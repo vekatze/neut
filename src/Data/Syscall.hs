@@ -48,6 +48,8 @@ asSyscallMaybe os arch name =
       | otherwise ->
         Nothing
     (OSLinux, ArchAArch64)
+      | name == nsOS <> "openat" ->
+        return (Right ("openat", 0x38), [ArgUnused, ArgImm, ArgArray, ArgImm, ArgImm])
       | name == nsOS <> "close" ->
         return (Right ("close", 0x39), [ArgImm])
       | name == nsOS <> "read" ->
@@ -68,8 +70,6 @@ asSyscallMaybe os arch name =
         return (Right ("exit", 0x5D), [ArgUnused, ArgImm])
       | name == nsOS <> "wait4" ->
         return (Right ("wait4", 0x104), [ArgImm, ArgArray, ArgImm, ArgStruct])
-      | name == nsOS <> "open" ->
-        return (Right ("open", 0x400), [ArgUnused, ArgArray, ArgImm, ArgImm])
       | otherwise ->
         Nothing
     (OSDarwin, Arch64)
