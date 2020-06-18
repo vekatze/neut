@@ -297,7 +297,7 @@ emitSyscallOp num ds = do
     ArchAArch64 -> do
       let args = (LLVMDataInt num, LowTypeInt 64) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
-      let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
+      let regStr = "\"={x0}" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"svc 0\",", regStr, argStr]
 
