@@ -186,11 +186,6 @@ lowDefEnv :: IORef (Map.HashMap T.Text ([Ident], LowComp))
 lowDefEnv =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE topNameSet #-}
-topNameSet :: IORef (S.Set T.Text)
-topNameSet =
-  unsafePerformIO (newIORef S.empty)
-
 {-# NOINLINE declEnv #-}
 declEnv :: IORef (Map.HashMap T.Text ([LowType], LowType))
 declEnv =

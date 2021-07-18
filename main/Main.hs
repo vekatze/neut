@@ -72,8 +72,7 @@ instance Read OutputKind where
     []
 
 data Command
-  = Build InputPath (Maybe OutputPath) OutputKind ShouldColorize ShouldCancelAlloc ShouldDisplayLogLocation ShouldDisplayLogLevel IsMain (Maybe ClangOption)
-  | Compile InputPath (Maybe OutputPath) OutputKind ShouldColorize ShouldCancelAlloc ShouldDisplayLogLocation ShouldDisplayLogLevel IsMain (Maybe ClangOption)
+  = Compile InputPath (Maybe OutputPath) OutputKind ShouldColorize ShouldCancelAlloc ShouldDisplayLogLocation ShouldDisplayLogLevel IsMain (Maybe ClangOption)
   | Link MainInputPath [AuxInputPath] (Maybe OutputPath) (Maybe ClangOption)
   | Check InputPath ShouldColorize CheckOptEndOfEntry
   | Archive InputPath (Maybe OutputPath)
@@ -86,11 +85,8 @@ parseOpt :: Parser Command
 parseOpt =
   subparser
     ( command
-        "build"
-        (info (helper <*> parseBuildOpt) (progDesc "build given file"))
-        <> command
-          "compile"
-          (info (helper <*> parseCompileOpt) (progDesc "compile given file"))
+        "compile"
+        (info (helper <*> parseCompileOpt) (progDesc "compile given file"))
         <> command
           "link"
           (info (helper <*> parseLinkOpt) (progDesc "link given files"))
@@ -104,76 +100,6 @@ parseOpt =
               (progDesc "create archive from given path")
           )
     )
-
-parseBuildOpt :: Parser Command
-parseBuildOpt =
-  Build
-    <$> argument
-      str
-      ( mconcat
-          [ metavar "INPUT",
-            help "The path of input file"
-          ]
-      )
-      <*> optional
-        ( strOption $
-            mconcat
-              [ long "output",
-                short 'o',
-                metavar "OUTPUT",
-                help "The path of output file"
-              ]
-        )
-      <*> option
-        kindReader
-        ( mconcat
-            [ long "emit",
-              metavar "KIND",
-              value OutputKindObject,
-              help "The type of output file"
-            ]
-        )
-      <*> colorizeOpt
-      <*> flag
-        True
-        False
-        ( mconcat
-            [ long "no-alloc-cancellation",
-              help "Set this to disable optimization for redundant alloc"
-            ]
-        )
-      <*> flag
-        True
-        False
-        ( mconcat
-            [ long "no-log-location",
-              help "Set this to suppress location information when displaying log"
-            ]
-        )
-      <*> flag
-        True
-        False
-        ( mconcat
-            [ long "no-log-level",
-              help "Set this to suppress level information when displaying log"
-            ]
-        )
-      <*> flag
-        False
-        True
-        ( mconcat
-            [ long "main"
-            ]
-        )
-      <*> optional
-        ( strOption
-            ( mconcat
-                [ long "clang-option",
-                  metavar "OPT",
-                  help "option string to be passed to clang"
-                ]
-            )
-        )
 
 parseCompileOpt :: Parser Command
 parseCompileOpt =
@@ -335,31 +261,6 @@ parseArchiveOpt =
 run :: Command -> IO ()
 run cmd =
   case cmd of
-    Build inputPathStr mOutputPathStr outputKind colorizeFlag cancelAllocFlag logLocationFlag logLevelFlag isMainFlag mClangOptStr -> do
-      writeIORef shouldColorize colorizeFlag
-      writeIORef shouldCancelAlloc cancelAllocFlag
-      writeIORef shouldDisplayLogLocation logLocationFlag
-      writeIORef shouldDisplayLogLevel logLevelFlag
-      writeIORef isMain isMainFlag
-      putStrLn $ show isMainFlag
-      inputPath <- resolveFile' inputPathStr
-      -- llvmIRBuilder <- runCompiler (runBuild inputPath)
-      llvmIRBuilder <- runCompiler (runBuild inputPath)
-      (basename, _) <- splitExtension $ filename inputPath
-      mOutputPath <- mapM resolveFile' mOutputPathStr
-      outputPath <- constructOutputPath basename mOutputPath outputKind
-      let llvmIR = toLazyByteString llvmIRBuilder
-      case outputKind of
-        OutputKindLLVM ->
-          L.writeFile (toFilePath outputPath) llvmIR
-        _ -> do
-          let additionalClangOptions = words $ fromMaybe "" mClangOptStr
-          let clangCmd = proc "clang" $ clangOptWith outputKind outputPath ++ additionalClangOptions
-          withCreateProcess clangCmd {std_in = CreatePipe} $ \(Just stdin) _ _ clangProcessHandler -> do
-            L.hPut stdin llvmIR
-            hClose stdin
-            exitCode <- waitForProcess clangProcessHandler
-            exitWith exitCode
     Compile inputPathStr mOutputPathStr outputKind colorizeFlag cancelAllocFlag logLocationFlag logLevelFlag isMainFlag mClangOptStr -> do
       writeIORef shouldColorize colorizeFlag
       writeIORef shouldCancelAlloc cancelAllocFlag
@@ -437,13 +338,9 @@ constructOutputArchivePath inputPath mPath =
     Nothing ->
       resolveFile' (fromRelDir $ dirname inputPath) >>= addExtension ".tar" >>= addExtension ".gz"
 
-runBuild :: Path Abs File -> IO Builder
-runBuild =
-  parse >=> elaborate >=> clarify >=> lower >=> emit
-
 runCompile :: Path Abs File -> IO Builder
 runCompile =
-  parse >=> elaborate >=> clarifyLibrary >=> lowerLibrary >=> emitLibrary
+  parse >=> elaborate >=> clarify >=> lower >=> emit
 
 runCheck :: Path Abs File -> IO ()
 runCheck =

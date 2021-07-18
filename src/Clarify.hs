@@ -1,6 +1,5 @@
 module Clarify
   ( clarify,
-    clarifyLibrary,
   )
 where
 
@@ -24,13 +23,8 @@ import qualified Data.Text as T
 import Path
 import Reduce.Comp
 
-clarify :: ([StmtPlus], StmtPlus) -> IO CompPlus
-clarify (ss, mainDefList) = do
-  clarifyHeader ss
-  clarifyBody mainDefList >>= reduceCompPlus
-
-clarifyLibrary :: ([StmtPlus], StmtPlus) -> IO ([(T.Text, CompPlus)], Maybe CompPlus)
-clarifyLibrary (ss, (mainFilePath, mainDefList)) = do
+clarify :: ([StmtPlus], StmtPlus) -> IO ([(T.Text, CompPlus)], Maybe CompPlus)
+clarify (ss, (mainFilePath, mainDefList)) = do
   clarifyHeader ss
   mainDefList' <- mapM (clarifyDef mainFilePath) mainDefList
   register mainDefList' -- for inlining
@@ -42,18 +36,21 @@ clarifyLibrary (ss, (mainFilePath, mainDefList)) = do
     then return (mainDefList'', Nothing)
     else do
       let m = newHint 1 1 mainFilePath
-      -- register cartesian-immediate and cartesian-closure
       _ <- immediateS4 m
       _ <- returnClosureS4 m
-      denv <- readIORef defEnv
-      case Map.lookup (toGlobalVarName mainFilePath $ asIdent "main") denv of
-        Nothing -> do
-          p' $ Map.keys denv
-          raiseError m "`main` is missing"
-        _ ->
-          return ()
+      ensureMain m mainFilePath
       let mainTerm = (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName mainFilePath $ asIdent "main")) [])
       return (mainDefList'', Just mainTerm)
+
+ensureMain :: Hint -> Path Abs File -> IO ()
+ensureMain m mainFilePath = do
+  denv <- readIORef defEnv
+  case Map.lookup (toGlobalVarName mainFilePath $ asIdent "main") denv of
+    Nothing -> do
+      p' $ Map.keys denv
+      raiseError m "`main` is missing"
+    _ ->
+      return ()
 
 clarifyHeader :: [StmtPlus] -> IO ()
 clarifyHeader ss =
@@ -61,15 +58,8 @@ clarifyHeader ss =
     [] ->
       return ()
     (path, defList) : rest -> do
-      -- mapM (clarifyDef path) defList >>= register
       mapM (clarifyDef path) defList >>= register'
       clarifyHeader rest
-
-clarifyBody :: StmtPlus -> IO CompPlus
-clarifyBody (mainFilePath, mainDefList) = do
-  mapM (clarifyDef mainFilePath) mainDefList >>= register
-  let m = newHint 1 1 mainFilePath
-  return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName mainFilePath $ asIdent "main")) [])
 
 register :: [(T.Text, CompPlus)] -> IO ()
 register defList =
@@ -83,7 +73,6 @@ clarifyDef :: Path Abs File -> Stmt -> IO (T.Text, CompPlus)
 clarifyDef path (StmtDef _ x _ e) = do
   e' <- clarifyTerm IntMap.empty e >>= reduceCompPlus
   let x' = toGlobalVarName path x
-  modifyIORef' topNameSet $ \set -> S.insert x' set
   return (x', e')
 
 clarifyTerm :: TypeEnv -> TermPlus -> IO CompPlus

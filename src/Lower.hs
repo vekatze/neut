@@ -1,6 +1,5 @@
 module Lower
   ( lower,
-    lowerLibrary,
   )
 where
 
@@ -13,14 +12,29 @@ import Data.IORef
 import Data.Log
 import Data.LowComp
 import Data.LowType
--- import qualified Data.Set as S
 import qualified Data.Text as T
 import Path
 
--- import System.IO.Unsafe (unsafePerformIO)
+lower :: ([(T.Text, CompPlus)], Maybe CompPlus) -> IO (Maybe LowComp)
+lower (defList, mMainTerm) = do
+  case mMainTerm of
+    Nothing -> do
+      insDeclEnv "cartesian-immediate" [(), ()]
+      insDeclEnv "cartesian-closure" [(), ()]
+      forM_ defList $ \(name, _) -> do
+        insLowDefEnv name [] LowCompUnreachable
+      forM_ defList $ \(name, e) -> do
+        e' <- lowerComp e
+        insLowDefEnv name [] e'
+      return Nothing
+    Just mainTerm -> do
+      registerCartesian "cartesian-immediate"
+      registerCartesian "cartesian-closure"
+      mainTerm' <- lowerMain mainTerm
+      return $ Just mainTerm'
 
-lower :: CompPlus -> IO LowComp
-lower mainTerm@(m, _) = do
+lowerMain :: CompPlus -> IO LowComp
+lowerMain mainTerm@(m, _) = do
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith m "result"
@@ -28,26 +42,6 @@ lower mainTerm@(m, _) = do
   castResult <- castThen (LowCompReturn cast)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
-
-lowerLibrary :: ([(T.Text, CompPlus)], Maybe CompPlus) -> IO (Maybe LowComp)
-lowerLibrary (defList, mMainTerm) = do
-  forM_ defList $ \(name, _) -> do
-    insLowDefEnv name [] LowCompUnreachable
-  forM_ defList $ \(name, e) -> do
-    e' <- lowerComp e
-    insLowDefEnv name [] e'
-  case mMainTerm of
-    Nothing -> do
-      lenv <- readIORef lowDefEnv
-      let lenv' = Map.delete "cartesian-immediate" lenv
-      let lenv'' = Map.delete "cartesian-closure" lenv'
-      insDeclEnv "cartesian-immediate" [(), ()]
-      insDeclEnv "cartesian-closure" [(), ()]
-      writeIORef lowDefEnv lenv''
-      return Nothing
-    Just mainTerm -> do
-      mainTerm' <- lower mainTerm
-      return $ Just mainTerm'
 
 lowerComp :: CompPlus -> IO LowComp
 lowerComp term =
@@ -195,11 +189,6 @@ lowerCompPrimitive m codeOp =
         DerangementExternal name -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "ext-call-arg") args
           insDeclEnv name vs
-          -- denv <- readIORef declEnv
-          -- when (not $ name `Map.member` denv) $ do
-          --   let dom = map (const voidPtr) vs
-          --   let cod = voidPtr
-          --   modifyIORef' declEnv $ \env -> Map.insert name (dom, cod) env
           lowerValueLet' (zip xs args) $ LowCompCall (LowValueVarGlobal name) vs
         DerangementLoad valueLowType -> do
           let ptr = args !! 0
@@ -342,13 +331,14 @@ lowerValueLet x lowerValue cont =
   case lowerValue of
     (m, ValueVarGlobal y) -> do
       denv <- readIORef defEnv
+      deEnv <- readIORef declEnv
       lenv <- readIORef lowDefEnv
       case Map.lookup y denv of
         Nothing ->
           raiseCritical m $ "no such global label defined: " <> y
-        -- Just (_, args, _) ->
-        --   llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
         Just (_, args, me)
+          | Map.member y deEnv ->
+            llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
           | not (Map.member y lenv) -> do
             case me of
               Nothing -> do
@@ -549,3 +539,12 @@ insDeclEnv name args = do
     let dom = map (const voidPtr) args
     let cod = voidPtr
     modifyIORef' declEnv $ \env -> Map.insert name (dom, cod) env
+
+registerCartesian :: T.Text -> IO ()
+registerCartesian name = do
+  denv <- readIORef defEnv
+  case Map.lookup name denv of
+    Just (_, args, Just e) ->
+      lowerComp e >>= insLowDefEnv name args
+    _ ->
+      return ()

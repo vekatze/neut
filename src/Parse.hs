@@ -33,14 +33,16 @@ parse path = do
   setupEnumEnv
   pushTrace path
   result <- visit path
-  -- ensureMain
+  ensureMain
   return result
 
--- ensureMain :: IO ()
--- ensureMain = do
---   m <- currentHint
---   _ <- discern (m, WeakTermVar VarKindLocal $ asIdent "main")
---   return ()
+ensureMain :: IO ()
+ensureMain = do
+  flag <- readIORef isMain
+  when flag $ do
+    m <- currentHint
+    _ <- discern (m, WeakTermVar VarKindLocal $ asIdent "main")
+    return ()
 
 visit :: Path Abs File -> IO ([WeakStmtPlus], WeakStmtPlus)
 visit path = do
