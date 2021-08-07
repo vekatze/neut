@@ -64,14 +64,6 @@ data Opacity
 
 instance Binary Opacity
 
--- data VarKind
---   = VarKindLocal
---   | VarKindGlobalOpaque FilePath
---   | VarKindGlobalTransparent FilePath
---   deriving (Show, Eq, Generic)
-
--- instance Binary VarKind
-
 data LamKind a
   = LamKindNormal
   | LamKindCons T.Text T.Text
