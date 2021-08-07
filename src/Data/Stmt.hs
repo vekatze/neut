@@ -4,7 +4,6 @@ module Data.Stmt where
 
 import Data.Basic
 import Data.Binary
-import qualified Data.ByteString.Lazy as L
 import Data.Global
 import Data.Term
 import qualified Data.Text as T
@@ -14,12 +13,11 @@ import Path
 import Path.IO
 
 type HeaderStmtPlus =
-  (Path Abs File, Either [Stmt] [WeakStmt])
+  (Path Abs File, Either [Stmt] [WeakStmt]) -- [EnumInfo]
 
 type WeakStmtPlus =
   (Path Abs File, [WeakStmt])
 
--- WeakStmtDef Hint Ident WeakTermPlus WeakTermPlus
 data WeakStmt
   = WeakStmtDef IsReducible Hint T.Text WeakTermPlus WeakTermPlus
   | WeakStmtUse T.Text
@@ -37,12 +35,19 @@ data Stmt
 
 instance Binary Stmt
 
+type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
+
+data Cache = Cache
+  { cacheSrcPath :: Path Abs File,
+    cacheDefList :: [Stmt],
+    cacheEnumList :: [EnumInfo]
+  }
+
 saveCache :: StmtPlus -> IO ()
 saveCache (path, stmtList) = do
   let stmtList' = map compress stmtList
-  let cacheData = encode stmtList'
   cachePath <- replaceExtension ".cache" path
-  L.writeFile (toFilePath cachePath) cacheData
+  encodeFile (toFilePath cachePath) stmtList'
 
 compress :: Stmt -> Stmt
 compress stmt@(StmtDef isReducible m x t _) =
@@ -50,11 +55,10 @@ compress stmt@(StmtDef isReducible m x t _) =
     then stmt
     else StmtDef isReducible m x t (m, TermTau)
 
-loadCache :: Path Abs File -> IO (Maybe [Stmt])
-loadCache srcPath = do
+loadCache :: Hint -> Path Abs File -> IO (Maybe [Stmt])
+loadCache m srcPath = do
   cachePath <- replaceExtension ".cache" srcPath
   hasCache <- doesFileExist cachePath
-  -- fixme: hasCacheの判定にファイルの更新時刻を用いる
   if not hasCache
     then return Nothing
     else do
@@ -63,7 +67,11 @@ loadCache srcPath = do
       if cacheModTime < srcModTime
         then return Nothing
         else do
-          cacheData <- L.readFile (toFilePath cachePath)
-          let item = decode cacheData :: [Stmt]
-          p' item
-          return $ Just $ decode cacheData
+          dataOrErr <- decodeFileOrFail (toFilePath cachePath)
+          case dataOrErr of
+            Left _ -> do
+              warn (getPosInfo m) $ "the cache file `" <> T.pack (toFilePath cachePath) <> "` is malformed, and thus is removed."
+              removeFile cachePath
+              return Nothing
+            Right content ->
+              return $ Just content
