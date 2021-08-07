@@ -389,6 +389,5 @@ runCompiler c = do
 
 waitAll :: IO ()
 waitAll = do
-  p "waiting"
   ps <- readIORef promiseEnv
   forM_ ps $ \promise -> wait promise
