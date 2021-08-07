@@ -14,12 +14,9 @@ import GHC.Generics
 
 data Term
   = TermTau
-  | --  | TermVar VarKind Ident
-    TermVar Ident
+  | TermVar Ident
   | TermVarGlobal TopName
-  | -- | TermVarGlobalOpaque TopName
-    -- | TermVarGlobalTransparent TopName
-    TermPi [IdentPlus] TermPlus
+  | TermPi [IdentPlus] TermPlus
   | TermPiIntro Opacity (LamKind IdentPlus) [IdentPlus] TermPlus
   | TermPiElim TermPlus [TermPlus]
   | TermConst T.Text
@@ -41,9 +38,6 @@ instance Binary Term
 
 type Pattern =
   (Hint, TopName, [IdentPlus])
-
--- type Pattern =
---   (Hint, Ident, [IdentPlus])
 
 type TermPlus =
   (Hint, Term)
@@ -74,12 +68,6 @@ weaken term =
       (m, WeakTermVar x)
     (m, TermVarGlobal g) ->
       (m, WeakTermVarGlobal g)
-    -- (m, TermVarGlobalOpaque g) ->
-    --   (m, WeakTermVarGlobalOpaque g)
-    -- (m, TermVarGlobalTransparent g) ->
-    --   (m, WeakTermVarGlobalTransparent g)
-    -- (m, TermVar x) ->
-    --   (m, WeakTermVar x)
     (m, TermPi xts t) ->
       (m, WeakTermPi (map weakenIdentPlus xts) (weaken t))
     (m, TermPiIntro opacity kind xts e) -> do
@@ -120,16 +108,6 @@ weaken term =
       (m, WeakTermCase resultType' mSubject' (e', t') patList')
     (m, TermIgnore e) ->
       (m, WeakTermIgnore (weaken e))
-
--- weakenEnumCase :: EnumCase -> EnumCase
--- weakenEnumCase ec =
---   case ec of
---     EnumCaseLabel fp l ->
---       WeakEnumCaseLabel (Just fp) l
---     EnumCaseInt i ->
---       WeakEnumCaseInt i
---     EnumCaseDefault ->
---       WeakEnumCaseDefault
 
 weakenIdentPlus :: (Hint, Ident, TermPlus) -> (Hint, Ident, WeakTermPlus)
 weakenIdentPlus (m, x, t) =

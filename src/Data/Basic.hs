@@ -64,13 +64,13 @@ data Opacity
 
 instance Binary Opacity
 
-data VarKind
-  = VarKindLocal
-  | VarKindGlobalOpaque FilePath
-  | VarKindGlobalTransparent FilePath
-  deriving (Show, Eq, Generic)
+-- data VarKind
+--   = VarKindLocal
+--   | VarKindGlobalOpaque FilePath
+--   | VarKindGlobalTransparent FilePath
+--   deriving (Show, Eq, Generic)
 
-instance Binary VarKind
+-- instance Binary VarKind
 
 data LamKind a
   = LamKindNormal
