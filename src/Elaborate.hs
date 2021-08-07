@@ -24,28 +24,31 @@ import Reduce.Term
 import Reduce.WeakTerm
 
 elaborate :: ([HeaderStmtPlus], WeakStmtPlus) -> IO ([StmtPlus], StmtPlus)
-elaborate (ss, (mainSrcPath, mainContent)) =
+elaborate (ss, mainData@(mainSrcPath, mainContent)) =
   case ss of
     [] -> do
       mainDefList' <- elaborateStmtPlus mainSrcPath mainContent
       return ([], mainDefList')
     (srcPath, content) : rest -> do
       case content of
-        Left result -> do
-          forM_ result $ \stmt -> registerTopLevelDef (toFilePath srcPath) stmt
-          (rest', s') <- elaborate (rest, (mainSrcPath, mainContent))
-          return ((srcPath, result) : rest', s')
+        Left cache -> do
+          forM_ cache $ \stmt -> registerTopLevelDef (toFilePath srcPath) stmt
+          (rest', s') <- elaborate (rest, mainData)
+          return ((srcPath, cache) : rest', s')
         Right defList -> do
           headStmtPlus' <- elaborateStmtPlus srcPath defList
           promise <- async $ saveCache headStmtPlus'
           modifyIORef' promiseEnv $ \env -> promise : env
-          (rest', s') <- elaborate (rest, (mainSrcPath, mainContent))
+          (rest', s') <- elaborate (rest, mainData)
           return (headStmtPlus' : rest', s')
 
 registerTopLevelDef :: FilePath -> Stmt -> IO ()
 registerTopLevelDef path (StmtDef _ x t e) = do
-  insWeakTypeEnv x $ weaken t
-  modifyIORef' topDefEnv $ \env -> Map.insert (path, asInt x) (weaken e) env
+  insTopTypeEnv (path, x) $ weaken t
+  modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e) env
+
+-- insWeakTypeEnv x $ weaken t
+-- modifyIORef' topDefEnv $ \env -> Map.insert (path, asInt x) (weaken e) env
 
 elaborateStmtPlus :: Path Abs File -> [WeakStmt] -> IO StmtPlus
 elaborateStmtPlus path defList = do
@@ -65,10 +68,10 @@ setupDef :: Path Abs File -> WeakStmt -> IO ()
 setupDef path def =
   case def of
     WeakStmtDef _ x t e -> do
-      insWeakTypeEnv x t
+      insTopTypeEnv (toFilePath path, x) t
       nenv <- readIORef transparentTopNameEnv
-      when (Map.member (asText x) nenv) $
-        modifyIORef' topDefEnv $ \env -> Map.insert (toFilePath path, asInt x) e env
+      when (Map.member x nenv) $
+        modifyIORef' topDefEnv $ \env -> Map.insert (toFilePath path, x) e env
     _ ->
       return ()
 
@@ -81,7 +84,7 @@ inferStmtList stmtList =
       (e', te) <- infer e
       t' <- inferType t
       insConstraintEnv te t'
-      when (asText x == "main") $ insConstraintEnv t (m, WeakTermConst "i64")
+      when (x == "main") $ insConstraintEnv t (m, WeakTermConst "i64")
       rest' <- inferStmtList rest
       return $ WeakStmtDef m x t' e' : rest'
     _ : rest ->
@@ -95,8 +98,8 @@ elaborateStmtList path stmtList = do
     WeakStmtDef m x t e : rest -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTermPlus
-      insWeakTypeEnv x $ weaken t'
-      modifyIORef' topDefEnv $ \env -> Map.insert (path, asInt x) (weaken e') env
+      insTopTypeEnv (path, x) $ weaken t'
+      modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e') env
       rest' <- elaborateStmtList path rest
       return $ StmtDef m x t' e' : rest'
     _ : rest ->
@@ -107,8 +110,14 @@ elaborate' term =
   case term of
     (m, WeakTermTau) ->
       return (m, TermTau)
-    (m, WeakTermVar opacity x) ->
-      return (m, TermVar opacity x)
+    (m, WeakTermVar x) ->
+      return (m, TermVar x)
+    (m, WeakTermVarGlobalOpaque name) ->
+      return (m, TermVarGlobalOpaque name)
+    (m, WeakTermVarGlobalTransparent name) ->
+      return (m, TermVarGlobalTransparent name)
+    -- (m, WeakTermVar opacity x) ->
+    --   return (m, TermVar opacity x)
     (m, WeakTermPi xts t) -> do
       xts' <- mapM elaborateWeakIdentPlus xts
       t' <- elaborate' t
@@ -198,14 +207,19 @@ elaborate' term =
       denv <- readIORef dataEnv
       oenv <- readIORef opaqueTopNameEnv
       case t' of
-        (_, TermPiElim (_, TermVar _ name) _)
-          | Just bs <- Map.lookup (asText name) denv,
-            Map.member (asText name) oenv -> do
+        (_, TermPiElim (_, TermVarGlobalOpaque name) _)
+          | Just bs <- Map.lookup (snd name) denv,
+            Map.member (snd name) oenv -> do
             patList' <- elaboratePatternList m bs patList
             return (m, TermCase resultType' mSubject' (e', t') patList')
-        (_, TermVar _ name)
-          | Just bs <- Map.lookup (asText name) denv,
-            Map.member (asText name) oenv -> do
+        -- (_, TermPiElim (_, TermVar _ name) _)
+        --   | Just bs <- Map.lookup (asText name) denv,
+        --     Map.member (asText name) oenv -> do
+        --     patList' <- elaboratePatternList m bs patList
+        --     return (m, TermCase resultType' mSubject' (e', t') patList')
+        (_, TermVarGlobalOpaque name)
+          | Just bs <- Map.lookup (snd name) denv,
+            Map.member (snd name) oenv -> do
             patList' <- elaboratePatternList m bs patList
             return (m, TermCase resultType' mSubject' (e', t') patList')
         _ -> do
@@ -230,13 +244,13 @@ checkCaseSanity m bs patList =
     ([], []) ->
       return ()
     (b : bsRest, ((mPat, b', _), _) : patListRest) -> do
-      if b /= asText b'
-        then raiseError mPat $ "the constructor here is supposed to be `" <> b <> "`, but is: `" <> asText b' <> "`"
+      if b /= snd b'
+        then raiseError mPat $ "the constructor here is supposed to be `" <> b <> "`, but is: `" <> snd b' <> "`"
         else checkCaseSanity m bsRest patListRest
     (b : _, []) ->
       raiseError m $ "found a non-exhaustive pattern; the clause for `" <> b <> "` is missing"
     ([], ((mPat, b, _), _) : _) ->
-      raiseError mPat $ "found a redundant pattern; this clause for `" <> asText b <> "` is redundant"
+      raiseError mPat $ "found a redundant pattern; this clause for `" <> snd b <> "` is redundant"
 
 elaborateWeakIdentPlus :: WeakIdentPlus -> IO IdentPlus
 elaborateWeakIdentPlus (m, x, t) = do
@@ -285,3 +299,7 @@ lookupEnumSet m name = do
       raiseError m $ "no such enum defined: " <> name
     Just xis ->
       return $ map fst $ snd xis
+
+insTopTypeEnv :: TopName -> WeakTermPlus -> IO ()
+insTopTypeEnv name t =
+  modifyIORef' topTypeEnv $ \env -> Map.insert name t env

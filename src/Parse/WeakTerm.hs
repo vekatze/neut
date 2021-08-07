@@ -329,7 +329,9 @@ weakTermPattern = do
   m <- currentHint
   c <- symbol
   argList <- weakTermPatternArgument
-  return (m, asIdent c, argList)
+  return (m, ("", c), argList)
+
+-- return (m, asIdent c, argList)
 
 weakTermPatternArgument :: IO [WeakIdentPlus]
 weakTermPatternArgument = do
@@ -409,7 +411,10 @@ weakTermLetCoproduct = do
   err <- newTextualIdentFromText "err"
   typeOfLeft <- newAster m
   typeOfRight <- newAster m
-  let sumLeft = asIdent "sum.left"
+  let sumLeft = ("", "sum.left")
+  let sumRight = ("", "sum.right")
+  let sumLeftVar = asIdent "sum.left"
+  -- let sumLeft = asIdent "sum.left"
   return
     ( m,
       WeakTermCase
@@ -417,9 +422,9 @@ weakTermLetCoproduct = do
         Nothing
         (e1, doNotCare m)
         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
-            (m, WeakTermPiElim (weakVar' m sumLeft) [typeOfLeft, typeOfRight, (weakVar' m err)])
+            (m, WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, (weakVar' m err)])
           ),
-          ( (m, asIdent "sum.right", [x]),
+          ( (m, sumRight, [x]),
             e2
           )
         ]

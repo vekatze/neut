@@ -96,7 +96,7 @@ checkClauseListSanity consNameList clauseList =
     ([], []) ->
       True
     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
-      | consName == asText name ->
+      | consName == snd name ->
         checkClauseListSanity restConsNameList restClauseList
     _ ->
       False
@@ -110,11 +110,15 @@ substTermPlus sub term =
   case term of
     (_, TermTau) ->
       return term
-    (_, TermVar _ x)
+    (_, TermVar x)
       | Just e <- IntMap.lookup (asInt x) sub ->
         return e
       | otherwise ->
         return term
+    (_, TermVarGlobalOpaque {}) ->
+      return term
+    (_, TermVarGlobalTransparent {}) ->
+      return term
     (m, TermPi xts t) -> do
       (xts', t') <- substTermPlus' sub xts t
       return (m, TermPi xts' t')
@@ -175,6 +179,6 @@ substTermPlus' sub binder e =
     ((m, x, t) : xts) -> do
       t' <- substTermPlus sub t
       x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (asInt x) (m, TermVar VarKindLocal x') sub
+      let sub' = IntMap.insert (asInt x) (m, TermVar x') sub
       (xts', e') <- substTermPlus' sub' xts e
       return ((m, x', t') : xts', e')

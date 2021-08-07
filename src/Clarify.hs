@@ -41,13 +41,13 @@ clarify (ss, (mainFilePath, mainDefList)) = do
       _ <- immediateS4 m
       _ <- returnClosureS4 m
       ensureMain m path
-      let mainTerm = (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path $ asIdent "main")) [])
+      let mainTerm = (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path "main")) [])
       return (mainDefList'', Just mainTerm)
 
 ensureMain :: Hint -> FilePath -> IO ()
 ensureMain m mainFilePath = do
   denv <- readIORef defEnv
-  case Map.lookup (toGlobalVarName mainFilePath $ asIdent "main") denv of
+  case Map.lookup (toGlobalVarName mainFilePath "main") denv of
     Nothing -> do
       p' $ Map.keys denv
       raiseError m "`main` is missing"
@@ -82,14 +82,31 @@ clarifyTerm tenv term =
   case term of
     (m, TermTau) ->
       returnImmediateS4 m
-    (m, TermVar kind x) -> do
-      case kind of
-        VarKindLocal ->
-          return (m, CompUpIntro (m, ValueVarLocal x))
-        VarKindGlobalOpaque path ->
-          return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-        VarKindGlobalTransparent path ->
-          return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    (m, TermVar x) -> do
+      return (m, CompUpIntro (m, ValueVarLocal x))
+    (m, TermVarGlobalOpaque (path, x)) ->
+      return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    -- return (m, CompUpIntro (m, ValueVarLocal x))
+    (m, TermVarGlobalTransparent (path, x)) ->
+      return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    -- (m, TermVar x) -> do
+    --   return (m, CompUpIntro (m, ValueVarLocal x))
+    -- case kind of
+    --   VarKindLocal ->
+    --     return (m, CompUpIntro (m, ValueVarLocal x))
+    --   VarKindGlobalOpaque path ->
+    --     return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    --   VarKindGlobalTransparent path ->
+    --     return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    -- (m, TermVar kind x) -> do
+    --   case kind of
+    --     VarKindLocal ->
+    --       return (m, CompUpIntro (m, ValueVarLocal x))
+    --     VarKindGlobalOpaque path ->
+    --       return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    --     VarKindGlobalTransparent path ->
+    --       return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+
     (m, TermPi {}) ->
       returnClosureS4 m
     (m, TermPiIntro opacity kind mxts e) -> do
@@ -138,7 +155,7 @@ clarifyTerm tenv term =
         clauseClosure <- returnClosure tenv True LamKindNormal fvs mPat xts body'
         closureArgs <- constructClauseArguments clauseClosure i $ length patList
         let (argVarNameList, argList, argVarList) = unzip3 (resultArg : closureArgs)
-        let constructorName' = asText constructorName <> ";cons"
+        let constructorName' = snd constructorName <> ";cons"
         let consName = wrapWithQuote $ if isJust mSubject then constructorName' <> ";noetic" else constructorName'
         return $
           ( EnumCaseInt i,
@@ -337,14 +354,25 @@ chainOf tenv term =
   case term of
     (_, TermTau) ->
       []
-    (m, TermVar opacity x) -> do
-      case opacity of
-        VarKindLocal -> do
-          let t = (IntMap.!) tenv (asInt x)
-          let xts = chainOf tenv t
-          xts ++ [(m, x, t)]
-        _ ->
-          []
+    (m, TermVar x) -> do
+      let t = (IntMap.!) tenv (asInt x)
+      let xts = chainOf tenv t
+      xts ++ [(m, x, t)]
+    (_, TermVarGlobalOpaque {}) ->
+      []
+    (_, TermVarGlobalTransparent {}) ->
+      []
+    -- _ ->
+    --   []
+    -- (m, TermVar opacity x) -> do
+    --   case opacity of
+    --     VarKindLocal -> do
+    --       let t = (IntMap.!) tenv (asInt x)
+    --       let xts = chainOf tenv t
+    --       xts ++ [(m, x, t)]
+    --     _ ->
+    --       []
+
     (_, TermPi {}) ->
       []
     (_, TermPiIntro _ kind xts e) ->

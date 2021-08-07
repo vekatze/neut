@@ -169,8 +169,8 @@ takeAll predicate candidateList acc =
 
 {-# INLINE asVar #-}
 asVar :: Hint -> Map.HashMap T.Text b -> T.Text -> (b -> a) -> Maybe (Hint, a)
-asVar m nenv var f =
-  Map.lookup var nenv >>= \x -> return (m, f x)
+asVar m nenv name f =
+  Map.lookup name nenv >>= \x -> return (m, f x)
 
 -- {-# INLINE asMetaVar #-}
 -- asMetaVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe MetaTermPlus
@@ -180,22 +180,42 @@ asVar m nenv var f =
 {-# INLINE asWeakVar #-}
 asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTermPlus
 asWeakVar m nenv var =
-  asVar m nenv var (WeakTermVar VarKindLocal)
+  asVar m nenv var WeakTermVar
+
+-- {-# INLINE asWeakVar #-}
+-- asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTermPlus
+-- asWeakVar m nenv var =
+--   asVar m nenv var (WeakTermVar VarKindLocal)
 
 {-# INLINE asTransparentGlobalVar #-}
-asTransparentGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
-asTransparentGlobalVar m nenv var =
-  asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalTransparent fp) x)
+asTransparentGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
+asTransparentGlobalVar m nenv name =
+  asVar m nenv name (\fp -> WeakTermVarGlobalTransparent (fp, name))
+
+-- {-# INLINE asTransparentGlobalVar #-}
+-- asTransparentGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
+-- asTransparentGlobalVar m nenv var =
+--   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalTransparent fp) x)
 
 {-# INLINE asOpaqueGlobalVar #-}
-asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
-asOpaqueGlobalVar m nenv var =
-  asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalOpaque fp) x)
+asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
+asOpaqueGlobalVar m nenv name =
+  asVar m nenv name (\fp -> WeakTermVarGlobalOpaque (fp, name))
+
+-- {-# INLINE asOpaqueGlobalVar #-}
+-- asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
+-- asOpaqueGlobalVar m nenv var =
+--   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalOpaque fp) x)
 
 {-# INLINE asConstructor #-}
-asConstructor :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe (Hint, Ident)
-asConstructor m nenv var =
-  asVar m nenv var snd
+asConstructor :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe (Hint, TopName)
+asConstructor m nenv name =
+  asVar m nenv name (\fp -> (fp, name))
+
+-- {-# INLINE asConstructor #-}
+-- asConstructor :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe (Hint, Ident)
+-- asConstructor m nenv var =
+--   asVar m nenv var snd
 
 {-# INLINE findThenModify #-}
 findThenModify :: Map.HashMap T.Text t -> (T.Text -> a) -> T.Text -> Maybe a

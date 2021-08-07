@@ -109,9 +109,14 @@ boolFalse =
   "bool" <> nsSep <> "false"
 
 {-# INLINE toGlobalVarName #-}
-toGlobalVarName :: FilePath -> Ident -> T.Text
+toGlobalVarName :: FilePath -> T.Text -> T.Text
 toGlobalVarName path x =
-  wrapWithQuote $ asText x <> ";" <> T.pack path
+  wrapWithQuote $ x <> ";" <> T.pack path
+
+-- {-# INLINE toGlobalVarName #-}
+-- toGlobalVarName :: FilePath -> Ident -> T.Text
+-- toGlobalVarName path x =
+--   wrapWithQuote $ asText x <> ";" <> T.pack path
 
 -- {-# INLINE toGlobalVarName #-}
 -- toGlobalVarName :: Ident -> T.Text

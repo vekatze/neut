@@ -12,9 +12,12 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import GHC.Generics
 
+--  WeakTermVar VarKind Ident
 data WeakTerm
   = WeakTermTau
-  | WeakTermVar VarKind Ident
+  | WeakTermVar Ident
+  | WeakTermVarGlobalOpaque TopName
+  | WeakTermVarGlobalTransparent TopName
   | WeakTermPi [WeakIdentPlus] WeakTermPlus
   | WeakTermPiIntro Opacity (LamKind WeakIdentPlus) [WeakIdentPlus] WeakTermPlus
   | WeakTermPiElim WeakTermPlus [WeakTermPlus]
@@ -38,7 +41,10 @@ data WeakTerm
 instance Binary WeakTerm
 
 type WeakPattern =
-  (Hint, Ident, [WeakIdentPlus])
+  (Hint, TopName, [WeakIdentPlus])
+
+-- type WeakPattern =
+--   (Hint, Ident, [WeakIdentPlus])
 
 type WeakTermPlus =
   (Hint, WeakTerm)
@@ -95,7 +101,11 @@ type SuspendedConstraintQueue = Q.MinQueue SuspendedConstraint
 
 toVar :: Hint -> Ident -> WeakTermPlus
 toVar m x =
-  (m, WeakTermVar VarKindLocal x)
+  (m, WeakTermVar x)
+
+-- toVar :: Hint -> Ident -> WeakTermPlus
+-- toVar m x =
+--   (m, WeakTermVar VarKindLocal x)
 
 kindToInt :: ConstraintKind -> Int
 kindToInt k =
@@ -118,12 +128,18 @@ varWeakTermPlus term =
   case term of
     (_, WeakTermTau) ->
       S.empty
-    (_, WeakTermVar opacity x) ->
-      case opacity of
-        VarKindLocal ->
-          S.singleton x
-        _ ->
-          S.empty
+    -- (_, WeakTermVar opacity x) ->
+    (_, WeakTermVar x) ->
+      S.singleton x
+    (_, WeakTermVarGlobalOpaque {}) ->
+      S.empty
+    (_, WeakTermVarGlobalTransparent {}) ->
+      S.empty
+    -- case opacity of
+    --   VarKindLocal ->
+    --     S.singleton x
+    --   _ ->
+    --     S.empty
     (_, WeakTermPi xts t) ->
       varWeakTermPlus' xts [t]
     (_, WeakTermPiIntro _ k xts e) ->
@@ -180,7 +196,11 @@ asterWeakTermPlus term =
   case term of
     (_, WeakTermTau) ->
       S.empty
-    (_, WeakTermVar _ _) ->
+    (_, WeakTermVar {}) ->
+      S.empty
+    (_, WeakTermVarGlobalOpaque {}) ->
+      S.empty
+    (_, WeakTermVarGlobalTransparent {}) ->
       S.empty
     (_, WeakTermPi xts t) ->
       asterWeakTermPlus' xts t
@@ -238,8 +258,10 @@ metaOf =
 asVar :: WeakTermPlus -> Maybe Ident
 asVar term =
   case term of
-    (_, WeakTermVar _ x) ->
+    (_, WeakTermVar x) ->
       Just x
+    -- (_, WeakTermVar _ x) ->
+    --   Just x
     _ ->
       Nothing
 
@@ -248,8 +270,14 @@ toText term =
   case term of
     (_, WeakTermTau) ->
       "tau"
-    (_, WeakTermVar _ x) ->
+    (_, WeakTermVar x) ->
       showVariable x
+    (_, WeakTermVarGlobalOpaque (_, x)) ->
+      x
+    (_, WeakTermVarGlobalTransparent (_, x)) ->
+      x
+    -- (_, WeakTermVar _ x) ->
+    --   showVariable x
     (_, WeakTermPi xts cod)
       | [(_, I ("internal.sigma-tau", _), _), (_, _, (_, WeakTermPi yts _))] <- xts ->
         case splitLast yts of
@@ -341,14 +369,23 @@ showCaseClause :: (WeakPattern, WeakTermPlus) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, Ident, [WeakIdentPlus]) -> T.Text
-showPattern (_, f, xts) = do
+showPattern :: (Hint, TopName, [WeakIdentPlus]) -> T.Text
+showPattern (_, (_, f), xts) = do
   case xts of
     [] ->
-      inParen $ asText f
+      inParen f
     _ -> do
       let xs = map (\(_, x, _) -> x) xts
-      inParen $ asText f <> " " <> T.intercalate " " (map showVariable xs)
+      inParen $ f <> " " <> T.intercalate " " (map showVariable xs)
+
+-- showPattern :: (Hint, Ident, [WeakIdentPlus]) -> T.Text
+-- showPattern (_, f, xts) = do
+--   case xts of
+--     [] ->
+--       inParen $ asText f
+--     _ -> do
+--       let xs = map (\(_, x, _) -> x) xts
+--       inParen $ asText f <> " " <> T.intercalate " " (map showVariable xs)
 
 showClause :: (EnumCase, WeakTermPlus) -> T.Text
 showClause (c, e) =

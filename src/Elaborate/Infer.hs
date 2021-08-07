@@ -36,9 +36,18 @@ infer' ctx term =
   case term of
     (m, WeakTermTau) ->
       return ((m, WeakTermTau), (m, WeakTermTau))
-    (m, WeakTermVar kind x) -> do
+    (m, WeakTermVar x) -> do
       t <- lookupWeakTypeEnv m x
-      return ((m, WeakTermVar kind x), (m, snd t))
+      return ((m, WeakTermVar x), (m, snd t))
+    (m, WeakTermVarGlobalOpaque name) -> do
+      t <- lookupTopTypeEnv m name
+      return ((m, WeakTermVarGlobalOpaque name), (m, snd t))
+    (m, WeakTermVarGlobalTransparent name) -> do
+      t <- lookupTopTypeEnv m name
+      return ((m, WeakTermVarGlobalTransparent name), (m, snd t))
+    -- (m, WeakTermVar kind x) -> do
+    --   t <- lookupWeakTypeEnv m x
+    --   return ((m, WeakTermVar kind x), (m, snd t))
     (m, WeakTermPi xts t) -> do
       (xts', t') <- inferPi ctx xts t
       return ((m, WeakTermPi xts' t'), (m, WeakTermTau))
@@ -115,21 +124,24 @@ infer' ctx term =
           return ((m, WeakTermCase resultType mSubject' (e', t') []), resultType) -- ex falso quodlibet
         ((_, constructorName, _), _) : _ -> do
           cenv <- readIORef constructorEnv
-          case Map.lookup (asText constructorName) cenv of
+          -- case Map.lookup (asText constructorName) cenv of
+          case Map.lookup (snd constructorName) cenv of
             Nothing ->
-              raiseCritical m $ "no such constructor defined (infer): " <> asText constructorName
+              raiseCritical m $ "no such constructor defined (infer): " <> snd constructorName
             Just (holeCount, _) -> do
               holeList <- mapM (const $ newAsterInCtx ctx m) $ replicate holeCount ()
               clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
                 (xts', (body', tBody)) <- inferBinder ctx xts body
                 insConstraintEnv resultType tBody
-                let xs = map (\(mx, x, t) -> ((mx, WeakTermVar VarKindLocal x), t)) xts'
-                tCons <- lookupWeakTypeEnv m name
+                let xs = map (\(mx, x, t) -> ((mx, WeakTermVar x), t)) xts'
+                tCons <- lookupTopTypeEnv m name
+                -- tCons <- lookupWeakTypeEnv m name
                 case holeList ++ xs of
                   [] ->
                     insConstraintEnv tCons t'
                   _ -> do
-                    (_, tPat) <- inferPiElim ctx m ((m, WeakTermVar VarKindLocal name), tCons) (holeList ++ xs)
+                    -- (_, tPat) <- inferPiElim ctx m ((m, WeakTermVar VarKindLocal name), tCons) (holeList ++ xs)
+                    (_, tPat) <- inferPiElim ctx m ((m, WeakTermVarGlobalTransparent name), tCons) (holeList ++ xs)
                     insConstraintEnv tPat t'
                 return ((mPat, name, xts'), body')
               return ((m, WeakTermCase resultType mSubject' (e', t') clauseList'), resultType)
@@ -237,7 +249,7 @@ inferPiElim ctx m (e, t) ets = do
 newAsterInCtx :: Context -> Hint -> IO (WeakTermPlus, WeakTermPlus)
 newAsterInCtx ctx m = do
   higherAster <- newAster m
-  let varSeq = map (\(mx, x, _) -> (mx, WeakTermVar VarKindLocal x)) ctx
+  let varSeq = map (\(mx, x, _) -> (mx, WeakTermVar x)) ctx
   let higherApp = (m, WeakTermPiElim higherAster varSeq)
   aster <- newAster m
   let app = (m, WeakTermPiElim aster varSeq)
@@ -248,7 +260,7 @@ newAsterInCtx ctx m = do
 -- and return ?M @ (x1, ..., xn) : Univ{i}.
 newTypeAsterInCtx :: Context -> Hint -> IO WeakTermPlus
 newTypeAsterInCtx ctx m = do
-  let varSeq = map (\(mx, x, _) -> (mx, WeakTermVar VarKindLocal x)) ctx
+  let varSeq = map (\(mx, x, _) -> (mx, WeakTermVar x)) ctx
   aster <- newAster m
   return (m, WeakTermPiElim aster varSeq)
 
@@ -301,6 +313,16 @@ lookupWeakTypeEnv m s = do
     Nothing ->
       raiseCritical m $
         asText' s <> " is not found in the weak type environment."
+
+lookupTopTypeEnv :: Hint -> TopName -> IO WeakTermPlus
+lookupTopTypeEnv m name = do
+  ttenv <- readIORef topTypeEnv
+  case Map.lookup name ttenv of
+    Nothing -> do
+      raiseCritical m $
+        snd name <> " is not found in the top type environment."
+    Just t ->
+      return t
 
 lookupWeakTypeEnvMaybe :: Ident -> IO (Maybe WeakTermPlus)
 lookupWeakTypeEnvMaybe (I (_, s)) = do

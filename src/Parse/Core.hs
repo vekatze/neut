@@ -394,11 +394,19 @@ keywordSet =
 
 weakVar :: Hint -> T.Text -> WeakTermPlus
 weakVar m str =
-  (m, WeakTermVar VarKindLocal (asIdent str))
+  (m, WeakTermVar (asIdent str))
+
+-- weakVar :: Hint -> T.Text -> WeakTermPlus
+-- weakVar m str =
+--   (m, WeakTermVar VarKindLocal (asIdent str))
 
 weakVar' :: Hint -> Ident -> WeakTermPlus
 weakVar' m ident =
-  (m, WeakTermVar VarKindLocal ident)
+  (m, WeakTermVar ident)
+
+-- weakVar' :: Hint -> Ident -> WeakTermPlus
+-- weakVar' m ident =
+--   (m, WeakTermVar VarKindLocal ident)
 
 lam :: Hint -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus
 lam m varList e =

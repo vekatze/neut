@@ -133,19 +133,34 @@ sectionEnv =
   unsafePerformIO (newIORef [])
 
 {-# NOINLINE transparentTopNameEnv #-}
-transparentTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
+transparentTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
 transparentTopNameEnv =
   unsafePerformIO (newIORef Map.empty)
 
+-- {-# NOINLINE transparentTopNameEnv #-}
+-- transparentTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
+-- transparentTopNameEnv =
+--   unsafePerformIO (newIORef Map.empty)
+
 {-# NOINLINE opaqueTopNameEnv #-}
-opaqueTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
+opaqueTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
 opaqueTopNameEnv =
   unsafePerformIO (newIORef Map.empty)
+
+-- {-# NOINLINE opaqueTopNameEnv #-}
+-- opaqueTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
+-- opaqueTopNameEnv =
+--   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE weakTypeEnv #-}
 weakTypeEnv :: IORef (IntMap.IntMap WeakTermPlus)
 weakTypeEnv =
   unsafePerformIO (newIORef IntMap.empty)
+
+{-# NOINLINE topTypeEnv #-}
+topTypeEnv :: IORef (Map.HashMap TopName WeakTermPlus)
+topTypeEnv =
+  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE constTypeEnv #-}
 constTypeEnv :: IORef (Map.HashMap T.Text TermPlus)
@@ -173,9 +188,14 @@ substEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE topDefEnv #-}
-topDefEnv :: IORef (Map.HashMap (FilePath, Int) WeakTermPlus)
+topDefEnv :: IORef (Map.HashMap TopName WeakTermPlus)
 topDefEnv =
   unsafePerformIO (newIORef Map.empty)
+
+-- {-# NOINLINE topDefEnv #-}
+-- topDefEnv :: IORef (Map.HashMap (FilePath, Int) WeakTermPlus)
+-- topDefEnv =
+--   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE defEnv #-}
 defEnv :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe CompPlus))

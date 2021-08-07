@@ -101,7 +101,7 @@ checkClauseListSanity consNameList clauseList =
     ([], []) ->
       True
     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
-      | consName == asText name ->
+      | consName == snd name ->
         checkClauseListSanity restConsNameList restClauseList
     _ ->
       False
@@ -115,11 +115,15 @@ substWeakTermPlus sub term =
   case term of
     (_, WeakTermTau) ->
       return term
-    (_, WeakTermVar _ x)
+    (_, WeakTermVar x)
       | Just e <- IntMap.lookup (asInt x) sub ->
         return e
       | otherwise ->
         return term
+    (_, WeakTermVarGlobalOpaque {}) ->
+      return term
+    (_, WeakTermVarGlobalTransparent {}) ->
+      return term
     (m, WeakTermPi xts t) -> do
       (xts', t') <- substWeakTermPlus' sub xts t
       return (m, WeakTermPi xts' t')
@@ -192,6 +196,6 @@ substWeakTermPlus' sub binder e =
     ((m, x, t) : xts) -> do
       t' <- substWeakTermPlus sub t
       x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (asInt x) (m, WeakTermVar VarKindLocal x') sub
+      let sub' = IntMap.insert (asInt x) (m, WeakTermVar x') sub
       (xts', e') <- substWeakTermPlus' sub' xts e
       return ((m, x', t') : xts', e')

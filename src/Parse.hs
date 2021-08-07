@@ -42,7 +42,7 @@ ensureMain = do
   flag <- readIORef isMain
   when flag $ do
     m <- currentHint
-    _ <- discern (m, WeakTermVar VarKindLocal $ asIdent "main")
+    _ <- discern (m, WeakTermVar $ asIdent "main")
     return ()
 
 visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
@@ -191,14 +191,16 @@ stmtDefine isReducible = do
 defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
 defineFunction isReducible m mFun funName' argList codType e = do
   let piType = (m, WeakTermPi argList codType)
-  funName'' <- discernTopLevelName isReducible m $ asIdent funName'
+  registerTopLevelName isReducible m $ asIdent funName'
+  -- funName'' <- discernTopLevelName isReducible m $ asIdent funName'
   let e' = (m, WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent funName', piType)) argList e)
-  return $ WeakStmtDef m funName'' piType e'
+  return $ WeakStmtDef m funName' piType e'
 
 defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
 defineTerm isReducible m funName' codType e = do
-  funName'' <- discernTopLevelName isReducible m $ asIdent funName'
-  return $ WeakStmtDef m funName'' codType e
+  registerTopLevelName isReducible m $ asIdent funName'
+  -- funName'' <- discernTopLevelName isReducible m $ asIdent funName'
+  return $ WeakStmtDef m funName' codType e
 
 stmtDefineEnum :: IO ()
 stmtDefineEnum = do
@@ -353,7 +355,7 @@ stmtInclude = do
           forM_ stmtList $ \(StmtDef _ x _ _) -> do
             -- let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
             let nameEnv = if False then transparentTopNameEnv else opaqueTopNameEnv
-            modifyIORef' nameEnv $ \env -> Map.insert (asText x) (toFilePath newPath, x) env
+            modifyIORef' nameEnv $ \env -> Map.insert x (toFilePath newPath) env
           modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
           return [(newPath, Left stmtList)]
         Nothing -> do
@@ -402,11 +404,13 @@ defineData m mFun a xts bts = do
   setAsData a (length xts) bts
   z <- newTextualIdentFromText "cod"
   let lamArgs = (m, z, (m, WeakTermTau)) : map (toPiTypeWith z) bts
-  let baseType = (m, WeakTermPi lamArgs (m, WeakTermVar VarKindLocal z))
+  -- let baseType = (m, WeakTermPi lamArgs (m, WeakTermVar VarKindLocal z))
+  let baseType = (m, WeakTermPi lamArgs (m, WeakTermVar z))
   case xts of
     [] -> do
-      a' <- discernTopLevelName False m $ asIdent a
-      let formRule = WeakStmtDef m a' (m, WeakTermTau) (m, WeakTermPi [] (m, WeakTermTau)) -- fake type
+      -- a' <- discernTopLevelName False m $ asIdent a
+      registerTopLevelName False m $ asIdent a
+      let formRule = WeakStmtDef m a (m, WeakTermTau) (m, WeakTermPi [] (m, WeakTermTau)) -- fake type
       introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
     _ -> do
@@ -519,7 +523,7 @@ stmtDefineCodataElim m a xts yts (mY, y, elemType) = do
         elemType
         Nothing
         (weakVar m recordVarText, codataType)
-        [((m, asIdent (a <> nsSep <> "new"), yts), weakVar m (asText y))]
+        [((m, ("", a <> nsSep <> "new"), yts), weakVar m (asText y))]
     )
 
 stmtDefineResourceType :: IO WeakStmt
@@ -586,11 +590,11 @@ setAsData a i bts = do
 
 toPiTypeWith :: Ident -> (Hint, T.Text, [WeakIdentPlus]) -> WeakIdentPlus
 toPiTypeWith cod (m, b, yts) =
-  (m, asIdent b, (m, WeakTermPi yts (m, WeakTermVar VarKindLocal cod)))
+  (m, asIdent b, (m, WeakTermPi yts (m, WeakTermVar cod)))
 
 identPlusToVar :: WeakIdentPlus -> WeakTermPlus
 identPlusToVar (m, x, _) =
-  (m, WeakTermVar VarKindLocal x)
+  (m, WeakTermVar x)
 
 {-# INLINE isLinear #-}
 isLinear :: [Int] -> Bool

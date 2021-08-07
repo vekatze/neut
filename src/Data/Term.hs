@@ -14,7 +14,10 @@ import GHC.Generics
 
 data Term
   = TermTau
-  | TermVar VarKind Ident
+  | --  | TermVar VarKind Ident
+    TermVar Ident
+  | TermVarGlobalOpaque TopName
+  | TermVarGlobalTransparent TopName
   | TermPi [IdentPlus] TermPlus
   | TermPiIntro Opacity (LamKind IdentPlus) [IdentPlus] TermPlus
   | TermPiElim TermPlus [TermPlus]
@@ -36,7 +39,10 @@ data Term
 instance Binary Term
 
 type Pattern =
-  (Hint, Ident, [IdentPlus])
+  (Hint, TopName, [IdentPlus])
+
+-- type Pattern =
+--   (Hint, Ident, [IdentPlus])
 
 type TermPlus =
   (Hint, Term)
@@ -53,7 +59,7 @@ type TypeEnv =
 asVar :: TermPlus -> Maybe Ident
 asVar term =
   case term of
-    (_, TermVar _ x) ->
+    (_, TermVar x) ->
       Just x
     _ ->
       Nothing
@@ -63,8 +69,14 @@ weaken term =
   case term of
     (m, TermTau) ->
       (m, WeakTermTau)
-    (m, TermVar kind x) ->
-      (m, WeakTermVar kind x)
+    (m, TermVar x) ->
+      (m, WeakTermVar x)
+    (m, TermVarGlobalOpaque g) ->
+      (m, WeakTermVarGlobalOpaque g)
+    (m, TermVarGlobalTransparent g) ->
+      (m, WeakTermVarGlobalTransparent g)
+    -- (m, TermVar x) ->
+    --   (m, WeakTermVar x)
     (m, TermPi xts t) ->
       (m, WeakTermPi (map weakenIdentPlus xts) (weaken t))
     (m, TermPiIntro opacity kind xts e) -> do
