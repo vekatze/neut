@@ -18,14 +18,17 @@ import Data.Log
 import Data.LowType
 import Data.Maybe (catMaybes, isJust, maybeToList)
 import qualified Data.Set as S
+import Data.Stmt
 import Data.Term
 import qualified Data.Text as T
+import Path
 import Reduce.Comp
 
 clarify :: ([StmtPlus], StmtPlus) -> IO ([(T.Text, CompPlus)], Maybe CompPlus)
 clarify (ss, (mainFilePath, mainDefList)) = do
+  let path = toFilePath mainFilePath
   clarifyHeader ss
-  mainDefList' <- mapM (clarifyDef mainFilePath) mainDefList
+  mainDefList' <- mapM (clarifyDef path) mainDefList
   register mainDefList' -- for inlining
   mainDefList'' <- forM mainDefList' $ \(name, e) -> do
     e' <- reduceCompPlus e
@@ -34,11 +37,11 @@ clarify (ss, (mainFilePath, mainDefList)) = do
   if not flag
     then return (mainDefList'', Nothing)
     else do
-      let m = newHint 1 1 mainFilePath
+      let m = newHint 1 1 path
       _ <- immediateS4 m
       _ <- returnClosureS4 m
-      ensureMain m mainFilePath
-      let mainTerm = (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName mainFilePath $ asIdent "main")) [])
+      ensureMain m path
+      let mainTerm = (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path $ asIdent "main")) [])
       return (mainDefList'', Just mainTerm)
 
 ensureMain :: Hint -> FilePath -> IO ()
@@ -57,7 +60,7 @@ clarifyHeader ss =
     [] ->
       return ()
     (path, defList) : rest -> do
-      mapM (clarifyDef path) defList >>= register'
+      mapM (clarifyDef $ toFilePath path) defList >>= register'
       clarifyHeader rest
 
 register :: [(T.Text, CompPlus)] -> IO ()

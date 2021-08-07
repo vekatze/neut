@@ -12,6 +12,7 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import Data.Log
 import Data.Namespace
+import Data.Stmt
 import qualified Data.Text as T
 import Data.WeakTerm
 import Path

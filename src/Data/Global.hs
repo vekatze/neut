@@ -1,5 +1,6 @@
 module Data.Global where
 
+import Control.Concurrent.Async
 import Data.Basic
 import Data.Comp
 import qualified Data.HashMap.Lazy as Map
@@ -185,6 +186,11 @@ defEnv =
 lowDefEnv :: IORef (Map.HashMap T.Text ([Ident], LowComp))
 lowDefEnv =
   unsafePerformIO (newIORef Map.empty)
+
+{-# NOINLINE promiseEnv #-}
+promiseEnv :: IORef [Async ()]
+promiseEnv =
+  unsafePerformIO (newIORef [])
 
 {-# NOINLINE declEnv #-}
 declEnv :: IORef (Map.HashMap T.Text ([LowType], LowType))

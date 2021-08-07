@@ -12,6 +12,7 @@ import Data.List (find)
 import Data.Log
 import Data.Namespace
 import qualified Data.Set as S
+import Data.Stmt
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.WeakTerm
@@ -28,7 +29,7 @@ import System.Process hiding (env)
 -- core functions
 --
 
-parse :: Path Abs File -> IO ([WeakStmtPlus], WeakStmtPlus)
+parse :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
 parse path = do
   setupEnumEnv
   pushTrace path
@@ -44,7 +45,7 @@ ensureMain = do
     _ <- discern (m, WeakTermVar VarKindLocal $ asIdent "main")
     return ()
 
-visit :: Path Abs File -> IO ([WeakStmtPlus], WeakStmtPlus)
+visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
 visit path = do
   pushTrace path
   ensureNoDoubleQuotes path
@@ -52,7 +53,7 @@ visit path = do
   withNestedState $ do
     TIO.readFile (toFilePath path) >>= initializeState
     skip
-    header $ toFilePath path
+    header path
 
 ensureNoDoubleQuotes :: Path Abs File -> IO ()
 ensureNoDoubleQuotes path = do
@@ -76,7 +77,7 @@ popTrace :: IO ()
 popTrace =
   modifyIORef' traceEnv $ \env -> tail env
 
-header :: FilePath -> IO ([WeakStmtPlus], WeakStmtPlus)
+header :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
 header path = do
   s <- readIORef text
   if T.null s
@@ -325,7 +326,7 @@ stmtRemovePrefix = do
   modifyIORef' nsEnv $ \env -> filter (/= (from, to)) env
   return $ WeakStmtRemovePrefix from to
 
-stmtInclude :: IO [WeakStmtPlus]
+stmtInclude :: IO [HeaderStmtPlus]
 stmtInclude = do
   m <- currentHint
   token "include"
@@ -346,8 +347,18 @@ stmtInclude = do
       return []
     Nothing -> do
       -- これが嘘。StmtIncludeからはvisitはしない。includeを無視するようなやつがいる。
-      (ss, s) <- visit newPath
-      return $ ss ++ [s]
+      stmtListOrNothing <- loadCache newPath
+      case stmtListOrNothing of
+        Just stmtList -> do
+          forM_ stmtList $ \(StmtDef _ x _ _) -> do
+            -- let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
+            let nameEnv = if False then transparentTopNameEnv else opaqueTopNameEnv
+            modifyIORef' nameEnv $ \env -> Map.insert (asText x) (toFilePath newPath, x) env
+          modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
+          return [(newPath, Left stmtList)]
+        Nothing -> do
+          (ss, (foo, bar)) <- visit newPath
+          return $ ss ++ [(foo, Right bar)]
 
 ensureFileExistence :: Hint -> Path Abs File -> IO ()
 ensureFileExistence m path = do

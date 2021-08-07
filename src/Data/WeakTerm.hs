@@ -58,16 +58,16 @@ type Def =
 type IdentDef =
   (Ident, Def)
 
-type WeakStmtPlus =
-  (FilePath, [WeakStmt])
+-- type WeakStmtPlus =
+--   (Path Abs File, [WeakStmt])
 
-data WeakStmt
-  = WeakStmtDef Hint Ident WeakTermPlus WeakTermPlus
-  | WeakStmtUse T.Text
-  | WeakStmtUnuse T.Text
-  | WeakStmtDefinePrefix T.Text T.Text
-  | WeakStmtRemovePrefix T.Text T.Text
-  deriving (Show)
+-- data WeakStmt
+--   = WeakStmtDef Hint Ident WeakTermPlus WeakTermPlus
+--   | WeakStmtUse T.Text
+--   | WeakStmtUnuse T.Text
+--   | WeakStmtDefinePrefix T.Text T.Text
+--   | WeakStmtRemovePrefix T.Text T.Text
+--   deriving (Show)
 
 type Constraint =
   (WeakTermPlus, WeakTermPlus) -- (expected-type, actual-type)

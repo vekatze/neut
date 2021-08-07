@@ -13,7 +13,9 @@ default-extensions:
 
 dependencies:
 - ansi-terminal
+- async
 - base
+- binary
 - bytestring
 - containers
 - half

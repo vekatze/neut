@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Clarify
+import Control.Concurrent.Async
 import Control.Exception.Safe
 import Control.Monad
 import Data.ByteString.Builder
@@ -274,8 +275,9 @@ run cmd =
       outputPath <- constructOutputPath basename mOutputPath outputKind
       let llvmIR = toLazyByteString llvmIRBuilder
       case outputKind of
-        OutputKindLLVM ->
+        OutputKindLLVM -> do
           L.writeFile (toFilePath outputPath) llvmIR
+          waitAll
         _ -> do
           let additionalClangOptions = words $ fromMaybe "" mClangOptStr
           let clangCmd = proc "clang" $ clangOptWith outputKind outputPath ++ additionalClangOptions ++ ["-c"]
@@ -283,6 +285,7 @@ run cmd =
             L.hPut stdin llvmIR
             hClose stdin
             exitCode <- waitForProcess clangProcessHandler
+            waitAll
             exitWith exitCode
     Link mainFilePath auxFilePathList mOutputPathStr mClangOptStr -> do
       inputPath <- resolveFile' mainFilePath
@@ -293,12 +296,14 @@ run cmd =
       let clangCmd = proc "clang" $ clangLibOpt outputPath ++ additionalClangOptions ++ (mainFilePath : auxFilePathList)
       withCreateProcess clangCmd $ \_ _ _ clangProcessHandler -> do
         exitCode <- waitForProcess clangProcessHandler
+        waitAll
         exitWith exitCode
     Check inputPathStr colorizeFlag eoe -> do
       writeIORef shouldColorize colorizeFlag
       writeIORef endOfEntry eoe
       inputPath <- resolveFile' inputPathStr
       void $ runCompiler (runCheck inputPath)
+      waitAll
     Archive inputPathStr mOutputPathStr -> do
       libDirPath <- resolveDir' inputPathStr
       let parentDirPath = parent libDirPath
@@ -308,6 +313,7 @@ run cmd =
       let tarCmd = proc "tar" ["cJf", outputPath, "-C", toFilePath parentDirPath, toFilePath basename]
       (_, _, _, handler) <- createProcess tarCmd
       tarExitCode <- waitForProcess handler
+      waitAll
       exitWith tarExitCode
 
 constructOutputPath :: Path Rel File -> Maybe (Path Abs File) -> OutputKind -> IO (Path Abs File)
@@ -380,3 +386,9 @@ runCompiler c = do
       foldr (>>) (exitWith (ExitFailure 1)) (map outputLog err)
     Right result ->
       return result
+
+waitAll :: IO ()
+waitAll = do
+  p "waiting"
+  ps <- readIORef promiseEnv
+  forM_ ps $ \promise -> wait promise

@@ -1,12 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Data.Term where
 
 import Control.Exception.Safe
 import Data.Basic
+import Data.Binary
 import qualified Data.IntMap as IntMap
 import Data.Log
 import Data.LowType
 import qualified Data.Text as T
 import Data.WeakTerm
+import GHC.Generics
 
 data Term
   = TermTau
@@ -27,7 +31,9 @@ data Term
       (TermPlus, TermPlus) -- (pattern-matched value, its type)
       [(Pattern, TermPlus)]
   | TermIgnore TermPlus
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance Binary Term
 
 type Pattern =
   (Hint, Ident, [IdentPlus])
@@ -43,13 +49,6 @@ type IdentPlus =
 
 type TypeEnv =
   IntMap.IntMap TermPlus
-
-type StmtPlus =
-  (FilePath, [Stmt])
-
-data Stmt
-  = StmtDef Hint Ident TermPlus TermPlus
-  deriving (Show)
 
 asVar :: TermPlus -> Maybe Ident
 asVar term =

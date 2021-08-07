@@ -3,6 +3,7 @@ module Elaborate
   )
 where
 
+import Control.Concurrent.Async
 import Control.Monad
 import Data.Basic
 import Data.Global
@@ -12,28 +13,42 @@ import qualified Data.IntMap as IntMap
 import Data.List (nub)
 import Data.Log
 import Data.LowType
+import Data.Stmt
 import Data.Term
 import qualified Data.Text as T
 import Data.WeakTerm
 import Elaborate.Infer
 import Elaborate.Unify
+import Path
 import Reduce.Term
 import Reduce.WeakTerm
 
--- elaborate :: [WeakStmtPlus] -> IO [StmtPlus]
-elaborate :: ([WeakStmtPlus], WeakStmtPlus) -> IO ([StmtPlus], StmtPlus)
-elaborate (ss, mainDefList) =
+elaborate :: ([HeaderStmtPlus], WeakStmtPlus) -> IO ([StmtPlus], StmtPlus)
+elaborate (ss, (mainSrcPath, mainContent)) =
   case ss of
     [] -> do
-      mainDefList' <- elaborateStmtPlus mainDefList
+      mainDefList' <- elaborateStmtPlus mainSrcPath mainContent
       return ([], mainDefList')
-    headStmtPlus : rest -> do
-      headStmtPlus' <- elaborateStmtPlus headStmtPlus
-      (rest', s') <- elaborate (rest, mainDefList)
-      return (headStmtPlus' : rest', s')
+    (srcPath, content) : rest -> do
+      case content of
+        Left result -> do
+          forM_ result $ \stmt -> registerTopLevelDef (toFilePath srcPath) stmt
+          (rest', s') <- elaborate (rest, (mainSrcPath, mainContent))
+          return ((srcPath, result) : rest', s')
+        Right defList -> do
+          headStmtPlus' <- elaborateStmtPlus srcPath defList
+          promise <- async $ saveCache headStmtPlus'
+          modifyIORef' promiseEnv $ \env -> promise : env
+          (rest', s') <- elaborate (rest, (mainSrcPath, mainContent))
+          return (headStmtPlus' : rest', s')
 
-elaborateStmtPlus :: WeakStmtPlus -> IO StmtPlus
-elaborateStmtPlus (path, defList) = do
+registerTopLevelDef :: FilePath -> Stmt -> IO ()
+registerTopLevelDef path (StmtDef _ x t e) = do
+  insWeakTypeEnv x $ weaken t
+  modifyIORef' topDefEnv $ \env -> Map.insert (path, asInt x) (weaken e) env
+
+elaborateStmtPlus :: Path Abs File -> [WeakStmt] -> IO StmtPlus
+elaborateStmtPlus path defList = do
   mapM_ (setupDef path) defList
   defList' <- inferStmtList defList
   -- cs <- readIORef constraintEnv
@@ -43,17 +58,17 @@ elaborateStmtPlus (path, defList) = do
   --   p $ T.unpack $ toText e2
   --   p "---------------------"
   unify
-  defList'' <- elaborateStmtList path defList'
+  defList'' <- elaborateStmtList (toFilePath path) defList'
   return (path, defList'')
 
-setupDef :: FilePath -> WeakStmt -> IO ()
+setupDef :: Path Abs File -> WeakStmt -> IO ()
 setupDef path def =
   case def of
     WeakStmtDef _ x t e -> do
       insWeakTypeEnv x t
       nenv <- readIORef transparentTopNameEnv
       when (Map.member (asText x) nenv) $
-        modifyIORef' topDefEnv $ \env -> Map.insert (path, asInt x) e env
+        modifyIORef' topDefEnv $ \env -> Map.insert (toFilePath path, asInt x) e env
     _ ->
       return ()
 
