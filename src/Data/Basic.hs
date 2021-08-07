@@ -1,16 +1,22 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Data.Basic where
 
+import Data.Binary
 import qualified Data.Text as T
+import GHC.Generics
 import Path
 import System.Environment
 
 newtype Ident
   = I (T.Text, Int)
-  deriving (Eq, Ord)
+  deriving (Eq, Ord, Generic)
 
 instance Show Ident where
   show (I (s, i)) =
     T.unpack s ++ "-" ++ show i
+
+instance Binary Ident
 
 type Line =
   Int
@@ -22,22 +28,27 @@ type Loc =
   (Line, Column)
 
 data Hint = Hint
-  { metaFileName :: Path Abs File,
+  { metaFileName :: FilePath,
     metaLocation :: Loc
   }
+  deriving (Generic)
+
+instance Binary Hint
 
 type PosInfo =
-  (Path Abs File, Loc)
+  (FilePath, Loc)
 
 instance Show Hint where
   show _ =
     "_"
 
 data EnumCase
-  = EnumCaseLabel (Path Abs File) T.Text
+  = EnumCaseLabel FilePath T.Text
   | EnumCaseInt Int
   | EnumCaseDefault
-  deriving (Show, Eq, Ord)
+  deriving (Show, Eq, Ord, Generic)
+
+instance Binary EnumCase
 
 type EnumCasePlus =
   (Hint, EnumCase)
@@ -46,20 +57,26 @@ data Opacity
   = OpacityOpaque
   | OpacityTranslucent
   | OpacityTransparent
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance Binary Opacity
 
 data VarKind
   = VarKindLocal
-  | VarKindGlobalOpaque (Path Abs File)
-  | VarKindGlobalTransparent (Path Abs File)
-  deriving (Show, Eq)
+  | VarKindGlobalOpaque FilePath
+  | VarKindGlobalTransparent FilePath
+  deriving (Show, Eq, Generic)
+
+instance Binary VarKind
 
 data LamKind a
   = LamKindNormal
   | LamKindCons T.Text T.Text
   | LamKindFix a
   | LamKindResourceHandler
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance (Binary a) => Binary (LamKind a)
 
 type IsReducible =
   Bool
@@ -123,9 +140,9 @@ showHint :: Hint -> String
 showHint m = do
   let name = metaFileName m
   let (l, c) = metaLocation m
-  toFilePath name ++ ":" ++ show l ++ ":" ++ show c
+  name ++ ":" ++ show l ++ ":" ++ show c
 
-newHint :: Int -> Int -> Path Abs File -> Hint
+newHint :: Int -> Int -> FilePath -> Hint
 newHint l c path =
   Hint
     { metaFileName = path,
@@ -136,9 +153,9 @@ getPosInfo :: Hint -> PosInfo
 getPosInfo m =
   (metaFileName m, metaLocation m)
 
-showPosInfo :: Path Abs File -> Loc -> String
+showPosInfo :: FilePath -> Loc -> String
 showPosInfo path (l, c) =
-  toFilePath path ++ ":" ++ show l ++ ":" ++ show c
+  path ++ ":" ++ show l ++ ":" ++ show c
 
 getExecPath :: IO (Path Abs File)
 getExecPath =

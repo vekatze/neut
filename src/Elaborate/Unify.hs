@@ -15,13 +15,12 @@ import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
-import Path
 import Reduce.WeakTerm
 
 data Stuck
   = StuckPiElimVarLocalOpaque Ident [(Hint, [WeakTermPlus])]
-  | StuckPiElimVarGlobalTransparent (Path Abs File) Ident [(Hint, [WeakTermPlus])]
-  | StuckPiElimVarGlobalOpaque (Path Abs File) Ident [(Hint, [WeakTermPlus])]
+  | StuckPiElimVarGlobalTransparent FilePath Ident [(Hint, [WeakTermPlus])]
+  | StuckPiElimVarGlobalOpaque FilePath Ident [(Hint, [WeakTermPlus])]
   | StuckPiElimAster Int [[WeakTermPlus]]
   deriving (Show)
 
@@ -352,6 +351,6 @@ lookupAny is sub =
           lookupAny js sub
 
 {-# INLINE lookupDefinition #-}
-lookupDefinition :: Path Abs File -> Ident -> Map.HashMap (Path Abs File, Int) WeakTermPlus -> Maybe WeakTermPlus
+lookupDefinition :: FilePath -> Ident -> Map.HashMap (FilePath, Int) WeakTermPlus -> Maybe WeakTermPlus
 lookupDefinition path x defs =
   Map.lookup (path, asInt x) defs

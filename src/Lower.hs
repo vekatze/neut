@@ -13,7 +13,6 @@ import Data.Log
 import Data.LowComp
 import Data.LowType
 import qualified Data.Text as T
-import Path
 
 lower :: ([(T.Text, CompPlus)], Maybe CompPlus) -> IO (Maybe LowComp)
 lower (defList, mMainTerm) = do
@@ -492,11 +491,11 @@ newNameWith mName =
     Just name ->
       newIdentFromText name
 
-enumValueToInteger :: Hint -> Path Abs File -> T.Text -> IO Int
+enumValueToInteger :: Hint -> FilePath -> T.Text -> IO Int
 enumValueToInteger m path l =
   getEnumNum m path l
 
-getEnumNum :: Hint -> Path Abs File -> T.Text -> IO Int
+getEnumNum :: Hint -> FilePath -> T.Text -> IO Int
 getEnumNum m path label = do
   renv <- readIORef revEnumEnv
   case Map.lookup label renv of

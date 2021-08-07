@@ -1,7 +1,11 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Data.LowType where
 
+import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
+import GHC.Generics
 import Text.Read hiding (get)
 
 data LowType
@@ -11,7 +15,9 @@ data LowType
   | LowTypeArray Int LowType -- [n x LOWTYPE]
   | LowTypeStruct [LowType]
   | LowTypeFunction [LowType] LowType
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary LowType
 
 type IntSize =
   Int
@@ -20,7 +26,9 @@ data FloatSize
   = FloatSize16
   | FloatSize32
   | FloatSize64
-  deriving (Eq, Ord, Show)
+  deriving (Eq, Ord, Show, Generic)
+
+instance Binary FloatSize
 
 data PrimOp
   = PrimOp T.Text [LowType] LowType
@@ -35,7 +43,9 @@ data Derangement
   | DerangementCreateArray LowType
   | DerangementCreateStruct [LowType]
   | DerangementNop
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance Binary Derangement
 
 asLowTypeMaybe :: T.Text -> Maybe LowType
 asLowTypeMaybe name

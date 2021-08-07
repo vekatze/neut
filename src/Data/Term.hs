@@ -7,7 +7,6 @@ import Data.Log
 import Data.LowType
 import qualified Data.Text as T
 import Data.WeakTerm
-import Path
 
 data Term
   = TermTau
@@ -18,8 +17,8 @@ data Term
   | TermConst T.Text
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
-  | TermEnum (Path Abs File) T.Text
-  | TermEnumIntro (Path Abs File) T.Text
+  | TermEnum FilePath T.Text
+  | TermEnumIntro FilePath T.Text
   | TermEnumElim (TermPlus, TermPlus) [(EnumCasePlus, TermPlus)]
   | TermDerangement Derangement [TermPlus]
   | TermCase
@@ -46,7 +45,7 @@ type TypeEnv =
   IntMap.IntMap TermPlus
 
 type StmtPlus =
-  (Path Abs File, [Stmt])
+  (FilePath, [Stmt])
 
 data Stmt
   = StmtDef Hint Ident TermPlus TermPlus

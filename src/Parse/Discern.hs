@@ -14,6 +14,7 @@ import Data.Log
 import Data.Namespace
 import qualified Data.Text as T
 import Data.WeakTerm
+import Path
 
 type NameEnv = Map.HashMap T.Text Ident
 
@@ -51,7 +52,7 @@ discernTopLevelName isReducible m x = do
   when (Map.member (asText x) nenv) $
     raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
   x' <- newIdentFromIdent x
-  path <- getCurrentFilePath
+  path <- toFilePath <$> getCurrentFilePath
   modifyIORef' nameEnv $ \env -> Map.insert (asText x) (path, x') env
   return x'
 

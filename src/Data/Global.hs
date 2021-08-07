@@ -96,13 +96,13 @@ traceEnv =
 
 -- [("choice", [("left", 0), ("right", 1)]), ...]
 {-# NOINLINE enumEnv #-}
-enumEnv :: IORef (Map.HashMap T.Text (Path Abs File, [(T.Text, Int)]))
+enumEnv :: IORef (Map.HashMap T.Text (FilePath, [(T.Text, Int)]))
 enumEnv =
   unsafePerformIO (newIORef Map.empty)
 
 -- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
 {-# NOINLINE revEnumEnv #-}
-revEnumEnv :: IORef (Map.HashMap T.Text (Path Abs File, T.Text, Int))
+revEnumEnv :: IORef (Map.HashMap T.Text (FilePath, T.Text, Int))
 revEnumEnv =
   unsafePerformIO (newIORef Map.empty)
 
@@ -132,12 +132,12 @@ sectionEnv =
   unsafePerformIO (newIORef [])
 
 {-# NOINLINE transparentTopNameEnv #-}
-transparentTopNameEnv :: IORef (Map.HashMap T.Text (Path Abs File, Ident))
+transparentTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
 transparentTopNameEnv =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE opaqueTopNameEnv #-}
-opaqueTopNameEnv :: IORef (Map.HashMap T.Text (Path Abs File, Ident))
+opaqueTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
 opaqueTopNameEnv =
   unsafePerformIO (newIORef Map.empty)
 
@@ -172,7 +172,7 @@ substEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE topDefEnv #-}
-topDefEnv :: IORef (Map.HashMap (Path Abs File, Int) WeakTermPlus)
+topDefEnv :: IORef (Map.HashMap (FilePath, Int) WeakTermPlus)
 topDefEnv =
   unsafePerformIO (newIORef Map.empty)
 

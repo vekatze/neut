@@ -13,7 +13,7 @@ import Path
 toApp :: T.Text -> Hint -> Ident -> CompPlus -> IO CompPlus --
 toApp switcher m x t = do
   (expVarName, expVar) <- newValueVarLocalWith m "exp"
-  path <- getExecPath
+  path <- toFilePath <$> getExecPath
   return
     ( m,
       CompUpElim
@@ -48,7 +48,7 @@ bindLet binder cont =
     (x, e) : xes ->
       (fst e, CompUpElim x e $ bindLet xes cont)
 
-switch :: Path Abs File -> CompPlus -> CompPlus -> [(EnumCase, CompPlus)]
+switch :: FilePath -> CompPlus -> CompPlus -> [(EnumCase, CompPlus)]
 switch path e1 e2 =
   -- [(EnumCaseInt 0, e1), (EnumCaseDefault, e2)]
 
@@ -70,7 +70,7 @@ makeSwitcher m compAff compRel = do
   (argVarName, argVar) <- newValueVarLocalWith m "arg"
   aff <- compAff argVar
   rel <- compRel argVar
-  path <- getExecPath
+  path <- toFilePath <$> getExecPath
   return
     ( [switchVarName, argVarName],
       ( m,
@@ -109,9 +109,9 @@ boolFalse =
   "bool" <> nsSep <> "false"
 
 {-# INLINE toGlobalVarName #-}
-toGlobalVarName :: Path Abs File -> Ident -> T.Text
+toGlobalVarName :: FilePath -> Ident -> T.Text
 toGlobalVarName path x =
-  wrapWithQuote $ asText x <> ";" <> T.pack (toFilePath path)
+  wrapWithQuote $ asText x <> ";" <> T.pack path
 
 -- {-# INLINE toGlobalVarName #-}
 -- toGlobalVarName :: Ident -> T.Text

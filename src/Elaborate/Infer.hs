@@ -18,6 +18,7 @@ import qualified Data.Set as S
 import Data.Term
 import qualified Data.Text as T
 import Data.WeakTerm
+import Path
 import Reduce.WeakTerm
 
 type Context = [WeakIdentPlus]
@@ -341,7 +342,7 @@ primOpToType m (PrimOp op domList cod) = do
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
-      path <- getExecPath
+      path <- toFilePath <$> getExecPath
       let cod' = (m, TermEnum path "bool")
       return (m, TermPi xts cod')
     else do

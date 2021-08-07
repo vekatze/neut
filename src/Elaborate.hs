@@ -17,7 +17,6 @@ import qualified Data.Text as T
 import Data.WeakTerm
 import Elaborate.Infer
 import Elaborate.Unify
-import Path
 import Reduce.Term
 import Reduce.WeakTerm
 
@@ -47,7 +46,7 @@ elaborateStmtPlus (path, defList) = do
   defList'' <- elaborateStmtList path defList'
   return (path, defList'')
 
-setupDef :: Path Abs File -> WeakStmt -> IO ()
+setupDef :: FilePath -> WeakStmt -> IO ()
 setupDef path def =
   case def of
     WeakStmtDef _ x t e -> do
@@ -73,7 +72,7 @@ inferStmtList stmtList =
     _ : rest ->
       inferStmtList rest
 
-elaborateStmtList :: Path Abs File -> [WeakStmt] -> IO [Stmt]
+elaborateStmtList :: FilePath -> [WeakStmt] -> IO [Stmt]
 elaborateStmtList path stmtList = do
   case stmtList of
     [] ->
@@ -242,7 +241,7 @@ elaborateKind kind =
     LamKindResourceHandler ->
       return LamKindResourceHandler
 
-checkEnumElim :: Hint -> Path Abs File -> [EnumCase] -> IO ()
+checkEnumElim :: Hint -> FilePath -> [EnumCase] -> IO ()
 checkEnumElim m path ls =
   case ls of
     [] ->

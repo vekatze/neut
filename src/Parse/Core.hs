@@ -8,6 +8,7 @@ import Data.Log
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
+import Path
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Read (readMaybe)
 
@@ -275,7 +276,7 @@ currentHint :: IO Hint
 currentHint = do
   l <- readIORef line
   c <- readIORef column
-  path <- getCurrentFilePath
+  path <- toFilePath <$> getCurrentFilePath
   return $ newHint (fromEnum l) (fromEnum c) path
 
 {-# INLINE isSymbolChar #-}

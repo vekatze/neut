@@ -175,7 +175,7 @@ weakTermEnumClause = do
     "default" ->
       return ((m, EnumCaseDefault), body)
     _ ->
-      return ((m, EnumCaseLabel placeholderPath c), body)
+      return ((m, EnumCaseLabel "" c), body)
 
 -- question e
 weakTermQuestion :: IO WeakTermPlus
@@ -461,7 +461,7 @@ weakTermIf = do
 
 foldIf :: Hint -> WeakTermPlus -> WeakTermPlus -> [(WeakTermPlus, WeakTermPlus)] -> WeakTermPlus -> IO WeakTermPlus
 foldIf m ifCond ifBody elseIfList elseBody = do
-  path <- getExecPath
+  path <- toFilePath <$> getExecPath
   case elseIfList of
     [] -> do
       h <- newAster m
@@ -798,6 +798,6 @@ defaultTargetArch =
     other ->
       T.pack other
 
-placeholderPath :: Path Abs File
-placeholderPath =
-  $(mkAbsFile "/_")
+-- placeholderPath :: Path Abs File
+-- placeholderPath =
+--   $(mkAbsFile "/_")

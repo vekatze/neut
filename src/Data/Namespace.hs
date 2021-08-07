@@ -8,7 +8,6 @@ import Data.Log
 import Data.LowType
 import qualified Data.Text as T
 import Data.WeakTerm hiding (asVar)
-import Path
 
 nsSepChar :: Char
 nsSepChar =
@@ -184,17 +183,17 @@ asWeakVar m nenv var =
   asVar m nenv var (WeakTermVar VarKindLocal)
 
 {-# INLINE asTransparentGlobalVar #-}
-asTransparentGlobalVar :: Hint -> Map.HashMap T.Text (Path Abs File, Ident) -> T.Text -> Maybe WeakTermPlus
+asTransparentGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
 asTransparentGlobalVar m nenv var =
   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalTransparent fp) x)
 
 {-# INLINE asOpaqueGlobalVar #-}
-asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text (Path Abs File, Ident) -> T.Text -> Maybe WeakTermPlus
+asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
 asOpaqueGlobalVar m nenv var =
   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalOpaque fp) x)
 
 {-# INLINE asConstructor #-}
-asConstructor :: Hint -> Map.HashMap T.Text (Path Abs File, Ident) -> T.Text -> Maybe (Hint, Ident)
+asConstructor :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe (Hint, Ident)
 asConstructor m nenv var =
   asVar m nenv var snd
 
@@ -206,7 +205,7 @@ findThenModify env f name = do
     else Nothing
 
 {-# INLINE asEnumLabel #-}
-asEnumLabel :: Map.HashMap T.Text (Path Abs File, T.Text, Int) -> T.Text -> Maybe EnumCase
+asEnumLabel :: Map.HashMap T.Text (FilePath, T.Text, Int) -> T.Text -> Maybe EnumCase
 asEnumLabel env name = do
   case Map.lookup name env of
     Just (fp, _, _) ->
@@ -215,7 +214,7 @@ asEnumLabel env name = do
       Nothing
 
 {-# INLINE asEnumIntro #-}
-asEnumIntro :: Hint -> Map.HashMap T.Text (Path Abs File, T.Text, Int) -> T.Text -> Maybe WeakTermPlus
+asEnumIntro :: Hint -> Map.HashMap T.Text (FilePath, T.Text, Int) -> T.Text -> Maybe WeakTermPlus
 asEnumIntro m env name = do
   case Map.lookup name env of
     Just (fp, _, _) ->
@@ -224,7 +223,7 @@ asEnumIntro m env name = do
       Nothing
 
 {-# INLINE asEnum #-}
-asEnum :: Hint -> Map.HashMap T.Text (Path Abs File, a) -> T.Text -> Maybe WeakTermPlus
+asEnum :: Hint -> Map.HashMap T.Text (FilePath, a) -> T.Text -> Maybe WeakTermPlus
 asEnum m env name = do
   case Map.lookup name env of
     Just (fp, _) ->

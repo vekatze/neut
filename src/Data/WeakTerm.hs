@@ -1,13 +1,16 @@
+{-# LANGUAGE DeriveGeneric #-}
+
 module Data.WeakTerm where
 
 import Data.Basic
+import Data.Binary
 import qualified Data.IntMap as IntMap
 import Data.LowType
 import Data.Maybe (catMaybes, maybeToList)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Path
+import GHC.Generics
 
 data WeakTerm
   = WeakTermTau
@@ -19,8 +22,8 @@ data WeakTerm
   | WeakTermConst T.Text
   | WeakTermInt WeakTermPlus Integer
   | WeakTermFloat WeakTermPlus Double
-  | WeakTermEnum (Path Abs File) T.Text
-  | WeakTermEnumIntro (Path Abs File) T.Text
+  | WeakTermEnum FilePath T.Text
+  | WeakTermEnumIntro FilePath T.Text
   | WeakTermEnumElim (WeakTermPlus, WeakTermPlus) [(EnumCasePlus, WeakTermPlus)]
   | WeakTermQuestion WeakTermPlus WeakTermPlus -- e : t (output the type `t` as note)
   | WeakTermDerangement Derangement [WeakTermPlus] -- (derangement kind arg-1 ... arg-n)
@@ -30,7 +33,9 @@ data WeakTerm
       (WeakTermPlus, WeakTermPlus) -- (pattern-matched value, its type)
       [(WeakPattern, WeakTermPlus)]
   | WeakTermIgnore WeakTermPlus
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance Binary WeakTerm
 
 type WeakPattern =
   (Hint, Ident, [WeakIdentPlus])
@@ -54,7 +59,7 @@ type IdentDef =
   (Ident, Def)
 
 type WeakStmtPlus =
-  (Path Abs File, [WeakStmt])
+  (FilePath, [WeakStmt])
 
 data WeakStmt
   = WeakStmtDef Hint Ident WeakTermPlus WeakTermPlus
@@ -287,7 +292,7 @@ toText term =
     (_, WeakTermFloat _ a) ->
       T.pack $ show a
     (_, WeakTermEnum path l) ->
-      l <> "@" <> T.pack (toFilePath path)
+      l <> "@" <> T.pack path
     (_, WeakTermEnumIntro _ v) ->
       v
     (_, WeakTermEnumElim (e, _) mles) -> do

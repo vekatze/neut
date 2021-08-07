@@ -52,7 +52,7 @@ visit path = do
   withNestedState $ do
     TIO.readFile (toFilePath path) >>= initializeState
     skip
-    header path
+    header $ toFilePath path
 
 ensureNoDoubleQuotes :: Path Abs File -> IO ()
 ensureNoDoubleQuotes path = do
@@ -76,7 +76,7 @@ popTrace :: IO ()
 popTrace =
   modifyIORef' traceEnv $ \env -> tail env
 
-header :: Path Abs File -> IO ([WeakStmtPlus], WeakStmtPlus)
+header :: FilePath -> IO ([WeakStmtPlus], WeakStmtPlus)
 header path = do
   s <- readIORef text
   if T.null s
@@ -520,7 +520,7 @@ stmtDefineResourceType = do
   copier <- weakTermSimple
   flag <- newTextualIdentFromText "flag"
   value <- newTextualIdentFromText "value"
-  path <- getExecPath
+  path <- toFilePath <$> getExecPath
   defineTerm
     True
     m
@@ -603,7 +603,7 @@ setupEnumEnv =
 
 setupEnumEnvWith :: T.Text -> [(T.Text, Int)] -> IO ()
 setupEnumEnvWith name xis = do
-  path <- getExecPath
+  path <- toFilePath <$> getExecPath
   let (xs, is) = unzip xis
   modifyIORef' enumEnv $ \env -> Map.insert name (path, xis) env
   let rev = Map.fromList $ zip xs (zip3 (repeat path) (repeat name) is)
@@ -618,7 +618,7 @@ initEnumEnvInfo =
 
 insEnumEnv :: Hint -> T.Text -> [(T.Text, Int)] -> IO ()
 insEnumEnv m name xis = do
-  path <- getCurrentFilePath
+  path <- toFilePath <$> getCurrentFilePath
   eenv <- readIORef enumEnv
   let definedEnums = Map.keys eenv ++ map fst (concat $ map snd (Map.elems eenv))
   case find (`elem` definedEnums) $ name : map fst xis of

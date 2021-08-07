@@ -20,7 +20,6 @@ import Data.Maybe (catMaybes, isJust, maybeToList)
 import qualified Data.Set as S
 import Data.Term
 import qualified Data.Text as T
-import Path
 import Reduce.Comp
 
 clarify :: ([StmtPlus], StmtPlus) -> IO ([(T.Text, CompPlus)], Maybe CompPlus)
@@ -42,7 +41,7 @@ clarify (ss, (mainFilePath, mainDefList)) = do
       let mainTerm = (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName mainFilePath $ asIdent "main")) [])
       return (mainDefList'', Just mainTerm)
 
-ensureMain :: Hint -> Path Abs File -> IO ()
+ensureMain :: Hint -> FilePath -> IO ()
 ensureMain m mainFilePath = do
   denv <- readIORef defEnv
   case Map.lookup (toGlobalVarName mainFilePath $ asIdent "main") denv of
@@ -69,7 +68,7 @@ register' :: [(T.Text, CompPlus)] -> IO ()
 register' defList =
   forM_ defList $ \(x, _) -> insDefEnv' x True []
 
-clarifyDef :: Path Abs File -> Stmt -> IO (T.Text, CompPlus)
+clarifyDef :: FilePath -> Stmt -> IO (T.Text, CompPlus)
 clarifyDef path (StmtDef _ x _ e) = do
   e' <- clarifyTerm IntMap.empty e >>= reduceCompPlus
   let x' = toGlobalVarName path x
