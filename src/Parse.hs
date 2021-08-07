@@ -33,9 +33,9 @@ parse :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
 parse path = do
   setupEnumEnv
   pushTrace path
-  result <- visit path
+  (headerInfo, bodyInfo, _) <- visit path
   ensureMain
-  return result
+  return (headerInfo, bodyInfo)
 
 ensureMain :: IO ()
 ensureMain = do
@@ -45,7 +45,7 @@ ensureMain = do
     _ <- discern (m, WeakTermVar $ asIdent "main")
     return ()
 
-visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
+visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
 visit path = do
   pushTrace path
   ensureNoDoubleQuotes path
@@ -77,24 +77,28 @@ popTrace :: IO ()
 popTrace =
   modifyIORef' traceEnv $ \env -> tail env
 
-header :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
+header :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
 header path = do
   s <- readIORef text
   if T.null s
-    then leave >>= \result -> return ([], (path, result))
+    then leave >>= \result -> return ([], (path, result), [])
     else do
       headSymbol <- lookAhead (symbolMaybe isSymbolChar)
       case headSymbol of
         Just "include" -> do
           defList1 <- stmtInclude
-          (defList2, main) <- header path
-          return (defList1 ++ defList2, main)
+          (defList2, main, enumInfoList) <- header path
+          return (defList1 ++ defList2, main, enumInfoList)
         Just "ensure" -> do
           stmtEnsure
           header path
+        Just "define-enum" -> do
+          enumInfo <- stmtDefineEnum
+          (headerInfo, bodyInfo, enumInfoList) <- header path
+          return (headerInfo, bodyInfo, enumInfo : enumInfoList)
         _ -> do
           stmtList <- stmt >>= discernStmtList
-          return ([], (path, stmtList))
+          return ([], (path, stmtList), [])
 
 stmt :: IO [WeakStmt]
 stmt = do
@@ -114,8 +118,8 @@ stmt = do
           stmtList <- stmt
           return $ def : stmtList
         Just "define-enum" -> do
-          stmtDefineEnum
-          stmt
+          m <- currentHint
+          raiseParseError m "`define-enum` can only be used at the header section of a file"
         Just "include" -> do
           m <- currentHint
           raiseParseError m "`include` can only be used at the header section of a file"
@@ -201,7 +205,7 @@ defineTerm isReducible m funName' codType e = do
   registerTopLevelName m $ asIdent funName'
   return $ WeakStmtDef isReducible m funName' codType e
 
-stmtDefineEnum :: IO ()
+stmtDefineEnum :: IO EnumInfo
 stmtDefineEnum = do
   m <- currentHint
   token "define-enum"
@@ -210,7 +214,9 @@ stmtDefineEnum = do
   let itemList' = arrangeEnumItemList name 0 itemList
   when (not (isLinear (map snd itemList'))) $
     raiseError m "found a collision of discriminant"
-  insEnumEnv m name itemList'
+  path <- toFilePath <$> getCurrentFilePath
+  insEnumEnv path m name itemList'
+  return (m, name, itemList')
 
 arrangeEnumItemList :: T.Text -> Int -> [(T.Text, Maybe Int)] -> [(T.Text, Int)]
 arrangeEnumItemList name currentValue clauseList =
@@ -347,17 +353,18 @@ stmtInclude = do
     Just VisitInfoFinish ->
       return []
     Nothing -> do
-      -- これが嘘。StmtIncludeからはvisitはしない。includeを無視するようなやつがいる。
-      stmtListOrNothing <- loadCache newPath
+      stmtListOrNothing <- loadCache m newPath
       case stmtListOrNothing of
-        Just stmtList -> do
+        Just (stmtList, enumInfoList) -> do
+          forM_ enumInfoList $ \(mEnum, name, itemList) -> do
+            insEnumEnv (toFilePath newPath) mEnum name itemList
           forM_ stmtList $ \(StmtDef _ _ x _ _) -> do
             modifyIORef' topNameEnv $ \env -> Map.insert x (toFilePath newPath) env
           modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
-          return [(newPath, Left stmtList)]
+          return [(newPath, Left stmtList, enumInfoList)]
         Nothing -> do
-          (ss, (foo, bar)) <- visit newPath
-          return $ ss ++ [(foo, Right bar)]
+          (ss, (headerInfo, bodyInfo), enumInfoList) <- visit newPath
+          return $ ss ++ [(headerInfo, Right bodyInfo, enumInfoList)]
 
 ensureFileExistence :: Hint -> Path Abs File -> IO ()
 ensureFileExistence m path = do
@@ -627,9 +634,8 @@ initEnumEnvInfo =
     ("bool", [("bool.false", 0), ("bool.true", 1)])
   ]
 
-insEnumEnv :: Hint -> T.Text -> [(T.Text, Int)] -> IO ()
-insEnumEnv m name xis = do
-  path <- toFilePath <$> getCurrentFilePath
+insEnumEnv :: FilePath -> Hint -> T.Text -> [(T.Text, Int)] -> IO ()
+insEnumEnv path m name xis = do
   eenv <- readIORef enumEnv
   let definedEnums = Map.keys eenv ++ map fst (concat $ map snd (Map.elems eenv))
   case find (`elem` definedEnums) $ name : map fst xis of

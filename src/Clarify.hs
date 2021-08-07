@@ -51,7 +51,7 @@ ensureMain m mainFilePath = do
     Nothing -> do
       p' $ Map.keys denv
       raiseError m "`main` is missing"
-    _ ->
+    Just _ ->
       return ()
 
 clarifyHeader :: [StmtPlus] -> IO ()
@@ -72,14 +72,10 @@ register' defList =
   forM_ defList $ \(x, _) -> insDefEnv' x True []
 
 clarifyDef :: FilePath -> Stmt -> IO (T.Text, CompPlus)
-clarifyDef path (StmtDef isReducible m x _ e) = do
-  if isReducible
-    then do
-      e' <- clarifyTerm IntMap.empty e >>= reduceCompPlus
-      let x' = toGlobalVarName path x
-      return (x', e')
-    else do
-      return (toGlobalVarName path x, dummyComp m)
+clarifyDef path (StmtDef _ _ x _ e) = do
+  e' <- clarifyTerm IntMap.empty e >>= reduceCompPlus
+  let x' = toGlobalVarName path x
+  return (x', e')
 
 clarifyTerm :: TypeEnv -> TermPlus -> IO CompPlus
 clarifyTerm tenv term =

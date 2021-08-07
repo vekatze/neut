@@ -29,7 +29,7 @@ elaborate (ss, mainData@(mainSrcPath, mainContent)) =
     [] -> do
       mainDefList' <- elaborateStmtPlus mainSrcPath mainContent
       return ([], mainDefList')
-    (srcPath, content) : rest -> do
+    (srcPath, content, enumInfoList) : rest -> do
       case content of
         Left cache -> do
           forM_ cache $ \stmt -> registerTopLevelDef (toFilePath srcPath) stmt
@@ -37,7 +37,9 @@ elaborate (ss, mainData@(mainSrcPath, mainContent)) =
           return ((srcPath, cache) : rest', s')
         Right defList -> do
           headStmtPlus' <- elaborateStmtPlus srcPath defList
-          promise <- async $ saveCache headStmtPlus'
+          -- cache <- toCache (snd headStmtPlus') enumInfoList
+          promise <- async $ saveCache headStmtPlus' enumInfoList
+          -- promise <- async $ saveCache (fst undefined) cache
           modifyIORef' promiseEnv $ \env -> promise : env
           (rest', s') <- elaborate (rest, mainData)
           return (headStmtPlus' : rest', s')
