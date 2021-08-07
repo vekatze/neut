@@ -72,10 +72,14 @@ register' defList =
   forM_ defList $ \(x, _) -> insDefEnv' x True []
 
 clarifyDef :: FilePath -> Stmt -> IO (T.Text, CompPlus)
-clarifyDef path (StmtDef _ x _ e) = do
-  e' <- clarifyTerm IntMap.empty e >>= reduceCompPlus
-  let x' = toGlobalVarName path x
-  return (x', e')
+clarifyDef path (StmtDef isReducible m x _ e) = do
+  if isReducible
+    then do
+      e' <- clarifyTerm IntMap.empty e >>= reduceCompPlus
+      let x' = toGlobalVarName path x
+      return (x', e')
+    else do
+      return (toGlobalVarName path x, dummyComp m)
 
 clarifyTerm :: TypeEnv -> TermPlus -> IO CompPlus
 clarifyTerm tenv term =
@@ -84,11 +88,11 @@ clarifyTerm tenv term =
       returnImmediateS4 m
     (m, TermVar x) -> do
       return (m, CompUpIntro (m, ValueVarLocal x))
-    (m, TermVarGlobalOpaque (path, x)) ->
+    (m, TermVarGlobal (path, x)) ->
       return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
     -- return (m, CompUpIntro (m, ValueVarLocal x))
-    (m, TermVarGlobalTransparent (path, x)) ->
-      return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
+    -- (m, TermVarGlobalTransparent (path, x)) ->
+    --   return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
     -- (m, TermVar x) -> do
     --   return (m, CompUpIntro (m, ValueVarLocal x))
     -- case kind of
@@ -358,9 +362,7 @@ chainOf tenv term =
       let t = (IntMap.!) tenv (asInt x)
       let xts = chainOf tenv t
       xts ++ [(m, x, t)]
-    (_, TermVarGlobalOpaque {}) ->
-      []
-    (_, TermVarGlobalTransparent {}) ->
+    (_, TermVarGlobal {}) ->
       []
     -- _ ->
     --   []

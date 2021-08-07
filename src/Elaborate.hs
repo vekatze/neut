@@ -43,9 +43,10 @@ elaborate (ss, mainData@(mainSrcPath, mainContent)) =
           return (headStmtPlus' : rest', s')
 
 registerTopLevelDef :: FilePath -> Stmt -> IO ()
-registerTopLevelDef path (StmtDef _ x t e) = do
+registerTopLevelDef path (StmtDef isReducible _ x t e) = do
   insTopTypeEnv (path, x) $ weaken t
-  modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e) env
+  when isReducible $ do
+    modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e) env
 
 -- insWeakTypeEnv x $ weaken t
 -- modifyIORef' topDefEnv $ \env -> Map.insert (path, asInt x) (weaken e) env
@@ -67,11 +68,15 @@ elaborateStmtPlus path defList = do
 setupDef :: Path Abs File -> WeakStmt -> IO ()
 setupDef path def =
   case def of
-    WeakStmtDef _ x t e -> do
+    WeakStmtDef isReducible _ x t e -> do
       insTopTypeEnv (toFilePath path, x) t
-      nenv <- readIORef transparentTopNameEnv
-      when (Map.member x nenv) $
+      when isReducible $
         modifyIORef' topDefEnv $ \env -> Map.insert (toFilePath path, x) e env
+    -- nenv <- readIORef topNameEnv
+    -- -- nenv <- readIORef transparentTopNameEnv
+    -- -- fixme
+    -- when (Map.member x nenv) $
+    --   modifyIORef' topDefEnv $ \env -> Map.insert (toFilePath path, x) e env
     _ ->
       return ()
 
@@ -80,13 +85,13 @@ inferStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    WeakStmtDef m x t e : rest -> do
+    WeakStmtDef isReducible m x t e : rest -> do
       (e', te) <- infer e
       t' <- inferType t
       insConstraintEnv te t'
       when (x == "main") $ insConstraintEnv t (m, WeakTermConst "i64")
       rest' <- inferStmtList rest
-      return $ WeakStmtDef m x t' e' : rest'
+      return $ WeakStmtDef isReducible m x t' e' : rest'
     _ : rest ->
       inferStmtList rest
 
@@ -95,13 +100,14 @@ elaborateStmtList path stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDef m x t e : rest -> do
+    WeakStmtDef isReducible m x t e : rest -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTermPlus
       insTopTypeEnv (path, x) $ weaken t'
-      modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e') env
+      when isReducible $
+        modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e') env
       rest' <- elaborateStmtList path rest
-      return $ StmtDef m x t' e' : rest'
+      return $ StmtDef isReducible m x t' e' : rest'
     _ : rest ->
       elaborateStmtList path rest
 
@@ -112,10 +118,10 @@ elaborate' term =
       return (m, TermTau)
     (m, WeakTermVar x) ->
       return (m, TermVar x)
-    (m, WeakTermVarGlobalOpaque name) ->
-      return (m, TermVarGlobalOpaque name)
-    (m, WeakTermVarGlobalTransparent name) ->
-      return (m, TermVarGlobalTransparent name)
+    (m, WeakTermVarGlobal name) ->
+      return (m, TermVarGlobal name)
+    -- (m, WeakTermVarGlobalTransparent name) ->
+    --   return (m, TermVarGlobalTransparent name)
     -- (m, WeakTermVar opacity x) ->
     --   return (m, TermVar opacity x)
     (m, WeakTermPi xts t) -> do
@@ -205,11 +211,11 @@ elaborate' term =
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTermPlus
       denv <- readIORef dataEnv
-      oenv <- readIORef opaqueTopNameEnv
+      -- oenv <- readIORef opaqueTopNameEnv
       case t' of
-        (_, TermPiElim (_, TermVarGlobalOpaque name) _)
-          | Just bs <- Map.lookup (snd name) denv,
-            Map.member (snd name) oenv -> do
+        (_, TermPiElim (_, TermVarGlobal name) _)
+          | Just bs <- Map.lookup (snd name) denv -> do
+            -- Map.member (snd name) oenv
             patList' <- elaboratePatternList m bs patList
             return (m, TermCase resultType' mSubject' (e', t') patList')
         -- (_, TermPiElim (_, TermVar _ name) _)
@@ -217,9 +223,9 @@ elaborate' term =
         --     Map.member (asText name) oenv -> do
         --     patList' <- elaboratePatternList m bs patList
         --     return (m, TermCase resultType' mSubject' (e', t') patList')
-        (_, TermVarGlobalOpaque name)
-          | Just bs <- Map.lookup (snd name) denv,
-            Map.member (snd name) oenv -> do
+        (_, TermVarGlobal name)
+          | Just bs <- Map.lookup (snd name) denv -> do
+            -- Map.member (snd name) oenv -> do
             patList' <- elaboratePatternList m bs patList
             return (m, TermCase resultType' mSubject' (e', t') patList')
         _ -> do

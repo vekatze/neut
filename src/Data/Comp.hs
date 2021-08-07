@@ -77,3 +77,7 @@ varComp c =
           S.unions $ map varValue vs
     (_, CompIgnore e) ->
       varComp e
+
+dummyComp :: Hint -> CompPlus
+dummyComp m =
+  (m, CompUpIntro (m, ValueInt 64 0))

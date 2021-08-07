@@ -16,9 +16,10 @@ import GHC.Generics
 data WeakTerm
   = WeakTermTau
   | WeakTermVar Ident
-  | WeakTermVarGlobalOpaque TopName
-  | WeakTermVarGlobalTransparent TopName
-  | WeakTermPi [WeakIdentPlus] WeakTermPlus
+  | WeakTermVarGlobal TopName
+  | -- | WeakTermVarGlobalOpaque TopName
+    -- | WeakTermVarGlobalTransparent TopName
+    WeakTermPi [WeakIdentPlus] WeakTermPlus
   | WeakTermPiIntro Opacity (LamKind WeakIdentPlus) [WeakIdentPlus] WeakTermPlus
   | WeakTermPiElim WeakTermPlus [WeakTermPlus]
   | WeakTermAster Int
@@ -131,10 +132,12 @@ varWeakTermPlus term =
     -- (_, WeakTermVar opacity x) ->
     (_, WeakTermVar x) ->
       S.singleton x
-    (_, WeakTermVarGlobalOpaque {}) ->
+    (_, WeakTermVarGlobal {}) ->
       S.empty
-    (_, WeakTermVarGlobalTransparent {}) ->
-      S.empty
+    -- (_, WeakTermVarGlobalOpaque {}) ->
+    --   S.empty
+    -- (_, WeakTermVarGlobalTransparent {}) ->
+    --   S.empty
     -- case opacity of
     --   VarKindLocal ->
     --     S.singleton x
@@ -198,10 +201,12 @@ asterWeakTermPlus term =
       S.empty
     (_, WeakTermVar {}) ->
       S.empty
-    (_, WeakTermVarGlobalOpaque {}) ->
+    (_, WeakTermVarGlobal {}) ->
       S.empty
-    (_, WeakTermVarGlobalTransparent {}) ->
-      S.empty
+    -- (_, WeakTermVarGlobalOpaque {}) ->
+    --   S.empty
+    -- (_, WeakTermVarGlobalTransparent {}) ->
+    --   S.empty
     (_, WeakTermPi xts t) ->
       asterWeakTermPlus' xts t
     (_, WeakTermPiIntro _ _ xts e) ->
@@ -272,10 +277,12 @@ toText term =
       "tau"
     (_, WeakTermVar x) ->
       showVariable x
-    (_, WeakTermVarGlobalOpaque (_, x)) ->
+    (_, WeakTermVarGlobal (_, x)) ->
       x
-    (_, WeakTermVarGlobalTransparent (_, x)) ->
-      x
+    -- (_, WeakTermVarGlobalOpaque (_, x)) ->
+    --   x
+    -- (_, WeakTermVarGlobalTransparent (_, x)) ->
+    --   x
     -- (_, WeakTermVar _ x) ->
     --   showVariable x
     (_, WeakTermPi xts cod)

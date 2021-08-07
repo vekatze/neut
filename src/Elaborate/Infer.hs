@@ -39,12 +39,15 @@ infer' ctx term =
     (m, WeakTermVar x) -> do
       t <- lookupWeakTypeEnv m x
       return ((m, WeakTermVar x), (m, snd t))
-    (m, WeakTermVarGlobalOpaque name) -> do
+    (m, WeakTermVarGlobal name) -> do
       t <- lookupTopTypeEnv m name
-      return ((m, WeakTermVarGlobalOpaque name), (m, snd t))
-    (m, WeakTermVarGlobalTransparent name) -> do
-      t <- lookupTopTypeEnv m name
-      return ((m, WeakTermVarGlobalTransparent name), (m, snd t))
+      return ((m, WeakTermVarGlobal name), (m, snd t))
+    -- (m, WeakTermVarGlobalOpaque name) -> do
+    --   t <- lookupTopTypeEnv m name
+    --   return ((m, WeakTermVarGlobalOpaque name), (m, snd t))
+    -- (m, WeakTermVarGlobalTransparent name) -> do
+    --   t <- lookupTopTypeEnv m name
+    --   return ((m, WeakTermVarGlobalTransparent name), (m, snd t))
     -- (m, WeakTermVar kind x) -> do
     --   t <- lookupWeakTypeEnv m x
     --   return ((m, WeakTermVar kind x), (m, snd t))
@@ -141,7 +144,7 @@ infer' ctx term =
                     insConstraintEnv tCons t'
                   _ -> do
                     -- (_, tPat) <- inferPiElim ctx m ((m, WeakTermVar VarKindLocal name), tCons) (holeList ++ xs)
-                    (_, tPat) <- inferPiElim ctx m ((m, WeakTermVarGlobalTransparent name), tCons) (holeList ++ xs)
+                    (_, tPat) <- inferPiElim ctx m ((m, WeakTermVarGlobal name), tCons) (holeList ++ xs)
                     insConstraintEnv tPat t'
                 return ((mPat, name, xts'), body')
               return ((m, WeakTermCase resultType mSubject' (e', t') clauseList'), resultType)

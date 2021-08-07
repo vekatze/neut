@@ -132,20 +132,25 @@ sectionEnv :: IORef [T.Text]
 sectionEnv =
   unsafePerformIO (newIORef [])
 
-{-# NOINLINE transparentTopNameEnv #-}
-transparentTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
-transparentTopNameEnv =
+{-# NOINLINE topNameEnv #-}
+topNameEnv :: IORef (Map.HashMap T.Text FilePath)
+topNameEnv =
   unsafePerformIO (newIORef Map.empty)
+
+-- {-# NOINLINE transparentTopNameEnv #-}
+-- transparentTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
+-- transparentTopNameEnv =
+--   unsafePerformIO (newIORef Map.empty)
 
 -- {-# NOINLINE transparentTopNameEnv #-}
 -- transparentTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
 -- transparentTopNameEnv =
 --   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE opaqueTopNameEnv #-}
-opaqueTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
-opaqueTopNameEnv =
-  unsafePerformIO (newIORef Map.empty)
+-- {-# NOINLINE opaqueTopNameEnv #-}
+-- opaqueTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
+-- opaqueTopNameEnv =
+--   unsafePerformIO (newIORef Map.empty)
 
 -- {-# NOINLINE opaqueTopNameEnv #-}
 -- opaqueTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))

@@ -1,7 +1,6 @@
 module Parse.Discern
   ( discern,
     discernStmtList,
-    registerTopLevelName,
   )
 where
 
@@ -15,7 +14,6 @@ import Data.Namespace
 import Data.Stmt
 import qualified Data.Text as T
 import Data.WeakTerm
-import Path
 
 type NameEnv = Map.HashMap T.Text Ident
 
@@ -28,11 +26,11 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    WeakStmtDef m x t e : rest -> do
+    WeakStmtDef isReducible m x t e : rest -> do
       t' <- discern t
       e' <- discern e
       rest' <- discernStmtList rest
-      return $ WeakStmtDef m x t' e' : rest'
+      return $ WeakStmtDef isReducible m x t' e' : rest'
     WeakStmtUse name : rest -> do
       use name
       discernStmtList rest
@@ -46,27 +44,6 @@ discernStmtList stmtList =
       modifyIORef' nsEnv $ \env -> filter (/= (from, to)) env
       discernStmtList rest
 
-registerTopLevelName :: Bool -> Hint -> Ident -> IO ()
-registerTopLevelName isReducible m x = do
-  let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
-  nenv <- readIORef nameEnv
-  when (Map.member (asText x) nenv) $
-    raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
-  path <- toFilePath <$> getCurrentFilePath
-  modifyIORef' nameEnv $ \env -> Map.insert (asText x) path env
-
--- discernTopLevelName :: Bool -> Hint -> Ident -> IO Ident
--- discernTopLevelName isReducible m x = do
---   let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
---   nenv <- readIORef nameEnv
---   when (Map.member (asText x) nenv) $
---     raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
---   x' <- newIdentFromIdent x
---   path <- toFilePath <$> getCurrentFilePath
---   -- modifyIORef' nameEnv $ \env -> Map.insert (asText x) (path, x') env
---   modifyIORef' nameEnv $ \env -> Map.insert (asText x) path env
---   return x'
-
 -- Alpha-convert all the variables so that different variables have different names.
 discern' :: NameEnv -> WeakTermPlus -> IO WeakTermPlus
 discern' nenv term =
@@ -75,20 +52,24 @@ discern' nenv term =
       return (m, WeakTermTau)
     (m, WeakTermVar (I (s, _))) -> do
       tryCand (resolveSymbol m (asWeakVar m nenv) s) $ do
-        nenvTrans <- readIORef transparentTopNameEnv
-        tryCand (resolveSymbol m (asTransparentGlobalVar m nenvTrans) s) $ do
-          nenvOpaque <- readIORef opaqueTopNameEnv
-          tryCand (resolveSymbol m (asOpaqueGlobalVar m nenvOpaque) s) $ do
-            renv <- readIORef revEnumEnv
-            tryCand (resolveSymbol m (asEnumIntro m renv) s) $ do
-              eenv <- readIORef enumEnv
-              tryCand (resolveSymbol m (asEnum m eenv) s) $
-                tryCand (resolveSymbol m (asWeakConstant m) s) $
-                  raiseError m $ "undefined variable: " <> s
-    (_, WeakTermVarGlobalOpaque {}) ->
+        tnenv <- readIORef topNameEnv
+        tryCand (resolveSymbol m (asGlobalVar m tnenv) s) $ do
+          -- nenvTrans <- readIORef transparentTopNameEnv
+          -- tryCand (resolveSymbol m (asTransparentGlobalVar m nenvTrans) s) $ do
+          -- nenvOpaque <- readIORef opaqueTopNameEnv
+          -- tryCand (resolveSymbol m (asOpaqueGlobalVar m nenvOpaque) s) $ do
+          renv <- readIORef revEnumEnv
+          tryCand (resolveSymbol m (asEnumIntro m renv) s) $ do
+            eenv <- readIORef enumEnv
+            tryCand (resolveSymbol m (asEnum m eenv) s) $
+              tryCand (resolveSymbol m (asWeakConstant m) s) $
+                raiseError m $ "undefined variable: " <> s
+    (_, WeakTermVarGlobal {}) ->
       return term
-    (_, WeakTermVarGlobalTransparent {}) ->
-      return term
+    -- (_, WeakTermVarGlobalOpaque {}) ->
+    --   return term
+    -- (_, WeakTermVarGlobalTransparent {}) ->
+    --   return term
     (m, WeakTermPi xts t) -> do
       (xts', t') <- discernBinder nenv xts t
       return (m, WeakTermPi xts' t')
@@ -139,9 +120,10 @@ discern' nenv term =
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e
       t' <- discern' nenv t
-      nenvTrans <- readIORef transparentTopNameEnv
+      tnenv <- readIORef topNameEnv
+      -- nenvTrans <- readIORef transparentTopNameEnv
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        constructorName' <- resolveSymbol m (asConstructor m nenvTrans) (snd constructorName)
+        constructorName' <- resolveSymbol m (asConstructor m tnenv) (snd constructorName)
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinder nenv xts body

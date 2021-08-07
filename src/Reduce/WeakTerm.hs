@@ -120,10 +120,10 @@ substWeakTermPlus sub term =
         return e
       | otherwise ->
         return term
-    (_, WeakTermVarGlobalOpaque {}) ->
+    (_, WeakTermVarGlobal {}) ->
       return term
-    (_, WeakTermVarGlobalTransparent {}) ->
-      return term
+    -- (_, WeakTermVarGlobalTransparent {}) ->
+    --   return term
     (m, WeakTermPi xts t) -> do
       (xts', t') <- substWeakTermPlus' sub xts t
       return (m, WeakTermPi xts' t')

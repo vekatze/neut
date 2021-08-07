@@ -16,9 +16,10 @@ data Term
   = TermTau
   | --  | TermVar VarKind Ident
     TermVar Ident
-  | TermVarGlobalOpaque TopName
-  | TermVarGlobalTransparent TopName
-  | TermPi [IdentPlus] TermPlus
+  | TermVarGlobal TopName
+  | -- | TermVarGlobalOpaque TopName
+    -- | TermVarGlobalTransparent TopName
+    TermPi [IdentPlus] TermPlus
   | TermPiIntro Opacity (LamKind IdentPlus) [IdentPlus] TermPlus
   | TermPiElim TermPlus [TermPlus]
   | TermConst T.Text
@@ -71,10 +72,12 @@ weaken term =
       (m, WeakTermTau)
     (m, TermVar x) ->
       (m, WeakTermVar x)
-    (m, TermVarGlobalOpaque g) ->
-      (m, WeakTermVarGlobalOpaque g)
-    (m, TermVarGlobalTransparent g) ->
-      (m, WeakTermVarGlobalTransparent g)
+    (m, TermVarGlobal g) ->
+      (m, WeakTermVarGlobal g)
+    -- (m, TermVarGlobalOpaque g) ->
+    --   (m, WeakTermVarGlobalOpaque g)
+    -- (m, TermVarGlobalTransparent g) ->
+    --   (m, WeakTermVarGlobalTransparent g)
     -- (m, TermVar x) ->
     --   (m, WeakTermVar x)
     (m, TermPi xts t) ->

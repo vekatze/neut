@@ -358,7 +358,7 @@ keywordSet =
       "define-codata",
       "define-data",
       "define-enum",
-      "define-opaque",
+      "define-inline",
       "define-prefix",
       "define-resource-type",
       "derangement",

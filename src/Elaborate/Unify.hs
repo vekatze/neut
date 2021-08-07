@@ -18,10 +18,11 @@ import Data.WeakTerm
 import Reduce.WeakTerm
 
 data Stuck
-  = StuckPiElimVarLocalOpaque Ident [(Hint, [WeakTermPlus])]
-  | StuckPiElimVarGlobalTransparent TopName [(Hint, [WeakTermPlus])]
-  | StuckPiElimVarGlobalOpaque TopName [(Hint, [WeakTermPlus])]
-  | StuckPiElimAster Int [[WeakTermPlus]]
+  = StuckPiElimVarLocal Ident [(Hint, [WeakTermPlus])]
+  | StuckPiElimVarGlobal TopName [(Hint, [WeakTermPlus])]
+  | -- | StuckPiElimVarGlobalTransparent TopName [(Hint, [WeakTermPlus])]
+    -- | StuckPiElimVarGlobalOpaque TopName [(Hint, [WeakTermPlus])]
+    StuckPiElimAster Int [[WeakTermPlus]]
   deriving (Show)
 
 unify :: IO ()
@@ -85,10 +86,10 @@ simplify constraintList =
         ((_, WeakTermVar x1), (_, WeakTermVar x2))
           | x1 == x2 ->
             simplify cs
-        ((_, WeakTermVarGlobalOpaque g1), (_, WeakTermVarGlobalOpaque g2))
-          | g1 == g2 ->
-            simplify cs
-        ((_, WeakTermVarGlobalTransparent g1), (_, WeakTermVarGlobalTransparent g2))
+        -- ((_, WeakTermVarGlobalOpaque g1), (_, WeakTermVarGlobalOpaque g2))
+        --   | g1 == g2 ->
+        --     simplify cs
+        ((_, WeakTermVarGlobal g1), (_, WeakTermVarGlobal g2))
           | g1 == g2 ->
             simplify cs
         ((m1, WeakTermPi xts1 cod1), (m2, WeakTermPi xts2 cod2))
@@ -177,20 +178,21 @@ simplify constraintList =
                     h2 `S.notMember` fmvs1,
                     fvs1 `S.isSubsetOf` argSet2 ->
                     resolveHole h2 xss2 e1 cs
-                (Just (StuckPiElimVarLocalOpaque x1 mess1), Just (StuckPiElimVarLocalOpaque x2 mess2))
+                (Just (StuckPiElimVarLocal x1 mess1), Just (StuckPiElimVarLocal x2 mess2))
                   | x1 == x2,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) -> do
                     simplify $ map (\pair -> (pair, orig)) pairList ++ cs
-                (Just (StuckPiElimVarGlobalOpaque g1 mess1), Just (StuckPiElimVarGlobalOpaque g2 mess2))
+                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
+                    Nothing <- lookupDefinition g1 defs,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) -> do
                     simplify $ map (\pair -> (pair, orig)) pairList ++ cs
-                (Just (StuckPiElimVarGlobalTransparent g1 mess1), Just (StuckPiElimVarGlobalTransparent g2 mess2))
+                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
                     Just lam <- lookupDefinition g1 defs -> do
                     simplify $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
-                (Just (StuckPiElimVarGlobalTransparent g1 mess1), Just (StuckPiElimVarGlobalTransparent g2 mess2))
-                  | g1 /= g2,
+                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
+                  | -- g1 /= g2,
                     -- x1 /= x2 || path1 /= path2,
                     Just lam1 <- lookupDefinition g1 defs,
                     Just lam2 <- lookupDefinition g2 defs -> do
@@ -199,20 +201,20 @@ simplify constraintList =
                 -- if asInt x1 > asInt x2
                 --   then simplify $ ((toPiElim lam1 mess1, e2), orig) : cs
                 --   else simplify $ ((e1, toPiElim lam2 mess2), orig) : cs
-                (Just (StuckPiElimVarGlobalTransparent g1 mess1), Just (StuckPiElimAster {}))
+                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimAster {}))
                   | Just lam <- lookupDefinition g1 defs -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
                     modifyIORef' suspendedConstraintEnv $ \env -> Q.insert uc env
                     simplify cs
-                (Just (StuckPiElimAster {}), Just (StuckPiElimVarGlobalTransparent g2 mess2))
+                (Just (StuckPiElimAster {}), Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- lookupDefinition g2 defs -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
                     modifyIORef' suspendedConstraintEnv $ \env -> Q.insert uc env
                     simplify cs
-                (Just (StuckPiElimVarGlobalTransparent g1 mess1), _)
+                (Just (StuckPiElimVarGlobal g1 mess1), _)
                   | Just lam <- lookupDefinition g1 defs -> do
                     simplify $ ((toPiElim lam mess1, e2), orig) : cs
-                (_, Just (StuckPiElimVarGlobalTransparent g2 mess2))
+                (_, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- lookupDefinition g2 defs -> do
                     simplify $ ((e1, toPiElim lam mess2), orig) : cs
                 _ -> do
@@ -271,14 +273,16 @@ asStuckedTerm :: WeakTermPlus -> Maybe Stuck
 asStuckedTerm term =
   case term of
     (_, WeakTermVar x) ->
-      Just $ StuckPiElimVarLocalOpaque x []
-    (_, WeakTermVarGlobalOpaque g) ->
-      Just $ StuckPiElimVarGlobalOpaque g []
-    (_, WeakTermVarGlobalTransparent g) ->
-      Just $ StuckPiElimVarGlobalTransparent g []
+      Just $ StuckPiElimVarLocal x []
+    (_, WeakTermVarGlobal g) ->
+      Just $ StuckPiElimVarGlobal g []
+    -- (_, WeakTermVarGlobalOpaque g) ->
+    --   Just $ StuckPiElimVarGlobalOpaque g []
+    -- (_, WeakTermVarGlobalTransparent g) ->
+    --   Just $ StuckPiElimVarGlobalTransparent g []
     -- case opacity of
     --   VarKindLocal ->
-    --     Just $ StuckPiElimVarLocalOpaque x []
+    --     Just $ StuckPiElimVarLocal x []
     --   VarKindGlobalOpaque path ->
     --     Just $ StuckPiElimVarGlobalOpaque path x []
     --   VarKindGlobalTransparent path ->
@@ -286,7 +290,7 @@ asStuckedTerm term =
     -- (_, WeakTermVar opacity x) ->
     --   case opacity of
     --     VarKindLocal ->
-    --       Just $ StuckPiElimVarLocalOpaque x []
+    --       Just $ StuckPiElimVarLocal x []
     --     VarKindGlobalOpaque path ->
     --       Just $ StuckPiElimVarGlobalOpaque path x []
     --     VarKindGlobalTransparent path ->
@@ -298,12 +302,12 @@ asStuckedTerm term =
         Just (StuckPiElimAster h iexss)
           | Just _ <- mapM asVar es ->
             Just $ StuckPiElimAster h $ iexss ++ [es]
-        Just (StuckPiElimVarGlobalTransparent g ess) ->
-          Just $ StuckPiElimVarGlobalTransparent g $ ess ++ [(m, es)]
-        Just (StuckPiElimVarGlobalOpaque g ess) ->
-          Just $ StuckPiElimVarGlobalOpaque g $ ess ++ [(m, es)]
-        Just (StuckPiElimVarLocalOpaque x ess) ->
-          Just $ StuckPiElimVarLocalOpaque x $ ess ++ [(m, es)]
+        Just (StuckPiElimVarGlobal g ess) ->
+          Just $ StuckPiElimVarGlobal g $ ess ++ [(m, es)]
+        -- Just (StuckPiElimVarGlobalOpaque g ess) ->
+        --   Just $ StuckPiElimVarGlobalOpaque g $ ess ++ [(m, es)]
+        Just (StuckPiElimVarLocal x ess) ->
+          Just $ StuckPiElimVarLocal x $ ess ++ [(m, es)]
         _ ->
           Nothing
     _ ->

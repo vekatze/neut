@@ -187,20 +187,25 @@ asWeakVar m nenv var =
 -- asWeakVar m nenv var =
 --   asVar m nenv var (WeakTermVar VarKindLocal)
 
-{-# INLINE asTransparentGlobalVar #-}
-asTransparentGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
-asTransparentGlobalVar m nenv name =
-  asVar m nenv name (\fp -> WeakTermVarGlobalTransparent (fp, name))
+{-# INLINE asGlobalVar #-}
+asGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
+asGlobalVar m nenv name =
+  asVar m nenv name (\fp -> WeakTermVarGlobal (fp, name))
+
+-- {-# INLINE asTransparentGlobalVar #-}
+-- asTransparentGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
+-- asTransparentGlobalVar m nenv name =
+--   asVar m nenv name (\fp -> WeakTermVarGlobalTransparent (fp, name))
 
 -- {-# INLINE asTransparentGlobalVar #-}
 -- asTransparentGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
 -- asTransparentGlobalVar m nenv var =
 --   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalTransparent fp) x)
 
-{-# INLINE asOpaqueGlobalVar #-}
-asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
-asOpaqueGlobalVar m nenv name =
-  asVar m nenv name (\fp -> WeakTermVarGlobalOpaque (fp, name))
+-- {-# INLINE asOpaqueGlobalVar #-}
+-- asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
+-- asOpaqueGlobalVar m nenv name =
+--   asVar m nenv name (\fp -> WeakTermVarGlobalOpaque (fp, name))
 
 -- {-# INLINE asOpaqueGlobalVar #-}
 -- asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
