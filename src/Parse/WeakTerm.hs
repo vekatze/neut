@@ -414,7 +414,6 @@ weakTermLetCoproduct = do
   let sumLeft = ("", "sum.left")
   let sumRight = ("", "sum.right")
   let sumLeftVar = asIdent "sum.left"
-  -- let sumLeft = asIdent "sum.left"
   return
     ( m,
       WeakTermCase
@@ -802,7 +801,3 @@ defaultTargetArch =
       "amd64"
     other ->
       T.pack other
-
--- placeholderPath :: Path Abs File
--- placeholderPath =
---   $(mkAbsFile "/_")

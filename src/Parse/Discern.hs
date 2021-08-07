@@ -54,10 +54,6 @@ discern' nenv term =
       tryCand (resolveSymbol m (asWeakVar m nenv) s) $ do
         tnenv <- readIORef topNameEnv
         tryCand (resolveSymbol m (asGlobalVar m tnenv) s) $ do
-          -- nenvTrans <- readIORef transparentTopNameEnv
-          -- tryCand (resolveSymbol m (asTransparentGlobalVar m nenvTrans) s) $ do
-          -- nenvOpaque <- readIORef opaqueTopNameEnv
-          -- tryCand (resolveSymbol m (asOpaqueGlobalVar m nenvOpaque) s) $ do
           renv <- readIORef revEnumEnv
           tryCand (resolveSymbol m (asEnumIntro m renv) s) $ do
             eenv <- readIORef enumEnv
@@ -66,10 +62,6 @@ discern' nenv term =
                 raiseError m $ "undefined variable: " <> s
     (_, WeakTermVarGlobal {}) ->
       return term
-    -- (_, WeakTermVarGlobalOpaque {}) ->
-    --   return term
-    -- (_, WeakTermVarGlobalTransparent {}) ->
-    --   return term
     (m, WeakTermPi xts t) -> do
       (xts', t') <- discernBinder nenv xts t
       return (m, WeakTermPi xts' t')
@@ -121,7 +113,6 @@ discern' nenv term =
       e' <- discern' nenv e
       t' <- discern' nenv t
       tnenv <- readIORef topNameEnv
-      -- nenvTrans <- readIORef transparentTopNameEnv
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
         constructorName' <- resolveSymbol m (asConstructor m tnenv) (snd constructorName)
         case constructorName' of

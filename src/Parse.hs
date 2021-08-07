@@ -109,18 +109,10 @@ stmt = do
           stmtList <- stmt
           return $ def : stmtList
         Just "define-inline" -> do
+          -- fixme: define-reducibleとdefine-inlineは概念として別物ですわよ。
           def <- stmtDefine True
           stmtList <- stmt
           return $ def : stmtList
-        -- Just "define" -> do
-        --   def <- stmtDefine True
-        --   stmtList <- stmt
-        --   return $ def : stmtList
-        -- Just "define-opaque" -> do
-        --   def <- stmtDefine False
-        --   stmtList <- stmt
-        --   return $ def : stmtList
-
         Just "define-enum" -> do
           stmtDefineEnum
           stmt
@@ -181,9 +173,6 @@ stmt = do
 stmtDefine :: Bool -> IO WeakStmt
 stmtDefine isReducible = do
   m <- currentHint
-  -- if isReducible
-  --   then token "define"
-  --   else token "define-opaque"
   if isReducible
     then token "define-inline"
     else token "define"
@@ -204,16 +193,12 @@ defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakIdentPlus] -> We
 defineFunction isReducible m mFun funName' argList codType e = do
   let piType = (m, WeakTermPi argList codType)
   registerTopLevelName m $ asIdent funName'
-  -- registerTopLevelName isReducible m $ asIdent funName'
-  -- funName'' <- discernTopLevelName isReducible m $ asIdent funName'
   let e' = (m, WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent funName', piType)) argList e)
   return $ WeakStmtDef isReducible m funName' piType e'
 
 defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
 defineTerm isReducible m funName' codType e = do
-  -- registerTopLevelName isReducible m $ asIdent funName'
   registerTopLevelName m $ asIdent funName'
-  -- funName'' <- discernTopLevelName isReducible m $ asIdent funName'
   return $ WeakStmtDef isReducible m funName' codType e
 
 stmtDefineEnum :: IO ()
@@ -367,9 +352,6 @@ stmtInclude = do
       case stmtListOrNothing of
         Just stmtList -> do
           forM_ stmtList $ \(StmtDef _ _ x _ _) -> do
-            -- let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
-            -- let nameEnv = if False then transparentTopNameEnv else opaqueTopNameEnv
-            -- modifyIORef' nameEnv $ \env -> Map.insert x (toFilePath newPath) env
             modifyIORef' topNameEnv $ \env -> Map.insert x (toFilePath newPath) env
           modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
           return [(newPath, Left stmtList)]
@@ -665,20 +647,8 @@ varText =
 
 registerTopLevelName :: Hint -> Ident -> IO ()
 registerTopLevelName m x = do
-  -- let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
-  -- nenv <- readIORef nameEnv
   nenv <- readIORef topNameEnv
   when (Map.member (asText x) nenv) $
     raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
   path <- toFilePath <$> getCurrentFilePath
   modifyIORef' topNameEnv $ \env -> Map.insert (asText x) path env
-
--- registerTopLevelName :: Bool -> Hint -> Ident -> IO ()
--- registerTopLevelName isReducible m x = do
---   -- let nameEnv = if isReducible then transparentTopNameEnv else opaqueTopNameEnv
---   -- nenv <- readIORef nameEnv
---   nenv <- readIORef topNameEnv
---   when (Map.member (asText x) nenv) $
---     raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
---   path <- toFilePath <$> getCurrentFilePath
---   modifyIORef' topNameEnv $ \env -> Map.insert (asText x) path env

@@ -90,27 +90,6 @@ clarifyTerm tenv term =
       return (m, CompUpIntro (m, ValueVarLocal x))
     (m, TermVarGlobal (path, x)) ->
       return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-    -- return (m, CompUpIntro (m, ValueVarLocal x))
-    -- (m, TermVarGlobalTransparent (path, x)) ->
-    --   return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-    -- (m, TermVar x) -> do
-    --   return (m, CompUpIntro (m, ValueVarLocal x))
-    -- case kind of
-    --   VarKindLocal ->
-    --     return (m, CompUpIntro (m, ValueVarLocal x))
-    --   VarKindGlobalOpaque path ->
-    --     return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-    --   VarKindGlobalTransparent path ->
-    --     return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-    -- (m, TermVar kind x) -> do
-    --   case kind of
-    --     VarKindLocal ->
-    --       return (m, CompUpIntro (m, ValueVarLocal x))
-    --     VarKindGlobalOpaque path ->
-    --       return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-    --     VarKindGlobalTransparent path ->
-    --       return (m, CompPiElimDownElim (m, ValueVarGlobal (toGlobalVarName path x)) [])
-
     (m, TermPi {}) ->
       returnClosureS4 m
     (m, TermPiIntro opacity kind mxts e) -> do
@@ -364,17 +343,6 @@ chainOf tenv term =
       xts ++ [(m, x, t)]
     (_, TermVarGlobal {}) ->
       []
-    -- _ ->
-    --   []
-    -- (m, TermVar opacity x) -> do
-    --   case opacity of
-    --     VarKindLocal -> do
-    --       let t = (IntMap.!) tenv (asInt x)
-    --       let xts = chainOf tenv t
-    --       xts ++ [(m, x, t)]
-    --     _ ->
-    --       []
-
     (_, TermPi {}) ->
       []
     (_, TermPiIntro _ kind xts e) ->

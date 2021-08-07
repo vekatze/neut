@@ -396,17 +396,9 @@ weakVar :: Hint -> T.Text -> WeakTermPlus
 weakVar m str =
   (m, WeakTermVar (asIdent str))
 
--- weakVar :: Hint -> T.Text -> WeakTermPlus
--- weakVar m str =
---   (m, WeakTermVar VarKindLocal (asIdent str))
-
 weakVar' :: Hint -> Ident -> WeakTermPlus
 weakVar' m ident =
   (m, WeakTermVar ident)
-
--- weakVar' :: Hint -> Ident -> WeakTermPlus
--- weakVar' m ident =
---   (m, WeakTermVar VarKindLocal ident)
 
 lam :: Hint -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus
 lam m varList e =
@@ -421,7 +413,4 @@ weakTermToWeakIdent :: Hint -> IO WeakTermPlus -> IO WeakIdentPlus
 weakTermToWeakIdent m f = do
   a <- f
   h <- newTextualIdentFromText "_"
-  -- h <- newIdent
-  -- txt <- newText
-  -- h <- newIdentFromText txt
   return (m, h, a)

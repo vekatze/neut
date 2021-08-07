@@ -42,15 +42,6 @@ infer' ctx term =
     (m, WeakTermVarGlobal name) -> do
       t <- lookupTopTypeEnv m name
       return ((m, WeakTermVarGlobal name), (m, snd t))
-    -- (m, WeakTermVarGlobalOpaque name) -> do
-    --   t <- lookupTopTypeEnv m name
-    --   return ((m, WeakTermVarGlobalOpaque name), (m, snd t))
-    -- (m, WeakTermVarGlobalTransparent name) -> do
-    --   t <- lookupTopTypeEnv m name
-    --   return ((m, WeakTermVarGlobalTransparent name), (m, snd t))
-    -- (m, WeakTermVar kind x) -> do
-    --   t <- lookupWeakTypeEnv m x
-    --   return ((m, WeakTermVar kind x), (m, snd t))
     (m, WeakTermPi xts t) -> do
       (xts', t') <- inferPi ctx xts t
       return ((m, WeakTermPi xts' t'), (m, WeakTermTau))
@@ -127,7 +118,6 @@ infer' ctx term =
           return ((m, WeakTermCase resultType mSubject' (e', t') []), resultType) -- ex falso quodlibet
         ((_, constructorName, _), _) : _ -> do
           cenv <- readIORef constructorEnv
-          -- case Map.lookup (asText constructorName) cenv of
           case Map.lookup (snd constructorName) cenv of
             Nothing ->
               raiseCritical m $ "no such constructor defined (infer): " <> snd constructorName
@@ -138,12 +128,10 @@ infer' ctx term =
                 insConstraintEnv resultType tBody
                 let xs = map (\(mx, x, t) -> ((mx, WeakTermVar x), t)) xts'
                 tCons <- lookupTopTypeEnv m name
-                -- tCons <- lookupWeakTypeEnv m name
                 case holeList ++ xs of
                   [] ->
                     insConstraintEnv tCons t'
                   _ -> do
-                    -- (_, tPat) <- inferPiElim ctx m ((m, WeakTermVar VarKindLocal name), tCons) (holeList ++ xs)
                     (_, tPat) <- inferPiElim ctx m ((m, WeakTermVarGlobal name), tCons) (holeList ++ xs)
                     insConstraintEnv tPat t'
                 return ((mPat, name, xts'), body')
