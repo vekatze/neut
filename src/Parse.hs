@@ -180,30 +180,32 @@ stmtDefine isReducible = do
   if isReducible
     then token "define-inline"
     else token "define"
-  (mFun, funName) <- var
-  funName' <- withSectionPrefix funName
+  (mTerm, name) <- var
+  name' <- withSectionPrefix name
   argList <- many weakIdentPlus
   token ":"
   codType <- weakTerm
   token "="
   e <- weakTerm
+  -- registerTopLevelName m $ asIdent name'
   case argList of
     [] ->
-      defineTerm isReducible m funName' codType e
+      defineTerm isReducible m name' codType e
     _ ->
-      defineFunction isReducible m mFun funName' argList codType e
+      defineFunction isReducible m mTerm name' argList codType e
 
 defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
-defineFunction isReducible m mFun funName' argList codType e = do
+defineFunction isReducible m mFun name argList codType e = do
   let piType = (m, WeakTermPi argList codType)
-  registerTopLevelName m $ asIdent funName'
-  let e' = (m, WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent funName', piType)) argList e)
-  return $ WeakStmtDef isReducible m funName' piType e'
+  -- registerTopLevelName m $ asIdent name
+  -- return $ WeakStmtDef isReducible m name piType e'
+  let e' = (m, WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent name, piType)) argList e)
+  defineTerm isReducible m name piType e'
 
 defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
-defineTerm isReducible m funName' codType e = do
-  registerTopLevelName m $ asIdent funName'
-  return $ WeakStmtDef isReducible m funName' codType e
+defineTerm isReducible m name codType e = do
+  registerTopLevelName m $ asIdent name
+  return $ WeakStmtDef isReducible m name codType e
 
 stmtDefineEnum :: IO EnumInfo
 stmtDefineEnum = do
@@ -262,7 +264,6 @@ stmtEnsure = do
   when (not isAlreadyInstalled) $ do
     ensureDir pkgStrDirPath
     let urlStr' = T.unpack urlStr
-    p urlStr'
     let curlCmd = proc "curl" ["-s", "-S", "-L", urlStr']
     let tarCmd = proc "tar" ["xJf", "-", "-C", toFilePath pkgStr', "--strip-components=1"]
     (_, Just stdoutHandler, Just curlErrorHandler, curlHandler) <-
@@ -363,6 +364,7 @@ stmtInclude = do
           modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
           return [(newPath, Left stmtList, enumInfoList)]
         Nothing -> do
+          -- FIXME: 多重includeをおこなわないようにする。
           (ss, (headerInfo, bodyInfo), enumInfoList) <- visit newPath
           return $ ss ++ [(headerInfo, Right bodyInfo, enumInfoList)]
 
