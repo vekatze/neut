@@ -37,9 +37,7 @@ elaborate (ss, mainData@(mainSrcPath, mainContent)) =
           return ((srcPath, cache) : rest', s')
         Right defList -> do
           headStmtPlus' <- elaborateStmtPlus srcPath defList
-          -- cache <- toCache (snd headStmtPlus') enumInfoList
           promise <- async $ saveCache headStmtPlus' enumInfoList
-          -- promise <- async $ saveCache (fst undefined) cache
           modifyIORef' promiseEnv $ \env -> promise : env
           (rest', s') <- elaborate (rest, mainData)
           return (headStmtPlus' : rest', s')
