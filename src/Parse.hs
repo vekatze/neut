@@ -187,7 +187,6 @@ stmtDefine isReducible = do
   codType <- weakTerm
   token "="
   e <- weakTerm
-  -- registerTopLevelName m $ asIdent name'
   case argList of
     [] ->
       defineTerm isReducible m name' codType e
@@ -197,8 +196,6 @@ stmtDefine isReducible = do
 defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
 defineFunction isReducible m mFun name argList codType e = do
   let piType = (m, WeakTermPi argList codType)
-  -- registerTopLevelName m $ asIdent name
-  -- return $ WeakStmtDef isReducible m name piType e'
   let e' = (m, WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent name, piType)) argList e)
   defineTerm isReducible m name piType e'
 
