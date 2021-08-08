@@ -10,6 +10,7 @@ import Data.Global
 import Data.IORef
 import Data.Log
 import Data.Maybe (fromMaybe)
+import Data.Version (showVersion)
 import Elaborate
 import Emit
 import GHC.IO.Handle
@@ -18,6 +19,7 @@ import Options.Applicative
 import Parse
 import Path
 import Path.IO
+import Paths_neut (version)
 import System.Exit
 import System.Process hiding (env)
 import Text.Read (readMaybe)
@@ -77,6 +79,7 @@ data Command
   | Link MainInputPath [AuxInputPath] (Maybe OutputPath) (Maybe ClangOption)
   | Check InputPath ShouldColorize CheckOptEndOfEntry
   | Archive InputPath (Maybe OutputPath)
+  | Version
 
 main :: IO ()
 main =
@@ -99,6 +102,12 @@ parseOpt =
           ( info
               (helper <*> parseArchiveOpt)
               (progDesc "create archive from given path")
+          )
+        <> command
+          "version"
+          ( info
+              (helper <*> parseVersionOpt)
+              (progDesc "show version info")
           )
     )
 
@@ -201,6 +210,10 @@ parseLinkOpt = do
                 ]
             )
         )
+
+parseVersionOpt :: Parser Command
+parseVersionOpt =
+  pure Version
 
 kindReader :: ReadM OutputKind
 kindReader = do
@@ -315,6 +328,8 @@ run cmd =
       tarExitCode <- waitForProcess handler
       waitAll
       exitWith tarExitCode
+    Version ->
+      putStrLn $ showVersion version
 
 constructOutputPath :: Path Rel File -> Maybe (Path Abs File) -> OutputKind -> IO (Path Abs File)
 constructOutputPath basename mPath kind =
