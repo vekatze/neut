@@ -9,75 +9,75 @@ import qualified Data.Text as T
 data Value
   = ValueVarLocal Ident
   | ValueVarGlobal T.Text
-  | ValueSigmaIntro [ValuePlus]
+  | ValueSigmaIntro [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
   | ValueEnumIntro FilePath T.Text
   deriving (Show)
 
 data Comp
-  = CompPiElimDownElim ValuePlus [ValuePlus] -- ((force v) v1 ... vn)
-  | CompSigmaElim Bool [Ident] ValuePlus CompPlus
-  | CompUpIntro ValuePlus
-  | CompUpElim Ident CompPlus CompPlus
-  | CompEnumElim ValuePlus [(EnumCase, CompPlus)]
+  = CompPiElimDownElim Value [Value] -- ((force v) v1 ... vn)
+  | CompSigmaElim Bool [Ident] Value Comp
+  | CompUpIntro Value
+  | CompUpElim Ident Comp Comp
+  | CompEnumElim Value [(EnumCase, Comp)]
   | CompPrimitive Primitive
-  | CompIgnore CompPlus
+  | CompIgnore Comp
   deriving (Show)
 
 data Primitive
-  = PrimitivePrimOp PrimOp [ValuePlus]
-  | PrimitiveDerangement Derangement [ValuePlus]
+  = PrimitivePrimOp PrimOp [Value]
+  | PrimitiveDerangement Derangement [Value]
   deriving (Show)
 
-type ValuePlus =
-  (Hint, Value)
+-- type Value =
+--   (Hint, Value)
 
-type CompPlus =
-  (Hint, Comp)
+-- type Comp =
+--   (Hint, Comp)
 
-type SubstValuePlus =
-  IntMap.IntMap ValuePlus
+type SubstValue =
+  IntMap.IntMap Value
 
-varValue :: ValuePlus -> S.Set Ident
+varValue :: Value -> S.Set Ident
 varValue v =
   case v of
-    (_, ValueVarLocal x) ->
+    ValueVarLocal x ->
       S.singleton x
-    (_, ValueSigmaIntro vs) ->
+    ValueSigmaIntro vs ->
       S.unions $ map varValue vs
     _ ->
       S.empty
 
-varComp :: CompPlus -> S.Set Ident
+varComp :: Comp -> S.Set Ident
 varComp c =
   case c of
-    (_, CompPiElimDownElim v vs) ->
+    CompPiElimDownElim v vs ->
       S.unions $ map varValue (v : vs)
-    (_, CompSigmaElim _ xs v e) -> do
+    CompSigmaElim _ xs v e -> do
       let s1 = varValue v
       let s2 = S.filter (`notElem` xs) $ varComp e
       S.union s1 s2
-    (_, CompUpIntro v) ->
+    CompUpIntro v ->
       varValue v
-    (_, CompUpElim x e1 e2) -> do
+    CompUpElim x e1 e2 -> do
       let s1 = varComp e1
       let s2 = S.filter (/= x) $ varComp e2
       S.union s1 s2
-    (_, CompEnumElim v caseList) -> do
+    CompEnumElim v caseList -> do
       let s1 = varValue v
       let (_, es) = unzip caseList
       let s2 = S.unions (map varComp es)
       S.union s1 s2
-    (_, CompPrimitive prim) ->
+    CompPrimitive prim ->
       case prim of
         PrimitivePrimOp _ vs ->
           S.unions $ map varValue vs
         PrimitiveDerangement _ vs ->
           S.unions $ map varValue vs
-    (_, CompIgnore e) ->
+    CompIgnore e ->
       varComp e
 
-dummyComp :: Hint -> CompPlus
-dummyComp m =
-  (m, CompUpIntro (m, ValueInt 64 0))
+dummyComp :: Comp
+dummyComp =
+  CompUpIntro (ValueInt 64 0)

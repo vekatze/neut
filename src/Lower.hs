@@ -14,7 +14,7 @@ import Data.LowComp
 import Data.LowType
 import qualified Data.Text as T
 
-lower :: ([(T.Text, CompPlus)], Maybe CompPlus) -> IO (Maybe LowComp)
+lower :: ([(T.Text, Comp)], Maybe Comp) -> IO (Maybe LowComp)
 lower (defList, mMainTerm) = do
   case mMainTerm of
     Nothing -> do
@@ -32,40 +32,40 @@ lower (defList, mMainTerm) = do
       mainTerm' <- lowerMain mainTerm
       return $ Just mainTerm'
 
-lowerMain :: CompPlus -> IO LowComp
-lowerMain mainTerm@(m, _) = do
+lowerMain :: Comp -> IO LowComp
+lowerMain mainTerm = do
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
-  (result, resultVar) <- newValueVarLocalWith m "result"
+  (result, resultVar) <- newValueVarLocalWith "result"
   (cast, castThen) <- llvmCast (Just "cast") resultVar (LowTypeInt 64)
   castResult <- castThen (LowCompReturn cast)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
 
-lowerComp :: CompPlus -> IO LowComp
+lowerComp :: Comp -> IO LowComp
 lowerComp term =
   case term of
-    (m, CompPrimitive theta) ->
-      lowerCompPrimitive m theta
-    (_, CompPiElimDownElim v ds) -> do
+    CompPrimitive theta ->
+      lowerCompPrimitive theta
+    CompPiElimDownElim v ds -> do
       (xs, vs) <- unzip <$> mapM (newValueLocal . takeBaseName) ds
       (fun, castThen) <- llvmCast (Just $ takeBaseName v) v $ toFunPtrType ds
       castThenCall <- castThen $ LowCompCall fun vs
       lowerValueLet' (zip xs ds) castThenCall
-    (_, CompSigmaElim isNoetic xs v e) -> do
+    CompSigmaElim isNoetic xs v e -> do
       let basePtrType = LowTypePointer $ LowTypeArray (length xs) voidPtr -- base pointer type  ([(length xs) x ARRAY_ELEM_TYPE])
       let idxList = map (\i -> (LowValueInt i, LowTypeInt 32)) [0 ..]
       ys <- mapM newIdentFromIdent xs
       let xts' = zip xs (repeat voidPtr)
       loadContent isNoetic v basePtrType (zip idxList (zip ys xts')) e
-    (_, CompUpIntro d) -> do
+    CompUpIntro d -> do
       result <- newIdentFromText $ takeBaseName d
       lowerValueLet result d $ LowCompReturn $ LowValueVarLocal result
-    (_, CompUpElim x e1 e2) -> do
+    CompUpElim x e1 e2 -> do
       e1' <- lowerComp e1
       e2' <- lowerComp e2
       commConv x e1' e2'
-    (_, CompEnumElim v branchList) -> do
+    CompEnumElim v branchList -> do
       m <- constructSwitch branchList
       case m of
         Nothing ->
@@ -74,10 +74,10 @@ lowerComp term =
           let t = LowTypeInt 64
           (cast, castThen) <- llvmCast (Just "enum-base") v t
           castThen $ LowCompSwitch (cast, t) defaultCase caseList
-    (_, CompIgnore e) ->
+    CompIgnore e ->
       lowerComp e
 
-uncastList :: [(Ident, (Ident, LowType))] -> CompPlus -> IO LowComp
+uncastList :: [(Ident, (Ident, LowType))] -> Comp -> IO LowComp
 uncastList args e =
   case args of
     [] ->
@@ -86,24 +86,24 @@ uncastList args e =
       e' <- uncastList yxs e
       llvmUncastLet x (LowValueVarLocal y) et e'
 
-takeBaseName :: ValuePlus -> T.Text
+takeBaseName :: Value -> T.Text
 takeBaseName term =
   case term of
-    (_, ValueVarGlobal s) ->
+    ValueVarGlobal s ->
       s
-    (_, ValueVarLocal (I (s, _))) ->
+    ValueVarLocal (I (s, _)) ->
       s
-    (_, ValueSigmaIntro ds) ->
+    ValueSigmaIntro ds ->
       "array" <> T.pack (show (length ds))
-    (_, ValueInt size _) ->
+    ValueInt size _ ->
       "i" <> T.pack (show size)
-    (_, ValueFloat FloatSize16 _) ->
+    ValueFloat FloatSize16 _ ->
       "half"
-    (_, ValueFloat FloatSize32 _) ->
+    ValueFloat FloatSize32 _ ->
       "float"
-    (_, ValueFloat FloatSize64 _) ->
+    ValueFloat FloatSize64 _ ->
       "double"
-    (_, ValueEnumIntro {}) ->
+    ValueEnumIntro {} ->
       "i64"
 
 takeBaseName' :: LowValue -> T.Text
@@ -126,10 +126,10 @@ takeBaseName' lowerValue =
 
 loadContent ::
   Bool -> -- noetic-or-not
-  ValuePlus -> -- base pointer
+  Value -> -- base pointer
   LowType -> -- the type of base pointer
   [((LowValue, LowType), (Ident, (Ident, LowType)))] -> -- [(the index of an element, the variable to load the element)]
-  CompPlus -> -- continuation
+  Comp -> -- continuation
   IO LowComp
 loadContent isNoetic v bt iyxs cont =
   case iyxs of
@@ -169,8 +169,8 @@ loadContent' isNoetic bp bt values cont =
           (LowOpGetElementPtr (bp, bt) [(LowValueInt 0, LowTypeInt 32), i])
           $ LowCompLet x (LowOpLoad pos et) cont'
 
-lowerCompPrimitive :: Hint -> Primitive -> IO LowComp
-lowerCompPrimitive m codeOp =
+lowerCompPrimitive :: Primitive -> IO LowComp
+lowerCompPrimitive codeOp =
   case codeOp of
     PrimitivePrimOp op vs ->
       lowerCompPrimOp op vs
@@ -208,21 +208,21 @@ lowerCompPrimitive m codeOp =
           let arrayType = AggPtrTypeArray (length args) elemType
           let argTypeList = zip args (repeat elemType)
           resName <- newIdentFromText "result"
-          storeContent m resName arrayType argTypeList (LowCompReturn (LowValueVarLocal resName))
+          storeContent resName arrayType argTypeList (LowCompReturn (LowValueVarLocal resName))
         DerangementCreateStruct elemTypeList -> do
           let structType = AggPtrTypeStruct elemTypeList
           let argTypeList = zip args elemTypeList
           resName <- newIdentFromText "result"
-          storeContent m resName structType argTypeList (LowCompReturn (LowValueVarLocal resName))
+          storeContent resName structType argTypeList (LowCompReturn (LowValueVarLocal resName))
 
-lowerCompPrimOp :: PrimOp -> [ValuePlus] -> IO LowComp
+lowerCompPrimOp :: PrimOp -> [Value] -> IO LowComp
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
   (argVarList, castArgsThen) <- llvmCastPrimArgs $ zip vs domList
   result <- newIdentFromText "prim-op-result"
   uncast <- llvmUncast (Just $ asText result) (LowValueVarLocal result) cod
   castArgsThen $ LowCompLet result (LowOpPrimOp op argVarList) uncast
 
-llvmCastPrimArgs :: [(ValuePlus, LowType)] -> IO ([LowValue], LowComp -> IO LowComp)
+llvmCastPrimArgs :: [(Value, LowType)] -> IO ([LowValue], LowComp -> IO LowComp)
 llvmCastPrimArgs dts =
   case dts of
     [] ->
@@ -234,7 +234,7 @@ llvmCastPrimArgs dts =
 
 llvmCast ::
   Maybe T.Text ->
-  ValuePlus ->
+  Value ->
   LowType ->
   IO (LowValue, LowComp -> IO LowComp)
 llvmCast mName v lowType =
@@ -254,7 +254,7 @@ llvmCast mName v lowType =
 
 llvmCastInt ::
   Maybe T.Text -> -- base name for newly created variables
-  ValuePlus ->
+  Value ->
   LowType ->
   IO (LowValue, LowComp -> IO LowComp)
 llvmCastInt mName v lowType = do
@@ -270,7 +270,7 @@ llvmCastInt mName v lowType = do
 
 llvmCastFloat ::
   Maybe T.Text -> -- base name for newly created variables
-  ValuePlus ->
+  Value ->
   FloatSize ->
   IO (LowValue, LowComp -> IO LowComp)
 llvmCastFloat mName v size = do
@@ -325,16 +325,16 @@ llvmUncastLet x@(I (s, _)) d lowType cont = do
 
 -- `lowerValueLet x d cont` binds the data `d` to the variable `x`, and computes the
 -- continuation `cont`.
-lowerValueLet :: Ident -> ValuePlus -> LowComp -> IO LowComp
+lowerValueLet :: Ident -> Value -> LowComp -> IO LowComp
 lowerValueLet x lowerValue cont =
   case lowerValue of
-    (m, ValueVarGlobal y) -> do
+    ValueVarGlobal y -> do
       denv <- readIORef defEnv
       deEnv <- readIORef declEnv
       lenv <- readIORef lowDefEnv
       case Map.lookup y denv of
         Nothing ->
-          raiseCritical m $ "no such global label defined: " <> y
+          raiseCritical' $ "no such global label defined: " <> y
         Just (_, args, me)
           | Map.member y deEnv ->
             llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
@@ -352,21 +352,21 @@ lowerValueLet x lowerValue cont =
                 llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
           | otherwise ->
             llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
-    (_, ValueVarLocal y) ->
+    ValueVarLocal y ->
       llvmUncastLet x (LowValueVarLocal y) voidPtr cont
-    (m, ValueSigmaIntro ds) -> do
+    ValueSigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr
       let dts = zip ds (repeat voidPtr)
-      storeContent m x arrayType dts cont
-    (_, ValueInt size l) ->
+      storeContent x arrayType dts cont
+    ValueInt size l ->
       llvmUncastLet x (LowValueInt l) (LowTypeInt size) cont
-    (_, ValueFloat size f) ->
+    ValueFloat size f ->
       llvmUncastLet x (LowValueFloat size f) (LowTypeFloat size) cont
-    (m, ValueEnumIntro path l) -> do
-      i <- toInteger <$> getEnumNum m path l
+    ValueEnumIntro path l -> do
+      i <- toInteger <$> getEnumNum path l
       llvmUncastLet x (LowValueInt i) (LowTypeInt 64) cont
 
-lowerValueLet' :: [(Ident, ValuePlus)] -> LowComp -> IO LowComp
+lowerValueLet' :: [(Ident, Value)] -> LowComp -> IO LowComp
 lowerValueLet' binder cont =
   case binder of
     [] ->
@@ -376,7 +376,7 @@ lowerValueLet' binder cont =
       lowerValueLet x d cont'
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: [(EnumCase, CompPlus)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
+constructSwitch :: [(EnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
 constructSwitch switch =
   case switch of
     [] ->
@@ -386,8 +386,8 @@ constructSwitch switch =
       return $ Just (code', [])
     [(_, code)] -> do
       constructSwitch [(EnumCaseDefault, code)]
-    (EnumCaseLabel path l, code@(m, _)) : rest -> do
-      i <- enumValueToInteger m path l
+    (EnumCaseLabel path l, code) : rest -> do
+      i <- enumValueToInteger path l
       constructSwitch $ (EnumCaseInt i, code) : rest
     (EnumCaseInt i, code) : rest -> do
       code' <- lowerComp code
@@ -409,15 +409,14 @@ toLowType aggPtrType =
       LowTypePointer $ LowTypeStruct ts
 
 storeContent ::
-  Hint ->
   Ident ->
   AggPtrType ->
-  [(ValuePlus, LowType)] ->
+  [(Value, LowType)] ->
   LowComp ->
   IO LowComp
-storeContent m reg aggPtrType dts cont = do
+storeContent reg aggPtrType dts cont = do
   let lowType = toLowType aggPtrType
-  (cast, castThen) <- llvmCast (Just $ asText reg) (m, ValueVarLocal reg) lowType
+  (cast, castThen) <- llvmCast (Just $ asText reg) (ValueVarLocal reg) lowType
   storeThenCont <- storeContent' cast lowType (zip [0 ..] dts) cont
   castThenStoreThenCont <- castThen storeThenCont
   case aggPtrType of
@@ -429,7 +428,7 @@ storeContent m reg aggPtrType dts cont = do
 storeContent' ::
   LowValue -> -- base pointer
   LowType -> -- the type of base pointer (like [n x u8]*, {i8*, i8*}*, etc.)
-  [(Integer, (ValuePlus, LowType))] -> -- [(the index of an element, the element to be stored)]
+  [(Integer, (Value, LowType))] -> -- [(the index of an element, the element to be stored)]
   LowComp -> -- continuation
   IO LowComp
 storeContent' bp bt values cont =
@@ -491,19 +490,19 @@ newNameWith mName =
     Just name ->
       newIdentFromText name
 
-enumValueToInteger :: Hint -> FilePath -> T.Text -> IO Int
-enumValueToInteger m path l =
-  getEnumNum m path l
+enumValueToInteger :: FilePath -> T.Text -> IO Int
+enumValueToInteger path l =
+  getEnumNum path l
 
-getEnumNum :: Hint -> FilePath -> T.Text -> IO Int
-getEnumNum m path label = do
+getEnumNum :: FilePath -> T.Text -> IO Int
+getEnumNum path label = do
   renv <- readIORef revEnumEnv
   case Map.lookup label renv of
     Just (fp, _, i)
       | fp == path ->
         return i
     _ ->
-      raiseCritical m $ "no such enum is defined: " <> label
+      raiseCritical' $ "no such enum is defined: " <> label
 
 insLowDefEnv :: T.Text -> [Ident] -> LowComp -> IO ()
 insLowDefEnv funName args e =

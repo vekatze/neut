@@ -10,87 +10,80 @@ import Data.Namespace
 import qualified Data.Text as T
 import Path
 
-toApp :: T.Text -> Hint -> Ident -> CompPlus -> IO CompPlus --
-toApp switcher m x t = do
-  (expVarName, expVar) <- newValueVarLocalWith m "exp"
+toApp :: T.Text -> Ident -> Comp -> IO Comp
+toApp switcher x t = do
+  (expVarName, expVar) <- newValueVarLocalWith "exp"
   path <- toFilePath <$> getExecPath
-  return
-    ( m,
-      CompUpElim
-        expVarName
-        t
-        ( m,
-          CompPiElimDownElim
-            expVar
-            [(m, ValueEnumIntro path switcher), (m, ValueVarLocal x)]
-        )
-    )
+  return $
+    CompUpElim
+      expVarName
+      t
+      ( CompPiElimDownElim
+          expVar
+          [ValueEnumIntro path switcher, ValueVarLocal x]
+      )
 
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Hint -> Ident -> CompPlus -> IO CompPlus
+toAffineApp :: Ident -> Comp -> IO Comp
 toAffineApp =
   toApp boolFalse
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Hint -> Ident -> CompPlus -> IO CompPlus
+toRelevantApp :: Ident -> Comp -> IO Comp
 toRelevantApp =
   toApp boolTrue
 
-bindLet :: [(Ident, CompPlus)] -> CompPlus -> CompPlus
+bindLet :: [(Ident, Comp)] -> Comp -> Comp
 bindLet binder cont =
   case binder of
     [] ->
       cont
     (x, e) : xes ->
-      (fst e, CompUpElim x e $ bindLet xes cont)
+      CompUpElim x e $ bindLet xes cont
 
-switch :: FilePath -> CompPlus -> CompPlus -> [(EnumCase, CompPlus)]
+switch :: FilePath -> Comp -> Comp -> [(EnumCase, Comp)]
 switch path e1 e2 =
   -- [(EnumCaseInt 0, e1), (EnumCaseDefault, e2)]
-
   [(EnumCaseLabel path boolFalse, e1), (EnumCaseDefault, e2)]
 
-tryCache :: Hint -> T.Text -> IO () -> IO ValuePlus
-tryCache m key doInsertion = do
+tryCache :: T.Text -> IO () -> IO Value
+tryCache key doInsertion = do
   denv <- readIORef defEnv
   when (not $ Map.member key denv) doInsertion
-  return (m, ValueVarGlobal key)
+  return $ ValueVarGlobal key
 
 makeSwitcher ::
-  Hint ->
-  (ValuePlus -> IO CompPlus) ->
-  (ValuePlus -> IO CompPlus) ->
-  IO ([Ident], CompPlus)
-makeSwitcher m compAff compRel = do
-  (switchVarName, switchVar) <- newValueVarLocalWith m "switch"
-  (argVarName, argVar) <- newValueVarLocalWith m "arg"
+  (Value -> IO Comp) ->
+  (Value -> IO Comp) ->
+  IO ([Ident], Comp)
+makeSwitcher compAff compRel = do
+  (switchVarName, switchVar) <- newValueVarLocalWith "switch"
+  (argVarName, argVar) <- newValueVarLocalWith "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   path <- toFilePath <$> getExecPath
   return
     ( [switchVarName, argVarName],
-      ( m,
-        CompEnumElim
+      ( CompEnumElim
           switchVar
           (switch path aff rel)
       )
     )
 
 registerSwitcher ::
-  Hint ->
   T.Text ->
-  (ValuePlus -> IO CompPlus) ->
-  (ValuePlus -> IO CompPlus) ->
+  (Value -> IO Comp) ->
+  (Value -> IO Comp) ->
   IO ()
-registerSwitcher m name aff rel = do
-  (args, e) <- makeSwitcher m aff rel
+registerSwitcher name aff rel = do
+  (args, e) <- makeSwitcher aff rel
   insDefEnv name True args e
 
-insDefEnv :: T.Text -> Bool -> [Ident] -> CompPlus -> IO ()
+insDefEnv :: T.Text -> Bool -> [Ident] -> Comp -> IO ()
 insDefEnv name isReducible args e =
   modifyIORef' defEnv $ \env -> Map.insert name (isReducible, args, Just e) env
 

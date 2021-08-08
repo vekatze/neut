@@ -18,30 +18,29 @@ immediateName :: T.Text
 immediateName =
   "cartesian-immediate"
 
-returnImmediateS4 :: Hint -> IO CompPlus
-returnImmediateS4 m = do
-  v <- immediateS4 m
-  return (m, CompUpIntro v)
+returnImmediateS4 :: IO Comp
+returnImmediateS4 = do
+  v <- immediateS4
+  return $ CompUpIntro v
 
-immediateS4 :: Hint -> IO ValuePlus
-immediateS4 m = do
-  let immediateT _ = return (m, CompUpIntro (m, ValueSigmaIntro []))
-  let immediate4 arg = return (m, CompUpIntro arg)
-  tryCache m immediateName $ registerSwitcher m immediateName immediateT immediate4
+immediateS4 :: IO Value
+immediateS4 = do
+  let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
+  let immediate4 arg = return $ CompUpIntro arg
+  tryCache immediateName $ registerSwitcher immediateName immediateT immediate4
 
 sigmaS4 ::
   Maybe T.Text ->
-  Hint ->
-  [Either CompPlus (Ident, CompPlus)] ->
-  IO ValuePlus
-sigmaS4 mName m mxts =
+  [Either Comp (Ident, Comp)] ->
+  IO Value
+sigmaS4 mName mxts =
   case mName of
     Nothing -> do
       h <- wrapWithQuote <$> newText
-      registerSwitcher m h (sigmaT m mxts) (sigma4 m mxts)
-      return (m, ValueVarGlobal h)
+      registerSwitcher h (sigmaT mxts) (sigma4 mxts)
+      return $ ValueVarGlobal h
     Just name ->
-      tryCache m name $ registerSwitcher m name (sigmaT m mxts) (sigma4 m mxts)
+      tryCache name $ registerSwitcher name (sigmaT mxts) (sigma4 mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -59,17 +58,16 @@ sigmaS4 mName m mxts =
 --     return ()                                     ---        ---
 --
 sigmaT ::
-  Hint ->
-  [Either CompPlus (Ident, CompPlus)] ->
-  ValuePlus ->
-  IO CompPlus
-sigmaT m mxts argVar = do
+  [Either Comp (Ident, Comp)] ->
+  Value ->
+  IO Comp
+sigmaT mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ \(x, t) -> toAffineApp m x t
+  as <- forM xts $ \(x, t) -> toAffineApp x t
   ys <- mapM (const $ newIdentFromText "arg") xts
-  body' <- linearize xts $ bindLet (zip ys as) (m, CompUpIntro (m, ValueSigmaIntro []))
-  return (m, CompSigmaElim False (map fst xts) argVar body')
+  body' <- linearize xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
+  return $ CompSigmaElim False (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigma4 NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -86,17 +84,16 @@ sigmaT m mxts argVar = do
 --       fn @ (1, xn) in              ---  APP-n                       ---       ---
 --     return (x1', ..., xn')
 sigma4 ::
-  Hint ->
-  [Either CompPlus (Ident, CompPlus)] ->
-  ValuePlus ->
-  IO CompPlus
-sigma4 m mxts argVar = do
+  [Either Comp (Ident, Comp)] ->
+  Value ->
+  IO Comp
+sigma4 mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ \(x, t) -> toRelevantApp m x t
-  (varNameList, varList) <- unzip <$> mapM (const $ newValueVarLocalWith m "pair") xts
-  body' <- linearize xts $ bindLet (zip varNameList as) (m, CompUpIntro (m, ValueSigmaIntro varList))
-  return (m, CompSigmaElim True (map fst xts) argVar body')
+  as <- forM xts $ \(x, t) -> toRelevantApp x t
+  (varNameList, varList) <- unzip <$> mapM (const $ newValueVarLocalWith "pair") xts
+  body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
+  return $ CompSigmaElim True (map fst xts) argVar body'
 
 supplyName :: Either b (Ident, b) -> IO (Ident, b)
 supplyName mName =
@@ -108,23 +105,21 @@ supplyName mName =
       return (x, t)
 
 closureEnvS4 ::
-  Hint ->
-  [Either CompPlus (Ident, CompPlus)] ->
-  IO ValuePlus
-closureEnvS4 m mxts =
+  [Either Comp (Ident, Comp)] ->
+  IO Value
+closureEnvS4 mxts =
   case mxts of
     [] ->
-      immediateS4 m -- performance optimization; not necessary for correctness
+      immediateS4 -- performance optimization; not necessary for correctness
     _ ->
-      sigmaS4 Nothing m mxts
+      sigmaS4 Nothing mxts
 
-returnClosureS4 :: Hint -> IO CompPlus
-returnClosureS4 m = do
-  (env, envVar) <- newValueVarLocalWith m "env"
-  retImmS4 <- returnImmediateS4 m
+returnClosureS4 :: IO Comp
+returnClosureS4 = do
+  (env, envVar) <- newValueVarLocalWith "env"
+  retImmS4 <- returnImmediateS4
   t <-
     sigmaS4
       (Just "cartesian-closure")
-      m
-      [Right (env, retImmS4), Left (m, CompUpIntro envVar), Left retImmS4]
-  return (m, CompUpIntro t)
+      [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
+  return $ CompUpIntro t

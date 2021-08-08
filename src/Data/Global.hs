@@ -203,7 +203,7 @@ topDefEnv =
 --   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE defEnv #-}
-defEnv :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe CompPlus))
+defEnv :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe Comp))
 defEnv =
   unsafePerformIO (newIORef Map.empty)
 
@@ -271,10 +271,16 @@ newAster m = do
   return (m, WeakTermAster i)
 
 {-# INLINE newValueVarLocalWith #-}
-newValueVarLocalWith :: Hint -> T.Text -> IO (Ident, ValuePlus)
-newValueVarLocalWith m name = do
+newValueVarLocalWith :: T.Text -> IO (Ident, Value)
+newValueVarLocalWith name = do
   x <- newIdentFromText name
-  return (x, (m, ValueVarLocal x))
+  return (x, ValueVarLocal x)
+
+-- {-# INLINE newValueVarLocalWith #-}
+-- newValueVarLocalWith :: Hint -> T.Text -> IO (Ident, ValuePlus)
+-- newValueVarLocalWith m name = do
+--   x <- newIdentFromText name
+--   return (x, (m, ValueVarLocal x))
 
 --
 -- obtain information from the environment
