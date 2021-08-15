@@ -47,6 +47,7 @@ ensureMain = do
 
 visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
 visit path = do
+  initNameEnv
   pushTrace path
   ensureNoDoubleQuotes path
   modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoActive env
@@ -65,7 +66,8 @@ ensureNoDoubleQuotes path = do
 leave :: IO [WeakStmt]
 leave = do
   path <- getCurrentFilePath
-  modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoFinish env
+  tnenv <- readIORef topNameEnv
+  modifyIORef' fileEnv $ \env -> Map.insert path (VisitInfoFinish tnenv) env
   popTrace
   return []
 
@@ -348,7 +350,8 @@ stmtInclude = do
       tenv <- readIORef traceEnv
       let cyclicPath = dropWhile (/= newPath) (reverse tenv) ++ [newPath]
       raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPath
-    Just VisitInfoFinish ->
+    Just (VisitInfoFinish nameInfo) -> do
+      modifyIORef' topNameEnvExt $ \env -> Map.union nameInfo env
       return []
     Nothing -> do
       stmtListOrNothing <- loadCache m newPath
@@ -356,14 +359,17 @@ stmtInclude = do
         Just (stmtList, enumInfoList) -> do
           forM_ enumInfoList $ \(mEnum, name, itemList) -> do
             insEnumEnv (toFilePath newPath) mEnum name itemList
-          forM_ stmtList $ \(StmtDef _ _ x _ _) -> do
-            modifyIORef' topNameEnv $ \env -> Map.insert x (toFilePath newPath) env
-          modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
+          let names = Map.fromList $ map (\(StmtDef _ _ x _ _) -> (x, toFilePath newPath)) stmtList
+          modifyIORef' topNameEnvExt $ \env -> Map.union names env
+          modifyIORef' fileEnv $ \env -> Map.insert newPath (VisitInfoFinish names) env
           return [(newPath, Left stmtList, enumInfoList)]
         Nothing -> do
-          -- FIXME: 多重includeをおこなわないようにする。
-          (ss, (headerInfo, bodyInfo), enumInfoList) <- visit newPath
-          return $ ss ++ [(headerInfo, Right bodyInfo, enumInfoList)]
+          nenvExt <- readIORef topNameEnvExt
+          (ss, (pathInfo, bodyInfo), enumInfoList) <- visit newPath
+          newNameEnv <- readIORef topNameEnv
+          writeIORef topNameEnv Map.empty
+          writeIORef topNameEnvExt $ Map.union nenvExt newNameEnv
+          return $ ss ++ [(pathInfo, Right bodyInfo, enumInfoList)]
 
 ensureFileExistence :: Hint -> Path Abs File -> IO ()
 ensureFileExistence m path = do
@@ -411,7 +417,6 @@ defineData m mFun a xts bts = do
   case xts of
     [] -> do
       registerTopLevelName m $ asIdent a
-      -- registerTopLevelName False m $ asIdent a
       let formRule = WeakStmtDef False m a (m, WeakTermTau) (m, WeakTermPi [] (m, WeakTermTau)) -- fake type
       introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
@@ -657,3 +662,8 @@ registerTopLevelName m x = do
     raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
   path <- toFilePath <$> getCurrentFilePath
   modifyIORef' topNameEnv $ \env -> Map.insert (asText x) path env
+
+initNameEnv :: IO ()
+initNameEnv = do
+  writeIORef topNameEnv Map.empty
+  writeIORef topNameEnvExt Map.empty

@@ -24,7 +24,7 @@ import System.IO.Unsafe (unsafePerformIO)
 
 data VisitInfo
   = VisitInfoActive
-  | VisitInfoFinish
+  | VisitInfoFinish (Map.HashMap T.Text FilePath)
 
 --
 -- global variables
@@ -135,6 +135,12 @@ sectionEnv =
 {-# NOINLINE topNameEnv #-}
 topNameEnv :: IORef (Map.HashMap T.Text FilePath)
 topNameEnv =
+  unsafePerformIO (newIORef Map.empty)
+
+-- included names
+{-# NOINLINE topNameEnvExt #-}
+topNameEnvExt :: IORef (Map.HashMap T.Text FilePath)
+topNameEnvExt =
   unsafePerformIO (newIORef Map.empty)
 
 -- {-# NOINLINE transparentTopNameEnv #-}
