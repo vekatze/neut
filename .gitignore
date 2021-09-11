@@ -2,3 +2,5 @@
 neut.cabal
 .DS_Store
 stack.yaml.lock
+test/res
+*.prof
