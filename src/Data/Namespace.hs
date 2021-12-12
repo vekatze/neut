@@ -63,22 +63,6 @@ getCurrentSection' nameStack =
     (n : ns) ->
       getCurrentSection' ns <> nsSep <> n
 
--- prefixTextPlus :: TreePlus -> IO TreePlus
--- prefixTextPlus tree =
---   case tree of
---     (_, TreeLeaf "_") ->
---       return tree
---     (m, TreeLeaf x) -> do
---       x' <- withSectionPrefix x
---       return (m, TreeLeaf x')
---     (m, TreeNode [(mx, TreeLeaf "_"), t]) ->
---       return (m, TreeNode [(mx, TreeLeaf "_"), t])
---     (m, TreeNode [(mx, TreeLeaf x), t]) -> do
---       x' <- withSectionPrefix x
---       return (m, TreeNode [(mx, TreeLeaf x'), t])
---     t ->
---       raiseSyntaxError (fst t) "LEAF | (LEAF TREE)"
-
 handleSection :: T.Text -> IO ()
 handleSection s = do
   modifyIORef' sectionEnv $ \env -> s : env
@@ -150,55 +134,20 @@ asVar :: Hint -> Map.HashMap T.Text b -> T.Text -> (b -> a) -> Maybe (Hint, a)
 asVar m nenv name f =
   Map.lookup name nenv >>= \x -> return (m, f x)
 
--- {-# INLINE asMetaVar #-}
--- asMetaVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe MetaTermPlus
--- asMetaVar m nenv var =
---   asVar m nenv var MetaTermVar
-
 {-# INLINE asWeakVar #-}
 asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTermPlus
 asWeakVar m nenv var =
   asVar m nenv var WeakTermVar
-
--- {-# INLINE asWeakVar #-}
--- asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTermPlus
--- asWeakVar m nenv var =
---   asVar m nenv var (WeakTermVar VarKindLocal)
 
 {-# INLINE asGlobalVar #-}
 asGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
 asGlobalVar m nenv name =
   asVar m nenv name (\fp -> WeakTermVarGlobal (fp, name))
 
--- {-# INLINE asTransparentGlobalVar #-}
--- asTransparentGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
--- asTransparentGlobalVar m nenv name =
---   asVar m nenv name (\fp -> WeakTermVarGlobalTransparent (fp, name))
-
--- {-# INLINE asTransparentGlobalVar #-}
--- asTransparentGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
--- asTransparentGlobalVar m nenv var =
---   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalTransparent fp) x)
-
--- {-# INLINE asOpaqueGlobalVar #-}
--- asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
--- asOpaqueGlobalVar m nenv name =
---   asVar m nenv name (\fp -> WeakTermVarGlobalOpaque (fp, name))
-
--- {-# INLINE asOpaqueGlobalVar #-}
--- asOpaqueGlobalVar :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe WeakTermPlus
--- asOpaqueGlobalVar m nenv var =
---   asVar m nenv var (\(fp, x) -> WeakTermVar (VarKindGlobalOpaque fp) x)
-
 {-# INLINE asConstructor #-}
 asConstructor :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe (Hint, TopName)
 asConstructor m nenv name =
   asVar m nenv name (,name)
-
--- {-# INLINE asConstructor #-}
--- asConstructor :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe (Hint, Ident)
--- asConstructor m nenv var =
---   asVar m nenv var snd
 
 {-# INLINE findThenModify #-}
 findThenModify :: Map.HashMap T.Text t -> (T.Text -> a) -> T.Text -> Maybe a
@@ -233,17 +182,6 @@ asEnum m env name = do
       Just (m, WeakTermEnum fp name)
     _ ->
       Nothing
-
--- if name `Map.member` env
---   then Just $ f name
---   else Nothing
-
--- {-# INLINE asMetaConstant #-}
--- asMetaConstant :: Hint -> T.Text -> Maybe MetaTermPlus
--- asMetaConstant m name =
---   if Map.member name metaConstants
---     then Just (m, MetaTermConst name)
---     else Nothing
 
 {-# INLINE asWeakConstant #-}
 asWeakConstant :: Hint -> T.Text -> Maybe WeakTermPlus

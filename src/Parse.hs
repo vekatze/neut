@@ -187,22 +187,22 @@ header currentFilePath = do
     else do
       headSymbol <- lookAhead (symbolMaybe isSymbolChar)
       case headSymbol of
-        Just "include" -> do
-          defList1 <- stmtInclude
-          (defList2, main, enumInfoList) <- header currentFilePath
-          return (defList1 ++ defList2, main, enumInfoList)
-        Just "ensure" -> do
-          stmtEnsure
-          header currentFilePath
         Just "define-enum" -> do
           enumInfo <- stmtDefineEnum
           (headerInfo, bodyInfo, enumInfoList) <- header currentFilePath
           return (headerInfo, bodyInfo, enumInfo : enumInfoList)
-        Just "section" -> do
-          stmtSection
-          header currentFilePath
         Just "define-prefix" -> do
           stmtDefinePrefix
+          header currentFilePath
+        Just "ensure" -> do
+          stmtEnsure
+          header currentFilePath
+        Just "include" -> do
+          defList1 <- stmtInclude
+          (defList2, main, enumInfoList) <- header currentFilePath
+          return (defList1 ++ defList2, main, enumInfoList)
+        Just "section" -> do
+          stmtSection
           header currentFilePath
         Just "use" -> do
           stmtUse
@@ -228,15 +228,6 @@ stmt = do
           def <- stmtDefine True
           stmtList <- stmt
           return $ def : stmtList
-        Just "define-enum" -> do
-          m <- currentHint
-          raiseParseError m "`define-enum` can only be used at the header section of a file"
-        Just "include" -> do
-          m <- currentHint
-          raiseParseError m "`include` can only be used at the header section of a file"
-        Just "ensure" -> do
-          m <- currentHint
-          raiseParseError m "`ensure` can only be used at the header section of a file"
         Just "define-data" -> do
           stmtList1 <- stmtDefineData
           stmtList2 <- stmt

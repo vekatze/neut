@@ -199,26 +199,6 @@ topNameEnvExt :: IORef (Map.HashMap T.Text FilePath)
 topNameEnvExt =
   unsafePerformIO (newIORef Map.empty)
 
--- {-# NOINLINE transparentTopNameEnv #-}
--- transparentTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
--- transparentTopNameEnv =
---   unsafePerformIO (newIORef Map.empty)
-
--- {-# NOINLINE transparentTopNameEnv #-}
--- transparentTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
--- transparentTopNameEnv =
---   unsafePerformIO (newIORef Map.empty)
-
--- {-# NOINLINE opaqueTopNameEnv #-}
--- opaqueTopNameEnv :: IORef (Map.HashMap T.Text FilePath)
--- opaqueTopNameEnv =
---   unsafePerformIO (newIORef Map.empty)
-
--- {-# NOINLINE opaqueTopNameEnv #-}
--- opaqueTopNameEnv :: IORef (Map.HashMap T.Text (FilePath, Ident))
--- opaqueTopNameEnv =
---   unsafePerformIO (newIORef Map.empty)
-
 {-# NOINLINE weakTypeEnv #-}
 weakTypeEnv :: IORef (IntMap.IntMap WeakTermPlus)
 weakTypeEnv =
@@ -258,11 +238,6 @@ substEnv =
 topDefEnv :: IORef (Map.HashMap TopName WeakTermPlus)
 topDefEnv =
   unsafePerformIO (newIORef Map.empty)
-
--- {-# NOINLINE topDefEnv #-}
--- topDefEnv :: IORef (Map.HashMap (FilePath, Int) WeakTermPlus)
--- topDefEnv =
---   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE defEnv #-}
 defEnv :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe Comp))
@@ -337,12 +312,6 @@ newValueVarLocalWith :: T.Text -> IO (Ident, Value)
 newValueVarLocalWith name = do
   x <- newIdentFromText name
   return (x, ValueVarLocal x)
-
--- {-# INLINE newValueVarLocalWith #-}
--- newValueVarLocalWith :: Hint -> T.Text -> IO (Ident, ValuePlus)
--- newValueVarLocalWith m name = do
---   x <- newIdentFromText name
---   return (x, (m, ValueVarLocal x))
 
 --
 -- obtain information from the environment

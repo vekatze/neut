@@ -140,8 +140,6 @@ setupDef path def =
       insTopTypeEnv (toFilePath path, x) t
       when isReducible $
         modifyIORef' topDefEnv $ \env -> Map.insert (toFilePath path, x) e env
-    _ ->
-      return ()
 
 inferStmtList :: [WeakStmt] -> IO [WeakStmt]
 inferStmtList stmtList =
@@ -155,8 +153,6 @@ inferStmtList stmtList =
       when (x == "main") $ insConstraintEnv t (m, WeakTermConst "i64")
       rest' <- inferStmtList rest
       return $ WeakStmtDef isReducible m x t' e' : rest'
-    _ : rest ->
-      inferStmtList rest
 
 elaborateStmtList :: FilePath -> [WeakStmt] -> IO [Stmt]
 elaborateStmtList path stmtList = do
@@ -171,8 +167,6 @@ elaborateStmtList path stmtList = do
         modifyIORef' topDefEnv $ \env -> Map.insert (path, x) (weaken e') env
       rest' <- elaborateStmtList path rest
       return $ StmtDef isReducible m x t' e' : rest'
-    _ : rest ->
-      elaborateStmtList path rest
 
 elaborate' :: WeakTermPlus -> IO TermPlus
 elaborate' term =
