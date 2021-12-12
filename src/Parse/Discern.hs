@@ -13,9 +13,9 @@ import Data.Basic
     asText,
   )
 import Data.Global
-  ( enumEnv,
+  ( aliasEnv,
+    enumEnv,
     newIdentFromIdent,
-    nsEnv,
     p',
     revEnumEnv,
     topNameEnv,
@@ -34,7 +34,6 @@ import Data.Namespace
     asWeakVar,
     resolveSymbol,
     tryCand,
-    unuse,
     use,
   )
 import Data.Stmt (WeakStmt (..))
@@ -82,14 +81,8 @@ discernStmtList stmtList =
     WeakStmtUse name : rest -> do
       use name
       discernStmtList rest
-    WeakStmtUnuse name : rest -> do
-      unuse name
-      discernStmtList rest
     WeakStmtDefinePrefix from to : rest -> do
-      modifyIORef' nsEnv $ \env -> (from, to) : env
-      discernStmtList rest
-    WeakStmtRemovePrefix from to : rest -> do
-      modifyIORef' nsEnv $ \env -> filter (/= (from, to)) env
+      modifyIORef' aliasEnv $ \env -> (from, to) : env
       discernStmtList rest
 
 -- Alpha-convert all the variables so that different variables have different names.

@@ -3,7 +3,7 @@
 module Data.Namespace where
 
 import Data.Basic (EnumCase (EnumCaseLabel), Hint, Ident, TopName)
-import Data.Global (nsEnv, prefixEnv, sectionEnv)
+import Data.Global (aliasEnv, prefixEnv, sectionEnv)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import Data.Log (raiseError)
@@ -46,10 +46,6 @@ nsOS =
 use :: T.Text -> IO ()
 use s =
   modifyIORef' prefixEnv $ \env -> s : env
-
-unuse :: T.Text -> IO ()
-unuse s =
-  modifyIORef' prefixEnv $ \env -> filter (/= s) env
 
 withSectionPrefix :: T.Text -> IO T.Text
 withSectionPrefix x = do
@@ -100,20 +96,6 @@ handleSection s = do
 --   getCurrentSection >>= use
 --   cont
 
-handleEnd :: Hint -> T.Text -> IO ()
-handleEnd m s = do
-  ns <- readIORef sectionEnv
-  case ns of
-    [] ->
-      raiseError m "there is no section to end"
-    s' : ns'
-      | s == s' -> do
-        getCurrentSection >>= unuse
-        modifyIORef' sectionEnv $ const ns'
-      | otherwise ->
-        raiseError m $
-          "the innermost section is not `" <> s <> "`, but is `" <> s' <> "`"
-
 -- handleEnd :: Hint -> T.Text -> IO a -> IO a
 -- handleEnd m s cont = do
 --   ns <- readIORef sectionEnv
@@ -145,7 +127,7 @@ resolveSymbol m predicate name = do
 constructCandList :: T.Text -> IO [T.Text]
 constructCandList name = do
   penv <- readIORef prefixEnv
-  nenv <- readIORef nsEnv
+  nenv <- readIORef aliasEnv
   return $ constructCandList' nenv $ name : map (<> nsSep <> name) penv
 
 constructCandList' :: [(T.Text, T.Text)] -> [T.Text] -> [T.Text]

@@ -11,10 +11,10 @@ import Data.Basic
     newHint,
   )
 import Data.Global
-  ( getCurrentFilePath,
+  ( aliasEnv,
+    getCurrentFilePath,
     newCount,
     newIdentFromText,
-    nsEnv,
     prefixEnv,
   )
 import Data.IORef
@@ -89,7 +89,7 @@ withNestedState comp = do
 
 cleanup :: IO ()
 cleanup = do
-  writeIORef nsEnv []
+  writeIORef aliasEnv []
   writeIORef prefixEnv []
 
 betweenParen :: IO a -> IO a

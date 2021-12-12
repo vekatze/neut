@@ -158,14 +158,29 @@ constructorEnv :: IORef (Map.HashMap T.Text (Int, Int))
 constructorEnv =
   unsafePerformIO (newIORef Map.empty)
 
+{-# NOINLINE defaultPrefixEnv #-}
+defaultPrefixEnv :: IORef [T.Text]
+defaultPrefixEnv =
+  unsafePerformIO (newIORef [])
+
 {-# NOINLINE prefixEnv #-}
 prefixEnv :: IORef [T.Text]
 prefixEnv =
   unsafePerformIO (newIORef [])
 
-{-# NOINLINE nsEnv #-}
-nsEnv :: IORef [(T.Text, T.Text)]
-nsEnv =
+{-# NOINLINE defaultAliasEnv #-}
+defaultAliasEnv :: IORef [(T.Text, T.Text)]
+defaultAliasEnv =
+  unsafePerformIO (newIORef [])
+
+{-# NOINLINE aliasEnv #-}
+aliasEnv :: IORef [(T.Text, T.Text)]
+aliasEnv =
+  unsafePerformIO (newIORef [])
+
+{-# NOINLINE defaultSectionEnv #-}
+defaultSectionEnv :: IORef [T.Text]
+defaultSectionEnv =
   unsafePerformIO (newIORef [])
 
 {-# NOINLINE sectionEnv #-}

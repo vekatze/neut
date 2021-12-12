@@ -17,8 +17,11 @@ import Data.Basic
   )
 import Data.Global
   ( VisitInfo (VisitInfoActive, VisitInfoFinish),
+    aliasEnv,
     constructorEnv,
     dataEnv,
+    defaultAliasEnv,
+    defaultSectionEnv,
     enumEnv,
     fileEnv,
     getCurrentDirPath,
@@ -27,8 +30,9 @@ import Data.Global
     isMain,
     newText,
     note',
-    nsEnv,
+    prefixEnv,
     revEnumEnv,
+    sectionEnv,
     topNameEnv,
     topNameEnvExt,
     traceEnv,
@@ -38,10 +42,8 @@ import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.List (find)
 import Data.Log (raiseError)
 import Data.Namespace
-  ( handleEnd,
-    handleSection,
+  ( handleSection,
     nsSep,
-    unuse,
     use,
     withSectionPrefix,
   )
@@ -146,7 +148,7 @@ ensureMain = do
 
 visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
 visit path = do
-  initNameEnv
+  initializeNamespace
   pushTrace path
   ensureNoDoubleQuotes path
   modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoActive env
@@ -241,24 +243,12 @@ stmt = do
           st <- stmtSection
           stmtList <- stmt
           return $ st : stmtList
-        Just "end" -> do
-          st <- stmtEnd
-          stmtList <- stmt
-          return $ st : stmtList
         Just "define-prefix" -> do
           st <- stmtDefinePrefix
           stmtList <- stmt
           return $ st : stmtList
-        Just "remove-prefix" -> do
-          st <- stmtRemovePrefix
-          stmtList <- stmt
-          return $ st : stmtList
         Just "use" -> do
           st <- stmtUse
-          stmtList <- stmt
-          return $ st : stmtList
-        Just "unuse" -> do
-          st <- stmtUnuse
           stmtList <- stmt
           return $ st : stmtList
         Just x -> do
@@ -390,14 +380,6 @@ stmtSection = do
   handleSection name
   return $ WeakStmtUse name
 
-stmtEnd :: IO WeakStmt
-stmtEnd = do
-  m <- currentHint
-  token "end"
-  name <- varText
-  handleEnd m name
-  return $ WeakStmtUnuse name
-
 stmtUse :: IO WeakStmt
 stmtUse = do
   token "use"
@@ -405,30 +387,14 @@ stmtUse = do
   use name
   return $ WeakStmtUse name
 
-stmtUnuse :: IO WeakStmt
-stmtUnuse = do
-  token "unuse"
-  name <- varText
-  unuse name
-  return $ WeakStmtUnuse name
-
 stmtDefinePrefix :: IO WeakStmt
 stmtDefinePrefix = do
   token "define-prefix"
   from <- varText
   token "="
   to <- varText
-  modifyIORef' nsEnv $ \env -> (from, to) : env
+  modifyIORef' aliasEnv $ \env -> (from, to) : env
   return $ WeakStmtDefinePrefix from to
-
-stmtRemovePrefix :: IO WeakStmt
-stmtRemovePrefix = do
-  token "remove-prefix"
-  from <- varText
-  token "="
-  to <- varText
-  modifyIORef' nsEnv $ \env -> filter (/= (from, to)) env
-  return $ WeakStmtRemovePrefix from to
 
 stmtInclude :: IO [HeaderStmtPlus]
 stmtInclude = do
@@ -760,7 +726,10 @@ registerTopLevelName m x = do
   path <- toFilePath <$> getCurrentFilePath
   modifyIORef' topNameEnv $ \env -> Map.insert (asText x) path env
 
-initNameEnv :: IO ()
-initNameEnv = do
+initializeNamespace :: IO ()
+initializeNamespace = do
   writeIORef topNameEnv Map.empty
   writeIORef topNameEnvExt Map.empty
+  readIORef defaultAliasEnv >>= writeIORef aliasEnv
+  readIORef defaultSectionEnv >>= writeIORef sectionEnv
+  writeIORef prefixEnv []
