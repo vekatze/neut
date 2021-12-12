@@ -423,9 +423,7 @@ stmtInclude = do
 ensureFileExistence :: Hint -> Path Abs File -> IO ()
 ensureFileExistence m path = do
   b <- doesFileExist path
-  if b
-    then return ()
-    else raiseError m $ "no such file: " <> T.pack (toFilePath path)
+  unless b $ raiseError m $ "no such file: " <> T.pack (toFilePath path)
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
