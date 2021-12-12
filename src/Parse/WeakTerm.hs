@@ -24,6 +24,7 @@ import Data.Basic
   )
 import Data.Global (newAster, targetPlatform)
 import Data.IORef (readIORef)
+import Data.Log (raiseError)
 import Data.LowType
   ( Derangement (..),
     LowType
@@ -35,6 +36,7 @@ import Data.LowType
       ),
     asLowFloat,
     asLowInt,
+    getDerangementName,
     showFloatSize,
     showIntSize,
   )
@@ -254,10 +256,39 @@ weakTermDerangement :: IO WeakTermPlus
 weakTermDerangement = do
   m <- currentHint
   token "derangement"
-  k <- tryPlanList [weakTermDerangementNop, betweenParen weakTermDerangementKind]
+  d <- tryPlanList [weakTermDerangementNop, betweenParen weakTermDerangementKind]
   es <- many weakTermSimple
-  -- fixme: add arity check
-  return (m, WeakTermDerangement k es)
+  checkDerangementArity m d (length es)
+  return (m, WeakTermDerangement d es)
+
+checkDerangementArity :: Hint -> Derangement -> Int -> IO ()
+checkDerangementArity m derangement actualArgLen = do
+  let mExpectedArgLen = getDerangementArity derangement
+  case mExpectedArgLen of
+    Just expectedArgLen
+      | expectedArgLen /= actualArgLen -> do
+        raiseError m $
+          "the derangement `"
+            <> getDerangementName derangement
+            <> "` expects "
+            <> T.pack (show expectedArgLen)
+            <> " arguments, but found "
+            <> T.pack (show actualArgLen)
+            <> "."
+    _ ->
+      return ()
+
+getDerangementArity :: Derangement -> Maybe Int
+getDerangementArity d =
+  case d of
+    DerangementNop ->
+      return 0
+    DerangementStore _ ->
+      return 2
+    DerangementLoad _ ->
+      return 1
+    _ ->
+      Nothing
 
 weakTermDerangementNop :: IO Derangement
 weakTermDerangementNop = do

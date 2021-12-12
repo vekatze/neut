@@ -47,6 +47,24 @@ data Derangement
 
 instance Binary Derangement
 
+getDerangementName :: Derangement -> T.Text
+getDerangementName d =
+  case d of
+    DerangementSyscall _ ->
+      "syscall"
+    DerangementExternal _ ->
+      "external"
+    DerangementLoad _ ->
+      "load"
+    DerangementStore _ ->
+      "store"
+    DerangementCreateArray _ ->
+      "create-array"
+    DerangementCreateStruct _ ->
+      "create-struct"
+    DerangementNop ->
+      "nop"
+
 asLowTypeMaybe :: T.Text -> Maybe LowType
 asLowTypeMaybe name
   | Just intSize <- asLowInt name =
