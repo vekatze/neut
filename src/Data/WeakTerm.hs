@@ -184,10 +184,6 @@ asterWeakTermPlus term =
       S.empty
     (_, WeakTermVarGlobal {}) ->
       S.empty
-    -- (_, WeakTermVarGlobalOpaque {}) ->
-    --   S.empty
-    -- (_, WeakTermVarGlobalTransparent {}) ->
-    --   S.empty
     (_, WeakTermPi xts t) ->
       asterWeakTermPlus' xts t
     (_, WeakTermPiIntro _ _ xts e) ->

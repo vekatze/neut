@@ -417,8 +417,6 @@ weakTermPattern = do
   argList <- weakTermPatternArgument
   return (m, ("", c), argList)
 
--- return (m, asIdent c, argList)
-
 weakTermPatternArgument :: IO [WeakIdentPlus]
 weakTermPatternArgument = do
   m <- currentHint

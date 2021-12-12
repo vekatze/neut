@@ -146,10 +146,6 @@ substTermPlus sub term =
         return term
     (_, TermVarGlobal {}) ->
       return term
-    -- (_, TermVarGlobalOpaque {}) ->
-    --   return term
-    -- (_, TermVarGlobalTransparent {}) ->
-    --   return term
     (m, TermPi xts t) -> do
       (xts', t') <- substTermPlus' sub xts t
       return (m, TermPi xts' t')
