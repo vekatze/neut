@@ -20,8 +20,6 @@ type WeakStmtPlus =
 
 data WeakStmt
   = WeakStmtDef IsReducible Hint T.Text WeakTermPlus WeakTermPlus
-  | WeakStmtUse T.Text
-  | WeakStmtDefinePrefix T.Text T.Text
   deriving (Show)
 
 type StmtPlus =

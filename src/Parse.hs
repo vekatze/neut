@@ -42,9 +42,10 @@ import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.List (find)
 import Data.Log (raiseError)
 import Data.Namespace
-  ( handleSection,
+  ( handleDefinePrefix,
+    handleSection,
+    handleUse,
     nsSep,
-    use,
     withSectionPrefix,
   )
 import qualified Data.Set as S
@@ -179,27 +180,36 @@ popTrace =
   modifyIORef' traceEnv $ \env -> tail env
 
 header :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
-header path = do
+header currentFilePath = do
   s <- readIORef text
   if T.null s
-    then leave >>= \result -> return ([], (path, result), [])
+    then leave >>= \result -> return ([], (currentFilePath, result), [])
     else do
       headSymbol <- lookAhead (symbolMaybe isSymbolChar)
       case headSymbol of
         Just "include" -> do
           defList1 <- stmtInclude
-          (defList2, main, enumInfoList) <- header path
+          (defList2, main, enumInfoList) <- header currentFilePath
           return (defList1 ++ defList2, main, enumInfoList)
         Just "ensure" -> do
           stmtEnsure
-          header path
+          header currentFilePath
         Just "define-enum" -> do
           enumInfo <- stmtDefineEnum
-          (headerInfo, bodyInfo, enumInfoList) <- header path
+          (headerInfo, bodyInfo, enumInfoList) <- header currentFilePath
           return (headerInfo, bodyInfo, enumInfo : enumInfoList)
+        Just "section" -> do
+          stmtSection
+          header currentFilePath
+        Just "define-prefix" -> do
+          stmtDefinePrefix
+          header currentFilePath
+        Just "use" -> do
+          stmtUse
+          header currentFilePath
         _ -> do
           stmtList <- stmt >>= discernStmtList
-          return ([], (path, stmtList), [])
+          return ([], (currentFilePath, stmtList), [])
 
 stmt :: IO [WeakStmt]
 stmt = do
@@ -239,18 +249,6 @@ stmt = do
           def <- stmtDefineResourceType
           stmtList <- stmt
           return $ def : stmtList
-        Just "section" -> do
-          st <- stmtSection
-          stmtList <- stmt
-          return $ st : stmtList
-        Just "define-prefix" -> do
-          st <- stmtDefinePrefix
-          stmtList <- stmt
-          return $ st : stmtList
-        Just "use" -> do
-          st <- stmtUse
-          stmtList <- stmt
-          return $ st : stmtList
         Just x -> do
           m <- currentHint
           raiseParseError m $ "invalid statement: " <> x
@@ -373,28 +371,25 @@ raiseIfFailure m procName exitCode h pkgDirPath =
       errStr <- hGetContents h
       raiseError m $ T.pack $ "the child process `" ++ procName ++ "` failed with the following message (exitcode = " ++ show i ++ "):\n" ++ errStr
 
-stmtSection :: IO WeakStmt
+stmtSection :: IO ()
 stmtSection = do
   token "section"
   name <- varText
   handleSection name
-  return $ WeakStmtUse name
 
-stmtUse :: IO WeakStmt
+stmtUse :: IO ()
 stmtUse = do
   token "use"
   name <- varText
-  use name
-  return $ WeakStmtUse name
+  handleUse name
 
-stmtDefinePrefix :: IO WeakStmt
+stmtDefinePrefix :: IO ()
 stmtDefinePrefix = do
   token "define-prefix"
   from <- varText
   token "="
   to <- varText
-  modifyIORef' aliasEnv $ \env -> (from, to) : env
-  return $ WeakStmtDefinePrefix from to
+  handleDefinePrefix from to
 
 stmtInclude :: IO [HeaderStmtPlus]
 stmtInclude = do

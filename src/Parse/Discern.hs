@@ -13,8 +13,7 @@ import Data.Basic
     asText,
   )
 import Data.Global
-  ( aliasEnv,
-    enumEnv,
+  ( enumEnv,
     newIdentFromIdent,
     p',
     revEnumEnv,
@@ -22,7 +21,7 @@ import Data.Global
     topNameEnvExt,
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef (readIORef)
 import Data.Log (raiseError)
 import Data.Namespace
   ( asConstructor,
@@ -34,7 +33,6 @@ import Data.Namespace
     asWeakVar,
     resolveSymbol,
     tryCand,
-    use,
   )
 import Data.Stmt (WeakStmt (..))
 import qualified Data.Text as T
@@ -78,12 +76,6 @@ discernStmtList stmtList =
       e' <- discern e
       rest' <- discernStmtList rest
       return $ WeakStmtDef isReducible m x t' e' : rest'
-    WeakStmtUse name : rest -> do
-      use name
-      discernStmtList rest
-    WeakStmtDefinePrefix from to : rest -> do
-      modifyIORef' aliasEnv $ \env -> (from, to) : env
-      discernStmtList rest
 
 -- Alpha-convert all the variables so that different variables have different names.
 discern' :: NameEnv -> WeakTermPlus -> IO WeakTermPlus

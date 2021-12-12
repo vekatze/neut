@@ -43,10 +43,6 @@ nsOS :: T.Text
 nsOS =
   "os" <> nsSep
 
-use :: T.Text -> IO ()
-use s =
-  modifyIORef' prefixEnv $ \env -> s : env
-
 withSectionPrefix :: T.Text -> IO T.Text
 withSectionPrefix x = do
   ns <- readIORef sectionEnv
@@ -86,30 +82,15 @@ getCurrentSection' nameStack =
 handleSection :: T.Text -> IO ()
 handleSection s = do
   modifyIORef' sectionEnv $ \env -> s : env
+  handleUse s
 
--- getCurrentSection >>= use
--- cont
+handleUse :: T.Text -> IO ()
+handleUse s =
+  modifyIORef' prefixEnv $ \env -> s : env
 
--- handleSection :: T.Text -> IO a -> IO a
--- handleSection s cont = do
---   modifyIORef' sectionEnv $ \env -> s : env
---   getCurrentSection >>= use
---   cont
-
--- handleEnd :: Hint -> T.Text -> IO a -> IO a
--- handleEnd m s cont = do
---   ns <- readIORef sectionEnv
---   case ns of
---     [] ->
---       raiseError m "there is no section to end"
---     s' : ns'
---       | s == s' -> do
---         getCurrentSection >>= unuse
---         modifyIORef' sectionEnv $ \_ -> ns'
---         cont
---       | otherwise ->
---         raiseError m $
---           "the innermost section is not `" <> s <> "`, but is `" <> s' <> "`"
+handleDefinePrefix :: T.Text -> T.Text -> IO ()
+handleDefinePrefix from to = do
+  modifyIORef' aliasEnv $ \env -> (from, to) : env
 
 {-# INLINE resolveSymbol #-}
 resolveSymbol :: Hint -> (T.Text -> Maybe b) -> T.Text -> IO (Maybe b)
