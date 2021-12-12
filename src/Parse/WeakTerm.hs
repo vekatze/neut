@@ -87,7 +87,6 @@ import Parse.Core
     weakVar',
   )
 import Path (toFilePath)
-import qualified System.Info as System
 
 --
 -- parser for WeakTerm
@@ -751,8 +750,8 @@ weakTermBuiltin = do
   x <- symbol
   case x of
     "target-platform" -> do
-      target <- getTarget
-      return (weakVar m ("target" <> nsSep <> target))
+      target <- readIORef targetPlatform
+      return (weakVar m ("target" <> nsSep <> T.pack target))
     _ ->
       raiseParseError m $ "no such builtin constant: " <> x
 
@@ -840,23 +839,3 @@ wrapWithNoema subject baseType = do
 doNotCare :: Hint -> WeakTermPlus
 doNotCare m =
   (m, WeakTermTau)
-
-getTarget :: IO T.Text
-getTarget = do
-  mx <- readIORef targetPlatform
-  case mx of
-    Just x ->
-      return x
-    Nothing ->
-      return $ T.pack System.os <> "-" <> defaultTargetArch
-
--- cf. https://www.debian.org/ports/
-defaultTargetArch :: T.Text
-defaultTargetArch =
-  case System.arch of
-    "aarch64" ->
-      "arm64"
-    "x86_64" ->
-      "amd64"
-    other ->
-      T.pack other

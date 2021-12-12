@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Data.Global where
 
 import Control.Concurrent.Async (Async)
@@ -50,18 +52,22 @@ import Path
     File,
     Path,
     Rel,
+    mkRelDir,
     parent,
+    parseAbsDir,
     parseRelDir,
     (</>),
   )
-import Path.IO (createDirIfMissing, getHomeDir)
+import Path.IO (ensureDir, getHomeDir)
 import Paths_neut (version)
 import System.Console.ANSI
   ( ConsoleIntensity (BoldIntensity),
     SGR (Reset, SetConsoleIntensity),
     setSGR,
   )
+import System.Environment (lookupEnv)
 import System.IO.Unsafe (unsafePerformIO)
+import qualified System.Info as System
 
 data VisitInfo
   = VisitInfoActive
@@ -122,9 +128,9 @@ topMetaNameEnv =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE targetPlatform #-}
-targetPlatform :: IORef (Maybe T.Text)
+targetPlatform :: IORef String
 targetPlatform =
-  unsafePerformIO (newIORef Nothing)
+  unsafePerformIO (newIORef $ System.arch <> "-" <> System.os)
 
 {-# NOINLINE fileEnv #-}
 fileEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo)
@@ -317,6 +323,21 @@ newValueVarLocalWith name = do
 -- obtain information from the environment
 --
 
+getCacheDir :: IO (Path Abs Dir)
+getCacheDir = do
+  mPathString <- lookupEnv "XDG_CACHE_HOME"
+  case mPathString of
+    Just pathString ->
+      parseAbsDir pathString >>= returnDirectory
+    Nothing -> do
+      homeDirPath <- getHomeDir
+      returnDirectory $ homeDirPath </> $(mkRelDir ".cache")
+
+getBasePath :: IO (Path Abs Dir)
+getBasePath = do
+  dirPath <- getCacheDir
+  returnDirectory $ dirPath </> $(mkRelDir "neut")
+
 getCurrentFilePath :: IO (Path Abs File)
 getCurrentFilePath = do
   tenv <- readIORef traceEnv
@@ -328,16 +349,23 @@ getCurrentDirPath =
 
 getLibraryDirPath :: IO (Path Abs Dir)
 getLibraryDirPath = do
-  let ver = showVersion version
-  relLibPath <- parseRelDir $ ".local/share/neut/" <> ver <> "/library"
-  getDirPath relLibPath
+  basePath <- getBasePath
+  returnDirectory $ basePath </> $(mkRelDir "library")
 
-getDirPath :: Path Rel Dir -> IO (Path Abs Dir)
-getDirPath base = do
-  homeDirPath <- getHomeDir
-  let path = homeDirPath </> base
-  createDirIfMissing True path
-  return path
+getTargetDependentDirPath :: String -> IO (Path Abs Dir)
+getTargetDependentDirPath directoryName = do
+  basePath <- getBasePath
+  target <- readIORef targetPlatform
+  relPath <- parseRelDir $ directoryName <> "/" <> target <> "/" <> showVersion version
+  returnDirectory $ basePath </> relPath
+
+getObjectDirPath :: IO (Path Abs Dir)
+getObjectDirPath = do
+  getTargetDependentDirPath "object"
+
+returnDirectory :: Path Abs Dir -> IO (Path Abs Dir)
+returnDirectory path =
+  ensureDir path >> return path
 
 --
 -- log
