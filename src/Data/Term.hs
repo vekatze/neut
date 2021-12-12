@@ -2,15 +2,49 @@
 
 module Data.Term where
 
-import Control.Exception.Safe
+import Control.Exception.Safe (MonadThrow)
 import Data.Basic
-import Data.Binary
+  ( EnumCasePlus,
+    Hint,
+    Ident,
+    LamKind (..),
+    Opacity,
+    TopName,
+  )
+import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
-import Data.Log
+import Data.Log (raiseCritical)
 import Data.LowType
+  ( Derangement,
+    FloatSize,
+    IntSize,
+    LowType (LowTypeFloat, LowTypeInt),
+    showFloatSize,
+    showIntSize,
+  )
 import qualified Data.Text as T
 import Data.WeakTerm
-import GHC.Generics
+  ( WeakIdentPlus,
+    WeakTerm
+      ( WeakTermCase,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnum,
+        WeakTermEnumElim,
+        WeakTermEnumIntro,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermTau,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+  )
+import GHC.Generics (Generic)
 
 data Term
   = TermTau

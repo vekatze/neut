@@ -1,8 +1,8 @@
 module Data.Comp where
 
-import Data.Basic
+import Data.Basic (EnumCase, Ident)
 import qualified Data.IntMap as IntMap
-import Data.LowType
+import Data.LowType (Derangement, FloatSize, IntSize, PrimOp)
 import qualified Data.Set as S
 import qualified Data.Text as T
 

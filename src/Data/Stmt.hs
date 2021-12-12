@@ -2,15 +2,15 @@
 
 module Data.Stmt where
 
-import Data.Basic
-import Data.Binary
-import Data.Global
-import Data.Term
+import Data.Basic (Hint, IsReducible, getPosInfo)
+import Data.Binary (Binary, decodeFileOrFail, encodeFile)
+import Data.Global (p, warn)
+import Data.Term (Term (TermTau), TermPlus)
 import qualified Data.Text as T
-import Data.WeakTerm
-import GHC.Generics
-import Path
-import Path.IO
+import Data.WeakTerm (WeakTermPlus)
+import GHC.Generics (Generic)
+import Path (Abs, File, Path, replaceExtension, toFilePath)
+import Path.IO (doesFileExist, getModificationTime, removeFile)
 
 type HeaderStmtPlus =
   (Path Abs File, Either [Stmt] [WeakStmt], [EnumInfo])

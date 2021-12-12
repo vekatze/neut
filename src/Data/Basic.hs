@@ -2,11 +2,11 @@
 
 module Data.Basic where
 
-import Data.Binary
+import Data.Binary (Binary)
 import qualified Data.Text as T
-import GHC.Generics
-import Path
-import System.Environment
+import GHC.Generics (Generic)
+import Path (Abs, File, Path, parseAbsFile)
+import System.Environment (getExecutablePath)
 
 newtype Ident
   = I (T.Text, Int)

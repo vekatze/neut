@@ -3,15 +3,56 @@ module Lower
   )
 where
 
-import Control.Monad
-import Data.Basic
-import Data.Comp
+import Control.Monad (forM_, unless, (>=>))
+import Data.Basic (EnumCase (..), Ident (..), asText)
+import Data.Comp (Comp (..), Primitive (..), Value (..))
 import Data.Global
+  ( declEnv,
+    defEnv,
+    lowDefEnv,
+    newCount,
+    newIdentFromIdent,
+    newIdentFromText,
+    newValueVarLocalWith,
+    revEnumEnv,
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
-import Data.Log
+import Data.IORef (modifyIORef', readIORef)
+import Data.Log (raiseCritical')
 import Data.LowComp
+  ( LowComp (..),
+    LowOp
+      ( LowOpAlloc,
+        LowOpBitcast,
+        LowOpCall,
+        LowOpFree,
+        LowOpGetElementPtr,
+        LowOpIntToPointer,
+        LowOpLoad,
+        LowOpPointerToInt,
+        LowOpPrimOp,
+        LowOpStore,
+        LowOpSyscall
+      ),
+    LowValue (..),
+    SizeInfo,
+  )
 import Data.LowType
+  ( Derangement
+      ( DerangementCreateArray,
+        DerangementCreateStruct,
+        DerangementExternal,
+        DerangementLoad,
+        DerangementNop,
+        DerangementStore,
+        DerangementSyscall
+      ),
+    FloatSize (..),
+    LowType (..),
+    PrimOp (..),
+    sizeAsInt,
+    voidPtr,
+  )
 import qualified Data.Text as T
 
 lower :: ([(T.Text, Comp)], Maybe Comp) -> IO (Maybe LowComp)
@@ -138,7 +179,7 @@ loadContent isNoetic v bt iyxs cont =
     _ -> do
       let ixs = map (\(i, (y, (_, k))) -> (i, (y, k))) iyxs
       (bp, castThen) <- llvmCast (Just $ takeBaseName v) v bt
-      let yxs = map (\(_, yx) -> yx) iyxs
+      let yxs = map snd iyxs
       uncastThenCont <- uncastList yxs cont
       extractThenFreeThenUncastThenCont <- loadContent' isNoetic bp bt ixs uncastThenCont
       castThen extractThenFreeThenUncastThenCont
@@ -178,7 +219,7 @@ lowerCompPrimitive codeOp =
       case expKind of
         DerangementNop -> do
           (x, v) <- newValueLocal "nop-arg"
-          lowerValueLet x (args !! 0) $ LowCompReturn v
+          lowerValueLet x (head args) $ LowCompReturn v
         DerangementSyscall i -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "sys-call-arg") args
           res <- newIdentFromText "result"
@@ -190,14 +231,14 @@ lowerCompPrimitive codeOp =
           insDeclEnv name vs
           lowerValueLet' (zip xs args) $ LowCompCall (LowValueVarGlobal name) vs
         DerangementLoad valueLowType -> do
-          let ptr = args !! 0
+          let ptr = head args
           (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName ptr) ptr (LowTypePointer valueLowType)
           resName <- newIdentFromText "result"
           uncast <- llvmUncast (Just $ asText resName) (LowValueVarLocal resName) valueLowType
           castPtrThen $
             LowCompLet resName (LowOpLoad ptrVar valueLowType) uncast
         DerangementStore valueLowType -> do
-          let ptr = args !! 0
+          let ptr = head args
           let val = args !! 1
           (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName ptr) ptr (LowTypePointer valueLowType)
           (valVar, castValThen) <- llvmCast (Just $ takeBaseName val) val valueLowType
@@ -491,8 +532,8 @@ newNameWith mName =
       newIdentFromText name
 
 enumValueToInteger :: FilePath -> T.Text -> IO Int
-enumValueToInteger path l =
-  getEnumNum path l
+enumValueToInteger =
+  getEnumNum
 
 getEnumNum :: FilePath -> T.Text -> IO Int
 getEnumNum path label = do
@@ -533,7 +574,7 @@ commConv x llvm cont2 =
 insDeclEnv :: T.Text -> [a] -> IO ()
 insDeclEnv name args = do
   d <- readIORef declEnv
-  when (not $ name `Map.member` d) $ do
+  unless (name `Map.member` d) $ do
     let dom = map (const voidPtr) args
     let cod = voidPtr
     modifyIORef' declEnv $ \env -> Map.insert name (dom, cod) env

@@ -1,9 +1,15 @@
 module Data.Log where
 
-import Control.Exception.Safe
-import Data.Basic
+import Control.Exception.Safe (Exception, MonadThrow, throw)
+import Data.Basic (Hint, PosInfo, getPosInfo)
 import qualified Data.Text as T
 import System.Console.ANSI
+  ( Color (Blue, Red, Yellow),
+    ColorIntensity (Vivid),
+    ConsoleIntensity (BoldIntensity),
+    ConsoleLayer (Foreground),
+    SGR (SetColor, SetConsoleIntensity),
+  )
 
 data LogLevel
   = LogLevelNote
@@ -59,10 +65,8 @@ logLevelToSGR level =
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
 
 forgetPosInfoIfNecessary :: Bool -> Log -> Log
-forgetPosInfoIfNecessary flag (_, l, t) =
-  if flag
-    then (Nothing, l, t)
-    else (Nothing, l, t)
+forgetPosInfoIfNecessary _ (_, l, t) =
+  (Nothing, l, t)
 
 logNote :: PosInfo -> T.Text -> Log
 logNote pos text =

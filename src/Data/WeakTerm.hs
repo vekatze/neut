@@ -3,14 +3,26 @@
 module Data.WeakTerm where
 
 import Data.Basic
-import Data.Binary
+  ( EnumCase (..),
+    EnumCasePlus,
+    Hint,
+    Ident (..),
+    LamKind (LamKindCons, LamKindFix),
+    Opacity,
+    TopName,
+    asText,
+    fromLamKind,
+    isOpaque,
+    isTransparent,
+  )
+import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
-import Data.LowType
+import Data.LowType (Derangement, showIntSize)
 import Data.Maybe (catMaybes, maybeToList)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
-import GHC.Generics
+import GHC.Generics (Generic)
 
 data WeakTerm
   = WeakTermTau
@@ -330,8 +342,7 @@ showTypeArgs args =
       s1 <> " " <> s2
 
 showVariable :: Ident -> T.Text
-showVariable x =
-  asText x
+showVariable = asText
 
 showCaseClause :: (WeakPattern, WeakTermPlus) -> T.Text
 showCaseClause (pat, e) =

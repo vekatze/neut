@@ -3,27 +3,126 @@ module Parse
   )
 where
 
-import Control.Monad (forM_, when)
+import Control.Monad (forM_, unless, when)
 import Data.Basic
+  ( EnumCase (EnumCaseLabel),
+    Hint,
+    Ident,
+    IsReducible,
+    LamKind (LamKindCons, LamKindFix, LamKindResourceHandler),
+    Opacity (OpacityTranslucent, OpacityTransparent),
+    asIdent,
+    asText,
+    getExecPath,
+  )
 import Data.Global
+  ( VisitInfo (VisitInfoActive, VisitInfoFinish),
+    constructorEnv,
+    dataEnv,
+    enumEnv,
+    fileEnv,
+    getCurrentDirPath,
+    getCurrentFilePath,
+    getLibraryDirPath,
+    isMain,
+    newText,
+    note',
+    nsEnv,
+    revEnumEnv,
+    topNameEnv,
+    topNameEnvExt,
+    traceEnv,
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.List (find)
-import Data.Log
+import Data.Log (raiseError)
 import Data.Namespace
+  ( handleEnd,
+    handleSection,
+    nsSep,
+    unuse,
+    use,
+    withSectionPrefix,
+  )
 import qualified Data.Set as S
 import Data.Stmt
+  ( EnumInfo,
+    HeaderStmtPlus,
+    Stmt (StmtDef),
+    WeakStmt (..),
+    WeakStmtPlus,
+    loadCache,
+  )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.WeakTerm
-import GHC.IO.Handle
+  ( WeakIdentPlus,
+    WeakTerm
+      ( WeakTermCase,
+        WeakTermEnumElim,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermTau,
+        WeakTermVar
+      ),
+    WeakTermPlus,
+  )
+import GHC.IO.Handle (Handle, hGetContents)
 import Parse.Core
-import Parse.Discern
+  ( currentHint,
+    initializeState,
+    integer,
+    isSymbolChar,
+    lookAhead,
+    many,
+    newTextualIdentFromText,
+    raiseParseError,
+    skip,
+    string,
+    symbol,
+    symbolMaybe,
+    text,
+    token,
+    tryPlanList,
+    var,
+    weakTermToWeakIdent,
+    weakVar,
+    withNestedState,
+  )
+import Parse.Discern (discern, discernStmtList)
 import Parse.WeakTerm
+  ( ascriptionInner,
+    weakAscription,
+    weakIdentPlus,
+    weakTerm,
+    weakTermSimple,
+  )
 import Path
+  ( Abs,
+    Dir,
+    File,
+    Path,
+    parseRelDir,
+    toFilePath,
+    (</>),
+  )
 import Path.IO
-import System.Exit
-import System.Process hiding (env)
+  ( doesDirExist,
+    doesFileExist,
+    ensureDir,
+    removeDir,
+    resolveFile,
+  )
+import System.Exit (ExitCode (..))
+import System.Process
+  ( CreateProcess (cwd, std_err, std_in, std_out),
+    StdStream (CreatePipe, UseHandle),
+    createProcess,
+    proc,
+    waitForProcess,
+  )
 
 --
 -- core functions
@@ -59,9 +158,7 @@ visit path = do
 ensureNoDoubleQuotes :: Path Abs File -> IO ()
 ensureNoDoubleQuotes path = do
   m <- currentHint
-  if ('"' `elem` toFilePath path)
-    then raiseError m "filepath cannot contain double quotes"
-    else return ()
+  when ('"' `elem` toFilePath path) $ raiseError m "filepath cannot contain double quotes"
 
 leave :: IO [WeakStmt]
 leave = do
@@ -169,7 +266,7 @@ stmt = do
           raiseParseError m $ "invalid statement: " <> x
         Nothing -> do
           m <- currentHint
-          raiseParseError m $ "found the empty symbol when expecting a statement"
+          raiseParseError m "found the empty symbol when expecting a statement"
 
 --
 -- parser for statements
@@ -213,7 +310,7 @@ stmtDefineEnum = do
   name <- varText >>= withSectionPrefix
   itemList <- many stmtDefineEnumClause
   let itemList' = arrangeEnumItemList name 0 itemList
-  when (not (isLinear (map snd itemList'))) $
+  unless (isLinear (map snd itemList')) $
     raiseError m "found a collision of discriminant"
   path <- toFilePath <$> getCurrentFilePath
   insEnumEnv path m name itemList'
@@ -260,7 +357,7 @@ stmtEnsure = do
   pkgStr' <- parseRelDir $ T.unpack pkgStr
   let pkgStrDirPath = libDirPath </> pkgStr'
   isAlreadyInstalled <- doesDirExist pkgStrDirPath
-  when (not isAlreadyInstalled) $ do
+  unless isAlreadyInstalled $ do
     ensureDir pkgStrDirPath
     let urlStr' = T.unpack urlStr
     let curlCmd = proc "curl" ["-s", "-S", "-L", urlStr']
@@ -563,12 +660,12 @@ stmtDefineResourceType = do
             WeakTermPiIntro
               OpacityTransparent
               LamKindResourceHandler
-              [ (m, flag, (weakVar m "bool")),
-                (m, value, (weakVar m "unsafe.pointer"))
+              [ (m, flag, weakVar m "bool"),
+                (m, value, weakVar m "unsafe.pointer")
               ]
               ( m,
                 WeakTermEnumElim
-                  ((weakVar m (asText flag)), (weakVar m "bool"))
+                  (weakVar m (asText flag), weakVar m "bool")
                   [ ( (m, EnumCaseLabel path "bool.true"),
                       (m, WeakTermPiElim copier [weakVar m (asText value)])
                     ),
@@ -576,8 +673,8 @@ stmtDefineResourceType = do
                       ( m,
                         WeakTermPiElim
                           (weakVar m "unsafe.cast")
-                          [ (weakVar m "top"),
-                            (weakVar m "unsafe.pointer"),
+                          [ weakVar m "top",
+                            weakVar m "unsafe.pointer",
                             (m, WeakTermPiElim discarder [weakVar m (asText value)])
                           ]
                       )
@@ -621,7 +718,7 @@ isLinear' found input =
 
 setupEnumEnv :: IO ()
 setupEnumEnv =
-  forM_ initEnumEnvInfo $ \(name, xis) -> setupEnumEnvWith name xis
+  forM_ initEnumEnvInfo $ uncurry setupEnumEnvWith
 
 setupEnumEnvWith :: T.Text -> [(T.Text, Int)] -> IO ()
 setupEnumEnvWith name xis = do
@@ -641,7 +738,7 @@ initEnumEnvInfo =
 insEnumEnv :: FilePath -> Hint -> T.Text -> [(T.Text, Int)] -> IO ()
 insEnumEnv path m name xis = do
   eenv <- readIORef enumEnv
-  let definedEnums = Map.keys eenv ++ map fst (concat $ map snd (Map.elems eenv))
+  let definedEnums = Map.keys eenv ++ map fst (concatMap snd (Map.elems eenv))
   case find (`elem` definedEnums) $ name : map fst xis of
     Just x ->
       raiseError m $ "the constant `" <> x <> "` is already defined [ENUM]"

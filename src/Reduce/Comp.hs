@@ -4,11 +4,26 @@ module Reduce.Comp
   )
 where
 
-import Data.Basic hiding (asIdent)
+import Data.Basic
+  ( EnumCase (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
+    Ident,
+    asInt,
+  )
 import Data.Comp
-import Data.Global
+  ( Comp (..),
+    Primitive (..),
+    SubstValue,
+    Value
+      ( ValueEnumIntro,
+        ValueInt,
+        ValueSigmaIntro,
+        ValueVarGlobal,
+        ValueVarLocal
+      ),
+  )
+import Data.Global (defEnv, newIdentFromIdent, p, p')
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
 
 type NameEnv = IntMap.IntMap Ident

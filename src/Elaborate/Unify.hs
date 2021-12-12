@@ -1,21 +1,67 @@
+{-# LANGUAGE TupleSections #-}
+
 module Elaborate.Unify
   ( unify,
   )
 where
 
-import Control.Exception.Safe
-import Control.Monad
+import Control.Exception.Safe (throw)
+import Control.Monad (forM)
 import Data.Basic
+  ( Hint,
+    Ident,
+    LamKind (LamKindFix, LamKindNormal),
+    Opacity (OpacityTransparent),
+    TopName,
+    asInt,
+    getPosInfo,
+    lamKindWeakEq,
+  )
 import Data.Global
+  ( constraintEnv,
+    newIdentFromText,
+    substEnv,
+    suspendedConstraintEnv,
+    topDefEnv,
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
-import Data.Log
+import Data.Log (Error (Error), logError)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
-import Reduce.WeakTerm
+  ( Constraint,
+    ConstraintKind (ConstraintKindDelta, ConstraintKindOther),
+    SubstWeakTerm,
+    SuspendedConstraint (SuspendedConstraint),
+    WeakIdentPlus,
+    WeakTerm
+      ( WeakTermAster,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnum,
+        WeakTermEnumIntro,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermQuestion,
+        WeakTermTau,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+    asVar,
+    asterWeakTermPlus,
+    metaOf,
+    toText,
+    varWeakTermPlus,
+  )
+import Reduce.WeakTerm (reduceWeakTermPlus, substWeakTermPlus)
 
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTermPlus])]
@@ -30,7 +76,7 @@ unify =
 analyze :: IO ()
 analyze = do
   cs <- readIORef constraintEnv
-  modifyIORef' constraintEnv $ \_ -> []
+  modifyIORef' constraintEnv $ const []
   simplify $ zip cs cs
 
 synthesize :: IO ()
@@ -39,11 +85,11 @@ synthesize = do
   case Q.minView cs of
     Nothing ->
       return ()
-    Just ((SuspendedConstraint (_, ConstraintKindDelta c, (_, orig))), cs') -> do
-      modifyIORef' suspendedConstraintEnv $ \_ -> cs'
+    Just (SuspendedConstraint (_, ConstraintKindDelta c, (_, orig)), cs') -> do
+      modifyIORef' suspendedConstraintEnv $ const cs'
       simplify [(c, orig)]
       synthesize
-    Just ((SuspendedConstraint (_, ConstraintKindOther, _)), _) ->
+    Just (SuspendedConstraint (_, ConstraintKindOther, _), _) ->
       throwTypeErrors
 
 throwTypeErrors :: IO a
@@ -133,7 +179,7 @@ simplify constraintList =
         ((_, WeakTermDerangement i1 es1), (_, WeakTermDerangement i2 es2))
           | length es1 == length es2,
             i1 == i2 -> do
-            simplify $ map (\pair -> (pair, orig)) (zip es1 es2) ++ cs
+            simplify $ zipWith (curry (,orig)) es1 es2 ++ cs
         ((_, WeakTermIgnore e1), (_, WeakTermIgnore e2)) ->
           simplify $ ((e1, e2), orig) : cs
         (e1, e2) -> do
@@ -176,12 +222,12 @@ simplify constraintList =
                 (Just (StuckPiElimVarLocal x1 mess1), Just (StuckPiElimVarLocal x2 mess2))
                   | x1 == x2,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) -> do
-                    simplify $ map (\pair -> (pair, orig)) pairList ++ cs
+                    simplify $ map (,orig) pairList ++ cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
                     Nothing <- lookupDefinition g1 defs,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) -> do
-                    simplify $ map (\pair -> (pair, orig)) pairList ++ cs
+                    simplify $ map (,orig) pairList ++ cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
                     Just lam <- lookupDefinition g1 defs -> do
@@ -190,12 +236,12 @@ simplify constraintList =
                   | Just lam1 <- lookupDefinition g1 defs,
                     Just lam2 <- lookupDefinition g2 defs -> do
                     simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
-                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimAster {}))
+                (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
                   | Just lam <- lookupDefinition g1 defs -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
                     modifyIORef' suspendedConstraintEnv $ \env -> Q.insert uc env
                     simplify cs
-                (Just (StuckPiElimAster {}), Just (StuckPiElimVarGlobal g2 mess2))
+                (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- lookupDefinition g2 defs -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
                     modifyIORef' suspendedConstraintEnv $ \env -> Q.insert uc env
@@ -217,7 +263,7 @@ resolveHole h1 xss e2' cs = do
   modifyIORef' substEnv $ \env -> IntMap.insert h1 (toPiIntro xss e2') env
   sus <- readIORef suspendedConstraintEnv
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) sus
-  modifyIORef' suspendedConstraintEnv $ \_ -> sus2
+  modifyIORef' suspendedConstraintEnv $ const sus2
   let sus1' = map (\(SuspendedConstraint (_, _, c)) -> c) $ Q.toList sus1
   simplify $ sus1' ++ cs
 
@@ -343,5 +389,5 @@ lookupAny is sub =
 
 {-# INLINE lookupDefinition #-}
 lookupDefinition :: TopName -> Map.HashMap (FilePath, T.Text) WeakTermPlus -> Maybe WeakTermPlus
-lookupDefinition g defs =
-  Map.lookup g defs
+lookupDefinition =
+  Map.lookup

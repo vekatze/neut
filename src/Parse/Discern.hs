@@ -4,16 +4,64 @@ module Parse.Discern
   )
 where
 
-import Control.Monad
+import Control.Monad (forM)
 import Data.Basic
+  ( EnumCase (EnumCaseLabel),
+    Hint,
+    Ident (..),
+    LamKind (LamKindFix),
+    asText,
+  )
 import Data.Global
+  ( enumEnv,
+    newIdentFromIdent,
+    nsEnv,
+    p',
+    revEnumEnv,
+    topNameEnv,
+    topNameEnvExt,
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
-import Data.Log
+import Data.IORef (modifyIORef', readIORef)
+import Data.Log (raiseError)
 import Data.Namespace
-import Data.Stmt
+  ( asConstructor,
+    asEnum,
+    asEnumIntro,
+    asEnumLabel,
+    asGlobalVar,
+    asWeakConstant,
+    asWeakVar,
+    resolveSymbol,
+    tryCand,
+    unuse,
+    use,
+  )
+import Data.Stmt (WeakStmt (..))
 import qualified Data.Text as T
 import Data.WeakTerm
+  ( WeakIdentPlus,
+    WeakTerm
+      ( WeakTermAster,
+        WeakTermCase,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnum,
+        WeakTermEnumElim,
+        WeakTermEnumIntro,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermQuestion,
+        WeakTermTau,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+  )
 
 type NameEnv = Map.HashMap T.Text Ident
 

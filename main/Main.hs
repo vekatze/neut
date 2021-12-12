@@ -1,27 +1,81 @@
 module Main (main) where
 
-import Clarify
-import Control.Concurrent.Async
-import Control.Exception.Safe
-import Control.Monad
-import Data.ByteString.Builder
+import Clarify (clarify)
+import Control.Concurrent.Async (wait)
+import Control.Exception.Safe (try)
+import Control.Monad (forM_, void, (>=>))
+import Data.ByteString.Builder (Builder, toLazyByteString)
 import qualified Data.ByteString.Lazy as L
 import Data.Global
-import Data.IORef
-import Data.Log
+  ( endOfEntry,
+    isMain,
+    outputLog,
+    promiseEnv,
+    shouldCancelAlloc,
+    shouldColorize,
+    shouldDisplayLogLevel,
+    shouldDisplayLogLocation,
+  )
+import Data.IORef (readIORef, writeIORef)
+import Data.Log (Error (Error))
 import Data.Maybe (fromMaybe)
 import Data.Version (showVersion)
-import Elaborate
-import Emit
-import GHC.IO.Handle
-import Lower
+import Elaborate (elaborate)
+import Emit (emit)
+import GHC.IO.Handle (hClose)
+import Lower (lower)
 import Options.Applicative
-import Parse
+  ( Alternative (many),
+    Parser,
+    ReadM,
+    argument,
+    command,
+    execParser,
+    flag,
+    fullDesc,
+    help,
+    helper,
+    info,
+    long,
+    metavar,
+    option,
+    optional,
+    progDesc,
+    readerError,
+    short,
+    str,
+    strOption,
+    subparser,
+    value,
+  )
+import Parse (parse)
 import Path
-import Path.IO
+  ( Abs,
+    Dir,
+    File,
+    Path,
+    Rel,
+    addExtension,
+    dirname,
+    filename,
+    fromRelDir,
+    parent,
+    splitExtension,
+    stripProperPrefix,
+    toFilePath,
+    (</>),
+  )
+import Path.IO (getCurrentDir, resolveDir', resolveFile')
 import Paths_neut (version)
-import System.Exit
-import System.Process hiding (env)
+import System.Exit (ExitCode (ExitFailure), exitWith)
+import System.Process
+  ( CreateProcess (std_in),
+    StdStream (CreatePipe),
+    createProcess,
+    proc,
+    waitForProcess,
+    withCreateProcess,
+  )
 import Text.Read (readMaybe)
 
 type InputPath =
@@ -398,7 +452,7 @@ runCompiler c = do
   resultOrErr <- try c
   case resultOrErr of
     Left (Error err) ->
-      foldr (>>) (exitWith (ExitFailure 1)) (map outputLog err)
+      foldr ((>>) . outputLog) (exitWith (ExitFailure 1)) err
     Right result ->
       return result
 

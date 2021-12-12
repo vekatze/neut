@@ -9,17 +9,84 @@ module Parse.WeakTerm
   )
 where
 
-import Codec.Binary.UTF8.String
+import Codec.Binary.UTF8.String (encode)
 import Control.Monad (forM)
 import Data.Basic
-import Data.Global
-import Data.IORef
+  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+    EnumCasePlus,
+    Hint,
+    Ident,
+    LamKind (LamKindFix),
+    Opacity (OpacityTransparent),
+    asIdent,
+    asText,
+    getExecPath,
+  )
+import Data.Global (newAster, targetPlatform)
+import Data.IORef (readIORef)
 import Data.LowType
-import Data.Namespace
+  ( Derangement (..),
+    LowType
+      ( LowTypeArray,
+        LowTypeFloat,
+        LowTypeInt,
+        LowTypePointer,
+        LowTypeStruct
+      ),
+    asLowFloat,
+    asLowInt,
+    showFloatSize,
+    showIntSize,
+  )
+import Data.Namespace (nsSep)
 import qualified Data.Text as T
 import Data.WeakTerm
+  ( WeakIdentPlus,
+    WeakPattern,
+    WeakTerm
+      ( WeakTermCase,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnumElim,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermQuestion,
+        WeakTermTau
+      ),
+    WeakTermPlus,
+  )
 import Parse.Core
-import Path
+  ( betweenParen,
+    char,
+    currentHint,
+    float,
+    integer,
+    isKeyword,
+    isSymbolChar,
+    lam,
+    lookAhead,
+    many,
+    many1,
+    newTextualIdentFromText,
+    raiseParseError,
+    sepBy2,
+    simpleSymbol,
+    skip,
+    string,
+    symbol,
+    symbolMaybe,
+    token,
+    tryPlanList,
+    var,
+    weakTermToWeakIdent,
+    weakVar,
+    weakVar',
+  )
+import Path (toFilePath)
 import qualified System.Info as System
 
 --
@@ -72,8 +139,7 @@ weakTermAster :: IO WeakTermPlus
 weakTermAster = do
   m <- currentHint
   token "?"
-  h <- newAster m
-  return h
+  newAster m
 
 weakTermPiIntro :: IO WeakTermPlus
 weakTermPiIntro = do
@@ -86,8 +152,7 @@ weakTermPiIntro = do
 weakTermDotBind :: IO WeakTermPlus
 weakTermDotBind = do
   char '.' >> skip
-  e <- weakTerm
-  return e
+  weakTerm
 
 weakTermDoEnd :: IO WeakTermPlus
 weakTermDoEnd = do
@@ -108,7 +173,7 @@ weakTermPiIntroFix = do
 weakTermAux :: IO WeakTermPlus
 weakTermAux = do
   m <- currentHint
-  xt@(_, _, e) <- weakTermToWeakIdent m $ weakTermSimple
+  xt@(_, _, e) <- weakTermToWeakIdent m weakTermSimple
   tryPlanList
     [ weakTermPi m xt,
       weakTermSigma m xt,
@@ -117,13 +182,13 @@ weakTermAux = do
 
 weakTermPi :: Hint -> WeakIdentPlus -> IO WeakTermPlus
 weakTermPi m xt = do
-  xts <- many1 $ (token "->" >> weakTermArrowItem)
+  xts <- many1 (token "->" >> weakTermArrowItem)
   let (_, _, cod) = last xts
   return (m, WeakTermPi (xt : init xts) cod)
 
 weakTermSigma :: Hint -> WeakIdentPlus -> IO WeakTermPlus
 weakTermSigma m xt = do
-  xts <- many1 $ (token "*" >> weakTermArrowItem)
+  xts <- many1 (token "*" >> weakTermArrowItem)
   toSigma m $ xt : xts
 
 weakTermApp :: Hint -> WeakTermPlus -> IO WeakTermPlus
@@ -208,23 +273,17 @@ weakTermDerangementKind = do
     "nop" ->
       return DerangementNop
     "store" -> do
-      t <- lowTypeSimple
-      return $ DerangementStore t
+      DerangementStore <$> lowTypeSimple
     "load" -> do
-      t <- lowTypeSimple
-      return $ DerangementLoad t
+      DerangementLoad <$> lowTypeSimple
     "create-array" -> do
-      t <- lowTypeSimple
-      return $ DerangementCreateArray t
+      DerangementCreateArray <$> lowTypeSimple
     "create-struct" -> do
-      ts <- many lowTypeSimple
-      return $ DerangementCreateStruct ts
+      DerangementCreateStruct <$> many lowTypeSimple
     "syscall" -> do
-      syscallNum <- integer
-      return $ DerangementSyscall syscallNum
+      DerangementSyscall <$> integer
     "external" -> do
-      f <- symbol
-      return $ DerangementExternal f
+      DerangementExternal <$> symbol
     _ -> do
       raiseParseError m "invalid derangement kind"
 
@@ -235,15 +294,12 @@ lowType = do
   headSymbol <- symbol
   case headSymbol of
     "pointer" -> do
-      t <- lowTypeSimple
-      return $ LowTypePointer t
+      LowTypePointer <$> lowTypeSimple
     "array" -> do
       intValue <- integer
-      t <- lowTypeSimple
-      return $ LowTypeArray (fromInteger intValue) t
+      LowTypeArray (fromInteger intValue) <$> lowTypeSimple
     "struct" -> do
-      ts <- many lowTypeSimple
-      return $ LowTypeStruct ts
+      LowTypeStruct <$> many lowTypeSimple
     _
       | Just size <- asLowInt headSymbol ->
         return $ LowTypeInt size
@@ -369,7 +425,7 @@ weakTermLetNormal = do
         [ t1,
           resultType,
           e1,
-          (lam m [x] e2)
+          lam m [x] e2
         ]
     )
 
@@ -421,7 +477,7 @@ weakTermLetCoproduct = do
         Nothing
         (e1, doNotCare m)
         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
-            (m, WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, (weakVar' m err)])
+            (m, WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, weakVar' m err])
           ),
           ( (m, sumRight, [x]),
             e2
@@ -521,7 +577,7 @@ weakTermIdealize = do
   token "in"
   e <- weakTerm
   resultType <- newAster m
-  let subjectTerm = (weakVar mSubject subject)
+  let subjectTerm = weakVar mSubject subject
   ts <- mapM (\(mx, _) -> newAster mx) varList
   return
     ( m,
@@ -530,7 +586,7 @@ weakTermIdealize = do
         [ resultType,
           lam
             m
-            [(mSubject, asIdent subject, (weakVar m "subject"))]
+            [(mSubject, asIdent subject, weakVar m "subject")]
             (castLet subjectTerm (zip varList' ts) e)
         ]
     )
@@ -563,8 +619,11 @@ weakTermArrayIntro = do
   return $
     bind m (m, arr, ptrType) (m, WeakTermDerangement (DerangementCreateArray t) es') $
       bind m (m, ptr, ptrType) (m, WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
-        bind m (m, h1, topType) (m, WeakTermPiElim (weakVar m "memory.store-i64-with-index") [(weakVar m (asText ptr)), intTerm m 0, intTerm m (toInteger (length es))]) $
-          bind m (m, h2, topType) (m, WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [(weakVar m (asText ptr)), intTerm m 1, (weakVar m (asText arr))]) $
+        bind m (m, h1, topType) (m, WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
+          bind
+            m
+            (m, h2, topType)
+            (m, WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
             (m, WeakTermPiElim (weakVar m "unsafe.cast") [weakVar m "unsafe.pointer", weakVar m arrName, weakVar m (asText ptr)])
 
 lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTermPlus

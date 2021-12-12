@@ -3,22 +3,41 @@ module Emit
   )
 where
 
-import Control.Monad
-import Data.Basic
+import Control.Monad (forM)
+import Data.Basic (Ident (..))
 import Data.ByteString.Builder
+  ( Builder,
+    doubleHexFixed,
+    intDec,
+    integerDec,
+  )
 import Data.Global
+  ( declEnv,
+    lowDefEnv,
+    newIdentFromText,
+    nopFreeSet,
+  )
 import qualified Data.HashMap.Lazy as HashMap
-import Data.IORef
+import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
-import Data.Log
-import Data.LowComp
+import Data.Log (raiseCritical', raiseError')
+import Data.LowComp (LowComp (..), LowOp (..), LowValue (..))
 import Data.LowType
+  ( FloatSize (FloatSize16, FloatSize32, FloatSize64),
+    LowType (..),
+    PrimOp (PrimOp),
+    binaryOpSet,
+    cmpOpSet,
+    convOpSet,
+    unaryOpSet,
+    voidPtr,
+  )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Numeric.Half
-import Reduce.LowComp
+import Numeric.Half (Half)
+import Reduce.LowComp (reduceLowComp)
 import qualified System.Info as System
 
 emit :: Maybe LowComp -> IO Builder
@@ -172,13 +191,13 @@ emitLowOp llvmOp =
       let op' = TE.encodeUtf8Builder op
       case (S.member op unaryOpSet, S.member op convOpSet, S.member op binaryOpSet, S.member op cmpOpSet) of
         (True, _, _, _) ->
-          emitUnaryOp (domList !! 0) op' (args !! 0)
+          emitUnaryOp (head domList) op' (head args)
         (_, True, _, _) ->
-          emitConvOp op' (args !! 0) (domList !! 0) cod
+          emitConvOp op' (head args) (head domList) cod
         (_, _, True, _) ->
-          emitBinaryOp (domList !! 0) op' (args !! 0) (args !! 1)
+          emitBinaryOp (head domList) op' (head args) (args !! 1)
         (_, _, _, True) ->
-          emitBinaryOp (domList !! 0) op' (args !! 0) (args !! 1)
+          emitBinaryOp (head domList) op' (head args) (args !! 1)
         _ ->
           raiseCritical' $ "unknown primitive: " <> op
 

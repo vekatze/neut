@@ -4,14 +4,46 @@ module Reduce.WeakTerm
   )
 where
 
-import Control.Monad
+import Control.Monad (forM)
 import Data.Basic
-import Data.Global
+  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+    Hint,
+    LamKind (LamKindCons, LamKindFix, LamKindNormal),
+    Opacity (OpacityTransparent),
+    asInt,
+    isOpaque,
+  )
+import Data.Global (dataEnv, newIdentFromIdent)
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Data.WeakTerm
+  ( SubstWeakTerm,
+    WeakIdentPlus,
+    WeakPattern,
+    WeakTerm
+      ( WeakTermAster,
+        WeakTermCase,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnum,
+        WeakTermEnumElim,
+        WeakTermEnumIntro,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermQuestion,
+        WeakTermTau,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+    varWeakTermPlus,
+  )
 
 reduceWeakTermPlus :: WeakTermPlus -> IO WeakTermPlus
 reduceWeakTermPlus term =

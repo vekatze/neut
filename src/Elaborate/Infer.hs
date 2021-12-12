@@ -6,20 +6,76 @@ module Elaborate.Infer
   )
 where
 
-import Control.Monad
+import Control.Monad (forM, forM_, replicateM)
 import Data.Basic
+  ( EnumCase (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
+    EnumCasePlus,
+    Hint,
+    Ident (..),
+    LamKind (LamKindFix),
+    TopName,
+    asInt,
+    asText',
+    getExecPath,
+  )
 import Data.Global
+  ( constTypeEnv,
+    constraintEnv,
+    constructorEnv,
+    holeEnv,
+    newAster,
+    newIdentFromText,
+    revEnumEnv,
+    topTypeEnv,
+    weakTypeEnv,
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
-import Data.Log
+import Data.Log (raiseCritical, raiseError)
 import Data.LowType
+  ( PrimOp (..),
+    asLowFloat,
+    asLowInt,
+    asLowTypeMaybe,
+    asPrimOp,
+    cmpOpSet,
+  )
 import qualified Data.Set as S
 import Data.Term
+  ( Term (TermEnum, TermPi, TermTau),
+    TermPlus,
+    lowTypeToType,
+    weaken,
+  )
 import qualified Data.Text as T
 import Data.WeakTerm
-import Path
-import Reduce.WeakTerm
+  ( SubstWeakTerm,
+    WeakIdentPlus,
+    WeakTerm
+      ( WeakTermAster,
+        WeakTermCase,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnum,
+        WeakTermEnumElim,
+        WeakTermEnumIntro,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermQuestion,
+        WeakTermTau,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+    metaOf,
+  )
+import Path (toFilePath)
+import Reduce.WeakTerm (substWeakTermPlus)
 
 type Context = [WeakIdentPlus]
 
@@ -122,7 +178,7 @@ infer' ctx term =
             Nothing ->
               raiseCritical m $ "no such constructor defined (infer): " <> snd constructorName
             Just (holeCount, _) -> do
-              holeList <- mapM (const $ newAsterInCtx ctx m) $ replicate holeCount ()
+              holeList <- replicateM holeCount (newAsterInCtx ctx m)
               clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
                 (xts', (body', tBody)) <- inferBinder ctx xts body
                 insConstraintEnv resultType tBody

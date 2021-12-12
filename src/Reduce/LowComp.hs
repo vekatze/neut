@@ -3,12 +3,26 @@ module Reduce.LowComp
   )
 where
 
-import Data.Basic
+import Data.Basic (asInt)
 import Data.Global
-import Data.IORef
+  ( newIdentFromIdent,
+    nopFreeSet,
+    shouldCancelAlloc,
+  )
+import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
 import Data.LowComp
+  ( LowComp (..),
+    LowOp (LowOpAlloc, LowOpBitcast, LowOpFree),
+    LowValue (LowValueNull, LowValueVarLocal),
+    SizeInfo,
+    SubstLowComp,
+    substLowOp,
+    substLowValue,
+  )
 import Data.LowType
+  ( LowType (LowTypeArray, LowTypePointer, LowTypeStruct),
+  )
 import qualified Data.Map as Map
 import qualified Data.Set as S
 

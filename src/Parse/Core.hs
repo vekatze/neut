@@ -1,14 +1,38 @@
 module Parse.Core where
 
-import Control.Exception.Safe
+import Control.Exception.Safe (catch, throw)
 import Data.Basic
+  ( Hint,
+    Ident,
+    LamKind (LamKindNormal),
+    Opacity (OpacityTransparent),
+    asIdent,
+    getPosInfo,
+    newHint,
+  )
 import Data.Global
+  ( getCurrentFilePath,
+    newCount,
+    newIdentFromText,
+    nsEnv,
+    prefixEnv,
+  )
 import Data.IORef
-import Data.Log
+  ( IORef,
+    modifyIORef',
+    newIORef,
+    readIORef,
+    writeIORef,
+  )
+import Data.Log (Error (..), logError, raiseCritical)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
-import Path
+  ( WeakIdentPlus,
+    WeakTerm (WeakTermPiIntro, WeakTermVar),
+    WeakTermPlus,
+  )
+import Path (toFilePath)
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Read (readMaybe)
 
@@ -302,7 +326,7 @@ newlineSet =
 {-# INLINE nonSymbolSet #-}
 nonSymbolSet :: S.Set Char
 nonSymbolSet =
-  S.fromList $ "() \"\n;,"
+  S.fromList "() \"\n;,"
 
 {-# INLINE nonSimpleSymbolSet #-}
 nonSimpleSymbolSet :: S.Set Char
@@ -312,20 +336,20 @@ nonSimpleSymbolSet =
 {-# INLINE updateStreamL #-}
 updateStreamL :: T.Text -> IO ()
 updateStreamL s = do
-  modifyIORef' text $ \_ -> s
+  modifyIORef' text $ const s
   incrementLine
 
 {-# INLINE updateStreamC #-}
 updateStreamC :: Int -> T.Text -> IO ()
 updateStreamC c s = do
-  modifyIORef' text $ \_ -> s
+  modifyIORef' text $ const s
   modifyIORef' column $ \x -> c + x
 
 {-# INLINE incrementLine #-}
 incrementLine :: IO ()
 incrementLine = do
   modifyIORef' line $ \x -> 1 + x
-  modifyIORef' column $ \_ -> 1
+  modifyIORef' column $ const 1
 
 {-# INLINE incrementColumn #-}
 incrementColumn :: IO ()

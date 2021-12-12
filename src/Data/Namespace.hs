@@ -1,13 +1,28 @@
+{-# LANGUAGE TupleSections #-}
+
 module Data.Namespace where
 
-import Data.Basic
-import Data.Global
+import Data.Basic (EnumCase (EnumCaseLabel), Hint, Ident, TopName)
+import Data.Global (nsEnv, prefixEnv, sectionEnv)
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
-import Data.Log
+import Data.IORef (modifyIORef', readIORef)
+import Data.Log (raiseError)
 import Data.LowType
+  ( LowType (LowTypeFloat, LowTypeInt),
+    asLowTypeMaybe,
+    asPrimOp,
+  )
 import qualified Data.Text as T
-import Data.WeakTerm hiding (asVar)
+import Data.WeakTerm
+  ( WeakTerm
+      ( WeakTermConst,
+        WeakTermEnum,
+        WeakTermEnumIntro,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+  )
 
 nsSepChar :: Char
 nsSepChar =
@@ -94,7 +109,7 @@ handleEnd m s = do
     s' : ns'
       | s == s' -> do
         getCurrentSection >>= unuse
-        modifyIORef' sectionEnv $ \_ -> ns'
+        modifyIORef' sectionEnv $ const ns'
       | otherwise ->
         raiseError m $
           "the innermost section is not `" <> s <> "`, but is `" <> s' <> "`"
@@ -124,7 +139,7 @@ resolveSymbol m predicate name = do
     [prefixedName] ->
       return $ predicate prefixedName
     candList' -> do
-      let candInfo = T.concat $ map (\cand -> "\n- " <> cand) candList'
+      let candInfo = T.concat $ map ("\n- " <>) candList'
       raiseError m $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 constructCandList :: T.Text -> IO [T.Text]
@@ -134,8 +149,8 @@ constructCandList name = do
   return $ constructCandList' nenv $ name : map (<> nsSep <> name) penv
 
 constructCandList' :: [(T.Text, T.Text)] -> [T.Text] -> [T.Text]
-constructCandList' nenv nameList =
-  concat $ map (constructCandList'' nenv) nameList
+constructCandList' nenv =
+  concatMap (constructCandList'' nenv)
 
 constructCandList'' :: [(T.Text, T.Text)] -> T.Text -> [T.Text]
 constructCandList'' nenv name = do
@@ -215,7 +230,7 @@ asGlobalVar m nenv name =
 {-# INLINE asConstructor #-}
 asConstructor :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe (Hint, TopName)
 asConstructor m nenv name =
-  asVar m nenv name (\fp -> (fp, name))
+  asVar m nenv name (,name)
 
 -- {-# INLINE asConstructor #-}
 -- asConstructor :: Hint -> Map.HashMap T.Text (FilePath, Ident) -> T.Text -> Maybe (Hint, Ident)
@@ -282,8 +297,4 @@ asWeakConstant m name
 tryCand :: (Monad m) => m (Maybe a) -> m a -> m a
 tryCand comp cont = do
   mx <- comp
-  case mx of
-    Just x ->
-      return x
-    Nothing ->
-      cont
+  maybe cont return mx

@@ -1,14 +1,22 @@
 module Clarify.Utility where
 
-import Control.Monad
+import Control.Monad (unless)
 import Data.Basic
+  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+    Ident,
+    asText,
+    getExecPath,
+  )
 import Data.Comp
-import Data.Global
+  ( Comp (CompEnumElim, CompPiElimDownElim, CompUpElim),
+    Value (ValueEnumIntro, ValueVarGlobal, ValueVarLocal),
+  )
+import Data.Global (defEnv, newValueVarLocalWith)
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
-import Data.Namespace
+import Data.IORef (modifyIORef', readIORef)
+import Data.Namespace (nsSep)
 import qualified Data.Text as T
-import Path
+import Path (toFilePath)
 
 toApp :: T.Text -> Ident -> Comp -> IO Comp
 toApp switcher x t = do
@@ -53,7 +61,7 @@ switch path e1 e2 =
 tryCache :: T.Text -> IO () -> IO Value
 tryCache key doInsertion = do
   denv <- readIORef defEnv
-  when (not $ Map.member key denv) doInsertion
+  unless (Map.member key denv) doInsertion
   return $ ValueVarGlobal key
 
 makeSwitcher ::
@@ -68,10 +76,9 @@ makeSwitcher compAff compRel = do
   path <- toFilePath <$> getExecPath
   return
     ( [switchVarName, argVarName],
-      ( CompEnumElim
-          switchVar
-          (switch path aff rel)
-      )
+      CompEnumElim
+        switchVar
+        (switch path aff rel)
     )
 
 registerSwitcher ::

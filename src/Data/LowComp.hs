@@ -1,8 +1,8 @@
 module Data.LowComp where
 
-import Data.Basic
+import Data.Basic (Ident, asInt)
 import qualified Data.IntMap as IntMap
-import Data.LowType
+import Data.LowType (FloatSize, LowType, PrimOp)
 import qualified Data.Text as T
 
 data LowValue

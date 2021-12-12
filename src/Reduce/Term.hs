@@ -3,13 +3,42 @@ module Reduce.Term
   )
 where
 
-import Control.Monad
+import Control.Monad (forM)
 import Data.Basic
-import Data.Global
+  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+    Hint,
+    LamKind (LamKindCons, LamKindFix, LamKindNormal),
+    Opacity (OpacityTransparent),
+    asInt,
+    isOpaque,
+  )
+import Data.Global (dataEnv, newIdentFromIdent)
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
 import Data.Term
+  ( IdentPlus,
+    Pattern,
+    SubstTerm,
+    Term
+      ( TermCase,
+        TermConst,
+        TermDerangement,
+        TermEnum,
+        TermEnumElim,
+        TermEnumIntro,
+        TermFloat,
+        TermIgnore,
+        TermInt,
+        TermPi,
+        TermPiElim,
+        TermPiIntro,
+        TermTau,
+        TermVar,
+        TermVarGlobal
+      ),
+    TermPlus,
+  )
 import qualified Data.Text as T
 
 -- reduce given term assuming its purity

@@ -3,26 +3,89 @@ module Clarify
   )
 where
 
-import Clarify.Linearize
+import Clarify.Linearize (linearize)
 import Clarify.Sigma
+  ( closureEnvS4,
+    immediateS4,
+    returnClosureS4,
+    returnImmediateS4,
+  )
 import Clarify.Utility
-import Control.Monad
+  ( bindLet,
+    insDefEnv,
+    insDefEnv',
+    toGlobalVarName,
+    wrapWithQuote,
+  )
+import Control.Monad (forM, forM_, unless, when, (>=>))
 import Data.Basic
+  ( EnumCase (EnumCaseInt),
+    Hint,
+    Ident,
+    LamKind (..),
+    Opacity (OpacityTranslucent, OpacityTransparent),
+    asInt,
+    asText',
+    fromLamKind,
+    isTransparent,
+    newHint,
+  )
 import Data.Comp
+  ( Comp (..),
+    Primitive (PrimitiveDerangement, PrimitivePrimOp),
+    Value (..),
+    varComp,
+  )
 import Data.Global
+  ( constructorEnv,
+    defEnv,
+    isMain,
+    newCount,
+    newIdentFromText,
+    newValueVarLocalWith,
+    p',
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
 import Data.List (nubBy)
-import Data.Log
+import Data.Log (raiseCritical, raiseError)
 import Data.LowType
+  ( Derangement (DerangementNop),
+    PrimOp (..),
+    asLowTypeMaybe,
+    asPrimOp,
+  )
 import Data.Maybe (catMaybes, isJust, maybeToList)
 import qualified Data.Set as S
-import Data.Stmt
+import Data.Stmt (Stmt (..), StmtPlus)
 import Data.Term
+  ( IdentPlus,
+    Pattern,
+    Term
+      ( TermCase,
+        TermConst,
+        TermDerangement,
+        TermEnum,
+        TermEnumElim,
+        TermEnumIntro,
+        TermFloat,
+        TermIgnore,
+        TermInt,
+        TermPi,
+        TermPiElim,
+        TermPiIntro,
+        TermTau,
+        TermVar,
+        TermVarGlobal
+      ),
+    TermPlus,
+    TypeEnv,
+    lowTypeToType,
+  )
 import qualified Data.Text as T
-import Path
-import Reduce.Comp
+import Path (toFilePath)
+import Reduce.Comp (reduceComp, substComp)
 
 clarify :: ([StmtPlus], StmtPlus) -> IO ([(T.Text, Comp)], Maybe Comp)
 clarify (ss, (mainFilePath, mainDefList)) = do
@@ -136,7 +199,7 @@ clarifyTerm tenv term =
         let (argVarNameList, argList, argVarList) = unzip3 (resultArg : closureArgs)
         let constructorName' = snd constructorName <> ";cons"
         let consName = wrapWithQuote $ if isJust mSubject then constructorName' <> ";noetic" else constructorName'
-        return $
+        return
           ( EnumCaseInt i,
             bindLet
               (zip argVarNameList argList)
@@ -145,7 +208,7 @@ clarifyTerm tenv term =
                   (argVarList ++ [envVar])
               )
           )
-      return $
+      return
         ( CompUpElim
             closureVarName
             closure
@@ -191,12 +254,12 @@ constructClauseArguments' clsInfo clsIndex cursor upperBound = do
           -- let (_, (m, _), _) = clsInfo
           (argVarName, argVar) <- newValueVarLocalWith "arg"
           fakeClosure <- makeFakeClosure
-          return $ (argVarName, (CompUpIntro fakeClosure), argVar) : rest
+          return $ (argVarName, CompUpIntro fakeClosure, argVar) : rest
 
 makeFakeClosure :: IO Value
 makeFakeClosure = do
   imm <- immediateS4
-  return $ ValueSigmaIntro [imm, (ValueInt 64 0), (ValueInt 64 0)]
+  return $ ValueSigmaIntro [imm, ValueInt 64 0, ValueInt 64 0]
 
 clarifyPlus :: TypeEnv -> TermPlus -> IO (Ident, Comp, Value)
 clarifyPlus tenv e = do
@@ -216,12 +279,12 @@ clarifyBinder tenv binder =
 
 chainFromTermList :: TypeEnv -> [TermPlus] -> [IdentPlus]
 chainFromTermList tenv es =
-  nubFreeVariables $ concat $ map (chainOf tenv) es
+  nubFreeVariables $ concatMap (chainOf tenv) es
 
 alignFreeVariables :: TypeEnv -> Hint -> [IdentPlus] -> [Comp] -> IO [Comp]
 alignFreeVariables tenv m fvs es = do
   es' <- mapM (returnClosure tenv True LamKindNormal fvs m []) es
-  mapM (\cls -> callClosure cls []) es'
+  mapM (`callClosure` []) es'
 
 nubFreeVariables :: [IdentPlus] -> [IdentPlus]
 nubFreeVariables =
@@ -281,7 +344,7 @@ returnClosure tenv isReducible kind fvs m xts e = do
       registerIfNecessary name' False False xts'' fvs'' e'
       return $ CompUpIntro cls
     LamKindResourceHandler -> do
-      when (not (null fvs'')) $
+      unless (null fvs'') $
         raiseError m "this resource-lambda is not closed"
       e' <- linearize xts'' e >>= reduceComp
       i <- newCount
@@ -299,7 +362,7 @@ registerIfNecessary ::
   IO ()
 registerIfNecessary name isReducible isNoetic xts1 xts2 e = do
   denv <- readIORef defEnv
-  when (not $ name `Map.member` denv) $ do
+  unless (name `Map.member` denv) $ do
     e' <- linearize (xts2 ++ xts1) e
     (envVarName, envVar) <- newValueVarLocalWith "env"
     let args = map fst xts1 ++ [envVarName]
@@ -340,7 +403,7 @@ chainOf tenv term =
       chainOf' tenv (catMaybes [fromLamKind kind] ++ xts) [e]
     (_, TermPiElim e es) -> do
       let xs1 = chainOf tenv e
-      let xs2 = concat $ map (chainOf tenv) es
+      let xs2 = concatMap (chainOf tenv) es
       xs1 ++ xs2
     (_, TermConst _) ->
       []
@@ -356,14 +419,14 @@ chainOf tenv term =
       let xs0 = chainOf tenv t
       let xs1 = chainOf tenv e
       let es = map snd les
-      let xs2 = concat $ map (chainOf tenv) es
+      let xs2 = concatMap (chainOf tenv) es
       xs0 ++ xs1 ++ xs2
     (_, TermDerangement _ es) ->
-      concat $ map (chainOf tenv) es
+      concatMap (chainOf tenv) es
     (_, TermCase _ mSubject (e, _) patList) -> do
-      let xs1 = concat $ (map (chainOf tenv) $ maybeToList mSubject)
+      let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)
       let xs2 = chainOf tenv e
-      let xs3 = concat $ (flip map patList $ \((_, _, xts), body) -> chainOf' tenv xts [body])
+      let xs3 = concatMap (\((_, _, xts), body) -> chainOf' tenv xts [body]) patList
       xs1 ++ xs2 ++ xs3
     (_, TermIgnore e) ->
       chainOf tenv e
@@ -372,7 +435,7 @@ chainOf' :: TypeEnv -> [IdentPlus] -> [TermPlus] -> [IdentPlus]
 chainOf' tenv binder es =
   case binder of
     [] ->
-      concat $ map (chainOf tenv) es
+      concatMap (chainOf tenv) es
     (_, x, t) : xts -> do
       let xs1 = chainOf tenv t
       let xs2 = chainOf' (IntMap.insert (asInt x) t tenv) xts es

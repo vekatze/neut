@@ -6,12 +6,26 @@ module Clarify.Sigma
   )
 where
 
-import Clarify.Linearize
+import Clarify.Linearize (linearize)
 import Clarify.Utility
-import Control.Monad
-import Data.Basic
+  ( bindLet,
+    registerSwitcher,
+    toAffineApp,
+    toRelevantApp,
+    tryCache,
+    wrapWithQuote,
+  )
+import Control.Monad (forM)
+import Data.Basic (Ident)
 import Data.Comp
+  ( Comp (CompSigmaElim, CompUpIntro),
+    Value (ValueSigmaIntro, ValueVarGlobal),
+  )
 import Data.Global
+  ( newIdentFromText,
+    newText,
+    newValueVarLocalWith,
+  )
 import qualified Data.Text as T
 
 immediateName :: T.Text
@@ -20,8 +34,7 @@ immediateName =
 
 returnImmediateS4 :: IO Comp
 returnImmediateS4 = do
-  v <- immediateS4
-  return $ CompUpIntro v
+  CompUpIntro <$> immediateS4
 
 immediateS4 :: IO Value
 immediateS4 = do
@@ -64,7 +77,7 @@ sigmaT ::
 sigmaT mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ \(x, t) -> toAffineApp x t
+  as <- forM xts $ uncurry toAffineApp
   ys <- mapM (const $ newIdentFromText "arg") xts
   body' <- linearize xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
   return $ CompSigmaElim False (map fst xts) argVar body'
@@ -90,7 +103,7 @@ sigma4 ::
 sigma4 mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ \(x, t) -> toRelevantApp x t
+  as <- forM xts $ uncurry toRelevantApp
   (varNameList, varList) <- unzip <$> mapM (const $ newValueVarLocalWith "pair") xts
   body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
   return $ CompSigmaElim True (map fst xts) argVar body'

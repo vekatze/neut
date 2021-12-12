@@ -1,25 +1,66 @@
 module Data.Global where
 
-import Control.Concurrent.Async
+import Control.Concurrent.Async (Async)
+import Control.Monad (when)
 import Data.Basic
-import Data.Comp
+  ( Hint,
+    Ident (..),
+    IsReducible,
+    PosInfo,
+    TopName,
+    asText,
+    getPosInfo,
+    showPosInfo,
+  )
+import Data.Comp (Comp, Value (ValueVarLocal))
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
+  ( IORef,
+    atomicModifyIORef',
+    newIORef,
+    readIORef,
+  )
 import qualified Data.IntMap as IntMap
 import Data.Log
-import Data.LowComp
-import Data.LowType
+  ( Log,
+    LogLevel (LogLevelFail, LogLevelPass),
+    logLevelToSGR,
+    logLevelToText,
+    logNote,
+    logNote',
+    logWarning,
+  )
+import Data.LowComp (LowComp)
+import Data.LowType (LowType, voidPtr)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
-import Data.Term
+import Data.Term (TermPlus)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Version (showVersion)
 import Data.WeakTerm
+  ( Constraint,
+    SuspendedConstraintQueue,
+    WeakTerm (WeakTermAster),
+    WeakTermPlus,
+  )
 import Path
-import Path.IO
+  ( Abs,
+    Dir,
+    File,
+    Path,
+    Rel,
+    parent,
+    parseRelDir,
+    (</>),
+  )
+import Path.IO (createDirIfMissing, getHomeDir)
 import Paths_neut (version)
 import System.Console.ANSI
+  ( ConsoleIntensity (BoldIntensity),
+    SGR (Reset, SetConsoleIntensity),
+    setSGR,
+  )
 import System.IO.Unsafe (unsafePerformIO)
 
 data VisitInfo
@@ -326,15 +367,14 @@ outputLog (mpos, l, t) = do
     outputLogLevel l
   whenRef shouldDisplayLogText $
     outputLogText t (logLevelToPad l)
-  whenRef shouldDisplayLogFooter $
+  whenRef
+    shouldDisplayLogFooter
     outputFooter
 
 whenRef :: IORef Bool -> IO () -> IO ()
 whenRef ref comp = do
   b <- readIORef ref
-  if b
-    then comp
-    else return ()
+  when b comp
 
 outputLogLocation :: Maybe PosInfo -> IO ()
 outputLogLocation mpos = do
@@ -414,9 +454,9 @@ outputFail str =
 
 -- for debug
 p :: String -> IO ()
-p s =
-  putStrLn s
+p =
+  putStrLn
 
 p' :: (Show a) => a -> IO ()
-p' s =
-  putStrLn $ show s
+p' =
+  print

@@ -1,21 +1,33 @@
 module Main (main) where
 
-import Control.Exception.Safe
-import Control.Monad
-import Data.Global
-import Data.List
+import Control.Exception.Safe (catch)
+import Control.Monad (filterM, forM_)
+import Data.Global (outputFail, outputPass)
+import Data.List (intercalate, sort)
 import Path
-import Path.IO
-import System.Environment
-import System.Exit
-import System.Process
+  ( Abs,
+    Dir,
+    File,
+    Path,
+    PathException,
+    addExtension,
+    parseRelDir,
+    splitExtension,
+    stripProperPrefix,
+    toFilePath,
+    (</>),
+  )
+import Path.IO (getCurrentDir, listDirRecur, removeFile)
+import System.Environment (getArgs)
+import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)
+import System.Process (readProcess, readProcessWithExitCode)
 
 main :: IO ()
 main = do
   args <- getArgs
   relDirPathList <- mapM parseRelDir args
   currentDir <- getCurrentDir
-  let testDirPathList = map (\path -> currentDir </> path) relDirPathList
+  let testDirPathList = map (currentDir </>) relDirPathList
   forM_ testDirPathList $ \testDirPath -> do
     (_, contents) <- listDirRecur testDirPath
     progList <- filterM isSourceFile contents

@@ -3,25 +3,96 @@ module Elaborate
   )
 where
 
-import Control.Concurrent.Async
-import Control.Monad
+import Control.Concurrent.Async (async)
+import Control.Monad (forM, forM_, unless, when)
 import Data.Basic
+  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+    Hint,
+    LamKind (..),
+    Opacity (OpacityTransparent),
+    TopName,
+    asInt,
+  )
 import Data.Global
+  ( dataEnv,
+    enumEnv,
+    note,
+    promiseEnv,
+    substEnv,
+    topDefEnv,
+    topTypeEnv,
+  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
+import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
 import Data.List (nub)
-import Data.Log
+import Data.Log (raiseCritical, raiseError)
 import Data.LowType
+  ( LowType (LowTypeFloat, LowTypeInt),
+    asLowTypeMaybe,
+  )
 import Data.Stmt
+  ( HeaderStmtPlus,
+    Stmt (..),
+    StmtPlus,
+    WeakStmt (WeakStmtDef),
+    WeakStmtPlus,
+    saveCache,
+  )
 import Data.Term
+  ( IdentPlus,
+    Pattern,
+    Term
+      ( TermCase,
+        TermConst,
+        TermDerangement,
+        TermEnum,
+        TermEnumElim,
+        TermEnumIntro,
+        TermFloat,
+        TermIgnore,
+        TermInt,
+        TermPi,
+        TermPiElim,
+        TermPiIntro,
+        TermTau,
+        TermVar,
+        TermVarGlobal
+      ),
+    TermPlus,
+    weaken,
+  )
 import qualified Data.Text as T
 import Data.WeakTerm
-import Elaborate.Infer
-import Elaborate.Unify
-import Path
-import Reduce.Term
-import Reduce.WeakTerm
+  ( WeakIdentPlus,
+    WeakPattern,
+    WeakTerm
+      ( WeakTermAster,
+        WeakTermCase,
+        WeakTermConst,
+        WeakTermDerangement,
+        WeakTermEnum,
+        WeakTermEnumElim,
+        WeakTermEnumIntro,
+        WeakTermFloat,
+        WeakTermIgnore,
+        WeakTermInt,
+        WeakTermPi,
+        WeakTermPiElim,
+        WeakTermPiIntro,
+        WeakTermQuestion,
+        WeakTermTau,
+        WeakTermVar,
+        WeakTermVarGlobal
+      ),
+    WeakTermPlus,
+    toText,
+  )
+import Elaborate.Infer (infer, inferType, insConstraintEnv)
+import Elaborate.Unify (unify)
+import Path (Abs, File, Path, toFilePath)
+import Reduce.Term (reduceTermPlus)
+import Reduce.WeakTerm (reduceWeakTermPlus, substWeakTermPlus)
 
 elaborate :: ([HeaderStmtPlus], WeakStmtPlus) -> IO ([StmtPlus], StmtPlus)
 elaborate (ss, mainData@(mainSrcPath, mainContent)) =
@@ -209,7 +280,7 @@ elaborate' term =
             patList' <- elaboratePatternList m bs patList
             return (m, TermCase resultType' mSubject' (e', t') patList')
         _ -> do
-          raiseError (fst t) $ "the type of this term must be a data-type, but its type is:\n" <> (toText $ weaken t')
+          raiseError (fst t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
     (m, WeakTermIgnore e) -> do
       e' <- elaborate' e
       return (m, TermIgnore e')
@@ -274,7 +345,7 @@ checkSwitchExaustiveness m x caseList = do
   let b = EnumCaseDefault `elem` caseList
   enumSet <- lookupEnumSet m x
   let len = toInteger $ length (nub caseList)
-  when (not ((toInteger (length enumSet)) <= len || b)) $
+  unless (toInteger (length enumSet) <= len || b) $
     raiseError m "this switch is ill-constructed in that it is not exhaustive"
 
 lookupEnumSet :: Hint -> T.Text -> IO [T.Text]

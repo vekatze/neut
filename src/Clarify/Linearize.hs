@@ -3,12 +3,16 @@ module Clarify.Linearize
   )
 where
 
-import Clarify.Utility
-import Control.Monad
-import Data.Basic
+import Clarify.Utility (toAffineApp, toRelevantApp)
+import Control.Monad (forM)
+import Data.Basic (Ident)
 import Data.Comp
-import Data.Global
-import Data.IORef
+  ( Comp (..),
+    Primitive (..),
+    Value (ValueSigmaIntro, ValueVarLocal),
+  )
+import Data.Global (count, newIdentFromIdent, newIdentFromText)
+import Data.IORef (readIORef, writeIORef)
 
 linearize ::
   [(Ident, Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
@@ -81,14 +85,14 @@ distinguishComp z term =
     CompSigmaElim b xs d e -> do
       (vs1, d') <- distinguishValue z d
       (vs2, e') <- distinguishComp z e
-      return (concat [vs1, vs2], CompSigmaElim b xs d' e')
+      return (vs1 ++ vs2, CompSigmaElim b xs d' e')
     CompUpIntro d -> do
       (vs, d') <- distinguishValue z d
-      return (vs, (CompUpIntro d'))
+      return (vs, CompUpIntro d')
     CompUpElim x e1 e2 -> do
       (vs1, e1') <- distinguishComp z e1
       (vs2, e2') <- distinguishComp z e2
-      return (concat [vs1, vs2], CompUpElim x e1' e2')
+      return (vs1 ++ vs2, CompUpElim x e1' e2')
     CompEnumElim d branchList -> do
       (vs, d') <- distinguishValue z d
       case branchList of
@@ -101,7 +105,7 @@ distinguishComp z term =
             forM es $ \e -> do
               writeIORef count countBefore
               distinguishComp z e
-          return (concat $ [vs, head vss], CompEnumElim d' (zip cs es'))
+          return (vs ++ head vss, CompEnumElim d' (zip cs es'))
     CompIgnore _ ->
       return ([], term)
 

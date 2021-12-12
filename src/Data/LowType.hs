@@ -2,11 +2,11 @@
 
 module Data.LowType where
 
-import Data.Binary
+import Data.Binary (Binary)
 import qualified Data.Set as S
 import qualified Data.Text as T
-import GHC.Generics
-import Text.Read hiding (get)
+import GHC.Generics (Generic)
+import Text.Read (readMaybe)
 
 data LowType
   = LowTypeInt IntSize
@@ -131,8 +131,8 @@ convOpSet =
 
 cmpOpSet :: S.Set T.Text
 cmpOpSet = do
-  let s1 = S.map ("icmp " <>) $ intCmpOpSet
-  let s2 = S.map ("fcmp " <>) $ floatCmpOpSet
+  let s1 = S.map ("icmp " <>) intCmpOpSet
+  let s2 = S.map ("fcmp " <>) floatCmpOpSet
   S.union s1 s2
 
 binaryOpSet :: S.Set T.Text
