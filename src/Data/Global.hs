@@ -53,13 +53,14 @@ import Path
     File,
     Path,
     Rel,
+    mkAbsDir,
     mkRelDir,
     parent,
     parseAbsDir,
     parseRelDir,
     (</>),
   )
-import Path.IO (ensureDir, getHomeDir)
+import Path.IO (XdgDirectory (XdgCache), ensureDir, getHomeDir, getXdgDir)
 import Paths_neut (version)
 import System.Console.ANSI
   ( ConsoleIntensity (BoldIntensity),
@@ -117,6 +118,11 @@ shouldCancelAlloc =
 isMain :: IORef Bool
 isMain =
   unsafePerformIO (newIORef False)
+
+{-# NOINLINE mainModuleDirRef #-}
+mainModuleDirRef :: IORef (Path Abs Dir)
+mainModuleDirRef =
+  unsafePerformIO (newIORef $(mkAbsDir "/"))
 
 {-# NOINLINE endOfEntry #-}
 endOfEntry :: IORef String
@@ -284,6 +290,10 @@ nopFreeSet :: IORef (S.Set Int)
 nopFreeSet =
   unsafePerformIO (newIORef S.empty)
 
+moduleFileName :: FilePath
+moduleFileName =
+  "module.ens"
+
 --
 -- generating new symbols using count
 --
@@ -334,13 +344,7 @@ newValueVarLocalWith name = do
 
 getCacheDir :: IO (Path Abs Dir)
 getCacheDir = do
-  mPathString <- lookupEnv "XDG_CACHE_HOME"
-  case mPathString of
-    Just pathString ->
-      parseAbsDir pathString >>= returnDirectory
-    Nothing -> do
-      homeDirPath <- getHomeDir
-      returnDirectory $ homeDirPath </> $(mkRelDir ".cache")
+  getXdgDir XdgCache (Just $(mkRelDir ".cache")) >>= returnDirectory
 
 getBasePath :: IO (Path Abs Dir)
 getBasePath = do
