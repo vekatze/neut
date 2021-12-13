@@ -171,13 +171,6 @@ leave = do
   popTrace
   return []
 
-pushTrace :: Path Abs File -> IO ()
-pushTrace path =
-  modifyIORef' traceEnv $ \env -> path : env
-
-popTrace :: IO ()
-popTrace =
-  modifyIORef' traceEnv $ \env -> tail env
 
 header :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
 header currentFilePath = do

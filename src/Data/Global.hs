@@ -19,6 +19,7 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
     atomicModifyIORef',
+    modifyIORef',
     newIORef,
     readIORef,
   )
@@ -141,6 +142,14 @@ fileEnv =
 traceEnv :: IORef [Path Abs File]
 traceEnv =
   unsafePerformIO (newIORef [])
+
+pushTrace :: Path Abs File -> IO ()
+pushTrace path =
+  modifyIORef' traceEnv $ \env -> path : env
+
+popTrace :: IO ()
+popTrace =
+  modifyIORef' traceEnv $ \env -> tail env
 
 -- [("choice", [("left", 0), ("right", 1)]), ...]
 {-# NOINLINE enumEnv #-}

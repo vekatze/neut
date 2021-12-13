@@ -2,7 +2,7 @@ module Parse.Core where
 
 import Control.Exception.Safe (catch, throw)
 import Data.Basic
-  ( Hint,
+  ( Hint (metaFileName, metaLocation),
     Ident,
     LamKind (LamKindNormal),
     Opacity (OpacityTransparent),
@@ -165,6 +165,16 @@ many f = do
       return []
     ]
 
+manyStrict :: IO a -> IO [a]
+manyStrict f = do
+  s <- readIORef text
+  if T.null s
+    then return []
+    else do
+      x <- f
+      xs <- manyStrict f
+      return $ x : xs
+
 many1 :: IO a -> IO [a]
 many1 f = do
   item <- f
@@ -190,6 +200,18 @@ float = do
       return floatValue
     Nothing ->
       raiseParseError m $ "unexpected symbol: " <> x <> "\n expecting: an integer"
+
+parseBool :: IO Bool
+parseBool = do
+  m <- currentHint
+  b <- symbol
+  case b of
+    "true" ->
+      return True
+    "false" ->
+      return False
+    _ ->
+      raiseParseError m $ "unexpected symbol: `" <> b <> "`\n expecting: `true` or `false`"
 
 tryPlanList :: [IO a] -> IO a
 tryPlanList planList =
