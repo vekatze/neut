@@ -48,26 +48,6 @@ withSectionPrefix x = do
   ns <- readIORef sectionEnv
   return $ foldl (\acc n -> n <> nsSep <> acc) x ns
 
-getCurrentSection :: IO T.Text
-getCurrentSection = do
-  ns <- readIORef sectionEnv
-  return $ getCurrentSection' ns
-
-getCurrentSection' :: [T.Text] -> T.Text
-getCurrentSection' nameStack =
-  case nameStack of
-    [] ->
-      ""
-    [n] ->
-      n
-    (n : ns) ->
-      getCurrentSection' ns <> nsSep <> n
-
-handleSection :: T.Text -> IO ()
-handleSection s = do
-  modifyIORef' sectionEnv $ \env -> s : env
-  handleUse s
-
 handleUse :: T.Text -> IO ()
 handleUse s =
   modifyIORef' prefixEnv $ \env -> s : env
