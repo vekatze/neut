@@ -3,6 +3,8 @@
 module Parse.Section
   ( getSectionForSourceFile,
     getModuleRootDir,
+    getSpecForCurrentDirectory,
+    Spec (..),
   )
 where
 
@@ -14,7 +16,7 @@ import Data.Log (raiseError')
 import qualified Data.Text as T
 import qualified Parse.Entity as E
 import Path (Abs, Dir, File, Path, Rel, dirname, mkRelFile, parent, parseRelDir, parseRelFile, splitExtension, stripProperPrefix, toFilePath, (</>))
-import Path.IO (doesFileExist)
+import Path.IO (doesFileExist, getCurrentDir)
 
 type ModuleName =
   T.Text
@@ -47,8 +49,13 @@ getSectionForSourceFile sourceFilePath = do
     else return $ T.pack (toFilePath (dirname moduleDir)) : section
 
 getModuleRootDir :: Path Abs File -> IO (Path Abs Dir)
-getModuleRootDir sourceFile =
+getModuleRootDir sourceFile = do
   parent <$> getModuleFilePath (parent sourceFile)
+
+getSpecForCurrentDirectory :: IO Spec
+getSpecForCurrentDirectory = do
+  currentDir <- getCurrentDir
+  getModuleFilePath currentDir >>= parseModuleFile
 
 getModuleFilePath :: Path Abs Dir -> IO (Path Abs File)
 getModuleFilePath path = do

@@ -8,17 +8,15 @@ import Data.ByteString.Builder (Builder, toLazyByteString)
 import qualified Data.ByteString.Lazy as L
 import Data.Global
   ( endOfEntry,
-    isMain,
     outputLog,
     promiseEnv,
-    shouldCancelAlloc,
     shouldColorize,
-    shouldDisplayLogLevel,
-    shouldDisplayLogLocation,
   )
+import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef, writeIORef)
-import Data.Log (Error (Error))
+import Data.Log (Error (Error), raiseError')
 import Data.Maybe (fromMaybe)
+import qualified Data.Text as T
 import Data.Version (showVersion)
 import Elaborate (elaborate)
 import Emit (emit)
@@ -49,6 +47,7 @@ import Options.Applicative
     value,
   )
 import Parse (parse)
+import Parse.Section (Spec (..), getSpecForCurrentDirectory)
 import Path
   ( Abs,
     Dir,
@@ -60,6 +59,7 @@ import Path
     filename,
     fromRelDir,
     parent,
+    parseRelFile,
     splitExtension,
     stripProperPrefix,
     toFilePath,
@@ -78,6 +78,9 @@ import System.Process
   )
 import Text.Read (readMaybe)
 
+type Target =
+  String
+
 type InputPath =
   String
 
@@ -93,19 +96,7 @@ type OutputPath =
 type CheckOptEndOfEntry =
   String
 
-type ShouldCancelAlloc =
-  Bool
-
 type ShouldColorize =
-  Bool
-
-type ShouldDisplayLogLocation =
-  Bool
-
-type ShouldDisplayLogLevel =
-  Bool
-
-type IsMain =
   Bool
 
 type ClangOption =
@@ -129,7 +120,11 @@ instance Read OutputKind where
     []
 
 data Command
-  = Compile InputPath (Maybe OutputPath) OutputKind ShouldColorize ShouldCancelAlloc ShouldDisplayLogLocation ShouldDisplayLogLevel IsMain (Maybe ClangOption)
+  = Build
+      Target
+      OutputKind
+      ShouldColorize
+      (Maybe ClangOption)
   | Link MainInputPath [AuxInputPath] (Maybe OutputPath) (Maybe ClangOption)
   | Check InputPath ShouldColorize CheckOptEndOfEntry
   | Archive InputPath (Maybe OutputPath)
@@ -137,14 +132,14 @@ data Command
 
 main :: IO ()
 main =
-  execParser (info (helper <*> parseOpt) fullDesc) >>= run
+  execParser (info (helper <*> parseOpt) fullDesc) >>= runCommand
 
 parseOpt :: Parser Command
 parseOpt =
   subparser
     ( command
-        "compile"
-        (info (helper <*> parseCompileOpt) (progDesc "compile given file"))
+        "build"
+        (info (helper <*> parseBuildOpt) (progDesc "build given file"))
         <> command
           "link"
           (info (helper <*> parseLinkOpt) (progDesc "link given files"))
@@ -165,25 +160,16 @@ parseOpt =
           )
     )
 
-parseCompileOpt :: Parser Command
-parseCompileOpt =
-  Compile
+parseBuildOpt :: Parser Command
+parseBuildOpt =
+  Build
     <$> argument
       str
       ( mconcat
-          [ metavar "INPUT",
-            help "The path of input file"
+          [ metavar "TARGET",
+            help "The build target"
           ]
       )
-      <*> optional
-        ( strOption $
-            mconcat
-              [ long "output",
-                short 'o',
-                metavar "OUTPUT",
-                help "The path of output file"
-              ]
-        )
       <*> option
         kindReader
         ( mconcat
@@ -194,37 +180,6 @@ parseCompileOpt =
             ]
         )
       <*> colorizeOpt
-      <*> flag
-        True
-        False
-        ( mconcat
-            [ long "no-alloc-cancellation",
-              help "Set this to disable optimization for redundant alloc"
-            ]
-        )
-      <*> flag
-        True
-        False
-        ( mconcat
-            [ long "no-log-location",
-              help "Set this to suppress location information when displaying log"
-            ]
-        )
-      <*> flag
-        True
-        False
-        ( mconcat
-            [ long "no-log-level",
-              help "Set this to suppress level information when displaying log"
-            ]
-        )
-      <*> flag
-        False
-        True
-        ( mconcat
-            [ long "main"
-            ]
-        )
       <*> optional
         ( strOption
             ( mconcat
@@ -326,20 +281,17 @@ parseArchiveOpt =
             ]
       )
 
-run :: Command -> IO ()
-run cmd =
+runCommand :: Command -> IO ()
+runCommand cmd =
   case cmd of
-    Compile inputPathStr mOutputPathStr outputKind colorizeFlag cancelAllocFlag logLocationFlag logLevelFlag isMainFlag mClangOptStr -> do
+    Build target outputKind colorizeFlag mClangOptStr -> do
       writeIORef shouldColorize colorizeFlag
-      writeIORef shouldCancelAlloc cancelAllocFlag
-      writeIORef shouldDisplayLogLocation logLocationFlag
-      writeIORef shouldDisplayLogLevel logLevelFlag
-      writeIORef isMain isMainFlag
-      inputPath <- resolveFile' inputPathStr
-      llvmIRBuilder <- runCompiler (runCompile inputPath)
-      (basename, _) <- splitExtension $ filename inputPath
-      mOutputPath <- mapM resolveFile' mOutputPathStr
-      outputPath <- constructOutputPath basename mOutputPath outputKind
+      mainSpec <- runAction getSpecForCurrentDirectory
+      entryFilePath <- runAction $ resolveTarget target mainSpec
+      outputPath <- getOutputPath target mainSpec
+      -- _ <- error $ toFilePath entryFilePath
+      -- _ <- error $ toFilePath outputPath
+      llvmIRBuilder <- runAction (build entryFilePath)
       let llvmIR = toLazyByteString llvmIRBuilder
       case outputKind of
         OutputKindLLVM -> do
@@ -369,7 +321,7 @@ run cmd =
       writeIORef shouldColorize colorizeFlag
       writeIORef endOfEntry eoe
       inputPath <- resolveFile' inputPathStr
-      void $ runCompiler (runCheck inputPath)
+      void $ runAction (runCheck inputPath)
       waitAll
     Archive inputPathStr mOutputPathStr -> do
       libDirPath <- resolveDir' inputPathStr
@@ -413,8 +365,24 @@ constructOutputArchivePath inputPath mPath =
     Nothing ->
       resolveFile' (fromRelDir $ dirname inputPath) >>= addExtension ".tar" >>= addExtension ".gz"
 
-runCompile :: Path Abs File -> IO Builder
-runCompile =
+resolveTarget :: Target -> Spec -> IO (Path Abs File)
+resolveTarget target mainSpec = do
+  case M.lookup (T.pack target) (specEntryPoint mainSpec) of
+    Just path ->
+      return path
+    Nothing -> do
+      l <- raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
+      outputLog l
+      exitWith (ExitFailure 1)
+
+getOutputPath :: Target -> Spec -> IO (Path Abs File)
+getOutputPath target mainSpec = do
+  targetFile <- parseRelFile target
+  let targetDir = specTargetPath mainSpec
+  return $ targetDir </> targetFile
+
+build :: Path Abs File -> IO Builder
+build =
   parse >=> elaborate >=> clarify >=> lower >=> emit
 
 runCheck :: Path Abs File -> IO ()
@@ -447,8 +415,8 @@ clangLibOpt outputPath =
     toFilePath outputPath
   ]
 
-runCompiler :: IO a -> IO a
-runCompiler c = do
+runAction :: IO a -> IO a
+runAction c = do
   resultOrErr <- try c
   case resultOrErr of
     Left (Error err) ->
