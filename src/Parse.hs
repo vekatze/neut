@@ -46,6 +46,7 @@ import Data.Namespace
     handleUse,
     withSectionPrefix,
   )
+import qualified Data.Set as S
 import Data.Spec (Spec)
 import Data.Stmt
   ( EnumInfo,
@@ -129,13 +130,12 @@ import System.Process
 -- core functions
 --
 
-parse :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
+parse :: Path Abs File -> IO ([HeaderStmtPlus], [WeakStmt])
 parse mainSourceFilePath = do
   mainSource <- getMainSource mainSourceFilePath
   writeIORef mainModuleDirRef $ getModuleRootDir $ sourceModule mainSource
   initializeEnumEnv
-  (headerInfo, bodyInfo, _) <- visit mainSource
-  _ <- error "finished parsing"
+  (headerInfo, (_, bodyInfo), _) <- visit mainSource
   pushTrace mainSourceFilePath
   ensureMain
   return (headerInfo, bodyInfo)
@@ -297,7 +297,7 @@ defineFunction isReducible m mFun name argList codType e = do
 
 defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
 defineTerm isReducible m name codType e = do
-  registerTopLevelName m $ asIdent name
+  registerTopLevelName m name
   return $ WeakStmtDef isReducible m name codType e
 
 stmtEnsure :: IO ()
@@ -368,7 +368,7 @@ defineData m mFun a xts bts = do
   let baseType = (m, WeakTermPi lamArgs (m, WeakTermVar z))
   case xts of
     [] -> do
-      registerTopLevelName m $ asIdent a
+      registerTopLevelName m a
       let formRule = WeakStmtDef False m a (m, WeakTermTau) (m, WeakTermPi [] (m, WeakTermTau)) -- fake type
       introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
@@ -482,7 +482,7 @@ stmtDefineCodataElim m a xts yts (mY, y, elemType) = do
         elemType
         Nothing
         (weakVar m recordVarText, codataType)
-        [((m, ("", a <> nsSep <> "new"), yts), weakVar m (asText y))]
+        [((m, a <> nsSep <> "new", yts), weakVar m (asText y))]
     )
 
 stmtDefineResourceType :: IO WeakStmt
@@ -554,16 +554,15 @@ identPlusToVar :: WeakIdentPlus -> WeakTermPlus
 identPlusToVar (m, x, _) =
   (m, WeakTermVar x)
 
-registerTopLevelName :: Hint -> Ident -> IO ()
+registerTopLevelName :: Hint -> T.Text -> IO ()
 registerTopLevelName m x = do
   nenv <- readIORef topNameEnv
-  when (Map.member (asText x) nenv) $
-    raiseError m $ "the variable `" <> asText x <> "` is already defined at the top level"
-  path <- toFilePath <$> getCurrentFilePath
-  modifyIORef' topNameEnv $ \env -> Map.insert (asText x) path env
+  when (S.member x nenv) $
+    raiseError m $ "the variable `" <> x <> "` is already defined at the top level"
+  modifyIORef' topNameEnv $ \env -> S.insert x env
 
 initializeNamespace :: IO ()
 initializeNamespace = do
-  writeIORef topNameEnv Map.empty
+  writeIORef topNameEnv S.empty
   readIORef defaultAliasEnv >>= writeIORef aliasEnv
   writeIORef prefixEnv initialPrefixEnv

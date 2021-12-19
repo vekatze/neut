@@ -9,7 +9,6 @@ import Data.Basic
     Ident (..),
     IsReducible,
     PosInfo,
-    TopName,
     asText,
     getPosInfo,
     showPosInfo,
@@ -212,9 +211,9 @@ sectionEnv =
   unsafePerformIO (newIORef [])
 
 {-# NOINLINE topNameEnv #-}
-topNameEnv :: IORef (Map.HashMap T.Text FilePath)
+topNameEnv :: IORef (S.Set T.Text)
 topNameEnv =
-  unsafePerformIO (newIORef Map.empty)
+  unsafePerformIO (newIORef S.empty)
 
 {-# NOINLINE weakTypeEnv #-}
 weakTypeEnv :: IORef (IntMap.IntMap WeakTermPlus)
@@ -222,7 +221,7 @@ weakTypeEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE topTypeEnv #-}
-topTypeEnv :: IORef (Map.HashMap TopName WeakTermPlus)
+topTypeEnv :: IORef (Map.HashMap T.Text WeakTermPlus)
 topTypeEnv =
   unsafePerformIO (newIORef Map.empty)
 
@@ -252,7 +251,7 @@ substEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE topDefEnv #-}
-topDefEnv :: IORef (Map.HashMap TopName WeakTermPlus)
+topDefEnv :: IORef (Map.HashMap T.Text WeakTermPlus)
 topDefEnv =
   unsafePerformIO (newIORef Map.empty)
 

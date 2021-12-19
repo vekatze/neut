@@ -51,7 +51,6 @@ bindLet binder cont =
 
 switch :: Comp -> Comp -> [(EnumCase, Comp)]
 switch e1 e2 =
-  -- [(EnumCaseInt 0, e1), (EnumCaseDefault, e2)]
   [(EnumCaseLabel boolFalse, e1), (EnumCaseDefault, e2)]
 
 tryCache :: T.Text -> IO () -> IO Value
@@ -92,21 +91,6 @@ insDefEnv name isReducible args e =
 insDefEnv' :: T.Text -> Bool -> [Ident] -> IO ()
 insDefEnv' name isReducible args =
   modifyIORef' defEnv $ \env -> Map.insert name (isReducible, args, Nothing) env
-
-{-# INLINE toGlobalVarName #-}
-toGlobalVarName :: FilePath -> T.Text -> T.Text
-toGlobalVarName path x =
-  wrapWithQuote $ x <> ";" <> T.pack path
-
--- {-# INLINE toGlobalVarName #-}
--- toGlobalVarName :: FilePath -> Ident -> T.Text
--- toGlobalVarName path x =
---   wrapWithQuote $ asText x <> ";" <> T.pack path
-
--- {-# INLINE toGlobalVarName #-}
--- toGlobalVarName :: Ident -> T.Text
--- toGlobalVarName x =
---   wrapWithQuote $ "neut:" <> asText x
 
 {-# INLINE toConstructorLabelName #-}
 toConstructorLabelName :: Ident -> T.Text

@@ -125,7 +125,7 @@ checkClauseListSanity consNameList clauseList =
     ([], []) ->
       True
     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
-      | consName == snd name ->
+      | consName == name ->
         checkClauseListSanity restConsNameList restClauseList
     _ ->
       False

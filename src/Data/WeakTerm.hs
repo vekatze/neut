@@ -9,7 +9,6 @@ import Data.Basic
     Ident (..),
     LamKind (LamKindCons, LamKindFix),
     Opacity,
-    TopName,
     asText,
     fromLamKind,
     isOpaque,
@@ -27,7 +26,7 @@ import GHC.Generics (Generic)
 data WeakTerm
   = WeakTermTau
   | WeakTermVar Ident
-  | WeakTermVarGlobal TopName
+  | WeakTermVarGlobal T.Text
   | WeakTermPi [WeakIdentPlus] WeakTermPlus
   | WeakTermPiIntro Opacity (LamKind WeakIdentPlus) [WeakIdentPlus] WeakTermPlus
   | WeakTermPiElim WeakTermPlus [WeakTermPlus]
@@ -51,7 +50,7 @@ data WeakTerm
 instance Binary WeakTerm
 
 type WeakPattern =
-  (Hint, TopName, [WeakIdentPlus])
+  (Hint, T.Text, [WeakIdentPlus])
 
 type WeakTermPlus =
   (Hint, WeakTerm)
@@ -252,7 +251,7 @@ toText term =
       "tau"
     (_, WeakTermVar x) ->
       showVariable x
-    (_, WeakTermVarGlobal (_, x)) ->
+    (_, WeakTermVarGlobal x) ->
       x
     (_, WeakTermPi xts cod)
       | [(_, I ("internal.sigma-tau", _), _), (_, _, (_, WeakTermPi yts _))] <- xts ->
@@ -344,8 +343,8 @@ showCaseClause :: (WeakPattern, WeakTermPlus) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, TopName, [WeakIdentPlus]) -> T.Text
-showPattern (_, (_, f), xts) = do
+showPattern :: (Hint, T.Text, [WeakIdentPlus]) -> T.Text
+showPattern (_, f, xts) = do
   case xts of
     [] ->
       inParen f

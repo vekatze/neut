@@ -9,7 +9,6 @@ import Data.Basic
     Ident,
     LamKind (..),
     Opacity,
-    TopName,
   )
 import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
@@ -49,7 +48,7 @@ import GHC.Generics (Generic)
 data Term
   = TermTau
   | TermVar Ident
-  | TermVarGlobal TopName
+  | TermVarGlobal T.Text
   | TermPi [IdentPlus] TermPlus
   | TermPiIntro Opacity (LamKind IdentPlus) [IdentPlus] TermPlus
   | TermPiElim TermPlus [TermPlus]
@@ -71,7 +70,7 @@ data Term
 instance Binary Term
 
 type Pattern =
-  (Hint, TopName, [IdentPlus])
+  (Hint, T.Text, [IdentPlus])
 
 type TermPlus =
   (Hint, Term)

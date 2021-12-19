@@ -13,7 +13,6 @@ import Data.Basic
     Hint,
     Ident (..),
     LamKind (LamKindFix),
-    TopName,
     asInt,
     asText',
   )
@@ -172,9 +171,9 @@ infer' ctx term =
           return ((m, WeakTermCase resultType mSubject' (e', t') []), resultType) -- ex falso quodlibet
         ((_, constructorName, _), _) : _ -> do
           cenv <- readIORef constructorEnv
-          case Map.lookup (snd constructorName) cenv of
+          case Map.lookup constructorName cenv of
             Nothing ->
-              raiseCritical m $ "no such constructor defined (infer): " <> snd constructorName
+              raiseCritical m $ "no such constructor defined (infer): " <> constructorName
             Just (holeCount, _) -> do
               holeList <- replicateM holeCount (newAsterInCtx ctx m)
               clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
@@ -359,13 +358,12 @@ lookupWeakTypeEnv m s = do
       raiseCritical m $
         asText' s <> " is not found in the weak type environment."
 
-lookupTopTypeEnv :: Hint -> TopName -> IO WeakTermPlus
+lookupTopTypeEnv :: Hint -> T.Text -> IO WeakTermPlus
 lookupTopTypeEnv m name = do
   ttenv <- readIORef topTypeEnv
   case Map.lookup name ttenv of
     Nothing -> do
-      raiseCritical m $
-        snd name <> " is not found in the top type environment."
+      raiseCritical m $ name <> " is not found in the top type environment."
     Just t ->
       return t
 

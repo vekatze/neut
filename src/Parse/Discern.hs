@@ -150,13 +150,13 @@ discern' nenv term =
       t' <- discern' nenv t
       tnenv <- readIORef topNameEnv
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        constructorName' <- resolveSymbol m (asConstructor m tnenv) (snd constructorName)
+        constructorName' <- resolveSymbol m (asConstructor m tnenv) constructorName
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinder nenv xts body
             return ((mCons, newName, xts'), body')
           Nothing ->
-            raiseError m $ "no such constructor is defined: " <> snd constructorName
+            raiseError m $ "no such constructor is defined: " <> constructorName
       return (m, WeakTermCase resultType' mSubject' (e', t') clauseList')
     (m, WeakTermIgnore e) -> do
       e' <- discern' nenv e

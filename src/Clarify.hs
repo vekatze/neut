@@ -14,7 +14,6 @@ import Clarify.Utility
   ( bindLet,
     insDefEnv,
     insDefEnv',
-    toGlobalVarName,
     wrapWithQuote,
   )
 import Control.Monad (forM, forM_, unless, when, (>=>))
@@ -39,6 +38,7 @@ import Data.Comp
 import Data.Global
   ( constructorEnv,
     defEnv,
+    getCurrentFilePath,
     isMain,
     newCount,
     newIdentFromText,
@@ -58,7 +58,7 @@ import Data.LowType
   )
 import Data.Maybe (catMaybes, isJust, maybeToList)
 import qualified Data.Set as S
-import Data.Stmt (Stmt (..), StmtPlus)
+import Data.Stmt (Stmt (..))
 import Data.Term
   ( IdentPlus,
     Pattern,
@@ -87,11 +87,10 @@ import qualified Data.Text as T
 import Path (toFilePath)
 import Reduce.Comp (reduceComp, substComp)
 
-clarify :: ([StmtPlus], StmtPlus) -> IO ([(T.Text, Comp)], Maybe Comp)
-clarify (ss, (mainFilePath, mainDefList)) = do
-  let path = toFilePath mainFilePath
+clarify :: ([[Stmt]], [Stmt]) -> IO ([(T.Text, Comp)], Maybe Comp)
+clarify (ss, mainDefList) = do
   clarifyHeader ss
-  mainDefList' <- mapM (clarifyDef path) mainDefList
+  mainDefList' <- mapM clarifyDef mainDefList
   register mainDefList' -- for inlining
   mainDefList'' <- forM mainDefList' $ \(name, e) -> do
     e' <- reduceComp e
@@ -100,30 +99,31 @@ clarify (ss, (mainFilePath, mainDefList)) = do
   if not flag
     then return (mainDefList'', Nothing)
     else do
+      path <- toFilePath <$> getCurrentFilePath
       let m = newHint 1 1 path
       _ <- immediateS4
       _ <- returnClosureS4
-      ensureMain m path
-      let mainTerm = CompPiElimDownElim (ValueVarGlobal (toGlobalVarName path "main")) []
+      ensureMain m
+      let mainTerm = CompPiElimDownElim (ValueVarGlobal "this.main") []
       return (mainDefList'', Just mainTerm)
 
-ensureMain :: Hint -> FilePath -> IO ()
-ensureMain m mainFilePath = do
+ensureMain :: Hint -> IO ()
+ensureMain m = do
   denv <- readIORef defEnv
-  case Map.lookup (toGlobalVarName mainFilePath "main") denv of
+  case Map.lookup "this.main" denv of
     Nothing -> do
       p' $ Map.keys denv
       raiseError m "`main` is missing"
     Just _ ->
       return ()
 
-clarifyHeader :: [StmtPlus] -> IO ()
+clarifyHeader :: [[Stmt]] -> IO ()
 clarifyHeader ss =
   case ss of
     [] ->
       return ()
-    (path, defList) : rest -> do
-      mapM (clarifyDef $ toFilePath path) defList >>= register'
+    defList : rest -> do
+      mapM clarifyDef defList >>= register'
       clarifyHeader rest
 
 register :: [(T.Text, Comp)] -> IO ()
@@ -134,11 +134,10 @@ register' :: [(T.Text, Comp)] -> IO ()
 register' defList =
   forM_ defList $ \(x, _) -> insDefEnv' x True []
 
-clarifyDef :: FilePath -> Stmt -> IO (T.Text, Comp)
-clarifyDef path (StmtDef _ _ x _ e) = do
+clarifyDef :: Stmt -> IO (T.Text, Comp)
+clarifyDef (StmtDef _ _ x _ e) = do
   e' <- clarifyTerm IntMap.empty e >>= reduceComp
-  let x' = toGlobalVarName path x
-  return (x', e')
+  return (x, e')
 
 clarifyTerm :: TypeEnv -> TermPlus -> IO Comp
 clarifyTerm tenv term =
@@ -147,8 +146,8 @@ clarifyTerm tenv term =
       returnImmediateS4
     (_, TermVar x) -> do
       return $ CompUpIntro $ ValueVarLocal x
-    (_, TermVarGlobal (path, x)) ->
-      return $ CompPiElimDownElim (ValueVarGlobal (toGlobalVarName path x)) []
+    (_, TermVarGlobal x) ->
+      return $ CompPiElimDownElim (ValueVarGlobal x) []
     (_, TermPi {}) ->
       returnClosureS4
     (m, TermPiIntro opacity kind mxts e) -> do
@@ -197,7 +196,7 @@ clarifyTerm tenv term =
         clauseClosure <- returnClosure tenv True LamKindNormal fvs mPat xts body'
         closureArgs <- constructClauseArguments clauseClosure i $ length patList
         let (argVarNameList, argList, argVarList) = unzip3 (resultArg : closureArgs)
-        let constructorName' = snd constructorName <> ";cons"
+        let constructorName' = constructorName <> ";cons"
         let consName = wrapWithQuote $ if isJust mSubject then constructorName' <> ";noetic" else constructorName'
         return
           ( EnumCaseInt i,
@@ -251,7 +250,6 @@ constructClauseArguments' clsInfo clsIndex cursor upperBound = do
       if cursor == clsIndex
         then return $ clsInfo : rest
         else do
-          -- let (_, (m, _), _) = clsInfo
           (argVarName, argVar) <- newValueVarLocalWith "arg"
           fakeClosure <- makeFakeClosure
           return $ (argVarName, CompUpIntro fakeClosure, argVar) : rest

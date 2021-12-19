@@ -2,7 +2,7 @@
 
 module Data.Namespace where
 
-import Data.Basic (EnumCase (EnumCaseLabel), Hint, Ident, TopName)
+import Data.Basic (EnumCase (EnumCaseLabel), Hint, Ident)
 import Data.Global (aliasEnv, nsSep, prefixEnv, sectionEnv)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
@@ -12,6 +12,7 @@ import Data.LowType
     asLowTypeMaybe,
     asPrimOp,
   )
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakTerm
@@ -114,14 +115,18 @@ asWeakVar m nenv var =
   asVar m nenv var WeakTermVar
 
 {-# INLINE asGlobalVar #-}
-asGlobalVar :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe WeakTermPlus
+asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> Maybe WeakTermPlus
 asGlobalVar m nenv name =
-  asVar m nenv name (\fp -> WeakTermVarGlobal (fp, name))
+  if S.member name nenv
+    then Just (m, WeakTermVarGlobal name)
+    else Nothing
 
 {-# INLINE asConstructor #-}
-asConstructor :: Hint -> Map.HashMap T.Text FilePath -> T.Text -> Maybe (Hint, TopName)
+asConstructor :: Hint -> S.Set T.Text -> T.Text -> Maybe (Hint, T.Text)
 asConstructor m nenv name =
-  asVar m nenv name (,name)
+  if S.member name nenv
+    then Just (m, name)
+    else Nothing
 
 {-# INLINE findThenModify #-}
 findThenModify :: Map.HashMap T.Text t -> (T.Text -> a) -> T.Text -> Maybe a

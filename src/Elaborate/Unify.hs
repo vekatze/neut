@@ -12,7 +12,6 @@ import Data.Basic
     Ident,
     LamKind (LamKindFix, LamKindNormal),
     Opacity (OpacityTransparent),
-    TopName,
     asInt,
     getPosInfo,
     lamKindWeakEq,
@@ -65,7 +64,7 @@ import Reduce.WeakTerm (reduceWeakTermPlus, substWeakTermPlus)
 
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTermPlus])]
-  | StuckPiElimVarGlobal TopName [(Hint, [WeakTermPlus])]
+  | StuckPiElimVarGlobal T.Text [(Hint, [WeakTermPlus])]
   | StuckPiElimAster Int [[WeakTermPlus]]
   deriving (Show)
 
@@ -386,6 +385,6 @@ lookupAny is sub =
           lookupAny js sub
 
 {-# INLINE lookupDefinition #-}
-lookupDefinition :: TopName -> Map.HashMap (FilePath, T.Text) WeakTermPlus -> Maybe WeakTermPlus
+lookupDefinition :: T.Text -> Map.HashMap T.Text WeakTermPlus -> Maybe WeakTermPlus
 lookupDefinition =
   Map.lookup

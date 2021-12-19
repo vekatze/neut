@@ -38,9 +38,6 @@ instance Binary Hint
 type PosInfo =
   (FilePath, Loc)
 
-type TopName =
-  (FilePath, T.Text)
-
 instance Show Hint where
   show _ =
     "_"
