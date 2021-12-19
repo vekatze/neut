@@ -56,18 +56,16 @@ import Path
     mkAbsDir,
     mkRelDir,
     parent,
-    parseAbsDir,
     parseRelDir,
     (</>),
   )
-import Path.IO (XdgDirectory (XdgCache), ensureDir, getHomeDir, getXdgDir)
+import Path.IO (XdgDirectory (XdgCache), ensureDir, getXdgDir)
 import Paths_neut (version)
 import System.Console.ANSI
   ( ConsoleIntensity (BoldIntensity),
     SGR (Reset, SetConsoleIntensity),
     setSGR,
   )
-import System.Environment (lookupEnv)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Info as System
 
@@ -184,10 +182,14 @@ defaultPrefixEnv :: IORef [T.Text]
 defaultPrefixEnv =
   unsafePerformIO (newIORef [])
 
+initialPrefixEnv :: [T.Text]
+initialPrefixEnv =
+  ["this"]
+
 {-# NOINLINE prefixEnv #-}
 prefixEnv :: IORef [T.Text]
 prefixEnv =
-  unsafePerformIO (newIORef [])
+  unsafePerformIO (newIORef initialPrefixEnv)
 
 {-# NOINLINE defaultAliasEnv #-}
 defaultAliasEnv :: IORef [(T.Text, T.Text)]
@@ -294,6 +296,19 @@ moduleFileName :: FilePath
 moduleFileName =
   "module.ens"
 
+sourceFileExtension :: T.Text
+sourceFileExtension =
+  "neut"
+
+defaultModulePrefix :: T.Text
+defaultModulePrefix =
+  "this"
+
+{-# NOINLINE currentModuleName #-}
+currentModuleName :: IORef T.Text
+currentModuleName =
+  unsafePerformIO (newIORef "this")
+
 --
 -- generating new symbols using count
 --
@@ -342,14 +357,9 @@ newValueVarLocalWith name = do
 -- obtain information from the environment
 --
 
-getCacheDir :: IO (Path Abs Dir)
-getCacheDir = do
-  getXdgDir XdgCache (Just $(mkRelDir ".cache")) >>= returnDirectory
-
-getBasePath :: IO (Path Abs Dir)
-getBasePath = do
-  dirPath <- getCacheDir
-  returnDirectory $ dirPath </> $(mkRelDir "neut")
+getCacheDirPath :: IO (Path Abs Dir)
+getCacheDirPath = do
+  getXdgDir XdgCache (Just $(mkRelDir "neut")) >>= returnDirectory
 
 getCurrentFilePath :: IO (Path Abs File)
 getCurrentFilePath = do
@@ -362,12 +372,12 @@ getCurrentDirPath =
 
 getLibraryDirPath :: IO (Path Abs Dir)
 getLibraryDirPath = do
-  basePath <- getBasePath
+  basePath <- getCacheDirPath
   returnDirectory $ basePath </> $(mkRelDir "library")
 
 getTargetDependentDirPath :: String -> IO (Path Abs Dir)
 getTargetDependentDirPath directoryName = do
-  basePath <- getBasePath
+  basePath <- getCacheDirPath
   target <- readIORef targetPlatform
   relPath <- parseRelDir $ directoryName <> "/" <> target <> "/" <> showVersion version
   returnDirectory $ basePath </> relPath

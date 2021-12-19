@@ -18,6 +18,7 @@ dependencies:
   - binary
   - bytestring
   - containers
+  - filepath
   - free
   - half
   - optparse-applicative

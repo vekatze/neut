@@ -84,6 +84,9 @@ discern' nenv term =
     (m, WeakTermTau) ->
       return (m, WeakTermTau)
     (m, WeakTermVar (I (s, _))) -> do
+      -- fixme: weakvarというかローカル変数の解決にresolveSymbolをつかってるのはおかしいのでは。
+      -- prefixは無関係だし。
+      -- （ローカル変数にprefix解決をおこなってもあんまりうれしくないでしょ）
       tryCand (resolveSymbol m (asWeakVar m nenv) s) $ do
         tnenv <- readIORef topNameEnv
         tryCand (resolveSymbol m (asGlobalVar m tnenv) s) $ do

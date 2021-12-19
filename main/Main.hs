@@ -16,6 +16,7 @@ import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef, writeIORef)
 import Data.Log (Error (Error), raiseError')
 import Data.Maybe (fromMaybe)
+import Data.Spec (Spec (specEntryPoint, specTargetDir))
 import qualified Data.Text as T
 import Data.Version (showVersion)
 import Elaborate (elaborate)
@@ -47,7 +48,7 @@ import Options.Applicative
     value,
   )
 import Parse (parse)
-import Parse.Section (Spec (..), getSpecForCurrentDirectory)
+import Parse.Section (getSpecForBuildDirectory)
 import Path
   ( Abs,
     Dir,
@@ -286,11 +287,9 @@ runCommand cmd =
   case cmd of
     Build target outputKind colorizeFlag mClangOptStr -> do
       writeIORef shouldColorize colorizeFlag
-      mainSpec <- runAction getSpecForCurrentDirectory
+      mainSpec <- runAction getSpecForBuildDirectory
       entryFilePath <- runAction $ resolveTarget target mainSpec
       outputPath <- getOutputPath target mainSpec
-      -- _ <- error $ toFilePath entryFilePath
-      -- _ <- error $ toFilePath outputPath
       llvmIRBuilder <- runAction (build entryFilePath)
       let llvmIR = toLazyByteString llvmIRBuilder
       case outputKind of
@@ -378,7 +377,7 @@ resolveTarget target mainSpec = do
 getOutputPath :: Target -> Spec -> IO (Path Abs File)
 getOutputPath target mainSpec = do
   targetFile <- parseRelFile target
-  let targetDir = specTargetPath mainSpec
+  let targetDir = specTargetDir mainSpec
   return $ targetDir </> targetFile
 
 build :: Path Abs File -> IO Builder

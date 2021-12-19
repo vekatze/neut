@@ -21,41 +21,41 @@ import Data.Global
     constructorEnv,
     dataEnv,
     defaultAliasEnv,
-    defaultSectionEnv,
     enumEnv,
     fileEnv,
-    getCurrentDirPath,
     getCurrentFilePath,
     getLibraryDirPath,
+    initialPrefixEnv,
     isMain,
+    mainModuleDirRef,
     newText,
     note',
+    popTrace,
     prefixEnv,
+    pushTrace,
     revEnumEnv,
     sectionEnv,
     topNameEnv,
     topNameEnvExt,
-    traceEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.List (find)
 import Data.Log (raiseError)
+import Data.Module (Source (..), getMainModule, getModuleRootDir)
 import Data.Namespace
   ( handleDefinePrefix,
-    handleSection,
     handleUse,
     nsSep,
     withSectionPrefix,
   )
 import qualified Data.Set as S
+import Data.Spec (Spec)
 import Data.Stmt
   ( EnumInfo,
     HeaderStmtPlus,
-    Stmt (StmtDef),
     WeakStmt (..),
     WeakStmtPlus,
-    loadCache,
   )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -95,6 +95,9 @@ import Parse.Core
     withNestedState,
   )
 import Parse.Discern (discern, discernStmtList)
+import Parse.Import (parseImport)
+import Parse.Section (pathToSection)
+import Parse.Spec (moduleToSpec)
 import Parse.WeakTerm
   ( ascriptionInner,
     weakAscription,
@@ -113,10 +116,8 @@ import Path
   )
 import Path.IO
   ( doesDirExist,
-    doesFileExist,
     ensureDir,
     removeDir,
-    resolveFile,
   )
 import System.Exit (ExitCode (..))
 import System.Process
@@ -132,12 +133,24 @@ import System.Process
 --
 
 parse :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
-parse path = do
+parse mainSourceFilePath = do
+  mainSource <- getMainSource mainSourceFilePath
+  writeIORef mainModuleDirRef $ getModuleRootDir $ sourceModule mainSource
   setupEnumEnv
-  pushTrace path
-  (headerInfo, bodyInfo, _) <- visit path
+  (headerInfo, bodyInfo, _) <- visit mainSource
+  _ <- error "finished parsing"
+  pushTrace mainSourceFilePath
   ensureMain
   return (headerInfo, bodyInfo)
+
+getMainSource :: Path Abs File -> IO Source
+getMainSource mainSourceFilePath = do
+  mainModule <- getMainModule
+  return $
+    Source
+      { sourceModule = mainModule,
+        sourceFilePath = mainSourceFilePath
+      }
 
 ensureMain :: IO ()
 ensureMain = do
@@ -147,21 +160,18 @@ ensureMain = do
     _ <- discern (m, WeakTermVar $ asIdent "main")
     return ()
 
-visit :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
-visit path = do
+visit :: Source -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+visit source = do
   initializeNamespace
+  let path = sourceFilePath source
   pushTrace path
-  ensureNoDoubleQuotes path
   modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoActive env
   withNestedState $ do
     TIO.readFile (toFilePath path) >>= initializeState
     skip
-    header path
-
-ensureNoDoubleQuotes :: Path Abs File -> IO ()
-ensureNoDoubleQuotes path = do
-  m <- currentHint
-  when ('"' `elem` toFilePath path) $ raiseError m "filepath cannot contain double quotes"
+    m <- currentHint
+    spec <- moduleToSpec m (sourceModule source)
+    parseHeader spec path
 
 leave :: IO [WeakStmt]
 leave = do
@@ -171,38 +181,65 @@ leave = do
   popTrace
   return []
 
-
-header :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
-header currentFilePath = do
+parseHeaderBase ::
+  Path Abs File ->
+  IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo]) ->
+  IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+parseHeaderBase currentFilePath action = do
   s <- readIORef text
   if T.null s
     then leave >>= \result -> return ([], (currentFilePath, result), [])
-    else do
-      headSymbol <- lookAhead (symbolMaybe isSymbolChar)
-      case headSymbol of
-        Just "define-enum" -> do
-          enumInfo <- stmtDefineEnum
-          (headerInfo, bodyInfo, enumInfoList) <- header currentFilePath
-          return (headerInfo, bodyInfo, enumInfo : enumInfoList)
-        Just "define-prefix" -> do
-          stmtDefinePrefix
-          header currentFilePath
-        Just "ensure" -> do
-          stmtEnsure
-          header currentFilePath
-        Just "include" -> do
-          defList1 <- stmtInclude
-          (defList2, main, enumInfoList) <- header currentFilePath
-          return (defList1 ++ defList2, main, enumInfoList)
-        Just "section" -> do
-          stmtSection
-          header currentFilePath
-        Just "use" -> do
-          stmtUse
-          header currentFilePath
-        _ -> do
-          stmtList <- stmt >>= discernStmtList
-          return ([], (currentFilePath, stmtList), [])
+    else action
+
+parseHeader :: Spec -> Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+parseHeader currentSpec currentFilePath = do
+  parseHeaderBase currentFilePath $ do
+    headSymbol <- lookAhead (symbolMaybe isSymbolChar)
+    case headSymbol of
+      Just "import" -> do
+        defList1 <- parseImport currentSpec visit
+        (defList2, main, enumInfoList) <- parseHeader currentSpec currentFilePath
+        return (defList1 ++ defList2, main, enumInfoList)
+      _ -> do
+        parseHeader' currentSpec currentFilePath
+
+setupSectionPrefix :: Spec -> Path Abs File -> IO ()
+setupSectionPrefix currentSpec currentFilePath = do
+  (moduleName, pathInfo) <- pathToSection currentSpec currentFilePath
+  let section = moduleName : pathInfo
+  handleUse $ T.intercalate nsSep section
+  writeIORef sectionEnv section
+
+parseHeader' :: Spec -> Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+parseHeader' currentSpec currentFilePath = do
+  parseHeaderBase currentFilePath $ do
+    headSymbol <- lookAhead (symbolMaybe isSymbolChar)
+    case headSymbol of
+      Just "define-prefix" -> do
+        stmtDefinePrefix
+        parseHeader' currentSpec currentFilePath
+      Just "ensure" -> do
+        stmtEnsure
+        parseHeader' currentSpec currentFilePath
+      Just "use" -> do
+        stmtUse
+        parseHeader' currentSpec currentFilePath
+      _ -> do
+        setupSectionPrefix currentSpec currentFilePath
+        parseHeader'' currentFilePath
+
+parseHeader'' :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+parseHeader'' currentFilePath = do
+  parseHeaderBase currentFilePath $ do
+    headSymbol <- lookAhead (symbolMaybe isSymbolChar)
+    case headSymbol of
+      Just "define-enum" -> do
+        enumInfo <- stmtDefineEnum
+        (parseHeader''Info, bodyInfo, enumInfoList) <- parseHeader'' currentFilePath
+        return (parseHeader''Info, bodyInfo, enumInfo : enumInfoList)
+      _ -> do
+        stmtList <- stmt >>= discernStmtList
+        return ([], (currentFilePath, stmtList), [])
 
 stmt :: IO [WeakStmt]
 stmt = do
@@ -355,12 +392,6 @@ raiseIfFailure m procName exitCode h pkgDirPath =
       errStr <- hGetContents h
       raiseError m $ T.pack $ "the child process `" ++ procName ++ "` failed with the following message (exitcode = " ++ show i ++ "):\n" ++ errStr
 
-stmtSection :: IO ()
-stmtSection = do
-  token "section"
-  name <- varText
-  handleSection name
-
 stmtUse :: IO ()
 stmtUse = do
   token "use"
@@ -374,69 +405,6 @@ stmtDefinePrefix = do
   token "="
   to <- varText
   handleDefinePrefix from to
-
-stmtInclude :: IO [HeaderStmtPlus]
-stmtInclude = do
-  m <- currentHint
-  token "include"
-  path <- T.unpack <$> string
-  dirPath <-
-    if head path == '.'
-      then getCurrentDirPath
-      else getLibraryDirPath
-  newPath <- resolveFile dirPath path
-  ensureFileExistence m newPath
-  denv <- readIORef fileEnv
-  case Map.lookup newPath denv of
-    Just VisitInfoActive -> do
-      tenv <- readIORef traceEnv
-      let cyclicPath = dropWhile (/= newPath) (reverse tenv) ++ [newPath]
-      raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPath
-    Just (VisitInfoFinish nameInfo) -> do
-      modifyIORef' topNameEnvExt $ \env -> Map.union nameInfo env
-      return []
-    Nothing -> do
-      stmtListOrNothing <- loadCache m newPath
-      case stmtListOrNothing of
-        Just (stmtList, enumInfoList) -> do
-          forM_ enumInfoList $ \(mEnum, name, itemList) -> do
-            insEnumEnv (toFilePath newPath) mEnum name itemList
-          let names = Map.fromList $ map (\(StmtDef _ _ x _ _) -> (x, toFilePath newPath)) stmtList
-          modifyIORef' topNameEnvExt $ \env -> Map.union names env
-          modifyIORef' fileEnv $ \env -> Map.insert newPath (VisitInfoFinish names) env
-          return [(newPath, Left stmtList, enumInfoList)]
-        Nothing -> do
-          nenvExt <- readIORef topNameEnvExt
-          (ss, (pathInfo, bodyInfo), enumInfoList) <- visit newPath
-          newNameEnv <- readIORef topNameEnv
-          writeIORef topNameEnv Map.empty
-          writeIORef topNameEnvExt $ Map.union nenvExt newNameEnv
-          return $ ss ++ [(pathInfo, Right bodyInfo, enumInfoList)]
-
-ensureFileExistence :: Hint -> Path Abs File -> IO ()
-ensureFileExistence m path = do
-  b <- doesFileExist path
-  unless b $ raiseError m $ "no such file: " <> T.pack (toFilePath path)
-
-showCyclicPath :: [Path Abs File] -> T.Text
-showCyclicPath pathList =
-  case pathList of
-    [] ->
-      ""
-    [path] ->
-      T.pack (toFilePath path)
-    (path : ps) ->
-      "     " <> T.pack (toFilePath path) <> showCyclicPath' ps
-
-showCyclicPath' :: [Path Abs File] -> T.Text
-showCyclicPath' pathList =
-  case pathList of
-    [] ->
-      ""
-    [path] ->
-      "\n  ~> " <> T.pack (toFilePath path)
-    (path : ps) ->
-      "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
 stmtDefineData :: IO [WeakStmt]
 stmtDefineData = do
@@ -708,5 +676,4 @@ initializeNamespace = do
   writeIORef topNameEnv Map.empty
   writeIORef topNameEnvExt Map.empty
   readIORef defaultAliasEnv >>= writeIORef aliasEnv
-  readIORef defaultSectionEnv >>= writeIORef sectionEnv
-  writeIORef prefixEnv []
+  writeIORef prefixEnv initialPrefixEnv

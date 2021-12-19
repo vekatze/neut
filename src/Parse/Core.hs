@@ -2,7 +2,7 @@ module Parse.Core where
 
 import Control.Exception.Safe (catch, throw)
 import Data.Basic
-  ( Hint (metaFileName, metaLocation),
+  ( Hint,
     Ident,
     LamKind (LamKindNormal),
     Opacity (OpacityTransparent),
@@ -58,20 +58,37 @@ column =
 -- basic functions for the parser combinator
 --
 
-type ParserState = (T.Text, Int, Int)
+data ParserState = ParserState
+  { parserStateText :: T.Text,
+    parserStateLine :: Int,
+    parserStateColumn :: Int,
+    parserStatePrefixEnv :: [T.Text],
+    parserStateAliasEnv :: [(T.Text, T.Text)]
+  }
 
 saveState :: IO ParserState
 saveState = do
   s <- readIORef text
   l <- readIORef line
   c <- readIORef column
-  return (s, l, c)
+  p <- readIORef prefixEnv
+  a <- readIORef aliasEnv
+  return $
+    ParserState
+      { parserStateText = s,
+        parserStateLine = l,
+        parserStateColumn = c,
+        parserStatePrefixEnv = p,
+        parserStateAliasEnv = a
+      }
 
 loadState :: ParserState -> IO ()
-loadState (s, l, c) = do
-  writeIORef text s
-  writeIORef line l
-  writeIORef column c
+loadState state = do
+  writeIORef text $ parserStateText state
+  writeIORef line $ parserStateLine state
+  writeIORef column $ parserStateColumn state
+  writeIORef prefixEnv $ parserStatePrefixEnv state
+  writeIORef aliasEnv $ parserStateAliasEnv state
 
 initializeState :: T.Text -> IO ()
 initializeState fileContent = do
@@ -83,14 +100,8 @@ withNestedState :: IO a -> IO a
 withNestedState comp = do
   state <- saveState
   value <- comp
-  cleanup
   loadState state
   return value
-
-cleanup :: IO ()
-cleanup = do
-  writeIORef aliasEnv []
-  writeIORef prefixEnv []
 
 betweenParen :: IO a -> IO a
 betweenParen f = do
@@ -417,7 +428,7 @@ keywordSet =
       "idealize",
       "if",
       "in",
-      "include",
+      "import",
       "lambda",
       "let",
       "let?",

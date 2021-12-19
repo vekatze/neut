@@ -24,6 +24,9 @@ import Data.WeakTerm
     WeakTermPlus,
   )
 
+data Section
+  = Section T.Text [T.Text]
+
 nsSepChar :: Char
 nsSepChar =
   '.'
@@ -46,7 +49,7 @@ nsOS =
 withSectionPrefix :: T.Text -> IO T.Text
 withSectionPrefix x = do
   ns <- readIORef sectionEnv
-  return $ foldl (\acc n -> n <> nsSep <> acc) x ns
+  return $ T.intercalate "." (ns ++ [x])
 
 handleUse :: T.Text -> IO ()
 handleUse s =

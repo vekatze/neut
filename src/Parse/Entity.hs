@@ -36,17 +36,19 @@ import Parse.Core
     symbol,
     text,
     tryPlanList,
+    withNestedState,
   )
 import Path (Abs, File, Path, toFilePath)
 
 parse :: Path Abs File -> IO Entity
 parse path = do
-  TIO.readFile (toFilePath path) >>= initializeState
-  pushTrace path
-  m <- currentHint
-  ens <- parseFile
-  popTrace
-  return $ m :< EntityDictionary ens
+  withNestedState $ do
+    TIO.readFile (toFilePath path) >>= initializeState
+    pushTrace path
+    m <- currentHint
+    ens <- skip >> parseFile
+    popTrace
+    return $ m :< EntityDictionary ens
 
 parseEntity :: IO Entity
 parseEntity = do
