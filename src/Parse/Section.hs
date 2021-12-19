@@ -8,7 +8,7 @@ where
 import Data.Global (defaultModulePrefix, mainModuleDirRef, sourceFileExtension)
 import Data.IORef (readIORef)
 import Data.Module (getMainModule)
-import Data.Spec (Spec (..))
+import Data.Spec (Spec (..), getSourceDir)
 import qualified Data.Text as T
 import Parse.Core (currentHint)
 import Parse.Spec (moduleToSpec)
@@ -17,7 +17,7 @@ import System.FilePath.Posix (dropTrailingPathSeparator, pathSeparator)
 
 pathToSection :: Spec -> Path Abs File -> IO (T.Text, [T.Text])
 pathToSection spec sourceFilePath = do
-  relFilePath <- stripProperPrefix (specSourceDir spec) sourceFilePath
+  relFilePath <- stripProperPrefix (getSourceDir spec) sourceFilePath
   (relFilePath', _) <- splitExtension relFilePath
   let section = T.splitOn "/" $ T.pack $ toFilePath relFilePath'
   let moduleDir = parent $ specLocation spec

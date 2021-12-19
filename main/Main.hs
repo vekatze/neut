@@ -1,6 +1,7 @@
 module Main (main) where
 
 import Clarify (clarify)
+import Command.Get (get, tidy)
 import Control.Concurrent.Async (wait)
 import Control.Exception.Safe (try)
 import Control.Monad (forM_, void, (>=>))
@@ -12,11 +13,11 @@ import Data.Global
     promiseEnv,
     shouldColorize,
   )
-import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef, writeIORef)
 import Data.Log (Error (Error), raiseError')
 import Data.Maybe (fromMaybe)
-import Data.Spec (Spec (specEntryPoint, specTargetDir))
+import Data.Module (Alias)
+import Data.Spec (Spec, URL (URL), getEntryPoint, getTargetDir)
 import qualified Data.Text as T
 import Data.Version (showVersion)
 import Elaborate (elaborate)
@@ -120,6 +121,12 @@ instance Read OutputKind where
   readsPrec _ _ =
     []
 
+-- type Alias =
+--   String
+
+-- type URL =
+--   String
+
 data Command
   = Build
       Target
@@ -129,6 +136,8 @@ data Command
   | Link MainInputPath [AuxInputPath] (Maybe OutputPath) (Maybe ClangOption)
   | Check InputPath ShouldColorize CheckOptEndOfEntry
   | Archive InputPath (Maybe OutputPath)
+  | Get Alias URL
+  | Tidy
   | Version
 
 main :: IO ()
@@ -152,6 +161,18 @@ parseOpt =
           ( info
               (helper <*> parseArchiveOpt)
               (progDesc "create archive from given path")
+          )
+        <> command
+          "get"
+          ( info
+              (helper <*> parseGetOpt)
+              (progDesc "get a package")
+          )
+        <> command
+          "tidy"
+          ( info
+              (helper <*> parseTidyOpt)
+              (progDesc "tidy the module dependency")
           )
         <> command
           "version"
@@ -220,6 +241,32 @@ parseLinkOpt = do
                 ]
             )
         )
+
+parseGetOpt :: Parser Command
+parseGetOpt =
+  Get
+    <$> ( T.pack
+            <$> argument
+              str
+              ( mconcat
+                  [ metavar "ALIAS",
+                    help "The alias of the module"
+                  ]
+              )
+        )
+      <*> ( URL . T.pack
+              <$> argument
+                str
+                ( mconcat
+                    [ metavar "URL",
+                      help "The URL of the archive"
+                    ]
+                )
+          )
+
+parseTidyOpt :: Parser Command
+parseTidyOpt =
+  pure Tidy
 
 parseVersionOpt :: Parser Command
 parseVersionOpt =
@@ -333,6 +380,10 @@ runCommand cmd =
       tarExitCode <- waitForProcess handler
       waitAll
       exitWith tarExitCode
+    Get alias url ->
+      runAction $ get alias url
+    Tidy ->
+      runAction tidy
     Version ->
       putStrLn $ showVersion version
 
@@ -366,7 +417,8 @@ constructOutputArchivePath inputPath mPath =
 
 resolveTarget :: Target -> Spec -> IO (Path Abs File)
 resolveTarget target mainSpec = do
-  case M.lookup (T.pack target) (specEntryPoint mainSpec) of
+  -- case M.lookup (T.pack target) (specEntryPoint mainSpec) of
+  case getEntryPoint mainSpec (T.pack target) of
     Just path ->
       return path
     Nothing -> do
@@ -377,7 +429,7 @@ resolveTarget target mainSpec = do
 getOutputPath :: Target -> Spec -> IO (Path Abs File)
 getOutputPath target mainSpec = do
   targetFile <- parseRelFile target
-  let targetDir = specTargetDir mainSpec
+  let targetDir = getTargetDir mainSpec
   return $ targetDir </> targetFile
 
 build :: Path Abs File -> IO Builder

@@ -22,7 +22,7 @@ import Data.IORef (modifyIORef', readIORef)
 import Data.Log (raiseCritical, raiseError)
 import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), Source (Source), getModuleName, signatureToModule, sourceFilePath, sourceModule)
 import qualified Data.Set as S
-import Data.Spec (Spec (specDependency, specSourceDir))
+import Data.Spec (Spec (specDependency), getSourceDir)
 import Data.Stmt
   ( EnumInfo,
     HeaderStmtPlus,
@@ -131,8 +131,7 @@ parseModuleInfo m sectionString = do
 getSourceFilePath :: Hint -> Module -> FilePath -> IO (Path Abs File)
 getSourceFilePath m mo relPathString = do
   spec <- moduleToSpec m mo
-  let dirPath = specSourceDir spec
-  filePath <- resolveFile dirPath relPathString
+  filePath <- resolveFile (getSourceDir spec) relPathString
   ensureFileExistence m mo spec filePath
   return filePath
 

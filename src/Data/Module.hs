@@ -15,15 +15,20 @@ import Path.IO
     resolveFile,
   )
 
-type AliasName = T.Text
+type Alias =
+  T.Text
 
 newtype Checksum
   = Checksum T.Text
-  deriving (Eq)
+  deriving (Show, Eq)
+
+showChecksum :: Checksum -> T.Text
+showChecksum (Checksum checksum) =
+  checksum
 
 data ModuleSignature
   = ModuleThis
-  | ModuleThat AliasName Checksum
+  | ModuleThat Alias Checksum
   deriving (Eq)
 
 data Module = Module
@@ -71,11 +76,30 @@ dirPathToModuleFileDir dirPath =
 getMainModule :: IO Module
 getMainModule = do
   filePath <- getCurrentDir >>= dirPathToModuleFilePath
-  return $
+  return
     Module
       { moduleSignature = ModuleThis,
         moduleFilePath = filePath
       }
+
+constructLibraryModule :: Alias -> Checksum -> IO Module
+constructLibraryModule alias checksum = do
+  path <- getLibraryModuleFilePath checksum
+  return
+    Module
+      { moduleSignature = ModuleThat alias checksum,
+        moduleFilePath = path
+      }
+
+getLibraryModuleFilePath :: Checksum -> IO (Path Abs File)
+getLibraryModuleFilePath checksum = do
+  moduleDir <- getModuleDir checksum
+  resolveFile moduleDir moduleFileName
+
+getModuleDir :: Checksum -> IO (Path Abs Dir)
+getModuleDir (Checksum checksum) = do
+  libDir <- getLibraryDirPath
+  resolveDir libDir $ T.unpack checksum
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir mo =

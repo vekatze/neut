@@ -8,6 +8,8 @@ module Data.Entity
     toList,
     toDictionary,
     access,
+    ppEntity,
+    ppEntityTopLevel,
   )
 where
 
@@ -15,6 +17,7 @@ import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic (Hint)
 import qualified Data.HashMap.Lazy as M
 import Data.Int (Int64)
+import Data.List (sortOn)
 import Data.Log (raiseError)
 import qualified Data.Text as T
 
@@ -137,3 +140,66 @@ raiseTypeError m expectedType actualType =
       <> "`, but is: `"
       <> showEntityType actualType
       <> "`"
+
+showWithOffset :: Int -> T.Text -> T.Text
+showWithOffset n text =
+  T.replicate n "  " <> text
+
+ppInt64 :: Int64 -> T.Text
+ppInt64 i =
+  T.pack (show i)
+
+ppFloat64 :: Double -> T.Text
+ppFloat64 i =
+  T.pack (show i)
+
+ppBool :: Bool -> T.Text
+ppBool x =
+  if x
+    then "true"
+    else "false"
+
+ppString :: T.Text -> T.Text
+ppString x =
+  T.pack $ show x
+
+ppList :: Int -> [Cofree EntityF a] -> T.Text
+ppList n xs = do
+  let header = "["
+  let xs' = map (showWithOffset (n + 1) . ppEntity (n + 1)) xs
+  let footer = showWithOffset n "]"
+  T.intercalate "\n" $ [header] <> xs' <> [footer]
+
+ppDictionary :: Int -> M.HashMap T.Text (Cofree EntityF a) -> T.Text
+ppDictionary n dict = do
+  let header = "{"
+  let dictList = sortOn fst $ M.toList dict
+  let strList = map (uncurry $ ppDictionaryEntry (n + 1)) dictList
+  let footer = showWithOffset n "}"
+  T.intercalate "\n" $ [header] <> strList <> [footer]
+
+ppDictionaryEntry :: Int -> T.Text -> Cofree EntityF a -> T.Text
+ppDictionaryEntry n key value = do
+  showWithOffset n $ key <> " = " <> ppEntity n value
+
+ppEntity :: Int -> Cofree EntityF a -> T.Text
+ppEntity n entity = do
+  case entity of
+    _ :< EntityInt64 i ->
+      ppInt64 i
+    _ :< EntityFloat64 i ->
+      ppFloat64 i
+    _ :< EntityBool b ->
+      ppBool b
+    _ :< EntityString s ->
+      ppString s
+    _ :< EntityList xs -> do
+      ppList n xs
+    _ :< EntityDictionary dict -> do
+      ppDictionary n dict
+
+ppEntityTopLevel :: M.HashMap T.Text (Cofree EntityF a) -> T.Text
+ppEntityTopLevel dict = do
+  let dictList = sortOn fst $ M.toList dict
+  let strList = map (uncurry $ ppDictionaryEntry 0) dictList
+  T.intercalate "\n" strList

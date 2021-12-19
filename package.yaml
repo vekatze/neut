@@ -15,9 +15,11 @@ dependencies:
   - ansi-terminal
   - async
   - base
+  - base64-bytestring
   - binary
   - bytestring
   - containers
+  - cryptohash-sha256
   - filepath
   - free
   - half

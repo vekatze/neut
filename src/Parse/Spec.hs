@@ -1,18 +1,38 @@
 module Parse.Spec
   ( moduleToSpec,
+    getMainSpec,
+    parse,
   )
 where
 
-import Control.Monad (unless)
+import Control.Monad (unless, (>=>))
 import Data.Basic (Hint)
 import Data.Entity (Entity, access, toDictionary, toString)
 import Data.Log (raiseError)
-import Data.Module (Checksum (..), Module (moduleFilePath), getModuleName, getModuleRootDir)
+import Data.Module (Checksum (..), Module (moduleFilePath), getMainModule, getModuleName)
 import Data.Spec (Spec (..), URL (..))
 import qualified Data.Text as T
 import qualified Parse.Entity as E
-import Path (Abs, Dir, File, Path)
-import Path.IO (doesFileExist, resolveDir, resolveFile)
+import Path (Abs, Dir, File, Path, Rel, parseRelDir, parseRelFile)
+import Path.IO (doesFileExist)
+
+parse :: Path Abs File -> IO Spec
+parse specFilePath = do
+  entity <- E.parse specFilePath
+  sourceDirPath <- access "source-directory" entity >>= interpretRelDirPath
+  targetDirPath <- access "target-directory" entity >>= interpretRelDirPath
+  entryPointEns <- access "entry-point" entity >>= toDictionary
+  dependencyEns <- access "dependency" entity >>= toDictionary
+  entryPoint <- mapM interpretRelFilePath entryPointEns
+  dependency <- mapM interpretDependency dependencyEns
+  return
+    Spec
+      { specSourceDir = sourceDirPath,
+        specTargetDir = targetDirPath,
+        specEntryPoint = entryPoint,
+        specDependency = dependency,
+        specLocation = specFilePath
+      }
 
 moduleToSpec :: Hint -> Module -> IO Spec
 moduleToSpec m mo = do
@@ -23,33 +43,22 @@ moduleToSpec m mo = do
       T.pack "could not find the module `"
         <> moduleName
         <> "`"
-  entity <- E.parse (moduleFilePath mo)
-  sourceDirPath <- access "source-directory" entity >>= toString >>= interpretRelDirString mo
-  targetDirPath <- access "target-directory" entity >>= toString >>= interpretRelDirString mo
-  entryPointEns <- access "entry-point" entity >>= toDictionary
-  dependencyEns <- access "dependency" entity >>= toDictionary
-  entryPoint <- mapM (interpretEntryPoint sourceDirPath) entryPointEns
-  dependency <- mapM interpretDependency dependencyEns
-  return
-    Spec
-      { specSourceDir = sourceDirPath,
-        specTargetDir = targetDirPath,
-        specEntryPoint = entryPoint,
-        specDependency = dependency,
-        specLocation = moduleFilePath mo
-      }
+  parse $ moduleFilePath mo
 
-interpretEntryPoint :: Path Abs Dir -> Entity -> IO (Path Abs File)
-interpretEntryPoint sourceDirPath entryPointFilePathValue = do
-  entryPointFilePath <- toString entryPointFilePathValue
-  resolveFile sourceDirPath $ T.unpack entryPointFilePath
+getMainSpec :: IO Spec
+getMainSpec =
+  getMainModule >>= parse . moduleFilePath
+
+interpretRelFilePath :: Entity -> IO (Path Rel File)
+interpretRelFilePath =
+  toString >=> parseRelFile . T.unpack
+
+interpretRelDirPath :: Entity -> IO (Path Rel Dir)
+interpretRelDirPath =
+  toString >=> parseRelDir . T.unpack
 
 interpretDependency :: Entity -> IO (URL, Checksum)
 interpretDependency dependencyValue = do
   url <- access "URL" dependencyValue >>= toString
   checksum <- access "checksum" dependencyValue >>= toString
   return (URL url, Checksum checksum)
-
-interpretRelDirString :: Module -> T.Text -> IO (Path Abs Dir)
-interpretRelDirString mo sourceDirPathString = do
-  resolveDir (getModuleRootDir mo) $ T.unpack sourceDirPathString

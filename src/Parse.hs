@@ -3,7 +3,7 @@ module Parse
   )
 where
 
-import Control.Monad (forM, forM_, unless, when)
+import Control.Monad (forM, forM_, when)
 import Data.Basic
   ( EnumCase (EnumCaseLabel),
     Hint,
@@ -24,12 +24,10 @@ import Data.Global
     defaultAliasEnv,
     fileEnv,
     getCurrentFilePath,
-    getLibraryDirPath,
     initialPrefixEnv,
     isMain,
     mainModuleDirRef,
     newText,
-    note',
     nsSep,
     popTrace,
     prefixEnv,
@@ -69,7 +67,6 @@ import Data.WeakTerm
       ),
     WeakTermPlus,
   )
-import GHC.IO.Handle (Handle, hGetContents)
 import Parse.Core
   ( currentHint,
     initializeState,
@@ -79,7 +76,6 @@ import Parse.Core
     newTextualIdentFromText,
     raiseParseError,
     skip,
-    string,
     symbol,
     symbolMaybe,
     text,
@@ -105,25 +101,9 @@ import Parse.WeakTerm
   )
 import Path
   ( Abs,
-    Dir,
     File,
     Path,
-    parseRelDir,
     toFilePath,
-    (</>),
-  )
-import Path.IO
-  ( doesDirExist,
-    ensureDir,
-    removeDir,
-  )
-import System.Exit (ExitCode (..))
-import System.Process
-  ( CreateProcess (cwd, std_err, std_in, std_out),
-    StdStream (CreatePipe, UseHandle),
-    createProcess,
-    proc,
-    waitForProcess,
   )
 
 --
@@ -228,9 +208,6 @@ parseHeader' currentSpec currentFilePath = do
       Just "define-prefix" -> do
         stmtDefinePrefix
         parseHeader' currentSpec currentFilePath
-      Just "ensure" -> do
-        stmtEnsure
-        parseHeader' currentSpec currentFilePath
       Just "use" -> do
         stmtUse
         parseHeader' currentSpec currentFilePath
@@ -309,42 +286,6 @@ defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> I
 defineTerm isReducible m name codType e = do
   registerTopLevelName m name
   return $ WeakStmtDef isReducible m name codType e
-
-stmtEnsure :: IO ()
-stmtEnsure = do
-  token "ensure"
-  pkgStr <- symbol
-  mUrl <- currentHint
-  urlStr <- string
-  libDirPath <- getLibraryDirPath
-  pkgStr' <- parseRelDir $ T.unpack pkgStr
-  let pkgStrDirPath = libDirPath </> pkgStr'
-  isAlreadyInstalled <- doesDirExist pkgStrDirPath
-  unless isAlreadyInstalled $ do
-    ensureDir pkgStrDirPath
-    let urlStr' = T.unpack urlStr
-    let curlCmd = proc "curl" ["-s", "-S", "-L", urlStr']
-    let tarCmd = proc "tar" ["xJf", "-", "-C", toFilePath pkgStr', "--strip-components=1"]
-    (_, Just stdoutHandler, Just curlErrorHandler, curlHandler) <-
-      createProcess curlCmd {cwd = Just (toFilePath libDirPath), std_out = CreatePipe, std_err = CreatePipe}
-    (_, _, Just tarErrorHandler, tarHandler) <-
-      createProcess tarCmd {cwd = Just (toFilePath libDirPath), std_in = UseHandle stdoutHandler, std_err = CreatePipe}
-    note' $ "downloading " <> pkgStr <> " from " <> T.pack urlStr'
-    curlExitCode <- waitForProcess curlHandler
-    raiseIfFailure mUrl "curl" curlExitCode curlErrorHandler pkgStrDirPath
-    note' $ "extracting " <> pkgStr <> " into " <> T.pack (toFilePath pkgStrDirPath)
-    tarExitCode <- waitForProcess tarHandler
-    raiseIfFailure mUrl "tar" tarExitCode tarErrorHandler pkgStrDirPath
-
-raiseIfFailure :: Hint -> String -> ExitCode -> Handle -> Path Abs Dir -> IO ()
-raiseIfFailure m procName exitCode h pkgDirPath =
-  case exitCode of
-    ExitSuccess ->
-      return ()
-    ExitFailure i -> do
-      removeDir pkgDirPath
-      errStr <- hGetContents h
-      raiseError m $ T.pack $ "the child process `" ++ procName ++ "` failed with the following message (exitcode = " ++ show i ++ "):\n" ++ errStr
 
 stmtUse :: IO ()
 stmtUse = do
