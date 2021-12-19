@@ -16,7 +16,6 @@ import Data.Basic
     TopName,
     asInt,
     asText',
-    getExecPath,
   )
 import Data.Global
   ( constTypeEnv,
@@ -74,7 +73,6 @@ import Data.WeakTerm
     WeakTermPlus,
     metaOf,
   )
-import Path (toFilePath)
 import Reduce.WeakTerm (substWeakTermPlus)
 
 type Context = [WeakIdentPlus]
@@ -143,12 +141,12 @@ infer' ctx term =
     (m, WeakTermFloat t f) -> do
       t' <- inferType' [] t -- t must be closed
       return ((m, WeakTermFloat t' f), t')
-    (m, WeakTermEnum path name) ->
-      return ((m, WeakTermEnum path name), (m, WeakTermTau))
-    (m, WeakTermEnumIntro path l) -> do
+    (m, WeakTermEnum name) ->
+      return ((m, WeakTermEnum name), (m, WeakTermTau))
+    (m, WeakTermEnumIntro l) -> do
       k <- lookupKind m l
-      let t = (m, WeakTermEnum path k)
-      return ((m, WeakTermEnumIntro path l), t)
+      let t = (m, WeakTermEnum k)
+      return ((m, WeakTermEnumIntro l), t)
     (m, WeakTermEnumElim (e, _) ces) -> do
       (e', t') <- infer' ctx e
       let (cs, es) = unzip ces
@@ -334,9 +332,9 @@ newTypeAsterListInCtx ctx ids =
 inferEnumCase :: Context -> EnumCasePlus -> IO (EnumCasePlus, WeakTermPlus)
 inferEnumCase ctx weakCase =
   case weakCase of
-    (m, EnumCaseLabel path name) -> do
+    (m, EnumCaseLabel name) -> do
       k <- lookupKind m name
-      return (weakCase, (m, WeakTermEnum path k))
+      return (weakCase, (m, WeakTermEnum k))
     (m, EnumCaseDefault) -> do
       h <- newTypeAsterInCtx ctx m
       return ((m, EnumCaseDefault), h)
@@ -386,7 +384,7 @@ lookupKind m name = do
   case Map.lookup name renv of
     Nothing ->
       raiseError m $ "no such enum-intro is defined: " <> name
-    Just (_, j, _) ->
+    Just (j, _) ->
       return j
 
 lookupConstTypeEnv :: Hint -> T.Text -> IO TermPlus
@@ -411,8 +409,7 @@ primOpToType m (PrimOp op domList cod) = do
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
-      path <- toFilePath <$> getExecPath
-      let cod' = (m, TermEnum path "bool")
+      let cod' = (m, TermEnum "bool")
       return (m, TermPi xts cod')
     else do
       cod' <- lowTypeToType m cod

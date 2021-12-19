@@ -3,7 +3,7 @@
 module Data.Namespace where
 
 import Data.Basic (EnumCase (EnumCaseLabel), Hint, Ident, TopName)
-import Data.Global (aliasEnv, prefixEnv, sectionEnv)
+import Data.Global (aliasEnv, nsSep, prefixEnv, sectionEnv)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import Data.Log (raiseError)
@@ -26,15 +26,6 @@ import Data.WeakTerm
 
 data Section
   = Section T.Text [T.Text]
-
-nsSepChar :: Char
-nsSepChar =
-  '.'
-
-{-# INLINE nsSep #-}
-nsSep :: T.Text
-nsSep =
-  T.singleton nsSepChar
 
 {-# INLINE nsUnsafe #-}
 nsUnsafe :: T.Text
@@ -140,29 +131,29 @@ findThenModify env f name = do
     else Nothing
 
 {-# INLINE asEnumLabel #-}
-asEnumLabel :: Map.HashMap T.Text (FilePath, T.Text, Int) -> T.Text -> Maybe EnumCase
+asEnumLabel :: Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe EnumCase
 asEnumLabel env name = do
   case Map.lookup name env of
-    Just (fp, _, _) ->
-      Just $ EnumCaseLabel fp name
+    Just _ ->
+      Just $ EnumCaseLabel name
     _ ->
       Nothing
 
 {-# INLINE asEnumIntro #-}
-asEnumIntro :: Hint -> Map.HashMap T.Text (FilePath, T.Text, Int) -> T.Text -> Maybe WeakTermPlus
+asEnumIntro :: Hint -> Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe WeakTermPlus
 asEnumIntro m env name = do
   case Map.lookup name env of
-    Just (fp, _, _) ->
-      Just (m, WeakTermEnumIntro fp name)
+    Just (_, _) ->
+      Just (m, WeakTermEnumIntro name)
     _ ->
       Nothing
 
 {-# INLINE asEnum #-}
-asEnum :: Hint -> Map.HashMap T.Text (FilePath, a) -> T.Text -> Maybe WeakTermPlus
+asEnum :: Hint -> Map.HashMap T.Text a -> T.Text -> Maybe WeakTermPlus
 asEnum m env name = do
   case Map.lookup name env of
-    Just (fp, _) ->
-      Just (m, WeakTermEnum fp name)
+    Just _ ->
+      Just (m, WeakTermEnum name)
     _ ->
       Nothing
 

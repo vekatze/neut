@@ -12,7 +12,7 @@ data Value
   | ValueSigmaIntro [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
-  | ValueEnumIntro FilePath T.Text
+  | ValueEnumIntro T.Text
   deriving (Show)
 
 data Comp

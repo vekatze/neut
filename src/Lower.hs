@@ -403,8 +403,8 @@ lowerValueLet x lowerValue cont =
       llvmUncastLet x (LowValueInt l) (LowTypeInt size) cont
     ValueFloat size f ->
       llvmUncastLet x (LowValueFloat size f) (LowTypeFloat size) cont
-    ValueEnumIntro path l -> do
-      i <- toInteger <$> getEnumNum path l
+    ValueEnumIntro l -> do
+      i <- toInteger <$> enumValueToInteger l
       llvmUncastLet x (LowValueInt i) (LowTypeInt 64) cont
 
 lowerValueLet' :: [(Ident, Value)] -> LowComp -> IO LowComp
@@ -427,8 +427,8 @@ constructSwitch switch =
       return $ Just (code', [])
     [(_, code)] -> do
       constructSwitch [(EnumCaseDefault, code)]
-    (EnumCaseLabel path l, code) : rest -> do
-      i <- enumValueToInteger path l
+    (EnumCaseLabel l, code) : rest -> do
+      i <- enumValueToInteger l
       constructSwitch $ (EnumCaseInt i, code) : rest
     (EnumCaseInt i, code) : rest -> do
       code' <- lowerComp code
@@ -531,17 +531,12 @@ newNameWith mName =
     Just name ->
       newIdentFromText name
 
-enumValueToInteger :: FilePath -> T.Text -> IO Int
-enumValueToInteger =
-  getEnumNum
-
-getEnumNum :: FilePath -> T.Text -> IO Int
-getEnumNum path label = do
+enumValueToInteger :: T.Text -> IO Int
+enumValueToInteger label = do
   renv <- readIORef revEnumEnv
   case Map.lookup label renv of
-    Just (fp, _, i)
-      | fp == path ->
-        return i
+    Just (_, i) ->
+      return i
     _ ->
       raiseCritical' $ "no such enum is defined: " <> label
 

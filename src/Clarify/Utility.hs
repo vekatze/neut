@@ -5,30 +5,26 @@ import Data.Basic
   ( EnumCase (EnumCaseDefault, EnumCaseLabel),
     Ident,
     asText,
-    getExecPath,
   )
 import Data.Comp
   ( Comp (CompEnumElim, CompPiElimDownElim, CompUpElim),
     Value (ValueEnumIntro, ValueVarGlobal, ValueVarLocal),
   )
-import Data.Global (defEnv, newValueVarLocalWith)
+import Data.Global (boolFalse, boolTrue, defEnv, newValueVarLocalWith)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
-import Data.Namespace (nsSep)
 import qualified Data.Text as T
-import Path (toFilePath)
 
 toApp :: T.Text -> Ident -> Comp -> IO Comp
 toApp switcher x t = do
   (expVarName, expVar) <- newValueVarLocalWith "exp"
-  path <- toFilePath <$> getExecPath
   return $
     CompUpElim
       expVarName
       t
       ( CompPiElimDownElim
           expVar
-          [ValueEnumIntro path switcher, ValueVarLocal x]
+          [ValueEnumIntro switcher, ValueVarLocal x]
       )
 
 -- toAffineApp meta x t ~>
@@ -53,10 +49,10 @@ bindLet binder cont =
     (x, e) : xes ->
       CompUpElim x e $ bindLet xes cont
 
-switch :: FilePath -> Comp -> Comp -> [(EnumCase, Comp)]
-switch path e1 e2 =
+switch :: Comp -> Comp -> [(EnumCase, Comp)]
+switch e1 e2 =
   -- [(EnumCaseInt 0, e1), (EnumCaseDefault, e2)]
-  [(EnumCaseLabel path boolFalse, e1), (EnumCaseDefault, e2)]
+  [(EnumCaseLabel boolFalse, e1), (EnumCaseDefault, e2)]
 
 tryCache :: T.Text -> IO () -> IO Value
 tryCache key doInsertion = do
@@ -73,12 +69,11 @@ makeSwitcher compAff compRel = do
   (argVarName, argVar) <- newValueVarLocalWith "arg"
   aff <- compAff argVar
   rel <- compRel argVar
-  path <- toFilePath <$> getExecPath
   return
     ( [switchVarName, argVarName],
       CompEnumElim
         switchVar
-        (switch path aff rel)
+        (switch aff rel)
     )
 
 registerSwitcher ::
@@ -97,16 +92,6 @@ insDefEnv name isReducible args e =
 insDefEnv' :: T.Text -> Bool -> [Ident] -> IO ()
 insDefEnv' name isReducible args =
   modifyIORef' defEnv $ \env -> Map.insert name (isReducible, args, Nothing) env
-
-{-# INLINE boolTrue #-}
-boolTrue :: T.Text
-boolTrue =
-  "bool" <> nsSep <> "true"
-
-{-# INLINE boolFalse #-}
-boolFalse :: T.Text
-boolFalse =
-  "bool" <> nsSep <> "false"
 
 {-# INLINE toGlobalVarName #-}
 toGlobalVarName :: FilePath -> T.Text -> T.Text

@@ -56,8 +56,8 @@ data Term
   | TermConst T.Text
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
-  | TermEnum FilePath T.Text
-  | TermEnumIntro FilePath T.Text
+  | TermEnum T.Text
+  | TermEnumIntro T.Text
   | TermEnumElim (TermPlus, TermPlus) [(EnumCasePlus, TermPlus)]
   | TermDerangement Derangement [TermPlus]
   | TermCase
@@ -119,10 +119,10 @@ weaken term =
       (m, WeakTermInt (m, WeakTermConst (showIntSize size)) x)
     (m, TermFloat size x) ->
       (m, WeakTermFloat (m, WeakTermConst (showFloatSize size)) x)
-    (m, TermEnum filePath x) ->
-      (m, WeakTermEnum filePath x)
-    (m, TermEnumIntro filePath l) ->
-      (m, WeakTermEnumIntro filePath l)
+    (m, TermEnum x) ->
+      (m, WeakTermEnum x)
+    (m, TermEnumIntro l) ->
+      (m, WeakTermEnumIntro l)
     (m, TermEnumElim (e, t) branchList) -> do
       let t' = weaken t
       let e' = weaken e

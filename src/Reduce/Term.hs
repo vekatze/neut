@@ -81,8 +81,8 @@ reduceTermPlus term =
       let les'' = zip (map snd ls) es'
       t' <- reduceTermPlus t
       case e' of
-        (_, TermEnumIntro fp l) ->
-          case lookup (EnumCaseLabel fp l) les'' of
+        (_, TermEnumIntro l) ->
+          case lookup (EnumCaseLabel l) les'' of
             Just body ->
               reduceTermPlus (m, snd body)
             Nothing ->
@@ -167,9 +167,9 @@ substTermPlus sub term =
       return term
     (_, TermFloat {}) ->
       return term
-    (_, TermEnum _ _) ->
+    (_, TermEnum _) ->
       return term
-    (_, TermEnumIntro _ _) ->
+    (_, TermEnumIntro _) ->
       return term
     (m, TermEnumElim (e, t) branchList) -> do
       t' <- substTermPlus sub t

@@ -46,7 +46,7 @@ instance Show Hint where
     "_"
 
 data EnumCase
-  = EnumCaseLabel FilePath T.Text
+  = EnumCaseLabel T.Text
   | EnumCaseInt Int
   | EnumCaseDefault
   deriving (Show, Eq, Ord, Generic)

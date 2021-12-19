@@ -170,10 +170,10 @@ clarifyTerm tenv term =
       return $ CompUpIntro (ValueInt size l)
     (_, TermFloat size l) ->
       return $ CompUpIntro (ValueFloat size l)
-    (_, TermEnum _ _) ->
+    (_, TermEnum _) ->
       returnImmediateS4
-    (_, TermEnumIntro path l) ->
-      return $ CompUpIntro $ ValueEnumIntro path l
+    (_, TermEnumIntro l) ->
+      return $ CompUpIntro $ ValueEnumIntro l
     (m, TermEnumElim (e, _) bs) -> do
       let (cs, es) = unzip bs
       let fvs = chainFromTermList tenv es
@@ -411,9 +411,9 @@ chainOf tenv term =
       []
     (_, TermFloat _ _) ->
       []
-    (_, TermEnum _ _) ->
+    (_, TermEnum _) ->
       []
-    (_, TermEnumIntro _ _) ->
+    (_, TermEnumIntro _) ->
       []
     (_, TermEnumElim (e, t) les) -> do
       let xs0 = chainOf tenv t

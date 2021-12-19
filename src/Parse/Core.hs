@@ -449,6 +449,10 @@ keywordSet =
       "with"
     ]
 
+varText :: IO T.Text
+varText =
+  snd <$> var
+
 weakVar :: Hint -> T.Text -> WeakTermPlus
 weakVar m str =
   (m, WeakTermVar (asIdent str))

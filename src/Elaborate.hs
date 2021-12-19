@@ -230,19 +230,19 @@ elaborate' term =
               <> T.pack (show x)
               <> "` is a float, but its type is:\n"
               <> toText (weaken t')
-    (m, WeakTermEnum path k) ->
-      return (m, TermEnum path k)
-    (m, WeakTermEnumIntro path x) ->
-      return (m, TermEnumIntro path x)
+    (m, WeakTermEnum k) ->
+      return (m, TermEnum k)
+    (m, WeakTermEnumIntro x) ->
+      return (m, TermEnumIntro x)
     (m, WeakTermEnumElim (e, t) les) -> do
       e' <- elaborate' e
       let (ls, es) = unzip les
       es' <- mapM elaborate' es
       t' <- elaborate' t >>= reduceTermPlus
       case t' of
-        (_, TermEnum path x) -> do
+        (_, TermEnum x) -> do
           checkSwitchExaustiveness m x (map snd ls)
-          checkEnumElim m path $ map snd ls
+          checkEnumElim m $ map snd ls
           return (m, TermEnumElim (e', t') (zip ls es'))
         _ ->
           raiseError m $
@@ -321,18 +321,17 @@ elaborateKind kind =
     LamKindResourceHandler ->
       return LamKindResourceHandler
 
-checkEnumElim :: Hint -> FilePath -> [EnumCase] -> IO ()
-checkEnumElim m path ls =
+checkEnumElim :: Hint -> [EnumCase] -> IO ()
+checkEnumElim m ls =
   case ls of
     [] ->
       return ()
     l : rest -> do
       case l of
-        EnumCaseLabel fp _
-          | fp /= path ->
-            raiseError m "enum-elim"
+        EnumCaseLabel _ ->
+          raiseError m "enum-elim"
         _ ->
-          checkEnumElim m path rest
+          checkEnumElim m rest
 
 checkSwitchExaustiveness :: Hint -> T.Text -> [EnumCase] -> IO ()
 checkSwitchExaustiveness m x caseList = do
@@ -349,7 +348,7 @@ lookupEnumSet m name = do
     Nothing ->
       raiseError m $ "no such enum defined: " <> name
     Just xis ->
-      return $ map fst $ snd xis
+      return $ map fst xis
 
 insTopTypeEnv :: TopName -> WeakTermPlus -> IO ()
 insTopTypeEnv name t =

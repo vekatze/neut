@@ -20,9 +20,8 @@ import Data.Basic
     Opacity (OpacityTransparent),
     asIdent,
     asText,
-    getExecPath,
   )
-import Data.Global (newAster, targetPlatform)
+import Data.Global (newAster, nsSep, targetPlatform)
 import Data.IORef (readIORef)
 import Data.Log (raiseError)
 import Data.LowType
@@ -40,7 +39,6 @@ import Data.LowType
     showFloatSize,
     showIntSize,
   )
-import Data.Namespace (nsSep)
 import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakIdentPlus,
@@ -88,7 +86,6 @@ import Parse.Core
     weakVar,
     weakVar',
   )
-import Path (toFilePath)
 
 --
 -- parser for WeakTerm
@@ -241,7 +238,7 @@ weakTermEnumClause = do
     "default" ->
       return ((m, EnumCaseDefault), body)
     _ ->
-      return ((m, EnumCaseLabel "" c), body)
+      return ((m, EnumCaseLabel c), body)
 
 -- question e
 weakTermQuestion :: IO WeakTermPlus
@@ -549,7 +546,6 @@ weakTermIf = do
 
 foldIf :: Hint -> WeakTermPlus -> WeakTermPlus -> [(WeakTermPlus, WeakTermPlus)] -> WeakTermPlus -> IO WeakTermPlus
 foldIf m ifCond ifBody elseIfList elseBody = do
-  path <- toFilePath <$> getExecPath
   case elseIfList of
     [] -> do
       h <- newAster m
@@ -557,8 +553,8 @@ foldIf m ifCond ifBody elseIfList elseBody = do
         ( m,
           WeakTermEnumElim
             (ifCond, h)
-            [ ((m, EnumCaseLabel path "bool.true"), ifBody),
-              ((m, EnumCaseLabel path "bool.false"), elseBody)
+            [ ((m, EnumCaseLabel "bool.true"), ifBody),
+              ((m, EnumCaseLabel "bool.false"), elseBody)
             ]
         )
     ((elseIfCond, elseIfBody) : rest) -> do
@@ -568,8 +564,8 @@ foldIf m ifCond ifBody elseIfList elseBody = do
         ( m,
           WeakTermEnumElim
             (ifCond, h)
-            [ ((m, EnumCaseLabel path "bool.true"), ifBody),
-              ((m, EnumCaseLabel path "bool.false"), cont)
+            [ ((m, EnumCaseLabel "bool.true"), ifBody),
+              ((m, EnumCaseLabel "bool.false"), cont)
             ]
         )
 

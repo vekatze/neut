@@ -166,13 +166,11 @@ simplify constraintList =
         ((_, WeakTermFloat t1 l1), (_, WeakTermFloat t2 l2))
           | l1 == l2 ->
             simplify $ ((t1, t2), orig) : cs
-        ((_, WeakTermEnum path1 a1), (_, WeakTermEnum path2 a2))
-          | a1 == a2,
-            path1 == path2 ->
+        ((_, WeakTermEnum a1), (_, WeakTermEnum a2))
+          | a1 == a2 ->
             simplify cs
-        ((_, WeakTermEnumIntro path1 a1), (_, WeakTermEnumIntro path2 a2))
-          | a1 == a2,
-            path1 == path2 ->
+        ((_, WeakTermEnumIntro a1), (_, WeakTermEnumIntro a2))
+          | a1 == a2 ->
             simplify cs
         ((_, WeakTermQuestion e1 t1), (_, WeakTermQuestion e2 t2)) ->
           simplify $ ((e1, e2), orig) : ((t1, t2), orig) : cs

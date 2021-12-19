@@ -123,10 +123,10 @@ discern' nenv term =
     (m, WeakTermFloat t x) -> do
       t' <- discern' nenv t
       return (m, WeakTermFloat t' x)
-    (m, WeakTermEnum fp s) ->
-      return (m, WeakTermEnum fp s)
-    (m, WeakTermEnumIntro fp x) ->
-      return (m, WeakTermEnumIntro fp x)
+    (m, WeakTermEnum s) ->
+      return (m, WeakTermEnum s)
+    (m, WeakTermEnumIntro x) ->
+      return (m, WeakTermEnumIntro x)
     (m, WeakTermEnumElim (e, t) caseList) -> do
       e' <- discern' nenv e
       t' <- discern' nenv t
@@ -181,7 +181,7 @@ discernBinder nenv binder e =
 discernEnumCase :: Hint -> EnumCase -> IO EnumCase
 discernEnumCase m weakCase =
   case weakCase of
-    EnumCaseLabel _ l -> do
+    EnumCaseLabel l -> do
       renv <- readIORef revEnumEnv
       ml <- resolveSymbol m (asEnumLabel renv) l
       case ml of

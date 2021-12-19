@@ -85,8 +85,8 @@ reduceComp term =
               return $ CompUpElim x e1' e2'
     CompEnumElim v les ->
       case v of
-        ValueEnumIntro path l
-          | Just body <- lookup (EnumCaseLabel path l) les ->
+        ValueEnumIntro l
+          | Just body <- lookup (EnumCaseLabel l) les ->
             reduceComp body
           | Just body <- lookup EnumCaseDefault les ->
             reduceComp body

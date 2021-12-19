@@ -7,17 +7,14 @@ import Data.Basic (Hint)
 import Data.Global
   ( VisitInfo (VisitInfoActive, VisitInfoFinish),
     defaultModulePrefix,
-    enumEnv,
     fileEnv,
-    revEnumEnv,
+    nsSep,
     traceEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
-import Data.List (find)
 import Data.Log (raiseCritical, raiseError)
 import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), Source (Source), getModuleName, signatureToModule, sourceFilePath, sourceModule)
-import Data.Namespace (nsSep)
 import Data.Spec (Spec (specDependency, specSourceDir))
 import Data.Stmt
   ( EnumInfo,
@@ -32,6 +29,7 @@ import Parse.Core
     symbol,
     token,
   )
+import Parse.Enum (insEnumEnv)
 import Parse.Section (pathToSection, sectionToPath)
 import Parse.Spec (moduleToSpec)
 import Path
@@ -111,7 +109,7 @@ useCache ::
   IO [HeaderStmtPlus]
 useCache newPath stmtList enumInfoList = do
   forM_ enumInfoList $ \(mEnum, name, itemList) -> do
-    insEnumEnv (toFilePath newPath) mEnum name itemList
+    insEnumEnv mEnum name itemList
   modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
   return [(newPath, Left stmtList, enumInfoList)]
 
@@ -153,16 +151,3 @@ showCyclicPath' pathList =
       "\n  ~> " <> T.pack (toFilePath path)
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
-
-insEnumEnv :: FilePath -> Hint -> T.Text -> [(T.Text, Int)] -> IO ()
-insEnumEnv path m name xis = do
-  eenv <- readIORef enumEnv
-  let definedEnums = Map.keys eenv ++ map fst (concatMap snd (Map.elems eenv))
-  case find (`elem` definedEnums) $ name : map fst xis of
-    Just x ->
-      raiseError m $ "the constant `" <> x <> "` is already defined [ENUM]"
-    _ -> do
-      let (xs, is) = unzip xis
-      let rev = Map.fromList $ zip xs (zip3 (repeat path) (repeat name) is)
-      modifyIORef' enumEnv $ \env -> Map.insert name (path, xis) env
-      modifyIORef' revEnumEnv $ \env -> Map.union rev env

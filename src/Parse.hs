@@ -13,15 +13,15 @@ import Data.Basic
     Opacity (OpacityTranslucent, OpacityTransparent),
     asIdent,
     asText,
-    getExecPath,
   )
 import Data.Global
   ( VisitInfo (VisitInfoActive, VisitInfoFinish),
     aliasEnv,
+    boolFalse,
+    boolTrue,
     constructorEnv,
     dataEnv,
     defaultAliasEnv,
-    enumEnv,
     fileEnv,
     getCurrentFilePath,
     getLibraryDirPath,
@@ -30,25 +30,22 @@ import Data.Global
     mainModuleDirRef,
     newText,
     note',
+    nsSep,
     popTrace,
     prefixEnv,
     pushTrace,
-    revEnumEnv,
     sectionEnv,
     topNameEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
-import Data.List (find)
 import Data.Log (raiseError)
 import Data.Module (Source (..), getMainModule, getModuleRootDir)
 import Data.Namespace
   ( handleDefinePrefix,
     handleUse,
-    nsSep,
     withSectionPrefix,
   )
-import qualified Data.Set as S
 import Data.Spec (Spec)
 import Data.Stmt
   ( EnumInfo,
@@ -75,7 +72,6 @@ import GHC.IO.Handle (Handle, hGetContents)
 import Parse.Core
   ( currentHint,
     initializeState,
-    integer,
     isSymbolChar,
     lookAhead,
     many,
@@ -89,11 +85,13 @@ import Parse.Core
     token,
     tryPlanList,
     var,
+    varText,
     weakTermToWeakIdent,
     weakVar,
     withNestedState,
   )
 import Parse.Discern (discern, discernStmtList)
+import Parse.Enum (initializeEnumEnv, parseDefineEnum)
 import Parse.Import (parseImport)
 import Parse.Section (pathToSection)
 import Parse.Spec (moduleToSpec)
@@ -135,7 +133,7 @@ parse :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus)
 parse mainSourceFilePath = do
   mainSource <- getMainSource mainSourceFilePath
   writeIORef mainModuleDirRef $ getModuleRootDir $ sourceModule mainSource
-  setupEnumEnv
+  initializeEnumEnv
   (headerInfo, bodyInfo, _) <- visit mainSource
   _ <- error "finished parsing"
   pushTrace mainSourceFilePath
@@ -213,6 +211,10 @@ parseHeader' currentSpec currentFilePath = do
   parseHeaderBase currentFilePath $ do
     headSymbol <- lookAhead (symbolMaybe isSymbolChar)
     case headSymbol of
+      Just "define-enum" -> do
+        enumInfo <- parseDefineEnum
+        (defList, bodyInfo, enumInfoList) <- parseHeader' currentSpec currentFilePath
+        return (defList, bodyInfo, enumInfo : enumInfoList)
       Just "define-prefix" -> do
         stmtDefinePrefix
         parseHeader' currentSpec currentFilePath
@@ -224,18 +226,6 @@ parseHeader' currentSpec currentFilePath = do
         parseHeader' currentSpec currentFilePath
       _ -> do
         setupSectionPrefix currentSpec currentFilePath
-        parseHeader'' currentFilePath
-
-parseHeader'' :: Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
-parseHeader'' currentFilePath = do
-  parseHeaderBase currentFilePath $ do
-    headSymbol <- lookAhead (symbolMaybe isSymbolChar)
-    case headSymbol of
-      Just "define-enum" -> do
-        enumInfo <- stmtDefineEnum
-        (parseHeader''Info, bodyInfo, enumInfoList) <- parseHeader'' currentFilePath
-        return (parseHeader''Info, bodyInfo, enumInfo : enumInfoList)
-      _ -> do
         stmtList <- stmt >>= discernStmtList
         return ([], (currentFilePath, stmtList), [])
 
@@ -309,50 +299,6 @@ defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> I
 defineTerm isReducible m name codType e = do
   registerTopLevelName m $ asIdent name
   return $ WeakStmtDef isReducible m name codType e
-
-stmtDefineEnum :: IO EnumInfo
-stmtDefineEnum = do
-  m <- currentHint
-  token "define-enum"
-  name <- varText >>= withSectionPrefix
-  itemList <- many stmtDefineEnumClause
-  let itemList' = arrangeEnumItemList name 0 itemList
-  unless (isLinear (map snd itemList')) $
-    raiseError m "found a collision of discriminant"
-  path <- toFilePath <$> getCurrentFilePath
-  insEnumEnv path m name itemList'
-  return (m, name, itemList')
-
-arrangeEnumItemList :: T.Text -> Int -> [(T.Text, Maybe Int)] -> [(T.Text, Int)]
-arrangeEnumItemList name currentValue clauseList =
-  case clauseList of
-    [] ->
-      []
-    (item, Nothing) : rest ->
-      (name <> nsSep <> item, currentValue) : arrangeEnumItemList name (currentValue + 1) rest
-    (item, Just v) : rest ->
-      (name <> nsSep <> item, v) : arrangeEnumItemList name (v + 1) rest
-
-stmtDefineEnumClause :: IO (T.Text, Maybe Int)
-stmtDefineEnumClause = do
-  tryPlanList
-    [ stmtDefineEnumClauseWithDiscriminant,
-      stmtDefineEnumClauseWithoutDiscriminant
-    ]
-
-stmtDefineEnumClauseWithDiscriminant :: IO (T.Text, Maybe Int)
-stmtDefineEnumClauseWithDiscriminant = do
-  token "-"
-  item <- varText
-  token "<-"
-  discriminant <- integer
-  return (item, Just (fromInteger discriminant))
-
-stmtDefineEnumClauseWithoutDiscriminant :: IO (T.Text, Maybe Int)
-stmtDefineEnumClauseWithoutDiscriminant = do
-  token "-"
-  item <- varText
-  return (item, Nothing)
 
 stmtEnsure :: IO ()
 stmtEnsure = do
@@ -548,7 +494,6 @@ stmtDefineResourceType = do
   copier <- weakTermSimple
   flag <- newTextualIdentFromText "flag"
   value <- newTextualIdentFromText "value"
-  path <- toFilePath <$> getExecPath
   defineTerm
     True
     m
@@ -575,10 +520,10 @@ stmtDefineResourceType = do
               ( m,
                 WeakTermEnumElim
                   (weakVar m (asText flag), weakVar m "bool")
-                  [ ( (m, EnumCaseLabel path "bool.true"),
+                  [ ( (m, EnumCaseLabel boolTrue),
                       (m, WeakTermPiElim copier [weakVar m (asText value)])
                     ),
-                    ( (m, EnumCaseLabel path "bool.false"),
+                    ( (m, EnumCaseLabel boolFalse),
                       ( m,
                         WeakTermPiElim
                           (weakVar m "unsafe.cast")
@@ -608,58 +553,6 @@ toPiTypeWith cod (m, b, yts) =
 identPlusToVar :: WeakIdentPlus -> WeakTermPlus
 identPlusToVar (m, x, _) =
   (m, WeakTermVar x)
-
-{-# INLINE isLinear #-}
-isLinear :: [Int] -> Bool
-isLinear =
-  isLinear' S.empty
-
-isLinear' :: S.Set Int -> [Int] -> Bool
-isLinear' found input =
-  case input of
-    [] ->
-      True
-    (x : xs)
-      | x `S.member` found ->
-        False
-      | otherwise ->
-        isLinear' (S.insert x found) xs
-
-setupEnumEnv :: IO ()
-setupEnumEnv =
-  forM_ initEnumEnvInfo $ uncurry setupEnumEnvWith
-
-setupEnumEnvWith :: T.Text -> [(T.Text, Int)] -> IO ()
-setupEnumEnvWith name xis = do
-  path <- toFilePath <$> getExecPath
-  let (xs, is) = unzip xis
-  modifyIORef' enumEnv $ \env -> Map.insert name (path, xis) env
-  let rev = Map.fromList $ zip xs (zip3 (repeat path) (repeat name) is)
-  modifyIORef' revEnumEnv $ \env -> Map.union rev env
-
-initEnumEnvInfo :: [(T.Text, [(T.Text, Int)])]
-initEnumEnvInfo =
-  [ ("bottom", []),
-    ("top", [("top.unit", 0)]),
-    ("bool", [("bool.false", 0), ("bool.true", 1)])
-  ]
-
-insEnumEnv :: FilePath -> Hint -> T.Text -> [(T.Text, Int)] -> IO ()
-insEnumEnv path m name xis = do
-  eenv <- readIORef enumEnv
-  let definedEnums = Map.keys eenv ++ map fst (concatMap snd (Map.elems eenv))
-  case find (`elem` definedEnums) $ name : map fst xis of
-    Just x ->
-      raiseError m $ "the constant `" <> x <> "` is already defined [ENUM]"
-    _ -> do
-      let (xs, is) = unzip xis
-      let rev = Map.fromList $ zip xs (zip3 (repeat path) (repeat name) is)
-      modifyIORef' enumEnv $ \env -> Map.insert name (path, xis) env
-      modifyIORef' revEnumEnv $ \env -> Map.union rev env
-
-varText :: IO T.Text
-varText =
-  snd <$> var
 
 registerTopLevelName :: Hint -> Ident -> IO ()
 registerTopLevelName m x = do

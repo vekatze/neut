@@ -35,8 +35,8 @@ data WeakTerm
   | WeakTermConst T.Text
   | WeakTermInt WeakTermPlus Integer
   | WeakTermFloat WeakTermPlus Double
-  | WeakTermEnum FilePath T.Text
-  | WeakTermEnumIntro FilePath T.Text
+  | WeakTermEnum T.Text
+  | WeakTermEnumIntro T.Text
   | WeakTermEnumElim (WeakTermPlus, WeakTermPlus) [(EnumCasePlus, WeakTermPlus)]
   | WeakTermQuestion WeakTermPlus WeakTermPlus -- e : t (output the type `t` as note)
   | WeakTermDerangement Derangement [WeakTermPlus] -- (derangement kind arg-1 ... arg-n)
@@ -140,9 +140,9 @@ varWeakTermPlus term =
       varWeakTermPlus t
     (_, WeakTermFloat t _) ->
       varWeakTermPlus t
-    (_, WeakTermEnum _ _) ->
+    (_, WeakTermEnum _) ->
       S.empty
-    (_, WeakTermEnumIntro _ _) ->
+    (_, WeakTermEnumIntro _) ->
       S.empty
     (_, WeakTermEnumElim (e, t) les) -> do
       let xs = varWeakTermPlus t
@@ -198,9 +198,9 @@ asterWeakTermPlus term =
       asterWeakTermPlus t
     (_, WeakTermFloat t _) ->
       asterWeakTermPlus t
-    (_, WeakTermEnum _ _) ->
+    (_, WeakTermEnum _) ->
       S.empty
-    (_, WeakTermEnumIntro _ _) ->
+    (_, WeakTermEnumIntro _) ->
       S.empty
     (_, WeakTermEnumElim (e, t) les) -> do
       let set1 = asterWeakTermPlus e
@@ -295,9 +295,9 @@ toText term =
       T.pack $ show a
     (_, WeakTermFloat _ a) ->
       T.pack $ show a
-    (_, WeakTermEnum path l) ->
-      l <> "@" <> T.pack path
-    (_, WeakTermEnumIntro _ v) ->
+    (_, WeakTermEnum l) ->
+      l
+    (_, WeakTermEnumIntro v) ->
       v
     (_, WeakTermEnumElim (e, _) mles) -> do
       let (mls, es) = unzip mles
@@ -360,7 +360,7 @@ showClause (c, e) =
 showCase :: EnumCase -> T.Text
 showCase c =
   case c of
-    EnumCaseLabel _ l ->
+    EnumCaseLabel l ->
       l
     EnumCaseDefault ->
       "default"

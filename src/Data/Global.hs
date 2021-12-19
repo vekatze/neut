@@ -157,13 +157,13 @@ popTrace =
 
 -- [("choice", [("left", 0), ("right", 1)]), ...]
 {-# NOINLINE enumEnv #-}
-enumEnv :: IORef (Map.HashMap T.Text (FilePath, [(T.Text, Int)]))
+enumEnv :: IORef (Map.HashMap T.Text [(T.Text, Int)])
 enumEnv =
   unsafePerformIO (newIORef Map.empty)
 
 -- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
 {-# NOINLINE revEnumEnv #-}
-revEnumEnv :: IORef (Map.HashMap T.Text (FilePath, T.Text, Int))
+revEnumEnv :: IORef (Map.HashMap T.Text (T.Text, Int))
 revEnumEnv =
   unsafePerformIO (newIORef Map.empty)
 
@@ -302,6 +302,26 @@ defaultModulePrefix =
 currentModuleName :: IORef T.Text
 currentModuleName =
   unsafePerformIO (newIORef "this")
+
+{-# INLINE nsSepChar #-}
+nsSepChar :: Char
+nsSepChar =
+  '.'
+
+{-# INLINE nsSep #-}
+nsSep :: T.Text
+nsSep =
+  T.singleton nsSepChar
+
+{-# INLINE boolTrue #-}
+boolTrue :: T.Text
+boolTrue =
+  "bool" <> nsSep <> "true"
+
+{-# INLINE boolFalse #-}
+boolFalse :: T.Text
+boolFalse =
+  "bool" <> nsSep <> "false"
 
 --
 -- generating new symbols using count
