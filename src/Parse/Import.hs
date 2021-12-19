@@ -1,6 +1,11 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Parse.Import (parseImport) where
+module Parse.Import
+  ( parseImport,
+    parseImportSequence,
+    Signature,
+  )
+where
 
 import Control.Monad (forM_, unless)
 import Data.Basic (Hint)
@@ -9,25 +14,29 @@ import Data.Global
     defaultModulePrefix,
     fileEnv,
     nsSep,
+    topNameEnv,
     traceEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import Data.Log (raiseCritical, raiseError)
 import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), Source (Source), getModuleName, signatureToModule, sourceFilePath, sourceModule)
+import qualified Data.Set as S
 import Data.Spec (Spec (specDependency, specSourceDir))
 import Data.Stmt
   ( EnumInfo,
     HeaderStmtPlus,
-    Stmt,
+    Stmt (StmtDef),
     WeakStmtPlus,
     loadCache,
   )
 import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
+    many,
     symbol,
     token,
+    tryPlanList,
   )
 import Parse.Enum (insEnumEnv)
 import Parse.Section (pathToSection, sectionToPath)
@@ -40,10 +49,12 @@ import Path
   )
 import Path.IO (doesFileExist, resolveFile)
 
-parseImport :: Spec -> (Source -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])) -> IO [HeaderStmtPlus]
-parseImport currentSpec visiter = do
+type Signature = (T.Text, [T.Text])
+
+parseImport :: Spec -> (Source -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])) -> Signature -> IO [HeaderStmtPlus]
+parseImport currentSpec visiter signature = do
   m <- currentHint
-  source <- parseImport' currentSpec
+  source <- signatureToSource currentSpec signature
   denv <- readIORef fileEnv
   let newPath = sourceFilePath source
   case Map.lookup newPath denv of
@@ -59,11 +70,9 @@ parseImport currentSpec visiter = do
         Nothing ->
           visitNewFile visiter source
 
-parseImport' :: Spec -> IO Source
-parseImport' currentSpec = do
+signatureToSource :: Spec -> Signature -> IO Source
+signatureToSource currentSpec (moduleName, section) = do
   m <- currentHint
-  token "import"
-  (moduleName, section) <- parseModuleInfo
   mo <- parseModuleName m currentSpec moduleName >>= signatureToModule
   filePath <- getSourceFilePath m mo (sectionToPath section)
   return $
@@ -71,6 +80,33 @@ parseImport' currentSpec = do
       { sourceModule = mo,
         sourceFilePath = filePath
       }
+
+parseImportSequence :: IO [(Signature, Maybe T.Text)]
+parseImportSequence =
+  many $
+    tryPlanList
+      [ do
+          (sectionString, alias) <- parseImportQualified
+          return (sectionString, Just alias),
+        do
+          sectionString <- parseImportSimple
+          return (sectionString, Nothing)
+      ]
+
+parseImportSimple :: IO Signature
+parseImportSimple = do
+  m <- currentHint
+  token "import"
+  symbol >>= parseModuleInfo m
+
+parseImportQualified :: IO (Signature, T.Text)
+parseImportQualified = do
+  m <- currentHint
+  token "import"
+  preSection <- symbol >>= parseModuleInfo m
+  token "as"
+  alias <- symbol
+  return (preSection, alias)
 
 parseModuleName :: Hint -> Spec -> T.Text -> IO ModuleSignature
 parseModuleName m currentSpec moduleName
@@ -81,11 +117,9 @@ parseModuleName m currentSpec moduleName
   | otherwise =
     raiseError m $ "no such module is declared: " <> moduleName
 
-parseModuleInfo :: IO (T.Text, [T.Text])
-parseModuleInfo = do
-  m <- currentHint
-  moduleSection <- symbol
-  let xs = T.splitOn "." moduleSection
+parseModuleInfo :: Hint -> T.Text -> IO Signature
+parseModuleInfo m sectionString = do
+  let xs = T.splitOn "." sectionString
   case xs of
     [] ->
       raiseCritical m "empty symbol"
@@ -110,6 +144,8 @@ useCache ::
 useCache newPath stmtList enumInfoList = do
   forM_ enumInfoList $ \(mEnum, name, itemList) -> do
     insEnumEnv mEnum name itemList
+  let names = S.fromList $ map (\(StmtDef _ _ x _ _) -> x) stmtList
+  modifyIORef' topNameEnv $ S.union names
   modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
   return [(newPath, Left stmtList, enumInfoList)]
 

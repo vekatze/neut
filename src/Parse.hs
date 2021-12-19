@@ -3,7 +3,7 @@ module Parse
   )
 where
 
-import Control.Monad (forM_, unless, when)
+import Control.Monad (forM, forM_, unless, when)
 import Data.Basic
   ( EnumCase (EnumCaseLabel),
     Hint,
@@ -93,7 +93,7 @@ import Parse.Core
   )
 import Parse.Discern (discern, discernStmtList)
 import Parse.Enum (initializeEnumEnv, parseDefineEnum)
-import Parse.Import (parseImport)
+import Parse.Import (Signature, parseImport, parseImportSequence)
 import Parse.Section (pathToSection)
 import Parse.Spec (moduleToSpec)
 import Parse.WeakTerm
@@ -190,14 +190,24 @@ parseHeaderBase currentFilePath action = do
 parseHeader :: Spec -> Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
 parseHeader currentSpec currentFilePath = do
   parseHeaderBase currentFilePath $ do
-    headSymbol <- lookAhead (symbolMaybe isSymbolChar)
-    case headSymbol of
-      Just "import" -> do
-        defList1 <- parseImport currentSpec visit
-        (defList2, main, enumInfoList) <- parseHeader currentSpec currentFilePath
-        return (defList1 ++ defList2, main, enumInfoList)
-      _ -> do
-        parseHeader' currentSpec currentFilePath
+    importSequence <- parseImportSequence
+    let sectionList = map fst importSequence
+    defListExternal <- fmap concat $ forM sectionList $ parseImport currentSpec visit
+    arrangeNamespace importSequence
+    (defList, main, enumInfoList) <- parseHeader' currentSpec currentFilePath
+    return (defListExternal ++ defList, main, enumInfoList)
+
+arrangeNamespace :: [(Signature, Maybe T.Text)] -> IO ()
+arrangeNamespace importSequence = do
+  case importSequence of
+    [] ->
+      return ()
+    ((moduleName, section), Just alias) : rest -> do
+      handleDefinePrefix alias (T.intercalate nsSep (moduleName : section))
+      arrangeNamespace rest
+    ((moduleName, section), Nothing) : rest -> do
+      handleUse $ T.intercalate nsSep $ moduleName : section
+      arrangeNamespace rest
 
 setupSectionPrefix :: Spec -> Path Abs File -> IO ()
 setupSectionPrefix currentSpec currentFilePath = do
