@@ -18,7 +18,7 @@ import Data.Global
     p',
     revEnumEnv,
     topNameEnv,
-    topNameEnvExt,
+    -- topNameEnvExt,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (readIORef)
@@ -90,14 +90,12 @@ discern' nenv term =
       tryCand (resolveSymbol m (asWeakVar m nenv) s) $ do
         tnenv <- readIORef topNameEnv
         tryCand (resolveSymbol m (asGlobalVar m tnenv) s) $ do
-          tnenvExt <- readIORef topNameEnvExt
-          tryCand (resolveSymbol m (asGlobalVar m tnenvExt) s) $ do
-            renv <- readIORef revEnumEnv
-            tryCand (resolveSymbol m (asEnumIntro m renv) s) $ do
-              eenv <- readIORef enumEnv
-              tryCand (resolveSymbol m (asEnum m eenv) s) $
-                tryCand (resolveSymbol m (asWeakConstant m) s) $
-                  raiseError m $ "undefined variable: " <> s
+          renv <- readIORef revEnumEnv
+          tryCand (resolveSymbol m (asEnumIntro m renv) s) $ do
+            eenv <- readIORef enumEnv
+            tryCand (resolveSymbol m (asEnum m eenv) s) $
+              tryCand (resolveSymbol m (asWeakConstant m) s) $
+                raiseError m $ "undefined variable: " <> s
     (_, WeakTermVarGlobal {}) ->
       return term
     (m, WeakTermPi xts t) -> do

@@ -36,7 +36,6 @@ import Data.Global
     revEnumEnv,
     sectionEnv,
     topNameEnv,
-    topNameEnvExt,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
@@ -176,8 +175,7 @@ visit source = do
 leave :: IO [WeakStmt]
 leave = do
   path <- getCurrentFilePath
-  tnenv <- readIORef topNameEnv
-  modifyIORef' fileEnv $ \env -> Map.insert path (VisitInfoFinish tnenv) env
+  modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoFinish env
   popTrace
   return []
 
@@ -674,6 +672,5 @@ registerTopLevelName m x = do
 initializeNamespace :: IO ()
 initializeNamespace = do
   writeIORef topNameEnv Map.empty
-  writeIORef topNameEnvExt Map.empty
   readIORef defaultAliasEnv >>= writeIORef aliasEnv
   writeIORef prefixEnv initialPrefixEnv

@@ -10,12 +10,10 @@ import Data.Global
     enumEnv,
     fileEnv,
     revEnumEnv,
-    topNameEnv,
-    topNameEnvExt,
     traceEnv,
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef, writeIORef)
+import Data.IORef (modifyIORef', readIORef)
 import Data.List (find)
 import Data.Log (raiseCritical, raiseError)
 import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), Source (Source), getModuleName, signatureToModule, sourceFilePath, sourceModule)
@@ -24,7 +22,7 @@ import Data.Spec (Spec (specDependency, specSourceDir))
 import Data.Stmt
   ( EnumInfo,
     HeaderStmtPlus,
-    Stmt (StmtDef),
+    Stmt,
     WeakStmtPlus,
     loadCache,
   )
@@ -53,8 +51,7 @@ parseImport currentSpec visiter = do
   case Map.lookup newPath denv of
     Just VisitInfoActive ->
       raiseCyclicInclusion m newPath
-    Just (VisitInfoFinish nameInfo) -> do
-      modifyIORef' topNameEnvExt $ \env -> Map.union nameInfo env
+    Just VisitInfoFinish -> do
       return []
     Nothing -> do
       stmtListOrNothing <- loadCache m newPath
@@ -115,18 +112,12 @@ useCache ::
 useCache newPath stmtList enumInfoList = do
   forM_ enumInfoList $ \(mEnum, name, itemList) -> do
     insEnumEnv (toFilePath newPath) mEnum name itemList
-  let names = Map.fromList $ map (\(StmtDef _ _ x _ _) -> (x, toFilePath newPath)) stmtList
-  modifyIORef' topNameEnvExt $ \env -> Map.union names env
-  modifyIORef' fileEnv $ \env -> Map.insert newPath (VisitInfoFinish names) env
+  modifyIORef' fileEnv $ \env -> Map.insert newPath VisitInfoFinish env
   return [(newPath, Left stmtList, enumInfoList)]
 
 visitNewFile :: (t -> IO ([(a1, Either a2 b, c)], (a1, b), c)) -> t -> IO [(a1, Either a2 b, c)]
 visitNewFile visiter newPath = do
-  nenvExt <- readIORef topNameEnvExt
   (ss, (pathInfo, bodyInfo), enumInfoList) <- visiter newPath
-  newNameEnv <- readIORef topNameEnv
-  writeIORef topNameEnv Map.empty
-  writeIORef topNameEnvExt $ Map.union nenvExt newNameEnv
   return $ ss ++ [(pathInfo, Right bodyInfo, enumInfoList)]
 
 raiseCyclicInclusion :: Hint -> Path Abs File -> IO b
