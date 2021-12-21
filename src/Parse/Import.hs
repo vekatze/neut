@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Parse.Import
   ( parseImport,
     parseImportSequence,

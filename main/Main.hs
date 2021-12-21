@@ -2,6 +2,7 @@ module Main (main) where
 
 import Clarify (clarify)
 import Command.Get (get, tidy)
+import Command.Init (initialize)
 import Control.Concurrent.Async (wait)
 import Control.Exception.Safe (try)
 import Control.Monad (forM_, void, (>=>))
@@ -138,6 +139,7 @@ data Command
   | Archive InputPath (Maybe OutputPath)
   | Get Alias URL
   | Tidy
+  | Init T.Text
   | Version
 
 main :: IO ()
@@ -161,6 +163,12 @@ parseOpt =
           ( info
               (helper <*> parseArchiveOpt)
               (progDesc "create archive from given path")
+          )
+        <> command
+          "init"
+          ( info
+              (helper <*> parseInitOpt)
+              (progDesc "create a new module")
           )
         <> command
           "get"
@@ -267,6 +275,19 @@ parseGetOpt =
 parseTidyOpt :: Parser Command
 parseTidyOpt =
   pure Tidy
+
+parseInitOpt :: Parser Command
+parseInitOpt =
+  Init
+    <$> ( T.pack
+            <$> argument
+              str
+              ( mconcat
+                  [ metavar "MODULE",
+                    help "The name of the module"
+                  ]
+              )
+        )
 
 parseVersionOpt :: Parser Command
 parseVersionOpt =
@@ -380,6 +401,8 @@ runCommand cmd =
       tarExitCode <- waitForProcess handler
       waitAll
       exitWith tarExitCode
+    Init moduleName ->
+      runAction $ initialize moduleName
     Get alias url ->
       runAction $ get alias url
     Tidy ->

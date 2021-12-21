@@ -172,11 +172,14 @@ ppList n xs = do
 
 ppDictionary :: Int -> M.HashMap T.Text (Cofree EntityF a) -> T.Text
 ppDictionary n dict = do
-  let header = "{"
-  let dictList = sortOn fst $ M.toList dict
-  let strList = map (uncurry $ ppDictionaryEntry (n + 1)) dictList
-  let footer = showWithOffset n "}"
-  T.intercalate "\n" $ [header] <> strList <> [footer]
+  if M.size dict == 0
+    then "{}"
+    else do
+      let header = "{"
+      let dictList = sortOn fst $ M.toList dict
+      let strList = map (uncurry $ ppDictionaryEntry (n + 1)) dictList
+      let footer = showWithOffset n "}"
+      T.intercalate "\n" $ [header] <> strList <> [footer]
 
 ppDictionaryEntry :: Int -> T.Text -> Cofree EntityF a -> T.Text
 ppDictionaryEntry n key value = do
@@ -202,4 +205,4 @@ ppEntityTopLevel :: M.HashMap T.Text (Cofree EntityF a) -> T.Text
 ppEntityTopLevel dict = do
   let dictList = sortOn fst $ M.toList dict
   let strList = map (uncurry $ ppDictionaryEntry 0) dictList
-  T.intercalate "\n" strList
+  T.intercalate "\n" strList <> "\n"

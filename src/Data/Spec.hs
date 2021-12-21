@@ -26,36 +26,18 @@ addDependency alias url checksum spec =
 
 ppSpec :: Spec -> T.Text
 ppSpec spec = do
-  let sourceDirText = ppSpecSourceDir spec
-  let targetDirText = ppSpecTargetDir spec
-  let entryPointText = ppSpecEntryPoint spec
-  let dependencyText = ppSpecDependency spec
-  T.intercalate "\n\n" [sourceDirText, targetDirText, entryPointText, dependencyText] <> "\n"
-
-ppSpecSourceDir :: Spec -> T.Text
-ppSpecSourceDir spec =
-  ppEntityTopLevel $ Map.fromList [("source-directory", () :< EntityString (T.pack $ toFilePath $ specSourceDir spec))]
-
-ppSpecTargetDir :: Spec -> T.Text
-ppSpecTargetDir spec =
-  ppEntityTopLevel $ Map.fromList [("target-directory", () :< EntityString (T.pack $ toFilePath $ specTargetDir spec))]
-
-ppSpecEntryPoint :: Spec -> T.Text
-ppSpecEntryPoint spec = do
   let entryPoint = Map.map (\x -> () :< EntityString (T.pack (toFilePath x))) $ specEntryPoint spec
-  ppEntityTopLevel $ Map.fromList [("entry-point", () :< EntityDictionary entryPoint)]
-
-ppSpecDependency :: Spec -> T.Text
-ppSpecDependency spec = do
   let dependency = flip Map.map (specDependency spec) $ \(URL url, Checksum checksum) -> do
         let urlEntity = () :< EntityString url
         let checksumEntity = () :< EntityString checksum
         () :< EntityDictionary (Map.fromList [("checksum", checksumEntity), ("URL", urlEntity)])
-  ppEntityTopLevel $ Map.fromList [("dependency", () :< EntityDictionary dependency)]
-
-wrapWithDict :: T.Text -> Cofree EntityF () -> Cofree EntityF ()
-wrapWithDict key value =
-  () :< EntityDictionary (Map.fromList [(key, value)])
+  ppEntityTopLevel $
+    Map.fromList
+      [ ("dependency", () :< EntityDictionary dependency),
+        ("entry-point", () :< EntityDictionary entryPoint),
+        ("source-directory", () :< EntityString (T.pack $ toFilePath $ specSourceDir spec)),
+        ("target-directory", () :< EntityString (T.pack $ toFilePath $ specTargetDir spec))
+      ]
 
 getSourceDir :: Spec -> Path Abs Dir
 getSourceDir spec =
