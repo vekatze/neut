@@ -1,7 +1,7 @@
 module Main (main) where
 
 import Clarify (clarify)
-import Command.Get (get, tidy)
+import Command.Dependency (get, tidy)
 import Command.Init (initialize)
 import Control.Concurrent.Async (wait)
 import Control.Exception.Safe (try)

@@ -34,8 +34,8 @@ ppSpec spec = do
   ppEntityTopLevel $
     Map.fromList
       [ ("dependency", () :< EntityDictionary dependency),
-        ("entry-point", () :< EntityDictionary entryPoint),
         ("source-directory", () :< EntityString (T.pack $ toFilePath $ specSourceDir spec)),
+        ("target", () :< EntityDictionary entryPoint),
         ("target-directory", () :< EntityString (T.pack $ toFilePath $ specTargetDir spec))
       ]
 
@@ -49,6 +49,5 @@ getTargetDir spec =
 
 getEntryPoint :: Spec -> T.Text -> Maybe (Path Abs File)
 getEntryPoint spec entryPointName = do
-  let sourceDir = getSourceDir spec
   relPath <- Map.lookup entryPointName (specEntryPoint spec)
-  return $ sourceDir </> relPath
+  return $ getSourceDir spec </> relPath

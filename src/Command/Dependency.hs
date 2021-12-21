@@ -1,4 +1,4 @@
-module Command.Get (get, tidy) where
+module Command.Dependency (get, tidy) where
 
 import Control.Monad (forM_, unless, when)
 import Crypto.Hash.SHA256 as SHA256 (hash)

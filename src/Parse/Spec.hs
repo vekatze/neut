@@ -21,7 +21,7 @@ parse specFilePath = do
   entity <- E.parse specFilePath
   sourceDirPath <- access "source-directory" entity >>= interpretRelDirPath
   targetDirPath <- access "target-directory" entity >>= interpretRelDirPath
-  entryPointEns <- access "entry-point" entity >>= toDictionary
+  entryPointEns <- access "target" entity >>= toDictionary
   dependencyEns <- access "dependency" entity >>= toDictionary
   entryPoint <- mapM interpretRelFilePath entryPointEns
   dependency <- mapM interpretDependency dependencyEns
