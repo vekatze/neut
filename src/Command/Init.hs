@@ -24,6 +24,7 @@ initialize moduleName = do
     then raiseError' $ "the directory `" <> moduleName <> "` already exists"
     else do
       createModuleFile spec
+      createReleaseDir spec
       createSourceDir spec
       createTargetDir spec
       createMainFile spec
@@ -32,6 +33,11 @@ createModuleFile :: Spec -> IO ()
 createModuleFile spec = do
   ensureDir $ parent $ specLocation spec
   TIO.writeFile (toFilePath $ specLocation spec) $ ppSpec spec
+
+createReleaseDir :: Spec -> IO ()
+createReleaseDir spec = do
+  let baseDir = parent $ specLocation spec
+  ensureDir $ baseDir </> $(mkRelDir "release/")
 
 createSourceDir :: Spec -> IO ()
 createSourceDir spec = do

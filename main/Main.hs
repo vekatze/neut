@@ -3,6 +3,7 @@ module Main (main) where
 import Clarify (clarify)
 import Command.Dependency (get, tidy)
 import Command.Init (initialize)
+import Command.Release (release)
 import Control.Concurrent.Async (wait)
 import Control.Exception.Safe (try)
 import Control.Monad (forM_, void, (>=>))
@@ -53,28 +54,22 @@ import Parse (parse)
 import Parse.Section (getSpecForBuildDirectory)
 import Path
   ( Abs,
-    Dir,
     File,
     Path,
     Rel,
     addExtension,
-    dirname,
     filename,
-    fromRelDir,
-    parent,
     parseRelFile,
     splitExtension,
-    stripProperPrefix,
     toFilePath,
     (</>),
   )
-import Path.IO (getCurrentDir, resolveDir', resolveFile')
+import Path.IO (getCurrentDir, resolveFile')
 import Paths_neut (version)
 import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.Process
   ( CreateProcess (std_in),
     StdStream (CreatePipe),
-    createProcess,
     proc,
     waitForProcess,
     withCreateProcess,
@@ -136,7 +131,7 @@ data Command
       (Maybe ClangOption)
   | Link MainInputPath [AuxInputPath] (Maybe OutputPath) (Maybe ClangOption)
   | Check InputPath ShouldColorize CheckOptEndOfEntry
-  | Archive InputPath (Maybe OutputPath)
+  | Release T.Text
   | Get Alias URL
   | Tidy
   | Init T.Text
@@ -159,10 +154,10 @@ parseOpt =
           "check"
           (info (helper <*> parseCheckOpt) (progDesc "check specified file"))
         <> command
-          "archive"
+          "release"
           ( info
-              (helper <*> parseArchiveOpt)
-              (progDesc "create archive from given path")
+              (helper <*> parseReleaseOpt)
+              (progDesc "create a release from a given path")
           )
         <> command
           "init"
@@ -333,22 +328,15 @@ colorizeOpt =
         ]
     )
 
-parseArchiveOpt :: Parser Command
-parseArchiveOpt =
-  Archive
-    <$> argument
-      str
-      ( mconcat [metavar "INPUT", help "The path of input directory"]
-      )
-    <*> optional
-      ( strOption $
-          mconcat
-            [ long "output",
-              short 'o',
-              metavar "OUTPUT",
-              help "The path of output"
-            ]
-      )
+parseReleaseOpt :: Parser Command
+parseReleaseOpt =
+  Release
+    <$> ( T.pack
+            <$> argument
+              str
+              ( mconcat [metavar "IDENTIFIER", help "The name of the release"]
+              )
+        )
 
 runCommand :: Command -> IO ()
 runCommand cmd =
@@ -390,17 +378,8 @@ runCommand cmd =
       inputPath <- resolveFile' inputPathStr
       void $ runAction (runCheck inputPath)
       waitAll
-    Archive inputPathStr mOutputPathStr -> do
-      libDirPath <- resolveDir' inputPathStr
-      let parentDirPath = parent libDirPath
-      basename <- stripProperPrefix parentDirPath libDirPath
-      mOutputPath <- mapM resolveFile' mOutputPathStr
-      outputPath <- toFilePath <$> constructOutputArchivePath libDirPath mOutputPath
-      let tarCmd = proc "tar" ["cJf", outputPath, "-C", toFilePath parentDirPath, toFilePath basename]
-      (_, _, _, handler) <- createProcess tarCmd
-      tarExitCode <- waitForProcess handler
-      waitAll
-      exitWith tarExitCode
+    Release identifier -> do
+      runAction (release identifier)
     Init moduleName ->
       runAction $ initialize moduleName
     Get alias url ->
@@ -429,14 +408,6 @@ constructOutputPath basename mPath kind =
         OutputKindObject -> do
           dir <- getCurrentDir
           return $ dir </> basename
-
-constructOutputArchivePath :: Path Abs Dir -> Maybe (Path Abs File) -> IO (Path Abs File)
-constructOutputArchivePath inputPath mPath =
-  case mPath of
-    Just path ->
-      return path
-    Nothing ->
-      resolveFile' (fromRelDir $ dirname inputPath) >>= addExtension ".tar" >>= addExtension ".gz"
 
 resolveTarget :: Target -> Spec -> IO (Path Abs File)
 resolveTarget target mainSpec = do
