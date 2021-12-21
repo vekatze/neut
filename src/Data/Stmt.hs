@@ -6,12 +6,13 @@ import Control.Comonad.Cofree (Cofree ((:<)))
 import Data.Basic (Hint, IsReducible, getPosInfo)
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
 import Data.Global (p, warn)
+import Data.Module (Source (sourceFilePath), sourceToCachePath)
 import Data.Term (Term, TermF (TermTau))
 import qualified Data.Text as T
 import Data.WeakTerm (WeakTerm)
 import GHC.Generics (Generic)
-import Path (Abs, File, Path, replaceExtension, toFilePath)
-import Path.IO (doesFileExist, getModificationTime, removeFile)
+import Path (Abs, File, Path, parent, toFilePath)
+import Path.IO (doesFileExist, ensureDir, getModificationTime, removeFile)
 
 type HeaderProgram =
   (Path Abs File, Either [Stmt] [WeakStmt], [EnumInfo])
@@ -23,7 +24,7 @@ data WeakStmt
   = WeakStmtDef IsReducible Hint T.Text WeakTerm WeakTerm
 
 type Program =
-  (Path Abs File, [Stmt])
+  (Source, [Stmt])
 
 data Stmt
   = StmtDef IsReducible Hint T.Text Term Term
@@ -42,23 +43,24 @@ compress stmt@(StmtDef isReducible m x t _) =
     else StmtDef isReducible m x t (m :< TermTau)
 
 saveCache :: Program -> [EnumInfo] -> IO ()
-saveCache (srcPath, stmtList) enumInfoList = do
-  b <- doesFreshCacheExist srcPath
+saveCache (source, stmtList) enumInfoList = do
+  b <- doesFreshCacheExist source
   if b
     then return () -- the cache is already fresh
     else do
       let stmtList' = map compress stmtList
-      cachePath <- replaceExtension ".cache" srcPath
+      cachePath <- sourceToCachePath source
+      ensureDir $ parent cachePath
       encodeFile (toFilePath cachePath) (stmtList', enumInfoList)
 
-loadCache :: Hint -> Path Abs File -> IO (Maybe Cache)
-loadCache m srcPath = do
-  cachePath <- replaceExtension ".cache" srcPath
+loadCache :: Hint -> Source -> IO (Maybe Cache)
+loadCache m source = do
+  cachePath <- sourceToCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
     else do
-      b <- doesFreshCacheExist srcPath
+      b <- doesFreshCacheExist source
       if not b
         then do
           p "no cache is available"
@@ -73,13 +75,13 @@ loadCache m srcPath = do
             Right content ->
               return $ Just content
 
-doesFreshCacheExist :: Path Abs File -> IO Bool
-doesFreshCacheExist srcPath = do
-  cachePath <- replaceExtension ".cache" srcPath
+doesFreshCacheExist :: Source -> IO Bool
+doesFreshCacheExist source = do
+  cachePath <- sourceToCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return False
     else do
-      srcModTime <- getModificationTime srcPath
+      srcModTime <- getModificationTime $ sourceFilePath source
       cacheModTime <- getModificationTime cachePath
       return $ cacheModTime > srcModTime

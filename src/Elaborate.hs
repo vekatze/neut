@@ -4,7 +4,6 @@ module Elaborate
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Concurrent.Async (async)
 import Control.Monad (forM, forM_, unless, when)
 import Data.Basic
   ( EnumCase,
@@ -18,7 +17,6 @@ import Data.Global
   ( dataEnv,
     enumEnv,
     note,
-    promiseEnv,
     substEnv,
     topDefEnv,
     topTypeEnv,
@@ -32,8 +30,9 @@ import Data.LowType
   ( LowType (LowTypeFloat, LowTypeInt),
     asLowTypeMaybe,
   )
+import Data.Module (Source)
 import Data.Stmt
-  ( HeaderProgram,
+  ( EnumInfo,
     Stmt (..),
     WeakStmt (WeakStmtDef),
     saveCache,
@@ -93,24 +92,16 @@ import Elaborate.Unify (unify)
 import Reduce.Term (reduceTerm)
 import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
 
-elaborate :: ([HeaderProgram], [WeakStmt]) -> IO ([[Stmt]], [Stmt])
-elaborate (ss, mainContent) =
-  case ss of
-    [] -> do
-      mainDefList' <- elaborateProgram mainContent
-      return ([], mainDefList')
-    (srcPath, content, enumInfoList) : rest -> do
-      case content of
-        Left cache -> do
-          forM_ cache $ \stmt -> registerTopLevelDef stmt
-          (rest', s') <- elaborate (rest, mainContent)
-          return (cache : rest', s')
-        Right defList -> do
-          headProgram' <- elaborateProgram defList
-          promise <- async $ saveCache (srcPath, headProgram') enumInfoList
-          modifyIORef' promiseEnv $ \env -> promise : env
-          (rest', s') <- elaborate (rest, mainContent)
-          return (headProgram' : rest', s')
+elaborate :: Either [Stmt] (Source, [WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborate cacheOrStmt =
+  case cacheOrStmt of
+    Left cache -> do
+      forM_ cache $ \stmt -> registerTopLevelDef stmt
+      return cache
+    Right (source, defList, enumInfoList) -> do
+      defList' <- elaborateProgram defList
+      saveCache (source, defList') enumInfoList
+      return defList'
 
 registerTopLevelDef :: Stmt -> IO ()
 registerTopLevelDef (StmtDef isReducible _ x t e) = do
@@ -241,8 +232,6 @@ elaborate' term =
         _ :< TermEnum x -> do
           checkSwitchExaustiveness m x ls
           checkEnumElim m ls
-          -- checkSwitchExaustiveness m x (map snd ls)
-          -- checkEnumElim m $ map snd ls
           return $ m :< TermEnumElim (e', t') (zip ls es')
         _ ->
           raiseError m $

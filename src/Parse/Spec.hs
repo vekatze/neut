@@ -40,7 +40,7 @@ moduleToSpec m mo = do
   unless moduleFileExists $ do
     let moduleName = getModuleName mo
     raiseError m $
-      T.pack "could not find the module `"
+      T.pack "could not find the module file for `"
         <> moduleName
         <> "`"
   parse $ moduleFilePath mo

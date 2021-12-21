@@ -1,3 +1,5 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Data.Module where
 
 import Data.Global
@@ -7,7 +9,7 @@ import Data.Global
   )
 import Data.Log (raiseError')
 import qualified Data.Text as T
-import Path (Abs, Dir, File, Path, parent)
+import Path (Abs, Dir, File, Path, Rel, addExtension, mkRelDir, parent, splitExtension, stripProperPrefix, (</>))
 import Path.IO
   ( doesFileExist,
     getCurrentDir,
@@ -20,26 +22,39 @@ type Alias =
 
 newtype Checksum
   = Checksum T.Text
-  deriving (Show, Eq)
+  deriving (Show, Ord, Eq)
 
 showChecksum :: Checksum -> T.Text
 showChecksum (Checksum checksum) =
   checksum
 
+data OutputKind
+  = OutputKindObject
+  | OutputKindLLVM
+  | OutputKindExecutable
+  | OutputKindAsm
+  deriving (Show)
+
 data ModuleSignature
   = ModuleThis
   | ModuleThat Alias Checksum
-  deriving (Eq)
+  deriving (Show, Ord, Eq)
 
 data Module = Module
   { moduleSignature :: ModuleSignature,
     moduleFilePath :: Path Abs File
   }
+  deriving (Show, Ord, Eq)
 
 data Source = Source
   { sourceModule :: Module,
     sourceFilePath :: Path Abs File
   }
+  deriving (Show, Ord)
+
+instance Eq Source where
+  s1 == s2 =
+    sourceFilePath s1 == sourceFilePath s2
 
 getModuleName :: Module -> T.Text
 getModuleName mo =
@@ -127,3 +142,50 @@ signatureToModule sig = do
       { moduleSignature = sig,
         moduleFilePath = path
       }
+
+getModuleSourceDir :: Module -> Path Abs Dir
+getModuleSourceDir mo =
+  getModuleRootDir mo </> $(mkRelDir "source")
+
+getModuleTargetDir :: Module -> Path Abs Dir
+getModuleTargetDir mo =
+  getModuleRootDir mo </> $(mkRelDir "target")
+
+getModuleArtifactDir :: Module -> Path Abs Dir
+getModuleArtifactDir mo = do
+  getModuleRootDir mo </> $(mkRelDir "target/artifact")
+
+getModuleExecutableDir :: Module -> Path Abs Dir
+getModuleExecutableDir mo = do
+  getModuleRootDir mo </> $(mkRelDir "target/executable")
+
+getRelPathFromSourceDir :: Source -> IO (Path Rel File)
+getRelPathFromSourceDir source = do
+  let sourceDir = getModuleSourceDir $ sourceModule source
+  stripProperPrefix sourceDir (sourceFilePath source)
+
+sourceToOutputPath :: Source -> OutputKind -> IO (Path Abs File)
+sourceToOutputPath source kind = do
+  let artifactDir = getModuleArtifactDir $ sourceModule source
+  relPath <- getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- splitExtension relPath
+  attachExtension (artifactDir </> relPathWithoutExtension) kind
+
+sourceToCachePath :: Source -> IO (Path Abs File)
+sourceToCachePath source = do
+  let artifactDir = getModuleArtifactDir $ sourceModule source
+  relPath <- getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- splitExtension relPath
+  addExtension ".cache" (artifactDir </> relPathWithoutExtension)
+
+attachExtension :: Path Abs File -> OutputKind -> IO (Path Abs File)
+attachExtension file kind =
+  case kind of
+    OutputKindLLVM -> do
+      addExtension ".ll" file
+    OutputKindAsm -> do
+      addExtension ".s" file
+    OutputKindObject -> do
+      addExtension ".o" file
+    OutputKindExecutable -> do
+      return file

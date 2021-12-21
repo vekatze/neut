@@ -13,7 +13,6 @@ import Clarify.Sigma
 import Clarify.Utility
   ( bindLet,
     insDefEnv,
-    insDefEnv',
     wrapWithQuote,
   )
 import Control.Comonad.Cofree (Cofree (..))
@@ -90,11 +89,10 @@ import qualified Data.Text as T
 import Path (toFilePath)
 import Reduce.Comp (reduceComp, substComp)
 
-clarify :: ([[Stmt]], [Stmt]) -> IO ([(T.Text, Comp)], Maybe Comp)
-clarify (ss, mainDefList) = do
-  clarifyHeader ss
+clarify :: [Stmt] -> IO ([(T.Text, Comp)], Maybe Comp)
+clarify mainDefList = do
   mainDefList' <- mapM clarifyDef mainDefList
-  register mainDefList' -- for inlining
+  register mainDefList'
   mainDefList'' <- forM mainDefList' $ \(name, e) -> do
     e' <- reduceComp e
     return (name, e')
@@ -120,22 +118,9 @@ ensureMain m = do
     Just _ ->
       return ()
 
-clarifyHeader :: [[Stmt]] -> IO ()
-clarifyHeader ss =
-  case ss of
-    [] ->
-      return ()
-    defList : rest -> do
-      mapM clarifyDef defList >>= register'
-      clarifyHeader rest
-
 register :: [(T.Text, Comp)] -> IO ()
 register defList =
   forM_ defList $ \(x, e) -> insDefEnv x True [] e
-
-register' :: [(T.Text, Comp)] -> IO ()
-register' defList =
-  forM_ defList $ \(x, _) -> insDefEnv' x True []
 
 clarifyDef :: Stmt -> IO (T.Text, Comp)
 clarifyDef (StmtDef _ _ x _ e) = do
@@ -181,7 +166,6 @@ clarifyTerm tenv term =
       let fvs = chainFromTermList tenv es
       es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv m fvs) es
       (y, e', yVar) <- clarifyPlus tenv e
-      -- return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map unwrap cs) es')
       return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
     _ :< TermDerangement expKind es -> do
       case (expKind, es) of

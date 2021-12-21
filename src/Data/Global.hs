@@ -3,7 +3,6 @@
 module Data.Global where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Concurrent.Async (Async)
 import Control.Monad (when)
 import Data.Basic
   ( Hint,
@@ -32,6 +31,7 @@ import Data.Log
     logNote,
     logNote',
     logWarning,
+    raiseCritical',
   )
 import Data.LowComp (LowComp)
 import Data.LowType (LowType, voidPtr)
@@ -137,23 +137,23 @@ targetPlatform :: IORef String
 targetPlatform =
   unsafePerformIO (newIORef $ System.arch <> "-" <> System.os)
 
-{-# NOINLINE fileEnv #-}
-fileEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo)
-fileEnv =
-  unsafePerformIO (newIORef Map.empty)
+{-# NOINLINE currentFileRef #-}
+currentFileRef :: IORef (Maybe (Path Abs File))
+currentFileRef =
+  unsafePerformIO (newIORef Nothing)
 
-{-# NOINLINE traceEnv #-}
-traceEnv :: IORef [Path Abs File]
-traceEnv =
-  unsafePerformIO (newIORef [])
+setCurrentFilePath :: Path Abs File -> IO ()
+setCurrentFilePath path =
+  modifyIORef' currentFileRef $ const $ Just path
 
-pushTrace :: Path Abs File -> IO ()
-pushTrace path =
-  modifyIORef' traceEnv $ \env -> path : env
-
-popTrace :: IO ()
-popTrace =
-  modifyIORef' traceEnv $ \env -> tail env
+getCurrentFilePath :: IO (Path Abs File)
+getCurrentFilePath = do
+  currentFileOrNothing <- readIORef currentFileRef
+  case currentFileOrNothing of
+    Just currentFile ->
+      return currentFile
+    Nothing ->
+      raiseCritical' "no current file is set"
 
 -- [("choice", [("left", 0), ("right", 1)]), ...]
 {-# NOINLINE enumEnv #-}
@@ -266,11 +266,6 @@ lowDefEnv :: IORef (Map.HashMap T.Text ([Ident], LowComp))
 lowDefEnv =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE promiseEnv #-}
-promiseEnv :: IORef [Async ()]
-promiseEnv =
-  unsafePerformIO (newIORef [])
-
 {-# NOINLINE declEnv #-}
 declEnv :: IORef (Map.HashMap T.Text ([LowType], LowType))
 declEnv =
@@ -297,11 +292,6 @@ sourceFileExtension =
 defaultModulePrefix :: T.Text
 defaultModulePrefix =
   "this"
-
-{-# NOINLINE currentModuleName #-}
-currentModuleName :: IORef T.Text
-currentModuleName =
-  unsafePerformIO (newIORef "this")
 
 {-# INLINE nsSepChar #-}
 nsSepChar :: Char
@@ -374,11 +364,6 @@ newValueVarLocalWith name = do
 getCacheDirPath :: IO (Path Abs Dir)
 getCacheDirPath = do
   getXdgDir XdgCache (Just $(mkRelDir "neut")) >>= returnDirectory
-
-getCurrentFilePath :: IO (Path Abs File)
-getCurrentFilePath = do
-  tenv <- readIORef traceEnv
-  return $ head tenv
 
 getCurrentDirPath :: IO (Path Abs Dir)
 getCurrentDirPath =

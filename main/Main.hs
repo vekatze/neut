@@ -1,34 +1,24 @@
 module Main (main) where
 
-import Clarify (clarify)
+import Command.Build (OutputKind (..), build, clean)
 import Command.Dependency (get, tidy)
 import Command.Init (initialize)
 import Command.Release (release)
-import Control.Concurrent.Async (wait)
 import Control.Exception.Safe (try)
-import Control.Monad (forM_, void, (>=>))
-import Data.ByteString.Builder (Builder, toLazyByteString)
-import qualified Data.ByteString.Lazy as L
+import Control.Monad (void)
 import Data.Global
   ( endOfEntry,
     outputLog,
-    promiseEnv,
     shouldColorize,
   )
-import Data.IORef (readIORef, writeIORef)
-import Data.Log (Error (Error), raiseError')
-import Data.Maybe (fromMaybe)
+import Data.IORef (writeIORef)
+import Data.Log (Error (Error))
 import Data.Module (Alias)
-import Data.Spec (Spec, URL (URL), getEntryPoint, getTargetDir)
+import Data.Spec (URL (URL))
 import qualified Data.Text as T
 import Data.Version (showVersion)
-import Elaborate (elaborate)
-import Emit (emit)
-import GHC.IO.Handle (hClose)
-import Lower (lower)
 import Options.Applicative
-  ( Alternative (many),
-    Parser,
+  ( Parser,
     ReadM,
     argument,
     command,
@@ -44,51 +34,25 @@ import Options.Applicative
     optional,
     progDesc,
     readerError,
-    short,
     str,
     strOption,
     subparser,
     value,
   )
-import Parse (parse)
-import Parse.Section (getSpecForBuildDirectory)
 import Path
   ( Abs,
     File,
     Path,
-    Rel,
-    addExtension,
-    filename,
-    parseRelFile,
-    splitExtension,
-    toFilePath,
-    (</>),
   )
-import Path.IO (getCurrentDir, resolveFile')
+import Path.IO (resolveFile')
 import Paths_neut (version)
 import System.Exit (ExitCode (ExitFailure), exitWith)
-import System.Process
-  ( CreateProcess (std_in),
-    StdStream (CreatePipe),
-    proc,
-    waitForProcess,
-    withCreateProcess,
-  )
 import Text.Read (readMaybe)
 
 type Target =
   String
 
 type InputPath =
-  String
-
-type MainInputPath =
-  String
-
-type AuxInputPath =
-  String
-
-type OutputPath =
   String
 
 type CheckOptEndOfEntry =
@@ -100,36 +64,13 @@ type ShouldColorize =
 type ClangOption =
   String
 
-data OutputKind
-  = OutputKindObject
-  | OutputKindLLVM
-  | OutputKindLibrary
-  | OutputKindAsm
-  deriving (Show)
-
-instance Read OutputKind where
-  readsPrec _ "object" =
-    [(OutputKindObject, [])]
-  readsPrec _ "llvm" =
-    [(OutputKindLLVM, [])]
-  readsPrec _ "asm" =
-    [(OutputKindAsm, [])]
-  readsPrec _ _ =
-    []
-
--- type Alias =
---   String
-
--- type URL =
---   String
-
 data Command
   = Build
       Target
       OutputKind
       ShouldColorize
       (Maybe ClangOption)
-  | Link MainInputPath [AuxInputPath] (Maybe OutputPath) (Maybe ClangOption)
+  | Clean
   | Check InputPath ShouldColorize CheckOptEndOfEntry
   | Release T.Text
   | Get Alias URL
@@ -143,47 +84,57 @@ main =
 
 parseOpt :: Parser Command
 parseOpt =
-  subparser
-    ( command
-        "build"
-        (info (helper <*> parseBuildOpt) (progDesc "build given file"))
-        <> command
-          "link"
-          (info (helper <*> parseLinkOpt) (progDesc "link given files"))
-        <> command
+  subparser $
+    mconcat
+      [ command
+          "build"
+          ( info
+              (helper <*> parseBuildOpt)
+              (progDesc "build given file")
+          ),
+        command
+          "clean"
+          ( info
+              (helper <*> parseCleanOpt)
+              (progDesc "remove the resulting files")
+          ),
+        command
           "check"
-          (info (helper <*> parseCheckOpt) (progDesc "check specified file"))
-        <> command
+          ( info
+              (helper <*> parseCheckOpt)
+              (progDesc "check specified file")
+          ),
+        command
           "release"
           ( info
               (helper <*> parseReleaseOpt)
               (progDesc "create a release from a given path")
-          )
-        <> command
+          ),
+        command
           "init"
           ( info
               (helper <*> parseInitOpt)
               (progDesc "create a new module")
-          )
-        <> command
+          ),
+        command
           "get"
           ( info
               (helper <*> parseGetOpt)
               (progDesc "get a package")
-          )
-        <> command
+          ),
+        command
           "tidy"
           ( info
               (helper <*> parseTidyOpt)
               (progDesc "tidy the module dependency")
-          )
-        <> command
+          ),
+        command
           "version"
           ( info
               (helper <*> parseVersionOpt)
               (progDesc "show version info")
           )
-    )
+      ]
 
 parseBuildOpt :: Parser Command
 parseBuildOpt =
@@ -200,7 +151,7 @@ parseBuildOpt =
         ( mconcat
             [ long "emit",
               metavar "KIND",
-              value OutputKindLibrary,
+              value OutputKindExecutable,
               help "The type of output file"
             ]
         )
@@ -215,35 +166,9 @@ parseBuildOpt =
             )
         )
 
-parseLinkOpt :: Parser Command
-parseLinkOpt = do
-  Link
-    <$> argument
-      str
-      ( mconcat
-          [ metavar "INPUT",
-            help "The main input file"
-          ]
-      )
-      <*> many (argument str (metavar "AUX_INPUT"))
-      <*> optional
-        ( strOption $
-            mconcat
-              [ long "output",
-                short 'o',
-                metavar "OUTPUT",
-                help "The path of output file"
-              ]
-        )
-      <*> optional
-        ( strOption
-            ( mconcat
-                [ long "clang-option",
-                  metavar "OPT",
-                  help "option string to be passed to clang"
-                ]
-            )
-        )
+parseCleanOpt :: Parser Command
+parseCleanOpt =
+  pure Clean
 
 parseGetOpt :: Parser Command
 parseGetOpt =
@@ -257,15 +182,15 @@ parseGetOpt =
                   ]
               )
         )
-      <*> ( URL . T.pack
-              <$> argument
-                str
-                ( mconcat
-                    [ metavar "URL",
-                      help "The URL of the archive"
-                    ]
-                )
-          )
+    <*> ( URL . T.pack
+            <$> argument
+              str
+              ( mconcat
+                  [ metavar "URL",
+                    help "The URL of the archive"
+                  ]
+              )
+        )
 
 parseTidyOpt :: Parser Command
 parseTidyOpt =
@@ -342,42 +267,14 @@ runCommand :: Command -> IO ()
 runCommand cmd =
   case cmd of
     Build target outputKind colorizeFlag mClangOptStr -> do
-      writeIORef shouldColorize colorizeFlag
-      mainSpec <- runAction getSpecForBuildDirectory
-      entryFilePath <- runAction $ resolveTarget target mainSpec
-      outputPath <- getOutputPath target mainSpec
-      llvmIRBuilder <- runAction (build entryFilePath)
-      let llvmIR = toLazyByteString llvmIRBuilder
-      case outputKind of
-        OutputKindLLVM -> do
-          L.writeFile (toFilePath outputPath) llvmIR
-          waitAll
-        _ -> do
-          let additionalClangOptions = words $ fromMaybe "" mClangOptStr
-          let clangCmd = proc "clang" $ clangOptWith outputKind outputPath ++ additionalClangOptions ++ ["-c"]
-          withCreateProcess clangCmd {std_in = CreatePipe} $ \(Just stdin) _ _ clangProcessHandler -> do
-            L.hPut stdin llvmIR
-            hClose stdin
-            exitCode <- waitForProcess clangProcessHandler
-            waitAll
-            exitWith exitCode
-    Link mainFilePath auxFilePathList mOutputPathStr mClangOptStr -> do
-      inputPath <- resolveFile' mainFilePath
-      (basename, _) <- splitExtension $ filename inputPath
-      mOutputPath <- mapM resolveFile' mOutputPathStr
-      outputPath <- constructOutputPath basename mOutputPath OutputKindObject
-      let additionalClangOptions = words $ fromMaybe "" mClangOptStr
-      let clangCmd = proc "clang" $ clangLibOpt outputPath ++ additionalClangOptions ++ (mainFilePath : auxFilePathList)
-      withCreateProcess clangCmd $ \_ _ _ clangProcessHandler -> do
-        exitCode <- waitForProcess clangProcessHandler
-        waitAll
-        exitWith exitCode
+      runAction $ build target outputKind colorizeFlag mClangOptStr
     Check inputPathStr colorizeFlag eoe -> do
       writeIORef shouldColorize colorizeFlag
       writeIORef endOfEntry eoe
       inputPath <- resolveFile' inputPathStr
       void $ runAction (runCheck inputPath)
-      waitAll
+    Clean ->
+      runAction clean
     Release identifier -> do
       runAction (release identifier)
     Init moduleName ->
@@ -389,76 +286,9 @@ runCommand cmd =
     Version ->
       putStrLn $ showVersion version
 
-constructOutputPath :: Path Rel File -> Maybe (Path Abs File) -> OutputKind -> IO (Path Abs File)
-constructOutputPath basename mPath kind =
-  case mPath of
-    Just path ->
-      return path
-    Nothing ->
-      case kind of
-        OutputKindLLVM -> do
-          dir <- getCurrentDir
-          addExtension ".ll" (dir </> basename)
-        OutputKindAsm -> do
-          dir <- getCurrentDir
-          addExtension ".s" (dir </> basename)
-        OutputKindLibrary -> do
-          dir <- getCurrentDir
-          addExtension ".o" (dir </> basename)
-        OutputKindObject -> do
-          dir <- getCurrentDir
-          return $ dir </> basename
-
-resolveTarget :: Target -> Spec -> IO (Path Abs File)
-resolveTarget target mainSpec = do
-  -- case M.lookup (T.pack target) (specEntryPoint mainSpec) of
-  case getEntryPoint mainSpec (T.pack target) of
-    Just path ->
-      return path
-    Nothing -> do
-      l <- raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
-      outputLog l
-      exitWith (ExitFailure 1)
-
-getOutputPath :: Target -> Spec -> IO (Path Abs File)
-getOutputPath target mainSpec = do
-  targetFile <- parseRelFile target
-  let targetDir = getTargetDir mainSpec
-  return $ targetDir </> targetFile
-
-build :: Path Abs File -> IO Builder
-build =
-  parse >=> elaborate >=> clarify >=> lower >=> emit
-
 runCheck :: Path Abs File -> IO ()
 runCheck =
-  parse >=> elaborate >=> \_ -> return ()
-
-clangOptWith :: OutputKind -> Path Abs File -> [String]
-clangOptWith kind outputPath =
-  case kind of
-    OutputKindAsm ->
-      "-S" : clangBaseOpt outputPath
-    _ ->
-      clangBaseOpt outputPath
-
-clangBaseOpt :: Path Abs File -> [String]
-clangBaseOpt outputPath =
-  [ "-xir",
-    "-Wno-override-module",
-    "-O2",
-    "-",
-    "-o",
-    toFilePath outputPath
-  ]
-
-clangLibOpt :: Path Abs File -> [String]
-clangLibOpt outputPath =
-  [ "-Wno-override-module",
-    "-O2",
-    "-o",
-    toFilePath outputPath
-  ]
+  undefined
 
 runAction :: IO a -> IO a
 runAction c = do
@@ -468,8 +298,3 @@ runAction c = do
       foldr ((>>) . outputLog) (exitWith (ExitFailure 1)) err
     Right result ->
       return result
-
-waitAll :: IO ()
-waitAll = do
-  ps <- readIORef promiseEnv
-  forM_ ps $ \promise -> wait promise

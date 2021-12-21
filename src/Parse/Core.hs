@@ -97,13 +97,6 @@ initializeState fileContent = do
   writeIORef column 1
   writeIORef text fileContent
 
-withNestedState :: IO a -> IO a
-withNestedState comp = do
-  state <- saveState
-  value <- comp
-  loadState state
-  return value
-
 betweenParen :: IO a -> IO a
 betweenParen f = do
   char '(' >> skip

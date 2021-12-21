@@ -16,7 +16,9 @@ import Data.Entity
         EntityString
       ),
   )
-import Data.Global (popTrace, pushTrace)
+-- import Data.Global (popTrace, pushTrace)
+
+import Data.Global (setCurrentFilePath)
 import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef)
 import qualified Data.Text as T
@@ -36,19 +38,16 @@ import Parse.Core
     symbol,
     text,
     tryPlanList,
-    withNestedState,
   )
 import Path (Abs, File, Path, toFilePath)
 
 parse :: Path Abs File -> IO Entity
 parse path = do
-  withNestedState $ do
-    TIO.readFile (toFilePath path) >>= initializeState
-    pushTrace path
-    m <- currentHint
-    ens <- skip >> parseFile
-    popTrace
-    return $ m :< EntityDictionary ens
+  TIO.readFile (toFilePath path) >>= initializeState
+  setCurrentFilePath path
+  m <- currentHint
+  ens <- skip >> parseFile
+  return $ m :< EntityDictionary ens
 
 parseEntity :: IO Entity
 parseEntity = do

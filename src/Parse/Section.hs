@@ -2,12 +2,13 @@ module Parse.Section
   ( getSpecForBuildDirectory,
     pathToSection,
     sectionToPath,
+    getMainSpec,
   )
 where
 
-import Data.Global (defaultModulePrefix, mainModuleDirRef, sourceFileExtension)
+import Data.Global (defaultModulePrefix, mainModuleDirRef, setCurrentFilePath, sourceFileExtension)
 import Data.IORef (readIORef)
-import Data.Module (getMainModule)
+import Data.Module (getMainModule, moduleFilePath)
 import Data.Spec (Spec (..), getSourceDir)
 import qualified Data.Text as T
 import Parse.Core (currentHint)
@@ -39,3 +40,10 @@ getSpecForBuildDirectory = do
   m <- currentHint
   mo <- getMainModule
   moduleToSpec m mo
+
+getMainSpec :: IO Spec
+getMainSpec = do
+  mainModule <- getMainModule
+  setCurrentFilePath $ moduleFilePath mainModule
+  m <- currentHint
+  moduleToSpec m mainModule

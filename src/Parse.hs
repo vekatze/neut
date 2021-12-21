@@ -4,7 +4,7 @@ module Parse
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM, forM_, when)
+import Control.Monad (forM_, when)
 import Data.Basic
   ( EnumCaseF (EnumCaseLabel),
     Hint,
@@ -16,30 +16,24 @@ import Data.Basic
     asText,
   )
 import Data.Global
-  ( VisitInfo (VisitInfoActive, VisitInfoFinish),
-    aliasEnv,
+  ( aliasEnv,
     boolFalse,
     boolTrue,
     constructorEnv,
     dataEnv,
     defaultAliasEnv,
-    fileEnv,
-    getCurrentFilePath,
     initialPrefixEnv,
-    isMain,
-    mainModuleDirRef,
     newText,
     nsSep,
-    popTrace,
     prefixEnv,
-    pushTrace,
     sectionEnv,
+    setCurrentFilePath,
     topNameEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseError)
-import Data.Module (Source (..), getMainModule, getModuleRootDir)
+import Data.Module (Source (..))
 import Data.Namespace
   ( handleDefinePrefix,
     handleUse,
@@ -49,9 +43,9 @@ import qualified Data.Set as S
 import Data.Spec (Spec)
 import Data.Stmt
   ( EnumInfo,
-    HeaderProgram,
-    WeakProgram,
+    Stmt (StmtDef),
     WeakStmt (..),
+    loadCache,
   )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -86,11 +80,10 @@ import Parse.Core
     varText,
     weakTermToWeakIdent,
     weakVar,
-    withNestedState,
   )
-import Parse.Discern (discern, discernStmtList)
-import Parse.Enum (initializeEnumEnv, parseDefineEnum)
-import Parse.Import (Signature, parseImport, parseImportSequence)
+import Parse.Discern (discernStmtList)
+import Parse.Enum (insEnumEnv, parseDefineEnum)
+import Parse.Import (Signature, parseImportSequence)
 import Parse.Section (pathToSection)
 import Parse.Spec (moduleToSpec)
 import Parse.WeakTerm
@@ -111,72 +104,48 @@ import Path
 -- core functions
 --
 
-parse :: Path Abs File -> IO ([HeaderProgram], [WeakStmt])
-parse mainSourceFilePath = do
-  mainSource <- getMainSource mainSourceFilePath
-  writeIORef mainModuleDirRef $ getModuleRootDir $ sourceModule mainSource
-  initializeEnumEnv
-  (headerInfo, (_, bodyInfo), _) <- visit mainSource
-  pushTrace mainSourceFilePath
-  ensureMain
-  return (headerInfo, bodyInfo)
-
-getMainSource :: Path Abs File -> IO Source
-getMainSource mainSourceFilePath = do
-  mainModule <- getMainModule
-  return $
-    Source
-      { sourceModule = mainModule,
-        sourceFilePath = mainSourceFilePath
-      }
-
-ensureMain :: IO ()
-ensureMain = do
-  flag <- readIORef isMain
-  when flag $ do
-    m <- currentHint
-    _ <- discern $ m :< WeakTermVar (asIdent "main")
-    return ()
-
-visit :: Source -> IO ([HeaderProgram], WeakProgram, [EnumInfo])
-visit source = do
-  initializeNamespace
+parse :: Source -> IO (Either [Stmt] (Source, [WeakStmt], [EnumInfo]))
+parse source = do
+  m <- currentHint
   let path = sourceFilePath source
-  pushTrace path
-  modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoActive env
-  withNestedState $ do
-    TIO.readFile (toFilePath path) >>= initializeState
-    skip
-    m <- currentHint
-    spec <- moduleToSpec m (sourceModule source)
-    parseHeader spec path
+  setCurrentFilePath path
+  mCache <- loadCache m source
+  case mCache of
+    Just (stmtList, enumInfoList) -> do
+      forM_ enumInfoList $ \(mEnum, name, itemList) -> do
+        insEnumEnv mEnum name itemList
+      let names = S.fromList $ map (\(StmtDef _ _ x _ _) -> x) stmtList
+      modifyIORef' topNameEnv $ S.union names
+      return $ Left stmtList
+    Nothing -> do
+      initializeNamespace
+      TIO.readFile (toFilePath path) >>= initializeState
+      skip
+      spec <- moduleToSpec m (sourceModule source)
+      setupSectionPrefix spec path
+      (defList, enumInfoList) <- parseHeader
+      return $ Right (source, defList, enumInfoList)
 
-leave :: IO [WeakStmt]
-leave = do
-  path <- getCurrentFilePath
-  modifyIORef' fileEnv $ \env -> Map.insert path VisitInfoFinish env
-  popTrace
-  return []
+setupSectionPrefix :: Spec -> Path Abs File -> IO ()
+setupSectionPrefix currentSpec currentFilePath = do
+  (moduleName, pathInfo) <- pathToSection currentSpec currentFilePath
+  let section = moduleName : pathInfo
+  handleUse $ T.intercalate nsSep section
+  writeIORef sectionEnv section
 
-parseHeaderBase ::
-  Path Abs File ->
-  IO ([HeaderProgram], WeakProgram, [EnumInfo]) ->
-  IO ([HeaderProgram], WeakProgram, [EnumInfo])
-parseHeaderBase currentFilePath action = do
+parseHeaderBase :: IO ([WeakStmt], [EnumInfo]) -> IO ([WeakStmt], [EnumInfo])
+parseHeaderBase action = do
   s <- readIORef text
   if T.null s
-    then leave >>= \result -> return ([], (currentFilePath, result), [])
+    then return ([], [])
     else action
 
-parseHeader :: Spec -> Path Abs File -> IO ([HeaderProgram], WeakProgram, [EnumInfo])
-parseHeader currentSpec currentFilePath =
-  parseHeaderBase currentFilePath $ do
+parseHeader :: IO ([WeakStmt], [EnumInfo])
+parseHeader =
+  parseHeaderBase $ do
     importSequence <- parseImportSequence
-    let sectionList = map fst importSequence
-    defListExternal <- fmap concat $ forM sectionList $ parseImport currentSpec visit
     arrangeNamespace importSequence
-    (defList, main, enumInfoList) <- parseHeader' currentSpec currentFilePath
-    return (defListExternal ++ defList, main, enumInfoList)
+    parseHeader'
 
 arrangeNamespace :: [(Signature, Maybe T.Text)] -> IO ()
 arrangeNamespace importSequence =
@@ -190,61 +159,52 @@ arrangeNamespace importSequence =
       handleUse $ T.intercalate nsSep $ moduleName : section
       arrangeNamespace rest
 
-setupSectionPrefix :: Spec -> Path Abs File -> IO ()
-setupSectionPrefix currentSpec currentFilePath = do
-  (moduleName, pathInfo) <- pathToSection currentSpec currentFilePath
-  let section = moduleName : pathInfo
-  handleUse $ T.intercalate nsSep section
-  writeIORef sectionEnv section
-
-parseHeader' :: Spec -> Path Abs File -> IO ([HeaderProgram], WeakProgram, [EnumInfo])
-parseHeader' currentSpec currentFilePath =
-  parseHeaderBase currentFilePath $ do
+parseHeader' :: IO ([WeakStmt], [EnumInfo])
+parseHeader' =
+  parseHeaderBase $ do
     headSymbol <- lookAhead (symbolMaybe isSymbolChar)
     case headSymbol of
       Just "define-enum" -> do
         enumInfo <- parseDefineEnum
-        (defList, bodyInfo, enumInfoList) <- parseHeader' currentSpec currentFilePath
-        return (defList, bodyInfo, enumInfo : enumInfoList)
+        (defList, enumInfoList) <- parseHeader'
+        return (defList, enumInfo : enumInfoList)
       Just "define-prefix" -> do
-        stmtDefinePrefix
-        parseHeader' currentSpec currentFilePath
+        parseDefinePrefix
+        parseHeader'
       Just "use" -> do
-        stmtUse
-        parseHeader' currentSpec currentFilePath
+        parseStmtUse
+        parseHeader'
       _ -> do
-        setupSectionPrefix currentSpec currentFilePath
-        stmtList <- stmt >>= discernStmtList
-        return ([], (currentFilePath, stmtList), [])
+        stmtList <- parseStmtList >>= discernStmtList
+        return (stmtList, [])
 
-stmt :: IO [WeakStmt]
-stmt = do
+parseStmtList :: IO [WeakStmt]
+parseStmtList = do
   s <- readIORef text
   if T.null s
-    then leave
+    then return []
     else do
       headSymbol <- lookAhead (symbolMaybe isSymbolChar)
       case headSymbol of
         Just "define" -> do
-          def <- stmtDefine False
-          stmtList <- stmt
+          def <- parseDefine False
+          stmtList <- parseStmtList
           return $ def : stmtList
         Just "define-inline" -> do
-          -- fixme: define-reducibleとdefine-inlineは概念として別物ですわよ。
-          def <- stmtDefine True
-          stmtList <- stmt
+          def <- parseDefine True
+          stmtList <- parseStmtList
           return $ def : stmtList
         Just "define-data" -> do
-          stmtList1 <- stmtDefineData
-          stmtList2 <- stmt
+          stmtList1 <- parseDefineData
+          stmtList2 <- parseStmtList
           return $ stmtList1 ++ stmtList2
         Just "define-codata" -> do
-          stmtList1 <- stmtDefineCodata
-          stmtList2 <- stmt
+          stmtList1 <- parseDefineCodata
+          stmtList2 <- parseStmtList
           return $ stmtList1 ++ stmtList2
         Just "define-resource-type" -> do
-          def <- stmtDefineResourceType
-          stmtList <- stmt
+          def <- parseDefineResourceType
+          stmtList <- parseStmtList
           return $ def : stmtList
         Just x -> do
           m <- currentHint
@@ -258,8 +218,8 @@ stmt = do
 --
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-stmtDefine :: Bool -> IO WeakStmt
-stmtDefine isReducible = do
+parseDefine :: Bool -> IO WeakStmt
+parseDefine isReducible = do
   m <- currentHint
   if isReducible
     then token "define-inline"
@@ -288,28 +248,28 @@ defineTerm isReducible m name codType e = do
   registerTopLevelName m name
   return $ WeakStmtDef isReducible m name codType e
 
-stmtUse :: IO ()
-stmtUse = do
+parseStmtUse :: IO ()
+parseStmtUse = do
   token "use"
   name <- varText
   handleUse name
 
-stmtDefinePrefix :: IO ()
-stmtDefinePrefix = do
+parseDefinePrefix :: IO ()
+parseDefinePrefix = do
   token "define-prefix"
   from <- varText
   token "="
   to <- varText
   handleDefinePrefix from to
 
-stmtDefineData :: IO [WeakStmt]
-stmtDefineData = do
+parseDefineData :: IO [WeakStmt]
+parseDefineData = do
   m <- currentHint
   token "define-data"
   mFun <- currentHint
   a <- varText >>= withSectionPrefix
   xts <- many weakAscription
-  bts <- many stmtDefineDataClause
+  bts <- many parseDefineDataClause
   defineData m mFun a xts bts
 
 defineData :: Hint -> Hint -> T.Text -> [WeakBinder] -> [(Hint, T.Text, [WeakBinder])] -> IO [WeakStmt]
@@ -322,15 +282,15 @@ defineData m mFun a xts bts = do
     [] -> do
       registerTopLevelName m a
       let formRule = WeakStmtDef False m a (m :< WeakTermTau) (m :< WeakTermPi [] (m :< WeakTermTau)) -- fake type
-      introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
+      introRuleList <- mapM (parseDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
     _ -> do
       formRule <- defineFunction False m mFun a xts (m :< WeakTermTau) baseType
-      introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
+      introRuleList <- mapM (parseDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
 
-stmtDefineDataConstructor :: Hint -> [WeakBinder] -> WeakTerm -> T.Text -> [WeakBinder] -> (Hint, T.Text, [WeakBinder]) -> IO WeakStmt
-stmtDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
+parseDefineDataConstructor :: Hint -> [WeakBinder] -> WeakTerm -> T.Text -> [WeakBinder] -> (Hint, T.Text, [WeakBinder]) -> IO WeakStmt
+parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
   let consArgs = xts ++ yts
   let args = map identPlusToVar yts
   let b' = a <> nsSep <> b
@@ -382,24 +342,24 @@ stmtDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
               ]
         )
 
-stmtDefineDataClause :: IO (Hint, T.Text, [WeakBinder])
-stmtDefineDataClause = do
+parseDefineDataClause :: IO (Hint, T.Text, [WeakBinder])
+parseDefineDataClause = do
   token "-"
   m <- currentHint
   b <- symbol
-  yts <- many stmtDefineDataClauseArg
+  yts <- many parseDefineDataClauseArg
   return (m, b, yts)
 
-stmtDefineDataClauseArg :: IO WeakBinder
-stmtDefineDataClauseArg = do
+parseDefineDataClauseArg :: IO WeakBinder
+parseDefineDataClauseArg = do
   m <- currentHint
   tryPlanList
     [ weakAscription,
       weakTermToWeakIdent m weakTermSimple
     ]
 
-stmtDefineCodata :: IO [WeakStmt]
-stmtDefineCodata = do
+parseDefineCodata :: IO [WeakStmt]
+parseDefineCodata = do
   m <- currentHint
   token "define-codata"
   mFun <- currentHint
@@ -407,11 +367,11 @@ stmtDefineCodata = do
   xts <- many weakAscription
   yts <- many (token "-" >> ascriptionInner)
   formRule <- defineData m mFun a xts [(m, "new", yts)]
-  elimRuleList <- mapM (stmtDefineCodataElim m a xts yts) yts
+  elimRuleList <- mapM (parseDefineCodataElim m a xts yts) yts
   return $ formRule ++ elimRuleList
 
-stmtDefineCodataElim :: Hint -> T.Text -> [WeakBinder] -> [WeakBinder] -> WeakBinder -> IO WeakStmt
-stmtDefineCodataElim m a xts yts (mY, y, elemType) = do
+parseDefineCodataElim :: Hint -> T.Text -> [WeakBinder] -> [WeakBinder] -> WeakBinder -> IO WeakStmt
+parseDefineCodataElim m a xts yts (mY, y, elemType) = do
   let codataType =
         case xts of
           [] ->
@@ -435,8 +395,8 @@ stmtDefineCodataElim m a xts yts (mY, y, elemType) = do
           [((m, a <> nsSep <> "new", yts), weakVar m (asText y))]
     )
 
-stmtDefineResourceType :: IO WeakStmt
-stmtDefineResourceType = do
+parseDefineResourceType :: IO WeakStmt
+parseDefineResourceType = do
   m <- currentHint
   _ <- token "define-resource-type"
   name <- varText >>= withSectionPrefix
