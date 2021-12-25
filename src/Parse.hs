@@ -3,9 +3,10 @@ module Parse
   )
 where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM, forM_, when)
 import Data.Basic
-  ( EnumCase (EnumCaseLabel),
+  ( EnumCaseF (EnumCaseLabel),
     Hint,
     Ident,
     IsReducible,
@@ -48,15 +49,16 @@ import qualified Data.Set as S
 import Data.Spec (Spec)
 import Data.Stmt
   ( EnumInfo,
-    HeaderStmtPlus,
+    HeaderProgram,
+    WeakProgram,
     WeakStmt (..),
-    WeakStmtPlus,
   )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.WeakTerm
-  ( WeakIdentPlus,
-    WeakTerm
+  ( WeakBinder,
+    WeakTerm,
+    WeakTermF
       ( WeakTermCase,
         WeakTermEnumElim,
         WeakTermPi,
@@ -65,7 +67,6 @@ import Data.WeakTerm
         WeakTermTau,
         WeakTermVar
       ),
-    WeakTermPlus,
   )
 import Parse.Core
   ( currentHint,
@@ -95,7 +96,7 @@ import Parse.Spec (moduleToSpec)
 import Parse.WeakTerm
   ( ascriptionInner,
     weakAscription,
-    weakIdentPlus,
+    weakBinder,
     weakTerm,
     weakTermSimple,
   )
@@ -110,7 +111,7 @@ import Path
 -- core functions
 --
 
-parse :: Path Abs File -> IO ([HeaderStmtPlus], [WeakStmt])
+parse :: Path Abs File -> IO ([HeaderProgram], [WeakStmt])
 parse mainSourceFilePath = do
   mainSource <- getMainSource mainSourceFilePath
   writeIORef mainModuleDirRef $ getModuleRootDir $ sourceModule mainSource
@@ -134,10 +135,10 @@ ensureMain = do
   flag <- readIORef isMain
   when flag $ do
     m <- currentHint
-    _ <- discern (m, WeakTermVar $ asIdent "main")
+    _ <- discern $ m :< WeakTermVar (asIdent "main")
     return ()
 
-visit :: Source -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+visit :: Source -> IO ([HeaderProgram], WeakProgram, [EnumInfo])
 visit source = do
   initializeNamespace
   let path = sourceFilePath source
@@ -159,16 +160,16 @@ leave = do
 
 parseHeaderBase ::
   Path Abs File ->
-  IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo]) ->
-  IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
+  IO ([HeaderProgram], WeakProgram, [EnumInfo]) ->
+  IO ([HeaderProgram], WeakProgram, [EnumInfo])
 parseHeaderBase currentFilePath action = do
   s <- readIORef text
   if T.null s
     then leave >>= \result -> return ([], (currentFilePath, result), [])
     else action
 
-parseHeader :: Spec -> Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
-parseHeader currentSpec currentFilePath = do
+parseHeader :: Spec -> Path Abs File -> IO ([HeaderProgram], WeakProgram, [EnumInfo])
+parseHeader currentSpec currentFilePath =
   parseHeaderBase currentFilePath $ do
     importSequence <- parseImportSequence
     let sectionList = map fst importSequence
@@ -178,7 +179,7 @@ parseHeader currentSpec currentFilePath = do
     return (defListExternal ++ defList, main, enumInfoList)
 
 arrangeNamespace :: [(Signature, Maybe T.Text)] -> IO ()
-arrangeNamespace importSequence = do
+arrangeNamespace importSequence =
   case importSequence of
     [] ->
       return ()
@@ -196,8 +197,8 @@ setupSectionPrefix currentSpec currentFilePath = do
   handleUse $ T.intercalate nsSep section
   writeIORef sectionEnv section
 
-parseHeader' :: Spec -> Path Abs File -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])
-parseHeader' currentSpec currentFilePath = do
+parseHeader' :: Spec -> Path Abs File -> IO ([HeaderProgram], WeakProgram, [EnumInfo])
+parseHeader' currentSpec currentFilePath =
   parseHeaderBase currentFilePath $ do
     headSymbol <- lookAhead (symbolMaybe isSymbolChar)
     case headSymbol of
@@ -265,7 +266,7 @@ stmtDefine isReducible = do
     else token "define"
   (mTerm, name) <- var
   name' <- withSectionPrefix name
-  argList <- many weakIdentPlus
+  argList <- many weakBinder
   token ":"
   codType <- weakTerm
   token "="
@@ -276,13 +277,13 @@ stmtDefine isReducible = do
     _ ->
       defineFunction isReducible m mTerm name' argList codType e
 
-defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
+defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakBinder] -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineFunction isReducible m mFun name argList codType e = do
-  let piType = (m, WeakTermPi argList codType)
-  let e' = (m, WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent name, piType)) argList e)
+  let piType = m :< WeakTermPi argList codType
+  let e' = m :< WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent name, piType)) argList e
   defineTerm isReducible m name piType e'
 
-defineTerm :: IsReducible -> Hint -> T.Text -> WeakTermPlus -> WeakTermPlus -> IO WeakStmt
+defineTerm :: IsReducible -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineTerm isReducible m name codType e = do
   registerTopLevelName m name
   return $ WeakStmtDef isReducible m name codType e
@@ -311,24 +312,24 @@ stmtDefineData = do
   bts <- many stmtDefineDataClause
   defineData m mFun a xts bts
 
-defineData :: Hint -> Hint -> T.Text -> [WeakIdentPlus] -> [(Hint, T.Text, [WeakIdentPlus])] -> IO [WeakStmt]
+defineData :: Hint -> Hint -> T.Text -> [WeakBinder] -> [(Hint, T.Text, [WeakBinder])] -> IO [WeakStmt]
 defineData m mFun a xts bts = do
   setAsData a (length xts) bts
   z <- newTextualIdentFromText "cod"
-  let lamArgs = (m, z, (m, WeakTermTau)) : map (toPiTypeWith z) bts
-  let baseType = (m, WeakTermPi lamArgs (m, WeakTermVar z))
+  let lamArgs = (m, z, m :< WeakTermTau) : map (toPiTypeWith z) bts
+  let baseType = m :< WeakTermPi lamArgs (m :< WeakTermVar z)
   case xts of
     [] -> do
       registerTopLevelName m a
-      let formRule = WeakStmtDef False m a (m, WeakTermTau) (m, WeakTermPi [] (m, WeakTermTau)) -- fake type
+      let formRule = WeakStmtDef False m a (m :< WeakTermTau) (m :< WeakTermPi [] (m :< WeakTermTau)) -- fake type
       introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
     _ -> do
-      formRule <- defineFunction False m mFun a xts (m, WeakTermTau) baseType
+      formRule <- defineFunction False m mFun a xts (m :< WeakTermTau) baseType
       introRuleList <- mapM (stmtDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
 
-stmtDefineDataConstructor :: Hint -> [WeakIdentPlus] -> WeakTermPlus -> T.Text -> [WeakIdentPlus] -> (Hint, T.Text, [WeakIdentPlus]) -> IO WeakStmt
+stmtDefineDataConstructor :: Hint -> [WeakBinder] -> WeakTerm -> T.Text -> [WeakBinder] -> (Hint, T.Text, [WeakBinder]) -> IO WeakStmt
 stmtDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
   let consArgs = xts ++ yts
   let args = map identPlusToVar yts
@@ -338,7 +339,7 @@ stmtDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
           [] ->
             weakVar m a
           _ ->
-            (m, WeakTermPiElim (weakVar m a) (map identPlusToVar xts))
+            m :< WeakTermPiElim (weakVar m a) (map identPlusToVar xts)
   case consArgs of
     [] ->
       defineTerm
@@ -346,19 +347,18 @@ stmtDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
         m
         b'
         indType
-        ( m,
-          WeakTermPiElim
-            (weakVar m "unsafe.cast")
-            [ baseType,
-              indType,
-              ( m,
-                WeakTermPiIntro
-                  OpacityTransparent
-                  (LamKindCons a b')
-                  lamArgs
-                  (m, WeakTermPiElim (weakVar m b) args)
-              )
-            ]
+        ( m
+            :< WeakTermPiElim
+              (weakVar m "unsafe.cast")
+              [ baseType,
+                indType,
+                m
+                  :< WeakTermPiIntro
+                    OpacityTransparent
+                    (LamKindCons a b')
+                    lamArgs
+                    (m :< WeakTermPiElim (weakVar m b) args)
+              ]
         )
     _ ->
       defineFunction
@@ -368,22 +368,21 @@ stmtDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
         b'
         consArgs
         indType
-        ( m,
-          WeakTermPiElim
-            (weakVar m "unsafe.cast")
-            [ baseType,
-              indType,
-              ( m,
-                WeakTermPiIntro
-                  OpacityTransparent
-                  (LamKindCons a b')
-                  lamArgs
-                  (m, WeakTermPiElim (weakVar m b) args)
-              )
-            ]
+        ( m
+            :< WeakTermPiElim
+              (weakVar m "unsafe.cast")
+              [ baseType,
+                indType,
+                m
+                  :< WeakTermPiIntro
+                    OpacityTransparent
+                    (LamKindCons a b')
+                    lamArgs
+                    (m :< WeakTermPiElim (weakVar m b) args)
+              ]
         )
 
-stmtDefineDataClause :: IO (Hint, T.Text, [WeakIdentPlus])
+stmtDefineDataClause :: IO (Hint, T.Text, [WeakBinder])
 stmtDefineDataClause = do
   token "-"
   m <- currentHint
@@ -391,7 +390,7 @@ stmtDefineDataClause = do
   yts <- many stmtDefineDataClauseArg
   return (m, b, yts)
 
-stmtDefineDataClauseArg :: IO WeakIdentPlus
+stmtDefineDataClauseArg :: IO WeakBinder
 stmtDefineDataClauseArg = do
   m <- currentHint
   tryPlanList
@@ -411,14 +410,14 @@ stmtDefineCodata = do
   elimRuleList <- mapM (stmtDefineCodataElim m a xts yts) yts
   return $ formRule ++ elimRuleList
 
-stmtDefineCodataElim :: Hint -> T.Text -> [WeakIdentPlus] -> [WeakIdentPlus] -> WeakIdentPlus -> IO WeakStmt
+stmtDefineCodataElim :: Hint -> T.Text -> [WeakBinder] -> [WeakBinder] -> WeakBinder -> IO WeakStmt
 stmtDefineCodataElim m a xts yts (mY, y, elemType) = do
   let codataType =
         case xts of
           [] ->
             weakVar m a
           _ ->
-            (m, WeakTermPiElim (weakVar m a) (map identPlusToVar xts))
+            m :< WeakTermPiElim (weakVar m a) (map identPlusToVar xts)
   recordVarText <- newText
   let projArgs = xts ++ [(m, asIdent recordVarText, codataType)]
   defineFunction
@@ -428,12 +427,12 @@ stmtDefineCodataElim m a xts yts (mY, y, elemType) = do
     (a <> nsSep <> asText y)
     projArgs
     elemType
-    ( m,
-      WeakTermCase
-        elemType
-        Nothing
-        (weakVar m recordVarText, codataType)
-        [((m, a <> nsSep <> "new", yts), weakVar m (asText y))]
+    ( m
+        :< WeakTermCase
+          elemType
+          Nothing
+          (weakVar m recordVarText, codataType)
+          [((m, a <> nsSep <> "new", yts), weakVar m (asText y))]
     )
 
 stmtDefineResourceType :: IO WeakStmt
@@ -449,61 +448,58 @@ stmtDefineResourceType = do
     True
     m
     name
-    (m, WeakTermTau)
-    ( m,
-      WeakTermPiElim
-        (weakVar m "unsafe.cast")
-        [ ( m,
-            WeakTermPi
-              [ (m, flag, weakVar m "bool"),
-                (m, value, weakVar m "unsafe.pointer")
-              ]
-              (weakVar m "unsafe.pointer")
-          ),
-          (m, WeakTermTau),
-          ( m,
-            WeakTermPiIntro
-              OpacityTransparent
-              LamKindResourceHandler
-              [ (m, flag, weakVar m "bool"),
-                (m, value, weakVar m "unsafe.pointer")
-              ]
-              ( m,
-                WeakTermEnumElim
-                  (weakVar m (asText flag), weakVar m "bool")
-                  [ ( (m, EnumCaseLabel boolTrue),
-                      (m, WeakTermPiElim copier [weakVar m (asText value)])
-                    ),
-                    ( (m, EnumCaseLabel boolFalse),
-                      ( m,
-                        WeakTermPiElim
-                          (weakVar m "unsafe.cast")
-                          [ weakVar m "top",
-                            weakVar m "unsafe.pointer",
-                            (m, WeakTermPiElim discarder [weakVar m (asText value)])
-                          ]
-                      )
-                    )
-                  ]
-              )
-          )
-        ]
+    (m :< WeakTermTau)
+    ( m
+        :< WeakTermPiElim
+          (weakVar m "unsafe.cast")
+          [ m
+              :< WeakTermPi
+                [ (m, flag, weakVar m "bool"),
+                  (m, value, weakVar m "unsafe.pointer")
+                ]
+                (weakVar m "unsafe.pointer"),
+            m :< WeakTermTau,
+            m
+              :< WeakTermPiIntro
+                OpacityTransparent
+                LamKindResourceHandler
+                [ (m, flag, weakVar m "bool"),
+                  (m, value, weakVar m "unsafe.pointer")
+                ]
+                ( m
+                    :< WeakTermEnumElim
+                      (weakVar m (asText flag), weakVar m "bool")
+                      [ ( m :< EnumCaseLabel boolTrue,
+                          m :< WeakTermPiElim copier [weakVar m (asText value)]
+                        ),
+                        ( m :< EnumCaseLabel boolFalse,
+                          m
+                            :< WeakTermPiElim
+                              (weakVar m "unsafe.cast")
+                              [ weakVar m "top",
+                                weakVar m "unsafe.pointer",
+                                m :< WeakTermPiElim discarder [weakVar m (asText value)]
+                              ]
+                        )
+                      ]
+                )
+          ]
     )
 
-setAsData :: T.Text -> Int -> [(Hint, T.Text, [WeakIdentPlus])] -> IO ()
+setAsData :: T.Text -> Int -> [(Hint, T.Text, [WeakBinder])] -> IO ()
 setAsData a i bts = do
   let bs = map (\(_, b, _) -> a <> nsSep <> b) bts
   modifyIORef' dataEnv $ \env -> Map.insert a bs env
   forM_ (zip bs [0 ..]) $ \(x, k) ->
     modifyIORef' constructorEnv $ \env -> Map.insert x (i, k) env
 
-toPiTypeWith :: Ident -> (Hint, T.Text, [WeakIdentPlus]) -> WeakIdentPlus
+toPiTypeWith :: Ident -> (Hint, T.Text, [WeakBinder]) -> WeakBinder
 toPiTypeWith cod (m, b, yts) =
-  (m, asIdent b, (m, WeakTermPi yts (m, WeakTermVar cod)))
+  (m, asIdent b, m :< WeakTermPi yts (m :< WeakTermVar cod))
 
-identPlusToVar :: WeakIdentPlus -> WeakTermPlus
+identPlusToVar :: WeakBinder -> WeakTerm
 identPlusToVar (m, x, _) =
-  (m, WeakTermVar x)
+  m :< WeakTermVar x
 
 registerTopLevelName :: Hint -> T.Text -> IO ()
 registerTopLevelName m x = do

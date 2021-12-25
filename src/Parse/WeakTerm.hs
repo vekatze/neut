@@ -3,17 +3,18 @@
 module Parse.WeakTerm
   ( weakTerm,
     weakTermSimple,
-    weakIdentPlus,
+    weakBinder,
     weakAscription,
     ascriptionInner,
   )
 where
 
 import Codec.Binary.UTF8.String (encode)
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM)
 import Data.Basic
-  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
-    EnumCasePlus,
+  ( EnumCase,
+    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     Ident,
     LamKind (LamKindFix),
@@ -41,9 +42,10 @@ import Data.LowType
   )
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakIdentPlus,
+  ( WeakBinder,
     WeakPattern,
-    WeakTerm
+    WeakTerm,
+    WeakTermF
       ( WeakTermCase,
         WeakTermConst,
         WeakTermDerangement,
@@ -57,7 +59,7 @@ import Data.WeakTerm
         WeakTermQuestion,
         WeakTermTau
       ),
-    WeakTermPlus,
+    metaOf,
   )
 import Parse.Core
   ( betweenParen,
@@ -91,7 +93,7 @@ import Parse.Core
 -- parser for WeakTerm
 --
 
-weakTerm :: IO WeakTermPlus
+weakTerm :: IO WeakTerm
 weakTerm = do
   headSymbol <- lookAhead (symbolMaybe isSymbolChar)
   case headSymbol of
@@ -127,48 +129,48 @@ weakTerm = do
           weakTermAux
         ]
 
-weakTermTau :: IO WeakTermPlus
+weakTermTau :: IO WeakTerm
 weakTermTau = do
   m <- currentHint
   token "tau"
-  return (m, WeakTermTau)
+  return $ m :< WeakTermTau
 
-weakTermAster :: IO WeakTermPlus
+weakTermAster :: IO WeakTerm
 weakTermAster = do
   m <- currentHint
   token "?"
   newAster m
 
-weakTermPiIntro :: IO WeakTermPlus
+weakTermPiIntro :: IO WeakTerm
 weakTermPiIntro = do
   m <- currentHint
   token "lambda"
-  varList <- many weakIdentPlus
+  varList <- many weakBinder
   e <- tryPlanList [weakTermDotBind, weakTermDoEnd]
   return $ lam m varList e
 
-weakTermDotBind :: IO WeakTermPlus
+weakTermDotBind :: IO WeakTerm
 weakTermDotBind = do
   char '.' >> skip
   weakTerm
 
-weakTermDoEnd :: IO WeakTermPlus
+weakTermDoEnd :: IO WeakTerm
 weakTermDoEnd = do
   token "do"
   e <- weakTerm
   token "end"
   return e
 
-weakTermPiIntroFix :: IO WeakTermPlus
+weakTermPiIntroFix :: IO WeakTerm
 weakTermPiIntroFix = do
   m <- currentHint
   token "fix"
-  self <- weakIdentPlus
-  varList <- many weakIdentPlus
+  self <- weakBinder
+  varList <- many weakBinder
   e <- tryPlanList [weakTermDotBind, weakTermDoEnd]
-  return (m, WeakTermPiIntro OpacityTransparent (LamKindFix self) varList e)
+  return $ m :< WeakTermPiIntro OpacityTransparent (LamKindFix self) varList e
 
-weakTermAux :: IO WeakTermPlus
+weakTermAux :: IO WeakTerm
 weakTermAux = do
   m <- currentHint
   xt@(_, _, e) <- weakTermToWeakIdent m weakTermSimple
@@ -178,25 +180,25 @@ weakTermAux = do
       weakTermApp m e
     ]
 
-weakTermPi :: Hint -> WeakIdentPlus -> IO WeakTermPlus
+weakTermPi :: Hint -> WeakBinder -> IO WeakTerm
 weakTermPi m xt = do
   xts <- many1 (token "->" >> weakTermArrowItem)
   let (_, _, cod) = last xts
-  return (m, WeakTermPi (xt : init xts) cod)
+  return $ m :< WeakTermPi (xt : init xts) cod
 
-weakTermSigma :: Hint -> WeakIdentPlus -> IO WeakTermPlus
+weakTermSigma :: Hint -> WeakBinder -> IO WeakTerm
 weakTermSigma m xt = do
   xts <- many1 (token "*" >> weakTermArrowItem)
   toSigma m $ xt : xts
 
-weakTermApp :: Hint -> WeakTermPlus -> IO WeakTermPlus
+weakTermApp :: Hint -> WeakTerm -> IO WeakTerm
 weakTermApp m e = do
   es <- many weakTermSimple
   if null es
     then return e
-    else return (m, WeakTermPiElim e es)
+    else return $ m :< WeakTermPiElim e es
 
-weakTermDep :: IO WeakTermPlus
+weakTermDep :: IO WeakTerm
 weakTermDep = do
   m <- currentHint
   xt <- weakAscription
@@ -205,8 +207,8 @@ weakTermDep = do
       weakTermSigma m xt
     ]
 
-weakTermArrowItem :: IO WeakIdentPlus
-weakTermArrowItem = do
+weakTermArrowItem :: IO WeakBinder
+weakTermArrowItem =
   tryPlanList
     [ weakAscription,
       do
@@ -216,7 +218,7 @@ weakTermArrowItem = do
         return (m, h, a)
     ]
 
-weakTermEnumElim :: IO WeakTermPlus
+weakTermEnumElim :: IO WeakTerm
 weakTermEnumElim = do
   m <- currentHint
   token "switch"
@@ -225,9 +227,9 @@ weakTermEnumElim = do
   clauseList <- many weakTermEnumClause
   token "end"
   h <- newAster m
-  return (m, WeakTermEnumElim (e, h) clauseList)
+  return $ m :< WeakTermEnumElim (e, h) clauseList
 
-weakTermEnumClause :: IO (EnumCasePlus, WeakTermPlus)
+weakTermEnumClause :: IO (EnumCase, WeakTerm)
 weakTermEnumClause = do
   m <- currentHint
   token "-"
@@ -236,34 +238,34 @@ weakTermEnumClause = do
   body <- weakTerm
   case c of
     "default" ->
-      return ((m, EnumCaseDefault), body)
+      return (m :< EnumCaseDefault, body)
     _ ->
-      return ((m, EnumCaseLabel c), body)
+      return (m :< EnumCaseLabel c, body)
 
 -- question e
-weakTermQuestion :: IO WeakTermPlus
+weakTermQuestion :: IO WeakTerm
 weakTermQuestion = do
   m <- currentHint
   token "question"
   e <- weakTerm
   h <- newAster m
-  return (m, WeakTermQuestion e h)
+  return $ m :< WeakTermQuestion e h
 
-weakTermDerangement :: IO WeakTermPlus
+weakTermDerangement :: IO WeakTerm
 weakTermDerangement = do
   m <- currentHint
   token "derangement"
   d <- tryPlanList [weakTermDerangementNop, betweenParen weakTermDerangementKind]
   es <- many weakTermSimple
   checkDerangementArity m d (length es)
-  return (m, WeakTermDerangement d es)
+  return $ m :< WeakTermDerangement d es
 
 checkDerangementArity :: Hint -> Derangement -> Int -> IO ()
 checkDerangementArity m derangement actualArgLen = do
   let mExpectedArgLen = getDerangementArity derangement
   case mExpectedArgLen of
     Just expectedArgLen
-      | expectedArgLen /= actualArgLen -> do
+      | expectedArgLen /= actualArgLen ->
         raiseError m $
           "the derangement `"
             <> getDerangementName derangement
@@ -299,19 +301,19 @@ weakTermDerangementKind = do
   case headSymbol of
     "nop" ->
       return DerangementNop
-    "store" -> do
+    "store" ->
       DerangementStore <$> lowTypeSimple
-    "load" -> do
+    "load" ->
       DerangementLoad <$> lowTypeSimple
-    "create-array" -> do
+    "create-array" ->
       DerangementCreateArray <$> lowTypeSimple
-    "create-struct" -> do
+    "create-struct" ->
       DerangementCreateStruct <$> many lowTypeSimple
-    "syscall" -> do
+    "syscall" ->
       DerangementSyscall <$> integer
-    "external" -> do
+    "external" ->
       DerangementExternal <$> symbol
-    _ -> do
+    _ ->
       raiseParseError m "invalid derangement kind"
 
 -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
@@ -320,23 +322,23 @@ lowType = do
   m <- currentHint
   headSymbol <- symbol
   case headSymbol of
-    "pointer" -> do
+    "pointer" ->
       LowTypePointer <$> lowTypeSimple
     "array" -> do
       intValue <- integer
       LowTypeArray (fromInteger intValue) <$> lowTypeSimple
-    "struct" -> do
+    "struct" ->
       LowTypeStruct <$> many lowTypeSimple
     _
       | Just size <- asLowInt headSymbol ->
         return $ LowTypeInt size
       | Just size <- asLowFloat headSymbol ->
         return $ LowTypeFloat size
-      | otherwise -> do
+      | otherwise ->
         raiseParseError m "lowType"
 
 lowTypeSimple :: IO LowType
-lowTypeSimple = do
+lowTypeSimple =
   tryPlanList
     [ betweenParen lowType,
       lowTypeInt,
@@ -363,7 +365,7 @@ lowTypeFloat = do
     Nothing ->
       raiseParseError m "lowTypeFloat"
 
-weakTermMatch :: IO WeakTermPlus
+weakTermMatch :: IO WeakTerm
 weakTermMatch = do
   m <- currentHint
   token "match"
@@ -371,9 +373,9 @@ weakTermMatch = do
   token "with"
   clauseList <- many weakTermMatchClause
   token "end"
-  return (m, WeakTermCase (doNotCare m) Nothing (e, doNotCare m) clauseList)
+  return $ m :< WeakTermCase (doNotCare m) Nothing (e, doNotCare m) clauseList
 
-weakTermMatchNoetic :: IO WeakTermPlus
+weakTermMatchNoetic :: IO WeakTerm
 weakTermMatchNoetic = do
   m <- currentHint
   token "match-noetic"
@@ -385,20 +387,20 @@ weakTermMatchNoetic = do
   clauseList <- many weakTermMatchClause
   token "end"
   let clauseList' = map (modifyWeakPattern s) clauseList
-  return (m, WeakTermCase (doNotCare m) (Just s) (e', doNotCare m) clauseList')
+  return $ m :< WeakTermCase (doNotCare m) (Just s) (e', doNotCare m) clauseList'
 
-weakTermMatchClause :: IO (WeakPattern, WeakTermPlus)
+weakTermMatchClause :: IO (WeakPattern, WeakTerm)
 weakTermMatchClause = do
   token "-"
   pat <- weakTermPattern
   body <- weakTerm
   return (pat, body)
 
-modifyWeakPattern :: WeakTermPlus -> (WeakPattern, WeakTermPlus) -> (WeakPattern, WeakTermPlus)
+modifyWeakPattern :: WeakTerm -> (WeakPattern, WeakTerm) -> (WeakPattern, WeakTerm)
 modifyWeakPattern s ((m, a, xts), body) =
   ((m, a, xts), modifyWeakPatternBody s xts body)
 
-modifyWeakPatternBody :: WeakTermPlus -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus
+modifyWeakPatternBody :: WeakTerm -> [WeakBinder] -> WeakTerm -> WeakTerm
 modifyWeakPatternBody s xts body =
   case xts of
     [] ->
@@ -414,7 +416,7 @@ weakTermPattern = do
   argList <- weakTermPatternArgument
   return (m, c, argList)
 
-weakTermPatternArgument :: IO [WeakIdentPlus]
+weakTermPatternArgument :: IO [WeakBinder]
 weakTermPatternArgument = do
   m <- currentHint
   x <- symbol
@@ -428,11 +430,11 @@ weakTermPatternArgument = do
 
 -- let x : A = e1 in e2
 -- let x     = e1 in e2
-weakTermLet :: IO WeakTermPlus
+weakTermLet :: IO WeakTerm
 weakTermLet =
   tryPlanList [weakTermLetSigmaElim, weakTermLetNormal]
 
-weakTermLetNormal :: IO WeakTermPlus
+weakTermLetNormal :: IO WeakTerm
 weakTermLetNormal = do
   m <- currentHint
   token "let"
@@ -443,23 +445,22 @@ weakTermLetNormal = do
   e2 <- weakTerm
   t1 <- newAster m
   resultType <- newAster m
-  return
-    ( m,
-      WeakTermPiElim
+  return $
+    m
+      :< WeakTermPiElim
         (weakVar m "identity.bind")
         [ t1,
           resultType,
           e1,
           lam m [x] e2
         ]
-    )
 
-weakTermSigmaElimVar :: IO WeakIdentPlus
+weakTermSigmaElimVar :: IO WeakBinder
 weakTermSigmaElimVar =
   tryPlanList [ascriptionInner, weakAscription']
 
 -- let (x1 : A1, ..., xn : An) = e1 in e2
-weakTermLetSigmaElim :: IO WeakTermPlus
+weakTermLetSigmaElim :: IO WeakTerm
 weakTermLetSigmaElim = do
   m <- currentHint
   token "let"
@@ -469,18 +470,17 @@ weakTermLetSigmaElim = do
   token "in"
   e2 <- weakTerm
   resultType <- newAster m
-  return
-    ( m,
-      WeakTermPiElim
+  return $
+    m
+      :< WeakTermPiElim
         e1
         [ resultType,
           lam m xts e2
         ]
-    )
 
 -- let? x : A = e1 in e2
 -- let? x     = e1 in e2
-weakTermLetCoproduct :: IO WeakTermPlus
+weakTermLetCoproduct :: IO WeakTerm
 weakTermLetCoproduct = do
   m <- currentHint
   token "let?"
@@ -495,22 +495,21 @@ weakTermLetCoproduct = do
   let sumLeft = "sum.left"
   let sumRight = "sum.right"
   let sumLeftVar = asIdent "sum.left"
-  return
-    ( m,
-      WeakTermCase
+  return $
+    m
+      :< WeakTermCase
         (doNotCare m)
         Nothing
         (e1, doNotCare m)
         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
-            (m, WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, weakVar' m err])
+            m :< WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, weakVar' m err]
           ),
           ( (m, sumRight, [x]),
             e2
           )
         ]
-    )
 
-weakTermLetVar :: IO WeakIdentPlus
+weakTermLetVar :: IO WeakBinder
 weakTermLetVar = do
   m <- currentHint
   tryPlanList
@@ -526,7 +525,7 @@ weakTermLetVar = do
         return (m, asIdent x, h)
     ]
 
-weakTermIf :: IO WeakTermPlus
+weakTermIf :: IO WeakTerm
 weakTermIf = do
   m <- currentHint
   token "if"
@@ -544,33 +543,31 @@ weakTermIf = do
   token "end"
   foldIf m ifCond ifBody elseIfList elseBody
 
-foldIf :: Hint -> WeakTermPlus -> WeakTermPlus -> [(WeakTermPlus, WeakTermPlus)] -> WeakTermPlus -> IO WeakTermPlus
-foldIf m ifCond ifBody elseIfList elseBody = do
+foldIf :: Hint -> WeakTerm -> WeakTerm -> [(WeakTerm, WeakTerm)] -> WeakTerm -> IO WeakTerm
+foldIf m ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       h <- newAster m
-      return
-        ( m,
-          WeakTermEnumElim
+      return $
+        m
+          :< WeakTermEnumElim
             (ifCond, h)
-            [ ((m, EnumCaseLabel "bool.true"), ifBody),
-              ((m, EnumCaseLabel "bool.false"), elseBody)
+            [ (m :< EnumCaseLabel "bool.true", ifBody),
+              (m :< EnumCaseLabel "bool.false", elseBody)
             ]
-        )
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf m elseIfCond elseIfBody rest elseBody
       h <- newAster m
-      return
-        ( m,
-          WeakTermEnumElim
+      return $
+        m
+          :< WeakTermEnumElim
             (ifCond, h)
-            [ ((m, EnumCaseLabel "bool.true"), ifBody),
-              ((m, EnumCaseLabel "bool.false"), cont)
+            [ (m :< EnumCaseLabel "bool.true", ifBody),
+              (m :< EnumCaseLabel "bool.false", cont)
             ]
-        )
 
 -- (e1, ..., en) (n >= 2)
-weakTermSigmaIntro :: IO WeakTermPlus
+weakTermSigmaIntro :: IO WeakTerm
 weakTermSigmaIntro = do
   m <- currentHint
   betweenParen $ do
@@ -584,12 +581,12 @@ weakTermSigmaIntro = do
     return $
       lam
         m
-        [ (m, sigVar, (m, WeakTermTau)),
-          (m, k, (m, WeakTermPi xts (weakVar' m sigVar)))
+        [ (m, sigVar, m :< WeakTermTau),
+          (m, k, m :< WeakTermPi xts (weakVar' m sigVar))
         ]
-        (m, WeakTermPiElim (weakVar' m k) es)
+        (m :< WeakTermPiElim (weakVar' m k) es)
 
-weakTermIdealize :: IO WeakTermPlus
+weakTermIdealize :: IO WeakTerm
 weakTermIdealize = do
   m <- currentHint
   token "idealize"
@@ -603,9 +600,9 @@ weakTermIdealize = do
   resultType <- newAster m
   let subjectTerm = weakVar mSubject subject
   ts <- mapM (\(mx, _) -> newAster mx) varList
-  return
-    ( m,
-      WeakTermPiElim
+  return $
+    m
+      :< WeakTermPiElim
         (weakVar m "idea.run")
         [ resultType,
           lam
@@ -613,18 +610,17 @@ weakTermIdealize = do
             [(mSubject, asIdent subject, weakVar m "subject")]
             (castLet subjectTerm (zip varList' ts) e)
         ]
-    )
 
-castLet :: WeakTermPlus -> [((Hint, Ident), WeakTermPlus)] -> WeakTermPlus -> WeakTermPlus
+castLet :: WeakTerm -> [((Hint, Ident), WeakTerm)] -> WeakTerm -> WeakTerm
 castLet subject xts cont =
   case xts of
     [] ->
       cont
     ((m, x), t) : rest ->
-      bind m (m, x, wrapWithNoema subject t) (castToNoema subject t (m, WeakTermIgnore (weakVar' m x))) $
+      bind m (m, x, wrapWithNoema subject t) (castToNoema subject t (m :< WeakTermIgnore (weakVar' m x))) $
         castLet subject rest cont
 
-weakTermArrayIntro :: IO WeakTermPlus
+weakTermArrayIntro :: IO WeakTerm
 weakTermArrayIntro = do
   m <- currentHint
   token "new-array"
@@ -641,28 +637,28 @@ weakTermArrayIntro = do
   t' <- lowTypeToWeakTerm m t
   es' <- mapM (annotate t') es
   return $
-    bind m (m, arr, ptrType) (m, WeakTermDerangement (DerangementCreateArray t) es') $
-      bind m (m, ptr, ptrType) (m, WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
-        bind m (m, h1, topType) (m, WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
+    bind m (m, arr, ptrType) (m :< WeakTermDerangement (DerangementCreateArray t) es') $
+      bind m (m, ptr, ptrType) (m :< WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
+        bind m (m, h1, topType) (m :< WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
           bind
             m
             (m, h2, topType)
-            (m, WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
-            (m, WeakTermPiElim (weakVar m "unsafe.cast") [weakVar m "unsafe.pointer", weakVar m arrName, weakVar m (asText ptr)])
+            (m :< WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
+            (m :< WeakTermPiElim (weakVar m "unsafe.cast") [weakVar m "unsafe.pointer", weakVar m arrName, weakVar m (asText ptr)])
 
-lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTermPlus
+lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTerm
 lowTypeToWeakTerm m t =
   case t of
     LowTypeInt s ->
-      return (m, WeakTermConst (showIntSize s))
+      return (m :< WeakTermConst (showIntSize s))
     LowTypeFloat s ->
-      return (m, WeakTermConst (showFloatSize s))
+      return (m :< WeakTermConst (showFloatSize s))
     _ ->
       raiseParseError m "invalid argument passed to lowTypeToType"
 
-annotate :: WeakTermPlus -> WeakTermPlus -> IO WeakTermPlus
+annotate :: WeakTerm -> WeakTerm -> IO WeakTerm
 annotate t e = do
-  let m = fst e
+  let m = metaOf e
   h <- newTextualIdentFromText "_"
   return $ bind m (m, h, t) e $ weakVar m (asText h)
 
@@ -673,55 +669,53 @@ lowTypeToArrayKindText m t =
       return $ showIntSize size
     LowTypeFloat size ->
       return $ showFloatSize size
-    _ -> do
+    _ ->
       raiseParseError m "unsupported array kind"
 
-intTerm :: Hint -> Integer -> WeakTermPlus
+intTerm :: Hint -> Integer -> WeakTerm
 intTerm m i =
-  (m, WeakTermInt (m, WeakTermConst "i64") i)
+  m :< WeakTermInt (m :< WeakTermConst "i64") i
 
-bind :: Hint -> WeakIdentPlus -> WeakTermPlus -> WeakTermPlus -> WeakTermPlus
+bind :: Hint -> WeakBinder -> WeakTerm -> WeakTerm -> WeakTerm
 bind m mxt e cont =
-  (m, WeakTermPiElim (lam m [mxt] cont) [e])
+  m :< WeakTermPiElim (lam m [mxt] cont) [e]
 
-weakTermAdmit :: IO WeakTermPlus
+weakTermAdmit :: IO WeakTerm
 weakTermAdmit = do
   m <- currentHint
   token "admit"
   h <- newAster m
-  return
-    ( m,
-      WeakTermPiElim
+  return $
+    m
+      :< WeakTermPiElim
         (weakVar m "os.exit")
         [ h,
-          (m, WeakTermInt (m, WeakTermConst "i64") 1)
+          m :< WeakTermInt (m :< WeakTermConst "i64") 1
         ]
-    )
 
-weakTermAdmitQuestion :: IO WeakTermPlus
+weakTermAdmitQuestion :: IO WeakTerm
 weakTermAdmitQuestion = do
   m <- currentHint
   token "?admit"
   h <- newAster m
-  return
-    ( m,
-      WeakTermQuestion
-        ( m,
-          WeakTermPiElim
-            (weakVar m "os.exit")
-            [ h,
-              (m, WeakTermInt (m, WeakTermConst "i64") 1)
-            ]
+  return $
+    m
+      :< WeakTermQuestion
+        ( m
+            :< WeakTermPiElim
+              (weakVar m "os.exit")
+              [ h,
+                m :< WeakTermInt (m :< WeakTermConst "i64") 1
+              ]
         )
         h
-    )
 
 --
 -- term-related helper functions
 --
 
-weakTermSimple :: IO WeakTermPlus
-weakTermSimple = do
+weakTermSimple :: IO WeakTerm
+weakTermSimple =
   tryPlanList
     [ weakTermSigmaIntro,
       betweenParen weakTerm,
@@ -736,14 +730,14 @@ weakTermSimple = do
       weakTermVar
     ]
 
-weakIdentPlus :: IO WeakIdentPlus
-weakIdentPlus = do
+weakBinder :: IO WeakBinder
+weakBinder =
   tryPlanList
     [ weakAscription,
       weakAscription'
     ]
 
-ascriptionInner :: IO WeakIdentPlus
+ascriptionInner :: IO WeakBinder
 ascriptionInner = do
   m <- currentHint
   x <- symbol
@@ -751,11 +745,11 @@ ascriptionInner = do
   a <- weakTerm
   return (m, asIdent x, a)
 
-weakAscription :: IO WeakIdentPlus
-weakAscription = do
+weakAscription :: IO WeakBinder
+weakAscription =
   betweenParen ascriptionInner
 
-weakAscription' :: IO WeakIdentPlus
+weakAscription' :: IO WeakBinder
 weakAscription' = do
   (m, x) <- weakSimpleIdent
   h <- newAster m
@@ -769,7 +763,7 @@ weakSimpleIdent = do
     then raiseParseError m $ "found a keyword `" <> x <> "`, expecting a variable"
     else return (m, asIdent x)
 
-weakTermBuiltin :: IO WeakTermPlus
+weakTermBuiltin :: IO WeakTerm
 weakTermBuiltin = do
   m <- currentHint
   x <- symbol
@@ -780,87 +774,82 @@ weakTermBuiltin = do
     _ ->
       raiseParseError m $ "no such builtin constant: " <> x
 
-weakTermVar :: IO WeakTermPlus
+weakTermVar :: IO WeakTerm
 weakTermVar = do
   (m, x) <- var
   return (weakVar m x)
 
-weakTermString :: IO WeakTermPlus
+weakTermString :: IO WeakTerm
 weakTermString = do
   m <- currentHint
   s <- string
   let i8s = encode $ T.unpack s
   let len = toInteger $ length i8s
-  let i8s' = map (\x -> (m, WeakTermInt (m, WeakTermConst "i8") (toInteger x))) i8s
-  return
-    ( m,
-      WeakTermPiElim
+  let i8s' = map (\x -> m :< WeakTermInt (m :< WeakTermConst "i8") (toInteger x)) i8s
+  return $
+    m
+      :< WeakTermPiElim
         (weakVar m "unsafe.create-new-string")
-        [ (m, WeakTermInt (m, WeakTermConst "i64") len),
-          ( m,
-            WeakTermDerangement
+        [ m :< WeakTermInt (m :< WeakTermConst "i64") len,
+          m
+            :< WeakTermDerangement
               (DerangementCreateArray (LowTypeInt 8))
               i8s'
-          )
         ]
-    )
 
-weakTermInteger :: IO WeakTermPlus
+weakTermInteger :: IO WeakTerm
 weakTermInteger = do
   m <- currentHint
   intValue <- integer
   h <- newAster m
-  return (m, WeakTermInt h intValue)
+  return $ m :< WeakTermInt h intValue
 
-weakTermFloat :: IO WeakTermPlus
+weakTermFloat :: IO WeakTerm
 weakTermFloat = do
   m <- currentHint
   floatValue <- float
   h <- newAster m
-  return (m, WeakTermFloat h floatValue)
+  return $ m :< WeakTermFloat h floatValue
 
-toSigma :: Hint -> [WeakIdentPlus] -> IO WeakTermPlus
+toSigma :: Hint -> [WeakBinder] -> IO WeakTerm
 toSigma m xts = do
   sigVar <- newTextualIdentFromText "sig"
   h <- newTextualIdentFromText "_"
-  return
-    ( m,
-      WeakTermPi
-        [ (m, sigVar, (m, WeakTermTau)),
-          (m, h, (m, WeakTermPi xts (weakVar' m sigVar)))
+  return $
+    m
+      :< WeakTermPi
+        [ (m, sigVar, m :< WeakTermTau),
+          (m, h, m :< WeakTermPi xts (weakVar' m sigVar))
         ]
         (weakVar' m sigVar)
-    )
 
-castFromNoema :: WeakTermPlus -> WeakTermPlus -> WeakTermPlus -> WeakTermPlus
+castFromNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castFromNoema subject baseType tree = do
-  let m = fst tree
-  ( m,
-    WeakTermPiElim
+  let m = metaOf tree
+  m
+    :< WeakTermPiElim
       (weakVar m "unsafe.cast")
       [ wrapWithNoema subject baseType,
         baseType,
         tree
       ]
-    )
 
-castToNoema :: WeakTermPlus -> WeakTermPlus -> WeakTermPlus -> WeakTermPlus
+castToNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castToNoema subject baseType tree = do
-  let m = fst tree
-  ( m,
-    WeakTermPiElim
+  let m = metaOf tree
+  m
+    :< WeakTermPiElim
       (weakVar m "unsafe.cast")
       [ baseType,
         wrapWithNoema subject baseType,
         tree
       ]
-    )
 
-wrapWithNoema :: WeakTermPlus -> WeakTermPlus -> WeakTermPlus
+wrapWithNoema :: WeakTerm -> WeakTerm -> WeakTerm
 wrapWithNoema subject baseType = do
-  let m = fst baseType
-  (m, WeakTermPiElim (weakVar m "noema") [subject, baseType])
+  let m = metaOf baseType
+  m :< WeakTermPiElim (weakVar m "noema") [subject, baseType]
 
-doNotCare :: Hint -> WeakTermPlus
+doNotCare :: Hint -> WeakTerm
 doNotCare m =
-  (m, WeakTermTau)
+  m :< WeakTermTau

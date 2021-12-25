@@ -4,8 +4,9 @@ module Reduce.Comp
   )
 where
 
+import Control.Comonad.Cofree.Class (ComonadCofree (unwrap))
 import Data.Basic
-  ( EnumCase (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
+  ( EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Ident,
     asInt,
   )
@@ -83,30 +84,32 @@ reduceComp term =
                 return e1' -- eta-reduce
             _ ->
               return $ CompUpElim x e1' e2'
-    CompEnumElim v les ->
+    CompEnumElim v les -> do
+      let (ls, es) = unzip les
+      let les' = zip (map unwrap ls) es
       case v of
         ValueEnumIntro l
-          | Just body <- lookup (EnumCaseLabel l) les ->
+          | Just body <- lookup (EnumCaseLabel l) les' ->
             reduceComp body
-          | Just body <- lookup EnumCaseDefault les ->
+          | Just body <- lookup EnumCaseDefault les' ->
             reduceComp body
         ValueInt _ l
-          | Just body <- lookup (EnumCaseInt (fromInteger l)) les ->
+          | Just body <- lookup (EnumCaseInt (fromInteger l)) les' ->
             reduceComp body
-          | Just body <- lookup EnumCaseDefault les ->
+          | Just body <- lookup EnumCaseDefault les' ->
             reduceComp body
           | otherwise -> do
             p "other"
             p' v
             p' les
-            let (ls, es) = unzip les
+            -- let (ls, es) = unzip les
             es' <- mapM reduceComp es
             return $ CompEnumElim v (zip ls es')
         _ -> do
           -- p "other"
           -- p' v
           -- p' les
-          let (ls, es) = unzip les
+          -- let (ls, es) = unzip les
           es' <- mapM reduceComp es
           return $ CompEnumElim v (zip ls es')
     CompIgnore e -> do

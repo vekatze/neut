@@ -1,12 +1,13 @@
 module Reduce.WeakTerm
-  ( reduceWeakTermPlus,
-    substWeakTermPlus,
+  ( reduceWeakTerm,
+    substWeakTerm,
   )
 where
 
+import Control.Comonad.Cofree (Cofree (..), unwrap)
 import Control.Monad (forM)
 import Data.Basic
-  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+  ( EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     LamKind (LamKindCons, LamKindFix, LamKindNormal),
     Opacity (OpacityTransparent),
@@ -20,9 +21,10 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Data.WeakTerm
   ( SubstWeakTerm,
-    WeakIdentPlus,
+    WeakBinder,
     WeakPattern,
-    WeakTerm
+    WeakTerm,
+    WeakTermF
       ( WeakTermAster,
         WeakTermCase,
         WeakTermConst,
@@ -41,93 +43,93 @@ import Data.WeakTerm
         WeakTermVar,
         WeakTermVarGlobal
       ),
-    WeakTermPlus,
-    varWeakTermPlus,
+    varWeakTerm,
   )
 
-reduceWeakTermPlus :: WeakTermPlus -> IO WeakTermPlus
-reduceWeakTermPlus term =
+reduceWeakTerm :: WeakTerm -> IO WeakTerm
+reduceWeakTerm term =
   case term of
-    (m, WeakTermPi xts cod) -> do
+    m :< WeakTermPi xts cod -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduceWeakTermPlus ts
-      cod' <- reduceWeakTermPlus cod
-      return (m, WeakTermPi (zip3 ms xs ts') cod')
-    (m, WeakTermPiIntro opacity kind xts e)
+      ts' <- mapM reduceWeakTerm ts
+      cod' <- reduceWeakTerm cod
+      return $ m :< WeakTermPi (zip3 ms xs ts') cod'
+    m :< WeakTermPiIntro opacity kind xts e
       | LamKindFix (_, x, _) <- kind,
-        x `notElem` varWeakTermPlus e ->
-        reduceWeakTermPlus (m, WeakTermPiIntro opacity LamKindNormal xts e)
+        x `notElem` varWeakTerm e ->
+        reduceWeakTerm $ m :< WeakTermPiIntro opacity LamKindNormal xts e
       | otherwise -> do
         let (ms, xs, ts) = unzip3 xts
-        ts' <- mapM reduceWeakTermPlus ts
-        e' <- reduceWeakTermPlus e
+        ts' <- mapM reduceWeakTerm ts
+        e' <- reduceWeakTerm e
         case kind of
           LamKindFix (mx, x, t) -> do
-            t' <- reduceWeakTermPlus t
-            return (m, WeakTermPiIntro opacity (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+            t' <- reduceWeakTerm t
+            return (m :< WeakTermPiIntro opacity (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
           _ ->
-            return (m, WeakTermPiIntro opacity kind (zip3 ms xs ts') e')
-    (m, WeakTermPiElim e es) -> do
-      e' <- reduceWeakTermPlus e
-      es' <- mapM reduceWeakTermPlus es
+            return (m :< WeakTermPiIntro opacity kind (zip3 ms xs ts') e')
+    m :< WeakTermPiElim e es -> do
+      e' <- reduceWeakTerm e
+      es' <- mapM reduceWeakTerm es
       case e' of
-        (_, WeakTermPiIntro opacity LamKindNormal xts body)
+        (_ :< WeakTermPiIntro opacity LamKindNormal xts body)
           | not (isOpaque opacity),
             length xts == length es' -> do
             let xs = map (\(_, x, _) -> asInt x) xts
             let sub = IntMap.fromList $ zip xs es'
-            substWeakTermPlus sub body >>= reduceWeakTermPlus
+            substWeakTerm sub body >>= reduceWeakTerm
         _ ->
-          return (m, WeakTermPiElim e' es')
-    (m, WeakTermEnumElim (e, t) les) -> do
-      e' <- reduceWeakTermPlus e
+          return $ m :< WeakTermPiElim e' es'
+    m :< WeakTermEnumElim (e, t) les -> do
+      e' <- reduceWeakTerm e
       let (ls, es) = unzip les
-      es' <- mapM reduceWeakTermPlus es
+      es' <- mapM reduceWeakTerm es
       let les' = zip ls es'
-      let les'' = zip (map snd ls) es'
-      t' <- reduceWeakTermPlus t
+      -- let les'' = zip (map snd ls) es'
+      let les'' = zip (map unwrap ls) es'
+      t' <- reduceWeakTerm t
       case e' of
-        (_, WeakTermEnumIntro l) ->
+        (_ :< WeakTermEnumIntro l) ->
           case lookup (EnumCaseLabel l) les'' of
             Just body ->
-              reduceWeakTermPlus body
+              reduceWeakTerm body
             Nothing ->
               case lookup EnumCaseDefault les'' of
                 Just body ->
-                  reduceWeakTermPlus body
+                  reduceWeakTerm body
                 Nothing ->
-                  return (m, WeakTermEnumElim (e', t') les')
+                  return $ m :< WeakTermEnumElim (e', t') les'
         _ ->
-          return (m, WeakTermEnumElim (e', t') les')
-    (_, WeakTermQuestion e _) ->
-      reduceWeakTermPlus e
-    (m, WeakTermDerangement i es) -> do
-      es' <- mapM reduceWeakTermPlus es
-      return (m, WeakTermDerangement i es')
-    (m, WeakTermCase resultType mSubject (e, t) clauseList) -> do
-      e' <- reduceWeakTermPlus e
+          return $ m :< WeakTermEnumElim (e', t') les'
+    _ :< WeakTermQuestion e _ ->
+      reduceWeakTerm e
+    m :< WeakTermDerangement i es -> do
+      es' <- mapM reduceWeakTerm es
+      return $ m :< WeakTermDerangement i es'
+    m :< WeakTermCase resultType mSubject (e, t) clauseList -> do
+      e' <- reduceWeakTerm e
       let lamList = map (toLamList m) clauseList
       denv <- readIORef dataEnv
       case e' of
-        (_, WeakTermPiIntro opacity (LamKindCons dataName consName) _ _)
+        (_ :< WeakTermPiIntro opacity (LamKindCons dataName consName) _ _)
           | not (isOpaque opacity),
             Just consNameList <- Map.lookup dataName denv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do
-            let app = (m, WeakTermPiElim e' (resultType : lamList))
-            reduceWeakTermPlus app
+            let app = m :< WeakTermPiElim e' (resultType : lamList)
+            reduceWeakTerm app
         _ -> do
-          resultType' <- reduceWeakTermPlus resultType
-          mSubject' <- mapM reduceWeakTermPlus mSubject
-          t' <- reduceWeakTermPlus t
+          resultType' <- reduceWeakTerm resultType
+          mSubject' <- mapM reduceWeakTerm mSubject
+          t' <- reduceWeakTerm t
           clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-            body' <- reduceWeakTermPlus body
+            body' <- reduceWeakTerm body
             return ((mPat, name, xts), body')
-          return (m, WeakTermCase resultType' mSubject' (e', t') clauseList')
+          return $ m :< WeakTermCase resultType' mSubject' (e', t') clauseList'
     _ ->
       return term
 
-checkClauseListSanity :: [T.Text] -> [(WeakPattern, WeakTermPlus)] -> Bool
+checkClauseListSanity :: [T.Text] -> [(WeakPattern, WeakTerm)] -> Bool
 checkClauseListSanity consNameList clauseList =
   case (consNameList, clauseList) of
     ([], []) ->
@@ -138,96 +140,94 @@ checkClauseListSanity consNameList clauseList =
     _ ->
       False
 
-toLamList :: Hint -> (WeakPattern, WeakTermPlus) -> WeakTermPlus
+toLamList :: Hint -> (WeakPattern, WeakTerm) -> WeakTerm
 toLamList m ((_, _, xts), body) =
-  (m, WeakTermPiIntro OpacityTransparent LamKindNormal xts body)
+  m :< WeakTermPiIntro OpacityTransparent LamKindNormal xts body
 
-substWeakTermPlus :: SubstWeakTerm -> WeakTermPlus -> IO WeakTermPlus
-substWeakTermPlus sub term =
+substWeakTerm :: SubstWeakTerm -> WeakTerm -> IO WeakTerm
+substWeakTerm sub term =
   case term of
-    (_, WeakTermTau) ->
+    _ :< WeakTermTau ->
       return term
-    (_, WeakTermVar x)
+    _ :< WeakTermVar x
       | Just e <- IntMap.lookup (asInt x) sub ->
         return e
       | otherwise ->
         return term
-    (_, WeakTermVarGlobal {}) ->
+    _ :< WeakTermVarGlobal {} ->
       return term
-    -- (_, WeakTermVarGlobalTransparent {}) ->
-    --   return term
-    (m, WeakTermPi xts t) -> do
-      (xts', t') <- substWeakTermPlus' sub xts t
-      return (m, WeakTermPi xts' t')
-    (m, WeakTermPiIntro opacity kind xts e) -> do
+    m :< WeakTermPi xts t -> do
+      (xts', t') <- substWeakTerm' sub xts t
+      return $ m :< WeakTermPi xts' t'
+    m :< WeakTermPiIntro opacity kind xts e -> do
       case kind of
         LamKindFix xt -> do
-          (xt' : xts', e') <- substWeakTermPlus' sub (xt : xts) e
-          return (m, WeakTermPiIntro opacity (LamKindFix xt') xts' e')
+          (xt' : xts', e') <- substWeakTerm' sub (xt : xts) e
+          return $ m :< WeakTermPiIntro opacity (LamKindFix xt') xts' e'
         _ -> do
-          (xts', e') <- substWeakTermPlus' sub xts e
-          return (m, WeakTermPiIntro opacity kind xts' e')
-    (m, WeakTermPiElim e es) -> do
-      e' <- substWeakTermPlus sub e
-      es' <- mapM (substWeakTermPlus sub) es
-      return (m, WeakTermPiElim e' es')
-    (_, WeakTermConst _) ->
+          (xts', e') <- substWeakTerm' sub xts e
+          return $ m :< WeakTermPiIntro opacity kind xts' e'
+    m :< WeakTermPiElim e es -> do
+      e' <- substWeakTerm sub e
+      es' <- mapM (substWeakTerm sub) es
+      return $ m :< WeakTermPiElim e' es'
+    _ :< WeakTermConst _ ->
       return term
-    (_, WeakTermAster x) ->
+    _ :< WeakTermAster x ->
       case IntMap.lookup x sub of
         Nothing ->
           return term
         Just e2 ->
           return e2
-    (m, WeakTermInt t x) -> do
-      t' <- substWeakTermPlus sub t
-      return (m, WeakTermInt t' x)
-    (m, WeakTermFloat t x) -> do
-      t' <- substWeakTermPlus sub t
-      return (m, WeakTermFloat t' x)
-    (_, WeakTermEnum _) ->
+    m :< WeakTermInt t x -> do
+      t' <- substWeakTerm sub t
+      return $ m :< WeakTermInt t' x
+    m :< WeakTermFloat t x -> do
+      t' <- substWeakTerm sub t
+      return $ m :< WeakTermFloat t' x
+    _ :< WeakTermEnum _ ->
       return term
-    (_, WeakTermEnumIntro _) ->
+    _ :< WeakTermEnumIntro _ ->
       return term
-    (m, WeakTermEnumElim (e, t) branchList) -> do
-      t' <- substWeakTermPlus sub t
-      e' <- substWeakTermPlus sub e
+    m :< WeakTermEnumElim (e, t) branchList -> do
+      t' <- substWeakTerm sub t
+      e' <- substWeakTerm sub e
       let (caseList, es) = unzip branchList
-      es' <- mapM (substWeakTermPlus sub) es
-      return (m, WeakTermEnumElim (e', t') (zip caseList es'))
-    (m, WeakTermQuestion e t) -> do
-      e' <- substWeakTermPlus sub e
-      t' <- substWeakTermPlus sub t
-      return (m, WeakTermQuestion e' t')
-    (m, WeakTermDerangement i es) -> do
-      es' <- mapM (substWeakTermPlus sub) es
-      return (m, WeakTermDerangement i es')
-    (m, WeakTermCase resultType mSubject (e, t) clauseList) -> do
-      resultType' <- substWeakTermPlus sub resultType
-      mSubject' <- mapM (substWeakTermPlus sub) mSubject
-      e' <- substWeakTermPlus sub e
-      t' <- substWeakTermPlus sub t
+      es' <- mapM (substWeakTerm sub) es
+      return $ m :< WeakTermEnumElim (e', t') (zip caseList es')
+    m :< WeakTermQuestion e t -> do
+      e' <- substWeakTerm sub e
+      t' <- substWeakTerm sub t
+      return $ m :< WeakTermQuestion e' t'
+    m :< WeakTermDerangement i es -> do
+      es' <- mapM (substWeakTerm sub) es
+      return $ m :< WeakTermDerangement i es'
+    m :< WeakTermCase resultType mSubject (e, t) clauseList -> do
+      resultType' <- substWeakTerm sub resultType
+      mSubject' <- mapM (substWeakTerm sub) mSubject
+      e' <- substWeakTerm sub e
+      t' <- substWeakTerm sub t
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-        (xts', body') <- substWeakTermPlus' sub xts body
+        (xts', body') <- substWeakTerm' sub xts body
         return ((mPat, name, xts'), body')
-      return (m, WeakTermCase resultType' mSubject' (e', t') clauseList')
-    (m, WeakTermIgnore e) -> do
-      e' <- substWeakTermPlus sub e
-      return (m, WeakTermIgnore e')
+      return $ m :< WeakTermCase resultType' mSubject' (e', t') clauseList'
+    m :< WeakTermIgnore e -> do
+      e' <- substWeakTerm sub e
+      return $ m :< WeakTermIgnore e'
 
-substWeakTermPlus' ::
+substWeakTerm' ::
   SubstWeakTerm ->
-  [WeakIdentPlus] ->
-  WeakTermPlus ->
-  IO ([WeakIdentPlus], WeakTermPlus)
-substWeakTermPlus' sub binder e =
+  [WeakBinder] ->
+  WeakTerm ->
+  IO ([WeakBinder], WeakTerm)
+substWeakTerm' sub binder e =
   case binder of
     [] -> do
-      e' <- substWeakTermPlus sub e
+      e' <- substWeakTerm sub e
       return ([], e')
     ((m, x, t) : xts) -> do
-      t' <- substWeakTermPlus sub t
+      t' <- substWeakTerm sub t
       x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (asInt x) (m, WeakTermVar x') sub
-      (xts', e') <- substWeakTermPlus' sub' xts e
+      let sub' = IntMap.insert (asInt x) (m :< WeakTermVar x') sub
+      (xts', e') <- substWeakTerm' sub' xts e
       return ((m, x', t') : xts', e')

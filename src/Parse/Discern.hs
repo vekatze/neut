@@ -4,10 +4,11 @@ module Parse.Discern
   )
 where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM)
 import Data.Basic
-  ( EnumCase (EnumCaseLabel),
-    Hint,
+  ( EnumCase,
+    EnumCaseF (EnumCaseLabel),
     Ident (..),
     LamKind (LamKindFix),
     asText,
@@ -18,7 +19,6 @@ import Data.Global
     p',
     revEnumEnv,
     topNameEnv,
-    -- topNameEnvExt,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (readIORef)
@@ -37,8 +37,9 @@ import Data.Namespace
 import Data.Stmt (WeakStmt (..))
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakIdentPlus,
-    WeakTerm
+  ( WeakBinder,
+    WeakTerm,
+    WeakTermF
       ( WeakTermAster,
         WeakTermCase,
         WeakTermConst,
@@ -57,12 +58,11 @@ import Data.WeakTerm
         WeakTermVar,
         WeakTermVarGlobal
       ),
-    WeakTermPlus,
   )
 
 type NameEnv = Map.HashMap T.Text Ident
 
-discern :: WeakTermPlus -> IO WeakTermPlus
+discern :: WeakTerm -> IO WeakTerm
 discern e = do
   discern' Map.empty e
 
@@ -78,12 +78,12 @@ discernStmtList stmtList =
       return $ WeakStmtDef isReducible m x t' e' : rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern' :: NameEnv -> WeakTermPlus -> IO WeakTermPlus
+discern' :: NameEnv -> WeakTerm -> IO WeakTerm
 discern' nenv term =
   case term of
-    (m, WeakTermTau) ->
-      return (m, WeakTermTau)
-    (m, WeakTermVar (I (s, _))) -> do
+    m :< WeakTermTau ->
+      return $ m :< WeakTermTau
+    m :< WeakTermVar (I (s, _)) -> do
       -- fixme: weakvarというかローカル変数の解決にresolveSymbolをつかってるのはおかしいのでは。
       -- prefixは無関係だし。
       -- （ローカル変数にprefix解決をおこなってもあんまりうれしくないでしょ）
@@ -96,54 +96,54 @@ discern' nenv term =
             tryCand (resolveSymbol m (asEnum m eenv) s) $
               tryCand (resolveSymbol m (asWeakConstant m) s) $
                 raiseError m $ "undefined variable: " <> s
-    (_, WeakTermVarGlobal {}) ->
+    _ :< WeakTermVarGlobal {} ->
       return term
-    (m, WeakTermPi xts t) -> do
+    m :< WeakTermPi xts t -> do
       (xts', t') <- discernBinder nenv xts t
-      return (m, WeakTermPi xts' t')
-    (m, WeakTermPiIntro opacity kind xts e) -> do
+      return $ m :< WeakTermPi xts' t'
+    m :< WeakTermPiIntro opacity kind xts e -> do
       case kind of
         LamKindFix xt -> do
           (xt' : xts', e') <- discernBinder nenv (xt : xts) e
-          return (m, WeakTermPiIntro opacity (LamKindFix xt') xts' e')
+          return $ m :< WeakTermPiIntro opacity (LamKindFix xt') xts' e'
         _ -> do
           (xts', e') <- discernBinder nenv xts e
-          return (m, WeakTermPiIntro opacity kind xts' e')
-    (m, WeakTermPiElim e es) -> do
+          return $ m :< WeakTermPiIntro opacity kind xts' e'
+    m :< WeakTermPiElim e es -> do
       es' <- mapM (discern' nenv) es
       e' <- discern' nenv e
-      return (m, WeakTermPiElim e' es')
-    (m, WeakTermConst x) ->
-      return (m, WeakTermConst x)
-    (m, WeakTermAster h) ->
-      return (m, WeakTermAster h)
-    (m, WeakTermInt t x) -> do
+      return $ m :< WeakTermPiElim e' es'
+    m :< WeakTermConst x ->
+      return $ m :< WeakTermConst x
+    m :< WeakTermAster h ->
+      return $ m :< WeakTermAster h
+    m :< WeakTermInt t x -> do
       t' <- discern' nenv t
-      return (m, WeakTermInt t' x)
-    (m, WeakTermFloat t x) -> do
+      return $ m :< WeakTermInt t' x
+    m :< WeakTermFloat t x -> do
       t' <- discern' nenv t
-      return (m, WeakTermFloat t' x)
-    (m, WeakTermEnum s) ->
-      return (m, WeakTermEnum s)
-    (m, WeakTermEnumIntro x) ->
-      return (m, WeakTermEnumIntro x)
-    (m, WeakTermEnumElim (e, t) caseList) -> do
+      return $ m :< WeakTermFloat t' x
+    m :< WeakTermEnum s ->
+      return $ m :< WeakTermEnum s
+    m :< WeakTermEnumIntro x ->
+      return $ m :< WeakTermEnumIntro x
+    m :< WeakTermEnumElim (e, t) caseList -> do
       e' <- discern' nenv e
       t' <- discern' nenv t
       caseList' <-
-        forM caseList $ \((mCase, l), body) -> do
-          l' <- discernEnumCase mCase l
+        forM caseList $ \(enumCase, body) -> do
+          enumCase' <- discernEnumCase enumCase
           body' <- discern' nenv body
-          return ((mCase, l'), body')
-      return (m, WeakTermEnumElim (e', t') caseList')
-    (m, WeakTermQuestion e t) -> do
+          return (enumCase', body')
+      return $ m :< WeakTermEnumElim (e', t') caseList'
+    m :< WeakTermQuestion e t -> do
       e' <- discern' nenv e
       t' <- discern' nenv t
-      return (m, WeakTermQuestion e' t')
-    (m, WeakTermDerangement i es) -> do
+      return $ m :< WeakTermQuestion e' t'
+    m :< WeakTermDerangement i es -> do
       es' <- mapM (discern' nenv) es
-      return (m, WeakTermDerangement i es')
-    (m, WeakTermCase resultType mSubject (e, t) clauseList) -> do
+      return $ m :< WeakTermDerangement i es'
+    m :< WeakTermCase resultType mSubject (e, t) clauseList -> do
       resultType' <- discern' nenv resultType
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e
@@ -157,16 +157,16 @@ discern' nenv term =
             return ((mCons, newName, xts'), body')
           Nothing ->
             raiseError m $ "no such constructor is defined: " <> constructorName
-      return (m, WeakTermCase resultType' mSubject' (e', t') clauseList')
-    (m, WeakTermIgnore e) -> do
+      return $ m :< WeakTermCase resultType' mSubject' (e', t') clauseList'
+    m :< WeakTermIgnore e -> do
       e' <- discern' nenv e
-      return (m, WeakTermIgnore e')
+      return $ m :< WeakTermIgnore e'
 
 discernBinder ::
   NameEnv ->
-  [WeakIdentPlus] ->
-  WeakTermPlus ->
-  IO ([WeakIdentPlus], WeakTermPlus)
+  [WeakBinder] ->
+  WeakTerm ->
+  IO ([WeakBinder], WeakTerm)
 discernBinder nenv binder e =
   case binder of
     [] -> do
@@ -178,12 +178,12 @@ discernBinder nenv binder e =
       (xts', e') <- discernBinder (Map.insert (asText x) x' nenv) xts e
       return ((mx, x', t') : xts', e')
 
-discernEnumCase :: Hint -> EnumCase -> IO EnumCase
-discernEnumCase m weakCase =
-  case weakCase of
-    EnumCaseLabel l -> do
+discernEnumCase :: EnumCase -> IO EnumCase
+discernEnumCase enumCase =
+  case enumCase of
+    m :< EnumCaseLabel l -> do
       renv <- readIORef revEnumEnv
-      ml <- resolveSymbol m (asEnumLabel renv) l
+      ml <- resolveSymbol m (asEnumLabel m renv) l
       case ml of
         Just l' ->
           return l'
@@ -192,4 +192,4 @@ discernEnumCase m weakCase =
           p' e
           raiseError m $ "no such enum-value is defined: " <> l
     _ ->
-      return weakCase
+      return enumCase

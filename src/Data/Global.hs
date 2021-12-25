@@ -2,6 +2,7 @@
 
 module Data.Global where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Concurrent.Async (Async)
 import Control.Monad (when)
 import Data.Basic
@@ -36,15 +37,15 @@ import Data.LowComp (LowComp)
 import Data.LowType (LowType, voidPtr)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
-import Data.Term (TermPlus)
+import Data.Term (Term)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Version (showVersion)
 import Data.WeakTerm
   ( Constraint,
     SuspendedConstraintQueue,
-    WeakTerm (WeakTermAster),
-    WeakTermPlus,
+    WeakTerm,
+    WeakTermF (WeakTermAster),
   )
 import Path
   ( Abs,
@@ -216,22 +217,22 @@ topNameEnv =
   unsafePerformIO (newIORef S.empty)
 
 {-# NOINLINE weakTypeEnv #-}
-weakTypeEnv :: IORef (IntMap.IntMap WeakTermPlus)
+weakTypeEnv :: IORef (IntMap.IntMap WeakTerm)
 weakTypeEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE topTypeEnv #-}
-topTypeEnv :: IORef (Map.HashMap T.Text WeakTermPlus)
+topTypeEnv :: IORef (Map.HashMap T.Text WeakTerm)
 topTypeEnv =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE constTypeEnv #-}
-constTypeEnv :: IORef (Map.HashMap T.Text TermPlus)
+constTypeEnv :: IORef (Map.HashMap T.Text Term)
 constTypeEnv =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE holeEnv #-}
-holeEnv :: IORef (IntMap.IntMap (WeakTermPlus, WeakTermPlus))
+holeEnv :: IORef (IntMap.IntMap (WeakTerm, WeakTerm))
 holeEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
@@ -246,12 +247,12 @@ suspendedConstraintEnv =
   unsafePerformIO (newIORef Q.empty)
 
 {-# NOINLINE substEnv #-}
-substEnv :: IORef (IntMap.IntMap WeakTermPlus)
+substEnv :: IORef (IntMap.IntMap WeakTerm)
 substEnv =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE topDefEnv #-}
-topDefEnv :: IORef (Map.HashMap T.Text WeakTermPlus)
+topDefEnv :: IORef (Map.HashMap T.Text WeakTerm)
 topDefEnv =
   unsafePerformIO (newIORef Map.empty)
 
@@ -355,10 +356,10 @@ newTextFromText txt = do
   return $ ";" <> txt <> T.pack (show i)
 
 {-# INLINE newAster #-}
-newAster :: Hint -> IO WeakTermPlus
+newAster :: Hint -> IO WeakTerm
 newAster m = do
   i <- newCount
-  return (m, WeakTermAster i)
+  return $ m :< WeakTermAster i
 
 {-# INLINE newValueVarLocalWith #-}
 newValueVarLocalWith :: T.Text -> IO (Ident, Value)

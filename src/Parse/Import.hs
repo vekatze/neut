@@ -23,9 +23,9 @@ import qualified Data.Set as S
 import Data.Spec (Spec (specDependency), getSourceDir)
 import Data.Stmt
   ( EnumInfo,
-    HeaderStmtPlus,
+    HeaderProgram,
     Stmt (StmtDef),
-    WeakStmtPlus,
+    WeakProgram,
     loadCache,
   )
 import qualified Data.Text as T
@@ -49,7 +49,7 @@ import Path.IO (doesFileExist, resolveFile)
 
 type Signature = (T.Text, [T.Text])
 
-parseImport :: Spec -> (Source -> IO ([HeaderStmtPlus], WeakStmtPlus, [EnumInfo])) -> Signature -> IO [HeaderStmtPlus]
+parseImport :: Spec -> (Source -> IO ([HeaderProgram], WeakProgram, [EnumInfo])) -> Signature -> IO [HeaderProgram]
 parseImport currentSpec visiter signature = do
   m <- currentHint
   source <- signatureToSource currentSpec signature
@@ -137,7 +137,7 @@ useCache ::
   Path Abs File ->
   [Stmt] ->
   [(Hint, T.Text, [(T.Text, Int)])] ->
-  IO [HeaderStmtPlus]
+  IO [HeaderProgram]
 useCache newPath stmtList enumInfoList = do
   forM_ enumInfoList $ \(mEnum, name, itemList) -> do
     insEnumEnv mEnum name itemList

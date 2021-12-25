@@ -1,8 +1,10 @@
 module Clarify.Utility where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (unless)
 import Data.Basic
-  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+  ( CompEnumCase,
+    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Ident,
     asText,
   )
@@ -49,9 +51,9 @@ bindLet binder cont =
     (x, e) : xes ->
       CompUpElim x e $ bindLet xes cont
 
-switch :: Comp -> Comp -> [(EnumCase, Comp)]
+switch :: Comp -> Comp -> [(CompEnumCase, Comp)]
 switch e1 e2 =
-  [(EnumCaseLabel boolFalse, e1), (EnumCaseDefault, e2)]
+  [(() :< EnumCaseLabel boolFalse, e1), (() :< EnumCaseDefault, e2)]
 
 tryCache :: T.Text -> IO () -> IO Value
 tryCache key doInsertion = do

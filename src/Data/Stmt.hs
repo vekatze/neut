@@ -2,32 +2,32 @@
 
 module Data.Stmt where
 
+import Control.Comonad.Cofree (Cofree ((:<)))
 import Data.Basic (Hint, IsReducible, getPosInfo)
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
 import Data.Global (p, warn)
-import Data.Term (Term (TermTau), TermPlus)
+import Data.Term (Term, TermF (TermTau))
 import qualified Data.Text as T
-import Data.WeakTerm (WeakTermPlus)
+import Data.WeakTerm (WeakTerm)
 import GHC.Generics (Generic)
 import Path (Abs, File, Path, replaceExtension, toFilePath)
 import Path.IO (doesFileExist, getModificationTime, removeFile)
 
-type HeaderStmtPlus =
+type HeaderProgram =
   (Path Abs File, Either [Stmt] [WeakStmt], [EnumInfo])
 
-type WeakStmtPlus =
+type WeakProgram =
   (Path Abs File, [WeakStmt])
 
 data WeakStmt
-  = WeakStmtDef IsReducible Hint T.Text WeakTermPlus WeakTermPlus
-  deriving (Show)
+  = WeakStmtDef IsReducible Hint T.Text WeakTerm WeakTerm
 
-type StmtPlus =
+type Program =
   (Path Abs File, [Stmt])
 
 data Stmt
-  = StmtDef IsReducible Hint T.Text TermPlus TermPlus
-  deriving (Show, Generic)
+  = StmtDef IsReducible Hint T.Text Term Term
+  deriving (Generic)
 
 instance Binary Stmt
 
@@ -39,9 +39,9 @@ compress :: Stmt -> Stmt
 compress stmt@(StmtDef isReducible m x t _) =
   if isReducible
     then stmt
-    else StmtDef isReducible m x t (m, TermTau)
+    else StmtDef isReducible m x t (m :< TermTau)
 
-saveCache :: StmtPlus -> [EnumInfo] -> IO ()
+saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (srcPath, stmtList) enumInfoList = do
   b <- doesFreshCacheExist srcPath
   if b

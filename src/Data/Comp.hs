@@ -1,6 +1,6 @@
 module Data.Comp where
 
-import Data.Basic (EnumCase, Ident)
+import Data.Basic (CompEnumCase, Ident)
 import qualified Data.IntMap as IntMap
 import Data.LowType (Derangement, FloatSize, IntSize, PrimOp)
 import qualified Data.Set as S
@@ -20,7 +20,7 @@ data Comp
   | CompSigmaElim Bool [Ident] Value Comp
   | CompUpIntro Value
   | CompUpElim Ident Comp Comp
-  | CompEnumElim Value [(EnumCase, Comp)]
+  | CompEnumElim Value [(CompEnumCase, Comp)]
   | CompPrimitive Primitive
   | CompIgnore Comp
   deriving (Show)
@@ -29,12 +29,6 @@ data Primitive
   = PrimitivePrimOp PrimOp [Value]
   | PrimitiveDerangement Derangement [Value]
   deriving (Show)
-
--- type Value =
---   (Hint, Value)
-
--- type Comp =
---   (Hint, Comp)
 
 type SubstValue =
   IntMap.IntMap Value

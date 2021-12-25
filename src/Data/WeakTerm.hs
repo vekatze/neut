@@ -1,10 +1,13 @@
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 
 module Data.WeakTerm where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic
-  ( EnumCase (..),
-    EnumCasePlus,
+  ( EnumCase,
+    EnumCaseF (..),
     Hint,
     Ident (..),
     LamKind (LamKindCons, LamKindFix),
@@ -23,55 +26,60 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 
-data WeakTerm
+data WeakTermF a
   = WeakTermTau
   | WeakTermVar Ident
   | WeakTermVarGlobal T.Text
-  | WeakTermPi [WeakIdentPlus] WeakTermPlus
-  | WeakTermPiIntro Opacity (LamKind WeakIdentPlus) [WeakIdentPlus] WeakTermPlus
-  | WeakTermPiElim WeakTermPlus [WeakTermPlus]
+  | WeakTermPi [WeakBinderF a] a
+  | WeakTermPiIntro Opacity (LamKind (WeakBinderF a)) [WeakBinderF a] a
+  | WeakTermPiElim a [a]
   | WeakTermAster Int
   | WeakTermConst T.Text
-  | WeakTermInt WeakTermPlus Integer
-  | WeakTermFloat WeakTermPlus Double
+  | WeakTermInt a Integer
+  | WeakTermFloat a Double
   | WeakTermEnum T.Text
   | WeakTermEnumIntro T.Text
-  | WeakTermEnumElim (WeakTermPlus, WeakTermPlus) [(EnumCasePlus, WeakTermPlus)]
-  | WeakTermQuestion WeakTermPlus WeakTermPlus -- e : t (output the type `t` as note)
-  | WeakTermDerangement Derangement [WeakTermPlus] -- (derangement kind arg-1 ... arg-n)
+  | WeakTermEnumElim (a, a) [(EnumCase, a)]
+  | WeakTermQuestion a a -- e : t (output the type `t` as note)
+  | WeakTermDerangement Derangement [a] -- (derangement kind arg-1 ... arg-n)
   | WeakTermCase
-      WeakTermPlus -- result type
-      (Maybe WeakTermPlus) -- noetic subject (this is for `case-noetic`)
-      (WeakTermPlus, WeakTermPlus) -- (pattern-matched value, its type)
-      [(WeakPattern, WeakTermPlus)]
-  | WeakTermIgnore WeakTermPlus
-  deriving (Show, Generic)
+      a -- result type
+      (Maybe a) -- noetic subject (this is for `case-noetic`)
+      (a, a) -- (pattern-matched value, its type)
+      [(WeakPatternF a, a)]
+  | WeakTermIgnore a
+  deriving (Generic)
+
+instance (Binary a) => Binary (WeakTermF a)
+
+type WeakBinderF a =
+  (Hint, Ident, a)
+
+type WeakPatternF a =
+  (Hint, T.Text, [WeakBinderF a])
+
+type WeakTerm = Cofree WeakTermF Hint
+
+type WeakBinder = WeakBinderF WeakTerm
+
+type WeakPattern = WeakPatternF WeakTerm
 
 instance Binary WeakTerm
 
-type WeakPattern =
-  (Hint, T.Text, [WeakIdentPlus])
-
-type WeakTermPlus =
-  (Hint, WeakTerm)
-
 type SubstWeakTerm =
-  IntMap.IntMap WeakTermPlus
+  IntMap.IntMap WeakTerm
 
-type WeakIdentPlus =
-  (Hint, Ident, WeakTermPlus)
-
-type WeakTextPlus =
-  (Hint, T.Text, WeakTermPlus)
+type WeakText =
+  (Hint, T.Text, WeakTerm)
 
 type Def =
-  (Hint, WeakIdentPlus, [WeakIdentPlus], WeakTermPlus)
+  (Hint, WeakBinder, [WeakBinder], WeakTerm)
 
 type IdentDef =
   (Ident, Def)
 
 type Constraint =
-  (WeakTermPlus, WeakTermPlus) -- (expected-type, actual-type)
+  (WeakTerm, WeakTerm) -- (expected-type, actual-type)
 
 type MetaVarSet =
   S.Set Int
@@ -79,7 +87,6 @@ type MetaVarSet =
 data ConstraintKind
   = ConstraintKindDelta Constraint
   | ConstraintKindOther
-  deriving (Show)
 
 newtype SuspendedConstraint
   = SuspendedConstraint (MetaVarSet, ConstraintKind, (Constraint, Constraint))
@@ -94,9 +101,9 @@ instance Ord SuspendedConstraint where
 
 type SuspendedConstraintQueue = Q.MinQueue SuspendedConstraint
 
-toVar :: Hint -> Ident -> WeakTermPlus
+toVar :: Hint -> Ident -> WeakTerm
 toVar m x =
-  (m, WeakTermVar x)
+  m :< WeakTermVar x
 
 kindToInt :: ConstraintKind -> Int
 kindToInt k =
@@ -106,155 +113,155 @@ kindToInt k =
     ConstraintKindOther {} ->
       1
 
-i8 :: Hint -> WeakTermPlus
+i8 :: Hint -> WeakTerm
 i8 m =
-  (m, WeakTermConst (showIntSize 8))
+  m :< WeakTermConst (showIntSize 8)
 
-i64 :: Hint -> WeakTermPlus
+i64 :: Hint -> WeakTerm
 i64 m =
-  (m, WeakTermConst (showIntSize 64))
+  m :< WeakTermConst (showIntSize 64)
 
-varWeakTermPlus :: WeakTermPlus -> S.Set Ident
-varWeakTermPlus term =
+varWeakTerm :: WeakTerm -> S.Set Ident
+varWeakTerm term =
   case term of
-    (_, WeakTermTau) ->
+    _ :< WeakTermTau ->
       S.empty
-    (_, WeakTermVar x) ->
+    _ :< WeakTermVar x ->
       S.singleton x
-    (_, WeakTermVarGlobal {}) ->
+    _ :< WeakTermVarGlobal {} ->
       S.empty
-    (_, WeakTermPi xts t) ->
-      varWeakTermPlus' xts [t]
-    (_, WeakTermPiIntro _ k xts e) ->
-      varWeakTermPlus' (catMaybes [fromLamKind k] ++ xts) [e]
-    (_, WeakTermPiElim e es) -> do
-      let xs = varWeakTermPlus e
-      let ys = S.unions $ map varWeakTermPlus es
+    _ :< WeakTermPi xts t ->
+      varWeakTerm' xts [t]
+    _ :< WeakTermPiIntro _ k xts e ->
+      varWeakTerm' (catMaybes [fromLamKind k] ++ xts) [e]
+    _ :< WeakTermPiElim e es -> do
+      let xs = varWeakTerm e
+      let ys = S.unions $ map varWeakTerm es
       S.union xs ys
-    (_, WeakTermConst _) ->
+    _ :< WeakTermConst _ ->
       S.empty
-    (_, WeakTermAster _) ->
+    _ :< WeakTermAster _ ->
       S.empty
-    (_, WeakTermInt t _) ->
-      varWeakTermPlus t
-    (_, WeakTermFloat t _) ->
-      varWeakTermPlus t
-    (_, WeakTermEnum _) ->
+    _ :< WeakTermInt t _ ->
+      varWeakTerm t
+    _ :< WeakTermFloat t _ ->
+      varWeakTerm t
+    _ :< WeakTermEnum _ ->
       S.empty
-    (_, WeakTermEnumIntro _) ->
+    _ :< WeakTermEnumIntro _ ->
       S.empty
-    (_, WeakTermEnumElim (e, t) les) -> do
-      let xs = varWeakTermPlus t
-      let ys = varWeakTermPlus e
-      let zs = S.unions $ map (varWeakTermPlus . snd) les
+    _ :< WeakTermEnumElim (e, t) les -> do
+      let xs = varWeakTerm t
+      let ys = varWeakTerm e
+      let zs = S.unions $ map (varWeakTerm . snd) les
       S.unions [xs, ys, zs]
-    (_, WeakTermQuestion e t) -> do
-      let set1 = varWeakTermPlus e
-      let set2 = varWeakTermPlus t
+    _ :< WeakTermQuestion e t -> do
+      let set1 = varWeakTerm e
+      let set2 = varWeakTerm t
       S.union set1 set2
-    (_, WeakTermDerangement _ es) ->
-      S.unions $ map varWeakTermPlus es
-    (_, WeakTermCase resultType mSubject (e, t) patList) -> do
-      let xs1 = varWeakTermPlus resultType
-      let xs2 = S.unions $ map varWeakTermPlus $ maybeToList mSubject
-      let xs3 = varWeakTermPlus e
-      let xs4 = varWeakTermPlus t
-      let xs5 = S.unions $ map (\((_, _, xts), body) -> varWeakTermPlus' xts [body]) patList
+    _ :< WeakTermDerangement _ es ->
+      S.unions $ map varWeakTerm es
+    _ :< WeakTermCase resultType mSubject (e, t) patList -> do
+      let xs1 = varWeakTerm resultType
+      let xs2 = S.unions $ map varWeakTerm $ maybeToList mSubject
+      let xs3 = varWeakTerm e
+      let xs4 = varWeakTerm t
+      let xs5 = S.unions $ map (\((_, _, xts), body) -> varWeakTerm' xts [body]) patList
       S.unions [xs1, xs2, xs3, xs4, xs5]
-    (_, WeakTermIgnore e) ->
-      varWeakTermPlus e
+    _ :< WeakTermIgnore e ->
+      varWeakTerm e
 
-varWeakTermPlus' :: [WeakIdentPlus] -> [WeakTermPlus] -> S.Set Ident
-varWeakTermPlus' binder es =
+varWeakTerm' :: [WeakBinder] -> [WeakTerm] -> S.Set Ident
+varWeakTerm' binder es =
   case binder of
     [] ->
-      S.unions $ map varWeakTermPlus es
+      S.unions $ map varWeakTerm es
     ((_, x, t) : xts) -> do
-      let hs1 = varWeakTermPlus t
-      let hs2 = varWeakTermPlus' xts es
+      let hs1 = varWeakTerm t
+      let hs2 = varWeakTerm' xts es
       S.union hs1 $ S.filter (/= x) hs2
 
-asterWeakTermPlus :: WeakTermPlus -> S.Set Int
-asterWeakTermPlus term =
+asterWeakTerm :: WeakTerm -> S.Set Int
+asterWeakTerm term =
   case term of
-    (_, WeakTermTau) ->
+    _ :< WeakTermTau ->
       S.empty
-    (_, WeakTermVar {}) ->
+    _ :< WeakTermVar {} ->
       S.empty
-    (_, WeakTermVarGlobal {}) ->
+    _ :< WeakTermVarGlobal {} ->
       S.empty
-    (_, WeakTermPi xts t) ->
-      asterWeakTermPlus' xts t
-    (_, WeakTermPiIntro _ _ xts e) ->
-      asterWeakTermPlus' xts e
-    (_, WeakTermPiElim e es) ->
-      S.unions $ map asterWeakTermPlus $ e : es
-    (_, WeakTermAster h) ->
+    _ :< WeakTermPi xts t ->
+      asterWeakTerm' xts t
+    _ :< WeakTermPiIntro _ _ xts e ->
+      asterWeakTerm' xts e
+    _ :< WeakTermPiElim e es ->
+      S.unions $ map asterWeakTerm $ e : es
+    _ :< WeakTermAster h ->
       S.singleton h
-    (_, WeakTermConst _) ->
+    _ :< WeakTermConst _ ->
       S.empty
-    (_, WeakTermInt t _) ->
-      asterWeakTermPlus t
-    (_, WeakTermFloat t _) ->
-      asterWeakTermPlus t
-    (_, WeakTermEnum _) ->
+    _ :< WeakTermInt t _ ->
+      asterWeakTerm t
+    _ :< WeakTermFloat t _ ->
+      asterWeakTerm t
+    _ :< WeakTermEnum _ ->
       S.empty
-    (_, WeakTermEnumIntro _) ->
+    _ :< WeakTermEnumIntro _ ->
       S.empty
-    (_, WeakTermEnumElim (e, t) les) -> do
-      let set1 = asterWeakTermPlus e
-      let set2 = asterWeakTermPlus t
-      let set3 = S.unions $ map (\(_, body) -> asterWeakTermPlus body) les
+    _ :< WeakTermEnumElim (e, t) les -> do
+      let set1 = asterWeakTerm e
+      let set2 = asterWeakTerm t
+      let set3 = S.unions $ map (\(_, body) -> asterWeakTerm body) les
       S.unions [set1, set2, set3]
-    (_, WeakTermQuestion e t) -> do
-      let set1 = asterWeakTermPlus e
-      let set2 = asterWeakTermPlus t
+    _ :< WeakTermQuestion e t -> do
+      let set1 = asterWeakTerm e
+      let set2 = asterWeakTerm t
       S.union set1 set2
-    (_, WeakTermDerangement _ es) ->
-      S.unions $ map asterWeakTermPlus es
-    (_, WeakTermCase resultType mSubject (e, t) patList) -> do
-      let xs1 = asterWeakTermPlus resultType
-      let xs2 = S.unions $ map asterWeakTermPlus $ maybeToList mSubject
-      let xs3 = asterWeakTermPlus e
-      let xs4 = asterWeakTermPlus t
-      let xs5 = S.unions $ map (\((_, _, xts), body) -> asterWeakTermPlus' xts body) patList
+    _ :< WeakTermDerangement _ es ->
+      S.unions $ map asterWeakTerm es
+    _ :< WeakTermCase resultType mSubject (e, t) patList -> do
+      let xs1 = asterWeakTerm resultType
+      let xs2 = S.unions $ map asterWeakTerm $ maybeToList mSubject
+      let xs3 = asterWeakTerm e
+      let xs4 = asterWeakTerm t
+      let xs5 = S.unions $ map (\((_, _, xts), body) -> asterWeakTerm' xts body) patList
       S.unions [xs1, xs2, xs3, xs4, xs5]
-    (_, WeakTermIgnore e) ->
-      asterWeakTermPlus e
+    _ :< WeakTermIgnore e ->
+      asterWeakTerm e
 
-asterWeakTermPlus' :: [WeakIdentPlus] -> WeakTermPlus -> S.Set Int
-asterWeakTermPlus' binder e =
+asterWeakTerm' :: [WeakBinder] -> WeakTerm -> S.Set Int
+asterWeakTerm' binder e =
   case binder of
     [] ->
-      asterWeakTermPlus e
+      asterWeakTerm e
     ((_, _, t) : xts) -> do
-      let set1 = asterWeakTermPlus t
-      let set2 = asterWeakTermPlus' xts e
+      let set1 = asterWeakTerm t
+      let set2 = asterWeakTerm' xts e
       S.union set1 set2
 
-metaOf :: WeakTermPlus -> Hint
-metaOf =
-  fst
+metaOf :: WeakTerm -> Hint
+metaOf (m :< _) =
+  m
 
-asVar :: WeakTermPlus -> Maybe Ident
+asVar :: WeakTerm -> Maybe Ident
 asVar term =
   case term of
-    (_, WeakTermVar x) ->
+    (_ :< WeakTermVar x) ->
       Just x
     _ ->
       Nothing
 
-toText :: WeakTermPlus -> T.Text
+toText :: WeakTerm -> T.Text
 toText term =
   case term of
-    (_, WeakTermTau) ->
+    _ :< WeakTermTau ->
       "tau"
-    (_, WeakTermVar x) ->
+    _ :< WeakTermVar x ->
       showVariable x
-    (_, WeakTermVarGlobal x) ->
+    _ :< WeakTermVarGlobal x ->
       x
-    (_, WeakTermPi xts cod)
-      | [(_, I ("internal.sigma-tau", _), _), (_, _, (_, WeakTermPi yts _))] <- xts ->
+    _ :< WeakTermPi xts cod
+      | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WeakTermPi yts _)] <- xts ->
         case splitLast yts of
           Nothing ->
             "(product)"
@@ -262,7 +269,7 @@ toText term =
             showCons ["∑", inParen $ showTypeArgs zts, toText t]
       | otherwise ->
         showCons ["Π", inParen $ showTypeArgs xts, toText cod]
-    (_, WeakTermPiIntro opacity kind xts e) -> do
+    _ :< WeakTermPiIntro opacity kind xts e -> do
       case kind of
         LamKindFix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
@@ -280,51 +287,49 @@ toText term =
           if isTransparent opacity
             then showCons ["λ", argStr, toText e]
             else showCons ["λ-irreducible", argStr, toText e]
-    (_, WeakTermPiElim e es) ->
+    _ :< WeakTermPiElim e es ->
       case e of
         -- (_, WeakTermAster _) ->
         --   "*"
         _ ->
           showCons $ map toText $ e : es
-    (_, WeakTermConst x) ->
+    _ :< WeakTermConst x ->
       x
-    (_, WeakTermAster i) ->
+    _ :< WeakTermAster i ->
       "?M" <> T.pack (show i)
-    (_, WeakTermInt _ a) ->
+    _ :< WeakTermInt _ a ->
       T.pack $ show a
-    (_, WeakTermFloat _ a) ->
+    _ :< WeakTermFloat _ a ->
       T.pack $ show a
-    (_, WeakTermEnum l) ->
+    _ :< WeakTermEnum l ->
       l
-    (_, WeakTermEnumIntro v) ->
+    _ :< WeakTermEnumIntro v ->
       v
-    (_, WeakTermEnumElim (e, _) mles) -> do
-      let (mls, es) = unzip mles
-      let les = zip (map snd mls) es
-      showCons ["switch", toText e, showItems (map showClause les)]
-    (_, WeakTermQuestion e _) ->
+    _ :< WeakTermEnumElim (e, _) mles -> do
+      showCons ["switch", toText e, showItems (map showClause mles)]
+    _ :< WeakTermQuestion e _ ->
       toText e
-    (_, WeakTermDerangement i es) -> do
+    _ :< WeakTermDerangement i es -> do
       let es' = map toText es
       showCons $ "derangement" : T.pack (show i) : es'
-    (_, WeakTermCase _ mSubject (e, _) caseClause) -> do
+    _ :< WeakTermCase _ mSubject (e, _) caseClause -> do
       case mSubject of
         Nothing -> do
           showCons $ "case" : toText e : map showCaseClause caseClause
         Just _ -> do
           showCons $ "case-noetic" : toText e : map showCaseClause caseClause
-    (_, WeakTermIgnore e) ->
+    _ :< WeakTermIgnore e ->
       showCons ["ignore", toText e]
 
 inParen :: T.Text -> T.Text
 inParen s =
   "(" <> s <> ")"
 
-showArg :: (Hint, Ident, WeakTermPlus) -> T.Text
+showArg :: (Hint, Ident, WeakTerm) -> T.Text
 showArg (_, x, t) =
   inParen $ showVariable x <> " " <> toText t
 
-showTypeArgs :: [WeakIdentPlus] -> T.Text
+showTypeArgs :: [WeakBinder] -> T.Text
 showTypeArgs args =
   case args of
     [] ->
@@ -339,11 +344,11 @@ showTypeArgs args =
 showVariable :: Ident -> T.Text
 showVariable = asText
 
-showCaseClause :: (WeakPattern, WeakTermPlus) -> T.Text
+showCaseClause :: (WeakPattern, WeakTerm) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, T.Text, [WeakIdentPlus]) -> T.Text
+showPattern :: (Hint, T.Text, [WeakBinder]) -> T.Text
 showPattern (_, f, xts) = do
   case xts of
     [] ->
@@ -352,18 +357,18 @@ showPattern (_, f, xts) = do
       let xs = map (\(_, x, _) -> x) xts
       inParen $ f <> " " <> T.intercalate " " (map showVariable xs)
 
-showClause :: (EnumCase, WeakTermPlus) -> T.Text
+showClause :: (EnumCase, WeakTerm) -> T.Text
 showClause (c, e) =
   inParen $ showCase c <> " " <> toText e
 
 showCase :: EnumCase -> T.Text
 showCase c =
   case c of
-    EnumCaseLabel l ->
+    _ :< EnumCaseLabel l ->
       l
-    EnumCaseDefault ->
+    _ :< EnumCaseDefault ->
       "default"
-    EnumCaseInt i ->
+    _ :< EnumCaseInt i ->
       T.pack (show i)
 
 showItems :: [T.Text] -> T.Text

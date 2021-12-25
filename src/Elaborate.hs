@@ -3,10 +3,12 @@ module Elaborate
   )
 where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Concurrent.Async (async)
 import Control.Monad (forM, forM_, unless, when)
 import Data.Basic
-  ( EnumCase (EnumCaseDefault, EnumCaseLabel),
+  ( EnumCase,
+    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     LamKind (..),
     Opacity (OpacityTransparent),
@@ -31,15 +33,16 @@ import Data.LowType
     asLowTypeMaybe,
   )
 import Data.Stmt
-  ( HeaderStmtPlus,
+  ( HeaderProgram,
     Stmt (..),
     WeakStmt (WeakStmtDef),
     saveCache,
   )
 import Data.Term
-  ( IdentPlus,
+  ( Binder,
     Pattern,
-    Term
+    Term,
+    TermF
       ( TermCase,
         TermConst,
         TermDerangement,
@@ -56,14 +59,14 @@ import Data.Term
         TermVar,
         TermVarGlobal
       ),
-    TermPlus,
     weaken,
   )
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakIdentPlus,
+  ( WeakBinder,
     WeakPattern,
-    WeakTerm
+    WeakTerm,
+    WeakTermF
       ( WeakTermAster,
         WeakTermCase,
         WeakTermConst,
@@ -82,19 +85,19 @@ import Data.WeakTerm
         WeakTermVar,
         WeakTermVarGlobal
       ),
-    WeakTermPlus,
+    metaOf,
     toText,
   )
 import Elaborate.Infer (infer, inferType, insConstraintEnv)
 import Elaborate.Unify (unify)
-import Reduce.Term (reduceTermPlus)
-import Reduce.WeakTerm (reduceWeakTermPlus, substWeakTermPlus)
+import Reduce.Term (reduceTerm)
+import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
 
-elaborate :: ([HeaderStmtPlus], [WeakStmt]) -> IO ([[Stmt]], [Stmt])
+elaborate :: ([HeaderProgram], [WeakStmt]) -> IO ([[Stmt]], [Stmt])
 elaborate (ss, mainContent) =
   case ss of
     [] -> do
-      mainDefList' <- elaborateStmtPlus mainContent
+      mainDefList' <- elaborateProgram mainContent
       return ([], mainDefList')
     (srcPath, content, enumInfoList) : rest -> do
       case content of
@@ -103,11 +106,11 @@ elaborate (ss, mainContent) =
           (rest', s') <- elaborate (rest, mainContent)
           return (cache : rest', s')
         Right defList -> do
-          headStmtPlus' <- elaborateStmtPlus defList
-          promise <- async $ saveCache (srcPath, headStmtPlus') enumInfoList
+          headProgram' <- elaborateProgram defList
+          promise <- async $ saveCache (srcPath, headProgram') enumInfoList
           modifyIORef' promiseEnv $ \env -> promise : env
           (rest', s') <- elaborate (rest, mainContent)
-          return (headStmtPlus' : rest', s')
+          return (headProgram' : rest', s')
 
 registerTopLevelDef :: Stmt -> IO ()
 registerTopLevelDef (StmtDef isReducible _ x t e) = do
@@ -115,8 +118,8 @@ registerTopLevelDef (StmtDef isReducible _ x t e) = do
   when isReducible $ do
     modifyIORef' topDefEnv $ \env -> Map.insert x (weaken e) env
 
-elaborateStmtPlus :: [WeakStmt] -> IO [Stmt]
-elaborateStmtPlus defList = do
+elaborateProgram :: [WeakStmt] -> IO [Stmt]
+elaborateProgram defList = do
   mapM_ setupDef defList
   defList' <- inferStmtList defList
   -- cs <- readIORef constraintEnv
@@ -145,7 +148,7 @@ inferStmtList stmtList =
       (e', te) <- infer e
       t' <- inferType t
       insConstraintEnv te t'
-      when (x == "main") $ insConstraintEnv t (m, WeakTermConst "i64")
+      when (x == "main") $ insConstraintEnv t (m :< WeakTermConst "i64")
       rest' <- inferStmtList rest
       return $ WeakStmtDef isReducible m x t' e' : rest'
 
@@ -156,135 +159,137 @@ elaborateStmtList stmtList = do
       return []
     WeakStmtDef isReducible m x t e : rest -> do
       e' <- elaborate' e
-      t' <- elaborate' t >>= reduceTermPlus
+      t' <- elaborate' t >>= reduceTerm
       insTopTypeEnv x $ weaken t'
       when isReducible $
         modifyIORef' topDefEnv $ \env -> Map.insert x (weaken e') env
       rest' <- elaborateStmtList rest
       return $ StmtDef isReducible m x t' e' : rest'
 
-elaborate' :: WeakTermPlus -> IO TermPlus
+elaborate' :: WeakTerm -> IO Term
 elaborate' term =
   case term of
-    (m, WeakTermTau) ->
-      return (m, TermTau)
-    (m, WeakTermVar x) ->
-      return (m, TermVar x)
-    (m, WeakTermVarGlobal name) ->
-      return (m, TermVarGlobal name)
-    (m, WeakTermPi xts t) -> do
-      xts' <- mapM elaborateWeakIdentPlus xts
+    m :< WeakTermTau ->
+      return $ m :< TermTau
+    m :< WeakTermVar x ->
+      return $ m :< TermVar x
+    m :< WeakTermVarGlobal name ->
+      return $ m :< TermVarGlobal name
+    m :< WeakTermPi xts t -> do
+      xts' <- mapM elaborateWeakBinder xts
       t' <- elaborate' t
-      return (m, TermPi xts' t')
-    (m, WeakTermPiIntro isReducible kind xts e) -> do
+      return $ m :< TermPi xts' t'
+    m :< WeakTermPiIntro isReducible kind xts e -> do
       kind' <- elaborateKind kind
-      xts' <- mapM elaborateWeakIdentPlus xts
+      xts' <- mapM elaborateWeakBinder xts
       e' <- elaborate' e
-      return (m, TermPiIntro isReducible kind' xts' e')
-    (m, WeakTermPiElim (mh, WeakTermAster x) es) -> do
+      return $ m :< TermPiIntro isReducible kind' xts' e'
+    m :< WeakTermPiElim (mh :< WeakTermAster x) es -> do
       sub <- readIORef substEnv
       case IntMap.lookup x sub of
         Nothing ->
           raiseError mh "couldn't instantiate the asterisk here"
-        Just (_, WeakTermPiIntro OpacityTransparent LamKindNormal xts e)
+        Just (_ :< WeakTermPiIntro OpacityTransparent LamKindNormal xts e)
           | length xts == length es -> do
             let xs = map (\(_, y, _) -> asInt y) xts
             let s = IntMap.fromList $ zip xs es
-            substWeakTermPlus s e >>= elaborate'
+            substWeakTerm s e >>= elaborate'
         Just e ->
-          reduceWeakTermPlus (m, WeakTermPiElim e es) >>= elaborate'
-    (m, WeakTermPiElim e es) -> do
+          reduceWeakTerm (m :< WeakTermPiElim e es) >>= elaborate'
+    m :< WeakTermPiElim e es -> do
       e' <- elaborate' e
       es' <- mapM elaborate' es
-      return (m, TermPiElim e' es')
-    (m, WeakTermAster _) ->
+      return $ m :< TermPiElim e' es'
+    m :< WeakTermAster _ ->
       raiseCritical m "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
-    (m, WeakTermConst x) ->
-      return (m, TermConst x)
-    (m, WeakTermInt t x) -> do
-      t' <- elaborate' t >>= reduceTermPlus
+    m :< WeakTermConst x ->
+      return $ m :< TermConst x
+    m :< WeakTermInt t x -> do
+      t' <- elaborate' t >>= reduceTerm
       case t' of
-        (_, TermConst intTypeStr)
+        _ :< TermConst intTypeStr
           | Just (LowTypeInt size) <- asLowTypeMaybe intTypeStr ->
-            return (m, TermInt size x)
+            return $ m :< TermInt size x
         _ ->
           raiseError m $
             "the term `"
               <> T.pack (show x)
               <> "` is an integer, but its type is: "
               <> toText (weaken t')
-    (m, WeakTermFloat t x) -> do
-      t' <- elaborate' t >>= reduceTermPlus
+    m :< WeakTermFloat t x -> do
+      t' <- elaborate' t >>= reduceTerm
       case t' of
-        (_, TermConst floatTypeStr)
+        _ :< TermConst floatTypeStr
           | Just (LowTypeFloat size) <- asLowTypeMaybe floatTypeStr ->
-            return (m, TermFloat size x)
+            return $ m :< TermFloat size x
         _ ->
           raiseError m $
             "the term `"
               <> T.pack (show x)
               <> "` is a float, but its type is:\n"
               <> toText (weaken t')
-    (m, WeakTermEnum k) ->
-      return (m, TermEnum k)
-    (m, WeakTermEnumIntro x) ->
-      return (m, TermEnumIntro x)
-    (m, WeakTermEnumElim (e, t) les) -> do
+    m :< WeakTermEnum k ->
+      return $ m :< TermEnum k
+    m :< WeakTermEnumIntro x ->
+      return $ m :< TermEnumIntro x
+    m :< WeakTermEnumElim (e, t) les -> do
       e' <- elaborate' e
       let (ls, es) = unzip les
       es' <- mapM elaborate' es
-      t' <- elaborate' t >>= reduceTermPlus
+      t' <- elaborate' t >>= reduceTerm
       case t' of
-        (_, TermEnum x) -> do
-          checkSwitchExaustiveness m x (map snd ls)
-          checkEnumElim m $ map snd ls
-          return (m, TermEnumElim (e', t') (zip ls es'))
+        _ :< TermEnum x -> do
+          checkSwitchExaustiveness m x ls
+          checkEnumElim m ls
+          -- checkSwitchExaustiveness m x (map snd ls)
+          -- checkEnumElim m $ map snd ls
+          return $ m :< TermEnumElim (e', t') (zip ls es')
         _ ->
           raiseError m $
             "the type of `"
               <> toText (weaken e')
               <> "` must be an enum type, but is:\n"
               <> toText (weaken t')
-    (m, WeakTermQuestion e t) -> do
+    m :< WeakTermQuestion e t -> do
       e' <- elaborate' e
       t' <- elaborate' t
       note m $ toText (weaken t')
       return e'
-    (m, WeakTermDerangement i es) -> do
+    m :< WeakTermDerangement i es -> do
       es' <- mapM elaborate' es
-      return (m, TermDerangement i es')
-    (m, WeakTermCase resultType mSubject (e, t) patList) -> do
+      return $ m :< TermDerangement i es'
+    m :< WeakTermCase resultType mSubject (e, t) patList -> do
       resultType' <- elaborate' resultType
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e
-      t' <- elaborate' t >>= reduceTermPlus
+      t' <- elaborate' t >>= reduceTerm
       denv <- readIORef dataEnv
       case t' of
-        (_, TermPiElim (_, TermVarGlobal name) _)
+        _ :< TermPiElim (_ :< TermVarGlobal name) _
           | Just bs <- Map.lookup name denv -> do
             patList' <- elaboratePatternList m bs patList
-            return (m, TermCase resultType' mSubject' (e', t') patList')
-        (_, TermVarGlobal name)
+            return $ m :< TermCase resultType' mSubject' (e', t') patList'
+        _ :< TermVarGlobal name
           | Just bs <- Map.lookup name denv -> do
             patList' <- elaboratePatternList m bs patList
-            return (m, TermCase resultType' mSubject' (e', t') patList')
+            return $ m :< TermCase resultType' mSubject' (e', t') patList'
         _ -> do
-          raiseError (fst t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
-    (m, WeakTermIgnore e) -> do
+          raiseError (metaOf t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
+    m :< WeakTermIgnore e -> do
       e' <- elaborate' e
-      return (m, TermIgnore e')
+      return $ m :< TermIgnore e'
 
 -- for now
-elaboratePatternList :: Hint -> [T.Text] -> [(WeakPattern, WeakTermPlus)] -> IO [(Pattern, TermPlus)]
+elaboratePatternList :: Hint -> [T.Text] -> [(WeakPattern, WeakTerm)] -> IO [(Pattern, Term)]
 elaboratePatternList m bs patList = do
   patList' <- forM patList $ \((mPat, c, xts), body) -> do
-    xts' <- mapM elaborateWeakIdentPlus xts
+    xts' <- mapM elaborateWeakBinder xts
     body' <- elaborate' body
     return ((mPat, c, xts'), body')
   checkCaseSanity m bs patList'
   return patList'
 
-checkCaseSanity :: Hint -> [T.Text] -> [(Pattern, TermPlus)] -> IO ()
+checkCaseSanity :: Hint -> [T.Text] -> [(Pattern, Term)] -> IO ()
 checkCaseSanity m bs patList =
   case (bs, patList) of
     ([], []) ->
@@ -298,12 +303,12 @@ checkCaseSanity m bs patList =
     ([], ((mPat, b, _), _) : _) ->
       raiseError mPat $ "found a redundant pattern; this clause for `" <> b <> "` is redundant"
 
-elaborateWeakIdentPlus :: WeakIdentPlus -> IO IdentPlus
-elaborateWeakIdentPlus (m, x, t) = do
+elaborateWeakBinder :: WeakBinder -> IO Binder
+elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: LamKind WeakIdentPlus -> IO (LamKind IdentPlus)
+elaborateKind :: LamKind WeakBinder -> IO (LamKind Binder)
 elaborateKind kind =
   case kind of
     LamKindNormal ->
@@ -311,7 +316,7 @@ elaborateKind kind =
     LamKindCons t1 t2 ->
       return $ LamKindCons t1 t2
     LamKindFix xt -> do
-      xt' <- elaborateWeakIdentPlus xt
+      xt' <- elaborateWeakBinder xt
       return $ LamKindFix xt'
     LamKindResourceHandler ->
       return LamKindResourceHandler
@@ -323,17 +328,17 @@ checkEnumElim m ls =
       return ()
     l : rest -> do
       case l of
-        EnumCaseLabel _ ->
+        _ :< EnumCaseLabel _ ->
           raiseError m "enum-elim"
         _ ->
           checkEnumElim m rest
 
 checkSwitchExaustiveness :: Hint -> T.Text -> [EnumCase] -> IO ()
 checkSwitchExaustiveness m x caseList = do
-  let b = EnumCaseDefault `elem` caseList
+  let containsDefaultCase = doesContainDefaultCase caseList
   enumSet <- lookupEnumSet m x
   let len = toInteger $ length (nub caseList)
-  unless (toInteger (length enumSet) <= len || b) $
+  unless (toInteger (length enumSet) <= len || containsDefaultCase) $
     raiseError m "this switch is ill-constructed in that it is not exhaustive"
 
 lookupEnumSet :: Hint -> T.Text -> IO [T.Text]
@@ -345,6 +350,16 @@ lookupEnumSet m name = do
     Just xis ->
       return $ map fst xis
 
-insTopTypeEnv :: T.Text -> WeakTermPlus -> IO ()
+insTopTypeEnv :: T.Text -> WeakTerm -> IO ()
 insTopTypeEnv name t =
   modifyIORef' topTypeEnv $ \env -> Map.insert name t env
+
+doesContainDefaultCase :: [EnumCase] -> Bool
+doesContainDefaultCase enumCaseList =
+  case enumCaseList of
+    [] ->
+      False
+    (_ :< EnumCaseDefault) : _ ->
+      True
+    _ : rest ->
+      doesContainDefaultCase rest

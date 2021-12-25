@@ -3,8 +3,9 @@ module Lower
   )
 where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, unless, (>=>))
-import Data.Basic (EnumCase (..), Ident (..), asText)
+import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..), asText)
 import Data.Comp (Comp (..), Primitive (..), Value (..))
 import Data.Global
   ( declEnv,
@@ -417,20 +418,20 @@ lowerValueLet' binder cont =
       lowerValueLet x d cont'
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: [(EnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
+constructSwitch :: [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
 constructSwitch switch =
   case switch of
     [] ->
       return Nothing
-    (EnumCaseDefault, code) : _ -> do
+    (_ :< EnumCaseDefault, code) : _ -> do
       code' <- lowerComp code
       return $ Just (code', [])
-    [(_, code)] -> do
-      constructSwitch [(EnumCaseDefault, code)]
-    (EnumCaseLabel l, code) : rest -> do
+    [(m :< _, code)] -> do
+      constructSwitch [(m :< EnumCaseDefault, code)]
+    (m :< EnumCaseLabel l, code) : rest -> do
       i <- enumValueToInteger l
-      constructSwitch $ (EnumCaseInt i, code) : rest
-    (EnumCaseInt i, code) : rest -> do
+      constructSwitch $ (m :< EnumCaseInt i, code) : rest
+    (_ :< EnumCaseInt i, code) : rest -> do
       code' <- lowerComp code
       mSwitch <- constructSwitch rest
       return $ do

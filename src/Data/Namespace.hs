@@ -2,7 +2,8 @@
 
 module Data.Namespace where
 
-import Data.Basic (EnumCase (EnumCaseLabel), Hint, Ident)
+import Control.Comonad.Cofree (Cofree (..))
+import Data.Basic (EnumCase, EnumCaseF (EnumCaseLabel), Hint, Ident)
 import Data.Global (aliasEnv, nsSep, prefixEnv, sectionEnv)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
@@ -15,14 +16,14 @@ import Data.LowType
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakTerm
+  ( WeakTerm,
+    WeakTermF
       ( WeakTermConst,
         WeakTermEnum,
         WeakTermEnumIntro,
         WeakTermVar,
         WeakTermVarGlobal
       ),
-    WeakTermPlus,
   )
 
 data Section
@@ -105,20 +106,21 @@ takeAll predicate candidateList acc =
           takeAll predicate xs acc
 
 {-# INLINE asVar #-}
-asVar :: Hint -> Map.HashMap T.Text b -> T.Text -> (b -> a) -> Maybe (Hint, a)
+-- asVar :: Hint -> Map.HashMap T.Text b -> T.Text -> (b -> a) -> Maybe (Cofree a Hint)
+asVar :: Hint -> Map.HashMap T.Text t -> T.Text -> (t -> f (Cofree f Hint)) -> Maybe (Cofree f Hint)
 asVar m nenv name f =
-  Map.lookup name nenv >>= \x -> return (m, f x)
+  Map.lookup name nenv >>= \x -> return (m :< f x)
 
 {-# INLINE asWeakVar #-}
-asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTermPlus
+asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTerm
 asWeakVar m nenv var =
   asVar m nenv var WeakTermVar
 
 {-# INLINE asGlobalVar #-}
-asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> Maybe WeakTermPlus
+asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> Maybe WeakTerm
 asGlobalVar m nenv name =
   if S.member name nenv
-    then Just (m, WeakTermVarGlobal name)
+    then Just (m :< WeakTermVarGlobal name)
     else Nothing
 
 {-# INLINE asConstructor #-}
@@ -136,41 +138,41 @@ findThenModify env f name = do
     else Nothing
 
 {-# INLINE asEnumLabel #-}
-asEnumLabel :: Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe EnumCase
-asEnumLabel env name = do
+asEnumLabel :: Hint -> Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe EnumCase
+asEnumLabel m env name = do
   case Map.lookup name env of
     Just _ ->
-      Just $ EnumCaseLabel name
+      Just $ m :< EnumCaseLabel name
     _ ->
       Nothing
 
 {-# INLINE asEnumIntro #-}
-asEnumIntro :: Hint -> Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe WeakTermPlus
+asEnumIntro :: Hint -> Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe WeakTerm
 asEnumIntro m env name = do
   case Map.lookup name env of
     Just (_, _) ->
-      Just (m, WeakTermEnumIntro name)
+      Just (m :< WeakTermEnumIntro name)
     _ ->
       Nothing
 
 {-# INLINE asEnum #-}
-asEnum :: Hint -> Map.HashMap T.Text a -> T.Text -> Maybe WeakTermPlus
+asEnum :: Hint -> Map.HashMap T.Text a -> T.Text -> Maybe WeakTerm
 asEnum m env name = do
   case Map.lookup name env of
     Just _ ->
-      Just (m, WeakTermEnum name)
+      Just (m :< WeakTermEnum name)
     _ ->
       Nothing
 
 {-# INLINE asWeakConstant #-}
-asWeakConstant :: Hint -> T.Text -> Maybe WeakTermPlus
+asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm
 asWeakConstant m name
   | Just (LowTypeInt _) <- asLowTypeMaybe name =
-    Just (m, WeakTermConst name)
+    Just (m :< WeakTermConst name)
   | Just (LowTypeFloat _) <- asLowTypeMaybe name =
-    Just (m, WeakTermConst name)
+    Just (m :< WeakTermConst name)
   | Just _ <- asPrimOp name =
-    Just (m, WeakTermConst name)
+    Just (m :< WeakTermConst name)
   | otherwise = do
     Nothing
 

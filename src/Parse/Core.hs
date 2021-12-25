@@ -1,5 +1,6 @@
 module Parse.Core where
 
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Exception.Safe (catch, throw)
 import Data.Basic
   ( Hint,
@@ -28,9 +29,9 @@ import Data.Log (Error (..), logError, raiseCritical)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakIdentPlus,
-    WeakTerm (WeakTermPiIntro, WeakTermVar),
-    WeakTermPlus,
+  ( WeakBinder,
+    WeakTerm,
+    WeakTermF (WeakTermPiIntro, WeakTermVar),
   )
 import Path (toFilePath)
 import System.IO.Unsafe (unsafePerformIO)
@@ -453,24 +454,24 @@ varText :: IO T.Text
 varText =
   snd <$> var
 
-weakVar :: Hint -> T.Text -> WeakTermPlus
+weakVar :: Hint -> T.Text -> WeakTerm
 weakVar m str =
-  (m, WeakTermVar (asIdent str))
+  m :< WeakTermVar (asIdent str)
 
-weakVar' :: Hint -> Ident -> WeakTermPlus
+weakVar' :: Hint -> Ident -> WeakTerm
 weakVar' m ident =
-  (m, WeakTermVar ident)
+  m :< WeakTermVar ident
 
-lam :: Hint -> [WeakIdentPlus] -> WeakTermPlus -> WeakTermPlus
+lam :: Hint -> [WeakBinder] -> WeakTerm -> WeakTerm
 lam m varList e =
-  (m, WeakTermPiIntro OpacityTransparent LamKindNormal varList e)
+  m :< WeakTermPiIntro OpacityTransparent LamKindNormal varList e
 
 newTextualIdentFromText :: T.Text -> IO Ident
 newTextualIdentFromText txt = do
   i <- newCount
   newIdentFromText $ ";" <> txt <> T.pack (show i)
 
-weakTermToWeakIdent :: Hint -> IO WeakTermPlus -> IO WeakIdentPlus
+weakTermToWeakIdent :: Hint -> IO WeakTerm -> IO WeakBinder
 weakTermToWeakIdent m f = do
   a <- f
   h <- newTextualIdentFromText "_"

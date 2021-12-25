@@ -16,9 +16,12 @@ import Clarify.Utility
     insDefEnv',
     wrapWithQuote,
   )
+import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM, forM_, unless, when, (>=>))
 import Data.Basic
-  ( EnumCase (EnumCaseInt),
+  ( CompEnumCase,
+    EnumCase,
+    EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Hint,
     Ident,
     LamKind (..),
@@ -60,9 +63,10 @@ import Data.Maybe (catMaybes, isJust, maybeToList)
 import qualified Data.Set as S
 import Data.Stmt (Stmt (..))
 import Data.Term
-  ( IdentPlus,
+  ( Binder,
     Pattern,
-    Term
+    Term,
+    TermF
       ( TermCase,
         TermConst,
         TermDerangement,
@@ -79,7 +83,6 @@ import Data.Term
         TermVar,
         TermVarGlobal
       ),
-    TermPlus,
     TypeEnv,
     lowTypeToType,
   )
@@ -139,18 +142,18 @@ clarifyDef (StmtDef _ _ x _ e) = do
   e' <- clarifyTerm IntMap.empty e >>= reduceComp
   return (x, e')
 
-clarifyTerm :: TypeEnv -> TermPlus -> IO Comp
+clarifyTerm :: TypeEnv -> Term -> IO Comp
 clarifyTerm tenv term =
   case term of
-    (_, TermTau) ->
+    _ :< TermTau ->
       returnImmediateS4
-    (_, TermVar x) -> do
+    _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
-    (_, TermVarGlobal x) ->
+    _ :< TermVarGlobal x ->
       return $ CompPiElimDownElim (ValueVarGlobal x) []
-    (_, TermPi {}) ->
+    _ :< TermPi {} ->
       returnClosureS4
-    (m, TermPiIntro opacity kind mxts e) -> do
+    m :< TermPiIntro opacity kind mxts e -> do
       e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
       let fvs = nubFreeVariables $ chainOf tenv term
       case (opacity, kind) of
@@ -159,34 +162,35 @@ clarifyTerm tenv term =
             returnClosure tenv True LamKindNormal fvs m mxts e'
         _ ->
           returnClosure tenv (isTransparent opacity) kind fvs m mxts e'
-    (_, TermPiElim e es) -> do
+    _ :< TermPiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    (m, TermConst x) ->
+    m :< TermConst x ->
       clarifyConst tenv m x
-    (_, TermInt size l) ->
+    _ :< TermInt size l ->
       return $ CompUpIntro (ValueInt size l)
-    (_, TermFloat size l) ->
+    _ :< TermFloat size l ->
       return $ CompUpIntro (ValueFloat size l)
-    (_, TermEnum _) ->
+    _ :< TermEnum _ ->
       returnImmediateS4
-    (_, TermEnumIntro l) ->
+    _ :< TermEnumIntro l ->
       return $ CompUpIntro $ ValueEnumIntro l
-    (m, TermEnumElim (e, _) bs) -> do
-      let (cs, es) = unzip bs
+    m :< TermEnumElim (e, _) bs -> do
+      let (enumCaseList, es) = unzip bs
       let fvs = chainFromTermList tenv es
       es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv m fvs) es
       (y, e', yVar) <- clarifyPlus tenv e
-      return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map snd cs) es')
-    (_, TermDerangement expKind es) -> do
+      -- return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map unwrap cs) es')
+      return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
+    _ :< TermDerangement expKind es -> do
       case (expKind, es) of
         (DerangementNop, [e]) ->
           clarifyTerm tenv e
         _ -> do
           (xs, es', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) es
           return $ bindLet (zip xs es') $ CompPrimitive (PrimitiveDerangement expKind xsAsVars)
-    (_, TermCase resultType mSubject (e, _) patList) -> do
+    _ :< TermCase resultType mSubject (e, _) patList -> do
       let fvs = chainFromTermList tenv $ map caseClauseToLambda patList
       resultArg <- clarifyPlus tenv resultType
       closure <- clarifyTerm tenv e
@@ -199,7 +203,7 @@ clarifyTerm tenv term =
         let constructorName' = constructorName <> ";cons"
         let consName = wrapWithQuote $ if isJust mSubject then constructorName' <> ";noetic" else constructorName'
         return
-          ( EnumCaseInt i,
+          ( () :< EnumCaseInt i,
             bindLet
               (zip argVarNameList argList)
               ( CompPiElimDownElim
@@ -218,7 +222,7 @@ clarifyTerm tenv term =
                 (CompEnumElim tagVar branchList)
             )
         )
-    (_, TermIgnore e) -> do
+    _ :< TermIgnore e -> do
       e' <- clarifyTerm tenv e
       return $ CompIgnore e'
 
@@ -230,11 +234,11 @@ newClosureNames = do
   lamVarInfo <- newValueVarLocalWith "thunk"
   return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
 
-caseClauseToLambda :: (Pattern, TermPlus) -> TermPlus
+caseClauseToLambda :: (Pattern, Term) -> Term
 caseClauseToLambda pat =
   case pat of
     ((mPat, _, xts), body) ->
-      (mPat, TermPiIntro OpacityTransparent LamKindNormal xts body)
+      mPat :< TermPiIntro OpacityTransparent LamKindNormal xts body
 
 constructClauseArguments :: Comp -> Int -> Int -> IO [(Ident, Comp, Value)]
 constructClauseArguments cls clsIndex upperBound = do
@@ -259,13 +263,13 @@ makeFakeClosure = do
   imm <- immediateS4
   return $ ValueSigmaIntro [imm, ValueInt 64 0, ValueInt 64 0]
 
-clarifyPlus :: TypeEnv -> TermPlus -> IO (Ident, Comp, Value)
+clarifyPlus :: TypeEnv -> Term -> IO (Ident, Comp, Value)
 clarifyPlus tenv e = do
   e' <- clarifyTerm tenv e
   (varName, var) <- newValueVarLocalWith "var"
   return (varName, e', var)
 
-clarifyBinder :: TypeEnv -> [IdentPlus] -> IO [(Hint, Ident, Comp)]
+clarifyBinder :: TypeEnv -> [Binder] -> IO [(Hint, Ident, Comp)]
 clarifyBinder tenv binder =
   case binder of
     [] ->
@@ -275,16 +279,16 @@ clarifyBinder tenv binder =
       xts' <- clarifyBinder (IntMap.insert (asInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
-chainFromTermList :: TypeEnv -> [TermPlus] -> [IdentPlus]
+chainFromTermList :: TypeEnv -> [Term] -> [Binder]
 chainFromTermList tenv es =
   nubFreeVariables $ concatMap (chainOf tenv) es
 
-alignFreeVariables :: TypeEnv -> Hint -> [IdentPlus] -> [Comp] -> IO [Comp]
+alignFreeVariables :: TypeEnv -> Hint -> [Binder] -> [Comp] -> IO [Comp]
 alignFreeVariables tenv m fvs es = do
   es' <- mapM (returnClosure tenv True LamKindNormal fvs m []) es
   mapM (`callClosure` []) es'
 
-nubFreeVariables :: [IdentPlus] -> [IdentPlus]
+nubFreeVariables :: [Binder] -> [Binder]
 nubFreeVariables =
   nubBy (\(_, x, _) (_, y, _) -> x == y)
 
@@ -307,10 +311,10 @@ clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
 returnClosure ::
   TypeEnv ->
   Bool -> -- whether the closure is reducible
-  LamKind IdentPlus -> -- the name of newly created closure
-  [IdentPlus] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
+  LamKind Binder -> -- the name of newly created closure
+  [Binder] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   Hint -> -- meta of lambda
-  [IdentPlus] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
+  [Binder] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   Comp -> -- the `e` in `lam (x1, ..., xn). e`
   IO Comp
 returnClosure tenv isReducible kind fvs m xts e = do
@@ -384,52 +388,52 @@ callClosure e zexes = do
           (CompPiElimDownElim lamVar (xs ++ [envVar]))
       )
 
-chainOf :: TypeEnv -> TermPlus -> [IdentPlus]
+chainOf :: TypeEnv -> Term -> [Binder]
 chainOf tenv term =
   case term of
-    (_, TermTau) ->
+    _ :< TermTau ->
       []
-    (m, TermVar x) -> do
+    m :< TermVar x -> do
       let t = (IntMap.!) tenv (asInt x)
       let xts = chainOf tenv t
       xts ++ [(m, x, t)]
-    (_, TermVarGlobal {}) ->
+    _ :< TermVarGlobal {} ->
       []
-    (_, TermPi {}) ->
+    _ :< TermPi {} ->
       []
-    (_, TermPiIntro _ kind xts e) ->
+    _ :< TermPiIntro _ kind xts e ->
       chainOf' tenv (catMaybes [fromLamKind kind] ++ xts) [e]
-    (_, TermPiElim e es) -> do
+    _ :< TermPiElim e es -> do
       let xs1 = chainOf tenv e
       let xs2 = concatMap (chainOf tenv) es
       xs1 ++ xs2
-    (_, TermConst _) ->
+    _ :< TermConst _ ->
       []
-    (_, TermInt _ _) ->
+    _ :< TermInt _ _ ->
       []
-    (_, TermFloat _ _) ->
+    _ :< TermFloat _ _ ->
       []
-    (_, TermEnum _) ->
+    _ :< TermEnum _ ->
       []
-    (_, TermEnumIntro _) ->
+    _ :< TermEnumIntro _ ->
       []
-    (_, TermEnumElim (e, t) les) -> do
+    _ :< TermEnumElim (e, t) les -> do
       let xs0 = chainOf tenv t
       let xs1 = chainOf tenv e
       let es = map snd les
       let xs2 = concatMap (chainOf tenv) es
       xs0 ++ xs1 ++ xs2
-    (_, TermDerangement _ es) ->
+    _ :< TermDerangement _ es ->
       concatMap (chainOf tenv) es
-    (_, TermCase _ mSubject (e, _) patList) -> do
+    _ :< TermCase _ mSubject (e, _) patList -> do
       let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)
       let xs2 = chainOf tenv e
       let xs3 = concatMap (\((_, _, xts), body) -> chainOf' tenv xts [body]) patList
       xs1 ++ xs2 ++ xs3
-    (_, TermIgnore e) ->
+    _ :< TermIgnore e ->
       chainOf tenv e
 
-chainOf' :: TypeEnv -> [IdentPlus] -> [TermPlus] -> [IdentPlus]
+chainOf' :: TypeEnv -> [Binder] -> [Term] -> [Binder]
 chainOf' tenv binder es =
   case binder of
     [] ->
@@ -444,10 +448,20 @@ dropFst xyzs = do
   let (_, ys, zs) = unzip3 xyzs
   zip ys zs
 
-insTypeEnv :: [IdentPlus] -> TypeEnv -> TypeEnv
+insTypeEnv :: [Binder] -> TypeEnv -> TypeEnv
 insTypeEnv xts tenv =
   case xts of
     [] ->
       tenv
     (_, x, t) : rest ->
       insTypeEnv rest $ IntMap.insert (asInt x) t tenv
+
+forgetHint :: EnumCase -> CompEnumCase
+forgetHint (_ :< enumCase) =
+  case enumCase of
+    EnumCaseLabel label ->
+      () :< EnumCaseLabel label
+    EnumCaseInt i ->
+      () :< EnumCaseInt i
+    EnumCaseDefault ->
+      () :< EnumCaseDefault
