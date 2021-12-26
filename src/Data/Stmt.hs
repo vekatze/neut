@@ -2,12 +2,11 @@
 
 module Data.Stmt where
 
-import Control.Comonad.Cofree (Cofree ((:<)))
 import Data.Basic (Hint, IsReducible, getPosInfo)
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
-import Data.Global (p, warn)
-import Data.Module (Source (sourceFilePath), sourceToCachePath)
-import Data.Term (Term, TermF (TermTau))
+import Data.Global (warn)
+import Data.Spec (Source (sourceFilePath), sourceToCachePath)
+import Data.Term (Term)
 import qualified Data.Text as T
 import Data.WeakTerm (WeakTerm)
 import GHC.Generics (Generic)

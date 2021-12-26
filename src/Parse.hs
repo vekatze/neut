@@ -22,26 +22,23 @@ import Data.Global
     boolTrue,
     constructorEnv,
     dataEnv,
-    defaultAliasEnv,
     initialPrefixEnv,
     newText,
     nsSep,
     prefixEnv,
     sectionEnv,
-    setCurrentFilePath,
     topNameEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseError)
-import Data.Module (Source (..))
 import Data.Namespace
   ( handleDefinePrefix,
     handleUse,
     withSectionPrefix,
   )
 import qualified Data.Set as S
-import Data.Spec (Spec)
+import Data.Spec (Source (..), Spec, getSpecAliasList, pathToSection)
 import Data.Stmt
   ( EnumInfo,
     Stmt (StmtDef),
@@ -49,7 +46,6 @@ import Data.Stmt
     loadCache,
   )
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Data.WeakTerm
   ( WeakBinder,
     WeakTerm,
@@ -85,8 +81,6 @@ import Parse.Core
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (Signature, parseImportSequence)
-import Parse.Section (pathToSection)
-import Parse.Spec (moduleToSpec)
 import Parse.WeakTerm
   ( ascriptionInner,
     weakAscription,
@@ -98,7 +92,6 @@ import Path
   ( Abs,
     File,
     Path,
-    toFilePath,
   )
 
 --
@@ -127,16 +120,14 @@ parse' source = do
       modifyIORef' topNameEnv $ S.union names
       return $ Left stmtList
     Nothing -> do
-      spec <- moduleToSpec m (sourceModule source)
+      let spec = sourceSpec source
       let path = sourceFilePath source
       initializeParserForFile path
-      initializeNamespace
+      initializeNamespace source
       setupSectionPrefix spec path
       skip
       (defList, enumInfoList) <- parseHeader
       return $ Right (defList, enumInfoList)
-
--- ensureMain source
 
 ensureMain :: T.Text -> IO ()
 ensureMain mainFunctionName = do
@@ -489,11 +480,9 @@ registerTopLevelName m x = do
   nenv <- readIORef topNameEnv
   when (S.member x nenv) $
     raiseError m $ "the variable `" <> x <> "` is already defined at the top level"
-  putStrLn $ "register : " <> T.unpack x
   modifyIORef' topNameEnv $ \env -> S.insert x env
 
-initializeNamespace :: IO ()
-initializeNamespace = do
-  -- writeIORef topNameEnv S.empty
-  readIORef defaultAliasEnv >>= writeIORef aliasEnv
+initializeNamespace :: Source -> IO ()
+initializeNamespace source = do
+  writeIORef aliasEnv $ getSpecAliasList $ sourceSpec source
   writeIORef prefixEnv initialPrefixEnv

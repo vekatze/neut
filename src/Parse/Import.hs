@@ -13,8 +13,8 @@ import Data.Global
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.Log (raiseCritical, raiseError)
-import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), Source (Source), getModuleName, signatureToModule, sourceFilePath, sourceModule)
-import Data.Spec (Spec (specDependency), getSourceDir)
+import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), getModuleName, signatureToModule)
+import Data.Spec (Source (Source), Spec (specDependency), getSourceDir, pathToSection, sectionToPath, sourceFilePath, sourceSpec)
 import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
@@ -23,8 +23,7 @@ import Parse.Core
     token,
     tryPlanList,
   )
-import Parse.Section (pathToSection, sectionToPath)
-import Parse.Spec (moduleToSpec)
+import qualified Parse.Spec as Spec
 import Path
   ( Abs,
     File,
@@ -38,12 +37,24 @@ signatureToSource :: Spec -> Signature -> IO Source
 signatureToSource currentSpec (moduleName, section) = do
   m <- currentHint
   mo <- parseModuleName m currentSpec moduleName >>= signatureToModule
-  filePath <- getSourceFilePath m mo (sectionToPath section)
+  spec <- moduleToSpec m mo
+  filePath <- getSourceFilePath m mo spec (sectionToPath section)
   return $
     Source
-      { sourceModule = mo,
+      { sourceSpec = spec,
         sourceFilePath = filePath
       }
+
+moduleToSpec :: Hint -> Module -> IO Spec
+moduleToSpec m mo = do
+  moduleFileExists <- doesFileExist (moduleFilePath mo)
+  unless moduleFileExists $ do
+    let moduleName = getModuleName mo
+    raiseError m $
+      T.pack "could not find the module file for `"
+        <> moduleName
+        <> "`"
+  Spec.parse $ moduleFilePath mo
 
 parseImportSequence :: IO [(Signature, Maybe T.Text)]
 parseImportSequence =
@@ -92,9 +103,8 @@ parseModuleInfo m sectionString = do
     moduleName : sectionPath ->
       return (moduleName, sectionPath)
 
-getSourceFilePath :: Hint -> Module -> FilePath -> IO (Path Abs File)
-getSourceFilePath m mo relPathString = do
-  spec <- moduleToSpec m mo
+getSourceFilePath :: Hint -> Module -> Spec -> FilePath -> IO (Path Abs File)
+getSourceFilePath m mo spec relPathString = do
   filePath <- resolveFile (getSourceDir spec) relPathString
   ensureFileExistence m mo spec filePath
   return filePath

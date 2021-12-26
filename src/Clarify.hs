@@ -56,8 +56,8 @@ import Data.LowType
     asPrimOp,
   )
 import Data.Maybe (catMaybes, isJust, maybeToList)
-import Data.Module (Source, isMain)
 import qualified Data.Set as S
+import Data.Spec (Source, isMain)
 import Data.Stmt (Stmt (..))
 import Data.Term
   ( Binder,

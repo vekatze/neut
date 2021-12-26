@@ -5,14 +5,11 @@ module Data.Module where
 import Data.Global
   ( getCurrentFilePath,
     getLibraryDirPath,
-    getMainFilePath,
-    mainFilePathRef,
     moduleFileName,
   )
-import Data.IORef (IORef, readIORef)
 import Data.Log (raiseError')
 import qualified Data.Text as T
-import Path (Abs, Dir, File, Path, Rel, addExtension, mkRelDir, parent, splitExtension, stripProperPrefix, (</>))
+import Path (Abs, Dir, File, Path, parent)
 import Path.IO
   ( doesFileExist,
     getCurrentDir,
@@ -48,16 +45,6 @@ data Module = Module
     moduleFilePath :: Path Abs File
   }
   deriving (Show, Ord, Eq)
-
-data Source = Source
-  { sourceModule :: Module,
-    sourceFilePath :: Path Abs File
-  }
-  deriving (Show, Ord)
-
-instance Eq Source where
-  s1 == s2 =
-    sourceFilePath s1 == sourceFilePath s2
 
 getModuleName :: Module -> T.Text
 getModuleName mo =
@@ -100,15 +87,6 @@ getMainModule = do
         moduleFilePath = filePath
       }
 
-constructLibraryModule :: Alias -> Checksum -> IO Module
-constructLibraryModule alias checksum = do
-  path <- getLibraryModuleFilePath checksum
-  return
-    Module
-      { moduleSignature = ModuleThat alias checksum,
-        moduleFilePath = path
-      }
-
 getLibraryModuleFilePath :: Checksum -> IO (Path Abs File)
 getLibraryModuleFilePath checksum = do
   moduleDir <- getModuleDir checksum
@@ -145,102 +123,3 @@ signatureToModule sig = do
       { moduleSignature = sig,
         moduleFilePath = path
       }
-
-getModuleSourceDir :: Module -> Path Abs Dir
-getModuleSourceDir mo =
-  getModuleRootDir mo </> $(mkRelDir "source")
-
-getModuleTargetDir :: Module -> Path Abs Dir
-getModuleTargetDir mo =
-  getModuleRootDir mo </> $(mkRelDir "target")
-
-getModuleArtifactDir :: Module -> Path Abs Dir
-getModuleArtifactDir mo = do
-  getModuleRootDir mo </> $(mkRelDir "target/artifact")
-
-getModuleExecutableDir :: Module -> Path Abs Dir
-getModuleExecutableDir mo = do
-  getModuleRootDir mo </> $(mkRelDir "target/executable")
-
-getRelPathFromSourceDir :: Source -> IO (Path Rel File)
-getRelPathFromSourceDir source = do
-  let sourceDir = getModuleSourceDir $ sourceModule source
-  stripProperPrefix sourceDir (sourceFilePath source)
-
-sourceToOutputPath :: Source -> OutputKind -> IO (Path Abs File)
-sourceToOutputPath source kind = do
-  let artifactDir = getModuleArtifactDir $ sourceModule source
-  relPath <- getRelPathFromSourceDir source
-  (relPathWithoutExtension, _) <- splitExtension relPath
-  attachExtension (artifactDir </> relPathWithoutExtension) kind
-
-sourceToCachePath :: Source -> IO (Path Abs File)
-sourceToCachePath source = do
-  let artifactDir = getModuleArtifactDir $ sourceModule source
-  relPath <- getRelPathFromSourceDir source
-  (relPathWithoutExtension, _) <- splitExtension relPath
-  addExtension ".cache" (artifactDir </> relPathWithoutExtension)
-
-attachExtension :: Path Abs File -> OutputKind -> IO (Path Abs File)
-attachExtension file kind =
-  case kind of
-    OutputKindLLVM -> do
-      addExtension ".ll" file
-    OutputKindAsm -> do
-      addExtension ".s" file
-    OutputKindObject -> do
-      addExtension ".o" file
-    OutputKindExecutable -> do
-      return file
-
-isMain :: Source -> IO Bool
-isMain source = do
-  mainFilePath <- getMainFilePath
-  return $ sourceFilePath source == mainFilePath
-
--- pathToSection :: Spec -> Path Abs File -> IO (T.Text, [T.Text])
--- pathToSection spec sourceFilePath = do
---   relFilePath <- stripProperPrefix (getSourceDir spec) sourceFilePath
---   (relFilePath', _) <- splitExtension relFilePath
---   let section = T.splitOn "/" $ T.pack $ toFilePath relFilePath'
---   let moduleDir = parent $ specLocation spec
---   mainModuleDir <- getMainModuleDir
---   if mainModuleDir == moduleDir
---     then return (defaultModulePrefix, section)
---     else return (T.pack (getDirectoryName moduleDir), section)
-
--- {-# NOINLINE mainFilePathRef #-}
--- mainFilePathRef :: IORef (Maybe (Path Abs File))
--- mainFilePathRef =
---   unsafePerformIO (newIORef Nothing)
-
--- setMainFilePath :: Path Abs File -> IO ()
--- setMainFilePath path =
---   modifyIORef' mainFilePathRef $ const $ Just path
-
--- getMainFilePath :: IO (Path Abs File)
--- getMainFilePath = do
---   mainFilePathOrNothing <- readIORef mainFilePathRef
---   case mainFilePathOrNothing of
---     Just mainFilePath ->
---       return mainFilePath
---     Nothing ->
---       raiseCritical' "no main file path is set"
-
--- {-# NOINLINE mainModuleDirRef #-}
--- mainModuleDirRef :: IORef (Maybe (Path Abs Dir))
--- mainModuleDirRef =
---   unsafePerformIO (newIORef Nothing)
-
--- setMainModuleDir :: Path Abs Dir -> IO ()
--- setMainModuleDir path =
---   modifyIORef' mainModuleDirRef $ const $ Just path
-
--- getMainModuleDir :: IO (Path Abs Dir)
--- getMainModuleDir = do
---   mainModuleDirOrNothing <- readIORef mainModuleDirRef
---   case mainModuleDirOrNothing of
---     Just mainModuleDir ->
---       return mainModuleDir
---     Nothing ->
---       raiseCritical' "no main module dir is set"

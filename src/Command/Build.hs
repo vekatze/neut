@@ -1,5 +1,4 @@
 {-# LANGUAGE TemplateHaskell #-}
-{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Command.Build
   ( build,
@@ -9,11 +8,11 @@ module Command.Build
 where
 
 import Clarify (clarifyMain, clarifyOther)
-import Data.Basic (Hint, newHint)
+import Data.Basic (newHint)
 import Data.ByteString.Builder (Builder, toLazyByteString)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (VisitInfo (..), getMainFilePath, nsSep, outputLog, setCurrentFilePath, setMainFilePath, setMainModuleDir, shouldColorize)
+import Data.Global (VisitInfo (..), getMainFilePath, nsSep, outputLog, setMainFilePath, setMainModuleDir, shouldColorize)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -24,14 +23,13 @@ import Data.IORef
   )
 import Data.List (foldl')
 import Data.Log (raiseError, raiseError')
-import Data.Module (Source (Source, sourceModule), getMainModule, getModuleArtifactDir, getModuleExecutableDir, getModuleRootDir, getRelPathFromSourceDir, sourceFilePath)
 import Data.Sequence as Seq
   ( Seq,
     empty,
     (><),
     (|>),
   )
-import Data.Spec (Spec, getEntryPoint, getMainSpec, getTargetDir, specLocation)
+import Data.Spec (Source (Source, sourceSpec), getEntryPoint, getMainSpec, getProjectArtifactDir, getProjectExecutableDir, getProjectRootDir, getRelPathFromSourceDir, getTargetDir, pathToSection, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Elaborate (elaborateMain, elaborateOther)
@@ -39,19 +37,14 @@ import Emit (emitMain, emitOther)
 import GHC.IO.Handle (hClose)
 import Lower (lowerMain, lowerOther)
 import Parse (parseMain, parseOther)
-import Parse.Core (currentHint, initializeParserForFile, skip)
+import Parse.Core (initializeParserForFile, skip)
 import Parse.Enum (initializeEnumEnv)
 import Parse.Import (Signature, parseImportSequence, signatureToSource)
-import Parse.Section (pathToSection)
-import Parse.Spec (initializeMainSpec, moduleToSpec)
 import Path
   ( Abs,
-    Dir,
     File,
     Path,
-    Rel,
     addExtension,
-    mkRelDir,
     parent,
     splitExtension,
     toFilePath,
@@ -89,7 +82,7 @@ build target outputKind colorizeFlag mClangOptStr = do
   writeIORef shouldColorize colorizeFlag
   mainFilePath <- resolveTarget target
   mainSource <- getMainSource mainFilePath
-  setMainModuleDir $ getModuleRootDir $ sourceModule mainSource
+  setMainModuleDir $ getProjectRootDir $ sourceSpec mainSource
   setMainFilePath mainFilePath
   initializeEnumEnv
   dependenceSeq <- computeDependence mainSource
@@ -140,22 +133,21 @@ clean = do
 getExecutableOutputPath :: Target -> IO (Path Abs File)
 getExecutableOutputPath target = do
   mainSpec <- getMainSpec
-  let path = parent (specLocation mainSpec) </> $(mkRelDir "target/executable")
-  resolveFile path target
+  resolveFile (getProjectExecutableDir mainSpec) target
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
 sourceToOutputPath kind source = do
-  let artifactDir = getModuleArtifactDir $ sourceModule source
+  let artifactDir = getProjectArtifactDir $ sourceSpec source
   relPath <- getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- splitExtension relPath
   attachExtension (artifactDir </> relPathWithoutExtension) kind
 
 getMainSource :: Path Abs File -> IO Source
 getMainSource mainSourceFilePath = do
-  mainModule <- getMainModule
+  mainSpec <- getMainSpec
   return $
     Source
-      { sourceModule = mainModule,
+      { sourceSpec = mainSpec,
         sourceFilePath = mainSourceFilePath
       }
 
@@ -240,18 +232,13 @@ getChildren currentSource = do
     Nothing -> do
       initializeParserForFile $ sourceFilePath currentSource
       skip
-      m <- currentHint
       importSequence <- parseImportSequence
       let signatureList = map fst importSequence
-      currentSpec <- sourceToSpec m currentSource
+      let currentSpec = sourceSpec currentSource
       sourceList <- mapM (signatureToSource currentSpec) signatureList
       modifyIORef' sourceChildrenMapRef $ Map.insert (sourceFilePath currentSource) sourceList
       modifyIORef' sourceAliasMapRef $ Map.insert (sourceFilePath currentSource) importSequence
       return sourceList
-
-sourceToSpec :: Hint -> Source -> IO Spec
-sourceToSpec m source = do
-  moduleToSpec m (sourceModule source)
 
 attachExtension :: Path Abs File -> OutputKind -> IO (Path Abs File)
 attachExtension file kind =

@@ -1,20 +1,16 @@
 module Parse.Spec
-  ( moduleToSpec,
-    initializeMainSpec,
+  ( initializeMainSpec,
     parse,
   )
 where
 
-import Control.Monad (unless, (>=>))
-import Data.Basic (Hint)
+import Control.Monad ((>=>))
 import Data.Entity (Entity, access, toDictionary, toString)
-import Data.Log (raiseError)
-import Data.Module (Checksum (..), Module (moduleFilePath), getMainModule, getModuleName)
+import Data.Module (Checksum (..), Module (moduleFilePath), getMainModule)
 import Data.Spec (Spec (..), URL (..), setMainSpec)
 import qualified Data.Text as T
 import qualified Parse.Entity as E
 import Path (Abs, Dir, File, Path, Rel, parseRelDir, parseRelFile)
-import Path.IO (doesFileExist)
 
 parse :: Path Abs File -> IO Spec
 parse specFilePath = do
@@ -33,21 +29,6 @@ parse specFilePath = do
         specDependency = dependency,
         specLocation = specFilePath
       }
-
-moduleToSpec :: Hint -> Module -> IO Spec
-moduleToSpec m mo = do
-  moduleFileExists <- doesFileExist (moduleFilePath mo)
-  unless moduleFileExists $ do
-    let moduleName = getModuleName mo
-    raiseError m $
-      T.pack "could not find the module file for `"
-        <> moduleName
-        <> "`"
-  parse $ moduleFilePath mo
-
--- getMainSpec :: IO Spec
--- getMainSpec =
---   getMainModule >>= parse . moduleFilePath
 
 initializeMainSpec :: IO ()
 initializeMainSpec = do
