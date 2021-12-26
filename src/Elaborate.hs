@@ -1,5 +1,6 @@
 module Elaborate
-  ( elaborate,
+  ( elaborateMain,
+    elaborateOther,
   )
 where
 
@@ -92,14 +93,22 @@ import Elaborate.Unify (unify)
 import Reduce.Term (reduceTerm)
 import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
 
-elaborate :: Either [Stmt] (Source, [WeakStmt], [EnumInfo]) -> IO [Stmt]
-elaborate cacheOrStmt =
+elaborateMain :: T.Text -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborateMain mainFunctionName =
+  elaborate (elaborateProgramMain mainFunctionName)
+
+elaborateOther :: Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborateOther =
+  elaborate elaborateProgramOther
+
+elaborate :: ([WeakStmt] -> IO [Stmt]) -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborate defListElaborator source cacheOrStmt =
   case cacheOrStmt of
     Left cache -> do
       forM_ cache $ \stmt -> registerTopLevelDef stmt
       return cache
-    Right (source, defList, enumInfoList) -> do
-      defList' <- elaborateProgram defList
+    Right (defList, enumInfoList) -> do
+      defList' <- defListElaborator defList
       saveCache (source, defList') enumInfoList
       return defList'
 
@@ -109,10 +118,18 @@ registerTopLevelDef (StmtDef isReducible _ x t e) = do
   when isReducible $ do
     modifyIORef' topDefEnv $ \env -> Map.insert x (weaken e) env
 
-elaborateProgram :: [WeakStmt] -> IO [Stmt]
-elaborateProgram defList = do
+elaborateProgramMain :: T.Text -> [WeakStmt] -> IO [Stmt]
+elaborateProgramMain mainFunctionName = do
+  elaborateProgram $ mapM $ inferStmtMain mainFunctionName
+
+elaborateProgramOther :: [WeakStmt] -> IO [Stmt]
+elaborateProgramOther = do
+  elaborateProgram $ mapM inferStmtOther
+
+elaborateProgram :: ([WeakStmt] -> IO [WeakStmt]) -> [WeakStmt] -> IO [Stmt]
+elaborateProgram defListInferrer defList = do
   mapM_ setupDef defList
-  defList' <- inferStmtList defList
+  defList' <- defListInferrer defList
   -- cs <- readIORef constraintEnv
   -- p "==========================================================="
   -- forM_ cs $ \(e1, e2) -> do
@@ -127,21 +144,50 @@ setupDef def =
   case def of
     WeakStmtDef isReducible _ x t e -> do
       insTopTypeEnv x t
-      when isReducible $
-        modifyIORef' topDefEnv $ \env -> Map.insert x e env
+      when isReducible $ modifyIORef' topDefEnv $ Map.insert x e
 
-inferStmtList :: [WeakStmt] -> IO [WeakStmt]
-inferStmtList stmtList =
-  case stmtList of
-    [] ->
-      return []
-    WeakStmtDef isReducible m x t e : rest -> do
-      (e', te) <- infer e
-      t' <- inferType t
-      insConstraintEnv te t'
-      when (x == "main") $ insConstraintEnv t (m :< WeakTermConst "i64")
-      rest' <- inferStmtList rest
-      return $ WeakStmtDef isReducible m x t' e' : rest'
+inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
+inferStmtMain mainFunctionName (WeakStmtDef isReducible m x t e) = do
+  (e', t') <- inferStmt e t
+  when (x == mainFunctionName) $ insConstraintEnv t (m :< WeakTermConst "i64")
+  return $ WeakStmtDef isReducible m x t' e'
+
+inferStmtOther :: WeakStmt -> IO WeakStmt
+inferStmtOther (WeakStmtDef isReducible m x t e) = do
+  (e', t') <- inferStmt e t
+  return $ WeakStmtDef isReducible m x t' e'
+
+inferStmt :: WeakTerm -> WeakTerm -> IO (WeakTerm, WeakTerm)
+inferStmt e t = do
+  (e', te) <- infer e
+  t' <- inferType t
+  insConstraintEnv te t'
+  return (e', t')
+
+-- inferStmtListOther :: [WeakStmt] -> IO [WeakStmt]
+-- inferStmtListOther stmtList =
+--   case stmtList of
+--     [] ->
+--       return []
+--     WeakStmtDef isReducible m x t e : rest -> do
+--       (e', te) <- infer e
+--       t' <- inferType t
+--       insConstraintEnv te t'
+--       rest' <- inferStmtListOther rest
+--       return $ WeakStmtDef isReducible m x t' e' : rest'
+
+-- inferStmtListMain :: T.Text -> [WeakStmt] -> IO [WeakStmt]
+-- inferStmtListMain mainFunctionName stmtList =
+--   case stmtList of
+--     [] ->
+--       return []
+--     WeakStmtDef isReducible m x t e : rest -> do
+--       (e', te) <- infer e
+--       t' <- inferType t
+--       insConstraintEnv te t'
+--       when (x == mainFunctionName) $ insConstraintEnv t (m :< WeakTermConst "i64")
+--       rest' <- inferStmtListMain mainFunctionName rest
+--       return $ WeakStmtDef isReducible m x t' e' : rest'
 
 elaborateStmtList :: [WeakStmt] -> IO [Stmt]
 elaborateStmtList stmtList = do

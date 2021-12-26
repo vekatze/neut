@@ -1,5 +1,6 @@
 module Emit
-  ( emit,
+  ( emitMain,
+    emitOther,
   )
 where
 
@@ -40,15 +41,25 @@ import Numeric.Half (Half)
 import Reduce.LowComp (reduceLowComp)
 import qualified System.Info as System
 
-emit :: Maybe LowComp -> IO Builder
-emit mMainTerm = do
-  case mMainTerm of
-    Just mainTerm -> do
-      mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
-      mainBuilder <- emitDefinition "i64" "main" [] mainTerm'
-      emit' mainBuilder
-    Nothing -> do
-      emit' []
+-- emit :: Maybe LowComp -> IO Builder
+-- emit mMainTerm = do
+--   case mMainTerm of
+--     Just mainTerm -> do
+--       mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
+--       mainBuilder <- emitDefinition "i64" "main" [] mainTerm'
+--       emit' mainBuilder
+--     Nothing -> do
+--       emit' []
+
+emitMain :: LowComp -> IO Builder
+emitMain mainTerm = do
+  mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
+  mainBuilder <- emitDefinition "i64" "main" [] mainTerm'
+  emit' mainBuilder
+
+emitOther :: IO Builder
+emitOther =
+  emit' []
 
 emit' :: [Builder] -> IO Builder
 emit' aux = do

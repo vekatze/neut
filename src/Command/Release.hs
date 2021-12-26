@@ -2,11 +2,10 @@ module Command.Release (release) where
 
 import Control.Monad (when)
 import Data.Log (raiseError')
-import Data.Spec (Spec (specLocation))
+import Data.Spec (Spec (specLocation), getMainSpec)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import GHC.IO.Exception (ExitCode (..))
-import Parse.Spec (getMainSpec)
 import Path
   ( parent,
     stripProperPrefix,

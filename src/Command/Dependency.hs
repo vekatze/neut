@@ -13,6 +13,7 @@ import Data.Spec
   ( Spec (specDependency, specLocation),
     URL (..),
     addDependency,
+    getMainSpec,
     ppSpec,
   )
 import qualified Data.Text as T
@@ -33,7 +34,7 @@ import System.Process
 
 get :: Alias -> URL -> IO ()
 get alias url = do
-  spec <- Spec.getMainSpec
+  spec <- getMainSpec
   withSystemTempFile (T.unpack alias) $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
     archive <- B.hGetContents tempFileHandle
@@ -44,7 +45,7 @@ get alias url = do
 
 tidy :: IO ()
 tidy =
-  Spec.getMainSpec >>= tidy'
+  getMainSpec >>= tidy'
 
 tidy' :: Spec -> IO ()
 tidy' spec = do

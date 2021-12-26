@@ -18,16 +18,14 @@ import Data.Entity
   )
 -- import Data.Global (popTrace, pushTrace)
 
-import Data.Global (setCurrentFilePath)
 import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef)
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Parse.Core
   ( char,
     currentHint,
     float,
-    initializeState,
+    initializeParserForFile,
     integer,
     many,
     manyStrict,
@@ -39,12 +37,11 @@ import Parse.Core
     text,
     tryPlanList,
   )
-import Path (Abs, File, Path, toFilePath)
+import Path (Abs, File, Path)
 
 parse :: Path Abs File -> IO Entity
 parse path = do
-  TIO.readFile (toFilePath path) >>= initializeState
-  setCurrentFilePath path
+  initializeParserForFile path
   m <- currentHint
   ens <- skip >> parseFile
   return $ m :< EntityDictionary ens

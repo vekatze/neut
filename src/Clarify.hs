@@ -1,5 +1,6 @@
 module Clarify
-  ( clarify,
+  ( clarifyMain,
+    clarifyOther,
   )
 where
 
@@ -29,7 +30,6 @@ import Data.Basic
     asText',
     fromLamKind,
     isTransparent,
-    newHint,
   )
 import Data.Comp
   ( Comp (..),
@@ -40,15 +40,12 @@ import Data.Comp
 import Data.Global
   ( constructorEnv,
     defEnv,
-    getCurrentFilePath,
-    isMain,
     newCount,
     newIdentFromText,
     newValueVarLocalWith,
-    p',
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (readIORef)
+import Data.IORef (readIORef, writeIORef)
 import qualified Data.IntMap as IntMap
 import Data.List (nubBy)
 import Data.Log (raiseCritical, raiseError)
@@ -59,6 +56,7 @@ import Data.LowType
     asPrimOp,
   )
 import Data.Maybe (catMaybes, isJust, maybeToList)
+import Data.Module (Source, isMain)
 import qualified Data.Set as S
 import Data.Stmt (Stmt (..))
 import Data.Term
@@ -86,37 +84,25 @@ import Data.Term
     lowTypeToType,
   )
 import qualified Data.Text as T
-import Path (toFilePath)
 import Reduce.Comp (reduceComp, substComp)
 
-clarify :: [Stmt] -> IO ([(T.Text, Comp)], Maybe Comp)
-clarify mainDefList = do
-  mainDefList' <- mapM clarifyDef mainDefList
-  register mainDefList'
-  mainDefList'' <- forM mainDefList' $ \(name, e) -> do
+clarifyMain :: T.Text -> [Stmt] -> IO Comp
+clarifyMain mainName defList = do
+  _ <- clarifyDefList defList
+  reduceComp $ CompPiElimDownElim (ValueVarGlobal mainName) []
+
+clarifyOther :: [Stmt] -> IO [(T.Text, Comp)]
+clarifyOther defList = do
+  clarifyDefList defList
+
+clarifyDefList :: [Stmt] -> IO [(T.Text, Comp)]
+clarifyDefList defList = do
+  defList' <- mapM clarifyDef defList
+  register defList'
+  -- reduceのあとでもういっかいdefEnvをemptyにして登録するべき？
+  forM defList' $ \(name, e) -> do
     e' <- reduceComp e
     return (name, e')
-  flag <- readIORef isMain
-  if not flag
-    then return (mainDefList'', Nothing)
-    else do
-      path <- toFilePath <$> getCurrentFilePath
-      let m = newHint 1 1 path
-      _ <- immediateS4
-      _ <- returnClosureS4
-      ensureMain m
-      let mainTerm = CompPiElimDownElim (ValueVarGlobal "this.main") []
-      return (mainDefList'', Just mainTerm)
-
-ensureMain :: Hint -> IO ()
-ensureMain m = do
-  denv <- readIORef defEnv
-  case Map.lookup "this.main" denv of
-    Nothing -> do
-      p' $ Map.keys denv
-      raiseError m "`main` is missing"
-    Just _ ->
-      return ()
 
 register :: [(T.Text, Comp)] -> IO ()
 register defList =

@@ -53,7 +53,6 @@ import Path
     File,
     Path,
     Rel,
-    mkAbsDir,
     mkRelDir,
     parent,
     parseRelDir,
@@ -112,15 +111,46 @@ shouldCancelAlloc :: IORef Bool
 shouldCancelAlloc =
   unsafePerformIO (newIORef True)
 
-{-# NOINLINE isMain #-}
-isMain :: IORef Bool
-isMain =
-  unsafePerformIO (newIORef False)
+-- {-# NOINLINE isMain #-}
+-- isMain :: IORef Bool
+-- isMain =
+--   unsafePerformIO (newIORef False)
+
+{-# NOINLINE mainFilePathRef #-}
+mainFilePathRef :: IORef (Maybe (Path Abs File))
+mainFilePathRef =
+  unsafePerformIO (newIORef Nothing)
+
+setMainFilePath :: Path Abs File -> IO ()
+setMainFilePath path =
+  modifyIORef' mainFilePathRef $ const $ Just path
+
+getMainFilePath :: IO (Path Abs File)
+getMainFilePath = do
+  mainFilePathOrNothing <- readIORef mainFilePathRef
+  case mainFilePathOrNothing of
+    Just mainFilePath ->
+      return mainFilePath
+    Nothing ->
+      raiseCritical' "no main file path is set"
 
 {-# NOINLINE mainModuleDirRef #-}
-mainModuleDirRef :: IORef (Path Abs Dir)
+mainModuleDirRef :: IORef (Maybe (Path Abs Dir))
 mainModuleDirRef =
-  unsafePerformIO (newIORef $(mkAbsDir "/"))
+  unsafePerformIO (newIORef Nothing)
+
+setMainModuleDir :: Path Abs Dir -> IO ()
+setMainModuleDir path =
+  modifyIORef' mainModuleDirRef $ const $ Just path
+
+getMainModuleDir :: IO (Path Abs Dir)
+getMainModuleDir = do
+  mainModuleDirOrNothing <- readIORef mainModuleDirRef
+  case mainModuleDirOrNothing of
+    Just mainModuleDir ->
+      return mainModuleDir
+    Nothing ->
+      raiseCritical' "no main module dir is set"
 
 {-# NOINLINE endOfEntry #-}
 endOfEntry :: IORef String

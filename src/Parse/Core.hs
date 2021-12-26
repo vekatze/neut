@@ -17,6 +17,7 @@ import Data.Global
     newCount,
     newIdentFromText,
     prefixEnv,
+    setCurrentFilePath,
   )
 import Data.IORef
   ( IORef,
@@ -28,12 +29,13 @@ import Data.IORef
 import Data.Log (Error (..), logError, raiseCritical)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Data.WeakTerm
   ( WeakBinder,
     WeakTerm,
     WeakTermF (WeakTermPiIntro, WeakTermVar),
   )
-import Path (toFilePath)
+import Path (Abs, File, Path, toFilePath)
 import System.IO.Unsafe (unsafePerformIO)
 import Text.Read (readMaybe)
 
@@ -91,11 +93,13 @@ loadState state = do
   writeIORef prefixEnv $ parserStatePrefixEnv state
   writeIORef aliasEnv $ parserStateAliasEnv state
 
-initializeState :: T.Text -> IO ()
-initializeState fileContent = do
+initializeParserForFile :: Path Abs File -> IO ()
+initializeParserForFile path = do
+  fileContent <- TIO.readFile (toFilePath path)
   writeIORef line 1
   writeIORef column 1
   writeIORef text fileContent
+  setCurrentFilePath path
 
 betweenParen :: IO a -> IO a
 betweenParen f = do

@@ -6,8 +6,7 @@ module Parse.Section
   )
 where
 
-import Data.Global (defaultModulePrefix, mainModuleDirRef, setCurrentFilePath, sourceFileExtension)
-import Data.IORef (readIORef)
+import Data.Global (defaultModulePrefix, getMainModuleDir, setCurrentFilePath, sourceFileExtension)
 import Data.Module (getMainModule, moduleFilePath)
 import Data.Spec (Spec (..), getSourceDir)
 import qualified Data.Text as T
@@ -22,7 +21,7 @@ pathToSection spec sourceFilePath = do
   (relFilePath', _) <- splitExtension relFilePath
   let section = T.splitOn "/" $ T.pack $ toFilePath relFilePath'
   let moduleDir = parent $ specLocation spec
-  mainModuleDir <- readIORef mainModuleDirRef
+  mainModuleDir <- getMainModuleDir
   if mainModuleDir == moduleDir
     then return (defaultModulePrefix, section)
     else return (T.pack (getDirectoryName moduleDir), section)

@@ -39,6 +39,7 @@ import Options.Applicative
     subparser,
     value,
   )
+import Parse.Spec (initializeMainSpec)
 import Path
   ( Abs,
     File,
@@ -264,7 +265,8 @@ parseReleaseOpt =
         )
 
 runCommand :: Command -> IO ()
-runCommand cmd =
+runCommand cmd = do
+  initializeMainSpec
   case cmd of
     Build target outputKind colorizeFlag mClangOptStr -> do
       runAction $ build target outputKind colorizeFlag mClangOptStr

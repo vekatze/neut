@@ -1,6 +1,6 @@
 module Parse.Spec
   ( moduleToSpec,
-    getMainSpec,
+    initializeMainSpec,
     parse,
   )
 where
@@ -10,7 +10,7 @@ import Data.Basic (Hint)
 import Data.Entity (Entity, access, toDictionary, toString)
 import Data.Log (raiseError)
 import Data.Module (Checksum (..), Module (moduleFilePath), getMainModule, getModuleName)
-import Data.Spec (Spec (..), URL (..))
+import Data.Spec (Spec (..), URL (..), setMainSpec)
 import qualified Data.Text as T
 import qualified Parse.Entity as E
 import Path (Abs, Dir, File, Path, Rel, parseRelDir, parseRelFile)
@@ -45,9 +45,13 @@ moduleToSpec m mo = do
         <> "`"
   parse $ moduleFilePath mo
 
-getMainSpec :: IO Spec
-getMainSpec =
-  getMainModule >>= parse . moduleFilePath
+-- getMainSpec :: IO Spec
+-- getMainSpec =
+--   getMainModule >>= parse . moduleFilePath
+
+initializeMainSpec :: IO ()
+initializeMainSpec = do
+  getMainModule >>= parse . moduleFilePath >>= setMainSpec
 
 interpretRelFilePath :: Entity -> IO (Path Rel File)
 interpretRelFilePath =

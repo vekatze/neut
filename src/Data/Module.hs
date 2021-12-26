@@ -5,8 +5,11 @@ module Data.Module where
 import Data.Global
   ( getCurrentFilePath,
     getLibraryDirPath,
+    getMainFilePath,
+    mainFilePathRef,
     moduleFileName,
   )
+import Data.IORef (IORef, readIORef)
 import Data.Log (raiseError')
 import qualified Data.Text as T
 import Path (Abs, Dir, File, Path, Rel, addExtension, mkRelDir, parent, splitExtension, stripProperPrefix, (</>))
@@ -189,3 +192,55 @@ attachExtension file kind =
       addExtension ".o" file
     OutputKindExecutable -> do
       return file
+
+isMain :: Source -> IO Bool
+isMain source = do
+  mainFilePath <- getMainFilePath
+  return $ sourceFilePath source == mainFilePath
+
+-- pathToSection :: Spec -> Path Abs File -> IO (T.Text, [T.Text])
+-- pathToSection spec sourceFilePath = do
+--   relFilePath <- stripProperPrefix (getSourceDir spec) sourceFilePath
+--   (relFilePath', _) <- splitExtension relFilePath
+--   let section = T.splitOn "/" $ T.pack $ toFilePath relFilePath'
+--   let moduleDir = parent $ specLocation spec
+--   mainModuleDir <- getMainModuleDir
+--   if mainModuleDir == moduleDir
+--     then return (defaultModulePrefix, section)
+--     else return (T.pack (getDirectoryName moduleDir), section)
+
+-- {-# NOINLINE mainFilePathRef #-}
+-- mainFilePathRef :: IORef (Maybe (Path Abs File))
+-- mainFilePathRef =
+--   unsafePerformIO (newIORef Nothing)
+
+-- setMainFilePath :: Path Abs File -> IO ()
+-- setMainFilePath path =
+--   modifyIORef' mainFilePathRef $ const $ Just path
+
+-- getMainFilePath :: IO (Path Abs File)
+-- getMainFilePath = do
+--   mainFilePathOrNothing <- readIORef mainFilePathRef
+--   case mainFilePathOrNothing of
+--     Just mainFilePath ->
+--       return mainFilePath
+--     Nothing ->
+--       raiseCritical' "no main file path is set"
+
+-- {-# NOINLINE mainModuleDirRef #-}
+-- mainModuleDirRef :: IORef (Maybe (Path Abs Dir))
+-- mainModuleDirRef =
+--   unsafePerformIO (newIORef Nothing)
+
+-- setMainModuleDir :: Path Abs Dir -> IO ()
+-- setMainModuleDir path =
+--   modifyIORef' mainModuleDirRef $ const $ Just path
+
+-- getMainModuleDir :: IO (Path Abs Dir)
+-- getMainModuleDir = do
+--   mainModuleDirOrNothing <- readIORef mainModuleDirRef
+--   case mainModuleDirOrNothing of
+--     Just mainModuleDir ->
+--       return mainModuleDir
+--     Nothing ->
+--       raiseCritical' "no main module dir is set"

@@ -1,5 +1,6 @@
 module Parse
-  ( parse,
+  ( parseMain,
+    parseOther,
   )
 where
 
@@ -64,7 +65,7 @@ import Data.WeakTerm
   )
 import Parse.Core
   ( currentHint,
-    initializeState,
+    initializeParserForFile,
     isSymbolChar,
     lookAhead,
     many,
@@ -104,11 +105,19 @@ import Path
 -- core functions
 --
 
-parse :: Source -> IO (Either [Stmt] (Source, [WeakStmt], [EnumInfo]))
-parse source = do
+parseMain :: T.Text -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseMain mainFunctionName source = do
+  result <- parse' source
+  ensureMain mainFunctionName
+  return result
+
+parseOther :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseOther =
+  parse'
+
+parse' :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parse' source = do
   m <- currentHint
-  let path = sourceFilePath source
-  setCurrentFilePath path
   mCache <- loadCache m source
   case mCache of
     Just (stmtList, enumInfoList) -> do
@@ -118,13 +127,27 @@ parse source = do
       modifyIORef' topNameEnv $ S.union names
       return $ Left stmtList
     Nothing -> do
-      initializeNamespace
-      TIO.readFile (toFilePath path) >>= initializeState
-      skip
       spec <- moduleToSpec m (sourceModule source)
+      let path = sourceFilePath source
+      initializeParserForFile path
+      initializeNamespace
       setupSectionPrefix spec path
+      skip
       (defList, enumInfoList) <- parseHeader
-      return $ Right (source, defList, enumInfoList)
+      return $ Right (defList, enumInfoList)
+
+-- ensureMain source
+
+ensureMain :: T.Text -> IO ()
+ensureMain mainFunctionName = do
+  m <- currentHint
+  tnenv <- readIORef topNameEnv
+  section <- readIORef sectionEnv
+  if S.member mainFunctionName tnenv
+    then return ()
+    else do
+      print tnenv
+      raiseError m $ "`main` is not defined in the main module `" <> T.intercalate nsSep section <> "`"
 
 setupSectionPrefix :: Spec -> Path Abs File -> IO ()
 setupSectionPrefix currentSpec currentFilePath = do
@@ -141,7 +164,7 @@ parseHeaderBase action = do
     else action
 
 parseHeader :: IO ([WeakStmt], [EnumInfo])
-parseHeader =
+parseHeader = do
   parseHeaderBase $ do
     importSequence <- parseImportSequence
     arrangeNamespace importSequence
@@ -466,10 +489,11 @@ registerTopLevelName m x = do
   nenv <- readIORef topNameEnv
   when (S.member x nenv) $
     raiseError m $ "the variable `" <> x <> "` is already defined at the top level"
+  putStrLn $ "register : " <> T.unpack x
   modifyIORef' topNameEnv $ \env -> S.insert x env
 
 initializeNamespace :: IO ()
 initializeNamespace = do
-  writeIORef topNameEnv S.empty
+  -- writeIORef topNameEnv S.empty
   readIORef defaultAliasEnv >>= writeIORef aliasEnv
   writeIORef prefixEnv initialPrefixEnv

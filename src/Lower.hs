@@ -1,5 +1,6 @@
 module Lower
-  ( lower,
+  ( lowerMain,
+    lowerOther,
   )
 where
 
@@ -18,7 +19,7 @@ import Data.Global
     revEnumEnv,
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseCritical')
 import Data.LowComp
   ( LowComp (..),
@@ -56,26 +57,11 @@ import Data.LowType
   )
 import qualified Data.Text as T
 
-lower :: ([(T.Text, Comp)], Maybe Comp) -> IO (Maybe LowComp)
-lower (defList, mMainTerm) = do
-  case mMainTerm of
-    Nothing -> do
-      insDeclEnv "cartesian-immediate" [(), ()]
-      insDeclEnv "cartesian-closure" [(), ()]
-      forM_ defList $ \(name, _) -> do
-        insLowDefEnv name [] LowCompUnreachable
-      forM_ defList $ \(name, e) -> do
-        e' <- lowerComp e
-        insLowDefEnv name [] e'
-      return Nothing
-    Just mainTerm -> do
-      registerCartesian "cartesian-immediate"
-      registerCartesian "cartesian-closure"
-      mainTerm' <- lowerMain mainTerm
-      return $ Just mainTerm'
-
 lowerMain :: Comp -> IO LowComp
 lowerMain mainTerm = do
+  initialize
+  registerCartesian "cartesian-immediate"
+  registerCartesian "cartesian-closure"
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
@@ -83,6 +69,22 @@ lowerMain mainTerm = do
   castResult <- castThen (LowCompReturn cast)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
+
+lowerOther :: [(T.Text, Comp)] -> IO ()
+lowerOther defList = do
+  initialize
+  insDeclEnv "cartesian-immediate" [(), ()]
+  insDeclEnv "cartesian-closure" [(), ()]
+  forM_ defList $ \(name, _) -> do
+    insLowDefEnv name [] LowCompUnreachable
+  forM_ defList $ \(name, e) -> do
+    e' <- lowerComp e
+    insLowDefEnv name [] e'
+
+initialize :: IO ()
+initialize = do
+  writeIORef declEnv Map.empty
+  writeIORef lowDefEnv Map.empty
 
 lowerComp :: Comp -> IO LowComp
 lowerComp term =

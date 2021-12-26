@@ -37,10 +37,12 @@ type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
 type Cache = ([Stmt], [EnumInfo])
 
 compress :: Stmt -> Stmt
-compress stmt@(StmtDef isReducible m x t _) =
-  if isReducible
-    then stmt
-    else StmtDef isReducible m x t (m :< TermTau)
+compress = id
+
+-- compress stmt@(StmtDef isReducible m x t _) =
+--   if isReducible
+--     then stmt
+--     else StmtDef isReducible m x t (m :< TermTau)
 
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
@@ -62,9 +64,7 @@ loadCache m source = do
     else do
       b <- doesFreshCacheExist source
       if not b
-        then do
-          p "no cache is available"
-          return Nothing -- no cache is available
+        then return Nothing -- no cache is available
         else do
           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of

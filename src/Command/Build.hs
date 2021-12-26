@@ -1,4 +1,5 @@
 {-# LANGUAGE TemplateHaskell #-}
+{-# OPTIONS_GHC -Wno-unused-imports #-}
 
 module Command.Build
   ( build,
@@ -7,13 +8,12 @@ module Command.Build
   )
 where
 
-import Clarify (clarify)
-import Control.Monad (forM_, (>=>))
-import Data.Basic (Hint)
+import Clarify (clarifyMain, clarifyOther)
+import Data.Basic (Hint, newHint)
 import Data.ByteString.Builder (Builder, toLazyByteString)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (VisitInfo (..), mainModuleDirRef, outputLog, setCurrentFilePath, shouldColorize)
+import Data.Global (VisitInfo (..), getMainFilePath, nsSep, outputLog, setCurrentFilePath, setMainFilePath, setMainModuleDir, shouldColorize)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -23,29 +23,27 @@ import Data.IORef
     writeIORef,
   )
 import Data.List (foldl')
-import Data.Log (raiseError')
-import Data.Maybe (fromMaybe)
-import Data.Module (Source (Source, sourceModule), getMainModule, getModuleArtifactDir, getModuleRootDir, getRelPathFromSourceDir, sourceFilePath)
+import Data.Log (raiseError, raiseError')
+import Data.Module (Source (Source, sourceModule), getMainModule, getModuleArtifactDir, getModuleExecutableDir, getModuleRootDir, getRelPathFromSourceDir, sourceFilePath)
 import Data.Sequence as Seq
   ( Seq,
-    ViewL (EmptyL, (:<)),
     empty,
-    viewl,
     (><),
     (|>),
   )
-import Data.Spec (Spec, getEntryPoint, getTargetDir)
+import Data.Spec (Spec, getEntryPoint, getMainSpec, getTargetDir, specLocation)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Elaborate (elaborate)
-import Emit (emit)
+import Elaborate (elaborateMain, elaborateOther)
+import Emit (emitMain, emitOther)
 import GHC.IO.Handle (hClose)
-import Lower (lower)
-import Parse (parse)
-import Parse.Core (currentHint, initializeState, skip)
+import Lower (lowerMain, lowerOther)
+import Parse (parseMain, parseOther)
+import Parse.Core (currentHint, initializeParserForFile, skip)
 import Parse.Enum (initializeEnumEnv)
 import Parse.Import (Signature, parseImportSequence, signatureToSource)
-import Parse.Spec (getMainSpec, moduleToSpec)
+import Parse.Section (pathToSection)
+import Parse.Spec (initializeMainSpec, moduleToSpec)
 import Path
   ( Abs,
     Dir,
@@ -55,21 +53,23 @@ import Path
     addExtension,
     mkRelDir,
     parent,
-    parseRelFile,
     splitExtension,
     toFilePath,
     (</>),
   )
-import Path.IO (ensureDir, removeDirRecur)
-import System.Exit (ExitCode (ExitFailure), exitWith)
+import Path.IO (ensureDir, removeDirRecur, resolveFile)
+import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)
+import System.IO (Handle)
 import System.IO.Unsafe (unsafePerformIO)
 import System.Process
   ( CreateProcess (std_in),
     StdStream (CreatePipe),
+    createProcess,
     proc,
     waitForProcess,
     withCreateProcess,
   )
+import System.Process.Internals (std_err)
 
 data OutputKind
   = OutputKindObject
@@ -87,80 +87,68 @@ type ClangOption =
 build :: Target -> OutputKind -> ShouldColorize -> Maybe ClangOption -> IO ()
 build target outputKind colorizeFlag mClangOptStr = do
   writeIORef shouldColorize colorizeFlag
-  mainSpec <- getMainSpec
-  entryFilePath <- resolveTarget target mainSpec
-  mainSource <- getMainSource entryFilePath
-  writeIORef mainModuleDirRef $ getModuleRootDir $ sourceModule mainSource
+  mainFilePath <- resolveTarget target
+  mainSource <- getMainSource mainFilePath
+  setMainModuleDir $ getModuleRootDir $ sourceModule mainSource
+  setMainFilePath mainFilePath
   initializeEnumEnv
   dependenceSeq <- computeDependence mainSource
-  forM_ (toList dependenceSeq) $ \source -> do
-    compile source
-  -- link dependenceSeq
-  _ <- error "stop"
-  outputPath <- getOutputPath target mainSpec outputKind
-  case outputKind of
-    OutputKindLLVM -> do
-      llvmIRBuilder <- sourceToLLVM mainSource
-      let llvmIR = toLazyByteString llvmIRBuilder
-      L.writeFile (toFilePath outputPath) llvmIR
-    OutputKindAsm ->
-      undefined
-    OutputKindObject -> do
-      let additionalClangOptions = words $ fromMaybe "" mClangOptStr
-      let clangCmd = proc "clang" $ clangOptWith outputKind outputPath ++ additionalClangOptions ++ ["-c"]
-      llvmIRBuilder <- sourceToLLVM mainSource
-      let llvmIR = toLazyByteString llvmIRBuilder
-      withCreateProcess clangCmd {std_in = CreatePipe} $ \(Just stdin) _ _ clangProcessHandler -> do
-        L.hPut stdin llvmIR
-        hClose stdin
-        exitCode <- waitForProcess clangProcessHandler
-        exitWith exitCode
-    OutputKindExecutable ->
-      undefined
+  mapM_ compile (toList dependenceSeq)
+  link target $ toList dependenceSeq
 
 compile :: Source -> IO ()
 compile source = do
   llvm <- sourceToLLVM source
-  outputPath <- sourceToOutputPath source OutputKindObject
+  outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
+  llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
+  L.writeFile (toFilePath llvmOutputPath) $ toLazyByteString llvm
   let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"]
   let llvmIR = toLazyByteString llvm
-  withCreateProcess clangCmd {std_in = CreatePipe} $ \(Just stdin) _ _ clangProcessHandler -> do
+  withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
     L.hPut stdin llvmIR
     hClose stdin
-    _ <- waitForProcess clangProcessHandler
+    clangExitCode <- waitForProcess clangProcessHandler
+    raiseIfFailure "clang" clangExitCode clangErrorHandler
     return ()
+
+link :: Target -> [Source] -> IO ()
+link target sourceList = do
+  outputPath <- getExecutableOutputPath target
+  ensureDir $ parent outputPath
+  objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
+  let clangCmd = proc "clang" $ clangLinkOpt objectPathList outputPath
+  (_, _, Just clangErrorHandler, clangHandler) <-
+    createProcess clangCmd {std_err = CreatePipe}
+  clangExitCode <- waitForProcess clangHandler
+  raiseIfFailure "clang" clangExitCode clangErrorHandler
+
+sourceToLLVM :: Source -> IO Builder
+sourceToLLVM source = do
+  mMainFunctionName <- getMainFunctionName source
+  case mMainFunctionName of
+    Just mainName ->
+      parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName >>= lowerMain >>= emitMain
+    Nothing ->
+      parseOther source >>= elaborateOther source >>= clarifyOther >>= lowerOther >> emitOther
 
 clean :: IO ()
 clean = do
   mainSpec <- getMainSpec
   removeDirRecur $ getTargetDir mainSpec
 
-sourceToOutputPath :: Source -> OutputKind -> IO (Path Abs File)
-sourceToOutputPath source kind = do
+getExecutableOutputPath :: Target -> IO (Path Abs File)
+getExecutableOutputPath target = do
+  mainSpec <- getMainSpec
+  let path = parent (specLocation mainSpec) </> $(mkRelDir "target/executable")
+  resolveFile path target
+
+sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
+sourceToOutputPath kind source = do
   let artifactDir = getModuleArtifactDir $ sourceModule source
   relPath <- getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- splitExtension relPath
   attachExtension (artifactDir </> relPathWithoutExtension) kind
-
--- undefined
-
--- exitWith exitCode
-
-link :: Seq Source -> IO ()
-link = undefined
-
-sourceToLLVM :: Source -> IO Builder
-sourceToLLVM =
-  parse >=> elaborate >=> clarify >=> lower >=> emit
-
--- ensureMain :: IO ()
--- ensureMain = do
---   flag <- readIORef isMain
---   when flag $ do
---     m <- currentHint
---     _ <- discern $ m :< WeakTermVar (asIdent "main")
---     return ()
 
 getMainSource :: Path Abs File -> IO Source
 getMainSource mainSourceFilePath = do
@@ -170,6 +158,22 @@ getMainSource mainSourceFilePath = do
       { sourceModule = mainModule,
         sourceFilePath = mainSourceFilePath
       }
+
+getMainFunctionName :: Source -> IO (Maybe T.Text)
+getMainFunctionName source = do
+  mainFilePath <- getMainFilePath
+  if sourceFilePath source /= mainFilePath
+    then return Nothing
+    else do
+      mainSpec <- getMainSpec
+      (sectionHead, sectionTail) <- pathToSection mainSpec $ sourceFilePath source
+      let section = sectionHead : sectionTail
+      return $ Just $ T.intercalate nsSep $ section ++ ["main"]
+
+{-# NOINLINE traceSourceListRef #-}
+traceSourceListRef :: IORef [Source]
+traceSourceListRef =
+  unsafePerformIO (newIORef [])
 
 {-# NOINLINE visitEnvRef #-}
 visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo)
@@ -190,15 +194,20 @@ computeDependence :: Source -> IO (Seq Source)
 computeDependence source = do
   visitEnv <- readIORef visitEnvRef
   case Map.lookup (sourceFilePath source) visitEnv of
-    Just VisitInfoActive ->
-      error "cyclic inclusion"
+    Just VisitInfoActive -> do
+      traceSourceList <- readIORef traceSourceListRef
+      let m = newHint 1 1 $ toFilePath $ sourceFilePath source
+      let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
+      raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
     Just VisitInfoFinish ->
       return Seq.empty
     Nothing -> do
       children <- getChildren source
       let path = sourceFilePath source
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
+      modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
       dependenceSeq <- foldl' (><) Seq.empty <$> mapM computeDependence children
+      modifyIORef' traceSourceListRef tail
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
       return $ dependenceSeq |> source
 
@@ -209,7 +218,7 @@ showCyclicPath pathList =
       ""
     [path] ->
       T.pack (toFilePath path)
-    (path : ps) ->
+    path : ps ->
       "     " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
 showCyclicPath' :: [Path Abs File] -> T.Text
@@ -222,12 +231,6 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
--- raiseCyclicInclusion :: Hint -> Path Abs File -> IO b
--- raiseCyclicInclusion m newPath = do
---   tenv <- readIORef traceEnv
---   let cyclicPath = dropWhile (/= newPath) (reverse tenv) ++ [newPath]
---   raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPath
-
 getChildren :: Source -> IO [Source]
 getChildren currentSource = do
   sourceChildrenMap <- readIORef sourceChildrenMapRef
@@ -235,8 +238,7 @@ getChildren currentSource = do
     Just sourceList ->
       return sourceList
     Nothing -> do
-      setCurrentFilePath $ sourceFilePath currentSource
-      TIO.readFile (toFilePath (sourceFilePath currentSource)) >>= initializeState
+      initializeParserForFile $ sourceFilePath currentSource
       skip
       m <- currentHint
       importSequence <- parseImportSequence
@@ -246,12 +248,6 @@ getChildren currentSource = do
       modifyIORef' sourceChildrenMapRef $ Map.insert (sourceFilePath currentSource) sourceList
       modifyIORef' sourceAliasMapRef $ Map.insert (sourceFilePath currentSource) importSequence
       return sourceList
-
--- で、リストがemptyになるまでCPUをわりあてつづけて（プロセスが終わるのをwaitしながら）、
--- emptyになった時点ですべて処理が終了したことになる。みたいな。
--- ここでCPUのわりあては、ようはprocessのうち終了してないものの数がn以下になるようにする、という形でおこなわれる。
-
--- mapM (signatureToSource currentSpec . fst) importSequence
 
 sourceToSpec :: Hint -> Source -> IO Spec
 sourceToSpec m source = do
@@ -269,18 +265,6 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-getTargetDirName :: OutputKind -> Path Rel Dir
-getTargetDirName kind =
-  case kind of
-    OutputKindLLVM ->
-      $(mkRelDir "llvm")
-    OutputKindAsm ->
-      $(mkRelDir "assembly")
-    OutputKindObject ->
-      $(mkRelDir "object")
-    OutputKindExecutable ->
-      $(mkRelDir "executable")
-
 instance Read OutputKind where
   readsPrec _ "object" =
     [(OutputKindObject, [])]
@@ -290,6 +274,11 @@ instance Read OutputKind where
     [(OutputKindAsm, [])]
   readsPrec _ _ =
     []
+
+clangLinkOpt :: [Path Abs File] -> Path Abs File -> [String]
+clangLinkOpt objectPathList outputPath = do
+  let pathList = map toFilePath objectPathList
+  ["-Wno-override-module", "-O2", "-o", toFilePath outputPath] ++ pathList
 
 clangOptWith :: OutputKind -> Path Abs File -> [String]
 clangOptWith kind outputPath =
@@ -309,19 +298,12 @@ clangBaseOpt outputPath =
     toFilePath outputPath
   ]
 
--- clangLibOpt :: Path Abs File -> [String]
--- clangLibOpt outputPath =
---   [ "-Wno-override-module",
---     "-O2",
---     "-o",
---     toFilePath outputPath
---   ]
-
 type Target =
   String
 
-resolveTarget :: Target -> Spec -> IO (Path Abs File)
-resolveTarget target mainSpec = do
+resolveTarget :: Target -> IO (Path Abs File)
+resolveTarget target = do
+  mainSpec <- getMainSpec
   case getEntryPoint mainSpec (T.pack target) of
     Just path ->
       return path
@@ -330,9 +312,17 @@ resolveTarget target mainSpec = do
       outputLog l
       exitWith (ExitFailure 1)
 
-getOutputPath :: Target -> Spec -> OutputKind -> IO (Path Abs File)
-getOutputPath target mainSpec kind = do
-  targetFile <- parseRelFile target
-  let targetDir = getTargetDir mainSpec
-  ensureDir targetDir
-  attachExtension (targetDir </> getTargetDirName kind </> targetFile) kind
+raiseIfFailure :: T.Text -> ExitCode -> Handle -> IO ()
+raiseIfFailure procName exitCode h =
+  case exitCode of
+    ExitSuccess ->
+      return ()
+    ExitFailure i -> do
+      errStr <- TIO.hGetContents h
+      raiseError' $
+        "the child process `"
+          <> procName
+          <> "` failed with the following message (exitcode = "
+          <> T.pack (show i)
+          <> "):\n"
+          <> errStr
