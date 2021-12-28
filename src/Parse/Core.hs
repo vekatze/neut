@@ -93,6 +93,13 @@ loadState state = do
   writeIORef prefixEnv $ parserStatePrefixEnv state
   writeIORef aliasEnv $ parserStateAliasEnv state
 
+withNewState :: IO a -> IO a
+withNewState action = do
+  state <- saveState
+  result <- action
+  loadState state
+  return result
+
 initializeParserForFile :: Path Abs File -> IO ()
 initializeParserForFile path = do
   fileContent <- TIO.readFile (toFilePath path)

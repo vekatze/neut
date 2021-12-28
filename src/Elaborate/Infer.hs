@@ -18,10 +18,9 @@ import Data.Basic
     asText',
   )
 import Data.Global
-  ( constTypeEnv,
-    constraintEnv,
+  ( constraintEnv,
     constructorEnv,
-    holeEnv,
+    holeEnvRef,
     newAster,
     newIdentFromText,
     revEnumEnv,
@@ -116,13 +115,13 @@ infer' ctx term =
       etl <- infer' ctx e
       inferPiElim ctx m etl etls
     m :< WeakTermAster x -> do
-      henv <- readIORef holeEnv
-      case IntMap.lookup x henv of
+      holeEnv <- readIORef holeEnvRef
+      case IntMap.lookup x holeEnv of
         Just asterInfo ->
           return asterInfo
         Nothing -> do
           (app, higherApp) <- newAsterInCtx ctx m
-          modifyIORef' holeEnv $ \env -> IntMap.insert x (app, higherApp) env
+          modifyIORef' holeEnvRef $ \env -> IntMap.insert x (app, higherApp) env
           return (app, higherApp)
     m :< WeakTermConst x
       -- i64, f16, etc.
@@ -392,14 +391,9 @@ lookupConstTypeEnv m x
     return $ m :< TermTau
   | Just op <- asPrimOp x =
     primOpToType m op
-  | otherwise = do
-    ctenv <- readIORef constTypeEnv
-    case Map.lookup x ctenv of
-      Just t ->
-        return t
-      Nothing ->
-        raiseCritical m $
-          "the constant `" <> x <> "` is not found in the type environment."
+  | otherwise =
+    raiseCritical m $
+      "the constant `" <> x <> "` is not found in the type environment."
 
 primOpToType :: Hint -> PrimOp -> IO Term
 primOpToType m (PrimOp op domList cod) = do

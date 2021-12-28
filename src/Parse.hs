@@ -6,39 +6,33 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
-import Data.Basic
-  ( EnumCaseF (EnumCaseLabel),
-    Hint,
-    Ident,
-    IsReducible,
-    LamKind (LamKindCons, LamKindFix, LamKindResourceHandler),
-    Opacity (OpacityTranslucent, OpacityTransparent),
-    asIdent,
-    asText,
-  )
+import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, IsReducible, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (OpacityTranslucent, OpacityTransparent), asIdent, asText)
 import Data.Global
   ( aliasEnv,
     boolFalse,
     boolTrue,
     constructorEnv,
     dataEnv,
+    getCurrentFilePath,
     initialPrefixEnv,
     newText,
     nsSep,
     prefixEnv,
     sectionEnv,
+    sourceAliasMapRef,
     topNameEnv,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
-import Data.Log (raiseError)
+import Data.Log (raiseCritical', raiseError)
+import Data.Module (getChecksumAliasList)
 import Data.Namespace
   ( handleDefinePrefix,
     handleUse,
     withSectionPrefix,
   )
 import qualified Data.Set as S
-import Data.Spec (Source (..), Spec, getSpecAliasList, pathToSection)
+import Data.Source (Source (..), getSection)
 import Data.Stmt
   ( EnumInfo,
     Stmt (StmtDef),
@@ -80,18 +74,13 @@ import Parse.Core
   )
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
-import Parse.Import (Signature, parseImportSequence)
+import Parse.Import (skipImportSequence)
 import Parse.WeakTerm
   ( ascriptionInner,
     weakAscription,
     weakBinder,
     weakTerm,
     weakTermSimple,
-  )
-import Path
-  ( Abs,
-    File,
-    Path,
   )
 
 --
@@ -120,12 +109,12 @@ parse' source = do
       modifyIORef' topNameEnv $ S.union names
       return $ Left stmtList
     Nothing -> do
-      let spec = sourceSpec source
       let path = sourceFilePath source
       initializeParserForFile path
       initializeNamespace source
-      setupSectionPrefix spec path
+      setupSectionPrefix source
       skip
+      arrangeNamespace
       (defList, enumInfoList) <- parseHeader
       return $ Right (defList, enumInfoList)
 
@@ -140,10 +129,9 @@ ensureMain mainFunctionName = do
       print tnenv
       raiseError m $ "`main` is not defined in the main module `" <> T.intercalate nsSep section <> "`"
 
-setupSectionPrefix :: Spec -> Path Abs File -> IO ()
-setupSectionPrefix currentSpec currentFilePath = do
-  (moduleName, pathInfo) <- pathToSection currentSpec currentFilePath
-  let section = moduleName : pathInfo
+setupSectionPrefix :: Source -> IO ()
+setupSectionPrefix currentSource = do
+  section <- getSection currentSource
   handleUse $ T.intercalate nsSep section
   writeIORef sectionEnv section
 
@@ -157,21 +145,26 @@ parseHeaderBase action = do
 parseHeader :: IO ([WeakStmt], [EnumInfo])
 parseHeader = do
   parseHeaderBase $ do
-    importSequence <- parseImportSequence
-    arrangeNamespace importSequence
+    skipImportSequence
     parseHeader'
 
-arrangeNamespace :: [(Signature, Maybe T.Text)] -> IO ()
-arrangeNamespace importSequence =
-  case importSequence of
-    [] ->
-      return ()
-    ((moduleName, section), Just alias) : rest -> do
-      handleDefinePrefix alias (T.intercalate nsSep (moduleName : section))
-      arrangeNamespace rest
-    ((moduleName, section), Nothing) : rest -> do
-      handleUse $ T.intercalate nsSep $ moduleName : section
-      arrangeNamespace rest
+arrangeNamespace :: IO ()
+arrangeNamespace = do
+  sourceAliasMap <- readIORef sourceAliasMapRef
+  currentFilePath <- getCurrentFilePath
+  case Map.lookup currentFilePath sourceAliasMap of
+    Nothing ->
+      raiseCritical' "[arrangeNamespace] (compiler bug)"
+    Just aliasInfoList ->
+      mapM_ arrangeNamespace' aliasInfoList
+
+arrangeNamespace' :: AliasInfo -> IO ()
+arrangeNamespace' aliasInfo =
+  case aliasInfo of
+    AliasInfoUse namespace ->
+      handleUse namespace
+    AliasInfoPrefix from to ->
+      handleDefinePrefix from to
 
 parseHeader' :: IO ([WeakStmt], [EnumInfo])
 parseHeader' =
@@ -484,5 +477,5 @@ registerTopLevelName m x = do
 
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
-  writeIORef aliasEnv $ getSpecAliasList $ sourceSpec source
+  writeIORef aliasEnv $ getChecksumAliasList $ sourceModule source
   writeIORef prefixEnv initialPrefixEnv

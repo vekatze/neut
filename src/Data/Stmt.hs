@@ -5,7 +5,7 @@ module Data.Stmt where
 import Data.Basic (Hint, IsReducible, getPosInfo)
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
 import Data.Global (warn)
-import Data.Spec (Source (sourceFilePath), sourceToCachePath)
+import Data.Source (Source (sourceFilePath), getSourceCachePath)
 import Data.Term (Term)
 import qualified Data.Text as T
 import Data.WeakTerm (WeakTerm)
@@ -50,13 +50,13 @@ saveCache (source, stmtList) enumInfoList = do
     then return () -- the cache is already fresh
     else do
       let stmtList' = map compress stmtList
-      cachePath <- sourceToCachePath source
+      cachePath <- getSourceCachePath source
       ensureDir $ parent cachePath
       encodeFile (toFilePath cachePath) (stmtList', enumInfoList)
 
 loadCache :: Hint -> Source -> IO (Maybe Cache)
 loadCache m source = do
-  cachePath <- sourceToCachePath source
+  cachePath <- getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
@@ -76,7 +76,7 @@ loadCache m source = do
 
 doesFreshCacheExist :: Source -> IO Bool
 doesFreshCacheExist source = do
-  cachePath <- sourceToCachePath source
+  cachePath <- getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return False

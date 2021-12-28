@@ -4,15 +4,7 @@ module Data.Global where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (when)
-import Data.Basic
-  ( Hint,
-    Ident (..),
-    IsReducible,
-    PosInfo,
-    asText,
-    getPosInfo,
-    showPosInfo,
-  )
+import Data.Basic (AliasInfo, Hint, Ident (..), IsReducible, PosInfo, asText, getPosInfo, showPosInfo)
 import Data.Comp (Comp, Value (ValueVarLocal))
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
@@ -37,10 +29,8 @@ import Data.LowComp (LowComp)
 import Data.LowType (LowType, voidPtr)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
-import Data.Term (Term)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Version (showVersion)
 import Data.WeakTerm
   ( Constraint,
     SuspendedConstraintQueue,
@@ -54,12 +44,9 @@ import Path
     Path,
     Rel,
     mkRelDir,
-    parent,
-    parseRelDir,
     (</>),
   )
 import Path.IO (XdgDirectory (XdgCache), ensureDir, getXdgDir)
-import Paths_neut (version)
 import System.Console.ANSI
   ( ConsoleIntensity (BoldIntensity),
     SGR (Reset, SetConsoleIntensity),
@@ -67,10 +54,6 @@ import System.Console.ANSI
   )
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Info as System
-
-data VisitInfo
-  = VisitInfoActive
-  | VisitInfoFinish
 
 --
 -- global variables
@@ -111,11 +94,6 @@ shouldCancelAlloc :: IORef Bool
 shouldCancelAlloc =
   unsafePerformIO (newIORef True)
 
--- {-# NOINLINE isMain #-}
--- isMain :: IORef Bool
--- isMain =
---   unsafePerformIO (newIORef False)
-
 {-# NOINLINE mainFilePathRef #-}
 mainFilePathRef :: IORef (Maybe (Path Abs File))
 mainFilePathRef =
@@ -134,33 +112,10 @@ getMainFilePath = do
     Nothing ->
       raiseCritical' "no main file path is set"
 
-{-# NOINLINE mainModuleDirRef #-}
-mainModuleDirRef :: IORef (Maybe (Path Abs Dir))
-mainModuleDirRef =
-  unsafePerformIO (newIORef Nothing)
-
-setMainModuleDir :: Path Abs Dir -> IO ()
-setMainModuleDir path =
-  modifyIORef' mainModuleDirRef $ const $ Just path
-
-getMainModuleDir :: IO (Path Abs Dir)
-getMainModuleDir = do
-  mainModuleDirOrNothing <- readIORef mainModuleDirRef
-  case mainModuleDirOrNothing of
-    Just mainModuleDir ->
-      return mainModuleDir
-    Nothing ->
-      raiseCritical' "no main module dir is set"
-
 {-# NOINLINE endOfEntry #-}
 endOfEntry :: IORef String
 endOfEntry =
   unsafePerformIO (newIORef "")
-
-{-# NOINLINE topMetaNameEnv #-}
-topMetaNameEnv :: IORef (Map.HashMap T.Text Ident)
-topMetaNameEnv =
-  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE targetPlatform #-}
 targetPlatform :: IORef String
@@ -207,11 +162,6 @@ constructorEnv :: IORef (Map.HashMap T.Text (Int, Int))
 constructorEnv =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE defaultPrefixEnv #-}
-defaultPrefixEnv :: IORef [T.Text]
-defaultPrefixEnv =
-  unsafePerformIO (newIORef [])
-
 initialPrefixEnv :: [T.Text]
 initialPrefixEnv =
   ["this"]
@@ -221,19 +171,9 @@ prefixEnv :: IORef [T.Text]
 prefixEnv =
   unsafePerformIO (newIORef initialPrefixEnv)
 
-{-# NOINLINE defaultAliasEnv #-}
-defaultAliasEnv :: IORef [(T.Text, T.Text)]
-defaultAliasEnv =
-  unsafePerformIO (newIORef [])
-
 {-# NOINLINE aliasEnv #-}
 aliasEnv :: IORef [(T.Text, T.Text)]
 aliasEnv =
-  unsafePerformIO (newIORef [])
-
-{-# NOINLINE defaultSectionEnv #-}
-defaultSectionEnv :: IORef [T.Text]
-defaultSectionEnv =
   unsafePerformIO (newIORef [])
 
 {-# NOINLINE sectionEnv #-}
@@ -256,20 +196,20 @@ topTypeEnv :: IORef (Map.HashMap T.Text WeakTerm)
 topTypeEnv =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE constTypeEnv #-}
-constTypeEnv :: IORef (Map.HashMap T.Text Term)
-constTypeEnv =
-  unsafePerformIO (newIORef Map.empty)
-
-{-# NOINLINE holeEnv #-}
-holeEnv :: IORef (IntMap.IntMap (WeakTerm, WeakTerm))
-holeEnv =
+{-# NOINLINE holeEnvRef #-}
+holeEnvRef :: IORef (IntMap.IntMap (WeakTerm, WeakTerm))
+holeEnvRef =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE constraintEnv #-}
 constraintEnv :: IORef [Constraint]
 constraintEnv =
   unsafePerformIO (newIORef [])
+
+{-# NOINLINE sourceAliasMapRef #-}
+sourceAliasMapRef :: IORef (Map.HashMap (Path Abs File) [AliasInfo])
+sourceAliasMapRef =
+  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE suspendedConstraintEnv #-}
 suspendedConstraintEnv :: IORef SuspendedConstraintQueue
@@ -311,17 +251,9 @@ nopFreeSet :: IORef (S.Set Int)
 nopFreeSet =
   unsafePerformIO (newIORef S.empty)
 
-moduleFileName :: FilePath
-moduleFileName =
-  "module.ens"
-
 sourceFileExtension :: T.Text
 sourceFileExtension =
   "neut"
-
-defaultModulePrefix :: T.Text
-defaultModulePrefix =
-  "this"
 
 {-# INLINE nsSepChar #-}
 nsSepChar :: Char
@@ -350,7 +282,7 @@ boolFalse =
 {-# INLINE newCount #-}
 newCount :: IO Int
 newCount =
-  atomicModifyIORef' count $ \x -> let z = x + 1 in (z, z) -- for now (i64-overflow breaks this)
+  atomicModifyIORef' count $ \x -> let z = x + 1 in (z, z)
 
 {-# INLINE newIdentFromText #-}
 newIdentFromText :: T.Text -> IO Ident
@@ -368,12 +300,6 @@ newText :: IO T.Text
 newText = do
   i <- newCount
   return $ ";" <> T.pack (show i)
-
-{-# INLINE newTextFromText #-}
-newTextFromText :: T.Text -> IO T.Text
-newTextFromText txt = do
-  i <- newCount
-  return $ ";" <> txt <> T.pack (show i)
 
 {-# INLINE newAster #-}
 newAster :: Hint -> IO WeakTerm
@@ -395,25 +321,10 @@ getCacheDirPath :: IO (Path Abs Dir)
 getCacheDirPath = do
   getXdgDir XdgCache (Just $(mkRelDir "neut")) >>= returnDirectory
 
-getCurrentDirPath :: IO (Path Abs Dir)
-getCurrentDirPath =
-  parent <$> getCurrentFilePath
-
 getLibraryDirPath :: IO (Path Abs Dir)
 getLibraryDirPath = do
   basePath <- getCacheDirPath
   returnDirectory $ basePath </> $(mkRelDir "library")
-
-getTargetDependentDirPath :: String -> IO (Path Abs Dir)
-getTargetDependentDirPath directoryName = do
-  basePath <- getCacheDirPath
-  target <- readIORef targetPlatform
-  relPath <- parseRelDir $ directoryName <> "/" <> target <> "/" <> showVersion version
-  returnDirectory $ basePath </> relPath
-
-getObjectDirPath :: IO (Path Abs Dir)
-getObjectDirPath = do
-  getTargetDependentDirPath "object"
 
 returnDirectory :: Path Abs Dir -> IO (Path Abs Dir)
 returnDirectory path =

@@ -45,7 +45,7 @@ import Data.Global
     newValueVarLocalWith,
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (readIORef, writeIORef)
+import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
 import Data.List (nubBy)
 import Data.Log (raiseCritical, raiseError)
@@ -57,7 +57,6 @@ import Data.LowType
   )
 import Data.Maybe (catMaybes, isJust, maybeToList)
 import qualified Data.Set as S
-import Data.Spec (Source, isMain)
 import Data.Stmt (Stmt (..))
 import Data.Term
   ( Binder,

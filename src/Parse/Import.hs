@@ -1,20 +1,28 @@
 module Parse.Import
   ( parseImportSequence,
-    Signature,
-    signatureToSource,
+    skipImportSequence,
   )
 where
 
-import Control.Monad (unless)
-import Data.Basic (Hint)
+import Control.Monad (unless, void)
+import Data.Basic (AliasInfo (..), Checksum (Checksum), Hint)
 import Data.Global
-  ( defaultModulePrefix,
-    nsSep,
+  ( getCurrentFilePath,
+    getLibraryDirPath,
+    sourceFileExtension,
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.Log (raiseCritical, raiseError)
-import Data.Module (Module (..), ModuleSignature (ModuleThat, ModuleThis), getModuleName, signatureToModule)
-import Data.Spec (Source (Source), Spec (specDependency), getSourceDir, pathToSection, sectionToPath, sourceFilePath, sourceSpec)
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.List (uncons)
+import Data.Log (raiseError)
+import Data.Module
+  ( Module (moduleDependency),
+    defaultModulePrefix,
+    findModuleFile,
+    getSourceDir,
+    moduleFile,
+  )
+import Data.Source (Source (Source), sourceFilePath, sourceModule)
 import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
@@ -23,96 +31,155 @@ import Parse.Core
     token,
     tryPlanList,
   )
-import qualified Parse.Spec as Spec
+import qualified Parse.Module as Module
 import Path
   ( Abs,
+    Dir,
     File,
     Path,
+    parent,
+    (</>),
   )
-import Path.IO (doesFileExist, resolveFile)
+import Path.IO (doesFileExist, resolveDir, resolveFile)
+import System.FilePath (pathSeparator)
+import System.IO.Unsafe (unsafePerformIO)
 
-type Signature = (T.Text, [T.Text])
+type SourceSignature =
+  (T.Text, [T.Text], T.Text)
 
-signatureToSource :: Spec -> Signature -> IO Source
-signatureToSource currentSpec (moduleName, section) = do
+parseImportSequence :: Module -> IO ([Source], [AliasInfo])
+parseImportSequence currentModule = do
+  fmap unzip $ many $ tryPlanList [parseImportQualified currentModule, parseImportSimple currentModule]
+
+skipImportSequence :: IO ()
+skipImportSequence =
+  void $ many $ tryPlanList [skipImportQualified, skipImportSimple]
+
+parseImportSimple :: Module -> IO (Source, AliasInfo)
+parseImportSimple currentModule = do
   m <- currentHint
-  mo <- parseModuleName m currentSpec moduleName >>= signatureToModule
-  spec <- moduleToSpec m mo
-  filePath <- getSourceFilePath m mo spec (sectionToPath section)
+  token "import"
+  sigText <- symbol
+  source <- getNextSource m currentModule sigText
+  return (source, AliasInfoUse sigText)
+
+skipImportSimple :: IO ()
+skipImportSimple = do
+  token "import"
+  _ <- symbol
+  return ()
+
+parseImportQualified :: Module -> IO (Source, AliasInfo)
+parseImportQualified currentModule = do
+  m <- currentHint
+  token "import"
+  sigText <- symbol
+  token "as"
+  alias <- symbol
+  source <- getNextSource m currentModule sigText
+  return (source, AliasInfoPrefix alias sigText)
+
+skipImportQualified :: IO ()
+skipImportQualified = do
+  token "import"
+  _ <- symbol
+  token "as"
+  _ <- symbol
+  return ()
+
+getNextSource :: Hint -> Module -> T.Text -> IO Source
+getNextSource m currentModule sigText = do
+  sig <- parseModuleInfo m sigText
+  newModule <- getNextModule m currentModule sig
+  filePath <- getSourceFilePath newModule sig
   return $
     Source
-      { sourceSpec = spec,
+      { sourceModule = newModule,
         sourceFilePath = filePath
       }
 
-moduleToSpec :: Hint -> Module -> IO Spec
-moduleToSpec m mo = do
-  moduleFileExists <- doesFileExist (moduleFilePath mo)
-  unless moduleFileExists $ do
-    let moduleName = getModuleName mo
-    raiseError m $
-      T.pack "could not find the module file for `"
-        <> moduleName
-        <> "`"
-  Spec.parse $ moduleFilePath mo
-
-parseImportSequence :: IO [(Signature, Maybe T.Text)]
-parseImportSequence =
-  many $
-    tryPlanList
-      [ do
-          (sectionString, alias) <- parseImportQualified
-          return (sectionString, Just alias),
-        do
-          sectionString <- parseImportSimple
-          return (sectionString, Nothing)
-      ]
-
-parseImportSimple :: IO Signature
-parseImportSimple = do
-  m <- currentHint
-  token "import"
-  symbol >>= parseModuleInfo m
-
-parseImportQualified :: IO (Signature, T.Text)
-parseImportQualified = do
-  m <- currentHint
-  token "import"
-  preSection <- symbol >>= parseModuleInfo m
-  token "as"
-  alias <- symbol
-  return (preSection, alias)
-
-parseModuleName :: Hint -> Spec -> T.Text -> IO ModuleSignature
-parseModuleName m currentSpec moduleName
-  | moduleName == defaultModulePrefix =
-    return ModuleThis
-  | Just (_, checksum) <- Map.lookup moduleName (specDependency currentSpec) =
-    return $ ModuleThat moduleName checksum
-  | otherwise =
-    raiseError m $ "no such module is declared: " <> moduleName
-
-parseModuleInfo :: Hint -> T.Text -> IO Signature
+parseModuleInfo :: Hint -> T.Text -> IO SourceSignature
 parseModuleInfo m sectionString = do
-  let xs = T.splitOn "." sectionString
+  case getHeadMiddleLast $ T.splitOn "." sectionString of
+    Just sig ->
+      return sig
+    Nothing ->
+      raiseError m "found a malformed module signature"
+
+getHeadMiddleLast :: [a] -> Maybe (a, [a], a)
+getHeadMiddleLast xs = do
+  (y, ys) <- uncons xs
+  (zs, z) <- unsnoc ys
+  return (y, zs, z)
+
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc xs =
   case xs of
     [] ->
-      raiseCritical m "empty symbol"
-    [_] ->
-      raiseError m "this module signature is malformed"
-    moduleName : sectionPath ->
-      return (moduleName, sectionPath)
+      Nothing
+    [x] ->
+      return ([], x)
+    y : ys -> do
+      (zs, z) <- unsnoc ys
+      return (y : zs, z)
 
-getSourceFilePath :: Hint -> Module -> Spec -> FilePath -> IO (Path Abs File)
-getSourceFilePath m mo spec relPathString = do
-  filePath <- resolveFile (getSourceDir spec) relPathString
-  ensureFileExistence m mo spec filePath
-  return filePath
+getNextModule :: Hint -> Module -> SourceSignature -> IO Module
+getNextModule m currentModule sig@(domain, _, _) = do
+  nextModuleFilePath <- getNextModuleFilePath m currentModule sig
+  moduleMap <- readIORef moduleMapRef
+  case Map.lookup nextModuleFilePath moduleMap of
+    Just nextModule ->
+      return nextModule
+    Nothing -> do
+      moduleFileExists <- doesFileExist nextModuleFilePath
+      unless moduleFileExists $ do
+        raiseError m $
+          T.pack "could not find the module file for `"
+            <> domain
+            <> "`"
+      nextModule <- Module.parse nextModuleFilePath
+      modifyIORef' moduleMapRef $ Map.insert nextModuleFilePath nextModule
+      return nextModule
 
-ensureFileExistence :: Hint -> Module -> Spec -> Path Abs File -> IO ()
-ensureFileExistence m mo spec sourcePath = do
-  b <- doesFileExist sourcePath
-  unless b $ do
-    let moduleName = getModuleName mo
-    (_, pathInfo) <- pathToSection spec sourcePath
-    raiseError m $ "the module `" <> moduleName <> "` does not have the component `" <> T.intercalate nsSep pathInfo <> "`"
+getNextModuleFilePath :: Hint -> Module -> SourceSignature -> IO (Path Abs File)
+getNextModuleFilePath m currentModule sig = do
+  moduleDirPath <- getNextModuleDirPath m currentModule sig
+  return $ moduleDirPath </> moduleFile
+
+getNextModuleDirPath :: Hint -> Module -> SourceSignature -> IO (Path Abs Dir)
+getNextModuleDirPath m currentModule (domain, _, _) =
+  if domain == defaultModulePrefix
+    then getCurrentFilePath >>= filePathToModuleFileDir
+    else do
+      Checksum checksum <- getChecksum m currentModule domain
+      libraryDir <- getLibraryDirPath
+      resolveDir libraryDir $ T.unpack checksum
+
+getSourceFilePath :: Module -> SourceSignature -> IO (Path Abs File)
+getSourceFilePath baseModule (_, locator, name) = do
+  resolveFile (getSourceDir baseModule) (sectionToPath $ locator ++ [name])
+
+getChecksum :: Hint -> Module -> T.Text -> IO Checksum
+getChecksum m currentModule domain =
+  case Map.lookup domain (moduleDependency currentModule) of
+    Just (_, checksum) ->
+      return checksum
+    Nothing ->
+      raiseError m $ "no such module alias is defined: " <> domain
+
+{-# NOINLINE moduleMapRef #-}
+moduleMapRef :: IORef (Map.HashMap (Path Abs File) Module)
+moduleMapRef =
+  unsafePerformIO (newIORef Map.empty)
+
+sectionToPath :: [T.Text] -> FilePath
+sectionToPath sectionPath =
+  T.unpack $ T.intercalate (T.singleton pathSeparator) sectionPath <> "." <> sourceFileExtension
+
+filePathToModuleFilePath :: Path Abs File -> IO (Path Abs File)
+filePathToModuleFilePath filePath = do
+  findModuleFile $ parent filePath
+
+filePathToModuleFileDir :: Path Abs File -> IO (Path Abs Dir)
+filePathToModuleFileDir filePath =
+  parent <$> filePathToModuleFilePath filePath

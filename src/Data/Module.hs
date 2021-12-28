@@ -2,124 +2,118 @@
 
 module Data.Module where
 
-import Data.Global
-  ( getCurrentFilePath,
-    getLibraryDirPath,
-    moduleFileName,
-  )
-import Data.Log (raiseError')
+import Control.Comonad.Cofree (Cofree (..))
+import Data.Basic (Alias, Checksum (..), URL (..))
+import Data.Entity (EntityF (EntityDictionary, EntityString), ppEntityTopLevel)
+import qualified Data.HashMap.Lazy as Map
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.Log (raiseCritical', raiseError')
 import qualified Data.Text as T
-import Path (Abs, Dir, File, Path, parent)
-import Path.IO
-  ( doesFileExist,
-    getCurrentDir,
-    resolveDir,
-    resolveFile,
-  )
-
-type Alias =
-  T.Text
-
-newtype Checksum
-  = Checksum T.Text
-  deriving (Show, Ord, Eq)
-
-showChecksum :: Checksum -> T.Text
-showChecksum (Checksum checksum) =
-  checksum
-
-data OutputKind
-  = OutputKindObject
-  | OutputKindLLVM
-  | OutputKindExecutable
-  | OutputKindAsm
-  deriving (Show)
-
-data ModuleSignature
-  = ModuleThis
-  | ModuleThat Alias Checksum
-  deriving (Show, Ord, Eq)
+import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, parent, toFilePath, (</>))
+import Path.IO (doesFileExist)
+import System.IO.Unsafe (unsafePerformIO)
 
 data Module = Module
-  { moduleSignature :: ModuleSignature,
-    moduleFilePath :: Path Abs File
+  { moduleSourceDir :: Path Rel Dir,
+    moduleTargetDir :: Path Rel Dir,
+    moduleTarget :: Map.HashMap T.Text (Path Rel File),
+    moduleDependency :: Map.HashMap Alias (URL, Checksum),
+    moduleLocation :: Path Abs File
   }
-  deriving (Show, Ord, Eq)
+  deriving (Show)
 
-getModuleName :: Module -> T.Text
-getModuleName mo =
-  case moduleSignature mo of
-    ModuleThis ->
-      "this"
-    ModuleThat name _ ->
-      name
+moduleFile :: Path Rel File
+moduleFile =
+  $(mkRelFile "module.ens")
 
-filePathToModuleFilePath :: Path Abs File -> IO (Path Abs File)
-filePathToModuleFilePath filePath = do
-  dirPathToModuleFilePath $ parent filePath
+defaultModulePrefix :: T.Text
+defaultModulePrefix =
+  "this"
 
-dirPathToModuleFilePath :: Path Abs Dir -> IO (Path Abs File)
-dirPathToModuleFilePath dirPath = do
-  absModuleFile <- resolveFile dirPath moduleFileName
-  moduleFileExists <- doesFileExist absModuleFile
-  case (moduleFileExists, dirPath /= parent dirPath) of
+getSourceDir :: Module -> Path Abs Dir
+getSourceDir baseModule =
+  parent (moduleLocation baseModule) </> moduleSourceDir baseModule
+
+getTargetDir :: Module -> Path Abs Dir
+getTargetDir baseModule =
+  parent (moduleLocation baseModule) </> moduleTargetDir baseModule
+
+getReleaseDir :: Module -> Path Abs Dir
+getReleaseDir baseModule =
+  getModuleRootDir baseModule </> $(mkRelDir "release")
+
+getArtifactDir :: Module -> Path Abs Dir
+getArtifactDir baseModule =
+  getTargetDir baseModule </> $(mkRelDir "artifact")
+
+getExecutableDir :: Module -> Path Abs Dir
+getExecutableDir baseModule =
+  getTargetDir baseModule </> $(mkRelDir "executable")
+
+getModuleRootDir :: Module -> Path Abs Dir
+getModuleRootDir baseModule =
+  parent $ moduleLocation baseModule
+
+getTargetFilePath :: Module -> T.Text -> Maybe (Path Abs File)
+getTargetFilePath baseModule target = do
+  relPath <- Map.lookup target (moduleTarget baseModule)
+  return $ getSourceDir baseModule </> relPath
+
+getChecksumAliasList :: Module -> [(T.Text, T.Text)]
+getChecksumAliasList baseModule = do
+  let dependencyList = Map.toList $ moduleDependency baseModule
+  map (\(key, (_, Checksum checksum)) -> (key, checksum)) dependencyList
+
+findModuleFile :: Path Abs Dir -> IO (Path Abs File)
+findModuleFile moduleRootDirCandidate = do
+  let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
+  moduleFileExists <- doesFileExist moduleFileCandidate
+  case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
     (True, _) ->
-      return absModuleFile
+      return moduleFileCandidate
     (_, True) ->
-      dirPathToModuleFilePath $ parent dirPath
+      findModuleFile $ parent moduleRootDirCandidate
     _ ->
       raiseError' "couldn't find a module file."
 
-filePathToModuleFileDir :: Path Abs File -> IO (Path Abs Dir)
-filePathToModuleFileDir filePath =
-  parent <$> filePathToModuleFilePath filePath
+{-# NOINLINE mainModuleRef #-}
+mainModuleRef :: IORef (Maybe Module)
+mainModuleRef =
+  unsafePerformIO (newIORef Nothing)
 
-dirPathToModuleFileDir :: Path Abs Dir -> IO (Path Abs Dir)
-dirPathToModuleFileDir dirPath =
-  parent <$> dirPathToModuleFilePath dirPath
+setMainModule :: Module -> IO ()
+setMainModule mainModule = do
+  mainModuleOrNothing <- readIORef mainModuleRef
+  case mainModuleOrNothing of
+    Just _ ->
+      raiseCritical' "the main module is already initialized"
+    Nothing ->
+      modifyIORef' mainModuleRef $ const $ Just mainModule
 
 getMainModule :: IO Module
 getMainModule = do
-  filePath <- getCurrentDir >>= dirPathToModuleFilePath
-  return
-    Module
-      { moduleSignature = ModuleThis,
-        moduleFilePath = filePath
-      }
+  mainModuleOrNothing <- readIORef mainModuleRef
+  case mainModuleOrNothing of
+    Just mainModule ->
+      return mainModule
+    Nothing ->
+      raiseCritical' "the main module is not initialized"
 
-getLibraryModuleFilePath :: Checksum -> IO (Path Abs File)
-getLibraryModuleFilePath checksum = do
-  moduleDir <- getModuleDir checksum
-  resolveFile moduleDir moduleFileName
+addDependency :: Alias -> URL -> Checksum -> Module -> Module
+addDependency alias url checksum someModule =
+  someModule {moduleDependency = Map.insert alias (url, checksum) (moduleDependency someModule)}
 
-getModuleDir :: Checksum -> IO (Path Abs Dir)
-getModuleDir (Checksum checksum) = do
-  libDir <- getLibraryDirPath
-  resolveDir libDir $ T.unpack checksum
-
-getModuleRootDir :: Module -> Path Abs Dir
-getModuleRootDir mo =
-  parent $ moduleFilePath mo
-
-signatureToModuleFilePath :: ModuleSignature -> IO (Path Abs File)
-signatureToModuleFilePath sig = do
-  moduleDirPath <- signatureToModuleDirPath sig
-  resolveFile moduleDirPath moduleFileName
-
-signatureToModuleDirPath :: ModuleSignature -> IO (Path Abs Dir)
-signatureToModuleDirPath sig =
-  case sig of
-    ModuleThis ->
-      getCurrentFilePath >>= filePathToModuleFileDir
-    ModuleThat _ (Checksum checksum) -> do
-      libraryDir <- getLibraryDirPath
-      resolveDir libraryDir (T.unpack checksum)
-
-signatureToModule :: ModuleSignature -> IO Module
-signatureToModule sig = do
-  path <- signatureToModuleFilePath sig
-  return $
-    Module
-      { moduleSignature = sig,
-        moduleFilePath = path
-      }
+ppModule :: Module -> T.Text
+ppModule someModule = do
+  let entryPoint = Map.map (\x -> () :< EntityString (T.pack (toFilePath x))) $ moduleTarget someModule
+  let dependency = flip Map.map (moduleDependency someModule) $ \(URL url, Checksum checksum) -> do
+        let urlEntity = () :< EntityString url
+        let checksumEntity = () :< EntityString checksum
+        () :< EntityDictionary (Map.fromList [("checksum", checksumEntity), ("URL", urlEntity)])
+  ppEntityTopLevel $
+    Map.fromList
+      [ ("dependency", () :< EntityDictionary dependency),
+        ("source-directory", () :< EntityString (T.pack $ toFilePath $ moduleSourceDir someModule)),
+        ("target", () :< EntityDictionary entryPoint),
+        ("target-directory", () :< EntityString (T.pack $ toFilePath $ moduleTargetDir someModule))
+      ]

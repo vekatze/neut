@@ -6,6 +6,7 @@ import Command.Init (initialize)
 import Command.Release (release)
 import Control.Exception.Safe (try)
 import Control.Monad (void)
+import Data.Basic (Alias, URL (..))
 import Data.Global
   ( endOfEntry,
     outputLog,
@@ -13,8 +14,6 @@ import Data.Global
   )
 import Data.IORef (writeIORef)
 import Data.Log (Error (Error))
-import Data.Module (Alias)
-import Data.Spec (URL (URL))
 import qualified Data.Text as T
 import Data.Version (showVersion)
 import Options.Applicative
@@ -39,7 +38,7 @@ import Options.Applicative
     subparser,
     value,
   )
-import Parse.Spec (initializeMainSpec)
+import Parse.Module (initializeMainModule)
 import Path
   ( Abs,
     File,
@@ -121,7 +120,7 @@ parseOpt =
           "get"
           ( info
               (helper <*> parseGetOpt)
-              (progDesc "get a package")
+              (progDesc "get a module")
           ),
         command
           "tidy"
@@ -266,24 +265,29 @@ parseReleaseOpt =
 
 runCommand :: Command -> IO ()
 runCommand cmd = do
-  initializeMainSpec
   case cmd of
     Build target outputKind colorizeFlag mClangOptStr -> do
+      initializeMainModule
       runAction $ build target outputKind colorizeFlag mClangOptStr
     Check inputPathStr colorizeFlag eoe -> do
+      initializeMainModule
       writeIORef shouldColorize colorizeFlag
       writeIORef endOfEntry eoe
       inputPath <- resolveFile' inputPathStr
       void $ runAction (runCheck inputPath)
-    Clean ->
+    Clean -> do
+      initializeMainModule
       runAction clean
     Release identifier -> do
+      initializeMainModule
       runAction (release identifier)
     Init moduleName ->
       runAction $ initialize moduleName
-    Get alias url ->
+    Get alias url -> do
+      initializeMainModule
       runAction $ get alias url
-    Tidy ->
+    Tidy -> do
+      initializeMainModule
       runAction tidy
     Version ->
       putStrLn $ showVersion version

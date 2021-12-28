@@ -16,8 +16,6 @@ import Data.Entity
         EntityString
       ),
   )
--- import Data.Global (popTrace, pushTrace)
-
 import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef)
 import qualified Data.Text as T
@@ -36,15 +34,17 @@ import Parse.Core
     symbol,
     text,
     tryPlanList,
+    withNewState,
   )
 import Path (Abs, File, Path)
 
 parse :: Path Abs File -> IO Entity
 parse path = do
-  initializeParserForFile path
-  m <- currentHint
-  ens <- skip >> parseFile
-  return $ m :< EntityDictionary ens
+  withNewState $ do
+    initializeParserForFile path
+    m <- currentHint
+    ens <- skip >> parseFile
+    return $ m :< EntityDictionary ens
 
 parseEntity :: IO Entity
 parseEntity = do

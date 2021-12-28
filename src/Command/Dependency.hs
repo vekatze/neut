@@ -2,26 +2,25 @@ module Command.Dependency (get, tidy) where
 
 import Control.Monad (forM_, unless, when)
 import Crypto.Hash.SHA256 as SHA256 (hash)
-import Data.Basic ()
+import Data.Basic (Alias, Checksum (Checksum), URL (..), showChecksum)
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64.URL as Base64
-import Data.Global (getLibraryDirPath, moduleFileName, note')
+import Data.Global (getLibraryDirPath, note')
 import qualified Data.HashMap.Lazy as Map
 import Data.Log (raiseError')
-import Data.Module (Alias, Checksum (Checksum), showChecksum)
-import Data.Spec
-  ( Spec (specDependency, specLocation),
-    URL (..),
+import Data.Module
+  ( Module (moduleDependency, moduleLocation),
     addDependency,
-    getMainSpec,
-    ppSpec,
+    getMainModule,
+    moduleFile,
+    ppModule,
   )
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.IO as TIO
-import qualified Parse.Spec as Spec
-import Path (Abs, Dir, File, Path, toFilePath)
-import Path.IO (doesFileExist, ensureDir, resolveDir, resolveFile, withSystemTempFile)
+import qualified Parse.Module as Module
+import Path (Abs, Dir, File, Path, toFilePath, (</>))
+import Path.IO (doesFileExist, ensureDir, resolveDir, withSystemTempFile)
 import System.Exit (ExitCode (..))
 import System.IO (Handle)
 import System.Process
@@ -34,23 +33,23 @@ import System.Process
 
 get :: Alias -> URL -> IO ()
 get alias url = do
-  spec <- getMainSpec
+  mainModule <- getMainModule
   withSystemTempFile (T.unpack alias) $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
     archive <- B.hGetContents tempFileHandle
     let checksum = computeChecksum archive
     extractToLibDir tempFilePath alias checksum
-    addDependencyToModuleFile spec alias url checksum
-    getLibrarySpec alias checksum >>= tidy'
+    addDependencyToModuleFile mainModule alias url checksum
+    getLibraryModule alias checksum >>= tidy'
 
 tidy :: IO ()
 tidy =
-  getMainSpec >>= tidy'
+  getMainModule >>= tidy'
 
-tidy' :: Spec -> IO ()
-tidy' spec = do
-  note' $ "context: " <> T.pack (toFilePath (specLocation spec))
-  let dependency = Map.toList $ specDependency spec
+tidy' :: Module -> IO ()
+tidy' targetModule = do
+  note' $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
+  let dependency = Map.toList $ moduleDependency targetModule
   forM_ dependency $ \(alias, (url, checksum)) ->
     installIfNecessary alias url checksum
 
@@ -74,7 +73,7 @@ installIfNecessary alias url checksum = do
             <> showChecksum archiveChecksum
             <> " (actual)"
       extractToLibDir tempFilePath alias checksum
-      getLibrarySpec alias checksum >>= tidy'
+      getLibraryModule alias checksum >>= tidy'
 
 checkIfInstalled :: Checksum -> IO Bool
 checkIfInstalled checksum = do
@@ -83,15 +82,15 @@ checkIfInstalled checksum = do
 getLibraryModuleFilePath :: Checksum -> IO (Path Abs File)
 getLibraryModuleFilePath checksum = do
   moduleDir <- getModuleDir checksum
-  resolveFile moduleDir moduleFileName
+  return $ moduleDir </> moduleFile
 
-getLibrarySpec :: Alias -> Checksum -> IO Spec
-getLibrarySpec alias checksum@(Checksum c) = do
-  specFilePath <- getLibraryModuleFilePath checksum
-  moduleFileExists <- doesFileExist specFilePath
+getLibraryModule :: Alias -> Checksum -> IO Module
+getLibraryModule alias checksum@(Checksum c) = do
+  moduleFilePath <- getLibraryModuleFilePath checksum
+  moduleFileExists <- doesFileExist moduleFilePath
   if not moduleFileExists
-    then raiseError' $ "could not find the spec file for the module `" <> alias <> "` (" <> c <> ")."
-    else Spec.parse specFilePath
+    then raiseError' $ "could not find the module file for `" <> alias <> "` (" <> c <> ")."
+    else Module.parse moduleFilePath
 
 getModuleDir :: Checksum -> IO (Path Abs Dir)
 getModuleDir (Checksum checksum) = do
@@ -122,11 +121,11 @@ extractToLibDir tempFilePath alias c@(Checksum checksum) = do
   tarExitCode <- waitForProcess tarHandler
   raiseIfFailure "tar" tarExitCode tarErrorHandler
 
-addDependencyToModuleFile :: Spec -> Alias -> URL -> Checksum -> IO ()
-addDependencyToModuleFile spec alias url checksum = do
+addDependencyToModuleFile :: Module -> Alias -> URL -> Checksum -> IO ()
+addDependencyToModuleFile targetModule alias url checksum = do
   note' $ "adding the dependency of `" <> alias <> "` to the module file"
-  let spec' = addDependency alias url checksum spec
-  TIO.writeFile (toFilePath $ specLocation spec) $ ppSpec spec'
+  let targetModule' = addDependency alias url checksum targetModule
+  TIO.writeFile (toFilePath $ moduleLocation targetModule') $ ppModule targetModule'
 
 raiseIfFailure :: T.Text -> ExitCode -> Handle -> IO ()
 raiseIfFailure procName exitCode h =

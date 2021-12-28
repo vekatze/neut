@@ -12,7 +12,7 @@ import Data.Basic (newHint)
 import Data.ByteString.Builder (Builder, toLazyByteString)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (VisitInfo (..), getMainFilePath, nsSep, outputLog, setMainFilePath, setMainModuleDir, shouldColorize)
+import Data.Global (getMainFilePath, nsSep, outputLog, setMainFilePath, shouldColorize, sourceAliasMapRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -23,13 +23,14 @@ import Data.IORef
   )
 import Data.List (foldl')
 import Data.Log (raiseError, raiseError')
+import Data.Module (getArtifactDir, getExecutableDir, getMainModule, getTargetDir, getTargetFilePath)
 import Data.Sequence as Seq
   ( Seq,
     empty,
     (><),
     (|>),
   )
-import Data.Spec (Source (Source, sourceSpec), getEntryPoint, getMainSpec, getProjectArtifactDir, getProjectExecutableDir, getProjectRootDir, getRelPathFromSourceDir, getTargetDir, pathToSection, sourceFilePath)
+import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Elaborate (elaborateMain, elaborateOther)
@@ -39,7 +40,7 @@ import Lower (lowerMain, lowerOther)
 import Parse (parseMain, parseOther)
 import Parse.Core (initializeParserForFile, skip)
 import Parse.Enum (initializeEnumEnv)
-import Parse.Import (Signature, parseImportSequence, signatureToSource)
+import Parse.Import (parseImportSequence)
 import Path
   ( Abs,
     File,
@@ -71,6 +72,10 @@ data OutputKind
   | OutputKindAsm
   deriving (Show)
 
+data VisitInfo
+  = VisitInfoActive
+  | VisitInfoFinish
+
 type ShouldColorize =
   Bool
 
@@ -82,7 +87,6 @@ build target outputKind colorizeFlag mClangOptStr = do
   writeIORef shouldColorize colorizeFlag
   mainFilePath <- resolveTarget target
   mainSource <- getMainSource mainFilePath
-  setMainModuleDir $ getProjectRootDir $ sourceSpec mainSource
   setMainFilePath mainFilePath
   initializeEnumEnv
   dependenceSeq <- computeDependence mainSource
@@ -127,27 +131,27 @@ sourceToLLVM source = do
 
 clean :: IO ()
 clean = do
-  mainSpec <- getMainSpec
-  removeDirRecur $ getTargetDir mainSpec
+  mainModule <- getMainModule
+  removeDirRecur $ getTargetDir mainModule
 
 getExecutableOutputPath :: Target -> IO (Path Abs File)
 getExecutableOutputPath target = do
-  mainSpec <- getMainSpec
-  resolveFile (getProjectExecutableDir mainSpec) target
+  mainModule <- getMainModule
+  resolveFile (getExecutableDir mainModule) target
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
 sourceToOutputPath kind source = do
-  let artifactDir = getProjectArtifactDir $ sourceSpec source
+  let artifactDir = getArtifactDir $ sourceModule source
   relPath <- getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- splitExtension relPath
   attachExtension (artifactDir </> relPathWithoutExtension) kind
 
 getMainSource :: Path Abs File -> IO Source
 getMainSource mainSourceFilePath = do
-  mainSpec <- getMainSpec
+  mainModule <- getMainModule
   return $
     Source
-      { sourceSpec = mainSpec,
+      { sourceModule = mainModule,
         sourceFilePath = mainSourceFilePath
       }
 
@@ -157,9 +161,7 @@ getMainFunctionName source = do
   if sourceFilePath source /= mainFilePath
     then return Nothing
     else do
-      mainSpec <- getMainSpec
-      (sectionHead, sectionTail) <- pathToSection mainSpec $ sourceFilePath source
-      let section = sectionHead : sectionTail
+      section <- getSection source
       return $ Just $ T.intercalate nsSep $ section ++ ["main"]
 
 {-# NOINLINE traceSourceListRef #-}
@@ -175,11 +177,6 @@ visitEnvRef =
 {-# NOINLINE sourceChildrenMapRef #-}
 sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
-  unsafePerformIO (newIORef Map.empty)
-
-{-# NOINLINE sourceAliasMapRef #-}
-sourceAliasMapRef :: IORef (Map.HashMap (Path Abs File) [(Signature, Maybe T.Text)])
-sourceAliasMapRef =
   unsafePerformIO (newIORef Map.empty)
 
 computeDependence :: Source -> IO (Seq Source)
@@ -226,18 +223,16 @@ showCyclicPath' pathList =
 getChildren :: Source -> IO [Source]
 getChildren currentSource = do
   sourceChildrenMap <- readIORef sourceChildrenMapRef
-  case Map.lookup (sourceFilePath currentSource) sourceChildrenMap of
+  let currentSourceFilePath = sourceFilePath currentSource
+  case Map.lookup currentSourceFilePath sourceChildrenMap of
     Just sourceList ->
       return sourceList
     Nothing -> do
       initializeParserForFile $ sourceFilePath currentSource
       skip
-      importSequence <- parseImportSequence
-      let signatureList = map fst importSequence
-      let currentSpec = sourceSpec currentSource
-      sourceList <- mapM (signatureToSource currentSpec) signatureList
-      modifyIORef' sourceChildrenMapRef $ Map.insert (sourceFilePath currentSource) sourceList
-      modifyIORef' sourceAliasMapRef $ Map.insert (sourceFilePath currentSource) importSequence
+      (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
+      modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
+      modifyIORef' sourceAliasMapRef $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList
 
 attachExtension :: Path Abs File -> OutputKind -> IO (Path Abs File)
@@ -290,8 +285,8 @@ type Target =
 
 resolveTarget :: Target -> IO (Path Abs File)
 resolveTarget target = do
-  mainSpec <- getMainSpec
-  case getEntryPoint mainSpec (T.pack target) of
+  mainModule <- getMainModule
+  case getTargetFilePath mainModule (T.pack target) of
     Just path ->
       return path
     Nothing -> do

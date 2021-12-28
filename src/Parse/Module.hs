@@ -1,38 +1,39 @@
-module Parse.Spec
-  ( initializeMainSpec,
+module Parse.Module
+  ( initializeMainModule,
     parse,
   )
 where
 
 import Control.Monad ((>=>))
+import Data.Basic (Checksum (..), URL (..))
 import Data.Entity (Entity, access, toDictionary, toString)
-import Data.Module (Checksum (..), Module (moduleFilePath), getMainModule)
-import Data.Spec (Spec (..), URL (..), setMainSpec)
+import Data.Module (Module (..), findModuleFile, setMainModule)
 import qualified Data.Text as T
 import qualified Parse.Entity as E
 import Path (Abs, Dir, File, Path, Rel, parseRelDir, parseRelFile)
+import Path.IO (getCurrentDir)
 
-parse :: Path Abs File -> IO Spec
-parse specFilePath = do
-  entity <- E.parse specFilePath
+parse :: Path Abs File -> IO Module
+parse moduleFilePath = do
+  entity <- E.parse moduleFilePath
   sourceDirPath <- access "source-directory" entity >>= interpretRelDirPath
   targetDirPath <- access "target-directory" entity >>= interpretRelDirPath
   entryPointEns <- access "target" entity >>= toDictionary
   dependencyEns <- access "dependency" entity >>= toDictionary
-  entryPoint <- mapM interpretRelFilePath entryPointEns
+  target <- mapM interpretRelFilePath entryPointEns
   dependency <- mapM interpretDependency dependencyEns
   return
-    Spec
-      { specSourceDir = sourceDirPath,
-        specTargetDir = targetDirPath,
-        specEntryPoint = entryPoint,
-        specDependency = dependency,
-        specLocation = specFilePath
+    Module
+      { moduleSourceDir = sourceDirPath,
+        moduleTargetDir = targetDirPath,
+        moduleTarget = target,
+        moduleDependency = dependency,
+        moduleLocation = moduleFilePath
       }
 
-initializeMainSpec :: IO ()
-initializeMainSpec = do
-  getMainModule >>= parse . moduleFilePath >>= setMainSpec
+initializeMainModule :: IO ()
+initializeMainModule = do
+  getMainModuleFilePath >>= parse >>= setMainModule
 
 interpretRelFilePath :: Entity -> IO (Path Rel File)
 interpretRelFilePath =
@@ -47,3 +48,7 @@ interpretDependency dependencyValue = do
   url <- access "URL" dependencyValue >>= toString
   checksum <- access "checksum" dependencyValue >>= toString
   return (URL url, Checksum checksum)
+
+getMainModuleFilePath :: IO (Path Abs File)
+getMainModuleFilePath =
+  getCurrentDir >>= findModuleFile

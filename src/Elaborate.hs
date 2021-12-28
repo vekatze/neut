@@ -31,7 +31,7 @@ import Data.LowType
   ( LowType (LowTypeFloat, LowTypeInt),
     asLowTypeMaybe,
   )
-import Data.Spec (Source)
+import Data.Source (Source)
 import Data.Stmt
   ( EnumInfo,
     Stmt (..),

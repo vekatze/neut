@@ -6,7 +6,7 @@ module Data.Basic where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Data.Binary (Binary)
-import Data.Functor.Classes
+import Data.Functor.Classes (Eq1 (..), Show1 (liftShowsPrec))
 import qualified Data.Text as T
 import GHC.Generics (Generic)
 import Path (Abs, File, Path, parseAbsFile)
@@ -200,3 +200,30 @@ showPosInfo path (l, c) =
 getExecPath :: IO (Path Abs File)
 getExecPath =
   getExecutablePath >>= parseAbsFile
+
+type Alias =
+  T.Text
+
+newtype URL
+  = URL T.Text
+  deriving (Show)
+
+newtype Checksum
+  = Checksum T.Text
+  deriving (Show, Ord, Eq)
+
+showChecksum :: Checksum -> T.Text
+showChecksum (Checksum checksum) =
+  checksum
+
+data AliasInfo
+  = AliasInfoUse T.Text
+  | AliasInfoPrefix T.Text T.Text
+  deriving (Show)
+
+data OutputKind
+  = OutputKindObject
+  | OutputKindLLVM
+  | OutputKindExecutable
+  | OutputKindAsm
+  deriving (Show)
