@@ -17,7 +17,7 @@ import Data.Module
   )
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Path (Dir, Rel, mkRelDir, parent, parseRelFile, toFilePath, (</>))
+import Path (parent, parseRelFile, toFilePath, (</>))
 import Path.IO (doesDirExist, ensureDir, getCurrentDir, resolveDir)
 
 initialize :: T.Text -> IO ()
@@ -41,8 +41,7 @@ createModuleFile newModule = do
 
 createMainFile :: Module -> IO ()
 createMainFile newModule = do
-  let baseDir = parent $ moduleLocation newModule
-  let sourceDir = baseDir </> moduleSourceDir newModule
+  let sourceDir = getSourceDir newModule
   let target = Map.toList $ moduleTarget newModule
   forM_ target $ \(_, relPath) -> do
     let mainFilePath = sourceDir </> relPath
@@ -55,9 +54,7 @@ constructDefaultModule name = do
   mainFile <- parseRelFile $ T.unpack $ name <> "." <> sourceFileExtension
   return $
     Module
-      { moduleSourceDir = $(mkRelDir "source/"),
-        moduleTargetDir = $(mkRelDir "target/"),
-        moduleTarget = Map.fromList [(name, mainFile)],
+      { moduleTarget = Map.fromList [(name, mainFile)],
         moduleDependency = Map.empty,
         moduleLocation = moduleRootDir </> moduleFile
       }

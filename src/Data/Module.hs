@@ -14,9 +14,7 @@ import Path.IO (doesFileExist)
 import System.IO.Unsafe (unsafePerformIO)
 
 data Module = Module
-  { moduleSourceDir :: Path Rel Dir,
-    moduleTargetDir :: Path Rel Dir,
-    moduleTarget :: Map.HashMap T.Text (Path Rel File),
+  { moduleTarget :: Map.HashMap T.Text (Path Rel File),
     moduleDependency :: Map.HashMap Alias (URL, Checksum),
     moduleLocation :: Path Abs File
   }
@@ -32,11 +30,11 @@ defaultModulePrefix =
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
-  parent (moduleLocation baseModule) </> moduleSourceDir baseModule
+  parent (moduleLocation baseModule) </> $(mkRelDir "source")
 
 getTargetDir :: Module -> Path Abs Dir
 getTargetDir baseModule =
-  parent (moduleLocation baseModule) </> moduleTargetDir baseModule
+  parent (moduleLocation baseModule) </> $(mkRelDir "target")
 
 getReleaseDir :: Module -> Path Abs Dir
 getReleaseDir baseModule =
@@ -113,7 +111,5 @@ ppModule someModule = do
   ppEntityTopLevel $
     Map.fromList
       [ ("dependency", () :< EntityDictionary dependency),
-        ("source-directory", () :< EntityString (T.pack $ toFilePath $ moduleSourceDir someModule)),
-        ("target", () :< EntityDictionary entryPoint),
-        ("target-directory", () :< EntityString (T.pack $ toFilePath $ moduleTargetDir someModule))
+        ("target", () :< EntityDictionary entryPoint)
       ]
