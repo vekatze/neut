@@ -69,26 +69,6 @@ shouldColorize :: IORef Bool
 shouldColorize =
   unsafePerformIO (newIORef True)
 
-{-# NOINLINE shouldDisplayLogLocation #-}
-shouldDisplayLogLocation :: IORef Bool
-shouldDisplayLogLocation =
-  unsafePerformIO (newIORef True)
-
-{-# NOINLINE shouldDisplayLogLevel #-}
-shouldDisplayLogLevel :: IORef Bool
-shouldDisplayLogLevel =
-  unsafePerformIO (newIORef True)
-
-{-# NOINLINE shouldDisplayLogText #-}
-shouldDisplayLogText :: IORef Bool
-shouldDisplayLogText =
-  unsafePerformIO (newIORef True)
-
-{-# NOINLINE shouldDisplayLogFooter #-}
-shouldDisplayLogFooter :: IORef Bool
-shouldDisplayLogFooter =
-  unsafePerformIO (newIORef True)
-
 {-# NOINLINE shouldCancelAlloc #-}
 shouldCancelAlloc :: IORef Bool
 shouldCancelAlloc =
@@ -336,15 +316,10 @@ returnDirectory path =
 
 outputLog :: Log -> IO ()
 outputLog (mpos, l, t) = do
-  whenRef shouldDisplayLogLocation $
-    outputLogLocation mpos
-  whenRef shouldDisplayLogLevel $
-    outputLogLevel l
-  whenRef shouldDisplayLogText $
-    outputLogText t (logLevelToPad l)
-  whenRef
-    shouldDisplayLogFooter
-    outputFooter
+  outputLogLocation mpos
+  outputLogLevel l
+  outputLogText t (logLevelToPad l)
+  outputFooter
 
 whenRef :: IORef Bool -> IO () -> IO ()
 whenRef ref comp = do
@@ -353,9 +328,8 @@ whenRef ref comp = do
 
 outputLogLocation :: Maybe PosInfo -> IO ()
 outputLogLocation mpos = do
-  b <- readIORef shouldDisplayLogLocation
   case mpos of
-    Just (path, loc) | b ->
+    Just (path, loc) ->
       withSGR [SetConsoleIntensity BoldIntensity] $ do
         TIO.putStr $ T.pack (showPosInfo path loc)
         TIO.putStrLn ":"
@@ -388,10 +362,7 @@ outputLogText str padComp = do
 
 logLevelToPad :: LogLevel -> IO T.Text
 logLevelToPad level = do
-  b <- readIORef shouldDisplayLogLevel
-  if b
-    then return $ T.replicate (T.length (logLevelToText level) + 2) " "
-    else return ""
+  return $ T.replicate (T.length (logLevelToText level) + 2) " "
 
 stylizeLogText :: T.Text -> T.Text -> T.Text
 stylizeLogText str pad = do
