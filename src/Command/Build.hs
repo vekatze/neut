@@ -8,22 +8,22 @@ module Command.Build
 where
 
 import Clarify (clarifyMain, clarifyOther)
-import Control.Monad (void, when)
+import Control.Monad (forM_, void, when)
 import Data.Basic (newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (getMainFilePath, nsSep, outputLog, setMainFilePath, shouldColorize, sourceAliasMapRef)
+import Data.Global (getMainFilePath, nsSep, outputLog, setMainFilePath, sourceAliasMapRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
     modifyIORef',
     newIORef,
     readIORef,
-    writeIORef,
   )
 import Data.List (foldl')
 import Data.Log (raiseError, raiseError')
-import Data.Module (getArtifactDir, getExecutableDir, getMainModule, getTargetDir, getTargetFilePath)
+import Data.Maybe (fromMaybe)
+import Data.Module (Module (moduleTarget), getArtifactDir, getExecutableDir, getMainModule, getTargetDir, getTargetFilePath)
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -80,28 +80,35 @@ data VisitInfo
 type IsModified =
   Bool
 
-type ShouldColorize =
-  Bool
-
 type ClangOption =
   String
 
-build :: Target -> OutputKind -> ShouldColorize -> Maybe ClangOption -> IO ()
-build target outputKind colorizeFlag mClangOptStr = do
-  writeIORef shouldColorize colorizeFlag
+build :: Maybe Target -> Maybe ClangOption -> IO ()
+build mTarget mClangOptStr = do
+  case mTarget of
+    Just target ->
+      build' target mClangOptStr
+    Nothing -> do
+      mainModule <- getMainModule
+      forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
+        build' (T.unpack target) mClangOptStr
+
+build' :: Target -> Maybe ClangOption -> IO ()
+build' target mClangOptStr = do
   mainFilePath <- resolveTarget target
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
   initializeEnumEnv
   (isModified, dependenceSeq) <- computeDependence mainSource
   modifiedSourceSet <- readIORef modifiedSourceSetRef
-  mapM_ (compile modifiedSourceSet) dependenceSeq
-  when isModified $ link target $ toList dependenceSeq
+  let clangOptStr = fromMaybe "" mClangOptStr
+  mapM_ (compile modifiedSourceSet clangOptStr) dependenceSeq
+  when isModified $ link target mClangOptStr $ toList dependenceSeq
 
-compile :: S.Set (Path Abs File) -> Source -> IO ()
-compile modifiedSourceSet source = do
+compile :: S.Set (Path Abs File) -> String -> Source -> IO ()
+compile modifiedSourceSet clangOptStr source = do
   if S.member (sourceFilePath source) modifiedSourceSet
-    then compile' source
+    then compile' clangOptStr source
     else loadTopLevelDefinitions source
 
 loadTopLevelDefinitions :: Source -> IO ()
@@ -113,14 +120,14 @@ loadTopLevelDefinitions source = do
     Nothing ->
       void $ parseOther source >>= elaborateOther source >>= clarifyOther
 
-compile' :: Source -> IO ()
-compile' source = do
+compile' :: String -> Source -> IO ()
+compile' clangOptStr source = do
   llvm <- compileToLLVM source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
   L.writeFile (toFilePath llvmOutputPath) llvm
-  let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"]
+  let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"] ++ words clangOptStr
   withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
     L.hPut stdin llvm
     hClose stdin
@@ -137,12 +144,12 @@ compileToLLVM source = do
     Nothing ->
       parseOther source >>= elaborateOther source >>= clarifyOther >>= lowerOther >> emitOther
 
-link :: Target -> [Source] -> IO ()
-link target sourceList = do
+link :: Target -> Maybe String -> [Source] -> IO ()
+link target mClangOptStr sourceList = do
   outputPath <- getExecutableOutputPath target
   ensureDir $ parent outputPath
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
-  let clangCmd = proc "clang" $ clangLinkOpt objectPathList outputPath
+  let clangCmd = proc "clang" $ clangLinkOpt objectPathList outputPath $ fromMaybe "" mClangOptStr
   (_, _, Just clangErrorHandler, clangHandler) <-
     createProcess clangCmd {std_err = CreatePipe}
   clangExitCode <- waitForProcess clangHandler
@@ -307,10 +314,10 @@ instance Read OutputKind where
   readsPrec _ _ =
     []
 
-clangLinkOpt :: [Path Abs File] -> Path Abs File -> [String]
-clangLinkOpt objectPathList outputPath = do
+clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
+clangLinkOpt objectPathList outputPath additionalOptionStr = do
   let pathList = map toFilePath objectPathList
-  ["-Wno-override-module", "-O2", "-o", toFilePath outputPath] ++ pathList
+  ["-Wno-override-module", "-O2", "-o", toFilePath outputPath] ++ pathList ++ words additionalOptionStr
 
 clangOptWith :: OutputKind -> Path Abs File -> [String]
 clangOptWith kind outputPath =

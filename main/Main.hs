@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Command.Build (OutputKind (..), build, clean)
+import Command.Build (build, clean)
 import Command.Dependency (get, tidy)
 import Command.Init (initialize)
 import Command.Release (release)
@@ -18,7 +18,6 @@ import qualified Data.Text as T
 import Data.Version (showVersion)
 import Options.Applicative
   ( Parser,
-    ReadM,
     argument,
     command,
     execParser,
@@ -29,10 +28,8 @@ import Options.Applicative
     info,
     long,
     metavar,
-    option,
     optional,
     progDesc,
-    readerError,
     str,
     strOption,
     subparser,
@@ -47,7 +44,6 @@ import Path
 import Path.IO (resolveFile')
 import Paths_neut (version)
 import System.Exit (ExitCode (ExitFailure), exitWith)
-import Text.Read (readMaybe)
 
 type Target =
   String
@@ -58,20 +54,13 @@ type InputPath =
 type CheckOptEndOfEntry =
   String
 
-type ShouldColorize =
-  Bool
-
 type ClangOption =
   String
 
 data Command
-  = Build
-      Target
-      OutputKind
-      ShouldColorize
-      (Maybe ClangOption)
+  = Build (Maybe Target) (Maybe ClangOption)
   | Clean
-  | Check InputPath ShouldColorize CheckOptEndOfEntry
+  | Check InputPath Bool CheckOptEndOfEntry
   | Release T.Text
   | Get Alias URL
   | Tidy
@@ -139,23 +128,15 @@ parseOpt =
 parseBuildOpt :: Parser Command
 parseBuildOpt =
   Build
-    <$> argument
-      str
-      ( mconcat
-          [ metavar "TARGET",
-            help "The build target"
-          ]
+    <$> optional
+      ( argument
+          str
+          ( mconcat
+              [ metavar "TARGET",
+                help "The build target"
+              ]
+          )
       )
-      <*> option
-        kindReader
-        ( mconcat
-            [ long "emit",
-              metavar "KIND",
-              value OutputKindExecutable,
-              help "The type of output file"
-            ]
-        )
-      <*> colorizeOpt
       <*> optional
         ( strOption
             ( mconcat
@@ -213,15 +194,6 @@ parseVersionOpt :: Parser Command
 parseVersionOpt =
   pure Version
 
-kindReader :: ReadM OutputKind
-kindReader = do
-  s <- str
-  case readMaybe s of
-    Nothing ->
-      readerError $ "unknown mode:" ++ s
-    Just m ->
-      return m
-
 parseCheckOpt :: Parser Command
 parseCheckOpt =
   Check
@@ -266,9 +238,9 @@ parseReleaseOpt =
 runCommand :: Command -> IO ()
 runCommand cmd = do
   case cmd of
-    Build target outputKind colorizeFlag mClangOptStr -> do
+    Build target mClangOptStr -> do
       initializeMainModule
-      runAction $ build target outputKind colorizeFlag mClangOptStr
+      runAction $ build target mClangOptStr
     Check inputPathStr colorizeFlag eoe -> do
       initializeMainModule
       writeIORef shouldColorize colorizeFlag
