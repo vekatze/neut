@@ -8,7 +8,7 @@ module Command.Build
 where
 
 import Clarify (clarifyMain, clarifyOther)
-import Control.Monad (unless, void, when)
+import Control.Monad (void, when)
 import Data.Basic (newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
@@ -30,10 +30,10 @@ import Data.Sequence as Seq
     (><),
     (|>),
   )
+import qualified Data.Set as S
 import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Time.Clock (UTCTime)
 import Elaborate (elaborateMain, elaborateOther)
 import Emit (emitMain, emitOther)
 import GHC.IO.Handle (hClose)
@@ -77,6 +77,9 @@ data VisitInfo
   = VisitInfoActive
   | VisitInfoFinish
 
+type IsModified =
+  Bool
+
 type ShouldColorize =
   Bool
 
@@ -90,29 +93,49 @@ build target outputKind colorizeFlag mClangOptStr = do
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
   initializeEnumEnv
-  dependenceList <- toList <$> computeDependence mainSource
-  mapM_ compile dependenceList
-  alreadyFresh <- isExecutableAlreadyFresh target dependenceList
-  unless alreadyFresh $ link target dependenceList
+  (isModified, dependenceSeq) <- computeDependence mainSource
+  modifiedSourceSet <- readIORef modifiedSourceSetRef
+  mapM_ (compile modifiedSourceSet) dependenceSeq
+  when isModified $ link target $ toList dependenceSeq
 
-compile :: Source -> IO ()
-compile source = do
-  b <- doesFreshObjectCacheExist source
-  if b
-    then loadTopLevelDefinitions source
-    else do
-      llvm <- sourceToLLVM source
-      outputPath <- sourceToOutputPath OutputKindObject source
-      ensureDir $ parent outputPath
-      llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
-      L.writeFile (toFilePath llvmOutputPath) llvm
-      let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"]
-      withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
-        L.hPut stdin llvm
-        hClose stdin
-        clangExitCode <- waitForProcess clangProcessHandler
-        raiseIfFailure "clang" clangExitCode clangErrorHandler
-        return ()
+compile :: S.Set (Path Abs File) -> Source -> IO ()
+compile modifiedSourceSet source = do
+  if S.member (sourceFilePath source) modifiedSourceSet
+    then compile' source
+    else loadTopLevelDefinitions source
+
+loadTopLevelDefinitions :: Source -> IO ()
+loadTopLevelDefinitions source = do
+  mMainFunctionName <- getMainFunctionName source
+  case mMainFunctionName of
+    Just mainName ->
+      void $ parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName
+    Nothing ->
+      void $ parseOther source >>= elaborateOther source >>= clarifyOther
+
+compile' :: Source -> IO ()
+compile' source = do
+  llvm <- compileToLLVM source
+  outputPath <- sourceToOutputPath OutputKindObject source
+  ensureDir $ parent outputPath
+  llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
+  L.writeFile (toFilePath llvmOutputPath) llvm
+  let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"]
+  withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
+    L.hPut stdin llvm
+    hClose stdin
+    clangExitCode <- waitForProcess clangProcessHandler
+    raiseIfFailure "clang" clangExitCode clangErrorHandler
+    return ()
+
+compileToLLVM :: Source -> IO L.ByteString
+compileToLLVM source = do
+  mMainFunctionName <- getMainFunctionName source
+  case mMainFunctionName of
+    Just mainName ->
+      parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName >>= lowerMain >>= emitMain
+    Nothing ->
+      parseOther source >>= elaborateOther source >>= clarifyOther >>= lowerOther >> emitOther
 
 link :: Target -> [Source] -> IO ()
 link target sourceList = do
@@ -124,24 +147,6 @@ link target sourceList = do
     createProcess clangCmd {std_err = CreatePipe}
   clangExitCode <- waitForProcess clangHandler
   raiseIfFailure "clang" clangExitCode clangErrorHandler
-
-sourceToLLVM :: Source -> IO L.ByteString
-sourceToLLVM source = do
-  mMainFunctionName <- getMainFunctionName source
-  case mMainFunctionName of
-    Just mainName ->
-      parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName >>= lowerMain >>= emitMain
-    Nothing ->
-      parseOther source >>= elaborateOther source >>= clarifyOther >>= lowerOther >> emitOther
-
-loadTopLevelDefinitions :: Source -> IO ()
-loadTopLevelDefinitions source = do
-  mMainFunctionName <- getMainFunctionName source
-  case mMainFunctionName of
-    Just mainName ->
-      void $ parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName
-    Nothing ->
-      void $ parseOther source >>= elaborateOther source >>= clarifyOther
 
 clean :: IO ()
 clean = do
@@ -195,26 +200,55 @@ sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-computeDependence :: Source -> IO (Seq Source)
+{-# NOINLINE modifiedSourceSetRef #-}
+modifiedSourceSetRef :: IORef (S.Set (Path Abs File))
+modifiedSourceSetRef =
+  unsafePerformIO (newIORef S.empty)
+
+computeDependence :: Source -> IO (IsModified, Seq Source)
 computeDependence source = do
   visitEnv <- readIORef visitEnvRef
   case Map.lookup (sourceFilePath source) visitEnv of
-    Just VisitInfoActive -> do
-      traceSourceList <- readIORef traceSourceListRef
-      let m = newHint 1 1 $ toFilePath $ sourceFilePath source
-      let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-      raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+    Just VisitInfoActive ->
+      raiseCyclicPath source
     Just VisitInfoFinish ->
-      return Seq.empty
+      return (False, Seq.empty)
     Nothing -> do
-      children <- getChildren source
       let path = sourceFilePath source
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
       modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
-      dependenceSeq <- foldl' (><) Seq.empty <$> mapM computeDependence children
+      children <- getChildren source
+      (isModifiedList, seqList) <- unzip <$> mapM computeDependence children
       modifyIORef' traceSourceListRef tail
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
-      return $ dependenceSeq |> source
+      isModified <- computeModificationStatus isModifiedList source
+      return (isModified, foldl' (><) Seq.empty seqList |> source)
+
+computeModificationStatus :: [IsModified] -> Source -> IO IsModified
+computeModificationStatus isModifiedList source = do
+  b <- isSourceModified source
+  let isModified = or $ b : isModifiedList
+  when isModified $
+    modifyIORef' modifiedSourceSetRef $ S.insert $ sourceFilePath source
+  return isModified
+
+isSourceModified :: Source -> IO Bool
+isSourceModified source = do
+  cachePath <- sourceToOutputPath OutputKindObject source
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return True
+    else do
+      srcModTime <- getModificationTime $ sourceFilePath source
+      cacheModTime <- getModificationTime cachePath
+      return $ cacheModTime < srcModTime
+
+raiseCyclicPath :: Source -> IO a
+raiseCyclicPath source = do
+  traceSourceList <- readIORef traceSourceListRef
+  let m = newHint 1 1 $ toFilePath $ sourceFilePath source
+  let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
+  raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
@@ -324,36 +358,3 @@ raiseIfFailure procName exitCode h =
           <> T.pack (show i)
           <> "):\n"
           <> errStr
-
-doesFreshObjectCacheExist :: Source -> IO Bool
-doesFreshObjectCacheExist source = do
-  cachePath <- sourceToOutputPath OutputKindObject source
-  hasCache <- doesFileExist cachePath
-  if not hasCache
-    then return False
-    else do
-      srcModTime <- getModificationTime $ sourceFilePath source
-      cacheModTime <- getModificationTime cachePath
-      return $ cacheModTime > srcModTime
-
-isExecutableAlreadyFresh :: Target -> [Source] -> IO Bool
-isExecutableAlreadyFresh target sourceList = do
-  executablePath <- getExecutableOutputPath target
-  executableExists <- doesFileExist executablePath
-  if not executableExists
-    then return False
-    else do
-      executableModTime <- getModificationTime executablePath
-      isExecutableAlreadyFresh' executableModTime sourceList
-
-isExecutableAlreadyFresh' :: UTCTime -> [Source] -> IO Bool
-isExecutableAlreadyFresh' executableModTime sourceList =
-  case sourceList of
-    [] ->
-      return True
-    source : rest -> do
-      objectFilePath <- sourceToOutputPath OutputKindObject source
-      objectModTime <- getModificationTime objectFilePath
-      if executableModTime >= objectModTime
-        then isExecutableAlreadyFresh' executableModTime rest
-        else return False
