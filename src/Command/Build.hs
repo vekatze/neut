@@ -8,8 +8,8 @@ module Command.Build
 where
 
 import Clarify (clarifyMain, clarifyOther)
+import Control.Monad (void)
 import Data.Basic (newHint)
-import Data.ByteString.Builder (Builder, toLazyByteString)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
 import Data.Global (getMainFilePath, nsSep, outputLog, setMainFilePath, shouldColorize, sourceAliasMapRef)
@@ -51,7 +51,7 @@ import Path
     toFilePath,
     (</>),
   )
-import Path.IO (ensureDir, removeDirRecur, resolveFile)
+import Path.IO (doesFileExist, ensureDir, getModificationTime, removeDirRecur, resolveFile)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)
 import System.IO (Handle)
 import System.IO.Unsafe (unsafePerformIO)
@@ -95,19 +95,22 @@ build target outputKind colorizeFlag mClangOptStr = do
 
 compile :: Source -> IO ()
 compile source = do
-  llvm <- sourceToLLVM source
-  outputPath <- sourceToOutputPath OutputKindObject source
-  ensureDir $ parent outputPath
-  llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
-  L.writeFile (toFilePath llvmOutputPath) $ toLazyByteString llvm
-  let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"]
-  let llvmIR = toLazyByteString llvm
-  withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
-    L.hPut stdin llvmIR
-    hClose stdin
-    clangExitCode <- waitForProcess clangProcessHandler
-    raiseIfFailure "clang" clangExitCode clangErrorHandler
-    return ()
+  b <- doesFreshObjectCacheExist source
+  if b
+    then loadTopLevelDefinitions source
+    else do
+      llvm <- sourceToLLVM source
+      outputPath <- sourceToOutputPath OutputKindObject source
+      ensureDir $ parent outputPath
+      llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
+      L.writeFile (toFilePath llvmOutputPath) llvm
+      let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"]
+      withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
+        L.hPut stdin llvm
+        hClose stdin
+        clangExitCode <- waitForProcess clangProcessHandler
+        raiseIfFailure "clang" clangExitCode clangErrorHandler
+        return ()
 
 link :: Target -> [Source] -> IO ()
 link target sourceList = do
@@ -120,7 +123,7 @@ link target sourceList = do
   clangExitCode <- waitForProcess clangHandler
   raiseIfFailure "clang" clangExitCode clangErrorHandler
 
-sourceToLLVM :: Source -> IO Builder
+sourceToLLVM :: Source -> IO L.ByteString
 sourceToLLVM source = do
   mMainFunctionName <- getMainFunctionName source
   case mMainFunctionName of
@@ -128,6 +131,15 @@ sourceToLLVM source = do
       parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName >>= lowerMain >>= emitMain
     Nothing ->
       parseOther source >>= elaborateOther source >>= clarifyOther >>= lowerOther >> emitOther
+
+loadTopLevelDefinitions :: Source -> IO ()
+loadTopLevelDefinitions source = do
+  mMainFunctionName <- getMainFunctionName source
+  case mMainFunctionName of
+    Just mainName ->
+      void $ parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName
+    Nothing ->
+      void $ parseOther source >>= elaborateOther source >>= clarifyOther
 
 clean :: IO ()
 clean = do
@@ -308,3 +320,14 @@ raiseIfFailure procName exitCode h =
           <> T.pack (show i)
           <> "):\n"
           <> errStr
+
+doesFreshObjectCacheExist :: Source -> IO Bool
+doesFreshObjectCacheExist source = do
+  cachePath <- sourceToOutputPath OutputKindObject source
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return False
+    else do
+      srcModTime <- getModificationTime $ sourceFilePath source
+      cacheModTime <- getModificationTime cachePath
+      return $ cacheModTime > srcModTime

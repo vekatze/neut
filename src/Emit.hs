@@ -12,6 +12,8 @@ import Data.ByteString.Builder
     intDec,
     integerDec,
   )
+import qualified Data.ByteString.Builder as L
+import qualified Data.ByteString.Lazy as L
 import Data.Global
   ( declEnv,
     lowDefEnv,
@@ -41,27 +43,17 @@ import Numeric.Half (Half)
 import Reduce.LowComp (reduceLowComp)
 import qualified System.Info as System
 
--- emit :: Maybe LowComp -> IO Builder
--- emit mMainTerm = do
---   case mMainTerm of
---     Just mainTerm -> do
---       mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
---       mainBuilder <- emitDefinition "i64" "main" [] mainTerm'
---       emit' mainBuilder
---     Nothing -> do
---       emit' []
-
-emitMain :: LowComp -> IO Builder
+emitMain :: LowComp -> IO L.ByteString
 emitMain mainTerm = do
   mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
   mainBuilder <- emitDefinition "i64" "main" [] mainTerm'
   emit' mainBuilder
 
-emitOther :: IO Builder
+emitOther :: IO L.ByteString
 emitOther =
   emit' []
 
-emit' :: [Builder] -> IO Builder
+emit' :: [Builder] -> IO L.ByteString
 emit' aux = do
   g <- emitDeclarations
   lenv <- readIORef lowDefEnv
@@ -70,7 +62,7 @@ emit' aux = do
       let args' = map (showLowValue . LowValueVarLocal) args
       body' <- reduceLowComp IntMap.empty Map.empty body
       emitDefinition "i8*" (TE.encodeUtf8Builder name) args' body'
-  return $ unlinesL $ g : aux <> concat xs
+  return $ L.toLazyByteString $ unlinesL $ g : aux <> concat xs
 
 emitDeclarations :: IO Builder
 emitDeclarations = do
