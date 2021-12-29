@@ -30,6 +30,7 @@ dependencies:
   - process
   - safe-exceptions
   - text
+  - time
   - unordered-containers
   - utf8-string
 

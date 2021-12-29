@@ -8,7 +8,7 @@ module Command.Build
 where
 
 import Clarify (clarifyMain, clarifyOther)
-import Control.Monad (void)
+import Control.Monad (unless, void, when)
 import Data.Basic (newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
@@ -33,6 +33,7 @@ import Data.Sequence as Seq
 import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import Data.Time.Clock (UTCTime)
 import Elaborate (elaborateMain, elaborateOther)
 import Emit (emitMain, emitOther)
 import GHC.IO.Handle (hClose)
@@ -51,7 +52,7 @@ import Path
     toFilePath,
     (</>),
   )
-import Path.IO (doesFileExist, ensureDir, getModificationTime, removeDirRecur, resolveFile)
+import Path.IO (doesDirExist, doesFileExist, ensureDir, getModificationTime, removeDirRecur, resolveFile)
 import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)
 import System.IO (Handle)
 import System.IO.Unsafe (unsafePerformIO)
@@ -89,9 +90,10 @@ build target outputKind colorizeFlag mClangOptStr = do
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
   initializeEnumEnv
-  dependenceSeq <- computeDependence mainSource
-  mapM_ compile (toList dependenceSeq)
-  link target $ toList dependenceSeq
+  dependenceList <- toList <$> computeDependence mainSource
+  mapM_ compile dependenceList
+  alreadyFresh <- isExecutableAlreadyFresh target dependenceList
+  unless alreadyFresh $ link target dependenceList
 
 compile :: Source -> IO ()
 compile source = do
@@ -144,7 +146,9 @@ loadTopLevelDefinitions source = do
 clean :: IO ()
 clean = do
   mainModule <- getMainModule
-  removeDirRecur $ getTargetDir mainModule
+  let targetDir = getTargetDir mainModule
+  b <- doesDirExist targetDir
+  when b $ removeDirRecur $ getTargetDir mainModule
 
 getExecutableOutputPath :: Target -> IO (Path Abs File)
 getExecutableOutputPath target = do
@@ -331,3 +335,25 @@ doesFreshObjectCacheExist source = do
       srcModTime <- getModificationTime $ sourceFilePath source
       cacheModTime <- getModificationTime cachePath
       return $ cacheModTime > srcModTime
+
+isExecutableAlreadyFresh :: Target -> [Source] -> IO Bool
+isExecutableAlreadyFresh target sourceList = do
+  executablePath <- getExecutableOutputPath target
+  executableExists <- doesFileExist executablePath
+  if not executableExists
+    then return False
+    else do
+      executableModTime <- getModificationTime executablePath
+      isExecutableAlreadyFresh' executableModTime sourceList
+
+isExecutableAlreadyFresh' :: UTCTime -> [Source] -> IO Bool
+isExecutableAlreadyFresh' executableModTime sourceList =
+  case sourceList of
+    [] ->
+      return True
+    source : rest -> do
+      objectFilePath <- sourceToOutputPath OutputKindObject source
+      objectModTime <- getModificationTime objectFilePath
+      if executableModTime >= objectModTime
+        then isExecutableAlreadyFresh' executableModTime rest
+        else return False
