@@ -18,14 +18,14 @@ import Data.Basic
     asText',
   )
 import Data.Global
-  ( constraintEnv,
-    constructorEnv,
+  ( constraintListRef,
+    constructorEnvRef,
     holeEnvRef,
     newAster,
     newIdentFromText,
-    revEnumEnv,
-    topTypeEnv,
-    weakTypeEnv,
+    revEnumEnvRef,
+    termTypeEnvRef,
+    weakTypeEnvRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
@@ -93,7 +93,7 @@ infer' ctx term =
       _ :< t <- lookupWeakTypeEnv m x
       return (m :< WeakTermVar x, m :< t)
     m :< WeakTermVarGlobal name -> do
-      _ :< t <- lookupTopTypeEnv m name
+      _ :< t <- lookupTermTypeEnv m name
       return (m :< WeakTermVarGlobal name, m :< t)
     m :< WeakTermPi xts t -> do
       (xts', t') <- inferPi ctx xts t
@@ -170,8 +170,8 @@ infer' ctx term =
         [] ->
           return (m :< WeakTermCase resultType mSubject' (e', t') [], resultType) -- ex falso quodlibet
         ((_, constructorName, _), _) : _ -> do
-          cenv <- readIORef constructorEnv
-          case Map.lookup constructorName cenv of
+          constructorEnv <- readIORef constructorEnvRef
+          case Map.lookup constructorName constructorEnv of
             Nothing ->
               raiseCritical m $ "no such constructor defined (infer): " <> constructorName
             Just (holeCount, _) -> do
@@ -180,7 +180,7 @@ infer' ctx term =
                 (xts', (body', tBody)) <- inferBinder ctx xts body
                 insConstraintEnv resultType tBody
                 let xs = map (\(mx, x, t) -> (mx :< WeakTermVar x, t)) xts'
-                tCons <- lookupTopTypeEnv m name
+                tCons <- lookupTermTypeEnv m name
                 case holeList ++ xs of
                   [] ->
                     insConstraintEnv tCons t'
@@ -342,11 +342,11 @@ inferEnumCase ctx weakCase =
 
 insConstraintEnv :: WeakTerm -> WeakTerm -> IO ()
 insConstraintEnv t1 t2 =
-  modifyIORef' constraintEnv $ \env -> (t1, t2) : env
+  modifyIORef' constraintListRef $ (:) (t1, t2)
 
 insWeakTypeEnv :: Ident -> WeakTerm -> IO ()
 insWeakTypeEnv (I (_, i)) t =
-  modifyIORef' weakTypeEnv $ \env -> IntMap.insert i t env
+  modifyIORef' weakTypeEnvRef $ IntMap.insert i t
 
 lookupWeakTypeEnv :: Hint -> Ident -> IO WeakTerm
 lookupWeakTypeEnv m s = do
@@ -358,19 +358,19 @@ lookupWeakTypeEnv m s = do
       raiseCritical m $
         asText' s <> " is not found in the weak type environment."
 
-lookupTopTypeEnv :: Hint -> T.Text -> IO WeakTerm
-lookupTopTypeEnv m name = do
-  ttenv <- readIORef topTypeEnv
-  case Map.lookup name ttenv of
+lookupTermTypeEnv :: Hint -> T.Text -> IO WeakTerm
+lookupTermTypeEnv m name = do
+  termTypeEnv <- readIORef termTypeEnvRef
+  case Map.lookup name termTypeEnv of
     Nothing ->
-      raiseCritical m $ name <> " is not found in the top type environment."
+      raiseCritical m $ name <> " is not found in the term type environment."
     Just t ->
       return t
 
 lookupWeakTypeEnvMaybe :: Ident -> IO (Maybe WeakTerm)
 lookupWeakTypeEnvMaybe (I (_, s)) = do
-  wtenv <- readIORef weakTypeEnv
-  case IntMap.lookup s wtenv of
+  weakTypeEnv <- readIORef weakTypeEnvRef
+  case IntMap.lookup s weakTypeEnv of
     Nothing ->
       return Nothing
     Just t ->
@@ -378,8 +378,8 @@ lookupWeakTypeEnvMaybe (I (_, s)) = do
 
 lookupKind :: Hint -> T.Text -> IO T.Text
 lookupKind m name = do
-  renv <- readIORef revEnumEnv
-  case Map.lookup name renv of
+  revEnumEnv <- readIORef revEnumEnvRef
+  case Map.lookup name revEnumEnv of
     Nothing ->
       raiseError m $ "no such enum-intro is defined: " <> name
     Just (j, _) ->

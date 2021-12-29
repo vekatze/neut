@@ -15,10 +15,10 @@ import Data.ByteString.Builder
 import qualified Data.ByteString.Builder as L
 import qualified Data.ByteString.Lazy as L
 import Data.Global
-  ( declEnv,
-    lowDefEnv,
+  ( lowDeclEnvRef,
+    lowDefEnvRef,
     newIdentFromText,
-    nopFreeSet,
+    nopFreeSetRef,
   )
 import qualified Data.HashMap.Lazy as HashMap
 import Data.IORef (readIORef)
@@ -56,9 +56,9 @@ emitOther =
 emit' :: [Builder] -> IO L.ByteString
 emit' aux = do
   g <- emitDeclarations
-  lenv <- readIORef lowDefEnv
+  lowDefEnv <- readIORef lowDefEnvRef
   xs <-
-    forM (HashMap.toList lenv) $ \(name, (args, body)) -> do
+    forM (HashMap.toList lowDefEnv) $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
       body' <- reduceLowComp IntMap.empty Map.empty body
       emitDefinition "i8*" (TE.encodeUtf8Builder name) args' body'
@@ -66,8 +66,8 @@ emit' aux = do
 
 emitDeclarations :: IO Builder
 emitDeclarations = do
-  denv <- HashMap.toList <$> readIORef declEnv
-  return $ unlinesL $ map declToBuilder denv
+  lowDeclEnv <- HashMap.toList <$> readIORef lowDeclEnvRef
+  return $ unlinesL $ map declToBuilder lowDeclEnv
 
 declToBuilder :: (T.Text, ([LowType], LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
@@ -184,8 +184,8 @@ emitLowOp llvmOp =
     LowOpAlloc d _ ->
       return $ unwordsL ["call fastcc", "i8*", "@malloc(i8* " <> showLowValue d <> ")"]
     LowOpFree d _ j -> do
-      nenv <- readIORef nopFreeSet
-      if S.member j nenv
+      nopFreeSet <- readIORef nopFreeSetRef
+      if S.member j nopFreeSet
         then return "bitcast i8* null to i8*" -- nop
         else return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> showLowValue d <> ")"]
     LowOpSyscall num ds ->

@@ -13,7 +13,7 @@ import Data.Basic
     asInt,
     isOpaque,
   )
-import Data.Global (dataEnv, newIdentFromIdent)
+import Data.Global (dataEnvRef, newIdentFromIdent)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
@@ -101,11 +101,11 @@ reduceTerm term =
     (m :< TermCase resultType mSubject (e, t) clauseList) -> do
       e' <- reduceTerm e
       let lamList = map (toLamList m) clauseList
-      denv <- readIORef dataEnv
+      dataEnv <- readIORef dataEnvRef
       case e' of
         (_ :< TermPiIntro opacity (LamKindCons dataName consName) _ _)
           | not (isOpaque opacity),
-            Just consNameList <- Map.lookup dataName denv,
+            Just consNameList <- Map.lookup dataName dataEnv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do
             let app = m :< TermPiElim e' (resultType : lamList)

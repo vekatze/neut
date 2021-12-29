@@ -9,14 +9,14 @@ import Control.Monad (forM_, unless, (>=>))
 import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..), asText)
 import Data.Comp (Comp (..), Primitive (..), Value (..))
 import Data.Global
-  ( declEnv,
-    defEnv,
-    lowDefEnv,
+  ( compDefEnvRef,
+    lowDeclEnvRef,
+    lowDefEnvRef,
     newCount,
     newIdentFromIdent,
     newIdentFromText,
     newValueVarLocalWith,
-    revEnumEnv,
+    revEnumEnvRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
@@ -83,8 +83,8 @@ lowerOther defList = do
 
 initialize :: IO ()
 initialize = do
-  writeIORef declEnv Map.empty
-  writeIORef lowDefEnv Map.empty
+  writeIORef lowDeclEnvRef Map.empty
+  writeIORef lowDefEnvRef Map.empty
 
 lowerComp :: Comp -> IO LowComp
 lowerComp term =
@@ -373,16 +373,16 @@ lowerValueLet :: Ident -> Value -> LowComp -> IO LowComp
 lowerValueLet x lowerValue cont =
   case lowerValue of
     ValueVarGlobal y -> do
-      denv <- readIORef defEnv
-      deEnv <- readIORef declEnv
-      lenv <- readIORef lowDefEnv
-      case Map.lookup y denv of
+      compDefEnv <- readIORef compDefEnvRef
+      lowDeclEnv <- readIORef lowDeclEnvRef
+      lowDefEnv <- readIORef lowDefEnvRef
+      case Map.lookup y compDefEnv of
         Nothing ->
           raiseCritical' $ "no such global label defined: " <> y
         Just (_, args, me)
-          | Map.member y deEnv ->
+          | Map.member y lowDeclEnv ->
             llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
-          | not (Map.member y lenv) -> do
+          | not (Map.member y lowDefEnv) -> do
             case me of
               Nothing -> do
                 -- external definition
@@ -536,8 +536,8 @@ newNameWith mName =
 
 enumValueToInteger :: T.Text -> IO Int
 enumValueToInteger label = do
-  renv <- readIORef revEnumEnv
-  case Map.lookup label renv of
+  revEnumEnv <- readIORef revEnumEnvRef
+  case Map.lookup label revEnumEnv of
     Just (_, i) ->
       return i
     _ ->
@@ -545,7 +545,7 @@ enumValueToInteger label = do
 
 insLowDefEnv :: T.Text -> [Ident] -> LowComp -> IO ()
 insLowDefEnv funName args e =
-  modifyIORef' lowDefEnv $ \env -> Map.insert funName (args, e) env
+  modifyIORef' lowDefEnvRef $ Map.insert funName (args, e)
 
 commConv :: Ident -> LowComp -> LowComp -> IO LowComp
 commConv x llvm cont2 =
@@ -571,16 +571,16 @@ commConv x llvm cont2 =
 
 insDeclEnv :: T.Text -> [a] -> IO ()
 insDeclEnv name args = do
-  d <- readIORef declEnv
-  unless (name `Map.member` d) $ do
+  lowDeclEnv <- readIORef lowDeclEnvRef
+  unless (name `Map.member` lowDeclEnv) $ do
     let dom = map (const voidPtr) args
     let cod = voidPtr
-    modifyIORef' declEnv $ \env -> Map.insert name (dom, cod) env
+    modifyIORef' lowDeclEnvRef $ Map.insert name (dom, cod)
 
 registerCartesian :: T.Text -> IO ()
 registerCartesian name = do
-  denv <- readIORef defEnv
-  case Map.lookup name denv of
+  compDefEnv <- readIORef compDefEnvRef
+  case Map.lookup name compDefEnv of
     Just (_, args, Just e) ->
       lowerComp e >>= insLowDefEnv name args
     _ ->

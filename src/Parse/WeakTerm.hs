@@ -22,7 +22,7 @@ import Data.Basic
     asIdent,
     asText,
   )
-import Data.Global (newAster, nsSep, targetPlatform)
+import Data.Global (newAster, nsSep, targetPlatformRef)
 import Data.IORef (readIORef)
 import Data.Log (raiseError)
 import Data.LowType
@@ -769,8 +769,8 @@ weakTermBuiltin = do
   x <- symbol
   case x of
     "target-platform" -> do
-      target <- readIORef targetPlatform
-      return (weakVar m ("target" <> nsSep <> T.pack target))
+      targetPlatform <- readIORef targetPlatformRef
+      return (weakVar m ("target" <> nsSep <> T.pack targetPlatform))
     _ ->
       raiseParseError m $ "no such builtin constant: " <> x
 

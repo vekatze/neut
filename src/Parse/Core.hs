@@ -12,11 +12,11 @@ import Data.Basic
     newHint,
   )
 import Data.Global
-  ( aliasEnv,
+  ( aliasEnvRef,
     getCurrentFilePath,
     newCount,
     newIdentFromText,
-    prefixEnv,
+    prefixEnvRef,
     setCurrentFilePath,
   )
 import Data.IORef
@@ -42,19 +42,19 @@ import Text.Read (readMaybe)
 type EscapeFlag =
   Bool
 
-{-# NOINLINE text #-}
-text :: IORef T.Text
-text =
+{-# NOINLINE textRef #-}
+textRef :: IORef T.Text
+textRef =
   unsafePerformIO (newIORef "")
 
-{-# NOINLINE line #-}
-line :: IORef Int
-line =
+{-# NOINLINE lineRef #-}
+lineRef :: IORef Int
+lineRef =
   unsafePerformIO (newIORef 1)
 
-{-# NOINLINE column #-}
-column :: IORef Int
-column =
+{-# NOINLINE columnRef #-}
+columnRef :: IORef Int
+columnRef =
   unsafePerformIO (newIORef 1)
 
 --
@@ -71,27 +71,27 @@ data ParserState = ParserState
 
 saveState :: IO ParserState
 saveState = do
-  s <- readIORef text
-  l <- readIORef line
-  c <- readIORef column
-  p <- readIORef prefixEnv
-  a <- readIORef aliasEnv
+  text <- readIORef textRef
+  line <- readIORef lineRef
+  column <- readIORef columnRef
+  prefixEnv <- readIORef prefixEnvRef
+  aliasEnv <- readIORef aliasEnvRef
   return $
     ParserState
-      { parserStateText = s,
-        parserStateLine = l,
-        parserStateColumn = c,
-        parserStatePrefixEnv = p,
-        parserStateAliasEnv = a
+      { parserStateText = text,
+        parserStateLine = line,
+        parserStateColumn = column,
+        parserStatePrefixEnv = prefixEnv,
+        parserStateAliasEnv = aliasEnv
       }
 
 loadState :: ParserState -> IO ()
 loadState state = do
-  writeIORef text $ parserStateText state
-  writeIORef line $ parserStateLine state
-  writeIORef column $ parserStateColumn state
-  writeIORef prefixEnv $ parserStatePrefixEnv state
-  writeIORef aliasEnv $ parserStateAliasEnv state
+  writeIORef textRef $ parserStateText state
+  writeIORef lineRef $ parserStateLine state
+  writeIORef columnRef $ parserStateColumn state
+  writeIORef prefixEnvRef $ parserStatePrefixEnv state
+  writeIORef aliasEnvRef $ parserStateAliasEnv state
 
 withNewState :: IO a -> IO a
 withNewState action = do
@@ -103,9 +103,9 @@ withNewState action = do
 initializeParserForFile :: Path Abs File -> IO ()
 initializeParserForFile path = do
   fileContent <- TIO.readFile (toFilePath path)
-  writeIORef line 1
-  writeIORef column 1
-  writeIORef text fileContent
+  writeIORef lineRef 1
+  writeIORef columnRef 1
+  writeIORef textRef fileContent
   setCurrentFilePath path
 
 betweenParen :: IO a -> IO a
@@ -126,8 +126,8 @@ token expected = do
 char :: Char -> IO ()
 char c = do
   m <- currentHint
-  s <- readIORef text
-  case T.uncons s of
+  text <- readIORef textRef
+  case T.uncons text of
     Nothing ->
       raiseParseError m $
         "unexpected end of input\nexpecting: '" <> T.singleton c <> "'"
@@ -146,8 +146,8 @@ char c = do
 
 skip :: IO ()
 skip = do
-  s <- readIORef text
-  case T.uncons s of
+  text <- readIORef textRef
+  case T.uncons text of
     Just (c, rest)
       | c == '-',
         Just ('-', _) <- T.uncons rest ->
@@ -161,8 +161,8 @@ skip = do
 
 comment :: IO ()
 comment = do
-  s <- readIORef text
-  case T.uncons s of
+  text <- readIORef textRef
+  case T.uncons text of
     Just (c, rest)
       | c `S.member` newlineSet ->
         updateStreamL rest >> skip
@@ -183,8 +183,8 @@ many f = do
 
 manyStrict :: IO a -> IO [a]
 manyStrict f = do
-  s <- readIORef text
-  if T.null s
+  text <- readIORef textRef
+  if T.null text
     then return []
     else do
       x <- f
@@ -285,9 +285,9 @@ returnSymbol m mx =
 {-# INLINE symbolMaybe #-}
 symbolMaybe :: (Char -> Bool) -> IO (Maybe T.Text)
 symbolMaybe predicate = do
-  s <- readIORef text
-  let x = T.takeWhile predicate s
-  let rest = T.dropWhile predicate s
+  text <- readIORef textRef
+  let x = T.takeWhile predicate text
+  let rest = T.dropWhile predicate text
   updateStreamC (T.length x) rest
   skip
   if T.null x
@@ -305,10 +305,10 @@ var = do
 string :: IO T.Text
 string = do
   char '"'
-  s <- readIORef text
-  len <- stringLengthOf False s 0
-  let (x, s') = T.splitAt len s
-  writeIORef text $ T.tail s'
+  text <- readIORef textRef
+  len <- stringLengthOf False text 0
+  let (x, s') = T.splitAt len text
+  writeIORef textRef $ T.tail s'
   skip
   return x
 
@@ -336,10 +336,10 @@ stringLengthOf flag s i =
 
 currentHint :: IO Hint
 currentHint = do
-  l <- readIORef line
-  c <- readIORef column
+  line <- readIORef lineRef
+  column <- readIORef columnRef
   path <- toFilePath <$> getCurrentFilePath
-  return $ newHint (fromEnum l) (fromEnum c) path
+  return $ newHint (fromEnum line) (fromEnum column) path
 
 {-# INLINE isSymbolChar #-}
 isSymbolChar :: Char -> Bool
@@ -373,26 +373,26 @@ nonSimpleSymbolSet =
 
 {-# INLINE updateStreamL #-}
 updateStreamL :: T.Text -> IO ()
-updateStreamL s = do
-  modifyIORef' text $ const s
+updateStreamL text = do
+  modifyIORef' textRef $ const text
   incrementLine
 
 {-# INLINE updateStreamC #-}
 updateStreamC :: Int -> T.Text -> IO ()
-updateStreamC c s = do
-  modifyIORef' text $ const s
-  modifyIORef' column $ \x -> c + x
+updateStreamC column text = do
+  modifyIORef' textRef $ const text
+  modifyIORef' columnRef $ (+) column
 
 {-# INLINE incrementLine #-}
 incrementLine :: IO ()
 incrementLine = do
-  modifyIORef' line $ \x -> 1 + x
-  modifyIORef' column $ const 1
+  modifyIORef' lineRef $ (+) 1
+  modifyIORef' columnRef $ const 1
 
 {-# INLINE incrementColumn #-}
 incrementColumn :: IO ()
 incrementColumn =
-  modifyIORef' column $ \x -> 1 + x
+  modifyIORef' columnRef $ (+) 1
 
 raiseParseError :: Hint -> T.Text -> IO a
 raiseParseError m txt =

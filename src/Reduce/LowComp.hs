@@ -6,8 +6,8 @@ where
 import Data.Basic (asInt)
 import Data.Global
   ( newIdentFromIdent,
-    nopFreeSet,
-    shouldCancelAlloc,
+    nopFreeSetRef,
+    shouldCancelAllocRef,
   )
 import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
@@ -31,7 +31,7 @@ type SizeMap =
 
 reduceLowComp :: SubstLowComp -> SizeMap -> LowComp -> IO LowComp
 reduceLowComp sub sizeMap llvm = do
-  cancelAllocFlag <- readIORef shouldCancelAlloc
+  cancelAllocFlag <- readIORef shouldCancelAllocRef
   case llvm of
     LowCompReturn d ->
       return $ LowCompReturn $ substLowValue sub d
@@ -50,7 +50,7 @@ reduceLowComp sub sizeMap llvm = do
         LowOpAlloc _ size
           | cancelAllocFlag,
             Just ((j, d) : rest) <- Map.lookup size sizeMap -> do
-            modifyIORef' nopFreeSet $ \env -> S.insert j env
+            modifyIORef' nopFreeSetRef $ S.insert j
             let sizeMap' = Map.insert size rest sizeMap
             let sub' = IntMap.insert (asInt x) (substLowValue sub d) sub
             reduceLowComp sub' sizeMap' cont

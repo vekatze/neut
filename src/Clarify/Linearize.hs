@@ -11,7 +11,7 @@ import Data.Comp
     Primitive (..),
     Value (ValueSigmaIntro, ValueVarLocal),
   )
-import Data.Global (count, newIdentFromIdent, newIdentFromText)
+import Data.Global (countRef, newIdentFromIdent, newIdentFromText)
 import Data.IORef (readIORef, writeIORef)
 
 linearize ::
@@ -100,10 +100,10 @@ distinguishComp z term =
           return (vs, CompEnumElim d' [])
         _ -> do
           let (cs, es) = unzip branchList
-          countBefore <- readIORef count
+          countBefore <- readIORef countRef
           (vss, es') <- fmap unzip $
             forM es $ \e -> do
-              writeIORef count countBefore
+              writeIORef countRef countBefore
               distinguishComp z e
           return (vs ++ head vss, CompEnumElim d' (zip cs es'))
     CompIgnore _ ->

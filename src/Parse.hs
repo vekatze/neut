@@ -8,28 +8,28 @@ import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
 import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, IsReducible, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (OpacityTranslucent, OpacityTransparent), asIdent, asText)
 import Data.Global
-  ( aliasEnv,
+  ( aliasEnvRef,
     boolFalse,
     boolTrue,
-    constructorEnv,
-    dataEnv,
+    constructorEnvRef,
+    currentSectionRef,
+    dataEnvRef,
     getCurrentFilePath,
     initialPrefixEnv,
     newText,
     nsSep,
-    prefixEnv,
-    sectionEnv,
+    prefixEnvRef,
     sourceAliasMapRef,
-    topNameEnv,
+    topNameSetRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseCritical', raiseError)
 import Data.Module (getChecksumAliasList)
 import Data.Namespace
-  ( handleDefinePrefix,
+  ( attachSectionPrefix,
+    handleDefinePrefix,
     handleUse,
-    withSectionPrefix,
   )
 import qualified Data.Set as S
 import Data.Source (Source (..), getSection)
@@ -64,7 +64,7 @@ import Parse.Core
     skip,
     symbol,
     symbolMaybe,
-    text,
+    textRef,
     token,
     tryPlanList,
     var,
@@ -106,7 +106,7 @@ parse' source = do
       forM_ enumInfoList $ \(mEnum, name, itemList) -> do
         insEnumEnv mEnum name itemList
       let names = S.fromList $ map (\(StmtDef _ _ x _ _) -> x) stmtList
-      modifyIORef' topNameEnv $ S.union names
+      modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
       let path = sourceFilePath source
@@ -121,24 +121,24 @@ parse' source = do
 ensureMain :: T.Text -> IO ()
 ensureMain mainFunctionName = do
   m <- currentHint
-  tnenv <- readIORef topNameEnv
-  section <- readIORef sectionEnv
-  if S.member mainFunctionName tnenv
+  topNameSet <- readIORef topNameSetRef
+  currentSection <- readIORef currentSectionRef
+  if S.member mainFunctionName topNameSet
     then return ()
     else do
-      print tnenv
-      raiseError m $ "`main` is not defined in the main module `" <> T.intercalate nsSep section <> "`"
+      print topNameSet
+      raiseError m $ "`main` is not defined in the main module `" <> currentSection <> "`"
 
 setupSectionPrefix :: Source -> IO ()
 setupSectionPrefix currentSource = do
   section <- getSection currentSource
-  handleUse $ T.intercalate nsSep section
-  writeIORef sectionEnv section
+  handleUse section
+  writeIORef currentSectionRef section
 
 parseHeaderBase :: IO ([WeakStmt], [EnumInfo]) -> IO ([WeakStmt], [EnumInfo])
 parseHeaderBase action = do
-  s <- readIORef text
-  if T.null s
+  text <- readIORef textRef
+  if T.null text
     then return ([], [])
     else action
 
@@ -187,8 +187,8 @@ parseHeader' =
 
 parseStmtList :: IO [WeakStmt]
 parseStmtList = do
-  s <- readIORef text
-  if T.null s
+  text <- readIORef textRef
+  if T.null text
     then return []
     else do
       headSymbol <- lookAhead (symbolMaybe isSymbolChar)
@@ -232,7 +232,7 @@ parseDefine isReducible = do
     then token "define-inline"
     else token "define"
   (mTerm, name) <- var
-  name' <- withSectionPrefix name
+  name' <- attachSectionPrefix name
   argList <- many weakBinder
   token ":"
   codType <- weakTerm
@@ -274,7 +274,7 @@ parseDefineData = do
   m <- currentHint
   token "define-data"
   mFun <- currentHint
-  a <- varText >>= withSectionPrefix
+  a <- varText >>= attachSectionPrefix
   xts <- many weakAscription
   bts <- many parseDefineDataClause
   defineData m mFun a xts bts
@@ -370,7 +370,7 @@ parseDefineCodata = do
   m <- currentHint
   token "define-codata"
   mFun <- currentHint
-  a <- varText >>= withSectionPrefix
+  a <- varText >>= attachSectionPrefix
   xts <- many weakAscription
   yts <- many (token "-" >> ascriptionInner)
   formRule <- defineData m mFun a xts [(m, "new", yts)]
@@ -406,7 +406,7 @@ parseDefineResourceType :: IO WeakStmt
 parseDefineResourceType = do
   m <- currentHint
   _ <- token "define-resource-type"
-  name <- varText >>= withSectionPrefix
+  name <- varText >>= attachSectionPrefix
   discarder <- weakTermSimple
   copier <- weakTermSimple
   flag <- newTextualIdentFromText "flag"
@@ -456,9 +456,9 @@ parseDefineResourceType = do
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [WeakBinder])] -> IO ()
 setAsData a i bts = do
   let bs = map (\(_, b, _) -> a <> nsSep <> b) bts
-  modifyIORef' dataEnv $ \env -> Map.insert a bs env
+  modifyIORef' dataEnvRef $ Map.insert a bs
   forM_ (zip bs [0 ..]) $ \(x, k) ->
-    modifyIORef' constructorEnv $ \env -> Map.insert x (i, k) env
+    modifyIORef' constructorEnvRef $ Map.insert x (i, k)
 
 toPiTypeWith :: Ident -> (Hint, T.Text, [WeakBinder]) -> WeakBinder
 toPiTypeWith cod (m, b, yts) =
@@ -470,12 +470,12 @@ identPlusToVar (m, x, _) =
 
 registerTopLevelName :: Hint -> T.Text -> IO ()
 registerTopLevelName m x = do
-  nenv <- readIORef topNameEnv
-  when (S.member x nenv) $
+  topNameSet <- readIORef topNameSetRef
+  when (S.member x topNameSet) $
     raiseError m $ "the variable `" <> x <> "` is already defined at the top level"
-  modifyIORef' topNameEnv $ \env -> S.insert x env
+  modifyIORef' topNameSetRef $ S.insert x
 
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
-  writeIORef aliasEnv $ getChecksumAliasList $ sourceModule source
-  writeIORef prefixEnv initialPrefixEnv
+  writeIORef aliasEnvRef $ getChecksumAliasList $ sourceModule source
+  writeIORef prefixEnvRef initialPrefixEnv

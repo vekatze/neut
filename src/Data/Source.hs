@@ -50,12 +50,12 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-getSection :: Source -> IO [T.Text]
+getSection :: Source -> IO T.Text
 getSection source = do
   baseModule <- getMainModule
   let domain = getDomain baseModule (sourceModule source)
   sigTail <- getSignatureTail source
-  return $ domain : sigTail
+  return $ T.intercalate "." $ domain : sigTail
 
 getDomain :: Module -> Module -> T.Text
 getDomain baseModule targetModule =

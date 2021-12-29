@@ -32,7 +32,7 @@ import Parse.Core
     skip,
     string,
     symbol,
-    text,
+    textRef,
     tryPlanList,
     withNewState,
   )
@@ -95,8 +95,8 @@ parseList = do
 
 raiseEntityParseError :: Hint -> IO a
 raiseEntityParseError m = do
-  s <- readIORef text
-  case T.uncons s of
+  text <- readIORef textRef
+  case T.uncons text of
     Nothing ->
       raiseParseError m "unexpected end of input"
     Just (c, _) ->

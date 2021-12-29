@@ -12,7 +12,7 @@ import Data.Comp
   ( Comp (CompEnumElim, CompPiElimDownElim, CompUpElim),
     Value (ValueEnumIntro, ValueVarGlobal, ValueVarLocal),
   )
-import Data.Global (boolFalse, boolTrue, defEnv, newValueVarLocalWith)
+import Data.Global (boolFalse, boolTrue, compDefEnvRef, newValueVarLocalWith)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import qualified Data.Text as T
@@ -57,8 +57,8 @@ switch e1 e2 =
 
 tryCache :: T.Text -> IO () -> IO Value
 tryCache key doInsertion = do
-  denv <- readIORef defEnv
-  unless (Map.member key denv) doInsertion
+  compDefEnv <- readIORef compDefEnvRef
+  unless (Map.member key compDefEnv) doInsertion
   return $ ValueVarGlobal key
 
 makeSwitcher ::
@@ -88,11 +88,11 @@ registerSwitcher name aff rel = do
 
 insDefEnv :: T.Text -> Bool -> [Ident] -> Comp -> IO ()
 insDefEnv name isReducible args e =
-  modifyIORef' defEnv $ \env -> Map.insert name (isReducible, args, Just e) env
+  modifyIORef' compDefEnvRef $ Map.insert name (isReducible, args, Just e)
 
 insDefEnv' :: T.Text -> Bool -> [Ident] -> IO ()
 insDefEnv' name isReducible args =
-  modifyIORef' defEnv $ \env -> Map.insert name (isReducible, args, Nothing) env
+  modifyIORef' compDefEnvRef $ Map.insert name (isReducible, args, Nothing)
 
 {-# INLINE toConstructorLabelName #-}
 toConstructorLabelName :: Ident -> T.Text

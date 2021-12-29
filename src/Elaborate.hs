@@ -15,12 +15,12 @@ import Data.Basic
     asInt,
   )
 import Data.Global
-  ( dataEnv,
-    enumEnv,
+  ( dataEnvRef,
+    enumEnvRef,
     note,
-    substEnv,
-    topDefEnv,
-    topTypeEnv,
+    substRef,
+    termDefEnvRef,
+    termTypeEnvRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
@@ -114,9 +114,9 @@ elaborate defListElaborator source cacheOrStmt =
 
 registerTopLevelDef :: Stmt -> IO ()
 registerTopLevelDef (StmtDef isReducible _ x t e) = do
-  insTopTypeEnv x $ weaken t
+  insTermTypeEnv x $ weaken t
   when isReducible $ do
-    modifyIORef' topDefEnv $ \env -> Map.insert x (weaken e) env
+    modifyIORef' termDefEnvRef $ Map.insert x (weaken e)
 
 elaborateProgramMain :: T.Text -> [WeakStmt] -> IO [Stmt]
 elaborateProgramMain mainFunctionName = do
@@ -143,8 +143,8 @@ setupDef :: WeakStmt -> IO ()
 setupDef def =
   case def of
     WeakStmtDef isReducible _ x t e -> do
-      insTopTypeEnv x t
-      when isReducible $ modifyIORef' topDefEnv $ Map.insert x e
+      insTermTypeEnv x t
+      when isReducible $ modifyIORef' termDefEnvRef $ Map.insert x e
 
 inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
 inferStmtMain mainFunctionName (WeakStmtDef isReducible m x t e) = do
@@ -164,31 +164,6 @@ inferStmt e t = do
   insConstraintEnv te t'
   return (e', t')
 
--- inferStmtListOther :: [WeakStmt] -> IO [WeakStmt]
--- inferStmtListOther stmtList =
---   case stmtList of
---     [] ->
---       return []
---     WeakStmtDef isReducible m x t e : rest -> do
---       (e', te) <- infer e
---       t' <- inferType t
---       insConstraintEnv te t'
---       rest' <- inferStmtListOther rest
---       return $ WeakStmtDef isReducible m x t' e' : rest'
-
--- inferStmtListMain :: T.Text -> [WeakStmt] -> IO [WeakStmt]
--- inferStmtListMain mainFunctionName stmtList =
---   case stmtList of
---     [] ->
---       return []
---     WeakStmtDef isReducible m x t e : rest -> do
---       (e', te) <- infer e
---       t' <- inferType t
---       insConstraintEnv te t'
---       when (x == mainFunctionName) $ insConstraintEnv t (m :< WeakTermConst "i64")
---       rest' <- inferStmtListMain mainFunctionName rest
---       return $ WeakStmtDef isReducible m x t' e' : rest'
-
 elaborateStmtList :: [WeakStmt] -> IO [Stmt]
 elaborateStmtList stmtList = do
   case stmtList of
@@ -197,9 +172,9 @@ elaborateStmtList stmtList = do
     WeakStmtDef isReducible m x t e : rest -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTerm
-      insTopTypeEnv x $ weaken t'
+      insTermTypeEnv x $ weaken t'
       when isReducible $
-        modifyIORef' topDefEnv $ \env -> Map.insert x (weaken e') env
+        modifyIORef' termDefEnvRef $ Map.insert x (weaken e')
       rest' <- elaborateStmtList rest
       return $ StmtDef isReducible m x t' e' : rest'
 
@@ -222,8 +197,8 @@ elaborate' term =
       e' <- elaborate' e
       return $ m :< TermPiIntro isReducible kind' xts' e'
     m :< WeakTermPiElim (mh :< WeakTermAster x) es -> do
-      sub <- readIORef substEnv
-      case IntMap.lookup x sub of
+      subst <- readIORef substRef
+      case IntMap.lookup x subst of
         Nothing ->
           raiseError mh "couldn't instantiate the asterisk here"
         Just (_ :< WeakTermPiIntro OpacityTransparent LamKindNormal xts e)
@@ -298,14 +273,14 @@ elaborate' term =
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTerm
-      denv <- readIORef dataEnv
+      dataEnv <- readIORef dataEnvRef
       case t' of
         _ :< TermPiElim (_ :< TermVarGlobal name) _
-          | Just bs <- Map.lookup name denv -> do
+          | Just bs <- Map.lookup name dataEnv -> do
             patList' <- elaboratePatternList m bs patList
             return $ m :< TermCase resultType' mSubject' (e', t') patList'
         _ :< TermVarGlobal name
-          | Just bs <- Map.lookup name denv -> do
+          | Just bs <- Map.lookup name dataEnv -> do
             patList' <- elaboratePatternList m bs patList
             return $ m :< TermCase resultType' mSubject' (e', t') patList'
         _ -> do
@@ -378,16 +353,16 @@ checkSwitchExaustiveness m x caseList = do
 
 lookupEnumSet :: Hint -> T.Text -> IO [T.Text]
 lookupEnumSet m name = do
-  eenv <- readIORef enumEnv
-  case Map.lookup name eenv of
+  enumEnv <- readIORef enumEnvRef
+  case Map.lookup name enumEnv of
     Nothing ->
       raiseError m $ "no such enum defined: " <> name
     Just xis ->
       return $ map fst xis
 
-insTopTypeEnv :: T.Text -> WeakTerm -> IO ()
-insTopTypeEnv name t =
-  modifyIORef' topTypeEnv $ \env -> Map.insert name t env
+insTermTypeEnv :: T.Text -> WeakTerm -> IO ()
+insTermTypeEnv name t =
+  modifyIORef' termTypeEnvRef $ Map.insert name t
 
 doesContainDefaultCase :: [EnumCase] -> Bool
 doesContainDefaultCase enumCaseList =

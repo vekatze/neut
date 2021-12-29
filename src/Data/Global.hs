@@ -59,19 +59,19 @@ import qualified System.Info as System
 -- global variables
 --
 
-{-# NOINLINE count #-}
-count :: IORef Int
-count =
+{-# NOINLINE countRef #-}
+countRef :: IORef Int
+countRef =
   unsafePerformIO (newIORef 0)
 
-{-# NOINLINE shouldColorize #-}
-shouldColorize :: IORef Bool
-shouldColorize =
+{-# NOINLINE shouldColorizeRef #-}
+shouldColorizeRef :: IORef Bool
+shouldColorizeRef =
   unsafePerformIO (newIORef True)
 
-{-# NOINLINE shouldCancelAlloc #-}
-shouldCancelAlloc :: IORef Bool
-shouldCancelAlloc =
+{-# NOINLINE shouldCancelAllocRef #-}
+shouldCancelAllocRef :: IORef Bool
+shouldCancelAllocRef =
   unsafePerformIO (newIORef True)
 
 {-# NOINLINE mainFilePathRef #-}
@@ -92,14 +92,14 @@ getMainFilePath = do
     Nothing ->
       raiseCritical' "no main file path is set"
 
-{-# NOINLINE endOfEntry #-}
-endOfEntry :: IORef String
-endOfEntry =
+{-# NOINLINE endOfEntryRef #-}
+endOfEntryRef :: IORef String
+endOfEntryRef =
   unsafePerformIO (newIORef "")
 
-{-# NOINLINE targetPlatform #-}
-targetPlatform :: IORef String
-targetPlatform =
+{-# NOINLINE targetPlatformRef #-}
+targetPlatformRef :: IORef String
+targetPlatformRef =
   unsafePerformIO (newIORef $ System.arch <> "-" <> System.os)
 
 {-# NOINLINE currentFileRef #-}
@@ -121,69 +121,60 @@ getCurrentFilePath = do
       raiseCritical' "no current file is set"
 
 -- [("choice", [("left", 0), ("right", 1)]), ...]
-{-# NOINLINE enumEnv #-}
-enumEnv :: IORef (Map.HashMap T.Text [(T.Text, Int)])
-enumEnv =
+{-# NOINLINE enumEnvRef #-}
+enumEnvRef :: IORef (Map.HashMap T.Text [(T.Text, Int)])
+enumEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 -- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
-{-# NOINLINE revEnumEnv #-}
-revEnumEnv :: IORef (Map.HashMap T.Text (T.Text, Int))
-revEnumEnv =
+{-# NOINLINE revEnumEnvRef #-}
+revEnumEnvRef :: IORef (Map.HashMap T.Text (T.Text, Int))
+revEnumEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE dataEnv #-}
-dataEnv :: IORef (Map.HashMap T.Text [T.Text])
-dataEnv =
+{-# NOINLINE dataEnvRef #-}
+dataEnvRef :: IORef (Map.HashMap T.Text [T.Text])
+dataEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE constructorEnv #-}
-constructorEnv :: IORef (Map.HashMap T.Text (Int, Int))
-constructorEnv =
+{-# NOINLINE constructorEnvRef #-}
+constructorEnvRef :: IORef (Map.HashMap T.Text (Int, Int))
+constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-initialPrefixEnv :: [T.Text]
-initialPrefixEnv =
-  ["this"]
-
-{-# NOINLINE prefixEnv #-}
-prefixEnv :: IORef [T.Text]
-prefixEnv =
+{-# NOINLINE prefixEnvRef #-}
+prefixEnvRef :: IORef [T.Text]
+prefixEnvRef =
   unsafePerformIO (newIORef initialPrefixEnv)
 
-{-# NOINLINE aliasEnv #-}
-aliasEnv :: IORef [(T.Text, T.Text)]
-aliasEnv =
+{-# NOINLINE aliasEnvRef #-}
+aliasEnvRef :: IORef [(T.Text, T.Text)]
+aliasEnvRef =
   unsafePerformIO (newIORef [])
 
-{-# NOINLINE sectionEnv #-}
-sectionEnv :: IORef [T.Text]
-sectionEnv =
-  unsafePerformIO (newIORef [])
+{-# NOINLINE currentSectionRef #-}
+currentSectionRef :: IORef T.Text
+currentSectionRef =
+  unsafePerformIO (newIORef "")
 
-{-# NOINLINE topNameEnv #-}
-topNameEnv :: IORef (S.Set T.Text)
-topNameEnv =
+{-# NOINLINE topNameSetRef #-}
+topNameSetRef :: IORef (S.Set T.Text)
+topNameSetRef =
   unsafePerformIO (newIORef S.empty)
 
-{-# NOINLINE weakTypeEnv #-}
-weakTypeEnv :: IORef (IntMap.IntMap WeakTerm)
-weakTypeEnv =
+{-# NOINLINE weakTypeEnvRef #-}
+weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm)
+weakTypeEnvRef =
   unsafePerformIO (newIORef IntMap.empty)
-
-{-# NOINLINE topTypeEnv #-}
-topTypeEnv :: IORef (Map.HashMap T.Text WeakTerm)
-topTypeEnv =
-  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE holeEnvRef #-}
 holeEnvRef :: IORef (IntMap.IntMap (WeakTerm, WeakTerm))
 holeEnvRef =
   unsafePerformIO (newIORef IntMap.empty)
 
-{-# NOINLINE constraintEnv #-}
-constraintEnv :: IORef [Constraint]
-constraintEnv =
+{-# NOINLINE constraintListRef #-}
+constraintListRef :: IORef [Constraint]
+constraintListRef =
   unsafePerformIO (newIORef [])
 
 {-# NOINLINE sourceAliasMapRef #-}
@@ -191,34 +182,39 @@ sourceAliasMapRef :: IORef (Map.HashMap (Path Abs File) [AliasInfo])
 sourceAliasMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE suspendedConstraintEnv #-}
-suspendedConstraintEnv :: IORef SuspendedConstraintQueue
-suspendedConstraintEnv =
+{-# NOINLINE suspendedConstraintQueueRef #-}
+suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
+suspendedConstraintQueueRef =
   unsafePerformIO (newIORef Q.empty)
 
-{-# NOINLINE substEnv #-}
-substEnv :: IORef (IntMap.IntMap WeakTerm)
-substEnv =
+{-# NOINLINE substRef #-}
+substRef :: IORef (IntMap.IntMap WeakTerm)
+substRef =
   unsafePerformIO (newIORef IntMap.empty)
 
-{-# NOINLINE topDefEnv #-}
-topDefEnv :: IORef (Map.HashMap T.Text WeakTerm)
-topDefEnv =
+{-# NOINLINE termTypeEnvRef #-}
+termTypeEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
+termTypeEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE defEnv #-}
-defEnv :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe Comp))
-defEnv =
+{-# NOINLINE termDefEnvRef #-}
+termDefEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
+termDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE lowDefEnv #-}
-lowDefEnv :: IORef (Map.HashMap T.Text ([Ident], LowComp))
-lowDefEnv =
+{-# NOINLINE compDefEnvRef #-}
+compDefEnvRef :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe Comp))
+compDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE declEnv #-}
-declEnv :: IORef (Map.HashMap T.Text ([LowType], LowType))
-declEnv =
+{-# NOINLINE lowDefEnvRef #-}
+lowDefEnvRef :: IORef (Map.HashMap T.Text ([Ident], LowComp))
+lowDefEnvRef =
+  unsafePerformIO (newIORef Map.empty)
+
+{-# NOINLINE lowDeclEnvRef #-}
+lowDeclEnvRef :: IORef (Map.HashMap T.Text ([LowType], LowType))
+lowDeclEnvRef =
   unsafePerformIO $
     newIORef $
       Map.fromList
@@ -226,9 +222,9 @@ declEnv =
           ("free", ([voidPtr], voidPtr))
         ]
 
-{-# NOINLINE nopFreeSet #-}
-nopFreeSet :: IORef (S.Set Int)
-nopFreeSet =
+{-# NOINLINE nopFreeSetRef #-}
+nopFreeSetRef :: IORef (S.Set Int)
+nopFreeSetRef =
   unsafePerformIO (newIORef S.empty)
 
 sourceFileExtension :: T.Text
@@ -255,6 +251,11 @@ boolFalse :: T.Text
 boolFalse =
   "bool" <> nsSep <> "false"
 
+{-# INLINE initialPrefixEnv #-}
+initialPrefixEnv :: [T.Text]
+initialPrefixEnv =
+  ["this"]
+
 --
 -- generating new symbols using count
 --
@@ -262,7 +263,7 @@ boolFalse =
 {-# INLINE newCount #-}
 newCount :: IO Int
 newCount =
-  atomicModifyIORef' count $ \x -> let z = x + 1 in (z, z)
+  atomicModifyIORef' countRef $ \x -> let z = x + 1 in (z, z)
 
 {-# INLINE newIdentFromText #-}
 newIdentFromText :: T.Text -> IO Ident
@@ -338,7 +339,7 @@ outputLogLocation mpos = do
 
 outputFooter :: IO ()
 outputFooter = do
-  eoe <- readIORef endOfEntry
+  eoe <- readIORef endOfEntryRef
   if eoe == ""
     then return ()
     else putStrLn eoe
@@ -373,7 +374,7 @@ stylizeLogText str pad = do
 
 withSGR :: [SGR] -> IO () -> IO ()
 withSGR arg f = do
-  b <- readIORef shouldColorize
+  b <- readIORef shouldColorizeRef
   if b
     then setSGR arg >> f >> setSGR [Reset]
     else f

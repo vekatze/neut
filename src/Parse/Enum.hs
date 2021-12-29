@@ -12,17 +12,15 @@ import Data.Basic
 import Data.Global
   ( boolFalse,
     boolTrue,
-    enumEnv,
+    enumEnvRef,
     nsSep,
-    revEnumEnv,
+    revEnumEnvRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import Data.List (find)
 import Data.Log (raiseError)
-import Data.Namespace
-  ( withSectionPrefix,
-  )
+import Data.Namespace (attachSectionPrefix)
 import qualified Data.Set as S
 import Data.Stmt
   ( EnumInfo,
@@ -41,7 +39,7 @@ parseDefineEnum :: IO EnumInfo
 parseDefineEnum = do
   m <- currentHint
   token "define-enum"
-  name <- varText >>= withSectionPrefix
+  name <- varText >>= attachSectionPrefix
   itemList <- many parseDefineEnumClause
   let itemList' = arrangeEnumItemList name 0 itemList
   unless (isLinear (map snd itemList')) $
@@ -95,13 +93,13 @@ insEnumEnv' :: T.Text -> [(T.Text, Int)] -> IO ()
 insEnumEnv' name xis = do
   let (xs, is) = unzip xis
   let rev = Map.fromList $ zip xs (zip (repeat name) is)
-  modifyIORef' enumEnv $ \env -> Map.insert name xis env
-  modifyIORef' revEnumEnv $ \env -> Map.union rev env
+  modifyIORef' enumEnvRef $ Map.insert name xis
+  modifyIORef' revEnumEnvRef $ Map.union rev
 
 insEnumEnv :: Hint -> T.Text -> [(T.Text, Int)] -> IO ()
 insEnumEnv m name xis = do
-  eenv <- readIORef enumEnv
-  let definedEnums = Map.keys eenv ++ map fst (concat (Map.elems eenv))
+  enumEnv <- readIORef enumEnvRef
+  let definedEnums = Map.keys enumEnv ++ map fst (concat (Map.elems enumEnv))
   case find (`elem` definedEnums) $ name : map fst xis of
     Just x ->
       raiseError m $ "the constant `" <> x <> "` is already defined [ENUM]"

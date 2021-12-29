@@ -1,10 +1,8 @@
-{-# LANGUAGE TupleSections #-}
-
 module Data.Namespace where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic (EnumCase, EnumCaseF (EnumCaseLabel), Hint, Ident)
-import Data.Global (aliasEnv, nsSep, prefixEnv, sectionEnv)
+import Data.Global (aliasEnvRef, currentSectionRef, nsSep, prefixEnvRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import Data.Log (raiseError)
@@ -39,18 +37,18 @@ nsOS :: T.Text
 nsOS =
   "os" <> nsSep
 
-withSectionPrefix :: T.Text -> IO T.Text
-withSectionPrefix x = do
-  ns <- readIORef sectionEnv
-  return $ T.intercalate "." (ns ++ [x])
+attachSectionPrefix :: T.Text -> IO T.Text
+attachSectionPrefix x = do
+  currentSection <- readIORef currentSectionRef
+  return $ currentSection <> nsSep <> x
 
 handleUse :: T.Text -> IO ()
 handleUse s =
-  modifyIORef' prefixEnv $ \env -> s : env
+  modifyIORef' prefixEnvRef $ (:) s
 
 handleDefinePrefix :: T.Text -> T.Text -> IO ()
 handleDefinePrefix from to = do
-  modifyIORef' aliasEnv $ \env -> (from, to) : env
+  modifyIORef' aliasEnvRef $ (:) (from, to)
 
 {-# INLINE resolveSymbol #-}
 resolveSymbol :: Hint -> (T.Text -> Maybe b) -> T.Text -> IO (Maybe b)
@@ -67,9 +65,9 @@ resolveSymbol m predicate name = do
 
 constructCandList :: T.Text -> IO [T.Text]
 constructCandList name = do
-  penv <- readIORef prefixEnv
-  nenv <- readIORef aliasEnv
-  return $ constructCandList' nenv $ name : map (<> nsSep <> name) penv
+  prefixEnv <- readIORef prefixEnvRef
+  aliasEnv <- readIORef aliasEnvRef
+  return $ constructCandList' aliasEnv $ name : map (<> nsSep <> name) prefixEnv
 
 constructCandList' :: [(T.Text, T.Text)] -> [T.Text] -> [T.Text]
 constructCandList' nenv =
@@ -106,7 +104,6 @@ takeAll predicate candidateList acc =
           takeAll predicate xs acc
 
 {-# INLINE asVar #-}
--- asVar :: Hint -> Map.HashMap T.Text b -> T.Text -> (b -> a) -> Maybe (Cofree a Hint)
 asVar :: Hint -> Map.HashMap T.Text t -> T.Text -> (t -> f (Cofree f Hint)) -> Maybe (Cofree f Hint)
 asVar m nenv name f =
   Map.lookup name nenv >>= \x -> return (m :< f x)

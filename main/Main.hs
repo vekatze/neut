@@ -8,9 +8,9 @@ import Control.Exception.Safe (try)
 import Control.Monad (void)
 import Data.Basic (Alias, URL (..))
 import Data.Global
-  ( endOfEntry,
+  ( endOfEntryRef,
     outputLog,
-    shouldColorize,
+    shouldColorizeRef,
   )
 import Data.IORef (writeIORef)
 import Data.Log (Error (Error))
@@ -243,8 +243,8 @@ runCommand cmd = do
       runAction $ build target mClangOptStr
     Check inputPathStr colorizeFlag eoe -> do
       initializeMainModule
-      writeIORef shouldColorize colorizeFlag
-      writeIORef endOfEntry eoe
+      writeIORef shouldColorizeRef colorizeFlag
+      writeIORef endOfEntryRef eoe
       inputPath <- resolveFile' inputPathStr
       void $ runAction (runCheck inputPath)
     Clean -> do

@@ -99,7 +99,8 @@ instance Ord SuspendedConstraint where
   (SuspendedConstraint (_, kind1, _)) `compare` (SuspendedConstraint (_, kind2, _)) =
     kindToInt kind1 `compare` kindToInt kind2
 
-type SuspendedConstraintQueue = Q.MinQueue SuspendedConstraint
+type SuspendedConstraintQueue =
+  Q.MinQueue SuspendedConstraint
 
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =

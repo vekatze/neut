@@ -14,11 +14,11 @@ import Data.Basic
     asText,
   )
 import Data.Global
-  ( enumEnv,
+  ( enumEnvRef,
     newIdentFromIdent,
     p',
-    revEnumEnv,
-    topNameEnv,
+    revEnumEnvRef,
+    topNameSetRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (readIORef)
@@ -88,12 +88,12 @@ discern' nenv term =
       -- prefixは無関係だし。
       -- （ローカル変数にprefix解決をおこなってもあんまりうれしくないでしょ）
       tryCand (resolveSymbol m (asWeakVar m nenv) s) $ do
-        tnenv <- readIORef topNameEnv
-        tryCand (resolveSymbol m (asGlobalVar m tnenv) s) $ do
-          renv <- readIORef revEnumEnv
-          tryCand (resolveSymbol m (asEnumIntro m renv) s) $ do
-            eenv <- readIORef enumEnv
-            tryCand (resolveSymbol m (asEnum m eenv) s) $
+        topNameSet <- readIORef topNameSetRef
+        tryCand (resolveSymbol m (asGlobalVar m topNameSet) s) $ do
+          revEnumEnv <- readIORef revEnumEnvRef
+          tryCand (resolveSymbol m (asEnumIntro m revEnumEnv) s) $ do
+            enumEnv <- readIORef enumEnvRef
+            tryCand (resolveSymbol m (asEnum m enumEnv) s) $
               tryCand (resolveSymbol m (asWeakConstant m) s) $
                 raiseError m $ "undefined variable: " <> s
     _ :< WeakTermVarGlobal {} ->
@@ -148,9 +148,9 @@ discern' nenv term =
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e
       t' <- discern' nenv t
-      tnenv <- readIORef topNameEnv
+      topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        constructorName' <- resolveSymbol m (asConstructor m tnenv) constructorName
+        constructorName' <- resolveSymbol m (asConstructor m topNameSet) constructorName
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinder nenv xts body
@@ -182,14 +182,14 @@ discernEnumCase :: EnumCase -> IO EnumCase
 discernEnumCase enumCase =
   case enumCase of
     m :< EnumCaseLabel l -> do
-      renv <- readIORef revEnumEnv
-      ml <- resolveSymbol m (asEnumLabel m renv) l
+      revEnumEnv <- readIORef revEnumEnvRef
+      ml <- resolveSymbol m (asEnumLabel m revEnumEnv) l
       case ml of
         Just l' ->
           return l'
         Nothing -> do
-          e <- readIORef enumEnv
-          p' e
+          enumEnv <- readIORef enumEnvRef
+          p' enumEnv
           raiseError m $ "no such enum-value is defined: " <> l
     _ ->
       return enumCase

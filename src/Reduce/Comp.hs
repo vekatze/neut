@@ -22,7 +22,7 @@ import Data.Comp
         ValueVarLocal
       ),
   )
-import Data.Global (defEnv, newIdentFromIdent, p, p')
+import Data.Global (compDefEnvRef, newIdentFromIdent, p, p')
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
@@ -35,10 +35,10 @@ reduceComp term =
     CompPrimitive _ ->
       return term
     CompPiElimDownElim v ds -> do
-      denv <- readIORef defEnv
+      compDefEnv <- readIORef compDefEnvRef
       case v of
         ValueVarGlobal x
-          | Just (isReducible, xs, Just body) <- Map.lookup x denv,
+          | Just (isReducible, xs, Just body) <- Map.lookup x compDefEnv,
             isReducible,
             length xs == length ds -> do
             let sub = IntMap.fromList (zip (map asInt xs) ds)

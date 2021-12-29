@@ -190,7 +190,7 @@ getMainFunctionName source = do
     then return Nothing
     else do
       section <- getSection source
-      return $ Just $ T.intercalate nsSep $ section ++ ["main"]
+      return $ Just $ section <> nsSep <> "main"
 
 {-# NOINLINE traceSourceListRef #-}
 traceSourceListRef :: IORef [Source]

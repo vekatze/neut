@@ -38,8 +38,8 @@ import Data.Comp
     varComp,
   )
 import Data.Global
-  ( constructorEnv,
-    defEnv,
+  ( compDefEnvRef,
+    constructorEnvRef,
     newCount,
     newIdentFromText,
     newValueVarLocalWith,
@@ -98,7 +98,7 @@ clarifyDefList :: [Stmt] -> IO [(T.Text, Comp)]
 clarifyDefList defList = do
   defList' <- mapM clarifyDef defList
   register defList'
-  -- reduceのあとでもういっかいdefEnvをemptyにして登録するべき？
+  -- reduceのあとでもういっかいcompDefEnvをemptyにして登録するべき？
   forM defList' $ \(name, e) -> do
     e' <- reduceComp e
     return (name, e')
@@ -300,8 +300,8 @@ returnClosure tenv isReducible kind fvs m xts e = do
       registerIfNecessary name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
     LamKindCons _ consName -> do
-      cenv <- readIORef constructorEnv
-      case Map.lookup consName cenv of
+      constructorEnv <- readIORef constructorEnvRef
+      case Map.lookup consName constructorEnv of
         Just (_, constructorNumber) -> do
           let consName' = consName <> ";cons"
           registerIfNecessary consName' isReducible True xts'' fvs'' e
@@ -332,8 +332,8 @@ registerIfNecessary ::
   Comp ->
   IO ()
 registerIfNecessary name isReducible isNoetic xts1 xts2 e = do
-  denv <- readIORef defEnv
-  unless (name `Map.member` denv) $ do
+  compDefEnv <- readIORef compDefEnvRef
+  unless (name `Map.member` compDefEnv) $ do
     e' <- linearize (xts2 ++ xts1) e
     (envVarName, envVar) <- newValueVarLocalWith "env"
     let args = map fst xts1 ++ [envVarName]
