@@ -2,7 +2,7 @@ module Data.Source where
 
 import Data.Basic (OutputKind (..))
 import Data.Module
-  ( Module,
+  ( Module (moduleTarget),
     defaultModulePrefix,
     getArtifactDir,
     getMainModule,
@@ -68,3 +68,8 @@ getSignatureTail source = do
   relFilePath <- stripProperPrefix (getSourceDir $ sourceModule source) $ sourceFilePath source
   (relFilePath', _) <- splitExtension relFilePath
   return $ T.splitOn "/" $ T.pack $ toFilePath relFilePath'
+
+isMainFile :: Source -> IO Bool
+isMainFile source = do
+  sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
+  return $ elem sourceRelPath $ moduleTarget (sourceModule source)

@@ -1,6 +1,6 @@
 module Main (main) where
 
-import Command.Build (build, clean)
+import Command.Build (build, check, clean)
 import Command.Dependency (get, tidy)
 import Command.Init (initialize)
 import Command.Release (release)
@@ -36,12 +36,6 @@ import Options.Applicative
     value,
   )
 import Parse.Module (initializeMainModule)
-import Path
-  ( Abs,
-    File,
-    Path,
-  )
-import Path.IO (resolveFile')
 import Paths_neut (version)
 import System.Exit (ExitCode (ExitFailure), exitWith)
 
@@ -60,7 +54,7 @@ type ClangOption =
 data Command
   = Build (Maybe Target) (Maybe ClangOption)
   | Clean
-  | Check InputPath Bool CheckOptEndOfEntry
+  | Check (Maybe InputPath) Bool CheckOptEndOfEntry
   | Release T.Text
   | Get Alias URL
   | Tidy
@@ -197,12 +191,14 @@ parseVersionOpt =
 parseCheckOpt :: Parser Command
 parseCheckOpt =
   Check
-    <$> argument
-      str
-      ( mconcat
-          [ metavar "INPUT",
-            help "The path of input file"
-          ]
+    <$> optional
+      ( argument
+          str
+          ( mconcat
+              [ metavar "INPUT",
+                help "The path of input file"
+              ]
+          )
       )
       <*> colorizeOpt
       <*> strOption
@@ -241,12 +237,11 @@ runCommand cmd = do
     Build target mClangOptStr -> do
       initializeMainModule
       runAction $ build target mClangOptStr
-    Check inputPathStr colorizeFlag eoe -> do
+    Check mInputPathStr colorizeFlag eoe -> do
       initializeMainModule
       writeIORef shouldColorizeRef colorizeFlag
       writeIORef endOfEntryRef eoe
-      inputPath <- resolveFile' inputPathStr
-      void $ runAction (runCheck inputPath)
+      void $ runAction $ check mInputPathStr
     Clean -> do
       initializeMainModule
       runAction clean
@@ -263,10 +258,6 @@ runCommand cmd = do
       runAction tidy
     Version ->
       putStrLn $ showVersion version
-
-runCheck :: Path Abs File -> IO ()
-runCheck =
-  undefined
 
 runAction :: IO a -> IO a
 runAction c = do

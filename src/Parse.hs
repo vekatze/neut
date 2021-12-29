@@ -101,6 +101,7 @@ parse' :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parse' source = do
   m <- currentHint
   mCache <- loadCache m source
+  setupSectionPrefix source
   case mCache of
     Just (stmtList, enumInfoList) -> do
       forM_ enumInfoList $ \(mEnum, name, itemList) -> do
@@ -112,7 +113,6 @@ parse' source = do
       let path = sourceFilePath source
       initializeParserForFile path
       initializeNamespace source
-      setupSectionPrefix source
       skip
       arrangeNamespace
       (defList, enumInfoList) <- parseHeader
@@ -125,9 +125,7 @@ ensureMain mainFunctionName = do
   currentSection <- readIORef currentSectionRef
   if S.member mainFunctionName topNameSet
     then return ()
-    else do
-      print topNameSet
-      raiseError m $ "`main` is not defined in the main module `" <> currentSection <> "`"
+    else raiseError m $ "`main` is missing in `" <> currentSection <> "`"
 
 setupSectionPrefix :: Source -> IO ()
 setupSectionPrefix currentSource = do

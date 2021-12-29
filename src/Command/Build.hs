@@ -3,12 +3,13 @@
 module Command.Build
   ( build,
     clean,
+    check,
     OutputKind (..),
   )
 where
 
 import Clarify (clarifyMain, clarifyOther)
-import Control.Monad (forM_, void, when)
+import Control.Monad (forM_, unless, void, when)
 import Data.Basic (newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
@@ -23,7 +24,7 @@ import Data.IORef
 import Data.List (foldl')
 import Data.Log (raiseError, raiseError')
 import Data.Maybe (fromMaybe)
-import Data.Module (Module (moduleTarget), getArtifactDir, getExecutableDir, getMainModule, getTargetDir, getTargetFilePath)
+import Data.Module (Module (moduleTarget), getArtifactDir, getExecutableDir, getMainModule, getSourceDir, getTargetDir, getTargetFilePath)
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -31,7 +32,7 @@ import Data.Sequence as Seq
     (|>),
   )
 import qualified Data.Set as S
-import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, sourceFilePath)
+import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, isMainFile, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Elaborate (elaborateMain, elaborateOther)
@@ -47,12 +48,13 @@ import Path
     File,
     Path,
     addExtension,
+    isProperPrefixOf,
     parent,
     splitExtension,
     toFilePath,
     (</>),
   )
-import Path.IO (doesDirExist, doesFileExist, ensureDir, getModificationTime, removeDirRecur, resolveFile)
+import Path.IO (doesDirExist, doesFileExist, ensureDir, getModificationTime, removeDirRecur, resolveFile, resolveFile')
 import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)
 import System.IO (Handle)
 import System.IO.Unsafe (unsafePerformIO)
@@ -105,6 +107,41 @@ build' target mClangOptStr = do
   mapM_ (compile modifiedSourceSet clangOptStr) dependenceSeq
   when isModified $ link target mClangOptStr $ toList dependenceSeq
 
+check :: Maybe FilePath -> IO ()
+check mFilePathStr = do
+  case mFilePathStr of
+    Just filePathStr -> do
+      filePath <- resolveFile' filePathStr
+      check' filePath
+    Nothing -> do
+      mainModule <- getMainModule
+      forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
+        check' $ getSourceDir mainModule </> relPath
+
+check' :: Path Abs File -> IO ()
+check' filePath = do
+  ensureFileModuleSanity filePath
+  mainModule <- getMainModule
+  let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
+  initializeEnumEnv
+  (_, dependenceSeq) <- computeDependence source
+  mapM_ check'' dependenceSeq
+
+ensureFileModuleSanity :: Path Abs File -> IO ()
+ensureFileModuleSanity filePath = do
+  mainModule <- getMainModule
+  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
+    raiseError' "the specified file is not in the current module"
+
+check'' :: Source -> IO ()
+check'' source = do
+  mMainFunctionName <- getMainFunctionName source
+  case mMainFunctionName of
+    Just mainName ->
+      void $ parseMain mainName source >>= elaborateMain mainName source
+    Nothing ->
+      void $ parseOther source >>= elaborateOther source
+
 compile :: S.Set (Path Abs File) -> String -> Source -> IO ()
 compile modifiedSourceSet clangOptStr source = do
   if S.member (sourceFilePath source) modifiedSourceSet
@@ -113,7 +150,7 @@ compile modifiedSourceSet clangOptStr source = do
 
 loadTopLevelDefinitions :: Source -> IO ()
 loadTopLevelDefinitions source = do
-  mMainFunctionName <- getMainFunctionName source
+  mMainFunctionName <- getMainFunctionNameIfEntryPoint source
   case mMainFunctionName of
     Just mainName ->
       void $ parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName
@@ -137,7 +174,7 @@ compile' clangOptStr source = do
 
 compileToLLVM :: Source -> IO L.ByteString
 compileToLLVM source = do
-  mMainFunctionName <- getMainFunctionName source
+  mMainFunctionName <- getMainFunctionNameIfEntryPoint source
   case mMainFunctionName of
     Just mainName ->
       parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName >>= lowerMain >>= emitMain
@@ -185,12 +222,22 @@ getMainSource mainSourceFilePath = do
 
 getMainFunctionName :: Source -> IO (Maybe T.Text)
 getMainFunctionName source = do
+  b <- isMainFile source
+  if b
+    then return <$> getMainFunctionName' source
+    else return Nothing
+
+getMainFunctionNameIfEntryPoint :: Source -> IO (Maybe T.Text)
+getMainFunctionNameIfEntryPoint source = do
   mainFilePath <- getMainFilePath
-  if sourceFilePath source /= mainFilePath
-    then return Nothing
-    else do
-      section <- getSection source
-      return $ Just $ section <> nsSep <> "main"
+  if sourceFilePath source == mainFilePath
+    then return <$> getMainFunctionName' source
+    else return Nothing
+
+getMainFunctionName' :: Source -> IO T.Text
+getMainFunctionName' source = do
+  section <- getSection source
+  return $ section <> nsSep <> "main"
 
 {-# NOINLINE traceSourceListRef #-}
 traceSourceListRef :: IORef [Source]
