@@ -246,15 +246,28 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
+{-# INLINE bool #-}
+bool :: T.Text
+bool =
+  "bool"
+
 {-# INLINE boolTrue #-}
 boolTrue :: T.Text
 boolTrue =
-  "bool" <> nsSep <> "true"
+  bool <> nsSep <> "true"
 
 {-# INLINE boolFalse #-}
 boolFalse :: T.Text
 boolFalse =
-  "bool" <> nsSep <> "false"
+  bool <> nsSep <> "false"
+
+unsafePtr :: T.Text
+unsafePtr =
+  "unsafe.pointer"
+
+unsafeCast :: T.Text
+unsafeCast =
+  "unsafe.cast"
 
 initialLowDeclEnv :: Map.HashMap T.Text ([LowType], LowType)
 initialLowDeclEnv =

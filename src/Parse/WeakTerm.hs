@@ -21,7 +21,7 @@ import Data.Basic
     asIdent,
     asText,
   )
-import Data.Global (newAster, nsSep, targetPlatformRef)
+import Data.Global (boolFalse, boolTrue, newAster, nsSep, targetPlatformRef, unsafeCast, unsafePtr)
 import Data.IORef (readIORef)
 import Data.Log (raiseError)
 import Data.LowType
@@ -551,8 +551,8 @@ foldIf m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel "bool.true", ifBody),
-              (m :< EnumCaseLabel "bool.false", elseBody)
+            [ (m :< EnumCaseLabel boolTrue, ifBody),
+              (m :< EnumCaseLabel boolFalse, elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf m elseIfCond elseIfBody rest elseBody
@@ -561,8 +561,8 @@ foldIf m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel "bool.true", ifBody),
-              (m :< EnumCaseLabel "bool.false", cont)
+            [ (m :< EnumCaseLabel boolTrue, ifBody),
+              (m :< EnumCaseLabel boolFalse, cont)
             ]
 
 -- (e1, ..., en) (n >= 2)
@@ -629,7 +629,7 @@ weakTermArrayIntro = do
   ptr <- newTextualIdentFromText "ptr"
   h1 <- newTextualIdentFromText "_"
   h2 <- newTextualIdentFromText "_"
-  let ptrType = weakVar m "unsafe.pointer"
+  let ptrType = weakVar m unsafePtr
   let topType = weakVar m "top"
   arrText <- lowTypeToArrayKindText m t
   let arrName = arrText <> "-array" -- e.g. i8-array
@@ -643,7 +643,7 @@ weakTermArrayIntro = do
             m
             (m, h2, topType)
             (m :< WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
-            (m :< WeakTermPiElim (weakVar m "unsafe.cast") [weakVar m "unsafe.pointer", weakVar m arrName, weakVar m (asText ptr)])
+            (m :< WeakTermPiElim (weakVar m unsafeCast) [weakVar m unsafePtr, weakVar m arrName, weakVar m (asText ptr)])
 
 lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTerm
 lowTypeToWeakTerm m t =
@@ -827,7 +827,7 @@ castFromNoema subject baseType tree = do
   let m = metaOf tree
   m
     :< WeakTermPiElim
-      (weakVar m "unsafe.cast")
+      (weakVar m unsafeCast)
       [ wrapWithNoema subject baseType,
         baseType,
         tree
@@ -838,7 +838,7 @@ castToNoema subject baseType tree = do
   let m = metaOf tree
   m
     :< WeakTermPiElim
-      (weakVar m "unsafe.cast")
+      (weakVar m unsafeCast)
       [ baseType,
         wrapWithNoema subject baseType,
         tree

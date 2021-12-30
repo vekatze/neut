@@ -9,6 +9,7 @@ import Control.Monad (forM_, when)
 import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
 import Data.Global
   ( aliasEnvRef,
+    bool,
     boolFalse,
     boolTrue,
     constructorEnvRef,
@@ -20,6 +21,8 @@ import Data.Global
     prefixEnvRef,
     sourceAliasMapRef,
     topNameSetRef,
+    unsafeCast,
+    unsafePtr,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
@@ -316,7 +319,7 @@ parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
         indType
         ( m
             :< WeakTermPiElim
-              (weakVar m "unsafe.cast")
+              (weakVar m unsafeCast)
               [ baseType,
                 indType,
                 m
@@ -336,7 +339,7 @@ parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
         indType
         ( m
             :< WeakTermPiElim
-              (weakVar m "unsafe.cast")
+              (weakVar m unsafeCast)
               [ baseType,
                 indType,
                 m
@@ -416,32 +419,32 @@ parseDefineResourceType = do
     (m :< WeakTermTau)
     ( m
         :< WeakTermPiElim
-          (weakVar m "unsafe.cast")
+          (weakVar m unsafeCast)
           [ m
               :< WeakTermPi
-                [ (m, flag, weakVar m "bool"),
-                  (m, value, weakVar m "unsafe.pointer")
+                [ (m, flag, weakVar m bool),
+                  (m, value, weakVar m unsafePtr)
                 ]
-                (weakVar m "unsafe.pointer"),
+                (weakVar m unsafePtr),
             m :< WeakTermTau,
             m
               :< WeakTermPiIntro
                 LamKindResourceHandler
-                [ (m, flag, weakVar m "bool"),
-                  (m, value, weakVar m "unsafe.pointer")
+                [ (m, flag, weakVar m bool),
+                  (m, value, weakVar m unsafePtr)
                 ]
                 ( m
                     :< WeakTermEnumElim
-                      (weakVar m (asText flag), weakVar m "bool")
+                      (weakVar m (asText flag), weakVar m bool)
                       [ ( m :< EnumCaseLabel boolTrue,
                           m :< WeakTermPiElim copier [weakVar m (asText value)]
                         ),
                         ( m :< EnumCaseLabel boolFalse,
                           m
                             :< WeakTermPiElim
-                              (weakVar m "unsafe.cast")
+                              (weakVar m unsafeCast)
                               [ weakVar m "top",
-                                weakVar m "unsafe.pointer",
+                                weakVar m unsafePtr,
                                 m :< WeakTermPiElim discarder [weakVar m (asText value)]
                               ]
                         )
