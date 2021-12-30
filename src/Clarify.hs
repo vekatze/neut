@@ -17,19 +17,18 @@ import Clarify.Utility
     wrapWithQuote,
   )
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM, forM_, unless, when, (>=>))
+import Control.Monad (forM, unless, when, (>=>))
 import Data.Basic
   ( CompEnumCase,
     EnumCase,
     EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Hint,
     Ident,
+    IsReducible,
     LamKind (..),
-    Opacity (OpacityTranslucent, OpacityTransparent),
     asInt,
     asText',
     fromLamKind,
-    isTransparent,
   )
 import Data.Comp
   ( Comp (..),
@@ -123,15 +122,23 @@ clarifyTerm tenv term =
       return $ CompPiElimDownElim (ValueVarGlobal x) []
     _ :< TermPi {} ->
       returnClosureS4
-    m :< TermPiIntro opacity kind mxts e -> do
+    m :< TermPiIntro kind mxts e -> do
       e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
       let fvs = nubFreeVariables $ chainOf tenv term
-      case (opacity, kind) of
-        (OpacityTranslucent, LamKindFix (_, x, _))
-          | not (S.member x (varComp e')) ->
+      case kind of
+        LamKindFix (_, x, _)
+          | S.member x (varComp e') ->
+            returnClosure tenv False kind fvs m mxts e'
+          | otherwise ->
             returnClosure tenv True LamKindNormal fvs m mxts e'
         _ ->
-          returnClosure tenv (isTransparent opacity) kind fvs m mxts e'
+          returnClosure tenv True kind fvs m mxts e'
+    -- case (opacity, kind) of
+    --   (OpacityTranslucent, LamKindFix (_, x, _))
+    --     | not (S.member x (varComp e')) ->
+    --       returnClosure tenv True LamKindNormal fvs m mxts e'
+    --   _ ->
+    --     returnClosure tenv (isTransparent opacity) kind fvs m mxts e'
     _ :< TermPiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -207,7 +214,7 @@ caseClauseToLambda :: (Pattern, Term) -> Term
 caseClauseToLambda pat =
   case pat of
     ((mPat, _, xts), body) ->
-      mPat :< TermPiIntro OpacityTransparent LamKindNormal xts body
+      mPat :< TermPiIntro LamKindNormal xts body
 
 constructClauseArguments :: Comp -> Int -> Int -> IO [(Ident, Comp, Value)]
 constructClauseArguments cls clsIndex upperBound = do
@@ -370,7 +377,7 @@ chainOf tenv term =
       []
     _ :< TermPi {} ->
       []
-    _ :< TermPiIntro _ kind xts e ->
+    _ :< TermPiIntro kind xts e ->
       chainOf' tenv (catMaybes [fromLamKind kind] ++ xts) [e]
     _ :< TermPiElim e es -> do
       let xs1 = chainOf tenv e

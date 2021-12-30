@@ -10,9 +10,7 @@ import Data.Basic
   ( EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     LamKind (LamKindCons, LamKindFix, LamKindNormal),
-    Opacity (OpacityTransparent),
     asInt,
-    isOpaque,
   )
 import Data.Global (dataEnvRef, newIdentFromIdent)
 import qualified Data.HashMap.Lazy as Map
@@ -54,10 +52,10 @@ reduceWeakTerm term =
       ts' <- mapM reduceWeakTerm ts
       cod' <- reduceWeakTerm cod
       return $ m :< WeakTermPi (zip3 ms xs ts') cod'
-    m :< WeakTermPiIntro opacity kind xts e
+    m :< WeakTermPiIntro kind xts e
       | LamKindFix (_, x, _) <- kind,
         x `notElem` varWeakTerm e ->
-        reduceWeakTerm $ m :< WeakTermPiIntro opacity LamKindNormal xts e
+        reduceWeakTerm $ m :< WeakTermPiIntro LamKindNormal xts e
       | otherwise -> do
         let (ms, xs, ts) = unzip3 xts
         ts' <- mapM reduceWeakTerm ts
@@ -65,16 +63,15 @@ reduceWeakTerm term =
         case kind of
           LamKindFix (mx, x, t) -> do
             t' <- reduceWeakTerm t
-            return (m :< WeakTermPiIntro opacity (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+            return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
           _ ->
-            return (m :< WeakTermPiIntro opacity kind (zip3 ms xs ts') e')
+            return (m :< WeakTermPiIntro kind (zip3 ms xs ts') e')
     m :< WeakTermPiElim e es -> do
       e' <- reduceWeakTerm e
       es' <- mapM reduceWeakTerm es
       case e' of
-        (_ :< WeakTermPiIntro opacity LamKindNormal xts body)
-          | not (isOpaque opacity),
-            length xts == length es' -> do
+        (_ :< WeakTermPiIntro LamKindNormal xts body)
+          | length xts == length es' -> do
             let xs = map (\(_, x, _) -> asInt x) xts
             let sub = IntMap.fromList $ zip xs es'
             substWeakTerm sub body >>= reduceWeakTerm
@@ -111,9 +108,8 @@ reduceWeakTerm term =
       let lamList = map (toLamList m) clauseList
       dataEnv <- readIORef dataEnvRef
       case e' of
-        (_ :< WeakTermPiIntro opacity (LamKindCons dataName consName) _ _)
-          | not (isOpaque opacity),
-            Just consNameList <- Map.lookup dataName dataEnv,
+        (_ :< WeakTermPiIntro (LamKindCons dataName consName) _ _)
+          | Just consNameList <- Map.lookup dataName dataEnv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do
             let app = m :< WeakTermPiElim e' (resultType : lamList)
@@ -142,7 +138,7 @@ checkClauseListSanity consNameList clauseList =
 
 toLamList :: Hint -> (WeakPattern, WeakTerm) -> WeakTerm
 toLamList m ((_, _, xts), body) =
-  m :< WeakTermPiIntro OpacityTransparent LamKindNormal xts body
+  m :< WeakTermPiIntro LamKindNormal xts body
 
 substWeakTerm :: SubstWeakTerm -> WeakTerm -> IO WeakTerm
 substWeakTerm sub term =
@@ -159,14 +155,14 @@ substWeakTerm sub term =
     m :< WeakTermPi xts t -> do
       (xts', t') <- substWeakTerm' sub xts t
       return $ m :< WeakTermPi xts' t'
-    m :< WeakTermPiIntro opacity kind xts e -> do
+    m :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
           (xt' : xts', e') <- substWeakTerm' sub (xt : xts) e
-          return $ m :< WeakTermPiIntro opacity (LamKindFix xt') xts' e'
+          return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
         _ -> do
           (xts', e') <- substWeakTerm' sub xts e
-          return $ m :< WeakTermPiIntro opacity kind xts' e'
+          return $ m :< WeakTermPiIntro kind xts' e'
     m :< WeakTermPiElim e es -> do
       e' <- substWeakTerm sub e
       es' <- mapM (substWeakTerm sub) es

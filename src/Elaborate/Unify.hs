@@ -12,7 +12,6 @@ import Data.Basic
   ( Hint,
     Ident,
     LamKind (LamKindFix, LamKindNormal),
-    Opacity (OpacityTransparent),
     asInt,
     getPosInfo,
     lamKindWeakEq,
@@ -140,7 +139,7 @@ simplify constraintList =
             xt2 <- asWeakBinder m2 cod2
             cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
             simplify $ cs' ++ cs
-        (m1 :< WeakTermPiIntro _ kind1 xts1 e1, m2 :< WeakTermPiIntro _ kind2 xts2 e2)
+        (m1 :< WeakTermPiIntro kind1 xts1 e1, m2 :< WeakTermPiIntro kind2 xts2 e2)
           | LamKindFix xt1@(_, x1, _) <- kind1,
             LamKindFix xt2@(_, x2, _) <- kind2,
             x1 == x2,
@@ -333,7 +332,7 @@ toPiIntro args e =
       e
     xts : xtss -> do
       let e' = toPiIntro xtss e
-      metaOf e' :< WeakTermPiIntro OpacityTransparent LamKindNormal xts e'
+      metaOf e' :< WeakTermPiIntro LamKindNormal xts e'
 
 toPiElim :: WeakTerm -> [(Hint, [WeakTerm])] -> WeakTerm
 toPiElim e args =

@@ -11,7 +11,6 @@ import Data.Basic
     EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     LamKind (..),
-    Opacity (OpacityTransparent),
     asInt,
   )
 import Data.Global
@@ -191,17 +190,17 @@ elaborate' term =
       xts' <- mapM elaborateWeakBinder xts
       t' <- elaborate' t
       return $ m :< TermPi xts' t'
-    m :< WeakTermPiIntro isReducible kind xts e -> do
+    m :< WeakTermPiIntro kind xts e -> do
       kind' <- elaborateKind kind
       xts' <- mapM elaborateWeakBinder xts
       e' <- elaborate' e
-      return $ m :< TermPiIntro isReducible kind' xts' e'
+      return $ m :< TermPiIntro kind' xts' e'
     m :< WeakTermPiElim (mh :< WeakTermAster x) es -> do
       subst <- readIORef substRef
       case IntMap.lookup x subst of
         Nothing ->
           raiseError mh "couldn't instantiate the asterisk here"
-        Just (_ :< WeakTermPiIntro OpacityTransparent LamKindNormal xts e)
+        Just (_ :< WeakTermPiIntro LamKindNormal xts e)
           | length xts == length es -> do
             let xs = map (\(_, y, _) -> asInt y) xts
             let s = IntMap.fromList $ zip xs es

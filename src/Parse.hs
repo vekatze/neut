@@ -6,7 +6,7 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
-import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, IsReducible, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (OpacityTranslucent, OpacityTransparent), asIdent, asText)
+import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, IsReducible, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), asIdent, asText)
 import Data.Global
   ( aliasEnvRef,
     boolFalse,
@@ -245,7 +245,7 @@ parseDefine isReducible = do
 defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakBinder] -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineFunction isReducible m mFun name argList codType e = do
   let piType = m :< WeakTermPi argList codType
-  let e' = m :< WeakTermPiIntro OpacityTranslucent (LamKindFix (mFun, asIdent name, piType)) argList e
+  let e' = m :< WeakTermPiIntro (LamKindFix (mFun, asIdent name, piType)) argList e
   defineTerm isReducible m name piType e'
 
 defineTerm :: IsReducible -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
@@ -319,7 +319,6 @@ parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
                 indType,
                 m
                   :< WeakTermPiIntro
-                    OpacityTransparent
                     (LamKindCons a b')
                     lamArgs
                     (m :< WeakTermPiElim (weakVar m b) args)
@@ -340,7 +339,6 @@ parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
                 indType,
                 m
                   :< WeakTermPiIntro
-                    OpacityTransparent
                     (LamKindCons a b')
                     lamArgs
                     (m :< WeakTermPiElim (weakVar m b) args)
@@ -426,7 +424,6 @@ parseDefineResourceType = do
             m :< WeakTermTau,
             m
               :< WeakTermPiIntro
-                OpacityTransparent
                 LamKindResourceHandler
                 [ (m, flag, weakVar m "bool"),
                   (m, value, weakVar m "unsafe.pointer")

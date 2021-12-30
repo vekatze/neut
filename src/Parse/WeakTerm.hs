@@ -18,7 +18,6 @@ import Data.Basic
     Hint,
     Ident,
     LamKind (LamKindFix),
-    Opacity (OpacityTransparent),
     asIdent,
     asText,
   )
@@ -168,7 +167,7 @@ weakTermPiIntroFix = do
   self <- weakBinder
   varList <- many weakBinder
   e <- tryPlanList [weakTermDotBind, weakTermDoEnd]
-  return $ m :< WeakTermPiIntro OpacityTransparent (LamKindFix self) varList e
+  return $ m :< WeakTermPiIntro (LamKindFix self) varList e
 
 weakTermAux :: IO WeakTerm
 weakTermAux = do

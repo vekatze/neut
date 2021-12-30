@@ -11,7 +11,6 @@ import Data.Basic
     Hint,
     Ident,
     LamKind (..),
-    Opacity,
   )
 import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
@@ -53,7 +52,7 @@ data TermF a
   | TermVar Ident
   | TermVarGlobal T.Text
   | TermPi [BinderF a] a
-  | TermPiIntro Opacity (LamKind (BinderF a)) [BinderF a] a
+  | TermPiIntro (LamKind (BinderF a)) [BinderF a] a
   | TermPiElim a [a]
   | TermConst T.Text
   | TermInt IntSize Integer
@@ -111,11 +110,11 @@ weaken term =
       m :< WeakTermVarGlobal g
     m :< TermPi xts t ->
       m :< WeakTermPi (map weakenBinder xts) (weaken t)
-    m :< TermPiIntro opacity kind xts e -> do
+    m :< TermPiIntro kind xts e -> do
       let kind' = weakenKind kind
       let xts' = map weakenBinder xts
       let e' = weaken e
-      m :< WeakTermPiIntro opacity kind' xts' e'
+      m :< WeakTermPiIntro kind' xts' e'
     m :< TermPiElim e es -> do
       let e' = weaken e
       let es' = map weaken es

@@ -9,9 +9,7 @@ import Data.Basic
   ( EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     LamKind (LamKindCons, LamKindFix, LamKindNormal),
-    Opacity (OpacityTransparent),
     asInt,
-    isOpaque,
   )
 import Data.Global (dataEnvRef, newIdentFromIdent)
 import qualified Data.HashMap.Lazy as Map
@@ -51,25 +49,24 @@ reduceTerm term =
       ts' <- mapM reduceTerm ts
       cod' <- reduceTerm cod
       return (m :< TermPi (zip3 ms xs ts') cod')
-    (m :< TermPiIntro opacity kind xts e) -> do
+    (m :< TermPiIntro kind xts e) -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduceTerm ts
       e' <- reduceTerm e
       case kind of
         LamKindFix (mx, x, t) -> do
           t' <- reduceTerm t
-          return (m :< TermPiIntro opacity (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+          return (m :< TermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
         _ ->
-          return (m :< TermPiIntro opacity kind (zip3 ms xs ts') e')
+          return (m :< TermPiIntro kind (zip3 ms xs ts') e')
     (m :< TermPiElim e es) -> do
       e' <- reduceTerm e
       es' <- mapM reduceTerm es
       let app = TermPiElim e' es'
       case e' of
         -- (_ :< TermPiIntro opacity LamKindNormal xts body)
-        (_ :< TermPiIntro opacity LamKindNormal xts (_ :< body))
-          | not (isOpaque opacity),
-            length xts == length es' -> do
+        (_ :< TermPiIntro LamKindNormal xts (_ :< body))
+          | length xts == length es' -> do
             let xs = map (\(_, x, _) -> asInt x) xts
             let sub = IntMap.fromList $ zip xs es'
             substTerm sub (m :< body) >>= reduceTerm
@@ -103,9 +100,8 @@ reduceTerm term =
       let lamList = map (toLamList m) clauseList
       dataEnv <- readIORef dataEnvRef
       case e' of
-        (_ :< TermPiIntro opacity (LamKindCons dataName consName) _ _)
-          | not (isOpaque opacity),
-            Just consNameList <- Map.lookup dataName dataEnv,
+        (_ :< TermPiIntro (LamKindCons dataName consName) _ _)
+          | Just consNameList <- Map.lookup dataName dataEnv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do
             let app = m :< TermPiElim e' (resultType : lamList)
@@ -134,7 +130,7 @@ checkClauseListSanity consNameList clauseList =
 
 toLamList :: Hint -> (Pattern, Term) -> Term
 toLamList m ((_, _, xts), body) =
-  m :< TermPiIntro OpacityTransparent LamKindNormal xts body
+  m :< TermPiIntro LamKindNormal xts body
 
 substTerm :: SubstTerm -> Term -> IO Term
 substTerm sub term =
@@ -151,14 +147,14 @@ substTerm sub term =
     (m :< TermPi xts t) -> do
       (xts', t') <- substTerm' sub xts t
       return (m :< TermPi xts' t')
-    (m :< TermPiIntro opacity kind xts e) -> do
+    (m :< TermPiIntro kind xts e) -> do
       case kind of
         LamKindFix xt -> do
           (xt' : xts', e') <- substTerm' sub (xt : xts) e
-          return (m :< TermPiIntro opacity (LamKindFix xt') xts' e')
+          return (m :< TermPiIntro (LamKindFix xt') xts' e')
         _ -> do
           (xts', e') <- substTerm' sub xts e
-          return (m :< TermPiIntro opacity kind xts' e')
+          return (m :< TermPiIntro kind xts' e')
     (m :< TermPiElim e es) -> do
       e' <- substTerm sub e
       es' <- mapM (substTerm sub) es

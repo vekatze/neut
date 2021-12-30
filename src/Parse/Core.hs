@@ -6,7 +6,6 @@ import Data.Basic
   ( Hint,
     Ident,
     LamKind (LamKindNormal),
-    Opacity (OpacityTransparent),
     asIdent,
     getPosInfo,
     newHint,
@@ -468,7 +467,7 @@ weakVar' m ident =
 
 lam :: Hint -> [WeakBinder] -> WeakTerm -> WeakTerm
 lam m varList e =
-  m :< WeakTermPiIntro OpacityTransparent LamKindNormal varList e
+  m :< WeakTermPiIntro LamKindNormal varList e
 
 newTextualIdentFromText :: T.Text -> IO Ident
 newTextualIdentFromText txt = do

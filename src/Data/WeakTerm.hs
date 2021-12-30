@@ -11,11 +11,8 @@ import Data.Basic
     Hint,
     Ident (..),
     LamKind (LamKindCons, LamKindFix),
-    Opacity,
     asText,
     fromLamKind,
-    isOpaque,
-    isTransparent,
   )
 import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
@@ -31,7 +28,7 @@ data WeakTermF a
   | WeakTermVar Ident
   | WeakTermVarGlobal T.Text
   | WeakTermPi [WeakBinderF a] a
-  | WeakTermPiIntro Opacity (LamKind (WeakBinderF a)) [WeakBinderF a] a
+  | WeakTermPiIntro (LamKind (WeakBinderF a)) [WeakBinderF a] a
   | WeakTermPiElim a [a]
   | WeakTermAster Int
   | WeakTermConst T.Text
@@ -133,7 +130,7 @@ varWeakTerm term =
       S.empty
     _ :< WeakTermPi xts t ->
       varWeakTerm' xts [t]
-    _ :< WeakTermPiIntro _ k xts e ->
+    _ :< WeakTermPiIntro k xts e ->
       varWeakTerm' (catMaybes [fromLamKind k] ++ xts) [e]
     _ :< WeakTermPiElim e es -> do
       let xs = varWeakTerm e
@@ -193,7 +190,7 @@ asterWeakTerm term =
       S.empty
     _ :< WeakTermPi xts t ->
       asterWeakTerm' xts t
-    _ :< WeakTermPiIntro _ _ xts e ->
+    _ :< WeakTermPiIntro _ xts e ->
       asterWeakTerm' xts e
     _ :< WeakTermPiElim e es ->
       S.unions $ map asterWeakTerm $ e : es
@@ -270,30 +267,20 @@ toText term =
             showCons ["∑", inParen $ showTypeArgs zts, toText t]
       | otherwise ->
         showCons ["Π", inParen $ showTypeArgs xts, toText cod]
-    _ :< WeakTermPiIntro opacity kind xts e -> do
+    _ :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
-          if isOpaque opacity
-            then showCons ["fix-irreducible", showVariable x, argStr, toText e]
-            else showCons ["fix", showVariable x, argStr, toText e]
+          showCons ["fix", showVariable x, argStr, toText e]
         LamKindCons _ _ -> do
           let argStr = inParen $ showItems $ map showArg xts
-          if isTransparent opacity
-            then showCons ["λ", argStr, toText e]
-            else showCons ["λ-irreducible", argStr, toText e]
+          showCons ["λ", argStr, toText e]
         -- "<cons>"
         _ -> do
           let argStr = inParen $ showItems $ map showArg xts
-          if isTransparent opacity
-            then showCons ["λ", argStr, toText e]
-            else showCons ["λ-irreducible", argStr, toText e]
+          showCons ["λ", argStr, toText e]
     _ :< WeakTermPiElim e es ->
-      case e of
-        -- (_, WeakTermAster _) ->
-        --   "*"
-        _ ->
-          showCons $ map toText $ e : es
+      showCons $ map toText $ e : es
     _ :< WeakTermConst x ->
       x
     _ :< WeakTermAster i ->

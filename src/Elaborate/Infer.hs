@@ -98,7 +98,7 @@ infer' ctx term =
     m :< WeakTermPi xts t -> do
       (xts', t') <- inferPi ctx xts t
       return (m :< WeakTermPi xts' t', m :< WeakTermTau)
-    m :< WeakTermPiIntro opacity kind xts e -> do
+    m :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix (mx, x, t) -> do
           t' <- inferType' ctx t
@@ -106,10 +106,10 @@ infer' ctx term =
           (xts', (e', tCod)) <- inferBinder ctx xts e
           let piType = m :< WeakTermPi xts' tCod
           insConstraintEnv piType t'
-          return (m :< WeakTermPiIntro opacity (LamKindFix (mx, x, t')) xts' e', piType)
+          return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) xts' e', piType)
         _ -> do
           (xts', (e', t')) <- inferBinder ctx xts e
-          return (m :< WeakTermPiIntro opacity kind xts' e', m :< WeakTermPi xts' t')
+          return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermPi xts' t')
     m :< WeakTermPiElim e es -> do
       etls <- mapM (infer' ctx) es
       etl <- infer' ctx e
