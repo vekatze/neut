@@ -30,16 +30,16 @@ import Parse.Core
   ( currentHint,
     integer,
     many,
+    simpleVar,
     token,
     tryPlanList,
-    varText,
   )
 
 parseDefineEnum :: IO EnumInfo
 parseDefineEnum = do
   m <- currentHint
   token "define-enum"
-  name <- varText >>= attachSectionPrefix
+  name <- simpleVar >>= attachSectionPrefix . snd
   itemList <- many parseDefineEnumClause
   let itemList' = arrangeEnumItemList name 0 itemList
   unless (isLinear (map snd itemList')) $
@@ -67,7 +67,7 @@ parseDefineEnumClause = do
 parseDefineEnumClauseWithDiscriminant :: IO (T.Text, Maybe Int)
 parseDefineEnumClauseWithDiscriminant = do
   token "-"
-  item <- varText
+  item <- snd <$> simpleVar
   token "<-"
   discriminant <- integer
   return (item, Just (fromInteger discriminant))
@@ -75,7 +75,7 @@ parseDefineEnumClauseWithDiscriminant = do
 parseDefineEnumClauseWithoutDiscriminant :: IO (T.Text, Maybe Int)
 parseDefineEnumClauseWithoutDiscriminant = do
   token "-"
-  item <- varText
+  item <- snd <$> simpleVar
   return (item, Nothing)
 
 initEnumEnvInfo :: [(T.Text, [(T.Text, Int)])]

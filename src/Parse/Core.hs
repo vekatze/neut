@@ -301,6 +301,14 @@ var = do
     then raiseParseError m $ "found a reserved symbol `" <> x <> "`, expecting a variable"
     else return (m, x)
 
+simpleVar :: IO (Hint, T.Text)
+simpleVar = do
+  m <- currentHint
+  x <- simpleSymbol
+  if isKeyword x
+    then raiseParseError m $ "found a reserved symbol `" <> x <> "`, expecting a variable"
+    else return (m, x)
+
 string :: IO T.Text
 string = do
   char '"'

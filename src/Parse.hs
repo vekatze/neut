@@ -60,13 +60,13 @@ import Parse.Core
     many,
     newTextualIdentFromText,
     raiseParseError,
+    simpleVar,
     skip,
     symbol,
     symbolMaybe,
     textRef,
     token,
     tryPlanList,
-    var,
     varText,
     weakTermToWeakIdent,
     weakVar,
@@ -231,7 +231,7 @@ parseDefine opacity = do
       token "define"
     OpacityTransparent ->
       token "define-inline"
-  (mTerm, name) <- var
+  (mTerm, name) <- simpleVar
   name' <- attachSectionPrefix name
   argList <- many weakBinder
   token ":"
