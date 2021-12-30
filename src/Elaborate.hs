@@ -12,6 +12,7 @@ import Data.Basic
     Hint,
     LamKind (..),
     asInt,
+    isOpaque,
   )
 import Data.Global
   ( dataEnvRef,
@@ -112,9 +113,9 @@ elaborate defListElaborator source cacheOrStmt =
       return defList'
 
 registerTopLevelDef :: Stmt -> IO ()
-registerTopLevelDef (StmtDef isReducible _ x t e) = do
+registerTopLevelDef (StmtDef opacity _ x t e) = do
   insTermTypeEnv x $ weaken t
-  when isReducible $ do
+  unless (isOpaque opacity) $
     modifyIORef' termDefEnvRef $ Map.insert x (weaken e)
 
 elaborateProgramMain :: T.Text -> [WeakStmt] -> IO [Stmt]
@@ -141,9 +142,11 @@ elaborateProgram defListInferrer defList = do
 setupDef :: WeakStmt -> IO ()
 setupDef def =
   case def of
-    WeakStmtDef isReducible _ x t e -> do
+    WeakStmtDef opacity _ x t e -> do
       insTermTypeEnv x t
-      when isReducible $ modifyIORef' termDefEnvRef $ Map.insert x e
+      unless (isOpaque opacity) $ modifyIORef' termDefEnvRef $ Map.insert x e
+
+-- when isReducible $ modifyIORef' termDefEnvRef $ Map.insert x e
 
 inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
 inferStmtMain mainFunctionName (WeakStmtDef isReducible m x t e) = do
@@ -168,14 +171,14 @@ elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDef isReducible m x t e : rest -> do
+    WeakStmtDef opacity m x t e : rest -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTerm
       insTermTypeEnv x $ weaken t'
-      when isReducible $
+      unless (isOpaque opacity) $
         modifyIORef' termDefEnvRef $ Map.insert x (weaken e')
       rest' <- elaborateStmtList rest
-      return $ StmtDef isReducible m x t' e' : rest'
+      return $ StmtDef opacity m x t' e' : rest'
 
 elaborate' :: WeakTerm -> IO Term
 elaborate' term =
@@ -221,7 +224,9 @@ elaborate' term =
         _ :< TermConst intTypeStr
           | Just (LowTypeInt size) <- asLowTypeMaybe intTypeStr ->
             return $ m :< TermInt size x
-        _ ->
+        _ -> do
+          tl <- readIORef termDefEnvRef
+          print $ toText <$> Map.lookup "this.foo.my-type" tl
           raiseError m $
             "the term `"
               <> T.pack (show x)

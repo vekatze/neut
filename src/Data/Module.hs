@@ -72,7 +72,7 @@ findModuleFile moduleRootDirCandidate = do
     (_, True) ->
       findModuleFile $ parent moduleRootDirCandidate
     _ ->
-      raiseError' "couldn't find a module file."
+      raiseError' "could not find a module file."
 
 {-# NOINLINE mainModuleRef #-}
 mainModuleRef :: IORef (Maybe Module)

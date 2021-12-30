@@ -22,15 +22,13 @@ import Data.Comp
     Value (ValueSigmaIntro, ValueVarGlobal),
   )
 import Data.Global
-  ( newIdentFromText,
+  ( cartClsName,
+    cartImmName,
+    newIdentFromText,
     newText,
     newValueVarLocalWith,
   )
 import qualified Data.Text as T
-
-immediateName :: T.Text
-immediateName =
-  "cartesian-immediate"
 
 returnImmediateS4 :: IO Comp
 returnImmediateS4 = do
@@ -40,7 +38,7 @@ immediateS4 :: IO Value
 immediateS4 = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  tryCache immediateName $ registerSwitcher immediateName immediateT immediate4
+  tryCache cartImmName $ registerSwitcher cartImmName immediateT immediate4
 
 sigmaS4 ::
   Maybe T.Text ->
@@ -133,6 +131,6 @@ returnClosureS4 = do
   retImmS4 <- returnImmediateS4
   t <-
     sigmaS4
-      (Just "cartesian-closure")
+      (Just cartClsName)
       [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
   return $ CompUpIntro t

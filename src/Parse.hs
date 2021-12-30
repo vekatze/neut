@@ -6,7 +6,7 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
-import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, IsReducible, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), asIdent, asText)
+import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
 import Data.Global
   ( aliasEnvRef,
     boolFalse,
@@ -15,7 +15,6 @@ import Data.Global
     currentSectionRef,
     dataEnvRef,
     getCurrentFilePath,
-    initialPrefixEnv,
     newText,
     nsSep,
     prefixEnvRef,
@@ -89,22 +88,22 @@ import Parse.WeakTerm
 
 parseMain :: T.Text -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseMain mainFunctionName source = do
-  result <- parse' source
+  result <- parseSource source
   ensureMain mainFunctionName
   return result
 
 parseOther :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseOther =
-  parse'
+  parseSource
 
-parse' :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
-parse' source = do
-  m <- currentHint
-  mCache <- loadCache m source
+parseSource :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseSource source = do
+  mCache <- loadCache source
+  initializeNamespace source
   setupSectionPrefix source
   case mCache of
     Just (stmtList, enumInfoList) -> do
-      forM_ enumInfoList $ \(mEnum, name, itemList) -> do
+      forM_ enumInfoList $ \(mEnum, name, itemList) ->
         insEnumEnv mEnum name itemList
       let names = S.fromList $ map (\(StmtDef _ _ x _ _) -> x) stmtList
       modifyIORef' topNameSetRef $ S.union names
@@ -112,7 +111,6 @@ parse' source = do
     Nothing -> do
       let path = sourceFilePath source
       initializeParserForFile path
-      initializeNamespace source
       skip
       arrangeNamespace
       (defList, enumInfoList) <- parseHeader
@@ -125,7 +123,9 @@ ensureMain mainFunctionName = do
   currentSection <- readIORef currentSectionRef
   if S.member mainFunctionName topNameSet
     then return ()
-    else raiseError m $ "`main` is missing in `" <> currentSection <> "`"
+    else do
+      print topNameSet
+      raiseError m $ "`main` is missing in `" <> currentSection <> "`"
 
 setupSectionPrefix :: Source -> IO ()
 setupSectionPrefix currentSource = do
@@ -192,11 +192,11 @@ parseStmtList = do
       headSymbol <- lookAhead (symbolMaybe isSymbolChar)
       case headSymbol of
         Just "define" -> do
-          def <- parseDefine False
+          def <- parseDefine OpacityOpaque
           stmtList <- parseStmtList
           return $ def : stmtList
         Just "define-inline" -> do
-          def <- parseDefine True
+          def <- parseDefine OpacityTransparent
           stmtList <- parseStmtList
           return $ def : stmtList
         Just "define-data" -> do
@@ -223,12 +223,14 @@ parseStmtList = do
 --
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Bool -> IO WeakStmt
-parseDefine isReducible = do
+parseDefine :: Opacity -> IO WeakStmt
+parseDefine opacity = do
   m <- currentHint
-  if isReducible
-    then token "define-inline"
-    else token "define"
+  case opacity of
+    OpacityOpaque ->
+      token "define"
+    OpacityTransparent ->
+      token "define-inline"
   (mTerm, name) <- var
   name' <- attachSectionPrefix name
   argList <- many weakBinder
@@ -238,20 +240,20 @@ parseDefine isReducible = do
   e <- weakTerm
   case argList of
     [] ->
-      defineTerm isReducible m name' codType e
+      defineTerm opacity m name' codType e
     _ ->
-      defineFunction isReducible m mTerm name' argList codType e
+      defineFunction opacity m mTerm name' argList codType e
 
-defineFunction :: IsReducible -> Hint -> Hint -> T.Text -> [WeakBinder] -> WeakTerm -> WeakTerm -> IO WeakStmt
-defineFunction isReducible m mFun name argList codType e = do
+defineFunction :: Opacity -> Hint -> Hint -> T.Text -> [WeakBinder] -> WeakTerm -> WeakTerm -> IO WeakStmt
+defineFunction opacity m mFun name argList codType e = do
   let piType = m :< WeakTermPi argList codType
   let e' = m :< WeakTermPiIntro (LamKindFix (mFun, asIdent name, piType)) argList e
-  defineTerm isReducible m name piType e'
+  defineTerm opacity m name piType e'
 
-defineTerm :: IsReducible -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
-defineTerm isReducible m name codType e = do
+defineTerm :: Opacity -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
+defineTerm opacity m name codType e = do
   registerTopLevelName m name
-  return $ WeakStmtDef isReducible m name codType e
+  return $ WeakStmtDef opacity m name codType e
 
 parseStmtUse :: IO ()
 parseStmtUse = do
@@ -286,11 +288,11 @@ defineData m mFun a xts bts = do
   case xts of
     [] -> do
       registerTopLevelName m a
-      let formRule = WeakStmtDef False m a (m :< WeakTermTau) (m :< WeakTermPi [] (m :< WeakTermTau)) -- fake type
+      let formRule = WeakStmtDef OpacityOpaque m a (m :< WeakTermTau) (m :< WeakTermPi [] (m :< WeakTermTau)) -- fake type
       introRuleList <- mapM (parseDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
     _ -> do
-      formRule <- defineFunction False m mFun a xts (m :< WeakTermTau) baseType
+      formRule <- defineFunction OpacityOpaque m mFun a xts (m :< WeakTermTau) baseType
       introRuleList <- mapM (parseDefineDataConstructor m lamArgs baseType a xts) bts
       return $ formRule : introRuleList
 
@@ -308,7 +310,7 @@ parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
   case consArgs of
     [] ->
       defineTerm
-        True
+        OpacityOpaque
         m
         b'
         indType
@@ -326,7 +328,7 @@ parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
         )
     _ ->
       defineFunction
-        True
+        OpacityOpaque
         m
         mb
         b'
@@ -384,7 +386,7 @@ parseDefineCodataElim m a xts yts (mY, y, elemType) = do
   recordVarText <- newText
   let projArgs = xts ++ [(m, asIdent recordVarText, codataType)]
   defineFunction
-    True
+    OpacityOpaque
     m
     mY
     (a <> nsSep <> asText y)
@@ -408,7 +410,7 @@ parseDefineResourceType = do
   flag <- newTextualIdentFromText "flag"
   value <- newTextualIdentFromText "value"
   defineTerm
-    True
+    OpacityOpaque
     m
     name
     (m :< WeakTermTau)
@@ -473,4 +475,4 @@ registerTopLevelName m x = do
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
   writeIORef aliasEnvRef $ getChecksumAliasList $ sourceModule source
-  writeIORef prefixEnvRef initialPrefixEnv
+  writeIORef prefixEnvRef []

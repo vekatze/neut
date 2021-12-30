@@ -145,7 +145,7 @@ constructorEnvRef =
 {-# NOINLINE prefixEnvRef #-}
 prefixEnvRef :: IORef [T.Text]
 prefixEnvRef =
-  unsafePerformIO (newIORef initialPrefixEnv)
+  unsafePerformIO (newIORef [])
 
 {-# NOINLINE aliasEnvRef #-}
 aliasEnvRef :: IORef [(T.Text, T.Text)]
@@ -215,16 +215,21 @@ lowDefEnvRef =
 {-# NOINLINE lowDeclEnvRef #-}
 lowDeclEnvRef :: IORef (Map.HashMap T.Text ([LowType], LowType))
 lowDeclEnvRef =
-  unsafePerformIO $
-    newIORef $
-      Map.fromList
-        [ ("malloc", ([voidPtr], voidPtr)),
-          ("free", ([voidPtr], voidPtr))
-        ]
+  unsafePerformIO $ newIORef initialLowDeclEnv
+
+{-# NOINLINE lowNameSetRef #-}
+lowNameSetRef :: IORef (S.Set T.Text)
+lowNameSetRef =
+  unsafePerformIO (newIORef S.empty)
 
 {-# NOINLINE nopFreeSetRef #-}
 nopFreeSetRef :: IORef (S.Set Int)
 nopFreeSetRef =
+  unsafePerformIO (newIORef S.empty)
+
+{-# NOINLINE modifiedSourceSetRef #-}
+modifiedSourceSetRef :: IORef (S.Set (Path Abs File))
+modifiedSourceSetRef =
   unsafePerformIO (newIORef S.empty)
 
 sourceFileExtension :: T.Text
@@ -251,10 +256,20 @@ boolFalse :: T.Text
 boolFalse =
   "bool" <> nsSep <> "false"
 
-{-# INLINE initialPrefixEnv #-}
-initialPrefixEnv :: [T.Text]
-initialPrefixEnv =
-  ["this"]
+initialLowDeclEnv :: Map.HashMap T.Text ([LowType], LowType)
+initialLowDeclEnv =
+  Map.fromList
+    [ ("malloc", ([voidPtr], voidPtr)),
+      ("free", ([voidPtr], voidPtr))
+    ]
+
+cartImmName :: T.Text
+cartImmName =
+  "imm"
+
+cartClsName :: T.Text
+cartClsName =
+  "cls"
 
 --
 -- generating new symbols using count

@@ -10,10 +10,10 @@ where
 
 import Clarify (clarifyMain, clarifyOther)
 import Control.Monad (forM_, unless, void, when)
-import Data.Basic (newHint)
+import Data.Basic (OutputKind (..), newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (getMainFilePath, nsSep, outputLog, setMainFilePath, sourceAliasMapRef)
+import Data.Global (getLibraryDirPath, getMainFilePath, modifiedSourceSetRef, nsSep, outputLog, setMainFilePath, sourceAliasMapRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -24,7 +24,7 @@ import Data.IORef
 import Data.List (foldl')
 import Data.Log (raiseError, raiseError')
 import Data.Maybe (fromMaybe)
-import Data.Module (Module (moduleTarget), getArtifactDir, getExecutableDir, getMainModule, getSourceDir, getTargetDir, getTargetFilePath)
+import Data.Module (Module (moduleLocation, moduleTarget), getArtifactDir, getExecutableDir, getMainModule, getSourceDir, getTargetDir, getTargetFilePath)
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -32,7 +32,7 @@ import Data.Sequence as Seq
     (|>),
   )
 import qualified Data.Set as S
-import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, isMainFile, sourceFilePath)
+import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, getSourceCachePath, isMainFile, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Elaborate (elaborateMain, elaborateOther)
@@ -68,13 +68,6 @@ import System.Process
   )
 import System.Process.Internals (std_err)
 
-data OutputKind
-  = OutputKindObject
-  | OutputKindLLVM
-  | OutputKindExecutable
-  | OutputKindAsm
-  deriving (Show)
-
 data VisitInfo
   = VisitInfoActive
   | VisitInfoFinish
@@ -87,6 +80,7 @@ type ClangOption =
 
 build :: Maybe Target -> Maybe ClangOption -> IO ()
 build mTarget mClangOptStr = do
+  ensureNotInLibDir "build"
   case mTarget of
     Just target ->
       build' target mClangOptStr
@@ -109,6 +103,7 @@ build' target mClangOptStr = do
 
 check :: Maybe FilePath -> IO ()
 check mFilePathStr = do
+  ensureNotInLibDir "check"
   case mFilePathStr of
     Just filePathStr -> do
       filePath <- resolveFile' filePathStr
@@ -132,6 +127,13 @@ ensureFileModuleSanity filePath = do
   mainModule <- getMainModule
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     raiseError' "the specified file is not in the current module"
+
+ensureNotInLibDir :: T.Text -> IO ()
+ensureNotInLibDir commandName = do
+  mainModule <- getMainModule
+  libDir <- getLibraryDirPath
+  when (isProperPrefixOf libDir (moduleLocation mainModule)) $
+    raiseError' $ "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
 check'' :: Source -> IO ()
 check'' source = do
@@ -162,8 +164,8 @@ compile' clangOptStr source = do
   llvm <- compileToLLVM source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
-  llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
-  L.writeFile (toFilePath llvmOutputPath) llvm
+  -- llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
+  -- L.writeFile (toFilePath llvmOutputPath) llvm
   let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"] ++ words clangOptStr
   withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
     L.hPut stdin llvm
@@ -254,11 +256,6 @@ sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE modifiedSourceSetRef #-}
-modifiedSourceSetRef :: IORef (S.Set (Path Abs File))
-modifiedSourceSetRef =
-  unsafePerformIO (newIORef S.empty)
-
 computeDependence :: Source -> IO (IsModified, Seq Source)
 computeDependence source = do
   visitEnv <- readIORef visitEnvRef
@@ -288,14 +285,21 @@ computeModificationStatus isModifiedList source = do
 
 isSourceModified :: Source -> IO Bool
 isSourceModified source = do
-  cachePath <- sourceToOutputPath OutputKindObject source
-  hasCache <- doesFileExist cachePath
-  if not hasCache
+  objectPath <- sourceToOutputPath OutputKindObject source
+  cachePath <- getSourceCachePath source
+  b1 <- isSourceModified' source objectPath
+  b2 <- isSourceModified' source cachePath
+  return $ b1 || b2
+
+isSourceModified' :: Source -> Path Abs File -> IO Bool
+isSourceModified' source itemPath = do
+  existsItem <- doesFileExist itemPath
+  if not existsItem
     then return True
     else do
       srcModTime <- getModificationTime $ sourceFilePath source
-      cacheModTime <- getModificationTime cachePath
-      return $ cacheModTime < srcModTime
+      itemModTime <- getModificationTime itemPath
+      return $ itemModTime < srcModTime
 
 raiseCyclicPath :: Source -> IO a
 raiseCyclicPath source = do
@@ -350,16 +354,6 @@ attachExtension file kind =
       addExtension ".o" file
     OutputKindExecutable -> do
       return file
-
-instance Read OutputKind where
-  readsPrec _ "object" =
-    [(OutputKindObject, [])]
-  readsPrec _ "llvm" =
-    [(OutputKindLLVM, [])]
-  readsPrec _ "asm" =
-    [(OutputKindAsm, [])]
-  readsPrec _ _ =
-    []
 
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do

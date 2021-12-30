@@ -99,11 +99,8 @@ type CompEnumCase =
 
 instance Binary EnumCase
 
--- instance Show EnumCase
-
 data Opacity
   = OpacityOpaque
-  | OpacityTranslucent
   | OpacityTransparent
   deriving (Show, Eq, Generic)
 
@@ -227,3 +224,13 @@ data OutputKind
   | OutputKindExecutable
   | OutputKindAsm
   deriving (Show)
+
+instance Read OutputKind where
+  readsPrec _ "object" =
+    [(OutputKindObject, [])]
+  readsPrec _ "llvm" =
+    [(OutputKindLLVM, [])]
+  readsPrec _ "asm" =
+    [(OutputKindAsm, [])]
+  readsPrec _ _ =
+    []

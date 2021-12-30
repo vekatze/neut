@@ -9,9 +9,13 @@ import Control.Monad (forM_, unless, (>=>))
 import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..), asText)
 import Data.Comp (Comp (..), Primitive (..), Value (..))
 import Data.Global
-  ( compDefEnvRef,
+  ( cartClsName,
+    cartImmName,
+    compDefEnvRef,
+    initialLowDeclEnv,
     lowDeclEnvRef,
     lowDefEnvRef,
+    lowNameSetRef,
     newCount,
     newIdentFromIdent,
     newIdentFromText,
@@ -55,13 +59,16 @@ import Data.LowType
     sizeAsInt,
     voidPtr,
   )
+import qualified Data.Set as S
 import qualified Data.Text as T
 
-lowerMain :: Comp -> IO LowComp
-lowerMain mainTerm = do
-  initialize
-  registerCartesian "cartesian-immediate"
-  registerCartesian "cartesian-closure"
+lowerMain :: ([(T.Text, Comp)], Comp) -> IO LowComp
+lowerMain (defList, mainTerm) = do
+  initialize $ cartImmName : cartClsName : map fst defList
+  registerCartesian cartImmName
+  registerCartesian cartClsName
+  forM_ defList $ \(name, e) ->
+    lowerComp e >>= insLowDefEnv name []
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
@@ -72,19 +79,17 @@ lowerMain mainTerm = do
 
 lowerOther :: [(T.Text, Comp)] -> IO ()
 lowerOther defList = do
-  initialize
-  insDeclEnv "cartesian-immediate" [(), ()]
-  insDeclEnv "cartesian-closure" [(), ()]
-  forM_ defList $ \(name, _) -> do
-    insLowDefEnv name [] LowCompUnreachable
-  forM_ defList $ \(name, e) -> do
-    e' <- lowerComp e
-    insLowDefEnv name [] e'
+  initialize $ map fst defList
+  insDeclEnv cartImmName [(), ()]
+  insDeclEnv cartClsName [(), ()]
+  forM_ defList $ \(name, e) ->
+    lowerComp e >>= insLowDefEnv name []
 
-initialize :: IO ()
-initialize = do
-  writeIORef lowDeclEnvRef Map.empty
+initialize :: [T.Text] -> IO ()
+initialize nameList = do
+  writeIORef lowDeclEnvRef initialLowDeclEnv
   writeIORef lowDefEnvRef Map.empty
+  writeIORef lowNameSetRef $ S.fromList nameList
 
 lowerComp :: Comp -> IO LowComp
 lowerComp term =
@@ -374,28 +379,12 @@ lowerValueLet x lowerValue cont =
   case lowerValue of
     ValueVarGlobal y -> do
       compDefEnv <- readIORef compDefEnvRef
-      lowDeclEnv <- readIORef lowDeclEnvRef
-      lowDefEnv <- readIORef lowDefEnvRef
       case Map.lookup y compDefEnv of
         Nothing ->
-          raiseCritical' $ "no such global label defined: " <> y
-        Just (_, args, me)
-          | Map.member y lowDeclEnv ->
-            llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
-          | not (Map.member y lowDefEnv) -> do
-            case me of
-              Nothing -> do
-                -- external definition
-                insDeclEnv y args
-                llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
-              Just e -> do
-                -- internal definition
-                insLowDefEnv y args LowCompUnreachable
-                llvm <- lowerComp e
-                insLowDefEnv y args llvm
-                llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
-          | otherwise ->
-            llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
+          raiseCritical' $ "no such global variable is defined: " <> y
+        Just (_, args, _) -> do
+          insDeclEnvIfNecessary y args
+          llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
     ValueVarLocal y ->
       llvmUncastLet x (LowValueVarLocal y) voidPtr cont
     ValueSigmaIntro ds -> do
@@ -409,6 +398,13 @@ lowerValueLet x lowerValue cont =
     ValueEnumIntro l -> do
       i <- toInteger <$> enumValueToInteger l
       llvmUncastLet x (LowValueInt i) (LowTypeInt 64) cont
+
+insDeclEnvIfNecessary :: T.Text -> [a] -> IO ()
+insDeclEnvIfNecessary symbol args = do
+  lowNameSet <- readIORef lowNameSetRef
+  if S.member symbol lowNameSet
+    then return ()
+    else insDeclEnv symbol args
 
 lowerValueLet' :: [(Ident, Value)] -> LowComp -> IO LowComp
 lowerValueLet' binder cont =

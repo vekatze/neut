@@ -235,27 +235,21 @@ runCommand :: Command -> IO ()
 runCommand cmd = do
   case cmd of
     Build target mClangOptStr -> do
-      initializeMainModule
-      runAction $ build target mClangOptStr
+      runAction $ initializeMainModule >> build target mClangOptStr
     Check mInputPathStr colorizeFlag eoe -> do
-      initializeMainModule
       writeIORef shouldColorizeRef colorizeFlag
       writeIORef endOfEntryRef eoe
-      void $ runAction $ check mInputPathStr
+      void $ runAction $ initializeMainModule >> check mInputPathStr
     Clean -> do
-      initializeMainModule
-      runAction clean
+      runAction $ initializeMainModule >> clean
     Release identifier -> do
-      initializeMainModule
-      runAction (release identifier)
+      runAction $ initializeMainModule >> release identifier
     Init moduleName ->
       runAction $ initialize moduleName
     Get alias url -> do
-      initializeMainModule
-      runAction $ get alias url
+      runAction $ initializeMainModule >> get alias url
     Tidy -> do
-      initializeMainModule
-      runAction tidy
+      runAction $ initializeMainModule >> tidy
     Version ->
       putStrLn $ showVersion version
 

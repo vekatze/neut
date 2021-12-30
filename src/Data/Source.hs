@@ -38,6 +38,13 @@ getSourceCachePath source = do
   (relPathWithoutExtension, _) <- splitExtension relPath
   addExtension ".i" (artifactDir </> relPathWithoutExtension)
 
+getTypeCachePath :: Source -> IO (Path Abs File)
+getTypeCachePath source = do
+  let artifactDir = getArtifactDir $ sourceModule source
+  relPath <- getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- splitExtension relPath
+  addExtension ".t" (artifactDir </> relPathWithoutExtension)
+
 attachExtension :: Path Abs File -> OutputKind -> IO (Path Abs File)
 attachExtension file kind =
   case kind of

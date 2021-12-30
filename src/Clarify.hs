@@ -24,8 +24,8 @@ import Data.Basic
     EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Hint,
     Ident,
-    IsReducible,
     LamKind (..),
+    Opacity (..),
     asInt,
     asText',
     fromLamKind,
@@ -84,10 +84,13 @@ import Data.Term
 import qualified Data.Text as T
 import Reduce.Comp (reduceComp, substComp)
 
-clarifyMain :: T.Text -> [Stmt] -> IO Comp
+clarifyMain :: T.Text -> [Stmt] -> IO ([(T.Text, Comp)], Comp)
 clarifyMain mainName defList = do
-  _ <- clarifyDefList defList
-  reduceComp $ CompPiElimDownElim (ValueVarGlobal mainName) []
+  _ <- returnImmediateS4
+  _ <- returnClosureS4
+  defList' <- clarifyDefList defList
+  mainTerm <- reduceComp $ CompPiElimDownElim (ValueVarGlobal mainName) []
+  return (defList', mainTerm)
 
 clarifyOther :: [Stmt] -> IO [(T.Text, Comp)]
 clarifyOther defList = do
@@ -96,20 +99,23 @@ clarifyOther defList = do
 clarifyDefList :: [Stmt] -> IO [(T.Text, Comp)]
 clarifyDefList defList = do
   defList' <- mapM clarifyDef defList
-  register defList'
-  -- reduceのあとでもういっかいcompDefEnvをemptyにして登録するべき？
-  forM defList' $ \(name, e) -> do
+  mapM_ register defList'
+  forM defList' $ \(_, name, e) -> do
     e' <- reduceComp e
     return (name, e')
 
-register :: [(T.Text, Comp)] -> IO ()
-register defList =
-  forM_ defList $ \(x, e) -> insDefEnv x True [] e
+register :: (Opacity, T.Text, Comp) -> IO ()
+register (opacity, x, e) =
+  case opacity of
+    OpacityOpaque ->
+      insDefEnv x False [] e
+    OpacityTransparent ->
+      insDefEnv x True [] e
 
-clarifyDef :: Stmt -> IO (T.Text, Comp)
-clarifyDef (StmtDef _ _ x _ e) = do
+clarifyDef :: Stmt -> IO (Opacity, T.Text, Comp)
+clarifyDef (StmtDef opacity _ x _ e) = do
   e' <- clarifyTerm IntMap.empty e >>= reduceComp
-  return (x, e')
+  return (opacity, x, e')
 
 clarifyTerm :: TypeEnv -> Term -> IO Comp
 clarifyTerm tenv term =
@@ -133,12 +139,6 @@ clarifyTerm tenv term =
             returnClosure tenv True LamKindNormal fvs m mxts e'
         _ ->
           returnClosure tenv True kind fvs m mxts e'
-    -- case (opacity, kind) of
-    --   (OpacityTranslucent, LamKindFix (_, x, _))
-    --     | not (S.member x (varComp e')) ->
-    --       returnClosure tenv True LamKindNormal fvs m mxts e'
-    --   _ ->
-    --     returnClosure tenv (isTransparent opacity) kind fvs m mxts e'
     _ :< TermPiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e

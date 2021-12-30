@@ -2,31 +2,31 @@
 
 module Data.Stmt where
 
-import Data.Basic (Hint, IsReducible, getPosInfo)
+import Control.Comonad.Cofree (Cofree ((:<)))
+import Data.Basic (Hint, Opacity (OpacityOpaque))
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
-import Data.Global (warn)
+import Data.Global (modifiedSourceSetRef)
+import qualified Data.Set as S
 import Data.Source (Source (sourceFilePath), getSourceCachePath)
-import Data.Term (Term)
+import Data.Term (Term, TermF (..))
 import qualified Data.Text as T
 import Data.WeakTerm (WeakTerm)
 import GHC.Generics (Generic)
+import GHC.IORef (readIORef)
 import Path (Abs, File, Path, parent, toFilePath)
-import Path.IO (doesFileExist, ensureDir, getModificationTime, removeFile)
-
-type HeaderProgram =
-  (Path Abs File, Either [Stmt] [WeakStmt], [EnumInfo])
+import Path.IO (doesFileExist, ensureDir, removeFile)
 
 type WeakProgram =
   (Path Abs File, [WeakStmt])
 
 data WeakStmt
-  = WeakStmtDef IsReducible Hint T.Text WeakTerm WeakTerm
+  = WeakStmtDef Opacity Hint T.Text WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])
 
 data Stmt
-  = StmtDef IsReducible Hint T.Text Term Term
+  = StmtDef Opacity Hint T.Text Term Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -36,12 +36,12 @@ type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
 type Cache = ([Stmt], [EnumInfo])
 
 compress :: Stmt -> Stmt
-compress = id
-
--- compress stmt@(StmtDef isReducible m x t _) =
---   if isReducible
---     then stmt
---     else StmtDef isReducible m x t (m :< TermTau)
+compress stmt@(StmtDef opacity m x t _) =
+  case opacity of
+    OpacityOpaque ->
+      StmtDef opacity m x t (m :< TermTau)
+    _ ->
+      stmt
 
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
@@ -54,8 +54,8 @@ saveCache (source, stmtList) enumInfoList = do
       ensureDir $ parent cachePath
       encodeFile (toFilePath cachePath) (stmtList', enumInfoList)
 
-loadCache :: Hint -> Source -> IO (Maybe Cache)
-loadCache m source = do
+loadCache :: Source -> IO (Maybe Cache)
+loadCache source = do
   cachePath <- getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
@@ -68,7 +68,6 @@ loadCache m source = do
           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
-              warn (getPosInfo m) $ "the cache file `" <> T.pack (toFilePath cachePath) <> "` is malformed, and thus is removed."
               removeFile cachePath
               return Nothing
             Right content ->
@@ -76,11 +75,5 @@ loadCache m source = do
 
 doesFreshCacheExist :: Source -> IO Bool
 doesFreshCacheExist source = do
-  cachePath <- getSourceCachePath source
-  hasCache <- doesFileExist cachePath
-  if not hasCache
-    then return False
-    else do
-      srcModTime <- getModificationTime $ sourceFilePath source
-      cacheModTime <- getModificationTime cachePath
-      return $ cacheModTime > srcModTime
+  modifiedSourceSet <- readIORef modifiedSourceSetRef
+  return $ S.notMember (sourceFilePath source) modifiedSourceSet
