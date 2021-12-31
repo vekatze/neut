@@ -11,7 +11,6 @@ import Data.Module
   ( Module (..),
     getReleaseDir,
     getSourceDir,
-    getTargetDir,
     moduleFile,
     ppModule,
   )
@@ -30,7 +29,6 @@ initialize moduleName = do
       ensureDir $ parent $ moduleLocation newModule
       ensureDir $ getReleaseDir newModule
       ensureDir $ getSourceDir newModule
-      ensureDir $ getTargetDir newModule
       createModuleFile newModule
       createMainFile newModule
 
