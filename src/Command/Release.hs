@@ -2,12 +2,13 @@ module Command.Release (release) where
 
 import Control.Monad (when)
 import Data.Log (raiseError')
-import Data.Module (Module (moduleLocation), getMainModule, getReleaseDir, getSourceDir)
+import Data.Module (Module (moduleExtraContents, moduleLocation), SomePath, getMainModule, getReleaseDir, getSourceDir)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import GHC.IO.Exception (ExitCode (..))
 import Path
   ( Abs,
+    Dir,
     File,
     Path,
     parent,
@@ -32,21 +33,31 @@ release identifier = do
   let tarRootDir = parent moduleRootDir
   relModuleSourceDir <- stripProperPrefix tarRootDir $ getSourceDir mainModule
   relModuleFile <- stripProperPrefix tarRootDir $ moduleLocation mainModule
+  extra <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
   let tarCmd =
         proc
           "tar"
-          [ "-c",
-            "--zstd",
-            "-f",
-            toFilePath releaseFile,
-            "-C",
-            toFilePath tarRootDir,
-            toFilePath relModuleSourceDir,
-            toFilePath relModuleFile
-          ]
+          $ [ "-c",
+              "--zstd",
+              "-f",
+              toFilePath releaseFile,
+              "-C",
+              toFilePath tarRootDir,
+              toFilePath relModuleSourceDir,
+              toFilePath relModuleFile
+            ]
+            ++ extra
   (_, _, Just tarErrorHandler, handler) <- createProcess tarCmd {std_err = CreatePipe}
   tarExitCode <- waitForProcess handler
   raiseIfFailure "tar" tarExitCode tarErrorHandler
+
+arrangeExtraContentPath :: Path Abs Dir -> SomePath -> IO FilePath
+arrangeExtraContentPath tarRootDir somePath =
+  case somePath of
+    Left dirPath ->
+      toFilePath <$> stripProperPrefix tarRootDir dirPath
+    Right filePath ->
+      toFilePath <$> stripProperPrefix tarRootDir filePath
 
 getReleaseFile :: Module -> T.Text -> IO (Path Abs File)
 getReleaseFile targetModule identifier = do

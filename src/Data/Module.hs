@@ -4,7 +4,7 @@ module Data.Module where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic (Alias, Checksum (..), URL (..))
-import Data.Entity (EntityF (EntityDictionary, EntityString), ppEntityTopLevel)
+import Data.Entity (EntityF (EntityDictionary, EntityList, EntityString), ppEntityTopLevel)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Log (raiseCritical', raiseError')
@@ -13,9 +13,13 @@ import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, parent, toFilePath,
 import Path.IO (doesFileExist)
 import System.IO.Unsafe (unsafePerformIO)
 
+type SomePath =
+  Either (Path Abs Dir) (Path Abs File)
+
 data Module = Module
   { moduleTarget :: Map.HashMap T.Text (Path Rel File),
     moduleDependency :: Map.HashMap Alias (URL, Checksum),
+    moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
   }
   deriving (Show)
@@ -108,8 +112,18 @@ ppModule someModule = do
         let urlEntity = () :< EntityString url
         let checksumEntity = () :< EntityString checksum
         () :< EntityDictionary (Map.fromList [("checksum", checksumEntity), ("URL", urlEntity)])
+  let extraContents = map (\x -> () :< EntityString (ppExtraContent x)) $ moduleExtraContents someModule
   ppEntityTopLevel $
     Map.fromList
       [ ("dependency", () :< EntityDictionary dependency),
-        ("target", () :< EntityDictionary entryPoint)
+        ("target", () :< EntityDictionary entryPoint),
+        ("extra-content", () :< EntityList extraContents)
       ]
+
+ppExtraContent :: SomePath -> T.Text
+ppExtraContent somePath =
+  case somePath of
+    Left dirPath ->
+      T.pack $ toFilePath dirPath
+    Right filePath ->
+      T.pack $ toFilePath filePath

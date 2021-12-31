@@ -56,5 +56,6 @@ constructDefaultModule name = do
     Module
       { moduleTarget = Map.fromList [(name, mainFile)],
         moduleDependency = Map.empty,
+        moduleExtraContents = [],
         moduleLocation = moduleRootDir </> moduleFile
       }
