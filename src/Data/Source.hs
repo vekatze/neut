@@ -59,16 +59,16 @@ attachExtension file kind =
 
 getSection :: Source -> IO T.Text
 getSection source = do
-  baseModule <- getMainModule
-  let domain = getDomain baseModule (sourceModule source)
+  domain <- getDomain (sourceModule source)
   sigTail <- getSignatureTail source
   return $ T.intercalate "." $ domain : sigTail
 
-getDomain :: Module -> Module -> T.Text
-getDomain baseModule targetModule =
-  if moduleLocation baseModule == moduleLocation targetModule
-    then defaultModulePrefix
-    else T.pack $ dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
+getDomain :: Module -> IO T.Text
+getDomain targetModule = do
+  mainModule <- getMainModule
+  if moduleLocation mainModule == moduleLocation targetModule
+    then return defaultModulePrefix
+    else return $ T.pack $ dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
 
 getSignatureTail :: Source -> IO [T.Text]
 getSignatureTail source = do

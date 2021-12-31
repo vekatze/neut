@@ -27,14 +27,14 @@ import Data.Global
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseCritical', raiseError)
-import Data.Module (getChecksumAliasList)
+import Data.Module (defaultModulePrefix, getChecksumAliasList)
 import Data.Namespace
   ( attachSectionPrefix,
     handleDefinePrefix,
     handleUse,
   )
 import qualified Data.Set as S
-import Data.Source (Source (..), getSection)
+import Data.Source (Source (..), getDomain, getSection)
 import Data.Stmt
   ( EnumInfo,
     Stmt (StmtDef),
@@ -477,5 +477,13 @@ registerTopLevelName m x = do
 
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
-  writeIORef aliasEnvRef $ getChecksumAliasList $ sourceModule source
+  additionalChecksumAlias <- getAdditionalChecksumAlias source
+  writeIORef aliasEnvRef $ additionalChecksumAlias ++ getChecksumAliasList (sourceModule source)
   writeIORef prefixEnvRef []
+
+getAdditionalChecksumAlias :: Source -> IO [(T.Text, T.Text)]
+getAdditionalChecksumAlias source = do
+  domain <- getDomain $ sourceModule source
+  if defaultModulePrefix == domain
+    then return []
+    else return [(defaultModulePrefix, domain)]
