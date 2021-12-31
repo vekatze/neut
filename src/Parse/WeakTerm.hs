@@ -280,7 +280,7 @@ getDerangementArity :: Derangement -> Maybe Int
 getDerangementArity d =
   case d of
     DerangementNop ->
-      return 0
+      return 1
     DerangementStore _ ->
       return 2
     DerangementLoad _ ->
