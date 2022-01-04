@@ -264,11 +264,9 @@ defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF W
 defineData m a dataArgs consInfoList = do
   consInfoList' <- mapM modifyConstructorName consInfoList
   setAsData a (length dataArgs) consInfoList'
-  z <- newTextualIdentFromText "cod"
-  let lamArgs = (m, z, m :< WeakTermTau) : map (toPiTypeWith z) consInfoList'
-  let baseType = m :< WeakTermPi lamArgs (m :< WeakTermVar z)
-  formRule <- define OpacityOpaque m a dataArgs (m :< WeakTermTau) baseType
-  introRuleList <- mapM (parseDefineDataConstructor lamArgs a dataArgs) $ zip consInfoList' [0 ..]
+  let consType = m :< WeakTermPi [] (m :< WeakTermTau)
+  formRule <- define OpacityOpaque m a dataArgs (m :< WeakTermTau) consType
+  introRuleList <- mapM (parseDefineDataConstructor a dataArgs) $ zip consInfoList' [0 ..]
   return $ formRule : introRuleList
 
 modifyConstructorName :: (Hint, T.Text, [BinderF WeakTerm]) -> IO (Hint, T.Text, [BinderF WeakTerm])
@@ -276,11 +274,12 @@ modifyConstructorName (mb, b, yts) = do
   b' <- attachSectionPrefix b
   return (mb, b', yts)
 
-parseDefineDataConstructor :: [BinderF WeakTerm] -> T.Text -> [BinderF WeakTerm] -> ((Hint, T.Text, [BinderF WeakTerm]), Integer) -> IO WeakStmt
-parseDefineDataConstructor lamArgs dataName dataArgs ((m, consName, consArgs), consNumber) = do
+parseDefineDataConstructor :: T.Text -> [BinderF WeakTerm] -> ((Hint, T.Text, [BinderF WeakTerm]), Integer) -> IO WeakStmt
+parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumber) = do
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
+  z <- newTextualIdentFromText "answer"
   define
     OpacityTransparent
     m
@@ -290,7 +289,9 @@ parseDefineDataConstructor lamArgs dataName dataArgs ((m, consName, consArgs), c
     $ m
       :< WeakTermPiIntro
         (LamKindCons dataName consName consNumber dataType)
-        lamArgs
+        [ (m, z, m :< WeakTermTau),
+          (m, asIdent consName, m :< WeakTermPi consArgs (m :< WeakTermVar z))
+        ]
         (m :< WeakTermPiElim (weakVar m consName) consArgs')
 
 constructDataType :: Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm

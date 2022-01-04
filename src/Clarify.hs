@@ -7,7 +7,6 @@ where
 import Clarify.Linearize (linearize)
 import Clarify.Sigma
   ( closureEnvS4,
-    immediateS4,
     returnClosureS4,
     returnImmediateS4,
   )
@@ -115,7 +114,7 @@ register (x, (opacity, args, e)) =
   insDefEnv (wrapWithQuote x) opacity args e
 
 clarifyDef :: Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
-clarifyDef (StmtDef opacity _ x _ e) = do
+clarifyDef (StmtDefine opacity _ x _ e) = do
   e' <- clarifyTerm IntMap.empty e >>= reduceComp
   return (x, (opacity, [], e'))
 
@@ -170,23 +169,24 @@ clarifyTerm tenv term =
           return $ bindLet (zip xs es') $ CompPrimitive (PrimitiveDerangement expKind xsAsVars)
     _ :< TermMatch resultType mSubject (e, _) patList -> do
       let fvs = chainFromTermList tenv $ map caseClauseToLambda patList
-      resultArg <- clarifyPlus tenv resultType
+      (resultArgVarName, resultType', resultArgVar) <- clarifyPlus tenv resultType
       closure <- clarifyTerm tenv e
       ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
-      branchList <- forM (zip patList [0 ..]) $ \(((mPat, constructorName, xts), body), i) -> do
+      branchList <- forM (zip patList [0 ..]) $ \(((mPat, consName, xts), body), i) -> do
         body' <- clarifyTerm (insTypeEnv xts tenv) body
         clauseClosure <- returnClosure tenv OpacityTransparent LamKindNormal fvs mPat xts body'
-        closureArgs <- constructClauseArguments clauseClosure i $ length patList
-        let (argVarNameList, argList, argVarList) = unzip3 (resultArg : closureArgs)
-        let constructorName' = getLamConsName constructorName
-        let consName = wrapWithQuote $ if isJust mSubject then constructorName' <> ";noetic" else constructorName'
+        (clauseClosureVarName, clauseClosureVar) <- newValueVarLocalWith "clause"
+        let consName' = getLamConsName consName
+        let consName'' = wrapWithQuote $ if isJust mSubject then consName' <> ";noetic" else consName'
         return
           ( () :< EnumCaseInt i,
             bindLet
-              (zip argVarNameList argList)
+              [ (resultArgVarName, resultType'),
+                (clauseClosureVarName, clauseClosure)
+              ]
               ( CompPiElimDownElim
-                  (ValueVarGlobal consName)
-                  (argVarList ++ [envVar])
+                  (ValueVarGlobal consName'')
+                  [resultArgVar, clauseClosureVar, envVar]
               )
           )
       return
@@ -217,29 +217,6 @@ caseClauseToLambda pat =
   case pat of
     ((mPat, _, xts), body) ->
       mPat :< TermPiIntro LamKindNormal xts body
-
-constructClauseArguments :: Comp -> Int -> Int -> IO [(Ident, Comp, Value)]
-constructClauseArguments cls clsIndex upperBound = do
-  (innerClsVarName, innerClsVar) <- newValueVarLocalWith "var"
-  constructClauseArguments' (innerClsVarName, cls, innerClsVar) clsIndex 0 upperBound
-
-constructClauseArguments' :: (Ident, Comp, Value) -> Int -> Int -> Int -> IO [(Ident, Comp, Value)]
-constructClauseArguments' clsInfo clsIndex cursor upperBound = do
-  if cursor == upperBound
-    then return []
-    else do
-      rest <- constructClauseArguments' clsInfo clsIndex (cursor + 1) upperBound
-      if cursor == clsIndex
-        then return $ clsInfo : rest
-        else do
-          (argVarName, argVar) <- newValueVarLocalWith "arg"
-          fakeClosure <- makeFakeClosure
-          return $ (argVarName, CompUpIntro fakeClosure, argVar) : rest
-
-makeFakeClosure :: IO Value
-makeFakeClosure = do
-  imm <- immediateS4
-  return $ ValueSigmaIntro [imm, ValueInt 64 0, ValueInt 64 0]
 
 clarifyPlus :: TypeEnv -> Term -> IO (Ident, Comp, Value)
 clarifyPlus tenv e = do
