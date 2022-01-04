@@ -105,10 +105,10 @@ discern' nenv term =
         LamKindFix xt -> do
           (xt' : xts', e') <- discernBinder nenv (xt : xts) e
           return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
-        LamKindCons dataName consName dataType -> do
+        LamKindCons dataName consName consNumber dataType -> do
           dataType' <- discern' nenv dataType
           (xts', e') <- discernBinder nenv xts e
-          return $ m :< WeakTermPiIntro (LamKindCons dataName consName dataType') xts' e'
+          return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
         _ -> do
           (xts', e') <- discernBinder nenv xts e
           return $ m :< WeakTermPiIntro kind xts' e'

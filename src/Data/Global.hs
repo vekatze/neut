@@ -150,7 +150,7 @@ dataEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE constructorEnvRef #-}
-constructorEnvRef :: IORef (Map.HashMap T.Text (Int, Int))
+constructorEnvRef :: IORef (Map.HashMap T.Text Int)
 constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 

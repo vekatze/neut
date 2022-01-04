@@ -154,10 +154,11 @@ simplify constraintList =
             xt2 <- asWeakBinder m2 e2
             cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
             simplify $ cs' ++ cs
-          | LamKindCons dataName1 consName1 dataType1 <- kind1,
-            LamKindCons dataName2 consName2 dataType2 <- kind2,
+          | LamKindCons dataName1 consName1 consNumber1 dataType1 <- kind1,
+            LamKindCons dataName2 consName2 consNumber2 dataType2 <- kind2,
             dataName1 == dataName2,
             consName1 == consName2,
+            consNumber1 == consNumber2,
             length xts1 == length xts2 -> do
             xt1 <- asWeakBinder m1 e1
             xt2 <- asWeakBinder m2 e2

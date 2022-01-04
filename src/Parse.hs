@@ -268,7 +268,7 @@ defineData m a dataArgs consInfoList = do
   let lamArgs = (m, z, m :< WeakTermTau) : map (toPiTypeWith z) consInfoList'
   let baseType = m :< WeakTermPi lamArgs (m :< WeakTermVar z)
   formRule <- define OpacityOpaque m a dataArgs (m :< WeakTermTau) baseType
-  introRuleList <- mapM (parseDefineDataConstructor lamArgs a dataArgs) consInfoList'
+  introRuleList <- mapM (parseDefineDataConstructor lamArgs a dataArgs) $ zip consInfoList' [0 ..]
   return $ formRule : introRuleList
 
 modifyConstructorName :: (Hint, T.Text, [BinderF WeakTerm]) -> IO (Hint, T.Text, [BinderF WeakTerm])
@@ -276,8 +276,8 @@ modifyConstructorName (mb, b, yts) = do
   b' <- attachSectionPrefix b
   return (mb, b', yts)
 
-parseDefineDataConstructor :: [BinderF WeakTerm] -> T.Text -> [BinderF WeakTerm] -> (Hint, T.Text, [BinderF WeakTerm]) -> IO WeakStmt
-parseDefineDataConstructor lamArgs dataName dataArgs (m, consName, consArgs) = do
+parseDefineDataConstructor :: [BinderF WeakTerm] -> T.Text -> [BinderF WeakTerm] -> ((Hint, T.Text, [BinderF WeakTerm]), Integer) -> IO WeakStmt
+parseDefineDataConstructor lamArgs dataName dataArgs ((m, consName, consArgs), consNumber) = do
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
@@ -289,7 +289,7 @@ parseDefineDataConstructor lamArgs dataName dataArgs (m, consName, consArgs) = d
     dataType
     $ m
       :< WeakTermPiIntro
-        (LamKindCons dataName consName dataType)
+        (LamKindCons dataName consName consNumber dataType)
         lamArgs
         (m :< WeakTermPiElim (weakVar m consName) consArgs')
 
@@ -398,11 +398,11 @@ parseDefineResourceType = do
     )
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
-setAsData a i bts = do
-  let bs = map (\(_, b, _) -> b) bts
-  modifyIORef' dataEnvRef $ Map.insert a bs
-  forM_ (zip bs [0 ..]) $ \(x, k) ->
-    modifyIORef' constructorEnvRef $ Map.insert x (i, k)
+setAsData dataName dataArgNum consInfoList = do
+  let consNameList = map (\(_, consName, _) -> consName) consInfoList
+  modifyIORef' dataEnvRef $ Map.insert dataName consNameList
+  forM_ consNameList $ \consName ->
+    modifyIORef' constructorEnvRef $ Map.insert consName dataArgNum
 
 toPiTypeWith :: Ident -> (Hint, T.Text, [BinderF WeakTerm]) -> BinderF WeakTerm
 toPiTypeWith cod (m, b, yts) =

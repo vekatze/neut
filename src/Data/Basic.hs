@@ -118,9 +118,12 @@ type DataName =
 type ConsName =
   T.Text
 
+type ConsNumber =
+  Integer
+
 data LamKindF a
   = LamKindNormal
-  | LamKindCons DataName ConsName a
+  | LamKindCons DataName ConsName ConsNumber a
   | LamKindFix (BinderF a)
   | LamKindResourceHandler
   deriving (Show, Generic)

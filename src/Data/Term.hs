@@ -149,8 +149,8 @@ weakenKind kind =
   case kind of
     LamKindNormal ->
       LamKindNormal
-    LamKindCons dataName consName dataType ->
-      LamKindCons dataName consName (weaken dataType)
+    LamKindCons dataName consName consNumber dataType ->
+      LamKindCons dataName consName consNumber (weaken dataType)
     LamKindFix xt ->
       LamKindFix (weakenBinder xt)
     LamKindResourceHandler ->

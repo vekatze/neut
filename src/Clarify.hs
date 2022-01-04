@@ -41,7 +41,6 @@ import Data.Comp
   )
 import Data.Global
   ( compDefEnvRef,
-    constructorEnvRef,
     newCount,
     newIdentFromText,
     newValueVarLocalWith,
@@ -309,16 +308,10 @@ returnClosure tenv isReducible kind fvs m xts e = do
       name <- attachSectionPrefix $ "lambda;" <> T.pack (show i)
       registerIfNecessary name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
-    LamKindCons _ consName _ -> do
-      constructorEnv <- readIORef constructorEnvRef
-      case Map.lookup consName constructorEnv of
-        Just (_, constructorNumber) -> do
-          let consName' = consName <> ";cons"
-          registerIfNecessary consName' isReducible True xts'' fvs'' e
-          return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt 64 (toInteger constructorNumber)]
-        Nothing -> do
-          print constructorEnv
-          raiseCritical m $ "no such constructor is registered: `" <> consName <> "`"
+    LamKindCons _ consName consNumber _ -> do
+      let consName' = consName <> ";cons"
+      registerIfNecessary consName' isReducible True xts'' fvs'' e
+      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt 64 consNumber]
     LamKindFix (_, name, _) -> do
       let name' = asText' name
       let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name')]

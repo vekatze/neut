@@ -100,7 +100,7 @@ reduceTerm term =
       let lamList = map (toLamList m) clauseList
       dataEnv <- readIORef dataEnvRef
       case e' of
-        (_ :< TermPiIntro (LamKindCons dataName consName _) _ _)
+        (_ :< TermPiIntro (LamKindCons dataName consName _ _) _ _)
           | Just consNameList <- Map.lookup dataName dataEnv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do

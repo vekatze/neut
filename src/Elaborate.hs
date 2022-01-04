@@ -324,9 +324,9 @@ elaborateKind kind =
   case kind of
     LamKindNormal ->
       return LamKindNormal
-    LamKindCons dataName consName dataType -> do
+    LamKindCons dataName consName consNumber dataType -> do
       dataType' <- elaborate' dataType
-      return $ LamKindCons dataName consName dataType'
+      return $ LamKindCons dataName consName consNumber dataType'
     LamKindFix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LamKindFix xt'
