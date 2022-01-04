@@ -84,7 +84,6 @@ import Parse.Core
     token,
     tryPlanList,
     var,
-    weakTermToWeakIdent,
     weakVar,
     weakVar',
   )
@@ -127,8 +126,9 @@ weakTerm = do
       weakTermArrayIntro
     _ ->
       tryPlanList
-        [ weakTermDep,
-          weakTermAux
+        [ weakTermPiArrow,
+          weakTermSigma,
+          weakTermPiElim
         ]
 
 weakTermTau :: IO WeakTerm
@@ -142,6 +142,14 @@ weakTermAster = do
   m <- currentHint
   token "?"
   newAster m
+
+weakTermPiArrow :: IO WeakTerm
+weakTermPiArrow = do
+  m <- currentHint
+  xt <- weakTermPiItem
+  xts <- many1 (token "->" >> weakTermPiItem)
+  let (_, _, cod) = last xts
+  return $ m :< WeakTermPi (xt : init xts) cod
 
 weakTermPiIntro :: IO WeakTerm
 weakTermPiIntro = do
@@ -165,50 +173,40 @@ weakTermPiIntroFix = do
   e <- tryPlanList [weakTermDotBind, doBlock weakTerm]
   return $ m :< WeakTermPiIntro (LamKindFix self) varList e
 
-weakTermAux :: IO WeakTerm
-weakTermAux = do
+weakTermPiElim :: IO WeakTerm
+weakTermPiElim = do
   m <- currentHint
-  xt@(_, _, e) <- weakTermToWeakIdent m weakTermSimple
-  tryPlanList
-    [ weakTermPi m xt,
-      weakTermSigma m xt,
-      weakTermApp m e
-    ]
-
-weakTermPi :: Hint -> BinderF WeakTerm -> IO WeakTerm
-weakTermPi m xt = do
-  xts <- many1 (token "->" >> weakTermArrowItem)
-  let (_, _, cod) = last xts
-  return $ m :< WeakTermPi (xt : init xts) cod
-
-weakTermSigma :: Hint -> BinderF WeakTerm -> IO WeakTerm
-weakTermSigma m xt = do
-  xts <- many1 (token "*" >> weakTermArrowItem)
-  toSigma m $ xt : xts
-
-weakTermApp :: Hint -> WeakTerm -> IO WeakTerm
-weakTermApp m e = do
+  e <- weakTermSimple
   es <- many weakTermSimple
   if null es
     then return e
     else return $ m :< WeakTermPiElim e es
 
-weakTermDep :: IO WeakTerm
-weakTermDep = do
+weakTermSigma :: IO WeakTerm
+weakTermSigma = do
   m <- currentHint
-  xt <- weakAscription
-  tryPlanList
-    [ weakTermPi m xt,
-      weakTermSigma m xt
-    ]
+  xt <- weakTermSigmaItem
+  xts <- many1 (token "*" >> weakTermSigmaItem)
+  toSigma m $ xt : xts
 
-weakTermArrowItem :: IO (BinderF WeakTerm)
-weakTermArrowItem =
+weakTermPiItem :: IO (BinderF WeakTerm)
+weakTermPiItem =
   tryPlanList
     [ weakAscription,
       do
         m <- currentHint
-        a <- tryPlanList [weakTermSimple >>= weakTermApp m, weakTermTau, weakTermVar]
+        a <- tryPlanList [weakTermSigma, weakTermPiElim, weakTermTau, weakTermVar]
+        h <- newTextualIdentFromText "_"
+        return (m, h, a)
+    ]
+
+weakTermSigmaItem :: IO (BinderF WeakTerm)
+weakTermSigmaItem =
+  tryPlanList
+    [ weakAscription,
+      do
+        m <- currentHint
+        a <- tryPlanList [weakTermPiElim, weakTermTau, weakTermVar]
         h <- newTextualIdentFromText "_"
         return (m, h, a)
     ]
