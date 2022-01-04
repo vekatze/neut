@@ -178,7 +178,7 @@ clarifyTerm tenv term =
         clauseClosure <- returnClosure tenv OpacityTransparent LamKindNormal fvs mPat xts body'
         closureArgs <- constructClauseArguments clauseClosure i $ length patList
         let (argVarNameList, argList, argVarList) = unzip3 (resultArg : closureArgs)
-        let constructorName' = constructorName <> ";cons"
+        let constructorName' = getLamConsName constructorName
         let consName = wrapWithQuote $ if isJust mSubject then constructorName' <> ";noetic" else constructorName'
         return
           ( () :< EnumCaseInt i,
@@ -309,7 +309,7 @@ returnClosure tenv isReducible kind fvs m xts e = do
       registerIfNecessary name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
     LamKindCons _ consName consNumber _ -> do
-      let consName' = consName <> ";cons"
+      let consName' = getLamConsName consName
       registerIfNecessary consName' isReducible True xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt 64 consNumber]
     LamKindFix (_, name, _) -> do
@@ -438,3 +438,7 @@ forgetHint (_ :< enumCase) =
       () :< EnumCaseInt i
     EnumCaseDefault ->
       () :< EnumCaseDefault
+
+getLamConsName :: T.Text -> T.Text
+getLamConsName basename =
+  basename <> ";cons"
