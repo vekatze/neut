@@ -70,11 +70,11 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    WeakStmtDef isReducible m x t e : rest -> do
+    WeakStmtDefine isReducible m x t e : rest -> do
       t' <- discern t
       e' <- discern e
       rest' <- discernStmtList rest
-      return $ WeakStmtDef isReducible m x t' e' : rest'
+      return $ WeakStmtDefine isReducible m x t' e' : rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
 discern' :: NameEnv -> WeakTerm -> IO WeakTerm

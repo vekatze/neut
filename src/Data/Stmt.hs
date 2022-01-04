@@ -20,13 +20,13 @@ type WeakProgram =
   (Path Abs File, [WeakStmt])
 
 data WeakStmt
-  = WeakStmtDef Opacity Hint T.Text WeakTerm WeakTerm
+  = WeakStmtDefine Opacity Hint T.Text WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])
 
 data Stmt
-  = StmtDef Opacity Hint T.Text Term Term
+  = StmtDefine Opacity Hint T.Text Term Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -36,10 +36,10 @@ type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
 type Cache = ([Stmt], [EnumInfo])
 
 compress :: Stmt -> Stmt
-compress stmt@(StmtDef opacity m x t _) =
+compress stmt@(StmtDefine opacity m x t _) =
   case opacity of
     OpacityOpaque ->
-      StmtDef opacity m x t (m :< TermTau)
+      StmtDefine opacity m x t (m :< TermTau)
     _ ->
       stmt
 

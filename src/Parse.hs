@@ -6,7 +6,7 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
-import Data.Basic (AliasInfo (..), BinderF, EnumCaseF (EnumCaseLabel), Hint, Ident, LamKindF (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
+import Data.Basic (AliasInfo (..), BinderF, EnumCaseF (EnumCaseLabel), Hint, LamKindF (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
 import Data.Global
   ( aliasEnvRef,
     bool,
@@ -36,7 +36,7 @@ import qualified Data.Set as S
 import Data.Source (Source (..), getDomain, getSection)
 import Data.Stmt
   ( EnumInfo,
-    Stmt (StmtDef),
+    Stmt (StmtDefine),
     WeakStmt (..),
     loadCache,
   )
@@ -88,7 +88,7 @@ parseSource source = do
     Just (stmtList, enumInfoList) -> do
       forM_ enumInfoList $ \(mEnum, name, itemList) ->
         insEnumEnv mEnum name itemList
-      let names = S.fromList $ map (\(StmtDef _ _ x _ _) -> x) stmtList
+      let names = S.fromList $ map (\(StmtDefine _ _ x _ _) -> x) stmtList
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
@@ -235,7 +235,7 @@ defineFunction opacity m name argList codType e = do
 defineTerm :: Opacity -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineTerm opacity m name codType e = do
   registerTopLevelName m name
-  return $ WeakStmtDef opacity m name codType e
+  return $ WeakStmtDefine opacity m name codType e
 
 parseStmtUse :: IO ()
 parseStmtUse = do

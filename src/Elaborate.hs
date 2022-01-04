@@ -37,7 +37,7 @@ import Data.Source (Source)
 import Data.Stmt
   ( EnumInfo,
     Stmt (..),
-    WeakStmt (WeakStmtDef),
+    WeakStmt (WeakStmtDefine),
     saveCache,
   )
 import Data.Term
@@ -111,7 +111,7 @@ elaborate defListElaborator source cacheOrStmt =
       return defList'
 
 registerTopLevelDef :: Stmt -> IO ()
-registerTopLevelDef (StmtDef opacity _ x t e) = do
+registerTopLevelDef (StmtDefine opacity _ x t e) = do
   insTermTypeEnv x $ weaken t
   unless (isOpaque opacity) $
     modifyIORef' termDefEnvRef $ Map.insert x (weaken e)
@@ -140,22 +140,22 @@ elaborateProgram defListInferrer defList = do
 setupDef :: WeakStmt -> IO ()
 setupDef def =
   case def of
-    WeakStmtDef opacity _ x t e -> do
+    WeakStmtDefine opacity _ x t e -> do
       insTermTypeEnv x t
       unless (isOpaque opacity) $ modifyIORef' termDefEnvRef $ Map.insert x e
 
 -- when isReducible $ modifyIORef' termDefEnvRef $ Map.insert x e
 
 inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
-inferStmtMain mainFunctionName (WeakStmtDef isReducible m x t e) = do
+inferStmtMain mainFunctionName (WeakStmtDefine isReducible m x t e) = do
   (e', t') <- inferStmt e t
   when (x == mainFunctionName) $ insConstraintEnv t (m :< WeakTermConst "i64")
-  return $ WeakStmtDef isReducible m x t' e'
+  return $ WeakStmtDefine isReducible m x t' e'
 
 inferStmtOther :: WeakStmt -> IO WeakStmt
-inferStmtOther (WeakStmtDef isReducible m x t e) = do
+inferStmtOther (WeakStmtDefine isReducible m x t e) = do
   (e', t') <- inferStmt e t
-  return $ WeakStmtDef isReducible m x t' e'
+  return $ WeakStmtDefine isReducible m x t' e'
 
 inferStmt :: WeakTerm -> WeakTerm -> IO (WeakTerm, WeakTerm)
 inferStmt e t = do
@@ -169,14 +169,14 @@ elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDef opacity m x t e : rest -> do
+    WeakStmtDefine opacity m x t e : rest -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTerm
       insTermTypeEnv x $ weaken t'
       unless (isOpaque opacity) $
         modifyIORef' termDefEnvRef $ Map.insert x (weaken e')
       rest' <- elaborateStmtList rest
-      return $ StmtDef opacity m x t' e' : rest'
+      return $ StmtDefine opacity m x t' e' : rest'
 
 elaborate' :: WeakTerm -> IO Term
 elaborate' term =
