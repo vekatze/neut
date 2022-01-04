@@ -26,7 +26,8 @@ import Data.Stmt
   )
 import qualified Data.Text as T
 import Parse.Core
-  ( currentHint,
+  ( asBlock,
+    currentHint,
     integer,
     many,
     simpleVar,
@@ -39,7 +40,7 @@ parseDefineEnum = do
   m <- currentHint
   token "define-enum"
   name <- simpleVar >>= attachSectionPrefix . snd
-  itemList <- many parseDefineEnumClause
+  itemList <- asBlock $ many parseDefineEnumClause
   currentSection <- readIORef currentSectionRef
   let itemList' = arrangeEnumItemList currentSection 0 itemList
   unless (isLinear (map snd itemList')) $

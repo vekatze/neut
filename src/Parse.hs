@@ -53,25 +53,7 @@ import Data.WeakTerm
         WeakTermVar
       ),
   )
-import Parse.Core
-  ( currentHint,
-    initializeParserForFile,
-    isSymbolChar,
-    lookAhead,
-    many,
-    newTextualIdentFromText,
-    raiseParseError,
-    simpleVar,
-    skip,
-    symbol,
-    symbolMaybe,
-    textRef,
-    token,
-    tryPlanList,
-    varText,
-    weakTermToWeakIdent,
-    weakVar,
-  )
+import Parse.Core (asBlock, currentHint, initializeParserForFile, isSymbolChar, lookAhead, many, newTextualIdentFromText, raiseParseError, simpleVar, skip, symbol, symbolMaybe, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
@@ -235,8 +217,7 @@ parseDefine opacity = do
   argList <- many weakBinder
   token ":"
   codType <- weakTerm
-  token "="
-  e <- weakTerm
+  e <- asBlock weakTerm
   define opacity m name' argList codType e
 
 define :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
@@ -276,7 +257,7 @@ parseDefineData = do
   token "define-data"
   a <- varText >>= attachSectionPrefix
   dataArgs <- many weakAscription
-  consInfoList <- many parseDefineDataClause
+  consInfoList <- asBlock $ many parseDefineDataClause
   defineData m a dataArgs consInfoList
 
 defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO [WeakStmt]
@@ -342,7 +323,7 @@ parseDefineCodata = do
   token "define-codata"
   dataName <- varText >>= attachSectionPrefix
   dataArgs <- many weakAscription
-  elemInfoList <- many (token "-" >> ascriptionInner)
+  elemInfoList <- asBlock $ many (token "-" >> ascriptionInner)
   formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
   elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList

@@ -64,6 +64,7 @@ import Parse.Core
   ( betweenParen,
     char,
     currentHint,
+    doBlock,
     float,
     integer,
     isKeyword,
@@ -147,7 +148,7 @@ weakTermPiIntro = do
   m <- currentHint
   token "lambda"
   varList <- many weakBinder
-  e <- tryPlanList [weakTermDotBind, weakTermDoEnd]
+  e <- tryPlanList [weakTermDotBind, doBlock weakTerm]
   return $ lam m varList e
 
 weakTermDotBind :: IO WeakTerm
@@ -155,20 +156,13 @@ weakTermDotBind = do
   char '.' >> skip
   weakTerm
 
-weakTermDoEnd :: IO WeakTerm
-weakTermDoEnd = do
-  token "do"
-  e <- weakTerm
-  token "end"
-  return e
-
 weakTermPiIntroFix :: IO WeakTerm
 weakTermPiIntroFix = do
   m <- currentHint
   token "fix"
   self <- weakBinder
   varList <- many weakBinder
-  e <- tryPlanList [weakTermDotBind, weakTermDoEnd]
+  e <- tryPlanList [weakTermDotBind, doBlock weakTerm]
   return $ m :< WeakTermPiIntro (LamKindFix self) varList e
 
 weakTermAux :: IO WeakTerm

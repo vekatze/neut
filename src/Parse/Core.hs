@@ -114,6 +114,21 @@ betweenParen f = do
   char ')' >> skip
   return item
 
+asBlock :: IO a -> IO a
+asBlock =
+  inBlock "as"
+
+doBlock :: IO a -> IO a
+doBlock =
+  inBlock "do"
+
+inBlock :: T.Text -> IO a -> IO a
+inBlock name f = do
+  _ <- token name
+  item <- f
+  _ <- token "end"
+  return item
+
 token :: T.Text -> IO ()
 token expected = do
   m <- currentHint
