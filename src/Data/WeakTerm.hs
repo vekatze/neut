@@ -6,11 +6,13 @@ module Data.WeakTerm where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic
-  ( EnumCase,
+  ( BinderF,
+    EnumCase,
     EnumCaseF (..),
     Hint,
     Ident (..),
-    LamKind (LamKindCons, LamKindFix),
+    LamKindF (LamKindCons, LamKindFix),
+    PatternF,
     asText,
     fromLamKind,
   )
@@ -27,8 +29,8 @@ data WeakTermF a
   = WeakTermTau
   | WeakTermVar Ident
   | WeakTermVarGlobal T.Text
-  | WeakTermPi [WeakBinderF a] a
-  | WeakTermPiIntro (LamKind (WeakBinderF a)) [WeakBinderF a] a
+  | WeakTermPi [BinderF a] a
+  | WeakTermPiIntro (LamKindF a) [BinderF a] a
   | WeakTermPiElim a [a]
   | WeakTermAster Int
   | WeakTermConst T.Text
@@ -39,41 +41,22 @@ data WeakTermF a
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
   | WeakTermDerangement Derangement [a] -- (derangement kind arg-1 ... arg-n)
-  | WeakTermCase
+  | WeakTermMatch
       a -- result type
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
-      [(WeakPatternF a, a)]
+      [(PatternF a, a)]
   | WeakTermIgnore a
   deriving (Generic)
 
-instance (Binary a) => Binary (WeakTermF a)
-
-type WeakBinderF a =
-  (Hint, Ident, a)
-
-type WeakPatternF a =
-  (Hint, T.Text, [WeakBinderF a])
-
 type WeakTerm = Cofree WeakTermF Hint
 
-type WeakBinder = WeakBinderF WeakTerm
-
-type WeakPattern = WeakPatternF WeakTerm
+instance (Binary a) => Binary (WeakTermF a)
 
 instance Binary WeakTerm
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm
-
-type WeakText =
-  (Hint, T.Text, WeakTerm)
-
-type Def =
-  (Hint, WeakBinder, [WeakBinder], WeakTerm)
-
-type IdentDef =
-  (Ident, Def)
 
 type Constraint =
   (WeakTerm, WeakTerm) -- (expected-type, actual-type)
@@ -159,7 +142,7 @@ varWeakTerm term =
       S.union set1 set2
     _ :< WeakTermDerangement _ es ->
       S.unions $ map varWeakTerm es
-    _ :< WeakTermCase resultType mSubject (e, t) patList -> do
+    _ :< WeakTermMatch resultType mSubject (e, t) patList -> do
       let xs1 = varWeakTerm resultType
       let xs2 = S.unions $ map varWeakTerm $ maybeToList mSubject
       let xs3 = varWeakTerm e
@@ -169,7 +152,7 @@ varWeakTerm term =
     _ :< WeakTermIgnore e ->
       varWeakTerm e
 
-varWeakTerm' :: [WeakBinder] -> [WeakTerm] -> S.Set Ident
+varWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 varWeakTerm' binder es =
   case binder of
     [] ->
@@ -217,7 +200,7 @@ asterWeakTerm term =
       S.union set1 set2
     _ :< WeakTermDerangement _ es ->
       S.unions $ map asterWeakTerm es
-    _ :< WeakTermCase resultType mSubject (e, t) patList -> do
+    _ :< WeakTermMatch resultType mSubject (e, t) patList -> do
       let xs1 = asterWeakTerm resultType
       let xs2 = S.unions $ map asterWeakTerm $ maybeToList mSubject
       let xs3 = asterWeakTerm e
@@ -227,7 +210,7 @@ asterWeakTerm term =
     _ :< WeakTermIgnore e ->
       asterWeakTerm e
 
-asterWeakTerm' :: [WeakBinder] -> WeakTerm -> S.Set Int
+asterWeakTerm' :: [BinderF WeakTerm] -> WeakTerm -> S.Set Int
 asterWeakTerm' binder e =
   case binder of
     [] ->
@@ -272,7 +255,7 @@ toText term =
         LamKindFix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["fix", showVariable x, argStr, toText e]
-        LamKindCons _ _ -> do
+        LamKindCons {} -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["λ", argStr, toText e]
         -- "<cons>"
@@ -300,7 +283,7 @@ toText term =
     _ :< WeakTermDerangement i es -> do
       let es' = map toText es
       showCons $ "derangement" : T.pack (show i) : es'
-    _ :< WeakTermCase _ mSubject (e, _) caseClause -> do
+    _ :< WeakTermMatch _ mSubject (e, _) caseClause -> do
       case mSubject of
         Nothing -> do
           showCons $ "case" : toText e : map showCaseClause caseClause
@@ -317,7 +300,7 @@ showArg :: (Hint, Ident, WeakTerm) -> T.Text
 showArg (_, x, t) =
   inParen $ showVariable x <> " " <> toText t
 
-showTypeArgs :: [WeakBinder] -> T.Text
+showTypeArgs :: [BinderF WeakTerm] -> T.Text
 showTypeArgs args =
   case args of
     [] ->
@@ -332,11 +315,11 @@ showTypeArgs args =
 showVariable :: Ident -> T.Text
 showVariable = asText
 
-showCaseClause :: (WeakPattern, WeakTerm) -> T.Text
+showCaseClause :: (PatternF WeakTerm, WeakTerm) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, T.Text, [WeakBinder]) -> T.Text
+showPattern :: (Hint, T.Text, [BinderF WeakTerm]) -> T.Text
 showPattern (_, f, xts) = do
   case xts of
     [] ->

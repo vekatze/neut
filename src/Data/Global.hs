@@ -4,7 +4,7 @@ module Data.Global where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (when)
-import Data.Basic (AliasInfo, Hint, Ident (..), IsReducible, PosInfo, asText, getPosInfo, showPosInfo)
+import Data.Basic (AliasInfo, Hint, Ident (..), Opacity, PosInfo, asText, getPosInfo, showPosInfo)
 import Data.Comp (Comp, Value (ValueVarLocal))
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
@@ -18,6 +18,7 @@ import qualified Data.IntMap as IntMap
 import Data.Log
   ( Log,
     LogLevel (LogLevelFail, LogLevelPass),
+    logError,
     logLevelToSGR,
     logLevelToText,
     logNote,
@@ -52,6 +53,7 @@ import System.Console.ANSI
     SGR (Reset, SetConsoleIntensity),
     setSGR,
   )
+import System.Exit (ExitCode (ExitFailure), exitWith)
 import System.IO.Unsafe (unsafePerformIO)
 import qualified System.Info as System
 
@@ -101,6 +103,16 @@ endOfEntryRef =
 targetPlatformRef :: IORef String
 targetPlatformRef =
   unsafePerformIO (newIORef $ System.arch <> "-" <> System.os)
+
+{-# NOINLINE targetOSRef #-}
+targetOSRef :: IORef String
+targetOSRef =
+  unsafePerformIO (newIORef System.os)
+
+{-# NOINLINE targetArchRef #-}
+targetArchRef :: IORef String
+targetArchRef =
+  unsafePerformIO (newIORef System.arch)
 
 {-# NOINLINE currentFileRef #-}
 currentFileRef :: IORef (Maybe (Path Abs File))
@@ -203,7 +215,7 @@ termDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE compDefEnvRef #-}
-compDefEnvRef :: IORef (Map.HashMap T.Text (IsReducible, [Ident], Maybe Comp))
+compDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [Ident], Comp))
 compDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
@@ -249,25 +261,29 @@ nsSep =
 {-# INLINE bool #-}
 bool :: T.Text
 bool =
-  "bool"
+  "core.bool.bool"
 
 {-# INLINE boolTrue #-}
 boolTrue :: T.Text
 boolTrue =
-  bool <> nsSep <> "true"
+  "core.bool.true"
 
 {-# INLINE boolFalse #-}
 boolFalse :: T.Text
 boolFalse =
-  bool <> nsSep <> "false"
+  "core.bool.false"
+
+topUnit :: T.Text
+topUnit =
+  "unit"
 
 unsafePtr :: T.Text
 unsafePtr =
-  "unsafe.pointer"
+  "unsafe-pointer"
 
 unsafeCast :: T.Text
 unsafeCast =
-  "unsafe.cast"
+  "unsafe-cast"
 
 initialLowDeclEnv :: Map.HashMap T.Text ([LowType], LowType)
 initialLowDeclEnv =
@@ -418,6 +434,11 @@ note' str =
 warn :: PosInfo -> T.Text -> IO ()
 warn pos str =
   outputLog $ logWarning pos str
+
+outputError :: Hint -> T.Text -> IO a
+outputError m text = do
+  outputLog $ logError (getPosInfo m) text
+  exitWith (ExitFailure 1)
 
 outputPass :: String -> IO ()
 outputPass str =

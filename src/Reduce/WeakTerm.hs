@@ -7,9 +7,11 @@ where
 import Control.Comonad.Cofree (Cofree (..), unwrap)
 import Control.Monad (forM)
 import Data.Basic
-  ( EnumCaseF (EnumCaseDefault, EnumCaseLabel),
+  ( BinderF,
+    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
-    LamKind (LamKindCons, LamKindFix, LamKindNormal),
+    LamKindF (LamKindCons, LamKindFix, LamKindNormal),
+    PatternF,
     asInt,
   )
 import Data.Global (dataEnvRef, newIdentFromIdent)
@@ -19,12 +21,9 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Data.WeakTerm
   ( SubstWeakTerm,
-    WeakBinder,
-    WeakPattern,
     WeakTerm,
     WeakTermF
       ( WeakTermAster,
-        WeakTermCase,
         WeakTermConst,
         WeakTermDerangement,
         WeakTermEnum,
@@ -33,6 +32,7 @@ import Data.WeakTerm
         WeakTermFloat,
         WeakTermIgnore,
         WeakTermInt,
+        WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -82,7 +82,6 @@ reduceWeakTerm term =
       let (ls, es) = unzip les
       es' <- mapM reduceWeakTerm es
       let les' = zip ls es'
-      -- let les'' = zip (map snd ls) es'
       let les'' = zip (map unwrap ls) es'
       t' <- reduceWeakTerm t
       case e' of
@@ -103,17 +102,16 @@ reduceWeakTerm term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM reduceWeakTerm es
       return $ m :< WeakTermDerangement i es'
-    m :< WeakTermCase resultType mSubject (e, t) clauseList -> do
+    m :< WeakTermMatch resultType mSubject (e, t) clauseList -> do
       e' <- reduceWeakTerm e
       let lamList = map (toLamList m) clauseList
       dataEnv <- readIORef dataEnvRef
       case e' of
-        (_ :< WeakTermPiIntro (LamKindCons dataName consName) _ _)
+        (_ :< WeakTermPiIntro (LamKindCons dataName consName _) _ _)
           | Just consNameList <- Map.lookup dataName dataEnv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do
-            let app = m :< WeakTermPiElim e' (resultType : lamList)
-            reduceWeakTerm app
+            reduceWeakTerm $ m :< WeakTermPiElim e' (resultType : lamList)
         _ -> do
           resultType' <- reduceWeakTerm resultType
           mSubject' <- mapM reduceWeakTerm mSubject
@@ -121,11 +119,11 @@ reduceWeakTerm term =
           clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
             body' <- reduceWeakTerm body
             return ((mPat, name, xts), body')
-          return $ m :< WeakTermCase resultType' mSubject' (e', t') clauseList'
+          return $ m :< WeakTermMatch resultType' mSubject' (e', t') clauseList'
     _ ->
       return term
 
-checkClauseListSanity :: [T.Text] -> [(WeakPattern, WeakTerm)] -> Bool
+checkClauseListSanity :: [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> Bool
 checkClauseListSanity consNameList clauseList =
   case (consNameList, clauseList) of
     ([], []) ->
@@ -136,7 +134,7 @@ checkClauseListSanity consNameList clauseList =
     _ ->
       False
 
-toLamList :: Hint -> (WeakPattern, WeakTerm) -> WeakTerm
+toLamList :: Hint -> (PatternF WeakTerm, WeakTerm) -> WeakTerm
 toLamList m ((_, _, xts), body) =
   m :< WeakTermPiIntro LamKindNormal xts body
 
@@ -198,7 +196,7 @@ substWeakTerm sub term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM (substWeakTerm sub) es
       return $ m :< WeakTermDerangement i es'
-    m :< WeakTermCase resultType mSubject (e, t) clauseList -> do
+    m :< WeakTermMatch resultType mSubject (e, t) clauseList -> do
       resultType' <- substWeakTerm sub resultType
       mSubject' <- mapM (substWeakTerm sub) mSubject
       e' <- substWeakTerm sub e
@@ -206,16 +204,16 @@ substWeakTerm sub term =
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
         (xts', body') <- substWeakTerm' sub xts body
         return ((mPat, name, xts'), body')
-      return $ m :< WeakTermCase resultType' mSubject' (e', t') clauseList'
+      return $ m :< WeakTermMatch resultType' mSubject' (e', t') clauseList'
     m :< WeakTermIgnore e -> do
       e' <- substWeakTerm sub e
       return $ m :< WeakTermIgnore e'
 
 substWeakTerm' ::
   SubstWeakTerm ->
-  [WeakBinder] ->
+  [BinderF WeakTerm] ->
   WeakTerm ->
-  IO ([WeakBinder], WeakTerm)
+  IO ([BinderF WeakTerm], WeakTerm)
 substWeakTerm' sub binder e =
   case binder of
     [] -> do

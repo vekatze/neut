@@ -7,10 +7,12 @@ where
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM, forM_, unless, when)
 import Data.Basic
-  ( EnumCase,
-    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
+  ( BinderF,
+    EnumCase,
+    EnumCaseF (EnumCaseDefault),
     Hint,
-    LamKind (..),
+    LamKindF (..),
+    PatternF,
     asInt,
     isOpaque,
   )
@@ -39,12 +41,9 @@ import Data.Stmt
     saveCache,
   )
 import Data.Term
-  ( Binder,
-    Pattern,
-    Term,
+  ( Term,
     TermF
-      ( TermCase,
-        TermConst,
+      ( TermConst,
         TermDerangement,
         TermEnum,
         TermEnumElim,
@@ -52,6 +51,7 @@ import Data.Term
         TermFloat,
         TermIgnore,
         TermInt,
+        TermMatch,
         TermPi,
         TermPiElim,
         TermPiIntro,
@@ -63,12 +63,9 @@ import Data.Term
   )
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakBinder,
-    WeakPattern,
-    WeakTerm,
+  ( WeakTerm,
     WeakTermF
       ( WeakTermAster,
-        WeakTermCase,
         WeakTermConst,
         WeakTermDerangement,
         WeakTermEnum,
@@ -77,6 +74,7 @@ import Data.WeakTerm
         WeakTermFloat,
         WeakTermIgnore,
         WeakTermInt,
+        WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -256,7 +254,6 @@ elaborate' term =
       case t' of
         _ :< TermEnum x -> do
           checkSwitchExaustiveness m x ls
-          checkEnumElim m ls
           return $ m :< TermEnumElim (e', t') (zip ls es')
         _ ->
           raiseError m $
@@ -272,7 +269,7 @@ elaborate' term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM elaborate' es
       return $ m :< TermDerangement i es'
-    m :< WeakTermCase resultType mSubject (e, t) patList -> do
+    m :< WeakTermMatch resultType mSubject (e, t) patList -> do
       resultType' <- elaborate' resultType
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e
@@ -282,11 +279,11 @@ elaborate' term =
         _ :< TermPiElim (_ :< TermVarGlobal name) _
           | Just bs <- Map.lookup name dataEnv -> do
             patList' <- elaboratePatternList m bs patList
-            return $ m :< TermCase resultType' mSubject' (e', t') patList'
+            return $ m :< TermMatch resultType' mSubject' (e', t') patList'
         _ :< TermVarGlobal name
           | Just bs <- Map.lookup name dataEnv -> do
             patList' <- elaboratePatternList m bs patList
-            return $ m :< TermCase resultType' mSubject' (e', t') patList'
+            return $ m :< TermMatch resultType' mSubject' (e', t') patList'
         _ -> do
           raiseError (metaOf t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
     m :< WeakTermIgnore e -> do
@@ -294,7 +291,7 @@ elaborate' term =
       return $ m :< TermIgnore e'
 
 -- for now
-elaboratePatternList :: Hint -> [T.Text] -> [(WeakPattern, WeakTerm)] -> IO [(Pattern, Term)]
+elaboratePatternList :: Hint -> [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> IO [(PatternF Term, Term)]
 elaboratePatternList m bs patList = do
   patList' <- forM patList $ \((mPat, c, xts), body) -> do
     xts' <- mapM elaborateWeakBinder xts
@@ -303,7 +300,7 @@ elaboratePatternList m bs patList = do
   checkCaseSanity m bs patList'
   return patList'
 
-checkCaseSanity :: Hint -> [T.Text] -> [(Pattern, Term)] -> IO ()
+checkCaseSanity :: Hint -> [T.Text] -> [(PatternF Term, Term)] -> IO ()
 checkCaseSanity m bs patList =
   case (bs, patList) of
     ([], []) ->
@@ -317,35 +314,24 @@ checkCaseSanity m bs patList =
     ([], ((mPat, b, _), _) : _) ->
       raiseError mPat $ "found a redundant pattern; this clause for `" <> b <> "` is redundant"
 
-elaborateWeakBinder :: WeakBinder -> IO Binder
+elaborateWeakBinder :: BinderF WeakTerm -> IO (BinderF Term)
 elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: LamKind WeakBinder -> IO (LamKind Binder)
+elaborateKind :: LamKindF WeakTerm -> IO (LamKindF Term)
 elaborateKind kind =
   case kind of
     LamKindNormal ->
       return LamKindNormal
-    LamKindCons t1 t2 ->
-      return $ LamKindCons t1 t2
+    LamKindCons dataName consName dataType -> do
+      dataType' <- elaborate' dataType
+      return $ LamKindCons dataName consName dataType'
     LamKindFix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LamKindFix xt'
     LamKindResourceHandler ->
       return LamKindResourceHandler
-
-checkEnumElim :: Hint -> [EnumCase] -> IO ()
-checkEnumElim m ls =
-  case ls of
-    [] ->
-      return ()
-    l : rest -> do
-      case l of
-        _ :< EnumCaseLabel _ ->
-          raiseError m "enum-elim"
-        _ ->
-          checkEnumElim m rest
 
 checkSwitchExaustiveness :: Hint -> T.Text -> [EnumCase] -> IO ()
 checkSwitchExaustiveness m x caseList = do

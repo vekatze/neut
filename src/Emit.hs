@@ -19,6 +19,7 @@ import Data.Global
     lowDefEnvRef,
     newIdentFromText,
     nopFreeSetRef,
+    targetPlatformRef,
   )
 import qualified Data.HashMap.Lazy as HashMap
 import Data.IORef (readIORef)
@@ -332,15 +333,16 @@ showLowTypeAsIfNonPtr lowType =
 
 getRegList :: IO [Builder]
 getRegList = do
-  case (System.os, System.arch) of
-    ("linux", "x86_64") ->
+  targetPlatform <- readIORef targetPlatformRef
+  case targetPlatform of
+    "x86_64-linux" ->
       return ["rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"]
-    ("linux", "aarch64") ->
+    "arm64-linux" ->
       return ["x8", "x0", "x1", "x2", "x3", "x4", "x5"]
-    ("darwin", "x86_64") ->
+    "x86_64-darwin" ->
       return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
-    (targetOS, targetArch) ->
-      raiseError' $ "unsupported target: " <> T.pack targetOS <> " (" <> T.pack targetArch <> ")"
+    _ ->
+      raiseError' $ "unsupported target: " <> T.pack targetPlatform
 
 showLowType :: LowType -> Builder
 showLowType lowType =

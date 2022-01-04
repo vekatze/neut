@@ -3,9 +3,10 @@ module Parse.Core where
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Exception.Safe (catch, throw)
 import Data.Basic
-  ( Hint,
+  ( BinderF,
+    Hint,
     Ident,
-    LamKind (LamKindNormal),
+    LamKindF (LamKindNormal),
     asIdent,
     getPosInfo,
     newHint,
@@ -30,8 +31,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.WeakTerm
-  ( WeakBinder,
-    WeakTerm,
+  ( WeakTerm,
     WeakTermF (WeakTermPiIntro, WeakTermVar),
   )
 import Path (Abs, File, Path, toFilePath)
@@ -423,6 +423,7 @@ keywordSet =
       "?",
       "?admit",
       "admit",
+      "as",
       "define",
       "define-codata",
       "define-data",
@@ -439,8 +440,9 @@ keywordSet =
       "hole",
       "idealize",
       "if",
-      "in",
       "import",
+      "in",
+      "introspect",
       "lambda",
       "let",
       "let?",
@@ -473,7 +475,7 @@ weakVar' :: Hint -> Ident -> WeakTerm
 weakVar' m ident =
   m :< WeakTermVar ident
 
-lam :: Hint -> [WeakBinder] -> WeakTerm -> WeakTerm
+lam :: Hint -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm
 lam m varList e =
   m :< WeakTermPiIntro LamKindNormal varList e
 
@@ -482,7 +484,7 @@ newTextualIdentFromText txt = do
   i <- newCount
   newIdentFromText $ ";" <> txt <> T.pack (show i)
 
-weakTermToWeakIdent :: Hint -> IO WeakTerm -> IO WeakBinder
+weakTermToWeakIdent :: Hint -> IO WeakTerm -> IO (BinderF WeakTerm)
 weakTermToWeakIdent m f = do
   a <- f
   h <- newTextualIdentFromText "_"

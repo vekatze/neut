@@ -7,10 +7,11 @@ where
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM)
 import Data.Basic
-  ( EnumCase,
+  ( BinderF,
+    EnumCase,
     EnumCaseF (EnumCaseLabel),
     Ident (..),
-    LamKind (LamKindFix),
+    LamKindF (LamKindCons, LamKindFix),
     asText,
   )
 import Data.Global
@@ -30,18 +31,15 @@ import Data.Namespace
     asEnumLabel,
     asGlobalVar,
     asWeakConstant,
-    asWeakVar,
     resolveSymbol,
     tryCand,
   )
 import Data.Stmt (WeakStmt (..))
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakBinder,
-    WeakTerm,
+  ( WeakTerm,
     WeakTermF
       ( WeakTermAster,
-        WeakTermCase,
         WeakTermConst,
         WeakTermDerangement,
         WeakTermEnum,
@@ -50,6 +48,7 @@ import Data.WeakTerm
         WeakTermFloat,
         WeakTermIgnore,
         WeakTermInt,
+        WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -84,18 +83,18 @@ discern' nenv term =
     m :< WeakTermTau ->
       return $ m :< WeakTermTau
     m :< WeakTermVar (I (s, _)) -> do
-      -- fixme: weakvarというかローカル変数の解決にresolveSymbolをつかってるのはおかしいのでは。
-      -- prefixは無関係だし。
-      -- （ローカル変数にprefix解決をおこなってもあんまりうれしくないでしょ）
-      tryCand (resolveSymbol m (asWeakVar m nenv) s) $ do
-        topNameSet <- readIORef topNameSetRef
-        tryCand (resolveSymbol m (asGlobalVar m topNameSet) s) $ do
-          revEnumEnv <- readIORef revEnumEnvRef
-          tryCand (resolveSymbol m (asEnumIntro m revEnumEnv) s) $ do
-            enumEnv <- readIORef enumEnvRef
-            tryCand (resolveSymbol m (asEnum m enumEnv) s) $
-              tryCand (resolveSymbol m (asWeakConstant m) s) $
-                raiseError m $ "undefined variable: " <> s
+      case Map.lookup s nenv of
+        Just name ->
+          return $ m :< WeakTermVar name
+        Nothing -> do
+          topNameSet <- readIORef topNameSetRef
+          tryCand (resolveSymbol m (asGlobalVar m topNameSet) s) $ do
+            revEnumEnv <- readIORef revEnumEnvRef
+            tryCand (resolveSymbol m (asEnumIntro m revEnumEnv) s) $ do
+              enumEnv <- readIORef enumEnvRef
+              tryCand (resolveSymbol m (asEnum m enumEnv) s) $
+                tryCand (resolveSymbol m (asWeakConstant m) s) $
+                  raiseError m $ "undefined variable: " <> s
     _ :< WeakTermVarGlobal {} ->
       return term
     m :< WeakTermPi xts t -> do
@@ -106,6 +105,10 @@ discern' nenv term =
         LamKindFix xt -> do
           (xt' : xts', e') <- discernBinder nenv (xt : xts) e
           return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
+        LamKindCons dataName consName dataType -> do
+          dataType' <- discern' nenv dataType
+          (xts', e') <- discernBinder nenv xts e
+          return $ m :< WeakTermPiIntro (LamKindCons dataName consName dataType') xts' e'
         _ -> do
           (xts', e') <- discernBinder nenv xts e
           return $ m :< WeakTermPiIntro kind xts' e'
@@ -143,7 +146,7 @@ discern' nenv term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM (discern' nenv) es
       return $ m :< WeakTermDerangement i es'
-    m :< WeakTermCase resultType mSubject (e, t) clauseList -> do
+    m :< WeakTermMatch resultType mSubject (e, t) clauseList -> do
       resultType' <- discern' nenv resultType
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e
@@ -157,16 +160,16 @@ discern' nenv term =
             return ((mCons, newName, xts'), body')
           Nothing ->
             raiseError m $ "no such constructor is defined: " <> constructorName
-      return $ m :< WeakTermCase resultType' mSubject' (e', t') clauseList'
+      return $ m :< WeakTermMatch resultType' mSubject' (e', t') clauseList'
     m :< WeakTermIgnore e -> do
       e' <- discern' nenv e
       return $ m :< WeakTermIgnore e'
 
 discernBinder ::
   NameEnv ->
-  [WeakBinder] ->
+  [BinderF WeakTerm] ->
   WeakTerm ->
-  IO ([WeakBinder], WeakTerm)
+  IO ([BinderF WeakTerm], WeakTerm)
 discernBinder nenv binder e =
   case binder of
     [] -> do

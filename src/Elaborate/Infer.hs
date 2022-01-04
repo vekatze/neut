@@ -9,11 +9,12 @@ where
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM, forM_, replicateM)
 import Data.Basic
-  ( EnumCase,
+  ( BinderF,
+    EnumCase,
     EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Hint,
     Ident (..),
-    LamKind (LamKindFix),
+    LamKindF (LamKindCons, LamKindFix),
     asInt,
     asText',
   )
@@ -49,11 +50,9 @@ import Data.Term
 import qualified Data.Text as T
 import Data.WeakTerm
   ( SubstWeakTerm,
-    WeakBinder,
     WeakTerm,
     WeakTermF
       ( WeakTermAster,
-        WeakTermCase,
         WeakTermConst,
         WeakTermDerangement,
         WeakTermEnum,
@@ -62,6 +61,7 @@ import Data.WeakTerm
         WeakTermFloat,
         WeakTermIgnore,
         WeakTermInt,
+        WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -74,7 +74,7 @@ import Data.WeakTerm
   )
 import Reduce.WeakTerm (substWeakTerm)
 
-type Context = [WeakBinder]
+type Context = [BinderF WeakTerm]
 
 infer :: WeakTerm -> IO (WeakTerm, WeakTerm)
 infer =
@@ -107,6 +107,10 @@ infer' ctx term =
           let piType = m :< WeakTermPi xts' tCod
           insConstraintEnv piType t'
           return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) xts' e', piType)
+        LamKindCons dataName consName dataType -> do
+          dataType' <- inferType' ctx dataType
+          (xts', (e', _)) <- inferBinder ctx xts e
+          return (m :< WeakTermPiIntro (LamKindCons dataName consName dataType') xts' e', dataType')
         _ -> do
           (xts', (e', t')) <- inferBinder ctx xts e
           return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermPi xts' t')
@@ -162,13 +166,13 @@ infer' ctx term =
       resultType <- newTypeAsterInCtx ctx m
       (es', _) <- unzip <$> mapM (infer' ctx) es
       return (m :< WeakTermDerangement kind es', resultType)
-    m :< WeakTermCase _ mSubject (e, _) clauseList -> do
+    m :< WeakTermMatch _ mSubject (e, _) clauseList -> do
       resultType <- newTypeAsterInCtx ctx m
       (e', t') <- infer' ctx e
       mSubject' <- mapM (inferSubject m ctx) mSubject
       case clauseList of
         [] ->
-          return (m :< WeakTermCase resultType mSubject' (e', t') [], resultType) -- ex falso quodlibet
+          return (m :< WeakTermMatch resultType mSubject' (e', t') [], resultType) -- ex falso quodlibet
         ((_, constructorName, _), _) : _ -> do
           constructorEnv <- readIORef constructorEnvRef
           case Map.lookup constructorName constructorEnv of
@@ -188,7 +192,7 @@ infer' ctx term =
                     (_, tPat) <- inferPiElim ctx m (m :< WeakTermVarGlobal name, tCons) (holeList ++ xs)
                     insConstraintEnv tPat t'
                 return ((mPat, name, xts'), body')
-              return (m :< WeakTermCase resultType mSubject' (e', t') clauseList', resultType)
+              return (m :< WeakTermMatch resultType mSubject' (e', t') clauseList', resultType)
     m :< WeakTermIgnore e -> do
       (e', t') <- infer' ctx e
       return (m :< WeakTermIgnore e', t')
@@ -203,7 +207,7 @@ inferArgs ::
   SubstWeakTerm ->
   Hint ->
   [(WeakTerm, WeakTerm)] ->
-  [WeakBinder] ->
+  [BinderF WeakTerm] ->
   WeakTerm ->
   IO WeakTerm
 inferArgs sub m args1 args2 cod =
@@ -231,9 +235,9 @@ inferType' ctx t = do
 
 inferPi ::
   Context ->
-  [WeakBinder] ->
+  [BinderF WeakTerm] ->
   WeakTerm ->
-  IO ([WeakBinder], WeakTerm)
+  IO ([BinderF WeakTerm], WeakTerm)
 inferPi ctx binder cod =
   case binder of
     [] -> do
@@ -247,9 +251,9 @@ inferPi ctx binder cod =
 
 inferBinder ::
   Context ->
-  [WeakBinder] ->
+  [BinderF WeakTerm] ->
   WeakTerm ->
-  IO ([WeakBinder], (WeakTerm, WeakTerm))
+  IO ([BinderF WeakTerm], (WeakTerm, WeakTerm))
 inferBinder ctx binder e =
   case binder of
     [] -> do
@@ -317,7 +321,7 @@ newTypeAsterInCtx ctx m = do
 --    (y{m}, ?M{m} @ (x1, ..., xn, y1, ..., y{m-1}))]
 --
 -- inserting type information `yi : ?Mi @ (x1, ..., xn, y1, ..., y{i-1})
-newTypeAsterListInCtx :: Context -> [(Ident, Hint)] -> IO [WeakBinder]
+newTypeAsterListInCtx :: Context -> [(Ident, Hint)] -> IO [BinderF WeakTerm]
 newTypeAsterListInCtx ctx ids =
   case ids of
     [] ->

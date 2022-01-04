@@ -1,17 +1,16 @@
 module Parse.Enum
   ( parseDefineEnum,
-    initializeEnumEnv,
+    -- initializeEnumEnv,
     insEnumEnv,
   )
 where
 
-import Control.Monad (forM_, unless)
+import Control.Monad (unless)
 import Data.Basic
   ( Hint,
   )
 import Data.Global
-  ( boolFalse,
-    boolTrue,
+  ( currentSectionRef,
     enumEnvRef,
     nsSep,
     revEnumEnvRef,
@@ -41,21 +40,27 @@ parseDefineEnum = do
   token "define-enum"
   name <- simpleVar >>= attachSectionPrefix . snd
   itemList <- many parseDefineEnumClause
-  let itemList' = arrangeEnumItemList name 0 itemList
+  currentSection <- readIORef currentSectionRef
+  let itemList' = arrangeEnumItemList currentSection 0 itemList
   unless (isLinear (map snd itemList')) $
     raiseError m "found a collision of discriminant"
   insEnumEnv m name itemList'
   return (m, name, itemList')
 
 arrangeEnumItemList :: T.Text -> Int -> [(T.Text, Maybe Int)] -> [(T.Text, Int)]
-arrangeEnumItemList name currentValue clauseList =
+arrangeEnumItemList currentSection currentValue clauseList =
   case clauseList of
     [] ->
       []
     (item, Nothing) : rest ->
-      (name <> nsSep <> item, currentValue) : arrangeEnumItemList name (currentValue + 1) rest
+      (currentSection <> nsSep <> item, currentValue) : arrangeEnumItemList currentSection (currentValue + 1) rest
     (item, Just v) : rest ->
-      (name <> nsSep <> item, v) : arrangeEnumItemList name (v + 1) rest
+      (currentSection <> nsSep <> item, v) : arrangeEnumItemList currentSection (v + 1) rest
+
+-- (item, Nothing) : rest ->
+--   (name <> nsSep <> item, currentValue) : arrangeEnumItemList name (currentValue + 1) rest
+-- (item, Just v) : rest ->
+--   (name <> nsSep <> item, v) : arrangeEnumItemList name (v + 1) rest
 
 parseDefineEnumClause :: IO (T.Text, Maybe Int)
 parseDefineEnumClause = do
@@ -68,7 +73,8 @@ parseDefineEnumClauseWithDiscriminant :: IO (T.Text, Maybe Int)
 parseDefineEnumClauseWithDiscriminant = do
   token "-"
   item <- snd <$> simpleVar
-  token "<-"
+  token "="
+  -- token "<-"
   discriminant <- integer
   return (item, Just (fromInteger discriminant))
 
@@ -77,17 +83,6 @@ parseDefineEnumClauseWithoutDiscriminant = do
   token "-"
   item <- snd <$> simpleVar
   return (item, Nothing)
-
-initEnumEnvInfo :: [(T.Text, [(T.Text, Int)])]
-initEnumEnvInfo =
-  [ ("bottom", []),
-    ("top", [("top.unit", 0)]),
-    ("bool", [(boolFalse, 0), (boolTrue, 1)])
-  ]
-
-initializeEnumEnv :: IO ()
-initializeEnumEnv =
-  forM_ initEnumEnvInfo $ uncurry insEnumEnv'
 
 insEnumEnv' :: T.Text -> [(T.Text, Int)] -> IO ()
 insEnumEnv' name xis = do

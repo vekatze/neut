@@ -6,9 +6,11 @@ where
 import Control.Comonad.Cofree (Cofree (..), unwrap)
 import Control.Monad (forM)
 import Data.Basic
-  ( EnumCaseF (EnumCaseDefault, EnumCaseLabel),
+  ( BinderF,
+    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
-    LamKind (LamKindCons, LamKindFix, LamKindNormal),
+    LamKindF (LamKindCons, LamKindFix, LamKindNormal),
+    PatternF,
     asInt,
   )
 import Data.Global (dataEnvRef, newIdentFromIdent)
@@ -16,13 +18,10 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef (readIORef)
 import qualified Data.IntMap as IntMap
 import Data.Term
-  ( Binder,
-    Pattern,
-    SubstTerm,
+  ( SubstTerm,
     Term,
     TermF
-      ( TermCase,
-        TermConst,
+      ( TermConst,
         TermDerangement,
         TermEnum,
         TermEnumElim,
@@ -30,6 +29,7 @@ import Data.Term
         TermFloat,
         TermIgnore,
         TermInt,
+        TermMatch,
         TermPi,
         TermPiElim,
         TermPiIntro,
@@ -95,12 +95,12 @@ reduceTerm term =
     (m :< TermDerangement i es) -> do
       es' <- mapM reduceTerm es
       return (m :< TermDerangement i es')
-    (m :< TermCase resultType mSubject (e, t) clauseList) -> do
+    (m :< TermMatch resultType mSubject (e, t) clauseList) -> do
       e' <- reduceTerm e
       let lamList = map (toLamList m) clauseList
       dataEnv <- readIORef dataEnvRef
       case e' of
-        (_ :< TermPiIntro (LamKindCons dataName consName) _ _)
+        (_ :< TermPiIntro (LamKindCons dataName consName _) _ _)
           | Just consNameList <- Map.lookup dataName dataEnv,
             consName `elem` consNameList,
             checkClauseListSanity consNameList clauseList -> do
@@ -113,11 +113,11 @@ reduceTerm term =
           clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
             body' <- reduceTerm body
             return ((mPat, name, xts), body')
-          return (m :< TermCase resultType' mSubject' (e', t') clauseList')
+          return (m :< TermMatch resultType' mSubject' (e', t') clauseList')
     _ ->
       return term
 
-checkClauseListSanity :: [T.Text] -> [(Pattern, Term)] -> Bool
+checkClauseListSanity :: [T.Text] -> [(PatternF Term, Term)] -> Bool
 checkClauseListSanity consNameList clauseList =
   case (consNameList, clauseList) of
     ([], []) ->
@@ -128,7 +128,7 @@ checkClauseListSanity consNameList clauseList =
     _ ->
       False
 
-toLamList :: Hint -> (Pattern, Term) -> Term
+toLamList :: Hint -> (PatternF Term, Term) -> Term
 toLamList m ((_, _, xts), body) =
   m :< TermPiIntro LamKindNormal xts body
 
@@ -178,7 +178,7 @@ substTerm sub term =
     (m :< TermDerangement i es) -> do
       es' <- mapM (substTerm sub) es
       return (m :< TermDerangement i es')
-    (m :< TermCase resultType mSubject (e, t) clauseList) -> do
+    (m :< TermMatch resultType mSubject (e, t) clauseList) -> do
       resultType' <- substTerm sub resultType
       mSubject' <- mapM (substTerm sub) mSubject
       e' <- substTerm sub e
@@ -186,16 +186,16 @@ substTerm sub term =
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
         (xts', body') <- substTerm' sub xts body
         return ((mPat, name, xts'), body')
-      return (m :< TermCase resultType' mSubject' (e', t') clauseList')
+      return (m :< TermMatch resultType' mSubject' (e', t') clauseList')
     (m :< TermIgnore e) -> do
       e' <- substTerm sub e
       return (m :< TermIgnore e')
 
 substTerm' ::
   SubstTerm ->
-  [Binder] ->
+  [BinderF Term] ->
   Term ->
-  IO ([Binder], Term)
+  IO ([BinderF Term], Term)
 substTerm' sub binder e =
   case binder of
     [] -> do

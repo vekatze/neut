@@ -4,20 +4,21 @@ import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (unless)
 import Data.Basic
   ( CompEnumCase,
-    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
+    EnumCaseF (EnumCaseDefault, EnumCaseInt),
     Ident,
+    Opacity (OpacityTransparent),
     asText,
   )
 import Data.Comp
   ( Comp (CompEnumElim, CompPiElimDownElim, CompUpElim),
-    Value (ValueEnumIntro, ValueVarGlobal, ValueVarLocal),
+    Value (ValueInt, ValueVarGlobal, ValueVarLocal),
   )
-import Data.Global (boolFalse, boolTrue, compDefEnvRef, newValueVarLocalWith)
+import Data.Global (compDefEnvRef, newValueVarLocalWith)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef)
 import qualified Data.Text as T
 
-toApp :: T.Text -> Ident -> Comp -> IO Comp
+toApp :: Integer -> Ident -> Comp -> IO Comp
 toApp switcher x t = do
   (expVarName, expVar) <- newValueVarLocalWith "exp"
   return $
@@ -26,7 +27,7 @@ toApp switcher x t = do
       t
       ( CompPiElimDownElim
           expVar
-          [ValueEnumIntro switcher, ValueVarLocal x]
+          [ValueInt 64 switcher, ValueVarLocal x]
       )
 
 -- toAffineApp meta x t ~>
@@ -34,14 +35,16 @@ toApp switcher x t = do
 --   exp @ (0, x)
 toAffineApp :: Ident -> Comp -> IO Comp
 toAffineApp =
-  toApp boolFalse
+  toApp 0
+
+-- toApp boolFalse
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
 toRelevantApp :: Ident -> Comp -> IO Comp
 toRelevantApp =
-  toApp boolTrue
+  toApp 1
 
 bindLet :: [(Ident, Comp)] -> Comp -> Comp
 bindLet binder cont =
@@ -53,7 +56,7 @@ bindLet binder cont =
 
 switch :: Comp -> Comp -> [(CompEnumCase, Comp)]
 switch e1 e2 =
-  [(() :< EnumCaseLabel boolFalse, e1), (() :< EnumCaseDefault, e2)]
+  [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
 
 tryCache :: T.Text -> IO () -> IO Value
 tryCache key doInsertion = do
@@ -84,15 +87,11 @@ registerSwitcher ::
   IO ()
 registerSwitcher name aff rel = do
   (args, e) <- makeSwitcher aff rel
-  insDefEnv name True args e
+  insDefEnv name OpacityTransparent args e
 
-insDefEnv :: T.Text -> Bool -> [Ident] -> Comp -> IO ()
-insDefEnv name isReducible args e =
-  modifyIORef' compDefEnvRef $ Map.insert name (isReducible, args, Just e)
-
-insDefEnv' :: T.Text -> Bool -> [Ident] -> IO ()
-insDefEnv' name isReducible args =
-  modifyIORef' compDefEnvRef $ Map.insert name (isReducible, args, Nothing)
+insDefEnv :: T.Text -> Opacity -> [Ident] -> Comp -> IO ()
+insDefEnv name opacity args e =
+  modifyIORef' compDefEnvRef $ Map.insert name (opacity, args, e)
 
 {-# INLINE toConstructorLabelName #-}
 toConstructorLabelName :: Ident -> T.Text

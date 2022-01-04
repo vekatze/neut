@@ -41,7 +41,7 @@ import GHC.IO.Handle (hClose)
 import Lower (lowerMain, lowerOther)
 import Parse (parseMain, parseOther)
 import Parse.Core (initializeParserForFile, skip)
-import Parse.Enum (initializeEnumEnv)
+-- import Parse.Enum (initializeEnumEnv)
 import Parse.Import (parseImportSequence)
 import Path
   ( Abs,
@@ -94,7 +94,7 @@ build' target mClangOptStr = do
   mainFilePath <- resolveTarget target
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
-  initializeEnumEnv
+  -- initializeEnumEnv
   (isModified, dependenceSeq) <- computeDependence mainSource
   modifiedSourceSet <- readIORef modifiedSourceSetRef
   let clangOptStr = fromMaybe "" mClangOptStr
@@ -118,7 +118,7 @@ check' filePath = do
   ensureFileModuleSanity filePath
   mainModule <- getMainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  initializeEnumEnv
+  -- initializeEnumEnv
   (_, dependenceSeq) <- computeDependence source
   mapM_ check'' dependenceSeq
 
@@ -164,8 +164,8 @@ compile' clangOptStr source = do
   llvm <- compileToLLVM source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
-  -- llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
-  -- L.writeFile (toFilePath llvmOutputPath) llvm
+  llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
+  L.writeFile (toFilePath llvmOutputPath) llvm
   let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"] ++ words clangOptStr
   withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
     L.hPut stdin llvm

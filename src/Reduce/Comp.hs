@@ -8,6 +8,7 @@ import Control.Comonad.Cofree.Class (ComonadCofree (unwrap))
 import Data.Basic
   ( EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Ident,
+    Opacity (OpacityTransparent),
     asInt,
   )
 import Data.Comp
@@ -38,8 +39,7 @@ reduceComp term =
       compDefEnv <- readIORef compDefEnvRef
       case v of
         ValueVarGlobal x
-          | Just (isReducible, xs, Just body) <- Map.lookup x compDefEnv,
-            isReducible,
+          | Just (OpacityTransparent, xs, body) <- Map.lookup x compDefEnv,
             length xs == length ds -> do
             let sub = IntMap.fromList (zip (map asInt xs) ds)
             substComp sub IntMap.empty body >>= reduceComp

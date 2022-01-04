@@ -6,7 +6,7 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
-import Data.Basic (AliasInfo (..), EnumCaseF (EnumCaseLabel), Hint, Ident, LamKind (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
+import Data.Basic (AliasInfo (..), BinderF, EnumCaseF (EnumCaseLabel), Hint, Ident, LamKindF (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
 import Data.Global
   ( aliasEnvRef,
     bool,
@@ -17,7 +17,6 @@ import Data.Global
     dataEnvRef,
     getCurrentFilePath,
     newText,
-    nsSep,
     prefixEnvRef,
     sourceAliasMapRef,
     topNameSetRef,
@@ -43,11 +42,10 @@ import Data.Stmt
   )
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakBinder,
-    WeakTerm,
+  ( WeakTerm,
     WeakTermF
-      ( WeakTermCase,
-        WeakTermEnumElim,
+      ( WeakTermEnumElim,
+        WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -126,9 +124,7 @@ ensureMain mainFunctionName = do
   currentSection <- readIORef currentSectionRef
   if S.member mainFunctionName topNameSet
     then return ()
-    else do
-      print topNameSet
-      raiseError m $ "`main` is missing in `" <> currentSection <> "`"
+    else raiseError m $ "`main` is missing in `" <> currentSection <> "`"
 
 setupSectionPrefix :: Source -> IO ()
 setupSectionPrefix currentSource = do
@@ -234,23 +230,25 @@ parseDefine opacity = do
       token "define"
     OpacityTransparent ->
       token "define-inline"
-  (mTerm, name) <- simpleVar
+  (_, name) <- simpleVar
   name' <- attachSectionPrefix name
   argList <- many weakBinder
   token ":"
   codType <- weakTerm
   token "="
   e <- weakTerm
-  case argList of
-    [] ->
-      defineTerm opacity m name' codType e
-    _ ->
-      defineFunction opacity m mTerm name' argList codType e
+  define opacity m name' argList codType e
 
-defineFunction :: Opacity -> Hint -> Hint -> T.Text -> [WeakBinder] -> WeakTerm -> WeakTerm -> IO WeakStmt
-defineFunction opacity m mFun name argList codType e = do
+define :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
+define opacity m name argList answerType e = do
+  if null argList
+    then defineTerm opacity m name answerType e
+    else defineFunction opacity m name argList answerType e
+
+defineFunction :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
+defineFunction opacity m name argList codType e = do
   let piType = m :< WeakTermPi argList codType
-  let e' = m :< WeakTermPiIntro (LamKindFix (mFun, asIdent name, piType)) argList e
+  let e' = m :< WeakTermPiIntro (LamKindFix (m, asIdent name, piType)) argList e
   defineTerm opacity m name piType e'
 
 defineTerm :: Opacity -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
@@ -276,81 +274,53 @@ parseDefineData :: IO [WeakStmt]
 parseDefineData = do
   m <- currentHint
   token "define-data"
-  mFun <- currentHint
   a <- varText >>= attachSectionPrefix
-  xts <- many weakAscription
-  bts <- many parseDefineDataClause
-  defineData m mFun a xts bts
+  dataArgs <- many weakAscription
+  consInfoList <- many parseDefineDataClause
+  defineData m a dataArgs consInfoList
 
-defineData :: Hint -> Hint -> T.Text -> [WeakBinder] -> [(Hint, T.Text, [WeakBinder])] -> IO [WeakStmt]
-defineData m mFun a xts bts = do
-  setAsData a (length xts) bts
+defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO [WeakStmt]
+defineData m a dataArgs consInfoList = do
+  consInfoList' <- mapM modifyConstructorName consInfoList
+  setAsData a (length dataArgs) consInfoList'
   z <- newTextualIdentFromText "cod"
-  let lamArgs = (m, z, m :< WeakTermTau) : map (toPiTypeWith z) bts
+  let lamArgs = (m, z, m :< WeakTermTau) : map (toPiTypeWith z) consInfoList'
   let baseType = m :< WeakTermPi lamArgs (m :< WeakTermVar z)
-  case xts of
-    [] -> do
-      registerTopLevelName m a
-      let formRule = WeakStmtDef OpacityOpaque m a (m :< WeakTermTau) (m :< WeakTermPi [] (m :< WeakTermTau)) -- fake type
-      introRuleList <- mapM (parseDefineDataConstructor m lamArgs baseType a xts) bts
-      return $ formRule : introRuleList
-    _ -> do
-      formRule <- defineFunction OpacityOpaque m mFun a xts (m :< WeakTermTau) baseType
-      introRuleList <- mapM (parseDefineDataConstructor m lamArgs baseType a xts) bts
-      return $ formRule : introRuleList
+  formRule <- define OpacityOpaque m a dataArgs (m :< WeakTermTau) baseType
+  introRuleList <- mapM (parseDefineDataConstructor lamArgs a dataArgs) consInfoList'
+  return $ formRule : introRuleList
 
-parseDefineDataConstructor :: Hint -> [WeakBinder] -> WeakTerm -> T.Text -> [WeakBinder] -> (Hint, T.Text, [WeakBinder]) -> IO WeakStmt
-parseDefineDataConstructor m lamArgs baseType a xts (mb, b, yts) = do
-  let consArgs = xts ++ yts
-  let args = map identPlusToVar yts
-  let b' = a <> nsSep <> b
-  let indType =
-        case xts of
-          [] ->
-            weakVar m a
-          _ ->
-            m :< WeakTermPiElim (weakVar m a) (map identPlusToVar xts)
-  case consArgs of
+modifyConstructorName :: (Hint, T.Text, [BinderF WeakTerm]) -> IO (Hint, T.Text, [BinderF WeakTerm])
+modifyConstructorName (mb, b, yts) = do
+  b' <- attachSectionPrefix b
+  return (mb, b', yts)
+
+parseDefineDataConstructor :: [BinderF WeakTerm] -> T.Text -> [BinderF WeakTerm] -> (Hint, T.Text, [BinderF WeakTerm]) -> IO WeakStmt
+parseDefineDataConstructor lamArgs dataName dataArgs (m, consName, consArgs) = do
+  let dataConsArgs = dataArgs ++ consArgs
+  let consArgs' = map identPlusToVar consArgs
+  let dataType = constructDataType m dataName dataArgs
+  define
+    OpacityTransparent
+    m
+    consName
+    dataConsArgs
+    dataType
+    $ m
+      :< WeakTermPiIntro
+        (LamKindCons dataName consName dataType)
+        lamArgs
+        (m :< WeakTermPiElim (weakVar m consName) consArgs')
+
+constructDataType :: Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm
+constructDataType m dataName dataArgs =
+  case dataArgs of
     [] ->
-      defineTerm
-        OpacityOpaque
-        m
-        b'
-        indType
-        ( m
-            :< WeakTermPiElim
-              (weakVar m unsafeCast)
-              [ baseType,
-                indType,
-                m
-                  :< WeakTermPiIntro
-                    (LamKindCons a b')
-                    lamArgs
-                    (m :< WeakTermPiElim (weakVar m b) args)
-              ]
-        )
+      weakVar m dataName
     _ ->
-      defineFunction
-        OpacityOpaque
-        m
-        mb
-        b'
-        consArgs
-        indType
-        ( m
-            :< WeakTermPiElim
-              (weakVar m unsafeCast)
-              [ baseType,
-                indType,
-                m
-                  :< WeakTermPiIntro
-                    (LamKindCons a b')
-                    lamArgs
-                    (m :< WeakTermPiElim (weakVar m b) args)
-              ]
-        )
+      m :< WeakTermPiElim (weakVar m dataName) (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: IO (Hint, T.Text, [WeakBinder])
+parseDefineDataClause :: IO (Hint, T.Text, [BinderF WeakTerm])
 parseDefineDataClause = do
   token "-"
   m <- currentHint
@@ -358,7 +328,7 @@ parseDefineDataClause = do
   yts <- many parseDefineDataClauseArg
   return (m, b, yts)
 
-parseDefineDataClauseArg :: IO WeakBinder
+parseDefineDataClauseArg :: IO (BinderF WeakTerm)
 parseDefineDataClauseArg = do
   m <- currentHint
   tryPlanList
@@ -370,38 +340,31 @@ parseDefineCodata :: IO [WeakStmt]
 parseDefineCodata = do
   m <- currentHint
   token "define-codata"
-  mFun <- currentHint
-  a <- varText >>= attachSectionPrefix
-  xts <- many weakAscription
-  yts <- many (token "-" >> ascriptionInner)
-  formRule <- defineData m mFun a xts [(m, "new", yts)]
-  elimRuleList <- mapM (parseDefineCodataElim m a xts yts) yts
+  dataName <- varText >>= attachSectionPrefix
+  dataArgs <- many weakAscription
+  elemInfoList <- many (token "-" >> ascriptionInner)
+  formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
+  elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
 
-parseDefineCodataElim :: Hint -> T.Text -> [WeakBinder] -> [WeakBinder] -> WeakBinder -> IO WeakStmt
-parseDefineCodataElim m a xts yts (mY, y, elemType) = do
-  let codataType =
-        case xts of
-          [] ->
-            weakVar m a
-          _ ->
-            m :< WeakTermPiElim (weakVar m a) (map identPlusToVar xts)
+parseDefineCodataElim :: T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> BinderF WeakTerm -> IO WeakStmt
+parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
+  let codataType = constructDataType m dataName dataArgs
   recordVarText <- newText
-  let projArgs = xts ++ [(m, asIdent recordVarText, codataType)]
-  defineFunction
+  let projArgs = dataArgs ++ [(m, asIdent recordVarText, codataType)]
+  elemName' <- attachSectionPrefix $ asText elemName
+  define
     OpacityOpaque
     m
-    mY
-    (a <> nsSep <> asText y)
+    elemName'
     projArgs
     elemType
-    ( m
-        :< WeakTermCase
-          elemType
-          Nothing
-          (weakVar m recordVarText, codataType)
-          [((m, a <> nsSep <> "new", yts), weakVar m (asText y))]
-    )
+    $ m
+      :< WeakTermMatch
+        elemType
+        Nothing
+        (weakVar m recordVarText, codataType)
+        [((m, dataName <> ":" <> "new", elemInfoList), weakVar m (asText elemName))]
 
 parseDefineResourceType :: IO WeakStmt
 parseDefineResourceType = do
@@ -453,18 +416,18 @@ parseDefineResourceType = do
           ]
     )
 
-setAsData :: T.Text -> Int -> [(Hint, T.Text, [WeakBinder])] -> IO ()
+setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
 setAsData a i bts = do
-  let bs = map (\(_, b, _) -> a <> nsSep <> b) bts
+  let bs = map (\(_, b, _) -> b) bts
   modifyIORef' dataEnvRef $ Map.insert a bs
   forM_ (zip bs [0 ..]) $ \(x, k) ->
     modifyIORef' constructorEnvRef $ Map.insert x (i, k)
 
-toPiTypeWith :: Ident -> (Hint, T.Text, [WeakBinder]) -> WeakBinder
+toPiTypeWith :: Ident -> (Hint, T.Text, [BinderF WeakTerm]) -> BinderF WeakTerm
 toPiTypeWith cod (m, b, yts) =
   (m, asIdent b, m :< WeakTermPi yts (m :< WeakTermVar cod))
 
-identPlusToVar :: WeakBinder -> WeakTerm
+identPlusToVar :: BinderF WeakTerm -> WeakTerm
 identPlusToVar (m, x, _) =
   m :< WeakTermVar x
 

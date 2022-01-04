@@ -7,7 +7,7 @@ where
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, unless, (>=>))
 import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..), asText)
-import Data.Comp (Comp (..), Primitive (..), Value (..))
+import Data.Comp (Comp (..), CompDef, Primitive (..), Value (..))
 import Data.Global
   ( cartClsName,
     cartImmName,
@@ -62,13 +62,13 @@ import Data.LowType
 import qualified Data.Set as S
 import qualified Data.Text as T
 
-lowerMain :: ([(T.Text, Comp)], Comp) -> IO LowComp
+lowerMain :: ([CompDef], Comp) -> IO LowComp
 lowerMain (defList, mainTerm) = do
   initialize $ cartImmName : cartClsName : map fst defList
   registerCartesian cartImmName
   registerCartesian cartClsName
-  forM_ defList $ \(name, e) ->
-    lowerComp e >>= insLowDefEnv name []
+  forM_ defList $ \(name, (_, args, e)) ->
+    lowerComp e >>= insLowDefEnv name args
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
@@ -77,13 +77,15 @@ lowerMain (defList, mainTerm) = do
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
 
-lowerOther :: [(T.Text, Comp)] -> IO ()
+lowerOther :: [CompDef] -> IO ()
 lowerOther defList = do
   initialize $ map fst defList
   insDeclEnv cartImmName [(), ()]
   insDeclEnv cartClsName [(), ()]
-  forM_ defList $ \(name, e) ->
-    lowerComp e >>= insLowDefEnv name []
+  lowDeclEnv <- readIORef lowDeclEnvRef
+  forM_ defList $ \(name, (_, args, e)) ->
+    unless (Map.member name lowDeclEnv) $
+      lowerComp e >>= insLowDefEnv name args
 
 initialize :: [T.Text] -> IO ()
 initialize nameList = do
@@ -536,7 +538,8 @@ enumValueToInteger label = do
   case Map.lookup label revEnumEnv of
     Just (_, i) ->
       return i
-    _ ->
+    _ -> do
+      print revEnumEnv
       raiseCritical' $ "no such enum is defined: " <> label
 
 insLowDefEnv :: T.Text -> [Ident] -> LowComp -> IO ()
@@ -577,7 +580,7 @@ registerCartesian :: T.Text -> IO ()
 registerCartesian name = do
   compDefEnv <- readIORef compDefEnvRef
   case Map.lookup name compDefEnv of
-    Just (_, args, Just e) ->
+    Just (_, args, e) ->
       lowerComp e >>= insLowDefEnv name args
     _ ->
       return ()

@@ -7,10 +7,12 @@ module Data.Term where
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Exception.Safe (MonadThrow)
 import Data.Basic
-  ( EnumCase,
+  ( BinderF,
+    EnumCase,
     Hint,
     Ident,
-    LamKind (..),
+    LamKindF (..),
+    PatternF,
   )
 import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
@@ -25,11 +27,9 @@ import Data.LowType
   )
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakBinder,
-    WeakTerm,
+  ( WeakTerm,
     WeakTermF
-      ( WeakTermCase,
-        WeakTermConst,
+      ( WeakTermConst,
         WeakTermDerangement,
         WeakTermEnum,
         WeakTermEnumElim,
@@ -37,6 +37,7 @@ import Data.WeakTerm
         WeakTermFloat,
         WeakTermIgnore,
         WeakTermInt,
+        WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -52,7 +53,7 @@ data TermF a
   | TermVar Ident
   | TermVarGlobal T.Text
   | TermPi [BinderF a] a
-  | TermPiIntro (LamKind (BinderF a)) [BinderF a] a
+  | TermPiIntro (LamKindF a) [BinderF a] a
   | TermPiElim a [a]
   | TermConst T.Text
   | TermInt IntSize Integer
@@ -61,7 +62,7 @@ data TermF a
   | TermEnumIntro T.Text
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermDerangement Derangement [a]
-  | TermCase
+  | TermMatch
       a -- result type
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
@@ -69,17 +70,7 @@ data TermF a
   | TermIgnore a
   deriving (Show, Generic)
 
-type BinderF a =
-  (Hint, Ident, a)
-
-type PatternF a =
-  (Hint, T.Text, [BinderF a])
-
 type Term = Cofree TermF Hint
-
-type Binder = BinderF Term
-
-type Pattern = PatternF Term
 
 instance (Binary a) => Binary (TermF a)
 
@@ -139,13 +130,13 @@ weaken term =
     m :< TermDerangement i es -> do
       let es' = map weaken es
       m :< WeakTermDerangement i es'
-    m :< TermCase resultType mSubject (e, t) patList -> do
+    m :< TermMatch resultType mSubject (e, t) patList -> do
       let resultType' = weaken resultType
       let mSubject' = fmap weaken mSubject
       let e' = weaken e
       let t' = weaken t
       let patList' = map (\((mp, p, xts), body) -> ((mp, p, map weakenBinder xts), weaken body)) patList
-      m :< WeakTermCase resultType' mSubject' (e', t') patList'
+      m :< WeakTermMatch resultType' mSubject' (e', t') patList'
     m :< TermIgnore e ->
       m :< WeakTermIgnore (weaken e)
 
@@ -153,13 +144,13 @@ weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =
   (m, x, weaken t)
 
-weakenKind :: LamKind Binder -> LamKind WeakBinder
+weakenKind :: LamKindF Term -> LamKindF WeakTerm
 weakenKind kind =
   case kind of
     LamKindNormal ->
       LamKindNormal
-    LamKindCons t1 t2 ->
-      LamKindCons t1 t2
+    LamKindCons dataName consName dataType ->
+      LamKindCons dataName consName (weaken dataType)
     LamKindFix xt ->
       LamKindFix (weakenBinder xt)
     LamKindResourceHandler ->

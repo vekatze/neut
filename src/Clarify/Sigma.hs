@@ -24,10 +24,11 @@ import Data.Comp
 import Data.Global
   ( cartClsName,
     cartImmName,
+    newCount,
     newIdentFromText,
-    newText,
     newValueVarLocalWith,
   )
+import Data.Namespace (attachSectionPrefix)
 import qualified Data.Text as T
 
 returnImmediateS4 :: IO Comp
@@ -47,9 +48,11 @@ sigmaS4 ::
 sigmaS4 mName mxts =
   case mName of
     Nothing -> do
-      h <- wrapWithQuote <$> newText
-      registerSwitcher h (sigmaT mxts) (sigma4 mxts)
-      return $ ValueVarGlobal h
+      i <- newCount
+      name <- fmap wrapWithQuote $ attachSectionPrefix $ "sigma;" <> T.pack (show i)
+      -- h <- wrapWithQuote <$> newText
+      registerSwitcher name (sigmaT mxts) (sigma4 mxts)
+      return $ ValueVarGlobal name
     Just name ->
       tryCache name $ registerSwitcher name (sigmaT mxts) (sigma4 mxts)
 

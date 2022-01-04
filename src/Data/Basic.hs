@@ -106,17 +106,26 @@ data Opacity
 
 instance Binary Opacity
 
-data LamKind a
+type BinderF a =
+  (Hint, Ident, a)
+
+type PatternF a =
+  (Hint, T.Text, [BinderF a])
+
+type DataName =
+  T.Text
+
+type ConsName =
+  T.Text
+
+data LamKindF a
   = LamKindNormal
-  | LamKindCons T.Text T.Text
-  | LamKindFix a
+  | LamKindCons DataName ConsName a
+  | LamKindFix (BinderF a)
   | LamKindResourceHandler
   deriving (Show, Generic)
 
-instance (Binary a) => Binary (LamKind a)
-
-type IsReducible =
-  Bool
+instance (Binary a) => Binary (LamKindF a)
 
 isOpaque :: Opacity -> Bool
 isOpaque o =
@@ -126,31 +135,13 @@ isOpaque o =
     _ ->
       False
 
-isTransparent :: Opacity -> Bool
-isTransparent o =
-  case o of
-    OpacityTransparent ->
-      True
-    _ ->
-      False
-
-fromLamKind :: LamKind a -> Maybe a
+fromLamKind :: LamKindF a -> Maybe (Hint, Ident, a)
 fromLamKind k =
   case k of
     LamKindFix x ->
       Just x
     _ ->
       Nothing
-
-lamKindWeakEq :: LamKind a -> LamKind a -> Bool
-lamKindWeakEq k1 k2 =
-  case (k1, k2) of
-    (LamKindNormal, LamKindNormal) ->
-      True
-    (LamKindCons t11 t12, LamKindCons t21 t22) ->
-      t11 == t21 && t12 == t22
-    _ ->
-      False
 
 asText :: Ident -> T.Text
 asText (I (s, _)) =

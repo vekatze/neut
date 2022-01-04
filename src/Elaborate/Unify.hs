@@ -9,12 +9,12 @@ import Control.Comonad.Cofree (Cofree (..))
 import Control.Exception.Safe (throw)
 import Control.Monad (forM)
 import Data.Basic
-  ( Hint,
+  ( BinderF,
+    Hint,
     Ident,
-    LamKind (LamKindFix, LamKindNormal),
+    LamKindF (LamKindCons, LamKindFix, LamKindNormal),
     asInt,
     getPosInfo,
-    lamKindWeakEq,
   )
 import Data.Global
   ( constraintListRef,
@@ -35,7 +35,6 @@ import Data.WeakTerm
     ConstraintKind (ConstraintKindDelta, ConstraintKindOther),
     SubstWeakTerm,
     SuspendedConstraint (SuspendedConstraint),
-    WeakBinder,
     WeakTerm,
     WeakTermF
       ( WeakTermAster,
@@ -148,12 +147,22 @@ simplify constraintList =
             yt2 <- asWeakBinder m2 e2
             cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
             simplify $ cs' ++ cs
-          | lamKindWeakEq kind1 kind2,
+          | LamKindNormal <- kind1,
+            LamKindNormal <- kind2,
             length xts1 == length xts2 -> do
             xt1 <- asWeakBinder m1 e1
             xt2 <- asWeakBinder m2 e2
             cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
             simplify $ cs' ++ cs
+          | LamKindCons dataName1 consName1 dataType1 <- kind1,
+            LamKindCons dataName2 consName2 dataType2 <- kind2,
+            dataName1 == dataName2,
+            consName1 == consName2,
+            length xts1 == length xts2 -> do
+            xt1 <- asWeakBinder m1 e1
+            xt2 <- asWeakBinder m2 e2
+            cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+            simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
         (_ :< WeakTermAster h1, _ :< WeakTermAster h2)
           | h1 == h2 ->
             simplify cs
@@ -256,7 +265,7 @@ simplify constraintList =
                   simplify cs
 
 {-# INLINE resolveHole #-}
-resolveHole :: Int -> [[WeakBinder]] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
+resolveHole :: Int -> [[BinderF WeakTerm]] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
 resolveHole h1 xss e2' cs = do
   modifyIORef' substRef $ IntMap.insert h1 (toPiIntro xss e2')
   suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
@@ -265,11 +274,11 @@ resolveHole h1 xss e2' cs = do
   let sus1' = map (\(SuspendedConstraint (_, _, c)) -> c) $ Q.toList sus1
   simplify $ sus1' ++ cs
 
-simplifyBinder :: Constraint -> [WeakBinder] -> [WeakBinder] -> IO [(Constraint, Constraint)]
+simplifyBinder :: Constraint -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> IO [(Constraint, Constraint)]
 simplifyBinder orig =
   simplifyBinder' orig IntMap.empty
 
-simplifyBinder' :: Constraint -> SubstWeakTerm -> [WeakBinder] -> [WeakBinder] -> IO [(Constraint, Constraint)]
+simplifyBinder' :: Constraint -> SubstWeakTerm -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> IO [(Constraint, Constraint)]
 simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
@@ -280,7 +289,7 @@ simplifyBinder' orig sub args1 args2 =
     _ ->
       return []
 
-asWeakBinder :: Hint -> WeakTerm -> IO WeakBinder
+asWeakBinder :: Hint -> WeakTerm -> IO (BinderF WeakTerm)
 asWeakBinder m t = do
   h <- newIdentFromText "aster"
   return (m, h, t)
@@ -325,7 +334,7 @@ asStuckedTerm term =
     _ ->
       Nothing
 
-toPiIntro :: [[WeakBinder]] -> WeakTerm -> WeakTerm
+toPiIntro :: [[BinderF WeakTerm]] -> WeakTerm -> WeakTerm
 toPiIntro args e =
   case args of
     [] ->
@@ -342,7 +351,7 @@ toPiElim e args =
     (m, es) : ess ->
       toPiElim (m :< WeakTermPiElim e es) ess
 
-asIdentList :: [WeakTerm] -> Maybe [WeakBinder]
+asIdentList :: [WeakTerm] -> Maybe [BinderF WeakTerm]
 asIdentList termList =
   case termList of
     [] ->
@@ -356,11 +365,11 @@ asIdentList termList =
         Nothing
 
 {-# INLINE toLinearIdentSet #-}
-toLinearIdentSet :: [[WeakBinder]] -> Maybe (S.Set Ident)
+toLinearIdentSet :: [[BinderF WeakTerm]] -> Maybe (S.Set Ident)
 toLinearIdentSet xtss =
   toLinearIdentSet' xtss S.empty
 
-toLinearIdentSet' :: [[WeakBinder]] -> S.Set Ident -> Maybe (S.Set Ident)
+toLinearIdentSet' :: [[BinderF WeakTerm]] -> S.Set Ident -> Maybe (S.Set Ident)
 toLinearIdentSet' xtss acc =
   case xtss of
     [] ->

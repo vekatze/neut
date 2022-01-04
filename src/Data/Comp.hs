@@ -1,6 +1,6 @@
 module Data.Comp where
 
-import Data.Basic (CompEnumCase, Ident)
+import Data.Basic (CompEnumCase, Ident, Opacity)
 import qualified Data.IntMap as IntMap
 import Data.LowType (Derangement, FloatSize, IntSize, PrimOp)
 import qualified Data.Set as S
@@ -32,6 +32,9 @@ data Primitive
 
 type SubstValue =
   IntMap.IntMap Value
+
+type CompDef =
+  (T.Text, (Opacity, [Ident], Comp))
 
 varValue :: Value -> S.Set Ident
 varValue v =
