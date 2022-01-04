@@ -366,7 +366,7 @@ weakTermMatch = do
   token "with"
   clauseList <- many weakTermMatchClause
   token "end"
-  return $ m :< WeakTermMatch (doNotCare m) Nothing (e, doNotCare m) clauseList
+  return $ m :< WeakTermMatch Nothing (e, doNotCare m) clauseList
 
 weakTermMatchNoetic :: IO WeakTerm
 weakTermMatchNoetic = do
@@ -380,7 +380,7 @@ weakTermMatchNoetic = do
   clauseList <- many weakTermMatchClause
   token "end"
   let clauseList' = map (modifyWeakPattern s) clauseList
-  return $ m :< WeakTermMatch (doNotCare m) (Just s) (e', doNotCare m) clauseList'
+  return $ m :< WeakTermMatch (Just s) (e', doNotCare m) clauseList'
 
 weakTermMatchClause :: IO (PatternF WeakTerm, WeakTerm)
 weakTermMatchClause = do
@@ -491,7 +491,6 @@ weakTermLetCoproduct = do
   return $
     m
       :< WeakTermMatch
-        (doNotCare m)
         Nothing
         (e1, doNotCare m)
         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),

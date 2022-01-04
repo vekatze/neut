@@ -269,8 +269,7 @@ elaborate' term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM elaborate' es
       return $ m :< TermDerangement i es'
-    m :< WeakTermMatch resultType mSubject (e, t) patList -> do
-      resultType' <- elaborate' resultType
+    m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e
       t' <- elaborate' t >>= reduceTerm
@@ -279,11 +278,11 @@ elaborate' term =
         _ :< TermPiElim (_ :< TermVarGlobal name) _
           | Just bs <- Map.lookup name dataEnv -> do
             patList' <- elaboratePatternList m bs patList
-            return $ m :< TermMatch resultType' mSubject' (e', t') patList'
+            return $ m :< TermMatch mSubject' (e', t') patList'
         _ :< TermVarGlobal name
           | Just bs <- Map.lookup name dataEnv -> do
             patList' <- elaboratePatternList m bs patList
-            return $ m :< TermMatch resultType' mSubject' (e', t') patList'
+            return $ m :< TermMatch mSubject' (e', t') patList'
         _ -> do
           raiseError (metaOf t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
     m :< WeakTermIgnore e -> do

@@ -166,13 +166,13 @@ infer' ctx term =
       resultType <- newTypeAsterInCtx ctx m
       (es', _) <- unzip <$> mapM (infer' ctx) es
       return (m :< WeakTermDerangement kind es', resultType)
-    m :< WeakTermMatch _ mSubject (e, _) clauseList -> do
+    m :< WeakTermMatch mSubject (e, _) clauseList -> do
       resultType <- newTypeAsterInCtx ctx m
       (e', t') <- infer' ctx e
       mSubject' <- mapM (inferSubject m ctx) mSubject
       case clauseList of
         [] ->
-          return (m :< WeakTermMatch resultType mSubject' (e', t') [], resultType) -- ex falso quodlibet
+          return (m :< WeakTermMatch mSubject' (e', t') [], resultType) -- ex falso quodlibet
         ((_, constructorName, _), _) : _ -> do
           constructorEnv <- readIORef constructorEnvRef
           case Map.lookup constructorName constructorEnv of
@@ -192,7 +192,7 @@ infer' ctx term =
                     (_, tPat) <- inferPiElim ctx m (m :< WeakTermVarGlobal name, tCons) (holeList ++ xs)
                     insConstraintEnv tPat t'
                 return ((mPat, name, xts'), body')
-              return (m :< WeakTermMatch resultType mSubject' (e', t') clauseList', resultType)
+              return (m :< WeakTermMatch mSubject' (e', t') clauseList', resultType)
     m :< WeakTermIgnore e -> do
       (e', t') <- infer' ctx e
       return (m :< WeakTermIgnore e', t')

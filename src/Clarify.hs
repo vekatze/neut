@@ -130,16 +130,7 @@ clarifyTerm tenv term =
     _ :< TermPi {} ->
       returnClosureS4
     m :< TermPiIntro kind mxts e -> do
-      e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
-      let fvs = nubFreeVariables $ chainOf tenv term
-      case kind of
-        LamKindFix (_, x, _)
-          | S.member x (varComp e') ->
-            returnClosure tenv OpacityOpaque kind fvs m mxts e'
-          | otherwise ->
-            returnClosure tenv OpacityTransparent LamKindNormal fvs m mxts e'
-        _ ->
-          returnClosure tenv OpacityTransparent kind fvs m mxts e'
+      clarifyLambda m tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
     _ :< TermPiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -167,42 +158,53 @@ clarifyTerm tenv term =
         _ -> do
           (xs, es', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) es
           return $ bindLet (zip xs es') $ CompPrimitive (PrimitiveDerangement expKind xsAsVars)
-    _ :< TermMatch resultType mSubject (e, _) patList -> do
-      let fvs = chainFromTermList tenv $ map caseClauseToLambda patList
-      (resultArgVarName, resultType', resultArgVar) <- clarifyPlus tenv resultType
-      closure <- clarifyTerm tenv e
-      ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
-      branchList <- forM (zip patList [0 ..]) $ \(((mPat, consName, xts), body), i) -> do
-        body' <- clarifyTerm (insTypeEnv xts tenv) body
-        clauseClosure <- returnClosure tenv OpacityTransparent LamKindNormal fvs mPat xts body'
-        (clauseClosureVarName, clauseClosureVar) <- newValueVarLocalWith "clause"
-        let consName' = getLamConsName consName
-        let consName'' = wrapWithQuote $ if isJust mSubject then consName' <> ";noetic" else consName'
+    _ :< TermMatch mSubject (e, _) clauseList -> do
+      ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
+      let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
+      clauseList' <- forM (zip clauseList [0 ..]) $ \(((mPat, consName, xts), body), i) -> do
+        closure <- clarifyLambda mPat tenv LamKindNormal xts body fvs
+        (closureVarName, closureVar) <- newValueVarLocalWith "clause"
         return
           ( () :< EnumCaseInt i,
-            bindLet
-              [ (resultArgVarName, resultType'),
-                (clauseClosureVarName, clauseClosure)
-              ]
-              ( CompPiElimDownElim
-                  (ValueVarGlobal consName'')
-                  [resultArgVar, clauseClosureVar, envVar]
-              )
+            CompUpElim
+              closureVarName
+              closure
+              $ CompPiElimDownElim
+                (ValueVarGlobal (getClauseConsName consName (isJust mSubject)))
+                [closureVar, envVar]
           )
-      return
-        ( CompUpElim
-            closureVarName
-            closure
-            ( CompSigmaElim
-                (isJust mSubject)
-                [typeVarName, envVarName, tagVarName]
-                closureVar
-                (CompEnumElim tagVar branchList)
-            )
-        )
+      dataTerm <- clarifyTerm tenv e
+      return $
+        CompUpElim
+          dataVarName
+          dataTerm
+          $ CompSigmaElim
+            (isJust mSubject)
+            [typeVarName, envVarName, tagVarName]
+            dataVar
+            $ CompEnumElim tagVar clauseList'
     _ :< TermIgnore e -> do
       e' <- clarifyTerm tenv e
       return $ CompIgnore e'
+
+clarifyLambda ::
+  Hint ->
+  TypeEnv ->
+  LamKindF Term ->
+  [(Hint, Ident, Term)] ->
+  Term ->
+  [BinderF Term] ->
+  IO Comp
+clarifyLambda m tenv kind mxts e fvs = do
+  e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
+  case kind of
+    LamKindFix (_, x, _)
+      | S.member x (varComp e') ->
+        returnClosure tenv OpacityOpaque kind fvs m mxts e'
+      | otherwise ->
+        returnClosure tenv OpacityTransparent LamKindNormal fvs m mxts e'
+    _ ->
+      returnClosure tenv OpacityTransparent kind fvs m mxts e'
 
 newClosureNames :: IO ((Ident, Value), Ident, (Ident, Value), (Ident, Value))
 newClosureNames = do
@@ -375,7 +377,7 @@ chainOf tenv term =
       xs0 ++ xs1 ++ xs2
     _ :< TermDerangement _ es ->
       concatMap (chainOf tenv) es
-    _ :< TermMatch _ mSubject (e, _) patList -> do
+    _ :< TermMatch mSubject (e, _) patList -> do
       let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)
       let xs2 = chainOf tenv e
       let xs3 = concatMap (\((_, _, xts), body) -> chainOf' tenv xts [body]) patList
@@ -419,3 +421,8 @@ forgetHint (_ :< enumCase) =
 getLamConsName :: T.Text -> T.Text
 getLamConsName basename =
   basename <> ";cons"
+
+getClauseConsName :: T.Text -> Bool -> T.Text
+getClauseConsName basename isNoetic = do
+  let consName' = getLamConsName basename
+  wrapWithQuote $ if isNoetic then consName' <> ";noetic" else consName'

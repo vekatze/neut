@@ -42,7 +42,6 @@ data WeakTermF a
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
   | WeakTermDerangement Derangement [a] -- (derangement kind arg-1 ... arg-n)
   | WeakTermMatch
-      a -- result type
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
       [(PatternF a, a)]
@@ -142,13 +141,12 @@ varWeakTerm term =
       S.union set1 set2
     _ :< WeakTermDerangement _ es ->
       S.unions $ map varWeakTerm es
-    _ :< WeakTermMatch resultType mSubject (e, t) patList -> do
-      let xs1 = varWeakTerm resultType
-      let xs2 = S.unions $ map varWeakTerm $ maybeToList mSubject
-      let xs3 = varWeakTerm e
-      let xs4 = varWeakTerm t
-      let xs5 = S.unions $ map (\((_, _, xts), body) -> varWeakTerm' xts [body]) patList
-      S.unions [xs1, xs2, xs3, xs4, xs5]
+    _ :< WeakTermMatch mSubject (e, t) patList -> do
+      let xs1 = S.unions $ map varWeakTerm $ maybeToList mSubject
+      let xs2 = varWeakTerm e
+      let xs3 = varWeakTerm t
+      let xs4 = S.unions $ map (\((_, _, xts), body) -> varWeakTerm' xts [body]) patList
+      S.unions [xs1, xs2, xs3, xs4]
     _ :< WeakTermIgnore e ->
       varWeakTerm e
 
@@ -200,13 +198,12 @@ asterWeakTerm term =
       S.union set1 set2
     _ :< WeakTermDerangement _ es ->
       S.unions $ map asterWeakTerm es
-    _ :< WeakTermMatch resultType mSubject (e, t) patList -> do
-      let xs1 = asterWeakTerm resultType
-      let xs2 = S.unions $ map asterWeakTerm $ maybeToList mSubject
-      let xs3 = asterWeakTerm e
-      let xs4 = asterWeakTerm t
-      let xs5 = S.unions $ map (\((_, _, xts), body) -> asterWeakTerm' xts body) patList
-      S.unions [xs1, xs2, xs3, xs4, xs5]
+    _ :< WeakTermMatch mSubject (e, t) patList -> do
+      let xs1 = S.unions $ map asterWeakTerm $ maybeToList mSubject
+      let xs2 = asterWeakTerm e
+      let xs3 = asterWeakTerm t
+      let xs4 = S.unions $ map (\((_, _, xts), body) -> asterWeakTerm' xts body) patList
+      S.unions [xs1, xs2, xs3, xs4]
     _ :< WeakTermIgnore e ->
       asterWeakTerm e
 
@@ -283,7 +280,7 @@ toText term =
     _ :< WeakTermDerangement i es -> do
       let es' = map toText es
       showCons $ "derangement" : T.pack (show i) : es'
-    _ :< WeakTermMatch _ mSubject (e, _) caseClause -> do
+    _ :< WeakTermMatch mSubject (e, _) caseClause -> do
       case mSubject of
         Nothing -> do
           showCons $ "case" : toText e : map showCaseClause caseClause

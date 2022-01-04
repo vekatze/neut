@@ -146,8 +146,7 @@ discern' nenv term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM (discern' nenv) es
       return $ m :< WeakTermDerangement i es'
-    m :< WeakTermMatch resultType mSubject (e, t) clauseList -> do
-      resultType' <- discern' nenv resultType
+    m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e
       t' <- discern' nenv t
@@ -160,7 +159,7 @@ discern' nenv term =
             return ((mCons, newName, xts'), body')
           Nothing ->
             raiseError m $ "no such constructor is defined: " <> constructorName
-      return $ m :< WeakTermMatch resultType' mSubject' (e', t') clauseList'
+      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermIgnore e -> do
       e' <- discern' nenv e
       return $ m :< WeakTermIgnore e'

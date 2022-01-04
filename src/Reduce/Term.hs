@@ -95,42 +95,41 @@ reduceTerm term =
     (m :< TermDerangement i es) -> do
       es' <- mapM reduceTerm es
       return (m :< TermDerangement i es')
-    (m :< TermMatch resultType mSubject (e, t) clauseList) -> do
+    (m :< TermMatch mSubject (e, t) clauseList) -> do
       e' <- reduceTerm e
-      let lamList = map (toLamList m) clauseList
-      dataEnv <- readIORef dataEnvRef
-      case e' of
-        (_ :< TermPiIntro (LamKindCons dataName consName _ _) _ _)
-          | Just consNameList <- Map.lookup dataName dataEnv,
-            consName `elem` consNameList,
-            checkClauseListSanity consNameList clauseList -> do
-            let app = m :< TermPiElim e' (resultType : lamList)
-            reduceTerm app
-        _ -> do
-          resultType' <- reduceTerm resultType
-          mSubject' <- mapM reduceTerm mSubject
-          t' <- reduceTerm t
-          clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-            body' <- reduceTerm body
-            return ((mPat, name, xts), body')
-          return (m :< TermMatch resultType' mSubject' (e', t') clauseList')
+      -- let lamList = map (toLamList m) clauseList
+      -- dataEnv <- readIORef dataEnvRef
+      -- case e' of
+      -- (_ :< TermPiIntro (LamKindCons dataName consName _ _) _ _)
+      --   | Just consNameList <- Map.lookup dataName dataEnv,
+      --     consName `elem` consNameList,
+      --     checkClauseListSanity consNameList clauseList -> do
+      --     let app = m :< TermPiElim e' lamList
+      --     reduceTerm app
+      -- _ -> do
+      mSubject' <- mapM reduceTerm mSubject
+      t' <- reduceTerm t
+      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+        body' <- reduceTerm body
+        return ((mPat, name, xts), body')
+      return (m :< TermMatch mSubject' (e', t') clauseList')
     _ ->
       return term
 
-checkClauseListSanity :: [T.Text] -> [(PatternF Term, Term)] -> Bool
-checkClauseListSanity consNameList clauseList =
-  case (consNameList, clauseList) of
-    ([], []) ->
-      True
-    (consName : restConsNameList, ((_, name, _), _) : restClauseList)
-      | consName == name ->
-        checkClauseListSanity restConsNameList restClauseList
-    _ ->
-      False
+-- checkClauseListSanity :: [T.Text] -> [(PatternF Term, Term)] -> Bool
+-- checkClauseListSanity consNameList clauseList =
+--   case (consNameList, clauseList) of
+--     ([], []) ->
+--       True
+--     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
+--       | consName == name ->
+--         checkClauseListSanity restConsNameList restClauseList
+--     _ ->
+--       False
 
-toLamList :: Hint -> (PatternF Term, Term) -> Term
-toLamList m ((_, _, xts), body) =
-  m :< TermPiIntro LamKindNormal xts body
+-- toLamList :: Hint -> (PatternF Term, Term) -> Term
+-- toLamList m ((_, _, xts), body) =
+--   m :< TermPiIntro LamKindNormal xts body
 
 substTerm :: SubstTerm -> Term -> IO Term
 substTerm sub term =
@@ -178,15 +177,14 @@ substTerm sub term =
     (m :< TermDerangement i es) -> do
       es' <- mapM (substTerm sub) es
       return (m :< TermDerangement i es')
-    (m :< TermMatch resultType mSubject (e, t) clauseList) -> do
-      resultType' <- substTerm sub resultType
+    (m :< TermMatch mSubject (e, t) clauseList) -> do
       mSubject' <- mapM (substTerm sub) mSubject
       e' <- substTerm sub e
       t' <- substTerm sub t
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
         (xts', body') <- substTerm' sub xts body
         return ((mPat, name, xts'), body')
-      return (m :< TermMatch resultType' mSubject' (e', t') clauseList')
+      return (m :< TermMatch mSubject' (e', t') clauseList')
     (m :< TermIgnore e) -> do
       e' <- substTerm sub e
       return (m :< TermIgnore e')

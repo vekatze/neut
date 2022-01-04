@@ -102,41 +102,41 @@ reduceWeakTerm term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM reduceWeakTerm es
       return $ m :< WeakTermDerangement i es'
-    m :< WeakTermMatch resultType mSubject (e, t) clauseList -> do
+    m :< WeakTermMatch mSubject (e, t) clauseList -> do
       e' <- reduceWeakTerm e
-      let lamList = map (toLamList m) clauseList
-      dataEnv <- readIORef dataEnvRef
-      case e' of
-        (_ :< WeakTermPiIntro (LamKindCons dataName consName _ _) _ _)
-          | Just consNameList <- Map.lookup dataName dataEnv,
-            consName `elem` consNameList,
-            checkClauseListSanity consNameList clauseList -> do
-            reduceWeakTerm $ m :< WeakTermPiElim e' (resultType : lamList)
-        _ -> do
-          resultType' <- reduceWeakTerm resultType
-          mSubject' <- mapM reduceWeakTerm mSubject
-          t' <- reduceWeakTerm t
-          clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-            body' <- reduceWeakTerm body
-            return ((mPat, name, xts), body')
-          return $ m :< WeakTermMatch resultType' mSubject' (e', t') clauseList'
+      -- let lamList = map (toLamList m) clauseList
+      -- dataEnv <- readIORef dataEnvRef
+      -- case e' of
+      --   (_ :< WeakTermPiIntro (LamKindCons dataName consName _ _) _ _)
+      --     | Just consNameList <- Map.lookup dataName dataEnv,
+      --       consName `elem` consNameList,
+      --       checkClauseListSanity consNameList clauseList -> do
+      --       reduceWeakTerm $ m :< WeakTermPiElim e' (resultType : lamList)
+      --   _ -> do
+      -- resultType' <- reduceWeakTerm resultType
+      mSubject' <- mapM reduceWeakTerm mSubject
+      t' <- reduceWeakTerm t
+      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+        body' <- reduceWeakTerm body
+        return ((mPat, name, xts), body')
+      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     _ ->
       return term
 
-checkClauseListSanity :: [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> Bool
-checkClauseListSanity consNameList clauseList =
-  case (consNameList, clauseList) of
-    ([], []) ->
-      True
-    (consName : restConsNameList, ((_, name, _), _) : restClauseList)
-      | consName == name ->
-        checkClauseListSanity restConsNameList restClauseList
-    _ ->
-      False
+-- checkClauseListSanity :: [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> Bool
+-- checkClauseListSanity consNameList clauseList =
+--   case (consNameList, clauseList) of
+--     ([], []) ->
+--       True
+--     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
+--       | consName == name ->
+--         checkClauseListSanity restConsNameList restClauseList
+--     _ ->
+--       False
 
-toLamList :: Hint -> (PatternF WeakTerm, WeakTerm) -> WeakTerm
-toLamList m ((_, _, xts), body) =
-  m :< WeakTermPiIntro LamKindNormal xts body
+-- toLamList :: Hint -> (PatternF WeakTerm, WeakTerm) -> WeakTerm
+-- toLamList m ((_, _, xts), body) =
+--   m :< WeakTermPiIntro LamKindNormal xts body
 
 substWeakTerm :: SubstWeakTerm -> WeakTerm -> IO WeakTerm
 substWeakTerm sub term =
@@ -196,15 +196,14 @@ substWeakTerm sub term =
     m :< WeakTermDerangement i es -> do
       es' <- mapM (substWeakTerm sub) es
       return $ m :< WeakTermDerangement i es'
-    m :< WeakTermMatch resultType mSubject (e, t) clauseList -> do
-      resultType' <- substWeakTerm sub resultType
+    m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (substWeakTerm sub) mSubject
       e' <- substWeakTerm sub e
       t' <- substWeakTerm sub t
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
         (xts', body') <- substWeakTerm' sub xts body
         return ((mPat, name, xts'), body')
-      return $ m :< WeakTermMatch resultType' mSubject' (e', t') clauseList'
+      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermIgnore e -> do
       e' <- substWeakTerm sub e
       return $ m :< WeakTermIgnore e'

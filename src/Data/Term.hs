@@ -63,7 +63,6 @@ data TermF a
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermDerangement Derangement [a]
   | TermMatch
-      a -- result type
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
       [(PatternF a, a)]
@@ -130,13 +129,12 @@ weaken term =
     m :< TermDerangement i es -> do
       let es' = map weaken es
       m :< WeakTermDerangement i es'
-    m :< TermMatch resultType mSubject (e, t) patList -> do
-      let resultType' = weaken resultType
+    m :< TermMatch mSubject (e, t) patList -> do
       let mSubject' = fmap weaken mSubject
       let e' = weaken e
       let t' = weaken t
       let patList' = map (\((mp, p, xts), body) -> ((mp, p, map weakenBinder xts), weaken body)) patList
-      m :< WeakTermMatch resultType' mSubject' (e', t') patList'
+      m :< WeakTermMatch mSubject' (e', t') patList'
     m :< TermIgnore e ->
       m :< WeakTermIgnore (weaken e)
 

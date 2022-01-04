@@ -279,7 +279,6 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
-  z <- newTextualIdentFromText "answer"
   define
     OpacityTransparent
     m
@@ -289,8 +288,7 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
     $ m
       :< WeakTermPiIntro
         (LamKindCons dataName consName consNumber dataType)
-        [ (m, z, m :< WeakTermTau),
-          (m, asIdent consName, m :< WeakTermPi consArgs (m :< WeakTermVar z))
+        [ (m, asIdent consName, m :< WeakTermPi consArgs (m :< WeakTermTau))
         ]
         (m :< WeakTermPiElim (weakVar m consName) consArgs')
 
@@ -343,7 +341,6 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
     elemType
     $ m
       :< WeakTermMatch
-        elemType
         Nothing
         (weakVar m recordVarText, codataType)
         [((m, dataName <> ":" <> "new", elemInfoList), weakVar m (asText elemName))]
@@ -404,10 +401,6 @@ setAsData dataName dataArgNum consInfoList = do
   modifyIORef' dataEnvRef $ Map.insert dataName consNameList
   forM_ consNameList $ \consName ->
     modifyIORef' constructorEnvRef $ Map.insert consName dataArgNum
-
-toPiTypeWith :: Ident -> (Hint, T.Text, [BinderF WeakTerm]) -> BinderF WeakTerm
-toPiTypeWith cod (m, b, yts) =
-  (m, asIdent b, m :< WeakTermPi yts (m :< WeakTermVar cod))
 
 identPlusToVar :: BinderF WeakTerm -> WeakTerm
 identPlusToVar (m, x, _) =
