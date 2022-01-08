@@ -5,7 +5,6 @@ module Parse.WeakTerm
     weakTermSimple,
     weakBinder,
     weakAscription,
-    ascriptionInner,
   )
 where
 
@@ -25,6 +24,7 @@ import Data.Basic
   )
 import Data.Global (boolFalse, boolTrue, newAster, outputError, targetArchRef, targetOSRef, targetPlatformRef, unsafeCast, unsafePtr)
 import Data.IORef (readIORef)
+import Data.List (foldl')
 import Data.Log (raiseError)
 import Data.LowType
   ( Derangement (..),
@@ -61,7 +61,9 @@ import Data.WeakTerm
     metaOf,
   )
 import Parse.Core
-  ( betweenParen,
+  ( argList,
+    argList2,
+    betweenParen,
     char,
     currentHint,
     doBlock,
@@ -72,7 +74,7 @@ import Parse.Core
     lam,
     lookAhead,
     many,
-    many1,
+    manyList,
     newTextualIdentFromText,
     raiseParseError,
     sepBy2,
@@ -128,7 +130,7 @@ weakTerm = do
       tryPlanList
         [ weakTermPiArrow,
           weakTermSigma,
-          weakTermPiElim
+          weakTermAux
         ]
 
 weakTermTau :: IO WeakTerm
@@ -146,16 +148,16 @@ weakTermAster = do
 weakTermPiArrow :: IO WeakTerm
 weakTermPiArrow = do
   m <- currentHint
-  xt <- weakTermPiItem
-  xts <- many1 (token "->" >> weakTermPiItem)
-  let (_, _, cod) = last xts
-  return $ m :< WeakTermPi (xt : init xts) cod
+  domList <- argList $ tryPlanList [weakAscription, typeWithoutIdent]
+  token "->"
+  cod <- weakTerm
+  return $ m :< WeakTermPi domList cod
 
 weakTermPiIntro :: IO WeakTerm
 weakTermPiIntro = do
   m <- currentHint
   token "lambda"
-  varList <- many weakBinder
+  varList <- argList weakBinder
   e <- tryPlanList [weakTermDotBind, doBlock weakTerm]
   return $ lam m varList e
 
@@ -173,40 +175,19 @@ weakTermPiIntroFix = do
   e <- tryPlanList [weakTermDotBind, doBlock weakTerm]
   return $ m :< WeakTermPiIntro (LamKindFix self) varList e
 
-weakTermPiElim :: IO WeakTerm
-weakTermPiElim = do
-  m <- currentHint
-  e <- weakTermSimple
-  es <- many weakTermSimple
-  if null es
-    then return e
-    else return $ m :< WeakTermPiElim e es
-
 weakTermSigma :: IO WeakTerm
 weakTermSigma = do
   m <- currentHint
-  xt <- weakTermSigmaItem
-  xts <- many1 (token "*" >> weakTermSigmaItem)
-  toSigma m $ xt : xts
-
-weakTermPiItem :: IO (BinderF WeakTerm)
-weakTermPiItem =
-  tryPlanList
-    [ weakAscription,
-      do
-        m <- currentHint
-        a <- tryPlanList [weakTermSigma, weakTermPiElim, weakTermTau, weakTermVar]
-        h <- newTextualIdentFromText "_"
-        return (m, h, a)
-    ]
+  xts <- sepBy2 (token "*") weakTermSigmaItem
+  toSigma m xts
 
 weakTermSigmaItem :: IO (BinderF WeakTerm)
 weakTermSigmaItem =
   tryPlanList
-    [ weakAscription,
+    [ betweenParen weakAscription,
       do
         m <- currentHint
-        a <- tryPlanList [weakTermPiElim, weakTermTau, weakTermVar]
+        a <- tryPlanList [weakTermAux, weakTermTau, weakTermVar]
         h <- newTextualIdentFromText "_"
         return (m, h, a)
     ]
@@ -364,7 +345,7 @@ weakTermMatch = do
   token "match"
   e <- weakTerm
   token "with"
-  clauseList <- many weakTermMatchClause
+  clauseList <- manyList weakTermMatchClause
   token "end"
   return $ m :< WeakTermMatch Nothing (e, doNotCare m) clauseList
 
@@ -377,15 +358,15 @@ weakTermMatchNoetic = do
   s <- newAster m
   t <- newAster m
   let e' = castFromNoema s t e
-  clauseList <- many weakTermMatchClause
+  clauseList <- manyList weakTermMatchClause
   token "end"
   let clauseList' = map (modifyWeakPattern s) clauseList
   return $ m :< WeakTermMatch (Just s) (e', doNotCare m) clauseList'
 
 weakTermMatchClause :: IO (PatternF WeakTerm, WeakTerm)
 weakTermMatchClause = do
-  token "-"
   pat <- weakTermPattern
+  token "->"
   body <- weakTerm
   return (pat, body)
 
@@ -406,20 +387,8 @@ weakTermPattern :: IO (PatternF WeakTerm)
 weakTermPattern = do
   m <- currentHint
   c <- symbol
-  argList <- weakTermPatternArgument
-  return (m, c, argList)
-
-weakTermPatternArgument :: IO [BinderF WeakTerm]
-weakTermPatternArgument = do
-  m <- currentHint
-  x <- symbol
-  skip
-  if x == "->"
-    then return []
-    else do
-      tmp <- weakTermPatternArgument
-      h <- newAster m
-      return $ (m, asIdent x, h) : tmp
+  patArgs <- argList weakBinder
+  return (m, c, patArgs)
 
 -- let x : A = e1 in e2
 -- let x     = e1 in e2
@@ -448,16 +417,14 @@ weakTermLetNormal = do
           lam m [x] e2
         ]
 
-weakTermSigmaElimVar :: IO (BinderF WeakTerm)
-weakTermSigmaElimVar =
-  tryPlanList [ascriptionInner, weakAscription']
-
 -- let (x1 : A1, ..., xn : An) = e1 in e2
 weakTermLetSigmaElim :: IO WeakTerm
 weakTermLetSigmaElim = do
   m <- currentHint
   token "let"
-  xts <- betweenParen $ sepBy2 weakTermSigmaElimVar (char ',' >> skip)
+  -- xts <- betweenParen $ sepBy2 (char ',' >> skip) weakTermSigmaElimVar
+  -- xts <- betweenParen $ sepBy2 (char ',' >> skip) weakBinder
+  xts <- argList2 weakBinder
   token "="
   e1 <- weakTerm
   token "in"
@@ -562,21 +529,20 @@ foldIf m ifCond ifBody elseIfList elseBody =
 weakTermSigmaIntro :: IO WeakTerm
 weakTermSigmaIntro = do
   m <- currentHint
-  betweenParen $ do
-    es <- sepBy2 weakTerm (char ',' >> skip)
-    xts <- forM es $ \_ -> do
-      x <- newTextualIdentFromText "_"
-      t <- newAster m
-      return (m, x, t)
-    sigVar <- newTextualIdentFromText "sigvar"
-    k <- newTextualIdentFromText "sig-k"
-    return $
-      lam
-        m
-        [ (m, sigVar, m :< WeakTermTau),
-          (m, k, m :< WeakTermPi xts (weakVar' m sigVar))
-        ]
-        (m :< WeakTermPiElim (weakVar' m k) es)
+  es <- argList2 weakTerm
+  xts <- forM es $ \_ -> do
+    x <- newTextualIdentFromText "_"
+    t <- newAster m
+    return (m, x, t)
+  sigVar <- newTextualIdentFromText "sigvar"
+  k <- newTextualIdentFromText "sig-k"
+  return $
+    lam
+      m
+      [ (m, sigVar, m :< WeakTermTau),
+        (m, k, m :< WeakTermPi xts (weakVar' m sigVar))
+      ]
+      (m :< WeakTermPiElim (weakVar' m k) es)
 
 weakTermIdealize :: IO WeakTerm
 weakTermIdealize = do
@@ -702,6 +668,13 @@ weakTermAdmitQuestion = do
         )
         h
 
+weakTermAux :: IO WeakTerm
+weakTermAux = do
+  m <- currentHint
+  e <- weakTermSimple
+  ess <- many $ argList weakTerm
+  return $ foldl' (\base es -> m :< WeakTermPiElim base es) e ess
+
 --
 -- term-related helper functions
 --
@@ -716,7 +689,6 @@ weakTermSimple =
       weakTermString,
       weakTermInteger,
       weakTermFloat,
-      -- weakTermBuiltin,
       weakTermAdmitQuestion,
       weakTermAdmit,
       weakTermVar
@@ -729,17 +701,20 @@ weakBinder =
       weakAscription'
     ]
 
-ascriptionInner :: IO (BinderF WeakTerm)
-ascriptionInner = do
+weakAscription :: IO (BinderF WeakTerm)
+weakAscription = do
   m <- currentHint
   x <- symbol
   char ':' >> skip
   a <- weakTerm
   return (m, asIdent x, a)
 
-weakAscription :: IO (BinderF WeakTerm)
-weakAscription =
-  betweenParen ascriptionInner
+typeWithoutIdent :: IO (BinderF WeakTerm)
+typeWithoutIdent = do
+  m <- currentHint
+  x <- newTextualIdentFromText "_"
+  t <- weakTerm
+  return (m, x, t)
 
 weakAscription' :: IO (BinderF WeakTerm)
 weakAscription' = do

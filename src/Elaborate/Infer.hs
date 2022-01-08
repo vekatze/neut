@@ -3,6 +3,7 @@ module Elaborate.Infer
     inferType,
     insConstraintEnv,
     insWeakTypeEnv,
+    inferBinder,
   )
 where
 
@@ -14,7 +15,7 @@ import Data.Basic
     EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
     Hint,
     Ident (..),
-    LamKindF (LamKindCons, LamKindFix),
+    LamKindF (LamKindCons, LamKindFix, LamKindResourceHandler),
     asInt,
     asText',
   )
@@ -111,6 +112,9 @@ infer' ctx term =
           dataType' <- inferType' ctx dataType
           (xts', (e', _)) <- inferBinder ctx xts e
           return (m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e', dataType')
+        LamKindResourceHandler -> do
+          (xts', (e', _)) <- inferBinder ctx xts e
+          return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermTau)
         _ -> do
           (xts', (e', t')) <- inferBinder ctx xts e
           return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermPi xts' t')

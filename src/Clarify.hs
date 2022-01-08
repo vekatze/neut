@@ -7,6 +7,7 @@ where
 import Clarify.Linearize (linearize)
 import Clarify.Sigma
   ( closureEnvS4,
+    immediateS4,
     returnClosureS4,
     returnImmediateS4,
   )
@@ -114,9 +115,10 @@ register (x, (opacity, args, e)) =
   insDefEnv (wrapWithQuote x) opacity args e
 
 clarifyDef :: Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
-clarifyDef (StmtDefine opacity _ x _ e) = do
-  e' <- clarifyTerm IntMap.empty e >>= reduceComp
-  return (x, (opacity, [], e'))
+clarifyDef (StmtDefine opacity _ f xts _ e) = do
+  e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e >>= reduceComp
+  let xts' = map (\(_, x, _) -> x) xts
+  return (f, (opacity, xts', e'))
 
 clarifyTerm :: TypeEnv -> Term -> IO Comp
 clarifyTerm tenv term =
@@ -125,8 +127,15 @@ clarifyTerm tenv term =
       returnImmediateS4
     _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
-    _ :< TermVarGlobal x ->
-      return $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote x)) []
+    _ :< TermVarGlobal x -> do
+      imm <- immediateS4
+      return $
+        CompUpIntro $
+          ValueSigmaIntro
+            [ imm,
+              ValueSigmaIntro [],
+              ValueVarGlobal $ wrapWithQuote x
+            ]
     _ :< TermPi {} ->
       returnClosureS4
     m :< TermPiIntro kind mxts e -> do

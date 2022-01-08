@@ -60,6 +60,7 @@ import Data.Term
         TermVarGlobal
       ),
     weaken,
+    weakenBinder,
   )
 import qualified Data.Text as T
 import Data.WeakTerm
@@ -86,7 +87,7 @@ import Data.WeakTerm
     metaOf,
     toText,
   )
-import Elaborate.Infer (infer, inferType, insConstraintEnv)
+import Elaborate.Infer (inferBinder, inferType, insConstraintEnv)
 import Elaborate.Unify (unify)
 import Reduce.Term (reduceTerm)
 import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
@@ -111,10 +112,10 @@ elaborate defListElaborator source cacheOrStmt =
       return defList'
 
 registerTopLevelDef :: Stmt -> IO ()
-registerTopLevelDef (StmtDefine opacity _ x t e) = do
-  insTermTypeEnv x $ weaken t
+registerTopLevelDef (StmtDefine opacity m x xts codType e) = do
+  insTermTypeEnv x $ weaken $ m :< TermPi xts codType
   unless (isOpaque opacity) $
-    modifyIORef' termDefEnvRef $ Map.insert x (weaken e)
+    modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts, weaken e)
 
 elaborateProgramMain :: T.Text -> [WeakStmt] -> IO [Stmt]
 elaborateProgramMain mainFunctionName = do
@@ -140,43 +141,44 @@ elaborateProgram defListInferrer defList = do
 setupDef :: WeakStmt -> IO ()
 setupDef def =
   case def of
-    WeakStmtDefine opacity _ x t e -> do
-      insTermTypeEnv x t
-      unless (isOpaque opacity) $ modifyIORef' termDefEnvRef $ Map.insert x e
-
--- when isReducible $ modifyIORef' termDefEnvRef $ Map.insert x e
+    WeakStmtDefine opacity m f xts codType e -> do
+      insTermTypeEnv f $ m :< WeakTermPi xts codType
+      modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts, e)
 
 inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
-inferStmtMain mainFunctionName (WeakStmtDefine isReducible m x t e) = do
-  (e', t') <- inferStmt e t
-  when (x == mainFunctionName) $ insConstraintEnv t (m :< WeakTermConst "i64")
-  return $ WeakStmtDefine isReducible m x t' e'
+inferStmtMain mainFunctionName (WeakStmtDefine isReducible m x xts codType e) = do
+  (xts', e', codType') <- inferStmt xts e codType
+  when (x == mainFunctionName) $
+    insConstraintEnv
+      (m :< WeakTermPi xts codType)
+      (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
+  return $ WeakStmtDefine isReducible m x xts' codType' e'
 
 inferStmtOther :: WeakStmt -> IO WeakStmt
-inferStmtOther (WeakStmtDefine isReducible m x t e) = do
-  (e', t') <- inferStmt e t
-  return $ WeakStmtDefine isReducible m x t' e'
+inferStmtOther (WeakStmtDefine isReducible m x xts codType e) = do
+  (xts', e', codType') <- inferStmt xts e codType
+  return $ WeakStmtDefine isReducible m x xts' codType' e'
 
-inferStmt :: WeakTerm -> WeakTerm -> IO (WeakTerm, WeakTerm)
-inferStmt e t = do
-  (e', te) <- infer e
-  t' <- inferType t
-  insConstraintEnv te t'
-  return (e', t')
+inferStmt :: [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
+inferStmt xts e codType = do
+  (xts', (e', te)) <- inferBinder [] xts e
+  codType' <- inferType codType
+  insConstraintEnv te codType'
+  return (xts', e', codType')
 
 elaborateStmtList :: [WeakStmt] -> IO [Stmt]
 elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDefine opacity m x t e : rest -> do
+    WeakStmtDefine opacity m x xts codType e : rest -> do
       e' <- elaborate' e
-      t' <- elaborate' t >>= reduceTerm
-      insTermTypeEnv x $ weaken t'
-      unless (isOpaque opacity) $
-        modifyIORef' termDefEnvRef $ Map.insert x (weaken e')
+      xts' <- mapM elaborateWeakBinder xts
+      codType' <- elaborate' codType >>= reduceTerm
+      insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
+      modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList rest
-      return $ StmtDefine opacity m x t' e' : rest'
+      return $ StmtDefine opacity m x xts' codType' e' : rest'
 
 elaborate' :: WeakTerm -> IO Term
 elaborate' term =
@@ -223,8 +225,6 @@ elaborate' term =
           | Just (LowTypeInt size) <- asLowTypeMaybe intTypeStr ->
             return $ m :< TermInt size x
         _ -> do
-          tl <- readIORef termDefEnvRef
-          print $ toText <$> Map.lookup "this.foo.my-type" tl
           raiseError m $
             "the term `"
               <> T.pack (show x)

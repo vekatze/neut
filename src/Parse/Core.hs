@@ -129,6 +129,18 @@ inBlock name f = do
   _ <- token "end"
   return item
 
+argList :: IO a -> IO [a]
+argList f =
+  betweenParen $ sepBy (char ',' >> skip) f
+
+argList2 :: IO a -> IO [a]
+argList2 f =
+  betweenParen $ sepBy2 (char ',' >> skip) f
+
+manyList :: IO a -> IO [a]
+manyList f =
+  many $ token "-" >> f
+
 token :: T.Text -> IO ()
 token expected = do
   m <- currentHint
@@ -267,8 +279,21 @@ lookAhead f = do
   loadState s
   return result
 
-sepBy2 :: IO a -> IO b -> IO [a]
-sepBy2 f sep = do
+sepBy :: IO b -> IO a -> IO [a]
+sepBy sep f =
+  tryPlanList
+    [ sepBy1 sep f,
+      return []
+    ]
+
+sepBy1 :: IO b -> IO a -> IO [a]
+sepBy1 sep f = do
+  item1 <- f
+  itemList <- many $ sep >> f
+  return $ item1 : itemList
+
+sepBy2 :: IO b -> IO a -> IO [a]
+sepBy2 sep f = do
   item1 <- f
   _ <- sep
   item2 <- f
@@ -386,7 +411,7 @@ newlineSet =
 {-# INLINE nonSymbolSet #-}
 nonSymbolSet :: S.Set Char
 nonSymbolSet =
-  S.fromList "() \"\n;,"
+  S.fromList "() \"\n:;,!?"
 
 {-# INLINE nonSimpleSymbolSet #-}
 nonSimpleSymbolSet :: S.Set Char

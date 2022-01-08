@@ -3,7 +3,7 @@
 module Data.Stmt where
 
 import Control.Comonad.Cofree (Cofree ((:<)))
-import Data.Basic (Hint, Opacity (OpacityOpaque))
+import Data.Basic (BinderF, Hint, Opacity (OpacityOpaque))
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
 import Data.Global (modifiedSourceSetRef)
 import qualified Data.Set as S
@@ -20,13 +20,13 @@ type WeakProgram =
   (Path Abs File, [WeakStmt])
 
 data WeakStmt
-  = WeakStmtDefine Opacity Hint T.Text WeakTerm WeakTerm
+  = WeakStmtDefine Opacity Hint T.Text [BinderF WeakTerm] WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])
 
 data Stmt
-  = StmtDefine Opacity Hint T.Text Term Term
+  = StmtDefine Opacity Hint T.Text [BinderF Term] Term Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -36,10 +36,10 @@ type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
 type Cache = ([Stmt], [EnumInfo])
 
 compress :: Stmt -> Stmt
-compress stmt@(StmtDefine opacity m x t _) =
+compress stmt@(StmtDefine opacity m functionName args codType _) =
   case opacity of
     OpacityOpaque ->
-      StmtDefine opacity m x t (m :< TermTau)
+      StmtDefine opacity m functionName args codType (m :< TermTau)
     _ ->
       stmt
 

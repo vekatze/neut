@@ -6,12 +6,9 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
-import Data.Basic (AliasInfo (..), BinderF, EnumCaseF (EnumCaseLabel), Hint, LamKindF (LamKindCons, LamKindFix, LamKindResourceHandler), Opacity (..), asIdent, asText)
+import Data.Basic (AliasInfo (..), BinderF, Hint, LamKindF (LamKindCons), Opacity (..), asIdent, asText)
 import Data.Global
   ( aliasEnvRef,
-    bool,
-    boolFalse,
-    boolTrue,
     constructorEnvRef,
     currentSectionRef,
     dataEnvRef,
@@ -20,8 +17,6 @@ import Data.Global
     prefixEnvRef,
     sourceAliasMapRef,
     topNameSetRef,
-    unsafeCast,
-    unsafePtr,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
@@ -44,8 +39,7 @@ import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakTerm,
     WeakTermF
-      ( WeakTermEnumElim,
-        WeakTermMatch,
+      ( WeakTermMatch,
         WeakTermPi,
         WeakTermPiElim,
         WeakTermPiIntro,
@@ -53,16 +47,13 @@ import Data.WeakTerm
         WeakTermVar
       ),
   )
-import Parse.Core (asBlock, currentHint, initializeParserForFile, isSymbolChar, lookAhead, many, newTextualIdentFromText, raiseParseError, simpleVar, skip, symbol, symbolMaybe, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
+import Parse.Core (argList, asBlock, char, currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyList, raiseParseError, simpleVar, skip, symbol, symbolMaybe, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
 import Parse.WeakTerm
-  ( ascriptionInner,
-    weakAscription,
-    weakBinder,
+  ( weakAscription,
     weakTerm,
-    weakTermSimple,
   )
 
 --
@@ -88,7 +79,7 @@ parseSource source = do
     Just (stmtList, enumInfoList) -> do
       forM_ enumInfoList $ \(mEnum, name, itemList) ->
         insEnumEnv mEnum name itemList
-      let names = S.fromList $ map (\(StmtDefine _ _ x _ _) -> x) stmtList
+      let names = S.fromList $ map (\(StmtDefine _ _ x _ _ _) -> x) stmtList
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
@@ -214,28 +205,16 @@ parseDefine opacity = do
       token "define-inline"
   (_, name) <- simpleVar
   name' <- attachSectionPrefix name
-  argList <- many weakBinder
-  token ":"
+  binder <- argList weakAscription
+  char ':' >> skip
   codType <- weakTerm
   e <- asBlock weakTerm
-  define opacity m name' argList codType e
-
-define :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
-define opacity m name argList answerType e = do
-  if null argList
-    then defineTerm opacity m name answerType e
-    else defineFunction opacity m name argList answerType e
+  defineFunction opacity m name' binder codType e
 
 defineFunction :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
-defineFunction opacity m name argList codType e = do
-  let piType = m :< WeakTermPi argList codType
-  let e' = m :< WeakTermPiIntro (LamKindFix (m, asIdent name, piType)) argList e
-  defineTerm opacity m name piType e'
-
-defineTerm :: Opacity -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
-defineTerm opacity m name codType e = do
+defineFunction opacity m name binder codType e = do
   registerTopLevelName m name
-  return $ WeakStmtDefine opacity m name codType e
+  return $ WeakStmtDefine opacity m name binder codType e
 
 parseStmtUse :: IO ()
 parseStmtUse = do
@@ -256,8 +235,8 @@ parseDefineData = do
   m <- currentHint
   token "define-data"
   a <- varText >>= attachSectionPrefix
-  dataArgs <- many weakAscription
-  consInfoList <- asBlock $ many parseDefineDataClause
+  dataArgs <- argList weakAscription
+  consInfoList <- asBlock $ manyList parseDefineDataClause
   defineData m a dataArgs consInfoList
 
 defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO [WeakStmt]
@@ -265,7 +244,7 @@ defineData m a dataArgs consInfoList = do
   consInfoList' <- mapM modifyConstructorName consInfoList
   setAsData a (length dataArgs) consInfoList'
   let consType = m :< WeakTermPi [] (m :< WeakTermTau)
-  formRule <- define OpacityOpaque m a dataArgs (m :< WeakTermTau) consType
+  formRule <- defineFunction OpacityOpaque m a dataArgs (m :< WeakTermTau) consType
   introRuleList <- mapM (parseDefineDataConstructor a dataArgs) $ zip consInfoList' [0 ..]
   return $ formRule : introRuleList
 
@@ -279,7 +258,7 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
-  define
+  defineFunction
     OpacityTransparent
     m
     consName
@@ -294,18 +273,14 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
 
 constructDataType :: Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm
 constructDataType m dataName dataArgs =
-  case dataArgs of
-    [] ->
-      weakVar m dataName
-    _ ->
-      m :< WeakTermPiElim (weakVar m dataName) (map identPlusToVar dataArgs)
+  m :< WeakTermPiElim (weakVar m dataName) (map identPlusToVar dataArgs)
 
 parseDefineDataClause :: IO (Hint, T.Text, [BinderF WeakTerm])
 parseDefineDataClause = do
-  token "-"
+  -- token "-"
   m <- currentHint
   b <- symbol
-  yts <- many parseDefineDataClauseArg
+  yts <- argList parseDefineDataClauseArg
   return (m, b, yts)
 
 parseDefineDataClauseArg :: IO (BinderF WeakTerm)
@@ -313,7 +288,7 @@ parseDefineDataClauseArg = do
   m <- currentHint
   tryPlanList
     [ weakAscription,
-      weakTermToWeakIdent m weakTermSimple
+      weakTermToWeakIdent m weakTerm
     ]
 
 parseDefineCodata :: IO [WeakStmt]
@@ -321,8 +296,8 @@ parseDefineCodata = do
   m <- currentHint
   token "define-codata"
   dataName <- varText >>= attachSectionPrefix
-  dataArgs <- many weakAscription
-  elemInfoList <- asBlock $ many (token "-" >> ascriptionInner)
+  dataArgs <- argList weakAscription
+  elemInfoList <- asBlock $ manyList weakAscription
   formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
   elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
@@ -333,7 +308,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
   recordVarText <- newText
   let projArgs = dataArgs ++ [(m, asIdent recordVarText, codataType)]
   elemName' <- attachSectionPrefix $ asText elemName
-  define
+  defineFunction
     OpacityOpaque
     m
     elemName'
@@ -347,53 +322,43 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
 
 parseDefineResourceType :: IO WeakStmt
 parseDefineResourceType = do
-  m <- currentHint
+  -- m <- currentHint
   _ <- token "define-resource-type"
-  name <- varText >>= attachSectionPrefix
-  discarder <- weakTermSimple
-  copier <- weakTermSimple
-  flag <- newTextualIdentFromText "flag"
-  value <- newTextualIdentFromText "value"
-  defineTerm
-    OpacityOpaque
-    m
-    name
-    (m :< WeakTermTau)
-    ( m
-        :< WeakTermPiElim
-          (weakVar m unsafeCast)
-          [ m
-              :< WeakTermPi
-                [ (m, flag, weakVar m bool),
-                  (m, value, weakVar m unsafePtr)
-                ]
-                (weakVar m unsafePtr),
-            m :< WeakTermTau,
-            m
-              :< WeakTermPiIntro
-                LamKindResourceHandler
-                [ (m, flag, weakVar m bool),
-                  (m, value, weakVar m unsafePtr)
-                ]
-                ( m
-                    :< WeakTermEnumElim
-                      (weakVar m (asText flag), weakVar m bool)
-                      [ ( m :< EnumCaseLabel boolTrue,
-                          m :< WeakTermPiElim copier [weakVar m (asText value)]
-                        ),
-                        ( m :< EnumCaseLabel boolFalse,
-                          m
-                            :< WeakTermPiElim
-                              (weakVar m unsafeCast)
-                              [ weakVar m "top",
-                                weakVar m unsafePtr,
-                                m :< WeakTermPiElim discarder [weakVar m (asText value)]
-                              ]
-                        )
-                      ]
-                )
-          ]
-    )
+  -- name <- varText >>= attachSectionPrefix
+  -- discarder <- weakTermSimple
+  -- copier <- weakTermSimple
+  -- flag <- newTextualIdentFromText "flag"
+  -- value <- newTextualIdentFromText "value"
+  undefined
+
+-- defineTerm
+--   OpacityOpaque
+--   m
+--   name
+--   (m :< WeakTermTau)
+--   $ m
+--     :< WeakTermPiIntro
+--       LamKindResourceHandler
+--       [ (m, flag, weakVar m bool),
+--         (m, value, weakVar m unsafePtr)
+--       ]
+--       ( m
+--           :< WeakTermEnumElim
+--             (weakVar m (asText flag), weakVar m bool)
+--             [ ( m :< EnumCaseLabel boolTrue,
+--                 m :< WeakTermPiElim copier [weakVar m (asText value)]
+--               ),
+--               ( m :< EnumCaseLabel boolFalse,
+--                 m
+--                   :< WeakTermPiElim
+--                     (weakVar m unsafeCast)
+--                     [ weakVar m "top",
+--                       weakVar m unsafePtr,
+--                       m :< WeakTermPiElim discarder [weakVar m (asText value)]
+--                     ]
+--               )
+--             ]
+--       )
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
 setAsData dataName dataArgNum consInfoList = do

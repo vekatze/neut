@@ -26,7 +26,9 @@ import Data.Source (Source (Source), sourceFilePath, sourceModule)
 import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
+    inBlock,
     many,
+    manyList,
     symbol,
     token,
     tryPlanList,
@@ -49,30 +51,42 @@ type SourceSignature =
 
 parseImportSequence :: Module -> IO ([Source], [AliasInfo])
 parseImportSequence currentModule = do
-  fmap unzip $ many $ tryPlanList [parseImportQualified currentModule, parseImportSimple currentModule]
+  unzip
+    <$> tryPlanList
+      [ inBlock "import" $
+          manyList $ do
+            tryPlanList
+              [ parseImportQualified currentModule,
+                parseImportSimple currentModule
+              ],
+        return []
+      ]
 
 skipImportSequence :: IO ()
 skipImportSequence =
-  void $ many $ tryPlanList [skipImportQualified, skipImportSimple]
+  tryPlanList
+    [ void $ inBlock "import" $ manyList $ tryPlanList [skipImportQualified, skipImportSimple],
+      return ()
+    ]
 
 parseImportSimple :: Module -> IO (Source, AliasInfo)
 parseImportSimple currentModule = do
   m <- currentHint
-  token "import"
+  -- token "import"
   sigText <- symbol
   source <- getNextSource m currentModule sigText
   return (source, AliasInfoUse sigText)
 
 skipImportSimple :: IO ()
 skipImportSimple = do
-  token "import"
+  -- token "import"
   _ <- symbol
   return ()
 
 parseImportQualified :: Module -> IO (Source, AliasInfo)
 parseImportQualified currentModule = do
   m <- currentHint
-  token "import"
+  -- token "import"
   sigText <- symbol
   token "as"
   alias <- symbol
@@ -81,7 +95,7 @@ parseImportQualified currentModule = do
 
 skipImportQualified :: IO ()
 skipImportQualified = do
-  token "import"
+  -- token "import"
   _ <- symbol
   token "as"
   _ <- symbol

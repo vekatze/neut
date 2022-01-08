@@ -4,7 +4,7 @@ module Data.Global where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (when)
-import Data.Basic (AliasInfo, Hint, Ident (..), Opacity, PosInfo, asText, getPosInfo, showPosInfo)
+import Data.Basic (AliasInfo, BinderF, Hint, Ident (..), Opacity, PosInfo, asText, getPosInfo, showPosInfo)
 import Data.Comp (Comp, Value (ValueVarLocal))
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
@@ -209,8 +209,12 @@ termTypeEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
 termTypeEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
+-- {-# NOINLINE termDefEnvRef #-}
+-- termDefEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
+-- termDefEnvRef =
+--   unsafePerformIO (newIORef Map.empty)
 {-# NOINLINE termDefEnvRef #-}
-termDefEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
+termDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [BinderF WeakTerm], WeakTerm))
 termDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 

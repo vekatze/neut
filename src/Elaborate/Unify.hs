@@ -13,6 +13,7 @@ import Data.Basic
     Hint,
     Ident,
     LamKindF (LamKindCons, LamKindFix, LamKindNormal),
+    Opacity (OpacityTransparent),
     asInt,
     getPosInfo,
   )
@@ -190,7 +191,7 @@ simplify constraintList =
             simplify $ zipWith (curry (,orig)) es1 es2 ++ cs
         (_ :< WeakTermIgnore e1, _ :< WeakTermIgnore e2) ->
           simplify $ ((e1, e2), orig) : cs
-        (e1, e2) -> do
+        (e1@(m1 :< _), e2@(m2 :< _)) -> do
           subst <- readIORef substRef
           termDefEnv <- readIORef termDefEnvRef
           let fvs1 = varWeakTerm e1
@@ -233,32 +234,32 @@ simplify constraintList =
                     simplify $ map (,orig) pairList ++ cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
-                    Nothing <- lookupDefinition g1 termDefEnv,
+                    Nothing <- lookupDefinition m1 g1 termDefEnv,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
                     simplify $ map (,orig) pairList ++ cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
-                    Just lam <- lookupDefinition g1 termDefEnv ->
+                    Just lam <- lookupDefinition m1 g1 termDefEnv ->
                     simplify $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
-                  | Just lam1 <- lookupDefinition g1 termDefEnv,
-                    Just lam2 <- lookupDefinition g2 termDefEnv ->
+                  | Just lam1 <- lookupDefinition m1 g1 termDefEnv,
+                    Just lam2 <- lookupDefinition m2 g2 termDefEnv ->
                     simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
-                  | Just lam <- lookupDefinition g1 termDefEnv -> do
+                  | Just lam <- lookupDefinition m1 g1 termDefEnv -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
                     modifyIORef' suspendedConstraintQueueRef $ Q.insert uc
                     simplify cs
                 (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
-                  | Just lam <- lookupDefinition g2 termDefEnv -> do
+                  | Just lam <- lookupDefinition m2 g2 termDefEnv -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
                     modifyIORef' suspendedConstraintQueueRef $ Q.insert uc
                     simplify cs
                 (Just (StuckPiElimVarGlobal g1 mess1), _)
-                  | Just lam <- lookupDefinition g1 termDefEnv ->
+                  | Just lam <- lookupDefinition m1 g1 termDefEnv ->
                     simplify $ ((toPiElim lam mess1, e2), orig) : cs
                 (_, Just (StuckPiElimVarGlobal g2 mess2))
-                  | Just lam <- lookupDefinition g2 termDefEnv ->
+                  | Just lam <- lookupDefinition m2 g2 termDefEnv ->
                     simplify $ ((e1, toPiElim lam mess2), orig) : cs
                 _ -> do
                   let uc = SuspendedConstraint (fmvs, ConstraintKindOther, headConstraint)
@@ -396,6 +397,10 @@ lookupAny is sub =
           lookupAny js sub
 
 {-# INLINE lookupDefinition #-}
-lookupDefinition :: T.Text -> Map.HashMap T.Text WeakTerm -> Maybe WeakTerm
-lookupDefinition =
-  Map.lookup
+lookupDefinition :: Hint -> T.Text -> Map.HashMap T.Text (Opacity, [BinderF WeakTerm], WeakTerm) -> Maybe WeakTerm
+lookupDefinition m name termDefEnv =
+  case Map.lookup name termDefEnv of
+    Just (OpacityTransparent, xts, e) ->
+      return $ m :< WeakTermPiIntro LamKindNormal xts e
+    _ ->
+      Nothing

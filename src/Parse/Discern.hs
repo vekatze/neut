@@ -70,11 +70,12 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    WeakStmtDefine isReducible m x t e : rest -> do
-      t' <- discern t
-      e' <- discern e
+    WeakStmtDefine isReducible m functionName xts codType e : rest -> do
+      (xts', nenv) <- discernBinder' Map.empty xts
+      codType' <- discern' nenv codType
+      e' <- discern' nenv e
       rest' <- discernStmtList rest
-      return $ WeakStmtDefine isReducible m x t' e' : rest'
+      return $ WeakStmtDefine isReducible m functionName xts' codType' e' : rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
 discern' :: NameEnv -> WeakTerm -> IO WeakTerm
@@ -169,16 +170,24 @@ discernBinder ::
   [BinderF WeakTerm] ->
   WeakTerm ->
   IO ([BinderF WeakTerm], WeakTerm)
-discernBinder nenv binder e =
+discernBinder nenv binder e = do
+  (binder', nenv') <- discernBinder' nenv binder
+  e' <- discern' nenv' e
+  return (binder', e')
+
+discernBinder' ::
+  NameEnv ->
+  [BinderF WeakTerm] ->
+  IO ([BinderF WeakTerm], NameEnv)
+discernBinder' nenv binder =
   case binder of
     [] -> do
-      e' <- discern' nenv e
-      return ([], e')
+      return ([], nenv)
     (mx, x, t) : xts -> do
       t' <- discern' nenv t
       x' <- newIdentFromIdent x
-      (xts', e') <- discernBinder (Map.insert (asText x) x' nenv) xts e
-      return ((mx, x', t') : xts', e')
+      (xts', nenv') <- discernBinder' (Map.insert (asText x) x' nenv) xts
+      return ((mx, x', t') : xts', nenv')
 
 discernEnumCase :: EnumCase -> IO EnumCase
 discernEnumCase enumCase =
