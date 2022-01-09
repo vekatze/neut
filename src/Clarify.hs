@@ -14,6 +14,7 @@ import Clarify.Sigma
 import Clarify.Utility
   ( bindLet,
     insDefEnv,
+    switch,
     wrapWithQuote,
   )
 import Control.Comonad.Cofree (Cofree (..))
@@ -44,12 +45,13 @@ import Data.Global
     newCount,
     newIdentFromText,
     newValueVarLocalWith,
+    resourceTypeSetRef,
   )
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import qualified Data.IntMap as IntMap
 import Data.List (nubBy)
-import Data.Log (raiseCritical, raiseError)
+import Data.Log (raiseCritical)
 import Data.LowType
   ( Derangement (DerangementNop),
     PrimOp (..),
@@ -115,10 +117,25 @@ register (x, (opacity, args, e)) =
   insDefEnv (wrapWithQuote x) opacity args e
 
 clarifyDef :: Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
-clarifyDef (StmtDefine opacity _ f xts _ e) = do
-  e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e >>= reduceComp
-  let xts' = map (\(_, x, _) -> x) xts
-  return (f, (opacity, xts', e'))
+clarifyDef stmt =
+  case stmt of
+    StmtDefine opacity _ f xts _ e -> do
+      e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e >>= reduceComp
+      xts' <- dropFst <$> clarifyBinder IntMap.empty xts
+      e'' <- linearize xts' e' >>= reduceComp
+      return (f, (opacity, map fst xts', e''))
+    StmtDefineResource m name discarder copier -> do
+      switchValue <- newIdentFromText "switchValue"
+      value <- newIdentFromText "value"
+      discarder' <- clarifyTerm IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduceComp
+      copier' <- clarifyTerm IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduceComp
+      return
+        ( name,
+          ( OpacityTransparent,
+            [switchValue, value],
+            CompEnumElim (ValueVarLocal switchValue) $ switch discarder' copier'
+          )
+        )
 
 clarifyTerm :: TypeEnv -> Term -> IO Comp
 clarifyTerm tenv term =
@@ -128,18 +145,22 @@ clarifyTerm tenv term =
     _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
     _ :< TermVarGlobal x -> do
-      imm <- immediateS4
-      return $
-        CompUpIntro $
-          ValueSigmaIntro
-            [ imm,
-              ValueSigmaIntro [],
-              ValueVarGlobal $ wrapWithQuote x
-            ]
+      resourceTypeSet <- readIORef resourceTypeSetRef
+      if S.member x resourceTypeSet
+        then return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote x
+        else do
+          imm <- immediateS4
+          return $
+            CompUpIntro $
+              ValueSigmaIntro
+                [ imm,
+                  ValueSigmaIntro [],
+                  ValueVarGlobal $ wrapWithQuote x
+                ]
     _ :< TermPi {} ->
       returnClosureS4
-    m :< TermPiIntro kind mxts e -> do
-      clarifyLambda m tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
+    _ :< TermPiIntro kind mxts e -> do
+      clarifyLambda tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
     _ :< TermPiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -154,10 +175,10 @@ clarifyTerm tenv term =
       returnImmediateS4
     _ :< TermEnumIntro l ->
       return $ CompUpIntro $ ValueEnumIntro l
-    m :< TermEnumElim (e, _) bs -> do
+    _ :< TermEnumElim (e, _) bs -> do
       let (enumCaseList, es) = unzip bs
       let fvs = chainFromTermList tenv es
-      es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv m fvs) es
+      es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
       (y, e', yVar) <- clarifyPlus tenv e
       return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
     _ :< TermDerangement expKind es -> do
@@ -170,8 +191,8 @@ clarifyTerm tenv term =
     _ :< TermMatch mSubject (e, _) clauseList -> do
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
-      clauseList' <- forM (zip clauseList [0 ..]) $ \(((mPat, consName, xts), body), i) -> do
-        closure <- clarifyLambda mPat tenv LamKindNormal xts body fvs
+      clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, xts), body), i) -> do
+        closure <- clarifyLambda tenv LamKindNormal xts body fvs
         (closureVarName, closureVar) <- newValueVarLocalWith "clause"
         return
           ( () :< EnumCaseInt i,
@@ -197,23 +218,22 @@ clarifyTerm tenv term =
       return $ CompIgnore e'
 
 clarifyLambda ::
-  Hint ->
   TypeEnv ->
   LamKindF Term ->
   [(Hint, Ident, Term)] ->
   Term ->
   [BinderF Term] ->
   IO Comp
-clarifyLambda m tenv kind mxts e fvs = do
+clarifyLambda tenv kind mxts e fvs = do
   e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
   case kind of
     LamKindFix (_, x, _)
       | S.member x (varComp e') ->
-        returnClosure tenv OpacityOpaque kind fvs m mxts e'
+        returnClosure tenv OpacityOpaque kind fvs mxts e'
       | otherwise ->
-        returnClosure tenv OpacityTransparent LamKindNormal fvs m mxts e'
+        returnClosure tenv OpacityTransparent LamKindNormal fvs mxts e'
     _ ->
-      returnClosure tenv OpacityTransparent kind fvs m mxts e'
+      returnClosure tenv OpacityTransparent kind fvs mxts e'
 
 newClosureNames :: IO ((Ident, Value), Ident, (Ident, Value), (Ident, Value))
 newClosureNames = do
@@ -249,9 +269,9 @@ chainFromTermList :: TypeEnv -> [Term] -> [BinderF Term]
 chainFromTermList tenv es =
   nubFreeVariables $ concatMap (chainOf tenv) es
 
-alignFreeVariables :: TypeEnv -> Hint -> [BinderF Term] -> [Comp] -> IO [Comp]
-alignFreeVariables tenv m fvs es = do
-  es' <- mapM (returnClosure tenv OpacityTransparent LamKindNormal fvs m []) es
+alignFreeVariables :: TypeEnv -> [BinderF Term] -> [Comp] -> IO [Comp]
+alignFreeVariables tenv fvs es = do
+  es' <- mapM (returnClosure tenv OpacityTransparent LamKindNormal fvs []) es
   mapM (`callClosure` []) es'
 
 nubFreeVariables :: [BinderF Term] -> [BinderF Term]
@@ -272,18 +292,17 @@ clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   argTypeList <- mapM (lowTypeToType m) domList
   (xs, varList) <- unzip <$> mapM (const (newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv OpacityTransparent LamKindNormal [] m mxts $ CompPrimitive (PrimitivePrimOp op varList)
+  returnClosure tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)
 
 returnClosure ::
   TypeEnv ->
   Opacity -> -- whether the closure is reducible
   LamKindF Term -> -- the name of newly created closure
   [BinderF Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
-  Hint -> -- meta of lambda
   [BinderF Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   Comp -> -- the `e` in `lam (x1, ..., xn). e`
   IO Comp
-returnClosure tenv isReducible kind fvs m xts e = do
+returnClosure tenv isReducible kind fvs xts e = do
   fvs' <- clarifyBinder tenv fvs
   xts' <- clarifyBinder tenv xts
   let xts'' = dropFst xts'
@@ -306,14 +325,6 @@ returnClosure tenv isReducible kind fvs m xts e = do
       e' <- substComp (IntMap.fromList [(asInt name, cls)]) IntMap.empty e
       registerIfNecessary name' OpacityOpaque False xts'' fvs'' e'
       return $ CompUpIntro cls
-    LamKindResourceHandler -> do
-      unless (null fvs'') $
-        raiseError m "this resource-lambda is not closed"
-      e' <- linearize xts'' e >>= reduceComp
-      i <- newCount
-      let name = "resource-handler;" <> T.pack (show i)
-      insDefEnv (wrapWithQuote name) isReducible (map fst xts'') e'
-      return $ CompUpIntro $ ValueVarGlobal (wrapWithQuote name)
 
 registerIfNecessary ::
   T.Text ->

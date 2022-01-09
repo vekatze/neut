@@ -9,16 +9,11 @@ import Control.Monad (forM)
 import Data.Basic
   ( BinderF,
     EnumCaseF (EnumCaseDefault, EnumCaseLabel),
-    Hint,
-    LamKindF (LamKindCons, LamKindFix, LamKindNormal),
-    PatternF,
+    LamKindF (LamKindFix, LamKindNormal),
     asInt,
   )
-import Data.Global (dataEnvRef, newIdentFromIdent)
-import qualified Data.HashMap.Lazy as Map
-import Data.IORef (readIORef)
+import Data.Global (newIdentFromIdent)
 import qualified Data.IntMap as IntMap
-import qualified Data.Text as T
 import Data.WeakTerm
   ( SubstWeakTerm,
     WeakTerm,

@@ -76,6 +76,11 @@ discernStmtList stmtList =
       e' <- discern' nenv e
       rest' <- discernStmtList rest
       return $ WeakStmtDefine isReducible m functionName xts' codType' e' : rest'
+    WeakStmtDefineResource m name discarder copier : rest -> do
+      discarder' <- discern discarder
+      copier' <- discern copier
+      rest' <- discernStmtList rest
+      return $ WeakStmtDefineResource m name discarder' copier' : rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
 discern' :: NameEnv -> WeakTerm -> IO WeakTerm

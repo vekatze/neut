@@ -15,6 +15,7 @@ import Data.Global
     getCurrentFilePath,
     newText,
     prefixEnvRef,
+    resourceTypeSetRef,
     sourceAliasMapRef,
     topNameSetRef,
   )
@@ -31,8 +32,9 @@ import qualified Data.Set as S
 import Data.Source (Source (..), getDomain, getSection)
 import Data.Stmt
   ( EnumInfo,
-    Stmt (StmtDefine),
+    Stmt,
     WeakStmt (..),
+    extractName,
     loadCache,
   )
 import qualified Data.Text as T
@@ -47,7 +49,7 @@ import Data.WeakTerm
         WeakTermVar
       ),
   )
-import Parse.Core (argList, asBlock, char, currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyList, newTextualIdentFromText, raiseParseError, simpleVar, skip, symbol, symbolMaybe, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
+import Parse.Core (argList, asBlock, currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyList, raiseParseError, skip, symbol, symbolMaybe, takeN, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
@@ -55,7 +57,6 @@ import Parse.WeakTerm
   ( parseDefInfo,
     weakAscription,
     weakTerm,
-    weakTermSimple,
   )
 
 --
@@ -81,7 +82,7 @@ parseSource source = do
     Just (stmtList, enumInfoList) -> do
       forM_ enumInfoList $ \(mEnum, name, itemList) ->
         insEnumEnv mEnum name itemList
-      let names = S.fromList $ map (\(StmtDefine _ _ x _ _ _) -> x) stmtList
+      let names = S.fromList $ map extractName stmtList
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
@@ -181,8 +182,8 @@ parseStmtList = do
           stmtList1 <- parseDefineCodata
           stmtList2 <- parseStmtList
           return $ stmtList1 ++ stmtList2
-        Just "define-resource-type" -> do
-          def <- parseDefineResourceType
+        Just "define-resource" -> do
+          def <- parseDefineResource
           stmtList <- parseStmtList
           return $ def : stmtList
         Just x -> do
@@ -318,45 +319,15 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
         (weakVar m recordVarText, codataType)
         [((m, dataName <> ":" <> "new", elemInfoList), weakVar m (asText elemName))]
 
-parseDefineResourceType :: IO WeakStmt
-parseDefineResourceType = do
-  -- m <- currentHint
-  _ <- token "define-resource-type"
-  -- name <- varText >>= attachSectionPrefix
-  -- discarder <- weakTermSimple
-  -- copier <- weakTermSimple
-  -- flag <- newTextualIdentFromText "flag"
-  -- value <- newTextualIdentFromText "value"
-  undefined
-
--- defineTerm
---   OpacityOpaque
---   m
---   name
---   (m :< WeakTermTau)
---   $ m
---     :< WeakTermPiIntro
---       LamKindResourceHandler
---       [ (m, flag, weakVar m bool),
---         (m, value, weakVar m unsafePtr)
---       ]
---       ( m
---           :< WeakTermEnumElim
---             (weakVar m (asText flag), weakVar m bool)
---             [ ( m :< EnumCaseLabel boolTrue,
---                 m :< WeakTermPiElim copier [weakVar m (asText value)]
---               ),
---               ( m :< EnumCaseLabel boolFalse,
---                 m
---                   :< WeakTermPiElim
---                     (weakVar m unsafeCast)
---                     [ weakVar m "top",
---                       weakVar m unsafePtr,
---                       m :< WeakTermPiElim discarder [weakVar m (asText value)]
---                     ]
---               )
---             ]
---       )
+parseDefineResource :: IO WeakStmt
+parseDefineResource = do
+  m <- currentHint
+  _ <- token "define-resource"
+  name <- varText >>= attachSectionPrefix
+  [discarder, copier] <- asBlock $ takeN 2 $ token "-" >> weakTerm
+  registerTopLevelName m name
+  modifyIORef' resourceTypeSetRef $ S.insert name
+  return $ WeakStmtDefineResource m name discarder copier
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
 setAsData dataName dataArgNum consInfoList = do

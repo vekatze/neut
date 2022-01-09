@@ -21,27 +21,41 @@ type WeakProgram =
 
 data WeakStmt
   = WeakStmtDefine Opacity Hint T.Text [BinderF WeakTerm] WeakTerm WeakTerm
+  | WeakStmtDefineResource Hint T.Text WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])
 
 data Stmt
   = StmtDefine Opacity Hint T.Text [BinderF Term] Term Term
+  | StmtDefineResource Hint T.Text Term Term
   deriving (Generic)
 
 instance Binary Stmt
+
+extractName :: Stmt -> T.Text
+extractName stmt = do
+  case stmt of
+    StmtDefine _ _ name _ _ _ ->
+      name
+    StmtDefineResource _ name _ _ ->
+      name
 
 type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
 
 type Cache = ([Stmt], [EnumInfo])
 
 compress :: Stmt -> Stmt
-compress stmt@(StmtDefine opacity m functionName args codType _) =
-  case opacity of
-    OpacityOpaque ->
-      StmtDefine opacity m functionName args codType (m :< TermTau)
-    _ ->
-      stmt
+compress stmt =
+  case stmt of
+    StmtDefine opacity m functionName args codType _ ->
+      case opacity of
+        OpacityOpaque ->
+          StmtDefine opacity m functionName args codType (m :< TermTau)
+        _ ->
+          stmt
+    StmtDefineResource m name _ _ ->
+      StmtDefineResource m name (m :< TermTau) (m :< TermTau)
 
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do

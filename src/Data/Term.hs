@@ -151,8 +151,6 @@ weakenKind kind =
       LamKindCons dataName consName consNumber (weaken dataType)
     LamKindFix xt ->
       LamKindFix (weakenBinder xt)
-    LamKindResourceHandler ->
-      LamKindResourceHandler
 
 lowTypeToType :: (MonadThrow m) => Hint -> LowType -> m Term
 lowTypeToType m lowType =

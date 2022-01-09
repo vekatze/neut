@@ -225,6 +225,11 @@ termDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [BinderF WeakTerm], WeakTer
 termDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
+{-# NOINLINE resourceTypeSetRef #-}
+resourceTypeSetRef :: IORef (S.Set T.Text)
+resourceTypeSetRef =
+  unsafePerformIO $ newIORef S.empty
+
 {-# NOINLINE compDefEnvRef #-}
 compDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [Ident], Comp))
 compDefEnvRef =

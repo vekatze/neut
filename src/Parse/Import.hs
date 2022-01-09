@@ -27,7 +27,6 @@ import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
     inBlock,
-    many,
     manyList,
     symbol,
     token,

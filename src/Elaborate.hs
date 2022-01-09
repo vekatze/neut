@@ -19,6 +19,7 @@ import Data.Basic
 import Data.Global
   ( dataEnvRef,
     enumEnvRef,
+    newIdentFromText,
     note,
     substRef,
     termDefEnvRef,
@@ -37,7 +38,7 @@ import Data.Source (Source)
 import Data.Stmt
   ( EnumInfo,
     Stmt (..),
-    WeakStmt (WeakStmtDefine),
+    WeakStmt (WeakStmtDefine, WeakStmtDefineResource),
     saveCache,
   )
 import Data.Term
@@ -87,7 +88,7 @@ import Data.WeakTerm
     metaOf,
     toText,
   )
-import Elaborate.Infer (inferBinder, inferType, insConstraintEnv)
+import Elaborate.Infer (infer, inferBinder, inferType, insConstraintEnv)
 import Elaborate.Unify (unify)
 import Reduce.Term (reduceTerm)
 import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
@@ -104,7 +105,7 @@ elaborate :: ([WeakStmt] -> IO [Stmt]) -> Source -> Either [Stmt] ([WeakStmt], [
 elaborate defListElaborator source cacheOrStmt =
   case cacheOrStmt of
     Left cache -> do
-      forM_ cache $ \stmt -> registerTopLevelDef stmt
+      forM_ cache registerTopLevelDef
       return cache
     Right (defList, enumInfoList) -> do
       defList' <- defListElaborator defList
@@ -112,10 +113,14 @@ elaborate defListElaborator source cacheOrStmt =
       return defList'
 
 registerTopLevelDef :: Stmt -> IO ()
-registerTopLevelDef (StmtDefine opacity m x xts codType e) = do
-  insTermTypeEnv x $ weaken $ m :< TermPi xts codType
-  unless (isOpaque opacity) $
-    modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts, weaken e)
+registerTopLevelDef stmt = do
+  case stmt of
+    StmtDefine opacity m x xts codType e -> do
+      insTermTypeEnv x $ weaken $ m :< TermPi xts codType
+      unless (isOpaque opacity) $
+        modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts, weaken e)
+    StmtDefineResource m name _ _ ->
+      insTermTypeEnv name $ m :< WeakTermTau
 
 elaborateProgramMain :: T.Text -> [WeakStmt] -> IO [Stmt]
 elaborateProgramMain mainFunctionName = do
@@ -144,20 +149,41 @@ setupDef def =
     WeakStmtDefine opacity m f xts codType e -> do
       insTermTypeEnv f $ m :< WeakTermPi xts codType
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts, e)
+    WeakStmtDefineResource m name _ _ -> do
+      insTermTypeEnv name $ m :< WeakTermTau
 
 inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
-inferStmtMain mainFunctionName (WeakStmtDefine isReducible m x xts codType e) = do
-  (xts', e', codType') <- inferStmt xts e codType
-  when (x == mainFunctionName) $
-    insConstraintEnv
-      (m :< WeakTermPi xts codType)
-      (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
-  return $ WeakStmtDefine isReducible m x xts' codType' e'
+inferStmtMain mainFunctionName stmt = do
+  case stmt of
+    WeakStmtDefine isReducible m x xts codType e -> do
+      (xts', e', codType') <- inferStmt xts e codType
+      when (x == mainFunctionName) $
+        insConstraintEnv
+          (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
+          (m :< WeakTermPi xts codType)
+      return $ WeakStmtDefine isReducible m x xts' codType' e'
+    WeakStmtDefineResource m name discarder copier ->
+      inferDefineResource m name discarder copier
 
 inferStmtOther :: WeakStmt -> IO WeakStmt
-inferStmtOther (WeakStmtDefine isReducible m x xts codType e) = do
-  (xts', e', codType') <- inferStmt xts e codType
-  return $ WeakStmtDefine isReducible m x xts' codType' e'
+inferStmtOther stmt = do
+  case stmt of
+    WeakStmtDefine isReducible m x xts codType e -> do
+      (xts', e', codType') <- inferStmt xts e codType
+      return $ WeakStmtDefine isReducible m x xts' codType' e'
+    WeakStmtDefineResource m name discarder copier ->
+      inferDefineResource m name discarder copier
+
+inferDefineResource :: Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
+inferDefineResource m name discarder copier = do
+  (discarder', td) <- infer discarder
+  (copier', tc) <- infer copier
+  x <- newIdentFromText "_"
+  let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "top")
+  let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "bottom")
+  insConstraintEnv botTop td
+  insConstraintEnv botBot tc
+  return $ WeakStmtDefineResource m name discarder' copier'
 
 inferStmt :: [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
 inferStmt xts e codType = do
@@ -179,6 +205,11 @@ elaborateStmtList stmtList = do
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList rest
       return $ StmtDefine opacity m x xts' codType' e' : rest'
+    WeakStmtDefineResource m name discarder copier : rest -> do
+      discarder' <- elaborate' discarder
+      copier' <- elaborate' copier
+      rest' <- elaborateStmtList rest
+      return $ StmtDefineResource m name discarder' copier' : rest'
 
 elaborate' :: WeakTerm -> IO Term
 elaborate' term =
@@ -329,8 +360,6 @@ elaborateKind kind =
     LamKindFix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LamKindFix xt'
-    LamKindResourceHandler ->
-      return LamKindResourceHandler
 
 checkSwitchExaustiveness :: Hint -> T.Text -> [EnumCase] -> IO ()
 checkSwitchExaustiveness m x caseList = do

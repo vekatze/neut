@@ -223,6 +223,15 @@ many1 f = do
   itemList <- many f
   return $ item : itemList
 
+takeN :: Int -> IO a -> IO [a]
+takeN n f = do
+  if n == 0
+    then return []
+    else do
+      item <- f
+      itemList <- takeN (n - 1) f
+      return $ item : itemList
+
 integer :: IO Integer
 integer = do
   m <- currentHint
