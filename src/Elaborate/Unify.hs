@@ -67,8 +67,6 @@ data Stuck
   | StuckPiElimVarGlobal T.Text [(Hint, [WeakTerm])]
   | StuckPiElimAster Int [[WeakTerm]]
 
--- deriving (Show)
-
 unify :: IO ()
 unify =
   analyze >> synthesize

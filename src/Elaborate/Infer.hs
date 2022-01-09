@@ -279,7 +279,6 @@ inferPiElim ctx m (e, t) ets = do
     (_ :< WeakTermPi xts (_ :< cod))
       | length xts == length ets -> do
         cod' <- inferArgs IntMap.empty m ets xts (m :< cod)
-        -- cod' <- inferArgs m ets xts (m, cod)
         return (m :< WeakTermPiElim e es, cod')
     _ -> do
       ys <- mapM (const $ newIdentFromText "arg") es
@@ -287,7 +286,6 @@ inferPiElim ctx m (e, t) ets = do
       cod <- newTypeAsterInCtx (ctx ++ yts) m
       insConstraintEnv (metaOf e :< WeakTermPi yts cod) t
       cod' <- inferArgs IntMap.empty m ets yts cod
-      -- cod' <- inferArgs m ets yts cod
       return (m :< WeakTermPiElim e es, cod')
 
 -- In a context (x1 : A1, ..., xn : An), this function creates metavariables

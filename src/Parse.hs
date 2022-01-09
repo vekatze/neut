@@ -276,7 +276,6 @@ constructDataType m dataName dataArgs =
 
 parseDefineDataClause :: IO (Hint, T.Text, [BinderF WeakTerm])
 parseDefineDataClause = do
-  -- token "-"
   m <- currentHint
   b <- symbol
   yts <- argList parseDefineDataClauseArg

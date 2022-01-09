@@ -71,6 +71,7 @@ import Parse.Core
     currentHint,
     doBlock,
     float,
+    inBlock,
     integer,
     isKeyword,
     isSymbolChar,
@@ -357,9 +358,7 @@ weakTermMatch = do
   m <- currentHint
   token "match"
   e <- weakTerm
-  token "with"
-  clauseList <- manyList weakTermMatchClause
-  token "end"
+  clauseList <- inBlock "with" $ manyList weakTermMatchClause
   return $ m :< WeakTermMatch Nothing (e, doNotCare m) clauseList
 
 weakTermMatchNoetic :: IO WeakTerm
@@ -423,7 +422,7 @@ weakTermLetNormal = do
   return $
     m
       :< WeakTermPiElim
-        (weakVar m "identity.bind")
+        (weakVar m "core.identity.bind")
         [ t1,
           resultType,
           e1,
@@ -435,8 +434,6 @@ weakTermLetSigmaElim :: IO WeakTerm
 weakTermLetSigmaElim = do
   m <- currentHint
   token "let"
-  -- xts <- betweenParen $ sepBy2 (char ',' >> skip) weakTermSigmaElimVar
-  -- xts <- betweenParen $ sepBy2 (char ',' >> skip) weakBinder
   xts <- argList2 weakBinder
   token "="
   e1 <- weakTerm
