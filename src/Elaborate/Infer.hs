@@ -20,7 +20,8 @@ import Data.Basic
     asText',
   )
 import Data.Global
-  ( constraintListRef,
+  ( constBool,
+    constraintListRef,
     constructorEnvRef,
     holeEnvRef,
     newAster,
@@ -410,7 +411,7 @@ primOpToType m (PrimOp op domList cod) = do
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
-      let cod' = m :< TermEnum "bool"
+      let cod' = m :< TermEnum constBool
       return $ m :< TermPi xts cod'
     else do
       cod' <- lowTypeToType m cod

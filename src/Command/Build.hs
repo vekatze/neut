@@ -13,7 +13,7 @@ import Control.Monad (forM_, unless, void, when)
 import Data.Basic (OutputKind (..), newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (getLibraryDirPath, getMainFilePath, modifiedSourceSetRef, nsSep, outputLog, setMainFilePath, sourceAliasMapRef)
+import Data.Global (getLibraryDirPath, getMainFilePath, globalEnumEnv, modifiedSourceSetRef, nsSep, outputLog, setMainFilePath, sourceAliasMapRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -42,6 +42,8 @@ import Lower (lowerMain, lowerOther)
 import Parse (parseMain, parseOther)
 import Parse.Core (initializeParserForFile, skip)
 -- import Parse.Enum (initializeEnumEnv)
+
+import Parse.Enum (insEnumEnv')
 import Parse.Import (parseImportSequence)
 import Path
   ( Abs,
@@ -94,7 +96,7 @@ build' target mClangOptStr = do
   mainFilePath <- resolveTarget target
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
-  -- initializeEnumEnv
+  initializeEnumEnv
   (isModified, dependenceSeq) <- computeDependence mainSource
   modifiedSourceSet <- readIORef modifiedSourceSetRef
   let clangOptStr = fromMaybe "" mClangOptStr
@@ -118,9 +120,14 @@ check' filePath = do
   ensureFileModuleSanity filePath
   mainModule <- getMainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  -- initializeEnumEnv
+  initializeEnumEnv
   (_, dependenceSeq) <- computeDependence source
   mapM_ check'' dependenceSeq
+
+initializeEnumEnv :: IO ()
+initializeEnumEnv = do
+  forM_ globalEnumEnv $ \(enum, enumValueList) -> do
+    insEnumEnv' enum enumValueList
 
 ensureFileModuleSanity :: Path Abs File -> IO ()
 ensureFileModuleSanity filePath = do

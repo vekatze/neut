@@ -132,11 +132,18 @@ getCurrentFilePath = do
     Nothing ->
       raiseCritical' "no current file is set"
 
+globalEnumEnv :: [(T.Text, [(T.Text, Int)])]
+globalEnumEnv =
+  [ (constBottom, []),
+    (constTop, [(constTopUnit, 0)]),
+    (constBool, [(constBoolFalse, 0), (constBoolTrue, 1)])
+  ]
+
 -- [("choice", [("left", 0), ("right", 1)]), ...]
 {-# NOINLINE enumEnvRef #-}
 enumEnvRef :: IORef (Map.HashMap T.Text [(T.Text, Int)])
 enumEnvRef =
-  unsafePerformIO (newIORef Map.empty)
+  unsafePerformIO $ newIORef Map.empty
 
 -- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
 {-# NOINLINE revEnumEnvRef #-}
@@ -262,24 +269,32 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
-{-# INLINE bool #-}
-bool :: T.Text
-bool =
-  "core.bool.bool"
+constBottom :: T.Text
+constBottom =
+  "bottom"
 
-{-# INLINE boolTrue #-}
-boolTrue :: T.Text
-boolTrue =
-  "core.bool.true"
+constTop :: T.Text
+constTop =
+  "top"
 
-{-# INLINE boolFalse #-}
-boolFalse :: T.Text
-boolFalse =
-  "core.bool.false"
-
-topUnit :: T.Text
-topUnit =
+constTopUnit :: T.Text
+constTopUnit =
   "unit"
+
+{-# INLINE constBool #-}
+constBool :: T.Text
+constBool =
+  "bool"
+
+{-# INLINE constBoolTrue #-}
+constBoolTrue :: T.Text
+constBoolTrue =
+  "true"
+
+{-# INLINE constBoolFalse #-}
+constBoolFalse :: T.Text
+constBoolFalse =
+  "false"
 
 unsafePtr :: T.Text
 unsafePtr =

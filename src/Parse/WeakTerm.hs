@@ -22,7 +22,7 @@ import Data.Basic
     asIdent,
     asText,
   )
-import Data.Global (boolFalse, boolTrue, newAster, outputError, targetArchRef, targetOSRef, targetPlatformRef, unsafeCast, unsafePtr)
+import Data.Global (constBoolFalse, constBoolTrue, newAster, outputError, targetArchRef, targetOSRef, targetPlatformRef, unsafeCast, unsafePtr)
 import Data.IORef (readIORef)
 import Data.List (foldl')
 import Data.Log (raiseError)
@@ -511,8 +511,8 @@ foldIf m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel boolTrue, ifBody),
-              (m :< EnumCaseLabel boolFalse, elseBody)
+            [ (m :< EnumCaseLabel constBoolTrue, ifBody),
+              (m :< EnumCaseLabel constBoolFalse, elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf m elseIfCond elseIfBody rest elseBody
@@ -521,8 +521,8 @@ foldIf m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel boolTrue, ifBody),
-              (m :< EnumCaseLabel boolFalse, cont)
+            [ (m :< EnumCaseLabel constBoolTrue, ifBody),
+              (m :< EnumCaseLabel constBoolFalse, cont)
             ]
 
 -- (e1, ..., en) (n >= 2)

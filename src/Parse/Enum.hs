@@ -1,7 +1,7 @@
 module Parse.Enum
   ( parseDefineEnum,
-    -- initializeEnumEnv,
     insEnumEnv,
+    insEnumEnv',
   )
 where
 
