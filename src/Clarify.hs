@@ -120,7 +120,7 @@ clarifyDef :: Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
 clarifyDef stmt =
   case stmt of
     StmtDefine opacity _ f xts _ e -> do
-      e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e >>= reduceComp
+      e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= reduceComp
       return (f, (opacity, map fst xts', e''))
