@@ -5,6 +5,7 @@ module Parse.WeakTerm
     weakTermSimple,
     weakBinder,
     weakAscription,
+    parseDefInfo,
   )
 where
 
@@ -43,7 +44,8 @@ import Data.LowType
   )
 import qualified Data.Text as T
 import Data.WeakTerm
-  ( WeakTerm,
+  ( WeakDefInfo,
+    WeakTerm,
     WeakTermF
       ( WeakTermConst,
         WeakTermDerangement,
@@ -63,6 +65,7 @@ import Data.WeakTerm
 import Parse.Core
   ( argList,
     argList2,
+    asBlock,
     betweenParen,
     char,
     currentHint,
@@ -79,6 +82,7 @@ import Parse.Core
     raiseParseError,
     sepBy2,
     simpleSymbol,
+    simpleVar,
     skip,
     string,
     symbol,
@@ -100,8 +104,8 @@ weakTerm = do
   case headSymbol of
     Just "lambda" ->
       weakTermPiIntro
-    Just "fix" ->
-      weakTermPiIntroFix
+    Just "define" ->
+      weakTermPiIntroDef
     Just "*" ->
       weakTermAster
     Just "switch" ->
@@ -166,14 +170,23 @@ weakTermDotBind = do
   char '.' >> skip
   weakTerm
 
-weakTermPiIntroFix :: IO WeakTerm
-weakTermPiIntroFix = do
+parseDefInfo :: IO WeakDefInfo
+parseDefInfo = do
+  functionVar <- simpleVar
+  domInfoList <- argList weakBinder
+  char ':' >> skip
+  codType <- weakTerm
+  e <- asBlock weakTerm
+  return (functionVar, domInfoList, codType, e)
+
+-- define name(x1: A1, ..., xn: An)[: A] as e end
+weakTermPiIntroDef :: IO WeakTerm
+weakTermPiIntroDef = do
   m <- currentHint
-  token "fix"
-  self <- weakBinder
-  varList <- many weakBinder
-  e <- tryPlanList [weakTermDotBind, doBlock weakTerm]
-  return $ m :< WeakTermPiIntro (LamKindFix self) varList e
+  token "define"
+  ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
+  let piType = mFun :< WeakTermPi domBinderList codType
+  return $ m :< WeakTermPiIntro (LamKindFix (mFun, asIdent functionName, piType)) domBinderList e
 
 weakTermSigma :: IO WeakTerm
 weakTermSigma = do

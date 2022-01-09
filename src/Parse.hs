@@ -47,13 +47,15 @@ import Data.WeakTerm
         WeakTermVar
       ),
   )
-import Parse.Core (argList, asBlock, char, currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyList, raiseParseError, simpleVar, skip, symbol, symbolMaybe, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
+import Parse.Core (argList, asBlock, char, currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyList, newTextualIdentFromText, raiseParseError, simpleVar, skip, symbol, symbolMaybe, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
 import Parse.WeakTerm
-  ( weakAscription,
+  ( parseDefInfo,
+    weakAscription,
     weakTerm,
+    weakTermSimple,
   )
 
 --
@@ -203,13 +205,9 @@ parseDefine opacity = do
       token "define"
     OpacityTransparent ->
       token "define-inline"
-  (_, name) <- simpleVar
+  ((_, name), domBinderList, codType, e) <- parseDefInfo
   name' <- attachSectionPrefix name
-  binder <- argList weakAscription
-  char ':' >> skip
-  codType <- weakTerm
-  e <- asBlock weakTerm
-  defineFunction opacity m name' binder codType e
+  defineFunction opacity m name' domBinderList codType e
 
 defineFunction :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineFunction opacity m name binder codType e = do
