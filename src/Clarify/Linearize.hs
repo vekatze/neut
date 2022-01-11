@@ -9,10 +9,15 @@ import Data.Basic (Ident)
 import Data.Comp
   ( Comp (..),
     Primitive (..),
-    Value (ValueSigmaIntro, ValueVarLocal),
+    Value (..),
   )
 import Data.Global (countRef, newIdentFromIdent, newIdentFromText)
 import Data.IORef (readIORef, writeIORef)
+import Data.LowType (Derangement (..))
+
+data Occurrence
+  = OccurrenceNormal Ident
+  | OccurrenceIdeal Ident
 
 linearize ::
   [(Ident, Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
@@ -26,8 +31,10 @@ linearize binder e =
       e' <- linearize xts e
       (newNameList, e'') <- distinguishComp x e'
       case newNameList of
-        [] ->
-          insertFooter x t e''
+        [] -> do
+          hole <- newIdentFromText "unit"
+          discardUnusedVar <- toAffineApp x t
+          return $ CompUpElim hole discardUnusedVar e''
         z : zs ->
           insertHeader x z zs t e''
 
@@ -43,21 +50,31 @@ insertFooter x t e = do
 
 insertHeader ::
   Ident ->
-  Ident ->
-  [Ident] ->
+  Occurrence ->
+  [Occurrence] ->
   Comp ->
   Comp ->
   IO Comp
-insertHeader x z1 zs t e = do
+insertHeader x occurrence zs t e = do
   case zs of
     [] ->
-      return $ CompUpElim z1 (CompUpIntro (ValueVarLocal x)) e
+      case occurrence of
+        OccurrenceNormal z1 ->
+          return $ CompUpElim z1 (CompUpIntro (ValueVarLocal x)) e
+        OccurrenceIdeal z1 -> do
+          e' <- insertFooter z1 t e
+          return $ CompUpElim z1 (CompUpIntro (ValueVarLocal x)) e'
     z2 : rest -> do
-      e' <- insertHeader x z2 rest t e
-      copyRelevantVar <- toRelevantApp x t
-      return $ CompUpElim z1 copyRelevantVar e'
+      case occurrence of
+        OccurrenceNormal z1 -> do
+          e' <- insertHeader x z2 rest t e
+          copyRelevantVar <- toRelevantApp x t
+          return $ CompUpElim z1 copyRelevantVar e'
+        OccurrenceIdeal z1 -> do
+          e' <- insertHeader x z2 rest t e
+          return $ CompUpElim z1 (CompUpIntro (ValueVarLocal x)) e'
 
-distinguishValue :: Ident -> Value -> IO ([Ident], Value)
+distinguishValue :: Ident -> Value -> IO ([Occurrence], Value)
 distinguishValue z term =
   case term of
     ValueVarLocal x ->
@@ -65,14 +82,21 @@ distinguishValue z term =
         then return ([], term)
         else do
           x' <- newIdentFromIdent x
-          return ([x'], ValueVarLocal x')
+          return ([OccurrenceNormal x'], ValueVarLocal x')
+    ValueVarLocalIdeal x ->
+      if x /= z
+        then return ([], term)
+        else do
+          x' <- newIdentFromIdent x
+          return ([OccurrenceIdeal x'], ValueVarLocal x')
     ValueSigmaIntro ds -> do
       (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
       return (concat vss, ValueSigmaIntro ds')
     _ ->
       return ([], term)
 
-distinguishComp :: Ident -> Comp -> IO ([Ident], Comp)
+-- fix: 順番が評価順序に合っているかをチェック。……大丈夫そう。
+distinguishComp :: Ident -> Comp -> IO ([Occurrence], Comp)
 distinguishComp z term =
   case term of
     CompPrimitive theta -> do
@@ -106,15 +130,40 @@ distinguishComp z term =
               writeIORef countRef countBefore
               distinguishComp z e
           return (vs ++ head vss, CompEnumElim d' (zip cs es'))
-    CompIgnore _ ->
-      return ([], term)
 
-distinguishPrimitive :: Ident -> Primitive -> IO ([Ident], Primitive)
+distinguishPrimitive :: Ident -> Primitive -> IO ([Occurrence], Primitive)
 distinguishPrimitive z term =
   case term of
     PrimitivePrimOp op ds -> do
       (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
       return (concat vss, PrimitivePrimOp op ds')
-    PrimitiveDerangement k ds -> do
-      (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
-      return (concat vss, PrimitiveDerangement k ds')
+    PrimitiveDerangement der -> do
+      case der of
+        DerangementCast from to value -> do
+          (vs1, from') <- distinguishValue z from
+          (vs2, to') <- distinguishValue z to
+          (vs3, value') <- distinguishValue z value
+          return (vs1 <> vs2 <> vs3, PrimitiveDerangement (DerangementCast from' to' value'))
+        DerangementStore lt pointer value -> do
+          (vs1, pointer') <- distinguishValue z pointer
+          (vs2, value') <- distinguishValue z value
+          return (vs1 <> vs2, PrimitiveDerangement (DerangementStore lt pointer' value'))
+        DerangementLoad lt pointer -> do
+          (vs, pointer') <- distinguishValue z pointer
+          return (vs, PrimitiveDerangement (DerangementLoad lt pointer'))
+        DerangementSyscall syscallNum args -> do
+          (vss, args') <- unzip <$> mapM (distinguishValue z) args
+          return (concat vss, PrimitiveDerangement (DerangementSyscall syscallNum args'))
+        DerangementExternal extFunName args -> do
+          (vss, args') <- unzip <$> mapM (distinguishValue z) args
+          return (concat vss, PrimitiveDerangement (DerangementExternal extFunName args'))
+        DerangementCreateArray lt args -> do
+          (vss, args') <- unzip <$> mapM (distinguishValue z) args
+          return (concat vss, PrimitiveDerangement (DerangementCreateArray lt args'))
+
+-- (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
+-- return (concat vss, PrimitiveDerangement k ds')
+
+-- PrimitiveDerangement k ds -> do
+--   (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
+--   return (concat vss, PrimitiveDerangement k ds')

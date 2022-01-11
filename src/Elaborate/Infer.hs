@@ -8,7 +8,7 @@ module Elaborate.Infer
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM, forM_, replicateM)
+import Control.Monad (forM, forM_, replicateM, (>=>))
 import Data.Basic
   ( BinderF,
     EnumCase,
@@ -35,7 +35,8 @@ import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
 import Data.Log (raiseCritical, raiseError)
 import Data.LowType
-  ( PrimOp (..),
+  ( Derangement (DerangementCast),
+    PrimOp (..),
     asLowFloat,
     asLowInt,
     asLowTypeMaybe,
@@ -53,25 +54,7 @@ import qualified Data.Text as T
 import Data.WeakTerm
   ( SubstWeakTerm,
     WeakTerm,
-    WeakTermF
-      ( WeakTermAster,
-        WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnum,
-        WeakTermEnumElim,
-        WeakTermEnumIntro,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermQuestion,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
+    WeakTermF (..),
     metaOf,
   )
 import Reduce.WeakTerm (substWeakTerm)
@@ -164,10 +147,18 @@ infer' ctx term =
     m :< WeakTermQuestion e _ -> do
       (e', te) <- infer' ctx e
       return (m :< WeakTermQuestion e' te, te)
-    m :< WeakTermDerangement kind es -> do
-      resultType <- newTypeAsterInCtx ctx m
-      (es', _) <- unzip <$> mapM (infer' ctx) es
-      return (m :< WeakTermDerangement kind es', resultType)
+    m :< WeakTermDerangement der -> do
+      case der of
+        DerangementCast from to value -> do
+          from' <- inferType' ctx from
+          to' <- inferType' ctx to
+          (value', t) <- infer' ctx value
+          insConstraintEnv t from'
+          return (m :< WeakTermDerangement (DerangementCast from' to' value'), to')
+        _ -> do
+          der' <- mapM (infer' ctx >=> return . fst) der
+          resultType <- newTypeAsterInCtx ctx m
+          return (m :< WeakTermDerangement der', resultType)
     m :< WeakTermMatch mSubject (e, _) clauseList -> do
       resultType <- newTypeAsterInCtx ctx m
       (e', t') <- infer' ctx e
@@ -195,9 +186,21 @@ infer' ctx term =
                     insConstraintEnv tPat t'
                 return ((mPat, name, xts'), body')
               return (m :< WeakTermMatch mSubject' (e', t') clauseList', resultType)
-    m :< WeakTermIgnore e -> do
+    m :< WeakTermNoema s t -> do
+      s' <- inferType' ctx s
+      t' <- inferType' ctx t
+      return (m :< WeakTermNoema s' t', m :< WeakTermTau)
+    m :< WeakTermNoemaIntro s e -> do
       (e', t') <- infer' ctx e
-      return (m :< WeakTermIgnore e', t')
+      return (e', m :< WeakTermNoema (m :< WeakTermVar s) t')
+    m :< WeakTermNoemaElim s e -> do
+      insWeakTypeEnv s (m :< WeakTermTau)
+      (e', t) <- infer' (ctx ++ [(m, s, m :< WeakTermTau)]) e
+      return (m :< WeakTermNoemaElim s e', t)
+
+-- m :< WeakTermIgnore e -> do
+--   (e', t') <- infer' ctx e
+--   return (m :< WeakTermIgnore e', t')
 
 inferSubject :: Hint -> Context -> WeakTerm -> IO WeakTerm
 inferSubject m ctx subject = do

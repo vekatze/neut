@@ -40,14 +40,17 @@ data WeakTermF a
   | WeakTermEnumIntro T.Text
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
-  | WeakTermDerangement Derangement [a] -- (derangement kind arg-1 ... arg-n)
+  | WeakTermDerangement (Derangement a) -- (derangement kind arg-1 ... arg-n)
   | WeakTermMatch
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
       [(PatternF a, a)]
-  | WeakTermIgnore a
+  | WeakTermNoema a a
+  | WeakTermNoemaIntro Ident a
+  | WeakTermNoemaElim Ident a
   deriving (Generic)
 
+--  WeakTermIgnore a
 type WeakTerm = Cofree WeakTermF Hint
 
 instance (Binary a) => Binary (WeakTermF a)
@@ -142,16 +145,20 @@ varWeakTerm term =
       let set1 = varWeakTerm e
       let set2 = varWeakTerm t
       S.union set1 set2
-    _ :< WeakTermDerangement _ es ->
-      S.unions $ map varWeakTerm es
+    _ :< WeakTermDerangement der ->
+      foldMap varWeakTerm der
     _ :< WeakTermMatch mSubject (e, t) patList -> do
       let xs1 = S.unions $ map varWeakTerm $ maybeToList mSubject
       let xs2 = varWeakTerm e
       let xs3 = varWeakTerm t
       let xs4 = S.unions $ map (\((_, _, xts), body) -> varWeakTerm' xts [body]) patList
       S.unions [xs1, xs2, xs3, xs4]
-    _ :< WeakTermIgnore e ->
-      varWeakTerm e
+    _ :< WeakTermNoema s e ->
+      S.unions [varWeakTerm s, varWeakTerm e]
+    _ :< WeakTermNoemaIntro s e ->
+      S.insert s $ varWeakTerm e
+    _ :< WeakTermNoemaElim s e ->
+      S.filter (/= s) $ varWeakTerm e
 
 varWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 varWeakTerm' binder es =
@@ -199,15 +206,19 @@ asterWeakTerm term =
       let set1 = asterWeakTerm e
       let set2 = asterWeakTerm t
       S.union set1 set2
-    _ :< WeakTermDerangement _ es ->
-      S.unions $ map asterWeakTerm es
+    _ :< WeakTermDerangement der ->
+      foldMap asterWeakTerm der
     _ :< WeakTermMatch mSubject (e, t) patList -> do
       let xs1 = S.unions $ map asterWeakTerm $ maybeToList mSubject
       let xs2 = asterWeakTerm e
       let xs3 = asterWeakTerm t
       let xs4 = S.unions $ map (\((_, _, xts), body) -> asterWeakTerm' xts body) patList
       S.unions [xs1, xs2, xs3, xs4]
-    _ :< WeakTermIgnore e ->
+    _ :< WeakTermNoema s e ->
+      S.unions [asterWeakTerm s, asterWeakTerm e]
+    _ :< WeakTermNoemaIntro _ e ->
+      asterWeakTerm e
+    _ :< WeakTermNoemaElim _ e ->
       asterWeakTerm e
 
 asterWeakTerm' :: [BinderF WeakTerm] -> WeakTerm -> S.Set Int
@@ -280,17 +291,22 @@ toText term =
       showCons ["switch", toText e, showItems (map showClause mles)]
     _ :< WeakTermQuestion e _ ->
       toText e
-    _ :< WeakTermDerangement i es -> do
-      let es' = map toText es
-      showCons $ "derangement" : T.pack (show i) : es'
+    _ :< WeakTermDerangement _ -> do
+      "<derangement>"
+    -- let es' = map toText es
+    -- showCons $ "derangement" : T.pack (show i) : es'
     _ :< WeakTermMatch mSubject (e, _) caseClause -> do
       case mSubject of
         Nothing -> do
           showCons $ "case" : toText e : map showCaseClause caseClause
         Just _ -> do
           showCons $ "case-noetic" : toText e : map showCaseClause caseClause
-    _ :< WeakTermIgnore e ->
-      showCons ["ignore", toText e]
+    _ :< WeakTermNoema s e ->
+      showCons ["&" <> toText s, toText e]
+    _ :< WeakTermNoemaIntro s e ->
+      showCons ["noema-intro", asText s, toText e]
+    _ :< WeakTermNoemaElim s e ->
+      showCons ["noema-elim", asText s, toText e]
 
 inParen :: T.Text -> T.Text
 inParen s =

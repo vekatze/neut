@@ -43,48 +43,14 @@ import Data.Stmt
   )
 import Data.Term
   ( Term,
-    TermF
-      ( TermConst,
-        TermDerangement,
-        TermEnum,
-        TermEnumElim,
-        TermEnumIntro,
-        TermFloat,
-        TermIgnore,
-        TermInt,
-        TermMatch,
-        TermPi,
-        TermPiElim,
-        TermPiIntro,
-        TermTau,
-        TermVar,
-        TermVarGlobal
-      ),
+    TermF (..),
     weaken,
     weakenBinder,
   )
 import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakTerm,
-    WeakTermF
-      ( WeakTermAster,
-        WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnum,
-        WeakTermEnumElim,
-        WeakTermEnumIntro,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermQuestion,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
+    WeakTermF (..),
     metaOf,
     toText,
   )
@@ -189,7 +155,7 @@ inferStmt :: [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm
 inferStmt xts e codType = do
   (xts', (e', te)) <- inferBinder [] xts e
   codType' <- inferType codType
-  insConstraintEnv te codType'
+  insConstraintEnv codType' te
   return (xts', e', codType')
 
 elaborateStmtList :: [WeakStmt] -> IO [Stmt]
@@ -297,9 +263,9 @@ elaborate' term =
       t' <- elaborate' t
       note m $ toText (weaken t')
       return e'
-    m :< WeakTermDerangement i es -> do
-      es' <- mapM elaborate' es
-      return $ m :< TermDerangement i es'
+    m :< WeakTermDerangement der -> do
+      der' <- mapM elaborate' der
+      return $ m :< TermDerangement der'
     m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e
@@ -316,9 +282,16 @@ elaborate' term =
             return $ m :< TermMatch mSubject' (e', t') patList'
         _ -> do
           raiseError (metaOf t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
-    m :< WeakTermIgnore e -> do
+    m :< WeakTermNoema s e -> do
+      s' <- elaborate' s
       e' <- elaborate' e
-      return $ m :< TermIgnore e'
+      return $ m :< TermNoema s' e'
+    m :< WeakTermNoemaIntro s e -> do
+      e' <- elaborate' e
+      return $ m :< TermNoemaIntro s e'
+    m :< WeakTermNoemaElim s e -> do
+      e' <- elaborate' e
+      return $ m :< TermNoemaElim s e'
 
 -- for now
 elaboratePatternList :: Hint -> [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> IO [(PatternF Term, Term)]

@@ -53,7 +53,7 @@ import qualified Data.IntMap as IntMap
 import Data.List (nubBy)
 import Data.Log (raiseCritical)
 import Data.LowType
-  ( Derangement (DerangementNop),
+  ( Derangement (..),
     PrimOp (..),
     asLowTypeMaybe,
     asPrimOp,
@@ -64,23 +64,7 @@ import qualified Data.Set as S
 import Data.Stmt (Stmt (..))
 import Data.Term
   ( Term,
-    TermF
-      ( TermConst,
-        TermDerangement,
-        TermEnum,
-        TermEnumElim,
-        TermEnumIntro,
-        TermFloat,
-        TermIgnore,
-        TermInt,
-        TermMatch,
-        TermPi,
-        TermPiElim,
-        TermPiIntro,
-        TermTau,
-        TermVar,
-        TermVarGlobal
-      ),
+    TermF (..),
     TypeEnv,
     lowTypeToType,
   )
@@ -181,13 +165,8 @@ clarifyTerm tenv term =
       es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
       (y, e', yVar) <- clarifyPlus tenv e
       return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
-    _ :< TermDerangement expKind es -> do
-      case (expKind, es) of
-        (DerangementNop, [e]) ->
-          clarifyTerm tenv e
-        _ -> do
-          (xs, es', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) es
-          return $ bindLet (zip xs es') $ CompPrimitive (PrimitiveDerangement expKind xsAsVars)
+    _ :< TermDerangement der -> do
+      clarifyDerangement tenv der
     _ :< TermMatch mSubject (e, _) clauseList -> do
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
@@ -213,9 +192,54 @@ clarifyTerm tenv term =
             [typeVarName, envVarName, tagVarName]
             dataVar
             $ CompEnumElim tagVar clauseList'
-    _ :< TermIgnore e -> do
-      e' <- clarifyTerm tenv e
-      return $ CompIgnore e'
+    _ :< TermNoema {} -> do
+      returnImmediateS4
+    m :< TermNoemaIntro _ e ->
+      case e of
+        _ :< TermVar x ->
+          return $ CompUpIntro (ValueVarLocalIdeal x)
+        _ ->
+          raiseCritical m "compiler bug: found a non-variable noetic value"
+    m :< TermNoemaElim s e -> do
+      e' <- clarifyTerm (IntMap.insert (asInt s) (m :< TermTau) tenv) e
+      return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
+
+clarifyDerangement :: TypeEnv -> Derangement Term -> IO Comp
+clarifyDerangement tenv der =
+  case der of
+    DerangementCast from to value -> do
+      (fromVarName, from', fromVar) <- clarifyPlus tenv from
+      (toVarName, to', toVar) <- clarifyPlus tenv to
+      (valueVarName, value', valueVar) <- clarifyPlus tenv value
+      return $
+        bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
+          CompPrimitive (PrimitiveDerangement (DerangementCast fromVar toVar valueVar))
+    DerangementStore lt pointer value -> do
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
+      (valueVarName, value', valueVar) <- clarifyPlus tenv value
+      return $
+        bindLet [(pointerVarName, pointer'), (valueVarName, value')] $
+          CompPrimitive (PrimitiveDerangement (DerangementStore lt pointerVar valueVar))
+    DerangementLoad lt pointer -> do
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
+      return $
+        bindLet [(pointerVarName, pointer')] $
+          CompPrimitive (PrimitiveDerangement (DerangementLoad lt pointerVar))
+    DerangementSyscall syscallNum args -> do
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      return $
+        bindLet (zip xs args') $
+          CompPrimitive (PrimitiveDerangement (DerangementSyscall syscallNum xsAsVars))
+    DerangementExternal extFunName args -> do
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      return $
+        bindLet (zip xs args') $
+          CompPrimitive (PrimitiveDerangement (DerangementExternal extFunName xsAsVars))
+    DerangementCreateArray lt args -> do
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      return $
+        bindLet (zip xs args') $
+          CompPrimitive (PrimitiveDerangement (DerangementCreateArray lt xsAsVars))
 
 clarifyLambda ::
   TypeEnv ->
@@ -395,15 +419,19 @@ chainOf tenv term =
       let es = map snd les
       let xs2 = concatMap (chainOf tenv) es
       xs0 ++ xs1 ++ xs2
-    _ :< TermDerangement _ es ->
-      concatMap (chainOf tenv) es
+    _ :< TermDerangement der ->
+      foldMap (chainOf tenv) der
     _ :< TermMatch mSubject (e, _) patList -> do
       let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)
       let xs2 = chainOf tenv e
       let xs3 = concatMap (\((_, _, xts), body) -> chainOf' tenv xts [body]) patList
       xs1 ++ xs2 ++ xs3
-    _ :< TermIgnore e ->
-      chainOf tenv e
+    _ :< TermNoema s t ->
+      chainOf tenv s ++ chainOf tenv t
+    m :< TermNoemaIntro s e ->
+      (m, s, m :< TermTau) : chainOf tenv e
+    m :< TermNoemaElim s e ->
+      filter (\(_, y, _) -> y /= s) $ chainOf (IntMap.insert (asInt s) (m :< TermTau) tenv) e
 
 chainOf' :: TypeEnv -> [BinderF Term] -> [Term] -> [BinderF Term]
 chainOf' tenv binder es =

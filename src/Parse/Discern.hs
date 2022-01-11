@@ -38,25 +38,7 @@ import Data.Stmt (WeakStmt (..))
 import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakTerm,
-    WeakTermF
-      ( WeakTermAster,
-        WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnum,
-        WeakTermEnumElim,
-        WeakTermEnumIntro,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermQuestion,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
+    WeakTermF (..),
   )
 
 type NameEnv = Map.HashMap T.Text Ident
@@ -149,9 +131,9 @@ discern' nenv term =
       e' <- discern' nenv e
       t' <- discern' nenv t
       return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermDerangement i es -> do
-      es' <- mapM (discern' nenv) es
-      return $ m :< WeakTermDerangement i es'
+    m :< WeakTermDerangement der -> do
+      der' <- traverse (discern' nenv) der
+      return $ m :< WeakTermDerangement der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e
@@ -166,9 +148,21 @@ discern' nenv term =
           Nothing ->
             raiseError m $ "no such constructor is defined: " <> constructorName
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< WeakTermIgnore e -> do
+    m :< WeakTermNoema s e -> do
+      s' <- discern' nenv s
       e' <- discern' nenv e
-      return $ m :< WeakTermIgnore e'
+      return $ m :< WeakTermNoema s' e'
+    m :< WeakTermNoemaIntro (I (x, _)) e ->
+      case Map.lookup x nenv of
+        Just name -> do
+          e' <- discern' nenv e
+          return $ m :< WeakTermNoemaIntro name e'
+        Nothing ->
+          raiseError m $ "undefined subject variable: " <> x
+    m :< WeakTermNoemaElim s e -> do
+      s' <- newIdentFromIdent s
+      e' <- discern' (Map.insert (asText s) s' nenv) e
+      return $ m :< WeakTermNoemaElim s' e'
 
 discernBinder ::
   NameEnv ->

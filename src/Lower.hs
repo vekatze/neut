@@ -27,32 +27,12 @@ import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseCritical')
 import Data.LowComp
   ( LowComp (..),
-    LowOp
-      ( LowOpAlloc,
-        LowOpBitcast,
-        LowOpCall,
-        LowOpFree,
-        LowOpGetElementPtr,
-        LowOpIntToPointer,
-        LowOpLoad,
-        LowOpPointerToInt,
-        LowOpPrimOp,
-        LowOpStore,
-        LowOpSyscall
-      ),
+    LowOp (..),
     LowValue (..),
     SizeInfo,
   )
 import Data.LowType
-  ( Derangement
-      ( DerangementCreateArray,
-        DerangementCreateStruct,
-        DerangementExternal,
-        DerangementLoad,
-        DerangementNop,
-        DerangementStore,
-        DerangementSyscall
-      ),
+  ( Derangement (..),
     FloatSize (..),
     LowType (..),
     PrimOp (..),
@@ -125,8 +105,6 @@ lowerComp term =
           let t = LowTypeInt 64
           (cast, castThen) <- llvmCast (Just "enum-base") v t
           castThen $ LowCompSwitch (cast, t) defaultCase caseList
-    CompIgnore e ->
-      lowerComp e
 
 uncastList :: [(Ident, (Ident, LowType))] -> Comp -> IO LowComp
 uncastList args e =
@@ -143,6 +121,8 @@ takeBaseName term =
     ValueVarGlobal s ->
       s
     ValueVarLocal (I (s, _)) ->
+      s
+    ValueVarLocalIdeal (I (s, _)) ->
       s
     ValueSigmaIntro ds ->
       "array" <> T.pack (show (length ds))
@@ -225,46 +205,38 @@ lowerCompPrimitive codeOp =
   case codeOp of
     PrimitivePrimOp op vs ->
       lowerCompPrimOp op vs
-    PrimitiveDerangement expKind args -> do
-      case expKind of
-        DerangementNop -> do
-          (x, v) <- newValueLocal "nop-arg"
-          lowerValueLet x (head args) $ LowCompReturn v
-        DerangementSyscall i -> do
+    PrimitiveDerangement der -> do
+      case der of
+        DerangementCast _ _ value -> do
+          (x, v) <- newValueLocal "cast-arg"
+          lowerValueLet x value $ LowCompReturn v
+        DerangementStore valueLowType pointer value -> do
+          (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName pointer) pointer (LowTypePointer valueLowType)
+          (valVar, castValThen) <- llvmCast (Just $ takeBaseName value) value valueLowType
+          (castPtrThen >=> castValThen) $
+            LowCompCont (LowOpStore valueLowType valVar ptrVar) $
+              LowCompReturn LowValueNull
+        DerangementLoad valueLowType pointer -> do
+          (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName pointer) pointer (LowTypePointer valueLowType)
+          resName <- newIdentFromText "result"
+          uncast <- llvmUncast (Just $ asText resName) (LowValueVarLocal resName) valueLowType
+          castPtrThen $
+            LowCompLet resName (LowOpLoad ptrVar valueLowType) uncast
+        DerangementSyscall i args -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "sys-call-arg") args
           res <- newIdentFromText "result"
           lowerValueLet' (zip xs args) $
             LowCompLet res (LowOpSyscall i vs) $
               LowCompReturn (LowValueVarLocal res)
-        DerangementExternal name -> do
+        DerangementExternal name args -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "ext-call-arg") args
           insDeclEnv name vs
           lowerValueLet' (zip xs args) $ LowCompCall (LowValueVarGlobal name) vs
-        DerangementLoad valueLowType -> do
-          let ptr = head args
-          (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName ptr) ptr (LowTypePointer valueLowType)
-          resName <- newIdentFromText "result"
-          uncast <- llvmUncast (Just $ asText resName) (LowValueVarLocal resName) valueLowType
-          castPtrThen $
-            LowCompLet resName (LowOpLoad ptrVar valueLowType) uncast
-        DerangementStore valueLowType -> do
-          let ptr = head args
-          let val = args !! 1
-          (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName ptr) ptr (LowTypePointer valueLowType)
-          (valVar, castValThen) <- llvmCast (Just $ takeBaseName val) val valueLowType
-          (castPtrThen >=> castValThen) $
-            LowCompCont (LowOpStore valueLowType valVar ptrVar) $
-              LowCompReturn LowValueNull
-        DerangementCreateArray elemType -> do
+        DerangementCreateArray elemType args -> do
           let arrayType = AggPtrTypeArray (length args) elemType
           let argTypeList = zip args (repeat elemType)
           resName <- newIdentFromText "result"
           storeContent resName arrayType argTypeList (LowCompReturn (LowValueVarLocal resName))
-        DerangementCreateStruct elemTypeList -> do
-          let structType = AggPtrTypeStruct elemTypeList
-          let argTypeList = zip args elemTypeList
-          resName <- newIdentFromText "result"
-          storeContent resName structType argTypeList (LowCompReturn (LowValueVarLocal resName))
 
 lowerCompPrimOp :: PrimOp -> [Value] -> IO LowComp
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
@@ -388,6 +360,8 @@ lowerValueLet x lowerValue cont =
           insDeclEnvIfNecessary y args
           llvmUncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
     ValueVarLocal y ->
+      llvmUncastLet x (LowValueVarLocal y) voidPtr cont
+    ValueVarLocalIdeal y ->
       llvmUncastLet x (LowValueVarLocal y) voidPtr cont
     ValueSigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr

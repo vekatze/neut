@@ -35,35 +35,80 @@ data PrimOp
   deriving (Show, Eq)
 
 -- a `derangement` handles an extra-linguistic feature
-data Derangement
-  = DerangementSyscall Integer
-  | DerangementExternal T.Text
-  | DerangementLoad LowType
-  | DerangementStore LowType
-  | DerangementCreateArray LowType
-  | DerangementCreateStruct [LowType]
-  | DerangementNop
+data Derangement a
+  = DerangementCast a a a
+  | DerangementStore LowType a a
+  | DerangementLoad LowType a
+  | DerangementSyscall Integer [a]
+  | DerangementExternal T.Text [a]
+  | DerangementCreateArray LowType [a]
   deriving (Show, Eq, Generic)
 
-instance Binary Derangement
+instance (Binary a) => Binary (Derangement a)
 
-getDerangementName :: Derangement -> T.Text
+instance Functor Derangement where
+  fmap f der =
+    case der of
+      DerangementCast from to value ->
+        DerangementCast (f from) (f to) (f value)
+      DerangementStore lt pointer value ->
+        DerangementStore lt (f pointer) (f value)
+      DerangementLoad lt pointer ->
+        DerangementLoad lt (f pointer)
+      DerangementSyscall syscallNum args ->
+        DerangementSyscall syscallNum $ fmap f args
+      DerangementExternal extFunName args ->
+        DerangementExternal extFunName $ fmap f args
+      DerangementCreateArray lt args ->
+        DerangementCreateArray lt $ fmap f args
+
+instance Foldable Derangement where
+  foldMap f der =
+    case der of
+      DerangementCast from to value ->
+        f from <> f to <> f value
+      DerangementStore _ pointer value ->
+        f pointer <> f value
+      DerangementLoad _ pointer ->
+        f pointer
+      DerangementSyscall _ args ->
+        foldMap f args
+      DerangementExternal _ args ->
+        foldMap f args
+      DerangementCreateArray _ args ->
+        foldMap f args
+
+instance Traversable Derangement where
+  traverse f der =
+    case der of
+      DerangementCast from to value ->
+        DerangementCast <$> f from <*> f to <*> f value
+      DerangementStore lt pointer value ->
+        DerangementStore lt <$> f pointer <*> f value
+      DerangementLoad lt pointer ->
+        DerangementLoad lt <$> f pointer
+      DerangementSyscall syscallNum args ->
+        DerangementSyscall syscallNum <$> traverse f args
+      DerangementExternal extFunName args ->
+        DerangementExternal extFunName <$> traverse f args
+      DerangementCreateArray lt args ->
+        DerangementCreateArray lt <$> traverse f args
+
+getDerangementName :: Derangement a -> T.Text
 getDerangementName d =
   case d of
-    DerangementSyscall _ ->
+    DerangementSyscall {} ->
       "syscall"
-    DerangementExternal _ ->
+    DerangementExternal {} ->
       "external"
-    DerangementLoad _ ->
+    DerangementLoad {} ->
       "load"
-    DerangementStore _ ->
+    DerangementStore {} ->
       "store"
-    DerangementCreateArray _ ->
-      "create-array"
-    DerangementCreateStruct _ ->
-      "create-struct"
-    DerangementNop ->
+    DerangementCast {} ->
       "nop"
+    DerangementCreateArray {} ->
+      "create-array"
 
 asLowTypeMaybe :: T.Text -> Maybe LowType
 asLowTypeMaybe name

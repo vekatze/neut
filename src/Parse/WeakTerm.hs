@@ -23,22 +23,15 @@ import Data.Basic
     asIdent,
     asText,
   )
-import Data.Global (constBoolFalse, constBoolTrue, newAster, outputError, targetArchRef, targetOSRef, targetPlatformRef, unsafeCast, unsafePtr)
+import Data.Global (constBoolFalse, constBoolTrue, newAster, outputError, targetArchRef, targetOSRef, targetPlatformRef, unsafePtr)
 import Data.IORef (readIORef)
 import Data.List (foldl')
 import Data.Log (raiseError)
 import Data.LowType
   ( Derangement (..),
-    LowType
-      ( LowTypeArray,
-        LowTypeFloat,
-        LowTypeInt,
-        LowTypePointer,
-        LowTypeStruct
-      ),
+    LowType (..),
     asLowFloat,
     asLowInt,
-    getDerangementName,
     showFloatSize,
     showIntSize,
   )
@@ -46,20 +39,7 @@ import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakDefInfo,
     WeakTerm,
-    WeakTermF
-      ( WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnumElim,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermQuestion,
-        WeakTermTau
-      ),
+    WeakTermF (..),
     metaOf,
   )
 import Parse.Core
@@ -131,6 +111,9 @@ weakTerm = do
       weakTermIdealize
     Just "new-array" ->
       weakTermArrayIntro
+    Just headSymbolText
+      | T.head headSymbolText == '&' -> do
+        weakTermNoema
     _ ->
       tryPlanList
         [ weakTermPiArrow,
@@ -243,66 +226,37 @@ weakTermDerangement :: IO WeakTerm
 weakTermDerangement = do
   m <- currentHint
   token "derangement"
-  d <- tryPlanList [weakTermDerangementNop, betweenParen weakTermDerangementKind]
-  es <- many weakTermSimple
-  checkDerangementArity m d (length es)
-  return $ m :< WeakTermDerangement d es
-
-checkDerangementArity :: Hint -> Derangement -> Int -> IO ()
-checkDerangementArity m derangement actualArgLen = do
-  let mExpectedArgLen = getDerangementArity derangement
-  case mExpectedArgLen of
-    Just expectedArgLen
-      | expectedArgLen /= actualArgLen ->
-        raiseError m $
-          "the derangement `"
-            <> getDerangementName derangement
-            <> "` expects "
-            <> T.pack (show expectedArgLen)
-            <> " arguments, but found "
-            <> T.pack (show actualArgLen)
-            <> "."
-    _ ->
-      return ()
-
-getDerangementArity :: Derangement -> Maybe Int
-getDerangementArity d =
-  case d of
-    DerangementNop ->
-      return 1
-    DerangementStore _ ->
-      return 2
-    DerangementLoad _ ->
-      return 1
-    _ ->
-      Nothing
-
-weakTermDerangementNop :: IO Derangement
-weakTermDerangementNop = do
-  token "nop"
-  return DerangementNop
-
-weakTermDerangementKind :: IO Derangement
-weakTermDerangementKind = do
-  m <- currentHint
   headSymbol <- symbol
-  case headSymbol of
-    "nop" ->
-      return DerangementNop
-    "store" ->
-      DerangementStore <$> lowTypeSimple
-    "load" ->
-      DerangementLoad <$> lowTypeSimple
-    "create-array" ->
-      DerangementCreateArray <$> lowTypeSimple
-    "create-struct" ->
-      DerangementCreateStruct <$> many lowTypeSimple
-    "syscall" ->
-      DerangementSyscall <$> integer
-    "external" ->
-      DerangementExternal <$> symbol
-    _ ->
-      raiseParseError m "invalid derangement kind"
+  betweenParen $ do
+    case headSymbol of
+      "cast" -> do
+        castFrom <- weakTerm
+        castTo <- char ',' >> skip >> weakTerm
+        value <- char ',' >> skip >> weakTerm
+        return $ m :< WeakTermDerangement (DerangementCast castFrom castTo value)
+      "store" -> do
+        lt <- lowType
+        pointer <- char ',' >> skip >> weakTerm
+        value <- char ',' >> skip >> weakTerm
+        return $ m :< WeakTermDerangement (DerangementStore lt pointer value)
+      "load" -> do
+        lt <- lowType
+        pointer <- char ',' >> skip >> weakTerm
+        return $ m :< WeakTermDerangement (DerangementLoad lt pointer)
+      "syscall" -> do
+        syscallNum <- integer
+        es <- many (char ',' >> skip >> weakTerm)
+        return $ m :< WeakTermDerangement (DerangementSyscall syscallNum es)
+      "external" -> do
+        extFunName <- symbol
+        es <- many (char ',' >> skip >> weakTerm)
+        return $ m :< WeakTermDerangement (DerangementExternal extFunName es)
+      "create-array" -> do
+        lt <- lowType
+        es <- many (char ',' >> skip >> weakTerm)
+        return $ m :< WeakTermDerangement (DerangementCreateArray lt es)
+      _ ->
+        raiseError m $ "no such derangement is defined: " <> headSymbol
 
 -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: IO LowType
@@ -392,7 +346,7 @@ modifyWeakPatternBody s xts body =
     [] ->
       body
     ((m, x, t) : rest) ->
-      bind m (m, x, wrapWithNoema s t) (castToNoema s t (weakVar' m x)) $
+      bind (m, x, wrapWithNoema s t) (castToNoema s t (weakVar' m x)) $
         modifyWeakPatternBody s rest body
 
 weakTermPattern :: IO (PatternF WeakTerm)
@@ -554,39 +508,33 @@ weakTermSigmaIntro = do
       ]
       (m :< WeakTermPiElim (weakVar' m k) es)
 
+weakTermNoema :: IO WeakTerm
+weakTermNoema = do
+  m <- currentHint
+  char '&'
+  subject <- asIdent <$> simpleSymbol
+  t <- weakTerm
+  return $ m :< WeakTermNoema (m :< WeakTermVar subject) t
+
 weakTermIdealize :: IO WeakTerm
 weakTermIdealize = do
   m <- currentHint
   token "idealize"
-  varList <- many var
+  varList <- many simpleVar
   let varList' = fmap (fmap asIdent) varList
   token "over"
-  mSubject <- currentHint
-  subject <- simpleSymbol
-  token "in"
-  e <- weakTerm
-  resultType <- newAster m
-  let subjectTerm = weakVar mSubject subject
+  subject <- asIdent <$> simpleSymbol
+  e <- doBlock weakTerm
   ts <- mapM (\(mx, _) -> newAster mx) varList
-  return $
-    m
-      :< WeakTermPiElim
-        (weakVar m "idea.run")
-        [ resultType,
-          lam
-            m
-            [(mSubject, asIdent subject, weakVar m "subject")]
-            (castLet subjectTerm (zip varList' ts) e)
-        ]
+  return $ m :< WeakTermNoemaElim subject (castLet subject (zip varList' ts) e)
 
-castLet :: WeakTerm -> [((Hint, Ident), WeakTerm)] -> WeakTerm -> WeakTerm
+castLet :: Ident -> [((Hint, Ident), WeakTerm)] -> WeakTerm -> WeakTerm
 castLet subject xts cont =
   case xts of
     [] ->
       cont
     ((m, x), t) : rest ->
-      bind m (m, x, wrapWithNoema subject t) (castToNoema subject t (m :< WeakTermIgnore (weakVar' m x))) $
-        castLet subject rest cont
+      bind (m, x, t) (m :< WeakTermNoemaIntro subject (weakVar' m x)) $ castLet subject rest cont
 
 weakTermArrayIntro :: IO WeakTerm
 weakTermArrayIntro = do
@@ -605,14 +553,13 @@ weakTermArrayIntro = do
   t' <- lowTypeToWeakTerm m t
   es' <- mapM (annotate t') es
   return $
-    bind m (m, arr, ptrType) (m :< WeakTermDerangement (DerangementCreateArray t) es') $
-      bind m (m, ptr, ptrType) (m :< WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
-        bind m (m, h1, topType) (m :< WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
+    bind (m, arr, ptrType) (m :< WeakTermDerangement (DerangementCreateArray t es')) $
+      bind (m, ptr, ptrType) (m :< WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
+        bind (m, h1, topType) (m :< WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
           bind
-            m
             (m, h2, topType)
             (m :< WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
-            (m :< WeakTermPiElim (weakVar m unsafeCast) [weakVar m unsafePtr, weakVar m arrName, weakVar m (asText ptr)])
+            (m :< WeakTermDerangement (DerangementCast (weakVar m unsafePtr) (weakVar m arrName) (weakVar m (asText ptr))))
 
 lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTerm
 lowTypeToWeakTerm m t =
@@ -628,7 +575,7 @@ annotate :: WeakTerm -> WeakTerm -> IO WeakTerm
 annotate t e = do
   let m = metaOf e
   h <- newTextualIdentFromText "_"
-  return $ bind m (m, h, t) e $ weakVar m (asText h)
+  return $ bind (m, h, t) e $ weakVar m (asText h)
 
 lowTypeToArrayKindText :: Hint -> LowType -> IO T.Text
 lowTypeToArrayKindText m t =
@@ -644,8 +591,8 @@ intTerm :: Hint -> Integer -> WeakTerm
 intTerm m i =
   m :< WeakTermInt (m :< WeakTermConst "i64") i
 
-bind :: Hint -> BinderF WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
-bind m mxt e cont =
+bind :: BinderF WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
+bind mxt@(m, _, _) e cont =
   m :< WeakTermPiElim (lam m [mxt] cont) [e]
 
 weakTermAdmit :: IO WeakTerm
@@ -794,8 +741,7 @@ weakTermString = do
         [ m :< WeakTermInt (m :< WeakTermConst "i64") len,
           m
             :< WeakTermDerangement
-              (DerangementCreateArray (LowTypeInt 8))
-              i8s'
+              (DerangementCreateArray (LowTypeInt 8) i8s')
         ]
 
 weakTermInteger :: IO WeakTerm
@@ -827,29 +773,17 @@ toSigma m xts = do
 castFromNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castFromNoema subject baseType tree = do
   let m = metaOf tree
-  m
-    :< WeakTermPiElim
-      (weakVar m unsafeCast)
-      [ wrapWithNoema subject baseType,
-        baseType,
-        tree
-      ]
+  m :< WeakTermDerangement (DerangementCast (wrapWithNoema subject baseType) baseType tree)
 
 castToNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castToNoema subject baseType tree = do
   let m = metaOf tree
-  m
-    :< WeakTermPiElim
-      (weakVar m unsafeCast)
-      [ baseType,
-        wrapWithNoema subject baseType,
-        tree
-      ]
+  m :< WeakTermDerangement (DerangementCast baseType (wrapWithNoema subject baseType) tree)
 
 wrapWithNoema :: WeakTerm -> WeakTerm -> WeakTerm
 wrapWithNoema subject baseType = do
   let m = metaOf baseType
-  m :< WeakTermPiElim (weakVar m "noema") [subject, baseType]
+  m :< WeakTermNoema subject baseType
 
 doNotCare :: Hint -> WeakTerm
 doNotCare m =

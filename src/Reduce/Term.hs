@@ -16,23 +16,7 @@ import qualified Data.IntMap as IntMap
 import Data.Term
   ( SubstTerm,
     Term,
-    TermF
-      ( TermConst,
-        TermDerangement,
-        TermEnum,
-        TermEnumElim,
-        TermEnumIntro,
-        TermFloat,
-        TermIgnore,
-        TermInt,
-        TermMatch,
-        TermPi,
-        TermPiElim,
-        TermPiIntro,
-        TermTau,
-        TermVar,
-        TermVarGlobal
-      ),
+    TermF (..),
   )
 
 -- reduce given term assuming its purity
@@ -87,9 +71,9 @@ reduceTerm term =
                   return (m :< TermEnumElim (e', t') les')
         _ ->
           return (m :< TermEnumElim (e', t') les')
-    (m :< TermDerangement i es) -> do
-      es' <- mapM reduceTerm es
-      return (m :< TermDerangement i es')
+    (m :< TermDerangement der) -> do
+      der' <- traverse reduceTerm der
+      return (m :< TermDerangement der')
     (m :< TermMatch mSubject (e, t) clauseList) -> do
       e' <- reduceTerm e
       -- let lamList = map (toLamList m) clauseList
@@ -108,6 +92,16 @@ reduceTerm term =
         body' <- reduceTerm body
         return ((mPat, name, xts), body')
       return (m :< TermMatch mSubject' (e', t') clauseList')
+    m :< TermNoema s e -> do
+      s' <- reduceTerm s
+      e' <- reduceTerm e
+      return $ m :< TermNoema s' e'
+    m :< TermNoemaIntro s e -> do
+      e' <- reduceTerm e
+      return $ m :< TermNoemaIntro s e'
+    m :< TermNoemaElim s e -> do
+      e' <- reduceTerm e
+      return $ m :< TermNoemaElim s e'
     _ ->
       return term
 
@@ -169,9 +163,9 @@ substTerm sub term =
       let (caseList, es) = unzip branchList
       es' <- mapM (substTerm sub) es
       return (m :< TermEnumElim (e', t') (zip caseList es'))
-    (m :< TermDerangement i es) -> do
-      es' <- mapM (substTerm sub) es
-      return (m :< TermDerangement i es')
+    (m :< TermDerangement der) -> do
+      der' <- traverse (substTerm sub) der
+      return (m :< TermDerangement der')
     (m :< TermMatch mSubject (e, t) clauseList) -> do
       mSubject' <- mapM (substTerm sub) mSubject
       e' <- substTerm sub e
@@ -180,9 +174,20 @@ substTerm sub term =
         (xts', body') <- substTerm' sub xts body
         return ((mPat, name, xts'), body')
       return (m :< TermMatch mSubject' (e', t') clauseList')
-    (m :< TermIgnore e) -> do
+    m :< TermNoema s e -> do
+      s' <- substTerm sub s
       e' <- substTerm sub e
-      return (m :< TermIgnore e')
+      return $ m :< TermNoema s' e'
+    m :< TermNoemaIntro s e -> do
+      e' <- substTerm sub e
+      return $ m :< TermNoemaIntro s e'
+    m :< TermNoemaElim s e -> do
+      e' <- substTerm sub e
+      return $ m :< TermNoemaElim s e'
+
+-- (m :< TermIgnore e) -> do
+--   e' <- substTerm sub e
+--   return (m :< TermIgnore e')
 
 substTerm' ::
   SubstTerm ->

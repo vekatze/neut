@@ -37,23 +37,7 @@ import Data.WeakTerm
     SubstWeakTerm,
     SuspendedConstraint (SuspendedConstraint),
     WeakTerm,
-    WeakTermF
-      ( WeakTermAster,
-        WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnum,
-        WeakTermEnumIntro,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermQuestion,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
+    WeakTermF (..),
     asVar,
     asterWeakTerm,
     metaOf,
@@ -183,12 +167,18 @@ simplify constraintList =
             simplify cs
         (_ :< WeakTermQuestion e1 t1, _ :< WeakTermQuestion e2 t2) ->
           simplify $ ((e1, e2), orig) : ((t1, t2), orig) : cs
-        (_ :< WeakTermDerangement i1 es1, _ :< WeakTermDerangement i2 es2)
-          | length es1 == length es2,
-            i1 == i2 ->
-            simplify $ zipWith (curry (,orig)) es1 es2 ++ cs
-        (_ :< WeakTermIgnore e1, _ :< WeakTermIgnore e2) ->
-          simplify $ ((e1, e2), orig) : cs
+        -- (_ :< WeakTermDerangement der1, _ :< WeakTermDerangement der2)
+        --   | length es1 == length es2,
+        --     i1 == i2 ->
+        --     simplify $ zipWith (curry (,orig)) es1 es2 ++ cs
+        (_ :< WeakTermNoema s1 e1, _ :< WeakTermNoema s2 e2) ->
+          simplify $ ((s1, s2), orig) : ((e1, e2), orig) : cs
+        (_ :< WeakTermNoemaIntro s1 e1, _ :< WeakTermNoemaIntro s2 e2)
+          | s1 == s2 ->
+            simplify $ ((e1, e2), orig) : cs
+        (_ :< WeakTermNoemaElim s1 e1, _ :< WeakTermNoemaElim s2 e2)
+          | s1 == s2 ->
+            simplify $ ((e1, e2), orig) : cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do
           subst <- readIORef substRef
           termDefEnv <- readIORef termDefEnvRef

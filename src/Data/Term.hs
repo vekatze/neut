@@ -28,23 +28,7 @@ import Data.LowType
 import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakTerm,
-    WeakTermF
-      ( WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnum,
-        WeakTermEnumElim,
-        WeakTermEnumIntro,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
+    WeakTermF (..),
   )
 import GHC.Generics (Generic)
 
@@ -61,12 +45,14 @@ data TermF a
   | TermEnum T.Text
   | TermEnumIntro T.Text
   | TermEnumElim (a, a) [(EnumCase, a)]
-  | TermDerangement Derangement [a]
+  | TermDerangement (Derangement a)
   | TermMatch
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
       [(PatternF a, a)]
-  | TermIgnore a
+  | TermNoema a a
+  | TermNoemaIntro Ident a
+  | TermNoemaElim Ident a
   deriving (Show, Generic)
 
 type Term = Cofree TermF Hint
@@ -126,17 +112,20 @@ weaken term =
       -- let caseList' = map (\(me, ec) -> (me, weakenEnumCase ec)) caseList
       let es' = map weaken es
       m :< WeakTermEnumElim (e', t') (zip caseList es')
-    m :< TermDerangement i es -> do
-      let es' = map weaken es
-      m :< WeakTermDerangement i es'
+    m :< TermDerangement der -> do
+      m :< WeakTermDerangement (fmap weaken der)
     m :< TermMatch mSubject (e, t) patList -> do
       let mSubject' = fmap weaken mSubject
       let e' = weaken e
       let t' = weaken t
       let patList' = map (\((mp, p, xts), body) -> ((mp, p, map weakenBinder xts), weaken body)) patList
       m :< WeakTermMatch mSubject' (e', t') patList'
-    m :< TermIgnore e ->
-      m :< WeakTermIgnore (weaken e)
+    m :< TermNoema s t ->
+      m :< WeakTermNoema (weaken s) (weaken t)
+    m :< TermNoemaIntro s e ->
+      m :< WeakTermNoemaIntro s (weaken e)
+    m :< TermNoemaElim s e ->
+      m :< WeakTermNoemaElim s (weaken e)
 
 weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =

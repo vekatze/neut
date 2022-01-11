@@ -15,13 +15,7 @@ import Data.Comp
   ( Comp (..),
     Primitive (..),
     SubstValue,
-    Value
-      ( ValueEnumIntro,
-        ValueInt,
-        ValueSigmaIntro,
-        ValueVarGlobal,
-        ValueVarLocal
-      ),
+    Value (..),
   )
 import Data.Global (compDefEnvRef, newIdentFromIdent, p, p')
 import qualified Data.HashMap.Lazy as Map
@@ -112,9 +106,10 @@ reduceComp term =
           -- let (ls, es) = unzip les
           es' <- mapM reduceComp es
           return $ CompEnumElim v (zip ls es')
-    CompIgnore e -> do
-      e' <- reduceComp e
-      return $ CompIgnore e'
+
+-- CompIgnore e -> do
+--   e' <- reduceComp e
+--   return $ CompIgnore e'
 
 substValue :: SubstValue -> NameEnv -> Value -> Value
 substValue sub nenv term =
@@ -122,6 +117,13 @@ substValue sub nenv term =
     ValueVarLocal x
       | Just x' <- IntMap.lookup (asInt x) nenv ->
         ValueVarLocal x'
+      | Just e <- IntMap.lookup (asInt x) sub ->
+        e
+      | otherwise ->
+        term
+    ValueVarLocalIdeal x
+      | Just x' <- IntMap.lookup (asInt x) nenv ->
+        ValueVarLocalIdeal x'
       | Just e <- IntMap.lookup (asInt x) sub ->
         e
       | otherwise ->
@@ -162,9 +164,6 @@ substComp sub nenv term =
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub nenv) es
       return $ CompEnumElim v' (zip cs es')
-    CompIgnore e -> do
-      e' <- substComp sub nenv e
-      return $ CompIgnore e'
 
 substPrimitive :: SubstValue -> NameEnv -> Primitive -> Primitive
 substPrimitive sub nenv c =
@@ -172,9 +171,9 @@ substPrimitive sub nenv c =
     PrimitivePrimOp op vs -> do
       let vs' = map (substValue sub nenv) vs
       PrimitivePrimOp op vs'
-    PrimitiveDerangement expKind ds -> do
-      let ds' = map (substValue sub nenv) ds
-      PrimitiveDerangement expKind ds'
+    PrimitiveDerangement der -> do
+      let der' = fmap (substValue sub nenv) der
+      PrimitiveDerangement der'
 
 asIdent :: Value -> Maybe Ident
 asIdent term =

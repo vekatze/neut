@@ -8,6 +8,7 @@ import qualified Data.Text as T
 
 data Value
   = ValueVarLocal Ident
+  | ValueVarLocalIdeal Ident
   | ValueVarGlobal T.Text
   | ValueSigmaIntro [Value]
   | ValueInt IntSize Integer
@@ -22,12 +23,11 @@ data Comp
   | CompUpElim Ident Comp Comp
   | CompEnumElim Value [(CompEnumCase, Comp)]
   | CompPrimitive Primitive
-  | CompIgnore Comp
   deriving (Show)
 
 data Primitive
   = PrimitivePrimOp PrimOp [Value]
-  | PrimitiveDerangement Derangement [Value]
+  | PrimitiveDerangement (Derangement Value)
   deriving (Show)
 
 type SubstValue =
@@ -40,6 +40,8 @@ varValue :: Value -> S.Set Ident
 varValue v =
   case v of
     ValueVarLocal x ->
+      S.singleton x
+    ValueVarLocalIdeal x ->
       S.singleton x
     ValueSigmaIntro vs ->
       S.unions $ map varValue vs
@@ -70,10 +72,8 @@ varComp c =
       case prim of
         PrimitivePrimOp _ vs ->
           S.unions $ map varValue vs
-        PrimitiveDerangement _ vs ->
-          S.unions $ map varValue vs
-    CompIgnore e ->
-      varComp e
+        PrimitiveDerangement der ->
+          foldMap varValue der
 
 dummyComp :: Comp
 dummyComp =

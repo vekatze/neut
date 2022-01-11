@@ -17,25 +17,7 @@ import qualified Data.IntMap as IntMap
 import Data.WeakTerm
   ( SubstWeakTerm,
     WeakTerm,
-    WeakTermF
-      ( WeakTermAster,
-        WeakTermConst,
-        WeakTermDerangement,
-        WeakTermEnum,
-        WeakTermEnumElim,
-        WeakTermEnumIntro,
-        WeakTermFloat,
-        WeakTermIgnore,
-        WeakTermInt,
-        WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermQuestion,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
+    WeakTermF (..),
     varWeakTerm,
   )
 
@@ -94,9 +76,9 @@ reduceWeakTerm term =
           return $ m :< WeakTermEnumElim (e', t') les'
     _ :< WeakTermQuestion e _ ->
       reduceWeakTerm e
-    m :< WeakTermDerangement i es -> do
-      es' <- mapM reduceWeakTerm es
-      return $ m :< WeakTermDerangement i es'
+    m :< WeakTermDerangement der -> do
+      der' <- mapM reduceWeakTerm der
+      return $ m :< WeakTermDerangement der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       e' <- reduceWeakTerm e
       -- let lamList = map (toLamList m) clauseList
@@ -115,6 +97,16 @@ reduceWeakTerm term =
         body' <- reduceWeakTerm body
         return ((mPat, name, xts), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
+    m :< WeakTermNoema s e -> do
+      s' <- reduceWeakTerm s
+      e' <- reduceWeakTerm e
+      return $ m :< WeakTermNoema s' e'
+    m :< WeakTermNoemaIntro s e -> do
+      e' <- reduceWeakTerm e
+      return $ m :< WeakTermNoemaIntro s e'
+    m :< WeakTermNoemaElim s e -> do
+      e' <- reduceWeakTerm e
+      return $ m :< WeakTermNoemaElim s e'
     _ ->
       return term
 
@@ -188,9 +180,9 @@ substWeakTerm sub term =
       e' <- substWeakTerm sub e
       t' <- substWeakTerm sub t
       return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermDerangement i es -> do
-      es' <- mapM (substWeakTerm sub) es
-      return $ m :< WeakTermDerangement i es'
+    m :< WeakTermDerangement der -> do
+      der' <- mapM (substWeakTerm sub) der
+      return $ m :< WeakTermDerangement der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (substWeakTerm sub) mSubject
       e' <- substWeakTerm sub e
@@ -199,9 +191,16 @@ substWeakTerm sub term =
         (xts', body') <- substWeakTerm' sub xts body
         return ((mPat, name, xts'), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< WeakTermIgnore e -> do
+    m :< WeakTermNoema s e -> do
+      s' <- substWeakTerm sub s
       e' <- substWeakTerm sub e
-      return $ m :< WeakTermIgnore e'
+      return $ m :< WeakTermNoema s' e'
+    m :< WeakTermNoemaIntro s e -> do
+      e' <- substWeakTerm sub e
+      return $ m :< WeakTermNoemaIntro s e'
+    m :< WeakTermNoemaElim s e -> do
+      e' <- substWeakTerm sub e
+      return $ m :< WeakTermNoemaElim s e'
 
 substWeakTerm' ::
   SubstWeakTerm ->

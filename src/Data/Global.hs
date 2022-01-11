@@ -216,10 +216,6 @@ termTypeEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
 termTypeEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
--- {-# NOINLINE termDefEnvRef #-}
--- termDefEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
--- termDefEnvRef =
---   unsafePerformIO (newIORef Map.empty)
 {-# NOINLINE termDefEnvRef #-}
 termDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [BinderF WeakTerm], WeakTerm))
 termDefEnvRef =
@@ -304,10 +300,6 @@ constBoolFalse =
 unsafePtr :: T.Text
 unsafePtr =
   "unsafe-pointer"
-
-unsafeCast :: T.Text
-unsafeCast =
-  "unsafe-cast"
 
 initialLowDeclEnv :: Map.HashMap T.Text ([LowType], LowType)
 initialLowDeclEnv =
