@@ -107,10 +107,6 @@ reduceComp term =
           es' <- mapM reduceComp es
           return $ CompEnumElim v (zip ls es')
 
--- CompIgnore e -> do
---   e' <- reduceComp e
---   return $ CompIgnore e'
-
 substValue :: SubstValue -> NameEnv -> Value -> Value
 substValue sub nenv term =
   case term of

@@ -185,10 +185,6 @@ substTerm sub term =
       e' <- substTerm sub e
       return $ m :< TermNoemaElim s e'
 
--- (m :< TermIgnore e) -> do
---   e' <- substTerm sub e
---   return (m :< TermIgnore e')
-
 substTerm' ::
   SubstTerm ->
   [BinderF Term] ->

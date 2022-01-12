@@ -50,7 +50,6 @@ data WeakTermF a
   | WeakTermNoemaElim Ident a
   deriving (Generic)
 
---  WeakTermIgnore a
 type WeakTerm = Cofree WeakTermF Hint
 
 instance (Binary a) => Binary (WeakTermF a)

@@ -198,10 +198,6 @@ infer' ctx term =
       (e', t) <- infer' (ctx ++ [(m, s, m :< WeakTermTau)]) e
       return (m :< WeakTermNoemaElim s e', t)
 
--- m :< WeakTermIgnore e -> do
---   (e', t') <- infer' ctx e
---   return (m :< WeakTermIgnore e', t')
-
 inferSubject :: Hint -> Context -> WeakTerm -> IO WeakTerm
 inferSubject m ctx subject = do
   (subject', tSub) <- infer' ctx subject

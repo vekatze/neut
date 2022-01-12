@@ -1,6 +1,5 @@
 module Parse.Discern
-  ( discern,
-    discernStmtList,
+  ( discernStmtList,
   )
 where
 
