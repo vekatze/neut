@@ -26,10 +26,10 @@ import Data.Source (Source (Source), sourceFilePath, sourceModule)
 import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
-    inBlock,
-    manyList,
-    symbol,
-    token,
+    parseInBlock,
+    parseManyList,
+    parseSymbol,
+    parseToken,
     tryPlanList,
   )
 import qualified Parse.Module as Module
@@ -52,52 +52,55 @@ parseImportSequence :: Module -> IO ([Source], [AliasInfo])
 parseImportSequence currentModule = do
   unzip
     <$> tryPlanList
-      [ inBlock "import" $
-          manyList $ do
+      [ parseInBlock "import" $
+          parseManyList $ do
             tryPlanList
-              [ parseImportQualified currentModule,
-                parseImportSimple currentModule
-              ],
-        return []
+              [ parseImportQualified currentModule
+              ]
+              (parseImportSimple currentModule)
       ]
+      (return [])
 
 skipImportSequence :: IO ()
 skipImportSequence =
   tryPlanList
-    [ void $ inBlock "import" $ manyList $ tryPlanList [skipImportQualified, skipImportSimple],
-      return ()
+    [ void $
+        parseInBlock "import" $
+          parseManyList $
+            tryPlanList [skipImportQualified] skipImportSimple
     ]
+    (return ())
 
 parseImportSimple :: Module -> IO (Source, AliasInfo)
 parseImportSimple currentModule = do
   m <- currentHint
-  -- token "import"
-  sigText <- symbol
+  -- parseToken "import"
+  sigText <- parseSymbol
   source <- getNextSource m currentModule sigText
   return (source, AliasInfoUse sigText)
 
 skipImportSimple :: IO ()
 skipImportSimple = do
-  -- token "import"
-  _ <- symbol
+  -- parseToken "import"
+  _ <- parseSymbol
   return ()
 
 parseImportQualified :: Module -> IO (Source, AliasInfo)
 parseImportQualified currentModule = do
   m <- currentHint
-  -- token "import"
-  sigText <- symbol
-  token "as"
-  alias <- symbol
+  -- parseToken "import"
+  sigText <- parseSymbol
+  parseToken "as"
+  alias <- parseSymbol
   source <- getNextSource m currentModule sigText
   return (source, AliasInfoPrefix alias sigText)
 
 skipImportQualified :: IO ()
 skipImportQualified = do
-  -- token "import"
-  _ <- symbol
-  token "as"
-  _ <- symbol
+  -- parseToken "import"
+  _ <- parseSymbol
+  parseToken "as"
+  _ <- parseSymbol
   return ()
 
 getNextSource :: Hint -> Module -> T.Text -> IO Source

@@ -26,21 +26,22 @@ import Data.Stmt
   )
 import qualified Data.Text as T
 import Parse.Core
-  ( asBlock,
-    currentHint,
-    integer,
-    manyList,
-    simpleVar,
-    token,
+  ( currentHint,
+    parseAsBlock,
+    parseInteger,
+    parseManyList,
+    parseToken,
+    parseVar,
+    parseVarText,
     tryPlanList,
   )
 
 parseDefineEnum :: IO EnumInfo
 parseDefineEnum = do
   m <- currentHint
-  token "define-enum"
-  name <- simpleVar >>= attachSectionPrefix . snd
-  itemList <- asBlock $ manyList parseDefineEnumClause
+  parseToken "define-enum"
+  name <- parseVar >>= attachSectionPrefix . snd
+  itemList <- parseAsBlock $ parseManyList parseDefineEnumClause
   currentSection <- readIORef currentSectionRef
   let itemList' = arrangeEnumItemList currentSection 0 itemList
   unless (isLinear (map snd itemList')) $
@@ -66,21 +67,20 @@ arrangeEnumItemList currentSection currentValue clauseList =
 parseDefineEnumClause :: IO (T.Text, Maybe Int)
 parseDefineEnumClause = do
   tryPlanList
-    [ parseDefineEnumClauseWithDiscriminant,
-      parseDefineEnumClauseWithoutDiscriminant
+    [ parseDefineEnumClauseWithDiscriminant
     ]
+    parseDefineEnumClauseWithoutDiscriminant
 
 parseDefineEnumClauseWithDiscriminant :: IO (T.Text, Maybe Int)
 parseDefineEnumClauseWithDiscriminant = do
-  item <- snd <$> simpleVar
-  token "="
-  -- token "<-"
-  discriminant <- integer
+  item <- snd <$> parseVar
+  parseToken "="
+  discriminant <- parseInteger
   return (item, Just (fromInteger discriminant))
 
 parseDefineEnumClauseWithoutDiscriminant :: IO (T.Text, Maybe Int)
 parseDefineEnumClauseWithoutDiscriminant = do
-  item <- snd <$> simpleVar
+  item <- parseVarText
   return (item, Nothing)
 
 insEnumEnv' :: T.Text -> [(T.Text, Int)] -> IO ()

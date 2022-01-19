@@ -26,7 +26,7 @@ import Data.IORef
     readIORef,
     writeIORef,
   )
-import Data.Log (Error (..), logError, raiseCritical)
+import Data.Log (Error (..), logError)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -107,50 +107,12 @@ initializeParserForFile path = do
   writeIORef textRef fileContent
   setCurrentFilePath path
 
-betweenParen :: IO a -> IO a
-betweenParen f = do
-  char '(' >> skip
-  item <- f
-  char ')' >> skip
-  return item
+--
+-- basic parser combinators
+--
 
-asBlock :: IO a -> IO a
-asBlock =
-  inBlock "as"
-
-doBlock :: IO a -> IO a
-doBlock =
-  inBlock "do"
-
-inBlock :: T.Text -> IO a -> IO a
-inBlock name f = do
-  _ <- token name
-  item <- f
-  _ <- token "end"
-  return item
-
-argList :: IO a -> IO [a]
-argList f =
-  betweenParen $ sepBy (char ',' >> skip) f
-
-argList2 :: IO a -> IO [a]
-argList2 f =
-  betweenParen $ sepBy2 (char ',' >> skip) f
-
-manyList :: IO a -> IO [a]
-manyList f =
-  many $ token "-" >> f
-
-token :: T.Text -> IO ()
-token expected = do
-  m <- currentHint
-  actual <- symbol
-  if actual == expected
-    then return ()
-    else raiseParseError m $ "found an unexpected token `" <> actual <> "`, expecting: " <> expected
-
-char :: Char -> IO ()
-char c = do
+parseChar :: Char -> IO ()
+parseChar c = do
   m <- currentHint
   text <- readIORef textRef
   case T.uncons text of
@@ -170,169 +132,30 @@ char c = do
             <> T.singleton c
             <> "'"
 
-skip :: IO ()
-skip = do
+parseToken :: T.Text -> IO ()
+parseToken expected = do
   text <- readIORef textRef
-  case T.uncons text of
-    Just (c, rest)
-      | c == '-',
-        Just ('-', _) <- T.uncons rest ->
-        comment
-      | c `S.member` newlineSet ->
-        updateStreamL rest >> skip
-      | c `S.member` spaceSet ->
-        updateStreamC 1 rest >> skip
-    _ ->
-      return ()
-
-comment :: IO ()
-comment = do
-  text <- readIORef textRef
-  case T.uncons text of
-    Just (c, rest)
-      | c `S.member` newlineSet ->
-        updateStreamL rest >> skip
-      | otherwise ->
-        updateStreamC 1 rest >> comment
-    Nothing ->
-      return ()
-
-many :: IO a -> IO [a]
-many f = do
-  tryPlanList
-    [ do
-        x <- f
-        xs <- many f
-        return $ x : xs,
-      return []
-    ]
-
-manyStrict :: IO a -> IO [a]
-manyStrict f = do
-  text <- readIORef textRef
-  if T.null text
-    then return []
-    else do
-      x <- f
-      xs <- manyStrict f
-      return $ x : xs
-
-many1 :: IO a -> IO [a]
-many1 f = do
-  item <- f
-  itemList <- many f
-  return $ item : itemList
-
-takeN :: Int -> IO a -> IO [a]
-takeN n f = do
-  if n == 0
-    then return []
-    else do
-      item <- f
-      itemList <- takeN (n - 1) f
-      return $ item : itemList
-
-integer :: IO Integer
-integer = do
-  m <- currentHint
-  x <- symbol
-  case readMaybe (T.unpack x) of
-    Just intValue ->
-      return intValue
-    Nothing ->
-      raiseParseError m $ "unexpected symbol: " <> x <> "\n expecting: an integer"
-
-float :: IO Double
-float = do
-  m <- currentHint
-  x <- symbol
-  case readMaybe (T.unpack x) of
-    Just floatValue ->
-      return floatValue
-    Nothing ->
-      raiseParseError m $ "unexpected symbol: " <> x <> "\n expecting: an integer"
-
-parseBool :: IO Bool
-parseBool = do
-  m <- currentHint
-  b <- symbol
-  case b of
-    "true" ->
-      return True
-    "false" ->
-      return False
-    _ ->
-      raiseParseError m $ "unexpected symbol: `" <> b <> "`\n expecting: `true` or `false`"
-
-tryPlanList :: [IO a] -> IO a
-tryPlanList planList =
-  case planList of
-    [] -> do
+  case T.stripPrefix expected text of
+    Just rest -> do
+      updateStreamC (T.length expected) rest
+      skip
+    Nothing -> do
       m <- currentHint
-      raiseCritical m "Parse.Core.tryPlanList: this function shouldn't be called for the empty list"
-    [f] ->
-      f
-    f : fs -> do
-      s <- saveState
-      catch f (helper s (tryPlanList fs))
+      raiseParseError m $ "could not find the expected token `" <> expected <> "`"
 
-helper :: ParserState -> IO a -> Error -> IO a
-helper s g _ = do
-  loadState s
-  g
-
-lookAhead :: IO a -> IO a
-lookAhead f = do
-  s <- saveState
-  result <- f
-  loadState s
-  return result
-
-sepBy :: IO b -> IO a -> IO [a]
-sepBy sep f =
-  tryPlanList
-    [ sepBy1 sep f,
-      return []
-    ]
-
-sepBy1 :: IO b -> IO a -> IO [a]
-sepBy1 sep f = do
-  item1 <- f
-  itemList <- many $ sep >> f
-  return $ item1 : itemList
-
-sepBy2 :: IO b -> IO a -> IO [a]
-sepBy2 sep f = do
-  item1 <- f
-  _ <- sep
-  item2 <- f
-  itemList <- many $ sep >> f
-  return $ item1 : item2 : itemList
-
-symbol :: IO T.Text
-symbol = do
+parseSymbol :: IO T.Text
+parseSymbol = do
   m <- currentHint
-  mx <- symbolMaybe isSymbolChar
-  returnSymbol m mx
-
-simpleSymbol :: IO T.Text
-simpleSymbol = do
-  m <- currentHint
-  mx <- symbolMaybe isSimpleSymbolChar
-  returnSymbol m mx
-
-{-# INLINE returnSymbol #-}
-returnSymbol :: Hint -> Maybe T.Text -> IO T.Text
-returnSymbol m mx =
+  mx <- parseByPredicate isSymbolChar
   case mx of
-    Nothing ->
-      raiseParseError m "unexpected non-symbol character, expecting: symbol-character"
     Just x ->
       return x
+    Nothing ->
+      raiseParseError m "unexpected non-symbol character, expecting: symbol-char"
 
-{-# INLINE symbolMaybe #-}
-symbolMaybe :: (Char -> Bool) -> IO (Maybe T.Text)
-symbolMaybe predicate = do
+{-# INLINE parseByPredicate #-}
+parseByPredicate :: (Char -> Bool) -> IO (Maybe T.Text)
+parseByPredicate predicate = do
   text <- readIORef textRef
   let x = T.takeWhile predicate text
   let rest = T.dropWhile predicate text
@@ -342,25 +165,41 @@ symbolMaybe predicate = do
     then return Nothing
     else return $ Just x
 
-var :: IO (Hint, T.Text)
-var = do
+parseInteger :: IO Integer
+parseInteger = do
   m <- currentHint
-  x <- symbol
-  if isKeyword x
-    then raiseParseError m $ "found a reserved symbol `" <> x <> "`, expecting a variable"
-    else return (m, x)
+  x <- parseSymbol
+  case readMaybe (T.unpack x) of
+    Just intValue ->
+      return intValue
+    Nothing ->
+      raiseParseError m $ "unexpected symbol: " <> x <> "\n expecting: an integer"
 
-simpleVar :: IO (Hint, T.Text)
-simpleVar = do
+parseFloat :: IO Double
+parseFloat = do
   m <- currentHint
-  x <- simpleSymbol
-  if isKeyword x
-    then raiseParseError m $ "found a reserved symbol `" <> x <> "`, expecting a variable"
-    else return (m, x)
+  x <- parseSymbol
+  case readMaybe (T.unpack x) of
+    Just floatValue ->
+      return floatValue
+    Nothing ->
+      raiseParseError m $ "unexpected symbol: " <> x <> "\n expecting: a float"
 
-string :: IO T.Text
-string = do
-  char '"'
+parseBool :: IO Bool
+parseBool = do
+  m <- currentHint
+  b <- parseSymbol
+  case b of
+    "true" ->
+      return True
+    "false" ->
+      return False
+    _ ->
+      raiseParseError m $ "unexpected symbol: `" <> b <> "`\n expecting: `true` or `false`"
+
+parseString :: IO T.Text
+parseString = do
+  parseChar '"'
   text <- readIORef textRef
   len <- stringLengthOf False text 0
   let (x, s') = T.splitAt len text
@@ -390,6 +229,175 @@ stringLengthOf flag s i =
         incrementColumn
         stringLengthOf False rest (i + 1)
 
+skip :: IO ()
+skip = do
+  text <- readIORef textRef
+  case T.uncons text of
+    Just (c, rest)
+      | c == '-',
+        Just ('-', _) <- T.uncons rest ->
+        parseComment
+      | c `S.member` newlineSet ->
+        updateStreamL rest >> skip
+      | c `S.member` spaceSet ->
+        updateStreamC 1 rest >> skip
+    _ ->
+      return ()
+
+parseComment :: IO ()
+parseComment = do
+  text <- readIORef textRef
+  case T.uncons text of
+    Just (c, rest)
+      | c `S.member` newlineSet ->
+        updateStreamL rest >> skip
+      | otherwise ->
+        updateStreamC 1 rest >> parseComment
+    Nothing ->
+      return ()
+
+parseBetweenParen :: IO a -> IO a
+parseBetweenParen f = do
+  parseChar '(' >> skip
+  item <- f
+  parseChar ')' >> skip
+  return item
+
+parseBetweenAngle :: IO a -> IO a
+parseBetweenAngle f = do
+  parseChar '<' >> skip
+  item <- f
+  parseChar '>' >> skip
+  return item
+
+parseAsBlock :: IO a -> IO a
+parseAsBlock =
+  parseInBlock "as"
+
+parseDoBlock :: IO a -> IO a
+parseDoBlock =
+  parseInBlock "do"
+
+parseInBlock :: T.Text -> IO a -> IO a
+parseInBlock name f = do
+  _ <- parseToken name
+  item <- f
+  _ <- parseToken "end"
+  return item
+
+parseArgList :: IO a -> IO [a]
+parseArgList f =
+  parseBetweenParen $ sepBy (parseChar ',' >> skip) f
+
+parseArgList2 :: IO a -> IO [a]
+parseArgList2 f =
+  parseBetweenParen $ sepBy2 (parseChar ',' >> skip) f
+
+parseImpArgList :: IO a -> IO [a]
+parseImpArgList f =
+  tryPlanList
+    [parseBetweenAngle $ sepBy (parseChar ',' >> skip) f]
+    (return [])
+
+parseManyList :: IO a -> IO [a]
+parseManyList f =
+  parseMany $ parseToken "-" >> f
+
+parseMany :: IO a -> IO [a]
+parseMany f = do
+  tryPlanList
+    [ do
+        x <- f
+        xs <- parseMany f
+        return $ x : xs
+    ]
+    (return [])
+
+manyStrict :: IO a -> IO [a]
+manyStrict f = do
+  text <- readIORef textRef
+  if T.null text
+    then return []
+    else do
+      x <- f
+      xs <- manyStrict f
+      return $ x : xs
+
+many1 :: IO a -> IO [a]
+many1 f = do
+  item <- f
+  itemList <- parseMany f
+  return $ item : itemList
+
+takeN :: Int -> IO a -> IO [a]
+takeN n f = do
+  if n == 0
+    then return []
+    else do
+      item <- f
+      itemList <- takeN (n - 1) f
+      return $ item : itemList
+
+-- tryPlanList :: IO a -> [IO a] -> IO a
+-- tryPlanList plan planList =
+--   case planList of
+--     [] -> do
+--       plan
+--     f : fs -> do
+--       s <- saveState
+--       catch plan (helper s (tryPlanList f fs))
+
+tryPlanList :: [IO a] -> IO a -> IO a
+tryPlanList planList recovery = do
+  s <- saveState
+  let run [] =
+        recovery
+      run (plan : restPlanList) =
+        catch plan (helper s (run restPlanList))
+  run planList
+
+helper :: ParserState -> IO a -> Error -> IO a
+helper s g _ = do
+  loadState s
+  g
+
+lookAhead :: IO a -> IO a
+lookAhead f = do
+  s <- saveState
+  result <- f
+  loadState s
+  return result
+
+sepBy :: IO b -> IO a -> IO [a]
+sepBy sep f =
+  tryPlanList [sepBy1 sep f] (return [])
+
+sepBy1 :: IO b -> IO a -> IO [a]
+sepBy1 sep f = do
+  item1 <- f
+  itemList <- parseMany $ sep >> f
+  return $ item1 : itemList
+
+sepBy2 :: IO b -> IO a -> IO [a]
+sepBy2 sep f = do
+  item1 <- f
+  _ <- sep
+  item2 <- f
+  itemList <- parseMany $ sep >> f
+  return $ item1 : item2 : itemList
+
+parseVar :: IO (Hint, T.Text)
+parseVar = do
+  m <- currentHint
+  x <- parseSymbol
+  if isKeyword x
+    then raiseParseError m $ "found a reserved symbol `" <> x <> "`, expecting a variable"
+    else return (m, x)
+
+--
+-- language-dependent auxiliary parser combinators
+--
+
 currentHint :: IO Hint
 currentHint = do
   line <- readIORef lineRef
@@ -397,15 +405,23 @@ currentHint = do
   path <- toFilePath <$> getCurrentFilePath
   return $ newHint (fromEnum line) (fromEnum column) path
 
+--
+-- symbol
+--
+
 {-# INLINE isSymbolChar #-}
 isSymbolChar :: Char -> Bool
 isSymbolChar c =
   c `S.notMember` nonSymbolSet
 
-{-# INLINE isSimpleSymbolChar #-}
-isSimpleSymbolChar :: Char -> Bool
-isSimpleSymbolChar c =
-  c `S.notMember` nonSimpleSymbolSet
+{-# INLINE nonSymbolSet #-}
+nonSymbolSet :: S.Set Char
+nonSymbolSet =
+  S.fromList "() \"\n:;,!?<>"
+
+--
+-- auxiliary charset
+--
 
 {-# INLINE spaceSet #-}
 spaceSet :: S.Set Char
@@ -417,15 +433,9 @@ newlineSet :: S.Set Char
 newlineSet =
   S.fromList "\n"
 
-{-# INLINE nonSymbolSet #-}
-nonSymbolSet :: S.Set Char
-nonSymbolSet =
-  S.fromList "() \"\n:;,!?"
-
-{-# INLINE nonSimpleSymbolSet #-}
-nonSimpleSymbolSet :: S.Set Char
-nonSimpleSymbolSet =
-  S.insert '.' nonSymbolSet
+--
+-- utility functions
+--
 
 {-# INLINE updateStreamL #-}
 updateStreamL :: T.Text -> IO ()
@@ -454,7 +464,6 @@ raiseParseError :: Hint -> T.Text -> IO a
 raiseParseError m txt =
   throw $ Error [logError (getPosInfo m) txt]
 
--- asKeyword :: T.Text -> Maybe Keywordみたいにすべきかも。
 isKeyword :: T.Text -> Bool
 isKeyword s =
   S.member s keywordSet
@@ -500,10 +509,8 @@ keywordSet =
       "match-noetic",
       "new",
       "over",
-      "pi",
       "question",
       "reduce",
-      "remove-prefix",
       "section",
       "switch",
       "tau",
@@ -513,9 +520,9 @@ keywordSet =
       "with"
     ]
 
-varText :: IO T.Text
-varText =
-  snd <$> var
+parseVarText :: IO T.Text
+parseVarText =
+  snd <$> parseVar
 
 weakVar :: Hint -> T.Text -> WeakTerm
 weakVar m str =

@@ -56,8 +56,11 @@ instance (Binary a) => Binary (WeakTermF a)
 
 instance Binary WeakTerm
 
-type WeakDefInfo =
+type DefInfo =
   ((Hint, T.Text), [BinderF WeakTerm], WeakTerm, WeakTerm)
+
+type TopDefInfo =
+  ((Hint, T.Text), [BinderF WeakTerm], [BinderF WeakTerm], WeakTerm, WeakTerm)
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm

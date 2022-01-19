@@ -13,6 +13,7 @@ import Data.Global
     currentSectionRef,
     dataEnvRef,
     getCurrentFilePath,
+    impArgEnvRef,
     newText,
     prefixEnvRef,
     resourceTypeSetRef,
@@ -49,12 +50,13 @@ import Data.WeakTerm
         WeakTermVar
       ),
   )
-import Parse.Core (argList, asBlock, currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyList, raiseParseError, skip, symbol, symbolMaybe, takeN, textRef, token, tryPlanList, varText, weakTermToWeakIdent, weakVar)
+import GHC.IORef (readIORef)
+import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
 import Parse.WeakTerm
-  ( parseDefInfo,
+  ( parseTopDefInfo,
     weakAscription,
     weakTerm,
   )
@@ -142,7 +144,7 @@ arrangeNamespace' aliasInfo =
 parseHeader' :: IO ([WeakStmt], [EnumInfo])
 parseHeader' =
   parseHeaderBase $ do
-    headSymbol <- lookAhead (symbolMaybe isSymbolChar)
+    headSymbol <- lookAhead (parseByPredicate isSymbolChar)
     case headSymbol of
       Just "define-enum" -> do
         enumInfo <- parseDefineEnum
@@ -164,7 +166,7 @@ parseStmtList = do
   if T.null text
     then return []
     else do
-      headSymbol <- lookAhead (symbolMaybe isSymbolChar)
+      headSymbol <- lookAhead (parseByPredicate isSymbolChar)
       case headSymbol of
         Just "define" -> do
           def <- parseDefine OpacityOpaque
@@ -203,12 +205,15 @@ parseDefine opacity = do
   m <- currentHint
   case opacity of
     OpacityOpaque ->
-      token "define"
+      parseToken "define"
     OpacityTransparent ->
-      token "define-inline"
-  ((_, name), domBinderList, codType, e) <- parseDefInfo
+      parseToken "define-inline"
+  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- attachSectionPrefix name
-  defineFunction opacity m name' domBinderList codType e
+  modifyIORef' impArgEnvRef $ Map.insert name' (length impArgs)
+  impArgEnv <- readIORef impArgEnvRef
+  print impArgEnv
+  defineFunction opacity m name' (impArgs ++ expArgs) codType e
 
 defineFunction :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineFunction opacity m name binder codType e = do
@@ -217,25 +222,25 @@ defineFunction opacity m name binder codType e = do
 
 parseStmtUse :: IO ()
 parseStmtUse = do
-  token "use"
-  name <- varText
+  parseToken "use"
+  name <- parseVarText
   handleUse name
 
 parseDefinePrefix :: IO ()
 parseDefinePrefix = do
-  token "define-prefix"
-  from <- varText
-  token "="
-  to <- varText
+  parseToken "define-prefix"
+  from <- parseVarText
+  parseToken "="
+  to <- parseVarText
   handleDefinePrefix from to
 
 parseDefineData :: IO [WeakStmt]
 parseDefineData = do
   m <- currentHint
-  token "define-data"
-  a <- varText >>= attachSectionPrefix
-  dataArgs <- argList weakAscription
-  consInfoList <- asBlock $ manyList parseDefineDataClause
+  parseToken "define-data"
+  a <- parseVarText >>= attachSectionPrefix
+  dataArgs <- parseArgList weakAscription
+  consInfoList <- parseAsBlock $ parseManyList parseDefineDataClause
   defineData m a dataArgs consInfoList
 
 defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO [WeakStmt]
@@ -277,25 +282,24 @@ constructDataType m dataName dataArgs =
 parseDefineDataClause :: IO (Hint, T.Text, [BinderF WeakTerm])
 parseDefineDataClause = do
   m <- currentHint
-  b <- symbol
-  yts <- argList parseDefineDataClauseArg
+  b <- parseSymbol
+  yts <- parseArgList parseDefineDataClauseArg
   return (m, b, yts)
 
 parseDefineDataClauseArg :: IO (BinderF WeakTerm)
 parseDefineDataClauseArg = do
   m <- currentHint
   tryPlanList
-    [ weakAscription,
-      weakTermToWeakIdent m weakTerm
-    ]
+    [weakAscription]
+    (weakTermToWeakIdent m weakTerm)
 
 parseDefineCodata :: IO [WeakStmt]
 parseDefineCodata = do
   m <- currentHint
-  token "define-codata"
-  dataName <- varText >>= attachSectionPrefix
-  dataArgs <- argList weakAscription
-  elemInfoList <- asBlock $ manyList weakAscription
+  parseToken "define-codata"
+  dataName <- parseVarText >>= attachSectionPrefix
+  dataArgs <- parseArgList weakAscription
+  elemInfoList <- parseAsBlock $ parseManyList weakAscription
   formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
   elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
@@ -321,9 +325,9 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
 parseDefineResource :: IO WeakStmt
 parseDefineResource = do
   m <- currentHint
-  _ <- token "define-resource"
-  name <- varText >>= attachSectionPrefix
-  [discarder, copier] <- asBlock $ takeN 2 $ token "-" >> weakTerm
+  _ <- parseToken "define-resource"
+  name <- parseVarText >>= attachSectionPrefix
+  [discarder, copier] <- parseAsBlock $ takeN 2 $ parseToken "-" >> weakTerm
   registerTopLevelName m name
   modifyIORef' resourceTypeSetRef $ S.insert name
   return $ WeakStmtDefineResource m name discarder copier

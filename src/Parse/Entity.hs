@@ -20,18 +20,18 @@ import qualified Data.HashMap.Lazy as M
 import Data.IORef (readIORef)
 import qualified Data.Text as T
 import Parse.Core
-  ( char,
-    currentHint,
-    float,
+  ( currentHint,
     initializeParserForFile,
-    integer,
-    many,
     manyStrict,
     parseBool,
+    parseChar,
+    parseFloat,
+    parseInteger,
+    parseMany,
+    parseString,
+    parseSymbol,
     raiseParseError,
     skip,
-    string,
-    symbol,
     textRef,
     tryPlanList,
     withNewState,
@@ -53,27 +53,27 @@ parseEntity = do
     tryPlanList
       [ EntityDictionary <$> parseDictionary,
         EntityList <$> parseList,
-        EntityString <$> string,
+        EntityString <$> parseString,
         EntityBool <$> parseBool,
-        EntityFloat64 <$> float,
-        EntityInt64 <$> (fromInteger <$> integer),
-        raiseEntityParseError m
+        EntityFloat64 <$> parseFloat,
+        EntityInt64 <$> (fromInteger <$> parseInteger)
       ]
+      (raiseEntityParseError m)
   return $ m :< v
 
 parseDictionary :: IO (M.HashMap T.Text Entity)
 parseDictionary = do
-  char '{' >> skip
+  parseChar '{' >> skip
   dictionary <- parseDictionaryInner
-  char '}' >> skip
+  parseChar '}' >> skip
   return dictionary
 
 parseDictionaryInner :: IO (M.HashMap T.Text Entity)
 parseDictionaryInner = do
   fmap M.fromList $
-    many $ do
-      k <- symbol
-      char '=' >> skip
+    parseMany $ do
+      k <- parseSymbol
+      parseChar '=' >> skip
       v <- parseEntity
       return (k, v)
 
@@ -81,16 +81,16 @@ parseFile :: IO (M.HashMap T.Text Entity)
 parseFile = do
   fmap M.fromList $
     manyStrict $ do
-      k <- symbol
-      char '=' >> skip
+      k <- parseSymbol
+      parseChar '=' >> skip
       v <- parseEntity
       return (k, v)
 
 parseList :: IO [Entity]
 parseList = do
-  char '[' >> skip
-  vs <- many parseEntity
-  char ']' >> skip
+  parseChar '[' >> skip
+  vs <- parseMany parseEntity
+  parseChar ']' >> skip
   return vs
 
 raiseEntityParseError :: Hint -> IO a
