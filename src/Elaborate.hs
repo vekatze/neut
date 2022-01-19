@@ -34,6 +34,7 @@ import Data.LowType
   ( LowType (LowTypeFloat, LowTypeInt),
     asLowTypeMaybe,
   )
+import Data.Maybe (catMaybes)
 import Data.Source (Source)
 import Data.Stmt
   ( EnumInfo,
@@ -54,7 +55,7 @@ import Data.WeakTerm
     metaOf,
     toText,
   )
-import Elaborate.Infer (infer, inferBinder, inferType, insConstraintEnv)
+import Elaborate.Infer (arrangeBinder, infer, inferBinder, inferType, insConstraintEnv)
 import Elaborate.Unify (unify)
 import Reduce.Term (reduceTerm)
 import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
@@ -98,8 +99,7 @@ elaborateProgramOther = do
 
 elaborateProgram :: ([WeakStmt] -> IO [WeakStmt]) -> [WeakStmt] -> IO [Stmt]
 elaborateProgram defListInferrer defList = do
-  mapM_ setupDef defList
-  defList' <- defListInferrer defList
+  defList' <- mapM setupDef defList >>= defListInferrer . catMaybes
   -- cs <- readIORef constraintEnv
   -- p "==========================================================="
   -- forM_ cs $ \(e1, e2) -> do
@@ -109,14 +109,17 @@ elaborateProgram defListInferrer defList = do
   unify
   elaborateStmtList defList'
 
-setupDef :: WeakStmt -> IO ()
+setupDef :: WeakStmt -> IO (Maybe WeakStmt)
 setupDef def =
   case def of
     WeakStmtDefine opacity m f xts codType e -> do
-      insTermTypeEnv f $ m :< WeakTermPi xts codType
-      modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts, e)
+      (xts', codType') <- arrangeBinder [] xts codType
+      insTermTypeEnv f $ m :< WeakTermPi xts' codType'
+      modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
+      return $ Just $ WeakStmtDefine opacity m f xts' codType' e
     WeakStmtDefineResource m name _ _ -> do
       insTermTypeEnv name $ m :< WeakTermTau
+      return Nothing
 
 inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
 inferStmtMain mainFunctionName stmt = do

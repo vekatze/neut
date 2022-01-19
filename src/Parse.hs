@@ -211,8 +211,6 @@ parseDefine opacity = do
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- attachSectionPrefix name
   modifyIORef' impArgEnvRef $ Map.insert name' (length impArgs)
-  impArgEnv <- readIORef impArgEnvRef
-  print impArgEnv
   defineFunction opacity m name' (impArgs ++ expArgs) codType e
 
 defineFunction :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt

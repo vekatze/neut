@@ -4,6 +4,7 @@ module Elaborate.Infer
     insConstraintEnv,
     insWeakTypeEnv,
     inferBinder,
+    arrangeBinder,
   )
 where
 
@@ -24,6 +25,7 @@ import Data.Global
     constraintListRef,
     constructorEnvRef,
     holeEnvRef,
+    impArgEnvRef,
     newAster,
     newIdentFromText,
     revEnumEnvRef,
@@ -99,6 +101,20 @@ infer' ctx term =
         _ -> do
           (xts', (e', t')) <- inferBinder ctx xts e
           return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermPi xts' t')
+    m :< WeakTermPiElim e@(_ :< WeakTermVarGlobal name) es -> do
+      etls <- mapM (infer' ctx) es
+      t <- lookupTermTypeEnv m name
+      impArgEnv <- readIORef impArgEnvRef
+      case Map.lookup name impArgEnv of
+        Nothing -> do
+          inferPiElim ctx m (e, t) etls
+        Just i -> do
+          holes <- forM [1 .. i] $ const $ newAsterInCtx ctx m
+          inferPiElim ctx m (e, t) $ holes ++ etls
+    m :< WeakTermPiElim hole@(_ :< WeakTermAster i) es -> do
+      etls <- mapM (infer' ctx) es
+      t <- lookupWeakTypeEnv' m i
+      inferPiElim ctx m (hole, t) etls
     m :< WeakTermPiElim e es -> do
       etls <- mapM (infer' ctx) es
       etl <- infer' ctx e
@@ -278,6 +294,8 @@ inferPiElim ctx m (e, t) ets = do
       | length xts == length ets -> do
         cod' <- inferArgs IntMap.empty m ets xts (m :< cod)
         return (m :< WeakTermPiElim e es, cod')
+      | otherwise -> do
+        raiseArityMismatchError e (length xts) (length ets)
     _ -> do
       ys <- mapM (const $ newIdentFromText "arg") es
       yts <- newTypeAsterListInCtx ctx $ zip ys (map metaOf es)
@@ -285,6 +303,28 @@ inferPiElim ctx m (e, t) ets = do
       insConstraintEnv (metaOf e :< WeakTermPi yts cod) t
       cod' <- inferArgs IntMap.empty m ets yts cod
       return (m :< WeakTermPiElim e es, cod')
+
+raiseArityMismatchError :: WeakTerm -> Int -> Int -> IO a
+raiseArityMismatchError function expected actual = do
+  impArgEnv <- readIORef impArgEnvRef
+  case function of
+    m :< WeakTermVarGlobal name
+      | Just k <- Map.lookup name impArgEnv ->
+        raiseError m $
+          "the function `"
+            <> name
+            <> "` expects "
+            <> T.pack (show (expected - k))
+            <> " arguments, but found "
+            <> T.pack (show (actual - k))
+            <> "."
+    m :< _ ->
+      raiseError m $
+        "this function expects "
+          <> T.pack (show expected)
+          <> " arguments, but found "
+          <> T.pack (show actual)
+          <> "."
 
 -- In a context (x1 : A1, ..., xn : An), this function creates metavariables
 --   ?M  : Pi (x1 : A1, ..., xn : An). ?Mt @ (x1, ..., xn)
@@ -297,7 +337,8 @@ newAsterInCtx ctx m = do
   higherAster <- newAster m
   let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) ctx
   let higherApp = m :< WeakTermPiElim higherAster varSeq
-  aster <- newAster m
+  aster@(_ :< WeakTermAster i) <- newAster m
+  modifyIORef' weakTypeEnvRef $ IntMap.insert i $ m :< WeakTermPi ctx higherApp
   let app = m :< WeakTermPiElim aster varSeq
   return (app, higherApp)
 
@@ -307,7 +348,8 @@ newAsterInCtx ctx m = do
 newTypeAsterInCtx :: Context -> Hint -> IO WeakTerm
 newTypeAsterInCtx ctx m = do
   let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) ctx
-  aster <- newAster m
+  aster@(_ :< WeakTermAster i) <- newAster m
+  modifyIORef' weakTypeEnvRef $ IntMap.insert i $ m :< WeakTermPi ctx (m :< WeakTermTau)
   return (m :< WeakTermPiElim aster varSeq)
 
 -- In context ctx == [x1, ..., xn], `newTypeAsterListInCtx ctx [y1, ..., ym]` generates
@@ -352,13 +394,23 @@ insWeakTypeEnv (I (_, i)) t =
 
 lookupWeakTypeEnv :: Hint -> Ident -> IO WeakTerm
 lookupWeakTypeEnv m s = do
-  mt <- lookupWeakTypeEnvMaybe s
+  mt <- lookupWeakTypeEnvMaybe $ asInt s
   case mt of
     Just t ->
       return t
     Nothing ->
       raiseCritical m $
         asText' s <> " is not found in the weak type environment."
+
+lookupWeakTypeEnv' :: Hint -> Int -> IO WeakTerm
+lookupWeakTypeEnv' m s = do
+  mt <- lookupWeakTypeEnvMaybe s
+  case mt of
+    Just t ->
+      return t
+    Nothing ->
+      raiseCritical m $
+        "the hole ?M" <> T.pack (show s) <> " is not found in the weak type environment."
 
 lookupTermTypeEnv :: Hint -> T.Text -> IO WeakTerm
 lookupTermTypeEnv m name = do
@@ -369,8 +421,8 @@ lookupTermTypeEnv m name = do
     Just t ->
       return t
 
-lookupWeakTypeEnvMaybe :: Ident -> IO (Maybe WeakTerm)
-lookupWeakTypeEnvMaybe (I (_, s)) = do
+lookupWeakTypeEnvMaybe :: Int -> IO (Maybe WeakTerm)
+lookupWeakTypeEnvMaybe s = do
   weakTypeEnv <- readIORef weakTypeEnvRef
   case IntMap.lookup s weakTypeEnv of
     Nothing ->
@@ -409,3 +461,95 @@ primOpToType m (PrimOp op domList cod) = do
     else do
       cod' <- lowTypeToType m cod
       return $ m :< TermPi xts cod'
+
+-- ?M ~> ?M @ ctx
+arrange :: Context -> WeakTerm -> IO WeakTerm
+arrange ctx term =
+  case term of
+    _ :< WeakTermTau ->
+      return term
+    _ :< WeakTermVar {} ->
+      return term
+    _ :< WeakTermVarGlobal {} ->
+      return term
+    m :< WeakTermPi xts t -> do
+      (xts', t') <- arrangeBinder ctx xts t
+      return $ m :< WeakTermPi xts' t'
+    m :< WeakTermPiIntro kind xts e -> do
+      case kind of
+        LamKindFix xt -> do
+          (xt' : xts', e') <- arrangeBinder ctx (xt : xts) e
+          return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
+        LamKindCons dataName consName consNumber dataType -> do
+          dataType' <- arrange ctx dataType
+          (xts', e') <- arrangeBinder ctx xts e
+          return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
+        _ -> do
+          (xts', e') <- arrangeBinder ctx xts e
+          return $ m :< WeakTermPiIntro kind xts' e'
+    m :< WeakTermPiElim e es -> do
+      es' <- mapM (arrange ctx) es
+      e' <- arrange ctx e
+      return $ m :< WeakTermPiElim e' es'
+    _ :< WeakTermConst _ ->
+      return term
+    m :< WeakTermAster _ ->
+      newTypeAsterInCtx ctx m
+    m :< WeakTermInt t x -> do
+      t' <- arrange ctx t
+      return $ m :< WeakTermInt t' x
+    m :< WeakTermFloat t x -> do
+      t' <- arrange ctx t
+      return $ m :< WeakTermFloat t' x
+    _ :< WeakTermEnum _ ->
+      return term
+    _ :< WeakTermEnumIntro _ ->
+      return term
+    m :< WeakTermEnumElim (e, t) caseList -> do
+      e' <- arrange ctx e
+      t' <- arrange ctx t
+      caseList' <-
+        forM caseList $ \(enumCase, body) -> do
+          body' <- arrange ctx body
+          return (enumCase, body')
+      return $ m :< WeakTermEnumElim (e', t') caseList'
+    m :< WeakTermQuestion e t -> do
+      e' <- arrange ctx e
+      t' <- arrange ctx t
+      return $ m :< WeakTermQuestion e' t'
+    m :< WeakTermDerangement der -> do
+      der' <- traverse (arrange ctx) der
+      return $ m :< WeakTermDerangement der'
+    m :< WeakTermMatch mSubject (e, t) clauseList -> do
+      mSubject' <- mapM (arrange ctx) mSubject
+      e' <- arrange ctx e
+      t' <- arrange ctx t
+      clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
+        (xts', body') <- arrangeBinder ctx xts body
+        return ((mCons, constructorName, xts'), body')
+      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
+    m :< WeakTermNoema s e -> do
+      s' <- arrange ctx s
+      e' <- arrange ctx e
+      return $ m :< WeakTermNoema s' e'
+    m :< WeakTermNoemaIntro x e -> do
+      e' <- arrange ctx e
+      return $ m :< WeakTermNoemaIntro x e'
+    m :< WeakTermNoemaElim s e -> do
+      e' <- arrange ctx e
+      return $ m :< WeakTermNoemaElim s e'
+
+arrangeBinder ::
+  Context ->
+  [BinderF WeakTerm] ->
+  WeakTerm ->
+  IO ([BinderF WeakTerm], WeakTerm)
+arrangeBinder ctx binder cod =
+  case binder of
+    [] -> do
+      cod' <- arrange ctx cod
+      return ([], cod')
+    ((mx, x, t) : xts) -> do
+      t' <- arrange ctx t
+      (xts', cod') <- arrangeBinder (ctx ++ [(mx, x, t')]) xts cod
+      return ((mx, x, t') : xts', cod')

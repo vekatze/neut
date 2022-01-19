@@ -206,6 +206,11 @@ suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
 suspendedConstraintQueueRef =
   unsafePerformIO (newIORef Q.empty)
 
+{-# NOINLINE impArgEnvRef #-}
+impArgEnvRef :: IORef (Map.HashMap T.Text Int)
+impArgEnvRef =
+  unsafePerformIO (newIORef Map.empty)
+
 {-# NOINLINE substRef #-}
 substRef :: IORef (IntMap.IntMap WeakTerm)
 substRef =
