@@ -18,7 +18,7 @@ import Data.Basic
     EnumCaseF (EnumCaseDefault, EnumCaseLabel),
     Hint,
     Ident,
-    LamKindF (LamKindFix),
+    LamKindF (LamKindFix, LamKindNormal),
     PatternF,
     asIdent,
     asText,
@@ -117,9 +117,10 @@ weakTerm = do
     _ ->
       tryPlanList
         [ weakTermPiArrow,
-          weakTermSigma
+          weakTermSigma,
+          weakTermPiElim
         ]
-        weakTermAux
+        weakTermSimple
 
 weakTermTau :: IO WeakTerm
 weakTermTau = do
@@ -195,7 +196,7 @@ weakTermSigmaItem =
     [parseBetweenParen weakAscription]
     $ do
       m <- currentHint
-      a <- tryPlanList [weakTermAux, weakTermTau] weakTermVar
+      a <- tryPlanList [weakTermPiElim, weakTermTau] weakTermVar
       h <- newTextualIdentFromText "_"
       return (m, h, a)
 
@@ -635,12 +636,32 @@ weakTermAdmitQuestion = do
         )
         h
 
-weakTermAux :: IO WeakTerm
-weakTermAux = do
+weakTermPiElim :: IO WeakTerm
+weakTermPiElim = do
   m <- currentHint
   e <- weakTermSimple
+  impArgs <- parseImpArgList weakTerm
+  es <- parseArgList weakTerm
   ess <- parseMany $ parseArgList weakTerm
-  return $ foldl' (\base es -> m :< WeakTermPiElim base es) e ess
+  if null impArgs
+    then return $ foldl' (\base args -> m :< WeakTermPiElim base args) e $ es : ess
+    else do
+      f <- newTextualIdentFromText "func"
+      h <- newAster m
+      return $
+        m
+          :< WeakTermPiElim
+            ( m
+                :< WeakTermPiIntro
+                  LamKindNormal
+                  [(m, f, h)]
+                  ( foldl'
+                      (\base args -> m :< WeakTermPiElim base args)
+                      (m :< WeakTermVar f)
+                      ((impArgs ++ es) : ess)
+                  )
+            )
+            [e]
 
 --
 -- term-related helper functions

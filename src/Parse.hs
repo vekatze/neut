@@ -260,6 +260,7 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
+  modifyIORef' impArgEnvRef $ Map.insert consName (length dataArgs)
   defineFunction
     OpacityTransparent
     m
