@@ -217,8 +217,7 @@ inferArgs sub m args1 args2 cod =
       substWeakTerm sub cod
     ((e, t) : ets, (_, x, tx) : xts) -> do
       tx' <- substWeakTerm sub tx
-      t' <- substWeakTerm sub t
-      insConstraintEnv tx' t'
+      insConstraintEnv tx' t
       inferArgs (IntMap.insert (asInt x) e sub) m ets xts cod
     _ ->
       raiseCritical m "invalid argument passed to inferArgs"
