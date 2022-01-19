@@ -270,6 +270,13 @@ parseBetweenAngle f = do
   parseChar '>' >> skip
   return item
 
+parseBetweenBracket :: IO a -> IO a
+parseBetweenBracket f = do
+  parseChar '[' >> skip
+  item <- f
+  parseChar ']' >> skip
+  return item
+
 parseAsBlock :: IO a -> IO a
 parseAsBlock =
   parseInBlock "as"
@@ -417,7 +424,7 @@ isSymbolChar c =
 {-# INLINE nonSymbolSet #-}
 nonSymbolSet :: S.Set Char
 nonSymbolSet =
-  S.fromList "() \"\n:;,!?<>"
+  S.fromList "() \"\n:;,!?<>[]"
 
 --
 -- auxiliary charset

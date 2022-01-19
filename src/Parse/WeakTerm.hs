@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Parse.WeakTerm
   ( weakTerm,
     weakTermSimple,
@@ -53,6 +51,7 @@ import Parse.Core
     parseArgList,
     parseArgList2,
     parseAsBlock,
+    parseBetweenBracket,
     parseBetweenParen,
     parseByPredicate,
     parseChar,
@@ -118,7 +117,8 @@ weakTerm = do
       tryPlanList
         [ weakTermPiArrow,
           weakTermSigma,
-          weakTermPiElim
+          weakTermPiElim,
+          weakTermPiElimInv
         ]
         weakTermSimple
 
@@ -662,6 +662,14 @@ weakTermPiElim = do
                   )
             )
             [e]
+
+weakTermPiElimInv :: IO WeakTerm
+weakTermPiElimInv = do
+  m <- currentHint
+  e <- weakTermSimple
+  f <- parseBetweenBracket weakTerm
+  fs <- parseMany $ parseBetweenBracket weakTerm
+  return $ foldl' (\base func -> m :< WeakTermPiElim func [base]) e $ f : fs
 
 --
 -- term-related helper functions
