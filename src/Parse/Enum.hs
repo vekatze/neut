@@ -59,11 +59,6 @@ arrangeEnumItemList currentSection currentValue clauseList =
     (item, Just v) : rest ->
       (currentSection <> nsSep <> item, v) : arrangeEnumItemList currentSection (v + 1) rest
 
--- (item, Nothing) : rest ->
---   (name <> nsSep <> item, currentValue) : arrangeEnumItemList name (currentValue + 1) rest
--- (item, Just v) : rest ->
---   (name <> nsSep <> item, v) : arrangeEnumItemList name (v + 1) rest
-
 parseDefineEnumClause :: IO (T.Text, Maybe Int)
 parseDefineEnumClause = do
   tryPlanList

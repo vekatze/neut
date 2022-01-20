@@ -74,21 +74,18 @@ skipImportSequence =
 parseImportSimple :: Module -> IO (Source, AliasInfo)
 parseImportSimple currentModule = do
   m <- currentHint
-  -- parseToken "import"
   sigText <- parseSymbol
   source <- getNextSource m currentModule sigText
   return (source, AliasInfoUse sigText)
 
 skipImportSimple :: IO ()
 skipImportSimple = do
-  -- parseToken "import"
   _ <- parseSymbol
   return ()
 
 parseImportQualified :: Module -> IO (Source, AliasInfo)
 parseImportQualified currentModule = do
   m <- currentHint
-  -- parseToken "import"
   sigText <- parseSymbol
   parseToken "as"
   alias <- parseSymbol
@@ -97,7 +94,6 @@ parseImportQualified currentModule = do
 
 skipImportQualified :: IO ()
 skipImportQualified = do
-  -- parseToken "import"
   _ <- parseSymbol
   parseToken "as"
   _ <- parseSymbol
