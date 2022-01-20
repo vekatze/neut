@@ -516,6 +516,8 @@ keywordSet =
       "match-noetic",
       "new",
       "over",
+      "private",
+      "public",
       "question",
       "reduce",
       "section",

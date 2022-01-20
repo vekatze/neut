@@ -5,7 +5,7 @@ module Data.Stmt where
 import Control.Comonad.Cofree (Cofree ((:<)))
 import Data.Basic (BinderF, Hint, Opacity (OpacityOpaque))
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
-import Data.Global (modifiedSourceSetRef)
+import Data.Global (modifiedSourceSetRef, topNameSetRef)
 import qualified Data.Set as S
 import Data.Source (Source (sourceFilePath), getSourceCachePath)
 import Data.Term (Term, TermF (..))
@@ -57,13 +57,18 @@ compress stmt =
     StmtDefineResource m name _ _ ->
       StmtDefineResource m name (m :< TermTau) (m :< TermTau)
 
+isPublic :: S.Set T.Text -> Stmt -> Bool
+isPublic topNameSet stmt =
+  S.member (extractName stmt) topNameSet
+
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
   b <- doesFreshCacheExist source
   if b
     then return () -- the cache is already fresh
     else do
-      let stmtList' = map compress stmtList
+      topNameSet <- readIORef topNameSetRef
+      let stmtList' = map compress $ filter (isPublic topNameSet) stmtList
       cachePath <- getSourceCachePath source
       ensureDir $ parent cachePath
       encodeFile (toFilePath cachePath) (stmtList', enumInfoList)

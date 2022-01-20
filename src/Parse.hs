@@ -21,7 +21,7 @@ import Data.Global
     topNameSetRef,
   )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef, writeIORef)
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Log (raiseCritical', raiseError)
 import Data.Module (defaultModulePrefix, getChecksumAliasList)
 import Data.Namespace
@@ -50,7 +50,6 @@ import Data.WeakTerm
         WeakTermVar
       ),
   )
-import GHC.IORef (readIORef)
 import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
@@ -60,6 +59,7 @@ import Parse.WeakTerm
     weakAscription,
     weakTerm,
   )
+import System.IO.Unsafe (unsafePerformIO)
 
 --
 -- core functions
@@ -78,6 +78,7 @@ parseOther =
 parseSource :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseSource source = do
   mCache <- loadCache source
+  modifyIORef' isPrivateRef $ const True
   initializeNamespace source
   setupSectionPrefix source
   case mCache of
@@ -93,6 +94,8 @@ parseSource source = do
       skip
       arrangeNamespace
       (defList, enumInfoList) <- parseHeader
+      privateNameSet <- readIORef privateNameSetRef
+      modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
       return $ Right (defList, enumInfoList)
 
 ensureMain :: T.Text -> IO ()
@@ -188,6 +191,12 @@ parseStmtList = do
           def <- parseDefineResource
           stmtList <- parseStmtList
           return $ def : stmtList
+        Just "public" -> do
+          parsePublic
+          parseStmtList
+        Just "private" -> do
+          parsePrivate
+          parseStmtList
         Just x -> do
           m <- currentHint
           raiseParseError m $ "invalid statement: " <> x
@@ -198,6 +207,16 @@ parseStmtList = do
 --
 -- parser for statements
 --
+
+parsePublic :: IO ()
+parsePublic = do
+  parseToken "public"
+  modifyIORef' isPrivateRef $ const False
+
+parsePrivate :: IO ()
+parsePrivate = do
+  parseToken "private"
+  modifyIORef' isPrivateRef $ const True
 
 -- define name (x1 : A1) ... (xn : An) : A = e
 parseDefine :: Opacity -> IO WeakStmt
@@ -348,6 +367,9 @@ registerTopLevelName m x = do
   when (S.member x topNameSet) $
     raiseError m $ "the variable `" <> x <> "` is already defined at the top level"
   modifyIORef' topNameSetRef $ S.insert x
+  isPrivate <- readIORef isPrivateRef
+  when isPrivate $
+    modifyIORef' privateNameSetRef $ S.insert x
 
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
@@ -361,3 +383,13 @@ getAdditionalChecksumAlias source = do
   if defaultModulePrefix == domain
     then return []
     else return [(defaultModulePrefix, domain)]
+
+{-# NOINLINE isPrivateRef #-}
+isPrivateRef :: IORef Bool
+isPrivateRef =
+  unsafePerformIO (newIORef True)
+
+{-# NOINLINE privateNameSetRef #-}
+privateNameSetRef :: IORef (S.Set T.Text)
+privateNameSetRef =
+  unsafePerformIO (newIORef S.empty)
