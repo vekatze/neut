@@ -55,6 +55,7 @@ import Parse.Core
     parseBetweenParen,
     parseByPredicate,
     parseChar,
+    parseDefiniteDescription,
     parseDoBlock,
     parseFloat,
     parseImpArgList,
@@ -117,6 +118,7 @@ weakTerm = do
       tryPlanList
         [ weakTermPiArrow,
           weakTermSigma,
+          weakTermDefiniteDescription,
           weakTermPiElim,
           weakTermPiElimInv
         ]
@@ -199,6 +201,11 @@ weakTermSigmaItem =
       a <- tryPlanList [weakTermPiElim, weakTermTau] weakTermVar
       h <- newTextualIdentFromText "_"
       return (m, h, a)
+
+weakTermDefiniteDescription :: IO WeakTerm
+weakTermDefiniteDescription = do
+  (m, x) <- parseDefiniteDescription
+  return $ m :< WeakTermVar (asIdent x)
 
 weakTermEnumElim :: IO WeakTerm
 weakTermEnumElim = do

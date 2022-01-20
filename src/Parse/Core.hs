@@ -401,6 +401,14 @@ parseVar = do
     then raiseParseError m $ "found a reserved symbol `" <> x <> "`, expecting a variable"
     else return (m, x)
 
+parseDefiniteDescription :: IO (Hint, T.Text)
+parseDefiniteDescription = do
+  m <- currentHint
+  x <- parseSymbol
+  parseToken "::"
+  y <- parseSymbol
+  return (m, x <> "::" <> y)
+
 --
 -- language-dependent auxiliary parser combinators
 --
