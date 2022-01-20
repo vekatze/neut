@@ -163,21 +163,16 @@ asPrimOp name
     Just codType <- asLowTypeMaybe codTypeStr,
     isValidConvOp convOpStr domType codType =
     Just $ PrimOp convOpStr [domType] codType
-  | Just (opStr, rest) <- breakOnMaybe "-" name =
-    case opStr of
-      "icmp"
-        | Just (condStr, typeStr) <- breakOnMaybe "-" rest,
-          Just lowType@(LowTypeInt _) <- asLowTypeMaybe typeStr,
-          asLowICmpMaybe condStr ->
-          Just $ PrimOp (opStr <> " " <> condStr) [lowType, lowType] (LowTypeInt 1)
-      "fcmp"
-        | Just (condStr, typeStr) <- breakOnMaybe "-" rest,
-          Just lowType@(LowTypeFloat _) <- asLowTypeMaybe typeStr,
-          asLowFCmpMaybe condStr ->
-          Just $ PrimOp (opStr <> " " <> condStr) [lowType, lowType] (LowTypeInt 1)
-      _
-        | Just lowType <- asLowTypeMaybe rest,
-          asLowBinaryOpMaybe' opStr lowType ->
+  | Just (opStr, typeStr) <- breakOnMaybe "-" name =
+    case asLowTypeMaybe typeStr of
+      Just lowType@(LowTypeInt _)
+        | asLowICmpMaybe opStr ->
+          Just $ PrimOp ("icmp " <> opStr) [lowType, lowType] (LowTypeInt 1)
+      Just lowType@(LowTypeFloat _)
+        | asLowFCmpMaybe opStr ->
+          Just $ PrimOp ("fcmp " <> opStr) [lowType, lowType] (LowTypeInt 1)
+      Just lowType
+        | asLowBinaryOpMaybe' opStr lowType ->
           Just $ PrimOp opStr [lowType, lowType] lowType
       _ ->
         Nothing
