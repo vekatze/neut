@@ -90,7 +90,7 @@ parseImportQualified currentModule = do
   parseToken "as"
   alias <- parseSymbol
   source <- getNextSource m currentModule sigText
-  return (source, AliasInfoPrefix alias sigText)
+  return (source, AliasInfoPrefix m alias sigText)
 
 skipImportQualified :: IO ()
 skipImportQualified = do

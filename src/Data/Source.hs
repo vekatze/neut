@@ -57,10 +57,10 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-getSection :: Source -> IO T.Text
-getSection source = do
+getLocator :: Source -> IO T.Text
+getLocator source = do
   domain <- getDomain (sourceModule source)
-  sigTail <- getSignatureTail source
+  sigTail <- getLocatorTail source
   return $ T.intercalate "." $ domain : sigTail
 
 getDomain :: Module -> IO T.Text
@@ -70,8 +70,8 @@ getDomain targetModule = do
     then return defaultModulePrefix
     else return $ T.pack $ dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
 
-getSignatureTail :: Source -> IO [T.Text]
-getSignatureTail source = do
+getLocatorTail :: Source -> IO [T.Text]
+getLocatorTail source = do
   relFilePath <- stripProperPrefix (getSourceDir $ sourceModule source) $ sourceFilePath source
   (relFilePath', _) <- splitExtension relFilePath
   return $ T.splitOn "/" $ T.pack $ toFilePath relFilePath'

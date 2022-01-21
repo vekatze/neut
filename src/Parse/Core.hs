@@ -12,13 +12,16 @@ import Data.Basic
     newHint,
   )
 import Data.Global
-  ( aliasEnvRef,
+  ( definiteSep,
     getCurrentFilePath,
+    globalLocatorListRef,
+    locatorAliasMapRef,
+    moduleAliasMapRef,
     newCount,
     newIdentFromText,
-    prefixEnvRef,
     setCurrentFilePath,
   )
+import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
     modifyIORef',
@@ -65,7 +68,8 @@ data ParserState = ParserState
     parserStateLine :: Int,
     parserStateColumn :: Int,
     parserStatePrefixEnv :: [T.Text],
-    parserStateAliasEnv :: [(T.Text, T.Text)]
+    parserStateChecksumAliasMap :: Map.HashMap T.Text T.Text,
+    parserStateImportAliasMap :: Map.HashMap T.Text T.Text
   }
 
 saveState :: IO ParserState
@@ -73,15 +77,17 @@ saveState = do
   text <- readIORef textRef
   line <- readIORef lineRef
   column <- readIORef columnRef
-  prefixEnv <- readIORef prefixEnvRef
-  aliasEnv <- readIORef aliasEnvRef
+  globalLocatorList <- readIORef globalLocatorListRef
+  moduleAliasMap <- readIORef moduleAliasMapRef
+  locatorAliasMap <- readIORef locatorAliasMapRef
   return $
     ParserState
       { parserStateText = text,
         parserStateLine = line,
         parserStateColumn = column,
-        parserStatePrefixEnv = prefixEnv,
-        parserStateAliasEnv = aliasEnv
+        parserStatePrefixEnv = globalLocatorList,
+        parserStateImportAliasMap = locatorAliasMap,
+        parserStateChecksumAliasMap = moduleAliasMap
       }
 
 loadState :: ParserState -> IO ()
@@ -89,8 +95,9 @@ loadState state = do
   writeIORef textRef $ parserStateText state
   writeIORef lineRef $ parserStateLine state
   writeIORef columnRef $ parserStateColumn state
-  writeIORef prefixEnvRef $ parserStatePrefixEnv state
-  writeIORef aliasEnvRef $ parserStateAliasEnv state
+  writeIORef globalLocatorListRef $ parserStatePrefixEnv state
+  writeIORef locatorAliasMapRef $ parserStateImportAliasMap state
+  writeIORef moduleAliasMapRef $ parserStateChecksumAliasMap state
 
 withNewState :: IO a -> IO a
 withNewState action = do
@@ -405,9 +412,9 @@ parseDefiniteDescription :: IO (Hint, T.Text)
 parseDefiniteDescription = do
   m <- currentHint
   x <- parseSymbol
-  parseToken "::"
+  parseToken definiteSep
   y <- parseSymbol
-  return (m, x <> "::" <> y)
+  return (m, x <> definiteSep <> y)
 
 --
 -- language-dependent auxiliary parser combinators

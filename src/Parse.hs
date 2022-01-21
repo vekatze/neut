@@ -8,14 +8,16 @@ import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
 import Data.Basic (AliasInfo (..), BinderF, Hint, LamKindF (LamKindCons), Opacity (..), asIdent, asText)
 import Data.Global
-  ( aliasEnvRef,
-    constructorEnvRef,
-    currentSectionRef,
+  ( constructorEnvRef,
+    currentGlobalLocatorRef,
     dataEnvRef,
     getCurrentFilePath,
+    globalLocatorListRef,
     impArgEnvRef,
+    localLocatorListRef,
+    moduleAliasMapRef,
     newText,
-    prefixEnvRef,
+    nsSep,
     resourceTypeSetRef,
     sourceAliasMapRef,
     topNameSetRef,
@@ -25,12 +27,13 @@ import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
 import Data.Log (raiseCritical', raiseError)
 import Data.Module (defaultModulePrefix, getChecksumAliasList)
 import Data.Namespace
-  ( attachSectionPrefix,
+  ( activateGlobalLocator,
+    activateLocalLocator,
+    attachSectionPrefix,
     handleDefinePrefix,
-    handleUse,
   )
 import qualified Data.Set as S
-import Data.Source (Source (..), getDomain, getSection)
+import Data.Source (Source (..), getDomain, getLocator)
 import Data.Stmt
   ( EnumInfo,
     Stmt,
@@ -47,10 +50,11 @@ import Data.WeakTerm
         WeakTermPiElim,
         WeakTermPiIntro,
         WeakTermTau,
-        WeakTermVar
+        WeakTermVar,
+        WeakTermVarGlobal
       ),
   )
-import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
+import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseDefiniteDescription, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
@@ -102,16 +106,16 @@ ensureMain :: T.Text -> IO ()
 ensureMain mainFunctionName = do
   m <- currentHint
   topNameSet <- readIORef topNameSetRef
-  currentSection <- readIORef currentSectionRef
+  currentGlobalLocator <- readIORef currentGlobalLocatorRef
   if S.member mainFunctionName topNameSet
     then return ()
-    else raiseError m $ "`main` is missing in `" <> currentSection <> "`"
+    else raiseError m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
 
 setupSectionPrefix :: Source -> IO ()
 setupSectionPrefix currentSource = do
-  section <- getSection currentSource
-  handleUse section
-  writeIORef currentSectionRef section
+  locator <- getLocator currentSource
+  activateGlobalLocator locator
+  writeIORef currentGlobalLocatorRef locator
 
 parseHeaderBase :: IO ([WeakStmt], [EnumInfo]) -> IO ([WeakStmt], [EnumInfo])
 parseHeaderBase action = do
@@ -139,10 +143,10 @@ arrangeNamespace = do
 arrangeNamespace' :: AliasInfo -> IO ()
 arrangeNamespace' aliasInfo =
   case aliasInfo of
-    AliasInfoUse namespace ->
-      handleUse namespace
-    AliasInfoPrefix from to ->
-      handleDefinePrefix from to
+    AliasInfoUse locator ->
+      activateGlobalLocator locator
+    AliasInfoPrefix m from to ->
+      handleDefinePrefix m from to
 
 parseHeader' :: IO ([WeakStmt], [EnumInfo])
 parseHeader' =
@@ -240,16 +244,17 @@ defineFunction opacity m name binder codType e = do
 parseStmtUse :: IO ()
 parseStmtUse = do
   parseToken "use"
-  name <- parseVarText
-  handleUse name
+  (_, name) <- parseDefiniteDescription
+  activateLocalLocator name
 
 parseDefinePrefix :: IO ()
 parseDefinePrefix = do
+  m <- currentHint
   parseToken "define-prefix"
   from <- parseVarText
   parseToken "="
   to <- parseVarText
-  handleDefinePrefix from to
+  handleDefinePrefix m from to
 
 parseDefineData :: IO [WeakStmt]
 parseDefineData = do
@@ -261,18 +266,17 @@ parseDefineData = do
   defineData m a dataArgs consInfoList
 
 defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO [WeakStmt]
-defineData m a dataArgs consInfoList = do
-  consInfoList' <- mapM modifyConstructorName consInfoList
-  setAsData a (length dataArgs) consInfoList'
+defineData m dataName dataArgs consInfoList = do
+  consInfoList' <- mapM (modifyConstructorName dataName) consInfoList
+  setAsData dataName (length dataArgs) consInfoList'
   let consType = m :< WeakTermPi [] (m :< WeakTermTau)
-  formRule <- defineFunction OpacityOpaque m a dataArgs (m :< WeakTermTau) consType
-  introRuleList <- mapM (parseDefineDataConstructor a dataArgs) $ zip consInfoList' [0 ..]
+  formRule <- defineFunction OpacityOpaque m dataName dataArgs (m :< WeakTermTau) consType
+  introRuleList <- mapM (parseDefineDataConstructor dataName dataArgs) $ zip consInfoList' [0 ..]
   return $ formRule : introRuleList
 
-modifyConstructorName :: (Hint, T.Text, [BinderF WeakTerm]) -> IO (Hint, T.Text, [BinderF WeakTerm])
-modifyConstructorName (mb, b, yts) = do
-  b' <- attachSectionPrefix b
-  return (mb, b', yts)
+modifyConstructorName :: T.Text -> (Hint, T.Text, [BinderF WeakTerm]) -> IO (Hint, T.Text, [BinderF WeakTerm])
+modifyConstructorName dataName (mb, b, yts) = do
+  return (mb, dataName <> nsSep <> b, yts)
 
 parseDefineDataConstructor :: T.Text -> [BinderF WeakTerm] -> ((Hint, T.Text, [BinderF WeakTerm]), Integer) -> IO WeakStmt
 parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumber) = do
@@ -295,7 +299,7 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
 
 constructDataType :: Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm
 constructDataType m dataName dataArgs =
-  m :< WeakTermPiElim (weakVar m dataName) (map identPlusToVar dataArgs)
+  m :< WeakTermPiElim (m :< WeakTermVarGlobal dataName) (map identPlusToVar dataArgs)
 
 parseDefineDataClause :: IO (Hint, T.Text, [BinderF WeakTerm])
 parseDefineDataClause = do
@@ -318,7 +322,8 @@ parseDefineCodata = do
   dataName <- parseVarText >>= attachSectionPrefix
   dataArgs <- parseArgList weakAscription
   elemInfoList <- parseAsBlock $ parseManyList weakAscription
-  formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
+  formRule <- defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  -- formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
   elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
 
@@ -327,7 +332,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
   let codataType = constructDataType m dataName dataArgs
   recordVarText <- newText
   let projArgs = dataArgs ++ [(m, asIdent recordVarText, codataType)]
-  elemName' <- attachSectionPrefix $ asText elemName
+  elemName' <- attachSectionPrefix $ dataName <> nsSep <> asText elemName
   defineFunction
     OpacityOpaque
     m
@@ -338,7 +343,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
       :< WeakTermMatch
         Nothing
         (weakVar m recordVarText, codataType)
-        [((m, dataName <> ":" <> "new", elemInfoList), weakVar m (asText elemName))]
+        [((m, dataName <> nsSep <> "new", elemInfoList), weakVar m (asText elemName))]
 
 parseDefineResource :: IO WeakStmt
 parseDefineResource = do
@@ -374,8 +379,9 @@ registerTopLevelName m x = do
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
   additionalChecksumAlias <- getAdditionalChecksumAlias source
-  writeIORef aliasEnvRef $ additionalChecksumAlias ++ getChecksumAliasList (sourceModule source)
-  writeIORef prefixEnvRef []
+  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getChecksumAliasList (sourceModule source)
+  writeIORef globalLocatorListRef []
+  writeIORef localLocatorListRef []
 
 getAdditionalChecksumAlias :: Source -> IO [(T.Text, T.Text)]
 getAdditionalChecksumAlias source = do

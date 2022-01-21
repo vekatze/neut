@@ -10,7 +10,7 @@ import Data.Basic
   ( Hint,
   )
 import Data.Global
-  ( currentSectionRef,
+  ( currentGlobalLocatorRef,
     enumEnvRef,
     nsSep,
     revEnumEnvRef,
@@ -42,22 +42,22 @@ parseDefineEnum = do
   parseToken "define-enum"
   name <- parseVar >>= attachSectionPrefix . snd
   itemList <- parseAsBlock $ parseManyList parseDefineEnumClause
-  currentSection <- readIORef currentSectionRef
-  let itemList' = arrangeEnumItemList currentSection 0 itemList
+  currentGlobalLocator <- readIORef currentGlobalLocatorRef
+  let itemList' = arrangeEnumItemList currentGlobalLocator 0 itemList
   unless (isLinear (map snd itemList')) $
     raiseError m "found a collision of discriminant"
   insEnumEnv m name itemList'
   return (m, name, itemList')
 
 arrangeEnumItemList :: T.Text -> Int -> [(T.Text, Maybe Int)] -> [(T.Text, Int)]
-arrangeEnumItemList currentSection currentValue clauseList =
+arrangeEnumItemList currentGlobalLocator currentValue clauseList =
   case clauseList of
     [] ->
       []
     (item, Nothing) : rest ->
-      (currentSection <> nsSep <> item, currentValue) : arrangeEnumItemList currentSection (currentValue + 1) rest
+      (currentGlobalLocator <> nsSep <> item, currentValue) : arrangeEnumItemList currentGlobalLocator (currentValue + 1) rest
     (item, Just v) : rest ->
-      (currentSection <> nsSep <> item, v) : arrangeEnumItemList currentSection (v + 1) rest
+      (currentGlobalLocator <> nsSep <> item, v) : arrangeEnumItemList currentGlobalLocator (v + 1) rest
 
 parseDefineEnumClause :: IO (T.Text, Maybe Int)
 parseDefineEnumClause = do

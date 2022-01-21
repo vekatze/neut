@@ -161,20 +161,30 @@ constructorEnvRef :: IORef (Map.HashMap T.Text Int)
 constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE prefixEnvRef #-}
-prefixEnvRef :: IORef [T.Text]
-prefixEnvRef =
-  unsafePerformIO (newIORef [])
-
-{-# NOINLINE aliasEnvRef #-}
-aliasEnvRef :: IORef [(T.Text, T.Text)]
-aliasEnvRef =
-  unsafePerformIO (newIORef [])
-
-{-# NOINLINE currentSectionRef #-}
-currentSectionRef :: IORef T.Text
-currentSectionRef =
+{-# NOINLINE currentGlobalLocatorRef #-}
+currentGlobalLocatorRef :: IORef T.Text
+currentGlobalLocatorRef =
   unsafePerformIO (newIORef "")
+
+{-# NOINLINE globalLocatorListRef #-}
+globalLocatorListRef :: IORef [T.Text]
+globalLocatorListRef =
+  unsafePerformIO (newIORef [])
+
+{-# NOINLINE localLocatorListRef #-}
+localLocatorListRef :: IORef [T.Text]
+localLocatorListRef =
+  unsafePerformIO (newIORef ["path.to.module::test", "buz.qux::sample.foo"])
+
+{-# NOINLINE moduleAliasMapRef #-}
+moduleAliasMapRef :: IORef (Map.HashMap T.Text T.Text)
+moduleAliasMapRef =
+  unsafePerformIO (newIORef Map.empty)
+
+{-# NOINLINE locatorAliasMapRef #-}
+locatorAliasMapRef :: IORef (Map.HashMap T.Text T.Text)
+locatorAliasMapRef =
+  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE topNameSetRef #-}
 topNameSetRef :: IORef (S.Set T.Text)
@@ -265,15 +275,14 @@ sourceFileExtension :: T.Text
 sourceFileExtension =
   "neut"
 
-{-# INLINE nsSepChar #-}
-nsSepChar :: Char
-nsSepChar =
-  '.'
-
 {-# INLINE nsSep #-}
 nsSep :: T.Text
 nsSep =
-  T.singleton nsSepChar
+  "."
+
+definiteSep :: T.Text
+definiteSep =
+  "::"
 
 constBottom :: T.Text
 constBottom =

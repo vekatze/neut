@@ -208,7 +208,7 @@ showChecksum (Checksum checksum) =
 
 data AliasInfo
   = AliasInfoUse T.Text
-  | AliasInfoPrefix T.Text T.Text
+  | AliasInfoPrefix Hint T.Text T.Text
   deriving (Show)
 
 data OutputKind

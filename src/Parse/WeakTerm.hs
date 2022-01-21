@@ -118,7 +118,6 @@ weakTerm = do
       tryPlanList
         [ weakTermPiArrow,
           weakTermSigma,
-          weakTermDefiniteDescription,
           weakTermPiElim,
           weakTermPiElimInv
         ]
@@ -205,7 +204,9 @@ weakTermSigmaItem =
 weakTermDefiniteDescription :: IO WeakTerm
 weakTermDefiniteDescription = do
   (m, x) <- parseDefiniteDescription
-  return $ m :< WeakTermVar (asIdent x)
+  -- using VarGlobal instead of Var for better performance.
+  -- cf. Parse.Discern
+  return $ m :< WeakTermVarGlobal x
 
 weakTermEnumElim :: IO WeakTerm
 weakTermEnumElim = do
@@ -687,6 +688,7 @@ weakTermSimple =
   tryPlanList
     [ weakTermSigmaIntro,
       parseBetweenParen weakTerm,
+      weakTermDefiniteDescription,
       weakTermTau,
       weakTermAster,
       weakTermString,

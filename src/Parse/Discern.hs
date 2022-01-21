@@ -30,6 +30,7 @@ import Data.Namespace
     asEnumLabel,
     asGlobalVar,
     asWeakConstant,
+    constructCandList,
     resolveSymbol,
     tryCand,
   )
@@ -75,15 +76,20 @@ discern' nenv term =
           return $ m :< WeakTermVar name
         Nothing -> do
           topNameSet <- readIORef topNameSetRef
-          tryCand (resolveSymbol m (asGlobalVar m topNameSet) s) $ do
+          candList <- constructCandList s False
+          tryCand (resolveSymbol m (asGlobalVar m topNameSet) s candList) $ do
             revEnumEnv <- readIORef revEnumEnvRef
-            tryCand (resolveSymbol m (asEnumIntro m revEnumEnv) s) $ do
+            let candList' = s : candList
+            tryCand (resolveSymbol m (asEnumIntro m revEnumEnv) s candList') $ do
               enumEnv <- readIORef enumEnvRef
-              tryCand (resolveSymbol m (asEnum m enumEnv) s) $
-                tryCand (resolveSymbol m (asWeakConstant m) s) $
+              tryCand (resolveSymbol m (asEnum m enumEnv) s candList') $
+                tryCand (resolveSymbol m (asWeakConstant m) s candList') $
                   raiseError m $ "undefined variable: " <> s
-    _ :< WeakTermVarGlobal {} ->
-      return term
+    m :< WeakTermVarGlobal x -> do
+      candList <- constructCandList x True
+      topNameSet <- readIORef topNameSetRef
+      tryCand (resolveSymbol m (asGlobalVar m topNameSet) x candList) $ do
+        raiseError m $ "unresolvable definite description: " <> x
     m :< WeakTermPi xts t -> do
       (xts', t') <- discernBinder nenv xts t
       return $ m :< WeakTermPi xts' t'
@@ -139,7 +145,8 @@ discern' nenv term =
       t' <- discern' nenv t
       topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        constructorName' <- resolveSymbol m (asConstructor m topNameSet) constructorName
+        candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
+        constructorName' <- resolveSymbol m (asConstructor m topNameSet) constructorName candList
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinder nenv xts body
@@ -192,7 +199,8 @@ discernEnumCase enumCase =
   case enumCase of
     m :< EnumCaseLabel l -> do
       revEnumEnv <- readIORef revEnumEnvRef
-      ml <- resolveSymbol m (asEnumLabel m revEnumEnv) l
+      candList <- constructCandList l False
+      ml <- resolveSymbol m (asEnumLabel m revEnumEnv) l $ l : candList
       case ml of
         Just l' ->
           return l'

@@ -2,9 +2,9 @@ module Data.Namespace where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic (EnumCase, EnumCaseF (EnumCaseLabel), Hint, Ident)
-import Data.Global (aliasEnvRef, currentSectionRef, nsSep, prefixEnvRef)
+import Data.Global (currentGlobalLocatorRef, definiteSep, globalLocatorListRef, localLocatorListRef, locatorAliasMapRef, moduleAliasMapRef, nsSep)
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseError)
 import Data.LowType
   ( LowType (LowTypeFloat, LowTypeInt),
@@ -13,6 +13,8 @@ import Data.LowType
   )
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Text.Internal as Text
+import Data.Text.Internal.Search (indices)
 import Data.WeakTerm
   ( WeakTerm,
     WeakTermF
@@ -39,21 +41,27 @@ nsOS =
 
 attachSectionPrefix :: T.Text -> IO T.Text
 attachSectionPrefix x = do
-  currentSection <- readIORef currentSectionRef
-  return $ currentSection <> nsSep <> x
+  currentGlobalLocator <- readIORef currentGlobalLocatorRef
+  return $ currentGlobalLocator <> definiteSep <> x
 
-handleUse :: T.Text -> IO ()
-handleUse s =
-  modifyIORef' prefixEnvRef $ (:) s
+activateGlobalLocator :: T.Text -> IO ()
+activateGlobalLocator s =
+  modifyIORef' globalLocatorListRef $ (:) s
 
-handleDefinePrefix :: T.Text -> T.Text -> IO ()
-handleDefinePrefix from to = do
-  modifyIORef' aliasEnvRef $ (:) (from, to)
+activateLocalLocator :: T.Text -> IO ()
+activateLocalLocator s =
+  modifyIORef' localLocatorListRef $ (:) s
+
+handleDefinePrefix :: Hint -> T.Text -> T.Text -> IO ()
+handleDefinePrefix m from to = do
+  aliasEnv <- readIORef locatorAliasMapRef
+  if Map.member from aliasEnv
+    then raiseError m $ "the prefix `" <> from <> "` is already registered"
+    else writeIORef locatorAliasMapRef $ Map.insert from to aliasEnv
 
 {-# INLINE resolveSymbol #-}
-resolveSymbol :: Hint -> (T.Text -> Maybe b) -> T.Text -> IO (Maybe b)
-resolveSymbol m predicate name = do
-  candList <- constructCandList name
+resolveSymbol :: Hint -> (T.Text -> Maybe b) -> T.Text -> [T.Text] -> IO (Maybe b)
+resolveSymbol m predicate name candList = do
   case takeAll predicate candList [] of
     [] ->
       return Nothing
@@ -63,33 +71,51 @@ resolveSymbol m predicate name = do
       let candInfo = T.concat $ map ("\n- " <>) candList'
       raiseError m $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
-constructCandList :: T.Text -> IO [T.Text]
-constructCandList name = do
-  prefixEnv <- readIORef prefixEnvRef
-  aliasEnv <- readIORef aliasEnvRef
-  return $ constructCandList' aliasEnv $ name : map (<> nsSep <> name) prefixEnv
+constructCandList :: T.Text -> Bool -> IO [T.Text]
+constructCandList name isDefinite = do
+  prefixedNameList <- getPrefixedNameList name isDefinite
+  print prefixedNameList
+  moduleAliasMap <- readIORef moduleAliasMapRef
+  locatorAliasMap <- readIORef locatorAliasMapRef
+  return $ map (resolveName moduleAliasMap locatorAliasMap) prefixedNameList
 
-constructCandList' :: [(T.Text, T.Text)] -> [T.Text] -> [T.Text]
-constructCandList' nenv =
-  concatMap (constructCandList'' nenv)
+getPrefixedNameList :: T.Text -> Bool -> IO [T.Text]
+getPrefixedNameList name isDefinite = do
+  if isDefinite
+    then return [name]
+    else do
+      localLocatorList <- readIORef localLocatorListRef
+      globalLocatorList <- readIORef globalLocatorListRef
+      let localNameList = mapPrefix nsSep localLocatorList name
+      let globalNameList = mapPrefix definiteSep globalLocatorList name
+      return $ globalNameList ++ localNameList
 
-constructCandList'' :: [(T.Text, T.Text)] -> T.Text -> [T.Text]
-constructCandList'' nenv name = do
-  let nameList = findNext nenv name
-  if null nameList
-    then [name]
-    else constructCandList' nenv nameList
+mapPrefix :: T.Text -> [T.Text] -> T.Text -> [T.Text]
+mapPrefix sep prefixList basename =
+  map (<> sep <> basename) prefixList
 
-findNext :: [(T.Text, T.Text)] -> T.Text -> [T.Text]
-findNext nenv name = do
-  concat $
-    concat $
-      flip map nenv $ \(from, to) -> do
-        case T.stripPrefix (from <> nsSep) name of
-          Just suffix -> do
-            return [to <> nsSep <> suffix]
-          Nothing ->
-            return []
+breakOn :: T.Text -> T.Text -> Maybe (T.Text, T.Text)
+breakOn pat src@(Text.Text arr off len)
+  | T.null pat =
+    Nothing
+  | otherwise = case indices pat src of
+    [] ->
+      Nothing
+    (x : _) ->
+      Just (Text.text arr off x, Text.text arr (off + x) (len - x))
+
+resolveName :: Map.HashMap T.Text T.Text -> Map.HashMap T.Text T.Text -> T.Text -> T.Text
+resolveName moduleAliasMap locatorAliasMap name =
+  resolveAlias nsSep moduleAliasMap $ resolveAlias definiteSep locatorAliasMap name
+
+resolveAlias :: T.Text -> Map.HashMap T.Text T.Text -> T.Text -> T.Text
+resolveAlias sep aliasMap currentName = do
+  case breakOn sep currentName of
+    Just (currentPrefix, currentSuffix)
+      | Just newPrefix <- Map.lookup currentPrefix aliasMap ->
+        newPrefix <> currentSuffix
+    _ ->
+      currentName
 
 takeAll :: (T.Text -> Maybe b) -> [T.Text] -> [T.Text] -> [T.Text]
 takeAll predicate candidateList acc =

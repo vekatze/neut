@@ -13,7 +13,7 @@ import Control.Monad (forM_, unless, void, when)
 import Data.Basic (OutputKind (..), newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (getLibraryDirPath, getMainFilePath, globalEnumEnv, modifiedSourceSetRef, nsSep, outputLog, setMainFilePath, sourceAliasMapRef)
+import Data.Global (definiteSep, getLibraryDirPath, getMainFilePath, globalEnumEnv, modifiedSourceSetRef, outputLog, setMainFilePath, sourceAliasMapRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -32,7 +32,7 @@ import Data.Sequence as Seq
     (|>),
   )
 import qualified Data.Set as S
-import Data.Source (Source (Source, sourceModule), getRelPathFromSourceDir, getSection, getSourceCachePath, isMainFile, sourceFilePath)
+import Data.Source (Source (Source, sourceModule), getLocator, getRelPathFromSourceDir, getSourceCachePath, isMainFile, sourceFilePath)
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Elaborate (elaborateMain, elaborateOther)
@@ -245,8 +245,8 @@ getMainFunctionNameIfEntryPoint source = do
 
 getMainFunctionName' :: Source -> IO T.Text
 getMainFunctionName' source = do
-  section <- getSection source
-  return $ section <> nsSep <> "main"
+  locator <- getLocator source
+  return $ locator <> definiteSep <> "main"
 
 {-# NOINLINE traceSourceListRef #-}
 traceSourceListRef :: IORef [Source]
