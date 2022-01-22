@@ -32,6 +32,9 @@ data WeakTermF a
   | WeakTermPi [BinderF a] a
   | WeakTermPiIntro (LamKindF a) [BinderF a] a
   | WeakTermPiElim a [a]
+  | WeakTermSigma [BinderF a]
+  | WeakTermSigmaIntro [a]
+  | WeakTermSigmaElim [BinderF a] a a
   | WeakTermAster Int
   | WeakTermConst T.Text
   | WeakTermInt a Integer
@@ -126,6 +129,14 @@ varWeakTerm term =
       let xs = varWeakTerm e
       let ys = S.unions $ map varWeakTerm es
       S.union xs ys
+    _ :< WeakTermSigma xts ->
+      varWeakTerm' xts []
+    _ :< WeakTermSigmaIntro es ->
+      S.unions $ map varWeakTerm es
+    _ :< WeakTermSigmaElim xts e1 e2 -> do
+      let set1 = varWeakTerm e1
+      let set2 = varWeakTerm' xts [e2]
+      S.union set1 set2
     _ :< WeakTermConst _ ->
       S.empty
     _ :< WeakTermAster _ ->
@@ -182,11 +193,19 @@ asterWeakTerm term =
     _ :< WeakTermVarGlobal {} ->
       S.empty
     _ :< WeakTermPi xts t ->
-      asterWeakTerm' xts t
+      asterWeakTerm' xts [t]
     _ :< WeakTermPiIntro _ xts e ->
-      asterWeakTerm' xts e
+      asterWeakTerm' xts [e]
     _ :< WeakTermPiElim e es ->
       S.unions $ map asterWeakTerm $ e : es
+    _ :< WeakTermSigma xts ->
+      asterWeakTerm' xts []
+    _ :< WeakTermSigmaIntro es ->
+      S.unions $ map asterWeakTerm es
+    _ :< WeakTermSigmaElim xts e1 e2 -> do
+      let set1 = asterWeakTerm e1
+      let set2 = asterWeakTerm' xts [e2]
+      S.union set1 set2
     _ :< WeakTermAster h ->
       S.singleton h
     _ :< WeakTermConst _ ->
@@ -214,7 +233,7 @@ asterWeakTerm term =
       let xs1 = S.unions $ map asterWeakTerm $ maybeToList mSubject
       let xs2 = asterWeakTerm e
       let xs3 = asterWeakTerm t
-      let xs4 = S.unions $ map (\((_, _, xts), body) -> asterWeakTerm' xts body) patList
+      let xs4 = S.unions $ map (\((_, _, xts), body) -> asterWeakTerm' xts [body]) patList
       S.unions [xs1, xs2, xs3, xs4]
     _ :< WeakTermNoema s e ->
       S.unions [asterWeakTerm s, asterWeakTerm e]
@@ -223,14 +242,14 @@ asterWeakTerm term =
     _ :< WeakTermNoemaElim _ e ->
       asterWeakTerm e
 
-asterWeakTerm' :: [BinderF WeakTerm] -> WeakTerm -> S.Set Int
-asterWeakTerm' binder e =
+asterWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Int
+asterWeakTerm' binder es =
   case binder of
     [] ->
-      asterWeakTerm e
+      S.unions $ map asterWeakTerm es
     ((_, _, t) : xts) -> do
       let set1 = asterWeakTerm t
-      let set2 = asterWeakTerm' xts e
+      let set2 = asterWeakTerm' xts es
       S.union set1 set2
 
 metaOf :: WeakTerm -> Hint
@@ -277,6 +296,12 @@ toText term =
           showCons ["λ", argStr, toText e]
     _ :< WeakTermPiElim e es ->
       showCons $ map toText $ e : es
+    _ :< WeakTermSigma xts ->
+      showCons ["sigma", showItems $ map showArg xts]
+    _ :< WeakTermSigmaIntro {} ->
+      "<sigma-intro>"
+    _ :< WeakTermSigmaElim {} ->
+      "<sigma-elim>"
     _ :< WeakTermConst x ->
       x
     _ :< WeakTermAster i ->

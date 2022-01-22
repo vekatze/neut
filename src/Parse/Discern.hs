@@ -36,7 +36,7 @@ import Data.Namespace
     resolveSymbol,
     tryCand,
   )
-import Data.Stmt (WeakStmt (..))
+import Data.Stmt (QuasiStmt (..), WeakStmt (..))
 import qualified Data.Text as T
 import Data.WeakTerm
   ( WeakTerm,
@@ -49,7 +49,7 @@ discern :: WeakTerm -> IO WeakTerm
 discern e = do
   discern' Map.empty e
 
-discernStmtList :: [WeakStmt] -> IO [WeakStmt]
+discernStmtList :: [WeakStmt] -> IO [QuasiStmt]
 discernStmtList stmtList =
   case stmtList of
     [] ->
@@ -59,12 +59,12 @@ discernStmtList stmtList =
       codType' <- discern' nenv codType
       e' <- discern' nenv e
       rest' <- discernStmtList rest
-      return $ WeakStmtDefine isReducible m functionName xts' codType' e' : rest'
+      return $ QuasiStmtDefine isReducible m functionName xts' codType' e' : rest'
     WeakStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern discarder
       copier' <- discern copier
       rest' <- discernStmtList rest
-      return $ WeakStmtDefineResource m name discarder' copier' : rest'
+      return $ QuasiStmtDefineResource m name discarder' copier' : rest'
     WeakStmtSection m sectionName innerStmtList : rest -> do
       pushToCurrentLocalLocator sectionName
       innerStmtList' <- discernStmtList innerStmtList
@@ -117,6 +117,16 @@ discern' nenv term =
       es' <- mapM (discern' nenv) es
       e' <- discern' nenv e
       return $ m :< WeakTermPiElim e' es'
+    m :< WeakTermSigma xts -> do
+      (xts', _) <- discernBinder nenv xts (m :< WeakTermTau)
+      return $ m :< WeakTermSigma xts'
+    m :< WeakTermSigmaIntro es -> do
+      es' <- mapM (discern' nenv) es
+      return $ m :< WeakTermSigmaIntro es'
+    m :< WeakTermSigmaElim xts e1 e2 -> do
+      e1' <- discern' nenv e1
+      (xts', e2') <- discernBinder nenv xts e2
+      return $ m :< WeakTermSigmaElim xts' e1' e2'
     m :< WeakTermConst x ->
       return $ m :< WeakTermConst x
     m :< WeakTermAster h ->

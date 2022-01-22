@@ -3,6 +3,7 @@ module Clarify.Sigma
     returnImmediateS4,
     closureEnvS4,
     returnClosureS4,
+    sigmaS4,
   )
 where
 

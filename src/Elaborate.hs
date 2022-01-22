@@ -34,12 +34,11 @@ import Data.LowType
   ( LowType (LowTypeFloat, LowTypeInt),
     asLowTypeMaybe,
   )
-import Data.Maybe (catMaybes)
 import Data.Source (Source)
 import Data.Stmt
   ( EnumInfo,
+    QuasiStmt (..),
     Stmt (..),
-    WeakStmt (WeakStmtDefine, WeakStmtDefineResource),
     saveCache,
   )
 import Data.Term
@@ -60,15 +59,15 @@ import Elaborate.Unify (unify)
 import Reduce.Term (reduceTerm)
 import Reduce.WeakTerm (reduceWeakTerm, substWeakTerm)
 
-elaborateMain :: T.Text -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborateMain :: T.Text -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
 elaborateMain mainFunctionName =
   elaborate (elaborateProgramMain mainFunctionName)
 
-elaborateOther :: Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborateOther :: Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
 elaborateOther =
   elaborate elaborateProgramOther
 
-elaborate :: ([WeakStmt] -> IO [Stmt]) -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborate :: ([QuasiStmt] -> IO [Stmt]) -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
 elaborate defListElaborator source cacheOrStmt =
   case cacheOrStmt of
     Left cache -> do
@@ -89,17 +88,17 @@ registerTopLevelDef stmt = do
     StmtDefineResource m name _ _ ->
       insTermTypeEnv name $ m :< WeakTermTau
 
-elaborateProgramMain :: T.Text -> [WeakStmt] -> IO [Stmt]
+elaborateProgramMain :: T.Text -> [QuasiStmt] -> IO [Stmt]
 elaborateProgramMain mainFunctionName = do
   elaborateProgram $ mapM $ inferStmtMain mainFunctionName
 
-elaborateProgramOther :: [WeakStmt] -> IO [Stmt]
+elaborateProgramOther :: [QuasiStmt] -> IO [Stmt]
 elaborateProgramOther = do
   elaborateProgram $ mapM inferStmtOther
 
-elaborateProgram :: ([WeakStmt] -> IO [WeakStmt]) -> [WeakStmt] -> IO [Stmt]
+elaborateProgram :: ([QuasiStmt] -> IO [QuasiStmt]) -> [QuasiStmt] -> IO [Stmt]
 elaborateProgram defListInferrer defList = do
-  defList' <- mapM setupDef defList >>= defListInferrer . catMaybes
+  defList' <- mapM setupDef defList >>= defListInferrer . concat
   -- cs <- readIORef constraintEnv
   -- p "==========================================================="
   -- forM_ cs $ \(e1, e2) -> do
@@ -109,41 +108,41 @@ elaborateProgram defListInferrer defList = do
   unify
   elaborateStmtList defList'
 
-setupDef :: WeakStmt -> IO (Maybe WeakStmt)
+setupDef :: QuasiStmt -> IO [QuasiStmt]
 setupDef def =
   case def of
-    WeakStmtDefine opacity m f xts codType e -> do
+    QuasiStmtDefine opacity m f xts codType e -> do
       (xts', codType') <- arrangeBinder [] xts codType
       insTermTypeEnv f $ m :< WeakTermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
-      return $ Just $ WeakStmtDefine opacity m f xts' codType' e
-    WeakStmtDefineResource m name _ _ -> do
+      return [QuasiStmtDefine opacity m f xts' codType' e]
+    QuasiStmtDefineResource m name _ _ -> do
       insTermTypeEnv name $ m :< WeakTermTau
-      return Nothing
+      return []
 
-inferStmtMain :: T.Text -> WeakStmt -> IO WeakStmt
+inferStmtMain :: T.Text -> QuasiStmt -> IO QuasiStmt
 inferStmtMain mainFunctionName stmt = do
   case stmt of
-    WeakStmtDefine isReducible m x xts codType e -> do
+    QuasiStmtDefine isReducible m x xts codType e -> do
       (xts', e', codType') <- inferStmt xts e codType
       when (x == mainFunctionName) $
         insConstraintEnv
           (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
           (m :< WeakTermPi xts codType)
-      return $ WeakStmtDefine isReducible m x xts' codType' e'
-    WeakStmtDefineResource m name discarder copier ->
+      return $ QuasiStmtDefine isReducible m x xts' codType' e'
+    QuasiStmtDefineResource m name discarder copier ->
       inferDefineResource m name discarder copier
 
-inferStmtOther :: WeakStmt -> IO WeakStmt
+inferStmtOther :: QuasiStmt -> IO QuasiStmt
 inferStmtOther stmt = do
   case stmt of
-    WeakStmtDefine isReducible m x xts codType e -> do
+    QuasiStmtDefine isReducible m x xts codType e -> do
       (xts', e', codType') <- inferStmt xts e codType
-      return $ WeakStmtDefine isReducible m x xts' codType' e'
-    WeakStmtDefineResource m name discarder copier ->
+      return $ QuasiStmtDefine isReducible m x xts' codType' e'
+    QuasiStmtDefineResource m name discarder copier ->
       inferDefineResource m name discarder copier
 
-inferDefineResource :: Hint -> T.Text -> WeakTerm -> WeakTerm -> IO WeakStmt
+inferDefineResource :: Hint -> T.Text -> WeakTerm -> WeakTerm -> IO QuasiStmt
 inferDefineResource m name discarder copier = do
   (discarder', td) <- infer discarder
   (copier', tc) <- infer copier
@@ -152,7 +151,7 @@ inferDefineResource m name discarder copier = do
   let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "bottom")
   insConstraintEnv botTop td
   insConstraintEnv botBot tc
-  return $ WeakStmtDefineResource m name discarder' copier'
+  return $ QuasiStmtDefineResource m name discarder' copier'
 
 inferStmt :: [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
 inferStmt xts e codType = do
@@ -161,12 +160,12 @@ inferStmt xts e codType = do
   insConstraintEnv codType' te
   return (xts', e', codType')
 
-elaborateStmtList :: [WeakStmt] -> IO [Stmt]
+elaborateStmtList :: [QuasiStmt] -> IO [Stmt]
 elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDefine opacity m x xts codType e : rest -> do
+    QuasiStmtDefine opacity m x xts codType e : rest -> do
       e' <- elaborate' e
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= reduceTerm
@@ -174,7 +173,7 @@ elaborateStmtList stmtList = do
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList rest
       return $ StmtDefine opacity m x xts' codType' e' : rest'
-    WeakStmtDefineResource m name discarder copier : rest -> do
+    QuasiStmtDefineResource m name discarder copier : rest -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
       rest' <- elaborateStmtList rest
@@ -214,6 +213,17 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TermPiElim e' es'
+    m :< WeakTermSigma xts -> do
+      xts' <- mapM elaborateWeakBinder xts
+      return $ m :< TermSigma xts'
+    m :< WeakTermSigmaIntro es -> do
+      es' <- mapM elaborate' es
+      return $ m :< TermSigmaIntro es'
+    m :< WeakTermSigmaElim xts e1 e2 -> do
+      e1' <- elaborate' e1
+      xts' <- mapM elaborateWeakBinder xts
+      e2' <- elaborate' e2
+      return $ m :< TermSigmaElim xts' e1' e2'
     m :< WeakTermAster _ ->
       raiseCritical m "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
     m :< WeakTermConst x ->

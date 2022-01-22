@@ -4,12 +4,12 @@ module Parse.WeakTerm
     weakBinder,
     weakAscription,
     parseTopDefInfo,
+    unsnoc,
   )
 where
 
 import Codec.Binary.UTF8.String (encode)
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM)
 import Data.Basic
   ( BinderF,
     EnumCase,
@@ -189,7 +189,7 @@ weakTermSigma :: IO WeakTerm
 weakTermSigma = do
   m <- currentHint
   xts <- sepBy2 (parseToken "*") weakTermSigmaItem
-  toSigma m xts
+  return $ m :< WeakTermSigma xts
 
 weakTermSigmaItem :: IO (BinderF WeakTerm)
 weakTermSigmaItem =
@@ -395,7 +395,7 @@ weakTermLetNormal = do
   return $
     m
       :< WeakTermPiElim
-        (weakVar m "core.identity.bind")
+        (m :< WeakTermVarGlobal "core.identity::bind")
         [ t1,
           resultType,
           e1,
@@ -412,14 +412,7 @@ weakTermLetSigmaElim = do
   e1 <- weakTerm
   parseToken "in"
   e2 <- weakTerm
-  resultType <- newAster m
-  return $
-    m
-      :< WeakTermPiElim
-        e1
-        [ resultType,
-          lam m xts e2
-        ]
+  return $ m :< WeakTermSigmaElim xts e1 e2
 
 -- let? x : A = e1 in e2
 -- let? x     = e1 in e2
@@ -513,19 +506,7 @@ weakTermSigmaIntro :: IO WeakTerm
 weakTermSigmaIntro = do
   m <- currentHint
   es <- parseArgList2 weakTerm
-  xts <- forM es $ \_ -> do
-    x <- newTextualIdentFromText "_"
-    t <- newAster m
-    return (m, x, t)
-  sigVar <- newTextualIdentFromText "sigvar"
-  k <- newTextualIdentFromText "sig-k"
-  return $
-    lam
-      m
-      [ (m, sigVar, m :< WeakTermTau),
-        (m, k, m :< WeakTermPi xts (weakVar' m sigVar))
-      ]
-      (m :< WeakTermPiElim (weakVar' m k) es)
+  return $ m :< WeakTermSigmaIntro es
 
 weakTermNoema :: IO WeakTerm
 weakTermNoema = do
@@ -806,18 +787,6 @@ weakTermFloat = do
   h <- newAster m
   return $ m :< WeakTermFloat h floatValue
 
-toSigma :: Hint -> [BinderF WeakTerm] -> IO WeakTerm
-toSigma m xts = do
-  sigVar <- newTextualIdentFromText "sig"
-  h <- newTextualIdentFromText "_"
-  return $
-    m
-      :< WeakTermPi
-        [ (m, sigVar, m :< WeakTermTau),
-          (m, h, m :< WeakTermPi xts (weakVar' m sigVar))
-        ]
-        (weakVar' m sigVar)
-
 castFromNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castFromNoema subject baseType tree = do
   let m = metaOf tree
@@ -836,3 +805,14 @@ wrapWithNoema subject baseType = do
 doNotCare :: Hint -> WeakTerm
 doNotCare m =
   m :< WeakTermTau
+
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc =
+  foldr go Nothing
+  where
+    go x acc =
+      case acc of
+        Nothing ->
+          Just ([], x)
+        Just (ys, y) ->
+          Just (x : ys, y)

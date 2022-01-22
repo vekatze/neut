@@ -38,6 +38,7 @@ import qualified Data.Set as S
 import Data.Source (Source (..), getDomain, getLocator)
 import Data.Stmt
   ( EnumInfo,
+    QuasiStmt,
     Stmt,
     WeakStmt (..),
     extractName,
@@ -71,17 +72,17 @@ import System.IO.Unsafe (unsafePerformIO)
 -- core functions
 --
 
-parseMain :: T.Text -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseMain :: T.Text -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseMain mainFunctionName source = do
   result <- parseSource source
   ensureMain mainFunctionName
   return result
 
-parseOther :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseOther :: Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseOther =
   parseSource
 
-parseSource :: Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseSource :: Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseSource source = do
   mCache <- loadCache source
   modifyIORef' isPrivateRef $ const True
@@ -119,14 +120,14 @@ setupSectionPrefix currentSource = do
   activateGlobalLocator locator
   writeIORef currentGlobalLocatorRef locator
 
-parseHeaderBase :: IO ([WeakStmt], [EnumInfo]) -> IO ([WeakStmt], [EnumInfo])
+parseHeaderBase :: IO ([QuasiStmt], [EnumInfo]) -> IO ([QuasiStmt], [EnumInfo])
 parseHeaderBase action = do
   text <- readIORef textRef
   if T.null text
     then return ([], [])
     else action
 
-parseHeader :: IO ([WeakStmt], [EnumInfo])
+parseHeader :: IO ([QuasiStmt], [EnumInfo])
 parseHeader = do
   parseHeaderBase $ do
     skipImportSequence
@@ -150,7 +151,7 @@ arrangeNamespace' aliasInfo =
     AliasInfoPrefix m from to ->
       handleDefinePrefix m from to
 
-parseHeader' :: IO ([WeakStmt], [EnumInfo])
+parseHeader' :: IO ([QuasiStmt], [EnumInfo])
 parseHeader' =
   parseHeaderBase $ do
     headSymbol <- lookAhead (parseByPredicate isSymbolChar)

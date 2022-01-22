@@ -54,6 +54,24 @@ reduceWeakTerm term =
             substWeakTerm sub body >>= reduceWeakTerm
         _ ->
           return $ m :< WeakTermPiElim e' es'
+    m :< WeakTermSigma xts -> do
+      let (ms, xs, ts) = unzip3 xts
+      ts' <- mapM reduceWeakTerm ts
+      return $ m :< WeakTermSigma (zip3 ms xs ts')
+    m :< WeakTermSigmaIntro es -> do
+      es' <- mapM reduceWeakTerm es
+      return $ m :< WeakTermSigmaIntro es'
+    m :< WeakTermSigmaElim xts e1 e2 -> do
+      e1' <- reduceWeakTerm e1
+      case e1' of
+        _ :< WeakTermSigmaIntro es
+          | length xts == length es -> do
+            let xs = map (\(_, x, _) -> asInt x) xts
+            let sub = IntMap.fromList $ zip xs es
+            substWeakTerm sub e2 >>= reduceWeakTerm
+        _ -> do
+          e2' <- reduceWeakTerm e2
+          return $ m :< WeakTermSigmaElim xts e1' e2'
     m :< WeakTermEnumElim (e, t) les -> do
       e' <- reduceWeakTerm e
       let (ls, es) = unzip les
@@ -152,6 +170,16 @@ substWeakTerm sub term =
       e' <- substWeakTerm sub e
       es' <- mapM (substWeakTerm sub) es
       return $ m :< WeakTermPiElim e' es'
+    m :< WeakTermSigma xts -> do
+      (xts', _) <- substWeakTerm' sub xts (m :< WeakTermTau)
+      return $ m :< WeakTermSigma xts'
+    m :< WeakTermSigmaIntro es -> do
+      es' <- mapM (substWeakTerm sub) es
+      return $ m :< WeakTermSigmaIntro es'
+    m :< WeakTermSigmaElim xts e1 e2 -> do
+      e1' <- substWeakTerm sub e1
+      (xts', e2') <- substWeakTerm' sub xts e2
+      return $ m :< WeakTermSigmaElim xts' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     _ :< WeakTermAster x ->

@@ -147,6 +147,13 @@ simplify constraintList =
             xt2 <- asWeakBinder m2 e2
             cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
             simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
+        (_ :< WeakTermSigma xts1, _ :< WeakTermSigma xts2)
+          | length xts1 == length xts2 -> do
+            cs' <- simplifyBinder orig xts1 xts2
+            simplify $ cs' ++ cs
+        (_ :< WeakTermSigmaIntro es1, _ :< WeakTermSigmaIntro es2)
+          | length es1 == length es2 -> do
+            simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
         (_ :< WeakTermAster h1, _ :< WeakTermAster h2)
           | h1 == h2 ->
             simplify cs

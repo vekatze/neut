@@ -24,6 +24,10 @@ data WeakStmt
   | WeakStmtDefineResource Hint T.Text WeakTerm WeakTerm
   | WeakStmtSection Hint T.Text [WeakStmt]
 
+data QuasiStmt
+  = QuasiStmtDefine Opacity Hint T.Text [BinderF WeakTerm] WeakTerm WeakTerm
+  | QuasiStmtDefineResource Hint T.Text WeakTerm WeakTerm
+
 type Program =
   (Source, [Stmt])
 

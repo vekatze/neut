@@ -51,6 +51,24 @@ reduceTerm term =
             substTerm sub (m :< body) >>= reduceTerm
         _ ->
           return (m :< app)
+    m :< TermSigma xts -> do
+      let (ms, xs, ts) = unzip3 xts
+      ts' <- mapM reduceTerm ts
+      return $ m :< TermSigma (zip3 ms xs ts')
+    m :< TermSigmaIntro es -> do
+      es' <- mapM reduceTerm es
+      return $ m :< TermSigmaIntro es'
+    m :< TermSigmaElim xts e1 e2 -> do
+      e1' <- reduceTerm e1
+      case e1' of
+        _ :< TermSigmaIntro es
+          | length xts == length es -> do
+            let xs = map (\(_, x, _) -> asInt x) xts
+            let sub = IntMap.fromList $ zip xs es
+            substTerm sub e2 >>= reduceTerm
+        _ -> do
+          e2' <- reduceTerm e2
+          return $ m :< TermSigmaElim xts e1' e2'
     (m :< TermEnumElim (e, t) les) -> do
       e' <- reduceTerm e
       let (ls, es) = unzip les
@@ -147,6 +165,16 @@ substTerm sub term =
       e' <- substTerm sub e
       es' <- mapM (substTerm sub) es
       return (m :< TermPiElim e' es')
+    m :< TermSigma xts -> do
+      (xts', _) <- substTerm' sub xts (m :< TermTau)
+      return $ m :< TermSigma xts'
+    m :< TermSigmaIntro es -> do
+      es' <- mapM (substTerm sub) es
+      return $ m :< TermSigmaIntro es'
+    m :< TermSigmaElim xts e1 e2 -> do
+      e1' <- substTerm sub e1
+      (xts', e2') <- substTerm' sub xts e2
+      return $ m :< TermSigmaElim xts' e1' e2'
     (_ :< TermConst _) ->
       return term
     (_ :< TermInt {}) ->

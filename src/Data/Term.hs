@@ -39,6 +39,9 @@ data TermF a
   | TermPi [BinderF a] a
   | TermPiIntro (LamKindF a) [BinderF a] a
   | TermPiElim a [a]
+  | TermSigma [BinderF a]
+  | TermSigmaIntro [a]
+  | TermSigmaElim [BinderF a] a a
   | TermConst T.Text
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
@@ -95,6 +98,12 @@ weaken term =
       let e' = weaken e
       let es' = map weaken es
       m :< WeakTermPiElim e' es'
+    m :< TermSigma xts ->
+      m :< WeakTermSigma (map weakenBinder xts)
+    m :< TermSigmaIntro es ->
+      m :< WeakTermSigmaIntro (map weaken es)
+    m :< TermSigmaElim xts e1 e2 -> do
+      m :< WeakTermSigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
     m :< TermConst x ->
       m :< WeakTermConst x
     m :< TermInt size x ->

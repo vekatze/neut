@@ -10,6 +10,7 @@ import Clarify.Sigma
     immediateS4,
     returnClosureS4,
     returnImmediateS4,
+    sigmaS4,
   )
 import Clarify.Utility
   ( bindLet,
@@ -149,6 +150,21 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
+    _ :< TermSigma xts -> do
+      xts' <- clarifyBinder tenv xts
+      CompUpIntro <$> sigmaS4 Nothing (map (\(_, x, t) -> Right (x, t)) xts')
+    _ :< TermSigmaIntro es -> do
+      (xs, es', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) es
+      return $ bindLet (zip xs es') $ CompUpIntro (ValueSigmaIntro xsAsVars)
+    m :< TermSigmaElim xts e1 e2 -> do
+      lam <- clarifyTerm tenv $ m :< TermPiIntro LamKindNormal xts e2
+      (sigVarName, sigVar) <- newValueVarLocalWith "sig"
+      argVarNameList <- mapM (const $ newIdentFromText "arg") xts
+      let vars = map (\argVarName -> m :< TermVar argVarName) argVarNameList
+      vars' <- mapM (clarifyPlus tenv) vars
+      e1' <- clarifyTerm tenv e1
+      call <- callClosure lam vars'
+      return $ CompUpElim sigVarName e1' $ CompSigmaElim False argVarNameList sigVar call
     m :< TermConst x ->
       clarifyConst tenv m x
     _ :< TermInt size l ->
@@ -402,6 +418,14 @@ chainOf tenv term =
     _ :< TermPiElim e es -> do
       let xs1 = chainOf tenv e
       let xs2 = concatMap (chainOf tenv) es
+      xs1 ++ xs2
+    _ :< TermSigma xts ->
+      chainOf' tenv xts []
+    _ :< TermSigmaIntro es ->
+      concatMap (chainOf tenv) es
+    _ :< TermSigmaElim xts e1 e2 -> do
+      let xs1 = chainOf tenv e1
+      let xs2 = chainOf' tenv xts [e2]
       xs1 ++ xs2
     _ :< TermConst _ ->
       []

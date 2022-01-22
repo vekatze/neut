@@ -119,6 +119,20 @@ infer' ctx term =
       etls <- mapM (infer' ctx) es
       etl <- infer' ctx e
       inferPiElim ctx m etl etls
+    m :< WeakTermSigma xts -> do
+      (xts', _) <- inferPi ctx xts (m :< WeakTermTau)
+      return (m :< WeakTermSigma xts', m :< WeakTermTau)
+    m :< WeakTermSigmaIntro es -> do
+      ets <- mapM (infer' ctx) es
+      ys <- mapM (const $ newIdentFromText "arg") es
+      yts <- newTypeAsterListInCtx ctx $ zip ys (map metaOf es)
+      _ <- inferArgs IntMap.empty m ets yts (m :< WeakTermTau)
+      return (m :< WeakTermSigmaIntro (map fst ets), m :< WeakTermSigma yts)
+    m :< WeakTermSigmaElim xts e1 e2 -> do
+      (e1', t1') <- infer' ctx e1
+      (xts', (e2', t)) <- inferBinder ctx xts e2
+      insConstraintEnv (m :< WeakTermSigma xts') t1'
+      return (m :< WeakTermSigmaElim xts' e1' e2', t)
     m :< WeakTermAster x -> do
       holeEnv <- readIORef holeEnvRef
       case IntMap.lookup x holeEnv of
@@ -491,6 +505,16 @@ arrange ctx term =
       es' <- mapM (arrange ctx) es
       e' <- arrange ctx e
       return $ m :< WeakTermPiElim e' es'
+    m :< WeakTermSigma xts -> do
+      (xts', _) <- arrangeBinder ctx xts (m :< WeakTermTau)
+      return $ m :< WeakTermSigma xts'
+    m :< WeakTermSigmaIntro es -> do
+      es' <- mapM (arrange ctx) es
+      return $ m :< WeakTermSigmaIntro es'
+    m :< WeakTermSigmaElim xts e1 e2 -> do
+      e1' <- arrange ctx e1
+      (xts', e2') <- arrangeBinder ctx xts e2
+      return $ m :< WeakTermSigmaElim xts' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     m :< WeakTermAster _ ->
