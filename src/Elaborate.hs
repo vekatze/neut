@@ -19,6 +19,7 @@ import Data.Basic
 import Data.Global
   ( dataEnvRef,
     enumEnvRef,
+    impArgEnvRef,
     newIdentFromText,
     note,
     substRef,
@@ -81,7 +82,8 @@ elaborate defListElaborator source cacheOrStmt =
 registerTopLevelDef :: Stmt -> IO ()
 registerTopLevelDef stmt = do
   case stmt of
-    StmtDefine opacity m x xts codType e -> do
+    StmtDefine opacity m x impArgNum xts codType e -> do
+      modifyIORef' impArgEnvRef $ Map.insert x impArgNum
       insTermTypeEnv x $ weaken $ m :< TermPi xts codType
       unless (isOpaque opacity) $
         modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts, weaken e)
@@ -111,11 +113,12 @@ elaborateProgram defListInferrer defList = do
 setupDef :: QuasiStmt -> IO [QuasiStmt]
 setupDef def =
   case def of
-    QuasiStmtDefine opacity m f xts codType e -> do
+    QuasiStmtDefine opacity m f impArgNum xts codType e -> do
       (xts', codType') <- arrangeBinder [] xts codType
       insTermTypeEnv f $ m :< WeakTermPi xts' codType'
+      modifyIORef' impArgEnvRef $ Map.insert f impArgNum
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
-      return [QuasiStmtDefine opacity m f xts' codType' e]
+      return [QuasiStmtDefine opacity m f impArgNum xts' codType' e]
     QuasiStmtDefineResource m name _ _ -> do
       insTermTypeEnv name $ m :< WeakTermTau
       return []
@@ -123,22 +126,22 @@ setupDef def =
 inferStmtMain :: T.Text -> QuasiStmt -> IO QuasiStmt
 inferStmtMain mainFunctionName stmt = do
   case stmt of
-    QuasiStmtDefine isReducible m x xts codType e -> do
+    QuasiStmtDefine isReducible m x impArgNum xts codType e -> do
       (xts', e', codType') <- inferStmt xts e codType
       when (x == mainFunctionName) $
         insConstraintEnv
           (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
           (m :< WeakTermPi xts codType)
-      return $ QuasiStmtDefine isReducible m x xts' codType' e'
+      return $ QuasiStmtDefine isReducible m x impArgNum xts' codType' e'
     QuasiStmtDefineResource m name discarder copier ->
       inferDefineResource m name discarder copier
 
 inferStmtOther :: QuasiStmt -> IO QuasiStmt
 inferStmtOther stmt = do
   case stmt of
-    QuasiStmtDefine isReducible m x xts codType e -> do
+    QuasiStmtDefine isReducible m x impArgNum xts codType e -> do
       (xts', e', codType') <- inferStmt xts e codType
-      return $ QuasiStmtDefine isReducible m x xts' codType' e'
+      return $ QuasiStmtDefine isReducible m x impArgNum xts' codType' e'
     QuasiStmtDefineResource m name discarder copier ->
       inferDefineResource m name discarder copier
 
@@ -165,14 +168,14 @@ elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    QuasiStmtDefine opacity m x xts codType e : rest -> do
+    QuasiStmtDefine opacity m x impArgNum xts codType e : rest -> do
       e' <- elaborate' e
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= reduceTerm
       insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList rest
-      return $ StmtDefine opacity m x xts' codType' e' : rest'
+      return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
     QuasiStmtDefineResource m name discarder copier : rest -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier

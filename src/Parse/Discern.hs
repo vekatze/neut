@@ -54,12 +54,12 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    WeakStmtDefine isReducible m functionName xts codType e : rest -> do
+    WeakStmtDefine isReducible m functionName impArgNum xts codType e : rest -> do
       (xts', nenv) <- discernBinder' Map.empty xts
       codType' <- discern' nenv codType
       e' <- discern' nenv e
       rest' <- discernStmtList rest
-      return $ QuasiStmtDefine isReducible m functionName xts' codType' e' : rest'
+      return $ QuasiStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
     WeakStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern discarder
       copier' <- discern copier

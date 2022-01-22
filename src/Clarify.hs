@@ -104,7 +104,7 @@ register (x, (opacity, args, e)) =
 clarifyDef :: Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
 clarifyDef stmt =
   case stmt of
-    StmtDefine opacity _ f xts _ e -> do
+    StmtDefine opacity _ f _ xts _ e -> do
       e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= reduceComp

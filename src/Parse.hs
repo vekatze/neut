@@ -13,7 +13,7 @@ import Data.Global
     dataEnvRef,
     getCurrentFilePath,
     globalLocatorListRef,
-    impArgEnvRef,
+    -- impArgEnvRef,
     localLocatorListRef,
     moduleAliasMapRef,
     newText,
@@ -37,10 +37,12 @@ import Data.Namespace
 import qualified Data.Set as S
 import Data.Source (Source (..), getDomain, getLocator)
 import Data.Stmt
-  ( EnumInfo,
+  ( Cache (cacheStmtList),
+    EnumInfo,
     QuasiStmt,
     Stmt,
     WeakStmt (..),
+    cacheEnumInfo,
     extractName,
     loadCache,
   )
@@ -89,9 +91,10 @@ parseSource source = do
   initializeNamespace source
   setupSectionPrefix source
   case mCache of
-    Just (stmtList, enumInfoList) -> do
-      forM_ enumInfoList $ \(mEnum, name, itemList) ->
+    Just cache -> do
+      forM_ (cacheEnumInfo cache) $ \(mEnum, name, itemList) ->
         insEnumEnv mEnum name itemList
+      let stmtList = cacheStmtList cache
       let names = S.fromList $ map extractName stmtList
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
@@ -245,13 +248,12 @@ parseDefine opacity = do
       parseToken "define-inline"
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- attachSectionPrefix name
-  modifyIORef' impArgEnvRef $ Map.insert name' (length impArgs)
-  defineFunction opacity m name' (impArgs ++ expArgs) codType e
+  defineFunction opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
 
-defineFunction :: Opacity -> Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
-defineFunction opacity m name binder codType e = do
+defineFunction :: Opacity -> Hint -> T.Text -> Int -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
+defineFunction opacity m name impArgNum binder codType e = do
   registerTopLevelName m name
-  return $ WeakStmtDefine opacity m name binder codType e
+  return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
 parseStmtUse :: IO ()
 parseStmtUse = do
@@ -282,7 +284,7 @@ defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName dataName) consInfoList
   setAsData dataName (length dataArgs) consInfoList'
   let consType = m :< WeakTermPi [] (m :< WeakTermTau)
-  formRule <- defineFunction OpacityOpaque m dataName dataArgs (m :< WeakTermTau) consType
+  formRule <- defineFunction OpacityOpaque m dataName 0 dataArgs (m :< WeakTermTau) consType
   introRuleList <- mapM (parseDefineDataConstructor dataName dataArgs) $ zip consInfoList' [0 ..]
   return $ formRule : introRuleList
 
@@ -295,11 +297,11 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
-  modifyIORef' impArgEnvRef $ Map.insert consName (length dataArgs)
   defineFunction
     OpacityTransparent
     m
     consName
+    (length dataArgs)
     dataConsArgs
     dataType
     $ m
@@ -348,6 +350,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
     OpacityOpaque
     m
     elemName'
+    (length dataArgs)
     projArgs
     elemType
     $ m
