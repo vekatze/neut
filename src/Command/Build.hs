@@ -13,7 +13,7 @@ import Control.Monad (forM_, unless, void, when)
 import Data.Basic (OutputKind (..), newHint)
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable (toList)
-import Data.Global (definiteSep, getLibraryDirPath, getMainFilePath, globalEnumEnv, modifiedSourceSetRef, outputLog, setMainFilePath, sourceAliasMapRef)
+import Data.Global (definiteSep, getLibraryDirPath, getMainFilePath, globalEnumEnv, hasCacheSetRef, hasObjectSetRef, outputLog, setMainFilePath, sourceAliasMapRef)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
   ( IORef,
@@ -41,8 +41,6 @@ import GHC.IO.Handle (hClose)
 import Lower (lowerMain, lowerOther)
 import Parse (parseMain, parseOther)
 import Parse.Core (initializeParserForFile, skip)
--- import Parse.Enum (initializeEnumEnv)
-
 import Parse.Enum (insEnumEnv')
 import Parse.Import (parseImportSequence)
 import Path
@@ -74,7 +72,10 @@ data VisitInfo
   = VisitInfoActive
   | VisitInfoFinish
 
-type IsModified =
+type IsCacheAvailable =
+  Bool
+
+type IsObjectAvailable =
   Bool
 
 type ClangOption =
@@ -97,11 +98,11 @@ build' target mClangOptStr = do
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
   initializeEnumEnv
-  (isModified, dependenceSeq) <- computeDependence mainSource
-  modifiedSourceSet <- readIORef modifiedSourceSetRef
+  (_, isObjectAvailable, dependenceSeq) <- computeDependence mainSource
+  hasObjectSet <- readIORef hasObjectSetRef
   let clangOptStr = fromMaybe "" mClangOptStr
-  mapM_ (compile modifiedSourceSet clangOptStr) dependenceSeq
-  when isModified $ link target mClangOptStr $ toList dependenceSeq
+  mapM_ (compile hasObjectSet clangOptStr) dependenceSeq
+  unless isObjectAvailable $ link target mClangOptStr $ toList dependenceSeq
 
 check :: Maybe FilePath -> IO ()
 check mFilePathStr = do
@@ -121,7 +122,7 @@ check' filePath = do
   mainModule <- getMainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
   initializeEnumEnv
-  (_, dependenceSeq) <- computeDependence source
+  (_, _, dependenceSeq) <- computeDependence source
   mapM_ check'' dependenceSeq
 
 initializeEnumEnv :: IO ()
@@ -152,10 +153,10 @@ check'' source = do
       void $ parseOther source >>= elaborateOther source
 
 compile :: S.Set (Path Abs File) -> String -> Source -> IO ()
-compile modifiedSourceSet clangOptStr source = do
-  if S.member (sourceFilePath source) modifiedSourceSet
-    then compile' clangOptStr source
-    else loadTopLevelDefinitions source
+compile hasObjectSet clangOptStr source = do
+  if S.member (sourceFilePath source) hasObjectSet
+    then loadTopLevelDefinitions source
+    else compile' clangOptStr source
 
 loadTopLevelDefinitions :: Source -> IO ()
 loadTopLevelDefinitions source = do
@@ -263,50 +264,61 @@ sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-computeDependence :: Source -> IO (IsModified, Seq Source)
+computeDependence :: Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
 computeDependence source = do
   visitEnv <- readIORef visitEnvRef
   case Map.lookup (sourceFilePath source) visitEnv of
     Just VisitInfoActive ->
       raiseCyclicPath source
     Just VisitInfoFinish ->
-      return (False, Seq.empty)
+      return (False, False, Seq.empty)
     Nothing -> do
       let path = sourceFilePath source
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
       modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
       children <- getChildren source
-      (isModifiedList, seqList) <- unzip <$> mapM computeDependence children
+      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM computeDependence children
       modifyIORef' traceSourceListRef tail
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
-      isModified <- computeModificationStatus isModifiedList source
-      return (isModified, foldl' (><) Seq.empty seqList |> source)
+      isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
+      isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
+      return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
 
-computeModificationStatus :: [IsModified] -> Source -> IO IsModified
-computeModificationStatus isModifiedList source = do
-  b <- isSourceModified source
-  let isModified = or $ b : isModifiedList
-  when isModified $
-    modifyIORef' modifiedSourceSetRef $ S.insert $ sourceFilePath source
-  return isModified
+checkIfCacheIsAvailable :: [IsCacheAvailable] -> Source -> IO IsCacheAvailable
+checkIfCacheIsAvailable isCacheAvailableList source = do
+  b <- isFreshCacheAvailable source
+  let isCacheAvailable = and $ b : isCacheAvailableList
+  when isCacheAvailable $
+    modifyIORef' hasCacheSetRef $ S.insert $ sourceFilePath source
+  return isCacheAvailable
 
-isSourceModified :: Source -> IO Bool
-isSourceModified source = do
-  objectPath <- sourceToOutputPath OutputKindObject source
+checkIfObjectIsAvailable :: [IsObjectAvailable] -> Source -> IO IsObjectAvailable
+checkIfObjectIsAvailable isObjectAvailableList source = do
+  b <- isFreshObjectAvailable source
+  let isObjectAvailable = and $ b : isObjectAvailableList
+  when isObjectAvailable $
+    modifyIORef' hasObjectSetRef $ S.insert $ sourceFilePath source
+  return isObjectAvailable
+
+isFreshCacheAvailable :: Source -> IO Bool
+isFreshCacheAvailable source = do
   cachePath <- getSourceCachePath source
-  b1 <- isSourceModified' source objectPath
-  b2 <- isSourceModified' source cachePath
-  return $ b1 || b2
+  isItemAvailable source cachePath
 
-isSourceModified' :: Source -> Path Abs File -> IO Bool
-isSourceModified' source itemPath = do
+isFreshObjectAvailable :: Source -> IO Bool
+isFreshObjectAvailable source = do
+  objectPath <- sourceToOutputPath OutputKindObject source
+  isItemAvailable source objectPath
+
+isItemAvailable :: Source -> Path Abs File -> IO Bool
+isItemAvailable source itemPath = do
   existsItem <- doesFileExist itemPath
   if not existsItem
-    then return True
+    then return False
     else do
       srcModTime <- getModificationTime $ sourceFilePath source
       itemModTime <- getModificationTime itemPath
-      return $ itemModTime < srcModTime
+      return $ itemModTime > srcModTime
 
 raiseCyclicPath :: Source -> IO a
 raiseCyclicPath source = do

@@ -5,7 +5,7 @@ module Data.Stmt where
 import Control.Comonad.Cofree (Cofree ((:<)))
 import Data.Basic (BinderF, Hint, Opacity (OpacityOpaque))
 import Data.Binary (Binary, decodeFileOrFail, encodeFile)
-import Data.Global (modifiedSourceSetRef, topNameSetRef)
+import Data.Global (hasCacheSetRef, topNameSetRef)
 import qualified Data.Set as S
 import Data.Source (Source (sourceFilePath), getSourceCachePath)
 import Data.Term (Term, TermF (..))
@@ -70,7 +70,7 @@ saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
   b <- doesFreshCacheExist source
   if b
-    then return () -- the cache is already fresh
+    then return ()
     else do
       topNameSet <- readIORef topNameSetRef
       let stmtList' = map compress $ filter (isPublic topNameSet) stmtList
@@ -87,7 +87,7 @@ loadCache source = do
     else do
       b <- doesFreshCacheExist source
       if not b
-        then return Nothing -- no cache is available
+        then return Nothing
         else do
           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
@@ -99,5 +99,5 @@ loadCache source = do
 
 doesFreshCacheExist :: Source -> IO Bool
 doesFreshCacheExist source = do
-  modifiedSourceSet <- readIORef modifiedSourceSetRef
-  return $ S.notMember (sourceFilePath source) modifiedSourceSet
+  hasCacheSet <- readIORef hasCacheSetRef
+  return $ S.member (sourceFilePath source) hasCacheSet
