@@ -161,6 +161,11 @@ constructorEnvRef :: IORef (Map.HashMap T.Text Int)
 constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
+{-# NOINLINE currentLocalLocatorListRef #-}
+currentLocalLocatorListRef :: IORef [T.Text]
+currentLocalLocatorListRef =
+  unsafePerformIO (newIORef [])
+
 {-# NOINLINE currentGlobalLocatorRef #-}
 currentGlobalLocatorRef :: IORef T.Text
 currentGlobalLocatorRef =

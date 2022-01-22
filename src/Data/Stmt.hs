@@ -22,6 +22,7 @@ type WeakProgram =
 data WeakStmt
   = WeakStmtDefine Opacity Hint T.Text [BinderF WeakTerm] WeakTerm WeakTerm
   | WeakStmtDefineResource Hint T.Text WeakTerm WeakTerm
+  | WeakStmtSection Hint T.Text [WeakStmt]
 
 type Program =
   (Source, [Stmt])

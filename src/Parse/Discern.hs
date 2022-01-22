@@ -31,6 +31,8 @@ import Data.Namespace
     asGlobalVar,
     asWeakConstant,
     constructCandList,
+    popFromCurrentLocalLocator,
+    pushToCurrentLocalLocator,
     resolveSymbol,
     tryCand,
   )
@@ -63,6 +65,12 @@ discernStmtList stmtList =
       copier' <- discern copier
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
+    WeakStmtSection m sectionName innerStmtList : rest -> do
+      pushToCurrentLocalLocator sectionName
+      innerStmtList' <- discernStmtList innerStmtList
+      _ <- popFromCurrentLocalLocator m
+      rest' <- discernStmtList rest
+      return $ innerStmtList' ++ rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
 discern' :: NameEnv -> WeakTerm -> IO WeakTerm

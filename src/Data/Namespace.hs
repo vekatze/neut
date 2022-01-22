@@ -1,8 +1,10 @@
 module Data.Namespace where
 
 import Control.Comonad.Cofree (Cofree (..))
+import Control.Monad ((>=>))
 import Data.Basic (EnumCase, EnumCaseF (EnumCaseLabel), Hint, Ident)
-import Data.Global (currentGlobalLocatorRef, definiteSep, globalLocatorListRef, localLocatorListRef, locatorAliasMapRef, moduleAliasMapRef, nsSep)
+import Data.Containers.ListUtils (nubOrd)
+import Data.Global (currentGlobalLocatorRef, currentLocalLocatorListRef, definiteSep, globalLocatorListRef, localLocatorListRef, locatorAliasMapRef, moduleAliasMapRef, nsSep)
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseError)
@@ -29,20 +31,42 @@ import Data.WeakTerm
 data Section
   = Section T.Text [T.Text]
 
-{-# INLINE nsUnsafe #-}
-nsUnsafe :: T.Text
-nsUnsafe =
-  "unsafe" <> nsSep
-
-{-# INLINE nsOS #-}
-nsOS :: T.Text
-nsOS =
-  "os" <> nsSep
-
 attachSectionPrefix :: T.Text -> IO T.Text
-attachSectionPrefix x = do
+attachSectionPrefix =
+  attachLocalLocator >=> attachGlobalLocator
+
+attachLocalLocator :: T.Text -> IO T.Text
+attachLocalLocator x = do
+  currentLocalLocatorList <- readIORef currentLocalLocatorListRef
+  case currentLocalLocatorList of
+    [] ->
+      return x
+    locator : _ ->
+      return $ locator <> nsSep <> x
+
+attachGlobalLocator :: T.Text -> IO T.Text
+attachGlobalLocator x = do
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
   return $ currentGlobalLocator <> definiteSep <> x
+
+pushToCurrentLocalLocator :: T.Text -> IO ()
+pushToCurrentLocalLocator s = do
+  localLocatorList <- readIORef currentLocalLocatorListRef
+  case localLocatorList of
+    [] ->
+      writeIORef currentLocalLocatorListRef [s]
+    headLocalLocator : _ ->
+      writeIORef currentLocalLocatorListRef $ headLocalLocator <> nsSep <> s : localLocatorList
+
+popFromCurrentLocalLocator :: Hint -> IO T.Text
+popFromCurrentLocalLocator m = do
+  localLocatorList <- readIORef currentLocalLocatorListRef
+  case localLocatorList of
+    [] ->
+      raiseError m "there is no section to end"
+    headLocalLocator : rest -> do
+      writeIORef currentLocalLocatorListRef rest
+      return headLocalLocator
 
 activateGlobalLocator :: T.Text -> IO ()
 activateGlobalLocator s =
@@ -74,7 +98,6 @@ resolveSymbol m predicate name candList = do
 constructCandList :: T.Text -> Bool -> IO [T.Text]
 constructCandList name isDefinite = do
   prefixedNameList <- getPrefixedNameList name isDefinite
-  print prefixedNameList
   moduleAliasMap <- readIORef moduleAliasMapRef
   locatorAliasMap <- readIORef locatorAliasMapRef
   return $ map (resolveName moduleAliasMap locatorAliasMap) prefixedNameList
@@ -84,15 +107,22 @@ getPrefixedNameList name isDefinite = do
   if isDefinite
     then return [name]
     else do
-      localLocatorList <- readIORef localLocatorListRef
       globalLocatorList <- readIORef globalLocatorListRef
-      let localNameList = mapPrefix nsSep localLocatorList name
       let globalNameList = mapPrefix definiteSep globalLocatorList name
-      return $ globalNameList ++ localNameList
+      localLocatorList <- readIORef localLocatorListRef
+      let localNameList = mapPrefix nsSep localLocatorList name
+      sectionalNameList <- getSectionalNameList name
+      return $ nubOrd $ globalNameList ++ localNameList ++ sectionalNameList
 
 mapPrefix :: T.Text -> [T.Text] -> T.Text -> [T.Text]
 mapPrefix sep prefixList basename =
   map (<> sep <> basename) prefixList
+
+getSectionalNameList :: T.Text -> IO [T.Text]
+getSectionalNameList name = do
+  currentGlobalLocator <- readIORef currentGlobalLocatorRef
+  currentLocalLocatorList <- readIORef currentLocalLocatorListRef
+  return $ map (\localLocator -> currentGlobalLocator <> definiteSep <> localLocator <> nsSep <> name) currentLocalLocatorList
 
 breakOn :: T.Text -> T.Text -> Maybe (T.Text, T.Text)
 breakOn pat src@(Text.Text arr off len)

@@ -31,6 +31,8 @@ import Data.Namespace
     activateLocalLocator,
     attachSectionPrefix,
     handleDefinePrefix,
+    popFromCurrentLocalLocator,
+    pushToCurrentLocalLocator,
   )
 import qualified Data.Set as S
 import Data.Source (Source (..), getDomain, getLocator)
@@ -54,7 +56,7 @@ import Data.WeakTerm
         WeakTermVarGlobal
       ),
   )
-import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseDefiniteDescription, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
+import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseDefiniteDescription, parseMany, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
@@ -167,46 +169,44 @@ parseHeader' =
         stmtList <- parseStmtList >>= discernStmtList
         return (stmtList, [])
 
-parseStmtList :: IO [WeakStmt]
-parseStmtList = do
+parseStmt :: IO [WeakStmt]
+parseStmt = do
   text <- readIORef textRef
   if T.null text
-    then return []
+    then do
+      m <- currentHint
+      raiseParseError m "unexpected end of input"
     else do
       headSymbol <- lookAhead (parseByPredicate isSymbolChar)
       case headSymbol of
-        Just "define" -> do
-          def <- parseDefine OpacityOpaque
-          stmtList <- parseStmtList
-          return $ def : stmtList
+        Just "define" ->
+          return <$> parseDefine OpacityOpaque
         Just "define-inline" -> do
-          def <- parseDefine OpacityTransparent
-          stmtList <- parseStmtList
-          return $ def : stmtList
+          return <$> parseDefine OpacityTransparent
         Just "define-data" -> do
-          stmtList1 <- parseDefineData
-          stmtList2 <- parseStmtList
-          return $ stmtList1 ++ stmtList2
+          parseDefineData
         Just "define-codata" -> do
-          stmtList1 <- parseDefineCodata
-          stmtList2 <- parseStmtList
-          return $ stmtList1 ++ stmtList2
+          parseDefineCodata
         Just "define-resource" -> do
-          def <- parseDefineResource
-          stmtList <- parseStmtList
-          return $ def : stmtList
+          return <$> parseDefineResource
         Just "public" -> do
           parsePublic
-          parseStmtList
+          return []
         Just "private" -> do
           parsePrivate
-          parseStmtList
+          return []
+        Just "section" -> do
+          return <$> parseSection
         Just x -> do
           m <- currentHint
           raiseParseError m $ "invalid statement: " <> x
         Nothing -> do
           m <- currentHint
           raiseParseError m "found the empty symbol when expecting a statement"
+
+parseStmtList :: IO [WeakStmt]
+parseStmtList =
+  concat <$> parseMany parseStmt
 
 --
 -- parser for statements
@@ -221,6 +221,17 @@ parsePrivate :: IO ()
 parsePrivate = do
   parseToken "private"
   modifyIORef' isPrivateRef $ const True
+
+parseSection :: IO WeakStmt
+parseSection = do
+  parseToken "section"
+  sectionName <- parseSymbol
+  pushToCurrentLocalLocator sectionName
+  stmtList <- parseStmtList
+  m <- currentHint
+  parseToken "end"
+  _ <- popFromCurrentLocalLocator m
+  return $ WeakStmtSection m sectionName stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
 parseDefine :: Opacity -> IO WeakStmt
@@ -323,7 +334,6 @@ parseDefineCodata = do
   dataArgs <- parseArgList weakAscription
   elemInfoList <- parseAsBlock $ parseManyList weakAscription
   formRule <- defineData m dataName dataArgs [(m, "new", elemInfoList)]
-  -- formRule <- defineData m dataName dataArgs [(m, dataName <> ":" <> "new", elemInfoList)]
   elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
 
@@ -332,7 +342,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
   let codataType = constructDataType m dataName dataArgs
   recordVarText <- newText
   let projArgs = dataArgs ++ [(m, asIdent recordVarText, codataType)]
-  elemName' <- attachSectionPrefix $ dataName <> nsSep <> asText elemName
+  let elemName' = dataName <> nsSep <> asText elemName
   defineFunction
     OpacityOpaque
     m
