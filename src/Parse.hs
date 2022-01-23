@@ -87,7 +87,6 @@ parseOther =
 parseSource :: Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseSource source = do
   mCache <- loadCache source
-  modifyIORef' isPrivateRef $ const True
   initializeNamespace source
   setupSectionPrefix source
   case mCache of
@@ -193,12 +192,6 @@ parseStmt = do
           parseDefineCodata
         Just "define-resource" -> do
           return <$> parseDefineResource
-        Just "public" -> do
-          parsePublic
-          return []
-        Just "private" -> do
-          parsePrivate
-          return []
         Just "section" -> do
           return <$> parseSection
         Just x -> do
@@ -216,25 +209,17 @@ parseStmtList =
 -- parser for statements
 --
 
-parsePublic :: IO ()
-parsePublic = do
-  parseToken "public"
-  modifyIORef' isPrivateRef $ const False
-
-parsePrivate :: IO ()
-parsePrivate = do
-  parseToken "private"
-  modifyIORef' isPrivateRef $ const True
-
 parseSection :: IO WeakStmt
 parseSection = do
   parseToken "section"
   sectionName <- parseSymbol
+  modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
   pushToCurrentLocalLocator sectionName
   stmtList <- parseStmtList
   m <- currentHint
   parseToken "end"
   _ <- popFromCurrentLocalLocator m
+  modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
@@ -386,7 +371,7 @@ registerTopLevelName m x = do
   when (S.member x topNameSet) $
     raiseError m $ "the variable `" <> x <> "` is already defined at the top level"
   modifyIORef' topNameSetRef $ S.insert x
-  isPrivate <- readIORef isPrivateRef
+  isPrivate <- checkIfPrivate
   when isPrivate $
     modifyIORef' privateNameSetRef $ S.insert x
 
@@ -404,10 +389,17 @@ getAdditionalChecksumAlias source = do
     then return []
     else return [(defaultModulePrefix, domain)]
 
-{-# NOINLINE isPrivateRef #-}
-isPrivateRef :: IORef Bool
-isPrivateRef =
-  unsafePerformIO (newIORef True)
+checkIfPrivate :: IO Bool
+checkIfPrivate = do
+  isPrivateStack <- readIORef isPrivateStackRef
+  if null isPrivateStack
+    then return False
+    else return $ head isPrivateStack
+
+{-# NOINLINE isPrivateStackRef #-}
+isPrivateStackRef :: IORef [Bool]
+isPrivateStackRef =
+  unsafePerformIO (newIORef [])
 
 {-# NOINLINE privateNameSetRef #-}
 privateNameSetRef :: IORef (S.Set T.Text)
