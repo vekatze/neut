@@ -13,7 +13,6 @@ import Data.Global
     dataEnvRef,
     getCurrentFilePath,
     globalLocatorListRef,
-    -- impArgEnvRef,
     localLocatorListRef,
     moduleAliasMapRef,
     newText,

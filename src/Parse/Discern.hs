@@ -97,7 +97,7 @@ discern' nenv term =
       candList <- constructCandList x True
       topNameSet <- readIORef topNameSetRef
       tryCand (resolveSymbol m (asGlobalVar m topNameSet) x candList) $ do
-        raiseError m $ "unresolvable definite description: " <> x
+        raiseError m $ "undefined constant: " <> x
     m :< WeakTermPi xts t -> do
       (xts', t') <- discernBinder nenv xts t
       return $ m :< WeakTermPi xts' t'
