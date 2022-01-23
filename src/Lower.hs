@@ -32,9 +32,9 @@ import Data.LowComp
     SizeInfo,
   )
 import Data.LowType
-  ( Derangement (..),
-    FloatSize (..),
+  ( FloatSize (..),
     LowType (..),
+    Magic (..),
     PrimOp (..),
     sizeAsInt,
     voidPtr,
@@ -205,34 +205,34 @@ lowerCompPrimitive codeOp =
   case codeOp of
     PrimitivePrimOp op vs ->
       lowerCompPrimOp op vs
-    PrimitiveDerangement der -> do
+    PrimitiveMagic der -> do
       case der of
-        DerangementCast _ _ value -> do
+        MagicCast _ _ value -> do
           (x, v) <- newValueLocal "cast-arg"
           lowerValueLet x value $ LowCompReturn v
-        DerangementStore valueLowType pointer value -> do
+        MagicStore valueLowType pointer value -> do
           (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName pointer) pointer (LowTypePointer valueLowType)
           (valVar, castValThen) <- llvmCast (Just $ takeBaseName value) value valueLowType
           (castPtrThen >=> castValThen) $
             LowCompCont (LowOpStore valueLowType valVar ptrVar) $
               LowCompReturn LowValueNull
-        DerangementLoad valueLowType pointer -> do
+        MagicLoad valueLowType pointer -> do
           (ptrVar, castPtrThen) <- llvmCast (Just $ takeBaseName pointer) pointer (LowTypePointer valueLowType)
           resName <- newIdentFromText "result"
           uncast <- llvmUncast (Just $ asText resName) (LowValueVarLocal resName) valueLowType
           castPtrThen $
             LowCompLet resName (LowOpLoad ptrVar valueLowType) uncast
-        DerangementSyscall i args -> do
+        MagicSyscall i args -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "sys-call-arg") args
           res <- newIdentFromText "result"
           lowerValueLet' (zip xs args) $
             LowCompLet res (LowOpSyscall i vs) $
               LowCompReturn (LowValueVarLocal res)
-        DerangementExternal name args -> do
+        MagicExternal name args -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "ext-call-arg") args
           insDeclEnv name vs
           lowerValueLet' (zip xs args) $ LowCompCall (LowValueVarGlobal name) vs
-        DerangementCreateArray elemType args -> do
+        MagicCreateArray elemType args -> do
           let arrayType = AggPtrTypeArray (length args) elemType
           let argTypeList = zip args (repeat elemType)
           resName <- newIdentFromText "result"

@@ -13,7 +13,7 @@ import Data.Comp
   )
 import Data.Global (countRef, newIdentFromIdent, newIdentFromText)
 import Data.IORef (readIORef, writeIORef)
-import Data.LowType (Derangement (..))
+import Data.LowType (Magic (..))
 
 data Occurrence
   = OccurrenceNormal Ident
@@ -137,33 +137,26 @@ distinguishPrimitive z term =
     PrimitivePrimOp op ds -> do
       (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
       return (concat vss, PrimitivePrimOp op ds')
-    PrimitiveDerangement der -> do
+    PrimitiveMagic der -> do
       case der of
-        DerangementCast from to value -> do
+        MagicCast from to value -> do
           (vs1, from') <- distinguishValue z from
           (vs2, to') <- distinguishValue z to
           (vs3, value') <- distinguishValue z value
-          return (vs1 <> vs2 <> vs3, PrimitiveDerangement (DerangementCast from' to' value'))
-        DerangementStore lt pointer value -> do
+          return (vs1 <> vs2 <> vs3, PrimitiveMagic (MagicCast from' to' value'))
+        MagicStore lt pointer value -> do
           (vs1, pointer') <- distinguishValue z pointer
           (vs2, value') <- distinguishValue z value
-          return (vs1 <> vs2, PrimitiveDerangement (DerangementStore lt pointer' value'))
-        DerangementLoad lt pointer -> do
+          return (vs1 <> vs2, PrimitiveMagic (MagicStore lt pointer' value'))
+        MagicLoad lt pointer -> do
           (vs, pointer') <- distinguishValue z pointer
-          return (vs, PrimitiveDerangement (DerangementLoad lt pointer'))
-        DerangementSyscall syscallNum args -> do
+          return (vs, PrimitiveMagic (MagicLoad lt pointer'))
+        MagicSyscall syscallNum args -> do
           (vss, args') <- unzip <$> mapM (distinguishValue z) args
-          return (concat vss, PrimitiveDerangement (DerangementSyscall syscallNum args'))
-        DerangementExternal extFunName args -> do
+          return (concat vss, PrimitiveMagic (MagicSyscall syscallNum args'))
+        MagicExternal extFunName args -> do
           (vss, args') <- unzip <$> mapM (distinguishValue z) args
-          return (concat vss, PrimitiveDerangement (DerangementExternal extFunName args'))
-        DerangementCreateArray lt args -> do
+          return (concat vss, PrimitiveMagic (MagicExternal extFunName args'))
+        MagicCreateArray lt args -> do
           (vss, args') <- unzip <$> mapM (distinguishValue z) args
-          return (concat vss, PrimitiveDerangement (DerangementCreateArray lt args'))
-
--- (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
--- return (concat vss, PrimitiveDerangement k ds')
-
--- PrimitiveDerangement k ds -> do
---   (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
---   return (concat vss, PrimitiveDerangement k ds')
+          return (concat vss, PrimitiveMagic (MagicCreateArray lt args'))

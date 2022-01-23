@@ -94,9 +94,9 @@ reduceWeakTerm term =
           return $ m :< WeakTermEnumElim (e', t') les'
     _ :< WeakTermQuestion e _ ->
       reduceWeakTerm e
-    m :< WeakTermDerangement der -> do
+    m :< WeakTermMagic der -> do
       der' <- mapM reduceWeakTerm der
-      return $ m :< WeakTermDerangement der'
+      return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       e' <- reduceWeakTerm e
       -- let lamList = map (toLamList m) clauseList
@@ -208,9 +208,9 @@ substWeakTerm sub term =
       e' <- substWeakTerm sub e
       t' <- substWeakTerm sub t
       return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermDerangement der -> do
+    m :< WeakTermMagic der -> do
       der' <- mapM (substWeakTerm sub) der
-      return $ m :< WeakTermDerangement der'
+      return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (substWeakTerm sub) mSubject
       e' <- substWeakTerm sub e

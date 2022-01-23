@@ -279,9 +279,9 @@ elaborate' term =
       t' <- elaborate' t
       note m $ toText (weaken t')
       return e'
-    m :< WeakTermDerangement der -> do
+    m :< WeakTermMagic der -> do
       der' <- mapM elaborate' der
-      return $ m :< TermDerangement der'
+      return $ m :< TermMagic der'
     m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e

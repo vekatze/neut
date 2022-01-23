@@ -37,7 +37,7 @@ import Data.IORef (modifyIORef', readIORef)
 import qualified Data.IntMap as IntMap
 import Data.Log (raiseCritical, raiseError)
 import Data.LowType
-  ( Derangement (DerangementCast),
+  ( Magic (MagicCast),
     PrimOp (..),
     asLowFloat,
     asLowInt,
@@ -177,18 +177,18 @@ infer' ctx term =
     m :< WeakTermQuestion e _ -> do
       (e', te) <- infer' ctx e
       return (m :< WeakTermQuestion e' te, te)
-    m :< WeakTermDerangement der -> do
+    m :< WeakTermMagic der -> do
       case der of
-        DerangementCast from to value -> do
+        MagicCast from to value -> do
           from' <- inferType' ctx from
           to' <- inferType' ctx to
           (value', t) <- infer' ctx value
           insConstraintEnv t from'
-          return (m :< WeakTermDerangement (DerangementCast from' to' value'), to')
+          return (m :< WeakTermMagic (MagicCast from' to' value'), to')
         _ -> do
           der' <- mapM (infer' ctx >=> return . fst) der
           resultType <- newTypeAsterInCtx ctx m
-          return (m :< WeakTermDerangement der', resultType)
+          return (m :< WeakTermMagic der', resultType)
     m :< WeakTermMatch mSubject (e, _) clauseList -> do
       resultType <- newTypeAsterInCtx ctx m
       (e', t') <- infer' ctx e
@@ -541,9 +541,9 @@ arrange ctx term =
       e' <- arrange ctx e
       t' <- arrange ctx t
       return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermDerangement der -> do
+    m :< WeakTermMagic der -> do
       der' <- traverse (arrange ctx) der
-      return $ m :< WeakTermDerangement der'
+      return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (arrange ctx) mSubject
       e' <- arrange ctx e

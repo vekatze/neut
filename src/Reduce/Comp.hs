@@ -167,9 +167,9 @@ substPrimitive sub nenv c =
     PrimitivePrimOp op vs -> do
       let vs' = map (substValue sub nenv) vs
       PrimitivePrimOp op vs'
-    PrimitiveDerangement der -> do
+    PrimitiveMagic der -> do
       let der' = fmap (substValue sub nenv) der
-      PrimitiveDerangement der'
+      PrimitiveMagic der'
 
 asIdent :: Value -> Maybe Ident
 asIdent term =

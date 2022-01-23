@@ -154,9 +154,9 @@ discern' nenv term =
       e' <- discern' nenv e
       t' <- discern' nenv t
       return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermDerangement der -> do
+    m :< WeakTermMagic der -> do
       der' <- traverse (discern' nenv) der
-      return $ m :< WeakTermDerangement der'
+      return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
       mSubject' <- mapM (discern' nenv) mSubject
       e' <- discern' nenv e

@@ -2,7 +2,7 @@ module Data.Comp where
 
 import Data.Basic (CompEnumCase, Ident, Opacity)
 import qualified Data.IntMap as IntMap
-import Data.LowType (Derangement, FloatSize, IntSize, PrimOp)
+import Data.LowType (FloatSize, IntSize, Magic, PrimOp)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -27,7 +27,7 @@ data Comp
 
 data Primitive
   = PrimitivePrimOp PrimOp [Value]
-  | PrimitiveDerangement (Derangement Value)
+  | PrimitiveMagic (Magic Value)
   deriving (Show)
 
 type SubstValue =
@@ -72,7 +72,7 @@ varComp c =
       case prim of
         PrimitivePrimOp _ vs ->
           S.unions $ map varValue vs
-        PrimitiveDerangement der ->
+        PrimitiveMagic der ->
           foldMap varValue der
 
 dummyComp :: Comp

@@ -18,10 +18,10 @@ import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
 import Data.Log (raiseCritical)
 import Data.LowType
-  ( Derangement,
-    FloatSize,
+  ( FloatSize,
     IntSize,
     LowType (LowTypeFloat, LowTypeInt),
+    Magic,
     showFloatSize,
     showIntSize,
   )
@@ -48,7 +48,7 @@ data TermF a
   | TermEnum T.Text
   | TermEnumIntro T.Text
   | TermEnumElim (a, a) [(EnumCase, a)]
-  | TermDerangement (Derangement a)
+  | TermMagic (Magic a)
   | TermMatch
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
@@ -121,8 +121,8 @@ weaken term =
       -- let caseList' = map (\(me, ec) -> (me, weakenEnumCase ec)) caseList
       let es' = map weaken es
       m :< WeakTermEnumElim (e', t') (zip caseList es')
-    m :< TermDerangement der -> do
-      m :< WeakTermDerangement (fmap weaken der)
+    m :< TermMagic der -> do
+      m :< WeakTermMagic (fmap weaken der)
     m :< TermMatch mSubject (e, t) patList -> do
       let mSubject' = fmap weaken mSubject
       let e' = weaken e

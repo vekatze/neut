@@ -37,7 +37,7 @@ import Data.Basic
 import Data.Comp
   ( Comp (..),
     CompDef,
-    Primitive (PrimitiveDerangement, PrimitivePrimOp),
+    Primitive (PrimitiveMagic, PrimitivePrimOp),
     Value (..),
     varComp,
   )
@@ -54,7 +54,7 @@ import qualified Data.IntMap as IntMap
 import Data.List (nubBy)
 import Data.Log (raiseCritical)
 import Data.LowType
-  ( Derangement (..),
+  ( Magic (..),
     PrimOp (..),
     asLowTypeMaybe,
     asPrimOp,
@@ -181,8 +181,8 @@ clarifyTerm tenv term =
       es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
       (y, e', yVar) <- clarifyPlus tenv e
       return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
-    _ :< TermDerangement der -> do
-      clarifyDerangement tenv der
+    _ :< TermMagic der -> do
+      clarifyMagic tenv der
     _ :< TermMatch mSubject (e, _) clauseList -> do
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
@@ -220,42 +220,42 @@ clarifyTerm tenv term =
       e' <- clarifyTerm (IntMap.insert (asInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
 
-clarifyDerangement :: TypeEnv -> Derangement Term -> IO Comp
-clarifyDerangement tenv der =
+clarifyMagic :: TypeEnv -> Magic Term -> IO Comp
+clarifyMagic tenv der =
   case der of
-    DerangementCast from to value -> do
+    MagicCast from to value -> do
       (fromVarName, from', fromVar) <- clarifyPlus tenv from
       (toVarName, to', toVar) <- clarifyPlus tenv to
       (valueVarName, value', valueVar) <- clarifyPlus tenv value
       return $
         bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
-          CompPrimitive (PrimitiveDerangement (DerangementCast fromVar toVar valueVar))
-    DerangementStore lt pointer value -> do
+          CompPrimitive (PrimitiveMagic (MagicCast fromVar toVar valueVar))
+    MagicStore lt pointer value -> do
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       (valueVarName, value', valueVar) <- clarifyPlus tenv value
       return $
         bindLet [(pointerVarName, pointer'), (valueVarName, value')] $
-          CompPrimitive (PrimitiveDerangement (DerangementStore lt pointerVar valueVar))
-    DerangementLoad lt pointer -> do
+          CompPrimitive (PrimitiveMagic (MagicStore lt pointerVar valueVar))
+    MagicLoad lt pointer -> do
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       return $
         bindLet [(pointerVarName, pointer')] $
-          CompPrimitive (PrimitiveDerangement (DerangementLoad lt pointerVar))
-    DerangementSyscall syscallNum args -> do
+          CompPrimitive (PrimitiveMagic (MagicLoad lt pointerVar))
+    MagicSyscall syscallNum args -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
       return $
         bindLet (zip xs args') $
-          CompPrimitive (PrimitiveDerangement (DerangementSyscall syscallNum xsAsVars))
-    DerangementExternal extFunName args -> do
+          CompPrimitive (PrimitiveMagic (MagicSyscall syscallNum xsAsVars))
+    MagicExternal extFunName args -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
       return $
         bindLet (zip xs args') $
-          CompPrimitive (PrimitiveDerangement (DerangementExternal extFunName xsAsVars))
-    DerangementCreateArray lt args -> do
+          CompPrimitive (PrimitiveMagic (MagicExternal extFunName xsAsVars))
+    MagicCreateArray lt args -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
       return $
         bindLet (zip xs args') $
-          CompPrimitive (PrimitiveDerangement (DerangementCreateArray lt xsAsVars))
+          CompPrimitive (PrimitiveMagic (MagicCreateArray lt xsAsVars))
 
 clarifyLambda ::
   TypeEnv ->
@@ -443,7 +443,7 @@ chainOf tenv term =
       let es = map snd les
       let xs2 = concatMap (chainOf tenv) es
       xs0 ++ xs1 ++ xs2
-    _ :< TermDerangement der ->
+    _ :< TermMagic der ->
       foldMap (chainOf tenv) der
     _ :< TermMatch mSubject (e, _) patList -> do
       let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)

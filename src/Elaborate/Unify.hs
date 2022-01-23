@@ -174,10 +174,6 @@ simplify constraintList =
             simplify cs
         (_ :< WeakTermQuestion e1 t1, _ :< WeakTermQuestion e2 t2) ->
           simplify $ ((e1, e2), orig) : ((t1, t2), orig) : cs
-        -- (_ :< WeakTermDerangement der1, _ :< WeakTermDerangement der2)
-        --   | length es1 == length es2,
-        --     i1 == i2 ->
-        --     simplify $ zipWith (curry (,orig)) es1 es2 ++ cs
         (_ :< WeakTermNoema s1 e1, _ :< WeakTermNoema s2 e2) ->
           simplify $ ((s1, s2), orig) : ((e1, e2), orig) : cs
         (_ :< WeakTermNoemaIntro s1 e1, _ :< WeakTermNoemaIntro s2 e2)

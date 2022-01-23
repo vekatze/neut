@@ -18,7 +18,7 @@ import Data.Basic
   )
 import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
-import Data.LowType (Derangement, showIntSize)
+import Data.LowType (Magic, showIntSize)
 import Data.Maybe (catMaybes, maybeToList)
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
@@ -43,7 +43,7 @@ data WeakTermF a
   | WeakTermEnumIntro T.Text
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
-  | WeakTermDerangement (Derangement a) -- (derangement kind arg-1 ... arg-n)
+  | WeakTermMagic (Magic a) -- (magic kind arg-1 ... arg-n)
   | WeakTermMatch
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)
@@ -158,7 +158,7 @@ varWeakTerm term =
       let set1 = varWeakTerm e
       let set2 = varWeakTerm t
       S.union set1 set2
-    _ :< WeakTermDerangement der ->
+    _ :< WeakTermMagic der ->
       foldMap varWeakTerm der
     _ :< WeakTermMatch mSubject (e, t) patList -> do
       let xs1 = S.unions $ map varWeakTerm $ maybeToList mSubject
@@ -227,7 +227,7 @@ asterWeakTerm term =
       let set1 = asterWeakTerm e
       let set2 = asterWeakTerm t
       S.union set1 set2
-    _ :< WeakTermDerangement der ->
+    _ :< WeakTermMagic der ->
       foldMap asterWeakTerm der
     _ :< WeakTermMatch mSubject (e, t) patList -> do
       let xs1 = S.unions $ map asterWeakTerm $ maybeToList mSubject
@@ -318,10 +318,10 @@ toText term =
       showCons ["switch", toText e, showItems (map showClause mles)]
     _ :< WeakTermQuestion e _ ->
       toText e
-    _ :< WeakTermDerangement _ -> do
-      "<derangement>"
+    _ :< WeakTermMagic _ -> do
+      "<magic>"
     -- let es' = map toText es
-    -- showCons $ "derangement" : T.pack (show i) : es'
+    -- showCons $ "magic" : T.pack (show i) : es'
     _ :< WeakTermMatch mSubject (e, _) caseClause -> do
       case mSubject of
         Nothing -> do

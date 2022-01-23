@@ -26,8 +26,8 @@ import Data.IORef (readIORef)
 import Data.List (foldl')
 import Data.Log (raiseError)
 import Data.LowType
-  ( Derangement (..),
-    LowType (..),
+  ( LowType (..),
+    Magic (..),
     asLowFloat,
     asLowInt,
     showFloatSize,
@@ -95,8 +95,8 @@ weakTerm = do
       weakTermIntrospect
     Just "question" ->
       weakTermQuestion
-    Just "derangement" ->
-      weakTermDerangement
+    Just "magic" ->
+      weakTermMagic
     Just "match" ->
       weakTermMatch
     Just "match-noetic" ->
@@ -241,10 +241,10 @@ weakTermQuestion = do
   h <- newAster m
   return $ m :< WeakTermQuestion e h
 
-weakTermDerangement :: IO WeakTerm
-weakTermDerangement = do
+weakTermMagic :: IO WeakTerm
+weakTermMagic = do
   m <- currentHint
-  parseToken "derangement"
+  parseToken "magic"
   headSymbol <- parseSymbol
   parseBetweenParen $ do
     case headSymbol of
@@ -252,30 +252,30 @@ weakTermDerangement = do
         castFrom <- weakTerm
         castTo <- parseChar ',' >> skip >> weakTerm
         value <- parseChar ',' >> skip >> weakTerm
-        return $ m :< WeakTermDerangement (DerangementCast castFrom castTo value)
+        return $ m :< WeakTermMagic (MagicCast castFrom castTo value)
       "store" -> do
         lt <- lowType
         pointer <- parseChar ',' >> skip >> weakTerm
         value <- parseChar ',' >> skip >> weakTerm
-        return $ m :< WeakTermDerangement (DerangementStore lt pointer value)
+        return $ m :< WeakTermMagic (MagicStore lt pointer value)
       "load" -> do
         lt <- lowType
         pointer <- parseChar ',' >> skip >> weakTerm
-        return $ m :< WeakTermDerangement (DerangementLoad lt pointer)
+        return $ m :< WeakTermMagic (MagicLoad lt pointer)
       "syscall" -> do
         syscallNum <- parseInteger
         es <- parseMany (parseChar ',' >> skip >> weakTerm)
-        return $ m :< WeakTermDerangement (DerangementSyscall syscallNum es)
+        return $ m :< WeakTermMagic (MagicSyscall syscallNum es)
       "external" -> do
         extFunName <- parseSymbol
         es <- parseMany (parseChar ',' >> skip >> weakTerm)
-        return $ m :< WeakTermDerangement (DerangementExternal extFunName es)
+        return $ m :< WeakTermMagic (MagicExternal extFunName es)
       "create-array" -> do
         lt <- lowType
         es <- parseMany (parseChar ',' >> skip >> weakTerm)
-        return $ m :< WeakTermDerangement (DerangementCreateArray lt es)
+        return $ m :< WeakTermMagic (MagicCreateArray lt es)
       _ ->
-        raiseError m $ "no such derangement is defined: " <> headSymbol
+        raiseError m $ "no such magic is defined: " <> headSymbol
 
 -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: IO LowType
@@ -553,13 +553,13 @@ weakTermArrayIntro = do
   t' <- lowTypeToWeakTerm m t
   es' <- mapM (annotate t') es
   return $
-    bind (m, arr, ptrType) (m :< WeakTermDerangement (DerangementCreateArray t es')) $
+    bind (m, arr, ptrType) (m :< WeakTermMagic (MagicCreateArray t es')) $
       bind (m, ptr, ptrType) (m :< WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
         bind (m, h1, topType) (m :< WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
           bind
             (m, h2, topType)
             (m :< WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
-            (m :< WeakTermDerangement (DerangementCast (weakVar m unsafePtr) (weakVar m arrName) (weakVar m (asText ptr))))
+            (m :< WeakTermMagic (MagicCast (weakVar m unsafePtr) (weakVar m arrName) (weakVar m (asText ptr))))
 
 lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTerm
 lowTypeToWeakTerm m t =
@@ -769,8 +769,8 @@ weakTermString = do
         (weakVar m "unsafe.create-new-string")
         [ m :< WeakTermInt (m :< WeakTermConst "i64") len,
           m
-            :< WeakTermDerangement
-              (DerangementCreateArray (LowTypeInt 8) i8s')
+            :< WeakTermMagic
+              (MagicCreateArray (LowTypeInt 8) i8s')
         ]
 
 weakTermInteger :: IO WeakTerm
@@ -790,12 +790,12 @@ weakTermFloat = do
 castFromNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castFromNoema subject baseType tree = do
   let m = metaOf tree
-  m :< WeakTermDerangement (DerangementCast (wrapWithNoema subject baseType) baseType tree)
+  m :< WeakTermMagic (MagicCast (wrapWithNoema subject baseType) baseType tree)
 
 castToNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 castToNoema subject baseType tree = do
   let m = metaOf tree
-  m :< WeakTermDerangement (DerangementCast baseType (wrapWithNoema subject baseType) tree)
+  m :< WeakTermMagic (MagicCast baseType (wrapWithNoema subject baseType) tree)
 
 wrapWithNoema :: WeakTerm -> WeakTerm -> WeakTerm
 wrapWithNoema subject baseType = do

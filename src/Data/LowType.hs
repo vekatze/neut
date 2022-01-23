@@ -34,80 +34,79 @@ data PrimOp
   = PrimOp T.Text [LowType] LowType
   deriving (Show, Eq)
 
--- a `derangement` handles an extra-linguistic feature
-data Derangement a
-  = DerangementCast a a a
-  | DerangementStore LowType a a
-  | DerangementLoad LowType a
-  | DerangementSyscall Integer [a]
-  | DerangementExternal T.Text [a]
-  | DerangementCreateArray LowType [a]
+data Magic a
+  = MagicCast a a a
+  | MagicStore LowType a a
+  | MagicLoad LowType a
+  | MagicSyscall Integer [a]
+  | MagicExternal T.Text [a]
+  | MagicCreateArray LowType [a]
   deriving (Show, Eq, Generic)
 
-instance (Binary a) => Binary (Derangement a)
+instance (Binary a) => Binary (Magic a)
 
-instance Functor Derangement where
+instance Functor Magic where
   fmap f der =
     case der of
-      DerangementCast from to value ->
-        DerangementCast (f from) (f to) (f value)
-      DerangementStore lt pointer value ->
-        DerangementStore lt (f pointer) (f value)
-      DerangementLoad lt pointer ->
-        DerangementLoad lt (f pointer)
-      DerangementSyscall syscallNum args ->
-        DerangementSyscall syscallNum $ fmap f args
-      DerangementExternal extFunName args ->
-        DerangementExternal extFunName $ fmap f args
-      DerangementCreateArray lt args ->
-        DerangementCreateArray lt $ fmap f args
+      MagicCast from to value ->
+        MagicCast (f from) (f to) (f value)
+      MagicStore lt pointer value ->
+        MagicStore lt (f pointer) (f value)
+      MagicLoad lt pointer ->
+        MagicLoad lt (f pointer)
+      MagicSyscall syscallNum args ->
+        MagicSyscall syscallNum $ fmap f args
+      MagicExternal extFunName args ->
+        MagicExternal extFunName $ fmap f args
+      MagicCreateArray lt args ->
+        MagicCreateArray lt $ fmap f args
 
-instance Foldable Derangement where
+instance Foldable Magic where
   foldMap f der =
     case der of
-      DerangementCast from to value ->
+      MagicCast from to value ->
         f from <> f to <> f value
-      DerangementStore _ pointer value ->
+      MagicStore _ pointer value ->
         f pointer <> f value
-      DerangementLoad _ pointer ->
+      MagicLoad _ pointer ->
         f pointer
-      DerangementSyscall _ args ->
+      MagicSyscall _ args ->
         foldMap f args
-      DerangementExternal _ args ->
+      MagicExternal _ args ->
         foldMap f args
-      DerangementCreateArray _ args ->
+      MagicCreateArray _ args ->
         foldMap f args
 
-instance Traversable Derangement where
+instance Traversable Magic where
   traverse f der =
     case der of
-      DerangementCast from to value ->
-        DerangementCast <$> f from <*> f to <*> f value
-      DerangementStore lt pointer value ->
-        DerangementStore lt <$> f pointer <*> f value
-      DerangementLoad lt pointer ->
-        DerangementLoad lt <$> f pointer
-      DerangementSyscall syscallNum args ->
-        DerangementSyscall syscallNum <$> traverse f args
-      DerangementExternal extFunName args ->
-        DerangementExternal extFunName <$> traverse f args
-      DerangementCreateArray lt args ->
-        DerangementCreateArray lt <$> traverse f args
+      MagicCast from to value ->
+        MagicCast <$> f from <*> f to <*> f value
+      MagicStore lt pointer value ->
+        MagicStore lt <$> f pointer <*> f value
+      MagicLoad lt pointer ->
+        MagicLoad lt <$> f pointer
+      MagicSyscall syscallNum args ->
+        MagicSyscall syscallNum <$> traverse f args
+      MagicExternal extFunName args ->
+        MagicExternal extFunName <$> traverse f args
+      MagicCreateArray lt args ->
+        MagicCreateArray lt <$> traverse f args
 
-getDerangementName :: Derangement a -> T.Text
-getDerangementName d =
+getMagicName :: Magic a -> T.Text
+getMagicName d =
   case d of
-    DerangementSyscall {} ->
+    MagicSyscall {} ->
       "syscall"
-    DerangementExternal {} ->
+    MagicExternal {} ->
       "external"
-    DerangementLoad {} ->
+    MagicLoad {} ->
       "load"
-    DerangementStore {} ->
+    MagicStore {} ->
       "store"
-    DerangementCast {} ->
+    MagicCast {} ->
       "nop"
-    DerangementCreateArray {} ->
+    MagicCreateArray {} ->
       "create-array"
 
 asLowTypeMaybe :: T.Text -> Maybe LowType

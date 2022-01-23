@@ -89,9 +89,9 @@ reduceTerm term =
                   return (m :< TermEnumElim (e', t') les')
         _ ->
           return (m :< TermEnumElim (e', t') les')
-    (m :< TermDerangement der) -> do
+    (m :< TermMagic der) -> do
       der' <- traverse reduceTerm der
-      return (m :< TermDerangement der')
+      return (m :< TermMagic der')
     (m :< TermMatch mSubject (e, t) clauseList) -> do
       e' <- reduceTerm e
       -- let lamList = map (toLamList m) clauseList
@@ -191,9 +191,9 @@ substTerm sub term =
       let (caseList, es) = unzip branchList
       es' <- mapM (substTerm sub) es
       return (m :< TermEnumElim (e', t') (zip caseList es'))
-    (m :< TermDerangement der) -> do
+    (m :< TermMagic der) -> do
       der' <- traverse (substTerm sub) der
-      return (m :< TermDerangement der')
+      return (m :< TermMagic der')
     (m :< TermMatch mSubject (e, t) clauseList) -> do
       mSubject' <- mapM (substTerm sub) mSubject
       e' <- substTerm sub e

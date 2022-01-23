@@ -512,7 +512,7 @@ keywordSet =
       "define-inline",
       "define-prefix",
       "define-resource-type",
-      "derangement",
+      "magic",
       "do",
       "else",
       "else-if",
