@@ -63,9 +63,9 @@ reduceComp term =
     CompUpElim x e1 e2 -> do
       e1' <- reduceComp e1
       case e1' of
-        CompUpIntro d -> do
-          let sub = IntMap.fromList [(asInt x, d)]
-          substComp sub IntMap.empty e2 >>= reduceComp
+        CompUpIntro (ValueVarLocalIdeal _) -> do
+          e2' <- reduceComp e2
+          return $ CompUpElim x e1' e2'
         CompUpElim y ey1 ey2 ->
           reduceComp $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
         CompSigmaElim b yts vy ey ->
