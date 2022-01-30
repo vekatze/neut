@@ -267,13 +267,15 @@ sourceChildrenMapRef =
 computeDependence :: Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
 computeDependence source = do
   visitEnv <- readIORef visitEnvRef
-  case Map.lookup (sourceFilePath source) visitEnv of
+  let path = sourceFilePath source
+  case Map.lookup path visitEnv of
     Just VisitInfoActive ->
       raiseCyclicPath source
-    Just VisitInfoFinish ->
-      return (False, False, Seq.empty)
+    Just VisitInfoFinish -> do
+      hasCacheSet <- readIORef hasCacheSetRef
+      hasObjectSet <- readIORef hasObjectSetRef
+      return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
-      let path = sourceFilePath source
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
       modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
       children <- getChildren source

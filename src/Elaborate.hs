@@ -33,6 +33,7 @@ import Data.List (nub)
 import Data.Log (raiseCritical, raiseError)
 import Data.LowType
   ( LowType (LowTypeFloat, LowTypeInt),
+    PrimNum (PrimNumFloat, PrimNumInt),
     asLowTypeMaybe,
   )
 import Data.Source (Source)
@@ -119,9 +120,9 @@ setupDef def =
       modifyIORef' impArgEnvRef $ Map.insert f impArgNum
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
       return [QuasiStmtDefine opacity m f impArgNum xts' codType' e]
-    QuasiStmtDefineResource m name _ _ -> do
+    QuasiStmtDefineResource m name discarder copier -> do
       insTermTypeEnv name $ m :< WeakTermTau
-      return []
+      return [QuasiStmtDefineResource m name discarder copier]
 
 inferStmtMain :: T.Text -> QuasiStmt -> IO QuasiStmt
 inferStmtMain mainFunctionName stmt = do
@@ -308,6 +309,41 @@ elaborate' term =
     m :< WeakTermNoemaElim s e -> do
       e' <- elaborate' e
       return $ m :< TermNoemaElim s e'
+    m :< WeakTermArray len elemType -> do
+      len' <- elaborate' len
+      elemType' <- elaborate' elemType
+      case elemType' of
+        _ :< TermConst typeStr
+          | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
+            return $ m :< TermArray len' (PrimNumInt size)
+          | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
+            return $ m :< TermArray len' (PrimNumFloat size)
+        _ ->
+          raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
+    m :< WeakTermArrayIntro elemType elems -> do
+      elemType' <- elaborate' elemType
+      elems' <- mapM elaborate' elems
+      case elemType' of
+        _ :< TermConst typeStr
+          | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
+            return $ m :< TermArrayIntro (PrimNumInt size) elems'
+          | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
+            return $ m :< TermArrayIntro (PrimNumFloat size) elems'
+        _ ->
+          raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
+    m :< WeakTermArrayAccess subject elemType array index -> do
+      subject' <- elaborate' subject
+      elemType' <- elaborate' elemType
+      array' <- elaborate' array
+      index' <- elaborate' index
+      case elemType' of
+        _ :< TermConst typeStr
+          | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
+            return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
+          | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
+            return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
+        _ ->
+          raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
 
 -- for now
 elaboratePatternList :: Hint -> [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> IO [(PatternF Term, Term)]

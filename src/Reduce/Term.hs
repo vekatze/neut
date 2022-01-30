@@ -120,6 +120,17 @@ reduceTerm term =
     m :< TermNoemaElim s e -> do
       e' <- reduceTerm e
       return $ m :< TermNoemaElim s e'
+    m :< TermArray len elemType -> do
+      len' <- reduceTerm len
+      return $ m :< TermArray len' elemType
+    m :< TermArrayIntro elemType elems -> do
+      elems' <- mapM reduceTerm elems
+      return $ m :< TermArrayIntro elemType elems'
+    m :< TermArrayAccess subject elemType array index -> do
+      subject' <- reduceTerm subject
+      array' <- reduceTerm array
+      index' <- reduceTerm index
+      return $ m :< TermArrayAccess subject' elemType array' index'
     _ ->
       return term
 
@@ -212,6 +223,17 @@ substTerm sub term =
     m :< TermNoemaElim s e -> do
       e' <- substTerm sub e
       return $ m :< TermNoemaElim s e'
+    m :< TermArray len elemType -> do
+      len' <- substTerm sub len
+      return $ m :< TermArray len' elemType
+    m :< TermArrayIntro elemType elems -> do
+      elems' <- mapM (substTerm sub) elems
+      return $ m :< TermArrayIntro elemType elems'
+    m :< TermArrayAccess subject elemType array index -> do
+      subject' <- substTerm sub subject
+      array' <- substTerm sub array
+      index' <- substTerm sub index
+      return $ m :< TermArrayAccess subject' elemType array' index'
 
 substTerm' ::
   SubstTerm ->

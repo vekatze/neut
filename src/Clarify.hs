@@ -58,6 +58,7 @@ import Data.LowType
     PrimOp (..),
     asLowTypeMaybe,
     asPrimOp,
+    showPrimNum,
   )
 import Data.Maybe (catMaybes, isJust, maybeToList)
 import Data.Namespace (attachSectionPrefix)
@@ -219,6 +220,20 @@ clarifyTerm tenv term =
     m :< TermNoemaElim s e -> do
       e' <- clarifyTerm (IntMap.insert (asInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
+    _ :< TermArray _ elemType -> do
+      let constName = "unsafe-" <> showPrimNum elemType <> "-array-internal"
+      return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
+    _ :< TermArrayIntro elemType elems -> do
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) elems
+      return $
+        bindLet (zip xs args') $
+          CompUpIntro (ValueArrayIntro elemType xsAsVars)
+    _ :< TermArrayAccess _ elemType array index -> do
+      (arrayVarName, array', arrayVar) <- clarifyPlus tenv array
+      (indexVarName, index', indexVar) <- clarifyPlus tenv index
+      return $
+        bindLet [(arrayVarName, array'), (indexVarName, index')] $
+          CompArrayAccess elemType arrayVar indexVar
 
 clarifyMagic :: TypeEnv -> Magic Term -> IO Comp
 clarifyMagic tenv der =
@@ -456,6 +471,12 @@ chainOf tenv term =
       (m, s, m :< TermTau) : chainOf tenv e
     m :< TermNoemaElim s e ->
       filter (\(_, y, _) -> y /= s) $ chainOf (IntMap.insert (asInt s) (m :< TermTau) tenv) e
+    _ :< TermArray len _ -> do
+      chainOf tenv len
+    _ :< TermArrayIntro _ elems -> do
+      concatMap (chainOf tenv) elems
+    _ :< TermArrayAccess subject _ array index -> do
+      concatMap (chainOf tenv) [subject, array, index]
 
 chainOf' :: TypeEnv -> [BinderF Term] -> [Term] -> [BinderF Term]
 chainOf' tenv binder es =

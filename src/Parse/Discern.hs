@@ -15,6 +15,8 @@ import Data.Basic
   )
 import Data.Global
   ( enumEnvRef,
+    locatorAliasMapRef,
+    moduleAliasMapRef,
     newIdentFromIdent,
     p',
     revEnumEnvRef,
@@ -97,6 +99,11 @@ discern' nenv term =
       candList <- constructCandList x True
       topNameSet <- readIORef topNameSetRef
       tryCand (resolveSymbol m (asGlobalVar m topNameSet) x candList) $ do
+        moduleAliasMap <- readIORef moduleAliasMapRef
+        print moduleAliasMap
+        locatorAliasMap <- readIORef locatorAliasMapRef
+        print locatorAliasMap
+        print topNameSet
         raiseError m $ "undefined constant: " <> x
     m :< WeakTermPi xts t -> do
       (xts', t') <- discernBinder nenv xts t
@@ -187,6 +194,20 @@ discern' nenv term =
       s' <- newIdentFromIdent s
       e' <- discern' (Map.insert (asText s) s' nenv) e
       return $ m :< WeakTermNoemaElim s' e'
+    m :< WeakTermArray len elemType -> do
+      len' <- discern' nenv len
+      elemType' <- discern' nenv elemType
+      return $ m :< WeakTermArray len' elemType'
+    m :< WeakTermArrayIntro elemType elems -> do
+      elemType' <- discern' nenv elemType
+      elems' <- mapM (discern' nenv) elems
+      return $ m :< WeakTermArrayIntro elemType' elems'
+    m :< WeakTermArrayAccess subject elemType array index -> do
+      subject' <- discern' nenv subject
+      elemType' <- discern' nenv elemType
+      array' <- discern' nenv array
+      index' <- discern' nenv index
+      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
 
 discernBinder ::
   NameEnv ->

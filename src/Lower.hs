@@ -1,3 +1,5 @@
+{-# LANGUAGE TupleSections #-}
+
 module Lower
   ( lowerMain,
     lowerOther,
@@ -35,7 +37,9 @@ import Data.LowType
   ( FloatSize (..),
     LowType (..),
     Magic (..),
+    PrimNum (..),
     PrimOp (..),
+    primNumToLowType,
     sizeAsInt,
     voidPtr,
   )
@@ -105,6 +109,56 @@ lowerComp term =
           let t = LowTypeInt 64
           (cast, castThen) <- llvmCast (Just "enum-base") v t
           castThen $ LowCompSwitch (cast, t) defaultCase caseList
+    CompArrayAccess elemType v index -> do
+      -- v + 8 + size(elemType) * indexをload.
+      let i64 = LowTypeInt 64
+      (arrayOffset, arrayOffsetVar) <- newValueLocal $ takeBaseName index
+      (realOffset, realOffsetVar) <- newValueLocal $ takeBaseName index
+      (elemAddress, elemAddressVar) <- newValueLocal $ takeBaseName v
+      (result, resultVar) <- newValueLocal $ takeBaseName v
+      (indexVar, calculateIndexThen) <- llvmCast (Just $ takeBaseName v) index $ LowTypeInt 64
+      (arrayVar, castArrayThen) <- llvmCast (Just $ takeBaseName v) v $ LowTypeInt 64
+      (pointer, pointerVar) <- newValueLocal $ takeBaseName v
+      (uncastedResult, uncastedResultVar) <- newValueLocal $ takeBaseName v
+      let elemType' = primNumToLowType elemType
+      castArrayThenLoad <-
+        castArrayThen $
+          LowCompLet
+            elemAddress
+            ( LowOpPrimOp
+                (PrimOp "add" [i64, i64] i64)
+                [arrayVar, realOffsetVar]
+            )
+            $ LowCompLet pointer (LowOpIntToPointer elemAddressVar i64 (LowTypePointer elemType')) $
+              LowCompLet
+                result
+                (LowOpLoad pointerVar elemType')
+                $ LowCompLet
+                  uncastedResult
+                  (LowOpIntToPointer resultVar elemType' voidPtr)
+                  (LowCompReturn uncastedResultVar)
+      calculateIndexThen $
+        LowCompLet
+          arrayOffset
+          ( LowOpPrimOp
+              (PrimOp "mul" [i64, i64] i64)
+              [LowValueInt (primNumToSizeInByte elemType), indexVar]
+          )
+          $ LowCompLet
+            realOffset
+            ( LowOpPrimOp
+                (PrimOp "add" [i64, i64] i64)
+                [LowValueInt 8, arrayOffsetVar]
+            )
+            castArrayThenLoad
+
+primNumToSizeInByte :: PrimNum -> Integer
+primNumToSizeInByte primNum =
+  case primNum of
+    PrimNumInt size ->
+      toInteger $ size `div` 8
+    PrimNumFloat size ->
+      toInteger $ sizeAsInt size `div` 8
 
 uncastList :: [(Ident, (Ident, LowType))] -> Comp -> IO LowComp
 uncastList args e =
@@ -125,6 +179,8 @@ takeBaseName term =
     ValueVarLocalIdeal (I (s, _)) ->
       s
     ValueSigmaIntro ds ->
+      "array" <> T.pack (show (length ds))
+    ValueArrayIntro _ ds ->
       "array" <> T.pack (show (length ds))
     ValueInt size _ ->
       "i" <> T.pack (show size)
@@ -374,6 +430,62 @@ lowerValueLet x lowerValue cont =
     ValueEnumIntro l -> do
       i <- toInteger <$> enumValueToInteger l
       llvmUncastLet x (LowValueInt i) (LowTypeInt 64) cont
+    ValueArrayIntro elemType vs -> do
+      let i64 = LowTypeInt 64
+      (arrayLength, arrayLengthVar) <- newValueLocal "array"
+      (realLength, realLengthVar) <- newValueLocal "array"
+      (castedRealLength, castedRealLengthVar) <- newValueLocal "array"
+      (pointer, pointerVar) <- newValueLocal "array"
+      let elemType' = primNumToLowType elemType
+      let pointerType = LowTypePointer $ LowTypeStruct [i64, LowTypeArray (length vs) elemType']
+      (castedPointer, castedPointerVar) <- newValueLocal "array"
+      (lenInfo, lenInfoVar) <- newValueLocal "array"
+      (array, arrayVar) <- newValueLocal "array"
+      let lenValue = LowValueInt (toInteger $ length vs)
+      let elemInfoList = zip [0 ..] $ map (,elemType') vs
+      let arrayType = LowTypePointer $ LowTypeArray (length vs) elemType'
+      storeThenReturn <- storeContent' arrayVar arrayType elemInfoList $ LowCompReturn (LowValueVarLocal pointer)
+      return $
+        LowCompLet
+          arrayLength
+          ( LowOpPrimOp
+              (PrimOp "mul" [i64, i64] i64)
+              [LowValueInt (primNumToSizeInByte elemType), lenValue]
+          )
+          $ LowCompLet
+            realLength
+            ( LowOpPrimOp
+                (PrimOp "add" [i64, i64] i64)
+                [LowValueInt 8, arrayLengthVar]
+            )
+            $ LowCompLet
+              castedRealLength
+              (LowOpIntToPointer realLengthVar i64 voidPtr)
+              $ LowCompLet
+                pointer
+                (LowOpCall (LowValueVarGlobal "malloc") [castedRealLengthVar])
+                $ LowCompLet
+                  castedPointer
+                  (LowOpBitcast pointerVar voidPtr pointerType)
+                  $ LowCompLet
+                    lenInfo
+                    ( LowOpGetElementPtr
+                        (castedPointerVar, pointerType)
+                        [ (LowValueInt 0, LowTypeInt 32),
+                          (LowValueInt 0, LowTypeInt 32)
+                        ]
+                    )
+                    $ LowCompCont
+                      (LowOpStore i64 lenValue lenInfoVar)
+                      $ LowCompLet
+                        array
+                        ( LowOpGetElementPtr
+                            (castedPointerVar, pointerType)
+                            [ (LowValueInt 0, LowTypeInt 32),
+                              (LowValueInt 1, LowTypeInt 32)
+                            ]
+                        )
+                        storeThenReturn
 
 insDeclEnvIfNecessary :: T.Text -> [a] -> IO ()
 insDeclEnvIfNecessary symbol args = do

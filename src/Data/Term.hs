@@ -22,6 +22,7 @@ import Data.LowType
     IntSize,
     LowType (LowTypeFloat, LowTypeInt),
     Magic,
+    PrimNum (..),
     showFloatSize,
     showIntSize,
   )
@@ -56,6 +57,9 @@ data TermF a
   | TermNoema a a
   | TermNoemaIntro Ident a
   | TermNoemaElim Ident a
+  | TermArray a PrimNum
+  | TermArrayIntro PrimNum [a]
+  | TermArrayAccess a PrimNum a a
   deriving (Show, Generic)
 
 type Term = Cofree TermF Hint
@@ -135,6 +139,12 @@ weaken term =
       m :< WeakTermNoemaIntro s (weaken e)
     m :< TermNoemaElim s e ->
       m :< WeakTermNoemaElim s (weaken e)
+    m :< TermArray len elemType ->
+      m :< WeakTermArray (weaken len) (weaken (primNumToType m elemType))
+    m :< TermArrayIntro elemType elems ->
+      m :< WeakTermArrayIntro (weaken (primNumToType m elemType)) (map weaken elems)
+    m :< TermArrayAccess subject elemType array index ->
+      m :< WeakTermArrayAccess (weaken subject) (weaken (primNumToType m elemType)) (weaken array) (weaken index)
 
 weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =
@@ -149,6 +159,14 @@ weakenKind kind =
       LamKindCons dataName consName consNumber (weaken dataType)
     LamKindFix xt ->
       LamKindFix (weakenBinder xt)
+
+primNumToType :: Hint -> PrimNum -> Term
+primNumToType m primNum =
+  case primNum of
+    PrimNumInt s ->
+      m :< TermConst (showIntSize s)
+    PrimNumFloat s ->
+      m :< TermConst (showFloatSize s)
 
 lowTypeToType :: (MonadThrow m) => Hint -> LowType -> m Term
 lowTypeToType m lowType =

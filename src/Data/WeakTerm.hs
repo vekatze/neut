@@ -51,6 +51,9 @@ data WeakTermF a
   | WeakTermNoema a a
   | WeakTermNoemaIntro Ident a
   | WeakTermNoemaElim Ident a
+  | WeakTermArray a a
+  | WeakTermArrayIntro a [a]
+  | WeakTermArrayAccess a a a a
   deriving (Generic)
 
 type WeakTerm = Cofree WeakTermF Hint
@@ -172,6 +175,12 @@ varWeakTerm term =
       S.insert s $ varWeakTerm e
     _ :< WeakTermNoemaElim s e ->
       S.filter (/= s) $ varWeakTerm e
+    _ :< WeakTermArray len elemType ->
+      S.unions [varWeakTerm len, varWeakTerm elemType]
+    _ :< WeakTermArrayIntro elemType elems ->
+      S.unions $ varWeakTerm elemType : map varWeakTerm elems
+    _ :< WeakTermArrayAccess subject elemType array index ->
+      S.unions $ map varWeakTerm [subject, elemType, array, index]
 
 varWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 varWeakTerm' binder es =
@@ -241,6 +250,12 @@ asterWeakTerm term =
       asterWeakTerm e
     _ :< WeakTermNoemaElim _ e ->
       asterWeakTerm e
+    _ :< WeakTermArray len elemType ->
+      S.unions [asterWeakTerm len, asterWeakTerm elemType]
+    _ :< WeakTermArrayIntro elemType elems ->
+      S.unions $ asterWeakTerm elemType : map asterWeakTerm elems
+    _ :< WeakTermArrayAccess subject elemType array index ->
+      S.unions $ map asterWeakTerm [subject, elemType, array, index]
 
 asterWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Int
 asterWeakTerm' binder es =
@@ -334,6 +349,12 @@ toText term =
       showCons ["noema-intro", asText s, toText e]
     _ :< WeakTermNoemaElim s e ->
       showCons ["noema-elim", asText s, toText e]
+    _ :< WeakTermArray len elemType ->
+      showCons ["array", toText len, toText elemType]
+    _ :< WeakTermArrayIntro elemType elems ->
+      showCons $ "array-new" : toText elemType : map toText elems
+    _ :< WeakTermArrayAccess subject elemType array index ->
+      showCons ["array-access", toText subject, toText elemType, toText array, toText index]
 
 inParen :: T.Text -> T.Text
 inParen s =

@@ -14,6 +14,7 @@ import Data.Global
     getCurrentFilePath,
     globalLocatorListRef,
     localLocatorListRef,
+    locatorAliasMapRef,
     moduleAliasMapRef,
     newText,
     nsSep,
@@ -347,7 +348,7 @@ parseDefineResource :: IO WeakStmt
 parseDefineResource = do
   m <- currentHint
   _ <- parseToken "define-resource"
-  name <- parseVarText >>= attachSectionPrefix
+  name <- parseVarText
   [discarder, copier] <- parseAsBlock $ takeN 2 $ parseToken "-" >> weakTerm
   registerTopLevelName m name
   modifyIORef' resourceTypeSetRef $ S.insert name
@@ -380,6 +381,7 @@ initializeNamespace source = do
   writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getChecksumAliasList (sourceModule source)
   writeIORef globalLocatorListRef []
   writeIORef localLocatorListRef []
+  writeIORef locatorAliasMapRef Map.empty
 
 getAdditionalChecksumAlias :: Source -> IO [(T.Text, T.Text)]
 getAdditionalChecksumAlias source = do

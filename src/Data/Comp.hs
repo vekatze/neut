@@ -2,7 +2,7 @@ module Data.Comp where
 
 import Data.Basic (CompEnumCase, Ident, Opacity)
 import qualified Data.IntMap as IntMap
-import Data.LowType (FloatSize, IntSize, Magic, PrimOp)
+import Data.LowType (FloatSize, IntSize, Magic, PrimNum, PrimOp)
 import qualified Data.Set as S
 import qualified Data.Text as T
 
@@ -11,6 +11,7 @@ data Value
   | ValueVarLocalIdeal Ident
   | ValueVarGlobal T.Text
   | ValueSigmaIntro [Value]
+  | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
   | ValueEnumIntro T.Text
@@ -22,6 +23,7 @@ data Comp
   | CompUpIntro Value
   | CompUpElim Ident Comp Comp
   | CompEnumElim Value [(CompEnumCase, Comp)]
+  | CompArrayAccess PrimNum Value Value
   | CompPrimitive Primitive
   deriving (Show)
 
@@ -44,6 +46,8 @@ varValue v =
     ValueVarLocalIdeal x ->
       S.singleton x
     ValueSigmaIntro vs ->
+      S.unions $ map varValue vs
+    ValueArrayIntro _ vs ->
       S.unions $ map varValue vs
     _ ->
       S.empty
@@ -68,6 +72,8 @@ varComp c =
       let (_, es) = unzip caseList
       let s2 = S.unions (map varComp es)
       S.union s1 s2
+    CompArrayAccess _ array index ->
+      S.union (varValue array) (varValue index)
     CompPrimitive prim ->
       case prim of
         PrimitivePrimOp _ vs ->

@@ -125,6 +125,20 @@ reduceWeakTerm term =
     m :< WeakTermNoemaElim s e -> do
       e' <- reduceWeakTerm e
       return $ m :< WeakTermNoemaElim s e'
+    m :< WeakTermArray len elemType -> do
+      len' <- reduceWeakTerm len
+      elemType' <- reduceWeakTerm elemType
+      return $ m :< WeakTermArray len' elemType'
+    m :< WeakTermArrayIntro elemType elems -> do
+      elemType' <- reduceWeakTerm elemType
+      elems' <- mapM reduceWeakTerm elems
+      return $ m :< WeakTermArrayIntro elemType' elems'
+    m :< WeakTermArrayAccess subject elemType array index -> do
+      subject' <- reduceWeakTerm subject
+      elemType' <- reduceWeakTerm elemType
+      array' <- reduceWeakTerm array
+      index' <- reduceWeakTerm index
+      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     _ ->
       return term
 
@@ -229,6 +243,20 @@ substWeakTerm sub term =
     m :< WeakTermNoemaElim s e -> do
       e' <- substWeakTerm sub e
       return $ m :< WeakTermNoemaElim s e'
+    m :< WeakTermArray len elemType -> do
+      len' <- substWeakTerm sub len
+      elemType' <- substWeakTerm sub elemType
+      return $ m :< WeakTermArray len' elemType'
+    m :< WeakTermArrayIntro elemType elems -> do
+      elemType' <- substWeakTerm sub elemType
+      elems' <- mapM (substWeakTerm sub) elems
+      return $ m :< WeakTermArrayIntro elemType' elems'
+    m :< WeakTermArrayAccess subject elemType array index -> do
+      subject' <- substWeakTerm sub subject
+      elemType' <- substWeakTerm sub elemType
+      array' <- substWeakTerm sub array
+      index' <- substWeakTerm sub index
+      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
 
 substWeakTerm' ::
   SubstWeakTerm ->

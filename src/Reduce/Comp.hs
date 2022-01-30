@@ -106,6 +106,8 @@ reduceComp term =
           -- let (ls, es) = unzip les
           es' <- mapM reduceComp es
           return $ CompEnumElim v (zip ls es')
+    CompArrayAccess {} ->
+      return term
 
 substValue :: SubstValue -> NameEnv -> Value -> Value
 substValue sub nenv term =
@@ -160,6 +162,8 @@ substComp sub nenv term =
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub nenv) es
       return $ CompEnumElim v' (zip cs es')
+    CompArrayAccess primNum v index ->
+      return $ CompArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)
 
 substPrimitive :: SubstValue -> NameEnv -> Primitive -> Primitive
 substPrimitive sub nenv c =

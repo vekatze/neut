@@ -19,6 +19,29 @@ data LowType
 
 instance Binary LowType
 
+data PrimNum
+  = PrimNumInt IntSize
+  | PrimNumFloat FloatSize
+  deriving (Show, Generic)
+
+instance Binary PrimNum
+
+showPrimNum :: PrimNum -> T.Text
+showPrimNum primNum =
+  case primNum of
+    PrimNumInt size ->
+      showIntSize size
+    PrimNumFloat size ->
+      showFloatSize size
+
+primNumToLowType :: PrimNum -> LowType
+primNumToLowType primNum =
+  case primNum of
+    PrimNumInt size ->
+      LowTypeInt size
+    PrimNumFloat size ->
+      LowTypeFloat size
+
 type IntSize =
   Int
 

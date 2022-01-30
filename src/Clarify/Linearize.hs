@@ -18,6 +18,7 @@ import Data.LowType (Magic (..))
 data Occurrence
   = OccurrenceNormal Ident
   | OccurrenceIdeal Ident
+  deriving (Show)
 
 linearize ::
   [(Ident, Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
@@ -95,7 +96,6 @@ distinguishValue z term =
     _ ->
       return ([], term)
 
--- fix: 順番が評価順序に合っているかをチェック。……大丈夫そう。
 distinguishComp :: Ident -> Comp -> IO ([Occurrence], Comp)
 distinguishComp z term =
   case term of
@@ -117,6 +117,10 @@ distinguishComp z term =
       (vs1, e1') <- distinguishComp z e1
       (vs2, e2') <- distinguishComp z e2
       return (vs1 ++ vs2, CompUpElim x e1' e2')
+    CompArrayAccess elemType array index -> do
+      (vs1, array') <- distinguishValue z array
+      (vs2, index') <- distinguishValue z index
+      return (vs1 ++ vs2, CompArrayAccess elemType array' index')
     CompEnumElim d branchList -> do
       (vs, d') <- distinguishValue z d
       case branchList of
