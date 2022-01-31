@@ -309,15 +309,14 @@ elaborate' term =
     m :< WeakTermNoemaElim s e -> do
       e' <- elaborate' e
       return $ m :< TermNoemaElim s e'
-    m :< WeakTermArray len elemType -> do
-      len' <- elaborate' len
+    m :< WeakTermArray elemType -> do
       elemType' <- elaborate' elemType
       case elemType' of
         _ :< TermConst typeStr
           | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
-            return $ m :< TermArray len' (PrimNumInt size)
+            return $ m :< TermArray (PrimNumInt size)
           | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
-            return $ m :< TermArray len' (PrimNumFloat size)
+            return $ m :< TermArray (PrimNumFloat size)
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayIntro elemType elems -> do

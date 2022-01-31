@@ -57,7 +57,7 @@ data TermF a
   | TermNoema a a
   | TermNoemaIntro Ident a
   | TermNoemaElim Ident a
-  | TermArray a PrimNum
+  | TermArray PrimNum
   | TermArrayIntro PrimNum [a]
   | TermArrayAccess a PrimNum a a
   deriving (Show, Generic)
@@ -139,8 +139,8 @@ weaken term =
       m :< WeakTermNoemaIntro s (weaken e)
     m :< TermNoemaElim s e ->
       m :< WeakTermNoemaElim s (weaken e)
-    m :< TermArray len elemType ->
-      m :< WeakTermArray (weaken len) (weaken (primNumToType m elemType))
+    m :< TermArray elemType ->
+      m :< WeakTermArray (weaken (primNumToType m elemType))
     m :< TermArrayIntro elemType elems ->
       m :< WeakTermArrayIntro (weaken (primNumToType m elemType)) (map weaken elems)
     m :< TermArrayAccess subject elemType array index ->

@@ -194,10 +194,9 @@ discern' nenv term =
       s' <- newIdentFromIdent s
       e' <- discern' (Map.insert (asText s) s' nenv) e
       return $ m :< WeakTermNoemaElim s' e'
-    m :< WeakTermArray len elemType -> do
-      len' <- discern' nenv len
+    m :< WeakTermArray elemType -> do
       elemType' <- discern' nenv elemType
-      return $ m :< WeakTermArray len' elemType'
+      return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
       elemType' <- discern' nenv elemType
       elems' <- mapM (discern' nenv) elems

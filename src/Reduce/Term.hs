@@ -120,9 +120,8 @@ reduceTerm term =
     m :< TermNoemaElim s e -> do
       e' <- reduceTerm e
       return $ m :< TermNoemaElim s e'
-    m :< TermArray len elemType -> do
-      len' <- reduceTerm len
-      return $ m :< TermArray len' elemType
+    _ :< TermArray _ ->
+      return term
     m :< TermArrayIntro elemType elems -> do
       elems' <- mapM reduceTerm elems
       return $ m :< TermArrayIntro elemType elems'
@@ -223,9 +222,8 @@ substTerm sub term =
     m :< TermNoemaElim s e -> do
       e' <- substTerm sub e
       return $ m :< TermNoemaElim s e'
-    m :< TermArray len elemType -> do
-      len' <- substTerm sub len
-      return $ m :< TermArray len' elemType
+    _ :< TermArray _ ->
+      return term
     m :< TermArrayIntro elemType elems -> do
       elems' <- mapM (substTerm sub) elems
       return $ m :< TermArrayIntro elemType elems'

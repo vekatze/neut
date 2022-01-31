@@ -125,10 +125,9 @@ reduceWeakTerm term =
     m :< WeakTermNoemaElim s e -> do
       e' <- reduceWeakTerm e
       return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray len elemType -> do
-      len' <- reduceWeakTerm len
+    m :< WeakTermArray elemType -> do
       elemType' <- reduceWeakTerm elemType
-      return $ m :< WeakTermArray len' elemType'
+      return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
       elemType' <- reduceWeakTerm elemType
       elems' <- mapM reduceWeakTerm elems
@@ -243,10 +242,9 @@ substWeakTerm sub term =
     m :< WeakTermNoemaElim s e -> do
       e' <- substWeakTerm sub e
       return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray len elemType -> do
-      len' <- substWeakTerm sub len
+    m :< WeakTermArray elemType -> do
       elemType' <- substWeakTerm sub elemType
-      return $ m :< WeakTermArray len' elemType'
+      return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
       elemType' <- substWeakTerm sub elemType
       elems' <- mapM (substWeakTerm sub) elems

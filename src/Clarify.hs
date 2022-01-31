@@ -220,7 +220,7 @@ clarifyTerm tenv term =
     m :< TermNoemaElim s e -> do
       e' <- clarifyTerm (IntMap.insert (asInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
-    _ :< TermArray _ elemType -> do
+    _ :< TermArray elemType -> do
       let constName = "unsafe-" <> showPrimNum elemType <> "-array-internal"
       return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
     _ :< TermArrayIntro elemType elems -> do
@@ -471,8 +471,8 @@ chainOf tenv term =
       (m, s, m :< TermTau) : chainOf tenv e
     m :< TermNoemaElim s e ->
       filter (\(_, y, _) -> y /= s) $ chainOf (IntMap.insert (asInt s) (m :< TermTau) tenv) e
-    _ :< TermArray len _ -> do
-      chainOf tenv len
+    _ :< TermArray _ ->
+      []
     _ :< TermArrayIntro _ elems -> do
       concatMap (chainOf tenv) elems
     _ :< TermArrayAccess subject _ array index -> do

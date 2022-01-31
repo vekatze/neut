@@ -179,8 +179,8 @@ simplify constraintList =
         (_ :< WeakTermNoemaIntro s1 e1, _ :< WeakTermNoemaIntro s2 e2)
           | s1 == s2 ->
             simplify $ ((e1, e2), orig) : cs
-        (_ :< WeakTermArray len1 elemType1, _ :< WeakTermArray len2 elemType2) ->
-          simplify $ ((len1, len2), orig) : ((elemType1, elemType2), orig) : cs
+        (_ :< WeakTermArray elemType1, _ :< WeakTermArray elemType2) ->
+          simplify $ ((elemType1, elemType2), orig) : cs
         (_ :< WeakTermArrayIntro elemType1 elems1, _ :< WeakTermArrayIntro elemType2 elems2) ->
           simplify $ ((elemType1, elemType2), orig) : zipWith (curry (orig,)) elems1 elems2 ++ cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do

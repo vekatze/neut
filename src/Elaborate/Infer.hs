@@ -227,26 +227,21 @@ infer' ctx term =
       insWeakTypeEnv s (m :< WeakTermTau)
       (e', t) <- infer' (ctx ++ [(m, s, m :< WeakTermTau)]) e
       return (m :< WeakTermNoemaElim s e', t)
-    m :< WeakTermArray len elemType -> do
-      (len', tLen) <- infer' ctx len
+    m :< WeakTermArray elemType -> do
       elemType' <- inferType' ctx elemType
-      insConstraintEnv (m :< WeakTermConst "i64") tLen
-      return (m :< WeakTermArray len' elemType', m :< WeakTermTau)
+      return (m :< WeakTermArray elemType', m :< WeakTermTau)
     m :< WeakTermArrayIntro _ elems -> do
       elemType <- newTypeAsterInCtx ctx m
       (elems', ts') <- unzip <$> mapM (infer' ctx) elems
       forM_ ts' $ insConstraintEnv elemType
-      let len = m :< WeakTermInt (m :< WeakTermConst "i64") (toInteger $ length elems)
-      return (m :< WeakTermArrayIntro elemType elems', m :< WeakTermArray len elemType)
+      return (m :< WeakTermArrayIntro elemType elems', m :< WeakTermArray elemType)
     m :< WeakTermArrayAccess _ _ array index -> do
-      (len, lenType) <- newAsterInCtx ctx m
-      insConstraintEnv (m :< WeakTermConst "i64") lenType
       subject <- newTypeAsterInCtx ctx m
       elemType <- newTypeAsterInCtx ctx m
       (array', tArray) <- infer' ctx array
       (index', tIndex) <- infer' ctx index
       insConstraintEnv (m :< WeakTermConst "i64") tIndex
-      let noeticArrayType = m :< WeakTermNoema subject (m :< WeakTermArray len elemType)
+      let noeticArrayType = m :< WeakTermNoema subject (m :< WeakTermArray elemType)
       insConstraintEnv noeticArrayType tArray
       return (m :< WeakTermArrayAccess subject elemType array' index', elemType)
 
@@ -584,10 +579,9 @@ arrange ctx term =
     m :< WeakTermNoemaElim s e -> do
       e' <- arrange ctx e
       return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray len elemType -> do
-      len' <- arrange ctx len
+    m :< WeakTermArray elemType -> do
       elemType' <- arrange ctx elemType
-      return $ m :< WeakTermArray len' elemType'
+      return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
       elemType' <- arrange ctx elemType
       elems' <- mapM (arrange ctx) elems

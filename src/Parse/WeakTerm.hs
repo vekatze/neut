@@ -543,9 +543,8 @@ weakTermArray = do
   m <- currentHint
   parseToken "array"
   parseBetweenParen $ do
-    len <- weakTerm
     elemType <- weakTerm
-    return $ m :< WeakTermArray len elemType
+    return $ m :< WeakTermArray elemType
 
 weakTermArrayIntro :: IO WeakTerm
 weakTermArrayIntro = do
