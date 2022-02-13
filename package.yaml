@@ -23,6 +23,7 @@ dependencies:
   - filepath
   - free
   - half
+  - mtl
   - optparse-applicative
   - path
   - path-io
