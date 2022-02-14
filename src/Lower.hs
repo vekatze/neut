@@ -149,24 +149,17 @@ i64 = LowTypeInt 64
 
 load :: LowType -> LowValue -> Lower LowValue
 load elemType pointer = do
-  (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
-  (loaded, loadedVar) <- liftIO $ newValueLocal "tmp"
-  extend $
-    return
-      . LowCompLet tmp (LowOpBitcast pointer voidPtr (LowTypePointer elemType))
-      . LowCompLet loaded (LowOpLoad tmpVar elemType)
-  autoUncast loadedVar elemType
+  tmp <- reflect $ LowOpBitcast pointer voidPtr (LowTypePointer elemType)
+  loaded <- reflect $ LowOpLoad tmp elemType
+  autoUncast loaded elemType
 
 store :: LowType -> LowValue -> LowValue -> Lower ()
-store lowType value pointer = do
-  extend $ return . LowCompCont (LowOpStore lowType value pointer)
-  return ()
+store lowType value pointer =
+  reflectCont $ LowOpStore lowType value pointer
 
 arith :: T.Text -> [LowValue] -> Lower LowValue
 arith op args = do
-  (result, resultVar) <- liftIO $ newValueLocal "arith"
-  extend $ return . LowCompLet result (LowOpPrimOp (PrimOp op [i64, i64] i64) args)
-  return resultVar
+  reflect $ LowOpPrimOp (PrimOp op [i64, i64] i64) args
 
 primNumToSizeInByte :: PrimNum -> Integer
 primNumToSizeInByte primNum =
@@ -250,11 +243,10 @@ lowerCompPrimitive codeOp =
             extend $ return . LowCompCont (LowOpStore valueLowType valVar ptrVar)
             return LowValueNull
         MagicLoad valueLowType pointer -> do
-          (result, resultVar) <- newValueLocal "result"
           runLower $ do
             castedPointer <- lowerValueLetCast' pointer (LowTypePointer valueLowType)
-            extend $ return . LowCompLet result (LowOpLoad castedPointer valueLowType)
-            autoUncast resultVar valueLowType
+            result <- reflect $ LowOpLoad castedPointer valueLowType
+            autoUncast result valueLowType
         MagicSyscall i args -> do
           (xs, vs) <- unzip <$> mapM (const $ newValueLocal "sys-call-arg") args
           (result, resultVar) <- newValueLocal "result"
@@ -423,16 +415,22 @@ lowerValueLet x lowerValue cont =
 
 malloc :: LowValue -> Lower LowValue
 malloc size = do
-  (pointer, pointerVar) <- liftIO $ newValueLocal "pointer"
-  extend $ return . LowCompLet pointer (LowOpCall (LowValueVarGlobal "malloc") [size])
-  return pointerVar
+  reflect $ LowOpCall (LowValueVarGlobal "malloc") [size]
 
 getElemPtr :: LowValue -> LowType -> [Integer] -> Lower LowValue
 getElemPtr value valueType indexList = do
   let indexList' = map (\i -> (LowValueInt i, LowTypeInt 32)) indexList
+  reflect $ LowOpGetElementPtr (value, valueType) indexList'
+
+reflect :: LowOp -> Lower LowValue
+reflect op = do
   (result, resultVar) <- liftIO $ newValueLocal "result"
-  extend $ return . LowCompLet result (LowOpGetElementPtr (value, valueType) indexList')
+  extend $ return . LowCompLet result op
   return resultVar
+
+reflectCont :: LowOp -> Lower ()
+reflectCont op = do
+  extend $ return . LowCompCont op
 
 insDeclEnvIfNecessary :: T.Text -> [a] -> IO ()
 insDeclEnvIfNecessary symbol args = do
