@@ -7,13 +7,13 @@ module Lower
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM_, unless, (<=<))
+import Control.Monad (forM_, unless, when, (<=<))
 import Control.Monad.Writer.Lazy
   ( MonadIO (liftIO),
     MonadWriter (tell),
     WriterT (runWriterT),
   )
-import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..), asText)
+import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..))
 import Data.Comp (Comp (..), CompDef, Primitive (..), Value (..))
 import Data.Global
   ( cartClsName,
@@ -24,7 +24,6 @@ import Data.Global
     lowDefEnvRef,
     lowNameSetRef,
     newCount,
-    newIdentFromIdent,
     newIdentFromText,
     newValueVarLocalWith,
     revEnumEnvRef,
@@ -85,7 +84,7 @@ lowerMain (defList, mainTerm) = do
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
-  castResult <- lowerValueLetCast resultVar (LowTypeInt 64) >>= uncurry knot
+  castResult <- runLower $ lowerValueLetCast resultVar (LowTypeInt 64)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
 
@@ -109,21 +108,25 @@ lowerComp :: Comp -> IO LowComp
 lowerComp term =
   case term of
     CompPrimitive theta ->
-      lowerCompPrimitive theta
+      runLower $ lowerCompPrimitive theta
     CompPiElimDownElim v ds -> do
-      (xs, vs) <- unzip <$> mapM (const $ newValueLocal "arg") ds
-      (fun, castThen) <- lowerValueLetCast v $ toFunPtrType ds
-      castThenCall <- castThen $ LowCompCall fun vs
-      lowerValueLet' (zip xs ds) castThenCall
+      runLowerComp $ do
+        v' <- lowerValue v
+        ds' <- mapM lowerValue ds
+        v'' <- cast v' $ toFunPtrType ds
+        return $ LowCompCall v'' ds'
     CompSigmaElim isNoetic xs v e -> do
-      let basePtrType = LowTypePointer $ LowTypeArray (length xs) voidPtr -- base pointer type  ([(length xs) x ARRAY_ELEM_TYPE])
-      let idxList = map (\i -> (LowValueInt i, LowTypeInt 32)) [0 ..]
-      ys <- mapM newIdentFromIdent xs
-      let xts' = zip xs (repeat voidPtr)
-      loadContent isNoetic v basePtrType (zip idxList (zip ys xts')) e
-    CompUpIntro d -> do
-      (result, resultVar) <- newValueLocal "result"
-      lowerValueLet result d $ LowCompReturn resultVar
+      let baseType = LowTypePointer $ LowTypeArray (length xs) voidPtr
+      runLowerComp $ do
+        basePointer <- lowerValue v
+        castedBasePointer <- cast basePointer baseType
+        ds <- loadElements castedBasePointer baseType $ take (length xs) $ zip [0 ..] (repeat voidPtr)
+        when isNoetic $ free castedBasePointer baseType
+        forM_ (zip xs ds) $ \(x, d) -> do
+          extend $ return . LowCompLet x (LowOpBitcast d voidPtr voidPtr)
+        liftIO $ lowerComp e
+    CompUpIntro d ->
+      runLower $ lowerValue d
     CompUpElim x e1 e2 -> do
       e1' <- lowerComp e1
       e2' <- lowerComp e2
@@ -134,18 +137,19 @@ lowerComp term =
         Nothing ->
           return LowCompUnreachable
         Just (defaultCase, caseList) -> do
-          let t = LowTypeInt 64
-          (castedValue, castThen) <- lowerValueLetCast v t
-          castThen $ LowCompSwitch (castedValue, t) defaultCase caseList
+          runLowerComp $ do
+            let t = LowTypeInt 64
+            castedValue <- lowerValueLetCast v t
+            return $ LowCompSwitch (castedValue, t) defaultCase caseList
     CompArrayAccess elemType v index -> do
       let elemSize = LowValueInt (primNumToSizeInByte elemType)
       runLower $ do
-        indexVar <- lowerValueLetCast' index i64
-        arrayVar <- lowerValueLetCast' v i64
+        indexVar <- lowerValueLetCast index i64
+        arrayVar <- lowerValueLetCast v i64
         arrayOffset <- arith "mul" [elemSize, indexVar]
         realOffset <- arith "add" [LowValueInt 8, arrayOffset]
         elemAddress <- arith "add" [arrayVar, realOffset]
-        uncastedElemAddress <- autoUncast elemAddress i64
+        uncastedElemAddress <- uncast elemAddress i64
         load (primNumToLowType elemType) uncastedElemAddress
 
 i64 :: LowType
@@ -155,7 +159,7 @@ load :: LowType -> LowValue -> Lower LowValue
 load elemType pointer = do
   tmp <- reflect $ LowOpBitcast pointer voidPtr (LowTypePointer elemType)
   loaded <- reflect $ LowOpLoad tmp elemType
-  autoUncast loaded elemType
+  uncast loaded elemType
 
 store :: LowType -> LowValue -> LowValue -> Lower ()
 store lowType value pointer =
@@ -173,64 +177,29 @@ primNumToSizeInByte primNum =
     PrimNumFloat size ->
       toInteger $ sizeAsInt size `div` 8
 
-uncastList :: [(Ident, (Ident, LowType))] -> Comp -> IO LowComp
-uncastList args e =
-  case args of
-    [] ->
-      lowerComp e
-    ((y, (x, et)) : yxs) -> do
-      e' <- uncastList yxs e
-      uncastLet x (LowValueVarLocal y) et e'
-
-knot :: LowValue -> (LowComp -> IO LowComp) -> IO LowComp
-knot value cont = do
-  cont $ LowCompReturn value
-
-loadContent ::
-  Bool -> -- noetic-or-not
-  Value -> -- base pointer
-  LowType -> -- the type of base pointer
-  [((LowValue, LowType), (Ident, (Ident, LowType)))] -> -- [(the index of an element, the variable to load the element)]
-  Comp -> -- continuation
-  IO LowComp
-loadContent isNoetic v bt iyxs cont =
-  case iyxs of
-    [] ->
-      lowerComp cont
-    _ -> do
-      let ixs = map (\(i, (y, (_, k))) -> (i, (y, k))) iyxs
-      (bp, castThen) <- lowerValueLetCast v bt
-      let yxs = map snd iyxs
-      uncastThenCont <- uncastList yxs cont
-      extractThenFreeThenUncastThenCont <- loadContent' isNoetic bp bt ixs uncastThenCont
-      castThen extractThenFreeThenUncastThenCont
-
-loadContent' ::
-  Bool -> -- noetic-or-not
+loadElements ::
   LowValue -> -- base pointer
   LowType -> -- the type of base pointer
-  [((LowValue, LowType), (Ident, LowType))] -> -- [(the index of an element, the variable to keep the loaded content)]
-  LowComp -> -- continuation
-  IO LowComp
-loadContent' isNoetic bp bt values cont =
+  [(Int, LowType)] -> -- [(the index of an element, the variable to keep the loaded content)]
+  Lower [LowValue]
+loadElements basePointer baseType values =
   case values of
-    []
-      | isNoetic ->
-        return cont
-      | otherwise -> do
-        (uncastedBasePointer, uncastBasePointerThen) <- uncast bp bt
-        j <- newCount
-        return $ uncastBasePointerThen $ LowCompCont (LowOpFree uncastedBasePointer bt j) cont
-    (i, (x, et)) : xis -> do
-      cont' <- loadContent' isNoetic bp bt xis cont
-      (posName, pos) <- newValueLocal' (Just $ asText x)
-      return $
-        LowCompLet
-          posName
-          (LowOpGetElementPtr (bp, bt) [(LowValueInt 0, LowTypeInt 32), i])
-          $ LowCompLet x (LowOpLoad pos et) cont'
+    [] -> do
+      return []
+    (valueIndex, valueType) : xis -> do
+      valuePointer <- getElemPtr basePointer baseType [0, toInteger valueIndex]
+      uncastedValuePointer <- uncast valuePointer (LowTypePointer valueType) -- fixme: uncast this
+      x <- load valueType uncastedValuePointer
+      xs <- loadElements basePointer baseType xis
+      return $ x : xs
 
-lowerCompPrimitive :: Primitive -> IO LowComp
+free :: LowValue -> LowType -> Lower ()
+free pointer pointerType = do
+  uncastedPointer <- uncast pointer pointerType
+  j <- liftIO newCount
+  reflectCont $ LowOpFree uncastedPointer pointerType j
+
+lowerCompPrimitive :: Primitive -> Lower LowValue
 lowerCompPrimitive codeOp =
   case codeOp of
     PrimitivePrimOp op vs ->
@@ -238,185 +207,126 @@ lowerCompPrimitive codeOp =
     PrimitiveMagic der -> do
       case der of
         MagicCast _ _ value -> do
-          (x, v) <- newValueLocal "cast-arg"
-          lowerValueLet x value $ LowCompReturn v
+          lowerValue value
         MagicStore valueLowType pointer value -> do
-          runLower $ do
-            ptrVar <- lowerValueLetCast' pointer (LowTypePointer valueLowType)
-            valVar <- lowerValueLetCast' value valueLowType
-            extend $ return . LowCompCont (LowOpStore valueLowType valVar ptrVar)
-            return LowValueNull
+          ptrVar <- lowerValueLetCast pointer (LowTypePointer valueLowType)
+          valVar <- lowerValueLetCast value valueLowType
+          extend $ return . LowCompCont (LowOpStore valueLowType valVar ptrVar)
+          return LowValueNull
         MagicLoad valueLowType pointer -> do
-          runLower $ do
-            castedPointer <- lowerValueLetCast' pointer (LowTypePointer valueLowType)
-            result <- reflect $ LowOpLoad castedPointer valueLowType
-            autoUncast result valueLowType
+          castedPointer <- lowerValueLetCast pointer (LowTypePointer valueLowType)
+          result <- reflect $ LowOpLoad castedPointer valueLowType
+          uncast result valueLowType
         MagicSyscall i args -> do
-          (xs, vs) <- unzip <$> mapM (const $ newValueLocal "sys-call-arg") args
-          (result, resultVar) <- newValueLocal "result"
-          lowerValueLet' (zip xs args) $
-            LowCompLet result (LowOpSyscall i vs) $
-              LowCompReturn resultVar
+          args' <- mapM lowerValue args
+          reflect $ LowOpSyscall i args'
         MagicExternal name args -> do
-          (xs, vs) <- unzip <$> mapM (const $ newValueLocal "ext-call-arg") args
-          insDeclEnv name vs
-          lowerValueLet' (zip xs args) $ LowCompCall (LowValueVarGlobal name) vs
+          args' <- mapM lowerValue args
+          liftIO $ insDeclEnv name args'
+          reflect $ LowOpCall (LowValueVarGlobal name) args'
         MagicCreateArray elemType args -> do
           let arrayType = AggPtrTypeArray (length args) elemType
           let argTypeList = zip args (repeat elemType)
-          runLower $ createAggData arrayType argTypeList
+          createAggData arrayType argTypeList
 
-lowerCompPrimOp :: PrimOp -> [Value] -> IO LowComp
+lowerCompPrimOp :: PrimOp -> [Value] -> Lower LowValue
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
-  (argVarList, castArgsThen) <- lowerValueLetCastPrimArgs $ zip vs domList
-  (result, resultVar) <- newValueLocal "result"
-  (uncastedResult, uncastResultThen) <- uncast resultVar cod
-  castArgsThen $
-    LowCompLet result (LowOpPrimOp op argVarList) $
-      uncastResultThen $
-        LowCompReturn uncastedResult
+  argVarList <- lowerValueLetCastPrimArgs $ zip vs domList
+  result <- reflect $ LowOpPrimOp op argVarList
+  uncast result cod
 
-lowerValueLetCastPrimArgs :: [(Value, LowType)] -> IO ([LowValue], LowComp -> IO LowComp)
+lowerValueLetCastPrimArgs :: [(Value, LowType)] -> Lower [LowValue]
 lowerValueLetCastPrimArgs dts =
   case dts of
     [] ->
-      return ([], return)
+      return []
     ((d, t) : rest) -> do
-      (argVarList, cont) <- lowerValueLetCastPrimArgs rest
-      (argVar, castThen) <- lowerValueLetCast d t
-      return (argVar : argVarList, castThen <=< cont)
+      argVar <- lowerValueLetCast d t
+      argVarList <- lowerValueLetCastPrimArgs rest
+      return $ argVar : argVarList
 
-cast :: LowValue -> LowType -> IO (LowValue, LowComp -> LowComp)
+cast :: LowValue -> LowType -> Lower LowValue
 cast v lowType = do
-  (result, resultVar) <- newValueLocal "result"
+  (result, resultVar) <- liftIO $ newValueLocal "result"
   case lowType of
     LowTypeInt _ -> do
-      return
-        ( resultVar,
-          LowCompLet
-            result
-            (LowOpPointerToInt v voidPtr lowType)
-        )
+      extend $ return . LowCompLet result (LowOpPointerToInt v voidPtr lowType)
     LowTypeFloat size -> do
       let floatType = LowTypeFloat size
       let intType = LowTypeInt $ sizeAsInt size
-      (tmp, tmpVar) <- newValueLocal "foo"
-      return
-        ( resultVar,
-          LowCompLet tmp (LowOpPointerToInt v voidPtr intType)
-            . LowCompLet result (LowOpBitcast tmpVar intType floatType)
-        )
+      (tmp, tmpVar) <- liftIO $ newValueLocal "foo"
+      extend $
+        return
+          . LowCompLet tmp (LowOpPointerToInt v voidPtr intType)
+          . LowCompLet result (LowOpBitcast tmpVar intType floatType)
     _ -> do
-      return
-        ( resultVar,
-          LowCompLet result (LowOpBitcast v voidPtr lowType)
-        )
+      extend $ return . LowCompLet result (LowOpBitcast v voidPtr lowType)
+  return resultVar
 
-autoCast :: LowValue -> LowType -> Lower LowValue
-autoCast v lowType = do
-  (castedValue, castThen) <- liftIO $ cast v lowType
-  extend $ return . castThen
-  return castedValue
-
-uncast :: LowValue -> LowType -> IO (LowValue, LowComp -> LowComp)
+uncast :: LowValue -> LowType -> Lower LowValue
 uncast castedValue lowType = do
-  (result, resultVar) <- newValueLocal "uncast"
+  (result, resultVar) <- liftIO $ newValueLocal "uncast"
   case lowType of
     LowTypeInt _ ->
-      return
-        ( resultVar,
-          LowCompLet result (LowOpIntToPointer castedValue lowType voidPtr)
-        )
+      extend $ return . LowCompLet result (LowOpIntToPointer castedValue lowType voidPtr)
     LowTypeFloat i -> do
       let floatType = LowTypeFloat i
       let intType = LowTypeInt $ sizeAsInt i
-      (tmp, tmpVar) <- newValueLocal "tmp"
-      return
-        ( resultVar,
-          LowCompLet tmp (LowOpBitcast castedValue floatType intType)
-            . LowCompLet result (LowOpIntToPointer tmpVar intType voidPtr)
-        )
-    _ -> do
-      return
-        ( resultVar,
-          LowCompLet result (LowOpBitcast castedValue lowType voidPtr)
-        )
+      (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
+      extend $
+        return
+          . LowCompLet tmp (LowOpBitcast castedValue floatType intType)
+          . LowCompLet result (LowOpIntToPointer tmpVar intType voidPtr)
+    _ ->
+      extend $ return . LowCompLet result (LowOpBitcast castedValue lowType voidPtr)
+  return resultVar
 
-autoUncast :: LowValue -> LowType -> Lower LowValue
-autoUncast castedValue lowType = do
-  (uncastedValue, uncastThen) <- liftIO $ uncast castedValue lowType
-  extend $ return . uncastThen
-  return uncastedValue
-
-uncastLet :: Ident -> LowValue -> LowType -> LowComp -> IO LowComp
-uncastLet x d lowType cont = do
-  (uncastedValue, uncastValueThen) <- uncast d lowType
-  return $
-    uncastValueThen $ LowCompLet x (LowOpBitcast uncastedValue voidPtr voidPtr) cont
-
-lowerValueLetCast :: Value -> LowType -> IO (LowValue, LowComp -> IO LowComp)
+lowerValueLetCast :: Value -> LowType -> Lower LowValue
 lowerValueLetCast v lowType = do
-  (tmp, tmpVar) <- newValueLocal "tmp"
-  (castedValue, castThen) <- cast tmpVar lowType
-  return
-    ( castedValue,
-      lowerValueLet tmp v . castThen
-    )
+  v' <- lowerValue v
+  cast v' lowType
 
-lowerValueLetCast' :: Value -> LowType -> Lower LowValue
-lowerValueLetCast' v lowType = do
-  (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
-  (castedValue, castThen) <- liftIO $ cast tmpVar lowType
-  extend $ lowerValueLet tmp v . castThen
-  return castedValue
-
--- `lowerValueLet x d cont` binds the data `d` to the variable `x`, and computes the
--- continuation `cont`.
-lowerValueLet :: Ident -> Value -> LowComp -> IO LowComp
-lowerValueLet x lowerValue cont =
-  case lowerValue of
+lowerValue :: Value -> Lower LowValue
+lowerValue v =
+  case v of
     ValueVarGlobal y -> do
-      compDefEnv <- readIORef compDefEnvRef
+      compDefEnv <- liftIO $ readIORef compDefEnvRef
       case Map.lookup y compDefEnv of
         Nothing ->
           raiseCritical' $ "no such global variable is defined: " <> y
         Just (_, args, _) -> do
-          insDeclEnvIfNecessary y args
-          uncastLet x (LowValueVarGlobal y) (toFunPtrType args) cont
+          liftIO $ insDeclEnvIfNecessary y args
+          uncast (LowValueVarGlobal y) (toFunPtrType args)
     ValueVarLocal y ->
-      uncastLet x (LowValueVarLocal y) voidPtr cont
+      return $ LowValueVarLocal y
     ValueVarLocalIdeal y ->
-      uncastLet x (LowValueVarLocal y) voidPtr cont
+      return $ LowValueVarLocal y
     ValueSigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr
-      let dts = zip ds (repeat voidPtr)
-      runLowerComp $ do
-        array <- createAggData arrayType dts
-        liftIO $ uncastLet x array voidPtr cont
-    ValueInt size l ->
-      uncastLet x (LowValueInt l) (LowTypeInt size) cont
+      createAggData arrayType $ zip ds (repeat voidPtr)
+    ValueInt size l -> do
+      uncast (LowValueInt l) (LowTypeInt size)
     ValueFloat size f ->
-      uncastLet x (LowValueFloat size f) (LowTypeFloat size) cont
+      uncast (LowValueFloat size f) (LowTypeFloat size)
     ValueEnumIntro l -> do
-      i <- toInteger <$> enumValueToInteger l
-      uncastLet x (LowValueInt i) (LowTypeInt 64) cont
+      i <- liftIO $ toInteger <$> enumValueToInteger l
+      uncast (LowValueInt i) (LowTypeInt 64)
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
       let elemType' = primNumToLowType elemType
       let pointerType = LowTypePointer $ LowTypeStruct [i64, LowTypeArray (length vs) elemType']
       let elemInfoList = zip [0 ..] $ map (,elemType') vs
       let arrayType = LowTypePointer $ LowTypeArray (length vs) elemType'
-      runLower $ do
-        arrayLength <- arith "mul" [LowValueInt (primNumToSizeInByte elemType), lenValue]
-        realLength <- arith "add" [LowValueInt 8, arrayLength]
-        uncastedRealLength <- autoUncast realLength i64
-        pointer <- malloc uncastedRealLength
-        castedPointer <- autoCast pointer pointerType
-        lengthPointer <- getElemPtr castedPointer pointerType [0, 0]
-        arrayPointer <- getElemPtr castedPointer pointerType [0, 1]
-        store i64 lenValue lengthPointer
-        storeElements arrayPointer arrayType elemInfoList
-        return pointer
+      arrayLength <- arith "mul" [LowValueInt (primNumToSizeInByte elemType), lenValue]
+      realLength <- arith "add" [LowValueInt 8, arrayLength]
+      uncastedRealLength <- uncast realLength i64
+      pointer <- malloc uncastedRealLength
+      castedPointer <- cast pointer pointerType
+      lengthPointer <- getElemPtr castedPointer pointerType [0, 0]
+      arrayPointer <- getElemPtr castedPointer pointerType [0, 1]
+      store i64 lenValue lengthPointer
+      storeElements arrayPointer arrayType elemInfoList
+      return pointer
 
 malloc :: LowValue -> Lower LowValue
 malloc size = do
@@ -443,15 +353,6 @@ insDeclEnvIfNecessary symbol args = do
   if S.member symbol lowNameSet
     then return ()
     else insDeclEnv symbol args
-
-lowerValueLet' :: [(Ident, Value)] -> LowComp -> IO LowComp
-lowerValueLet' binder cont =
-  case binder of
-    [] ->
-      return cont
-    (x, d) : rest -> do
-      cont' <- lowerValueLet' rest cont
-      lowerValueLet x d cont'
 
 -- returns Nothing iff the branch list is empty
 constructSwitch :: [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
@@ -492,7 +393,7 @@ createAggData ::
   Lower LowValue
 createAggData aggPtrType dts = do
   basePointer <- allocateBasePointer aggPtrType
-  castedBasePointer <- autoCast basePointer $ toLowType aggPtrType
+  castedBasePointer <- cast basePointer $ toLowType aggPtrType
   storeElements castedBasePointer (toLowType aggPtrType) $ zip [0 ..] dts
   return basePointer
 
@@ -508,7 +409,7 @@ allocateBasePointer :: AggPtrType -> Lower LowValue
 allocateBasePointer aggPtrType = do
   let (elemType, len) = getSizeInfoOf aggPtrType
   sizePointer <- getElemPtr LowValueNull (LowTypePointer elemType) [toInteger len]
-  c <- autoUncast sizePointer (LowTypePointer elemType)
+  c <- uncast sizePointer (LowTypePointer elemType)
   reflect $ LowOpAlloc c $ toLowType aggPtrType
 
 storeElements ::
@@ -521,7 +422,7 @@ storeElements basePointer baseType values =
     [] ->
       return ()
     (valueIndex, (value, valueType)) : ids -> do
-      castedValue <- lowerValueLetCast' value valueType
+      castedValue <- lowerValueLetCast value valueType
       elemPtr <- getElemPtr basePointer baseType [0, valueIndex]
       store valueType castedValue elemPtr
       storeElements basePointer baseType ids
@@ -534,19 +435,6 @@ newValueLocal :: T.Text -> IO (Ident, LowValue)
 newValueLocal name = do
   x <- newIdentFromText name
   return (x, LowValueVarLocal x)
-
-newValueLocal' :: Maybe T.Text -> IO (Ident, LowValue)
-newValueLocal' mName = do
-  x <- newNameWith mName
-  return (x, LowValueVarLocal x)
-
-newNameWith :: Maybe T.Text -> IO Ident
-newNameWith mName =
-  case mName of
-    Nothing ->
-      newIdentFromText "var"
-    Just name ->
-      newIdentFromText name
 
 enumValueToInteger :: T.Text -> IO Int
 enumValueToInteger label = do
