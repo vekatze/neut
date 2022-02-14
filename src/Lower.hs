@@ -36,7 +36,6 @@ import Data.LowComp
   ( LowComp (..),
     LowOp (..),
     LowValue (..),
-    SizeInfo,
   )
 import Data.LowType
   ( LowType (..),
@@ -70,6 +69,11 @@ runLower :: Lower LowValue -> IO LowComp
 runLower m = do
   (a, Cont b) <- runWriterT m
   b $ LowCompReturn a
+
+runLowerComp :: Lower LowComp -> IO LowComp
+runLowerComp m = do
+  (a, Cont b) <- runWriterT m
+  b a
 
 lowerMain :: ([CompDef], Comp) -> IO LowComp
 lowerMain (defList, mainTerm) = do
@@ -260,8 +264,7 @@ lowerCompPrimitive codeOp =
         MagicCreateArray elemType args -> do
           let arrayType = AggPtrTypeArray (length args) elemType
           let argTypeList = zip args (repeat elemType)
-          (result, resultVar) <- newValueLocal "result"
-          storeContent result arrayType argTypeList (LowCompReturn resultVar)
+          runLower $ createAggData arrayType argTypeList
 
 lowerCompPrimOp :: PrimOp -> [Value] -> IO LowComp
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
@@ -387,7 +390,9 @@ lowerValueLet x lowerValue cont =
     ValueSigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr
       let dts = zip ds (repeat voidPtr)
-      storeContent x arrayType dts cont
+      runLowerComp $ do
+        array <- createAggData arrayType dts
+        liftIO $ uncastLet x array voidPtr cont
     ValueInt size l ->
       uncastLet x (LowValueInt l) (LowTypeInt size) cont
     ValueFloat size f ->
@@ -410,7 +415,7 @@ lowerValueLet x lowerValue cont =
         lengthPointer <- getElemPtr castedPointer pointerType [0, 0]
         arrayPointer <- getElemPtr castedPointer pointerType [0, 1]
         store i64 lenValue lengthPointer
-        extend $ storeContent' arrayPointer arrayType elemInfoList
+        storeElements arrayPointer arrayType elemInfoList
         return pointer
 
 malloc :: LowValue -> Lower LowValue
@@ -481,65 +486,45 @@ toLowType aggPtrType =
     AggPtrTypeStruct ts ->
       LowTypePointer $ LowTypeStruct ts
 
-storeContent ::
-  Ident ->
-  AggPtrType ->
+createAggData ::
+  AggPtrType -> -- the type of the base pointer
   [(Value, LowType)] ->
-  LowComp ->
-  IO LowComp
-storeContent reg aggPtrType dts cont = do
-  let lowType = toLowType aggPtrType
-  (castedValue, castThen) <- lowerValueLetCast (ValueVarLocal reg) lowType
-  storeThenCont <- storeContent' castedValue lowType (zip [0 ..] dts) cont
-  castThenStoreThenCont <- castThen storeThenCont
-  case aggPtrType of
-    AggPtrTypeStruct ts ->
-      storeContent'' reg (LowTypeStruct ts) lowType 1 castThenStoreThenCont
-    AggPtrTypeArray len t ->
-      storeContent'' reg t lowType len castThenStoreThenCont
+  Lower LowValue
+createAggData aggPtrType dts = do
+  basePointer <- allocateBasePointer aggPtrType
+  castedBasePointer <- autoCast basePointer $ toLowType aggPtrType
+  storeElements castedBasePointer (toLowType aggPtrType) $ zip [0 ..] dts
+  return basePointer
 
-storeContent' ::
+getSizeInfoOf :: AggPtrType -> (LowType, Int)
+getSizeInfoOf aggPtrType =
+  case aggPtrType of
+    AggPtrTypeArray len t ->
+      (t, len)
+    AggPtrTypeStruct ts ->
+      (LowTypeStruct ts, 1)
+
+allocateBasePointer :: AggPtrType -> Lower LowValue
+allocateBasePointer aggPtrType = do
+  let (elemType, len) = getSizeInfoOf aggPtrType
+  sizePointer <- getElemPtr LowValueNull (LowTypePointer elemType) [toInteger len]
+  c <- autoUncast sizePointer (LowTypePointer elemType)
+  reflect $ LowOpAlloc c $ toLowType aggPtrType
+
+storeElements ::
   LowValue -> -- base pointer
   LowType -> -- the type of base pointer (like [n x u8]*, {i8*, i8*}*, etc.)
   [(Integer, (Value, LowType))] -> -- [(the index of an element, the element to be stored)]
-  LowComp -> -- continuation
-  IO LowComp
-storeContent' bp bt values cont =
+  Lower ()
+storeElements basePointer baseType values =
   case values of
     [] ->
-      return cont
-    (i, (d, et)) : ids -> do
-      cont' <- storeContent' bp bt ids cont
-      (locName, loc) <- newValueLocal "location"
-      (castedValue, castThen) <- lowerValueLetCast d et
-      let it = indexTypeOf bt
-      castThen $
-        LowCompLet
-          locName
-          (LowOpGetElementPtr (bp, bt) [(LowValueInt 0, LowTypeInt 32), (LowValueInt i, it)])
-          $ LowCompCont (LowOpStore et castedValue loc) cont'
-
-storeContent'' :: Ident -> LowType -> SizeInfo -> Int -> LowComp -> IO LowComp
-storeContent'' reg elemType sizeInfo len cont = do
-  (tmp, tmpVar) <- newValueLocal $ "sizeof-" <> asText reg
-  (c, cVar) <- newValueLocal $ "sizeof-" <> asText reg
-  uncastThenAllocThenCont <- uncastLet c tmpVar (LowTypePointer elemType) (LowCompLet reg (LowOpAlloc cVar sizeInfo) cont)
-  return $
-    LowCompLet
-      tmp
-      ( LowOpGetElementPtr
-          (LowValueNull, LowTypePointer elemType)
-          [(LowValueInt (toInteger len), LowTypeInt 64)]
-      )
-      uncastThenAllocThenCont
-
-indexTypeOf :: LowType -> LowType
-indexTypeOf lowType =
-  case lowType of
-    LowTypePointer (LowTypeStruct _) ->
-      LowTypeInt 32
-    _ ->
-      LowTypeInt 64
+      return ()
+    (valueIndex, (value, valueType)) : ids -> do
+      castedValue <- lowerValueLetCast' value valueType
+      elemPtr <- getElemPtr basePointer baseType [0, valueIndex]
+      store valueType castedValue elemPtr
+      storeElements basePointer baseType ids
 
 toFunPtrType :: [a] -> LowType
 toFunPtrType xs =
