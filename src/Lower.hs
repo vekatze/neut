@@ -142,15 +142,20 @@ lowerComp term =
             castedValue <- lowerValueLetCast v t
             return $ LowCompSwitch (castedValue, t) defaultCase caseList
     CompArrayAccess elemType v index -> do
+      let elemType' = primNumToLowType elemType
       let elemSize = LowValueInt (primNumToSizeInByte elemType)
       runLower $ do
         indexVar <- lowerValueLetCast index i64
-        arrayVar <- lowerValueLetCast v i64
-        arrayOffset <- arith "mul" [elemSize, indexVar]
-        realOffset <- arith "add" [LowValueInt 8, arrayOffset]
-        elemAddress <- arith "add" [arrayVar, realOffset]
+        arrayVar <- lowerValue v
+        castedArrayVar <- cast arrayVar i64
+        startIndex <- load (LowTypeInt 64) arrayVar
+        castedStartIndex <- cast startIndex i64
+        realIndex <- arith "add" [indexVar, castedStartIndex]
+        arrayOffset <- arith "mul" [elemSize, realIndex]
+        realOffset <- arith "add" [LowValueInt 16, arrayOffset]
+        elemAddress <- arith "add" [castedArrayVar, realOffset]
         uncastedElemAddress <- uncast elemAddress i64
-        load (primNumToLowType elemType) uncastedElemAddress
+        load elemType' uncastedElemAddress
 
 i64 :: LowType
 i64 = LowTypeInt 64
@@ -314,17 +319,19 @@ lowerValue v =
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
       let elemType' = primNumToLowType elemType
-      let pointerType = LowTypePointer $ LowTypeStruct [i64, LowTypeArray (length vs) elemType']
+      let pointerType = LowTypePointer $ LowTypeStruct [i64, i64, LowTypeArray (length vs) elemType']
       let elemInfoList = zip [0 ..] $ map (,elemType') vs
       let arrayType = LowTypePointer $ LowTypeArray (length vs) elemType'
       arrayLength <- arith "mul" [LowValueInt (primNumToSizeInByte elemType), lenValue]
-      realLength <- arith "add" [LowValueInt 8, arrayLength]
+      realLength <- arith "add" [LowValueInt 16, arrayLength]
       uncastedRealLength <- uncast realLength i64
       pointer <- malloc uncastedRealLength
       castedPointer <- cast pointer pointerType
-      lengthPointer <- getElemPtr castedPointer pointerType [0, 0]
-      arrayPointer <- getElemPtr castedPointer pointerType [0, 1]
-      store i64 lenValue lengthPointer
+      startPointer <- getElemPtr castedPointer pointerType [0, 0]
+      endPointer <- getElemPtr castedPointer pointerType [0, 1]
+      arrayPointer <- getElemPtr castedPointer pointerType [0, 2]
+      store i64 (LowValueInt 0) startPointer
+      store i64 lenValue endPointer
       storeElements arrayPointer arrayType elemInfoList
       return pointer
 
