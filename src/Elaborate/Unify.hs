@@ -183,6 +183,11 @@ simplify constraintList =
           simplify $ ((elemType1, elemType2), orig) : cs
         (_ :< WeakTermArrayIntro elemType1 elems1, _ :< WeakTermArrayIntro elemType2 elems2) ->
           simplify $ ((elemType1, elemType2), orig) : zipWith (curry (orig,)) elems1 elems2 ++ cs
+        (_ :< WeakTermText, _ :< WeakTermText) ->
+          simplify cs
+        (_ :< WeakTermTextIntro text1, _ :< WeakTermTextIntro text2)
+          | text1 == text2 ->
+            simplify cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do
           subst <- readIORef substRef
           termDefEnv <- readIORef termDefEnvRef

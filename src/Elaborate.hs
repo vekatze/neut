@@ -343,6 +343,10 @@ elaborate' term =
             return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
+    m :< WeakTermText ->
+      return $ m :< TermText
+    m :< WeakTermTextIntro text ->
+      return $ m :< TermTextIntro text
 
 -- for now
 elaboratePatternList :: Hint -> [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> IO [(PatternF Term, Term)]

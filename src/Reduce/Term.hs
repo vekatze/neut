@@ -232,6 +232,10 @@ substTerm sub term =
       array' <- substTerm sub array
       index' <- substTerm sub index
       return $ m :< TermArrayAccess subject' elemType array' index'
+    _ :< TermText ->
+      return term
+    _ :< TermTextIntro _ ->
+      return term
 
 substTerm' ::
   SubstTerm ->

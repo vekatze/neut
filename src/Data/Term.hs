@@ -60,6 +60,8 @@ data TermF a
   | TermArray PrimNum
   | TermArrayIntro PrimNum [a]
   | TermArrayAccess a PrimNum a a
+  | TermText
+  | TermTextIntro T.Text
   deriving (Show, Generic)
 
 type Term = Cofree TermF Hint
@@ -145,6 +147,10 @@ weaken term =
       m :< WeakTermArrayIntro (weaken (primNumToType m elemType)) (map weaken elems)
     m :< TermArrayAccess subject elemType array index ->
       m :< WeakTermArrayAccess (weaken subject) (weaken (primNumToType m elemType)) (weaken array) (weaken index)
+    m :< TermText ->
+      m :< WeakTermText
+    m :< TermTextIntro text ->
+      m :< WeakTermTextIntro text
 
 weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =

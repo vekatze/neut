@@ -538,6 +538,7 @@ keywordSet =
       "section",
       "switch",
       "tau",
+      "text",
       "then",
       "unuse",
       "use",

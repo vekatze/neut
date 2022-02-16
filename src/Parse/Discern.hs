@@ -78,8 +78,8 @@ discernStmtList stmtList =
 discern' :: NameEnv -> WeakTerm -> IO WeakTerm
 discern' nenv term =
   case term of
-    m :< WeakTermTau ->
-      return $ m :< WeakTermTau
+    _ :< WeakTermTau ->
+      return term
     m :< WeakTermVar (I (s, _)) -> do
       case Map.lookup s nenv of
         Just name ->
@@ -134,20 +134,20 @@ discern' nenv term =
       e1' <- discern' nenv e1
       (xts', e2') <- discernBinder nenv xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
-    m :< WeakTermConst x ->
-      return $ m :< WeakTermConst x
-    m :< WeakTermAster h ->
-      return $ m :< WeakTermAster h
+    _ :< WeakTermConst _ ->
+      return term
+    _ :< WeakTermAster _ ->
+      return term
     m :< WeakTermInt t x -> do
       t' <- discern' nenv t
       return $ m :< WeakTermInt t' x
     m :< WeakTermFloat t x -> do
       t' <- discern' nenv t
       return $ m :< WeakTermFloat t' x
-    m :< WeakTermEnum s ->
-      return $ m :< WeakTermEnum s
-    m :< WeakTermEnumIntro x ->
-      return $ m :< WeakTermEnumIntro x
+    _ :< WeakTermEnum _ ->
+      return term
+    _ :< WeakTermEnumIntro _ ->
+      return term
     m :< WeakTermEnumElim (e, t) caseList -> do
       e' <- discern' nenv e
       t' <- discern' nenv t
@@ -207,6 +207,10 @@ discern' nenv term =
       array' <- discern' nenv array
       index' <- discern' nenv index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
+    _ :< WeakTermText ->
+      return term
+    _ :< WeakTermTextIntro _ ->
+      return term
 
 discernBinder ::
   NameEnv ->

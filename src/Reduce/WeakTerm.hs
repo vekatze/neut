@@ -255,6 +255,10 @@ substWeakTerm sub term =
       array' <- substWeakTerm sub array
       index' <- substWeakTerm sub index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
+    _ :< WeakTermText ->
+      return term
+    _ :< WeakTermTextIntro _ ->
+      return term
 
 substWeakTerm' ::
   SubstWeakTerm ->

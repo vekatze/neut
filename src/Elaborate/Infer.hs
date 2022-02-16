@@ -74,14 +74,14 @@ inferType =
 infer' :: Context -> WeakTerm -> IO (WeakTerm, WeakTerm)
 infer' ctx term =
   case term of
-    m :< WeakTermTau ->
-      return (m :< WeakTermTau, m :< WeakTermTau)
+    _ :< WeakTermTau ->
+      return (term, term)
     m :< WeakTermVar x -> do
       _ :< t <- lookupWeakTypeEnv m x
-      return (m :< WeakTermVar x, m :< t)
+      return (term, m :< t)
     m :< WeakTermVarGlobal name -> do
       _ :< t <- lookupTermTypeEnv m name
-      return (m :< WeakTermVarGlobal name, m :< t)
+      return (term, m :< t)
     m :< WeakTermPi xts t -> do
       (xts', t') <- inferPi ctx xts t
       return (m :< WeakTermPi xts' t', m :< WeakTermTau)
@@ -145,26 +145,25 @@ infer' ctx term =
     m :< WeakTermConst x
       -- i64, f16, etc.
       | Just _ <- asLowInt x ->
-        return (m :< WeakTermConst x, m :< WeakTermTau)
+        return (term, m :< WeakTermTau)
       | Just _ <- asLowFloat x ->
-        return (m :< WeakTermConst x, m :< WeakTermTau)
+        return (term, m :< WeakTermTau)
       | Just op <- asPrimOp x ->
         inferExternal m x (primOpToType m op)
       | otherwise -> do
         _ :< t <- weaken <$> lookupConstTypeEnv m x
-        return (m :< WeakTermConst x, m :< t)
+        return (term, m :< t)
     m :< WeakTermInt t i -> do
       t' <- inferType' [] t -- ctx == [] since t' should be i64, i8, etc. (i.e. t must be closed)
       return (m :< WeakTermInt t' i, t')
     m :< WeakTermFloat t f -> do
       t' <- inferType' [] t -- t must be closed
       return (m :< WeakTermFloat t' f, t')
-    m :< WeakTermEnum name ->
-      return (m :< WeakTermEnum name, m :< WeakTermTau)
+    m :< WeakTermEnum _ ->
+      return (term, m :< WeakTermTau)
     m :< WeakTermEnumIntro l -> do
       k <- lookupKind m l
-      let t = m :< WeakTermEnum k
-      return (m :< WeakTermEnumIntro l, t)
+      return (term, m :< WeakTermEnum k)
     m :< WeakTermEnumElim (e, _) ces -> do
       (e', t') <- infer' ctx e
       let (cs, es) = unzip ces
@@ -244,6 +243,10 @@ infer' ctx term =
       let noeticArrayType = m :< WeakTermNoema subject (m :< WeakTermArray elemType)
       insConstraintEnv noeticArrayType tArray
       return (m :< WeakTermArrayAccess subject elemType array' index', elemType)
+    m :< WeakTermText ->
+      return (term, m :< WeakTermTau)
+    m :< WeakTermTextIntro _ -> do
+      return (term, m :< WeakTermText)
 
 inferSubject :: Hint -> Context -> WeakTerm -> IO WeakTerm
 inferSubject m ctx subject = do
@@ -592,6 +595,10 @@ arrange ctx term =
       array' <- arrange ctx array
       index' <- arrange ctx index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
+    _ :< WeakTermText ->
+      return term
+    _ :< WeakTermTextIntro _ ->
+      return term
 
 arrangeBinder ::
   Context ->

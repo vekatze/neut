@@ -54,6 +54,8 @@ data WeakTermF a
   | WeakTermArray a
   | WeakTermArrayIntro a [a]
   | WeakTermArrayAccess a a a a
+  | WeakTermText
+  | WeakTermTextIntro T.Text
   deriving (Generic)
 
 type WeakTerm = Cofree WeakTermF Hint
@@ -181,6 +183,10 @@ varWeakTerm term =
       S.unions $ varWeakTerm elemType : map varWeakTerm elems
     _ :< WeakTermArrayAccess subject elemType array index ->
       S.unions $ map varWeakTerm [subject, elemType, array, index]
+    _ :< WeakTermText ->
+      S.empty
+    _ :< WeakTermTextIntro _ ->
+      S.empty
 
 varWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 varWeakTerm' binder es =
@@ -256,6 +262,10 @@ asterWeakTerm term =
       S.unions $ asterWeakTerm elemType : map asterWeakTerm elems
     _ :< WeakTermArrayAccess subject elemType array index ->
       S.unions $ map asterWeakTerm [subject, elemType, array, index]
+    _ :< WeakTermText ->
+      S.empty
+    _ :< WeakTermTextIntro _ ->
+      S.empty
 
 asterWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Int
 asterWeakTerm' binder es =
@@ -355,6 +365,10 @@ toText term =
       showCons $ "array-new" : toText elemType : map toText elems
     _ :< WeakTermArrayAccess subject elemType array index ->
       showCons ["array-access", toText subject, toText elemType, toText array, toText index]
+    _ :< WeakTermText ->
+      "text"
+    _ :< WeakTermTextIntro text ->
+      T.pack $ show text
 
 inParen :: T.Text -> T.Text
 inParen s =

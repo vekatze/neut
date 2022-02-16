@@ -18,6 +18,7 @@ import Clarify.Utility
     switch,
     wrapWithQuote,
   )
+import Codec.Binary.UTF8.String (encode)
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM, unless, when, (>=>))
 import Data.Basic
@@ -55,6 +56,7 @@ import Data.List (nubBy)
 import Data.Log (raiseCritical)
 import Data.LowType
   ( Magic (..),
+    PrimNum (PrimNumInt),
     PrimOp (..),
     asLowTypeMaybe,
     asPrimOp,
@@ -234,6 +236,12 @@ clarifyTerm tenv term =
       return $
         bindLet [(arrayVarName, array'), (indexVarName, index')] $
           CompArrayAccess elemType arrayVar indexVar
+    m :< TermText ->
+      clarifyTerm tenv $ m :< TermArray (PrimNumInt 8)
+    m :< TermTextIntro text -> do
+      let i8s = encode $ T.unpack text
+      let i8s' = map (\x -> m :< TermInt 8 (toInteger x)) i8s
+      clarifyTerm tenv $ m :< TermArrayIntro (PrimNumInt 8) i8s'
 
 clarifyMagic :: TypeEnv -> Magic Term -> IO Comp
 clarifyMagic tenv der =
@@ -477,6 +485,10 @@ chainOf tenv term =
       concatMap (chainOf tenv) elems
     _ :< TermArrayAccess subject _ array index -> do
       concatMap (chainOf tenv) [subject, array, index]
+    _ :< TermText ->
+      []
+    _ :< TermTextIntro _ ->
+      []
 
 chainOf' :: TypeEnv -> [BinderF Term] -> [Term] -> [BinderF Term]
 chainOf' tenv binder es =

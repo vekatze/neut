@@ -8,7 +8,6 @@ module Parse.WeakTerm
   )
 where
 
-import Codec.Binary.UTF8.String (encode)
 import Control.Comonad.Cofree (Cofree (..))
 import Data.Basic
   ( BinderF,
@@ -113,6 +112,8 @@ weakTerm = do
       weakTermArrayIntro
     Just "array-access" ->
       weakTermArrayAccess
+    Just "text" ->
+      weakTermText
     Just headSymbolText
       | T.head headSymbolText == '&' -> do
         weakTermNoema
@@ -564,82 +565,6 @@ weakTermArrayAccess = do
     index <- weakTerm
     return $ m :< WeakTermArrayAccess (doNotCare m) (doNotCare m) array index
 
--- t <- lowTypeSimple
--- es <- parseMany weakTermSimple
--- arr <- newTextualIdentFromText "arr"
--- ptr <- newTextualIdentFromText "ptr"
--- h1 <- newTextualIdentFromText "_"
--- h2 <- newTextualIdentFromText "_"
--- let ptrType = weakVar m unsafePtr
--- let topType = weakVar m "top"
--- arrText <- lowTypeToArrayKindText m t
--- let arrName = arrText <> "-array" -- e.g. i8-array
--- t' <- lowTypeToWeakTerm m t
--- es' <- mapM (annotate t') es
--- return $
---   bind (m, arr, ptrType) (m :< WeakTermMagic (MagicCreateArray t es')) $
---     bind (m, ptr, ptrType) (m :< WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
---       bind (m, h1, topType) (m :< WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
---         bind
---           (m, h2, topType)
---           (m :< WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
---           (m :< WeakTermMagic (MagicCast (weakVar m unsafePtr) (weakVar m arrName) (weakVar m (asText ptr))))
-
--- weakTermArrayIntro :: IO WeakTerm
--- weakTermArrayIntro = do
---   m <- currentHint
---   parseToken "new-array"
---   t <- lowTypeSimple
---   es <- parseMany weakTermSimple
---   arr <- newTextualIdentFromText "arr"
---   ptr <- newTextualIdentFromText "ptr"
---   h1 <- newTextualIdentFromText "_"
---   h2 <- newTextualIdentFromText "_"
---   let ptrType = weakVar m unsafePtr
---   let topType = weakVar m "top"
---   arrText <- lowTypeToArrayKindText m t
---   let arrName = arrText <> "-array" -- e.g. i8-array
---   t' <- lowTypeToWeakTerm m t
---   es' <- mapM (annotate t') es
---   return $
---     bind (m, arr, ptrType) (m :< WeakTermMagic (MagicCreateArray t es')) $
---       bind (m, ptr, ptrType) (m :< WeakTermPiElim (weakVar m "memory.allocate") [intTerm m 16]) $
---         bind (m, h1, topType) (m :< WeakTermPiElim (weakVar m "memory.store-i64-with-index") [weakVar m (asText ptr), intTerm m 0, intTerm m (toInteger (length es))]) $
---           bind
---             (m, h2, topType)
---             (m :< WeakTermPiElim (weakVar m "memory.store-pointer-with-index") [weakVar m (asText ptr), intTerm m 1, weakVar m (asText arr)])
---             (m :< WeakTermMagic (MagicCast (weakVar m unsafePtr) (weakVar m arrName) (weakVar m (asText ptr))))
-
--- lowTypeToWeakTerm :: Hint -> LowType -> IO WeakTerm
--- lowTypeToWeakTerm m t =
---   case t of
---     LowTypeInt s ->
---       return (m :< WeakTermConst (showIntSize s))
---     LowTypeFloat s ->
---       return (m :< WeakTermConst (showFloatSize s))
---     _ ->
---       raiseParseError m "invalid argument passed to lowTypeToType"
-
--- annotate :: WeakTerm -> WeakTerm -> IO WeakTerm
--- annotate t e = do
---   let m = metaOf e
---   h <- newTextualIdentFromText "_"
---   return $ bind (m, h, t) e $ weakVar m (asText h)
-
--- lowTypeToArrayKindText :: Hint -> LowType -> IO T.Text
--- lowTypeToArrayKindText m t =
---   case t of
---     LowTypeInt size ->
---       return $ showIntSize size
---     LowTypeFloat size ->
---       return $ showFloatSize size
---     _ ->
---       raiseParseError m "unsupported array kind"
-
--- intTerm :: Hint -> Integer -> WeakTerm
--- intTerm m i =
---   m :< WeakTermInt (m :< WeakTermConst "i64") i
-
 bind :: BinderF WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 bind mxt@(m, _, _) e cont =
   m :< WeakTermPiElim (lam m [mxt] cont) [e]
@@ -721,7 +646,8 @@ weakTermSimple =
       weakTermDefiniteDescription,
       weakTermTau,
       weakTermAster,
-      weakTermString,
+      weakTermTextIntro,
+      -- weakTermString,
       weakTermInteger,
       weakTermFloat,
       weakTermAdmitQuestion,
@@ -805,22 +731,34 @@ weakTermVar = do
   (m, x) <- parseVar
   return (weakVar m x)
 
-weakTermString :: IO WeakTerm
-weakTermString = do
+weakTermText :: IO WeakTerm
+weakTermText = do
+  m <- currentHint
+  parseToken "text"
+  return $ m :< WeakTermText
+
+weakTermTextIntro :: IO WeakTerm
+weakTermTextIntro = do
   m <- currentHint
   s <- parseString
-  let i8s = encode $ T.unpack s
-  let len = toInteger $ length i8s
-  let i8s' = map (\x -> m :< WeakTermInt (m :< WeakTermConst "i8") (toInteger x)) i8s
-  return $
-    m
-      :< WeakTermPiElim
-        (weakVar m "unsafe.create-new-string")
-        [ m :< WeakTermInt (m :< WeakTermConst "i64") len,
-          m
-            :< WeakTermMagic
-              (MagicCreateArray (LowTypeInt 8) i8s')
-        ]
+  return $ m :< WeakTermTextIntro s
+
+-- weakTermString :: IO WeakTerm
+-- weakTermString = do
+--   m <- currentHint
+--   s <- parseString
+--   let i8s = encode $ T.unpack s
+--   let len = toInteger $ length i8s
+--   let i8s' = map (\x -> m :< WeakTermInt (m :< WeakTermConst "i8") (toInteger x)) i8s
+--   return $
+--     m
+--       :< WeakTermPiElim
+--         (weakVar m "unsafe.create-new-string")
+--         [ m :< WeakTermInt (m :< WeakTermConst "i64") len,
+--           m
+--             :< WeakTermMagic
+--               (MagicCreateArray (LowTypeInt 8) i8s')
+--         ]
 
 weakTermInteger :: IO WeakTerm
 weakTermInteger = do
