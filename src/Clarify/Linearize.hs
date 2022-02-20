@@ -161,6 +161,3 @@ distinguishPrimitive z term =
         MagicExternal extFunName args -> do
           (vss, args') <- unzip <$> mapM (distinguishValue z) args
           return (concat vss, PrimitiveMagic (MagicExternal extFunName args'))
-        MagicCreateArray lt args -> do
-          (vss, args') <- unzip <$> mapM (distinguishValue z) args
-          return (concat vss, PrimitiveMagic (MagicCreateArray lt args'))

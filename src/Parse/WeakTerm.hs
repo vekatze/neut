@@ -274,10 +274,6 @@ weakTermMagic = do
         extFunName <- parseSymbol
         es <- parseMany (parseChar ',' >> skip >> weakTerm)
         return $ m :< WeakTermMagic (MagicExternal extFunName es)
-      "create-array" -> do
-        lt <- lowType
-        es <- parseMany (parseChar ',' >> skip >> weakTerm)
-        return $ m :< WeakTermMagic (MagicCreateArray lt es)
       _ ->
         raiseError m $ "no such magic is defined: " <> headSymbol
 
@@ -743,23 +739,6 @@ weakTermTextIntro = do
   m <- currentHint
   s <- parseString
   return $ m :< WeakTermTextIntro s
-
--- weakTermString :: IO WeakTerm
--- weakTermString = do
---   m <- currentHint
---   s <- parseString
---   let i8s = encode $ T.unpack s
---   let len = toInteger $ length i8s
---   let i8s' = map (\x -> m :< WeakTermInt (m :< WeakTermConst "i8") (toInteger x)) i8s
---   return $
---     m
---       :< WeakTermPiElim
---         (weakVar m "unsafe.create-new-string")
---         [ m :< WeakTermInt (m :< WeakTermConst "i64") len,
---           m
---             :< WeakTermMagic
---               (MagicCreateArray (LowTypeInt 8) i8s')
---         ]
 
 weakTermInteger :: IO WeakTerm
 weakTermInteger = do

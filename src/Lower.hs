@@ -231,10 +231,6 @@ lowerCompPrimitive codeOp =
           args' <- mapM lowerValue args
           liftIO $ insDeclEnv name args'
           reflect $ LowOpCall (LowValueVarGlobal name) args'
-        MagicCreateArray elemType args -> do
-          let arrayType = AggPtrTypeArray (length args) elemType
-          let argTypeList = zip args (repeat elemType)
-          createAggData arrayType argTypeList
 
 lowerCompPrimOp :: PrimOp -> [Value] -> Lower LowValue
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do

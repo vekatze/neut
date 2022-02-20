@@ -270,11 +270,6 @@ clarifyMagic tenv der =
       return $
         bindLet (zip xs args') $
           CompPrimitive (PrimitiveMagic (MagicExternal extFunName xsAsVars))
-    MagicCreateArray lt args -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
-      return $
-        bindLet (zip xs args') $
-          CompPrimitive (PrimitiveMagic (MagicCreateArray lt xsAsVars))
 
 clarifyLambda ::
   TypeEnv ->

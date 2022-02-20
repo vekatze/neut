@@ -54,7 +54,6 @@ data Magic a
   | MagicLoad LowType a
   | MagicSyscall Integer [a]
   | MagicExternal T.Text [a]
-  | MagicCreateArray LowType [a]
   deriving (Show, Eq, Generic)
 
 instance (Binary a) => Binary (Magic a)
@@ -72,8 +71,6 @@ instance Functor Magic where
         MagicSyscall syscallNum $ fmap f args
       MagicExternal extFunName args ->
         MagicExternal extFunName $ fmap f args
-      MagicCreateArray lt args ->
-        MagicCreateArray lt $ fmap f args
 
 instance Foldable Magic where
   foldMap f der =
@@ -87,8 +84,6 @@ instance Foldable Magic where
       MagicSyscall _ args ->
         foldMap f args
       MagicExternal _ args ->
-        foldMap f args
-      MagicCreateArray _ args ->
         foldMap f args
 
 instance Traversable Magic where
@@ -104,8 +99,6 @@ instance Traversable Magic where
         MagicSyscall syscallNum <$> traverse f args
       MagicExternal extFunName args ->
         MagicExternal extFunName <$> traverse f args
-      MagicCreateArray lt args ->
-        MagicCreateArray lt <$> traverse f args
 
 getMagicName :: Magic a -> T.Text
 getMagicName d =
@@ -120,8 +113,6 @@ getMagicName d =
       "store"
     MagicCast {} ->
       "nop"
-    MagicCreateArray {} ->
-      "create-array"
 
 asPrimNumMaybe :: T.Text -> Maybe PrimNum
 asPrimNumMaybe name
