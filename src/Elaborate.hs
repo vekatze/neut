@@ -32,9 +32,8 @@ import qualified Data.IntMap as IntMap
 import Data.List (nub)
 import Data.Log (raiseCritical, raiseError)
 import Data.LowType
-  ( LowType (LowTypeFloat, LowTypeInt),
-    PrimNum (PrimNumFloat, PrimNumInt),
-    asLowTypeMaybe,
+  ( PrimNum (..),
+    asPrimNumMaybe,
   )
 import Data.Source (Source)
 import Data.Stmt
@@ -236,7 +235,7 @@ elaborate' term =
       t' <- elaborate' t >>= reduceTerm
       case t' of
         _ :< TermConst intTypeStr
-          | Just (LowTypeInt size) <- asLowTypeMaybe intTypeStr ->
+          | Just (PrimNumInt size) <- asPrimNumMaybe intTypeStr ->
             return $ m :< TermInt size x
         _ -> do
           raiseError m $
@@ -248,7 +247,7 @@ elaborate' term =
       t' <- elaborate' t >>= reduceTerm
       case t' of
         _ :< TermConst floatTypeStr
-          | Just (LowTypeFloat size) <- asLowTypeMaybe floatTypeStr ->
+          | Just (PrimNumFloat size) <- asPrimNumMaybe floatTypeStr ->
             return $ m :< TermFloat size x
         _ ->
           raiseError m $
@@ -313,9 +312,9 @@ elaborate' term =
       elemType' <- elaborate' elemType
       case elemType' of
         _ :< TermConst typeStr
-          | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
+          | Just (PrimNumInt size) <- asPrimNumMaybe typeStr ->
             return $ m :< TermArray (PrimNumInt size)
-          | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
+          | Just (PrimNumFloat size) <- asPrimNumMaybe typeStr ->
             return $ m :< TermArray (PrimNumFloat size)
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
@@ -324,9 +323,9 @@ elaborate' term =
       elems' <- mapM elaborate' elems
       case elemType' of
         _ :< TermConst typeStr
-          | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
+          | Just (PrimNumInt size) <- asPrimNumMaybe typeStr ->
             return $ m :< TermArrayIntro (PrimNumInt size) elems'
-          | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
+          | Just (PrimNumFloat size) <- asPrimNumMaybe typeStr ->
             return $ m :< TermArrayIntro (PrimNumFloat size) elems'
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
@@ -337,9 +336,9 @@ elaborate' term =
       index' <- elaborate' index
       case elemType' of
         _ :< TermConst typeStr
-          | Just (LowTypeInt size) <- asLowTypeMaybe typeStr ->
+          | Just (PrimNumInt size) <- asPrimNumMaybe typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
-          | Just (LowTypeFloat size) <- asLowTypeMaybe typeStr ->
+          | Just (PrimNumFloat size) <- asPrimNumMaybe typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')

@@ -9,8 +9,7 @@ import GHC.Generics (Generic)
 import Text.Read (readMaybe)
 
 data LowType
-  = LowTypeInt IntSize
-  | LowTypeFloat FloatSize
+  = LowTypePrimNum PrimNum
   | LowTypePointer LowType
   | LowTypeArray Int LowType -- [n x LOWTYPE]
   | LowTypeStruct [LowType]
@@ -22,7 +21,7 @@ instance Binary LowType
 data PrimNum
   = PrimNumInt IntSize
   | PrimNumFloat FloatSize
-  deriving (Show, Generic)
+  deriving (Show, Generic, Eq, Ord)
 
 instance Binary PrimNum
 
@@ -33,14 +32,6 @@ showPrimNum primNum =
       showIntSize size
     PrimNumFloat size ->
       showFloatSize size
-
-primNumToLowType :: PrimNum -> LowType
-primNumToLowType primNum =
-  case primNum of
-    PrimNumInt size ->
-      LowTypeInt size
-    PrimNumFloat size ->
-      LowTypeFloat size
 
 type IntSize =
   Int
@@ -54,8 +45,8 @@ data FloatSize
 instance Binary FloatSize
 
 data PrimOp
-  = PrimOp T.Text [LowType] LowType
-  deriving (Show, Eq)
+  = PrimOp T.Text [PrimNum] PrimNum
+  deriving (Show)
 
 data Magic a
   = MagicCast a a a
@@ -132,18 +123,18 @@ getMagicName d =
     MagicCreateArray {} ->
       "create-array"
 
-asLowTypeMaybe :: T.Text -> Maybe LowType
-asLowTypeMaybe name
+asPrimNumMaybe :: T.Text -> Maybe PrimNum
+asPrimNumMaybe name
   | Just intSize <- asLowInt name =
-    Just $ LowTypeInt intSize
+    Just $ PrimNumInt intSize
   | Just floatSize <- asLowFloat name =
-    Just $ LowTypeFloat floatSize
+    Just $ PrimNumFloat floatSize
   | otherwise =
     Nothing
 
 voidPtr :: LowType
 voidPtr =
-  LowTypePointer (LowTypeInt 8)
+  LowTypePointer (LowTypePrimNum (PrimNumInt 8))
 
 asLowInt :: T.Text -> Maybe IntSize
 asLowInt s =
@@ -177,25 +168,25 @@ asLowFloat s =
 asPrimOp :: T.Text -> Maybe PrimOp
 asPrimOp name
   | Just ("fneg", typeStr) <- breakOnMaybe "-" name,
-    Just lowType@(LowTypeFloat _) <- asLowTypeMaybe typeStr =
-    Just $ PrimOp "fneg" [lowType] lowType
+    Just primNum@(PrimNumFloat _) <- asPrimNumMaybe typeStr =
+    Just $ PrimOp "fneg" [primNum] primNum
   | Just (convOpStr, rest) <- breakOnMaybe "-" name,
     Just (domTypeStr, codTypeStr) <- breakOnMaybe "-" rest,
-    Just domType <- asLowTypeMaybe domTypeStr,
-    Just codType <- asLowTypeMaybe codTypeStr,
+    Just domType <- asPrimNumMaybe domTypeStr,
+    Just codType <- asPrimNumMaybe codTypeStr,
     isValidConvOp convOpStr domType codType =
     Just $ PrimOp convOpStr [domType] codType
   | Just (opStr, typeStr) <- breakOnMaybe "-" name =
-    case asLowTypeMaybe typeStr of
-      Just lowType@(LowTypeInt _)
+    case asPrimNumMaybe typeStr of
+      Just primNum@(PrimNumInt _)
         | asLowICmpMaybe opStr ->
-          Just $ PrimOp ("icmp " <> opStr) [lowType, lowType] (LowTypeInt 1)
-      Just lowType@(LowTypeFloat _)
+          Just $ PrimOp ("icmp " <> opStr) [primNum, primNum] (PrimNumInt 1)
+      Just primNum@(PrimNumFloat _)
         | asLowFCmpMaybe opStr ->
-          Just $ PrimOp ("fcmp " <> opStr) [lowType, lowType] (LowTypeInt 1)
-      Just lowType
-        | asLowBinaryOpMaybe' opStr lowType ->
-          Just $ PrimOp opStr [lowType, lowType] lowType
+          Just $ PrimOp ("fcmp " <> opStr) [primNum, primNum] (PrimNumInt 1)
+      Just primNum
+        | asLowBinaryOpMaybe' opStr primNum ->
+          Just $ PrimOp opStr [primNum, primNum] primNum
       _ ->
         Nothing
   | otherwise =
@@ -235,57 +226,55 @@ floatBinaryOpSet :: S.Set T.Text
 floatBinaryOpSet =
   S.fromList ["fadd", "fsub", "fmul", "fdiv", "frem"]
 
-isValidConvOp :: T.Text -> LowType -> LowType -> Bool
+isValidConvOp :: T.Text -> PrimNum -> PrimNum -> Bool
 isValidConvOp name domType codType =
   case name of
     "trunc"
-      | LowTypeInt i1 <- domType,
-        LowTypeInt i2 <- codType ->
+      | PrimNumInt i1 <- domType,
+        PrimNumInt i2 <- codType ->
         i1 > i2
     "zext"
-      | LowTypeInt i1 <- domType,
-        LowTypeInt i2 <- codType ->
+      | PrimNumInt i1 <- domType,
+        PrimNumInt i2 <- codType ->
         i1 < i2
     "sext"
-      | LowTypeInt i1 <- domType,
-        LowTypeInt i2 <- codType ->
+      | PrimNumInt i1 <- domType,
+        PrimNumInt i2 <- codType ->
         i1 < i2
     "fptrunc"
-      | LowTypeFloat size1 <- domType,
-        LowTypeFloat size2 <- codType ->
+      | PrimNumFloat size1 <- domType,
+        PrimNumFloat size2 <- codType ->
         sizeAsInt size1 > sizeAsInt size2
     "fpext"
-      | LowTypeFloat size1 <- domType,
-        LowTypeFloat size2 <- codType ->
+      | PrimNumFloat size1 <- domType,
+        PrimNumFloat size2 <- codType ->
         sizeAsInt size1 < sizeAsInt size2
     "fptoui"
-      | LowTypeFloat _ <- domType,
-        LowTypeInt _ <- codType ->
+      | PrimNumFloat _ <- domType,
+        PrimNumInt _ <- codType ->
         True
     "fptosi"
-      | LowTypeFloat _ <- domType,
-        LowTypeInt _ <- codType ->
+      | PrimNumFloat _ <- domType,
+        PrimNumInt _ <- codType ->
         True
     "uitofp"
-      | LowTypeInt _ <- domType,
-        LowTypeFloat _ <- codType ->
+      | PrimNumInt _ <- domType,
+        PrimNumFloat _ <- codType ->
         True
     "sitofp"
-      | LowTypeInt _ <- domType,
-        LowTypeFloat _ <- codType ->
+      | PrimNumInt _ <- domType,
+        PrimNumFloat _ <- codType ->
         True
     _ ->
       False
 
-asLowBinaryOpMaybe' :: T.Text -> LowType -> Bool
-asLowBinaryOpMaybe' name lowType =
-  case lowType of
-    LowTypeInt _ ->
+asLowBinaryOpMaybe' :: T.Text -> PrimNum -> Bool
+asLowBinaryOpMaybe' name primNum =
+  case primNum of
+    PrimNumInt _ ->
       S.member name intBinaryOpSet
-    LowTypeFloat _ ->
+    PrimNumFloat _ ->
       S.member name floatBinaryOpSet
-    _ ->
-      False
 
 asLowICmpMaybe :: T.Text -> Bool
 asLowICmpMaybe name =

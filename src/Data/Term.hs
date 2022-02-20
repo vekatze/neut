@@ -5,7 +5,6 @@
 module Data.Term where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Exception.Safe (MonadThrow)
 import Data.Basic
   ( BinderF,
     EnumCase,
@@ -16,11 +15,9 @@ import Data.Basic
   )
 import Data.Binary (Binary)
 import qualified Data.IntMap as IntMap
-import Data.Log (raiseCritical)
 import Data.LowType
   ( FloatSize,
     IntSize,
-    LowType (LowTypeFloat, LowTypeInt),
     Magic,
     PrimNum (..),
     showFloatSize,
@@ -173,13 +170,3 @@ primNumToType m primNum =
       m :< TermConst (showIntSize s)
     PrimNumFloat s ->
       m :< TermConst (showFloatSize s)
-
-lowTypeToType :: (MonadThrow m) => Hint -> LowType -> m Term
-lowTypeToType m lowType =
-  case lowType of
-    LowTypeInt s ->
-      return $ m :< TermConst (showIntSize s)
-    LowTypeFloat s ->
-      return $ m :< TermConst (showFloatSize s)
-    _ ->
-      raiseCritical m "invalid argument passed to lowTypeToType"

@@ -29,6 +29,7 @@ import Data.LowComp (LowComp (..), LowOp (..), LowValue (..))
 import Data.LowType
   ( FloatSize (FloatSize16, FloatSize32, FloatSize64),
     LowType (..),
+    PrimNum (..),
     PrimOp (PrimOp),
     binaryOpSet,
     cmpOpSet,
@@ -197,7 +198,7 @@ emitLowOp llvmOp =
         (True, _, _, _) ->
           emitUnaryOp (head domList) op' (head args)
         (_, True, _, _) ->
-          emitConvOp op' (head args) (head domList) cod
+          emitConvOp op' (head args) (LowTypePrimNum $ head domList) (LowTypePrimNum cod)
         (_, _, True, _) ->
           emitBinaryOp (head domList) op' (head args) (args !! 1)
         (_, _, _, True) ->
@@ -205,14 +206,14 @@ emitLowOp llvmOp =
         _ ->
           raiseCritical' $ "unknown primitive: " <> op
 
-emitUnaryOp :: LowType -> Builder -> LowValue -> IO Builder
+emitUnaryOp :: PrimNum -> Builder -> LowValue -> IO Builder
 emitUnaryOp t inst d =
-  return $ unwordsL [inst, showLowType t, showLowValue d]
+  return $ unwordsL [inst, showPrimNum t, showLowValue d]
 
-emitBinaryOp :: LowType -> Builder -> LowValue -> LowValue -> IO Builder
+emitBinaryOp :: PrimNum -> Builder -> LowValue -> LowValue -> IO Builder
 emitBinaryOp t inst d1 d2 =
   return $
-    unwordsL [inst, showLowType t, showLowValue d1 <> ",", showLowValue d2]
+    unwordsL [inst, showPrimNum t, showLowValue d1 <> ",", showLowValue d2]
 
 emitConvOp :: Builder -> LowValue -> LowType -> LowType -> IO Builder
 emitConvOp cast d dom cod =
@@ -224,13 +225,13 @@ emitSyscallOp num ds = do
   regList <- getRegList
   case System.arch of
     "x86_64" -> do
-      let args = (LowValueInt num, LowTypeInt 64) : zip ds (repeat voidPtr)
+      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt 64) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
     "aarch64" -> do
-      let args = (LowValueInt num, LowTypeInt 64) : zip ds (repeat voidPtr)
+      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt 64) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
@@ -313,14 +314,8 @@ showLowTypeAsIfPtr t =
 showLowTypeAsIfNonPtr :: LowType -> Builder
 showLowTypeAsIfNonPtr lowType =
   case lowType of
-    LowTypeInt i ->
-      "i" <> intDec i
-    LowTypeFloat FloatSize16 ->
-      "half"
-    LowTypeFloat FloatSize32 ->
-      "float"
-    LowTypeFloat FloatSize64 ->
-      "double"
+    LowTypePrimNum primNum ->
+      showPrimNum primNum
     LowTypeStruct ts ->
       "{" <> showItems showLowType ts <> "}"
     LowTypeFunction ts t ->
@@ -347,14 +342,8 @@ getRegList = do
 showLowType :: LowType -> Builder
 showLowType lowType =
   case lowType of
-    LowTypeInt i ->
-      "i" <> intDec i
-    LowTypeFloat FloatSize16 ->
-      "half"
-    LowTypeFloat FloatSize32 ->
-      "float"
-    LowTypeFloat FloatSize64 ->
-      "double"
+    LowTypePrimNum primNum ->
+      showPrimNum primNum
     LowTypeStruct ts ->
       "{" <> showItems showLowType ts <> "}"
     LowTypeFunction ts t ->
@@ -364,6 +353,18 @@ showLowType lowType =
       "[" <> intDec i <> " x " <> s <> "]"
     LowTypePointer t ->
       showLowType t <> "*"
+
+showPrimNum :: PrimNum -> Builder
+showPrimNum lowType =
+  case lowType of
+    PrimNumInt i ->
+      "i" <> intDec i
+    PrimNumFloat FloatSize16 ->
+      "half"
+    PrimNumFloat FloatSize32 ->
+      "float"
+    PrimNumFloat FloatSize64 ->
+      "double"
 
 showLowValue :: LowValue -> Builder
 showLowValue llvmValue =

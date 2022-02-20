@@ -41,7 +41,7 @@ import Data.LowType
     PrimOp (..),
     asLowFloat,
     asLowInt,
-    asLowTypeMaybe,
+    asPrimNumMaybe,
     asPrimOp,
     cmpOpSet,
   )
@@ -49,7 +49,7 @@ import qualified Data.Set as S
 import Data.Term
   ( Term,
     TermF (TermEnum, TermPi, TermTau),
-    lowTypeToType,
+    primNumToType,
     weaken,
   )
 import qualified Data.Text as T
@@ -475,7 +475,7 @@ lookupKind m name = do
 
 lookupConstTypeEnv :: Hint -> T.Text -> IO Term
 lookupConstTypeEnv m x
-  | Just _ <- asLowTypeMaybe x =
+  | Just _ <- asPrimNumMaybe x =
     return $ m :< TermTau
   | Just op <- asPrimOp x =
     primOpToType m op
@@ -485,7 +485,7 @@ lookupConstTypeEnv m x
 
 primOpToType :: Hint -> PrimOp -> IO Term
 primOpToType m (PrimOp op domList cod) = do
-  domList' <- mapM (lowTypeToType m) domList
+  let domList' = map (primNumToType m) domList
   xs <- mapM (const (newIdentFromText "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
@@ -493,7 +493,7 @@ primOpToType m (PrimOp op domList cod) = do
       let cod' = m :< TermEnum constBool
       return $ m :< TermPi xts cod'
     else do
-      cod' <- lowTypeToType m cod
+      let cod' = primNumToType m cod
       return $ m :< TermPi xts cod'
 
 -- ?M ~> ?M @ ctx

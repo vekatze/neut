@@ -41,7 +41,6 @@ import Data.LowType
     Magic (..),
     PrimNum (..),
     PrimOp (..),
-    primNumToLowType,
     sizeAsInt,
     voidPtr,
   )
@@ -84,7 +83,7 @@ lowerMain (defList, mainTerm) = do
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
-  castResult <- runLower $ lowerValueLetCast resultVar (LowTypeInt 64)
+  castResult <- runLower $ lowerValueLetCast resultVar (LowTypePrimNum $ PrimNumInt 64)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
 
@@ -138,17 +137,17 @@ lowerComp term =
           return LowCompUnreachable
         Just (defaultCase, caseList) -> do
           runLowerComp $ do
-            let t = LowTypeInt 64
+            let t = LowTypePrimNum $ PrimNumInt 64
             castedValue <- lowerValueLetCast v t
             return $ LowCompSwitch (castedValue, t) defaultCase caseList
     CompArrayAccess elemType v index -> do
-      let elemType' = primNumToLowType elemType
+      let elemType' = LowTypePrimNum elemType
       let elemSize = LowValueInt (primNumToSizeInByte elemType)
       runLower $ do
         indexVar <- lowerValueLetCast index i64
         arrayVar <- lowerValue v
         castedArrayVar <- cast arrayVar i64
-        startIndex <- load (LowTypeInt 64) arrayVar
+        startIndex <- load (LowTypePrimNum $ PrimNumInt 64) arrayVar
         castedStartIndex <- cast startIndex i64
         realIndex <- arith "add" [indexVar, castedStartIndex]
         arrayOffset <- arith "mul" [elemSize, realIndex]
@@ -158,7 +157,10 @@ lowerComp term =
         load elemType' uncastedElemAddress
 
 i64 :: LowType
-i64 = LowTypeInt 64
+i64 = LowTypePrimNum $ PrimNumInt 64
+
+i64p :: PrimNum
+i64p = PrimNumInt 64
 
 load :: LowType -> LowValue -> Lower LowValue
 load elemType pointer = do
@@ -172,7 +174,7 @@ store lowType value pointer =
 
 arith :: T.Text -> [LowValue] -> Lower LowValue
 arith op args = do
-  reflect $ LowOpPrimOp (PrimOp op [i64, i64] i64) args
+  reflect $ LowOpPrimOp (PrimOp op [i64p, i64p] i64p) args
 
 primNumToSizeInByte :: PrimNum -> Integer
 primNumToSizeInByte primNum =
@@ -238,15 +240,15 @@ lowerCompPrimOp :: PrimOp -> [Value] -> Lower LowValue
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
   argVarList <- lowerValueLetCastPrimArgs $ zip vs domList
   result <- reflect $ LowOpPrimOp op argVarList
-  uncast result cod
+  uncast result $ LowTypePrimNum cod
 
-lowerValueLetCastPrimArgs :: [(Value, LowType)] -> Lower [LowValue]
+lowerValueLetCastPrimArgs :: [(Value, PrimNum)] -> Lower [LowValue]
 lowerValueLetCastPrimArgs dts =
   case dts of
     [] ->
       return []
     ((d, t) : rest) -> do
-      argVar <- lowerValueLetCast d t
+      argVar <- lowerValueLetCast d $ LowTypePrimNum t
       argVarList <- lowerValueLetCastPrimArgs rest
       return $ argVar : argVarList
 
@@ -254,12 +256,12 @@ cast :: LowValue -> LowType -> Lower LowValue
 cast v lowType = do
   (result, resultVar) <- liftIO $ newValueLocal "result"
   case lowType of
-    LowTypeInt _ -> do
+    LowTypePrimNum (PrimNumInt _) -> do
       extend $ return . LowCompLet result (LowOpPointerToInt v voidPtr lowType)
-    LowTypeFloat size -> do
-      let floatType = LowTypeFloat size
-      let intType = LowTypeInt $ sizeAsInt size
-      (tmp, tmpVar) <- liftIO $ newValueLocal "foo"
+    LowTypePrimNum (PrimNumFloat size) -> do
+      let floatType = LowTypePrimNum $ PrimNumFloat size
+      let intType = LowTypePrimNum $ PrimNumInt $ sizeAsInt size
+      (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
       extend $
         return
           . LowCompLet tmp (LowOpPointerToInt v voidPtr intType)
@@ -272,11 +274,11 @@ uncast :: LowValue -> LowType -> Lower LowValue
 uncast castedValue lowType = do
   (result, resultVar) <- liftIO $ newValueLocal "uncast"
   case lowType of
-    LowTypeInt _ ->
+    LowTypePrimNum (PrimNumInt _) ->
       extend $ return . LowCompLet result (LowOpIntToPointer castedValue lowType voidPtr)
-    LowTypeFloat i -> do
-      let floatType = LowTypeFloat i
-      let intType = LowTypeInt $ sizeAsInt i
+    LowTypePrimNum (PrimNumFloat i) -> do
+      let floatType = LowTypePrimNum $ PrimNumFloat i
+      let intType = LowTypePrimNum $ PrimNumInt $ sizeAsInt i
       (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
       extend $
         return
@@ -310,15 +312,15 @@ lowerValue v =
       let arrayType = AggPtrTypeArray (length ds) voidPtr
       createAggData arrayType $ zip ds (repeat voidPtr)
     ValueInt size l -> do
-      uncast (LowValueInt l) (LowTypeInt size)
+      uncast (LowValueInt l) $ LowTypePrimNum $ PrimNumInt size
     ValueFloat size f ->
-      uncast (LowValueFloat size f) (LowTypeFloat size)
+      uncast (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
     ValueEnumIntro l -> do
       i <- liftIO $ toInteger <$> enumValueToInteger l
-      uncast (LowValueInt i) (LowTypeInt 64)
+      uncast (LowValueInt i) $ LowTypePrimNum $ PrimNumInt 64
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
-      let elemType' = primNumToLowType elemType
+      let elemType' = LowTypePrimNum elemType
       let pointerType = LowTypePointer $ LowTypeStruct [i64, i64, LowTypeArray (length vs) elemType']
       let elemInfoList = zip [0 ..] $ map (,elemType') vs
       let arrayType = LowTypePointer $ LowTypeArray (length vs) elemType'
@@ -341,7 +343,7 @@ malloc size = do
 
 getElemPtr :: LowValue -> LowType -> [Integer] -> Lower LowValue
 getElemPtr value valueType indexList = do
-  let indexList' = map (\i -> (LowValueInt i, LowTypeInt 32)) indexList
+  let indexList' = map (\i -> (LowValueInt i, LowTypePrimNum $ PrimNumInt 32)) indexList
   reflect $ LowOpGetElementPtr (value, valueType) indexList'
 
 reflect :: LowOp -> Lower LowValue

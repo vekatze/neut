@@ -57,7 +57,7 @@ import Data.LowType
   ( Magic (..),
     PrimNum (PrimNumInt),
     PrimOp (..),
-    asLowTypeMaybe,
+    asPrimNumMaybe,
     asPrimOp,
     showPrimNum,
   )
@@ -69,7 +69,7 @@ import Data.Term
   ( Term,
     TermF (..),
     TypeEnv,
-    lowTypeToType,
+    primNumToType,
   )
 import qualified Data.Text as T
 import Reduce.Comp (reduceComp, substComp)
@@ -341,14 +341,14 @@ clarifyConst :: TypeEnv -> Hint -> T.Text -> IO Comp
 clarifyConst tenv m constName
   | Just op <- asPrimOp constName =
     clarifyPrimOp tenv op m
-  | Just _ <- asLowTypeMaybe constName =
+  | Just _ <- asPrimNumMaybe constName =
     returnImmediateS4
   | otherwise = do
     raiseCritical m $ "undefined constant: " <> constName
 
 clarifyPrimOp :: TypeEnv -> PrimOp -> Hint -> IO Comp
 clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
-  argTypeList <- mapM (lowTypeToType m) domList
+  let argTypeList = map (primNumToType m) domList
   (xs, varList) <- unzip <$> mapM (const (newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   returnClosure tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)

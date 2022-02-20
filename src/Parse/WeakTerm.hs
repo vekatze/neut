@@ -26,6 +26,7 @@ import Data.Log (raiseError)
 import Data.LowType
   ( LowType (..),
     Magic (..),
+    PrimNum (PrimNumFloat, PrimNumInt),
     asLowFloat,
     asLowInt,
   )
@@ -295,9 +296,9 @@ lowType = do
       LowTypeStruct <$> parseMany lowTypeSimple
     _
       | Just size <- asLowInt headSymbol ->
-        return $ LowTypeInt size
+        return $ LowTypePrimNum $ PrimNumInt size
       | Just size <- asLowFloat headSymbol ->
-        return $ LowTypeFloat size
+        return $ LowTypePrimNum $ PrimNumFloat size
       | otherwise ->
         raiseParseError m "lowType"
 
@@ -315,7 +316,7 @@ lowTypeInt = do
   headSymbol <- parseSymbol
   case asLowInt headSymbol of
     Just size ->
-      return $ LowTypeInt size
+      return $ LowTypePrimNum $ PrimNumInt size
     Nothing ->
       raiseParseError m "lowTypeInt"
 
@@ -325,7 +326,7 @@ lowTypeFloat = do
   headSymbol <- parseSymbol
   case asLowFloat headSymbol of
     Just size ->
-      return $ LowTypeFloat size
+      return $ LowTypePrimNum $ PrimNumFloat size
     Nothing ->
       raiseParseError m "lowTypeFloat"
 

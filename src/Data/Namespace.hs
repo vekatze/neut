@@ -9,8 +9,8 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef (modifyIORef', readIORef, writeIORef)
 import Data.Log (raiseError)
 import Data.LowType
-  ( LowType (LowTypeFloat, LowTypeInt),
-    asLowTypeMaybe,
+  ( PrimNum (..),
+    asPrimNumMaybe,
     asPrimOp,
   )
 import qualified Data.Set as S
@@ -220,9 +220,9 @@ asEnum m env name = do
 {-# INLINE asWeakConstant #-}
 asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm
 asWeakConstant m name
-  | Just (LowTypeInt _) <- asLowTypeMaybe name =
+  | Just (PrimNumInt _) <- asPrimNumMaybe name =
     Just (m :< WeakTermConst name)
-  | Just (LowTypeFloat _) <- asLowTypeMaybe name =
+  | Just (PrimNumFloat _) <- asPrimNumMaybe name =
     Just (m :< WeakTermConst name)
   | Just _ <- asPrimOp name =
     Just (m :< WeakTermConst name)
