@@ -200,7 +200,7 @@ weakTermSigmaItem =
     [parseBetweenParen weakAscription]
     $ do
       m <- currentHint
-      a <- tryPlanList [weakTermPiElim, weakTermTau] weakTermVar
+      a <- tryPlanList [weakTermArray, weakTermPiElim, weakTermTau, weakTermText] weakTermVar
       h <- newTextualIdentFromText "_"
       return (m, h, a)
 

@@ -323,8 +323,8 @@ toText term =
       showCons $ map toText $ e : es
     _ :< WeakTermSigma xts ->
       showCons ["sigma", showItems $ map showArg xts]
-    _ :< WeakTermSigmaIntro {} ->
-      "<sigma-intro>"
+    _ :< WeakTermSigmaIntro es ->
+      showCons $ "sigma-intro" : map toText es
     _ :< WeakTermSigmaElim {} ->
       "<sigma-elim>"
     _ :< WeakTermConst x ->
