@@ -7,7 +7,7 @@ module Lower
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM_, unless, when, (<=<))
+import Control.Monad (forM_, unless,  (<=<))
 import Control.Monad.Writer.Lazy
   ( MonadIO (liftIO),
     MonadWriter (tell),
@@ -120,7 +120,7 @@ lowerComp term =
         basePointer <- lowerValue v
         castedBasePointer <- cast basePointer baseType
         ds <- loadElements castedBasePointer baseType $ take (length xs) $ zip [0 ..] (repeat voidPtr)
-        when isNoetic $ free castedBasePointer baseType
+        unless isNoetic $ free castedBasePointer baseType
         forM_ (zip xs ds) $ \(x, d) -> do
           extend $ return . LowCompLet x (LowOpBitcast d voidPtr voidPtr)
         liftIO $ lowerComp e

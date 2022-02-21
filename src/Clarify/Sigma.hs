@@ -3,6 +3,7 @@ module Clarify.Sigma
     returnImmediateS4,
     closureEnvS4,
     returnClosureS4,
+    returnCellS4,
     sigmaS4,
   )
 where
@@ -23,7 +24,8 @@ import Data.Comp
     Value (ValueSigmaIntro, ValueVarGlobal),
   )
 import Data.Global
-  ( cartClsName,
+  ( cartCellName,
+    cartClsName,
     cartImmName,
     newCount,
     newIdentFromText,
@@ -137,4 +139,14 @@ returnClosureS4 = do
     sigmaS4
       (Just cartClsName)
       [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
+  return $ CompUpIntro t
+
+returnCellS4 :: IO Comp
+returnCellS4 = do
+  (env, envVar) <- newValueVarLocalWith "env"
+  retImmS4 <- returnImmediateS4
+  t <-
+    sigmaS4
+      (Just cartCellName)
+      [Right (env, retImmS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
   return $ CompUpIntro t

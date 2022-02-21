@@ -115,6 +115,14 @@ weakTerm = do
       weakTermArrayAccess
     Just "text" ->
       weakTermText
+    Just "cell" ->
+      weakTermCell
+    Just "cell-new" ->
+      weakTermCellIntro
+    Just "cell-read" ->
+      weakTermCellRead
+    Just "cell-write" ->
+      weakTermCellWrite
     Just headSymbolText
       | T.head headSymbolText == '&' -> do
         weakTermNoema
@@ -561,6 +569,40 @@ weakTermArrayAccess = do
     skip >> parseChar ',' >> skip
     index <- weakTerm
     return $ m :< WeakTermArrayAccess (doNotCare m) (doNotCare m) array index
+
+weakTermCell :: IO WeakTerm
+weakTermCell = do
+  m <- currentHint
+  parseToken "cell"
+  parseBetweenParen $ do
+    contentType <- weakTerm
+    return $ m :< WeakTermCell contentType
+
+weakTermCellIntro :: IO WeakTerm
+weakTermCellIntro = do
+  m <- currentHint
+  parseToken "cell-new"
+  parseBetweenParen $ do
+    content <- weakTerm
+    return $ m :< WeakTermCellIntro (doNotCare m) content
+
+weakTermCellRead :: IO WeakTerm
+weakTermCellRead = do
+  m <- currentHint
+  parseToken "cell-read"
+  parseBetweenParen $ do
+    cell <- weakTerm
+    return $ m :< WeakTermCellRead cell
+
+weakTermCellWrite :: IO WeakTerm
+weakTermCellWrite = do
+  m <- currentHint
+  parseToken "cell-write"
+  parseBetweenParen $ do
+    cell <- weakTerm
+    skip >> parseChar ',' >> skip
+    newValue <- weakTerm
+    return $ m :< WeakTermCellWrite cell newValue
 
 bind :: BinderF WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 bind mxt@(m, _, _) e cont =

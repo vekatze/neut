@@ -59,6 +59,10 @@ data TermF a
   | TermArrayAccess a PrimNum a a
   | TermText
   | TermTextIntro T.Text
+  | TermCell a -- cell(list(i64))
+  | TermCellIntro a a -- cell-new(v) (the first argument is the type of `v`)
+  | TermCellRead a -- cell-read(ptr)
+  | TermCellWrite a a -- cell-write(ptr, value)
   deriving (Show, Generic)
 
 type Term = Cofree TermF Hint
@@ -148,6 +152,14 @@ weaken term =
       m :< WeakTermText
     m :< TermTextIntro text ->
       m :< WeakTermTextIntro text
+    m :< TermCell contentType ->
+      m :< WeakTermCell (weaken contentType)
+    m :< TermCellIntro contentType content ->
+      m :< WeakTermCellIntro (weaken contentType) (weaken content)
+    m :< TermCellRead cell ->
+      m :< WeakTermCellRead (weaken cell)
+    m :< TermCellWrite cell newValue ->
+      m :< WeakTermCellWrite (weaken cell) (weaken newValue)
 
 weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =

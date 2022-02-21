@@ -211,6 +211,20 @@ discern' nenv term =
       return term
     _ :< WeakTermTextIntro _ ->
       return term
+    m :< WeakTermCell contentType -> do
+      contentType' <- discern' nenv contentType
+      return $ m :< WeakTermCell contentType'
+    m :< WeakTermCellIntro contentType content -> do
+      contentType' <- discern' nenv contentType
+      content' <- discern' nenv content
+      return $ m :< WeakTermCellIntro contentType' content'
+    m :< WeakTermCellRead cell -> do
+      cell' <- discern' nenv cell
+      return $ m :< WeakTermCellRead cell'
+    m :< WeakTermCellWrite cell newValue -> do
+      cell' <- discern' nenv cell
+      newValue' <- discern' nenv newValue
+      return $ m :< WeakTermCellWrite cell' newValue'
 
 discernBinder ::
   NameEnv ->

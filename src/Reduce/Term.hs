@@ -236,6 +236,20 @@ substTerm sub term =
       return term
     _ :< TermTextIntro _ ->
       return term
+    m :< TermCell contentType -> do
+      contentType' <- substTerm sub contentType
+      return $ m :< TermCell contentType'
+    m :< TermCellIntro contentType content -> do
+      contentType' <- substTerm sub contentType
+      content' <- substTerm sub content
+      return $ m :< TermCellIntro contentType' content'
+    m :< TermCellRead cell -> do
+      cell' <- substTerm sub cell
+      return $ m :< TermCellRead cell'
+    m :< TermCellWrite cell newValue -> do
+      cell' <- substTerm sub cell
+      newValue' <- substTerm sub newValue
+      return $ m :< TermCellWrite cell' newValue'
 
 substTerm' ::
   SubstTerm ->

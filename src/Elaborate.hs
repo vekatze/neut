@@ -346,6 +346,20 @@ elaborate' term =
       return $ m :< TermText
     m :< WeakTermTextIntro text ->
       return $ m :< TermTextIntro text
+    m :< WeakTermCell contentType -> do
+      contentType' <- elaborate' contentType
+      return $ m :< TermCell contentType'
+    m :< WeakTermCellIntro contentType content -> do
+      contentType' <- elaborate' contentType
+      content' <- elaborate' content
+      return $ m :< TermCellIntro contentType' content'
+    m :< WeakTermCellRead cell -> do
+      cell' <- elaborate' cell
+      return $ m :< TermCellRead cell'
+    m :< WeakTermCellWrite cell newValue -> do
+      cell' <- elaborate' cell
+      newValue' <- elaborate' newValue
+      return $ m :< TermCellWrite cell' newValue'
 
 -- for now
 elaboratePatternList :: Hint -> [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> IO [(PatternF Term, Term)]

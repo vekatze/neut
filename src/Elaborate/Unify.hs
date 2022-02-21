@@ -188,6 +188,10 @@ simplify constraintList =
         (_ :< WeakTermTextIntro text1, _ :< WeakTermTextIntro text2)
           | text1 == text2 ->
             simplify cs
+        (_ :< WeakTermCell contentType1, _ :< WeakTermCell contentType2) ->
+          simplify $ ((contentType1, contentType2), orig) : cs
+        (_ :< WeakTermCellIntro contentType1 content1, _ :< WeakTermCellIntro contentType2 content2) ->
+          simplify $ ((contentType1, contentType2), orig) : ((content1, content2), orig) : cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do
           subst <- readIORef substRef
           termDefEnv <- readIORef termDefEnvRef

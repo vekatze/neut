@@ -56,6 +56,10 @@ data WeakTermF a
   | WeakTermArrayAccess a a a a
   | WeakTermText
   | WeakTermTextIntro T.Text
+  | WeakTermCell a -- cell(list(i64))
+  | WeakTermCellIntro a a -- cell-new(v) (the first argument is the type of `v`)
+  | WeakTermCellRead a -- cell-read(ptr)
+  | WeakTermCellWrite a a -- cell-write(ptr, value)
   deriving (Generic)
 
 type WeakTerm = Cofree WeakTermF Hint
@@ -187,6 +191,14 @@ varWeakTerm term =
       S.empty
     _ :< WeakTermTextIntro _ ->
       S.empty
+    _ :< WeakTermCell contentType ->
+      varWeakTerm contentType
+    _ :< WeakTermCellIntro contentType content ->
+      S.unions [varWeakTerm contentType, varWeakTerm content]
+    _ :< WeakTermCellRead cell ->
+      varWeakTerm cell
+    _ :< WeakTermCellWrite cell newValue ->
+      S.unions [varWeakTerm cell, varWeakTerm newValue]
 
 varWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 varWeakTerm' binder es =
@@ -266,6 +278,14 @@ asterWeakTerm term =
       S.empty
     _ :< WeakTermTextIntro _ ->
       S.empty
+    _ :< WeakTermCell contentType ->
+      asterWeakTerm contentType
+    _ :< WeakTermCellIntro contentType content ->
+      S.unions [asterWeakTerm contentType, asterWeakTerm content]
+    _ :< WeakTermCellRead cell ->
+      asterWeakTerm cell
+    _ :< WeakTermCellWrite cell newValue ->
+      S.unions [asterWeakTerm cell, asterWeakTerm newValue]
 
 asterWeakTerm' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Int
 asterWeakTerm' binder es =
@@ -369,6 +389,14 @@ toText term =
       "text"
     _ :< WeakTermTextIntro text ->
       T.pack $ show text
+    _ :< WeakTermCell contentType ->
+      showCons ["cell", toText contentType]
+    _ :< WeakTermCellIntro _ content ->
+      showCons ["cell-new", toText content]
+    _ :< WeakTermCellRead cell ->
+      showCons ["cell-read", toText cell]
+    _ :< WeakTermCellWrite cell newValue ->
+      showCons ["cell-write", toText cell, toText newValue]
 
 inParen :: T.Text -> T.Text
 inParen s =

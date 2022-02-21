@@ -259,6 +259,20 @@ substWeakTerm sub term =
       return term
     _ :< WeakTermTextIntro _ ->
       return term
+    m :< WeakTermCell contentType -> do
+      contentType' <- substWeakTerm sub contentType
+      return $ m :< WeakTermCell contentType'
+    m :< WeakTermCellIntro contentType content -> do
+      contentType' <- substWeakTerm sub contentType
+      content' <- substWeakTerm sub content
+      return $ m :< WeakTermCellIntro contentType' content'
+    m :< WeakTermCellRead cell -> do
+      cell' <- substWeakTerm sub cell
+      return $ m :< WeakTermCellRead cell'
+    m :< WeakTermCellWrite cell newValue -> do
+      cell' <- substWeakTerm sub cell
+      newValue' <- substWeakTerm sub newValue
+      return $ m :< WeakTermCellWrite cell' newValue'
 
 substWeakTerm' ::
   SubstWeakTerm ->

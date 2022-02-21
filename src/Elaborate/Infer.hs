@@ -22,6 +22,7 @@ import Data.Basic
   )
 import Data.Global
   ( constBool,
+    constTop,
     constraintListRef,
     constructorEnvRef,
     holeEnvRef,
@@ -247,6 +248,24 @@ infer' ctx term =
       return (term, m :< WeakTermTau)
     m :< WeakTermTextIntro _ -> do
       return (term, m :< WeakTermText)
+    m :< WeakTermCell contentType -> do
+      contentType' <- inferType' ctx contentType
+      return (m :< WeakTermCell contentType', m :< WeakTermTau)
+    m :< WeakTermCellIntro _ content -> do
+      (content', contentType) <- infer' ctx content
+      return (m :< WeakTermCellIntro contentType content', m :< WeakTermCell contentType)
+    m :< WeakTermCellRead cell -> do
+      (cell', cellType) <- infer' ctx cell
+      contentType <- newTypeAsterInCtx ctx m
+      subject <- newTypeAsterInCtx ctx m
+      insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell contentType)) cellType
+      return (m :< WeakTermCellRead cell', contentType)
+    m :< WeakTermCellWrite cell newValue -> do
+      (cell', cellType) <- infer' ctx cell
+      (newValue', newValueType) <- infer' ctx newValue
+      subject <- newTypeAsterInCtx ctx m
+      insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell newValueType)) cellType
+      return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum constTop)
 
 inferSubject :: Hint -> Context -> WeakTerm -> IO WeakTerm
 inferSubject m ctx subject = do
@@ -599,6 +618,20 @@ arrange ctx term =
       return term
     _ :< WeakTermTextIntro _ ->
       return term
+    m :< WeakTermCell contentType -> do
+      contentType' <- arrange ctx contentType
+      return $ m :< WeakTermCell contentType'
+    m :< WeakTermCellIntro contentType content -> do
+      contentType' <- arrange ctx contentType
+      content' <- arrange ctx content
+      return $ m :< WeakTermCellIntro contentType' content'
+    m :< WeakTermCellRead cell -> do
+      cell' <- arrange ctx cell
+      return $ m :< WeakTermCellRead cell'
+    m :< WeakTermCellWrite cell newValue -> do
+      cell' <- arrange ctx cell
+      newValue' <- arrange ctx newValue
+      return $ m :< WeakTermCellWrite cell' newValue'
 
 arrangeBinder ::
   Context ->

@@ -8,6 +8,7 @@ import Clarify.Linearize (linearize)
 import Clarify.Sigma
   ( closureEnvS4,
     immediateS4,
+    returnCellS4,
     returnClosureS4,
     returnImmediateS4,
   )
@@ -15,6 +16,8 @@ import Clarify.Utility
   ( bindLet,
     insDefEnv,
     switch,
+    toAffineApp,
+    toRelevantApp,
     wrapWithQuote,
   )
 import Codec.Binary.UTF8.String (encode)
@@ -60,6 +63,7 @@ import Data.LowType
     asPrimNumMaybe,
     asPrimOp,
     showPrimNum,
+    voidPtr,
   )
 import Data.Maybe (catMaybes, isJust, maybeToList)
 import Data.Namespace (attachSectionPrefix)
@@ -238,6 +242,42 @@ clarifyTerm tenv term =
       let i8s = encode $ T.unpack text
       let i8s' = map (\x -> m :< TermInt 8 (toInteger x)) i8s
       clarifyTerm tenv $ m :< TermArrayIntro (PrimNumInt 8) i8s'
+    _ :< TermCell {} -> do
+      returnCellS4
+    _ :< TermCellIntro contentType content -> do
+      (contentTypeVarName, contentType', contentTypeVar) <- clarifyPlus tenv contentType
+      (contentVarName, content', contentVar) <- clarifyPlus tenv content
+      return $
+        bindLet [(contentTypeVarName, contentType'), (contentVarName, content')] $
+          CompUpIntro (ValueSigmaIntro [contentTypeVar, contentVar])
+    _ :< TermCellRead cell -> do
+      (cellVarName, cell', cellVar) <- clarifyPlus tenv cell
+      (typeVarName, typeVar) <- newValueVarLocalWith "typeVar"
+      valueVarName <- newIdentFromText "valueVar"
+      returnClonedValue <- toRelevantApp valueVarName (CompUpIntro typeVar)
+      return $
+        bindLet [(cellVarName, cell')] $
+          CompSigmaElim True [typeVarName, valueVarName] cellVar returnClonedValue
+    _ :< TermCellWrite cell newValue -> do
+      (typeVarName, typeVar) <- newValueVarLocalWith "typeVar"
+      (cellVarName, cell', cellVar) <- clarifyPlus tenv cell
+      oldValueVarName <- newIdentFromText "oldValueVar"
+      (newValueVarName, newValue', newValueVar) <- clarifyPlus tenv newValue
+      discardOldContent <- toAffineApp oldValueVarName (CompUpIntro typeVar)
+      placeHolder <- newIdentFromText "placeholder"
+      (addrVarName, addrVar) <- newValueVarLocalWith "address"
+      return $
+        bindLet [(cellVarName, cell'), (newValueVarName, newValue')] $
+          CompSigmaElim True [typeVarName, oldValueVarName] cellVar $
+            CompUpElim placeHolder discardOldContent $
+              CompUpElim addrVarName (add cellVar (ValueInt 64 8)) $
+                CompPrimitive $
+                  PrimitiveMagic (MagicStore voidPtr addrVar newValueVar)
+
+add :: Value -> Value -> Comp
+add v1 v2 = do
+  let i64 = PrimNumInt 64
+  CompPrimitive $ PrimitivePrimOp (PrimOp "add" [i64, i64] i64) [v1, v2]
 
 clarifyMagic :: TypeEnv -> Magic Term -> IO Comp
 clarifyMagic tenv der =
@@ -480,6 +520,14 @@ chainOf tenv term =
       []
     _ :< TermTextIntro _ ->
       []
+    _ :< TermCell contentType ->
+      chainOf tenv contentType
+    _ :< TermCellIntro contentType content -> do
+      concatMap (chainOf tenv) [contentType, content]
+    _ :< TermCellRead cell -> do
+      chainOf tenv cell
+    _ :< TermCellWrite cell newValue -> do
+      concatMap (chainOf tenv) [cell, newValue]
 
 chainOf' :: TypeEnv -> [BinderF Term] -> [Term] -> [BinderF Term]
 chainOf' tenv binder es =

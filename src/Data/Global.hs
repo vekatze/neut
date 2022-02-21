@@ -340,6 +340,10 @@ cartClsName :: T.Text
 cartClsName =
   "cls"
 
+cartCellName :: T.Text
+cartCellName =
+  "cell"
+
 --
 -- generating new symbols using count
 --
