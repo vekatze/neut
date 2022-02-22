@@ -26,6 +26,9 @@ import Data.Source (Source (Source), sourceFilePath, sourceModule)
 import qualified Data.Text as T
 import Parse.Core
   ( currentHint,
+    isSymbolChar,
+    lookAhead,
+    parseByPredicate,
     parseInBlock,
     parseManyList,
     parseSymbol,
@@ -50,26 +53,30 @@ type SourceSignature =
 
 parseImportSequence :: Module -> IO ([Source], [AliasInfo])
 parseImportSequence currentModule = do
-  unzip
-    <$> tryPlanList
-      [ parseInBlock "import" $
+  headSymbol <- lookAhead (parseByPredicate isSymbolChar)
+  fmap unzip $
+    case headSymbol of
+      Just "import" ->
+        parseInBlock "import" $
           parseManyList $ do
             tryPlanList
               [ parseImportQualified currentModule
               ]
               (parseImportSimple currentModule)
-      ]
-      (return [])
+      _ ->
+        return []
 
 skipImportSequence :: IO ()
-skipImportSequence =
-  tryPlanList
-    [ void $
+skipImportSequence = do
+  headSymbol <- lookAhead (parseByPredicate isSymbolChar)
+  case headSymbol of
+    Just "import" ->
+      void $
         parseInBlock "import" $
           parseManyList $
             tryPlanList [skipImportQualified] skipImportSimple
-    ]
-    (return ())
+    _ ->
+      return ()
 
 parseImportSimple :: Module -> IO (Source, AliasInfo)
 parseImportSimple currentModule = do

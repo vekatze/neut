@@ -59,7 +59,7 @@ import Data.WeakTerm
         WeakTermVarGlobal
       ),
   )
-import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, parseArgList, parseAsBlock, parseByPredicate, parseDefiniteDescription, parseMany, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
+import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyStrict, parseArgList, parseAsBlock, parseByPredicate, parseDefiniteDescription, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
@@ -203,7 +203,7 @@ parseStmt = do
 
 parseStmtList :: IO [WeakStmt]
 parseStmtList =
-  concat <$> parseMany parseStmt
+  concat <$> manyStrict parseStmt
 
 --
 -- parser for statements
