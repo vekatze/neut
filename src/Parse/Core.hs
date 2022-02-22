@@ -241,8 +241,8 @@ skip = do
   text <- readIORef textRef
   case T.uncons text of
     Just (c, rest)
-      | c == '-',
-        Just ('-', _) <- T.uncons rest ->
+      | c == '/',
+        Just ('/', _) <- T.uncons rest ->
         parseComment
       | c `S.member` newlineSet ->
         updateStreamL rest >> skip
