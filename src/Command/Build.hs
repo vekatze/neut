@@ -40,7 +40,7 @@ import Emit (emitMain, emitOther)
 import GHC.IO.Handle (hClose)
 import Lower (lowerMain, lowerOther)
 import Parse (parseMain, parseOther)
-import Parse.Core (initializeParserForFile, skip)
+import Parse.Core
 import Parse.Enum (insEnumEnv')
 import Parse.Import (parseImportSequence)
 import Path
@@ -357,9 +357,11 @@ getChildren currentSource = do
     Just sourceList ->
       return sourceList
     Nothing -> do
-      initializeParserForFile $ sourceFilePath currentSource
-      skip
-      (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
+      let path = sourceFilePath currentSource
+      -- initializeParserForFile $ sourceFilePath currentSource
+      -- skip
+      (sourceList, aliasInfoList) <- run (parseImportSequence (sourceModule currentSource)) path
+      -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
       modifyIORef' sourceAliasMapRef $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList

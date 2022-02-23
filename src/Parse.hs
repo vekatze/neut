@@ -6,6 +6,7 @@ where
 
 import Control.Comonad.Cofree (Cofree (..))
 import Control.Monad (forM_, when)
+import Control.Monad.IO.Class (liftIO)
 import Data.Basic (AliasInfo (..), BinderF, Hint, LamKindF (LamKindCons), Opacity (..), asIdent, asText)
 import Data.Global
   ( constructorEnvRef,
@@ -19,6 +20,7 @@ import Data.Global
     newText,
     nsSep,
     resourceTypeSetRef,
+    setCurrentFilePath,
     sourceAliasMapRef,
     topNameSetRef,
   )
@@ -59,16 +61,20 @@ import Data.WeakTerm
         WeakTermVarGlobal
       ),
   )
-import Parse.Core (currentHint, initializeParserForFile, isSymbolChar, lookAhead, manyStrict, parseArgList, parseAsBlock, parseByPredicate, parseDefiniteDescription, parseManyList, parseSymbol, parseToken, parseVarText, raiseParseError, skip, takeN, textRef, tryPlanList, weakTermToWeakIdent, weakVar)
+import Parse.Core (Parser, argList, asBlock, currentHint, delimiter, keyword, manyList, run, symbol, var)
 import Parse.Discern (discernStmtList)
 import Parse.Enum (insEnumEnv, parseDefineEnum)
 import Parse.Import (skipImportSequence)
 import Parse.WeakTerm
-  ( parseTopDefInfo,
+  ( newTextualIdentFromText,
+    parseDefiniteDescription,
+    parseTopDefInfo,
     weakAscription,
     weakTerm,
+    weakVar,
   )
 import System.IO.Unsafe (unsafePerformIO)
+import Text.Megaparsec (MonadParsec (eof), choice, many, try)
 
 --
 -- core functions
@@ -86,6 +92,7 @@ parseOther =
 
 parseSource :: Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseSource source = do
+  setCurrentFilePath $ sourceFilePath source
   mCache <- loadCache source
   initializeNamespace source
   setupSectionPrefix source
@@ -98,18 +105,16 @@ parseSource source = do
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
-      let path = sourceFilePath source
-      initializeParserForFile path
-      skip
       arrangeNamespace
-      (defList, enumInfoList) <- parseHeader
+      (defList, enumInfoList) <- run program $ sourceFilePath source
       privateNameSet <- readIORef privateNameSetRef
       modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
       return $ Right (defList, enumInfoList)
 
 ensureMain :: T.Text -> IO ()
 ensureMain mainFunctionName = do
-  m <- currentHint
+  -- m <- currentHint
+  let m = error "undefined"
   topNameSet <- readIORef topNameSetRef
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
   if S.member mainFunctionName topNameSet
@@ -121,19 +126,6 @@ setupSectionPrefix currentSource = do
   locator <- getLocator currentSource
   activateGlobalLocator locator
   writeIORef currentGlobalLocatorRef locator
-
-parseHeaderBase :: IO ([QuasiStmt], [EnumInfo]) -> IO ([QuasiStmt], [EnumInfo])
-parseHeaderBase action = do
-  text <- readIORef textRef
-  if T.null text
-    then return ([], [])
-    else action
-
-parseHeader :: IO ([QuasiStmt], [EnumInfo])
-parseHeader = do
-  parseHeaderBase $ do
-    skipImportSequence
-    parseHeader'
 
 arrangeNamespace :: IO ()
 arrangeNamespace = do
@@ -153,116 +145,100 @@ arrangeNamespace' aliasInfo =
     AliasInfoPrefix m from to ->
       handleDefinePrefix m from to
 
-parseHeader' :: IO ([QuasiStmt], [EnumInfo])
-parseHeader' =
-  parseHeaderBase $ do
-    headSymbol <- lookAhead (parseByPredicate isSymbolChar)
-    case headSymbol of
-      Just "define-enum" -> do
+program :: Parser ([QuasiStmt], [EnumInfo])
+program = do
+  skipImportSequence
+  program' <* eof
+
+program' :: Parser ([QuasiStmt], [EnumInfo])
+program' =
+  choice
+    [ try $ do
         enumInfo <- parseDefineEnum
-        (defList, enumInfoList) <- parseHeader'
-        return (defList, enumInfo : enumInfoList)
-      Just "define-prefix" -> do
+        (defList, enumInfoList) <- program'
+        return (defList, enumInfo : enumInfoList),
+      try $ do
         parseDefinePrefix
-        parseHeader'
-      Just "use" -> do
+        program',
+      try $ do
         parseStmtUse
-        parseHeader'
-      _ -> do
-        stmtList <- parseStmtList >>= discernStmtList
+        program',
+      do
+        stmtList <- many parseStmt >>= liftIO . discernStmtList . concat
         return (stmtList, [])
+    ]
 
-parseStmt :: IO [WeakStmt]
+parseDefinePrefix :: Parser ()
+parseDefinePrefix = do
+  m <- currentHint
+  keyword "define-prefix"
+  from <- snd <$> var
+  delimiter "="
+  to <- snd <$> var
+  liftIO $ handleDefinePrefix m from to
+
+parseStmtUse :: Parser ()
+parseStmtUse = do
+  keyword "use"
+  (_, name) <- parseDefiniteDescription
+  liftIO $ activateLocalLocator name
+
+parseStmt :: Parser [WeakStmt]
 parseStmt = do
-  text <- readIORef textRef
-  if T.null text
-    then do
-      m <- currentHint
-      raiseParseError m "unexpected end of input"
-    else do
-      headSymbol <- lookAhead (parseByPredicate isSymbolChar)
-      case headSymbol of
-        Just "define" ->
-          return <$> parseDefine OpacityOpaque
-        Just "define-inline" -> do
-          return <$> parseDefine OpacityTransparent
-        Just "define-data" -> do
-          parseDefineData
-        Just "define-codata" -> do
-          parseDefineCodata
-        Just "define-resource" -> do
-          return <$> parseDefineResource
-        Just "section" -> do
-          return <$> parseSection
-        Just x -> do
-          m <- currentHint
-          raiseParseError m $ "invalid statement: " <> x
-        Nothing -> do
-          m <- currentHint
-          raiseParseError m "found the empty symbol when expecting a statement"
-
-parseStmtList :: IO [WeakStmt]
-parseStmtList =
-  concat <$> manyStrict parseStmt
+  liftIO $ putStrLn "parseStmt"
+  choice
+    [ parseDefineData,
+      parseDefineCodata,
+      return <$> parseDefineResource,
+      return <$> parseDefine OpacityTransparent,
+      return <$> parseDefine OpacityOpaque,
+      return <$> parseSection
+    ]
 
 --
 -- parser for statements
 --
 
-parseSection :: IO WeakStmt
+parseSection :: Parser WeakStmt
 parseSection = do
-  parseToken "section"
-  sectionName <- parseSymbol
-  modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
-  pushToCurrentLocalLocator sectionName
-  stmtList <- parseStmtList
+  try $ keyword "section"
+  sectionName <- symbol
+  liftIO $ modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
+  liftIO $ pushToCurrentLocalLocator sectionName
+  stmtList <- concat <$> many parseStmt
   m <- currentHint
-  parseToken "end"
-  _ <- popFromCurrentLocalLocator m
-  modifyIORef' isPrivateStackRef tail
+  keyword "end"
+  _ <- liftIO $ popFromCurrentLocalLocator m
+  liftIO $ modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Opacity -> IO WeakStmt
+parseDefine :: Opacity -> Parser WeakStmt
 parseDefine opacity = do
   m <- currentHint
-  case opacity of
-    OpacityOpaque ->
-      parseToken "define"
-    OpacityTransparent ->
-      parseToken "define-inline"
+  try $
+    case opacity of
+      OpacityOpaque ->
+        keyword "define"
+      OpacityTransparent ->
+        keyword "define-inline"
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
-  name' <- attachSectionPrefix name
-  defineFunction opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
+  name' <- liftIO $ attachSectionPrefix name
+  liftIO $ defineFunction opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction :: Opacity -> Hint -> T.Text -> Int -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO WeakStmt
 defineFunction opacity m name impArgNum binder codType e = do
   registerTopLevelName m name
   return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
-parseStmtUse :: IO ()
-parseStmtUse = do
-  parseToken "use"
-  (_, name) <- parseDefiniteDescription
-  activateLocalLocator name
-
-parseDefinePrefix :: IO ()
-parseDefinePrefix = do
-  m <- currentHint
-  parseToken "define-prefix"
-  from <- parseVarText
-  parseToken "="
-  to <- parseVarText
-  handleDefinePrefix m from to
-
-parseDefineData :: IO [WeakStmt]
+parseDefineData :: Parser [WeakStmt]
 parseDefineData = do
   m <- currentHint
-  parseToken "define-data"
-  a <- parseVarText >>= attachSectionPrefix
-  dataArgs <- parseArgList weakAscription
-  consInfoList <- parseAsBlock $ parseManyList parseDefineDataClause
-  defineData m a dataArgs consInfoList
+  try $ keyword "define-data"
+  a <- var >>= liftIO . attachSectionPrefix . snd
+  dataArgs <- argList weakAscription
+  consInfoList <- asBlock $ manyList parseDefineDataClause
+  liftIO $ defineData m a dataArgs consInfoList
 
 defineData :: Hint -> T.Text -> [BinderF WeakTerm] -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO [WeakStmt]
 defineData m dataName dataArgs consInfoList = do
@@ -300,29 +276,30 @@ constructDataType :: Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm
 constructDataType m dataName dataArgs =
   m :< WeakTermPiElim (m :< WeakTermVarGlobal dataName) (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: IO (Hint, T.Text, [BinderF WeakTerm])
+parseDefineDataClause :: Parser (Hint, T.Text, [BinderF WeakTerm])
 parseDefineDataClause = do
   m <- currentHint
-  b <- parseSymbol
-  yts <- parseArgList parseDefineDataClauseArg
+  b <- symbol
+  yts <- argList parseDefineDataClauseArg
   return (m, b, yts)
 
-parseDefineDataClauseArg :: IO (BinderF WeakTerm)
+parseDefineDataClauseArg :: Parser (BinderF WeakTerm)
 parseDefineDataClauseArg = do
   m <- currentHint
-  tryPlanList
-    [weakAscription]
-    (weakTermToWeakIdent m weakTerm)
+  choice
+    [ try weakAscription,
+      weakTermToWeakIdent m weakTerm
+    ]
 
-parseDefineCodata :: IO [WeakStmt]
+parseDefineCodata :: Parser [WeakStmt]
 parseDefineCodata = do
   m <- currentHint
-  parseToken "define-codata"
-  dataName <- parseVarText >>= attachSectionPrefix
-  dataArgs <- parseArgList weakAscription
-  elemInfoList <- parseAsBlock $ parseManyList weakAscription
-  formRule <- defineData m dataName dataArgs [(m, "new", elemInfoList)]
-  elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
+  try $ keyword "define-codata"
+  dataName <- var >>= liftIO . attachSectionPrefix . snd
+  dataArgs <- argList weakAscription
+  elemInfoList <- asBlock $ manyList weakAscription
+  formRule <- liftIO $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  elimRuleList <- liftIO $ mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
 
 parseDefineCodataElim :: T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> BinderF WeakTerm -> IO WeakStmt
@@ -344,15 +321,17 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
         (weakVar m recordVarText, codataType)
         [((m, dataName <> nsSep <> "new", elemInfoList), weakVar m (asText elemName))]
 
-parseDefineResource :: IO WeakStmt
+parseDefineResource :: Parser WeakStmt
 parseDefineResource = do
   m <- currentHint
-  _ <- parseToken "define-resource"
-  name <- parseVarText
-  [discarder, copier] <- parseAsBlock $ takeN 2 $ parseToken "-" >> weakTerm
-  registerTopLevelName m name
-  modifyIORef' resourceTypeSetRef $ S.insert name
-  return $ WeakStmtDefineResource m name discarder copier
+  try $ keyword "define-resource"
+  name <- snd <$> var
+  asBlock $ do
+    discarder <- delimiter "-" >> weakTerm
+    copier <- delimiter "-" >> weakTerm
+    liftIO $ registerTopLevelName m name
+    liftIO $ modifyIORef' resourceTypeSetRef $ S.insert name
+    return $ WeakStmtDefineResource m name discarder copier
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
 setAsData dataName dataArgNum consInfoList = do
@@ -406,3 +385,9 @@ isPrivateStackRef =
 privateNameSetRef :: IORef (S.Set T.Text)
 privateNameSetRef =
   unsafePerformIO (newIORef S.empty)
+
+weakTermToWeakIdent :: Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
+weakTermToWeakIdent m f = do
+  a <- f
+  h <- liftIO $ newTextualIdentFromText "_"
+  return (m, h, a)

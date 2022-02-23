@@ -5,6 +5,7 @@ module Parse.Import
 where
 
 import Control.Monad (unless, void)
+import Control.Monad.IO.Class (liftIO)
 import Data.Basic (AliasInfo (..), Checksum (Checksum), Hint)
 import Data.Global
   ( getCurrentFilePath,
@@ -25,15 +26,12 @@ import Data.Module
 import Data.Source (Source (Source), sourceFilePath, sourceModule)
 import qualified Data.Text as T
 import Parse.Core
-  ( currentHint,
-    isSymbolChar,
-    lookAhead,
-    parseByPredicate,
-    parseInBlock,
-    parseManyList,
-    parseSymbol,
-    parseToken,
-    tryPlanList,
+  ( Parser,
+    currentHint,
+    importBlock,
+    keyword,
+    manyList,
+    symbol,
   )
 import qualified Parse.Module as Module
 import Path
@@ -47,63 +45,66 @@ import Path
 import Path.IO (doesFileExist, resolveDir, resolveFile)
 import System.FilePath (pathSeparator)
 import System.IO.Unsafe (unsafePerformIO)
+import Text.Megaparsec (choice, try)
 
 type SourceSignature =
   (T.Text, [T.Text], T.Text)
 
-parseImportSequence :: Module -> IO ([Source], [AliasInfo])
+parseImportSequence :: Module -> Parser ([Source], [AliasInfo])
 parseImportSequence currentModule = do
-  headSymbol <- lookAhead (parseByPredicate isSymbolChar)
-  fmap unzip $
-    case headSymbol of
-      Just "import" ->
-        parseInBlock "import" $
-          parseManyList $ do
-            tryPlanList
-              [ parseImportQualified currentModule
-              ]
-              (parseImportSimple currentModule)
-      _ ->
+  unzip
+    <$> choice
+      [ importBlock $ manyList $ parseSingleImport currentModule,
         return []
+      ]
 
-skipImportSequence :: IO ()
+parseSingleImport :: Module -> Parser (Source, AliasInfo)
+parseSingleImport currentModule = do
+  choice
+    [ try $ parseImportQualified currentModule,
+      parseImportSimple currentModule
+    ]
+
+skipSingleImport :: Parser ()
+skipSingleImport = do
+  choice
+    [ try skipImportQualified,
+      skipImportSimple
+    ]
+
+skipImportSequence :: Parser ()
 skipImportSequence = do
-  headSymbol <- lookAhead (parseByPredicate isSymbolChar)
-  case headSymbol of
-    Just "import" ->
-      void $
-        parseInBlock "import" $
-          parseManyList $
-            tryPlanList [skipImportQualified] skipImportSimple
-    _ ->
+  choice
+    [ void $ importBlock $ manyList skipSingleImport,
       return ()
+    ]
 
-parseImportSimple :: Module -> IO (Source, AliasInfo)
+parseImportSimple :: Module -> Parser (Source, AliasInfo)
 parseImportSimple currentModule = do
   m <- currentHint
-  sigText <- parseSymbol
-  source <- getNextSource m currentModule sigText
+  sigText <- symbol
+  source <- liftIO $ getNextSource m currentModule sigText
   return (source, AliasInfoUse sigText)
 
-skipImportSimple :: IO ()
+skipImportSimple :: Parser ()
 skipImportSimple = do
-  _ <- parseSymbol
+  _ <- symbol
   return ()
 
-parseImportQualified :: Module -> IO (Source, AliasInfo)
+parseImportQualified :: Module -> Parser (Source, AliasInfo)
 parseImportQualified currentModule = do
   m <- currentHint
-  sigText <- parseSymbol
-  parseToken "as"
-  alias <- parseSymbol
-  source <- getNextSource m currentModule sigText
+  sigText <- symbol
+  keyword "as"
+  alias <- symbol
+  source <- liftIO $ getNextSource m currentModule sigText
   return (source, AliasInfoPrefix m alias sigText)
 
-skipImportQualified :: IO ()
+skipImportQualified :: Parser ()
 skipImportQualified = do
-  _ <- parseSymbol
-  parseToken "as"
-  _ <- parseSymbol
+  _ <- symbol
+  keyword "as"
+  _ <- symbol
   return ()
 
 getNextSource :: Hint -> Module -> T.Text -> IO Source
@@ -132,15 +133,15 @@ getHeadMiddleLast xs = do
   return (y, zs, z)
 
 unsnoc :: [a] -> Maybe ([a], a)
-unsnoc xs =
-  case xs of
-    [] ->
-      Nothing
-    [x] ->
-      return ([], x)
-    y : ys -> do
-      (zs, z) <- unsnoc ys
-      return (y : zs, z)
+unsnoc =
+  foldr go Nothing
+  where
+    go x acc =
+      case acc of
+        Nothing ->
+          Just ([], x)
+        Just (ys, y) ->
+          Just (x : ys, y)
 
 getNextModule :: Hint -> Module -> SourceSignature -> IO Module
 getNextModule m currentModule sig@(domain, _, _) = do
