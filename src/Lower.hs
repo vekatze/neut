@@ -7,7 +7,7 @@ module Lower
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM_, unless,  (<=<))
+import Control.Monad (forM_, unless, (<=<))
 import Control.Monad.Writer.Lazy
   ( MonadIO (liftIO),
     MonadWriter (tell),
@@ -16,7 +16,8 @@ import Control.Monad.Writer.Lazy
 import Data.Basic (CompEnumCase, EnumCaseF (..), Ident (..))
 import Data.Comp (Comp (..), CompDef, Primitive (..), Value (..))
 import Data.Global
-  ( cartClsName,
+  ( cartCellName,
+    cartClsName,
     cartImmName,
     compDefEnvRef,
     initialLowDeclEnv,
@@ -92,6 +93,7 @@ lowerOther defList = do
   initialize $ map fst defList
   insDeclEnv cartImmName [(), ()]
   insDeclEnv cartClsName [(), ()]
+  insDeclEnv cartCellName [(), ()]
   lowDeclEnv <- readIORef lowDeclEnvRef
   forM_ defList $ \(name, (_, args, e)) ->
     unless (Map.member name lowDeclEnv) $
