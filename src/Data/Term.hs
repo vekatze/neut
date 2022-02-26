@@ -40,6 +40,7 @@ data TermF a
   | TermSigma [BinderF a]
   | TermSigmaIntro [a]
   | TermSigmaElim [BinderF a] a a
+  | TermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | TermConst T.Text
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
@@ -111,6 +112,8 @@ weaken term =
       m :< WeakTermSigmaIntro (map weaken es)
     m :< TermSigmaElim xts e1 e2 -> do
       m :< WeakTermSigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
+    m :< TermLet mxt e1 e2 ->
+      m :< WeakTermLet (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TermConst x ->
       m :< WeakTermConst x
     m :< TermInt size x ->

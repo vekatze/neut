@@ -134,6 +134,10 @@ discern' nenv term =
       e1' <- discern' nenv e1
       (xts', e2') <- discernBinder nenv xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
+    m :< WeakTermLet mxt e1 e2 -> do
+      e1' <- discern' nenv e1
+      ([mxt'], e2') <- discernBinder nenv [mxt] e2
+      return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     _ :< WeakTermAster _ ->

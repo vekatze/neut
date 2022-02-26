@@ -168,6 +168,8 @@ clarifyTerm tenv term =
             (m :< TermPiElim (m :< TermVar k) es)
     m :< TermSigmaElim xts e1 e2 -> do
       clarifyTerm tenv $ m :< TermPiElim e1 [m :< TermPiIntro LamKindNormal xts e2]
+    m :< TermLet mxt e1 e2 -> do
+      clarifyTerm tenv $ m :< TermPiElim (m :< TermPiIntro LamKindNormal [mxt] e2) [e1]
     m :< TermConst x ->
       clarifyConst tenv m x
     _ :< TermInt size l ->
@@ -480,6 +482,10 @@ chainOf tenv term =
     _ :< TermSigmaElim xts e1 e2 -> do
       let xs1 = chainOf tenv e1
       let xs2 = chainOf' tenv xts [e2]
+      xs1 ++ xs2
+    _ :< TermLet mxt e1 e2 -> do
+      let xs1 = chainOf tenv e1
+      let xs2 = chainOf' tenv [mxt] [e2]
       xs1 ++ xs2
     _ :< TermConst _ ->
       []

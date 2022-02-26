@@ -72,6 +72,10 @@ reduceWeakTerm term =
         _ -> do
           e2' <- reduceWeakTerm e2
           return $ m :< WeakTermSigmaElim xts e1' e2'
+    _ :< WeakTermLet (_, x, _) e1 e2 -> do
+      e1' <- reduceWeakTerm e1
+      let sub = IntMap.fromList [(asInt x, e1')]
+      substWeakTerm sub e2
     m :< WeakTermEnumElim (e, t) les -> do
       e' <- reduceWeakTerm e
       let (ls, es) = unzip les
@@ -193,6 +197,10 @@ substWeakTerm sub term =
       e1' <- substWeakTerm sub e1
       (xts', e2') <- substWeakTerm' sub xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
+    m :< WeakTermLet mxt e1 e2 -> do
+      e1' <- substWeakTerm sub e1
+      ([mxt'], e2') <- substWeakTerm' sub [mxt] e2
+      return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     _ :< WeakTermAster x ->

@@ -227,6 +227,11 @@ elaborate' term =
       xts' <- mapM elaborateWeakBinder xts
       e2' <- elaborate' e2
       return $ m :< TermSigmaElim xts' e1' e2'
+    m :< WeakTermLet mxt e1 e2 -> do
+      e1' <- elaborate' e1
+      mxt' <- elaborateWeakBinder mxt
+      e2' <- elaborate' e2
+      return $ m :< TermLet mxt' e1' e2'
     m :< WeakTermAster _ ->
       raiseCritical m "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
     m :< WeakTermConst x ->

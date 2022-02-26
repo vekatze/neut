@@ -134,6 +134,13 @@ infer' ctx term =
       (xts', (e2', t)) <- inferBinder ctx xts e2
       insConstraintEnv (m :< WeakTermSigma xts') t1'
       return (m :< WeakTermSigmaElim xts' e1' e2', t)
+    m :< WeakTermLet (mx, x, t) e1 e2 -> do
+      (e1', t1') <- infer' ctx e1
+      t' <- inferType' ctx t
+      insConstraintEnv t' t1'
+      insWeakTypeEnv x t'
+      (e2', t2') <- infer' ctx e2 -- no context extension
+      return (m :< WeakTermLet (mx, x, t') e1' e2', t2')
     m :< WeakTermAster x -> do
       holeEnv <- readIORef holeEnvRef
       case IntMap.lookup x holeEnv of
@@ -554,6 +561,10 @@ arrange ctx term =
       e1' <- arrange ctx e1
       (xts', e2') <- arrangeBinder ctx xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
+    m :< WeakTermLet mxt e1 e2 -> do
+      e1' <- arrange ctx e1
+      ([mxt'], e2') <- arrangeBinder ctx [mxt] e2
+      return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     m :< WeakTermAster _ ->

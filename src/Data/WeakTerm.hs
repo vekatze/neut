@@ -35,6 +35,7 @@ data WeakTermF a
   | WeakTermSigma [BinderF a]
   | WeakTermSigmaIntro [a]
   | WeakTermSigmaElim [BinderF a] a a
+  | WeakTermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | WeakTermAster Int
   | WeakTermConst T.Text
   | WeakTermInt a Integer
@@ -146,6 +147,10 @@ varWeakTerm term =
       let set1 = varWeakTerm e1
       let set2 = varWeakTerm' xts [e2]
       S.union set1 set2
+    _ :< WeakTermLet mxt e1 e2 -> do
+      let set1 = varWeakTerm e1
+      let set2 = varWeakTerm' [mxt] [e2]
+      S.union set1 set2
     _ :< WeakTermConst _ ->
       S.empty
     _ :< WeakTermAster _ ->
@@ -232,6 +237,10 @@ asterWeakTerm term =
     _ :< WeakTermSigmaElim xts e1 e2 -> do
       let set1 = asterWeakTerm e1
       let set2 = asterWeakTerm' xts [e2]
+      S.union set1 set2
+    _ :< WeakTermLet mxt e1 e2 -> do
+      let set1 = asterWeakTerm e1
+      let set2 = asterWeakTerm' [mxt] [e2]
       S.union set1 set2
     _ :< WeakTermAster h ->
       S.singleton h
@@ -347,6 +356,8 @@ toText term =
       showCons $ "sigma-intro" : map toText es
     _ :< WeakTermSigmaElim {} ->
       "<sigma-elim>"
+    _ :< WeakTermLet {} -> do
+      "<let>"
     _ :< WeakTermConst x ->
       x
     _ :< WeakTermAster i ->

@@ -136,17 +136,7 @@ weakTermLet = do
   e1 <- weakTerm
   keyword "in"
   e2 <- weakTerm
-  t1 <- liftIO $ newAster m
-  resultType <- liftIO $ newAster m
-  return $
-    m
-      :< WeakTermPiElim
-        (m :< WeakTermVarGlobal "core.identity::bind")
-        [ t1,
-          resultType,
-          e1,
-          lam m [x] e2
-        ]
+  return $ m :< WeakTermLet x e1 e2
 
 -- let? x : A = e1 in e2
 -- let? x     = e1 in e2
@@ -631,7 +621,7 @@ weakTermCellWrite = do
 
 bind :: BinderF WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 bind mxt@(m, _, _) e cont =
-  m :< WeakTermPiElim (lam m [mxt] cont) [e]
+  m :< WeakTermLet mxt e cont
 
 weakTermAdmit :: Parser WeakTerm
 weakTermAdmit = do
@@ -677,18 +667,14 @@ weakTermPiElim = do
       h <- liftIO $ newAster m
       return $
         m
-          :< WeakTermPiElim
-            ( m
-                :< WeakTermPiIntro
-                  LamKindNormal
-                  [(m, f, h)]
-                  ( foldl'
-                      (\base args -> m :< WeakTermPiElim base args)
-                      (m :< WeakTermVar f)
-                      ((impArgs ++ es) : ess)
-                  )
+          :< WeakTermLet
+            (m, f, h)
+            e
+            ( foldl'
+                (\base args -> m :< WeakTermPiElim base args)
+                (m :< WeakTermVar f)
+                ((impArgs ++ es) : ess)
             )
-            [e]
 
 weakTermPiElimInv :: Parser WeakTerm
 weakTermPiElimInv = do
