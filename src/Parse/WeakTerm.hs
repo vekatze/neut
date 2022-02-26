@@ -545,7 +545,7 @@ weakTermSigmaIntro = do
 weakTermNoema :: Parser WeakTerm
 weakTermNoema = do
   m <- currentHint
-  try $ keyword "&"
+  try $ delimiter "&"
   subject <- asIdent <$> symbol
   t <- weakTerm
   return $ m :< WeakTermNoema (m :< WeakTermVar subject) t
