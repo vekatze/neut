@@ -66,6 +66,9 @@ reduceComp term =
         CompUpIntro (ValueVarLocalIdeal _) -> do
           e2' <- reduceComp e2
           return $ CompUpElim x e1' e2'
+        CompUpIntro v -> do
+          let sub = IntMap.fromList [(asInt x, v)]
+          substComp sub IntMap.empty e2 >>= reduceComp
         CompUpElim y ey1 ey2 ->
           reduceComp $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
         CompSigmaElim b yts vy ey ->
@@ -126,10 +129,19 @@ substValue sub nenv term =
         e
       | otherwise ->
         term
+    ValueVarGlobal {} ->
+      term
     ValueSigmaIntro vs -> do
       let vs' = map (substValue sub nenv) vs
       ValueSigmaIntro vs'
-    _ ->
+    ValueArrayIntro elemType vs -> do
+      let vs' = map (substValue sub nenv) vs
+      ValueArrayIntro elemType vs'
+    ValueInt {} ->
+      term
+    ValueFloat {} ->
+      term
+    ValueEnumIntro {} ->
       term
 
 substComp :: SubstValue -> NameEnv -> Comp -> IO Comp
