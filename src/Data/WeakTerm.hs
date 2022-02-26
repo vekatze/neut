@@ -363,8 +363,10 @@ toText term =
       showCons ["switch", toText e, showItems (map showClause mles)]
     _ :< WeakTermQuestion e _ ->
       toText e
-    _ :< WeakTermMagic _ -> do
-      "<magic>"
+    _ :< WeakTermMagic m -> do
+      let a = fmap toText m
+      T.pack $ show a
+    -- "<magic>"
     -- let es' = map toText es
     -- showCons $ "magic" : T.pack (show i) : es'
     _ :< WeakTermMatch mSubject (e, _) caseClause -> do

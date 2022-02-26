@@ -35,12 +35,12 @@ import Parse.Core
     manyList,
     var,
   )
-import Text.Megaparsec (choice)
+import Text.Megaparsec (choice, try)
 
 parseDefineEnum :: Parser EnumInfo
 parseDefineEnum = do
   m <- currentHint
-  keyword "define-enum"
+  try $ keyword "define-enum"
   name <- var >>= liftIO . attachSectionPrefix . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
   currentGlobalLocator <- liftIO $ readIORef currentGlobalLocatorRef
@@ -63,7 +63,7 @@ arrangeEnumItemList currentGlobalLocator currentValue clauseList =
 parseDefineEnumClause :: Parser (T.Text, Maybe Int)
 parseDefineEnumClause = do
   choice
-    [ parseDefineEnumClauseWithDiscriminant,
+    [ try parseDefineEnumClauseWithDiscriminant,
       parseDefineEnumClauseWithoutDiscriminant
     ]
 

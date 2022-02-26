@@ -11,7 +11,7 @@ module Parse.WeakTerm
 where
 
 import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad.IO.Class
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Basic
   ( BinderF,
     EnumCase,
@@ -22,7 +22,7 @@ import Data.Basic
     PatternF,
     asIdent,
   )
-import Data.Global (constBoolFalse, constBoolTrue, definiteSep, newAster, newCount, newIdentFromText, outputError, targetArchRef, targetOSRef, targetPlatformRef)
+import Data.Global (constBoolFalse, constBoolTrue, constTop, definiteSep, newAster, newCount, newIdentFromText, outputError, targetArchRef, targetOSRef, targetPlatformRef)
 import Data.IORef (readIORef)
 import Data.List (foldl')
 import Data.Log (raiseError)
@@ -63,7 +63,7 @@ import Parse.Core
     var,
     withBlock,
   )
-import Text.Megaparsec (choice, chunk, failure, many, manyTill, sepBy, try, (<|>))
+import Text.Megaparsec (choice, failure, many, manyTill, sepBy, try, (<|>))
 
 --
 -- parser for WeakTerm
@@ -71,30 +71,41 @@ import Text.Megaparsec (choice, chunk, failure, many, manyTill, sepBy, try, (<|>
 
 weakTerm :: Parser WeakTerm
 weakTerm = do
+  m <- currentHint
+  e1 <- weakTermEasy
   choice
-    [ try weakTermPiIntro,
-      try weakTermPiIntroDef,
-      try weakTermAster,
-      try weakTermEnumElim,
-      try weakTermIntrospect,
-      try weakTermQuestion,
-      try weakTermMagic,
-      try weakTermMatch,
-      try weakTermMatchNoetic,
-      try weakTermLet,
-      try weakTermLetCoproduct,
-      try weakTermIf,
+    [ weakTermVoid m e1,
+      weakTermExplicitAscription m e1,
+      return e1
+    ]
+
+weakTermEasy :: Parser WeakTerm
+weakTermEasy = do
+  choice
+    [ weakTermPiIntro,
+      weakTermPiIntroDef,
+      weakTermSigma,
+      weakTermSigmaIntro,
+      weakTermEnumElim,
+      weakTermIntrospect,
+      weakTermQuestion,
+      weakTermMagic,
+      weakTermMatch,
+      weakTermMatchNoetic,
+      weakTermIf,
       weakTermIdealize,
-      try weakTermArray,
-      try weakTermArrayIntro,
-      try weakTermArrayAccess,
-      try weakTermText,
-      try weakTermCell,
-      try weakTermCellIntro,
-      try weakTermCellRead,
-      try weakTermCellWrite,
-      try weakTermNoema,
-      try weakTermSigma,
+      weakTermArray,
+      weakTermArrayIntro,
+      weakTermArrayAccess,
+      weakTermText,
+      weakTermCell,
+      weakTermCellIntro,
+      weakTermCellRead,
+      weakTermCellWrite,
+      weakTermNoema,
+      try weakTermLetSigmaElim,
+      weakTermLet,
+      weakTermLetCoproduct,
       try weakTermPi,
       try weakTermPiElim,
       try weakTermPiElimInv,
@@ -104,29 +115,93 @@ weakTerm = do
 weakTermSimple :: Parser WeakTerm
 weakTermSimple = do
   choice
-    [ try weakTermSigmaIntro,
-      try $ betweenParen weakTerm,
-      try weakTermTau,
-      try weakTermAster,
-      try weakTermTextIntro,
-      try weakTermAdmitQuestion,
-      try weakTermAdmit,
-      try weakTermInteger,
-      try weakTermFloat,
-      try weakTermDefiniteDescription,
+    [ weakTermParen,
+      weakTermTau,
+      weakTermTextIntro,
+      weakTermAdmitQuestion,
+      weakTermAdmit,
+      weakTermAster,
+      weakTermInteger,
+      weakTermFloat,
+      weakTermDefiniteDescription,
       weakTermVar
     ]
+
+weakTermLet :: Parser WeakTerm
+weakTermLet = do
+  m <- currentHint
+  try $ keyword "let"
+  x <- weakTermLetVar
+  delimiter "="
+  e1 <- weakTerm
+  keyword "in"
+  e2 <- weakTerm
+  t1 <- liftIO $ newAster m
+  resultType <- liftIO $ newAster m
+  return $
+    m
+      :< WeakTermPiElim
+        (m :< WeakTermVarGlobal "core.identity::bind")
+        [ t1,
+          resultType,
+          e1,
+          lam m [x] e2
+        ]
+
+-- let? x : A = e1 in e2
+-- let? x     = e1 in e2
+weakTermLetCoproduct :: Parser WeakTerm
+weakTermLetCoproduct = do
+  m <- currentHint
+  try $ keyword "let?"
+  x <- weakTermLetVar
+  delimiter "="
+  e1 <- weakTerm
+  keyword "in"
+  e2 <- weakTerm
+  err <- liftIO $ newTextualIdentFromText "err"
+  typeOfLeft <- liftIO $ newAster m
+  typeOfRight <- liftIO $ newAster m
+  let sumLeft = "sum.left"
+  let sumRight = "sum.right"
+  let sumLeftVar = asIdent "sum.left"
+  return $
+    m
+      :< WeakTermMatch
+        Nothing
+        (e1, doNotCare m)
+        [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
+            m :< WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, weakVar' m err]
+          ),
+          ( (m, sumRight, [x]),
+            e2
+          )
+        ]
+
+weakTermVoid :: Hint -> WeakTerm -> Parser WeakTerm
+weakTermVoid m e1 = do
+  delimiter ";"
+  e2 <- weakTerm
+  f <- liftIO $ newTextualIdentFromText "unit"
+  return $ bind (m, f, m :< WeakTermEnum constTop) e1 e2
+
+weakTermExplicitAscription :: Hint -> WeakTerm -> Parser WeakTerm
+weakTermExplicitAscription m e = do
+  delimiter ":"
+  t <- weakTermEasy
+  f <- liftIO $ newTextualIdentFromText "unit"
+  return $ bind (m, f, t) e (m :< WeakTermVar f)
 
 weakTermTau :: Parser WeakTerm
 weakTermTau = do
   m <- currentHint
-  keyword "tau"
+  try $ keyword "tau"
   return $ m :< WeakTermTau
 
 weakTermAster :: Parser WeakTerm
 weakTermAster = do
   m <- currentHint
-  keyword "?"
+  delimiter "?"
   liftIO $ newAster m
 
 weakTermPi :: Parser WeakTerm
@@ -140,7 +215,7 @@ weakTermPi = do
 weakTermPiIntro :: Parser WeakTerm
 weakTermPiIntro = do
   m <- currentHint
-  keyword "lambda"
+  try $ keyword "lambda"
   varList <- argList weakBinder
   e <- weakTermDotBind <|> doBlock weakTerm
   return $ lam m varList e
@@ -173,7 +248,7 @@ parseTopDefInfo = do
 weakTermPiIntroDef :: Parser WeakTerm
 weakTermPiIntroDef = do
   m <- currentHint
-  keyword "define"
+  try $ keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
   let piType = mFun :< WeakTermPi domBinderList codType
   return $ m :< WeakTermPiIntro (LamKindFix (mFun, asIdent functionName, piType)) domBinderList e
@@ -181,7 +256,7 @@ weakTermPiIntroDef = do
 weakTermSigma :: Parser WeakTerm
 weakTermSigma = do
   m <- currentHint
-  keyword "tuple"
+  try $ keyword "tuple"
   ts <- argList $ choice [try weakAscription, typeWithoutIdent]
   return $ m :< WeakTermSigma ts
 
@@ -195,13 +270,13 @@ parseDefiniteDescription = do
 
 weakTermDefiniteDescription :: Parser WeakTerm
 weakTermDefiniteDescription = do
-  (m, x) <- parseDefiniteDescription
+  (m, x) <- try parseDefiniteDescription
   return $ m :< WeakTermVarGlobal x
 
 weakTermEnumElim :: Parser WeakTerm
 weakTermEnumElim = do
   m <- currentHint
-  keyword "switch"
+  try $ keyword "switch"
   e <- weakTerm
   keyword "with"
   clauseList <- many weakTermEnumClause
@@ -222,11 +297,11 @@ weakTermEnumClause = do
     _ ->
       return (m :< EnumCaseLabel c, body)
 
--- -- question e
+-- question e
 weakTermQuestion :: Parser WeakTerm
 weakTermQuestion = do
   m <- currentHint
-  keyword "question"
+  try $ keyword "question"
   e <- weakTerm
   h <- liftIO $ newAster m
   return $ m :< WeakTermQuestion e h
@@ -234,7 +309,7 @@ weakTermQuestion = do
 weakTermMagic :: Parser WeakTerm
 weakTermMagic = do
   m <- currentHint
-  keyword "magic"
+  try $ keyword "magic"
   choice
     [ weakTermMagicCast m,
       weakTermMagicStore m,
@@ -332,7 +407,7 @@ lowTypeNumber = do
 weakTermMatch :: Parser WeakTerm
 weakTermMatch = do
   m <- currentHint
-  keyword "match"
+  try $ keyword "match"
   e <- weakTerm
   clauseList <- withBlock $ manyList weakTermMatchClause
   return $ m :< WeakTermMatch Nothing (e, doNotCare m) clauseList
@@ -340,7 +415,7 @@ weakTermMatch = do
 weakTermMatchNoetic :: Parser WeakTerm
 weakTermMatchNoetic = do
   m <- currentHint
-  keyword "match-noetic"
+  try $ keyword "match-noetic"
   e <- weakTerm
   keyword "with"
   s <- liftIO $ newAster m
@@ -378,38 +453,11 @@ weakTermPattern = do
   patArgs <- argList weakBinder
   return (m, c, patArgs)
 
--- -- let x : A = e1 in e2
--- -- let x     = e1 in e2
-weakTermLet :: Parser WeakTerm
-weakTermLet = do
-  choice [try weakTermLetSigmaElim, weakTermLetNormal]
-
-weakTermLetNormal :: Parser WeakTerm
-weakTermLetNormal = do
-  m <- currentHint
-  keyword "let"
-  x <- weakTermLetVar
-  delimiter "="
-  e1 <- weakTerm
-  keyword "in"
-  e2 <- weakTerm
-  t1 <- liftIO $ newAster m
-  resultType <- liftIO $ newAster m
-  return $
-    m
-      :< WeakTermPiElim
-        (m :< WeakTermVarGlobal "core.identity::bind")
-        [ t1,
-          resultType,
-          e1,
-          lam m [x] e2
-        ]
-
 -- let (x1 : A1, ..., xn : An) = e1 in e2
 weakTermLetSigmaElim :: Parser WeakTerm
 weakTermLetSigmaElim = do
   m <- currentHint
-  keyword "let"
+  try $ keyword "let"
   -- xts <- parseArgList2 weakBinder
   xts <- argList weakBinder
   delimiter "="
@@ -417,36 +465,6 @@ weakTermLetSigmaElim = do
   keyword "in"
   e2 <- weakTerm
   return $ m :< WeakTermSigmaElim xts e1 e2
-
--- let? x : A = e1 in e2
--- let? x     = e1 in e2
-weakTermLetCoproduct :: Parser WeakTerm
-weakTermLetCoproduct = do
-  m <- currentHint
-  keyword "let?"
-  x <- weakTermLetVar
-  delimiter "="
-  e1 <- weakTerm
-  keyword "in"
-  e2 <- weakTerm
-  err <- liftIO $ newTextualIdentFromText "err"
-  typeOfLeft <- liftIO $ newAster m
-  typeOfRight <- liftIO $ newAster m
-  let sumLeft = "sum.left"
-  let sumRight = "sum.right"
-  let sumLeftVar = asIdent "sum.left"
-  return $
-    m
-      :< WeakTermMatch
-        Nothing
-        (e1, doNotCare m)
-        [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
-            m :< WeakTermPiElim (weakVar' m sumLeftVar) [typeOfLeft, typeOfRight, weakVar' m err]
-          ),
-          ( (m, sumRight, [x]),
-            e2
-          )
-        ]
 
 weakTermLetVar :: Parser (BinderF WeakTerm)
 weakTermLetVar = do
@@ -466,7 +484,7 @@ weakTermLetVar = do
 weakTermIf :: Parser WeakTerm
 weakTermIf = do
   m <- currentHint
-  keyword "if"
+  try $ keyword "if"
   ifCond <- weakTerm
   keyword "then"
   ifBody <- weakTerm
@@ -504,19 +522,30 @@ foldIf m ifCond ifBody elseIfList elseBody =
               (m :< EnumCaseLabel constBoolFalse, cont)
             ]
 
+weakTermParen :: Parser WeakTerm
+weakTermParen = do
+  m <- currentHint
+  es <- argList weakTerm
+  case es of
+    [] ->
+      return $ m :< WeakTermSigmaIntro []
+    [e] ->
+      return e
+    _ ->
+      return $ m :< WeakTermSigmaIntro es
+
 -- -- (e1, ..., en) (n >= 2)
 weakTermSigmaIntro :: Parser WeakTerm
 weakTermSigmaIntro = do
   m <- currentHint
+  try $ keyword "tuple-new"
   es <- argList weakTerm
-  if length es > 2
-    then return $ m :< WeakTermSigmaIntro es
-    else undefined
+  return $ m :< WeakTermSigmaIntro es
 
 weakTermNoema :: Parser WeakTerm
 weakTermNoema = do
   m <- currentHint
-  _ <- chunk "&"
+  try $ keyword "&"
   subject <- asIdent <$> symbol
   t <- weakTerm
   return $ m :< WeakTermNoema (m :< WeakTermVar subject) t
@@ -543,7 +572,7 @@ castLet subject xts cont =
 weakTermArray :: Parser WeakTerm
 weakTermArray = do
   m <- currentHint
-  keyword "array"
+  try $ keyword "array"
   betweenParen $ do
     elemType <- weakTerm
     return $ m :< WeakTermArray elemType
@@ -551,7 +580,7 @@ weakTermArray = do
 weakTermArrayIntro :: Parser WeakTerm
 weakTermArrayIntro = do
   m <- currentHint
-  keyword "array-new"
+  try $ keyword "array-new"
   betweenParen $ do
     elems <- sepBy weakTerm (delimiter ",")
     return $ m :< WeakTermArrayIntro (doNotCare m) elems
@@ -559,7 +588,7 @@ weakTermArrayIntro = do
 weakTermArrayAccess :: Parser WeakTerm
 weakTermArrayAccess = do
   m <- currentHint
-  keyword "array-access"
+  try $ keyword "array-access"
   betweenParen $ do
     array <- weakTerm
     delimiter ","
@@ -569,7 +598,7 @@ weakTermArrayAccess = do
 weakTermCell :: Parser WeakTerm
 weakTermCell = do
   m <- currentHint
-  keyword "cell"
+  try $ keyword "cell"
   betweenParen $ do
     contentType <- weakTerm
     return $ m :< WeakTermCell contentType
@@ -577,7 +606,7 @@ weakTermCell = do
 weakTermCellIntro :: Parser WeakTerm
 weakTermCellIntro = do
   m <- currentHint
-  keyword "cell-new"
+  try $ keyword "cell-new"
   betweenParen $ do
     content <- weakTerm
     return $ m :< WeakTermCellIntro (doNotCare m) content
@@ -585,7 +614,7 @@ weakTermCellIntro = do
 weakTermCellRead :: Parser WeakTerm
 weakTermCellRead = do
   m <- currentHint
-  keyword "cell-read"
+  try $ keyword "cell-read"
   betweenParen $ do
     cell <- weakTerm
     return $ m :< WeakTermCellRead cell
@@ -593,7 +622,7 @@ weakTermCellRead = do
 weakTermCellWrite :: Parser WeakTerm
 weakTermCellWrite = do
   m <- currentHint
-  keyword "cell-write"
+  try $ keyword "cell-write"
   betweenParen $ do
     cell <- weakTerm
     delimiter ","
@@ -607,7 +636,7 @@ bind mxt@(m, _, _) e cont =
 weakTermAdmit :: Parser WeakTerm
 weakTermAdmit = do
   m <- currentHint
-  keyword "admit"
+  try $ keyword "admit"
   h <- liftIO $ newAster m
   return $
     m
@@ -620,7 +649,7 @@ weakTermAdmit = do
 weakTermAdmitQuestion :: Parser WeakTerm
 weakTermAdmitQuestion = do
   m <- currentHint
-  keyword "?admit"
+  try $ keyword "?admit"
   h <- liftIO $ newAster m
   return $
     m
@@ -710,7 +739,7 @@ weakSimpleIdent = do
 weakTermIntrospect :: Parser WeakTerm
 weakTermIntrospect = do
   m <- currentHint
-  keyword "introspect"
+  try $ keyword "introspect"
   key <- symbol
   value <- liftIO $ getIntrospectiveValue m key
   keyword "with"
@@ -750,7 +779,7 @@ weakTermVar = do
 weakTermText :: Parser WeakTerm
 weakTermText = do
   m <- currentHint
-  keyword "text"
+  try $ keyword "text"
   return $ m :< WeakTermText
 
 weakTermTextIntro :: Parser WeakTerm
@@ -762,14 +791,14 @@ weakTermTextIntro = do
 weakTermInteger :: Parser WeakTerm
 weakTermInteger = do
   m <- currentHint
-  intValue <- integer
+  intValue <- try integer
   h <- liftIO $ newAster m
   return $ m :< WeakTermInt h intValue
 
 weakTermFloat :: Parser WeakTerm
 weakTermFloat = do
   m <- currentHint
-  floatValue <- float
+  floatValue <- try float
   h <- liftIO $ newAster m
   return $ m :< WeakTermFloat h floatValue
 

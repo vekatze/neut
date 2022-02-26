@@ -153,14 +153,14 @@ program = do
 program' :: Parser ([QuasiStmt], [EnumInfo])
 program' =
   choice
-    [ try $ do
+    [ do
         enumInfo <- parseDefineEnum
         (defList, enumInfoList) <- program'
         return (defList, enumInfo : enumInfoList),
-      try $ do
+      do
         parseDefinePrefix
         program',
-      try $ do
+      do
         parseStmtUse
         program',
       do
@@ -171,7 +171,7 @@ program' =
 parseDefinePrefix :: Parser ()
 parseDefinePrefix = do
   m <- currentHint
-  keyword "define-prefix"
+  try $ keyword "define-prefix"
   from <- snd <$> var
   delimiter "="
   to <- snd <$> var
@@ -179,13 +179,12 @@ parseDefinePrefix = do
 
 parseStmtUse :: Parser ()
 parseStmtUse = do
-  keyword "use"
+  try $ keyword "use"
   (_, name) <- parseDefiniteDescription
   liftIO $ activateLocalLocator name
 
 parseStmt :: Parser [WeakStmt]
 parseStmt = do
-  liftIO $ putStrLn "parseStmt"
   choice
     [ parseDefineData,
       parseDefineCodata,
