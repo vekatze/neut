@@ -65,8 +65,8 @@ compress stmt =
           StmtDefine opacity m functionName impArgNum args codType (m :< TermTau)
         _ ->
           stmt
-    StmtDefineResource m name _ _ ->
-      StmtDefineResource m name (m :< TermTau) (m :< TermTau)
+    StmtDefineResource {} ->
+      stmt
 
 isPublic :: S.Set T.Text -> Stmt -> Bool
 isPublic topNameSet stmt =
