@@ -17,6 +17,7 @@ import Data.Basic
     Hint,
     Ident (..),
     LamKindF (LamKindCons, LamKindFix),
+    PatternF,
     asInt,
     asText',
   )
@@ -200,29 +201,13 @@ infer' ctx term =
       resultType <- newTypeAsterInCtx ctx m
       (e', t') <- infer' ctx e
       mSubject' <- mapM (inferSubject m ctx) mSubject
-      case clauseList of
-        [] ->
-          return (m :< WeakTermMatch mSubject' (e', t') [], resultType) -- ex falso quodlibet
-        ((_, constructorName, _), _) : _ -> do
-          constructorEnv <- readIORef constructorEnvRef
-          case Map.lookup constructorName constructorEnv of
-            Nothing ->
-              raiseCritical m $ "no such constructor defined (infer): " <> constructorName
-            Just dataArgNum -> do
-              holeList <- replicateM dataArgNum (newAsterInCtx ctx m)
-              clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-                (xts', (body', tBody)) <- inferBinder ctx xts body
-                insConstraintEnv resultType tBody
-                let xs = map (\(mx, x, t) -> (mx :< WeakTermVar x, t)) xts'
-                tCons <- lookupTermTypeEnv m name
-                case holeList ++ xs of
-                  [] ->
-                    insConstraintEnv tCons t'
-                  _ -> do
-                    (_, tPat) <- inferPiElim ctx m (m :< WeakTermVarGlobal name, tCons) (holeList ++ xs)
-                    insConstraintEnv tPat t'
-                return ((mPat, name, xts'), body')
-              return (m :< WeakTermMatch mSubject' (e', t') clauseList', resultType)
+      clauseList' <- forM clauseList $ \(pat@(mPat, name, xts), body) -> do
+        (xts', (body', tBody)) <- inferBinder ctx xts body
+        insConstraintEnv resultType tBody
+        (_, tPat) <- infer' ctx $ patternToTerm pat
+        insConstraintEnv tPat t'
+        return ((mPat, name, xts'), body')
+      return (m :< WeakTermMatch mSubject' (e', t') clauseList', resultType)
     m :< WeakTermNoema s t -> do
       s' <- inferType' ctx s
       t' <- inferType' ctx t
@@ -658,3 +643,8 @@ arrangeBinder ctx binder cod =
       t' <- arrange ctx t
       (xts', cod') <- arrangeBinder (ctx ++ [(mx, x, t')]) xts cod
       return ((mx, x, t') : xts', cod')
+
+patternToTerm :: PatternF WeakTerm -> WeakTerm
+patternToTerm (m, name, args) = do
+  let args' = map (\(mx, x, _) -> mx :< WeakTermVar x) args
+  m :< WeakTermPiElim (m :< WeakTermVarGlobal name) args'
