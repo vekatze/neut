@@ -15,10 +15,16 @@ import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
+import Entity.EnumCase
 import Entity.Global
+import Entity.Hint
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Log
 import Entity.Magic
+import Entity.Pattern
 import qualified Entity.PrimNum.FromText as PrimNum
 import Entity.PrimOp
 import qualified Entity.PrimOp.FromText as PrimOp
@@ -243,7 +249,7 @@ inferArgs sub m args1 args2 cod =
     ((e, t) : ets, (_, x, tx) : xts) -> do
       tx' <- subst sub tx
       insConstraintEnv tx' t
-      inferArgs (IntMap.insert (asInt x) e sub) m ets xts cod
+      inferArgs (IntMap.insert (Ident.toInt x) e sub) m ets xts cod
     _ ->
       raiseCritical m "invalid argument passed to inferArgs"
 
@@ -403,13 +409,13 @@ insWeakTypeEnv (I (_, i)) t =
 
 lookupWeakTypeEnv :: Hint -> Ident -> IO WeakTerm
 lookupWeakTypeEnv m s = do
-  mt <- lookupWeakTypeEnvMaybe $ asInt s
+  mt <- lookupWeakTypeEnvMaybe $ Ident.toInt s
   case mt of
     Just t ->
       return t
     Nothing ->
       raiseCritical m $
-        asText' s <> " is not found in the weak type environment."
+        Ident.toText' s <> " is not found in the weak type environment."
 
 lookupWeakTypeEnv' :: Hint -> Int -> IO WeakTerm
 lookupWeakTypeEnv' m s = do

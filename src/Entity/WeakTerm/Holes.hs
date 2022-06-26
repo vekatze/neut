@@ -3,7 +3,7 @@ module Entity.WeakTerm.Holes (holes) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import qualified Data.Set as S
-import Entity.Basic
+import Entity.Binder
 import Entity.WeakTerm
 
 holes :: WeakTerm -> S.Set Int

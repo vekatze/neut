@@ -7,8 +7,13 @@ import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
+import Entity.EnumCase
+import Entity.Hint
+import Entity.Ident
+import Entity.LamKind
 import Entity.Magic
+import Entity.Pattern
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToText
 import GHC.Generics

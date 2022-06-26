@@ -6,8 +6,9 @@ where
 
 import Control.Monad
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Checksum
 import Entity.Ens
+import Entity.LibraryURL
 import Entity.Log
 import Entity.Module
 import Path
@@ -39,11 +40,11 @@ interpretRelFilePath :: Ens -> IO (Path Rel File)
 interpretRelFilePath =
   toString >=> parseRelFile . T.unpack
 
-interpretDependency :: Ens -> IO (URL, Checksum)
+interpretDependency :: Ens -> IO (LibraryURL, Checksum)
 interpretDependency dependencyValue = do
   url <- access "URL" dependencyValue >>= toString
   checksum <- access "checksum" dependencyValue >>= toString
-  return (URL url, Checksum checksum)
+  return (LibraryURL url, Checksum checksum)
 
 interpretExtraPath :: Path Abs Dir -> Ens -> IO SomePath
 interpretExtraPath moduleRootDir entity = do

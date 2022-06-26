@@ -8,8 +8,9 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Void (Void)
-import Entity.Basic
+import Entity.FilePos
 import Entity.Global
+import Entity.Hint
 import Entity.Log
 import Path
 import Text.Megaparsec
@@ -36,14 +37,14 @@ createParseError errorBundle = do
   let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
   let hint = sourcePosToHint $ pstateSourcePos posState
   let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
-  Error [logError (getPosInfo hint) message]
+  Error [logError (fromHint hint) message]
 
 sourcePosToHint :: SourcePos -> Hint
 sourcePosToHint pos = do
   let line = unPos $ sourceLine pos
   let column = unPos $ sourceColumn pos
   let file = sourceName pos
-  newHint line column file
+  Entity.Hint.new line column file
 
 currentHint :: Parser Hint
 currentHint =

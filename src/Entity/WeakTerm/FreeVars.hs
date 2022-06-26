@@ -3,7 +3,9 @@ module Entity.WeakTerm.FreeVars (freeVars) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import qualified Data.Set as S
-import Entity.Basic
+import Entity.Binder
+import Entity.Ident
+import Entity.LamKind
 import Entity.WeakTerm
 
 freeVars :: WeakTerm -> S.Set Ident

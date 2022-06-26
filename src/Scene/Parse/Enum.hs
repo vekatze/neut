@@ -12,8 +12,8 @@ import Data.IORef
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
 import Entity.Global
+import Entity.Hint
 import Entity.Log
 import Entity.Namespace
 import Entity.Stmt

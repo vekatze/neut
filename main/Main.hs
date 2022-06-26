@@ -9,8 +9,9 @@ import Control.Monad
 import Data.IORef
 import qualified Data.Text as T
 import Data.Version
-import Entity.Basic
 import Entity.Global
+import Entity.LibraryAlias
+import Entity.LibraryURL
 import Entity.Log
 import Options.Applicative
 import Paths_neut
@@ -34,7 +35,7 @@ data Command
   | Clean
   | Check (Maybe InputPath) Bool CheckOptEndOfEntry
   | Release T.Text
-  | Get Alias URL
+  | Get LibraryAlias LibraryURL
   | Tidy
   | Init T.Text
   | ShowVersion
@@ -126,7 +127,7 @@ parseCleanOpt =
 parseGetOpt :: Parser Command
 parseGetOpt =
   Get
-    <$> ( T.pack
+    <$> ( LibraryAlias . T.pack
             <$> argument
               str
               ( mconcat
@@ -135,7 +136,7 @@ parseGetOpt =
                   ]
               )
         )
-    <*> ( URL . T.pack
+    <*> ( LibraryURL . T.pack
             <$> argument
               str
               ( mconcat

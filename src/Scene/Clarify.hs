@@ -14,16 +14,23 @@ import Data.List
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
 import Entity.Comp
 import Entity.Comp.FreeVars
 import Entity.Comp.Reduce
 import Entity.Comp.Subst
+import Entity.EnumCase
 import Entity.Global
+import Entity.Hint
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Log
 import Entity.LowType
 import Entity.Magic
 import Entity.Namespace
+import Entity.Opacity
+import Entity.Pattern
 import Entity.PrimNum
 import qualified Entity.PrimNum.FromText as PrimNum
 import Entity.PrimNum.ToText
@@ -181,7 +188,7 @@ clarifyTerm tenv term =
         _ ->
           raiseCritical m "compiler bug: found a non-variable noetic value"
     m :< TermNoemaElim s e -> do
-      e' <- clarifyTerm (IntMap.insert (asInt s) (m :< TermTau) tenv) e
+      e' <- clarifyTerm (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
     _ :< TermArray elemType -> do
       let constName = "unsafe-" <> toText elemType <> "-array-internal"
@@ -317,7 +324,7 @@ clarifyBinder tenv binder =
       return []
     ((m, x, t) : xts) -> do
       t' <- clarifyTerm tenv t
-      xts' <- clarifyBinder (IntMap.insert (asInt x) t tenv) xts
+      xts' <- clarifyBinder (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
 chainFromTermList :: TypeEnv -> [Term] -> [BinderF Term]
@@ -375,9 +382,9 @@ returnClosure tenv isReducible kind fvs xts e = do
       registerIfNecessary consName' isReducible True xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) consNumber]
     LamKindFix (_, name, _) -> do
-      let name' = asText' name
+      let name' = Ident.toText' name
       let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name')]
-      e' <- subst (IntMap.fromList [(asInt name, cls)]) IntMap.empty e
+      e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
       registerIfNecessary name' OpacityOpaque False xts'' fvs'' e'
       return $ CompUpIntro cls
 
@@ -421,7 +428,7 @@ chainOf tenv term =
     _ :< TermTau ->
       []
     m :< TermVar x -> do
-      let t = (IntMap.!) tenv (asInt x)
+      let t = (IntMap.!) tenv (Ident.toInt x)
       let xts = chainOf tenv t
       xts ++ [(m, x, t)]
     _ :< TermVarGlobal {} ->
@@ -474,7 +481,7 @@ chainOf tenv term =
     m :< TermNoemaIntro s e ->
       (m, s, m :< TermTau) : chainOf tenv e
     m :< TermNoemaElim s e ->
-      filter (\(_, y, _) -> y /= s) $ chainOf (IntMap.insert (asInt s) (m :< TermTau) tenv) e
+      filter (\(_, y, _) -> y /= s) $ chainOf (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
     _ :< TermArray _ ->
       []
     _ :< TermArrayIntro _ elems -> do
@@ -501,7 +508,7 @@ chainOf' tenv binder es =
       concatMap (chainOf tenv) es
     (_, x, t) : xts -> do
       let xs1 = chainOf tenv t
-      let xs2 = chainOf' (IntMap.insert (asInt x) t tenv) xts es
+      let xs2 = chainOf' (IntMap.insert (Ident.toInt x) t tenv) xts es
       xs1 ++ filter (\(_, y, _) -> y /= x) xs2
 
 dropFst :: [(a, b, c)] -> [(b, c)]
@@ -515,7 +522,7 @@ insTypeEnv xts tenv =
     [] ->
       tenv
     (_, x, t) : rest ->
-      insTypeEnv rest $ IntMap.insert (asInt x) t tenv
+      insTypeEnv rest $ IntMap.insert (Ident.toInt x) t tenv
 
 forgetHint :: EnumCase -> CompEnumCase
 forgetHint (_ :< enumCase) =

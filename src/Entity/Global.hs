@@ -11,12 +11,18 @@ import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Basic
+import Entity.AliasInfo
+import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
+import Entity.FilePos
+import Entity.Hint
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
 import Entity.Log
 import Entity.LowComp
 import Entity.LowType
+import Entity.Opacity
 import Entity.WeakTerm
 import Path
 import Path.IO
@@ -330,7 +336,7 @@ newIdentFromText s = do
 {-# INLINE newIdentFromIdent #-}
 newIdentFromIdent :: Ident -> IO Ident
 newIdentFromIdent x =
-  newIdentFromText (asText x)
+  newIdentFromText (Ident.toText x)
 
 {-# INLINE newText #-}
 newText :: IO T.Text
@@ -383,12 +389,12 @@ whenRef ref comp = do
   b <- readIORef ref
   when b comp
 
-outputLogLocation :: Maybe PosInfo -> IO ()
+outputLogLocation :: Maybe FilePos -> IO ()
 outputLogLocation mpos = do
   case mpos of
-    Just (path, loc) ->
+    Just pos ->
       withSGR [SetConsoleIntensity BoldIntensity] $ do
-        TIO.putStr $ T.pack (showPosInfo path loc)
+        TIO.putStr $ T.pack (showFilePos pos)
         TIO.putStrLn ":"
     _ ->
       return ()
@@ -400,10 +406,10 @@ outputFooter = do
     then return ()
     else putStrLn eoe
 
-outputPosInfo :: PosInfo -> IO ()
-outputPosInfo (path, loc) =
+outputFilePos :: FilePos -> IO ()
+outputFilePos pos =
   withSGR [SetConsoleIntensity BoldIntensity] $ do
-    TIO.putStr $ T.pack (showPosInfo path loc)
+    TIO.putStr $ T.pack (showFilePos pos)
     TIO.putStrLn ":"
 
 outputLogLevel :: LogLevel -> IO ()
@@ -437,19 +443,19 @@ withSGR arg f = do
 
 note :: Hint -> T.Text -> IO ()
 note m str =
-  outputLog $ logNote (getPosInfo m) str
+  outputLog $ logNote (fromHint m) str
 
 note' :: T.Text -> IO ()
 note' str =
   outputLog $ logNote' str
 
-warn :: PosInfo -> T.Text -> IO ()
+warn :: FilePos -> T.Text -> IO ()
 warn pos str =
   outputLog $ logWarning pos str
 
 outputError :: Hint -> T.Text -> IO a
 outputError m text = do
-  outputLog $ logError (getPosInfo m) text
+  outputLog $ logError (fromHint m) text
   exitWith (ExitFailure 1)
 
 outputPass :: String -> IO ()

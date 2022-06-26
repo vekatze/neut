@@ -2,7 +2,8 @@ module Entity.Log where
 
 import Control.Exception.Safe
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.FilePos
+import Entity.Hint
 import System.Console.ANSI
 
 data LogLevel
@@ -15,7 +16,7 @@ data LogLevel
   deriving (Show, Eq)
 
 type Log =
-  (Maybe PosInfo, LogLevel, T.Text)
+  (Maybe FilePos, LogLevel, T.Text)
 
 type ColorFlag =
   Bool
@@ -58,11 +59,11 @@ logLevelToSGR level =
     LogLevelCritical ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
 
-forgetPosInfoIfNecessary :: Bool -> Log -> Log
-forgetPosInfoIfNecessary _ (_, l, t) =
+forgetFilePosIfNecessary :: Bool -> Log -> Log
+forgetFilePosIfNecessary _ (_, l, t) =
   (Nothing, l, t)
 
-logNote :: PosInfo -> T.Text -> Log
+logNote :: FilePos -> T.Text -> Log
 logNote pos text =
   (Just pos, LogLevelNote, text)
 
@@ -70,11 +71,11 @@ logNote' :: T.Text -> Log
 logNote' text =
   (Nothing, LogLevelNote, text)
 
-logWarning :: PosInfo -> T.Text -> Log
+logWarning :: FilePos -> T.Text -> Log
 logWarning pos text =
   (Just pos, LogLevelWarning, text)
 
-logError :: PosInfo -> T.Text -> Log
+logError :: FilePos -> T.Text -> Log
 logError pos text =
   (Just pos, LogLevelError, text)
 
@@ -82,7 +83,7 @@ logError' :: T.Text -> Log
 logError' text =
   (Nothing, LogLevelError, text)
 
-logCritical :: PosInfo -> T.Text -> Log
+logCritical :: FilePos -> T.Text -> Log
 logCritical pos text =
   (Just pos, LogLevelCritical, text)
 
@@ -92,7 +93,7 @@ logCritical' text =
 
 raiseError :: (MonadThrow m) => Hint -> T.Text -> m a
 raiseError m text =
-  throw $ Error [logError (getPosInfo m) text]
+  throw $ Error [logError (Entity.FilePos.fromHint m) text]
 
 raiseError' :: (MonadThrow m) => T.Text -> m a
 raiseError' text =
@@ -100,7 +101,7 @@ raiseError' text =
 
 raiseCritical :: (MonadThrow m) => Hint -> T.Text -> m a
 raiseCritical m text =
-  throw $ Error [logCritical (getPosInfo m) text]
+  throw $ Error [logCritical (Entity.FilePos.fromHint m) text]
 
 raiseCritical' :: (MonadThrow m) => T.Text -> m a
 raiseCritical' text =

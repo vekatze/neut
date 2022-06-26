@@ -1,7 +1,7 @@
 module Entity.Term.FromPrimNum (fromPrimNum) where
 
 import Control.Comonad.Cofree
-import Entity.Basic
+import Entity.Hint
 import Entity.PrimNum
 import Entity.PrimNumSize.ToText
 import Entity.Term

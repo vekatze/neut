@@ -15,8 +15,8 @@ import qualified Data.Map as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Entity.Basic
 import Entity.Global
+import Entity.Ident
 import Entity.Log
 import Entity.LowComp
 import Entity.LowComp.Reduce

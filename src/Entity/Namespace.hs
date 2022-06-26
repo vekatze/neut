@@ -9,8 +9,10 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Internal as Text
 import Data.Text.Internal.Search
-import Entity.Basic
+import Entity.EnumCase
 import Entity.Global
+import Entity.Hint
+import Entity.Ident
 import Entity.Log
 import Entity.PrimNum
 import qualified Entity.PrimNum.FromText as PrimNum

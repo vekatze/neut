@@ -8,8 +8,10 @@ import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.IO as TIO
-import Entity.Basic
+import Entity.Checksum
 import Entity.Global
+import Entity.LibraryAlias
+import Entity.LibraryURL
 import Entity.Log
 import Entity.Module
 import Path
@@ -19,10 +21,10 @@ import System.Exit
 import System.IO
 import System.Process
 
-get :: Alias -> URL -> IO ()
+get :: LibraryAlias -> LibraryURL -> IO ()
 get alias url = do
   mainModule <- getMainModule
-  withSystemTempFile (T.unpack alias) $ \tempFilePath tempFileHandle -> do
+  withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
     archive <- B.hGetContents tempFileHandle
     let checksum = computeChecksum archive
@@ -39,20 +41,20 @@ tidy' targetModule = do
   note' $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
   let dependency = Map.toList $ moduleDependency targetModule
   forM_ dependency $ \(alias, (url, checksum)) ->
-    installIfNecessary alias url checksum
+    installIfNecessary (LibraryAlias alias) url checksum
 
-installIfNecessary :: Alias -> URL -> Checksum -> IO ()
+installIfNecessary :: LibraryAlias -> LibraryURL -> Checksum -> IO ()
 installIfNecessary alias url checksum = do
   isInstalled <- checkIfInstalled checksum
   unless isInstalled $
-    withSystemTempFile (T.unpack alias) $ \tempFilePath tempFileHandle -> do
+    withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias url
       archive <- B.hGetContents tempFileHandle
       let archiveChecksum = computeChecksum archive
       when (checksum /= archiveChecksum) $
         raiseError' $
           "the checksum of the module `"
-            <> alias
+            <> extract alias
             <> "` is different from the expected one:"
             <> "\n- "
             <> showChecksum checksum
@@ -72,12 +74,12 @@ getLibraryModuleFilePath checksum = do
   moduleDir <- getModuleDir checksum
   return $ moduleDir </> moduleFile
 
-getLibraryModule :: Alias -> Checksum -> IO Module
+getLibraryModule :: LibraryAlias -> Checksum -> IO Module
 getLibraryModule alias checksum@(Checksum c) = do
   moduleFilePath <- getLibraryModuleFilePath checksum
   moduleFileExists <- doesFileExist moduleFilePath
   if not moduleFileExists
-    then raiseError' $ "could not find the module file for `" <> alias <> "` (" <> c <> ")."
+    then raiseError' $ "could not find the module file for `" <> extract alias <> "` (" <> c <> ")."
     else Module.parse moduleFilePath
 
 getModuleDir :: Checksum -> IO (Path Abs Dir)
@@ -85,12 +87,12 @@ getModuleDir (Checksum checksum) = do
   libDir <- getLibraryDirPath
   resolveDir libDir $ T.unpack checksum
 
-download :: Path Abs File -> Alias -> URL -> IO ()
-download tempFilePath alias (URL url) = do
+download :: Path Abs File -> LibraryAlias -> LibraryURL -> IO ()
+download tempFilePath alias (LibraryURL url) = do
   let curlCmd = proc "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
   (_, _, Just curlErrorHandler, curlHandler) <-
     createProcess curlCmd {std_err = CreatePipe}
-  note' $ "downloading `" <> alias <> "` from " <> url
+  note' $ "downloading `" <> extract alias <> "` from " <> url
   curlExitCode <- waitForProcess curlHandler
   raiseIfFailure "curl" curlExitCode curlErrorHandler
 
@@ -98,20 +100,20 @@ computeChecksum :: B.ByteString -> Checksum
 computeChecksum fileByteString =
   Checksum $ TE.decodeUtf8 $ Base64.encode $ SHA256.hash fileByteString
 
-extractToLibDir :: Path Abs File -> Alias -> Checksum -> IO ()
+extractToLibDir :: Path Abs File -> LibraryAlias -> Checksum -> IO ()
 extractToLibDir tempFilePath alias c@(Checksum checksum) = do
   targetDirPath <- getModuleDir c
   ensureDir targetDirPath
   let tarCmd = proc "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
   (_, _, Just tarErrorHandler, tarHandler) <-
     createProcess tarCmd {std_err = CreatePipe}
-  note' $ "extracting `" <> alias <> "` (" <> checksum <> ")"
+  note' $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
   tarExitCode <- waitForProcess tarHandler
   raiseIfFailure "tar" tarExitCode tarErrorHandler
 
-addDependencyToModuleFile :: Module -> Alias -> URL -> Checksum -> IO ()
+addDependencyToModuleFile :: Module -> LibraryAlias -> LibraryURL -> Checksum -> IO ()
 addDependencyToModuleFile targetModule alias url checksum = do
-  note' $ "adding the dependency of `" <> alias <> "` to the module file"
+  note' $ "adding the dependency of `" <> extract alias <> "` to the module file"
   let targetModule' = addDependency alias url checksum targetModule
   TIO.writeFile (toFilePath $ moduleLocation targetModule') $ ppModule targetModule'
 
@@ -129,3 +131,7 @@ raiseIfFailure procName exitCode h =
           <> T.pack (show i)
           <> "):\n"
           <> errStr
+
+showChecksum :: Checksum -> T.Text
+showChecksum (Checksum checksum) =
+  checksum

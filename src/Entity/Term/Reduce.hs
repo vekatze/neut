@@ -3,7 +3,9 @@ module Entity.Term.Reduce (reduce) where
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
-import Entity.Basic
+import Entity.EnumCase
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Term
 import Entity.Term.Subst
 
@@ -34,7 +36,7 @@ reduce term =
         -- (_ :< TermPiIntro opacity LamKindNormal xts body)
         (_ :< TermPiIntro LamKindNormal xts (_ :< body))
           | length xts == length es' -> do
-            let xs = map (\(_, x, _) -> asInt x) xts
+            let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es'
             subst sub (m :< body) >>= reduce
         _ ->
@@ -51,7 +53,7 @@ reduce term =
       case e1' of
         _ :< TermSigmaIntro es
           | length xts == length es -> do
-            let xs = map (\(_, x, _) -> asInt x) xts
+            let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es
             subst sub e2 >>= reduce
         _ -> do
@@ -59,7 +61,7 @@ reduce term =
           return $ m :< TermSigmaElim xts e1' e2'
     _ :< TermLet (_, x, _) e1 e2 -> do
       e1' <- reduce e1
-      let sub = IntMap.fromList [(asInt x, e1')]
+      let sub = IntMap.fromList [(Ident.toInt x, e1')]
       subst sub e2
     (m :< TermEnumElim (e, t) les) -> do
       e' <- reduce e

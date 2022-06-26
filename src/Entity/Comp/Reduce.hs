@@ -4,12 +4,13 @@ import Control.Comonad.Cofree.Class
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
-import Entity.Basic
 import Entity.Comp
 import Entity.Comp.Subst
+import Entity.EnumCase
 import Entity.Global
-
--- type NameEnv = IntMap.IntMap Ident
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.Opacity
 
 reduce :: Comp -> IO Comp
 reduce term =
@@ -22,7 +23,7 @@ reduce term =
         ValueVarGlobal x
           | Just (OpacityTransparent, xs, body) <- Map.lookup x compDefEnv,
             length xs == length ds -> do
-            let sub = IntMap.fromList (zip (map asInt xs) ds)
+            let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
             subst sub IntMap.empty body >>= reduce
         _ ->
           return term
@@ -30,7 +31,7 @@ reduce term =
       case v of
         ValueSigmaIntro ds
           | length ds == length xs -> do
-            let sub = IntMap.fromList (zip (map asInt xs) ds)
+            let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
             subst sub IntMap.empty e >>= reduce
         _ -> do
           e' <- reduce e
@@ -54,7 +55,7 @@ reduce term =
           e2' <- reduce e2
           return $ CompUpElim x e1' e2'
         CompUpIntro v -> do
-          let sub = IntMap.fromList [(asInt x, v)]
+          let sub = IntMap.fromList [(Ident.toInt x, v)]
           subst sub IntMap.empty e2 >>= reduce
         CompUpElim y ey1 ey2 ->
           reduce $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion

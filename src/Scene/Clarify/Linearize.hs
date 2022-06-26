@@ -5,9 +5,9 @@ where
 
 import Control.Monad
 import Data.IORef
-import Entity.Basic
 import Entity.Comp
 import Entity.Global
+import Entity.Ident
 import Entity.Magic
 import Scene.Clarify.Utility
 

@@ -10,6 +10,7 @@ extra-source-files:
 
 default-extensions:
   - OverloadedStrings
+  - DeriveGeneric
 
 dependencies:
   - ansi-terminal

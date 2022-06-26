@@ -16,11 +16,17 @@ import Data.IORef
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
+import Entity.EnumCase
 import Entity.Global
+import Entity.Hint
+import Entity.Ident
+import qualified Entity.Ident.Reflect as Ident
+import Entity.LamKind
 import Entity.Log
 import Entity.LowType
 import Entity.Magic
+import Entity.Pattern
 import Entity.PrimNum.FromText
 import Entity.WeakTerm
 import Scene.Parse.Core
@@ -115,7 +121,7 @@ weakTermLetCoproduct = do
   typeOfRight <- liftIO $ newAster m
   let sumLeft = "sum.left"
   let sumRight = "sum.right"
-  let sumLeftVar = asIdent "sum.left"
+  let sumLeftVar = Ident.fromText "sum.left"
   return $
     m
       :< WeakTermMatch
@@ -202,7 +208,7 @@ weakTermPiIntroDef = do
   try $ keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
   let piType = mFun :< WeakTermPi domBinderList codType
-  return $ m :< WeakTermPiIntro (LamKindFix (mFun, asIdent functionName, piType)) domBinderList e
+  return $ m :< WeakTermPiIntro (LamKindFix (mFun, Ident.fromText functionName, piType)) domBinderList e
 
 weakTermSigma :: Parser WeakTerm
 weakTermSigma = do
@@ -423,11 +429,11 @@ weakTermLetVar = do
         x <- symbol
         delimiter ":"
         a <- weakTerm
-        return (m, asIdent x, a),
+        return (m, Ident.fromText x, a),
       do
         x <- symbol
         h <- liftIO $ newAster m
-        return (m, asIdent x, h)
+        return (m, Ident.fromText x, h)
     ]
 
 weakTermIf :: Parser WeakTerm
@@ -495,7 +501,7 @@ weakTermNoema :: Parser WeakTerm
 weakTermNoema = do
   m <- currentHint
   try $ delimiter "&"
-  subject <- asIdent <$> symbol
+  subject <- Ident.fromText <$> symbol
   t <- weakTerm
   return $ m :< WeakTermNoema (m :< WeakTermVar subject) t
 
@@ -504,8 +510,8 @@ weakTermIdealize = do
   m <- currentHint
   try $ keyword "idealize"
   varList <- manyTill var (keyword "over")
-  let varList' = fmap (fmap asIdent) varList
-  subject <- asIdent <$> symbol
+  let varList' = fmap (fmap Ident.fromText) varList
+  subject <- Ident.fromText <$> symbol
   e <- doBlock weakTerm
   ts <- liftIO $ mapM (\(mx, _) -> newAster mx) varList
   return $ m :< WeakTermNoemaElim subject (castLet subject (zip varList' ts) e)
@@ -660,7 +666,7 @@ weakAscription = do
   x <- symbol
   delimiter ":"
   a <- weakTerm
-  return (m, asIdent x, a)
+  return (m, Ident.fromText x, a)
 
 typeWithoutIdent :: Parser (BinderF WeakTerm)
 typeWithoutIdent = do
@@ -679,7 +685,7 @@ weakSimpleIdent :: Parser (Hint, Ident)
 weakSimpleIdent = do
   m <- currentHint
   x <- symbol
-  return (m, asIdent x)
+  return (m, Ident.fromText x)
 
 weakTermIntrospect :: Parser WeakTerm
 weakTermIntrospect = do
@@ -772,7 +778,7 @@ lam m varList e =
 
 weakVar :: Hint -> T.Text -> WeakTerm
 weakVar m str =
-  m :< WeakTermVar (asIdent str)
+  m :< WeakTermVar (Ident.fromText str)
 
 weakVar' :: Hint -> Ident -> WeakTerm
 weakVar' m ident =

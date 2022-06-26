@@ -21,10 +21,11 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Basic
 import Entity.Global
+import Entity.Hint
 import Entity.Log
 import Entity.Module
+import Entity.OutputKind
 import Entity.Source
 import GHC.IO.Handle
 import Path
@@ -298,7 +299,7 @@ isItemAvailable source itemPath = do
 raiseCyclicPath :: Source -> IO a
 raiseCyclicPath source = do
   traceSourceList <- readIORef traceSourceListRef
-  let m = newHint 1 1 $ toFilePath $ sourceFilePath source
+  let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
   let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
   raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 

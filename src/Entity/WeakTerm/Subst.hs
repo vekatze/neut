@@ -3,8 +3,10 @@ module Entity.WeakTerm.Subst (subst) where
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
-import Entity.Basic
+import Entity.Binder
 import Entity.Global
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.WeakTerm
 
 subst :: SubstWeakTerm -> WeakTerm -> IO WeakTerm
@@ -13,7 +15,7 @@ subst sub term =
     _ :< WeakTermTau ->
       return term
     _ :< WeakTermVar x
-      | Just e <- IntMap.lookup (asInt x) sub ->
+      | Just e <- IntMap.lookup (Ident.toInt x) sub ->
         return e
       | otherwise ->
         return term
@@ -142,6 +144,6 @@ subst' sub binder e =
     ((m, x, t) : xts) -> do
       t' <- subst sub t
       x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (asInt x) (m :< WeakTermVar x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (m :< WeakTermVar x') sub
       (xts', e') <- subst' sub' xts e
       return ((m, x', t') : xts', e')

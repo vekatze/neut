@@ -13,9 +13,10 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
 import Entity.Comp
+import Entity.EnumCase
 import Entity.Global
+import Entity.Ident
 import Entity.Log
 import Entity.LowComp
 import Entity.LowType

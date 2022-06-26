@@ -2,7 +2,13 @@ module Entity.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
+import Entity.EnumCase
+import Entity.Hint
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
+import Entity.Pattern
 import Entity.WeakTerm
 
 toText :: WeakTerm -> T.Text
@@ -76,9 +82,9 @@ toText term =
     _ :< WeakTermNoema s e ->
       showCons ["&" <> toText s, toText e]
     _ :< WeakTermNoemaIntro s e ->
-      showCons ["noema-intro", asText s, toText e]
+      showCons ["noema-intro", Ident.toText s, toText e]
     _ :< WeakTermNoemaElim s e ->
-      showCons ["noema-elim", asText s, toText e]
+      showCons ["noema-elim", Ident.toText s, toText e]
     _ :< WeakTermArray elemType ->
       showCons ["array", toText elemType]
     _ :< WeakTermArrayIntro elemType elems ->
@@ -119,7 +125,8 @@ showTypeArgs args =
       s1 <> " " <> s2
 
 showVariable :: Ident -> T.Text
-showVariable = asText
+showVariable =
+  Ident.toText
 
 showCaseClause :: (PatternF WeakTerm, WeakTerm) -> T.Text
 showCaseClause (pat, e) =

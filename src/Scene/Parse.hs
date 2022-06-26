@@ -11,11 +11,17 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.AliasInfo
+import Entity.Binder
 import Entity.Global
+import Entity.Hint
+import qualified Entity.Ident.Reflect as Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Log
 import Entity.Module
 import Entity.Namespace
+import Entity.Opacity
 import Entity.Source
 import Entity.Stmt
 import Entity.WeakTerm
@@ -218,7 +224,7 @@ parseDefineDataConstructor dataName dataArgs ((m, consName, consArgs), consNumbe
     $ m
       :< WeakTermPiIntro
         (LamKindCons dataName consName consNumber dataType)
-        [ (m, asIdent consName, m :< WeakTermPi consArgs (m :< WeakTermTau))
+        [ (m, Ident.fromText consName, m :< WeakTermPi consArgs (m :< WeakTermTau))
         ]
         (m :< WeakTermPiElim (weakVar m consName) consArgs')
 
@@ -256,8 +262,8 @@ parseDefineCodataElim :: T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> B
 parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = constructDataType m dataName dataArgs
   recordVarText <- newText
-  let projArgs = dataArgs ++ [(m, asIdent recordVarText, codataType)]
-  let elemName' = dataName <> nsSep <> asText elemName
+  let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
+  let elemName' = dataName <> nsSep <> Ident.toText elemName
   defineFunction
     OpacityOpaque
     m
@@ -269,7 +275,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
       :< WeakTermMatch
         Nothing
         (weakVar m recordVarText, codataType)
-        [((m, dataName <> nsSep <> "new", elemInfoList), weakVar m (asText elemName))]
+        [((m, dataName <> nsSep <> "new", elemInfoList), weakVar m (Ident.toText elemName))]
 
 parseDefineResource :: Parser WeakStmt
 parseDefineResource = do

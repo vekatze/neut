@@ -7,8 +7,8 @@ import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Set as S
-import Entity.Basic
 import Entity.Global
+import qualified Entity.Ident.Reify as Ident
 import Entity.LowComp
 import Entity.LowComp.Subst
 import Entity.LowType
@@ -26,24 +26,24 @@ reduceLowComp sub sizeMap llvm = do
       case op of
         LowOpBitcast d from to
           | from == to -> do
-            let sub' = IntMap.insert (asInt x) (substLowValue sub d) sub
+            let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
             reduceLowComp sub' sizeMap cont
         LowOpAlloc _ (LowTypePointer (LowTypeArray 0 _)) -> do
-          let sub' = IntMap.insert (asInt x) LowValueNull sub
+          let sub' = IntMap.insert (Ident.toInt x) LowValueNull sub
           reduceLowComp sub' sizeMap cont
         LowOpAlloc _ (LowTypePointer (LowTypeStruct [])) -> do
-          let sub' = IntMap.insert (asInt x) LowValueNull sub
+          let sub' = IntMap.insert (Ident.toInt x) LowValueNull sub
           reduceLowComp sub' sizeMap cont
         LowOpAlloc _ size
           | cancelAllocFlag,
             Just ((j, d) : rest) <- Map.lookup size sizeMap -> do
             modifyIORef' nopFreeSetRef $ S.insert j
             let sizeMap' = Map.insert size rest sizeMap
-            let sub' = IntMap.insert (asInt x) (substLowValue sub d) sub
+            let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
             reduceLowComp sub' sizeMap' cont
         _ -> do
           x' <- newIdentFromIdent x
-          let sub' = IntMap.insert (asInt x) (LowValueVarLocal x') sub
+          let sub' = IntMap.insert (Ident.toInt x) (LowValueVarLocal x') sub
           cont' <- reduceLowComp sub' sizeMap cont
           return $ LowCompLet x' (substLowOp sub op) cont'
     LowCompCont op@(LowOpFree d size j) cont -> do

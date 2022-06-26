@@ -14,10 +14,16 @@ import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
 import Entity.Constraint
+import Entity.FilePos
 import Entity.Global
+import Entity.Hint
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Log
+import Entity.Opacity
 import Entity.WeakTerm
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
@@ -67,7 +73,7 @@ throwTypeErrors = do
     actual' <- subst sub actual >>= reduce
     -- expected' <- subst sub l >>= reduce
     -- actual' <- subst sub r >>= reduce
-    return $ logError (getPosInfo (metaOf actual)) $ constructErrorMsg actual' expected'
+    return $ logError (fromHint (metaOf actual)) $ constructErrorMsg actual' expected'
   throw $ Error errorList
 
 constructErrorMsg :: WeakTerm -> WeakTerm -> T.Text
@@ -265,7 +271,7 @@ simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
       t2' <- subst sub t2
-      let sub' = IntMap.insert (asInt x2) (m1 :< WeakTermVar x1) sub
+      let sub' = IntMap.insert (Ident.toInt x2) (m1 :< WeakTermVar x1) sub
       rest <- simplifyBinder' orig sub' xts1 xts2
       return $ ((t1, t2'), orig) : rest
     _ ->

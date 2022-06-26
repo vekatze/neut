@@ -6,7 +6,7 @@ module Entity.LowComp.Subst
 where
 
 import qualified Data.IntMap as IntMap
-import Entity.Basic
+import Entity.Ident.Reify
 import Entity.LowComp
 
 type SubstLowComp =
@@ -57,7 +57,7 @@ substLowValue :: SubstLowComp -> LowValue -> LowValue
 substLowValue sub llvmValue =
   case llvmValue of
     LowValueVarLocal x ->
-      case IntMap.lookup (asInt x) sub of
+      case IntMap.lookup (toInt x) sub of
         Just d ->
           d
         Nothing ->

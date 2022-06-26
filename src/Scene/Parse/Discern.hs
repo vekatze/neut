@@ -8,8 +8,12 @@ import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
+import Entity.EnumCase
 import Entity.Global
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Log
 import Entity.Namespace
 import Entity.Stmt
@@ -166,7 +170,7 @@ discern' nenv term =
           raiseError m $ "undefined subject variable: " <> x
     m :< WeakTermNoemaElim s e -> do
       s' <- newIdentFromIdent s
-      e' <- discern' (Map.insert (asText s) s' nenv) e
+      e' <- discern' (Map.insert (Ident.toText s) s' nenv) e
       return $ m :< WeakTermNoemaElim s' e'
     m :< WeakTermArray elemType -> do
       elemType' <- discern' nenv elemType
@@ -221,7 +225,7 @@ discernBinder' nenv binder =
     (mx, x, t) : xts -> do
       t' <- discern' nenv t
       x' <- newIdentFromIdent x
-      (xts', nenv') <- discernBinder' (Map.insert (asText x) x' nenv) xts
+      (xts', nenv') <- discernBinder' (Map.insert (Ident.toText x) x' nenv) xts
       return ((mx, x', t') : xts', nenv')
 
 discernEnumCase :: EnumCase -> IO EnumCase

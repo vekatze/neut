@@ -10,8 +10,10 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import Data.List
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.AliasInfo
+import Entity.Checksum
 import Entity.Global
+import Entity.Hint
 import Entity.Log
 import Entity.Module
 import Entity.Source

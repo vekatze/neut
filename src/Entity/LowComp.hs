@@ -1,7 +1,7 @@
 module Entity.LowComp where
 
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Ident
 import Entity.LowType
 import Entity.PrimNumSize
 import Entity.PrimOp

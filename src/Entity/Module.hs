@@ -6,8 +6,10 @@ import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Checksum
 import Entity.Ens
+import Entity.LibraryAlias
+import Entity.LibraryURL
 import Entity.Log
 import Path
 import Path.IO
@@ -18,7 +20,7 @@ type SomePath =
 
 data Module = Module
   { moduleTarget :: Map.HashMap T.Text (Path Rel File),
-    moduleDependency :: Map.HashMap Alias (URL, Checksum),
+    moduleDependency :: Map.HashMap T.Text (LibraryURL, Checksum),
     moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
   }
@@ -101,14 +103,14 @@ getMainModule = do
     Nothing ->
       raiseCritical' "the main module is not initialized"
 
-addDependency :: Alias -> URL -> Checksum -> Module -> Module
-addDependency alias url checksum someModule =
+addDependency :: LibraryAlias -> LibraryURL -> Checksum -> Module -> Module
+addDependency (LibraryAlias alias) url checksum someModule =
   someModule {moduleDependency = Map.insert alias (url, checksum) (moduleDependency someModule)}
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
   let entryPoint = Map.map (\x -> () :< EnsString (T.pack (toFilePath x))) $ moduleTarget someModule
-  let dependency = flip Map.map (moduleDependency someModule) $ \(URL url, Checksum checksum) -> do
+  let dependency = flip Map.map (moduleDependency someModule) $ \(LibraryURL url, Checksum checksum) -> do
         let urlEns = () :< EnsString url
         let checksumEns = () :< EnsString checksum
         () :< EnsDictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])

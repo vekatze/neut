@@ -1,8 +1,8 @@
 module Entity.Comp.FreeVars (freeVars) where
 
 import qualified Data.Set as S
-import Entity.Basic
 import Entity.Comp
+import Entity.Ident
 
 freeVars :: Comp -> S.Set Ident
 freeVars =

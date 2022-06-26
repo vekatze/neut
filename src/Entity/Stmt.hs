@@ -6,8 +6,10 @@ import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
 import Entity.Global
+import Entity.Hint
+import Entity.Opacity
 import Entity.Source
 import Entity.Term
 import Entity.WeakTerm

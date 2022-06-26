@@ -3,7 +3,9 @@ module Entity.WeakTerm.Reduce (reduce) where
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
-import Entity.Basic
+import Entity.EnumCase
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.WeakTerm
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Subst
@@ -36,7 +38,7 @@ reduce term =
       case e' of
         (_ :< WeakTermPiIntro LamKindNormal xts body)
           | length xts == length es' -> do
-            let xs = map (\(_, x, _) -> asInt x) xts
+            let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es'
             subst sub body >>= reduce
         _ ->
@@ -53,7 +55,7 @@ reduce term =
       case e1' of
         _ :< WeakTermSigmaIntro es
           | length xts == length es -> do
-            let xs = map (\(_, x, _) -> asInt x) xts
+            let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es
             subst sub e2 >>= reduce
         _ -> do
@@ -61,7 +63,7 @@ reduce term =
           return $ m :< WeakTermSigmaElim xts e1' e2'
     _ :< WeakTermLet (_, x, _) e1 e2 -> do
       e1' <- reduce e1
-      let sub = IntMap.fromList [(asInt x, e1')]
+      let sub = IntMap.fromList [(Ident.toInt x, e1')]
       subst sub e2
     m :< WeakTermEnumElim (e, t) les -> do
       e' <- reduce e

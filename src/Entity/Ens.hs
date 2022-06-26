@@ -18,7 +18,7 @@ import qualified Data.HashMap.Lazy as M
 import Data.Int
 import Data.List
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Hint
 import Entity.Log
 
 data EnsF a

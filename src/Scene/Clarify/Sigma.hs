@@ -10,9 +10,9 @@ where
 
 import Control.Monad
 import qualified Data.Text as T
-import Entity.Basic
 import Entity.Comp
 import Entity.Global
+import Entity.Ident
 import Entity.Namespace
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility

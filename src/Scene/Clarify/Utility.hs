@@ -5,9 +5,12 @@ import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
-import Entity.Basic
 import Entity.Comp
+import Entity.EnumCase
 import Entity.Global
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
+import Entity.Opacity
 import Entity.PrimNumSize
 
 toApp :: Integer -> Ident -> Comp -> IO Comp
@@ -88,7 +91,7 @@ insDefEnv name opacity args e =
 {-# INLINE toConstructorLabelName #-}
 toConstructorLabelName :: Ident -> T.Text
 toConstructorLabelName x =
-  wrapWithQuote $ asText x
+  wrapWithQuote $ Ident.toText x
 
 {-# INLINE wrapWithQuote #-}
 wrapWithQuote :: T.Text -> T.Text

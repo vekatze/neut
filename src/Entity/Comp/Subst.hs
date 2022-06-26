@@ -1,9 +1,10 @@
 module Entity.Comp.Subst (subst) where
 
 import qualified Data.IntMap as IntMap
-import Entity.Basic
 import Entity.Comp
 import Entity.Global
+import Entity.Ident
+import qualified Entity.Ident.Reify as Ident
 
 type NameEnv = IntMap.IntMap Ident
 
@@ -24,7 +25,7 @@ substComp sub nenv term =
     CompSigmaElim b xs v e -> do
       let v' = substValue sub nenv v
       xs' <- mapM newIdentFromIdent xs
-      let nenv' = IntMap.union (IntMap.fromList (zip (map asInt xs) xs')) nenv
+      let nenv' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) xs')) nenv
       e' <- subst sub nenv' e
       return $ CompSigmaElim b xs' v' e'
     CompUpIntro v -> do
@@ -33,7 +34,7 @@ substComp sub nenv term =
     CompUpElim x e1 e2 -> do
       e1' <- subst sub nenv e1
       x' <- newIdentFromIdent x
-      let nenv' = IntMap.insert (asInt x) x' nenv
+      let nenv' = IntMap.insert (Ident.toInt x) x' nenv
       e2' <- subst sub nenv' e2
       return $ CompUpElim x' e1' e2'
     CompEnumElim v branchList -> do
@@ -48,16 +49,16 @@ substValue :: SubstValue -> NameEnv -> Value -> Value
 substValue sub nenv term =
   case term of
     ValueVarLocal x
-      | Just x' <- IntMap.lookup (asInt x) nenv ->
+      | Just x' <- IntMap.lookup (Ident.toInt x) nenv ->
         ValueVarLocal x'
-      | Just e <- IntMap.lookup (asInt x) sub ->
+      | Just e <- IntMap.lookup (Ident.toInt x) sub ->
         e
       | otherwise ->
         term
     ValueVarLocalIdeal x
-      | Just x' <- IntMap.lookup (asInt x) nenv ->
+      | Just x' <- IntMap.lookup (Ident.toInt x) nenv ->
         ValueVarLocalIdeal x'
-      | Just e <- IntMap.lookup (asInt x) sub ->
+      | Just e <- IntMap.lookup (Ident.toInt x) sub ->
         e
       | otherwise ->
         term

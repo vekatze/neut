@@ -1,8 +1,8 @@
 module Entity.Source where
 
 import qualified Data.Text as T
-import Entity.Basic
 import Entity.Module
+import Entity.OutputKind
 import Path
 import qualified System.FilePath as FP
 

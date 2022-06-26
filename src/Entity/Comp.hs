@@ -2,8 +2,10 @@ module Entity.Comp where
 
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.EnumCase
+import Entity.Ident
 import Entity.Magic
+import Entity.Opacity
 import Entity.PrimNum
 import Entity.PrimNumSize
 import Entity.PrimOp

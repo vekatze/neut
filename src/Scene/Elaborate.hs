@@ -11,9 +11,15 @@ import Data.IORef
 import qualified Data.IntMap as IntMap
 import Data.List
 import qualified Data.Text as T
-import Entity.Basic
+import Entity.Binder
+import Entity.EnumCase
 import Entity.Global
+import Entity.Hint
+import qualified Entity.Ident.Reify as Ident
+import Entity.LamKind
 import Entity.Log
+import Entity.Opacity
+import Entity.Pattern
 import Entity.PrimNum
 import qualified Entity.PrimNum.FromText as PrimNum
 import Entity.Source
@@ -175,7 +181,7 @@ elaborate' term =
           raiseError mh "couldn't instantiate the asterisk here"
         Just (_ :< WeakTermPiIntro LamKindNormal xts e)
           | length xts == length es -> do
-            let xs = map (\(_, y, _) -> asInt y) xts
+            let xs = map (\(_, y, _) -> Ident.toInt y) xts
             let s = IntMap.fromList $ zip xs es
             WeakTerm.subst s e >>= elaborate'
         Just e ->

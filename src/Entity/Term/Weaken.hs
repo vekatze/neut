@@ -5,7 +5,9 @@ module Entity.Term.Weaken
 where
 
 import Control.Comonad.Cofree
-import Entity.Basic
+import Entity.Hint
+import Entity.Ident
+import Entity.LamKind
 import Entity.PrimNum
 import Entity.Term
 import Entity.Term.FromPrimNum
