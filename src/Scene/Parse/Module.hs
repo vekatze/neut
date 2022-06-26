@@ -7,12 +7,12 @@ where
 import Control.Monad
 import qualified Data.Text as T
 import Entity.Basic
-import Entity.Entity
+import Entity.Ens
 import Entity.Log
 import Entity.Module
 import Path
 import Path.IO
-import qualified Scene.Parse.Entity as E
+import qualified Scene.Parse.Ens as E
 
 parse :: Path Abs File -> IO Module
 parse moduleFilePath = do
@@ -35,17 +35,17 @@ initializeMainModule :: IO ()
 initializeMainModule = do
   getMainModuleFilePath >>= parse >>= setMainModule
 
-interpretRelFilePath :: Entity -> IO (Path Rel File)
+interpretRelFilePath :: Ens -> IO (Path Rel File)
 interpretRelFilePath =
   toString >=> parseRelFile . T.unpack
 
-interpretDependency :: Entity -> IO (URL, Checksum)
+interpretDependency :: Ens -> IO (URL, Checksum)
 interpretDependency dependencyValue = do
   url <- access "URL" dependencyValue >>= toString
   checksum <- access "checksum" dependencyValue >>= toString
   return (URL url, Checksum checksum)
 
-interpretExtraPath :: Path Abs Dir -> Entity -> IO SomePath
+interpretExtraPath :: Path Abs Dir -> Ens -> IO SomePath
 interpretExtraPath moduleRootDir entity = do
   itemPathText <- toString entity
   if T.last itemPathText == '/'

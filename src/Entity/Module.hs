@@ -7,7 +7,7 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
 import Entity.Basic
-import Entity.Entity
+import Entity.Ens
 import Entity.Log
 import Path
 import Path.IO
@@ -107,17 +107,17 @@ addDependency alias url checksum someModule =
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
-  let entryPoint = Map.map (\x -> () :< EntityString (T.pack (toFilePath x))) $ moduleTarget someModule
+  let entryPoint = Map.map (\x -> () :< EnsString (T.pack (toFilePath x))) $ moduleTarget someModule
   let dependency = flip Map.map (moduleDependency someModule) $ \(URL url, Checksum checksum) -> do
-        let urlEntity = () :< EntityString url
-        let checksumEntity = () :< EntityString checksum
-        () :< EntityDictionary (Map.fromList [("checksum", checksumEntity), ("URL", urlEntity)])
-  let extraContents = map (\x -> () :< EntityString (ppExtraContent x)) $ moduleExtraContents someModule
-  ppEntityTopLevel $
+        let urlEns = () :< EnsString url
+        let checksumEns = () :< EnsString checksum
+        () :< EnsDictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])
+  let extraContents = map (\x -> () :< EnsString (ppExtraContent x)) $ moduleExtraContents someModule
+  ppEnsTopLevel $
     Map.fromList
-      [ ("dependency", () :< EntityDictionary dependency),
-        ("target", () :< EntityDictionary entryPoint),
-        ("extra-content", () :< EntityList extraContents)
+      [ ("dependency", () :< EnsDictionary dependency),
+        ("target", () :< EnsDictionary entryPoint),
+        ("extra-content", () :< EnsList extraContents)
       ]
 
 ppExtraContent :: SomePath -> T.Text
