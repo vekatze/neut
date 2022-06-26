@@ -12,7 +12,9 @@ import Data.Text.Internal.Search
 import Entity.Basic
 import Entity.Global
 import Entity.Log
-import Entity.LowType
+import Entity.PrimNum
+import qualified Entity.PrimNum.FromText as PrimNum
+import qualified Entity.PrimOp.FromText as PrimOp
 import Entity.WeakTerm
 
 data Section
@@ -202,11 +204,11 @@ asEnum m env name = do
 {-# INLINE asWeakConstant #-}
 asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm
 asWeakConstant m name
-  | Just (PrimNumInt _) <- asPrimNumMaybe name =
+  | Just (PrimNumInt _) <- PrimNum.fromText name =
     Just (m :< WeakTermConst name)
-  | Just (PrimNumFloat _) <- asPrimNumMaybe name =
+  | Just (PrimNumFloat _) <- PrimNum.fromText name =
     Just (m :< WeakTermConst name)
-  | Just _ <- asPrimOp name =
+  | Just _ <- PrimOp.fromText name =
     Just (m :< WeakTermConst name)
   | otherwise = do
     Nothing

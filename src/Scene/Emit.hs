@@ -21,6 +21,11 @@ import Entity.Log
 import Entity.LowComp
 import Entity.LowComp.Reduce
 import Entity.LowType
+import Entity.PrimNum
+import Entity.PrimNumSize
+import Entity.PrimNumSize.ToInt
+import Entity.PrimOp
+import Entity.PrimOp.OpSet
 import Numeric.Half
 import qualified System.Info as System
 
@@ -204,13 +209,13 @@ emitSyscallOp num ds = do
   regList <- getRegList
   case System.arch of
     "x86_64" -> do
-      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt 64) : zip ds (repeat voidPtr)
+      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
     "aarch64" -> do
-      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt 64) : zip ds (repeat voidPtr)
+      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
@@ -337,7 +342,7 @@ showPrimNumForEmit :: PrimNum -> Builder
 showPrimNumForEmit lowType =
   case lowType of
     PrimNumInt i ->
-      "i" <> intDec i
+      "i" <> intDec (intSizeToInt i)
     PrimNumFloat FloatSize16 ->
       "half"
     PrimNumFloat FloatSize32 ->

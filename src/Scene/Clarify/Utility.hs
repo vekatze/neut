@@ -8,6 +8,7 @@ import qualified Data.Text as T
 import Entity.Basic
 import Entity.Comp
 import Entity.Global
+import Entity.PrimNumSize
 
 toApp :: Integer -> Ident -> Comp -> IO Comp
 toApp switcher x t = do
@@ -18,7 +19,7 @@ toApp switcher x t = do
       t
       ( CompPiElimDownElim
           expVar
-          [ValueInt 64 switcher, ValueVarLocal x]
+          [ValueInt (IntSize 64) switcher, ValueVarLocal x]
       )
 
 -- toAffineApp meta x t ~>

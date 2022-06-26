@@ -15,10 +15,15 @@ import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
+import Entity.Constraint
 import Entity.Global
 import Entity.Log
 import Entity.WeakTerm
+import Entity.WeakTerm.FreeVars
+import Entity.WeakTerm.Holes
 import Entity.WeakTerm.Reduce
+import Entity.WeakTerm.Subst
+import Entity.WeakTerm.ToText
 
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTerm])]
@@ -51,17 +56,17 @@ synthesize = do
 throwTypeErrors :: IO a
 throwTypeErrors = do
   suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
-  subst <- readIORef substRef
+  sub <- readIORef substRef
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     -- p' foo
     -- p $ T.unpack $ toText l
     -- p $ T.unpack $ toText r
     -- p' (expected, actual)
     -- p' sub
-    expected' <- substWeakTerm subst expected >>= reduceWeakTerm
-    actual' <- substWeakTerm subst actual >>= reduceWeakTerm
-    -- expected' <- substWeakTerm sub l >>= reduceWeakTerm
-    -- actual' <- substWeakTerm sub r >>= reduceWeakTerm
+    expected' <- subst sub expected >>= reduce
+    actual' <- subst sub actual >>= reduce
+    -- expected' <- subst sub l >>= reduce
+    -- actual' <- subst sub r >>= reduce
     return $ logError (getPosInfo (metaOf actual)) $ constructErrorMsg actual' expected'
   throw $ Error errorList
 
@@ -78,8 +83,8 @@ simplify constraintList =
     [] ->
       return ()
     headConstraint@(c, orig) : cs -> do
-      expected <- reduceWeakTerm $ fst c
-      actual <- reduceWeakTerm $ snd c
+      expected <- reduce $ fst c
+      actual <- reduce $ snd c
       case (expected, actual) of
         (_ :< WeakTermTau, _ :< WeakTermTau) ->
           simplify cs
@@ -167,27 +172,27 @@ simplify constraintList =
         (_ :< WeakTermCellIntro contentType1 content1, _ :< WeakTermCellIntro contentType2 content2) ->
           simplify $ ((contentType1, contentType2), orig) : ((content1, content2), orig) : cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do
-          subst <- readIORef substRef
+          sub <- readIORef substRef
           termDefEnv <- readIORef termDefEnvRef
-          let fvs1 = varWeakTerm e1
-          let fvs2 = varWeakTerm e2
-          let fmvs1 = asterWeakTerm e1
-          let fmvs2 = asterWeakTerm e2
+          let fvs1 = freeVars e1
+          let fvs2 = freeVars e2
+          let fmvs1 = holes e1
+          let fmvs2 = holes e2
           let fmvs = S.union fmvs1 fmvs2 -- fmvs: free meta-variables
-          case (lookupAny (S.toList fmvs1) subst, lookupAny (S.toList fmvs2) subst) of
+          case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
             (Just (h1, body1), Just (h2, body2)) -> do
               let s1 = IntMap.singleton h1 body1
               let s2 = IntMap.singleton h2 body2
-              e1' <- substWeakTerm s1 e1
-              e2' <- substWeakTerm s2 e2
+              e1' <- subst s1 e1
+              e2' <- subst s2 e2
               simplify $ ((e1', e2'), orig) : cs
             (Just (h1, body1), Nothing) -> do
               let s1 = IntMap.singleton h1 body1
-              e1' <- substWeakTerm s1 e1
+              e1' <- subst s1 e1
               simplify $ ((e1', e2), orig) : cs
             (Nothing, Just (h2, body2)) -> do
               let s2 = IntMap.singleton h2 body2
-              e2' <- substWeakTerm s2 e2
+              e2' <- subst s2 e2
               simplify $ ((e1, e2'), orig) : cs
             (Nothing, Nothing) -> do
               case (asStuckedTerm e1, asStuckedTerm e2) of
@@ -259,7 +264,7 @@ simplifyBinder' :: Constraint -> SubstWeakTerm -> [BinderF WeakTerm] -> [BinderF
 simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      t2' <- substWeakTerm sub t2
+      t2' <- subst sub t2
       let sub' = IntMap.insert (asInt x2) (m1 :< WeakTermVar x1) sub
       rest <- simplifyBinder' orig sub' xts1 xts2
       return $ ((t1, t2'), orig) : rest

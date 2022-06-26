@@ -1,8 +1,4 @@
-module Entity.Comp.Reduce
-  ( reduceComp,
-    substComp,
-  )
-where
+module Entity.Comp.Reduce (reduce) where
 
 import Control.Comonad.Cofree.Class
 import qualified Data.HashMap.Lazy as Map
@@ -10,12 +6,13 @@ import Data.IORef
 import qualified Data.IntMap as IntMap
 import Entity.Basic
 import Entity.Comp
+import Entity.Comp.Subst
 import Entity.Global
 
-type NameEnv = IntMap.IntMap Ident
+-- type NameEnv = IntMap.IntMap Ident
 
-reduceComp :: Comp -> IO Comp
-reduceComp term =
+reduce :: Comp -> IO Comp
+reduce term =
   case term of
     CompPrimitive _ ->
       return term
@@ -26,7 +23,7 @@ reduceComp term =
           | Just (OpacityTransparent, xs, body) <- Map.lookup x compDefEnv,
             length xs == length ds -> do
             let sub = IntMap.fromList (zip (map asInt xs) ds)
-            substComp sub IntMap.empty body >>= reduceComp
+            subst sub IntMap.empty body >>= reduce
         _ ->
           return term
     CompSigmaElim isNoetic xs v e ->
@@ -34,9 +31,9 @@ reduceComp term =
         ValueSigmaIntro ds
           | length ds == length xs -> do
             let sub = IntMap.fromList (zip (map asInt xs) ds)
-            substComp sub IntMap.empty e >>= reduceComp
+            subst sub IntMap.empty e >>= reduce
         _ -> do
-          e' <- reduceComp e
+          e' <- reduce e
           case e' of
             CompUpIntro (ValueSigmaIntro ds)
               | Just ys <- mapM extractIdent ds,
@@ -51,20 +48,20 @@ reduceComp term =
     CompUpIntro _ ->
       return term
     CompUpElim x e1 e2 -> do
-      e1' <- reduceComp e1
+      e1' <- reduce e1
       case e1' of
         CompUpIntro (ValueVarLocalIdeal _) -> do
-          e2' <- reduceComp e2
+          e2' <- reduce e2
           return $ CompUpElim x e1' e2'
         CompUpIntro v -> do
           let sub = IntMap.fromList [(asInt x, v)]
-          substComp sub IntMap.empty e2 >>= reduceComp
+          subst sub IntMap.empty e2 >>= reduce
         CompUpElim y ey1 ey2 ->
-          reduceComp $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
+          reduce $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
         CompSigmaElim b yts vy ey ->
-          reduceComp $ CompSigmaElim b yts vy $ CompUpElim x ey e2 -- commutative conversion
+          reduce $ CompSigmaElim b yts vy $ CompUpElim x ey e2 -- commutative conversion
         _ -> do
-          e2' <- reduceComp e2
+          e2' <- reduce e2
           case e2' of
             CompUpIntro (ValueVarLocal y)
               | x == y ->
@@ -77,105 +74,30 @@ reduceComp term =
       case v of
         ValueEnumIntro l
           | Just body <- lookup (EnumCaseLabel l) les' ->
-            reduceComp body
+            reduce body
           | Just body <- lookup EnumCaseDefault les' ->
-            reduceComp body
+            reduce body
         ValueInt _ l
           | Just body <- lookup (EnumCaseInt (fromInteger l)) les' ->
-            reduceComp body
+            reduce body
           | Just body <- lookup EnumCaseDefault les' ->
-            reduceComp body
+            reduce body
           | otherwise -> do
             p "other"
             p' v
             p' les
             -- let (ls, es) = unzip les
-            es' <- mapM reduceComp es
+            es' <- mapM reduce es
             return $ CompEnumElim v (zip ls es')
         _ -> do
           -- p "other"
           -- p' v
           -- p' les
           -- let (ls, es) = unzip les
-          es' <- mapM reduceComp es
+          es' <- mapM reduce es
           return $ CompEnumElim v (zip ls es')
     CompArrayAccess {} ->
       return term
-
-substValue :: SubstValue -> NameEnv -> Value -> Value
-substValue sub nenv term =
-  case term of
-    ValueVarLocal x
-      | Just x' <- IntMap.lookup (asInt x) nenv ->
-        ValueVarLocal x'
-      | Just e <- IntMap.lookup (asInt x) sub ->
-        e
-      | otherwise ->
-        term
-    ValueVarLocalIdeal x
-      | Just x' <- IntMap.lookup (asInt x) nenv ->
-        ValueVarLocalIdeal x'
-      | Just e <- IntMap.lookup (asInt x) sub ->
-        e
-      | otherwise ->
-        term
-    ValueVarGlobal {} ->
-      term
-    ValueSigmaIntro vs -> do
-      let vs' = map (substValue sub nenv) vs
-      ValueSigmaIntro vs'
-    ValueArrayIntro elemType vs -> do
-      let vs' = map (substValue sub nenv) vs
-      ValueArrayIntro elemType vs'
-    ValueInt {} ->
-      term
-    ValueFloat {} ->
-      term
-    ValueEnumIntro {} ->
-      term
-
-substComp :: SubstValue -> NameEnv -> Comp -> IO Comp
-substComp sub nenv term =
-  case term of
-    CompPrimitive theta -> do
-      let theta' = substPrimitive sub nenv theta
-      return $ CompPrimitive theta'
-    CompPiElimDownElim v ds -> do
-      let v' = substValue sub nenv v
-      let ds' = map (substValue sub nenv) ds
-      return $ CompPiElimDownElim v' ds'
-    CompSigmaElim b xs v e -> do
-      let v' = substValue sub nenv v
-      xs' <- mapM newIdentFromIdent xs
-      let nenv' = IntMap.union (IntMap.fromList (zip (map asInt xs) xs')) nenv
-      e' <- substComp sub nenv' e
-      return $ CompSigmaElim b xs' v' e'
-    CompUpIntro v -> do
-      let v' = substValue sub nenv v
-      return $ CompUpIntro v'
-    CompUpElim x e1 e2 -> do
-      e1' <- substComp sub nenv e1
-      x' <- newIdentFromIdent x
-      let nenv' = IntMap.insert (asInt x) x' nenv
-      e2' <- substComp sub nenv' e2
-      return $ CompUpElim x' e1' e2'
-    CompEnumElim v branchList -> do
-      let v' = substValue sub nenv v
-      let (cs, es) = unzip branchList
-      es' <- mapM (substComp sub nenv) es
-      return $ CompEnumElim v' (zip cs es')
-    CompArrayAccess primNum v index ->
-      return $ CompArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)
-
-substPrimitive :: SubstValue -> NameEnv -> Primitive -> Primitive
-substPrimitive sub nenv c =
-  case c of
-    PrimitivePrimOp op vs -> do
-      let vs' = map (substValue sub nenv) vs
-      PrimitivePrimOp op vs'
-    PrimitiveMagic der -> do
-      let der' = fmap (substValue sub nenv) der
-      PrimitiveMagic der'
 
 extractIdent :: Value -> Maybe Ident
 extractIdent term =

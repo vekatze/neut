@@ -18,10 +18,16 @@ import qualified Data.Text as T
 import Entity.Basic
 import Entity.Global
 import Entity.Log
-import Entity.LowType
+import Entity.Magic
+import qualified Entity.PrimNum.FromText as PrimNum
+import Entity.PrimOp
+import qualified Entity.PrimOp.FromText as PrimOp
+import Entity.PrimOp.OpSet
 import Entity.Term
+import qualified Entity.Term.FromPrimNum as Term
+import Entity.Term.Weaken
 import Entity.WeakTerm
-import Entity.WeakTerm.Reduce
+import Entity.WeakTerm.Subst
 
 type Context = [BinderF WeakTerm]
 
@@ -113,11 +119,9 @@ infer' ctx term =
           return (app, higherApp)
     m :< WeakTermConst x
       -- i64, f16, etc.
-      | Just _ <- asLowInt x ->
+      | Just _ <- PrimNum.fromText x ->
         return (term, m :< WeakTermTau)
-      | Just _ <- asLowFloat x ->
-        return (term, m :< WeakTermTau)
-      | Just op <- asPrimOp x ->
+      | Just op <- PrimOp.fromText x ->
         inferExternal m x (primOpToType m op)
       | otherwise -> do
         _ :< t <- weaken <$> lookupConstTypeEnv m x
@@ -235,9 +239,9 @@ inferArgs ::
 inferArgs sub m args1 args2 cod =
   case (args1, args2) of
     ([], []) ->
-      substWeakTerm sub cod
+      subst sub cod
     ((e, t) : ets, (_, x, tx) : xts) -> do
-      tx' <- substWeakTerm sub tx
+      tx' <- subst sub tx
       insConstraintEnv tx' t
       inferArgs (IntMap.insert (asInt x) e sub) m ets xts cod
     _ ->
@@ -446,9 +450,9 @@ lookupKind m name = do
 
 lookupConstTypeEnv :: Hint -> T.Text -> IO Term
 lookupConstTypeEnv m x
-  | Just _ <- asPrimNumMaybe x =
+  | Just _ <- PrimNum.fromText x =
     return $ m :< TermTau
-  | Just op <- asPrimOp x =
+  | Just op <- PrimOp.fromText x =
     primOpToType m op
   | otherwise =
     raiseCritical m $
@@ -456,7 +460,7 @@ lookupConstTypeEnv m x
 
 primOpToType :: Hint -> PrimOp -> IO Term
 primOpToType m (PrimOp op domList cod) = do
-  let domList' = map (primNumToType m) domList
+  let domList' = map (Term.fromPrimNum m) domList
   xs <- mapM (const (newIdentFromText "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
@@ -464,7 +468,7 @@ primOpToType m (PrimOp op domList cod) = do
       let cod' = m :< TermEnum constBool
       return $ m :< TermPi xts cod'
     else do
-      let cod' = primNumToType m cod
+      let cod' = Term.fromPrimNum m cod
       return $ m :< TermPi xts cod'
 
 -- ?M ~> ?M @ ctx

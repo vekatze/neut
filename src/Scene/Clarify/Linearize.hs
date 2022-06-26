@@ -8,7 +8,7 @@ import Data.IORef
 import Entity.Basic
 import Entity.Comp
 import Entity.Global
-import Entity.LowType
+import Entity.Magic
 import Scene.Clarify.Utility
 
 data Occurrence

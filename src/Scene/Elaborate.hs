@@ -14,13 +14,17 @@ import qualified Data.Text as T
 import Entity.Basic
 import Entity.Global
 import Entity.Log
-import Entity.LowType
+import Entity.PrimNum
+import qualified Entity.PrimNum.FromText as PrimNum
 import Entity.Source
 import Entity.Stmt
 import Entity.Term
-import Entity.Term.Reduce
+import qualified Entity.Term.Reduce as Term
+import Entity.Term.Weaken
 import Entity.WeakTerm
-import Entity.WeakTerm.Reduce
+import qualified Entity.WeakTerm.Reduce as WeakTerm
+import qualified Entity.WeakTerm.Subst as WeakTerm
+import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer
 import Scene.Elaborate.Unify
 
@@ -135,7 +139,7 @@ elaborateStmtList stmtList = do
     QuasiStmtDefine opacity m x impArgNum xts codType e : rest -> do
       e' <- elaborate' e
       xts' <- mapM elaborateWeakBinder xts
-      codType' <- elaborate' codType >>= reduceTerm
+      codType' <- elaborate' codType >>= Term.reduce
       insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList rest
@@ -173,9 +177,9 @@ elaborate' term =
           | length xts == length es -> do
             let xs = map (\(_, y, _) -> asInt y) xts
             let s = IntMap.fromList $ zip xs es
-            substWeakTerm s e >>= elaborate'
+            WeakTerm.subst s e >>= elaborate'
         Just e ->
-          reduceWeakTerm (m :< WeakTermPiElim e es) >>= elaborate'
+          WeakTerm.reduce (m :< WeakTermPiElim e es) >>= elaborate'
     m :< WeakTermPiElim e es -> do
       e' <- elaborate' e
       es' <- mapM elaborate' es
@@ -201,10 +205,10 @@ elaborate' term =
     m :< WeakTermConst x ->
       return $ m :< TermConst x
     m :< WeakTermInt t x -> do
-      t' <- elaborate' t >>= reduceTerm
+      t' <- elaborate' t >>= Term.reduce
       case t' of
         _ :< TermConst intTypeStr
-          | Just (PrimNumInt size) <- asPrimNumMaybe intTypeStr ->
+          | Just (PrimNumInt size) <- PrimNum.fromText intTypeStr ->
             return $ m :< TermInt size x
         _ -> do
           raiseError m $
@@ -213,10 +217,10 @@ elaborate' term =
               <> "` is an integer, but its type is: "
               <> toText (weaken t')
     m :< WeakTermFloat t x -> do
-      t' <- elaborate' t >>= reduceTerm
+      t' <- elaborate' t >>= Term.reduce
       case t' of
         _ :< TermConst floatTypeStr
-          | Just (PrimNumFloat size) <- asPrimNumMaybe floatTypeStr ->
+          | Just (PrimNumFloat size) <- PrimNum.fromText floatTypeStr ->
             return $ m :< TermFloat size x
         _ ->
           raiseError m $
@@ -232,7 +236,7 @@ elaborate' term =
       e' <- elaborate' e
       let (ls, es) = unzip les
       es' <- mapM elaborate' es
-      t' <- elaborate' t >>= reduceTerm
+      t' <- elaborate' t >>= Term.reduce
       case t' of
         _ :< TermEnum x -> do
           checkSwitchExaustiveness m x ls
@@ -254,7 +258,7 @@ elaborate' term =
     m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM elaborate' mSubject
       e' <- elaborate' e
-      t' <- elaborate' t >>= reduceTerm
+      t' <- elaborate' t >>= Term.reduce
       dataEnv <- readIORef dataEnvRef
       case t' of
         _ :< TermPiElim (_ :< TermVarGlobal name) _
@@ -281,9 +285,9 @@ elaborate' term =
       elemType' <- elaborate' elemType
       case elemType' of
         _ :< TermConst typeStr
-          | Just (PrimNumInt size) <- asPrimNumMaybe typeStr ->
+          | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArray (PrimNumInt size)
-          | Just (PrimNumFloat size) <- asPrimNumMaybe typeStr ->
+          | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArray (PrimNumFloat size)
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
@@ -292,9 +296,9 @@ elaborate' term =
       elems' <- mapM elaborate' elems
       case elemType' of
         _ :< TermConst typeStr
-          | Just (PrimNumInt size) <- asPrimNumMaybe typeStr ->
+          | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayIntro (PrimNumInt size) elems'
-          | Just (PrimNumFloat size) <- asPrimNumMaybe typeStr ->
+          | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayIntro (PrimNumFloat size) elems'
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
@@ -305,9 +309,9 @@ elaborate' term =
       index' <- elaborate' index
       case elemType' of
         _ :< TermConst typeStr
-          | Just (PrimNumInt size) <- asPrimNumMaybe typeStr ->
+          | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
-          | Just (PrimNumFloat size) <- asPrimNumMaybe typeStr ->
+          | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
           raiseError m $ "invalid element type:\n" <> toText (weaken elemType')

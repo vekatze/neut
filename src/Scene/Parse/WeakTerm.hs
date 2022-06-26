@@ -20,6 +20,8 @@ import Entity.Basic
 import Entity.Global
 import Entity.Log
 import Entity.LowType
+import Entity.Magic
+import Entity.PrimNum.FromText
 import Entity.WeakTerm
 import Scene.Parse.Core
 import Text.Megaparsec
@@ -345,11 +347,9 @@ lowTypeStruct = do
 lowTypeNumber :: Parser LowType
 lowTypeNumber = do
   sizeString <- symbol
-  case (asLowInt sizeString, asLowFloat sizeString) of
-    (Just size, _) ->
-      return $ LowTypePrimNum $ PrimNumInt size
-    (_, Just size) ->
-      return $ LowTypePrimNum $ PrimNumFloat size
+  case fromText sizeString of
+    Just primNum ->
+      return $ LowTypePrimNum primNum
     _ ->
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 

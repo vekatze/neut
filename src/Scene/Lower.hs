@@ -19,6 +19,11 @@ import Entity.Global
 import Entity.Log
 import Entity.LowComp
 import Entity.LowType
+import Entity.Magic
+import Entity.PrimNum
+import Entity.PrimNumSize
+import Entity.PrimNumSize.ToInt
+import Entity.PrimOp
 
 type Lower = WriterT Cont IO
 
@@ -56,7 +61,7 @@ lowerMain (defList, mainTerm) = do
   mainTerm'' <- lowerComp mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
-  castResult <- runLower $ lowerValueLetCast resultVar (LowTypePrimNum $ PrimNumInt 64)
+  castResult <- runLower $ lowerValueLetCast resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
 
@@ -111,7 +116,7 @@ lowerComp term =
           return LowCompUnreachable
         Just (defaultCase, caseList) -> do
           runLowerComp $ do
-            let t = LowTypePrimNum $ PrimNumInt 64
+            let t = LowTypePrimNum $ PrimNumInt $ IntSize 64
             castedValue <- lowerValueLetCast v t
             return $ LowCompSwitch (castedValue, t) defaultCase caseList
     CompArrayAccess elemType v index -> do
@@ -121,7 +126,7 @@ lowerComp term =
         indexVar <- lowerValueLetCast index i64
         arrayVar <- lowerValue v
         castedArrayVar <- cast arrayVar i64
-        startIndex <- load (LowTypePrimNum $ PrimNumInt 64) arrayVar
+        startIndex <- load (LowTypePrimNum $ PrimNumInt $ IntSize 64) arrayVar
         castedStartIndex <- cast startIndex i64
         realIndex <- arith "add" [indexVar, castedStartIndex]
         arrayOffset <- arith "mul" [elemSize, realIndex]
@@ -131,10 +136,10 @@ lowerComp term =
         load elemType' uncastedElemAddress
 
 i64 :: LowType
-i64 = LowTypePrimNum $ PrimNumInt 64
+i64 = LowTypePrimNum $ PrimNumInt $ IntSize 64
 
 i64p :: PrimNum
-i64p = PrimNumInt 64
+i64p = PrimNumInt $ IntSize 64
 
 load :: LowType -> LowValue -> Lower LowValue
 load elemType pointer = do
@@ -154,9 +159,9 @@ primNumToSizeInByte :: PrimNum -> Integer
 primNumToSizeInByte primNum =
   case primNum of
     PrimNumInt size ->
-      toInteger $ size `div` 8
+      toInteger $ intSizeToInt size `div` 8
     PrimNumFloat size ->
-      toInteger $ sizeAsInt size `div` 8
+      toInteger $ floatSizeToInt size `div` 8
 
 loadElements ::
   LowValue -> -- base pointer
@@ -230,7 +235,7 @@ cast v lowType = do
       extend $ return . LowCompLet result (LowOpPointerToInt v voidPtr lowType)
     LowTypePrimNum (PrimNumFloat size) -> do
       let floatType = LowTypePrimNum $ PrimNumFloat size
-      let intType = LowTypePrimNum $ PrimNumInt $ sizeAsInt size
+      let intType = LowTypePrimNum $ PrimNumInt $ IntSize $ floatSizeToInt size
       (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
       extend $
         return
@@ -248,7 +253,7 @@ uncast castedValue lowType = do
       extend $ return . LowCompLet result (LowOpIntToPointer castedValue lowType voidPtr)
     LowTypePrimNum (PrimNumFloat i) -> do
       let floatType = LowTypePrimNum $ PrimNumFloat i
-      let intType = LowTypePrimNum $ PrimNumInt $ sizeAsInt i
+      let intType = LowTypePrimNum $ PrimNumInt $ IntSize $ floatSizeToInt i
       (tmp, tmpVar) <- liftIO $ newValueLocal "tmp"
       extend $
         return
@@ -287,7 +292,7 @@ lowerValue v =
       uncast (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
     ValueEnumIntro l -> do
       i <- liftIO $ toInteger <$> enumValueToInteger l
-      uncast (LowValueInt i) $ LowTypePrimNum $ PrimNumInt 64
+      uncast (LowValueInt i) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
       let elemType' = LowTypePrimNum elemType
@@ -313,7 +318,7 @@ malloc size = do
 
 getElemPtr :: LowValue -> LowType -> [Integer] -> Lower LowValue
 getElemPtr value valueType indexList = do
-  let indexList' = map (\i -> (LowValueInt i, LowTypePrimNum $ PrimNumInt 32)) indexList
+  let indexList' = map (\i -> (LowValueInt i, LowTypePrimNum $ PrimNumInt $ IntSize 32)) indexList
   reflect $ LowOpGetElementPtr (value, valueType) indexList'
 
 reflect :: LowOp -> Lower LowValue

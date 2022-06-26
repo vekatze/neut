@@ -16,13 +16,23 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
 import Entity.Comp
+import Entity.Comp.FreeVars
 import Entity.Comp.Reduce
+import Entity.Comp.Subst
 import Entity.Global
 import Entity.Log
 import Entity.LowType
+import Entity.Magic
 import Entity.Namespace
+import Entity.PrimNum
+import qualified Entity.PrimNum.FromText as PrimNum
+import Entity.PrimNum.ToText
+import Entity.PrimNumSize
+import Entity.PrimOp
+import qualified Entity.PrimOp.FromText as PrimOp
 import Entity.Stmt
 import Entity.Term
+import Entity.Term.FromPrimNum
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
@@ -32,7 +42,7 @@ clarifyMain mainName defList = do
   _ <- returnImmediateS4
   _ <- returnClosureS4
   defList' <- clarifyDefList defList
-  mainTerm <- reduceComp $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
+  mainTerm <- reduce $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
   return (defList', mainTerm)
 
 clarifyOther :: [Stmt] -> IO [CompDef]
@@ -48,7 +58,7 @@ clarifyDefList defList = do
   modifyIORef' compDefEnvRef $ Map.union compDefEnv
   mapM_ register defList'
   defList'' <- forM defList' $ \(x, (opacity, args, e)) -> do
-    e' <- reduceComp e
+    e' <- reduce e
     return (wrapWithQuote x, (opacity, args, e'))
   return $ defList'' ++ newDefEnv
 
@@ -62,13 +72,13 @@ clarifyDef stmt =
     StmtDefine opacity _ f _ xts _ e -> do
       e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
-      e'' <- linearize xts' e' >>= reduceComp
+      e'' <- linearize xts' e' >>= reduce
       return (f, (opacity, map fst xts', e''))
     StmtDefineResource m name discarder copier -> do
       switchValue <- newIdentFromText "switchValue"
       value <- newIdentFromText "value"
-      discarder' <- clarifyTerm IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduceComp
-      copier' <- clarifyTerm IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduceComp
+      discarder' <- clarifyTerm IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduce
+      copier' <- clarifyTerm IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduce
       return
         ( name,
           ( OpacityTransparent,
@@ -174,7 +184,7 @@ clarifyTerm tenv term =
       e' <- clarifyTerm (IntMap.insert (asInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
     _ :< TermArray elemType -> do
-      let constName = "unsafe-" <> showPrimNum elemType <> "-array-internal"
+      let constName = "unsafe-" <> toText elemType <> "-array-internal"
       return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
     _ :< TermArrayIntro elemType elems -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) elems
@@ -188,11 +198,11 @@ clarifyTerm tenv term =
         bindLet [(arrayVarName, array'), (indexVarName, index')] $
           CompArrayAccess elemType arrayVar indexVar
     m :< TermText ->
-      clarifyTerm tenv $ m :< TermArray (PrimNumInt 8)
+      clarifyTerm tenv $ m :< TermArray (PrimNumInt $ IntSize 8)
     m :< TermTextIntro text -> do
       let i8s = encode $ T.unpack text
-      let i8s' = map (\x -> m :< TermInt 8 (toInteger x)) i8s
-      clarifyTerm tenv $ m :< TermArrayIntro (PrimNumInt 8) i8s'
+      let i8s' = map (\x -> m :< TermInt (IntSize 8) (toInteger x)) i8s
+      clarifyTerm tenv $ m :< TermArrayIntro (PrimNumInt (IntSize 8)) i8s'
     _ :< TermCell {} -> do
       returnCellS4
     _ :< TermCellIntro contentType content -> do
@@ -221,13 +231,13 @@ clarifyTerm tenv term =
         bindLet [(cellVarName, cell'), (newValueVarName, newValue')] $
           CompSigmaElim True [typeVarName, oldValueVarName] cellVar $
             CompUpElim placeHolder discardOldContent $
-              CompUpElim addrVarName (add cellVar (ValueInt 64 8)) $
+              CompUpElim addrVarName (add cellVar (ValueInt (IntSize 64) 8)) $
                 CompPrimitive $
                   PrimitiveMagic (MagicStore voidPtr addrVar newValueVar)
 
 add :: Value -> Value -> Comp
 add v1 v2 = do
-  let i64 = PrimNumInt 64
+  let i64 = PrimNumInt (IntSize 64)
   CompPrimitive $ PrimitivePrimOp (PrimOp "add" [i64, i64] i64) [v1, v2]
 
 clarifyMagic :: TypeEnv -> Magic Term -> IO Comp
@@ -273,7 +283,7 @@ clarifyLambda tenv kind mxts e fvs = do
   e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
   case kind of
     LamKindFix (_, x, _)
-      | S.member x (varComp e') ->
+      | S.member x (freeVars e') ->
         returnClosure tenv OpacityOpaque kind fvs mxts e'
       | otherwise ->
         returnClosure tenv OpacityTransparent LamKindNormal fvs mxts e'
@@ -325,16 +335,16 @@ nubFreeVariables =
 
 clarifyConst :: TypeEnv -> Hint -> T.Text -> IO Comp
 clarifyConst tenv m constName
-  | Just op <- asPrimOp constName =
+  | Just op <- PrimOp.fromText constName =
     clarifyPrimOp tenv op m
-  | Just _ <- asPrimNumMaybe constName =
+  | Just _ <- PrimNum.fromText constName =
     returnImmediateS4
   | otherwise = do
     raiseCritical m $ "undefined constant: " <> constName
 
 clarifyPrimOp :: TypeEnv -> PrimOp -> Hint -> IO Comp
 clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
-  let argTypeList = map (primNumToType m) domList
+  let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- unzip <$> mapM (const (newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   returnClosure tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)
@@ -363,11 +373,11 @@ returnClosure tenv isReducible kind fvs xts e = do
     LamKindCons _ consName consNumber _ -> do
       let consName' = getLamConsName consName
       registerIfNecessary consName' isReducible True xts'' fvs'' e
-      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt 64 consNumber]
+      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) consNumber]
     LamKindFix (_, name, _) -> do
       let name' = asText' name
       let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name')]
-      e' <- substComp (IntMap.fromList [(asInt name, cls)]) IntMap.empty e
+      e' <- subst (IntMap.fromList [(asInt name, cls)]) IntMap.empty e
       registerIfNecessary name' OpacityOpaque False xts'' fvs'' e'
       return $ CompUpIntro cls
 
@@ -385,10 +395,10 @@ registerIfNecessary name isReducible isNoetic xts1 xts2 e = do
     e' <- linearize (xts2 ++ xts1) e
     (envVarName, envVar) <- newValueVarLocalWith "env"
     let args = map fst xts1 ++ [envVarName]
-    body <- reduceComp $ CompSigmaElim False (map fst xts2) envVar e'
+    body <- reduce $ CompSigmaElim False (map fst xts2) envVar e'
     insDefEnv (wrapWithQuote name) isReducible args body
     when isNoetic $ do
-      bodyNoetic <- reduceComp $ CompSigmaElim True (map fst xts2) envVar e'
+      bodyNoetic <- reduce $ CompSigmaElim True (map fst xts2) envVar e'
       insDefEnv (wrapWithQuote $ name <> ";noetic") isReducible args bodyNoetic
 
 callClosure :: Comp -> [(Ident, Comp, Value)] -> IO Comp

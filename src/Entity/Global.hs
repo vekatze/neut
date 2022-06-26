@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Basic
 import Entity.Comp
+import Entity.Constraint
 import Entity.Log
 import Entity.LowComp
 import Entity.LowType

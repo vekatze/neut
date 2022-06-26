@@ -10,6 +10,7 @@ import qualified Data.Set as S
 import Entity.Basic
 import Entity.Global
 import Entity.LowComp
+import Entity.LowComp.Subst
 import Entity.LowType
 
 type SizeMap =
