@@ -27,21 +27,11 @@ parseDefineEnum = do
   name <- var >>= liftIO . attachSectionPrefix . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
   currentGlobalLocator <- liftIO $ readIORef currentGlobalLocatorRef
-  let itemList' = arrangeEnumItemList currentGlobalLocator 0 itemList
+  let itemList' = attachPrefix currentGlobalLocator $ setDiscriminant 0 itemList
   unless (isLinear (map snd itemList')) $
     liftIO $ raiseError m "found a collision of discriminant"
   liftIO $ insEnumEnv m name itemList'
   return (m, name, itemList')
-
-arrangeEnumItemList :: T.Text -> Int -> [(T.Text, Maybe Int)] -> [(T.Text, Int)]
-arrangeEnumItemList currentGlobalLocator currentValue clauseList =
-  case clauseList of
-    [] ->
-      []
-    (item, Nothing) : rest ->
-      (currentGlobalLocator <> nsSep <> item, currentValue) : arrangeEnumItemList currentGlobalLocator (currentValue + 1) rest
-    (item, Just v) : rest ->
-      (currentGlobalLocator <> nsSep <> item, v) : arrangeEnumItemList currentGlobalLocator (v + 1) rest
 
 parseDefineEnumClause :: Parser (T.Text, Maybe Int)
 parseDefineEnumClause = do
@@ -62,13 +52,6 @@ parseDefineEnumClauseWithoutDiscriminant = do
   item <- snd <$> var
   return (item, Nothing)
 
-insEnumEnv' :: T.Text -> [(T.Text, Int)] -> IO ()
-insEnumEnv' name xis = do
-  let (xs, is) = unzip xis
-  let rev = Map.fromList $ zip xs (zip (repeat name) is)
-  modifyIORef' enumEnvRef $ Map.insert name xis
-  modifyIORef' revEnumEnvRef $ Map.union rev
-
 insEnumEnv :: Hint -> T.Text -> [(T.Text, Int)] -> IO ()
 insEnumEnv m name xis = do
   enumEnv <- readIORef enumEnvRef
@@ -78,6 +61,13 @@ insEnumEnv m name xis = do
       raiseError m $ "the constant `" <> x <> "` is already defined [ENUM]"
     _ ->
       insEnumEnv' name xis
+
+insEnumEnv' :: T.Text -> [(T.Text, Int)] -> IO ()
+insEnumEnv' name xis = do
+  let (xs, is) = unzip xis
+  let rev = Map.fromList $ zip xs (zip (repeat name) is)
+  modifyIORef' enumEnvRef $ Map.insert name xis
+  modifyIORef' revEnumEnvRef $ Map.union rev
 
 {-# INLINE isLinear #-}
 isLinear :: [Int] -> Bool
@@ -94,3 +84,17 @@ isLinear' found input =
         False
       | otherwise ->
         isLinear' (S.insert x found) xs
+
+setDiscriminant :: Int -> [(a, Maybe Int)] -> [(a, Int)]
+setDiscriminant discriminant clauseList =
+  case clauseList of
+    [] ->
+      []
+    (item, Nothing) : rest ->
+      (item, discriminant) : setDiscriminant (discriminant + 1) rest
+    (item, Just value) : rest ->
+      (item, value) : setDiscriminant (value + 1) rest
+
+attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]
+attachPrefix prefix =
+  map (\(name, v) -> (prefix <> nsSep <> name, v))
