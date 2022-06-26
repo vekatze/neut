@@ -1,0 +1,109 @@
+{-# LANGUAGE DeriveGeneric #-}
+
+module Entity.Stmt where
+
+import Control.Comonad.Cofree (Cofree ((:<)))
+import Data.Binary (Binary, decodeFileOrFail, encodeFile)
+import qualified Data.Set as S
+import qualified Data.Text as T
+import Entity.Basic (BinderF, Hint, Opacity (OpacityOpaque))
+import Entity.Global (hasCacheSetRef, topNameSetRef)
+import Entity.Source (Source (sourceFilePath), getSourceCachePath)
+import Entity.Term (Term, TermF (..))
+import Entity.WeakTerm (WeakTerm)
+import GHC.Generics (Generic)
+import GHC.IORef (readIORef)
+import Path (Abs, File, Path, parent, toFilePath)
+import Path.IO (doesFileExist, ensureDir, removeFile)
+
+type WeakProgram =
+  (Path Abs File, [WeakStmt])
+
+data WeakStmt
+  = WeakStmtDefine Opacity Hint T.Text Int [BinderF WeakTerm] WeakTerm WeakTerm
+  | WeakStmtDefineResource Hint T.Text WeakTerm WeakTerm
+  | WeakStmtSection Hint T.Text [WeakStmt]
+
+data QuasiStmt
+  = QuasiStmtDefine Opacity Hint T.Text Int [BinderF WeakTerm] WeakTerm WeakTerm
+  | QuasiStmtDefineResource Hint T.Text WeakTerm WeakTerm
+
+type Program =
+  (Source, [Stmt])
+
+data Stmt
+  = StmtDefine Opacity Hint T.Text Int [BinderF Term] Term Term
+  | StmtDefineResource Hint T.Text Term Term
+  deriving (Generic)
+
+instance Binary Stmt
+
+extractName :: Stmt -> T.Text
+extractName stmt = do
+  case stmt of
+    StmtDefine _ _ name _ _ _ _ ->
+      name
+    StmtDefineResource _ name _ _ ->
+      name
+
+type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
+
+data Cache = Cache
+  { cacheStmtList :: [Stmt],
+    cacheEnumInfo :: [EnumInfo]
+  }
+  deriving (Generic)
+
+instance Binary Cache
+
+compress :: Stmt -> Stmt
+compress stmt =
+  case stmt of
+    StmtDefine opacity m functionName impArgNum args codType _ ->
+      case opacity of
+        OpacityOpaque ->
+          StmtDefine opacity m functionName impArgNum args codType (m :< TermTau)
+        _ ->
+          stmt
+    StmtDefineResource {} ->
+      stmt
+
+isPublic :: S.Set T.Text -> Stmt -> Bool
+isPublic topNameSet stmt =
+  S.member (extractName stmt) topNameSet
+
+saveCache :: Program -> [EnumInfo] -> IO ()
+saveCache (source, stmtList) enumInfoList = do
+  b <- doesFreshCacheExist source
+  if b
+    then return ()
+    else do
+      topNameSet <- readIORef topNameSetRef
+      let stmtList' = map compress $ filter (isPublic topNameSet) stmtList
+      cachePath <- getSourceCachePath source
+      ensureDir $ parent cachePath
+      encodeFile (toFilePath cachePath) (stmtList', enumInfoList)
+
+loadCache :: Source -> IO (Maybe Cache)
+loadCache source = do
+  cachePath <- getSourceCachePath source
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return Nothing
+    else do
+      b <- doesFreshCacheExist source
+      if not b
+        then return Nothing
+        else do
+          dataOrErr <- decodeFileOrFail (toFilePath cachePath)
+          case dataOrErr of
+            Left _ -> do
+              removeFile cachePath
+              return Nothing
+            Right content ->
+              return $ Just content
+
+doesFreshCacheExist :: Source -> IO Bool
+doesFreshCacheExist source = do
+  hasCacheSet <- readIORef hasCacheSetRef
+  return $ S.member (sourceFilePath source) hasCacheSet

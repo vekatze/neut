@@ -1,21 +1,21 @@
 module Main (main) where
 
-import Command.Build (build, check, clean)
-import Command.Dependency (get, tidy)
-import Command.Init (initialize)
-import Command.Release (release)
+import Act.Build (build, check, clean)
+import Act.Dependency (get, tidy)
+import Act.Init (initialize)
+import Act.Release (release)
 import Control.Exception.Safe (try)
 import Control.Monad (void)
-import Data.Basic (Alias, URL (..))
-import Data.Global
+import Data.IORef (writeIORef)
+import qualified Data.Text as T
+import Data.Version (showVersion)
+import Entity.Basic (Alias, URL (..))
+import Entity.Global
   ( endOfEntryRef,
     outputLog,
     shouldColorizeRef,
   )
-import Data.IORef (writeIORef)
-import Data.Log (Error (Error))
-import qualified Data.Text as T
-import Data.Version (showVersion)
+import Entity.Log (Error (Error))
 import Options.Applicative
   ( Parser,
     argument,
@@ -35,8 +35,8 @@ import Options.Applicative
     subparser,
     value,
   )
-import Parse.Module (initializeMainModule)
 import Paths_neut (version)
+import Scene.Parse.Module (initializeMainModule)
 import System.Exit (ExitCode (ExitFailure), exitWith)
 
 type Target =
