@@ -3,8 +3,8 @@ module Entity.Comp where
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic (CompEnumCase, Ident, Opacity)
-import Entity.LowType (FloatSize, IntSize, Magic, PrimNum, PrimOp)
+import Entity.Basic
+import Entity.LowType
 
 data Value
   = ValueVarLocal Ident

@@ -10,60 +10,19 @@ module Scene.Parse.WeakTerm
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad.IO.Class (MonadIO (liftIO))
-import Data.IORef (readIORef)
-import Data.List (foldl')
+import Control.Comonad.Cofree
+import Control.Monad.IO.Class
+import Data.IORef
+import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    EnumCase,
-    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
-    Hint,
-    Ident,
-    LamKindF (LamKindFix, LamKindNormal),
-    PatternF,
-    asIdent,
-  )
-import Entity.Global (constBoolFalse, constBoolTrue, constTop, definiteSep, newAster, newCount, newIdentFromText, outputError, targetArchRef, targetOSRef, targetPlatformRef)
-import Entity.Log (raiseError)
+import Entity.Global
+import Entity.Log
 import Entity.LowType
-  ( LowType (..),
-    Magic (..),
-    PrimNum (PrimNumFloat, PrimNumInt),
-    asLowFloat,
-    asLowInt,
-  )
 import Entity.WeakTerm
-  ( DefInfo,
-    TopDefInfo,
-    WeakTerm,
-    WeakTermF (..),
-    metaOf,
-  )
 import Scene.Parse.Core
-  ( Parser,
-    argList,
-    asBlock,
-    asLabel,
-    asTokens,
-    betweenBracket,
-    betweenParen,
-    currentHint,
-    delimiter,
-    doBlock,
-    float,
-    impArgList,
-    integer,
-    keyword,
-    manyList,
-    string,
-    symbol,
-    var,
-    withBlock,
-  )
-import Text.Megaparsec (choice, failure, many, manyTill, sepBy, try, (<|>))
+import Text.Megaparsec
 
 --
 -- parser for WeakTerm
@@ -309,9 +268,9 @@ weakTermMagic = do
     ]
 
 weakTermMagicBase :: T.Text -> Parser WeakTerm -> Parser WeakTerm
-weakTermMagicBase k p = do
+weakTermMagicBase k parser = do
   keyword k
-  betweenParen p
+  betweenParen parser
 
 weakTermMagicCast :: Hint -> Parser WeakTerm
 weakTermMagicCast m = do

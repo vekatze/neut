@@ -6,18 +6,12 @@ module Act.Build
   )
 where
 
-import Control.Monad (forM_, unless, void, when)
+import Control.Monad
 import qualified Data.ByteString.Lazy as L
-import Data.Foldable (toList)
+import Data.Foldable
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
-  ( IORef,
-    modifyIORef',
-    newIORef,
-    readIORef,
-  )
-import Data.List (foldl')
-import Data.Maybe (fromMaybe)
+import Data.Maybe
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -27,44 +21,25 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Basic (OutputKind (..), newHint)
-import Entity.Global (definiteSep, getLibraryDirPath, getMainFilePath, globalEnumEnv, hasCacheSetRef, hasObjectSetRef, outputLog, setMainFilePath, sourceAliasMapRef)
-import Entity.Log (raiseError, raiseError')
-import Entity.Module (Module (moduleLocation, moduleTarget), getArtifactDir, getExecutableDir, getMainModule, getSourceDir, getTargetDir, getTargetFilePath)
-import Entity.Source (Source (Source, sourceModule), getLocator, getRelPathFromSourceDir, getSourceCachePath, isMainFile, sourceFilePath)
-import GHC.IO.Handle (hClose)
+import Entity.Basic
+import Entity.Global
+import Entity.Log
+import Entity.Module
+import Entity.Source
+import GHC.IO.Handle
 import Path
-  ( Abs,
-    File,
-    Path,
-    addExtension,
-    isProperPrefixOf,
-    parent,
-    splitExtension,
-    toFilePath,
-    (</>),
-  )
-import Path.IO (doesDirExist, doesFileExist, ensureDir, getModificationTime, removeDirRecur, resolveFile, resolveFile')
-import Scene.Clarify (clarifyMain, clarifyOther)
-import Scene.Elaborate (elaborateMain, elaborateOther)
-import Scene.Emit (emitMain, emitOther)
-import Scene.Lower (lowerMain, lowerOther)
-import Scene.Parse (parseMain, parseOther)
+import Path.IO
+import Scene.Clarify
+import Scene.Elaborate
+import Scene.Emit
+import Scene.Lower
+import Scene.Parse
 import Scene.Parse.Core
-import Scene.Parse.Enum (insEnumEnv')
-import Scene.Parse.Import (parseImportSequence)
-import System.Exit (ExitCode (ExitFailure, ExitSuccess), exitWith)
-import System.IO (Handle)
-import System.IO.Unsafe (unsafePerformIO)
+import Scene.Parse.Enum
+import Scene.Parse.Import
+import System.Exit
+import System.IO.Unsafe
 import System.Process
-  ( CreateProcess (std_in),
-    StdStream (CreatePipe),
-    createProcess,
-    proc,
-    waitForProcess,
-    withCreateProcess,
-  )
-import System.Process.Internals (std_err)
 
 data VisitInfo
   = VisitInfoActive
@@ -217,7 +192,7 @@ sourceToOutputPath kind source = do
   let artifactDir = getArtifactDir $ sourceModule source
   relPath <- getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- splitExtension relPath
-  attachExtension (artifactDir </> relPathWithoutExtension) kind
+  addExtensionAlongKind (artifactDir </> relPathWithoutExtension) kind
 
 getMainSource :: Path Abs File -> IO Source
 getMainSource mainSourceFilePath = do
@@ -364,8 +339,8 @@ getChildren currentSource = do
       modifyIORef' sourceAliasMapRef $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList
 
-attachExtension :: Path Abs File -> OutputKind -> IO (Path Abs File)
-attachExtension file kind =
+addExtensionAlongKind :: Path Abs File -> OutputKind -> IO (Path Abs File)
+addExtensionAlongKind file kind =
   case kind of
     OutputKindLLVM -> do
       addExtension ".ll" file

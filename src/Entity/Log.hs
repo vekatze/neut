@@ -1,15 +1,9 @@
 module Entity.Log where
 
-import Control.Exception.Safe (Exception, MonadThrow, throw)
+import Control.Exception.Safe
 import qualified Data.Text as T
-import Entity.Basic (Hint, PosInfo, getPosInfo)
+import Entity.Basic
 import System.Console.ANSI
-  ( Color (Blue, Red, Yellow),
-    ColorIntensity (Vivid),
-    ConsoleIntensity (BoldIntensity),
-    ConsoleLayer (Foreground),
-    SGR (SetColor, SetConsoleIntensity),
-  )
 
 data LogLevel
   = LogLevelNote

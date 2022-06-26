@@ -1,29 +1,15 @@
 module Act.Release (release) where
 
-import Control.Monad (when)
+import Control.Monad
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Log (raiseError')
-import Entity.Module (Module (moduleExtraContents, moduleLocation), SomePath, getMainModule, getReleaseDir, getSourceDir)
-import GHC.IO.Exception (ExitCode (..))
+import Entity.Log
+import Entity.Module
+import GHC.IO.Exception
 import Path
-  ( Abs,
-    Dir,
-    File,
-    Path,
-    parent,
-    stripProperPrefix,
-    toFilePath,
-  )
-import Path.IO (doesFileExist, ensureDir, resolveFile)
-import System.IO (Handle)
+import Path.IO
+import System.IO
 import System.Process
-  ( CreateProcess (std_err),
-    StdStream (CreatePipe),
-    createProcess,
-    proc,
-    waitForProcess,
-  )
 
 release :: T.Text -> IO ()
 release identifier = do

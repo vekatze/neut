@@ -2,16 +2,16 @@
 
 module Entity.Module where
 
-import Control.Comonad.Cofree (Cofree (..))
+import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
+import Data.IORef
 import qualified Data.Text as T
-import Entity.Basic (Alias, Checksum (..), URL (..))
-import Entity.Entity (EntityF (EntityDictionary, EntityList, EntityString), ppEntityTopLevel)
-import Entity.Log (raiseCritical', raiseError')
-import Path (Abs, Dir, File, Path, Rel, mkRelDir, mkRelFile, parent, toFilePath, (</>))
-import Path.IO (doesFileExist)
-import System.IO.Unsafe (unsafePerformIO)
+import Entity.Basic
+import Entity.Entity
+import Entity.Log
+import Path
+import Path.IO
+import System.IO.Unsafe
 
 type SomePath =
   Either (Path Abs Dir) (Path Abs File)

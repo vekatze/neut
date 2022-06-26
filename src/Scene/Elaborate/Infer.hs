@@ -8,59 +8,20 @@ module Scene.Elaborate.Infer
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM, forM_, (>=>))
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    EnumCase,
-    EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
-    Hint,
-    Ident (..),
-    LamKindF (LamKindCons, LamKindFix),
-    PatternF,
-    asInt,
-    asText',
-  )
 import Entity.Global
-  ( constBool,
-    constTop,
-    constraintListRef,
-    holeEnvRef,
-    impArgEnvRef,
-    newAster,
-    newIdentFromText,
-    revEnumEnvRef,
-    termTypeEnvRef,
-    weakTypeEnvRef,
-  )
-import Entity.Log (raiseCritical, raiseError)
+import Entity.Log
 import Entity.LowType
-  ( Magic (MagicCast),
-    PrimOp (..),
-    asLowFloat,
-    asLowInt,
-    asPrimNumMaybe,
-    asPrimOp,
-    cmpOpSet,
-  )
 import Entity.Term
-  ( Term,
-    TermF (TermEnum, TermPi, TermTau),
-    primNumToType,
-    weaken,
-  )
 import Entity.WeakTerm
-  ( SubstWeakTerm,
-    WeakTerm,
-    WeakTermF (..),
-    metaOf,
-  )
-import Entity.WeakTerm.Reduce (substWeakTerm)
+import Entity.WeakTerm.Reduce
 
 type Context = [BinderF WeakTerm]
 

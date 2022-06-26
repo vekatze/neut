@@ -4,79 +4,28 @@ module Scene.Clarify
   )
 where
 
-import Codec.Binary.UTF8.String (encode)
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM, unless, when, (>=>))
+import Codec.Binary.UTF8.String
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef, writeIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
-import Data.List (nubBy)
-import Data.Maybe (catMaybes, isJust, maybeToList)
+import Data.List
+import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    CompEnumCase,
-    EnumCase,
-    EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
-    Hint,
-    Ident,
-    LamKindF (..),
-    Opacity (..),
-    PatternF,
-    asInt,
-    asText',
-    fromLamKind,
-  )
 import Entity.Comp
-  ( Comp (..),
-    CompDef,
-    Primitive (PrimitiveMagic, PrimitivePrimOp),
-    Value (..),
-    varComp,
-  )
-import Entity.Comp.Reduce (reduceComp, substComp)
+import Entity.Comp.Reduce
 import Entity.Global
-  ( compDefEnvRef,
-    newCount,
-    newIdentFromText,
-    newValueVarLocalWith,
-    resourceTypeSetRef,
-  )
-import Entity.Log (raiseCritical)
+import Entity.Log
 import Entity.LowType
-  ( Magic (..),
-    PrimNum (PrimNumInt),
-    PrimOp (..),
-    asPrimNumMaybe,
-    asPrimOp,
-    showPrimNum,
-    voidPtr,
-  )
-import Entity.Namespace (attachSectionPrefix)
-import Entity.Stmt (Stmt (..))
+import Entity.Namespace
+import Entity.Stmt
 import Entity.Term
-  ( Term,
-    TermF (..),
-    TypeEnv,
-    primNumToType,
-  )
-import Scene.Clarify.Linearize (linearize)
+import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
-  ( closureEnvS4,
-    immediateS4,
-    returnCellS4,
-    returnClosureS4,
-    returnImmediateS4,
-  )
 import Scene.Clarify.Utility
-  ( bindLet,
-    insDefEnv,
-    switch,
-    toAffineApp,
-    toRelevantApp,
-    wrapWithQuote,
-  )
 
 clarifyMain :: T.Text -> [Stmt] -> IO ([CompDef], Comp)
 clarifyMain mainName defList = do

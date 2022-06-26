@@ -6,47 +6,19 @@ module Scene.Lower
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM_, unless, (<=<))
+import Control.Comonad.Cofree
+import Control.Monad
 import Control.Monad.Writer.Lazy
-  ( MonadIO (liftIO),
-    MonadWriter (tell),
-    WriterT (runWriterT),
-  )
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef, writeIORef)
+import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic (CompEnumCase, EnumCaseF (..), Ident (..))
-import Entity.Comp (Comp (..), CompDef, Primitive (..), Value (..))
+import Entity.Basic
+import Entity.Comp
 import Entity.Global
-  ( cartCellName,
-    cartClsName,
-    cartImmName,
-    compDefEnvRef,
-    initialLowDeclEnv,
-    lowDeclEnvRef,
-    lowDefEnvRef,
-    lowNameSetRef,
-    newCount,
-    newIdentFromText,
-    newValueVarLocalWith,
-    revEnumEnvRef,
-  )
-import Entity.Log (raiseCritical')
+import Entity.Log
 import Entity.LowComp
-  ( LowComp (..),
-    LowOp (..),
-    LowValue (..),
-  )
 import Entity.LowType
-  ( LowType (..),
-    Magic (..),
-    PrimNum (..),
-    PrimOp (..),
-    sizeAsInt,
-    voidPtr,
-  )
 
 type Lower = WriterT Cont IO
 

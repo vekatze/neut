@@ -3,28 +3,14 @@ module Entity.LowComp.Reduce
   )
 where
 
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Set as S
-import Entity.Basic (asInt)
+import Entity.Basic
 import Entity.Global
-  ( newIdentFromIdent,
-    nopFreeSetRef,
-    shouldCancelAllocRef,
-  )
 import Entity.LowComp
-  ( LowComp (..),
-    LowOp (LowOpAlloc, LowOpBitcast, LowOpFree),
-    LowValue (LowValueNull, LowValueVarLocal),
-    SizeInfo,
-    SubstLowComp,
-    substLowOp,
-    substLowValue,
-  )
 import Entity.LowType
-  ( LowType (LowTypeArray, LowTypePointer, LowTypeStruct),
-  )
 
 type SizeMap =
   Map.Map SizeInfo [(Int, LowValue)]

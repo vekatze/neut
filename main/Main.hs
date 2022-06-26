@@ -1,43 +1,21 @@
 module Main (main) where
 
-import Act.Build (build, check, clean)
-import Act.Dependency (get, tidy)
-import Act.Init (initialize)
-import Act.Release (release)
-import Control.Exception.Safe (try)
-import Control.Monad (void)
-import Data.IORef (writeIORef)
+import Act.Build
+import Act.Dependency
+import Act.Init
+import Act.Release
+import Control.Exception.Safe
+import Control.Monad
+import Data.IORef
 import qualified Data.Text as T
-import Data.Version (showVersion)
-import Entity.Basic (Alias, URL (..))
+import Data.Version
+import Entity.Basic
 import Entity.Global
-  ( endOfEntryRef,
-    outputLog,
-    shouldColorizeRef,
-  )
-import Entity.Log (Error (Error))
+import Entity.Log
 import Options.Applicative
-  ( Parser,
-    argument,
-    command,
-    execParser,
-    flag,
-    fullDesc,
-    help,
-    helper,
-    info,
-    long,
-    metavar,
-    optional,
-    progDesc,
-    str,
-    strOption,
-    subparser,
-    value,
-  )
-import Paths_neut (version)
-import Scene.Parse.Module (initializeMainModule)
-import System.Exit (ExitCode (ExitFailure), exitWith)
+import Paths_neut
+import Scene.Parse.Module
+import System.Exit
 
 type Target =
   String
@@ -59,7 +37,7 @@ data Command
   | Get Alias URL
   | Tidy
   | Init T.Text
-  | Version
+  | ShowVersion
 
 main :: IO ()
 main =
@@ -186,7 +164,7 @@ parseInitOpt =
 
 parseVersionOpt :: Parser Command
 parseVersionOpt =
-  pure Version
+  pure ShowVersion
 
 parseCheckOpt :: Parser Command
 parseCheckOpt =
@@ -250,7 +228,7 @@ runCommand cmd = do
       runAction $ initializeMainModule >> get alias url
     Tidy -> do
       runAction $ initializeMainModule >> tidy
-    Version ->
+    ShowVersion ->
       putStrLn $ showVersion version
 
 runAction :: IO a -> IO a

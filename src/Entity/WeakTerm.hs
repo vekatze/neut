@@ -3,26 +3,16 @@
 
 module Entity.WeakTerm where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Data.Binary (Binary)
+import Control.Comonad.Cofree
+import Data.Binary
 import qualified Data.IntMap as IntMap
-import Data.Maybe (catMaybes, maybeToList)
+import Data.Maybe
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    EnumCase,
-    EnumCaseF (..),
-    Hint,
-    Ident (..),
-    LamKindF (LamKindCons, LamKindFix),
-    PatternF,
-    asText,
-    fromLamKind,
-  )
-import Entity.LowType (Magic, showIntSize)
-import GHC.Generics (Generic)
+import Entity.LowType
+import GHC.Generics
 
 data WeakTermF a
   = WeakTermTau

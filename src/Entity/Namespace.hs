@@ -1,32 +1,19 @@
 module Entity.Namespace where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad ((>=>))
-import Data.Containers.ListUtils (nubOrd)
+import Control.Comonad.Cofree
+import Control.Monad
+import Data.Containers.ListUtils
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef, writeIORef)
+import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Internal as Text
-import Data.Text.Internal.Search (indices)
-import Entity.Basic (EnumCase, EnumCaseF (EnumCaseLabel), Hint, Ident)
-import Entity.Global (currentGlobalLocatorRef, currentLocalLocatorListRef, definiteSep, globalLocatorListRef, localLocatorListRef, locatorAliasMapRef, moduleAliasMapRef, nsSep)
-import Entity.Log (raiseError)
+import Data.Text.Internal.Search
+import Entity.Basic
+import Entity.Global
+import Entity.Log
 import Entity.LowType
-  ( PrimNum (..),
-    asPrimNumMaybe,
-    asPrimOp,
-  )
 import Entity.WeakTerm
-  ( WeakTerm,
-    WeakTermF
-      ( WeakTermConst,
-        WeakTermEnum,
-        WeakTermEnumIntro,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
-  )
 
 data Section
   = Section T.Text [T.Text]
@@ -159,15 +146,10 @@ takeAll predicate candidateList acc =
         Nothing ->
           takeAll predicate xs acc
 
-{-# INLINE asVar #-}
-asVar :: Hint -> Map.HashMap T.Text t -> T.Text -> (t -> f (Cofree f Hint)) -> Maybe (Cofree f Hint)
-asVar m nenv name f =
-  Map.lookup name nenv >>= \x -> return (m :< f x)
-
 {-# INLINE asWeakVar #-}
 asWeakVar :: Hint -> Map.HashMap T.Text Ident -> T.Text -> Maybe WeakTerm
 asWeakVar m nenv var =
-  asVar m nenv var WeakTermVar
+  Map.lookup var nenv >>= \x -> return (m :< WeakTermVar x)
 
 {-# INLINE asGlobalVar #-}
 asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> Maybe WeakTerm

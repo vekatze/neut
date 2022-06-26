@@ -4,45 +4,24 @@ module Scene.Emit
   )
 where
 
-import Control.Monad (forM)
+import Control.Monad
 import Data.ByteString.Builder
-  ( Builder,
-    doubleHexFixed,
-    intDec,
-    integerDec,
-  )
 import qualified Data.ByteString.Builder as L
 import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Lazy as HashMap
-import Data.IORef (readIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Entity.Basic (Ident (..))
+import Entity.Basic
 import Entity.Global
-  ( lowDeclEnvRef,
-    lowDefEnvRef,
-    newIdentFromText,
-    nopFreeSetRef,
-    targetPlatformRef,
-  )
-import Entity.Log (raiseCritical', raiseError')
-import Entity.LowComp (LowComp (..), LowOp (..), LowValue (..))
-import Entity.LowComp.Reduce (reduceLowComp)
+import Entity.Log
+import Entity.LowComp
+import Entity.LowComp.Reduce
 import Entity.LowType
-  ( FloatSize (FloatSize16, FloatSize32, FloatSize64),
-    LowType (..),
-    PrimNum (..),
-    PrimOp (PrimOp),
-    binaryOpSet,
-    cmpOpSet,
-    convOpSet,
-    unaryOpSet,
-    voidPtr,
-  )
-import Numeric.Half (Half)
+import Numeric.Half
 import qualified System.Info as System
 
 emitMain :: LowComp -> IO L.ByteString
@@ -208,12 +187,12 @@ emitLowOp llvmOp =
 
 emitUnaryOp :: PrimNum -> Builder -> LowValue -> IO Builder
 emitUnaryOp t inst d =
-  return $ unwordsL [inst, showPrimNum t, showLowValue d]
+  return $ unwordsL [inst, showPrimNumForEmit t, showLowValue d]
 
 emitBinaryOp :: PrimNum -> Builder -> LowValue -> LowValue -> IO Builder
 emitBinaryOp t inst d1 d2 =
   return $
-    unwordsL [inst, showPrimNum t, showLowValue d1 <> ",", showLowValue d2]
+    unwordsL [inst, showPrimNumForEmit t, showLowValue d1 <> ",", showLowValue d2]
 
 emitConvOp :: Builder -> LowValue -> LowType -> LowType -> IO Builder
 emitConvOp cast d dom cod =
@@ -315,7 +294,7 @@ showLowTypeAsIfNonPtr :: LowType -> Builder
 showLowTypeAsIfNonPtr lowType =
   case lowType of
     LowTypePrimNum primNum ->
-      showPrimNum primNum
+      showPrimNumForEmit primNum
     LowTypeStruct ts ->
       "{" <> showItems showLowType ts <> "}"
     LowTypeFunction ts t ->
@@ -343,7 +322,7 @@ showLowType :: LowType -> Builder
 showLowType lowType =
   case lowType of
     LowTypePrimNum primNum ->
-      showPrimNum primNum
+      showPrimNumForEmit primNum
     LowTypeStruct ts ->
       "{" <> showItems showLowType ts <> "}"
     LowTypeFunction ts t ->
@@ -354,8 +333,8 @@ showLowType lowType =
     LowTypePointer t ->
       showLowType t <> "*"
 
-showPrimNum :: PrimNum -> Builder
-showPrimNum lowType =
+showPrimNumForEmit :: PrimNum -> Builder
+showPrimNumForEmit lowType =
   case lowType of
     PrimNumInt i ->
       "i" <> intDec i

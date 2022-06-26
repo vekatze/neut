@@ -2,59 +2,26 @@
 
 module Entity.Global where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (when)
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
-  ( IORef,
-    atomicModifyIORef',
-    modifyIORef',
-    newIORef,
-    readIORef,
-  )
 import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Basic (AliasInfo, BinderF, Hint, Ident (..), Opacity, PosInfo, asText, getPosInfo, showPosInfo)
-import Entity.Comp (Comp, Value (ValueVarLocal))
+import Entity.Basic
+import Entity.Comp
 import Entity.Log
-  ( Log,
-    LogLevel (LogLevelFail, LogLevelPass),
-    logError,
-    logLevelToSGR,
-    logLevelToText,
-    logNote,
-    logNote',
-    logWarning,
-    raiseCritical',
-  )
-import Entity.LowComp (LowComp)
-import Entity.LowType (LowType, voidPtr)
+import Entity.LowComp
+import Entity.LowType
 import Entity.WeakTerm
-  ( Constraint,
-    SuspendedConstraintQueue,
-    WeakTerm,
-    WeakTermF (WeakTermAster),
-  )
 import Path
-  ( Abs,
-    Dir,
-    File,
-    Path,
-    Rel,
-    mkRelDir,
-    (</>),
-  )
-import Path.IO (XdgDirectory (XdgCache), ensureDir, getXdgDir)
+import Path.IO
 import System.Console.ANSI
-  ( ConsoleIntensity (BoldIntensity),
-    SGR (Reset, SetConsoleIntensity),
-    setSGR,
-  )
-import System.Exit (ExitCode (ExitFailure), exitWith)
-import System.IO.Unsafe (unsafePerformIO)
+import System.Exit
+import System.IO.Unsafe
 import qualified System.Info as System
 
 --

@@ -8,31 +8,14 @@ module Scene.Clarify.Sigma
   )
 where
 
-import Control.Monad (forM)
+import Control.Monad
 import qualified Data.Text as T
-import Entity.Basic (Ident)
+import Entity.Basic
 import Entity.Comp
-  ( Comp (CompSigmaElim, CompUpIntro),
-    Value (ValueSigmaIntro, ValueVarGlobal),
-  )
 import Entity.Global
-  ( cartCellName,
-    cartClsName,
-    cartImmName,
-    newCount,
-    newIdentFromText,
-    newValueVarLocalWith,
-  )
-import Entity.Namespace (attachSectionPrefix)
-import Scene.Clarify.Linearize (linearize)
+import Entity.Namespace
+import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
-  ( bindLet,
-    registerSwitcher,
-    toAffineApp,
-    toRelevantApp,
-    tryCache,
-    wrapWithQuote,
-  )
 
 returnImmediateS4 :: IO Comp
 returnImmediateS4 = do

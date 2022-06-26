@@ -1,22 +1,13 @@
 module Scene.Clarify.Utility where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (unless)
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef
 import qualified Data.Text as T
 import Entity.Basic
-  ( CompEnumCase,
-    EnumCaseF (EnumCaseDefault, EnumCaseInt),
-    Ident,
-    Opacity (OpacityTransparent),
-    asText,
-  )
 import Entity.Comp
-  ( Comp (CompEnumElim, CompPiElimDownElim, CompUpElim),
-    Value (ValueInt, ValueVarGlobal, ValueVarLocal),
-  )
-import Entity.Global (compDefEnvRef, newValueVarLocalWith)
+import Entity.Global
 
 toApp :: Integer -> Ident -> Comp -> IO Comp
 toApp switcher x t = do

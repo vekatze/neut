@@ -4,48 +4,24 @@ module Scene.Parse.Import
   )
 where
 
-import Control.Monad (unless, void)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad
+import Control.Monad.IO.Class
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
-import Data.List (uncons)
+import Data.IORef
+import Data.List
 import qualified Data.Text as T
-import Entity.Basic (AliasInfo (..), Checksum (Checksum), Hint)
+import Entity.Basic
 import Entity.Global
-  ( getCurrentFilePath,
-    getLibraryDirPath,
-    sourceFileExtension,
-  )
-import Entity.Log (raiseError)
+import Entity.Log
 import Entity.Module
-  ( Module (moduleDependency),
-    defaultModulePrefix,
-    findModuleFile,
-    getSourceDir,
-    moduleFile,
-  )
-import Entity.Source (Source (Source), sourceFilePath, sourceModule)
+import Entity.Source
 import Path
-  ( Abs,
-    Dir,
-    File,
-    Path,
-    parent,
-    (</>),
-  )
-import Path.IO (doesFileExist, resolveDir, resolveFile)
+import Path.IO
 import Scene.Parse.Core
-  ( Parser,
-    currentHint,
-    importBlock,
-    keyword,
-    manyList,
-    symbol,
-  )
 import qualified Scene.Parse.Module as Module
-import System.FilePath (pathSeparator)
-import System.IO.Unsafe (unsafePerformIO)
-import Text.Megaparsec (choice, try)
+import qualified System.FilePath as FP
+import System.IO.Unsafe
+import Text.Megaparsec
 
 type SourceSignature =
   (T.Text, [T.Text], T.Text)
@@ -194,7 +170,7 @@ moduleMapRef =
 
 sectionToPath :: [T.Text] -> FilePath
 sectionToPath sectionPath =
-  T.unpack $ T.intercalate (T.singleton pathSeparator) sectionPath <> "." <> sourceFileExtension
+  T.unpack $ T.intercalate (T.singleton FP.pathSeparator) sectionPath <> "." <> sourceFileExtension
 
 filePathToModuleFilePath :: Path Abs File -> IO (Path Abs File)
 filePathToModuleFilePath filePath = do

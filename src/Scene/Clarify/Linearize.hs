@@ -3,17 +3,13 @@ module Scene.Clarify.Linearize
   )
 where
 
-import Control.Monad (forM)
-import Data.IORef (readIORef, writeIORef)
-import Entity.Basic (Ident)
+import Control.Monad
+import Data.IORef
+import Entity.Basic
 import Entity.Comp
-  ( Comp (..),
-    Primitive (..),
-    Value (..),
-  )
-import Entity.Global (countRef, newIdentFromIdent, newIdentFromText)
-import Entity.LowType (Magic (..))
-import Scene.Clarify.Utility (toAffineApp, toRelevantApp)
+import Entity.Global
+import Entity.LowType
+import Scene.Clarify.Utility
 
 data Occurrence
   = OccurrenceNormal Ident

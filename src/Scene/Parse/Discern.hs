@@ -3,47 +3,17 @@ module Scene.Parse.Discern
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM)
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (readIORef)
+import Data.IORef
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    EnumCase,
-    EnumCaseF (EnumCaseLabel),
-    Ident (..),
-    LamKindF (LamKindCons, LamKindFix),
-    asText,
-  )
 import Entity.Global
-  ( enumEnvRef,
-    locatorAliasMapRef,
-    moduleAliasMapRef,
-    newIdentFromIdent,
-    p',
-    revEnumEnvRef,
-    topNameSetRef,
-  )
-import Entity.Log (raiseError)
+import Entity.Log
 import Entity.Namespace
-  ( asConstructor,
-    asEnum,
-    asEnumIntro,
-    asEnumLabel,
-    asGlobalVar,
-    asWeakConstant,
-    constructCandList,
-    popFromCurrentLocalLocator,
-    pushToCurrentLocalLocator,
-    resolveSymbol,
-    tryCand,
-  )
-import Entity.Stmt (QuasiStmt (..), WeakStmt (..))
+import Entity.Stmt
 import Entity.WeakTerm
-  ( WeakTerm,
-    WeakTermF (..),
-  )
 
 type NameEnv = Map.HashMap T.Text Ident
 

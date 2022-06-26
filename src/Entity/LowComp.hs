@@ -2,8 +2,8 @@ module Entity.LowComp where
 
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
-import Entity.Basic (Ident, asInt)
-import Entity.LowType (FloatSize, LowType, PrimOp)
+import Entity.Basic
+import Entity.LowType
 
 data LowValue
   = LowValueVarLocal Ident

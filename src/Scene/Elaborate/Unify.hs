@@ -5,46 +5,20 @@ module Scene.Elaborate.Unify
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Exception.Safe (throw)
-import Control.Monad (forM)
+import Control.Comonad.Cofree
+import Control.Exception.Safe
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    Hint,
-    Ident,
-    LamKindF (LamKindCons, LamKindFix, LamKindNormal),
-    Opacity (OpacityTransparent),
-    asInt,
-    getPosInfo,
-  )
 import Entity.Global
-  ( constraintListRef,
-    newIdentFromText,
-    substRef,
-    suspendedConstraintQueueRef,
-    termDefEnvRef,
-  )
-import Entity.Log (Error (Error), logError)
+import Entity.Log
 import Entity.WeakTerm
-  ( Constraint,
-    ConstraintKind (ConstraintKindDelta, ConstraintKindOther),
-    SubstWeakTerm,
-    SuspendedConstraint (SuspendedConstraint),
-    WeakTerm,
-    WeakTermF (..),
-    asVar,
-    asterWeakTerm,
-    metaOf,
-    toText,
-    varWeakTerm,
-  )
-import Entity.WeakTerm.Reduce (reduceWeakTerm, substWeakTerm)
+import Entity.WeakTerm.Reduce
 
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTerm])]

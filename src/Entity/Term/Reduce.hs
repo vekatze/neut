@@ -3,21 +3,12 @@ module Entity.Term.Reduce
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..), unwrap)
-import Control.Monad (forM)
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.IntMap as IntMap
 import Entity.Basic
-  ( BinderF,
-    EnumCaseF (EnumCaseDefault, EnumCaseLabel),
-    LamKindF (LamKindFix, LamKindNormal),
-    asInt,
-  )
-import Entity.Global (newIdentFromIdent)
+import Entity.Global
 import Entity.Term
-  ( SubstTerm,
-    Term,
-    TermF (..),
-  )
 
 -- reduce given term assuming its purity
 reduceTerm :: Term -> IO Term

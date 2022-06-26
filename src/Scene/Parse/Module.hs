@@ -4,14 +4,14 @@ module Scene.Parse.Module
   )
 where
 
-import Control.Monad (unless, (>=>))
+import Control.Monad
 import qualified Data.Text as T
-import Entity.Basic (Checksum (..), URL (..))
-import Entity.Entity (Entity, access, toDictionary, toList, toString)
-import Entity.Log (raiseError')
-import Entity.Module (Module (..), SomePath, findModuleFile, setMainModule)
-import Path (Abs, Dir, File, Path, Rel, parent, parseRelFile, stripProperPrefix, toFilePath)
-import Path.IO (doesDirExist, doesFileExist, getCurrentDir, resolveDir, resolveFile)
+import Entity.Basic
+import Entity.Entity
+import Entity.Log
+import Entity.Module
+import Path
+import Path.IO
 import qualified Scene.Parse.Entity as E
 
 parse :: Path Abs File -> IO Module

@@ -1,20 +1,14 @@
 module Act.Init (initialize) where
 
-import Control.Monad (forM_)
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Global (sourceFileExtension)
-import Entity.Log (raiseError')
+import Entity.Global
+import Entity.Log
 import Entity.Module
-  ( Module (..),
-    getReleaseDir,
-    getSourceDir,
-    moduleFile,
-    ppModule,
-  )
-import Path (parent, parseRelFile, toFilePath, (</>))
-import Path.IO (doesDirExist, ensureDir, getCurrentDir, resolveDir)
+import Path
+import Path.IO
 
 initialize :: T.Text -> IO ()
 initialize moduleName = do

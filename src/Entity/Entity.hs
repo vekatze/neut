@@ -13,13 +13,13 @@ module Entity.Entity
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
+import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as M
-import Data.Int (Int64)
-import Data.List (sortOn)
+import Data.Int
+import Data.List
 import qualified Data.Text as T
-import Entity.Basic (Hint)
-import Entity.Log (raiseError)
+import Entity.Basic
+import Entity.Log
 
 data EntityF a
   = EntityInt64 Int64

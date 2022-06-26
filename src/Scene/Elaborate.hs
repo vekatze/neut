@@ -4,61 +4,25 @@ module Scene.Elaborate
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM, forM_, unless, when)
+import Control.Comonad.Cofree
+import Control.Monad
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
-import Data.List (nub)
+import Data.List
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    EnumCase,
-    EnumCaseF (EnumCaseDefault),
-    Hint,
-    LamKindF (..),
-    PatternF,
-    asInt,
-    isOpaque,
-  )
 import Entity.Global
-  ( dataEnvRef,
-    enumEnvRef,
-    impArgEnvRef,
-    newIdentFromText,
-    note,
-    substRef,
-    termDefEnvRef,
-    termTypeEnvRef,
-  )
-import Entity.Log (raiseCritical, raiseError)
+import Entity.Log
 import Entity.LowType
-  ( PrimNum (..),
-    asPrimNumMaybe,
-  )
-import Entity.Source (Source)
+import Entity.Source
 import Entity.Stmt
-  ( EnumInfo,
-    QuasiStmt (..),
-    Stmt (..),
-    saveCache,
-  )
 import Entity.Term
-  ( Term,
-    TermF (..),
-    weaken,
-    weakenBinder,
-  )
-import Entity.Term.Reduce (reduceTerm)
+import Entity.Term.Reduce
 import Entity.WeakTerm
-  ( WeakTerm,
-    WeakTermF (..),
-    metaOf,
-    toText,
-  )
-import Entity.WeakTerm.Reduce (reduceWeakTerm, substWeakTerm)
-import Scene.Elaborate.Infer (arrangeBinder, infer, inferBinder, inferType, insConstraintEnv)
-import Scene.Elaborate.Unify (unify)
+import Entity.WeakTerm.Reduce
+import Scene.Elaborate.Infer
+import Scene.Elaborate.Unify
 
 elaborateMain :: T.Text -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
 elaborateMain mainFunctionName =

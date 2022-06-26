@@ -1,48 +1,21 @@
 module Scene.Parse.Core where
 
-import Control.Exception.Safe (throw)
-import Control.Monad (void)
-import Control.Monad.IO.Class (liftIO)
-import Data.List.NonEmpty (fromList, toList)
+import Control.Exception.Safe
+import Control.Monad
+import Control.Monad.IO.Class
+import Data.List.NonEmpty
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Void (Void)
 import Entity.Basic
-  ( Hint,
-    getPosInfo,
-    newHint,
-  )
-import Entity.Global (setCurrentFilePath)
-import Entity.Log (Error (..), logError)
-import Path (Abs, File, Path, toFilePath)
+import Entity.Global
+import Entity.Log
+import Path
 import Text.Megaparsec
-  ( ErrorItem (Tokens),
-    MonadParsec (notFollowedBy),
-    ParseErrorBundle (bundleErrors, bundlePosState),
-    ParsecT,
-    PosState (pstateSourcePos),
-    SourcePos (sourceColumn, sourceLine, sourceName),
-    between,
-    choice,
-    chunk,
-    errorOffset,
-    failure,
-    getSourcePos,
-    many,
-    manyTill,
-    parseErrorTextPretty,
-    runParserT,
-    satisfy,
-    sepBy,
-    takeWhile1P,
-    unPos,
-    (<?>),
-  )
-import Text.Megaparsec.Char (char, space1)
+import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
-import Text.Megaparsec.Error (attachSourcePos)
-import Text.Read (readMaybe)
+import qualified Text.Read as R
 
 type Parser = ParsecT Void T.Text IO
 
@@ -122,7 +95,7 @@ string = do
 integer :: Parser Integer
 integer = do
   s <- symbol
-  case readMaybe (T.unpack s) of
+  case R.readMaybe (T.unpack s) of
     Just value ->
       return value
     Nothing ->
@@ -131,7 +104,7 @@ integer = do
 float :: Parser Double
 float = do
   s <- symbol
-  case readMaybe (T.unpack s) of
+  case R.readMaybe (T.unpack s) of
     Just value ->
       return value
     Nothing ->

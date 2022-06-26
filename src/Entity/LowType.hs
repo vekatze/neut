@@ -2,10 +2,10 @@
 
 module Entity.LowType where
 
-import Data.Binary (Binary)
+import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
-import GHC.Generics (Generic)
+import qualified GHC.Generics as G
 import Text.Read (readMaybe)
 
 data LowType
@@ -14,14 +14,14 @@ data LowType
   | LowTypeArray Int LowType -- [n x LOWTYPE]
   | LowTypeStruct [LowType]
   | LowTypeFunction [LowType] LowType
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, G.Generic)
 
 instance Binary LowType
 
 data PrimNum
   = PrimNumInt IntSize
   | PrimNumFloat FloatSize
-  deriving (Show, Generic, Eq, Ord)
+  deriving (Show, G.Generic, Eq, Ord)
 
 instance Binary PrimNum
 
@@ -40,7 +40,7 @@ data FloatSize
   = FloatSize16
   | FloatSize32
   | FloatSize64
-  deriving (Eq, Ord, Show, Generic)
+  deriving (Eq, Ord, Show, G.Generic)
 
 instance Binary FloatSize
 
@@ -54,7 +54,7 @@ data Magic a
   | MagicLoad LowType a
   | MagicSyscall Integer [a]
   | MagicExternal T.Text [a]
-  deriving (Show, Eq, Generic)
+  deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic a)
 

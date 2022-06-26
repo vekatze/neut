@@ -5,37 +5,20 @@ module Scene.Parse.Enum
   )
 where
 
-import Control.Monad (unless)
-import Control.Monad.IO.Class (liftIO)
+import Control.Monad
+import Control.Monad.IO.Class
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (modifyIORef', readIORef)
-import Data.List (find)
+import Data.IORef
+import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Basic
-  ( Hint,
-  )
 import Entity.Global
-  ( currentGlobalLocatorRef,
-    enumEnvRef,
-    nsSep,
-    revEnumEnvRef,
-  )
-import Entity.Log (raiseError)
-import Entity.Namespace (attachSectionPrefix)
+import Entity.Log
+import Entity.Namespace
 import Entity.Stmt
-  ( EnumInfo,
-  )
 import Scene.Parse.Core
-  ( Parser,
-    asBlock,
-    currentHint,
-    integer,
-    keyword,
-    manyList,
-    var,
-  )
-import Text.Megaparsec (choice, try)
+import Text.Megaparsec
 
 parseDefineEnum :: Parser EnumInfo
 parseDefineEnum = do

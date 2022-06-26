@@ -4,77 +4,28 @@ module Scene.Parse
   )
 where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Control.Monad (forM_, when)
-import Control.Monad.IO.Class (liftIO)
+import Control.Comonad.Cofree
+import Control.Monad
+import Control.Monad.IO.Class
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (IORef, modifyIORef', newIORef, readIORef, writeIORef)
+import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic (AliasInfo (..), BinderF, Hint, LamKindF (LamKindCons), Opacity (..), asIdent, asText)
+import Entity.Basic
 import Entity.Global
-  ( constructorEnvRef,
-    currentGlobalLocatorRef,
-    dataEnvRef,
-    getCurrentFilePath,
-    globalLocatorListRef,
-    localLocatorListRef,
-    locatorAliasMapRef,
-    moduleAliasMapRef,
-    newText,
-    nsSep,
-    resourceTypeSetRef,
-    setCurrentFilePath,
-    sourceAliasMapRef,
-    topNameSetRef,
-  )
-import Entity.Log (raiseCritical', raiseError)
-import Entity.Module (defaultModulePrefix, getChecksumAliasList)
+import Entity.Log
+import Entity.Module
 import Entity.Namespace
-  ( activateGlobalLocator,
-    activateLocalLocator,
-    attachSectionPrefix,
-    handleDefinePrefix,
-    popFromCurrentLocalLocator,
-    pushToCurrentLocalLocator,
-  )
-import Entity.Source (Source (..), getDomain, getLocator)
+import Entity.Source
 import Entity.Stmt
-  ( Cache (cacheStmtList),
-    EnumInfo,
-    QuasiStmt,
-    Stmt,
-    WeakStmt (..),
-    cacheEnumInfo,
-    extractName,
-    loadCache,
-  )
 import Entity.WeakTerm
-  ( WeakTerm,
-    WeakTermF
-      ( WeakTermMatch,
-        WeakTermPi,
-        WeakTermPiElim,
-        WeakTermPiIntro,
-        WeakTermTau,
-        WeakTermVar,
-        WeakTermVarGlobal
-      ),
-  )
-import Scene.Parse.Core (Parser, argList, asBlock, currentHint, delimiter, keyword, manyList, run, symbol, var)
-import Scene.Parse.Discern (discernStmtList)
-import Scene.Parse.Enum (insEnumEnv, parseDefineEnum)
-import Scene.Parse.Import (skipImportSequence)
+import Scene.Parse.Core
+import Scene.Parse.Discern
+import Scene.Parse.Enum
+import Scene.Parse.Import
 import Scene.Parse.WeakTerm
-  ( newTextualIdentFromText,
-    parseDefiniteDescription,
-    parseTopDefInfo,
-    weakAscription,
-    weakTerm,
-    weakVar,
-  )
-import System.IO.Unsafe (unsafePerformIO)
-import Text.Megaparsec (MonadParsec (eof), choice, many, try)
+import System.IO.Unsafe
+import Text.Megaparsec
 
 --
 -- core functions

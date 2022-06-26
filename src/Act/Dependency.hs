@@ -1,35 +1,23 @@
 module Act.Dependency (get, tidy) where
 
-import Control.Monad (forM_, unless, when)
-import Crypto.Hash.SHA256 as SHA256 (hash)
+import Control.Monad
+import Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64.URL as Base64
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import qualified Data.Text.IO as TIO
-import Entity.Basic (Alias, Checksum (Checksum), URL (..), showChecksum)
-import Entity.Global (getLibraryDirPath, note')
-import Entity.Log (raiseError')
+import Entity.Basic
+import Entity.Global
+import Entity.Log
 import Entity.Module
-  ( Module (moduleDependency, moduleLocation),
-    addDependency,
-    getMainModule,
-    moduleFile,
-    ppModule,
-  )
-import Path (Abs, Dir, File, Path, toFilePath, (</>))
-import Path.IO (doesFileExist, ensureDir, resolveDir, withSystemTempFile)
+import Path
+import Path.IO
 import qualified Scene.Parse.Module as Module
-import System.Exit (ExitCode (..))
-import System.IO (Handle)
+import System.Exit
+import System.IO
 import System.Process
-  ( CreateProcess (std_err),
-    StdStream (CreatePipe),
-    createProcess,
-    proc,
-    waitForProcess,
-  )
 
 get :: Alias -> URL -> IO ()
 get alias url = do

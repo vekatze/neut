@@ -3,26 +3,13 @@ module Scene.Parse.Entity
   )
 where
 
-import Control.Comonad.Cofree (Cofree ((:<)))
+import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as M
 import qualified Data.Text as T
 import Entity.Entity
-  ( Entity,
-    EntityF (..),
-  )
-import Path (Abs, File, Path)
+import Path
 import Scene.Parse.Core
-  ( Parser,
-    bool,
-    currentHint,
-    float,
-    integer,
-    keyword,
-    run,
-    string,
-    symbol,
-  )
-import Text.Megaparsec (MonadParsec (eof), choice, many, manyTill, try)
+import Text.Megaparsec hiding (parse)
 
 parse :: Path Abs File -> IO Entity
 parse =

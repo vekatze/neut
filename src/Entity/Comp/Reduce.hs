@@ -4,23 +4,13 @@ module Entity.Comp.Reduce
   )
 where
 
-import Control.Comonad.Cofree.Class (ComonadCofree (unwrap))
+import Control.Comonad.Cofree.Class
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef (readIORef)
+import Data.IORef
 import qualified Data.IntMap as IntMap
 import Entity.Basic
-  ( EnumCaseF (EnumCaseDefault, EnumCaseInt, EnumCaseLabel),
-    Ident,
-    Opacity (OpacityTransparent),
-    asInt,
-  )
 import Entity.Comp
-  ( Comp (..),
-    Primitive (..),
-    SubstValue,
-    Value (..),
-  )
-import Entity.Global (compDefEnvRef, newIdentFromIdent, p, p')
+import Entity.Global
 
 type NameEnv = IntMap.IntMap Ident
 
@@ -49,7 +39,7 @@ reduceComp term =
           e' <- reduceComp e
           case e' of
             CompUpIntro (ValueSigmaIntro ds)
-              | Just ys <- mapM asIdent ds,
+              | Just ys <- mapM extractIdent ds,
                 xs == ys ->
                 return $ CompUpIntro v -- eta-reduce
             _ ->
@@ -187,8 +177,8 @@ substPrimitive sub nenv c =
       let der' = fmap (substValue sub nenv) der
       PrimitiveMagic der'
 
-asIdent :: Value -> Maybe Ident
-asIdent term =
+extractIdent :: Value -> Maybe Ident
+extractIdent term =
   case term of
     ValueVarLocal x ->
       Just x

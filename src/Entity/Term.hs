@@ -3,30 +3,13 @@
 
 module Entity.Term where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Data.Binary (Binary)
+import Control.Comonad.Cofree
+import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Basic
-  ( BinderF,
-    EnumCase,
-    Hint,
-    Ident,
-    LamKindF (..),
-    PatternF,
-  )
 import Entity.LowType
-  ( FloatSize,
-    IntSize,
-    Magic,
-    PrimNum (..),
-    showFloatSize,
-    showIntSize,
-  )
 import Entity.WeakTerm
-  ( WeakTerm,
-    WeakTermF (..),
-  )
 import GHC.Generics (Generic)
 
 data TermF a

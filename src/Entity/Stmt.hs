@@ -2,19 +2,19 @@
 
 module Entity.Stmt where
 
-import Control.Comonad.Cofree (Cofree ((:<)))
-import Data.Binary (Binary, decodeFileOrFail, encodeFile)
+import Control.Comonad.Cofree
+import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Basic (BinderF, Hint, Opacity (OpacityOpaque))
-import Entity.Global (hasCacheSetRef, topNameSetRef)
-import Entity.Source (Source (sourceFilePath), getSourceCachePath)
-import Entity.Term (Term, TermF (..))
-import Entity.WeakTerm (WeakTerm)
-import GHC.Generics (Generic)
-import GHC.IORef (readIORef)
-import Path (Abs, File, Path, parent, toFilePath)
-import Path.IO (doesFileExist, ensureDir, removeFile)
+import Entity.Basic
+import Entity.Global
+import Entity.Source
+import Entity.Term
+import Entity.WeakTerm
+import GHC.Generics
+import GHC.IORef
+import Path
+import Path.IO
 
 type WeakProgram =
   (Path Abs File, [WeakStmt])

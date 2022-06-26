@@ -3,13 +3,13 @@
 
 module Entity.Basic where
 
-import Control.Comonad.Cofree (Cofree (..))
-import Data.Binary (Binary)
-import Data.Functor.Classes (Eq1 (..), Show1 (liftShowsPrec))
+import Control.Comonad.Cofree
+import Data.Binary
+import Data.Functor.Classes
 import qualified Data.Text as T
-import GHC.Generics (Generic)
-import Path (Abs, File, Path, parseAbsFile)
-import System.Environment (getExecutablePath)
+import GHC.Generics
+import Path
+import System.Environment
 
 newtype Ident
   = I (T.Text, Int)

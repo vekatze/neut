@@ -1,17 +1,10 @@
 module Entity.Source where
 
 import qualified Data.Text as T
-import Entity.Basic (OutputKind (..))
+import Entity.Basic
 import Entity.Module
-  ( Module (moduleTarget),
-    defaultModulePrefix,
-    getArtifactDir,
-    getMainModule,
-    getSourceDir,
-    moduleLocation,
-  )
-import Path (Abs, File, Path, Rel, addExtension, dirname, parent, splitExtension, stripProperPrefix, toFilePath, (</>))
-import System.FilePath (dropTrailingPathSeparator)
+import Path
+import qualified System.FilePath as FP
 
 data Source = Source
   { sourceFilePath :: Path Abs File,
@@ -68,7 +61,7 @@ getDomain targetModule = do
   mainModule <- getMainModule
   if moduleLocation mainModule == moduleLocation targetModule
     then return defaultModulePrefix
-    else return $ T.pack $ dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
+    else return $ T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
 
 getLocatorTail :: Source -> IO [T.Text]
 getLocatorTail source = do
