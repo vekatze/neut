@@ -6,11 +6,11 @@ where
 
 import Control.Monad
 import qualified Data.Text as T
-import Entity.Checksum
 import Entity.Ens
-import Entity.LibraryURL
 import Entity.Log
 import Entity.Module
+import Entity.ModuleChecksum
+import Entity.ModuleURL
 import Path
 import Path.IO
 import qualified Scene.Parse.Ens as E
@@ -40,11 +40,11 @@ interpretRelFilePath :: Ens -> IO (Path Rel File)
 interpretRelFilePath =
   toString >=> parseRelFile . T.unpack
 
-interpretDependency :: Ens -> IO (LibraryURL, Checksum)
+interpretDependency :: Ens -> IO (ModuleURL, ModuleChecksum)
 interpretDependency dependencyValue = do
   url <- access "URL" dependencyValue >>= toString
   checksum <- access "checksum" dependencyValue >>= toString
-  return (LibraryURL url, Checksum checksum)
+  return (ModuleURL url, ModuleChecksum checksum)
 
 interpretExtraPath :: Path Abs Dir -> Ens -> IO SomePath
 interpretExtraPath moduleRootDir entity = do

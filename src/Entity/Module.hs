@@ -6,11 +6,11 @@ import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
-import Entity.Checksum
 import Entity.Ens
-import Entity.LibraryAlias
-import Entity.LibraryURL
 import Entity.Log
+import Entity.ModuleAlias
+import Entity.ModuleChecksum
+import Entity.ModuleURL
 import Path
 import Path.IO
 import System.IO.Unsafe
@@ -20,7 +20,7 @@ type SomePath =
 
 data Module = Module
   { moduleTarget :: Map.HashMap T.Text (Path Rel File),
-    moduleDependency :: Map.HashMap T.Text (LibraryURL, Checksum),
+    moduleDependency :: Map.HashMap T.Text (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
   }
@@ -63,10 +63,10 @@ getTargetFilePath baseModule target = do
   relPath <- Map.lookup target (moduleTarget baseModule)
   return $ getSourceDir baseModule </> relPath
 
-getChecksumAliasList :: Module -> [(T.Text, T.Text)]
-getChecksumAliasList baseModule = do
+getModuleChecksumAliasList :: Module -> [(T.Text, T.Text)]
+getModuleChecksumAliasList baseModule = do
   let dependencyList = Map.toList $ moduleDependency baseModule
-  map (\(key, (_, Checksum checksum)) -> (key, checksum)) dependencyList
+  map (\(key, (_, ModuleChecksum checksum)) -> (key, checksum)) dependencyList
 
 findModuleFile :: Path Abs Dir -> IO (Path Abs File)
 findModuleFile moduleRootDirCandidate = do
@@ -103,14 +103,14 @@ getMainModule = do
     Nothing ->
       raiseCritical' "the main module is not initialized"
 
-addDependency :: LibraryAlias -> LibraryURL -> Checksum -> Module -> Module
-addDependency (LibraryAlias alias) url checksum someModule =
+addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
+addDependency (ModuleAlias alias) url checksum someModule =
   someModule {moduleDependency = Map.insert alias (url, checksum) (moduleDependency someModule)}
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
   let entryPoint = Map.map (\x -> () :< EnsString (T.pack (toFilePath x))) $ moduleTarget someModule
-  let dependency = flip Map.map (moduleDependency someModule) $ \(LibraryURL url, Checksum checksum) -> do
+  let dependency = flip Map.map (moduleDependency someModule) $ \(ModuleURL url, ModuleChecksum checksum) -> do
         let urlEns = () :< EnsString url
         let checksumEns = () :< EnsString checksum
         () :< EnsDictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])

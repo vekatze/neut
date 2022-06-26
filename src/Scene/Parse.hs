@@ -313,7 +313,7 @@ registerTopLevelName m x = do
 initializeNamespace :: Source -> IO ()
 initializeNamespace source = do
   additionalChecksumAlias <- getAdditionalChecksumAlias source
-  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getChecksumAliasList (sourceModule source)
+  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
   writeIORef globalLocatorListRef []
   writeIORef localLocatorListRef []
   writeIORef locatorAliasMapRef Map.empty
