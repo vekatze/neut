@@ -24,9 +24,9 @@ import Entity.Namespace
 import Entity.Opacity
 import Entity.Source
 import Entity.Stmt
+import Entity.Stmt.Discern
 import Entity.WeakTerm
 import Scene.Parse.Core
-import Scene.Parse.Discern
 import Scene.Parse.Enum
 import Scene.Parse.Import
 import Scene.Parse.WeakTerm
