@@ -1,5 +1,7 @@
 module Act.Dependency (get, tidy) where
 
+import Context.Log
+import Context.Log.IO
 import Control.Monad
 import Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString as B
@@ -24,31 +26,33 @@ import System.Process
 get :: ModuleAlias -> ModuleURL -> IO ()
 get alias url = do
   mainModule <- getMainModule
+  let logCtx = logContextIO
   withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
-    download tempFilePath alias url
+    download logCtx tempFilePath alias url
     archive <- B.hGetContents tempFileHandle
     let checksum = computeModuleChecksum archive
-    extractToLibDir tempFilePath alias checksum
-    addDependencyToModuleFile mainModule alias url checksum
-    getLibraryModule alias checksum >>= tidy'
+    extractToLibDir logCtx tempFilePath alias checksum
+    addDependencyToModuleFile logCtx mainModule alias url checksum
+    getLibraryModule alias checksum >>= tidy' logCtx
 
 tidy :: IO ()
-tidy =
-  getMainModule >>= tidy'
+tidy = do
+  let logCtx = logContextIO
+  getMainModule >>= tidy' logCtx
 
-tidy' :: Module -> IO ()
-tidy' targetModule = do
-  note' $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
+tidy' :: LogContext IO -> Module -> IO ()
+tidy' logCtx targetModule = do
+  printNote' logCtx $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
   let dependency = Map.toList $ moduleDependency targetModule
   forM_ dependency $ \(alias, (url, checksum)) ->
-    installIfNecessary (ModuleAlias alias) url checksum
+    installIfNecessary logCtx (ModuleAlias alias) url checksum
 
-installIfNecessary :: ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
-installIfNecessary alias url checksum = do
+installIfNecessary :: LogContext IO -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
+installIfNecessary logCtx alias url checksum = do
   isInstalled <- checkIfInstalled checksum
   unless isInstalled $
     withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
-      download tempFilePath alias url
+      download logCtx tempFilePath alias url
       archive <- B.hGetContents tempFileHandle
       let archiveModuleChecksum = computeModuleChecksum archive
       when (checksum /= archiveModuleChecksum) $
@@ -62,8 +66,8 @@ installIfNecessary alias url checksum = do
             <> "\n- "
             <> showModuleChecksum archiveModuleChecksum
             <> " (actual)"
-      extractToLibDir tempFilePath alias checksum
-      getLibraryModule alias checksum >>= tidy'
+      extractToLibDir logCtx tempFilePath alias checksum
+      getLibraryModule alias checksum >>= tidy' logCtx
 
 checkIfInstalled :: ModuleChecksum -> IO Bool
 checkIfInstalled checksum = do
@@ -87,12 +91,12 @@ getModuleDir (ModuleChecksum checksum) = do
   libDir <- getLibraryDirPath
   resolveDir libDir $ T.unpack checksum
 
-download :: Path Abs File -> ModuleAlias -> ModuleURL -> IO ()
-download tempFilePath alias (ModuleURL url) = do
+download :: LogContext IO -> Path Abs File -> ModuleAlias -> ModuleURL -> IO ()
+download logCtx tempFilePath alias (ModuleURL url) = do
   let curlCmd = proc "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
   (_, _, Just curlErrorHandler, curlHandler) <-
     createProcess curlCmd {std_err = CreatePipe}
-  note' $ "downloading `" <> extract alias <> "` from " <> url
+  printNote' logCtx $ "downloading `" <> extract alias <> "` from " <> url
   curlExitCode <- waitForProcess curlHandler
   raiseIfFailure "curl" curlExitCode curlErrorHandler
 
@@ -100,20 +104,20 @@ computeModuleChecksum :: B.ByteString -> ModuleChecksum
 computeModuleChecksum fileByteString =
   ModuleChecksum $ TE.decodeUtf8 $ Base64.encode $ SHA256.hash fileByteString
 
-extractToLibDir :: Path Abs File -> ModuleAlias -> ModuleChecksum -> IO ()
-extractToLibDir tempFilePath alias c@(ModuleChecksum checksum) = do
+extractToLibDir :: LogContext IO -> Path Abs File -> ModuleAlias -> ModuleChecksum -> IO ()
+extractToLibDir logCtx tempFilePath alias c@(ModuleChecksum checksum) = do
   targetDirPath <- getModuleDir c
   ensureDir targetDirPath
   let tarCmd = proc "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
   (_, _, Just tarErrorHandler, tarHandler) <-
     createProcess tarCmd {std_err = CreatePipe}
-  note' $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
+  printNote' logCtx $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
   tarExitCode <- waitForProcess tarHandler
   raiseIfFailure "tar" tarExitCode tarErrorHandler
 
-addDependencyToModuleFile :: Module -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
-addDependencyToModuleFile targetModule alias url checksum = do
-  note' $ "adding the dependency of `" <> extract alias <> "` to the module file"
+addDependencyToModuleFile :: LogContext IO -> Module -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
+addDependencyToModuleFile logCtx targetModule alias url checksum = do
+  printNote' logCtx $ "adding the dependency of `" <> extract alias <> "` to the module file"
   let targetModule' = addDependency alias url checksum targetModule
   TIO.writeFile (toFilePath $ moduleLocation targetModule') $ ppModule targetModule'
 

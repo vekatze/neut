@@ -1,9 +1,11 @@
 module Main (main) where
 
+import Context.Log
+import Context.Log.IO
 import Control.Exception.Safe (catch)
 import Control.Monad (filterM, forM_)
-import Data.Global (outputFail, outputPass)
 import Data.List (intercalate, sort)
+import qualified Data.Text as T
 import Path
   ( Abs,
     Dir,
@@ -76,13 +78,17 @@ test' testDirPath srcPath = do
   (testName, _) <- splitExtension relSrcPath
   if result == expectedResult
     then do
-      outputPass $ toFilePath testName
+      printPass' testLogContext $ T.pack $ toFilePath testName
       return True
     else do
-      outputFail $ toFilePath testName
+      printFail' testLogContext $ T.pack $ toFilePath testName
       putStrLn $ prefixExpected <> stylize expectedResult
       putStrLn $ prefixFound <> stylize result
       return False
+
+testLogContext :: LogContext IO
+testLogContext =
+  logContextIO
 
 prefixExpected :: String
 prefixExpected =

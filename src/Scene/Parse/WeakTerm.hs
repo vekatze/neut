@@ -700,7 +700,10 @@ weakTermIntrospect = do
     Just clause ->
       return clause
     Nothing -> do
-      liftIO $ outputError m $ "`" <> value <> "` is not supported here"
+      liftIO $ putStrLn "weakTermIntrospect (not implemented)"
+      undefined
+
+-- liftIO $ outputError m $ "`" <> value <> "` is not supported here"
 
 weakTermIntrospectiveClause :: Parser (T.Text, WeakTerm)
 weakTermIntrospectiveClause = do

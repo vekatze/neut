@@ -4,6 +4,8 @@ import Act.Build
 import Act.Dependency
 import Act.Init
 import Act.Release
+import Context.Log
+import Context.Log.IO
 import Control.Exception.Safe
 import Control.Monad
 import Data.IORef
@@ -234,9 +236,10 @@ runCommand cmd = do
 
 runAction :: IO a -> IO a
 runAction c = do
+  let logCtx = logContextIO
   resultOrErr <- try c
   case resultOrErr of
     Left (Error err) ->
-      foldr ((>>) . outputLog) (exitWith (ExitFailure 1)) err
+      foldr ((>>) . printLog logCtx) (exitWith (ExitFailure 1)) err
     Right result ->
       return result

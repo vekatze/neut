@@ -376,94 +376,94 @@ returnDirectory path =
 -- log
 --
 
-outputLog :: Log -> IO ()
-outputLog (mpos, l, t) = do
-  outputLogLocation mpos
-  outputLogLevel l
-  outputLogText t (logLevelToPad l)
-  outputFooter
+-- outputLog :: Log -> IO ()
+-- outputLog (mpos, l, t) = do
+--   outputLogLocation mpos
+--   outputLogLevel l
+--   outputLogText t (logLevelToPad l)
+--   outputFooter
 
-whenRef :: IORef Bool -> IO () -> IO ()
-whenRef ref comp = do
-  b <- readIORef ref
-  when b comp
+-- whenRef :: IORef Bool -> IO () -> IO ()
+-- whenRef ref comp = do
+--   b <- readIORef ref
+--   when b comp
 
-outputLogLocation :: Maybe FilePos -> IO ()
-outputLogLocation mpos = do
-  case mpos of
-    Just pos ->
-      withSGR [SetConsoleIntensity BoldIntensity] $ do
-        TIO.putStr $ T.pack (showFilePos pos)
-        TIO.putStrLn ":"
-    _ ->
-      return ()
+-- outputLogLocation :: Maybe FilePos -> IO ()
+-- outputLogLocation mpos = do
+--   case mpos of
+--     Just pos ->
+--       withSGR [SetConsoleIntensity BoldIntensity] $ do
+--         TIO.putStr $ T.pack (showFilePos pos)
+--         TIO.putStrLn ":"
+--     _ ->
+--       return ()
 
-outputFooter :: IO ()
-outputFooter = do
-  eoe <- readIORef endOfEntryRef
-  if eoe == ""
-    then return ()
-    else putStrLn eoe
+-- outputFooter :: IO ()
+-- outputFooter = do
+--   eoe <- readIORef endOfEntryRef
+--   if eoe == ""
+--     then return ()
+--     else putStrLn eoe
 
-outputFilePos :: FilePos -> IO ()
-outputFilePos pos =
-  withSGR [SetConsoleIntensity BoldIntensity] $ do
-    TIO.putStr $ T.pack (showFilePos pos)
-    TIO.putStrLn ":"
+-- outputFilePos :: FilePos -> IO ()
+-- outputFilePos pos =
+--   withSGR [SetConsoleIntensity BoldIntensity] $ do
+--     TIO.putStr $ T.pack (showFilePos pos)
+--     TIO.putStrLn ":"
 
-outputLogLevel :: LogLevel -> IO ()
-outputLogLevel l =
-  withSGR (logLevelToSGR l) $ do
-    TIO.putStr $ logLevelToText l
-    TIO.putStr ": "
+-- outputLogLevel :: LogLevel -> IO ()
+-- outputLogLevel l =
+--   withSGR (logLevelToSGR l) $ do
+--     TIO.putStr $ logLevelToText l
+--     TIO.putStr ": "
 
-outputLogText :: T.Text -> IO T.Text -> IO ()
-outputLogText str padComp = do
-  pad <- padComp
-  TIO.putStrLn $ stylizeLogText str pad
+-- outputLogText :: T.Text -> IO T.Text -> IO ()
+-- outputLogText str padComp = do
+--   pad <- padComp
+--   TIO.putStrLn $ stylizeLogText str pad
 
-logLevelToPad :: LogLevel -> IO T.Text
-logLevelToPad level = do
-  return $ T.replicate (T.length (logLevelToText level) + 2) " "
+-- logLevelToPad :: LogLevel -> IO T.Text
+-- logLevelToPad level = do
+--   return $ T.replicate (T.length (logLevelToText level) + 2) " "
 
-stylizeLogText :: T.Text -> T.Text -> T.Text
-stylizeLogText str pad = do
-  let ls = T.lines str
-  if null ls
-    then str
-    else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
+-- stylizeLogText :: T.Text -> T.Text -> T.Text
+-- stylizeLogText str pad = do
+--   let ls = T.lines str
+--   if null ls
+--     then str
+--     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
 
-withSGR :: [SGR] -> IO () -> IO ()
-withSGR arg f = do
-  b <- readIORef shouldColorizeRef
-  if b
-    then setSGR arg >> f >> setSGR [Reset]
-    else f
+-- withSGR :: [SGR] -> IO () -> IO ()
+-- withSGR arg f = do
+--   b <- readIORef shouldColorizeRef
+--   if b
+--     then setSGR arg >> f >> setSGR [Reset]
+--     else f
 
-note :: Hint -> T.Text -> IO ()
-note m str =
-  outputLog $ logNote (fromHint m) str
+-- note :: Hint -> T.Text -> IO ()
+-- note m str =
+--   outputLog $ logNote (fromHint m) str
 
-note' :: T.Text -> IO ()
-note' str =
-  outputLog $ logNote' str
+-- note' :: T.Text -> IO ()
+-- note' str =
+--   outputLog $ logNote' str
 
-warn :: FilePos -> T.Text -> IO ()
-warn pos str =
-  outputLog $ logWarning pos str
+-- warn :: FilePos -> T.Text -> IO ()
+-- warn pos str =
+--   outputLog $ logWarning pos str
 
-outputError :: Hint -> T.Text -> IO a
-outputError m text = do
-  outputLog $ logError (fromHint m) text
-  exitWith (ExitFailure 1)
+-- outputError :: Hint -> T.Text -> IO a
+-- outputError m text = do
+--   outputLog $ logError (fromHint m) text
+--   exitWith (ExitFailure 1)
 
-outputPass :: String -> IO ()
-outputPass str =
-  outputLog (Nothing, LogLevelPass, T.pack str)
+-- outputPass :: String -> IO ()
+-- outputPass str =
+--   outputLog (Nothing, LogLevelPass, T.pack str)
 
-outputFail :: String -> IO ()
-outputFail str =
-  outputLog (Nothing, LogLevelFail, T.pack str)
+-- outputFail :: String -> IO ()
+-- outputFail str =
+--   outputLog (Nothing, LogLevelFail, T.pack str)
 
 -- for debug
 p :: String -> IO ()

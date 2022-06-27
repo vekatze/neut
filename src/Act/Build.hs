@@ -6,6 +6,8 @@ module Act.Build
   )
 where
 
+import Context.Log
+import Context.Log.IO
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
@@ -21,6 +23,7 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import Entity.AliasInfo
 import Entity.EnumInfo.Env
 import Entity.Global
 import Entity.Hint
@@ -57,17 +60,18 @@ type ClangOption =
 
 build :: Maybe Target -> Maybe ClangOption -> IO ()
 build mTarget mClangOptStr = do
+  let logCtx = logContextIO
   ensureNotInLibDir "build"
   case mTarget of
     Just target ->
-      build' target mClangOptStr
+      build' logCtx target mClangOptStr
     Nothing -> do
       mainModule <- getMainModule
       forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-        build' (T.unpack target) mClangOptStr
+        build' logCtx (T.unpack target) mClangOptStr
 
-build' :: Target -> Maybe ClangOption -> IO ()
-build' target mClangOptStr = do
+build' :: LogContext IO -> Target -> Maybe ClangOption -> IO ()
+build' logCtx target mClangOptStr = do
   mainFilePath <- resolveTarget target
   mainSource <- getMainSource mainFilePath
   setMainFilePath mainFilePath
@@ -75,29 +79,30 @@ build' target mClangOptStr = do
   (_, isObjectAvailable, dependenceSeq) <- computeDependence mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   let clangOptStr = fromMaybe "" mClangOptStr
-  mapM_ (compile hasObjectSet clangOptStr) dependenceSeq
+  mapM_ (compile logCtx hasObjectSet clangOptStr) dependenceSeq
   unless isObjectAvailable $ link target mClangOptStr $ toList dependenceSeq
 
 check :: Maybe FilePath -> IO ()
 check mFilePathStr = do
+  let logCtx = logContextIO
   ensureNotInLibDir "check"
   case mFilePathStr of
     Just filePathStr -> do
       filePath <- resolveFile' filePathStr
-      check' filePath
+      check' logCtx filePath
     Nothing -> do
       mainModule <- getMainModule
       forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
-        check' $ getSourceDir mainModule </> relPath
+        check' logCtx $ getSourceDir mainModule </> relPath
 
-check' :: Path Abs File -> IO ()
-check' filePath = do
+check' :: LogContext IO -> Path Abs File -> IO ()
+check' logCtx filePath = do
   ensureFileModuleSanity filePath
   mainModule <- getMainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
   initializeEnumEnv
   (_, _, dependenceSeq) <- computeDependence source
-  mapM_ check'' dependenceSeq
+  mapM_ (check'' logCtx) dependenceSeq
 
 ensureFileModuleSanity :: Path Abs File -> IO ()
 ensureFileModuleSanity filePath = do
@@ -112,33 +117,33 @@ ensureNotInLibDir commandName = do
   when (isProperPrefixOf libDir (moduleLocation mainModule)) $
     raiseError' $ "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
-check'' :: Source -> IO ()
-check'' source = do
+check'' :: LogContext IO -> Source -> IO ()
+check'' logCtx source = do
   mMainFunctionName <- getMainFunctionName source
   case mMainFunctionName of
     Just mainName ->
-      void $ parseMain mainName source >>= elaborateMain mainName source
+      void $ parseMain mainName source >>= elaborateMain logCtx mainName source
     Nothing ->
-      void $ parseOther source >>= elaborateOther source
+      void $ parseOther source >>= elaborateOther logCtx source
 
-compile :: S.Set (Path Abs File) -> String -> Source -> IO ()
-compile hasObjectSet clangOptStr source = do
+compile :: LogContext IO -> S.Set (Path Abs File) -> String -> Source -> IO ()
+compile logCtx hasObjectSet clangOptStr source = do
   if S.member (sourceFilePath source) hasObjectSet
-    then loadTopLevelDefinitions source
-    else compile' clangOptStr source
+    then loadTopLevelDefinitions logCtx source
+    else compile' logCtx clangOptStr source
 
-loadTopLevelDefinitions :: Source -> IO ()
-loadTopLevelDefinitions source = do
+loadTopLevelDefinitions :: LogContext IO -> Source -> IO ()
+loadTopLevelDefinitions logCtx source = do
   mMainFunctionName <- getMainFunctionNameIfEntryPoint source
   case mMainFunctionName of
     Just mainName ->
-      void $ parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName
+      void $ parseMain mainName source >>= elaborateMain logCtx mainName source >>= clarifyMain mainName
     Nothing ->
-      void $ parseOther source >>= elaborateOther source >>= clarifyOther
+      void $ parseOther source >>= elaborateOther logCtx source >>= clarifyOther
 
-compile' :: String -> Source -> IO ()
-compile' clangOptStr source = do
-  llvm <- compileToLLVM source
+compile' :: LogContext IO -> String -> Source -> IO ()
+compile' logCtx clangOptStr source = do
+  llvm <- compileToLLVM logCtx source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
@@ -151,14 +156,21 @@ compile' clangOptStr source = do
     raiseIfFailure "clang" clangExitCode clangErrorHandler
     return ()
 
-compileToLLVM :: Source -> IO L.ByteString
-compileToLLVM source = do
+compileToLLVM :: LogContext IO -> Source -> IO L.ByteString
+compileToLLVM logCtx source = do
   mMainFunctionName <- getMainFunctionNameIfEntryPoint source
   case mMainFunctionName of
     Just mainName ->
-      parseMain mainName source >>= elaborateMain mainName source >>= clarifyMain mainName >>= lowerMain >>= emitMain
+      parseMain mainName source
+        >>= elaborateMain logCtx mainName source
+        >>= clarifyMain mainName
+        >>= lowerMain
+        >>= emitMain
     Nothing ->
-      parseOther source >>= elaborateOther source >>= clarifyOther >>= lowerOther >> emitOther
+      parseOther source
+        >>= elaborateOther logCtx source
+        >>= clarifyOther
+        >>= lowerOther >> emitOther
 
 link :: Target -> Maybe String -> [Source] -> IO ()
 link target mClangOptStr sourceList = do
@@ -332,7 +344,8 @@ getChildren currentSource = do
       (sourceList, aliasInfoList) <- run (parseImportSequence (sourceModule currentSource)) path
       -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
-      modifyIORef' sourceAliasMapRef $ Map.insert currentSourceFilePath aliasInfoList
+      updateSourceAliasMapRef currentSourceFilePath aliasInfoList
+      -- modifyIORef' sourceAliasMapRef $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList
 
 addExtensionAlongKind :: Path Abs File -> OutputKind -> IO (Path Abs File)
@@ -380,8 +393,9 @@ resolveTarget target = do
     Just path ->
       return path
     Nothing -> do
-      l <- raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
-      outputLog l
+      -- l <-
+      _ <- raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
+      -- outputLog l
       exitWith (ExitFailure 1)
 
 raiseIfFailure :: T.Text -> ExitCode -> Handle -> IO ()
