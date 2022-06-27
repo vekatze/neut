@@ -13,6 +13,8 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
 import Entity.Binder
+import Entity.EnumInfo
+import qualified Entity.EnumInfo.Env as EnumInfo
 import Entity.Global
 import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
@@ -55,8 +57,7 @@ parseSource source = do
   setupSectionPrefix source
   case mCache of
     Just cache -> do
-      forM_ (cacheEnumInfo cache) $ \(mEnum, name, itemList) ->
-        insEnumEnv mEnum name itemList
+      forM_ (cacheEnumInfo cache) EnumInfo.register
       let stmtList = cacheStmtList cache
       let names = S.fromList $ map extractName stmtList
       modifyIORef' topNameSetRef $ S.union names

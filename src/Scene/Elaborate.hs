@@ -13,6 +13,7 @@ import Data.List
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
+import Entity.EnumInfo
 import Entity.Global
 import Entity.Hint
 import qualified Entity.Ident.Reify as Ident

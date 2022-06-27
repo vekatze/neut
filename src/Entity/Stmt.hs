@@ -7,6 +7,7 @@ import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
+import Entity.EnumInfo
 import Entity.Global
 import Entity.Hint
 import Entity.Opacity
@@ -47,8 +48,6 @@ extractName stmt = do
       name
     StmtDefineResource _ name _ _ ->
       name
-
-type EnumInfo = (Hint, T.Text, [(T.Text, Int)])
 
 data Cache = Cache
   { cacheStmtList :: [Stmt],

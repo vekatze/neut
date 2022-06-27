@@ -21,6 +21,7 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import Entity.EnumInfo.Env
 import Entity.Global
 import Entity.Hint
 import Entity.Log
@@ -36,7 +37,6 @@ import Scene.Emit
 import Scene.Lower
 import Scene.Parse
 import Scene.Parse.Core
-import Scene.Parse.Enum
 import Scene.Parse.Import
 import System.Exit
 import System.IO.Unsafe
@@ -98,11 +98,6 @@ check' filePath = do
   initializeEnumEnv
   (_, _, dependenceSeq) <- computeDependence source
   mapM_ check'' dependenceSeq
-
-initializeEnumEnv :: IO ()
-initializeEnumEnv = do
-  forM_ globalEnumEnv $ \(enum, enumValueList) -> do
-    insEnumEnv' enum enumValueList
 
 ensureFileModuleSanity :: Path Abs File -> IO ()
 ensureFileModuleSanity filePath = do
