@@ -1,8 +1,12 @@
 module Entity.Source where
 
 import qualified Data.Text as T
+import Entity.Hint
 import Entity.Module
 import Entity.OutputKind
+import Entity.SourceLocator
+import qualified Entity.SourceLocator.Reflect as SourceLocator
+import qualified Entity.SourceLocator.Reify as SourceLocator
 import Path
 import qualified System.FilePath as FP
 
@@ -73,3 +77,13 @@ isMainFile :: Source -> IO Bool
 isMainFile source = do
   sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
   return $ elem sourceRelPath $ moduleTarget (sourceModule source)
+
+getNextSource :: Hint -> Module -> T.Text -> IO Source
+getNextSource m currentModule sigText = do
+  srcLocator <- SourceLocator.fromText m currentModule sigText
+  srcAbsPath <- SourceLocator.toAbsPath srcLocator
+  return $
+    Source
+      { sourceModule = sourceLocatorModule srcLocator,
+        sourceFilePath = srcAbsPath
+      }

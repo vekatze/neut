@@ -11,12 +11,12 @@ import qualified Data.Text.IO as TIO
 import Entity.Global
 import Entity.Log
 import Entity.Module
+import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import Entity.ModuleURL
 import Path
 import Path.IO
-import qualified Scene.Parse.Module as Module
 import System.Exit
 import System.IO
 import System.Process
@@ -80,7 +80,7 @@ getLibraryModule alias checksum@(ModuleChecksum c) = do
   moduleFileExists <- doesFileExist moduleFilePath
   if not moduleFileExists
     then raiseError' $ "could not find the module file for `" <> extract alias <> "` (" <> c <> ")."
-    else Module.parse moduleFilePath
+    else Module.fromFilePath moduleFilePath
 
 getModuleDir :: ModuleChecksum -> IO (Path Abs Dir)
 getModuleDir (ModuleChecksum checksum) = do

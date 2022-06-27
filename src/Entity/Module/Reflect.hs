@@ -1,23 +1,23 @@
-module Scene.Parse.Module
+module Entity.Module.Reflect
   ( initializeMainModule,
-    parse,
+    fromFilePath,
   )
 where
 
 import Control.Monad
 import qualified Data.Text as T
 import Entity.Ens
+import qualified Entity.Ens.Reflect as Ens
 import Entity.Log
 import Entity.Module
 import Entity.ModuleChecksum
 import Entity.ModuleURL
 import Path
 import Path.IO
-import qualified Scene.Parse.Ens as E
 
-parse :: Path Abs File -> IO Module
-parse moduleFilePath = do
-  entity <- E.parse moduleFilePath
+fromFilePath :: Path Abs File -> IO Module
+fromFilePath moduleFilePath = do
+  entity <- Ens.fromFilePath moduleFilePath
   entryPointEns <- access "target" entity >>= toDictionary
   dependencyEns <- access "dependency" entity >>= toDictionary
   extraContentsEns <- access "extra-content" entity >>= toList
@@ -31,10 +31,6 @@ parse moduleFilePath = do
         moduleExtraContents = extraContents,
         moduleLocation = moduleFilePath
       }
-
-initializeMainModule :: IO ()
-initializeMainModule = do
-  getMainModuleFilePath >>= parse >>= setMainModule
 
 interpretRelFilePath :: Ens -> IO (Path Rel File)
 interpretRelFilePath =
@@ -66,6 +62,6 @@ ensureExistence moduleRootDir path existenceChecker kindText = do
     relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
     raiseError' $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
 
-getMainModuleFilePath :: IO (Path Abs File)
-getMainModuleFilePath =
-  getCurrentDir >>= findModuleFile
+initializeMainModule :: IO ()
+initializeMainModule = do
+  getMainModuleFilePath >>= fromFilePath >>= setMainModule

@@ -1,7 +1,4 @@
-module Scene.Parse.Ens
-  ( parse,
-  )
-where
+module Entity.Ens.Reflect (fromFilePath) where
 
 import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as M
@@ -11,8 +8,8 @@ import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
 
-parse :: Path Abs File -> IO Ens
-parse =
+fromFilePath :: Path Abs File -> IO Ens
+fromFilePath =
   run parseFile
 
 parseFile :: Parser Ens

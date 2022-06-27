@@ -11,6 +11,7 @@ import Data.Void (Void)
 import Entity.FilePos
 import Entity.Global
 import Entity.Hint
+import qualified Entity.Hint.Reflect as Hint
 import Entity.Log
 import Path
 import Text.Megaparsec
@@ -35,20 +36,13 @@ run parser path = do
 createParseError :: ParseErrorBundle T.Text Void -> Error
 createParseError errorBundle = do
   let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
-  let hint = sourcePosToHint $ pstateSourcePos posState
+  let hint = Hint.fromSourcePos $ pstateSourcePos posState
   let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
   Error [logError (fromHint hint) message]
 
-sourcePosToHint :: SourcePos -> Hint
-sourcePosToHint pos = do
-  let line = unPos $ sourceLine pos
-  let column = unPos $ sourceColumn pos
-  let file = sourceName pos
-  Entity.Hint.new line column file
-
 currentHint :: Parser Hint
 currentHint =
-  sourcePosToHint <$> getSourcePos
+  Hint.fromSourcePos <$> getSourcePos
 
 spaceConsumer :: Parser ()
 spaceConsumer =

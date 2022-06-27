@@ -10,11 +10,11 @@ import Entity.Global
 import Entity.Hint
 import Entity.Log
 import Entity.Module
+import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import Path
 import Path.IO
-import qualified Scene.Parse.Module as Module
 import System.IO.Unsafe
 
 getNextModule :: Hint -> Module -> ModuleAlias -> IO Module
@@ -31,7 +31,7 @@ getNextModule m currentModule nextModuleAlias = do
           T.pack "could not find the module file for `"
             <> extract nextModuleAlias
             <> "`"
-      nextModule <- Module.parse nextModuleFilePath
+      nextModule <- Module.fromFilePath nextModuleFilePath
       modifyIORef' moduleCacheMapRef $ Map.insert nextModuleFilePath nextModule
       return nextModule
 

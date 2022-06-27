@@ -11,11 +11,11 @@ import qualified Data.Text as T
 import Data.Version
 import Entity.Global
 import Entity.Log
+import Entity.Module.Reflect
 import Entity.ModuleAlias
 import Entity.ModuleURL
 import Options.Applicative
 import Paths_neut
-import Scene.Parse.Module
 import System.Exit
 
 type Target =

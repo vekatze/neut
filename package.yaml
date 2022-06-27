@@ -27,6 +27,7 @@ dependencies:
   - megaparsec
   - mtl
   - optparse-applicative
+  - parser-combinators
   - path
   - path-io
   - pqueue

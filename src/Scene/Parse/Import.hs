@@ -6,14 +6,9 @@ where
 
 import Control.Monad
 import Control.Monad.IO.Class
-import qualified Data.Text as T
 import Entity.AliasInfo
-import Entity.Hint
 import Entity.Module
 import Entity.Source
-import Entity.SourceLocator
-import qualified Entity.SourceLocator.Reflect as SourceLocator
-import qualified Entity.SourceLocator.Reify as SourceLocator
 import Scene.Parse.Core
 import Text.Megaparsec
 
@@ -73,13 +68,3 @@ skipImportQualified = do
   keyword "as"
   _ <- symbol
   return ()
-
-getNextSource :: Hint -> Module -> T.Text -> IO Source
-getNextSource m currentModule sigText = do
-  srcLocator <- SourceLocator.fromText m currentModule sigText
-  srcAbsPath <- SourceLocator.toAbsPath srcLocator
-  return $
-    Source
-      { sourceModule = sourceLocatorModule srcLocator,
-        sourceFilePath = srcAbsPath
-      }

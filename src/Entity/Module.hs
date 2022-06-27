@@ -80,6 +80,10 @@ findModuleFile moduleRootDirCandidate = do
     _ ->
       raiseError' "could not find a module file."
 
+getMainModuleFilePath :: IO (Path Abs File)
+getMainModuleFilePath =
+  getCurrentDir >>= findModuleFile
+
 {-# NOINLINE mainModuleRef #-}
 mainModuleRef :: IORef (Maybe Module)
 mainModuleRef =
