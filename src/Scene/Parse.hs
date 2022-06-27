@@ -21,7 +21,6 @@ import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Log
-import Entity.Module
 import Entity.Namespace
 import Entity.Opacity
 import Entity.Source
@@ -63,7 +62,7 @@ parseSource source = do
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
-      arrangeNamespace
+      getCurrentFilePath >>= activateAliasInfo
       (defList, enumInfoList) <- run program $ sourceFilePath source
       privateNameSet <- readIORef privateNameSetRef
       modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
@@ -71,37 +70,12 @@ parseSource source = do
 
 ensureMain :: T.Text -> IO ()
 ensureMain mainFunctionName = do
-  -- m <- currentHint
   let m = error "undefined"
   topNameSet <- readIORef topNameSetRef
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
   if S.member mainFunctionName topNameSet
     then return ()
     else raiseError m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
-
-setupSectionPrefix :: Source -> IO ()
-setupSectionPrefix currentSource = do
-  locator <- getLocator currentSource
-  activateGlobalLocator locator
-  writeIORef currentGlobalLocatorRef locator
-
-arrangeNamespace :: IO ()
-arrangeNamespace = do
-  sourceAliasMap <- readIORef sourceAliasMapRef
-  currentFilePath <- getCurrentFilePath
-  case Map.lookup currentFilePath sourceAliasMap of
-    Nothing ->
-      raiseCritical' "[arrangeNamespace] (compiler bug)"
-    Just aliasInfoList ->
-      mapM_ arrangeNamespace' aliasInfoList
-
-arrangeNamespace' :: AliasInfo -> IO ()
-arrangeNamespace' aliasInfo =
-  case aliasInfo of
-    AliasInfoUse locator ->
-      activateGlobalLocator locator
-    AliasInfoPrefix m from to ->
-      handleDefinePrefix m from to
 
 program :: Parser ([QuasiStmt], [EnumInfo])
 program = do
@@ -310,21 +284,6 @@ registerTopLevelName m x = do
   isPrivate <- checkIfPrivate
   when isPrivate $
     modifyIORef' privateNameSetRef $ S.insert x
-
-initializeNamespace :: Source -> IO ()
-initializeNamespace source = do
-  additionalChecksumAlias <- getAdditionalChecksumAlias source
-  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
-  writeIORef globalLocatorListRef []
-  writeIORef localLocatorListRef []
-  writeIORef locatorAliasMapRef Map.empty
-
-getAdditionalChecksumAlias :: Source -> IO [(T.Text, T.Text)]
-getAdditionalChecksumAlias source = do
-  domain <- getDomain $ sourceModule source
-  if defaultModulePrefix == domain
-    then return []
-    else return [(defaultModulePrefix, domain)]
 
 checkIfPrivate :: IO Bool
 checkIfPrivate = do

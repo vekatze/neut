@@ -1,8 +1,12 @@
 module Entity.Source where
 
+import qualified Data.HashMap.Lazy as Map
+import Data.IORef
 import qualified Data.Text as T
+import Entity.Global
 import Entity.Hint
 import Entity.Module
+import Entity.Namespace
 import Entity.OutputKind
 import Entity.SourceLocator
 import qualified Entity.SourceLocator.Reflect as SourceLocator
@@ -87,3 +91,24 @@ getNextSource m currentModule sigText = do
       { sourceModule = sourceLocatorModule srcLocator,
         sourceFilePath = srcAbsPath
       }
+
+setupSectionPrefix :: Source -> IO ()
+setupSectionPrefix currentSource = do
+  locator <- getLocator currentSource
+  activateGlobalLocator locator
+  writeIORef currentGlobalLocatorRef locator
+
+getAdditionalChecksumAlias :: Source -> IO [(T.Text, T.Text)]
+getAdditionalChecksumAlias source = do
+  domain <- getDomain $ sourceModule source
+  if defaultModulePrefix == domain
+    then return []
+    else return [(defaultModulePrefix, domain)]
+
+initializeNamespace :: Source -> IO ()
+initializeNamespace source = do
+  additionalChecksumAlias <- getAdditionalChecksumAlias source
+  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
+  writeIORef globalLocatorListRef []
+  writeIORef localLocatorListRef []
+  writeIORef locatorAliasMapRef Map.empty

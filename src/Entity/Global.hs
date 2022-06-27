@@ -11,7 +11,6 @@ import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.AliasInfo
 import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
@@ -185,10 +184,10 @@ constraintListRef :: IORef [Constraint]
 constraintListRef =
   unsafePerformIO (newIORef [])
 
-{-# NOINLINE sourceAliasMapRef #-}
-sourceAliasMapRef :: IORef (Map.HashMap (Path Abs File) [AliasInfo])
-sourceAliasMapRef =
-  unsafePerformIO (newIORef Map.empty)
+-- {-# NOINLINE sourceAliasMapRef #-}
+-- sourceAliasMapRef :: IORef (Map.HashMap (Path Abs File) [AliasInfo])
+-- sourceAliasMapRef =
+--   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE suspendedConstraintQueueRef #-}
 suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
