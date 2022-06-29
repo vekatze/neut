@@ -13,13 +13,14 @@ module Entity.Ens
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import qualified Data.HashMap.Lazy as M
 import Data.Int
 import Data.List
 import qualified Data.Text as T
 import Entity.Hint
-import Entity.Log
 
 data EnsF a
   = EnsInt64 Int64
@@ -39,62 +40,62 @@ data EnsType
   | EnsTypeList
   | EnsTypeDictionary
 
-access :: T.Text -> Ens -> IO Ens
-access k entity@(m :< _) = do
-  dictionary <- toDictionary entity
+access :: Axis -> T.Text -> Ens -> IO Ens
+access axis k entity@(m :< _) = do
+  dictionary <- toDictionary axis entity
   case M.lookup k dictionary of
     Just v ->
       return v
     Nothing ->
-      raiseKeyNotFoundError m k
+      raiseKeyNotFoundError axis m k
 
-toInt64 :: Ens -> IO Int64
-toInt64 entity@(m :< _) =
+toInt64 :: Axis -> Ens -> IO Int64
+toInt64 axis entity@(m :< _) =
   case entity of
     _ :< EnsInt64 s ->
       return s
     _ ->
-      raiseTypeError m EnsTypeInt64 (typeOf entity)
+      raiseTypeError axis m EnsTypeInt64 (typeOf entity)
 
-toFloat64 :: Ens -> IO Double
-toFloat64 entity@(m :< _) =
+toFloat64 :: Axis -> Ens -> IO Double
+toFloat64 axis entity@(m :< _) =
   case entity of
     _ :< EnsFloat64 s ->
       return s
     _ ->
-      raiseTypeError m EnsTypeFloat64 (typeOf entity)
+      raiseTypeError axis m EnsTypeFloat64 (typeOf entity)
 
-toBool :: Ens -> IO Bool
-toBool entity@(m :< _) =
+toBool :: Axis -> Ens -> IO Bool
+toBool axis entity@(m :< _) =
   case entity of
     _ :< EnsBool x ->
       return x
     _ ->
-      raiseTypeError m EnsTypeBool (typeOf entity)
+      raiseTypeError axis m EnsTypeBool (typeOf entity)
 
-toString :: Ens -> IO T.Text
-toString entity@(m :< _) =
+toString :: Axis -> Ens -> IO T.Text
+toString axis entity@(m :< _) =
   case entity of
     _ :< EnsString s ->
       return s
     _ ->
-      raiseTypeError m EnsTypeString (typeOf entity)
+      raiseTypeError axis m EnsTypeString (typeOf entity)
 
-toDictionary :: Ens -> IO (M.HashMap T.Text Ens)
-toDictionary entity@(m :< _) =
+toDictionary :: Axis -> Ens -> IO (M.HashMap T.Text Ens)
+toDictionary axis entity@(m :< _) =
   case entity of
     _ :< EnsDictionary e ->
       return e
     _ ->
-      raiseTypeError m EnsTypeDictionary (typeOf entity)
+      raiseTypeError axis m EnsTypeDictionary (typeOf entity)
 
-toList :: Ens -> IO [Ens]
-toList entity@(m :< _) =
+toList :: Axis -> Ens -> IO [Ens]
+toList axis entity@(m :< _) =
   case entity of
     _ :< EnsList e ->
       return e
     _ ->
-      raiseTypeError m EnsTypeList (typeOf entity)
+      raiseTypeError axis m EnsTypeList (typeOf entity)
 
 typeOf :: Ens -> EnsType
 typeOf v =
@@ -128,13 +129,16 @@ showEnsType entityType =
     EnsTypeDictionary ->
       "dictionary"
 
-raiseKeyNotFoundError :: Hint -> T.Text -> IO a
-raiseKeyNotFoundError m k =
-  raiseError m $ "couldn't find the required key `" <> k <> "`."
+raiseKeyNotFoundError :: Axis -> Hint -> T.Text -> IO a
+raiseKeyNotFoundError axis m k =
+  (axis & throw & Throw.raiseError) m $
+    "couldn't find the required key `"
+      <> k
+      <> "`."
 
-raiseTypeError :: Hint -> EnsType -> EnsType -> IO a
-raiseTypeError m expectedType actualType =
-  raiseError m $
+raiseTypeError :: Axis -> Hint -> EnsType -> EnsType -> IO a
+raiseTypeError axis m expectedType actualType =
+  (axis & throw & Throw.raiseError) m $
     "the value here is expected to be of type `"
       <> showEnsType expectedType
       <> "`, but is: `"

@@ -3,7 +3,6 @@ module Entity.Log where
 import Control.Exception.Safe
 import qualified Data.Text as T
 import Entity.FilePos
-import Entity.Hint
 import System.Console.ANSI
 
 data LogLevel
@@ -21,6 +20,7 @@ type Log =
 type ColorFlag =
   Bool
 
+-- fixme: ErrorSyntax, ErrorType, ...
 newtype Error
   = Error [Log]
   deriving (Show)
@@ -90,23 +90,3 @@ logCritical pos text =
 logCritical' :: T.Text -> Log
 logCritical' text =
   (Nothing, LogLevelCritical, text)
-
-raiseError :: (MonadThrow m) => Hint -> T.Text -> m a
-raiseError m text =
-  throw $ Error [logError (Entity.FilePos.fromHint m) text]
-
-raiseError' :: (MonadThrow m) => T.Text -> m a
-raiseError' text =
-  throw $ Error [logError' text]
-
-raiseCritical :: (MonadThrow m) => Hint -> T.Text -> m a
-raiseCritical m text =
-  throw $ Error [logCritical (Entity.FilePos.fromHint m) text]
-
-raiseCritical' :: (MonadThrow m) => T.Text -> m a
-raiseCritical' text =
-  throw $ Error [logCritical' text]
-
-raiseSyntaxError :: (MonadThrow m) => Hint -> T.Text -> m a
-raiseSyntaxError m form =
-  raiseError m $ "couldn't match the input with the expected form: " <> form

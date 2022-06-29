@@ -6,8 +6,8 @@ module Act.Build
   )
 where
 
-import Context.Log
-import Context.Log.IO
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
@@ -27,7 +27,6 @@ import Entity.AliasInfo
 import Entity.EnumInfo.Env
 import Entity.Global
 import Entity.Hint
-import Entity.Log
 import Entity.Module
 import Entity.OutputKind
 import Entity.Source
@@ -58,92 +57,92 @@ type IsObjectAvailable =
 type ClangOption =
   String
 
-build :: Maybe Target -> Maybe ClangOption -> IO ()
-build mTarget mClangOptStr = do
-  let logCtx = logContextIO
-  ensureNotInLibDir "build"
+build :: Axis -> Maybe Target -> Maybe ClangOption -> IO ()
+build axis mTarget mClangOptStr = do
+  -- let axis = logContextIO
+  ensureNotInLibDir axis "build"
   case mTarget of
     Just target ->
-      build' logCtx target mClangOptStr
+      build' axis target mClangOptStr
     Nothing -> do
-      mainModule <- getMainModule
+      mainModule <- getMainModule axis
       forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-        build' logCtx (T.unpack target) mClangOptStr
+        build' axis (T.unpack target) mClangOptStr
 
-build' :: LogContext IO -> Target -> Maybe ClangOption -> IO ()
-build' logCtx target mClangOptStr = do
-  mainFilePath <- resolveTarget target
-  mainSource <- getMainSource mainFilePath
+build' :: Axis -> Target -> Maybe ClangOption -> IO ()
+build' axis target mClangOptStr = do
+  mainFilePath <- resolveTarget axis target
+  mainSource <- getMainSource axis mainFilePath
   setMainFilePath mainFilePath
   initializeEnumEnv
-  (_, isObjectAvailable, dependenceSeq) <- computeDependence mainSource
+  (_, isObjectAvailable, dependenceSeq) <- computeDependence axis mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   let clangOptStr = fromMaybe "" mClangOptStr
-  mapM_ (compile logCtx hasObjectSet clangOptStr) dependenceSeq
-  unless isObjectAvailable $ link target mClangOptStr $ toList dependenceSeq
+  mapM_ (compile axis hasObjectSet clangOptStr) dependenceSeq
+  unless isObjectAvailable $ link axis target mClangOptStr $ toList dependenceSeq
 
-check :: Maybe FilePath -> IO ()
-check mFilePathStr = do
-  let logCtx = logContextIO
-  ensureNotInLibDir "check"
+check :: Axis -> Maybe FilePath -> IO ()
+check axis mFilePathStr = do
+  ensureNotInLibDir axis "check"
   case mFilePathStr of
     Just filePathStr -> do
       filePath <- resolveFile' filePathStr
-      check' logCtx filePath
+      check' axis filePath
     Nothing -> do
-      mainModule <- getMainModule
+      mainModule <- getMainModule axis
       forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
-        check' logCtx $ getSourceDir mainModule </> relPath
+        check' axis $ getSourceDir mainModule </> relPath
 
-check' :: LogContext IO -> Path Abs File -> IO ()
-check' logCtx filePath = do
-  ensureFileModuleSanity filePath
-  mainModule <- getMainModule
+check' :: Axis -> Path Abs File -> IO ()
+check' axis filePath = do
+  ensureFileModuleSanity axis filePath
+  mainModule <- getMainModule axis
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
   initializeEnumEnv
-  (_, _, dependenceSeq) <- computeDependence source
-  mapM_ (check'' logCtx) dependenceSeq
+  (_, _, dependenceSeq) <- computeDependence axis source
+  mapM_ (check'' axis) dependenceSeq
 
-ensureFileModuleSanity :: Path Abs File -> IO ()
-ensureFileModuleSanity filePath = do
-  mainModule <- getMainModule
+ensureFileModuleSanity :: Axis -> Path Abs File -> IO ()
+ensureFileModuleSanity axis filePath = do
+  mainModule <- getMainModule axis
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    raiseError' "the specified file is not in the current module"
+    axis & throw & Throw.raiseError' $ "the specified file is not in the current module"
 
-ensureNotInLibDir :: T.Text -> IO ()
-ensureNotInLibDir commandName = do
-  mainModule <- getMainModule
+ensureNotInLibDir :: Axis -> T.Text -> IO ()
+ensureNotInLibDir axis commandName = do
+  mainModule <- getMainModule axis
   libDir <- getLibraryDirPath
   when (isProperPrefixOf libDir (moduleLocation mainModule)) $
-    raiseError' $ "the subcommand `" <> commandName <> "` cannot be run under the library directory"
+    axis & throw & Throw.raiseError' $
+      "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
-check'' :: LogContext IO -> Source -> IO ()
-check'' logCtx source = do
-  mMainFunctionName <- getMainFunctionName source
+check'' :: Axis -> Source -> IO ()
+check'' axis source = do
+  mMainFunctionName <- getMainFunctionName axis source
   case mMainFunctionName of
     Just mainName ->
-      void $ parseMain mainName source >>= elaborateMain logCtx mainName source
+      void $ parseMain axis mainName source >>= elaborateMain axis mainName source
     Nothing ->
-      void $ parseOther source >>= elaborateOther logCtx source
+      void $ parseOther axis source >>= elaborateOther axis source
 
-compile :: LogContext IO -> S.Set (Path Abs File) -> String -> Source -> IO ()
-compile logCtx hasObjectSet clangOptStr source = do
+compile :: Axis -> S.Set (Path Abs File) -> String -> Source -> IO ()
+compile axis hasObjectSet clangOptStr source = do
   if S.member (sourceFilePath source) hasObjectSet
-    then loadTopLevelDefinitions logCtx source
-    else compile' logCtx clangOptStr source
+    then loadTopLevelDefinitions axis source
+    else compile' axis clangOptStr source
 
-loadTopLevelDefinitions :: LogContext IO -> Source -> IO ()
-loadTopLevelDefinitions logCtx source = do
-  mMainFunctionName <- getMainFunctionNameIfEntryPoint source
+loadTopLevelDefinitions :: Axis -> Source -> IO ()
+loadTopLevelDefinitions axis source = do
+  mMainFunctionName <- getMainFunctionNameIfEntryPoint axis source
   case mMainFunctionName of
     Just mainName ->
-      void $ parseMain mainName source >>= elaborateMain logCtx mainName source >>= clarifyMain mainName
+      void $ parseMain axis mainName source >>= elaborateMain axis mainName source >>= clarifyMain axis mainName
     Nothing ->
-      void $ parseOther source >>= elaborateOther logCtx source >>= clarifyOther
+      void $ parseOther axis source >>= elaborateOther axis source >>= clarifyOther axis
 
-compile' :: LogContext IO -> String -> Source -> IO ()
-compile' logCtx clangOptStr source = do
-  llvm <- compileToLLVM logCtx source
+compile' :: Axis -> String -> Source -> IO ()
+compile' axis clangOptStr source = do
+  llvm <- compileToLLVM axis source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
@@ -153,46 +152,47 @@ compile' logCtx clangOptStr source = do
     L.hPut stdin llvm
     hClose stdin
     clangExitCode <- waitForProcess clangProcessHandler
-    raiseIfFailure "clang" clangExitCode clangErrorHandler
+    raiseIfFailure axis "clang" clangExitCode clangErrorHandler
     return ()
 
-compileToLLVM :: LogContext IO -> Source -> IO L.ByteString
-compileToLLVM logCtx source = do
-  mMainFunctionName <- getMainFunctionNameIfEntryPoint source
+compileToLLVM :: Axis -> Source -> IO L.ByteString
+compileToLLVM axis source = do
+  mMainFunctionName <- getMainFunctionNameIfEntryPoint axis source
   case mMainFunctionName of
     Just mainName ->
-      parseMain mainName source
-        >>= elaborateMain logCtx mainName source
-        >>= clarifyMain mainName
-        >>= lowerMain
-        >>= emitMain
+      parseMain axis mainName source
+        >>= elaborateMain axis mainName source
+        >>= clarifyMain axis mainName
+        >>= lowerMain axis
+        >>= emitMain axis
     Nothing ->
-      parseOther source
-        >>= elaborateOther logCtx source
-        >>= clarifyOther
-        >>= lowerOther >> emitOther
+      parseOther axis source
+        >>= elaborateOther axis source
+        >>= clarifyOther axis
+        >>= lowerOther axis
+        >> emitOther axis
 
-link :: Target -> Maybe String -> [Source] -> IO ()
-link target mClangOptStr sourceList = do
-  outputPath <- getExecutableOutputPath target
+link :: Axis -> Target -> Maybe String -> [Source] -> IO ()
+link axis target mClangOptStr sourceList = do
+  outputPath <- getExecutableOutputPath axis target
   ensureDir $ parent outputPath
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
   let clangCmd = proc "clang" $ clangLinkOpt objectPathList outputPath $ fromMaybe "" mClangOptStr
   (_, _, Just clangErrorHandler, clangHandler) <-
     createProcess clangCmd {std_err = CreatePipe}
   clangExitCode <- waitForProcess clangHandler
-  raiseIfFailure "clang" clangExitCode clangErrorHandler
+  raiseIfFailure axis "clang" clangExitCode clangErrorHandler
 
-clean :: IO ()
-clean = do
-  mainModule <- getMainModule
+clean :: Axis -> IO ()
+clean axis = do
+  mainModule <- getMainModule axis
   let targetDir = getTargetDir mainModule
   b <- doesDirExist targetDir
   when b $ removeDirRecur $ getTargetDir mainModule
 
-getExecutableOutputPath :: Target -> IO (Path Abs File)
-getExecutableOutputPath target = do
-  mainModule <- getMainModule
+getExecutableOutputPath :: Axis -> Target -> IO (Path Abs File)
+getExecutableOutputPath axis target = do
+  mainModule <- getMainModule axis
   resolveFile (getExecutableDir mainModule) target
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
@@ -202,32 +202,32 @@ sourceToOutputPath kind source = do
   (relPathWithoutExtension, _) <- splitExtension relPath
   addExtensionAlongKind (artifactDir </> relPathWithoutExtension) kind
 
-getMainSource :: Path Abs File -> IO Source
-getMainSource mainSourceFilePath = do
-  mainModule <- getMainModule
+getMainSource :: Axis -> Path Abs File -> IO Source
+getMainSource axis mainSourceFilePath = do
+  mainModule <- getMainModule axis
   return $
     Source
       { sourceModule = mainModule,
         sourceFilePath = mainSourceFilePath
       }
 
-getMainFunctionName :: Source -> IO (Maybe T.Text)
-getMainFunctionName source = do
+getMainFunctionName :: Axis -> Source -> IO (Maybe T.Text)
+getMainFunctionName axis source = do
   b <- isMainFile source
   if b
-    then return <$> getMainFunctionName' source
+    then return <$> getMainFunctionName' axis source
     else return Nothing
 
-getMainFunctionNameIfEntryPoint :: Source -> IO (Maybe T.Text)
-getMainFunctionNameIfEntryPoint source = do
-  mainFilePath <- getMainFilePath
+getMainFunctionNameIfEntryPoint :: Axis -> Source -> IO (Maybe T.Text)
+getMainFunctionNameIfEntryPoint axis source = do
+  mainFilePath <- getMainFilePath axis
   if sourceFilePath source == mainFilePath
-    then return <$> getMainFunctionName' source
+    then return <$> getMainFunctionName' axis source
     else return Nothing
 
-getMainFunctionName' :: Source -> IO T.Text
-getMainFunctionName' source = do
-  locator <- getLocator source
+getMainFunctionName' :: Axis -> Source -> IO T.Text
+getMainFunctionName' axis source = do
+  locator <- getLocator axis source
   return $ locator <> definiteSep <> "main"
 
 {-# NOINLINE traceSourceListRef #-}
@@ -245,13 +245,13 @@ sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-computeDependence :: Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
-computeDependence source = do
+computeDependence :: Axis -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
+computeDependence axis source = do
   visitEnv <- readIORef visitEnvRef
   let path = sourceFilePath source
   case Map.lookup path visitEnv of
     Just VisitInfoActive ->
-      raiseCyclicPath source
+      raiseCyclicPath axis source
     Just VisitInfoFinish -> do
       hasCacheSet <- readIORef hasCacheSetRef
       hasObjectSet <- readIORef hasObjectSetRef
@@ -259,8 +259,8 @@ computeDependence source = do
     Nothing -> do
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
       modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
-      children <- getChildren source
-      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM computeDependence children
+      children <- getChildren axis source
+      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (computeDependence axis) children
       modifyIORef' traceSourceListRef tail
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
       isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
@@ -303,12 +303,12 @@ isItemAvailable source itemPath = do
       itemModTime <- getModificationTime itemPath
       return $ itemModTime > srcModTime
 
-raiseCyclicPath :: Source -> IO a
-raiseCyclicPath source = do
+raiseCyclicPath :: Axis -> Source -> IO a
+raiseCyclicPath axis source = do
   traceSourceList <- readIORef traceSourceListRef
   let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
   let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-  raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+  (axis & throw & Throw.raiseError) m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
@@ -330,8 +330,8 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
-getChildren :: Source -> IO [Source]
-getChildren currentSource = do
+getChildren :: Axis -> Source -> IO [Source]
+getChildren axis currentSource = do
   sourceChildrenMap <- readIORef sourceChildrenMapRef
   let currentSourceFilePath = sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
@@ -341,7 +341,7 @@ getChildren currentSource = do
       let path = sourceFilePath currentSource
       -- initializeParserForFile $ sourceFilePath currentSource
       -- skip
-      (sourceList, aliasInfoList) <- run (parseImportSequence (sourceModule currentSource)) path
+      (sourceList, aliasInfoList) <- run (parseImportSequence axis (sourceModule currentSource)) path
       -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
       updateSourceAliasMapRef currentSourceFilePath aliasInfoList
@@ -386,26 +386,26 @@ clangBaseOpt outputPath =
 type Target =
   String
 
-resolveTarget :: Target -> IO (Path Abs File)
-resolveTarget target = do
-  mainModule <- getMainModule
+resolveTarget :: Axis -> Target -> IO (Path Abs File)
+resolveTarget axis target = do
+  mainModule <- getMainModule axis
   case getTargetFilePath mainModule (T.pack target) of
     Just path ->
       return path
     Nothing -> do
       -- l <-
-      _ <- raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
+      _ <- axis & throw & Throw.raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
       -- outputLog l
       exitWith (ExitFailure 1)
 
-raiseIfFailure :: T.Text -> ExitCode -> Handle -> IO ()
-raiseIfFailure procName exitCode h =
+raiseIfFailure :: Axis -> T.Text -> ExitCode -> Handle -> IO ()
+raiseIfFailure axis procName exitCode h =
   case exitCode of
     ExitSuccess ->
       return ()
     ExitFailure i -> do
       errStr <- TIO.hGetContents h
-      raiseError' $
+      axis & throw & Throw.raiseError' $
         "the child process `"
           <> procName
           <> "` failed with the following message (exitcode = "

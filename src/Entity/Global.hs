@@ -2,31 +2,27 @@
 
 module Entity.Global where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
-import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
-import Entity.FilePos
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.Log
 import Entity.LowComp
 import Entity.LowType
 import Entity.Opacity
 import Entity.WeakTerm
 import Path
 import Path.IO
-import System.Console.ANSI
-import System.Exit
 import System.IO.Unsafe
 import qualified System.Info as System
 
@@ -58,19 +54,14 @@ setMainFilePath :: Path Abs File -> IO ()
 setMainFilePath path =
   modifyIORef' mainFilePathRef $ const $ Just path
 
-getMainFilePath :: IO (Path Abs File)
-getMainFilePath = do
+getMainFilePath :: Axis -> IO (Path Abs File)
+getMainFilePath axis = do
   mainFilePathOrNothing <- readIORef mainFilePathRef
   case mainFilePathOrNothing of
     Just mainFilePath ->
       return mainFilePath
     Nothing ->
-      raiseCritical' "no main file path is set"
-
-{-# NOINLINE endOfEntryRef #-}
-endOfEntryRef :: IORef String
-endOfEntryRef =
-  unsafePerformIO (newIORef "")
+      axis & throw & Throw.raiseCritical' $ "no main file path is set"
 
 {-# NOINLINE targetPlatformRef #-}
 targetPlatformRef :: IORef String
@@ -96,14 +87,14 @@ setCurrentFilePath :: Path Abs File -> IO ()
 setCurrentFilePath path =
   modifyIORef' currentFileRef $ const $ Just path
 
-getCurrentFilePath :: IO (Path Abs File)
-getCurrentFilePath = do
+getCurrentFilePath :: Axis -> IO (Path Abs File)
+getCurrentFilePath axis = do
   currentFileOrNothing <- readIORef currentFileRef
   case currentFileOrNothing of
     Just currentFile ->
       return currentFile
     Nothing ->
-      raiseCritical' "no current file is set"
+      axis & throw & Throw.raiseCritical' $ "no current file is set"
 
 globalEnumEnv :: [(T.Text, [(T.Text, Int)])]
 globalEnumEnv =
@@ -371,99 +362,6 @@ getLibraryDirPath = do
 returnDirectory :: Path Abs Dir -> IO (Path Abs Dir)
 returnDirectory path =
   ensureDir path >> return path
-
---
--- log
---
-
--- outputLog :: Log -> IO ()
--- outputLog (mpos, l, t) = do
---   outputLogLocation mpos
---   outputLogLevel l
---   outputLogText t (logLevelToPad l)
---   outputFooter
-
--- whenRef :: IORef Bool -> IO () -> IO ()
--- whenRef ref comp = do
---   b <- readIORef ref
---   when b comp
-
--- outputLogLocation :: Maybe FilePos -> IO ()
--- outputLogLocation mpos = do
---   case mpos of
---     Just pos ->
---       withSGR [SetConsoleIntensity BoldIntensity] $ do
---         TIO.putStr $ T.pack (showFilePos pos)
---         TIO.putStrLn ":"
---     _ ->
---       return ()
-
--- outputFooter :: IO ()
--- outputFooter = do
---   eoe <- readIORef endOfEntryRef
---   if eoe == ""
---     then return ()
---     else putStrLn eoe
-
--- outputFilePos :: FilePos -> IO ()
--- outputFilePos pos =
---   withSGR [SetConsoleIntensity BoldIntensity] $ do
---     TIO.putStr $ T.pack (showFilePos pos)
---     TIO.putStrLn ":"
-
--- outputLogLevel :: LogLevel -> IO ()
--- outputLogLevel l =
---   withSGR (logLevelToSGR l) $ do
---     TIO.putStr $ logLevelToText l
---     TIO.putStr ": "
-
--- outputLogText :: T.Text -> IO T.Text -> IO ()
--- outputLogText str padComp = do
---   pad <- padComp
---   TIO.putStrLn $ stylizeLogText str pad
-
--- logLevelToPad :: LogLevel -> IO T.Text
--- logLevelToPad level = do
---   return $ T.replicate (T.length (logLevelToText level) + 2) " "
-
--- stylizeLogText :: T.Text -> T.Text -> T.Text
--- stylizeLogText str pad = do
---   let ls = T.lines str
---   if null ls
---     then str
---     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
-
--- withSGR :: [SGR] -> IO () -> IO ()
--- withSGR arg f = do
---   b <- readIORef shouldColorizeRef
---   if b
---     then setSGR arg >> f >> setSGR [Reset]
---     else f
-
--- note :: Hint -> T.Text -> IO ()
--- note m str =
---   outputLog $ logNote (fromHint m) str
-
--- note' :: T.Text -> IO ()
--- note' str =
---   outputLog $ logNote' str
-
--- warn :: FilePos -> T.Text -> IO ()
--- warn pos str =
---   outputLog $ logWarning pos str
-
--- outputError :: Hint -> T.Text -> IO a
--- outputError m text = do
---   outputLog $ logError (fromHint m) text
---   exitWith (ExitFailure 1)
-
--- outputPass :: String -> IO ()
--- outputPass str =
---   outputLog (Nothing, LogLevelPass, T.pack str)
-
--- outputFail :: String -> IO ()
--- outputFail str =
---   outputLog (Nothing, LogLevelFail, T.pack str)
 
 -- for debug
 p :: String -> IO ()

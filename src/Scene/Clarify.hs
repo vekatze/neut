@@ -5,6 +5,8 @@ module Scene.Clarify
 where
 
 import Codec.Binary.UTF8.String
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
@@ -25,7 +27,6 @@ import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Log
 import Entity.LowType
 import Entity.Magic
 import Entity.Namespace
@@ -44,23 +45,23 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 
-clarifyMain :: T.Text -> [Stmt] -> IO ([CompDef], Comp)
-clarifyMain mainName defList = do
+clarifyMain :: Axis -> T.Text -> [Stmt] -> IO ([CompDef], Comp)
+clarifyMain axis mainName defList = do
   _ <- returnImmediateS4
   _ <- returnClosureS4
-  defList' <- clarifyDefList defList
+  defList' <- clarifyDefList axis defList
   mainTerm <- reduce $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
   return (defList', mainTerm)
 
-clarifyOther :: [Stmt] -> IO [CompDef]
-clarifyOther defList = do
-  clarifyDefList defList
+clarifyOther :: Axis -> [Stmt] -> IO [CompDef]
+clarifyOther axis defList = do
+  clarifyDefList axis defList
 
-clarifyDefList :: [Stmt] -> IO [CompDef]
-clarifyDefList defList = do
+clarifyDefList :: Axis -> [Stmt] -> IO [CompDef]
+clarifyDefList axis defList = do
   compDefEnv <- readIORef compDefEnvRef
   writeIORef compDefEnvRef Map.empty
-  defList' <- mapM clarifyDef defList
+  defList' <- mapM (clarifyDef axis) defList
   newDefEnv <- Map.toList <$> readIORef compDefEnvRef
   modifyIORef' compDefEnvRef $ Map.union compDefEnv
   mapM_ register defList'
@@ -73,19 +74,19 @@ register :: (T.Text, (Opacity, [Ident], Comp)) -> IO ()
 register (x, (opacity, args, e)) =
   insDefEnv (wrapWithQuote x) opacity args e
 
-clarifyDef :: Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
-clarifyDef stmt =
+clarifyDef :: Axis -> Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
+clarifyDef axis stmt =
   case stmt of
     StmtDefine opacity _ f _ xts _ e -> do
-      e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e
-      xts' <- dropFst <$> clarifyBinder IntMap.empty xts
+      e' <- clarifyTerm axis (insTypeEnv xts IntMap.empty) e
+      xts' <- dropFst <$> clarifyBinder axis IntMap.empty xts
       e'' <- linearize xts' e' >>= reduce
       return (f, (opacity, map fst xts', e''))
     StmtDefineResource m name discarder copier -> do
       switchValue <- newIdentFromText "switchValue"
       value <- newIdentFromText "value"
-      discarder' <- clarifyTerm IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduce
-      copier' <- clarifyTerm IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduce
+      discarder' <- clarifyTerm axis IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduce
+      copier' <- clarifyTerm axis IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduce
       return
         ( name,
           ( OpacityTransparent,
@@ -94,8 +95,8 @@ clarifyDef stmt =
           )
         )
 
-clarifyTerm :: TypeEnv -> Term -> IO Comp
-clarifyTerm tenv term =
+clarifyTerm :: Axis -> TypeEnv -> Term -> IO Comp
+clarifyTerm axis tenv term =
   case term of
     _ :< TermTau ->
       returnImmediateS4
@@ -117,27 +118,27 @@ clarifyTerm tenv term =
     _ :< TermPi {} ->
       returnClosureS4
     _ :< TermPiIntro kind mxts e -> do
-      clarifyLambda tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
+      clarifyLambda axis tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
     _ :< TermPiElim e es -> do
-      es' <- mapM (clarifyPlus tenv) es
-      e' <- clarifyTerm tenv e
+      es' <- mapM (clarifyPlus axis tenv) es
+      e' <- clarifyTerm axis tenv e
       callClosure e' es'
     _ :< TermSigma {} -> do
       returnClosureS4
     m :< TermSigmaIntro es -> do
       k <- newIdentFromText "sigma"
-      clarifyTerm tenv $
+      clarifyTerm axis tenv $
         m
           :< TermPiIntro
             LamKindNormal
             [(m, k, m :< TermPi [] (m :< TermTau))]
             (m :< TermPiElim (m :< TermVar k) es)
     m :< TermSigmaElim xts e1 e2 -> do
-      clarifyTerm tenv $ m :< TermPiElim e1 [m :< TermPiIntro LamKindNormal xts e2]
+      clarifyTerm axis tenv $ m :< TermPiElim e1 [m :< TermPiIntro LamKindNormal xts e2]
     m :< TermLet mxt e1 e2 -> do
-      clarifyTerm tenv $ m :< TermPiElim (m :< TermPiIntro LamKindNormal [mxt] e2) [e1]
+      clarifyTerm axis tenv $ m :< TermPiElim (m :< TermPiIntro LamKindNormal [mxt] e2) [e1]
     m :< TermConst x ->
-      clarifyConst tenv m x
+      clarifyConst axis tenv m x
     _ :< TermInt size l ->
       return $ CompUpIntro (ValueInt size l)
     _ :< TermFloat size l ->
@@ -149,16 +150,16 @@ clarifyTerm tenv term =
     _ :< TermEnumElim (e, _) bs -> do
       let (enumCaseList, es) = unzip bs
       let fvs = chainFromTermList tenv es
-      es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
-      (y, e', yVar) <- clarifyPlus tenv e
+      es' <- (mapM (clarifyTerm axis tenv) >=> alignFreeVariables axis tenv fvs) es
+      (y, e', yVar) <- clarifyPlus axis tenv e
       return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
     _ :< TermMagic der -> do
-      clarifyMagic tenv der
+      clarifyMagic axis tenv der
     _ :< TermMatch mSubject (e, _) clauseList -> do
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
       clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, xts), body), i) -> do
-        closure <- clarifyLambda tenv LamKindNormal xts body fvs
+        closure <- clarifyLambda axis tenv LamKindNormal xts body fvs
         (closureVarName, closureVar) <- newValueVarLocalWith "clause"
         return
           ( () :< EnumCaseInt i,
@@ -169,7 +170,7 @@ clarifyTerm tenv term =
                 (ValueVarGlobal (getClauseConsName consName (isJust mSubject)))
                 [closureVar, envVar]
           )
-      dataTerm <- clarifyTerm tenv e
+      dataTerm <- clarifyTerm axis tenv e
       return $
         CompUpElim
           dataVarName
@@ -186,40 +187,40 @@ clarifyTerm tenv term =
         _ :< TermVar x ->
           return $ CompUpIntro (ValueVarLocalIdeal x)
         _ ->
-          raiseCritical m "compiler bug: found a non-variable noetic value"
+          (axis & throw & Throw.raiseCritical) m "compiler bug: found a non-variable noetic value"
     m :< TermNoemaElim s e -> do
-      e' <- clarifyTerm (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
+      e' <- clarifyTerm axis (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
     _ :< TermArray elemType -> do
       let constName = "unsafe-" <> toText elemType <> "-array-internal"
       return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
     _ :< TermArrayIntro elemType elems -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) elems
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus axis tenv) elems
       return $
         bindLet (zip xs args') $
           CompUpIntro (ValueArrayIntro elemType xsAsVars)
     _ :< TermArrayAccess _ elemType array index -> do
-      (arrayVarName, array', arrayVar) <- clarifyPlus tenv array
-      (indexVarName, index', indexVar) <- clarifyPlus tenv index
+      (arrayVarName, array', arrayVar) <- clarifyPlus axis tenv array
+      (indexVarName, index', indexVar) <- clarifyPlus axis tenv index
       return $
         bindLet [(arrayVarName, array'), (indexVarName, index')] $
           CompArrayAccess elemType arrayVar indexVar
     m :< TermText ->
-      clarifyTerm tenv $ m :< TermArray (PrimNumInt $ IntSize 8)
+      clarifyTerm axis tenv $ m :< TermArray (PrimNumInt $ IntSize 8)
     m :< TermTextIntro text -> do
       let i8s = encode $ T.unpack text
       let i8s' = map (\x -> m :< TermInt (IntSize 8) (toInteger x)) i8s
-      clarifyTerm tenv $ m :< TermArrayIntro (PrimNumInt (IntSize 8)) i8s'
+      clarifyTerm axis tenv $ m :< TermArrayIntro (PrimNumInt (IntSize 8)) i8s'
     _ :< TermCell {} -> do
       returnCellS4
     _ :< TermCellIntro contentType content -> do
-      (contentTypeVarName, contentType', contentTypeVar) <- clarifyPlus tenv contentType
-      (contentVarName, content', contentVar) <- clarifyPlus tenv content
+      (contentTypeVarName, contentType', contentTypeVar) <- clarifyPlus axis tenv contentType
+      (contentVarName, content', contentVar) <- clarifyPlus axis tenv content
       return $
         bindLet [(contentTypeVarName, contentType'), (contentVarName, content')] $
           CompUpIntro (ValueSigmaIntro [contentTypeVar, contentVar])
     _ :< TermCellRead cell -> do
-      (cellVarName, cell', cellVar) <- clarifyPlus tenv cell
+      (cellVarName, cell', cellVar) <- clarifyPlus axis tenv cell
       (typeVarName, typeVar) <- newValueVarLocalWith "typeVar"
       valueVarName <- newIdentFromText "valueVar"
       returnClonedValue <- toRelevantApp valueVarName (CompUpIntro typeVar)
@@ -228,9 +229,9 @@ clarifyTerm tenv term =
           CompSigmaElim True [typeVarName, valueVarName] cellVar returnClonedValue
     _ :< TermCellWrite cell newValue -> do
       (typeVarName, typeVar) <- newValueVarLocalWith "typeVar"
-      (cellVarName, cell', cellVar) <- clarifyPlus tenv cell
+      (cellVarName, cell', cellVar) <- clarifyPlus axis tenv cell
       oldValueVarName <- newIdentFromText "oldValueVar"
-      (newValueVarName, newValue', newValueVar) <- clarifyPlus tenv newValue
+      (newValueVarName, newValue', newValueVar) <- clarifyPlus axis tenv newValue
       discardOldContent <- toAffineApp oldValueVarName (CompUpIntro typeVar)
       placeHolder <- newIdentFromText "placeholder"
       (addrVarName, addrVar) <- newValueVarLocalWith "address"
@@ -247,55 +248,56 @@ add v1 v2 = do
   let i64 = PrimNumInt (IntSize 64)
   CompPrimitive $ PrimitivePrimOp (PrimOp "add" [i64, i64] i64) [v1, v2]
 
-clarifyMagic :: TypeEnv -> Magic Term -> IO Comp
-clarifyMagic tenv der =
+clarifyMagic :: Axis -> TypeEnv -> Magic Term -> IO Comp
+clarifyMagic axis tenv der =
   case der of
     MagicCast from to value -> do
-      (fromVarName, from', fromVar) <- clarifyPlus tenv from
-      (toVarName, to', toVar) <- clarifyPlus tenv to
-      (valueVarName, value', valueVar) <- clarifyPlus tenv value
+      (fromVarName, from', fromVar) <- clarifyPlus axis tenv from
+      (toVarName, to', toVar) <- clarifyPlus axis tenv to
+      (valueVarName, value', valueVar) <- clarifyPlus axis tenv value
       return $
         bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
           CompPrimitive (PrimitiveMagic (MagicCast fromVar toVar valueVar))
     MagicStore lt pointer value -> do
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
-      (valueVarName, value', valueVar) <- clarifyPlus tenv value
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus axis tenv pointer
+      (valueVarName, value', valueVar) <- clarifyPlus axis tenv value
       return $
         bindLet [(pointerVarName, pointer'), (valueVarName, value')] $
           CompPrimitive (PrimitiveMagic (MagicStore lt pointerVar valueVar))
     MagicLoad lt pointer -> do
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus axis tenv pointer
       return $
         bindLet [(pointerVarName, pointer')] $
           CompPrimitive (PrimitiveMagic (MagicLoad lt pointerVar))
     MagicSyscall syscallNum args -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus axis tenv) args
       return $
         bindLet (zip xs args') $
           CompPrimitive (PrimitiveMagic (MagicSyscall syscallNum xsAsVars))
     MagicExternal extFunName args -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus axis tenv) args
       return $
         bindLet (zip xs args') $
           CompPrimitive (PrimitiveMagic (MagicExternal extFunName xsAsVars))
 
 clarifyLambda ::
+  Axis ->
   TypeEnv ->
   LamKindF Term ->
   [(Hint, Ident, Term)] ->
   Term ->
   [BinderF Term] ->
   IO Comp
-clarifyLambda tenv kind mxts e fvs = do
-  e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
+clarifyLambda axis tenv kind mxts e fvs = do
+  e' <- clarifyTerm axis (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
   case kind of
     LamKindFix (_, x, _)
       | S.member x (freeVars e') ->
-        returnClosure tenv OpacityOpaque kind fvs mxts e'
+        returnClosure axis tenv OpacityOpaque kind fvs mxts e'
       | otherwise ->
-        returnClosure tenv OpacityTransparent LamKindNormal fvs mxts e'
+        returnClosure axis tenv OpacityTransparent LamKindNormal fvs mxts e'
     _ ->
-      returnClosure tenv OpacityTransparent kind fvs mxts e'
+      returnClosure axis tenv OpacityTransparent kind fvs mxts e'
 
 newClosureNames :: IO ((Ident, Value), Ident, (Ident, Value), (Ident, Value))
 newClosureNames = do
@@ -311,52 +313,53 @@ caseClauseToLambda pat =
     ((mPat, _, xts), body) ->
       mPat :< TermPiIntro LamKindNormal xts body
 
-clarifyPlus :: TypeEnv -> Term -> IO (Ident, Comp, Value)
-clarifyPlus tenv e = do
-  e' <- clarifyTerm tenv e
+clarifyPlus :: Axis -> TypeEnv -> Term -> IO (Ident, Comp, Value)
+clarifyPlus axis tenv e = do
+  e' <- clarifyTerm axis tenv e
   (varName, var) <- newValueVarLocalWith "var"
   return (varName, e', var)
 
-clarifyBinder :: TypeEnv -> [BinderF Term] -> IO [(Hint, Ident, Comp)]
-clarifyBinder tenv binder =
+clarifyBinder :: Axis -> TypeEnv -> [BinderF Term] -> IO [(Hint, Ident, Comp)]
+clarifyBinder axis tenv binder =
   case binder of
     [] ->
       return []
     ((m, x, t) : xts) -> do
-      t' <- clarifyTerm tenv t
-      xts' <- clarifyBinder (IntMap.insert (Ident.toInt x) t tenv) xts
+      t' <- clarifyTerm axis tenv t
+      xts' <- clarifyBinder axis (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
 chainFromTermList :: TypeEnv -> [Term] -> [BinderF Term]
 chainFromTermList tenv es =
   nubFreeVariables $ concatMap (chainOf tenv) es
 
-alignFreeVariables :: TypeEnv -> [BinderF Term] -> [Comp] -> IO [Comp]
-alignFreeVariables tenv fvs es = do
-  es' <- mapM (returnClosure tenv OpacityTransparent LamKindNormal fvs []) es
+alignFreeVariables :: Axis -> TypeEnv -> [BinderF Term] -> [Comp] -> IO [Comp]
+alignFreeVariables axis tenv fvs es = do
+  es' <- mapM (returnClosure axis tenv OpacityTransparent LamKindNormal fvs []) es
   mapM (`callClosure` []) es'
 
 nubFreeVariables :: [BinderF Term] -> [BinderF Term]
 nubFreeVariables =
   nubBy (\(_, x, _) (_, y, _) -> x == y)
 
-clarifyConst :: TypeEnv -> Hint -> T.Text -> IO Comp
-clarifyConst tenv m constName
+clarifyConst :: Axis -> TypeEnv -> Hint -> T.Text -> IO Comp
+clarifyConst axis tenv m constName
   | Just op <- PrimOp.fromText constName =
-    clarifyPrimOp tenv op m
+    clarifyPrimOp axis tenv op m
   | Just _ <- PrimNum.fromText constName =
     returnImmediateS4
   | otherwise = do
-    raiseCritical m $ "undefined constant: " <> constName
+    (axis & throw & Throw.raiseCritical) m $ "undefined constant: " <> constName
 
-clarifyPrimOp :: TypeEnv -> PrimOp -> Hint -> IO Comp
-clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
+clarifyPrimOp :: Axis -> TypeEnv -> PrimOp -> Hint -> IO Comp
+clarifyPrimOp axis tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- unzip <$> mapM (const (newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)
+  returnClosure axis tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)
 
 returnClosure ::
+  Axis ->
   TypeEnv ->
   Opacity -> -- whether the closure is reducible
   LamKindF Term -> -- the name of newly created closure
@@ -364,9 +367,9 @@ returnClosure ::
   [BinderF Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   Comp -> -- the `e` in `lam (x1, ..., xn). e`
   IO Comp
-returnClosure tenv isReducible kind fvs xts e = do
-  fvs' <- clarifyBinder tenv fvs
-  xts' <- clarifyBinder tenv xts
+returnClosure axis tenv isReducible kind fvs xts e = do
+  fvs' <- clarifyBinder axis tenv fvs
+  xts' <- clarifyBinder axis tenv xts
   let xts'' = dropFst xts'
   let fvs'' = dropFst fvs'
   fvEnvSigma <- closureEnvS4 $ map Right fvs''

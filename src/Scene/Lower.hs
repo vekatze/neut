@@ -6,6 +6,8 @@ module Scene.Lower
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -17,7 +19,6 @@ import Entity.Comp
 import Entity.EnumCase
 import Entity.Global
 import Entity.Ident
-import Entity.Log
 import Entity.LowComp
 import Entity.LowType
 import Entity.Magic
@@ -26,6 +27,7 @@ import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 
+-- fixme: remove WriterT
 type Lower = WriterT Cont IO
 
 newtype Cont = Cont (LowComp -> IO LowComp)
@@ -52,22 +54,22 @@ runLowerComp m = do
   (a, Cont b) <- runWriterT m
   b a
 
-lowerMain :: ([CompDef], Comp) -> IO LowComp
-lowerMain (defList, mainTerm) = do
+lowerMain :: Axis -> ([CompDef], Comp) -> IO LowComp
+lowerMain axis (defList, mainTerm) = do
   initialize $ cartImmName : cartClsName : map fst defList
-  registerCartesian cartImmName
-  registerCartesian cartClsName
+  registerCartesian axis cartImmName
+  registerCartesian axis cartClsName
   forM_ defList $ \(name, (_, args, e)) ->
-    lowerComp e >>= insLowDefEnv name args
-  mainTerm'' <- lowerComp mainTerm
+    lowerComp axis e >>= insLowDefEnv name args
+  mainTerm'' <- lowerComp axis mainTerm
   -- the result of "main" must be i64, not i8*
   (result, resultVar) <- newValueVarLocalWith "result"
-  castResult <- runLower $ lowerValueLetCast resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
+  castResult <- runLower $ lowerValueLetCast axis resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
 
-lowerOther :: [CompDef] -> IO ()
-lowerOther defList = do
+lowerOther :: Axis -> [CompDef] -> IO ()
+lowerOther axis defList = do
   initialize $ map fst defList
   insDeclEnv cartImmName [(), ()]
   insDeclEnv cartClsName [(), ()]
@@ -75,7 +77,7 @@ lowerOther defList = do
   lowDeclEnv <- readIORef lowDeclEnvRef
   forM_ defList $ \(name, (_, args, e)) ->
     unless (Map.member name lowDeclEnv) $
-      lowerComp e >>= insLowDefEnv name args
+      lowerComp axis e >>= insLowDefEnv name args
 
 initialize :: [T.Text] -> IO ()
 initialize nameList = do
@@ -83,49 +85,49 @@ initialize nameList = do
   writeIORef lowDefEnvRef Map.empty
   writeIORef lowNameSetRef $ S.fromList nameList
 
-lowerComp :: Comp -> IO LowComp
-lowerComp term =
+lowerComp :: Axis -> Comp -> IO LowComp
+lowerComp axis term =
   case term of
     CompPrimitive theta ->
-      runLower $ lowerCompPrimitive theta
+      runLower $ lowerCompPrimitive axis theta
     CompPiElimDownElim v ds -> do
       runLowerComp $ do
-        v' <- lowerValue v
-        ds' <- mapM lowerValue ds
+        v' <- lowerValue axis v
+        ds' <- mapM (lowerValue axis) ds
         v'' <- cast v' $ toFunPtrType ds
         return $ LowCompCall v'' ds'
     CompSigmaElim isNoetic xs v e -> do
       let baseType = LowTypePointer $ LowTypeArray (length xs) voidPtr
       runLowerComp $ do
-        basePointer <- lowerValue v
+        basePointer <- lowerValue axis v
         castedBasePointer <- cast basePointer baseType
         ds <- loadElements castedBasePointer baseType $ take (length xs) $ zip [0 ..] (repeat voidPtr)
         unless isNoetic $ free castedBasePointer baseType
         forM_ (zip xs ds) $ \(x, d) -> do
           extend $ return . LowCompLet x (LowOpBitcast d voidPtr voidPtr)
-        liftIO $ lowerComp e
+        liftIO $ lowerComp axis e
     CompUpIntro d ->
-      runLower $ lowerValue d
+      runLower $ lowerValue axis d
     CompUpElim x e1 e2 -> do
-      e1' <- lowerComp e1
-      e2' <- lowerComp e2
+      e1' <- lowerComp axis e1
+      e2' <- lowerComp axis e2
       commConv x e1' e2'
     CompEnumElim v branchList -> do
-      m <- constructSwitch branchList
+      m <- constructSwitch axis branchList
       case m of
         Nothing ->
           return LowCompUnreachable
         Just (defaultCase, caseList) -> do
           runLowerComp $ do
             let t = LowTypePrimNum $ PrimNumInt $ IntSize 64
-            castedValue <- lowerValueLetCast v t
+            castedValue <- lowerValueLetCast axis v t
             return $ LowCompSwitch (castedValue, t) defaultCase caseList
     CompArrayAccess elemType v index -> do
       let elemType' = LowTypePrimNum elemType
       let elemSize = LowValueInt (primNumToSizeInByte elemType)
       runLower $ do
-        indexVar <- lowerValueLetCast index i64
-        arrayVar <- lowerValue v
+        indexVar <- lowerValueLetCast axis index i64
+        arrayVar <- lowerValue axis v
         castedArrayVar <- cast arrayVar i64
         startIndex <- load (LowTypePrimNum $ PrimNumInt $ IntSize 64) arrayVar
         castedStartIndex <- cast startIndex i64
@@ -186,46 +188,46 @@ free pointer pointerType = do
   j <- liftIO newCount
   reflectCont $ LowOpFree uncastedPointer pointerType j
 
-lowerCompPrimitive :: Primitive -> Lower LowValue
-lowerCompPrimitive codeOp =
+lowerCompPrimitive :: Axis -> Primitive -> Lower LowValue
+lowerCompPrimitive axis codeOp =
   case codeOp of
     PrimitivePrimOp op vs ->
-      lowerCompPrimOp op vs
+      lowerCompPrimOp axis op vs
     PrimitiveMagic der -> do
       case der of
         MagicCast _ _ value -> do
-          lowerValue value
+          lowerValue axis value
         MagicStore valueLowType pointer value -> do
-          ptrVar <- lowerValueLetCast pointer (LowTypePointer valueLowType)
-          valVar <- lowerValueLetCast value valueLowType
+          ptrVar <- lowerValueLetCast axis pointer (LowTypePointer valueLowType)
+          valVar <- lowerValueLetCast axis value valueLowType
           extend $ return . LowCompCont (LowOpStore valueLowType valVar ptrVar)
           return LowValueNull
         MagicLoad valueLowType pointer -> do
-          castedPointer <- lowerValueLetCast pointer (LowTypePointer valueLowType)
+          castedPointer <- lowerValueLetCast axis pointer (LowTypePointer valueLowType)
           result <- reflect $ LowOpLoad castedPointer valueLowType
           uncast result valueLowType
         MagicSyscall i args -> do
-          args' <- mapM lowerValue args
+          args' <- mapM (lowerValue axis) args
           reflect $ LowOpSyscall i args'
         MagicExternal name args -> do
-          args' <- mapM lowerValue args
+          args' <- mapM (lowerValue axis) args
           liftIO $ insDeclEnv name args'
           reflect $ LowOpCall (LowValueVarGlobal name) args'
 
-lowerCompPrimOp :: PrimOp -> [Value] -> Lower LowValue
-lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
-  argVarList <- lowerValueLetCastPrimArgs $ zip vs domList
+lowerCompPrimOp :: Axis -> PrimOp -> [Value] -> Lower LowValue
+lowerCompPrimOp axis op@(PrimOp _ domList cod) vs = do
+  argVarList <- lowerValueLetCastPrimArgs axis $ zip vs domList
   result <- reflect $ LowOpPrimOp op argVarList
   uncast result $ LowTypePrimNum cod
 
-lowerValueLetCastPrimArgs :: [(Value, PrimNum)] -> Lower [LowValue]
-lowerValueLetCastPrimArgs dts =
+lowerValueLetCastPrimArgs :: Axis -> [(Value, PrimNum)] -> Lower [LowValue]
+lowerValueLetCastPrimArgs axis dts =
   case dts of
     [] ->
       return []
     ((d, t) : rest) -> do
-      argVar <- lowerValueLetCast d $ LowTypePrimNum t
-      argVarList <- lowerValueLetCastPrimArgs rest
+      argVar <- lowerValueLetCast axis d $ LowTypePrimNum t
+      argVarList <- lowerValueLetCastPrimArgs axis rest
       return $ argVar : argVarList
 
 cast :: LowValue -> LowType -> Lower LowValue
@@ -264,19 +266,19 @@ uncast castedValue lowType = do
       extend $ return . LowCompLet result (LowOpBitcast castedValue lowType voidPtr)
   return resultVar
 
-lowerValueLetCast :: Value -> LowType -> Lower LowValue
-lowerValueLetCast v lowType = do
-  v' <- lowerValue v
+lowerValueLetCast :: Axis -> Value -> LowType -> Lower LowValue
+lowerValueLetCast axis v lowType = do
+  v' <- lowerValue axis v
   cast v' lowType
 
-lowerValue :: Value -> Lower LowValue
-lowerValue v =
+lowerValue :: Axis -> Value -> Lower LowValue
+lowerValue axis v =
   case v of
     ValueVarGlobal y -> do
       compDefEnv <- liftIO $ readIORef compDefEnvRef
       case Map.lookup y compDefEnv of
         Nothing ->
-          raiseCritical' $ "no such global variable is defined: " <> y
+          liftIO $ axis & throw & Throw.raiseCritical' $ "no such global variable is defined: " <> y
         Just (_, args, _) -> do
           liftIO $ insDeclEnvIfNecessary y args
           uncast (LowValueVarGlobal y) (toFunPtrType args)
@@ -286,13 +288,13 @@ lowerValue v =
       return $ LowValueVarLocal y
     ValueSigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr
-      createAggData arrayType $ zip ds (repeat voidPtr)
+      createAggData axis arrayType $ zip ds (repeat voidPtr)
     ValueInt size l -> do
       uncast (LowValueInt l) $ LowTypePrimNum $ PrimNumInt size
     ValueFloat size f ->
       uncast (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
     ValueEnumIntro l -> do
-      i <- liftIO $ toInteger <$> enumValueToInteger l
+      i <- liftIO $ toInteger <$> enumValueToInteger axis l
       uncast (LowValueInt i) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
@@ -310,7 +312,7 @@ lowerValue v =
       arrayPointer <- getElemPtr castedPointer pointerType [0, 2]
       store i64 (LowValueInt 0) startPointer
       store i64 lenValue endPointer
-      storeElements arrayPointer arrayType elemInfoList
+      storeElements axis arrayPointer arrayType elemInfoList
       return pointer
 
 malloc :: LowValue -> Lower LowValue
@@ -340,22 +342,22 @@ insDeclEnvIfNecessary symbol args = do
     else insDeclEnv symbol args
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
-constructSwitch switch =
+constructSwitch :: Axis -> [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
+constructSwitch axis switch =
   case switch of
     [] ->
       return Nothing
     (_ :< EnumCaseDefault, code) : _ -> do
-      code' <- lowerComp code
+      code' <- lowerComp axis code
       return $ Just (code', [])
     [(m :< _, code)] -> do
-      constructSwitch [(m :< EnumCaseDefault, code)]
+      constructSwitch axis [(m :< EnumCaseDefault, code)]
     (m :< EnumCaseLabel l, code) : rest -> do
-      i <- enumValueToInteger l
-      constructSwitch $ (m :< EnumCaseInt i, code) : rest
+      i <- enumValueToInteger axis l
+      constructSwitch axis $ (m :< EnumCaseInt i, code) : rest
     (_ :< EnumCaseInt i, code) : rest -> do
-      code' <- lowerComp code
-      mSwitch <- constructSwitch rest
+      code' <- lowerComp axis code
+      mSwitch <- constructSwitch axis rest
       return $ do
         (defaultCase, caseList) <- mSwitch
         return (defaultCase, (i, code') : caseList)
@@ -373,13 +375,14 @@ toLowType aggPtrType =
       LowTypePointer $ LowTypeStruct ts
 
 createAggData ::
+  Axis ->
   AggPtrType -> -- the type of the base pointer
   [(Value, LowType)] ->
   Lower LowValue
-createAggData aggPtrType dts = do
+createAggData axis aggPtrType dts = do
   basePointer <- allocateBasePointer aggPtrType
   castedBasePointer <- cast basePointer $ toLowType aggPtrType
-  storeElements castedBasePointer (toLowType aggPtrType) $ zip [0 ..] dts
+  storeElements axis castedBasePointer (toLowType aggPtrType) $ zip [0 ..] dts
   return basePointer
 
 getSizeInfoOf :: AggPtrType -> (LowType, Int)
@@ -398,19 +401,20 @@ allocateBasePointer aggPtrType = do
   reflect $ LowOpAlloc c $ toLowType aggPtrType
 
 storeElements ::
+  Axis ->
   LowValue -> -- base pointer
   LowType -> -- the type of base pointer (like [n x u8]*, {i8*, i8*}*, etc.)
   [(Integer, (Value, LowType))] -> -- [(the index of an element, the element to be stored)]
   Lower ()
-storeElements basePointer baseType values =
+storeElements axis basePointer baseType values =
   case values of
     [] ->
       return ()
     (valueIndex, (value, valueType)) : ids -> do
-      castedValue <- lowerValueLetCast value valueType
+      castedValue <- lowerValueLetCast axis value valueType
       elemPtr <- getElemPtr basePointer baseType [0, valueIndex]
       store valueType castedValue elemPtr
-      storeElements basePointer baseType ids
+      storeElements axis basePointer baseType ids
 
 toFunPtrType :: [a] -> LowType
 toFunPtrType xs =
@@ -421,15 +425,15 @@ newValueLocal name = do
   x <- newIdentFromText name
   return (x, LowValueVarLocal x)
 
-enumValueToInteger :: T.Text -> IO Int
-enumValueToInteger label = do
+enumValueToInteger :: Axis -> T.Text -> IO Int
+enumValueToInteger axis label = do
   revEnumEnv <- readIORef revEnumEnvRef
   case Map.lookup label revEnumEnv of
     Just (_, i) ->
       return i
     _ -> do
       print revEnumEnv
-      raiseCritical' $ "no such enum is defined: " <> label
+      axis & throw & Throw.raiseCritical' $ "no such enum is defined: " <> label
 
 insLowDefEnv :: T.Text -> [Ident] -> LowComp -> IO ()
 insLowDefEnv funName args e =
@@ -465,11 +469,11 @@ insDeclEnv name args = do
     let cod = voidPtr
     modifyIORef' lowDeclEnvRef $ Map.insert name (dom, cod)
 
-registerCartesian :: T.Text -> IO ()
-registerCartesian name = do
+registerCartesian :: Axis -> T.Text -> IO ()
+registerCartesian axis name = do
   compDefEnv <- readIORef compDefEnvRef
   case Map.lookup name compDefEnv of
     Just (_, args, e) ->
-      lowerComp e >>= insLowDefEnv name args
+      lowerComp axis e >>= insLowDefEnv name args
     _ ->
       return ()

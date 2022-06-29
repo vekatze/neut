@@ -4,6 +4,7 @@ module Scene.Parse.Import
   )
 where
 
+import Context.App
 import Control.Monad
 import Control.Monad.IO.Class
 import Entity.AliasInfo
@@ -12,19 +13,19 @@ import Entity.Source
 import Scene.Parse.Core
 import Text.Megaparsec
 
-parseImportSequence :: Module -> Parser ([Source], [AliasInfo])
-parseImportSequence currentModule = do
+parseImportSequence :: Axis -> Module -> Parser ([Source], [AliasInfo])
+parseImportSequence axis currentModule = do
   unzip
     <$> choice
-      [ importBlock $ manyList $ parseSingleImport currentModule,
+      [ importBlock $ manyList $ parseSingleImport axis currentModule,
         return []
       ]
 
-parseSingleImport :: Module -> Parser (Source, AliasInfo)
-parseSingleImport currentModule = do
+parseSingleImport :: Axis -> Module -> Parser (Source, AliasInfo)
+parseSingleImport axis currentModule = do
   choice
-    [ try $ parseImportQualified currentModule,
-      parseImportSimple currentModule
+    [ try $ parseImportQualified axis currentModule,
+      parseImportSimple axis currentModule
     ]
 
 skipSingleImport :: Parser ()
@@ -41,11 +42,11 @@ skipImportSequence = do
       return ()
     ]
 
-parseImportSimple :: Module -> Parser (Source, AliasInfo)
-parseImportSimple currentModule = do
+parseImportSimple :: Axis -> Module -> Parser (Source, AliasInfo)
+parseImportSimple axis currentModule = do
   m <- currentHint
   sigText <- symbol
-  source <- liftIO $ getNextSource m currentModule sigText
+  source <- liftIO $ getNextSource axis m currentModule sigText
   return (source, AliasInfoUse sigText)
 
 skipImportSimple :: Parser ()
@@ -53,13 +54,13 @@ skipImportSimple = do
   _ <- symbol
   return ()
 
-parseImportQualified :: Module -> Parser (Source, AliasInfo)
-parseImportQualified currentModule = do
+parseImportQualified :: Axis -> Module -> Parser (Source, AliasInfo)
+parseImportQualified axis currentModule = do
   m <- currentHint
   sigText <- symbol
   keyword "as"
   alias <- symbol
-  source <- liftIO $ getNextSource m currentModule sigText
+  source <- liftIO $ getNextSource axis m currentModule sigText
   return (source, AliasInfoPrefix m alias sigText)
 
 skipImportQualified :: Parser ()

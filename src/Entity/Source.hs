@@ -1,5 +1,6 @@
 module Entity.Source where
 
+import Context.App
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -58,15 +59,15 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-getLocator :: Source -> IO T.Text
-getLocator source = do
-  domain <- getDomain (sourceModule source)
+getLocator :: Axis -> Source -> IO T.Text
+getLocator axis source = do
+  domain <- getDomain axis (sourceModule source)
   sigTail <- getLocatorTail source
   return $ T.intercalate "." $ domain : sigTail
 
-getDomain :: Module -> IO T.Text
-getDomain targetModule = do
-  mainModule <- getMainModule
+getDomain :: Axis -> Module -> IO T.Text
+getDomain axis targetModule = do
+  mainModule <- getMainModule axis
   if moduleLocation mainModule == moduleLocation targetModule
     then return defaultModulePrefix
     else return $ T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
@@ -82,9 +83,9 @@ isMainFile source = do
   sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
   return $ elem sourceRelPath $ moduleTarget (sourceModule source)
 
-getNextSource :: Hint -> Module -> T.Text -> IO Source
-getNextSource m currentModule sigText = do
-  srcLocator <- SourceLocator.fromText m currentModule sigText
+getNextSource :: Axis -> Hint -> Module -> T.Text -> IO Source
+getNextSource axis m currentModule sigText = do
+  srcLocator <- SourceLocator.fromText axis m currentModule sigText
   srcAbsPath <- SourceLocator.toAbsPath srcLocator
   return $
     Source
@@ -92,22 +93,22 @@ getNextSource m currentModule sigText = do
         sourceFilePath = srcAbsPath
       }
 
-setupSectionPrefix :: Source -> IO ()
-setupSectionPrefix currentSource = do
-  locator <- getLocator currentSource
+setupSectionPrefix :: Axis -> Source -> IO ()
+setupSectionPrefix axis currentSource = do
+  locator <- getLocator axis currentSource
   activateGlobalLocator locator
   writeIORef currentGlobalLocatorRef locator
 
-getAdditionalChecksumAlias :: Source -> IO [(T.Text, T.Text)]
-getAdditionalChecksumAlias source = do
-  domain <- getDomain $ sourceModule source
+getAdditionalChecksumAlias :: Axis -> Source -> IO [(T.Text, T.Text)]
+getAdditionalChecksumAlias axis source = do
+  domain <- getDomain axis $ sourceModule source
   if defaultModulePrefix == domain
     then return []
     else return [(defaultModulePrefix, domain)]
 
-initializeNamespace :: Source -> IO ()
-initializeNamespace source = do
-  additionalChecksumAlias <- getAdditionalChecksumAlias source
+initializeNamespace :: Axis -> Source -> IO ()
+initializeNamespace axis source = do
+  additionalChecksumAlias <- getAdditionalChecksumAlias axis source
   writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
   writeIORef globalLocatorListRef []
   writeIORef localLocatorListRef []

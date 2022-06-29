@@ -1,21 +1,22 @@
 module Act.Init (initialize) where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Global
-import Entity.Log
 import Entity.Module
 import Path
 import Path.IO
 
-initialize :: T.Text -> IO ()
-initialize moduleName = do
+initialize :: Axis -> T.Text -> IO ()
+initialize axis moduleName = do
   newModule <- constructDefaultModule moduleName
   moduleDirExists <- doesDirExist $ parent $ moduleLocation newModule
   if moduleDirExists
-    then raiseError' $ "the directory `" <> moduleName <> "` already exists"
+    then axis & throw & Throw.raiseError' $ "the directory `" <> moduleName <> "` already exists"
     else do
       ensureDir $ parent $ moduleLocation newModule
       ensureDir $ getReleaseDir newModule

@@ -11,6 +11,7 @@ extra-source-files:
 default-extensions:
   - OverloadedStrings
   - DeriveGeneric
+  - RankNTypes
 
 dependencies:
   - ansi-terminal

@@ -8,6 +8,8 @@ module Entity.EnumInfo
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Binary (Binary)
 import Data.IORef
@@ -15,7 +17,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Global
 import qualified Entity.Hint as Hint
-import Entity.Log
 import GHC.Generics
 
 type EnumItem = (T.Text, Int) -- e.g. (top.unit, 0), (color.yellow, 2)
@@ -24,12 +25,12 @@ newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (T.Text, [EnumItem])} deriving 
 
 instance Binary EnumInfo
 
-new :: Hint.Hint -> T.Text -> [(T.Text, Maybe Int)] -> IO EnumInfo
-new m name itemList = do
+new :: Axis -> Hint.Hint -> T.Text -> [(T.Text, Maybe Int)] -> IO EnumInfo
+new axis m name itemList = do
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
   let itemList' = attachPrefix currentGlobalLocator $ setDiscriminant 0 itemList
   unless (isLinear (map snd itemList')) $
-    raiseError m "found a collision of discriminant"
+    (axis & throw & Throw.raiseError) m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (name, itemList')}
 
 attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]

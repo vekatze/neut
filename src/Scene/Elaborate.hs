@@ -4,7 +4,9 @@ module Scene.Elaborate
   )
 where
 
-import Context.Log
+import Context.App
+import qualified Context.Log as Log
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
@@ -19,7 +21,6 @@ import Entity.Global
 import Entity.Hint
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Log
 import Entity.Opacity
 import Entity.Pattern
 import Entity.PrimNum
@@ -35,14 +36,15 @@ import qualified Entity.WeakTerm.Subst as WeakTerm
 import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer
 import Scene.Elaborate.Unify
+import Prelude hiding (log)
 
-elaborateMain :: LogContext IO -> T.Text -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
-elaborateMain logCtx mainFunctionName =
-  elaborate (elaborateProgramMain logCtx mainFunctionName)
+elaborateMain :: Axis -> T.Text -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
+elaborateMain axis mainFunctionName =
+  elaborate (elaborateProgramMain axis mainFunctionName)
 
-elaborateOther :: LogContext IO -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
-elaborateOther logCtx =
-  elaborate (elaborateProgramOther logCtx)
+elaborateOther :: Axis -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
+elaborateOther axis =
+  elaborate (elaborateProgramOther axis)
 
 elaborate :: ([QuasiStmt] -> IO [Stmt]) -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
 elaborate defListElaborator source cacheOrStmt =
@@ -66,16 +68,16 @@ registerTopLevelDef stmt = do
     StmtDefineResource m name _ _ ->
       insTermTypeEnv name $ m :< WeakTermTau
 
-elaborateProgramMain :: LogContext IO -> T.Text -> [QuasiStmt] -> IO [Stmt]
-elaborateProgramMain logCtx mainFunctionName = do
-  elaborateProgram logCtx $ mapM $ inferStmtMain mainFunctionName
+elaborateProgramMain :: Axis -> T.Text -> [QuasiStmt] -> IO [Stmt]
+elaborateProgramMain axis mainFunctionName = do
+  elaborateProgram axis $ mapM $ inferStmtMain axis mainFunctionName
 
-elaborateProgramOther :: LogContext IO -> [QuasiStmt] -> IO [Stmt]
-elaborateProgramOther logCtx = do
-  elaborateProgram logCtx $ mapM inferStmtOther
+elaborateProgramOther :: Axis -> [QuasiStmt] -> IO [Stmt]
+elaborateProgramOther axis = do
+  elaborateProgram axis $ mapM (inferStmtOther axis)
 
-elaborateProgram :: LogContext IO -> ([QuasiStmt] -> IO [QuasiStmt]) -> [QuasiStmt] -> IO [Stmt]
-elaborateProgram logCtx defListInferrer defList = do
+elaborateProgram :: Axis -> ([QuasiStmt] -> IO [QuasiStmt]) -> [QuasiStmt] -> IO [Stmt]
+elaborateProgram axis defListInferrer defList = do
   defList' <- mapM setupDef defList >>= defListInferrer . concat
   -- cs <- readIORef constraintEnv
   -- p "==========================================================="
@@ -84,7 +86,7 @@ elaborateProgram logCtx defListInferrer defList = do
   --   p $ T.unpack $ toText e2
   --   p "---------------------"
   unify
-  elaborateStmtList logCtx defList'
+  elaborateStmtList axis defList'
 
 setupDef :: QuasiStmt -> IO [QuasiStmt]
 setupDef def =
@@ -99,32 +101,32 @@ setupDef def =
       insTermTypeEnv name $ m :< WeakTermTau
       return [QuasiStmtDefineResource m name discarder copier]
 
-inferStmtMain :: T.Text -> QuasiStmt -> IO QuasiStmt
-inferStmtMain mainFunctionName stmt = do
+inferStmtMain :: Axis -> T.Text -> QuasiStmt -> IO QuasiStmt
+inferStmtMain axis mainFunctionName stmt = do
   case stmt of
     QuasiStmtDefine isReducible m x impArgNum xts codType e -> do
-      (xts', e', codType') <- inferStmt xts e codType
+      (xts', e', codType') <- inferStmt axis xts e codType
       when (x == mainFunctionName) $
         insConstraintEnv
           (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
           (m :< WeakTermPi xts codType)
       return $ QuasiStmtDefine isReducible m x impArgNum xts' codType' e'
     QuasiStmtDefineResource m name discarder copier ->
-      inferDefineResource m name discarder copier
+      inferDefineResource axis m name discarder copier
 
-inferStmtOther :: QuasiStmt -> IO QuasiStmt
-inferStmtOther stmt = do
+inferStmtOther :: Axis -> QuasiStmt -> IO QuasiStmt
+inferStmtOther axis stmt = do
   case stmt of
     QuasiStmtDefine isReducible m x impArgNum xts codType e -> do
-      (xts', e', codType') <- inferStmt xts e codType
+      (xts', e', codType') <- inferStmt axis xts e codType
       return $ QuasiStmtDefine isReducible m x impArgNum xts' codType' e'
     QuasiStmtDefineResource m name discarder copier ->
-      inferDefineResource m name discarder copier
+      inferDefineResource axis m name discarder copier
 
-inferDefineResource :: Hint -> T.Text -> WeakTerm -> WeakTerm -> IO QuasiStmt
-inferDefineResource m name discarder copier = do
-  (discarder', td) <- infer discarder
-  (copier', tc) <- infer copier
+inferDefineResource :: Axis -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO QuasiStmt
+inferDefineResource axis m name discarder copier = do
+  (discarder', td) <- infer axis discarder
+  (copier', tc) <- infer axis copier
   x <- newIdentFromText "_"
   let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "top")
   let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "bottom")
@@ -132,34 +134,34 @@ inferDefineResource m name discarder copier = do
   insConstraintEnv botBot tc
   return $ QuasiStmtDefineResource m name discarder' copier'
 
-inferStmt :: [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
-inferStmt xts e codType = do
-  (xts', (e', te)) <- inferBinder [] xts e
-  codType' <- inferType codType
+inferStmt :: Axis -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
+inferStmt axis xts e codType = do
+  (xts', (e', te)) <- inferBinder axis [] xts e
+  codType' <- inferType axis codType
   insConstraintEnv codType' te
   return (xts', e', codType')
 
-elaborateStmtList :: LogContext IO -> [QuasiStmt] -> IO [Stmt]
-elaborateStmtList logCtx stmtList = do
+elaborateStmtList :: Axis -> [QuasiStmt] -> IO [Stmt]
+elaborateStmtList axis stmtList = do
   case stmtList of
     [] ->
       return []
     QuasiStmtDefine opacity m x impArgNum xts codType e : rest -> do
-      e' <- elaborate' logCtx e
-      xts' <- mapM (elaborateWeakBinder logCtx) xts
-      codType' <- elaborate' logCtx codType >>= Term.reduce
+      e' <- elaborate' axis e
+      xts' <- mapM (elaborateWeakBinder axis) xts
+      codType' <- elaborate' axis codType >>= Term.reduce
       insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
-      rest' <- elaborateStmtList logCtx rest
+      rest' <- elaborateStmtList axis rest
       return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
     QuasiStmtDefineResource m name discarder copier : rest -> do
-      discarder' <- elaborate' logCtx discarder
-      copier' <- elaborate' logCtx copier
-      rest' <- elaborateStmtList logCtx rest
+      discarder' <- elaborate' axis discarder
+      copier' <- elaborate' axis copier
+      rest' <- elaborateStmtList axis rest
       return $ StmtDefineResource m name discarder' copier' : rest'
 
-elaborate' :: LogContext IO -> WeakTerm -> IO Term
-elaborate' logCtx term =
+elaborate' :: Axis -> WeakTerm -> IO Term
+elaborate' axis term =
   case term of
     m :< WeakTermTau ->
       return $ m :< TermTau
@@ -168,70 +170,72 @@ elaborate' logCtx term =
     m :< WeakTermVarGlobal name ->
       return $ m :< TermVarGlobal name
     m :< WeakTermPi xts t -> do
-      xts' <- mapM (elaborateWeakBinder logCtx) xts
-      t' <- elaborate' logCtx t
+      xts' <- mapM (elaborateWeakBinder axis) xts
+      t' <- elaborate' axis t
       return $ m :< TermPi xts' t'
     m :< WeakTermPiIntro kind xts e -> do
-      kind' <- elaborateKind logCtx kind
-      xts' <- mapM (elaborateWeakBinder logCtx) xts
-      e' <- elaborate' logCtx e
+      kind' <- elaborateKind axis kind
+      xts' <- mapM (elaborateWeakBinder axis) xts
+      e' <- elaborate' axis e
       return $ m :< TermPiIntro kind' xts' e'
     m :< WeakTermPiElim (mh :< WeakTermAster x) es -> do
       subst <- readIORef substRef
       case IntMap.lookup x subst of
         Nothing ->
-          raiseError mh "couldn't instantiate the asterisk here"
+          (axis & throw & Throw.raiseError) mh "couldn't instantiate the asterisk here"
         Just (_ :< WeakTermPiIntro LamKindNormal xts e)
           | length xts == length es -> do
             let xs = map (\(_, y, _) -> Ident.toInt y) xts
             let s = IntMap.fromList $ zip xs es
-            WeakTerm.subst s e >>= elaborate' logCtx
+            WeakTerm.subst s e >>= elaborate' axis
         Just e ->
-          WeakTerm.reduce (m :< WeakTermPiElim e es) >>= elaborate' logCtx
+          WeakTerm.reduce (m :< WeakTermPiElim e es) >>= elaborate' axis
     m :< WeakTermPiElim e es -> do
-      e' <- elaborate' logCtx e
-      es' <- mapM (elaborate' logCtx) es
+      e' <- elaborate' axis e
+      es' <- mapM (elaborate' axis) es
       return $ m :< TermPiElim e' es'
     m :< WeakTermSigma xts -> do
-      xts' <- mapM (elaborateWeakBinder logCtx) xts
+      xts' <- mapM (elaborateWeakBinder axis) xts
       return $ m :< TermSigma xts'
     m :< WeakTermSigmaIntro es -> do
-      es' <- mapM (elaborate' logCtx) es
+      es' <- mapM (elaborate' axis) es
       return $ m :< TermSigmaIntro es'
     m :< WeakTermSigmaElim xts e1 e2 -> do
-      e1' <- elaborate' logCtx e1
-      xts' <- mapM (elaborateWeakBinder logCtx) xts
-      e2' <- elaborate' logCtx e2
+      e1' <- elaborate' axis e1
+      xts' <- mapM (elaborateWeakBinder axis) xts
+      e2' <- elaborate' axis e2
       return $ m :< TermSigmaElim xts' e1' e2'
     m :< WeakTermLet mxt e1 e2 -> do
-      e1' <- elaborate' logCtx e1
-      mxt' <- elaborateWeakBinder logCtx mxt
-      e2' <- elaborate' logCtx e2
+      e1' <- elaborate' axis e1
+      mxt' <- elaborateWeakBinder axis mxt
+      e2' <- elaborate' axis e2
       return $ m :< TermLet mxt' e1' e2'
     m :< WeakTermAster _ ->
-      raiseCritical m "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
+      (axis & throw & Throw.raiseCritical)
+        m
+        "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
     m :< WeakTermConst x ->
       return $ m :< TermConst x
     m :< WeakTermInt t x -> do
-      t' <- elaborate' logCtx t >>= Term.reduce
+      t' <- elaborate' axis t >>= Term.reduce
       case t' of
         _ :< TermConst intTypeStr
           | Just (PrimNumInt size) <- PrimNum.fromText intTypeStr ->
             return $ m :< TermInt size x
         _ -> do
-          raiseError m $
+          (axis & throw & Throw.raiseError) m $
             "the term `"
               <> T.pack (show x)
               <> "` is an integer, but its type is: "
               <> toText (weaken t')
     m :< WeakTermFloat t x -> do
-      t' <- elaborate' logCtx t >>= Term.reduce
+      t' <- elaborate' axis t >>= Term.reduce
       case t' of
         _ :< TermConst floatTypeStr
           | Just (PrimNumFloat size) <- PrimNum.fromText floatTypeStr ->
             return $ m :< TermFloat size x
         _ ->
-          raiseError m $
+          (axis & throw & Throw.raiseError) m $
             "the term `"
               <> T.pack (show x)
               <> "` is a float, but its type is:\n"
@@ -241,56 +245,57 @@ elaborate' logCtx term =
     m :< WeakTermEnumIntro x ->
       return $ m :< TermEnumIntro x
     m :< WeakTermEnumElim (e, t) les -> do
-      e' <- elaborate' logCtx e
+      e' <- elaborate' axis e
       let (ls, es) = unzip les
-      es' <- mapM (elaborate' logCtx) es
-      t' <- elaborate' logCtx t >>= Term.reduce
+      es' <- mapM (elaborate' axis) es
+      t' <- elaborate' axis t >>= Term.reduce
       case t' of
         _ :< TermEnum x -> do
-          checkSwitchExaustiveness m x ls
+          checkSwitchExaustiveness axis m x ls
           return $ m :< TermEnumElim (e', t') (zip ls es')
         _ ->
-          raiseError m $
+          (axis & throw & Throw.raiseError) m $
             "the type of `"
               <> toText (weaken e')
               <> "` must be an enum type, but is:\n"
               <> toText (weaken t')
     m :< WeakTermQuestion e t -> do
-      e' <- elaborate' logCtx e
-      t' <- elaborate' logCtx t
-      printNote logCtx m $ toText (weaken t')
+      e' <- elaborate' axis e
+      t' <- elaborate' axis t
+      (axis & log & Log.printNote) m $ toText (weaken t')
       return e'
     m :< WeakTermMagic der -> do
-      der' <- mapM (elaborate' logCtx) der
+      der' <- mapM (elaborate' axis) der
       return $ m :< TermMagic der'
     m :< WeakTermMatch mSubject (e, t) patList -> do
-      mSubject' <- mapM (elaborate' logCtx) mSubject
-      e' <- elaborate' logCtx e
-      t' <- elaborate' logCtx t >>= Term.reduce
+      mSubject' <- mapM (elaborate' axis) mSubject
+      e' <- elaborate' axis e
+      t' <- elaborate' axis t >>= Term.reduce
       dataEnv <- readIORef dataEnvRef
       case t' of
         _ :< TermPiElim (_ :< TermVarGlobal name) _
           | Just bs <- Map.lookup name dataEnv -> do
-            patList' <- elaboratePatternList logCtx m bs patList
+            patList' <- elaboratePatternList axis m bs patList
             return $ m :< TermMatch mSubject' (e', t') patList'
         _ :< TermVarGlobal name
           | Just bs <- Map.lookup name dataEnv -> do
-            patList' <- elaboratePatternList logCtx m bs patList
+            patList' <- elaboratePatternList axis m bs patList
             return $ m :< TermMatch mSubject' (e', t') patList'
         _ -> do
-          raiseError (metaOf t) $ "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
+          (axis & throw & Throw.raiseError) (metaOf t) $
+            "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
     m :< WeakTermNoema s e -> do
-      s' <- elaborate' logCtx s
-      e' <- elaborate' logCtx e
+      s' <- elaborate' axis s
+      e' <- elaborate' axis e
       return $ m :< TermNoema s' e'
     m :< WeakTermNoemaIntro s e -> do
-      e' <- elaborate' logCtx e
+      e' <- elaborate' axis e
       return $ m :< TermNoemaIntro s e'
     m :< WeakTermNoemaElim s e -> do
-      e' <- elaborate' logCtx e
+      e' <- elaborate' axis e
       return $ m :< TermNoemaElim s e'
     m :< WeakTermArray elemType -> do
-      elemType' <- elaborate' logCtx elemType
+      elemType' <- elaborate' axis elemType
       case elemType' of
         _ :< TermConst typeStr
           | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
@@ -298,10 +303,11 @@ elaborate' logCtx term =
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArray (PrimNumFloat size)
         _ ->
-          raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
+          (axis & throw & Throw.raiseError) m $
+            "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- elaborate' logCtx elemType
-      elems' <- mapM (elaborate' logCtx) elems
+      elemType' <- elaborate' axis elemType
+      elems' <- mapM (elaborate' axis) elems
       case elemType' of
         _ :< TermConst typeStr
           | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
@@ -309,12 +315,12 @@ elaborate' logCtx term =
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayIntro (PrimNumFloat size) elems'
         _ ->
-          raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
+          (axis & throw & Throw.raiseError) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- elaborate' logCtx subject
-      elemType' <- elaborate' logCtx elemType
-      array' <- elaborate' logCtx array
-      index' <- elaborate' logCtx index
+      subject' <- elaborate' axis subject
+      elemType' <- elaborate' axis elemType
+      array' <- elaborate' axis array
+      index' <- elaborate' axis index
       case elemType' of
         _ :< TermConst typeStr
           | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
@@ -322,86 +328,90 @@ elaborate' logCtx term =
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
-          raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
+          (axis & throw & Throw.raiseError) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermText ->
       return $ m :< TermText
     m :< WeakTermTextIntro text ->
       return $ m :< TermTextIntro text
     m :< WeakTermCell contentType -> do
-      contentType' <- elaborate' logCtx contentType
+      contentType' <- elaborate' axis contentType
       return $ m :< TermCell contentType'
     m :< WeakTermCellIntro contentType content -> do
-      contentType' <- elaborate' logCtx contentType
-      content' <- elaborate' logCtx content
+      contentType' <- elaborate' axis contentType
+      content' <- elaborate' axis content
       return $ m :< TermCellIntro contentType' content'
     m :< WeakTermCellRead cell -> do
-      cell' <- elaborate' logCtx cell
+      cell' <- elaborate' axis cell
       return $ m :< TermCellRead cell'
     m :< WeakTermCellWrite cell newValue -> do
-      cell' <- elaborate' logCtx cell
-      newValue' <- elaborate' logCtx newValue
+      cell' <- elaborate' axis cell
+      newValue' <- elaborate' axis newValue
       return $ m :< TermCellWrite cell' newValue'
 
 -- for now
 elaboratePatternList ::
-  LogContext IO ->
+  Axis ->
   Hint ->
   [T.Text] ->
   [(PatternF WeakTerm, WeakTerm)] ->
   IO [(PatternF Term, Term)]
-elaboratePatternList logCtx m bs patList = do
+elaboratePatternList axis m bs patList = do
   patList' <- forM patList $ \((mPat, c, xts), body) -> do
-    xts' <- mapM (elaborateWeakBinder logCtx) xts
-    body' <- elaborate' logCtx body
+    xts' <- mapM (elaborateWeakBinder axis) xts
+    body' <- elaborate' axis body
     return ((mPat, c, xts'), body')
-  checkCaseSanity m bs patList'
+  checkCaseSanity axis m bs patList'
   return patList'
 
-checkCaseSanity :: Hint -> [T.Text] -> [(PatternF Term, Term)] -> IO ()
-checkCaseSanity m bs patList =
+checkCaseSanity :: Axis -> Hint -> [T.Text] -> [(PatternF Term, Term)] -> IO ()
+checkCaseSanity axis m bs patList =
   case (bs, patList) of
     ([], []) ->
       return ()
     (b : bsRest, ((mPat, b', _), _) : patListRest) -> do
       if b /= b'
-        then raiseError mPat $ "the constructor here is supposed to be `" <> b <> "`, but is: `" <> b' <> "`"
-        else checkCaseSanity m bsRest patListRest
+        then
+          (axis & throw & Throw.raiseError) mPat $
+            "the constructor here is supposed to be `" <> b <> "`, but is: `" <> b' <> "`"
+        else checkCaseSanity axis m bsRest patListRest
     (b : _, []) ->
-      raiseError m $ "found a non-exhaustive pattern; the clause for `" <> b <> "` is missing"
+      (axis & throw & Throw.raiseError) m $
+        "found a non-exhaustive pattern; the clause for `" <> b <> "` is missing"
     ([], ((mPat, b, _), _) : _) ->
-      raiseError mPat $ "found a redundant pattern; this clause for `" <> b <> "` is redundant"
+      (axis & throw & Throw.raiseError) mPat $
+        "found a redundant pattern; this clause for `" <> b <> "` is redundant"
 
-elaborateWeakBinder :: LogContext IO -> BinderF WeakTerm -> IO (BinderF Term)
-elaborateWeakBinder logCtx (m, x, t) = do
-  t' <- elaborate' logCtx t
+elaborateWeakBinder :: Axis -> BinderF WeakTerm -> IO (BinderF Term)
+elaborateWeakBinder axis (m, x, t) = do
+  t' <- elaborate' axis t
   return (m, x, t')
 
-elaborateKind :: LogContext IO -> LamKindF WeakTerm -> IO (LamKindF Term)
-elaborateKind logCtx kind =
+elaborateKind :: Axis -> LamKindF WeakTerm -> IO (LamKindF Term)
+elaborateKind axis kind =
   case kind of
     LamKindNormal ->
       return LamKindNormal
     LamKindCons dataName consName consNumber dataType -> do
-      dataType' <- elaborate' logCtx dataType
+      dataType' <- elaborate' axis dataType
       return $ LamKindCons dataName consName consNumber dataType'
     LamKindFix xt -> do
-      xt' <- elaborateWeakBinder logCtx xt
+      xt' <- elaborateWeakBinder axis xt
       return $ LamKindFix xt'
 
-checkSwitchExaustiveness :: Hint -> T.Text -> [EnumCase] -> IO ()
-checkSwitchExaustiveness m x caseList = do
+checkSwitchExaustiveness :: Axis -> Hint -> T.Text -> [EnumCase] -> IO ()
+checkSwitchExaustiveness axis m x caseList = do
   let containsDefaultCase = doesContainDefaultCase caseList
-  enumSet <- lookupEnumSet m x
+  enumSet <- lookupEnumSet axis m x
   let len = toInteger $ length (nub caseList)
   unless (toInteger (length enumSet) <= len || containsDefaultCase) $
-    raiseError m "this switch is ill-constructed in that it is not exhaustive"
+    (axis & throw & Throw.raiseError) m "this switch is ill-constructed in that it is not exhaustive"
 
-lookupEnumSet :: Hint -> T.Text -> IO [T.Text]
-lookupEnumSet m name = do
+lookupEnumSet :: Axis -> Hint -> T.Text -> IO [T.Text]
+lookupEnumSet axis m name = do
   enumEnv <- readIORef enumEnvRef
   case Map.lookup name enumEnv of
     Nothing ->
-      raiseError m $ "no such enum defined: " <> name
+      (axis & throw & Throw.raiseError) m $ "no such enum defined: " <> name
     Just xis ->
       return $ map fst xis
 

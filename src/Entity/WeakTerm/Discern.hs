@@ -4,6 +4,8 @@ module Entity.WeakTerm.Discern
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
@@ -15,15 +17,14 @@ import Entity.Global
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Log
 import Entity.Namespace
 import Entity.WeakTerm
 
 type NameEnv = Map.HashMap T.Text Ident
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern :: NameEnv -> WeakTerm -> IO WeakTerm
-discern nenv term =
+discern :: Axis -> NameEnv -> WeakTerm -> IO WeakTerm
+discern axis nenv term =
   case term of
     _ :< WeakTermTau ->
       return term
@@ -34,186 +35,188 @@ discern nenv term =
         Nothing -> do
           topNameSet <- readIORef topNameSetRef
           candList <- constructCandList s False
-          tryCand (resolveSymbol m (asGlobalVar m topNameSet) s candList) $ do
+          tryCand (resolveSymbol axis m (asGlobalVar m topNameSet) s candList) $ do
             revEnumEnv <- readIORef revEnumEnvRef
             let candList' = s : candList
-            tryCand (resolveSymbol m (asEnumIntro m revEnumEnv) s candList') $ do
+            tryCand (resolveSymbol axis m (asEnumIntro m revEnumEnv) s candList') $ do
               enumEnv <- readIORef enumEnvRef
-              tryCand (resolveSymbol m (asEnum m enumEnv) s candList') $
-                tryCand (resolveSymbol m (asWeakConstant m) s candList') $
-                  raiseError m $ "undefined variable: " <> s
+              tryCand (resolveSymbol axis m (asEnum m enumEnv) s candList') $
+                tryCand (resolveSymbol axis m (asWeakConstant m) s candList') $
+                  (axis & throw & Throw.raiseError) m $ "undefined variable: " <> s
     m :< WeakTermVarGlobal x -> do
       candList <- constructCandList x True
       topNameSet <- readIORef topNameSetRef
-      tryCand (resolveSymbol m (asGlobalVar m topNameSet) x candList) $ do
+      tryCand (resolveSymbol axis m (asGlobalVar m topNameSet) x candList) $ do
         moduleAliasMap <- readIORef moduleAliasMapRef
         print moduleAliasMap
         locatorAliasMap <- readIORef locatorAliasMapRef
         print locatorAliasMap
         print topNameSet
-        raiseError m $ "undefined constant: " <> x
+        (axis & throw & Throw.raiseError) m $ "undefined constant: " <> x
     m :< WeakTermPi xts t -> do
-      (xts', t') <- discernBinderWithBody nenv xts t
+      (xts', t') <- discernBinderWithBody axis nenv xts t
       return $ m :< WeakTermPi xts' t'
     m :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
-          (xt' : xts', e') <- discernBinderWithBody nenv (xt : xts) e
+          (xt' : xts', e') <- discernBinderWithBody axis nenv (xt : xts) e
           return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
         LamKindCons dataName consName consNumber dataType -> do
-          dataType' <- discern nenv dataType
-          (xts', e') <- discernBinderWithBody nenv xts e
+          dataType' <- discern axis nenv dataType
+          (xts', e') <- discernBinderWithBody axis nenv xts e
           return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
         _ -> do
-          (xts', e') <- discernBinderWithBody nenv xts e
+          (xts', e') <- discernBinderWithBody axis nenv xts e
           return $ m :< WeakTermPiIntro kind xts' e'
     m :< WeakTermPiElim e es -> do
-      es' <- mapM (discern nenv) es
-      e' <- discern nenv e
+      es' <- mapM (discern axis nenv) es
+      e' <- discern axis nenv e
       return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
-      (xts', _) <- discernBinderWithBody nenv xts (m :< WeakTermTau)
+      (xts', _) <- discernBinderWithBody axis nenv xts (m :< WeakTermTau)
       return $ m :< WeakTermSigma xts'
     m :< WeakTermSigmaIntro es -> do
-      es' <- mapM (discern nenv) es
+      es' <- mapM (discern axis nenv) es
       return $ m :< WeakTermSigmaIntro es'
     m :< WeakTermSigmaElim xts e1 e2 -> do
-      e1' <- discern nenv e1
-      (xts', e2') <- discernBinderWithBody nenv xts e2
+      e1' <- discern axis nenv e1
+      (xts', e2') <- discernBinderWithBody axis nenv xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
     m :< WeakTermLet mxt e1 e2 -> do
-      e1' <- discern nenv e1
-      ([mxt'], e2') <- discernBinderWithBody nenv [mxt] e2
+      e1' <- discern axis nenv e1
+      ([mxt'], e2') <- discernBinderWithBody axis nenv [mxt] e2
       return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     _ :< WeakTermAster _ ->
       return term
     m :< WeakTermInt t x -> do
-      t' <- discern nenv t
+      t' <- discern axis nenv t
       return $ m :< WeakTermInt t' x
     m :< WeakTermFloat t x -> do
-      t' <- discern nenv t
+      t' <- discern axis nenv t
       return $ m :< WeakTermFloat t' x
     _ :< WeakTermEnum _ ->
       return term
     _ :< WeakTermEnumIntro _ ->
       return term
     m :< WeakTermEnumElim (e, t) caseList -> do
-      e' <- discern nenv e
-      t' <- discern nenv t
+      e' <- discern axis nenv e
+      t' <- discern axis nenv t
       caseList' <-
         forM caseList $ \(enumCase, body) -> do
-          enumCase' <- discernEnumCase enumCase
-          body' <- discern nenv body
+          enumCase' <- discernEnumCase axis enumCase
+          body' <- discern axis nenv body
           return (enumCase', body')
       return $ m :< WeakTermEnumElim (e', t') caseList'
     m :< WeakTermQuestion e t -> do
-      e' <- discern nenv e
-      t' <- discern nenv t
+      e' <- discern axis nenv e
+      t' <- discern axis nenv t
       return $ m :< WeakTermQuestion e' t'
     m :< WeakTermMagic der -> do
-      der' <- traverse (discern nenv) der
+      der' <- traverse (discern axis nenv) der
       return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (discern nenv) mSubject
-      e' <- discern nenv e
-      t' <- discern nenv t
+      mSubject' <- mapM (discern axis nenv) mSubject
+      e' <- discern axis nenv e
+      t' <- discern axis nenv t
       topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
         candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
-        constructorName' <- resolveSymbol m (asConstructor m topNameSet) constructorName candList
+        constructorName' <- resolveSymbol axis m (asConstructor m topNameSet) constructorName candList
         case constructorName' of
           Just (_, newName) -> do
-            (xts', body') <- discernBinderWithBody nenv xts body
+            (xts', body') <- discernBinderWithBody axis nenv xts body
             return ((mCons, newName, xts'), body')
           Nothing ->
-            raiseError m $ "no such constructor is defined: " <> constructorName
+            (axis & throw & Throw.raiseError) m $ "no such constructor is defined: " <> constructorName
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
-      s' <- discern nenv s
-      e' <- discern nenv e
+      s' <- discern axis nenv s
+      e' <- discern axis nenv e
       return $ m :< WeakTermNoema s' e'
     m :< WeakTermNoemaIntro (I (x, _)) e ->
       case Map.lookup x nenv of
         Just name -> do
-          e' <- discern nenv e
+          e' <- discern axis nenv e
           return $ m :< WeakTermNoemaIntro name e'
         Nothing ->
-          raiseError m $ "undefined subject variable: " <> x
+          (axis & throw & Throw.raiseError) m $ "undefined subject variable: " <> x
     m :< WeakTermNoemaElim s e -> do
       s' <- newIdentFromIdent s
-      e' <- discern (Map.insert (Ident.toText s) s' nenv) e
+      e' <- discern axis (Map.insert (Ident.toText s) s' nenv) e
       return $ m :< WeakTermNoemaElim s' e'
     m :< WeakTermArray elemType -> do
-      elemType' <- discern nenv elemType
+      elemType' <- discern axis nenv elemType
       return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- discern nenv elemType
-      elems' <- mapM (discern nenv) elems
+      elemType' <- discern axis nenv elemType
+      elems' <- mapM (discern axis nenv) elems
       return $ m :< WeakTermArrayIntro elemType' elems'
     m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- discern nenv subject
-      elemType' <- discern nenv elemType
-      array' <- discern nenv array
-      index' <- discern nenv index
+      subject' <- discern axis nenv subject
+      elemType' <- discern axis nenv elemType
+      array' <- discern axis nenv array
+      index' <- discern axis nenv index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     _ :< WeakTermText ->
       return term
     _ :< WeakTermTextIntro _ ->
       return term
     m :< WeakTermCell contentType -> do
-      contentType' <- discern nenv contentType
+      contentType' <- discern axis nenv contentType
       return $ m :< WeakTermCell contentType'
     m :< WeakTermCellIntro contentType content -> do
-      contentType' <- discern nenv contentType
-      content' <- discern nenv content
+      contentType' <- discern axis nenv contentType
+      content' <- discern axis nenv content
       return $ m :< WeakTermCellIntro contentType' content'
     m :< WeakTermCellRead cell -> do
-      cell' <- discern nenv cell
+      cell' <- discern axis nenv cell
       return $ m :< WeakTermCellRead cell'
     m :< WeakTermCellWrite cell newValue -> do
-      cell' <- discern nenv cell
-      newValue' <- discern nenv newValue
+      cell' <- discern axis nenv cell
+      newValue' <- discern axis nenv newValue
       return $ m :< WeakTermCellWrite cell' newValue'
 
 discernBinder ::
+  Axis ->
   NameEnv ->
   [BinderF WeakTerm] ->
   IO ([BinderF WeakTerm], NameEnv)
-discernBinder nenv binder =
+discernBinder axis nenv binder =
   case binder of
     [] -> do
       return ([], nenv)
     (mx, x, t) : xts -> do
-      t' <- discern nenv t
+      t' <- discern axis nenv t
       x' <- newIdentFromIdent x
-      (xts', nenv') <- discernBinder (Map.insert (Ident.toText x) x' nenv) xts
+      (xts', nenv') <- discernBinder axis (Map.insert (Ident.toText x) x' nenv) xts
       return ((mx, x', t') : xts', nenv')
 
 discernBinderWithBody ::
+  Axis ->
   NameEnv ->
   [BinderF WeakTerm] ->
   WeakTerm ->
   IO ([BinderF WeakTerm], WeakTerm)
-discernBinderWithBody nenv binder e = do
-  (binder', nenv') <- discernBinder nenv binder
-  e' <- discern nenv' e
+discernBinderWithBody axis nenv binder e = do
+  (binder', nenv') <- discernBinder axis nenv binder
+  e' <- discern axis nenv' e
   return (binder', e')
 
-discernEnumCase :: EnumCase -> IO EnumCase
-discernEnumCase enumCase =
+discernEnumCase :: Axis -> EnumCase -> IO EnumCase
+discernEnumCase axis enumCase =
   case enumCase of
     m :< EnumCaseLabel l -> do
       revEnumEnv <- readIORef revEnumEnvRef
       candList <- constructCandList l False
-      ml <- resolveSymbol m (asEnumLabel m revEnumEnv) l $ l : candList
+      ml <- resolveSymbol axis m (asEnumLabel m revEnumEnv) l $ l : candList
       case ml of
         Just l' ->
           return l'
         Nothing -> do
           enumEnv <- readIORef enumEnvRef
           p' enumEnv
-          raiseError m $ "no such enum-value is defined: " <> l
+          (axis & throw & Throw.raiseError) m $ "no such enum-value is defined: " <> l
     _ ->
       return enumCase

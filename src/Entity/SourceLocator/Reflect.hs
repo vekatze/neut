@@ -1,19 +1,20 @@
 module Entity.SourceLocator.Reflect (fromText) where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Data.List
 import qualified Data.Text as T
 import Entity.Hint
-import Entity.Log
 import Entity.Module
 import Entity.Module.Locator
 import Entity.ModuleAlias
 import Entity.SourceLocator
 
-fromText :: Hint -> Module -> T.Text -> IO SourceLocator
-fromText m currentModule sectionString = do
+fromText :: Axis -> Hint -> Module -> T.Text -> IO SourceLocator
+fromText axis m currentModule sectionString = do
   case getHeadMiddleLast $ T.splitOn "." sectionString of
     Just (nextModuleName, dirNameList, fileName) -> do
-      nextModule <- getNextModule m currentModule $ ModuleAlias nextModuleName
+      nextModule <- getNextModule axis m currentModule $ ModuleAlias nextModuleName
       return $
         SourceLocator
           { sourceLocatorModule = nextModule,
@@ -21,7 +22,7 @@ fromText m currentModule sectionString = do
             sourceLocatorFileName = FileName . T.unpack $ fileName
           }
     Nothing ->
-      raiseError m "found a malformed module signature"
+      (axis & throw & Throw.raiseError) m "found a malformed module signature"
 
 getHeadMiddleLast :: [a] -> Maybe (a, [a], a)
 getHeadMiddleLast xs = do

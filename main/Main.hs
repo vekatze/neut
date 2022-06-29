@@ -4,8 +4,11 @@ import Act.Build
 import Act.Dependency
 import Act.Init
 import Act.Release
-import Context.Log
-import Context.Log.IO
+import Context.App
+import qualified Context.App.Main as App
+import qualified Context.Log as Log
+import qualified Context.Log.IO as Log
+import qualified Context.Throw.IO as Throw
 import Control.Exception.Safe
 import Control.Monad
 import Data.IORef
@@ -19,6 +22,7 @@ import Entity.ModuleURL
 import Options.Applicative
 import Paths_neut
 import System.Exit
+import Prelude hiding (log)
 
 type Target =
   String
@@ -214,32 +218,48 @@ parseReleaseOpt =
 
 runCommand :: Command -> IO ()
 runCommand cmd = do
+  axis <-
+    App.new
+      Log.Config
+        { Log.shouldColorize = True,
+          Log.endOfEntry = ""
+        }
+      Throw.Config
+        {
+        }
   case cmd of
     Build target mClangOptStr -> do
-      runAction $ initializeMainModule >> build target mClangOptStr
+      runAction axis $ initializeMainModule axis >> build axis target mClangOptStr
     Check mInputPathStr colorizeFlag eoe -> do
+      checkAxis <-
+        App.new
+          Log.Config
+            { Log.shouldColorize = colorizeFlag,
+              Log.endOfEntry = eoe
+            }
+          Throw.Config
+            {
+            }
       writeIORef shouldColorizeRef colorizeFlag
-      writeIORef endOfEntryRef eoe
-      void $ runAction $ initializeMainModule >> check mInputPathStr
+      void $ runAction checkAxis $ initializeMainModule checkAxis >> check checkAxis mInputPathStr
     Clean -> do
-      runAction $ initializeMainModule >> clean
+      runAction axis $ initializeMainModule axis >> clean axis
     Release identifier -> do
-      runAction $ initializeMainModule >> release identifier
+      runAction axis $ initializeMainModule axis >> release axis identifier
     Init moduleName ->
-      runAction $ initialize moduleName
+      runAction axis $ initialize axis moduleName
     Get alias url -> do
-      runAction $ initializeMainModule >> get alias url
+      runAction axis $ initializeMainModule axis >> get axis alias url
     Tidy -> do
-      runAction $ initializeMainModule >> tidy
+      runAction axis $ initializeMainModule axis >> tidy axis
     ShowVersion ->
       putStrLn $ showVersion version
 
-runAction :: IO a -> IO a
-runAction c = do
-  let logCtx = logContextIO
+runAction :: Axis -> IO a -> IO a
+runAction axis c = do
   resultOrErr <- try c
   case resultOrErr of
     Left (Error err) ->
-      foldr ((>>) . printLog logCtx) (exitWith (ExitFailure 1)) err
+      foldr ((>>) . (axis & log & Log.printLog)) (exitWith (ExitFailure 1)) err
     Right result ->
       return result

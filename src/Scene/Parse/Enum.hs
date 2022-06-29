@@ -3,6 +3,7 @@ module Scene.Parse.Enum
   )
 where
 
+import Context.App
 import Control.Monad.IO.Class
 import qualified Data.Text as T
 import Entity.EnumInfo
@@ -12,14 +13,14 @@ import Entity.Namespace
 import Scene.Parse.Core
 import Text.Megaparsec
 
-parseDefineEnum :: Parser EnumInfo
-parseDefineEnum = do
+parseDefineEnum :: Axis -> Parser EnumInfo
+parseDefineEnum axis = do
   m <- currentHint
   try $ keyword "define-enum"
   name <- var >>= liftIO . attachSectionPrefix . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
-  enumInfo <- liftIO $ EnumInfo.new m name itemList
-  liftIO $ EnumInfo.registerIfNew m enumInfo
+  enumInfo <- liftIO $ EnumInfo.new axis m name itemList
+  liftIO $ EnumInfo.registerIfNew axis m enumInfo
   return enumInfo
 
 parseDefineEnumClause :: Parser (T.Text, Maybe Int)

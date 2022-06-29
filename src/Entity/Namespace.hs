@@ -1,5 +1,7 @@
 module Entity.Namespace where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Containers.ListUtils
@@ -13,7 +15,6 @@ import Entity.EnumCase
 import Entity.Global
 import Entity.Hint
 import Entity.Ident
-import Entity.Log
 import Entity.PrimNum
 import qualified Entity.PrimNum.FromText as PrimNum
 import qualified Entity.PrimOp.FromText as PrimOp
@@ -49,12 +50,12 @@ pushToCurrentLocalLocator s = do
     headLocalLocator : _ ->
       writeIORef currentLocalLocatorListRef $ headLocalLocator <> nsSep <> s : localLocatorList
 
-popFromCurrentLocalLocator :: Hint -> IO T.Text
-popFromCurrentLocalLocator m = do
+popFromCurrentLocalLocator :: Axis -> Hint -> IO T.Text
+popFromCurrentLocalLocator axis m = do
   localLocatorList <- readIORef currentLocalLocatorListRef
   case localLocatorList of
     [] ->
-      raiseError m "there is no section to end"
+      (axis & throw & Throw.raiseError) m "there is no section to end"
     headLocalLocator : rest -> do
       writeIORef currentLocalLocatorListRef rest
       return headLocalLocator
@@ -67,16 +68,16 @@ activateLocalLocator :: T.Text -> IO ()
 activateLocalLocator s =
   modifyIORef' localLocatorListRef $ (:) s
 
-handleDefinePrefix :: Hint -> T.Text -> T.Text -> IO ()
-handleDefinePrefix m from to = do
+handleDefinePrefix :: Axis -> Hint -> T.Text -> T.Text -> IO ()
+handleDefinePrefix axis m from to = do
   aliasEnv <- readIORef locatorAliasMapRef
   if Map.member from aliasEnv
-    then raiseError m $ "the prefix `" <> from <> "` is already registered"
+    then (axis & throw & Throw.raiseError) m $ "the prefix `" <> from <> "` is already registered"
     else writeIORef locatorAliasMapRef $ Map.insert from to aliasEnv
 
 {-# INLINE resolveSymbol #-}
-resolveSymbol :: Hint -> (T.Text -> Maybe b) -> T.Text -> [T.Text] -> IO (Maybe b)
-resolveSymbol m predicate name candList = do
+resolveSymbol :: Axis -> Hint -> (T.Text -> Maybe b) -> T.Text -> [T.Text] -> IO (Maybe b)
+resolveSymbol axis m predicate name candList = do
   case takeAll predicate candList [] of
     [] ->
       return Nothing
@@ -84,7 +85,7 @@ resolveSymbol m predicate name candList = do
       return $ predicate prefixedName
     candList' -> do
       let candInfo = T.concat $ map ("\n- " <>) candList'
-      raiseError m $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
+      (axis & throw & Throw.raiseError) m $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 constructCandList :: T.Text -> Bool -> IO [T.Text]
 constructCandList name isDefinite = do

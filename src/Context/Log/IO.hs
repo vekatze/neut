@@ -1,47 +1,55 @@
-module Context.Log.IO (logContextIO) where
+module Context.Log.IO
+  ( Config (..),
+    new,
+  )
+where
 
-import Context.Log
-import Data.IORef
+import qualified Context.Log as Log
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.FilePos
-import Entity.Global
 import Entity.Log
 import System.Console.ANSI
 
-logContextIO :: LogContext IO
-logContextIO =
-  LogContext
-    { printLog = printLogIO
-    }
+data Config = Config
+  { shouldColorize :: Bool,
+    endOfEntry :: String
+  }
 
-printLogIO :: Log -> IO ()
-printLogIO (mpos, l, t) = do
-  outputLogLocation mpos
-  outputLogLevel l
+new :: Config -> IO Log.Context
+new config =
+  return
+    Log.Context
+      { Log.printLog = printLogIO config
+      }
+
+printLogIO :: Config -> Log -> IO ()
+printLogIO cfg (mpos, l, t) = do
+  outputLogLocation cfg mpos
+  outputLogLevel cfg l
   outputLogText t (logLevelToPad l)
-  outputFooter
+  outputFooter cfg
 
-outputLogLocation :: Maybe FilePos -> IO ()
-outputLogLocation mpos = do
+outputLogLocation :: Config -> Maybe FilePos -> IO ()
+outputLogLocation cfg mpos = do
   case mpos of
     Just pos ->
-      withSGR [SetConsoleIntensity BoldIntensity] $ do
+      withSGR cfg [SetConsoleIntensity BoldIntensity] $ do
         TIO.putStr $ T.pack (showFilePos pos)
         TIO.putStrLn ":"
     _ ->
       return ()
 
-outputFooter :: IO ()
-outputFooter = do
-  eoe <- readIORef endOfEntryRef
+outputFooter :: Config -> IO ()
+outputFooter cfg = do
+  let eoe = endOfEntry cfg
   if eoe == ""
     then return ()
     else putStrLn eoe
 
-outputLogLevel :: LogLevel -> IO ()
-outputLogLevel l =
-  withSGR (logLevelToSGR l) $ do
+outputLogLevel :: Config -> LogLevel -> IO ()
+outputLogLevel cfg l =
+  withSGR cfg (logLevelToSGR l) $ do
     TIO.putStr $ logLevelToText l
     TIO.putStr ": "
 
@@ -61,9 +69,8 @@ stylizeLogText str pad = do
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
 
-withSGR :: [SGR] -> IO () -> IO ()
-withSGR arg f = do
-  b <- readIORef shouldColorizeRef
-  if b
+withSGR :: Config -> [SGR] -> IO () -> IO ()
+withSGR cfg arg f = do
+  if shouldColorize cfg
     then setSGR arg >> f >> setSGR [Reset]
     else f

@@ -5,6 +5,8 @@ module Entity.EnumInfo.Env
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
@@ -12,7 +14,6 @@ import Data.List
 import Entity.EnumInfo
 import Entity.Global
 import Entity.Hint
-import Entity.Log
 
 register :: EnumInfo -> IO ()
 register enumInfo = do
@@ -22,14 +23,14 @@ register enumInfo = do
   modifyIORef' enumEnvRef $ Map.insert name xis
   modifyIORef' revEnumEnvRef $ Map.union rev
 
-registerIfNew :: Hint -> EnumInfo -> IO ()
-registerIfNew m enumInfo = do
+registerIfNew :: Axis -> Hint -> EnumInfo -> IO ()
+registerIfNew axis m enumInfo = do
   let (name, xis) = fromEnumInfo enumInfo
   enumEnv <- readIORef enumEnvRef
   let definedEnums = Map.keys enumEnv ++ map fst (concat (Map.elems enumEnv))
   case find (`elem` definedEnums) $ name : map fst xis of
     Just x ->
-      raiseError m $ "the constant `" <> x <> "` is already defined [ENUM]"
+      (axis & throw & Throw.raiseError) m $ "the constant `" <> x <> "` is already defined [ENUM]"
     _ ->
       register enumInfo
 

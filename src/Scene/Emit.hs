@@ -4,6 +4,8 @@ module Scene.Emit
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import Control.Monad
 import Data.ByteString.Builder
 import qualified Data.ByteString.Builder as L
@@ -17,7 +19,6 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Entity.Global
 import Entity.Ident
-import Entity.Log
 import Entity.LowComp
 import Entity.LowComp.Reduce
 import Entity.LowType
@@ -29,25 +30,25 @@ import Entity.PrimOp.OpSet
 import Numeric.Half
 import qualified System.Info as System
 
-emitMain :: LowComp -> IO L.ByteString
-emitMain mainTerm = do
+emitMain :: Axis -> LowComp -> IO L.ByteString
+emitMain axis mainTerm = do
   mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
-  mainBuilder <- emitDefinition "i64" "main" [] mainTerm'
-  emit' mainBuilder
+  mainBuilder <- emitDefinition axis "i64" "main" [] mainTerm'
+  emit' axis mainBuilder
 
-emitOther :: IO L.ByteString
-emitOther =
-  emit' []
+emitOther :: Axis -> IO L.ByteString
+emitOther axis =
+  emit' axis []
 
-emit' :: [Builder] -> IO L.ByteString
-emit' aux = do
+emit' :: Axis -> [Builder] -> IO L.ByteString
+emit' axis aux = do
   g <- emitDeclarations
   lowDefEnv <- readIORef lowDefEnvRef
   xs <-
     forM (HashMap.toList lowDefEnv) $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
       body' <- reduceLowComp IntMap.empty Map.empty body
-      emitDefinition "i8*" (TE.encodeUtf8Builder name) args' body'
+      emitDefinition axis "i8*" (TE.encodeUtf8Builder name) args' body'
   return $ L.toLazyByteString $ unlinesL $ g : aux <> concat xs
 
 emitDeclarations :: IO Builder
@@ -66,10 +67,10 @@ declToBuilder (name, (dom, cod)) = do
     <> showItems showLowType dom
     <> ")"
 
-emitDefinition :: Builder -> Builder -> [Builder] -> LowComp -> IO [Builder]
-emitDefinition retType name args asm = do
+emitDefinition :: Axis -> Builder -> Builder -> [Builder] -> LowComp -> IO [Builder]
+emitDefinition axis retType name args asm = do
   let header = sig retType name args <> " {"
-  content <- emitLowComp retType asm
+  content <- emitLowComp axis retType asm
   let footer = "}"
   return $ [header] <> content <> [footer]
 
@@ -77,13 +78,13 @@ sig :: Builder -> Builder -> [Builder] -> Builder
 sig retType name args =
   "define fastcc " <> retType <> " @" <> name <> showLocals args
 
-emitBlock :: Builder -> Ident -> LowComp -> IO [Builder]
-emitBlock funName (I (_, i)) asm = do
-  a <- emitLowComp funName asm
+emitBlock :: Axis -> Builder -> Ident -> LowComp -> IO [Builder]
+emitBlock axis funName (I (_, i)) asm = do
+  a <- emitLowComp axis funName asm
   return $ emitLabel ("_" <> intDec i) : a
 
-emitLowComp :: Builder -> LowComp -> IO [Builder]
-emitLowComp retType llvm =
+emitLowComp :: Axis -> Builder -> LowComp -> IO [Builder]
+emitLowComp axis retType llvm =
   case llvm of
     LowCompReturn d ->
       emitRet retType d
@@ -115,23 +116,23 @@ emitLowComp retType llvm =
       let asmList = map snd branchList
       xs <-
         forM (zip labelList asmList <> [(defaultLabel, defaultBranch)]) $
-          uncurry (emitBlock retType)
+          uncurry (emitBlock axis retType)
       return $ op <> concat xs
     LowCompCont op cont -> do
-      s <- emitLowOp op
+      s <- emitLowOp axis op
       str <- emitOp s
-      a <- emitLowComp retType cont
+      a <- emitLowComp axis retType cont
       return $ str <> a
     LowCompLet x op cont -> do
-      s <- emitLowOp op
+      s <- emitLowOp axis op
       str <- emitOp $ showLowValue (LowValueVarLocal x) <> " = " <> s
-      a <- emitLowComp retType cont
+      a <- emitLowComp axis retType cont
       return $ str <> a
     LowCompUnreachable ->
       emitOp $ unwordsL ["unreachable"]
 
-emitLowOp :: LowOp -> IO Builder
-emitLowOp llvmOp =
+emitLowOp :: Axis -> LowOp -> IO Builder
+emitLowOp axis llvmOp =
   case llvmOp of
     LowOpCall d ds ->
       return $ unwordsL ["call fastcc i8*", showLowValue d <> showArgs ds]
@@ -175,7 +176,7 @@ emitLowOp llvmOp =
         then return "bitcast i8* null to i8*" -- nop
         else return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> showLowValue d <> ")"]
     LowOpSyscall num ds ->
-      emitSyscallOp num ds
+      emitSyscallOp axis num ds
     LowOpPrimOp (PrimOp op domList cod) args -> do
       let op' = TE.encodeUtf8Builder op
       case (S.member op unaryOpSet, S.member op convOpSet, S.member op binaryOpSet, S.member op cmpOpSet) of
@@ -188,7 +189,7 @@ emitLowOp llvmOp =
         (_, _, _, True) ->
           emitBinaryOp (head domList) op' (head args) (args !! 1)
         _ ->
-          raiseCritical' $ "unknown primitive: " <> op
+          axis & throw & Throw.raiseCritical' $ "unknown primitive: " <> op
 
 emitUnaryOp :: PrimNum -> Builder -> LowValue -> IO Builder
 emitUnaryOp t inst d =
@@ -204,9 +205,9 @@ emitConvOp cast d dom cod =
   return $
     unwordsL [cast, showLowType dom, showLowValue d, "to", showLowType cod]
 
-emitSyscallOp :: Integer -> [LowValue] -> IO Builder
-emitSyscallOp num ds = do
-  regList <- getRegList
+emitSyscallOp :: Axis -> Integer -> [LowValue] -> IO Builder
+emitSyscallOp axis num ds = do
+  regList <- getRegList axis
   case System.arch of
     "x86_64" -> do
       let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
@@ -221,7 +222,7 @@ emitSyscallOp num ds = do
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"svc 0\",", regStr, argStr]
     targetArch ->
-      raiseCritical' $ "unsupported target arch: " <> T.pack (show targetArch)
+      axis & throw & Throw.raiseCritical' $ "unsupported target arch: " <> T.pack (show targetArch)
 
 emitOp :: Builder -> IO [Builder]
 emitOp s =
@@ -310,8 +311,8 @@ showLowTypeAsIfNonPtr lowType =
     LowTypePointer t ->
       showLowType t
 
-getRegList :: IO [Builder]
-getRegList = do
+getRegList :: Axis -> IO [Builder]
+getRegList axis = do
   targetPlatform <- readIORef targetPlatformRef
   case targetPlatform of
     "x86_64-linux" ->
@@ -321,7 +322,7 @@ getRegList = do
     "x86_64-darwin" ->
       return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
     _ ->
-      raiseError' $ "unsupported target: " <> T.pack targetPlatform
+      axis & throw & Throw.raiseError' $ "unsupported target: " <> T.pack targetPlatform
 
 showLowType :: LowType -> Builder
 showLowType lowType =

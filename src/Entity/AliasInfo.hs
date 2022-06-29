@@ -7,11 +7,12 @@ module Entity.AliasInfo
   )
 where
 
+import Context.App
+import qualified Context.Throw as Throw
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
 import Entity.Hint
-import Entity.Log
 import Entity.Namespace
 import Path
 import System.IO.Unsafe
@@ -21,22 +22,22 @@ data AliasInfo
   | AliasInfoPrefix Hint T.Text T.Text
   deriving (Show)
 
-activateAliasInfo :: Path Abs File -> IO ()
-activateAliasInfo path = do
+activateAliasInfo :: Axis -> Path Abs File -> IO ()
+activateAliasInfo axis path = do
   sourceAliasMap <- readIORef sourceAliasMapRef
   case Map.lookup path sourceAliasMap of
     Nothing ->
-      raiseCritical' "[activateAliasInfoOfCurrentFile] (compiler bug)"
+      axis & throw & Throw.raiseCritical' $ "[activateAliasInfoOfCurrentFile] (compiler bug)"
     Just aliasInfoList ->
-      mapM_ activateAliasInfoOfCurrentFile' aliasInfoList
+      mapM_ (activateAliasInfoOfCurrentFile' axis) aliasInfoList
 
-activateAliasInfoOfCurrentFile' :: AliasInfo -> IO ()
-activateAliasInfoOfCurrentFile' aliasInfo =
+activateAliasInfoOfCurrentFile' :: Axis -> AliasInfo -> IO ()
+activateAliasInfoOfCurrentFile' axis aliasInfo =
   case aliasInfo of
     AliasInfoUse locator ->
       activateGlobalLocator locator
     AliasInfoPrefix m from to ->
-      handleDefinePrefix m from to
+      handleDefinePrefix axis m from to
 
 updateSourceAliasMapRef :: Path Abs File -> [AliasInfo] -> IO ()
 updateSourceAliasMapRef path aliasInfoList = do
