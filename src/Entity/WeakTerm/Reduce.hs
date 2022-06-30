@@ -1,5 +1,6 @@
 module Entity.WeakTerm.Reduce (reduce) where
 
+import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
@@ -10,88 +11,88 @@ import Entity.WeakTerm
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Subst
 
-reduce :: WeakTerm -> IO WeakTerm
-reduce term =
+reduce :: Axis -> WeakTerm -> IO WeakTerm
+reduce axis term =
   case term of
     m :< WeakTermPi xts cod -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduce ts
-      cod' <- reduce cod
+      ts' <- mapM (reduce axis) ts
+      cod' <- reduce axis cod
       return $ m :< WeakTermPi (zip3 ms xs ts') cod'
     m :< WeakTermPiIntro kind xts e
       | LamKindFix (_, x, _) <- kind,
         x `notElem` freeVars e ->
-        reduce $ m :< WeakTermPiIntro LamKindNormal xts e
+        reduce axis $ m :< WeakTermPiIntro LamKindNormal xts e
       | otherwise -> do
         let (ms, xs, ts) = unzip3 xts
-        ts' <- mapM reduce ts
-        e' <- reduce e
+        ts' <- mapM (reduce axis) ts
+        e' <- reduce axis e
         case kind of
           LamKindFix (mx, x, t) -> do
-            t' <- reduce t
+            t' <- reduce axis t
             return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
           _ ->
             return (m :< WeakTermPiIntro kind (zip3 ms xs ts') e')
     m :< WeakTermPiElim e es -> do
-      e' <- reduce e
-      es' <- mapM reduce es
+      e' <- reduce axis e
+      es' <- mapM (reduce axis) es
       case e' of
         (_ :< WeakTermPiIntro LamKindNormal xts body)
           | length xts == length es' -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es'
-            subst sub body >>= reduce
+            subst axis sub body >>= reduce axis
         _ ->
           return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduce ts
+      ts' <- mapM (reduce axis) ts
       return $ m :< WeakTermSigma (zip3 ms xs ts')
     m :< WeakTermSigmaIntro es -> do
-      es' <- mapM reduce es
+      es' <- mapM (reduce axis) es
       return $ m :< WeakTermSigmaIntro es'
     m :< WeakTermSigmaElim xts e1 e2 -> do
-      e1' <- reduce e1
+      e1' <- reduce axis e1
       case e1' of
         _ :< WeakTermSigmaIntro es
           | length xts == length es -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es
-            subst sub e2 >>= reduce
+            subst axis sub e2 >>= reduce axis
         _ -> do
-          e2' <- reduce e2
+          e2' <- reduce axis e2
           return $ m :< WeakTermSigmaElim xts e1' e2'
     _ :< WeakTermLet (_, x, _) e1 e2 -> do
-      e1' <- reduce e1
+      e1' <- reduce axis e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
-      subst sub e2
+      subst axis sub e2
     m :< WeakTermEnumElim (e, t) les -> do
-      e' <- reduce e
+      e' <- reduce axis e
       let (ls, es) = unzip les
-      es' <- mapM reduce es
+      es' <- mapM (reduce axis) es
       let les' = zip ls es'
       let les'' = zip (map unwrap ls) es'
-      t' <- reduce t
+      t' <- reduce axis t
       case e' of
         (_ :< WeakTermEnumIntro l) ->
           case lookup (EnumCaseLabel l) les'' of
             Just body ->
-              reduce body
+              reduce axis body
             Nothing ->
               case lookup EnumCaseDefault les'' of
                 Just body ->
-                  reduce body
+                  reduce axis body
                 Nothing ->
                   return $ m :< WeakTermEnumElim (e', t') les'
         _ ->
           return $ m :< WeakTermEnumElim (e', t') les'
     _ :< WeakTermQuestion e _ ->
-      reduce e
+      reduce axis e
     m :< WeakTermMagic der -> do
-      der' <- mapM reduce der
+      der' <- mapM (reduce axis) der
       return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      e' <- reduce e
+      e' <- reduce axis e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
       -- case e' of
@@ -99,37 +100,37 @@ reduce term =
       --     | Just consNameList <- Map.lookup dataName dataEnv,
       --       consName `elem` consNameList,
       --       checkClauseListSanity consNameList clauseList -> do
-      --       reduce $ m :< WeakTermPiElim e' (resultType : lamList)
+      --       reduce axis $ m :< WeakTermPiElim e' (resultType : lamList)
       --   _ -> do
-      -- resultType' <- reduce resultType
-      mSubject' <- mapM reduce mSubject
-      t' <- reduce t
+      -- resultType' <- reduce axis resultType
+      mSubject' <- mapM (reduce axis) mSubject
+      t' <- reduce axis t
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-        body' <- reduce body
+        body' <- reduce axis body
         return ((mPat, name, xts), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
-      s' <- reduce s
-      e' <- reduce e
+      s' <- reduce axis s
+      e' <- reduce axis e
       return $ m :< WeakTermNoema s' e'
     m :< WeakTermNoemaIntro s e -> do
-      e' <- reduce e
+      e' <- reduce axis e
       return $ m :< WeakTermNoemaIntro s e'
     m :< WeakTermNoemaElim s e -> do
-      e' <- reduce e
+      e' <- reduce axis e
       return $ m :< WeakTermNoemaElim s e'
     m :< WeakTermArray elemType -> do
-      elemType' <- reduce elemType
+      elemType' <- reduce axis elemType
       return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- reduce elemType
-      elems' <- mapM reduce elems
+      elemType' <- reduce axis elemType
+      elems' <- mapM (reduce axis) elems
       return $ m :< WeakTermArrayIntro elemType' elems'
     m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- reduce subject
-      elemType' <- reduce elemType
-      array' <- reduce array
-      index' <- reduce index
+      subject' <- reduce axis subject
+      elemType' <- reduce axis elemType
+      array' <- reduce axis array
+      index' <- reduce axis index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     _ ->
       return term

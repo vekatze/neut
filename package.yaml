@@ -36,6 +36,7 @@ dependencies:
   - safe-exceptions
   - text
   - time
+  - unboxed-ref
   - unordered-containers
   - utf8-string
 

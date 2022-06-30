@@ -7,6 +7,7 @@ import Control.Monad
 import Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64.URL as Base64
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -26,7 +27,7 @@ import Prelude hiding (log)
 
 get :: Axis -> ModuleAlias -> ModuleURL -> IO ()
 get axis alias url = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
     download axis tempFilePath alias url
     archive <- B.hGetContents tempFileHandle
@@ -37,7 +38,7 @@ get axis alias url = do
 
 tidy :: Axis -> IO ()
 tidy axis = do
-  getMainModule axis >>= tidy' axis
+  getMainModule (axis & throw) >>= tidy' axis
 
 tidy' :: Axis -> Module -> IO ()
 tidy' axis targetModule = do
@@ -85,7 +86,7 @@ getLibraryModule axis alias checksum@(ModuleChecksum c) = do
     then
       axis & throw & Throw.raiseError' $
         "could not find the module file for `" <> extract alias <> "` (" <> c <> ")."
-    else Module.fromFilePath axis moduleFilePath
+    else Module.fromFilePath (axis & throw) moduleFilePath
 
 getModuleDir :: ModuleChecksum -> IO (Path Abs Dir)
 getModuleDir (ModuleChecksum checksum) = do

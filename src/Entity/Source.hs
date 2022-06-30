@@ -1,6 +1,7 @@
 module Entity.Source where
 
 import Context.App
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -67,7 +68,7 @@ getLocator axis source = do
 
 getDomain :: Axis -> Module -> IO T.Text
 getDomain axis targetModule = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   if moduleLocation mainModule == moduleLocation targetModule
     then return defaultModulePrefix
     else return $ T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)

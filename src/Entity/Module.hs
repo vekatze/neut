@@ -2,9 +2,9 @@
 
 module Entity.Module where
 
-import Context.App
-import qualified Context.Throw as Throw
+import Context.Throw
 import Control.Comonad.Cofree
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -69,44 +69,44 @@ getModuleChecksumAliasList baseModule = do
   let dependencyList = Map.toList $ moduleDependency baseModule
   map (\(key, (_, ModuleChecksum checksum)) -> (key, checksum)) dependencyList
 
-findModuleFile :: Axis -> Path Abs Dir -> IO (Path Abs File)
-findModuleFile axis moduleRootDirCandidate = do
+findModuleFile :: Context -> Path Abs Dir -> IO (Path Abs File)
+findModuleFile context moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
   moduleFileExists <- doesFileExist moduleFileCandidate
   case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
     (True, _) ->
       return moduleFileCandidate
     (_, True) ->
-      findModuleFile axis $ parent moduleRootDirCandidate
+      findModuleFile context $ parent moduleRootDirCandidate
     _ ->
-      axis & throw & Throw.raiseError' $ "could not find a module file."
+      context & raiseError' $ "could not find a module file."
 
-getMainModuleFilePath :: Axis -> IO (Path Abs File)
-getMainModuleFilePath axis =
-  getCurrentDir >>= findModuleFile axis
+getMainModuleFilePath :: Context -> IO (Path Abs File)
+getMainModuleFilePath context =
+  getCurrentDir >>= findModuleFile context
 
 {-# NOINLINE mainModuleRef #-}
 mainModuleRef :: IORef (Maybe Module)
 mainModuleRef =
   unsafePerformIO (newIORef Nothing)
 
-setMainModule :: Axis -> Module -> IO ()
-setMainModule axis mainModule = do
+setMainModule :: Context -> Module -> IO ()
+setMainModule context mainModule = do
   mainModuleOrNothing <- readIORef mainModuleRef
   case mainModuleOrNothing of
     Just _ ->
-      axis & throw & Throw.raiseCritical' $ "the main module is already initialized"
+      context & raiseCritical' $ "the main module is already initialized"
     Nothing ->
       modifyIORef' mainModuleRef $ const $ Just mainModule
 
-getMainModule :: Axis -> IO Module
-getMainModule axis = do
+getMainModule :: Context -> IO Module
+getMainModule context = do
   mainModuleOrNothing <- readIORef mainModuleRef
   case mainModuleOrNothing of
     Just mainModule ->
       return mainModule
     Nothing ->
-      (axis & throw & Throw.raiseCritical') "the main module is not initialized"
+      (context & raiseCritical') "the main module is not initialized"
 
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
 addDependency (ModuleAlias alias) url checksum someModule =

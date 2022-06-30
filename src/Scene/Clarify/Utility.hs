@@ -1,5 +1,6 @@
 module Scene.Clarify.Utility where
 
+import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
@@ -13,9 +14,9 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.Opacity
 import Entity.PrimNumSize
 
-toApp :: Integer -> Ident -> Comp -> IO Comp
-toApp switcher x t = do
-  (expVarName, expVar) <- newValueVarLocalWith "exp"
+toApp :: Axis -> Integer -> Ident -> Comp -> IO Comp
+toApp axis switcher x t = do
+  (expVarName, expVar) <- newValueVarLocalWith axis "exp"
   return $
     CompUpElim
       expVarName
@@ -28,18 +29,18 @@ toApp switcher x t = do
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Ident -> Comp -> IO Comp
-toAffineApp =
-  toApp 0
+toAffineApp :: Axis -> Ident -> Comp -> IO Comp
+toAffineApp axis =
+  toApp axis 0
 
 -- toApp boolFalse
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Ident -> Comp -> IO Comp
-toRelevantApp =
-  toApp 1
+toRelevantApp :: Axis -> Ident -> Comp -> IO Comp
+toRelevantApp axis =
+  toApp axis 1
 
 bindLet :: [(Ident, Comp)] -> Comp -> Comp
 bindLet binder cont =
@@ -60,12 +61,13 @@ tryCache key doInsertion = do
   return $ ValueVarGlobal key
 
 makeSwitcher ::
+  Axis ->
   (Value -> IO Comp) ->
   (Value -> IO Comp) ->
   IO ([Ident], Comp)
-makeSwitcher compAff compRel = do
-  (switchVarName, switchVar) <- newValueVarLocalWith "switch"
-  (argVarName, argVar) <- newValueVarLocalWith "arg"
+makeSwitcher axis compAff compRel = do
+  (switchVarName, switchVar) <- newValueVarLocalWith axis "switch"
+  (argVarName, argVar) <- newValueVarLocalWith axis "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   return
@@ -76,12 +78,13 @@ makeSwitcher compAff compRel = do
     )
 
 registerSwitcher ::
+  Axis ->
   T.Text ->
   (Value -> IO Comp) ->
   (Value -> IO Comp) ->
   IO ()
-registerSwitcher name aff rel = do
-  (args, e) <- makeSwitcher aff rel
+registerSwitcher axis name aff rel = do
+  (args, e) <- makeSwitcher axis aff rel
   insDefEnv name OpacityTransparent args e
 
 insDefEnv :: T.Text -> Opacity -> [Ident] -> Comp -> IO ()

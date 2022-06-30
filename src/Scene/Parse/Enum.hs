@@ -5,6 +5,7 @@ where
 
 import Context.App
 import Control.Monad.IO.Class
+import Data.Function
 import qualified Data.Text as T
 import Entity.EnumInfo
 import qualified Entity.EnumInfo as EnumInfo
@@ -19,8 +20,8 @@ parseDefineEnum axis = do
   try $ keyword "define-enum"
   name <- var >>= liftIO . attachSectionPrefix . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
-  enumInfo <- liftIO $ EnumInfo.new axis m name itemList
-  liftIO $ EnumInfo.registerIfNew axis m enumInfo
+  enumInfo <- liftIO $ EnumInfo.new (axis & throw) m name itemList
+  liftIO $ EnumInfo.registerIfNew (axis & throw) m enumInfo
   return enumInfo
 
 parseDefineEnumClause :: Parser (T.Text, Maybe Int)

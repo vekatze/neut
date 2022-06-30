@@ -9,9 +9,11 @@ module Scene.Elaborate.Infer
 where
 
 import Context.App
+import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -84,7 +86,7 @@ infer' axis ctx term =
         Nothing -> do
           inferPiElim axis ctx m (e, t) etls
         Just i -> do
-          holes <- forM [1 .. i] $ const $ newAsterInCtx ctx m
+          holes <- forM [1 .. i] $ const $ newAsterInCtx (axis & gensym) ctx m
           inferPiElim axis ctx m (e, t) $ holes ++ etls
     m :< WeakTermPiElim hole@(_ :< WeakTermAster i) es -> do
       etls <- mapM (infer' axis ctx) es
@@ -99,8 +101,8 @@ infer' axis ctx term =
       return (m :< WeakTermSigma xts', m :< WeakTermTau)
     m :< WeakTermSigmaIntro es -> do
       ets <- mapM (infer' axis ctx) es
-      ys <- mapM (const $ newIdentFromText "arg") es
-      yts <- newTypeAsterListInCtx ctx $ zip ys (map metaOf es)
+      ys <- mapM (const $ Gensym.newIdentFromText (gensym axis) "arg") es
+      yts <- newTypeAsterListInCtx (axis & gensym) ctx $ zip ys (map metaOf es)
       _ <- inferArgs axis IntMap.empty m ets yts (m :< WeakTermTau)
       return (m :< WeakTermSigmaIntro (map fst ets), m :< WeakTermSigma yts)
     m :< WeakTermSigmaElim xts e1 e2 -> do
@@ -121,7 +123,7 @@ infer' axis ctx term =
         Just asterInfo ->
           return asterInfo
         Nothing -> do
-          (app, higherApp) <- newAsterInCtx ctx m
+          (app, higherApp) <- newAsterInCtx (axis & gensym) ctx m
           modifyIORef' holeEnvRef $ \env -> IntMap.insert x (app, higherApp) env
           return (app, higherApp)
     m :< WeakTermConst x
@@ -129,7 +131,7 @@ infer' axis ctx term =
       | Just _ <- PrimNum.fromText x ->
         return (term, m :< WeakTermTau)
       | Just op <- PrimOp.fromText x ->
-        inferExternal m x (primOpToType m op)
+        inferExternal m x (primOpToType (axis & gensym) m op)
       | otherwise -> do
         _ :< t <- weaken <$> lookupConstTypeEnv axis m x
         return (term, m :< t)
@@ -150,7 +152,7 @@ infer' axis ctx term =
       (cs', tcs) <- unzip <$> mapM (inferEnumCase axis ctx) cs
       forM_ (zip tcs (repeat t')) $ uncurry insConstraintEnv
       (es', ts) <- unzip <$> mapM (infer' axis ctx) es
-      h <- newTypeAsterInCtx ctx m
+      h <- newTypeAsterInCtx (axis & gensym) ctx m
       forM_ (zip (repeat h) ts) $ uncurry insConstraintEnv
       return (m :< WeakTermEnumElim (e', t') (zip cs' es'), h)
     m :< WeakTermQuestion e _ -> do
@@ -166,10 +168,10 @@ infer' axis ctx term =
           return (m :< WeakTermMagic (MagicCast from' to' value'), to')
         _ -> do
           der' <- mapM (infer' axis ctx >=> return . fst) der
-          resultType <- newTypeAsterInCtx ctx m
+          resultType <- newTypeAsterInCtx (axis & gensym) ctx m
           return (m :< WeakTermMagic der', resultType)
     m :< WeakTermMatch mSubject (e, _) clauseList -> do
-      resultType <- newTypeAsterInCtx ctx m
+      resultType <- newTypeAsterInCtx (axis & gensym) ctx m
       (e', t') <- infer' axis ctx e
       mSubject' <- mapM (inferSubject axis m ctx) mSubject
       clauseList' <- forM clauseList $ \(pat@(mPat, name, xts), body) -> do
@@ -194,13 +196,13 @@ infer' axis ctx term =
       elemType' <- inferType' axis ctx elemType
       return (m :< WeakTermArray elemType', m :< WeakTermTau)
     m :< WeakTermArrayIntro _ elems -> do
-      elemType <- newTypeAsterInCtx ctx m
+      elemType <- newTypeAsterInCtx (axis & gensym) ctx m
       (elems', ts') <- unzip <$> mapM (infer' axis ctx) elems
       forM_ ts' $ insConstraintEnv elemType
       return (m :< WeakTermArrayIntro elemType elems', m :< WeakTermArray elemType)
     m :< WeakTermArrayAccess _ _ array index -> do
-      subject <- newTypeAsterInCtx ctx m
-      elemType <- newTypeAsterInCtx ctx m
+      subject <- newTypeAsterInCtx (axis & gensym) ctx m
+      elemType <- newTypeAsterInCtx (axis & gensym) ctx m
       (array', tArray) <- infer' axis ctx array
       (index', tIndex) <- infer' axis ctx index
       insConstraintEnv (m :< WeakTermConst "i64") tIndex
@@ -219,14 +221,14 @@ infer' axis ctx term =
       return (m :< WeakTermCellIntro contentType content', m :< WeakTermCell contentType)
     m :< WeakTermCellRead cell -> do
       (cell', cellType) <- infer' axis ctx cell
-      contentType <- newTypeAsterInCtx ctx m
-      subject <- newTypeAsterInCtx ctx m
+      contentType <- newTypeAsterInCtx (axis & gensym) ctx m
+      subject <- newTypeAsterInCtx (axis & gensym) ctx m
       insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell contentType)) cellType
       return (m :< WeakTermCellRead cell', contentType)
     m :< WeakTermCellWrite cell newValue -> do
       (cell', cellType) <- infer' axis ctx cell
       (newValue', newValueType) <- infer' axis ctx newValue
-      subject <- newTypeAsterInCtx ctx m
+      subject <- newTypeAsterInCtx (axis & gensym) ctx m
       insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell newValueType)) cellType
       return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum constTop)
 
@@ -247,9 +249,9 @@ inferArgs ::
 inferArgs axis sub m args1 args2 cod =
   case (args1, args2) of
     ([], []) ->
-      subst sub cod
+      subst (axis & gensym) sub cod
     ((e, t) : ets, (_, x, tx) : xts) -> do
-      tx' <- subst sub tx
+      tx' <- subst (axis & gensym) sub tx
       insConstraintEnv tx' t
       inferArgs axis (IntMap.insert (Ident.toInt x) e sub) m ets xts cod
     _ ->
@@ -317,9 +319,9 @@ inferPiElim axis ctx m (e, t) ets = do
       | otherwise -> do
         raiseArityMismatchError axis e (length xts) (length ets)
     _ -> do
-      ys <- mapM (const $ newIdentFromText "arg") es
-      yts <- newTypeAsterListInCtx ctx $ zip ys (map metaOf es)
-      cod <- newTypeAsterInCtx (ctx ++ yts) m
+      ys <- mapM (const $ Gensym.newIdentFromText (gensym axis) "arg") es
+      yts <- newTypeAsterListInCtx (axis & gensym) ctx $ zip ys (map metaOf es)
+      cod <- newTypeAsterInCtx (axis & gensym) (ctx ++ yts) m
       insConstraintEnv (metaOf e :< WeakTermPi yts cod) t
       cod' <- inferArgs axis IntMap.empty m ets yts cod
       return (m :< WeakTermPiElim e es, cod')
@@ -352,12 +354,12 @@ raiseArityMismatchError axis function expected actual = do
 -- and return ?M @ (x1, ..., xn) : ?Mt @ (x1, ..., xn).
 -- Note that we can't just set `?M : Pi (x1 : A1, ..., xn : An). Univ` since
 -- WeakTermAster might be used as an ordinary term, that is, a term which is not a type.
-newAsterInCtx :: Context -> Hint -> IO (WeakTerm, WeakTerm)
-newAsterInCtx ctx m = do
-  higherAster <- newAster m
+newAsterInCtx :: Gensym.Axis -> Context -> Hint -> IO (WeakTerm, WeakTerm)
+newAsterInCtx axis ctx m = do
+  higherAster <- Gensym.newAster axis m
   let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) ctx
   let higherApp = m :< WeakTermPiElim higherAster varSeq
-  aster@(_ :< WeakTermAster i) <- newAster m
+  aster@(_ :< WeakTermAster i) <- Gensym.newAster axis m
   modifyIORef' weakTypeEnvRef $ IntMap.insert i $ m :< WeakTermPi ctx higherApp
   let app = m :< WeakTermPiElim aster varSeq
   return (app, higherApp)
@@ -365,10 +367,10 @@ newAsterInCtx ctx m = do
 -- In a context (x1 : A1, ..., xn : An), this function creates a metavariable
 --   ?M  : Pi (x1 : A1, ..., xn : An). Univ{i}
 -- and return ?M @ (x1, ..., xn) : Univ{i}.
-newTypeAsterInCtx :: Context -> Hint -> IO WeakTerm
-newTypeAsterInCtx ctx m = do
+newTypeAsterInCtx :: Gensym.Axis -> Context -> Hint -> IO WeakTerm
+newTypeAsterInCtx axis ctx m = do
   let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) ctx
-  aster@(_ :< WeakTermAster i) <- newAster m
+  aster@(_ :< WeakTermAster i) <- Gensym.newAster axis m
   modifyIORef' weakTypeEnvRef $ IntMap.insert i $ m :< WeakTermPi ctx (m :< WeakTermTau)
   return (m :< WeakTermPiElim aster varSeq)
 
@@ -381,15 +383,15 @@ newTypeAsterInCtx ctx m = do
 --    (y{m}, ?M{m} @ (x1, ..., xn, y1, ..., y{m-1}))]
 --
 -- inserting type information `yi : ?Mi @ (x1, ..., xn, y1, ..., y{i-1})
-newTypeAsterListInCtx :: Context -> [(Ident, Hint)] -> IO [BinderF WeakTerm]
-newTypeAsterListInCtx ctx ids =
+newTypeAsterListInCtx :: Gensym.Axis -> Context -> [(Ident, Hint)] -> IO [BinderF WeakTerm]
+newTypeAsterListInCtx axis ctx ids =
   case ids of
     [] ->
       return []
     ((x, m) : rest) -> do
-      t <- newTypeAsterInCtx ctx m
+      t <- newTypeAsterInCtx axis ctx m
       insWeakTypeEnv x t
-      ts <- newTypeAsterListInCtx (ctx ++ [(m, x, t)]) rest
+      ts <- newTypeAsterListInCtx axis (ctx ++ [(m, x, t)]) rest
       return $ (m, x, t) : ts
 
 inferEnumCase :: Axis -> Context -> EnumCase -> IO (EnumCase, WeakTerm)
@@ -399,7 +401,7 @@ inferEnumCase axis ctx weakCase =
       k <- lookupKind axis m name
       return (weakCase, m :< WeakTermEnum k)
     m :< EnumCaseDefault -> do
-      h <- newTypeAsterInCtx ctx m
+      h <- newTypeAsterInCtx (axis & gensym) ctx m
       return (m :< EnumCaseDefault, h)
     m :< EnumCaseInt _ ->
       (axis & throw & Throw.raiseCritical) m "enum-case-int shouldn't be used in the target language"
@@ -464,15 +466,15 @@ lookupConstTypeEnv axis m x
   | Just _ <- PrimNum.fromText x =
     return $ m :< TermTau
   | Just op <- PrimOp.fromText x =
-    primOpToType m op
+    primOpToType (axis & gensym) m op
   | otherwise =
     (axis & throw & Throw.raiseCritical) m $
       "the constant `" <> x <> "` is not found in the type environment."
 
-primOpToType :: Hint -> PrimOp -> IO Term
-primOpToType m (PrimOp op domList cod) = do
+primOpToType :: Gensym.Axis -> Hint -> PrimOp -> IO Term
+primOpToType axis m (PrimOp op domList cod) = do
   let domList' = map (Term.fromPrimNum m) domList
-  xs <- mapM (const (newIdentFromText "_")) domList'
+  xs <- mapM (const (Gensym.newIdentFromText axis "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
@@ -483,8 +485,8 @@ primOpToType m (PrimOp op domList cod) = do
       return $ m :< TermPi xts cod'
 
 -- ?M ~> ?M @ ctx
-arrange :: Context -> WeakTerm -> IO WeakTerm
-arrange ctx term =
+arrange :: Gensym.Axis -> Context -> WeakTerm -> IO WeakTerm
+arrange axis ctx term =
   case term of
     _ :< WeakTermTau ->
       return term
@@ -493,130 +495,131 @@ arrange ctx term =
     _ :< WeakTermVarGlobal {} ->
       return term
     m :< WeakTermPi xts t -> do
-      (xts', t') <- arrangeBinder ctx xts t
+      (xts', t') <- arrangeBinder axis ctx xts t
       return $ m :< WeakTermPi xts' t'
     m :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
-          (xt' : xts', e') <- arrangeBinder ctx (xt : xts) e
+          (xt' : xts', e') <- arrangeBinder axis ctx (xt : xts) e
           return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
         LamKindCons dataName consName consNumber dataType -> do
-          dataType' <- arrange ctx dataType
-          (xts', e') <- arrangeBinder ctx xts e
+          dataType' <- arrange axis ctx dataType
+          (xts', e') <- arrangeBinder axis ctx xts e
           return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
         _ -> do
-          (xts', e') <- arrangeBinder ctx xts e
+          (xts', e') <- arrangeBinder axis ctx xts e
           return $ m :< WeakTermPiIntro kind xts' e'
     m :< WeakTermPiElim e es -> do
-      es' <- mapM (arrange ctx) es
-      e' <- arrange ctx e
+      es' <- mapM (arrange axis ctx) es
+      e' <- arrange axis ctx e
       return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
-      (xts', _) <- arrangeBinder ctx xts (m :< WeakTermTau)
+      (xts', _) <- arrangeBinder axis ctx xts (m :< WeakTermTau)
       return $ m :< WeakTermSigma xts'
     m :< WeakTermSigmaIntro es -> do
-      es' <- mapM (arrange ctx) es
+      es' <- mapM (arrange axis ctx) es
       return $ m :< WeakTermSigmaIntro es'
     m :< WeakTermSigmaElim xts e1 e2 -> do
-      e1' <- arrange ctx e1
-      (xts', e2') <- arrangeBinder ctx xts e2
+      e1' <- arrange axis ctx e1
+      (xts', e2') <- arrangeBinder axis ctx xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
     m :< WeakTermLet mxt e1 e2 -> do
-      e1' <- arrange ctx e1
-      ([mxt'], e2') <- arrangeBinder ctx [mxt] e2
+      e1' <- arrange axis ctx e1
+      ([mxt'], e2') <- arrangeBinder axis ctx [mxt] e2
       return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermConst _ ->
       return term
     m :< WeakTermAster _ ->
-      newTypeAsterInCtx ctx m
+      newTypeAsterInCtx axis ctx m
     m :< WeakTermInt t x -> do
-      t' <- arrange ctx t
+      t' <- arrange axis ctx t
       return $ m :< WeakTermInt t' x
     m :< WeakTermFloat t x -> do
-      t' <- arrange ctx t
+      t' <- arrange axis ctx t
       return $ m :< WeakTermFloat t' x
     _ :< WeakTermEnum _ ->
       return term
     _ :< WeakTermEnumIntro _ ->
       return term
     m :< WeakTermEnumElim (e, t) caseList -> do
-      e' <- arrange ctx e
-      t' <- arrange ctx t
+      e' <- arrange axis ctx e
+      t' <- arrange axis ctx t
       caseList' <-
         forM caseList $ \(enumCase, body) -> do
-          body' <- arrange ctx body
+          body' <- arrange axis ctx body
           return (enumCase, body')
       return $ m :< WeakTermEnumElim (e', t') caseList'
     m :< WeakTermQuestion e t -> do
-      e' <- arrange ctx e
-      t' <- arrange ctx t
+      e' <- arrange axis ctx e
+      t' <- arrange axis ctx t
       return $ m :< WeakTermQuestion e' t'
     m :< WeakTermMagic der -> do
-      der' <- traverse (arrange ctx) der
+      der' <- traverse (arrange axis ctx) der
       return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (arrange ctx) mSubject
-      e' <- arrange ctx e
-      t' <- arrange ctx t
+      mSubject' <- mapM (arrange axis ctx) mSubject
+      e' <- arrange axis ctx e
+      t' <- arrange axis ctx t
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        (xts', body') <- arrangeBinder ctx xts body
+        (xts', body') <- arrangeBinder axis ctx xts body
         return ((mCons, constructorName, xts'), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
-      s' <- arrange ctx s
-      e' <- arrange ctx e
+      s' <- arrange axis ctx s
+      e' <- arrange axis ctx e
       return $ m :< WeakTermNoema s' e'
     m :< WeakTermNoemaIntro x e -> do
-      e' <- arrange ctx e
+      e' <- arrange axis ctx e
       return $ m :< WeakTermNoemaIntro x e'
     m :< WeakTermNoemaElim s e -> do
-      e' <- arrange ctx e
+      e' <- arrange axis ctx e
       return $ m :< WeakTermNoemaElim s e'
     m :< WeakTermArray elemType -> do
-      elemType' <- arrange ctx elemType
+      elemType' <- arrange axis ctx elemType
       return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- arrange ctx elemType
-      elems' <- mapM (arrange ctx) elems
+      elemType' <- arrange axis ctx elemType
+      elems' <- mapM (arrange axis ctx) elems
       return $ m :< WeakTermArrayIntro elemType' elems'
     m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- arrange ctx subject
-      elemType' <- arrange ctx elemType
-      array' <- arrange ctx array
-      index' <- arrange ctx index
+      subject' <- arrange axis ctx subject
+      elemType' <- arrange axis ctx elemType
+      array' <- arrange axis ctx array
+      index' <- arrange axis ctx index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     _ :< WeakTermText ->
       return term
     _ :< WeakTermTextIntro _ ->
       return term
     m :< WeakTermCell contentType -> do
-      contentType' <- arrange ctx contentType
+      contentType' <- arrange axis ctx contentType
       return $ m :< WeakTermCell contentType'
     m :< WeakTermCellIntro contentType content -> do
-      contentType' <- arrange ctx contentType
-      content' <- arrange ctx content
+      contentType' <- arrange axis ctx contentType
+      content' <- arrange axis ctx content
       return $ m :< WeakTermCellIntro contentType' content'
     m :< WeakTermCellRead cell -> do
-      cell' <- arrange ctx cell
+      cell' <- arrange axis ctx cell
       return $ m :< WeakTermCellRead cell'
     m :< WeakTermCellWrite cell newValue -> do
-      cell' <- arrange ctx cell
-      newValue' <- arrange ctx newValue
+      cell' <- arrange axis ctx cell
+      newValue' <- arrange axis ctx newValue
       return $ m :< WeakTermCellWrite cell' newValue'
 
 arrangeBinder ::
+  Gensym.Axis ->
   Context ->
   [BinderF WeakTerm] ->
   WeakTerm ->
   IO ([BinderF WeakTerm], WeakTerm)
-arrangeBinder ctx binder cod =
+arrangeBinder axis ctx binder cod =
   case binder of
     [] -> do
-      cod' <- arrange ctx cod
+      cod' <- arrange axis ctx cod
       return ([], cod')
     ((mx, x, t) : xts) -> do
-      t' <- arrange ctx t
-      (xts', cod') <- arrangeBinder (ctx ++ [(mx, x, t')]) xts cod
+      t' <- arrange axis ctx t
+      (xts', cod') <- arrangeBinder axis (ctx ++ [(mx, x, t')]) xts cod
       return ((mx, x, t') : xts', cod')
 
 patternToTerm :: PatternF WeakTerm -> WeakTerm

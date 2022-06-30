@@ -3,6 +3,7 @@ module Entity.Module.Locator (getNextModule) where
 import Context.App
 import qualified Context.Throw as Throw
 import Control.Monad
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -30,7 +31,7 @@ getNextModule axis m currentModule nextModuleAlias = do
           T.pack "could not find the module file for `"
             <> extract nextModuleAlias
             <> "`"
-      nextModule <- Module.fromFilePath axis nextModuleFilePath
+      nextModule <- Module.fromFilePath (axis & throw) nextModuleFilePath
       modifyIORef' moduleCacheMapRef $ Map.insert nextModuleFilePath nextModule
       return nextModule
 
@@ -42,7 +43,7 @@ getNextModuleFilePath axis m currentModule nextModuleAlias = do
 getNextModuleDirPath :: Axis -> Hint -> Module -> ModuleAlias -> IO (Path Abs Dir)
 getNextModuleDirPath axis m currentModule nextModuleAlias =
   if nextModuleAlias == ModuleAlias defaultModulePrefix
-    then getCurrentFilePath axis >>= filePathToModuleFileDir axis
+    then getCurrentFilePath (axis & throw) >>= filePathToModuleFileDir axis
     else do
       ModuleChecksum checksum <- resolveModuleAliasIntoModuleName axis m currentModule nextModuleAlias
       libraryDir <- getLibraryDirPath
@@ -55,7 +56,7 @@ moduleCacheMapRef =
 
 filePathToModuleFilePath :: Axis -> Path Abs File -> IO (Path Abs File)
 filePathToModuleFilePath axis filePath = do
-  findModuleFile axis $ parent filePath
+  findModuleFile (axis & throw) $ parent filePath
 
 filePathToModuleFileDir :: Axis -> Path Abs File -> IO (Path Abs Dir)
 filePathToModuleFileDir axis filePath =

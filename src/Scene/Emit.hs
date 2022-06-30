@@ -5,11 +5,13 @@ module Scene.Emit
 where
 
 import Context.App
+import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Monad
 import Data.ByteString.Builder
 import qualified Data.ByteString.Builder as L
 import qualified Data.ByteString.Lazy as L
+import Data.Function
 import qualified Data.HashMap.Lazy as HashMap
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -32,7 +34,7 @@ import qualified System.Info as System
 
 emitMain :: Axis -> LowComp -> IO L.ByteString
 emitMain axis mainTerm = do
-  mainTerm' <- reduceLowComp IntMap.empty Map.empty mainTerm
+  mainTerm' <- reduceLowComp (axis & gensym) IntMap.empty Map.empty mainTerm
   mainBuilder <- emitDefinition axis "i64" "main" [] mainTerm'
   emit' axis mainBuilder
 
@@ -47,7 +49,7 @@ emit' axis aux = do
   xs <-
     forM (HashMap.toList lowDefEnv) $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
-      body' <- reduceLowComp IntMap.empty Map.empty body
+      body' <- reduceLowComp (axis & gensym) IntMap.empty Map.empty body
       emitDefinition axis "i8*" (TE.encodeUtf8Builder name) args' body'
   return $ L.toLazyByteString $ unlinesL $ g : aux <> concat xs
 
@@ -89,7 +91,7 @@ emitLowComp axis retType llvm =
     LowCompReturn d ->
       emitRet retType d
     LowCompCall f args -> do
-      tmp <- newIdentFromText "tmp"
+      tmp <- Gensym.newIdentFromText (axis & gensym) "tmp"
       op <-
         emitOp $
           unwordsL
@@ -101,8 +103,8 @@ emitLowComp axis retType llvm =
       a <- emitRet retType (LowValueVarLocal tmp)
       return $ op <> a
     LowCompSwitch (d, lowType) defaultBranch branchList -> do
-      defaultLabel <- newIdentFromText "default"
-      labelList <- constructLabelList branchList
+      defaultLabel <- Gensym.newIdentFromText (axis & gensym) "default"
+      labelList <- constructLabelList (axis & gensym) branchList
       op <-
         emitOp $
           unwordsL
@@ -236,14 +238,14 @@ emitLabel :: Builder -> Builder
 emitLabel s =
   s <> ":"
 
-constructLabelList :: [a] -> IO [Ident]
-constructLabelList input =
+constructLabelList :: Gensym.Axis -> [a] -> IO [Ident]
+constructLabelList axis input =
   case input of
     [] ->
       return []
     (_ : rest) -> do
-      label <- newIdentFromText "case"
-      labelList <- constructLabelList rest
+      label <- Gensym.newIdentFromText axis "case"
+      labelList <- constructLabelList axis rest
       return $ label : labelList
 
 showRegList :: [Builder] -> Builder

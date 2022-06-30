@@ -5,10 +5,12 @@ module Scene.Elaborate
 where
 
 import Context.App
+import qualified Context.Gensym as Gensym
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -78,21 +80,21 @@ elaborateProgramOther axis = do
 
 elaborateProgram :: Axis -> ([QuasiStmt] -> IO [QuasiStmt]) -> [QuasiStmt] -> IO [Stmt]
 elaborateProgram axis defListInferrer defList = do
-  defList' <- mapM setupDef defList >>= defListInferrer . concat
+  defList' <- mapM (setupDef (axis & gensym)) defList >>= defListInferrer . concat
   -- cs <- readIORef constraintEnv
   -- p "==========================================================="
   -- forM_ cs $ \(e1, e2) -> do
   --   p $ T.unpack $ toText e1
   --   p $ T.unpack $ toText e2
   --   p "---------------------"
-  unify
+  unify (axis & gensym)
   elaborateStmtList axis defList'
 
-setupDef :: QuasiStmt -> IO [QuasiStmt]
-setupDef def =
+setupDef :: Gensym.Axis -> QuasiStmt -> IO [QuasiStmt]
+setupDef axis def =
   case def of
     QuasiStmtDefine opacity m f impArgNum xts codType e -> do
-      (xts', codType') <- arrangeBinder [] xts codType
+      (xts', codType') <- arrangeBinder axis [] xts codType
       insTermTypeEnv f $ m :< WeakTermPi xts' codType'
       modifyIORef' impArgEnvRef $ Map.insert f impArgNum
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
@@ -127,7 +129,7 @@ inferDefineResource :: Axis -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO Quas
 inferDefineResource axis m name discarder copier = do
   (discarder', td) <- infer axis discarder
   (copier', tc) <- infer axis copier
-  x <- newIdentFromText "_"
+  x <- Gensym.newIdentFromText (axis & gensym) "_"
   let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "top")
   let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "bottom")
   insConstraintEnv botTop td
@@ -149,7 +151,7 @@ elaborateStmtList axis stmtList = do
     QuasiStmtDefine opacity m x impArgNum xts codType e : rest -> do
       e' <- elaborate' axis e
       xts' <- mapM (elaborateWeakBinder axis) xts
-      codType' <- elaborate' axis codType >>= Term.reduce
+      codType' <- elaborate' axis codType >>= Term.reduce (axis & gensym)
       insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList axis rest
@@ -187,9 +189,9 @@ elaborate' axis term =
           | length xts == length es -> do
             let xs = map (\(_, y, _) -> Ident.toInt y) xts
             let s = IntMap.fromList $ zip xs es
-            WeakTerm.subst s e >>= elaborate' axis
+            WeakTerm.subst (axis & gensym) s e >>= elaborate' axis
         Just e ->
-          WeakTerm.reduce (m :< WeakTermPiElim e es) >>= elaborate' axis
+          WeakTerm.reduce (axis & gensym) (m :< WeakTermPiElim e es) >>= elaborate' axis
     m :< WeakTermPiElim e es -> do
       e' <- elaborate' axis e
       es' <- mapM (elaborate' axis) es
@@ -217,7 +219,7 @@ elaborate' axis term =
     m :< WeakTermConst x ->
       return $ m :< TermConst x
     m :< WeakTermInt t x -> do
-      t' <- elaborate' axis t >>= Term.reduce
+      t' <- elaborate' axis t >>= Term.reduce (axis & gensym)
       case t' of
         _ :< TermConst intTypeStr
           | Just (PrimNumInt size) <- PrimNum.fromText intTypeStr ->
@@ -229,7 +231,7 @@ elaborate' axis term =
               <> "` is an integer, but its type is: "
               <> toText (weaken t')
     m :< WeakTermFloat t x -> do
-      t' <- elaborate' axis t >>= Term.reduce
+      t' <- elaborate' axis t >>= Term.reduce (axis & gensym)
       case t' of
         _ :< TermConst floatTypeStr
           | Just (PrimNumFloat size) <- PrimNum.fromText floatTypeStr ->
@@ -248,7 +250,7 @@ elaborate' axis term =
       e' <- elaborate' axis e
       let (ls, es) = unzip les
       es' <- mapM (elaborate' axis) es
-      t' <- elaborate' axis t >>= Term.reduce
+      t' <- elaborate' axis t >>= Term.reduce (axis & gensym)
       case t' of
         _ :< TermEnum x -> do
           checkSwitchExaustiveness axis m x ls
@@ -270,7 +272,7 @@ elaborate' axis term =
     m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM (elaborate' axis) mSubject
       e' <- elaborate' axis e
-      t' <- elaborate' axis t >>= Term.reduce
+      t' <- elaborate' axis t >>= Term.reduce (axis & gensym)
       dataEnv <- readIORef dataEnvRef
       case t' of
         _ :< TermPiElim (_ :< TermVarGlobal name) _

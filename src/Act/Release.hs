@@ -3,6 +3,7 @@ module Act.Release (release) where
 import Context.App
 import qualified Context.Throw as Throw
 import Control.Monad
+import Data.Function
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Module
@@ -14,7 +15,7 @@ import System.Process
 
 release :: Axis -> T.Text -> IO ()
 release axis identifier = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   let moduleRootDir = parent $ moduleLocation mainModule
   releaseFile <- getReleaseFile axis mainModule identifier
   let tarRootDir = parent moduleRootDir

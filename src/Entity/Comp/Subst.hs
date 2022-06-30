@@ -1,19 +1,19 @@
 module Entity.Comp.Subst (subst) where
 
+import Context.Gensym
 import qualified Data.IntMap as IntMap
 import Entity.Comp
-import Entity.Global
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 
 type NameEnv = IntMap.IntMap Ident
 
-subst :: SubstValue -> NameEnv -> Comp -> IO Comp
+subst :: Axis -> SubstValue -> NameEnv -> Comp -> IO Comp
 subst =
   substComp
 
-substComp :: SubstValue -> NameEnv -> Comp -> IO Comp
-substComp sub nenv term =
+substComp :: Axis -> SubstValue -> NameEnv -> Comp -> IO Comp
+substComp axis sub nenv term =
   case term of
     CompPrimitive theta -> do
       let theta' = substPrimitive sub nenv theta
@@ -24,23 +24,23 @@ substComp sub nenv term =
       return $ CompPiElimDownElim v' ds'
     CompSigmaElim b xs v e -> do
       let v' = substValue sub nenv v
-      xs' <- mapM newIdentFromIdent xs
+      xs' <- mapM (newIdentFromIdent axis) xs
       let nenv' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) xs')) nenv
-      e' <- subst sub nenv' e
+      e' <- substComp axis sub nenv' e
       return $ CompSigmaElim b xs' v' e'
     CompUpIntro v -> do
       let v' = substValue sub nenv v
       return $ CompUpIntro v'
     CompUpElim x e1 e2 -> do
-      e1' <- subst sub nenv e1
-      x' <- newIdentFromIdent x
+      e1' <- substComp axis sub nenv e1
+      x' <- newIdentFromIdent axis x
       let nenv' = IntMap.insert (Ident.toInt x) x' nenv
-      e2' <- subst sub nenv' e2
+      e2' <- substComp axis sub nenv' e2
       return $ CompUpElim x' e1' e2'
     CompEnumElim v branchList -> do
       let v' = substValue sub nenv v
       let (cs, es) = unzip branchList
-      es' <- mapM (subst sub nenv) es
+      es' <- mapM (substComp axis sub nenv) es
       return $ CompEnumElim v' (zip cs es')
     CompArrayAccess primNum v index ->
       return $ CompArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)

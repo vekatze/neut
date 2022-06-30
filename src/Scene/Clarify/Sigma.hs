@@ -8,6 +8,7 @@ module Scene.Clarify.Sigma
   )
 where
 
+import Context.Gensym
 import Control.Monad
 import qualified Data.Text as T
 import Entity.Comp
@@ -17,30 +18,31 @@ import Entity.Namespace
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
-returnImmediateS4 :: IO Comp
-returnImmediateS4 = do
-  CompUpIntro <$> immediateS4
+returnImmediateS4 :: Axis -> IO Comp
+returnImmediateS4 axis = do
+  CompUpIntro <$> immediateS4 axis
 
-immediateS4 :: IO Value
-immediateS4 = do
+immediateS4 :: Axis -> IO Value
+immediateS4 axis = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  tryCache cartImmName $ registerSwitcher cartImmName immediateT immediate4
+  tryCache cartImmName $ registerSwitcher axis cartImmName immediateT immediate4
 
 sigmaS4 ::
+  Axis ->
   Maybe T.Text ->
   [Either Comp (Ident, Comp)] ->
   IO Value
-sigmaS4 mName mxts =
+sigmaS4 axis mName mxts =
   case mName of
     Nothing -> do
-      i <- newCount
+      i <- newCount axis
       name <- fmap wrapWithQuote $ attachSectionPrefix $ "sigma;" <> T.pack (show i)
       -- h <- wrapWithQuote <$> newText
-      registerSwitcher name (sigmaT mxts) (sigma4 mxts)
+      registerSwitcher axis name (sigmaT axis mxts) (sigma4 axis mxts)
       return $ ValueVarGlobal name
     Just name ->
-      tryCache name $ registerSwitcher name (sigmaT mxts) (sigma4 mxts)
+      tryCache name $ registerSwitcher axis name (sigmaT axis mxts) (sigma4 axis mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -58,15 +60,16 @@ sigmaS4 mName mxts =
 --     return ()                                     ---        ---
 --
 sigmaT ::
+  Axis ->
   [Either Comp (Ident, Comp)] ->
   Value ->
   IO Comp
-sigmaT mxts argVar = do
-  xts <- mapM supplyName mxts
+sigmaT axis mxts argVar = do
+  xts <- mapM (supplyName axis) mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ uncurry toAffineApp
-  ys <- mapM (const $ newIdentFromText "arg") xts
-  body' <- linearize xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
+  as <- forM xts $ uncurry (toAffineApp axis)
+  ys <- mapM (const $ newIdentFromText axis "arg") xts
+  body' <- linearize axis xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
   return $ CompSigmaElim False (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -84,52 +87,56 @@ sigmaT mxts argVar = do
 --       fn @ (1, xn) in              ---  APP-n                       ---       ---
 --     return (x1', ..., xn')
 sigma4 ::
+  Axis ->
   [Either Comp (Ident, Comp)] ->
   Value ->
   IO Comp
-sigma4 mxts argVar = do
-  xts <- mapM supplyName mxts
+sigma4 axis mxts argVar = do
+  xts <- mapM (supplyName axis) mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ uncurry toRelevantApp
-  (varNameList, varList) <- unzip <$> mapM (const $ newValueVarLocalWith "pair") xts
-  body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
+  as <- forM xts $ uncurry (toRelevantApp axis)
+  (varNameList, varList) <- unzip <$> mapM (const $ newValueVarLocalWith axis "pair") xts
+  body' <- linearize axis xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
   return $ CompSigmaElim True (map fst xts) argVar body'
 
-supplyName :: Either b (Ident, b) -> IO (Ident, b)
-supplyName mName =
+supplyName :: Axis -> Either b (Ident, b) -> IO (Ident, b)
+supplyName axis mName =
   case mName of
     Right (x, t) ->
       return (x, t)
     Left t -> do
-      x <- newIdentFromText "unused-sigarg"
+      x <- newIdentFromText axis "unused-sigarg"
       return (x, t)
 
 closureEnvS4 ::
+  Axis ->
   [Either Comp (Ident, Comp)] ->
   IO Value
-closureEnvS4 mxts =
+closureEnvS4 axis mxts =
   case mxts of
     [] ->
-      immediateS4 -- performance optimization; not necessary for correctness
+      immediateS4 axis -- performance optimization; not necessary for correctness
     _ ->
-      sigmaS4 Nothing mxts
+      sigmaS4 axis Nothing mxts
 
-returnClosureS4 :: IO Comp
-returnClosureS4 = do
-  (env, envVar) <- newValueVarLocalWith "env"
-  retImmS4 <- returnImmediateS4
+returnClosureS4 :: Axis -> IO Comp
+returnClosureS4 axis = do
+  (env, envVar) <- newValueVarLocalWith axis "env"
+  retImmS4 <- returnImmediateS4 axis
   t <-
     sigmaS4
+      axis
       (Just cartClsName)
       [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
   return $ CompUpIntro t
 
-returnCellS4 :: IO Comp
-returnCellS4 = do
-  (env, envVar) <- newValueVarLocalWith "env"
-  retImmS4 <- returnImmediateS4
+returnCellS4 :: Axis -> IO Comp
+returnCellS4 axis = do
+  (env, envVar) <- newValueVarLocalWith axis "env"
+  retImmS4 <- returnImmediateS4 axis
   t <-
     sigmaS4
+      axis
       (Just cartCellName)
       [Right (env, retImmS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
   return $ CompUpIntro t

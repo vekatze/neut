@@ -15,5 +15,6 @@ new :: Config -> IO Throw.Context
 new _ =
   return
     Throw.Context
-      { Throw.throw = Safe.throw
+      { Throw.throw = Safe.throw,
+        Throw.try = Safe.try
       }

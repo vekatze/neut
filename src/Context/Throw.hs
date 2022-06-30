@@ -13,8 +13,9 @@ import Entity.FilePos
 import Entity.Hint
 import Entity.Log
 
-newtype Context = Context
-  { throw :: forall a. Error -> IO a
+data Context = Context
+  { throw :: forall a. Error -> IO a,
+    try :: forall a. IO a -> IO (Either Error a)
   }
 
 raiseError :: Context -> Hint -> T.Text -> IO a

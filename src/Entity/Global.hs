@@ -2,9 +2,8 @@
 
 module Entity.Global where
 
-import Context.App
 import qualified Context.Throw as Throw
-import Control.Comonad.Cofree
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -14,9 +13,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
-import Entity.Hint
 import Entity.Ident
-import qualified Entity.Ident.Reify as Ident
 import Entity.LowComp
 import Entity.LowType
 import Entity.Opacity
@@ -29,11 +26,6 @@ import qualified System.Info as System
 --
 -- global variables
 --
-
-{-# NOINLINE countRef #-}
-countRef :: IORef Int
-countRef =
-  unsafePerformIO (newIORef 0)
 
 {-# NOINLINE shouldColorizeRef #-}
 shouldColorizeRef :: IORef Bool
@@ -54,14 +46,14 @@ setMainFilePath :: Path Abs File -> IO ()
 setMainFilePath path =
   modifyIORef' mainFilePathRef $ const $ Just path
 
-getMainFilePath :: Axis -> IO (Path Abs File)
+getMainFilePath :: Throw.Context -> IO (Path Abs File)
 getMainFilePath axis = do
   mainFilePathOrNothing <- readIORef mainFilePathRef
   case mainFilePathOrNothing of
     Just mainFilePath ->
       return mainFilePath
     Nothing ->
-      axis & throw & Throw.raiseCritical' $ "no main file path is set"
+      axis & Throw.raiseCritical' $ "no main file path is set"
 
 {-# NOINLINE targetPlatformRef #-}
 targetPlatformRef :: IORef String
@@ -87,14 +79,14 @@ setCurrentFilePath :: Path Abs File -> IO ()
 setCurrentFilePath path =
   modifyIORef' currentFileRef $ const $ Just path
 
-getCurrentFilePath :: Axis -> IO (Path Abs File)
+getCurrentFilePath :: Throw.Context -> IO (Path Abs File)
 getCurrentFilePath axis = do
   currentFileOrNothing <- readIORef currentFileRef
   case currentFileOrNothing of
     Just currentFile ->
       return currentFile
     Nothing ->
-      axis & throw & Throw.raiseCritical' $ "no current file is set"
+      axis & Throw.raiseCritical' $ "no current file is set"
 
 globalEnumEnv :: [(T.Text, [(T.Text, Int)])]
 globalEnumEnv =
@@ -312,39 +304,39 @@ cartCellName =
 -- generating new symbols using count
 --
 
-{-# INLINE newCount #-}
-newCount :: IO Int
-newCount =
-  atomicModifyIORef' countRef $ \x -> let z = x + 1 in (z, z)
+-- {-# INLINE newCount #-}
+-- newCount :: IO Int
+-- newCount =
+--   atomicModifyIORef' countRef $ \x -> let z = x + 1 in (z, z)
 
-{-# INLINE newIdentFromText #-}
-newIdentFromText :: T.Text -> IO Ident
-newIdentFromText s = do
-  i <- newCount
-  return $ I (s, i)
+-- {-# INLINE newIdentFromText #-}
+-- newIdentFromText :: T.Text -> IO Ident
+-- newIdentFromText s = do
+--   i <- newCount
+--   return $ I (s, i)
 
-{-# INLINE newIdentFromIdent #-}
-newIdentFromIdent :: Ident -> IO Ident
-newIdentFromIdent x =
-  newIdentFromText (Ident.toText x)
+-- {-# INLINE newIdentFromIdent #-}
+-- newIdentFromIdent :: Ident -> IO Ident
+-- newIdentFromIdent x =
+--   newIdentFromText (Ident.toText x)
 
-{-# INLINE newText #-}
-newText :: IO T.Text
-newText = do
-  i <- newCount
-  return $ ";" <> T.pack (show i)
+-- {-# INLINE newText #-}
+-- newText :: IO T.Text
+-- newText = do
+--   i <- newCount
+--   return $ ";" <> T.pack (show i)
 
-{-# INLINE newAster #-}
-newAster :: Hint -> IO WeakTerm
-newAster m = do
-  i <- newCount
-  return $ m :< WeakTermAster i
+-- {-# INLINE newAster #-}
+-- newAster :: Hint -> IO WeakTerm
+-- newAster m = do
+--   i <- newCount
+--   return $ m :< WeakTermAster i
 
-{-# INLINE newValueVarLocalWith #-}
-newValueVarLocalWith :: T.Text -> IO (Ident, Value)
-newValueVarLocalWith name = do
-  x <- newIdentFromText name
-  return (x, ValueVarLocal x)
+-- {-# INLINE newValueVarLocalWith #-}
+-- newValueVarLocalWith :: T.Text -> IO (Ident, Value)
+-- newValueVarLocalWith name = do
+--   x <- newIdentFromText name
+--   return (x, ValueVarLocal x)
 
 --
 -- obtain information from the environment

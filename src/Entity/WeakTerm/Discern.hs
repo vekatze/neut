@@ -1,13 +1,15 @@
 module Entity.WeakTerm.Discern
   ( discern,
     discernBinder,
+    Axis (..),
   )
 where
 
-import Context.App
+import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -19,6 +21,11 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Namespace
 import Entity.WeakTerm
+
+data Axis = Axis
+  { throw :: Throw.Context,
+    gensym :: Gensym.Axis
+  }
 
 type NameEnv = Map.HashMap T.Text Ident
 
@@ -35,18 +42,18 @@ discern axis nenv term =
         Nothing -> do
           topNameSet <- readIORef topNameSetRef
           candList <- constructCandList s False
-          tryCand (resolveSymbol axis m (asGlobalVar m topNameSet) s candList) $ do
+          tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) s candList) $ do
             revEnumEnv <- readIORef revEnumEnvRef
             let candList' = s : candList
-            tryCand (resolveSymbol axis m (asEnumIntro m revEnumEnv) s candList') $ do
+            tryCand (resolveSymbol (axis & throw) m (asEnumIntro m revEnumEnv) s candList') $ do
               enumEnv <- readIORef enumEnvRef
-              tryCand (resolveSymbol axis m (asEnum m enumEnv) s candList') $
-                tryCand (resolveSymbol axis m (asWeakConstant m) s candList') $
+              tryCand (resolveSymbol (axis & throw) m (asEnum m enumEnv) s candList') $
+                tryCand (resolveSymbol (axis & throw) m (asWeakConstant m) s candList') $
                   (axis & throw & Throw.raiseError) m $ "undefined variable: " <> s
     m :< WeakTermVarGlobal x -> do
       candList <- constructCandList x True
       topNameSet <- readIORef topNameSetRef
-      tryCand (resolveSymbol axis m (asGlobalVar m topNameSet) x candList) $ do
+      tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) x candList) $ do
         moduleAliasMap <- readIORef moduleAliasMapRef
         print moduleAliasMap
         locatorAliasMap <- readIORef locatorAliasMapRef
@@ -123,7 +130,7 @@ discern axis nenv term =
       topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
         candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
-        constructorName' <- resolveSymbol axis m (asConstructor m topNameSet) constructorName candList
+        constructorName' <- resolveSymbol (axis & throw) m (asConstructor m topNameSet) constructorName candList
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinderWithBody axis nenv xts body
@@ -143,7 +150,7 @@ discern axis nenv term =
         Nothing ->
           (axis & throw & Throw.raiseError) m $ "undefined subject variable: " <> x
     m :< WeakTermNoemaElim s e -> do
-      s' <- newIdentFromIdent s
+      s' <- Gensym.newIdentFromIdent (axis & gensym) s
       e' <- discern axis (Map.insert (Ident.toText s) s' nenv) e
       return $ m :< WeakTermNoemaElim s' e'
     m :< WeakTermArray elemType -> do
@@ -189,7 +196,7 @@ discernBinder axis nenv binder =
       return ([], nenv)
     (mx, x, t) : xts -> do
       t' <- discern axis nenv t
-      x' <- newIdentFromIdent x
+      x' <- Gensym.newIdentFromIdent (axis & gensym) x
       (xts', nenv') <- discernBinder axis (Map.insert (Ident.toText x) x' nenv) xts
       return ((mx, x', t') : xts', nenv')
 
@@ -210,7 +217,7 @@ discernEnumCase axis enumCase =
     m :< EnumCaseLabel l -> do
       revEnumEnv <- readIORef revEnumEnvRef
       candList <- constructCandList l False
-      ml <- resolveSymbol axis m (asEnumLabel m revEnumEnv) l $ l : candList
+      ml <- resolveSymbol (axis & throw) m (asEnumLabel m revEnumEnv) l $ l : candList
       case ml of
         Just l' ->
           return l'

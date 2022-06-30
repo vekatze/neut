@@ -2,6 +2,7 @@ module Entity.SourceLocator.Reflect (fromText) where
 
 import Context.App
 import qualified Context.Throw as Throw
+import Data.Function
 import Data.List
 import qualified Data.Text as T
 import Entity.Hint

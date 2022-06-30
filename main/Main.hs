@@ -6,10 +6,12 @@ import Act.Init
 import Act.Release
 import Context.App
 import qualified Context.App.Main as App
+import Data.Function
 import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
+import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
-import Control.Exception.Safe
+-- import Control.Exception.Safe
 import Control.Monad
 import Data.IORef
 import qualified Data.Text as T
@@ -229,7 +231,7 @@ runCommand cmd = do
         }
   case cmd of
     Build target mClangOptStr -> do
-      runAction axis $ initializeMainModule axis >> build axis target mClangOptStr
+      runAction axis $ initializeMainModule (axis & throw) >> build axis target mClangOptStr
     Check mInputPathStr colorizeFlag eoe -> do
       checkAxis <-
         App.new
@@ -241,23 +243,23 @@ runCommand cmd = do
             {
             }
       writeIORef shouldColorizeRef colorizeFlag
-      void $ runAction checkAxis $ initializeMainModule checkAxis >> check checkAxis mInputPathStr
+      void $ runAction checkAxis $ initializeMainModule (checkAxis & throw) >> check checkAxis mInputPathStr
     Clean -> do
-      runAction axis $ initializeMainModule axis >> clean axis
+      runAction axis $ initializeMainModule (axis & throw) >> clean axis
     Release identifier -> do
-      runAction axis $ initializeMainModule axis >> release axis identifier
+      runAction axis $ initializeMainModule (axis & throw) >> release axis identifier
     Init moduleName ->
       runAction axis $ initialize axis moduleName
     Get alias url -> do
-      runAction axis $ initializeMainModule axis >> get axis alias url
+      runAction axis $ initializeMainModule (axis & throw) >> get axis alias url
     Tidy -> do
-      runAction axis $ initializeMainModule axis >> tidy axis
+      runAction axis $ initializeMainModule (axis & throw) >> tidy axis
     ShowVersion ->
       putStrLn $ showVersion version
 
 runAction :: Axis -> IO a -> IO a
 runAction axis c = do
-  resultOrErr <- try c
+  resultOrErr <- Throw.try (axis & throw) c
   case resultOrErr of
     Left (Error err) ->
       foldr ((>>) . (axis & log & Log.printLog)) (exitWith (ExitFailure 1)) err

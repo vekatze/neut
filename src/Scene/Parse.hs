@@ -5,10 +5,12 @@ module Scene.Parse
 where
 
 import Context.App
+import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Set as S
@@ -28,6 +30,7 @@ import Entity.Source
 import Entity.Stmt
 import Entity.Stmt.Discern
 import Entity.WeakTerm
+import qualified Entity.WeakTerm.Discern as WT
 import Scene.Parse.Core
 import Scene.Parse.Enum
 import Scene.Parse.Import
@@ -63,7 +66,7 @@ parseSource axis source = do
       modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
-      getCurrentFilePath axis >>= activateAliasInfo axis
+      getCurrentFilePath (axis & throw) >>= activateAliasInfo (axis & throw)
       (defList, enumInfoList) <- run (program axis) $ sourceFilePath source
       privateNameSet <- readIORef privateNameSetRef
       modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
@@ -97,7 +100,8 @@ program' axis =
         parseStmtUse
         program' axis,
       do
-        stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList axis . concat
+        let wtAxis = WT.Axis {WT.throw = axis & throw, WT.gensym = axis & gensym}
+        stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList wtAxis . concat
         return (stmtList, [])
     ]
 
@@ -108,7 +112,7 @@ parseDefinePrefix axis = do
   from <- snd <$> var
   delimiter "="
   to <- snd <$> var
-  liftIO $ handleDefinePrefix axis m from to
+  liftIO $ handleDefinePrefix (axis & throw) m from to
 
 parseStmtUse :: Parser ()
 parseStmtUse = do
@@ -140,7 +144,7 @@ parseSection axis = do
   stmtList <- concat <$> many (parseStmt axis)
   m <- currentHint
   keyword "end"
-  _ <- liftIO $ popFromCurrentLocalLocator axis m
+  _ <- liftIO $ popFromCurrentLocalLocator (axis & throw) m
   liftIO $ modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
@@ -241,7 +245,7 @@ parseDefineDataClauseArg axis = do
   m <- currentHint
   choice
     [ try (weakAscription axis),
-      weakTermToWeakIdent m (weakTerm axis)
+      weakTermToWeakIdent (axis & gensym) m (weakTerm axis)
     ]
 
 parseDefineCodata :: Axis -> Parser [WeakStmt]
@@ -258,7 +262,7 @@ parseDefineCodata axis = do
 parseDefineCodataElim :: Axis -> T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> BinderF WeakTerm -> IO WeakStmt
 parseDefineCodataElim axis dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = constructDataType m dataName dataArgs
-  recordVarText <- newText
+  recordVarText <- Gensym.newText (axis & gensym)
   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
   let elemName' = dataName <> nsSep <> Ident.toText elemName
   defineFunction
@@ -325,8 +329,8 @@ privateNameSetRef :: IORef (S.Set T.Text)
 privateNameSetRef =
   unsafePerformIO (newIORef S.empty)
 
-weakTermToWeakIdent :: Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
-weakTermToWeakIdent m f = do
+weakTermToWeakIdent :: Gensym.Axis -> Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
+weakTermToWeakIdent axis m f = do
   a <- f
-  h <- liftIO $ newTextualIdentFromText "_"
+  h <- liftIO $ Gensym.newTextualIdentFromText axis "_"
   return (m, h, a)

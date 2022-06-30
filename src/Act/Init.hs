@@ -3,6 +3,7 @@ module Act.Init (initialize) where
 import Context.App
 import qualified Context.Throw as Throw
 import Control.Monad
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO

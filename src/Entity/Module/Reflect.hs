@@ -4,8 +4,7 @@ module Entity.Module.Reflect
   )
 where
 
-import Context.App
-import qualified Context.Throw as Throw
+import Context.Throw
 import Control.Monad
 import qualified Data.Text as T
 import Entity.Ens
@@ -16,15 +15,15 @@ import Entity.ModuleURL
 import Path
 import Path.IO
 
-fromFilePath :: Axis -> Path Abs File -> IO Module
-fromFilePath axis moduleFilePath = do
+fromFilePath :: Context -> Path Abs File -> IO Module
+fromFilePath context moduleFilePath = do
   entity <- Ens.fromFilePath moduleFilePath
-  entryPointEns <- access axis "target" entity >>= toDictionary axis
-  dependencyEns <- access axis "dependency" entity >>= toDictionary axis
-  extraContentsEns <- access axis "extra-content" entity >>= toList axis
-  target <- mapM (interpretRelFilePath axis) entryPointEns
-  dependency <- mapM (interpretDependency axis) dependencyEns
-  extraContents <- mapM (interpretExtraPath axis $ parent moduleFilePath) extraContentsEns
+  entryPointEns <- access context "target" entity >>= toDictionary context
+  dependencyEns <- access context "dependency" entity >>= toDictionary context
+  extraContentsEns <- access context "extra-content" entity >>= toList context
+  target <- mapM (interpretRelFilePath context) entryPointEns
+  dependency <- mapM (interpretDependency context) dependencyEns
+  extraContents <- mapM (interpretExtraPath context $ parent moduleFilePath) extraContentsEns
   return
     Module
       { moduleTarget = target,
@@ -33,36 +32,36 @@ fromFilePath axis moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
-interpretRelFilePath :: Axis -> Ens -> IO (Path Rel File)
-interpretRelFilePath axis =
-  toString axis >=> parseRelFile . T.unpack
+interpretRelFilePath :: Context -> Ens -> IO (Path Rel File)
+interpretRelFilePath context =
+  toString context >=> parseRelFile . T.unpack
 
-interpretDependency :: Axis -> Ens -> IO (ModuleURL, ModuleChecksum)
-interpretDependency axis dependencyValue = do
-  url <- access axis "URL" dependencyValue >>= toString axis
-  checksum <- access axis "checksum" dependencyValue >>= toString axis
+interpretDependency :: Context -> Ens -> IO (ModuleURL, ModuleChecksum)
+interpretDependency context dependencyValue = do
+  url <- access context "URL" dependencyValue >>= toString context
+  checksum <- access context "checksum" dependencyValue >>= toString context
   return (ModuleURL url, ModuleChecksum checksum)
 
-interpretExtraPath :: Axis -> Path Abs Dir -> Ens -> IO SomePath
-interpretExtraPath axis moduleRootDir entity = do
-  itemPathText <- toString axis entity
+interpretExtraPath :: Context -> Path Abs Dir -> Ens -> IO SomePath
+interpretExtraPath context moduleRootDir entity = do
+  itemPathText <- toString context entity
   if T.last itemPathText == '/'
     then do
       dirPath <- resolveDir moduleRootDir $ T.unpack itemPathText
-      ensureExistence axis moduleRootDir dirPath doesDirExist "directory"
+      ensureExistence context moduleRootDir dirPath doesDirExist "directory"
       return $ Left dirPath
     else do
       filePath <- resolveFile moduleRootDir $ T.unpack itemPathText
-      ensureExistence axis moduleRootDir filePath doesFileExist "file"
+      ensureExistence context moduleRootDir filePath doesFileExist "file"
       return $ Right filePath
 
-ensureExistence :: Axis -> Path Abs Dir -> Path Abs t -> (Path Abs t -> IO Bool) -> T.Text -> IO ()
-ensureExistence axis moduleRootDir path existenceChecker kindText = do
+ensureExistence :: Context -> Path Abs Dir -> Path Abs t -> (Path Abs t -> IO Bool) -> T.Text -> IO ()
+ensureExistence context moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker path
   unless b $ do
     relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
-    axis & throw & Throw.raiseError' $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
+    raiseError' context $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
 
-initializeMainModule :: Axis -> IO ()
-initializeMainModule axis = do
-  getMainModuleFilePath axis >>= fromFilePath axis >>= setMainModule axis
+initializeMainModule :: Context -> IO ()
+initializeMainModule context = do
+  getMainModuleFilePath context >>= fromFilePath context >>= setMainModule context

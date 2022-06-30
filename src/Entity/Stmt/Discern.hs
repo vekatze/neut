@@ -1,12 +1,12 @@
 module Entity.Stmt.Discern (discernStmtList) where
 
-import Context.App
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Entity.Namespace
 import Entity.Stmt
 import qualified Entity.WeakTerm.Discern as WeakTerm
 
-discernStmtList :: Axis -> [WeakStmt] -> IO [QuasiStmt]
+discernStmtList :: WeakTerm.Axis -> [WeakStmt] -> IO [QuasiStmt]
 discernStmtList axis stmtList =
   case stmtList of
     [] ->
@@ -25,7 +25,7 @@ discernStmtList axis stmtList =
     WeakStmtSection m sectionName innerStmtList : rest -> do
       pushToCurrentLocalLocator sectionName
       innerStmtList' <- discernStmtList axis innerStmtList
-      _ <- popFromCurrentLocalLocator axis m
+      _ <- popFromCurrentLocalLocator (axis & WeakTerm.throw) m
       rest' <- discernStmtList axis rest
       return $ innerStmtList' ++ rest'
 

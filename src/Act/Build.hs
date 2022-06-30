@@ -11,6 +11,7 @@ import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
+import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import Data.Maybe
@@ -65,7 +66,7 @@ build axis mTarget mClangOptStr = do
     Just target ->
       build' axis target mClangOptStr
     Nothing -> do
-      mainModule <- getMainModule axis
+      mainModule <- getMainModule (axis & throw)
       forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
         build' axis (T.unpack target) mClangOptStr
 
@@ -89,14 +90,14 @@ check axis mFilePathStr = do
       filePath <- resolveFile' filePathStr
       check' axis filePath
     Nothing -> do
-      mainModule <- getMainModule axis
+      mainModule <- getMainModule (axis & throw)
       forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
         check' axis $ getSourceDir mainModule </> relPath
 
 check' :: Axis -> Path Abs File -> IO ()
 check' axis filePath = do
   ensureFileModuleSanity axis filePath
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
   initializeEnumEnv
   (_, _, dependenceSeq) <- computeDependence axis source
@@ -104,13 +105,13 @@ check' axis filePath = do
 
 ensureFileModuleSanity :: Axis -> Path Abs File -> IO ()
 ensureFileModuleSanity axis filePath = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     axis & throw & Throw.raiseError' $ "the specified file is not in the current module"
 
 ensureNotInLibDir :: Axis -> T.Text -> IO ()
 ensureNotInLibDir axis commandName = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   libDir <- getLibraryDirPath
   when (isProperPrefixOf libDir (moduleLocation mainModule)) $
     axis & throw & Throw.raiseError' $
@@ -185,14 +186,14 @@ link axis target mClangOptStr sourceList = do
 
 clean :: Axis -> IO ()
 clean axis = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   let targetDir = getTargetDir mainModule
   b <- doesDirExist targetDir
   when b $ removeDirRecur $ getTargetDir mainModule
 
 getExecutableOutputPath :: Axis -> Target -> IO (Path Abs File)
 getExecutableOutputPath axis target = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   resolveFile (getExecutableDir mainModule) target
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
@@ -204,7 +205,7 @@ sourceToOutputPath kind source = do
 
 getMainSource :: Axis -> Path Abs File -> IO Source
 getMainSource axis mainSourceFilePath = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   return $
     Source
       { sourceModule = mainModule,
@@ -220,7 +221,7 @@ getMainFunctionName axis source = do
 
 getMainFunctionNameIfEntryPoint :: Axis -> Source -> IO (Maybe T.Text)
 getMainFunctionNameIfEntryPoint axis source = do
-  mainFilePath <- getMainFilePath axis
+  mainFilePath <- getMainFilePath (axis & throw)
   if sourceFilePath source == mainFilePath
     then return <$> getMainFunctionName' axis source
     else return Nothing
@@ -388,7 +389,7 @@ type Target =
 
 resolveTarget :: Axis -> Target -> IO (Path Abs File)
 resolveTarget axis target = do
-  mainModule <- getMainModule axis
+  mainModule <- getMainModule (axis & throw)
   case getTargetFilePath mainModule (T.pack target) of
     Just path ->
       return path
