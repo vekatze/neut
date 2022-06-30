@@ -27,10 +27,6 @@ import qualified System.Info as System
 -- global variables
 --
 
-{-# NOINLINE shouldColorizeRef #-}
-shouldColorizeRef :: IORef Bool
-shouldColorizeRef =
-  unsafePerformIO (newIORef True)
 
 {-# NOINLINE shouldCancelAllocRef #-}
 shouldCancelAllocRef :: IORef Bool
@@ -299,48 +295,6 @@ cartClsName =
 cartCellName :: T.Text
 cartCellName =
   "cell"
-
---
--- generating new symbols using count
---
-
--- {-# INLINE newCount #-}
--- newCount :: IO Int
--- newCount =
---   atomicModifyIORef' countRef $ \x -> let z = x + 1 in (z, z)
-
--- {-# INLINE newIdentFromText #-}
--- newIdentFromText :: T.Text -> IO Ident
--- newIdentFromText s = do
---   i <- newCount
---   return $ I (s, i)
-
--- {-# INLINE newIdentFromIdent #-}
--- newIdentFromIdent :: Ident -> IO Ident
--- newIdentFromIdent x =
---   newIdentFromText (Ident.toText x)
-
--- {-# INLINE newText #-}
--- newText :: IO T.Text
--- newText = do
---   i <- newCount
---   return $ ";" <> T.pack (show i)
-
--- {-# INLINE newAster #-}
--- newAster :: Hint -> IO WeakTerm
--- newAster m = do
---   i <- newCount
---   return $ m :< WeakTermAster i
-
--- {-# INLINE newValueVarLocalWith #-}
--- newValueVarLocalWith :: T.Text -> IO (Ident, Value)
--- newValueVarLocalWith name = do
---   x <- newIdentFromText name
---   return (x, ValueVarLocal x)
-
---
--- obtain information from the environment
---
 
 getCacheDirPath :: IO (Path Abs Dir)
 getCacheDirPath = do

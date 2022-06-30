@@ -11,12 +11,9 @@ import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
--- import Control.Exception.Safe
 import Control.Monad
-import Data.IORef
 import qualified Data.Text as T
 import Data.Version
-import Entity.Global
 import Entity.Log
 import Entity.Module.Reflect
 import Entity.ModuleAlias
@@ -242,7 +239,6 @@ runCommand cmd = do
           Throw.Config
             {
             }
-      writeIORef shouldColorizeRef colorizeFlag
       void $ runAction checkAxis $ initializeMainModule (checkAxis & throw) >> check checkAxis mInputPathStr
     Clean -> do
       runAction axis $ initializeMainModule (axis & throw) >> clean axis
