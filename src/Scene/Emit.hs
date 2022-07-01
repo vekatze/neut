@@ -86,8 +86,8 @@ emitBlock axis funName (I (_, i)) asm = do
   return $ emitLabel ("_" <> intDec i) : a
 
 emitLowComp :: Axis -> Builder -> LowComp -> IO [Builder]
-emitLowComp axis retType llvm =
-  case llvm of
+emitLowComp axis retType lowComp =
+  case lowComp of
     LowCompReturn d ->
       emitRet retType d
     LowCompCall f args -> do
@@ -134,8 +134,8 @@ emitLowComp axis retType llvm =
       emitOp $ unwordsL ["unreachable"]
 
 emitLowOp :: Axis -> LowOp -> IO Builder
-emitLowOp axis llvmOp =
-  case llvmOp of
+emitLowOp axis lowOp =
+  case lowOp of
     LowOpCall d ds ->
       return $ unwordsL ["call fastcc i8*", showLowValue d <> showArgs ds]
     LowOpGetElementPtr (base, n) is ->
@@ -354,8 +354,8 @@ showPrimNumForEmit lowType =
       "double"
 
 showLowValue :: LowValue -> Builder
-showLowValue llvmValue =
-  case llvmValue of
+showLowValue lowValue =
+  case lowValue of
     LowValueVarLocal (I (_, i)) ->
       "%_" <> intDec i
     LowValueVarGlobal x ->

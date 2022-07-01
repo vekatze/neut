@@ -443,8 +443,8 @@ insLowDefEnv funName args e =
   modifyIORef' lowDefEnvRef $ Map.insert funName (args, e)
 
 commConv :: Ident -> LowComp -> LowComp -> IO LowComp
-commConv x llvm cont2 =
-  case llvm of
+commConv x lowComp cont2 =
+  case lowComp of
     LowCompReturn d ->
       return $ LowCompLet x (LowOpBitcast d voidPtr voidPtr) cont2 -- nop
     LowCompLet y op cont1 -> do

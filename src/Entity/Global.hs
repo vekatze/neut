@@ -83,13 +83,6 @@ getCurrentFilePath axis = do
     Nothing ->
       axis & Throw.raiseCritical' $ "no current file is set"
 
-globalEnumEnv :: [(T.Text, [(T.Text, Int)])]
-globalEnumEnv =
-  [ (constBottom, []),
-    (constTop, [(constTopUnit, 0)]),
-    (constBool, [(constBoolFalse, 0), (constBoolTrue, 1)])
-  ]
-
 -- [("choice", [("left", 0), ("right", 1)]), ...]
 {-# NOINLINE enumEnvRef #-}
 enumEnvRef :: IORef (Map.HashMap T.Text [(T.Text, Int)])
@@ -161,11 +154,6 @@ holeEnvRef =
 constraintListRef :: IORef [Constraint]
 constraintListRef =
   unsafePerformIO (newIORef [])
-
--- {-# NOINLINE sourceAliasMapRef #-}
--- sourceAliasMapRef :: IORef (Map.HashMap (Path Abs File) [AliasInfo])
--- sourceAliasMapRef =
---   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE suspendedConstraintQueueRef #-}
 suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue

@@ -20,7 +20,6 @@ import Entity.ModuleChecksum
 import Entity.ModuleURL
 import Path
 import Path.IO
-import System.Exit
 import System.IO
 import System.Process
 import Prelude hiding (log)
@@ -100,7 +99,7 @@ download axis tempFilePath alias (ModuleURL url) = do
     createProcess curlCmd {std_err = CreatePipe}
   axis & log & Log.printNote' $ "downloading `" <> extract alias <> "` from " <> url
   curlExitCode <- waitForProcess curlHandler
-  raiseIfFailure axis "curl" curlExitCode curlErrorHandler
+  Throw.raiseIfProcessFailed (axis & throw) "curl" curlExitCode curlErrorHandler
 
 computeModuleChecksum :: B.ByteString -> ModuleChecksum
 computeModuleChecksum fileByteString =
@@ -115,28 +114,13 @@ extractToLibDir axis tempFilePath alias c@(ModuleChecksum checksum) = do
     createProcess tarCmd {std_err = CreatePipe}
   axis & log & Log.printNote' $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
   tarExitCode <- waitForProcess tarHandler
-  raiseIfFailure axis "tar" tarExitCode tarErrorHandler
+  Throw.raiseIfProcessFailed (axis & throw) "tar" tarExitCode tarErrorHandler
 
 addDependencyToModuleFile :: Axis -> Module -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
 addDependencyToModuleFile axis targetModule alias url checksum = do
   axis & log & Log.printNote' $ "adding the dependency of `" <> extract alias <> "` to the module file"
   let targetModule' = addDependency alias url checksum targetModule
   TIO.writeFile (toFilePath $ moduleLocation targetModule') $ ppModule targetModule'
-
-raiseIfFailure :: Axis -> T.Text -> ExitCode -> Handle -> IO ()
-raiseIfFailure axis procName exitCode h =
-  case exitCode of
-    ExitSuccess ->
-      return ()
-    ExitFailure i -> do
-      errStr <- TIO.hGetContents h
-      axis & throw & Throw.raiseError' $
-        "the child process `"
-          <> procName
-          <> "` failed with the following message (exitcode = "
-          <> T.pack (show i)
-          <> "):\n"
-          <> errStr
 
 showModuleChecksum :: ModuleChecksum -> T.Text
 showModuleChecksum (ModuleChecksum checksum) =
