@@ -83,17 +83,17 @@ getCurrentFilePath axis = do
     Nothing ->
       axis & Throw.raiseCritical' $ "no current file is set"
 
--- [("choice", [("left", 0), ("right", 1)]), ...]
-{-# NOINLINE enumEnvRef #-}
-enumEnvRef :: IORef (Map.HashMap T.Text [(T.Text, Integer)])
-enumEnvRef =
-  unsafePerformIO $ newIORef Map.empty
+-- -- [("choice", [("left", 0), ("right", 1)]), ...]
+-- {-# NOINLINE enumEnvRef #-}
+-- enumEnvRef :: IORef (Map.HashMap T.Text [(T.Text, Integer)])
+-- enumEnvRef =
+--   unsafePerformIO $ newIORef Map.empty
 
--- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
-{-# NOINLINE revEnumEnvRef #-}
-revEnumEnvRef :: IORef (Map.HashMap T.Text (T.Text, Integer))
-revEnumEnvRef =
-  unsafePerformIO (newIORef Map.empty)
+-- -- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
+-- {-# NOINLINE revEnumEnvRef #-}
+-- revEnumEnvRef :: IORef (Map.HashMap T.Text (T.Text, Integer))
+-- revEnumEnvRef =
+--   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE dataEnvRef #-}
 dataEnvRef :: IORef (Map.HashMap T.Text [T.Text])

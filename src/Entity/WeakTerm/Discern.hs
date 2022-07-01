@@ -5,6 +5,7 @@ module Entity.WeakTerm.Discern
   )
 where
 
+import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
@@ -25,7 +26,8 @@ import Entity.WeakTerm
 
 data Axis = Axis
   { throw :: Throw.Context,
-    gensym :: Gensym.Axis
+    gensym :: Gensym.Axis,
+    enum :: Enum.Axis
   }
 
 type NameEnv = Map.HashMap T.Text Ident
@@ -116,7 +118,7 @@ discern axis nenv term =
       topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
         candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
-        constructorName' <- resolveSymbol (axis & throw) m (asConstructor m topNameSet) constructorName candList
+        constructorName' <- resolveSymbol (axis & throw) m (return . asConstructor m topNameSet) constructorName candList
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinderWithBody axis nenv xts body
@@ -201,15 +203,14 @@ discernEnumCase :: Axis -> EnumCase -> IO EnumCase
 discernEnumCase axis enumCase =
   case enumCase of
     m :< EnumCaseLabel _ l -> do
-      revEnumEnv <- readIORef revEnumEnvRef
       candList <- constructCandList l False
-      ml <- resolveSymbol (axis & throw) m (asEnumLabel m revEnumEnv) l $ l : candList
+      ml <- resolveSymbol (axis & throw) m (asEnumCase (axis & enum) m) l $ l : candList
       case ml of
         Just l' ->
           return l'
         Nothing -> do
-          enumEnv <- readIORef enumEnvRef
-          p' enumEnv
+          -- enumEnv <- readIORef enumEnvRef
+          -- p' enumEnv
           (axis & throw & Throw.raiseError) m $ "no such enum-value is defined: " <> l
     _ ->
       return enumCase
@@ -219,11 +220,8 @@ resolveVar axis m x termKind isDefinite = do
   topNameSet <- readIORef topNameSetRef
   candList <- constructCandList x isDefinite
   tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) x candList) $ do
-    revEnumEnv <- readIORef revEnumEnvRef
     let candList' = x : candList
-    tryCand (resolveSymbol (axis & throw) m (asEnumIntro m revEnumEnv) x candList') $ do
-      enumEnv <- readIORef enumEnvRef
-      tryCand (resolveSymbol (axis & throw) m (asEnum m enumEnv) x candList') $
-        tryCand (resolveSymbol (axis & throw) m (asWeakConstant m) x candList') $ do
-          p' revEnumEnv
+    tryCand (resolveSymbol (axis & throw) m (asEnumIntro (axis & enum) m) x candList') $ do
+      tryCand (resolveSymbol (axis & throw) m (asEnum (axis & enum) m) x candList') $
+        tryCand (resolveSymbol (axis & throw) m (return . asWeakConstant m) x candList') $ do
           (axis & throw & Throw.raiseError) m $ "undefined " <> termKind <> ": " <> x

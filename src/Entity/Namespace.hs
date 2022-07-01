@@ -1,6 +1,8 @@
 module Entity.Namespace where
 
 -- import Context.App
+
+import qualified Context.Enum as Enum
 import Context.Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -77,14 +79,15 @@ handleDefinePrefix context m from to = do
     else writeIORef locatorAliasMapRef $ Map.insert from to aliasEnv
 
 {-# INLINE resolveSymbol #-}
-resolveSymbol :: Context -> Hint -> (T.Text -> Maybe b) -> T.Text -> [T.Text] -> IO (Maybe b)
+resolveSymbol :: Context -> Hint -> (T.Text -> IO (Maybe b)) -> T.Text -> [T.Text] -> IO (Maybe b)
 resolveSymbol context m predicate name candList = do
-  case takeAll predicate candList [] of
+  candList' <- takeAll predicate candList []
+  case candList' of
     [] ->
       return Nothing
     [prefixedName] ->
-      return $ predicate prefixedName
-    candList' -> do
+      predicate prefixedName
+    _ -> do
       let candInfo = T.concat $ map ("\n- " <>) candList'
       (context & raiseError) m $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
@@ -140,13 +143,14 @@ resolveAlias sep aliasMap currentName = do
     _ ->
       currentName
 
-takeAll :: (T.Text -> Maybe b) -> [T.Text] -> [T.Text] -> [T.Text]
+takeAll :: (T.Text -> IO (Maybe b)) -> [T.Text] -> [T.Text] -> IO [T.Text]
 takeAll predicate candidateList acc =
   case candidateList of
     [] ->
-      acc
+      return acc
     x : xs -> do
-      case predicate x of
+      mResult <- predicate x
+      case mResult of
         Just _ ->
           takeAll predicate xs (x : acc)
         Nothing ->
@@ -158,11 +162,11 @@ asWeakVar m nenv var =
   Map.lookup var nenv >>= \x -> return (m :< WeakTermVar x)
 
 {-# INLINE asGlobalVar #-}
-asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> Maybe WeakTerm
+asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> IO (Maybe WeakTerm)
 asGlobalVar m nenv name =
   if S.member name nenv
-    then Just (m :< WeakTermVarGlobal name)
-    else Nothing
+    then return $ Just (m :< WeakTermVarGlobal name)
+    else return Nothing
 
 {-# INLINE asConstructor #-}
 asConstructor :: Hint -> S.Set T.Text -> T.Text -> Maybe (Hint, T.Text)
@@ -178,32 +182,59 @@ findThenModify env f name = do
     then Just $ f name
     else Nothing
 
-{-# INLINE asEnumLabel #-}
-asEnumLabel :: Hint -> Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe EnumCase
-asEnumLabel m env name = do
-  case Map.lookup name env of
-    Just labelInfo ->
-      Just $ m :< EnumCaseLabel labelInfo name
-    _ ->
-      Nothing
+-- {-# INLINE asEnumLabel #-}
+-- asEnumLabel :: Hint -> Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe EnumCase
+-- asEnumLabel m env name = do
+--   case Map.lookup name env of
+--     Just labelInfo ->
+--       Just $ m :< EnumCaseLabel labelInfo name
+--     _ ->
+--       Nothing
+
+{-# INLINE asEnumCase #-}
+asEnumCase :: Enum.Axis -> Hint -> T.Text -> IO (Maybe EnumCase)
+asEnumCase axis m name = do
+  mLabelInfo <- Enum.lookupValue axis name
+  return $ mLabelInfo >>= \labelInfo -> return (m :< EnumCaseLabel labelInfo name)
+
+-- case Map.lookup name env of
+--   Just labelInfo ->
+--     Just $ m :< EnumCaseLabel labelInfo name
+--   _ ->
+--     Nothing
 
 {-# INLINE asEnumIntro #-}
-asEnumIntro :: Hint -> Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe WeakTerm
-asEnumIntro m env name = do
-  case Map.lookup name env of
-    Just labelInfo ->
-      Just (m :< WeakTermEnumIntro labelInfo name)
-    _ ->
-      Nothing
+asEnumIntro :: Enum.Axis -> Hint -> T.Text -> IO (Maybe WeakTerm)
+asEnumIntro axis m name = do
+  mLabelInfo <- Enum.lookupValue axis name
+  return $ mLabelInfo >>= \labelInfo -> return (m :< WeakTermEnumIntro labelInfo name)
+
+-- case mLabelInfo of
+--   Just labelInfo ->
+--     return $ Just (m :< WeakTermEnumIntro labelInfo name)
+--   _ ->
+--     return Nothing
 
 {-# INLINE asEnum #-}
-asEnum :: Hint -> Map.HashMap T.Text a -> T.Text -> Maybe WeakTerm
-asEnum m env name = do
-  case Map.lookup name env of
-    Just _ ->
-      Just (m :< WeakTermEnum name)
-    _ ->
-      Nothing
+asEnum :: Enum.Axis -> Hint -> T.Text -> IO (Maybe WeakTerm)
+asEnum axis m name = do
+  mEnumItems <- Enum.lookupType axis name
+  return $ mEnumItems >> return (m :< WeakTermEnum name)
+
+-- case Map.lookup name env of
+--   Just _ ->
+--     Just (m :< WeakTermEnum name)
+--   _ ->
+--     Nothing
+
+-- {-# INLINE asEnum #-}
+-- asEnum :: Hint -> Map.HashMap T.Text a -> T.Text -> Maybe WeakTerm
+-- asEnum m env name = do
+--   case Map.lookup name env of
+--     Just _ ->
+--       Just (m :< WeakTermEnum name)
+--     _ ->
+--       Nothing
 
 {-# INLINE asWeakConstant #-}
 asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm

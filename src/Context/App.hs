@@ -3,6 +3,7 @@ module Context.App
   )
 where
 
+import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.LLVM as LLVM
 import qualified Context.Log as Log
@@ -12,5 +13,6 @@ data Axis = Axis
   { log :: Log.Context,
     throw :: Throw.Context,
     gensym :: Gensym.Axis,
-    llvm :: LLVM.Axis
+    llvm :: LLVM.Axis,
+    enum :: Enum.Axis
   }

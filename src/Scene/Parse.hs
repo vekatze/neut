@@ -5,6 +5,7 @@ module Scene.Parse
 where
 
 import Context.App
+import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
@@ -18,7 +19,6 @@ import qualified Data.Text as T
 import Entity.AliasInfo
 import Entity.Binder
 import Entity.EnumInfo
-import qualified Entity.EnumInfo.Env as EnumInfo
 import Entity.Global
 import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
@@ -31,6 +31,7 @@ import Entity.Stmt
 import Entity.Stmt.Discern
 import Entity.WeakTerm
 import qualified Entity.WeakTerm.Discern as WT
+import Path
 import Scene.Parse.Core
 import Scene.Parse.Enum
 import Scene.Parse.Import
@@ -60,7 +61,9 @@ parseSource axis source = do
   setupSectionPrefix axis source
   case mCache of
     Just cache -> do
-      forM_ (cacheEnumInfo cache) EnumInfo.register
+      let hint = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
+      forM_ (cacheEnumInfo cache) $ \enumInfo ->
+        uncurry (Enum.register (axis & enum) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
       let names = S.fromList $ map extractName stmtList
       modifyIORef' topNameSetRef $ S.union names
@@ -100,7 +103,7 @@ program' axis =
         parseStmtUse
         program' axis,
       do
-        let wtAxis = WT.Axis {WT.throw = axis & throw, WT.gensym = axis & gensym}
+        let wtAxis = WT.Axis {WT.throw = axis & throw, WT.gensym = axis & gensym, WT.enum = axis & enum}
         stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList wtAxis . concat
         return (stmtList, [])
     ]

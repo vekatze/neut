@@ -5,6 +5,7 @@ module Scene.Elaborate
 where
 
 import Context.App
+import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
@@ -410,12 +411,19 @@ checkSwitchExaustiveness axis m x caseList = do
 
 lookupEnumSet :: Axis -> Hint -> T.Text -> IO [T.Text]
 lookupEnumSet axis m name = do
-  enumEnv <- readIORef enumEnvRef
-  case Map.lookup name enumEnv of
+  mEnumItems <- Enum.lookupType (axis & enum) name
+  case mEnumItems of
     Nothing ->
       (axis & throw & Throw.raiseError) m $ "no such enum defined: " <> name
-    Just xis ->
-      return $ map fst xis
+    Just enumItems ->
+      return $ map fst enumItems
+
+-- enumEnv <- readIORef enumEnvRef
+-- case Map.lookup name enumEnv of
+--   Nothing ->
+--     (axis & throw & Throw.raiseError) m $ "no such enum defined: " <> name
+--   Just xis ->
+--     return $ map fst xis
 
 insTermTypeEnv :: T.Text -> WeakTerm -> IO ()
 insTermTypeEnv name t =

@@ -5,6 +5,7 @@ module Context.App.Main
 where
 
 import Context.App
+import qualified Context.Enum.Main as Enum
 import qualified Context.Gensym.Main as Gensym
 import qualified Context.LLVM.Main as LLVM
 import qualified Context.Log.IO as Log
@@ -22,10 +23,12 @@ new logCfg throwCfg clangOptStr = do
   throwCtx <- Throw.new throwCfg
   gensymCtx <- Gensym.new
   llvmCtx <- LLVM.new clangOptStr throwCtx
+  enumCtx <- Enum.new throwCtx
   return
     Axis
       { log = logCtx,
         throw = throwCtx,
         gensym = gensymCtx,
-        llvm = llvmCtx
+        llvm = llvmCtx,
+        enum = enumCtx
       }

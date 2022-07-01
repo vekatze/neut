@@ -23,7 +23,6 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
-import Entity.EnumInfo.Env
 import Entity.Global
 import Entity.Hint
 import Entity.Module
@@ -67,7 +66,6 @@ build' axis target = do
   mainFilePath <- resolveTarget axis target
   mainSource <- getMainSource axis mainFilePath
   setMainFilePath mainFilePath
-  initializeEnumEnv
   (_, isObjectAvailable, dependenceSeq) <- computeDependence axis mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   mapM_ (compile axis hasObjectSet) dependenceSeq
@@ -90,7 +88,6 @@ check' axis filePath = do
   ensureFileModuleSanity axis filePath
   mainModule <- getMainModule (axis & throw)
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  initializeEnumEnv
   (_, _, dependenceSeq) <- computeDependence axis source
   mapM_ (check'' axis) dependenceSeq
 
