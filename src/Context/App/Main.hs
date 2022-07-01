@@ -6,6 +6,7 @@ where
 
 import Context.App
 import qualified Context.Gensym.Main as Gensym
+import qualified Context.LLVM.Main as LLVM
 import qualified Context.Log.IO as Log
 import qualified Context.Throw.IO as Throw
 import Path
@@ -15,15 +16,16 @@ newtype Config = Config
   { mainFilePathConf :: Path Abs File
   }
 
-new :: Log.Config -> Throw.Config -> IO Axis
-new logCfg throwCfg = do
-  -- counter <- newCounter 0
+new :: Log.Config -> Throw.Config -> String -> IO Axis
+new logCfg throwCfg clangOptStr = do
   logCtx <- Log.new logCfg
   throwCtx <- Throw.new throwCfg
   gensymCtx <- Gensym.new
+  llvmCtx <- LLVM.new clangOptStr throwCtx
   return
     Axis
       { log = logCtx,
         throw = throwCtx,
-        gensym = gensymCtx
+        gensym = gensymCtx,
+        llvm = llvmCtx
       }

@@ -6,12 +6,13 @@ import Act.Init
 import Act.Release
 import Context.App
 import qualified Context.App.Main as App
-import Data.Function
 import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
 import Control.Monad
+import Data.Function
+import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import Data.Version
 import Entity.Log
@@ -226,9 +227,18 @@ runCommand cmd = do
       Throw.Config
         {
         }
+      ""
   case cmd of
     Build target mClangOptStr -> do
-      runAction axis $ initializeMainModule (axis & throw) >> build axis target mClangOptStr
+      buildAxis <-
+        App.new
+          Log.Config
+            { Log.shouldColorize = True,
+              Log.endOfEntry = ""
+            }
+          Throw.Config {}
+          (fromMaybe "" mClangOptStr)
+      runAction axis $ initializeMainModule (buildAxis & throw) >> build buildAxis target
     Check mInputPathStr colorizeFlag eoe -> do
       checkAxis <-
         App.new
@@ -239,6 +249,7 @@ runCommand cmd = do
           Throw.Config
             {
             }
+          ""
       void $ runAction checkAxis $ initializeMainModule (checkAxis & throw) >> check checkAxis mInputPathStr
     Clean -> do
       runAction axis $ initializeMainModule (axis & throw) >> clean axis

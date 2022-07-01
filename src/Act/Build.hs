@@ -2,11 +2,11 @@ module Act.Build
   ( build,
     clean,
     check,
-    OutputKind (..),
   )
 where
 
 import Context.App
+import qualified Context.LLVM as LLVM
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
@@ -14,7 +14,6 @@ import Data.Foldable
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
-import Data.Maybe
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -23,7 +22,6 @@ import Data.Sequence as Seq
   )
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Entity.AliasInfo
 import Entity.EnumInfo.Env
 import Entity.Global
@@ -31,7 +29,6 @@ import Entity.Hint
 import Entity.Module
 import Entity.OutputKind
 import Entity.Source
-import GHC.IO.Handle
 import Path
 import Path.IO
 import Scene.Clarify
@@ -43,7 +40,6 @@ import Scene.Parse.Core
 import Scene.Parse.Import
 import System.Exit
 import System.IO.Unsafe
-import System.Process
 
 data VisitInfo
   = VisitInfoActive
@@ -55,32 +51,27 @@ type IsCacheAvailable =
 type IsObjectAvailable =
   Bool
 
-type ClangOption =
-  String
-
-build :: Axis -> Maybe Target -> Maybe ClangOption -> IO ()
-build axis mTarget mClangOptStr = do
-  -- let axis = logContextIO
+build :: Axis -> Maybe Target -> IO ()
+build axis mTarget = do
   ensureNotInLibDir axis "build"
   case mTarget of
     Just target ->
-      build' axis target mClangOptStr
+      build' axis target
     Nothing -> do
       mainModule <- getMainModule (axis & throw)
       forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-        build' axis (T.unpack target) mClangOptStr
+        build' axis (T.unpack target)
 
-build' :: Axis -> Target -> Maybe ClangOption -> IO ()
-build' axis target mClangOptStr = do
+build' :: Axis -> Target -> IO ()
+build' axis target = do
   mainFilePath <- resolveTarget axis target
   mainSource <- getMainSource axis mainFilePath
   setMainFilePath mainFilePath
   initializeEnumEnv
   (_, isObjectAvailable, dependenceSeq) <- computeDependence axis mainSource
   hasObjectSet <- readIORef hasObjectSetRef
-  let clangOptStr = fromMaybe "" mClangOptStr
-  mapM_ (compile axis hasObjectSet clangOptStr) dependenceSeq
-  unless isObjectAvailable $ link axis target mClangOptStr $ toList dependenceSeq
+  mapM_ (compile axis hasObjectSet) dependenceSeq
+  unless isObjectAvailable $ link axis target $ toList dependenceSeq
 
 check :: Axis -> Maybe FilePath -> IO ()
 check axis mFilePathStr = do
@@ -126,11 +117,11 @@ check'' axis source = do
     Nothing ->
       void $ parseOther axis source >>= elaborateOther axis source
 
-compile :: Axis -> S.Set (Path Abs File) -> String -> Source -> IO ()
-compile axis hasObjectSet clangOptStr source = do
+compile :: Axis -> S.Set (Path Abs File) -> Source -> IO ()
+compile axis hasObjectSet source = do
   if S.member (sourceFilePath source) hasObjectSet
     then loadTopLevelDefinitions axis source
-    else compile' axis clangOptStr source
+    else compile' axis source
 
 loadTopLevelDefinitions :: Axis -> Source -> IO ()
 loadTopLevelDefinitions axis source = do
@@ -141,20 +132,14 @@ loadTopLevelDefinitions axis source = do
     Nothing ->
       void $ parseOther axis source >>= elaborateOther axis source >>= clarifyOther axis
 
-compile' :: Axis -> String -> Source -> IO ()
-compile' axis clangOptStr source = do
-  llvm <- compileToLLVM axis source
+compile' :: Axis -> Source -> IO ()
+compile' axis source = do
+  llvmCode <- compileToLLVM axis source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
-  L.writeFile (toFilePath llvmOutputPath) llvm
-  let clangCmd = proc "clang" $ clangOptWith OutputKindLLVM outputPath ++ ["-c"] ++ words clangOptStr
-  withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $ \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
-    L.hPut stdin llvm
-    hClose stdin
-    clangExitCode <- waitForProcess clangProcessHandler
-    raiseIfFailure axis "clang" clangExitCode clangErrorHandler
-    return ()
+  L.writeFile (toFilePath llvmOutputPath) llvmCode
+  (axis & llvm & LLVM.emit) OutputKindObject llvmCode outputPath
 
 compileToLLVM :: Axis -> Source -> IO L.ByteString
 compileToLLVM axis source = do
@@ -173,16 +158,11 @@ compileToLLVM axis source = do
         >>= lowerOther axis
         >> emitOther axis
 
-link :: Axis -> Target -> Maybe String -> [Source] -> IO ()
-link axis target mClangOptStr sourceList = do
+link :: Axis -> Target -> [Source] -> IO ()
+link axis target sourceList = do
   outputPath <- getExecutableOutputPath axis target
-  ensureDir $ parent outputPath
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
-  let clangCmd = proc "clang" $ clangLinkOpt objectPathList outputPath $ fromMaybe "" mClangOptStr
-  (_, _, Just clangErrorHandler, clangHandler) <-
-    createProcess clangCmd {std_err = CreatePipe}
-  clangExitCode <- waitForProcess clangHandler
-  raiseIfFailure axis "clang" clangExitCode clangErrorHandler
+  (axis & llvm & LLVM.link) objectPathList outputPath
 
 clean :: Axis -> IO ()
 clean axis = do
@@ -361,29 +341,6 @@ addExtensionAlongKind file kind =
     OutputKindExecutable -> do
       return file
 
-clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
-clangLinkOpt objectPathList outputPath additionalOptionStr = do
-  let pathList = map toFilePath objectPathList
-  ["-Wno-override-module", "-O2", "-o", toFilePath outputPath] ++ pathList ++ words additionalOptionStr
-
-clangOptWith :: OutputKind -> Path Abs File -> [String]
-clangOptWith kind outputPath =
-  case kind of
-    OutputKindAsm ->
-      "-S" : clangBaseOpt outputPath
-    _ ->
-      clangBaseOpt outputPath
-
-clangBaseOpt :: Path Abs File -> [String]
-clangBaseOpt outputPath =
-  [ "-xir",
-    "-Wno-override-module",
-    "-O2",
-    "-",
-    "-o",
-    toFilePath outputPath
-  ]
-
 type Target =
   String
 
@@ -398,18 +355,3 @@ resolveTarget axis target = do
       _ <- axis & throw & Throw.raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
       -- outputLog l
       exitWith (ExitFailure 1)
-
-raiseIfFailure :: Axis -> T.Text -> ExitCode -> Handle -> IO ()
-raiseIfFailure axis procName exitCode h =
-  case exitCode of
-    ExitSuccess ->
-      return ()
-    ExitFailure i -> do
-      errStr <- TIO.hGetContents h
-      axis & throw & Throw.raiseError' $
-        "the child process `"
-          <> procName
-          <> "` failed with the following message (exitcode = "
-          <> T.pack (show i)
-          <> "):\n"
-          <> errStr

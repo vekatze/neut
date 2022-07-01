@@ -27,7 +27,6 @@ import qualified System.Info as System
 -- global variables
 --
 
-
 {-# NOINLINE shouldCancelAllocRef #-}
 shouldCancelAllocRef :: IORef Bool
 shouldCancelAllocRef =
