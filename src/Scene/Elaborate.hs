@@ -244,8 +244,8 @@ elaborate' axis term =
               <> toText (weaken t')
     m :< WeakTermEnum k ->
       return $ m :< TermEnum k
-    m :< WeakTermEnumIntro x ->
-      return $ m :< TermEnumIntro x
+    m :< WeakTermEnumIntro labelInfo x ->
+      return $ m :< TermEnumIntro labelInfo x
     m :< WeakTermEnumElim (e, t) les -> do
       e' <- elaborate' axis e
       let (ls, es) = unzip les

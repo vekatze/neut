@@ -143,8 +143,7 @@ infer' axis ctx term =
       return (m :< WeakTermFloat t' f, t')
     m :< WeakTermEnum _ ->
       return (term, m :< WeakTermTau)
-    m :< WeakTermEnumIntro l -> do
-      k <- lookupKind axis m l
+    m :< WeakTermEnumIntro (k, _) _ -> do
       return (term, m :< WeakTermEnum k)
     m :< WeakTermEnumElim (e, _) ces -> do
       (e', t') <- infer' axis ctx e
@@ -397,8 +396,7 @@ newTypeAsterListInCtx axis ctx ids =
 inferEnumCase :: Axis -> Context -> EnumCase -> IO (EnumCase, WeakTerm)
 inferEnumCase axis ctx weakCase =
   case weakCase of
-    m :< EnumCaseLabel name -> do
-      k <- lookupKind axis m name
+    m :< EnumCaseLabel (k, _) _ -> do
       return (weakCase, m :< WeakTermEnum k)
     m :< EnumCaseDefault -> do
       h <- newTypeAsterInCtx (axis & gensym) ctx m
@@ -451,15 +449,6 @@ lookupWeakTypeEnvMaybe s = do
       return Nothing
     Just t ->
       return $ Just t
-
-lookupKind :: Axis -> Hint -> T.Text -> IO T.Text
-lookupKind axis m name = do
-  revEnumEnv <- readIORef revEnumEnvRef
-  case Map.lookup name revEnumEnv of
-    Nothing ->
-      (axis & throw & Throw.raiseError) m $ "no such enum-intro is defined: " <> name
-    Just (j, _) ->
-      return j
 
 lookupConstTypeEnv :: Axis -> Hint -> T.Text -> IO Term
 lookupConstTypeEnv axis m x
@@ -539,7 +528,7 @@ arrange axis ctx term =
       return $ m :< WeakTermFloat t' x
     _ :< WeakTermEnum _ ->
       return term
-    _ :< WeakTermEnumIntro _ ->
+    _ :< WeakTermEnumIntro _ _ ->
       return term
     m :< WeakTermEnumElim (e, t) caseList -> do
       e' <- arrange axis ctx e

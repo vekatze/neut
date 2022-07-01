@@ -59,9 +59,9 @@ subst axis sub term =
       return term
     (_ :< TermFloat {}) ->
       return term
-    (_ :< TermEnum _) ->
+    (_ :< TermEnum {}) ->
       return term
-    (_ :< TermEnumIntro _) ->
+    (_ :< TermEnumIntro {}) ->
       return term
     (m :< TermEnumElim (e, t) branchList) -> do
       t' <- subst axis sub t

@@ -64,9 +64,9 @@ subst axis sub term =
     m :< WeakTermFloat t x -> do
       t' <- subst axis sub t
       return $ m :< WeakTermFloat t' x
-    _ :< WeakTermEnum _ ->
+    _ :< WeakTermEnum {} ->
       return term
-    _ :< WeakTermEnumIntro _ ->
+    _ :< WeakTermEnumIntro {} ->
       return term
     m :< WeakTermEnumElim (e, t) branchList -> do
       t' <- subst axis sub t

@@ -10,16 +10,16 @@ import Entity.Hint
 import GHC.Generics
 
 data EnumCaseF a
-  = EnumCaseLabel T.Text
-  | EnumCaseInt Int
+  = EnumCaseLabel (T.Text, Integer) T.Text
+  | EnumCaseInt Integer
   | EnumCaseDefault
   deriving (Show, Eq, Ord, Generic)
 
 instance Functor EnumCaseF where
   fmap _ v =
     case v of
-      EnumCaseLabel label ->
-        EnumCaseLabel label
+      EnumCaseLabel labelInfo label ->
+        EnumCaseLabel labelInfo label
       EnumCaseInt i ->
         EnumCaseInt i
       EnumCaseDefault ->
@@ -28,8 +28,9 @@ instance Functor EnumCaseF where
 instance Eq1 EnumCaseF where
   liftEq _ v1 v2 =
     case (v1, v2) of
-      (EnumCaseLabel l1, EnumCaseLabel l2)
-        | l1 == l2 ->
+      (EnumCaseLabel labelInfo1 l1, EnumCaseLabel labelInfo2 l2)
+        | labelInfo1 == labelInfo2,
+          l1 == l2 ->
           True
       (EnumCaseInt i1, EnumCaseInt i2)
         | i1 == i2 ->
@@ -42,7 +43,7 @@ instance Eq1 EnumCaseF where
 instance Show1 EnumCaseF where
   liftShowsPrec _ _ _ someValue =
     case someValue of
-      EnumCaseLabel label ->
+      EnumCaseLabel _ label ->
         showString $ T.unpack label
       EnumCaseInt i ->
         showString $ show i

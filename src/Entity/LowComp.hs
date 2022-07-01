@@ -20,7 +20,7 @@ data LowComp
   -- `LowCompCont` is `LowCompLet` that discards the result of LowOp. This `LowCompCont` is required separately
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | LowCompCont LowOp LowComp
-  | LowCompSwitch (LowValue, LowType) LowComp [(Int, LowComp)] -- EnumElim
+  | LowCompSwitch (LowValue, LowType) LowComp [(Integer, LowComp)] -- EnumElim
   | LowCompCall LowValue [LowValue] -- tail call
   | LowCompUnreachable -- for empty case analysis
   deriving (Show)

@@ -74,8 +74,8 @@ reduce axis term =
       let (ls, es) = unzip les
       let les' = zip (map unwrap ls) es
       case v of
-        ValueEnumIntro l
-          | Just body <- lookup (EnumCaseLabel l) les' ->
+        ValueEnumIntro labelInfo l
+          | Just body <- lookup (EnumCaseLabel labelInfo l) les' ->
             reduce axis body
           | Just body <- lookup EnumCaseDefault les' ->
             reduce axis body

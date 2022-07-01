@@ -155,8 +155,9 @@ simplify axis constraintList =
         (_ :< WeakTermEnum a1, _ :< WeakTermEnum a2)
           | a1 == a2 ->
             simplify axis cs
-        (_ :< WeakTermEnumIntro a1, _ :< WeakTermEnumIntro a2)
-          | a1 == a2 ->
+        (_ :< WeakTermEnumIntro labelInfo1 a1, _ :< WeakTermEnumIntro labelInfo2 a2)
+          | labelInfo1 == labelInfo2,
+            a1 == a2 ->
             simplify axis cs
         (_ :< WeakTermQuestion e1 t1, _ :< WeakTermQuestion e2 t2) ->
           simplify axis $ ((e1, e2), orig) : ((t1, t2), orig) : cs

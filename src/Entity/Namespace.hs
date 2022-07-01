@@ -179,20 +179,20 @@ findThenModify env f name = do
     else Nothing
 
 {-# INLINE asEnumLabel #-}
-asEnumLabel :: Hint -> Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe EnumCase
+asEnumLabel :: Hint -> Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe EnumCase
 asEnumLabel m env name = do
   case Map.lookup name env of
-    Just _ ->
-      Just $ m :< EnumCaseLabel name
+    Just labelInfo ->
+      Just $ m :< EnumCaseLabel labelInfo name
     _ ->
       Nothing
 
 {-# INLINE asEnumIntro #-}
-asEnumIntro :: Hint -> Map.HashMap T.Text (T.Text, Int) -> T.Text -> Maybe WeakTerm
+asEnumIntro :: Hint -> Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe WeakTerm
 asEnumIntro m env name = do
   case Map.lookup name env of
-    Just (_, _) ->
-      Just (m :< WeakTermEnumIntro name)
+    Just labelInfo ->
+      Just (m :< WeakTermEnumIntro labelInfo name)
     _ ->
       Nothing
 

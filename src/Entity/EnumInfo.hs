@@ -12,32 +12,30 @@ import Context.Throw
 import Control.Monad
 import Data.Binary (Binary)
 import Data.Function
-import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Global
 import qualified Entity.Hint as Hint
 import GHC.Generics
 
-type EnumItem = (T.Text, Int) -- e.g. (top.unit, 0), (color.yellow, 2)
+type EnumItem = (T.Text, Integer) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
 
 newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (T.Text, [EnumItem])} deriving (Generic)
 
 instance Binary EnumInfo
 
-new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe Int)] -> IO EnumInfo
-new context m name itemList = do
-  currentGlobalLocator <- readIORef currentGlobalLocatorRef
-  let itemList' = attachPrefix currentGlobalLocator $ setDiscriminant 0 itemList
+new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe Integer)] -> IO EnumInfo
+new context m definiteEnumName itemList = do
+  let itemList' = attachPrefix definiteEnumName $ setDiscriminant 0 itemList
   unless (isLinear (map snd itemList')) $
     (context & raiseError) m "found a collision of discriminant"
-  return $ EnumInfoCons {fromEnumInfo = (name, itemList')}
+  return $ EnumInfoCons {fromEnumInfo = (definiteEnumName, itemList')}
 
 attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]
 attachPrefix prefix =
   map (\(name, v) -> (prefix <> nsSep <> name, v))
 
-setDiscriminant :: Int -> [(a, Maybe Int)] -> [(a, Int)]
+setDiscriminant :: Integer -> [(a, Maybe Integer)] -> [(a, Integer)]
 setDiscriminant discriminant clauseList =
   case clauseList of
     [] ->
@@ -55,11 +53,11 @@ initialEnumEnv =
   ]
 
 {-# INLINE isLinear #-}
-isLinear :: [Int] -> Bool
+isLinear :: [Integer] -> Bool
 isLinear =
   isLinear' S.empty
 
-isLinear' :: S.Set Int -> [Int] -> Bool
+isLinear' :: S.Set Integer -> [Integer] -> Bool
 isLinear' found input =
   case input of
     [] ->

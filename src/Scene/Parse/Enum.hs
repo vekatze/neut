@@ -18,27 +18,27 @@ parseDefineEnum :: Axis -> Parser EnumInfo
 parseDefineEnum axis = do
   m <- currentHint
   try $ keyword "define-enum"
-  name <- var >>= liftIO . attachSectionPrefix . snd
+  definiteEnumName <- var >>= liftIO . attachSectionPrefix . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
-  enumInfo <- liftIO $ EnumInfo.new (axis & throw) m name itemList
+  enumInfo <- liftIO $ EnumInfo.new (axis & throw) m definiteEnumName itemList
   liftIO $ EnumInfo.registerIfNew (axis & throw) m enumInfo
   return enumInfo
 
-parseDefineEnumClause :: Parser (T.Text, Maybe Int)
+parseDefineEnumClause :: Parser (T.Text, Maybe Integer)
 parseDefineEnumClause = do
   choice
     [ try parseDefineEnumClauseWithDiscriminant,
       parseDefineEnumClauseWithoutDiscriminant
     ]
 
-parseDefineEnumClauseWithDiscriminant :: Parser (T.Text, Maybe Int)
+parseDefineEnumClauseWithDiscriminant :: Parser (T.Text, Maybe Integer)
 parseDefineEnumClauseWithDiscriminant = do
   item <- snd <$> var
   keyword "="
   discriminant <- integer
-  return (item, Just (fromInteger discriminant))
+  return (item, Just discriminant)
 
-parseDefineEnumClauseWithoutDiscriminant :: Parser (T.Text, Maybe Int)
+parseDefineEnumClauseWithoutDiscriminant :: Parser (T.Text, Maybe Integer)
 parseDefineEnumClauseWithoutDiscriminant = do
   item <- snd <$> var
   return (item, Nothing)

@@ -41,9 +41,9 @@ holes term =
       holes t
     _ :< WeakTermFloat t _ ->
       holes t
-    _ :< WeakTermEnum _ ->
+    _ :< WeakTermEnum {} ->
       S.empty
-    _ :< WeakTermEnumIntro _ ->
+    _ :< WeakTermEnumIntro {} ->
       S.empty
     _ :< WeakTermEnumElim (e, t) les -> do
       let set1 = holes e

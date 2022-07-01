@@ -145,10 +145,10 @@ clarifyTerm axis tenv term =
       return $ CompUpIntro (ValueInt size l)
     _ :< TermFloat size l ->
       return $ CompUpIntro (ValueFloat size l)
-    _ :< TermEnum _ ->
+    _ :< TermEnum {} ->
       returnImmediateS4 (axis & gensym)
-    _ :< TermEnumIntro l ->
-      return $ CompUpIntro $ ValueEnumIntro l
+    _ :< TermEnumIntro internal l ->
+      return $ CompUpIntro $ ValueEnumIntro internal l
     _ :< TermEnumElim (e, _) bs -> do
       let (enumCaseList, es) = unzip bs
       let fvs = chainFromTermList tenv es
@@ -465,9 +465,9 @@ chainOf tenv term =
       []
     _ :< TermFloat _ _ ->
       []
-    _ :< TermEnum _ ->
+    _ :< TermEnum {} ->
       []
-    _ :< TermEnumIntro _ ->
+    _ :< TermEnumIntro _ _ ->
       []
     _ :< TermEnumElim (e, t) les -> do
       let xs0 = chainOf tenv t
@@ -533,8 +533,8 @@ insTypeEnv xts tenv =
 forgetHint :: EnumCase -> CompEnumCase
 forgetHint (_ :< enumCase) =
   case enumCase of
-    EnumCaseLabel label ->
-      () :< EnumCaseLabel label
+    EnumCaseLabel labelInfo label ->
+      () :< EnumCaseLabel labelInfo label
     EnumCaseInt i ->
       () :< EnumCaseInt i
     EnumCaseDefault ->

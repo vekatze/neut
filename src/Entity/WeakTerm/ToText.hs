@@ -61,7 +61,7 @@ toText term =
       T.pack $ show a
     _ :< WeakTermEnum l ->
       l
-    _ :< WeakTermEnumIntro v ->
+    _ :< WeakTermEnumIntro _ v ->
       v
     _ :< WeakTermEnumElim (e, _) mles -> do
       showCons ["switch", toText e, showItems (map showClause mles)]
@@ -148,7 +148,7 @@ showClause (c, e) =
 showCase :: EnumCase -> T.Text
 showCase c =
   case c of
-    _ :< EnumCaseLabel l ->
+    _ :< EnumCaseLabel _ l ->
       l
     _ :< EnumCaseDefault ->
       "default"

@@ -296,8 +296,8 @@ lowerValue axis v =
       uncast axis (LowValueInt l) $ LowTypePrimNum $ PrimNumInt size
     ValueFloat size f ->
       uncast axis (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
-    ValueEnumIntro l -> do
-      i <- liftIO $ toInteger <$> enumValueToInteger axis l
+    ValueEnumIntro (_, i) _ -> do
+      -- i <- liftIO $ toInteger <$> enumValueToInteger axis l
       uncast axis (LowValueInt i) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
@@ -345,7 +345,7 @@ insDeclEnvIfNecessary symbol args = do
     else insDeclEnv symbol args
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Axis -> [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Int, LowComp)]))
+constructSwitch :: Axis -> [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Integer, LowComp)]))
 constructSwitch axis switch =
   case switch of
     [] ->
@@ -355,8 +355,8 @@ constructSwitch axis switch =
       return $ Just (code', [])
     [(m :< _, code)] -> do
       constructSwitch axis [(m :< EnumCaseDefault, code)]
-    (m :< EnumCaseLabel l, code) : rest -> do
-      i <- enumValueToInteger axis l
+    (m :< EnumCaseLabel (_, i) _, code) : rest -> do
+      -- i <- enumValueToInteger axis l
       constructSwitch axis $ (m :< EnumCaseInt i, code) : rest
     (_ :< EnumCaseInt i, code) : rest -> do
       code' <- lowerComp axis code
@@ -427,16 +427,6 @@ newValueLocal :: Axis -> T.Text -> IO (Ident, LowValue)
 newValueLocal axis name = do
   x <- Gensym.newIdentFromText (axis & gensym) name
   return (x, LowValueVarLocal x)
-
-enumValueToInteger :: Axis -> T.Text -> IO Int
-enumValueToInteger axis label = do
-  revEnumEnv <- readIORef revEnumEnvRef
-  case Map.lookup label revEnumEnv of
-    Just (_, i) ->
-      return i
-    _ -> do
-      print revEnumEnv
-      axis & throw & Throw.raiseCritical' $ "no such enum is defined: " <> label
 
 insLowDefEnv :: T.Text -> [Ident] -> LowComp -> IO ()
 insLowDefEnv funName args e =

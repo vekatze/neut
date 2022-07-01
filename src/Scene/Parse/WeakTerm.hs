@@ -251,11 +251,12 @@ weakTermEnumClause axis = do
   c <- symbol
   delimiter "->"
   body <- weakTerm axis
+  let dummyLabelInfo = ("", 0)
   case c of
     "default" ->
       return (m :< EnumCaseDefault, body)
     _ ->
-      return (m :< EnumCaseLabel c, body)
+      return (m :< EnumCaseLabel dummyLabelInfo c, body)
 
 -- question e
 weakTermQuestion :: Axis -> Parser WeakTerm
@@ -466,8 +467,8 @@ foldIf axis m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel constBoolTrue, ifBody),
-              (m :< EnumCaseLabel constBoolFalse, elseBody)
+            [ (m :< EnumCaseLabel ("bool", 1) constBoolTrue, ifBody),
+              (m :< EnumCaseLabel ("bool", 0) constBoolFalse, elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf axis m elseIfCond elseIfBody rest elseBody
@@ -476,8 +477,8 @@ foldIf axis m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel constBoolTrue, ifBody),
-              (m :< EnumCaseLabel constBoolFalse, cont)
+            [ (m :< EnumCaseLabel ("bool", 1) constBoolTrue, ifBody),
+              (m :< EnumCaseLabel ("bool", 0) constBoolFalse, cont)
             ]
 
 weakTermParen :: Axis -> Parser WeakTerm

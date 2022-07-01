@@ -256,7 +256,7 @@ showRegList regList =
     (s : ss) ->
       ",{" <> s <> "}" <> showRegList ss
 
-showBranchList :: LowType -> [(Int, Ident)] -> Builder
+showBranchList :: LowType -> [(Integer, Ident)] -> Builder
 showBranchList lowType xs =
   "[" <> unwordsL (map (uncurry (showBranch lowType)) xs) <> "]"
 
@@ -270,11 +270,11 @@ showIndex idxList =
     ((d, t) : dts) ->
       showIndex [(d, t)] <> ", " <> showIndex dts
 
-showBranch :: LowType -> Int -> Ident -> Builder
+showBranch :: LowType -> Integer -> Ident -> Builder
 showBranch lowType i label =
   showLowType lowType
     <> " "
-    <> intDec i
+    <> integerDec i
     <> ", label "
     <> showLowValue (LowValueVarLocal label)
 

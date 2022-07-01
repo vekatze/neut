@@ -45,9 +45,9 @@ freeVars term =
       freeVars t
     _ :< WeakTermFloat t _ ->
       freeVars t
-    _ :< WeakTermEnum _ ->
+    _ :< WeakTermEnum {} ->
       S.empty
-    _ :< WeakTermEnumIntro _ ->
+    _ :< WeakTermEnumIntro {} ->
       S.empty
     _ :< WeakTermEnumElim (e, t) les -> do
       let xs = freeVars t

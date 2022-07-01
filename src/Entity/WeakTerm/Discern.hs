@@ -103,9 +103,9 @@ discern axis nenv term =
     m :< WeakTermFloat t x -> do
       t' <- discern axis nenv t
       return $ m :< WeakTermFloat t' x
-    _ :< WeakTermEnum _ ->
+    _ :< WeakTermEnum {} ->
       return term
-    _ :< WeakTermEnumIntro _ ->
+    _ :< WeakTermEnumIntro _ _ ->
       return term
     m :< WeakTermEnumElim (e, t) caseList -> do
       e' <- discern axis nenv e
@@ -214,7 +214,7 @@ discernBinderWithBody axis nenv binder e = do
 discernEnumCase :: Axis -> EnumCase -> IO EnumCase
 discernEnumCase axis enumCase =
   case enumCase of
-    m :< EnumCaseLabel l -> do
+    m :< EnumCaseLabel _ l -> do
       revEnumEnv <- readIORef revEnumEnvRef
       candList <- constructCandList l False
       ml <- resolveSymbol (axis & throw) m (asEnumLabel m revEnumEnv) l $ l : candList

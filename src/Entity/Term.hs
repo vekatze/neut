@@ -35,7 +35,7 @@ data TermF a
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
   | TermEnum T.Text
-  | TermEnumIntro T.Text
+  | TermEnumIntro (T.Text, Integer) T.Text
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermMagic (Magic a)
   | TermMatch

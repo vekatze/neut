@@ -72,8 +72,8 @@ reduce axis term =
       let les'' = zip (map unwrap ls) es'
       t' <- reduce axis t
       case e' of
-        (_ :< TermEnumIntro l) ->
-          case lookup (EnumCaseLabel l) les'' of
+        (_ :< TermEnumIntro labelInfo l) ->
+          case lookup (EnumCaseLabel labelInfo l) les'' of
             Just (_ :< body) ->
               reduce axis (m :< body)
             Nothing ->

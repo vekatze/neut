@@ -49,8 +49,8 @@ weaken term =
       m :< WeakTermFloat (weaken $ fromPrimNum m (PrimNumFloat size)) x
     m :< TermEnum x ->
       m :< WeakTermEnum x
-    m :< TermEnumIntro l ->
-      m :< WeakTermEnumIntro l
+    m :< TermEnumIntro interior l ->
+      m :< WeakTermEnumIntro interior l
     m :< TermEnumElim (e, t) branchList -> do
       let t' = weaken t
       let e' = weaken e

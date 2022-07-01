@@ -18,7 +18,7 @@ data Value
   | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
-  | ValueEnumIntro T.Text
+  | ValueEnumIntro (T.Text, Integer) T.Text
   deriving (Show)
 
 data Comp
