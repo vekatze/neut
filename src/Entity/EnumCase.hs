@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module Entity.EnumCase where
 
 import Control.Comonad.Cofree

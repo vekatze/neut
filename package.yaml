@@ -12,6 +12,7 @@ default-extensions:
   - OverloadedStrings
   - DeriveGeneric
   - RankNTypes
+  - FlexibleInstances
 
 dependencies:
   - ansi-terminal

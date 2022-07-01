@@ -1,6 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-{-# LANGUAGE FlexibleInstances #-}
-
 module Entity.WeakTerm where
 
 import Control.Comonad.Cofree

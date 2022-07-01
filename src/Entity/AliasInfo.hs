@@ -1,5 +1,3 @@
-{-# LANGUAGE FlexibleInstances #-}
-
 module Entity.AliasInfo
   ( AliasInfo (..),
     activateAliasInfo,

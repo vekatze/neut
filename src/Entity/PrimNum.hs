@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Entity.PrimNum where
 
 import Data.Binary

@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Entity.Stmt where
 
 import Control.Comonad.Cofree

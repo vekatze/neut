@@ -1,5 +1,3 @@
-{-# LANGUAGE DeriveGeneric #-}
-
 module Entity.EnumInfo
   ( EnumInfo,
     new,
