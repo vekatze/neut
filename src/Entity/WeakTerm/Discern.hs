@@ -16,6 +16,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
 import Entity.Global
+import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
@@ -29,6 +30,8 @@ data Axis = Axis
 
 type NameEnv = Map.HashMap T.Text Ident
 
+type IsDefinite = Bool
+
 -- Alpha-convert all the variables so that different variables have different names.
 discern :: Axis -> NameEnv -> WeakTerm -> IO WeakTerm
 discern axis nenv term =
@@ -40,26 +43,9 @@ discern axis nenv term =
         Just name ->
           return $ m :< WeakTermVar name
         Nothing -> do
-          topNameSet <- readIORef topNameSetRef
-          candList <- constructCandList s False
-          tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) s candList) $ do
-            revEnumEnv <- readIORef revEnumEnvRef
-            let candList' = s : candList
-            tryCand (resolveSymbol (axis & throw) m (asEnumIntro m revEnumEnv) s candList') $ do
-              enumEnv <- readIORef enumEnvRef
-              tryCand (resolveSymbol (axis & throw) m (asEnum m enumEnv) s candList') $
-                tryCand (resolveSymbol (axis & throw) m (asWeakConstant m) s candList') $
-                  (axis & throw & Throw.raiseError) m $ "undefined variable: " <> s
+          resolveVar axis m s "variable" False
     m :< WeakTermVarGlobal x -> do
-      candList <- constructCandList x True
-      topNameSet <- readIORef topNameSetRef
-      tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) x candList) $ do
-        moduleAliasMap <- readIORef moduleAliasMapRef
-        print moduleAliasMap
-        locatorAliasMap <- readIORef locatorAliasMapRef
-        print locatorAliasMap
-        print topNameSet
-        (axis & throw & Throw.raiseError) m $ "undefined constant: " <> x
+      resolveVar axis m x "constant" True
     m :< WeakTermPi xts t -> do
       (xts', t') <- discernBinderWithBody axis nenv xts t
       return $ m :< WeakTermPi xts' t'
@@ -227,3 +213,17 @@ discernEnumCase axis enumCase =
           (axis & throw & Throw.raiseError) m $ "no such enum-value is defined: " <> l
     _ ->
       return enumCase
+
+resolveVar :: Axis -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
+resolveVar axis m x termKind isDefinite = do
+  topNameSet <- readIORef topNameSetRef
+  candList <- constructCandList x isDefinite
+  tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) x candList) $ do
+    revEnumEnv <- readIORef revEnumEnvRef
+    let candList' = x : candList
+    tryCand (resolveSymbol (axis & throw) m (asEnumIntro m revEnumEnv) x candList') $ do
+      enumEnv <- readIORef enumEnvRef
+      tryCand (resolveSymbol (axis & throw) m (asEnum m enumEnv) x candList') $
+        tryCand (resolveSymbol (axis & throw) m (asWeakConstant m) x candList') $ do
+          p' revEnumEnv
+          (axis & throw & Throw.raiseError) m $ "undefined " <> termKind <> ": " <> x
