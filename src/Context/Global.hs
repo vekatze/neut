@@ -7,6 +7,5 @@ type GlobalVarName = T.Text
 
 data Axis = Axis
   { register :: Hint -> GlobalVarName -> IO (),
-    -- registerPrivate :: Hint -> GlobalVarName -> IO (),
     isDefined :: GlobalVarName -> IO Bool
   }

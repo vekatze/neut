@@ -15,7 +15,6 @@ import Control.Monad.IO.Class
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
-import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
 import Entity.Binder
@@ -66,32 +65,19 @@ parseSource axis source = do
       forM_ (cacheEnumInfo cache) $ \enumInfo ->
         uncurry (Enum.register (axis & enum) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
-      -- let names = S.fromList $ map extractName stmtList
       forM_ (map extractName stmtList) $ Global.register (axis & global) hint
-      -- modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
       getCurrentFilePath (axis & throw) >>= activateAliasInfo (axis & throw)
       (defList, enumInfoList) <- run (program axis) $ sourceFilePath source
-      -- privateNameSet <- readIORef privateNameSetRef
-      -- modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
       return $ Right (defList, enumInfoList)
 
 ensureMain :: Axis -> Hint -> T.Text -> IO ()
 ensureMain axis m mainFunctionName = do
-  -- topNameSet <- readIORef topNameSetRef
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
   isMainDefined <- Global.isDefined (axis & global) mainFunctionName
   unless isMainDefined $ do
     (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
-
--- if S.member mainFunctionName topNameSet
---   then return ()
---   else (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
-
--- if S.member mainFunctionName topNameSet
---   then return ()
---   else (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
 
 program :: Axis -> Parser ([QuasiStmt], [EnumInfo])
 program axis = do
@@ -192,7 +178,6 @@ defineFunction ::
   IO WeakStmt
 defineFunction axis opacity m name impArgNum binder codType e = do
   Global.register (axis & global) m name
-  -- registerTopLevelName axis m name
   return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
 parseDefineData :: Axis -> Parser [WeakStmt]
@@ -307,8 +292,6 @@ parseDefineResource axis = do
     discarder <- delimiter "-" >> weakTerm axis
     copier <- delimiter "-" >> weakTerm axis
     liftIO $ Global.register (axis & global) m name
-    -- liftIO $ registerTopLevelName axis m name
-    liftIO $ modifyIORef' resourceTypeSetRef $ S.insert name
     return $ WeakStmtDefineResource m name discarder copier
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
@@ -321,33 +304,6 @@ setAsData dataName dataArgNum consInfoList = do
 identPlusToVar :: BinderF WeakTerm -> WeakTerm
 identPlusToVar (m, x, _) =
   m :< WeakTermVar x
-
--- registerTopLevelName :: Axis -> Hint -> T.Text -> IO ()
--- registerTopLevelName axis m x = do
---   topNameSet <- readIORef topNameSetRef
---   when (S.member x topNameSet) $
---     (axis & throw & Throw.raiseError) m $ "the variable `" <> x <> "` is already defined at the top level"
---   modifyIORef' topNameSetRef $ S.insert x
---   isPrivate <- checkIfPrivate
---   when isPrivate $
---     modifyIORef' privateNameSetRef $ S.insert x
-
--- checkIfPrivate :: IO Bool
--- checkIfPrivate = do
---   isPrivateStack <- readIORef isPrivateStackRef
---   if null isPrivateStack
---     then return False
---     else return $ head isPrivateStack
-
--- {-# NOINLINE isPrivateStackRef #-}
--- isPrivateStackRef :: IORef [Bool]
--- isPrivateStackRef =
---   unsafePerformIO (newIORef [])
-
--- {-# NOINLINE privateNameSetRef #-}
--- privateNameSetRef :: IORef (S.Set T.Text)
--- privateNameSetRef =
---   unsafePerformIO (newIORef S.empty)
 
 weakTermToWeakIdent :: Gensym.Axis -> Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
 weakTermToWeakIdent axis m f = do

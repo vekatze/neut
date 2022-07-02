@@ -1,7 +1,5 @@
 module Entity.Namespace where
 
--- import Context.App
-
 import qualified Context.Enum as Enum
 import qualified Context.Global as Global
 import Context.Throw
@@ -11,7 +9,6 @@ import Data.Containers.ListUtils
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
-import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Internal as Text
 import Data.Text.Internal.Search
@@ -170,24 +167,6 @@ asGlobalVar axis m name = do
     then return $ Just (m :< WeakTermVarGlobal name)
     else return Nothing
 
--- if S.member name nenv
---   then return $ Just (m :< WeakTermVarGlobal name)
---   else return Nothing
-
--- {-# INLINE asGlobalVar #-}
--- asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> IO (Maybe WeakTerm)
--- asGlobalVar m nenv name =
---   if S.member name nenv
---     then return $ Just (m :< WeakTermVarGlobal name)
---     else return Nothing
-
--- {-# INLINE asConstructor #-}
--- asConstructor :: Hint -> S.Set T.Text -> T.Text -> Maybe (Hint, T.Text)
--- asConstructor m nenv name =
---   if S.member name nenv
---     then Just (m, name)
---     else Nothing
-
 {-# INLINE asConstructor #-}
 asConstructor :: Global.Axis -> Hint -> T.Text -> IO (Maybe (Hint, T.Text))
 asConstructor axis m name = do
@@ -203,26 +182,11 @@ findThenModify env f name = do
     then Just $ f name
     else Nothing
 
--- {-# INLINE asEnumLabel #-}
--- asEnumLabel :: Hint -> Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe EnumCase
--- asEnumLabel m env name = do
---   case Map.lookup name env of
---     Just labelInfo ->
---       Just $ m :< EnumCaseLabel labelInfo name
---     _ ->
---       Nothing
-
 {-# INLINE asEnumCase #-}
 asEnumCase :: Enum.Axis -> Hint -> T.Text -> IO (Maybe EnumCase)
 asEnumCase axis m name = do
   mLabelInfo <- Enum.lookupValue axis name
   return $ mLabelInfo >>= \labelInfo -> return (m :< EnumCaseLabel labelInfo name)
-
--- case Map.lookup name env of
---   Just labelInfo ->
---     Just $ m :< EnumCaseLabel labelInfo name
---   _ ->
---     Nothing
 
 {-# INLINE asEnumIntro #-}
 asEnumIntro :: Enum.Axis -> Hint -> T.Text -> IO (Maybe WeakTerm)
@@ -230,32 +194,11 @@ asEnumIntro axis m name = do
   mLabelInfo <- Enum.lookupValue axis name
   return $ mLabelInfo >>= \labelInfo -> return (m :< WeakTermEnumIntro labelInfo name)
 
--- case mLabelInfo of
---   Just labelInfo ->
---     return $ Just (m :< WeakTermEnumIntro labelInfo name)
---   _ ->
---     return Nothing
-
 {-# INLINE asEnum #-}
 asEnum :: Enum.Axis -> Hint -> T.Text -> IO (Maybe WeakTerm)
 asEnum axis m name = do
   mEnumItems <- Enum.lookupType axis name
   return $ mEnumItems >> return (m :< WeakTermEnum name)
-
--- case Map.lookup name env of
---   Just _ ->
---     Just (m :< WeakTermEnum name)
---   _ ->
---     Nothing
-
--- {-# INLINE asEnum #-}
--- asEnum :: Hint -> Map.HashMap T.Text a -> T.Text -> Maybe WeakTerm
--- asEnum m env name = do
---   case Map.lookup name env of
---     Just _ ->
---       Just (m :< WeakTermEnum name)
---     _ ->
---       Nothing
 
 {-# INLINE asWeakConstant #-}
 asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm

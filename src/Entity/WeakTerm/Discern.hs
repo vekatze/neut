@@ -115,7 +115,6 @@ discern axis nenv term =
       mSubject' <- mapM (discern axis nenv) mSubject
       e' <- discern axis nenv e
       t' <- discern axis nenv t
-      -- topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
         candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
         constructorName' <- resolveSymbol (axis & throw) m (asConstructor (axis & global) m) constructorName candList
@@ -215,7 +214,6 @@ discernEnumCase axis enumCase =
 
 resolveVar :: Axis -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
 resolveVar axis m x termKind isDefinite = do
-  -- topNameSet <- readIORef topNameSetRef
   candList <- constructCandList x isDefinite
   tryCand (resolveSymbol (axis & throw) m (asGlobalVar (axis & global) m) x candList) $ do
     let candList' = x : candList

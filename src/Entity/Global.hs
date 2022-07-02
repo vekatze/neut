@@ -123,11 +123,6 @@ locatorAliasMapRef :: IORef (Map.HashMap T.Text T.Text)
 locatorAliasMapRef =
   unsafePerformIO (newIORef Map.empty)
 
--- {-# NOINLINE topNameSetRef #-}
--- topNameSetRef :: IORef (S.Set T.Text)
--- topNameSetRef =
---   unsafePerformIO (newIORef S.empty)
-
 {-# NOINLINE weakTypeEnvRef #-}
 weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm)
 weakTypeEnvRef =
