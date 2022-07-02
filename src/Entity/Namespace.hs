@@ -3,6 +3,7 @@ module Entity.Namespace where
 -- import Context.App
 
 import qualified Context.Enum as Enum
+import qualified Context.Global as Global
 import Context.Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -162,18 +163,38 @@ asWeakVar m nenv var =
   Map.lookup var nenv >>= \x -> return (m :< WeakTermVar x)
 
 {-# INLINE asGlobalVar #-}
-asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> IO (Maybe WeakTerm)
-asGlobalVar m nenv name =
-  if S.member name nenv
+asGlobalVar :: Global.Axis -> Hint -> T.Text -> IO (Maybe WeakTerm)
+asGlobalVar axis m name = do
+  b <- Global.isDefined axis name
+  if b
     then return $ Just (m :< WeakTermVarGlobal name)
     else return Nothing
 
+-- if S.member name nenv
+--   then return $ Just (m :< WeakTermVarGlobal name)
+--   else return Nothing
+
+-- {-# INLINE asGlobalVar #-}
+-- asGlobalVar :: Hint -> S.Set T.Text -> T.Text -> IO (Maybe WeakTerm)
+-- asGlobalVar m nenv name =
+--   if S.member name nenv
+--     then return $ Just (m :< WeakTermVarGlobal name)
+--     else return Nothing
+
+-- {-# INLINE asConstructor #-}
+-- asConstructor :: Hint -> S.Set T.Text -> T.Text -> Maybe (Hint, T.Text)
+-- asConstructor m nenv name =
+--   if S.member name nenv
+--     then Just (m, name)
+--     else Nothing
+
 {-# INLINE asConstructor #-}
-asConstructor :: Hint -> S.Set T.Text -> T.Text -> Maybe (Hint, T.Text)
-asConstructor m nenv name =
-  if S.member name nenv
-    then Just (m, name)
-    else Nothing
+asConstructor :: Global.Axis -> Hint -> T.Text -> IO (Maybe (Hint, T.Text))
+asConstructor axis m name = do
+  b <- Global.isDefined axis name
+  if b
+    then return $ Just (m, name)
+    else return Nothing
 
 {-# INLINE findThenModify #-}
 findThenModify :: Map.HashMap T.Text t -> (T.Text -> a) -> T.Text -> Maybe a

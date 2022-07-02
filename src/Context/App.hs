@@ -5,6 +5,7 @@ where
 
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
@@ -14,5 +15,6 @@ data Axis = Axis
     throw :: Throw.Context,
     gensym :: Gensym.Axis,
     llvm :: LLVM.Axis,
-    enum :: Enum.Axis
+    enum :: Enum.Axis,
+    global :: Global.Axis
   }

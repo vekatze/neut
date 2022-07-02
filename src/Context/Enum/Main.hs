@@ -70,30 +70,3 @@ defaultEnumEnv =
     (constTop, [(constTopUnit, 0)]),
     (constBool, [(constBoolFalse, 0), (constBoolTrue, 1)])
   ]
-
--- registerIfNew :: Throw.Context -> Hint.Hint -> EnumInfo -> IO ()
--- registerIfNew context m enumInfo = do
---   let (name, xis) = fromEnumInfo enumInfo
---   enumEnv <- readIORef enumEnvRef
---   let definedEnums = Map.keys enumEnv ++ map fst (concat (Map.elems enumEnv))
---   case find (`elem` definedEnums) $ name : map fst xis of
---     Just x ->
---       (context & raiseError) m $ "the constant `" <> x <> "` is already defined [ENUM]"
---     _ ->
---       register enumInfo
-
---   let (name, xis) = fromEnumInfo enumInfo
--- let (xs, is) = unzip xis
--- let rev = Map.fromList $ zip xs (zip (repeat name) is)
--- modifyIORef' enumEnvRef $ Map.insert name xis
--- modifyIORef' revEnumEnvRef $ Map.union rev
-
--- enumEnvRef :: IORef (Map.HashMap T.Text [(T.Text, Integer)])
--- enumEnvRef =
---   unsafePerformIO $ newIORef Map.empty
-
--- -- [("left", ("choice", 0)), ("right", ("choice", 1)), ...]
--- {-# NOINLINE revEnumEnvRef #-}
--- revEnumEnvRef :: IORef (Map.HashMap T.Text (T.Text, Integer))
--- revEnumEnvRef =
---   unsafePerformIO (newIORef Map.empty)

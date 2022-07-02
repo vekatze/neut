@@ -418,13 +418,6 @@ lookupEnumSet axis m name = do
     Just enumItems ->
       return $ map fst enumItems
 
--- enumEnv <- readIORef enumEnvRef
--- case Map.lookup name enumEnv of
---   Nothing ->
---     (axis & throw & Throw.raiseError) m $ "no such enum defined: " <> name
---   Just xis ->
---     return $ map fst xis
-
 insTermTypeEnv :: T.Text -> WeakTerm -> IO ()
 insTermTypeEnv name t =
   modifyIORef' termTypeEnvRef $ Map.insert name t

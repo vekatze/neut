@@ -67,9 +67,9 @@ compress stmt =
     StmtDefineResource {} ->
       stmt
 
-isPublic :: S.Set T.Text -> Stmt -> Bool
-isPublic topNameSet stmt =
-  S.member (extractName stmt) topNameSet
+-- isPublic :: S.Set T.Text -> Stmt -> Bool
+-- isPublic topNameSet stmt =
+--   S.member (extractName stmt) topNameSet
 
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
@@ -77,11 +77,11 @@ saveCache (source, stmtList) enumInfoList = do
   if b
     then return ()
     else do
-      topNameSet <- readIORef topNameSetRef
-      let stmtList' = map compress $ filter (isPublic topNameSet) stmtList
+      -- topNameSet <- readIORef topNameSetRef
+      -- let stmtList' = map compress $ filter (isPublic topNameSet) stmtList
       cachePath <- getSourceCachePath source
       ensureDir $ parent cachePath
-      encodeFile (toFilePath cachePath) (stmtList', enumInfoList)
+      encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
 
 loadCache :: Source -> IO (Maybe Cache)
 loadCache source = do

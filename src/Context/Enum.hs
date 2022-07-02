@@ -15,5 +15,3 @@ data Axis = Axis
     lookupType :: T.Text -> IO (Maybe [EnumItem]),
     lookupValue :: T.Text -> IO (Maybe (EnumTypeName, Discriminant))
   }
-
--- Map.HashMap T.Text (T.Text, Integer) -> T.Text -> Maybe EnumCase

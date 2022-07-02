@@ -7,16 +7,15 @@ where
 
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
-import Entity.Global
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
@@ -27,7 +26,8 @@ import Entity.WeakTerm
 data Axis = Axis
   { throw :: Throw.Context,
     gensym :: Gensym.Axis,
-    enum :: Enum.Axis
+    enum :: Enum.Axis,
+    global :: Global.Axis
   }
 
 type NameEnv = Map.HashMap T.Text Ident
@@ -115,10 +115,10 @@ discern axis nenv term =
       mSubject' <- mapM (discern axis nenv) mSubject
       e' <- discern axis nenv e
       t' <- discern axis nenv t
-      topNameSet <- readIORef topNameSetRef
+      -- topNameSet <- readIORef topNameSetRef
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
         candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
-        constructorName' <- resolveSymbol (axis & throw) m (return . asConstructor m topNameSet) constructorName candList
+        constructorName' <- resolveSymbol (axis & throw) m (asConstructor (axis & global) m) constructorName candList
         case constructorName' of
           Just (_, newName) -> do
             (xts', body') <- discernBinderWithBody axis nenv xts body
@@ -209,17 +209,15 @@ discernEnumCase axis enumCase =
         Just l' ->
           return l'
         Nothing -> do
-          -- enumEnv <- readIORef enumEnvRef
-          -- p' enumEnv
           (axis & throw & Throw.raiseError) m $ "no such enum-value is defined: " <> l
     _ ->
       return enumCase
 
 resolveVar :: Axis -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
 resolveVar axis m x termKind isDefinite = do
-  topNameSet <- readIORef topNameSetRef
+  -- topNameSet <- readIORef topNameSetRef
   candList <- constructCandList x isDefinite
-  tryCand (resolveSymbol (axis & throw) m (asGlobalVar m topNameSet) x candList) $ do
+  tryCand (resolveSymbol (axis & throw) m (asGlobalVar (axis & global) m) x candList) $ do
     let candList' = x : candList
     tryCand (resolveSymbol (axis & throw) m (asEnumIntro (axis & enum) m) x candList') $ do
       tryCand (resolveSymbol (axis & throw) m (asEnum (axis & enum) m) x candList') $

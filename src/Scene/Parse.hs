@@ -7,6 +7,7 @@ where
 import Context.App
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -36,7 +37,6 @@ import Scene.Parse.Core
 import Scene.Parse.Enum
 import Scene.Parse.Import
 import Scene.Parse.WeakTerm
-import System.IO.Unsafe
 import Text.Megaparsec
 
 --
@@ -46,7 +46,8 @@ import Text.Megaparsec
 parseMain :: Axis -> T.Text -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseMain axis mainFunctionName source = do
   result <- parseSource axis source
-  ensureMain axis mainFunctionName
+  let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
+  ensureMain axis m mainFunctionName
   return result
 
 parseOther :: Axis -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
@@ -65,24 +66,32 @@ parseSource axis source = do
       forM_ (cacheEnumInfo cache) $ \enumInfo ->
         uncurry (Enum.register (axis & enum) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
-      let names = S.fromList $ map extractName stmtList
-      modifyIORef' topNameSetRef $ S.union names
+      -- let names = S.fromList $ map extractName stmtList
+      forM_ (map extractName stmtList) $ Global.register (axis & global) hint
+      -- modifyIORef' topNameSetRef $ S.union names
       return $ Left stmtList
     Nothing -> do
       getCurrentFilePath (axis & throw) >>= activateAliasInfo (axis & throw)
       (defList, enumInfoList) <- run (program axis) $ sourceFilePath source
-      privateNameSet <- readIORef privateNameSetRef
-      modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
+      -- privateNameSet <- readIORef privateNameSetRef
+      -- modifyIORef' topNameSetRef $ S.filter (`S.notMember` privateNameSet)
       return $ Right (defList, enumInfoList)
 
-ensureMain :: Axis -> T.Text -> IO ()
-ensureMain axis mainFunctionName = do
-  let m = error "undefined"
-  topNameSet <- readIORef topNameSetRef
+ensureMain :: Axis -> Hint -> T.Text -> IO ()
+ensureMain axis m mainFunctionName = do
+  -- topNameSet <- readIORef topNameSetRef
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
-  if S.member mainFunctionName topNameSet
-    then return ()
-    else (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
+  isMainDefined <- Global.isDefined (axis & global) mainFunctionName
+  unless isMainDefined $ do
+    (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
+
+-- if S.member mainFunctionName topNameSet
+--   then return ()
+--   else (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
+
+-- if S.member mainFunctionName topNameSet
+--   then return ()
+--   else (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
 
 program :: Axis -> Parser ([QuasiStmt], [EnumInfo])
 program axis = do
@@ -103,7 +112,13 @@ program' axis =
         parseStmtUse
         program' axis,
       do
-        let wtAxis = WT.Axis {WT.throw = axis & throw, WT.gensym = axis & gensym, WT.enum = axis & enum}
+        let wtAxis =
+              WT.Axis
+                { WT.throw = axis & throw,
+                  WT.gensym = axis & gensym,
+                  WT.enum = axis & enum,
+                  WT.global = axis & global
+                }
         stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList wtAxis . concat
         return (stmtList, [])
     ]
@@ -142,25 +157,25 @@ parseSection :: Axis -> Parser WeakStmt
 parseSection axis = do
   try $ keyword "section"
   sectionName <- symbol
-  liftIO $ modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
+  -- liftIO $ modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
   liftIO $ pushToCurrentLocalLocator sectionName
   stmtList <- concat <$> many (parseStmt axis)
   m <- currentHint
   keyword "end"
   _ <- liftIO $ popFromCurrentLocalLocator (axis & throw) m
-  liftIO $ modifyIORef' isPrivateStackRef tail
+  -- liftIO $ modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
 parseDefine :: Axis -> Opacity -> Parser WeakStmt
 parseDefine axis opacity = do
-  m <- currentHint
   try $
     case opacity of
       OpacityOpaque ->
         keyword "define"
       OpacityTransparent ->
         keyword "define-inline"
+  m <- currentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo axis
   name' <- liftIO $ attachSectionPrefix name
   liftIO $ defineFunction axis opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
@@ -176,7 +191,8 @@ defineFunction ::
   WeakTerm ->
   IO WeakStmt
 defineFunction axis opacity m name impArgNum binder codType e = do
-  registerTopLevelName axis m name
+  Global.register (axis & global) m name
+  -- registerTopLevelName axis m name
   return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
 parseDefineData :: Axis -> Parser [WeakStmt]
@@ -284,13 +300,14 @@ parseDefineCodataElim axis dataName dataArgs elemInfoList (m, elemName, elemType
 
 parseDefineResource :: Axis -> Parser WeakStmt
 parseDefineResource axis = do
-  m <- currentHint
   try $ keyword "define-resource"
+  m <- currentHint
   name <- snd <$> var
   asBlock $ do
     discarder <- delimiter "-" >> weakTerm axis
     copier <- delimiter "-" >> weakTerm axis
-    liftIO $ registerTopLevelName axis m name
+    liftIO $ Global.register (axis & global) m name
+    -- liftIO $ registerTopLevelName axis m name
     liftIO $ modifyIORef' resourceTypeSetRef $ S.insert name
     return $ WeakStmtDefineResource m name discarder copier
 
@@ -305,32 +322,32 @@ identPlusToVar :: BinderF WeakTerm -> WeakTerm
 identPlusToVar (m, x, _) =
   m :< WeakTermVar x
 
-registerTopLevelName :: Axis -> Hint -> T.Text -> IO ()
-registerTopLevelName axis m x = do
-  topNameSet <- readIORef topNameSetRef
-  when (S.member x topNameSet) $
-    (axis & throw & Throw.raiseError) m $ "the variable `" <> x <> "` is already defined at the top level"
-  modifyIORef' topNameSetRef $ S.insert x
-  isPrivate <- checkIfPrivate
-  when isPrivate $
-    modifyIORef' privateNameSetRef $ S.insert x
+-- registerTopLevelName :: Axis -> Hint -> T.Text -> IO ()
+-- registerTopLevelName axis m x = do
+--   topNameSet <- readIORef topNameSetRef
+--   when (S.member x topNameSet) $
+--     (axis & throw & Throw.raiseError) m $ "the variable `" <> x <> "` is already defined at the top level"
+--   modifyIORef' topNameSetRef $ S.insert x
+--   isPrivate <- checkIfPrivate
+--   when isPrivate $
+--     modifyIORef' privateNameSetRef $ S.insert x
 
-checkIfPrivate :: IO Bool
-checkIfPrivate = do
-  isPrivateStack <- readIORef isPrivateStackRef
-  if null isPrivateStack
-    then return False
-    else return $ head isPrivateStack
+-- checkIfPrivate :: IO Bool
+-- checkIfPrivate = do
+--   isPrivateStack <- readIORef isPrivateStackRef
+--   if null isPrivateStack
+--     then return False
+--     else return $ head isPrivateStack
 
-{-# NOINLINE isPrivateStackRef #-}
-isPrivateStackRef :: IORef [Bool]
-isPrivateStackRef =
-  unsafePerformIO (newIORef [])
+-- {-# NOINLINE isPrivateStackRef #-}
+-- isPrivateStackRef :: IORef [Bool]
+-- isPrivateStackRef =
+--   unsafePerformIO (newIORef [])
 
-{-# NOINLINE privateNameSetRef #-}
-privateNameSetRef :: IORef (S.Set T.Text)
-privateNameSetRef =
-  unsafePerformIO (newIORef S.empty)
+-- {-# NOINLINE privateNameSetRef #-}
+-- privateNameSetRef :: IORef (S.Set T.Text)
+-- privateNameSetRef =
+--   unsafePerformIO (newIORef S.empty)
 
 weakTermToWeakIdent :: Gensym.Axis -> Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
 weakTermToWeakIdent axis m f = do
