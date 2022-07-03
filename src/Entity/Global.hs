@@ -27,11 +27,6 @@ import qualified System.Info as System
 -- global variables
 --
 
-{-# NOINLINE shouldCancelAllocRef #-}
-shouldCancelAllocRef :: IORef Bool
-shouldCancelAllocRef =
-  unsafePerformIO (newIORef True)
-
 {-# NOINLINE mainFilePathRef #-}
 mainFilePathRef :: IORef (Maybe (Path Abs File))
 mainFilePathRef =

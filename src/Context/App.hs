@@ -18,5 +18,6 @@ data Axis = Axis
     llvm :: LLVM.Axis,
     enum :: Enum.Axis,
     global :: Global.Axis,
-    locator :: Locator.Axis
+    locator :: Locator.Axis,
+    shouldCancelAlloc :: Bool
   }

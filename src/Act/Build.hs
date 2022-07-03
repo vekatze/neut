@@ -8,7 +8,7 @@ module Act.Build
   )
 where
 
-import Context.App
+import qualified Context.App as App
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
@@ -65,7 +65,8 @@ data BuildConfig = BuildConfig
   { mTarget :: Maybe Target,
     mClangOptString :: Maybe String,
     buildLogCfg :: Log.Config,
-    buildThrowCfg :: Throw.Config
+    buildThrowCfg :: Throw.Config,
+    shouldCancelAlloc :: Bool
   }
 
 build :: Mode.Mode -> BuildConfig -> IO ()
@@ -77,25 +78,25 @@ build mode cfg = do
     ensureNotInLibDir throwCtx "build"
     case mTarget cfg of
       Just target ->
-        build' mode throwCtx logCtx target
+        build' mode throwCtx logCtx (shouldCancelAlloc cfg) target
       Nothing -> do
         mainModule <- getMainModule throwCtx
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-          build' mode throwCtx logCtx (T.unpack target)
+          build' mode throwCtx logCtx (shouldCancelAlloc cfg) (T.unpack target)
 
-build' :: Mode.Mode -> Throw.Context -> Log.Context -> Target -> IO ()
-build' mode throwCtx logCtx target = do
+build' :: Mode.Mode -> Throw.Context -> Log.Context -> Bool -> Target -> IO ()
+build' mode throwCtx logCtx cancelAllocFlag target = do
   mainFilePath <- resolveTarget throwCtx target
   mainSource <- getMainSource throwCtx mainFilePath
-  ctx <- newCtx mode throwCtx logCtx mainSource
+  ctx <- newCtx mode throwCtx logCtx cancelAllocFlag mainSource
   setMainFilePath mainFilePath
   (_, isObjectAvailable, dependenceSeq) <- computeDependence ctx mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   mapM_ (compile ctx hasObjectSet) dependenceSeq
   unless isObjectAvailable $ link ctx target $ toList dependenceSeq
 
-newCtx :: Mode.Mode -> Throw.Context -> Log.Context -> Source -> IO Axis
-newCtx mode throwCtx logCtx source = do
+newCtx :: Mode.Mode -> Throw.Context -> Log.Context -> Bool -> Source -> IO App.Axis
+newCtx mode throwCtx logCtx cancelAllocFlag source = do
   globalLocator <- getGlobalLocator throwCtx source
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   enumCtx <- Mode.enumCtx mode $ Enum.Config {Enum.throwCtx = throwCtx}
@@ -109,14 +110,15 @@ newCtx mode throwCtx logCtx source = do
           Locator.throwCtx = throwCtx
         }
   return $
-    Axis
-      { log = logCtx,
-        throw = throwCtx,
-        gensym = gensymCtx,
-        enum = enumCtx,
-        llvm = llvmCtx,
-        global = globalCtx,
-        locator = locatorCtx
+    App.Axis
+      { App.log = logCtx,
+        App.throw = throwCtx,
+        App.gensym = gensymCtx,
+        App.enum = enumCtx,
+        App.llvm = llvmCtx,
+        App.global = globalCtx,
+        App.locator = locatorCtx,
+        App.shouldCancelAlloc = cancelAllocFlag
       }
 
 data CheckConfig = CheckConfig
@@ -146,7 +148,7 @@ check' mode throwCtx logCtx filePath = do
   ensureFileModuleSanity throwCtx filePath
   mainModule <- getMainModule throwCtx
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  ctx <- newCtx mode throwCtx logCtx source
+  ctx <- newCtx mode throwCtx logCtx False source
   (_, _, dependenceSeq) <- computeDependence ctx source
   mapM_ (check'' ctx) dependenceSeq
 
@@ -164,7 +166,7 @@ ensureNotInLibDir ctx commandName = do
     Throw.raiseError' ctx $
       "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
-check'' :: Axis -> Source -> IO ()
+check'' :: App.Axis -> Source -> IO ()
 check'' axis source = do
   mMainFunctionName <- getMainFunctionName axis source
   case mMainFunctionName of
@@ -173,13 +175,13 @@ check'' axis source = do
     Nothing ->
       void $ parseOther axis source >>= elaborateOther axis source
 
-compile :: Axis -> S.Set (Path Abs File) -> Source -> IO ()
+compile :: App.Axis -> S.Set (Path Abs File) -> Source -> IO ()
 compile axis hasObjectSet source = do
   if S.member (sourceFilePath source) hasObjectSet
     then loadTopLevelDefinitions axis source
     else compile' axis source
 
-loadTopLevelDefinitions :: Axis -> Source -> IO ()
+loadTopLevelDefinitions :: App.Axis -> Source -> IO ()
 loadTopLevelDefinitions axis source = do
   mMainFunctionName <- getMainFunctionNameIfEntryPoint axis source
   case mMainFunctionName of
@@ -188,16 +190,16 @@ loadTopLevelDefinitions axis source = do
     Nothing ->
       void $ parseOther axis source >>= elaborateOther axis source >>= clarifyOther axis
 
-compile' :: Axis -> Source -> IO ()
+compile' :: App.Axis -> Source -> IO ()
 compile' axis source = do
   llvmCode <- compileToLLVM axis source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
   L.writeFile (toFilePath llvmOutputPath) llvmCode
-  (axis & llvm & LLVM.emit) OutputKindObject llvmCode outputPath
+  (axis & App.llvm & LLVM.emit) OutputKindObject llvmCode outputPath
 
-compileToLLVM :: Axis -> Source -> IO L.ByteString
+compileToLLVM :: App.Axis -> Source -> IO L.ByteString
 compileToLLVM axis source = do
   mMainFunctionName <- getMainFunctionNameIfEntryPoint axis source
   case mMainFunctionName of
@@ -214,11 +216,11 @@ compileToLLVM axis source = do
         >>= lowerOther axis
         >> emitOther axis
 
-link :: Axis -> Target -> [Source] -> IO ()
+link :: App.Axis -> Target -> [Source] -> IO ()
 link axis target sourceList = do
   outputPath <- getExecutableOutputPath axis target
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
-  (axis & llvm & LLVM.link) objectPathList outputPath
+  (axis & App.llvm & LLVM.link) objectPathList outputPath
 
 data CleanConfig = CleanConfig
   { cleanLogCfg :: Log.Config,
@@ -236,9 +238,9 @@ clean mode cfg = do
     b <- doesDirExist targetDir
     when b $ removeDirRecur $ getTargetDir mainModule
 
-getExecutableOutputPath :: Axis -> Target -> IO (Path Abs File)
+getExecutableOutputPath :: App.Axis -> Target -> IO (Path Abs File)
 getExecutableOutputPath axis target = do
-  mainModule <- getMainModule (axis & throw)
+  mainModule <- getMainModule (axis & App.throw)
   resolveFile (getExecutableDir mainModule) target
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
@@ -257,23 +259,23 @@ getMainSource axis mainSourceFilePath = do
         sourceFilePath = mainSourceFilePath
       }
 
-getMainFunctionName :: Axis -> Source -> IO (Maybe T.Text)
+getMainFunctionName :: App.Axis -> Source -> IO (Maybe T.Text)
 getMainFunctionName axis source = do
   b <- isMainFile source
   if b
     then return <$> getMainFunctionName' axis source
     else return Nothing
 
-getMainFunctionNameIfEntryPoint :: Axis -> Source -> IO (Maybe T.Text)
+getMainFunctionNameIfEntryPoint :: App.Axis -> Source -> IO (Maybe T.Text)
 getMainFunctionNameIfEntryPoint axis source = do
-  mainFilePath <- getMainFilePath (axis & throw)
+  mainFilePath <- getMainFilePath (axis & App.throw)
   if sourceFilePath source == mainFilePath
     then return <$> getMainFunctionName' axis source
     else return Nothing
 
-getMainFunctionName' :: Axis -> Source -> IO T.Text
+getMainFunctionName' :: App.Axis -> Source -> IO T.Text
 getMainFunctionName' axis source = do
-  globalLocator <- getGlobalLocator (axis & throw) source
+  globalLocator <- getGlobalLocator (axis & App.throw) source
   return $ globalLocator <> definiteSep <> "main"
 
 {-# NOINLINE traceSourceListRef #-}
@@ -291,7 +293,7 @@ sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-computeDependence :: Axis -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
+computeDependence :: App.Axis -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
 computeDependence axis source = do
   visitEnv <- readIORef visitEnvRef
   let path = sourceFilePath source
@@ -349,12 +351,12 @@ isItemAvailable source itemPath = do
       itemModTime <- getModificationTime itemPath
       return $ itemModTime > srcModTime
 
-raiseCyclicPath :: Axis -> Source -> IO a
+raiseCyclicPath :: App.Axis -> Source -> IO a
 raiseCyclicPath axis source = do
   traceSourceList <- readIORef traceSourceListRef
   let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
   let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-  (axis & throw & Throw.raiseError) m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+  (axis & App.throw & Throw.raiseError) m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
@@ -376,7 +378,7 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
-getChildren :: Axis -> Source -> IO [Source]
+getChildren :: App.Axis -> Source -> IO [Source]
 getChildren axis currentSource = do
   sourceChildrenMap <- readIORef sourceChildrenMapRef
   let currentSourceFilePath = sourceFilePath currentSource
@@ -387,7 +389,7 @@ getChildren axis currentSource = do
       let path = sourceFilePath currentSource
       -- initializeParserForFile $ sourceFilePath currentSource
       -- skip
-      (sourceList, aliasInfoList) <- run (throw axis) (parseImportSequence axis (sourceModule currentSource)) path
+      (sourceList, aliasInfoList) <- run (App.throw axis) (parseImportSequence axis (sourceModule currentSource)) path
       -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
       updateSourceAliasMapRef currentSourceFilePath aliasInfoList

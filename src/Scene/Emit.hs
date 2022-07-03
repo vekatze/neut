@@ -22,7 +22,7 @@ import qualified Data.Text.Encoding as TE
 import Entity.Global
 import Entity.Ident
 import Entity.LowComp
-import Entity.LowComp.Reduce
+import qualified Entity.LowComp.Reduce as LowComp
 import Entity.LowType
 import Entity.PrimNum
 import Entity.PrimNumSize
@@ -34,7 +34,7 @@ import qualified System.Info as System
 
 emitMain :: Axis -> LowComp -> IO L.ByteString
 emitMain axis mainTerm = do
-  mainTerm' <- reduceLowComp (axis & gensym) IntMap.empty Map.empty mainTerm
+  mainTerm' <- LowComp.reduce axis IntMap.empty Map.empty mainTerm
   mainBuilder <- emitDefinition axis "i64" "main" [] mainTerm'
   emit' axis mainBuilder
 
@@ -49,7 +49,7 @@ emit' axis aux = do
   xs <-
     forM (HashMap.toList lowDefEnv) $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
-      body' <- reduceLowComp (axis & gensym) IntMap.empty Map.empty body
+      body' <- LowComp.reduce axis IntMap.empty Map.empty body
       emitDefinition axis "i8*" (TE.encodeUtf8Builder name) args' body'
   return $ L.toLazyByteString $ unlinesL $ g : aux <> concat xs
 

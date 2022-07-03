@@ -74,13 +74,15 @@ parseBuildOpt = do
   mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
   logCfg <- logConfigOpt
+  shouldCancelAlloc <- cancelAllocOpt
   pure $
     Build
       Build.BuildConfig
         { Build.mTarget = mTarget,
           Build.mClangOptString = mClangOpt,
           Build.buildLogCfg = logCfg,
-          Build.buildThrowCfg = throwConfig
+          Build.buildThrowCfg = throwConfig,
+          Build.shouldCancelAlloc = shouldCancelAlloc
         }
 
 parseCleanOpt :: Parser Command
@@ -167,6 +169,17 @@ colorizeOpt =
     ( mconcat
         [ long "no-color",
           help "Set this to disable colorization of the output"
+        ]
+    )
+
+cancelAllocOpt :: Parser Bool
+cancelAllocOpt =
+  flag
+    True
+    False
+    ( mconcat
+        [ long "no-cancel-alloc",
+          help "Set this to disable cancelling malloc/free"
         ]
     )
 
