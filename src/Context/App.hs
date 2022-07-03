@@ -11,6 +11,7 @@ import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
 import Entity.Source
+import Entity.Target
 
 data Axis = Axis
   { log :: Log.Context,
@@ -21,5 +22,6 @@ data Axis = Axis
     global :: Global.Axis,
     locator :: Locator.Axis,
     shouldCancelAlloc :: Bool,
-    initialSource :: Source
+    initialSource :: Source,
+    target :: Target
   }

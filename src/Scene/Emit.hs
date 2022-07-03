@@ -29,6 +29,7 @@ import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
+import qualified Entity.Target as Target
 import Numeric.Half
 import qualified System.Info as System
 
@@ -315,7 +316,7 @@ showLowTypeAsIfNonPtr lowType =
 
 getRegList :: Axis -> IO [Builder]
 getRegList axis = do
-  targetPlatform <- readIORef targetPlatformRef
+  let targetPlatform = Target.platform $ target axis
   case targetPlatform of
     "x86_64-linux" ->
       return ["rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"]

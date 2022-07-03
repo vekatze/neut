@@ -21,26 +21,10 @@ import Entity.WeakTerm
 import Path
 import Path.IO
 import System.IO.Unsafe
-import qualified System.Info as System
 
 --
 -- global variables
 --
-
-{-# NOINLINE targetPlatformRef #-}
-targetPlatformRef :: IORef String
-targetPlatformRef =
-  unsafePerformIO (newIORef $ System.arch <> "-" <> System.os)
-
-{-# NOINLINE targetOSRef #-}
-targetOSRef :: IORef String
-targetOSRef =
-  unsafePerformIO (newIORef System.os)
-
-{-# NOINLINE targetArchRef #-}
-targetArchRef :: IORef String
-targetArchRef =
-  unsafePerformIO (newIORef System.arch)
 
 {-# NOINLINE currentFileRef #-}
 currentFileRef :: IORef (Maybe (Path Abs File))

@@ -15,7 +15,6 @@ import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
 import Data.Function
-import Data.IORef
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -30,6 +29,7 @@ import Entity.LowType
 import Entity.Magic
 import Entity.Pattern
 import Entity.PrimNum.FromText
+import qualified Entity.Target as Target
 import Entity.WeakTerm
 import Scene.Parse.Core
 import Text.Megaparsec
@@ -722,11 +722,11 @@ getIntrospectiveValue :: Axis -> Hint -> T.Text -> IO T.Text
 getIntrospectiveValue axis m key =
   case key of
     "target-platform" -> do
-      T.pack <$> readIORef targetPlatformRef
+      return $ T.pack (Target.platform (target axis))
     "target-arch" ->
-      T.pack <$> readIORef targetArchRef
+      return $ T.pack (Target.arch (target axis))
     "target-os" ->
-      T.pack <$> readIORef targetOSRef
+      return $ T.pack (Target.os (target axis))
     _ ->
       (axis & throw & Throw.raiseError) m $ "no such introspective value is defined: " <> key
 

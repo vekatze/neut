@@ -38,6 +38,7 @@ import Entity.Module
 import Entity.Module.Reflect
 import Entity.OutputKind
 import Entity.Source
+import qualified Entity.Target as Target
 import Path
 import Path.IO
 import Scene.Clarify
@@ -49,6 +50,7 @@ import Scene.Parse.Core
 import Scene.Parse.Import
 import System.Exit
 import System.IO.Unsafe
+import qualified System.Info as System
 import Prelude hiding (log)
 
 data VisitInfo
@@ -62,7 +64,7 @@ type IsObjectAvailable =
   Bool
 
 data BuildConfig = BuildConfig
-  { mTarget :: Maybe Target,
+  { mTarget :: Maybe TargetString,
     mClangOptString :: Maybe String,
     buildLogCfg :: Log.Config,
     buildThrowCfg :: Throw.Config,
@@ -84,7 +86,7 @@ build mode cfg = do
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
           build' mode throwCtx logCtx (shouldCancelAlloc cfg) (T.unpack target)
 
-build' :: Mode.Mode -> Throw.Context -> Log.Context -> Bool -> Target -> IO ()
+build' :: Mode.Mode -> Throw.Context -> Log.Context -> Bool -> TargetString -> IO ()
 build' mode throwCtx logCtx cancelAllocFlag target = do
   mainFilePath <- resolveTarget throwCtx target
   mainSource <- getMainSource throwCtx mainFilePath
@@ -118,7 +120,12 @@ newCtx mode throwCtx logCtx cancelAllocFlag source = do
         App.global = globalCtx,
         App.locator = locatorCtx,
         App.shouldCancelAlloc = cancelAllocFlag,
-        App.initialSource = source
+        App.initialSource = source,
+        App.target =
+          Target.Target
+            { Target.os = System.os,
+              Target.arch = System.arch
+            }
       }
 
 data CheckConfig = CheckConfig
@@ -216,7 +223,7 @@ compileToLLVM axis source = do
         >>= lowerOther axis
         >> emitOther axis
 
-link :: App.Axis -> Target -> [Source] -> IO ()
+link :: App.Axis -> TargetString -> [Source] -> IO ()
 link axis target sourceList = do
   outputPath <- getExecutableOutputPath axis target
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
@@ -238,7 +245,7 @@ clean mode cfg = do
     b <- doesDirExist targetDir
     when b $ removeDirRecur $ getTargetDir mainModule
 
-getExecutableOutputPath :: App.Axis -> Target -> IO (Path Abs File)
+getExecutableOutputPath :: App.Axis -> TargetString -> IO (Path Abs File)
 getExecutableOutputPath axis target = do
   mainModule <- getMainModule (axis & App.throw)
   resolveFile (getExecutableDir mainModule) target
@@ -407,10 +414,10 @@ addExtensionAlongKind file kind =
     OutputKindExecutable -> do
       return file
 
-type Target =
+type TargetString =
   String
 
-resolveTarget :: Throw.Context -> Target -> IO (Path Abs File)
+resolveTarget :: Throw.Context -> TargetString -> IO (Path Abs File)
 resolveTarget axis target = do
   mainModule <- getMainModule axis
   case getTargetFilePath mainModule (T.pack target) of
