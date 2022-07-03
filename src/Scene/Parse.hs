@@ -65,7 +65,6 @@ parseOther =
 
 parseSource :: Axis -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseSource axis source = do
-  setCurrentFilePath $ sourceFilePath source
   mCache <- loadCache source
   initializeNamespace axis source
   setupSectionPrefix axis source
@@ -78,7 +77,7 @@ parseSource axis source = do
       forM_ (map extractName stmtList) $ Global.register (axis & global) hint
       return $ Left stmtList
     Nothing -> do
-      getCurrentFilePath (axis & throw) >>= activateAliasInfo (axis & throw)
+      activateAliasInfo (axis & throw) (sourceFilePath source)
       globalLocator <- getGlobalLocator (axis & throw) source
       (defList, enumInfoList) <- run (axis & throw) (program (globalLocator, []) axis) $ sourceFilePath source
       return $ Right (defList, enumInfoList)

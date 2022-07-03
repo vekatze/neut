@@ -7,7 +7,6 @@ import Context.App
 import qualified Context.Enum as Enum
 import qualified Context.Locator as Locator
 import Control.Monad.IO.Class
-import Data.Function
 import qualified Data.Text as T
 import Entity.EnumInfo
 import qualified Entity.EnumInfo as EnumInfo
@@ -20,8 +19,8 @@ parseDefineEnum axis = do
   try $ keyword "define-enum"
   definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator axis) . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
-  enumInfo <- liftIO $ EnumInfo.new (axis & throw) m definiteEnumName itemList
-  liftIO $ uncurry (Enum.register (axis & enum) m) (fromEnumInfo enumInfo)
+  enumInfo <- liftIO $ EnumInfo.new (throw axis) m definiteEnumName itemList
+  liftIO $ uncurry (Enum.register (enum axis) m) (fromEnumInfo enumInfo)
   -- liftIO $ EnumInfo.registerIfNew (axis & throw) m enumInfo
   return enumInfo
 

@@ -1,7 +1,6 @@
 module Scene.Parse.Core where
 
-import qualified Context.Throw as Throw
-import Control.Exception.Safe
+import Context.Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.List.NonEmpty
@@ -10,7 +9,6 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Data.Void (Void)
 import Entity.FilePos
-import Entity.Global
 import Entity.Hint
 import qualified Entity.Hint.Reflect as Hint
 import Entity.Log
@@ -23,12 +21,11 @@ import qualified Text.Read as R
 
 type Parser = ParsecT Void T.Text IO
 
-run :: Throw.Context -> Parser a -> Path Abs File -> IO a
+run :: Context -> Parser a -> Path Abs File -> IO a
 run ctx parser path = do
   fileExists <- doesFileExist path
   unless fileExists $ do
-    Throw.raiseError' ctx $ T.pack $ "no such file exists: " <> toFilePath path
-  setCurrentFilePath path
+    raiseError' ctx $ T.pack $ "no such file exists: " <> toFilePath path
   let filePath = toFilePath path
   fileContent <- TIO.readFile filePath
   result <- runParserT (spaceConsumer >> parser) filePath fileContent
@@ -36,7 +33,7 @@ run ctx parser path = do
     Right v ->
       return v
     Left errorBundle ->
-      throw $ createParseError errorBundle
+      throw ctx $ createParseError errorBundle
 
 createParseError :: ParseErrorBundle T.Text Void -> Error
 createParseError errorBundle = do

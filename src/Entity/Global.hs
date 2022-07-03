@@ -2,8 +2,6 @@
 
 module Entity.Global where
 
-import qualified Context.Throw as Throw
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -25,24 +23,6 @@ import System.IO.Unsafe
 --
 -- global variables
 --
-
-{-# NOINLINE currentFileRef #-}
-currentFileRef :: IORef (Maybe (Path Abs File))
-currentFileRef =
-  unsafePerformIO (newIORef Nothing)
-
-setCurrentFilePath :: Path Abs File -> IO ()
-setCurrentFilePath path =
-  modifyIORef' currentFileRef $ const $ Just path
-
-getCurrentFilePath :: Throw.Context -> IO (Path Abs File)
-getCurrentFilePath axis = do
-  currentFileOrNothing <- readIORef currentFileRef
-  case currentFileOrNothing of
-    Just currentFile ->
-      return currentFile
-    Nothing ->
-      axis & Throw.raiseCritical' $ "no current file is set"
 
 {-# NOINLINE dataEnvRef #-}
 dataEnvRef :: IORef (Map.HashMap T.Text [T.Text])

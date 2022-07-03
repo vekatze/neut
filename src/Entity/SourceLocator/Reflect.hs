@@ -1,6 +1,6 @@
 module Entity.SourceLocator.Reflect (fromText) where
 
-import Context.Throw
+import qualified Context.Throw as Throw
 import Data.List
 import qualified Data.Text as T
 import Entity.Global
@@ -10,7 +10,7 @@ import Entity.Module.Locator
 import Entity.ModuleAlias
 import Entity.SourceLocator
 
-fromText :: Context -> Hint -> Module -> T.Text -> IO SourceLocator
+fromText :: Throw.Context -> Hint -> Module -> T.Text -> IO SourceLocator
 fromText ctx m currentModule sectionString = do
   case getHeadMiddleLast $ T.splitOn "." sectionString of
     Just (nextModuleName, dirNameList, fileNameWithoutExtension) -> do
@@ -23,7 +23,7 @@ fromText ctx m currentModule sectionString = do
             sourceLocatorFileName = FileName . T.unpack $ fileName
           }
     Nothing ->
-      raiseError ctx m "found a malformed module signature"
+      Throw.raiseError ctx m "found a malformed module signature"
 
 getHeadMiddleLast :: [a] -> Maybe (a, [a], a)
 getHeadMiddleLast xs = do
@@ -41,8 +41,3 @@ unsnoc =
           Just ([], x)
         Just (ys, y) ->
           Just (x : ys, y)
-
--- sourceSignatureは、(ModuleAlias, [DirPath], FileName) になってるのか。
--- sectionToPath :: [T.Text] -> FilePath
--- sectionToPath sectionPath =
---   T.unpack $ T.intercalate (T.singleton FP.pathSeparator) sectionPath <> "." <> sourceFileExtension

@@ -1,6 +1,6 @@
 module Entity.Module.Locator (getNextModule) where
 
-import Context.Throw
+import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
@@ -15,7 +15,7 @@ import Path
 import Path.IO
 import System.IO.Unsafe
 
-getNextModule :: Context -> Hint -> Module -> ModuleAlias -> IO Module
+getNextModule :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO Module
 getNextModule ctx m currentModule nextModuleAlias = do
   nextModuleFilePath <- getNextModuleFilePath ctx m currentModule nextModuleAlias
   moduleCacheMap <- readIORef moduleCacheMapRef
@@ -25,7 +25,7 @@ getNextModule ctx m currentModule nextModuleAlias = do
     Nothing -> do
       moduleFileExists <- doesFileExist nextModuleFilePath
       unless moduleFileExists $ do
-        raiseError ctx m $
+        Throw.raiseError ctx m $
           T.pack "could not find the module file for `"
             <> extract nextModuleAlias
             <> "`"
@@ -33,15 +33,15 @@ getNextModule ctx m currentModule nextModuleAlias = do
       modifyIORef' moduleCacheMapRef $ Map.insert nextModuleFilePath nextModule
       return nextModule
 
-getNextModuleFilePath :: Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
+getNextModuleFilePath :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
 getNextModuleFilePath ctx m currentModule nextModuleAlias = do
   moduleDirPath <- getNextModuleDirPath ctx m currentModule nextModuleAlias
   return $ moduleDirPath </> moduleFile
 
-getNextModuleDirPath :: Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs Dir)
-getNextModuleDirPath ctx m currentModule nextModuleAlias =
+getNextModuleDirPath :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs Dir)
+getNextModuleDirPath ctx m currentModule nextModuleAlias = do
   if nextModuleAlias == ModuleAlias defaultModulePrefix
-    then getCurrentFilePath ctx >>= filePathToModuleFileDir ctx
+    then return $ getModuleFileDir currentModule
     else do
       ModuleChecksum checksum <- resolveModuleAliasIntoModuleName ctx m currentModule nextModuleAlias
       libraryDir <- getLibraryDirPath
@@ -52,38 +52,14 @@ moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
 moduleCacheMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-filePathToModuleFilePath :: Context -> Path Abs File -> IO (Path Abs File)
-filePathToModuleFilePath ctx filePath = do
-  findModuleFile ctx $ parent filePath
+getModuleFileDir :: Module -> Path Abs Dir
+getModuleFileDir currentModule =
+  parent (moduleLocation currentModule)
 
-filePathToModuleFileDir :: Context -> Path Abs File -> IO (Path Abs Dir)
-filePathToModuleFileDir ctx filePath =
-  parent <$> filePathToModuleFilePath ctx filePath
-
-resolveModuleAliasIntoModuleName :: Context -> Hint -> Module -> ModuleAlias -> IO ModuleChecksum
+resolveModuleAliasIntoModuleName :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO ModuleChecksum
 resolveModuleAliasIntoModuleName ctx m currentModule (ModuleAlias nextModuleAlias) =
   case Map.lookup nextModuleAlias (moduleDependency currentModule) of
     Just (_, checksum) ->
       return checksum
     Nothing ->
-      raiseError ctx m $ "no such module alias is defined: " <> nextModuleAlias
-
--- getNextSource :: Hint -> Module -> ModuleAlias -> IO Source
--- getNextSource m currentModule nextModuleAlias = do
---   -- sig@(nextModuleName, _, _) <- parseModuleInfo m sigText
---   newModule <- getNextModule m currentModule nextModuleAlias
---   filePath <- getSourceFilePath newModule sig
---   return $
---     Source
---       { sourceModule = newModule,
---         sourceFilePath = filePath
---       }
-
--- getSourceFilePath :: Module -> SourceSignature -> IO (Path Abs File)
--- getSourceFilePath baseModule (_, locator, name) = do
---   resolveFile (getSourceDir baseModule) (sectionToPath $ locator ++ [name])
-
--- sourceSignatureは、(ModuleAlias, [DirPath], FileName) になってるのか。
--- sectionToPath :: [T.Text] -> FilePath
--- sectionToPath sectionPath =
---   T.unpack $ T.intercalate (T.singleton FP.pathSeparator) sectionPath <> "." <> sourceFileExtension
+      Throw.raiseError ctx m $ "no such module alias is defined: " <> nextModuleAlias
