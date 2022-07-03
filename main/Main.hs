@@ -1,199 +1,168 @@
 module Main (main) where
 
-import Act.Build
-import Act.Dependency
-import Act.Init
-import Act.Release
-import Context.App
-import qualified Context.App.Main as App
+import qualified Act.Build as Build
+import qualified Act.Dependency as Dependency
+import qualified Act.Init as Init
+import qualified Act.Release as Release
+import qualified Act.Version as Version
+import qualified Context.Enum.Main as Enum
+import qualified Context.Gensym.Main as Gensym
+import qualified Context.Global.Main as Global
+import qualified Context.LLVM.Main as LLVM
+import qualified Context.Locator.Main as Locator
 import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
+import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
 import Control.Monad
-import Data.Function
-import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import Data.Version
-import Entity.Log
-import Entity.Module.Reflect
 import Entity.ModuleAlias
 import Entity.ModuleURL
 import Options.Applicative
-import Paths_neut
-import System.Exit
 import Prelude hiding (log)
 
-type Target =
-  String
-
-type InputPath =
-  String
-
-type CheckOptEndOfEntry =
-  String
-
-type ClangOption =
-  String
-
 data Command
-  = Build (Maybe Target) (Maybe ClangOption)
-  | Clean
-  | Check (Maybe InputPath) Bool CheckOptEndOfEntry
-  | Release T.Text
-  | Get ModuleAlias ModuleURL
-  | Tidy
-  | Init T.Text
-  | ShowVersion
+  = Build Build.BuildConfig
+  | Check Build.CheckConfig
+  | Clean Build.CleanConfig
+  | Release Release.Config
+  | Get Dependency.GetConfig
+  | Tidy Dependency.TidyConfig
+  | Init Init.Config
+  | ShowVersion Version.Config
 
 main :: IO ()
 main =
   execParser (info (helper <*> parseOpt) fullDesc) >>= runCommand
 
+runCommand :: Command -> IO ()
+runCommand c = do
+  case c of
+    Build cfg -> do
+      Build.build prodMode cfg
+    Check cfg -> do
+      Build.check prodMode cfg
+    Clean cfg ->
+      Build.clean prodMode cfg
+    Release cfg ->
+      Release.release prodMode cfg
+    Init cfg ->
+      Init.initialize prodMode cfg
+    Get cfg ->
+      Dependency.get prodMode cfg
+    Tidy cfg ->
+      Dependency.tidy prodMode cfg
+    ShowVersion cfg ->
+      Version.showVersion cfg
+
+cmd :: String -> Parser a -> String -> Mod CommandFields a
+cmd name parser desc =
+  command name (info (helper <*> parser) (progDesc desc))
+
 parseOpt :: Parser Command
-parseOpt =
+parseOpt = do
   subparser $
     mconcat
-      [ command
-          "build"
-          ( info
-              (helper <*> parseBuildOpt)
-              (progDesc "build given file")
-          ),
-        command
-          "clean"
-          ( info
-              (helper <*> parseCleanOpt)
-              (progDesc "remove the resulting files")
-          ),
-        command
-          "check"
-          ( info
-              (helper <*> parseCheckOpt)
-              (progDesc "check specified file")
-          ),
-        command
-          "release"
-          ( info
-              (helper <*> parseReleaseOpt)
-              (progDesc "create a release from a given path")
-          ),
-        command
-          "init"
-          ( info
-              (helper <*> parseInitOpt)
-              (progDesc "create a new module")
-          ),
-        command
-          "get"
-          ( info
-              (helper <*> parseGetOpt)
-              (progDesc "get a module")
-          ),
-        command
-          "tidy"
-          ( info
-              (helper <*> parseTidyOpt)
-              (progDesc "tidy the module dependency")
-          ),
-        command
-          "version"
-          ( info
-              (helper <*> parseVersionOpt)
-              (progDesc "show version info")
-          )
+      [ cmd "build" parseBuildOpt "build given file",
+        cmd "clean" parseCleanOpt "remove the resulting files",
+        cmd "check" parseCheckOpt "type-check specified file",
+        cmd "release" parseReleaseOpt "create a release tar from a given path",
+        cmd "init" parseInitOpt "create a new module",
+        cmd "get" parseGetOpt "get a release tar",
+        cmd "tidy" parseTidyOpt "tidy the module dependency",
+        cmd "version" parseVersionOpt "show version info"
       ]
 
 parseBuildOpt :: Parser Command
-parseBuildOpt =
-  Build
-    <$> optional
-      ( argument
-          str
-          ( mconcat
-              [ metavar "TARGET",
-                help "The build target"
-              ]
-          )
-      )
-      <*> optional
-        ( strOption
-            ( mconcat
-                [ long "clang-option",
-                  metavar "OPT",
-                  help "option string to be passed to clang"
-                ]
-            )
-        )
+parseBuildOpt = do
+  mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
+  mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
+  logCfg <- logConfigOpt
+  pure $
+    Build
+      Build.BuildConfig
+        { Build.mTarget = mTarget,
+          Build.mClangOptString = mClangOpt,
+          Build.buildLogCfg = logCfg,
+          Build.buildThrowCfg = throwConfig
+        }
 
 parseCleanOpt :: Parser Command
-parseCleanOpt =
-  pure Clean
+parseCleanOpt = do
+  logCfg <- logConfigOpt
+  pure $
+    Clean
+      Build.CleanConfig
+        { Build.cleanLogCfg = logCfg,
+          Build.cleanThrowCfg = throwConfig
+        }
 
 parseGetOpt :: Parser Command
-parseGetOpt =
-  Get
-    <$> ( ModuleAlias . T.pack
-            <$> argument
-              str
-              ( mconcat
-                  [ metavar "ALIAS",
-                    help "The alias of the module"
-                  ]
-              )
-        )
-    <*> ( ModuleURL . T.pack
-            <$> argument
-              str
-              ( mconcat
-                  [ metavar "URL",
-                    help "The URL of the archive"
-                  ]
-              )
-        )
+parseGetOpt = do
+  moduleAlias <- argument str (mconcat [metavar "ALIAS", help "The alias of the module"])
+  moduleURL <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
+  logCfg <- logConfigOpt
+  pure $
+    Get
+      Dependency.GetConfig
+        { Dependency.moduleAlias = ModuleAlias $ T.pack moduleAlias,
+          Dependency.moduleURL = ModuleURL $ T.pack moduleURL,
+          Dependency.throwCfg = throwConfig,
+          Dependency.logCfg = logCfg
+        }
 
 parseTidyOpt :: Parser Command
-parseTidyOpt =
-  pure Tidy
+parseTidyOpt = do
+  logCfg <- logConfigOpt
+  pure $
+    Tidy
+      Dependency.TidyConfig
+        { Dependency.tidyThrowCfg = throwConfig,
+          Dependency.tidyLogCfg = logCfg
+        }
 
 parseInitOpt :: Parser Command
-parseInitOpt =
-  Init
-    <$> ( T.pack
-            <$> argument
-              str
-              ( mconcat
-                  [ metavar "MODULE",
-                    help "The name of the module"
-                  ]
-              )
-        )
+parseInitOpt = do
+  moduleName <- argument str (mconcat [metavar "MODULE", help "The name of the module"])
+  logCfg <- logConfigOpt
+  pure $
+    Init
+      Init.Config
+        { Init.moduleName = T.pack moduleName,
+          Init.throwCfg = throwConfig,
+          Init.logCfg = logCfg
+        }
 
 parseVersionOpt :: Parser Command
 parseVersionOpt =
-  pure ShowVersion
+  pure $ ShowVersion Version.Config {}
 
 parseCheckOpt :: Parser Command
-parseCheckOpt =
-  Check
-    <$> optional
-      ( argument
-          str
-          ( mconcat
-              [ metavar "INPUT",
-                help "The path of input file"
-              ]
-          )
-      )
-      <*> colorizeOpt
-      <*> strOption
-        ( mconcat
-            [ long "end-of-entry",
-              value "",
-              help "String printed after each entry",
-              metavar "STRING"
-            ]
-        )
+parseCheckOpt = do
+  inputFilePath <- optional $ argument str (mconcat [metavar "INPUT", help "The path of input file"])
+  logCfg <- logConfigOpt
+  pure $
+    Check
+      Build.CheckConfig
+        { Build.mFilePathString = inputFilePath,
+          Build.checkLogCfg = logCfg,
+          Build.checkThrowCfg = throwConfig
+        }
+
+logConfigOpt :: Parser Log.Config
+logConfigOpt = do
+  shouldColorize <- colorizeOpt
+  eoe <- endOfEntryOpt
+  pure
+    Log.Config
+      { Log.shouldColorize = shouldColorize,
+        Log.endOfEntry = eoe
+      }
+
+endOfEntryOpt :: Parser String
+endOfEntryOpt =
+  strOption (mconcat [long "end-of-entry", value "", help "String printed after each entry", metavar "STRING"])
 
 colorizeOpt :: Parser Bool
 colorizeOpt =
@@ -207,68 +176,29 @@ colorizeOpt =
     )
 
 parseReleaseOpt :: Parser Command
-parseReleaseOpt =
-  Release
-    <$> ( T.pack
-            <$> argument
-              str
-              ( mconcat [metavar "IDENTIFIER", help "The name of the release"]
-              )
-        )
-
-runCommand :: Command -> IO ()
-runCommand cmd = do
-  axis <-
-    App.new
-      Log.Config
-        { Log.shouldColorize = True,
-          Log.endOfEntry = ""
+parseReleaseOpt = do
+  releaseName <- argument str (mconcat [metavar "NAME", help "The name of the release"])
+  logCfg <- logConfigOpt
+  pure $
+    Release
+      Release.Config
+        { Release.getReleaseName = releaseName,
+          Release.throwCfg = throwConfig,
+          Release.logCfg = logCfg
         }
-      Throw.Config
-        {
-        }
-      ""
-  case cmd of
-    Build target mClangOptStr -> do
-      buildAxis <-
-        App.new
-          Log.Config
-            { Log.shouldColorize = True,
-              Log.endOfEntry = ""
-            }
-          Throw.Config {}
-          (fromMaybe "" mClangOptStr)
-      runAction axis $ initializeMainModule (buildAxis & throw) >> build buildAxis target
-    Check mInputPathStr colorizeFlag eoe -> do
-      checkAxis <-
-        App.new
-          Log.Config
-            { Log.shouldColorize = colorizeFlag,
-              Log.endOfEntry = eoe
-            }
-          Throw.Config
-            {
-            }
-          ""
-      void $ runAction checkAxis $ initializeMainModule (checkAxis & throw) >> check checkAxis mInputPathStr
-    Clean -> do
-      runAction axis $ initializeMainModule (axis & throw) >> clean axis
-    Release identifier -> do
-      runAction axis $ initializeMainModule (axis & throw) >> release axis identifier
-    Init moduleName ->
-      runAction axis $ initialize axis moduleName
-    Get alias url -> do
-      runAction axis $ initializeMainModule (axis & throw) >> get axis alias url
-    Tidy -> do
-      runAction axis $ initializeMainModule (axis & throw) >> tidy axis
-    ShowVersion ->
-      putStrLn $ showVersion version
 
-runAction :: Axis -> IO a -> IO a
-runAction axis c = do
-  resultOrErr <- Throw.try (axis & throw) c
-  case resultOrErr of
-    Left (Error err) ->
-      foldr ((>>) . (axis & log & Log.printLog)) (exitWith (ExitFailure 1)) err
-    Right result ->
-      return result
+prodMode :: Mode.Mode
+prodMode =
+  Mode.Mode
+    { Mode.logCtx = Log.new,
+      Mode.throwCtx = Throw.new,
+      Mode.gensymCtx = Gensym.new,
+      Mode.llvmCtx = LLVM.new,
+      Mode.enumCtx = Enum.new,
+      Mode.globalCtx = Global.new,
+      Mode.locatorCtx = Locator.new
+    }
+
+throwConfig :: Throw.Config
+throwConfig =
+  Throw.Config {}

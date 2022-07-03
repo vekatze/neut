@@ -93,25 +93,20 @@ constructorEnvRef :: IORef (Map.HashMap T.Text Int)
 constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE currentLocalLocatorListRef #-}
-currentLocalLocatorListRef :: IORef [T.Text]
-currentLocalLocatorListRef =
-  unsafePerformIO (newIORef [])
+-- {-# NOINLINE currentLocalLocatorListRef #-}
+-- currentLocalLocatorListRef :: IORef [T.Text]
+-- currentLocalLocatorListRef =
+--   unsafePerformIO (newIORef [])
 
-{-# NOINLINE currentGlobalLocatorRef #-}
-currentGlobalLocatorRef :: IORef T.Text
-currentGlobalLocatorRef =
-  unsafePerformIO (newIORef "")
+-- {-# NOINLINE globalLocatorListRef #-}
+-- globalLocatorListRef :: IORef [T.Text]
+-- globalLocatorListRef =
+--   unsafePerformIO (newIORef [])
 
-{-# NOINLINE globalLocatorListRef #-}
-globalLocatorListRef :: IORef [T.Text]
-globalLocatorListRef =
-  unsafePerformIO (newIORef [])
-
-{-# NOINLINE localLocatorListRef #-}
-localLocatorListRef :: IORef [T.Text]
-localLocatorListRef =
-  unsafePerformIO (newIORef ["path.to.module::test", "buz.qux::sample.foo"])
+-- {-# NOINLINE localLocatorListRef #-}
+-- localLocatorListRef :: IORef [T.Text]
+-- localLocatorListRef =
+--   unsafePerformIO (newIORef ["path.to.module::test", "buz.qux::sample.foo"])
 
 {-# NOINLINE moduleAliasMapRef #-}
 moduleAliasMapRef :: IORef (Map.HashMap T.Text T.Text)

@@ -1,6 +1,5 @@
 module Context.Log.IO
-  ( Config (..),
-    new,
+  ( new,
   )
 where
 
@@ -11,26 +10,21 @@ import Entity.FilePos
 import Entity.Log
 import System.Console.ANSI
 
-data Config = Config
-  { shouldColorize :: Bool,
-    endOfEntry :: String
-  }
-
-new :: Config -> IO Log.Context
+new :: Log.Config -> IO Log.Context
 new config =
   return
     Log.Context
       { Log.printLog = printLogIO config
       }
 
-printLogIO :: Config -> Log -> IO ()
+printLogIO :: Log.Config -> Log -> IO ()
 printLogIO cfg (mpos, l, t) = do
   outputLogLocation cfg mpos
   outputLogLevel cfg l
   outputLogText t (logLevelToPad l)
   outputFooter cfg
 
-outputLogLocation :: Config -> Maybe FilePos -> IO ()
+outputLogLocation :: Log.Config -> Maybe FilePos -> IO ()
 outputLogLocation cfg mpos = do
   case mpos of
     Just pos ->
@@ -40,14 +34,14 @@ outputLogLocation cfg mpos = do
     _ ->
       return ()
 
-outputFooter :: Config -> IO ()
+outputFooter :: Log.Config -> IO ()
 outputFooter cfg = do
-  let eoe = endOfEntry cfg
+  let eoe = Log.endOfEntry cfg
   if eoe == ""
     then return ()
     else putStrLn eoe
 
-outputLogLevel :: Config -> LogLevel -> IO ()
+outputLogLevel :: Log.Config -> LogLevel -> IO ()
 outputLogLevel cfg l =
   withSGR cfg (logLevelToSGR l) $ do
     TIO.putStr $ logLevelToText l
@@ -69,8 +63,8 @@ stylizeLogText str pad = do
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
 
-withSGR :: Config -> [SGR] -> IO () -> IO ()
+withSGR :: Log.Config -> [SGR] -> IO () -> IO ()
 withSGR cfg arg f = do
-  if shouldColorize cfg
+  if Log.shouldColorize cfg
     then setSGR arg >> f >> setSGR [Reset]
     else f

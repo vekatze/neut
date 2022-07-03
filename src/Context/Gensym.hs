@@ -1,5 +1,6 @@
 module Context.Gensym
   ( Axis (..),
+    Config (..),
     newText,
     newAster,
     newIdentFromText,
@@ -22,6 +23,8 @@ data Axis = Axis
     readCount :: IO Int,
     writeCount :: Int -> IO ()
   }
+
+data Config = Config {}
 
 {-# INLINE newText #-}
 newText :: Axis -> IO T.Text

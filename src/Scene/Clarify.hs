@@ -7,6 +7,7 @@ where
 import Codec.Binary.UTF8.String
 import Context.App
 import qualified Context.Gensym as Gensym
+import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -31,7 +32,6 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.LowType
 import Entity.Magic
-import Entity.Namespace
 import Entity.Opacity
 import Entity.Pattern
 import Entity.PrimNum
@@ -50,7 +50,7 @@ import Scene.Clarify.Utility
 clarifyMain :: Axis -> T.Text -> [Stmt] -> IO ([CompDef], Comp)
 clarifyMain axis mainName defList = do
   _ <- returnImmediateS4 (axis & gensym)
-  _ <- returnClosureS4 (axis & gensym)
+  _ <- returnClosureS4 axis
   defList' <- clarifyDefList axis defList
   mainTerm <- reduce (axis & gensym) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
   return (defList', mainTerm)
@@ -118,7 +118,7 @@ clarifyTerm axis tenv term =
                   ValueVarGlobal $ wrapWithQuote x
                 ]
     _ :< TermPi {} ->
-      returnClosureS4 (axis & gensym)
+      returnClosureS4 axis
     _ :< TermPiIntro kind mxts e -> do
       clarifyLambda axis tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
     _ :< TermPiElim e es -> do
@@ -126,7 +126,7 @@ clarifyTerm axis tenv term =
       e' <- clarifyTerm axis tenv e
       callClosure (axis & gensym) e' es'
     _ :< TermSigma {} -> do
-      returnClosureS4 (axis & gensym)
+      returnClosureS4 axis
     m :< TermSigmaIntro es -> do
       k <- Gensym.newIdentFromText (axis & gensym) "sigma"
       clarifyTerm axis tenv $
@@ -214,7 +214,7 @@ clarifyTerm axis tenv term =
       let i8s' = map (\x -> m :< TermInt (IntSize 8) (toInteger x)) i8s
       clarifyTerm axis tenv $ m :< TermArrayIntro (PrimNumInt (IntSize 8)) i8s'
     _ :< TermCell {} -> do
-      returnCellS4 (axis & gensym)
+      returnCellS4 axis
     _ :< TermCellIntro contentType content -> do
       (contentTypeVarName, contentType', contentTypeVar) <- clarifyPlus axis tenv contentType
       (contentVarName, content', contentVar) <- clarifyPlus axis tenv content
@@ -374,12 +374,12 @@ returnClosure axis tenv isReducible kind fvs xts e = do
   xts' <- clarifyBinder axis tenv xts
   let xts'' = dropFst xts'
   let fvs'' = dropFst fvs'
-  fvEnvSigma <- closureEnvS4 (axis & gensym) $ map Right fvs''
+  fvEnvSigma <- closureEnvS4 axis $ map Right fvs''
   let fvEnv = ValueSigmaIntro (map (\(_, x, _) -> ValueVarLocal x) fvs')
   case kind of
     LamKindNormal -> do
       i <- Gensym.newCount (axis & gensym)
-      name <- attachSectionPrefix $ "lambda;" <> T.pack (show i)
+      name <- Locator.attachCurrentLocator (axis & locator) $ "lambda;" <> T.pack (show i)
       registerIfNecessary (axis & gensym) name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
     LamKindCons _ consName consNumber _ -> do

@@ -32,8 +32,9 @@ activateAliasInfo context path = do
 activateAliasInfoOfCurrentFile' :: Context -> AliasInfo -> IO ()
 activateAliasInfoOfCurrentFile' context aliasInfo =
   case aliasInfo of
-    AliasInfoUse locator ->
-      activateGlobalLocator locator
+    AliasInfoUse _ ->
+      return ()
+    -- activateGlobalLocator locator
     AliasInfoPrefix m from to ->
       handleDefinePrefix context m from to
 

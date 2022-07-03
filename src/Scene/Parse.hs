@@ -8,6 +8,7 @@ import Context.App
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
+import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -37,6 +38,14 @@ import Scene.Parse.Enum
 import Scene.Parse.Import
 import Scene.Parse.WeakTerm
 import Text.Megaparsec
+
+type GlobalLocator = T.Text
+
+type Section = T.Text
+
+type LocalLocator = [Section]
+
+type Locator = (GlobalLocator, LocalLocator)
 
 --
 -- core functions
@@ -69,41 +78,45 @@ parseSource axis source = do
       return $ Left stmtList
     Nothing -> do
       getCurrentFilePath (axis & throw) >>= activateAliasInfo (axis & throw)
-      (defList, enumInfoList) <- run (program axis) $ sourceFilePath source
+      globalLocator <- getGlobalLocator (axis & throw) source
+      (defList, enumInfoList) <- run (program (globalLocator, []) axis) $ sourceFilePath source
       return $ Right (defList, enumInfoList)
 
 ensureMain :: Axis -> Hint -> T.Text -> IO ()
 ensureMain axis m mainFunctionName = do
-  currentGlobalLocator <- readIORef currentGlobalLocatorRef
+  -- currentGlobalLocator <- readIORef currentGlobalLocatorRef
   isMainDefined <- Global.isDefined (axis & global) mainFunctionName
   unless isMainDefined $ do
-    (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
+    (axis & throw & Throw.raiseError) m "`main` is missing"
 
-program :: Axis -> Parser ([QuasiStmt], [EnumInfo])
-program axis = do
+-- (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
+
+program :: Locator -> Axis -> Parser ([QuasiStmt], [EnumInfo])
+program prefix axis = do
   skipImportSequence
-  program' axis <* eof
+  program' prefix axis <* eof
 
-program' :: Axis -> Parser ([QuasiStmt], [EnumInfo])
-program' axis =
+program' :: Locator -> Axis -> Parser ([QuasiStmt], [EnumInfo])
+program' prefix axis =
   choice
     [ do
         enumInfo <- parseDefineEnum axis
-        (defList, enumInfoList) <- program' axis
+        (defList, enumInfoList) <- program' prefix axis
         return (defList, enumInfo : enumInfoList),
       do
         parseDefinePrefix axis
-        program' axis,
+        program' prefix axis,
       do
-        parseStmtUse
-        program' axis,
+        parseStmtUse axis
+        program' prefix axis,
       do
         let wtAxis =
               WT.Axis
                 { WT.throw = axis & throw,
                   WT.gensym = axis & gensym,
                   WT.enum = axis & enum,
-                  WT.global = axis & global
+                  WT.global = axis & global,
+                  WT.locator = axis & locator
                 }
         stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList wtAxis . concat
         return (stmtList, [])
@@ -118,11 +131,13 @@ parseDefinePrefix axis = do
   to <- snd <$> var
   liftIO $ handleDefinePrefix (axis & throw) m from to
 
-parseStmtUse :: Parser ()
-parseStmtUse = do
+parseStmtUse :: Axis -> Parser ()
+parseStmtUse axis = do
   try $ keyword "use"
   (_, name) <- parseDefiniteDescription
-  liftIO $ activateLocalLocator name
+  liftIO $ Locator.activatePartialLocator (axis & locator) name
+
+-- liftIO $ activateLocalLocator name
 
 parseStmt :: Axis -> Parser [WeakStmt]
 parseStmt axis = do
@@ -144,11 +159,11 @@ parseSection axis = do
   try $ keyword "section"
   sectionName <- symbol
   -- liftIO $ modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
-  liftIO $ pushToCurrentLocalLocator sectionName
+  liftIO $ Locator.pushToCurrentLocalLocator (axis & locator) sectionName
   stmtList <- concat <$> many (parseStmt axis)
   m <- currentHint
   keyword "end"
-  _ <- liftIO $ popFromCurrentLocalLocator (axis & throw) m
+  _ <- liftIO $ Locator.popFromCurrentLocalLocator (axis & locator) m
   -- liftIO $ modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
@@ -163,7 +178,7 @@ parseDefine axis opacity = do
         keyword "define-inline"
   m <- currentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo axis
-  name' <- liftIO $ attachSectionPrefix name
+  name' <- liftIO $ Locator.attachCurrentLocator (axis & locator) name
   liftIO $ defineFunction axis opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
@@ -184,7 +199,7 @@ parseDefineData :: Axis -> Parser [WeakStmt]
 parseDefineData axis = do
   m <- currentHint
   try $ keyword "define-data"
-  a <- var >>= liftIO . attachSectionPrefix . snd
+  a <- var >>= liftIO . Locator.attachCurrentLocator (axis & locator) . snd
   dataArgs <- argList $ weakAscription axis
   consInfoList <- asBlock $ manyList $ parseDefineDataClause axis
   liftIO $ defineData axis m a dataArgs consInfoList
@@ -256,7 +271,7 @@ parseDefineCodata :: Axis -> Parser [WeakStmt]
 parseDefineCodata axis = do
   m <- currentHint
   try $ keyword "define-codata"
-  dataName <- var >>= liftIO . attachSectionPrefix . snd
+  dataName <- var >>= liftIO . Locator.attachCurrentLocator (axis & locator) . snd
   dataArgs <- argList $ weakAscription axis
   elemInfoList <- asBlock $ manyList $ weakAscription axis
   formRule <- liftIO $ defineData axis m dataName dataArgs [(m, "new", elemInfoList)]

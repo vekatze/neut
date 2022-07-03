@@ -1,8 +1,8 @@
 module Entity.Stmt.Discern (discernStmtList) where
 
+import qualified Context.Locator as Locator
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
-import Entity.Namespace
 import Entity.Stmt
 import qualified Entity.WeakTerm.Discern as WeakTerm
 
@@ -23,9 +23,9 @@ discernStmtList axis stmtList =
       rest' <- discernStmtList axis rest
       return $ QuasiStmtDefineResource m name discarder' copier' : rest'
     WeakStmtSection m sectionName innerStmtList : rest -> do
-      pushToCurrentLocalLocator sectionName
+      Locator.pushToCurrentLocalLocator (WeakTerm.locator axis) sectionName
       innerStmtList' <- discernStmtList axis innerStmtList
-      _ <- popFromCurrentLocalLocator (axis & WeakTerm.throw) m
+      _ <- Locator.popFromCurrentLocalLocator (axis & WeakTerm.locator) m
       rest' <- discernStmtList axis rest
       return $ innerStmtList' ++ rest'
 

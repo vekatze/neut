@@ -3,7 +3,7 @@ module Context.Enum.Main
   )
 where
 
-import Context.Enum
+import qualified Context.Enum as Enum
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Lazy as Map
@@ -13,15 +13,15 @@ import Entity.EnumInfo hiding (new)
 import Entity.Global
 import qualified Entity.Hint as Hint
 
-new :: Throw.Context -> IO Axis
-new axis = do
+new :: Enum.Config -> IO Enum.Axis
+new cfg = do
   enumEnvRef <- newIORef $ Map.fromList defaultEnumEnv
   revEnumEnvRef <- newIORef $ Map.fromList $ transpose defaultEnumEnv
   return
-    Axis
-      { register = _register axis enumEnvRef revEnumEnvRef,
-        lookupType = _lookupType enumEnvRef,
-        lookupValue = _lookupValue revEnumEnvRef
+    Enum.Axis
+      { Enum.register = _register (Enum.throwCtx cfg) enumEnvRef revEnumEnvRef,
+        Enum.lookupType = _lookupType enumEnvRef,
+        Enum.lookupValue = _lookupValue revEnumEnvRef
       }
 
 type EnumEnv = Map.HashMap T.Text [EnumItem]
@@ -33,7 +33,7 @@ _register ::
   IORef EnumEnv ->
   IORef RevEnumEnv ->
   Hint.Hint ->
-  EnumTypeName ->
+  Enum.EnumTypeName ->
   [EnumItem] ->
   IO ()
 _register axis enumEnvRef revEnumEnvRef hint typeName enumItemList = do
@@ -45,12 +45,12 @@ _register axis enumEnvRef revEnumEnvRef hint typeName enumItemList = do
   let rev = Map.fromList $ zip labels (zip (repeat typeName) discriminants)
   modifyIORef' revEnumEnvRef $ Map.union rev
 
-_lookupType :: IORef EnumEnv -> EnumTypeName -> IO (Maybe [EnumItem])
+_lookupType :: IORef EnumEnv -> Enum.EnumTypeName -> IO (Maybe [EnumItem])
 _lookupType enumEnvRef typeName = do
   enumEnv <- readIORef enumEnvRef
   return $ Map.lookup typeName enumEnv
 
-_lookupValue :: IORef RevEnumEnv -> EnumValueName -> IO (Maybe (EnumTypeName, Discriminant))
+_lookupValue :: IORef RevEnumEnv -> Enum.EnumValueName -> IO (Maybe (Enum.EnumTypeName, Enum.Discriminant))
 _lookupValue revEnumEnvRef valueName = do
   revEnumEnv <- readIORef revEnumEnvRef
   return $ Map.lookup valueName revEnumEnv
@@ -64,7 +64,7 @@ transpose' (typeName, enumItemList) = do
   let (labels, discriminants) = unzip enumItemList
   zip labels (zip (repeat typeName) discriminants)
 
-defaultEnumEnv :: [(EnumTypeName, [EnumItem])]
+defaultEnumEnv :: [(Enum.EnumTypeName, [EnumItem])]
 defaultEnumEnv =
   [ (constBottom, []),
     (constTop, [(constTopUnit, 0)]),

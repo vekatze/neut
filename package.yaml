@@ -13,6 +13,7 @@ default-extensions:
   - DeriveGeneric
   - RankNTypes
   - FlexibleInstances
+  - ApplicativeDo
 
 dependencies:
   - ansi-terminal

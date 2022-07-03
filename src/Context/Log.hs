@@ -1,5 +1,6 @@
 module Context.Log
   ( Context (..),
+    Config (..),
     printNote,
     printNote',
     printWarning,
@@ -19,6 +20,11 @@ import qualified Data.Text as T
 import qualified Entity.FilePos as FilePos
 import Entity.Hint
 import Entity.Log
+
+data Config = Config
+  { shouldColorize :: Bool,
+    endOfEntry :: String
+  }
 
 newtype Context = Context
   { printLog :: Log -> IO ()

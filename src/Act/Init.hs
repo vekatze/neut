@@ -1,9 +1,13 @@
-module Act.Init (initialize) where
+module Act.Init
+  ( initialize,
+    Config (..),
+  )
+where
 
-import Context.App
+import qualified Context.Log as Log
+import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import Control.Monad
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
@@ -12,18 +16,28 @@ import Entity.Module
 import Path
 import Path.IO
 
-initialize :: Axis -> T.Text -> IO ()
-initialize axis moduleName = do
-  newModule <- constructDefaultModule moduleName
-  moduleDirExists <- doesDirExist $ parent $ moduleLocation newModule
-  if moduleDirExists
-    then axis & throw & Throw.raiseError' $ "the directory `" <> moduleName <> "` already exists"
-    else do
-      ensureDir $ parent $ moduleLocation newModule
-      ensureDir $ getReleaseDir newModule
-      ensureDir $ getSourceDir newModule
-      createModuleFile newModule
-      createMainFile newModule
+data Config = Config
+  { moduleName :: T.Text,
+    throwCfg :: Throw.Config,
+    logCfg :: Log.Config
+  }
+
+initialize :: Mode.Mode -> Config -> IO ()
+initialize mode cfg = do
+  throwCtx <- Mode.throwCtx mode $ throwCfg cfg
+  logCtx <- Mode.logCtx mode $ logCfg cfg
+  Throw.run throwCtx (Log.printLog logCtx) $ do
+    newModule <- constructDefaultModule (moduleName cfg)
+    moduleDirExists <- doesDirExist $ parent $ moduleLocation newModule
+    if moduleDirExists
+      then do
+        Throw.raiseError' throwCtx $ "the directory `" <> moduleName cfg <> "` already exists"
+      else do
+        ensureDir $ parent $ moduleLocation newModule
+        ensureDir $ getReleaseDir newModule
+        ensureDir $ getSourceDir newModule
+        createModuleFile newModule
+        createMainFile newModule
 
 createModuleFile :: Module -> IO ()
 createModuleFile newModule = do
@@ -36,7 +50,7 @@ createMainFile newModule = do
   let target = Map.toList $ moduleTarget newModule
   forM_ target $ \(_, relPath) -> do
     let mainFilePath = sourceDir </> relPath
-    TIO.writeFile (toFilePath mainFilePath) "define main : i64 =\n  0\n"
+    TIO.writeFile (toFilePath mainFilePath) "define main() : i64 as\n  0\nend\n"
 
 constructDefaultModule :: T.Text -> IO Module
 constructDefaultModule name = do

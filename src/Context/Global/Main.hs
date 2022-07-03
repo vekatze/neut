@@ -13,12 +13,12 @@ import Entity.Hint hiding (new)
 
 type NameSet = S.Set T.Text
 
-new :: Throw.Context -> IO Global.Axis
-new axis = do
+new :: Global.Config -> IO Global.Axis
+new cfg = do
   topNameSetRef <- newIORef S.empty
   return
     Global.Axis
-      { Global.register = register axis topNameSetRef,
+      { Global.register = register (Global.throwCtx cfg) topNameSetRef,
         Global.isDefined = isDefined topNameSetRef
       }
 

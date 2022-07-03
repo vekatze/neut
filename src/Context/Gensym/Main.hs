@@ -3,16 +3,16 @@ module Context.Gensym.Main
   )
 where
 
-import Context.Gensym
+import qualified Context.Gensym as Gensym
 import Data.IORef.Unboxed
 import Prelude hiding (log)
 
-new :: IO Axis
-new = do
+new :: Gensym.Config -> IO Gensym.Axis
+new _ = do
   counter <- newCounter 0
   return
-    Axis
-      { newCount = atomicAddCounter counter 1,
-        readCount = readIORefU counter,
-        writeCount = writeIORefU counter
+    Gensym.Axis
+      { Gensym.newCount = atomicAddCounter counter 1,
+        Gensym.readCount = readIORefU counter,
+        Gensym.writeCount = writeIORefU counter
       }

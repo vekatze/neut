@@ -8,6 +8,7 @@ where
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
+import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -27,7 +28,10 @@ data Axis = Axis
   { throw :: Throw.Context,
     gensym :: Gensym.Axis,
     enum :: Enum.Axis,
-    global :: Global.Axis
+    global :: Global.Axis,
+    locator :: Locator.Axis
+    -- currentGlobalLocator :: T.Text,
+    -- currentLocalLocator :: [T.Text]
   }
 
 type NameEnv = Map.HashMap T.Text Ident
@@ -116,7 +120,7 @@ discern axis nenv term =
       e' <- discern axis nenv e
       t' <- discern axis nenv t
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        candList <- constructCandList constructorName ("::" `T.isInfixOf` constructorName)
+        candList <- getCandidates axis constructorName ("::" `T.isInfixOf` constructorName)
         constructorName' <- resolveSymbol (axis & throw) m (asConstructor (axis & global) m) constructorName candList
         case constructorName' of
           Just (_, newName) -> do
@@ -202,7 +206,7 @@ discernEnumCase :: Axis -> EnumCase -> IO EnumCase
 discernEnumCase axis enumCase =
   case enumCase of
     m :< EnumCaseLabel _ l -> do
-      candList <- constructCandList l False
+      candList <- getCandidates axis l False
       ml <- resolveSymbol (axis & throw) m (asEnumCase (axis & enum) m) l $ l : candList
       case ml of
         Just l' ->
@@ -214,10 +218,14 @@ discernEnumCase axis enumCase =
 
 resolveVar :: Axis -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
 resolveVar axis m x termKind isDefinite = do
-  candList <- constructCandList x isDefinite
+  candList <- getCandidates axis x isDefinite
   tryCand (resolveSymbol (axis & throw) m (asGlobalVar (axis & global) m) x candList) $ do
     let candList' = x : candList
     tryCand (resolveSymbol (axis & throw) m (asEnumIntro (axis & enum) m) x candList') $ do
       tryCand (resolveSymbol (axis & throw) m (asEnum (axis & enum) m) x candList') $
         tryCand (resolveSymbol (axis & throw) m (return . asWeakConstant m) x candList') $ do
           (axis & throw & Throw.raiseError) m $ "undefined " <> termKind <> ": " <> x
+
+getCandidates :: Axis -> T.Text -> Bool -> IO [T.Text]
+getCandidates axis name isDefinite = do
+  constructCandList (axis & locator) name isDefinite

@@ -1,11 +1,13 @@
 module Context.Throw
   ( Context (..),
+    Config (..),
     raiseError,
     raiseError',
     raiseCritical,
     raiseCritical',
     raiseSyntaxError,
     raiseIfProcessFailed,
+    run,
   )
 where
 
@@ -21,6 +23,17 @@ data Context = Context
   { throw :: forall a. Error -> IO a,
     try :: forall a. IO a -> IO (Either Error a)
   }
+
+data Config = Config {}
+
+run :: Context -> (Log -> IO ()) -> IO a -> IO a
+run throwCtx printer c = do
+  resultOrErr <- try throwCtx c
+  case resultOrErr of
+    Left (Error err) ->
+      foldr ((>>) . printer) (exitWith (ExitFailure 1)) err
+    Right result ->
+      return result
 
 raiseError :: Context -> Hint -> T.Text -> IO a
 raiseError ctx m text =

@@ -1,6 +1,8 @@
 module Entity.Source where
 
 import Context.App
+import qualified Context.Locator as Locator
+import qualified Context.Throw as Throw
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
@@ -8,7 +10,6 @@ import qualified Data.Text as T
 import Entity.Global
 import Entity.Hint
 import Entity.Module
-import Entity.Namespace
 import Entity.OutputKind
 import Entity.SourceLocator
 import qualified Entity.SourceLocator.Reflect as SourceLocator
@@ -60,15 +61,15 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-getLocator :: Axis -> Source -> IO T.Text
-getLocator axis source = do
+getGlobalLocator :: Throw.Context -> Source -> IO T.Text
+getGlobalLocator axis source = do
   domain <- getDomain axis (sourceModule source)
   sigTail <- getLocatorTail source
   return $ T.intercalate "." $ domain : sigTail
 
-getDomain :: Axis -> Module -> IO T.Text
+getDomain :: Throw.Context -> Module -> IO T.Text
 getDomain axis targetModule = do
-  mainModule <- getMainModule (axis & throw)
+  mainModule <- getMainModule axis
   if moduleLocation mainModule == moduleLocation targetModule
     then return defaultModulePrefix
     else return $ T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
@@ -96,11 +97,14 @@ getNextSource axis m currentModule sigText = do
 
 setupSectionPrefix :: Axis -> Source -> IO ()
 setupSectionPrefix axis currentSource = do
-  locator <- getLocator axis currentSource
-  activateGlobalLocator locator
-  writeIORef currentGlobalLocatorRef locator
+  globalLocator <- getGlobalLocator (throw axis) currentSource
+  Locator.activateGlobalLocator (locator axis) globalLocator
+  Locator.setCurrentGlobalLocator (locator axis) globalLocator
 
-getAdditionalChecksumAlias :: Axis -> Source -> IO [(T.Text, T.Text)]
+-- activateGlobalLocator locator
+-- writeIORef currentGlobalLocatorRef locator
+
+getAdditionalChecksumAlias :: Throw.Context -> Source -> IO [(T.Text, T.Text)]
 getAdditionalChecksumAlias axis source = do
   domain <- getDomain axis $ sourceModule source
   if defaultModulePrefix == domain
@@ -109,8 +113,26 @@ getAdditionalChecksumAlias axis source = do
 
 initializeNamespace :: Axis -> Source -> IO ()
 initializeNamespace axis source = do
-  additionalChecksumAlias <- getAdditionalChecksumAlias axis source
+  additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
   writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
-  writeIORef globalLocatorListRef []
-  writeIORef localLocatorListRef []
+  Locator.clearActiveLocators (locator axis)
+  -- writeIORef globalLocatorListRef []
+  -- writeIORef localLocatorListRef []
   writeIORef locatorAliasMapRef Map.empty
+
+-- getMainSource :: Throw.Context -> IO Source
+-- getMainSource axis = do
+--   mainFilePath <- resolveTarget axis target
+--   getMainSource (axis & throw) mainFilePath
+
+-- resolveTarget :: Throw.Context -> Target -> IO (Path Abs File)
+-- resolveTarget axis target = do
+--   mainModule <- getMainModule axis
+--   case getTargetFilePath mainModule (T.pack target) of
+--     Just path ->
+--       return path
+--     Nothing -> do
+--       -- l <-
+--       _ <- axis & Throw.raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
+--       -- outputLog l
+--       exitWith (ExitFailure 1)

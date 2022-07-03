@@ -2,11 +2,20 @@ module Act.Build
   ( build,
     clean,
     check,
+    BuildConfig (..),
+    CheckConfig (..),
+    CleanConfig (..),
   )
 where
 
 import Context.App
+import qualified Context.Enum as Enum
+import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
+import qualified Context.Locator as Locator
+import qualified Context.Log as Log
+import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
@@ -26,6 +35,7 @@ import Entity.AliasInfo
 import Entity.Global
 import Entity.Hint
 import Entity.Module
+import Entity.Module.Reflect
 import Entity.OutputKind
 import Entity.Source
 import Path
@@ -39,6 +49,7 @@ import Scene.Parse.Core
 import Scene.Parse.Import
 import System.Exit
 import System.IO.Unsafe
+import Prelude hiding (log)
 
 data VisitInfo
   = VisitInfoActive
@@ -50,59 +61,107 @@ type IsCacheAvailable =
 type IsObjectAvailable =
   Bool
 
-build :: Axis -> Maybe Target -> IO ()
-build axis mTarget = do
-  ensureNotInLibDir axis "build"
-  case mTarget of
-    Just target ->
-      build' axis target
-    Nothing -> do
-      mainModule <- getMainModule (axis & throw)
-      forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-        build' axis (T.unpack target)
+data BuildConfig = BuildConfig
+  { mTarget :: Maybe Target,
+    mClangOptString :: Maybe String,
+    buildLogCfg :: Log.Config,
+    buildThrowCfg :: Throw.Config
+  }
 
-build' :: Axis -> Target -> IO ()
-build' axis target = do
-  mainFilePath <- resolveTarget axis target
-  mainSource <- getMainSource axis mainFilePath
+build :: Mode.Mode -> BuildConfig -> IO ()
+build mode cfg = do
+  throwCtx <- Mode.throwCtx mode $ buildThrowCfg cfg
+  logCtx <- Mode.logCtx mode $ buildLogCfg cfg
+  Throw.run throwCtx (Log.printLog logCtx) $ do
+    initializeMainModule throwCtx
+    ensureNotInLibDir throwCtx "build"
+    case mTarget cfg of
+      Just target ->
+        build' mode throwCtx logCtx target
+      Nothing -> do
+        mainModule <- getMainModule throwCtx
+        forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
+          build' mode throwCtx logCtx (T.unpack target)
+
+build' :: Mode.Mode -> Throw.Context -> Log.Context -> Target -> IO ()
+build' mode throwCtx logCtx target = do
+  mainFilePath <- resolveTarget throwCtx target
+  mainSource <- getMainSource throwCtx mainFilePath
+  ctx <- newCtx mode throwCtx logCtx mainSource
   setMainFilePath mainFilePath
-  (_, isObjectAvailable, dependenceSeq) <- computeDependence axis mainSource
+  (_, isObjectAvailable, dependenceSeq) <- computeDependence ctx mainSource
   hasObjectSet <- readIORef hasObjectSetRef
-  mapM_ (compile axis hasObjectSet) dependenceSeq
-  unless isObjectAvailable $ link axis target $ toList dependenceSeq
+  mapM_ (compile ctx hasObjectSet) dependenceSeq
+  unless isObjectAvailable $ link ctx target $ toList dependenceSeq
 
-check :: Axis -> Maybe FilePath -> IO ()
-check axis mFilePathStr = do
-  ensureNotInLibDir axis "check"
-  case mFilePathStr of
-    Just filePathStr -> do
-      filePath <- resolveFile' filePathStr
-      check' axis filePath
-    Nothing -> do
-      mainModule <- getMainModule (axis & throw)
-      forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
-        check' axis $ getSourceDir mainModule </> relPath
+newCtx :: Mode.Mode -> Throw.Context -> Log.Context -> Source -> IO Axis
+newCtx mode throwCtx logCtx source = do
+  globalLocator <- getGlobalLocator throwCtx source
+  gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
+  enumCtx <- Mode.enumCtx mode $ Enum.Config {Enum.throwCtx = throwCtx}
+  llvmCtx <- Mode.llvmCtx mode $ LLVM.Config {LLVM.throwCtx = throwCtx, LLVM.clangOptString = ""} -- fixme
+  globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
+  locatorCtx <-
+    Mode.locatorCtx mode $
+      Locator.Config
+        { Locator.currentGlobalLocator = globalLocator,
+          Locator.currentLocalLocator = [],
+          Locator.throwCtx = throwCtx
+        }
+  return $
+    Axis
+      { log = logCtx,
+        throw = throwCtx,
+        gensym = gensymCtx,
+        enum = enumCtx,
+        llvm = llvmCtx,
+        global = globalCtx,
+        locator = locatorCtx
+      }
 
-check' :: Axis -> Path Abs File -> IO ()
-check' axis filePath = do
-  ensureFileModuleSanity axis filePath
-  mainModule <- getMainModule (axis & throw)
+data CheckConfig = CheckConfig
+  { mFilePathString :: Maybe FilePath,
+    checkLogCfg :: Log.Config,
+    checkThrowCfg :: Throw.Config
+  }
+
+check :: Mode.Mode -> CheckConfig -> IO ()
+check mode cfg = do
+  throwCtx <- Mode.throwCtx mode $ checkThrowCfg cfg
+  logCtx <- Mode.logCtx mode $ checkLogCfg cfg
+  Throw.run throwCtx (Log.printLog logCtx) $ do
+    initializeMainModule throwCtx
+    ensureNotInLibDir throwCtx "check"
+    case mFilePathString cfg of
+      Just filePathStr -> do
+        filePath <- resolveFile' filePathStr
+        check' mode throwCtx logCtx filePath
+      Nothing -> do
+        mainModule <- getMainModule throwCtx
+        forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
+          check' mode throwCtx logCtx $ getSourceDir mainModule </> relPath
+
+check' :: Mode.Mode -> Throw.Context -> Log.Context -> Path Abs File -> IO ()
+check' mode throwCtx logCtx filePath = do
+  ensureFileModuleSanity throwCtx filePath
+  mainModule <- getMainModule throwCtx
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  (_, _, dependenceSeq) <- computeDependence axis source
-  mapM_ (check'' axis) dependenceSeq
+  ctx <- newCtx mode throwCtx logCtx source
+  (_, _, dependenceSeq) <- computeDependence ctx source
+  mapM_ (check'' ctx) dependenceSeq
 
-ensureFileModuleSanity :: Axis -> Path Abs File -> IO ()
-ensureFileModuleSanity axis filePath = do
-  mainModule <- getMainModule (axis & throw)
+ensureFileModuleSanity :: Throw.Context -> Path Abs File -> IO ()
+ensureFileModuleSanity ctx filePath = do
+  mainModule <- getMainModule ctx
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    axis & throw & Throw.raiseError' $ "the specified file is not in the current module"
+    Throw.raiseError' ctx "the specified file is not in the current module"
 
-ensureNotInLibDir :: Axis -> T.Text -> IO ()
-ensureNotInLibDir axis commandName = do
-  mainModule <- getMainModule (axis & throw)
+ensureNotInLibDir :: Throw.Context -> T.Text -> IO ()
+ensureNotInLibDir ctx commandName = do
+  mainModule <- getMainModule ctx
   libDir <- getLibraryDirPath
   when (isProperPrefixOf libDir (moduleLocation mainModule)) $
-    axis & throw & Throw.raiseError' $
+    Throw.raiseError' ctx $
       "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
 check'' :: Axis -> Source -> IO ()
@@ -161,12 +220,21 @@ link axis target sourceList = do
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
   (axis & llvm & LLVM.link) objectPathList outputPath
 
-clean :: Axis -> IO ()
-clean axis = do
-  mainModule <- getMainModule (axis & throw)
-  let targetDir = getTargetDir mainModule
-  b <- doesDirExist targetDir
-  when b $ removeDirRecur $ getTargetDir mainModule
+data CleanConfig = CleanConfig
+  { cleanLogCfg :: Log.Config,
+    cleanThrowCfg :: Throw.Config
+  }
+
+clean :: Mode.Mode -> CleanConfig -> IO ()
+clean mode cfg = do
+  throwCtx <- Mode.throwCtx mode $ cleanThrowCfg cfg
+  logCtx <- Mode.logCtx mode $ cleanLogCfg cfg
+  Throw.run throwCtx (Log.printLog logCtx) $ do
+    initializeMainModule throwCtx
+    mainModule <- getMainModule throwCtx
+    let targetDir = getTargetDir mainModule
+    b <- doesDirExist targetDir
+    when b $ removeDirRecur $ getTargetDir mainModule
 
 getExecutableOutputPath :: Axis -> Target -> IO (Path Abs File)
 getExecutableOutputPath axis target = do
@@ -180,9 +248,9 @@ sourceToOutputPath kind source = do
   (relPathWithoutExtension, _) <- splitExtension relPath
   addExtensionAlongKind (artifactDir </> relPathWithoutExtension) kind
 
-getMainSource :: Axis -> Path Abs File -> IO Source
+getMainSource :: Throw.Context -> Path Abs File -> IO Source
 getMainSource axis mainSourceFilePath = do
-  mainModule <- getMainModule (axis & throw)
+  mainModule <- getMainModule axis
   return $
     Source
       { sourceModule = mainModule,
@@ -205,8 +273,8 @@ getMainFunctionNameIfEntryPoint axis source = do
 
 getMainFunctionName' :: Axis -> Source -> IO T.Text
 getMainFunctionName' axis source = do
-  locator <- getLocator axis source
-  return $ locator <> definiteSep <> "main"
+  globalLocator <- getGlobalLocator (axis & throw) source
+  return $ globalLocator <> definiteSep <> "main"
 
 {-# NOINLINE traceSourceListRef #-}
 traceSourceListRef :: IORef [Source]
@@ -341,14 +409,14 @@ addExtensionAlongKind file kind =
 type Target =
   String
 
-resolveTarget :: Axis -> Target -> IO (Path Abs File)
+resolveTarget :: Throw.Context -> Target -> IO (Path Abs File)
 resolveTarget axis target = do
-  mainModule <- getMainModule (axis & throw)
+  mainModule <- getMainModule axis
   case getTargetFilePath mainModule (T.pack target) of
     Just path ->
       return path
     Nothing -> do
       -- l <-
-      _ <- axis & throw & Throw.raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
+      _ <- Throw.raiseError' axis $ "no such target is defined: `" <> T.pack target <> "`"
       -- outputLog l
       exitWith (ExitFailure 1)

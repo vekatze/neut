@@ -1,6 +1,6 @@
 module Context.LLVM.Main (new) where
 
-import Context.LLVM
+import qualified Context.LLVM as LLVM
 import qualified Context.Throw as Throw
 import qualified Data.ByteString.Lazy as L
 import Entity.OutputKind
@@ -15,12 +15,12 @@ type ClangOption = String
 
 type LLVMCode = L.ByteString
 
-new :: ClangOptString -> Throw.Context -> IO Axis
-new clangOptStr axis = do
+new :: LLVM.Config -> IO LLVM.Axis
+new cfg = do
   return
-    Axis
-      { emit = _emit axis clangOptStr,
-        link = _link axis clangOptStr
+    LLVM.Axis
+      { LLVM.emit = _emit (LLVM.throwCtx cfg) (LLVM.clangOptString cfg),
+        LLVM.link = _link (LLVM.throwCtx cfg) (LLVM.clangOptString cfg)
       }
 
 _emit :: Throw.Context -> ClangOptString -> OutputKind -> LLVMCode -> Path Abs File -> IO ()

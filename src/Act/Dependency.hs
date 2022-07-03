@@ -1,7 +1,13 @@
-module Act.Dependency (get, tidy) where
+module Act.Dependency
+  ( get,
+    tidy,
+    GetConfig (..),
+    TidyConfig (..),
+  )
+where
 
-import Context.App
 import qualified Context.Log as Log
+import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import Control.Monad
 import Crypto.Hash.SHA256 as SHA256
@@ -24,38 +30,88 @@ import System.IO
 import System.Process
 import Prelude hiding (log)
 
-get :: Axis -> ModuleAlias -> ModuleURL -> IO ()
-get axis alias url = do
-  mainModule <- getMainModule (axis & throw)
-  withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
-    download axis tempFilePath alias url
-    archive <- B.hGetContents tempFileHandle
-    let checksum = computeModuleChecksum archive
-    extractToLibDir axis tempFilePath alias checksum
-    addDependencyToModuleFile axis mainModule alias url checksum
-    getLibraryModule axis alias checksum >>= tidy' axis
+data Context = Context
+  { getThrowCtx :: Throw.Context,
+    getLogCtx :: Log.Context
+  }
 
-tidy :: Axis -> IO ()
-tidy axis = do
-  getMainModule (axis & throw) >>= tidy' axis
+data GetConfig = GetConfig
+  { moduleAlias :: ModuleAlias,
+    moduleURL :: ModuleURL,
+    throwCfg :: Throw.Config,
+    logCfg :: Log.Config
+  }
 
-tidy' :: Axis -> Module -> IO ()
-tidy' axis targetModule = do
-  (axis & log & Log.printNote') $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
+get :: Mode.Mode -> GetConfig -> IO ()
+get mode cfg = do
+  throwCtx <- Mode.throwCtx mode (throwCfg cfg)
+  logCtx <- Mode.logCtx mode (logCfg cfg)
+  Throw.run throwCtx (Log.printLog logCtx) $ do
+    Module.initializeMainModule throwCtx
+    let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
+    mainModule <- getMainModule throwCtx
+    let alias = moduleAlias cfg
+    let url = moduleURL cfg
+    withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
+      download ctx tempFilePath alias url
+      archive <- B.hGetContents tempFileHandle
+      let checksum = computeModuleChecksum archive
+      extractToLibDir ctx tempFilePath alias checksum
+      addDependencyToModuleFile logCtx mainModule alias url checksum
+      getLibraryModule throwCtx alias checksum >>= tidy' ctx
+
+-- get :: Mode.Mode -> ModuleAlias -> ModuleURL -> IO ()
+-- get mode alias url = do
+--   throwCtx <- Mode.throwCtx mode $ Throw.Config {}
+--   logCtx <- Mode.logCtx mode $ Log.Config {}
+--   let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
+--   mainModule <- getMainModule throwCtx
+--   withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
+--     download ctx tempFilePath alias url
+--     archive <- B.hGetContents tempFileHandle
+--     let checksum = computeModuleChecksum archive
+--     extractToLibDir ctx tempFilePath alias checksum
+--     addDependencyToModuleFile logCtx mainModule alias url checksum
+--     getLibraryModule throwCtx alias checksum >>= tidy' ctx
+
+data TidyConfig = TidyConfig
+  { tidyThrowCfg :: Throw.Config,
+    tidyLogCfg :: Log.Config
+  }
+
+tidy :: Mode.Mode -> TidyConfig -> IO ()
+tidy mode cfg = do
+  throwCtx <- Mode.throwCtx mode (tidyThrowCfg cfg)
+  logCtx <- Mode.logCtx mode (tidyLogCfg cfg)
+  Throw.run throwCtx (Log.printLog logCtx) $ do
+    Module.initializeMainModule throwCtx
+    let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
+    getMainModule throwCtx >>= tidy' ctx
+
+-- tidy :: Mode.Mode -> Throw.Config -> Log.Config -> IO ()
+-- tidy mode throwCfg logCfg = do
+--   throwCtx <- Mode.throwCtx mode throwCfg
+--   logCtx <- Mode.logCtx mode logCfg
+--   let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
+--   getMainModule throwCtx >>= tidy' ctx
+
+tidy' :: Context -> Module -> IO ()
+tidy' ctx targetModule = do
+  Log.printNote' (getLogCtx ctx) $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
   let dependency = Map.toList $ moduleDependency targetModule
   forM_ dependency $ \(alias, (url, checksum)) ->
-    installIfNecessary axis (ModuleAlias alias) url checksum
+    installIfNecessary ctx (ModuleAlias alias) url checksum
 
-installIfNecessary :: Axis -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
-installIfNecessary axis alias url checksum = do
+installIfNecessary :: Context -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
+installIfNecessary ctx alias url checksum = do
   isInstalled <- checkIfInstalled checksum
   unless isInstalled $
     withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
-      download axis tempFilePath alias url
+      download ctx tempFilePath alias url
       archive <- B.hGetContents tempFileHandle
       let archiveModuleChecksum = computeModuleChecksum archive
       when (checksum /= archiveModuleChecksum) $
-        axis & throw & Throw.raiseError' $
+        Throw.raiseError' (getThrowCtx ctx) $
           "the checksum of the module `"
             <> extract alias
             <> "` is different from the expected one:"
@@ -65,8 +121,8 @@ installIfNecessary axis alias url checksum = do
             <> "\n- "
             <> showModuleChecksum archiveModuleChecksum
             <> " (actual)"
-      extractToLibDir axis tempFilePath alias checksum
-      getLibraryModule axis alias checksum >>= tidy' axis
+      extractToLibDir ctx tempFilePath alias checksum
+      getLibraryModule (getThrowCtx ctx) alias checksum >>= tidy' ctx
 
 checkIfInstalled :: ModuleChecksum -> IO Bool
 checkIfInstalled checksum = do
@@ -77,48 +133,48 @@ getLibraryModuleFilePath checksum = do
   moduleDir <- getModuleDir checksum
   return $ moduleDir </> moduleFile
 
-getLibraryModule :: Axis -> ModuleAlias -> ModuleChecksum -> IO Module
-getLibraryModule axis alias checksum@(ModuleChecksum c) = do
+getLibraryModule :: Throw.Context -> ModuleAlias -> ModuleChecksum -> IO Module
+getLibraryModule throwCtx alias checksum@(ModuleChecksum c) = do
   moduleFilePath <- getLibraryModuleFilePath checksum
   moduleFileExists <- doesFileExist moduleFilePath
   if not moduleFileExists
     then
-      axis & throw & Throw.raiseError' $
+      throwCtx & Throw.raiseError' $
         "could not find the module file for `" <> extract alias <> "` (" <> c <> ")."
-    else Module.fromFilePath (axis & throw) moduleFilePath
+    else Module.fromFilePath throwCtx moduleFilePath
 
 getModuleDir :: ModuleChecksum -> IO (Path Abs Dir)
 getModuleDir (ModuleChecksum checksum) = do
   libDir <- getLibraryDirPath
   resolveDir libDir $ T.unpack checksum
 
-download :: Axis -> Path Abs File -> ModuleAlias -> ModuleURL -> IO ()
-download axis tempFilePath alias (ModuleURL url) = do
+download :: Context -> Path Abs File -> ModuleAlias -> ModuleURL -> IO ()
+download ctx tempFilePath alias (ModuleURL url) = do
   let curlCmd = proc "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
   (_, _, Just curlErrorHandler, curlHandler) <-
     createProcess curlCmd {std_err = CreatePipe}
-  axis & log & Log.printNote' $ "downloading `" <> extract alias <> "` from " <> url
+  getLogCtx ctx & Log.printNote' $ "downloading `" <> extract alias <> "` from " <> url
   curlExitCode <- waitForProcess curlHandler
-  Throw.raiseIfProcessFailed (axis & throw) "curl" curlExitCode curlErrorHandler
+  Throw.raiseIfProcessFailed (getThrowCtx ctx) "curl" curlExitCode curlErrorHandler
 
 computeModuleChecksum :: B.ByteString -> ModuleChecksum
 computeModuleChecksum fileByteString =
   ModuleChecksum $ TE.decodeUtf8 $ Base64.encode $ SHA256.hash fileByteString
 
-extractToLibDir :: Axis -> Path Abs File -> ModuleAlias -> ModuleChecksum -> IO ()
-extractToLibDir axis tempFilePath alias c@(ModuleChecksum checksum) = do
+extractToLibDir :: Context -> Path Abs File -> ModuleAlias -> ModuleChecksum -> IO ()
+extractToLibDir ctx tempFilePath alias c@(ModuleChecksum checksum) = do
   targetDirPath <- getModuleDir c
   ensureDir targetDirPath
   let tarCmd = proc "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
   (_, _, Just tarErrorHandler, tarHandler) <-
     createProcess tarCmd {std_err = CreatePipe}
-  axis & log & Log.printNote' $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
+  getLogCtx ctx & Log.printNote' $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
   tarExitCode <- waitForProcess tarHandler
-  Throw.raiseIfProcessFailed (axis & throw) "tar" tarExitCode tarErrorHandler
+  Throw.raiseIfProcessFailed (getThrowCtx ctx) "tar" tarExitCode tarErrorHandler
 
-addDependencyToModuleFile :: Axis -> Module -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
-addDependencyToModuleFile axis targetModule alias url checksum = do
-  axis & log & Log.printNote' $ "adding the dependency of `" <> extract alias <> "` to the module file"
+addDependencyToModuleFile :: Log.Context -> Module -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
+addDependencyToModuleFile logCtx targetModule alias url checksum = do
+  logCtx & Log.printNote' $ "adding the dependency of `" <> extract alias <> "` to the module file"
   let targetModule' = addDependency alias url checksum targetModule
   TIO.writeFile (toFilePath $ moduleLocation targetModule') $ ppModule targetModule'
 
