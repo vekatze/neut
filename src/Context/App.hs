@@ -10,6 +10,7 @@ import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
+import Entity.Source
 
 data Axis = Axis
   { log :: Log.Context,
@@ -19,5 +20,6 @@ data Axis = Axis
     enum :: Enum.Axis,
     global :: Global.Axis,
     locator :: Locator.Axis,
-    shouldCancelAlloc :: Bool
+    shouldCancelAlloc :: Bool,
+    initialSource :: Source
   }

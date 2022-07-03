@@ -27,24 +27,6 @@ import qualified System.Info as System
 -- global variables
 --
 
-{-# NOINLINE mainFilePathRef #-}
-mainFilePathRef :: IORef (Maybe (Path Abs File))
-mainFilePathRef =
-  unsafePerformIO (newIORef Nothing)
-
-setMainFilePath :: Path Abs File -> IO ()
-setMainFilePath path =
-  modifyIORef' mainFilePathRef $ const $ Just path
-
-getMainFilePath :: Throw.Context -> IO (Path Abs File)
-getMainFilePath axis = do
-  mainFilePathOrNothing <- readIORef mainFilePathRef
-  case mainFilePathOrNothing of
-    Just mainFilePath ->
-      return mainFilePath
-    Nothing ->
-      axis & Throw.raiseCritical' $ "no main file path is set"
-
 {-# NOINLINE targetPlatformRef #-}
 targetPlatformRef :: IORef String
 targetPlatformRef =

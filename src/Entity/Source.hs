@@ -1,13 +1,7 @@
 module Entity.Source where
 
-import Context.App
-import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
-import Data.Function
-import qualified Data.HashMap.Lazy as Map
-import Data.IORef
 import qualified Data.Text as T
-import Entity.Global
 import Entity.Hint
 import Entity.Module
 import Entity.OutputKind
@@ -85,9 +79,9 @@ isMainFile source = do
   sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
   return $ elem sourceRelPath $ moduleTarget (sourceModule source)
 
-getNextSource :: Axis -> Hint -> Module -> T.Text -> IO Source
-getNextSource axis m currentModule sigText = do
-  srcLocator <- SourceLocator.fromText axis m currentModule sigText
+getNextSource :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
+getNextSource ctx m currentModule sigText = do
+  srcLocator <- SourceLocator.fromText ctx m currentModule sigText
   srcAbsPath <- SourceLocator.toAbsPath srcLocator
   return $
     Source
@@ -95,11 +89,11 @@ getNextSource axis m currentModule sigText = do
         sourceFilePath = srcAbsPath
       }
 
-setupSectionPrefix :: Axis -> Source -> IO ()
-setupSectionPrefix axis currentSource = do
-  globalLocator <- getGlobalLocator (throw axis) currentSource
-  Locator.activateGlobalLocator (locator axis) globalLocator
-  Locator.setCurrentGlobalLocator (locator axis) globalLocator
+-- setupSectionPrefix :: Axis -> Source -> IO ()
+-- setupSectionPrefix axis currentSource = do
+--   globalLocator <- getGlobalLocator (throw axis) currentSource
+--   Locator.activateGlobalLocator (locator axis) globalLocator
+--   Locator.setCurrentGlobalLocator (locator axis) globalLocator
 
 -- activateGlobalLocator locator
 -- writeIORef currentGlobalLocatorRef locator
@@ -111,12 +105,12 @@ getAdditionalChecksumAlias axis source = do
     then return []
     else return [(defaultModulePrefix, domain)]
 
-initializeNamespace :: Axis -> Source -> IO ()
-initializeNamespace axis source = do
-  additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
-  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
-  Locator.clearActiveLocators (locator axis)
-  writeIORef locatorAliasMapRef Map.empty
+-- initializeNamespace :: Axis -> Source -> IO ()
+-- initializeNamespace axis source = do
+--   additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
+--   writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
+--   Locator.clearActiveLocators (locator axis)
+--   writeIORef locatorAliasMapRef Map.empty
 
 -- getMainSource :: Throw.Context -> IO Source
 -- getMainSource axis = do

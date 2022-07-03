@@ -89,8 +89,7 @@ build' mode throwCtx logCtx cancelAllocFlag target = do
   mainFilePath <- resolveTarget throwCtx target
   mainSource <- getMainSource throwCtx mainFilePath
   ctx <- newCtx mode throwCtx logCtx cancelAllocFlag mainSource
-  setMainFilePath mainFilePath
-  (_, isObjectAvailable, dependenceSeq) <- computeDependence ctx mainSource
+  (_, isObjectAvailable, dependenceSeq) <- computeDependence throwCtx mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   mapM_ (compile ctx hasObjectSet) dependenceSeq
   unless isObjectAvailable $ link ctx target $ toList dependenceSeq
@@ -118,7 +117,8 @@ newCtx mode throwCtx logCtx cancelAllocFlag source = do
         App.llvm = llvmCtx,
         App.global = globalCtx,
         App.locator = locatorCtx,
-        App.shouldCancelAlloc = cancelAllocFlag
+        App.shouldCancelAlloc = cancelAllocFlag,
+        App.initialSource = source
       }
 
 data CheckConfig = CheckConfig
@@ -149,7 +149,7 @@ check' mode throwCtx logCtx filePath = do
   mainModule <- getMainModule throwCtx
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
   ctx <- newCtx mode throwCtx logCtx False source
-  (_, _, dependenceSeq) <- computeDependence ctx source
+  (_, _, dependenceSeq) <- computeDependence throwCtx source
   mapM_ (check'' ctx) dependenceSeq
 
 ensureFileModuleSanity :: Throw.Context -> Path Abs File -> IO ()
@@ -268,8 +268,7 @@ getMainFunctionName axis source = do
 
 getMainFunctionNameIfEntryPoint :: App.Axis -> Source -> IO (Maybe T.Text)
 getMainFunctionNameIfEntryPoint axis source = do
-  mainFilePath <- getMainFilePath (axis & App.throw)
-  if sourceFilePath source == mainFilePath
+  if sourceFilePath source == sourceFilePath (App.initialSource axis)
     then return <$> getMainFunctionName' axis source
     else return Nothing
 
@@ -293,13 +292,13 @@ sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
 sourceChildrenMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-computeDependence :: App.Axis -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
-computeDependence axis source = do
+computeDependence :: Throw.Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
+computeDependence ctx source = do
   visitEnv <- readIORef visitEnvRef
   let path = sourceFilePath source
   case Map.lookup path visitEnv of
     Just VisitInfoActive ->
-      raiseCyclicPath axis source
+      raiseCyclicPath ctx source
     Just VisitInfoFinish -> do
       hasCacheSet <- readIORef hasCacheSetRef
       hasObjectSet <- readIORef hasObjectSetRef
@@ -307,8 +306,8 @@ computeDependence axis source = do
     Nothing -> do
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
       modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
-      children <- getChildren axis source
-      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (computeDependence axis) children
+      children <- getChildren ctx source
+      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (computeDependence ctx) children
       modifyIORef' traceSourceListRef tail
       modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
       isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
@@ -351,12 +350,12 @@ isItemAvailable source itemPath = do
       itemModTime <- getModificationTime itemPath
       return $ itemModTime > srcModTime
 
-raiseCyclicPath :: App.Axis -> Source -> IO a
-raiseCyclicPath axis source = do
+raiseCyclicPath :: Throw.Context -> Source -> IO a
+raiseCyclicPath ctx source = do
   traceSourceList <- readIORef traceSourceListRef
   let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
   let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-  (axis & App.throw & Throw.raiseError) m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+  Throw.raiseError ctx m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
@@ -378,8 +377,8 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
-getChildren :: App.Axis -> Source -> IO [Source]
-getChildren axis currentSource = do
+getChildren :: Throw.Context -> Source -> IO [Source]
+getChildren ctx currentSource = do
   sourceChildrenMap <- readIORef sourceChildrenMapRef
   let currentSourceFilePath = sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
@@ -389,7 +388,7 @@ getChildren axis currentSource = do
       let path = sourceFilePath currentSource
       -- initializeParserForFile $ sourceFilePath currentSource
       -- skip
-      (sourceList, aliasInfoList) <- run (App.throw axis) (parseImportSequence axis (sourceModule currentSource)) path
+      (sourceList, aliasInfoList) <- run ctx (parseImportSequence ctx (sourceModule currentSource)) path
       -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
       updateSourceAliasMapRef currentSourceFilePath aliasInfoList

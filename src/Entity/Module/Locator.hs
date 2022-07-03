@@ -1,9 +1,7 @@
 module Entity.Module.Locator (getNextModule) where
 
-import Context.App
-import qualified Context.Throw as Throw
+import Context.Throw
 import Control.Monad
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -17,9 +15,9 @@ import Path
 import Path.IO
 import System.IO.Unsafe
 
-getNextModule :: Axis -> Hint -> Module -> ModuleAlias -> IO Module
-getNextModule axis m currentModule nextModuleAlias = do
-  nextModuleFilePath <- getNextModuleFilePath axis m currentModule nextModuleAlias
+getNextModule :: Context -> Hint -> Module -> ModuleAlias -> IO Module
+getNextModule ctx m currentModule nextModuleAlias = do
+  nextModuleFilePath <- getNextModuleFilePath ctx m currentModule nextModuleAlias
   moduleCacheMap <- readIORef moduleCacheMapRef
   case Map.lookup nextModuleFilePath moduleCacheMap of
     Just nextModule ->
@@ -27,25 +25,25 @@ getNextModule axis m currentModule nextModuleAlias = do
     Nothing -> do
       moduleFileExists <- doesFileExist nextModuleFilePath
       unless moduleFileExists $ do
-        (axis & throw & Throw.raiseError) m $
+        raiseError ctx m $
           T.pack "could not find the module file for `"
             <> extract nextModuleAlias
             <> "`"
-      nextModule <- Module.fromFilePath (axis & throw) nextModuleFilePath
+      nextModule <- Module.fromFilePath ctx nextModuleFilePath
       modifyIORef' moduleCacheMapRef $ Map.insert nextModuleFilePath nextModule
       return nextModule
 
-getNextModuleFilePath :: Axis -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
-getNextModuleFilePath axis m currentModule nextModuleAlias = do
-  moduleDirPath <- getNextModuleDirPath axis m currentModule nextModuleAlias
+getNextModuleFilePath :: Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
+getNextModuleFilePath ctx m currentModule nextModuleAlias = do
+  moduleDirPath <- getNextModuleDirPath ctx m currentModule nextModuleAlias
   return $ moduleDirPath </> moduleFile
 
-getNextModuleDirPath :: Axis -> Hint -> Module -> ModuleAlias -> IO (Path Abs Dir)
-getNextModuleDirPath axis m currentModule nextModuleAlias =
+getNextModuleDirPath :: Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs Dir)
+getNextModuleDirPath ctx m currentModule nextModuleAlias =
   if nextModuleAlias == ModuleAlias defaultModulePrefix
-    then getCurrentFilePath (axis & throw) >>= filePathToModuleFileDir axis
+    then getCurrentFilePath ctx >>= filePathToModuleFileDir ctx
     else do
-      ModuleChecksum checksum <- resolveModuleAliasIntoModuleName axis m currentModule nextModuleAlias
+      ModuleChecksum checksum <- resolveModuleAliasIntoModuleName ctx m currentModule nextModuleAlias
       libraryDir <- getLibraryDirPath
       resolveDir libraryDir $ T.unpack checksum
 
@@ -54,21 +52,21 @@ moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
 moduleCacheMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-filePathToModuleFilePath :: Axis -> Path Abs File -> IO (Path Abs File)
-filePathToModuleFilePath axis filePath = do
-  findModuleFile (axis & throw) $ parent filePath
+filePathToModuleFilePath :: Context -> Path Abs File -> IO (Path Abs File)
+filePathToModuleFilePath ctx filePath = do
+  findModuleFile ctx $ parent filePath
 
-filePathToModuleFileDir :: Axis -> Path Abs File -> IO (Path Abs Dir)
-filePathToModuleFileDir axis filePath =
-  parent <$> filePathToModuleFilePath axis filePath
+filePathToModuleFileDir :: Context -> Path Abs File -> IO (Path Abs Dir)
+filePathToModuleFileDir ctx filePath =
+  parent <$> filePathToModuleFilePath ctx filePath
 
-resolveModuleAliasIntoModuleName :: Axis -> Hint -> Module -> ModuleAlias -> IO ModuleChecksum
-resolveModuleAliasIntoModuleName axis m currentModule (ModuleAlias nextModuleAlias) =
+resolveModuleAliasIntoModuleName :: Context -> Hint -> Module -> ModuleAlias -> IO ModuleChecksum
+resolveModuleAliasIntoModuleName ctx m currentModule (ModuleAlias nextModuleAlias) =
   case Map.lookup nextModuleAlias (moduleDependency currentModule) of
     Just (_, checksum) ->
       return checksum
     Nothing ->
-      (axis & throw & Throw.raiseError) m $ "no such module alias is defined: " <> nextModuleAlias
+      raiseError ctx m $ "no such module alias is defined: " <> nextModuleAlias
 
 -- getNextSource :: Hint -> Module -> ModuleAlias -> IO Source
 -- getNextSource m currentModule nextModuleAlias = do

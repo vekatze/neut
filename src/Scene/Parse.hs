@@ -25,6 +25,7 @@ import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
+import Entity.Module
 import Entity.Namespace
 import Entity.Opacity
 import Entity.Source
@@ -312,3 +313,16 @@ weakTermToWeakIdent axis m f = do
   a <- f
   h <- liftIO $ Gensym.newTextualIdentFromText axis "_"
   return (m, h, a)
+
+setupSectionPrefix :: Axis -> Source -> IO ()
+setupSectionPrefix axis currentSource = do
+  globalLocator <- getGlobalLocator (throw axis) currentSource
+  Locator.activateGlobalLocator (locator axis) globalLocator
+  Locator.setCurrentGlobalLocator (locator axis) globalLocator
+
+initializeNamespace :: Axis -> Source -> IO ()
+initializeNamespace axis source = do
+  additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
+  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
+  Locator.clearActiveLocators (locator axis)
+  writeIORef locatorAliasMapRef Map.empty
