@@ -116,8 +116,6 @@ initializeNamespace axis source = do
   additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
   writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
   Locator.clearActiveLocators (locator axis)
-  -- writeIORef globalLocatorListRef []
-  -- writeIORef localLocatorListRef []
   writeIORef locatorAliasMapRef Map.empty
 
 -- getMainSource :: Throw.Context -> IO Source

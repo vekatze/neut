@@ -34,7 +34,6 @@ activateAliasInfoOfCurrentFile' context aliasInfo =
   case aliasInfo of
     AliasInfoUse _ ->
       return ()
-    -- activateGlobalLocator locator
     AliasInfoPrefix m from to ->
       handleDefinePrefix context m from to
 

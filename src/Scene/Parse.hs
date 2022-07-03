@@ -79,17 +79,14 @@ parseSource axis source = do
     Nothing -> do
       getCurrentFilePath (axis & throw) >>= activateAliasInfo (axis & throw)
       globalLocator <- getGlobalLocator (axis & throw) source
-      (defList, enumInfoList) <- run (program (globalLocator, []) axis) $ sourceFilePath source
+      (defList, enumInfoList) <- run (axis & throw) (program (globalLocator, []) axis) $ sourceFilePath source
       return $ Right (defList, enumInfoList)
 
 ensureMain :: Axis -> Hint -> T.Text -> IO ()
 ensureMain axis m mainFunctionName = do
-  -- currentGlobalLocator <- readIORef currentGlobalLocatorRef
   isMainDefined <- Global.isDefined (axis & global) mainFunctionName
   unless isMainDefined $ do
     (axis & throw & Throw.raiseError) m "`main` is missing"
-
--- (axis & throw & Throw.raiseError) m $ "`main` is missing in `" <> currentGlobalLocator <> "`"
 
 program :: Locator -> Axis -> Parser ([QuasiStmt], [EnumInfo])
 program prefix axis = do

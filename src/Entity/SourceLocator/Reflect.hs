@@ -5,6 +5,7 @@ import qualified Context.Throw as Throw
 import Data.Function
 import Data.List
 import qualified Data.Text as T
+import Entity.Global
 import Entity.Hint
 import Entity.Module
 import Entity.Module.Locator
@@ -14,8 +15,9 @@ import Entity.SourceLocator
 fromText :: Axis -> Hint -> Module -> T.Text -> IO SourceLocator
 fromText axis m currentModule sectionString = do
   case getHeadMiddleLast $ T.splitOn "." sectionString of
-    Just (nextModuleName, dirNameList, fileName) -> do
+    Just (nextModuleName, dirNameList, fileNameWithoutExtension) -> do
       nextModule <- getNextModule axis m currentModule $ ModuleAlias nextModuleName
+      let fileName = fileNameWithoutExtension <> nsSep <> sourceFileExtension
       return $
         SourceLocator
           { sourceLocatorModule = nextModule,
@@ -41,3 +43,8 @@ unsnoc =
           Just ([], x)
         Just (ys, y) ->
           Just (x : ys, y)
+
+-- sourceSignatureは、(ModuleAlias, [DirPath], FileName) になってるのか。
+-- sectionToPath :: [T.Text] -> FilePath
+-- sectionToPath sectionPath =
+--   T.unpack $ T.intercalate (T.singleton FP.pathSeparator) sectionPath <> "." <> sourceFileExtension

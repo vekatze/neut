@@ -17,7 +17,7 @@ import Path.IO
 
 fromFilePath :: Context -> Path Abs File -> IO Module
 fromFilePath context moduleFilePath = do
-  entity <- Ens.fromFilePath moduleFilePath
+  entity <- Ens.fromFilePath context moduleFilePath
   entryPointEns <- access context "target" entity >>= toDictionary context
   dependencyEns <- access context "dependency" entity >>= toDictionary context
   extraContentsEns <- access context "extra-content" entity >>= toList context

@@ -231,7 +231,7 @@ parseDefiniteDescription = do
 weakTermDefiniteDescription :: Parser WeakTerm
 weakTermDefiniteDescription = do
   (m, x) <- try parseDefiniteDescription
-  return $ m :< WeakTermVar (Ident.fromText x)
+  return $ m :< WeakTermVarGlobal x
 
 weakTermEnumElim :: Axis -> Parser WeakTerm
 weakTermEnumElim axis = do

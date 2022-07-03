@@ -387,7 +387,7 @@ getChildren axis currentSource = do
       let path = sourceFilePath currentSource
       -- initializeParserForFile $ sourceFilePath currentSource
       -- skip
-      (sourceList, aliasInfoList) <- run (parseImportSequence axis (sourceModule currentSource)) path
+      (sourceList, aliasInfoList) <- run (throw axis) (parseImportSequence axis (sourceModule currentSource)) path
       -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
       updateSourceAliasMapRef currentSourceFilePath aliasInfoList

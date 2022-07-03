@@ -1,5 +1,6 @@
 module Scene.Parse.Core where
 
+import qualified Context.Throw as Throw
 import Control.Exception.Safe
 import Control.Monad
 import Control.Monad.IO.Class
@@ -14,6 +15,7 @@ import Entity.Hint
 import qualified Entity.Hint.Reflect as Hint
 import Entity.Log
 import Path
+import Path.IO
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
@@ -21,8 +23,11 @@ import qualified Text.Read as R
 
 type Parser = ParsecT Void T.Text IO
 
-run :: Parser a -> Path Abs File -> IO a
-run parser path = do
+run :: Throw.Context -> Parser a -> Path Abs File -> IO a
+run ctx parser path = do
+  fileExists <- doesFileExist path
+  unless fileExists $ do
+    Throw.raiseError' ctx $ T.pack $ "no such file exists: " <> toFilePath path
   setCurrentFilePath path
   let filePath = toFilePath path
   fileContent <- TIO.readFile filePath

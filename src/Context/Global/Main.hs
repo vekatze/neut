@@ -9,6 +9,7 @@ import Control.Monad
 import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Entity.Global
 import Entity.Hint hiding (new)
 
 type NameSet = S.Set T.Text
@@ -29,6 +30,8 @@ register ::
   T.Text ->
   IO ()
 register axis topNameSetRef m topLevelName = do
+  p "register:"
+  p' topLevelName
   topNameSet <- readIORef topNameSetRef
   when (S.member topLevelName topNameSet) $
     Throw.raiseError axis m $ "`" <> topLevelName <> "` is already defined at the top level"
