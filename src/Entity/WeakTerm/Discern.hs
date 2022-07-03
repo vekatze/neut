@@ -2,9 +2,11 @@ module Entity.WeakTerm.Discern
   ( discern,
     discernBinder,
     Axis (..),
+    specialize,
   )
 where
 
+import qualified Context.App as App
 import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
@@ -35,6 +37,16 @@ data Axis = Axis
 type NameEnv = Map.HashMap T.Text Ident
 
 type IsDefinite = Bool
+
+specialize :: App.Axis -> Axis
+specialize axis =
+  Axis
+    { throw = axis & App.throw,
+      gensym = axis & App.gensym,
+      enum = axis & App.enum,
+      global = axis & App.global,
+      locator = axis & App.locator
+    }
 
 -- Alpha-convert all the variables so that different variables have different names.
 discern :: Axis -> NameEnv -> WeakTerm -> IO WeakTerm

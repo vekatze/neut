@@ -107,15 +107,7 @@ program' prefix axis =
         parseStmtUse axis
         program' prefix axis,
       do
-        let wtAxis =
-              WT.Axis
-                { WT.throw = axis & throw,
-                  WT.gensym = axis & gensym,
-                  WT.enum = axis & enum,
-                  WT.global = axis & global,
-                  WT.locator = axis & locator
-                }
-        stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList wtAxis . concat
+        stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList (WT.specialize axis) . concat
         return (stmtList, [])
     ]
 
