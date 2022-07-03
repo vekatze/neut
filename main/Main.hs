@@ -15,12 +15,10 @@ import qualified Context.Log.IO as Log
 import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
-import Control.Monad
 import qualified Data.Text as T
 import Entity.ModuleAlias
 import Entity.ModuleURL
 import Options.Applicative
-import Prelude hiding (log)
 
 data Command
   = Build Build.BuildConfig
@@ -33,11 +31,8 @@ data Command
   | ShowVersion Version.Config
 
 main :: IO ()
-main =
-  execParser (info (helper <*> parseOpt) fullDesc) >>= runCommand
-
-runCommand :: Command -> IO ()
-runCommand c = do
+main = do
+  c <- execParser (info (helper <*> parseOpt) fullDesc)
   case c of
     Build cfg -> do
       Build.build prodMode cfg

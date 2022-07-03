@@ -20,54 +20,6 @@ import qualified Entity.PrimNum.FromText as PrimNum
 import qualified Entity.PrimOp.FromText as PrimOp
 import Entity.WeakTerm
 
--- data Section
---   = Section T.Text [T.Text]
-
--- attachSectionPrefix :: T.Text -> IO T.Text
--- attachSectionPrefix =
---   attachLocalLocator >=> attachGlobalLocator
-
--- attachLocalLocator :: T.Text -> IO T.Text
--- attachLocalLocator x = do
---   currentLocalLocatorList <- readIORef currentLocalLocatorListRef
---   case currentLocalLocatorList of
---     [] ->
---       return x
---     locator : _ ->
---       return $ locator <> nsSep <> x
-
--- attachGlobalLocator :: T.Text -> IO T.Text
--- attachGlobalLocator x = do
---   currentGlobalLocator <- readIORef currentGlobalLocatorRef
---   return $ currentGlobalLocator <> definiteSep <> x
-
--- pushToCurrentLocalLocator :: T.Text -> IO ()
--- pushToCurrentLocalLocator s = do
---   localLocatorList <- readIORef currentLocalLocatorListRef
---   case localLocatorList of
---     [] ->
---       writeIORef currentLocalLocatorListRef [s]
---     headLocalLocator : _ ->
---       writeIORef currentLocalLocatorListRef $ headLocalLocator <> nsSep <> s : localLocatorList
-
--- popFromCurrentLocalLocator :: Context -> Hint -> IO T.Text
--- popFromCurrentLocalLocator context m = do
---   localLocatorList <- readIORef currentLocalLocatorListRef
---   case localLocatorList of
---     [] ->
---       (context & raiseError) m "there is no section to end"
---     headLocalLocator : rest -> do
---       writeIORef currentLocalLocatorListRef rest
---       return headLocalLocator
-
--- activateGlobalLocator :: T.Text -> IO ()
--- activateGlobalLocator s =
---   modifyIORef' globalLocatorListRef $ (:) s
-
--- activateLocalLocator :: T.Text -> IO ()
--- activateLocalLocator s =
---   modifyIORef' localLocatorListRef $ (:) s
-
 handleDefinePrefix :: Context -> Hint -> T.Text -> T.Text -> IO ()
 handleDefinePrefix context m from to = do
   aliasEnv <- readIORef locatorAliasMapRef
@@ -91,33 +43,9 @@ resolveSymbol context m predicate name candList = do
 constructCandList :: Locator.Axis -> T.Text -> Bool -> IO [T.Text]
 constructCandList axis name isDefinite = do
   prefixedNameList <- Locator.getPossibleReferents axis name isDefinite
-  -- prefixedNameList <- Locator.getPossibleReferents axis currentGlobalLocator currentLocalLocator name isDefinite
-  -- prefixedNameList <- getPrefixedNameList name isDefinite
   moduleAliasMap <- readIORef moduleAliasMapRef
   locatorAliasMap <- readIORef locatorAliasMapRef
   return $ map (resolveName moduleAliasMap locatorAliasMap) prefixedNameList
-
--- getPrefixedNameList :: T.Text -> Bool -> IO [T.Text]
--- getPrefixedNameList name isDefinite = do
---   if isDefinite
---     then return [name]
---     else do
---       globalLocatorList <- readIORef globalLocatorListRef
---       let globalNameList = mapPrefix definiteSep globalLocatorList name
---       localLocatorList <- readIORef localLocatorListRef
---       let localNameList = mapPrefix nsSep localLocatorList name
---       sectionalNameList <- getSectionalNameList name
---       return $ nubOrd $ globalNameList ++ localNameList ++ sectionalNameList
-
--- mapPrefix :: T.Text -> [T.Text] -> T.Text -> [T.Text]
--- mapPrefix sep prefixList basename =
---   map (<> sep <> basename) prefixList
-
--- getSectionalNameList :: T.Text -> IO [T.Text]
--- getSectionalNameList name = do
---   currentGlobalLocator <- readIORef currentGlobalLocatorRef
---   currentLocalLocatorList <- readIORef currentLocalLocatorListRef
---   return $ map (\localLocator -> currentGlobalLocator <> definiteSep <> localLocator <> nsSep <> name) currentLocalLocatorList
 
 breakOn :: T.Text -> T.Text -> Maybe (T.Text, T.Text)
 breakOn pat src@(Text.Text arr off len)

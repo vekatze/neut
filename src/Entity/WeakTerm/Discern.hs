@@ -30,8 +30,6 @@ data Axis = Axis
     enum :: Enum.Axis,
     global :: Global.Axis,
     locator :: Locator.Axis
-    -- currentGlobalLocator :: T.Text,
-    -- currentLocalLocator :: [T.Text]
   }
 
 type NameEnv = Map.HashMap T.Text Ident

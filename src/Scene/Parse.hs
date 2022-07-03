@@ -134,8 +134,6 @@ parseStmtUse axis = do
   (_, name) <- parseDefiniteDescription
   liftIO $ Locator.activatePartialLocator (axis & locator) name
 
--- liftIO $ activateLocalLocator name
-
 parseStmt :: Axis -> Parser [WeakStmt]
 parseStmt axis = do
   choice
