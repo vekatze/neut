@@ -393,13 +393,9 @@ getChildren ctx currentSource = do
       return sourceList
     Nothing -> do
       let path = sourceFilePath currentSource
-      -- initializeParserForFile $ sourceFilePath currentSource
-      -- skip
       (sourceList, aliasInfoList) <- run ctx (parseImportSequence ctx (sourceModule currentSource)) path
-      -- (sourceList, aliasInfoList) <- parseImportSequence $ sourceModule currentSource
       modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
       updateSourceAliasMapRef currentSourceFilePath aliasInfoList
-      -- modifyIORef' sourceAliasMapRef $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList
 
 addExtensionAlongKind :: Path Abs File -> OutputKind -> IO (Path Abs File)
