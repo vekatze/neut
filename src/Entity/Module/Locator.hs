@@ -57,9 +57,9 @@ getModuleFileDir currentModule =
   parent (moduleLocation currentModule)
 
 resolveModuleAliasIntoModuleName :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO ModuleChecksum
-resolveModuleAliasIntoModuleName ctx m currentModule (ModuleAlias nextModuleAlias) =
+resolveModuleAliasIntoModuleName ctx m currentModule nextModuleAlias =
   case Map.lookup nextModuleAlias (moduleDependency currentModule) of
     Just (_, checksum) ->
       return checksum
     Nothing ->
-      Throw.raiseError ctx m $ "no such module alias is defined: " <> nextModuleAlias
+      Throw.raiseError ctx m $ "no such module alias is defined: " <> extract nextModuleAlias

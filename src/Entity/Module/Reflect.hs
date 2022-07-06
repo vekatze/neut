@@ -6,10 +6,12 @@ where
 
 import Context.Throw
 import Control.Monad
+import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import Entity.Ens
 import qualified Entity.Ens.Reflect as Ens
 import Entity.Module
+import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import Entity.ModuleURL
 import Path
@@ -27,7 +29,7 @@ fromFilePath ctx moduleFilePath = do
   return
     Module
       { moduleTarget = target,
-        moduleDependency = dependency,
+        moduleDependency = Map.mapKeys ModuleAlias dependency,
         moduleExtraContents = extraContents,
         moduleLocation = moduleFilePath
       }

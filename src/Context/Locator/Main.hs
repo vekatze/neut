@@ -8,6 +8,8 @@ import qualified Data.Text as T
 import Entity.Global
 import Entity.Hint hiding (new)
 import Entity.Module
+import Entity.ModuleChecksum
+import qualified Entity.ModuleID as MID
 import Entity.Source
 import Path
 
@@ -105,9 +107,12 @@ getSectionalNameList currentGlobalLocator currentLocalLocatorList name = do
 
 getGlobalLocator :: Module -> Source -> IO T.Text
 getGlobalLocator mainModule source = do
-  let domain = getDomain (sourceModule source) mainModule
   sigTail <- getLocatorTail source
-  return $ T.intercalate "." $ domain : sigTail
+  case MID.getModuleID mainModule $ sourceModule source of
+    MID.This ->
+      return $ T.intercalate "." $ defaultModulePrefix : sigTail
+    MID.That (ModuleChecksum checksum) ->
+      return $ T.intercalate "." $ checksum : sigTail
 
 getLocatorTail :: Source -> IO [T.Text]
 getLocatorTail source = do

@@ -28,6 +28,7 @@ dependencies:
   - filepath
   - free
   - half
+  - hashable
   - megaparsec
   - mtl
   - optparse-applicative

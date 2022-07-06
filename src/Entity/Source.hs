@@ -9,7 +9,6 @@ import Entity.SourceLocator
 import qualified Entity.SourceLocator.Reflect as SourceLocator
 import qualified Entity.SourceLocator.Reify as SourceLocator
 import Path
-import qualified System.FilePath as FP
 
 data Source = Source
   { sourceFilePath :: Path Abs File,
@@ -54,12 +53,6 @@ attachExtension file kind =
       addExtension ".o" file
     OutputKindExecutable -> do
       return file
-
-getDomain :: Module -> Module -> T.Text
-getDomain currentModule mainModule = do
-  if moduleLocation mainModule == moduleLocation currentModule
-    then defaultModulePrefix
-    else T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation currentModule)
 
 isMainFile :: Source -> IO Bool
 isMainFile source = do

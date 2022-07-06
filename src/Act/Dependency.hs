@@ -77,7 +77,7 @@ tidy' ctx targetModule = do
   Log.printNote' (getLogCtx ctx) $ "context: " <> T.pack (toFilePath (moduleLocation targetModule))
   let dependency = Map.toList $ moduleDependency targetModule
   forM_ dependency $ \(alias, (url, checksum)) ->
-    installIfNecessary ctx (ModuleAlias alias) url checksum
+    installIfNecessary ctx alias url checksum
 
 installIfNecessary :: Context -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
 installIfNecessary ctx alias url checksum = do

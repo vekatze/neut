@@ -18,7 +18,7 @@ type SomePath =
 
 data Module = Module
   { moduleTarget :: Map.HashMap T.Text (Path Rel File),
-    moduleDependency :: Map.HashMap T.Text (ModuleURL, ModuleChecksum),
+    moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
   }
@@ -61,10 +61,10 @@ getTargetFilePath baseModule target = do
   relPath <- Map.lookup target (moduleTarget baseModule)
   return $ getSourceDir baseModule </> relPath
 
-getModuleChecksumAliasList :: Module -> [(T.Text, T.Text)]
+getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
 getModuleChecksumAliasList baseModule = do
   let dependencyList = Map.toList $ moduleDependency baseModule
-  map (\(key, (_, ModuleChecksum checksum)) -> (key, checksum)) dependencyList
+  map (\(key, (_, checksum)) -> (key, checksum)) dependencyList
 
 findModuleFile :: Context -> Path Abs Dir -> IO (Path Abs File)
 findModuleFile ctx moduleRootDirCandidate = do
@@ -87,7 +87,7 @@ getCurrentModuleFilePath ctx =
   getCurrentDir >>= findModuleFile ctx
 
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
-addDependency (ModuleAlias alias) url checksum someModule =
+addDependency alias url checksum someModule =
   someModule {moduleDependency = Map.insert alias (url, checksum) (moduleDependency someModule)}
 
 ppModule :: Module -> T.Text
@@ -100,7 +100,7 @@ ppModule someModule = do
   let extraContents = map (\x -> () :< EnsString (ppExtraContent x)) $ moduleExtraContents someModule
   ppEnsTopLevel $
     Map.fromList
-      [ ("dependency", () :< EnsDictionary dependency),
+      [ ("dependency", () :< EnsDictionary (Map.mapKeys (\(ModuleAlias key) -> key) dependency)),
         ("target", () :< EnsDictionary entryPoint),
         ("extra-content", () :< EnsList extraContents)
       ]
