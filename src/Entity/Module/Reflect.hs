@@ -14,6 +14,7 @@ import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import Entity.ModuleURL
+import Entity.Target
 import Path
 import Path.IO
 
@@ -28,7 +29,7 @@ fromFilePath ctx moduleFilePath = do
   extraContents <- mapM (interpretExtraPath ctx $ parent moduleFilePath) extraContentsEns
   return
     Module
-      { moduleTarget = target,
+      { moduleTarget = Map.mapKeys Target target,
         moduleDependency = Map.mapKeys ModuleAlias dependency,
         moduleExtraContents = extraContents,
         moduleLocation = moduleFilePath

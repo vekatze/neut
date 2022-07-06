@@ -10,6 +10,7 @@ import Entity.Ens
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import Entity.ModuleURL
+import Entity.Target
 import Path
 import Path.IO
 
@@ -17,7 +18,7 @@ type SomePath =
   Either (Path Abs Dir) (Path Abs File)
 
 data Module = Module
-  { moduleTarget :: Map.HashMap T.Text (Path Rel File),
+  { moduleTarget :: Map.HashMap Target (Path Rel File),
     moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
@@ -56,7 +57,7 @@ getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
 
-getTargetFilePath :: Module -> T.Text -> Maybe (Path Abs File)
+getTargetFilePath :: Module -> Target -> Maybe (Path Abs File)
 getTargetFilePath baseModule target = do
   relPath <- Map.lookup target (moduleTarget baseModule)
   return $ getSourceDir baseModule </> relPath
@@ -101,7 +102,7 @@ ppModule someModule = do
   ppEnsTopLevel $
     Map.fromList
       [ ("dependency", () :< EnsDictionary (Map.mapKeys (\(ModuleAlias key) -> key) dependency)),
-        ("target", () :< EnsDictionary entryPoint),
+        ("target", () :< EnsDictionary (Map.mapKeys (\(Target key) -> key) entryPoint)),
         ("extra-content", () :< EnsList extraContents)
       ]
 

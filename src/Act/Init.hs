@@ -13,6 +13,7 @@ import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Global
 import Entity.Module
+import Entity.Target
 import Path
 import Path.IO
 
@@ -59,7 +60,7 @@ constructDefaultModule name = do
   mainFile <- parseRelFile $ T.unpack $ name <> "." <> sourceFileExtension
   return $
     Module
-      { moduleTarget = Map.fromList [(name, mainFile)],
+      { moduleTarget = Map.fromList [(Target name, mainFile)],
         moduleDependency = Map.empty,
         moduleExtraContents = [],
         moduleLocation = moduleRootDir </> moduleFile

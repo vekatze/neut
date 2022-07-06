@@ -28,6 +28,7 @@ import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt
+import Entity.Target
 import qualified Entity.TargetPlatform as TP
 import Path
 import Path.IO
@@ -40,6 +41,9 @@ import Scene.Unravel
 import System.Exit
 import qualified System.Info as System
 import Prelude hiding (log)
+
+type TargetString =
+  T.Text
 
 data BuildConfig = BuildConfig
   { mTarget :: Maybe TargetString,
@@ -57,18 +61,18 @@ build mode cfg = do
     ensureNotInLibDir throwCtx "build"
     mainModule <- Module.fromCurrentPath throwCtx
     case mTarget cfg of
-      Just target ->
-        build' mode throwCtx logCtx (shouldCancelAlloc cfg) target mainModule
+      Just targetString ->
+        build' mode throwCtx logCtx (shouldCancelAlloc cfg) (Target targetString) mainModule
       Nothing -> do
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-          build' mode throwCtx logCtx (shouldCancelAlloc cfg) (T.unpack target) mainModule
+          build' mode throwCtx logCtx (shouldCancelAlloc cfg) target mainModule
 
 build' ::
   Mode.Mode ->
   Throw.Context ->
   Log.Context ->
   Bool ->
-  TargetString ->
+  Target ->
   Module ->
   IO ()
 build' mode throwCtx logCtx cancelAllocFlag target mainModule = do
@@ -266,15 +270,15 @@ compileToLLVM ctx source = do
         >>= lowerOther ctx
         >> emitOther ctx
 
-link :: LLVM.Context -> TargetString -> Module -> [Source] -> IO ()
+link :: LLVM.Context -> Target -> Module -> [Source] -> IO ()
 link ctx target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
   LLVM.link ctx objectPathList outputPath
 
-getExecutableOutputPath :: TargetString -> Module -> IO (Path Abs File)
+getExecutableOutputPath :: Target -> Module -> IO (Path Abs File)
 getExecutableOutputPath target mainModule =
-  resolveFile (getExecutableDir mainModule) target
+  resolveFile (getExecutableDir mainModule) $ T.unpack $ extract target
 
 getMainSource :: Module -> Path Abs File -> IO Source
 getMainSource mainModule mainSourceFilePath = do
@@ -301,14 +305,11 @@ getMainFunctionName' :: App.Context -> IO T.Text
 getMainFunctionName' ctx = do
   Locator.attachCurrentLocator (App.locator ctx) "main"
 
-type TargetString =
-  String
-
-resolveTarget :: Throw.Context -> Module -> TargetString -> IO (Path Abs File)
+resolveTarget :: Throw.Context -> Module -> Target -> IO (Path Abs File)
 resolveTarget ctx mainModule target = do
-  case getTargetFilePath mainModule (T.pack target) of
+  case getTargetFilePath mainModule target of
     Just path ->
       return path
     Nothing -> do
-      _ <- Throw.raiseError' ctx $ "no such target is defined: `" <> T.pack target <> "`"
+      _ <- Throw.raiseError' ctx $ "no such target is defined: `" <> extract target <> "`"
       exitWith (ExitFailure 1)
