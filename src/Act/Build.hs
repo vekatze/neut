@@ -141,8 +141,7 @@ newCtx cfg source = do
   locatorCtx <-
     Mode.locatorCtx (ccMode cfg) $
       Locator.Config
-        { -- Locator.currentGlobalLocator = globalLocator,
-          Locator.currentSource = source,
+        { Locator.currentSource = source,
           Locator.mainModule = ccMainModule cfg,
           Locator.throwCtx = ccThrowCtx cfg
         }
