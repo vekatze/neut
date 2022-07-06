@@ -4,7 +4,7 @@ module Entity.Module where
 
 import Context.Throw
 import Control.Comonad.Cofree
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import Entity.Ens
 import Entity.ModuleAlias

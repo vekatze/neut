@@ -3,7 +3,7 @@ module Scene.Clarify.Utility where
 import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Text as T
 import Entity.Comp

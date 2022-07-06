@@ -7,7 +7,7 @@ import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Exception.Safe
 import Control.Monad
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q

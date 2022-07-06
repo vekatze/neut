@@ -11,7 +11,7 @@ import Control.Monad
 import Data.ByteString.Builder
 import qualified Data.ByteString.Builder as L
 import qualified Data.ByteString.Lazy as L
-import qualified Data.HashMap.Lazy as HashMap
+import qualified Data.HashMap.Strict as HashMap
 import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map

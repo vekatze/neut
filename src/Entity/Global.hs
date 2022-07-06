@@ -2,7 +2,7 @@
 
 module Entity.Global where
 
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q

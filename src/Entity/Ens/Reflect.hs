@@ -2,7 +2,7 @@ module Entity.Ens.Reflect (fromFilePath) where
 
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
-import qualified Data.HashMap.Lazy as M
+import qualified Data.HashMap.Strict as M
 import qualified Data.Text as T
 import Entity.Ens
 import Path

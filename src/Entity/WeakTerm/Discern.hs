@@ -14,7 +14,7 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
 import Entity.Binder

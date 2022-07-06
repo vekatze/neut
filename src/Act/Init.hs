@@ -8,7 +8,7 @@ import qualified Context.Log as Log
 import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import Control.Monad
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Global

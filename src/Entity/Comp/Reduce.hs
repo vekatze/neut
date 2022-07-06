@@ -2,7 +2,7 @@ module Entity.Comp.Reduce (reduce) where
 
 import Context.Gensym
 import Control.Comonad.Cofree.Class
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
 import Entity.Comp

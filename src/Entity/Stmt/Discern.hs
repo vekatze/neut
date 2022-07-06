@@ -1,7 +1,7 @@
 module Entity.Stmt.Discern (discernStmtList) where
 
 import qualified Context.Locator as Locator
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Entity.Stmt
 import qualified Entity.WeakTerm.Discern as WeakTerm
 

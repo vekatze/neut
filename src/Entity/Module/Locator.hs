@@ -2,7 +2,7 @@ module Entity.Module.Locator (getNextModule) where
 
 import qualified Context.Throw as Throw
 import Control.Monad
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Text as T
 import Entity.Global

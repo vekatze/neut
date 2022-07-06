@@ -18,7 +18,7 @@ import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
