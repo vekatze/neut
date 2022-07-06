@@ -1,10 +1,8 @@
 module Act.Build
   ( build,
-    clean,
     check,
     BuildConfig (..),
     CheckConfig (..),
-    CleanConfig (..),
   )
 where
 
@@ -21,7 +19,6 @@ import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
@@ -30,6 +27,7 @@ import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
 import Entity.Source
+import Entity.Stmt
 import qualified Entity.Target as Target
 import Path
 import Path.IO
@@ -76,8 +74,7 @@ build' ::
 build' mode throwCtx logCtx cancelAllocFlag target mainModule = do
   mainFilePath <- resolveTarget throwCtx mainModule target
   mainSource <- getMainSource mainModule mainFilePath
-  (_, isObjectAvailable, sourceAliasMap, dependenceSeq) <- unravel throwCtx mainSource
-  hasObjectSet <- readIORef hasObjectSetRef
+  (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel throwCtx mainSource
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   globalCtx <-
     Mode.globalCtx mode $
@@ -94,7 +91,8 @@ build' mode throwCtx logCtx cancelAllocFlag target mainModule = do
             ccCancelAllocFlag = cancelAllocFlag,
             ccMainModule = mainModule,
             ccInitialSource = mainSource,
-            ccSourceAliasMap = sourceAliasMap
+            ccSourceAliasMap = sourceAliasMap,
+            ccHasCacheSet = hasCacheSet
           }
   mapM_ (compile ctxCfg hasObjectSet) dependenceSeq
   llvmCtx <- Mode.llvmCtx mode $ LLVM.Config {LLVM.throwCtx = throwCtx, LLVM.clangOptString = ""} -- fixme
@@ -109,7 +107,8 @@ data ContextConfig = CC
     ccCancelAllocFlag :: Bool,
     ccMainModule :: Module,
     ccInitialSource :: Source,
-    ccSourceAliasMap :: SourceAliasMap
+    ccSourceAliasMap :: SourceAliasMap,
+    ccHasCacheSet :: PathSet
   }
 
 newCtx :: ContextConfig -> Source -> IO App.Context
@@ -151,7 +150,8 @@ newCtx cfg source = do
             { Target.os = System.os,
               Target.arch = System.arch
             },
-        App.sourceAliasMap = ccSourceAliasMap cfg
+        App.sourceAliasMap = ccSourceAliasMap cfg,
+        App.hasCacheSet = ccHasCacheSet cfg
       }
 
 data CheckConfig = CheckConfig
@@ -179,7 +179,7 @@ check' :: Mode.Mode -> Throw.Context -> Log.Context -> Path Abs File -> Module -
 check' mode throwCtx logCtx filePath mainModule = do
   ensureFileModuleSanity throwCtx filePath mainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  (_, _, sourceAliasMap, dependenceSeq) <- unravel throwCtx source
+  (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel throwCtx source
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
@@ -192,7 +192,8 @@ check' mode throwCtx logCtx filePath mainModule = do
             ccCancelAllocFlag = False,
             ccMainModule = mainModule,
             ccInitialSource = source,
-            ccSourceAliasMap = sourceAliasMap
+            ccSourceAliasMap = sourceAliasMap,
+            ccHasCacheSet = hasCacheSet
           }
   mapM_ (check'' ctxCfg) dependenceSeq
 
@@ -270,21 +271,6 @@ link ctx target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
   LLVM.link ctx objectPathList outputPath
-
-data CleanConfig = CleanConfig
-  { cleanLogCfg :: Log.Config,
-    cleanThrowCfg :: Throw.Config
-  }
-
-clean :: Mode.Mode -> CleanConfig -> IO ()
-clean mode cfg = do
-  throwCtx <- Mode.throwCtx mode $ cleanThrowCfg cfg
-  logCtx <- Mode.logCtx mode $ cleanLogCfg cfg
-  Throw.run throwCtx (Log.printLog logCtx) $ do
-    mainModule <- Module.fromCurrentPath throwCtx
-    let targetDir = getTargetDir mainModule
-    b <- doesDirExist targetDir
-    when b $ removeDirRecur $ getTargetDir mainModule
 
 getExecutableOutputPath :: TargetString -> Module -> IO (Path Abs File)
 getExecutableOutputPath target mainModule =

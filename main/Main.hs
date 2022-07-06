@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified Act.Build as Build
+import qualified Act.Clean as Clean
 import qualified Act.Dependency as Dependency
 import qualified Act.Init as Init
 import qualified Act.Release as Release
@@ -23,7 +24,7 @@ import Options.Applicative
 data Command
   = Build Build.BuildConfig
   | Check Build.CheckConfig
-  | Clean Build.CleanConfig
+  | Clean Clean.Config
   | Release Release.Config
   | Get Dependency.GetConfig
   | Tidy Dependency.TidyConfig
@@ -39,7 +40,7 @@ main = do
     Check cfg -> do
       Build.check prodMode cfg
     Clean cfg ->
-      Build.clean prodMode cfg
+      Clean.clean prodMode cfg
     Release cfg ->
       Release.release prodMode cfg
     Init cfg ->
@@ -90,9 +91,9 @@ parseCleanOpt = do
   logCfg <- logConfigOpt
   pure $
     Clean
-      Build.CleanConfig
-        { Build.cleanLogCfg = logCfg,
-          Build.cleanThrowCfg = throwConfig
+      Clean.Config
+        { Clean.logCfg = logCfg,
+          Clean.throwCfg = throwConfig
         }
 
 parseGetOpt :: Parser Command

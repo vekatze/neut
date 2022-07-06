@@ -104,15 +104,15 @@ nopFreeSetRef :: IORef (S.Set Int)
 nopFreeSetRef =
   unsafePerformIO (newIORef S.empty)
 
-{-# NOINLINE hasCacheSetRef #-}
-hasCacheSetRef :: IORef (S.Set (Path Abs File))
-hasCacheSetRef =
-  unsafePerformIO (newIORef S.empty)
+-- {-# NOINLINE hasCacheSetRef #-}
+-- hasCacheSetRef :: IORef (S.Set (Path Abs File))
+-- hasCacheSetRef =
+--   unsafePerformIO (newIORef S.empty)
 
-{-# NOINLINE hasObjectSetRef #-}
-hasObjectSetRef :: IORef (S.Set (Path Abs File))
-hasObjectSetRef =
-  unsafePerformIO (newIORef S.empty)
+-- {-# NOINLINE hasObjectSetRef #-}
+-- hasObjectSetRef :: IORef (S.Set (Path Abs File))
+-- hasObjectSetRef =
+--   unsafePerformIO (newIORef S.empty)
 
 sourceFileExtension :: T.Text
 sourceFileExtension =

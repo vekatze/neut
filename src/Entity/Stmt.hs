@@ -6,14 +6,12 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumInfo
-import Entity.Global
 import Entity.Hint
 import Entity.Opacity
 import Entity.Source
 import Entity.Term
 import Entity.WeakTerm
 import GHC.Generics
-import GHC.IORef
 import Path
 import Path.IO
 
@@ -38,6 +36,8 @@ data Stmt
   deriving (Generic)
 
 instance Binary Stmt
+
+type PathSet = S.Set (Path Abs File)
 
 extractName :: Stmt -> T.Text
 extractName stmt = do
@@ -69,23 +69,23 @@ compress stmt =
 
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
-  b <- doesFreshCacheExist source
-  if b
-    then return ()
-    else do
-      cachePath <- getSourceCachePath source
-      ensureDir $ parent cachePath
-      encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
+  -- b <- doesFreshCacheExist source
+  -- if b
+  --   then return ()
+  --   else do
+  cachePath <- getSourceCachePath source
+  ensureDir $ parent cachePath
+  encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
 
-loadCache :: Source -> IO (Maybe Cache)
-loadCache source = do
+loadCache :: Source -> PathSet -> IO (Maybe Cache)
+loadCache source hasCacheSet = do
   cachePath <- getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
     else do
-      b <- doesFreshCacheExist source
-      if not b
+      -- b <- doesFreshCacheExist source
+      if S.member (sourceFilePath source) hasCacheSet
         then return Nothing
         else do
           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
@@ -96,7 +96,7 @@ loadCache source = do
             Right content ->
               return $ Just content
 
-doesFreshCacheExist :: Source -> IO Bool
-doesFreshCacheExist source = do
-  hasCacheSet <- readIORef hasCacheSetRef
-  return $ S.member (sourceFilePath source) hasCacheSet
+-- doesFreshCacheExist :: Source -> IO Bool
+-- doesFreshCacheExist source = do
+--   hasCacheSet <- readIORef hasCacheSetRef
+--   return $ S.member (sourceFilePath source) hasCacheSet

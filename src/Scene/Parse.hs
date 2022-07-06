@@ -55,7 +55,7 @@ parseOther =
 
 parseSource :: Context -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseSource ctx source = do
-  mCache <- loadCache source
+  mCache <- loadCache source (hasCacheSet ctx)
   case mCache of
     Just cache -> do
       let hint = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source

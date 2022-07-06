@@ -10,9 +10,11 @@ import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
+import qualified Data.Set as S
 import Entity.AliasInfo
 import Entity.Source
 import Entity.Target
+import Path
 
 data Context = Context
   { log :: Log.Context,
@@ -25,5 +27,6 @@ data Context = Context
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
+    hasCacheSet :: S.Set (Path Abs File),
     target :: Target
   }

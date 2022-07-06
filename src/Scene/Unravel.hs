@@ -17,10 +17,10 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
-import Entity.Global
 import Entity.Hint
 import Entity.OutputKind
 import Entity.Source
+import Entity.Stmt
 import Path
 import Path.IO
 import Scene.Parse.Core
@@ -41,28 +41,39 @@ data Context = Context
     traceSourceListRef :: IORef [Source],
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source]),
+    hasCacheSetRef :: IORef PathSet,
+    hasObjectSetRef :: IORef PathSet,
     sourceAliasMapRef :: IORef SourceAliasMap
   }
 
-unravel :: Throw.Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, SourceAliasMap, Seq Source)
+unravel ::
+  Throw.Context ->
+  Source ->
+  IO (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source)
 unravel throwCtx source = do
-  ctx <- setup throwCtx
+  ctx <- newCtx throwCtx
   (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' ctx source
   sourceAliasMap <- readIORef $ sourceAliasMapRef ctx
-  return (isCacheAvailable, isObjectAvailable, sourceAliasMap, sourceSeq)
+  hasCacheSet <- readIORef $ hasCacheSetRef ctx
+  hasObjectSet <- readIORef $ hasObjectSetRef ctx
+  return (isCacheAvailable, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, sourceSeq)
 
-setup :: Throw.Context -> IO Context
-setup throwCtx = do
+newCtx :: Throw.Context -> IO Context
+newCtx throwCtx = do
   _traceSourceListRef <- newIORef []
   _visitEnvRef <- newIORef Map.empty
   _sourceChildrenMapRef <- newIORef Map.empty
   _sourceAliasMapRef <- newIORef Map.empty
+  _hasCacheSetRef <- newIORef S.empty
+  _hasObjectSetRef <- newIORef S.empty
   return $
     Context
       { asThrowCtx = throwCtx,
         traceSourceListRef = _traceSourceListRef,
         visitEnvRef = _visitEnvRef,
         sourceChildrenMapRef = _sourceChildrenMapRef,
+        hasCacheSetRef = _hasCacheSetRef,
+        hasObjectSetRef = _hasObjectSetRef,
         sourceAliasMapRef = _sourceAliasMapRef
       }
 
@@ -74,8 +85,8 @@ unravel' ctx source = do
     Just VisitInfoActive ->
       raiseCyclicPath ctx source
     Just VisitInfoFinish -> do
-      hasCacheSet <- readIORef hasCacheSetRef
-      hasObjectSet <- readIORef hasObjectSetRef
+      hasCacheSet <- readIORef $ hasCacheSetRef ctx
+      hasObjectSet <- readIORef $ hasObjectSetRef ctx
       return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
       modifyIORef' (visitEnvRef ctx) $ Map.insert path VisitInfoActive
@@ -84,24 +95,24 @@ unravel' ctx source = do
       (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (unravel' ctx) children
       modifyIORef' (traceSourceListRef ctx) tail
       modifyIORef' (visitEnvRef ctx) $ Map.insert path VisitInfoFinish
-      isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
-      isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
+      isCacheAvailable <- checkIfCacheIsAvailable ctx isCacheAvailableList source
+      isObjectAvailable <- checkIfObjectIsAvailable ctx isObjectAvailableList source
       return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
 
-checkIfCacheIsAvailable :: [IsCacheAvailable] -> Source -> IO IsCacheAvailable
-checkIfCacheIsAvailable isCacheAvailableList source = do
+checkIfCacheIsAvailable :: Context -> [IsCacheAvailable] -> Source -> IO IsCacheAvailable
+checkIfCacheIsAvailable ctx isCacheAvailableList source = do
   b <- isFreshCacheAvailable source
   let isCacheAvailable = and $ b : isCacheAvailableList
   when isCacheAvailable $
-    modifyIORef' hasCacheSetRef $ S.insert $ sourceFilePath source
+    modifyIORef' (hasCacheSetRef ctx) $ S.insert $ sourceFilePath source
   return isCacheAvailable
 
-checkIfObjectIsAvailable :: [IsObjectAvailable] -> Source -> IO IsObjectAvailable
-checkIfObjectIsAvailable isObjectAvailableList source = do
+checkIfObjectIsAvailable :: Context -> [IsObjectAvailable] -> Source -> IO IsObjectAvailable
+checkIfObjectIsAvailable ctx isObjectAvailableList source = do
   b <- isFreshObjectAvailable source
   let isObjectAvailable = and $ b : isObjectAvailableList
   when isObjectAvailable $
-    modifyIORef' hasObjectSetRef $ S.insert $ sourceFilePath source
+    modifyIORef' (hasObjectSetRef ctx) $ S.insert $ sourceFilePath source
   return isObjectAvailable
 
 isFreshCacheAvailable :: Source -> IO Bool
