@@ -14,9 +14,9 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.Opacity
 import Entity.PrimNumSize
 
-toApp :: Axis -> Integer -> Ident -> Comp -> IO Comp
-toApp axis switcher x t = do
-  (expVarName, expVar) <- newValueVarLocalWith axis "exp"
+toApp :: Context -> Integer -> Ident -> Comp -> IO Comp
+toApp ctx switcher x t = do
+  (expVarName, expVar) <- newValueVarLocalWith ctx "exp"
   return $
     CompUpElim
       expVarName
@@ -29,18 +29,18 @@ toApp axis switcher x t = do
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Axis -> Ident -> Comp -> IO Comp
-toAffineApp axis =
-  toApp axis 0
+toAffineApp :: Context -> Ident -> Comp -> IO Comp
+toAffineApp ctx =
+  toApp ctx 0
 
 -- toApp boolFalse
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Axis -> Ident -> Comp -> IO Comp
-toRelevantApp axis =
-  toApp axis 1
+toRelevantApp :: Context -> Ident -> Comp -> IO Comp
+toRelevantApp ctx =
+  toApp ctx 1
 
 bindLet :: [(Ident, Comp)] -> Comp -> Comp
 bindLet binder cont =
@@ -61,13 +61,13 @@ tryCache key doInsertion = do
   return $ ValueVarGlobal key
 
 makeSwitcher ::
-  Axis ->
+  Context ->
   (Value -> IO Comp) ->
   (Value -> IO Comp) ->
   IO ([Ident], Comp)
-makeSwitcher axis compAff compRel = do
-  (switchVarName, switchVar) <- newValueVarLocalWith axis "switch"
-  (argVarName, argVar) <- newValueVarLocalWith axis "arg"
+makeSwitcher ctx compAff compRel = do
+  (switchVarName, switchVar) <- newValueVarLocalWith ctx "switch"
+  (argVarName, argVar) <- newValueVarLocalWith ctx "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   return
@@ -78,13 +78,13 @@ makeSwitcher axis compAff compRel = do
     )
 
 registerSwitcher ::
-  Axis ->
+  Context ->
   T.Text ->
   (Value -> IO Comp) ->
   (Value -> IO Comp) ->
   IO ()
-registerSwitcher axis name aff rel = do
-  (args, e) <- makeSwitcher axis aff rel
+registerSwitcher ctx name aff rel = do
+  (args, e) <- makeSwitcher ctx aff rel
   insDefEnv name OpacityTransparent args e
 
 insDefEnv :: T.Text -> Opacity -> [Ident] -> Comp -> IO ()

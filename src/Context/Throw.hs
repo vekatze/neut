@@ -56,13 +56,13 @@ raiseSyntaxError ctx m form =
   raiseError ctx m $ "couldn't match the input with the expected form: " <> form
 
 raiseIfProcessFailed :: Context -> T.Text -> ExitCode -> Handle -> IO ()
-raiseIfProcessFailed axis procName exitCode h =
+raiseIfProcessFailed ctx procName exitCode h =
   case exitCode of
     ExitSuccess ->
       return ()
     ExitFailure i -> do
       errStr <- TIO.hGetContents h
-      raiseError' axis $
+      raiseError' ctx $
         "the child process `"
           <> procName
           <> "` failed with the following message (exitcode = "

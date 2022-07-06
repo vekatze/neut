@@ -13,15 +13,15 @@ import qualified Entity.EnumInfo as EnumInfo
 import Scene.Parse.Core
 import Text.Megaparsec
 
-parseDefineEnum :: Axis -> Parser EnumInfo
-parseDefineEnum axis = do
+parseDefineEnum :: Context -> Parser EnumInfo
+parseDefineEnum ctx = do
   m <- currentHint
   try $ keyword "define-enum"
-  definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator axis) . snd
+  definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
-  enumInfo <- liftIO $ EnumInfo.new (throw axis) m definiteEnumName itemList
-  liftIO $ uncurry (Global.registerEnum (global axis) m) (fromEnumInfo enumInfo)
-  -- liftIO $ EnumInfo.registerIfNew (axis & throw) m enumInfo
+  enumInfo <- liftIO $ EnumInfo.new (throw ctx) m definiteEnumName itemList
+  liftIO $ uncurry (Global.registerEnum (global ctx) m) (fromEnumInfo enumInfo)
+  -- liftIO $ EnumInfo.registerIfNew (ctx & throw) m enumInfo
   return enumInfo
 
 parseDefineEnumClause :: Parser (T.Text, Maybe Integer)

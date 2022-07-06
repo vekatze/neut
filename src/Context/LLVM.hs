@@ -1,5 +1,5 @@
 module Context.LLVM
-  ( Axis (..),
+  ( Context (..),
     Config (..),
   )
 where
@@ -11,7 +11,7 @@ import Path
 
 type OutputPath = Path Abs File
 
-data Axis = Axis
+data Context = Context
   { emit :: OutputKind -> L.ByteString -> OutputPath -> IO (),
     link :: [Path Abs File] -> OutputPath -> IO ()
   }

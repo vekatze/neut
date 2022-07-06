@@ -13,8 +13,8 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.Opacity
 
-reduce :: Axis -> Comp -> IO Comp
-reduce axis term =
+reduce :: Context -> Comp -> IO Comp
+reduce ctx term =
   case term of
     CompPrimitive _ ->
       return term
@@ -25,7 +25,7 @@ reduce axis term =
           | Just (OpacityTransparent, xs, body) <- Map.lookup x compDefEnv,
             length xs == length ds -> do
             let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-            subst axis sub IntMap.empty body >>= reduce axis
+            subst ctx sub IntMap.empty body >>= reduce ctx
         _ ->
           return term
     CompSigmaElim isNoetic xs v e ->
@@ -33,9 +33,9 @@ reduce axis term =
         ValueSigmaIntro ds
           | length ds == length xs -> do
             let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-            subst axis sub IntMap.empty e >>= reduce axis
+            subst ctx sub IntMap.empty e >>= reduce ctx
         _ -> do
-          e' <- reduce axis e
+          e' <- reduce ctx e
           case e' of
             CompUpIntro (ValueSigmaIntro ds)
               | Just ys <- mapM extractIdent ds,
@@ -50,20 +50,20 @@ reduce axis term =
     CompUpIntro _ ->
       return term
     CompUpElim x e1 e2 -> do
-      e1' <- reduce axis e1
+      e1' <- reduce ctx e1
       case e1' of
         CompUpIntro (ValueVarLocalIdeal _) -> do
-          e2' <- reduce axis e2
+          e2' <- reduce ctx e2
           return $ CompUpElim x e1' e2'
         CompUpIntro v -> do
           let sub = IntMap.fromList [(Ident.toInt x, v)]
-          subst axis sub IntMap.empty e2 >>= reduce axis
+          subst ctx sub IntMap.empty e2 >>= reduce ctx
         CompUpElim y ey1 ey2 ->
-          reduce axis $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
+          reduce ctx $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
         CompSigmaElim b yts vy ey ->
-          reduce axis $ CompSigmaElim b yts vy $ CompUpElim x ey e2 -- commutative conversion
+          reduce ctx $ CompSigmaElim b yts vy $ CompUpElim x ey e2 -- commutative conversion
         _ -> do
-          e2' <- reduce axis e2
+          e2' <- reduce ctx e2
           case e2' of
             CompUpIntro (ValueVarLocal y)
               | x == y ->
@@ -76,27 +76,27 @@ reduce axis term =
       case v of
         ValueEnumIntro labelInfo l
           | Just body <- lookup (EnumCaseLabel labelInfo l) les' ->
-            reduce axis body
+            reduce ctx body
           | Just body <- lookup EnumCaseDefault les' ->
-            reduce axis body
+            reduce ctx body
         ValueInt _ l
           | Just body <- lookup (EnumCaseInt (fromInteger l)) les' ->
-            reduce axis body
+            reduce ctx body
           | Just body <- lookup EnumCaseDefault les' ->
-            reduce axis body
+            reduce ctx body
           | otherwise -> do
             p "other"
             p' v
             p' les
             -- let (ls, es) = unzip les
-            es' <- mapM (reduce axis) es
+            es' <- mapM (reduce ctx) es
             return $ CompEnumElim v (zip ls es')
         _ -> do
           -- p "other"
           -- p' v
           -- p' les
           -- let (ls, es) = unzip les
-          es' <- mapM (reduce axis) es
+          es' <- mapM (reduce ctx) es
           return $ CompEnumElim v (zip ls es')
     CompArrayAccess {} ->
       return term

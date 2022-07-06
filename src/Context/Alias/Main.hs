@@ -37,7 +37,7 @@ getAdditionalChecksumAlias currentModule mainModule = do
     else return (defaultModulePrefix, domain)
 
 getCandList ::
-  Locator.Axis ->
+  Locator.Context ->
   Map.HashMap T.Text T.Text ->
   IORef (Map.HashMap T.Text T.Text) ->
   T.Text ->

@@ -11,9 +11,9 @@ import qualified Context.Throw as Throw
 data Mode = Mode
   { logCtx :: Log.Config -> IO Log.Context,
     throwCtx :: Throw.Config -> IO Throw.Context,
-    gensymCtx :: Gensym.Config -> IO Gensym.Axis,
-    llvmCtx :: LLVM.Config -> IO LLVM.Axis,
-    globalCtx :: Global.Config -> IO Global.Axis,
-    locatorCtx :: Locator.Config -> IO Locator.Axis,
+    gensymCtx :: Gensym.Config -> IO Gensym.Context,
+    llvmCtx :: LLVM.Config -> IO LLVM.Context,
+    globalCtx :: Global.Config -> IO Global.Context,
+    locatorCtx :: Locator.Config -> IO Locator.Context,
     aliasCtx :: Alias.Config -> IO Alias.Context
   }

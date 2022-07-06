@@ -68,24 +68,24 @@ getModuleChecksumAliasList baseModule = do
   map (\(key, (_, ModuleChecksum checksum)) -> (key, checksum)) dependencyList
 
 findModuleFile :: Context -> Path Abs Dir -> IO (Path Abs File)
-findModuleFile context moduleRootDirCandidate = do
+findModuleFile ctx moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
   moduleFileExists <- doesFileExist moduleFileCandidate
   case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
     (True, _) ->
       return moduleFileCandidate
     (_, True) ->
-      findModuleFile context $ parent moduleRootDirCandidate
+      findModuleFile ctx $ parent moduleRootDirCandidate
     _ ->
-      context & raiseError' $ "could not find a module file."
+      ctx & raiseError' $ "could not find a module file."
 
 getMainModuleFilePath :: Context -> IO (Path Abs File)
-getMainModuleFilePath context =
-  getCurrentDir >>= findModuleFile context
+getMainModuleFilePath ctx =
+  getCurrentDir >>= findModuleFile ctx
 
 getCurrentModuleFilePath :: Context -> IO (Path Abs File)
-getCurrentModuleFilePath context =
-  getCurrentDir >>= findModuleFile context
+getCurrentModuleFilePath ctx =
+  getCurrentDir >>= findModuleFile ctx
 
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
 addDependency (ModuleAlias alias) url checksum someModule =

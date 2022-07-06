@@ -36,7 +36,7 @@ type VarName = T.Text
 
 type IsDefinite = Bool
 
-data Axis = Axis
+data Context = Context
   { pushToCurrentLocalLocator :: T.Text -> IO (),
     popFromCurrentLocalLocator :: Hint -> IO T.Text,
     attachCurrentLocator :: VarName -> IO VarName,

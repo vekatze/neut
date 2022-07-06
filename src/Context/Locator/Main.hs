@@ -11,7 +11,7 @@ import Entity.Module
 import Entity.Source
 import Path
 
-new :: Locator.Config -> IO Locator.Axis
+new :: Locator.Config -> IO Locator.Context
 new cfg = do
   currentGlobalLocator <- getGlobalLocator (Locator.mainModule cfg) (Locator.currentSource cfg)
   currentGlobalLocatorRef <- newIORef currentGlobalLocator
@@ -19,7 +19,7 @@ new cfg = do
   activeGlobalLocatorListRef <- newIORef [currentGlobalLocator]
   activeLocalLocatorListRef <- newIORef []
   return
-    Locator.Axis
+    Locator.Context
       { Locator.pushToCurrentLocalLocator =
           pushToCurrentLocalLocator currentLocalLocatorListRef,
         Locator.popFromCurrentLocalLocator =
@@ -50,11 +50,11 @@ pushToCurrentLocalLocator currentLocalLocatorListRef s = do
       writeIORef currentLocalLocatorListRef $ headLocalLocator <> nsSep <> s : localLocatorList
 
 popFromCurrentLocalLocator :: Throw.Context -> IORef [T.Text] -> Hint -> IO T.Text
-popFromCurrentLocalLocator context currentLocalLocatorListRef m = do
+popFromCurrentLocalLocator ctx currentLocalLocatorListRef m = do
   localLocatorList <- readIORef currentLocalLocatorListRef
   case localLocatorList of
     [] ->
-      Throw.raiseError context m "there is no section to end"
+      Throw.raiseError ctx m "there is no section to end"
     headLocalLocator : rest -> do
       writeIORef currentLocalLocatorListRef rest
       return headLocalLocator

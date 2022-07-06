@@ -33,10 +33,10 @@ newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (T.Text, [EnumItem])} deriving 
 instance Binary EnumInfo
 
 new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe Integer)] -> IO EnumInfo
-new context m definiteEnumName itemList = do
+new ctx m definiteEnumName itemList = do
   let itemList' = attachPrefix definiteEnumName $ setDiscriminant 0 itemList
   unless (isLinear (map snd itemList')) $
-    (context & raiseError) m "found a collision of discriminant"
+    (ctx & raiseError) m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (definiteEnumName, itemList')}
 
 attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]

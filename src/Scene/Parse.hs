@@ -43,118 +43,118 @@ import Text.Megaparsec
 -- core functions
 --
 
-parseMain :: Axis -> T.Text -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
-parseMain axis mainFunctionName source = do
-  result <- parseSource axis source
+parseMain :: Context -> T.Text -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
+parseMain ctx mainFunctionName source = do
+  result <- parseSource ctx source
   let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
-  ensureMain axis m mainFunctionName
+  ensureMain ctx m mainFunctionName
   return result
 
-parseOther :: Axis -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
+parseOther :: Context -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseOther =
   parseSource
 
-parseSource :: Axis -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
-parseSource axis source = do
+parseSource :: Context -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
+parseSource ctx source = do
   mCache <- loadCache source
   case mCache of
     Just cache -> do
       let hint = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
       forM_ (cacheEnumInfo cache) $ \enumInfo ->
-        uncurry (Global.registerEnum (axis & global) hint) (fromEnumInfo enumInfo)
+        uncurry (Global.registerEnum (ctx & global) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
-      forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (axis & global) hint
+      forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (ctx & global) hint
       return $ Left stmtList
     Nothing -> do
       sourceAliasMap <- readIORef sourceAliasMapRef
       case Map.lookup (sourceFilePath source) sourceAliasMap of
         Nothing ->
-          Throw.raiseCritical' (throw axis) "[activateAliasInfoOfCurrentFile] (compiler bug)"
+          Throw.raiseCritical' (throw ctx) "[activateAliasInfoOfCurrentFile] (compiler bug)"
         Just aliasInfoList ->
-          activateAliasInfo (alias axis) aliasInfoList
-      (defList, enumInfoList) <- run (axis & throw) (program axis) $ sourceFilePath source
+          activateAliasInfo (alias ctx) aliasInfoList
+      (defList, enumInfoList) <- run (ctx & throw) (program ctx) $ sourceFilePath source
       return $ Right (defList, enumInfoList)
 
-ensureMain :: Axis -> Hint -> T.Text -> IO ()
-ensureMain axis m mainFunctionName = do
-  mMain <- Global.lookup (axis & global) mainFunctionName
+ensureMain :: Context -> Hint -> T.Text -> IO ()
+ensureMain ctx m mainFunctionName = do
+  mMain <- Global.lookup (ctx & global) mainFunctionName
   case mMain of
     Just GN.TopLevelFunc ->
       return ()
     _ ->
-      (axis & throw & Throw.raiseError) m "`main` is missing"
+      (ctx & throw & Throw.raiseError) m "`main` is missing"
 
-program :: Axis -> Parser ([QuasiStmt], [EnumInfo])
-program axis = do
+program :: Context -> Parser ([QuasiStmt], [EnumInfo])
+program ctx = do
   skipImportSequence
-  program' axis <* eof
+  program' ctx <* eof
 
-program' :: Axis -> Parser ([QuasiStmt], [EnumInfo])
-program' axis =
+program' :: Context -> Parser ([QuasiStmt], [EnumInfo])
+program' ctx =
   choice
     [ do
-        enumInfo <- parseDefineEnum axis
-        (defList, enumInfoList) <- program' axis
+        enumInfo <- parseDefineEnum ctx
+        (defList, enumInfoList) <- program' ctx
         return (defList, enumInfo : enumInfoList),
       do
-        parseDefinePrefix axis
-        program' axis,
+        parseDefinePrefix ctx
+        program' ctx,
       do
-        parseStmtUse axis
-        program' axis,
+        parseStmtUse ctx
+        program' ctx,
       do
-        stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList (WT.specialize axis) . concat
+        stmtList <- many (parseStmt ctx) >>= liftIO . discernStmtList (WT.specialize ctx) . concat
         return (stmtList, [])
     ]
 
-parseDefinePrefix :: Axis -> Parser ()
-parseDefinePrefix axis = do
+parseDefinePrefix :: Context -> Parser ()
+parseDefinePrefix ctx = do
   m <- currentHint
   try $ keyword "define-prefix"
   from <- snd <$> var
   delimiter "="
   to <- snd <$> var
-  liftIO $ Alias.registerLocatorAlias (axis & alias) m from to
+  liftIO $ Alias.registerLocatorAlias (ctx & alias) m from to
 
--- liftIO $ handleDefinePrefix (axis & throw) m from to
+-- liftIO $ handleDefinePrefix (ctx & throw) m from to
 
-parseStmtUse :: Axis -> Parser ()
-parseStmtUse axis = do
+parseStmtUse :: Context -> Parser ()
+parseStmtUse ctx = do
   try $ keyword "use"
   (_, name) <- parseDefiniteDescription
-  liftIO $ Locator.activatePartialLocator (axis & locator) name
+  liftIO $ Locator.activatePartialLocator (ctx & locator) name
 
-parseStmt :: Axis -> Parser [WeakStmt]
-parseStmt axis = do
+parseStmt :: Context -> Parser [WeakStmt]
+parseStmt ctx = do
   choice
-    [ parseDefineData axis,
-      parseDefineCodata axis,
-      return <$> parseDefineResource axis,
-      return <$> parseDefine axis OpacityTransparent,
-      return <$> parseDefine axis OpacityOpaque,
-      return <$> parseSection axis
+    [ parseDefineData ctx,
+      parseDefineCodata ctx,
+      return <$> parseDefineResource ctx,
+      return <$> parseDefine ctx OpacityTransparent,
+      return <$> parseDefine ctx OpacityOpaque,
+      return <$> parseSection ctx
     ]
 
 --
 -- parser for statements
 --
 
-parseSection :: Axis -> Parser WeakStmt
-parseSection axis = do
+parseSection :: Context -> Parser WeakStmt
+parseSection ctx = do
   try $ keyword "section"
   sectionName <- symbol
   -- liftIO $ modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
-  liftIO $ Locator.pushToCurrentLocalLocator (axis & locator) sectionName
-  stmtList <- concat <$> many (parseStmt axis)
+  liftIO $ Locator.pushToCurrentLocalLocator (ctx & locator) sectionName
+  stmtList <- concat <$> many (parseStmt ctx)
   m <- currentHint
   keyword "end"
-  _ <- liftIO $ Locator.popFromCurrentLocalLocator (axis & locator) m
+  _ <- liftIO $ Locator.popFromCurrentLocalLocator (ctx & locator) m
   -- liftIO $ modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Axis -> Opacity -> Parser WeakStmt
-parseDefine axis opacity = do
+parseDefine :: Context -> Opacity -> Parser WeakStmt
+parseDefine ctx opacity = do
   try $
     case opacity of
       OpacityOpaque ->
@@ -162,12 +162,12 @@ parseDefine axis opacity = do
       OpacityTransparent ->
         keyword "define-inline"
   m <- currentHint
-  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo axis
-  name' <- liftIO $ Locator.attachCurrentLocator (axis & locator) name
-  liftIO $ defineFunction axis opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
+  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo ctx
+  name' <- liftIO $ Locator.attachCurrentLocator (ctx & locator) name
+  liftIO $ defineFunction ctx opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
-  Axis ->
+  Context ->
   Opacity ->
   Hint ->
   T.Text ->
@@ -176,32 +176,32 @@ defineFunction ::
   WeakTerm ->
   WeakTerm ->
   IO WeakStmt
-defineFunction axis opacity m name impArgNum binder codType e = do
-  Global.registerTopLevelFunc (axis & global) m name
+defineFunction ctx opacity m name impArgNum binder codType e = do
+  Global.registerTopLevelFunc (ctx & global) m name
   return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
-parseDefineData :: Axis -> Parser [WeakStmt]
-parseDefineData axis = do
+parseDefineData :: Context -> Parser [WeakStmt]
+parseDefineData ctx = do
   m <- currentHint
   try $ keyword "define-data"
-  a <- var >>= liftIO . Locator.attachCurrentLocator (axis & locator) . snd
-  dataArgs <- argList $ weakAscription axis
-  consInfoList <- asBlock $ manyList $ parseDefineDataClause axis
-  liftIO $ defineData axis m a dataArgs consInfoList
+  a <- var >>= liftIO . Locator.attachCurrentLocator (ctx & locator) . snd
+  dataArgs <- argList $ weakAscription ctx
+  consInfoList <- asBlock $ manyList $ parseDefineDataClause ctx
+  liftIO $ defineData ctx m a dataArgs consInfoList
 
 defineData ::
-  Axis ->
+  Context ->
   Hint ->
   T.Text ->
   [BinderF WeakTerm] ->
   [(Hint, T.Text, [BinderF WeakTerm])] ->
   IO [WeakStmt]
-defineData axis m dataName dataArgs consInfoList = do
+defineData ctx m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName dataName) consInfoList
   setAsData dataName (length dataArgs) consInfoList'
   let consType = m :< WeakTermPi [] (m :< WeakTermTau)
-  formRule <- defineFunction axis OpacityOpaque m dataName 0 dataArgs (m :< WeakTermTau) consType
-  introRuleList <- mapM (parseDefineDataConstructor axis dataName dataArgs) $ zip consInfoList' [0 ..]
+  formRule <- defineFunction ctx OpacityOpaque m dataName 0 dataArgs (m :< WeakTermTau) consType
+  introRuleList <- mapM (parseDefineDataConstructor ctx dataName dataArgs) $ zip consInfoList' [0 ..]
   return $ formRule : introRuleList
 
 modifyConstructorName :: T.Text -> (Hint, T.Text, [BinderF WeakTerm]) -> IO (Hint, T.Text, [BinderF WeakTerm])
@@ -209,17 +209,17 @@ modifyConstructorName dataName (mb, b, yts) = do
   return (mb, dataName <> nsSep <> b, yts)
 
 parseDefineDataConstructor ::
-  Axis ->
+  Context ->
   T.Text ->
   [BinderF WeakTerm] ->
   ((Hint, T.Text, [BinderF WeakTerm]), Integer) ->
   IO WeakStmt
-parseDefineDataConstructor axis dataName dataArgs ((m, consName, consArgs), consNumber) = do
+parseDefineDataConstructor ctx dataName dataArgs ((m, consName, consArgs), consNumber) = do
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
   defineFunction
-    axis
+    ctx
     OpacityTransparent
     m
     consName
@@ -237,40 +237,40 @@ constructDataType :: Hint -> T.Text -> [BinderF WeakTerm] -> WeakTerm
 constructDataType m dataName dataArgs =
   m :< WeakTermPiElim (m :< WeakTermVarGlobal dataName) (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: Axis -> Parser (Hint, T.Text, [BinderF WeakTerm])
-parseDefineDataClause axis = do
+parseDefineDataClause :: Context -> Parser (Hint, T.Text, [BinderF WeakTerm])
+parseDefineDataClause ctx = do
   m <- currentHint
   b <- symbol
-  yts <- argList $ parseDefineDataClauseArg axis
+  yts <- argList $ parseDefineDataClauseArg ctx
   return (m, b, yts)
 
-parseDefineDataClauseArg :: Axis -> Parser (BinderF WeakTerm)
-parseDefineDataClauseArg axis = do
+parseDefineDataClauseArg :: Context -> Parser (BinderF WeakTerm)
+parseDefineDataClauseArg ctx = do
   m <- currentHint
   choice
-    [ try (weakAscription axis),
-      weakTermToWeakIdent (axis & gensym) m (weakTerm axis)
+    [ try (weakAscription ctx),
+      weakTermToWeakIdent (ctx & gensym) m (weakTerm ctx)
     ]
 
-parseDefineCodata :: Axis -> Parser [WeakStmt]
-parseDefineCodata axis = do
+parseDefineCodata :: Context -> Parser [WeakStmt]
+parseDefineCodata ctx = do
   m <- currentHint
   try $ keyword "define-codata"
-  dataName <- var >>= liftIO . Locator.attachCurrentLocator (axis & locator) . snd
-  dataArgs <- argList $ weakAscription axis
-  elemInfoList <- asBlock $ manyList $ weakAscription axis
-  formRule <- liftIO $ defineData axis m dataName dataArgs [(m, "new", elemInfoList)]
-  elimRuleList <- liftIO $ mapM (parseDefineCodataElim axis dataName dataArgs elemInfoList) elemInfoList
+  dataName <- var >>= liftIO . Locator.attachCurrentLocator (ctx & locator) . snd
+  dataArgs <- argList $ weakAscription ctx
+  elemInfoList <- asBlock $ manyList $ weakAscription ctx
+  formRule <- liftIO $ defineData ctx m dataName dataArgs [(m, "new", elemInfoList)]
+  elimRuleList <- liftIO $ mapM (parseDefineCodataElim ctx dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
 
-parseDefineCodataElim :: Axis -> T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> BinderF WeakTerm -> IO WeakStmt
-parseDefineCodataElim axis dataName dataArgs elemInfoList (m, elemName, elemType) = do
+parseDefineCodataElim :: Context -> T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> BinderF WeakTerm -> IO WeakStmt
+parseDefineCodataElim ctx dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = constructDataType m dataName dataArgs
-  recordVarText <- Gensym.newText (axis & gensym)
+  recordVarText <- Gensym.newText (ctx & gensym)
   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
   let elemName' = dataName <> nsSep <> Ident.toText elemName
   defineFunction
-    axis
+    ctx
     OpacityOpaque
     m
     elemName'
@@ -283,15 +283,15 @@ parseDefineCodataElim axis dataName dataArgs elemInfoList (m, elemName, elemType
         (weakVar m recordVarText, codataType)
         [((m, dataName <> nsSep <> "new", elemInfoList), weakVar m (Ident.toText elemName))]
 
-parseDefineResource :: Axis -> Parser WeakStmt
-parseDefineResource axis = do
+parseDefineResource :: Context -> Parser WeakStmt
+parseDefineResource ctx = do
   try $ keyword "define-resource"
   m <- currentHint
   name <- snd <$> var
   asBlock $ do
-    discarder <- delimiter "-" >> weakTerm axis
-    copier <- delimiter "-" >> weakTerm axis
-    liftIO $ Global.registerTopLevelFunc (axis & global) m name
+    discarder <- delimiter "-" >> weakTerm ctx
+    copier <- delimiter "-" >> weakTerm ctx
+    liftIO $ Global.registerTopLevelFunc (ctx & global) m name
     return $ WeakStmtDefineResource m name discarder copier
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
@@ -305,8 +305,8 @@ identPlusToVar :: BinderF WeakTerm -> WeakTerm
 identPlusToVar (m, x, _) =
   m :< WeakTermVar x
 
-weakTermToWeakIdent :: Gensym.Axis -> Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
-weakTermToWeakIdent axis m f = do
+weakTermToWeakIdent :: Gensym.Context -> Hint -> Parser WeakTerm -> Parser (BinderF WeakTerm)
+weakTermToWeakIdent ctx m f = do
   a <- f
-  h <- liftIO $ Gensym.newTextualIdentFromText axis "_"
+  h <- liftIO $ Gensym.newTextualIdentFromText ctx "_"
   return (m, h, a)

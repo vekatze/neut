@@ -123,14 +123,14 @@ data ContextConfig = CC
   { ccMode :: Mode.Mode,
     ccThrowCtx :: Throw.Context,
     ccLogCtx :: Log.Context,
-    ccGlobalCtx :: Global.Axis,
-    ccGensymCtx :: Gensym.Axis,
+    ccGlobalCtx :: Global.Context,
+    ccGensymCtx :: Gensym.Context,
     ccCancelAllocFlag :: Bool,
     ccMainModule :: Module,
     ccInitialSource :: Source
   }
 
-newCtx :: ContextConfig -> Source -> IO App.Axis
+newCtx :: ContextConfig -> Source -> IO App.Context
 newCtx cfg source = do
   llvmCtx <-
     Mode.llvmCtx (ccMode cfg) $
@@ -154,7 +154,7 @@ newCtx cfg source = do
           Alias.locatorCtx = locatorCtx
         }
   return $
-    App.Axis
+    App.Context
       { App.log = ccLogCtx cfg,
         App.throw = ccThrowCtx cfg,
         App.gensym = ccGensymCtx cfg,
@@ -246,46 +246,46 @@ compile ctxCfg hasObjectSet source = do
     then loadTopLevelDefinitions ctx source
     else compile' ctx source
 
-loadTopLevelDefinitions :: App.Axis -> Source -> IO ()
-loadTopLevelDefinitions axis source = do
-  mMainFunctionName <- getMainFunctionNameIfEntryPoint axis source
+loadTopLevelDefinitions :: App.Context -> Source -> IO ()
+loadTopLevelDefinitions ctx source = do
+  mMainFunctionName <- getMainFunctionNameIfEntryPoint ctx source
   case mMainFunctionName of
     Just mainName ->
-      void $ parseMain axis mainName source >>= elaborateMain axis mainName source >>= clarifyMain axis mainName
+      void $ parseMain ctx mainName source >>= elaborateMain ctx mainName source >>= clarifyMain ctx mainName
     Nothing ->
-      void $ parseOther axis source >>= elaborateOther axis source >>= clarifyOther axis
+      void $ parseOther ctx source >>= elaborateOther ctx source >>= clarifyOther ctx
 
-compile' :: App.Axis -> Source -> IO ()
-compile' axis source = do
-  llvmCode <- compileToLLVM axis source
+compile' :: App.Context -> Source -> IO ()
+compile' ctx source = do
+  llvmCode <- compileToLLVM ctx source
   outputPath <- sourceToOutputPath OutputKindObject source
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
   L.writeFile (toFilePath llvmOutputPath) llvmCode
-  (axis & App.llvm & LLVM.emit) OutputKindObject llvmCode outputPath
+  (ctx & App.llvm & LLVM.emit) OutputKindObject llvmCode outputPath
 
-compileToLLVM :: App.Axis -> Source -> IO L.ByteString
-compileToLLVM axis source = do
-  mMainFunctionName <- getMainFunctionNameIfEntryPoint axis source
+compileToLLVM :: App.Context -> Source -> IO L.ByteString
+compileToLLVM ctx source = do
+  mMainFunctionName <- getMainFunctionNameIfEntryPoint ctx source
   case mMainFunctionName of
     Just mainName -> do
-      parseMain axis mainName source
-        >>= elaborateMain axis mainName source
-        >>= clarifyMain axis mainName
-        >>= lowerMain axis
-        >>= emitMain axis
+      parseMain ctx mainName source
+        >>= elaborateMain ctx mainName source
+        >>= clarifyMain ctx mainName
+        >>= lowerMain ctx
+        >>= emitMain ctx
     Nothing -> do
-      parseOther axis source
-        >>= elaborateOther axis source
-        >>= clarifyOther axis
-        >>= lowerOther axis
-        >> emitOther axis
+      parseOther ctx source
+        >>= elaborateOther ctx source
+        >>= clarifyOther ctx
+        >>= lowerOther ctx
+        >> emitOther ctx
 
-link :: LLVM.Axis -> TargetString -> Module -> [Source] -> IO ()
-link axis target mainModule sourceList = do
+link :: LLVM.Context -> TargetString -> Module -> [Source] -> IO ()
+link ctx target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
-  LLVM.link axis objectPathList outputPath
+  LLVM.link ctx objectPathList outputPath
 
 data CleanConfig = CleanConfig
   { cleanLogCfg :: Log.Config,
@@ -321,22 +321,22 @@ getMainSource mainModule mainSourceFilePath = do
         sourceFilePath = mainSourceFilePath
       }
 
-getMainFunctionName :: App.Axis -> Source -> IO (Maybe T.Text)
-getMainFunctionName axis source = do
+getMainFunctionName :: App.Context -> Source -> IO (Maybe T.Text)
+getMainFunctionName ctx source = do
   b <- isMainFile source
   if b
-    then return <$> getMainFunctionName' axis
+    then return <$> getMainFunctionName' ctx
     else return Nothing
 
-getMainFunctionNameIfEntryPoint :: App.Axis -> Source -> IO (Maybe T.Text)
-getMainFunctionNameIfEntryPoint axis source = do
-  if sourceFilePath source == sourceFilePath (App.initialSource axis)
-    then return <$> getMainFunctionName' axis
+getMainFunctionNameIfEntryPoint :: App.Context -> Source -> IO (Maybe T.Text)
+getMainFunctionNameIfEntryPoint ctx source = do
+  if sourceFilePath source == sourceFilePath (App.initialSource ctx)
+    then return <$> getMainFunctionName' ctx
     else return Nothing
 
-getMainFunctionName' :: App.Axis -> IO T.Text
-getMainFunctionName' axis = do
-  Locator.attachCurrentLocator (axis & App.locator) "main"
+getMainFunctionName' :: App.Context -> IO T.Text
+getMainFunctionName' ctx = do
+  Locator.attachCurrentLocator (ctx & App.locator) "main"
 
 {-# NOINLINE traceSourceListRef #-}
 traceSourceListRef :: IORef [Source]
@@ -468,10 +468,10 @@ type TargetString =
   String
 
 resolveTarget :: Throw.Context -> Module -> TargetString -> IO (Path Abs File)
-resolveTarget axis mainModule target = do
+resolveTarget ctx mainModule target = do
   case getTargetFilePath mainModule (T.pack target) of
     Just path ->
       return path
     Nothing -> do
-      _ <- Throw.raiseError' axis $ "no such target is defined: `" <> T.pack target <> "`"
+      _ <- Throw.raiseError' ctx $ "no such target is defined: `" <> T.pack target <> "`"
       exitWith (ExitFailure 1)

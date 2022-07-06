@@ -1,5 +1,5 @@
 module Context.App
-  ( Axis (..),
+  ( Context (..),
   )
 where
 
@@ -13,13 +13,13 @@ import qualified Context.Throw as Throw
 import Entity.Source
 import Entity.Target
 
-data Axis = Axis
+data Context = Context
   { log :: Log.Context,
     throw :: Throw.Context,
-    gensym :: Gensym.Axis,
-    llvm :: LLVM.Axis,
-    global :: Global.Axis,
-    locator :: Locator.Axis,
+    gensym :: Gensym.Context,
+    llvm :: LLVM.Context,
+    global :: Global.Context,
+    locator :: Locator.Context,
     alias :: Alias.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,

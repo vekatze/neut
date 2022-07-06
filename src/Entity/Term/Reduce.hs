@@ -11,27 +11,27 @@ import Entity.Term
 import Entity.Term.Subst
 
 -- reduce given term assuming its purity
-reduce :: Axis -> Term -> IO Term
-reduce axis term =
+reduce :: Context -> Term -> IO Term
+reduce ctx term =
   case term of
     (m :< TermPi xts cod) -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (reduce axis) ts
-      cod' <- reduce axis cod
+      ts' <- mapM (reduce ctx) ts
+      cod' <- reduce ctx cod
       return (m :< TermPi (zip3 ms xs ts') cod')
     (m :< TermPiIntro kind xts e) -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (reduce axis) ts
-      e' <- reduce axis e
+      ts' <- mapM (reduce ctx) ts
+      e' <- reduce ctx e
       case kind of
         LamKindFix (mx, x, t) -> do
-          t' <- reduce axis t
+          t' <- reduce ctx t
           return (m :< TermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
         _ ->
           return (m :< TermPiIntro kind (zip3 ms xs ts') e')
     (m :< TermPiElim e es) -> do
-      e' <- reduce axis e
-      es' <- mapM (reduce axis) es
+      e' <- reduce ctx e
+      es' <- mapM (reduce ctx) es
       let app = TermPiElim e' es'
       case e' of
         -- (_ :< TermPiIntro opacity LamKindNormal xts body)
@@ -39,56 +39,56 @@ reduce axis term =
           | length xts == length es' -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es'
-            subst axis sub (m :< body) >>= reduce axis
+            subst ctx sub (m :< body) >>= reduce ctx
         _ ->
           return (m :< app)
     m :< TermSigma xts -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (reduce axis) ts
+      ts' <- mapM (reduce ctx) ts
       return $ m :< TermSigma (zip3 ms xs ts')
     m :< TermSigmaIntro es -> do
-      es' <- mapM (reduce axis) es
+      es' <- mapM (reduce ctx) es
       return $ m :< TermSigmaIntro es'
     m :< TermSigmaElim xts e1 e2 -> do
-      e1' <- reduce axis e1
+      e1' <- reduce ctx e1
       case e1' of
         _ :< TermSigmaIntro es
           | length xts == length es -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es
-            subst axis sub e2 >>= reduce axis
+            subst ctx sub e2 >>= reduce ctx
         _ -> do
-          e2' <- reduce axis e2
+          e2' <- reduce ctx e2
           return $ m :< TermSigmaElim xts e1' e2'
     _ :< TermLet (_, x, _) e1 e2 -> do
-      e1' <- reduce axis e1
+      e1' <- reduce ctx e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
-      subst axis sub e2
+      subst ctx sub e2
     (m :< TermEnumElim (e, t) les) -> do
-      e' <- reduce axis e
+      e' <- reduce ctx e
       let (ls, es) = unzip les
-      es' <- mapM (reduce axis) es
+      es' <- mapM (reduce ctx) es
       let les' = zip ls es'
       let les'' = zip (map unwrap ls) es'
-      t' <- reduce axis t
+      t' <- reduce ctx t
       case e' of
         (_ :< TermEnumIntro labelInfo l) ->
           case lookup (EnumCaseLabel labelInfo l) les'' of
             Just (_ :< body) ->
-              reduce axis (m :< body)
+              reduce ctx (m :< body)
             Nothing ->
               case lookup EnumCaseDefault les'' of
                 Just (_ :< body) ->
-                  reduce axis (m :< body)
+                  reduce ctx (m :< body)
                 Nothing ->
                   return (m :< TermEnumElim (e', t') les')
         _ ->
           return (m :< TermEnumElim (e', t') les')
     (m :< TermMagic der) -> do
-      der' <- traverse (reduce axis) der
+      der' <- traverse (reduce ctx) der
       return (m :< TermMagic der')
     (m :< TermMatch mSubject (e, t) clauseList) -> do
-      e' <- reduce axis e
+      e' <- reduce ctx e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
       -- case e' of
@@ -97,33 +97,33 @@ reduce axis term =
       --     consName `elem` consNameList,
       --     checkClauseListSanity consNameList clauseList -> do
       --     let app = m :< TermPiElim e' lamList
-      --     reduce axis app
+      --     reduce ctx app
       -- _ -> do
-      mSubject' <- mapM (reduce axis) mSubject
-      t' <- reduce axis t
+      mSubject' <- mapM (reduce ctx) mSubject
+      t' <- reduce ctx t
       clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
-        body' <- reduce axis body
+        body' <- reduce ctx body
         return ((mPat, name, xts), body')
       return (m :< TermMatch mSubject' (e', t') clauseList')
     m :< TermNoema s e -> do
-      s' <- reduce axis s
-      e' <- reduce axis e
+      s' <- reduce ctx s
+      e' <- reduce ctx e
       return $ m :< TermNoema s' e'
     m :< TermNoemaIntro s e -> do
-      e' <- reduce axis e
+      e' <- reduce ctx e
       return $ m :< TermNoemaIntro s e'
     m :< TermNoemaElim s e -> do
-      e' <- reduce axis e
+      e' <- reduce ctx e
       return $ m :< TermNoemaElim s e'
     _ :< TermArray _ ->
       return term
     m :< TermArrayIntro elemType elems -> do
-      elems' <- mapM (reduce axis) elems
+      elems' <- mapM (reduce ctx) elems
       return $ m :< TermArrayIntro elemType elems'
     m :< TermArrayAccess subject elemType array index -> do
-      subject' <- reduce axis subject
-      array' <- reduce axis array
-      index' <- reduce axis index
+      subject' <- reduce ctx subject
+      array' <- reduce ctx array
+      index' <- reduce ctx index
       return $ m :< TermArrayAccess subject' elemType array' index'
     _ ->
       return term

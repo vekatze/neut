@@ -10,7 +10,7 @@ data Config = Config
   { currentModule :: Module,
     mainModule :: Module,
     throwCtx :: Throw.Context,
-    locatorCtx :: Locator.Axis
+    locatorCtx :: Locator.Context
   }
 
 data Context = Context

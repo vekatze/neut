@@ -21,18 +21,18 @@ type SizeMap =
 
 data Context = Context
   { shouldCancelAlloc :: Bool,
-    gensym :: Gensym.Axis
+    gensym :: Gensym.Context
   }
 
-reduce :: App.Axis -> SubstLowComp -> SizeMap -> LowComp -> IO LowComp
-reduce axis sub sizeMap lowComp = do
-  reduce' (specialize axis) sub sizeMap lowComp
+reduce :: App.Context -> SubstLowComp -> SizeMap -> LowComp -> IO LowComp
+reduce ctx sub sizeMap lowComp = do
+  reduce' (specialize ctx) sub sizeMap lowComp
 
-specialize :: App.Axis -> Context
-specialize axis =
+specialize :: App.Context -> Context
+specialize ctx =
   Context
-    { shouldCancelAlloc = App.shouldCancelAlloc axis,
-      gensym = App.gensym axis
+    { shouldCancelAlloc = App.shouldCancelAlloc ctx,
+      gensym = App.gensym ctx
     }
 
 reduce' :: Context -> SubstLowComp -> SizeMap -> LowComp -> IO LowComp

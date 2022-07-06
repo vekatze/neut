@@ -1,5 +1,5 @@
 module Context.Gensym
-  ( Axis (..),
+  ( Context (..),
     Config (..),
     newText,
     newAster,
@@ -18,7 +18,7 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.WeakTerm
 
-data Axis = Axis
+data Context = Context
   { newCount :: IO Int,
     readCount :: IO Int,
     writeCount :: Int -> IO ()
@@ -27,36 +27,36 @@ data Axis = Axis
 data Config = Config {}
 
 {-# INLINE newText #-}
-newText :: Axis -> IO T.Text
-newText axis = do
-  i <- newCount axis
+newText :: Context -> IO T.Text
+newText ctx = do
+  i <- newCount ctx
   return $ ";" <> T.pack (show i)
 
 {-# INLINE newAster #-}
-newAster :: Axis -> Hint -> IO WeakTerm
-newAster axis m = do
-  i <- newCount axis
+newAster :: Context -> Hint -> IO WeakTerm
+newAster ctx m = do
+  i <- newCount ctx
   return $ m :< WeakTermAster i
 
 {-# INLINE newIdentFromText #-}
-newIdentFromText :: Axis -> T.Text -> IO Ident
-newIdentFromText axis s = do
-  i <- newCount axis
+newIdentFromText :: Context -> T.Text -> IO Ident
+newIdentFromText ctx s = do
+  i <- newCount ctx
   return $ I (s, i)
 
 {-# INLINE newIdentFromIdent #-}
-newIdentFromIdent :: Axis -> Ident -> IO Ident
-newIdentFromIdent axis x =
-  newIdentFromText axis (Ident.toText x)
+newIdentFromIdent :: Context -> Ident -> IO Ident
+newIdentFromIdent ctx x =
+  newIdentFromText ctx (Ident.toText x)
 
 {-# INLINE newValueVarLocalWith #-}
-newValueVarLocalWith :: Axis -> T.Text -> IO (Ident, Value)
-newValueVarLocalWith axis name = do
-  x <- newIdentFromText axis name
+newValueVarLocalWith :: Context -> T.Text -> IO (Ident, Value)
+newValueVarLocalWith ctx name = do
+  x <- newIdentFromText ctx name
   return (x, ValueVarLocal x)
 
 {-# INLINE newTextualIdentFromText #-}
-newTextualIdentFromText :: Axis -> T.Text -> IO Ident
-newTextualIdentFromText axis txt = do
-  i <- newCount axis
-  newIdentFromText axis $ ";" <> txt <> T.pack (show i)
+newTextualIdentFromText :: Context -> T.Text -> IO Ident
+newTextualIdentFromText ctx txt = do
+  i <- newCount ctx
+  newIdentFromText ctx $ ";" <> txt <> T.pack (show i)

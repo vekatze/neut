@@ -6,27 +6,27 @@ import qualified Data.HashMap.Lazy as Map
 import Entity.Stmt
 import qualified Entity.WeakTerm.Discern as WeakTerm
 
-discernStmtList :: WeakTerm.Axis -> [WeakStmt] -> IO [QuasiStmt]
-discernStmtList axis stmtList =
+discernStmtList :: WeakTerm.Context -> [WeakStmt] -> IO [QuasiStmt]
+discernStmtList ctx stmtList =
   case stmtList of
     [] ->
       return []
     WeakStmtDefine isReducible m functionName impArgNum xts codType e : rest -> do
-      (xts', nenv) <- WeakTerm.discernBinder axis Map.empty xts
-      codType' <- WeakTerm.discern axis nenv codType
-      e' <- WeakTerm.discern axis nenv e
-      rest' <- discernStmtList axis rest
+      (xts', nenv) <- WeakTerm.discernBinder ctx Map.empty xts
+      codType' <- WeakTerm.discern ctx nenv codType
+      e' <- WeakTerm.discern ctx nenv e
+      rest' <- discernStmtList ctx rest
       return $ QuasiStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
     WeakStmtDefineResource m name discarder copier : rest -> do
-      discarder' <- WeakTerm.discern axis Map.empty discarder
-      copier' <- WeakTerm.discern axis Map.empty copier
-      rest' <- discernStmtList axis rest
+      discarder' <- WeakTerm.discern ctx Map.empty discarder
+      copier' <- WeakTerm.discern ctx Map.empty copier
+      rest' <- discernStmtList ctx rest
       return $ QuasiStmtDefineResource m name discarder' copier' : rest'
     WeakStmtSection m sectionName innerStmtList : rest -> do
-      Locator.pushToCurrentLocalLocator (WeakTerm.locator axis) sectionName
-      innerStmtList' <- discernStmtList axis innerStmtList
-      _ <- Locator.popFromCurrentLocalLocator (axis & WeakTerm.locator) m
-      rest' <- discernStmtList axis rest
+      Locator.pushToCurrentLocalLocator (WeakTerm.locator ctx) sectionName
+      innerStmtList' <- discernStmtList ctx innerStmtList
+      _ <- Locator.popFromCurrentLocalLocator (ctx & WeakTerm.locator) m
+      rest' <- discernStmtList ctx rest
       return $ innerStmtList' ++ rest'
 
 -- discern :: WeakStmt -> IO QuasiStmt

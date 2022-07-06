@@ -38,90 +38,90 @@ import Text.Megaparsec
 -- parser for WeakTerm
 --
 
-weakTerm :: Axis -> Parser WeakTerm
-weakTerm axis = do
+weakTerm :: Context -> Parser WeakTerm
+weakTerm ctx = do
   m <- currentHint
-  e1 <- weakTermEasy axis
+  e1 <- weakTermEasy ctx
   choice
-    [ weakTermVoid axis m e1,
-      weakTermExplicitAscription axis m e1,
+    [ weakTermVoid ctx m e1,
+      weakTermExplicitAscription ctx m e1,
       return e1
     ]
 
 -- fixme: easy??
-weakTermEasy :: Axis -> Parser WeakTerm
-weakTermEasy axis = do
+weakTermEasy :: Context -> Parser WeakTerm
+weakTermEasy ctx = do
   choice
-    [ weakTermPiIntro axis,
-      weakTermPiIntroDef axis,
-      weakTermSigma axis,
-      weakTermSigmaIntro axis,
-      weakTermEnumElim axis,
-      weakTermIntrospect axis,
-      weakTermQuestion axis,
-      weakTermMagic axis,
-      weakTermMatch axis,
-      weakTermMatchNoetic axis,
-      weakTermIf axis,
-      weakTermIdealize axis,
-      weakTermArray axis,
-      weakTermArrayIntro axis,
-      weakTermArrayAccess axis,
+    [ weakTermPiIntro ctx,
+      weakTermPiIntroDef ctx,
+      weakTermSigma ctx,
+      weakTermSigmaIntro ctx,
+      weakTermEnumElim ctx,
+      weakTermIntrospect ctx,
+      weakTermQuestion ctx,
+      weakTermMagic ctx,
+      weakTermMatch ctx,
+      weakTermMatchNoetic ctx,
+      weakTermIf ctx,
+      weakTermIdealize ctx,
+      weakTermArray ctx,
+      weakTermArrayIntro ctx,
+      weakTermArrayAccess ctx,
       weakTermText,
-      weakTermCell axis,
-      weakTermCellIntro axis,
-      weakTermCellRead axis,
-      weakTermCellWrite axis,
-      weakTermNoema axis,
-      try $ weakTermLetSigmaElim axis,
-      weakTermLet axis,
-      weakTermLetCoproduct axis,
-      try $ weakTermPi axis,
-      try $ weakTermPiElim axis,
-      try $ weakTermPiElimInv axis,
-      weakTermSimple axis
+      weakTermCell ctx,
+      weakTermCellIntro ctx,
+      weakTermCellRead ctx,
+      weakTermCellWrite ctx,
+      weakTermNoema ctx,
+      try $ weakTermLetSigmaElim ctx,
+      weakTermLet ctx,
+      weakTermLetCoproduct ctx,
+      try $ weakTermPi ctx,
+      try $ weakTermPiElim ctx,
+      try $ weakTermPiElimInv ctx,
+      weakTermSimple ctx
     ]
 
-weakTermSimple :: Axis -> Parser WeakTerm
-weakTermSimple axis = do
+weakTermSimple :: Context -> Parser WeakTerm
+weakTermSimple ctx = do
   choice
-    [ weakTermParen axis,
+    [ weakTermParen ctx,
       weakTermTau,
       weakTermTextIntro,
-      weakTermAdmitQuestion (axis & gensym),
-      weakTermAdmit (axis & gensym),
-      weakTermAster axis,
-      weakTermInteger (axis & gensym),
-      weakTermFloat (axis & gensym),
+      weakTermAdmitQuestion (ctx & gensym),
+      weakTermAdmit (ctx & gensym),
+      weakTermAster ctx,
+      weakTermInteger (ctx & gensym),
+      weakTermFloat (ctx & gensym),
       weakTermDefiniteDescription,
       weakTermVar
     ]
 
-weakTermLet :: Axis -> Parser WeakTerm
-weakTermLet axis = do
+weakTermLet :: Context -> Parser WeakTerm
+weakTermLet ctx = do
   m <- currentHint
   try $ keyword "let"
-  x <- weakTermLetVar axis
+  x <- weakTermLetVar ctx
   delimiter "="
-  e1 <- weakTerm axis
+  e1 <- weakTerm ctx
   keyword "in"
-  e2 <- weakTerm axis
+  e2 <- weakTerm ctx
   return $ m :< WeakTermLet x e1 e2
 
 -- let? x : A = e1 in e2
 -- let? x     = e1 in e2
-weakTermLetCoproduct :: Axis -> Parser WeakTerm
-weakTermLetCoproduct axis = do
+weakTermLetCoproduct :: Context -> Parser WeakTerm
+weakTermLetCoproduct ctx = do
   m <- currentHint
   try $ keyword "let?"
-  x <- weakTermLetVar axis
+  x <- weakTermLetVar ctx
   delimiter "="
-  e1 <- weakTerm axis
+  e1 <- weakTerm ctx
   keyword "in"
-  e2 <- weakTerm axis
-  err <- liftIO $ Gensym.newTextualIdentFromText (axis & gensym) "err"
-  typeOfLeft <- liftIO $ Gensym.newAster (gensym axis) m
-  typeOfRight <- liftIO $ Gensym.newAster (gensym axis) m
+  e2 <- weakTerm ctx
+  err <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "err"
+  typeOfLeft <- liftIO $ Gensym.newAster (gensym ctx) m
+  typeOfRight <- liftIO $ Gensym.newAster (gensym ctx) m
   let sumLeft = "sum.left"
   let sumRight = "sum.right"
   let sumLeftVar = Ident.fromText "sum.left"
@@ -138,18 +138,18 @@ weakTermLetCoproduct axis = do
           )
         ]
 
-weakTermVoid :: Axis -> Hint -> WeakTerm -> Parser WeakTerm
-weakTermVoid axis m e1 = do
+weakTermVoid :: Context -> Hint -> WeakTerm -> Parser WeakTerm
+weakTermVoid ctx m e1 = do
   delimiter ";"
-  e2 <- weakTerm axis
-  f <- liftIO $ Gensym.newTextualIdentFromText (axis & gensym) "unit"
+  e2 <- weakTerm ctx
+  f <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "unit"
   return $ bind (m, f, m :< WeakTermEnum constTop) e1 e2
 
-weakTermExplicitAscription :: Axis -> Hint -> WeakTerm -> Parser WeakTerm
-weakTermExplicitAscription axis m e = do
+weakTermExplicitAscription :: Context -> Hint -> WeakTerm -> Parser WeakTerm
+weakTermExplicitAscription ctx m e = do
   delimiter ":"
-  t <- weakTermEasy axis
-  f <- liftIO $ Gensym.newTextualIdentFromText (axis & gensym) "unit"
+  t <- weakTermEasy ctx
+  f <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "unit"
   return $ bind (m, f, t) e (m :< WeakTermVar f)
 
 weakTermTau :: Parser WeakTerm
@@ -158,66 +158,66 @@ weakTermTau = do
   try $ keyword "tau"
   return $ m :< WeakTermTau
 
-weakTermAster :: Axis -> Parser WeakTerm
-weakTermAster axis = do
+weakTermAster :: Context -> Parser WeakTerm
+weakTermAster ctx = do
   m <- currentHint
   delimiter "?"
-  liftIO $ Gensym.newAster (gensym axis) m
+  liftIO $ Gensym.newAster (gensym ctx) m
 
-weakTermPi :: Axis -> Parser WeakTerm
-weakTermPi axis = do
+weakTermPi :: Context -> Parser WeakTerm
+weakTermPi ctx = do
   m <- currentHint
-  domList <- argList $ choice [try (weakAscription axis), typeWithoutIdent axis]
+  domList <- argList $ choice [try (weakAscription ctx), typeWithoutIdent ctx]
   delimiter "->"
-  cod <- weakTerm axis
+  cod <- weakTerm ctx
   return $ m :< WeakTermPi domList cod
 
-weakTermPiIntro :: Axis -> Parser WeakTerm
-weakTermPiIntro axis = do
+weakTermPiIntro :: Context -> Parser WeakTerm
+weakTermPiIntro ctx = do
   m <- currentHint
   try $ keyword "lambda"
-  varList <- argList $ weakBinder axis
-  e <- weakTermDotBind axis <|> doBlock (weakTerm axis)
+  varList <- argList $ weakBinder ctx
+  e <- weakTermDotBind ctx <|> doBlock (weakTerm ctx)
   return $ lam m varList e
 
-weakTermDotBind :: Axis -> Parser WeakTerm
-weakTermDotBind axis = do
+weakTermDotBind :: Context -> Parser WeakTerm
+weakTermDotBind ctx = do
   delimiter "."
-  weakTerm axis
+  weakTerm ctx
 
-parseDefInfo :: Axis -> Parser DefInfo
-parseDefInfo axis = do
+parseDefInfo :: Context -> Parser DefInfo
+parseDefInfo ctx = do
   functionVar <- var
-  domInfoList <- argList $ weakBinder axis
+  domInfoList <- argList $ weakBinder ctx
   delimiter ":"
-  codType <- weakTerm axis
-  e <- asBlock (weakTerm axis)
+  codType <- weakTerm ctx
+  e <- asBlock (weakTerm ctx)
   return (functionVar, domInfoList, codType, e)
 
-parseTopDefInfo :: Axis -> Parser TopDefInfo
-parseTopDefInfo axis = do
+parseTopDefInfo :: Context -> Parser TopDefInfo
+parseTopDefInfo ctx = do
   functionVar <- var
-  impDomInfoList <- impArgList $ weakBinder axis
-  domInfoList <- argList $ weakBinder axis
+  impDomInfoList <- impArgList $ weakBinder ctx
+  domInfoList <- argList $ weakBinder ctx
   delimiter ":"
-  codType <- weakTerm axis
-  e <- asBlock (weakTerm axis)
+  codType <- weakTerm ctx
+  e <- asBlock (weakTerm ctx)
   return (functionVar, impDomInfoList, domInfoList, codType, e)
 
 -- define name(x1: A1, ..., xn: An)[: A] as e end
-weakTermPiIntroDef :: Axis -> Parser WeakTerm
-weakTermPiIntroDef axis = do
+weakTermPiIntroDef :: Context -> Parser WeakTerm
+weakTermPiIntroDef ctx = do
   m <- currentHint
   try $ keyword "define"
-  ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo axis
+  ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo ctx
   let piType = mFun :< WeakTermPi domBinderList codType
   return $ m :< WeakTermPiIntro (LamKindFix (mFun, Ident.fromText functionName, piType)) domBinderList e
 
-weakTermSigma :: Axis -> Parser WeakTerm
-weakTermSigma axis = do
+weakTermSigma :: Context -> Parser WeakTerm
+weakTermSigma ctx = do
   m <- currentHint
   try $ keyword "tuple"
-  ts <- argList $ choice [try $ weakAscription axis, typeWithoutIdent axis]
+  ts <- argList $ choice [try $ weakAscription ctx, typeWithoutIdent ctx]
   return $ m :< WeakTermSigma ts
 
 parseDefiniteDescription :: Parser (Hint, T.Text)
@@ -233,24 +233,24 @@ weakTermDefiniteDescription = do
   (m, x) <- try parseDefiniteDescription
   return $ m :< WeakTermVarGlobal x
 
-weakTermEnumElim :: Axis -> Parser WeakTerm
-weakTermEnumElim axis = do
+weakTermEnumElim :: Context -> Parser WeakTerm
+weakTermEnumElim ctx = do
   m <- currentHint
   try $ keyword "switch"
-  e <- weakTerm axis
+  e <- weakTerm ctx
   keyword "with"
-  clauseList <- many (weakTermEnumClause axis)
+  clauseList <- many (weakTermEnumClause ctx)
   keyword "end"
-  h <- liftIO $ Gensym.newAster (gensym axis) m
+  h <- liftIO $ Gensym.newAster (gensym ctx) m
   return $ m :< WeakTermEnumElim (e, h) clauseList
 
-weakTermEnumClause :: Axis -> Parser (EnumCase, WeakTerm)
-weakTermEnumClause axis = do
+weakTermEnumClause :: Context -> Parser (EnumCase, WeakTerm)
+weakTermEnumClause ctx = do
   m <- currentHint
   delimiter "-"
   c <- symbol
   delimiter "->"
-  body <- weakTerm axis
+  body <- weakTerm ctx
   let dummyLabelInfo = ("", 0)
   case c of
     "default" ->
@@ -259,24 +259,24 @@ weakTermEnumClause axis = do
       return (m :< EnumCaseLabel dummyLabelInfo c, body)
 
 -- question e
-weakTermQuestion :: Axis -> Parser WeakTerm
-weakTermQuestion axis = do
+weakTermQuestion :: Context -> Parser WeakTerm
+weakTermQuestion ctx = do
   m <- currentHint
   try $ keyword "question"
-  e <- weakTerm axis
-  h <- liftIO $ Gensym.newAster (gensym axis) m
+  e <- weakTerm ctx
+  h <- liftIO $ Gensym.newAster (gensym ctx) m
   return $ m :< WeakTermQuestion e h
 
-weakTermMagic :: Axis -> Parser WeakTerm
-weakTermMagic axis = do
+weakTermMagic :: Context -> Parser WeakTerm
+weakTermMagic ctx = do
   m <- currentHint
   try $ keyword "magic"
   choice
-    [ weakTermMagicCast axis m,
-      weakTermMagicStore axis m,
-      weakTermMagicLoad axis m,
-      weakTermMagicSyscall axis m,
-      weakTermMagicExternal axis m
+    [ weakTermMagicCast ctx m,
+      weakTermMagicStore ctx m,
+      weakTermMagicLoad ctx m,
+      weakTermMagicSyscall ctx m,
+      weakTermMagicExternal ctx m
     ]
 
 weakTermMagicBase :: T.Text -> Parser WeakTerm -> Parser WeakTerm
@@ -284,41 +284,41 @@ weakTermMagicBase k parser = do
   keyword k
   betweenParen parser
 
-weakTermMagicCast :: Axis -> Hint -> Parser WeakTerm
-weakTermMagicCast axis m = do
+weakTermMagicCast :: Context -> Hint -> Parser WeakTerm
+weakTermMagicCast ctx m = do
   weakTermMagicBase "cast" $ do
-    castFrom <- weakTerm axis
-    castTo <- delimiter "," >> weakTerm axis
-    value <- delimiter "," >> weakTerm axis
+    castFrom <- weakTerm ctx
+    castTo <- delimiter "," >> weakTerm ctx
+    value <- delimiter "," >> weakTerm ctx
     return $ m :< WeakTermMagic (MagicCast castFrom castTo value)
 
-weakTermMagicStore :: Axis -> Hint -> Parser WeakTerm
-weakTermMagicStore axis m = do
+weakTermMagicStore :: Context -> Hint -> Parser WeakTerm
+weakTermMagicStore ctx m = do
   weakTermMagicBase "store" $ do
     lt <- lowType
-    pointer <- delimiter "," >> weakTerm axis
-    value <- delimiter "," >> weakTerm axis
+    pointer <- delimiter "," >> weakTerm ctx
+    value <- delimiter "," >> weakTerm ctx
     return $ m :< WeakTermMagic (MagicStore lt pointer value)
 
-weakTermMagicLoad :: Axis -> Hint -> Parser WeakTerm
-weakTermMagicLoad axis m = do
+weakTermMagicLoad :: Context -> Hint -> Parser WeakTerm
+weakTermMagicLoad ctx m = do
   weakTermMagicBase "load" $ do
     lt <- lowType
-    pointer <- delimiter "," >> weakTerm axis
+    pointer <- delimiter "," >> weakTerm ctx
     return $ m :< WeakTermMagic (MagicLoad lt pointer)
 
-weakTermMagicSyscall :: Axis -> Hint -> Parser WeakTerm
-weakTermMagicSyscall axis m = do
+weakTermMagicSyscall :: Context -> Hint -> Parser WeakTerm
+weakTermMagicSyscall ctx m = do
   weakTermMagicBase "syscall" $ do
     syscallNum <- integer
-    es <- many (delimiter "," >> weakTerm axis)
+    es <- many (delimiter "," >> weakTerm ctx)
     return $ m :< WeakTermMagic (MagicSyscall syscallNum es)
 
-weakTermMagicExternal :: Axis -> Hint -> Parser WeakTerm
-weakTermMagicExternal axis m = do
+weakTermMagicExternal :: Context -> Hint -> Parser WeakTerm
+weakTermMagicExternal ctx m = do
   weakTermMagicBase "external" $ do
     extFunName <- symbol
-    es <- many (delimiter "," >> weakTerm axis)
+    es <- many (delimiter "," >> weakTerm ctx)
     return $ m :< WeakTermMagic (MagicExternal extFunName es)
 
 -- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
@@ -363,33 +363,33 @@ lowTypeNumber = do
     _ ->
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 
-weakTermMatch :: Axis -> Parser WeakTerm
-weakTermMatch axis = do
+weakTermMatch :: Context -> Parser WeakTerm
+weakTermMatch ctx = do
   m <- currentHint
   try $ keyword "match"
-  e <- weakTerm axis
-  clauseList <- withBlock $ manyList $ weakTermMatchClause axis
+  e <- weakTerm ctx
+  clauseList <- withBlock $ manyList $ weakTermMatchClause ctx
   return $ m :< WeakTermMatch Nothing (e, doNotCare m) clauseList
 
-weakTermMatchNoetic :: Axis -> Parser WeakTerm
-weakTermMatchNoetic axis = do
+weakTermMatchNoetic :: Context -> Parser WeakTerm
+weakTermMatchNoetic ctx = do
   m <- currentHint
   try $ keyword "match-noetic"
-  e <- weakTerm axis
+  e <- weakTerm ctx
   keyword "with"
-  s <- liftIO $ Gensym.newAster (gensym axis) m
-  t <- liftIO $ Gensym.newAster (gensym axis) m
+  s <- liftIO $ Gensym.newAster (gensym ctx) m
+  t <- liftIO $ Gensym.newAster (gensym ctx) m
   let e' = castFromNoema s t e
-  clauseList <- manyList $ weakTermMatchClause axis
+  clauseList <- manyList $ weakTermMatchClause ctx
   keyword "end"
   let clauseList' = map (modifyWeakPattern s) clauseList
   return $ m :< WeakTermMatch (Just s) (e', doNotCare m) clauseList'
 
-weakTermMatchClause :: Axis -> Parser (PatternF WeakTerm, WeakTerm)
-weakTermMatchClause axis = do
-  pat <- weakTermPattern axis
+weakTermMatchClause :: Context -> Parser (PatternF WeakTerm, WeakTerm)
+weakTermMatchClause ctx = do
+  pat <- weakTermPattern ctx
   delimiter "->"
-  body <- weakTerm axis
+  body <- weakTerm ctx
   return (pat, body)
 
 modifyWeakPattern :: WeakTerm -> (PatternF WeakTerm, WeakTerm) -> (PatternF WeakTerm, WeakTerm)
@@ -405,64 +405,64 @@ modifyWeakPatternBody s xts body =
       bind (m, x, wrapWithNoema s t) (castToNoema s t (weakVar' m x)) $
         modifyWeakPatternBody s rest body
 
-weakTermPattern :: Axis -> Parser (PatternF WeakTerm)
-weakTermPattern axis = do
+weakTermPattern :: Context -> Parser (PatternF WeakTerm)
+weakTermPattern ctx = do
   m <- currentHint
   c <- symbol
-  patArgs <- argList $ weakBinder axis
+  patArgs <- argList $ weakBinder ctx
   return (m, c, patArgs)
 
 -- let (x1 : A1, ..., xn : An) = e1 in e2
-weakTermLetSigmaElim :: Axis -> Parser WeakTerm
-weakTermLetSigmaElim axis = do
+weakTermLetSigmaElim :: Context -> Parser WeakTerm
+weakTermLetSigmaElim ctx = do
   m <- currentHint
   try $ keyword "let"
   -- xts <- parseArgList2 weakBinder
-  xts <- argList $ weakBinder axis
+  xts <- argList $ weakBinder ctx
   delimiter "="
-  e1 <- weakTerm axis
+  e1 <- weakTerm ctx
   keyword "in"
-  e2 <- weakTerm axis
+  e2 <- weakTerm ctx
   return $ m :< WeakTermSigmaElim xts e1 e2
 
-weakTermLetVar :: Axis -> Parser (BinderF WeakTerm)
-weakTermLetVar axis = do
+weakTermLetVar :: Context -> Parser (BinderF WeakTerm)
+weakTermLetVar ctx = do
   m <- currentHint
   choice
     [ try $ do
         x <- symbol
         delimiter ":"
-        a <- weakTerm axis
+        a <- weakTerm ctx
         return (m, Ident.fromText x, a),
       do
         x <- symbol
-        h <- liftIO $ Gensym.newAster (gensym axis) m
+        h <- liftIO $ Gensym.newAster (gensym ctx) m
         return (m, Ident.fromText x, h)
     ]
 
-weakTermIf :: Axis -> Parser WeakTerm
-weakTermIf axis = do
+weakTermIf :: Context -> Parser WeakTerm
+weakTermIf ctx = do
   m <- currentHint
   try $ keyword "if"
-  ifCond <- weakTerm axis
+  ifCond <- weakTerm ctx
   keyword "then"
-  ifBody <- weakTerm axis
+  ifBody <- weakTerm ctx
   elseIfList <- many $ do
     keyword "else-if"
-    elseIfCond <- weakTerm axis
+    elseIfCond <- weakTerm ctx
     keyword "then"
-    elseIfBody <- weakTerm axis
+    elseIfBody <- weakTerm ctx
     return (elseIfCond, elseIfBody)
   keyword "else"
-  elseBody <- weakTerm axis
+  elseBody <- weakTerm ctx
   keyword "end"
-  liftIO $ foldIf axis m ifCond ifBody elseIfList elseBody
+  liftIO $ foldIf ctx m ifCond ifBody elseIfList elseBody
 
-foldIf :: Axis -> Hint -> WeakTerm -> WeakTerm -> [(WeakTerm, WeakTerm)] -> WeakTerm -> IO WeakTerm
-foldIf axis m ifCond ifBody elseIfList elseBody =
+foldIf :: Context -> Hint -> WeakTerm -> WeakTerm -> [(WeakTerm, WeakTerm)] -> WeakTerm -> IO WeakTerm
+foldIf ctx m ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
-      h <- Gensym.newAster (gensym axis) m
+      h <- Gensym.newAster (gensym ctx) m
       return $
         m
           :< WeakTermEnumElim
@@ -471,8 +471,8 @@ foldIf axis m ifCond ifBody elseIfList elseBody =
               (m :< EnumCaseLabel ("bool", 0) constBoolFalse, elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
-      cont <- foldIf axis m elseIfCond elseIfBody rest elseBody
-      h <- Gensym.newAster (gensym axis) m
+      cont <- foldIf ctx m elseIfCond elseIfBody rest elseBody
+      h <- Gensym.newAster (gensym ctx) m
       return $
         m
           :< WeakTermEnumElim
@@ -481,10 +481,10 @@ foldIf axis m ifCond ifBody elseIfList elseBody =
               (m :< EnumCaseLabel ("bool", 0) constBoolFalse, cont)
             ]
 
-weakTermParen :: Axis -> Parser WeakTerm
-weakTermParen axis = do
+weakTermParen :: Context -> Parser WeakTerm
+weakTermParen ctx = do
   m <- currentHint
-  es <- argList $ weakTerm axis
+  es <- argList $ weakTerm ctx
   case es of
     [] ->
       return $ m :< WeakTermSigmaIntro []
@@ -494,30 +494,30 @@ weakTermParen axis = do
       return $ m :< WeakTermSigmaIntro es
 
 -- -- (e1, ..., en) (n >= 2)
-weakTermSigmaIntro :: Axis -> Parser WeakTerm
-weakTermSigmaIntro axis = do
+weakTermSigmaIntro :: Context -> Parser WeakTerm
+weakTermSigmaIntro ctx = do
   m <- currentHint
   try $ keyword "tuple-new"
-  es <- argList $ weakTerm axis
+  es <- argList $ weakTerm ctx
   return $ m :< WeakTermSigmaIntro es
 
-weakTermNoema :: Axis -> Parser WeakTerm
-weakTermNoema axis = do
+weakTermNoema :: Context -> Parser WeakTerm
+weakTermNoema ctx = do
   m <- currentHint
   try $ delimiter "&"
   subject <- Ident.fromText <$> symbol
-  t <- weakTerm axis
+  t <- weakTerm ctx
   return $ m :< WeakTermNoema (m :< WeakTermVar subject) t
 
-weakTermIdealize :: Axis -> Parser WeakTerm
-weakTermIdealize axis = do
+weakTermIdealize :: Context -> Parser WeakTerm
+weakTermIdealize ctx = do
   m <- currentHint
   try $ keyword "idealize"
   varList <- manyTill var (keyword "over")
   let varList' = fmap (fmap Ident.fromText) varList
   subject <- Ident.fromText <$> symbol
-  e <- doBlock $ weakTerm axis
-  ts <- liftIO $ mapM (\(mx, _) -> Gensym.newAster (gensym axis) mx) varList
+  e <- doBlock $ weakTerm ctx
+  ts <- liftIO $ mapM (\(mx, _) -> Gensym.newAster (gensym ctx) mx) varList
   return $ m :< WeakTermNoemaElim subject (castLet subject (zip varList' ts) e)
 
 castLet :: Ident -> [((Hint, Ident), WeakTerm)] -> WeakTerm -> WeakTerm
@@ -528,75 +528,75 @@ castLet subject xts cont =
     ((m, x), t) : rest ->
       bind (m, x, t) (m :< WeakTermNoemaIntro subject (weakVar' m x)) $ castLet subject rest cont
 
-weakTermArray :: Axis -> Parser WeakTerm
-weakTermArray axis = do
+weakTermArray :: Context -> Parser WeakTerm
+weakTermArray ctx = do
   m <- currentHint
   try $ keyword "array"
   betweenParen $ do
-    elemType <- weakTerm axis
+    elemType <- weakTerm ctx
     return $ m :< WeakTermArray elemType
 
-weakTermArrayIntro :: Axis -> Parser WeakTerm
-weakTermArrayIntro axis = do
+weakTermArrayIntro :: Context -> Parser WeakTerm
+weakTermArrayIntro ctx = do
   m <- currentHint
   try $ keyword "array-new"
   betweenParen $ do
-    elems <- sepBy (weakTerm axis) (delimiter ",")
+    elems <- sepBy (weakTerm ctx) (delimiter ",")
     return $ m :< WeakTermArrayIntro (doNotCare m) elems
 
-weakTermArrayAccess :: Axis -> Parser WeakTerm
-weakTermArrayAccess axis = do
+weakTermArrayAccess :: Context -> Parser WeakTerm
+weakTermArrayAccess ctx = do
   m <- currentHint
   try $ keyword "array-access"
   betweenParen $ do
-    array <- weakTerm axis
+    array <- weakTerm ctx
     delimiter ","
-    index <- weakTerm axis
+    index <- weakTerm ctx
     return $ m :< WeakTermArrayAccess (doNotCare m) (doNotCare m) array index
 
-weakTermCell :: Axis -> Parser WeakTerm
-weakTermCell axis = do
+weakTermCell :: Context -> Parser WeakTerm
+weakTermCell ctx = do
   m <- currentHint
   try $ keyword "cell"
   betweenParen $ do
-    contentType <- weakTerm axis
+    contentType <- weakTerm ctx
     return $ m :< WeakTermCell contentType
 
-weakTermCellIntro :: Axis -> Parser WeakTerm
-weakTermCellIntro axis = do
+weakTermCellIntro :: Context -> Parser WeakTerm
+weakTermCellIntro ctx = do
   m <- currentHint
   try $ keyword "cell-new"
   betweenParen $ do
-    content <- weakTerm axis
+    content <- weakTerm ctx
     return $ m :< WeakTermCellIntro (doNotCare m) content
 
-weakTermCellRead :: Axis -> Parser WeakTerm
-weakTermCellRead axis = do
+weakTermCellRead :: Context -> Parser WeakTerm
+weakTermCellRead ctx = do
   m <- currentHint
   try $ keyword "cell-read"
   betweenParen $ do
-    cell <- weakTerm axis
+    cell <- weakTerm ctx
     return $ m :< WeakTermCellRead cell
 
-weakTermCellWrite :: Axis -> Parser WeakTerm
-weakTermCellWrite axis = do
+weakTermCellWrite :: Context -> Parser WeakTerm
+weakTermCellWrite ctx = do
   m <- currentHint
   try $ keyword "cell-write"
   betweenParen $ do
-    cell <- weakTerm axis
+    cell <- weakTerm ctx
     delimiter ","
-    newValue <- weakTerm axis
+    newValue <- weakTerm ctx
     return $ m :< WeakTermCellWrite cell newValue
 
 bind :: BinderF WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm
 bind mxt@(m, _, _) e cont =
   m :< WeakTermLet mxt e cont
 
-weakTermAdmit :: Gensym.Axis -> Parser WeakTerm
-weakTermAdmit axis = do
+weakTermAdmit :: Gensym.Context -> Parser WeakTerm
+weakTermAdmit ctx = do
   m <- currentHint
   try $ keyword "admit"
-  h <- liftIO $ Gensym.newAster axis m
+  h <- liftIO $ Gensym.newAster ctx m
   return $
     m
       :< WeakTermPiElim
@@ -605,11 +605,11 @@ weakTermAdmit axis = do
           m :< WeakTermInt (m :< WeakTermConst "i64") 1
         ]
 
-weakTermAdmitQuestion :: Gensym.Axis -> Parser WeakTerm
-weakTermAdmitQuestion axis = do
+weakTermAdmitQuestion :: Gensym.Context -> Parser WeakTerm
+weakTermAdmitQuestion ctx = do
   m <- currentHint
   try $ keyword "?admit"
-  h <- liftIO $ Gensym.newAster axis m
+  h <- liftIO $ Gensym.newAster ctx m
   return $
     m
       :< WeakTermQuestion
@@ -622,18 +622,18 @@ weakTermAdmitQuestion axis = do
         )
         h
 
-weakTermPiElim :: Axis -> Parser WeakTerm
-weakTermPiElim axis = do
+weakTermPiElim :: Context -> Parser WeakTerm
+weakTermPiElim ctx = do
   m <- currentHint
-  e <- weakTermSimple axis
-  impArgs <- impArgList $ weakTerm axis
-  es <- argList $ weakTerm axis
-  ess <- many $ argList $ weakTerm axis
+  e <- weakTermSimple ctx
+  impArgs <- impArgList $ weakTerm ctx
+  es <- argList $ weakTerm ctx
+  ess <- many $ argList $ weakTerm ctx
   if null impArgs
     then return $ foldl' (\base args -> m :< WeakTermPiElim base args) e $ es : ess
     else do
-      f <- liftIO $ Gensym.newTextualIdentFromText (axis & gensym) "func"
-      h <- liftIO $ Gensym.newAster (axis & gensym) m
+      f <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "func"
+      h <- liftIO $ Gensym.newAster (ctx & gensym) m
       return $
         m
           :< WeakTermLet
@@ -645,45 +645,45 @@ weakTermPiElim axis = do
                 ((impArgs ++ es) : ess)
             )
 
-weakTermPiElimInv :: Axis -> Parser WeakTerm
-weakTermPiElimInv axis = do
+weakTermPiElimInv :: Context -> Parser WeakTerm
+weakTermPiElimInv ctx = do
   m <- currentHint
-  e <- weakTermSimple axis
-  f <- betweenBracket $ weakTerm axis
-  fs <- many $ betweenBracket $ weakTerm axis
+  e <- weakTermSimple ctx
+  f <- betweenBracket $ weakTerm ctx
+  fs <- many $ betweenBracket $ weakTerm ctx
   return $ foldl' (\base func -> m :< WeakTermPiElim func [base]) e $ f : fs
 
 -- --
 -- -- term-related helper functions
 -- --
 
-weakBinder :: Axis -> Parser (BinderF WeakTerm)
-weakBinder axis =
+weakBinder :: Context -> Parser (BinderF WeakTerm)
+weakBinder ctx =
   choice
-    [ try (weakAscription axis),
-      weakAscription' (axis & gensym)
+    [ try (weakAscription ctx),
+      weakAscription' (ctx & gensym)
     ]
 
-weakAscription :: Axis -> Parser (BinderF WeakTerm)
-weakAscription axis = do
+weakAscription :: Context -> Parser (BinderF WeakTerm)
+weakAscription ctx = do
   m <- currentHint
   x <- symbol
   delimiter ":"
-  a <- weakTerm axis
+  a <- weakTerm ctx
 
   return (m, Ident.fromText x, a)
 
-typeWithoutIdent :: Axis -> Parser (BinderF WeakTerm)
-typeWithoutIdent axis = do
+typeWithoutIdent :: Context -> Parser (BinderF WeakTerm)
+typeWithoutIdent ctx = do
   m <- currentHint
-  x <- liftIO $ Gensym.newTextualIdentFromText (axis & gensym) "_"
-  t <- weakTerm axis
+  x <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "_"
+  t <- weakTerm ctx
   return (m, x, t)
 
-weakAscription' :: Gensym.Axis -> Parser (BinderF WeakTerm)
-weakAscription' axis = do
+weakAscription' :: Gensym.Context -> Parser (BinderF WeakTerm)
+weakAscription' ctx = do
   (m, x) <- weakSimpleIdent
-  h <- liftIO $ Gensym.newAster axis m
+  h <- liftIO $ Gensym.newAster ctx m
   return (m, x, h)
 
 weakSimpleIdent :: Parser (Hint, Ident)
@@ -692,14 +692,14 @@ weakSimpleIdent = do
   x <- symbol
   return (m, Ident.fromText x)
 
-weakTermIntrospect :: Axis -> Parser WeakTerm
-weakTermIntrospect axis = do
+weakTermIntrospect :: Context -> Parser WeakTerm
+weakTermIntrospect ctx = do
   m <- currentHint
   try $ keyword "introspect"
   key <- symbol
-  value <- liftIO $ getIntrospectiveValue axis m key
+  value <- liftIO $ getIntrospectiveValue ctx m key
   keyword "with"
-  clauseList <- many $ weakTermIntrospectiveClause axis
+  clauseList <- many $ weakTermIntrospectiveClause ctx
   keyword "end"
   case lookup value clauseList of
     Just clause ->
@@ -710,25 +710,25 @@ weakTermIntrospect axis = do
 
 -- liftIO $ outputError m $ "`" <> value <> "` is not supported here"
 
-weakTermIntrospectiveClause :: Axis -> Parser (T.Text, WeakTerm)
-weakTermIntrospectiveClause axis = do
+weakTermIntrospectiveClause :: Context -> Parser (T.Text, WeakTerm)
+weakTermIntrospectiveClause ctx = do
   delimiter "-"
   c <- symbol
   delimiter "->"
-  body <- weakTerm axis
+  body <- weakTerm ctx
   return (c, body)
 
-getIntrospectiveValue :: Axis -> Hint -> T.Text -> IO T.Text
-getIntrospectiveValue axis m key =
+getIntrospectiveValue :: Context -> Hint -> T.Text -> IO T.Text
+getIntrospectiveValue ctx m key =
   case key of
     "target-platform" -> do
-      return $ T.pack (Target.platform (target axis))
+      return $ T.pack (Target.platform (target ctx))
     "target-arch" ->
-      return $ T.pack (Target.arch (target axis))
+      return $ T.pack (Target.arch (target ctx))
     "target-os" ->
-      return $ T.pack (Target.os (target axis))
+      return $ T.pack (Target.os (target ctx))
     _ ->
-      (axis & throw & Throw.raiseError) m $ "no such introspective value is defined: " <> key
+      (ctx & throw & Throw.raiseError) m $ "no such introspective value is defined: " <> key
 
 weakTermVar :: Parser WeakTerm
 weakTermVar = do
@@ -747,18 +747,18 @@ weakTermTextIntro = do
   s <- string
   return $ m :< WeakTermTextIntro s
 
-weakTermInteger :: Gensym.Axis -> Parser WeakTerm
-weakTermInteger axis = do
+weakTermInteger :: Gensym.Context -> Parser WeakTerm
+weakTermInteger ctx = do
   m <- currentHint
   intValue <- try integer
-  h <- liftIO $ Gensym.newAster axis m
+  h <- liftIO $ Gensym.newAster ctx m
   return $ m :< WeakTermInt h intValue
 
-weakTermFloat :: Gensym.Axis -> Parser WeakTerm
-weakTermFloat axis = do
+weakTermFloat :: Gensym.Context -> Parser WeakTerm
+weakTermFloat ctx = do
   m <- currentHint
   floatValue <- try float
-  h <- liftIO $ Gensym.newAster axis m
+  h <- liftIO $ Gensym.newAster ctx m
   return $ m :< WeakTermFloat h floatValue
 
 castFromNoema :: WeakTerm -> WeakTerm -> WeakTerm -> WeakTerm

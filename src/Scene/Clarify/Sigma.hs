@@ -19,33 +19,33 @@ import Entity.Ident
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
-returnImmediateS4 :: Gensym.Axis -> IO Comp
-returnImmediateS4 axis = do
-  CompUpIntro <$> immediateS4 axis
+returnImmediateS4 :: Gensym.Context -> IO Comp
+returnImmediateS4 ctx = do
+  CompUpIntro <$> immediateS4 ctx
 
-immediateS4 :: Gensym.Axis -> IO Value
-immediateS4 axis = do
+immediateS4 :: Gensym.Context -> IO Value
+immediateS4 ctx = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  tryCache cartImmName $ registerSwitcher axis cartImmName immediateT immediate4
+  tryCache cartImmName $ registerSwitcher ctx cartImmName immediateT immediate4
 
 sigmaS4 ::
-  Axis ->
+  Context ->
   Maybe T.Text ->
   [Either Comp (Ident, Comp)] ->
   IO Value
-sigmaS4 axis mName mxts = do
-  let gAxis = gensym axis
+sigmaS4 ctx mName mxts = do
+  let gContext = gensym ctx
   case mName of
     Nothing -> do
-      i <- Gensym.newCount gAxis
+      i <- Gensym.newCount gContext
       -- name <- fmap wrapWithQuote $ attachSectionPrefix $ "sigma;" <> T.pack (show i)
-      name <- fmap wrapWithQuote $ Locator.attachCurrentLocator (locator axis) $ "sigma;" <> T.pack (show i)
+      name <- fmap wrapWithQuote $ Locator.attachCurrentLocator (locator ctx) $ "sigma;" <> T.pack (show i)
       -- h <- wrapWithQuote <$> newText
-      registerSwitcher gAxis name (sigmaT gAxis mxts) (sigma4 gAxis mxts)
+      registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
       return $ ValueVarGlobal name
     Just name ->
-      tryCache name $ registerSwitcher gAxis name (sigmaT gAxis mxts) (sigma4 gAxis mxts)
+      tryCache name $ registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -63,16 +63,16 @@ sigmaS4 axis mName mxts = do
 --     return ()                                     ---        ---
 --
 sigmaT ::
-  Gensym.Axis ->
+  Gensym.Context ->
   [Either Comp (Ident, Comp)] ->
   Value ->
   IO Comp
-sigmaT axis mxts argVar = do
-  xts <- mapM (supplyName axis) mxts
+sigmaT ctx mxts argVar = do
+  xts <- mapM (supplyName ctx) mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ uncurry (toAffineApp axis)
-  ys <- mapM (const $ Gensym.newIdentFromText axis "arg") xts
-  body' <- linearize axis xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
+  as <- forM xts $ uncurry (toAffineApp ctx)
+  ys <- mapM (const $ Gensym.newIdentFromText ctx "arg") xts
+  body' <- linearize ctx xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
   return $ CompSigmaElim False (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -90,56 +90,56 @@ sigmaT axis mxts argVar = do
 --       fn @ (1, xn) in              ---  APP-n                       ---       ---
 --     return (x1', ..., xn')
 sigma4 ::
-  Gensym.Axis ->
+  Gensym.Context ->
   [Either Comp (Ident, Comp)] ->
   Value ->
   IO Comp
-sigma4 axis mxts argVar = do
-  xts <- mapM (supplyName axis) mxts
+sigma4 ctx mxts argVar = do
+  xts <- mapM (supplyName ctx) mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ uncurry (toRelevantApp axis)
-  (varNameList, varList) <- unzip <$> mapM (const $ Gensym.newValueVarLocalWith axis "pair") xts
-  body' <- linearize axis xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
+  as <- forM xts $ uncurry (toRelevantApp ctx)
+  (varNameList, varList) <- unzip <$> mapM (const $ Gensym.newValueVarLocalWith ctx "pair") xts
+  body' <- linearize ctx xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
   return $ CompSigmaElim True (map fst xts) argVar body'
 
-supplyName :: Gensym.Axis -> Either b (Ident, b) -> IO (Ident, b)
-supplyName axis mName =
+supplyName :: Gensym.Context -> Either b (Ident, b) -> IO (Ident, b)
+supplyName ctx mName =
   case mName of
     Right (x, t) ->
       return (x, t)
     Left t -> do
-      x <- Gensym.newIdentFromText axis "unused-sigarg"
+      x <- Gensym.newIdentFromText ctx "unused-sigarg"
       return (x, t)
 
 closureEnvS4 ::
-  Axis ->
+  Context ->
   [Either Comp (Ident, Comp)] ->
   IO Value
-closureEnvS4 axis mxts =
+closureEnvS4 ctx mxts =
   case mxts of
     [] ->
-      immediateS4 (gensym axis) -- performance optimization; not necessary for correctness
+      immediateS4 (gensym ctx) -- performance optimization; not necessary for correctness
     _ ->
-      sigmaS4 axis Nothing mxts
+      sigmaS4 ctx Nothing mxts
 
-returnClosureS4 :: Axis -> IO Comp
-returnClosureS4 axis = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (gensym axis) "env"
-  retImmS4 <- returnImmediateS4 (gensym axis)
+returnClosureS4 :: Context -> IO Comp
+returnClosureS4 ctx = do
+  (env, envVar) <- Gensym.newValueVarLocalWith (gensym ctx) "env"
+  retImmS4 <- returnImmediateS4 (gensym ctx)
   t <-
     sigmaS4
-      axis
+      ctx
       (Just cartClsName)
       [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
   return $ CompUpIntro t
 
-returnCellS4 :: Axis -> IO Comp
-returnCellS4 axis = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (gensym axis) "env"
-  retImmS4 <- returnImmediateS4 (gensym axis)
+returnCellS4 :: Context -> IO Comp
+returnCellS4 ctx = do
+  (env, envVar) <- Gensym.newValueVarLocalWith (gensym ctx) "env"
+  retImmS4 <- returnImmediateS4 (gensym ctx)
   t <-
     sigmaS4
-      axis
+      ctx
       (Just cartCellName)
       [Right (env, retImmS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
   return $ CompUpIntro t

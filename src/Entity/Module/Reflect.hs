@@ -16,14 +16,14 @@ import Path
 import Path.IO
 
 fromFilePath :: Context -> Path Abs File -> IO Module
-fromFilePath context moduleFilePath = do
-  entity <- Ens.fromFilePath context moduleFilePath
-  entryPointEns <- access context "target" entity >>= toDictionary context
-  dependencyEns <- access context "dependency" entity >>= toDictionary context
-  extraContentsEns <- access context "extra-content" entity >>= toList context
-  target <- mapM (interpretRelFilePath context) entryPointEns
-  dependency <- mapM (interpretDependency context) dependencyEns
-  extraContents <- mapM (interpretExtraPath context $ parent moduleFilePath) extraContentsEns
+fromFilePath ctx moduleFilePath = do
+  entity <- Ens.fromFilePath ctx moduleFilePath
+  entryPointEns <- access ctx "target" entity >>= toDictionary ctx
+  dependencyEns <- access ctx "dependency" entity >>= toDictionary ctx
+  extraContentsEns <- access ctx "extra-content" entity >>= toList ctx
+  target <- mapM (interpretRelFilePath ctx) entryPointEns
+  dependency <- mapM (interpretDependency ctx) dependencyEns
+  extraContents <- mapM (interpretExtraPath ctx $ parent moduleFilePath) extraContentsEns
   return
     Module
       { moduleTarget = target,
@@ -37,31 +37,31 @@ fromCurrentPath ctx =
   getCurrentModuleFilePath ctx >>= fromFilePath ctx
 
 interpretRelFilePath :: Context -> Ens -> IO (Path Rel File)
-interpretRelFilePath context =
-  toString context >=> parseRelFile . T.unpack
+interpretRelFilePath ctx =
+  toString ctx >=> parseRelFile . T.unpack
 
 interpretDependency :: Context -> Ens -> IO (ModuleURL, ModuleChecksum)
-interpretDependency context dependencyValue = do
-  url <- access context "URL" dependencyValue >>= toString context
-  checksum <- access context "checksum" dependencyValue >>= toString context
+interpretDependency ctx dependencyValue = do
+  url <- access ctx "URL" dependencyValue >>= toString ctx
+  checksum <- access ctx "checksum" dependencyValue >>= toString ctx
   return (ModuleURL url, ModuleChecksum checksum)
 
 interpretExtraPath :: Context -> Path Abs Dir -> Ens -> IO SomePath
-interpretExtraPath context moduleRootDir entity = do
-  itemPathText <- toString context entity
+interpretExtraPath ctx moduleRootDir entity = do
+  itemPathText <- toString ctx entity
   if T.last itemPathText == '/'
     then do
       dirPath <- resolveDir moduleRootDir $ T.unpack itemPathText
-      ensureExistence context moduleRootDir dirPath doesDirExist "directory"
+      ensureExistence ctx moduleRootDir dirPath doesDirExist "directory"
       return $ Left dirPath
     else do
       filePath <- resolveFile moduleRootDir $ T.unpack itemPathText
-      ensureExistence context moduleRootDir filePath doesFileExist "file"
+      ensureExistence ctx moduleRootDir filePath doesFileExist "file"
       return $ Right filePath
 
 ensureExistence :: Context -> Path Abs Dir -> Path Abs t -> (Path Abs t -> IO Bool) -> T.Text -> IO ()
-ensureExistence context moduleRootDir path existenceChecker kindText = do
+ensureExistence ctx moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker path
   unless b $ do
     relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
-    raiseError' context $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
+    raiseError' ctx $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)

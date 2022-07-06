@@ -20,13 +20,13 @@ import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap T.Text GN.GlobalName
 
-new :: Global.Config -> IO Global.Axis
+new :: Global.Config -> IO Global.Context
 new cfg = do
   nameMapRef <- newIORef Map.empty
   forM_ defaultEnumEnv $ \(typeName, enumItemList) ->
     modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
   return
-    Global.Axis
+    Global.Context
       { Global.registerTopLevelFunc =
           registerTopLevelFunc (Global.throwCtx cfg) nameMapRef,
         Global.registerEnum =
@@ -41,11 +41,11 @@ registerTopLevelFunc ::
   Hint.Hint ->
   T.Text ->
   IO ()
-registerTopLevelFunc axis nameMapRef m topLevelName = do
+registerTopLevelFunc ctx nameMapRef m topLevelName = do
   topNameMap <- readIORef nameMapRef
-  ensureFreshness axis m topNameMap topLevelName
+  ensureFreshness ctx m topNameMap topLevelName
   when (Map.member topLevelName topNameMap) $
-    Throw.raiseError axis m $ "`" <> topLevelName <> "` is already defined at the top level"
+    Throw.raiseError ctx m $ "`" <> topLevelName <> "` is already defined at the top level"
   modifyIORef' nameMapRef $ Map.insert topLevelName GN.TopLevelFunc
 
 ensureFreshness :: Throw.Context -> Hint.Hint -> NameMap -> T.Text -> IO ()
@@ -60,9 +60,9 @@ registerEnum ::
   EnumTypeName ->
   [EnumItem] ->
   IO ()
-registerEnum axis nameMapRef hint typeName enumItemList = do
+registerEnum ctx nameMapRef hint typeName enumItemList = do
   nameMap <- readIORef nameMapRef
-  ensureFreshness axis hint nameMap typeName
+  ensureFreshness ctx hint nameMap typeName
   modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
 
 lookup :: IORef NameMap -> T.Text -> IO (Maybe GN.GlobalName)

@@ -6,7 +6,7 @@ import Entity.EnumInfo
 import Entity.GlobalName
 import Entity.Hint
 
-data Axis = Axis
+data Context = Context
   { registerTopLevelFunc :: Hint -> T.Text -> IO (),
     registerEnum :: Hint -> EnumTypeName -> [EnumItem] -> IO (),
     lookup :: T.Text -> IO (Maybe GlobalName)
