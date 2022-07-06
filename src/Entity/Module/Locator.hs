@@ -11,6 +11,7 @@ import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
+import qualified Entity.ModuleID as MID
 import Path
 import Path.IO
 import System.IO.Unsafe
@@ -35,31 +36,27 @@ getNextModule ctx m currentModule nextModuleAlias = do
 
 getNextModuleFilePath :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
 getNextModuleFilePath ctx m currentModule nextModuleAlias = do
-  moduleDirPath <- getNextModuleDirPath ctx m currentModule nextModuleAlias
-  return $ moduleDirPath </> moduleFile
-
-getNextModuleDirPath :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs Dir)
-getNextModuleDirPath ctx m currentModule nextModuleAlias = do
-  if nextModuleAlias == ModuleAlias defaultModulePrefix
-    then return $ getModuleFileDir currentModule
-    else do
-      ModuleChecksum checksum <- resolveModuleAliasIntoModuleName ctx m currentModule nextModuleAlias
+  moduleID <- resolveAlias ctx m currentModule nextModuleAlias
+  case moduleID of
+    MID.This ->
+      return $ moduleLocation currentModule
+    MID.That (ModuleChecksum checksum) -> do
       libraryDir <- getLibraryDirPath
-      resolveDir libraryDir $ T.unpack checksum
+      moduleDir <- resolveDir libraryDir $ T.unpack checksum
+      return $ moduleDir </> moduleFile
 
 {-# NOINLINE moduleCacheMapRef #-}
 moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
 moduleCacheMapRef =
   unsafePerformIO (newIORef Map.empty)
 
-getModuleFileDir :: Module -> Path Abs Dir
-getModuleFileDir currentModule =
-  parent (moduleLocation currentModule)
-
-resolveModuleAliasIntoModuleName :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO ModuleChecksum
-resolveModuleAliasIntoModuleName ctx m currentModule nextModuleAlias =
-  case Map.lookup nextModuleAlias (moduleDependency currentModule) of
-    Just (_, checksum) ->
-      return checksum
-    Nothing ->
-      Throw.raiseError ctx m $ "no such module alias is defined: " <> extract nextModuleAlias
+resolveAlias :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO MID.ModuleID
+resolveAlias ctx m currentModule nextModuleAlias =
+  if nextModuleAlias == ModuleAlias defaultModulePrefix
+    then return MID.This
+    else do
+      case Map.lookup nextModuleAlias (moduleDependency currentModule) of
+        Just (_, checksum) ->
+          return $ MID.That checksum
+        Nothing ->
+          Throw.raiseError ctx m $ "no such module alias is defined: " <> extract nextModuleAlias
