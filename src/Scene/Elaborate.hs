@@ -5,8 +5,8 @@ module Scene.Elaborate
 where
 
 import Context.App
-import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
@@ -21,6 +21,7 @@ import Entity.Binder
 import Entity.EnumCase
 import Entity.EnumInfo
 import Entity.Global
+import qualified Entity.GlobalName as GN
 import Entity.Hint
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
@@ -411,12 +412,12 @@ checkSwitchExaustiveness axis m x caseList = do
 
 lookupEnumSet :: Axis -> Hint -> T.Text -> IO [T.Text]
 lookupEnumSet axis m name = do
-  mEnumItems <- Enum.lookupType (axis & enum) name
+  mEnumItems <- Global.lookup (axis & global) name
   case mEnumItems of
-    Nothing ->
-      (axis & throw & Throw.raiseError) m $ "no such enum defined: " <> name
-    Just enumItems ->
+    Just (GN.Enum enumItems) ->
       return $ map fst enumItems
+    _ ->
+      (axis & throw & Throw.raiseError) m $ "no such enum defined: " <> name
 
 insTermTypeEnv :: T.Text -> WeakTerm -> IO ()
 insTermTypeEnv name t =

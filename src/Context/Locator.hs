@@ -3,6 +3,8 @@ module Context.Locator where
 import qualified Context.Throw as Throw
 import qualified Data.Text as T
 import Entity.Hint
+import Entity.Module
+import Entity.Source
 
 -- the structure of a name of a global variable:
 --
@@ -18,7 +20,7 @@ import Entity.Hint
 --     ------------------------------
 --     ↑ partial locator
 --     ----------------------------------
---     ↑ locator
+--     ↑ (partial) locator
 --     ------------------------------------------------
 --     ↑ the definite description of a global variable `some-function` (up-to module alias)
 
@@ -37,7 +39,6 @@ type IsDefinite = Bool
 data Axis = Axis
   { pushToCurrentLocalLocator :: T.Text -> IO (),
     popFromCurrentLocalLocator :: Hint -> IO T.Text,
-    setCurrentGlobalLocator :: T.Text -> IO (),
     attachCurrentLocator :: VarName -> IO VarName,
     activateGlobalLocator :: T.Text -> IO (),
     activatePartialLocator :: T.Text -> IO (),
@@ -45,13 +46,8 @@ data Axis = Axis
     getPossibleReferents :: VarName -> IsDefinite -> IO [VarName]
   }
 
-data Handler = Handler
-  { open :: Config -> IO Axis,
-    close :: Axis -> IO ()
-  }
-
 data Config = Config
-  { currentGlobalLocator :: T.Text,
-    currentLocalLocator :: [T.Text],
+  { mainModule :: Module,
+    currentSource :: Source,
     throwCtx :: Throw.Context
   }

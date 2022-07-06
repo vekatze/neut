@@ -6,8 +6,8 @@ module Entity.WeakTerm.Discern
   )
 where
 
+import qualified Context.Alias as Alias
 import qualified Context.App as App
-import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Locator as Locator
@@ -16,22 +16,23 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
+import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
+import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Namespace
 import Entity.WeakTerm
 
 data Axis = Axis
   { throw :: Throw.Context,
     gensym :: Gensym.Axis,
-    enum :: Enum.Axis,
     global :: Global.Axis,
-    locator :: Locator.Axis
+    locator :: Locator.Axis,
+    alias :: Alias.Context
   }
 
 type NameEnv = Map.HashMap T.Text Ident
@@ -43,9 +44,9 @@ specialize axis =
   Axis
     { throw = axis & App.throw,
       gensym = axis & App.gensym,
-      enum = axis & App.enum,
       global = axis & App.global,
-      locator = axis & App.locator
+      locator = axis & App.locator,
+      alias = axis & App.alias
     }
 
 -- Alpha-convert all the variables so that different variables have different names.
@@ -59,9 +60,9 @@ discern axis nenv term =
         Just name ->
           return $ m :< WeakTermVar name
         Nothing -> do
-          resolveVar axis m s "variable" False
+          resolveName axis m s "variable" False
     m :< WeakTermVarGlobal x -> do
-      resolveVar axis m x "constant" True
+      resolveName axis m x "constant" True
     m :< WeakTermPi xts t -> do
       (xts', t') <- discernBinderWithBody axis nenv xts t
       return $ m :< WeakTermPi xts' t'
@@ -130,13 +131,12 @@ discern axis nenv term =
       e' <- discern axis nenv e
       t' <- discern axis nenv t
       clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        candList <- getCandidates axis constructorName ("::" `T.isInfixOf` constructorName)
-        constructorName' <- resolveSymbol (axis & throw) m (asConstructor (axis & global) m) constructorName candList
-        case constructorName' of
-          Just (_, newName) -> do
+        term' <- resolveName axis m constructorName "variable" ("::" `T.isInfixOf` constructorName)
+        case term' of
+          _ :< WeakTermVarGlobal newName -> do
             (xts', body') <- discernBinderWithBody axis nenv xts body
             return ((mCons, newName, xts'), body')
-          Nothing ->
+          _ ->
             (axis & throw & Throw.raiseError) m $ "no such constructor is defined: " <> constructorName
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
@@ -216,26 +216,36 @@ discernEnumCase :: Axis -> EnumCase -> IO EnumCase
 discernEnumCase axis enumCase =
   case enumCase of
     m :< EnumCaseLabel _ l -> do
-      candList <- getCandidates axis l False
-      ml <- resolveSymbol (axis & throw) m (asEnumCase (axis & enum) m) l $ l : candList
-      case ml of
-        Just l' ->
-          return l'
-        Nothing -> do
-          (axis & throw & Throw.raiseError) m $ "no such enum-value is defined: " <> l
+      term <- resolveName axis m l "variable" False
+      case term of
+        _ :< WeakTermEnumIntro labelInfo label ->
+          return $ m :< EnumCaseLabel labelInfo label
+        _ ->
+          Throw.raiseError (throw axis) m $ "no such enum-value is defined: " <> l
     _ ->
       return enumCase
 
-resolveVar :: Axis -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
-resolveVar axis m x termKind isDefinite = do
-  candList <- getCandidates axis x isDefinite
-  tryCand (resolveSymbol (axis & throw) m (asGlobalVar (axis & global) m) x candList) $ do
-    let candList' = x : candList
-    tryCand (resolveSymbol (axis & throw) m (asEnumIntro (axis & enum) m) x candList') $ do
-      tryCand (resolveSymbol (axis & throw) m (asEnum (axis & enum) m) x candList') $
-        tryCand (resolveSymbol (axis & throw) m (return . asWeakConstant m) x candList') $ do
-          (axis & throw & Throw.raiseError) m $ "undefined " <> termKind <> ": " <> x
+resolveName :: Axis -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
+resolveName axis m name termKind isDefinite = do
+  candList <- Alias.getCandList (alias axis) name isDefinite
+  candList' <- mapM (Global.lookup (global axis)) candList
+  let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
+  case foundNameList of
+    [] ->
+      Throw.raiseError (throw axis) m $ "undefined " <> termKind <> ": " <> name
+    [(name', GN.TopLevelFunc)] ->
+      return $ m :< WeakTermVarGlobal name'
+    [(name', GN.Enum _)] ->
+      return $ m :< WeakTermEnum name'
+    [(name', GN.EnumIntro enumTypeName discriminant)] ->
+      return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) name'
+    [(name', GN.Constant)] ->
+      return $ m :< WeakTermConst name'
+    _ -> do
+      let candInfo = T.concat $ map (("\n- " <>) . fst) foundNameList
+      Throw.raiseError (throw axis) m $
+        "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
-getCandidates :: Axis -> T.Text -> Bool -> IO [T.Text]
-getCandidates axis name isDefinite = do
-  constructCandList (axis & locator) name isDefinite
+candFilter :: (a, Maybe b) -> Maybe (a, b)
+candFilter (from, mTo) =
+  fmap (from,) mTo

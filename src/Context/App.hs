@@ -3,7 +3,7 @@ module Context.App
   )
 where
 
-import qualified Context.Enum as Enum
+import qualified Context.Alias as Alias
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
@@ -18,9 +18,9 @@ data Axis = Axis
     throw :: Throw.Context,
     gensym :: Gensym.Axis,
     llvm :: LLVM.Axis,
-    enum :: Enum.Axis,
     global :: Global.Axis,
     locator :: Locator.Axis,
+    alias :: Alias.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
     target :: Target

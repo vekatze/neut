@@ -6,35 +6,100 @@ where
 import qualified Context.Global as Global
 import qualified Context.Throw as Throw
 import Control.Monad
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
-import qualified Data.Set as S
+import Data.Maybe
 import qualified Data.Text as T
-import Entity.Hint hiding (new)
+import Entity.EnumInfo hiding (new)
+import Entity.Global
+import qualified Entity.GlobalName as GN
+import qualified Entity.Hint as Hint
+import qualified Entity.PrimNum.FromText as PrimNum
+import qualified Entity.PrimOp.FromText as PrimOp
+import Prelude hiding (lookup)
 
-type NameSet = S.Set T.Text
+type NameMap = Map.HashMap T.Text GN.GlobalName
 
 new :: Global.Config -> IO Global.Axis
 new cfg = do
-  topNameSetRef <- newIORef S.empty
+  nameMapRef <- newIORef Map.empty
+  forM_ defaultEnumEnv $ \(typeName, enumItemList) ->
+    modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
   return
     Global.Axis
-      { Global.register = register (Global.throwCtx cfg) topNameSetRef,
-        Global.isDefined = isDefined topNameSetRef
+      { Global.registerTopLevelFunc =
+          registerTopLevelFunc (Global.throwCtx cfg) nameMapRef,
+        Global.registerEnum =
+          registerEnum (Global.throwCtx cfg) nameMapRef,
+        Global.lookup =
+          lookup nameMapRef
       }
 
-register ::
+registerTopLevelFunc ::
   Throw.Context ->
-  IORef NameSet ->
-  Hint ->
+  IORef NameMap ->
+  Hint.Hint ->
   T.Text ->
   IO ()
-register axis topNameSetRef m topLevelName = do
-  topNameSet <- readIORef topNameSetRef
-  when (S.member topLevelName topNameSet) $
+registerTopLevelFunc axis nameMapRef m topLevelName = do
+  topNameMap <- readIORef nameMapRef
+  ensureFreshness axis m topNameMap topLevelName
+  when (Map.member topLevelName topNameMap) $
     Throw.raiseError axis m $ "`" <> topLevelName <> "` is already defined at the top level"
-  modifyIORef' topNameSetRef $ S.insert topLevelName
+  modifyIORef' nameMapRef $ Map.insert topLevelName GN.TopLevelFunc
 
-isDefined :: IORef NameSet -> T.Text -> IO Bool
-isDefined topNameSetRef name = do
-  topNameSet <- readIORef topNameSetRef
-  return $ S.member name topNameSet
+ensureFreshness :: Throw.Context -> Hint.Hint -> NameMap -> T.Text -> IO ()
+ensureFreshness ctx m topNameMap name = do
+  when (Map.member name topNameMap) $
+    Throw.raiseError ctx m $ "`" <> name <> "` is already defined"
+
+registerEnum ::
+  Throw.Context ->
+  IORef NameMap ->
+  Hint.Hint ->
+  EnumTypeName ->
+  [EnumItem] ->
+  IO ()
+registerEnum axis nameMapRef hint typeName enumItemList = do
+  nameMap <- readIORef nameMapRef
+  ensureFreshness axis hint nameMap typeName
+  modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
+
+lookup :: IORef NameMap -> T.Text -> IO (Maybe GN.GlobalName)
+lookup nameMapRef name = do
+  nameMap <- readIORef nameMapRef
+  case Map.lookup name nameMap of
+    Just kind ->
+      return $ Just kind
+    Nothing
+      | Just _ <- PrimNum.fromText name ->
+        return $ Just GN.Constant
+      | Just _ <- PrimOp.fromText name ->
+        return $ Just GN.Constant
+      | otherwise ->
+        return Nothing
+
+createEnumMap :: EnumTypeName -> [EnumItem] -> NameMap
+createEnumMap typeName enumItemList = do
+  let (labels, discriminants) = unzip enumItemList
+  let rev = Map.fromList $ zip labels (map (GN.EnumIntro typeName) discriminants)
+  Map.insert typeName (GN.Enum enumItemList) rev
+
+defaultEnumEnv :: [(EnumTypeName, [EnumItem])]
+defaultEnumEnv =
+  [ (constBottom, []),
+    (constTop, [(constTopUnit, 0)]),
+    (constBool, [(constBoolFalse, 0), (constBoolTrue, 1)])
+  ]
+
+-- {-# INLINE asWeakConstant #-}
+-- asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm
+-- asWeakConstant m name
+--   | Just (PrimNumInt _) <- PrimNum.fromText name =
+--     Just (m :< WeakTermConst name)
+--   | Just (PrimNumFloat _) <- PrimNum.fromText name =
+--     Just (m :< WeakTermConst name)
+--   | Just _ <- PrimOp.fromText name =
+--     Just (m :< WeakTermConst name)
+--   | otherwise = do
+--     Nothing

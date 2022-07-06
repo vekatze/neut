@@ -6,7 +6,6 @@ import Context.Throw
 import Control.Comonad.Cofree
 import Data.Function
 import qualified Data.HashMap.Lazy as Map
-import Data.IORef
 import qualified Data.Text as T
 import Entity.Ens
 import Entity.ModuleAlias
@@ -14,7 +13,6 @@ import Entity.ModuleChecksum
 import Entity.ModuleURL
 import Path
 import Path.IO
-import System.IO.Unsafe
 
 type SomePath =
   Either (Path Abs Dir) (Path Abs File)
@@ -85,28 +83,9 @@ getMainModuleFilePath :: Context -> IO (Path Abs File)
 getMainModuleFilePath context =
   getCurrentDir >>= findModuleFile context
 
-{-# NOINLINE mainModuleRef #-}
-mainModuleRef :: IORef (Maybe Module)
-mainModuleRef =
-  unsafePerformIO (newIORef Nothing)
-
-setMainModule :: Context -> Module -> IO ()
-setMainModule context mainModule = do
-  mainModuleOrNothing <- readIORef mainModuleRef
-  case mainModuleOrNothing of
-    Just _ ->
-      context & raiseCritical' $ "the main module is already initialized"
-    Nothing ->
-      modifyIORef' mainModuleRef $ const $ Just mainModule
-
-getMainModule :: Context -> IO Module
-getMainModule context = do
-  mainModuleOrNothing <- readIORef mainModuleRef
-  case mainModuleOrNothing of
-    Just mainModule ->
-      return mainModule
-    Nothing ->
-      (context & raiseCritical') "the main module is not initialized"
+getCurrentModuleFilePath :: Context -> IO (Path Abs File)
+getCurrentModuleFilePath context =
+  getCurrentDir >>= findModuleFile context
 
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
 addDependency (ModuleAlias alias) url checksum someModule =

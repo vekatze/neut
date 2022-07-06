@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Scene.Elaborate.Unify
   ( unify,
   )

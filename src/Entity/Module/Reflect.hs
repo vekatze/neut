@@ -1,6 +1,6 @@
 module Entity.Module.Reflect
-  ( initializeMainModule,
-    fromFilePath,
+  ( fromFilePath,
+    fromCurrentPath,
   )
 where
 
@@ -32,6 +32,10 @@ fromFilePath context moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
+fromCurrentPath :: Context -> IO Module
+fromCurrentPath ctx =
+  getCurrentModuleFilePath ctx >>= fromFilePath ctx
+
 interpretRelFilePath :: Context -> Ens -> IO (Path Rel File)
 interpretRelFilePath context =
   toString context >=> parseRelFile . T.unpack
@@ -61,7 +65,3 @@ ensureExistence context moduleRootDir path existenceChecker kindText = do
   unless b $ do
     relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
     raiseError' context $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
-
-initializeMainModule :: Context -> IO ()
-initializeMainModule context = do
-  getMainModuleFilePath context >>= fromFilePath context >>= setMainModule context

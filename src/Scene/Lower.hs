@@ -1,5 +1,3 @@
-{-# LANGUAGE TupleSections #-}
-
 module Scene.Lower
   ( lowerMain,
     lowerOther,

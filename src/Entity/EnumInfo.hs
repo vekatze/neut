@@ -1,6 +1,9 @@
 module Entity.EnumInfo
   ( EnumInfo,
     EnumItem,
+    Discriminant,
+    EnumValueName,
+    EnumTypeName,
     new,
     fromEnumInfo,
     -- initialEnumEnv,
@@ -17,7 +20,13 @@ import Entity.Global
 import qualified Entity.Hint as Hint
 import GHC.Generics
 
-type EnumItem = (T.Text, Integer) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
+type Discriminant = Integer
+
+type EnumTypeName = T.Text
+
+type EnumValueName = T.Text
+
+type EnumItem = (EnumValueName, Discriminant) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
 
 newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (T.Text, [EnumItem])} deriving (Generic)
 

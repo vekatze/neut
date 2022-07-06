@@ -12,7 +12,7 @@ import Data.Function
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Module
-import Entity.Module.Reflect
+import qualified Entity.Module.Reflect as Module
 import GHC.IO.Exception
 import Path
 import Path.IO
@@ -30,8 +30,7 @@ release mode cfg = do
   throwCtx <- Mode.throwCtx mode $ throwCfg cfg
   logCtx <- Mode.logCtx mode $ logCfg cfg
   Throw.run throwCtx (Log.printLog logCtx) $ do
-    initializeMainModule throwCtx
-    mainModule <- getMainModule throwCtx
+    mainModule <- Module.fromCurrentPath throwCtx
     let moduleRootDir = parent $ moduleLocation mainModule
     releaseFile <- getReleaseFile throwCtx mainModule (getReleaseName cfg)
     let tarRootDir = parent moduleRootDir

@@ -55,24 +55,11 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-getGlobalLocator :: Throw.Context -> Source -> IO T.Text
-getGlobalLocator axis source = do
-  domain <- getDomain axis (sourceModule source)
-  sigTail <- getLocatorTail source
-  return $ T.intercalate "." $ domain : sigTail
-
-getDomain :: Throw.Context -> Module -> IO T.Text
-getDomain axis targetModule = do
-  mainModule <- getMainModule axis
-  if moduleLocation mainModule == moduleLocation targetModule
-    then return defaultModulePrefix
-    else return $ T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation targetModule)
-
-getLocatorTail :: Source -> IO [T.Text]
-getLocatorTail source = do
-  relFilePath <- stripProperPrefix (getSourceDir $ sourceModule source) $ sourceFilePath source
-  (relFilePath', _) <- splitExtension relFilePath
-  return $ T.splitOn "/" $ T.pack $ toFilePath relFilePath'
+getDomain :: Module -> Module -> T.Text
+getDomain currentModule mainModule = do
+  if moduleLocation mainModule == moduleLocation currentModule
+    then defaultModulePrefix
+    else T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation currentModule)
 
 isMainFile :: Source -> IO Bool
 isMainFile source = do
@@ -88,43 +75,3 @@ getNextSource ctx m currentModule sigText = do
       { sourceModule = sourceLocatorModule srcLocator,
         sourceFilePath = srcAbsPath
       }
-
--- setupSectionPrefix :: Axis -> Source -> IO ()
--- setupSectionPrefix axis currentSource = do
---   globalLocator <- getGlobalLocator (throw axis) currentSource
---   Locator.activateGlobalLocator (locator axis) globalLocator
---   Locator.setCurrentGlobalLocator (locator axis) globalLocator
-
--- activateGlobalLocator locator
--- writeIORef currentGlobalLocatorRef locator
-
-getAdditionalChecksumAlias :: Throw.Context -> Source -> IO [(T.Text, T.Text)]
-getAdditionalChecksumAlias axis source = do
-  domain <- getDomain axis $ sourceModule source
-  if defaultModulePrefix == domain
-    then return []
-    else return [(defaultModulePrefix, domain)]
-
--- initializeNamespace :: Axis -> Source -> IO ()
--- initializeNamespace axis source = do
---   additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
---   writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
---   Locator.clearActiveLocators (locator axis)
---   writeIORef locatorAliasMapRef Map.empty
-
--- getMainSource :: Throw.Context -> IO Source
--- getMainSource axis = do
---   mainFilePath <- resolveTarget axis target
---   getMainSource (axis & throw) mainFilePath
-
--- resolveTarget :: Throw.Context -> Target -> IO (Path Abs File)
--- resolveTarget axis target = do
---   mainModule <- getMainModule axis
---   case getTargetFilePath mainModule (T.pack target) of
---     Just path ->
---       return path
---     Nothing -> do
---       -- l <-
---       _ <- axis & Throw.raiseError' $ "no such target is defined: `" <> T.pack target <> "`"
---       -- outputLog l
---       exitWith (ExitFailure 1)

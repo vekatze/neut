@@ -1,6 +1,6 @@
 module Context.Mode where
 
-import qualified Context.Enum as Enum
+import qualified Context.Alias as Alias
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
@@ -13,7 +13,7 @@ data Mode = Mode
     throwCtx :: Throw.Config -> IO Throw.Context,
     gensymCtx :: Gensym.Config -> IO Gensym.Axis,
     llvmCtx :: LLVM.Config -> IO LLVM.Axis,
-    enumCtx :: Enum.Config -> IO Enum.Axis,
     globalCtx :: Global.Config -> IO Global.Axis,
-    locatorCtx :: Locator.Config -> IO Locator.Axis
+    locatorCtx :: Locator.Config -> IO Locator.Axis,
+    aliasCtx :: Alias.Config -> IO Alias.Context
   }

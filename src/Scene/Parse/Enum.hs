@@ -4,7 +4,7 @@ module Scene.Parse.Enum
 where
 
 import Context.App
-import qualified Context.Enum as Enum
+import qualified Context.Global as Global
 import qualified Context.Locator as Locator
 import Control.Monad.IO.Class
 import qualified Data.Text as T
@@ -20,7 +20,7 @@ parseDefineEnum axis = do
   definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator axis) . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
   enumInfo <- liftIO $ EnumInfo.new (throw axis) m definiteEnumName itemList
-  liftIO $ uncurry (Enum.register (enum axis) m) (fromEnumInfo enumInfo)
+  liftIO $ uncurry (Global.registerEnum (global axis) m) (fromEnumInfo enumInfo)
   -- liftIO $ EnumInfo.registerIfNew (axis & throw) m enumInfo
   return enumInfo
 

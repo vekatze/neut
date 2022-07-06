@@ -47,9 +47,8 @@ get mode cfg = do
   throwCtx <- Mode.throwCtx mode (throwCfg cfg)
   logCtx <- Mode.logCtx mode (logCfg cfg)
   Throw.run throwCtx (Log.printLog logCtx) $ do
-    Module.initializeMainModule throwCtx
+    mainModule <- Module.fromCurrentPath throwCtx
     let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
-    mainModule <- getMainModule throwCtx
     let alias = moduleAlias cfg
     let url = moduleURL cfg
     withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
@@ -59,20 +58,6 @@ get mode cfg = do
       extractToLibDir ctx tempFilePath alias checksum
       addDependencyToModuleFile logCtx mainModule alias url checksum
       getLibraryModule throwCtx alias checksum >>= tidy' ctx
-
--- get :: Mode.Mode -> ModuleAlias -> ModuleURL -> IO ()
--- get mode alias url = do
---   throwCtx <- Mode.throwCtx mode $ Throw.Config {}
---   logCtx <- Mode.logCtx mode $ Log.Config {}
---   let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
---   mainModule <- getMainModule throwCtx
---   withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
---     download ctx tempFilePath alias url
---     archive <- B.hGetContents tempFileHandle
---     let checksum = computeModuleChecksum archive
---     extractToLibDir ctx tempFilePath alias checksum
---     addDependencyToModuleFile logCtx mainModule alias url checksum
---     getLibraryModule throwCtx alias checksum >>= tidy' ctx
 
 data TidyConfig = TidyConfig
   { tidyThrowCfg :: Throw.Config,
@@ -84,16 +69,9 @@ tidy mode cfg = do
   throwCtx <- Mode.throwCtx mode (tidyThrowCfg cfg)
   logCtx <- Mode.logCtx mode (tidyLogCfg cfg)
   Throw.run throwCtx (Log.printLog logCtx) $ do
-    Module.initializeMainModule throwCtx
+    mainModule <- Module.fromCurrentPath throwCtx
     let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
-    getMainModule throwCtx >>= tidy' ctx
-
--- tidy :: Mode.Mode -> Throw.Config -> Log.Config -> IO ()
--- tidy mode throwCfg logCfg = do
---   throwCtx <- Mode.throwCtx mode throwCfg
---   logCtx <- Mode.logCtx mode logCfg
---   let ctx = Context {getThrowCtx = throwCtx, getLogCtx = logCtx}
---   getMainModule throwCtx >>= tidy' ctx
+    tidy' ctx mainModule
 
 tidy' :: Context -> Module -> IO ()
 tidy' ctx targetModule = do

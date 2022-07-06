@@ -34,16 +34,6 @@ constructorEnvRef :: IORef (Map.HashMap T.Text Int)
 constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE moduleAliasMapRef #-}
-moduleAliasMapRef :: IORef (Map.HashMap T.Text T.Text)
-moduleAliasMapRef =
-  unsafePerformIO (newIORef Map.empty)
-
-{-# NOINLINE locatorAliasMapRef #-}
-locatorAliasMapRef :: IORef (Map.HashMap T.Text T.Text)
-locatorAliasMapRef =
-  unsafePerformIO (newIORef Map.empty)
-
 {-# NOINLINE weakTypeEnvRef #-}
 weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm)
 weakTypeEnvRef =

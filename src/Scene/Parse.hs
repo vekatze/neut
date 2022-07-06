@@ -4,8 +4,8 @@ module Scene.Parse
   )
 where
 
+import qualified Context.Alias as Alias
 import Context.App
-import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Locator as Locator
@@ -21,12 +21,11 @@ import Entity.AliasInfo
 import Entity.Binder
 import Entity.EnumInfo
 import Entity.Global
+import qualified Entity.GlobalName as GN
 import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Module
-import Entity.Namespace
 import Entity.Opacity
 import Entity.Source
 import Entity.Stmt
@@ -39,14 +38,6 @@ import Scene.Parse.Enum
 import Scene.Parse.Import
 import Scene.Parse.WeakTerm
 import Text.Megaparsec
-
-type GlobalLocator = T.Text
-
-type Section = T.Text
-
-type LocalLocator = [Section]
-
-type Locator = (GlobalLocator, LocalLocator)
 
 --
 -- core functions
@@ -66,46 +57,51 @@ parseOther =
 parseSource :: Axis -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
 parseSource axis source = do
   mCache <- loadCache source
-  initializeNamespace axis source
-  setupSectionPrefix axis source
   case mCache of
     Just cache -> do
       let hint = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
       forM_ (cacheEnumInfo cache) $ \enumInfo ->
-        uncurry (Enum.register (axis & enum) hint) (fromEnumInfo enumInfo)
+        uncurry (Global.registerEnum (axis & global) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
-      forM_ (map extractName stmtList) $ Global.register (axis & global) hint
+      forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (axis & global) hint
       return $ Left stmtList
     Nothing -> do
-      activateAliasInfo (axis & throw) (sourceFilePath source)
-      globalLocator <- getGlobalLocator (axis & throw) source
-      (defList, enumInfoList) <- run (axis & throw) (program (globalLocator, []) axis) $ sourceFilePath source
+      sourceAliasMap <- readIORef sourceAliasMapRef
+      case Map.lookup (sourceFilePath source) sourceAliasMap of
+        Nothing ->
+          Throw.raiseCritical' (throw axis) "[activateAliasInfoOfCurrentFile] (compiler bug)"
+        Just aliasInfoList ->
+          activateAliasInfo (alias axis) aliasInfoList
+      (defList, enumInfoList) <- run (axis & throw) (program axis) $ sourceFilePath source
       return $ Right (defList, enumInfoList)
 
 ensureMain :: Axis -> Hint -> T.Text -> IO ()
 ensureMain axis m mainFunctionName = do
-  isMainDefined <- Global.isDefined (axis & global) mainFunctionName
-  unless isMainDefined $ do
-    (axis & throw & Throw.raiseError) m "`main` is missing"
+  mMain <- Global.lookup (axis & global) mainFunctionName
+  case mMain of
+    Just GN.TopLevelFunc ->
+      return ()
+    _ ->
+      (axis & throw & Throw.raiseError) m "`main` is missing"
 
-program :: Locator -> Axis -> Parser ([QuasiStmt], [EnumInfo])
-program prefix axis = do
+program :: Axis -> Parser ([QuasiStmt], [EnumInfo])
+program axis = do
   skipImportSequence
-  program' prefix axis <* eof
+  program' axis <* eof
 
-program' :: Locator -> Axis -> Parser ([QuasiStmt], [EnumInfo])
-program' prefix axis =
+program' :: Axis -> Parser ([QuasiStmt], [EnumInfo])
+program' axis =
   choice
     [ do
         enumInfo <- parseDefineEnum axis
-        (defList, enumInfoList) <- program' prefix axis
+        (defList, enumInfoList) <- program' axis
         return (defList, enumInfo : enumInfoList),
       do
         parseDefinePrefix axis
-        program' prefix axis,
+        program' axis,
       do
         parseStmtUse axis
-        program' prefix axis,
+        program' axis,
       do
         stmtList <- many (parseStmt axis) >>= liftIO . discernStmtList (WT.specialize axis) . concat
         return (stmtList, [])
@@ -118,7 +114,9 @@ parseDefinePrefix axis = do
   from <- snd <$> var
   delimiter "="
   to <- snd <$> var
-  liftIO $ handleDefinePrefix (axis & throw) m from to
+  liftIO $ Alias.registerLocatorAlias (axis & alias) m from to
+
+-- liftIO $ handleDefinePrefix (axis & throw) m from to
 
 parseStmtUse :: Axis -> Parser ()
 parseStmtUse axis = do
@@ -179,7 +177,7 @@ defineFunction ::
   WeakTerm ->
   IO WeakStmt
 defineFunction axis opacity m name impArgNum binder codType e = do
-  Global.register (axis & global) m name
+  Global.registerTopLevelFunc (axis & global) m name
   return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
 parseDefineData :: Axis -> Parser [WeakStmt]
@@ -293,7 +291,7 @@ parseDefineResource axis = do
   asBlock $ do
     discarder <- delimiter "-" >> weakTerm axis
     copier <- delimiter "-" >> weakTerm axis
-    liftIO $ Global.register (axis & global) m name
+    liftIO $ Global.registerTopLevelFunc (axis & global) m name
     return $ WeakStmtDefineResource m name discarder copier
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()
@@ -312,16 +310,3 @@ weakTermToWeakIdent axis m f = do
   a <- f
   h <- liftIO $ Gensym.newTextualIdentFromText axis "_"
   return (m, h, a)
-
-setupSectionPrefix :: Axis -> Source -> IO ()
-setupSectionPrefix axis currentSource = do
-  globalLocator <- getGlobalLocator (throw axis) currentSource
-  Locator.activateGlobalLocator (locator axis) globalLocator
-  Locator.setCurrentGlobalLocator (locator axis) globalLocator
-
-initializeNamespace :: Axis -> Source -> IO ()
-initializeNamespace axis source = do
-  additionalChecksumAlias <- getAdditionalChecksumAlias (axis & throw) source
-  writeIORef moduleAliasMapRef $ Map.fromList $ additionalChecksumAlias ++ getModuleChecksumAliasList (sourceModule source)
-  Locator.clearActiveLocators (locator axis)
-  writeIORef locatorAliasMapRef Map.empty

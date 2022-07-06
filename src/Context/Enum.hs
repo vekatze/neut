@@ -1,22 +1,16 @@
-module Context.Enum where
+module Context.Enum () where
 
-import qualified Context.Throw as Throw
-import qualified Data.Text as T
-import Entity.EnumInfo
-import Entity.Hint
+-- import qualified Context.Throw as Throw
+-- import qualified Data.Text as T
+-- import Entity.EnumInfo
+-- import Entity.Hint
 
-type EnumTypeName = T.Text
+-- data Axis = Axis
+--   { register :: Hint -> EnumTypeName -> [EnumItem] -> IO (),
+--     lookupType :: T.Text -> IO (Maybe [EnumItem]),
+--     lookupValue :: T.Text -> IO (Maybe (EnumTypeName, Discriminant))
+--   }
 
-type EnumValueName = T.Text
-
-type Discriminant = Integer
-
-data Axis = Axis
-  { register :: Hint -> EnumTypeName -> [EnumItem] -> IO (),
-    lookupType :: T.Text -> IO (Maybe [EnumItem]),
-    lookupValue :: T.Text -> IO (Maybe (EnumTypeName, Discriminant))
-  }
-
-newtype Config = Config
-  { throwCtx :: Throw.Context
-  }
+-- newtype Config = Config
+--   { throwCtx :: Throw.Context
+--   }

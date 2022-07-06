@@ -7,12 +7,16 @@ import Data.IORef
 import qualified Data.Text as T
 import Entity.Global
 import Entity.Hint hiding (new)
+import Entity.Module
+import Entity.Source
+import Path
 
 new :: Locator.Config -> IO Locator.Axis
 new cfg = do
-  currentGlobalLocatorRef <- newIORef $ Locator.currentGlobalLocator cfg
+  currentGlobalLocator <- getGlobalLocator (Locator.mainModule cfg) (Locator.currentSource cfg)
+  currentGlobalLocatorRef <- newIORef currentGlobalLocator
   currentLocalLocatorListRef <- newIORef []
-  activeGlobalLocatorListRef <- newIORef []
+  activeGlobalLocatorListRef <- newIORef [currentGlobalLocator]
   activeLocalLocatorListRef <- newIORef []
   return
     Locator.Axis
@@ -20,8 +24,6 @@ new cfg = do
           pushToCurrentLocalLocator currentLocalLocatorListRef,
         Locator.popFromCurrentLocalLocator =
           popFromCurrentLocalLocator (Locator.throwCtx cfg) currentLocalLocatorListRef,
-        Locator.setCurrentGlobalLocator =
-          writeIORef currentGlobalLocatorRef,
         Locator.attachCurrentLocator =
           attachCurrentLocator currentGlobalLocatorRef currentLocalLocatorListRef,
         Locator.activateGlobalLocator =
@@ -91,7 +93,7 @@ getPossibleReferents currentGlobalLocatorRef currentLocalLocatorRef activeGlobal
       localLocatorList <- readIORef activeLocalLocatorListRef
       let localNameList = mapPrefix nsSep localLocatorList name
       let sectionalNameList = getSectionalNameList currentGlobalLocator currentLocalLocator name
-      return $ ListUtils.nubOrd $ globalNameList ++ localNameList ++ sectionalNameList
+      return $ ListUtils.nubOrd $ name : globalNameList ++ localNameList ++ sectionalNameList
 
 mapPrefix :: T.Text -> [T.Text] -> T.Text -> [T.Text]
 mapPrefix sep prefixList basename =
@@ -99,12 +101,16 @@ mapPrefix sep prefixList basename =
 
 getSectionalNameList :: T.Text -> [T.Text] -> T.Text -> [T.Text]
 getSectionalNameList currentGlobalLocator currentLocalLocatorList name = do
-  -- currentGlobalLocator <- readIORef currentGlobalLocatorRef
-  -- currentLocalLocatorList <- readIORef currentLocalLocatorListRef
   map (\localLocator -> currentGlobalLocator <> definiteSep <> localLocator <> nsSep <> name) currentLocalLocatorList
 
--- getSectionalNameList :: IORef T.Text -> IORef [T.Text] -> T.Text -> IO [T.Text]
--- getSectionalNameList currentGlobalLocatorRef currentLocalLocatorListRef name = do
---   currentGlobalLocator <- readIORef currentGlobalLocatorRef
---   currentLocalLocatorList <- readIORef currentLocalLocatorListRef
---   return $ map (\localLocator -> currentGlobalLocator <> definiteSep <> localLocator <> nsSep <> name) currentLocalLocatorList
+getGlobalLocator :: Module -> Source -> IO T.Text
+getGlobalLocator mainModule source = do
+  let domain = getDomain (sourceModule source) mainModule
+  sigTail <- getLocatorTail source
+  return $ T.intercalate "." $ domain : sigTail
+
+getLocatorTail :: Source -> IO [T.Text]
+getLocatorTail source = do
+  relFilePath <- stripProperPrefix (getSourceDir $ sourceModule source) $ sourceFilePath source
+  (relFilePath', _) <- splitExtension relFilePath
+  return $ T.splitOn "/" $ T.pack $ toFilePath relFilePath'

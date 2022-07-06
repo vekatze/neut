@@ -5,7 +5,7 @@ import qualified Act.Dependency as Dependency
 import qualified Act.Init as Init
 import qualified Act.Release as Release
 import qualified Act.Version as Version
-import qualified Context.Enum.Main as Enum
+import qualified Context.Alias.Main as Alias
 import qualified Context.Gensym.Main as Gensym
 import qualified Context.Global.Main as Global
 import qualified Context.LLVM.Main as LLVM
@@ -202,7 +202,7 @@ prodMode =
       Mode.throwCtx = Throw.new,
       Mode.gensymCtx = Gensym.new,
       Mode.llvmCtx = LLVM.new,
-      Mode.enumCtx = Enum.new,
+      Mode.aliasCtx = Alias.new,
       Mode.globalCtx = Global.new,
       Mode.locatorCtx = Locator.new
     }

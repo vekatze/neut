@@ -14,6 +14,7 @@ default-extensions:
   - RankNTypes
   - FlexibleInstances
   - ApplicativeDo
+  - TupleSections
 
 dependencies:
   - ansi-terminal

@@ -2,13 +2,14 @@ module Context.Global where
 
 import qualified Context.Throw as Throw
 import qualified Data.Text as T
+import Entity.EnumInfo
+import Entity.GlobalName
 import Entity.Hint
 
-type GlobalVarName = T.Text
-
 data Axis = Axis
-  { register :: Hint -> GlobalVarName -> IO (),
-    isDefined :: GlobalVarName -> IO Bool
+  { registerTopLevelFunc :: Hint -> T.Text -> IO (),
+    registerEnum :: Hint -> EnumTypeName -> [EnumItem] -> IO (),
+    lookup :: T.Text -> IO (Maybe GlobalName)
   }
 
 newtype Config = Config
