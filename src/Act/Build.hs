@@ -22,17 +22,9 @@ import qualified Data.ByteString.Lazy as L
 import Data.Foldable
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
-import Data.Sequence as Seq
-  ( Seq,
-    empty,
-    (><),
-    (|>),
-  )
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.AliasInfo
 import Entity.Global
-import Entity.Hint
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
@@ -45,22 +37,10 @@ import Scene.Elaborate
 import Scene.Emit
 import Scene.Lower
 import Scene.Parse
-import Scene.Parse.Core
-import Scene.Parse.Import
+import Scene.Unravel
 import System.Exit
-import System.IO.Unsafe
 import qualified System.Info as System
 import Prelude hiding (log)
-
-data VisitInfo
-  = VisitInfoActive
-  | VisitInfoFinish
-
-type IsCacheAvailable =
-  Bool
-
-type IsObjectAvailable =
-  Bool
 
 data BuildConfig = BuildConfig
   { mTarget :: Maybe TargetString,
@@ -95,7 +75,7 @@ build' ::
 build' mode throwCtx logCtx cancelAllocFlag target mainModule = do
   mainFilePath <- resolveTarget throwCtx mainModule target
   mainSource <- getMainSource mainModule mainFilePath
-  (_, isObjectAvailable, dependenceSeq) <- computeDependence throwCtx mainSource
+  (_, isObjectAvailable, dependenceSeq) <- unravel throwCtx mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   globalCtx <-
@@ -195,7 +175,8 @@ check' :: Mode.Mode -> Throw.Context -> Log.Context -> Path Abs File -> Module -
 check' mode throwCtx logCtx filePath mainModule = do
   ensureFileModuleSanity throwCtx filePath mainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  (_, _, dependenceSeq) <- computeDependence throwCtx source
+  -- (_, _, dependenceSeq) <- computeDependence throwCtx source
+  (_, _, dependenceSeq) <- unravel throwCtx source
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
@@ -305,13 +286,6 @@ getExecutableOutputPath :: TargetString -> Module -> IO (Path Abs File)
 getExecutableOutputPath target mainModule =
   resolveFile (getExecutableDir mainModule) target
 
-sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
-sourceToOutputPath kind source = do
-  let artifactDir = getArtifactDir $ sourceModule source
-  relPath <- getRelPathFromSourceDir source
-  (relPathWithoutExtension, _) <- splitExtension relPath
-  addExtensionAlongKind (artifactDir </> relPathWithoutExtension) kind
-
 getMainSource :: Module -> Path Abs File -> IO Source
 getMainSource mainModule mainSourceFilePath = do
   return $
@@ -336,132 +310,6 @@ getMainFunctionNameIfEntryPoint ctx source = do
 getMainFunctionName' :: App.Context -> IO T.Text
 getMainFunctionName' ctx = do
   Locator.attachCurrentLocator (App.locator ctx) "main"
-
-{-# NOINLINE traceSourceListRef #-}
-traceSourceListRef :: IORef [Source]
-traceSourceListRef =
-  unsafePerformIO (newIORef [])
-
-{-# NOINLINE visitEnvRef #-}
-visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo)
-visitEnvRef =
-  unsafePerformIO (newIORef Map.empty)
-
-{-# NOINLINE sourceChildrenMapRef #-}
-sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
-sourceChildrenMapRef =
-  unsafePerformIO (newIORef Map.empty)
-
-computeDependence :: Throw.Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
-computeDependence ctx source = do
-  visitEnv <- readIORef visitEnvRef
-  let path = sourceFilePath source
-  case Map.lookup path visitEnv of
-    Just VisitInfoActive ->
-      raiseCyclicPath ctx source
-    Just VisitInfoFinish -> do
-      hasCacheSet <- readIORef hasCacheSetRef
-      hasObjectSet <- readIORef hasObjectSetRef
-      return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
-    Nothing -> do
-      modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
-      modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
-      children <- getChildren ctx source
-      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (computeDependence ctx) children
-      modifyIORef' traceSourceListRef tail
-      modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
-      isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
-      isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
-      return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
-
-checkIfCacheIsAvailable :: [IsCacheAvailable] -> Source -> IO IsCacheAvailable
-checkIfCacheIsAvailable isCacheAvailableList source = do
-  b <- isFreshCacheAvailable source
-  let isCacheAvailable = and $ b : isCacheAvailableList
-  when isCacheAvailable $
-    modifyIORef' hasCacheSetRef $ S.insert $ sourceFilePath source
-  return isCacheAvailable
-
-checkIfObjectIsAvailable :: [IsObjectAvailable] -> Source -> IO IsObjectAvailable
-checkIfObjectIsAvailable isObjectAvailableList source = do
-  b <- isFreshObjectAvailable source
-  let isObjectAvailable = and $ b : isObjectAvailableList
-  when isObjectAvailable $
-    modifyIORef' hasObjectSetRef $ S.insert $ sourceFilePath source
-  return isObjectAvailable
-
-isFreshCacheAvailable :: Source -> IO Bool
-isFreshCacheAvailable source = do
-  cachePath <- getSourceCachePath source
-  isItemAvailable source cachePath
-
-isFreshObjectAvailable :: Source -> IO Bool
-isFreshObjectAvailable source = do
-  objectPath <- sourceToOutputPath OutputKindObject source
-  isItemAvailable source objectPath
-
-isItemAvailable :: Source -> Path Abs File -> IO Bool
-isItemAvailable source itemPath = do
-  existsItem <- doesFileExist itemPath
-  if not existsItem
-    then return False
-    else do
-      srcModTime <- getModificationTime $ sourceFilePath source
-      itemModTime <- getModificationTime itemPath
-      return $ itemModTime > srcModTime
-
-raiseCyclicPath :: Throw.Context -> Source -> IO a
-raiseCyclicPath ctx source = do
-  traceSourceList <- readIORef traceSourceListRef
-  let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
-  let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-  Throw.raiseError ctx m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
-
-showCyclicPath :: [Path Abs File] -> T.Text
-showCyclicPath pathList =
-  case pathList of
-    [] ->
-      ""
-    [path] ->
-      T.pack (toFilePath path)
-    path : ps ->
-      "     " <> T.pack (toFilePath path) <> showCyclicPath' ps
-
-showCyclicPath' :: [Path Abs File] -> T.Text
-showCyclicPath' pathList =
-  case pathList of
-    [] ->
-      ""
-    [path] ->
-      "\n  ~> " <> T.pack (toFilePath path)
-    path : ps ->
-      "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
-
-getChildren :: Throw.Context -> Source -> IO [Source]
-getChildren ctx currentSource = do
-  sourceChildrenMap <- readIORef sourceChildrenMapRef
-  let currentSourceFilePath = sourceFilePath currentSource
-  case Map.lookup currentSourceFilePath sourceChildrenMap of
-    Just sourceList ->
-      return sourceList
-    Nothing -> do
-      let path = sourceFilePath currentSource
-      (sourceList, aliasInfoList) <- run ctx (parseImportSequence ctx (sourceModule currentSource)) path
-      modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
-      updateSourceAliasMapRef currentSourceFilePath aliasInfoList
-      return sourceList
-
-addExtensionAlongKind :: Path Abs File -> OutputKind -> IO (Path Abs File)
-addExtensionAlongKind file kind =
-  case kind of
-    OutputKindLLVM -> do
-      addExtension ".ll" file
-    OutputKindAsm -> do
-      addExtension ".s" file
-    OutputKindObject -> do
-      addExtension ".o" file
-    OutputKindExecutable -> do
-      return file
 
 type TargetString =
   String

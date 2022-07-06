@@ -75,3 +75,22 @@ getNextSource ctx m currentModule sigText = do
       { sourceModule = sourceLocatorModule srcLocator,
         sourceFilePath = srcAbsPath
       }
+
+sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
+sourceToOutputPath kind source = do
+  let artifactDir = getArtifactDir $ sourceModule source
+  relPath <- getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- splitExtension relPath
+  addExtensionAlongKind (artifactDir </> relPathWithoutExtension) kind
+
+addExtensionAlongKind :: Path Abs File -> OutputKind -> IO (Path Abs File)
+addExtensionAlongKind file kind =
+  case kind of
+    OutputKindLLVM -> do
+      addExtension ".ll" file
+    OutputKindAsm -> do
+      addExtension ".s" file
+    OutputKindObject -> do
+      addExtension ".o" file
+    OutputKindExecutable -> do
+      return file
