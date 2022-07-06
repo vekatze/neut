@@ -1,9 +1,12 @@
-module Scene.Unravel (unravel) where
+module Scene.Unravel
+  ( unravel,
+  )
+where
 
 import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Foldable
-import qualified Data.HashMap.Lazy as Map
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import Data.Sequence as Seq
   ( Seq,
@@ -22,7 +25,6 @@ import Path
 import Path.IO
 import Scene.Parse.Core
 import Scene.Parse.Import
-import System.IO.Unsafe
 
 data VisitInfo
   = VisitInfoActive
@@ -34,9 +36,39 @@ type IsCacheAvailable =
 type IsObjectAvailable =
   Bool
 
-unravel :: Throw.Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
-unravel ctx source = do
-  visitEnv <- readIORef visitEnvRef
+data Context = Context
+  { asThrowCtx :: Throw.Context,
+    traceSourceListRef :: IORef [Source],
+    visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
+    sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source]),
+    sourceAliasMapRef :: IORef SourceAliasMap
+  }
+
+unravel :: Throw.Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, SourceAliasMap, Seq Source)
+unravel throwCtx source = do
+  ctx <- setup throwCtx
+  (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' ctx source
+  sourceAliasMap <- readIORef $ sourceAliasMapRef ctx
+  return (isCacheAvailable, isObjectAvailable, sourceAliasMap, sourceSeq)
+
+setup :: Throw.Context -> IO Context
+setup throwCtx = do
+  _traceSourceListRef <- newIORef []
+  _visitEnvRef <- newIORef Map.empty
+  _sourceChildrenMapRef <- newIORef Map.empty
+  _sourceAliasMapRef <- newIORef Map.empty
+  return $
+    Context
+      { asThrowCtx = throwCtx,
+        traceSourceListRef = _traceSourceListRef,
+        visitEnvRef = _visitEnvRef,
+        sourceChildrenMapRef = _sourceChildrenMapRef,
+        sourceAliasMapRef = _sourceAliasMapRef
+      }
+
+unravel' :: Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
+unravel' ctx source = do
+  visitEnv <- readIORef $ visitEnvRef ctx
   let path = sourceFilePath source
   case Map.lookup path visitEnv of
     Just VisitInfoActive ->
@@ -46,30 +78,15 @@ unravel ctx source = do
       hasObjectSet <- readIORef hasObjectSetRef
       return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
-      modifyIORef' visitEnvRef $ Map.insert path VisitInfoActive
-      modifyIORef' traceSourceListRef $ \sourceList -> source : sourceList
+      modifyIORef' (visitEnvRef ctx) $ Map.insert path VisitInfoActive
+      modifyIORef' (traceSourceListRef ctx) $ \sourceList -> source : sourceList
       children <- getChildren ctx source
-      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (unravel ctx) children
-      modifyIORef' traceSourceListRef tail
-      modifyIORef' visitEnvRef $ Map.insert path VisitInfoFinish
+      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (unravel' ctx) children
+      modifyIORef' (traceSourceListRef ctx) tail
+      modifyIORef' (visitEnvRef ctx) $ Map.insert path VisitInfoFinish
       isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
       isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
       return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
-
-{-# NOINLINE traceSourceListRef #-}
-traceSourceListRef :: IORef [Source]
-traceSourceListRef =
-  unsafePerformIO (newIORef [])
-
-{-# NOINLINE visitEnvRef #-}
-visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo)
-visitEnvRef =
-  unsafePerformIO (newIORef Map.empty)
-
-{-# NOINLINE sourceChildrenMapRef #-}
-sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source])
-sourceChildrenMapRef =
-  unsafePerformIO (newIORef Map.empty)
 
 checkIfCacheIsAvailable :: [IsCacheAvailable] -> Source -> IO IsCacheAvailable
 checkIfCacheIsAvailable isCacheAvailableList source = do
@@ -107,12 +124,12 @@ isItemAvailable source itemPath = do
       itemModTime <- getModificationTime itemPath
       return $ itemModTime > srcModTime
 
-raiseCyclicPath :: Throw.Context -> Source -> IO a
+raiseCyclicPath :: Context -> Source -> IO a
 raiseCyclicPath ctx source = do
-  traceSourceList <- readIORef traceSourceListRef
+  traceSourceList <- readIORef $ traceSourceListRef ctx
   let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
   let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-  Throw.raiseError ctx m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+  Throw.raiseError (asThrowCtx ctx) m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
@@ -134,16 +151,16 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
-getChildren :: Throw.Context -> Source -> IO [Source]
+getChildren :: Context -> Source -> IO [Source]
 getChildren ctx currentSource = do
-  sourceChildrenMap <- readIORef sourceChildrenMapRef
+  sourceChildrenMap <- readIORef $ sourceChildrenMapRef ctx
   let currentSourceFilePath = sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
     Just sourceList ->
       return sourceList
     Nothing -> do
       let path = sourceFilePath currentSource
-      (sourceList, aliasInfoList) <- run ctx (parseImportSequence ctx (sourceModule currentSource)) path
-      modifyIORef' sourceChildrenMapRef $ Map.insert currentSourceFilePath sourceList
-      updateSourceAliasMapRef currentSourceFilePath aliasInfoList
+      (sourceList, aliasInfoList) <- run (asThrowCtx ctx) (parseImportSequence (asThrowCtx ctx) (sourceModule currentSource)) path
+      modifyIORef' (sourceChildrenMapRef ctx) $ Map.insert currentSourceFilePath sourceList
+      modifyIORef' (sourceAliasMapRef ctx) $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList

@@ -24,6 +24,7 @@ import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
+import Entity.AliasInfo
 import Entity.Global
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
@@ -75,7 +76,7 @@ build' ::
 build' mode throwCtx logCtx cancelAllocFlag target mainModule = do
   mainFilePath <- resolveTarget throwCtx mainModule target
   mainSource <- getMainSource mainModule mainFilePath
-  (_, isObjectAvailable, dependenceSeq) <- unravel throwCtx mainSource
+  (_, isObjectAvailable, sourceAliasMap, dependenceSeq) <- unravel throwCtx mainSource
   hasObjectSet <- readIORef hasObjectSetRef
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   globalCtx <-
@@ -92,7 +93,8 @@ build' mode throwCtx logCtx cancelAllocFlag target mainModule = do
             ccGensymCtx = gensymCtx,
             ccCancelAllocFlag = cancelAllocFlag,
             ccMainModule = mainModule,
-            ccInitialSource = mainSource
+            ccInitialSource = mainSource,
+            ccSourceAliasMap = sourceAliasMap
           }
   mapM_ (compile ctxCfg hasObjectSet) dependenceSeq
   llvmCtx <- Mode.llvmCtx mode $ LLVM.Config {LLVM.throwCtx = throwCtx, LLVM.clangOptString = ""} -- fixme
@@ -106,7 +108,8 @@ data ContextConfig = CC
     ccGensymCtx :: Gensym.Context,
     ccCancelAllocFlag :: Bool,
     ccMainModule :: Module,
-    ccInitialSource :: Source
+    ccInitialSource :: Source,
+    ccSourceAliasMap :: SourceAliasMap
   }
 
 newCtx :: ContextConfig -> Source -> IO App.Context
@@ -147,7 +150,8 @@ newCtx cfg source = do
           Target.Target
             { Target.os = System.os,
               Target.arch = System.arch
-            }
+            },
+        App.sourceAliasMap = ccSourceAliasMap cfg
       }
 
 data CheckConfig = CheckConfig
@@ -175,8 +179,7 @@ check' :: Mode.Mode -> Throw.Context -> Log.Context -> Path Abs File -> Module -
 check' mode throwCtx logCtx filePath mainModule = do
   ensureFileModuleSanity throwCtx filePath mainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  -- (_, _, dependenceSeq) <- computeDependence throwCtx source
-  (_, _, dependenceSeq) <- unravel throwCtx source
+  (_, _, sourceAliasMap, dependenceSeq) <- unravel throwCtx source
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
@@ -188,7 +191,8 @@ check' mode throwCtx logCtx filePath mainModule = do
             ccGensymCtx = gensymCtx,
             ccCancelAllocFlag = False,
             ccMainModule = mainModule,
-            ccInitialSource = source
+            ccInitialSource = source,
+            ccSourceAliasMap = sourceAliasMap
           }
   mapM_ (check'' ctxCfg) dependenceSeq
 

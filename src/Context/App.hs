@@ -10,6 +10,7 @@ import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
+import Entity.AliasInfo
 import Entity.Source
 import Entity.Target
 
@@ -23,5 +24,6 @@ data Context = Context
     alias :: Alias.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
+    sourceAliasMap :: SourceAliasMap,
     target :: Target
   }

@@ -65,8 +65,7 @@ parseSource ctx source = do
       forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (global ctx) hint
       return $ Left stmtList
     Nothing -> do
-      sourceAliasMap <- readIORef sourceAliasMapRef
-      case Map.lookup (sourceFilePath source) sourceAliasMap of
+      case Map.lookup (sourceFilePath source) (sourceAliasMap ctx) of
         Nothing ->
           Throw.raiseCritical' (throw ctx) "[activateAliasInfoOfCurrentFile] (compiler bug)"
         Just aliasInfoList ->
