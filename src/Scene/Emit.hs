@@ -11,7 +11,6 @@ import Control.Monad
 import Data.ByteString.Builder
 import qualified Data.ByteString.Builder as L
 import qualified Data.ByteString.Lazy as L
-import Data.Function
 import qualified Data.HashMap.Lazy as HashMap
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -92,7 +91,7 @@ emitLowComp ctx retType lowComp =
     LowCompReturn d ->
       emitRet retType d
     LowCompCall f args -> do
-      tmp <- Gensym.newIdentFromText (ctx & gensym) "tmp"
+      tmp <- Gensym.newIdentFromText (gensym ctx) "tmp"
       op <-
         emitOp $
           unwordsL
@@ -104,8 +103,8 @@ emitLowComp ctx retType lowComp =
       a <- emitRet retType (LowValueVarLocal tmp)
       return $ op <> a
     LowCompSwitch (d, lowType) defaultBranch branchList -> do
-      defaultLabel <- Gensym.newIdentFromText (ctx & gensym) "default"
-      labelList <- constructLabelList (ctx & gensym) branchList
+      defaultLabel <- Gensym.newIdentFromText (gensym ctx) "default"
+      labelList <- constructLabelList (gensym ctx) branchList
       op <-
         emitOp $
           unwordsL
@@ -192,7 +191,7 @@ emitLowOp ctx lowOp =
         (_, _, _, True) ->
           emitBinaryOp (head domList) op' (head args) (args !! 1)
         _ ->
-          ctx & throw & Throw.raiseCritical' $ "unknown primitive: " <> op
+          Throw.raiseCritical' (throw ctx) $ "unknown primitive: " <> op
 
 emitUnaryOp :: PrimNum -> Builder -> LowValue -> IO Builder
 emitUnaryOp t inst d =
@@ -225,7 +224,7 @@ emitSyscallOp ctx num ds = do
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"svc 0\",", regStr, argStr]
     targetArch ->
-      ctx & throw & Throw.raiseCritical' $ "unsupported target arch: " <> T.pack (show targetArch)
+      Throw.raiseCritical' (throw ctx) $ "unsupported target arch: " <> T.pack (show targetArch)
 
 emitOp :: Builder -> IO [Builder]
 emitOp s =
@@ -325,7 +324,7 @@ getRegList ctx = do
     "x86_64-darwin" ->
       return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
     _ ->
-      ctx & throw & Throw.raiseError' $ "unsupported target: " <> T.pack targetPlatform
+      Throw.raiseError' (throw ctx) $ "unsupported target: " <> T.pack targetPlatform
 
 showLowType :: LowType -> Builder
 showLowType lowType =

@@ -1,7 +1,6 @@
 module Entity.Stmt.Discern (discernStmtList) where
 
 import qualified Context.Locator as Locator
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Entity.Stmt
 import qualified Entity.WeakTerm.Discern as WeakTerm
@@ -25,24 +24,6 @@ discernStmtList ctx stmtList =
     WeakStmtSection m sectionName innerStmtList : rest -> do
       Locator.pushToCurrentLocalLocator (WeakTerm.locator ctx) sectionName
       innerStmtList' <- discernStmtList ctx innerStmtList
-      _ <- Locator.popFromCurrentLocalLocator (ctx & WeakTerm.locator) m
+      _ <- Locator.popFromCurrentLocalLocator (WeakTerm.locator ctx) m
       rest' <- discernStmtList ctx rest
       return $ innerStmtList' ++ rest'
-
--- discern :: WeakStmt -> IO QuasiStmt
--- discern stmt =
---   case stmt of
---     WeakStmtDefine isReducible m functionName impArgNum xts codType e -> do
---       (xts', nenv) <- WeakTerm.discernBinder Map.empty xts
---       codType' <- WeakTerm.discern nenv codType
---       e' <- WeakTerm.discern nenv e
---       return $ QuasiStmtDefine isReducible m functionName impArgNum xts' codType' e'
---     WeakStmtDefineResource m name discarder copier -> do
---       discarder' <- WeakTerm.discern Map.empty discarder
---       copier' <- WeakTerm.discern Map.empty copier
---       return $ QuasiStmtDefineResource m name discarder' copier'
---     WeakStmtSection m sectionName innerStmtList -> do
---       pushToCurrentLocalLocator sectionName
---       innerStmtList' <- mapM discern innerStmtList
---       _ <- popFromCurrentLocalLocator m
---       return $ innerStmtList' ++ rest'

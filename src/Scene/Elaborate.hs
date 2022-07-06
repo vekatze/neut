@@ -11,7 +11,6 @@ import qualified Context.Log as Log
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -82,14 +81,14 @@ elaborateProgramOther ctx = do
 
 elaborateProgram :: Context -> ([QuasiStmt] -> IO [QuasiStmt]) -> [QuasiStmt] -> IO [Stmt]
 elaborateProgram ctx defListInferrer defList = do
-  defList' <- mapM (setupDef (ctx & gensym)) defList >>= defListInferrer . concat
+  defList' <- mapM (setupDef (gensym ctx)) defList >>= defListInferrer . concat
   -- cs <- readIORef constraintEnv
   -- p "==========================================================="
   -- forM_ cs $ \(e1, e2) -> do
   --   p $ T.unpack $ toText e1
   --   p $ T.unpack $ toText e2
   --   p "---------------------"
-  unify (ctx & gensym)
+  unify (gensym ctx)
   elaborateStmtList ctx defList'
 
 setupDef :: Gensym.Context -> QuasiStmt -> IO [QuasiStmt]
@@ -131,7 +130,7 @@ inferDefineResource :: Context -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO Q
 inferDefineResource ctx m name discarder copier = do
   (discarder', td) <- infer ctx discarder
   (copier', tc) <- infer ctx copier
-  x <- Gensym.newIdentFromText (ctx & gensym) "_"
+  x <- Gensym.newIdentFromText (gensym ctx) "_"
   let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "top")
   let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "bottom")
   insConstraintEnv botTop td
@@ -153,7 +152,7 @@ elaborateStmtList ctx stmtList = do
     QuasiStmtDefine opacity m x impArgNum xts codType e : rest -> do
       e' <- elaborate' ctx e
       xts' <- mapM (elaborateWeakBinder ctx) xts
-      codType' <- elaborate' ctx codType >>= Term.reduce (ctx & gensym)
+      codType' <- elaborate' ctx codType >>= Term.reduce (gensym ctx)
       insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList ctx rest
@@ -186,14 +185,14 @@ elaborate' ctx term =
       subst <- readIORef substRef
       case IntMap.lookup x subst of
         Nothing ->
-          (ctx & throw & Throw.raiseError) mh "couldn't instantiate the asterisk here"
+          Throw.raiseError (throw ctx) mh "couldn't instantiate the asterisk here"
         Just (_ :< WeakTermPiIntro LamKindNormal xts e)
           | length xts == length es -> do
             let xs = map (\(_, y, _) -> Ident.toInt y) xts
             let s = IntMap.fromList $ zip xs es
-            WeakTerm.subst (ctx & gensym) s e >>= elaborate' ctx
+            WeakTerm.subst (gensym ctx) s e >>= elaborate' ctx
         Just e ->
-          WeakTerm.reduce (ctx & gensym) (m :< WeakTermPiElim e es) >>= elaborate' ctx
+          WeakTerm.reduce (gensym ctx) (m :< WeakTermPiElim e es) >>= elaborate' ctx
     m :< WeakTermPiElim e es -> do
       e' <- elaborate' ctx e
       es' <- mapM (elaborate' ctx) es
@@ -215,31 +214,32 @@ elaborate' ctx term =
       e2' <- elaborate' ctx e2
       return $ m :< TermLet mxt' e1' e2'
     m :< WeakTermAster _ ->
-      (ctx & throw & Throw.raiseCritical)
+      Throw.raiseCritical
+        (throw ctx)
         m
         "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
     m :< WeakTermConst x ->
       return $ m :< TermConst x
     m :< WeakTermInt t x -> do
-      t' <- elaborate' ctx t >>= Term.reduce (ctx & gensym)
+      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
         _ :< TermConst intTypeStr
           | Just (PrimNumInt size) <- PrimNum.fromText intTypeStr ->
             return $ m :< TermInt size x
         _ -> do
-          (ctx & throw & Throw.raiseError) m $
+          Throw.raiseError (throw ctx) m $
             "the term `"
               <> T.pack (show x)
               <> "` is an integer, but its type is: "
               <> toText (weaken t')
     m :< WeakTermFloat t x -> do
-      t' <- elaborate' ctx t >>= Term.reduce (ctx & gensym)
+      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
         _ :< TermConst floatTypeStr
           | Just (PrimNumFloat size) <- PrimNum.fromText floatTypeStr ->
             return $ m :< TermFloat size x
         _ ->
-          (ctx & throw & Throw.raiseError) m $
+          Throw.raiseError (throw ctx) m $
             "the term `"
               <> T.pack (show x)
               <> "` is a float, but its type is:\n"
@@ -252,13 +252,13 @@ elaborate' ctx term =
       e' <- elaborate' ctx e
       let (ls, es) = unzip les
       es' <- mapM (elaborate' ctx) es
-      t' <- elaborate' ctx t >>= Term.reduce (ctx & gensym)
+      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
         _ :< TermEnum x -> do
           checkSwitchExaustiveness ctx m x ls
           return $ m :< TermEnumElim (e', t') (zip ls es')
         _ ->
-          (ctx & throw & Throw.raiseError) m $
+          Throw.raiseError (throw ctx) m $
             "the type of `"
               <> toText (weaken e')
               <> "` must be an enum type, but is:\n"
@@ -266,7 +266,7 @@ elaborate' ctx term =
     m :< WeakTermQuestion e t -> do
       e' <- elaborate' ctx e
       t' <- elaborate' ctx t
-      (ctx & log & Log.printNote) m $ toText (weaken t')
+      Log.printNote (log ctx) m $ toText (weaken t')
       return e'
     m :< WeakTermMagic der -> do
       der' <- mapM (elaborate' ctx) der
@@ -274,7 +274,7 @@ elaborate' ctx term =
     m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM (elaborate' ctx) mSubject
       e' <- elaborate' ctx e
-      t' <- elaborate' ctx t >>= Term.reduce (ctx & gensym)
+      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       dataEnv <- readIORef dataEnvRef
       case t' of
         _ :< TermPiElim (_ :< TermVarGlobal name) _
@@ -286,7 +286,7 @@ elaborate' ctx term =
             patList' <- elaboratePatternList ctx m bs patList
             return $ m :< TermMatch mSubject' (e', t') patList'
         _ -> do
-          (ctx & throw & Throw.raiseError) (metaOf t) $
+          Throw.raiseError (throw ctx) (metaOf t) $
             "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
     m :< WeakTermNoema s e -> do
       s' <- elaborate' ctx s
@@ -307,7 +307,7 @@ elaborate' ctx term =
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArray (PrimNumFloat size)
         _ ->
-          (ctx & throw & Throw.raiseError) m $
+          Throw.raiseError (throw ctx) m $
             "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayIntro elemType elems -> do
       elemType' <- elaborate' ctx elemType
@@ -319,7 +319,7 @@ elaborate' ctx term =
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayIntro (PrimNumFloat size) elems'
         _ ->
-          (ctx & throw & Throw.raiseError) m $ "invalid element type:\n" <> toText (weaken elemType')
+          Throw.raiseError (throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayAccess subject elemType array index -> do
       subject' <- elaborate' ctx subject
       elemType' <- elaborate' ctx elemType
@@ -332,7 +332,7 @@ elaborate' ctx term =
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
-          (ctx & throw & Throw.raiseError) m $ "invalid element type:\n" <> toText (weaken elemType')
+          Throw.raiseError (throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermText ->
       return $ m :< TermText
     m :< WeakTermTextIntro text ->
@@ -375,14 +375,14 @@ checkCaseSanity ctx m bs patList =
     (b : bsRest, ((mPat, b', _), _) : patListRest) -> do
       if b /= b'
         then
-          (ctx & throw & Throw.raiseError) mPat $
+          Throw.raiseError (throw ctx) mPat $
             "the constructor here is supposed to be `" <> b <> "`, but is: `" <> b' <> "`"
         else checkCaseSanity ctx m bsRest patListRest
     (b : _, []) ->
-      (ctx & throw & Throw.raiseError) m $
+      Throw.raiseError (throw ctx) m $
         "found a non-exhaustive pattern; the clause for `" <> b <> "` is missing"
     ([], ((mPat, b, _), _) : _) ->
-      (ctx & throw & Throw.raiseError) mPat $
+      Throw.raiseError (throw ctx) mPat $
         "found a redundant pattern; this clause for `" <> b <> "` is redundant"
 
 elaborateWeakBinder :: Context -> BinderF WeakTerm -> IO (BinderF Term)
@@ -408,16 +408,16 @@ checkSwitchExaustiveness ctx m x caseList = do
   enumSet <- lookupEnumSet ctx m x
   let len = toInteger $ length (nub caseList)
   unless (toInteger (length enumSet) <= len || containsDefaultCase) $
-    (ctx & throw & Throw.raiseError) m "this switch is ill-constructed in that it is not exhaustive"
+    Throw.raiseError (throw ctx) m "this switch is ill-constructed in that it is not exhaustive"
 
 lookupEnumSet :: Context -> Hint -> T.Text -> IO [T.Text]
 lookupEnumSet ctx m name = do
-  mEnumItems <- Global.lookup (ctx & global) name
+  mEnumItems <- Global.lookup (global ctx) name
   case mEnumItems of
     Just (GN.Enum enumItems) ->
       return $ map fst enumItems
     _ ->
-      (ctx & throw & Throw.raiseError) m $ "no such enum defined: " <> name
+      Throw.raiseError (throw ctx) m $ "no such enum defined: " <> name
 
 insTermTypeEnv :: T.Text -> WeakTerm -> IO ()
 insTermTypeEnv name t =

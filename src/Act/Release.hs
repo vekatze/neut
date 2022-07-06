@@ -8,7 +8,6 @@ import qualified Context.Log as Log
 import qualified Context.Mode as Mode
 import qualified Context.Throw as Throw
 import Control.Monad
-import Data.Function
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.Module
@@ -69,7 +68,7 @@ getReleaseFile throwCtx targetModule releaseName = do
   releaseFile <- resolveFile releaseDir $ T.unpack $ releaseName <> ".tar.zst"
   releaseExists <- doesFileExist releaseFile
   when releaseExists $ do
-    throwCtx & Throw.raiseError' $ "the release `" <> releaseName <> "` already exists"
+    Throw.raiseError' throwCtx $ "the release `" <> releaseName <> "` already exists"
   return releaseFile
 
 raiseIfFailure :: Throw.Context -> T.Text -> ExitCode -> Handle -> IO ()

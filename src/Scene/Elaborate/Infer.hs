@@ -13,7 +13,6 @@ import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -86,7 +85,7 @@ infer' ctx varEnv term =
         Nothing -> do
           inferPiElim ctx varEnv m (e, t) etls
         Just i -> do
-          holes <- forM [1 .. i] $ const $ newAsterInVarEnv (ctx & gensym) varEnv m
+          holes <- forM [1 .. i] $ const $ newAsterInVarEnv (gensym ctx) varEnv m
           inferPiElim ctx varEnv m (e, t) $ holes ++ etls
     m :< WeakTermPiElim hole@(_ :< WeakTermAster i) es -> do
       etls <- mapM (infer' ctx varEnv) es
@@ -102,7 +101,7 @@ infer' ctx varEnv term =
     m :< WeakTermSigmaIntro es -> do
       ets <- mapM (infer' ctx varEnv) es
       ys <- mapM (const $ Gensym.newIdentFromText (gensym ctx) "arg") es
-      yts <- newTypeAsterListInVarEnv (ctx & gensym) varEnv $ zip ys (map metaOf es)
+      yts <- newTypeAsterListInVarEnv (gensym ctx) varEnv $ zip ys (map metaOf es)
       _ <- inferArgs ctx IntMap.empty m ets yts (m :< WeakTermTau)
       return (m :< WeakTermSigmaIntro (map fst ets), m :< WeakTermSigma yts)
     m :< WeakTermSigmaElim xts e1 e2 -> do
@@ -123,7 +122,7 @@ infer' ctx varEnv term =
         Just asterInfo ->
           return asterInfo
         Nothing -> do
-          (app, higherApp) <- newAsterInVarEnv (ctx & gensym) varEnv m
+          (app, higherApp) <- newAsterInVarEnv (gensym ctx) varEnv m
           modifyIORef' holeEnvRef $ \env -> IntMap.insert x (app, higherApp) env
           return (app, higherApp)
     m :< WeakTermConst x
@@ -131,7 +130,7 @@ infer' ctx varEnv term =
       | Just _ <- PrimNum.fromText x ->
         return (term, m :< WeakTermTau)
       | Just op <- PrimOp.fromText x ->
-        inferExternal m x (primOpToType (ctx & gensym) m op)
+        inferExternal m x (primOpToType (gensym ctx) m op)
       | otherwise -> do
         _ :< t <- weaken <$> lookupConstTypeEnv ctx m x
         return (term, m :< t)
@@ -151,7 +150,7 @@ infer' ctx varEnv term =
       (cs', tcs) <- unzip <$> mapM (inferEnumCase ctx varEnv) cs
       forM_ (zip tcs (repeat t')) $ uncurry insConstraintEnv
       (es', ts) <- unzip <$> mapM (infer' ctx varEnv) es
-      h <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      h <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       forM_ (zip (repeat h) ts) $ uncurry insConstraintEnv
       return (m :< WeakTermEnumElim (e', t') (zip cs' es'), h)
     m :< WeakTermQuestion e _ -> do
@@ -167,10 +166,10 @@ infer' ctx varEnv term =
           return (m :< WeakTermMagic (MagicCast from' to' value'), to')
         _ -> do
           der' <- mapM (infer' ctx varEnv >=> return . fst) der
-          resultType <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+          resultType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
           return (m :< WeakTermMagic der', resultType)
     m :< WeakTermMatch mSubject (e, _) clauseList -> do
-      resultType <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      resultType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       (e', t') <- infer' ctx varEnv e
       mSubject' <- mapM (inferSubject ctx m varEnv) mSubject
       clauseList' <- forM clauseList $ \(pat@(mPat, name, xts), body) -> do
@@ -195,13 +194,13 @@ infer' ctx varEnv term =
       elemType' <- inferType' ctx varEnv elemType
       return (m :< WeakTermArray elemType', m :< WeakTermTau)
     m :< WeakTermArrayIntro _ elems -> do
-      elemType <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      elemType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       (elems', ts') <- unzip <$> mapM (infer' ctx varEnv) elems
       forM_ ts' $ insConstraintEnv elemType
       return (m :< WeakTermArrayIntro elemType elems', m :< WeakTermArray elemType)
     m :< WeakTermArrayAccess _ _ array index -> do
-      subject <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
-      elemType <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      subject <- newTypeAsterInVarEnv (gensym ctx) varEnv m
+      elemType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       (array', tArray) <- infer' ctx varEnv array
       (index', tIndex) <- infer' ctx varEnv index
       insConstraintEnv (m :< WeakTermConst "i64") tIndex
@@ -220,14 +219,14 @@ infer' ctx varEnv term =
       return (m :< WeakTermCellIntro contentType content', m :< WeakTermCell contentType)
     m :< WeakTermCellRead cell -> do
       (cell', cellType) <- infer' ctx varEnv cell
-      contentType <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
-      subject <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      contentType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
+      subject <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell contentType)) cellType
       return (m :< WeakTermCellRead cell', contentType)
     m :< WeakTermCellWrite cell newValue -> do
       (cell', cellType) <- infer' ctx varEnv cell
       (newValue', newValueType) <- infer' ctx varEnv newValue
-      subject <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      subject <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell newValueType)) cellType
       return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum constTop)
 
@@ -248,13 +247,13 @@ inferArgs ::
 inferArgs ctx sub m args1 args2 cod =
   case (args1, args2) of
     ([], []) ->
-      subst (ctx & gensym) sub cod
+      subst (gensym ctx) sub cod
     ((e, t) : ets, (_, x, tx) : xts) -> do
-      tx' <- subst (ctx & gensym) sub tx
+      tx' <- subst (gensym ctx) sub tx
       insConstraintEnv tx' t
       inferArgs ctx (IntMap.insert (Ident.toInt x) e sub) m ets xts cod
     _ ->
-      (ctx & throw & Throw.raiseCritical) m "invalid argument passed to inferArgs"
+      Throw.raiseCritical (throw ctx) m "invalid argument passed to inferArgs"
 
 inferExternal :: Hint -> T.Text -> IO Term -> IO (WeakTerm, WeakTerm)
 inferExternal m x comp = do
@@ -319,8 +318,8 @@ inferPiElim ctx varEnv m (e, t) ets = do
         raiseArityMismatchError ctx e (length xts) (length ets)
     _ -> do
       ys <- mapM (const $ Gensym.newIdentFromText (gensym ctx) "arg") es
-      yts <- newTypeAsterListInVarEnv (ctx & gensym) varEnv $ zip ys (map metaOf es)
-      cod <- newTypeAsterInVarEnv (ctx & gensym) (varEnv ++ yts) m
+      yts <- newTypeAsterListInVarEnv (gensym ctx) varEnv $ zip ys (map metaOf es)
+      cod <- newTypeAsterInVarEnv (gensym ctx) (varEnv ++ yts) m
       insConstraintEnv (metaOf e :< WeakTermPi yts cod) t
       cod' <- inferArgs ctx IntMap.empty m ets yts cod
       return (m :< WeakTermPiElim e es, cod')
@@ -331,7 +330,7 @@ raiseArityMismatchError ctx function expected actual = do
   case function of
     m :< WeakTermVarGlobal name
       | Just k <- Map.lookup name impArgEnv ->
-        (ctx & throw & Throw.raiseCritical) m $
+        Throw.raiseCritical (throw ctx) m $
           "the function `"
             <> name
             <> "` expects "
@@ -340,7 +339,7 @@ raiseArityMismatchError ctx function expected actual = do
             <> T.pack (show (actual - k))
             <> "."
     m :< _ ->
-      (ctx & throw & Throw.raiseCritical) m $
+      Throw.raiseCritical (throw ctx) m $
         "this function expects "
           <> T.pack (show expected)
           <> " arguments, but found "
@@ -399,10 +398,10 @@ inferEnumCase ctx varEnv weakCase =
     m :< EnumCaseLabel (k, _) _ -> do
       return (weakCase, m :< WeakTermEnum k)
     m :< EnumCaseDefault -> do
-      h <- newTypeAsterInVarEnv (ctx & gensym) varEnv m
+      h <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       return (m :< EnumCaseDefault, h)
     m :< EnumCaseInt _ ->
-      (ctx & throw & Throw.raiseCritical) m "enum-case-int shouldn't be used in the target language"
+      Throw.raiseCritical (throw ctx) m "enum-case-int shouldn't be used in the target language"
 
 insConstraintEnv :: WeakTerm -> WeakTerm -> IO ()
 insConstraintEnv t1 t2 =
@@ -419,7 +418,7 @@ lookupWeakTypeEnv ctx m s = do
     Just t ->
       return t
     Nothing ->
-      (ctx & throw & Throw.raiseCritical) m $
+      Throw.raiseCritical (throw ctx) m $
         Ident.toText' s <> " is not found in the weak type environment."
 
 lookupWeakTypeEnv' :: Context -> Hint -> Int -> IO WeakTerm
@@ -429,7 +428,7 @@ lookupWeakTypeEnv' ctx m s = do
     Just t ->
       return t
     Nothing ->
-      (ctx & throw & Throw.raiseCritical) m $
+      Throw.raiseCritical (throw ctx) m $
         "the hole ?M" <> T.pack (show s) <> " is not found in the weak type environment."
 
 lookupTermTypeEnv :: Context -> Hint -> T.Text -> IO WeakTerm
@@ -437,7 +436,7 @@ lookupTermTypeEnv ctx m name = do
   termTypeEnv <- readIORef termTypeEnvRef
   case Map.lookup name termTypeEnv of
     Nothing ->
-      (ctx & throw & Throw.raiseCritical) m $ name <> " is not found in the term type environment."
+      Throw.raiseCritical (throw ctx) m $ name <> " is not found in the term type environment."
     Just t ->
       return t
 
@@ -455,9 +454,9 @@ lookupConstTypeEnv ctx m x
   | Just _ <- PrimNum.fromText x =
     return $ m :< TermTau
   | Just op <- PrimOp.fromText x =
-    primOpToType (ctx & gensym) m op
+    primOpToType (gensym ctx) m op
   | otherwise =
-    (ctx & throw & Throw.raiseCritical) m $
+    Throw.raiseCritical (throw ctx) m $
       "the constant `" <> x <> "` is not found in the type environment."
 
 primOpToType :: Gensym.Context -> Hint -> PrimOp -> IO Term

@@ -15,7 +15,6 @@ where
 
 import Context.Throw
 import Control.Comonad.Cofree
-import Data.Function
 import qualified Data.HashMap.Lazy as M
 import Data.Int
 import Data.List
@@ -131,14 +130,14 @@ showEnsType entityType =
 
 raiseKeyNotFoundError :: Context -> Hint -> T.Text -> IO a
 raiseKeyNotFoundError ctx m k =
-  (ctx & raiseError) m $
+  raiseError ctx m $
     "couldn't find the required key `"
       <> k
       <> "`."
 
 raiseTypeError :: Context -> Hint -> EnsType -> EnsType -> IO a
 raiseTypeError ctx m expectedType actualType =
-  (ctx & raiseError) m $
+  raiseError ctx m $
     "the value here is expected to be of type `"
       <> showEnsType expectedType
       <> "`, but is: `"

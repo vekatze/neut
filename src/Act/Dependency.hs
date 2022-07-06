@@ -13,7 +13,6 @@ import Control.Monad
 import Crypto.Hash.SHA256 as SHA256
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64.URL as Base64
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
@@ -117,7 +116,7 @@ getLibraryModule throwCtx alias checksum@(ModuleChecksum c) = do
   moduleFileExists <- doesFileExist moduleFilePath
   if not moduleFileExists
     then
-      throwCtx & Throw.raiseError' $
+      Throw.raiseError' throwCtx $
         "could not find the module file for `" <> extract alias <> "` (" <> c <> ")."
     else Module.fromFilePath throwCtx moduleFilePath
 
@@ -131,7 +130,7 @@ download ctx tempFilePath alias (ModuleURL url) = do
   let curlCmd = proc "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
   (_, _, Just curlErrorHandler, curlHandler) <-
     createProcess curlCmd {std_err = CreatePipe}
-  getLogCtx ctx & Log.printNote' $ "downloading `" <> extract alias <> "` from " <> url
+  Log.printNote' (getLogCtx ctx) $ "downloading `" <> extract alias <> "` from " <> url
   curlExitCode <- waitForProcess curlHandler
   Throw.raiseIfProcessFailed (getThrowCtx ctx) "curl" curlExitCode curlErrorHandler
 
@@ -146,13 +145,13 @@ extractToLibDir ctx tempFilePath alias c@(ModuleChecksum checksum) = do
   let tarCmd = proc "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
   (_, _, Just tarErrorHandler, tarHandler) <-
     createProcess tarCmd {std_err = CreatePipe}
-  getLogCtx ctx & Log.printNote' $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
+  Log.printNote' (getLogCtx ctx) $ "extracting `" <> extract alias <> "` (" <> checksum <> ")"
   tarExitCode <- waitForProcess tarHandler
   Throw.raiseIfProcessFailed (getThrowCtx ctx) "tar" tarExitCode tarErrorHandler
 
 addDependencyToModuleFile :: Log.Context -> Module -> ModuleAlias -> ModuleURL -> ModuleChecksum -> IO ()
 addDependencyToModuleFile logCtx targetModule alias url checksum = do
-  logCtx & Log.printNote' $ "adding the dependency of `" <> extract alias <> "` to the module file"
+  Log.printNote' logCtx $ "adding the dependency of `" <> extract alias <> "` to the module file"
   let targetModule' = addDependency alias url checksum targetModule
   TIO.writeFile (toFilePath $ moduleLocation targetModule') $ ppModule targetModule'
 

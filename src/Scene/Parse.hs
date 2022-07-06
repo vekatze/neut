@@ -13,7 +13,6 @@ import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Text as T
@@ -61,9 +60,9 @@ parseSource ctx source = do
     Just cache -> do
       let hint = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
       forM_ (cacheEnumInfo cache) $ \enumInfo ->
-        uncurry (Global.registerEnum (ctx & global) hint) (fromEnumInfo enumInfo)
+        uncurry (Global.registerEnum (global ctx) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
-      forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (ctx & global) hint
+      forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (global ctx) hint
       return $ Left stmtList
     Nothing -> do
       sourceAliasMap <- readIORef sourceAliasMapRef
@@ -72,17 +71,17 @@ parseSource ctx source = do
           Throw.raiseCritical' (throw ctx) "[activateAliasInfoOfCurrentFile] (compiler bug)"
         Just aliasInfoList ->
           activateAliasInfo (alias ctx) aliasInfoList
-      (defList, enumInfoList) <- run (ctx & throw) (program ctx) $ sourceFilePath source
+      (defList, enumInfoList) <- run (throw ctx) (program ctx) $ sourceFilePath source
       return $ Right (defList, enumInfoList)
 
 ensureMain :: Context -> Hint -> T.Text -> IO ()
 ensureMain ctx m mainFunctionName = do
-  mMain <- Global.lookup (ctx & global) mainFunctionName
+  mMain <- Global.lookup (global ctx) mainFunctionName
   case mMain of
     Just GN.TopLevelFunc ->
       return ()
     _ ->
-      (ctx & throw & Throw.raiseError) m "`main` is missing"
+      Throw.raiseError (throw ctx) m "`main` is missing"
 
 program :: Context -> Parser ([QuasiStmt], [EnumInfo])
 program ctx = do
@@ -114,15 +113,13 @@ parseDefinePrefix ctx = do
   from <- snd <$> var
   delimiter "="
   to <- snd <$> var
-  liftIO $ Alias.registerLocatorAlias (ctx & alias) m from to
-
--- liftIO $ handleDefinePrefix (ctx & throw) m from to
+  liftIO $ Alias.registerLocatorAlias (alias ctx) m from to
 
 parseStmtUse :: Context -> Parser ()
 parseStmtUse ctx = do
   try $ keyword "use"
   (_, name) <- parseDefiniteDescription
-  liftIO $ Locator.activatePartialLocator (ctx & locator) name
+  liftIO $ Locator.activatePartialLocator (locator ctx) name
 
 parseStmt :: Context -> Parser [WeakStmt]
 parseStmt ctx = do
@@ -144,11 +141,11 @@ parseSection ctx = do
   try $ keyword "section"
   sectionName <- symbol
   -- liftIO $ modifyIORef' isPrivateStackRef $ (:) (sectionName == "private")
-  liftIO $ Locator.pushToCurrentLocalLocator (ctx & locator) sectionName
+  liftIO $ Locator.pushToCurrentLocalLocator (locator ctx) sectionName
   stmtList <- concat <$> many (parseStmt ctx)
   m <- currentHint
   keyword "end"
-  _ <- liftIO $ Locator.popFromCurrentLocalLocator (ctx & locator) m
+  _ <- liftIO $ Locator.popFromCurrentLocalLocator (locator ctx) m
   -- liftIO $ modifyIORef' isPrivateStackRef tail
   return $ WeakStmtSection m sectionName stmtList
 
@@ -163,7 +160,7 @@ parseDefine ctx opacity = do
         keyword "define-inline"
   m <- currentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo ctx
-  name' <- liftIO $ Locator.attachCurrentLocator (ctx & locator) name
+  name' <- liftIO $ Locator.attachCurrentLocator (locator ctx) name
   liftIO $ defineFunction ctx opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
@@ -177,14 +174,14 @@ defineFunction ::
   WeakTerm ->
   IO WeakStmt
 defineFunction ctx opacity m name impArgNum binder codType e = do
-  Global.registerTopLevelFunc (ctx & global) m name
+  Global.registerTopLevelFunc (global ctx) m name
   return $ WeakStmtDefine opacity m name impArgNum binder codType e
 
 parseDefineData :: Context -> Parser [WeakStmt]
 parseDefineData ctx = do
   m <- currentHint
   try $ keyword "define-data"
-  a <- var >>= liftIO . Locator.attachCurrentLocator (ctx & locator) . snd
+  a <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
   dataArgs <- argList $ weakAscription ctx
   consInfoList <- asBlock $ manyList $ parseDefineDataClause ctx
   liftIO $ defineData ctx m a dataArgs consInfoList
@@ -249,14 +246,14 @@ parseDefineDataClauseArg ctx = do
   m <- currentHint
   choice
     [ try (weakAscription ctx),
-      weakTermToWeakIdent (ctx & gensym) m (weakTerm ctx)
+      weakTermToWeakIdent (gensym ctx) m (weakTerm ctx)
     ]
 
 parseDefineCodata :: Context -> Parser [WeakStmt]
 parseDefineCodata ctx = do
   m <- currentHint
   try $ keyword "define-codata"
-  dataName <- var >>= liftIO . Locator.attachCurrentLocator (ctx & locator) . snd
+  dataName <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
   dataArgs <- argList $ weakAscription ctx
   elemInfoList <- asBlock $ manyList $ weakAscription ctx
   formRule <- liftIO $ defineData ctx m dataName dataArgs [(m, "new", elemInfoList)]
@@ -266,7 +263,7 @@ parseDefineCodata ctx = do
 parseDefineCodataElim :: Context -> T.Text -> [BinderF WeakTerm] -> [BinderF WeakTerm] -> BinderF WeakTerm -> IO WeakStmt
 parseDefineCodataElim ctx dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = constructDataType m dataName dataArgs
-  recordVarText <- Gensym.newText (ctx & gensym)
+  recordVarText <- Gensym.newText (gensym ctx)
   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
   let elemName' = dataName <> nsSep <> Ident.toText elemName
   defineFunction
@@ -291,7 +288,7 @@ parseDefineResource ctx = do
   asBlock $ do
     discarder <- delimiter "-" >> weakTerm ctx
     copier <- delimiter "-" >> weakTerm ctx
-    liftIO $ Global.registerTopLevelFunc (ctx & global) m name
+    liftIO $ Global.registerTopLevelFunc (global ctx) m name
     return $ WeakStmtDefineResource m name discarder copier
 
 setAsData :: T.Text -> Int -> [(Hint, T.Text, [BinderF WeakTerm])] -> IO ()

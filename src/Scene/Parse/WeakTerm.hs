@@ -14,7 +14,6 @@ import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad.IO.Class
-import Data.Function
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -88,11 +87,11 @@ weakTermSimple ctx = do
     [ weakTermParen ctx,
       weakTermTau,
       weakTermTextIntro,
-      weakTermAdmitQuestion (ctx & gensym),
-      weakTermAdmit (ctx & gensym),
+      weakTermAdmitQuestion (gensym ctx),
+      weakTermAdmit (gensym ctx),
       weakTermAster ctx,
-      weakTermInteger (ctx & gensym),
-      weakTermFloat (ctx & gensym),
+      weakTermInteger (gensym ctx),
+      weakTermFloat (gensym ctx),
       weakTermDefiniteDescription,
       weakTermVar
     ]
@@ -119,7 +118,7 @@ weakTermLetCoproduct ctx = do
   e1 <- weakTerm ctx
   keyword "in"
   e2 <- weakTerm ctx
-  err <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "err"
+  err <- liftIO $ Gensym.newTextualIdentFromText (gensym ctx) "err"
   typeOfLeft <- liftIO $ Gensym.newAster (gensym ctx) m
   typeOfRight <- liftIO $ Gensym.newAster (gensym ctx) m
   let sumLeft = "sum.left"
@@ -142,14 +141,14 @@ weakTermVoid :: Context -> Hint -> WeakTerm -> Parser WeakTerm
 weakTermVoid ctx m e1 = do
   delimiter ";"
   e2 <- weakTerm ctx
-  f <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "unit"
+  f <- liftIO $ Gensym.newTextualIdentFromText (gensym ctx) "unit"
   return $ bind (m, f, m :< WeakTermEnum constTop) e1 e2
 
 weakTermExplicitAscription :: Context -> Hint -> WeakTerm -> Parser WeakTerm
 weakTermExplicitAscription ctx m e = do
   delimiter ":"
   t <- weakTermEasy ctx
-  f <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "unit"
+  f <- liftIO $ Gensym.newTextualIdentFromText (gensym ctx) "unit"
   return $ bind (m, f, t) e (m :< WeakTermVar f)
 
 weakTermTau :: Parser WeakTerm
@@ -632,8 +631,8 @@ weakTermPiElim ctx = do
   if null impArgs
     then return $ foldl' (\base args -> m :< WeakTermPiElim base args) e $ es : ess
     else do
-      f <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "func"
-      h <- liftIO $ Gensym.newAster (ctx & gensym) m
+      f <- liftIO $ Gensym.newTextualIdentFromText (gensym ctx) "func"
+      h <- liftIO $ Gensym.newAster (gensym ctx) m
       return $
         m
           :< WeakTermLet
@@ -661,7 +660,7 @@ weakBinder :: Context -> Parser (BinderF WeakTerm)
 weakBinder ctx =
   choice
     [ try (weakAscription ctx),
-      weakAscription' (ctx & gensym)
+      weakAscription' (gensym ctx)
     ]
 
 weakAscription :: Context -> Parser (BinderF WeakTerm)
@@ -676,7 +675,7 @@ weakAscription ctx = do
 typeWithoutIdent :: Context -> Parser (BinderF WeakTerm)
 typeWithoutIdent ctx = do
   m <- currentHint
-  x <- liftIO $ Gensym.newTextualIdentFromText (ctx & gensym) "_"
+  x <- liftIO $ Gensym.newTextualIdentFromText (gensym ctx) "_"
   t <- weakTerm ctx
   return (m, x, t)
 
@@ -728,7 +727,7 @@ getIntrospectiveValue ctx m key =
     "target-os" ->
       return $ T.pack (Target.os (target ctx))
     _ ->
-      (ctx & throw & Throw.raiseError) m $ "no such introspective value is defined: " <> key
+      Throw.raiseError (throw ctx) m $ "no such introspective value is defined: " <> key
 
 weakTermVar :: Parser WeakTerm
 weakTermVar = do

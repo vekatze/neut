@@ -11,7 +11,6 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
@@ -49,10 +48,10 @@ import Scene.Clarify.Utility
 
 clarifyMain :: Context -> T.Text -> [Stmt] -> IO ([CompDef], Comp)
 clarifyMain ctx mainName defList = do
-  _ <- returnImmediateS4 (ctx & gensym)
+  _ <- returnImmediateS4 (gensym ctx)
   _ <- returnClosureS4 ctx
   defList' <- clarifyDefList ctx defList
-  mainTerm <- reduce (ctx & gensym) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
+  mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
   return (defList', mainTerm)
 
 clarifyOther :: Context -> [Stmt] -> IO [CompDef]
@@ -68,7 +67,7 @@ clarifyDefList ctx defList = do
   modifyIORef' compDefEnvRef $ Map.union compDefEnv
   mapM_ register defList'
   defList'' <- forM defList' $ \(x, (opacity, args, e)) -> do
-    e' <- reduce (ctx & gensym) e
+    e' <- reduce (gensym ctx) e
     return (wrapWithQuote x, (opacity, args, e'))
   return $ defList'' ++ newDefEnv
 
@@ -82,13 +81,13 @@ clarifyDef ctx stmt =
     StmtDefine opacity _ f _ xts _ e -> do
       e' <- clarifyTerm ctx (insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder ctx IntMap.empty xts
-      e'' <- linearize (ctx & gensym) xts' e' >>= reduce (ctx & gensym)
+      e'' <- linearize (gensym ctx) xts' e' >>= reduce (gensym ctx)
       return (f, (opacity, map fst xts', e''))
     StmtDefineResource m name discarder copier -> do
-      switchValue <- Gensym.newIdentFromText (ctx & gensym) "switchValue"
-      value <- Gensym.newIdentFromText (ctx & gensym) "value"
-      discarder' <- clarifyTerm ctx IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduce (ctx & gensym)
-      copier' <- clarifyTerm ctx IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduce (ctx & gensym)
+      switchValue <- Gensym.newIdentFromText (gensym ctx) "switchValue"
+      value <- Gensym.newIdentFromText (gensym ctx) "value"
+      discarder' <- clarifyTerm ctx IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= reduce (gensym ctx)
+      copier' <- clarifyTerm ctx IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= reduce (gensym ctx)
       return
         ( name,
           ( OpacityTransparent,
@@ -101,7 +100,7 @@ clarifyTerm :: Context -> TypeEnv -> Term -> IO Comp
 clarifyTerm ctx tenv term =
   case term of
     _ :< TermTau ->
-      returnImmediateS4 (ctx & gensym)
+      returnImmediateS4 (gensym ctx)
     _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
     _ :< TermVarGlobal x -> do
@@ -109,7 +108,7 @@ clarifyTerm ctx tenv term =
       if S.member x resourceTypeSet
         then return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote x
         else do
-          imm <- immediateS4 (ctx & gensym)
+          imm <- immediateS4 (gensym ctx)
           return $
             CompUpIntro $
               ValueSigmaIntro
@@ -124,11 +123,11 @@ clarifyTerm ctx tenv term =
     _ :< TermPiElim e es -> do
       es' <- mapM (clarifyPlus ctx tenv) es
       e' <- clarifyTerm ctx tenv e
-      callClosure (ctx & gensym) e' es'
+      callClosure (gensym ctx) e' es'
     _ :< TermSigma {} -> do
       returnClosureS4 ctx
     m :< TermSigmaIntro es -> do
-      k <- Gensym.newIdentFromText (ctx & gensym) "sigma"
+      k <- Gensym.newIdentFromText (gensym ctx) "sigma"
       clarifyTerm ctx tenv $
         m
           :< TermPiIntro
@@ -146,7 +145,7 @@ clarifyTerm ctx tenv term =
     _ :< TermFloat size l ->
       return $ CompUpIntro (ValueFloat size l)
     _ :< TermEnum {} ->
-      returnImmediateS4 (ctx & gensym)
+      returnImmediateS4 (gensym ctx)
     _ :< TermEnumIntro internal l ->
       return $ CompUpIntro $ ValueEnumIntro internal l
     _ :< TermEnumElim (e, _) bs -> do
@@ -158,11 +157,11 @@ clarifyTerm ctx tenv term =
     _ :< TermMagic der -> do
       clarifyMagic ctx tenv der
     _ :< TermMatch mSubject (e, _) clauseList -> do
-      ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames (ctx & gensym)
+      ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames (gensym ctx)
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
       clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, xts), body), i) -> do
         closure <- clarifyLambda ctx tenv LamKindNormal xts body fvs
-        (closureVarName, closureVar) <- Gensym.newValueVarLocalWith (ctx & gensym) "clause"
+        (closureVarName, closureVar) <- Gensym.newValueVarLocalWith (gensym ctx) "clause"
         return
           ( () :< EnumCaseInt i,
             CompUpElim
@@ -183,13 +182,13 @@ clarifyTerm ctx tenv term =
             dataVar
             $ CompEnumElim tagVar clauseList'
     _ :< TermNoema {} -> do
-      returnImmediateS4 (ctx & gensym)
+      returnImmediateS4 (gensym ctx)
     m :< TermNoemaIntro _ e ->
       case e of
         _ :< TermVar x ->
           return $ CompUpIntro (ValueVarLocalIdeal x)
         _ ->
-          (ctx & throw & Throw.raiseCritical) m "compiler bug: found a non-variable noetic value"
+          Throw.raiseCritical (throw ctx) m "compiler bug: found a non-variable noetic value"
     m :< TermNoemaElim s e -> do
       e' <- clarifyTerm ctx (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
@@ -223,20 +222,20 @@ clarifyTerm ctx tenv term =
           CompUpIntro (ValueSigmaIntro [contentTypeVar, contentVar])
     _ :< TermCellRead cell -> do
       (cellVarName, cell', cellVar) <- clarifyPlus ctx tenv cell
-      (typeVarName, typeVar) <- Gensym.newValueVarLocalWith (ctx & gensym) "typeVar"
-      valueVarName <- Gensym.newIdentFromText (ctx & gensym) "valueVar"
-      returnClonedValue <- toRelevantApp (ctx & gensym) valueVarName (CompUpIntro typeVar)
+      (typeVarName, typeVar) <- Gensym.newValueVarLocalWith (gensym ctx) "typeVar"
+      valueVarName <- Gensym.newIdentFromText (gensym ctx) "valueVar"
+      returnClonedValue <- toRelevantApp (gensym ctx) valueVarName (CompUpIntro typeVar)
       return $
         bindLet [(cellVarName, cell')] $
           CompSigmaElim True [typeVarName, valueVarName] cellVar returnClonedValue
     _ :< TermCellWrite cell newValue -> do
-      (typeVarName, typeVar) <- Gensym.newValueVarLocalWith (ctx & gensym) "typeVar"
+      (typeVarName, typeVar) <- Gensym.newValueVarLocalWith (gensym ctx) "typeVar"
       (cellVarName, cell', cellVar) <- clarifyPlus ctx tenv cell
-      oldValueVarName <- Gensym.newIdentFromText (ctx & gensym) "oldValueVar"
+      oldValueVarName <- Gensym.newIdentFromText (gensym ctx) "oldValueVar"
       (newValueVarName, newValue', newValueVar) <- clarifyPlus ctx tenv newValue
-      discardOldContent <- toAffineApp (ctx & gensym) oldValueVarName (CompUpIntro typeVar)
-      placeHolder <- Gensym.newIdentFromText (ctx & gensym) "placeholder"
-      (addrVarName, addrVar) <- Gensym.newValueVarLocalWith (ctx & gensym) "address"
+      discardOldContent <- toAffineApp (gensym ctx) oldValueVarName (CompUpIntro typeVar)
+      placeHolder <- Gensym.newIdentFromText (gensym ctx) "placeholder"
+      (addrVarName, addrVar) <- Gensym.newValueVarLocalWith (gensym ctx) "address"
       return $
         bindLet [(cellVarName, cell'), (newValueVarName, newValue')] $
           CompSigmaElim True [typeVarName, oldValueVarName] cellVar $
@@ -318,7 +317,7 @@ caseClauseToLambda pat =
 clarifyPlus :: Context -> TypeEnv -> Term -> IO (Ident, Comp, Value)
 clarifyPlus ctx tenv e = do
   e' <- clarifyTerm ctx tenv e
-  (varName, var) <- Gensym.newValueVarLocalWith (ctx & gensym) "var"
+  (varName, var) <- Gensym.newValueVarLocalWith (gensym ctx) "var"
   return (varName, e', var)
 
 clarifyBinder :: Context -> TypeEnv -> [BinderF Term] -> IO [(Hint, Ident, Comp)]
@@ -338,7 +337,7 @@ chainFromTermList tenv es =
 alignFreeVariables :: Context -> TypeEnv -> [BinderF Term] -> [Comp] -> IO [Comp]
 alignFreeVariables ctx tenv fvs es = do
   es' <- mapM (returnClosure ctx tenv OpacityTransparent LamKindNormal fvs []) es
-  mapM (\e -> callClosure (ctx & gensym) e []) es'
+  mapM (\e -> callClosure (gensym ctx) e []) es'
 
 nubFreeVariables :: [BinderF Term] -> [BinderF Term]
 nubFreeVariables =
@@ -349,14 +348,14 @@ clarifyConst ctx tenv m constName
   | Just op <- PrimOp.fromText constName =
     clarifyPrimOp ctx tenv op m
   | Just _ <- PrimNum.fromText constName =
-    returnImmediateS4 (ctx & gensym)
+    returnImmediateS4 (gensym ctx)
   | otherwise = do
-    (ctx & throw & Throw.raiseCritical) m $ "undefined constant: " <> constName
+    Throw.raiseCritical (throw ctx) m $ "undefined constant: " <> constName
 
 clarifyPrimOp :: Context -> TypeEnv -> PrimOp -> Hint -> IO Comp
 clarifyPrimOp ctx tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
-  (xs, varList) <- unzip <$> mapM (const (Gensym.newValueVarLocalWith (ctx & gensym) "prim")) domList
+  (xs, varList) <- unzip <$> mapM (const (Gensym.newValueVarLocalWith (gensym ctx) "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   returnClosure ctx tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)
 
@@ -378,19 +377,19 @@ returnClosure ctx tenv isReducible kind fvs xts e = do
   let fvEnv = ValueSigmaIntro (map (\(_, x, _) -> ValueVarLocal x) fvs')
   case kind of
     LamKindNormal -> do
-      i <- Gensym.newCount (ctx & gensym)
-      name <- Locator.attachCurrentLocator (ctx & locator) $ "lambda;" <> T.pack (show i)
-      registerIfNecessary (ctx & gensym) name isReducible False xts'' fvs'' e
+      i <- Gensym.newCount (gensym ctx)
+      name <- Locator.attachCurrentLocator (locator ctx) $ "lambda;" <> T.pack (show i)
+      registerIfNecessary (gensym ctx) name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
     LamKindCons _ consName consNumber _ -> do
       let consName' = getLamConsName consName
-      registerIfNecessary (ctx & gensym) consName' isReducible True xts'' fvs'' e
+      registerIfNecessary (gensym ctx) consName' isReducible True xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) consNumber]
     LamKindFix (_, name, _) -> do
       let name' = Ident.toText' name
       let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name')]
-      e' <- subst (ctx & gensym) (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
-      registerIfNecessary (ctx & gensym) name' OpacityOpaque False xts'' fvs'' e'
+      e' <- subst (gensym ctx) (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
+      registerIfNecessary (gensym ctx) name' OpacityOpaque False xts'' fvs'' e'
       return $ CompUpIntro cls
 
 registerIfNecessary ::

@@ -14,7 +14,6 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
@@ -42,11 +41,11 @@ type IsDefinite = Bool
 specialize :: App.Context -> Context
 specialize ctx =
   Context
-    { throw = ctx & App.throw,
-      gensym = ctx & App.gensym,
-      global = ctx & App.global,
-      locator = ctx & App.locator,
-      alias = ctx & App.alias
+    { throw = App.throw ctx,
+      gensym = App.gensym ctx,
+      global = App.global ctx,
+      locator = App.locator ctx,
+      alias = App.alias ctx
     }
 
 -- Alpha-convert all the variables so that different variables have different names.
@@ -137,7 +136,7 @@ discern ctx nenv term =
             (xts', body') <- discernBinderWithBody ctx nenv xts body
             return ((mCons, newName, xts'), body')
           _ ->
-            (ctx & throw & Throw.raiseError) m $ "no such constructor is defined: " <> constructorName
+            Throw.raiseError (throw ctx) m $ "no such constructor is defined: " <> constructorName
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
       s' <- discern ctx nenv s
@@ -149,9 +148,9 @@ discern ctx nenv term =
           e' <- discern ctx nenv e
           return $ m :< WeakTermNoemaIntro name e'
         Nothing ->
-          (ctx & throw & Throw.raiseError) m $ "undefined subject variable: " <> x
+          Throw.raiseError (throw ctx) m $ "undefined subject variable: " <> x
     m :< WeakTermNoemaElim s e -> do
-      s' <- Gensym.newIdentFromIdent (ctx & gensym) s
+      s' <- Gensym.newIdentFromIdent (gensym ctx) s
       e' <- discern ctx (Map.insert (Ident.toText s) s' nenv) e
       return $ m :< WeakTermNoemaElim s' e'
     m :< WeakTermArray elemType -> do
@@ -197,7 +196,7 @@ discernBinder ctx nenv binder =
       return ([], nenv)
     (mx, x, t) : xts -> do
       t' <- discern ctx nenv t
-      x' <- Gensym.newIdentFromIdent (ctx & gensym) x
+      x' <- Gensym.newIdentFromIdent (gensym ctx) x
       (xts', nenv') <- discernBinder ctx (Map.insert (Ident.toText x) x' nenv) xts
       return ((mx, x', t') : xts', nenv')
 

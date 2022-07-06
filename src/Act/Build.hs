@@ -20,7 +20,6 @@ import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import Data.Sequence as Seq
@@ -262,7 +261,7 @@ compile' ctx source = do
   ensureDir $ parent outputPath
   llvmOutputPath <- sourceToOutputPath OutputKindLLVM source
   L.writeFile (toFilePath llvmOutputPath) llvmCode
-  (ctx & App.llvm & LLVM.emit) OutputKindObject llvmCode outputPath
+  LLVM.emit (App.llvm ctx) OutputKindObject llvmCode outputPath
 
 compileToLLVM :: App.Context -> Source -> IO L.ByteString
 compileToLLVM ctx source = do
@@ -336,7 +335,7 @@ getMainFunctionNameIfEntryPoint ctx source = do
 
 getMainFunctionName' :: App.Context -> IO T.Text
 getMainFunctionName' ctx = do
-  Locator.attachCurrentLocator (ctx & App.locator) "main"
+  Locator.attachCurrentLocator (App.locator ctx) "main"
 
 {-# NOINLINE traceSourceListRef #-}
 traceSourceListRef :: IORef [Source]

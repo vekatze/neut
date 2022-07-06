@@ -10,7 +10,6 @@ import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Writer.Lazy
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import Data.IORef
 import qualified Data.Set as S
@@ -63,7 +62,7 @@ lowerMain ctx (defList, mainTerm) = do
     lowerComp ctx e >>= insLowDefEnv name args
   mainTerm'' <- lowerComp ctx mainTerm
   -- the result of "main" must be i64, not i8*
-  (result, resultVar) <- Gensym.newValueVarLocalWith (ctx & gensym) "result"
+  (result, resultVar) <- Gensym.newValueVarLocalWith (gensym ctx) "result"
   castResult <- runLower $ lowerValueLetCast ctx resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
   -- let result: i8* := (main-term) in {cast result to i64}
   commConv result mainTerm'' castResult
@@ -186,7 +185,7 @@ loadElements ctx basePointer baseType values =
 free :: Context -> LowValue -> LowType -> Lower ()
 free ctx pointer pointerType = do
   uncastedPointer <- uncast ctx pointer pointerType
-  j <- liftIO $ Gensym.newCount (ctx & gensym)
+  j <- liftIO $ Gensym.newCount (gensym ctx)
   reflectCont $ LowOpFree uncastedPointer pointerType j
 
 lowerCompPrimitive :: Context -> Primitive -> Lower LowValue
@@ -279,7 +278,7 @@ lowerValue ctx v =
       compDefEnv <- liftIO $ readIORef compDefEnvRef
       case Map.lookup y compDefEnv of
         Nothing ->
-          liftIO $ ctx & throw & Throw.raiseCritical' $ "no such global variable is defined: " <> y
+          liftIO $ Throw.raiseCritical' (throw ctx) $ "no such global variable is defined: " <> y
         Just (_, args, _) -> do
           liftIO $ insDeclEnvIfNecessary y args
           uncast ctx (LowValueVarGlobal y) (toFunPtrType args)
@@ -423,7 +422,7 @@ toFunPtrType xs =
 
 newValueLocal :: Context -> T.Text -> IO (Ident, LowValue)
 newValueLocal ctx name = do
-  x <- Gensym.newIdentFromText (ctx & gensym) name
+  x <- Gensym.newIdentFromText (gensym ctx) name
   return (x, LowValueVarLocal x)
 
 insLowDefEnv :: T.Text -> [Ident] -> LowComp -> IO ()

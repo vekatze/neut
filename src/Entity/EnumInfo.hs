@@ -6,14 +6,12 @@ module Entity.EnumInfo
     EnumTypeName,
     new,
     fromEnumInfo,
-    -- initialEnumEnv,
   )
 where
 
 import Context.Throw
 import Control.Monad
 import Data.Binary (Binary)
-import Data.Function
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Global
@@ -36,7 +34,7 @@ new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe Integer)] -> IO EnumInf
 new ctx m definiteEnumName itemList = do
   let itemList' = attachPrefix definiteEnumName $ setDiscriminant 0 itemList
   unless (isLinear (map snd itemList')) $
-    (ctx & raiseError) m "found a collision of discriminant"
+    raiseError ctx m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (definiteEnumName, itemList')}
 
 attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]

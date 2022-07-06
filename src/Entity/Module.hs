@@ -4,7 +4,6 @@ module Entity.Module where
 
 import Context.Throw
 import Control.Comonad.Cofree
-import Data.Function
 import qualified Data.HashMap.Lazy as Map
 import qualified Data.Text as T
 import Entity.Ens
@@ -77,7 +76,7 @@ findModuleFile ctx moduleRootDirCandidate = do
     (_, True) ->
       findModuleFile ctx $ parent moduleRootDirCandidate
     _ ->
-      ctx & raiseError' $ "could not find a module file."
+      raiseError' ctx "couldn't find a module file."
 
 getMainModuleFilePath :: Context -> IO (Path Abs File)
 getMainModuleFilePath ctx =
