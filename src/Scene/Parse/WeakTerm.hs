@@ -28,7 +28,7 @@ import Entity.LowType
 import Entity.Magic
 import Entity.Pattern
 import Entity.PrimNum.FromText
-import qualified Entity.Target as Target
+import qualified Entity.TargetPlatform as TP
 import Entity.WeakTerm
 import Scene.Parse.Core
 import Text.Megaparsec
@@ -721,11 +721,11 @@ getIntrospectiveValue :: Context -> Hint -> T.Text -> IO T.Text
 getIntrospectiveValue ctx m key =
   case key of
     "target-platform" -> do
-      return $ T.pack (Target.platform (target ctx))
+      return $ T.pack (TP.platform (targetPlatform ctx))
     "target-arch" ->
-      return $ T.pack (Target.arch (target ctx))
+      return $ T.pack (TP.arch (targetPlatform ctx))
     "target-os" ->
-      return $ T.pack (Target.os (target ctx))
+      return $ T.pack (TP.os (targetPlatform ctx))
     _ ->
       Throw.raiseError (throw ctx) m $ "no such introspective value is defined: " <> key
 

@@ -13,7 +13,7 @@ import qualified Context.Throw as Throw
 import qualified Data.Set as S
 import Entity.AliasInfo
 import Entity.Source
-import Entity.Target
+import qualified Entity.TargetPlatform as TP
 import Path
 
 data Context = Context
@@ -28,5 +28,5 @@ data Context = Context
     initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
     hasCacheSet :: S.Set (Path Abs File),
-    target :: Target
+    targetPlatform :: TP.TargetPlatform
   }

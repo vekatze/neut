@@ -28,7 +28,7 @@ import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
-import qualified Entity.Target as Target
+import qualified Entity.TargetPlatform as TP
 import Numeric.Half
 import qualified System.Info as System
 
@@ -315,8 +315,8 @@ showLowTypeAsIfNonPtr lowType =
 
 getRegList :: Context -> IO [Builder]
 getRegList ctx = do
-  let targetPlatform = Target.platform $ target ctx
-  case targetPlatform of
+  let platform = TP.platform $ targetPlatform ctx
+  case platform of
     "x86_64-linux" ->
       return ["rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"]
     "arm64-linux" ->
@@ -324,7 +324,7 @@ getRegList ctx = do
     "x86_64-darwin" ->
       return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
     _ ->
-      Throw.raiseError' (throw ctx) $ "unsupported target: " <> T.pack targetPlatform
+      Throw.raiseError' (throw ctx) $ "unsupported target: " <> T.pack platform
 
 showLowType :: LowType -> Builder
 showLowType lowType =

@@ -28,7 +28,7 @@ import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt
-import qualified Entity.Target as Target
+import qualified Entity.TargetPlatform as TP
 import Path
 import Path.IO
 import Scene.Clarify
@@ -145,10 +145,10 @@ newCtx cfg source = do
         App.alias = aliasCtx,
         App.shouldCancelAlloc = ccCancelAllocFlag cfg,
         App.initialSource = ccInitialSource cfg,
-        App.target =
-          Target.Target
-            { Target.os = System.os,
-              Target.arch = System.arch
+        App.targetPlatform =
+          TP.TargetPlatform
+            { TP.os = System.os,
+              TP.arch = System.arch
             },
         App.sourceAliasMap = ccSourceAliasMap cfg,
         App.hasCacheSet = ccHasCacheSet cfg
