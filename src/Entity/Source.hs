@@ -5,7 +5,6 @@ import qualified Data.Text as T
 import Entity.Hint
 import Entity.Locator
 import qualified Entity.Locator.Reflect as Locator
-import qualified Entity.Locator.Reify as Locator
 import Entity.Module
 import Entity.OutputKind
 import Path
@@ -62,11 +61,10 @@ isMainFile source = do
 getNextSource :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
 getNextSource ctx m currentModule sigText = do
   srcLocator <- Locator.fromText ctx m currentModule sigText
-  srcAbsPath <- Locator.toAbsPath srcLocator
   return $
     Source
       { sourceModule = sourceLocatorModule srcLocator,
-        sourceFilePath = srcAbsPath
+        sourceFilePath = getSourceDir (sourceLocatorModule srcLocator) </> sourceLocatorFilePath srcLocator
       }
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)

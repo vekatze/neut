@@ -9,6 +9,7 @@ import Entity.Locator
 import Entity.Module
 import Entity.Module.Locator
 import Entity.ModuleAlias
+import Path
 
 fromText :: Throw.Context -> Hint -> Module -> T.Text -> IO Locator
 fromText ctx m currentModule sectionString = do
@@ -16,11 +17,11 @@ fromText ctx m currentModule sectionString = do
     Just (nextModuleName, dirNameList, fileNameWithoutExtension) -> do
       nextModule <- getNextModule ctx m currentModule $ ModuleAlias nextModuleName
       let fileName = fileNameWithoutExtension <> nsSep <> sourceFileExtension
+      path <- parseRelFile $ T.unpack $ T.intercalate "/" dirNameList <> "/" <> fileName
       return $
         Locator
           { sourceLocatorModule = nextModule,
-            sourceLocatorDirNameList = map (DirName . T.unpack) dirNameList,
-            sourceLocatorFileName = FileName . T.unpack $ fileName
+            sourceLocatorFilePath = path
           }
     Nothing ->
       Throw.raiseError ctx m "found a malformed module signature"
