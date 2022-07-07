@@ -51,13 +51,6 @@ setDiscriminant discriminant clauseList =
     (item, Just value) : rest ->
       (item, value) : setDiscriminant (value + 1) rest
 
--- initialEnumEnv :: [EnumInfo]
--- initialEnumEnv =
---   [ EnumInfoCons (constBottom, []),
---     EnumInfoCons (constTop, [(constTopUnit, 0)]),
---     EnumInfoCons (constBool, [(constBoolFalse, 0), (constBoolTrue, 1)])
---   ]
-
 {-# INLINE isLinear #-}
 isLinear :: [Integer] -> Bool
 isLinear =

@@ -1,13 +1,6 @@
 module Entity.Source where
 
-import qualified Context.Throw as Throw
-import Data.List
-import qualified Data.Text as T
-import Entity.Global
-import Entity.Hint
 import Entity.Module
-import Entity.Module.Locator
-import Entity.ModuleAlias
 import Entity.OutputKind
 import Path
 
@@ -59,21 +52,6 @@ isMainFile :: Source -> IO Bool
 isMainFile source = do
   sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
   return $ elem sourceRelPath $ moduleTarget (sourceModule source)
-
-getNextSource :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
-getNextSource ctx m currentModule locatorString = do
-  case uncons $ T.splitOn "." locatorString of
-    Just (nextModuleName, locatorTail) -> do
-      nextModule <- getNextModule ctx m currentModule $ ModuleAlias nextModuleName
-      let relFile = T.intercalate "/" locatorTail <> nsSep <> sourceFileExtension
-      relPath <- parseRelFile $ T.unpack relFile
-      return $
-        Source
-          { sourceModule = nextModule,
-            sourceFilePath = getSourceDir nextModule </> relPath
-          }
-    Nothing ->
-      Throw.raiseError ctx m "found a malformed module signature"
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
 sourceToOutputPath kind source = do
