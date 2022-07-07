@@ -1,5 +1,6 @@
 module Entity.GlobalName where
 
+import Entity.Discriminant
 import Entity.EnumInfo
 
 data GlobalName

@@ -8,6 +8,7 @@ import qualified Context.Global as Global
 import qualified Context.Locator as Locator
 import Control.Monad.IO.Class
 import qualified Data.Text as T
+import Entity.Discriminant
 import Entity.EnumInfo
 import qualified Entity.EnumInfo as EnumInfo
 import Scene.Parse.Core
@@ -24,21 +25,21 @@ parseDefineEnum ctx = do
   -- liftIO $ EnumInfo.registerIfNew (ctx & throw) m enumInfo
   return enumInfo
 
-parseDefineEnumClause :: Parser (T.Text, Maybe Integer)
+parseDefineEnumClause :: Parser (T.Text, Maybe Discriminant)
 parseDefineEnumClause = do
   choice
     [ try parseDefineEnumClauseWithDiscriminant,
       parseDefineEnumClauseWithoutDiscriminant
     ]
 
-parseDefineEnumClauseWithDiscriminant :: Parser (T.Text, Maybe Integer)
+parseDefineEnumClauseWithDiscriminant :: Parser (T.Text, Maybe Discriminant)
 parseDefineEnumClauseWithDiscriminant = do
   item <- snd <$> var
   keyword "="
-  discriminant <- integer
-  return (item, Just discriminant)
+  i <- integer
+  return (item, Just $ MakeDiscriminant {reify = i})
 
-parseDefineEnumClauseWithoutDiscriminant :: Parser (T.Text, Maybe Integer)
+parseDefineEnumClauseWithoutDiscriminant :: Parser (T.Text, Maybe Discriminant)
 parseDefineEnumClauseWithoutDiscriminant = do
   item <- snd <$> var
   return (item, Nothing)

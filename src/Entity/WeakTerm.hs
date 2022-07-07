@@ -5,6 +5,7 @@ import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Binder
+import Entity.Discriminant
 import Entity.EnumCase
 import Entity.Hint
 import Entity.Ident
@@ -33,7 +34,7 @@ data WeakTermF a
   | WeakTermInt a Integer
   | WeakTermFloat a Double
   | WeakTermEnum T.Text
-  | WeakTermEnumIntro (T.Text, Integer) T.Text -- EnumIntro (enum-type, actual-int-value) enum-label
+  | WeakTermEnumIntro (T.Text, Discriminant) T.Text -- EnumIntro (enum-type, actual-int-value) ebnum-label
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
   | WeakTermMagic (Magic a) -- (magic kind arg-1 ... arg-n)

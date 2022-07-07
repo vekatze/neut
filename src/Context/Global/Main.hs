@@ -10,6 +10,7 @@ import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import Data.Maybe
 import qualified Data.Text as T
+import qualified Entity.Discriminant as D
 import Entity.EnumInfo hiding (new)
 import Entity.Global
 import qualified Entity.GlobalName as GN
@@ -88,8 +89,8 @@ createEnumMap typeName enumItemList = do
 defaultEnumEnv :: [(EnumTypeName, [EnumItem])]
 defaultEnumEnv =
   [ (constBottom, []),
-    (constTop, [(constTopUnit, 0)]),
-    (constBool, [(constBoolFalse, 0), (constBoolTrue, 1)])
+    (constTop, [(constTopUnit, D.zero)]),
+    (constBool, [(constBoolFalse, D.zero), (constBoolTrue, D.increment D.zero)])
   ]
 
 -- {-# INLINE asWeakConstant #-}

@@ -18,6 +18,7 @@ import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.Global
 import Entity.Hint
@@ -250,7 +251,7 @@ weakTermEnumClause ctx = do
   c <- symbol
   delimiter "->"
   body <- weakTerm ctx
-  let dummyLabelInfo = ("", 0)
+  let dummyLabelInfo = ("", D.zero)
   case c of
     "default" ->
       return (m :< EnumCaseDefault, body)
@@ -466,8 +467,8 @@ foldIf ctx m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel ("bool", 1) constBoolTrue, ifBody),
-              (m :< EnumCaseLabel ("bool", 0) constBoolFalse, elseBody)
+            [ (m :< EnumCaseLabel ("bool", D.increment D.zero) constBoolTrue, ifBody),
+              (m :< EnumCaseLabel ("bool", D.zero) constBoolFalse, elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf ctx m elseIfCond elseIfBody rest elseBody
@@ -476,8 +477,8 @@ foldIf ctx m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel ("bool", 1) constBoolTrue, ifBody),
-              (m :< EnumCaseLabel ("bool", 0) constBoolFalse, cont)
+            [ (m :< EnumCaseLabel ("bool", D.increment D.zero) constBoolTrue, ifBody),
+              (m :< EnumCaseLabel ("bool", D.zero) constBoolFalse, cont)
             ]
 
 weakTermParen :: Context -> Parser WeakTerm

@@ -4,11 +4,12 @@ import Control.Comonad.Cofree
 import Data.Binary
 import Data.Functor.Classes
 import qualified Data.Text as T
+import Entity.Discriminant
 import Entity.Hint
 import GHC.Generics
 
 data EnumCaseF a
-  = EnumCaseLabel (T.Text, Integer) T.Text
+  = EnumCaseLabel (T.Text, Discriminant) T.Text
   | EnumCaseInt Integer
   | EnumCaseDefault
   deriving (Show, Eq, Ord, Generic)

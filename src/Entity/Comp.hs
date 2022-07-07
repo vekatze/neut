@@ -2,6 +2,7 @@ module Entity.Comp where
 
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
+import Entity.Discriminant
 import Entity.EnumCase
 import Entity.Ident
 import Entity.Magic
@@ -18,7 +19,7 @@ data Value
   | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
-  | ValueEnumIntro (T.Text, Integer) T.Text
+  | ValueEnumIntro (T.Text, Discriminant) T.Text
   deriving (Show)
 
 data Comp

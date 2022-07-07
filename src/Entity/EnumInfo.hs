@@ -1,7 +1,6 @@
 module Entity.EnumInfo
   ( EnumInfo,
     EnumItem,
-    Discriminant,
     EnumValueName,
     EnumTypeName,
     new,
@@ -14,25 +13,24 @@ import Control.Monad
 import Data.Binary (Binary)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.Discriminant as D
 import Entity.Global
 import qualified Entity.Hint as Hint
 import GHC.Generics
-
-type Discriminant = Integer
 
 type EnumTypeName = T.Text
 
 type EnumValueName = T.Text
 
-type EnumItem = (EnumValueName, Discriminant) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
+type EnumItem = (EnumValueName, D.Discriminant) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
 
 newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (T.Text, [EnumItem])} deriving (Generic)
 
 instance Binary EnumInfo
 
-new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe Integer)] -> IO EnumInfo
+new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe D.Discriminant)] -> IO EnumInfo
 new ctx m definiteEnumName itemList = do
-  let itemList' = attachPrefix definiteEnumName $ setDiscriminant 0 itemList
+  let itemList' = attachPrefix definiteEnumName $ setDiscriminant D.zero itemList
   unless (isLinear (map snd itemList')) $
     raiseError ctx m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (definiteEnumName, itemList')}
@@ -41,22 +39,22 @@ attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]
 attachPrefix prefix =
   map (\(name, v) -> (prefix <> nsSep <> name, v))
 
-setDiscriminant :: Integer -> [(a, Maybe Integer)] -> [(a, Integer)]
+setDiscriminant :: D.Discriminant -> [(a, Maybe D.Discriminant)] -> [(a, D.Discriminant)]
 setDiscriminant discriminant clauseList =
   case clauseList of
     [] ->
       []
     (item, Nothing) : rest ->
-      (item, discriminant) : setDiscriminant (discriminant + 1) rest
+      (item, discriminant) : setDiscriminant (D.increment discriminant) rest
     (item, Just value) : rest ->
-      (item, value) : setDiscriminant (value + 1) rest
+      (item, value) : setDiscriminant (D.increment value) rest
 
 {-# INLINE isLinear #-}
-isLinear :: [Integer] -> Bool
+isLinear :: [D.Discriminant] -> Bool
 isLinear =
   isLinear' S.empty
 
-isLinear' :: S.Set Integer -> [Integer] -> Bool
+isLinear' :: S.Set D.Discriminant -> [D.Discriminant] -> Bool
 isLinear' found input =
   case input of
     [] ->

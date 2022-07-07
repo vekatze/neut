@@ -5,6 +5,7 @@ import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Binder
+import Entity.Discriminant
 import Entity.EnumCase
 import Entity.Hint
 import Entity.Ident
@@ -32,7 +33,7 @@ data TermF a
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
   | TermEnum T.Text
-  | TermEnumIntro (T.Text, Integer) T.Text
+  | TermEnumIntro (T.Text, Discriminant) T.Text
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermMagic (Magic a)
   | TermMatch
