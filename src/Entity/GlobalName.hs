@@ -5,7 +5,7 @@ import Entity.EnumInfo
 
 data GlobalName
   = TopLevelFunc
-  | Enum [EnumItem]
+  | EnumType [EnumValue]
   | EnumIntro EnumTypeName Discriminant
   | Constant
   deriving (Show)

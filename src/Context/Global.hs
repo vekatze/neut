@@ -8,7 +8,7 @@ import Entity.Hint
 
 data Context = Context
   { registerTopLevelFunc :: Hint -> T.Text -> IO (),
-    registerEnum :: Hint -> EnumTypeName -> [EnumItem] -> IO (),
+    registerEnum :: Hint -> EnumTypeName -> [EnumValue] -> IO (),
     lookup :: T.Text -> IO (Maybe GlobalName)
   }
 

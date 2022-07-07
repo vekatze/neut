@@ -1,6 +1,6 @@
 module Entity.EnumInfo
   ( EnumInfo,
-    EnumItem,
+    EnumValue,
     EnumValueName,
     EnumTypeName,
     new,
@@ -8,9 +8,9 @@ module Entity.EnumInfo
   )
 where
 
-import Context.Throw
+import qualified Context.Throw as Throw
 import Control.Monad
-import Data.Binary (Binary)
+import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Entity.Discriminant as D
@@ -22,17 +22,17 @@ type EnumTypeName = T.Text
 
 type EnumValueName = T.Text
 
-type EnumItem = (EnumValueName, D.Discriminant) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
+type EnumValue = (EnumValueName, D.Discriminant) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
 
-newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (T.Text, [EnumItem])} deriving (Generic)
+newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (EnumTypeName, [EnumValue])} deriving (Generic)
 
 instance Binary EnumInfo
 
-new :: Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe D.Discriminant)] -> IO EnumInfo
+new :: Throw.Context -> Hint.Hint -> T.Text -> [(T.Text, Maybe D.Discriminant)] -> IO EnumInfo
 new ctx m definiteEnumName itemList = do
   let itemList' = attachPrefix definiteEnumName $ setDiscriminant D.zero itemList
   unless (isLinear (map snd itemList')) $
-    raiseError ctx m "found a collision of discriminant"
+    Throw.raiseError ctx m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (definiteEnumName, itemList')}
 
 attachPrefix :: T.Text -> [(T.Text, a)] -> [(T.Text, a)]

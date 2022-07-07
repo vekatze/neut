@@ -59,7 +59,7 @@ registerEnum ::
   IORef NameMap ->
   Hint.Hint ->
   EnumTypeName ->
-  [EnumItem] ->
+  [EnumValue] ->
   IO ()
 registerEnum ctx nameMapRef hint typeName enumItemList = do
   nameMap <- readIORef nameMapRef
@@ -80,13 +80,13 @@ lookup nameMapRef name = do
       | otherwise ->
         return Nothing
 
-createEnumMap :: EnumTypeName -> [EnumItem] -> NameMap
+createEnumMap :: EnumTypeName -> [EnumValue] -> NameMap
 createEnumMap typeName enumItemList = do
   let (labels, discriminants) = unzip enumItemList
   let rev = Map.fromList $ zip labels (map (GN.EnumIntro typeName) discriminants)
-  Map.insert typeName (GN.Enum enumItemList) rev
+  Map.insert typeName (GN.EnumType enumItemList) rev
 
-defaultEnumEnv :: [(EnumTypeName, [EnumItem])]
+defaultEnumEnv :: [(EnumTypeName, [EnumValue])]
 defaultEnumEnv =
   [ (constBottom, []),
     (constTop, [(constTopUnit, D.zero)]),

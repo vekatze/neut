@@ -234,7 +234,7 @@ resolveName ctx m name termKind isDefinite = do
       Throw.raiseError (throw ctx) m $ "undefined " <> termKind <> ": " <> name
     [(name', GN.TopLevelFunc)] ->
       return $ m :< WeakTermVarGlobal name'
-    [(name', GN.Enum _)] ->
+    [(name', GN.EnumType _)] ->
       return $ m :< WeakTermEnum name'
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
       return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) name'

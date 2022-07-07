@@ -414,7 +414,7 @@ lookupEnumSet :: Context -> Hint -> T.Text -> IO [T.Text]
 lookupEnumSet ctx m name = do
   mEnumItems <- Global.lookup (global ctx) name
   case mEnumItems of
-    Just (GN.Enum enumItems) ->
+    Just (GN.EnumType enumItems) ->
       return $ map fst enumItems
     _ ->
       Throw.raiseError (throw ctx) m $ "no such enum defined: " <> name
