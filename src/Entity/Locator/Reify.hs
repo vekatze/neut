@@ -1,12 +1,12 @@
-module Entity.SourceLocator.Reify (toAbsPath) where
+module Entity.Locator.Reify (toAbsPath) where
 
 import Control.Exception.Safe
+import Entity.Locator
 import Entity.Module
-import Entity.SourceLocator
 import Path
 
-toAbsPath :: MonadThrow m => SourceLocator -> m (Path Abs File)
-toAbsPath (SourceLocator baseModule dirNameList fileName) = do
+toAbsPath :: MonadThrow m => Locator -> m (Path Abs File)
+toAbsPath (Locator baseModule dirNameList fileName) = do
   relPathToSource <- getRelPathToSource dirNameList fileName
   return $ getSourceDir baseModule </> relPathToSource
 

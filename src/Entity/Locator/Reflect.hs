@@ -1,23 +1,23 @@
-module Entity.SourceLocator.Reflect (fromText) where
+module Entity.Locator.Reflect (fromText) where
 
 import qualified Context.Throw as Throw
 import Data.List
 import qualified Data.Text as T
 import Entity.Global
 import Entity.Hint
+import Entity.Locator
 import Entity.Module
 import Entity.Module.Locator
 import Entity.ModuleAlias
-import Entity.SourceLocator
 
-fromText :: Throw.Context -> Hint -> Module -> T.Text -> IO SourceLocator
+fromText :: Throw.Context -> Hint -> Module -> T.Text -> IO Locator
 fromText ctx m currentModule sectionString = do
   case getHeadMiddleLast $ T.splitOn "." sectionString of
     Just (nextModuleName, dirNameList, fileNameWithoutExtension) -> do
       nextModule <- getNextModule ctx m currentModule $ ModuleAlias nextModuleName
       let fileName = fileNameWithoutExtension <> nsSep <> sourceFileExtension
       return $
-        SourceLocator
+        Locator
           { sourceLocatorModule = nextModule,
             sourceLocatorDirNameList = map (DirName . T.unpack) dirNameList,
             sourceLocatorFileName = FileName . T.unpack $ fileName

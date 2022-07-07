@@ -3,11 +3,11 @@ module Entity.Source where
 import qualified Context.Throw as Throw
 import qualified Data.Text as T
 import Entity.Hint
+import Entity.Locator
+import qualified Entity.Locator.Reflect as Locator
+import qualified Entity.Locator.Reify as Locator
 import Entity.Module
 import Entity.OutputKind
-import Entity.SourceLocator
-import qualified Entity.SourceLocator.Reflect as SourceLocator
-import qualified Entity.SourceLocator.Reify as SourceLocator
 import Path
 
 data Source = Source
@@ -61,8 +61,8 @@ isMainFile source = do
 
 getNextSource :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
 getNextSource ctx m currentModule sigText = do
-  srcLocator <- SourceLocator.fromText ctx m currentModule sigText
-  srcAbsPath <- SourceLocator.toAbsPath srcLocator
+  srcLocator <- Locator.fromText ctx m currentModule sigText
+  srcAbsPath <- Locator.toAbsPath srcLocator
   return $
     Source
       { sourceModule = sourceLocatorModule srcLocator,
