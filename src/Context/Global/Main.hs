@@ -12,7 +12,8 @@ import Data.Maybe
 import qualified Data.Text as T
 import qualified Entity.Discriminant as D
 import Entity.EnumInfo hiding (new)
-import Entity.Global
+import qualified Entity.EnumTypeName as ET
+import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
 import qualified Entity.Hint as Hint
 import qualified Entity.PrimNum.FromText as PrimNum
@@ -49,22 +50,22 @@ registerTopLevelFunc ctx nameMapRef m topLevelName = do
     Throw.raiseError ctx m $ "`" <> topLevelName <> "` is already defined at the top level"
   modifyIORef' nameMapRef $ Map.insert topLevelName GN.TopLevelFunc
 
-ensureFreshness :: Throw.Context -> Hint.Hint -> NameMap -> T.Text -> IO ()
-ensureFreshness ctx m topNameMap name = do
-  when (Map.member name topNameMap) $
-    Throw.raiseError ctx m $ "`" <> name <> "` is already defined"
-
 registerEnum ::
   Throw.Context ->
   IORef NameMap ->
   Hint.Hint ->
-  EnumTypeName ->
+  ET.EnumTypeName ->
   [EnumValue] ->
   IO ()
-registerEnum ctx nameMapRef hint typeName enumItemList = do
+registerEnum ctx nameMapRef hint typeName@(ET.EnumTypeName typeNameString) enumItemList = do
   nameMap <- readIORef nameMapRef
-  ensureFreshness ctx hint nameMap typeName
+  ensureFreshness ctx hint nameMap typeNameString
   modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
+
+ensureFreshness :: Throw.Context -> Hint.Hint -> NameMap -> T.Text -> IO ()
+ensureFreshness ctx m topNameMap name = do
+  when (Map.member name topNameMap) $
+    Throw.raiseError ctx m $ "`" <> name <> "` is already defined"
 
 lookup :: IORef NameMap -> T.Text -> IO (Maybe GN.GlobalName)
 lookup nameMapRef name = do
@@ -80,27 +81,16 @@ lookup nameMapRef name = do
       | otherwise ->
         return Nothing
 
-createEnumMap :: EnumTypeName -> [EnumValue] -> NameMap
-createEnumMap typeName enumItemList = do
+createEnumMap :: ET.EnumTypeName -> [EnumValue] -> NameMap
+createEnumMap typeName@(ET.EnumTypeName typeNameInner) enumItemList = do
   let (labels, discriminants) = unzip enumItemList
-  let rev = Map.fromList $ zip labels (map (GN.EnumIntro typeName) discriminants)
-  Map.insert typeName (GN.EnumType enumItemList) rev
+  let labels' = map (\(EV.EnumValueName v) -> v) labels
+  let rev = Map.fromList $ zip labels' (map (GN.EnumIntro typeName) discriminants)
+  Map.insert typeNameInner (GN.EnumType enumItemList) rev
 
-defaultEnumEnv :: [(EnumTypeName, [EnumValue])]
+defaultEnumEnv :: [(ET.EnumTypeName, [EnumValue])]
 defaultEnumEnv =
   [ (constBottom, []),
     (constTop, [(constTopUnit, D.zero)]),
     (constBool, [(constBoolFalse, D.zero), (constBoolTrue, D.increment D.zero)])
   ]
-
--- {-# INLINE asWeakConstant #-}
--- asWeakConstant :: Hint -> T.Text -> Maybe WeakTerm
--- asWeakConstant m name
---   | Just (PrimNumInt _) <- PrimNum.fromText name =
---     Just (m :< WeakTermConst name)
---   | Just (PrimNumFloat _) <- PrimNum.fromText name =
---     Just (m :< WeakTermConst name)
---   | Just _ <- PrimOp.fromText name =
---     Just (m :< WeakTermConst name)
---   | otherwise = do
---     Nothing

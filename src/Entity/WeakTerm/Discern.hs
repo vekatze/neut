@@ -19,6 +19,7 @@ import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
+import qualified Entity.EnumTypeName as ET
 import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
@@ -227,6 +228,7 @@ discernEnumCase ctx enumCase =
 resolveName :: Context -> Hint -> T.Text -> T.Text -> IsDefinite -> IO WeakTerm
 resolveName ctx m name termKind isDefinite = do
   candList <- Alias.getCandList (alias ctx) name isDefinite
+  print candList
   candList' <- mapM (Global.lookup (global ctx)) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
@@ -237,7 +239,7 @@ resolveName ctx m name termKind isDefinite = do
     [(name', GN.EnumType _)] ->
       return $ m :< WeakTermEnum name'
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
-      return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) name'
+      return $ m :< WeakTermEnumIntro (ET.reify enumTypeName, discriminant) name'
     [(name', GN.Constant)] ->
       return $ m :< WeakTermConst name'
     _ -> do

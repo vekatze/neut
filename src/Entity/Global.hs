@@ -117,33 +117,6 @@ definiteSep :: T.Text
 definiteSep =
   "::"
 
-constBottom :: T.Text
-constBottom =
-  "bottom"
-
-constTop :: T.Text
-constTop =
-  "top"
-
-constTopUnit :: T.Text
-constTopUnit =
-  "unit"
-
-{-# INLINE constBool #-}
-constBool :: T.Text
-constBool =
-  "bool"
-
-{-# INLINE constBoolTrue #-}
-constBoolTrue :: T.Text
-constBoolTrue =
-  "true"
-
-{-# INLINE constBoolFalse #-}
-constBoolFalse :: T.Text
-constBoolFalse =
-  "false"
-
 unsafePtr :: T.Text
 unsafePtr =
   "unsafe-pointer"

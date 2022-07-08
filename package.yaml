@@ -15,6 +15,7 @@ default-extensions:
   - FlexibleInstances
   - ApplicativeDo
   - TupleSections
+  - GeneralizedNewtypeDeriving
 
 dependencies:
   - ansi-terminal

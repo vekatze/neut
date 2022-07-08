@@ -19,6 +19,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
 import Entity.EnumInfo
+import qualified Entity.EnumValueName as EV
 import Entity.Global
 import qualified Entity.GlobalName as GN
 import Entity.Hint
@@ -410,7 +411,7 @@ checkSwitchExaustiveness ctx m x caseList = do
   unless (toInteger (length enumSet) <= len || containsDefaultCase) $
     Throw.raiseError (throw ctx) m "this switch is ill-constructed in that it is not exhaustive"
 
-lookupEnumSet :: Context -> Hint -> T.Text -> IO [T.Text]
+lookupEnumSet :: Context -> Hint -> T.Text -> IO [EV.EnumValueName]
 lookupEnumSet ctx m name = do
   mEnumItems <- Global.lookup (global ctx) name
   case mEnumItems of

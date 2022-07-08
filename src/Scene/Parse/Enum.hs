@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import Entity.Discriminant
 import Entity.EnumInfo
 import qualified Entity.EnumInfo as EnumInfo
+import qualified Entity.EnumTypeName as ET
 import Scene.Parse.Core
 import Text.Megaparsec
 
@@ -20,7 +21,7 @@ parseDefineEnum ctx = do
   try $ keyword "define-enum"
   definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
-  enumInfo <- liftIO $ EnumInfo.new (throw ctx) m definiteEnumName itemList
+  enumInfo <- liftIO $ EnumInfo.new (throw ctx) m (ET.EnumTypeName definiteEnumName) itemList
   liftIO $ uncurry (Global.registerEnum (global ctx) m) (fromEnumInfo enumInfo)
   -- liftIO $ EnumInfo.registerIfNew (ctx & throw) m enumInfo
   return enumInfo
