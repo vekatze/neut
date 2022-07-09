@@ -1,4 +1,4 @@
-module Entity.GlobalName where
+module Entity.GlobalName (GlobalName (..)) where
 
 import Entity.Discriminant
 import Entity.EnumInfo
