@@ -14,7 +14,7 @@ import qualified Context.Locator as Locator
 import Control.Monad
 import qualified Data.Text as T
 import Entity.Comp
-import Entity.Global
+import Entity.Const
 import Entity.Ident
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility

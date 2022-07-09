@@ -11,7 +11,7 @@ import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.Global
+import Entity.Const
 import Entity.Module
 import Entity.Target
 import Path

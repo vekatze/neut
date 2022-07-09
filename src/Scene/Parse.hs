@@ -18,6 +18,7 @@ import Data.IORef
 import qualified Data.Text as T
 import Entity.AliasInfo
 import Entity.Binder
+import Entity.Const
 import Entity.EnumInfo
 import Entity.Global
 import qualified Entity.GlobalName as GN

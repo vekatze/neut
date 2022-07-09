@@ -10,7 +10,7 @@ import Control.Monad.IO.Class
 import Data.List
 import qualified Data.Text as T
 import Entity.AliasInfo
-import Entity.Global
+import Entity.Const
 import Entity.Hint
 import Entity.Module
 import Entity.Module.Locator

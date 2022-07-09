@@ -104,41 +104,12 @@ nopFreeSetRef :: IORef (S.Set Int)
 nopFreeSetRef =
   unsafePerformIO (newIORef S.empty)
 
-sourceFileExtension :: T.Text
-sourceFileExtension =
-  "neut"
-
-{-# INLINE nsSep #-}
-nsSep :: T.Text
-nsSep =
-  "."
-
-definiteSep :: T.Text
-definiteSep =
-  "::"
-
-unsafePtr :: T.Text
-unsafePtr =
-  "unsafe-pointer"
-
 initialLowDeclEnv :: Map.HashMap T.Text ([LowType], LowType)
 initialLowDeclEnv =
   Map.fromList
     [ ("malloc", ([voidPtr], voidPtr)),
       ("free", ([voidPtr], voidPtr))
     ]
-
-cartImmName :: T.Text
-cartImmName =
-  "imm"
-
-cartClsName :: T.Text
-cartClsName =
-  "cls"
-
-cartCellName :: T.Text
-cartCellName =
-  "cell"
 
 getCacheDirPath :: IO (Path Abs Dir)
 getCacheDirPath = do

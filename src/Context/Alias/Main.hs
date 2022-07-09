@@ -7,7 +7,7 @@ import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
-import Entity.Global
+import Entity.Const
 import Entity.Hint hiding (new)
 import Entity.Module
 import Entity.ModuleAlias

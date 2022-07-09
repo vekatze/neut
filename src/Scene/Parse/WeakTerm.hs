@@ -18,11 +18,11 @@ import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
+import Entity.Const
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.EnumInfo
 import qualified Entity.EnumValueName as EV
-import Entity.Global
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reflect as Ident

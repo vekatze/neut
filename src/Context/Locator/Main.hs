@@ -5,7 +5,7 @@ import qualified Context.Throw as Throw
 import qualified Data.Containers.ListUtils as ListUtils
 import Data.IORef
 import qualified Data.Text as T
-import Entity.Global
+import Entity.Const
 import Entity.Hint hiding (new)
 import Entity.Module
 import Entity.ModuleChecksum

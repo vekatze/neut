@@ -6,8 +6,8 @@ where
 
 import Data.Binary
 import qualified Data.Text as T
+import Entity.Const
 import Entity.EnumTypeName
-import Entity.Global
 import GHC.Generics
 
 newtype EnumValueName = EnumValueName {reify :: T.Text}

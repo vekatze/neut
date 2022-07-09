@@ -15,6 +15,7 @@ import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Comp
+import Entity.Const
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.Global
