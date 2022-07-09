@@ -604,7 +604,7 @@ weakTermAdmit ctx = do
       :< WeakTermPiElim
         (weakVar m "core.os.exit")
         [ h,
-          m :< WeakTermInt (m :< WeakTermPrim "i64") 1
+          m :< WeakTermInt (i64 m) 1
         ]
 
 weakTermAdmitQuestion :: Gensym.Context -> Parser WeakTerm
@@ -619,7 +619,7 @@ weakTermAdmitQuestion ctx = do
             :< WeakTermPiElim
               (weakVar m "os.exit")
               [ h,
-                m :< WeakTermInt (m :< WeakTermPrim "i64") 1
+                m :< WeakTermInt (i64 m) 1
               ]
         )
         h

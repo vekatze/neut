@@ -14,8 +14,9 @@ import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
+import qualified Entity.Prim as Prim
+import Entity.PrimNum
 import Entity.PrimNumSize
-import Entity.PrimNumSize.ToText
 import GHC.Generics
 
 type WeakTerm = Cofree WeakTermF Hint
@@ -32,7 +33,7 @@ data WeakTermF a
   | WeakTermSigmaElim [BinderF a] a a
   | WeakTermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | WeakTermAster Int
-  | WeakTermPrim T.Text
+  | WeakTermPrim Prim.Prim
   | WeakTermInt a Integer
   | WeakTermFloat a Double
   | WeakTermEnum EnumTypeName
@@ -77,11 +78,11 @@ toVar m x =
 
 i8 :: Hint -> WeakTerm
 i8 m =
-  m :< WeakTermPrim (intSizeToText $ IntSize 8)
+  m :< WeakTermPrim (Prim.Type $ PrimNumInt $ IntSize 8)
 
 i64 :: Hint -> WeakTerm
 i64 m =
-  m :< WeakTermPrim (intSizeToText $ IntSize 64)
+  m :< WeakTermPrim (Prim.Type $ PrimNumInt $ IntSize 64)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =

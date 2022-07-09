@@ -28,8 +28,8 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Opacity
 import Entity.Pattern
+import qualified Entity.Prim as Prim
 import Entity.PrimNum
-import qualified Entity.PrimNum.FromText as PrimNum
 import Entity.Source
 import Entity.Stmt
 import Entity.Term
@@ -113,7 +113,7 @@ inferStmtMain ctx mainFunctionName stmt = do
       (xts', e', codType') <- inferStmt ctx xts e codType
       when (x == mainFunctionName) $
         insConstraintEnv
-          (m :< WeakTermPi [] (m :< WeakTermPrim "i64"))
+          (m :< WeakTermPi [] (i64 m))
           (m :< WeakTermPi xts codType)
       return $ QuasiStmtDefine isReducible m x impArgNum xts' codType' e'
     QuasiStmtDefineResource m name discarder copier ->
@@ -225,9 +225,8 @@ elaborate' ctx term =
     m :< WeakTermInt t x -> do
       t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
-        _ :< TermPrim intTypeStr
-          | Just (PrimNumInt size) <- PrimNum.fromText intTypeStr ->
-            return $ m :< TermInt size x
+        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
+          return $ m :< TermInt size x
         _ -> do
           Throw.raiseError (throw ctx) m $
             "the term `"
@@ -237,9 +236,8 @@ elaborate' ctx term =
     m :< WeakTermFloat t x -> do
       t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
-        _ :< TermPrim floatTypeStr
-          | Just (PrimNumFloat size) <- PrimNum.fromText floatTypeStr ->
-            return $ m :< TermFloat size x
+        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
+          return $ m :< TermFloat size x
         _ ->
           Throw.raiseError (throw ctx) m $
             "the term `"
@@ -303,11 +301,10 @@ elaborate' ctx term =
     m :< WeakTermArray elemType -> do
       elemType' <- elaborate' ctx elemType
       case elemType' of
-        _ :< TermPrim typeStr
-          | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
-            return $ m :< TermArray (PrimNumInt size)
-          | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
-            return $ m :< TermArray (PrimNumFloat size)
+        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
+          return $ m :< TermArray (PrimNumInt size)
+        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
+          return $ m :< TermArray (PrimNumFloat size)
         _ ->
           Throw.raiseError (throw ctx) m $
             "invalid element type:\n" <> toText (weaken elemType')
@@ -315,11 +312,10 @@ elaborate' ctx term =
       elemType' <- elaborate' ctx elemType
       elems' <- mapM (elaborate' ctx) elems
       case elemType' of
-        _ :< TermPrim typeStr
-          | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
-            return $ m :< TermArrayIntro (PrimNumInt size) elems'
-          | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
-            return $ m :< TermArrayIntro (PrimNumFloat size) elems'
+        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
+          return $ m :< TermArrayIntro (PrimNumInt size) elems'
+        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
+          return $ m :< TermArrayIntro (PrimNumFloat size) elems'
         _ ->
           Throw.raiseError (throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayAccess subject elemType array index -> do
@@ -328,11 +324,10 @@ elaborate' ctx term =
       array' <- elaborate' ctx array
       index' <- elaborate' ctx index
       case elemType' of
-        _ :< TermPrim typeStr
-          | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
-            return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
-          | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
-            return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
+        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
+          return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
+        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
+          return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
           Throw.raiseError (throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermText ->

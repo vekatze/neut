@@ -28,9 +28,8 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
-import qualified Entity.PrimNum.FromText as PrimNum
+import qualified Entity.Prim as Prim
 import Entity.PrimOp
-import qualified Entity.PrimOp.FromText as PrimOp
 import Entity.PrimOp.OpSet
 import Entity.Term
 import qualified Entity.Term.FromPrimNum as Term
@@ -126,15 +125,12 @@ infer' ctx varEnv term =
           (app, higherApp) <- newAsterInVarEnv (gensym ctx) varEnv m
           modifyIORef' holeEnvRef $ \env -> IntMap.insert x (app, higherApp) env
           return (app, higherApp)
-    m :< WeakTermPrim x
-      -- i64, f16, etc.
-      | Just _ <- PrimNum.fromText x ->
+    m :< WeakTermPrim prim
+      | Prim.Type _ <- prim ->
         return (term, m :< WeakTermTau)
-      | Just op <- PrimOp.fromText x ->
-        inferExternal m x (primOpToType (gensym ctx) m op)
-      | otherwise -> do
-        _ :< t <- weaken <$> lookupConstTypeEnv ctx m x
-        return (term, m :< t)
+      | Prim.Op op <- prim -> do
+        primOpType <- primOpToType (gensym ctx) m op
+        return (term, weaken primOpType)
     m :< WeakTermInt t i -> do
       t' <- inferType' ctx [] t -- varEnv == [] since t' should be i64, i8, etc. (i.e. t must be closed)
       return (m :< WeakTermInt t' i, t')
@@ -204,7 +200,8 @@ infer' ctx varEnv term =
       elemType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       (array', tArray) <- infer' ctx varEnv array
       (index', tIndex) <- infer' ctx varEnv index
-      insConstraintEnv (m :< WeakTermPrim "i64") tIndex
+      insConstraintEnv (i64 m) tIndex
+      -- insConstraintEnv (m :< WeakTermPrim "i64") tIndex
       let noeticArrayType = m :< WeakTermNoema subject (m :< WeakTermArray elemType)
       insConstraintEnv noeticArrayType tArray
       return (m :< WeakTermArrayAccess subject elemType array' index', elemType)
@@ -255,11 +252,6 @@ inferArgs ctx sub m args1 args2 cod =
       inferArgs ctx (IntMap.insert (Ident.toInt x) e sub) m ets xts cod
     _ ->
       Throw.raiseCritical (throw ctx) m "invalid argument passed to inferArgs"
-
-inferExternal :: Hint -> T.Text -> IO Term -> IO (WeakTerm, WeakTerm)
-inferExternal m x comp = do
-  _ :< t <- weaken <$> comp
-  return (m :< WeakTermPrim x, m :< t)
 
 inferType' :: Context -> BoundVarEnv -> WeakTerm -> IO WeakTerm
 inferType' ctx varEnv t = do
@@ -449,16 +441,6 @@ lookupWeakTypeEnvMaybe s = do
       return Nothing
     Just t ->
       return $ Just t
-
-lookupConstTypeEnv :: Context -> Hint -> T.Text -> IO Term
-lookupConstTypeEnv ctx m x
-  | Just _ <- PrimNum.fromText x =
-    return $ m :< TermTau
-  | Just op <- PrimOp.fromText x =
-    primOpToType (gensym ctx) m op
-  | otherwise =
-    Throw.raiseCritical (throw ctx) m $
-      "the constant `" <> x <> "` is not found in the type environment."
 
 primOpToType :: Gensym.Context -> Hint -> PrimOp -> IO Term
 primOpToType ctx m (PrimOp op domList cod) = do

@@ -14,6 +14,7 @@ import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
+import qualified Entity.Prim as Prim
 import Entity.PrimNum
 import Entity.PrimNumSize
 import GHC.Generics (Generic)
@@ -31,7 +32,7 @@ data TermF a
   | TermSigmaIntro [a]
   | TermSigmaElim [BinderF a] a a
   | TermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | TermPrim T.Text
+  | TermPrim Prim.Prim
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
   | TermEnum EnumTypeName

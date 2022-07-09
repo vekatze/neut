@@ -26,6 +26,7 @@ import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
+import qualified Entity.Prim as Prim
 import Entity.WeakTerm
 
 data Context = Context
@@ -240,8 +241,10 @@ resolveName ctx m name termKind isDefinite = do
       return $ m :< WeakTermEnum (ET.EnumTypeName name')
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
       return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) (EV.EnumValueName name')
-    [(name', GN.Constant)] ->
-      return $ m :< WeakTermPrim name'
+    [(_, GN.PrimType primNum)] ->
+      return $ m :< WeakTermPrim (Prim.Type primNum)
+    [(_, GN.PrimOp primOp)] ->
+      return $ m :< WeakTermPrim (Prim.Op primOp)
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . fst) foundNameList
       Throw.raiseError (throw ctx) m $

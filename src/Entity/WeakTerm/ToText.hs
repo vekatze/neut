@@ -54,7 +54,7 @@ toText term =
     _ :< WeakTermLet {} -> do
       "<let>"
     _ :< WeakTermPrim x ->
-      x
+      T.pack $ show x -- fixme
     _ :< WeakTermAster i ->
       "?M" <> T.pack (show i)
     _ :< WeakTermInt _ a ->

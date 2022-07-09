@@ -33,12 +33,11 @@ import Entity.LowType
 import Entity.Magic
 import Entity.Opacity
 import Entity.Pattern
+import qualified Entity.Prim as Prim
 import Entity.PrimNum
-import qualified Entity.PrimNum.FromText as PrimNum
 import Entity.PrimNum.ToText
 import Entity.PrimNumSize
 import Entity.PrimOp
-import qualified Entity.PrimOp.FromText as PrimOp
 import Entity.Stmt
 import Entity.Term
 import Entity.Term.FromPrimNum
@@ -138,8 +137,12 @@ clarifyTerm ctx tenv term =
       clarifyTerm ctx tenv $ m :< TermPiElim e1 [m :< TermPiIntro LamKindNormal xts e2]
     m :< TermLet mxt e1 e2 -> do
       clarifyTerm ctx tenv $ m :< TermPiElim (m :< TermPiIntro LamKindNormal [mxt] e2) [e1]
-    m :< TermPrim x ->
-      clarifyConst ctx tenv m x
+    m :< TermPrim prim ->
+      case prim of
+        Prim.Op op ->
+          clarifyPrimOp ctx tenv op m
+        Prim.Type _ ->
+          returnImmediateS4 (gensym ctx)
     _ :< TermInt size l ->
       return $ CompUpIntro (ValueInt size l)
     _ :< TermFloat size l ->
@@ -342,15 +345,6 @@ alignFreeVariables ctx tenv fvs es = do
 nubFreeVariables :: [BinderF Term] -> [BinderF Term]
 nubFreeVariables =
   nubBy (\(_, x, _) (_, y, _) -> x == y)
-
-clarifyConst :: Context -> TypeEnv -> Hint -> T.Text -> IO Comp
-clarifyConst ctx tenv m constName
-  | Just op <- PrimOp.fromText constName =
-    clarifyPrimOp ctx tenv op m
-  | Just _ <- PrimNum.fromText constName =
-    returnImmediateS4 (gensym ctx)
-  | otherwise = do
-    Throw.raiseCritical (throw ctx) m $ "undefined constant: " <> constName
 
 clarifyPrimOp :: Context -> TypeEnv -> PrimOp -> Hint -> IO Comp
 clarifyPrimOp ctx tenv op@(PrimOp _ domList _) m = do

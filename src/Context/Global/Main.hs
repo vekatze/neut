@@ -74,10 +74,10 @@ lookup nameMapRef name = do
     Just kind ->
       return $ Just kind
     Nothing
-      | Just _ <- PrimNum.fromText name ->
-        return $ Just GN.Constant
-      | Just _ <- PrimOp.fromText name ->
-        return $ Just GN.Constant
+      | Just primNum <- PrimNum.fromText name ->
+        return $ Just $ GN.PrimType primNum
+      | Just primOp <- PrimOp.fromText name ->
+        return $ Just $ GN.PrimOp primOp
       | otherwise ->
         return Nothing
 
