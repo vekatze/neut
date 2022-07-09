@@ -8,6 +8,6 @@ import qualified Data.Text as T
 import GHC.Generics
 
 newtype EnumTypeName = EnumTypeName {reify :: T.Text}
-  deriving (Semigroup, Monoid, Show, Generic)
+  deriving (Semigroup, Monoid, Show, Generic, Eq, Ord)
 
 instance Binary EnumTypeName

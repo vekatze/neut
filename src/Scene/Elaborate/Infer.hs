@@ -21,7 +21,6 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
 import Entity.EnumInfo
-import qualified Entity.EnumTypeName as ET
 import Entity.Global
 import Entity.Hint
 import Entity.Ident
@@ -230,7 +229,7 @@ infer' ctx varEnv term =
       (newValue', newValueType) <- infer' ctx varEnv newValue
       subject <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell newValueType)) cellType
-      return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum (ET.reify constTop))
+      return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum constTop)
 
 inferSubject :: Context -> Hint -> BoundVarEnv -> WeakTerm -> IO WeakTerm
 inferSubject ctx m varEnv subject = do
@@ -468,7 +467,7 @@ primOpToType ctx m (PrimOp op domList cod) = do
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
-      let cod' = m :< TermEnum (ET.reify constBool)
+      let cod' = m :< TermEnum constBool
       return $ m :< TermPi xts cod'
     else do
       let cod' = Term.fromPrimNum m cod

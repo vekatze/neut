@@ -5,11 +5,12 @@ import Data.Binary
 import Data.Functor.Classes
 import qualified Data.Text as T
 import Entity.Discriminant
+import qualified Entity.EnumTypeName as ET
 import Entity.Hint
 import GHC.Generics
 
 data EnumCaseF a
-  = EnumCaseLabel (T.Text, Discriminant) T.Text
+  = EnumCaseLabel (ET.EnumTypeName, Discriminant) T.Text
   | EnumCaseInt Integer
   | EnumCaseDefault
   deriving (Show, Eq, Ord, Generic)

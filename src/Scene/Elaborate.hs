@@ -19,6 +19,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
 import Entity.EnumInfo
+import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import Entity.Global
 import qualified Entity.GlobalName as GN
@@ -132,8 +133,8 @@ inferDefineResource ctx m name discarder copier = do
   (discarder', td) <- infer ctx discarder
   (copier', tc) <- infer ctx copier
   x <- Gensym.newIdentFromText (gensym ctx) "_"
-  let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "top")
-  let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum "bottom")] (m :< WeakTermEnum "bottom")
+  let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum constBottom)] (m :< WeakTermEnum constTop)
+  let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum constBottom)] (m :< WeakTermEnum constBottom)
   insConstraintEnv botTop td
   insConstraintEnv botBot tc
   return $ QuasiStmtDefineResource m name discarder' copier'
@@ -403,16 +404,17 @@ elaborateKind ctx kind =
       xt' <- elaborateWeakBinder ctx xt
       return $ LamKindFix xt'
 
-checkSwitchExaustiveness :: Context -> Hint -> T.Text -> [EnumCase] -> IO ()
-checkSwitchExaustiveness ctx m x caseList = do
+checkSwitchExaustiveness :: Context -> Hint -> ET.EnumTypeName -> [EnumCase] -> IO ()
+checkSwitchExaustiveness ctx m enumTypeName caseList = do
   let containsDefaultCase = doesContainDefaultCase caseList
-  enumSet <- lookupEnumSet ctx m x
+  enumSet <- lookupEnumSet ctx m enumTypeName
   let len = toInteger $ length (nub caseList)
   unless (toInteger (length enumSet) <= len || containsDefaultCase) $
     Throw.raiseError (throw ctx) m "this switch is ill-constructed in that it is not exhaustive"
 
-lookupEnumSet :: Context -> Hint -> T.Text -> IO [EV.EnumValueName]
-lookupEnumSet ctx m name = do
+lookupEnumSet :: Context -> Hint -> ET.EnumTypeName -> IO [EV.EnumValueName]
+lookupEnumSet ctx m enumTypeName = do
+  let name = ET.reify enumTypeName
   mEnumItems <- Global.lookup (global ctx) name
   case mEnumItems of
     Just (GN.EnumType enumItems) ->

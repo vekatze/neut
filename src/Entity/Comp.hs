@@ -4,6 +4,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Discriminant
 import Entity.EnumCase
+import Entity.EnumTypeName
 import Entity.Ident
 import Entity.Magic
 import Entity.Opacity
@@ -19,7 +20,7 @@ data Value
   | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
-  | ValueEnumIntro (T.Text, Discriminant) T.Text
+  | ValueEnumIntro (EnumTypeName, Discriminant) T.Text
   deriving (Show)
 
 data Comp

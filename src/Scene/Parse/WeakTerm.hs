@@ -21,7 +21,6 @@ import Entity.Binder
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.EnumInfo
-import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import Entity.Global
 import Entity.Hint
@@ -146,7 +145,7 @@ weakTermVoid ctx m e1 = do
   delimiter ";"
   e2 <- weakTerm ctx
   f <- liftIO $ Gensym.newTextualIdentFromText (gensym ctx) "unit"
-  return $ bind (m, f, m :< WeakTermEnum (ET.reify constTop)) e1 e2
+  return $ bind (m, f, m :< WeakTermEnum constTop) e1 e2
 
 weakTermExplicitAscription :: Context -> Hint -> WeakTerm -> Parser WeakTerm
 weakTermExplicitAscription ctx m e = do
@@ -254,7 +253,7 @@ weakTermEnumClause ctx = do
   c <- symbol
   delimiter "->"
   body <- weakTerm ctx
-  let dummyLabelInfo = ("", D.zero)
+  let dummyLabelInfo = (constTop, D.zero)
   case c of
     "default" ->
       return (m :< EnumCaseDefault, body)
@@ -470,8 +469,8 @@ foldIf ctx m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel ("bool", D.increment D.zero) (EV.reify constBoolTrue), ifBody),
-              (m :< EnumCaseLabel ("bool", D.zero) (EV.reify constBoolFalse), elseBody)
+            [ (m :< EnumCaseLabel (constBool, D.increment D.zero) (EV.reify constBoolTrue), ifBody),
+              (m :< EnumCaseLabel (constBool, D.zero) (EV.reify constBoolFalse), elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf ctx m elseIfCond elseIfBody rest elseBody
@@ -480,8 +479,8 @@ foldIf ctx m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel ("bool", D.increment D.zero) (EV.reify constBoolTrue), ifBody),
-              (m :< EnumCaseLabel ("bool", D.zero) (EV.reify constBoolFalse), cont)
+            [ (m :< EnumCaseLabel (constBool, D.increment D.zero) (EV.reify constBoolTrue), ifBody),
+              (m :< EnumCaseLabel (constBool, D.zero) (EV.reify constBoolFalse), cont)
             ]
 
 weakTermParen :: Context -> Parser WeakTerm

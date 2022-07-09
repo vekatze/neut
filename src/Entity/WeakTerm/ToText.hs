@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
+import qualified Entity.EnumTypeName as ET
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
@@ -60,7 +61,7 @@ toText term =
     _ :< WeakTermFloat _ a ->
       T.pack $ show a
     _ :< WeakTermEnum l ->
-      l
+      ET.reify l
     _ :< WeakTermEnumIntro _ v ->
       v
     _ :< WeakTermEnumElim (e, _) mles -> do
