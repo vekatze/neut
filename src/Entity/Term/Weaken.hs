@@ -41,8 +41,8 @@ weaken term =
       m :< WeakTermSigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
     m :< TermLet mxt e1 e2 ->
       m :< WeakTermLet (weakenBinder mxt) (weaken e1) (weaken e2)
-    m :< TermConst x ->
-      m :< WeakTermConst x
+    m :< TermPrim x ->
+      m :< WeakTermPrim x
     m :< TermInt size x ->
       m :< WeakTermInt (weaken $ fromPrimNum m (PrimNumInt size)) x
     m :< TermFloat size x ->

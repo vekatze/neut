@@ -126,7 +126,7 @@ infer' ctx varEnv term =
           (app, higherApp) <- newAsterInVarEnv (gensym ctx) varEnv m
           modifyIORef' holeEnvRef $ \env -> IntMap.insert x (app, higherApp) env
           return (app, higherApp)
-    m :< WeakTermConst x
+    m :< WeakTermPrim x
       -- i64, f16, etc.
       | Just _ <- PrimNum.fromText x ->
         return (term, m :< WeakTermTau)
@@ -204,7 +204,7 @@ infer' ctx varEnv term =
       elemType <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       (array', tArray) <- infer' ctx varEnv array
       (index', tIndex) <- infer' ctx varEnv index
-      insConstraintEnv (m :< WeakTermConst "i64") tIndex
+      insConstraintEnv (m :< WeakTermPrim "i64") tIndex
       let noeticArrayType = m :< WeakTermNoema subject (m :< WeakTermArray elemType)
       insConstraintEnv noeticArrayType tArray
       return (m :< WeakTermArrayAccess subject elemType array' index', elemType)
@@ -259,7 +259,7 @@ inferArgs ctx sub m args1 args2 cod =
 inferExternal :: Hint -> T.Text -> IO Term -> IO (WeakTerm, WeakTerm)
 inferExternal m x comp = do
   _ :< t <- weaken <$> comp
-  return (m :< WeakTermConst x, m :< t)
+  return (m :< WeakTermPrim x, m :< t)
 
 inferType' :: Context -> BoundVarEnv -> WeakTerm -> IO WeakTerm
 inferType' ctx varEnv t = do
@@ -516,7 +516,7 @@ arrange ctx varEnv term =
       e1' <- arrange ctx varEnv e1
       ([mxt'], e2') <- arrangeBinder ctx varEnv [mxt] e2
       return $ m :< WeakTermLet mxt' e1' e2'
-    _ :< WeakTermConst _ ->
+    _ :< WeakTermPrim _ ->
       return term
     m :< WeakTermAster _ ->
       newTypeAsterInVarEnv ctx varEnv m

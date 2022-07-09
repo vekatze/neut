@@ -138,7 +138,7 @@ clarifyTerm ctx tenv term =
       clarifyTerm ctx tenv $ m :< TermPiElim e1 [m :< TermPiIntro LamKindNormal xts e2]
     m :< TermLet mxt e1 e2 -> do
       clarifyTerm ctx tenv $ m :< TermPiElim (m :< TermPiIntro LamKindNormal [mxt] e2) [e1]
-    m :< TermConst x ->
+    m :< TermPrim x ->
       clarifyConst ctx tenv m x
     _ :< TermInt size l ->
       return $ CompUpIntro (ValueInt size l)
@@ -458,7 +458,7 @@ chainOf tenv term =
       let xs1 = chainOf tenv e1
       let xs2 = chainOf' tenv [mxt] [e2]
       xs1 ++ xs2
-    _ :< TermConst _ ->
+    _ :< TermPrim _ ->
       []
     _ :< TermInt _ _ ->
       []

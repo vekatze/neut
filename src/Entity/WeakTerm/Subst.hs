@@ -50,7 +50,7 @@ subst ctx sub term =
       e1' <- subst ctx sub e1
       ([mxt'], e2') <- subst' ctx sub [mxt] e2
       return $ m :< WeakTermLet mxt' e1' e2'
-    _ :< WeakTermConst _ ->
+    _ :< WeakTermPrim _ ->
       return term
     _ :< WeakTermAster x ->
       case IntMap.lookup x sub of

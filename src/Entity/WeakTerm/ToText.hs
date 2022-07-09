@@ -53,7 +53,7 @@ toText term =
       "<sigma-elim>"
     _ :< WeakTermLet {} -> do
       "<let>"
-    _ :< WeakTermConst x ->
+    _ :< WeakTermPrim x ->
       x
     _ :< WeakTermAster i ->
       "?M" <> T.pack (show i)

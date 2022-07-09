@@ -31,7 +31,7 @@ data TermF a
   | TermSigmaIntro [a]
   | TermSigmaElim [BinderF a] a a
   | TermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | TermConst T.Text
+  | TermPrim T.Text
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
   | TermEnum EnumTypeName

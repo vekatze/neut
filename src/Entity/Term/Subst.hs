@@ -53,7 +53,7 @@ subst ctx sub term =
       e1' <- subst ctx sub e1
       ([mxt'], e2') <- subst' ctx sub [mxt] e2
       return $ m :< TermLet mxt' e1' e2'
-    (_ :< TermConst _) ->
+    (_ :< TermPrim _) ->
       return term
     (_ :< TermInt {}) ->
       return term

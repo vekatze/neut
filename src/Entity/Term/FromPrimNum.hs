@@ -10,6 +10,6 @@ fromPrimNum :: Hint -> PrimNum -> Term
 fromPrimNum m primNum =
   case primNum of
     PrimNumInt s ->
-      m :< TermConst (intSizeToText s)
+      m :< TermPrim (intSizeToText s)
     PrimNumFloat s ->
-      m :< TermConst (floatSizeToText s)
+      m :< TermPrim (floatSizeToText s)

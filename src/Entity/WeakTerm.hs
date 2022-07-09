@@ -32,7 +32,7 @@ data WeakTermF a
   | WeakTermSigmaElim [BinderF a] a a
   | WeakTermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | WeakTermAster Int
-  | WeakTermConst T.Text
+  | WeakTermPrim T.Text
   | WeakTermInt a Integer
   | WeakTermFloat a Double
   | WeakTermEnum EnumTypeName
@@ -77,11 +77,11 @@ toVar m x =
 
 i8 :: Hint -> WeakTerm
 i8 m =
-  m :< WeakTermConst (intSizeToText $ IntSize 8)
+  m :< WeakTermPrim (intSizeToText $ IntSize 8)
 
 i64 :: Hint -> WeakTerm
 i64 m =
-  m :< WeakTermConst (intSizeToText $ IntSize 64)
+  m :< WeakTermPrim (intSizeToText $ IntSize 64)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =

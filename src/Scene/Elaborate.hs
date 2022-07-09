@@ -113,7 +113,7 @@ inferStmtMain ctx mainFunctionName stmt = do
       (xts', e', codType') <- inferStmt ctx xts e codType
       when (x == mainFunctionName) $
         insConstraintEnv
-          (m :< WeakTermPi [] (m :< WeakTermConst "i64"))
+          (m :< WeakTermPi [] (m :< WeakTermPrim "i64"))
           (m :< WeakTermPi xts codType)
       return $ QuasiStmtDefine isReducible m x impArgNum xts' codType' e'
     QuasiStmtDefineResource m name discarder copier ->
@@ -220,12 +220,12 @@ elaborate' ctx term =
         (throw ctx)
         m
         "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
-    m :< WeakTermConst x ->
-      return $ m :< TermConst x
+    m :< WeakTermPrim x ->
+      return $ m :< TermPrim x
     m :< WeakTermInt t x -> do
       t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
-        _ :< TermConst intTypeStr
+        _ :< TermPrim intTypeStr
           | Just (PrimNumInt size) <- PrimNum.fromText intTypeStr ->
             return $ m :< TermInt size x
         _ -> do
@@ -237,7 +237,7 @@ elaborate' ctx term =
     m :< WeakTermFloat t x -> do
       t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
       case t' of
-        _ :< TermConst floatTypeStr
+        _ :< TermPrim floatTypeStr
           | Just (PrimNumFloat size) <- PrimNum.fromText floatTypeStr ->
             return $ m :< TermFloat size x
         _ ->
@@ -303,7 +303,7 @@ elaborate' ctx term =
     m :< WeakTermArray elemType -> do
       elemType' <- elaborate' ctx elemType
       case elemType' of
-        _ :< TermConst typeStr
+        _ :< TermPrim typeStr
           | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArray (PrimNumInt size)
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
@@ -315,7 +315,7 @@ elaborate' ctx term =
       elemType' <- elaborate' ctx elemType
       elems' <- mapM (elaborate' ctx) elems
       case elemType' of
-        _ :< TermConst typeStr
+        _ :< TermPrim typeStr
           | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayIntro (PrimNumInt size) elems'
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->
@@ -328,7 +328,7 @@ elaborate' ctx term =
       array' <- elaborate' ctx array
       index' <- elaborate' ctx index
       case elemType' of
-        _ :< TermConst typeStr
+        _ :< TermPrim typeStr
           | Just (PrimNumInt size) <- PrimNum.fromText typeStr ->
             return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
           | Just (PrimNumFloat size) <- PrimNum.fromText typeStr ->

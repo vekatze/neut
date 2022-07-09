@@ -97,7 +97,7 @@ discern ctx nenv term =
       e1' <- discern ctx nenv e1
       ([mxt'], e2') <- discernBinderWithBody ctx nenv [mxt] e2
       return $ m :< WeakTermLet mxt' e1' e2'
-    _ :< WeakTermConst _ ->
+    _ :< WeakTermPrim _ ->
       return term
     _ :< WeakTermAster _ ->
       return term
@@ -241,7 +241,7 @@ resolveName ctx m name termKind isDefinite = do
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
       return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) (EV.EnumValueName name')
     [(name', GN.Constant)] ->
-      return $ m :< WeakTermConst name'
+      return $ m :< WeakTermPrim name'
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . fst) foundNameList
       Throw.raiseError (throw ctx) m $

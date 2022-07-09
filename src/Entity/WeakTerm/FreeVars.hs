@@ -37,7 +37,7 @@ freeVars term =
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] [e2]
       S.union set1 set2
-    _ :< WeakTermConst _ ->
+    _ :< WeakTermPrim _ ->
       S.empty
     _ :< WeakTermAster _ ->
       S.empty

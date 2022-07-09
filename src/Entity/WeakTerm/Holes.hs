@@ -35,7 +35,7 @@ holes term =
       S.union set1 set2
     _ :< WeakTermAster h ->
       S.singleton h
-    _ :< WeakTermConst _ ->
+    _ :< WeakTermPrim _ ->
       S.empty
     _ :< WeakTermInt t _ ->
       holes t

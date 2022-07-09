@@ -141,7 +141,7 @@ simplify ctx constraintList =
         (_ :< WeakTermAster h1, _ :< WeakTermAster h2)
           | h1 == h2 ->
             simplify ctx cs
-        (_ :< WeakTermConst a1, _ :< WeakTermConst a2)
+        (_ :< WeakTermPrim a1, _ :< WeakTermPrim a2)
           | a1 == a2 ->
             simplify ctx cs
         (_ :< WeakTermInt t1 l1, _ :< WeakTermInt t2 l2)
