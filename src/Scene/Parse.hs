@@ -117,8 +117,19 @@ parseDefinePrefix ctx = do
 parseStmtUse :: Context -> Parser ()
 parseStmtUse ctx = do
   try $ keyword "use"
-  (_, name) <- parseDefiniteDescription
-  liftIO $ Locator.activatePartialLocator (locator ctx) name
+  loc <- parseLocator
+  case loc of
+    Left partialLocator ->
+      liftIO $ Locator.activatePartialLocator (locator ctx) partialLocator
+    Right globalLocator ->
+      liftIO $ Locator.activateGlobalLocator (locator ctx) globalLocator
+
+parseLocator :: Parser (Either T.Text T.Text)
+parseLocator = do
+  choice
+    [ Left . snd <$> try parseDefiniteDescription,
+      Right <$> symbol
+    ]
 
 parseStmt :: Context -> Parser [WeakStmt]
 parseStmt ctx = do
