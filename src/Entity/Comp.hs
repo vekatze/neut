@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import Entity.Discriminant
 import Entity.EnumCase
 import Entity.EnumTypeName
+import Entity.EnumValueName
 import Entity.Ident
 import Entity.Magic
 import Entity.Opacity
@@ -20,7 +21,7 @@ data Value
   | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer
   | ValueFloat FloatSize Double
-  | ValueEnumIntro (EnumTypeName, Discriminant) T.Text
+  | ValueEnumIntro (EnumTypeName, Discriminant) EnumValueName
   deriving (Show)
 
 data Comp

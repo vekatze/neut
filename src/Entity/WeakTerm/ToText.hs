@@ -5,6 +5,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
 import qualified Entity.EnumTypeName as ET
+import qualified Entity.EnumValueName as EV
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
@@ -63,7 +64,7 @@ toText term =
     _ :< WeakTermEnum l ->
       ET.reify l
     _ :< WeakTermEnumIntro _ v ->
-      v
+      EV.reify v
     _ :< WeakTermEnumElim (e, _) mles -> do
       showCons ["switch", toText e, showItems (map showClause mles)]
     _ :< WeakTermQuestion e _ ->
@@ -150,7 +151,7 @@ showCase :: EnumCase -> T.Text
 showCase c =
   case c of
     _ :< EnumCaseLabel _ l ->
-      l
+      EV.reify l
     _ :< EnumCaseDefault ->
       "default"
     _ :< EnumCaseInt i ->

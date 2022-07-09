@@ -3,14 +3,14 @@ module Entity.EnumCase where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Functor.Classes
-import qualified Data.Text as T
 import Entity.Discriminant
 import qualified Entity.EnumTypeName as ET
+import qualified Entity.EnumValueName as EV
 import Entity.Hint
 import GHC.Generics
 
 data EnumCaseF a
-  = EnumCaseLabel (ET.EnumTypeName, Discriminant) T.Text
+  = EnumCaseLabel (ET.EnumTypeName, Discriminant) EV.EnumValueName
   | EnumCaseInt Integer
   | EnumCaseDefault
   deriving (Show, Eq, Ord, Generic)
@@ -44,7 +44,7 @@ instance Show1 EnumCaseF where
   liftShowsPrec _ _ _ someValue =
     case someValue of
       EnumCaseLabel _ label ->
-        showString $ T.unpack label
+        showString $ show label
       EnumCaseInt i ->
         showString $ show i
       EnumCaseDefault ->

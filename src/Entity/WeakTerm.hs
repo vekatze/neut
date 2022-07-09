@@ -8,6 +8,7 @@ import Entity.Binder
 import Entity.Discriminant
 import Entity.EnumCase
 import Entity.EnumTypeName
+import Entity.EnumValueName
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind
@@ -35,7 +36,7 @@ data WeakTermF a
   | WeakTermInt a Integer
   | WeakTermFloat a Double
   | WeakTermEnum EnumTypeName
-  | WeakTermEnumIntro (EnumTypeName, Discriminant) T.Text -- EnumIntro (enum-type, actual-int-value) ebnum-label
+  | WeakTermEnumIntro (EnumTypeName, Discriminant) EnumValueName -- EnumIntro (enum-type, actual-int-value) ebnum-label
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
   | WeakTermMagic (Magic a) -- (magic kind arg-1 ... arg-n)

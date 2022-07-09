@@ -8,6 +8,7 @@ import Entity.Binder
 import Entity.Discriminant
 import Entity.EnumCase
 import Entity.EnumTypeName
+import Entity.EnumValueName
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind
@@ -34,7 +35,7 @@ data TermF a
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
   | TermEnum EnumTypeName
-  | TermEnumIntro (EnumTypeName, Discriminant) T.Text
+  | TermEnumIntro (EnumTypeName, Discriminant) EnumValueName
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermMagic (Magic a)
   | TermMatch

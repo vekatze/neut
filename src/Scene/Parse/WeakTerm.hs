@@ -258,7 +258,7 @@ weakTermEnumClause ctx = do
     "default" ->
       return (m :< EnumCaseDefault, body)
     _ ->
-      return (m :< EnumCaseLabel dummyLabelInfo c, body)
+      return (m :< EnumCaseLabel dummyLabelInfo (EV.EnumValueName c), body)
 
 -- question e
 weakTermQuestion :: Context -> Parser WeakTerm
@@ -469,8 +469,8 @@ foldIf ctx m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel (constBool, D.increment D.zero) (EV.reify constBoolTrue), ifBody),
-              (m :< EnumCaseLabel (constBool, D.zero) (EV.reify constBoolFalse), elseBody)
+            [ (m :< EnumCaseLabel (constBool, D.increment D.zero) constBoolTrue, ifBody),
+              (m :< EnumCaseLabel (constBool, D.zero) constBoolFalse, elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf ctx m elseIfCond elseIfBody rest elseBody
@@ -479,8 +479,8 @@ foldIf ctx m ifCond ifBody elseIfList elseBody =
         m
           :< WeakTermEnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel (constBool, D.increment D.zero) (EV.reify constBoolTrue), ifBody),
-              (m :< EnumCaseLabel (constBool, D.zero) (EV.reify constBoolFalse), cont)
+            [ (m :< EnumCaseLabel (constBool, D.increment D.zero) constBoolTrue, ifBody),
+              (m :< EnumCaseLabel (constBool, D.zero) constBoolFalse, cont)
             ]
 
 weakTermParen :: Context -> Parser WeakTerm

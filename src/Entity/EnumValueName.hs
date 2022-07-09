@@ -7,14 +7,17 @@ where
 import Data.Binary
 import qualified Data.Text as T
 import Entity.Const
-import Entity.EnumTypeName
+import qualified Entity.EnumTypeName as ET
 import GHC.Generics
 
 newtype EnumValueName = EnumValueName {reify :: T.Text}
-  deriving (Semigroup, Monoid, Show, Generic)
+  deriving (Semigroup, Monoid, Generic, Eq, Ord)
 
 instance Binary EnumValueName
 
-new :: EnumTypeName -> T.Text -> EnumValueName
-new (EnumTypeName enumTypeName) valueBaseName =
+instance Show EnumValueName where
+  show v = T.unpack $ reify v
+
+new :: ET.EnumTypeName -> T.Text -> EnumValueName
+new (ET.EnumTypeName enumTypeName) valueBaseName =
   EnumValueName $ enumTypeName <> nsSep <> valueBaseName

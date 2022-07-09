@@ -20,6 +20,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.EnumCase
 import qualified Entity.EnumTypeName as ET
+import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
@@ -216,12 +217,12 @@ discernEnumCase :: Context -> EnumCase -> IO EnumCase
 discernEnumCase ctx enumCase =
   case enumCase of
     m :< EnumCaseLabel _ l -> do
-      term <- resolveName ctx m l "variable" False
+      term <- resolveName ctx m (EV.reify l) "variable" False
       case term of
         _ :< WeakTermEnumIntro labelInfo label ->
           return $ m :< EnumCaseLabel labelInfo label
         _ ->
-          Throw.raiseError (throw ctx) m $ "no such enum-value is defined: " <> l
+          Throw.raiseError (throw ctx) m $ "no such enum-value is defined: " <> EV.reify l
     _ ->
       return enumCase
 
@@ -238,7 +239,7 @@ resolveName ctx m name termKind isDefinite = do
     [(name', GN.EnumType _)] ->
       return $ m :< WeakTermEnum (ET.EnumTypeName name')
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
-      return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) name'
+      return $ m :< WeakTermEnumIntro (enumTypeName, discriminant) (EV.EnumValueName name')
     [(name', GN.Constant)] ->
       return $ m :< WeakTermConst name'
     _ -> do
