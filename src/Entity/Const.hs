@@ -4,7 +4,7 @@ import qualified Data.Text as T
 
 sourceFileExtension :: T.Text
 sourceFileExtension =
-  "neut"
+  "nt"
 
 nsSep :: T.Text
 nsSep =
