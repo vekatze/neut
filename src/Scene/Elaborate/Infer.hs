@@ -19,6 +19,7 @@ import qualified Data.IntMap as IntMap
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumInfo
 import Entity.Global
@@ -139,7 +140,7 @@ infer' ctx varEnv term =
       return (m :< WeakTermFloat t' f, t')
     m :< WeakTermEnum _ ->
       return (term, m :< WeakTermTau)
-    m :< WeakTermEnumIntro (k, _) _ -> do
+    m :< WeakTermEnumIntro (EnumLabel k _ _) -> do
       return (term, m :< WeakTermEnum k)
     m :< WeakTermEnumElim (e, _) ces -> do
       (e', t') <- infer' ctx varEnv e
@@ -227,6 +228,8 @@ infer' ctx varEnv term =
       subject <- newTypeAsterInVarEnv (gensym ctx) varEnv m
       insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell newValueType)) cellType
       return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum constTop)
+    m :< WeakTermResourceType {} ->
+      return (term, m :< WeakTermTau)
 
 inferSubject :: Context -> Hint -> BoundVarEnv -> WeakTerm -> IO WeakTerm
 inferSubject ctx m varEnv subject = do
@@ -325,7 +328,7 @@ raiseArityMismatchError ctx function expected actual = do
       | Just k <- Map.lookup name impArgEnv ->
         Throw.raiseCritical (throw ctx) m $
           "the function `"
-            <> name
+            <> DD.reify name
             <> "` expects "
             <> T.pack (show (expected - k))
             <> " arguments, but found "
@@ -388,7 +391,7 @@ newTypeAsterListInVarEnv ctx varEnv ids =
 inferEnumCase :: Context -> BoundVarEnv -> EnumCase -> IO (EnumCase, WeakTerm)
 inferEnumCase ctx varEnv weakCase =
   case weakCase of
-    m :< EnumCaseLabel (k, _) _ -> do
+    m :< EnumCaseLabel (EnumLabel k _ _) -> do
       return (weakCase, m :< WeakTermEnum k)
     m :< EnumCaseDefault -> do
       h <- newTypeAsterInVarEnv (gensym ctx) varEnv m
@@ -424,12 +427,12 @@ lookupWeakTypeEnv' ctx m s = do
       Throw.raiseCritical (throw ctx) m $
         "the hole ?M" <> T.pack (show s) <> " is not found in the weak type environment."
 
-lookupTermTypeEnv :: Context -> Hint -> T.Text -> IO WeakTerm
+lookupTermTypeEnv :: Context -> Hint -> DD.DefiniteDescription -> IO WeakTerm
 lookupTermTypeEnv ctx m name = do
   termTypeEnv <- readIORef termTypeEnvRef
   case Map.lookup name termTypeEnv of
     Nothing ->
-      Throw.raiseCritical (throw ctx) m $ name <> " is not found in the term type environment."
+      Throw.raiseCritical (throw ctx) m $ "`" <> DD.reify name <> "` is not found in the term type environment."
     Just t ->
       return t
 
@@ -510,7 +513,7 @@ arrange ctx varEnv term =
       return $ m :< WeakTermFloat t' x
     _ :< WeakTermEnum _ ->
       return term
-    _ :< WeakTermEnumIntro _ _ ->
+    _ :< WeakTermEnumIntro {} ->
       return term
     m :< WeakTermEnumElim (e, t) caseList -> do
       e' <- arrange ctx varEnv e
@@ -576,6 +579,8 @@ arrange ctx varEnv term =
       cell' <- arrange ctx varEnv cell
       newValue' <- arrange ctx varEnv newValue
       return $ m :< WeakTermCellWrite cell' newValue'
+    _ :< WeakTermResourceType {} ->
+      return term
 
 arrangeBinder ::
   Gensym.Context ->

@@ -8,6 +8,7 @@ import Entity.PrimOp
 
 data GlobalName
   = TopLevelFunc
+  | Resource
   | EnumType [EnumValue]
   | EnumIntro ET.EnumTypeName Discriminant
   | PrimType PrimNum

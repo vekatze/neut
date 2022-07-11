@@ -15,6 +15,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
 import Entity.Constraint
+import qualified Entity.DefiniteDescription as DD
 import Entity.FilePos
 import Entity.Global
 import Entity.Hint
@@ -32,7 +33,7 @@ import Entity.WeakTerm.ToText
 
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTerm])]
-  | StuckPiElimVarGlobal T.Text [(Hint, [WeakTerm])]
+  | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WeakTerm])]
   | StuckPiElimAster Int [[WeakTerm]]
 
 unify :: Context -> IO ()
@@ -153,9 +154,8 @@ simplify ctx constraintList =
         (_ :< WeakTermEnum a1, _ :< WeakTermEnum a2)
           | a1 == a2 ->
             simplify ctx cs
-        (_ :< WeakTermEnumIntro labelInfo1 a1, _ :< WeakTermEnumIntro labelInfo2 a2)
-          | labelInfo1 == labelInfo2,
-            a1 == a2 ->
+        (_ :< WeakTermEnumIntro label1, _ :< WeakTermEnumIntro label2)
+          | label1 == label2 ->
             simplify ctx cs
         (_ :< WeakTermQuestion e1 t1, _ :< WeakTermQuestion e2 t2) ->
           simplify ctx $ ((e1, e2), orig) : ((t1, t2), orig) : cs
@@ -177,6 +177,9 @@ simplify ctx constraintList =
           simplify ctx $ ((contentType1, contentType2), orig) : cs
         (_ :< WeakTermCellIntro contentType1 content1, _ :< WeakTermCellIntro contentType2 content2) ->
           simplify ctx $ ((contentType1, contentType2), orig) : ((content1, content2), orig) : cs
+        (_ :< WeakTermResourceType name1, _ :< WeakTermResourceType name2)
+          | name1 == name2 ->
+            simplify ctx cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do
           sub <- readIORef substRef
           termDefEnv <- readIORef termDefEnvRef
@@ -394,7 +397,7 @@ lookupAny is sub =
           lookupAny js sub
 
 {-# INLINE lookupDefinition #-}
-lookupDefinition :: Hint -> T.Text -> Map.HashMap T.Text (Opacity, [BinderF WeakTerm], WeakTerm) -> Maybe WeakTerm
+lookupDefinition :: Hint -> DD.DefiniteDescription -> Map.HashMap DD.DefiniteDescription (Opacity, [BinderF WeakTerm], WeakTerm) -> Maybe WeakTerm
 lookupDefinition m name termDefEnv =
   case Map.lookup name termDefEnv of
     Just (OpacityTransparent, xts, e) ->

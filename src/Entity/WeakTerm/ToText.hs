@@ -3,6 +3,7 @@ module Entity.WeakTerm.ToText (toText) where
 import Control.Comonad.Cofree
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
@@ -21,7 +22,7 @@ toText term =
     _ :< WeakTermVar x ->
       showVariable x
     _ :< WeakTermVarGlobal x ->
-      x
+      T.pack $ show x
     _ :< WeakTermPi xts cod
       | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WeakTermPi yts _)] <- xts ->
         case splitLast yts of
@@ -62,9 +63,9 @@ toText term =
     _ :< WeakTermFloat _ a ->
       T.pack $ show a
     _ :< WeakTermEnum l ->
-      ET.reify l
-    _ :< WeakTermEnumIntro _ v ->
-      EV.reify v
+      DD.reify $ ET.reify l
+    _ :< WeakTermEnumIntro (EnumLabel _ _ v) ->
+      DD.reify $ EV.reify v
     _ :< WeakTermEnumElim (e, _) mles -> do
       showCons ["switch", toText e, showItems (map showClause mles)]
     _ :< WeakTermQuestion e _ ->
@@ -105,6 +106,8 @@ toText term =
       showCons ["cell-read", toText cell]
     _ :< WeakTermCellWrite cell newValue ->
       showCons ["cell-write", toText cell, toText newValue]
+    _ :< WeakTermResourceType name ->
+      DD.reify name
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -134,14 +137,14 @@ showCaseClause :: (PatternF WeakTerm, WeakTerm) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, T.Text, [BinderF WeakTerm]) -> T.Text
+showPattern :: (Hint, DD.DefiniteDescription, [BinderF WeakTerm]) -> T.Text
 showPattern (_, f, xts) = do
   case xts of
     [] ->
-      inParen f
+      inParen $ DD.reify f
     _ -> do
       let xs = map (\(_, x, _) -> x) xts
-      inParen $ f <> " " <> T.intercalate " " (map showVariable xs)
+      inParen $ DD.reify f <> " " <> T.intercalate " " (map showVariable xs)
 
 showClause :: (EnumCase, WeakTerm) -> T.Text
 showClause (c, e) =
@@ -150,8 +153,8 @@ showClause (c, e) =
 showCase :: EnumCase -> T.Text
 showCase c =
   case c of
-    _ :< EnumCaseLabel _ l ->
-      EV.reify l
+    _ :< EnumCaseLabel (EnumLabel _ _ l) ->
+      DD.reify $ EV.reify l
     _ :< EnumCaseDefault ->
       "default"
     _ :< EnumCaseInt i ->

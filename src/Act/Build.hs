@@ -22,6 +22,8 @@ import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
 import Entity.Global
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
@@ -288,22 +290,22 @@ getMainSource mainModule mainSourceFilePath = do
         sourceFilePath = mainSourceFilePath
       }
 
-getMainFunctionName :: App.Context -> Source -> IO (Maybe T.Text)
+getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
 getMainFunctionName ctx source = do
   b <- isMainFile source
   if b
     then return <$> getMainFunctionName' ctx
     else return Nothing
 
-getMainFunctionNameIfEntryPoint :: App.Context -> Source -> IO (Maybe T.Text)
+getMainFunctionNameIfEntryPoint :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
 getMainFunctionNameIfEntryPoint ctx source = do
   if sourceFilePath source == sourceFilePath (App.initialSource ctx)
     then return <$> getMainFunctionName' ctx
     else return Nothing
 
-getMainFunctionName' :: App.Context -> IO T.Text
+getMainFunctionName' :: App.Context -> IO DD.DefiniteDescription
 getMainFunctionName' ctx = do
-  Locator.attachCurrentLocator (App.locator ctx) "main"
+  Locator.attachCurrentLocator (App.locator ctx) BN.main
 
 resolveTarget :: Throw.Context -> Module -> Target -> IO (Path Abs File)
 resolveTarget ctx mainModule target = do

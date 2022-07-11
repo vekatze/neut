@@ -72,8 +72,8 @@ reduce ctx term =
       let les'' = zip (map unwrap ls) es'
       t' <- reduce ctx t
       case e' of
-        (_ :< TermEnumIntro labelInfo l) ->
-          case lookup (EnumCaseLabel labelInfo l) les'' of
+        (_ :< TermEnumIntro label) ->
+          case lookup (EnumCaseLabel label) les'' of
             Just (_ :< body) ->
               reduce ctx (m :< body)
             Nothing ->

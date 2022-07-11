@@ -5,10 +5,9 @@ import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Binder
-import Entity.Discriminant
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumTypeName
-import Entity.EnumValueName
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind
@@ -21,10 +20,11 @@ import GHC.Generics
 
 type WeakTerm = Cofree WeakTermF Hint
 
+-- fixme: add WeakTermResource and remove resourceTypeSetRef
 data WeakTermF a
   = WeakTermTau
   | WeakTermVar Ident
-  | WeakTermVarGlobal T.Text
+  | WeakTermVarGlobal DD.DefiniteDescription
   | WeakTermPi [BinderF a] a
   | WeakTermPiIntro (LamKindF a) [BinderF a] a
   | WeakTermPiElim a [a]
@@ -37,7 +37,7 @@ data WeakTermF a
   | WeakTermInt a Integer
   | WeakTermFloat a Double
   | WeakTermEnum EnumTypeName
-  | WeakTermEnumIntro (EnumTypeName, Discriminant) EnumValueName -- EnumIntro (enum-type, actual-int-value) ebnum-label
+  | WeakTermEnumIntro EnumLabel
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
   | WeakTermMagic (Magic a) -- (magic kind arg-1 ... arg-n)
@@ -57,6 +57,7 @@ data WeakTermF a
   | WeakTermCellIntro a a -- cell-new(v) (the first argument is the type of `v`)
   | WeakTermCellRead a -- cell-read(ptr)
   | WeakTermCellWrite a a -- cell-write(ptr, value)
+  | WeakTermResourceType DD.DefiniteDescription
   deriving (Generic)
 
 instance (Binary a) => Binary (WeakTermF a)

@@ -7,7 +7,9 @@ import Data.List.NonEmpty
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Data.Void (Void)
+import Data.Void
+import qualified Entity.BaseName as BN
+import Entity.Const
 import Entity.FilePos
 import Entity.Hint
 import qualified Entity.Hint.Reflect as Hint
@@ -60,6 +62,11 @@ lexeme =
 symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+
+baseName :: Parser BN.BaseName
+baseName = do
+  bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+  lexeme $ return $ BN.fromText bn
 
 keyword :: T.Text -> Parser ()
 keyword expected = do
@@ -171,6 +178,11 @@ var = do
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
   S.fromList "() \"\n\t:;,!?<>[]{}"
+
+{-# INLINE nonBaseNameCharSet #-}
+nonBaseNameCharSet :: S.Set Char
+nonBaseNameCharSet =
+  S.insert nsSepChar nonSymbolCharSet
 
 {-# INLINE spaceCharSet #-}
 spaceCharSet :: S.Set Char

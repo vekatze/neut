@@ -1,18 +1,23 @@
 module Context.Alias.Main (new) where
 
 import qualified Context.Alias as Alias
-import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Maybe as Maybe
-import qualified Data.Text as T
-import Entity.Const
+import qualified Entity.GlobalLocator as GL
+import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint hiding (new)
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import qualified Entity.ModuleID as MID
+import qualified Entity.SourceLocator as SL
+import qualified Entity.StrictGlobalLocator as SGL
+
+type GlobalLocatorAliasMap = Map.HashMap GLA.GlobalLocatorAlias GL.GlobalLocator
+
+type ModuleAliasMap = Map.HashMap ModuleAlias ModuleChecksum
 
 new :: Alias.Config -> IO Alias.Context
 new cfg = do
@@ -20,13 +25,13 @@ new cfg = do
   let moduleAliasMap = createModuleAliasMap (Alias.currentModule cfg) (Alias.mainModule cfg)
   return
     Alias.Context
-      { Alias.getCandList =
-          getCandList (Alias.locatorCtx cfg) moduleAliasMap locatorAliasMapRef,
-        Alias.registerLocatorAlias =
-          registerLocatorAlias (Alias.throwCtx cfg) locatorAliasMapRef
+      { Alias.registerGlobalLocatorAlias =
+          registerGlobalLocatorAlias (Alias.throwCtx cfg) locatorAliasMapRef,
+        Alias.resolveAlias =
+          resolveAlias (Alias.throwCtx cfg) locatorAliasMapRef moduleAliasMap
       }
 
-createModuleAliasMap :: Module -> Module -> Map.HashMap ModuleAlias ModuleChecksum
+createModuleAliasMap :: Module -> Module -> ModuleAliasMap
 createModuleAliasMap currentModule mainModule = do
   let additionalChecksumAlias = getAliasForThis mainModule currentModule
   Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ getModuleChecksumAliasList currentModule
@@ -38,42 +43,71 @@ getAliasForThis mainModule currentModule = do
       Nothing
     MID.That checksum ->
       return (ModuleAlias defaultModulePrefix, checksum)
+    MID.Base ->
+      Nothing
 
-getCandList ::
-  Locator.Context ->
-  Map.HashMap ModuleAlias ModuleChecksum ->
-  IORef (Map.HashMap T.Text T.Text) ->
-  T.Text ->
-  Bool ->
-  IO [T.Text]
-getCandList ctx moduleAliasMap locatorAliasMapRef name isDefinite = do
-  nameListWithAlias <- Locator.getPossibleReferents ctx name isDefinite
-  locatorAliasMap <- readIORef locatorAliasMapRef
-  return $ map (resolveModuleAlias moduleAliasMap . resolveAlias definiteSep locatorAliasMap) nameListWithAlias
-
-resolveAlias :: T.Text -> Map.HashMap T.Text T.Text -> T.Text -> T.Text
-resolveAlias sep aliasMap currentName = do
-  case T.breakOn sep currentName of
-    (prefix, suffix)
-      | not (T.null suffix),
-        Just newPrefix <- Map.lookup prefix aliasMap ->
-        resolveAlias sep aliasMap $ newPrefix <> suffix
-      | otherwise ->
-        currentName
-
-resolveModuleAlias :: Map.HashMap ModuleAlias ModuleChecksum -> T.Text -> T.Text
-resolveModuleAlias aliasMap currentName = do
-  case T.breakOn nsSep currentName of
-    (prefix, suffix) -- ("foo", ".bar.buz::qux.some-func")
-      | not (T.null suffix),
-        Just (ModuleChecksum checksum) <- Map.lookup (ModuleAlias prefix) aliasMap ->
-        checksum <> suffix
-      | otherwise ->
-        currentName
-
-registerLocatorAlias :: Throw.Context -> IORef (Map.HashMap T.Text T.Text) -> Hint -> T.Text -> T.Text -> IO ()
-registerLocatorAlias ctx locatorAliasMapRef m from to = do
+registerGlobalLocatorAlias ::
+  Throw.Context ->
+  IORef GlobalLocatorAliasMap ->
+  Hint ->
+  GLA.GlobalLocatorAlias ->
+  GL.GlobalLocator ->
+  IO ()
+registerGlobalLocatorAlias ctx locatorAliasMapRef m from to = do
   aliasEnv <- readIORef locatorAliasMapRef
   if Map.member from aliasEnv
-    then Throw.raiseError ctx m $ "the prefix `" <> from <> "` is already registered"
+    then Throw.raiseError ctx m $ "the global locator `" <> GLA.reify from <> "` is already registered"
     else writeIORef locatorAliasMapRef $ Map.insert from to aliasEnv
+
+resolveAlias ::
+  Throw.Context ->
+  IORef GlobalLocatorAliasMap ->
+  ModuleAliasMap ->
+  Hint ->
+  GL.GlobalLocator ->
+  IO SGL.StrictGlobalLocator
+resolveAlias throwCtx locatorAliasMapRef moduleAliasMap m gl = do
+  (moduleAlias, sourceLocator) <- resolveLocatorAlias throwCtx locatorAliasMapRef m gl
+  moduleID <- resolveModuleAlias throwCtx moduleAliasMap m moduleAlias
+  return $
+    SGL.StrictGlobalLocator
+      { SGL.moduleID = moduleID,
+        SGL.sourceLocator = sourceLocator
+      }
+
+resolveLocatorAlias ::
+  Throw.Context ->
+  IORef GlobalLocatorAliasMap ->
+  Hint ->
+  GL.GlobalLocator ->
+  IO (ModuleAlias, SL.SourceLocator)
+resolveLocatorAlias throwCtx aliasMapRef m gl = do
+  aliasMap <- readIORef aliasMapRef
+  case gl of
+    GL.GlobalLocator moduleAlias sourceLocator ->
+      return (moduleAlias, sourceLocator)
+    GL.GlobalLocatorAlias alias
+      | Just (GL.GlobalLocator moduleAlias sourceLocator) <- Map.lookup alias aliasMap ->
+        return (moduleAlias, sourceLocator)
+      | otherwise ->
+        Throw.raiseError throwCtx m $
+          "no such global locator alias is defined: " <> GLA.reify alias
+
+resolveModuleAlias :: Throw.Context -> ModuleAliasMap -> Hint -> ModuleAlias -> IO MID.ModuleID
+resolveModuleAlias throwCtx aliasMap m moduleAlias = do
+  case moduleAlias of
+    ModuleAlias "this" ->
+      return MID.This
+    ModuleAlias "base" ->
+      return MID.Base
+    _
+      | Just checksum <- Map.lookup moduleAlias aliasMap ->
+        return $ MID.That checksum
+      | otherwise ->
+        Throw.raiseError throwCtx m $
+          "no such module alias is defined: " <> extract moduleAlias
+
+getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
+getModuleChecksumAliasList baseModule = do
+  let dependencyList = Map.toList $ moduleDependency baseModule
+  map (\(key, (_, checksum)) -> (key, checksum)) dependencyList

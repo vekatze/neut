@@ -2,9 +2,11 @@ module Context.Alias where
 
 import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
-import qualified Data.Text as T
+import qualified Entity.GlobalLocator as GL
+import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint
 import Entity.Module
+import qualified Entity.StrictGlobalLocator as SGL
 
 data Config = Config
   { currentModule :: Module,
@@ -14,6 +16,6 @@ data Config = Config
   }
 
 data Context = Context
-  { getCandList :: T.Text -> Bool -> IO [T.Text], -- get all possible referants, with aliases resolved
-    registerLocatorAlias :: Hint -> T.Text -> T.Text -> IO ()
+  { registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> GL.GlobalLocator -> IO (),
+    resolveAlias :: Hint -> GL.GlobalLocator -> IO SGL.StrictGlobalLocator
   }

@@ -18,11 +18,13 @@ import Data.List
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Binder
 import Entity.Comp
 import Entity.Comp.FreeVars
 import Entity.Comp.Reduce
 import Entity.Comp.Subst
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.Global
 import Entity.Hint
@@ -45,12 +47,12 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 
-clarifyMain :: Context -> T.Text -> [Stmt] -> IO ([CompDef], Comp)
+clarifyMain :: Context -> DD.DefiniteDescription -> [Stmt] -> IO ([CompDef], Comp)
 clarifyMain ctx mainName defList = do
   _ <- returnImmediateS4 (gensym ctx)
   _ <- returnClosureS4 ctx
   defList' <- clarifyDefList ctx defList
-  mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote mainName)) []
+  mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName)) []
   return (defList', mainTerm)
 
 clarifyOther :: Context -> [Stmt] -> IO [CompDef]
@@ -67,14 +69,14 @@ clarifyDefList ctx defList = do
   mapM_ register defList'
   defList'' <- forM defList' $ \(x, (opacity, args, e)) -> do
     e' <- reduce (gensym ctx) e
-    return (wrapWithQuote x, (opacity, args, e'))
+    return (wrapWithQuote $ DD.reify x, (opacity, args, e'))
   return $ defList'' ++ newDefEnv
 
-register :: (T.Text, (Opacity, [Ident], Comp)) -> IO ()
+register :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> IO ()
 register (x, (opacity, args, e)) =
-  insDefEnv (wrapWithQuote x) opacity args e
+  insDefEnv (wrapWithQuote $ DD.reify x) opacity args e
 
-clarifyDef :: Context -> Stmt -> IO (T.Text, (Opacity, [Ident], Comp))
+clarifyDef :: Context -> Stmt -> IO (DD.DefiniteDescription, (Opacity, [Ident], Comp))
 clarifyDef ctx stmt =
   case stmt of
     StmtDefine opacity _ f _ xts _ e -> do
@@ -103,18 +105,14 @@ clarifyTerm ctx tenv term =
     _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
     _ :< TermVarGlobal x -> do
-      resourceTypeSet <- readIORef resourceTypeSetRef
-      if S.member x resourceTypeSet
-        then return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote x
-        else do
-          imm <- immediateS4 (gensym ctx)
-          return $
-            CompUpIntro $
-              ValueSigmaIntro
-                [ imm,
-                  ValueSigmaIntro [],
-                  ValueVarGlobal $ wrapWithQuote x
-                ]
+      imm <- immediateS4 (gensym ctx)
+      return $
+        CompUpIntro $
+          ValueSigmaIntro
+            [ imm,
+              ValueSigmaIntro [],
+              ValueVarGlobal $ wrapWithQuote $ DD.reify x
+            ]
     _ :< TermPi {} ->
       returnClosureS4 ctx
     _ :< TermPiIntro kind mxts e -> do
@@ -149,8 +147,8 @@ clarifyTerm ctx tenv term =
       return $ CompUpIntro (ValueFloat size l)
     _ :< TermEnum {} ->
       returnImmediateS4 (gensym ctx)
-    _ :< TermEnumIntro internal l ->
-      return $ CompUpIntro $ ValueEnumIntro internal l
+    _ :< TermEnumIntro label ->
+      return $ CompUpIntro $ ValueEnumIntro label
     _ :< TermEnumElim (e, _) bs -> do
       let (enumCaseList, es) = unzip bs
       let fvs = chainFromTermList tenv es
@@ -171,7 +169,7 @@ clarifyTerm ctx tenv term =
               closureVarName
               closure
               $ CompPiElimDownElim
-                (ValueVarGlobal (getClauseConsName consName (isJust mSubject)))
+                (ValueVarGlobal (getClauseConsName (DD.reify consName) (isJust mSubject)))
                 [closureVar, envVar]
           )
       dataTerm <- clarifyTerm ctx tenv e
@@ -246,6 +244,8 @@ clarifyTerm ctx tenv term =
               CompUpElim addrVarName (add cellVar (ValueInt (IntSize 64) 8)) $
                 CompPrimitive $
                   PrimitiveMagic (MagicStore voidPtr addrVar newValueVar)
+    _ :< TermResourceType name -> do
+      return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote $ DD.reify name
 
 add :: Value -> Value -> Comp
 add v1 v2 = do
@@ -372,11 +372,12 @@ returnClosure ctx tenv isReducible kind fvs xts e = do
   case kind of
     LamKindNormal -> do
       i <- Gensym.newCount (gensym ctx)
-      name <- Locator.attachCurrentLocator (locator ctx) $ "lambda;" <> T.pack (show i)
+      name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName i
+      -- name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ "lambda;" <> T.pack (show i)
       registerIfNecessary (gensym ctx) name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
     LamKindCons _ consName consNumber _ -> do
-      let consName' = getLamConsName consName
+      let consName' = getLamConsName $ DD.reify consName
       registerIfNecessary (gensym ctx) consName' isReducible True xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) consNumber]
     LamKindFix (_, name, _) -> do
@@ -460,7 +461,7 @@ chainOf tenv term =
       []
     _ :< TermEnum {} ->
       []
-    _ :< TermEnumIntro _ _ ->
+    _ :< TermEnumIntro {} ->
       []
     _ :< TermEnumElim (e, t) les -> do
       let xs0 = chainOf tenv t
@@ -499,6 +500,8 @@ chainOf tenv term =
       chainOf tenv cell
     _ :< TermCellWrite cell newValue -> do
       concatMap (chainOf tenv) [cell, newValue]
+    _ :< TermResourceType {} ->
+      []
 
 chainOf' :: TypeEnv -> [BinderF Term] -> [Term] -> [BinderF Term]
 chainOf' tenv binder es =
@@ -526,8 +529,8 @@ insTypeEnv xts tenv =
 forgetHint :: EnumCase -> CompEnumCase
 forgetHint (_ :< enumCase) =
   case enumCase of
-    EnumCaseLabel labelInfo label ->
-      () :< EnumCaseLabel labelInfo label
+    EnumCaseLabel label ->
+      () :< EnumCaseLabel label
     EnumCaseInt i ->
       () :< EnumCaseInt i
     EnumCaseDefault ->

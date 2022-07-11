@@ -3,6 +3,7 @@ module Context.Gensym
     Config (..),
     newText,
     newAster,
+    newPreAster,
     newIdentFromText,
     newIdentFromIdent,
     newValueVarLocalWith,
@@ -16,6 +17,7 @@ import Entity.Comp
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
+import qualified Entity.PreTerm as PT
 import Entity.WeakTerm
 
 data Context = Context
@@ -31,6 +33,12 @@ newText :: Context -> IO T.Text
 newText ctx = do
   i <- newCount ctx
   return $ ";" <> T.pack (show i)
+
+{-# INLINE newPreAster #-}
+newPreAster :: Context -> Hint -> IO PT.PreTerm
+newPreAster ctx m = do
+  i <- newCount ctx
+  return $ m :< PT.Aster i
 
 {-# INLINE newAster #-}
 newAster :: Context -> Hint -> IO WeakTerm

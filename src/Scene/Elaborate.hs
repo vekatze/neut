@@ -17,6 +17,7 @@ import qualified Data.IntMap as IntMap
 import Data.List
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumInfo
 import qualified Entity.EnumTypeName as ET
@@ -43,7 +44,7 @@ import Scene.Elaborate.Infer
 import Scene.Elaborate.Unify
 import Prelude hiding (log)
 
-elaborateMain :: Context -> T.Text -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
+elaborateMain :: Context -> DD.DefiniteDescription -> Source -> Either [Stmt] ([QuasiStmt], [EnumInfo]) -> IO [Stmt]
 elaborateMain ctx mainFunctionName =
   elaborate (elaborateProgramMain ctx mainFunctionName)
 
@@ -73,7 +74,7 @@ registerTopLevelDef stmt = do
     StmtDefineResource m name _ _ ->
       insTermTypeEnv name $ m :< WeakTermTau
 
-elaborateProgramMain :: Context -> T.Text -> [QuasiStmt] -> IO [Stmt]
+elaborateProgramMain :: Context -> DD.DefiniteDescription -> [QuasiStmt] -> IO [Stmt]
 elaborateProgramMain ctx mainFunctionName = do
   elaborateProgram ctx $ mapM $ inferStmtMain ctx mainFunctionName
 
@@ -106,7 +107,7 @@ setupDef ctx def =
       insTermTypeEnv name $ m :< WeakTermTau
       return [QuasiStmtDefineResource m name discarder copier]
 
-inferStmtMain :: Context -> T.Text -> QuasiStmt -> IO QuasiStmt
+inferStmtMain :: Context -> DD.DefiniteDescription -> QuasiStmt -> IO QuasiStmt
 inferStmtMain ctx mainFunctionName stmt = do
   case stmt of
     QuasiStmtDefine isReducible m x impArgNum xts codType e -> do
@@ -128,7 +129,7 @@ inferStmtOther ctx stmt = do
     QuasiStmtDefineResource m name discarder copier ->
       inferDefineResource ctx m name discarder copier
 
-inferDefineResource :: Context -> Hint -> T.Text -> WeakTerm -> WeakTerm -> IO QuasiStmt
+inferDefineResource :: Context -> Hint -> DD.DefiniteDescription -> WeakTerm -> WeakTerm -> IO QuasiStmt
 inferDefineResource ctx m name discarder copier = do
   (discarder', td) <- infer ctx discarder
   (copier', tc) <- infer ctx copier
@@ -246,8 +247,8 @@ elaborate' ctx term =
               <> toText (weaken t')
     m :< WeakTermEnum k ->
       return $ m :< TermEnum k
-    m :< WeakTermEnumIntro labelInfo x ->
-      return $ m :< TermEnumIntro labelInfo x
+    m :< WeakTermEnumIntro label ->
+      return $ m :< TermEnumIntro label
     m :< WeakTermEnumElim (e, t) les -> do
       e' <- elaborate' ctx e
       let (ls, es) = unzip les
@@ -348,12 +349,14 @@ elaborate' ctx term =
       cell' <- elaborate' ctx cell
       newValue' <- elaborate' ctx newValue
       return $ m :< TermCellWrite cell' newValue'
+    m :< WeakTermResourceType name ->
+      return $ m :< TermResourceType name
 
 -- for now
 elaboratePatternList ::
   Context ->
   Hint ->
-  [T.Text] ->
+  [DD.DefiniteDescription] ->
   [(PatternF WeakTerm, WeakTerm)] ->
   IO [(PatternF Term, Term)]
 elaboratePatternList ctx m bs patList = do
@@ -364,7 +367,7 @@ elaboratePatternList ctx m bs patList = do
   checkCaseSanity ctx m bs patList'
   return patList'
 
-checkCaseSanity :: Context -> Hint -> [T.Text] -> [(PatternF Term, Term)] -> IO ()
+checkCaseSanity :: Context -> Hint -> [DD.DefiniteDescription] -> [(PatternF Term, Term)] -> IO ()
 checkCaseSanity ctx m bs patList =
   case (bs, patList) of
     ([], []) ->
@@ -373,14 +376,14 @@ checkCaseSanity ctx m bs patList =
       if b /= b'
         then
           Throw.raiseError (throw ctx) mPat $
-            "the constructor here is supposed to be `" <> b <> "`, but is: `" <> b' <> "`"
+            "the constructor here is supposed to be `" <> DD.reify b <> "`, but is: `" <> DD.reify b' <> "`"
         else checkCaseSanity ctx m bsRest patListRest
     (b : _, []) ->
       Throw.raiseError (throw ctx) m $
-        "found a non-exhaustive pattern; the clause for `" <> b <> "` is missing"
+        "found a non-exhaustive pattern; the clause for `" <> DD.reify b <> "` is missing"
     ([], ((mPat, b, _), _) : _) ->
       Throw.raiseError (throw ctx) mPat $
-        "found a redundant pattern; this clause for `" <> b <> "` is redundant"
+        "found a redundant pattern; this clause for `" <> DD.reify b <> "` is redundant"
 
 elaborateWeakBinder :: Context -> BinderF WeakTerm -> IO (BinderF Term)
 elaborateWeakBinder ctx (m, x, t) = do
@@ -415,9 +418,9 @@ lookupEnumSet ctx m enumTypeName = do
     Just (GN.EnumType enumItems) ->
       return $ map fst enumItems
     _ ->
-      Throw.raiseError (throw ctx) m $ "no such enum defined: " <> name
+      Throw.raiseError (throw ctx) m $ "no such enum defined: " <> DD.reify name
 
-insTermTypeEnv :: T.Text -> WeakTerm -> IO ()
+insTermTypeEnv :: DD.DefiniteDescription -> WeakTerm -> IO ()
 insTermTypeEnv name t =
   modifyIORef' termTypeEnvRef $ Map.insert name t
 

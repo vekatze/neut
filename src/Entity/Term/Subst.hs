@@ -118,6 +118,8 @@ subst ctx sub term =
       cell' <- subst ctx sub cell
       newValue' <- subst ctx sub newValue
       return $ m :< TermCellWrite cell' newValue'
+    _ :< TermResourceType {} ->
+      return term
 
 subst' ::
   Context ->

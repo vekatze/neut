@@ -49,8 +49,8 @@ weaken term =
       m :< WeakTermFloat (weaken $ fromPrimNum m (PrimNumFloat size)) x
     m :< TermEnum x ->
       m :< WeakTermEnum x
-    m :< TermEnumIntro interior l ->
-      m :< WeakTermEnumIntro interior l
+    m :< TermEnumIntro label ->
+      m :< WeakTermEnumIntro label
     m :< TermEnumElim (e, t) branchList -> do
       let t' = weaken t
       let e' = weaken e
@@ -90,6 +90,8 @@ weaken term =
       m :< WeakTermCellRead (weaken cell)
     m :< TermCellWrite cell newValue ->
       m :< WeakTermCellWrite (weaken cell) (weaken newValue)
+    m :< TermResourceType name ->
+      m :< WeakTermResourceType name
 
 weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =

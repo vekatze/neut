@@ -7,28 +7,30 @@ where
 import qualified Context.Throw as Throw
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.List
+import Data.Maybe
 import qualified Data.Text as T
 import Entity.AliasInfo
 import Entity.Const
+import qualified Entity.GlobalLocator as GL
+import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint
 import Entity.Module
 import Entity.Module.Locator
 import Entity.ModuleAlias
 import Entity.Source
+import qualified Entity.SourceLocator as SL
 import Path
 import Scene.Parse.Core
 import Text.Megaparsec
 
 parseImportSequence :: Throw.Context -> Module -> Parser ([Source], [AliasInfo])
 parseImportSequence ctx currentModule = do
-  unzip
-    <$> choice
-      [ importBlock $ manyList $ parseSingleImport ctx currentModule,
-        return []
-      ]
+  let p1 = importBlock (manyList $ parseSingleImport ctx currentModule)
+  let p2 = return []
+  (sourceList, mInfoList) <- unzip <$> (p1 <|> p2)
+  return (sourceList, catMaybes mInfoList)
 
-parseSingleImport :: Throw.Context -> Module -> Parser (Source, AliasInfo)
+parseSingleImport :: Throw.Context -> Module -> Parser (Source, Maybe AliasInfo)
 parseSingleImport ctx currentModule = do
   choice
     [ try $ parseImportQualified ctx currentModule,
@@ -49,26 +51,29 @@ skipImportSequence = do
       return ()
     ]
 
-parseImportSimple :: Throw.Context -> Module -> Parser (Source, AliasInfo)
+parseImportSimple :: Throw.Context -> Module -> Parser (Source, Maybe AliasInfo)
 parseImportSimple ctx currentModule = do
   m <- currentHint
   sigText <- symbol
-  source <- liftIO $ parseLocator ctx m currentModule sigText
-  return (source, AliasInfoUse sigText)
+  (moduleAlias, sourceLocator) <- liftIO $ GL.reflect' ctx sigText
+  source <- liftIO $ parseLocator ctx m currentModule moduleAlias sourceLocator
+  -- source <- liftIO $ parseLocator ctx m currentModule sigText
+  return (source, Nothing)
 
 skipImportSimple :: Parser ()
 skipImportSimple = do
   _ <- symbol
   return ()
 
-parseImportQualified :: Throw.Context -> Module -> Parser (Source, AliasInfo)
+parseImportQualified :: Throw.Context -> Module -> Parser (Source, Maybe AliasInfo)
 parseImportQualified ctx currentModule = do
   m <- currentHint
   sigText <- symbol
   keyword "as"
-  alias <- symbol
-  source <- liftIO $ parseLocator ctx m currentModule sigText
-  return (source, AliasInfoPrefix m alias sigText)
+  alias <- GLA.GlobalLocatorAlias <$> symbol
+  (moduleAlias, sourceLocator) <- liftIO $ GL.reflect' ctx sigText
+  source <- liftIO $ parseLocator ctx m currentModule moduleAlias sourceLocator
+  return (source, Just $ AliasInfoPrefix m alias (GL.GlobalLocator moduleAlias sourceLocator))
 
 skipImportQualified :: Parser ()
 skipImportQualified = do
@@ -77,17 +82,28 @@ skipImportQualified = do
   _ <- symbol
   return ()
 
-parseLocator :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
-parseLocator ctx m currentModule locatorString = do
-  case uncons $ T.splitOn "." locatorString of
-    Just (nextModuleName, locatorTail) -> do
-      nextModule <- getNextModule ctx m currentModule $ ModuleAlias nextModuleName
-      let relFile = T.intercalate "/" locatorTail <> nsSep <> sourceFileExtension
-      relPath <- parseRelFile $ T.unpack relFile
-      return $
-        Source
-          { sourceModule = nextModule,
-            sourceFilePath = getSourceDir nextModule </> relPath
-          }
-    Nothing ->
-      Throw.raiseError ctx m "found a malformed module signature"
+parseLocator :: Throw.Context -> Hint -> Module -> ModuleAlias -> SL.SourceLocator -> IO Source
+parseLocator ctx m currentModule moduleAlias sourceLocator = do
+  nextModule <- getNextModule ctx m currentModule moduleAlias
+  let relFile = SL.reify sourceLocator <> nsSep <> sourceFileExtension
+  relPath <- parseRelFile $ T.unpack relFile
+  return $
+    Source
+      { sourceModule = nextModule,
+        sourceFilePath = getSourceDir nextModule </> relPath
+      }
+
+-- parseLocator :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
+-- parseLocator ctx m currentModule locatorString = do
+--   case uncons $ T.splitOn "." locatorString of
+--     Just (nextModuleName, locatorTail) -> do
+--       nextModule <- getNextModule ctx m currentModule $ ModuleAlias nextModuleName
+--       let relFile = T.intercalate "/" locatorTail <> nsSep <> sourceFileExtension
+--       relPath <- parseRelFile $ T.unpack relFile
+--       return $
+--         Source
+--           { sourceModule = nextModule,
+--             sourceFilePath = getSourceDir nextModule </> relPath
+--           }
+--     Nothing ->
+--       Throw.raiseError ctx m "found a malformed module signature"

@@ -4,118 +4,134 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import qualified Data.Containers.ListUtils as ListUtils
 import Data.IORef
-import qualified Data.Text as T
-import Entity.Const
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.DefiniteLocator as DL
 import Entity.Hint hiding (new)
+import qualified Entity.LocalLocator as LL
 import Entity.Module
-import Entity.ModuleChecksum
 import qualified Entity.ModuleID as MID
+import qualified Entity.Section as S
 import Entity.Source
+import Entity.SourceLocator as SL
+import qualified Entity.StrictGlobalLocator as SGL
 import Path
 
 new :: Locator.Config -> IO Locator.Context
 new cfg = do
   currentGlobalLocator <- getGlobalLocator (Locator.mainModule cfg) (Locator.currentSource cfg)
   currentGlobalLocatorRef <- newIORef currentGlobalLocator
-  currentLocalLocatorListRef <- newIORef []
-  activeGlobalLocatorListRef <- newIORef [currentGlobalLocator]
-  activeLocalLocatorListRef <- newIORef []
+  currentSectionStackRef <- newIORef []
+  activeGlobalLocatorListRef <- newIORef [currentGlobalLocator, SGL.llvmGlobalLocator]
+  activeDefiniteLocatorListRef <- newIORef []
   return
     Locator.Context
-      { Locator.pushToCurrentLocalLocator =
-          pushToCurrentLocalLocator currentLocalLocatorListRef,
-        Locator.popFromCurrentLocalLocator =
-          popFromCurrentLocalLocator (Locator.throwCtx cfg) currentLocalLocatorListRef,
+      { Locator.pushSection =
+          pushSection currentSectionStackRef,
+        Locator.popSection =
+          popSection (Locator.throwCtx cfg) currentSectionStackRef,
         Locator.attachCurrentLocator =
-          attachCurrentLocator currentGlobalLocatorRef currentLocalLocatorListRef,
+          attachCurrentLocator currentGlobalLocatorRef currentSectionStackRef,
         Locator.activateGlobalLocator =
           modifyIORef' activeGlobalLocatorListRef . (:),
-        Locator.activatePartialLocator =
-          modifyIORef' activeLocalLocatorListRef . (:),
+        Locator.activateDefiniteLocator =
+          modifyIORef' activeDefiniteLocatorListRef . (:),
         Locator.clearActiveLocators =
-          clearActiveLocators activeGlobalLocatorListRef activeLocalLocatorListRef,
+          clearActiveLocators activeGlobalLocatorListRef activeDefiniteLocatorListRef,
         Locator.getPossibleReferents =
           getPossibleReferents
             currentGlobalLocatorRef
-            currentLocalLocatorListRef
+            currentSectionStackRef
             activeGlobalLocatorListRef
-            activeLocalLocatorListRef
+            activeDefiniteLocatorListRef
       }
 
-pushToCurrentLocalLocator :: IORef [T.Text] -> T.Text -> IO ()
-pushToCurrentLocalLocator currentLocalLocatorListRef s = do
-  localLocatorList <- readIORef currentLocalLocatorListRef
-  case localLocatorList of
-    [] ->
-      writeIORef currentLocalLocatorListRef [s]
-    headLocalLocator : _ ->
-      writeIORef currentLocalLocatorListRef $ headLocalLocator <> nsSep <> s : localLocatorList
+pushSection :: IORef [S.Section] -> S.Section -> IO ()
+pushSection currentSectionStackRef section = do
+  modifyIORef' currentSectionStackRef $ \stack -> section : stack
 
-popFromCurrentLocalLocator :: Throw.Context -> IORef [T.Text] -> Hint -> IO T.Text
-popFromCurrentLocalLocator ctx currentLocalLocatorListRef m = do
-  localLocatorList <- readIORef currentLocalLocatorListRef
-  case localLocatorList of
+-- localLocatorList <- readIORef currentSectionStackRef
+-- case localLocatorList of
+--   [] ->
+--     writeIORef currentSectionStackRef [section]
+--   headSection : _ ->
+--     writeIORef currentSectionStackRef $ S.join headSection section : localLocatorList
+
+popSection :: Throw.Context -> IORef [S.Section] -> Hint -> IO ()
+popSection ctx currentSectionStackRef m = do
+  currentSectionStack <- readIORef currentSectionStackRef
+  case currentSectionStack of
     [] ->
       Throw.raiseError ctx m "there is no section to end"
-    headLocalLocator : rest -> do
-      writeIORef currentLocalLocatorListRef rest
-      return headLocalLocator
+    _ : rest ->
+      writeIORef currentSectionStackRef rest
 
-attachCurrentLocator :: IORef T.Text -> IORef [T.Text] -> T.Text -> IO T.Text
-attachCurrentLocator currentGlobalLocatorRef currentLocalLocatorListRef name = do
+attachCurrentLocator ::
+  IORef SGL.StrictGlobalLocator ->
+  IORef [S.Section] ->
+  BN.BaseName ->
+  IO DD.DefiniteDescription
+attachCurrentLocator currentGlobalLocatorRef currentSectionStackRef name = do
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
-  currentLocalLocatorList <- readIORef currentLocalLocatorListRef
-  case currentLocalLocatorList of
-    [] ->
-      return $ currentGlobalLocator <> definiteSep <> name
-    currentLocalLocator : _ ->
-      return $ currentGlobalLocator <> definiteSep <> currentLocalLocator <> nsSep <> name
+  currentSectionStack <- readIORef currentSectionStackRef
+  return $
+    DD.new currentGlobalLocator $
+      LL.new currentSectionStack name
 
-clearActiveLocators :: IORef [T.Text] -> IORef [T.Text] -> IO ()
-clearActiveLocators activeGlobalLocatorListRef activeLocalLocatorListRef = do
+-- case currentSectionStack of
+--   [] ->
+--     return $ DD.newByGlobalLocator currentGlobalLocator name
+--   currentLocalLocator : _ ->
+--     return $ DD.new currentGlobalLocator currentLocalLocator name
+
+clearActiveLocators :: IORef [SGL.StrictGlobalLocator] -> IORef [DL.DefiniteLocator] -> IO ()
+clearActiveLocators activeGlobalLocatorListRef activeDefiniteLocatorListRef = do
   writeIORef activeGlobalLocatorListRef []
-  writeIORef activeLocalLocatorListRef []
+  writeIORef activeDefiniteLocatorListRef []
 
 getPossibleReferents ::
-  IORef T.Text ->
-  IORef [T.Text] ->
-  IORef [T.Text] ->
-  IORef [T.Text] ->
-  T.Text ->
-  Bool ->
-  IO [T.Text]
-getPossibleReferents currentGlobalLocatorRef currentLocalLocatorRef activeGlobalLocatorListRef activeLocalLocatorListRef name isDefinite = do
+  IORef SGL.StrictGlobalLocator ->
+  IORef [S.Section] ->
+  IORef [SGL.StrictGlobalLocator] ->
+  IORef [DL.DefiniteLocator] ->
+  LL.LocalLocator ->
+  IO [DD.DefiniteDescription]
+getPossibleReferents currentGlobalLocatorRef currentSectionStackRef activeGlobalLocatorListRef activeDefiniteLocatorListRef localLocator = do
   currentGlobalLocator <- readIORef currentGlobalLocatorRef
-  currentLocalLocator <- readIORef currentLocalLocatorRef
-  if isDefinite
-    then return [name]
-    else do
-      globalLocatorList <- readIORef activeGlobalLocatorListRef
-      let globalNameList = mapPrefix definiteSep globalLocatorList name
-      localLocatorList <- readIORef activeLocalLocatorListRef
-      let localNameList = mapPrefix nsSep localLocatorList name
-      let sectionalNameList = getSectionalNameList currentGlobalLocator currentLocalLocator name
-      return $ ListUtils.nubOrd $ name : globalNameList ++ localNameList ++ sectionalNameList
+  currentSectionStack <- readIORef currentSectionStackRef
+  globalLocatorList <- readIORef activeGlobalLocatorListRef
+  definiteLocatorList <- readIORef activeDefiniteLocatorListRef
+  let dds1 = map (`DD.new` localLocator) globalLocatorList
+  let dds2 = map (`DD.newByDefiniteLocator` localLocator) definiteLocatorList
+  -- let dds3 = getSectionalNameList currentGlobalLocator currentSectionStack name
+  let dd = getDefaultDefiniteDescription currentGlobalLocator currentSectionStack localLocator
+  return $ ListUtils.nubOrd $ dd : dds1 ++ dds2
 
-mapPrefix :: T.Text -> [T.Text] -> T.Text -> [T.Text]
-mapPrefix sep prefixList basename =
-  map (<> sep <> basename) prefixList
+getDefaultDefiniteDescription :: SGL.StrictGlobalLocator -> [S.Section] -> LL.LocalLocator -> DD.DefiniteDescription
+getDefaultDefiniteDescription gl sectionStack ll =
+  DD.new gl $
+    LL.new (LL.sectionStack ll ++ sectionStack) (LL.baseName ll)
 
-getSectionalNameList :: T.Text -> [T.Text] -> T.Text -> [T.Text]
-getSectionalNameList currentGlobalLocator currentLocalLocatorList name = do
-  map (\localLocator -> currentGlobalLocator <> definiteSep <> localLocator <> nsSep <> name) currentLocalLocatorList
+-- getSectionalNameList :: SGL.StrictGlobalLocator -> [S.Section] -> T.Text -> [DD.DefiniteDescription]
+-- getSectionalNameList gl currentSectionStack name = do
+--   flip map currentSectionStack $ \sectionStack ->
+--     DD.new gl $
+--       LL.LocalLocator
+--         { LL.sectionStack = sectionStack,
+--           LL.baseName = name
+--         }
 
-getGlobalLocator :: Module -> Source -> IO T.Text
+getGlobalLocator :: Module -> Source -> IO SGL.StrictGlobalLocator
 getGlobalLocator mainModule source = do
-  sigTail <- getLocatorTail source
-  case MID.getModuleID mainModule $ sourceModule source of
-    MID.This ->
-      return $ T.intercalate "." $ defaultModulePrefix : sigTail
-    MID.That (ModuleChecksum checksum) ->
-      return $ T.intercalate "." $ checksum : sigTail
+  sourceLocator <- getSourceLocator source
+  return $
+    SGL.StrictGlobalLocator
+      { SGL.moduleID = MID.getModuleID mainModule $ sourceModule source,
+        SGL.sourceLocator = sourceLocator
+      }
 
-getLocatorTail :: Source -> IO [T.Text]
-getLocatorTail source = do
+getSourceLocator :: Source -> IO SL.SourceLocator
+getSourceLocator source = do
   relFilePath <- stripProperPrefix (getSourceDir $ sourceModule source) $ sourceFilePath source
   (relFilePath', _) <- splitExtension relFilePath
-  return $ T.splitOn "/" $ T.pack $ toFilePath relFilePath'
+  return $ SL.SourceLocator relFilePath'

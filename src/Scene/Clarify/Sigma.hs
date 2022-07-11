@@ -13,8 +13,10 @@ import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Comp
 import Entity.Const
+import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
@@ -40,7 +42,8 @@ sigmaS4 ctx mName mxts = do
     Nothing -> do
       i <- Gensym.newCount gContext
       -- name <- fmap wrapWithQuote $ attachSectionPrefix $ "sigma;" <> T.pack (show i)
-      name <- fmap wrapWithQuote $ Locator.attachCurrentLocator (locator ctx) $ "sigma;" <> T.pack (show i)
+      name <- fmap (wrapWithQuote . DD.reify) $ Locator.attachCurrentLocator (locator ctx) $ BN.sigmaName i
+      -- name <- fmap (wrapWithQuote . DD.reify) $ Locator.attachCurrentLocator (locator ctx) $ "sigma;" <> T.pack (show i)
       -- h <- wrapWithQuote <$> newText
       registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
       return $ ValueVarGlobal name

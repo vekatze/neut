@@ -3,11 +3,13 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumInfo
 import Entity.Hint
 import Entity.Opacity
+import qualified Entity.PreTerm as PT
+import qualified Entity.Section as Section
 import Entity.Source
 import Entity.Term
 import Entity.WeakTerm
@@ -15,31 +17,34 @@ import GHC.Generics
 import Path
 import Path.IO
 
-type WeakProgram =
-  (Path Abs File, [WeakStmt])
+type PreProgram =
+  (Path Abs File, [PreStmt])
 
-data WeakStmt
-  = WeakStmtDefine Opacity Hint T.Text Int [BinderF WeakTerm] WeakTerm WeakTerm
-  | WeakStmtDefineResource Hint T.Text WeakTerm WeakTerm
-  | WeakStmtSection Hint T.Text [WeakStmt]
+-- type WeakProgram =
+--   (Path Abs File, [WeakStmt])
+
+data PreStmt
+  = PreStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
+  | PreStmtDefineResource Hint DD.DefiniteDescription PT.PreTerm PT.PreTerm
+  | PreStmtSection Hint Section.Section [PreStmt]
 
 data QuasiStmt
-  = QuasiStmtDefine Opacity Hint T.Text Int [BinderF WeakTerm] WeakTerm WeakTerm
-  | QuasiStmtDefineResource Hint T.Text WeakTerm WeakTerm
+  = QuasiStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF WeakTerm] WeakTerm WeakTerm
+  | QuasiStmtDefineResource Hint DD.DefiniteDescription WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])
 
 data Stmt
-  = StmtDefine Opacity Hint T.Text Int [BinderF Term] Term Term
-  | StmtDefineResource Hint T.Text Term Term
+  = StmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF Term] Term Term
+  | StmtDefineResource Hint DD.DefiniteDescription Term Term
   deriving (Generic)
 
 instance Binary Stmt
 
 type PathSet = S.Set (Path Abs File)
 
-extractName :: Stmt -> T.Text
+extractName :: Stmt -> DD.DefiniteDescription
 extractName stmt = do
   case stmt of
     StmtDefine _ _ name _ _ _ _ ->

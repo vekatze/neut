@@ -86,6 +86,8 @@ holes term =
       holes cell
     _ :< WeakTermCellWrite cell newValue ->
       S.unions [holes cell, holes newValue]
+    _ :< WeakTermResourceType _ ->
+      S.empty
 
 holes' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Int
 holes' binder es =

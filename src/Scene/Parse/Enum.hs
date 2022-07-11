@@ -19,11 +19,11 @@ parseDefineEnum :: Context -> Parser EnumInfo
 parseDefineEnum ctx = do
   m <- currentHint
   try $ keyword "define-enum"
-  definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
+  definiteEnumName <- baseName >>= liftIO . Locator.attachCurrentLocator (locator ctx)
+  -- definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
   enumInfo <- liftIO $ EnumInfo.new (throw ctx) m (ET.EnumTypeName definiteEnumName) itemList
   liftIO $ uncurry (Global.registerEnum (global ctx) m) (fromEnumInfo enumInfo)
-  -- liftIO $ EnumInfo.registerIfNew (ctx & throw) m enumInfo
   return enumInfo
 
 parseDefineEnumClause :: Parser (T.Text, Maybe Discriminant)

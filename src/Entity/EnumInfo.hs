@@ -14,33 +14,36 @@ where
 
 import qualified Context.Throw as Throw
 import Control.Monad
-import Data.Bifunctor
 import Data.Binary
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import Entity.EnumTypeName
 import qualified Entity.EnumValueName as EV
 import qualified Entity.Hint as Hint
+import qualified Entity.SourceLocator as SL
+import qualified Entity.StrictGlobalLocator as SGL
 import GHC.Generics
 
 type EnumValue = (EV.EnumValueName, D.Discriminant) -- e.g. (this.core::top.unit, 0), (foo.bar.buz::color.yellow, 2)
 
 newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (EnumTypeName, [EnumValue])}
-  deriving (Generic)
+  deriving (Generic, Show)
 
 instance Binary EnumInfo
 
 new :: Throw.Context -> Hint.Hint -> EnumTypeName -> [(T.Text, Maybe D.Discriminant)] -> IO EnumInfo
 new ctx m enumTypeName itemList = do
-  let itemList' = attachPrefix enumTypeName $ setDiscriminant D.zero itemList
+  let itemList' = map (attachPrefix enumTypeName) $ setDiscriminant D.zero itemList
   unless (isLinear (map snd itemList')) $
     Throw.raiseError ctx m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (enumTypeName, itemList')}
 
-attachPrefix :: EnumTypeName -> [(T.Text, a)] -> [(EV.EnumValueName, a)]
-attachPrefix enumTypeName =
-  map (first (EV.new enumTypeName))
+attachPrefix :: EnumTypeName -> (T.Text, a) -> (EV.EnumValueName, a)
+attachPrefix enumTypeName (enumValue, d) =
+  (EV.new enumTypeName enumValue, d)
 
 setDiscriminant :: D.Discriminant -> [(a, Maybe D.Discriminant)] -> [(a, D.Discriminant)]
 setDiscriminant discriminant clauseList =
@@ -70,11 +73,11 @@ isLinear' found input =
 
 constBottom :: EnumTypeName
 constBottom =
-  EnumTypeName "bottom"
+  EnumTypeName $ DD.newByGlobalLocator (SGL.baseGlobalLocatorOf SL.bottomLocator) [] BN.bottom
 
 constTop :: EnumTypeName
 constTop =
-  EnumTypeName "top"
+  EnumTypeName $ DD.newByGlobalLocator (SGL.baseGlobalLocatorOf SL.topLocator) [] BN.top
 
 constTopUnit :: EV.EnumValueName
 constTopUnit =
@@ -83,7 +86,7 @@ constTopUnit =
 {-# INLINE constBool #-}
 constBool :: EnumTypeName
 constBool =
-  EnumTypeName "bool"
+  EnumTypeName $ DD.newByGlobalLocator (SGL.baseGlobalLocatorOf SL.boolLocator) [] BN.bool
 
 {-# INLINE constBoolTrue #-}
 constBoolTrue :: EV.EnumValueName

@@ -5,10 +5,9 @@ import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Binder
-import Entity.Discriminant
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumTypeName
-import Entity.EnumValueName
 import Entity.Hint
 import Entity.Ident
 import Entity.LamKind
@@ -24,7 +23,7 @@ type Term = Cofree TermF Hint
 data TermF a
   = TermTau
   | TermVar Ident
-  | TermVarGlobal T.Text
+  | TermVarGlobal DD.DefiniteDescription
   | TermPi [BinderF a] a
   | TermPiIntro (LamKindF a) [BinderF a] a
   | TermPiElim a [a]
@@ -36,7 +35,7 @@ data TermF a
   | TermInt IntSize Integer
   | TermFloat FloatSize Double
   | TermEnum EnumTypeName
-  | TermEnumIntro (EnumTypeName, Discriminant) EnumValueName
+  | TermEnumIntro EnumLabel
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermMagic (Magic a)
   | TermMatch
@@ -55,6 +54,7 @@ data TermF a
   | TermCellIntro a a -- cell-new(v) (the first argument is the type of `v`)
   | TermCellRead a -- cell-read(ptr)
   | TermCellWrite a a -- cell-write(ptr, value)
+  | TermResourceType DD.DefiniteDescription
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

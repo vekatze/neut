@@ -38,6 +38,8 @@ getNextModuleFilePath :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO (P
 getNextModuleFilePath ctx m currentModule nextModuleAlias = do
   moduleID <- resolveAlias ctx m currentModule nextModuleAlias
   case moduleID of
+    MID.Base ->
+      Throw.raiseError ctx m "the base module can't be imported"
     MID.This ->
       return $ moduleLocation currentModule
     MID.That (ModuleChecksum checksum) -> do

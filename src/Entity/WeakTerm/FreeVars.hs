@@ -90,6 +90,8 @@ freeVars term =
       freeVars cell
     _ :< WeakTermCellWrite cell newValue ->
       S.unions [freeVars cell, freeVars newValue]
+    _ :< WeakTermResourceType _ ->
+      S.empty
 
 freeVars' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 freeVars' binder es =

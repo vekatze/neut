@@ -74,8 +74,8 @@ reduce ctx term =
       let (ls, es) = unzip les
       let les' = zip (map unwrap ls) es
       case v of
-        ValueEnumIntro labelInfo l
-          | Just body <- lookup (EnumCaseLabel labelInfo l) les' ->
+        ValueEnumIntro label
+          | Just body <- lookup (EnumCaseLabel label) les' ->
             reduce ctx body
           | Just body <- lookup EnumCaseDefault les' ->
             reduce ctx body

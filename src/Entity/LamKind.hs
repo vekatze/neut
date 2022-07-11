@@ -3,6 +3,7 @@ module Entity.LamKind where
 import Data.Binary
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DefiniteDescription as DD
 import GHC.Generics
 
 type DataName =
@@ -16,7 +17,7 @@ type ConsNumber =
 
 data LamKindF a
   = LamKindNormal
-  | LamKindCons DataName ConsName ConsNumber a
+  | LamKindCons DD.DefiniteDescription DD.DefiniteDescription ConsNumber a
   | LamKindFix (BinderF a)
   deriving (Show, Generic)
 

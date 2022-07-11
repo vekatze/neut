@@ -295,7 +295,7 @@ lowerValue ctx v =
       uncast ctx (LowValueInt l) $ LowTypePrimNum $ PrimNumInt size
     ValueFloat size f ->
       uncast ctx (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
-    ValueEnumIntro (_, d) _ -> do
+    ValueEnumIntro (EnumLabel _ d _) -> do
       uncast ctx (LowValueInt $ D.reify d) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
     ValueArrayIntro elemType vs -> do
       let lenValue = LowValueInt (toInteger $ length vs)
@@ -353,7 +353,7 @@ constructSwitch ctx switch =
       return $ Just (code', [])
     [(m :< _, code)] -> do
       constructSwitch ctx [(m :< EnumCaseDefault, code)]
-    (m :< EnumCaseLabel (_, d) _, code) : rest -> do
+    (m :< EnumCaseLabel (EnumLabel _ d _), code) : rest -> do
       constructSwitch ctx $ (m :< EnumCaseInt (D.reify d), code) : rest
     (_ :< EnumCaseInt i, code) : rest -> do
       code' <- lowerComp ctx code

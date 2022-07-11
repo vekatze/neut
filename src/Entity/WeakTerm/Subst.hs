@@ -130,6 +130,8 @@ subst ctx sub term =
       cell' <- subst ctx sub cell
       newValue' <- subst ctx sub newValue
       return $ m :< WeakTermCellWrite cell' newValue'
+    _ :< WeakTermResourceType _ ->
+      return term
 
 subst' ::
   Context ->

@@ -1,10 +1,15 @@
 module Context.Locator where
 
 import qualified Context.Throw as Throw
-import qualified Data.Text as T
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
+import Entity.DefiniteLocator as DL
 import Entity.Hint
+import qualified Entity.LocalLocator as LL
 import Entity.Module
+import qualified Entity.Section as S
 import Entity.Source
+import Entity.StrictGlobalLocator as SGL
 
 -- the structure of a name of a global variable:
 --
@@ -13,14 +18,8 @@ import Entity.Source
 --                            ↑ section name
 --     -----------------  ---------------
 --     ↑ global locator   ↑ local locator
---     ----------------------
---     ↑ partial locator
---     --------------------------
---     ↑ partial locator
---     ------------------------------
---     ↑ partial locator
 --     ----------------------------------
---     ↑ (partial) locator
+--     ↑ definite locator
 --     ------------------------------------------------
 --     ↑ the definite description of a global variable `some-function` (up-to module alias)
 
@@ -32,18 +31,16 @@ import Entity.Source
 --     - active global locator: a global locator that is used when resolving global names
 --     - active local locator: a local locator that is used when resolving global names
 
-type VarName = T.Text
-
 type IsDefinite = Bool
 
 data Context = Context
-  { pushToCurrentLocalLocator :: T.Text -> IO (),
-    popFromCurrentLocalLocator :: Hint -> IO T.Text,
-    attachCurrentLocator :: VarName -> IO VarName,
-    activateGlobalLocator :: T.Text -> IO (),
-    activatePartialLocator :: T.Text -> IO (),
+  { pushSection :: S.Section -> IO (),
+    popSection :: Hint -> IO (),
+    attachCurrentLocator :: BN.BaseName -> IO DD.DefiniteDescription,
+    activateGlobalLocator :: SGL.StrictGlobalLocator -> IO (),
+    activateDefiniteLocator :: DL.DefiniteLocator -> IO (),
     clearActiveLocators :: IO (),
-    getPossibleReferents :: VarName -> IsDefinite -> IO [VarName]
+    getPossibleReferents :: LL.LocalLocator -> IO [DD.DefiniteDescription]
   }
 
 data Config = Config

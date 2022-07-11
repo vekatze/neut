@@ -11,6 +11,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
+import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
@@ -25,12 +26,12 @@ import System.IO.Unsafe
 --
 
 {-# NOINLINE dataEnvRef #-}
-dataEnvRef :: IORef (Map.HashMap T.Text [T.Text])
+dataEnvRef :: IORef (Map.HashMap DD.DefiniteDescription [DD.DefiniteDescription])
 dataEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE constructorEnvRef #-}
-constructorEnvRef :: IORef (Map.HashMap T.Text Int)
+constructorEnvRef :: IORef (Map.HashMap DD.DefiniteDescription Int)
 constructorEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
@@ -55,7 +56,7 @@ suspendedConstraintQueueRef =
   unsafePerformIO (newIORef Q.empty)
 
 {-# NOINLINE impArgEnvRef #-}
-impArgEnvRef :: IORef (Map.HashMap T.Text Int)
+impArgEnvRef :: IORef (Map.HashMap DD.DefiniteDescription Int)
 impArgEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
@@ -65,19 +66,14 @@ substRef =
   unsafePerformIO (newIORef IntMap.empty)
 
 {-# NOINLINE termTypeEnvRef #-}
-termTypeEnvRef :: IORef (Map.HashMap T.Text WeakTerm)
+termTypeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
 termTypeEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE termDefEnvRef #-}
-termDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [BinderF WeakTerm], WeakTerm))
+termDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (Opacity, [BinderF WeakTerm], WeakTerm))
 termDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
-
-{-# NOINLINE resourceTypeSetRef #-}
-resourceTypeSetRef :: IORef (S.Set T.Text)
-resourceTypeSetRef =
-  unsafePerformIO $ newIORef S.empty
 
 {-# NOINLINE compDefEnvRef #-}
 compDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [Ident], Comp))

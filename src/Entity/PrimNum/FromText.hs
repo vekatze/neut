@@ -1,9 +1,21 @@
-module Entity.PrimNum.FromText (fromText) where
+module Entity.PrimNum.FromText (fromDefiniteDescription, fromText) where
 
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.LocalLocator as LL
 import Entity.PrimNum
 import Entity.PrimNumSize
+import qualified Entity.StrictGlobalLocator as SGL
 import Text.Read
+
+fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PrimNum
+fromDefiniteDescription dd = do
+  let sgl = DD.globalLocator dd
+  let ll = DD.localLocator dd
+  if SGL.llvmGlobalLocator /= sgl || not (null (LL.sectionStack ll))
+    then Nothing
+    else fromText $ BN.reify $ LL.baseName ll
 
 fromText :: T.Text -> Maybe PrimNum
 fromText name

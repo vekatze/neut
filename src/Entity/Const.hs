@@ -6,9 +6,13 @@ sourceFileExtension :: T.Text
 sourceFileExtension =
   "nt"
 
+nsSepChar :: Char
+nsSepChar =
+  '.'
+
 nsSep :: T.Text
 nsSep =
-  "."
+  T.singleton nsSepChar
 
 definiteSep :: T.Text
 definiteSep =

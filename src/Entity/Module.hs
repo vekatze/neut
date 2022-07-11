@@ -62,11 +62,6 @@ getTargetFilePath baseModule target = do
   relPath <- Map.lookup target (moduleTarget baseModule)
   return $ getSourceDir baseModule </> relPath
 
-getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
-getModuleChecksumAliasList baseModule = do
-  let dependencyList = Map.toList $ moduleDependency baseModule
-  map (\(key, (_, checksum)) -> (key, checksum)) dependencyList
-
 findModuleFile :: Context -> Path Abs Dir -> IO (Path Abs File)
 findModuleFile ctx moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile

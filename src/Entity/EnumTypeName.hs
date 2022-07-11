@@ -4,10 +4,10 @@ module Entity.EnumTypeName
 where
 
 import Data.Binary
-import qualified Data.Text as T
+import qualified Entity.DefiniteDescription as DD
 import GHC.Generics
 
-newtype EnumTypeName = EnumTypeName {reify :: T.Text}
-  deriving (Semigroup, Monoid, Show, Generic, Eq, Ord)
+newtype EnumTypeName = EnumTypeName {reify :: DD.DefiniteDescription}
+  deriving (Show, Generic, Eq, Ord)
 
 instance Binary EnumTypeName
