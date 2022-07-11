@@ -28,9 +28,9 @@ data PreStmt
   | PreStmtDefineResource Hint DD.DefiniteDescription PT.PreTerm PT.PreTerm
   | PreStmtSection Hint Section.Section [PreStmt]
 
-data QuasiStmt
-  = QuasiStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF WeakTerm] WeakTerm WeakTerm
-  | QuasiStmtDefineResource Hint DD.DefiniteDescription WeakTerm WeakTerm
+data WeakStmt
+  = WeakStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF WeakTerm] WeakTerm WeakTerm
+  | WeakStmtDefineResource Hint DD.DefiniteDescription WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])

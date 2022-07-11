@@ -49,18 +49,18 @@ import Text.Megaparsec
 -- core functions
 --
 
-parseMain :: Context -> DD.DefiniteDescription -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
+parseMain :: Context -> DD.DefiniteDescription -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseMain ctx mainFunctionName source = do
   result <- parseSource ctx source
   let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
   ensureMain ctx m mainFunctionName
   return result
 
-parseOther :: Context -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
+parseOther :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseOther =
   parseSource
 
-parseSource :: Context -> Source -> IO (Either [Stmt] ([QuasiStmt], [EnumInfo]))
+parseSource :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseSource ctx source = do
   mCache <- loadCache source (hasCacheSet ctx)
   case mCache of
@@ -89,12 +89,12 @@ ensureMain ctx m mainFunctionName = do
     _ ->
       Throw.raiseError (throw ctx) m "`main` is missing"
 
-program :: Context -> Parser ([QuasiStmt], [EnumInfo])
+program :: Context -> Parser ([WeakStmt], [EnumInfo])
 program ctx = do
   skipImportSequence
   program' ctx <* eof
 
-program' :: Context -> Parser ([QuasiStmt], [EnumInfo])
+program' :: Context -> Parser ([WeakStmt], [EnumInfo])
 program' ctx =
   choice
     [ do

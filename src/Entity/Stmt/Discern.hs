@@ -5,7 +5,7 @@ import qualified Data.HashMap.Strict as Map
 import Entity.Stmt
 import qualified Entity.WeakTerm.Discern as WeakTerm
 
-discernStmtList :: WeakTerm.Context -> [PreStmt] -> IO [QuasiStmt]
+discernStmtList :: WeakTerm.Context -> [PreStmt] -> IO [WeakStmt]
 discernStmtList ctx stmtList =
   case stmtList of
     [] ->
@@ -15,12 +15,12 @@ discernStmtList ctx stmtList =
       codType' <- WeakTerm.discern ctx nenv codType
       e' <- WeakTerm.discern ctx nenv e
       rest' <- discernStmtList ctx rest
-      return $ QuasiStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
+      return $ WeakStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
     PreStmtDefineResource m name discarder copier : rest -> do
       discarder' <- WeakTerm.discern ctx Map.empty discarder
       copier' <- WeakTerm.discern ctx Map.empty copier
       rest' <- discernStmtList ctx rest
-      return $ QuasiStmtDefineResource m name discarder' copier' : rest'
+      return $ WeakStmtDefineResource m name discarder' copier' : rest'
     PreStmtSection m section innerStmtList : rest -> do
       Locator.pushSection (WeakTerm.locator ctx) section
       innerStmtList' <- discernStmtList ctx innerStmtList
