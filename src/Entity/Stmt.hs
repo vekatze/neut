@@ -89,8 +89,7 @@ loadCache source hasCacheSet = do
   if not hasCache
     then return Nothing
     else do
-      -- b <- doesFreshCacheExist source
-      if S.member (sourceFilePath source) hasCacheSet
+      if S.notMember (sourceFilePath source) hasCacheSet
         then return Nothing
         else do
           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
