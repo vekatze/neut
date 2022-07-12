@@ -9,10 +9,12 @@ import qualified Data.Text as T
 import Entity.Ens
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
+import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
 import Entity.Target
 import Path
 import Path.IO
+import qualified System.FilePath as FP
 
 type SomePath =
   Either (Path Abs Dir) (Path Abs File)
@@ -112,3 +114,12 @@ ppExtraContent somePath =
       T.pack $ toFilePath dirPath
     Right filePath ->
       T.pack $ toFilePath filePath
+
+getID :: Module -> Module -> MID.ModuleID
+getID mainModule currentModule = do
+  if moduleLocation mainModule == moduleLocation currentModule
+    then MID.This
+    else
+      MID.That $
+        ModuleChecksum $
+          T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation currentModule)

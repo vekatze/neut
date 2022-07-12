@@ -8,8 +8,7 @@ import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.DefiniteLocator as DL
 import qualified Entity.LocalLocator as LL
-import Entity.Module
-import qualified Entity.ModuleID as MID
+import qualified Entity.Module as Module
 import qualified Entity.Section as S
 import Entity.Source
 import Entity.SourceLocator as SL
@@ -100,17 +99,17 @@ getDefaultDefiniteDescription gl sectionStack ll =
 --           LL.baseName = name
 --         }
 
-getGlobalLocator :: Module -> Source -> IO SGL.StrictGlobalLocator
+getGlobalLocator :: Module.Module -> Source -> IO SGL.StrictGlobalLocator
 getGlobalLocator mainModule source = do
   sourceLocator <- getSourceLocator source
   return $
     SGL.StrictGlobalLocator
-      { SGL.moduleID = MID.getModuleID mainModule $ sourceModule source,
+      { SGL.moduleID = Module.getID mainModule $ sourceModule source,
         SGL.sourceLocator = sourceLocator
       }
 
 getSourceLocator :: Source -> IO SL.SourceLocator
 getSourceLocator source = do
-  relFilePath <- stripProperPrefix (getSourceDir $ sourceModule source) $ sourceFilePath source
+  relFilePath <- stripProperPrefix (Module.getSourceDir $ sourceModule source) $ sourceFilePath source
   (relFilePath', _) <- splitExtension relFilePath
   return $ SL.SourceLocator relFilePath'

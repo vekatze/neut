@@ -37,7 +37,7 @@ createModuleAliasMap currentModule mainModule = do
 
 getAliasForThis :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
 getAliasForThis mainModule currentModule = do
-  case MID.getModuleID mainModule currentModule of
+  case getID mainModule currentModule of
     MID.This ->
       Nothing
     MID.That checksum ->
