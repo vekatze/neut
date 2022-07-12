@@ -65,7 +65,7 @@ parseImportSimple ctx = do
   locatorText <- symbol
   globalLocator <- liftIO $ GL.reflect locatorText
   strictGlobalLocator <- liftIO $ Alias.resolveAlias (alias ctx) m globalLocator
-  source <- liftIO $ getNextSource ctx m strictGlobalLocator locatorText
+  source <- liftIO $ getSource (moduleCtx ctx) m strictGlobalLocator locatorText
   return (source, Nothing)
 
 skipImportSimple :: Parser ()
@@ -80,7 +80,7 @@ parseImportQualified ctx = do
   keyword "as"
   globalLocator <- liftIO $ GL.reflect locatorText
   strictGlobalLocator <- liftIO $ Alias.resolveAlias (alias ctx) m globalLocator
-  source <- liftIO $ getNextSource ctx m strictGlobalLocator locatorText
+  source <- liftIO $ getSource (moduleCtx ctx) m strictGlobalLocator locatorText
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> symbol
   return (source, Just $ AliasInfoPrefix m globalLocatorAlias strictGlobalLocator)
 
@@ -91,9 +91,9 @@ skipImportQualified = do
   _ <- symbol
   return ()
 
-getNextSource :: Context -> Hint -> SGL.StrictGlobalLocator -> T.Text -> IO Source
-getNextSource ctx m sgl locatorText = do
-  nextModule <- Module.getModule (moduleCtx ctx) m (SGL.moduleID sgl) locatorText
+getSource :: Module.Context -> Hint -> SGL.StrictGlobalLocator -> T.Text -> IO Source
+getSource ctx m sgl locatorText = do
+  nextModule <- Module.getModule ctx m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   return $
     Source

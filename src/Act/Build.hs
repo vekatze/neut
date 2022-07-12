@@ -1,15 +1,10 @@
 module Act.Build
   ( build,
-    check,
-    BuildConfig (..),
-    CheckConfig (..),
+    Config (..),
   )
 where
 
-import qualified Context.Alias as Alias
 import qualified Context.App as App
-import qualified Context.Gensym as Gensym
-import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
@@ -23,15 +18,11 @@ import Data.Foldable
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.AliasInfo
-import qualified Entity.DefiniteDescription as DD
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
 import Entity.Source
-import Entity.Stmt
 import Entity.Target
-import qualified Entity.TargetPlatform as TP
 import Path
 import Path.IO
 import Scene.Clarify
@@ -41,26 +32,25 @@ import Scene.Lower
 import Scene.Parse
 import Scene.Unravel
 import System.Exit
-import qualified System.Info as System
 import Prelude hiding (log)
 
 type TargetString =
   T.Text
 
-data BuildConfig = BuildConfig
+data Config = Config
   { mTarget :: Maybe TargetString,
     mClangOptString :: Maybe String,
-    buildLogCfg :: Log.Config,
-    buildThrowCfg :: Throw.Config,
-    buildPathCfg :: Path.Config,
+    logCfg :: Log.Config,
+    throwCfg :: Throw.Config,
+    pathCfg :: Path.Config,
     shouldCancelAlloc :: Bool
   }
 
-build :: Mode.Mode -> BuildConfig -> IO ()
+build :: Mode.Mode -> Config -> IO ()
 build mode cfg = do
-  throwCtx <- Mode.throwCtx mode $ buildThrowCfg cfg
-  logCtx <- Mode.logCtx mode $ buildLogCfg cfg
-  pathCtx <- Mode.pathCtx mode $ buildPathCfg cfg
+  throwCtx <- Mode.throwCtx mode $ throwCfg cfg
+  logCtx <- Mode.logCtx mode $ logCfg cfg
+  pathCtx <- Mode.pathCtx mode $ pathCfg cfg
   Throw.run throwCtx (Log.printLog logCtx) $ do
     mainModule <- Module.fromCurrentPath throwCtx
     moduleCtx <-
@@ -91,148 +81,20 @@ build' mode throwCtx logCtx moduleCtx cancelAllocFlag target mainModule = do
   mainFilePath <- resolveTarget throwCtx mainModule target
   mainSource <- getMainSource mainModule mainFilePath
   (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule mainSource
-  gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
-  globalCtx <-
-    Mode.globalCtx mode $
-      Global.Config
-        { Global.throwCtx = throwCtx
-        }
   let ctxCfg =
-        CC
-          { ccMode = mode,
-            ccThrowCtx = throwCtx,
-            ccLogCtx = logCtx,
-            ccGlobalCtx = globalCtx,
-            ccGensymCtx = gensymCtx,
-            ccCancelAllocFlag = cancelAllocFlag,
-            ccMainModule = mainModule,
-            ccInitialSource = mainSource,
-            ccSourceAliasMap = sourceAliasMap,
-            ccHasCacheSet = hasCacheSet
+        App.Config
+          { App.mode = mode,
+            App.throwCtx = throwCtx,
+            App.logCtx = logCtx,
+            App.cancelAllocFlagConf = cancelAllocFlag,
+            App.mainModuleConf = mainModule,
+            App.initialSourceConf = mainSource,
+            App.sourceAliasMapConf = sourceAliasMap,
+            App.hasCacheSetConf = hasCacheSet
           }
   mapM_ (compile ctxCfg hasObjectSet) dependenceSeq
   llvmCtx <- Mode.llvmCtx mode $ LLVM.Config {LLVM.throwCtx = throwCtx, LLVM.clangOptString = ""} -- fixme
   unless isObjectAvailable $ link llvmCtx target mainModule $ toList dependenceSeq
-
-data ContextConfig = CC
-  { ccMode :: Mode.Mode,
-    ccThrowCtx :: Throw.Context,
-    ccLogCtx :: Log.Context,
-    ccGlobalCtx :: Global.Context,
-    ccGensymCtx :: Gensym.Context,
-    ccCancelAllocFlag :: Bool,
-    ccMainModule :: Module,
-    ccInitialSource :: Source,
-    ccSourceAliasMap :: SourceAliasMap,
-    ccHasCacheSet :: PathSet
-  }
-
-newCtx :: ContextConfig -> Source -> IO App.Context
-newCtx cfg source = do
-  llvmCtx <-
-    Mode.llvmCtx (ccMode cfg) $
-      LLVM.Config
-        { LLVM.throwCtx = ccThrowCtx cfg,
-          LLVM.clangOptString = "" -- fixme
-        }
-  locatorCtx <-
-    Mode.locatorCtx (ccMode cfg) $
-      Locator.Config
-        { Locator.currentSource = source,
-          Locator.mainModule = ccMainModule cfg,
-          Locator.throwCtx = ccThrowCtx cfg
-        }
-  aliasCtx <-
-    Mode.aliasCtx (ccMode cfg) $
-      Alias.Config
-        { Alias.currentModule = sourceModule source,
-          Alias.mainModule = ccMainModule cfg,
-          Alias.throwCtx = ccThrowCtx cfg,
-          Alias.locatorCtx = locatorCtx
-        }
-  return $
-    App.Context
-      { App.log = ccLogCtx cfg,
-        App.throw = ccThrowCtx cfg,
-        App.gensym = ccGensymCtx cfg,
-        App.llvm = llvmCtx,
-        App.global = ccGlobalCtx cfg,
-        App.locator = locatorCtx,
-        App.alias = aliasCtx,
-        App.shouldCancelAlloc = ccCancelAllocFlag cfg,
-        App.initialSource = ccInitialSource cfg,
-        App.targetPlatform =
-          TP.TargetPlatform
-            { TP.os = System.os,
-              TP.arch = System.arch
-            },
-        App.sourceAliasMap = ccSourceAliasMap cfg,
-        App.hasCacheSet = ccHasCacheSet cfg
-      }
-
-data CheckConfig = CheckConfig
-  { mFilePathString :: Maybe FilePath,
-    checkLogCfg :: Log.Config,
-    checkThrowCfg :: Throw.Config,
-    checkPathCfg :: Path.Config
-  }
-
-check :: Mode.Mode -> CheckConfig -> IO ()
-check mode cfg = do
-  throwCtx <- Mode.throwCtx mode $ checkThrowCfg cfg
-  logCtx <- Mode.logCtx mode $ checkLogCfg cfg
-  pathCtx <- Mode.pathCtx mode $ checkPathCfg cfg
-  Throw.run throwCtx (Log.printLog logCtx) $ do
-    ensureNotInLibDir throwCtx pathCtx "check"
-    mainModule <- Module.fromCurrentPath throwCtx
-    moduleCtx <-
-      Mode.moduleCtx mode $
-        Module.Config
-          { Module.mainModule = mainModule,
-            Module.throwCtx = throwCtx,
-            Module.pathCtx = pathCtx
-          }
-    case mFilePathString cfg of
-      Just filePathStr -> do
-        filePath <- resolveFile' filePathStr
-        check' mode throwCtx logCtx moduleCtx filePath mainModule
-      Nothing -> do
-        forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
-          check' mode throwCtx logCtx moduleCtx (getSourceDir mainModule </> relPath) mainModule
-
-check' ::
-  Mode.Mode ->
-  Throw.Context ->
-  Log.Context ->
-  Module.Context ->
-  Path Abs File ->
-  Module ->
-  IO ()
-check' mode throwCtx logCtx moduleCtx filePath mainModule = do
-  ensureFileModuleSanity throwCtx filePath mainModule
-  let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule source
-  globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
-  gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
-  let ctxCfg =
-        CC
-          { ccMode = mode,
-            ccThrowCtx = throwCtx,
-            ccLogCtx = logCtx,
-            ccGlobalCtx = globalCtx,
-            ccGensymCtx = gensymCtx,
-            ccCancelAllocFlag = False,
-            ccMainModule = mainModule,
-            ccInitialSource = source,
-            ccSourceAliasMap = sourceAliasMap,
-            ccHasCacheSet = hasCacheSet
-          }
-  mapM_ (check'' ctxCfg) dependenceSeq
-
-ensureFileModuleSanity :: Throw.Context -> Path Abs File -> Module -> IO ()
-ensureFileModuleSanity ctx filePath mainModule = do
-  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    Throw.raiseError' ctx "the specified file is not in the current module"
 
 ensureNotInLibDir :: Throw.Context -> Path.Context -> T.Text -> IO ()
 ensureNotInLibDir throwCtx pathCtx commandName = do
@@ -242,30 +104,20 @@ ensureNotInLibDir throwCtx pathCtx commandName = do
     Throw.raiseError' throwCtx $
       "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
-check'' :: ContextConfig -> Source -> IO ()
-check'' ctxCfg source = do
-  ctx <- newCtx ctxCfg source
-  mMainFunctionName <- getMainFunctionName ctx source
-  case mMainFunctionName of
-    Just mainName ->
-      void $ parseMain ctx mainName source >>= elaborateMain ctx mainName source
-    Nothing ->
-      void $ parseOther ctx source >>= elaborateOther ctx source
-
 compile ::
-  ContextConfig ->
+  App.Config ->
   S.Set (Path Abs File) ->
   Source ->
   IO ()
 compile ctxCfg hasObjectSet source = do
-  ctx <- newCtx ctxCfg source
+  ctx <- App.new ctxCfg source
   if S.member (sourceFilePath source) hasObjectSet
     then loadTopLevelDefinitions ctx source
     else compile' ctx source
 
 loadTopLevelDefinitions :: App.Context -> Source -> IO ()
 loadTopLevelDefinitions ctx source = do
-  mMainFunctionName <- getMainFunctionNameIfEntryPoint ctx source
+  mMainFunctionName <- Locator.getMainFunctionName (App.locator ctx) source
   case mMainFunctionName of
     Just mainName ->
       void $ parseMain ctx mainName source >>= elaborateMain ctx mainName source >>= clarifyMain ctx mainName
@@ -283,7 +135,7 @@ compile' ctx source = do
 
 compileToLLVM :: App.Context -> Source -> IO L.ByteString
 compileToLLVM ctx source = do
-  mMainFunctionName <- getMainFunctionNameIfEntryPoint ctx source
+  mMainFunctionName <- Locator.getMainFunctionName (App.locator ctx) source
   case mMainFunctionName of
     Just mainName -> do
       parseMain ctx mainName source
@@ -315,19 +167,6 @@ getMainSource mainModule mainSourceFilePath = do
       { sourceModule = mainModule,
         sourceFilePath = mainSourceFilePath
       }
-
-getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
-getMainFunctionName ctx source = do
-  b <- isMainFile source
-  if b
-    then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
-    else return Nothing
-
-getMainFunctionNameIfEntryPoint :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
-getMainFunctionNameIfEntryPoint ctx source = do
-  if sourceFilePath source == sourceFilePath (App.initialSource ctx)
-    then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
-    else return Nothing
 
 resolveTarget :: Throw.Context -> Module -> Target -> IO (Path Abs File)
 resolveTarget ctx mainModule target = do

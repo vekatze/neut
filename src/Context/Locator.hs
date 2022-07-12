@@ -49,3 +49,10 @@ data Config = Config
 getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
 getMainDefiniteDescription ctx = do
   attachCurrentLocator ctx BN.main
+
+getMainFunctionName :: Context -> Source -> IO (Maybe DD.DefiniteDescription)
+getMainFunctionName ctx source = do
+  b <- isMainFile source
+  if b
+    then return <$> getMainDefiniteDescription ctx
+    else return Nothing

@@ -1,6 +1,7 @@
 module Main (main) where
 
 import qualified Act.Build as Build
+import qualified Act.Check as Check
 import qualified Act.Clean as Clean
 import qualified Act.Dependency as Dependency
 import qualified Act.Init as Init
@@ -25,8 +26,8 @@ import Entity.ModuleURL
 import Options.Applicative
 
 data Command
-  = Build Build.BuildConfig
-  | Check Build.CheckConfig
+  = Build Build.Config
+  | Check Check.Config
   | Clean Clean.Config
   | Release Release.Config
   | Get Dependency.GetConfig
@@ -41,7 +42,7 @@ main = do
     Build cfg -> do
       Build.build prodMode cfg
     Check cfg -> do
-      Build.check prodMode cfg
+      Check.check prodMode cfg
     Clean cfg ->
       Clean.clean prodMode cfg
     Release cfg ->
@@ -81,12 +82,12 @@ parseBuildOpt = do
   shouldCancelAlloc <- cancelAllocOpt
   pure $
     Build
-      Build.BuildConfig
+      Build.Config
         { Build.mTarget = mTarget,
           Build.mClangOptString = mClangOpt,
-          Build.buildLogCfg = logCfg,
-          Build.buildPathCfg = pathConfig,
-          Build.buildThrowCfg = throwConfig,
+          Build.logCfg = logCfg,
+          Build.pathCfg = pathConfig,
+          Build.throwCfg = throwConfig,
           Build.shouldCancelAlloc = shouldCancelAlloc
         }
 
@@ -148,11 +149,11 @@ parseCheckOpt = do
   logCfg <- logConfigOpt
   pure $
     Check
-      Build.CheckConfig
-        { Build.mFilePathString = inputFilePath,
-          Build.checkLogCfg = logCfg,
-          Build.checkThrowCfg = throwConfig,
-          Build.checkPathCfg = pathConfig
+      Check.Config
+        { Check.mFilePathString = inputFilePath,
+          Check.logCfg = logCfg,
+          Check.throwCfg = throwConfig,
+          Check.pathCfg = pathConfig
         }
 
 logConfigOpt :: Parser Log.Config
