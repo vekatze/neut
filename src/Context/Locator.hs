@@ -45,3 +45,7 @@ data Config = Config
     currentSource :: Source,
     throwCtx :: Throw.Context
   }
+
+getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
+getMainDefiniteDescription ctx = do
+  attachCurrentLocator ctx BN.main
