@@ -1,13 +1,12 @@
 module Context.Locator.Main (new) where
 
 import qualified Context.Locator as Locator
-import qualified Context.Throw as Throw
+import Control.Monad.IO.Class
 import qualified Data.Containers.ListUtils as ListUtils
 import Data.IORef
 import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.DefiniteLocator as DL
-import Entity.Hint hiding (new)
 import qualified Entity.LocalLocator as LL
 import Entity.Module
 import qualified Entity.ModuleID as MID
@@ -26,10 +25,8 @@ new cfg = do
   activeDefiniteLocatorListRef <- newIORef []
   return
     Locator.Context
-      { Locator.pushSection =
-          pushSection currentSectionStackRef,
-        Locator.popSection =
-          popSection (Locator.throwCtx cfg) currentSectionStackRef,
+      { Locator.withSection =
+          withSection currentSectionStackRef,
         Locator.attachCurrentLocator =
           attachCurrentLocator currentGlobalLocatorRef currentSectionStackRef,
         Locator.activateGlobalLocator =
@@ -46,25 +43,13 @@ new cfg = do
             activeDefiniteLocatorListRef
       }
 
-pushSection :: IORef [S.Section] -> S.Section -> IO ()
-pushSection currentSectionStackRef section = do
-  modifyIORef' currentSectionStackRef $ \stack -> section : stack
-
--- localLocatorList <- readIORef currentSectionStackRef
--- case localLocatorList of
---   [] ->
---     writeIORef currentSectionStackRef [section]
---   headSection : _ ->
---     writeIORef currentSectionStackRef $ S.join headSection section : localLocatorList
-
-popSection :: Throw.Context -> IORef [S.Section] -> Hint -> IO ()
-popSection ctx currentSectionStackRef m = do
-  currentSectionStack <- readIORef currentSectionStackRef
-  case currentSectionStack of
-    [] ->
-      Throw.raiseError ctx m "there is no section to end"
-    _ : rest ->
-      writeIORef currentSectionStackRef rest
+withSection :: MonadIO m => IORef [S.Section] -> S.Section -> m a -> m a
+withSection currentSectionStackRef section computation = do
+  currentSectionStack <- liftIO $ readIORef currentSectionStackRef
+  liftIO $ modifyIORef' currentSectionStackRef $ const $ section : currentSectionStack
+  result <- computation
+  liftIO $ writeIORef currentSectionStackRef currentSectionStack
+  return result
 
 attachCurrentLocator ::
   IORef SGL.StrictGlobalLocator ->
@@ -77,12 +62,6 @@ attachCurrentLocator currentGlobalLocatorRef currentSectionStackRef name = do
   return $
     DD.new currentGlobalLocator $
       LL.new currentSectionStack name
-
--- case currentSectionStack of
---   [] ->
---     return $ DD.newByGlobalLocator currentGlobalLocator name
---   currentLocalLocator : _ ->
---     return $ DD.new currentGlobalLocator currentLocalLocator name
 
 clearActiveLocators :: IORef [SGL.StrictGlobalLocator] -> IORef [DL.DefiniteLocator] -> IO ()
 clearActiveLocators activeGlobalLocatorListRef activeDefiniteLocatorListRef = do

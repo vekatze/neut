@@ -1,10 +1,10 @@
 module Context.Locator where
 
 import qualified Context.Throw as Throw
+import Control.Monad.IO.Class
 import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
 import Entity.DefiniteLocator as DL
-import Entity.Hint
 import qualified Entity.LocalLocator as LL
 import Entity.Module
 import qualified Entity.Section as S
@@ -32,8 +32,7 @@ import Entity.StrictGlobalLocator as SGL
 --     - active local locator: a local locator that is used when resolving global names
 
 data Context = Context
-  { pushSection :: S.Section -> IO (),
-    popSection :: Hint -> IO (),
+  { withSection :: forall a m. MonadIO m => S.Section -> m a -> m a,
     attachCurrentLocator :: BN.BaseName -> IO DD.DefiniteDescription,
     activateGlobalLocator :: SGL.StrictGlobalLocator -> IO (),
     activateDefiniteLocator :: DL.DefiniteLocator -> IO (),

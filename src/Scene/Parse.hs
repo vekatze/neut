@@ -160,12 +160,10 @@ parseSection :: Context -> Parser PreStmt
 parseSection ctx = do
   try $ keyword "section"
   section <- Section.Section <$> baseName
-  liftIO $ Locator.pushSection (locator ctx) section
-  stmtList <- concat <$> many (parseStmt ctx)
-  m <- currentHint
-  keyword "end"
-  liftIO $ Locator.popSection (locator ctx) m
-  return $ PreStmtSection m section stmtList
+  Locator.withSection (locator ctx) section $ do
+    stmtList <- concat <$> many (parseStmt ctx)
+    keyword "end"
+    return $ PreStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
 parseDefine :: Context -> Opacity -> Parser PreStmt

@@ -23,7 +23,7 @@ type PreProgram =
 data PreStmt
   = PreStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
   | PreStmtDefineResource Hint DD.DefiniteDescription PT.PreTerm PT.PreTerm
-  | PreStmtSection Hint Section.Section [PreStmt]
+  | PreStmtSection Section.Section [PreStmt]
 
 data WeakStmt
   = WeakStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF WeakTerm] WeakTerm WeakTerm
