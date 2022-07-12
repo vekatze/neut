@@ -21,9 +21,8 @@ discernStmtList ctx stmtList =
       copier' <- WeakTerm.discern ctx Map.empty copier
       rest' <- discernStmtList ctx rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
-    PreStmtSection m section innerStmtList : rest -> do
-      Locator.pushSection (WeakTerm.locator ctx) section
-      innerStmtList' <- discernStmtList ctx innerStmtList
-      Locator.popSection (WeakTerm.locator ctx) m
-      rest' <- discernStmtList ctx rest
-      return $ innerStmtList' ++ rest'
+    PreStmtSection section innerStmtList : rest -> do
+      Locator.withSection (WeakTerm.locator ctx) section $ do
+        innerStmtList' <- discernStmtList ctx innerStmtList
+        rest' <- discernStmtList ctx rest
+        return $ innerStmtList' ++ rest'

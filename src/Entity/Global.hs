@@ -1,5 +1,3 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Entity.Global where
 
 import qualified Data.HashMap.Strict as Map
@@ -17,8 +15,6 @@ import Entity.LowComp
 import Entity.LowType
 import Entity.Opacity
 import Entity.WeakTerm
-import Path
-import Path.IO
 import System.IO.Unsafe
 
 --
@@ -106,19 +102,6 @@ initialLowDeclEnv =
     [ ("malloc", ([voidPtr], voidPtr)),
       ("free", ([voidPtr], voidPtr))
     ]
-
-getCacheDirPath :: IO (Path Abs Dir)
-getCacheDirPath = do
-  getXdgDir XdgCache (Just $(mkRelDir "neut")) >>= returnDirectory
-
-getLibraryDirPath :: IO (Path Abs Dir)
-getLibraryDirPath = do
-  basePath <- getCacheDirPath
-  returnDirectory $ basePath </> $(mkRelDir "library")
-
-returnDirectory :: Path Abs Dir -> IO (Path Abs Dir)
-returnDirectory path =
-  ensureDir path >> return path
 
 -- for debug
 p :: String -> IO ()

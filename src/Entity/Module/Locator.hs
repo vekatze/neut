@@ -1,11 +1,15 @@
-module Entity.Module.Locator (getNextModule) where
+module Entity.Module.Locator
+  ( getNextModule,
+    Context (..),
+  )
+where
 
+import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Text as T
-import Entity.Global
 import Entity.Hint
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
@@ -16,7 +20,12 @@ import Path
 import Path.IO
 import System.IO.Unsafe
 
-getNextModule :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO Module
+data Context = Context
+  { throw :: Throw.Context,
+    path :: Path.Context
+  }
+
+getNextModule :: Context -> Hint -> Module -> ModuleAlias -> IO Module
 getNextModule ctx m currentModule nextModuleAlias = do
   nextModuleFilePath <- getNextModuleFilePath ctx m currentModule nextModuleAlias
   moduleCacheMap <- readIORef moduleCacheMapRef
@@ -26,24 +35,24 @@ getNextModule ctx m currentModule nextModuleAlias = do
     Nothing -> do
       moduleFileExists <- doesFileExist nextModuleFilePath
       unless moduleFileExists $ do
-        Throw.raiseError ctx m $
+        Throw.raiseError (throw ctx) m $
           T.pack "could not find the module file for `"
             <> extract nextModuleAlias
             <> "`"
-      nextModule <- Module.fromFilePath ctx nextModuleFilePath
+      nextModule <- Module.fromFilePath (throw ctx) nextModuleFilePath
       modifyIORef' moduleCacheMapRef $ Map.insert nextModuleFilePath nextModule
       return nextModule
 
-getNextModuleFilePath :: Throw.Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
+getNextModuleFilePath :: Context -> Hint -> Module -> ModuleAlias -> IO (Path Abs File)
 getNextModuleFilePath ctx m currentModule nextModuleAlias = do
-  moduleID <- resolveAlias ctx m currentModule nextModuleAlias
+  moduleID <- resolveAlias (throw ctx) m currentModule nextModuleAlias
   case moduleID of
     MID.Base ->
-      Throw.raiseError ctx m "the base module can't be imported"
+      Throw.raiseError (throw ctx) m "the base module can't be imported"
     MID.This ->
       return $ moduleLocation currentModule
     MID.That (ModuleChecksum checksum) -> do
-      libraryDir <- getLibraryDirPath
+      libraryDir <- Path.getLibraryDirPath (path ctx)
       moduleDir <- resolveDir libraryDir $ T.unpack checksum
       return $ moduleDir </> moduleFile
 

@@ -3,6 +3,7 @@ module Scene.Unravel
   )
 where
 
+import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Foldable
@@ -24,7 +25,7 @@ import Entity.Stmt
 import Path
 import Path.IO
 import Scene.Parse.Core
-import Scene.Parse.Import
+import qualified Scene.Parse.Import as Parse
 
 data VisitInfo
   = VisitInfoActive
@@ -38,6 +39,7 @@ type IsObjectAvailable =
 
 data Context = Context
   { asThrowCtx :: Throw.Context,
+    asPathCtx :: Path.Context,
     traceSourceListRef :: IORef [Source],
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source]),
@@ -48,18 +50,19 @@ data Context = Context
 
 unravel ::
   Throw.Context ->
+  Path.Context ->
   Source ->
   IO (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source)
-unravel throwCtx source = do
-  ctx <- newCtx throwCtx
+unravel throwCtx pathCtx source = do
+  ctx <- newCtx throwCtx pathCtx
   (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' ctx source
   sourceAliasMap <- readIORef $ sourceAliasMapRef ctx
   hasCacheSet <- readIORef $ hasCacheSetRef ctx
   hasObjectSet <- readIORef $ hasObjectSetRef ctx
   return (isCacheAvailable, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, sourceSeq)
 
-newCtx :: Throw.Context -> IO Context
-newCtx throwCtx = do
+newCtx :: Throw.Context -> Path.Context -> IO Context
+newCtx throwCtx pathCtx = do
   _traceSourceListRef <- newIORef []
   _visitEnvRef <- newIORef Map.empty
   _sourceChildrenMapRef <- newIORef Map.empty
@@ -69,6 +72,7 @@ newCtx throwCtx = do
   return $
     Context
       { asThrowCtx = throwCtx,
+        asPathCtx = pathCtx,
         traceSourceListRef = _traceSourceListRef,
         visitEnvRef = _visitEnvRef,
         sourceChildrenMapRef = _sourceChildrenMapRef,
@@ -171,7 +175,12 @@ getChildren ctx currentSource = do
       return sourceList
     Nothing -> do
       let path = sourceFilePath currentSource
-      (sourceList, aliasInfoList) <- run (asThrowCtx ctx) (parseImportSequence (asThrowCtx ctx) (sourceModule currentSource)) path
+      let parseCtx = Parse.Context {Parse.throw = asThrowCtx ctx, Parse.path = asPathCtx ctx}
+      (sourceList, aliasInfoList) <-
+        run
+          (asThrowCtx ctx)
+          (Parse.parseImportSequence parseCtx (sourceModule currentSource))
+          path
       modifyIORef' (sourceChildrenMapRef ctx) $ Map.insert currentSourceFilePath sourceList
       modifyIORef' (sourceAliasMapRef ctx) $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList

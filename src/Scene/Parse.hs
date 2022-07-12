@@ -41,7 +41,7 @@ import qualified Entity.WeakTerm.Discern as WT
 import Path
 import Scene.Parse.Core
 import Scene.Parse.Enum
-import Scene.Parse.Import
+import qualified Scene.Parse.Import as Parse
 import Scene.Parse.PreTerm
 import Text.Megaparsec
 
@@ -91,7 +91,7 @@ ensureMain ctx m mainFunctionName = do
 
 program :: Context -> Parser ([WeakStmt], [EnumInfo])
 program ctx = do
-  skipImportSequence
+  Parse.skipImportSequence
   program' ctx <* eof
 
 program' :: Context -> Parser ([WeakStmt], [EnumInfo])

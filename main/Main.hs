@@ -14,6 +14,8 @@ import qualified Context.Locator.Main as Locator
 import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
 import qualified Context.Mode as Mode
+import qualified Context.Path as Path
+import qualified Context.Path.Main as Path
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
 import qualified Data.Text as T
@@ -82,6 +84,7 @@ parseBuildOpt = do
         { Build.mTarget = mTarget,
           Build.mClangOptString = mClangOpt,
           Build.buildLogCfg = logCfg,
+          Build.buildPathCfg = pathConfig,
           Build.buildThrowCfg = throwConfig,
           Build.shouldCancelAlloc = shouldCancelAlloc
         }
@@ -107,7 +110,8 @@ parseGetOpt = do
         { Dependency.moduleAlias = ModuleAlias $ T.pack moduleAlias,
           Dependency.moduleURL = ModuleURL $ T.pack moduleURL,
           Dependency.throwCfg = throwConfig,
-          Dependency.logCfg = logCfg
+          Dependency.logCfg = logCfg,
+          Dependency.pathCfg = pathConfig
         }
 
 parseTidyOpt :: Parser Command
@@ -117,7 +121,8 @@ parseTidyOpt = do
     Tidy
       Dependency.TidyConfig
         { Dependency.tidyThrowCfg = throwConfig,
-          Dependency.tidyLogCfg = logCfg
+          Dependency.tidyLogCfg = logCfg,
+          Dependency.tidyPathCfg = pathConfig
         }
 
 parseInitOpt :: Parser Command
@@ -145,7 +150,8 @@ parseCheckOpt = do
       Build.CheckConfig
         { Build.mFilePathString = inputFilePath,
           Build.checkLogCfg = logCfg,
-          Build.checkThrowCfg = throwConfig
+          Build.checkThrowCfg = throwConfig,
+          Build.checkPathCfg = pathConfig
         }
 
 logConfigOpt :: Parser Log.Config
@@ -205,9 +211,14 @@ prodMode =
       Mode.llvmCtx = LLVM.new,
       Mode.aliasCtx = Alias.new,
       Mode.globalCtx = Global.new,
-      Mode.locatorCtx = Locator.new
+      Mode.locatorCtx = Locator.new,
+      Mode.pathCtx = Path.new
     }
 
 throwConfig :: Throw.Config
 throwConfig =
   Throw.Config {}
+
+pathConfig :: Path.Config
+pathConfig =
+  Path.Config {}
