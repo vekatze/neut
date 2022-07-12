@@ -16,21 +16,3 @@ data Config = Config
     throwCtx :: Throw.Context,
     pathCtx :: Path.Context
   }
-
--- module Context.Module where
-
--- import qualified Context.Throw as Throw
--- import Entity.Hint
--- import Entity.Module
--- import Entity.ModuleAlias
--- import Entity.Source
-
--- data Context = Context
---   { getNextModule :: Hint -> Module -> ModuleAlias -> IO Module
---   }
-
--- data Config = Config
---   { mainModule :: Module,
---     currentSource :: Source,
---     throwCtx :: Throw.Context
---   }
