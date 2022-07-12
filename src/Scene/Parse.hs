@@ -35,11 +35,10 @@ import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
 import Entity.Source
 import Entity.Stmt
-import Entity.Stmt.Discern
 import qualified Entity.StrictGlobalLocator as SGL
-import qualified Entity.WeakTerm.Discern as WT
 import Path
 import Scene.Parse.Core
+import qualified Scene.Parse.Discern as Discern
 import Scene.Parse.Enum
 import qualified Scene.Parse.Import as Parse
 import Scene.Parse.PreTerm
@@ -105,7 +104,7 @@ program' ctx =
         parseStmtUse ctx
         program' ctx,
       do
-        stmtList <- many (parseStmt ctx) >>= liftIO . discernStmtList (WT.specialize ctx) . concat
+        stmtList <- many (parseStmt ctx) >>= liftIO . Discern.discernStmtList (Discern.specialize ctx) . concat
         return (stmtList, [])
     ]
 
