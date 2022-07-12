@@ -20,7 +20,7 @@ instance Hashable StrictGlobalLocator
 
 reify :: StrictGlobalLocator -> T.Text
 reify gl =
-  MID.reify (moduleID gl) <> nsSep <> SL.reify (sourceLocator gl)
+  MID.reify (moduleID gl) <> nsSep <> SL.toText (sourceLocator gl)
 
 llvmGlobalLocator :: StrictGlobalLocator
 llvmGlobalLocator =

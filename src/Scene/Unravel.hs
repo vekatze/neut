@@ -3,7 +3,10 @@ module Scene.Unravel
   )
 where
 
-import qualified Context.Path as Path
+import qualified Context.Alias as Alias
+import qualified Context.Locator as Locator
+import qualified Context.Mode as Mode
+import qualified Context.Module as Module
 import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Foldable
@@ -19,6 +22,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.AliasInfo
 import Entity.Hint
+import Entity.Module
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt
@@ -39,30 +43,34 @@ type IsObjectAvailable =
 
 data Context = Context
   { asThrowCtx :: Throw.Context,
-    asPathCtx :: Path.Context,
+    asModuleCtx :: Module.Context,
     traceSourceListRef :: IORef [Source],
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source]),
     hasCacheSetRef :: IORef PathSet,
     hasObjectSetRef :: IORef PathSet,
-    sourceAliasMapRef :: IORef SourceAliasMap
+    sourceAliasMapRef :: IORef SourceAliasMap,
+    getMainModule :: Module,
+    getMode :: Mode.Mode
   }
 
 unravel ::
+  Mode.Mode ->
   Throw.Context ->
-  Path.Context ->
+  Module.Context ->
+  Module ->
   Source ->
   IO (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source)
-unravel throwCtx pathCtx source = do
-  ctx <- newCtx throwCtx pathCtx
+unravel mode throwCtx moduleCtx mainModule source = do
+  ctx <- newCtx mode throwCtx moduleCtx mainModule
   (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' ctx source
   sourceAliasMap <- readIORef $ sourceAliasMapRef ctx
   hasCacheSet <- readIORef $ hasCacheSetRef ctx
   hasObjectSet <- readIORef $ hasObjectSetRef ctx
   return (isCacheAvailable, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, sourceSeq)
 
-newCtx :: Throw.Context -> Path.Context -> IO Context
-newCtx throwCtx pathCtx = do
+newCtx :: Mode.Mode -> Throw.Context -> Module.Context -> Module -> IO Context
+newCtx mode throwCtx moduleCtx mainModule = do
   _traceSourceListRef <- newIORef []
   _visitEnvRef <- newIORef Map.empty
   _sourceChildrenMapRef <- newIORef Map.empty
@@ -72,13 +80,15 @@ newCtx throwCtx pathCtx = do
   return $
     Context
       { asThrowCtx = throwCtx,
-        asPathCtx = pathCtx,
+        asModuleCtx = moduleCtx,
         traceSourceListRef = _traceSourceListRef,
         visitEnvRef = _visitEnvRef,
         sourceChildrenMapRef = _sourceChildrenMapRef,
         hasCacheSetRef = _hasCacheSetRef,
         hasObjectSetRef = _hasObjectSetRef,
-        sourceAliasMapRef = _sourceAliasMapRef
+        sourceAliasMapRef = _sourceAliasMapRef,
+        getMainModule = mainModule,
+        getMode = mode
       }
 
 unravel' :: Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
@@ -175,12 +185,32 @@ getChildren ctx currentSource = do
       return sourceList
     Nothing -> do
       let path = sourceFilePath currentSource
-      let parseCtx = Parse.Context {Parse.throw = asThrowCtx ctx, Parse.path = asPathCtx ctx}
-      (sourceList, aliasInfoList) <-
-        run
-          (asThrowCtx ctx)
-          (Parse.parseImportSequence parseCtx (sourceModule currentSource))
-          path
+      parseCtx <- newParseContext ctx currentSource
+      (sourceList, aliasInfoList) <- run (asThrowCtx ctx) (Parse.parseImportSequence parseCtx) path
       modifyIORef' (sourceChildrenMapRef ctx) $ Map.insert currentSourceFilePath sourceList
       modifyIORef' (sourceAliasMapRef ctx) $ Map.insert currentSourceFilePath aliasInfoList
       return sourceList
+
+newParseContext :: Context -> Source -> IO Parse.Context
+newParseContext ctx source = do
+  locatorCtx <-
+    Mode.locatorCtx (getMode ctx) $
+      Locator.Config
+        { Locator.mainModule = getMainModule ctx,
+          Locator.throwCtx = asThrowCtx ctx,
+          Locator.currentSource = source
+        }
+  aliasCtx <-
+    Mode.aliasCtx (getMode ctx) $
+      Alias.Config
+        { Alias.currentModule = sourceModule source,
+          Alias.mainModule = getMainModule ctx,
+          Alias.throwCtx = asThrowCtx ctx,
+          Alias.locatorCtx = locatorCtx
+        }
+  return $
+    Parse.Context
+      { Parse.throw = asThrowCtx ctx,
+        Parse.moduleCtx = asModuleCtx ctx,
+        Parse.alias = aliasCtx
+      }

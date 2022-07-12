@@ -26,7 +26,7 @@ reify :: GlobalLocator -> T.Text
 reify gl =
   case gl of
     GlobalLocator alias locator ->
-      extract alias <> nsSep <> SL.reify locator
+      extract alias <> nsSep <> SL.toText locator
     GlobalLocatorAlias alias ->
       GLA.reify alias
 

@@ -2,9 +2,13 @@ module Entity.Const where
 
 import qualified Data.Text as T
 
-sourceFileExtension :: T.Text
+sourceFileExtension :: String
 sourceFileExtension =
-  "nt"
+  ".nt"
+
+-- sourceFileExtension :: T.Text
+-- sourceFileExtension =
+--   "nt"
 
 nsSepChar :: Char
 nsSepChar =

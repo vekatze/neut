@@ -7,13 +7,13 @@ where
 
 import qualified Context.Alias as Alias
 import qualified Data.HashMap.Strict as Map
-import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint
+import qualified Entity.StrictGlobalLocator as SGL
 import Path
 
 data AliasInfo
-  = AliasInfoPrefix Hint GLA.GlobalLocatorAlias GL.GlobalLocator
+  = AliasInfoPrefix Hint GLA.GlobalLocatorAlias SGL.StrictGlobalLocator
   deriving (Show)
 
 type SourceAliasMap = Map.HashMap (Path Abs File) [AliasInfo]

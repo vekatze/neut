@@ -16,6 +16,6 @@ data Config = Config
   }
 
 data Context = Context
-  { registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> GL.GlobalLocator -> IO (),
+  { registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> SGL.StrictGlobalLocator -> IO (),
     resolveAlias :: Hint -> GL.GlobalLocator -> IO SGL.StrictGlobalLocator
   }

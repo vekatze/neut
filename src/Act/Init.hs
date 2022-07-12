@@ -57,7 +57,7 @@ constructDefaultModule :: T.Text -> IO Module
 constructDefaultModule name = do
   currentDir <- getCurrentDir
   moduleRootDir <- resolveDir currentDir $ T.unpack name
-  mainFile <- parseRelFile $ T.unpack $ name <> "." <> sourceFileExtension
+  mainFile <- parseRelFile $ T.unpack name <> sourceFileExtension
   return $
     Module
       { moduleTarget = Map.fromList [(Target name, mainFile)],

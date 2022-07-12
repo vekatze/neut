@@ -12,10 +12,9 @@ import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import qualified Entity.ModuleID as MID
-import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
 
-type GlobalLocatorAliasMap = Map.HashMap GLA.GlobalLocatorAlias GL.GlobalLocator
+type GlobalLocatorAliasMap = Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator
 
 type ModuleAliasMap = Map.HashMap ModuleAlias ModuleChecksum
 
@@ -51,7 +50,7 @@ registerGlobalLocatorAlias ::
   IORef GlobalLocatorAliasMap ->
   Hint ->
   GLA.GlobalLocatorAlias ->
-  GL.GlobalLocator ->
+  SGL.StrictGlobalLocator ->
   IO ()
 registerGlobalLocatorAlias ctx locatorAliasMapRef m from to = do
   aliasEnv <- readIORef locatorAliasMapRef
@@ -66,32 +65,23 @@ resolveAlias ::
   Hint ->
   GL.GlobalLocator ->
   IO SGL.StrictGlobalLocator
-resolveAlias throwCtx locatorAliasMapRef moduleAliasMap m gl = do
-  (moduleAlias, sourceLocator) <- resolveLocatorAlias throwCtx locatorAliasMapRef m gl
-  moduleID <- resolveModuleAlias throwCtx moduleAliasMap m moduleAlias
-  return $
-    SGL.StrictGlobalLocator
-      { SGL.moduleID = moduleID,
-        SGL.sourceLocator = sourceLocator
-      }
-
-resolveLocatorAlias ::
-  Throw.Context ->
-  IORef GlobalLocatorAliasMap ->
-  Hint ->
-  GL.GlobalLocator ->
-  IO (ModuleAlias, SL.SourceLocator)
-resolveLocatorAlias throwCtx aliasMapRef m gl = do
-  aliasMap <- readIORef aliasMapRef
+resolveAlias throwCtx aliasMapRef moduleAliasMap m gl = do
   case gl of
-    GL.GlobalLocator moduleAlias sourceLocator ->
-      return (moduleAlias, sourceLocator)
-    GL.GlobalLocatorAlias alias
-      | Just (GL.GlobalLocator moduleAlias sourceLocator) <- Map.lookup alias aliasMap ->
-        return (moduleAlias, sourceLocator)
-      | otherwise ->
-        Throw.raiseError throwCtx m $
-          "no such global locator alias is defined: " <> GLA.reify alias
+    GL.GlobalLocator moduleAlias sourceLocator -> do
+      moduleID <- resolveModuleAlias throwCtx moduleAliasMap m moduleAlias
+      return $
+        SGL.StrictGlobalLocator
+          { SGL.moduleID = moduleID,
+            SGL.sourceLocator = sourceLocator
+          }
+    GL.GlobalLocatorAlias alias -> do
+      aliasMap <- readIORef aliasMapRef
+      case Map.lookup alias aliasMap of
+        Just sgl ->
+          return sgl
+        Nothing ->
+          Throw.raiseError throwCtx m $
+            "no such global locator alias is defined: " <> GLA.reify alias
 
 resolveModuleAlias :: Throw.Context -> ModuleAliasMap -> Hint -> ModuleAlias -> IO MID.ModuleID
 resolveModuleAlias throwCtx aliasMap m moduleAlias = do

@@ -14,6 +14,7 @@ import qualified Context.Locator.Main as Locator
 import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
 import qualified Context.Mode as Mode
+import qualified Context.Module.Main as Module
 import qualified Context.Path as Path
 import qualified Context.Path.Main as Path
 import qualified Context.Throw as Throw
@@ -212,7 +213,8 @@ prodMode =
       Mode.aliasCtx = Alias.new,
       Mode.globalCtx = Global.new,
       Mode.locatorCtx = Locator.new,
-      Mode.pathCtx = Path.new
+      Mode.pathCtx = Path.new,
+      Mode.moduleCtx = Module.new
     }
 
 throwConfig :: Throw.Config

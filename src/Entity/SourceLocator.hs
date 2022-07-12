@@ -2,7 +2,7 @@
 
 module Entity.SourceLocator
   ( SourceLocator (..),
-    reify,
+    toText,
     reflect,
     bottomLocator,
     topLocator,
@@ -18,7 +18,7 @@ import qualified Data.Text as T
 import GHC.Generics
 import Path
 
-newtype SourceLocator = SourceLocator (Path Rel File)
+newtype SourceLocator = SourceLocator {reify :: Path Rel File}
   deriving (Generic, Eq, Show)
 
 instance Hashable SourceLocator
@@ -34,9 +34,13 @@ instance Binary SourceLocator where
         fail $ "couldn't parse given path: " <> filePath
     return $ SourceLocator path
 
+-- reify :: SourceLocator -> T.Text
+-- reify (SourceLocator sl) =
+--   T.replace "/" "." $ T.pack $ toFilePath sl
+
 -- fixme: parametrize "/"
-reify :: SourceLocator -> T.Text
-reify (SourceLocator sl) =
+toText :: SourceLocator -> T.Text
+toText (SourceLocator sl) =
   T.replace "/" "." $ T.pack $ toFilePath sl
 
 -- fixme: parametrize "/"

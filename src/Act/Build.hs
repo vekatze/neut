@@ -14,6 +14,7 @@ import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Mode as Mode
+import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
@@ -62,28 +63,35 @@ build mode cfg = do
   logCtx <- Mode.logCtx mode $ buildLogCfg cfg
   pathCtx <- Mode.pathCtx mode $ buildPathCfg cfg
   Throw.run throwCtx (Log.printLog logCtx) $ do
-    ensureNotInLibDir throwCtx pathCtx "build"
     mainModule <- Module.fromCurrentPath throwCtx
+    moduleCtx <-
+      Mode.moduleCtx mode $
+        Module.Config
+          { Module.mainModule = mainModule,
+            Module.throwCtx = throwCtx,
+            Module.pathCtx = pathCtx
+          }
+    ensureNotInLibDir throwCtx pathCtx "build"
     case mTarget cfg of
       Just targetString ->
-        build' mode throwCtx logCtx pathCtx (shouldCancelAlloc cfg) (Target targetString) mainModule
+        build' mode throwCtx logCtx moduleCtx (shouldCancelAlloc cfg) (Target targetString) mainModule
       Nothing -> do
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-          build' mode throwCtx logCtx pathCtx (shouldCancelAlloc cfg) target mainModule
+          build' mode throwCtx logCtx moduleCtx (shouldCancelAlloc cfg) target mainModule
 
 build' ::
   Mode.Mode ->
   Throw.Context ->
   Log.Context ->
-  Path.Context ->
+  Module.Context ->
   Bool ->
   Target ->
   Module ->
   IO ()
-build' mode throwCtx logCtx pathCtx cancelAllocFlag target mainModule = do
+build' mode throwCtx logCtx moduleCtx cancelAllocFlag target mainModule = do
   mainFilePath <- resolveTarget throwCtx mainModule target
   mainSource <- getMainSource mainModule mainFilePath
-  (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel throwCtx pathCtx mainSource
+  (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule mainSource
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   globalCtx <-
     Mode.globalCtx mode $
@@ -178,26 +186,33 @@ check mode cfg = do
   Throw.run throwCtx (Log.printLog logCtx) $ do
     ensureNotInLibDir throwCtx pathCtx "check"
     mainModule <- Module.fromCurrentPath throwCtx
+    moduleCtx <-
+      Mode.moduleCtx mode $
+        Module.Config
+          { Module.mainModule = mainModule,
+            Module.throwCtx = throwCtx,
+            Module.pathCtx = pathCtx
+          }
     case mFilePathString cfg of
       Just filePathStr -> do
         filePath <- resolveFile' filePathStr
-        check' mode throwCtx logCtx pathCtx filePath mainModule
+        check' mode throwCtx logCtx moduleCtx filePath mainModule
       Nothing -> do
         forM_ (Map.elems $ moduleTarget mainModule) $ \relPath ->
-          check' mode throwCtx logCtx pathCtx (getSourceDir mainModule </> relPath) mainModule
+          check' mode throwCtx logCtx moduleCtx (getSourceDir mainModule </> relPath) mainModule
 
 check' ::
   Mode.Mode ->
   Throw.Context ->
   Log.Context ->
-  Path.Context ->
+  Module.Context ->
   Path Abs File ->
   Module ->
   IO ()
-check' mode throwCtx logCtx pathCtx filePath mainModule = do
+check' mode throwCtx logCtx moduleCtx filePath mainModule = do
   ensureFileModuleSanity throwCtx filePath mainModule
   let source = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel throwCtx pathCtx source
+  (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule source
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
