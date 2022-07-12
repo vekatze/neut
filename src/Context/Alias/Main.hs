@@ -95,14 +95,14 @@ resolveLocatorAlias throwCtx aliasMapRef m gl = do
 
 resolveModuleAlias :: Throw.Context -> ModuleAliasMap -> Hint -> ModuleAlias -> IO MID.ModuleID
 resolveModuleAlias throwCtx aliasMap m moduleAlias = do
-  case moduleAlias of
-    ModuleAlias "this" ->
-      return MID.This
-    ModuleAlias "base" ->
-      return MID.Base
-    _
-      | Just checksum <- Map.lookup moduleAlias aliasMap ->
-        return $ MID.That checksum
+  case Map.lookup moduleAlias aliasMap of
+    Just checksum ->
+      return $ MID.That checksum
+    Nothing
+      | moduleAlias == ModuleAlias defaultModulePrefix ->
+        return MID.This
+      | moduleAlias == ModuleAlias baseModulePrefix ->
+        return MID.Base
       | otherwise ->
         Throw.raiseError throwCtx m $
           "no such module alias is defined: " <> extract moduleAlias

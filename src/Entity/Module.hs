@@ -33,6 +33,10 @@ defaultModulePrefix :: T.Text
 defaultModulePrefix =
   "this"
 
+baseModulePrefix :: T.Text
+baseModulePrefix =
+  "base"
+
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
   parent (moduleLocation baseModule) </> $(mkRelDir "source")
