@@ -30,8 +30,6 @@ reify gl =
     GlobalLocatorAlias alias ->
       GLA.reify alias
 
--- extract (moduleAlias gl) <> nsSep <> SL.reify (sourceLocator gl)
-
 reflect' :: Throw.Context -> T.Text -> IO (ModuleAlias, SL.SourceLocator)
 reflect' ctx rawTxt = do
   case T.breakOn nsSep rawTxt of
@@ -50,8 +48,3 @@ reflect rawTxt = do
     (prefix, suffix) -> do
       locator <- SL.reflect $ T.tail suffix
       return (GlobalLocator (ModuleAlias prefix) locator)
-
--- GlobalLocator
---   { moduleAlias = ModuleAlias prefix,
---     sourceLocator = locator
---   }

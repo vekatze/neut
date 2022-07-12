@@ -144,7 +144,6 @@ parseDefiniteLocator ctx = do
   delimiter definiteSep
   ll <- symbol
   let sectionStack = map Section.Section $ BN.bySplit ll
-  -- let sectionStack = map Section.Section $ T.splitOn "." ll
   return $ DL.new gl sectionStack
 
 parseGlobalLocator :: Alias.Context -> Parser SGL.StrictGlobalLocator

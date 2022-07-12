@@ -31,8 +31,6 @@ import Entity.StrictGlobalLocator as SGL
 --     - active global locator: a global locator that is used when resolving global names
 --     - active local locator: a local locator that is used when resolving global names
 
-type IsDefinite = Bool
-
 data Context = Context
   { pushSection :: S.Section -> IO (),
     popSection :: Hint -> IO (),

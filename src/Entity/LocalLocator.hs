@@ -18,7 +18,7 @@ import GHC.Generics
 -- invariant: no dots occur in sectionStack and baseName
 data LocalLocator = MakeLocalLocator
   { sectionStack :: [S.Section],
-    baseName :: BN.BaseName -- fixme: change this to something like BaseName
+    baseName :: BN.BaseName
   }
   deriving (Generic, Show)
 
@@ -59,11 +59,6 @@ new ss base =
       baseName = base
     }
 
--- LL.LocalLocator
---   { LL.sectionStack = LL.sectionStack ll ++ DL.sectionStack dl,
---     LL.baseName = LL.baseName ll
---   }
-
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc =
   foldr go Nothing
@@ -81,12 +76,3 @@ extend outer inner =
     { sectionStack = sectionStack inner ++ [S.Section (baseName outer)] ++ sectionStack outer,
       baseName = baseName inner
     }
-
--- let ll = localLocator dd
--- let ll' = LL.reflect newName
--- new
---   gl
---   LL.LocalLocator
---     { LL.sectionStack = Section.Section (LL.baseName ll) : LL.sectionStack ll,
---       LL.baseName = newName
---     }

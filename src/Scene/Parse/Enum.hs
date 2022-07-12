@@ -20,7 +20,6 @@ parseDefineEnum ctx = do
   m <- currentHint
   try $ keyword "define-enum"
   definiteEnumName <- baseName >>= liftIO . Locator.attachCurrentLocator (locator ctx)
-  -- definiteEnumName <- var >>= liftIO . Locator.attachCurrentLocator (locator ctx) . snd
   itemList <- asBlock $ manyList parseDefineEnumClause
   enumInfo <- liftIO $ EnumInfo.new (throw ctx) m (ET.EnumTypeName definiteEnumName) itemList
   liftIO $ uncurry (Global.registerEnum (global ctx) m) (fromEnumInfo enumInfo)

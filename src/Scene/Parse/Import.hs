@@ -57,7 +57,6 @@ parseImportSimple ctx currentModule = do
   sigText <- symbol
   (moduleAlias, sourceLocator) <- liftIO $ GL.reflect' ctx sigText
   source <- liftIO $ parseLocator ctx m currentModule moduleAlias sourceLocator
-  -- source <- liftIO $ parseLocator ctx m currentModule sigText
   return (source, Nothing)
 
 skipImportSimple :: Parser ()
@@ -92,18 +91,3 @@ parseLocator ctx m currentModule moduleAlias sourceLocator = do
       { sourceModule = nextModule,
         sourceFilePath = getSourceDir nextModule </> relPath
       }
-
--- parseLocator :: Throw.Context -> Hint -> Module -> T.Text -> IO Source
--- parseLocator ctx m currentModule locatorString = do
---   case uncons $ T.splitOn "." locatorString of
---     Just (nextModuleName, locatorTail) -> do
---       nextModule <- getNextModule ctx m currentModule $ ModuleAlias nextModuleName
---       let relFile = T.intercalate "/" locatorTail <> nsSep <> sourceFileExtension
---       relPath <- parseRelFile $ T.unpack relFile
---       return $
---         Source
---           { sourceModule = nextModule,
---             sourceFilePath = getSourceDir nextModule </> relPath
---           }
---     Nothing ->
---       Throw.raiseError ctx m "found a malformed module signature"

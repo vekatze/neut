@@ -20,9 +20,6 @@ import Path.IO
 type PreProgram =
   (Path Abs File, [PreStmt])
 
--- type WeakProgram =
---   (Path Abs File, [WeakStmt])
-
 data PreStmt
   = PreStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
   | PreStmtDefineResource Hint DD.DefiniteDescription PT.PreTerm PT.PreTerm
@@ -74,10 +71,6 @@ compress stmt =
 
 saveCache :: Program -> [EnumInfo] -> IO ()
 saveCache (source, stmtList) enumInfoList = do
-  -- b <- doesFreshCacheExist source
-  -- if b
-  --   then return ()
-  --   else do
   cachePath <- getSourceCachePath source
   ensureDir $ parent cachePath
   encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
@@ -99,8 +92,3 @@ loadCache source hasCacheSet = do
               return Nothing
             Right content ->
               return $ Just content
-
--- doesFreshCacheExist :: Source -> IO Bool
--- doesFreshCacheExist source = do
---   hasCacheSet <- readIORef hasCacheSetRef
---   return $ S.member (sourceFilePath source) hasCacheSet

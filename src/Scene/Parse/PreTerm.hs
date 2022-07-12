@@ -801,8 +801,3 @@ preVar m str =
 preVar' :: Hint -> Ident -> PT.PreTerm
 preVar' m ident =
   m :< PT.Var ident
-
--- newTextualIdentFromText :: T.Text -> IO Ident
--- newTextualIdentFromText txt = do
---   i <- newCount
---   newIdentFromText $ ";" <> txt <> T.pack (show i)
