@@ -10,8 +10,6 @@ import qualified Context.Module as Module
 import qualified Context.Throw as Throw
 import Control.Monad
 import Control.Monad.IO.Class
-import qualified Data.HashMap.Strict as Map
-import Data.IORef
 import Data.Maybe
 import qualified Data.Text as T
 import Entity.AliasInfo
@@ -20,15 +18,11 @@ import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint
 import Entity.Module
-import qualified Entity.Module.Reflect as Module
-import qualified Entity.ModuleID as MID
 import Entity.Source
 import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
 import Path
-import Path.IO
 import Scene.Parse.Core
-import System.IO.Unsafe
 import Text.Megaparsec
 
 data Context = Context
@@ -99,33 +93,10 @@ skipImportQualified = do
 
 getNextSource :: Context -> Hint -> SGL.StrictGlobalLocator -> T.Text -> IO Source
 getNextSource ctx m sgl locatorText = do
-  nextModule <- getNextModule ctx m (SGL.moduleID sgl) locatorText
+  nextModule <- Module.getModule (moduleCtx ctx) m (SGL.moduleID sgl) locatorText
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   return $
     Source
       { sourceModule = nextModule,
         sourceFilePath = getSourceDir nextModule </> relPath
       }
-
-getNextModule :: Context -> Hint -> MID.ModuleID -> T.Text -> IO Module
-getNextModule ctx m moduleID locatorText = do
-  nextModuleFilePath <- Module.getModuleFilePath (moduleCtx ctx) (Just m) moduleID
-  moduleCacheMap <- readIORef moduleCacheMapRef
-  case Map.lookup nextModuleFilePath moduleCacheMap of
-    Just nextModule ->
-      return nextModule
-    Nothing -> do
-      moduleFileExists <- doesFileExist nextModuleFilePath
-      unless moduleFileExists $ do
-        Throw.raiseError (throw ctx) m $
-          T.pack "could not find the module file for `"
-            <> locatorText
-            <> "`"
-      nextModule <- Module.fromFilePath (throw ctx) nextModuleFilePath
-      modifyIORef' moduleCacheMapRef $ Map.insert nextModuleFilePath nextModule
-      return nextModule
-
-{-# NOINLINE moduleCacheMapRef #-}
-moduleCacheMapRef :: IORef (Map.HashMap (Path Abs File) Module)
-moduleCacheMapRef =
-  unsafePerformIO (newIORef Map.empty)
