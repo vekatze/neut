@@ -26,11 +26,6 @@ dataEnvRef :: IORef (Map.HashMap DD.DefiniteDescription [DD.DefiniteDescription]
 dataEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
-{-# NOINLINE constructorEnvRef #-}
-constructorEnvRef :: IORef (Map.HashMap DD.DefiniteDescription Int)
-constructorEnvRef =
-  unsafePerformIO (newIORef Map.empty)
-
 {-# NOINLINE weakTypeEnvRef #-}
 weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm)
 weakTypeEnvRef =

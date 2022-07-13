@@ -210,7 +210,7 @@ defineData ::
   IO [PreStmt]
 defineData ctx m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName dataName) consInfoList
-  setAsData dataName (length dataArgs) consInfoList'
+  setAsData dataName consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
   formRule <- defineFunction ctx OpacityOpaque m dataName 0 dataArgs (m :< PT.Tau) consType
   introRuleList <- mapM (parseDefineDataConstructor ctx dataName dataArgs) $ zip consInfoList' [0 ..]
@@ -317,12 +317,10 @@ parseDefineResource ctx = do
     liftIO $ Global.registerResource (global ctx) m name'
     return $ PreStmtDefineResource m name' discarder copier
 
-setAsData :: DD.DefiniteDescription -> Int -> [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] -> IO ()
-setAsData dataName dataArgNum consInfoList = do
+setAsData :: DD.DefiniteDescription -> [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] -> IO ()
+setAsData dataName consInfoList = do
   let consNameList = map (\(_, consName, _) -> consName) consInfoList
   modifyIORef' dataEnvRef $ Map.insert dataName consNameList
-  forM_ consNameList $ \consName ->
-    modifyIORef' constructorEnvRef $ Map.insert consName dataArgNum
 
 identPlusToVar :: BinderF PT.PreTerm -> PT.PreTerm
 identPlusToVar (m, x, _) =
