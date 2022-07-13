@@ -31,7 +31,6 @@ import qualified Entity.Prim as Prim
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
 import Entity.WeakTerm
-import Entity.WeakTerm.ToText
 
 data Context = Context
   { throw :: Throw.Context,

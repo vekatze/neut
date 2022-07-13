@@ -27,7 +27,7 @@ fromFilePath ctx moduleID moduleFilePath = do
   entryPointEns <- access ctx "target" entity >>= toDictionary ctx
   dependencyEns <- access ctx "dependency" entity >>= toDictionary ctx
   extraContentsEns <- access ctx "extra-content" entity >>= toList ctx
-  target <- mapM (interpretSGL ctx moduleID) entryPointEns
+  target <- mapM (interpretRelFilePath ctx moduleID) entryPointEns
   dependency <- mapM (interpretDependency ctx) dependencyEns
   extraContents <- mapM (interpretExtraPath ctx $ parent moduleFilePath) extraContentsEns
   return
@@ -42,8 +42,8 @@ fromCurrentPath :: Context -> IO Module
 fromCurrentPath ctx =
   getCurrentModuleFilePath ctx >>= fromFilePath ctx MID.Main
 
-interpretSGL :: Context -> MID.ModuleID -> Ens -> IO SGL.StrictGlobalLocator
-interpretSGL ctx moduleID ens = do
+interpretRelFilePath :: Context -> MID.ModuleID -> Ens -> IO SGL.StrictGlobalLocator
+interpretRelFilePath ctx moduleID ens = do
   relPath <- toString ctx ens >>= parseRelFile . T.unpack
   return
     SGL.StrictGlobalLocator

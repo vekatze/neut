@@ -41,7 +41,6 @@ initialize mode cfg = do
         Throw.raiseError' throwCtx $ "the directory `" <> moduleName cfg <> "` already exists"
       else do
         ensureDir $ parent $ moduleLocation newModule
-        ensureDir $ getReleaseDir newModule
         ensureDir $ getSourceDir newModule
         createModuleFile newModule
         moduleCtx <-

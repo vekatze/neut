@@ -45,3 +45,7 @@ reflectInMainModule relFilePathString = do
       { moduleID = MID.Main,
         sourceLocator = SL.SourceLocator filePath
       }
+
+getRelPathText :: StrictGlobalLocator -> T.Text
+getRelPathText sgl =
+  T.pack $ toFilePath $ SL.reify $ sourceLocator sgl

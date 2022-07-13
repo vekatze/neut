@@ -63,10 +63,6 @@ findModuleFile ctx moduleRootDirCandidate = do
     _ ->
       raiseError' ctx "couldn't find a module file."
 
-getMainModuleFilePath :: Context -> IO (Path Abs File)
-getMainModuleFilePath ctx =
-  getCurrentDir >>= findModuleFile ctx
-
 getCurrentModuleFilePath :: Context -> IO (Path Abs File)
 getCurrentModuleFilePath ctx =
   getCurrentDir >>= findModuleFile ctx
@@ -77,7 +73,7 @@ addDependency alias url checksum someModule =
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
-  let entryPoint = Map.map (\x -> () :< EnsString (SGL.reify x)) $ moduleTarget someModule
+  let entryPoint = Map.map (\x -> () :< EnsString (SGL.getRelPathText x)) $ moduleTarget someModule
   let dependency = flip Map.map (moduleDependency someModule) $ \(ModuleURL url, ModuleChecksum checksum) -> do
         let urlEns = () :< EnsString url
         let checksumEns = () :< EnsString checksum
