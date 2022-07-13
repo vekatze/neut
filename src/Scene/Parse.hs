@@ -21,6 +21,7 @@ import Entity.Binder
 import Entity.Const
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.DefiniteLocator as DL
+import qualified Entity.Discriminant as D
 import Entity.EnumInfo
 import Entity.Global
 import qualified Entity.GlobalLocator as GL
@@ -213,7 +214,7 @@ defineData ctx m dataName dataArgs consInfoList = do
   setAsData dataName consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
   formRule <- defineFunction ctx OpacityOpaque m dataName 0 dataArgs (m :< PT.Tau) consType
-  introRuleList <- mapM (parseDefineDataConstructor ctx dataName dataArgs) $ zip consInfoList' [0 ..]
+  introRuleList <- parseDefineDataConstructor ctx dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
 modifyConstructorName ::
@@ -227,26 +228,33 @@ parseDefineDataConstructor ::
   Context ->
   DD.DefiniteDescription ->
   [BinderF PT.PreTerm] ->
-  ((Hint, DD.DefiniteDescription, [BinderF PT.PreTerm]), Integer) ->
-  IO PreStmt
-parseDefineDataConstructor ctx dataName dataArgs ((m, consName, consArgs), discriminant) = do
-  let dataConsArgs = dataArgs ++ consArgs
-  let consArgs' = map identPlusToVar consArgs
-  let dataType = constructDataType m dataName dataArgs
-  defineFunction
-    ctx
-    OpacityTransparent
-    m
-    consName
-    (length dataArgs)
-    dataConsArgs
-    dataType
-    $ m
-      :< PT.PiIntro
-        (LamKindCons dataName consName discriminant dataType)
-        [ (m, Ident.fromText (DD.reify consName), m :< PT.Pi consArgs (m :< PT.Tau))
-        ]
-        (m :< PT.PiElim (preVar m (DD.reify consName)) consArgs')
+  [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] ->
+  D.Discriminant ->
+  IO [PreStmt]
+parseDefineDataConstructor ctx dataName dataArgs consInfoList discriminant = do
+  case consInfoList of
+    [] ->
+      return []
+    (m, consName, consArgs) : rest -> do
+      let consArgs' = map identPlusToVar consArgs
+      let dataType = constructDataType m dataName dataArgs
+      introRule <-
+        defineFunction
+          ctx
+          OpacityTransparent
+          m
+          consName
+          (length dataArgs)
+          (dataArgs ++ consArgs)
+          dataType
+          $ m
+            :< PT.PiIntro
+              (LamKindCons dataName consName discriminant dataType)
+              [ (m, Ident.fromText (DD.reify consName), m :< PT.Pi consArgs (m :< PT.Tau))
+              ]
+              (m :< PT.PiElim (preVar m (DD.reify consName)) consArgs')
+      introRuleList <- parseDefineDataConstructor ctx dataName dataArgs rest (D.increment discriminant)
+      return $ introRule : introRuleList
 
 constructDataType :: Hint -> DD.DefiniteDescription -> [BinderF PT.PreTerm] -> PT.PreTerm
 constructDataType m dataName dataArgs =

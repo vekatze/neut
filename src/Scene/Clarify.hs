@@ -24,6 +24,7 @@ import Entity.Comp.FreeVars
 import Entity.Comp.Reduce
 import Entity.Comp.Subst
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.Global
 import Entity.Hint
@@ -377,10 +378,10 @@ returnClosure ctx tenv isReducible kind fvs xts e = do
       name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName i
       registerIfNecessary (gensym ctx) name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
-    LamKindCons _ consName consNumber _ -> do
+    LamKindCons _ consName discriminant _ -> do
       let consName' = getLamConsName $ DD.reify consName
       registerIfNecessary (gensym ctx) consName' isReducible True xts'' fvs'' e
-      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) consNumber]
+      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) (D.reify discriminant)]
     LamKindFix (_, name, _) -> do
       let name' = Ident.toText' name
       let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name')]

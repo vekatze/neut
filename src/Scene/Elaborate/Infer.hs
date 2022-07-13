@@ -71,10 +71,10 @@ infer' ctx varEnv term =
           let piType = m :< WeakTermPi xts' tCod
           insConstraintEnv piType t'
           return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) xts' e', piType)
-        LamKindCons dataName consName consNumber dataType -> do
+        LamKindCons dataName consName discriminant dataType -> do
           dataType' <- inferType' ctx varEnv dataType
           (xts', (e', _)) <- inferBinder ctx varEnv xts e
-          return (m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e', dataType')
+          return (m :< WeakTermPiIntro (LamKindCons dataName consName discriminant dataType') xts' e', dataType')
         _ -> do
           (xts', (e', t')) <- inferBinder ctx varEnv xts e
           return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermPi xts' t')

@@ -3,11 +3,12 @@ module Entity.LamKind where
 import Data.Binary
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import GHC.Generics
 
 data LamKindF a
   = LamKindNormal
-  | LamKindCons DD.DefiniteDescription DD.DefiniteDescription Integer a
+  | LamKindCons DD.DefiniteDescription DD.DefiniteDescription D.Discriminant a
   | LamKindFix (BinderF a)
   deriving (Show, Generic)
 
