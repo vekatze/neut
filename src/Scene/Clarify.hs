@@ -375,7 +375,6 @@ returnClosure ctx tenv isReducible kind fvs xts e = do
     LamKindNormal -> do
       i <- Gensym.newCount (gensym ctx)
       name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName i
-      -- name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ "lambda;" <> T.pack (show i)
       registerIfNecessary (gensym ctx) name isReducible False xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
     LamKindCons _ consName consNumber _ -> do
