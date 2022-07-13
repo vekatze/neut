@@ -59,10 +59,6 @@ parse ctx source = do
     Nothing ->
       return result
 
--- parseOther :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
--- parseOther =
---   parseSource
-
 parseSource :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseSource ctx source = do
   mCache <- loadCache source (hasCacheSet ctx)

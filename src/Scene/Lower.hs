@@ -80,17 +80,6 @@ lower ctx (defList, mMainTerm) = do
           lowerComp ctx e >>= insLowDefEnv name args
       return Nothing
 
--- lowerOther :: Context -> [CompDef] -> IO ()
--- lowerOther ctx defList = do
---   initialize $ map fst defList
---   insDeclEnv cartImmName [(), ()]
---   insDeclEnv cartClsName [(), ()]
---   insDeclEnv cartCellName [(), ()]
---   lowDeclEnv <- readIORef lowDeclEnvRef
---   forM_ defList $ \(name, (_, args, e)) ->
---     unless (Map.member name lowDeclEnv) $
---       lowerComp ctx e >>= insLowDefEnv name args
-
 initialize :: [T.Text] -> IO ()
 initialize nameList = do
   writeIORef lowDeclEnvRef initialLowDeclEnv

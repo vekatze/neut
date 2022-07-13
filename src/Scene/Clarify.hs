@@ -61,18 +61,6 @@ clarify ctx source defList = do
       defList' <- clarifyDefList ctx defList
       return (defList', Nothing)
 
--- clarifyMain :: Context -> DD.DefiniteDescription -> [Stmt] -> IO ([CompDef], Comp)
--- clarifyMain ctx mainName defList = do
---   _ <- returnImmediateS4 (gensym ctx)
---   _ <- returnClosureS4 ctx
---   defList' <- clarifyDefList ctx defList
---   mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName)) []
---   return (defList', mainTerm)
-
--- clarifyOther :: Context -> [Stmt] -> IO [CompDef]
--- clarifyOther ctx defList = do
---   clarifyDefList ctx defList
-
 clarifyDefList :: Context -> [Stmt] -> IO [CompDef]
 clarifyDefList ctx defList = do
   compDefEnv <- readIORef compDefEnvRef

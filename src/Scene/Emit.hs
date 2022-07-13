@@ -41,10 +41,6 @@ emit ctx mMainTerm = do
     Nothing -> do
       emit' ctx []
 
--- emitOther :: Context -> IO L.ByteString
--- emitOther ctx =
---   emit' ctx []
-
 emit' :: Context -> [Builder] -> IO L.ByteString
 emit' ctx aux = do
   g <- emitDeclarations
