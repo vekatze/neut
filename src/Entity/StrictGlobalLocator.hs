@@ -7,6 +7,7 @@ import Entity.Const
 import qualified Entity.ModuleID as MID
 import qualified Entity.SourceLocator as SL
 import GHC.Generics
+import Path
 
 data StrictGlobalLocator = StrictGlobalLocator
   { moduleID :: MID.ModuleID,
@@ -35,3 +36,12 @@ baseGlobalLocatorOf sl =
     { moduleID = MID.Base,
       sourceLocator = sl
     }
+
+reflectInMainModule :: String -> IO StrictGlobalLocator
+reflectInMainModule relFilePathString = do
+  filePath <- parseRelFile relFilePathString
+  return $
+    StrictGlobalLocator
+      { moduleID = MID.Main,
+        sourceLocator = SL.SourceLocator filePath
+      }

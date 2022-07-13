@@ -5,6 +5,7 @@ import qualified Context.Throw as Throw
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Maybe as Maybe
+import Entity.Const
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint hiding (new)
@@ -32,16 +33,16 @@ new cfg = do
 
 createModuleAliasMap :: Module -> Module -> ModuleAliasMap
 createModuleAliasMap currentModule mainModule = do
-  let additionalChecksumAlias = getAliasForThis mainModule currentModule
+  let additionalChecksumAlias = getAlias mainModule currentModule
   Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ getModuleChecksumAliasList currentModule
 
-getAliasForThis :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
-getAliasForThis mainModule currentModule = do
+getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
+getAlias mainModule currentModule = do
   case getID mainModule currentModule of
-    MID.This ->
+    MID.Library checksum ->
+      return (defaultModulePrefix, checksum)
+    MID.Main ->
       Nothing
-    MID.That checksum ->
-      return (ModuleAlias defaultModulePrefix, checksum)
     MID.Base ->
       Nothing
 
@@ -87,11 +88,11 @@ resolveModuleAlias :: Throw.Context -> ModuleAliasMap -> Hint -> ModuleAlias -> 
 resolveModuleAlias throwCtx aliasMap m moduleAlias = do
   case Map.lookup moduleAlias aliasMap of
     Just checksum ->
-      return $ MID.That checksum
+      return $ MID.Library checksum
     Nothing
-      | moduleAlias == ModuleAlias defaultModulePrefix ->
-        return MID.This
-      | moduleAlias == ModuleAlias baseModulePrefix ->
+      | moduleAlias == defaultModulePrefix ->
+        return MID.Main
+      | moduleAlias == baseModulePrefix ->
         return MID.Base
       | otherwise ->
         Throw.raiseError throwCtx m $

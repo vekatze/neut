@@ -13,18 +13,21 @@ import qualified Entity.Ens.Reflect as Ens
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
+import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
+import qualified Entity.SourceLocator as SL
+import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
 import Path
 import Path.IO
 
-fromFilePath :: Context -> Path Abs File -> IO Module
-fromFilePath ctx moduleFilePath = do
+fromFilePath :: Context -> MID.ModuleID -> Path Abs File -> IO Module
+fromFilePath ctx moduleID moduleFilePath = do
   entity <- Ens.fromFilePath ctx moduleFilePath
   entryPointEns <- access ctx "target" entity >>= toDictionary ctx
   dependencyEns <- access ctx "dependency" entity >>= toDictionary ctx
   extraContentsEns <- access ctx "extra-content" entity >>= toList ctx
-  target <- mapM (interpretRelFilePath ctx) entryPointEns
+  target <- mapM (interpretSGL ctx moduleID) entryPointEns
   dependency <- mapM (interpretDependency ctx) dependencyEns
   extraContents <- mapM (interpretExtraPath ctx $ parent moduleFilePath) extraContentsEns
   return
@@ -37,11 +40,20 @@ fromFilePath ctx moduleFilePath = do
 
 fromCurrentPath :: Context -> IO Module
 fromCurrentPath ctx =
-  getCurrentModuleFilePath ctx >>= fromFilePath ctx
+  getCurrentModuleFilePath ctx >>= fromFilePath ctx MID.Main
 
-interpretRelFilePath :: Context -> Ens -> IO (Path Rel File)
-interpretRelFilePath ctx =
-  toString ctx >=> parseRelFile . T.unpack
+interpretSGL :: Context -> MID.ModuleID -> Ens -> IO SGL.StrictGlobalLocator
+interpretSGL ctx moduleID ens = do
+  relPath <- toString ctx ens >>= parseRelFile . T.unpack
+  return
+    SGL.StrictGlobalLocator
+      { SGL.moduleID = moduleID,
+        SGL.sourceLocator = SL.SourceLocator relPath
+      }
+
+-- interpretRelFilePath :: Context -> Ens -> IO (Path Rel File)
+-- interpretRelFilePath ctx =
+--   toString ctx >=> parseRelFile . T.unpack
 
 interpretDependency :: Context -> Ens -> IO (ModuleURL, ModuleChecksum)
 interpretDependency ctx dependencyValue = do

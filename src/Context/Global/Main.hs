@@ -89,7 +89,7 @@ lookup nameMapRef name = do
         return $ Just $ GN.PrimType primType
       | Just primOp <- PrimOp.fromDefiniteDescription name ->
         return $ Just $ GN.PrimOp primOp
-      | otherwise ->
+      | otherwise -> do
         return Nothing
 
 createEnumMap :: ET.EnumTypeName -> [EnumValue] -> NameMap

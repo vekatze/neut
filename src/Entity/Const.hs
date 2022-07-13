@@ -1,6 +1,10 @@
+{-# LANGUAGE TemplateHaskell #-}
+
 module Entity.Const where
 
 import qualified Data.Text as T
+import Entity.ModuleAlias
+import Path
 
 sourceFileExtension :: String
 sourceFileExtension =
@@ -37,3 +41,35 @@ cartClsName =
 cartCellName :: T.Text
 cartCellName =
   "cell"
+
+moduleFile :: Path Rel File
+moduleFile =
+  $(mkRelFile "module.ens")
+
+defaultModulePrefix :: ModuleAlias
+defaultModulePrefix =
+  ModuleAlias "this"
+
+baseModulePrefix :: ModuleAlias
+baseModulePrefix =
+  ModuleAlias "base"
+
+sourceRelDir :: Path Rel Dir
+sourceRelDir =
+  $(mkRelDir "source")
+
+targetRelDir :: Path Rel Dir
+targetRelDir =
+  $(mkRelDir "target")
+
+releaseRelDir :: Path Rel Dir
+releaseRelDir =
+  $(mkRelDir "release")
+
+artifactRelDir :: Path Rel Dir
+artifactRelDir =
+  $(mkRelDir "artifact")
+
+executableRelDir :: Path Rel Dir
+executableRelDir =
+  $(mkRelDir "executable")

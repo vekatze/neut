@@ -31,6 +31,7 @@ import qualified Entity.Prim as Prim
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
 import Entity.WeakTerm
+import Entity.WeakTerm.ToText
 
 data Context = Context
   { throw :: Throw.Context,
@@ -269,10 +270,7 @@ resolveName ctx m name = do
   candList' <- mapM (Global.lookup (global ctx)) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
-    [] -> do
-      print name
-      print candList
-      print candList'
+    [] ->
       Throw.raiseError (throw ctx) m $ "undefined variable: " <> name
     [(dd, GN.TopLevelFunc)] ->
       return $ m :< WeakTermVarGlobal dd

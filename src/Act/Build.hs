@@ -5,6 +5,8 @@ module Act.Build
 where
 
 import qualified Context.App as App
+import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
@@ -18,10 +20,12 @@ import Data.Foldable
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.DefiniteDescription as DD
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
 import Entity.Source
+import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
 import Path
 import Path.IO
@@ -31,14 +35,10 @@ import Scene.Emit
 import Scene.Lower
 import Scene.Parse
 import Scene.Unravel
-import System.Exit
 import Prelude hiding (log)
 
-type TargetString =
-  T.Text
-
 data Config = Config
-  { mTarget :: Maybe TargetString,
+  { mTarget :: Maybe Target,
     mClangOptString :: Maybe String,
     logCfg :: Log.Config,
     throwCfg :: Throw.Config,
@@ -62,30 +62,37 @@ build mode cfg = do
           }
     ensureNotInLibDir throwCtx pathCtx "build"
     case mTarget cfg of
-      Just targetString ->
-        build' mode throwCtx logCtx moduleCtx (shouldCancelAlloc cfg) (Target targetString) mainModule
+      Just target ->
+        build' mode throwCtx logCtx pathCtx moduleCtx (shouldCancelAlloc cfg) target mainModule
       Nothing -> do
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-          build' mode throwCtx logCtx moduleCtx (shouldCancelAlloc cfg) target mainModule
+          build' mode throwCtx logCtx pathCtx moduleCtx (shouldCancelAlloc cfg) target mainModule
 
 build' ::
   Mode.Mode ->
   Throw.Context ->
   Log.Context ->
+  Path.Context ->
   Module.Context ->
   Bool ->
   Target ->
   Module ->
   IO ()
-build' mode throwCtx logCtx moduleCtx cancelAllocFlag target mainModule = do
-  mainFilePath <- resolveTarget throwCtx mainModule target
+build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule = do
+  sgl <- resolveTarget throwCtx mainModule target
+  mainFilePath <- Module.getSourcePath moduleCtx sgl
   mainSource <- getMainSource mainModule mainFilePath
   (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule mainSource
+  globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
+  gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
         App.Config
           { App.mode = mode,
             App.throwCtx = throwCtx,
             App.logCtx = logCtx,
+            App.gensymCtx = gensymCtx,
+            App.pathCtx = pathCtx,
+            App.globalCtx = globalCtx,
             App.cancelAllocFlagConf = cancelAllocFlag,
             App.mainModuleConf = mainModule,
             App.initialSourceConf = mainSource,
@@ -117,7 +124,7 @@ compile ctxCfg hasObjectSet source = do
 
 loadTopLevelDefinitions :: App.Context -> Source -> IO ()
 loadTopLevelDefinitions ctx source = do
-  mMainFunctionName <- Locator.getMainFunctionName (App.locator ctx) source
+  mMainFunctionName <- getMainFunctionName ctx source
   case mMainFunctionName of
     Just mainName ->
       void $ parseMain ctx mainName source >>= elaborateMain ctx mainName source >>= clarifyMain ctx mainName
@@ -135,7 +142,7 @@ compile' ctx source = do
 
 compileToLLVM :: App.Context -> Source -> IO L.ByteString
 compileToLLVM ctx source = do
-  mMainFunctionName <- Locator.getMainFunctionName (App.locator ctx) source
+  mMainFunctionName <- getMainFunctionName ctx source
   case mMainFunctionName of
     Just mainName -> do
       parseMain ctx mainName source
@@ -168,11 +175,17 @@ getMainSource mainModule mainSourceFilePath = do
         sourceFilePath = mainSourceFilePath
       }
 
-resolveTarget :: Throw.Context -> Module -> Target -> IO (Path Abs File)
+resolveTarget :: Throw.Context -> Module -> Target -> IO SGL.StrictGlobalLocator
 resolveTarget ctx mainModule target = do
-  case getTargetFilePath mainModule target of
+  case Map.lookup target (moduleTarget mainModule) of
     Just path ->
       return path
-    Nothing -> do
-      _ <- Throw.raiseError' ctx $ "no such target is defined: `" <> extract target <> "`"
-      exitWith (ExitFailure 1)
+    Nothing ->
+      Throw.raiseError' ctx $ "no such target is defined: `" <> extract target <> "`"
+
+getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
+getMainFunctionName ctx source = do
+  b <- isMainFile (App.moduleCtx ctx) source
+  if b
+    then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
+    else return Nothing

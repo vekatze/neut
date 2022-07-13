@@ -12,6 +12,8 @@ import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Mode as Mode
+import qualified Context.Module as Module
+import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import qualified Data.Set as S
 import Entity.AliasInfo
@@ -30,6 +32,7 @@ data Context = Context
     global :: Global.Context,
     locator :: Locator.Context,
     alias :: Alias.Context,
+    moduleCtx :: Module.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
@@ -41,6 +44,9 @@ data Config = Config
   { mode :: Mode.Mode,
     throwCtx :: Throw.Context,
     logCtx :: Log.Context,
+    pathCtx :: Path.Context,
+    globalCtx :: Global.Context,
+    gensymCtx :: Gensym.Context,
     cancelAllocFlagConf :: Bool,
     mainModuleConf :: Module,
     initialSourceConf :: Source,
@@ -50,17 +56,19 @@ data Config = Config
 
 new :: Config -> Source -> IO Context
 new cfg source = do
-  gensymCtx <- Mode.gensymCtx (mode cfg) $ Gensym.Config {}
+  _moduleCtx <-
+    Mode.moduleCtx (mode cfg) $
+      Module.Config
+        { Module.mainModule = mainModuleConf cfg,
+          Module.throwCtx = throwCtx cfg,
+          Module.pathCtx = pathCtx cfg
+        }
+  -- gensymCtx <- Mode.gensymCtx (mode cfg) $ Gensym.Config {}
   llvmCtx <-
     Mode.llvmCtx (mode cfg) $
       LLVM.Config
         { LLVM.throwCtx = throwCtx cfg,
           LLVM.clangOptString = "" -- fixme
-        }
-  globalCtx <-
-    Mode.globalCtx (mode cfg) $
-      Global.Config
-        { Global.throwCtx = throwCtx cfg
         }
   locatorCtx <-
     Mode.locatorCtx (mode cfg) $
@@ -81,11 +89,12 @@ new cfg source = do
     Context
       { log = logCtx cfg,
         throw = throwCtx cfg,
-        gensym = gensymCtx,
+        gensym = gensymCtx cfg,
         llvm = llvmCtx,
-        global = globalCtx,
+        global = globalCtx cfg,
         locator = locatorCtx,
         alias = aliasCtx,
+        moduleCtx = _moduleCtx,
         shouldCancelAlloc = cancelAllocFlagConf cfg,
         initialSource = initialSourceConf cfg,
         targetPlatform =

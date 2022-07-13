@@ -1,16 +1,16 @@
-{-# LANGUAGE TemplateHaskell #-}
-
 module Entity.Module where
 
 import Context.Throw
 import Control.Comonad.Cofree
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
+import Entity.Const
 import Entity.Ens
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
+import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
 import Path
 import Path.IO
@@ -20,53 +20,36 @@ type SomePath =
   Either (Path Abs Dir) (Path Abs File)
 
 data Module = Module
-  { moduleTarget :: Map.HashMap Target (Path Rel File),
+  { moduleTarget :: Map.HashMap Target SGL.StrictGlobalLocator,
     moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
   }
   deriving (Show)
 
-moduleFile :: Path Rel File
-moduleFile =
-  $(mkRelFile "module.ens")
-
-defaultModulePrefix :: T.Text
-defaultModulePrefix =
-  "this"
-
-baseModulePrefix :: T.Text
-baseModulePrefix =
-  "base"
-
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
-  parent (moduleLocation baseModule) </> $(mkRelDir "source")
+  getModuleRootDir baseModule </> sourceRelDir
 
 getTargetDir :: Module -> Path Abs Dir
 getTargetDir baseModule =
-  parent (moduleLocation baseModule) </> $(mkRelDir "target")
+  getModuleRootDir baseModule </> targetRelDir
 
 getReleaseDir :: Module -> Path Abs Dir
 getReleaseDir baseModule =
-  getModuleRootDir baseModule </> $(mkRelDir "release")
+  getModuleRootDir baseModule </> releaseRelDir
 
 getArtifactDir :: Module -> Path Abs Dir
 getArtifactDir baseModule =
-  getTargetDir baseModule </> $(mkRelDir "artifact")
+  getTargetDir baseModule </> artifactRelDir
 
 getExecutableDir :: Module -> Path Abs Dir
 getExecutableDir baseModule =
-  getTargetDir baseModule </> $(mkRelDir "executable")
+  getTargetDir baseModule </> executableRelDir
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
-
-getTargetFilePath :: Module -> Target -> Maybe (Path Abs File)
-getTargetFilePath baseModule target = do
-  relPath <- Map.lookup target (moduleTarget baseModule)
-  return $ getSourceDir baseModule </> relPath
 
 findModuleFile :: Context -> Path Abs Dir -> IO (Path Abs File)
 findModuleFile ctx moduleRootDirCandidate = do
@@ -94,7 +77,7 @@ addDependency alias url checksum someModule =
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
-  let entryPoint = Map.map (\x -> () :< EnsString (T.pack (toFilePath x))) $ moduleTarget someModule
+  let entryPoint = Map.map (\x -> () :< EnsString (SGL.reify x)) $ moduleTarget someModule
   let dependency = flip Map.map (moduleDependency someModule) $ \(ModuleURL url, ModuleChecksum checksum) -> do
         let urlEns = () :< EnsString url
         let checksumEns = () :< EnsString checksum
@@ -118,8 +101,8 @@ ppExtraContent somePath =
 getID :: Module -> Module -> MID.ModuleID
 getID mainModule currentModule = do
   if moduleLocation mainModule == moduleLocation currentModule
-    then MID.This
+    then MID.Main
     else
-      MID.That $
+      MID.Library $
         ModuleChecksum $
           T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation currentModule)

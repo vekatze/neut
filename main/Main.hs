@@ -23,6 +23,7 @@ import qualified Context.Throw.IO as Throw
 import qualified Data.Text as T
 import Entity.ModuleAlias
 import Entity.ModuleURL
+import Entity.Target
 import Options.Applicative
 
 data Command
@@ -83,7 +84,7 @@ parseBuildOpt = do
   pure $
     Build
       Build.Config
-        { Build.mTarget = mTarget,
+        { Build.mTarget = Target <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.logCfg = logCfg,
           Build.pathCfg = pathConfig,
@@ -136,7 +137,8 @@ parseInitOpt = do
       Init.Config
         { Init.moduleName = T.pack moduleName,
           Init.throwCfg = throwConfig,
-          Init.logCfg = logCfg
+          Init.logCfg = logCfg,
+          Init.pathCfg = pathConfig
         }
 
 parseVersionOpt :: Parser Command

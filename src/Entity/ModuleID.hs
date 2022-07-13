@@ -11,8 +11,8 @@ import qualified Entity.ModuleChecksum as MC
 import GHC.Generics
 
 data ModuleID
-  = This
-  | That MC.ModuleChecksum
+  = Main
+  | Library MC.ModuleChecksum
   | Base
   deriving (Generic, Eq, Ord, Show)
 
@@ -23,9 +23,9 @@ instance Hashable ModuleID
 reify :: ModuleID -> T.Text
 reify moduleID =
   case moduleID of
-    This ->
+    Main ->
       "this"
-    That checksum ->
+    Library checksum ->
       MC.reify checksum
     Base ->
       "base"

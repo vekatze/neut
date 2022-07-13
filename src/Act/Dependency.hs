@@ -121,17 +121,17 @@ installIfNecessary ctx alias url checksum = do
 
 checkIfInstalled :: Module.Context -> MC.ModuleChecksum -> IO Bool
 checkIfInstalled ctx checksum = do
-  Module.getModuleFilePath ctx Nothing (MID.That checksum) >>= doesFileExist
+  Module.getModuleFilePath ctx Nothing (MID.Library checksum) >>= doesFileExist
 
 getLibraryModule :: Context -> ModuleAlias -> MC.ModuleChecksum -> IO Module
 getLibraryModule ctx alias checksum = do
-  moduleFilePath <- Module.getModuleFilePath (getModuleCtx ctx) Nothing (MID.That checksum)
+  moduleFilePath <- Module.getModuleFilePath (getModuleCtx ctx) Nothing (MID.Library checksum)
   moduleFileExists <- doesFileExist moduleFilePath
   if not moduleFileExists
     then
       Throw.raiseError' (getThrowCtx ctx) $
         "could not find the module file for `" <> extract alias <> "` (" <> MC.reify checksum <> ")."
-    else Module.fromFilePath (getThrowCtx ctx) moduleFilePath
+    else Module.fromFilePath (getThrowCtx ctx) (MID.Library checksum) moduleFilePath
 
 download :: Context -> Path Abs File -> ModuleAlias -> ModuleURL -> IO ()
 download ctx tempFilePath alias (ModuleURL url) = do
@@ -144,7 +144,7 @@ download ctx tempFilePath alias (ModuleURL url) = do
 
 extractToLibDir :: Context -> Path Abs File -> ModuleAlias -> MC.ModuleChecksum -> IO ()
 extractToLibDir ctx tempFilePath alias checksum = do
-  targetDirPath <- parent <$> Module.getModuleFilePath (getModuleCtx ctx) Nothing (MID.That checksum)
+  targetDirPath <- parent <$> Module.getModuleFilePath (getModuleCtx ctx) Nothing (MID.Library checksum)
   ensureDir targetDirPath
   let tarCmd = proc "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
   (_, _, Just tarErrorHandler, tarHandler) <-

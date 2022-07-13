@@ -54,8 +54,8 @@ toText term =
       "<sigma-elim>"
     _ :< WeakTermLet {} -> do
       "<let>"
-    _ :< WeakTermPrim x ->
-      T.pack $ show x -- fixme
+    _ :< WeakTermPrim prim ->
+      T.pack $ show prim -- fixme
     _ :< WeakTermAster i ->
       "?M" <> T.pack (show i)
     _ :< WeakTermInt _ a ->

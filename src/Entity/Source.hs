@@ -1,5 +1,7 @@
 module Entity.Source where
 
+import qualified Context.Module as Module
+import qualified Data.HashMap.Strict as Map
 import Entity.Module
 import Entity.OutputKind
 import Path
@@ -48,10 +50,13 @@ attachExtension file kind =
     OutputKindExecutable -> do
       return file
 
-isMainFile :: Source -> IO Bool
-isMainFile source = do
-  sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
-  return $ elem sourceRelPath $ moduleTarget (sourceModule source)
+isMainFile :: Module.Context -> Source -> IO Bool
+isMainFile ctx source = do
+  sourcePathList <- mapM (Module.getSourcePath ctx) $ Map.elems $ moduleTarget (sourceModule source)
+  return $ elem (sourceFilePath source) sourcePathList
+
+-- sourceRelPath <- stripProperPrefix (getSourceDir (sourceModule source)) (sourceFilePath source)
+-- return $ elem sourceRelPath $ moduleTarget (sourceModule source)
 
 sourceToOutputPath :: OutputKind -> Source -> IO (Path Abs File)
 sourceToOutputPath kind source = do
