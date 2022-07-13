@@ -20,7 +20,6 @@ import GHC.Generics
 
 type WeakTerm = Cofree WeakTermF Hint
 
--- fixme: add WeakTermResource and remove resourceTypeSetRef
 data WeakTermF a
   = WeakTermTau
   | WeakTermVar Ident
@@ -63,12 +62,6 @@ data WeakTermF a
 instance (Binary a) => Binary (WeakTermF a)
 
 instance Binary WeakTerm
-
-type DefInfo =
-  ((Hint, T.Text), [BinderF WeakTerm], WeakTerm, WeakTerm)
-
-type TopDefInfo =
-  ((Hint, T.Text), [BinderF WeakTerm], [BinderF WeakTerm], WeakTerm, WeakTerm)
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm
