@@ -229,7 +229,7 @@ parseDefineDataConstructor ::
   [BinderF PT.PreTerm] ->
   ((Hint, DD.DefiniteDescription, [BinderF PT.PreTerm]), Integer) ->
   IO PreStmt
-parseDefineDataConstructor ctx dataName dataArgs ((m, consName, consArgs), consNumber) = do
+parseDefineDataConstructor ctx dataName dataArgs ((m, consName, consArgs), discriminant) = do
   let dataConsArgs = dataArgs ++ consArgs
   let consArgs' = map identPlusToVar consArgs
   let dataType = constructDataType m dataName dataArgs
@@ -243,7 +243,7 @@ parseDefineDataConstructor ctx dataName dataArgs ((m, consName, consArgs), consN
     dataType
     $ m
       :< PT.PiIntro
-        (LamKindCons dataName consName consNumber dataType)
+        (LamKindCons dataName consName discriminant dataType)
         [ (m, Ident.fromText (DD.reify consName), m :< PT.Pi consArgs (m :< PT.Tau))
         ]
         (m :< PT.PiElim (preVar m (DD.reify consName)) consArgs')
