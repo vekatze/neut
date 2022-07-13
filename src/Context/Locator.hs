@@ -1,5 +1,7 @@
 module Context.Locator where
 
+import qualified Context.Module as Module
+import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad.IO.Class
 import qualified Entity.BaseName as BN
@@ -37,15 +39,23 @@ data Context = Context
     activateGlobalLocator :: SGL.StrictGlobalLocator -> IO (),
     activateDefiniteLocator :: DL.DefiniteLocator -> IO (),
     clearActiveLocators :: IO (),
-    getPossibleReferents :: LL.LocalLocator -> IO [DD.DefiniteDescription]
+    getPossibleReferents :: LL.LocalLocator -> IO [DD.DefiniteDescription],
+    getMainDefiniteDescription :: Source -> IO (Maybe DD.DefiniteDescription)
   }
 
 data Config = Config
   { mainModule :: Module,
     currentSource :: Source,
-    throwCtx :: Throw.Context
+    throwCtx :: Throw.Context,
+    pathCtx :: Path.Context,
+    moduleCtx :: Module.Context
   }
 
-getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
-getMainDefiniteDescription ctx = do
-  attachCurrentLocator ctx BN.main
+-- getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
+-- getMainDefiniteDescription ctx = do
+--   attachCurrentLocator ctx BN.main
+
+-- isMainFile :: Context -> Source -> IO Bool
+-- isMainFile ctx source = do
+--   sourcePathList <- mapM (getSourcePath ctx) $ Map.elems $ moduleTarget (sourceModule source)
+--   return $ elem (sourceFilePath source) sourcePathList

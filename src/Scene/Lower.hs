@@ -1,6 +1,5 @@
 module Scene.Lower
-  ( lowerMain,
-    lowerOther,
+  ( lower,
   )
 where
 
@@ -55,30 +54,42 @@ runLowerComp m = do
   (a, Cont b) <- runWriterT m
   b a
 
-lowerMain :: Context -> ([CompDef], Comp) -> IO LowComp
-lowerMain ctx (defList, mainTerm) = do
-  initialize $ cartImmName : cartClsName : map fst defList
-  registerCartesian ctx cartImmName
-  registerCartesian ctx cartClsName
-  forM_ defList $ \(name, (_, args, e)) ->
-    lowerComp ctx e >>= insLowDefEnv name args
-  mainTerm'' <- lowerComp ctx mainTerm
-  -- the result of "main" must be i64, not i8*
-  (result, resultVar) <- Gensym.newValueVarLocalWith (gensym ctx) "result"
-  castResult <- runLower $ lowerValueLetCast ctx resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
-  -- let result: i8* := (main-term) in {cast result to i64}
-  commConv result mainTerm'' castResult
+lower :: Context -> ([CompDef], Maybe Comp) -> IO (Maybe LowComp)
+lower ctx (defList, mMainTerm) = do
+  case mMainTerm of
+    Just mainTerm -> do
+      initialize $ cartImmName : cartClsName : map fst defList
+      registerCartesian ctx cartImmName
+      registerCartesian ctx cartClsName
+      forM_ defList $ \(name, (_, args, e)) ->
+        lowerComp ctx e >>= insLowDefEnv name args
+      mainTerm'' <- lowerComp ctx mainTerm
+      -- the result of "main" must be i64, not i8*
+      (result, resultVar) <- Gensym.newValueVarLocalWith (gensym ctx) "result"
+      castResult <- runLower $ lowerValueLetCast ctx resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
+      -- let result: i8* := (main-term) in {cast result to i64}
+      Just <$> commConv result mainTerm'' castResult
+    Nothing -> do
+      initialize $ map fst defList
+      insDeclEnv cartImmName [(), ()]
+      insDeclEnv cartClsName [(), ()]
+      insDeclEnv cartCellName [(), ()]
+      lowDeclEnv <- readIORef lowDeclEnvRef
+      forM_ defList $ \(name, (_, args, e)) ->
+        unless (Map.member name lowDeclEnv) $
+          lowerComp ctx e >>= insLowDefEnv name args
+      return Nothing
 
-lowerOther :: Context -> [CompDef] -> IO ()
-lowerOther ctx defList = do
-  initialize $ map fst defList
-  insDeclEnv cartImmName [(), ()]
-  insDeclEnv cartClsName [(), ()]
-  insDeclEnv cartCellName [(), ()]
-  lowDeclEnv <- readIORef lowDeclEnvRef
-  forM_ defList $ \(name, (_, args, e)) ->
-    unless (Map.member name lowDeclEnv) $
-      lowerComp ctx e >>= insLowDefEnv name args
+-- lowerOther :: Context -> [CompDef] -> IO ()
+-- lowerOther ctx defList = do
+--   initialize $ map fst defList
+--   insDeclEnv cartImmName [(), ()]
+--   insDeclEnv cartClsName [(), ()]
+--   insDeclEnv cartCellName [(), ()]
+--   lowDeclEnv <- readIORef lowDeclEnvRef
+--   forM_ defList $ \(name, (_, args, e)) ->
+--     unless (Map.member name lowDeclEnv) $
+--       lowerComp ctx e >>= insLowDefEnv name args
 
 initialize :: [T.Text] -> IO ()
 initialize nameList = do

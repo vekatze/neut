@@ -7,6 +7,7 @@ import qualified Context.Alias as Alias
 import qualified Context.Locator as Locator
 import qualified Context.Mode as Mode
 import qualified Context.Module as Module
+import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Foldable
@@ -43,6 +44,7 @@ type IsObjectAvailable =
 
 data Context = Context
   { asThrowCtx :: Throw.Context,
+    asPathCtx :: Path.Context,
     asModuleCtx :: Module.Context,
     traceSourceListRef :: IORef [Source],
     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
@@ -57,20 +59,21 @@ data Context = Context
 unravel ::
   Mode.Mode ->
   Throw.Context ->
+  Path.Context ->
   Module.Context ->
   Module ->
   Source ->
   IO (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source)
-unravel mode throwCtx moduleCtx mainModule source = do
-  ctx <- newCtx mode throwCtx moduleCtx mainModule
+unravel mode throwCtx pathCtx moduleCtx mainModule source = do
+  ctx <- newCtx mode throwCtx pathCtx moduleCtx mainModule
   (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' ctx source
   sourceAliasMap <- readIORef $ sourceAliasMapRef ctx
   hasCacheSet <- readIORef $ hasCacheSetRef ctx
   hasObjectSet <- readIORef $ hasObjectSetRef ctx
   return (isCacheAvailable, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, sourceSeq)
 
-newCtx :: Mode.Mode -> Throw.Context -> Module.Context -> Module -> IO Context
-newCtx mode throwCtx moduleCtx mainModule = do
+newCtx :: Mode.Mode -> Throw.Context -> Path.Context -> Module.Context -> Module -> IO Context
+newCtx mode throwCtx pathCtx moduleCtx mainModule = do
   _traceSourceListRef <- newIORef []
   _visitEnvRef <- newIORef Map.empty
   _sourceChildrenMapRef <- newIORef Map.empty
@@ -81,6 +84,7 @@ newCtx mode throwCtx moduleCtx mainModule = do
     Context
       { asThrowCtx = throwCtx,
         asModuleCtx = moduleCtx,
+        asPathCtx = pathCtx,
         traceSourceListRef = _traceSourceListRef,
         visitEnvRef = _visitEnvRef,
         sourceChildrenMapRef = _sourceChildrenMapRef,
@@ -198,7 +202,9 @@ newParseContext ctx source = do
       Locator.Config
         { Locator.mainModule = getMainModule ctx,
           Locator.throwCtx = asThrowCtx ctx,
-          Locator.currentSource = source
+          Locator.currentSource = source,
+          Locator.pathCtx = asPathCtx ctx,
+          Locator.moduleCtx = asModuleCtx ctx
         }
   aliasCtx <-
     Mode.aliasCtx (getMode ctx) $

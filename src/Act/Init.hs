@@ -59,11 +59,8 @@ createModuleFile newModule = do
 
 createMainFile :: Module.Context -> Module -> IO ()
 createMainFile moduleCtx newModule = do
-  -- let sourceDir = getSourceDir newModule
-  -- let target = Map.toList $ moduleTarget newModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath moduleCtx sgl
-    -- let mainFilePath = sourceDir </> relPath
     TIO.writeFile (toFilePath mainFilePath) "define main() : i64 as\n  0\nend\n"
 
 constructDefaultModule :: T.Text -> IO Module

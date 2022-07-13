@@ -8,7 +8,6 @@ import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.LLVM as LLVM
-import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Mode as Mode
 import qualified Context.Module as Module
@@ -20,7 +19,6 @@ import Data.Foldable
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
-import qualified Entity.DefiniteDescription as DD
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
@@ -81,7 +79,7 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
   sgl <- resolveTarget throwCtx mainModule target
   mainFilePath <- Module.getSourcePath moduleCtx sgl
   mainSource <- getMainSource mainModule mainFilePath
-  (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule mainSource
+  (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx pathCtx moduleCtx mainModule mainSource
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
@@ -115,12 +113,7 @@ compile ctxCfg hasObjectSet source = do
 
 loadTopLevelDefinitions :: App.Context -> Source -> IO ()
 loadTopLevelDefinitions ctx source = do
-  mMainFunctionName <- getMainFunctionName ctx source
-  case mMainFunctionName of
-    Just mainName ->
-      void $ parseMain ctx mainName source >>= elaborateMain ctx mainName source >>= clarifyMain ctx mainName
-    Nothing ->
-      void $ parseOther ctx source >>= elaborateOther ctx source >>= clarifyOther ctx
+  void $ parse ctx source >>= elaborate ctx source >>= clarify ctx source
 
 compile' :: App.Context -> Source -> IO ()
 compile' ctx source = do
@@ -133,20 +126,11 @@ compile' ctx source = do
 
 compileToLLVM :: App.Context -> Source -> IO L.ByteString
 compileToLLVM ctx source = do
-  mMainFunctionName <- getMainFunctionName ctx source
-  case mMainFunctionName of
-    Just mainName -> do
-      parseMain ctx mainName source
-        >>= elaborateMain ctx mainName source
-        >>= clarifyMain ctx mainName
-        >>= lowerMain ctx
-        >>= emitMain ctx
-    Nothing -> do
-      parseOther ctx source
-        >>= elaborateOther ctx source
-        >>= clarifyOther ctx
-        >>= lowerOther ctx
-        >> emitOther ctx
+  parse ctx source
+    >>= elaborate ctx source
+    >>= clarify ctx source
+    >>= lower ctx
+    >>= emit ctx
 
 link :: LLVM.Context -> Target -> Module -> [Source] -> IO ()
 link ctx target mainModule sourceList = do
@@ -173,10 +157,3 @@ resolveTarget ctx mainModule target = do
       return path
     Nothing ->
       Throw.raiseError' ctx $ "no such target is defined: `" <> extract target <> "`"
-
-getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
-getMainFunctionName ctx source = do
-  b <- isMainFile (App.moduleCtx ctx) source
-  if b
-    then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
-    else return Nothing

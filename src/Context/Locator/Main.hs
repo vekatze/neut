@@ -1,8 +1,10 @@
 module Context.Locator.Main (new) where
 
 import qualified Context.Locator as Locator
+import qualified Context.Module as Module
 import Control.Monad.IO.Class
 import qualified Data.Containers.ListUtils as ListUtils
+import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
@@ -39,7 +41,12 @@ new cfg = do
             currentGlobalLocatorRef
             currentSectionStackRef
             activeGlobalLocatorListRef
-            activeDefiniteLocatorListRef
+            activeDefiniteLocatorListRef,
+        Locator.getMainDefiniteDescription =
+          getMainDefiniteDescription
+            (Locator.moduleCtx cfg)
+            currentGlobalLocatorRef
+            currentSectionStackRef
       }
 
 withSection :: MonadIO m => IORef [S.Section] -> S.Section -> m a -> m a
@@ -113,3 +120,41 @@ getSourceLocator source = do
   relFilePath <- stripProperPrefix (Module.getSourceDir $ sourceModule source) $ sourceFilePath source
   (relFilePath', _) <- splitExtension relFilePath
   return $ SL.SourceLocator relFilePath'
+
+getMainDefiniteDescription ::
+  Module.Context ->
+  IORef SGL.StrictGlobalLocator ->
+  IORef [S.Section] ->
+  Source ->
+  IO (Maybe DD.DefiniteDescription)
+getMainDefiniteDescription moduleCtx currentGlobalLocatorRef currentSectionStackRef source = do
+  b <- isMainFile moduleCtx source
+  if b
+    then Just <$> attachCurrentLocator currentGlobalLocatorRef currentSectionStackRef BN.main
+    else return Nothing
+
+-- getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
+-- getMainDefiniteDescription ctx = do
+--   attachCurrentLocator ctx BN.main
+
+-- b <- isMainFile (App.moduleCtx ctx) source
+-- if b
+--   then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
+--   else return Nothing
+
+-- getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
+-- getMainFunctionName ctx source = do
+--   b <- isMainFile (App.moduleCtx ctx) source
+--   if b
+--     then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
+--     else return Nothing
+
+isMainFile ::
+  Module.Context ->
+  Source ->
+  IO Bool
+isMainFile moduleCtx source = do
+  sourcePathList <- mapM (Module.getSourcePath moduleCtx) $ Map.elems $ Module.moduleTarget (sourceModule source)
+  return $ elem (sourceFilePath source) sourcePathList
+
+-- getSourcePath (Module.throwCtx cfg) (Module.pathCtx cfg) (Module.mainModule cfg)

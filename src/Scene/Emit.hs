@@ -1,6 +1,5 @@
 module Scene.Emit
-  ( emitMain,
-    emitOther,
+  ( emit,
   )
 where
 
@@ -32,15 +31,19 @@ import qualified Entity.TargetPlatform as TP
 import Numeric.Half
 import qualified System.Info as System
 
-emitMain :: Context -> LowComp -> IO L.ByteString
-emitMain ctx mainTerm = do
-  mainTerm' <- LowComp.reduce ctx IntMap.empty Map.empty mainTerm
-  mainBuilder <- emitDefinition ctx "i64" "main" [] mainTerm'
-  emit' ctx mainBuilder
+emit :: Context -> Maybe LowComp -> IO L.ByteString
+emit ctx mMainTerm = do
+  case mMainTerm of
+    Just mainTerm -> do
+      mainTerm' <- LowComp.reduce ctx IntMap.empty Map.empty mainTerm
+      mainBuilder <- emitDefinition ctx "i64" "main" [] mainTerm'
+      emit' ctx mainBuilder
+    Nothing -> do
+      emit' ctx []
 
-emitOther :: Context -> IO L.ByteString
-emitOther ctx =
-  emit' ctx []
+-- emitOther :: Context -> IO L.ByteString
+-- emitOther ctx =
+--   emit' ctx []
 
 emit' :: Context -> [Builder] -> IO L.ByteString
 emit' ctx aux = do

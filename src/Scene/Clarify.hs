@@ -1,6 +1,5 @@
 module Scene.Clarify
-  ( clarifyMain,
-    clarifyOther,
+  ( clarify,
   )
 where
 
@@ -40,6 +39,7 @@ import Entity.PrimNum
 import Entity.PrimNum.ToText
 import Entity.PrimNumSize
 import Entity.PrimOp
+import Entity.Source
 import Entity.Stmt
 import Entity.Term
 import Entity.Term.FromPrimNum
@@ -47,17 +47,31 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 
-clarifyMain :: Context -> DD.DefiniteDescription -> [Stmt] -> IO ([CompDef], Comp)
-clarifyMain ctx mainName defList = do
-  _ <- returnImmediateS4 (gensym ctx)
-  _ <- returnClosureS4 ctx
-  defList' <- clarifyDefList ctx defList
-  mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName)) []
-  return (defList', mainTerm)
+clarify :: Context -> Source -> [Stmt] -> IO ([CompDef], Maybe Comp)
+clarify ctx source defList = do
+  mMainDefiniteDescription <- Locator.getMainDefiniteDescription (locator ctx) source
+  case mMainDefiniteDescription of
+    Just mainName -> do
+      _ <- returnImmediateS4 (gensym ctx)
+      _ <- returnClosureS4 ctx
+      defList' <- clarifyDefList ctx defList
+      mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName)) []
+      return (defList', Just mainTerm)
+    Nothing -> do
+      defList' <- clarifyDefList ctx defList
+      return (defList', Nothing)
 
-clarifyOther :: Context -> [Stmt] -> IO [CompDef]
-clarifyOther ctx defList = do
-  clarifyDefList ctx defList
+-- clarifyMain :: Context -> DD.DefiniteDescription -> [Stmt] -> IO ([CompDef], Comp)
+-- clarifyMain ctx mainName defList = do
+--   _ <- returnImmediateS4 (gensym ctx)
+--   _ <- returnClosureS4 ctx
+--   defList' <- clarifyDefList ctx defList
+--   mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName)) []
+--   return (defList', mainTerm)
+
+-- clarifyOther :: Context -> [Stmt] -> IO [CompDef]
+-- clarifyOther ctx defList = do
+--   clarifyDefList ctx defList
 
 clarifyDefList :: Context -> [Stmt] -> IO [CompDef]
 clarifyDefList ctx defList = do

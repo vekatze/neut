@@ -1,6 +1,5 @@
 module Scene.Parse
-  ( parseMain,
-    parseOther,
+  ( parse,
   )
 where
 
@@ -42,22 +41,27 @@ import qualified Scene.Parse.Discern as Discern
 import Scene.Parse.Enum
 import qualified Scene.Parse.Import as Parse
 import Scene.Parse.PreTerm
-import Text.Megaparsec
+import Text.Megaparsec hiding (parse)
 
 --
 -- core functions
 --
 
-parseMain :: Context -> DD.DefiniteDescription -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
-parseMain ctx mainFunctionName source = do
+parse :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parse ctx source = do
   result <- parseSource ctx source
-  let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
-  ensureMain ctx m mainFunctionName
-  return result
+  mMainDD <- Locator.getMainDefiniteDescription (locator ctx) source
+  case mMainDD of
+    Just mainDD -> do
+      let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
+      ensureMain ctx m mainDD
+      return result
+    Nothing ->
+      return result
 
-parseOther :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
-parseOther =
-  parseSource
+-- parseOther :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
+-- parseOther =
+--   parseSource
 
 parseSource :: Context -> Source -> IO (Either [Stmt] ([WeakStmt], [EnumInfo]))
 parseSource ctx source = do

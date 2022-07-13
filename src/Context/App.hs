@@ -75,7 +75,9 @@ new cfg source = do
       Locator.Config
         { Locator.currentSource = source,
           Locator.mainModule = mainModuleConf cfg,
-          Locator.throwCtx = throwCtx cfg
+          Locator.throwCtx = throwCtx cfg,
+          Locator.pathCtx = pathCtx cfg,
+          Locator.moduleCtx = _moduleCtx
         }
   aliasCtx <-
     Mode.aliasCtx (mode cfg) $

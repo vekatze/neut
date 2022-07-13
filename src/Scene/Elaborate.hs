@@ -1,12 +1,12 @@
 module Scene.Elaborate
-  ( elaborateMain,
-    elaborateOther,
+  ( elaborate,
   )
 where
 
 import Context.App
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
+import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
@@ -44,24 +44,20 @@ import Scene.Elaborate.Infer
 import Scene.Elaborate.Unify
 import Prelude hiding (log)
 
-elaborateMain :: Context -> DD.DefiniteDescription -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
-elaborateMain ctx mainFunctionName =
-  elaborate (elaborateProgramMain ctx mainFunctionName)
-
-elaborateOther :: Context -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
-elaborateOther ctx =
-  elaborate (elaborateProgramOther ctx)
-
-elaborate :: ([WeakStmt] -> IO [Stmt]) -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
-elaborate defListElaborator source cacheOrStmt =
+elaborate :: Context -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborate ctx source cacheOrStmt = do
   case cacheOrStmt of
     Left cache -> do
       forM_ cache registerTopLevelDef
       return cache
     Right (defList, enumInfoList) -> do
-      defList' <- defListElaborator defList
-      saveCache (source, defList') enumInfoList
-      return defList'
+      mMainDefiniteDescription <- Locator.getMainDefiniteDescription (locator ctx) source
+      defList' <- mapM (setupDef (gensym ctx)) defList
+      defList'' <- mapM (inferStmt ctx mMainDefiniteDescription) defList'
+      unify (gensym ctx)
+      defList''' <- elaborateStmtList ctx defList''
+      saveCache (source, defList''') enumInfoList
+      return defList'''
 
 registerTopLevelDef :: Stmt -> IO ()
 registerTopLevelDef stmt = do
@@ -74,27 +70,7 @@ registerTopLevelDef stmt = do
     StmtDefineResource m name _ _ ->
       insTermTypeEnv name $ m :< WeakTermTau
 
-elaborateProgramMain :: Context -> DD.DefiniteDescription -> [WeakStmt] -> IO [Stmt]
-elaborateProgramMain ctx mainFunctionName = do
-  elaborateProgram ctx $ mapM $ inferStmtMain ctx mainFunctionName
-
-elaborateProgramOther :: Context -> [WeakStmt] -> IO [Stmt]
-elaborateProgramOther ctx = do
-  elaborateProgram ctx $ mapM (inferStmtOther ctx)
-
-elaborateProgram :: Context -> ([WeakStmt] -> IO [WeakStmt]) -> [WeakStmt] -> IO [Stmt]
-elaborateProgram ctx defListInferrer defList = do
-  defList' <- mapM (setupDef (gensym ctx)) defList >>= defListInferrer . concat
-  -- cs <- readIORef constraintEnv
-  -- p "==========================================================="
-  -- forM_ cs $ \(e1, e2) -> do
-  --   p $ T.unpack $ toText e1
-  --   p $ T.unpack $ toText e2
-  --   p "---------------------"
-  unify (gensym ctx)
-  elaborateStmtList ctx defList'
-
-setupDef :: Gensym.Context -> WeakStmt -> IO [WeakStmt]
+setupDef :: Gensym.Context -> WeakStmt -> IO WeakStmt
 setupDef ctx def =
   case def of
     WeakStmtDefine opacity m f impArgNum xts codType e -> do
@@ -102,29 +78,18 @@ setupDef ctx def =
       insTermTypeEnv f $ m :< WeakTermPi xts' codType'
       modifyIORef' impArgEnvRef $ Map.insert f impArgNum
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
-      return [WeakStmtDefine opacity m f impArgNum xts' codType' e]
+      return $ WeakStmtDefine opacity m f impArgNum xts' codType' e
     WeakStmtDefineResource m name discarder copier -> do
       insTermTypeEnv name $ m :< WeakTermTau
-      return [WeakStmtDefineResource m name discarder copier]
+      return $ WeakStmtDefineResource m name discarder copier
 
-inferStmtMain :: Context -> DD.DefiniteDescription -> WeakStmt -> IO WeakStmt
-inferStmtMain ctx mainFunctionName stmt = do
+inferStmt :: Context -> Maybe DD.DefiniteDescription -> WeakStmt -> IO WeakStmt
+inferStmt ctx mMainDD stmt = do
   case stmt of
     WeakStmtDefine isReducible m x impArgNum xts codType e -> do
-      (xts', e', codType') <- inferStmt ctx xts e codType
-      when (x == mainFunctionName) $
-        insConstraintEnv
-          (m :< WeakTermPi [] (i64 m))
-          (m :< WeakTermPi xts codType)
-      return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
-    WeakStmtDefineResource m name discarder copier ->
-      inferDefineResource ctx m name discarder copier
-
-inferStmtOther :: Context -> WeakStmt -> IO WeakStmt
-inferStmtOther ctx stmt = do
-  case stmt of
-    WeakStmtDefine isReducible m x impArgNum xts codType e -> do
-      (xts', e', codType') <- inferStmt ctx xts e codType
+      (xts', e', codType') <- inferStmtDefine ctx xts e codType
+      when (Just x == mMainDD) $
+        insConstraintEnv (m :< WeakTermPi [] (i64 m)) (m :< WeakTermPi xts codType)
       return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier ->
       inferDefineResource ctx m name discarder copier
@@ -140,8 +105,8 @@ inferDefineResource ctx m name discarder copier = do
   insConstraintEnv botBot tc
   return $ WeakStmtDefineResource m name discarder' copier'
 
-inferStmt :: Context -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
-inferStmt ctx xts e codType = do
+inferStmtDefine :: Context -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
+inferStmtDefine ctx xts e codType = do
   (xts', (e', te)) <- inferBinder ctx [] xts e
   codType' <- inferType ctx codType
   insConstraintEnv codType' te
@@ -433,3 +398,10 @@ doesContainDefaultCase enumCaseList =
       True
     _ : rest ->
       doesContainDefaultCase rest
+
+-- cs <- readIORef constraintEnv
+-- p "==========================================================="
+-- forM_ cs $ \(e1, e2) -> do
+--   p $ T.unpack $ toText e1
+--   p $ T.unpack $ toText e2
+--   p "---------------------"

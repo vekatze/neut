@@ -20,3 +20,8 @@ data Config = Config
     throwCtx :: Throw.Context,
     pathCtx :: Path.Context
   }
+
+-- isMainFile :: Context -> Source -> IO Bool
+-- isMainFile ctx source = do
+--   sourcePathList <- mapM (getSourcePath ctx) $ Map.elems $ moduleTarget (sourceModule source)
+--   return $ elem (sourceFilePath source) sourcePathList

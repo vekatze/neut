@@ -24,11 +24,21 @@ new cfg = do
   return $
     Module.Context
       { Module.getModuleFilePath =
-          getModuleFilePath (Module.throwCtx cfg) (Module.pathCtx cfg) (Module.mainModule cfg),
+          getModuleFilePath
+            (Module.throwCtx cfg)
+            (Module.pathCtx cfg)
+            (Module.mainModule cfg),
         Module.getModule =
-          getModule (Module.throwCtx cfg) (Module.pathCtx cfg) (Module.mainModule cfg) moduleCacheMapRef,
+          getModule
+            (Module.throwCtx cfg)
+            (Module.pathCtx cfg)
+            (Module.mainModule cfg)
+            moduleCacheMapRef,
         Module.getSourcePath =
-          getSourcePath (Module.throwCtx cfg) (Module.pathCtx cfg) (Module.mainModule cfg)
+          getSourcePath
+            (Module.throwCtx cfg)
+            (Module.pathCtx cfg)
+            (Module.mainModule cfg)
       }
 
 getModuleFilePath :: Throw.Context -> Path.Context -> Module -> Maybe H.Hint -> MID.ModuleID -> IO (Path Abs File)

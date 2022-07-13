@@ -7,7 +7,6 @@ where
 import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
-import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Mode as Mode
 import qualified Context.Module as Module
@@ -15,7 +14,6 @@ import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
-import qualified Entity.DefiniteDescription as DD
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.Source
@@ -67,7 +65,7 @@ check' mode throwCtx logCtx pathCtx moduleCtx sgl mainModule = do
   filePath <- Module.getSourcePath moduleCtx sgl
   ensureFileModuleSanity throwCtx filePath mainModule
   let initialSource = Source {sourceModule = mainModule, sourceFilePath = filePath}
-  (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx moduleCtx mainModule initialSource
+  (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx pathCtx moduleCtx mainModule initialSource
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   let ctxCfg =
@@ -86,21 +84,9 @@ check' mode throwCtx logCtx pathCtx moduleCtx sgl mainModule = do
           }
   forM_ dependenceSeq $ \source -> do
     ctx <- App.new ctxCfg source
-    mMainFunctionName <- getMainFunctionName ctx source
-    case mMainFunctionName of
-      Just mainName ->
-        void $ parseMain ctx mainName source >>= elaborateMain ctx mainName source
-      Nothing ->
-        void $ parseOther ctx source >>= elaborateOther ctx source
+    void $ parse ctx source >>= elaborate ctx source
 
 ensureFileModuleSanity :: Throw.Context -> Path Abs File -> Module -> IO ()
 ensureFileModuleSanity ctx filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     Throw.raiseError' ctx "the specified file is not in the current module"
-
-getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
-getMainFunctionName ctx source = do
-  b <- isMainFile (App.moduleCtx ctx) source
-  if b
-    then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
-    else return Nothing
