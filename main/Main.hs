@@ -3,9 +3,10 @@ module Main (main) where
 import qualified Act.Build as Build
 import qualified Act.Check as Check
 import qualified Act.Clean as Clean
-import qualified Act.Dependency as Dependency
+import qualified Act.Get as Get
 import qualified Act.Init as Init
 import qualified Act.Release as Release
+import qualified Act.Tidy as Tidy
 import qualified Act.Version as Version
 import qualified Context.Alias.Main as Alias
 import qualified Context.Gensym.Main as Gensym
@@ -30,8 +31,8 @@ data Command
   | Check Check.Config
   | Clean Clean.Config
   | Release Release.Config
-  | Get Dependency.GetConfig
-  | Tidy Dependency.TidyConfig
+  | Get Get.Config
+  | Tidy Tidy.Config
   | Init Init.Config
   | ShowVersion Version.Config
 
@@ -50,9 +51,9 @@ main = do
     Init cfg ->
       Init.initialize prodMode cfg
     Get cfg ->
-      Dependency.get prodMode cfg
+      Get.get prodMode cfg
     Tidy cfg ->
-      Dependency.tidy prodMode cfg
+      Tidy.tidy prodMode cfg
     ShowVersion cfg ->
       Version.showVersion cfg
 
@@ -107,11 +108,11 @@ parseGetOpt = do
   logCfg <- logConfigOpt
   pure $
     Get
-      Dependency.GetConfig
-        { Dependency.moduleAlias = ModuleAlias $ T.pack moduleAlias,
-          Dependency.moduleURL = ModuleURL $ T.pack moduleURL,
-          Dependency.throwCfg = throwConfig,
-          Dependency.logCfg = logCfg
+      Get.Config
+        { Get.moduleAlias = ModuleAlias $ T.pack moduleAlias,
+          Get.moduleURL = ModuleURL $ T.pack moduleURL,
+          Get.throwCfg = throwConfig,
+          Get.logCfg = logCfg
         }
 
 parseTidyOpt :: Parser Command
@@ -119,9 +120,9 @@ parseTidyOpt = do
   logCfg <- logConfigOpt
   pure $
     Tidy
-      Dependency.TidyConfig
-        { Dependency.tidyThrowCfg = throwConfig,
-          Dependency.tidyLogCfg = logCfg
+      Tidy.Config
+        { Tidy.throwCfg = throwConfig,
+          Tidy.logCfg = logCfg
         }
 
 parseInitOpt :: Parser Command
