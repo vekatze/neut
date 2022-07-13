@@ -15,14 +15,12 @@ import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
-import qualified Data.Text as T
 import qualified Entity.DefiniteDescription as DD
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.Source
 import qualified Entity.StrictGlobalLocator as SGL
 import Path
-import Path.IO
 import Scene.Elaborate
 import Scene.Parse
 import Scene.Unravel
@@ -30,17 +28,16 @@ import Scene.Unravel
 data Config = Config
   { mFilePathString :: Maybe FilePath,
     logCfg :: Log.Config,
-    throwCfg :: Throw.Config,
-    pathCfg :: Path.Config
+    throwCfg :: Throw.Config
   }
 
 check :: Mode.Mode -> Config -> IO ()
 check mode cfg = do
   throwCtx <- Mode.throwCtx mode $ throwCfg cfg
   logCtx <- Mode.logCtx mode $ logCfg cfg
-  pathCtx <- Mode.pathCtx mode $ pathCfg cfg
+  pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Throw.run throwCtx (Log.printLog logCtx) $ do
-    ensureNotInLibDir throwCtx pathCtx "check"
+    Path.ensureNotInLibDir pathCtx
     mainModule <- Module.fromCurrentPath throwCtx
     moduleCtx <-
       Mode.moduleCtx mode $
@@ -100,14 +97,6 @@ ensureFileModuleSanity :: Throw.Context -> Path Abs File -> Module -> IO ()
 ensureFileModuleSanity ctx filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     Throw.raiseError' ctx "the specified file is not in the current module"
-
-ensureNotInLibDir :: Throw.Context -> Path.Context -> T.Text -> IO ()
-ensureNotInLibDir throwCtx pathCtx commandName = do
-  currentDir <- getCurrentDir
-  libDir <- Path.getLibraryDirPath pathCtx
-  when (isProperPrefixOf libDir currentDir) $
-    Throw.raiseError' throwCtx $
-      "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
 getMainFunctionName :: App.Context -> Source -> IO (Maybe DD.DefiniteDescription)
 getMainFunctionName ctx source = do

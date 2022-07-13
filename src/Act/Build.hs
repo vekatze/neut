@@ -42,7 +42,6 @@ data Config = Config
     mClangOptString :: Maybe String,
     logCfg :: Log.Config,
     throwCfg :: Throw.Config,
-    pathCfg :: Path.Config,
     shouldCancelAlloc :: Bool
   }
 
@@ -50,7 +49,7 @@ build :: Mode.Mode -> Config -> IO ()
 build mode cfg = do
   throwCtx <- Mode.throwCtx mode $ throwCfg cfg
   logCtx <- Mode.logCtx mode $ logCfg cfg
-  pathCtx <- Mode.pathCtx mode $ pathCfg cfg
+  pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Throw.run throwCtx (Log.printLog logCtx) $ do
     mainModule <- Module.fromCurrentPath throwCtx
     moduleCtx <-
@@ -60,7 +59,7 @@ build mode cfg = do
             Module.throwCtx = throwCtx,
             Module.pathCtx = pathCtx
           }
-    ensureNotInLibDir throwCtx pathCtx "build"
+    Path.ensureNotInLibDir pathCtx
     case mTarget cfg of
       Just target ->
         build' mode throwCtx logCtx pathCtx moduleCtx (shouldCancelAlloc cfg) target mainModule
@@ -102,14 +101,6 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
   mapM_ (compile ctxCfg hasObjectSet) dependenceSeq
   llvmCtx <- Mode.llvmCtx mode $ LLVM.Config {LLVM.throwCtx = throwCtx, LLVM.clangOptString = ""} -- fixme
   unless isObjectAvailable $ link llvmCtx target mainModule $ toList dependenceSeq
-
-ensureNotInLibDir :: Throw.Context -> Path.Context -> T.Text -> IO ()
-ensureNotInLibDir throwCtx pathCtx commandName = do
-  currentDir <- getCurrentDir
-  libDir <- Path.getLibraryDirPath pathCtx
-  when (isProperPrefixOf libDir currentDir) $
-    Throw.raiseError' throwCtx $
-      "the subcommand `" <> commandName <> "` cannot be run under the library directory"
 
 compile ::
   App.Config ->

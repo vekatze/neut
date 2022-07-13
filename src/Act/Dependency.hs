@@ -38,15 +38,14 @@ data GetConfig = GetConfig
   { moduleAlias :: ModuleAlias,
     moduleURL :: ModuleURL,
     throwCfg :: Throw.Config,
-    logCfg :: Log.Config,
-    pathCfg :: Path.Config
+    logCfg :: Log.Config
   }
 
 get :: Mode.Mode -> GetConfig -> IO ()
 get mode cfg = do
   throwCtx <- Mode.throwCtx mode (throwCfg cfg)
   logCtx <- Mode.logCtx mode (logCfg cfg)
-  pathCtx <- Mode.pathCtx mode (pathCfg cfg)
+  pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Throw.run throwCtx (Log.printLog logCtx) $ do
     mainModule <- Module.fromCurrentPath throwCtx
     moduleCtx <-
@@ -69,15 +68,14 @@ get mode cfg = do
 
 data TidyConfig = TidyConfig
   { tidyThrowCfg :: Throw.Config,
-    tidyLogCfg :: Log.Config,
-    tidyPathCfg :: Path.Config
+    tidyLogCfg :: Log.Config
   }
 
 tidy :: Mode.Mode -> TidyConfig -> IO ()
 tidy mode cfg = do
   throwCtx <- Mode.throwCtx mode (tidyThrowCfg cfg)
   logCtx <- Mode.logCtx mode (tidyLogCfg cfg)
-  pathCtx <- Mode.pathCtx mode (tidyPathCfg cfg)
+  pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Throw.run throwCtx (Log.printLog logCtx) $ do
     mainModule <- Module.fromCurrentPath throwCtx
     moduleCtx <-

@@ -25,15 +25,14 @@ import Path.IO
 data Config = Config
   { moduleName :: T.Text,
     throwCfg :: Throw.Config,
-    logCfg :: Log.Config,
-    pathCfg :: Path.Config
+    logCfg :: Log.Config
   }
 
 initialize :: Mode.Mode -> Config -> IO ()
 initialize mode cfg = do
   throwCtx <- Mode.throwCtx mode $ throwCfg cfg
   logCtx <- Mode.logCtx mode $ logCfg cfg
-  pathCtx <- Mode.pathCtx mode $ pathCfg cfg
+  pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Throw.run throwCtx (Log.printLog logCtx) $ do
     newModule <- constructDefaultModule (moduleName cfg)
     moduleDirExists <- doesDirExist $ parent $ moduleLocation newModule

@@ -16,7 +16,6 @@ import qualified Context.Log as Log
 import qualified Context.Log.IO as Log
 import qualified Context.Mode as Mode
 import qualified Context.Module.Main as Module
-import qualified Context.Path as Path
 import qualified Context.Path.Main as Path
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
@@ -87,7 +86,6 @@ parseBuildOpt = do
         { Build.mTarget = Target <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.logCfg = logCfg,
-          Build.pathCfg = pathConfig,
           Build.throwCfg = throwConfig,
           Build.shouldCancelAlloc = shouldCancelAlloc
         }
@@ -113,8 +111,7 @@ parseGetOpt = do
         { Dependency.moduleAlias = ModuleAlias $ T.pack moduleAlias,
           Dependency.moduleURL = ModuleURL $ T.pack moduleURL,
           Dependency.throwCfg = throwConfig,
-          Dependency.logCfg = logCfg,
-          Dependency.pathCfg = pathConfig
+          Dependency.logCfg = logCfg
         }
 
 parseTidyOpt :: Parser Command
@@ -124,8 +121,7 @@ parseTidyOpt = do
     Tidy
       Dependency.TidyConfig
         { Dependency.tidyThrowCfg = throwConfig,
-          Dependency.tidyLogCfg = logCfg,
-          Dependency.tidyPathCfg = pathConfig
+          Dependency.tidyLogCfg = logCfg
         }
 
 parseInitOpt :: Parser Command
@@ -137,8 +133,7 @@ parseInitOpt = do
       Init.Config
         { Init.moduleName = T.pack moduleName,
           Init.throwCfg = throwConfig,
-          Init.logCfg = logCfg,
-          Init.pathCfg = pathConfig
+          Init.logCfg = logCfg
         }
 
 parseVersionOpt :: Parser Command
@@ -154,8 +149,7 @@ parseCheckOpt = do
       Check.Config
         { Check.mFilePathString = inputFilePath,
           Check.logCfg = logCfg,
-          Check.throwCfg = throwConfig,
-          Check.pathCfg = pathConfig
+          Check.throwCfg = throwConfig
         }
 
 logConfigOpt :: Parser Log.Config
@@ -223,7 +217,3 @@ prodMode =
 throwConfig :: Throw.Config
 throwConfig =
   Throw.Config {}
-
-pathConfig :: Path.Config
-pathConfig =
-  Path.Config {}

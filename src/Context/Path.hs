@@ -1,15 +1,13 @@
 module Context.Path where
 
+import qualified Context.Throw as Throw
 import Path
 
-newtype Context = Context
-  { getLibraryDirPath :: IO (Path Abs Dir)
-  -- getModuleFilePath :: Maybe Hint -> ModuleID -> IO (Path Abs File)
+data Context = Context
+  { getLibraryDirPath :: IO (Path Abs Dir),
+    ensureNotInLibDir :: IO ()
   }
 
-data Config = Config
-  {
+newtype Config = Config
+  { throwCtx :: Throw.Context
   }
-
--- currentModule :: Module,
--- throwCtx :: Throw.Context
