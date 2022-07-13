@@ -97,7 +97,7 @@ preTermSimple ctx = do
       preTermAster ctx,
       preTermInteger (gensym ctx),
       preTermFloat (gensym ctx),
-      preTermDefiniteDescription,
+      preTermDefiniteDescription ctx,
       preTermVar
     ]
 
@@ -225,18 +225,18 @@ preTermSigma ctx = do
   ts <- argList $ choice [try $ preAscription ctx, typeWithoutIdent ctx]
   return $ m :< PT.Sigma ts
 
-parseDefiniteDescription :: Parser (Hint, GL.GlobalLocator, LL.LocalLocator)
-parseDefiniteDescription = do
+parseDefiniteDescription :: Context -> Parser (Hint, GL.GlobalLocator, LL.LocalLocator)
+parseDefiniteDescription ctx = do
   m <- currentHint
   globalLocator <- symbol
-  globalLocator' <- liftIO $ GL.reflect globalLocator
+  globalLocator' <- liftIO $ GL.reflect (throw ctx) m globalLocator
   delimiter definiteSep
   localLocator <- parseLocalLocator
   return (m, globalLocator', localLocator)
 
-preTermDefiniteDescription :: Parser PT.PreTerm
-preTermDefiniteDescription = do
-  (m, globalLocator, localLocator) <- try parseDefiniteDescription
+preTermDefiniteDescription :: Context -> Parser PT.PreTerm
+preTermDefiniteDescription ctx = do
+  (m, globalLocator, localLocator) <- try $ parseDefiniteDescription ctx
   return $ m :< PT.VarGlobal globalLocator localLocator
 
 parseLocalLocator :: Parser LL.LocalLocator

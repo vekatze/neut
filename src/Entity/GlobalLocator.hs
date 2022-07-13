@@ -4,8 +4,10 @@ import qualified Context.Throw as Throw
 import Data.Binary
 import Data.Hashable
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Const
 import qualified Entity.GlobalLocatorAlias as GLA
+import qualified Entity.Hint as H
 import Entity.ModuleAlias
 import qualified Entity.SourceLocator as SL
 import GHC.Generics
@@ -28,7 +30,7 @@ reify gl =
     GlobalLocator alias locator ->
       extract alias <> nsSep <> SL.toText locator
     GlobalLocatorAlias alias ->
-      GLA.reify alias
+      BN.reify $ GLA.reify alias
 
 reflect' :: Throw.Context -> T.Text -> IO (ModuleAlias, SL.SourceLocator)
 reflect' ctx rawTxt = do
@@ -40,11 +42,14 @@ reflect' ctx rawTxt = do
       locator <- SL.reflect $ T.tail suffix
       return (ModuleAlias prefix, locator)
 
-reflect :: T.Text -> IO GlobalLocator
-reflect rawTxt = do
+reflect :: Throw.Context -> H.Hint -> T.Text -> IO GlobalLocator
+reflect ctx m rawTxt = do
   case T.breakOn nsSep rawTxt of
     (_, "") ->
-      return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias rawTxt)
+      return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias (BN.fromText rawTxt)) -- rawTxt doesn't contain any nsSeps
     (prefix, suffix) -> do
-      locator <- SL.reflect $ T.tail suffix
-      return (GlobalLocator (ModuleAlias prefix) locator)
+      case SL.reflect $ T.tail suffix of
+        Just locator ->
+          return (GlobalLocator (ModuleAlias prefix) locator)
+        Nothing ->
+          Throw.raiseError ctx m $ "global locators can't end with '" <> nsSep <> "'"

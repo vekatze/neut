@@ -63,7 +63,7 @@ parseImportSimple :: Context -> Parser (Source, Maybe AliasInfo)
 parseImportSimple ctx = do
   m <- currentHint
   locatorText <- symbol
-  globalLocator <- liftIO $ GL.reflect locatorText
+  globalLocator <- liftIO $ GL.reflect (throw ctx) m locatorText
   strictGlobalLocator <- liftIO $ Alias.resolveAlias (alias ctx) m globalLocator
   source <- liftIO $ getSource (moduleCtx ctx) m strictGlobalLocator locatorText
   return (source, Nothing)
@@ -78,10 +78,10 @@ parseImportQualified ctx = do
   m <- currentHint
   locatorText <- symbol
   keyword "as"
-  globalLocator <- liftIO $ GL.reflect locatorText
+  globalLocator <- liftIO $ GL.reflect (throw ctx) m locatorText
   strictGlobalLocator <- liftIO $ Alias.resolveAlias (alias ctx) m globalLocator
   source <- liftIO $ getSource (moduleCtx ctx) m strictGlobalLocator locatorText
-  globalLocatorAlias <- GLA.GlobalLocatorAlias <$> symbol
+  globalLocatorAlias <- GLA.GlobalLocatorAlias <$> baseName
   return (source, Just $ AliasInfoPrefix m globalLocatorAlias strictGlobalLocator)
 
 skipImportQualified :: Parser ()

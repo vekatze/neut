@@ -5,6 +5,7 @@ import qualified Context.Throw as Throw
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Maybe as Maybe
+import qualified Entity.BaseName as BN
 import Entity.Const
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalLocatorAlias as GLA
@@ -56,7 +57,7 @@ registerGlobalLocatorAlias ::
 registerGlobalLocatorAlias ctx locatorAliasMapRef m from to = do
   aliasEnv <- readIORef locatorAliasMapRef
   if Map.member from aliasEnv
-    then Throw.raiseError ctx m $ "the global locator `" <> GLA.reify from <> "` is already registered"
+    then Throw.raiseError ctx m $ "the global locator `" <> BN.reify (GLA.reify from) <> "` is already registered"
     else writeIORef locatorAliasMapRef $ Map.insert from to aliasEnv
 
 resolveAlias ::
@@ -82,7 +83,7 @@ resolveAlias throwCtx aliasMapRef moduleAliasMap m gl = do
           return sgl
         Nothing ->
           Throw.raiseError throwCtx m $
-            "no such global locator alias is defined: " <> GLA.reify alias
+            "no such global locator alias is defined: " <> BN.reify (GLA.reify alias)
 
 resolveModuleAlias :: Throw.Context -> ModuleAliasMap -> Hint -> ModuleAlias -> IO MID.ModuleID
 resolveModuleAlias throwCtx aliasMap m moduleAlias = do

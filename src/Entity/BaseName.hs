@@ -21,7 +21,7 @@ import Entity.Const
 import GHC.Generics
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq)
 
 instance Binary BaseName
 

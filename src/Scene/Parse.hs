@@ -112,14 +112,14 @@ program' ctx =
 parseStmtUse :: Context -> Parser ()
 parseStmtUse ctx = do
   try $ keyword "use"
-  loc <- parseLocator (alias ctx)
+  loc <- parseLocator ctx
   case loc of
     Left partialLocator ->
       liftIO $ Locator.activateDefiniteLocator (locator ctx) partialLocator
     Right globalLocator ->
       liftIO $ Locator.activateGlobalLocator (locator ctx) globalLocator
 
-parseLocator :: Alias.Context -> Parser (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
+parseLocator :: Context -> Parser (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
 parseLocator ctx = do
   choice
     [ Left <$> try (parseDefiniteLocator ctx),
@@ -137,20 +137,20 @@ parseStmt ctx = do
       return <$> parseSection ctx
     ]
 
-parseDefiniteLocator :: Alias.Context -> Parser DL.DefiniteLocator
+parseDefiniteLocator :: Context -> Parser DL.DefiniteLocator
 parseDefiniteLocator ctx = do
   m <- currentHint
-  gl <- symbol >>= liftIO . (GL.reflect >=> Alias.resolveAlias ctx m)
+  gl <- symbol >>= liftIO . (GL.reflect (throw ctx) m >=> Alias.resolveAlias (alias ctx) m)
   delimiter definiteSep
   ll <- symbol
   let sectionStack = map Section.Section $ BN.bySplit ll
   return $ DL.new gl sectionStack
 
-parseGlobalLocator :: Alias.Context -> Parser SGL.StrictGlobalLocator
+parseGlobalLocator :: Context -> Parser SGL.StrictGlobalLocator
 parseGlobalLocator ctx = do
   m <- currentHint
-  gl <- symbol >>= liftIO . GL.reflect
-  liftIO $ Alias.resolveAlias ctx m gl
+  gl <- symbol >>= liftIO . GL.reflect (throw ctx) m
+  liftIO $ Alias.resolveAlias (alias ctx) m gl
 
 --
 -- parser for statements
