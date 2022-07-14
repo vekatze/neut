@@ -273,6 +273,8 @@ resolveName ctx m name = do
       Throw.raiseError (throw ctx) m $ "undefined variable: " <> name
     [(dd, GN.TopLevelFunc)] ->
       return $ m :< WeakTermVarGlobal dd
+    [(dd, GN.Data {})] ->
+      return $ m :< WeakTermVarGlobal dd
     [(name', GN.EnumType _)] ->
       return $ m :< WeakTermEnum (ET.EnumTypeName name')
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
@@ -297,6 +299,8 @@ resolveDefiniteDescription ctx m dd = do
   kind <- Global.lookup (global ctx) dd
   case kind of
     Just GN.TopLevelFunc ->
+      return $ m :< WeakTermVarGlobal dd
+    Just GN.Data {} ->
       return $ m :< WeakTermVarGlobal dd
     Just (GN.EnumType _) ->
       return $ m :< WeakTermEnum (ET.EnumTypeName dd)

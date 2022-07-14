@@ -13,7 +13,6 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
-import Data.IORef
 import qualified Data.Text as T
 import Entity.AliasInfo
 import qualified Entity.BaseName as BN
@@ -23,7 +22,6 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.DefiniteLocator as DL
 import qualified Entity.Discriminant as D
 import Entity.EnumInfo
-import Entity.Global
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
@@ -212,9 +210,9 @@ defineData ::
   IO [PreStmt]
 defineData ctx m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName (throw ctx) m dataName) consInfoList
-  setAsData dataName consInfoList'
+  setAsData (global ctx) m dataName consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
-  formRule <- defineFunction ctx OpacityOpaque m dataName 0 dataArgs (m :< PT.Tau) consType
+  let formRule = PreStmtDefine OpacityOpaque m dataName 0 dataArgs (m :< PT.Tau) consType
   introRuleList <- parseDefineDataConstructor ctx dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -329,10 +327,15 @@ parseDefineResource ctx = do
     liftIO $ Global.registerResource (global ctx) m name'
     return $ PreStmtDefineResource m name' discarder copier
 
-setAsData :: DD.DefiniteDescription -> [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] -> IO ()
-setAsData dataName consInfoList = do
+setAsData ::
+  Global.Context ->
+  Hint ->
+  DD.DefiniteDescription ->
+  [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] ->
+  IO ()
+setAsData ctx m dataName consInfoList = do
   let consNameList = map (\(_, consName, _) -> consName) consInfoList
-  modifyIORef' dataEnvRef $ Map.insert dataName consNameList
+  Global.registerData ctx m dataName consNameList
 
 identPlusToVar :: BinderF PT.PreTerm -> PT.PreTerm
 identPlusToVar (m, x, _) =

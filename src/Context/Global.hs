@@ -11,6 +11,7 @@ data Context = Context
   { registerTopLevelFunc :: Hint -> DD.DefiniteDescription -> IO (),
     registerEnum :: Hint -> ET.EnumTypeName -> [EnumValue] -> IO (),
     registerResource :: Hint -> DD.DefiniteDescription -> IO (),
+    registerData :: Hint -> DD.DefiniteDescription -> [DD.DefiniteDescription] -> IO (),
     lookup :: DD.DefiniteDescription -> IO (Maybe GlobalName)
   }
 

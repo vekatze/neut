@@ -1,5 +1,6 @@
 module Entity.GlobalName (GlobalName (..)) where
 
+import qualified Entity.DefiniteDescription as DD
 import Entity.Discriminant
 import Entity.EnumInfo
 import qualified Entity.EnumTypeName as ET
@@ -13,4 +14,5 @@ data GlobalName
   | EnumIntro ET.EnumTypeName Discriminant
   | PrimType PrimNum
   | PrimOp PrimOp
+  | Data [DD.DefiniteDescription]
   deriving (Show)

@@ -33,6 +33,8 @@ new cfg = do
           registerTopLevelFunc (Global.throwCtx cfg) nameMapRef,
         Global.registerEnum =
           registerEnum (Global.throwCtx cfg) nameMapRef,
+        Global.registerData =
+          registerData (Global.throwCtx cfg) nameMapRef,
         Global.registerResource =
           registerResource (Global.throwCtx cfg) nameMapRef,
         Global.lookup =
@@ -61,6 +63,18 @@ registerEnum ctx nameMapRef hint typeName@(ET.EnumTypeName typeNameString) enumI
   nameMap <- readIORef nameMapRef
   ensureFreshness ctx hint nameMap typeNameString
   modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
+
+registerData ::
+  Throw.Context ->
+  IORef NameMap ->
+  Hint.Hint ->
+  DD.DefiniteDescription ->
+  [DD.DefiniteDescription] ->
+  IO ()
+registerData ctx nameMapRef m dataName consList = do
+  topNameMap <- readIORef nameMapRef
+  ensureFreshness ctx m topNameMap dataName
+  modifyIORef' nameMapRef $ Map.insert dataName $ GN.Data consList
 
 registerResource ::
   Throw.Context ->

@@ -5,7 +5,6 @@ import Data.Binary
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Binder
-import qualified Entity.Data as D
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumTypeName
@@ -44,7 +43,6 @@ data PreTermF a
   | EnumElim (a, a) [(PreEnumCase, a)]
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | Data D.DataLabel
   | Match
       (Maybe a) -- noetic subject (this is for `case-noetic`)
       (a, a) -- (pattern-matched value, its type)

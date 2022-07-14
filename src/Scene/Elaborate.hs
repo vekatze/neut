@@ -241,16 +241,16 @@ elaborate' ctx term =
       mSubject' <- mapM (elaborate' ctx) mSubject
       e' <- elaborate' ctx e
       t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
-      dataEnv <- readIORef dataEnvRef
       case t' of
-        _ :< TermPiElim (_ :< TermVarGlobal name) _
-          | Just bs <- Map.lookup name dataEnv -> do
-            patList' <- elaboratePatternList ctx m bs patList
-            return $ m :< TermMatch mSubject' (e', t') patList'
-        _ :< TermVarGlobal name
-          | Just bs <- Map.lookup name dataEnv -> do
-            patList' <- elaboratePatternList ctx m bs patList
-            return $ m :< TermMatch mSubject' (e', t') patList'
+        _ :< TermPiElim (_ :< TermVarGlobal name) _ -> do
+          mConsInfoList <- Global.lookup (global ctx) name
+          case mConsInfoList of
+            Just (GN.Data consInfoList) -> do
+              patList' <- elaboratePatternList ctx m consInfoList patList
+              return $ m :< TermMatch mSubject' (e', t') patList'
+            _ ->
+              Throw.raiseError (throw ctx) (metaOf t) $
+                "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
         _ -> do
           Throw.raiseError (throw ctx) (metaOf t) $
             "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')

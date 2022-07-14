@@ -21,11 +21,6 @@ import System.IO.Unsafe
 -- global variables
 --
 
-{-# NOINLINE dataEnvRef #-}
-dataEnvRef :: IORef (Map.HashMap DD.DefiniteDescription [DD.DefiniteDescription])
-dataEnvRef =
-  unsafePerformIO (newIORef Map.empty)
-
 {-# NOINLINE weakTypeEnvRef #-}
 weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm)
 weakTypeEnvRef =
