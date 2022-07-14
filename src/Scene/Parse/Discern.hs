@@ -264,7 +264,7 @@ discernEnumCase ctx enumCase =
 
 resolveName :: Context -> Hint -> T.Text -> IO WeakTerm
 resolveName ctx m name = do
-  let localLocator = LL.reflect name
+  localLocator <- LL.reflect (throw ctx) m name
   candList <- Locator.getPossibleReferents (locator ctx) localLocator
   candList' <- mapM (Global.lookup (global ctx)) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'

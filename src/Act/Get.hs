@@ -9,6 +9,8 @@ import qualified Context.Mode as Mode
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
+import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
 import Entity.ModuleURL
@@ -17,7 +19,7 @@ import System.IO
 import Prelude hiding (log)
 
 data Config = Config
-  { moduleAlias :: ModuleAlias,
+  { moduleAliasText :: T.Text,
     moduleURL :: ModuleURL,
     throwCfg :: Throw.Config,
     logCfg :: Log.Config
@@ -38,8 +40,9 @@ get mode cfg = do
             Module.pathCtx = pathCtx
           }
     let ctx = F.Context {F.throwCtx = throwCtx, F.logCtx = logCtx, F.moduleCtx = moduleCtx}
+    baseName <- BN.reflect' throwCtx $ moduleAliasText cfg
     F.insertDependency
       ctx
       mainModule
-      (moduleAlias cfg)
+      (ModuleAlias baseName)
       (moduleURL cfg)

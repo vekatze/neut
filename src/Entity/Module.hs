@@ -4,6 +4,7 @@ import Context.Throw
 import Control.Comonad.Cofree
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Const
 import Entity.Ens
 import Entity.ModuleAlias
@@ -81,7 +82,7 @@ ppModule someModule = do
   let extraContents = map (\x -> () :< EnsString (ppExtraContent x)) $ moduleExtraContents someModule
   ppEnsTopLevel $
     Map.fromList
-      [ ("dependency", () :< EnsDictionary (Map.mapKeys (\(ModuleAlias key) -> key) dependency)),
+      [ ("dependency", () :< EnsDictionary (Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency)),
         ("target", () :< EnsDictionary (Map.mapKeys (\(Target key) -> key) entryPoint)),
         ("extra-content", () :< EnsList extraContents)
       ]

@@ -8,8 +8,10 @@ import Context.Throw
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Ens
 import qualified Entity.Ens.Reflect as Ens
+import qualified Entity.Hint as H
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
@@ -24,16 +26,16 @@ import Path.IO
 fromFilePath :: Context -> MID.ModuleID -> Path Abs File -> IO Module
 fromFilePath ctx moduleID moduleFilePath = do
   entity <- Ens.fromFilePath ctx moduleFilePath
-  entryPointEns <- access ctx "target" entity >>= toDictionary ctx
+  (_, entryPointEns) <- access ctx "target" entity >>= toDictionary ctx
   dependencyEns <- access ctx "dependency" entity >>= toDictionary ctx
   extraContentsEns <- access ctx "extra-content" entity >>= toList ctx
   target <- mapM (interpretRelFilePath ctx moduleID) entryPointEns
-  dependency <- mapM (interpretDependency ctx) dependencyEns
+  dependency <- interpretDependencyDict ctx dependencyEns
   extraContents <- mapM (interpretExtraPath ctx $ parent moduleFilePath) extraContentsEns
   return
     Module
       { moduleTarget = Map.mapKeys Target target,
-        moduleDependency = Map.mapKeys ModuleAlias dependency,
+        moduleDependency = dependency,
         moduleExtraContents = extraContents,
         moduleLocation = moduleFilePath
       }
@@ -44,39 +46,52 @@ fromCurrentPath ctx =
 
 interpretRelFilePath :: Context -> MID.ModuleID -> Ens -> IO SGL.StrictGlobalLocator
 interpretRelFilePath ctx moduleID ens = do
-  relPath <- toString ctx ens >>= parseRelFile . T.unpack
-  return
-    SGL.StrictGlobalLocator
-      { SGL.moduleID = moduleID,
-        SGL.sourceLocator = SL.SourceLocator relPath
-      }
+  (m, pathString) <- toString ctx ens
+  case parseRelFile $ T.unpack pathString of
+    Just relPath ->
+      return
+        SGL.StrictGlobalLocator
+          { SGL.moduleID = moduleID,
+            SGL.sourceLocator = SL.SourceLocator relPath
+          }
+    Nothing ->
+      raiseError ctx m $ "invalid file path: " <> pathString
 
--- interpretRelFilePath :: Context -> Ens -> IO (Path Rel File)
--- interpretRelFilePath ctx =
---   toString ctx >=> parseRelFile . T.unpack
-
-interpretDependency :: Context -> Ens -> IO (ModuleURL, ModuleChecksum)
-interpretDependency ctx dependencyValue = do
-  url <- access ctx "URL" dependencyValue >>= toString ctx
-  checksum <- access ctx "checksum" dependencyValue >>= toString ctx
-  return (ModuleURL url, ModuleChecksum checksum)
+interpretDependencyDict ::
+  Context ->
+  (H.Hint, Map.HashMap T.Text Ens) ->
+  IO (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
+interpretDependencyDict ctx (m, dep) = do
+  items <- forM (Map.toList dep) $ \(k, ens) -> do
+    k' <- BN.reflect ctx m k
+    (_, url) <- access ctx "URL" ens >>= toString ctx
+    (_, checksum) <- access ctx "checksum" ens >>= toString ctx
+    return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
+  return $ Map.fromList items
 
 interpretExtraPath :: Context -> Path Abs Dir -> Ens -> IO SomePath
 interpretExtraPath ctx moduleRootDir entity = do
-  itemPathText <- toString ctx entity
+  (m, itemPathText) <- toString ctx entity
   if T.last itemPathText == '/'
     then do
       dirPath <- resolveDir moduleRootDir $ T.unpack itemPathText
-      ensureExistence ctx moduleRootDir dirPath doesDirExist "directory"
+      ensureExistence ctx m moduleRootDir dirPath doesDirExist "directory"
       return $ Left dirPath
     else do
       filePath <- resolveFile moduleRootDir $ T.unpack itemPathText
-      ensureExistence ctx moduleRootDir filePath doesFileExist "file"
+      ensureExistence ctx m moduleRootDir filePath doesFileExist "file"
       return $ Right filePath
 
-ensureExistence :: Context -> Path Abs Dir -> Path Abs t -> (Path Abs t -> IO Bool) -> T.Text -> IO ()
-ensureExistence ctx moduleRootDir path existenceChecker kindText = do
+ensureExistence ::
+  Context ->
+  H.Hint ->
+  Path Abs Dir ->
+  Path Abs t ->
+  (Path Abs t -> IO Bool) ->
+  T.Text ->
+  IO ()
+ensureExistence ctx m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker path
   unless b $ do
     relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
-    raiseError' ctx $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
+    raiseError ctx m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)

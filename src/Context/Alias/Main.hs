@@ -6,7 +6,6 @@ import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Maybe as Maybe
 import qualified Entity.BaseName as BN
-import Entity.Const
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalLocatorAlias as GLA
 import Entity.Hint hiding (new)
@@ -97,7 +96,7 @@ resolveModuleAlias throwCtx aliasMap m moduleAlias = do
         return MID.Base
       | otherwise ->
         Throw.raiseError throwCtx m $
-          "no such module alias is defined: " <> extract moduleAlias
+          "no such module alias is defined: " <> BN.reify (extract moduleAlias)
 
 getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
 getModuleChecksumAliasList baseModule = do

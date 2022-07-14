@@ -21,7 +21,6 @@ import qualified Context.Path.Main as Path
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
 import qualified Data.Text as T
-import Entity.ModuleAlias
 import Entity.ModuleURL
 import Entity.Target
 import Options.Applicative
@@ -109,7 +108,7 @@ parseGetOpt = do
   pure $
     Get
       Get.Config
-        { Get.moduleAlias = ModuleAlias $ T.pack moduleAlias,
+        { Get.moduleAliasText = T.pack moduleAlias,
           Get.moduleURL = ModuleURL $ T.pack moduleURL,
           Get.throwCfg = throwConfig,
           Get.logCfg = logCfg

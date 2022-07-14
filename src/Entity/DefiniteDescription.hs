@@ -8,12 +8,14 @@ module Entity.DefiniteDescription
   )
 where
 
+import qualified Context.Throw as Throw
 import Data.Binary
 import Data.Hashable
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Const
 import qualified Entity.DefiniteLocator as DL
+import qualified Entity.Hint as H
 import qualified Entity.LocalLocator as LL
 import qualified Entity.Section as Section
 import qualified Entity.StrictGlobalLocator as SGL
@@ -54,13 +56,13 @@ newByDefiniteLocator dl ll = do
   let ll' = LL.new (LL.sectionStack ll ++ DL.sectionStack dl) (LL.baseName ll)
   new gl ll'
 
-extend :: DefiniteDescription -> T.Text -> DefiniteDescription
-extend dd newName = do
+extend :: Throw.Context -> H.Hint -> DefiniteDescription -> T.Text -> IO DefiniteDescription
+extend ctx m dd newName = do
   let gl = globalLocator dd
   let outer = localLocator dd
-  let inner = LL.reflect newName
+  inner <- LL.reflect ctx m newName
   let ll = LL.extend outer inner
-  new gl ll
+  return $ new gl ll
 
 extendLL :: DefiniteDescription -> LL.LocalLocator -> DefiniteDescription
 extendLL dd inner = do

@@ -3,7 +3,6 @@
 module Entity.Const where
 
 import qualified Data.Text as T
-import Entity.ModuleAlias
 import Path
 
 sourceFileExtension :: String
@@ -45,14 +44,6 @@ cartCellName =
 moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")
-
-defaultModulePrefix :: ModuleAlias
-defaultModulePrefix =
-  ModuleAlias "this"
-
-baseModulePrefix :: ModuleAlias
-baseModulePrefix =
-  ModuleAlias "base"
 
 sourceRelDir :: Path Rel Dir
 sourceRelDir =

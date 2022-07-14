@@ -41,7 +41,7 @@ data EnsType
 
 access :: Context -> T.Text -> Ens -> IO Ens
 access ctx k entity@(m :< _) = do
-  dictionary <- toDictionary ctx entity
+  (_, dictionary) <- toDictionary ctx entity
   case M.lookup k dictionary of
     Just v ->
       return v
@@ -72,19 +72,19 @@ toBool ctx entity@(m :< _) =
     _ ->
       raiseTypeError ctx m EnsTypeBool (typeOf entity)
 
-toString :: Context -> Ens -> IO T.Text
+toString :: Context -> Ens -> IO (Hint, T.Text)
 toString ctx entity@(m :< _) =
   case entity of
     _ :< EnsString s ->
-      return s
+      return (m, s)
     _ ->
       raiseTypeError ctx m EnsTypeString (typeOf entity)
 
-toDictionary :: Context -> Ens -> IO (M.HashMap T.Text Ens)
+toDictionary :: Context -> Ens -> IO (Hint, M.HashMap T.Text Ens)
 toDictionary ctx entity@(m :< _) =
   case entity of
     _ :< EnsDictionary e ->
-      return e
+      return (m, e)
     _ ->
       raiseTypeError ctx m EnsTypeDictionary (typeOf entity)
 

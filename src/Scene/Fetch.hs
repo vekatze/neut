@@ -13,6 +13,7 @@ import qualified Data.ByteString as B
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
+import qualified Entity.BaseName as BN
 import qualified Entity.Module as M
 import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
@@ -40,7 +41,7 @@ fetch ctx baseModule = do
 
 insertDependency :: Context -> M.Module -> ModuleAlias -> ModuleURL -> IO ()
 insertDependency ctx mainModule alias url = do
-  withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
+  withSystemTempFile (T.unpack $ BN.reify (extract alias)) $ \tempFilePath tempFileHandle -> do
     download ctx tempFilePath alias url
     archive <- B.hGetContents tempFileHandle
     let checksum = MC.fromByteString archive
@@ -52,14 +53,14 @@ installIfNecessary :: Context -> ModuleAlias -> ModuleURL -> MC.ModuleChecksum -
 installIfNecessary ctx alias url checksum = do
   isInstalled <- checkIfInstalled (moduleCtx ctx) checksum
   unless isInstalled $
-    withSystemTempFile (T.unpack $ extract alias) $ \tempFilePath tempFileHandle -> do
+    withSystemTempFile (T.unpack $ BN.reify (extract alias)) $ \tempFilePath tempFileHandle -> do
       download ctx tempFilePath alias url
       archive <- B.hGetContents tempFileHandle
       let archiveModuleChecksum = MC.fromByteString archive
       when (checksum /= archiveModuleChecksum) $
         Throw.raiseError' (throwCtx ctx) $
           "the checksum of the module `"
-            <> extract alias
+            <> BN.reify (extract alias)
             <> "` is different from the expected one:"
             <> "\n- "
             <> MC.reify checksum
@@ -81,7 +82,11 @@ getLibraryModule ctx alias checksum = do
   if not moduleFileExists
     then
       Throw.raiseError' (throwCtx ctx) $
-        "could not find the module file for `" <> extract alias <> "` (" <> MC.reify checksum <> ")."
+        "could not find the module file for `"
+          <> BN.reify (extract alias)
+          <> "` ("
+          <> MC.reify checksum
+          <> ")."
     else Module.fromFilePath (throwCtx ctx) (MID.Library checksum) moduleFilePath
 
 download :: Context -> Path Abs File -> ModuleAlias -> ModuleURL -> IO ()
@@ -89,7 +94,7 @@ download ctx tempFilePath alias (ModuleURL url) = do
   let curlCmd = proc "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
   (_, _, Just curlErrorHandler, curlHandler) <-
     createProcess curlCmd {std_err = CreatePipe}
-  Log.printNote' (logCtx ctx) $ "downloading `" <> extract alias <> "` from " <> url
+  Log.printNote' (logCtx ctx) $ "downloading `" <> BN.reify (extract alias) <> "` from " <> url
   curlExitCode <- waitForProcess curlHandler
   Throw.raiseIfProcessFailed (throwCtx ctx) "curl" curlExitCode curlErrorHandler
 
@@ -102,7 +107,7 @@ extractToLibDir ctx tempFilePath alias checksum = do
     createProcess tarCmd {std_err = CreatePipe}
   Log.printNote' (logCtx ctx) $
     "extracting `"
-      <> extract alias
+      <> BN.reify (extract alias)
       <> "` ("
       <> MC.reify checksum
       <> ")"
@@ -111,6 +116,9 @@ extractToLibDir ctx tempFilePath alias checksum = do
 
 addDependencyToModuleFile :: Context -> M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> IO ()
 addDependencyToModuleFile ctx targetModule alias url checksum = do
-  Log.printNote' (logCtx ctx) $ "adding the dependency of `" <> extract alias <> "` to the module file"
+  Log.printNote' (logCtx ctx) $
+    "adding the dependency of `"
+      <> BN.reify (extract alias)
+      <> "` to the module file"
   let targetModule' = M.addDependency alias url checksum targetModule
   TIO.writeFile (toFilePath $ M.moduleLocation targetModule') $ M.ppModule targetModule'

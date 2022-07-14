@@ -30,6 +30,7 @@ import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
+import qualified Entity.LocalLocator as LL
 import Entity.Opacity
 import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
@@ -140,11 +141,11 @@ parseStmt ctx = do
 parseDefiniteLocator :: Context -> Parser DL.DefiniteLocator
 parseDefiniteLocator ctx = do
   m <- currentHint
-  gl <- symbol >>= liftIO . (GL.reflect (throw ctx) m >=> Alias.resolveAlias (alias ctx) m)
+  globalLocator <- symbol >>= liftIO . (GL.reflect (throw ctx) m >=> Alias.resolveAlias (alias ctx) m)
   delimiter definiteSep
-  ll <- symbol
-  let sectionStack = map Section.Section $ BN.bySplit ll
-  return $ DL.new gl sectionStack
+  localLocator <- symbol
+  baseNameList <- liftIO $ BN.bySplit (throw ctx) m localLocator
+  return $ DL.new globalLocator $ map Section.Section baseNameList
 
 parseGlobalLocator :: Context -> Parser SGL.StrictGlobalLocator
 parseGlobalLocator ctx = do
@@ -210,7 +211,7 @@ defineData ::
   [(Hint, T.Text, [BinderF PT.PreTerm])] ->
   IO [PreStmt]
 defineData ctx m dataName dataArgs consInfoList = do
-  consInfoList' <- mapM (modifyConstructorName dataName) consInfoList
+  consInfoList' <- mapM (modifyConstructorName (throw ctx) m dataName) consInfoList
   setAsData dataName consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
   formRule <- defineFunction ctx OpacityOpaque m dataName 0 dataArgs (m :< PT.Tau) consType
@@ -218,11 +219,14 @@ defineData ctx m dataName dataArgs consInfoList = do
   return $ formRule : introRuleList
 
 modifyConstructorName ::
+  Throw.Context ->
+  Hint ->
   DD.DefiniteDescription ->
   (Hint, T.Text, [BinderF PT.PreTerm]) ->
   IO (Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])
-modifyConstructorName dataDD (mb, consName, yts) = do
-  return (mb, DD.extend dataDD consName, yts)
+modifyConstructorName ctx m dataDD (mb, consName, yts) = do
+  consName' <- DD.extend ctx m dataDD consName
+  return (mb, consName', yts)
 
 parseDefineDataConstructor ::
   Context ->
@@ -297,8 +301,8 @@ parseDefineCodataElim ctx dataName dataArgs elemInfoList (m, elemName, elemType)
   let codataType = constructDataType m dataName dataArgs
   recordVarText <- Gensym.newText (gensym ctx)
   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
-  let projectionName = DD.extend dataName $ Ident.toText elemName
-  let newDD = DD.extend dataName "new"
+  projectionName <- DD.extend (throw ctx) m dataName $ Ident.toText elemName
+  let newDD = DD.extendLL dataName $ LL.new [] BN.new
   defineFunction
     ctx
     OpacityOpaque

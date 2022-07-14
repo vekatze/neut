@@ -28,28 +28,18 @@ reify :: GlobalLocator -> T.Text
 reify gl =
   case gl of
     GlobalLocator alias locator ->
-      extract alias <> nsSep <> SL.toText locator
+      BN.reify (extract alias) <> nsSep <> SL.toText locator
     GlobalLocatorAlias alias ->
       BN.reify $ GLA.reify alias
 
-reflect' :: Throw.Context -> T.Text -> IO (ModuleAlias, SL.SourceLocator)
-reflect' ctx rawTxt = do
-  case T.breakOn nsSep rawTxt of
-    (_, "") ->
-      Throw.raiseError' ctx $
-        "couldn't parse given global locator: " <> rawTxt
-    (prefix, suffix) -> do
-      locator <- SL.reflect $ T.tail suffix
-      return (ModuleAlias prefix, locator)
-
 reflect :: Throw.Context -> H.Hint -> T.Text -> IO GlobalLocator
 reflect ctx m rawTxt = do
-  case T.breakOn nsSep rawTxt of
-    (_, "") ->
-      return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias (BN.fromText rawTxt)) -- rawTxt doesn't contain any nsSeps
-    (prefix, suffix) -> do
-      case SL.reflect $ T.tail suffix of
-        Just locator ->
-          return (GlobalLocator (ModuleAlias prefix) locator)
-        Nothing ->
-          Throw.raiseError ctx m $ "global locators can't end with '" <> nsSep <> "'"
+  baseNameList <- BN.bySplit ctx m rawTxt
+  case baseNameList of
+    [baseName] ->
+      return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias baseName)
+    prefix : rest
+      | Just locator <- SL.fromBaseNameList rest ->
+        return (GlobalLocator (ModuleAlias prefix) locator)
+    _ ->
+      Throw.raiseError ctx m $ "invalid global locator: `" <> rawTxt <> "`"

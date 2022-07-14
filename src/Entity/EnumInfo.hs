@@ -23,6 +23,7 @@ import qualified Entity.Discriminant as D
 import Entity.EnumTypeName
 import qualified Entity.EnumValueName as EV
 import qualified Entity.Hint as Hint
+import qualified Entity.LocalLocator as LL
 import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
 import GHC.Generics
@@ -36,14 +37,15 @@ instance Binary EnumInfo
 
 new :: Throw.Context -> Hint.Hint -> EnumTypeName -> [(T.Text, Maybe D.Discriminant)] -> IO EnumInfo
 new ctx m enumTypeName itemList = do
-  let itemList' = map (attachPrefix enumTypeName) $ setDiscriminant D.zero itemList
+  itemList' <- mapM (attachPrefix ctx m enumTypeName) $ setDiscriminant D.zero itemList
   unless (isLinear (map snd itemList')) $
     Throw.raiseError ctx m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (enumTypeName, itemList')}
 
-attachPrefix :: EnumTypeName -> (T.Text, a) -> (EV.EnumValueName, a)
-attachPrefix enumTypeName (enumValue, d) =
-  (EV.new enumTypeName enumValue, d)
+attachPrefix :: Throw.Context -> Hint.Hint -> EnumTypeName -> (T.Text, a) -> IO (EV.EnumValueName, a)
+attachPrefix ctx m enumTypeName (enumValueName, d) = do
+  enumValue <- EV.new ctx m enumTypeName enumValueName
+  return (enumValue, d)
 
 setDiscriminant :: D.Discriminant -> [(a, Maybe D.Discriminant)] -> [(a, D.Discriminant)]
 setDiscriminant discriminant clauseList =
@@ -81,7 +83,7 @@ constTop =
 
 constTopUnit :: EV.EnumValueName
 constTopUnit =
-  EV.new constTop "unit"
+  EV.new' constTop $ LL.new [] BN.topUnit
 
 {-# INLINE constBool #-}
 constBool :: EnumTypeName
@@ -91,9 +93,9 @@ constBool =
 {-# INLINE constBoolTrue #-}
 constBoolTrue :: EV.EnumValueName
 constBoolTrue =
-  EV.new constBool "true"
+  EV.new' constBool $ LL.new [] BN.boolTrue
 
 {-# INLINE constBoolFalse #-}
 constBoolFalse :: EV.EnumValueName
 constBoolFalse =
-  EV.new constBool "false"
+  EV.new' constBool $ LL.new [] BN.boolFalse

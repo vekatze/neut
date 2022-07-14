@@ -3,7 +3,7 @@
 module Entity.SourceLocator
   ( SourceLocator (..),
     toText,
-    reflect,
+    fromBaseNameList,
     bottomLocator,
     topLocator,
     boolLocator,
@@ -11,10 +11,10 @@ module Entity.SourceLocator
   )
 where
 
-import Control.Exception.Safe
 import Data.Binary
 import Data.Hashable
 import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import GHC.Generics
 import Path
 
@@ -34,19 +34,14 @@ instance Binary SourceLocator where
         fail $ "couldn't parse given path: " <> filePath
     return $ SourceLocator path
 
--- reify :: SourceLocator -> T.Text
--- reify (SourceLocator sl) =
---   T.replace "/" "." $ T.pack $ toFilePath sl
-
 -- fixme: parametrize "/"
 toText :: SourceLocator -> T.Text
 toText (SourceLocator sl) =
   T.replace "/" "." $ T.pack $ toFilePath sl
 
--- fixme: parametrize "/"
-reflect :: MonadThrow m => T.Text -> m SourceLocator
-reflect rawTxt = do
-  path <- parseRelFile $ T.unpack $ T.replace "." "/" rawTxt
+fromBaseNameList :: [BN.BaseName] -> Maybe SourceLocator
+fromBaseNameList baseNameList = do
+  path <- parseRelFile $ T.unpack $ T.intercalate "/" $ map BN.reify baseNameList
   return $ SourceLocator path
 
 bottomLocator :: SourceLocator

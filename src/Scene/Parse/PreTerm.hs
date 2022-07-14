@@ -231,7 +231,7 @@ parseDefiniteDescription ctx = do
   globalLocator <- symbol
   globalLocator' <- liftIO $ GL.reflect (throw ctx) m globalLocator
   delimiter definiteSep
-  localLocator <- parseLocalLocator
+  localLocator <- parseLocalLocator (throw ctx)
   return (m, globalLocator', localLocator)
 
 preTermDefiniteDescription :: Context -> Parser PT.PreTerm
@@ -239,9 +239,11 @@ preTermDefiniteDescription ctx = do
   (m, globalLocator, localLocator) <- try $ parseDefiniteDescription ctx
   return $ m :< PT.VarGlobal globalLocator localLocator
 
-parseLocalLocator :: Parser LL.LocalLocator
-parseLocalLocator =
-  LL.reflect <$> symbol
+parseLocalLocator :: Throw.Context -> Parser LL.LocalLocator
+parseLocalLocator ctx = do
+  m <- currentHint
+  rawTxt <- symbol
+  liftIO $ LL.reflect ctx m rawTxt
 
 preTermEnumElim :: Context -> Parser PT.PreTerm
 preTermEnumElim ctx = do
