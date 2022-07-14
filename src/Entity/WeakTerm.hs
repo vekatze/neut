@@ -1,7 +1,6 @@
 module Entity.WeakTerm where
 
 import Control.Comonad.Cofree
-import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
 import Entity.Binder
@@ -16,7 +15,6 @@ import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNum
 import Entity.PrimNumSize
-import GHC.Generics
 
 type WeakTerm = Cofree WeakTermF Hint
 
@@ -57,11 +55,6 @@ data WeakTermF a
   | WeakTermCellRead a -- cell-read(ptr)
   | WeakTermCellWrite a a -- cell-write(ptr, value)
   | WeakTermResourceType DD.DefiniteDescription
-  deriving (Generic)
-
-instance (Binary a) => Binary (WeakTermF a)
-
-instance Binary WeakTerm
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm

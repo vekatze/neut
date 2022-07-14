@@ -1,7 +1,6 @@
 module Entity.PreTerm where
 
 import Control.Comonad.Cofree
-import Data.Binary
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Binder
@@ -18,7 +17,6 @@ import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNum
 import Entity.PrimNumSize
-import GHC.Generics
 
 type PreTerm = Cofree PreTermF Hint
 
@@ -59,11 +57,6 @@ data PreTermF a
   | CellIntro a a -- cell-new(v) (the first argument is the type of `v`)
   | CellRead a -- cell-read(ptr)
   | CellWrite a a -- cell-write(ptr, value)
-  deriving (Generic)
-
-instance (Binary a) => Binary (PreTermF a)
-
-instance Binary PreTerm
 
 type DefInfo =
   ((Hint, T.Text), [BinderF PreTerm], PreTerm, PreTerm)
