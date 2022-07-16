@@ -365,7 +365,6 @@ newTypeAsterList ctx varEnv ids =
       t <- newAster ctx varEnv m
       insWeakTypeEnv x t
       ts <- newTypeAsterList ctx ((m, x, t) : varEnv) rest
-      -- ts <- newTypeAsterList ctx (varEnv ++ [(m, x, t)]) rest
       return $ (m, x, t) : ts
 
 inferEnumCase :: Context -> BoundVarEnv -> EnumCase -> IO (EnumCase, WeakTerm)

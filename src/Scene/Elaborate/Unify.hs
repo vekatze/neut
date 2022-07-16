@@ -182,12 +182,10 @@ simplify ctx constraintList =
             simplify ctx cs
         (e1@(m1 :< _), e2@(m2 :< _)) -> do
           sub <- readIORef substRef
-          termDefEnv <- readIORef termDefEnvRef
           let fvs1 = freeVars e1
           let fvs2 = freeVars e2
-          let fmvs1 = holes e1
+          let fmvs1 = holes e1 -- fmvs: free meta-variables
           let fmvs2 = holes e2
-          let fmvs = S.union fmvs1 fmvs2 -- fmvs: free meta-variables
           case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
             (Just (h1, (xs1, body1)), Just (h2, (xs2, body2))) -> do
               let s1 = HS.singleton h1 xs1 body1
@@ -204,6 +202,8 @@ simplify ctx constraintList =
               e2' <- fill ctx s2 e2
               simplify ctx $ ((e1, e2'), orig) : cs
             (Nothing, Nothing) -> do
+              termDefEnv <- readIORef termDefEnvRef
+              let fmvs = S.union fmvs1 fmvs2
               case (asStuckedTerm e1, asStuckedTerm e2) of
                 (Just (StuckPiElimAster h1 ies1), _)
                   | Just xss1 <- mapM asIdent ies1,
