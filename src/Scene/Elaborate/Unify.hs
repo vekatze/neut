@@ -37,7 +37,7 @@ import Entity.WeakTerm.ToText
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTerm])]
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WeakTerm])]
-  | StuckPiElimAster HID.HoleID [[WeakTerm]]
+  | StuckPiElimAster HID.HoleID [WeakTerm]
 
 unify :: Context -> IO ()
 unify ctx =
@@ -72,8 +72,8 @@ throwTypeErrors ctx = do
     -- p $ T.unpack $ toText r
     -- p' (expected, actual)
     -- p' sub
-    expected' <- reduce ctx $ fill sub expected
-    actual' <- reduce ctx $ fill sub actual
+    expected' <- fill ctx sub expected >>= reduce ctx
+    actual' <- fill ctx sub actual >>= reduce ctx
     -- expected' <- subst sub l >>= reduce
     -- actual' <- subst sub r >>= reduce
     return $ logError (fromHint (metaOf actual)) $ constructErrorMsg actual' expected'
@@ -189,30 +189,30 @@ simplify ctx constraintList =
           let fmvs2 = holes e2
           let fmvs = S.union fmvs1 fmvs2 -- fmvs: free meta-variables
           case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
-            (Just (h1, body1), Just (h2, body2)) -> do
-              let s1 = HS.singleton h1 body1
-              let s2 = HS.singleton h2 body2
-              let e1' = fill s1 e1
-              let e2' = fill s2 e2
+            (Just (h1, (xs1, body1)), Just (h2, (xs2, body2))) -> do
+              let s1 = HS.singleton h1 xs1 body1
+              let s2 = HS.singleton h2 xs2 body2
+              e1' <- fill ctx s1 e1
+              e2' <- fill ctx s2 e2
               simplify ctx $ ((e1', e2'), orig) : cs
-            (Just (h1, body1), Nothing) -> do
-              let s1 = HS.singleton h1 body1
-              let e1' = fill s1 e1
+            (Just (h1, (xs1, body1)), Nothing) -> do
+              let s1 = HS.singleton h1 xs1 body1
+              e1' <- fill ctx s1 e1
               simplify ctx $ ((e1', e2), orig) : cs
-            (Nothing, Just (h2, body2)) -> do
-              let s2 = HS.singleton h2 body2
-              let e2' = fill s2 e2
+            (Nothing, Just (h2, (xs2, body2))) -> do
+              let s2 = HS.singleton h2 xs2 body2
+              e2' <- fill ctx s2 e2
               simplify ctx $ ((e1, e2'), orig) : cs
             (Nothing, Nothing) -> do
               case (asStuckedTerm e1, asStuckedTerm e2) of
                 (Just (StuckPiElimAster h1 ies1), _)
-                  | Just xss1 <- mapM asIdentList ies1,
+                  | Just xss1 <- mapM asIdent ies1,
                     Just argSet1 <- toLinearIdentSet xss1,
                     h1 `S.notMember` fmvs2,
                     fvs2 `S.isSubsetOf` argSet1 ->
                     resolveHole ctx h1 xss1 e2 cs
                 (_, Just (StuckPiElimAster h2 ies2))
-                  | Just xss2 <- mapM asIdentList ies2,
+                  | Just xss2 <- mapM asIdent ies2,
                     Just argSet2 <- toLinearIdentSet xss2,
                     h2 `S.notMember` fmvs1,
                     fvs1 `S.isSubsetOf` argSet2 ->
@@ -256,9 +256,9 @@ simplify ctx constraintList =
                   simplify ctx cs
 
 {-# INLINE resolveHole #-}
-resolveHole :: Context -> HID.HoleID -> [[BinderF WeakTerm]] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
-resolveHole ctx h1 xss e2' cs = do
-  modifyIORef' substRef $ HS.insert h1 (toPiIntro xss e2')
+resolveHole :: Context -> HID.HoleID -> [Ident] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
+resolveHole ctx h1 xs e2' cs = do
+  modifyIORef' substRef $ HS.insert h1 xs e2'
   suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
   modifyIORef' suspendedConstraintQueueRef $ const sus2
@@ -321,29 +321,17 @@ asStuckedTerm term =
     (_ :< WeakTermVarGlobal g) ->
       Just $ StuckPiElimVarGlobal g []
     (_ :< WeakTermAster h es) ->
-      Just $ StuckPiElimAster h [es]
+      Just $ StuckPiElimAster h es
     (m :< WeakTermPiElim e es) ->
       case asStuckedTerm e of
         Just (StuckPiElimVarLocal x ess) ->
           Just $ StuckPiElimVarLocal x $ ess ++ [(m, es)]
         Just (StuckPiElimVarGlobal g ess) ->
           Just $ StuckPiElimVarGlobal g $ ess ++ [(m, es)]
-        Just (StuckPiElimAster h iexss)
-          | Just _ <- mapM asVar es ->
-            Just $ StuckPiElimAster h $ iexss ++ [es]
         _ ->
           Nothing
     _ ->
       Nothing
-
-toPiIntro :: [[BinderF WeakTerm]] -> WeakTerm -> WeakTerm
-toPiIntro args e =
-  case args of
-    [] ->
-      e
-    xts : xtss -> do
-      let e' = toPiIntro xtss e
-      metaOf e' :< WeakTermPiIntro LamKindNormal xts e'
 
 toPiElim :: WeakTerm -> [(Hint, [WeakTerm])] -> WeakTerm
 toPiElim e args =
@@ -353,38 +341,31 @@ toPiElim e args =
     (m, es) : ess ->
       toPiElim (m :< WeakTermPiElim e es) ess
 
-asIdentList :: [WeakTerm] -> Maybe [BinderF WeakTerm]
-asIdentList termList =
-  case termList of
-    [] ->
-      return []
-    e : es
-      | (m :< WeakTermVar x) <- e -> do
-        let t = m :< WeakTermTau -- don't care (FIXME)
-        xts <- asIdentList es
-        return $ (m, x, t) : xts
-      | otherwise ->
-        Nothing
+asIdent :: WeakTerm -> Maybe Ident
+asIdent e =
+  case e of
+    _ :< WeakTermVar x ->
+      return x
+    _ ->
+      Nothing
 
 {-# INLINE toLinearIdentSet #-}
-toLinearIdentSet :: [[BinderF WeakTerm]] -> Maybe (S.Set Ident)
-toLinearIdentSet xtss =
-  toLinearIdentSet' xtss S.empty
+toLinearIdentSet :: [Ident] -> Maybe (S.Set Ident)
+toLinearIdentSet xs =
+  toLinearIdentSet' xs S.empty
 
-toLinearIdentSet' :: [[BinderF WeakTerm]] -> S.Set Ident -> Maybe (S.Set Ident)
-toLinearIdentSet' xtss acc =
-  case xtss of
+toLinearIdentSet' :: [Ident] -> S.Set Ident -> Maybe (S.Set Ident)
+toLinearIdentSet' xs acc =
+  case xs of
     [] ->
       return acc
-    [] : rest ->
-      toLinearIdentSet' rest acc
-    ((_, x, _) : rest1) : rest2
+    x : rest
       | x `S.member` acc ->
         Nothing
       | otherwise ->
-        toLinearIdentSet' (rest1 : rest2) (S.insert x acc)
+        toLinearIdentSet' rest (S.insert x acc)
 
-lookupAny :: [HID.HoleID] -> HS.HoleSubst -> Maybe (HID.HoleID, WeakTerm)
+lookupAny :: [HID.HoleID] -> HS.HoleSubst -> Maybe (HID.HoleID, ([Ident], WeakTerm))
 lookupAny is sub =
   case is of
     [] ->
@@ -397,7 +378,11 @@ lookupAny is sub =
           lookupAny js sub
 
 {-# INLINE lookupDefinition #-}
-lookupDefinition :: Hint -> DD.DefiniteDescription -> Map.HashMap DD.DefiniteDescription (Opacity, [BinderF WeakTerm], WeakTerm) -> Maybe WeakTerm
+lookupDefinition ::
+  Hint ->
+  DD.DefiniteDescription ->
+  Map.HashMap DD.DefiniteDescription (Opacity, [BinderF WeakTerm], WeakTerm) ->
+  Maybe WeakTerm
 lookupDefinition m name termDefEnv =
   case Map.lookup name termDefEnv of
     Just (OpacityTransparent, xts, e) ->

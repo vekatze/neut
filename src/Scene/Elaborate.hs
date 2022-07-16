@@ -38,7 +38,6 @@ import Entity.Term
 import qualified Entity.Term.Reduce as Term
 import Entity.Term.Weaken
 import Entity.WeakTerm
-import qualified Entity.WeakTerm.Reduce as WeakTerm
 import qualified Entity.WeakTerm.Subst as WeakTerm
 import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer
@@ -174,13 +173,12 @@ elaborate' ctx term =
       case HS.lookup h subst of
         Nothing ->
           Throw.raiseError (throw ctx) m "couldn't instantiate the hole here"
-        Just (_ :< WeakTermPiIntro LamKindNormal xts e)
-          | length xts == length es -> do
-            let xs = map (\(_, y, _) -> Ident.toInt y) xts
-            let s = IntMap.fromList $ zip xs es
+        Just (xs, e)
+          | length xs == length es -> do
+            let s = IntMap.fromList $ zip (map Ident.toInt xs) es
             WeakTerm.subst (gensym ctx) s e >>= elaborate' ctx
-        Just e ->
-          WeakTerm.reduce (gensym ctx) (m :< WeakTermPiElim e es) >>= elaborate' ctx
+          | otherwise ->
+            Throw.raiseError (throw ctx) m "arity mismatch"
     m :< WeakTermPrim x ->
       return $ m :< TermPrim x
     m :< WeakTermInt t x -> do

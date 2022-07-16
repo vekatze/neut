@@ -3,145 +3,158 @@ module Entity.WeakTerm.Fill
   )
 where
 
+import Context.Gensym
 import Control.Comonad.Cofree
+import Control.Monad
+import qualified Data.IntMap as IntMap
 import Data.Maybe
 import Entity.Binder
 import Entity.HoleSubst
+import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.WeakTerm
+import Entity.WeakTerm.Reduce
+import Entity.WeakTerm.Subst
 import Prelude hiding (lookup)
 
-fill :: HoleSubst -> WeakTerm -> WeakTerm
-fill sub term =
+fill :: Context -> HoleSubst -> WeakTerm -> IO WeakTerm
+fill ctx sub term =
   case term of
     _ :< WeakTermTau ->
-      term
+      return term
     _ :< WeakTermVar {} ->
-      term
+      return term
     _ :< WeakTermVarGlobal {} ->
-      term
+      return term
     m :< WeakTermPi xts t -> do
-      let (xts', t') = fill' sub xts t
-      m :< WeakTermPi xts' t'
+      (xts', t') <- fill' ctx sub xts t
+      return $ m :< WeakTermPi xts' t'
     m :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
-          let (xt' : xts', e') = fill' sub (xt : xts) e
-          m :< WeakTermPiIntro (LamKindFix xt') xts' e'
+          (xt' : xts', e') <- fill' ctx sub (xt : xts) e
+          return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
         _ -> do
-          let (xts', e') = fill' sub xts e
-          m :< WeakTermPiIntro kind xts' e'
+          (xts', e') <- fill' ctx sub xts e
+          return $ m :< WeakTermPiIntro kind xts' e'
     m :< WeakTermPiElim e es -> do
-      let e' = fill sub e
-      let es' = map (fill sub) es
-      m :< WeakTermPiElim e' es'
+      e' <- fill ctx sub e
+      es' <- mapM (fill ctx sub) es
+      return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
-      let (xts', _) = fill' sub xts (m :< WeakTermTau)
-      m :< WeakTermSigma xts'
+      (xts', _) <- fill' ctx sub xts (m :< WeakTermTau)
+      return $ m :< WeakTermSigma xts'
     m :< WeakTermSigmaIntro es -> do
-      let es' = map (fill sub) es
-      m :< WeakTermSigmaIntro es'
+      es' <- mapM (fill ctx sub) es
+      return $ m :< WeakTermSigmaIntro es'
     m :< WeakTermSigmaElim xts e1 e2 -> do
-      let e1' = fill sub e1
-      let (xts', e2') = fill' sub xts e2
-      m :< WeakTermSigmaElim xts' e1' e2'
+      e1' <- fill ctx sub e1
+      (xts', e2') <- fill' ctx sub xts e2
+      return $ m :< WeakTermSigmaElim xts' e1' e2'
     m :< WeakTermLet mxt e1 e2 -> do
-      let e1' = fill sub e1
-      let ([mxt'], e2') = fill' sub [mxt] e2
-      m :< WeakTermLet mxt' e1' e2'
+      e1' <- fill ctx sub e1
+      ([mxt'], e2') <- fill' ctx sub [mxt] e2
+      return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermPrim _ ->
-      term
+      return term
     m :< WeakTermAster i es -> do
-      let es' = map (fill sub) es
+      es' <- mapM (fill ctx sub) es
       case lookup i sub of
-        Just e ->
-          m :< WeakTermPiElim e es'
+        Just (xs, body)
+          | length xs == length es -> do
+            let varList = map Ident.toInt xs
+            subst ctx (IntMap.fromList $ zip varList es') body >>= reduce ctx
+          | otherwise ->
+            error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
-          m :< WeakTermAster i es'
+          return $ m :< WeakTermAster i es'
     m :< WeakTermInt t x -> do
-      let t' = fill sub t
-      m :< WeakTermInt t' x
+      t' <- fill ctx sub t
+      return $ m :< WeakTermInt t' x
     m :< WeakTermFloat t x -> do
-      let t' = fill sub t
-      m :< WeakTermFloat t' x
+      t' <- fill ctx sub t
+      return $ m :< WeakTermFloat t' x
     _ :< WeakTermEnum {} ->
-      term
+      return term
     _ :< WeakTermEnumIntro {} ->
-      term
+      return term
     m :< WeakTermEnumElim (e, t) branchList -> do
-      let t' = fill sub t
-      let e' = fill sub e
+      t' <- fill ctx sub t
+      e' <- fill ctx sub e
       let (caseList, es) = unzip branchList
-      let es' = map (fill sub) es
-      m :< WeakTermEnumElim (e', t') (zip caseList es')
+      es' <- mapM (fill ctx sub) es
+      return $ m :< WeakTermEnumElim (e', t') (zip caseList es')
     m :< WeakTermQuestion e t -> do
-      let e' = fill sub e
-      let t' = fill sub t
-      m :< WeakTermQuestion e' t'
+      e' <- fill ctx sub e
+      t' <- fill ctx sub t
+      return $ m :< WeakTermQuestion e' t'
     m :< WeakTermMagic der -> do
-      let der' = fmap (fill sub) der
-      m :< WeakTermMagic der'
+      der' <- mapM (fill ctx sub) der
+      return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      let mSubject' = fmap (fill sub) mSubject
-      let e' = fill sub e
-      let t' = fill sub t
-      let clauseList' = flip map clauseList $ \((mPat, name, xts), body) -> do
-            let (xts', body') = fill' sub xts body
-            ((mPat, name, xts'), body')
-      m :< WeakTermMatch mSubject' (e', t') clauseList'
+      mSubject' <- mapM (fill ctx sub) mSubject
+      e' <- fill ctx sub e
+      t' <- fill ctx sub t
+      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+        (xts', body') <- fill' ctx sub xts body
+        return ((mPat, name, xts'), body')
+      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
-      let s' = fill sub s
-      let e' = fill sub e
-      m :< WeakTermNoema s' e'
+      s' <- fill ctx sub s
+      e' <- fill ctx sub e
+      return $ m :< WeakTermNoema s' e'
     m :< WeakTermNoemaIntro s e -> do
-      let e' = fill sub e
-      m :< WeakTermNoemaIntro s e'
+      e' <- fill ctx sub e
+      return $ m :< WeakTermNoemaIntro s e'
     m :< WeakTermNoemaElim s e -> do
-      let e' = fill sub e
-      m :< WeakTermNoemaElim s e'
+      e' <- fill ctx sub e
+      return $ m :< WeakTermNoemaElim s e'
     m :< WeakTermArray elemType -> do
-      let elemType' = fill sub elemType
-      m :< WeakTermArray elemType'
+      elemType' <- fill ctx sub elemType
+      return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
-      let elemType' = fill sub elemType
-      let elems' = map (fill sub) elems
-      m :< WeakTermArrayIntro elemType' elems'
+      elemType' <- fill ctx sub elemType
+      elems' <- mapM (fill ctx sub) elems
+      return $ m :< WeakTermArrayIntro elemType' elems'
     m :< WeakTermArrayAccess subject elemType array index -> do
-      let subject' = fill sub subject
-      let elemType' = fill sub elemType
-      let array' = fill sub array
-      let index' = fill sub index
-      m :< WeakTermArrayAccess subject' elemType' array' index'
+      subject' <- fill ctx sub subject
+      elemType' <- fill ctx sub elemType
+      array' <- fill ctx sub array
+      index' <- fill ctx sub index
+      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     _ :< WeakTermText ->
-      term
+      return term
     _ :< WeakTermTextIntro _ ->
-      term
+      return term
     m :< WeakTermCell contentType -> do
-      let contentType' = fill sub contentType
-      m :< WeakTermCell contentType'
+      contentType' <- fill ctx sub contentType
+      return $ m :< WeakTermCell contentType'
     m :< WeakTermCellIntro contentType content -> do
-      let contentType' = fill sub contentType
-      let content' = fill sub content
-      m :< WeakTermCellIntro contentType' content'
+      contentType' <- fill ctx sub contentType
+      content' <- fill ctx sub content
+      return $ m :< WeakTermCellIntro contentType' content'
     m :< WeakTermCellRead cell -> do
-      let cell' = fill sub cell
-      m :< WeakTermCellRead cell'
+      cell' <- fill ctx sub cell
+      return $ m :< WeakTermCellRead cell'
     m :< WeakTermCellWrite cell newValue -> do
-      let cell' = fill sub cell
-      let newValue' = fill sub newValue
-      m :< WeakTermCellWrite cell' newValue'
+      cell' <- fill ctx sub cell
+      newValue' <- fill ctx sub newValue
+      return $ m :< WeakTermCellWrite cell' newValue'
     _ :< WeakTermResourceType _ ->
-      term
+      return term
 
 fill' ::
+  Context ->
   HoleSubst ->
   [BinderF WeakTerm] ->
   WeakTerm ->
-  ([BinderF WeakTerm], WeakTerm)
-fill' sub binder e =
+  IO ([BinderF WeakTerm], WeakTerm)
+fill' ctx sub binder e =
   case binder of
-    [] ->
-      ([], fill sub e)
+    [] -> do
+      e' <- fill ctx sub e
+      return ([], e')
     ((m, x, t) : xts) -> do
-      let (xts', e') = fill' sub xts e
-      ((m, x, fill sub t) : xts', e')
+      (xts', e') <- fill' ctx sub xts e
+      t' <- fill ctx sub t
+      return ((m, x, t') : xts', e')
