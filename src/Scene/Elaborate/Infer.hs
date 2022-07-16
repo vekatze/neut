@@ -24,6 +24,7 @@ import Entity.EnumCase
 import Entity.EnumInfo
 import Entity.Global
 import Entity.Hint
+import qualified Entity.HoleID as HID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
@@ -88,10 +89,6 @@ infer' ctx varEnv term =
         Just i -> do
           holes <- forM [1 .. i] $ const $ newAsterInVarEnv (gensym ctx) varEnv m
           inferPiElim ctx varEnv m (e, t) $ holes ++ etls
-    m :< WeakTermPiElim hole@(_ :< WeakTermAster i) es -> do
-      etls <- mapM (infer' ctx varEnv) es
-      t <- lookupWeakTypeEnv' ctx m i
-      inferPiElim ctx varEnv m (hole, t) etls
     m :< WeakTermPiElim e es -> do
       etls <- mapM (infer' ctx varEnv) es
       etl <- infer' ctx varEnv e
@@ -119,12 +116,12 @@ infer' ctx varEnv term =
       return (m :< WeakTermLet (mx, x, t') e1' e2', t2')
     m :< WeakTermAster x -> do
       holeEnv <- readIORef holeEnvRef
-      case IntMap.lookup x holeEnv of
+      case IntMap.lookup (HID.reify x) holeEnv of
         Just asterInfo ->
           return asterInfo
         Nothing -> do
           (app, higherApp) <- newAsterInVarEnv (gensym ctx) varEnv m
-          modifyIORef' holeEnvRef $ \env -> IntMap.insert x (app, higherApp) env
+          modifyIORef' holeEnvRef $ \env -> IntMap.insert (HID.reify x) (app, higherApp) env
           return (app, higherApp)
     m :< WeakTermPrim prim
       | Prim.Type _ <- prim ->
@@ -350,11 +347,10 @@ raiseArityMismatchError ctx function expected actual = do
 -- WeakTermAster might be used as an ordinary term, that is, a term which is not a type.
 newAsterInVarEnv :: Gensym.Context -> BoundVarEnv -> Hint -> IO (WeakTerm, WeakTerm)
 newAsterInVarEnv ctx varEnv m = do
-  higherAster <- Gensym.newAster ctx m
   let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
+  higherAster <- Gensym.newAster ctx m
   let higherApp = m :< WeakTermPiElim higherAster varSeq
-  aster@(_ :< WeakTermAster i) <- Gensym.newAster ctx m
-  modifyIORef' weakTypeEnvRef $ IntMap.insert i $ m :< WeakTermPi varEnv higherApp
+  aster <- Gensym.newAster ctx m
   let app = m :< WeakTermPiElim aster varSeq
   return (app, higherApp)
 
@@ -364,8 +360,7 @@ newAsterInVarEnv ctx varEnv m = do
 newTypeAsterInVarEnv :: Gensym.Context -> BoundVarEnv -> Hint -> IO WeakTerm
 newTypeAsterInVarEnv ctx varEnv m = do
   let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
-  aster@(_ :< WeakTermAster i) <- Gensym.newAster ctx m
-  modifyIORef' weakTypeEnvRef $ IntMap.insert i $ m :< WeakTermPi varEnv (m :< WeakTermTau)
+  aster <- Gensym.newAster ctx m
   return (m :< WeakTermPiElim aster varSeq)
 
 -- In context varEnv == [x1, ..., xn], `newTypeAsterListInVarEnv varEnv [y1, ..., ym]` generates
@@ -416,16 +411,6 @@ lookupWeakTypeEnv ctx m s = do
     Nothing ->
       Throw.raiseCritical (throw ctx) m $
         Ident.toText' s <> " is not found in the weak type environment."
-
-lookupWeakTypeEnv' :: Context -> Hint -> Int -> IO WeakTerm
-lookupWeakTypeEnv' ctx m s = do
-  mt <- lookupWeakTypeEnvMaybe s
-  case mt of
-    Just t ->
-      return t
-    Nothing ->
-      Throw.raiseCritical (throw ctx) m $
-        "the hole ?M" <> T.pack (show s) <> " is not found in the weak type environment."
 
 lookupTermTypeEnv :: Context -> Hint -> DD.DefiniteDescription -> IO WeakTerm
 lookupTermTypeEnv ctx m name = do

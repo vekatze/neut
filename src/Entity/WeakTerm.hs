@@ -8,6 +8,7 @@ import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumTypeName
 import Entity.Hint
+import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
@@ -29,7 +30,7 @@ data WeakTermF a
   | WeakTermSigmaIntro [a]
   | WeakTermSigmaElim [BinderF a] a a
   | WeakTermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | WeakTermAster Int
+  | WeakTermAster HoleID
   | WeakTermPrim Prim.Prim
   | WeakTermInt a Integer
   | WeakTermFloat a Double

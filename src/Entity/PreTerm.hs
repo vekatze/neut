@@ -9,6 +9,7 @@ import Entity.EnumCase
 import Entity.EnumTypeName
 import qualified Entity.GlobalLocator as GL
 import Entity.Hint
+import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import qualified Entity.LocalLocator as LL
@@ -32,7 +33,7 @@ data PreTermF a
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
   | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | Aster Int
+  | Aster HoleID
   | Prim Prim.Prim
   | Int a Integer
   | Float a Double

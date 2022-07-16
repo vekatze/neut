@@ -4,9 +4,10 @@ import Control.Comonad.Cofree
 import Data.Maybe
 import qualified Data.Set as S
 import Entity.Binder
+import Entity.HoleID
 import Entity.WeakTerm
 
-holes :: WeakTerm -> S.Set Int
+holes :: WeakTerm -> S.Set HoleID
 holes term =
   case term of
     _ :< WeakTermTau ->
@@ -89,7 +90,7 @@ holes term =
     _ :< WeakTermResourceType _ ->
       S.empty
 
-holes' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Int
+holes' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set HoleID
 holes' binder es =
   case binder of
     [] ->

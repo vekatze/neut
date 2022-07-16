@@ -2,6 +2,7 @@ module Entity.Constraint where
 
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
+import qualified Entity.HoleID as HID
 import Entity.WeakTerm
 
 type Constraint =
@@ -12,7 +13,7 @@ data ConstraintKind
   | ConstraintKindOther
 
 type MetaVarSet =
-  S.Set Int
+  S.Set HID.HoleID
 
 newtype SuspendedConstraint
   = SuspendedConstraint (MetaVarSet, ConstraintKind, (Constraint, Constraint))

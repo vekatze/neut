@@ -15,6 +15,7 @@ import Control.Comonad.Cofree
 import qualified Data.Text as T
 import Entity.Comp
 import Entity.Hint
+import Entity.HoleID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.PreTerm as PT
@@ -37,13 +38,13 @@ newText ctx = do
 {-# INLINE newPreAster #-}
 newPreAster :: Context -> Hint -> IO PT.PreTerm
 newPreAster ctx m = do
-  i <- newCount ctx
+  i <- HoleID <$> newCount ctx
   return $ m :< PT.Aster i
 
 {-# INLINE newAster #-}
 newAster :: Context -> Hint -> IO WeakTerm
 newAster ctx m = do
-  i <- newCount ctx
+  i <- HoleID <$> newCount ctx
   return $ m :< WeakTermAster i
 
 {-# INLINE newIdentFromText #-}
