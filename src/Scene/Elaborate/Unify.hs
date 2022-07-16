@@ -20,12 +20,14 @@ import Entity.FilePos
 import Entity.Global
 import Entity.Hint
 import qualified Entity.HoleID as HID
+import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Log
 import Entity.Opacity
 import Entity.WeakTerm
+import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
 import Entity.WeakTerm.Reduce
@@ -70,8 +72,8 @@ throwTypeErrors ctx = do
     -- p $ T.unpack $ toText r
     -- p' (expected, actual)
     -- p' sub
-    expected' <- subst ctx sub expected >>= reduce ctx
-    actual' <- subst ctx sub actual >>= reduce ctx
+    expected' <- reduce ctx $ fill sub expected
+    actual' <- reduce ctx $ fill sub actual
     -- expected' <- subst sub l >>= reduce
     -- actual' <- subst sub r >>= reduce
     return $ logError (fromHint (metaOf actual)) $ constructErrorMsg actual' expected'
@@ -191,18 +193,18 @@ simplify ctx constraintList =
           let fmvs = S.union fmvs1 fmvs2 -- fmvs: free meta-variables
           case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
             (Just (h1, body1), Just (h2, body2)) -> do
-              let s1 = IntMap.singleton (HID.reify h1) body1
-              let s2 = IntMap.singleton (HID.reify h2) body2
-              e1' <- subst ctx s1 e1
-              e2' <- subst ctx s2 e2
+              let s1 = HS.singleton h1 body1
+              let s2 = HS.singleton h2 body2
+              let e1' = fill s1 e1
+              let e2' = fill s2 e2
               simplify ctx $ ((e1', e2'), orig) : cs
             (Just (h1, body1), Nothing) -> do
-              let s1 = IntMap.singleton (HID.reify h1) body1
-              e1' <- subst ctx s1 e1
+              let s1 = HS.singleton h1 body1
+              let e1' = fill s1 e1
               simplify ctx $ ((e1', e2), orig) : cs
             (Nothing, Just (h2, body2)) -> do
-              let s2 = IntMap.singleton (HID.reify h2) body2
-              e2' <- subst ctx s2 e2
+              let s2 = HS.singleton h2 body2
+              let e2' = fill s2 e2
               simplify ctx $ ((e1, e2'), orig) : cs
             (Nothing, Nothing) -> do
               case (asStuckedTerm e1, asStuckedTerm e2) of
@@ -259,7 +261,8 @@ simplify ctx constraintList =
 {-# INLINE resolveHole #-}
 resolveHole :: Context -> HID.HoleID -> [[BinderF WeakTerm]] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
 resolveHole ctx h1 xss e2' cs = do
-  modifyIORef' substRef $ IntMap.insert (HID.reify h1) (toPiIntro xss e2')
+  modifyIORef' substRef $ HS.insert h1 (toPiIntro xss e2')
+  -- modifyIORef' substRef $ IntMap.insert (HID.reify h1) (toPiIntro xss e2')
   suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
   modifyIORef' suspendedConstraintQueueRef $ const sus2
@@ -385,13 +388,13 @@ toLinearIdentSet' xtss acc =
       | otherwise ->
         toLinearIdentSet' (rest1 : rest2) (S.insert x acc)
 
-lookupAny :: [HID.HoleID] -> IntMap.IntMap a -> Maybe (HID.HoleID, a)
+lookupAny :: [HID.HoleID] -> HS.HoleSubst -> Maybe (HID.HoleID, WeakTerm)
 lookupAny is sub =
   case is of
     [] ->
       Nothing
     j : js ->
-      case IntMap.lookup (HID.reify j) sub of
+      case HS.lookup j sub of
         Just v ->
           Just (j, v)
         _ ->

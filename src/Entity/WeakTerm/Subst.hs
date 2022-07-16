@@ -5,7 +5,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
 import Entity.Binder
-import qualified Entity.HoleID as HID
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.WeakTerm
@@ -53,12 +52,8 @@ subst ctx sub term =
       return $ m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermPrim _ ->
       return term
-    _ :< WeakTermAster x ->
-      case IntMap.lookup (HID.reify x) sub of
-        Nothing ->
-          return term
-        Just e2 ->
-          return e2
+    _ :< WeakTermAster {} ->
+      return term
     m :< WeakTermInt t x -> do
       t' <- subst ctx sub t
       return $ m :< WeakTermInt t' x

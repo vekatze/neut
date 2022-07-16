@@ -25,7 +25,7 @@ import qualified Entity.EnumValueName as EV
 import Entity.Global
 import qualified Entity.GlobalName as GN
 import Entity.Hint
-import qualified Entity.HoleID as HID
+import qualified Entity.HoleSubst as HS
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Opacity
@@ -152,7 +152,7 @@ elaborate' ctx term =
       return $ m :< TermPiIntro kind' xts' e'
     m :< WeakTermPiElim (mh :< WeakTermAster x) es -> do
       subst <- readIORef substRef
-      case IntMap.lookup (HID.reify x) subst of
+      case HS.lookup x subst of
         Nothing ->
           Throw.raiseError (throw ctx) mh "couldn't instantiate the asterisk here"
         Just (_ :< WeakTermPiIntro LamKindNormal xts e)

@@ -10,6 +10,7 @@ import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
@@ -47,9 +48,9 @@ impArgEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE substRef #-}
-substRef :: IORef (IntMap.IntMap WeakTerm)
+substRef :: IORef HS.HoleSubst
 substRef =
-  unsafePerformIO (newIORef IntMap.empty)
+  unsafePerformIO (newIORef HS.empty)
 
 {-# NOINLINE termTypeEnvRef #-}
 termTypeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
