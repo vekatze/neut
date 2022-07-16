@@ -322,7 +322,7 @@ raiseArityMismatchError ctx function expected actual = do
   case function of
     m :< WeakTermVarGlobal name
       | Just k <- Map.lookup name impArgEnv ->
-        Throw.raiseCritical (throw ctx) m $
+        Throw.raiseError (throw ctx) m $
           "the function `"
             <> DD.reify name
             <> "` expects "
@@ -331,7 +331,7 @@ raiseArityMismatchError ctx function expected actual = do
             <> T.pack (show (actual - k))
             <> "."
     m :< _ ->
-      Throw.raiseCritical (throw ctx) m $
+      Throw.raiseError (throw ctx) m $
         "this function expects "
           <> T.pack (show expected)
           <> " arguments, but found "
