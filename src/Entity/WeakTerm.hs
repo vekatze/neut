@@ -30,7 +30,7 @@ data WeakTermF a
   | WeakTermSigmaIntro [a]
   | WeakTermSigmaElim [BinderF a] a a
   | WeakTermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | WeakTermAster HoleID
+  | WeakTermAster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | WeakTermPrim Prim.Prim
   | WeakTermInt a Integer
   | WeakTermFloat a Double

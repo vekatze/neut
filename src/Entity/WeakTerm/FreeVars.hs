@@ -39,8 +39,8 @@ freeVars term =
       S.union set1 set2
     _ :< WeakTermPrim _ ->
       S.empty
-    _ :< WeakTermAster _ ->
-      S.empty
+    _ :< WeakTermAster _ es ->
+      S.unions $ map freeVars es
     _ :< WeakTermInt t _ ->
       freeVars t
     _ :< WeakTermFloat t _ ->

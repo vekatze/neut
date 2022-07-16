@@ -8,6 +8,7 @@ import Entity.EnumCase
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import Entity.Hint
+import qualified Entity.HoleID as HID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
@@ -22,7 +23,7 @@ toText term =
     _ :< WeakTermVar x ->
       showVariable x
     _ :< WeakTermVarGlobal x ->
-      T.pack $ show x
+      DD.reify x
     _ :< WeakTermPi xts cod
       | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WeakTermPi yts _)] <- xts ->
         case splitLast yts of
@@ -56,8 +57,8 @@ toText term =
       "<let>"
     _ :< WeakTermPrim prim ->
       T.pack $ show prim -- fixme
-    _ :< WeakTermAster i ->
-      "?M" <> T.pack (show i)
+    _ :< WeakTermAster i es ->
+      showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
     _ :< WeakTermInt _ a ->
       T.pack $ show a
     _ :< WeakTermFloat _ a ->
@@ -131,7 +132,7 @@ showTypeArgs args =
 
 showVariable :: Ident -> T.Text
 showVariable =
-  Ident.toText
+  Ident.toText'
 
 showCaseClause :: (PatternF WeakTerm, WeakTerm) -> T.Text
 showCaseClause (pat, e) =

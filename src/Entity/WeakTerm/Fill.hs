@@ -51,8 +51,13 @@ fill sub term =
       m :< WeakTermLet mxt' e1' e2'
     _ :< WeakTermPrim _ ->
       term
-    _ :< WeakTermAster i ->
-      fromMaybe term (lookup i sub)
+    m :< WeakTermAster i es -> do
+      let es' = map (fill sub) es
+      case lookup i sub of
+        Just e ->
+          m :< WeakTermPiElim e es'
+        Nothing ->
+          m :< WeakTermAster i es'
     m :< WeakTermInt t x -> do
       let t' = fill sub t
       m :< WeakTermInt t' x

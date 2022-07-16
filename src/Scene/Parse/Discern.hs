@@ -12,7 +12,6 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
 import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
 import Entity.Binder
@@ -40,7 +39,10 @@ data Context = Context
     alias :: Alias.Context
   }
 
-type NameEnv = Map.HashMap T.Text Ident
+type NameEnv = [(T.Text, (Hint, Ident))]
+
+empty :: NameEnv
+empty = []
 
 specialize :: App.Context -> Context
 specialize ctx =
@@ -58,14 +60,14 @@ discernStmtList ctx stmtList =
     [] ->
       return []
     PreStmtDefine isReducible m functionName impArgNum xts codType e : rest -> do
-      (xts', nenv) <- discernBinder ctx Map.empty xts
+      (xts', nenv) <- discernBinder ctx empty xts
       codType' <- discern ctx nenv codType
       e' <- discern ctx nenv e
       rest' <- discernStmtList ctx rest
       return $ WeakStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
     PreStmtDefineResource m name discarder copier : rest -> do
-      discarder' <- discern ctx Map.empty discarder
-      copier' <- discern ctx Map.empty copier
+      discarder' <- discern ctx empty discarder
+      copier' <- discern ctx empty copier
       rest' <- discernStmtList ctx rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
     PreStmtSection section innerStmtList : rest -> do
@@ -81,8 +83,8 @@ discern ctx nenv term =
     m :< PT.Tau ->
       return $ m :< WeakTermTau
     m :< PT.Var (I (s, _)) -> do
-      case Map.lookup s nenv of
-        Just name ->
+      case lookup s nenv of
+        Just (_, name) ->
           return $ m :< WeakTermVar name
         Nothing -> do
           resolveName ctx m s
@@ -127,7 +129,7 @@ discern ctx nenv term =
     m :< PT.Prim prim ->
       return $ m :< WeakTermPrim prim
     m :< PT.Aster k ->
-      return $ m :< WeakTermAster k
+      return $ m :< WeakTermAster k (map (\(_, (mx, x)) -> mx :< WeakTermVar x) nenv)
     m :< PT.Int t x -> do
       t' <- discern ctx nenv t
       return $ m :< WeakTermInt t' x
@@ -173,15 +175,15 @@ discern ctx nenv term =
       e' <- discern ctx nenv e
       return $ m :< WeakTermNoema s' e'
     m :< PT.NoemaIntro (I (x, _)) e ->
-      case Map.lookup x nenv of
-        Just name -> do
+      case lookup x nenv of
+        Just (_, name) -> do
           e' <- discern ctx nenv e
           return $ m :< WeakTermNoemaIntro name e'
         Nothing ->
           Throw.raiseError (throw ctx) m $ "undefined subject variable: " <> x
     m :< PT.NoemaElim s e -> do
       s' <- Gensym.newIdentFromIdent (gensym ctx) s
-      e' <- discern ctx (Map.insert (Ident.toText s) s' nenv) e
+      e' <- discern ctx ((Ident.toText s, (m, s')) : nenv) e
       return $ m :< WeakTermNoemaElim s' e'
     m :< PT.Array elemType -> do
       elemType' <- discern ctx nenv elemType
@@ -227,7 +229,7 @@ discernBinder ctx nenv binder =
     (mx, x, t) : xts -> do
       t' <- discern ctx nenv t
       x' <- Gensym.newIdentFromIdent (gensym ctx) x
-      (xts', nenv') <- discernBinder ctx (Map.insert (Ident.toText x) x' nenv) xts
+      (xts', nenv') <- discernBinder ctx ((Ident.toText x, (mx, x')) : nenv) xts
       return ((mx, x', t') : xts', nenv')
 
 discernBinderWithBody ::

@@ -34,8 +34,8 @@ holes term =
       let set1 = holes e1
       let set2 = holes' [mxt] [e2]
       S.union set1 set2
-    _ :< WeakTermAster h ->
-      S.singleton h
+    _ :< WeakTermAster h es ->
+      S.insert h $ S.unions $ map holes es
     _ :< WeakTermPrim _ ->
       S.empty
     _ :< WeakTermInt t _ ->

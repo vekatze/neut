@@ -142,9 +142,6 @@ simplify ctx constraintList =
         (_ :< WeakTermSigmaIntro es1, _ :< WeakTermSigmaIntro es2)
           | length es1 == length es2 -> do
             simplify ctx $ zipWith (curry (orig,)) es1 es2 ++ cs
-        (_ :< WeakTermAster h1, _ :< WeakTermAster h2)
-          | h1 == h2 ->
-            simplify ctx cs
         (_ :< WeakTermPrim a1, _ :< WeakTermPrim a2)
           | a1 == a2 ->
             simplify ctx cs
@@ -262,7 +259,6 @@ simplify ctx constraintList =
 resolveHole :: Context -> HID.HoleID -> [[BinderF WeakTerm]] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
 resolveHole ctx h1 xss e2' cs = do
   modifyIORef' substRef $ HS.insert h1 (toPiIntro xss e2')
-  -- modifyIORef' substRef $ IntMap.insert (HID.reify h1) (toPiIntro xss e2')
   suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
   modifyIORef' suspendedConstraintQueueRef $ const sus2
@@ -324,8 +320,8 @@ asStuckedTerm term =
       Just $ StuckPiElimVarLocal x []
     (_ :< WeakTermVarGlobal g) ->
       Just $ StuckPiElimVarGlobal g []
-    (_ :< WeakTermAster h) ->
-      Just $ StuckPiElimAster h []
+    (_ :< WeakTermAster h es) ->
+      Just $ StuckPiElimAster h [es]
     (m :< WeakTermPiElim e es) ->
       case asStuckedTerm e of
         Just (StuckPiElimVarLocal x ess) ->
@@ -364,7 +360,7 @@ asIdentList termList =
       return []
     e : es
       | (m :< WeakTermVar x) <- e -> do
-        let t = m :< WeakTermTau -- don't care
+        let t = m :< WeakTermTau -- don't care (FIXME)
         xts <- asIdentList es
         return $ (m, x, t) : xts
       | otherwise ->

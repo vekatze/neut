@@ -4,7 +4,6 @@ module Scene.Elaborate.Infer
     insConstraintEnv,
     insWeakTypeEnv,
     inferBinder,
-    arrangeBinder,
   )
 where
 
@@ -114,15 +113,15 @@ infer' ctx varEnv term =
       insWeakTypeEnv x t'
       (e2', t2') <- infer' ctx varEnv e2 -- no context extension
       return (m :< WeakTermLet (mx, x, t') e1' e2', t2')
-    m :< WeakTermAster x -> do
+    m :< WeakTermAster x es -> do
       holeEnv <- readIORef holeEnvRef
       case IntMap.lookup (HID.reify x) holeEnv of
         Just asterInfo ->
           return asterInfo
         Nothing -> do
-          typedAster <- newTypedAster (gensym ctx) varEnv m
-          modifyIORef' holeEnvRef $ \env -> IntMap.insert (HID.reify x) typedAster env
-          return typedAster
+          holeType <- Gensym.newAster (gensym ctx) m es
+          modifyIORef' holeEnvRef $ \env -> IntMap.insert (HID.reify x) (term, holeType) env
+          return (term, holeType)
     m :< WeakTermPrim prim
       | Prim.Type _ <- prim ->
         return (term, m :< WeakTermTau)
@@ -183,7 +182,7 @@ infer' ctx varEnv term =
       return (m :< WeakTermNoemaIntro s e', m :< WeakTermNoema (m :< WeakTermVar s) t')
     m :< WeakTermNoemaElim s e -> do
       insWeakTypeEnv s (m :< WeakTermTau)
-      (e', t) <- infer' ctx (varEnv ++ [(m, s, m :< WeakTermTau)]) e
+      (e', t) <- infer' ctx ((m, s, m :< WeakTermTau) : varEnv) e
       return (m :< WeakTermNoemaElim s e', t)
     m :< WeakTermArray elemType -> do
       elemType' <- inferType' ctx varEnv elemType
@@ -272,7 +271,7 @@ inferPi ctx varEnv binder cod =
     ((mx, x, t) : xts) -> do
       t' <- inferType' ctx varEnv t
       insWeakTypeEnv x t'
-      (xtls', tlCod) <- inferPi ctx (varEnv ++ [(mx, x, t')]) xts cod
+      (xtls', tlCod) <- inferPi ctx ((mx, x, t') : varEnv) xts cod
       return ((mx, x, t') : xtls', tlCod)
 
 inferBinder ::
@@ -289,7 +288,7 @@ inferBinder ctx varEnv binder e =
     ((mx, x, t) : xts) -> do
       t' <- inferType' ctx varEnv t
       insWeakTypeEnv x t'
-      (xts', etl') <- inferBinder ctx (varEnv ++ [(mx, x, t')]) xts e
+      (xts', etl') <- inferBinder ctx ((mx, x, t') : varEnv) xts e
       return ((mx, x, t') : xts', etl')
 
 inferPiElim ::
@@ -311,7 +310,7 @@ inferPiElim ctx varEnv m (e, t) ets = do
     _ -> do
       ys <- mapM (const $ Gensym.newIdentFromText (gensym ctx) "arg") es
       yts <- newTypeAsterList (gensym ctx) varEnv $ zip ys (map metaOf es)
-      cod <- newAster (gensym ctx) (varEnv ++ yts) m
+      cod <- newAster (gensym ctx) (yts ++ varEnv) m
       insConstraintEnv (metaOf e :< WeakTermPi yts cod) t
       cod' <- inferArgs ctx IntMap.empty m ets yts cod
       return (m :< WeakTermPiElim e es, cod')
@@ -339,10 +338,8 @@ raiseArityMismatchError ctx function expected actual = do
           <> "."
 
 newAster :: Gensym.Context -> BoundVarEnv -> Hint -> IO WeakTerm
-newAster ctx varEnv m = do
-  let varSeq = map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
-  aster <- Gensym.newAster ctx m
-  return (m :< WeakTermPiElim aster varSeq)
+newAster ctx varEnv m =
+  Gensym.newAster ctx m $ map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
 
 newTypedAster :: Gensym.Context -> BoundVarEnv -> Hint -> IO (WeakTerm, WeakTerm)
 newTypedAster ctx varEnv m = do
@@ -367,7 +364,8 @@ newTypeAsterList ctx varEnv ids =
     ((x, m) : rest) -> do
       t <- newAster ctx varEnv m
       insWeakTypeEnv x t
-      ts <- newTypeAsterList ctx (varEnv ++ [(m, x, t)]) rest
+      ts <- newTypeAsterList ctx ((m, x, t) : varEnv) rest
+      -- ts <- newTypeAsterList ctx (varEnv ++ [(m, x, t)]) rest
       return $ (m, x, t) : ts
 
 inferEnumCase :: Context -> BoundVarEnv -> EnumCase -> IO (EnumCase, WeakTerm)
@@ -429,146 +427,6 @@ primOpToType ctx m (PrimOp op domList cod) = do
     else do
       let cod' = Term.fromPrimNum m cod
       return $ m :< TermPi xts cod'
-
--- ?M ~> ?M @ varEnv
-arrange :: Gensym.Context -> BoundVarEnv -> WeakTerm -> IO WeakTerm
-arrange ctx varEnv term =
-  case term of
-    _ :< WeakTermTau ->
-      return term
-    _ :< WeakTermVar {} ->
-      return term
-    _ :< WeakTermVarGlobal {} ->
-      return term
-    m :< WeakTermPi xts t -> do
-      (xts', t') <- arrangeBinder ctx varEnv xts t
-      return $ m :< WeakTermPi xts' t'
-    m :< WeakTermPiIntro kind xts e -> do
-      case kind of
-        LamKindFix xt -> do
-          (xt' : xts', e') <- arrangeBinder ctx varEnv (xt : xts) e
-          return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
-        LamKindCons dataName consName consNumber dataType -> do
-          dataType' <- arrange ctx varEnv dataType
-          (xts', e') <- arrangeBinder ctx varEnv xts e
-          return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
-        _ -> do
-          (xts', e') <- arrangeBinder ctx varEnv xts e
-          return $ m :< WeakTermPiIntro kind xts' e'
-    m :< WeakTermPiElim e es -> do
-      es' <- mapM (arrange ctx varEnv) es
-      e' <- arrange ctx varEnv e
-      return $ m :< WeakTermPiElim e' es'
-    m :< WeakTermSigma xts -> do
-      (xts', _) <- arrangeBinder ctx varEnv xts (m :< WeakTermTau)
-      return $ m :< WeakTermSigma xts'
-    m :< WeakTermSigmaIntro es -> do
-      es' <- mapM (arrange ctx varEnv) es
-      return $ m :< WeakTermSigmaIntro es'
-    m :< WeakTermSigmaElim xts e1 e2 -> do
-      e1' <- arrange ctx varEnv e1
-      (xts', e2') <- arrangeBinder ctx varEnv xts e2
-      return $ m :< WeakTermSigmaElim xts' e1' e2'
-    m :< WeakTermLet mxt e1 e2 -> do
-      e1' <- arrange ctx varEnv e1
-      ([mxt'], e2') <- arrangeBinder ctx varEnv [mxt] e2
-      return $ m :< WeakTermLet mxt' e1' e2'
-    _ :< WeakTermPrim _ ->
-      return term
-    m :< WeakTermAster _ ->
-      newAster ctx varEnv m
-    m :< WeakTermInt t x -> do
-      t' <- arrange ctx varEnv t
-      return $ m :< WeakTermInt t' x
-    m :< WeakTermFloat t x -> do
-      t' <- arrange ctx varEnv t
-      return $ m :< WeakTermFloat t' x
-    _ :< WeakTermEnum _ ->
-      return term
-    _ :< WeakTermEnumIntro {} ->
-      return term
-    m :< WeakTermEnumElim (e, t) caseList -> do
-      e' <- arrange ctx varEnv e
-      t' <- arrange ctx varEnv t
-      caseList' <-
-        forM caseList $ \(enumCase, body) -> do
-          body' <- arrange ctx varEnv body
-          return (enumCase, body')
-      return $ m :< WeakTermEnumElim (e', t') caseList'
-    m :< WeakTermQuestion e t -> do
-      e' <- arrange ctx varEnv e
-      t' <- arrange ctx varEnv t
-      return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermMagic der -> do
-      der' <- traverse (arrange ctx varEnv) der
-      return $ m :< WeakTermMagic der'
-    m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (arrange ctx varEnv) mSubject
-      e' <- arrange ctx varEnv e
-      t' <- arrange ctx varEnv t
-      clauseList' <- forM clauseList $ \((mCons, constructorName, xts), body) -> do
-        (xts', body') <- arrangeBinder ctx varEnv xts body
-        return ((mCons, constructorName, xts'), body')
-      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< WeakTermNoema s e -> do
-      s' <- arrange ctx varEnv s
-      e' <- arrange ctx varEnv e
-      return $ m :< WeakTermNoema s' e'
-    m :< WeakTermNoemaIntro x e -> do
-      e' <- arrange ctx varEnv e
-      return $ m :< WeakTermNoemaIntro x e'
-    m :< WeakTermNoemaElim s e -> do
-      e' <- arrange ctx varEnv e
-      return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray elemType -> do
-      elemType' <- arrange ctx varEnv elemType
-      return $ m :< WeakTermArray elemType'
-    m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- arrange ctx varEnv elemType
-      elems' <- mapM (arrange ctx varEnv) elems
-      return $ m :< WeakTermArrayIntro elemType' elems'
-    m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- arrange ctx varEnv subject
-      elemType' <- arrange ctx varEnv elemType
-      array' <- arrange ctx varEnv array
-      index' <- arrange ctx varEnv index
-      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
-    _ :< WeakTermText ->
-      return term
-    _ :< WeakTermTextIntro _ ->
-      return term
-    m :< WeakTermCell contentType -> do
-      contentType' <- arrange ctx varEnv contentType
-      return $ m :< WeakTermCell contentType'
-    m :< WeakTermCellIntro contentType content -> do
-      contentType' <- arrange ctx varEnv contentType
-      content' <- arrange ctx varEnv content
-      return $ m :< WeakTermCellIntro contentType' content'
-    m :< WeakTermCellRead cell -> do
-      cell' <- arrange ctx varEnv cell
-      return $ m :< WeakTermCellRead cell'
-    m :< WeakTermCellWrite cell newValue -> do
-      cell' <- arrange ctx varEnv cell
-      newValue' <- arrange ctx varEnv newValue
-      return $ m :< WeakTermCellWrite cell' newValue'
-    _ :< WeakTermResourceType {} ->
-      return term
-
-arrangeBinder ::
-  Gensym.Context ->
-  BoundVarEnv ->
-  [BinderF WeakTerm] ->
-  WeakTerm ->
-  IO ([BinderF WeakTerm], WeakTerm)
-arrangeBinder ctx varEnv binder cod =
-  case binder of
-    [] -> do
-      cod' <- arrange ctx varEnv cod
-      return ([], cod')
-    ((mx, x, t) : xts) -> do
-      t' <- arrange ctx varEnv t
-      (xts', cod') <- arrangeBinder ctx (varEnv ++ [(mx, x, t')]) xts cod
-      return ((mx, x, t') : xts', cod')
 
 patternToTerm :: PatternF WeakTerm -> WeakTerm
 patternToTerm (m, name, args) = do

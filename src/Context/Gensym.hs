@@ -42,10 +42,10 @@ newPreAster ctx m = do
   return $ m :< PT.Aster i
 
 {-# INLINE newAster #-}
-newAster :: Context -> Hint -> IO WeakTerm
-newAster ctx m = do
+newAster :: Context -> Hint -> [WeakTerm] -> IO WeakTerm
+newAster ctx m varSeq = do
   i <- HoleID <$> newCount ctx
-  return $ m :< WeakTermAster i
+  return $ m :< WeakTermAster i varSeq
 
 {-# INLINE newIdentFromText #-}
 newIdentFromText :: Context -> T.Text -> IO Ident

@@ -72,14 +72,13 @@ registerTopLevelDef stmt = do
       insTermTypeEnv name $ m :< WeakTermTau
 
 setupDef :: Gensym.Context -> WeakStmt -> IO WeakStmt
-setupDef ctx def =
+setupDef _ def =
   case def of
     WeakStmtDefine opacity m f impArgNum xts codType e -> do
-      (xts', codType') <- arrangeBinder ctx [] xts codType
-      insTermTypeEnv f $ m :< WeakTermPi xts' codType'
+      insTermTypeEnv f $ m :< WeakTermPi xts codType
       modifyIORef' impArgEnvRef $ Map.insert f impArgNum
-      modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts', e)
-      return $ WeakStmtDefine opacity m f impArgNum xts' codType' e
+      modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts, e)
+      return $ WeakStmtDefine opacity m f impArgNum xts codType e
     WeakStmtDefineResource m name discarder copier -> do
       insTermTypeEnv name $ m :< WeakTermTau
       return $ WeakStmtDefineResource m name discarder copier
@@ -150,18 +149,6 @@ elaborate' ctx term =
       xts' <- mapM (elaborateWeakBinder ctx) xts
       e' <- elaborate' ctx e
       return $ m :< TermPiIntro kind' xts' e'
-    m :< WeakTermPiElim (mh :< WeakTermAster x) es -> do
-      subst <- readIORef substRef
-      case HS.lookup x subst of
-        Nothing ->
-          Throw.raiseError (throw ctx) mh "couldn't instantiate the asterisk here"
-        Just (_ :< WeakTermPiIntro LamKindNormal xts e)
-          | length xts == length es -> do
-            let xs = map (\(_, y, _) -> Ident.toInt y) xts
-            let s = IntMap.fromList $ zip xs es
-            WeakTerm.subst (gensym ctx) s e >>= elaborate' ctx
-        Just e ->
-          WeakTerm.reduce (gensym ctx) (m :< WeakTermPiElim e es) >>= elaborate' ctx
     m :< WeakTermPiElim e es -> do
       e' <- elaborate' ctx e
       es' <- mapM (elaborate' ctx) es
@@ -182,11 +169,18 @@ elaborate' ctx term =
       mxt' <- elaborateWeakBinder ctx mxt
       e2' <- elaborate' ctx e2
       return $ m :< TermLet mxt' e1' e2'
-    m :< WeakTermAster _ ->
-      Throw.raiseCritical
-        (throw ctx)
-        m
-        "every meta-variable must be of the form (?M e1 ... en) where n >= 0, but the meta-variable here doesn't fit this pattern"
+    m :< WeakTermAster h es -> do
+      subst <- readIORef substRef
+      case HS.lookup h subst of
+        Nothing ->
+          Throw.raiseError (throw ctx) m "couldn't instantiate the hole here"
+        Just (_ :< WeakTermPiIntro LamKindNormal xts e)
+          | length xts == length es -> do
+            let xs = map (\(_, y, _) -> Ident.toInt y) xts
+            let s = IntMap.fromList $ zip xs es
+            WeakTerm.subst (gensym ctx) s e >>= elaborate' ctx
+        Just e ->
+          WeakTerm.reduce (gensym ctx) (m :< WeakTermPiElim e es) >>= elaborate' ctx
     m :< WeakTermPrim x ->
       return $ m :< TermPrim x
     m :< WeakTermInt t x -> do
