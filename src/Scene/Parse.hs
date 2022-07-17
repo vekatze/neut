@@ -27,6 +27,7 @@ import qualified Entity.GlobalName as GN
 import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.Ident.Reify as Ident
+import qualified Entity.ImpArgNum as I
 import Entity.LamKind
 import qualified Entity.LocalLocator as LL
 import Entity.Opacity
@@ -176,14 +177,14 @@ parseDefine ctx opacity = do
   m <- currentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo ctx
   name' <- liftIO $ Locator.attachCurrentLocator (locator ctx) name
-  liftIO $ defineFunction ctx opacity m name' (length impArgs) (impArgs ++ expArgs) codType e
+  liftIO $ defineFunction ctx opacity m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
   Context ->
   Opacity ->
   Hint ->
   DD.DefiniteDescription ->
-  Int ->
+  I.ImpArgNum ->
   [BinderF PT.PreTerm] ->
   PT.PreTerm ->
   PT.PreTerm ->
@@ -212,7 +213,7 @@ defineData ctx m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName (throw ctx) m dataName) consInfoList
   setAsData (global ctx) m dataName consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
-  let formRule = PreStmtDefine OpacityOpaque m dataName 0 dataArgs (m :< PT.Tau) consType
+  let formRule = PreStmtDefine OpacityOpaque m dataName (I.fromInt 0) dataArgs (m :< PT.Tau) consType
   introRuleList <- parseDefineDataConstructor ctx dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -246,7 +247,7 @@ parseDefineDataConstructor ctx dataName dataArgs consInfoList discriminant = do
           OpacityTransparent
           m
           consName
-          (length dataArgs)
+          (I.fromInt $ length dataArgs)
           (dataArgs ++ consArgs)
           dataType
           $ m
@@ -306,7 +307,7 @@ parseDefineCodataElim ctx dataName dataArgs elemInfoList (m, elemName, elemType)
     OpacityOpaque
     m
     projectionName -- e.g. some-lib.foo::my-record.element-x
-    (length dataArgs)
+    (I.fromInt $ length dataArgs)
     projArgs
     elemType
     $ m

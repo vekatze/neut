@@ -7,6 +7,7 @@ where
 import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
+import qualified Context.Implicit as Implicit
 import qualified Context.LLVM as LLVM
 import qualified Context.Log as Log
 import qualified Context.Mode as Mode
@@ -84,6 +85,7 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   typeCtx <- Mode.typeCtx mode $ Type.Config {Type.throwCtx = throwCtx}
+  implicitCtx <- Mode.implicitCtx mode $ Implicit.Config {}
   let ctxCfg =
         App.Config
           { App.mode = mode,
@@ -92,6 +94,7 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
             App.gensymCtx = gensymCtx,
             App.pathCtx = pathCtx,
             App.typeCtx = typeCtx,
+            App.implicitCtx = implicitCtx,
             App.globalCtx = globalCtx,
             App.cancelAllocFlagConf = cancelAllocFlag,
             App.mainModuleConf = mainModule,

@@ -3,6 +3,7 @@ module Context.Mode where
 import qualified Context.Alias as Alias
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
+import qualified Context.Implicit as Implicit
 import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
@@ -21,5 +22,6 @@ data Mode = Mode
     aliasCtx :: Alias.Config -> IO Alias.Context,
     pathCtx :: Path.Config -> IO Path.Context,
     moduleCtx :: Module.Config -> IO Module.Context,
-    typeCtx :: Type.Config -> IO Type.Context
+    typeCtx :: Type.Config -> IO Type.Context,
+    implicitCtx :: Implicit.Config -> IO Implicit.Context
   }

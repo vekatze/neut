@@ -7,6 +7,7 @@ import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumInfo
 import Entity.Hint
+import qualified Entity.ImpArgNum as I
 import Entity.Opacity
 import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
@@ -21,19 +22,19 @@ type PreProgram =
   (Path Abs File, [PreStmt])
 
 data PreStmt
-  = PreStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
+  = PreStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
   | PreStmtDefineResource Hint DD.DefiniteDescription PT.PreTerm PT.PreTerm
   | PreStmtSection Section.Section [PreStmt]
 
 data WeakStmt
-  = WeakStmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF WeakTerm] WeakTerm WeakTerm
+  = WeakStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WeakTerm] WeakTerm WeakTerm
   | WeakStmtDefineResource Hint DD.DefiniteDescription WeakTerm WeakTerm
 
 type Program =
   (Source, [Stmt])
 
 data Stmt
-  = StmtDefine Opacity Hint DD.DefiniteDescription Int [BinderF Term] Term Term
+  = StmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF Term] Term Term
   | StmtDefineResource Hint DD.DefiniteDescription Term Term
   deriving (Generic)
 

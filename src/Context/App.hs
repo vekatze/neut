@@ -8,6 +8,7 @@ where
 import qualified Context.Alias as Alias
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
+import qualified Context.Implicit as Implicit
 import qualified Context.LLVM as LLVM
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
@@ -35,6 +36,7 @@ data Context = Context
     alias :: Alias.Context,
     moduleCtx :: Module.Context,
     asTypeCtx :: Type.Context,
+    implicit :: Implicit.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
@@ -50,6 +52,7 @@ data Config = Config
     globalCtx :: Global.Context,
     gensymCtx :: Gensym.Context,
     typeCtx :: Type.Context,
+    implicitCtx :: Implicit.Context,
     cancelAllocFlagConf :: Bool,
     mainModuleConf :: Module,
     initialSourceConf :: Source,
@@ -101,6 +104,7 @@ new cfg source = do
         alias = aliasCtx,
         moduleCtx = _moduleCtx,
         asTypeCtx = typeCtx cfg,
+        implicit = implicitCtx cfg,
         shouldCancelAlloc = cancelAllocFlagConf cfg,
         initialSource = initialSourceConf cfg,
         targetPlatform =

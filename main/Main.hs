@@ -11,6 +11,7 @@ import qualified Act.Version as Version
 import qualified Context.Alias.Main as Alias
 import qualified Context.Gensym.Main as Gensym
 import qualified Context.Global.Main as Global
+import qualified Context.Implicit.Main as Implicit
 import qualified Context.LLVM.Main as LLVM
 import qualified Context.Locator.Main as Locator
 import qualified Context.Log as Log
@@ -213,7 +214,8 @@ prodMode =
       Mode.locatorCtx = Locator.new,
       Mode.pathCtx = Path.new,
       Mode.moduleCtx = Module.new,
-      Mode.typeCtx = Type.new
+      Mode.typeCtx = Type.new,
+      Mode.implicitCtx = Implicit.new
     }
 
 throwConfig :: Throw.Config

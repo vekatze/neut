@@ -11,13 +11,14 @@ where
 
 import qualified Context.App as App
 import qualified Context.Gensym as Gensym
+import qualified Context.Implicit as Implicit
 import qualified Context.Throw as Throw
 import qualified Context.Type as Type
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
+import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
@@ -29,6 +30,7 @@ import Entity.Hint
 import qualified Entity.HoleID as HID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
+import qualified Entity.ImpArgNum as I
 import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
@@ -47,8 +49,7 @@ data Context = Context
   { base :: App.Context,
     weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm),
     holeEnvRef :: IORef (IntMap.IntMap (WeakTerm, WeakTerm)),
-    constraintListRef :: IORef [Constraint],
-    impArgEnvRef :: IORef (Map.HashMap DD.DefiniteDescription Int)
+    constraintListRef :: IORef [Constraint]
   }
 
 specialize :: App.Context -> IO Context
@@ -56,14 +57,12 @@ specialize ctx = do
   _weakTypeEnvRef <- newIORef IntMap.empty
   _holeEnvRef <- newIORef IntMap.empty
   _constraintListRef <- newIORef []
-  _impArgEnvRef <- newIORef Map.empty
   return $
     Context
       { base = ctx,
         weakTypeEnvRef = _weakTypeEnvRef,
         holeEnvRef = _holeEnvRef,
-        constraintListRef = _constraintListRef,
-        impArgEnvRef = _impArgEnvRef
+        constraintListRef = _constraintListRef
       }
 
 infer :: Context -> WeakTerm -> IO (WeakTerm, WeakTerm)
@@ -107,12 +106,12 @@ infer' ctx varEnv term =
     m :< WeakTermPiElim e@(_ :< WeakTermVarGlobal name) es -> do
       etls <- mapM (infer' ctx varEnv) es
       t <- lookupTermTypeEnv ctx m name
-      impArgEnv <- readIORef $ impArgEnvRef ctx
-      case Map.lookup name impArgEnv of
+      mImpArgNum <- Implicit.lookup (App.implicit (base ctx)) name
+      case mImpArgNum of
         Nothing -> do
           inferPiElim ctx varEnv m (e, t) etls
         Just i -> do
-          holes <- forM [1 .. i] $ const $ newTypedAster (App.gensym (base ctx)) varEnv m
+          holes <- forM [1 .. I.reify i] $ const $ newTypedAster (App.gensym (base ctx)) varEnv m
           inferPiElim ctx varEnv m (e, t) $ holes ++ etls
     m :< WeakTermPiElim e es -> do
       etls <- mapM (infer' ctx varEnv) es
@@ -343,18 +342,18 @@ inferPiElim ctx varEnv m (e, t) ets = do
 
 raiseArityMismatchError :: Context -> WeakTerm -> Int -> Int -> IO a
 raiseArityMismatchError ctx function expected actual = do
-  impArgEnv <- readIORef $ impArgEnvRef ctx
   case function of
-    m :< WeakTermVarGlobal name
-      | Just k <- Map.lookup name impArgEnv ->
-        Throw.raiseError (App.throw (base ctx)) m $
-          "the function `"
-            <> DD.reify name
-            <> "` expects "
-            <> T.pack (show (expected - k))
-            <> " arguments, but found "
-            <> T.pack (show (actual - k))
-            <> "."
+    m :< WeakTermVarGlobal name -> do
+      mImpArgNum <- Implicit.lookup (App.implicit (base ctx)) name
+      let k = I.reify $ fromMaybe I.zero mImpArgNum
+      Throw.raiseError (App.throw (base ctx)) m $
+        "the function `"
+          <> DD.reify name
+          <> "` expects "
+          <> T.pack (show (expected - k))
+          <> " arguments, but found "
+          <> T.pack (show (actual - k))
+          <> "."
     m :< _ ->
       Throw.raiseError (App.throw (base ctx)) m $
         "this function expects "
