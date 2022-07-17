@@ -4,6 +4,7 @@ module Scene.Elaborate
 where
 
 import qualified Context.App as App
+import qualified Context.Definition as Definition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Implicit as Implicit
@@ -13,7 +14,6 @@ import qualified Context.Throw as Throw
 import qualified Context.Type as Type
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.IntMap as IntMap
 import Data.List
@@ -30,7 +30,6 @@ import Entity.Hint
 import qualified Entity.HoleSubst as HS
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Opacity
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNum
@@ -43,36 +42,39 @@ import Entity.WeakTerm
 import qualified Entity.WeakTerm.Subst as WeakTerm
 import Entity.WeakTerm.ToText
 import qualified Scene.Elaborate.Infer as Infer
-import Scene.Elaborate.Unify
+import qualified Scene.Elaborate.Unify as Unify
 import Prelude hiding (log)
 
 elaborate :: App.Context -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
 elaborate ctx source cacheOrStmt = do
-  ctx' <- Infer.specialize ctx
   case cacheOrStmt of
     Left cache -> do
-      forM_ cache $ registerTopLevelDef ctx'
+      forM_ cache $ registerTopLevelDef ctx
       return cache
     Right (defList, enumInfoList) -> do
       mMainDefiniteDescription <- Locator.getMainDefiniteDescription (App.locator ctx) source
-      defList' <- mapM (setupDef ctx') defList
-      defList'' <- mapM (inferStmt ctx' mMainDefiniteDescription) defList'
-      constraintList <- readIORef $ Infer.constraintListRef ctx'
-      unify (App.gensym ctx) constraintList
+      -- infer
+      inferCtx <- Infer.specialize ctx
+      defList' <- mapM (setupDef inferCtx) defList
+      defList'' <- mapM (inferStmt inferCtx mMainDefiniteDescription) defList'
+      constraintList <- readIORef $ Infer.constraintListRef inferCtx
+      -- unify
+      unifyCtx <- Unify.specialize ctx
+      Unify.unify unifyCtx constraintList
+      -- elaborate
       defList''' <- elaborateStmtList ctx defList''
       saveCache (source, defList''') enumInfoList
       return defList'''
 
-registerTopLevelDef :: Infer.Context -> Stmt -> IO ()
+registerTopLevelDef :: App.Context -> Stmt -> IO ()
 registerTopLevelDef ctx stmt = do
   case stmt of
     StmtDefine opacity m x impArgNum xts codType e -> do
-      Implicit.insert (App.implicit (Infer.base ctx)) x impArgNum
-      Type.insert (App.asTypeCtx (Infer.base ctx)) x $ weaken $ m :< TermPi xts codType
-      unless (isOpaque opacity) $
-        modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts, weaken e)
+      Implicit.insert (App.implicit ctx) x impArgNum
+      Type.insert (App.asTypeCtx ctx) x $ weaken $ m :< TermPi xts codType
+      Definition.insert (App.definition ctx) opacity m x (map weakenBinder xts) (weaken e)
     StmtDefineResource m name _ _ ->
-      Type.insert (App.asTypeCtx (Infer.base ctx)) name $ m :< WeakTermTau
+      Type.insert (App.asTypeCtx ctx) name $ m :< WeakTermTau
 
 setupDef :: Infer.Context -> WeakStmt -> IO WeakStmt
 setupDef ctx def =
@@ -80,7 +82,7 @@ setupDef ctx def =
     WeakStmtDefine opacity m f impArgNum xts codType e -> do
       Type.insert (App.asTypeCtx (Infer.base ctx)) f $ m :< WeakTermPi xts codType
       Implicit.insert (App.implicit (Infer.base ctx)) f impArgNum
-      modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts, e)
+      Definition.insert (App.definition (Infer.base ctx)) opacity m f xts e
       return $ WeakStmtDefine opacity m f impArgNum xts codType e
     WeakStmtDefineResource m name discarder copier -> do
       Type.insert (App.asTypeCtx (Infer.base ctx)) name $ m :< WeakTermTau
@@ -130,7 +132,7 @@ elaborateStmtList ctx stmtList = do
       xts' <- mapM (elaborateWeakBinder ctx) xts
       codType' <- elaborate' ctx codType >>= Term.reduce (App.gensym ctx)
       Type.insert (App.asTypeCtx ctx) x $ weaken $ m :< TermPi xts' codType'
-      modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
+      Definition.insert (App.definition ctx) opacity m x (map weakenBinder xts') (weaken e')
       rest' <- elaborateStmtList ctx rest
       return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
     WeakStmtDefineResource m name discarder copier : rest -> do

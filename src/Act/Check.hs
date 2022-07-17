@@ -5,6 +5,7 @@ module Act.Check
 where
 
 import qualified Context.App as App
+import qualified Context.Definition as Definition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Implicit as Implicit
@@ -72,6 +73,7 @@ check' mode throwCtx logCtx pathCtx moduleCtx sgl mainModule = do
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   typeCtx <- Mode.typeCtx mode $ Type.Config {Type.throwCtx = throwCtx}
   implicitCtx <- Mode.implicitCtx mode $ Implicit.Config {}
+  definitionCtx <- Mode.definitionCtx mode $ Definition.Config {}
   let ctxCfg =
         App.Config
           { App.mode = mode,
@@ -81,6 +83,7 @@ check' mode throwCtx logCtx pathCtx moduleCtx sgl mainModule = do
             App.pathCtx = pathCtx,
             App.typeCtx = typeCtx,
             App.implicitCtx = implicitCtx,
+            App.definitionCtx = definitionCtx,
             App.gensymCtx = gensymCtx,
             App.cancelAllocFlagConf = False,
             App.mainModuleConf = mainModule,

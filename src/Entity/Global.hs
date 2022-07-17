@@ -5,16 +5,13 @@ import Data.IORef
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.Binder
 import Entity.Comp
 import Entity.Constraint
-import qualified Entity.DefiniteDescription as DD
 import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
 import Entity.Opacity
-import Entity.WeakTerm
 import System.IO.Unsafe
 
 --
@@ -30,11 +27,6 @@ suspendedConstraintQueueRef =
 substRef :: IORef HS.HoleSubst
 substRef =
   unsafePerformIO (newIORef HS.empty)
-
-{-# NOINLINE termDefEnvRef #-}
-termDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (Opacity, [BinderF WeakTerm], WeakTerm))
-termDefEnvRef =
-  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE compDefEnvRef #-}
 compDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [Ident], Comp))

@@ -16,6 +16,7 @@ default-extensions:
   - ApplicativeDo
   - TupleSections
   - GeneralizedNewtypeDeriving
+  - ExistentialQuantification
 
 dependencies:
   - ansi-terminal

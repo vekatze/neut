@@ -9,6 +9,7 @@ import qualified Act.Release as Release
 import qualified Act.Tidy as Tidy
 import qualified Act.Version as Version
 import qualified Context.Alias.Main as Alias
+import qualified Context.Definition.Main as Definition
 import qualified Context.Gensym.Main as Gensym
 import qualified Context.Global.Main as Global
 import qualified Context.Implicit.Main as Implicit
@@ -215,7 +216,8 @@ prodMode =
       Mode.pathCtx = Path.new,
       Mode.moduleCtx = Module.new,
       Mode.typeCtx = Type.new,
-      Mode.implicitCtx = Implicit.new
+      Mode.implicitCtx = Implicit.new,
+      Mode.definitionCtx = Definition.new
     }
 
 throwConfig :: Throw.Config

@@ -1,6 +1,7 @@
 module Context.Mode where
 
 import qualified Context.Alias as Alias
+import qualified Context.Definition as Definition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Implicit as Implicit
@@ -23,5 +24,6 @@ data Mode = Mode
     pathCtx :: Path.Config -> IO Path.Context,
     moduleCtx :: Module.Config -> IO Module.Context,
     typeCtx :: Type.Config -> IO Type.Context,
-    implicitCtx :: Implicit.Config -> IO Implicit.Context
+    implicitCtx :: Implicit.Config -> IO Implicit.Context,
+    definitionCtx :: Definition.Config -> IO Definition.Context
   }

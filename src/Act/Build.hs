@@ -5,6 +5,7 @@ module Act.Build
 where
 
 import qualified Context.App as App
+import qualified Context.Definition as Definition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Implicit as Implicit
@@ -86,6 +87,7 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
   typeCtx <- Mode.typeCtx mode $ Type.Config {Type.throwCtx = throwCtx}
   implicitCtx <- Mode.implicitCtx mode $ Implicit.Config {}
+  definitionCtx <- Mode.definitionCtx mode $ Definition.Config {}
   let ctxCfg =
         App.Config
           { App.mode = mode,
@@ -93,8 +95,9 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
             App.logCtx = logCtx,
             App.gensymCtx = gensymCtx,
             App.pathCtx = pathCtx,
-            App.typeCtx = typeCtx,
             App.implicitCtx = implicitCtx,
+            App.definitionCtx = definitionCtx,
+            App.typeCtx = typeCtx,
             App.globalCtx = globalCtx,
             App.cancelAllocFlagConf = cancelAllocFlag,
             App.mainModuleConf = mainModule,
