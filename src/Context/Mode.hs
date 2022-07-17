@@ -9,6 +9,7 @@ import qualified Context.Log as Log
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
+import qualified Context.Type as Type
 
 data Mode = Mode
   { logCtx :: Log.Config -> IO Log.Context,
@@ -19,5 +20,6 @@ data Mode = Mode
     locatorCtx :: Locator.Config -> IO Locator.Context,
     aliasCtx :: Alias.Config -> IO Alias.Context,
     pathCtx :: Path.Config -> IO Path.Context,
-    moduleCtx :: Module.Config -> IO Module.Context
+    moduleCtx :: Module.Config -> IO Module.Context,
+    typeCtx :: Type.Config -> IO Type.Context
   }

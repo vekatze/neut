@@ -20,6 +20,7 @@ import qualified Context.Module.Main as Module
 import qualified Context.Path.Main as Path
 import qualified Context.Throw as Throw
 import qualified Context.Throw.IO as Throw
+import qualified Context.Type.Main as Type
 import qualified Data.Text as T
 import Entity.ModuleURL
 import Entity.Target
@@ -211,7 +212,8 @@ prodMode =
       Mode.globalCtx = Global.new,
       Mode.locatorCtx = Locator.new,
       Mode.pathCtx = Path.new,
-      Mode.moduleCtx = Module.new
+      Mode.moduleCtx = Module.new,
+      Mode.typeCtx = Type.new
     }
 
 throwConfig :: Throw.Config

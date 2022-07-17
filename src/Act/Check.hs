@@ -12,6 +12,7 @@ import qualified Context.Mode as Mode
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
+import qualified Context.Type as Type
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import Entity.Module
@@ -68,6 +69,7 @@ check' mode throwCtx logCtx pathCtx moduleCtx sgl mainModule = do
   (_, _, hasCacheSet, _, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx pathCtx moduleCtx mainModule initialSource
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
+  typeCtx <- Mode.typeCtx mode $ Type.Config {Type.throwCtx = throwCtx}
   let ctxCfg =
         App.Config
           { App.mode = mode,
@@ -75,6 +77,7 @@ check' mode throwCtx logCtx pathCtx moduleCtx sgl mainModule = do
             App.logCtx = logCtx,
             App.globalCtx = globalCtx,
             App.pathCtx = pathCtx,
+            App.typeCtx = typeCtx,
             App.gensymCtx = gensymCtx,
             App.cancelAllocFlagConf = False,
             App.mainModuleConf = mainModule,

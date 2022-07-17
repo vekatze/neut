@@ -13,6 +13,7 @@ import qualified Context.Mode as Mode
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
+import qualified Context.Type as Type
 import Control.Monad
 import qualified Data.ByteString.Lazy as L
 import Data.Foldable
@@ -82,6 +83,7 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
   (_, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, dependenceSeq) <- unravel mode throwCtx pathCtx moduleCtx mainModule mainSource
   globalCtx <- Mode.globalCtx mode $ Global.Config {Global.throwCtx = throwCtx}
   gensymCtx <- Mode.gensymCtx mode $ Gensym.Config {}
+  typeCtx <- Mode.typeCtx mode $ Type.Config {Type.throwCtx = throwCtx}
   let ctxCfg =
         App.Config
           { App.mode = mode,
@@ -89,6 +91,7 @@ build' mode throwCtx logCtx pathCtx moduleCtx cancelAllocFlag target mainModule 
             App.logCtx = logCtx,
             App.gensymCtx = gensymCtx,
             App.pathCtx = pathCtx,
+            App.typeCtx = typeCtx,
             App.globalCtx = globalCtx,
             App.cancelAllocFlagConf = cancelAllocFlag,
             App.mainModuleConf = mainModule,

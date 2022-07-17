@@ -3,12 +3,13 @@ module Scene.Elaborate
   )
 where
 
-import Context.App
+import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
 import qualified Context.Throw as Throw
+import qualified Context.Type as Type
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
@@ -44,42 +45,44 @@ import Scene.Elaborate.Infer
 import Scene.Elaborate.Unify
 import Prelude hiding (log)
 
-elaborate :: Context -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
+elaborate :: App.Context -> Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> IO [Stmt]
 elaborate ctx source cacheOrStmt = do
+  ctx' <- specialize ctx
   case cacheOrStmt of
     Left cache -> do
-      forM_ cache registerTopLevelDef
+      forM_ cache $ registerTopLevelDef ctx'
       return cache
     Right (defList, enumInfoList) -> do
-      mMainDefiniteDescription <- Locator.getMainDefiniteDescription (locator ctx) source
-      defList' <- mapM (setupDef (gensym ctx)) defList
-      defList'' <- mapM (inferStmt ctx mMainDefiniteDescription) defList'
-      unify (gensym ctx)
+      mMainDefiniteDescription <- Locator.getMainDefiniteDescription (App.locator ctx) source
+      defList' <- mapM (setupDef ctx') defList
+      defList'' <- mapM (inferStmt ctx' mMainDefiniteDescription) defList'
+      constraintList <- readIORef $ constraintListRef ctx'
+      unify (App.gensym ctx) constraintList
       defList''' <- elaborateStmtList ctx defList''
       saveCache (source, defList''') enumInfoList
       return defList'''
 
-registerTopLevelDef :: Stmt -> IO ()
-registerTopLevelDef stmt = do
+registerTopLevelDef :: Context -> Stmt -> IO ()
+registerTopLevelDef ctx stmt = do
   case stmt of
     StmtDefine opacity m x impArgNum xts codType e -> do
-      modifyIORef' impArgEnvRef $ Map.insert x impArgNum
-      insTermTypeEnv x $ weaken $ m :< TermPi xts codType
+      modifyIORef' (impArgEnvRef ctx) $ Map.insert x impArgNum
+      Type.insert (App.asTypeCtx (base ctx)) x $ weaken $ m :< TermPi xts codType
       unless (isOpaque opacity) $
         modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts, weaken e)
     StmtDefineResource m name _ _ ->
-      insTermTypeEnv name $ m :< WeakTermTau
+      Type.insert (App.asTypeCtx (base ctx)) name $ m :< WeakTermTau
 
-setupDef :: Gensym.Context -> WeakStmt -> IO WeakStmt
-setupDef _ def =
+setupDef :: Context -> WeakStmt -> IO WeakStmt
+setupDef ctx def =
   case def of
     WeakStmtDefine opacity m f impArgNum xts codType e -> do
-      insTermTypeEnv f $ m :< WeakTermPi xts codType
-      modifyIORef' impArgEnvRef $ Map.insert f impArgNum
+      Type.insert (App.asTypeCtx (base ctx)) f $ m :< WeakTermPi xts codType
+      modifyIORef' (impArgEnvRef ctx) $ Map.insert f impArgNum
       modifyIORef' termDefEnvRef $ Map.insert f (opacity, xts, e)
       return $ WeakStmtDefine opacity m f impArgNum xts codType e
     WeakStmtDefineResource m name discarder copier -> do
-      insTermTypeEnv name $ m :< WeakTermTau
+      Type.insert (App.asTypeCtx (base ctx)) name $ m :< WeakTermTau
       return $ WeakStmtDefineResource m name discarder copier
 
 inferStmt :: Context -> Maybe DD.DefiniteDescription -> WeakStmt -> IO WeakStmt
@@ -88,7 +91,7 @@ inferStmt ctx mMainDD stmt = do
     WeakStmtDefine isReducible m x impArgNum xts codType e -> do
       (xts', e', codType') <- inferStmtDefine ctx xts e codType
       when (Just x == mMainDD) $
-        insConstraintEnv (m :< WeakTermPi [] (i64 m)) (m :< WeakTermPi xts codType)
+        insConstraintEnv ctx (m :< WeakTermPi [] (i64 m)) (m :< WeakTermPi xts codType)
       return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier ->
       inferDefineResource ctx m name discarder copier
@@ -97,21 +100,26 @@ inferDefineResource :: Context -> Hint -> DD.DefiniteDescription -> WeakTerm -> 
 inferDefineResource ctx m name discarder copier = do
   (discarder', td) <- infer ctx discarder
   (copier', tc) <- infer ctx copier
-  x <- Gensym.newIdentFromText (gensym ctx) "_"
+  x <- Gensym.newIdentFromText (App.gensym (base ctx)) "_"
   let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum constBottom)] (m :< WeakTermEnum constTop)
   let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum constBottom)] (m :< WeakTermEnum constBottom)
-  insConstraintEnv botTop td
-  insConstraintEnv botBot tc
+  insConstraintEnv ctx botTop td
+  insConstraintEnv ctx botBot tc
   return $ WeakStmtDefineResource m name discarder' copier'
 
-inferStmtDefine :: Context -> [BinderF WeakTerm] -> WeakTerm -> WeakTerm -> IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
+inferStmtDefine ::
+  Context ->
+  [BinderF WeakTerm] ->
+  WeakTerm ->
+  WeakTerm ->
+  IO ([BinderF WeakTerm], WeakTerm, WeakTerm)
 inferStmtDefine ctx xts e codType = do
   (xts', (e', te)) <- inferBinder ctx [] xts e
   codType' <- inferType ctx codType
-  insConstraintEnv codType' te
+  insConstraintEnv ctx codType' te
   return (xts', e', codType')
 
-elaborateStmtList :: Context -> [WeakStmt] -> IO [Stmt]
+elaborateStmtList :: App.Context -> [WeakStmt] -> IO [Stmt]
 elaborateStmtList ctx stmtList = do
   case stmtList of
     [] ->
@@ -119,8 +127,8 @@ elaborateStmtList ctx stmtList = do
     WeakStmtDefine opacity m x impArgNum xts codType e : rest -> do
       e' <- elaborate' ctx e
       xts' <- mapM (elaborateWeakBinder ctx) xts
-      codType' <- elaborate' ctx codType >>= Term.reduce (gensym ctx)
-      insTermTypeEnv x $ weaken $ m :< TermPi xts' codType'
+      codType' <- elaborate' ctx codType >>= Term.reduce (App.gensym ctx)
+      Type.insert (App.asTypeCtx ctx) x $ weaken $ m :< TermPi xts' codType'
       modifyIORef' termDefEnvRef $ Map.insert x (opacity, map weakenBinder xts', weaken e')
       rest' <- elaborateStmtList ctx rest
       return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
@@ -130,7 +138,7 @@ elaborateStmtList ctx stmtList = do
       rest' <- elaborateStmtList ctx rest
       return $ StmtDefineResource m name discarder' copier' : rest'
 
-elaborate' :: Context -> WeakTerm -> IO Term
+elaborate' :: App.Context -> WeakTerm -> IO Term
 elaborate' ctx term =
   case term of
     m :< WeakTermTau ->
@@ -172,33 +180,33 @@ elaborate' ctx term =
       subst <- readIORef substRef
       case HS.lookup h subst of
         Nothing ->
-          Throw.raiseError (throw ctx) m "couldn't instantiate the hole here"
+          Throw.raiseError (App.throw ctx) m "couldn't instantiate the hole here"
         Just (xs, e)
           | length xs == length es -> do
             let s = IntMap.fromList $ zip (map Ident.toInt xs) es
-            WeakTerm.subst (gensym ctx) s e >>= elaborate' ctx
+            WeakTerm.subst (App.gensym ctx) s e >>= elaborate' ctx
           | otherwise ->
-            Throw.raiseError (throw ctx) m "arity mismatch"
+            Throw.raiseError (App.throw ctx) m "arity mismatch"
     m :< WeakTermPrim x ->
       return $ m :< TermPrim x
     m :< WeakTermInt t x -> do
-      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
+      t' <- elaborate' ctx t >>= Term.reduce (App.gensym ctx)
       case t' of
         _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
           return $ m :< TermInt size x
         _ -> do
-          Throw.raiseError (throw ctx) m $
+          Throw.raiseError (App.throw ctx) m $
             "the term `"
               <> T.pack (show x)
               <> "` is an integer, but its type is: "
               <> toText (weaken t')
     m :< WeakTermFloat t x -> do
-      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
+      t' <- elaborate' ctx t >>= Term.reduce (App.gensym ctx)
       case t' of
         _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
           return $ m :< TermFloat size x
         _ ->
-          Throw.raiseError (throw ctx) m $
+          Throw.raiseError (App.throw ctx) m $
             "the term `"
               <> T.pack (show x)
               <> "` is a float, but its type is:\n"
@@ -211,13 +219,13 @@ elaborate' ctx term =
       e' <- elaborate' ctx e
       let (ls, es) = unzip les
       es' <- mapM (elaborate' ctx) es
-      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
+      t' <- elaborate' ctx t >>= Term.reduce (App.gensym ctx)
       case t' of
         _ :< TermEnum x -> do
           checkSwitchExaustiveness ctx m x ls
           return $ m :< TermEnumElim (e', t') (zip ls es')
         _ ->
-          Throw.raiseError (throw ctx) m $
+          Throw.raiseError (App.throw ctx) m $
             "the type of `"
               <> toText (weaken e')
               <> "` must be an enum type, but is:\n"
@@ -225,7 +233,7 @@ elaborate' ctx term =
     m :< WeakTermQuestion e t -> do
       e' <- elaborate' ctx e
       t' <- elaborate' ctx t
-      Log.printNote (log ctx) m $ toText (weaken t')
+      Log.printNote (App.log ctx) m $ toText (weaken t')
       return e'
     m :< WeakTermMagic der -> do
       der' <- mapM (elaborate' ctx) der
@@ -233,19 +241,19 @@ elaborate' ctx term =
     m :< WeakTermMatch mSubject (e, t) patList -> do
       mSubject' <- mapM (elaborate' ctx) mSubject
       e' <- elaborate' ctx e
-      t' <- elaborate' ctx t >>= Term.reduce (gensym ctx)
+      t' <- elaborate' ctx t >>= Term.reduce (App.gensym ctx)
       case t' of
         _ :< TermPiElim (_ :< TermVarGlobal name) _ -> do
-          mConsInfoList <- Global.lookup (global ctx) name
+          mConsInfoList <- Global.lookup (App.global ctx) name
           case mConsInfoList of
             Just (GN.Data consInfoList) -> do
               patList' <- elaboratePatternList ctx m consInfoList patList
               return $ m :< TermMatch mSubject' (e', t') patList'
             _ ->
-              Throw.raiseError (throw ctx) (metaOf t) $
+              Throw.raiseError (App.throw ctx) (metaOf t) $
                 "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
         _ -> do
-          Throw.raiseError (throw ctx) (metaOf t) $
+          Throw.raiseError (App.throw ctx) (metaOf t) $
             "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
     m :< WeakTermNoema s e -> do
       s' <- elaborate' ctx s
@@ -265,7 +273,7 @@ elaborate' ctx term =
         _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
           return $ m :< TermArray (PrimNumFloat size)
         _ ->
-          Throw.raiseError (throw ctx) m $
+          Throw.raiseError (App.throw ctx) m $
             "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayIntro elemType elems -> do
       elemType' <- elaborate' ctx elemType
@@ -276,7 +284,7 @@ elaborate' ctx term =
         _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
           return $ m :< TermArrayIntro (PrimNumFloat size) elems'
         _ ->
-          Throw.raiseError (throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
+          Throw.raiseError (App.throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermArrayAccess subject elemType array index -> do
       subject' <- elaborate' ctx subject
       elemType' <- elaborate' ctx elemType
@@ -288,7 +296,7 @@ elaborate' ctx term =
         _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
           return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
         _ ->
-          Throw.raiseError (throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
+          Throw.raiseError (App.throw ctx) m $ "invalid element type:\n" <> toText (weaken elemType')
     m :< WeakTermText ->
       return $ m :< TermText
     m :< WeakTermTextIntro text ->
@@ -312,7 +320,7 @@ elaborate' ctx term =
 
 -- for now
 elaboratePatternList ::
-  Context ->
+  App.Context ->
   Hint ->
   [DD.DefiniteDescription] ->
   [(PatternF WeakTerm, WeakTerm)] ->
@@ -325,7 +333,7 @@ elaboratePatternList ctx m bs patList = do
   checkCaseSanity ctx m bs patList'
   return patList'
 
-checkCaseSanity :: Context -> Hint -> [DD.DefiniteDescription] -> [(PatternF Term, Term)] -> IO ()
+checkCaseSanity :: App.Context -> Hint -> [DD.DefiniteDescription] -> [(PatternF Term, Term)] -> IO ()
 checkCaseSanity ctx m bs patList =
   case (bs, patList) of
     ([], []) ->
@@ -333,22 +341,22 @@ checkCaseSanity ctx m bs patList =
     (b : bsRest, ((mPat, b', _), _) : patListRest) -> do
       if b /= b'
         then
-          Throw.raiseError (throw ctx) mPat $
+          Throw.raiseError (App.throw ctx) mPat $
             "the constructor here is supposed to be `" <> DD.reify b <> "`, but is: `" <> DD.reify b' <> "`"
         else checkCaseSanity ctx m bsRest patListRest
     (b : _, []) ->
-      Throw.raiseError (throw ctx) m $
+      Throw.raiseError (App.throw ctx) m $
         "found a non-exhaustive pattern; the clause for `" <> DD.reify b <> "` is missing"
     ([], ((mPat, b, _), _) : _) ->
-      Throw.raiseError (throw ctx) mPat $
+      Throw.raiseError (App.throw ctx) mPat $
         "found a redundant pattern; this clause for `" <> DD.reify b <> "` is redundant"
 
-elaborateWeakBinder :: Context -> BinderF WeakTerm -> IO (BinderF Term)
+elaborateWeakBinder :: App.Context -> BinderF WeakTerm -> IO (BinderF Term)
 elaborateWeakBinder ctx (m, x, t) = do
   t' <- elaborate' ctx t
   return (m, x, t')
 
-elaborateKind :: Context -> LamKindF WeakTerm -> IO (LamKindF Term)
+elaborateKind :: App.Context -> LamKindF WeakTerm -> IO (LamKindF Term)
 elaborateKind ctx kind =
   case kind of
     LamKindNormal ->
@@ -360,27 +368,23 @@ elaborateKind ctx kind =
       xt' <- elaborateWeakBinder ctx xt
       return $ LamKindFix xt'
 
-checkSwitchExaustiveness :: Context -> Hint -> ET.EnumTypeName -> [EnumCase] -> IO ()
+checkSwitchExaustiveness :: App.Context -> Hint -> ET.EnumTypeName -> [EnumCase] -> IO ()
 checkSwitchExaustiveness ctx m enumTypeName caseList = do
   let containsDefaultCase = doesContainDefaultCase caseList
   enumSet <- lookupEnumSet ctx m enumTypeName
   let len = toInteger $ length (nub caseList)
   unless (toInteger (length enumSet) <= len || containsDefaultCase) $
-    Throw.raiseError (throw ctx) m "this switch is ill-constructed in that it is not exhaustive"
+    Throw.raiseError (App.throw ctx) m "this switch is ill-constructed in that it is not exhaustive"
 
-lookupEnumSet :: Context -> Hint -> ET.EnumTypeName -> IO [EV.EnumValueName]
+lookupEnumSet :: App.Context -> Hint -> ET.EnumTypeName -> IO [EV.EnumValueName]
 lookupEnumSet ctx m enumTypeName = do
   let name = ET.reify enumTypeName
-  mEnumItems <- Global.lookup (global ctx) name
+  mEnumItems <- Global.lookup (App.global ctx) name
   case mEnumItems of
     Just (GN.EnumType enumItems) ->
       return $ map fst enumItems
     _ ->
-      Throw.raiseError (throw ctx) m $ "no such enum defined: " <> DD.reify name
-
-insTermTypeEnv :: DD.DefiniteDescription -> WeakTerm -> IO ()
-insTermTypeEnv name t =
-  modifyIORef' termTypeEnvRef $ Map.insert name t
+      Throw.raiseError (App.throw ctx) m $ "no such enum defined: " <> DD.reify name
 
 doesContainDefaultCase :: [EnumCase] -> Bool
 doesContainDefaultCase enumCaseList =

@@ -39,14 +39,12 @@ data Stuck
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WeakTerm])]
   | StuckPiElimAster HID.HoleID [WeakTerm]
 
-unify :: Context -> IO ()
-unify ctx =
-  analyze ctx >> synthesize ctx
+unify :: Context -> [Constraint] -> IO ()
+unify ctx constraintList =
+  analyze ctx constraintList >> synthesize ctx
 
-analyze :: Context -> IO ()
-analyze ctx = do
-  constraintList <- readIORef constraintListRef
-  modifyIORef' constraintListRef $ const []
+analyze :: Context -> [Constraint] -> IO ()
+analyze ctx constraintList =
   simplify ctx $ zip constraintList constraintList
 
 synthesize :: Context -> IO ()

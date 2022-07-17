@@ -15,6 +15,7 @@ import qualified Context.Mode as Mode
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
+import qualified Context.Type as Type
 import qualified Data.Set as S
 import Entity.AliasInfo
 import Entity.Module
@@ -33,6 +34,7 @@ data Context = Context
     locator :: Locator.Context,
     alias :: Alias.Context,
     moduleCtx :: Module.Context,
+    asTypeCtx :: Type.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
@@ -47,6 +49,7 @@ data Config = Config
     pathCtx :: Path.Context,
     globalCtx :: Global.Context,
     gensymCtx :: Gensym.Context,
+    typeCtx :: Type.Context,
     cancelAllocFlagConf :: Bool,
     mainModuleConf :: Module,
     initialSourceConf :: Source,
@@ -97,6 +100,7 @@ new cfg source = do
         locator = locatorCtx,
         alias = aliasCtx,
         moduleCtx = _moduleCtx,
+        asTypeCtx = typeCtx cfg,
         shouldCancelAlloc = cancelAllocFlagConf cfg,
         initialSource = initialSourceConf cfg,
         targetPlatform =

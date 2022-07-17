@@ -2,7 +2,6 @@ module Entity.Global where
 
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
-import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -22,40 +21,15 @@ import System.IO.Unsafe
 -- global variables
 --
 
-{-# NOINLINE weakTypeEnvRef #-}
-weakTypeEnvRef :: IORef (IntMap.IntMap WeakTerm)
-weakTypeEnvRef =
-  unsafePerformIO (newIORef IntMap.empty)
-
-{-# NOINLINE holeEnvRef #-}
-holeEnvRef :: IORef (IntMap.IntMap (WeakTerm, WeakTerm))
-holeEnvRef =
-  unsafePerformIO (newIORef IntMap.empty)
-
-{-# NOINLINE constraintListRef #-}
-constraintListRef :: IORef [Constraint]
-constraintListRef =
-  unsafePerformIO (newIORef [])
-
 {-# NOINLINE suspendedConstraintQueueRef #-}
 suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
 suspendedConstraintQueueRef =
   unsafePerformIO (newIORef Q.empty)
 
-{-# NOINLINE impArgEnvRef #-}
-impArgEnvRef :: IORef (Map.HashMap DD.DefiniteDescription Int)
-impArgEnvRef =
-  unsafePerformIO (newIORef Map.empty)
-
 {-# NOINLINE substRef #-}
 substRef :: IORef HS.HoleSubst
 substRef =
   unsafePerformIO (newIORef HS.empty)
-
-{-# NOINLINE termTypeEnvRef #-}
-termTypeEnvRef :: IORef (Map.HashMap DD.DefiniteDescription WeakTerm)
-termTypeEnvRef =
-  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE termDefEnvRef #-}
 termDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (Opacity, [BinderF WeakTerm], WeakTerm))
