@@ -19,7 +19,6 @@ import Entity.Binder
 import Entity.Constraint
 import qualified Entity.DefiniteDescription as DD
 import Entity.FilePos
-import Entity.Global
 import Entity.Hint
 import qualified Entity.HoleID as HID
 import qualified Entity.HoleSubst as HS
@@ -38,17 +37,20 @@ import Entity.WeakTerm.ToText
 data Context = Context
   { gensym :: Gensym.Context,
     definition :: Definition.Context,
-    suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
+    suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue,
+    substRef :: IORef HS.HoleSubst
   }
 
 specialize :: App.Context -> IO Context
 specialize ctx = do
   suspendedConstraintQueue <- newIORef Q.empty
+  sub <- newIORef HS.empty
   return $
     Context
       { gensym = App.gensym ctx,
         definition = App.definition ctx,
-        suspendedConstraintQueueRef = suspendedConstraintQueue
+        suspendedConstraintQueueRef = suspendedConstraintQueue,
+        substRef = sub
       }
 
 data Stuck
@@ -56,9 +58,10 @@ data Stuck
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WeakTerm])]
   | StuckPiElimAster HID.HoleID [WeakTerm]
 
-unify :: Context -> [Constraint] -> IO ()
-unify ctx constraintList =
+unify :: Context -> [Constraint] -> IO HS.HoleSubst
+unify ctx constraintList = do
   analyze ctx constraintList >> synthesize ctx
+  readIORef (substRef ctx)
 
 analyze :: Context -> [Constraint] -> IO ()
 analyze ctx constraintList =
@@ -80,7 +83,7 @@ synthesize ctx = do
 throwTypeErrors :: Context -> IO a
 throwTypeErrors ctx = do
   suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
-  sub <- readIORef substRef
+  sub <- readIORef $ substRef ctx
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     -- p' foo
     -- p $ T.unpack $ toText l
@@ -196,7 +199,7 @@ simplify ctx constraintList =
           | name1 == name2 ->
             simplify ctx cs
         (e1, e2) -> do
-          sub <- readIORef substRef
+          sub <- readIORef $ substRef ctx
           let fvs1 = freeVars e1
           let fvs2 = freeVars e2
           let fmvs1 = holes e1 -- fmvs: free meta-variables
@@ -276,7 +279,7 @@ simplify ctx constraintList =
 {-# INLINE resolveHole #-}
 resolveHole :: Context -> HID.HoleID -> [Ident] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
 resolveHole ctx h1 xs e2' cs = do
-  modifyIORef' substRef $ HS.insert h1 xs e2'
+  modifyIORef' (substRef ctx) $ HS.insert h1 xs e2'
   suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
   modifyIORef' (suspendedConstraintQueueRef ctx) $ const sus2

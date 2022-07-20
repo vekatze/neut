@@ -5,7 +5,6 @@ import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Comp
-import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
@@ -15,11 +14,6 @@ import System.IO.Unsafe
 --
 -- global variables
 --
-
-{-# NOINLINE substRef #-}
-substRef :: IORef HS.HoleSubst
-substRef =
-  unsafePerformIO (newIORef HS.empty)
 
 {-# NOINLINE compDefEnvRef #-}
 compDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [Ident], Comp))
