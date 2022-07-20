@@ -2,11 +2,9 @@ module Entity.Global where
 
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
-import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Comp
-import Entity.Constraint
 import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import Entity.LowComp
@@ -17,11 +15,6 @@ import System.IO.Unsafe
 --
 -- global variables
 --
-
-{-# NOINLINE suspendedConstraintQueueRef #-}
-suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
-suspendedConstraintQueueRef =
-  unsafePerformIO (newIORef Q.empty)
 
 {-# NOINLINE substRef #-}
 substRef :: IORef HS.HoleSubst

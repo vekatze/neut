@@ -37,15 +37,18 @@ import Entity.WeakTerm.ToText
 
 data Context = Context
   { gensym :: Gensym.Context,
-    definition :: Definition.Context
+    definition :: Definition.Context,
+    suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue
   }
 
 specialize :: App.Context -> IO Context
-specialize ctx =
+specialize ctx = do
+  suspendedConstraintQueue <- newIORef Q.empty
   return $
     Context
       { gensym = App.gensym ctx,
-        definition = App.definition ctx
+        definition = App.definition ctx,
+        suspendedConstraintQueueRef = suspendedConstraintQueue
       }
 
 data Stuck
@@ -63,12 +66,12 @@ analyze ctx constraintList =
 
 synthesize :: Context -> IO ()
 synthesize ctx = do
-  suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
+  suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
   case Q.minView suspendedConstraintQueue of
     Nothing ->
       return ()
     Just (SuspendedConstraint (_, ConstraintKindDelta c, (_, orig)), cs') -> do
-      modifyIORef' suspendedConstraintQueueRef $ const cs'
+      modifyIORef' (suspendedConstraintQueueRef ctx) $ const cs'
       simplify ctx [(c, orig)]
       synthesize ctx
     Just (SuspendedConstraint (_, ConstraintKindOther, _), _) ->
@@ -76,7 +79,7 @@ synthesize ctx = do
 
 throwTypeErrors :: Context -> IO a
 throwTypeErrors ctx = do
-  suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
+  suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
   sub <- readIORef substRef
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     -- p' foo
@@ -252,12 +255,12 @@ simplify ctx constraintList =
                   (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
                     | Just lam <- defMapConsumer g1 defMap -> do
                       let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
-                      modifyIORef' suspendedConstraintQueueRef $ Q.insert uc
+                      modifyIORef' (suspendedConstraintQueueRef ctx) $ Q.insert uc
                       simplify ctx cs
                   (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
                     | Just lam <- defMapConsumer g2 defMap -> do
                       let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
-                      modifyIORef' suspendedConstraintQueueRef $ Q.insert uc
+                      modifyIORef' (suspendedConstraintQueueRef ctx) $ Q.insert uc
                       simplify ctx cs
                   (Just (StuckPiElimVarGlobal g1 mess1), _)
                     | Just lam <- defMapConsumer g1 defMap ->
@@ -267,16 +270,16 @@ simplify ctx constraintList =
                       simplify ctx $ ((e1, toPiElim lam mess2), orig) : cs
                   _ -> do
                     let uc = SuspendedConstraint (fmvs, ConstraintKindOther, headConstraint)
-                    modifyIORef' suspendedConstraintQueueRef $ Q.insert uc
+                    modifyIORef' (suspendedConstraintQueueRef ctx) $ Q.insert uc
                     simplify ctx cs
 
 {-# INLINE resolveHole #-}
 resolveHole :: Context -> HID.HoleID -> [Ident] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
 resolveHole ctx h1 xs e2' cs = do
   modifyIORef' substRef $ HS.insert h1 xs e2'
-  suspendedConstraintQueue <- readIORef suspendedConstraintQueueRef
+  suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
-  modifyIORef' suspendedConstraintQueueRef $ const sus2
+  modifyIORef' (suspendedConstraintQueueRef ctx) $ const sus2
   let sus1' = map (\(SuspendedConstraint (_, _, c)) -> c) $ Q.toList sus1
   simplify ctx $ sus1' ++ cs
 
