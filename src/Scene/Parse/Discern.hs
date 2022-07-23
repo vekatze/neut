@@ -162,13 +162,13 @@ discern ctx nenv term =
       e' <- discern ctx nenv e
       t' <- discern ctx nenv t
       clauseList' <- forM clauseList $ \((mCons, cons, xts), body) -> do
-        (cons', consName) <- resolveConstructor ctx mCons cons
+        (cons', unresolvedConsName) <- resolveConstructor ctx mCons cons
         case cons' of
-          _ :< WeakTermVarGlobal newName -> do
+          _ :< WeakTermVarGlobal consName arity -> do
             (xts', body') <- discernBinderWithBody ctx nenv xts body
-            return ((mCons, newName, xts'), body')
+            return ((mCons, consName, arity, xts'), body')
           _ ->
-            Throw.raiseError (throw ctx) m $ "no such constructor is defined: " <> consName
+            Throw.raiseError (throw ctx) m $ "no such constructor is defined: " <> unresolvedConsName
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< PT.Noema s e -> do
       s' <- discern ctx nenv s
@@ -273,10 +273,10 @@ resolveName ctx m name = do
   case foundNameList of
     [] ->
       Throw.raiseError (throw ctx) m $ "undefined variable: " <> name
-    [(dd, GN.TopLevelFunc)] ->
-      return $ m :< WeakTermVarGlobal dd
-    [(dd, GN.Data {})] ->
-      return $ m :< WeakTermVarGlobal dd
+    [(dd, GN.TopLevelFunc arity)] ->
+      return $ m :< WeakTermVarGlobal dd arity
+    [(dd, GN.Data arity _)] ->
+      return $ m :< WeakTermVarGlobal dd arity
     [(name', GN.EnumType _)] ->
       return $ m :< WeakTermEnum (ET.EnumTypeName name')
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
@@ -300,10 +300,10 @@ resolveDefiniteDescription :: Context -> Hint -> DD.DefiniteDescription -> IO We
 resolveDefiniteDescription ctx m dd = do
   kind <- Global.lookup (global ctx) dd
   case kind of
-    Just GN.TopLevelFunc ->
-      return $ m :< WeakTermVarGlobal dd
-    Just GN.Data {} ->
-      return $ m :< WeakTermVarGlobal dd
+    Just (GN.TopLevelFunc arity) ->
+      return $ m :< WeakTermVarGlobal dd arity
+    Just (GN.Data arity _) ->
+      return $ m :< WeakTermVarGlobal dd arity
     Just (GN.EnumType _) ->
       return $ m :< WeakTermEnum (ET.EnumTypeName dd)
     Just (GN.EnumIntro enumTypeName discriminant) ->

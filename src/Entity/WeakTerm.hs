@@ -3,6 +3,7 @@ module Entity.WeakTerm where
 import Control.Comonad.Cofree
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
+import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
@@ -22,7 +23,7 @@ type WeakTerm = Cofree WeakTermF Hint
 data WeakTermF a
   = WeakTermTau
   | WeakTermVar Ident
-  | WeakTermVarGlobal DD.DefiniteDescription
+  | WeakTermVarGlobal DD.DefiniteDescription Arity
   | WeakTermPi [BinderF a] a
   | WeakTermPiIntro (LamKindF a) [BinderF a] a
   | WeakTermPiElim a [a]

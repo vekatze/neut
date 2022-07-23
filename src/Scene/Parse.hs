@@ -15,6 +15,7 @@ import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import Entity.AliasInfo
+import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Binder
 import Entity.Const
@@ -69,7 +70,12 @@ parseSource ctx source = do
       forM_ (cacheEnumInfo cache) $ \enumInfo ->
         uncurry (Global.registerEnum (global ctx) hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
-      forM_ (map extractName stmtList) $ Global.registerTopLevelFunc (global ctx) hint
+      forM_ stmtList $ \stmt -> do
+        case stmt of
+          StmtDefine _ _ name _ args _ _ ->
+            Global.registerTopLevelFunc (global ctx) hint name $ A.fromInt (length args)
+          StmtDefineResource _ name _ _ ->
+            Global.registerResource (global ctx) hint name
       return $ Left stmtList
     Nothing -> do
       case Map.lookup (sourceFilePath source) (sourceAliasMap ctx) of
@@ -84,7 +90,7 @@ ensureMain :: Context -> Hint -> DD.DefiniteDescription -> IO ()
 ensureMain ctx m mainFunctionName = do
   mMain <- Global.lookup (global ctx) mainFunctionName
   case mMain of
-    Just GN.TopLevelFunc ->
+    Just (GN.TopLevelFunc _) ->
       return ()
     _ ->
       Throw.raiseError (throw ctx) m "`main` is missing"
@@ -190,7 +196,7 @@ defineFunction ::
   PT.PreTerm ->
   IO PreStmt
 defineFunction ctx opacity m name impArgNum binder codType e = do
-  Global.registerTopLevelFunc (global ctx) m name
+  Global.registerTopLevelFunc (global ctx) m name (A.fromInt (length binder))
   return $ PreStmtDefine opacity m name impArgNum binder codType e
 
 parseDefineData :: Context -> Parser [PreStmt]
@@ -211,7 +217,7 @@ defineData ::
   IO [PreStmt]
 defineData ctx m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName (throw ctx) m dataName) consInfoList
-  setAsData (global ctx) m dataName consInfoList'
+  setAsData (global ctx) m dataName (A.fromInt (length dataArgs)) consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
   let formRule = PreStmtDefine OpacityOpaque m dataName (I.fromInt 0) dataArgs (m :< PT.Tau) consType
   introRuleList <- parseDefineDataConstructor ctx dataName dataArgs consInfoList' D.zero
@@ -332,11 +338,12 @@ setAsData ::
   Global.Context ->
   Hint ->
   DD.DefiniteDescription ->
+  A.Arity ->
   [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] ->
   IO ()
-setAsData ctx m dataName consInfoList = do
+setAsData ctx m dataName arity consInfoList = do
   let consNameList = map (\(_, consName, _) -> consName) consInfoList
-  Global.registerData ctx m dataName consNameList
+  Global.registerData ctx m dataName arity consNameList
 
 identPlusToVar :: BinderF PT.PreTerm -> PT.PreTerm
 identPlusToVar (m, x, _) =

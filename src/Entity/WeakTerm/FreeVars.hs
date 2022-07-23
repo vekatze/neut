@@ -64,7 +64,7 @@ freeVars term =
       let xs1 = S.unions $ map freeVars $ maybeToList mSubject
       let xs2 = freeVars e
       let xs3 = freeVars t
-      let xs4 = S.unions $ map (\((_, _, xts), body) -> freeVars' xts [body]) patList
+      let xs4 = S.unions $ map (\((_, _, _, xts), body) -> freeVars' xts [body]) patList
       S.unions [xs1, xs2, xs3, xs4]
     _ :< WeakTermNoema s e ->
       S.unions [freeVars s, freeVars e]

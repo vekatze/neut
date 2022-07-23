@@ -21,7 +21,7 @@ reduce ctx term =
     CompPiElimDownElim v ds -> do
       compDefEnv <- readIORef compDefEnvRef
       case v of
-        ValueVarGlobal x
+        ValueVarGlobal x _
           | Just (OpacityTransparent, xs, body) <- Map.lookup x compDefEnv,
             length xs == length ds -> do
             let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)

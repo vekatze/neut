@@ -61,7 +61,7 @@ holes term =
       let xs1 = S.unions $ map holes $ maybeToList mSubject
       let xs2 = holes e
       let xs3 = holes t
-      let xs4 = S.unions $ map (\((_, _, xts), body) -> holes' xts [body]) patList
+      let xs4 = S.unions $ map (\((_, _, _, xts), body) -> holes' xts [body]) patList
       S.unions [xs1, xs2, xs3, xs4]
     _ :< WeakTermNoema s e ->
       S.unions [holes s, holes e]

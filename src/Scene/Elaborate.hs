@@ -152,8 +152,8 @@ elaborate' ctx term =
       return $ m :< TermTau
     m :< WeakTermVar x ->
       return $ m :< TermVar x
-    m :< WeakTermVarGlobal name ->
-      return $ m :< TermVarGlobal name
+    m :< WeakTermVarGlobal name arity ->
+      return $ m :< TermVarGlobal name arity
     m :< WeakTermPi xts t -> do
       xts' <- mapM (elaborateWeakBinder ctx) xts
       t' <- elaborate' ctx t
@@ -249,10 +249,10 @@ elaborate' ctx term =
       e' <- elaborate' ctx e
       t' <- elaborate' ctx t >>= Term.reduce (App.gensym (base ctx))
       case t' of
-        _ :< TermPiElim (_ :< TermVarGlobal name) _ -> do
+        _ :< TermPiElim (_ :< TermVarGlobal name _) _ -> do
           mConsInfoList <- Global.lookup (App.global (base ctx)) name
           case mConsInfoList of
-            Just (GN.Data consInfoList) -> do
+            Just (GN.Data _ consInfoList) -> do
               patList' <- elaboratePatternList ctx m consInfoList patList
               return $ m :< TermMatch mSubject' (e', t') patList'
             _ ->
@@ -332,10 +332,10 @@ elaboratePatternList ::
   [(PatternF WeakTerm, WeakTerm)] ->
   IO [(PatternF Term, Term)]
 elaboratePatternList ctx m bs patList = do
-  patList' <- forM patList $ \((mPat, c, xts), body) -> do
+  patList' <- forM patList $ \((mPat, c, arity, xts), body) -> do
     xts' <- mapM (elaborateWeakBinder ctx) xts
     body' <- elaborate' ctx body
-    return ((mPat, c, xts'), body')
+    return ((mPat, c, arity, xts'), body')
   checkCaseSanity ctx m bs patList'
   return patList'
 
@@ -344,7 +344,7 @@ checkCaseSanity ctx m bs patList =
   case (bs, patList) of
     ([], []) ->
       return ()
-    (b : bsRest, ((mPat, b', _), _) : patListRest) -> do
+    (b : bsRest, ((mPat, b', _, _), _) : patListRest) -> do
       if b /= b'
         then
           Throw.raiseError (App.throw (base ctx)) mPat $
@@ -353,7 +353,7 @@ checkCaseSanity ctx m bs patList =
     (b : _, []) ->
       Throw.raiseError (App.throw (base ctx)) m $
         "found a non-exhaustive pattern; the clause for `" <> DD.reify b <> "` is missing"
-    ([], ((mPat, b, _), _) : _) ->
+    ([], ((mPat, b, _, _), _) : _) ->
       Throw.raiseError (App.throw (base ctx)) mPat $
         "found a redundant pattern; this clause for `" <> DD.reify b <> "` is redundant"
 

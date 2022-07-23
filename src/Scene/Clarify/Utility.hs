@@ -6,6 +6,7 @@ import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Text as T
+import qualified Entity.Arity as A
 import Entity.Comp
 import Entity.EnumCase
 import Entity.Global
@@ -54,11 +55,11 @@ switch :: Comp -> Comp -> [(CompEnumCase, Comp)]
 switch e1 e2 =
   [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
 
-tryCache :: T.Text -> IO () -> IO Value
-tryCache key doInsertion = do
+registerS4 :: T.Text -> IO () -> IO Value
+registerS4 key doInsertion = do
   compDefEnv <- readIORef compDefEnvRef
   unless (Map.member key compDefEnv) doInsertion
-  return $ ValueVarGlobal key
+  return $ ValueVarGlobal key A.arityS4
 
 makeSwitcher ::
   Context ->

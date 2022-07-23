@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
+import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
@@ -23,7 +24,7 @@ type Term = Cofree TermF Hint
 data TermF a
   = TermTau
   | TermVar Ident
-  | TermVarGlobal DD.DefiniteDescription
+  | TermVarGlobal DD.DefiniteDescription Arity
   | TermPi [BinderF a] a
   | TermPiIntro (LamKindF a) [BinderF a] a
   | TermPiElim a [a]

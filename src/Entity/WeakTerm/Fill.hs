@@ -95,9 +95,9 @@ fill ctx sub term =
       mSubject' <- mapM (fill ctx sub) mSubject
       e' <- fill ctx sub e
       t' <- fill ctx sub t
-      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+      clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- fill' ctx sub xts body
-        return ((mPat, name, xts'), body')
+        return ((mPat, name, arity, xts'), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
       s' <- fill ctx sub s

@@ -17,6 +17,7 @@ import Data.List
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Binder
 import Entity.Comp
@@ -56,7 +57,9 @@ clarify ctx source defList = do
       _ <- returnImmediateS4 (gensym ctx)
       _ <- returnClosureS4 ctx
       defList' <- clarifyDefList ctx defList
-      mainTerm <- reduce (gensym ctx) $ CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName)) []
+      mainTerm <-
+        reduce (gensym ctx) $
+          CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName) (A.Arity 0)) []
       return (defList', Just mainTerm)
     Nothing -> do
       defList' <- clarifyDefList ctx defList
@@ -107,14 +110,14 @@ clarifyTerm ctx tenv term =
       returnImmediateS4 (gensym ctx)
     _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
-    _ :< TermVarGlobal x -> do
+    _ :< TermVarGlobal x arity -> do
       imm <- immediateS4 (gensym ctx)
       return $
         CompUpIntro $
           ValueSigmaIntro
             [ imm,
               ValueSigmaIntro [],
-              ValueVarGlobal $ wrapWithQuote $ DD.reify x
+              ValueVarGlobal (wrapWithQuote $ DD.reify x) arity
             ]
     _ :< TermPi {} ->
       returnClosureS4 ctx
@@ -163,7 +166,7 @@ clarifyTerm ctx tenv term =
     _ :< TermMatch mSubject (e, _) clauseList -> do
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames (gensym ctx)
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
-      clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, xts), body), i) -> do
+      clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, arity, xts), body), i) -> do
         closure <- clarifyLambda ctx tenv LamKindNormal xts body fvs
         (closureVarName, closureVar) <- Gensym.newValueVarLocalWith (gensym ctx) "clause"
         return
@@ -172,7 +175,7 @@ clarifyTerm ctx tenv term =
               closureVarName
               closure
               $ CompPiElimDownElim
-                (ValueVarGlobal (getClauseConsName (DD.reify consName) (isJust mSubject)))
+                (ValueVarGlobal (getClauseConsName (DD.reify consName) (isJust mSubject)) arity)
                 [closureVar, envVar]
           )
       dataTerm <- clarifyTerm ctx tenv e
@@ -198,7 +201,8 @@ clarifyTerm ctx tenv term =
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
     _ :< TermArray elemType -> do
       let constName = "unsafe-" <> toText elemType <> "-array-internal"
-      return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
+      return $ CompUpIntro $ ValueVarGlobal (wrapWithQuote constName) A.arityS4
+    -- return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
     _ :< TermArrayIntro elemType elems -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus ctx tenv) elems
       return $
@@ -248,7 +252,7 @@ clarifyTerm ctx tenv term =
                 CompPrimitive $
                   PrimitiveMagic (MagicStore voidPtr addrVar newValueVar)
     _ :< TermResourceType name -> do
-      return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote $ DD.reify name
+      return $ CompUpIntro $ ValueVarGlobal (wrapWithQuote $ DD.reify name) A.arityS4
 
 add :: Value -> Value -> Comp
 add v1 v2 = do
@@ -317,7 +321,7 @@ newClosureNames ctx = do
 caseClauseToLambda :: (PatternF Term, Term) -> Term
 caseClauseToLambda pat =
   case pat of
-    ((mPat, _, xts), body) ->
+    ((mPat, _, _, xts), body) ->
       mPat :< TermPiIntro LamKindNormal xts body
 
 clarifyPlus :: Context -> TypeEnv -> Term -> IO (Ident, Comp, Value)
@@ -372,19 +376,20 @@ returnClosure ctx tenv isReducible kind fvs xts e = do
   let fvs'' = dropFst fvs'
   fvEnvSigma <- closureEnvS4 ctx $ map Right fvs''
   let fvEnv = ValueSigmaIntro (map (\(_, x, _) -> ValueVarLocal x) fvs')
+  let arity = A.fromInt $ length xts'' + 1 -- arity == count(xts) + env
   case kind of
     LamKindNormal -> do
       i <- Gensym.newCount (gensym ctx)
       name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName i
       registerIfNecessary (gensym ctx) name isReducible False xts'' fvs'' e
-      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name)]
+      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name) arity]
     LamKindCons _ consName discriminant _ -> do
       let consName' = getLamConsName $ DD.reify consName
       registerIfNecessary (gensym ctx) consName' isReducible True xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) (D.reify discriminant)]
     LamKindFix (_, name, _) -> do
       let name' = Ident.toText' name
-      let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name')]
+      let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name') arity]
       e' <- subst (gensym ctx) (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
       registerIfNecessary (gensym ctx) name' OpacityOpaque False xts'' fvs'' e'
       return $ CompUpIntro cls
@@ -476,7 +481,7 @@ chainOf tenv term =
     _ :< TermMatch mSubject (e, _) patList -> do
       let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)
       let xs2 = chainOf tenv e
-      let xs3 = concatMap (\((_, _, xts), body) -> chainOf' tenv xts [body]) patList
+      let xs3 = concatMap (\((_, _, _, xts), body) -> chainOf' tenv xts [body]) patList
       xs1 ++ xs2 ++ xs3
     _ :< TermNoema s t ->
       chainOf tenv s ++ chainOf tenv t

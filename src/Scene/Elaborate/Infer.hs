@@ -81,7 +81,7 @@ infer' ctx varEnv term =
     m :< WeakTermVar x -> do
       _ :< t <- lookupWeakTypeEnv ctx m x
       return (term, m :< t)
-    m :< WeakTermVarGlobal name -> do
+    m :< WeakTermVarGlobal name _ -> do
       _ :< t <- lookupTermTypeEnv ctx m name
       return (term, m :< t)
     m :< WeakTermPi xts t -> do
@@ -103,7 +103,7 @@ infer' ctx varEnv term =
         _ -> do
           (xts', (e', t')) <- inferBinder ctx varEnv xts e
           return (m :< WeakTermPiIntro kind xts' e', m :< WeakTermPi xts' t')
-    m :< WeakTermPiElim e@(_ :< WeakTermVarGlobal name) es -> do
+    m :< WeakTermPiElim e@(_ :< WeakTermVarGlobal name _) es -> do
       etls <- mapM (infer' ctx varEnv) es
       t <- lookupTermTypeEnv ctx m name
       mImpArgNum <- Implicit.lookup (App.implicit (base ctx)) name
@@ -191,12 +191,12 @@ infer' ctx varEnv term =
       resultType <- newAster (App.gensym (base ctx)) varEnv m
       (e', t') <- infer' ctx varEnv e
       mSubject' <- mapM (inferSubject ctx m varEnv) mSubject
-      clauseList' <- forM clauseList $ \(pat@(mPat, name, xts), body) -> do
+      clauseList' <- forM clauseList $ \(pat@(mPat, name, arity, xts), body) -> do
         (xts', (body', tBody)) <- inferBinder ctx varEnv xts body
         insConstraintEnv ctx resultType tBody
         (_, tPat) <- infer' ctx varEnv $ patternToTerm pat
         insConstraintEnv ctx tPat t'
-        return ((mPat, name, xts'), body')
+        return ((mPat, name, arity, xts'), body')
       return (m :< WeakTermMatch mSubject' (e', t') clauseList', resultType)
     m :< WeakTermNoema s t -> do
       s' <- inferType' ctx varEnv s
@@ -343,7 +343,7 @@ inferPiElim ctx varEnv m (e, t) ets = do
 raiseArityMismatchError :: Context -> WeakTerm -> Int -> Int -> IO a
 raiseArityMismatchError ctx function expected actual = do
   case function of
-    m :< WeakTermVarGlobal name -> do
+    m :< WeakTermVarGlobal name _ -> do
       mImpArgNum <- Implicit.lookup (App.implicit (base ctx)) name
       let k = I.reify $ fromMaybe I.zero mImpArgNum
       Throw.raiseError (App.throw (base ctx)) m $
@@ -448,6 +448,6 @@ primOpToType ctx m (PrimOp op domList cod) = do
       return $ m :< TermPi xts cod'
 
 patternToTerm :: PatternF WeakTerm -> WeakTerm
-patternToTerm (m, name, args) = do
+patternToTerm (m, name, arity, args) = do
   let args' = map (\(mx, x, _) -> mx :< WeakTermVar x) args
-  m :< WeakTermPiElim (m :< WeakTermVarGlobal name) args'
+  m :< WeakTermPiElim (m :< WeakTermVarGlobal name arity) args'

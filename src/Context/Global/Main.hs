@@ -9,6 +9,7 @@ import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import Data.Maybe
+import Entity.Arity
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import Entity.EnumInfo hiding (new)
@@ -46,11 +47,12 @@ registerTopLevelFunc ::
   IORef NameMap ->
   Hint.Hint ->
   DD.DefiniteDescription ->
+  Arity ->
   IO ()
-registerTopLevelFunc ctx nameMapRef m topLevelName = do
+registerTopLevelFunc ctx nameMapRef m topLevelName arity = do
   topNameMap <- readIORef nameMapRef
   ensureFreshness ctx m topNameMap topLevelName
-  modifyIORef' nameMapRef $ Map.insert topLevelName GN.TopLevelFunc
+  modifyIORef' nameMapRef $ Map.insert topLevelName $ GN.TopLevelFunc arity
 
 registerEnum ::
   Throw.Context ->
@@ -69,12 +71,13 @@ registerData ::
   IORef NameMap ->
   Hint.Hint ->
   DD.DefiniteDescription ->
+  Arity ->
   [DD.DefiniteDescription] ->
   IO ()
-registerData ctx nameMapRef m dataName consList = do
+registerData ctx nameMapRef m dataName arity consList = do
   topNameMap <- readIORef nameMapRef
   ensureFreshness ctx m topNameMap dataName
-  modifyIORef' nameMapRef $ Map.insert dataName $ GN.Data consList
+  modifyIORef' nameMapRef $ Map.insert dataName $ GN.Data arity consList
 
 registerResource ::
   Throw.Context ->

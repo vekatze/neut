@@ -20,8 +20,8 @@ weaken term =
       m :< WeakTermTau
     m :< TermVar x ->
       m :< WeakTermVar x
-    m :< TermVarGlobal g ->
-      m :< WeakTermVarGlobal g
+    m :< TermVarGlobal g arity ->
+      m :< WeakTermVarGlobal g arity
     m :< TermPi xts t ->
       m :< WeakTermPi (map weakenBinder xts) (weaken t)
     m :< TermPiIntro kind xts e -> do
@@ -64,7 +64,7 @@ weaken term =
       let mSubject' = fmap weaken mSubject
       let e' = weaken e
       let t' = weaken t
-      let patList' = map (\((mp, p, xts), body) -> ((mp, p, map weakenBinder xts), weaken body)) patList
+      let patList' = map (\((mp, p, arity, xts), body) -> ((mp, p, arity, map weakenBinder xts), weaken body)) patList
       m :< WeakTermMatch mSubject' (e', t') patList'
     m :< TermNoema s t ->
       m :< WeakTermNoema (weaken s) (weaken t)

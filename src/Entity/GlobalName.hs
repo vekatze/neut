@@ -1,5 +1,6 @@
 module Entity.GlobalName (GlobalName (..)) where
 
+import Entity.Arity
 import qualified Entity.DefiniteDescription as DD
 import Entity.Discriminant
 import Entity.EnumInfo
@@ -8,11 +9,11 @@ import Entity.PrimNum
 import Entity.PrimOp
 
 data GlobalName
-  = TopLevelFunc
+  = TopLevelFunc Arity
   | Resource
   | EnumType [EnumValue]
   | EnumIntro ET.EnumTypeName Discriminant
   | PrimType PrimNum
   | PrimOp PrimOp
-  | Data [DD.DefiniteDescription]
+  | Data Arity [DD.DefiniteDescription]
   deriving (Show)

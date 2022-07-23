@@ -2,6 +2,7 @@ module Entity.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
 import qualified Data.Text as T
+import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
@@ -22,7 +23,7 @@ toText term =
       "tau"
     _ :< WeakTermVar x ->
       showVariable x
-    _ :< WeakTermVarGlobal x ->
+    _ :< WeakTermVarGlobal x _ ->
       DD.reify x
     _ :< WeakTermPi xts cod
       | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WeakTermPi yts _)] <- xts ->
@@ -138,8 +139,8 @@ showCaseClause :: (PatternF WeakTerm, WeakTerm) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, DD.DefiniteDescription, [BinderF WeakTerm]) -> T.Text
-showPattern (_, f, xts) = do
+showPattern :: (Hint, DD.DefiniteDescription, Arity, [BinderF WeakTerm]) -> T.Text
+showPattern (_, f, _, xts) = do
   case xts of
     [] ->
       inParen $ DD.reify f

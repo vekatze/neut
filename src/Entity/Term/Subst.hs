@@ -76,9 +76,9 @@ subst ctx sub term =
       mSubject' <- mapM (subst ctx sub) mSubject
       e' <- subst ctx sub e
       t' <- subst ctx sub t
-      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+      clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- subst' ctx sub xts body
-        return ((mPat, name, xts'), body')
+        return ((mPat, name, arity, xts'), body')
       return (m :< TermMatch mSubject' (e', t') clauseList')
     m :< TermNoema s e -> do
       s' <- subst ctx sub s

@@ -101,9 +101,9 @@ reduce ctx term =
       -- _ -> do
       mSubject' <- mapM (reduce ctx) mSubject
       t' <- reduce ctx t
-      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+      clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         body' <- reduce ctx body
-        return ((mPat, name, xts), body')
+        return ((mPat, name, arity, xts), body')
       return (m :< TermMatch mSubject' (e', t') clauseList')
     m :< TermNoema s e -> do
       s' <- reduce ctx s

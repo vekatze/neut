@@ -29,7 +29,7 @@ immediateS4 :: Gensym.Context -> IO Value
 immediateS4 ctx = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  tryCache cartImmName $ registerSwitcher ctx cartImmName immediateT immediate4
+  registerS4 cartImmName $ registerSwitcher ctx cartImmName immediateT immediate4
 
 sigmaS4 ::
   Context ->
@@ -38,17 +38,17 @@ sigmaS4 ::
   IO Value
 sigmaS4 ctx mName mxts = do
   let gContext = gensym ctx
+  name <- getSigmaName ctx mName
+  registerS4 name $ registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
+
+getSigmaName :: Context -> Maybe T.Text -> IO T.Text
+getSigmaName ctx mName =
   case mName of
-    Nothing -> do
-      i <- Gensym.newCount gContext
-      -- name <- fmap wrapWithQuote $ attachSectionPrefix $ "sigma;" <> T.pack (show i)
-      name <- fmap (wrapWithQuote . DD.reify) $ Locator.attachCurrentLocator (locator ctx) $ BN.sigmaName i
-      -- name <- fmap (wrapWithQuote . DD.reify) $ Locator.attachCurrentLocator (locator ctx) $ "sigma;" <> T.pack (show i)
-      -- h <- wrapWithQuote <$> newText
-      registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
-      return $ ValueVarGlobal name
     Just name ->
-      tryCache name $ registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
+      return name
+    Nothing -> do
+      i <- Gensym.newCount (gensym ctx)
+      fmap (wrapWithQuote . DD.reify) $ Locator.attachCurrentLocator (locator ctx) $ BN.sigmaName i
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>

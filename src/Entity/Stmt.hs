@@ -42,14 +42,6 @@ instance Binary Stmt
 
 type PathSet = S.Set (Path Abs File)
 
-extractName :: Stmt -> DD.DefiniteDescription
-extractName stmt = do
-  case stmt of
-    StmtDefine _ _ name _ _ _ _ ->
-      name
-    StmtDefineResource _ name _ _ ->
-      name
-
 data Cache = Cache
   { cacheStmtList :: [Stmt],
     cacheEnumInfo :: [EnumInfo]

@@ -5,7 +5,6 @@ where
 
 import Context.App
 import qualified Context.Gensym as Gensym
-import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -13,6 +12,7 @@ import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.Arity as A
 import Entity.Comp
 import Entity.Const
 import qualified Entity.Discriminant as D
@@ -71,9 +71,9 @@ lower ctx (defList, mMainTerm) = do
       Just <$> commConv result mainTerm'' castResult
     Nothing -> do
       initialize $ map fst defList
-      insDeclEnv cartImmName [(), ()]
-      insDeclEnv cartClsName [(), ()]
-      insDeclEnv cartCellName [(), ()]
+      insDeclEnv cartImmName A.arityS4
+      insDeclEnv cartClsName A.arityS4
+      insDeclEnv cartCellName A.arityS4
       lowDeclEnv <- readIORef lowDeclEnvRef
       forM_ defList $ \(name, (_, args, e)) ->
         unless (Map.member name lowDeclEnv) $
@@ -213,7 +213,7 @@ lowerCompPrimitive ctx codeOp =
           reflect ctx $ LowOpSyscall i args'
         MagicExternal name args -> do
           args' <- mapM (lowerValue ctx) args
-          liftIO $ insDeclEnv name args'
+          liftIO $ insDeclEnv name $ A.fromInt $ length args'
           reflect ctx $ LowOpCall (LowValueVarGlobal name) args'
 
 lowerCompPrimOp :: Context -> PrimOp -> [Value] -> Lower LowValue
@@ -276,14 +276,9 @@ lowerValueLetCast ctx v lowType = do
 lowerValue :: Context -> Value -> Lower LowValue
 lowerValue ctx v =
   case v of
-    ValueVarGlobal y -> do
-      compDefEnv <- liftIO $ readIORef compDefEnvRef
-      case Map.lookup y compDefEnv of
-        Nothing ->
-          liftIO $ Throw.raiseCritical' (throw ctx) $ "no such global variable is defined: " <> y
-        Just (_, args, _) -> do
-          liftIO $ insDeclEnvIfNecessary y args
-          uncast ctx (LowValueVarGlobal y) (toFunPtrType args)
+    ValueVarGlobal y arity -> do
+      liftIO $ insDeclEnvIfNecessary y arity
+      uncast ctx (LowValueVarGlobal y) (toFunPtrType' arity)
     ValueVarLocal y ->
       return $ LowValueVarLocal y
     ValueVarLocalIdeal y ->
@@ -335,12 +330,12 @@ reflectCont :: LowOp -> Lower ()
 reflectCont op = do
   extend $ return . LowCompCont op
 
-insDeclEnvIfNecessary :: T.Text -> [a] -> IO ()
-insDeclEnvIfNecessary symbol args = do
+insDeclEnvIfNecessary :: T.Text -> A.Arity -> IO ()
+insDeclEnvIfNecessary symbol arity = do
   lowNameSet <- readIORef lowNameSetRef
   if S.member symbol lowNameSet
     then return ()
-    else insDeclEnv symbol args
+    else insDeclEnv symbol arity
 
 -- returns Nothing iff the branch list is empty
 constructSwitch :: Context -> [(CompEnumCase, Comp)] -> IO (Maybe (LowComp, [(Integer, LowComp)]))
@@ -420,6 +415,10 @@ toFunPtrType :: [a] -> LowType
 toFunPtrType xs =
   LowTypePointer (LowTypeFunction (map (const voidPtr) xs) voidPtr)
 
+toFunPtrType' :: A.Arity -> LowType
+toFunPtrType' arity =
+  LowTypePointer (LowTypeFunction (toVoidPtrSeq arity) voidPtr)
+
 newValueLocal :: Context -> T.Text -> IO (Ident, LowValue)
 newValueLocal ctx name = do
   x <- Gensym.newIdentFromText (gensym ctx) name
@@ -451,13 +450,17 @@ commConv x lowComp cont2 =
     LowCompUnreachable ->
       return LowCompUnreachable
 
-insDeclEnv :: T.Text -> [a] -> IO ()
-insDeclEnv name args = do
+insDeclEnv :: T.Text -> A.Arity -> IO ()
+insDeclEnv name arity = do
   lowDeclEnv <- readIORef lowDeclEnvRef
   unless (name `Map.member` lowDeclEnv) $ do
-    let dom = map (const voidPtr) args
+    let dom = toVoidPtrSeq arity
     let cod = voidPtr
     modifyIORef' lowDeclEnvRef $ Map.insert name (dom, cod)
+
+toVoidPtrSeq :: A.Arity -> [LowType]
+toVoidPtrSeq arity =
+  map (const voidPtr) [1 .. A.reify arity]
 
 registerCartesian :: Context -> T.Text -> IO ()
 registerCartesian ctx name = do

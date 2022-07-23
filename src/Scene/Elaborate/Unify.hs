@@ -118,7 +118,7 @@ simplify ctx constraintList =
         (_ :< WeakTermVar x1, _ :< WeakTermVar x2)
           | x1 == x2 ->
             simplify ctx cs
-        (_ :< WeakTermVarGlobal g1, _ :< WeakTermVarGlobal g2)
+        (_ :< WeakTermVarGlobal g1 _, _ :< WeakTermVarGlobal g2 _)
           | g1 == g2 ->
             simplify ctx cs
         (m1 :< WeakTermPi xts1 cod1, m2 :< WeakTermPi xts2 cod2)
@@ -339,7 +339,7 @@ asStuckedTerm term =
   case term of
     (_ :< WeakTermVar x) ->
       Just $ StuckPiElimVarLocal x []
-    (_ :< WeakTermVarGlobal g) ->
+    (_ :< WeakTermVarGlobal g _) ->
       Just $ StuckPiElimVarGlobal g []
     (_ :< WeakTermAster h es) ->
       Just $ StuckPiElimAster h es

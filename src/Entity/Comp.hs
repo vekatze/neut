@@ -2,6 +2,7 @@ module Entity.Comp where
 
 import qualified Data.IntMap as IntMap
 import qualified Data.Text as T
+import Entity.Arity
 import Entity.EnumCase
 import Entity.Ident
 import Entity.Magic
@@ -13,7 +14,7 @@ import Entity.PrimOp
 data Value
   = ValueVarLocal Ident
   | ValueVarLocalIdeal Ident
-  | ValueVarGlobal T.Text
+  | ValueVarGlobal T.Text Arity
   | ValueSigmaIntro [Value]
   | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer

@@ -105,9 +105,9 @@ reduce ctx term =
       -- resultType' <- reduce ctx resultType
       mSubject' <- mapM (reduce ctx) mSubject
       t' <- reduce ctx t
-      clauseList' <- forM clauseList $ \((mPat, name, xts), body) -> do
+      clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         body' <- reduce ctx body
-        return ((mPat, name, xts), body')
+        return ((mPat, name, arity, xts), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
       s' <- reduce ctx s
