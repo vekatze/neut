@@ -58,9 +58,7 @@ lower :: Context -> ([CompDef], Maybe Comp) -> IO (Maybe LowComp)
 lower ctx (defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
-      initialize $ cartImmName : cartClsName : map fst defList
-      registerCartesian ctx cartImmName
-      registerCartesian ctx cartClsName
+      initialize $ cartImmName : cartClsName : cartCellName : map fst defList
       forM_ defList $ \(name, (_, args, e)) ->
         lowerComp ctx e >>= insLowDefEnv name args
       mainTerm'' <- lowerComp ctx mainTerm
@@ -461,12 +459,3 @@ insDeclEnv name arity = do
 toVoidPtrSeq :: A.Arity -> [LowType]
 toVoidPtrSeq arity =
   map (const voidPtr) [1 .. A.reify arity]
-
-registerCartesian :: Context -> T.Text -> IO ()
-registerCartesian ctx name = do
-  compDefEnv <- readIORef compDefEnvRef
-  case Map.lookup name compDefEnv of
-    Just (_, args, e) ->
-      lowerComp ctx e >>= insLowDefEnv name args
-    _ ->
-      return ()

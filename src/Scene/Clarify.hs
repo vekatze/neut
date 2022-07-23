@@ -56,6 +56,7 @@ clarify ctx source defList = do
     Just mainName -> do
       _ <- returnImmediateS4 (gensym ctx)
       _ <- returnClosureS4 ctx
+      _ <- returnCellS4 ctx
       defList' <- clarifyDefList ctx defList
       mainTerm <-
         reduce (gensym ctx) $
