@@ -38,7 +38,6 @@ import Entity.Opacity
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNum
-import Entity.PrimNum.ToText
 import Entity.PrimNumSize
 import Entity.PrimOp
 import Entity.Source
@@ -60,7 +59,7 @@ clarify ctx source defList = do
       defList' <- clarifyDefList ctx defList
       mainTerm <-
         reduce (gensym ctx) $
-          CompPiElimDownElim (ValueVarGlobal (wrapWithQuote $ DD.reify mainName) (A.Arity 0)) []
+          CompPiElimDownElim (ValueVarGlobal mainName (A.Arity 0)) []
       return (defList', Just mainTerm)
     Nothing -> do
       defList' <- clarifyDefList ctx defList
@@ -76,12 +75,12 @@ clarifyDefList ctx defList = do
   mapM_ register defList'
   defList'' <- forM defList' $ \(x, (opacity, args, e)) -> do
     e' <- reduce (gensym ctx) e
-    return (wrapWithQuote $ DD.reify x, (opacity, args, e'))
+    return (x, (opacity, args, e'))
   return $ defList'' ++ newDefEnv
 
 register :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> IO ()
 register (x, (opacity, args, e)) =
-  insDefEnv (wrapWithQuote $ DD.reify x) opacity args e
+  insDefEnv x opacity args e
 
 clarifyDef :: Context -> Stmt -> IO (DD.DefiniteDescription, (Opacity, [Ident], Comp))
 clarifyDef ctx stmt =
@@ -118,7 +117,7 @@ clarifyTerm ctx tenv term =
           ValueSigmaIntro
             [ imm,
               ValueSigmaIntro [],
-              ValueVarGlobal (wrapWithQuote $ DD.reify x) arity
+              ValueVarGlobal x arity
             ]
     _ :< TermPi {} ->
       returnClosureS4 ctx
@@ -176,7 +175,7 @@ clarifyTerm ctx tenv term =
               closureVarName
               closure
               $ CompPiElimDownElim
-                (ValueVarGlobal (getClauseConsName (DD.reify consName) (isJust mSubject)) arity)
+                (ValueVarGlobal (getClauseConsName consName (isJust mSubject)) arity)
                 [closureVar, envVar]
           )
       dataTerm <- clarifyTerm ctx tenv e
@@ -201,9 +200,9 @@ clarifyTerm ctx tenv term =
       e' <- clarifyTerm ctx (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
       return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
     _ :< TermArray elemType -> do
-      let constName = "unsafe-" <> toText elemType <> "-array-internal"
-      return $ CompUpIntro $ ValueVarGlobal (wrapWithQuote constName) A.arityS4
-    -- return $ CompUpIntro $ ValueVarGlobal $ wrapWithQuote constName
+      -- let constName = "unsafe-" <> toText elemType <> "-array-internal"
+      return $ CompUpIntro $ ValueVarGlobal (DD.array elemType) A.arityS4
+    -- return $ CompUpIntro $ ValueVarGlobal (wrapWithQuote constName) A.arityS4
     _ :< TermArrayIntro elemType elems -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus ctx tenv) elems
       return $
@@ -253,7 +252,7 @@ clarifyTerm ctx tenv term =
                 CompPrimitive $
                   PrimitiveMagic (MagicStore voidPtr addrVar newValueVar)
     _ :< TermResourceType name -> do
-      return $ CompUpIntro $ ValueVarGlobal (wrapWithQuote $ DD.reify name) A.arityS4
+      return $ CompUpIntro $ ValueVarGlobal name A.arityS4
 
 add :: Value -> Value -> Comp
 add v1 v2 = do
@@ -381,23 +380,23 @@ returnClosure ctx tenv isReducible kind fvs xts e = do
   case kind of
     LamKindNormal -> do
       i <- Gensym.newCount (gensym ctx)
-      name <- fmap DD.reify $ Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName i
+      name <- Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName i
       registerIfNecessary (gensym ctx) name isReducible False xts'' fvs'' e
-      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name) arity]
+      return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal name arity]
     LamKindCons _ consName discriminant _ -> do
-      let consName' = getLamConsName $ DD.reify consName
-      registerIfNecessary (gensym ctx) consName' isReducible True xts'' fvs'' e
+      let consDD = DD.getConsDD consName
+      registerIfNecessary (gensym ctx) consDD isReducible True xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) (D.reify discriminant)]
     LamKindFix (_, name, _) -> do
-      let name' = Ident.toText' name
-      let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal (wrapWithQuote name') arity]
+      name' <- Locator.attachCurrentLocator (locator ctx) $ BN.lambdaName $ Ident.toInt name
+      let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal name' arity]
       e' <- subst (gensym ctx) (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
       registerIfNecessary (gensym ctx) name' OpacityOpaque False xts'' fvs'' e'
       return $ CompUpIntro cls
 
 registerIfNecessary ::
   Gensym.Context ->
-  T.Text ->
+  DD.DefiniteDescription ->
   Opacity ->
   Bool ->
   [(Ident, Comp)] ->
@@ -411,10 +410,10 @@ registerIfNecessary ctx name isReducible isNoetic xts1 xts2 e = do
     (envVarName, envVar) <- Gensym.newValueVarLocalWith ctx "env"
     let args = map fst xts1 ++ [envVarName]
     body <- reduce ctx $ CompSigmaElim False (map fst xts2) envVar e'
-    insDefEnv (wrapWithQuote name) isReducible args body
+    insDefEnv name isReducible args body
     when isNoetic $ do
       bodyNoetic <- reduce ctx $ CompSigmaElim True (map fst xts2) envVar e'
-      insDefEnv (wrapWithQuote $ name <> ";noetic") isReducible args bodyNoetic
+      insDefEnv (DD.getNoeticDD name) isReducible args bodyNoetic
 
 callClosure :: Gensym.Context -> Comp -> [(Ident, Comp, Value)] -> IO Comp
 callClosure ctx e zexes = do
@@ -544,11 +543,9 @@ forgetHint (_ :< enumCase) =
     EnumCaseDefault ->
       () :< EnumCaseDefault
 
-getLamConsName :: T.Text -> T.Text
-getLamConsName basename =
-  basename <> ";cons"
-
-getClauseConsName :: T.Text -> Bool -> T.Text
+getClauseConsName :: DD.DefiniteDescription -> Bool -> DD.DefiniteDescription
 getClauseConsName basename isNoetic = do
-  let consName' = getLamConsName basename
-  wrapWithQuote $ if isNoetic then consName' <> ";noetic" else consName'
+  let consName' = DD.getConsDD basename
+  if isNoetic
+    then DD.getNoeticDD consName'
+    else consName'

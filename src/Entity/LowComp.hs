@@ -1,6 +1,7 @@
 module Entity.LowComp where
 
-import qualified Data.Text as T
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.ExternalName as EN
 import Entity.Ident
 import Entity.LowType
 import Entity.PrimNumSize
@@ -8,7 +9,8 @@ import Entity.PrimOp
 
 data LowValue
   = LowValueVarLocal Ident
-  | LowValueVarGlobal T.Text
+  | LowValueVarGlobal DD.DefiniteDescription
+  | LowValueVarExternal EN.ExternalName
   | LowValueInt Integer
   | LowValueFloat FloatSize Double
   | LowValueNull

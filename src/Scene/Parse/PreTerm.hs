@@ -22,6 +22,7 @@ import Entity.Const
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.EnumInfo
+import qualified Entity.ExternalName as EN
 import qualified Entity.GlobalLocator as GL
 import Entity.Hint
 import Entity.Ident
@@ -337,7 +338,7 @@ preTermMagicExternal ctx m = do
   preTermMagicBase "external" $ do
     extFunName <- symbol
     es <- many (delimiter "," >> preTerm ctx)
-    return $ m :< PT.Magic (MagicExternal extFunName es)
+    return $ m :< PT.Magic (MagicExternal (EN.ExternalName extFunName) es)
 
 -- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: Parser LowType

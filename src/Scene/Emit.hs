@@ -13,10 +13,14 @@ import qualified Data.ByteString.Lazy as L
 import qualified Data.HashMap.Strict as HashMap
 import Data.IORef
 import qualified Data.IntMap as IntMap
+import qualified Data.List as List
 import qualified Data.Map as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import qualified Entity.DeclarationName as DN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.ExternalName as EN
 import Entity.Global
 import Entity.Ident
 import Entity.LowComp
@@ -49,17 +53,17 @@ emit' ctx aux = do
     forM (HashMap.toList lowDefEnv) $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
       body' <- LowComp.reduce ctx IntMap.empty Map.empty body
-      emitDefinition ctx "i8*" (TE.encodeUtf8Builder name) args' body'
+      emitDefinition ctx "i8*" (DD.toBuilder name) args' body'
   return $ L.toLazyByteString $ unlinesL $ g : aux <> concat xs
 
 emitDeclarations :: IO Builder
 emitDeclarations = do
-  lowDeclEnv <- HashMap.toList <$> readIORef lowDeclEnvRef
+  lowDeclEnv <- List.sort . HashMap.toList <$> readIORef lowDeclEnvRef
   return $ unlinesL $ map declToBuilder lowDeclEnv
 
-declToBuilder :: (T.Text, ([LowType], LowType)) -> Builder
+declToBuilder :: (DN.DeclarationName, ([LowType], LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
-  let name' = TE.encodeUtf8Builder name
+  let name' = DN.toBuilder name
   "declare fastcc "
     <> showLowType cod
     <> " @"
@@ -357,8 +361,10 @@ showLowValue lowValue =
   case lowValue of
     LowValueVarLocal (I (_, i)) ->
       "%_" <> intDec i
-    LowValueVarGlobal x ->
-      "@" <> TE.encodeUtf8Builder x
+    LowValueVarGlobal globalName ->
+      "@" <> DD.toBuilder globalName
+    LowValueVarExternal extName ->
+      "@" <> EN.toBuilder extName
     LowValueInt i ->
       integerDec i
     LowValueFloat FloatSize16 x -> do

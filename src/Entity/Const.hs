@@ -29,13 +29,13 @@ unsafePtr :: T.Text
 unsafePtr =
   "unsafe-pointer"
 
-cartImmName :: T.Text
-cartImmName =
-  "imm"
+-- cartImmName :: T.Text
+-- cartImmName =
+--   "imm"
 
-cartClsName :: T.Text
-cartClsName =
-  "cls"
+-- cartClsName :: T.Text
+-- cartClsName =
+--   "cls"
 
 cartCellName :: T.Text
 cartCellName =

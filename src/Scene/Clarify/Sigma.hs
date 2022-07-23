@@ -12,10 +12,8 @@ import Context.App
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
-import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Comp
-import Entity.Const
 import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Scene.Clarify.Linearize
@@ -29,11 +27,11 @@ immediateS4 :: Gensym.Context -> IO Value
 immediateS4 ctx = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  registerS4 cartImmName $ registerSwitcher ctx cartImmName immediateT immediate4
+  registerS4 DD.imm $ registerSwitcher ctx DD.imm immediateT immediate4
 
 sigmaS4 ::
   Context ->
-  Maybe T.Text ->
+  Maybe DD.DefiniteDescription ->
   [Either Comp (Ident, Comp)] ->
   IO Value
 sigmaS4 ctx mName mxts = do
@@ -41,14 +39,14 @@ sigmaS4 ctx mName mxts = do
   name <- getSigmaName ctx mName
   registerS4 name $ registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
 
-getSigmaName :: Context -> Maybe T.Text -> IO T.Text
+getSigmaName :: Context -> Maybe DD.DefiniteDescription -> IO DD.DefiniteDescription
 getSigmaName ctx mName =
   case mName of
     Just name ->
       return name
     Nothing -> do
       i <- Gensym.newCount (gensym ctx)
-      fmap (wrapWithQuote . DD.reify) $ Locator.attachCurrentLocator (locator ctx) $ BN.sigmaName i
+      Locator.attachCurrentLocator (locator ctx) $ BN.sigmaName i
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -132,7 +130,7 @@ returnClosureS4 ctx = do
   t <-
     sigmaS4
       ctx
-      (Just cartClsName)
+      (Just DD.cls)
       [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
   return $ CompUpIntro t
 
@@ -143,6 +141,6 @@ returnCellS4 ctx = do
   t <-
     sigmaS4
       ctx
-      (Just cartCellName)
+      (Just DD.cell)
       [Right (env, retImmS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
   return $ CompUpIntro t

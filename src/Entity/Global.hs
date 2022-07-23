@@ -3,8 +3,9 @@ module Entity.Global where
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Entity.Comp
+import qualified Entity.DeclarationName as DN
+import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
@@ -16,22 +17,22 @@ import System.IO.Unsafe
 --
 
 {-# NOINLINE compDefEnvRef #-}
-compDefEnvRef :: IORef (Map.HashMap T.Text (Opacity, [Ident], Comp))
+compDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp))
 compDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE lowDefEnvRef #-}
-lowDefEnvRef :: IORef (Map.HashMap T.Text ([Ident], LowComp))
+lowDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription ([Ident], LowComp))
 lowDefEnvRef =
   unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE lowDeclEnvRef #-}
-lowDeclEnvRef :: IORef (Map.HashMap T.Text ([LowType], LowType))
+lowDeclEnvRef :: IORef (Map.HashMap DN.DeclarationName ([LowType], LowType))
 lowDeclEnvRef =
   unsafePerformIO $ newIORef initialLowDeclEnv
 
 {-# NOINLINE lowNameSetRef #-}
-lowNameSetRef :: IORef (S.Set T.Text)
+lowNameSetRef :: IORef (S.Set DD.DefiniteDescription)
 lowNameSetRef =
   unsafePerformIO (newIORef S.empty)
 
@@ -40,11 +41,11 @@ nopFreeSetRef :: IORef (S.Set Int)
 nopFreeSetRef =
   unsafePerformIO (newIORef S.empty)
 
-initialLowDeclEnv :: Map.HashMap T.Text ([LowType], LowType)
+initialLowDeclEnv :: Map.HashMap DN.DeclarationName ([LowType], LowType)
 initialLowDeclEnv =
   Map.fromList
-    [ ("malloc", ([voidPtr], voidPtr)),
-      ("free", ([voidPtr], voidPtr))
+    [ (DN.malloc, ([voidPtr], voidPtr)),
+      (DN.free, ([voidPtr], voidPtr))
     ]
 
 -- for debug

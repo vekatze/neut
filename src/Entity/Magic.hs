@@ -2,6 +2,7 @@ module Entity.Magic where
 
 import Data.Binary
 import qualified Data.Text as T
+import qualified Entity.ExternalName as EN
 import Entity.LowType
 import qualified GHC.Generics as G
 
@@ -10,7 +11,7 @@ data Magic a
   | MagicStore LowType a a
   | MagicLoad LowType a
   | MagicSyscall Integer [a]
-  | MagicExternal T.Text [a]
+  | MagicExternal EN.ExternalName [a]
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic a)

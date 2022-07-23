@@ -5,19 +5,32 @@ module Entity.DefiniteDescription
     newByDefiniteLocator,
     extend,
     extendLL,
+    getConsDD,
+    imm,
+    cls,
+    cell,
+    getNoeticDD,
+    array,
+    isBaseDefiniteDescription,
+    toBuilder,
   )
 where
 
 import qualified Context.Throw as Throw
 import Data.Binary
+import Data.ByteString.Builder
 import Data.Hashable
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Entity.BaseName as BN
 import Entity.Const
 import qualified Entity.DefiniteLocator as DL
 import qualified Entity.Hint as H
 import qualified Entity.LocalLocator as LL
+import qualified Entity.ModuleID as MID
+import qualified Entity.PrimNum as PN
 import qualified Entity.Section as Section
+import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
 import GHC.Generics
 
@@ -69,3 +82,53 @@ extendLL dd inner = do
   let gl = globalLocator dd
   let outer = localLocator dd
   new gl $ LL.extend outer inner
+
+{-# INLINE toLowName #-}
+toLowName :: DefiniteDescription -> T.Text
+toLowName dd =
+  wrapWithQuote $ reify dd
+
+{-# INLINE wrapWithQuote #-}
+wrapWithQuote :: T.Text -> T.Text
+wrapWithQuote x =
+  "\"" <> x <> "\""
+
+-- this.core::nat.succ
+-- ~> this.core::nat.succ.#.cons
+getConsDD :: DefiniteDescription -> DefiniteDescription
+getConsDD dd =
+  extendLL dd $ LL.new Section.dummySectionStack BN.cons
+
+getNoeticDD :: DefiniteDescription -> DefiniteDescription
+getNoeticDD dd =
+  extendLL dd $ LL.new Section.dummySectionStack BN.noetic
+
+imm :: DefiniteDescription
+imm =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.imm
+
+cls :: DefiniteDescription
+cls =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.cls
+
+cell :: DefiniteDescription
+cell =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.cell
+
+array :: PN.PrimNum -> DefiniteDescription
+array elemType =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] $ BN.arrayType elemType
+
+isBaseDefiniteDescription :: DefiniteDescription -> Bool
+isBaseDefiniteDescription dd =
+  SGL.moduleID (globalLocator dd) == MID.Base
+
+-- data LocalLocator = MakeLocalLocator
+--   { sectionStack :: [S.Section],
+--     baseName :: BN.BaseName
+--   }
+--   deriving (Generic, Show)
+
+toBuilder :: DefiniteDescription -> Builder
+toBuilder dd =
+  TE.encodeUtf8Builder $ toLowName dd

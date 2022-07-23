@@ -13,3 +13,7 @@ newtype Section = Section {reify :: BN.BaseName}
 instance Binary Section
 
 instance Hashable Section
+
+dummySectionStack :: SectionStack
+dummySectionStack =
+  [Section BN.internalBaseName]

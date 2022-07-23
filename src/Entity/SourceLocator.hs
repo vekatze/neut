@@ -8,6 +8,7 @@ module Entity.SourceLocator
     topLocator,
     boolLocator,
     llvmLocator,
+    internalLocator,
   )
 where
 
@@ -59,3 +60,7 @@ boolLocator =
 llvmLocator :: SourceLocator
 llvmLocator =
   SourceLocator $(mkRelFile "llvm")
+
+internalLocator :: SourceLocator
+internalLocator =
+  SourceLocator $(mkRelFile "#")

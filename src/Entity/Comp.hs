@@ -1,8 +1,8 @@
 module Entity.Comp where
 
 import qualified Data.IntMap as IntMap
-import qualified Data.Text as T
 import Entity.Arity
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.Ident
 import Entity.Magic
@@ -14,7 +14,7 @@ import Entity.PrimOp
 data Value
   = ValueVarLocal Ident
   | ValueVarLocalIdeal Ident
-  | ValueVarGlobal T.Text Arity
+  | ValueVarGlobal DD.DefiniteDescription Arity
   | ValueSigmaIntro [Value]
   | ValueArrayIntro PrimNum [Value]
   | ValueInt IntSize Integer
@@ -41,4 +41,7 @@ type SubstValue =
   IntMap.IntMap Value
 
 type CompDef =
-  (T.Text, (Opacity, [Ident], Comp))
+  (DD.DefiniteDescription, (Opacity, [Ident], Comp))
+
+-- type CompDef =
+--   (T.Text, (Opacity, [Ident], Comp))

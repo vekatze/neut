@@ -17,6 +17,15 @@ module Entity.BaseName
     this,
     new,
     base,
+    internalBaseName,
+    cons,
+    imm,
+    cls,
+    cell,
+    noetic,
+    arrayType,
+    malloc,
+    free,
   )
 where
 
@@ -28,10 +37,12 @@ import Data.Hashable
 import qualified Data.Text as T
 import Entity.Const
 import qualified Entity.Hint as H
+import qualified Entity.PrimNum as PN
+import qualified Entity.PrimNum.ToText as PN
 import GHC.Generics
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
-  deriving (Generic, Show, Eq)
+  deriving (Generic, Show, Eq, Ord)
 
 instance Binary BaseName
 
@@ -104,6 +115,18 @@ new :: BaseName
 new =
   MakeBaseName "new"
 
+imm :: BaseName
+imm =
+  MakeBaseName "imm"
+
+cls :: BaseName
+cls =
+  MakeBaseName "cls"
+
+cell :: BaseName
+cell =
+  MakeBaseName "cell"
+
 sigmaName :: Int -> BaseName
 sigmaName i =
   MakeBaseName $ "sigma;" <> T.pack (show i)
@@ -111,6 +134,37 @@ sigmaName i =
 lambdaName :: Int -> BaseName
 lambdaName i =
   MakeBaseName $ "lambda;" <> T.pack (show i)
+
+cons :: BaseName
+cons =
+  MakeBaseName "cons"
+
+noetic :: BaseName
+noetic =
+  MakeBaseName "noetic"
+
+malloc :: BaseName
+malloc =
+  MakeBaseName "malloc"
+
+free :: BaseName
+free =
+  MakeBaseName "free"
+
+arrayType :: PN.PrimNum -> BaseName
+arrayType elemType =
+  MakeBaseName $ "unsafe-" <> PN.toText elemType <> "-array-internal"
+
+-- let constName = "unsafe-" <> toText elemType <> "-array-internal"
+-- consName :: Int -> BaseName
+-- consName i =
+--   MakeBaseName $ "cons;" <> T.pack (show i)
+
+internalBaseName :: BaseName
+internalBaseName =
+  MakeBaseName "#"
+
+-- basename <> ";cons"
 
 {-# INLINE fromText #-}
 fromText :: T.Text -> BaseName

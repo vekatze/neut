@@ -5,13 +5,12 @@ import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
-import qualified Data.Text as T
 import qualified Entity.Arity as A
 import Entity.Comp
+import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.Global
 import Entity.Ident
-import qualified Entity.Ident.Reify as Ident
 import Entity.Opacity
 import Entity.PrimNumSize
 
@@ -34,8 +33,6 @@ toAffineApp :: Context -> Ident -> Comp -> IO Comp
 toAffineApp ctx =
   toApp ctx 0
 
--- toApp boolFalse
-
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
@@ -55,7 +52,7 @@ switch :: Comp -> Comp -> [(CompEnumCase, Comp)]
 switch e1 e2 =
   [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
 
-registerS4 :: T.Text -> IO () -> IO Value
+registerS4 :: DD.DefiniteDescription -> IO () -> IO Value
 registerS4 key doInsertion = do
   compDefEnv <- readIORef compDefEnvRef
   unless (Map.member key compDefEnv) doInsertion
@@ -80,7 +77,7 @@ makeSwitcher ctx compAff compRel = do
 
 registerSwitcher ::
   Context ->
-  T.Text ->
+  DD.DefiniteDescription ->
   (Value -> IO Comp) ->
   (Value -> IO Comp) ->
   IO ()
@@ -88,16 +85,6 @@ registerSwitcher ctx name aff rel = do
   (args, e) <- makeSwitcher ctx aff rel
   insDefEnv name OpacityTransparent args e
 
-insDefEnv :: T.Text -> Opacity -> [Ident] -> Comp -> IO ()
+insDefEnv :: DD.DefiniteDescription -> Opacity -> [Ident] -> Comp -> IO ()
 insDefEnv name opacity args e =
   modifyIORef' compDefEnvRef $ Map.insert name (opacity, args, e)
-
-{-# INLINE toConstructorLabelName #-}
-toConstructorLabelName :: Ident -> T.Text
-toConstructorLabelName x =
-  wrapWithQuote $ Ident.toText x
-
-{-# INLINE wrapWithQuote #-}
-wrapWithQuote :: T.Text -> T.Text
-wrapWithQuote x =
-  "\"" <> x <> "\""
