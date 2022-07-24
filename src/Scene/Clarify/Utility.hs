@@ -1,22 +1,21 @@
 module Scene.Clarify.Utility where
 
-import Context.Gensym
+import qualified Context.App as App
+import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
-import Data.IORef
 import qualified Entity.Arity as A
 import Entity.Comp
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
-import Entity.Global
 import Entity.Ident
 import Entity.Opacity
 import Entity.PrimNumSize
+import Scene.Clarify.Context
 
-toApp :: Context -> Integer -> Ident -> Comp -> IO Comp
+toApp :: Gensym.Context -> Integer -> Ident -> Comp -> IO Comp
 toApp ctx switcher x t = do
-  (expVarName, expVar) <- newValueVarLocalWith ctx "exp"
+  (expVarName, expVar) <- Gensym.newValueVarLocalWith ctx "exp"
   return $
     CompUpElim
       expVarName
@@ -29,14 +28,14 @@ toApp ctx switcher x t = do
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Context -> Ident -> Comp -> IO Comp
+toAffineApp :: Gensym.Context -> Ident -> Comp -> IO Comp
 toAffineApp ctx =
   toApp ctx 0
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Context -> Ident -> Comp -> IO Comp
+toRelevantApp :: Gensym.Context -> Ident -> Comp -> IO Comp
 toRelevantApp ctx =
   toApp ctx 1
 
@@ -52,20 +51,20 @@ switch :: Comp -> Comp -> [(CompEnumCase, Comp)]
 switch e1 e2 =
   [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
 
-registerS4 :: DD.DefiniteDescription -> IO () -> IO Value
-registerS4 key doInsertion = do
-  compDefEnv <- readIORef compDefEnvRef
-  unless (Map.member key compDefEnv) doInsertion
+registerS4 :: Context -> DD.DefiniteDescription -> IO () -> IO Value
+registerS4 ctx key doInsertion = do
+  b <- isAlreadyRegistered ctx key
+  unless b doInsertion
   return $ ValueVarGlobal key A.arityS4
 
 makeSwitcher ::
-  Context ->
+  Gensym.Context ->
   (Value -> IO Comp) ->
   (Value -> IO Comp) ->
   IO ([Ident], Comp)
 makeSwitcher ctx compAff compRel = do
-  (switchVarName, switchVar) <- newValueVarLocalWith ctx "switch"
-  (argVarName, argVar) <- newValueVarLocalWith ctx "arg"
+  (switchVarName, switchVar) <- Gensym.newValueVarLocalWith ctx "switch"
+  (argVarName, argVar) <- Gensym.newValueVarLocalWith ctx "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   return
@@ -82,9 +81,5 @@ registerSwitcher ::
   (Value -> IO Comp) ->
   IO ()
 registerSwitcher ctx name aff rel = do
-  (args, e) <- makeSwitcher ctx aff rel
-  insDefEnv name OpacityTransparent args e
-
-insDefEnv :: DD.DefiniteDescription -> Opacity -> [Ident] -> Comp -> IO ()
-insDefEnv name opacity args e =
-  modifyIORef' compDefEnvRef $ Map.insert name (opacity, args, e)
+  (args, e) <- makeSwitcher (App.gensym (base ctx)) aff rel
+  insertToAuxEnv ctx name (OpacityTransparent, args, e)

@@ -1,6 +1,7 @@
 module Context.Mode where
 
 import qualified Context.Alias as Alias
+import qualified Context.CompDefinition as CompDefinition
 import qualified Context.Definition as Definition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
@@ -25,5 +26,6 @@ data Mode = Mode
     moduleCtx :: Module.Config -> IO Module.Context,
     typeCtx :: Type.Config -> IO Type.Context,
     implicitCtx :: Implicit.Config -> IO Implicit.Context,
-    definitionCtx :: Definition.Config -> IO Definition.Context
+    definitionCtx :: Definition.Config -> IO Definition.Context,
+    compDefinitionCtx :: CompDefinition.Config -> IO CompDefinition.Context
   }

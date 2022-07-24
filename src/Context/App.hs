@@ -6,6 +6,7 @@ module Context.App
 where
 
 import qualified Context.Alias as Alias
+import qualified Context.CompDefinition as CompDefinition
 import qualified Context.Definition as Definition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
@@ -39,6 +40,7 @@ data Context = Context
     asTypeCtx :: Type.Context,
     implicit :: Implicit.Context,
     definition :: Definition.Context,
+    compDefinition :: CompDefinition.Context,
     shouldCancelAlloc :: Bool,
     initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
@@ -56,6 +58,7 @@ data Config = Config
     typeCtx :: Type.Context,
     implicitCtx :: Implicit.Context,
     definitionCtx :: Definition.Context,
+    compDefinitionCtx :: CompDefinition.Context,
     cancelAllocFlagConf :: Bool,
     mainModuleConf :: Module,
     initialSourceConf :: Source,
@@ -109,6 +112,7 @@ new cfg source = do
         asTypeCtx = typeCtx cfg,
         implicit = implicitCtx cfg,
         definition = definitionCtx cfg,
+        compDefinition = compDefinitionCtx cfg,
         shouldCancelAlloc = cancelAllocFlagConf cfg,
         initialSource = initialSourceConf cfg,
         targetPlatform =

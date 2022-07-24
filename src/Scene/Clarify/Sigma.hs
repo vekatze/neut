@@ -4,11 +4,10 @@ module Scene.Clarify.Sigma
     closureEnvS4,
     returnClosureS4,
     returnCellS4,
-    sigmaS4,
   )
 where
 
-import Context.App
+import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
@@ -16,18 +15,19 @@ import qualified Entity.BaseName as BN
 import Entity.Comp
 import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
+import Scene.Clarify.Context
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
-returnImmediateS4 :: Gensym.Context -> IO Comp
+returnImmediateS4 :: Context -> IO Comp
 returnImmediateS4 ctx = do
   CompUpIntro <$> immediateS4 ctx
 
-immediateS4 :: Gensym.Context -> IO Value
+immediateS4 :: Context -> IO Value
 immediateS4 ctx = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  registerS4 DD.imm $ registerSwitcher ctx DD.imm immediateT immediate4
+  registerS4 ctx DD.imm $ registerSwitcher ctx DD.imm immediateT immediate4
 
 sigmaS4 ::
   Context ->
@@ -35,18 +35,18 @@ sigmaS4 ::
   [Either Comp (Ident, Comp)] ->
   IO Value
 sigmaS4 ctx mName mxts = do
-  let gContext = gensym ctx
-  name <- getSigmaName ctx mName
-  registerS4 name $ registerSwitcher gContext name (sigmaT gContext mxts) (sigma4 gContext mxts)
+  let gContext = App.gensym (base ctx)
+  name <- getSigmaName (base ctx) mName
+  registerS4 ctx name $ registerSwitcher ctx name (sigmaT gContext mxts) (sigma4 gContext mxts)
 
-getSigmaName :: Context -> Maybe DD.DefiniteDescription -> IO DD.DefiniteDescription
+getSigmaName :: App.Context -> Maybe DD.DefiniteDescription -> IO DD.DefiniteDescription
 getSigmaName ctx mName =
   case mName of
     Just name ->
       return name
     Nothing -> do
-      i <- Gensym.newCount (gensym ctx)
-      Locator.attachCurrentLocator (locator ctx) $ BN.sigmaName i
+      i <- Gensym.newCount (App.gensym ctx)
+      Locator.attachCurrentLocator (App.locator ctx) $ BN.sigmaName i
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -119,14 +119,14 @@ closureEnvS4 ::
 closureEnvS4 ctx mxts =
   case mxts of
     [] ->
-      immediateS4 (gensym ctx) -- performance optimization; not necessary for correctness
+      immediateS4 ctx -- performance optimization; not necessary for correctness
     _ ->
       sigmaS4 ctx Nothing mxts
 
 returnClosureS4 :: Context -> IO Comp
 returnClosureS4 ctx = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (gensym ctx) "env"
-  retImmS4 <- returnImmediateS4 (gensym ctx)
+  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
+  retImmS4 <- returnImmediateS4 ctx
   t <-
     sigmaS4
       ctx
@@ -136,8 +136,8 @@ returnClosureS4 ctx = do
 
 returnCellS4 :: Context -> IO Comp
 returnCellS4 ctx = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (gensym ctx) "env"
-  retImmS4 <- returnImmediateS4 (gensym ctx)
+  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
+  retImmS4 <- returnImmediateS4 ctx
   t <-
     sigmaS4
       ctx

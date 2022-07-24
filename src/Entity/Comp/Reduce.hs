@@ -1,9 +1,8 @@
 module Entity.Comp.Reduce (reduce) where
 
-import Context.Gensym
+import Context.App
+import qualified Context.CompDefinition as CompDefinition
 import Control.Comonad.Cofree.Class
-import qualified Data.HashMap.Strict as Map
-import Data.IORef
 import qualified Data.IntMap as IntMap
 import Entity.Comp
 import Entity.Comp.Subst
@@ -19,13 +18,15 @@ reduce ctx term =
     CompPrimitive _ ->
       return term
     CompPiElimDownElim v ds -> do
-      compDefEnv <- readIORef compDefEnvRef
       case v of
-        ValueVarGlobal x _
-          | Just (OpacityTransparent, xs, body) <- Map.lookup x compDefEnv,
-            length xs == length ds -> do
-            let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-            subst ctx sub IntMap.empty body >>= reduce ctx
+        ValueVarGlobal x _ -> do
+          mDefValue <- CompDefinition.lookup (compDefinition ctx) x
+          case mDefValue of
+            Just (OpacityTransparent, xs, body) -> do
+              let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
+              subst (gensym ctx) sub IntMap.empty body >>= reduce ctx
+            _ ->
+              return term
         _ ->
           return term
     CompSigmaElim isNoetic xs v e ->
@@ -33,7 +34,7 @@ reduce ctx term =
         ValueSigmaIntro ds
           | length ds == length xs -> do
             let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-            subst ctx sub IntMap.empty e >>= reduce ctx
+            subst (gensym ctx) sub IntMap.empty e >>= reduce ctx
         _ -> do
           e' <- reduce ctx e
           case e' of
@@ -57,7 +58,7 @@ reduce ctx term =
           return $ CompUpElim x e1' e2'
         CompUpIntro v -> do
           let sub = IntMap.fromList [(Ident.toInt x, v)]
-          subst ctx sub IntMap.empty e2 >>= reduce ctx
+          subst (gensym ctx) sub IntMap.empty e2 >>= reduce ctx
         CompUpElim y ey1 ey2 ->
           reduce ctx $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
         CompSigmaElim b yts vy ey ->

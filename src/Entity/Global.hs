@@ -3,23 +3,16 @@ module Entity.Global where
 import qualified Data.HashMap.Strict as Map
 import Data.IORef
 import qualified Data.Set as S
-import Entity.Comp
 import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
-import Entity.Opacity
 import System.IO.Unsafe
 
 --
 -- global variables
 --
-
-{-# NOINLINE compDefEnvRef #-}
-compDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp))
-compDefEnvRef =
-  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE lowDefEnvRef #-}
 lowDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription ([Ident], LowComp))

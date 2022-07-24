@@ -75,7 +75,6 @@ lower ctx (defList, mMainTerm) = do
       insDeclEnv (DN.In DD.imm) A.arityS4
       insDeclEnv (DN.In DD.cls) A.arityS4
       insDeclEnv (DN.In DD.cell) A.arityS4
-      -- lowDeclEnv <- readIORef lowDeclEnvRef
       forM_ defList $ \(name, (_, args, e)) ->
         unless (DD.isBaseDefiniteDescription name) $
           lowerComp ctx e >>= insLowDefEnv name args
