@@ -22,7 +22,6 @@ import qualified Data.ByteString.Lazy as L
 import Data.Foldable
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
-import qualified Data.Text as T
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import Entity.OutputKind
@@ -149,10 +148,6 @@ link ctx target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (sourceToOutputPath OutputKindObject) sourceList
   LLVM.link ctx objectPathList outputPath
-
-getExecutableOutputPath :: Target -> Module -> IO (Path Abs File)
-getExecutableOutputPath target mainModule =
-  resolveFile (getExecutableDir mainModule) $ T.unpack $ extract target
 
 getMainSource :: Module -> Path Abs File -> IO Source
 getMainSource mainModule mainSourceFilePath = do

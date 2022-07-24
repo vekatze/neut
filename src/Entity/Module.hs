@@ -12,7 +12,7 @@ import Entity.ModuleChecksum
 import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
 import qualified Entity.StrictGlobalLocator as SGL
-import Entity.Target
+import qualified Entity.Target as Target
 import Path
 import Path.IO
 import qualified System.FilePath as FP
@@ -21,7 +21,7 @@ type SomePath =
   Either (Path Abs Dir) (Path Abs File)
 
 data Module = Module
-  { moduleTarget :: Map.HashMap Target SGL.StrictGlobalLocator,
+  { moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
     moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
     moduleLocation :: Path Abs File
@@ -47,6 +47,10 @@ getArtifactDir baseModule =
 getExecutableDir :: Module -> Path Abs Dir
 getExecutableDir baseModule =
   getTargetDir baseModule </> executableRelDir
+
+getExecutableOutputPath :: Target.Target -> Module -> IO (Path Abs File)
+getExecutableOutputPath target mainModule =
+  resolveFile (getExecutableDir mainModule) $ T.unpack $ Target.extract target
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
@@ -83,7 +87,7 @@ ppModule someModule = do
   ppEnsTopLevel $
     Map.fromList
       [ ("dependency", () :< EnsDictionary (Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency)),
-        ("target", () :< EnsDictionary (Map.mapKeys (\(Target key) -> key) entryPoint)),
+        ("target", () :< EnsDictionary (Map.mapKeys (\(Target.Target key) -> key) entryPoint)),
         ("extra-content", () :< EnsList extraContents)
       ]
 

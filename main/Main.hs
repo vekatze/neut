@@ -6,6 +6,7 @@ import qualified Act.Clean as Clean
 import qualified Act.Get as Get
 import qualified Act.Init as Init
 import qualified Act.Release as Release
+import qualified Act.Run as Run
 import qualified Act.Tidy as Tidy
 import qualified Act.Version as Version
 import qualified Context.Alias.Main as Alias
@@ -31,6 +32,7 @@ import Options.Applicative
 
 data Command
   = Build Build.Config
+  | Run Run.Config
   | Check Check.Config
   | Clean Clean.Config
   | Release Release.Config
@@ -45,6 +47,8 @@ main = do
   case c of
     Build cfg -> do
       Build.build prodMode cfg
+    Run cfg -> do
+      Run.run prodMode cfg
     Check cfg -> do
       Check.check prodMode cfg
     Clean cfg ->
@@ -68,7 +72,8 @@ parseOpt :: Parser Command
 parseOpt = do
   subparser $
     mconcat
-      [ cmd "build" parseBuildOpt "build given file",
+      [ cmd "build" parseBuildOpt "build given target",
+        cmd "run" parseRunOpt "build and run given target",
         cmd "clean" parseCleanOpt "remove the resulting files",
         cmd "check" parseCheckOpt "type-check specified file",
         cmd "release" parseReleaseOpt "create a release tar from a given path",
@@ -92,6 +97,22 @@ parseBuildOpt = do
           Build.logCfg = logCfg,
           Build.throwCfg = throwConfig,
           Build.shouldCancelAlloc = shouldCancelAlloc
+        }
+
+parseRunOpt :: Parser Command
+parseRunOpt = do
+  target <- argument str $ mconcat [metavar "TARGET", help "The build target"]
+  mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
+  logCfg <- logConfigOpt
+  shouldCancelAlloc <- cancelAllocOpt
+  pure $
+    Run
+      Run.Config
+        { Run.target = Target target,
+          Run.mClangOptString = mClangOpt,
+          Run.logCfg = logCfg,
+          Run.throwCfg = throwConfig,
+          Run.shouldCancelAlloc = shouldCancelAlloc
         }
 
 parseCleanOpt :: Parser Command
