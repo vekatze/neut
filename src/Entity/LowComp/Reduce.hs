@@ -10,7 +10,6 @@ import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Set as S
-import Entity.Global
 import qualified Entity.Ident.Reify as Ident
 import Entity.LowComp
 import Entity.LowComp.Subst
@@ -21,19 +20,26 @@ type SizeMap =
 
 data Context = Context
   { shouldCancelAlloc :: Bool,
-    gensym :: Gensym.Context
+    gensym :: Gensym.Context,
+    nopFreeSetRef :: IORef (S.Set Int)
   }
 
-reduce :: App.Context -> SubstLowComp -> SizeMap -> LowComp -> IO LowComp
+reduce :: App.Context -> SubstLowComp -> SizeMap -> LowComp -> IO (S.Set Int, LowComp)
 reduce ctx sub sizeMap lowComp = do
-  reduce' (specialize ctx) sub sizeMap lowComp
+  ctx' <- specialize ctx
+  result <- reduce' ctx' sub sizeMap lowComp
+  nopFreeSet <- readIORef $ nopFreeSetRef ctx'
+  return (nopFreeSet, result)
 
-specialize :: App.Context -> Context
-specialize ctx =
-  Context
-    { shouldCancelAlloc = App.shouldCancelAlloc ctx,
-      gensym = App.gensym ctx
-    }
+specialize :: App.Context -> IO Context
+specialize ctx = do
+  _nopFreeSetRef <- newIORef S.empty
+  return
+    Context
+      { shouldCancelAlloc = App.shouldCancelAlloc ctx,
+        gensym = App.gensym ctx,
+        nopFreeSetRef = _nopFreeSetRef
+      }
 
 reduce' :: Context -> SubstLowComp -> SizeMap -> LowComp -> IO LowComp
 reduce' ctx sub sizeMap lowComp = do
@@ -56,7 +62,7 @@ reduce' ctx sub sizeMap lowComp = do
         LowOpAlloc _ size
           | cancelAllocFlag,
             Just ((j, d) : rest) <- Map.lookup size sizeMap -> do
-            modifyIORef' nopFreeSetRef $ S.insert j
+            modifyIORef' (nopFreeSetRef ctx) $ S.insert j
             let sizeMap' = Map.insert size rest sizeMap
             let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
             reduce' ctx sub' sizeMap' cont
