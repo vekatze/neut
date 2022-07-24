@@ -3,8 +3,6 @@ module Scene.Clarify.Utility where
 import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
-import Control.Monad
-import qualified Entity.Arity as A
 import Entity.Comp
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
@@ -50,12 +48,6 @@ bindLet binder cont =
 switch :: Comp -> Comp -> [(CompEnumCase, Comp)]
 switch e1 e2 =
   [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
-
-registerS4 :: Context -> DD.DefiniteDescription -> IO () -> IO Value
-registerS4 ctx key doInsertion = do
-  b <- isAlreadyRegistered ctx key
-  unless b doInsertion
-  return $ ValueVarGlobal key A.arityS4
 
 makeSwitcher ::
   Gensym.Context ->

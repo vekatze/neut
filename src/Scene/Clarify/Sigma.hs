@@ -1,9 +1,12 @@
 module Scene.Clarify.Sigma
-  ( immediateS4,
+  ( registerImmediateS4,
+    registerClosureS4,
+    registerCellS4,
+    immediateS4,
     returnImmediateS4,
-    closureEnvS4,
     returnClosureS4,
     returnCellS4,
+    closureEnvS4,
   )
 where
 
@@ -11,6 +14,7 @@ import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
+import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Comp
 import qualified Entity.DefiniteDescription as DD
@@ -19,34 +23,52 @@ import Scene.Clarify.Context
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
-returnImmediateS4 :: Context -> IO Comp
-returnImmediateS4 ctx = do
-  CompUpIntro <$> immediateS4 ctx
-
-immediateS4 :: Context -> IO Value
-immediateS4 ctx = do
+registerImmediateS4 :: Context -> IO ()
+registerImmediateS4 ctx = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  registerS4 ctx DD.imm $ registerSwitcher ctx DD.imm immediateT immediate4
+  registerSwitcher ctx DD.imm immediateT immediate4
 
-sigmaS4 ::
+registerClosureS4 :: Context -> IO ()
+registerClosureS4 ctx = do
+  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
+  registerSigmaS4
+    ctx
+    DD.cls
+    [Right (env, returnImmediateS4), Left (CompUpIntro envVar), Left returnImmediateS4]
+
+registerCellS4 :: Context -> IO ()
+registerCellS4 ctx = do
+  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
+  registerSigmaS4
+    ctx
+    DD.cell
+    [Right (env, returnImmediateS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
+
+returnImmediateS4 :: Comp
+returnImmediateS4 = do
+  CompUpIntro immediateS4
+
+returnClosureS4 :: Comp
+returnClosureS4 = do
+  CompUpIntro $ ValueVarGlobal DD.cls A.arityS4
+
+returnCellS4 :: Comp
+returnCellS4 = do
+  CompUpIntro $ ValueVarGlobal DD.cell A.arityS4
+
+immediateS4 :: Value
+immediateS4 = do
+  ValueVarGlobal DD.imm A.arityS4
+
+registerSigmaS4 ::
   Context ->
-  Maybe DD.DefiniteDescription ->
+  DD.DefiniteDescription ->
   [Either Comp (Ident, Comp)] ->
-  IO Value
-sigmaS4 ctx mName mxts = do
+  IO ()
+registerSigmaS4 ctx name mxts = do
   let gContext = App.gensym (base ctx)
-  name <- getSigmaName (base ctx) mName
-  registerS4 ctx name $ registerSwitcher ctx name (sigmaT gContext mxts) (sigma4 gContext mxts)
-
-getSigmaName :: App.Context -> Maybe DD.DefiniteDescription -> IO DD.DefiniteDescription
-getSigmaName ctx mName =
-  case mName of
-    Just name ->
-      return name
-    Nothing -> do
-      i <- Gensym.newCount (App.gensym ctx)
-      Locator.attachCurrentLocator (App.locator ctx) $ BN.sigmaName i
+  registerSwitcher ctx name (sigmaT gContext mxts) (sigma4 gContext mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -119,28 +141,10 @@ closureEnvS4 ::
 closureEnvS4 ctx mxts =
   case mxts of
     [] ->
-      immediateS4 ctx -- performance optimization; not necessary for correctness
-    _ ->
-      sigmaS4 ctx Nothing mxts
-
-returnClosureS4 :: Context -> IO Comp
-returnClosureS4 ctx = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
-  retImmS4 <- returnImmediateS4 ctx
-  t <-
-    sigmaS4
-      ctx
-      (Just DD.cls)
-      [Right (env, retImmS4), Left (CompUpIntro envVar), Left retImmS4]
-  return $ CompUpIntro t
-
-returnCellS4 :: Context -> IO Comp
-returnCellS4 ctx = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
-  retImmS4 <- returnImmediateS4 ctx
-  t <-
-    sigmaS4
-      ctx
-      (Just DD.cell)
-      [Right (env, retImmS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
-  return $ CompUpIntro t
+      return immediateS4 -- performance optimization; not necessary for correctness
+    _ -> do
+      let gContext = App.gensym (base ctx)
+      i <- Gensym.newCount (App.gensym (base ctx))
+      name <- Locator.attachCurrentLocator (App.locator (base ctx)) $ BN.sigmaName i
+      registerSwitcher ctx name (sigmaT gContext mxts) (sigma4 gContext mxts)
+      return $ ValueVarGlobal name A.arityS4

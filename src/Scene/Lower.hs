@@ -56,36 +56,33 @@ runLowerComp m = do
   (a, Cont b) <- runWriterT m
   b a
 
-lower :: Context -> ([CompDef], Maybe Comp) -> IO (Maybe LowComp)
+lower :: Context -> ([CompDef], Maybe Comp) -> IO ([LowDef], Maybe LowComp)
 lower ctx (defList, mMainTerm) = do
+  initialize $ map fst defList
   case mMainTerm of
     Just mainTerm -> do
-      initialize $ DD.imm : DD.cls : DD.cell : map fst defList
-      -- initialize $ cartImmName : cartClsName : cartCellName : map fst defList
-      forM_ defList $ \(name, (_, args, e)) ->
-        lowerComp ctx e >>= insLowDefEnv name args
+      defList' <- forM defList $ \(name, (_, args, e)) -> do
+        e' <- lowerComp ctx e
+        return (name, (args, e'))
       mainTerm'' <- lowerComp ctx mainTerm
       -- the result of "main" must be i64, not i8*
       (result, resultVar) <- Gensym.newValueVarLocalWith (gensym ctx) "result"
       castResult <- runLower $ lowerValueLetCast ctx resultVar (LowTypePrimNum $ PrimNumInt $ IntSize 64)
       -- let result: i8* := (main-term) in {cast result to i64}
-      Just <$> commConv result mainTerm'' castResult
+      mainTerm''' <- Just <$> commConv result mainTerm'' castResult
+      return (defList', mainTerm''')
     Nothing -> do
-      initialize $ map fst defList
       insDeclEnv (DN.In DD.imm) A.arityS4
       insDeclEnv (DN.In DD.cls) A.arityS4
       insDeclEnv (DN.In DD.cell) A.arityS4
-      forM_ defList $ \(name, (_, args, e)) ->
-        unless (DD.isBaseDefiniteDescription name) $
-          lowerComp ctx e >>= insLowDefEnv name args
-      -- unless (Map.member name lowDeclEnv) $
-      --   lowerComp ctx e >>= insLowDefEnv name args
-      return Nothing
+      defList' <- forM defList $ \(name, (_, args, e)) -> do
+        e' <- lowerComp ctx e
+        return (name, (args, e'))
+      return (defList', Nothing)
 
 initialize :: [DD.DefiniteDescription] -> IO ()
 initialize nameList = do
   writeIORef lowDeclEnvRef initialLowDeclEnv
-  writeIORef lowDefEnvRef Map.empty
   writeIORef lowNameSetRef $ S.fromList nameList
 
 lowerComp :: Context -> Comp -> IO LowComp
@@ -425,10 +422,6 @@ newValueLocal :: Context -> T.Text -> IO (Ident, LowValue)
 newValueLocal ctx name = do
   x <- Gensym.newIdentFromText (gensym ctx) name
   return (x, LowValueVarLocal x)
-
-insLowDefEnv :: DD.DefiniteDescription -> [Ident] -> LowComp -> IO ()
-insLowDefEnv funName args e =
-  modifyIORef' lowDefEnvRef $ Map.insert funName (args, e)
 
 commConv :: Ident -> LowComp -> LowComp -> IO LowComp
 commConv x lowComp cont2 =

@@ -35,22 +35,21 @@ import qualified Entity.TargetPlatform as TP
 import Numeric.Half
 import qualified System.Info as System
 
-emit :: Context -> Maybe LowComp -> IO L.ByteString
-emit ctx mMainTerm = do
+emit :: Context -> ([LowDef], Maybe LowComp) -> IO L.ByteString
+emit ctx (defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
       mainTerm' <- LowComp.reduce ctx IntMap.empty Map.empty mainTerm
       mainBuilder <- emitDefinition ctx "i64" "main" [] mainTerm'
-      emit' ctx mainBuilder
+      emit' ctx defList mainBuilder
     Nothing -> do
-      emit' ctx []
+      emit' ctx defList []
 
-emit' :: Context -> [Builder] -> IO L.ByteString
-emit' ctx aux = do
+emit' :: Context -> [LowDef] -> [Builder] -> IO L.ByteString
+emit' ctx lowDefEnv aux = do
   g <- emitDeclarations
-  lowDefEnv <- readIORef lowDefEnvRef
   xs <-
-    forM (HashMap.toList lowDefEnv) $ \(name, (args, body)) -> do
+    forM lowDefEnv $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
       body' <- LowComp.reduce ctx IntMap.empty Map.empty body
       emitDefinition ctx "i8*" (DD.toBuilder name) args' body'

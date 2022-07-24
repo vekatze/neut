@@ -5,19 +5,12 @@ import Data.IORef
 import qualified Data.Set as S
 import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
-import Entity.Ident
-import Entity.LowComp
 import Entity.LowType
 import System.IO.Unsafe
 
 --
 -- global variables
 --
-
-{-# NOINLINE lowDefEnvRef #-}
-lowDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription ([Ident], LowComp))
-lowDefEnvRef =
-  unsafePerformIO (newIORef Map.empty)
 
 {-# NOINLINE lowDeclEnvRef #-}
 lowDeclEnvRef :: IORef (Map.HashMap DN.DeclarationName ([LowType], LowType))

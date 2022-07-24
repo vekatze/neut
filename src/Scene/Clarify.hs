@@ -54,9 +54,9 @@ clarify ctx source defList = do
   case mMainDefiniteDescription of
     Just mainName -> do
       auxEnv <- withSpecializedCtx ctx $ \clarifyCtx -> do
-        _ <- returnImmediateS4 clarifyCtx
-        _ <- returnClosureS4 clarifyCtx
-        _ <- returnCellS4 clarifyCtx
+        registerImmediateS4 clarifyCtx
+        registerClosureS4 clarifyCtx
+        registerCellS4 clarifyCtx
         readAuxEnv clarifyCtx
       defList' <- clarifyDefList ctx defList
       mainTerm <- reduce ctx $ CompPiElimDownElim (ValueVarGlobal mainName (A.Arity 0)) []
@@ -108,20 +108,19 @@ clarifyTerm :: Context -> TypeEnv -> Term -> IO Comp
 clarifyTerm ctx tenv term =
   case term of
     _ :< TermTau ->
-      returnImmediateS4 ctx
+      return returnImmediateS4
     _ :< TermVar x -> do
       return $ CompUpIntro $ ValueVarLocal x
     _ :< TermVarGlobal x arity -> do
-      imm <- immediateS4 ctx
       return $
         CompUpIntro $
           ValueSigmaIntro
-            [ imm,
+            [ immediateS4,
               ValueSigmaIntro [],
               ValueVarGlobal x arity
             ]
     _ :< TermPi {} ->
-      returnClosureS4 ctx
+      return returnClosureS4
     _ :< TermPiIntro kind mxts e -> do
       clarifyLambda ctx tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
     _ :< TermPiElim e es -> do
@@ -129,7 +128,7 @@ clarifyTerm ctx tenv term =
       e' <- clarifyTerm ctx tenv e
       callClosure (App.gensym (base ctx)) e' es'
     _ :< TermSigma {} -> do
-      returnClosureS4 ctx
+      return returnClosureS4
     m :< TermSigmaIntro es -> do
       k <- Gensym.newIdentFromText (App.gensym (base ctx)) "sigma"
       clarifyTerm ctx tenv $
@@ -147,13 +146,13 @@ clarifyTerm ctx tenv term =
         Prim.Op op ->
           clarifyPrimOp ctx tenv op m
         Prim.Type _ ->
-          returnImmediateS4 ctx
+          return returnImmediateS4
     _ :< TermInt size l ->
       return $ CompUpIntro (ValueInt size l)
     _ :< TermFloat size l ->
       return $ CompUpIntro (ValueFloat size l)
     _ :< TermEnum {} ->
-      returnImmediateS4 ctx
+      return returnImmediateS4
     _ :< TermEnumIntro label ->
       return $ CompUpIntro $ ValueEnumIntro label
     _ :< TermEnumElim (e, _) bs -> do
@@ -190,7 +189,7 @@ clarifyTerm ctx tenv term =
             dataVar
             $ CompEnumElim tagVar clauseList'
     _ :< TermNoema {} -> do
-      returnImmediateS4 ctx
+      return returnImmediateS4
     m :< TermNoemaIntro _ e ->
       case e of
         _ :< TermVar x ->
@@ -220,7 +219,7 @@ clarifyTerm ctx tenv term =
       let i8s' = map (\x -> m :< TermInt (IntSize 8) (toInteger x)) i8s
       clarifyTerm ctx tenv $ m :< TermArrayIntro (PrimNumInt (IntSize 8)) i8s'
     _ :< TermCell {} -> do
-      returnCellS4 ctx
+      return returnCellS4
     _ :< TermCellIntro contentType content -> do
       (contentTypeVarName, contentType', contentTypeVar) <- clarifyPlus ctx tenv contentType
       (contentVarName, content', contentVar) <- clarifyPlus ctx tenv content
