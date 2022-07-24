@@ -19,7 +19,6 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import qualified Entity.ExternalName as EN
-import Entity.Global
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
@@ -44,16 +43,19 @@ instance Monoid Cont where
 
 data Context = Context
   { base :: App.Context,
-    declEnvRef :: IORef DN.DeclEnv
+    declEnvRef :: IORef DN.DeclEnv,
+    definedNameSetRef :: IORef (S.Set DD.DefiniteDescription)
   }
 
-specialize :: App.Context -> IO Context
-specialize ctx = do
+specialize :: App.Context -> [DD.DefiniteDescription] -> IO Context
+specialize ctx nameList = do
   _declEnvRef <- newIORef initialLowDeclEnv
+  _definedNameSetRef <- newIORef $ S.fromList nameList
   return $
     Context
       { base = ctx,
-        declEnvRef = _declEnvRef
+        declEnvRef = _declEnvRef,
+        definedNameSetRef = _definedNameSetRef
       }
 
 extend :: (LowComp -> IO LowComp) -> Lower ()
@@ -72,8 +74,8 @@ runLowerComp m = do
 
 lower :: App.Context -> ([CompDef], Maybe Comp) -> IO (DN.DeclEnv, [LowDef], Maybe LowComp)
 lower ctx (defList, mMainTerm) = do
-  lowerCtx <- specialize ctx
-  initialize $ map fst defList
+  lowerCtx <- specialize ctx $ map fst defList
+  -- initialize $ map fst defList
   case mMainTerm of
     Just mainTerm -> do
       defList' <- forM defList $ \(name, (_, args, e)) -> do
@@ -97,9 +99,9 @@ lower ctx (defList, mMainTerm) = do
       declEnv <- getDeclEnv lowerCtx
       return (declEnv, defList', Nothing)
 
-initialize :: [DD.DefiniteDescription] -> IO ()
-initialize nameList = do
-  writeIORef lowNameSetRef $ S.fromList nameList
+-- initialize :: [DD.DefiniteDescription] -> IO ()
+-- initialize nameList = do
+--   writeIORef lowNameSetRef $ S.fromList nameList
 
 lowerComp :: Context -> Comp -> IO LowComp
 lowerComp ctx term =
@@ -292,7 +294,7 @@ lowerValue :: Context -> Value -> Lower LowValue
 lowerValue ctx v =
   case v of
     ValueVarGlobal globalName arity -> do
-      lowNameSet <- liftIO $ readIORef lowNameSetRef
+      lowNameSet <- liftIO $ readIORef (definedNameSetRef ctx)
       unless (S.member globalName lowNameSet) $
         liftIO $ insDeclEnv ctx (DN.In globalName) arity
       uncast (base ctx) (LowValueVarGlobal globalName) (toFunPtrType' arity)
