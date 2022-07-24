@@ -1,10 +1,12 @@
 module Entity.DeclarationName where
 
 import Data.ByteString.Builder
+import qualified Data.HashMap.Strict as Map
 import Data.Hashable
 import qualified Data.Text.Encoding as TE
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.ExternalName as EN
+import Entity.LowType
 import GHC.Generics
 
 data DeclarationName
@@ -13,6 +15,8 @@ data DeclarationName
   deriving (Eq, Ord, Show, Generic)
 
 instance Hashable DeclarationName
+
+type DeclEnv = Map.HashMap DeclarationName ([LowType], LowType)
 
 malloc :: DeclarationName
 malloc =
@@ -29,5 +33,3 @@ toBuilder dn =
       DD.toBuilder dd
     Ext (EN.ExternalName rawTxt) ->
       TE.encodeUtf8Builder rawTxt
-
--- "@" <> TE.encodeUtf8Builder x

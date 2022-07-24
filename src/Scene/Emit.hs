@@ -35,19 +35,19 @@ import qualified Entity.TargetPlatform as TP
 import Numeric.Half
 import qualified System.Info as System
 
-emit :: Context -> ([LowDef], Maybe LowComp) -> IO L.ByteString
-emit ctx (defList, mMainTerm) = do
+emit :: Context -> (DN.DeclEnv, [LowDef], Maybe LowComp) -> IO L.ByteString
+emit ctx (declEnv, defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
       mainTerm' <- LowComp.reduce ctx IntMap.empty Map.empty mainTerm
       mainBuilder <- emitDefinition ctx "i64" "main" [] mainTerm'
-      emit' ctx defList mainBuilder
+      emit' ctx declEnv defList mainBuilder
     Nothing -> do
-      emit' ctx defList []
+      emit' ctx declEnv defList []
 
-emit' :: Context -> [LowDef] -> [Builder] -> IO L.ByteString
-emit' ctx lowDefEnv aux = do
-  g <- emitDeclarations
+emit' :: Context -> DN.DeclEnv -> [LowDef] -> [Builder] -> IO L.ByteString
+emit' ctx declEnv lowDefEnv aux = do
+  g <- emitDeclarations declEnv
   xs <-
     forM lowDefEnv $ \(name, (args, body)) -> do
       let args' = map (showLowValue . LowValueVarLocal) args
@@ -55,10 +55,9 @@ emit' ctx lowDefEnv aux = do
       emitDefinition ctx "i8*" (DD.toBuilder name) args' body'
   return $ L.toLazyByteString $ unlinesL $ g : aux <> concat xs
 
-emitDeclarations :: IO Builder
-emitDeclarations = do
-  lowDeclEnv <- List.sort . HashMap.toList <$> readIORef lowDeclEnvRef
-  return $ unlinesL $ map declToBuilder lowDeclEnv
+emitDeclarations :: DN.DeclEnv -> IO Builder
+emitDeclarations declEnv = do
+  return $ unlinesL $ map declToBuilder $ List.sort $ HashMap.toList declEnv
 
 declToBuilder :: (DN.DeclarationName, ([LowType], LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
