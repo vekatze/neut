@@ -7,7 +7,6 @@ import qualified Data.IntMap as IntMap
 import Entity.Comp
 import Entity.Comp.Subst
 import Entity.EnumCase
-import Entity.Global
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.Opacity
@@ -86,9 +85,9 @@ reduce ctx term =
           | Just body <- lookup EnumCaseDefault les' ->
             reduce ctx body
           | otherwise -> do
-            p "other"
-            p' v
-            p' les
+            putStrLn "other"
+            print v
+            print les
             -- let (ls, es) = unzip les
             es' <- mapM (reduce ctx) es
             return $ CompEnumElim v (zip ls es')
