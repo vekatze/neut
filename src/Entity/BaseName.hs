@@ -85,7 +85,7 @@ top =
 
 topUnit :: BaseName
 topUnit =
-  MakeBaseName "top"
+  MakeBaseName "unit"
 
 bool :: BaseName
 bool =
