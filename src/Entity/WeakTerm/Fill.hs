@@ -3,7 +3,6 @@ module Entity.WeakTerm.Fill
   )
 where
 
-import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap

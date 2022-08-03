@@ -1,6 +1,5 @@
 module Entity.WeakTerm.Reduce (reduce) where
 
-import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
@@ -9,9 +8,9 @@ import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.WeakTerm
 import Entity.WeakTerm.FreeVars
-import Entity.WeakTerm.Subst
+import qualified Entity.WeakTerm.Subst as Subst
 
-reduce :: Context -> WeakTerm -> IO WeakTerm
+reduce :: Subst.Context -> WeakTerm -> IO WeakTerm
 reduce ctx term =
   case term of
     m :< WeakTermPi xts cod -> do
@@ -41,7 +40,7 @@ reduce ctx term =
           | length xts == length es' -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es'
-            subst ctx sub body >>= reduce ctx
+            Subst.subst ctx sub body >>= reduce ctx
         _ ->
           return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
@@ -58,14 +57,14 @@ reduce ctx term =
           | length xts == length es -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es
-            subst ctx sub e2 >>= reduce ctx
+            Subst.subst ctx sub e2 >>= reduce ctx
         _ -> do
           e2' <- reduce ctx e2
           return $ m :< WeakTermSigmaElim xts e1' e2'
     _ :< WeakTermLet (_, x, _) e1 e2 -> do
       e1' <- reduce ctx e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
-      subst ctx sub e2
+      Subst.subst ctx sub e2
     m :< WeakTermEnumElim (e, t) les -> do
       e' <- reduce ctx e
       let (ls, es) = unzip les

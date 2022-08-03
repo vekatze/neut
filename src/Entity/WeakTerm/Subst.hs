@@ -1,13 +1,21 @@
-module Entity.WeakTerm.Subst (subst) where
+module Entity.WeakTerm.Subst
+  ( subst,
+    Context (..),
+  )
+where
 
-import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
 import Entity.Binder
+import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.WeakTerm
+
+newtype Context = Context
+  { newIdentFromIdent :: Ident -> IO Ident
+  }
 
 subst :: Context -> SubstWeakTerm -> WeakTerm -> IO WeakTerm
 subst ctx sub term =

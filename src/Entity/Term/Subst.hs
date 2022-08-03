@@ -1,16 +1,24 @@
-module Entity.Term.Subst (subst) where
+module Entity.Term.Subst
+  ( subst,
+    Context (..),
+  )
+where
 
-import Context.Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
 import Entity.Binder
+import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Term
 
 type SubstTerm =
   IntMap.IntMap Term
+
+newtype Context = Context
+  { newIdentFromIdent :: Ident -> IO Ident
+  }
 
 subst :: Context -> SubstTerm -> Term -> IO Term
 subst ctx sub term =
