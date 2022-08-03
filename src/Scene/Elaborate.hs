@@ -37,7 +37,6 @@ import qualified Entity.WeakTerm.Subst as WeakTerm
 import Entity.WeakTerm.ToText
 import qualified Scene.Elaborate.Infer as Infer
 import qualified Scene.Elaborate.Unify as Unify
-import Prelude hiding (log)
 
 data Context = Context
   { inferCtx :: Infer.Context,
