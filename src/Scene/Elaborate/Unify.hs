@@ -1,16 +1,12 @@
 module Scene.Elaborate.Unify
   ( unify,
-    specialize,
+    Context (..),
   )
 where
 
-import qualified Context.App as App
-import qualified Context.Definition as Definition
-import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
-import Control.Exception.Safe
 import Control.Monad
-import Data.IORef
+import qualified Data.HashMap.Strict as Map
 import qualified Data.IntMap as IntMap
 import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
@@ -31,27 +27,22 @@ import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
 import Entity.WeakTerm.Reduce
-import Entity.WeakTerm.Subst
+import qualified Entity.WeakTerm.Subst as Subst
 import Entity.WeakTerm.ToText
 
 data Context = Context
-  { gensym :: Gensym.Context,
-    definition :: Definition.Context,
-    suspendedConstraintQueueRef :: IORef SuspendedConstraintQueue,
-    substRef :: IORef HS.HoleSubst
+  { substCtx :: Subst.Context,
+    newIdentFromText :: T.Text -> IO Ident,
+    readDefMap :: IO DefMap,
+    getConstraintQueue :: IO SuspendedConstraintQueue,
+    insertConstraint :: SuspendedConstraint -> IO (),
+    putConstraints :: Q.MinQueue SuspendedConstraint -> IO (),
+    readSubstRef :: IO HS.HoleSubst,
+    insertSubst :: HID.HoleID -> [Ident] -> WeakTerm -> IO (),
+    throw :: forall a. Error -> IO a
   }
 
-specialize :: App.Context -> IO Context
-specialize ctx = do
-  suspendedConstraintQueue <- newIORef Q.empty
-  sub <- newIORef HS.empty
-  return $
-    Context
-      { gensym = App.gensym ctx,
-        definition = App.definition ctx,
-        suspendedConstraintQueueRef = suspendedConstraintQueue,
-        substRef = sub
-      }
+type DefMap = Map.HashMap DD.DefiniteDescription WeakTerm
 
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WeakTerm])]
@@ -61,7 +52,7 @@ data Stuck
 unify :: Context -> [Constraint] -> IO HS.HoleSubst
 unify ctx constraintList = do
   analyze ctx constraintList >> synthesize ctx
-  readIORef (substRef ctx)
+  readSubstRef ctx
 
 analyze :: Context -> [Constraint] -> IO ()
 analyze ctx constraintList =
@@ -69,12 +60,12 @@ analyze ctx constraintList =
 
 synthesize :: Context -> IO ()
 synthesize ctx = do
-  suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
+  suspendedConstraintQueue <- getConstraintQueue ctx
   case Q.minView suspendedConstraintQueue of
     Nothing ->
       return ()
     Just (SuspendedConstraint (_, ConstraintKindDelta c, (_, orig)), cs') -> do
-      modifyIORef' (suspendedConstraintQueueRef ctx) $ const cs'
+      putConstraints ctx cs'
       simplify ctx [(c, orig)]
       synthesize ctx
     Just (SuspendedConstraint (_, ConstraintKindOther, _), _) ->
@@ -82,20 +73,20 @@ synthesize ctx = do
 
 throwTypeErrors :: Context -> IO a
 throwTypeErrors ctx = do
-  suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
-  sub <- readIORef $ substRef ctx
+  suspendedConstraintQueue <- getConstraintQueue ctx
+  sub <- readSubstRef ctx
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     -- p' foo
     -- p $ T.unpack $ toText l
     -- p $ T.unpack $ toText r
     -- p' (expected, actual)
     -- p' sub
-    expected' <- fill (gensym ctx) sub expected >>= reduce (gensym ctx)
-    actual' <- fill (gensym ctx) sub actual >>= reduce (gensym ctx)
+    expected' <- fill (substCtx ctx) sub expected >>= reduce (substCtx ctx)
+    actual' <- fill (substCtx ctx) sub actual >>= reduce (substCtx ctx)
     -- expected' <- subst sub l >>= reduce
     -- actual' <- subst sub r >>= reduce
     return $ logError (fromHint (metaOf actual)) $ constructErrorMsg actual' expected'
-  throw $ Error errorList
+  throw ctx $ Error errorList
 
 constructErrorMsg :: WeakTerm -> WeakTerm -> T.Text
 constructErrorMsg e1 e2 =
@@ -110,8 +101,8 @@ simplify ctx constraintList =
     [] ->
       return ()
     headConstraint@(c, orig) : cs -> do
-      expected <- reduce (gensym ctx) $ fst c
-      actual <- reduce (gensym ctx) $ snd c
+      expected <- reduce (substCtx ctx) $ fst c
+      actual <- reduce (substCtx ctx) $ snd c
       case (expected, actual) of
         (_ :< WeakTermTau, _ :< WeakTermTau) ->
           simplify ctx cs
@@ -199,7 +190,7 @@ simplify ctx constraintList =
           | name1 == name2 ->
             simplify ctx cs
         (e1, e2) -> do
-          sub <- readIORef $ substRef ctx
+          sub <- readSubstRef ctx
           let fvs1 = freeVars e1
           let fvs2 = freeVars e2
           let fmvs1 = holes e1 -- fmvs: free meta-variables
@@ -208,81 +199,76 @@ simplify ctx constraintList =
             (Just (h1, (xs1, body1)), Just (h2, (xs2, body2))) -> do
               let s1 = HS.singleton h1 xs1 body1
               let s2 = HS.singleton h2 xs2 body2
-              e1' <- fill (gensym ctx) s1 e1
-              e2' <- fill (gensym ctx) s2 e2
+              e1' <- fill (substCtx ctx) s1 e1
+              e2' <- fill (substCtx ctx) s2 e2
               simplify ctx $ ((e1', e2'), orig) : cs
             (Just (h1, (xs1, body1)), Nothing) -> do
               let s1 = HS.singleton h1 xs1 body1
-              e1' <- fill (gensym ctx) s1 e1
+              e1' <- fill (substCtx ctx) s1 e1
               simplify ctx $ ((e1', e2), orig) : cs
             (Nothing, Just (h2, (xs2, body2))) -> do
               let s2 = HS.singleton h2 xs2 body2
-              e2' <- fill (gensym ctx) s2 e2
+              e2' <- fill (substCtx ctx) s2 e2
               simplify ctx $ ((e1, e2'), orig) : cs
-            (Nothing, Nothing)
-              | Definition.Context
-                  { Definition.read = defMapProducer,
-                    Definition.lookup = defMapConsumer
-                  } <-
-                  definition ctx -> do
-                defMap <- defMapProducer
-                let fmvs = S.union fmvs1 fmvs2
-                case (asStuckedTerm e1, asStuckedTerm e2) of
-                  (Just (StuckPiElimAster h1 ies1), _)
-                    | Just xss1 <- mapM asIdent ies1,
-                      Just argSet1 <- toLinearIdentSet xss1,
-                      h1 `S.notMember` fmvs2,
-                      fvs2 `S.isSubsetOf` argSet1 ->
-                      resolveHole ctx h1 xss1 e2 cs
-                  (_, Just (StuckPiElimAster h2 ies2))
-                    | Just xss2 <- mapM asIdent ies2,
-                      Just argSet2 <- toLinearIdentSet xss2,
-                      h2 `S.notMember` fmvs1,
-                      fvs1 `S.isSubsetOf` argSet2 ->
-                      resolveHole ctx h2 xss2 e1 cs
-                  (Just (StuckPiElimVarLocal x1 mess1), Just (StuckPiElimVarLocal x2 mess2))
-                    | x1 == x2,
-                      Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
-                      simplify ctx $ map (,orig) pairList ++ cs
-                  (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
-                    | g1 == g2,
-                      Nothing <- defMapConsumer g1 defMap,
-                      Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
-                      simplify ctx $ map (,orig) pairList ++ cs
-                    | g1 == g2,
-                      Just lam <- defMapConsumer g1 defMap ->
-                      simplify ctx $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
-                    | Just lam1 <- defMapConsumer g1 defMap,
-                      Just lam2 <- defMapConsumer g2 defMap ->
-                      simplify ctx $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
-                  (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
-                    | Just lam <- defMapConsumer g1 defMap -> do
-                      let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
-                      modifyIORef' (suspendedConstraintQueueRef ctx) $ Q.insert uc
-                      simplify ctx cs
-                  (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
-                    | Just lam <- defMapConsumer g2 defMap -> do
-                      let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
-                      modifyIORef' (suspendedConstraintQueueRef ctx) $ Q.insert uc
-                      simplify ctx cs
-                  (Just (StuckPiElimVarGlobal g1 mess1), _)
-                    | Just lam <- defMapConsumer g1 defMap ->
-                      simplify ctx $ ((toPiElim lam mess1, e2), orig) : cs
-                  (_, Just (StuckPiElimVarGlobal g2 mess2))
-                    | Just lam <- defMapConsumer g2 defMap ->
-                      simplify ctx $ ((e1, toPiElim lam mess2), orig) : cs
-                  _ -> do
-                    let uc = SuspendedConstraint (fmvs, ConstraintKindOther, headConstraint)
-                    modifyIORef' (suspendedConstraintQueueRef ctx) $ Q.insert uc
+            (Nothing, Nothing) -> do
+              defMap <- readDefMap ctx
+              let fmvs = S.union fmvs1 fmvs2
+              case (asStuckedTerm e1, asStuckedTerm e2) of
+                (Just (StuckPiElimAster h1 ies1), _)
+                  | Just xss1 <- mapM asIdent ies1,
+                    Just argSet1 <- toLinearIdentSet xss1,
+                    h1 `S.notMember` fmvs2,
+                    fvs2 `S.isSubsetOf` argSet1 ->
+                    resolveHole ctx h1 xss1 e2 cs
+                (_, Just (StuckPiElimAster h2 ies2))
+                  | Just xss2 <- mapM asIdent ies2,
+                    Just argSet2 <- toLinearIdentSet xss2,
+                    h2 `S.notMember` fmvs1,
+                    fvs1 `S.isSubsetOf` argSet2 ->
+                    resolveHole ctx h2 xss2 e1 cs
+                (Just (StuckPiElimVarLocal x1 mess1), Just (StuckPiElimVarLocal x2 mess2))
+                  | x1 == x2,
+                    Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
+                    simplify ctx $ map (,orig) pairList ++ cs
+                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
+                  | g1 == g2,
+                    Nothing <- Map.lookup g1 defMap,
+                    Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
+                    simplify ctx $ map (,orig) pairList ++ cs
+                  | g1 == g2,
+                    Just lam <- Map.lookup g1 defMap ->
+                    simplify ctx $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
+                  | Just lam1 <- Map.lookup g1 defMap,
+                    Just lam2 <- Map.lookup g2 defMap ->
+                    simplify ctx $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
+                (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
+                  | Just lam <- Map.lookup g1 defMap -> do
+                    let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
+                    insertConstraint ctx uc
                     simplify ctx cs
+                (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
+                  | Just lam <- Map.lookup g2 defMap -> do
+                    let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
+                    insertConstraint ctx uc
+                    simplify ctx cs
+                (Just (StuckPiElimVarGlobal g1 mess1), _)
+                  | Just lam <- Map.lookup g1 defMap ->
+                    simplify ctx $ ((toPiElim lam mess1, e2), orig) : cs
+                (_, Just (StuckPiElimVarGlobal g2 mess2))
+                  | Just lam <- Map.lookup g2 defMap ->
+                    simplify ctx $ ((e1, toPiElim lam mess2), orig) : cs
+                _ -> do
+                  let uc = SuspendedConstraint (fmvs, ConstraintKindOther, headConstraint)
+                  insertConstraint ctx uc
+                  simplify ctx cs
 
 {-# INLINE resolveHole #-}
 resolveHole :: Context -> HID.HoleID -> [Ident] -> WeakTerm -> [(Constraint, Constraint)] -> IO ()
 resolveHole ctx h1 xs e2' cs = do
-  modifyIORef' (substRef ctx) $ HS.insert h1 xs e2'
-  suspendedConstraintQueue <- readIORef $ suspendedConstraintQueueRef ctx
+  insertSubst ctx h1 xs e2'
+  suspendedConstraintQueue <- getConstraintQueue ctx
   let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
-  modifyIORef' (suspendedConstraintQueueRef ctx) $ const sus2
+  putConstraints ctx sus2
   let sus1' = map (\(SuspendedConstraint (_, _, c)) -> c) $ Q.toList sus1
   simplify ctx $ sus1' ++ cs
 
@@ -305,7 +291,7 @@ simplifyBinder' ::
 simplifyBinder' ctx orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
-      t2' <- subst (gensym ctx) sub t2
+      t2' <- Subst.subst (substCtx ctx) sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (m1 :< WeakTermVar x1) sub
       rest <- simplifyBinder' ctx orig sub' xts1 xts2
       return $ ((t1, t2'), orig) : rest
@@ -314,7 +300,7 @@ simplifyBinder' ctx orig sub args1 args2 =
 
 asWeakBinder :: Context -> Hint -> WeakTerm -> IO (BinderF WeakTerm)
 asWeakBinder ctx m t = do
-  h <- Gensym.newIdentFromText (gensym ctx) "aster"
+  h <- newIdentFromText ctx "aster"
   return (m, h, t)
 
 asPairList ::
