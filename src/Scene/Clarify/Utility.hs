@@ -1,6 +1,6 @@
 module Scene.Clarify.Utility where
 
-import qualified Context.App as App
+-- import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
 import Entity.Comp
@@ -11,9 +11,9 @@ import Entity.Opacity
 import Entity.PrimNumSize
 import Scene.Clarify.Context
 
-toApp :: Gensym.Context -> Integer -> Ident -> Comp -> IO Comp
-toApp ctx switcher x t = do
-  (expVarName, expVar) <- Gensym.newValueVarLocalWith ctx "exp"
+toApp :: Gensym.Context m => Integer -> Ident -> Comp -> m Comp
+toApp switcher x t = do
+  (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
   return $
     CompUpElim
       expVarName
@@ -26,16 +26,16 @@ toApp ctx switcher x t = do
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Gensym.Context -> Ident -> Comp -> IO Comp
-toAffineApp ctx =
-  toApp ctx 0
+toAffineApp :: Gensym.Context m => Ident -> Comp -> m Comp
+toAffineApp =
+  toApp 0
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Gensym.Context -> Ident -> Comp -> IO Comp
-toRelevantApp ctx =
-  toApp ctx 1
+toRelevantApp :: Gensym.Context m => Ident -> Comp -> m Comp
+toRelevantApp =
+  toApp 1
 
 bindLet :: [(Ident, Comp)] -> Comp -> Comp
 bindLet binder cont =
@@ -50,13 +50,13 @@ switch e1 e2 =
   [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
 
 makeSwitcher ::
-  Gensym.Context ->
-  (Value -> IO Comp) ->
-  (Value -> IO Comp) ->
-  IO ([Ident], Comp)
-makeSwitcher ctx compAff compRel = do
-  (switchVarName, switchVar) <- Gensym.newValueVarLocalWith ctx "switch"
-  (argVarName, argVar) <- Gensym.newValueVarLocalWith ctx "arg"
+  Gensym.Context m =>
+  (Value -> m Comp) ->
+  (Value -> m Comp) ->
+  m ([Ident], Comp)
+makeSwitcher compAff compRel = do
+  (switchVarName, switchVar) <- Gensym.newValueVarLocalWith "switch"
+  (argVarName, argVar) <- Gensym.newValueVarLocalWith "arg"
   aff <- compAff argVar
   rel <- compRel argVar
   return
@@ -67,11 +67,11 @@ makeSwitcher ctx compAff compRel = do
     )
 
 registerSwitcher ::
-  Context ->
+  Context m =>
   DD.DefiniteDescription ->
-  (Value -> IO Comp) ->
-  (Value -> IO Comp) ->
-  IO ()
-registerSwitcher ctx name aff rel = do
-  (args, e) <- makeSwitcher (App.gensym (base ctx)) aff rel
-  insertToAuxEnv ctx name (OpacityTransparent, args, e)
+  (Value -> m Comp) ->
+  (Value -> m Comp) ->
+  m ()
+registerSwitcher name aff rel = do
+  (args, e) <- makeSwitcher aff rel
+  insertToAuxEnv name (OpacityTransparent, args, e)

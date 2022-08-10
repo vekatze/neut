@@ -10,7 +10,6 @@ module Scene.Clarify.Sigma
   )
 where
 
-import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
@@ -23,25 +22,23 @@ import Scene.Clarify.Context
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
-registerImmediateS4 :: Context -> IO ()
-registerImmediateS4 ctx = do
+registerImmediateS4 :: Context m => m ()
+registerImmediateS4 = do
   let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
   let immediate4 arg = return $ CompUpIntro arg
-  registerSwitcher ctx DD.imm immediateT immediate4
+  registerSwitcher DD.imm immediateT immediate4
 
-registerClosureS4 :: Context -> IO ()
-registerClosureS4 ctx = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
+registerClosureS4 :: Context m => m ()
+registerClosureS4 = do
+  (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
-    ctx
     DD.cls
     [Right (env, returnImmediateS4), Left (CompUpIntro envVar), Left returnImmediateS4]
 
-registerCellS4 :: Context -> IO ()
-registerCellS4 ctx = do
-  (env, envVar) <- Gensym.newValueVarLocalWith (App.gensym (base ctx)) "env"
+registerCellS4 :: Context m => m ()
+registerCellS4 = do
+  (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
-    ctx
     DD.cell
     [Right (env, returnImmediateS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
 
@@ -62,13 +59,12 @@ immediateS4 = do
   ValueVarGlobal DD.imm A.arityS4
 
 registerSigmaS4 ::
-  Context ->
+  Context m =>
   DD.DefiniteDescription ->
   [Either Comp (Ident, Comp)] ->
-  IO ()
-registerSigmaS4 ctx name mxts = do
-  let gContext = App.gensym (base ctx)
-  registerSwitcher ctx name (sigmaT gContext mxts) (sigma4 gContext mxts)
+  m ()
+registerSigmaS4 name mxts = do
+  registerSwitcher name (sigmaT mxts) (sigma4 mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -86,16 +82,16 @@ registerSigmaS4 ctx name mxts = do
 --     return ()                                     ---        ---
 --
 sigmaT ::
-  Gensym.Context ->
+  Gensym.Context m =>
   [Either Comp (Ident, Comp)] ->
   Value ->
-  IO Comp
-sigmaT ctx mxts argVar = do
-  xts <- mapM (supplyName ctx) mxts
+  m Comp
+sigmaT mxts argVar = do
+  xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
-  as <- forM xts $ uncurry (toAffineApp ctx)
-  ys <- mapM (const $ Gensym.newIdentFromText ctx "arg") xts
-  body' <- linearize ctx xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
+  as <- forM xts $ uncurry toAffineApp
+  ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
+  body' <- linearize xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
   return $ CompSigmaElim False (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
@@ -113,38 +109,37 @@ sigmaT ctx mxts argVar = do
 --       fn @ (1, xn) in              ---  APP-n                       ---       ---
 --     return (x1', ..., xn')
 sigma4 ::
-  Gensym.Context ->
+  Gensym.Context m =>
   [Either Comp (Ident, Comp)] ->
   Value ->
-  IO Comp
-sigma4 ctx mxts argVar = do
-  xts <- mapM (supplyName ctx) mxts
+  m Comp
+sigma4 mxts argVar = do
+  xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]
-  as <- forM xts $ uncurry (toRelevantApp ctx)
-  (varNameList, varList) <- unzip <$> mapM (const $ Gensym.newValueVarLocalWith ctx "pair") xts
-  body' <- linearize ctx xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
+  as <- forM xts $ uncurry toRelevantApp
+  (varNameList, varList) <- unzip <$> mapM (const $ Gensym.newValueVarLocalWith "pair") xts
+  body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
   return $ CompSigmaElim True (map fst xts) argVar body'
 
-supplyName :: Gensym.Context -> Either b (Ident, b) -> IO (Ident, b)
-supplyName ctx mName =
+supplyName :: Gensym.Context m => Either b (Ident, b) -> m (Ident, b)
+supplyName mName =
   case mName of
     Right (x, t) ->
       return (x, t)
     Left t -> do
-      x <- Gensym.newIdentFromText ctx "unused-sigarg"
+      x <- Gensym.newIdentFromText "unused-sigarg"
       return (x, t)
 
 closureEnvS4 ::
-  Context ->
+  Context m =>
   [Either Comp (Ident, Comp)] ->
-  IO Value
-closureEnvS4 ctx mxts =
+  m Value
+closureEnvS4 mxts =
   case mxts of
     [] ->
       return immediateS4 -- performance optimization; not necessary for correctness
     _ -> do
-      let gContext = App.gensym (base ctx)
-      i <- Gensym.newCount (App.gensym (base ctx))
-      name <- Locator.attachCurrentLocator (App.locator (base ctx)) $ BN.sigmaName i
-      registerSwitcher ctx name (sigmaT gContext mxts) (sigma4 gContext mxts)
+      i <- Gensym.newCount
+      name <- Locator.attachCurrentLocator $ BN.sigmaName i
+      registerSwitcher name (sigmaT mxts) (sigma4 mxts)
       return $ ValueVarGlobal name A.arityS4

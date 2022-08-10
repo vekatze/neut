@@ -1,4 +1,8 @@
-module Entity.Comp.Reduce (reduce) where
+module Entity.Comp.Reduce
+  ( reduce,
+    Context,
+  )
+where
 
 import qualified Context.CompDefinition as CompDefinition
 import qualified Context.Gensym as Gensym
