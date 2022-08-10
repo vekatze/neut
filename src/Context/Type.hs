@@ -1,6 +1,5 @@
 module Context.Type
   ( Context (..),
-    Config (..),
   )
 where
 

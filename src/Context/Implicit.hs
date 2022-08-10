@@ -1,6 +1,5 @@
 module Context.Implicit
   ( Context (..),
-    Config (..),
   )
 where
 
