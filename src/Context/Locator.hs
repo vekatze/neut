@@ -3,12 +3,10 @@ module Context.Locator where
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
-import Control.Monad.IO.Class
 import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
 import Entity.DefiniteLocator as DL
 import qualified Entity.LocalLocator as LL
-import Entity.Module
 import qualified Entity.Section as S
 import Entity.Source
 import Entity.StrictGlobalLocator as SGL
@@ -34,7 +32,7 @@ import Entity.StrictGlobalLocator as SGL
 --     - active local locator: a local locator that is used when resolving global names
 
 class (Throw.Context m, Path.Context m, Module.Context m) => Context m where
-  withSection :: forall a m. MonadIO m => S.Section -> m a -> m a
+  withSection :: forall a. S.Section -> m a -> m a
   attachCurrentLocator :: BN.BaseName -> m DD.DefiniteDescription
   activateGlobalLocator :: SGL.StrictGlobalLocator -> m ()
   activateDefiniteLocator :: DL.DefiniteLocator -> m ()
@@ -42,6 +40,7 @@ class (Throw.Context m, Path.Context m, Module.Context m) => Context m where
   getPossibleReferents :: LL.LocalLocator -> m [DD.DefiniteDescription]
   getMainDefiniteDescription :: Source -> m (Maybe DD.DefiniteDescription)
 
+-- withSection :: forall a m. MonadIO m => S.Section -> m a -> m a
 -- data Config = Config
 --   { mainModule :: Module,
 --     currentSource :: Source,

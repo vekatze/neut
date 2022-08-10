@@ -11,12 +11,11 @@ import qualified Entity.ImpArgNum as I
 import Entity.Opacity
 import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
-import Entity.Source
+import qualified Entity.Source as Source
 import Entity.Term
 import Entity.WeakTerm
 import GHC.Generics
 import Path
-import Path.IO
 
 type PreProgram =
   (Path Abs File, [PreStmt])
@@ -31,7 +30,7 @@ data WeakStmt
   | WeakStmtDefineResource Hint DD.DefiniteDescription WeakTerm WeakTerm
 
 type Program =
-  (Source, [Stmt])
+  (Source.Source, [Stmt])
 
 data Stmt
   = StmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF Term] Term Term
@@ -62,26 +61,26 @@ compress stmt =
     StmtDefineResource {} ->
       stmt
 
-saveCache :: Program -> [EnumInfo] -> IO ()
-saveCache (source, stmtList) enumInfoList = do
-  cachePath <- getSourceCachePath source
-  ensureDir $ parent cachePath
-  encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
+-- saveCache :: Source.Context m => Program -> [EnumInfo] -> m ()
+-- saveCache (source, stmtList) enumInfoList = do
+--   cachePath <- Source.getSourceCachePath source
+--   ensureDir $ parent cachePath
+--   encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
 
-loadCache :: Source -> PathSet -> IO (Maybe Cache)
-loadCache source hasCacheSet = do
-  cachePath <- getSourceCachePath source
-  hasCache <- doesFileExist cachePath
-  if not hasCache
-    then return Nothing
-    else do
-      if S.notMember (sourceFilePath source) hasCacheSet
-        then return Nothing
-        else do
-          dataOrErr <- decodeFileOrFail (toFilePath cachePath)
-          case dataOrErr of
-            Left _ -> do
-              removeFile cachePath
-              return Nothing
-            Right content ->
-              return $ Just content
+-- loadCache :: Source.Source -> PathSet -> IO (Maybe Cache)
+-- loadCache source hasCacheSet = do
+--   cachePath <- Source.getSourceCachePath source
+--   hasCache <- doesFileExist cachePath
+--   if not hasCache
+--     then return Nothing
+--     else do
+--       if S.notMember (Source.sourceFilePath source) hasCacheSet
+--         then return Nothing
+--         else do
+--           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
+--           case dataOrErr of
+--             Left _ -> do
+--               removeFile cachePath
+--               return Nothing
+--             Right content ->
+--               return $ Just content

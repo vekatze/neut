@@ -1,11 +1,10 @@
 module Scene.Parse.Discern
   ( discernStmtList,
-    specialize,
+    Context,
   )
 where
 
 import qualified Context.Alias as Alias
-import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Locator as Locator
@@ -31,54 +30,45 @@ import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
 import Entity.WeakTerm
 
-data Context = Context
-  { throw :: Throw.Context,
-    gensym :: Gensym.Context,
-    global :: Global.Context,
-    locator :: Locator.Context,
-    alias :: Alias.Context
-  }
+class
+  ( Throw.Context m,
+    Gensym.Context m,
+    Global.Context m,
+    Locator.Context m,
+    Alias.Context m
+  ) =>
+  Context m
 
 type NameEnv = [(T.Text, (Hint, Ident))]
 
 empty :: NameEnv
 empty = []
 
-specialize :: App.Context -> Context
-specialize ctx =
-  Context
-    { throw = App.throw ctx,
-      gensym = App.gensym ctx,
-      global = App.global ctx,
-      locator = App.locator ctx,
-      alias = App.alias ctx
-    }
-
-discernStmtList :: Context -> [PreStmt] -> IO [WeakStmt]
-discernStmtList ctx stmtList =
+discernStmtList :: Context m => [PreStmt] -> m [WeakStmt]
+discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
     PreStmtDefine isReducible m functionName impArgNum xts codType e : rest -> do
-      (xts', nenv) <- discernBinder ctx empty xts
-      codType' <- discern ctx nenv codType
-      e' <- discern ctx nenv e
-      rest' <- discernStmtList ctx rest
+      (xts', nenv) <- discernBinder empty xts
+      codType' <- discern nenv codType
+      e' <- discern nenv e
+      rest' <- discernStmtList rest
       return $ WeakStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
     PreStmtDefineResource m name discarder copier : rest -> do
-      discarder' <- discern ctx empty discarder
-      copier' <- discern ctx empty copier
-      rest' <- discernStmtList ctx rest
+      discarder' <- discern empty discarder
+      copier' <- discern empty copier
+      rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
     PreStmtSection section innerStmtList : rest -> do
-      Locator.withSection (locator ctx) section $ do
-        innerStmtList' <- discernStmtList ctx innerStmtList
-        rest' <- discernStmtList ctx rest
+      Locator.withSection section $ do
+        innerStmtList' <- discernStmtList innerStmtList
+        rest' <- discernStmtList rest
         return $ innerStmtList' ++ rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern :: Context -> NameEnv -> PT.PreTerm -> IO WeakTerm
-discern ctx nenv term =
+discern :: Context m => NameEnv -> PT.PreTerm -> m WeakTerm
+discern nenv term =
   case term of
     m :< PT.Tau ->
       return $ m :< WeakTermTau
@@ -87,192 +77,209 @@ discern ctx nenv term =
         Just (_, name) ->
           return $ m :< WeakTermVar name
         Nothing -> do
-          resolveName ctx m s
+          resolveName m s
     m :< PT.VarGlobal globalLocator localLocator -> do
-      sgl <- Alias.resolveAlias (alias ctx) m globalLocator
-      resolveDefiniteDescription ctx m $ DD.new sgl localLocator
+      sgl <- Alias.resolveAlias m globalLocator
+      resolveDefiniteDescription m $ DD.new sgl localLocator
     m :< PT.VarGlobalStrict dd -> do
-      resolveDefiniteDescription ctx m dd
+      resolveDefiniteDescription m dd
     m :< PT.Pi xts t -> do
-      (xts', t') <- discernBinderWithBody ctx nenv xts t
+      (xts', t') <- discernBinderWithBody nenv xts t
       return $ m :< WeakTermPi xts' t'
     m :< PT.PiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
-          (xt' : xts', e') <- discernBinderWithBody ctx nenv (xt : xts) e
+          (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
         LamKindCons dataName consName consNumber dataType -> do
-          dataType' <- discern ctx nenv dataType
-          (xts', e') <- discernBinderWithBody ctx nenv xts e
+          dataType' <- discern nenv dataType
+          (xts', e') <- discernBinderWithBody nenv xts e
           return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
         LamKindNormal -> do
-          (xts', e') <- discernBinderWithBody ctx nenv xts e
+          (xts', e') <- discernBinderWithBody nenv xts e
           return $ m :< WeakTermPiIntro LamKindNormal xts' e'
     m :< PT.PiElim e es -> do
-      es' <- mapM (discern ctx nenv) es
-      e' <- discern ctx nenv e
+      es' <- mapM (discern nenv) es
+      e' <- discern nenv e
       return $ m :< WeakTermPiElim e' es'
     m :< PT.Sigma xts -> do
-      (xts', _) <- discernBinderWithBody ctx nenv xts (m :< PT.Tau)
+      (xts', _) <- discernBinderWithBody nenv xts (m :< PT.Tau)
       return $ m :< WeakTermSigma xts'
     m :< PT.SigmaIntro es -> do
-      es' <- mapM (discern ctx nenv) es
+      es' <- mapM (discern nenv) es
       return $ m :< WeakTermSigmaIntro es'
     m :< PT.SigmaElim xts e1 e2 -> do
-      e1' <- discern ctx nenv e1
-      (xts', e2') <- discernBinderWithBody ctx nenv xts e2
+      e1' <- discern nenv e1
+      (xts', e2') <- discernBinderWithBody nenv xts e2
       return $ m :< WeakTermSigmaElim xts' e1' e2'
     m :< PT.Let mxt e1 e2 -> do
-      e1' <- discern ctx nenv e1
-      ([mxt'], e2') <- discernBinderWithBody ctx nenv [mxt] e2
+      e1' <- discern nenv e1
+      (mxt', _, e2') <- discernBinderWithBody' nenv mxt [] e2
       return $ m :< WeakTermLet mxt' e1' e2'
     m :< PT.Prim prim ->
       return $ m :< WeakTermPrim prim
     m :< PT.Aster k ->
       return $ m :< WeakTermAster k (map (\(_, (mx, x)) -> mx :< WeakTermVar x) nenv)
     m :< PT.Int t x -> do
-      t' <- discern ctx nenv t
+      t' <- discern nenv t
       return $ m :< WeakTermInt t' x
     m :< PT.Float t x -> do
-      t' <- discern ctx nenv t
+      t' <- discern nenv t
       return $ m :< WeakTermFloat t' x
     m :< PT.Enum t ->
       return $ m :< WeakTermEnum t
     m :< PT.EnumIntro label -> do
-      label' <- discernEnumLabel ctx m label
+      label' <- discernEnumLabel m label
       return $ m :< WeakTermEnumIntro label'
     m :< PT.EnumElim (e, t) caseList -> do
-      e' <- discern ctx nenv e
-      t' <- discern ctx nenv t
+      e' <- discern nenv e
+      t' <- discern nenv t
       caseList' <-
         forM caseList $ \(enumCase, body) -> do
-          enumCase' <- discernEnumCase ctx enumCase
-          body' <- discern ctx nenv body
+          enumCase' <- discernEnumCase enumCase
+          body' <- discern nenv body
           return (enumCase', body')
       return $ m :< WeakTermEnumElim (e', t') caseList'
     m :< PT.Question e t -> do
-      e' <- discern ctx nenv e
-      t' <- discern ctx nenv t
+      e' <- discern nenv e
+      t' <- discern nenv t
       return $ m :< WeakTermQuestion e' t'
     m :< PT.Magic der -> do
-      der' <- traverse (discern ctx nenv) der
+      der' <- traverse (discern nenv) der
       return $ m :< WeakTermMagic der'
     m :< PT.Match mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (discern ctx nenv) mSubject
-      e' <- discern ctx nenv e
-      t' <- discern ctx nenv t
+      mSubject' <- mapM (discern nenv) mSubject
+      e' <- discern nenv e
+      t' <- discern nenv t
       clauseList' <- forM clauseList $ \((mCons, cons, xts), body) -> do
-        (cons', unresolvedConsName) <- resolveConstructor ctx mCons cons
+        (cons', unresolvedConsName) <- resolveConstructor mCons cons
         case cons' of
           _ :< WeakTermVarGlobal consName arity -> do
-            (xts', body') <- discernBinderWithBody ctx nenv xts body
+            (xts', body') <- discernBinderWithBody nenv xts body
             return ((mCons, consName, arity, xts'), body')
           _ ->
-            Throw.raiseError (throw ctx) m $ "no such constructor is defined: " <> unresolvedConsName
+            Throw.raiseError m $ "no such constructor is defined: " <> unresolvedConsName
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< PT.Noema s e -> do
-      s' <- discern ctx nenv s
-      e' <- discern ctx nenv e
+      s' <- discern nenv s
+      e' <- discern nenv e
       return $ m :< WeakTermNoema s' e'
     m :< PT.NoemaIntro (I (x, _)) e ->
       case lookup x nenv of
         Just (_, name) -> do
-          e' <- discern ctx nenv e
+          e' <- discern nenv e
           return $ m :< WeakTermNoemaIntro name e'
         Nothing ->
-          Throw.raiseError (throw ctx) m $ "undefined subject variable: " <> x
+          Throw.raiseError m $ "undefined subject variable: " <> x
     m :< PT.NoemaElim s e -> do
-      s' <- Gensym.newIdentFromIdent (gensym ctx) s
-      e' <- discern ctx ((Ident.toText s, (m, s')) : nenv) e
+      s' <- Gensym.newIdentFromIdent s
+      e' <- discern ((Ident.toText s, (m, s')) : nenv) e
       return $ m :< WeakTermNoemaElim s' e'
     m :< PT.Array elemType -> do
-      elemType' <- discern ctx nenv elemType
+      elemType' <- discern nenv elemType
       return $ m :< WeakTermArray elemType'
     m :< PT.ArrayIntro elemType elems -> do
-      elemType' <- discern ctx nenv elemType
-      elems' <- mapM (discern ctx nenv) elems
+      elemType' <- discern nenv elemType
+      elems' <- mapM (discern nenv) elems
       return $ m :< WeakTermArrayIntro elemType' elems'
     m :< PT.ArrayAccess subject elemType array index -> do
-      subject' <- discern ctx nenv subject
-      elemType' <- discern ctx nenv elemType
-      array' <- discern ctx nenv array
-      index' <- discern ctx nenv index
+      subject' <- discern nenv subject
+      elemType' <- discern nenv elemType
+      array' <- discern nenv array
+      index' <- discern nenv index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     m :< PT.Text ->
       return $ m :< WeakTermText
     m :< PT.TextIntro txt ->
       return $ m :< WeakTermTextIntro txt
     m :< PT.Cell contentType -> do
-      contentType' <- discern ctx nenv contentType
+      contentType' <- discern nenv contentType
       return $ m :< WeakTermCell contentType'
     m :< PT.CellIntro contentType content -> do
-      contentType' <- discern ctx nenv contentType
-      content' <- discern ctx nenv content
+      contentType' <- discern nenv contentType
+      content' <- discern nenv content
       return $ m :< WeakTermCellIntro contentType' content'
     m :< PT.CellRead cell -> do
-      cell' <- discern ctx nenv cell
+      cell' <- discern nenv cell
       return $ m :< WeakTermCellRead cell'
     m :< PT.CellWrite cell newValue -> do
-      cell' <- discern ctx nenv cell
-      newValue' <- discern ctx nenv newValue
+      cell' <- discern nenv cell
+      newValue' <- discern nenv newValue
       return $ m :< WeakTermCellWrite cell' newValue'
 
 discernBinder ::
-  Context ->
+  Context m =>
   NameEnv ->
   [BinderF PT.PreTerm] ->
-  IO ([BinderF WeakTerm], NameEnv)
-discernBinder ctx nenv binder =
+  m ([BinderF WeakTerm], NameEnv)
+discernBinder nenv binder =
   case binder of
     [] -> do
       return ([], nenv)
     (mx, x, t) : xts -> do
-      t' <- discern ctx nenv t
-      x' <- Gensym.newIdentFromIdent (gensym ctx) x
-      (xts', nenv') <- discernBinder ctx ((Ident.toText x, (mx, x')) : nenv) xts
+      t' <- discern nenv t
+      x' <- Gensym.newIdentFromIdent x
+      (xts', nenv') <- discernBinder ((Ident.toText x, (mx, x')) : nenv) xts
       return ((mx, x', t') : xts', nenv')
 
 discernBinderWithBody ::
-  Context ->
+  Context m =>
   NameEnv ->
   [BinderF PT.PreTerm] ->
   PT.PreTerm ->
-  IO ([BinderF WeakTerm], WeakTerm)
-discernBinderWithBody ctx nenv binder e = do
-  (binder', nenv') <- discernBinder ctx nenv binder
-  e' <- discern ctx nenv' e
+  m ([BinderF WeakTerm], WeakTerm)
+discernBinderWithBody nenv binder e = do
+  (binder', nenv') <- discernBinder nenv binder
+  e' <- discern nenv' e
   return (binder', e')
 
-discernEnumLabel :: Context -> Hint -> PreEnumLabel -> IO EnumLabel
-discernEnumLabel ctx m (PreEnumLabel _ _ (UN.UnresolvedName name)) = do
-  term <- resolveName ctx m name
+discernBinderWithBody' ::
+  Context m =>
+  NameEnv ->
+  BinderF PT.PreTerm ->
+  [BinderF PT.PreTerm] ->
+  PT.PreTerm ->
+  m (BinderF WeakTerm, [BinderF WeakTerm], WeakTerm)
+discernBinderWithBody' nenv (mx, x, t) binder e = do
+  t' <- discern nenv t
+  x' <- Gensym.newIdentFromIdent x
+  (binder', e') <- discernBinderWithBody ((Ident.toText x, (mx, x')) : nenv) binder e
+  return ((mx, x', t'), binder', e')
+
+-- (binder', nenv') <- discernBinder nenv binder
+-- e' <- discern nenv' e
+-- return (binder', e')
+
+discernEnumLabel :: Context m => Hint -> PreEnumLabel -> m EnumLabel
+discernEnumLabel m (PreEnumLabel _ _ (UN.UnresolvedName name)) = do
+  term <- resolveName m name
   case term of
     _ :< WeakTermEnumIntro label ->
       return label
     _ ->
-      Throw.raiseError (throw ctx) m $
+      Throw.raiseError m $
         "no such enum-value is defined: " <> name
 
-discernEnumCase :: Context -> PreEnumCase -> IO EnumCase
-discernEnumCase ctx enumCase =
+discernEnumCase :: Context m => PreEnumCase -> m EnumCase
+discernEnumCase enumCase =
   case enumCase of
     m :< EnumCaseLabel l -> do
-      l' <- discernEnumLabel ctx m l
+      l' <- discernEnumLabel m l
       return $ m :< EnumCaseLabel l'
     m :< EnumCaseInt i -> do
       return $ m :< EnumCaseInt i
     m :< EnumCaseDefault -> do
       return $ m :< EnumCaseDefault
 
-resolveName :: Context -> Hint -> T.Text -> IO WeakTerm
-resolveName ctx m name = do
-  localLocator <- LL.reflect (throw ctx) m name
-  candList <- Locator.getPossibleReferents (locator ctx) localLocator
-  candList' <- mapM (Global.lookup (global ctx)) candList
+resolveName :: Context m => Hint -> T.Text -> m WeakTerm
+resolveName m name = do
+  localLocator <- LL.reflect m name
+  candList <- Locator.getPossibleReferents localLocator
+  candList' <- mapM Global.lookup candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
-      Throw.raiseError (throw ctx) m $ "undefined variable: " <> name
+      Throw.raiseError m $ "undefined variable: " <> name
     [(dd, GN.TopLevelFunc arity)] ->
       return $ m :< WeakTermVarGlobal dd arity
     [(dd, GN.Data arity _)] ->
@@ -289,16 +296,16 @@ resolveName ctx m name = do
       return $ m :< WeakTermResourceType dd
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
-      Throw.raiseError (throw ctx) m $
+      Throw.raiseError m $
         "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =
   fmap (from,) mTo
 
-resolveDefiniteDescription :: Context -> Hint -> DD.DefiniteDescription -> IO WeakTerm
-resolveDefiniteDescription ctx m dd = do
-  kind <- Global.lookup (global ctx) dd
+resolveDefiniteDescription :: Context m => Hint -> DD.DefiniteDescription -> m WeakTerm
+resolveDefiniteDescription m dd = do
+  kind <- Global.lookup dd
   case kind of
     Just (GN.TopLevelFunc arity) ->
       return $ m :< WeakTermVarGlobal dd arity
@@ -315,18 +322,18 @@ resolveDefiniteDescription ctx m dd = do
     Just GN.Resource ->
       return $ m :< WeakTermResourceType dd
     Nothing ->
-      Throw.raiseError (throw ctx) m $ "undefined definite description: " <> DD.reify dd
+      Throw.raiseError m $ "undefined definite description: " <> DD.reify dd
 
 resolveConstructor ::
-  Context ->
+  Context m =>
   Hint ->
   Either UN.UnresolvedName DD.DefiniteDescription ->
-  IO (WeakTerm, T.Text)
-resolveConstructor ctx m cons = do
+  m (WeakTerm, T.Text)
+resolveConstructor m cons = do
   case cons of
     Left (UN.UnresolvedName consName') -> do
-      term <- resolveName ctx m consName'
+      term <- resolveName m consName'
       return (term, consName')
     Right dd -> do
-      term <- resolveDefiniteDescription ctx m dd
+      term <- resolveDefiniteDescription m dd
       return (term, DD.reify dd)

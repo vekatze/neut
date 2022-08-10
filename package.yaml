@@ -17,6 +17,8 @@ default-extensions:
   - TupleSections
   - GeneralizedNewtypeDeriving
   - ExistentialQuantification
+  - TypeFamilies
+  - FunctionalDependencies
 
 dependencies:
   - ansi-terminal
