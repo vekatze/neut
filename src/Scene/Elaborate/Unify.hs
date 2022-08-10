@@ -4,6 +4,7 @@ module Scene.Elaborate.Unify
   )
 where
 
+import qualified Context.Env as Env
 import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
@@ -32,10 +33,9 @@ import Entity.WeakTerm.Reduce
 import qualified Entity.WeakTerm.Subst as Subst
 import Entity.WeakTerm.ToText
 
-class (Subst.Context m, Gensym.Context m, Throw.Context m) => Context m where
+class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where
   initialize :: m ()
   insertSubst :: HID.HoleID -> [Ident] -> WeakTerm -> m ()
-  getSubst :: m HS.HoleSubst
   setConstraintQueue :: Q.MinQueue SuspendedConstraint -> m ()
   insertConstraint :: SuspendedConstraint -> m ()
   getConstraintQueue :: m SuspendedConstraintQueue
@@ -52,7 +52,7 @@ unify :: Context m => [Constraint] -> m HS.HoleSubst
 unify constraintList = do
   initialize
   analyze constraintList >> synthesize
-  getSubst
+  Env.getHoleSubst
 
 analyze :: Context m => [Constraint] -> m ()
 analyze constraintList =
@@ -74,7 +74,7 @@ synthesize = do
 throwTypeErrors :: Context m => m a
 throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
-  sub <- getSubst
+  sub <- Env.getHoleSubst
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     -- p' foo
     -- p $ T.unpack $ toText l
@@ -190,7 +190,7 @@ simplify constraintList =
           | name1 == name2 ->
             simplify cs
         (e1, e2) -> do
-          sub <- getSubst
+          sub <- Env.getHoleSubst
           let fvs1 = freeVars e1
           let fvs2 = freeVars e2
           let fmvs1 = holes e1 -- fmvs: free meta-variables
