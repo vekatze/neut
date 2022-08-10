@@ -13,8 +13,8 @@ import Entity.Opacity
 import Entity.WeakTerm
 import Prelude hiding (lookup, read)
 
-type DefMap =
-  Map.HashMap DD.DefiniteDescription WeakTerm
+-- type DefMap =
+--   Map.HashMap DD.DefiniteDescription WeakTerm
 
 new :: Definition.Config -> IO Definition.Context
 new _ = do

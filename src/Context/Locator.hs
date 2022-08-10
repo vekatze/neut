@@ -33,23 +33,22 @@ import Entity.StrictGlobalLocator as SGL
 --     - active global locator: a global locator that is used when resolving global names
 --     - active local locator: a local locator that is used when resolving global names
 
-data Context = Context
-  { withSection :: forall a m. MonadIO m => S.Section -> m a -> m a,
-    attachCurrentLocator :: BN.BaseName -> IO DD.DefiniteDescription,
-    activateGlobalLocator :: SGL.StrictGlobalLocator -> IO (),
-    activateDefiniteLocator :: DL.DefiniteLocator -> IO (),
-    clearActiveLocators :: IO (),
-    getPossibleReferents :: LL.LocalLocator -> IO [DD.DefiniteDescription],
-    getMainDefiniteDescription :: Source -> IO (Maybe DD.DefiniteDescription)
-  }
+class (Throw.Context m, Path.Context m, Module.Context m) => Context m where
+  withSection :: forall a m. MonadIO m => S.Section -> m a -> m a
+  attachCurrentLocator :: BN.BaseName -> m DD.DefiniteDescription
+  activateGlobalLocator :: SGL.StrictGlobalLocator -> m ()
+  activateDefiniteLocator :: DL.DefiniteLocator -> m ()
+  clearActiveLocators :: m ()
+  getPossibleReferents :: LL.LocalLocator -> m [DD.DefiniteDescription]
+  getMainDefiniteDescription :: Source -> m (Maybe DD.DefiniteDescription)
 
-data Config = Config
-  { mainModule :: Module,
-    currentSource :: Source,
-    throwCtx :: Throw.Context,
-    pathCtx :: Path.Context,
-    moduleCtx :: Module.Context
-  }
+-- data Config = Config
+--   { mainModule :: Module,
+--     currentSource :: Source,
+--     throwCtx :: Throw.Context,
+--     pathCtx :: Path.Context,
+--     moduleCtx :: Module.Context
+--   }
 
 -- getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
 -- getMainDefiniteDescription ctx = do

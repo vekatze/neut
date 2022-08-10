@@ -1,6 +1,5 @@
 module Context.Gensym
   ( Context (..),
-    Config (..),
     newText,
     newAster,
     newPreAster,
@@ -21,51 +20,48 @@ import qualified Entity.Ident.Reify as Ident
 import qualified Entity.PreTerm as PT
 import Entity.WeakTerm
 
-data Context = Context
-  { newCount :: IO Int,
-    readCount :: IO Int,
-    writeCount :: Int -> IO ()
-  }
-
-data Config = Config {}
+class Monad m => Context m where
+  newCount :: m Int
+  readCount :: m Int
+  writeCount :: Int -> m ()
 
 {-# INLINE newText #-}
-newText :: Context -> IO T.Text
-newText ctx = do
-  i <- newCount ctx
+newText :: Context m => m T.Text
+newText = do
+  i <- newCount
   return $ ";" <> T.pack (show i)
 
 {-# INLINE newPreAster #-}
-newPreAster :: Context -> Hint -> IO PT.PreTerm
-newPreAster ctx m = do
-  i <- HoleID <$> newCount ctx
+newPreAster :: Context m => Hint -> m PT.PreTerm
+newPreAster m = do
+  i <- HoleID <$> newCount
   return $ m :< PT.Aster i
 
 {-# INLINE newAster #-}
-newAster :: Context -> Hint -> [WeakTerm] -> IO WeakTerm
-newAster ctx m varSeq = do
-  i <- HoleID <$> newCount ctx
+newAster :: Context m => Hint -> [WeakTerm] -> m WeakTerm
+newAster m varSeq = do
+  i <- HoleID <$> newCount
   return $ m :< WeakTermAster i varSeq
 
 {-# INLINE newIdentFromText #-}
-newIdentFromText :: Context -> T.Text -> IO Ident
-newIdentFromText ctx s = do
-  i <- newCount ctx
+newIdentFromText :: Context m => T.Text -> m Ident
+newIdentFromText s = do
+  i <- newCount
   return $ I (s, i)
 
 {-# INLINE newIdentFromIdent #-}
-newIdentFromIdent :: Context -> Ident -> IO Ident
-newIdentFromIdent ctx x =
-  newIdentFromText ctx (Ident.toText x)
+newIdentFromIdent :: Context m => Ident -> m Ident
+newIdentFromIdent x =
+  newIdentFromText (Ident.toText x)
 
 {-# INLINE newValueVarLocalWith #-}
-newValueVarLocalWith :: Context -> T.Text -> IO (Ident, Value)
-newValueVarLocalWith ctx name = do
-  x <- newIdentFromText ctx name
+newValueVarLocalWith :: Context m => T.Text -> m (Ident, Value)
+newValueVarLocalWith name = do
+  x <- newIdentFromText name
   return (x, ValueVarLocal x)
 
 {-# INLINE newTextualIdentFromText #-}
-newTextualIdentFromText :: Context -> T.Text -> IO Ident
-newTextualIdentFromText ctx txt = do
-  i <- newCount ctx
-  newIdentFromText ctx $ ";" <> txt <> T.pack (show i)
+newTextualIdentFromText :: Context m => T.Text -> m Ident
+newTextualIdentFromText txt = do
+  i <- newCount
+  newIdentFromText $ ";" <> txt <> T.pack (show i)

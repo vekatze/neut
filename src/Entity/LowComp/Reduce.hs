@@ -1,12 +1,11 @@
 module Entity.LowComp.Reduce
   ( reduce,
-    Context (..),
+    Context (),
   )
 where
 
-import qualified Context.App as App
+import qualified Context.Env as Env
 import qualified Context.Gensym as Gensym
-import Data.IORef
 import qualified Data.IntMap as IntMap
 import qualified Data.Map as Map
 import qualified Data.Set as S
@@ -18,32 +17,17 @@ import Entity.LowType
 type SizeMap =
   Map.Map SizeInfo [(Int, LowValue)]
 
-data Context = Context
-  { shouldCancelAlloc :: Bool,
-    gensym :: Gensym.Context,
-    nopFreeSetRef :: IORef (S.Set Int)
-  }
+class (Gensym.Context m, Env.Context m) => Context m
 
-reduce :: App.Context -> SubstLowComp -> SizeMap -> LowComp -> IO (S.Set Int, LowComp)
-reduce ctx sub sizeMap lowComp = do
-  ctx' <- specialize ctx
-  result <- reduce' ctx' sub sizeMap lowComp
-  nopFreeSet <- readIORef $ nopFreeSetRef ctx'
+reduce :: Context m => SubstLowComp -> SizeMap -> LowComp -> m (S.Set Int, LowComp)
+reduce sub sizeMap lowComp = do
+  result <- reduce' sub sizeMap lowComp
+  nopFreeSet <- Env.getNopFreeSet
   return (nopFreeSet, result)
 
-specialize :: App.Context -> IO Context
-specialize ctx = do
-  _nopFreeSetRef <- newIORef S.empty
-  return
-    Context
-      { shouldCancelAlloc = App.shouldCancelAlloc ctx,
-        gensym = App.gensym ctx,
-        nopFreeSetRef = _nopFreeSetRef
-      }
-
-reduce' :: Context -> SubstLowComp -> SizeMap -> LowComp -> IO LowComp
-reduce' ctx sub sizeMap lowComp = do
-  let cancelAllocFlag = shouldCancelAlloc ctx
+reduce' :: Context m => SubstLowComp -> SizeMap -> LowComp -> m LowComp
+reduce' sub sizeMap lowComp = do
+  cancelAllocFlag <- Env.getShouldCancelAlloc
   case lowComp of
     LowCompReturn d ->
       return $ LowCompReturn $ substLowValue sub d
@@ -52,39 +36,40 @@ reduce' ctx sub sizeMap lowComp = do
         LowOpBitcast d from to
           | from == to -> do
             let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
-            reduce' ctx sub' sizeMap cont
+            reduce' sub' sizeMap cont
         LowOpAlloc _ (LowTypePointer (LowTypeArray 0 _)) -> do
           let sub' = IntMap.insert (Ident.toInt x) LowValueNull sub
-          reduce' ctx sub' sizeMap cont
+          reduce' sub' sizeMap cont
         LowOpAlloc _ (LowTypePointer (LowTypeStruct [])) -> do
           let sub' = IntMap.insert (Ident.toInt x) LowValueNull sub
-          reduce' ctx sub' sizeMap cont
+          reduce' sub' sizeMap cont
         LowOpAlloc _ size
           | cancelAllocFlag,
             Just ((j, d) : rest) <- Map.lookup size sizeMap -> do
-            modifyIORef' (nopFreeSetRef ctx) $ S.insert j
+            -- modifyIORef' nopFreeSetRef $ S.insert j
+            Env.insertToNopFreeSet j
             let sizeMap' = Map.insert size rest sizeMap
             let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
-            reduce' ctx sub' sizeMap' cont
+            reduce' sub' sizeMap' cont
         _ -> do
-          x' <- Gensym.newIdentFromIdent (gensym ctx) x
+          x' <- Gensym.newIdentFromIdent x
           let sub' = IntMap.insert (Ident.toInt x) (LowValueVarLocal x') sub
-          cont' <- reduce' ctx sub' sizeMap cont
+          cont' <- reduce' sub' sizeMap cont
           return $ LowCompLet x' (substLowOp sub op) cont'
     LowCompCont op@(LowOpFree d size j) cont -> do
       let op' = substLowOp sub op
       let sizeMap' = Map.insertWith (++) size [(j, d)] sizeMap
-      cont' <- reduce' ctx sub sizeMap' cont
+      cont' <- reduce' sub sizeMap' cont
       return $ LowCompCont op' cont'
     LowCompCont op cont -> do
       let op' = substLowOp sub op
-      cont' <- reduce' ctx sub sizeMap cont
+      cont' <- reduce' sub sizeMap cont
       return $ LowCompCont op' cont'
     LowCompSwitch (d, t) defaultBranch les -> do
       let d' = substLowValue sub d
       let (ls, es) = unzip les
-      defaultBranch' <- reduce' ctx sub sizeMap defaultBranch
-      es' <- mapM (reduce' ctx sub sizeMap) es
+      defaultBranch' <- reduce' sub sizeMap defaultBranch
+      es' <- mapM (reduce' sub sizeMap) es
       return $ LowCompSwitch (d', t) defaultBranch' (zip ls es')
     LowCompCall d ds -> do
       let d' = substLowValue sub d

@@ -10,88 +10,88 @@ import Entity.WeakTerm
 import Entity.WeakTerm.FreeVars
 import qualified Entity.WeakTerm.Subst as Subst
 
-reduce :: Subst.Context -> WeakTerm -> IO WeakTerm
-reduce ctx term =
+reduce :: Subst.Context m => WeakTerm -> m WeakTerm
+reduce term =
   case term of
     m :< WeakTermPi xts cod -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (reduce ctx) ts
-      cod' <- reduce ctx cod
+      ts' <- mapM reduce ts
+      cod' <- reduce cod
       return $ m :< WeakTermPi (zip3 ms xs ts') cod'
     m :< WeakTermPiIntro kind xts e
       | LamKindFix (_, x, _) <- kind,
         x `notElem` freeVars e ->
-        reduce ctx $ m :< WeakTermPiIntro LamKindNormal xts e
+        reduce $ m :< WeakTermPiIntro LamKindNormal xts e
       | otherwise -> do
         let (ms, xs, ts) = unzip3 xts
-        ts' <- mapM (reduce ctx) ts
-        e' <- reduce ctx e
+        ts' <- mapM reduce ts
+        e' <- reduce e
         case kind of
           LamKindFix (mx, x, t) -> do
-            t' <- reduce ctx t
+            t' <- reduce t
             return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
           _ ->
             return (m :< WeakTermPiIntro kind (zip3 ms xs ts') e')
     m :< WeakTermPiElim e es -> do
-      e' <- reduce ctx e
-      es' <- mapM (reduce ctx) es
+      e' <- reduce e
+      es' <- mapM reduce es
       case e' of
         (_ :< WeakTermPiIntro LamKindNormal xts body)
           | length xts == length es' -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es'
-            Subst.subst ctx sub body >>= reduce ctx
+            Subst.subst sub body >>= reduce
         _ ->
           return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
       let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (reduce ctx) ts
+      ts' <- mapM reduce ts
       return $ m :< WeakTermSigma (zip3 ms xs ts')
     m :< WeakTermSigmaIntro es -> do
-      es' <- mapM (reduce ctx) es
+      es' <- mapM reduce es
       return $ m :< WeakTermSigmaIntro es'
     m :< WeakTermSigmaElim xts e1 e2 -> do
-      e1' <- reduce ctx e1
+      e1' <- reduce e1
       case e1' of
         _ :< WeakTermSigmaIntro es
           | length xts == length es -> do
             let xs = map (\(_, x, _) -> Ident.toInt x) xts
             let sub = IntMap.fromList $ zip xs es
-            Subst.subst ctx sub e2 >>= reduce ctx
+            Subst.subst sub e2 >>= reduce
         _ -> do
-          e2' <- reduce ctx e2
+          e2' <- reduce e2
           return $ m :< WeakTermSigmaElim xts e1' e2'
     _ :< WeakTermLet (_, x, _) e1 e2 -> do
-      e1' <- reduce ctx e1
+      e1' <- reduce e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
-      Subst.subst ctx sub e2
+      Subst.subst sub e2
     m :< WeakTermEnumElim (e, t) les -> do
-      e' <- reduce ctx e
+      e' <- reduce e
       let (ls, es) = unzip les
-      es' <- mapM (reduce ctx) es
+      es' <- mapM reduce es
       let les' = zip ls es'
       let les'' = zip (map unwrap ls) es'
-      t' <- reduce ctx t
+      t' <- reduce t
       case e' of
         (_ :< WeakTermEnumIntro label) ->
           case lookup (EnumCaseLabel label) les'' of
             Just body ->
-              reduce ctx body
+              reduce body
             Nothing ->
               case lookup EnumCaseDefault les'' of
                 Just body ->
-                  reduce ctx body
+                  reduce body
                 Nothing ->
                   return $ m :< WeakTermEnumElim (e', t') les'
         _ ->
           return $ m :< WeakTermEnumElim (e', t') les'
     _ :< WeakTermQuestion e _ ->
-      reduce ctx e
+      reduce e
     m :< WeakTermMagic der -> do
-      der' <- mapM (reduce ctx) der
+      der' <- mapM reduce der
       return $ m :< WeakTermMagic der'
     m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      e' <- reduce ctx e
+      e' <- reduce e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
       -- case e' of
@@ -99,37 +99,37 @@ reduce ctx term =
       --     | Just consNameList <- Map.lookup dataName dataEnv,
       --       consName `elem` consNameList,
       --       checkClauseListSanity consNameList clauseList -> do
-      --       reduce ctx $ m :< WeakTermPiElim e' (resultType : lamList)
+      --       reduce $ m :< WeakTermPiElim e' (resultType : lamList)
       --   _ -> do
-      -- resultType' <- reduce ctx resultType
-      mSubject' <- mapM (reduce ctx) mSubject
-      t' <- reduce ctx t
+      -- resultType' <- reduce resultType
+      mSubject' <- mapM reduce mSubject
+      t' <- reduce t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
-        body' <- reduce ctx body
+        body' <- reduce body
         return ((mPat, name, arity, xts), body')
       return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
     m :< WeakTermNoema s e -> do
-      s' <- reduce ctx s
-      e' <- reduce ctx e
+      s' <- reduce s
+      e' <- reduce e
       return $ m :< WeakTermNoema s' e'
     m :< WeakTermNoemaIntro s e -> do
-      e' <- reduce ctx e
+      e' <- reduce e
       return $ m :< WeakTermNoemaIntro s e'
     m :< WeakTermNoemaElim s e -> do
-      e' <- reduce ctx e
+      e' <- reduce e
       return $ m :< WeakTermNoemaElim s e'
     m :< WeakTermArray elemType -> do
-      elemType' <- reduce ctx elemType
+      elemType' <- reduce elemType
       return $ m :< WeakTermArray elemType'
     m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- reduce ctx elemType
-      elems' <- mapM (reduce ctx) elems
+      elemType' <- reduce elemType
+      elems' <- mapM reduce elems
       return $ m :< WeakTermArrayIntro elemType' elems'
     m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- reduce ctx subject
-      elemType' <- reduce ctx elemType
-      array' <- reduce ctx array
-      index' <- reduce ctx index
+      subject' <- reduce subject
+      elemType' <- reduce elemType
+      array' <- reduce array
+      index' <- reduce index
       return $ m :< WeakTermArrayAccess subject' elemType' array' index'
     _ ->
       return term

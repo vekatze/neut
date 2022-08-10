@@ -39,62 +39,62 @@ data EnsType
   | EnsTypeList
   | EnsTypeDictionary
 
-access :: Context -> T.Text -> Ens -> IO Ens
-access ctx k entity@(m :< _) = do
-  (_, dictionary) <- toDictionary ctx entity
+access :: Context m => T.Text -> Ens -> m Ens
+access k entity@(m :< _) = do
+  (_, dictionary) <- toDictionary entity
   case M.lookup k dictionary of
     Just v ->
       return v
     Nothing ->
-      raiseKeyNotFoundError ctx m k
+      raiseKeyNotFoundError m k
 
-toInt64 :: Context -> Ens -> IO Int64
-toInt64 ctx entity@(m :< _) =
+toInt64 :: Context m => Ens -> m Int64
+toInt64 entity@(m :< _) =
   case entity of
     _ :< EnsInt64 s ->
       return s
     _ ->
-      raiseTypeError ctx m EnsTypeInt64 (typeOf entity)
+      raiseTypeError m EnsTypeInt64 (typeOf entity)
 
-toFloat64 :: Context -> Ens -> IO Double
-toFloat64 ctx entity@(m :< _) =
+toFloat64 :: Context m => Ens -> m Double
+toFloat64 entity@(m :< _) =
   case entity of
     _ :< EnsFloat64 s ->
       return s
     _ ->
-      raiseTypeError ctx m EnsTypeFloat64 (typeOf entity)
+      raiseTypeError m EnsTypeFloat64 (typeOf entity)
 
-toBool :: Context -> Ens -> IO Bool
-toBool ctx entity@(m :< _) =
+toBool :: Context m => Ens -> m Bool
+toBool entity@(m :< _) =
   case entity of
     _ :< EnsBool x ->
       return x
     _ ->
-      raiseTypeError ctx m EnsTypeBool (typeOf entity)
+      raiseTypeError m EnsTypeBool (typeOf entity)
 
-toString :: Context -> Ens -> IO (Hint, T.Text)
-toString ctx entity@(m :< _) =
+toString :: Context m => Ens -> m (Hint, T.Text)
+toString entity@(m :< _) =
   case entity of
     _ :< EnsString s ->
       return (m, s)
     _ ->
-      raiseTypeError ctx m EnsTypeString (typeOf entity)
+      raiseTypeError m EnsTypeString (typeOf entity)
 
-toDictionary :: Context -> Ens -> IO (Hint, M.HashMap T.Text Ens)
-toDictionary ctx entity@(m :< _) =
+toDictionary :: Context m => Ens -> m (Hint, M.HashMap T.Text Ens)
+toDictionary entity@(m :< _) =
   case entity of
     _ :< EnsDictionary e ->
       return (m, e)
     _ ->
-      raiseTypeError ctx m EnsTypeDictionary (typeOf entity)
+      raiseTypeError m EnsTypeDictionary (typeOf entity)
 
-toList :: Context -> Ens -> IO [Ens]
-toList ctx entity@(m :< _) =
+toList :: Context m => Ens -> m [Ens]
+toList entity@(m :< _) =
   case entity of
     _ :< EnsList e ->
       return e
     _ ->
-      raiseTypeError ctx m EnsTypeList (typeOf entity)
+      raiseTypeError m EnsTypeList (typeOf entity)
 
 typeOf :: Ens -> EnsType
 typeOf v =
@@ -128,16 +128,16 @@ showEnsType entityType =
     EnsTypeDictionary ->
       "dictionary"
 
-raiseKeyNotFoundError :: Context -> Hint -> T.Text -> IO a
-raiseKeyNotFoundError ctx m k =
-  raiseError ctx m $
+raiseKeyNotFoundError :: Context m => Hint -> T.Text -> m a
+raiseKeyNotFoundError m k =
+  raiseError m $
     "couldn't find the required key `"
       <> k
       <> "`."
 
-raiseTypeError :: Context -> Hint -> EnsType -> EnsType -> IO a
-raiseTypeError ctx m expectedType actualType =
-  raiseError ctx m $
+raiseTypeError :: Context m => Hint -> EnsType -> EnsType -> m a
+raiseTypeError m expectedType actualType =
+  raiseError m $
     "the value here is expected to be of type `"
       <> showEnsType expectedType
       <> "`, but is: `"

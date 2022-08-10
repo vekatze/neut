@@ -1,6 +1,5 @@
 module Context.LLVM
   ( Context (..),
-    Config (..),
   )
 where
 
@@ -11,12 +10,11 @@ import Path
 
 type OutputPath = Path Abs File
 
-data Context = Context
-  { emit :: OutputKind -> L.ByteString -> OutputPath -> IO (),
-    link :: [Path Abs File] -> OutputPath -> IO ()
-  }
+class Throw.Context m => Context m where
+  emit :: OutputKind -> L.ByteString -> OutputPath -> m ()
+  link :: [Path Abs File] -> OutputPath -> m ()
 
-data Config = Config
-  { clangOptString :: String,
-    throwCtx :: Throw.Context
-  }
+-- data Config = Config
+--   { clangOptString :: String,
+--     throwCtx :: Throw.Context
+--   }

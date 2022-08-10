@@ -18,12 +18,12 @@ data AliasInfo
 
 type SourceAliasMap = Map.HashMap (Path Abs File) [AliasInfo]
 
-activateAliasInfo :: Alias.Context -> [AliasInfo] -> IO ()
-activateAliasInfo ctx aliasInfoList = do
-  mapM_ (activateAliasInfoOfCurrentFile' ctx) aliasInfoList
+activateAliasInfo :: Alias.Context m => [AliasInfo] -> m ()
+activateAliasInfo aliasInfoList = do
+  mapM_ activateAliasInfoOfCurrentFile' aliasInfoList
 
-activateAliasInfoOfCurrentFile' :: Alias.Context -> AliasInfo -> IO ()
-activateAliasInfoOfCurrentFile' ctx aliasInfo =
+activateAliasInfoOfCurrentFile' :: Alias.Context m => AliasInfo -> m ()
+activateAliasInfoOfCurrentFile' aliasInfo =
   case aliasInfo of
     AliasInfoPrefix m from to ->
-      Alias.registerGlobalLocatorAlias ctx m from to
+      Alias.registerGlobalLocatorAlias m from to

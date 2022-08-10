@@ -8,12 +8,12 @@ import qualified Entity.Ident.Reify as Ident
 
 type NameEnv = IntMap.IntMap Ident
 
-subst :: Context -> SubstValue -> NameEnv -> Comp -> IO Comp
+subst :: Context m => SubstValue -> NameEnv -> Comp -> m Comp
 subst =
   substComp
 
-substComp :: Context -> SubstValue -> NameEnv -> Comp -> IO Comp
-substComp ctx sub nenv term =
+substComp :: Context m => SubstValue -> NameEnv -> Comp -> m Comp
+substComp sub nenv term =
   case term of
     CompPrimitive theta -> do
       let theta' = substPrimitive sub nenv theta
@@ -24,23 +24,23 @@ substComp ctx sub nenv term =
       return $ CompPiElimDownElim v' ds'
     CompSigmaElim b xs v e -> do
       let v' = substValue sub nenv v
-      xs' <- mapM (newIdentFromIdent ctx) xs
+      xs' <- mapM newIdentFromIdent xs
       let nenv' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) xs')) nenv
-      e' <- substComp ctx sub nenv' e
+      e' <- substComp sub nenv' e
       return $ CompSigmaElim b xs' v' e'
     CompUpIntro v -> do
       let v' = substValue sub nenv v
       return $ CompUpIntro v'
     CompUpElim x e1 e2 -> do
-      e1' <- substComp ctx sub nenv e1
-      x' <- newIdentFromIdent ctx x
+      e1' <- substComp sub nenv e1
+      x' <- newIdentFromIdent x
       let nenv' = IntMap.insert (Ident.toInt x) x' nenv
-      e2' <- substComp ctx sub nenv' e2
+      e2' <- substComp sub nenv' e2
       return $ CompUpElim x' e1' e2'
     CompEnumElim v branchList -> do
       let v' = substValue sub nenv v
       let (cs, es) = unzip branchList
-      es' <- mapM (substComp ctx sub nenv) es
+      es' <- mapM (substComp sub nenv) es
       return $ CompEnumElim v' (zip cs es')
     CompArrayAccess primNum v index ->
       return $ CompArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)

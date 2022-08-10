@@ -69,11 +69,11 @@ newByDefiniteLocator dl ll = do
   let ll' = LL.new (LL.sectionStack ll ++ DL.sectionStack dl) (LL.baseName ll)
   new gl ll'
 
-extend :: Throw.Context -> H.Hint -> DefiniteDescription -> T.Text -> IO DefiniteDescription
-extend ctx m dd newName = do
+extend :: Throw.Context m => H.Hint -> DefiniteDescription -> T.Text -> m DefiniteDescription
+extend m dd newName = do
   let gl = globalLocator dd
   let outer = localLocator dd
-  inner <- LL.reflect ctx m newName
+  inner <- LL.reflect m newName
   let ll = LL.extend outer inner
   return $ new gl ll
 

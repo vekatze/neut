@@ -9,11 +9,10 @@ import qualified Entity.DefiniteDescription as DD
 import Entity.Hint
 import Entity.WeakTerm
 
-data Context = Context
-  { lookup :: Hint -> DD.DefiniteDescription -> IO WeakTerm,
-    insert :: DD.DefiniteDescription -> WeakTerm -> IO ()
-  }
+class Throw.Context m => Context m where
+  lookup :: Hint -> DD.DefiniteDescription -> m WeakTerm
+  insert :: DD.DefiniteDescription -> WeakTerm -> m ()
 
-newtype Config = Config
-  { throwCtx :: Throw.Context
-  }
+-- newtype Config = Config
+--   { throwCtx :: Throw.Context
+--   }

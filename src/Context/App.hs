@@ -42,7 +42,6 @@ data Context = Context
     definition :: Definition.Context,
     compDefinition :: CompDefinition.Context,
     shouldCancelAlloc :: Bool,
-    initialSource :: Source,
     sourceAliasMap :: SourceAliasMap,
     hasCacheSet :: S.Set (Path Abs File),
     targetPlatform :: TP.TargetPlatform
@@ -61,7 +60,6 @@ data Config = Config
     compDefinitionCtx :: CompDefinition.Context,
     cancelAllocFlagConf :: Bool,
     mainModuleConf :: Module,
-    initialSourceConf :: Source,
     sourceAliasMapConf :: SourceAliasMap,
     hasCacheSetConf :: S.Set (Path Abs File)
   }
@@ -114,7 +112,6 @@ new cfg source = do
         definition = definitionCtx cfg,
         compDefinition = compDefinitionCtx cfg,
         shouldCancelAlloc = cancelAllocFlagConf cfg,
-        initialSource = initialSourceConf cfg,
         targetPlatform =
           TP.TargetPlatform
             { TP.os = System.os,

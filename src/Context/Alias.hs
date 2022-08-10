@@ -8,14 +8,13 @@ import Entity.Hint
 import Entity.Module
 import qualified Entity.StrictGlobalLocator as SGL
 
-data Config = Config
-  { currentModule :: Module,
-    mainModule :: Module,
-    throwCtx :: Throw.Context,
-    locatorCtx :: Locator.Context
-  }
+-- data Config = Config
+--   { currentModule :: Module,
+--     mainModule :: Module,
+--     throwCtx :: Throw.Context,
+--     locatorCtx :: Locator.Context
+--   }
 
-data Context = Context
-  { registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> SGL.StrictGlobalLocator -> IO (),
-    resolveAlias :: Hint -> GL.GlobalLocator -> IO SGL.StrictGlobalLocator
-  }
+class Monad m => Context m where
+  registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> SGL.StrictGlobalLocator -> m ()
+  resolveAlias :: Hint -> GL.GlobalLocator -> m SGL.StrictGlobalLocator

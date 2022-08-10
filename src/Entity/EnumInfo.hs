@@ -35,16 +35,16 @@ newtype EnumInfo = EnumInfoCons {fromEnumInfo :: (EnumTypeName, [EnumValue])}
 
 instance Binary EnumInfo
 
-new :: Throw.Context -> Hint.Hint -> EnumTypeName -> [(T.Text, Maybe D.Discriminant)] -> IO EnumInfo
-new ctx m enumTypeName itemList = do
-  itemList' <- mapM (attachPrefix ctx m enumTypeName) $ setDiscriminant D.zero itemList
+new :: Throw.Context m => Hint.Hint -> EnumTypeName -> [(T.Text, Maybe D.Discriminant)] -> m EnumInfo
+new m enumTypeName itemList = do
+  itemList' <- mapM (attachPrefix m enumTypeName) $ setDiscriminant D.zero itemList
   unless (isLinear (map snd itemList')) $
-    Throw.raiseError ctx m "found a collision of discriminant"
+    Throw.raiseError m "found a collision of discriminant"
   return $ EnumInfoCons {fromEnumInfo = (enumTypeName, itemList')}
 
-attachPrefix :: Throw.Context -> Hint.Hint -> EnumTypeName -> (T.Text, a) -> IO (EV.EnumValueName, a)
-attachPrefix ctx m enumTypeName (enumValueName, d) = do
-  enumValue <- EV.new ctx m enumTypeName enumValueName
+attachPrefix :: Throw.Context m => Hint.Hint -> EnumTypeName -> (T.Text, a) -> m (EV.EnumValueName, a)
+attachPrefix m enumTypeName (enumValueName, d) = do
+  enumValue <- EV.new m enumTypeName enumValueName
   return (enumValue, d)
 
 setDiscriminant :: D.Discriminant -> [(a, Maybe D.Discriminant)] -> [(a, D.Discriminant)]

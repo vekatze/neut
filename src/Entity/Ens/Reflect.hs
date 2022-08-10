@@ -2,6 +2,7 @@ module Entity.Ens.Reflect (fromFilePath) where
 
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
+import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as M
 import qualified Data.Text as T
 import Entity.Ens
@@ -9,9 +10,9 @@ import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
 
-fromFilePath :: Throw.Context -> Path Abs File -> IO Ens
-fromFilePath ctx =
-  run ctx parseFile
+fromFilePath :: (MonadIO m, Throw.Context m) => Path Abs File -> m Ens
+fromFilePath =
+  run parseFile
 
 parseFile :: Parser Ens
 parseFile = do

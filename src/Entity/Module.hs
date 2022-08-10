@@ -2,6 +2,7 @@ module Entity.Module where
 
 import Context.Throw
 import Control.Comonad.Cofree
+import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
@@ -56,21 +57,21 @@ getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
 
-findModuleFile :: Context -> Path Abs Dir -> IO (Path Abs File)
-findModuleFile ctx moduleRootDirCandidate = do
+findModuleFile :: (MonadIO m, Context m) => Path Abs Dir -> m (Path Abs File)
+findModuleFile moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
   moduleFileExists <- doesFileExist moduleFileCandidate
   case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
     (True, _) ->
       return moduleFileCandidate
     (_, True) ->
-      findModuleFile ctx $ parent moduleRootDirCandidate
+      findModuleFile $ parent moduleRootDirCandidate
     _ ->
-      raiseError' ctx "couldn't find a module file."
+      raiseError' "couldn't find a module file."
 
-getCurrentModuleFilePath :: Context -> IO (Path Abs File)
-getCurrentModuleFilePath ctx =
-  getCurrentDir >>= findModuleFile ctx
+getCurrentModuleFilePath :: (MonadIO m, Context m) => m (Path Abs File)
+getCurrentModuleFilePath =
+  getCurrentDir >>= findModuleFile
 
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
 addDependency alias url checksum someModule =

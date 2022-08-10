@@ -22,9 +22,9 @@ instance Binary EnumValueName
 instance Show EnumValueName where
   show v = T.unpack $ DD.reify $ reify v
 
-new :: Throw.Context -> H.Hint -> ET.EnumTypeName -> T.Text -> IO EnumValueName
-new ctx m (ET.EnumTypeName enumTypeName) valueBaseName = do
-  EnumValueName <$> DD.extend ctx m enumTypeName valueBaseName
+new :: Throw.Context m => H.Hint -> ET.EnumTypeName -> T.Text -> m EnumValueName
+new m (ET.EnumTypeName enumTypeName) valueBaseName = do
+  EnumValueName <$> DD.extend m enumTypeName valueBaseName
 
 new' :: ET.EnumTypeName -> LL.LocalLocator -> EnumValueName
 new' (ET.EnumTypeName enumTypeName) valueBaseName = do

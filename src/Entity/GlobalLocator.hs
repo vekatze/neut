@@ -32,9 +32,9 @@ reify gl =
     GlobalLocatorAlias alias ->
       BN.reify $ GLA.reify alias
 
-reflect :: Throw.Context -> H.Hint -> T.Text -> IO GlobalLocator
-reflect ctx m rawTxt = do
-  baseNameList <- BN.bySplit ctx m rawTxt
+reflect :: Throw.Context m => H.Hint -> T.Text -> m GlobalLocator
+reflect m rawTxt = do
+  baseNameList <- BN.bySplit m rawTxt
   case baseNameList of
     [baseName] ->
       return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias baseName)
@@ -42,4 +42,4 @@ reflect ctx m rawTxt = do
       | Just locator <- SL.fromBaseNameList rest ->
         return (GlobalLocator (ModuleAlias prefix) locator)
     _ ->
-      Throw.raiseError ctx m $ "invalid global locator: `" <> rawTxt <> "`"
+      Throw.raiseError m $ "invalid global locator: `" <> rawTxt <> "`"

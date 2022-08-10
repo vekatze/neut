@@ -48,28 +48,28 @@ instance Binary BaseName
 
 instance Hashable BaseName
 
-bySplit :: Throw.Context -> H.Hint -> T.Text -> IO [BaseName]
-bySplit ctx m name = do
+bySplit :: Throw.Context m => H.Hint -> T.Text -> m [BaseName]
+bySplit m name = do
   let cand = map MakeBaseName $ T.split (nsSepChar ==) name
   if empty `notElem` cand
     then return $ map MakeBaseName $ T.split (nsSepChar ==) name
-    else Throw.raiseError ctx m $ "invalid signature: " <> name
+    else Throw.raiseError m $ "invalid signature: " <> name
 
-reflect :: Throw.Context -> H.Hint -> T.Text -> IO BaseName
-reflect ctx m rawTxt = do
+reflect :: Throw.Context m => H.Hint -> T.Text -> m BaseName
+reflect m rawTxt = do
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
       return baseName
     _ ->
-      Throw.raiseError ctx m $ "invalid signature: " <> rawTxt
+      Throw.raiseError m $ "invalid signature: " <> rawTxt
 
-reflect' :: Throw.Context -> T.Text -> IO BaseName
-reflect' ctx rawTxt = do
+reflect' :: Throw.Context m => T.Text -> m BaseName
+reflect' rawTxt = do
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
       return baseName
     _ ->
-      Throw.raiseError' ctx $ "invalid signature: " <> rawTxt
+      Throw.raiseError' $ "invalid signature: " <> rawTxt
 
 empty :: BaseName
 empty =

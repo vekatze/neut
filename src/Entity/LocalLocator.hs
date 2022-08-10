@@ -39,9 +39,9 @@ reify' ss acc =
     S.Section s : rest ->
       reify' rest $ BN.reify s <> nsSep <> acc
 
-reflect :: Throw.Context -> H.Hint -> T.Text -> IO LocalLocator
-reflect ctx m rawTxt = do
-  items <- BN.bySplit ctx m rawTxt
+reflect :: Throw.Context m => H.Hint -> T.Text -> m LocalLocator
+reflect m rawTxt = do
+  items <- BN.bySplit m rawTxt
   case unsnoc items of
     Just (ss, base) ->
       return $
@@ -52,7 +52,7 @@ reflect ctx m rawTxt = do
     Nothing ->
       -- every result of `T.split` is known to be non-empty, but unfortunately
       -- the fact is not represented in its cod type.
-      Throw.raiseError ctx m $ "invalid local locator: `" <> rawTxt <> "`"
+      Throw.raiseError m $ "invalid local locator: `" <> rawTxt <> "`"
 
 new :: [S.Section] -> BN.BaseName -> LocalLocator
 new ss base =

@@ -6,6 +6,8 @@ where
 
 import Context.Throw
 import Control.Monad
+import Control.Monad.Catch
+import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
@@ -23,15 +25,15 @@ import Entity.Target
 import Path
 import Path.IO
 
-fromFilePath :: Context -> MID.ModuleID -> Path Abs File -> IO Module
-fromFilePath ctx moduleID moduleFilePath = do
-  entity <- Ens.fromFilePath ctx moduleFilePath
-  (_, entryPointEns) <- access ctx "target" entity >>= toDictionary ctx
-  dependencyEns <- access ctx "dependency" entity >>= toDictionary ctx
-  extraContentsEns <- access ctx "extra-content" entity >>= toList ctx
-  target <- mapM (interpretRelFilePath ctx moduleID) entryPointEns
-  dependency <- interpretDependencyDict ctx dependencyEns
-  extraContents <- mapM (interpretExtraPath ctx $ parent moduleFilePath) extraContentsEns
+fromFilePath :: (MonadIO m, MonadThrow m, Context m) => MID.ModuleID -> Path Abs File -> m Module
+fromFilePath moduleID moduleFilePath = do
+  entity <- Ens.fromFilePath moduleFilePath
+  (_, entryPointEns) <- access "target" entity >>= toDictionary
+  dependencyEns <- access "dependency" entity >>= toDictionary
+  extraContentsEns <- access "extra-content" entity >>= toList
+  target <- mapM (interpretRelFilePath moduleID) entryPointEns
+  dependency <- interpretDependencyDict dependencyEns
+  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
   return
     Module
       { moduleTarget = Map.mapKeys Target target,
@@ -40,13 +42,13 @@ fromFilePath ctx moduleID moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
-fromCurrentPath :: Context -> IO Module
-fromCurrentPath ctx =
-  getCurrentModuleFilePath ctx >>= fromFilePath ctx MID.Main
+fromCurrentPath :: (MonadIO m, MonadThrow m, Context m) => m Module
+fromCurrentPath =
+  getCurrentModuleFilePath >>= fromFilePath MID.Main
 
-interpretRelFilePath :: Context -> MID.ModuleID -> Ens -> IO SGL.StrictGlobalLocator
-interpretRelFilePath ctx moduleID ens = do
-  (m, pathString) <- toString ctx ens
+interpretRelFilePath :: Context m => MID.ModuleID -> Ens -> m SGL.StrictGlobalLocator
+interpretRelFilePath moduleID ens = do
+  (m, pathString) <- toString ens
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return
@@ -55,43 +57,43 @@ interpretRelFilePath ctx moduleID ens = do
             SGL.sourceLocator = SL.SourceLocator relPath
           }
     Nothing ->
-      raiseError ctx m $ "invalid file path: " <> pathString
+      raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  Context ->
+  (MonadThrow m, Context m) =>
   (H.Hint, Map.HashMap T.Text Ens) ->
-  IO (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
-interpretDependencyDict ctx (m, dep) = do
+  m (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
+interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
-    k' <- BN.reflect ctx m k
-    (_, url) <- access ctx "URL" ens >>= toString ctx
-    (_, checksum) <- access ctx "checksum" ens >>= toString ctx
+    k' <- BN.reflect m k
+    (_, url) <- access "URL" ens >>= toString
+    (_, checksum) <- access "checksum" ens >>= toString
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
   return $ Map.fromList items
 
-interpretExtraPath :: Context -> Path Abs Dir -> Ens -> IO SomePath
-interpretExtraPath ctx moduleRootDir entity = do
-  (m, itemPathText) <- toString ctx entity
+interpretExtraPath :: (MonadIO m, MonadThrow m, Context m) => Path Abs Dir -> Ens -> m SomePath
+interpretExtraPath moduleRootDir entity = do
+  (m, itemPathText) <- toString entity
   if T.last itemPathText == '/'
     then do
       dirPath <- resolveDir moduleRootDir $ T.unpack itemPathText
-      ensureExistence ctx m moduleRootDir dirPath doesDirExist "directory"
+      ensureExistence m moduleRootDir dirPath doesDirExist "directory"
       return $ Left dirPath
     else do
       filePath <- resolveFile moduleRootDir $ T.unpack itemPathText
-      ensureExistence ctx m moduleRootDir filePath doesFileExist "file"
+      ensureExistence m moduleRootDir filePath doesFileExist "file"
       return $ Right filePath
 
 ensureExistence ::
-  Context ->
+  (MonadThrow m, Context m) =>
   H.Hint ->
   Path Abs Dir ->
   Path Abs t ->
-  (Path Abs t -> IO Bool) ->
+  (Path Abs t -> m Bool) ->
   T.Text ->
-  IO ()
-ensureExistence ctx m moduleRootDir path existenceChecker kindText = do
+  m ()
+ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker path
   unless b $ do
     relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
-    raiseError ctx m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
+    raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)

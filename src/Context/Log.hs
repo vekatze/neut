@@ -1,6 +1,5 @@
 module Context.Log
   ( Context (..),
-    Config (..),
     printNote,
     printNote',
     printWarning,
@@ -21,67 +20,66 @@ import qualified Entity.FilePos as FilePos
 import Entity.Hint
 import Entity.Log
 
-data Config = Config
-  { shouldColorize :: Bool,
-    endOfEntry :: String
-  }
+-- data Config = Config
+--   { shouldColorize :: Bool,
+--     endOfEntry :: String
+--   }
 
-newtype Context = Context
-  { printLog :: Log -> IO ()
-  }
+class Monad m => Context m where
+  printLog :: Log -> m ()
 
-printNote :: Context -> Hint -> T.Text -> IO ()
+printNote :: Context m => Hint -> T.Text -> m ()
 printNote =
   printLogWithFilePos LogLevelNote
 
-printNote' :: Context -> T.Text -> IO ()
+printNote' :: Context m => T.Text -> m ()
 printNote' =
   printLogWithoutFilePos LogLevelNote
 
-printWarning :: Context -> Hint -> T.Text -> IO ()
+printWarning :: Context m => Hint -> T.Text -> m ()
 printWarning =
   printLogWithFilePos LogLevelWarning
 
-printWarning' :: Context -> T.Text -> IO ()
+printWarning' :: Context m => T.Text -> m ()
 printWarning' =
   printLogWithoutFilePos LogLevelWarning
 
-printError :: Context -> Hint -> T.Text -> IO ()
+printError :: Context m => Hint -> T.Text -> m ()
 printError =
   printLogWithFilePos LogLevelError
 
-printError' :: Context -> T.Text -> IO ()
+printError' :: Context m => T.Text -> m ()
 printError' =
   printLogWithoutFilePos LogLevelError
 
-printCritical :: Context -> Hint -> T.Text -> IO ()
+printCritical :: Context m => Hint -> T.Text -> m ()
 printCritical =
   printLogWithFilePos LogLevelCritical
 
-printCritical' :: Context -> T.Text -> IO ()
+printCritical' :: Context m => T.Text -> m ()
 printCritical' =
   printLogWithoutFilePos LogLevelCritical
 
-printPass :: Context -> Hint -> T.Text -> IO ()
+printPass :: Context m => Hint -> T.Text -> m ()
 printPass =
   printLogWithFilePos LogLevelPass
 
-printPass' :: Context -> T.Text -> IO ()
+printPass' :: Context m => T.Text -> m ()
 printPass' =
   printLogWithoutFilePos LogLevelPass
 
-printFail :: Context -> Hint -> T.Text -> IO ()
+printFail :: Context m => Hint -> T.Text -> m ()
 printFail =
   printLogWithFilePos LogLevelFail
 
-printFail' :: Context -> T.Text -> IO ()
+printFail' :: Context m => T.Text -> m ()
 printFail' =
   printLogWithoutFilePos LogLevelFail
 
-printLogWithFilePos :: LogLevel -> Context -> Hint -> T.Text -> IO ()
-printLogWithFilePos level logCtx m txt = do
-  printLog logCtx (Just (FilePos.fromHint m), level, txt)
+printLogWithFilePos :: Context m => LogLevel -> Hint -> T.Text -> m ()
+printLogWithFilePos level m txt = do
+  printLog (Just (FilePos.fromHint m), level, txt)
 
-printLogWithoutFilePos :: LogLevel -> Context -> T.Text -> IO ()
-printLogWithoutFilePos level logCtx txt =
-  printLog logCtx (Nothing, level, txt)
+printLogWithoutFilePos :: Context m => LogLevel -> T.Text -> m ()
+printLogWithoutFilePos level txt =
+  printLog (Nothing, level, txt)

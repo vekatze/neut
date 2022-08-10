@@ -1,9 +1,9 @@
 module Context.Definition
   ( Context (..),
-    Config (..),
   )
 where
 
+import qualified Data.HashMap.Strict as Map
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import Entity.Hint
@@ -11,13 +11,14 @@ import Entity.Opacity
 import Entity.WeakTerm
 import Prelude hiding (lookup, read)
 
-data Context = forall defMap.
-  Context
-  { insert :: Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> WeakTerm -> IO (),
-    read :: IO defMap,
-    lookup :: DD.DefiniteDescription -> defMap -> Maybe WeakTerm
-  }
+type DefMap =
+  Map.HashMap DD.DefiniteDescription WeakTerm
 
-data Config = Config
-  {
-  }
+class Monad m => Context m where
+  insert :: Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> WeakTerm -> m ()
+  read :: m DefMap
+  lookup :: m (DD.DefiniteDescription -> DefMap -> Maybe WeakTerm)
+
+-- data Config = Config
+--   {
+--   }

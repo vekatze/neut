@@ -1,6 +1,5 @@
 module Context.CompDefinition
   ( Context (..),
-    Config (..),
     DefKey,
     DefValue,
     DefMap,
@@ -20,14 +19,13 @@ type DefValue = (Opacity, [Ident], Comp)
 
 type DefMap = Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)
 
-data Context = Context
-  { insert :: DefKey -> DefValue -> IO (),
-    union :: DefMap -> IO (),
-    lookup :: DefKey -> IO (Maybe DefValue)
-  }
+class Monad m => Context m where
+  insert :: DefKey -> DefValue -> m ()
+  union :: DefMap -> m ()
+  lookup :: DefKey -> m (Maybe DefValue)
 
-data Config = Config
-  {
-  }
+-- data Config = Config
+--   {
+--   }
 
 -- compDefEnvRef :: IORef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp))
