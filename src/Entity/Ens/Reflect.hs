@@ -2,7 +2,7 @@ module Entity.Ens.Reflect (fromFilePath) where
 
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
-import Control.Monad.IO.Class
+import Control.Monad.Trans
 import qualified Data.HashMap.Strict as M
 import qualified Data.Text as T
 import Entity.Ens
@@ -10,27 +10,27 @@ import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
 
-fromFilePath :: (MonadIO m, Throw.Context m) => Path Abs File -> m Ens
+fromFilePath :: (Throw.Context m, Context m) => Path Abs File -> m Ens
 fromFilePath =
   run parseFile
 
-parseFile :: Parser Ens
+parseFile :: Context m => Parser m Ens
 parseFile = do
-  m <- currentHint
+  m <- lift getCurrentHint
   keyValuePairList <- many parseKeyValuePair
   eof
   return $ m :< EnsDictionary (M.fromList keyValuePairList)
 
-parseKeyValuePair :: Parser (T.Text, Ens)
+parseKeyValuePair :: Context m => Parser m (T.Text, Ens)
 parseKeyValuePair = do
   k <- symbol
   keyword "="
   v <- parseEns
   return (k, v)
 
-parseEns :: Parser Ens
+parseEns :: Context m => Parser m Ens
 parseEns = do
-  m <- currentHint
+  m <- lift getCurrentHint
   v <- do
     choice
       [ EnsDictionary <$> parseDictionary,
@@ -42,12 +42,12 @@ parseEns = do
       ]
   return $ m :< v
 
-parseDictionary :: Parser (M.HashMap T.Text Ens)
+parseDictionary :: Context m => Parser m (M.HashMap T.Text Ens)
 parseDictionary = do
   keyword "{"
   M.fromList <$> manyTill parseKeyValuePair (keyword "}")
 
-parseList :: Parser [Ens]
+parseList :: Context m => Parser m [Ens]
 parseList = do
   keyword "["
   vs <- many parseEns

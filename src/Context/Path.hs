@@ -5,7 +5,14 @@ import Path
 
 class Throw.Context m => Context m where
   getLibraryDirPath :: m (Path Abs Dir)
+  getCurrentDir :: m (Path Abs Dir)
   ensureNotInLibDir :: m ()
+  resolveDir :: Path Abs Dir -> FilePath -> m (Path Abs Dir)
+  resolveFile :: Path Abs Dir -> FilePath -> m (Path Abs File)
+  doesDirExist :: Path Abs Dir -> m Bool
+  doesFileExist :: Path Abs File -> m Bool
+  ensureDir :: Path Abs Dir -> m ()
+  stripPrefix :: Path b Dir -> Path b t -> m (Path Rel t)
 
 -- newtype Config = Config
 --   { throwCtx :: Throw.Context

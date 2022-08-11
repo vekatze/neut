@@ -4,10 +4,9 @@ module Entity.Module.Reflect
   )
 where
 
+import qualified Context.Path as Path
 import Context.Throw
 import Control.Monad
-import Control.Monad.Catch
-import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
@@ -23,9 +22,9 @@ import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
 import Path
-import Path.IO
+import qualified Scene.Parse.Core as Parse
 
-fromFilePath :: (MonadIO m, MonadThrow m, Context m) => MID.ModuleID -> Path Abs File -> m Module
+fromFilePath :: (Parse.Context m, Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module
 fromFilePath moduleID moduleFilePath = do
   entity <- Ens.fromFilePath moduleFilePath
   (_, entryPointEns) <- access "target" entity >>= toDictionary
@@ -42,7 +41,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
-fromCurrentPath :: (MonadIO m, MonadThrow m, Context m) => m Module
+fromCurrentPath :: (Parse.Context m, Context m) => m Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
@@ -60,7 +59,7 @@ interpretRelFilePath moduleID ens = do
       raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  (MonadThrow m, Context m) =>
+  (Context m) =>
   (H.Hint, Map.HashMap T.Text Ens) ->
   m (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
 interpretDependencyDict (m, dep) = do
@@ -71,21 +70,21 @@ interpretDependencyDict (m, dep) = do
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
   return $ Map.fromList items
 
-interpretExtraPath :: (MonadIO m, MonadThrow m, Context m) => Path Abs Dir -> Ens -> m SomePath
+interpretExtraPath :: (Parse.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- toString entity
   if T.last itemPathText == '/'
     then do
-      dirPath <- resolveDir moduleRootDir $ T.unpack itemPathText
-      ensureExistence m moduleRootDir dirPath doesDirExist "directory"
+      dirPath <- Path.resolveDir moduleRootDir $ T.unpack itemPathText
+      ensureExistence m moduleRootDir dirPath Path.doesDirExist "directory"
       return $ Left dirPath
     else do
-      filePath <- resolveFile moduleRootDir $ T.unpack itemPathText
-      ensureExistence m moduleRootDir filePath doesFileExist "file"
+      filePath <- Path.resolveFile moduleRootDir $ T.unpack itemPathText
+      ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
 
 ensureExistence ::
-  (MonadThrow m, Context m) =>
+  (Context m, Path.Context m) =>
   H.Hint ->
   Path Abs Dir ->
   Path Abs t ->
@@ -95,5 +94,5 @@ ensureExistence ::
 ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker path
   unless b $ do
-    relPathFromModuleRoot <- stripProperPrefix moduleRootDir path
+    relPathFromModuleRoot <- Path.stripPrefix moduleRootDir path
     raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
