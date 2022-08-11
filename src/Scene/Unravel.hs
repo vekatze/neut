@@ -3,16 +3,13 @@ module Scene.Unravel
   )
 where
 
-import qualified Context.Alias as Alias
-import qualified Context.Locator as Locator
-import qualified Context.Mode as Mode
+import qualified Context.Env as Env
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Foldable
 import qualified Data.HashMap.Strict as Map
-import Data.IORef
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -21,20 +18,15 @@ import Data.Sequence as Seq
   )
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Entity.AliasInfo
+import Data.Time
 import Entity.Hint
 import Entity.Module
 import Entity.OutputKind
-import Entity.Source
-import Entity.Stmt
+import qualified Entity.Source as Source
+import Entity.VisitInfo
 import Path
-import Path.IO
-import Scene.Parse.Core
+import qualified Scene.Parse.Core as ParseCore
 import qualified Scene.Parse.Import as Parse
-
-data VisitInfo
-  = VisitInfoActive
-  | VisitInfoFinish
 
 type IsCacheAvailable =
   Bool
@@ -42,123 +34,149 @@ type IsCacheAvailable =
 type IsObjectAvailable =
   Bool
 
-data Context = Context
-  { asThrowCtx :: Throw.Context,
-    asPathCtx :: Path.Context,
-    asModuleCtx :: Module.Context,
-    traceSourceListRef :: IORef [Source],
-    visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
-    sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source]),
-    hasCacheSetRef :: IORef PathSet,
-    hasObjectSetRef :: IORef PathSet,
-    sourceAliasMapRef :: IORef SourceAliasMap,
-    getMainModule :: Module,
-    getMode :: Mode.Mode
-  }
+-- data Context = Context
+--   { asThrowCtx :: Throw.Context,
+--     asPathCtx :: Path.Context,
+--     asModuleCtx :: Module.Context,
+--     traceSourceListRef :: IORef [Source.Source],
+--     visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo),
+--     sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source.Source]),
+--     hasCacheSetRef :: IORef PathSet,
+--     hasObjectSetRef :: IORef PathSet,
+--     sourceAliasMapRef :: IORef Source.SourceAliasMap,
+--     getMainModule :: Module,
+--     getMode :: Mode.Mode
+--   }
+
+class
+  ( Throw.Context m,
+    Path.Context m,
+    Module.Context m,
+    Env.Context m,
+    Source.Context m,
+    Parse.Context m
+  ) =>
+  Context m
+  where
+  initialize :: Module -> m ()
+  doesFileExist :: Path Abs File -> m Bool
+  getModificationTime :: Path Abs File -> m UTCTime
+
+-- traceSourceListRef :: IORef [Source.Source]
+-- visitEnvRef :: IORef (Map.HashMap (Path Abs File) VisitInfo)
+-- sourceChildrenMapRef :: IORef (Map.HashMap (Path Abs File) [Source.Source])
+-- hasObjectSetRef :: IORef PathSet
+-- getMainModule :: Module
+
+-- hasCacheSetRef :: IORef PathSet
+-- sourceAliasMapRef :: IORef SourceAliasMap
 
 unravel ::
-  Mode.Mode ->
-  Throw.Context ->
-  Path.Context ->
-  Module.Context ->
+  Context m =>
   Module ->
-  Source ->
-  IO (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source)
-unravel mode throwCtx pathCtx moduleCtx mainModule source = do
-  ctx <- newCtx mode throwCtx pathCtx moduleCtx mainModule
-  (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' ctx source
-  sourceAliasMap <- readIORef $ sourceAliasMapRef ctx
-  hasCacheSet <- readIORef $ hasCacheSetRef ctx
-  hasObjectSet <- readIORef $ hasObjectSetRef ctx
-  return (isCacheAvailable, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, sourceSeq)
+  Source.Source ->
+  m (IsCacheAvailable, IsObjectAvailable, Seq Source.Source)
+-- m (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source.Source)
+unravel mainModule source = do
+  initialize mainModule
+  unravel' source
 
-newCtx :: Mode.Mode -> Throw.Context -> Path.Context -> Module.Context -> Module -> IO Context
-newCtx mode throwCtx pathCtx moduleCtx mainModule = do
-  _traceSourceListRef <- newIORef []
-  _visitEnvRef <- newIORef Map.empty
-  _sourceChildrenMapRef <- newIORef Map.empty
-  _sourceAliasMapRef <- newIORef Map.empty
-  _hasCacheSetRef <- newIORef S.empty
-  _hasObjectSetRef <- newIORef S.empty
-  return $
-    Context
-      { asThrowCtx = throwCtx,
-        asModuleCtx = moduleCtx,
-        asPathCtx = pathCtx,
-        traceSourceListRef = _traceSourceListRef,
-        visitEnvRef = _visitEnvRef,
-        sourceChildrenMapRef = _sourceChildrenMapRef,
-        hasCacheSetRef = _hasCacheSetRef,
-        hasObjectSetRef = _hasObjectSetRef,
-        sourceAliasMapRef = _sourceAliasMapRef,
-        getMainModule = mainModule,
-        getMode = mode
-      }
+-- <- newCtx mode throwCtx pathCtx moduleCtx mainModule
+-- (isCacheAvailable, isObjectAvailable, sourceSeq) <- unravel' source
+-- sourceAliasMap <- readIORef $ sourceAliasMapRef
+-- hasCacheSet <- readIORef $ hasCacheSetRef
+-- hasObjectSet <- readIORef $ hasObjectSetRef
+-- return (isCacheAvailable, isObjectAvailable, hasCacheSet, hasObjectSet, sourceAliasMap, sourceSeq)
 
-unravel' :: Context -> Source -> IO (IsCacheAvailable, IsObjectAvailable, Seq Source)
-unravel' ctx source = do
-  visitEnv <- readIORef $ visitEnvRef ctx
-  let path = sourceFilePath source
+-- newCtx :: Throw.Context m => Path.Context m => Module.Context m => Module -> IO Context
+-- newCtx mode throwCtx pathCtx moduleCtx mainModule = do
+--   _traceSourceListRef <- newIORef []
+--   _visitEnvRef <- newIORef Map.empty
+--   _sourceChildrenMapRef <- newIORef Map.empty
+--   _sourceAliasMapRef <- newIORef Map.empty
+--   _hasCacheSetRef <- newIORef S.empty
+--   _hasObjectSetRef <- newIORef S.empty
+--   return $
+--     Context
+--       { asThrowCtx = throwCtx,
+--         asModuleCtx = moduleCtx,
+--         asPathCtx = pathCtx,
+--         traceSourceListRef = _traceSourceListRef,
+--         visitEnvRef = _visitEnvRef,
+--         sourceChildrenMapRef = _sourceChildrenMapRef,
+--         hasCacheSetRef = _hasCacheSetRef,
+--         hasObjectSetRef = _hasObjectSetRef,
+--         sourceAliasMapRef = _sourceAliasMapRef,
+--         getMainModule = mainModule,
+--         getMode = mode
+--       }
+
+unravel' :: Context m => Source.Source -> m (IsCacheAvailable, IsObjectAvailable, Seq Source.Source)
+unravel' source = do
+  visitEnv <- Env.getVisitEnv
+  let path = Source.sourceFilePath source
   case Map.lookup path visitEnv of
     Just VisitInfoActive ->
-      raiseCyclicPath ctx source
+      raiseCyclicPath source
     Just VisitInfoFinish -> do
-      hasCacheSet <- readIORef $ hasCacheSetRef ctx
-      hasObjectSet <- readIORef $ hasObjectSetRef ctx
+      hasCacheSet <- Env.getHasCacheSet
+      hasObjectSet <- Env.getHasObjectSet
       return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
-      modifyIORef' (visitEnvRef ctx) $ Map.insert path VisitInfoActive
-      modifyIORef' (traceSourceListRef ctx) $ \sourceList -> source : sourceList
-      children <- getChildren ctx source
-      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM (unravel' ctx) children
-      modifyIORef' (traceSourceListRef ctx) tail
-      modifyIORef' (visitEnvRef ctx) $ Map.insert path VisitInfoFinish
-      isCacheAvailable <- checkIfCacheIsAvailable ctx isCacheAvailableList source
-      isObjectAvailable <- checkIfObjectIsAvailable ctx isObjectAvailableList source
+      Env.insertToVisitEnv path VisitInfoActive
+      Env.pushToTraceSourceList source
+      children <- getChildren source
+      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM unravel' children
+      _ <- Env.popFromTraceSourceList
+      Env.insertToVisitEnv path VisitInfoFinish
+      isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
+      isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
       return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
 
-checkIfCacheIsAvailable :: Context -> [IsCacheAvailable] -> Source -> IO IsCacheAvailable
-checkIfCacheIsAvailable ctx isCacheAvailableList source = do
+checkIfCacheIsAvailable :: Context m => [IsCacheAvailable] -> Source.Source -> m IsCacheAvailable
+checkIfCacheIsAvailable isCacheAvailableList source = do
   b <- isFreshCacheAvailable source
   let isCacheAvailable = and $ b : isCacheAvailableList
   when isCacheAvailable $
-    modifyIORef' (hasCacheSetRef ctx) $ S.insert $ sourceFilePath source
+    Env.insertToHasObjectSet $ Source.sourceFilePath source
+  -- modifyIORef' (hasCacheSetRef) $ S.insert $ sourceFilePath source
   return isCacheAvailable
 
-checkIfObjectIsAvailable :: Context -> [IsObjectAvailable] -> Source -> IO IsObjectAvailable
-checkIfObjectIsAvailable ctx isObjectAvailableList source = do
+checkIfObjectIsAvailable :: Context m => [IsObjectAvailable] -> Source.Source -> m IsObjectAvailable
+checkIfObjectIsAvailable isObjectAvailableList source = do
   b <- isFreshObjectAvailable source
   let isObjectAvailable = and $ b : isObjectAvailableList
   when isObjectAvailable $
-    modifyIORef' (hasObjectSetRef ctx) $ S.insert $ sourceFilePath source
+    Env.insertToHasObjectSet $ Source.sourceFilePath source
+  -- modifyIORef' (hasObjectSetRef) $ S.insert $ sourceFilePath source
   return isObjectAvailable
 
-isFreshCacheAvailable :: Source -> IO Bool
+isFreshCacheAvailable :: Context m => Source.Source -> m Bool
 isFreshCacheAvailable source = do
-  cachePath <- getSourceCachePath source
+  cachePath <- Source.getSourceCachePath source
   isItemAvailable source cachePath
 
-isFreshObjectAvailable :: Source -> IO Bool
+isFreshObjectAvailable :: Context m => Source.Source -> m Bool
 isFreshObjectAvailable source = do
-  objectPath <- sourceToOutputPath OutputKindObject source
+  objectPath <- Source.sourceToOutputPath OutputKindObject source
   isItemAvailable source objectPath
 
-isItemAvailable :: Source -> Path Abs File -> IO Bool
+isItemAvailable :: Context m => Source.Source -> Path Abs File -> m Bool
 isItemAvailable source itemPath = do
   existsItem <- doesFileExist itemPath
   if not existsItem
     then return False
     else do
-      srcModTime <- getModificationTime $ sourceFilePath source
+      srcModTime <- getModificationTime $ Source.sourceFilePath source
       itemModTime <- getModificationTime itemPath
       return $ itemModTime > srcModTime
 
-raiseCyclicPath :: Context -> Source -> IO a
-raiseCyclicPath ctx source = do
-  traceSourceList <- readIORef $ traceSourceListRef ctx
-  let m = Entity.Hint.new 1 1 $ toFilePath $ sourceFilePath source
-  let cyclicPathList = map sourceFilePath $ reverse $ source : traceSourceList
-  Throw.raiseError (asThrowCtx ctx) m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+raiseCyclicPath :: Context m => Source.Source -> m a
+raiseCyclicPath source = do
+  traceSourceList <- Env.getTraceSourceList
+  let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
+  let cyclicPathList = map Source.sourceFilePath $ reverse $ source : traceSourceList
+  Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
 showCyclicPath pathList =
@@ -180,43 +198,42 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
-getChildren :: Context -> Source -> IO [Source]
-getChildren ctx currentSource = do
-  sourceChildrenMap <- readIORef $ sourceChildrenMapRef ctx
-  let currentSourceFilePath = sourceFilePath currentSource
+getChildren :: Context m => Source.Source -> m [Source.Source]
+getChildren currentSource = do
+  sourceChildrenMap <- Env.getSourceChildrenMap
+  let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
     Just sourceList ->
       return sourceList
     Nothing -> do
-      let path = sourceFilePath currentSource
-      parseCtx <- newParseContext ctx currentSource
-      (sourceList, aliasInfoList) <- run (asThrowCtx ctx) (Parse.parseImportSequence parseCtx) path
-      modifyIORef' (sourceChildrenMapRef ctx) $ Map.insert currentSourceFilePath sourceList
-      modifyIORef' (sourceAliasMapRef ctx) $ Map.insert currentSourceFilePath aliasInfoList
+      let path = Source.sourceFilePath currentSource
+      (sourceList, aliasInfoList) <- ParseCore.run Parse.parseImportSequence path
+      Env.insertToSourceChildrenMap currentSourceFilePath sourceList
+      Env.insertToSourceAliasMap currentSourceFilePath aliasInfoList
       return sourceList
 
-newParseContext :: Context -> Source -> IO Parse.Context
-newParseContext ctx source = do
-  locatorCtx <-
-    Mode.locatorCtx (getMode ctx) $
-      Locator.Config
-        { Locator.mainModule = getMainModule ctx,
-          Locator.throwCtx = asThrowCtx ctx,
-          Locator.currentSource = source,
-          Locator.pathCtx = asPathCtx ctx,
-          Locator.moduleCtx = asModuleCtx ctx
-        }
-  aliasCtx <-
-    Mode.aliasCtx (getMode ctx) $
-      Alias.Config
-        { Alias.currentModule = sourceModule source,
-          Alias.mainModule = getMainModule ctx,
-          Alias.throwCtx = asThrowCtx ctx,
-          Alias.locatorCtx = locatorCtx
-        }
-  return $
-    Parse.Context
-      { Parse.throw = asThrowCtx ctx,
-        Parse.moduleCtx = asModuleCtx ctx,
-        Parse.alias = aliasCtx
-      }
+-- newParseContext :: Context m => Source.Source -> IO Parse.Context
+-- newParseContext source = do
+--   locatorCtx <-
+--     Mode.locatorCtx (getMode) $
+--       Locator.Config
+--         { Locator.mainModule = getMainModule,
+--           Locator.throwCtx = asThrowCtx,
+--           Locator.currentSource = source,
+--           Locator.pathCtx = asPathCtx,
+--           Locator.moduleCtx = asModuleCtx
+--         }
+--   aliasCtx <-
+--     Mode.aliasCtx (getMode) $
+--       Alias.Config
+--         { Alias.currentModule = sourceModule source,
+--           Alias.mainModule = getMainModule,
+--           Alias.throwCtx = asThrowCtx,
+--           Alias.locatorCtx = locatorCtx
+--         }
+--   return $
+--     Parse.Context
+--       { Parse.throw = asThrowCtx,
+--         Parse.moduleCtx = asModuleCtx,
+--         Parse.alias = aliasCtx
+--       }
