@@ -3,7 +3,7 @@ module Scene.Emit
   )
 where
 
-import qualified Context.App as App
+import qualified Context.Env as Env
 import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Monad
@@ -33,47 +33,57 @@ import qualified Entity.TargetPlatform as TP
 import Numeric.Half
 import qualified System.Info as System
 
-data Context = Context
-  { base :: App.Context,
-    nopFreeSet :: S.Set Int
-  }
+class
+  ( Gensym.Context m,
+    Throw.Context m,
+    Env.Context m,
+    LowComp.Context m
+  ) =>
+  Context m
 
-specialize :: App.Context -> S.Set Int -> Context
-specialize ctx is =
-  Context
-    { base = ctx,
-      nopFreeSet = is
-    }
+-- data Context = Context
+--   { base :: Context,
+--     nopFreeSet :: S.Set Int
+--   }
 
-emit :: App.Context -> (DN.DeclEnv, [LowDef], Maybe LowComp) -> IO L.ByteString
-emit ctx (declEnv, defList, mMainTerm) = do
+-- specialize :: Context m => S.Set Int -> Context
+-- specialize is =
+--   Context
+--     { base =,
+--       nopFreeSet = is
+--     }
+
+emit :: Context m => (DN.DeclEnv, [LowDef], Maybe LowComp) -> m L.ByteString
+emit (declEnv, defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
       let declStrList = emitDeclarations declEnv
-      mainStrList <- emitMain ctx mainTerm
-      defStrList <- concat <$> mapM (emitDefinitions ctx) defList
+      mainStrList <- emitMain mainTerm
+      defStrList <- concat <$> mapM emitDefinitions defList
       return $ L.toLazyByteString $ unlinesL $ declStrList <> mainStrList <> defStrList
     Nothing -> do
       let declStrList = emitDeclarations declEnv
-      defStrList <- concat <$> mapM (emitDefinitions ctx) defList
+      defStrList <- concat <$> mapM emitDefinitions defList
       return $ L.toLazyByteString $ unlinesL $ declStrList <> defStrList
 
 emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
   map declToBuilder $ List.sort $ HashMap.toList declEnv
 
-emitDefinitions :: App.Context -> LowDef -> IO [Builder]
-emitDefinitions ctx (name, (args, body)) = do
+emitDefinitions :: Context m => LowDef -> m [Builder]
+emitDefinitions (name, (args, body)) = do
   let args' = map (showLowValue . LowValueVarLocal) args
-  (is, body') <- LowComp.reduce ctx IntMap.empty Map.empty body
-  let ctx' = specialize ctx is
-  emitDefinition ctx' "i8*" (DD.toBuilder name) args' body'
+  (is, body') <- LowComp.reduce IntMap.empty Map.empty body
+  Env.setNopFreeSet is
+  -- let ctx' = specialize is
+  emitDefinition "i8*" (DD.toBuilder name) args' body'
 
-emitMain :: App.Context -> LowComp -> IO [Builder]
-emitMain ctx mainTerm = do
-  (is, mainTerm') <- LowComp.reduce ctx IntMap.empty Map.empty mainTerm
-  let ctx' = specialize ctx is
-  emitDefinition ctx' "i64" "main" [] mainTerm'
+emitMain :: Context m => LowComp -> m [Builder]
+emitMain mainTerm = do
+  (is, mainTerm') <- LowComp.reduce IntMap.empty Map.empty mainTerm
+  Env.setNopFreeSet is
+  -- let ctx' = specialize is
+  emitDefinition "i64" "main" [] mainTerm'
 
 declToBuilder :: (DN.DeclarationName, ([LowType], LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
@@ -86,10 +96,10 @@ declToBuilder (name, (dom, cod)) = do
     <> showItems showLowType dom
     <> ")"
 
-emitDefinition :: Context -> Builder -> Builder -> [Builder] -> LowComp -> IO [Builder]
-emitDefinition ctx retType name args asm = do
+emitDefinition :: Context m => Builder -> Builder -> [Builder] -> LowComp -> m [Builder]
+emitDefinition retType name args asm = do
   let header = sig retType name args <> " {"
-  content <- emitLowComp ctx retType asm
+  content <- emitLowComp retType asm
   let footer = "}"
   return $ [header] <> content <> [footer]
 
@@ -97,18 +107,18 @@ sig :: Builder -> Builder -> [Builder] -> Builder
 sig retType name args =
   "define fastcc " <> retType <> " @" <> name <> showLocals args
 
-emitBlock :: Context -> Builder -> Ident -> LowComp -> IO [Builder]
-emitBlock ctx funName (I (_, i)) asm = do
-  a <- emitLowComp ctx funName asm
+emitBlock :: Context m => Builder -> Ident -> LowComp -> m [Builder]
+emitBlock funName (I (_, i)) asm = do
+  a <- emitLowComp funName asm
   return $ emitLabel ("_" <> intDec i) : a
 
-emitLowComp :: Context -> Builder -> LowComp -> IO [Builder]
-emitLowComp ctx retType lowComp =
+emitLowComp :: Context m => Builder -> LowComp -> m [Builder]
+emitLowComp retType lowComp =
   case lowComp of
     LowCompReturn d ->
       emitRet retType d
     LowCompCall f args -> do
-      tmp <- Gensym.newIdentFromText (App.gensym (base ctx)) "tmp"
+      tmp <- Gensym.newIdentFromText "tmp"
       op <-
         emitOp $
           unwordsL
@@ -120,8 +130,8 @@ emitLowComp ctx retType lowComp =
       a <- emitRet retType (LowValueVarLocal tmp)
       return $ op <> a
     LowCompSwitch (d, lowType) defaultBranch branchList -> do
-      defaultLabel <- Gensym.newIdentFromText (App.gensym (base ctx)) "default"
-      labelList <- constructLabelList (App.gensym (base ctx)) branchList
+      defaultLabel <- Gensym.newIdentFromText "default"
+      labelList <- constructLabelList branchList
       op <-
         emitOp $
           unwordsL
@@ -135,23 +145,23 @@ emitLowComp ctx retType lowComp =
       let asmList = map snd branchList
       xs <-
         forM (zip labelList asmList <> [(defaultLabel, defaultBranch)]) $
-          uncurry (emitBlock ctx retType)
+          uncurry (emitBlock retType)
       return $ op <> concat xs
     LowCompCont op cont -> do
-      s <- emitLowOp ctx op
+      s <- emitLowOp op
       str <- emitOp s
-      a <- emitLowComp ctx retType cont
+      a <- emitLowComp retType cont
       return $ str <> a
     LowCompLet x op cont -> do
-      s <- emitLowOp ctx op
+      s <- emitLowOp op
       str <- emitOp $ showLowValue (LowValueVarLocal x) <> " = " <> s
-      a <- emitLowComp ctx retType cont
+      a <- emitLowComp retType cont
       return $ str <> a
     LowCompUnreachable ->
       emitOp $ unwordsL ["unreachable"]
 
-emitLowOp :: Context -> LowOp -> IO Builder
-emitLowOp ctx lowOp =
+emitLowOp :: Context m => LowOp -> m Builder
+emitLowOp lowOp =
   case lowOp of
     LowOpCall d ds ->
       return $ unwordsL ["call fastcc i8*", showLowValue d <> showArgs ds]
@@ -190,11 +200,12 @@ emitLowOp ctx lowOp =
     LowOpAlloc d _ ->
       return $ unwordsL ["call fastcc", "i8*", "@malloc(i8* " <> showLowValue d <> ")"]
     LowOpFree d _ j -> do
-      if S.member j $ nopFreeSet ctx
+      nopFreeSet <- Env.getNopFreeSet
+      if S.member j nopFreeSet
         then return "bitcast i8* null to i8*" -- nop
         else return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> showLowValue d <> ")"]
     LowOpSyscall num ds ->
-      emitSyscallOp ctx num ds
+      emitSyscallOp num ds
     LowOpPrimOp (PrimOp op domList cod) args -> do
       let op' = TE.encodeUtf8Builder op
       case (S.member op unaryOpSet, S.member op convOpSet, S.member op binaryOpSet, S.member op cmpOpSet) of
@@ -207,25 +218,25 @@ emitLowOp ctx lowOp =
         (_, _, _, True) ->
           emitBinaryOp (head domList) op' (head args) (args !! 1)
         _ ->
-          Throw.raiseCritical' (App.throw (base ctx)) $ "unknown primitive: " <> op
+          Throw.raiseCritical' $ "unknown primitive: " <> op
 
-emitUnaryOp :: PrimNum -> Builder -> LowValue -> IO Builder
+emitUnaryOp :: Monad m => PrimNum -> Builder -> LowValue -> m Builder
 emitUnaryOp t inst d =
   return $ unwordsL [inst, showPrimNumForEmit t, showLowValue d]
 
-emitBinaryOp :: PrimNum -> Builder -> LowValue -> LowValue -> IO Builder
+emitBinaryOp :: Monad m => PrimNum -> Builder -> LowValue -> LowValue -> m Builder
 emitBinaryOp t inst d1 d2 =
   return $
     unwordsL [inst, showPrimNumForEmit t, showLowValue d1 <> ",", showLowValue d2]
 
-emitConvOp :: Builder -> LowValue -> LowType -> LowType -> IO Builder
+emitConvOp :: Monad m => Builder -> LowValue -> LowType -> LowType -> m Builder
 emitConvOp cast d dom cod =
   return $
     unwordsL [cast, showLowType dom, showLowValue d, "to", showLowType cod]
 
-emitSyscallOp :: Context -> Integer -> [LowValue] -> IO Builder
-emitSyscallOp ctx num ds = do
-  regList <- getRegList $ base ctx
+emitSyscallOp :: Context m => Integer -> [LowValue] -> m Builder
+emitSyscallOp num ds = do
+  regList <- getRegList
   case System.arch of
     "x86_64" -> do
       let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
@@ -240,13 +251,13 @@ emitSyscallOp ctx num ds = do
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"svc 0\",", regStr, argStr]
     targetArch ->
-      Throw.raiseCritical' (App.throw (base ctx)) $ "unsupported target arch: " <> T.pack (show targetArch)
+      Throw.raiseCritical' $ "unsupported target arch: " <> T.pack (show targetArch)
 
-emitOp :: Builder -> IO [Builder]
+emitOp :: Monad m => Builder -> m [Builder]
 emitOp s =
   return ["  " <> s]
 
-emitRet :: Builder -> LowValue -> IO [Builder]
+emitRet :: Monad m => Builder -> LowValue -> m [Builder]
 emitRet retType d =
   emitOp $ unwordsL ["ret", retType, showLowValue d]
 
@@ -254,14 +265,14 @@ emitLabel :: Builder -> Builder
 emitLabel s =
   s <> ":"
 
-constructLabelList :: Gensym.Context -> [a] -> IO [Ident]
-constructLabelList ctx input =
+constructLabelList :: Gensym.Context m => [a] -> m [Ident]
+constructLabelList input =
   case input of
     [] ->
       return []
     (_ : rest) -> do
-      label <- Gensym.newIdentFromText ctx "case"
-      labelList <- constructLabelList ctx rest
+      label <- Gensym.newIdentFromText "case"
+      labelList <- constructLabelList rest
       return $ label : labelList
 
 showRegList :: [Builder] -> Builder
@@ -329,9 +340,10 @@ showLowTypeAsIfNonPtr lowType =
     LowTypePointer t ->
       showLowType t
 
-getRegList :: App.Context -> IO [Builder]
-getRegList ctx = do
-  let platform = TP.platform $ App.targetPlatform ctx
+getRegList :: Context m => m [Builder]
+getRegList = do
+  targetPlatform <- Env.getTargetPlatform
+  let platform = TP.platform targetPlatform
   case platform of
     "x86_64-linux" ->
       return ["rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"]
@@ -340,7 +352,7 @@ getRegList ctx = do
     "x86_64-darwin" ->
       return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
     _ ->
-      Throw.raiseError' (App.throw ctx) $ "unsupported target: " <> T.pack platform
+      Throw.raiseError' $ "unsupported target: " <> T.pack platform
 
 showLowType :: LowType -> Builder
 showLowType lowType =
