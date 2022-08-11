@@ -11,6 +11,7 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Control.Monad.Trans
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import Entity.AliasInfo
@@ -42,6 +43,7 @@ import qualified Scene.Parse.Discern as Discern
 import qualified Scene.Parse.Enum as Enum
 import qualified Scene.Parse.Import as Parse
 import Scene.Parse.PreTerm
+import Text.Megaparsec hiding (parse)
 
 class
   ( Alias.Context m,
@@ -52,7 +54,8 @@ class
     Env.Context m,
     Enum.Context m,
     Discern.Context m,
-    Parse.Context m
+    Parse.Context m,
+    P.Context m
   ) =>
   Context m
   where
@@ -110,14 +113,14 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Context m => m ([WeakStmt], [EnumInfo])
+program :: Context m => P.Parser m ([WeakStmt], [EnumInfo])
 program = do
   Parse.skipImportSequence
-  program' <* P.eof
+  program' <* eof
 
-program' :: Context m => m ([WeakStmt], [EnumInfo])
+program' :: Context m => P.Parser m ([WeakStmt], [EnumInfo])
 program' =
-  P.choice
+  choice
     [ do
         enumInfo <- Enum.parseDefineEnum
         (defList, enumInfoList) <- program'
@@ -126,31 +129,31 @@ program' =
         parseStmtUse
         program',
       do
-        stmtList <- P.many parseStmt >>= Discern.discernStmtList . concat
+        stmtList <- many parseStmt >>= lift . Discern.discernStmtList . concat
         -- stmtList <- many (parseStmt) >>= liftm . Discern.discernStmtList (Discern.specialize) . concat
         return (stmtList, [])
     ]
 
-parseStmtUse :: Context m => m ()
+parseStmtUse :: Context m => P.Parser m ()
 parseStmtUse = do
-  P.try $ P.keyword "use"
+  try $ P.keyword "use"
   loc <- parseLocator
   case loc of
     Left partialLocator ->
-      Locator.activateDefiniteLocator partialLocator
+      lift $ Locator.activateDefiniteLocator partialLocator
     Right globalLocator ->
-      Locator.activateGlobalLocator globalLocator
+      lift $ Locator.activateGlobalLocator globalLocator
 
-parseLocator :: Context m => m (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
+parseLocator :: Context m => P.Parser m (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
 parseLocator = do
-  P.choice
-    [ Left <$> P.try parseDefiniteLocator,
+  choice
+    [ Left <$> try parseDefiniteLocator,
       Right <$> parseGlobalLocator
     ]
 
-parseStmt :: Context m => m [PreStmt]
+parseStmt :: Context m => P.Parser m [PreStmt]
 parseStmt = do
-  P.choice
+  choice
     [ parseDefineData,
       parseDefineCodata,
       return <$> parseDefineResource,
@@ -159,47 +162,47 @@ parseStmt = do
       return <$> parseSection
     ]
 
-parseDefiniteLocator :: Context m => m DL.DefiniteLocator
+parseDefiniteLocator :: Context m => P.Parser m DL.DefiniteLocator
 parseDefiniteLocator = do
-  m <- P.getCurrentHint
-  globalLocator <- P.symbol >>= (GL.reflect m >=> Alias.resolveAlias m)
+  m <- lift P.getCurrentHint
+  globalLocator <- P.symbol >>= lift . (GL.reflect m >=> Alias.resolveAlias m)
   P.delimiter definiteSep
   localLocator <- P.symbol
-  baseNameList <- BN.bySplit m localLocator
+  baseNameList <- lift $ BN.bySplit m localLocator
   return $ DL.new globalLocator $ map Section.Section baseNameList
 
-parseGlobalLocator :: Context m => m SGL.StrictGlobalLocator
+parseGlobalLocator :: Context m => P.Parser m SGL.StrictGlobalLocator
 parseGlobalLocator = do
-  m <- P.getCurrentHint
-  gl <- P.symbol >>= GL.reflect m
-  Alias.resolveAlias m gl
+  m <- lift P.getCurrentHint
+  gl <- P.symbol >>= lift . GL.reflect m
+  lift $ Alias.resolveAlias m gl
 
 --
 -- parser for statements
 --
 
-parseSection :: Context m => m PreStmt
+parseSection :: Context m => P.Parser m PreStmt
 parseSection = do
-  P.try $ P.keyword "section"
+  try $ P.keyword "section"
   section <- Section.Section <$> P.baseName
-  Locator.withSection section $ do
-    stmtList <- concat <$> P.many parseStmt
+  Locator.withLiftedSection section $ do
+    stmtList <- concat <$> many parseStmt
     P.keyword "end"
     return $ PreStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Context m => Opacity -> m PreStmt
+parseDefine :: Context m => Opacity -> P.Parser m PreStmt
 parseDefine opacity = do
-  P.try $
+  try $
     case opacity of
       OpacityOpaque ->
         P.keyword "define"
       OpacityTransparent ->
         P.keyword "define-inline"
-  m <- P.getCurrentHint
+  m <- lift P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
-  name' <- Locator.attachCurrentLocator name
-  defineFunction opacity m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
+  name' <- lift $ Locator.attachCurrentLocator name
+  lift $ defineFunction opacity m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
   Context m =>
@@ -215,14 +218,14 @@ defineFunction opacity m name impArgNum binder codType e = do
   Global.registerTopLevelFunc m name (A.fromInt (length binder))
   return $ PreStmtDefine opacity m name impArgNum binder codType e
 
-parseDefineData :: Context m => m [PreStmt]
+parseDefineData :: Context m => P.Parser m [PreStmt]
 parseDefineData = do
-  m <- P.getCurrentHint
-  P.try $ P.keyword "define-data"
-  a <- P.baseName >>= Locator.attachCurrentLocator
+  m <- lift P.getCurrentHint
+  try $ P.keyword "define-data"
+  a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   consInfoList <- P.asBlock $ P.manyList parseDefineDataClause
-  defineData m a dataArgs consInfoList
+  lift $ defineData m a dataArgs consInfoList
 
 defineData ::
   Context m =>
@@ -284,30 +287,30 @@ constructDataType :: Hint -> DD.DefiniteDescription -> [BinderF PT.PreTerm] -> P
 constructDataType m dataName dataArgs =
   m :< PT.PiElim (m :< PT.VarGlobalStrict dataName) (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: Context m => m (Hint, T.Text, [BinderF PT.PreTerm])
+parseDefineDataClause :: Context m => P.Parser m (Hint, T.Text, [BinderF PT.PreTerm])
 parseDefineDataClause = do
-  m <- P.getCurrentHint
+  m <- lift P.getCurrentHint
   b <- P.symbol
   yts <- P.argList parseDefineDataClauseArg
   return (m, b, yts)
 
-parseDefineDataClauseArg :: Context m => m (BinderF PT.PreTerm)
+parseDefineDataClauseArg :: Context m => P.Parser m (BinderF PT.PreTerm)
 parseDefineDataClauseArg = do
-  m <- P.getCurrentHint
-  P.choice
-    [ P.try preAscription,
+  m <- lift P.getCurrentHint
+  choice
+    [ try preAscription,
       weakTermToWeakIdent m preTerm
     ]
 
-parseDefineCodata :: Context m => m [PreStmt]
+parseDefineCodata :: Context m => P.Parser m [PreStmt]
 parseDefineCodata = do
-  m <- P.getCurrentHint
-  P.try $ P.keyword "define-codata"
-  dataName <- P.baseName >>= Locator.attachCurrentLocator
+  m <- lift P.getCurrentHint
+  try $ P.keyword "define-codata"
+  dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   elemInfoList <- P.asBlock $ P.manyList preAscription
-  formRule <- defineData m dataName dataArgs [(m, "new", elemInfoList)]
-  elimRuleList <- mapM (parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
+  formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   return $ formRule ++ elimRuleList
 
 parseDefineCodataElim ::
@@ -336,16 +339,16 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
         (preVar m recordVarText, codataType)
         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
 
-parseDefineResource :: Context m => m PreStmt
+parseDefineResource :: Context m => P.Parser m PreStmt
 parseDefineResource = do
-  P.try $ P.keyword "define-resource"
-  m <- P.getCurrentHint
+  try $ P.keyword "define-resource"
+  m <- lift P.getCurrentHint
   name <- P.baseName
-  name' <- Locator.attachCurrentLocator name
+  name' <- lift $ Locator.attachCurrentLocator name
   P.asBlock $ do
     discarder <- P.delimiter "-" >> preTerm
     copier <- P.delimiter "-" >> preTerm
-    Global.registerResource m name'
+    lift $ Global.registerResource m name'
     return $ PreStmtDefineResource m name' discarder copier
 
 setAsData ::
@@ -363,8 +366,8 @@ identPlusToVar :: BinderF PT.PreTerm -> PT.PreTerm
 identPlusToVar (m, x, _) =
   m :< PT.Var x
 
-weakTermToWeakIdent :: Gensym.Context m => Hint -> m PT.PreTerm -> m (BinderF PT.PreTerm)
+weakTermToWeakIdent :: Context m => Hint -> P.Parser m PT.PreTerm -> P.Parser m (BinderF PT.PreTerm)
 weakTermToWeakIdent m f = do
   a <- f
-  h <- Gensym.newTextualIdentFromText "_"
+  h <- lift $ Gensym.newTextualIdentFromText "_"
   return (m, h, a)

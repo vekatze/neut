@@ -3,12 +3,14 @@ module Context.Locator where
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
+import Control.Monad.Identity
+import Control.Monad.Trans
 import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
 import Entity.DefiniteLocator as DL
 import qualified Entity.LocalLocator as LL
 import qualified Entity.Section as S
-import Entity.Source
+import qualified Entity.Source as Source
 import Entity.StrictGlobalLocator as SGL
 
 -- the structure of a name of a global variable:
@@ -32,13 +34,16 @@ import Entity.StrictGlobalLocator as SGL
 --     - active local locator: a local locator that is used when resolving global names
 
 class (Throw.Context m, Path.Context m, Module.Context m) => Context m where
-  withSection :: forall a. S.Section -> m a -> m a
+  withLiftedSection :: MonadTrans t => S.Section -> t m a -> t m a
   attachCurrentLocator :: BN.BaseName -> m DD.DefiniteDescription
   activateGlobalLocator :: SGL.StrictGlobalLocator -> m ()
   activateDefiniteLocator :: DL.DefiniteLocator -> m ()
   clearActiveLocators :: m ()
   getPossibleReferents :: LL.LocalLocator -> m [DD.DefiniteDescription]
-  getMainDefiniteDescription :: Source -> m (Maybe DD.DefiniteDescription)
+  getMainDefiniteDescription :: Source.Source -> m (Maybe DD.DefiniteDescription)
+  withSection :: S.Section -> m a -> m a
+  withSection section action =
+    runIdentityT $ withLiftedSection section $ lift action
 
 -- withSection :: forall a m. MonadIO m => S.Section -> m a -> m a
 -- data Config = Config
