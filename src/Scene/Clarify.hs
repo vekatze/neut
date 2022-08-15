@@ -1,5 +1,6 @@
 module Scene.Clarify
   ( clarify,
+    Context,
   )
 where
 
@@ -47,7 +48,12 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 
-class (Clarify.Context m, Reduce.Context m) => Context m
+class
+  ( Clarify.Context m,
+    Reduce.Context m,
+    Throw.Context m
+  ) =>
+  Context m
 
 clarify :: Context m => Source.Source -> [Stmt] -> m ([CompDef], Maybe Comp)
 clarify source defList = do

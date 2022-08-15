@@ -8,6 +8,7 @@ module Context.Throw
   )
 where
 
+-- import qualified Context.Env as Env
 import qualified Data.Text as T
 import Entity.FilePos
 import Entity.Hint
@@ -16,6 +17,7 @@ import Entity.Log
 class Monad m => Context m where
   throw :: forall a. Error -> m a
   try :: forall a. m a -> m (Either Error a)
+  run :: m a -> m a
 
 -- run :: Context m => (Log -> m ()) -> m a -> m a
 -- run printer c = do

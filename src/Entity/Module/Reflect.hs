@@ -41,7 +41,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
-fromCurrentPath :: (Parse.Context m, Context m) => m Module
+fromCurrentPath :: (Parse.Context m, Path.Context m, Context m) => m Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
@@ -70,7 +70,7 @@ interpretDependencyDict (m, dep) = do
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
   return $ Map.fromList items
 
-interpretExtraPath :: (Parse.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
+interpretExtraPath :: (Parse.Context m, Path.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- toString entity
   if T.last itemPathText == '/'

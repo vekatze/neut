@@ -1,5 +1,6 @@
 module Context.Log
   ( Context (..),
+    Config (..),
     printNote,
     printNote',
     printWarning,
@@ -15,17 +16,18 @@ module Context.Log
   )
 where
 
+import qualified Context.Env as Env
 import qualified Data.Text as T
 import qualified Entity.FilePos as FilePos
 import Entity.Hint
 import Entity.Log
 
--- data Config = Config
---   { shouldColorize :: Bool,
---     endOfEntry :: String
---   }
+data Config = Config
+  { shouldColorize :: Bool,
+    endOfEntry :: T.Text
+  }
 
-class Monad m => Context m where
+class Env.Context m => Context m where
   printLog :: Log -> m ()
 
 printNote :: Context m => Hint -> T.Text -> m ()

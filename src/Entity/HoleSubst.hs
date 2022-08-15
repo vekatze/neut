@@ -6,6 +6,7 @@ import Entity.Ident
 import Entity.WeakTerm
 
 newtype HoleSubst = HoleSubst (IntMap.IntMap ([Ident], WeakTerm))
+  deriving (Semigroup, Monoid)
 
 insert :: HID.HoleID -> [Ident] -> WeakTerm -> HoleSubst -> HoleSubst
 insert (HID.HoleID i) xs e (HoleSubst sub) =

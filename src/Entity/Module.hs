@@ -15,7 +15,6 @@ import Entity.ModuleURL
 import qualified Entity.StrictGlobalLocator as SGL
 import qualified Entity.Target as Target
 import Path
-import Path.IO
 import qualified System.FilePath as FP
 
 type SomePath =
@@ -49,9 +48,9 @@ getExecutableDir :: Module -> Path Abs Dir
 getExecutableDir baseModule =
   getTargetDir baseModule </> executableRelDir
 
-getExecutableOutputPath :: Target.Target -> Module -> IO (Path Abs File)
+getExecutableOutputPath :: (Path.Context m) => Target.Target -> Module -> m (Path Abs File)
 getExecutableOutputPath target mainModule =
-  resolveFile (getExecutableDir mainModule) $ T.unpack $ Target.extract target
+  Path.resolveFile (getExecutableDir mainModule) $ T.unpack $ Target.extract target
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =

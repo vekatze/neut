@@ -1,5 +1,6 @@
 module Entity.StrictGlobalLocator where
 
+import Control.Monad.Catch
 import Data.Binary
 import Data.Hashable
 import qualified Data.Text as T
@@ -37,7 +38,7 @@ baseGlobalLocatorOf sl =
       sourceLocator = sl
     }
 
-reflectInMainModule :: String -> IO StrictGlobalLocator
+reflectInMainModule :: MonadThrow m => String -> m StrictGlobalLocator
 reflectInMainModule relFilePathString = do
   filePath <- parseRelFile relFilePathString
   return $

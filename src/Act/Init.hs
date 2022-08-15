@@ -1,73 +1,89 @@
 module Act.Init
   ( initialize,
     Config (..),
+    Context,
   )
 where
 
+import qualified Context.Env as Env
 import qualified Context.Log as Log
-import qualified Context.Mode as Mode
 import qualified Context.Module as Module
 import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Entity.Const
 import Entity.Module
 import qualified Entity.ModuleID as MID
 import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
-import Path
-import Path.IO
+import Path (parent, (</>))
 
 data Config = Config
   { moduleName :: T.Text,
-    throwCfg :: Throw.Config,
+    -- throwCfg :: Throw.Config,
     logCfg :: Log.Config
   }
 
-initialize :: Mode.Mode -> Config -> IO ()
-initialize mode cfg = do
-  throwCtx <- Mode.throwCtx mode $ throwCfg cfg
-  logCtx <- Mode.logCtx mode $ logCfg cfg
-  pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
-  Throw.run throwCtx (Log.printLog logCtx) $ do
+class
+  ( Throw.Context m,
+    Log.Context m,
+    Path.Context m,
+    Module.Context m
+  ) =>
+  Context m
+
+initialize :: Context m => Config -> m ()
+initialize cfg = do
+  -- throwCtx <- Mode.throwCtx mode $ throwCfg cfg
+  -- logCtx <- Mode.logCtx mode $ logCfg cfg
+  -- pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
+  Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
+  Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
+  Throw.run $ do
     newModule <- constructDefaultModule (moduleName cfg)
-    moduleDirExists <- doesDirExist $ parent $ moduleLocation newModule
+    Env.setMainModule newModule
+    moduleDirExists <- Path.doesDirExist $ parent $ moduleLocation newModule
     if moduleDirExists
       then do
-        Throw.raiseError' throwCtx $ "the directory `" <> moduleName cfg <> "` already exists"
+        Throw.raiseError' $ "the directory `" <> moduleName cfg <> "` already exists"
       else do
-        ensureDir $ parent $ moduleLocation newModule
-        ensureDir $ getSourceDir newModule
-        createModuleFile newModule
-        moduleCtx <-
-          Mode.moduleCtx mode $
-            Module.Config
-              { Module.mainModule = newModule,
-                Module.throwCtx = throwCtx,
-                Module.pathCtx = pathCtx
-              }
-        createMainFile moduleCtx newModule
+        Path.ensureDir $ parent $ moduleLocation newModule
+        Path.ensureDir $ getSourceDir newModule
+        createModuleFile
+        -- moduleCtx <-
+        --   Mode.moduleCtx mode $
+        --     Module.Config
+        --       { Module.mainModule = newModule,
+        --         Module.throwCtx = throwCtx,
+        --         Module.pathCtx = pathCtx
+        --       }
+        createMainFile
 
-createModuleFile :: Module -> IO ()
-createModuleFile newModule = do
-  ensureDir $ parent $ moduleLocation newModule
-  TIO.writeFile (toFilePath $ moduleLocation newModule) $ ppModule newModule
+createModuleFile :: Context m => m ()
+createModuleFile = do
+  newModule <- Env.getMainModule
+  Path.ensureDir $ parent $ moduleLocation newModule
+  Path.writeText (moduleLocation newModule) $ ppModule newModule
 
-createMainFile :: Module.Context -> Module -> IO ()
-createMainFile moduleCtx newModule = do
+-- TIO.writeFile (toFilePath $ moduleLocation newModule) $ ppModule newModule
+
+createMainFile :: Context m => m ()
+createMainFile = do
+  newModule <- Env.getMainModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
-    mainFilePath <- Module.getSourcePath moduleCtx sgl
-    TIO.writeFile (toFilePath mainFilePath) "define main() : i64 as\n  0\nend\n"
+    mainFilePath <- Module.getSourcePath sgl
+    Path.writeText mainFilePath "define main() : i64 as\n  0\nend\n"
 
-constructDefaultModule :: T.Text -> IO Module
+-- TIO.writeFile (toFilePath mainFilePath) "define main() : i64 as\n  0\nend\n"
+
+constructDefaultModule :: Context m => T.Text -> m Module
 constructDefaultModule name = do
-  currentDir <- getCurrentDir
-  moduleRootDir <- resolveDir currentDir $ T.unpack name
-  mainFile <- parseRelFile $ T.unpack name <> sourceFileExtension
+  currentDir <- Path.getCurrentDir
+  moduleRootDir <- Path.resolveDir currentDir $ T.unpack name
+  mainFile <- Path.parseRelFile $ T.unpack name <> sourceFileExtension
   return $
     Module
       { moduleTarget =

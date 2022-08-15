@@ -9,16 +9,17 @@ extra-source-files:
   - readme.org
 
 default-extensions:
-  - OverloadedStrings
-  - DeriveGeneric
-  - RankNTypes
-  - FlexibleInstances
   - ApplicativeDo
-  - TupleSections
-  - GeneralizedNewtypeDeriving
+  - DeriveGeneric
   - ExistentialQuantification
-  - TypeFamilies
+  - FlexibleInstances
   - FunctionalDependencies
+  - GeneralizedNewtypeDeriving
+  - OverloadedStrings
+  - RankNTypes
+  - RecordWildCards
+  - TupleSections
+  - TypeFamilies
 
 dependencies:
   - ansi-terminal
@@ -43,9 +44,11 @@ dependencies:
   - pqueue
   - process
   - safe-exceptions
+  - template-haskell
   - text
   - time
   - unboxed-ref
+  - unliftio-core
   - unordered-containers
   - utf8-string
 

@@ -34,7 +34,6 @@ import qualified Entity.WeakTerm.Subst as Subst
 import Entity.WeakTerm.ToText
 
 class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where
-  initialize :: m ()
   insertSubst :: HID.HoleID -> [Ident] -> WeakTerm -> m ()
   setConstraintQueue :: Q.MinQueue SuspendedConstraint -> m ()
   insertConstraint :: SuspendedConstraint -> m ()
@@ -50,7 +49,6 @@ data Stuck
 
 unify :: Context m => [Constraint] -> m HS.HoleSubst
 unify constraintList = do
-  initialize
   analyze constraintList >> synthesize
   Env.getHoleSubst
 

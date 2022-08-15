@@ -2,7 +2,6 @@ module Entity.Ens.Reflect (fromFilePath) where
 
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
-import Control.Monad.Trans
 import qualified Data.HashMap.Strict as M
 import qualified Data.Text as T
 import Entity.Ens
@@ -16,7 +15,7 @@ fromFilePath =
 
 parseFile :: Context m => Parser m Ens
 parseFile = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   keyValuePairList <- many parseKeyValuePair
   eof
   return $ m :< EnsDictionary (M.fromList keyValuePairList)
@@ -30,7 +29,7 @@ parseKeyValuePair = do
 
 parseEns :: Context m => Parser m Ens
 parseEns = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   v <- do
     choice
       [ EnsDictionary <$> parseDictionary,

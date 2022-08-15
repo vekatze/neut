@@ -59,7 +59,7 @@ skipImportSequence = do
 
 parseImportSimple :: Context m => P.Parser m (Source.Source, Maybe AliasInfo)
 parseImportSimple = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   locatorText <- P.symbol
   globalLocator <- lift $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
@@ -73,7 +73,7 @@ skipImportSimple = do
 
 parseImportQualified :: Context m => P.Parser m (Source.Source, Maybe AliasInfo)
 parseImportQualified = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   locatorText <- P.symbol
   P.keyword "as"
   globalLocator <- lift $ GL.reflect m locatorText

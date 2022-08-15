@@ -1,15 +1,15 @@
 module Context.Throw.IO
-  ( new,
+  (
   )
 where
 
-import qualified Context.Throw as Throw
-import qualified Control.Exception.Safe as Safe
+-- import qualified Context.Throw as Throw
+-- import qualified Control.Exception.Safe as Safe
 
-new :: Throw.Config -> IO Throw.Context
-new _ =
-  return
-    Throw.Context
-      { Throw.throw = Safe.throw,
-        Throw.try = Safe.try
-      }
+-- new :: Throw.Config -> IO Throw.Context
+-- new _ =
+--   return
+--     Throw.Context
+--       { Throw.throw = Safe.throw,
+--         Throw.try = Safe.try
+--       }

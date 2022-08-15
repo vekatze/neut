@@ -1,5 +1,6 @@
 module Scene.Unravel
   ( unravel,
+    Context (..),
   )
 where
 
@@ -20,7 +21,6 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Data.Time
 import Entity.Hint
-import Entity.Module
 import Entity.OutputKind
 import qualified Entity.Source as Source
 import Entity.VisitInfo
@@ -58,7 +58,6 @@ class
   ) =>
   Context m
   where
-  initialize :: Module -> m ()
   doesFileExist :: Path Abs File -> m Bool
   getModificationTime :: Path Abs File -> m UTCTime
 
@@ -73,12 +72,11 @@ class
 
 unravel ::
   Context m =>
-  Module ->
   Source.Source ->
   m (IsCacheAvailable, IsObjectAvailable, Seq Source.Source)
 -- m (IsCacheAvailable, IsObjectAvailable, S.Set (Path Abs File), S.Set (Path Abs File), SourceAliasMap, Seq Source.Source)
-unravel mainModule source = do
-  initialize mainModule
+unravel source = do
+  -- initialize mainModule
   unravel' source
 
 -- <- newCtx mode throwCtx pathCtx moduleCtx mainModule

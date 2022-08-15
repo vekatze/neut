@@ -1,10 +1,12 @@
 module Scene.Fetch
   ( fetch,
     insertDependency,
-    Context (),
+    Context (..),
   )
 where
 
+import qualified Context.Env as Env
+import qualified Context.External as External
 import qualified Context.Log as Log
 import qualified Context.Module as Module
 import qualified Context.Path as Path
@@ -13,7 +15,6 @@ import Control.Monad
 import qualified Data.ByteString as B
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
--- import qualified Data.Text.IO as TIO
 import qualified Entity.BaseName as BN
 import qualified Entity.Module as M
 import qualified Entity.Module.Reflect as Module
@@ -23,29 +24,21 @@ import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
 import Path
 import qualified Scene.Parse.Core as Parse
--- import Path.IO
--- import System.Exit
 import System.IO
--- import System.Process
 import Prelude hiding (log)
-
--- data Context = Context
---   { throwCtx :: Throw.Context,
---     logCtx :: Log.Context,
---     moduleCtx :: Module.Context
---   }
 
 class
   ( Throw.Context m,
     Path.Context m,
     Log.Context m,
     Module.Context m,
+    Env.Context m,
+    External.Context m,
     Parse.Context m
   ) =>
   Context m
   where
   writeModule :: M.Module -> m ()
-  runCommand :: FilePath -> [String] -> m ()
   getHandleContents :: Handle -> m B.ByteString
   withTempFile :: (Path Abs File -> Handle -> m a) -> m a
 
@@ -56,8 +49,9 @@ fetch baseModule = do
   forM_ dependency $ \(alias, (url, checksum)) ->
     installIfNecessary alias url checksum
 
-insertDependency :: Context m => M.Module -> ModuleAlias -> ModuleURL -> m ()
-insertDependency mainModule alias url = do
+insertDependency :: Context m => ModuleAlias -> ModuleURL -> m ()
+insertDependency alias url = do
+  mainModule <- Env.getMainModule
   -- withSystemTempFile (T.unpack $ BN.reify (extract alias)) $ \tempFilePath tempFileHandle -> do
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
@@ -114,7 +108,7 @@ download tempFilePath alias (ModuleURL url) = do
   -- (_, _, Just curlErrorHandler, curlHandler) <-
   --   createProcess curlCmd {std_err = CreatePipe}
   Log.printNote' $ "downloading `" <> BN.reify (extract alias) <> "` from " <> url
-  runCommand "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
+  External.run "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
 
 -- curlExitCode <- waitForProcess curlHandler
 -- raiseIfProcessFailed "curl" curlExitCode curlErrorHandler
@@ -132,7 +126,7 @@ extractToLibDir tempFilePath alias checksum = do
       <> "` ("
       <> MC.reify checksum
       <> ")"
-  runCommand "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
+  External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
 
 -- tarExitCode <- waitForProcess tarHandler
 -- raiseIfProcessFailed "tar" tarExitCode tarErrorHandler

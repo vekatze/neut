@@ -1,6 +1,7 @@
 module Act.Version
   ( showVersion,
     Config (..),
+    Context (..),
   )
 where
 
@@ -9,6 +10,9 @@ import Paths_neut
 
 data Config = Config {}
 
-showVersion :: Config -> IO ()
+class Monad m => Context m where
+  printString :: String -> m ()
+
+showVersion :: Context m => Config -> m ()
 showVersion _ = do
-  putStrLn $ V.showVersion version
+  printString $ V.showVersion version

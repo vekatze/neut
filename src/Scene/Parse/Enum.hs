@@ -20,7 +20,7 @@ class (Locator.Context m, Global.Context m, Throw.Context m, P.Context m) => Con
 
 parseDefineEnum :: Context m => P.Parser m EnumInfo
 parseDefineEnum = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   try $ P.keyword "define-enum"
   definiteEnumName <- P.baseName >>= lift . Locator.attachCurrentLocator
   itemList <- P.asBlock $ P.manyList parseDefineEnumClause

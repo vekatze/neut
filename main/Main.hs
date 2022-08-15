@@ -9,22 +9,8 @@ import qualified Act.Release as Release
 import qualified Act.Run as Run
 import qualified Act.Tidy as Tidy
 import qualified Act.Version as Version
-import qualified Context.Alias.Main as Alias
-import qualified Context.CompDefinition.Main as CompDefinition
-import qualified Context.Definition.Main as Definition
-import qualified Context.Gensym.Main as Gensym
-import qualified Context.Global.Main as Global
-import qualified Context.Implicit.Main as Implicit
-import qualified Context.LLVM.Main as LLVM
-import qualified Context.Locator.Main as Locator
+import qualified Case.Main as Main
 import qualified Context.Log as Log
-import qualified Context.Log.IO as Log
-import qualified Context.Mode as Mode
-import qualified Context.Module.Main as Module
-import qualified Context.Path.Main as Path
-import qualified Context.Throw as Throw
-import qualified Context.Throw.IO as Throw
-import qualified Context.Type.Main as Type
 import qualified Data.Text as T
 import Entity.ModuleURL
 import Entity.Target
@@ -46,23 +32,23 @@ main = do
   c <- execParser (info (helper <*> parseOpt) fullDesc)
   case c of
     Build cfg -> do
-      Build.build prodMode cfg
+      Main.build cfg
     Run cfg -> do
-      Run.run prodMode cfg
+      Main.run cfg
     Check cfg -> do
-      Check.check prodMode cfg
+      Main.check cfg
     Clean cfg ->
-      Clean.clean prodMode cfg
+      Main.clean cfg
     Release cfg ->
-      Release.release prodMode cfg
+      Main.release cfg
     Init cfg ->
-      Init.initialize prodMode cfg
+      Main.initialize cfg
     Get cfg ->
-      Get.get prodMode cfg
+      Main.get cfg
     Tidy cfg ->
-      Tidy.tidy prodMode cfg
+      Main.tidy cfg
     ShowVersion cfg ->
-      Version.showVersion cfg
+      Main.version cfg
 
 cmd :: String -> Parser a -> String -> Mod CommandFields a
 cmd name parser desc =
@@ -95,7 +81,6 @@ parseBuildOpt = do
         { Build.mTarget = Target <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.logCfg = logCfg,
-          Build.throwCfg = throwConfig,
           Build.shouldCancelAlloc = shouldCancelAlloc
         }
 
@@ -111,7 +96,6 @@ parseRunOpt = do
         { Run.target = Target target,
           Run.mClangOptString = mClangOpt,
           Run.logCfg = logCfg,
-          Run.throwCfg = throwConfig,
           Run.shouldCancelAlloc = shouldCancelAlloc
         }
 
@@ -121,8 +105,7 @@ parseCleanOpt = do
   pure $
     Clean
       Clean.Config
-        { Clean.logCfg = logCfg,
-          Clean.throwCfg = throwConfig
+        { Clean.logCfg = logCfg
         }
 
 parseGetOpt :: Parser Command
@@ -135,7 +118,6 @@ parseGetOpt = do
       Get.Config
         { Get.moduleAliasText = T.pack moduleAlias,
           Get.moduleURL = ModuleURL $ T.pack moduleURL,
-          Get.throwCfg = throwConfig,
           Get.logCfg = logCfg
         }
 
@@ -145,8 +127,7 @@ parseTidyOpt = do
   pure $
     Tidy
       Tidy.Config
-        { Tidy.throwCfg = throwConfig,
-          Tidy.logCfg = logCfg
+        { Tidy.logCfg = logCfg
         }
 
 parseInitOpt :: Parser Command
@@ -157,7 +138,6 @@ parseInitOpt = do
     Init
       Init.Config
         { Init.moduleName = T.pack moduleName,
-          Init.throwCfg = throwConfig,
           Init.logCfg = logCfg
         }
 
@@ -173,14 +153,13 @@ parseCheckOpt = do
     Check
       Check.Config
         { Check.mFilePathString = inputFilePath,
-          Check.logCfg = logCfg,
-          Check.throwCfg = throwConfig
+          Check.logCfg = logCfg
         }
 
 logConfigOpt :: Parser Log.Config
 logConfigOpt = do
   shouldColorize <- colorizeOpt
-  eoe <- endOfEntryOpt
+  eoe <- T.pack <$> endOfEntryOpt
   pure
     Log.Config
       { Log.shouldColorize = shouldColorize,
@@ -221,28 +200,5 @@ parseReleaseOpt = do
     Release
       Release.Config
         { Release.getReleaseName = releaseName,
-          Release.throwCfg = throwConfig,
           Release.logCfg = logCfg
         }
-
-prodMode :: Mode.Mode
-prodMode =
-  Mode.Mode
-    { Mode.logCtx = Log.new,
-      Mode.throwCtx = Throw.new,
-      Mode.gensymCtx = Gensym.new,
-      Mode.llvmCtx = LLVM.new,
-      Mode.aliasCtx = Alias.new,
-      Mode.globalCtx = Global.new,
-      Mode.locatorCtx = Locator.new,
-      Mode.pathCtx = Path.new,
-      Mode.moduleCtx = Module.new,
-      Mode.typeCtx = Type.new,
-      Mode.implicitCtx = Implicit.new,
-      Mode.definitionCtx = Definition.new,
-      Mode.compDefinitionCtx = CompDefinition.new
-    }
-
-throwConfig :: Throw.Config
-throwConfig =
-  Throw.Config {}

@@ -1,5 +1,6 @@
 module Scene.Emit
   ( emit,
+    Context,
   )
 where
 

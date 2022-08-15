@@ -1,5 +1,6 @@
 module Scene.Lower
   ( lower,
+    Context (..),
   )
 where
 
@@ -7,7 +8,6 @@ import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Writer.Lazy
-import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Entity.Arity as A
@@ -40,7 +40,7 @@ instance Monad m => Monoid (Cont m) where
     Cont return
 
 class (Gensym.Context m) => Context m where
-  initialize :: m ()
+  initialize :: [DD.DefiniteDescription] -> m ()
   getDeclEnv :: m DN.DeclEnv
   insDeclEnv :: DN.DeclarationName -> A.Arity -> m ()
   getDefinedNameSet :: m (S.Set DD.DefiniteDescription)
@@ -78,9 +78,9 @@ runLowerComp m = do
 
 lower :: Context m => ([CompDef], Maybe Comp) -> m (DN.DeclEnv, [LowDef], Maybe LowComp)
 lower (defList, mMainTerm) = do
-  initialize
+  -- initialize
   -- lowerCtx <- specialize $ map fst defList
-  -- initialize $ map fst defList
+  initialize $ map fst defList
   case mMainTerm of
     Just mainTerm -> do
       defList' <- forM defList $ \(name, (_, args, e)) -> do
@@ -472,13 +472,13 @@ commConv x lowComp cont2 =
 -- getDeclEnv =
 --   readIORef (declEnvRef)
 
-toVoidPtrSeq :: A.Arity -> [LowType]
-toVoidPtrSeq arity =
-  map (const voidPtr) [1 .. A.reify arity]
+-- toVoidPtrSeq :: A.Arity -> [LowType]
+-- toVoidPtrSeq arity =
+--   map (const voidPtr) [1 .. A.reify arity]
 
-initialLowDeclEnv :: DN.DeclEnv
-initialLowDeclEnv =
-  Map.fromList
-    [ (DN.malloc, ([voidPtr], voidPtr)),
-      (DN.free, ([voidPtr], voidPtr))
-    ]
+-- initialLowDeclEnv :: DN.DeclEnv
+-- initialLowDeclEnv =
+--   Map.fromList
+--     [ (DN.malloc, ([voidPtr], voidPtr)),
+--       (DN.free, ([voidPtr], voidPtr))
+--     ]

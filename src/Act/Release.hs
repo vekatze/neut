@@ -1,87 +1,107 @@
 module Act.Release
   ( release,
     Config (..),
+    Context,
   )
 where
 
+import qualified Context.Env as Env
+import qualified Context.External as External
 import qualified Context.Log as Log
-import qualified Context.Mode as Mode
+import qualified Context.Path as Path
 import qualified Context.Throw as Throw
 import Control.Monad
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
-import GHC.IO.Exception
 import Path
-import Path.IO
-import System.IO
-import System.Process
+import qualified Scene.Parse.Core as ParseCore
 
 data Config = Config
   { getReleaseName :: T.Text,
-    throwCfg :: Throw.Config,
+    -- throwCfg :: Throw.Config,
     logCfg :: Log.Config
   }
 
-release :: Mode.Mode -> Config -> IO ()
-release mode cfg = do
-  throwCtx <- Mode.throwCtx mode $ throwCfg cfg
-  logCtx <- Mode.logCtx mode $ logCfg cfg
-  Throw.run throwCtx (Log.printLog logCtx) $ do
-    mainModule <- Module.fromCurrentPath throwCtx
-    let moduleRootDir = parent $ moduleLocation mainModule
-    releaseFile <- getReleaseFile throwCtx mainModule (getReleaseName cfg)
-    let tarRootDir = parent moduleRootDir
-    relModuleSourceDir <- stripProperPrefix tarRootDir $ getSourceDir mainModule
-    relModuleFile <- stripProperPrefix tarRootDir $ moduleLocation mainModule
-    extra <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
-    let tarCmd =
-          proc
-            "tar"
-            $ [ "-c",
-                "--zstd",
-                "-f",
-                toFilePath releaseFile,
-                "-C",
-                toFilePath tarRootDir,
-                toFilePath relModuleSourceDir,
-                toFilePath relModuleFile
-              ]
-              ++ extra
-    (_, _, Just tarErrorHandler, handler) <- createProcess tarCmd {std_err = CreatePipe}
-    tarExitCode <- waitForProcess handler
-    raiseIfFailure throwCtx "tar" tarExitCode tarErrorHandler
+class
+  ( Throw.Context m,
+    Log.Context m,
+    Path.Context m,
+    External.Context m,
+    ParseCore.Context m
+  ) =>
+  Context m
 
-arrangeExtraContentPath :: Path Abs Dir -> SomePath -> IO FilePath
+release :: Context m => Config -> m ()
+release cfg = do
+  Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
+  Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
+  Throw.run $ do
+    mainModule <- Module.fromCurrentPath
+    let moduleRootDir = parent $ moduleLocation mainModule
+    releaseFile <- getReleaseFile mainModule (getReleaseName cfg)
+    let tarRootDir = parent moduleRootDir
+    relModuleSourceDir <- Path.stripPrefix tarRootDir $ getSourceDir mainModule
+    relModuleFile <- Path.stripPrefix tarRootDir $ moduleLocation mainModule
+    extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
+    External.run "tar" $
+      [ "-c",
+        "--zstd",
+        "-f",
+        toFilePath releaseFile,
+        "-C",
+        toFilePath tarRootDir,
+        toFilePath relModuleSourceDir,
+        toFilePath relModuleFile
+      ]
+        ++ extraContents
+
+-- let tarCmd =
+--       proc
+--         "tar"
+--         $ [ "-c",
+--             "--zstd",
+--             "-f",
+--             toFilePath releaseFile,
+--             "-C",
+--             toFilePath tarRootDir,
+--             toFilePath relModuleSourceDir,
+--             toFilePath relModuleFile
+--           ]
+--           ++ extra
+-- (_, _, Just tarErrorHandler, handler) <- createProcess tarCmd {std_err = CreatePipe}
+-- tarExitCode <- waitForProcess handler
+-- raiseIfFailure "tar" tarExitCode tarErrorHandler
+
+arrangeExtraContentPath :: Context m => Path Abs Dir -> SomePath -> m FilePath
 arrangeExtraContentPath tarRootDir somePath =
   case somePath of
     Left dirPath ->
-      toFilePath <$> stripProperPrefix tarRootDir dirPath
+      toFilePath <$> Path.stripPrefix tarRootDir dirPath
     Right filePath ->
-      toFilePath <$> stripProperPrefix tarRootDir filePath
+      toFilePath <$> Path.stripPrefix tarRootDir filePath
 
-getReleaseFile :: Throw.Context -> Module -> T.Text -> IO (Path Abs File)
-getReleaseFile throwCtx targetModule releaseName = do
+getReleaseFile :: Context m => Module -> T.Text -> m (Path Abs File)
+getReleaseFile targetModule releaseName = do
   let releaseDir = getReleaseDir targetModule
-  ensureDir releaseDir
-  releaseFile <- resolveFile releaseDir $ T.unpack $ releaseName <> ".tar.zst"
-  releaseExists <- doesFileExist releaseFile
+  Path.ensureDir releaseDir
+  releaseFile <- Path.resolveFile releaseDir $ T.unpack $ releaseName <> ".tar.zst"
+  releaseExists <- Path.doesFileExist releaseFile
   when releaseExists $ do
-    Throw.raiseError' throwCtx $ "the release `" <> releaseName <> "` already exists"
+    Throw.raiseError' $ "the release `" <> releaseName <> "` already exists"
   return releaseFile
 
-raiseIfFailure :: Throw.Context -> T.Text -> ExitCode -> Handle -> IO ()
-raiseIfFailure throwCtx procName exitCode h =
-  case exitCode of
-    ExitSuccess ->
-      return ()
-    ExitFailure i -> do
-      errStr <- TIO.hGetContents h
-      Throw.raiseError' throwCtx $
-        "the child process `"
-          <> procName
-          <> "` failed with the following message (exitcode = "
-          <> T.pack (show i)
-          <> "):\n"
-          <> errStr
+-- raiseIfFailure :: Context m => T.Text -> ExitCode -> Handle -> m ()
+-- raiseIfFailure procName exitCode h =
+--   case exitCode of
+--     ExitSuccess ->
+--       return ()
+--     ExitFailure i -> do
+--       errStr <- TIO.hGetContents h
+--       Throw.raiseError' $
+--         "the child process `"
+--           <> procName
+--           <> "` failed with the following message (exitcode = "
+--           <> T.pack (show i)
+--           <> "):\n"
+--           <> errStr

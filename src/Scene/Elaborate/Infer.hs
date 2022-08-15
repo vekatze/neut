@@ -52,10 +52,8 @@ class
   ) =>
   Context m
   where
-  initializeWeakTypeEnv :: m ()
   insWeakTypeEnv :: Ident -> WeakTerm -> m ()
   lookupWeakTypeEnv :: Hint -> Ident -> m WeakTerm
-  setupHoleEnv :: m ()
   lookupHoleEnv :: Int -> m (Maybe (WeakTerm, WeakTerm))
   insHoleEnv :: Int -> WeakTerm -> WeakTerm -> m ()
 

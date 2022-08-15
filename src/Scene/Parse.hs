@@ -1,5 +1,6 @@
 module Scene.Parse
   ( parse,
+    Context (..),
   )
 where
 
@@ -164,7 +165,7 @@ parseStmt = do
 
 parseDefiniteLocator :: Context m => P.Parser m DL.DefiniteLocator
 parseDefiniteLocator = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   globalLocator <- P.symbol >>= lift . (GL.reflect m >=> Alias.resolveAlias m)
   P.delimiter definiteSep
   localLocator <- P.symbol
@@ -173,7 +174,7 @@ parseDefiniteLocator = do
 
 parseGlobalLocator :: Context m => P.Parser m SGL.StrictGlobalLocator
 parseGlobalLocator = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   gl <- P.symbol >>= lift . GL.reflect m
   lift $ Alias.resolveAlias m gl
 
@@ -199,7 +200,7 @@ parseDefine opacity = do
         P.keyword "define"
       OpacityTransparent ->
         P.keyword "define-inline"
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
   lift $ defineFunction opacity m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
@@ -220,7 +221,7 @@ defineFunction opacity m name impArgNum binder codType e = do
 
 parseDefineData :: Context m => P.Parser m [PreStmt]
 parseDefineData = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   try $ P.keyword "define-data"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
@@ -289,14 +290,14 @@ constructDataType m dataName dataArgs =
 
 parseDefineDataClause :: Context m => P.Parser m (Hint, T.Text, [BinderF PT.PreTerm])
 parseDefineDataClause = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   b <- P.symbol
   yts <- P.argList parseDefineDataClauseArg
   return (m, b, yts)
 
 parseDefineDataClauseArg :: Context m => P.Parser m (BinderF PT.PreTerm)
 parseDefineDataClauseArg = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   choice
     [ try preAscription,
       weakTermToWeakIdent m preTerm
@@ -304,7 +305,7 @@ parseDefineDataClauseArg = do
 
 parseDefineCodata :: Context m => P.Parser m [PreStmt]
 parseDefineCodata = do
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   try $ P.keyword "define-codata"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
@@ -342,7 +343,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
 parseDefineResource :: Context m => P.Parser m PreStmt
 parseDefineResource = do
   try $ P.keyword "define-resource"
-  m <- lift P.getCurrentHint
+  m <- P.getCurrentHint
   name <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
   P.asBlock $ do

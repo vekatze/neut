@@ -4,7 +4,6 @@ import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Monad
-import Control.Monad.Trans
 import Data.List.NonEmpty
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -26,7 +25,6 @@ import qualified Text.Read as R
 type Parser m = ParsecT Void T.Text m
 
 class (Throw.Context m, Gensym.Context m, Locator.Context m) => Context m where
-  getCurrentHint :: m Hint
   getTargetPlatform :: m TargetPlatform
   readSourceFile :: Path Abs File -> m T.Text
   ensureExistence :: Path Abs File -> m ()
@@ -117,9 +115,9 @@ createParseError errorBundle = do
   let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
   Error [logError (fromHint hint) message]
 
--- currentHint :: Parser m Hint
--- currentHint =
---   Hint.fromSourcePos <$> getSourcePos
+getCurrentHint :: Parser m Hint
+getCurrentHint =
+  Hint.fromSourcePos <$> getSourcePos
 
 spaceConsumer :: Parser m ()
 spaceConsumer =
@@ -260,7 +258,7 @@ manyList f =
 
 var :: Context m => Parser m (Hint, T.Text)
 var = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   x <- symbol
   return (m, x)
 

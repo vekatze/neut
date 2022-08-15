@@ -44,7 +44,7 @@ import Text.Megaparsec
 
 preTerm :: Context m => Parser m PT.PreTerm
 preTerm = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   e1 <- preTermEasy
   choice
     [ preTermVoid m e1,
@@ -103,7 +103,7 @@ preTermSimple = do
 
 preTermLet :: Context m => Parser m PT.PreTerm
 preTermLet = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "let"
   x <- preTermLetVar
   delimiter "="
@@ -116,7 +116,7 @@ preTermLet = do
 -- let? x     = e1 in e2
 preTermLetCoproduct :: Context m => Parser m PT.PreTerm
 preTermLetCoproduct = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "let?"
   x <- preTermLetVar
   delimiter "="
@@ -158,19 +158,19 @@ preTermExplicitAscription m e = do
 
 preTermTau :: Context m => Parser m PT.PreTerm
 preTermTau = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "tau"
   return $ m :< PT.Tau
 
 preTermAster :: Context m => Parser m PT.PreTerm
 preTermAster = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   delimiter "?"
   lift $ Gensym.newPreAster m
 
 preTermPi :: Context m => Parser m PT.PreTerm
 preTermPi = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   domList <- argList $ choice [try preAscription, typeWithoutIdent]
   delimiter "->"
   cod <- preTerm
@@ -178,7 +178,7 @@ preTermPi = do
 
 preTermPiIntro :: Context m => Parser m PT.PreTerm
 preTermPiIntro = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "lambda"
   varList <- argList preBinder
   e <- choice [preTermDotBind, doBlock preTerm]
@@ -200,7 +200,7 @@ parseDefInfo = do
 
 parseTopDefInfo :: Context m => Parser m PT.TopDefInfo
 parseTopDefInfo = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   funcBaseName <- baseName
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
@@ -212,7 +212,7 @@ parseTopDefInfo = do
 -- define name(x1: A1, ..., xn: An)[: A] as e end
 preTermPiIntroDef :: Context m => Parser m PT.PreTerm
 preTermPiIntroDef = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
   let piType = mFun :< PT.Pi domBinderList codType
@@ -220,14 +220,14 @@ preTermPiIntroDef = do
 
 preTermSigma :: Context m => Parser m PT.PreTerm
 preTermSigma = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "tuple"
   ts <- argList $ choice [try preAscription, typeWithoutIdent]
   return $ m :< PT.Sigma ts
 
 parseDefiniteDescription :: Context m => Parser m (Hint, GL.GlobalLocator, LL.LocalLocator)
 parseDefiniteDescription = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   globalLocator <- symbol
   globalLocator' <- lift $ GL.reflect m globalLocator
   delimiter definiteSep
@@ -241,13 +241,13 @@ preTermDefiniteDescription = do
 
 parseLocalLocator :: Context m => Parser m LL.LocalLocator
 parseLocalLocator = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   rawTxt <- symbol
   lift $ LL.reflect m rawTxt
 
 preTermEnumElim :: Context m => Parser m PT.PreTerm
 preTermEnumElim = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "switch"
   e <- preTerm
   keyword "with"
@@ -258,7 +258,7 @@ preTermEnumElim = do
 
 preTermEnumClause :: Context m => Parser m (PreEnumCase, PT.PreTerm)
 preTermEnumClause = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   delimiter "-"
   c <- symbol
   delimiter "->"
@@ -279,7 +279,7 @@ dummyLabel c =
 -- question e
 preTermQuestion :: Context m => Parser m PT.PreTerm
 preTermQuestion = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "question"
   e <- preTerm
   h <- lift $ Gensym.newPreAster m
@@ -287,7 +287,7 @@ preTermQuestion = do
 
 preTermMagic :: Context m => Parser m PT.PreTerm
 preTermMagic = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "magic"
   choice
     [ preTermMagicCast m,
@@ -388,7 +388,7 @@ lowTypeNumber = do
 
 preTermMatch :: Context m => Parser m PT.PreTerm
 preTermMatch = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "match"
   e <- preTerm
   clauseList <- withBlock $ manyList preTermMatchClause
@@ -396,7 +396,7 @@ preTermMatch = do
 
 preTermMatchNoetic :: Context m => Parser m PT.PreTerm
 preTermMatchNoetic = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "match-noetic"
   e <- preTerm
   keyword "with"
@@ -430,7 +430,7 @@ modifyPrePatternBody s xts body =
 
 preTermPattern :: Context m => Parser m (PrePatternF PT.PreTerm)
 preTermPattern = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   c <- symbol
   patArgs <- argList preBinder
   return (m, Left $ UN.UnresolvedName c, patArgs)
@@ -438,7 +438,7 @@ preTermPattern = do
 -- let (x1 : A1, ..., xn : An) = e1 in e2
 preTermLetSigmaElim :: Context m => Parser m PT.PreTerm
 preTermLetSigmaElim = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "let"
   -- xts <- parseArgList2 preBinder
   xts <- argList preBinder
@@ -450,7 +450,7 @@ preTermLetSigmaElim = do
 
 preTermLetVar :: Context m => Parser m (BinderF PT.PreTerm)
 preTermLetVar = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   choice
     [ try $ do
         x <- symbol
@@ -465,7 +465,7 @@ preTermLetVar = do
 
 preTermIf :: Context m => Parser m PT.PreTerm
 preTermIf = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "if"
   ifCond <- preTerm
   keyword "then"
@@ -506,7 +506,7 @@ foldIf m ifCond ifBody elseIfList elseBody =
 
 preTermParen :: Context m => Parser m PT.PreTerm
 preTermParen = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   es <- argList preTerm
   case es of
     [] ->
@@ -519,14 +519,14 @@ preTermParen = do
 -- -- (e1, ..., en) (n >= 2)
 preTermSigmaIntro :: Context m => Parser m PT.PreTerm
 preTermSigmaIntro = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "tuple-new"
   es <- argList preTerm
   return $ m :< PT.SigmaIntro es
 
 preTermNoema :: Context m => Parser m PT.PreTerm
 preTermNoema = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ delimiter "&"
   subject <- Ident.fromText <$> symbol
   t <- preTerm
@@ -534,7 +534,7 @@ preTermNoema = do
 
 preTermIdealize :: Context m => Parser m PT.PreTerm
 preTermIdealize = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "idealize"
   varList <- manyTill var (keyword "over")
   let varList' = fmap (fmap Ident.fromText) varList
@@ -553,7 +553,7 @@ castLet subject xts cont =
 
 preTermArray :: Context m => Parser m PT.PreTerm
 preTermArray = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "array"
   betweenParen $ do
     elemType <- preTerm
@@ -561,7 +561,7 @@ preTermArray = do
 
 preTermArrayIntro :: Context m => Parser m PT.PreTerm
 preTermArrayIntro = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "array-new"
   betweenParen $ do
     elems <- sepBy preTerm (delimiter ",")
@@ -569,7 +569,7 @@ preTermArrayIntro = do
 
 preTermArrayAccess :: Context m => Parser m PT.PreTerm
 preTermArrayAccess = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "array-access"
   betweenParen $ do
     array <- preTerm
@@ -579,7 +579,7 @@ preTermArrayAccess = do
 
 preTermCell :: Context m => Parser m PT.PreTerm
 preTermCell = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "cell"
   betweenParen $ do
     contentType <- preTerm
@@ -587,7 +587,7 @@ preTermCell = do
 
 preTermCellIntro :: Context m => Parser m PT.PreTerm
 preTermCellIntro = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "cell-new"
   betweenParen $ do
     content <- preTerm
@@ -595,7 +595,7 @@ preTermCellIntro = do
 
 preTermCellRead :: Context m => Parser m PT.PreTerm
 preTermCellRead = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "cell-read"
   betweenParen $ do
     cell <- preTerm
@@ -603,7 +603,7 @@ preTermCellRead = do
 
 preTermCellWrite :: Context m => Parser m PT.PreTerm
 preTermCellWrite = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "cell-write"
   betweenParen $ do
     cell <- preTerm
@@ -617,7 +617,7 @@ bind mxt@(m, _, _) e cont =
 
 preTermAdmit :: Context m => Parser m PT.PreTerm
 preTermAdmit = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "admit"
   h <- lift $ Gensym.newPreAster m
   return $
@@ -630,7 +630,7 @@ preTermAdmit = do
 
 preTermAdmitQuestion :: Context m => Parser m PT.PreTerm
 preTermAdmitQuestion = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "?admit"
   h <- lift $ Gensym.newPreAster m
   return $
@@ -647,7 +647,7 @@ preTermAdmitQuestion = do
 
 preTermPiElim :: Context m => Parser m PT.PreTerm
 preTermPiElim = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   e <- preTermSimple
   impArgs <- impArgList preTerm
   es <- argList preTerm
@@ -670,7 +670,7 @@ preTermPiElim = do
 
 preTermPiElimInv :: Context m => Parser m PT.PreTerm
 preTermPiElimInv = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   e <- preTermSimple
   f <- betweenBracket preTerm
   fs <- many $ betweenBracket preTerm
@@ -689,7 +689,7 @@ preBinder =
 
 preAscription :: Context m => Parser m (BinderF PT.PreTerm)
 preAscription = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   x <- symbol
   delimiter ":"
   a <- preTerm
@@ -698,7 +698,7 @@ preAscription = do
 
 typeWithoutIdent :: Context m => Parser m (BinderF PT.PreTerm)
 typeWithoutIdent = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   x <- lift $ Gensym.newTextualIdentFromText "_"
   t <- preTerm
   return (m, x, t)
@@ -711,13 +711,13 @@ preAscription' = do
 
 preSimpleIdent :: Context m => Parser m (Hint, Ident)
 preSimpleIdent = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   x <- symbol
   return (m, Ident.fromText x)
 
 preTermIntrospect :: Context m => Parser m PT.PreTerm
 preTermIntrospect = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "introspect"
   key <- symbol
   value <- lift $ getIntrospectiveValue m key
@@ -758,26 +758,26 @@ preTermVar = do
 
 preTermText :: Context m => Parser m PT.PreTerm
 preTermText = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   try $ keyword "text"
   return $ m :< PT.Text
 
 preTermTextIntro :: Context m => Parser m PT.PreTerm
 preTermTextIntro = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   s <- string
   return $ m :< PT.TextIntro s
 
 preTermInteger :: Context m => Parser m PT.PreTerm
 preTermInteger = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   intValue <- try integer
   h <- lift $ Gensym.newPreAster m
   return $ m :< PT.Int h intValue
 
 preTermFloat :: Context m => Parser m PT.PreTerm
 preTermFloat = do
-  m <- lift getCurrentHint
+  m <- getCurrentHint
   floatValue <- try float
   h <- lift $ Gensym.newPreAster m
   return $ m :< PT.Float h floatValue

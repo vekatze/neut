@@ -1,8 +1,5 @@
 module Context.Locator where
 
-import qualified Context.Module as Module
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
 import Control.Monad.Identity
 import Control.Monad.Trans
 import qualified Entity.BaseName as BN
@@ -33,8 +30,9 @@ import Entity.StrictGlobalLocator as SGL
 --     - active global locator: a global locator that is used when resolving global names
 --     - active local locator: a local locator that is used when resolving global names
 
-class (Throw.Context m, Path.Context m, Module.Context m) => Context m where
-  withLiftedSection :: MonadTrans t => S.Section -> t m a -> t m a
+class Monad m => Context m where
+  initialize :: m ()
+  withLiftedSection :: (MonadTrans t, Monad (t m)) => S.Section -> t m a -> t m a
   attachCurrentLocator :: BN.BaseName -> m DD.DefiniteDescription
   activateGlobalLocator :: SGL.StrictGlobalLocator -> m ()
   activateDefiniteLocator :: DL.DefiniteLocator -> m ()

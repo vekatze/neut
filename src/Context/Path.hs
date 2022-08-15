@@ -1,9 +1,11 @@
 module Context.Path where
 
-import qualified Context.Throw as Throw
+-- import qualified Context.Throw as Throw
+import qualified Data.ByteString.Lazy as L
+import qualified Data.Text as T
 import Path
 
-class Throw.Context m => Context m where
+class Monad m => Context m where
   getLibraryDirPath :: m (Path Abs Dir)
   getCurrentDir :: m (Path Abs Dir)
   ensureNotInLibDir :: m ()
@@ -13,6 +15,10 @@ class Throw.Context m => Context m where
   doesFileExist :: Path Abs File -> m Bool
   ensureDir :: Path Abs Dir -> m ()
   stripPrefix :: Path b Dir -> Path b t -> m (Path Rel t)
+  writeByteString :: Path Abs File -> L.ByteString -> m ()
+  writeText :: Path Abs File -> T.Text -> m ()
+  parseRelFile :: FilePath -> m (Path Rel File)
+  removeDirRecur :: Path Abs Dir -> m ()
 
 -- newtype Config = Config
 --   { throwCtx :: Throw.Context

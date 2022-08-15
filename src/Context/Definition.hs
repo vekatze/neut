@@ -18,7 +18,3 @@ class Monad m => Context m where
   insert :: Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> WeakTerm -> m ()
   read :: m DefMap
   lookup :: m (DD.DefiniteDescription -> DefMap -> Maybe WeakTerm)
-
--- data Config = Config
---   {
---   }
