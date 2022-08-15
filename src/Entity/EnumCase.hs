@@ -31,12 +31,6 @@ data EnumCaseF e a
   | EnumCaseDefault
   deriving (Show, Eq, Ord, Generic)
 
--- data EnumCaseF e a
---   = EnumCaseLabel (e, Discriminant) EV.EnumValueName
---   | EnumCaseInt Integer
---   | EnumCaseDefault
---   deriving (Show, Eq, Ord, Generic)
-
 instance Functor (EnumCaseF e) where
   fmap _ v =
     case v of

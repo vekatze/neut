@@ -123,12 +123,6 @@ isBaseDefiniteDescription :: DefiniteDescription -> Bool
 isBaseDefiniteDescription dd =
   SGL.moduleID (globalLocator dd) == MID.Base
 
--- data LocalLocator = MakeLocalLocator
---   { sectionStack :: [S.Section],
---     baseName :: BN.BaseName
---   }
---   deriving (Generic, Show)
-
 toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =
   TE.encodeUtf8Builder $ toLowName dd

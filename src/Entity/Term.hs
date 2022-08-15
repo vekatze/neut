@@ -64,11 +64,3 @@ instance Binary Term
 
 type TypeEnv =
   IntMap.IntMap Term
-
--- asVar :: Term -> Maybe Ident
--- asVar term =
---   case term of
---     _ :< TermVar x ->
---       Just x
---     _ ->
---       Nothing

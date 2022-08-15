@@ -45,23 +45,6 @@ class (Gensym.Context m) => Context m where
   insDeclEnv :: DN.DeclarationName -> A.Arity -> m ()
   getDefinedNameSet :: m (S.Set DD.DefiniteDescription)
 
--- data Context = Context
---   { base :: Context,
---     declEnvRef :: IORef DN.DeclEnv,
---     definedNameSetRef :: IORef (S.Set DD.DefiniteDescription)
---   }
-
--- specialize :: Context m => [DD.DefiniteDescription] -> m Context
--- specialize nameList = do
---   _declEnvRef <- newIORef initialLowDeclEnv
---   _definedNameSetRef <- newIORef $ S.fromList nameList
---   return $
---     Context
---       { base =
---         declEnvRef = _declEnvRef,
---         definedNameSetRef = _definedNameSetRef
---       }
-
 extend :: Monad m => (LowComp -> m LowComp) -> Lower m ()
 extend =
   tell . Cont
@@ -78,8 +61,6 @@ runLowerComp m = do
 
 lower :: Context m => ([CompDef], Maybe Comp) -> m (DN.DeclEnv, [LowDef], Maybe LowComp)
 lower (defList, mMainTerm) = do
-  -- initialize
-  -- lowerCtx <- specialize $ map fst defList
   initialize $ map fst defList
   case mMainTerm of
     Just mainTerm -> do
@@ -103,10 +84,6 @@ lower (defList, mMainTerm) = do
         return (name, (args, e'))
       declEnv <- getDeclEnv
       return (declEnv, defList', Nothing)
-
--- initialize :: [DD.DefiniteDescription] -> m ()
--- initialize nameList = do
---   writeIORef lowNameSetRef $ S.fromList nameList
 
 lowerComp :: Context m => Comp -> m LowComp
 lowerComp term =
@@ -300,7 +277,6 @@ lowerValue v =
   case v of
     ValueVarGlobal globalName arity -> do
       lowNameSet <- lift getDefinedNameSet
-      -- lowNameSet <- liftm $ readIORef (definedNameSetRef)
       unless (S.member globalName lowNameSet) $
         lift $ insDeclEnv (DN.In globalName) arity
       uncast (LowValueVarGlobal globalName) (toFunPtrType' arity)
@@ -463,22 +439,3 @@ commConv x lowComp cont2 =
       return $ LowCompLet x (LowOpCall d ds) cont2
     LowCompUnreachable ->
       return LowCompUnreachable
-
--- insDeclEnv :: Context m => DN.DeclarationName -> A.Arity -> m ()
--- insDeclEnv name arity =
---   modifyIORef' (declEnvRef) $ Map.insert name (toVoidPtrSeq arity, voidPtr)
-
--- getDeclEnv :: Context m => m DN.DeclEnv
--- getDeclEnv =
---   readIORef (declEnvRef)
-
--- toVoidPtrSeq :: A.Arity -> [LowType]
--- toVoidPtrSeq arity =
---   map (const voidPtr) [1 .. A.reify arity]
-
--- initialLowDeclEnv :: DN.DeclEnv
--- initialLowDeclEnv =
---   Map.fromList
---     [ (DN.malloc, ([voidPtr], voidPtr)),
---       (DN.free, ([voidPtr], voidPtr))
---     ]

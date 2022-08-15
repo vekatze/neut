@@ -33,7 +33,6 @@ parseImportSequence = do
   let p1 = P.importBlock (P.manyList parseSingleImport)
   let p2 = return []
   (sourceList, mInfoList) <- unzip <$> choice [p1, p2]
-  -- (sourceList, mInfoList) <- unzip <$> (p1 <|> p2)
   return (sourceList, catMaybes mInfoList)
 
 parseSingleImport :: Context m => P.Parser m (Source.Source, Maybe AliasInfo)

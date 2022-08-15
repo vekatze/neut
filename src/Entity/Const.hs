@@ -9,10 +9,6 @@ sourceFileExtension :: String
 sourceFileExtension =
   ".nt"
 
--- sourceFileExtension :: T.Text
--- sourceFileExtension =
---   "nt"
-
 nsSepChar :: Char
 nsSepChar =
   '.'
@@ -24,22 +20,6 @@ nsSep =
 definiteSep :: T.Text
 definiteSep =
   "::"
-
-unsafePtr :: T.Text
-unsafePtr =
-  "unsafe-pointer"
-
--- cartImmName :: T.Text
--- cartImmName =
---   "imm"
-
--- cartClsName :: T.Text
--- cartClsName =
---   "cls"
-
-cartCellName :: T.Text
-cartCellName =
-  "cell"
 
 moduleFile :: Path Rel File
 moduleFile =

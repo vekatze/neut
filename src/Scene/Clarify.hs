@@ -90,9 +90,6 @@ withSpecializedCtx action = do
   Clarify.initialize
   action
 
--- clarifyCtx <- specialize
--- action clarifyCtx
-
 clarifyDef :: Context m => Stmt -> m (DD.DefiniteDescription, (Opacity, [Ident], Comp))
 clarifyDef stmt =
   case stmt of

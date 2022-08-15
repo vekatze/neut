@@ -1,6 +1,5 @@
 module Scene.Clarify.Utility where
 
--- import qualified Context.App as App
 import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
 import Entity.Comp

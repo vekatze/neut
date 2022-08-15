@@ -155,16 +155,9 @@ arrayType :: PN.PrimNum -> BaseName
 arrayType elemType =
   MakeBaseName $ "unsafe-" <> PN.toText elemType <> "-array-internal"
 
--- let constName = "unsafe-" <> toText elemType <> "-array-internal"
--- consName :: Int -> BaseName
--- consName i =
---   MakeBaseName $ "cons;" <> T.pack (show i)
-
 internalBaseName :: BaseName
 internalBaseName =
   MakeBaseName "#"
-
--- basename <> ";cons"
 
 {-# INLINE fromText #-}
 fromText :: T.Text -> BaseName

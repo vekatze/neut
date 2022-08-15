@@ -21,7 +21,6 @@ import Prelude hiding (log)
 data Config = Config
   { moduleAliasText :: T.Text,
     moduleURL :: ModuleURL,
-    -- throwCfg :: Throw.Config,
     logCfg :: Log.Config
   }
 
@@ -36,22 +35,10 @@ class
 
 get :: Context m => Config -> m ()
 get cfg = do
-  -- throwCtx <- Mode.throwCtx mode (throwCfg cfg)
-  -- logCtx <- Mode.logCtx mode (logCfg cfg)
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-
-  -- pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Throw.run $ do
     Module.fromCurrentPath >>= Env.setMainModule
-    -- moduleCtx <-
-    --   Mode.moduleCtx mode $
-    --     Module.Config
-    --       { Module.mainModule = mainModule,
-    --         Module.throwCtx = throwCtx,
-    --         Module.pathCtx = pathCtx
-    --       }
-    -- let ctx = F.Context {F.throwCtx = throwCtx, F.logCtx = logCtx, F.moduleCtx = moduleCtx}
     baseName <- BN.reflect' $ moduleAliasText cfg
     F.insertDependency
       (ModuleAlias baseName)

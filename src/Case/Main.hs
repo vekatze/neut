@@ -103,7 +103,7 @@ import qualified Scene.Parse.Core as ParseCore (Context (..))
 import qualified Scene.Parse.Discern as ParseDiscern (Context)
 import qualified Scene.Parse.Enum as ParseEnum (Context)
 import qualified Scene.Parse.Import as ParseImport (Context)
-import qualified Scene.Unravel as Unravel (Context (..))
+import qualified Scene.Unravel as Unravel (Context)
 
 type Ref a = IORef (Maybe a)
 
@@ -261,9 +261,7 @@ instance Tidy.Context App
 instance Version.Context App where
   printString = liftIO . putStrLn
 
-instance Unravel.Context App where
-  doesFileExist = doesFileExist
-  getModificationTime = getModificationTime
+instance Unravel.Context App
 
 instance Fetch.Context App where
   withTempFile =
@@ -445,6 +443,7 @@ instance Path.Context App where
   resolveFile = resolveFile
   doesDirExist = doesDirExist
   doesFileExist = doesFileExist
+  getModificationTime = getModificationTime
   ensureDir = ensureDir
   stripPrefix = stripProperPrefix
   writeText path text = liftIO $ TIO.writeFile (toFilePath path) text

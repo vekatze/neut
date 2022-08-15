@@ -5,7 +5,6 @@ module Act.Tidy
   )
 where
 
--- import qualified Context.Mode as Mode
 import qualified Context.Env as Env
 import qualified Context.Log as Log
 import qualified Context.Module as Module
@@ -19,9 +18,6 @@ import Prelude hiding (log)
 newtype Config = Config
   { logCfg :: Log.Config
   }
-
--- throwCfg :: Throw.Config,
--- logCfg :: Log.Config
 
 class
   ( Throw.Context m,

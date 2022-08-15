@@ -246,10 +246,6 @@ discernBinderWithBody' nenv (mx, x, t) binder e = do
   (binder', e') <- discernBinderWithBody ((Ident.toText x, (mx, x')) : nenv) binder e
   return ((mx, x', t'), binder', e')
 
--- (binder', nenv') <- discernBinder nenv binder
--- e' <- discern nenv' e
--- return (binder', e')
-
 discernEnumLabel :: Context m => Hint -> PreEnumLabel -> m EnumLabel
 discernEnumLabel m (PreEnumLabel _ _ (UN.UnresolvedName name)) = do
   term <- resolveName m name

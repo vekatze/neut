@@ -31,8 +31,6 @@ clean :: Context m => Config -> m ()
 clean cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  -- throwCtx <- Mode.throwCtx mode $ throwCfg cfg
-  -- logCtx <- Mode.logCtx mode $ logCfg cfg
   Throw.run $ do
     mainModule <- Module.fromCurrentPath
     let targetDir = getTargetDir mainModule

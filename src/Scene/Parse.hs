@@ -131,7 +131,6 @@ program' =
         program',
       do
         stmtList <- many parseStmt >>= lift . Discern.discernStmtList . concat
-        -- stmtList <- many (parseStmt) >>= liftm . Discern.discernStmtList (Discern.specialize) . concat
         return (stmtList, [])
     ]
 

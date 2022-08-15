@@ -21,7 +21,6 @@ import Text.Megaparsec.Char
 import qualified Text.Megaparsec.Char.Lexer as L
 import qualified Text.Read as R
 
--- type Parser m = ParsecT
 type Parser m = ParsecT Void T.Text m
 
 class (Throw.Context m, Gensym.Context m, Locator.Context m) => Context m where
@@ -29,78 +28,11 @@ class (Throw.Context m, Gensym.Context m, Locator.Context m) => Context m where
   readSourceFile :: Path Abs File -> m T.Text
   ensureExistence :: Path Abs File -> m ()
 
--- spaceConsumer :: m ()
--- baseLexeme :: m () -> m a -> m a
--- takeWhile1P :: (Char -> Bool) -> m T.Text
--- chunk :: T.Text -> m T.Text
--- satisfy :: (Char -> Bool) -> m Char
--- notFollowedBy :: m a -> m ()
--- (<?>) :: m a -> String -> m a
--- failure :: Maybe (ErrorItem m Char) -> [ErrorItem m Char] -> m a
--- asTokens :: T.Text -> m (ErrorItem m Char)
--- asLabel :: T.Text -> m (ErrorItem m Char)
--- charLiteral :: m Char
--- try :: m a -> m a
--- char :: Char -> m ()
--- manyTill :: m a -> m end -> m [a]
--- between :: m () -> m () -> m a -> m a
--- sepBy :: m a -> m sep -> m [a]
--- many :: m a -> m [a]
--- choice :: [m a] -> m a
--- eof :: m ()
-
--- class (Throw.Context m, Gensym.Context m) => Context m where
---   type ErrorItem m :: * -> *
---   run :: m a -> Path Abs File -> m a
---   getCurrentHint :: m Hint
---   getTargetPlatform :: m TargetPlatform
---   spaceConsumer :: m ()
---   baseLexeme :: m () -> m a -> m a
---   takeWhile1P :: (Char -> Bool) -> m T.Text
---   chunk :: T.Text -> m T.Text
---   satisfy :: (Char -> Bool) -> m Char
---   notFollowedBy :: m a -> m ()
---   (<?>) :: m a -> String -> m a
---   failure :: Maybe (ErrorItem m Char) -> [ErrorItem m Char] -> m a
---   asTokens :: T.Text -> m (ErrorItem m Char)
---   asLabel :: T.Text -> m (ErrorItem m Char)
---   charLiteral :: m Char
---   try :: m a -> m a
---   char :: Char -> m ()
---   manyTill :: m a -> m end -> m [a]
---   between :: m () -> m () -> m a -> m a
---   sepBy :: m a -> m sep -> m [a]
---   many :: m a -> m [a]
---   choice :: [m a] -> m a
---   eof :: m ()
-
--- class (Monad m, Monad inner) => NestedMonad inner m | m -> inner where
---   run :: inner a -> m a
---   mySepBy :: m a -> m sep -> m [a]
-
--- run :: (MonadIO m, Throw.Context m) => Parser m a -> Path Abs File -> m a
--- run parser path = do
---   fileExists <- doesFileExist path
---   unless fileExists $ do
---     Throw.raiseError' $ T.pack $ "no such file exists: " <> toFilePath path
---   let filePath = toFilePath path
---   fileContent <- liftIO $ TIO.readFile filePath
---   result <- runParserT (spaceConsumer >> parser) filePath fileContent
---   case result of
---     Right v ->
---       return v
---     Left errorBundle ->
---       Throw.throw $ createParseError errorBundle
-
 run :: (Throw.Context m, Context m) => Parser m a -> Path Abs File -> m a
 run parser path = do
   ensureExistence path
-  -- fileExists <- doesFileExist path
-  -- unless fileExists $ do
-  --   Throw.raiseError' $ T.pack $ "no such file exists: " <> toFilePath path
   let filePath = toFilePath path
   fileContent <- readSourceFile path
-  -- fileContent <- liftIO $ TIO.readFile filePath
   result <- runParserT (spaceConsumer >> parser) filePath fileContent
   case result of
     Right v ->
@@ -125,14 +57,6 @@ spaceConsumer =
     space1
     (L.skipLineComment "//")
     (L.skipBlockCommentNested "/-" "-/")
-
--- asTokens :: T.Text -> ErrorItem Char
--- asTokens s =
---   Tokens $ fromList $ T.unpack s
-
--- asLabel :: T.Text -> ErrorItem Char
--- asLabel s =
---   Tokens $ fromList $ T.unpack s
 
 lexeme :: Context m => Parser m a -> Parser m a
 lexeme =
@@ -174,13 +98,8 @@ integer = do
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
-    -- Nothing -> do
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
-
--- s' <- asTokens s
--- labelInteger <- asLabel "integer"
--- failure (Just s') [labelInteger]
 
 float :: Context m => Parser m Double
 float = do
@@ -190,10 +109,6 @@ float = do
       return value
     Nothing -> do
       failure (Just (asTokens s)) (S.fromList [asLabel "float"])
-
--- s' <- asTokens s
--- labelFloat <- asLabel "float"
--- failure (Just s') [labelFloat]
 
 bool :: Context m => Parser m Bool
 bool = do
@@ -205,13 +120,6 @@ bool = do
       return False
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
-
--- s' <- asTokens s
--- labelTrue <- asLabel "true"
--- labelFalse <- asLabel "false"
--- failure (Just s') [labelTrue, labelFalse]
-
--- failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
 betweenParen :: Context m => Parser m a -> Parser m a
 betweenParen =
@@ -276,9 +184,6 @@ nonBaseNameCharSet =
 spaceCharSet :: S.Set Char
 spaceCharSet =
   S.fromList " \n\t"
-
--- -- p :: (Show a) => a -> Parser m ()
--- -- p = liftIO . print
 
 asTokens :: T.Text -> ErrorItem Char
 asTokens s =

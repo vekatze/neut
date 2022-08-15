@@ -3,6 +3,7 @@ module Context.Path where
 -- import qualified Context.Throw as Throw
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
+import Data.Time
 import Path
 
 class Monad m => Context m where
@@ -13,6 +14,7 @@ class Monad m => Context m where
   resolveFile :: Path Abs Dir -> FilePath -> m (Path Abs File)
   doesDirExist :: Path Abs Dir -> m Bool
   doesFileExist :: Path Abs File -> m Bool
+  getModificationTime :: Path Abs File -> m UTCTime
   ensureDir :: Path Abs Dir -> m ()
   stripPrefix :: Path b Dir -> Path b t -> m (Path Rel t)
   writeByteString :: Path Abs File -> L.ByteString -> m ()

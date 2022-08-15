@@ -42,6 +42,3 @@ type SubstValue =
 
 type CompDef =
   (DD.DefiniteDescription, (Opacity, [Ident], Comp))
-
--- type CompDef =
---   (T.Text, (Opacity, [Ident], Comp))

@@ -42,18 +42,6 @@ class
   ) =>
   Context m
 
--- data Context = Context
---   { base :: Context,
---     nopFreeSet :: S.Set Int
---   }
-
--- specialize :: Context m => S.Set Int -> Context
--- specialize is =
---   Context
---     { base =,
---       nopFreeSet = is
---     }
-
 emit :: Context m => (DN.DeclEnv, [LowDef], Maybe LowComp) -> m L.ByteString
 emit (declEnv, defList, mMainTerm) = do
   case mMainTerm of
@@ -76,14 +64,12 @@ emitDefinitions (name, (args, body)) = do
   let args' = map (showLowValue . LowValueVarLocal) args
   (is, body') <- LowComp.reduce IntMap.empty Map.empty body
   Env.setNopFreeSet is
-  -- let ctx' = specialize is
   emitDefinition "i8*" (DD.toBuilder name) args' body'
 
 emitMain :: Context m => LowComp -> m [Builder]
 emitMain mainTerm = do
   (is, mainTerm') <- LowComp.reduce IntMap.empty Map.empty mainTerm
   Env.setNopFreeSet is
-  -- let ctx' = specialize is
   emitDefinition "i64" "main" [] mainTerm'
 
 declToBuilder :: (DN.DeclarationName, ([LowType], LowType)) -> Builder

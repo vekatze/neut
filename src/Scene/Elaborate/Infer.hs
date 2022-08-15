@@ -109,7 +109,6 @@ infer' varEnv term =
     m :< WeakTermPiElim e@(_ :< WeakTermVarGlobal name _) es -> do
       etls <- mapM (infer' varEnv) es
       t <- Type.lookup m name
-      -- t <- lookupTermTypeEnv m name
       mImpArgNum <- Implicit.lookup name
       case mImpArgNum of
         Nothing -> do
@@ -149,7 +148,7 @@ infer' varEnv term =
         Just asterInfo ->
           return asterInfo
         Nothing -> do
-          holeType <- newAster' m es
+          holeType <- Gensym.newAster m es
           insHoleEnv rawHoleID term holeType
           return (term, holeType)
     m :< WeakTermPrim prim
@@ -367,20 +366,9 @@ raiseArityMismatchError function expected actual = do
           <> T.pack (show actual)
           <> "."
 
--- newAster :: Gensym.Context m => BoundVarEnv -> Hint -> m WeakTerm
--- newAster varEnv m =
---   Gensym.newAster m $ map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
-
 newAster :: Context m => Hint -> BoundVarEnv -> m WeakTerm
 newAster m varEnv = do
-  newAster' m $ map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
-
-newAster' :: Context m => Hint -> [WeakTerm] -> m WeakTerm
-newAster' m es = do
-  Gensym.newAster m es
-
--- i <- newHoleID
--- return $ m :< WeakTermAster i es
+  Gensym.newAster m $ map (\(mx, x, _) -> mx :< WeakTermVar x) varEnv
 
 newTypedAster :: Context m => BoundVarEnv -> Hint -> m (WeakTerm, WeakTerm)
 newTypedAster varEnv m = do
@@ -418,16 +406,6 @@ inferEnumCase varEnv weakCase =
       return (m :< EnumCaseDefault, h)
     m :< EnumCaseInt _ ->
       Throw.raiseCritical m "enum-case-int shouldn't be used in the target language"
-
--- lookupWeakTypeEnv :: Context m => Hint -> Ident -> m WeakTerm
--- lookupWeakTypeEnv m s = do
---   mt <- lookupWeakTypeEnvMaybe $ Ident.toInt s
---   case mt of
---     Just t ->
---       return t
---     Nothing ->
---       Throw.raiseCritical m $
---         Ident.toText' s <> " is not found in the weak type environment."
 
 primOpToType :: Context m => Hint -> PrimOp -> m Term
 primOpToType m (PrimOp op domList cod) = do

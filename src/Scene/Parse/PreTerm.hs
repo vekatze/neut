@@ -381,11 +381,6 @@ lowTypeNumber = do
     _ -> do
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 
--- sizeString' <- asTokens sizeString
--- labelInteger <- asLabel "i{n}"
--- labelFloat <- asLabel "f{n}"
--- failure (Just sizeString') [labelInteger, labelFloat]
-
 preTermMatch :: Context m => Parser m PT.PreTerm
 preTermMatch = do
   m <- getCurrentHint
@@ -440,7 +435,6 @@ preTermLetSigmaElim :: Context m => Parser m PT.PreTerm
 preTermLetSigmaElim = do
   m <- getCurrentHint
   try $ keyword "let"
-  -- xts <- parseArgList2 preBinder
   xts <- argList preBinder
   delimiter "="
   e1 <- preTerm
@@ -676,9 +670,9 @@ preTermPiElimInv = do
   fs <- many $ betweenBracket preTerm
   return $ foldl' (\base func -> m :< PT.PiElim func [base]) e $ f : fs
 
--- --
--- -- term-related helper functions
--- --
+--
+-- term-related helper functions
+--
 
 preBinder :: Context m => Parser m (BinderF PT.PreTerm)
 preBinder =

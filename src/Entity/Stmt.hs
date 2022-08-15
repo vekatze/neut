@@ -60,27 +60,3 @@ compress stmt =
           stmt
     StmtDefineResource {} ->
       stmt
-
--- saveCache :: Source.Context m => Program -> [EnumInfo] -> m ()
--- saveCache (source, stmtList) enumInfoList = do
---   cachePath <- Source.getSourceCachePath source
---   ensureDir $ parent cachePath
---   encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
-
--- loadCache :: Source.Source -> PathSet -> IO (Maybe Cache)
--- loadCache source hasCacheSet = do
---   cachePath <- Source.getSourceCachePath source
---   hasCache <- doesFileExist cachePath
---   if not hasCache
---     then return Nothing
---     else do
---       if S.notMember (Source.sourceFilePath source) hasCacheSet
---         then return Nothing
---         else do
---           dataOrErr <- decodeFileOrFail (toFilePath cachePath)
---           case dataOrErr of
---             Left _ -> do
---               removeFile cachePath
---               return Nothing
---             Right content ->
---               return $ Just content

@@ -48,6 +48,3 @@ run cfg = do
   mainModule <- Module.fromCurrentPath
   outputPath <- getExecutableOutputPath (target cfg) mainModule
   External.run (toFilePath outputPath) []
-
--- (_, _, _, handler) <- createProcess $ proc (toFilePath outputPath) []
--- waitForProcess handler >>= exitWith

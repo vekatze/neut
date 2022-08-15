@@ -52,7 +52,6 @@ fetch baseModule = do
 insertDependency :: Context m => ModuleAlias -> ModuleURL -> m ()
 insertDependency alias url = do
   mainModule <- Env.getMainModule
-  -- withSystemTempFile (T.unpack $ BN.reify (extract alias)) $ \tempFilePath tempFileHandle -> do
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
     archive <- getHandleContents tempFileHandle
@@ -68,7 +67,6 @@ installIfNecessary alias url checksum = do
     withTempFile $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias url
       archive <- getHandleContents tempFileHandle
-      -- archive <- B.hGetContents tempFileHandle
       let archiveModuleChecksum = MC.fromByteString archive
       when (checksum /= archiveModuleChecksum) $
         Throw.raiseError' $
@@ -104,22 +102,13 @@ getLibraryModule alias checksum = do
 
 download :: Context m => Path Abs File -> ModuleAlias -> ModuleURL -> m ()
 download tempFilePath alias (ModuleURL url) = do
-  -- let curlCmd = proc "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
-  -- (_, _, Just curlErrorHandler, curlHandler) <-
-  --   createProcess curlCmd {std_err = CreatePipe}
   Log.printNote' $ "downloading `" <> BN.reify (extract alias) <> "` from " <> url
   External.run "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
-
--- curlExitCode <- waitForProcess curlHandler
--- raiseIfProcessFailed "curl" curlExitCode curlErrorHandler
 
 extractToLibDir :: Context m => Path Abs File -> ModuleAlias -> MC.ModuleChecksum -> m ()
 extractToLibDir tempFilePath alias checksum = do
   targetDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library checksum)
   Path.ensureDir targetDirPath
-  -- let tarCmd = proc "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
-  -- (_, _, Just tarErrorHandler, tarHandler) <-
-  --   createProcess tarCmd {std_err = CreatePipe}
   Log.printNote' $
     "extracting `"
       <> BN.reify (extract alias)
@@ -127,9 +116,6 @@ extractToLibDir tempFilePath alias checksum = do
       <> MC.reify checksum
       <> ")"
   External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
-
--- tarExitCode <- waitForProcess tarHandler
--- raiseIfProcessFailed "tar" tarExitCode tarErrorHandler
 
 addDependencyToModuleFile :: Context m => M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> m ()
 addDependencyToModuleFile targetModule alias url checksum = do
@@ -139,5 +125,3 @@ addDependencyToModuleFile targetModule alias url checksum = do
       <> "` to the module file"
   let targetModule' = M.addDependency alias url checksum targetModule
   writeModule targetModule'
-
--- TIO.writeFile (toFilePath $ M.moduleLocation targetModule') $ M.ppModule targetModule'

@@ -19,7 +19,6 @@ import qualified Scene.Parse.Core as ParseCore
 
 data Config = Config
   { getReleaseName :: T.Text,
-    -- throwCfg :: Throw.Config,
     logCfg :: Log.Config
   }
 
@@ -56,23 +55,6 @@ release cfg = do
       ]
         ++ extraContents
 
--- let tarCmd =
---       proc
---         "tar"
---         $ [ "-c",
---             "--zstd",
---             "-f",
---             toFilePath releaseFile,
---             "-C",
---             toFilePath tarRootDir,
---             toFilePath relModuleSourceDir,
---             toFilePath relModuleFile
---           ]
---           ++ extra
--- (_, _, Just tarErrorHandler, handler) <- createProcess tarCmd {std_err = CreatePipe}
--- tarExitCode <- waitForProcess handler
--- raiseIfFailure "tar" tarExitCode tarErrorHandler
-
 arrangeExtraContentPath :: Context m => Path Abs Dir -> SomePath -> m FilePath
 arrangeExtraContentPath tarRootDir somePath =
   case somePath of
@@ -90,18 +72,3 @@ getReleaseFile targetModule releaseName = do
   when releaseExists $ do
     Throw.raiseError' $ "the release `" <> releaseName <> "` already exists"
   return releaseFile
-
--- raiseIfFailure :: Context m => T.Text -> ExitCode -> Handle -> m ()
--- raiseIfFailure procName exitCode h =
---   case exitCode of
---     ExitSuccess ->
---       return ()
---     ExitFailure i -> do
---       errStr <- TIO.hGetContents h
---       Throw.raiseError' $
---         "the child process `"
---           <> procName
---           <> "` failed with the following message (exitcode = "
---           <> T.pack (show i)
---           <> "):\n"
---           <> errStr

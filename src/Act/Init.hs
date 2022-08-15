@@ -23,7 +23,6 @@ import Path (parent, (</>))
 
 data Config = Config
   { moduleName :: T.Text,
-    -- throwCfg :: Throw.Config,
     logCfg :: Log.Config
   }
 
@@ -37,9 +36,6 @@ class
 
 initialize :: Context m => Config -> m ()
 initialize cfg = do
-  -- throwCtx <- Mode.throwCtx mode $ throwCfg cfg
-  -- logCtx <- Mode.logCtx mode $ logCfg cfg
-  -- pathCtx <- Mode.pathCtx mode $ Path.Config {Path.throwCtx = throwCtx}
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
   Throw.run $ do
@@ -53,13 +49,6 @@ initialize cfg = do
         Path.ensureDir $ parent $ moduleLocation newModule
         Path.ensureDir $ getSourceDir newModule
         createModuleFile
-        -- moduleCtx <-
-        --   Mode.moduleCtx mode $
-        --     Module.Config
-        --       { Module.mainModule = newModule,
-        --         Module.throwCtx = throwCtx,
-        --         Module.pathCtx = pathCtx
-        --       }
         createMainFile
 
 createModuleFile :: Context m => m ()
@@ -68,16 +57,12 @@ createModuleFile = do
   Path.ensureDir $ parent $ moduleLocation newModule
   Path.writeText (moduleLocation newModule) $ ppModule newModule
 
--- TIO.writeFile (toFilePath $ moduleLocation newModule) $ ppModule newModule
-
 createMainFile :: Context m => m ()
 createMainFile = do
   newModule <- Env.getMainModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath sgl
     Path.writeText mainFilePath "define main() : i64 as\n  0\nend\n"
-
--- TIO.writeFile (toFilePath mainFilePath) "define main() : i64 as\n  0\nend\n"
 
 constructDefaultModule :: Context m => T.Text -> m Module
 constructDefaultModule name = do
