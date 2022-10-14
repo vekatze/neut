@@ -52,21 +52,15 @@ dependencies:
   - unordered-containers
   - utf8-string
 
-library:
-  source-dirs: src
-  ghc-options: -Wall
-
 executables:
   neut:
     main: Main.hs
-    source-dirs: main
+    source-dirs: src
     ghc-options:
       - -threaded
       - -rtsopts
       - -with-rtsopts=-N
       - -Wall
-    dependencies:
-      - neut
 
 tests:
   neut-test:
