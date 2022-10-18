@@ -18,6 +18,7 @@ default-extensions:
   - OverloadedStrings
   - RankNTypes
   - RecordWildCards
+  - StrictData
   - TupleSections
   - TypeFamilies
 
