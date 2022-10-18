@@ -28,8 +28,6 @@ freeVarsComp c =
       let (_, es) = unzip caseList
       let s2 = S.unions (map freeVarsComp es)
       S.union s1 s2
-    C.ArrayAccess _ array index ->
-      S.union (freeVarsValue array) (freeVarsValue index)
     C.Primitive prim ->
       case prim of
         C.PrimOp _ vs ->
@@ -43,8 +41,6 @@ freeVarsValue v =
     C.VarLocal x ->
       S.singleton x
     C.SigmaIntro vs ->
-      S.unions $ map freeVarsValue vs
-    C.ArrayIntro _ vs ->
       S.unions $ map freeVarsValue vs
     _ ->
       S.empty

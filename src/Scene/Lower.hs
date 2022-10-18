@@ -16,7 +16,6 @@ import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
-import qualified Entity.ExternalName as EN
 import Entity.Ident
 import Entity.LowComp
 import Entity.LowType
@@ -123,27 +122,6 @@ lowerComp term =
             let t = LowTypePrimNum $ PrimNumInt $ IntSize 64
             castedValue <- lowerValueLetCast v t
             return $ LowCompSwitch (castedValue, t) defaultCase caseList
-    C.ArrayAccess elemType v index -> do
-      let elemType' = LowTypePrimNum elemType
-      let elemSize = LowValueInt (primNumToSizeInByte elemType)
-      runLower $ do
-        indexVar <- lowerValueLetCast index i64
-        arrayVar <- lowerValue v
-        castedArrayVar <- cast arrayVar i64
-        startIndex <- load (LowTypePrimNum $ PrimNumInt $ IntSize 64) arrayVar
-        castedStartIndex <- cast startIndex i64
-        realIndex <- arith "add" [indexVar, castedStartIndex]
-        arrayOffset <- arith "mul" [elemSize, realIndex]
-        realOffset <- arith "add" [LowValueInt 16, arrayOffset]
-        elemAddress <- arith "add" [castedArrayVar, realOffset]
-        uncastedElemAddress <- uncast elemAddress i64
-        load elemType' uncastedElemAddress
-
-i64 :: LowType
-i64 = LowTypePrimNum $ PrimNumInt $ IntSize 64
-
-i64p :: PrimNum
-i64p = PrimNumInt $ IntSize 64
 
 load :: Context m => LowType -> LowValue -> Lower m LowValue
 load elemType pointer = do
@@ -154,18 +132,6 @@ load elemType pointer = do
 store :: Monad m => LowType -> LowValue -> LowValue -> Lower m ()
 store lowType value pointer =
   reflectCont $ LowOpStore lowType value pointer
-
-arith :: Context m => T.Text -> [LowValue] -> Lower m LowValue
-arith op args = do
-  reflect $ LowOpPrimOp (PrimOp op [i64p, i64p] i64p) args
-
-primNumToSizeInByte :: PrimNum -> Integer
-primNumToSizeInByte primNum =
-  case primNum of
-    PrimNumInt size ->
-      toInteger $ intSizeToInt size `div` 8
-    PrimNumFloat size ->
-      toInteger $ floatSizeToInt size `div` 8
 
 loadElements ::
   Context m =>
@@ -293,28 +259,6 @@ lowerValue v =
       uncast (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
     C.EnumIntro (EnumLabel _ d _) -> do
       uncast (LowValueInt $ D.reify d) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
-    C.ArrayIntro elemType vs -> do
-      let lenValue = LowValueInt (toInteger $ length vs)
-      let elemType' = LowTypePrimNum elemType
-      let pointerType = LowTypePointer $ LowTypeStruct [i64, i64, LowTypeArray (length vs) elemType']
-      let elemInfoList = zip [0 ..] $ map (,elemType') vs
-      let arrayType = LowTypePointer $ LowTypeArray (length vs) elemType'
-      arrayLength <- arith "mul" [LowValueInt (primNumToSizeInByte elemType), lenValue]
-      realLength <- arith "add" [LowValueInt 16, arrayLength]
-      uncastedRealLength <- uncast realLength i64
-      pointer <- malloc uncastedRealLength
-      castedPointer <- cast pointer pointerType
-      startPointer <- getElemPtr castedPointer pointerType [0, 0]
-      endPointer <- getElemPtr castedPointer pointerType [0, 1]
-      arrayPointer <- getElemPtr castedPointer pointerType [0, 2]
-      store i64 (LowValueInt 0) startPointer
-      store i64 lenValue endPointer
-      storeElements arrayPointer arrayType elemInfoList
-      return pointer
-
-malloc :: Context m => LowValue -> Lower m LowValue
-malloc size = do
-  reflect $ LowOpCall (LowValueVarExternal EN.malloc) [size]
 
 getElemPtr :: Context m => LowValue -> LowType -> [Integer] -> Lower m LowValue
 getElemPtr value valueType indexList = do

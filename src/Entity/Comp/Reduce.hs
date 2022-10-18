@@ -101,8 +101,6 @@ reduce term =
           -- let (ls, es) = unzip les
           es' <- mapM reduce es
           return $ C.EnumElim v (zip ls es')
-    C.ArrayAccess {} ->
-      return term
 
 extractIdent :: C.Value -> Maybe Ident
 extractIdent term =

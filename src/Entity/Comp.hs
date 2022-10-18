@@ -7,7 +7,6 @@ import Entity.EnumCase
 import Entity.Ident
 import Entity.Magic
 import Entity.Opacity
-import Entity.PrimNum
 import Entity.PrimNumSize
 import Entity.PrimOp
 
@@ -15,7 +14,6 @@ data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription Arity
   | SigmaIntro [Value]
-  | ArrayIntro PrimNum [Value]
   | Int IntSize Integer
   | Float FloatSize Double
   | EnumIntro EnumLabel
@@ -27,7 +25,6 @@ data Comp
   | UpIntro Value
   | UpElim Ident Comp Comp
   | EnumElim Value [(CompEnumCase, Comp)]
-  | ArrayAccess PrimNum Value Value
   | Primitive Primitive
   deriving (Show)
 

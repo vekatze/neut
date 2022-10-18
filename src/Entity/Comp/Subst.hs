@@ -42,8 +42,6 @@ substComp sub nenv term =
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub nenv) es
       return $ C.EnumElim v' (zip cs es')
-    C.ArrayAccess primNum v index ->
-      return $ C.ArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)
 
 substValue :: C.SubstValue -> NameEnv -> C.Value -> C.Value
 substValue sub nenv term =
@@ -60,9 +58,6 @@ substValue sub nenv term =
     C.SigmaIntro vs -> do
       let vs' = map (substValue sub nenv) vs
       C.SigmaIntro vs'
-    C.ArrayIntro elemType vs -> do
-      let vs' = map (substValue sub nenv) vs
-      C.ArrayIntro elemType vs'
     C.Int {} ->
       term
     C.Float {} ->

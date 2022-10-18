@@ -85,10 +85,6 @@ distinguishComp z term =
       (vs1, e1') <- distinguishComp z e1
       (vs2, e2') <- distinguishComp z e2
       return (vs1 ++ vs2, C.UpElim x e1' e2')
-    C.ArrayAccess elemType array index -> do
-      (vs1, array') <- distinguishValue z array
-      (vs2, index') <- distinguishValue z index
-      return (vs1 ++ vs2, C.ArrayAccess elemType array' index')
     C.EnumElim d branchList -> do
       (vs, d') <- distinguishValue z d
       case branchList of
