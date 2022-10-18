@@ -1,5 +1,5 @@
 module Entity.LowComp.Subst
-  ( substLowOp,
+  ( substOp,
     substLowValue,
     SubstLowComp,
   )
@@ -7,60 +7,60 @@ where
 
 import qualified Data.IntMap as IntMap
 import Entity.Ident.Reify
-import Entity.LowComp
+import qualified Entity.LowComp as LC
 
 type SubstLowComp =
-  IntMap.IntMap LowValue
+  IntMap.IntMap LC.Value
 
-substLowOp :: SubstLowComp -> LowOp -> LowOp
-substLowOp sub llvmOp =
+substOp :: SubstLowComp -> LC.Op -> LC.Op
+substOp sub llvmOp =
   case llvmOp of
-    LowOpCall d ds -> do
+    LC.Call d ds -> do
       let d' = substLowValue sub d
       let ds' = map (substLowValue sub) ds
-      LowOpCall d' ds'
-    LowOpGetElementPtr (d, t) dts -> do
+      LC.Call d' ds'
+    LC.GetElementPtr (d, t) dts -> do
       let d' = substLowValue sub d
       let (ds, ts) = unzip dts
       let ds' = map (substLowValue sub) ds
-      LowOpGetElementPtr (d', t) (zip ds' ts)
-    LowOpBitcast d t1 t2 -> do
+      LC.GetElementPtr (d', t) (zip ds' ts)
+    LC.Bitcast d t1 t2 -> do
       let d' = substLowValue sub d
-      LowOpBitcast d' t1 t2
-    LowOpIntToPointer d t1 t2 -> do
+      LC.Bitcast d' t1 t2
+    LC.IntToPointer d t1 t2 -> do
       let d' = substLowValue sub d
-      LowOpIntToPointer d' t1 t2
-    LowOpPointerToInt d t1 t2 -> do
+      LC.IntToPointer d' t1 t2
+    LC.PointerToInt d t1 t2 -> do
       let d' = substLowValue sub d
-      LowOpPointerToInt d' t1 t2
-    LowOpLoad d t -> do
+      LC.PointerToInt d' t1 t2
+    LC.Load d t -> do
       let d' = substLowValue sub d
-      LowOpLoad d' t
-    LowOpStore t d1 d2 -> do
+      LC.Load d' t
+    LC.Store t d1 d2 -> do
       let d1' = substLowValue sub d1
       let d2' = substLowValue sub d2
-      LowOpStore t d1' d2'
-    LowOpAlloc d sizeInfo -> do
+      LC.Store t d1' d2'
+    LC.Alloc d sizeInfo -> do
       let d' = substLowValue sub d
-      LowOpAlloc d' sizeInfo
-    LowOpFree d sizeInfo i -> do
+      LC.Alloc d' sizeInfo
+    LC.Free d sizeInfo i -> do
       let d' = substLowValue sub d
-      LowOpFree d' sizeInfo i
-    LowOpPrimOp op ds -> do
+      LC.Free d' sizeInfo i
+    LC.PrimOp op ds -> do
       let ds' = map (substLowValue sub) ds
-      LowOpPrimOp op ds'
-    LowOpSyscall i ds -> do
+      LC.PrimOp op ds'
+    LC.Syscall i ds -> do
       let ds' = map (substLowValue sub) ds
-      LowOpSyscall i ds'
+      LC.Syscall i ds'
 
-substLowValue :: SubstLowComp -> LowValue -> LowValue
+substLowValue :: SubstLowComp -> LC.Value -> LC.Value
 substLowValue sub llvmValue =
   case llvmValue of
-    LowValueVarLocal x ->
+    LC.VarLocal x ->
       case IntMap.lookup (toInt x) sub of
         Just d ->
           d
         Nothing ->
-          LowValueVarLocal x
+          LC.VarLocal x
     _ ->
       llvmValue

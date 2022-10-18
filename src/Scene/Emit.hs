@@ -22,7 +22,7 @@ import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.ExternalName as EN
 import Entity.Ident
-import Entity.LowComp
+import qualified Entity.LowComp as LC
 import qualified Entity.LowComp.Reduce as LowComp
 import Entity.LowType
 import Entity.PrimNum
@@ -42,7 +42,7 @@ class
   ) =>
   Context m
 
-emit :: Context m => (DN.DeclEnv, [LowDef], Maybe LowComp) -> m L.ByteString
+emit :: Context m => (DN.DeclEnv, [LC.Def], Maybe LC.Comp) -> m L.ByteString
 emit (declEnv, defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
@@ -59,14 +59,14 @@ emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
   map declToBuilder $ List.sort $ HashMap.toList declEnv
 
-emitDefinitions :: Context m => LowDef -> m [Builder]
+emitDefinitions :: Context m => LC.Def -> m [Builder]
 emitDefinitions (name, (args, body)) = do
-  let args' = map (showLowValue . LowValueVarLocal) args
+  let args' = map (showLowValue . LC.VarLocal) args
   (is, body') <- LowComp.reduce IntMap.empty Map.empty body
   Env.setNopFreeSet is
   emitDefinition "i8*" (DD.toBuilder name) args' body'
 
-emitMain :: Context m => LowComp -> m [Builder]
+emitMain :: Context m => LC.Comp -> m [Builder]
 emitMain mainTerm = do
   (is, mainTerm') <- LowComp.reduce IntMap.empty Map.empty mainTerm
   Env.setNopFreeSet is
@@ -83,7 +83,7 @@ declToBuilder (name, (dom, cod)) = do
     <> showItems showLowType dom
     <> ")"
 
-emitDefinition :: Context m => Builder -> Builder -> [Builder] -> LowComp -> m [Builder]
+emitDefinition :: Context m => Builder -> Builder -> [Builder] -> LC.Comp -> m [Builder]
 emitDefinition retType name args asm = do
   let header = sig retType name args <> " {"
   content <- emitLowComp retType asm
@@ -94,29 +94,29 @@ sig :: Builder -> Builder -> [Builder] -> Builder
 sig retType name args =
   "define fastcc " <> retType <> " @" <> name <> showLocals args
 
-emitBlock :: Context m => Builder -> Ident -> LowComp -> m [Builder]
+emitBlock :: Context m => Builder -> Ident -> LC.Comp -> m [Builder]
 emitBlock funName (I (_, i)) asm = do
   a <- emitLowComp funName asm
   return $ emitLabel ("_" <> intDec i) : a
 
-emitLowComp :: Context m => Builder -> LowComp -> m [Builder]
+emitLowComp :: Context m => Builder -> LC.Comp -> m [Builder]
 emitLowComp retType lowComp =
   case lowComp of
-    LowCompReturn d ->
+    LC.Return d ->
       emitRet retType d
-    LowCompCall f args -> do
+    LC.TailCall f args -> do
       tmp <- Gensym.newIdentFromText "tmp"
       op <-
         emitOp $
           unwordsL
-            [ showLowValue (LowValueVarLocal tmp),
+            [ showLowValue (LC.VarLocal tmp),
               "=",
               "tail call fastcc i8*",
               showLowValue f <> showArgs args
             ]
-      a <- emitRet retType (LowValueVarLocal tmp)
+      a <- emitRet retType (LC.VarLocal tmp)
       return $ op <> a
-    LowCompSwitch (d, lowType) defaultBranch branchList -> do
+    LC.Switch (d, lowType) defaultBranch branchList -> do
       defaultLabel <- Gensym.newIdentFromText "default"
       labelList <- constructLabelList branchList
       op <-
@@ -126,7 +126,7 @@ emitLowComp retType lowComp =
               showLowType lowType,
               showLowValue d <> ",",
               "label",
-              showLowValue (LowValueVarLocal defaultLabel),
+              showLowValue (LC.VarLocal defaultLabel),
               showBranchList lowType $ zip (map fst branchList) labelList
             ]
       let asmList = map snd branchList
@@ -134,25 +134,25 @@ emitLowComp retType lowComp =
         forM (zip labelList asmList <> [(defaultLabel, defaultBranch)]) $
           uncurry (emitBlock retType)
       return $ op <> concat xs
-    LowCompCont op cont -> do
+    LC.Cont op cont -> do
       s <- emitLowOp op
       str <- emitOp s
       a <- emitLowComp retType cont
       return $ str <> a
-    LowCompLet x op cont -> do
+    LC.Let x op cont -> do
       s <- emitLowOp op
-      str <- emitOp $ showLowValue (LowValueVarLocal x) <> " = " <> s
+      str <- emitOp $ showLowValue (LC.VarLocal x) <> " = " <> s
       a <- emitLowComp retType cont
       return $ str <> a
-    LowCompUnreachable ->
+    LC.Unreachable ->
       emitOp $ unwordsL ["unreachable"]
 
-emitLowOp :: Context m => LowOp -> m Builder
+emitLowOp :: Context m => LC.Op -> m Builder
 emitLowOp lowOp =
   case lowOp of
-    LowOpCall d ds ->
+    LC.Call d ds ->
       return $ unwordsL ["call fastcc i8*", showLowValue d <> showArgs ds]
-    LowOpGetElementPtr (basePtr, n) is ->
+    LC.GetElementPtr (basePtr, n) is ->
       return $
         unwordsL
           [ "getelementptr",
@@ -161,13 +161,13 @@ emitLowOp lowOp =
             showLowValue basePtr <> ",",
             showIndex is
           ]
-    LowOpBitcast d fromType toType ->
+    LC.Bitcast d fromType toType ->
       emitConvOp "bitcast" d fromType toType
-    LowOpIntToPointer d fromType toType ->
+    LC.IntToPointer d fromType toType ->
       emitConvOp "inttoptr" d fromType toType
-    LowOpPointerToInt d fromType toType ->
+    LC.PointerToInt d fromType toType ->
       emitConvOp "ptrtoint" d fromType toType
-    LowOpLoad d lowType ->
+    LC.Load d lowType ->
       return $
         unwordsL
           [ "load",
@@ -175,7 +175,7 @@ emitLowOp lowOp =
             showLowTypeAsIfPtr lowType,
             showLowValue d
           ]
-    LowOpStore t d1 d2 ->
+    LC.Store t d1 d2 ->
       return $
         unwordsL
           [ "store",
@@ -184,16 +184,16 @@ emitLowOp lowOp =
             showLowTypeAsIfPtr t,
             showLowValue d2
           ]
-    LowOpAlloc d _ ->
+    LC.Alloc d _ ->
       return $ unwordsL ["call fastcc", "i8*", "@malloc(i8* " <> showLowValue d <> ")"]
-    LowOpFree d _ j -> do
+    LC.Free d _ j -> do
       nopFreeSet <- Env.getNopFreeSet
       if S.member j nopFreeSet
         then return "bitcast i8* null to i8*" -- nop
         else return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> showLowValue d <> ")"]
-    LowOpSyscall num ds ->
+    LC.Syscall num ds ->
       emitSyscallOp num ds
-    LowOpPrimOp (PrimOp op domList cod) args -> do
+    LC.PrimOp (PrimOp op domList cod) args -> do
       let op' = TE.encodeUtf8Builder op
       case (S.member op unaryOpSet, S.member op convOpSet, S.member op binaryOpSet, S.member op cmpOpSet) of
         (True, _, _, _) ->
@@ -207,32 +207,32 @@ emitLowOp lowOp =
         _ ->
           Throw.raiseCritical' $ "unknown primitive: " <> op
 
-emitUnaryOp :: Monad m => PrimNum -> Builder -> LowValue -> m Builder
+emitUnaryOp :: Monad m => PrimNum -> Builder -> LC.Value -> m Builder
 emitUnaryOp t inst d =
   return $ unwordsL [inst, showPrimNumForEmit t, showLowValue d]
 
-emitBinaryOp :: Monad m => PrimNum -> Builder -> LowValue -> LowValue -> m Builder
+emitBinaryOp :: Monad m => PrimNum -> Builder -> LC.Value -> LC.Value -> m Builder
 emitBinaryOp t inst d1 d2 =
   return $
     unwordsL [inst, showPrimNumForEmit t, showLowValue d1 <> ",", showLowValue d2]
 
-emitConvOp :: Monad m => Builder -> LowValue -> LowType -> LowType -> m Builder
+emitConvOp :: Monad m => Builder -> LC.Value -> LowType -> LowType -> m Builder
 emitConvOp cast d dom cod =
   return $
     unwordsL [cast, showLowType dom, showLowValue d, "to", showLowType cod]
 
-emitSyscallOp :: Context m => Integer -> [LowValue] -> m Builder
+emitSyscallOp :: Context m => Integer -> [LC.Value] -> m Builder
 emitSyscallOp num ds = do
   regList <- getRegList
   case System.arch of
     "x86_64" -> do
-      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
+      let args = (LC.Int num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
     "aarch64" -> do
-      let args = (LowValueInt num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
+      let args = (LC.Int num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
@@ -244,7 +244,7 @@ emitOp :: Monad m => Builder -> m [Builder]
 emitOp s =
   return ["  " <> s]
 
-emitRet :: Monad m => Builder -> LowValue -> m [Builder]
+emitRet :: Monad m => Builder -> LC.Value -> m [Builder]
 emitRet retType d =
   emitOp $ unwordsL ["ret", retType, showLowValue d]
 
@@ -274,7 +274,7 @@ showBranchList :: LowType -> [(Integer, Ident)] -> Builder
 showBranchList lowType xs =
   "[" <> unwordsL (map (uncurry (showBranch lowType)) xs) <> "]"
 
-showIndex :: [(LowValue, LowType)] -> Builder
+showIndex :: [(LC.Value, LowType)] -> Builder
 showIndex idxList =
   case idxList of
     [] ->
@@ -290,9 +290,9 @@ showBranch lowType i label =
     <> " "
     <> integerDec i
     <> ", label "
-    <> showLowValue (LowValueVarLocal label)
+    <> showLowValue (LC.VarLocal label)
 
-showArg :: LowValue -> Builder
+showArg :: LC.Value -> Builder
 showArg d =
   "i8* " <> showLowValue d
 
@@ -300,7 +300,7 @@ showLocal :: Builder -> Builder
 showLocal x =
   "i8* " <> x
 
-showArgs :: [LowValue] -> Builder
+showArgs :: [LC.Value] -> Builder
 showArgs ds =
   "(" <> showItems showArg ds <> ")"
 
@@ -368,27 +368,27 @@ showPrimNumForEmit lowType =
     PrimNumFloat FloatSize64 ->
       "double"
 
-showLowValue :: LowValue -> Builder
+showLowValue :: LC.Value -> Builder
 showLowValue lowValue =
   case lowValue of
-    LowValueVarLocal (I (_, i)) ->
+    LC.VarLocal (I (_, i)) ->
       "%_" <> intDec i
-    LowValueVarGlobal globalName ->
+    LC.VarGlobal globalName ->
       "@" <> DD.toBuilder globalName
-    LowValueVarExternal extName ->
+    LC.VarExternal extName ->
       "@" <> EN.toBuilder extName
-    LowValueInt i ->
+    LC.Int i ->
       integerDec i
-    LowValueFloat FloatSize16 x -> do
+    LC.Float FloatSize16 x -> do
       let x' = realToFrac x :: Half
       "0x" <> doubleHexFixed (realToFrac x')
-    LowValueFloat FloatSize32 x -> do
+    LC.Float FloatSize32 x -> do
       let x' = realToFrac x :: Float
       "0x" <> doubleHexFixed (realToFrac x')
-    LowValueFloat FloatSize64 x -> do
+    LC.Float FloatSize64 x -> do
       let x' = realToFrac x :: Double
       "0x" <> doubleHexFixed (realToFrac x')
-    LowValueNull ->
+    LC.Null ->
       "null"
 
 showItems :: (a -> Builder) -> [a] -> Builder

@@ -17,7 +17,7 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.Ident
-import Entity.LowComp
+import qualified Entity.LowComp as LC
 import Entity.LowType
 import Entity.Magic
 import Entity.PrimNum
@@ -28,7 +28,7 @@ import Entity.PrimOp
 -- fixme: remove WriterT
 type Lower m = WriterT (Cont m) m
 
-newtype Cont m = Cont (LowComp -> m LowComp)
+newtype Cont m = Cont (LC.Comp -> m LC.Comp)
 
 instance Monad m => Semigroup (Cont m) where
   Cont newCont <> Cont oldCont =
@@ -44,21 +44,21 @@ class (Gensym.Context m) => Context m where
   insDeclEnv :: DN.DeclarationName -> A.Arity -> m ()
   getDefinedNameSet :: m (S.Set DD.DefiniteDescription)
 
-extend :: Monad m => (LowComp -> m LowComp) -> Lower m ()
+extend :: Monad m => (LC.Comp -> m LC.Comp) -> Lower m ()
 extend =
   tell . Cont
 
-runLower :: Monad m => Lower m LowValue -> m LowComp
+runLower :: Monad m => Lower m LC.Value -> m LC.Comp
 runLower m = do
   (a, Cont b) <- runWriterT m
-  b $ LowCompReturn a
+  b $ LC.Return a
 
-runLowerComp :: Monad m => Lower m LowComp -> m LowComp
+runLowerComp :: Monad m => Lower m LC.Comp -> m LC.Comp
 runLowerComp m = do
   (a, Cont b) <- runWriterT m
   b a
 
-lower :: Context m => ([C.CompDef], Maybe C.Comp) -> m (DN.DeclEnv, [LowDef], Maybe LowComp)
+lower :: Context m => ([C.CompDef], Maybe C.Comp) -> m (DN.DeclEnv, [LC.Def], Maybe LC.Comp)
 lower (defList, mMainTerm) = do
   initialize $ map fst defList
   case mMainTerm of
@@ -84,7 +84,7 @@ lower (defList, mMainTerm) = do
       declEnv <- getDeclEnv
       return (declEnv, defList', Nothing)
 
-lowerComp :: Context m => C.Comp -> m LowComp
+lowerComp :: Context m => C.Comp -> m LC.Comp
 lowerComp term =
   case term of
     C.Primitive theta ->
@@ -94,7 +94,7 @@ lowerComp term =
         v' <- lowerValue v
         ds' <- mapM lowerValue ds
         v'' <- cast v' $ toFunPtrType ds
-        return $ LowCompCall v'' ds'
+        return $ LC.TailCall v'' ds'
     C.SigmaElim shouldDeallocate xs v e -> do
       let baseType = LowTypePointer $ LowTypeArray (length xs) voidPtr
       runLowerComp $ do
@@ -104,7 +104,7 @@ lowerComp term =
         when shouldDeallocate $ do
           free castedBasePointer baseType
         forM_ (zip xs ds) $ \(x, d) -> do
-          extend $ return . LowCompLet x (LowOpBitcast d voidPtr voidPtr)
+          extend $ return . LC.Let x (LC.Bitcast d voidPtr voidPtr)
         lift $ lowerComp e
     C.UpIntro d ->
       runLower $ lowerValue d
@@ -116,29 +116,29 @@ lowerComp term =
       m <- constructSwitch branchList
       case m of
         Nothing ->
-          return LowCompUnreachable
+          return LC.Unreachable
         Just (defaultCase, caseList) -> do
           runLowerComp $ do
             let t = LowTypePrimNum $ PrimNumInt $ IntSize 64
             castedValue <- lowerValueLetCast v t
-            return $ LowCompSwitch (castedValue, t) defaultCase caseList
+            return $ LC.Switch (castedValue, t) defaultCase caseList
 
-load :: Context m => LowType -> LowValue -> Lower m LowValue
+load :: Context m => LowType -> LC.Value -> Lower m LC.Value
 load elemType pointer = do
-  tmp <- reflect $ LowOpBitcast pointer voidPtr (LowTypePointer elemType)
-  loaded <- reflect $ LowOpLoad tmp elemType
+  tmp <- reflect $ LC.Bitcast pointer voidPtr (LowTypePointer elemType)
+  loaded <- reflect $ LC.Load tmp elemType
   uncast loaded elemType
 
-store :: Monad m => LowType -> LowValue -> LowValue -> Lower m ()
+store :: Monad m => LowType -> LC.Value -> LC.Value -> Lower m ()
 store lowType value pointer =
-  reflectCont $ LowOpStore lowType value pointer
+  reflectCont $ LC.Store lowType value pointer
 
 loadElements ::
   Context m =>
-  LowValue -> -- base pointer
+  LC.Value -> -- base pointer
   LowType -> -- the type of base pointer
   [(Int, LowType)] -> -- [(the index of an element, the variable to keep the loaded content)]
-  Lower m [LowValue]
+  Lower m [LC.Value]
 loadElements basePointer baseType values =
   case values of
     [] -> do
@@ -150,13 +150,13 @@ loadElements basePointer baseType values =
       xs <- loadElements basePointer baseType xis
       return $ x : xs
 
-free :: Context m => LowValue -> LowType -> Lower m ()
+free :: Context m => LC.Value -> LowType -> Lower m ()
 free pointer pointerType = do
   uncastedPointer <- uncast pointer pointerType
   j <- lift Gensym.newCount
-  reflectCont $ LowOpFree uncastedPointer pointerType j
+  reflectCont $ LC.Free uncastedPointer pointerType j
 
-lowerCompPrimitive :: Context m => C.Primitive -> Lower m LowValue
+lowerCompPrimitive :: Context m => C.Primitive -> Lower m LC.Value
 lowerCompPrimitive codeOp =
   case codeOp of
     C.PrimOp op vs ->
@@ -168,27 +168,27 @@ lowerCompPrimitive codeOp =
         MagicStore valueLowType pointer value -> do
           ptrVar <- lowerValueLetCast pointer (LowTypePointer valueLowType)
           valVar <- lowerValueLetCast value valueLowType
-          extend $ return . LowCompCont (LowOpStore valueLowType valVar ptrVar)
-          return LowValueNull
+          extend $ return . LC.Cont (LC.Store valueLowType valVar ptrVar)
+          return LC.Null
         MagicLoad valueLowType pointer -> do
           castedPointer <- lowerValueLetCast pointer (LowTypePointer valueLowType)
-          result <- reflect $ LowOpLoad castedPointer valueLowType
+          result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
         MagicSyscall i args -> do
           args' <- mapM lowerValue args
-          reflect $ LowOpSyscall i args'
+          reflect $ LC.Syscall i args'
         MagicExternal name args -> do
           args' <- mapM lowerValue args
           lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'
-          reflect $ LowOpCall (LowValueVarExternal name) args'
+          reflect $ LC.Call (LC.VarExternal name) args'
 
-lowerCompPrimOp :: Context m => PrimOp -> [C.Value] -> Lower m LowValue
+lowerCompPrimOp :: Context m => PrimOp -> [C.Value] -> Lower m LC.Value
 lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
   argVarList <- lowerValueLetCastPrimArgs $ zip vs domList
-  result <- reflect $ LowOpPrimOp op argVarList
+  result <- reflect $ LC.PrimOp op argVarList
   uncast result $ LowTypePrimNum cod
 
-lowerValueLetCastPrimArgs :: Context m => [(C.Value, PrimNum)] -> Lower m [LowValue]
+lowerValueLetCastPrimArgs :: Context m => [(C.Value, PrimNum)] -> Lower m [LC.Value]
 lowerValueLetCastPrimArgs dts =
   case dts of
     [] ->
@@ -198,48 +198,48 @@ lowerValueLetCastPrimArgs dts =
       argVarList <- lowerValueLetCastPrimArgs rest
       return $ argVar : argVarList
 
-cast :: Context m => LowValue -> LowType -> Lower m LowValue
+cast :: Context m => LC.Value -> LowType -> Lower m LC.Value
 cast v lowType = do
   (result, resultVar) <- lift $ newValueLocal "result"
   case lowType of
     LowTypePrimNum (PrimNumInt _) -> do
-      extend $ return . LowCompLet result (LowOpPointerToInt v voidPtr lowType)
+      extend $ return . LC.Let result (LC.PointerToInt v voidPtr lowType)
     LowTypePrimNum (PrimNumFloat size) -> do
       let floatType = LowTypePrimNum $ PrimNumFloat size
       let intType = LowTypePrimNum $ PrimNumInt $ IntSize $ floatSizeToInt size
       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
       extend $
         return
-          . LowCompLet tmp (LowOpPointerToInt v voidPtr intType)
-          . LowCompLet result (LowOpBitcast tmpVar intType floatType)
+          . LC.Let tmp (LC.PointerToInt v voidPtr intType)
+          . LC.Let result (LC.Bitcast tmpVar intType floatType)
     _ -> do
-      extend $ return . LowCompLet result (LowOpBitcast v voidPtr lowType)
+      extend $ return . LC.Let result (LC.Bitcast v voidPtr lowType)
   return resultVar
 
-uncast :: Context m => LowValue -> LowType -> Lower m LowValue
+uncast :: Context m => LC.Value -> LowType -> Lower m LC.Value
 uncast castedValue lowType = do
   (result, resultVar) <- lift $ newValueLocal "uncast"
   case lowType of
     LowTypePrimNum (PrimNumInt _) ->
-      extend $ return . LowCompLet result (LowOpIntToPointer castedValue lowType voidPtr)
+      extend $ return . LC.Let result (LC.IntToPointer castedValue lowType voidPtr)
     LowTypePrimNum (PrimNumFloat i) -> do
       let floatType = LowTypePrimNum $ PrimNumFloat i
       let intType = LowTypePrimNum $ PrimNumInt $ IntSize $ floatSizeToInt i
       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
       extend $
         return
-          . LowCompLet tmp (LowOpBitcast castedValue floatType intType)
-          . LowCompLet result (LowOpIntToPointer tmpVar intType voidPtr)
+          . LC.Let tmp (LC.Bitcast castedValue floatType intType)
+          . LC.Let result (LC.IntToPointer tmpVar intType voidPtr)
     _ ->
-      extend $ return . LowCompLet result (LowOpBitcast castedValue lowType voidPtr)
+      extend $ return . LC.Let result (LC.Bitcast castedValue lowType voidPtr)
   return resultVar
 
-lowerValueLetCast :: Context m => C.Value -> LowType -> Lower m LowValue
+lowerValueLetCast :: Context m => C.Value -> LowType -> Lower m LC.Value
 lowerValueLetCast v lowType = do
   v' <- lowerValue v
   cast v' lowType
 
-lowerValue :: Context m => C.Value -> Lower m LowValue
+lowerValue :: Context m => C.Value -> Lower m LC.Value
 lowerValue v =
   case v of
     C.VarGlobal globalName arity -> do
@@ -247,36 +247,36 @@ lowerValue v =
       unless (S.member globalName lowNameSet) $
         lift $
           insDeclEnv (DN.In globalName) arity
-      uncast (LowValueVarGlobal globalName) (toFunPtrType' arity)
+      uncast (LC.VarGlobal globalName) (toFunPtrType' arity)
     C.VarLocal y ->
-      return $ LowValueVarLocal y
+      return $ LC.VarLocal y
     C.SigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr
       createAggData arrayType $ zip ds (repeat voidPtr)
     C.Int size l -> do
-      uncast (LowValueInt l) $ LowTypePrimNum $ PrimNumInt size
+      uncast (LC.Int l) $ LowTypePrimNum $ PrimNumInt size
     C.Float size f ->
-      uncast (LowValueFloat size f) $ LowTypePrimNum $ PrimNumFloat size
+      uncast (LC.Float size f) $ LowTypePrimNum $ PrimNumFloat size
     C.EnumIntro (EnumLabel _ d _) -> do
-      uncast (LowValueInt $ D.reify d) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
+      uncast (LC.Int $ D.reify d) $ LowTypePrimNum $ PrimNumInt $ IntSize 64
 
-getElemPtr :: Context m => LowValue -> LowType -> [Integer] -> Lower m LowValue
+getElemPtr :: Context m => LC.Value -> LowType -> [Integer] -> Lower m LC.Value
 getElemPtr value valueType indexList = do
-  let indexList' = map (\i -> (LowValueInt i, LowTypePrimNum $ PrimNumInt $ IntSize 32)) indexList
-  reflect $ LowOpGetElementPtr (value, valueType) indexList'
+  let indexList' = map (\i -> (LC.Int i, LowTypePrimNum $ PrimNumInt $ IntSize 32)) indexList
+  reflect $ LC.GetElementPtr (value, valueType) indexList'
 
-reflect :: Context m => LowOp -> Lower m LowValue
+reflect :: Context m => LC.Op -> Lower m LC.Value
 reflect op = do
   (result, resultVar) <- lift $ newValueLocal "result"
-  extend $ return . LowCompLet result op
+  extend $ return . LC.Let result op
   return resultVar
 
-reflectCont :: Monad m => LowOp -> Lower m ()
+reflectCont :: Monad m => LC.Op -> Lower m ()
 reflectCont op = do
-  extend $ return . LowCompCont op
+  extend $ return . LC.Cont op
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Context m => [(CompEnumCase, C.Comp)] -> m (Maybe (LowComp, [(Integer, LowComp)]))
+constructSwitch :: Context m => [(CompEnumCase, C.Comp)] -> m (Maybe (LC.Comp, [(Integer, LC.Comp)]))
 constructSwitch switch =
   case switch of
     [] ->
@@ -311,7 +311,7 @@ createAggData ::
   Context m =>
   AggPtrType -> -- the type of the base pointer
   [(C.Value, LowType)] ->
-  Lower m LowValue
+  Lower m LC.Value
 createAggData aggPtrType dts = do
   basePointer <- allocateBasePointer aggPtrType
   castedBasePointer <- cast basePointer $ toLowType aggPtrType
@@ -326,16 +326,16 @@ getSizeInfoOf aggPtrType =
     AggPtrTypeStruct ts ->
       (LowTypeStruct ts, 1)
 
-allocateBasePointer :: Context m => AggPtrType -> Lower m LowValue
+allocateBasePointer :: Context m => AggPtrType -> Lower m LC.Value
 allocateBasePointer aggPtrType = do
   let (elemType, len) = getSizeInfoOf aggPtrType
-  sizePointer <- getElemPtr LowValueNull (LowTypePointer elemType) [toInteger len]
+  sizePointer <- getElemPtr LC.Null (LowTypePointer elemType) [toInteger len]
   c <- uncast sizePointer (LowTypePointer elemType)
-  reflect $ LowOpAlloc c $ toLowType aggPtrType
+  reflect $ LC.Alloc c $ toLowType aggPtrType
 
 storeElements ::
   Context m =>
-  LowValue -> -- base pointer
+  LC.Value -> -- base pointer
   LowType -> -- the type of base pointer (like [n x u8]*, {i8*, i8*}*, etc.)
   [(Integer, (C.Value, LowType))] -> -- [(the index of an element, the element to be stored)]
   Lower m ()
@@ -357,29 +357,29 @@ toFunPtrType' :: A.Arity -> LowType
 toFunPtrType' arity =
   LowTypePointer (LowTypeFunction (toVoidPtrSeq arity) voidPtr)
 
-newValueLocal :: Context m => T.Text -> m (Ident, LowValue)
+newValueLocal :: Context m => T.Text -> m (Ident, LC.Value)
 newValueLocal name = do
   x <- Gensym.newIdentFromText name
-  return (x, LowValueVarLocal x)
+  return (x, LC.VarLocal x)
 
-commConv :: Monad m => Ident -> LowComp -> LowComp -> m LowComp
+commConv :: Monad m => Ident -> LC.Comp -> LC.Comp -> m LC.Comp
 commConv x lowComp cont2 =
   case lowComp of
-    LowCompReturn d ->
-      return $ LowCompLet x (LowOpBitcast d voidPtr voidPtr) cont2 -- nop
-    LowCompLet y op cont1 -> do
+    LC.Return d ->
+      return $ LC.Let x (LC.Bitcast d voidPtr voidPtr) cont2 -- nop
+    LC.Let y op cont1 -> do
       cont <- commConv x cont1 cont2
-      return $ LowCompLet y op cont
-    LowCompCont op cont1 -> do
+      return $ LC.Let y op cont
+    LC.Cont op cont1 -> do
       cont <- commConv x cont1 cont2
-      return $ LowCompCont op cont
-    LowCompSwitch (d, t) defaultCase caseList -> do
+      return $ LC.Cont op cont
+    LC.Switch (d, t) defaultCase caseList -> do
       let (ds, es) = unzip caseList
       es' <- mapM (\e -> commConv x e cont2) es
       let caseList' = zip ds es'
       defaultCase' <- commConv x defaultCase cont2
-      return $ LowCompSwitch (d, t) defaultCase' caseList'
-    LowCompCall d ds ->
-      return $ LowCompLet x (LowOpCall d ds) cont2
-    LowCompUnreachable ->
-      return LowCompUnreachable
+      return $ LC.Switch (d, t) defaultCase' caseList'
+    LC.TailCall d ds ->
+      return $ LC.Let x (LC.Call d ds) cont2
+    LC.Unreachable ->
+      return LC.Unreachable
