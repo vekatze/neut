@@ -26,9 +26,9 @@ subst sub term =
       return term
     (_ :< TermVar x)
       | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-        return e
+          return e
       | otherwise ->
-        return term
+          return term
     (_ :< TermVarGlobal {}) ->
       return term
     (m :< TermPi xts t) -> do
@@ -79,54 +79,13 @@ subst sub term =
     (m :< TermMagic der) -> do
       der' <- traverse (subst sub) der
       return (m :< TermMagic der')
-    (m :< TermMatch mSubject (e, t) clauseList) -> do
-      mSubject' <- mapM (subst sub) mSubject
+    (m :< TermMatch (e, t) clauseList) -> do
       e' <- subst sub e
       t' <- subst sub t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- subst' sub xts body
         return ((mPat, name, arity, xts'), body')
-      return (m :< TermMatch mSubject' (e', t') clauseList')
-    m :< TermNoema s e -> do
-      s' <- subst sub s
-      e' <- subst sub e
-      return $ m :< TermNoema s' e'
-    m :< TermNoemaIntro s e -> do
-      e' <- subst sub e
-      return $ m :< TermNoemaIntro s e'
-    m :< TermNoemaElim s e -> do
-      e' <- subst sub e
-      return $ m :< TermNoemaElim s e'
-    _ :< TermArray _ ->
-      return term
-    m :< TermArrayIntro elemType elems -> do
-      elems' <- mapM (subst sub) elems
-      return $ m :< TermArrayIntro elemType elems'
-    m :< TermArrayAccess subject elemType array index -> do
-      subject' <- subst sub subject
-      array' <- subst sub array
-      index' <- subst sub index
-      return $ m :< TermArrayAccess subject' elemType array' index'
-    _ :< TermText ->
-      return term
-    _ :< TermTextIntro _ ->
-      return term
-    m :< TermCell contentType -> do
-      contentType' <- subst sub contentType
-      return $ m :< TermCell contentType'
-    m :< TermCellIntro contentType content -> do
-      contentType' <- subst sub contentType
-      content' <- subst sub content
-      return $ m :< TermCellIntro contentType' content'
-    m :< TermCellRead cell -> do
-      cell' <- subst sub cell
-      return $ m :< TermCellRead cell'
-    m :< TermCellWrite cell newValue -> do
-      cell' <- subst sub cell
-      newValue' <- subst sub newValue
-      return $ m :< TermCellWrite cell' newValue'
-    _ :< TermResourceType {} ->
-      return term
+      return (m :< TermMatch (e', t') clauseList')
 
 subst' ::
   Context m =>

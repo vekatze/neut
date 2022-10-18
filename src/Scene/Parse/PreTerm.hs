@@ -65,18 +65,7 @@ preTermEasy = do
       preTermQuestion,
       preTermMagic,
       preTermMatch,
-      preTermMatchNoetic,
       preTermIf,
-      preTermIdealize,
-      preTermArray,
-      preTermArrayIntro,
-      preTermArrayAccess,
-      preTermText,
-      preTermCell,
-      preTermCellIntro,
-      preTermCellRead,
-      preTermCellWrite,
-      preTermNoema,
       try preTermLetSigmaElim,
       preTermLet,
       preTermLetCoproduct,
@@ -91,7 +80,6 @@ preTermSimple = do
   choice
     [ preTermParen,
       preTermTau,
-      preTermTextIntro,
       preTermAdmitQuestion,
       preTermAdmit,
       preTermAster,
@@ -132,7 +120,6 @@ preTermLetCoproduct = do
   return $
     m
       :< PT.Match
-        Nothing
         (e1, doNotCare m)
         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
             m :< PT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
@@ -387,21 +374,7 @@ preTermMatch = do
   try $ keyword "match"
   e <- preTerm
   clauseList <- withBlock $ manyList preTermMatchClause
-  return $ m :< PT.Match Nothing (e, doNotCare m) clauseList
-
-preTermMatchNoetic :: Context m => Parser m PT.PreTerm
-preTermMatchNoetic = do
-  m <- getCurrentHint
-  try $ keyword "match-noetic"
-  e <- preTerm
-  keyword "with"
-  s <- lift $ Gensym.newPreAster m
-  t <- lift $ Gensym.newPreAster m
-  let e' = castFromNoema s t e
-  clauseList <- manyList preTermMatchClause
-  keyword "end"
-  let clauseList' = map (modifyPrePattern s) clauseList
-  return $ m :< PT.Match (Just s) (e', doNotCare m) clauseList'
+  return $ m :< PT.Match (e, doNotCare m) clauseList
 
 preTermMatchClause :: Context m => Parser m (PrePatternF PT.PreTerm, PT.PreTerm)
 preTermMatchClause = do
@@ -409,19 +382,6 @@ preTermMatchClause = do
   delimiter "->"
   body <- preTerm
   return (pat, body)
-
-modifyPrePattern :: PT.PreTerm -> (PrePatternF PT.PreTerm, PT.PreTerm) -> (PrePatternF PT.PreTerm, PT.PreTerm)
-modifyPrePattern s ((m, a, xts), body) =
-  ((m, a, xts), modifyPrePatternBody s xts body)
-
-modifyPrePatternBody :: PT.PreTerm -> [BinderF PT.PreTerm] -> PT.PreTerm -> PT.PreTerm
-modifyPrePatternBody s xts body =
-  case xts of
-    [] ->
-      body
-    ((m, x, t) : rest) ->
-      bind (m, x, wrapWithNoema s t) (castToNoema s t (preVar' m x)) $
-        modifyPrePatternBody s rest body
 
 preTermPattern :: Context m => Parser m (PrePatternF PT.PreTerm)
 preTermPattern = do
@@ -517,93 +477,6 @@ preTermSigmaIntro = do
   try $ keyword "tuple-new"
   es <- argList preTerm
   return $ m :< PT.SigmaIntro es
-
-preTermNoema :: Context m => Parser m PT.PreTerm
-preTermNoema = do
-  m <- getCurrentHint
-  try $ delimiter "&"
-  subject <- Ident.fromText <$> symbol
-  t <- preTerm
-  return $ m :< PT.Noema (m :< PT.Var subject) t
-
-preTermIdealize :: Context m => Parser m PT.PreTerm
-preTermIdealize = do
-  m <- getCurrentHint
-  try $ keyword "idealize"
-  varList <- manyTill var (keyword "over")
-  let varList' = fmap (fmap Ident.fromText) varList
-  subject <- Ident.fromText <$> symbol
-  e <- doBlock preTerm
-  ts <- mapM (\(mx, _) -> lift $ Gensym.newPreAster mx) varList
-  return $ m :< PT.NoemaElim subject (castLet subject (zip varList' ts) e)
-
-castLet :: Ident -> [((Hint, Ident), PT.PreTerm)] -> PT.PreTerm -> PT.PreTerm
-castLet subject xts cont =
-  case xts of
-    [] ->
-      cont
-    ((m, x), t) : rest ->
-      bind (m, x, t) (m :< PT.NoemaIntro subject (preVar' m x)) $ castLet subject rest cont
-
-preTermArray :: Context m => Parser m PT.PreTerm
-preTermArray = do
-  m <- getCurrentHint
-  try $ keyword "array"
-  betweenParen $ do
-    elemType <- preTerm
-    return $ m :< PT.Array elemType
-
-preTermArrayIntro :: Context m => Parser m PT.PreTerm
-preTermArrayIntro = do
-  m <- getCurrentHint
-  try $ keyword "array-new"
-  betweenParen $ do
-    elems <- sepBy preTerm (delimiter ",")
-    return $ m :< PT.ArrayIntro (doNotCare m) elems
-
-preTermArrayAccess :: Context m => Parser m PT.PreTerm
-preTermArrayAccess = do
-  m <- getCurrentHint
-  try $ keyword "array-access"
-  betweenParen $ do
-    array <- preTerm
-    delimiter ","
-    index <- preTerm
-    return $ m :< PT.ArrayAccess (doNotCare m) (doNotCare m) array index
-
-preTermCell :: Context m => Parser m PT.PreTerm
-preTermCell = do
-  m <- getCurrentHint
-  try $ keyword "cell"
-  betweenParen $ do
-    contentType <- preTerm
-    return $ m :< PT.Cell contentType
-
-preTermCellIntro :: Context m => Parser m PT.PreTerm
-preTermCellIntro = do
-  m <- getCurrentHint
-  try $ keyword "cell-new"
-  betweenParen $ do
-    content <- preTerm
-    return $ m :< PT.CellIntro (doNotCare m) content
-
-preTermCellRead :: Context m => Parser m PT.PreTerm
-preTermCellRead = do
-  m <- getCurrentHint
-  try $ keyword "cell-read"
-  betweenParen $ do
-    cell <- preTerm
-    return $ m :< PT.CellRead cell
-
-preTermCellWrite :: Context m => Parser m PT.PreTerm
-preTermCellWrite = do
-  m <- getCurrentHint
-  try $ keyword "cell-write"
-  betweenParen $ do
-    cell <- preTerm
-    delimiter ","
-    newValue <- preTerm
-    return $ m :< PT.CellWrite cell newValue
 
 bind :: BinderF PT.PreTerm -> PT.PreTerm -> PT.PreTerm -> PT.PreTerm
 bind mxt@(m, _, _) e cont =
@@ -750,17 +623,17 @@ preTermVar = do
   (m, x) <- var
   return (preVar m x)
 
-preTermText :: Context m => Parser m PT.PreTerm
-preTermText = do
-  m <- getCurrentHint
-  try $ keyword "text"
-  return $ m :< PT.Text
+-- preTermText :: Context m => Parser m PT.PreTerm
+-- preTermText = do
+--   m <- getCurrentHint
+--   try $ keyword "text"
+--   return $ m :< PT.Text
 
-preTermTextIntro :: Context m => Parser m PT.PreTerm
-preTermTextIntro = do
-  m <- getCurrentHint
-  s <- string
-  return $ m :< PT.TextIntro s
+-- preTermTextIntro :: Context m => Parser m PT.PreTerm
+-- preTermTextIntro = do
+--   m <- getCurrentHint
+--   s <- string
+--   return $ m :< PT.TextIntro s
 
 preTermInteger :: Context m => Parser m PT.PreTerm
 preTermInteger = do
@@ -775,18 +648,6 @@ preTermFloat = do
   floatValue <- try float
   h <- lift $ Gensym.newPreAster m
   return $ m :< PT.Float h floatValue
-
-castFromNoema :: PT.PreTerm -> PT.PreTerm -> PT.PreTerm -> PT.PreTerm
-castFromNoema subject baseType tree@(m :< _) = do
-  m :< PT.Magic (MagicCast (wrapWithNoema subject baseType) baseType tree)
-
-castToNoema :: PT.PreTerm -> PT.PreTerm -> PT.PreTerm -> PT.PreTerm
-castToNoema subject baseType tree@(m :< _) = do
-  m :< PT.Magic (MagicCast baseType (wrapWithNoema subject baseType) tree)
-
-wrapWithNoema :: PT.PreTerm -> PT.PreTerm -> PT.PreTerm
-wrapWithNoema subject baseType@(m :< _) = do
-  m :< PT.Noema subject baseType
 
 doNotCare :: Hint -> PT.PreTerm
 doNotCare m =

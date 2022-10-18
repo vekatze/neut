@@ -4,7 +4,6 @@ module Scene.Clarify
   )
 where
 
-import Codec.Binary.UTF8.String
 import qualified Context.CompDefinition as CompDefinition
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
@@ -16,7 +15,6 @@ import qualified Data.IntMap as IntMap
 import Data.List
 import Data.Maybe
 import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Binder
@@ -31,12 +29,10 @@ import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.LowType
 import Entity.Magic
 import Entity.Opacity
 import Entity.Pattern
 import qualified Entity.Prim as Prim
-import Entity.PrimNum
 import Entity.PrimNumSize
 import Entity.PrimOp
 import qualified Entity.Source as Source
@@ -98,18 +94,6 @@ clarifyDef stmt =
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= Reduce.reduce
       return (f, (opacity, map fst xts', e''))
-    StmtDefineResource m name discarder copier -> do
-      switchValue <- Gensym.newIdentFromText "switchValue"
-      value <- Gensym.newIdentFromText "value"
-      discarder' <- clarifyTerm IntMap.empty (m :< TermPiElim discarder [m :< TermVar value]) >>= Reduce.reduce
-      copier' <- clarifyTerm IntMap.empty (m :< TermPiElim copier [m :< TermVar value]) >>= Reduce.reduce
-      return
-        ( name,
-          ( OpacityTransparent,
-            [switchValue, value],
-            CompEnumElim (ValueVarLocal switchValue) $ switch discarder' copier'
-          )
-        )
 
 clarifyTerm :: Context m => TypeEnv -> Term -> m Comp
 clarifyTerm tenv term =
@@ -170,7 +154,7 @@ clarifyTerm tenv term =
       return $ bindLet [(y, e')] $ CompEnumElim yVar (zip (map forgetHint enumCaseList) es')
     _ :< TermMagic der -> do
       clarifyMagic tenv der
-    _ :< TermMatch mSubject (e, _) clauseList -> do
+    _ :< TermMatch (e, _) clauseList -> do
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
       clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, arity, xts), body), i) -> do
@@ -178,91 +162,14 @@ clarifyTerm tenv term =
         (closureVarName, closureVar) <- Gensym.newValueVarLocalWith "clause"
         return
           ( () :< EnumCaseInt i,
-            CompUpElim
-              closureVarName
-              closure
-              $ CompPiElimDownElim
-                (ValueVarGlobal (getClauseConsName consName (isJust mSubject)) arity)
-                [closureVar, envVar]
+            CompUpElim closureVarName closure $
+              CompPiElimDownElim (ValueVarGlobal (DD.getConsDD consName) arity) [closureVar, envVar]
           )
       dataTerm <- clarifyTerm tenv e
       return $
-        CompUpElim
-          dataVarName
-          dataTerm
-          $ CompSigmaElim
-            (isJust mSubject)
-            [typeVarName, envVarName, tagVarName]
-            dataVar
-            $ CompEnumElim tagVar clauseList'
-    _ :< TermNoema {} -> do
-      return returnImmediateS4
-    m :< TermNoemaIntro _ e ->
-      case e of
-        _ :< TermVar x ->
-          return $ CompUpIntro (ValueVarLocalIdeal x)
-        _ ->
-          Throw.raiseCritical m "compiler bug: found a non-variable noetic value"
-    m :< TermNoemaElim s e -> do
-      e' <- clarifyTerm (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
-      return $ CompUpElim s (CompUpIntro (ValueSigmaIntro [])) e'
-    _ :< TermArray elemType -> do
-      return $ CompUpIntro $ ValueVarGlobal (DD.array elemType) A.arityS4
-    _ :< TermArrayIntro elemType elems -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) elems
-      return $
-        bindLet (zip xs args') $
-          CompUpIntro (ValueArrayIntro elemType xsAsVars)
-    _ :< TermArrayAccess _ elemType array index -> do
-      (arrayVarName, array', arrayVar) <- clarifyPlus tenv array
-      (indexVarName, index', indexVar) <- clarifyPlus tenv index
-      return $
-        bindLet [(arrayVarName, array'), (indexVarName, index')] $
-          CompArrayAccess elemType arrayVar indexVar
-    m :< TermText ->
-      clarifyTerm tenv $ m :< TermArray (PrimNumInt $ IntSize 8)
-    m :< TermTextIntro text -> do
-      let i8s = encode $ T.unpack text
-      let i8s' = map (\x -> m :< TermInt (IntSize 8) (toInteger x)) i8s
-      clarifyTerm tenv $ m :< TermArrayIntro (PrimNumInt (IntSize 8)) i8s'
-    _ :< TermCell {} -> do
-      return returnCellS4
-    _ :< TermCellIntro contentType content -> do
-      (contentTypeVarName, contentType', contentTypeVar) <- clarifyPlus tenv contentType
-      (contentVarName, content', contentVar) <- clarifyPlus tenv content
-      return $
-        bindLet [(contentTypeVarName, contentType'), (contentVarName, content')] $
-          CompUpIntro (ValueSigmaIntro [contentTypeVar, contentVar])
-    _ :< TermCellRead cell -> do
-      (cellVarName, cell', cellVar) <- clarifyPlus tenv cell
-      (typeVarName, typeVar) <- Gensym.newValueVarLocalWith "typeVar"
-      valueVarName <- Gensym.newIdentFromText "valueVar"
-      returnClonedValue <- toRelevantApp valueVarName (CompUpIntro typeVar)
-      return $
-        bindLet [(cellVarName, cell')] $
-          CompSigmaElim True [typeVarName, valueVarName] cellVar returnClonedValue
-    _ :< TermCellWrite cell newValue -> do
-      (typeVarName, typeVar) <- Gensym.newValueVarLocalWith "typeVar"
-      (cellVarName, cell', cellVar) <- clarifyPlus tenv cell
-      oldValueVarName <- Gensym.newIdentFromText "oldValueVar"
-      (newValueVarName, newValue', newValueVar) <- clarifyPlus tenv newValue
-      discardOldContent <- toAffineApp oldValueVarName (CompUpIntro typeVar)
-      placeHolder <- Gensym.newIdentFromText "placeholder"
-      (addrVarName, addrVar) <- Gensym.newValueVarLocalWith "address"
-      return $
-        bindLet [(cellVarName, cell'), (newValueVarName, newValue')] $
-          CompSigmaElim True [typeVarName, oldValueVarName] cellVar $
-            CompUpElim placeHolder discardOldContent $
-              CompUpElim addrVarName (add cellVar (ValueInt (IntSize 64) 8)) $
-                CompPrimitive $
-                  PrimitiveMagic (MagicStore voidPtr addrVar newValueVar)
-    _ :< TermResourceType name -> do
-      return $ CompUpIntro $ ValueVarGlobal name A.arityS4
-
-add :: Value -> Value -> Comp
-add v1 v2 = do
-  let i64 = PrimNumInt (IntSize 64)
-  CompPrimitive $ PrimitivePrimOp (PrimOp "add" [i64, i64] i64) [v1, v2]
+        CompUpElim dataVarName dataTerm $
+          CompSigmaElim True [typeVarName, envVarName, tagVarName] dataVar $
+            CompEnumElim tagVar clauseList'
 
 clarifyMagic :: Context m => TypeEnv -> Magic Term -> m Comp
 clarifyMagic tenv der =
@@ -309,9 +216,9 @@ clarifyLambda tenv kind mxts e fvs = do
   case kind of
     LamKindFix (_, x, _)
       | S.member x (freeVars e') ->
-        returnClosure tenv OpacityOpaque kind fvs mxts e'
+          returnClosure tenv OpacityOpaque kind fvs mxts e'
       | otherwise ->
-        returnClosure tenv OpacityTransparent LamKindNormal fvs mxts e'
+          returnClosure tenv OpacityTransparent LamKindNormal fvs mxts e'
     _ ->
       returnClosure tenv OpacityTransparent kind fvs mxts e'
 
@@ -386,39 +293,35 @@ returnClosure tenv opacity kind fvs xts e = do
     LamKindNormal -> do
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.lambdaName i
-      registerIfNecessary name opacity False xts'' fvs'' e
+      registerIfNecessary name opacity xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal name arity]
     LamKindCons _ consName discriminant _ -> do
       let consDD = DD.getConsDD consName
-      registerIfNecessary consDD opacity True xts'' fvs'' e
+      registerIfNecessary consDD opacity xts'' fvs'' e
       return $ CompUpIntro $ ValueSigmaIntro [fvEnvSigma, fvEnv, ValueInt (IntSize 64) (D.reify discriminant)]
     LamKindFix (_, name, _) -> do
       name' <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt name
       let cls = ValueSigmaIntro [fvEnvSigma, fvEnv, ValueVarGlobal name' arity]
       e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
-      registerIfNecessary name' OpacityOpaque False xts'' fvs'' e'
+      registerIfNecessary name' OpacityOpaque xts'' fvs'' e'
       return $ CompUpIntro cls
 
 registerIfNecessary ::
   Context m =>
   DD.DefiniteDescription ->
   Opacity ->
-  Bool ->
   [(Ident, Comp)] ->
   [(Ident, Comp)] ->
   Comp ->
   m ()
-registerIfNecessary name opacity isNoetic xts1 xts2 e = do
+registerIfNecessary name opacity xts1 xts2 e = do
   b <- Clarify.isAlreadyRegistered name
   unless b $ do
     e' <- linearize (xts2 ++ xts1) e
     (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
     let args = map fst xts1 ++ [envVarName]
-    body <- Reduce.reduce $ CompSigmaElim False (map fst xts2) envVar e'
+    body <- Reduce.reduce $ CompSigmaElim True (map fst xts2) envVar e'
     Clarify.insertToAuxEnv name (opacity, args, body)
-    when isNoetic $ do
-      bodyNoetic <- Reduce.reduce $ CompSigmaElim True (map fst xts2) envVar e'
-      Clarify.insertToAuxEnv (DD.getNoeticDD name) (opacity, args, bodyNoetic)
 
 callClosure :: Gensym.Context m => Comp -> [(Ident, Comp, Value)] -> m Comp
 callClosure e zexes = do
@@ -428,7 +331,7 @@ callClosure e zexes = do
     bindLet
       ((closureVarName, e) : zip zs es')
       ( CompSigmaElim
-          False
+          True
           [typeVarName, envVarName, lamVarName]
           closureVar
           (CompPiElimDownElim lamVar (xs ++ [envVar]))
@@ -483,37 +386,10 @@ chainOf tenv term =
       xs0 ++ xs1 ++ xs2
     _ :< TermMagic der ->
       foldMap (chainOf tenv) der
-    _ :< TermMatch mSubject (e, _) patList -> do
-      let xs1 = concatMap (chainOf tenv) (maybeToList mSubject)
-      let xs2 = chainOf tenv e
-      let xs3 = concatMap (\((_, _, _, xts), body) -> chainOf' tenv xts [body]) patList
-      xs1 ++ xs2 ++ xs3
-    _ :< TermNoema s t ->
-      chainOf tenv s ++ chainOf tenv t
-    m :< TermNoemaIntro s e ->
-      (m, s, m :< TermTau) : chainOf tenv e
-    m :< TermNoemaElim s e ->
-      filter (\(_, y, _) -> y /= s) $ chainOf (IntMap.insert (Ident.toInt s) (m :< TermTau) tenv) e
-    _ :< TermArray _ ->
-      []
-    _ :< TermArrayIntro _ elems -> do
-      concatMap (chainOf tenv) elems
-    _ :< TermArrayAccess subject _ array index -> do
-      concatMap (chainOf tenv) [subject, array, index]
-    _ :< TermText ->
-      []
-    _ :< TermTextIntro _ ->
-      []
-    _ :< TermCell contentType ->
-      chainOf tenv contentType
-    _ :< TermCellIntro contentType content -> do
-      concatMap (chainOf tenv) [contentType, content]
-    _ :< TermCellRead cell -> do
-      chainOf tenv cell
-    _ :< TermCellWrite cell newValue -> do
-      concatMap (chainOf tenv) [cell, newValue]
-    _ :< TermResourceType {} ->
-      []
+    _ :< TermMatch (e, _) patList -> do
+      let xs1 = chainOf tenv e
+      let xs2 = concatMap (\((_, _, _, xts), body) -> chainOf' tenv xts [body]) patList
+      xs1 ++ xs2
 
 chainOf' :: TypeEnv -> [BinderF Term] -> [Term] -> [BinderF Term]
 chainOf' tenv binder es =
@@ -547,10 +423,3 @@ forgetHint (_ :< enumCase) =
       () :< EnumCaseInt i
     EnumCaseDefault ->
       () :< EnumCaseDefault
-
-getClauseConsName :: DD.DefiniteDescription -> Bool -> DD.DefiniteDescription
-getClauseConsName basename isNoetic = do
-  let consName' = DD.getConsDD basename
-  if isNoetic
-    then DD.getNoeticDD consName'
-    else consName'

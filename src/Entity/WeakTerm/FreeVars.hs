@@ -60,38 +60,11 @@ freeVars term =
       S.union set1 set2
     _ :< WeakTermMagic der ->
       foldMap freeVars der
-    _ :< WeakTermMatch mSubject (e, t) patList -> do
-      let xs1 = S.unions $ map freeVars $ maybeToList mSubject
-      let xs2 = freeVars e
-      let xs3 = freeVars t
-      let xs4 = S.unions $ map (\((_, _, _, xts), body) -> freeVars' xts [body]) patList
-      S.unions [xs1, xs2, xs3, xs4]
-    _ :< WeakTermNoema s e ->
-      S.unions [freeVars s, freeVars e]
-    _ :< WeakTermNoemaIntro s e ->
-      S.insert s $ freeVars e
-    _ :< WeakTermNoemaElim s e ->
-      S.filter (/= s) $ freeVars e
-    _ :< WeakTermArray elemType ->
-      freeVars elemType
-    _ :< WeakTermArrayIntro elemType elems ->
-      S.unions $ freeVars elemType : map freeVars elems
-    _ :< WeakTermArrayAccess subject elemType array index ->
-      S.unions $ map freeVars [subject, elemType, array, index]
-    _ :< WeakTermText ->
-      S.empty
-    _ :< WeakTermTextIntro _ ->
-      S.empty
-    _ :< WeakTermCell contentType ->
-      freeVars contentType
-    _ :< WeakTermCellIntro contentType content ->
-      S.unions [freeVars contentType, freeVars content]
-    _ :< WeakTermCellRead cell ->
-      freeVars cell
-    _ :< WeakTermCellWrite cell newValue ->
-      S.unions [freeVars cell, freeVars newValue]
-    _ :< WeakTermResourceType _ ->
-      S.empty
+    _ :< WeakTermMatch (e, t) patList -> do
+      let xs1 = freeVars e
+      let xs2 = freeVars t
+      let xs3 = S.unions $ map (\((_, _, _, xts), body) -> freeVars' xts [body]) patList
+      S.unions [xs1, xs2, xs3]
 
 freeVars' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
 freeVars' binder es =

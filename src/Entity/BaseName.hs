@@ -22,7 +22,6 @@ module Entity.BaseName
     imm,
     cls,
     cell,
-    noetic,
     arrayType,
     malloc,
     free,
@@ -138,10 +137,6 @@ lambdaName i =
 cons :: BaseName
 cons =
   MakeBaseName "cons"
-
-noetic :: BaseName
-noetic =
-  MakeBaseName "noetic"
 
 malloc :: BaseName
 malloc =

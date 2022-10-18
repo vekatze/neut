@@ -55,11 +55,6 @@ discernStmtList stmtList =
       e' <- discern nenv e
       rest' <- discernStmtList rest
       return $ WeakStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
-    PreStmtDefineResource m name discarder copier : rest -> do
-      discarder' <- discern empty discarder
-      copier' <- discern empty copier
-      rest' <- discernStmtList rest
-      return $ WeakStmtDefineResource m name discarder' copier' : rest'
     PreStmtSection section innerStmtList : rest -> do
       Locator.withSection section $ do
         innerStmtList' <- discernStmtList innerStmtList
@@ -147,8 +142,7 @@ discern nenv term =
     m :< PT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WeakTermMagic der'
-    m :< PT.Match mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (discern nenv) mSubject
+    m :< PT.Match (e, t) clauseList -> do
       e' <- discern nenv e
       t' <- discern nenv t
       clauseList' <- forM clauseList $ \((mCons, cons, xts), body) -> do
@@ -159,53 +153,7 @@ discern nenv term =
             return ((mCons, consName, arity, xts'), body')
           _ ->
             Throw.raiseError m $ "no such constructor is defined: " <> unresolvedConsName
-      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< PT.Noema s e -> do
-      s' <- discern nenv s
-      e' <- discern nenv e
-      return $ m :< WeakTermNoema s' e'
-    m :< PT.NoemaIntro (I (x, _)) e ->
-      case lookup x nenv of
-        Just (_, name) -> do
-          e' <- discern nenv e
-          return $ m :< WeakTermNoemaIntro name e'
-        Nothing ->
-          Throw.raiseError m $ "undefined subject variable: " <> x
-    m :< PT.NoemaElim s e -> do
-      s' <- Gensym.newIdentFromIdent s
-      e' <- discern ((Ident.toText s, (m, s')) : nenv) e
-      return $ m :< WeakTermNoemaElim s' e'
-    m :< PT.Array elemType -> do
-      elemType' <- discern nenv elemType
-      return $ m :< WeakTermArray elemType'
-    m :< PT.ArrayIntro elemType elems -> do
-      elemType' <- discern nenv elemType
-      elems' <- mapM (discern nenv) elems
-      return $ m :< WeakTermArrayIntro elemType' elems'
-    m :< PT.ArrayAccess subject elemType array index -> do
-      subject' <- discern nenv subject
-      elemType' <- discern nenv elemType
-      array' <- discern nenv array
-      index' <- discern nenv index
-      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
-    m :< PT.Text ->
-      return $ m :< WeakTermText
-    m :< PT.TextIntro txt ->
-      return $ m :< WeakTermTextIntro txt
-    m :< PT.Cell contentType -> do
-      contentType' <- discern nenv contentType
-      return $ m :< WeakTermCell contentType'
-    m :< PT.CellIntro contentType content -> do
-      contentType' <- discern nenv contentType
-      content' <- discern nenv content
-      return $ m :< WeakTermCellIntro contentType' content'
-    m :< PT.CellRead cell -> do
-      cell' <- discern nenv cell
-      return $ m :< WeakTermCellRead cell'
-    m :< PT.CellWrite cell newValue -> do
-      cell' <- discern nenv cell
-      newValue' <- discern nenv newValue
-      return $ m :< WeakTermCellWrite cell' newValue'
+      return $ m :< WeakTermMatch (e', t') clauseList'
 
 discernBinder ::
   Context m =>
@@ -288,8 +236,6 @@ resolveName m name = do
       return $ m :< WeakTermPrim (Prim.Type primNum)
     [(_, GN.PrimOp primOp)] ->
       return $ m :< WeakTermPrim (Prim.Op primOp)
-    [(dd, GN.Resource)] ->
-      return $ m :< WeakTermResourceType dd
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       Throw.raiseError m $
@@ -315,8 +261,6 @@ resolveDefiniteDescription m dd = do
       return $ m :< WeakTermPrim (Prim.Type primNum)
     Just (GN.PrimOp primOp) ->
       return $ m :< WeakTermPrim (Prim.Op primOp)
-    Just GN.Resource ->
-      return $ m :< WeakTermResourceType dd
     Nothing ->
       Throw.raiseError m $ "undefined definite description: " <> DD.reify dd
 

@@ -10,7 +10,6 @@ import Entity.PrimOp
 
 data GlobalName
   = TopLevelFunc Arity
-  | Resource
   | EnumType [EnumValue]
   | EnumIntro ET.EnumTypeName Discriminant
   | PrimType PrimNum

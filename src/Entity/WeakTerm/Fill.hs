@@ -62,10 +62,10 @@ fill sub term =
       case lookup i sub of
         Just (xs, body)
           | length xs == length es -> do
-            let varList = map Ident.toInt xs
-            subst (IntMap.fromList $ zip varList es') body >>= reduce
+              let varList = map Ident.toInt xs
+              subst (IntMap.fromList $ zip varList es') body >>= reduce
           | otherwise ->
-            error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
+              error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
           return $ m :< WeakTermAster i es'
     m :< WeakTermInt t x -> do
@@ -91,57 +91,13 @@ fill sub term =
     m :< WeakTermMagic der -> do
       der' <- mapM (fill sub) der
       return $ m :< WeakTermMagic der'
-    m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (fill sub) mSubject
+    m :< WeakTermMatch (e, t) clauseList -> do
       e' <- fill sub e
       t' <- fill sub t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- fill' sub xts body
         return ((mPat, name, arity, xts'), body')
-      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< WeakTermNoema s e -> do
-      s' <- fill sub s
-      e' <- fill sub e
-      return $ m :< WeakTermNoema s' e'
-    m :< WeakTermNoemaIntro s e -> do
-      e' <- fill sub e
-      return $ m :< WeakTermNoemaIntro s e'
-    m :< WeakTermNoemaElim s e -> do
-      e' <- fill sub e
-      return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray elemType -> do
-      elemType' <- fill sub elemType
-      return $ m :< WeakTermArray elemType'
-    m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- fill sub elemType
-      elems' <- mapM (fill sub) elems
-      return $ m :< WeakTermArrayIntro elemType' elems'
-    m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- fill sub subject
-      elemType' <- fill sub elemType
-      array' <- fill sub array
-      index' <- fill sub index
-      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
-    _ :< WeakTermText ->
-      return term
-    _ :< WeakTermTextIntro _ ->
-      return term
-    m :< WeakTermCell contentType -> do
-      contentType' <- fill sub contentType
-      return $ m :< WeakTermCell contentType'
-    m :< WeakTermCellIntro contentType content -> do
-      contentType' <- fill sub contentType
-      content' <- fill sub content
-      return $ m :< WeakTermCellIntro contentType' content'
-    m :< WeakTermCellRead cell -> do
-      cell' <- fill sub cell
-      return $ m :< WeakTermCellRead cell'
-    m :< WeakTermCellWrite cell newValue -> do
-      cell' <- fill sub cell
-      newValue' <- fill sub newValue
-      return $ m :< WeakTermCellWrite cell' newValue'
-    _ :< WeakTermResourceType _ ->
-      return term
+      return $ m :< WeakTermMatch (e', t') clauseList'
 
 fill' ::
   Context m =>

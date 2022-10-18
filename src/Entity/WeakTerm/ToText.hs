@@ -27,13 +27,13 @@ toText term =
       DD.reify x
     _ :< WeakTermPi xts cod
       | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WeakTermPi yts _)] <- xts ->
-        case splitLast yts of
-          Nothing ->
-            "(product)"
-          Just (zts, (_, _, t)) ->
-            showCons ["∑", inParen $ showTypeArgs zts, toText t]
+          case splitLast yts of
+            Nothing ->
+              "(product)"
+            Just (zts, (_, _, t)) ->
+              showCons ["∑", inParen $ showTypeArgs zts, toText t]
       | otherwise ->
-        showCons ["Π", inParen $ showTypeArgs xts, toText cod]
+          showCons ["Π", inParen $ showTypeArgs xts, toText cod]
     _ :< WeakTermPiIntro kind xts e -> do
       case kind of
         LamKindFix (_, x, _) -> do
@@ -78,38 +78,8 @@ toText term =
     -- "<magic>"
     -- let es' = map toText es
     -- showCons $ "magic" : T.pack (show i) : es'
-    _ :< WeakTermMatch mSubject (e, _) caseClause -> do
-      case mSubject of
-        Nothing -> do
-          showCons $ "case" : toText e : map showCaseClause caseClause
-        Just _ -> do
-          showCons $ "case-noetic" : toText e : map showCaseClause caseClause
-    _ :< WeakTermNoema s e ->
-      showCons ["&" <> toText s, toText e]
-    _ :< WeakTermNoemaIntro s e ->
-      showCons ["noema-intro", Ident.toText s, toText e]
-    _ :< WeakTermNoemaElim s e ->
-      showCons ["noema-elim", Ident.toText s, toText e]
-    _ :< WeakTermArray elemType ->
-      showCons ["array", toText elemType]
-    _ :< WeakTermArrayIntro elemType elems ->
-      showCons $ "array-new" : toText elemType : map toText elems
-    _ :< WeakTermArrayAccess subject elemType array index ->
-      showCons ["array-access", toText subject, toText elemType, toText array, toText index]
-    _ :< WeakTermText ->
-      "text"
-    _ :< WeakTermTextIntro text ->
-      T.pack $ show text
-    _ :< WeakTermCell contentType ->
-      showCons ["cell", toText contentType]
-    _ :< WeakTermCellIntro _ content ->
-      showCons ["cell-new", toText content]
-    _ :< WeakTermCellRead cell ->
-      showCons ["cell-read", toText cell]
-    _ :< WeakTermCellWrite cell newValue ->
-      showCons ["cell-write", toText cell, toText newValue]
-    _ :< WeakTermResourceType name ->
-      DD.reify name
+    _ :< WeakTermMatch (e, _) caseClause -> do
+      showCons $ "case" : toText e : map showCaseClause caseClause
 
 inParen :: T.Text -> T.Text
 inParen s =

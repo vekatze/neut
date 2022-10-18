@@ -22,19 +22,16 @@ type PreProgram =
 
 data PreStmt
   = PreStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
-  | PreStmtDefineResource Hint DD.DefiniteDescription PT.PreTerm PT.PreTerm
   | PreStmtSection Section.Section [PreStmt]
 
 data WeakStmt
   = WeakStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WeakTerm] WeakTerm WeakTerm
-  | WeakStmtDefineResource Hint DD.DefiniteDescription WeakTerm WeakTerm
 
 type Program =
   (Source.Source, [Stmt])
 
 data Stmt
   = StmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF Term] Term Term
-  | StmtDefineResource Hint DD.DefiniteDescription Term Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -58,5 +55,3 @@ compress stmt =
           StmtDefine opacity m functionName impArgNum args codType (m :< TermTau)
         _ ->
           stmt
-    StmtDefineResource {} ->
-      stmt

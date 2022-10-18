@@ -92,13 +92,13 @@ sigmaT mxts argVar = do
   as <- forM xts $ uncurry toAffineApp
   ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
   body' <- linearize xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
-  return $ CompSigmaElim False (map fst xts) argVar body'
+  return $ CompSigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigma4 NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
 --   update CompEnv with NAME ~> (thunk LAM), where LAM is:
 --   lam z.
---     let-noetic (x1, ..., xn) := z in
+--     let-without-free (x1, ..., xn) := z in
 --     <LINEARIZE_HEADER for x1, .., xn> in                                      ---
 --     bind x1' :=                                                     ---       ---
 --       bind f1 = t1 in              ---                              ---       ---
@@ -119,7 +119,7 @@ sigma4 mxts argVar = do
   as <- forM xts $ uncurry toRelevantApp
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith "pair") xts
   body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
-  return $ CompSigmaElim True (map fst xts) argVar body'
+  return $ CompSigmaElim False (map fst xts) argVar body'
 
 supplyName :: Gensym.Context m => Either b (Ident, b) -> m (Ident, b)
 supplyName mName =

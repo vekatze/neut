@@ -103,10 +103,10 @@ distinguishComp z term =
       (vs, d') <- distinguishValue z d
       (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat $ vs : vss, CompPiElimDownElim d' ds')
-    CompSigmaElim b xs d e -> do
+    CompSigmaElim shouldDeallocate xs d e -> do
       (vs1, d') <- distinguishValue z d
       (vs2, e') <- distinguishComp z e
-      return (vs1 ++ vs2, CompSigmaElim b xs d' e')
+      return (vs1 ++ vs2, CompSigmaElim shouldDeallocate xs d' e')
     CompUpIntro d -> do
       (vs, d') <- distinguishValue z d
       return (vs, CompUpIntro d')

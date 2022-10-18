@@ -96,13 +96,14 @@ lowerComp term =
         ds' <- mapM lowerValue ds
         v'' <- cast v' $ toFunPtrType ds
         return $ LowCompCall v'' ds'
-    CompSigmaElim isNoetic xs v e -> do
+    CompSigmaElim shouldDeallocate xs v e -> do
       let baseType = LowTypePointer $ LowTypeArray (length xs) voidPtr
       runLowerComp $ do
         basePointer <- lowerValue v
         castedBasePointer <- cast basePointer baseType
         ds <- loadElements castedBasePointer baseType $ take (length xs) $ zip [0 ..] (repeat voidPtr)
-        unless isNoetic $ free castedBasePointer baseType
+        when shouldDeallocate $ do
+          free castedBasePointer baseType
         forM_ (zip xs ds) $ \(x, d) -> do
           extend $ return . LowCompLet x (LowOpBitcast d voidPtr voidPtr)
         lift $ lowerComp e
@@ -278,7 +279,8 @@ lowerValue v =
     ValueVarGlobal globalName arity -> do
       lowNameSet <- lift getDefinedNameSet
       unless (S.member globalName lowNameSet) $
-        lift $ insDeclEnv (DN.In globalName) arity
+        lift $
+          insDeclEnv (DN.In globalName) arity
       uncast (LowValueVarGlobal globalName) (toFunPtrType' arity)
     ValueVarLocal y ->
       return $ LowValueVarLocal y

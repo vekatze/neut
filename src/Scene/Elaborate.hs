@@ -84,8 +84,6 @@ registerTopLevelDef stmt = do
       Implicit.insert x impArgNum
       Type.insert x $ weaken $ m :< TermPi xts codType
       Definition.insert opacity m x (map weakenBinder xts) (weaken e)
-    StmtDefineResource m name _ _ ->
-      Type.insert name $ m :< WeakTermTau
 
 setupDef :: Context m => WeakStmt -> m WeakStmt
 setupDef def =
@@ -95,9 +93,6 @@ setupDef def =
       Implicit.insert f impArgNum
       Definition.insert opacity m f xts e
       return $ WeakStmtDefine opacity m f impArgNum xts codType e
-    WeakStmtDefineResource m name discarder copier -> do
-      Type.insert name $ m :< WeakTermTau
-      return $ WeakStmtDefineResource m name discarder copier
 
 inferStmt :: Infer.Context m => Maybe DD.DefiniteDescription -> WeakStmt -> m WeakStmt
 inferStmt mMainDD stmt = do
@@ -107,8 +102,6 @@ inferStmt mMainDD stmt = do
       when (Just x == mMainDD) $
         Env.insConstraintEnv (m :< WeakTermPi [] (i64 m)) (m :< WeakTermPi xts codType)
       return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
-    WeakStmtDefineResource m name discarder copier ->
-      Infer.inferDefineResource m name discarder copier
 
 inferStmtDefine ::
   Infer.Context m =>
@@ -135,11 +128,6 @@ elaborateStmtList stmtList = do
       Definition.insert opacity m x (map weakenBinder xts') (weaken e')
       rest' <- elaborateStmtList rest
       return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
-    WeakStmtDefineResource m name discarder copier : rest -> do
-      discarder' <- elaborate' discarder
-      copier' <- elaborate' copier
-      rest' <- elaborateStmtList rest
-      return $ StmtDefineResource m name discarder' copier' : rest'
 
 elaborate' :: Context m => WeakTerm -> m Term
 elaborate' term =
@@ -186,10 +174,10 @@ elaborate' term =
           Throw.raiseError m "couldn't instantiate the hole here"
         Just (xs, e)
           | length xs == length es -> do
-            let s = IntMap.fromList $ zip (map Ident.toInt xs) es
-            WeakTerm.subst s e >>= elaborate'
+              let s = IntMap.fromList $ zip (map Ident.toInt xs) es
+              WeakTerm.subst s e >>= elaborate'
           | otherwise ->
-            Throw.raiseError m "arity mismatch"
+              Throw.raiseError m "arity mismatch"
     m :< WeakTermPrim x ->
       return $ m :< TermPrim x
     m :< WeakTermInt t x -> do
@@ -241,8 +229,7 @@ elaborate' term =
     m :< WeakTermMagic der -> do
       der' <- mapM elaborate' der
       return $ m :< TermMagic der'
-    m :< WeakTermMatch mSubject (e, t) patList -> do
-      mSubject' <- mapM elaborate' mSubject
+    m :< WeakTermMatch (e, t) patList -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= Term.reduce
       case t' of
@@ -251,75 +238,13 @@ elaborate' term =
           case mConsInfoList of
             Just (GN.Data _ consInfoList) -> do
               patList' <- elaboratePatternList m consInfoList patList
-              return $ m :< TermMatch mSubject' (e', t') patList'
+              return $ m :< TermMatch (e', t') patList'
             _ ->
               Throw.raiseError (metaOf t) $
                 "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
         _ -> do
           Throw.raiseError (metaOf t) $
             "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
-    m :< WeakTermNoema s e -> do
-      s' <- elaborate' s
-      e' <- elaborate' e
-      return $ m :< TermNoema s' e'
-    m :< WeakTermNoemaIntro s e -> do
-      e' <- elaborate' e
-      return $ m :< TermNoemaIntro s e'
-    m :< WeakTermNoemaElim s e -> do
-      e' <- elaborate' e
-      return $ m :< TermNoemaElim s e'
-    m :< WeakTermArray elemType -> do
-      elemType' <- elaborate' elemType
-      case elemType' of
-        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
-          return $ m :< TermArray (PrimNumInt size)
-        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
-          return $ m :< TermArray (PrimNumFloat size)
-        _ ->
-          Throw.raiseError m $
-            "invalid element type:\n" <> toText (weaken elemType')
-    m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- elaborate' elemType
-      elems' <- mapM elaborate' elems
-      case elemType' of
-        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
-          return $ m :< TermArrayIntro (PrimNumInt size) elems'
-        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
-          return $ m :< TermArrayIntro (PrimNumFloat size) elems'
-        _ ->
-          Throw.raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
-    m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- elaborate' subject
-      elemType' <- elaborate' elemType
-      array' <- elaborate' array
-      index' <- elaborate' index
-      case elemType' of
-        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
-          return $ m :< TermArrayAccess subject' (PrimNumInt size) array' index'
-        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
-          return $ m :< TermArrayAccess subject' (PrimNumFloat size) array' index'
-        _ ->
-          Throw.raiseError m $ "invalid element type:\n" <> toText (weaken elemType')
-    m :< WeakTermText ->
-      return $ m :< TermText
-    m :< WeakTermTextIntro text ->
-      return $ m :< TermTextIntro text
-    m :< WeakTermCell contentType -> do
-      contentType' <- elaborate' contentType
-      return $ m :< TermCell contentType'
-    m :< WeakTermCellIntro contentType content -> do
-      contentType' <- elaborate' contentType
-      content' <- elaborate' content
-      return $ m :< TermCellIntro contentType' content'
-    m :< WeakTermCellRead cell -> do
-      cell' <- elaborate' cell
-      return $ m :< TermCellRead cell'
-    m :< WeakTermCellWrite cell newValue -> do
-      cell' <- elaborate' cell
-      newValue' <- elaborate' newValue
-      return $ m :< TermCellWrite cell' newValue'
-    m :< WeakTermResourceType name ->
-      return $ m :< TermResourceType name
 
 -- for now
 elaboratePatternList ::

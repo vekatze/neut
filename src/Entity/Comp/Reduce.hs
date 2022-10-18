@@ -34,25 +34,25 @@ reduce term =
               return term
         _ ->
           return term
-    CompSigmaElim isNoetic xs v e ->
+    CompSigmaElim shouldDeallocate xs v e ->
       case v of
         ValueSigmaIntro ds
           | length ds == length xs -> do
-            let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-            subst sub IntMap.empty e >>= reduce
+              let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
+              subst sub IntMap.empty e >>= reduce
         _ -> do
           e' <- reduce e
           case e' of
             CompUpIntro (ValueSigmaIntro ds)
               | Just ys <- mapM extractIdent ds,
                 xs == ys ->
-                return $ CompUpIntro v -- eta-reduce
+                  return $ CompUpIntro v -- eta-reduce
             _ ->
               case xs of
                 [] ->
                   return e'
                 _ ->
-                  return $ CompSigmaElim isNoetic xs v e'
+                  return $ CompSigmaElim shouldDeallocate xs v e'
     CompUpIntro _ ->
       return term
     CompUpElim x e1 e2 -> do
@@ -73,7 +73,7 @@ reduce term =
           case e2' of
             CompUpIntro (ValueVarLocal y)
               | x == y ->
-                return e1' -- eta-reduce
+                  return e1' -- eta-reduce
             _ ->
               return $ CompUpElim x e1' e2'
     CompEnumElim v les -> do
@@ -82,21 +82,21 @@ reduce term =
       case v of
         ValueEnumIntro label
           | Just body <- lookup (EnumCaseLabel label) les' ->
-            reduce body
+              reduce body
           | Just body <- lookup EnumCaseDefault les' ->
-            reduce body
+              reduce body
         ValueInt _ l
           | Just body <- lookup (EnumCaseInt (fromInteger l)) les' ->
-            reduce body
+              reduce body
           | Just body <- lookup EnumCaseDefault les' ->
-            reduce body
+              reduce body
           | otherwise -> do
-            -- putStrLn "other"
-            -- print v
-            -- print les
-            -- let (ls, es) = unzip les
-            es' <- mapM reduce es
-            return $ CompEnumElim v (zip ls es')
+              -- putStrLn "other"
+              -- print v
+              -- print les
+              -- let (ls, es) = unzip les
+              es' <- mapM reduce es
+              return $ CompEnumElim v (zip ls es')
         _ -> do
           -- p "other"
           -- p' v

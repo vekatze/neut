@@ -42,22 +42,7 @@ data PreTermF a
   | EnumElim (a, a) [(PreEnumCase, a)]
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | Match
-      (Maybe a) -- noetic subject (this is for `case-noetic`)
-      (a, a) -- (pattern-matched value, its type)
-      [(PrePatternF a, a)]
-  | Noema a a
-  | NoemaIntro Ident a
-  | NoemaElim Ident a
-  | Array a
-  | ArrayIntro a [a]
-  | ArrayAccess a a a a
-  | Text
-  | TextIntro T.Text
-  | Cell a -- cell(list(i64))
-  | CellIntro a a -- cell-new(v) (the first argument is the type of `v`)
-  | CellRead a -- cell-read(ptr)
-  | CellWrite a a -- cell-write(ptr, value)
+  | Match (a, a) [(PrePatternF a, a)] -- (pattern-matched value, its type)
 
 type DefInfo =
   ((Hint, T.Text), [BinderF PreTerm], PreTerm, PreTerm)

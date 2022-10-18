@@ -1,7 +1,6 @@
 module Entity.WeakTerm.Holes (holes) where
 
 import Control.Comonad.Cofree
-import Data.Maybe
 import qualified Data.Set as S
 import Entity.Binder
 import Entity.HoleID
@@ -57,38 +56,11 @@ holes term =
       S.union set1 set2
     _ :< WeakTermMagic der ->
       foldMap holes der
-    _ :< WeakTermMatch mSubject (e, t) patList -> do
-      let xs1 = S.unions $ map holes $ maybeToList mSubject
-      let xs2 = holes e
-      let xs3 = holes t
-      let xs4 = S.unions $ map (\((_, _, _, xts), body) -> holes' xts [body]) patList
-      S.unions [xs1, xs2, xs3, xs4]
-    _ :< WeakTermNoema s e ->
-      S.unions [holes s, holes e]
-    _ :< WeakTermNoemaIntro _ e ->
-      holes e
-    _ :< WeakTermNoemaElim _ e ->
-      holes e
-    _ :< WeakTermArray elemType ->
-      holes elemType
-    _ :< WeakTermArrayIntro elemType elems ->
-      S.unions $ holes elemType : map holes elems
-    _ :< WeakTermArrayAccess subject elemType array index ->
-      S.unions $ map holes [subject, elemType, array, index]
-    _ :< WeakTermText ->
-      S.empty
-    _ :< WeakTermTextIntro _ ->
-      S.empty
-    _ :< WeakTermCell contentType ->
-      holes contentType
-    _ :< WeakTermCellIntro contentType content ->
-      S.unions [holes contentType, holes content]
-    _ :< WeakTermCellRead cell ->
-      holes cell
-    _ :< WeakTermCellWrite cell newValue ->
-      S.unions [holes cell, holes newValue]
-    _ :< WeakTermResourceType _ ->
-      S.empty
+    _ :< WeakTermMatch (e, t) patList -> do
+      let xs1 = holes e
+      let xs2 = holes t
+      let xs3 = S.unions $ map (\((_, _, _, xts), body) -> holes' xts [body]) patList
+      S.unions [xs1, xs2, xs3]
 
 holes' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set HoleID
 holes' binder es =

@@ -60,38 +60,11 @@ weaken term =
       m :< WeakTermEnumElim (e', t') (zip caseList es')
     m :< TermMagic der -> do
       m :< WeakTermMagic (fmap weaken der)
-    m :< TermMatch mSubject (e, t) patList -> do
-      let mSubject' = fmap weaken mSubject
+    m :< TermMatch (e, t) patList -> do
       let e' = weaken e
       let t' = weaken t
       let patList' = map (\((mp, p, arity, xts), body) -> ((mp, p, arity, map weakenBinder xts), weaken body)) patList
-      m :< WeakTermMatch mSubject' (e', t') patList'
-    m :< TermNoema s t ->
-      m :< WeakTermNoema (weaken s) (weaken t)
-    m :< TermNoemaIntro s e ->
-      m :< WeakTermNoemaIntro s (weaken e)
-    m :< TermNoemaElim s e ->
-      m :< WeakTermNoemaElim s (weaken e)
-    m :< TermArray elemType ->
-      m :< WeakTermArray (weaken (fromPrimNum m elemType))
-    m :< TermArrayIntro elemType elems ->
-      m :< WeakTermArrayIntro (weaken (fromPrimNum m elemType)) (map weaken elems)
-    m :< TermArrayAccess subject elemType array index ->
-      m :< WeakTermArrayAccess (weaken subject) (weaken (fromPrimNum m elemType)) (weaken array) (weaken index)
-    m :< TermText ->
-      m :< WeakTermText
-    m :< TermTextIntro text ->
-      m :< WeakTermTextIntro text
-    m :< TermCell contentType ->
-      m :< WeakTermCell (weaken contentType)
-    m :< TermCellIntro contentType content ->
-      m :< WeakTermCellIntro (weaken contentType) (weaken content)
-    m :< TermCellRead cell ->
-      m :< WeakTermCellRead (weaken cell)
-    m :< TermCellWrite cell newValue ->
-      m :< WeakTermCellWrite (weaken cell) (weaken newValue)
-    m :< TermResourceType name ->
-      m :< WeakTermResourceType name
+      m :< WeakTermMatch (e', t') patList'
 
 weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WeakTerm)
 weakenBinder (m, x, t) =

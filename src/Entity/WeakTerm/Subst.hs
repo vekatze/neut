@@ -20,9 +20,9 @@ subst sub term =
       return term
     _ :< WeakTermVar x
       | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-        return e
+          return e
       | otherwise ->
-        return term
+          return term
     _ :< WeakTermVarGlobal {} ->
       return term
     m :< WeakTermPi xts t -> do
@@ -81,57 +81,13 @@ subst sub term =
     m :< WeakTermMagic der -> do
       der' <- mapM (subst sub) der
       return $ m :< WeakTermMagic der'
-    m :< WeakTermMatch mSubject (e, t) clauseList -> do
-      mSubject' <- mapM (subst sub) mSubject
+    m :< WeakTermMatch (e, t) clauseList -> do
       e' <- subst sub e
       t' <- subst sub t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- subst' sub xts body
         return ((mPat, name, arity, xts'), body')
-      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< WeakTermNoema s e -> do
-      s' <- subst sub s
-      e' <- subst sub e
-      return $ m :< WeakTermNoema s' e'
-    m :< WeakTermNoemaIntro s e -> do
-      e' <- subst sub e
-      return $ m :< WeakTermNoemaIntro s e'
-    m :< WeakTermNoemaElim s e -> do
-      e' <- subst sub e
-      return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray elemType -> do
-      elemType' <- subst sub elemType
-      return $ m :< WeakTermArray elemType'
-    m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- subst sub elemType
-      elems' <- mapM (subst sub) elems
-      return $ m :< WeakTermArrayIntro elemType' elems'
-    m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- subst sub subject
-      elemType' <- subst sub elemType
-      array' <- subst sub array
-      index' <- subst sub index
-      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
-    _ :< WeakTermText ->
-      return term
-    _ :< WeakTermTextIntro _ ->
-      return term
-    m :< WeakTermCell contentType -> do
-      contentType' <- subst sub contentType
-      return $ m :< WeakTermCell contentType'
-    m :< WeakTermCellIntro contentType content -> do
-      contentType' <- subst sub contentType
-      content' <- subst sub content
-      return $ m :< WeakTermCellIntro contentType' content'
-    m :< WeakTermCellRead cell -> do
-      cell' <- subst sub cell
-      return $ m :< WeakTermCellRead cell'
-    m :< WeakTermCellWrite cell newValue -> do
-      cell' <- subst sub cell
-      newValue' <- subst sub newValue
-      return $ m :< WeakTermCellWrite cell' newValue'
-    _ :< WeakTermResourceType _ ->
-      return term
+      return $ m :< WeakTermMatch (e', t') clauseList'
 
 subst' ::
   Context m =>

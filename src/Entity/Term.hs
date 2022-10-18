@@ -3,7 +3,6 @@ module Entity.Term where
 import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.IntMap as IntMap
-import qualified Data.Text as T
 import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
@@ -15,7 +14,6 @@ import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
 import qualified Entity.Prim as Prim
-import Entity.PrimNum
 import Entity.PrimNumSize
 import GHC.Generics (Generic)
 
@@ -39,23 +37,7 @@ data TermF a
   | TermEnumIntro EnumLabel
   | TermEnumElim (a, a) [(EnumCase, a)]
   | TermMagic (Magic a)
-  | TermMatch
-      (Maybe a) -- noetic subject (this is for `case-noetic`)
-      (a, a) -- (pattern-matched value, its type)
-      [(PatternF a, a)]
-  | TermNoema a a
-  | TermNoemaIntro Ident a
-  | TermNoemaElim Ident a
-  | TermArray PrimNum
-  | TermArrayIntro PrimNum [a]
-  | TermArrayAccess a PrimNum a a
-  | TermText
-  | TermTextIntro T.Text
-  | TermCell a -- cell(list(i64))
-  | TermCellIntro a a -- cell-new(v) (the first argument is the type of `v`)
-  | TermCellRead a -- cell-read(ptr)
-  | TermCellWrite a a -- cell-write(ptr, value)
-  | TermResourceType DD.DefiniteDescription
+  | TermMatch (a, a) [(PatternF a, a)]
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

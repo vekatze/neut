@@ -2,7 +2,6 @@ module Case.Main.Global
   ( registerTopLevelFunc,
     registerEnum,
     registerData,
-    registerResource,
     lookup,
     initialize,
     Context,
@@ -96,20 +95,11 @@ registerData m dataName arity consList = do
   ensureFreshness m topNameMap dataName
   Env.insertToNameMap dataName $ GN.Data arity consList
 
-registerResource ::
-  Context m =>
-  Hint.Hint ->
-  DD.DefiniteDescription ->
-  m ()
-registerResource m resourceName = do
-  topNameMap <- Env.getNameMap
-  ensureFreshness m topNameMap resourceName
-  Env.insertToNameMap resourceName GN.Resource
-
 ensureFreshness :: Context m => Hint.Hint -> NameMap -> DD.DefiniteDescription -> m ()
 ensureFreshness m topNameMap name = do
   when (Map.member name topNameMap) $
-    Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
+    Throw.raiseError m $
+      "`" <> DD.reify name <> "` is already defined"
 
 lookup :: Context m => DD.DefiniteDescription -> m (Maybe GN.GlobalName)
 lookup name = do
@@ -119,11 +109,11 @@ lookup name = do
       return $ Just kind
     Nothing
       | Just primType <- PrimNum.fromDefiniteDescription name ->
-        return $ Just $ GN.PrimType primType
+          return $ Just $ GN.PrimType primType
       | Just primOp <- PrimOp.fromDefiniteDescription name ->
-        return $ Just $ GN.PrimOp primOp
+          return $ Just $ GN.PrimOp primOp
       | otherwise -> do
-        return Nothing
+          return Nothing
 
 createEnumMap :: ET.EnumTypeName -> [EnumValue] -> [(DD.DefiniteDescription, GN.GlobalName)]
 createEnumMap typeName@(ET.EnumTypeName typeNameInner) enumItemList = do

@@ -3,7 +3,6 @@ module Scene.Elaborate.Infer
     infer,
     inferType,
     inferBinder,
-    inferDefineResource,
   )
 where
 
@@ -33,7 +32,6 @@ import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
-import Entity.Stmt
 import Entity.Term
 import qualified Entity.Term.FromPrimNum as Term
 import Entity.Term.Weaken
@@ -64,17 +62,6 @@ infer =
 inferType :: Context m => WeakTerm -> m WeakTerm
 inferType =
   inferType' []
-
-inferDefineResource :: Context m => Hint -> DD.DefiniteDescription -> WeakTerm -> WeakTerm -> m WeakStmt
-inferDefineResource m name discarder copier = do
-  (discarder', td) <- infer discarder
-  (copier', tc) <- infer copier
-  x <- Gensym.newIdentFromText "_"
-  let botTop = m :< WeakTermPi [(m, x, m :< WeakTermEnum constBottom)] (m :< WeakTermEnum constTop)
-  let botBot = m :< WeakTermPi [(m, x, m :< WeakTermEnum constBottom)] (m :< WeakTermEnum constBottom)
-  Env.insConstraintEnv botTop td
-  Env.insConstraintEnv botBot tc
-  return $ WeakStmtDefineResource m name discarder' copier'
 
 infer' :: Context m => BoundVarEnv -> WeakTerm -> m (WeakTerm, WeakTerm)
 infer' varEnv term =
@@ -153,10 +140,10 @@ infer' varEnv term =
           return (term, holeType)
     m :< WeakTermPrim prim
       | Prim.Type _ <- prim ->
-        return (term, m :< WeakTermTau)
+          return (term, m :< WeakTermTau)
       | Prim.Op op <- prim -> do
-        primOpType <- primOpToType m op
-        return (term, weaken primOpType)
+          primOpType <- primOpToType m op
+          return (term, weaken primOpType)
     m :< WeakTermInt t i -> do
       t' <- inferType' [] t -- varEnv == [] since t' should be i64, i8, etc. (i.e. t must be closed)
       return (m :< WeakTermInt t' i, t')
@@ -191,75 +178,16 @@ infer' varEnv term =
           der' <- mapM (infer' varEnv >=> return . fst) der
           resultType <- newAster m varEnv
           return (m :< WeakTermMagic der', resultType)
-    m :< WeakTermMatch mSubject (e, _) clauseList -> do
+    m :< WeakTermMatch (e, _) clauseList -> do
       resultType <- newAster m varEnv
       (e', t') <- infer' varEnv e
-      mSubject' <- mapM (inferSubject m varEnv) mSubject
       clauseList' <- forM clauseList $ \(pat@(mPat, name, arity, xts), body) -> do
         (xts', (body', tBody)) <- inferBinder varEnv xts body
         Env.insConstraintEnv resultType tBody
         (_, tPat) <- infer' varEnv $ patternToTerm pat
         Env.insConstraintEnv tPat t'
         return ((mPat, name, arity, xts'), body')
-      return (m :< WeakTermMatch mSubject' (e', t') clauseList', resultType)
-    m :< WeakTermNoema s t -> do
-      s' <- inferType' varEnv s
-      t' <- inferType' varEnv t
-      return (m :< WeakTermNoema s' t', m :< WeakTermTau)
-    m :< WeakTermNoemaIntro s e -> do
-      (e', t') <- infer' varEnv e
-      return (m :< WeakTermNoemaIntro s e', m :< WeakTermNoema (m :< WeakTermVar s) t')
-    m :< WeakTermNoemaElim s e -> do
-      insWeakTypeEnv s (m :< WeakTermTau)
-      (e', t) <- infer' ((m, s, m :< WeakTermTau) : varEnv) e
-      return (m :< WeakTermNoemaElim s e', t)
-    m :< WeakTermArray elemType -> do
-      elemType' <- inferType' varEnv elemType
-      return (m :< WeakTermArray elemType', m :< WeakTermTau)
-    m :< WeakTermArrayIntro _ elems -> do
-      elemType <- newAster m varEnv
-      (elems', ts') <- unzip <$> mapM (infer' varEnv) elems
-      forM_ ts' $ Env.insConstraintEnv elemType
-      return (m :< WeakTermArrayIntro elemType elems', m :< WeakTermArray elemType)
-    m :< WeakTermArrayAccess _ _ array index -> do
-      subject <- newAster m varEnv
-      elemType <- newAster m varEnv
-      (array', tArray) <- infer' varEnv array
-      (index', tIndex) <- infer' varEnv index
-      Env.insConstraintEnv (i64 m) tIndex
-      let noeticArrayType = m :< WeakTermNoema subject (m :< WeakTermArray elemType)
-      Env.insConstraintEnv noeticArrayType tArray
-      return (m :< WeakTermArrayAccess subject elemType array' index', elemType)
-    m :< WeakTermText ->
-      return (term, m :< WeakTermTau)
-    m :< WeakTermTextIntro _ -> do
-      return (term, m :< WeakTermText)
-    m :< WeakTermCell contentType -> do
-      contentType' <- inferType' varEnv contentType
-      return (m :< WeakTermCell contentType', m :< WeakTermTau)
-    m :< WeakTermCellIntro _ content -> do
-      (content', contentType) <- infer' varEnv content
-      return (m :< WeakTermCellIntro contentType content', m :< WeakTermCell contentType)
-    m :< WeakTermCellRead cell -> do
-      (cell', cellType) <- infer' varEnv cell
-      contentType <- newAster m varEnv
-      subject <- newAster m varEnv
-      Env.insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell contentType)) cellType
-      return (m :< WeakTermCellRead cell', contentType)
-    m :< WeakTermCellWrite cell newValue -> do
-      (cell', cellType) <- infer' varEnv cell
-      (newValue', newValueType) <- infer' varEnv newValue
-      subject <- newAster m varEnv
-      Env.insConstraintEnv (m :< WeakTermNoema subject (m :< WeakTermCell newValueType)) cellType
-      return (m :< WeakTermCellWrite cell' newValue', m :< WeakTermEnum constTop)
-    m :< WeakTermResourceType {} ->
-      return (term, m :< WeakTermTau)
-
-inferSubject :: Context m => Hint -> BoundVarEnv -> WeakTerm -> m WeakTerm
-inferSubject m varEnv subject = do
-  (subject', tSub) <- infer' varEnv subject
-  Env.insConstraintEnv (m :< WeakTermTau) tSub
-  return subject'
+      return (m :< WeakTermMatch (e', t') clauseList', resultType)
 
 inferArgs ::
   Context m =>
@@ -332,10 +260,10 @@ inferPiElim varEnv m (e, t) ets = do
   case t of
     (_ :< WeakTermPi xts (_ :< cod))
       | length xts == length ets -> do
-        cod' <- inferArgs IntMap.empty m ets xts (m :< cod)
-        return (m :< WeakTermPiElim e es, cod')
+          cod' <- inferArgs IntMap.empty m ets xts (m :< cod)
+          return (m :< WeakTermPiElim e es, cod')
       | otherwise -> do
-        raiseArityMismatchError e (length xts) (length ets)
+          raiseArityMismatchError e (length xts) (length ets)
     _ -> do
       ys <- mapM (const $ Gensym.newIdentFromText "arg") es
       yts <- newTypeAsterList varEnv $ zip ys (map metaOf es)

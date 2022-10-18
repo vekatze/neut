@@ -21,26 +21,26 @@ reduce term =
     m :< WeakTermPiIntro kind xts e
       | LamKindFix (_, x, _) <- kind,
         x `notElem` freeVars e ->
-        reduce $ m :< WeakTermPiIntro LamKindNormal xts e
+          reduce $ m :< WeakTermPiIntro LamKindNormal xts e
       | otherwise -> do
-        let (ms, xs, ts) = unzip3 xts
-        ts' <- mapM reduce ts
-        e' <- reduce e
-        case kind of
-          LamKindFix (mx, x, t) -> do
-            t' <- reduce t
-            return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
-          _ ->
-            return (m :< WeakTermPiIntro kind (zip3 ms xs ts') e')
+          let (ms, xs, ts) = unzip3 xts
+          ts' <- mapM reduce ts
+          e' <- reduce e
+          case kind of
+            LamKindFix (mx, x, t) -> do
+              t' <- reduce t
+              return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+            _ ->
+              return (m :< WeakTermPiIntro kind (zip3 ms xs ts') e')
     m :< WeakTermPiElim e es -> do
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
         (_ :< WeakTermPiIntro LamKindNormal xts body)
           | length xts == length es' -> do
-            let xs = map (\(_, x, _) -> Ident.toInt x) xts
-            let sub = IntMap.fromList $ zip xs es'
-            Subst.subst sub body >>= reduce
+              let xs = map (\(_, x, _) -> Ident.toInt x) xts
+              let sub = IntMap.fromList $ zip xs es'
+              Subst.subst sub body >>= reduce
         _ ->
           return $ m :< WeakTermPiElim e' es'
     m :< WeakTermSigma xts -> do
@@ -55,9 +55,9 @@ reduce term =
       case e1' of
         _ :< WeakTermSigmaIntro es
           | length xts == length es -> do
-            let xs = map (\(_, x, _) -> Ident.toInt x) xts
-            let sub = IntMap.fromList $ zip xs es
-            Subst.subst sub e2 >>= reduce
+              let xs = map (\(_, x, _) -> Ident.toInt x) xts
+              let sub = IntMap.fromList $ zip xs es
+              Subst.subst sub e2 >>= reduce
         _ -> do
           e2' <- reduce e2
           return $ m :< WeakTermSigmaElim xts e1' e2'
@@ -90,7 +90,7 @@ reduce term =
     m :< WeakTermMagic der -> do
       der' <- mapM reduce der
       return $ m :< WeakTermMagic der'
-    m :< WeakTermMatch mSubject (e, t) clauseList -> do
+    m :< WeakTermMatch (e, t) clauseList -> do
       e' <- reduce e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
@@ -102,35 +102,11 @@ reduce term =
       --       reduce $ m :< WeakTermPiElim e' (resultType : lamList)
       --   _ -> do
       -- resultType' <- reduce resultType
-      mSubject' <- mapM reduce mSubject
       t' <- reduce t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         body' <- reduce body
         return ((mPat, name, arity, xts), body')
-      return $ m :< WeakTermMatch mSubject' (e', t') clauseList'
-    m :< WeakTermNoema s e -> do
-      s' <- reduce s
-      e' <- reduce e
-      return $ m :< WeakTermNoema s' e'
-    m :< WeakTermNoemaIntro s e -> do
-      e' <- reduce e
-      return $ m :< WeakTermNoemaIntro s e'
-    m :< WeakTermNoemaElim s e -> do
-      e' <- reduce e
-      return $ m :< WeakTermNoemaElim s e'
-    m :< WeakTermArray elemType -> do
-      elemType' <- reduce elemType
-      return $ m :< WeakTermArray elemType'
-    m :< WeakTermArrayIntro elemType elems -> do
-      elemType' <- reduce elemType
-      elems' <- mapM reduce elems
-      return $ m :< WeakTermArrayIntro elemType' elems'
-    m :< WeakTermArrayAccess subject elemType array index -> do
-      subject' <- reduce subject
-      elemType' <- reduce elemType
-      array' <- reduce array
-      index' <- reduce index
-      return $ m :< WeakTermArrayAccess subject' elemType' array' index'
+      return $ m :< WeakTermMatch (e', t') clauseList'
     _ ->
       return term
 

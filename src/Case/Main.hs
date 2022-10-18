@@ -478,7 +478,6 @@ instance MainGlobal.Context App
 instance Global.Context App where
   registerTopLevelFunc = MainGlobal.registerTopLevelFunc
   registerEnum = MainGlobal.registerEnum
-  registerResource = MainGlobal.registerResource
   registerData = MainGlobal.registerData
   lookup = MainGlobal.lookup
   initialize = MainGlobal.initialize

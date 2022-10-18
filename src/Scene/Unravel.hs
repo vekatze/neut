@@ -77,7 +77,8 @@ checkIfCacheIsAvailable isCacheAvailableList source = do
   b <- isFreshCacheAvailable source
   let isCacheAvailable = and $ b : isCacheAvailableList
   when isCacheAvailable $
-    Env.insertToHasObjectSet $ Source.sourceFilePath source
+    Env.insertToHasObjectSet $
+      Source.sourceFilePath source
   return isCacheAvailable
 
 checkIfObjectIsAvailable :: Context m => [IsObjectAvailable] -> Source.Source -> m IsObjectAvailable
@@ -85,7 +86,8 @@ checkIfObjectIsAvailable isObjectAvailableList source = do
   b <- isFreshObjectAvailable source
   let isObjectAvailable = and $ b : isObjectAvailableList
   when isObjectAvailable $
-    Env.insertToHasObjectSet $ Source.sourceFilePath source
+    Env.insertToHasObjectSet $
+      Source.sourceFilePath source
   return isObjectAvailable
 
 isFreshCacheAvailable :: Context m => Source.Source -> m Bool

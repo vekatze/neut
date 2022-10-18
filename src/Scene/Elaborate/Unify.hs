@@ -106,87 +106,66 @@ simplify constraintList =
           simplify cs
         (_ :< WeakTermVar x1, _ :< WeakTermVar x2)
           | x1 == x2 ->
-            simplify cs
+              simplify cs
         (_ :< WeakTermVarGlobal g1 _, _ :< WeakTermVarGlobal g2 _)
           | g1 == g2 ->
-            simplify cs
+              simplify cs
         (m1 :< WeakTermPi xts1 cod1, m2 :< WeakTermPi xts2 cod2)
           | length xts1 == length xts2 -> do
-            xt1 <- asWeakBinder m1 cod1
-            xt2 <- asWeakBinder m2 cod2
-            cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
-            simplify $ cs' ++ cs
+              xt1 <- asWeakBinder m1 cod1
+              xt2 <- asWeakBinder m2 cod2
+              cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+              simplify $ cs' ++ cs
         (m1 :< WeakTermPiIntro kind1 xts1 e1, m2 :< WeakTermPiIntro kind2 xts2 e2)
           | LamKindFix xt1@(_, x1, _) <- kind1,
             LamKindFix xt2@(_, x2, _) <- kind2,
             x1 == x2,
             length xts1 == length xts2 -> do
-            yt1 <- asWeakBinder m1 e1
-            yt2 <- asWeakBinder m2 e2
-            cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
-            simplify $ cs' ++ cs
+              yt1 <- asWeakBinder m1 e1
+              yt2 <- asWeakBinder m2 e2
+              cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
+              simplify $ cs' ++ cs
           | LamKindNormal <- kind1,
             LamKindNormal <- kind2,
             length xts1 == length xts2 -> do
-            xt1 <- asWeakBinder m1 e1
-            xt2 <- asWeakBinder m2 e2
-            cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
-            simplify $ cs' ++ cs
+              xt1 <- asWeakBinder m1 e1
+              xt2 <- asWeakBinder m2 e2
+              cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+              simplify $ cs' ++ cs
           | LamKindCons dataName1 consName1 consNumber1 dataType1 <- kind1,
             LamKindCons dataName2 consName2 consNumber2 dataType2 <- kind2,
             dataName1 == dataName2,
             consName1 == consName2,
             consNumber1 == consNumber2,
             length xts1 == length xts2 -> do
-            xt1 <- asWeakBinder m1 e1
-            xt2 <- asWeakBinder m2 e2
-            cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
-            simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
+              xt1 <- asWeakBinder m1 e1
+              xt2 <- asWeakBinder m2 e2
+              cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+              simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
         (_ :< WeakTermSigma xts1, _ :< WeakTermSigma xts2)
           | length xts1 == length xts2 -> do
-            cs' <- simplifyBinder orig xts1 xts2
-            simplify $ cs' ++ cs
+              cs' <- simplifyBinder orig xts1 xts2
+              simplify $ cs' ++ cs
         (_ :< WeakTermSigmaIntro es1, _ :< WeakTermSigmaIntro es2)
           | length es1 == length es2 -> do
-            simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
+              simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
         (_ :< WeakTermPrim a1, _ :< WeakTermPrim a2)
           | a1 == a2 ->
-            simplify cs
+              simplify cs
         (_ :< WeakTermInt t1 l1, _ :< WeakTermInt t2 l2)
           | l1 == l2 ->
-            simplify $ ((t1, t2), orig) : cs
+              simplify $ ((t1, t2), orig) : cs
         (_ :< WeakTermFloat t1 l1, _ :< WeakTermFloat t2 l2)
           | l1 == l2 ->
-            simplify $ ((t1, t2), orig) : cs
+              simplify $ ((t1, t2), orig) : cs
         (_ :< WeakTermEnum a1, _ :< WeakTermEnum a2)
           | a1 == a2 ->
-            simplify cs
+              simplify cs
         (_ :< WeakTermEnumIntro label1, _ :< WeakTermEnumIntro label2)
           | label1 == label2 ->
-            simplify cs
+              simplify cs
         (_ :< WeakTermQuestion e1 t1, _ :< WeakTermQuestion e2 t2) ->
           simplify $ ((e1, e2), orig) : ((t1, t2), orig) : cs
-        (_ :< WeakTermNoema s1 e1, _ :< WeakTermNoema s2 e2) ->
-          simplify $ ((s1, s2), orig) : ((e1, e2), orig) : cs
-        (_ :< WeakTermNoemaIntro s1 e1, _ :< WeakTermNoemaIntro s2 e2)
-          | s1 == s2 ->
-            simplify $ ((e1, e2), orig) : cs
-        (_ :< WeakTermArray elemType1, _ :< WeakTermArray elemType2) ->
-          simplify $ ((elemType1, elemType2), orig) : cs
-        (_ :< WeakTermArrayIntro elemType1 elems1, _ :< WeakTermArrayIntro elemType2 elems2) ->
-          simplify $ ((elemType1, elemType2), orig) : zipWith (curry (orig,)) elems1 elems2 ++ cs
-        (_ :< WeakTermText, _ :< WeakTermText) ->
-          simplify cs
-        (_ :< WeakTermTextIntro text1, _ :< WeakTermTextIntro text2)
-          | text1 == text2 ->
-            simplify cs
-        (_ :< WeakTermCell contentType1, _ :< WeakTermCell contentType2) ->
-          simplify $ ((contentType1, contentType2), orig) : cs
-        (_ :< WeakTermCellIntro contentType1 content1, _ :< WeakTermCellIntro contentType2 content2) ->
-          simplify $ ((contentType1, contentType2), orig) : ((content1, content2), orig) : cs
-        (_ :< WeakTermResourceType name1, _ :< WeakTermResourceType name2)
-          | name1 == name2 ->
-            simplify cs
         (e1, e2) -> do
           sub <- Env.getHoleSubst
           let fvs1 = freeVars e1
@@ -217,44 +196,44 @@ simplify constraintList =
                     Just argSet1 <- toLinearIdentSet xss1,
                     h1 `S.notMember` fmvs2,
                     fvs2 `S.isSubsetOf` argSet1 ->
-                    resolveHole h1 xss1 e2 cs
+                      resolveHole h1 xss1 e2 cs
                 (_, Just (StuckPiElimAster h2 ies2))
                   | Just xss2 <- mapM asIdent ies2,
                     Just argSet2 <- toLinearIdentSet xss2,
                     h2 `S.notMember` fmvs1,
                     fvs1 `S.isSubsetOf` argSet2 ->
-                    resolveHole h2 xss2 e1 cs
+                      resolveHole h2 xss2 e1 cs
                 (Just (StuckPiElimVarLocal x1 mess1), Just (StuckPiElimVarLocal x2 mess2))
                   | x1 == x2,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
-                    simplify $ map (,orig) pairList ++ cs
+                      simplify $ map (,orig) pairList ++ cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
                   | g1 == g2,
                     Nothing <- Map.lookup g1 defMap,
                     Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
-                    simplify $ map (,orig) pairList ++ cs
+                      simplify $ map (,orig) pairList ++ cs
                   | g1 == g2,
                     Just lam <- Map.lookup g1 defMap ->
-                    simplify $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
+                      simplify $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
                   | Just lam1 <- Map.lookup g1 defMap,
                     Just lam2 <- Map.lookup g2 defMap ->
-                    simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
+                      simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
                   | Just lam <- Map.lookup g1 defMap -> do
-                    let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
-                    insertConstraint uc
-                    simplify cs
+                      let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
+                      insertConstraint uc
+                      simplify cs
                 (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap -> do
-                    let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
-                    insertConstraint uc
-                    simplify cs
+                      let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
+                      insertConstraint uc
+                      simplify cs
                 (Just (StuckPiElimVarGlobal g1 mess1), _)
                   | Just lam <- Map.lookup g1 defMap ->
-                    simplify $ ((toPiElim lam mess1, e2), orig) : cs
+                      simplify $ ((toPiElim lam mess1, e2), orig) : cs
                 (_, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap ->
-                    simplify $ ((e1, toPiElim lam mess2), orig) : cs
+                      simplify $ ((e1, toPiElim lam mess2), orig) : cs
                 _ -> do
                   let uc = SuspendedConstraint (fmvs, ConstraintKindOther, headConstraint)
                   insertConstraint uc
@@ -311,10 +290,10 @@ asPairList list1 list2 =
       Just []
     (es1 : mess1, es2 : mess2)
       | length es1 /= length es2 ->
-        Nothing
+          Nothing
       | otherwise -> do
-        pairList <- asPairList mess1 mess2
-        return $ zip es1 es2 ++ pairList
+          pairList <- asPairList mess1 mess2
+          return $ zip es1 es2 ++ pairList
     _ ->
       Nothing
 
@@ -366,9 +345,9 @@ toLinearIdentSet' xs acc =
       return acc
     x : rest
       | x `S.member` acc ->
-        Nothing
+          Nothing
       | otherwise ->
-        toLinearIdentSet' rest (S.insert x acc)
+          toLinearIdentSet' rest (S.insert x acc)
 
 lookupAny :: [HID.HoleID] -> HS.HoleSubst -> Maybe (HID.HoleID, ([Ident], WeakTerm))
 lookupAny is sub =

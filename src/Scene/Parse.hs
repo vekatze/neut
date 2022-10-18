@@ -92,8 +92,6 @@ parseSource source = do
         case stmt of
           StmtDefine _ _ name _ args _ _ ->
             Global.registerTopLevelFunc hint name $ A.fromInt (length args)
-          StmtDefineResource _ name _ _ ->
-            Global.registerResource hint name
       return $ Left stmtList
     Nothing -> do
       sourceAliasMap <- Env.getSourceAliasMap
@@ -156,7 +154,6 @@ parseStmt = do
   choice
     [ parseDefineData,
       parseDefineCodata,
-      return <$> parseDefineResource,
       return <$> parseDefine OpacityTransparent,
       return <$> parseDefine OpacityOpaque,
       return <$> parseSection
@@ -335,21 +332,8 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
     elemType
     $ m
       :< PT.Match
-        Nothing
         (preVar m recordVarText, codataType)
         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
-
-parseDefineResource :: Context m => P.Parser m PreStmt
-parseDefineResource = do
-  try $ P.keyword "define-resource"
-  m <- P.getCurrentHint
-  name <- P.baseName
-  name' <- lift $ Locator.attachCurrentLocator name
-  P.asBlock $ do
-    discarder <- P.delimiter "-" >> preTerm
-    copier <- P.delimiter "-" >> preTerm
-    lift $ Global.registerResource m name'
-    return $ PreStmtDefineResource m name' discarder copier
 
 setAsData ::
   Global.Context m =>

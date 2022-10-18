@@ -24,13 +24,15 @@ data Value
 
 data Comp
   = CompPiElimDownElim Value [Value] -- ((force v) v1 ... vn)
-  | CompSigmaElim Bool [Ident] Value Comp
+  | CompSigmaElim ShouldDeallocate [Ident] Value Comp
   | CompUpIntro Value
   | CompUpElim Ident Comp Comp
   | CompEnumElim Value [(CompEnumCase, Comp)]
   | CompArrayAccess PrimNum Value Value
   | CompPrimitive Primitive
   deriving (Show)
+
+type ShouldDeallocate = Bool
 
 data Primitive
   = PrimitivePrimOp PrimOp [Value]

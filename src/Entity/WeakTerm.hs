@@ -2,7 +2,6 @@ module Entity.WeakTerm where
 
 import Control.Comonad.Cofree
 import qualified Data.IntMap as IntMap
-import qualified Data.Text as T
 import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
@@ -40,23 +39,7 @@ data WeakTermF a
   | WeakTermEnumElim (a, a) [(EnumCase, a)]
   | WeakTermQuestion a a -- e : t (output the type `t` as note)
   | WeakTermMagic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | WeakTermMatch
-      (Maybe a) -- noetic subject (this is for `case-noetic`)
-      (a, a) -- (pattern-matched value, its type)
-      [(PatternF a, a)]
-  | WeakTermNoema a a
-  | WeakTermNoemaIntro Ident a
-  | WeakTermNoemaElim Ident a
-  | WeakTermArray a
-  | WeakTermArrayIntro a [a]
-  | WeakTermArrayAccess a a a a
-  | WeakTermText
-  | WeakTermTextIntro T.Text
-  | WeakTermCell a -- cell(list(i64))
-  | WeakTermCellIntro a a -- cell-new(v) (the first argument is the type of `v`)
-  | WeakTermCellRead a -- cell-read(ptr)
-  | WeakTermCellWrite a a -- cell-write(ptr, value)
-  | WeakTermResourceType DD.DefiniteDescription
+  | WeakTermMatch (a, a) [(PatternF a, a)] -- (pattern-matched value, its type) [(pattern, body)]
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm

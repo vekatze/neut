@@ -35,9 +35,9 @@ reduce term =
         -- (_ :< TermPiIntro opacity LamKindNormal xts body)
         (_ :< TermPiIntro LamKindNormal xts (_ :< body))
           | length xts == length es' -> do
-            let xs = map (\(_, x, _) -> Ident.toInt x) xts
-            let sub = IntMap.fromList $ zip xs es'
-            Subst.subst sub (m :< body) >>= reduce
+              let xs = map (\(_, x, _) -> Ident.toInt x) xts
+              let sub = IntMap.fromList $ zip xs es'
+              Subst.subst sub (m :< body) >>= reduce
         _ ->
           return (m :< app)
     m :< TermSigma xts -> do
@@ -52,9 +52,9 @@ reduce term =
       case e1' of
         _ :< TermSigmaIntro es
           | length xts == length es -> do
-            let xs = map (\(_, x, _) -> Ident.toInt x) xts
-            let sub = IntMap.fromList $ zip xs es
-            Subst.subst sub e2 >>= reduce
+              let xs = map (\(_, x, _) -> Ident.toInt x) xts
+              let sub = IntMap.fromList $ zip xs es
+              Subst.subst sub e2 >>= reduce
         _ -> do
           e2' <- reduce e2
           return $ m :< TermSigmaElim xts e1' e2'
@@ -85,7 +85,7 @@ reduce term =
     (m :< TermMagic der) -> do
       der' <- traverse reduce der
       return (m :< TermMagic der')
-    (m :< TermMatch mSubject (e, t) clauseList) -> do
+    (m :< TermMatch (e, t) clauseList) -> do
       e' <- reduce e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
@@ -97,32 +97,11 @@ reduce term =
       --     let app = m :< TermPiElim e' lamList
       --     reduce app
       -- _ -> do
-      mSubject' <- mapM reduce mSubject
       t' <- reduce t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         body' <- reduce body
         return ((mPat, name, arity, xts), body')
-      return (m :< TermMatch mSubject' (e', t') clauseList')
-    m :< TermNoema s e -> do
-      s' <- reduce s
-      e' <- reduce e
-      return $ m :< TermNoema s' e'
-    m :< TermNoemaIntro s e -> do
-      e' <- reduce e
-      return $ m :< TermNoemaIntro s e'
-    m :< TermNoemaElim s e -> do
-      e' <- reduce e
-      return $ m :< TermNoemaElim s e'
-    _ :< TermArray _ ->
-      return term
-    m :< TermArrayIntro elemType elems -> do
-      elems' <- mapM reduce elems
-      return $ m :< TermArrayIntro elemType elems'
-    m :< TermArrayAccess subject elemType array index -> do
-      subject' <- reduce subject
-      array' <- reduce array
-      index' <- reduce index
-      return $ m :< TermArrayAccess subject' elemType array' index'
+      return (m :< TermMatch (e', t') clauseList')
     _ ->
       return term
 

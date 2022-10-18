@@ -9,7 +9,6 @@ module Entity.DefiniteDescription
     imm,
     cls,
     cell,
-    getNoeticDD,
     array,
     isBaseDefiniteDescription,
     toBuilder,
@@ -98,10 +97,6 @@ wrapWithQuote x =
 getConsDD :: DefiniteDescription -> DefiniteDescription
 getConsDD dd =
   extendLL dd $ LL.new Section.dummySectionStack BN.cons
-
-getNoeticDD :: DefiniteDescription -> DefiniteDescription
-getNoeticDD dd =
-  extendLL dd $ LL.new Section.dummySectionStack BN.noetic
 
 imm :: DefiniteDescription
 imm =
