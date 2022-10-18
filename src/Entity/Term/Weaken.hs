@@ -9,68 +9,68 @@ import Entity.Hint
 import Entity.Ident
 import Entity.LamKind
 import Entity.PrimNum
-import Entity.Term
+import qualified Entity.Term as TM
 import Entity.Term.FromPrimNum
 import qualified Entity.WeakTerm as WT
 
-weaken :: Term -> WT.WeakTerm
+weaken :: TM.Term -> WT.WeakTerm
 weaken term =
   case term of
-    m :< TermTau ->
+    m :< TM.Tau ->
       m :< WT.Tau
-    m :< TermVar x ->
+    m :< TM.Var x ->
       m :< WT.Var x
-    m :< TermVarGlobal g arity ->
+    m :< TM.VarGlobal g arity ->
       m :< WT.VarGlobal g arity
-    m :< TermPi xts t ->
+    m :< TM.Pi xts t ->
       m :< WT.Pi (map weakenBinder xts) (weaken t)
-    m :< TermPiIntro kind xts e -> do
+    m :< TM.PiIntro kind xts e -> do
       let kind' = weakenKind kind
       let xts' = map weakenBinder xts
       let e' = weaken e
       m :< WT.PiIntro kind' xts' e'
-    m :< TermPiElim e es -> do
+    m :< TM.PiElim e es -> do
       let e' = weaken e
       let es' = map weaken es
       m :< WT.PiElim e' es'
-    m :< TermSigma xts ->
+    m :< TM.Sigma xts ->
       m :< WT.Sigma (map weakenBinder xts)
-    m :< TermSigmaIntro es ->
+    m :< TM.SigmaIntro es ->
       m :< WT.SigmaIntro (map weaken es)
-    m :< TermSigmaElim xts e1 e2 -> do
+    m :< TM.SigmaElim xts e1 e2 -> do
       m :< WT.SigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
-    m :< TermLet mxt e1 e2 ->
+    m :< TM.Let mxt e1 e2 ->
       m :< WT.Let (weakenBinder mxt) (weaken e1) (weaken e2)
-    m :< TermPrim x ->
+    m :< TM.Prim x ->
       m :< WT.Prim x
-    m :< TermInt size x ->
+    m :< TM.Int size x ->
       m :< WT.Int (weaken $ fromPrimNum m (PrimNumInt size)) x
-    m :< TermFloat size x ->
+    m :< TM.Float size x ->
       m :< WT.Float (weaken $ fromPrimNum m (PrimNumFloat size)) x
-    m :< TermEnum x ->
+    m :< TM.Enum x ->
       m :< WT.Enum x
-    m :< TermEnumIntro label ->
+    m :< TM.EnumIntro label ->
       m :< WT.EnumIntro label
-    m :< TermEnumElim (e, t) branchList -> do
+    m :< TM.EnumElim (e, t) branchList -> do
       let t' = weaken t
       let e' = weaken e
       let (caseList, es) = unzip branchList
       -- let caseList' = map (\(me, ec) -> (me, weakenEnumCase ec)) caseList
       let es' = map weaken es
       m :< WT.EnumElim (e', t') (zip caseList es')
-    m :< TermMagic der -> do
+    m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
-    m :< TermMatch (e, t) patList -> do
+    m :< TM.Match (e, t) patList -> do
       let e' = weaken e
       let t' = weaken t
       let patList' = map (\((mp, p, arity, xts), body) -> ((mp, p, arity, map weakenBinder xts), weaken body)) patList
       m :< WT.Match (e', t') patList'
 
-weakenBinder :: (Hint, Ident, Term) -> (Hint, Ident, WT.WeakTerm)
+weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
   (m, x, weaken t)
 
-weakenKind :: LamKindF Term -> LamKindF WT.WeakTerm
+weakenKind :: LamKindF TM.Term -> LamKindF WT.WeakTerm
 weakenKind kind =
   case kind of
     LamKindNormal ->

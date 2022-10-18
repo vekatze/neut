@@ -4,8 +4,8 @@ import Control.Comonad.Cofree
 import Entity.Hint
 import qualified Entity.Prim as Prim
 import Entity.PrimNum
-import Entity.Term
+import qualified Entity.Term as TM
 
-fromPrimNum :: Hint -> PrimNum -> Term
+fromPrimNum :: Hint -> PrimNum -> TM.Term
 fromPrimNum m primNum =
-  m :< TermPrim (Prim.Type primNum)
+  m :< TM.Prim (Prim.Type primNum)

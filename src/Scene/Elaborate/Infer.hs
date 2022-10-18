@@ -32,7 +32,7 @@ import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
-import Entity.Term
+import qualified Entity.Term as TM
 import qualified Entity.Term.FromPrimNum as Term
 import Entity.Term.Weaken
 import qualified Entity.WeakTerm as WT
@@ -335,18 +335,18 @@ inferEnumCase varEnv weakCase =
     m :< EnumCaseInt _ ->
       Throw.raiseCritical m "enum-case-int shouldn't be used in the target language"
 
-primOpToType :: Context m => Hint -> PrimOp -> m Term
+primOpToType :: Context m => Hint -> PrimOp -> m TM.Term
 primOpToType m (PrimOp op domList cod) = do
   let domList' = map (Term.fromPrimNum m) domList
   xs <- mapM (const (Gensym.newIdentFromText "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
-      let cod' = m :< TermEnum constBool
-      return $ m :< TermPi xts cod'
+      let cod' = m :< TM.Enum constBool
+      return $ m :< TM.Pi xts cod'
     else do
       let cod' = Term.fromPrimNum m cod
-      return $ m :< TermPi xts cod'
+      return $ m :< TM.Pi xts cod'
 
 patternToTerm :: PatternF WT.WeakTerm -> WT.WeakTerm
 patternToTerm (m, name, arity, args) = do

@@ -33,7 +33,7 @@ import qualified Entity.Prim as Prim
 import Entity.PrimNum
 import qualified Entity.Source as Source
 import Entity.Stmt
-import Entity.Term
+import qualified Entity.Term as TM
 import qualified Entity.Term.Reduce as Term
 import qualified Entity.Term.Subst as Subst
 import Entity.Term.Weaken
@@ -82,7 +82,7 @@ registerTopLevelDef stmt = do
   case stmt of
     StmtDefine opacity m x impArgNum xts codType e -> do
       Implicit.insert x impArgNum
-      Type.insert x $ weaken $ m :< TermPi xts codType
+      Type.insert x $ weaken $ m :< TM.Pi xts codType
       Definition.insert opacity m x (map weakenBinder xts) (weaken e)
 
 setupDef :: Context m => WeakStmt -> m WeakStmt
@@ -124,49 +124,49 @@ elaborateStmtList stmtList = do
       e' <- elaborate' e
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= Term.reduce
-      Type.insert x $ weaken $ m :< TermPi xts' codType'
+      Type.insert x $ weaken $ m :< TM.Pi xts' codType'
       Definition.insert opacity m x (map weakenBinder xts') (weaken e')
       rest' <- elaborateStmtList rest
       return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
 
-elaborate' :: Context m => WT.WeakTerm -> m Term
+elaborate' :: Context m => WT.WeakTerm -> m TM.Term
 elaborate' term =
   case term of
     m :< WT.Tau ->
-      return $ m :< TermTau
+      return $ m :< TM.Tau
     m :< WT.Var x ->
-      return $ m :< TermVar x
+      return $ m :< TM.Var x
     m :< WT.VarGlobal name arity ->
-      return $ m :< TermVarGlobal name arity
+      return $ m :< TM.VarGlobal name arity
     m :< WT.Pi xts t -> do
       xts' <- mapM elaborateWeakBinder xts
       t' <- elaborate' t
-      return $ m :< TermPi xts' t'
+      return $ m :< TM.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
       kind' <- elaborateKind kind
       xts' <- mapM elaborateWeakBinder xts
       e' <- elaborate' e
-      return $ m :< TermPiIntro kind' xts' e'
+      return $ m :< TM.PiIntro kind' xts' e'
     m :< WT.PiElim e es -> do
       e' <- elaborate' e
       es' <- mapM elaborate' es
-      return $ m :< TermPiElim e' es'
+      return $ m :< TM.PiElim e' es'
     m :< WT.Sigma xts -> do
       xts' <- mapM elaborateWeakBinder xts
-      return $ m :< TermSigma xts'
+      return $ m :< TM.Sigma xts'
     m :< WT.SigmaIntro es -> do
       es' <- mapM elaborate' es
-      return $ m :< TermSigmaIntro es'
+      return $ m :< TM.SigmaIntro es'
     m :< WT.SigmaElim xts e1 e2 -> do
       e1' <- elaborate' e1
       xts' <- mapM elaborateWeakBinder xts
       e2' <- elaborate' e2
-      return $ m :< TermSigmaElim xts' e1' e2'
+      return $ m :< TM.SigmaElim xts' e1' e2'
     m :< WT.Let mxt e1 e2 -> do
       e1' <- elaborate' e1
       mxt' <- elaborateWeakBinder mxt
       e2' <- elaborate' e2
-      return $ m :< TermLet mxt' e1' e2'
+      return $ m :< TM.Let mxt' e1' e2'
     m :< WT.Aster h es -> do
       holeSubst <- Env.getHoleSubst
       case HS.lookup h holeSubst of
@@ -179,12 +179,12 @@ elaborate' term =
           | otherwise ->
               Throw.raiseError m "arity mismatch"
     m :< WT.Prim x ->
-      return $ m :< TermPrim x
+      return $ m :< TM.Prim x
     m :< WT.Int t x -> do
       t' <- elaborate' t >>= Term.reduce
       case t' of
-        _ :< TermPrim (Prim.Type (PrimNumInt size)) ->
-          return $ m :< TermInt size x
+        _ :< TM.Prim (Prim.Type (PrimNumInt size)) ->
+          return $ m :< TM.Int size x
         _ -> do
           Throw.raiseError m $
             "the term `"
@@ -194,8 +194,8 @@ elaborate' term =
     m :< WT.Float t x -> do
       t' <- elaborate' t >>= Term.reduce
       case t' of
-        _ :< TermPrim (Prim.Type (PrimNumFloat size)) ->
-          return $ m :< TermFloat size x
+        _ :< TM.Prim (Prim.Type (PrimNumFloat size)) ->
+          return $ m :< TM.Float size x
         _ ->
           Throw.raiseError m $
             "the term `"
@@ -203,18 +203,18 @@ elaborate' term =
               <> "` is a float, but its type is:\n"
               <> toText (weaken t')
     m :< WT.Enum k ->
-      return $ m :< TermEnum k
+      return $ m :< TM.Enum k
     m :< WT.EnumIntro label ->
-      return $ m :< TermEnumIntro label
+      return $ m :< TM.EnumIntro label
     m :< WT.EnumElim (e, t) les -> do
       e' <- elaborate' e
       let (ls, es) = unzip les
       es' <- mapM elaborate' es
       t' <- elaborate' t >>= Term.reduce
       case t' of
-        _ :< TermEnum x -> do
+        _ :< TM.Enum x -> do
           checkSwitchExaustiveness m x ls
-          return $ m :< TermEnumElim (e', t') (zip ls es')
+          return $ m :< TM.EnumElim (e', t') (zip ls es')
         _ ->
           Throw.raiseError m $
             "the type of `"
@@ -228,17 +228,17 @@ elaborate' term =
       return e'
     m :< WT.Magic der -> do
       der' <- mapM elaborate' der
-      return $ m :< TermMagic der'
+      return $ m :< TM.Magic der'
     m :< WT.Match (e, t) patList -> do
       e' <- elaborate' e
       t' <- elaborate' t >>= Term.reduce
       case t' of
-        _ :< TermPiElim (_ :< TermVarGlobal name _) _ -> do
+        _ :< TM.PiElim (_ :< TM.VarGlobal name _) _ -> do
           mConsInfoList <- Global.lookup name
           case mConsInfoList of
             Just (GN.Data _ consInfoList) -> do
               patList' <- elaboratePatternList m consInfoList patList
-              return $ m :< TermMatch (e', t') patList'
+              return $ m :< TM.Match (e', t') patList'
             _ ->
               Throw.raiseError (WT.metaOf t) $
                 "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
@@ -252,7 +252,7 @@ elaboratePatternList ::
   Hint ->
   [DD.DefiniteDescription] ->
   [(PatternF WT.WeakTerm, WT.WeakTerm)] ->
-  m [(PatternF Term, Term)]
+  m [(PatternF TM.Term, TM.Term)]
 elaboratePatternList m bs patList = do
   patList' <- forM patList $ \((mPat, c, arity, xts), body) -> do
     xts' <- mapM elaborateWeakBinder xts
@@ -261,7 +261,7 @@ elaboratePatternList m bs patList = do
   checkCaseSanity m bs patList'
   return patList'
 
-checkCaseSanity :: Context m => Hint -> [DD.DefiniteDescription] -> [(PatternF Term, Term)] -> m ()
+checkCaseSanity :: Context m => Hint -> [DD.DefiniteDescription] -> [(PatternF TM.Term, TM.Term)] -> m ()
 checkCaseSanity m bs patList =
   case (bs, patList) of
     ([], []) ->
@@ -279,12 +279,12 @@ checkCaseSanity m bs patList =
       Throw.raiseError mPat $
         "found a redundant pattern; this clause for `" <> DD.reify b <> "` is redundant"
 
-elaborateWeakBinder :: Context m => BinderF WT.WeakTerm -> m (BinderF Term)
+elaborateWeakBinder :: Context m => BinderF WT.WeakTerm -> m (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: Context m => LamKindF WT.WeakTerm -> m (LamKindF Term)
+elaborateKind :: Context m => LamKindF WT.WeakTerm -> m (LamKindF TM.Term)
 elaborateKind kind =
   case kind of
     LamKindNormal ->

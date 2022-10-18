@@ -11,88 +11,88 @@ import Entity.Binder
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Term
+import qualified Entity.Term as TM
 
 type SubstTerm =
-  IntMap.IntMap Term
+  IntMap.IntMap TM.Term
 
 class MonadFail m => Context m where
   newIdentFromIdent :: Ident -> m Ident
 
-subst :: Context m => SubstTerm -> Term -> m Term
+subst :: Context m => SubstTerm -> TM.Term -> m TM.Term
 subst sub term =
   case term of
-    (_ :< TermTau) ->
+    (_ :< TM.Tau) ->
       return term
-    (_ :< TermVar x)
+    (_ :< TM.Var x)
       | Just e <- IntMap.lookup (Ident.toInt x) sub ->
           return e
       | otherwise ->
           return term
-    (_ :< TermVarGlobal {}) ->
+    (_ :< TM.VarGlobal {}) ->
       return term
-    (m :< TermPi xts t) -> do
+    (m :< TM.Pi xts t) -> do
       (xts', t') <- subst' sub xts t
-      return (m :< TermPi xts' t')
-    (m :< TermPiIntro kind xts e) -> do
+      return (m :< TM.Pi xts' t')
+    (m :< TM.PiIntro kind xts e) -> do
       case kind of
         LamKindFix xt -> do
           (xt' : xts', e') <- subst' sub (xt : xts) e
-          return (m :< TermPiIntro (LamKindFix xt') xts' e')
+          return (m :< TM.PiIntro (LamKindFix xt') xts' e')
         _ -> do
           (xts', e') <- subst' sub xts e
-          return (m :< TermPiIntro kind xts' e')
-    (m :< TermPiElim e es) -> do
+          return (m :< TM.PiIntro kind xts' e')
+    (m :< TM.PiElim e es) -> do
       e' <- subst sub e
       es' <- mapM (subst sub) es
-      return (m :< TermPiElim e' es')
-    m :< TermSigma xts -> do
-      (xts', _) <- subst' sub xts (m :< TermTau)
-      return $ m :< TermSigma xts'
-    m :< TermSigmaIntro es -> do
+      return (m :< TM.PiElim e' es')
+    m :< TM.Sigma xts -> do
+      (xts', _) <- subst' sub xts (m :< TM.Tau)
+      return $ m :< TM.Sigma xts'
+    m :< TM.SigmaIntro es -> do
       es' <- mapM (subst sub) es
-      return $ m :< TermSigmaIntro es'
-    m :< TermSigmaElim xts e1 e2 -> do
+      return $ m :< TM.SigmaIntro es'
+    m :< TM.SigmaElim xts e1 e2 -> do
       e1' <- subst sub e1
       (xts', e2') <- subst' sub xts e2
-      return $ m :< TermSigmaElim xts' e1' e2'
-    m :< TermLet mxt e1 e2 -> do
+      return $ m :< TM.SigmaElim xts' e1' e2'
+    m :< TM.Let mxt e1 e2 -> do
       e1' <- subst sub e1
       ([mxt'], e2') <- subst' sub [mxt] e2
-      return $ m :< TermLet mxt' e1' e2'
-    (_ :< TermPrim _) ->
+      return $ m :< TM.Let mxt' e1' e2'
+    (_ :< TM.Prim _) ->
       return term
-    (_ :< TermInt {}) ->
+    (_ :< TM.Int {}) ->
       return term
-    (_ :< TermFloat {}) ->
+    (_ :< TM.Float {}) ->
       return term
-    (_ :< TermEnum {}) ->
+    (_ :< TM.Enum {}) ->
       return term
-    (_ :< TermEnumIntro {}) ->
+    (_ :< TM.EnumIntro {}) ->
       return term
-    (m :< TermEnumElim (e, t) branchList) -> do
+    (m :< TM.EnumElim (e, t) branchList) -> do
       t' <- subst sub t
       e' <- subst sub e
       let (caseList, es) = unzip branchList
       es' <- mapM (subst sub) es
-      return (m :< TermEnumElim (e', t') (zip caseList es'))
-    (m :< TermMagic der) -> do
+      return (m :< TM.EnumElim (e', t') (zip caseList es'))
+    (m :< TM.Magic der) -> do
       der' <- traverse (subst sub) der
-      return (m :< TermMagic der')
-    (m :< TermMatch (e, t) clauseList) -> do
+      return (m :< TM.Magic der')
+    (m :< TM.Match (e, t) clauseList) -> do
       e' <- subst sub e
       t' <- subst sub t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- subst' sub xts body
         return ((mPat, name, arity, xts'), body')
-      return (m :< TermMatch (e', t') clauseList')
+      return (m :< TM.Match (e', t') clauseList')
 
 subst' ::
   Context m =>
   SubstTerm ->
-  [BinderF Term] ->
-  Term ->
-  m ([BinderF Term], Term)
+  [BinderF TM.Term] ->
+  TM.Term ->
+  m ([BinderF TM.Term], TM.Term)
 subst' sub binder e =
   case binder of
     [] -> do
@@ -101,6 +101,6 @@ subst' sub binder e =
     ((m, x, t) : xts) -> do
       t' <- subst sub t
       x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (Ident.toInt x) (m :< TermVar x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (m :< TM.Var x') sub
       (xts', e') <- subst' sub' xts e
       return ((m, x', t') : xts', e')

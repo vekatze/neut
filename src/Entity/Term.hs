@@ -20,24 +20,24 @@ import GHC.Generics (Generic)
 type Term = Cofree TermF Hint
 
 data TermF a
-  = TermTau
-  | TermVar Ident
-  | TermVarGlobal DD.DefiniteDescription Arity
-  | TermPi [BinderF a] a
-  | TermPiIntro (LamKindF a) [BinderF a] a
-  | TermPiElim a [a]
-  | TermSigma [BinderF a]
-  | TermSigmaIntro [a]
-  | TermSigmaElim [BinderF a] a a
-  | TermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | TermPrim Prim.Prim
-  | TermInt IntSize Integer
-  | TermFloat FloatSize Double
-  | TermEnum EnumTypeName
-  | TermEnumIntro EnumLabel
-  | TermEnumElim (a, a) [(EnumCase, a)]
-  | TermMagic (Magic a)
-  | TermMatch (a, a) [(PatternF a, a)]
+  = Tau
+  | Var Ident
+  | VarGlobal DD.DefiniteDescription Arity
+  | Pi [BinderF a] a
+  | PiIntro (LamKindF a) [BinderF a] a
+  | PiElim a [a]
+  | Sigma [BinderF a]
+  | SigmaIntro [a]
+  | SigmaElim [BinderF a] a a
+  | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
+  | Prim Prim.Prim
+  | Int IntSize Integer
+  | Float FloatSize Double
+  | Enum EnumTypeName
+  | EnumIntro EnumLabel
+  | EnumElim (a, a) [(EnumCase, a)]
+  | Magic (Magic a)
+  | Match (a, a) [(PatternF a, a)]
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

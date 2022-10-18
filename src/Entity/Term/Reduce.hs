@@ -6,63 +6,63 @@ import qualified Data.IntMap as IntMap
 import Entity.EnumCase
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.Term
+import qualified Entity.Term as TM
 import qualified Entity.Term.Subst as Subst
 
-reduce :: Subst.Context m => Term -> m Term
+reduce :: Subst.Context m => TM.Term -> m TM.Term
 reduce term =
   case term of
-    (m :< TermPi xts cod) -> do
+    (m :< TM.Pi xts cod) -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
       cod' <- reduce cod
-      return (m :< TermPi (zip3 ms xs ts') cod')
-    (m :< TermPiIntro kind xts e) -> do
+      return (m :< TM.Pi (zip3 ms xs ts') cod')
+    (m :< TM.PiIntro kind xts e) -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
       e' <- reduce e
       case kind of
         LamKindFix (mx, x, t) -> do
           t' <- reduce t
-          return (m :< TermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+          return (m :< TM.PiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
         _ ->
-          return (m :< TermPiIntro kind (zip3 ms xs ts') e')
-    (m :< TermPiElim e es) -> do
+          return (m :< TM.PiIntro kind (zip3 ms xs ts') e')
+    (m :< TM.PiElim e es) -> do
       e' <- reduce e
       es' <- mapM reduce es
-      let app = TermPiElim e' es'
+      let app = TM.PiElim e' es'
       case e' of
-        -- (_ :< TermPiIntro opacity LamKindNormal xts body)
-        (_ :< TermPiIntro LamKindNormal xts (_ :< body))
+        -- (_ :< TM.PiIntro opacity LamKindNormal xts body)
+        (_ :< TM.PiIntro LamKindNormal xts (_ :< body))
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es'
               Subst.subst sub (m :< body) >>= reduce
         _ ->
           return (m :< app)
-    m :< TermSigma xts -> do
+    m :< TM.Sigma xts -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
-      return $ m :< TermSigma (zip3 ms xs ts')
-    m :< TermSigmaIntro es -> do
+      return $ m :< TM.Sigma (zip3 ms xs ts')
+    m :< TM.SigmaIntro es -> do
       es' <- mapM reduce es
-      return $ m :< TermSigmaIntro es'
-    m :< TermSigmaElim xts e1 e2 -> do
+      return $ m :< TM.SigmaIntro es'
+    m :< TM.SigmaElim xts e1 e2 -> do
       e1' <- reduce e1
       case e1' of
-        _ :< TermSigmaIntro es
+        _ :< TM.SigmaIntro es
           | length xts == length es -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es
               Subst.subst sub e2 >>= reduce
         _ -> do
           e2' <- reduce e2
-          return $ m :< TermSigmaElim xts e1' e2'
-    _ :< TermLet (_, x, _) e1 e2 -> do
+          return $ m :< TM.SigmaElim xts e1' e2'
+    _ :< TM.Let (_, x, _) e1 e2 -> do
       e1' <- reduce e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
       Subst.subst sub e2
-    (m :< TermEnumElim (e, t) les) -> do
+    (m :< TM.EnumElim (e, t) les) -> do
       e' <- reduce e
       let (ls, es) = unzip les
       es' <- mapM reduce es
@@ -70,7 +70,7 @@ reduce term =
       let les'' = zip (map unwrap ls) es'
       t' <- reduce t
       case e' of
-        (_ :< TermEnumIntro label) ->
+        (_ :< TM.EnumIntro label) ->
           case lookup (EnumCaseLabel label) les'' of
             Just (_ :< body) ->
               reduce (m :< body)
@@ -79,29 +79,29 @@ reduce term =
                 Just (_ :< body) ->
                   reduce (m :< body)
                 Nothing ->
-                  return (m :< TermEnumElim (e', t') les')
+                  return (m :< TM.EnumElim (e', t') les')
         _ ->
-          return (m :< TermEnumElim (e', t') les')
-    (m :< TermMagic der) -> do
+          return (m :< TM.EnumElim (e', t') les')
+    (m :< TM.Magic der) -> do
       der' <- traverse reduce der
-      return (m :< TermMagic der')
-    (m :< TermMatch (e, t) clauseList) -> do
+      return (m :< TM.Magic der')
+    (m :< TM.Match (e, t) clauseList) -> do
       e' <- reduce e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
       -- case e' of
-      -- (_ :< TermPiIntro (LamKindCons dataName consName _ _) _ _)
+      -- (_ :< TM.PiIntro (LamKindCons dataName consName _ _) _ _)
       --   | Just consNameList <- Map.lookup dataName dataEnv,
       --     consName `elem` consNameList,
       --     checkClauseListSanity consNameList clauseList -> do
-      --     let app = m :< TermPiElim e' lamList
+      --     let app = m :< TM.PiElim e' lamList
       --     reduce app
       -- _ -> do
       t' <- reduce t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         body' <- reduce body
         return ((mPat, name, arity, xts), body')
-      return (m :< TermMatch (e', t') clauseList')
+      return (m :< TM.Match (e', t') clauseList')
     _ ->
       return term
 
@@ -118,4 +118,4 @@ reduce term =
 
 -- toLamList :: Hint -> (PatternF Term, Term) -> Term
 -- toLamList m ((_, _, xts), body) =
---   m :< TermPiIntro LamKindNormal xts body
+--   m :< TM.PiIntro LamKindNormal xts body
