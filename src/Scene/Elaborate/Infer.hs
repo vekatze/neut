@@ -157,9 +157,9 @@ infer' varEnv term =
     m :< WeakTermEnumElim (e, _) ces -> do
       (e', t') <- infer' varEnv e
       let (cs, es) = unzip ces
-      (cs', tcs) <- unzip <$> mapM (inferEnumCase varEnv) cs
+      (cs', tcs) <- mapAndUnzipM (inferEnumCase varEnv) cs
       forM_ (zip tcs (repeat t')) $ uncurry Env.insConstraintEnv
-      (es', ts) <- unzip <$> mapM (infer' varEnv) es
+      (es', ts) <- mapAndUnzipM (infer' varEnv) es
       h <- newAster m varEnv
       forM_ (zip (repeat h) ts) $ uncurry Env.insConstraintEnv
       return (m :< WeakTermEnumElim (e', t') (zip cs' es'), h)
