@@ -13,7 +13,6 @@ import Entity.PrimOp
 
 data Value
   = VarLocal Ident
-  | VarLocalIdeal Ident
   | VarGlobal DD.DefiniteDescription Arity
   | SigmaIntro [Value]
   | ArrayIntro PrimNum [Value]

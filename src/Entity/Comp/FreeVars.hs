@@ -42,8 +42,6 @@ freeVarsValue v =
   case v of
     C.VarLocal x ->
       S.singleton x
-    C.VarLocalIdeal x ->
-      S.singleton x
     C.SigmaIntro vs ->
       S.unions $ map freeVarsValue vs
     C.ArrayIntro _ vs ->

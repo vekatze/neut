@@ -284,8 +284,6 @@ lowerValue v =
       uncast (LowValueVarGlobal globalName) (toFunPtrType' arity)
     C.VarLocal y ->
       return $ LowValueVarLocal y
-    C.VarLocalIdeal y ->
-      return $ LowValueVarLocal y
     C.SigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) voidPtr
       createAggData arrayType $ zip ds (repeat voidPtr)

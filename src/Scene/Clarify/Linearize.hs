@@ -10,10 +10,7 @@ import Entity.Ident
 import Entity.Magic
 import Scene.Clarify.Utility
 
-data Occurrence
-  = OccurrenceNormal Ident
-  | OccurrenceIdeal Ident
-  deriving (Show)
+type Occurrence = Ident
 
 linearize ::
   Context m =>
@@ -35,16 +32,6 @@ linearize binder e =
         z : zs ->
           insertHeader x z zs t e''
 
-insertFooter :: Context m => Ident -> C.Comp -> C.Comp -> m C.Comp
-insertFooter x t e = do
-  ans <- newIdentFromText "answer"
-  hole <- newIdentFromText "unit"
-  discardUnusedVar <- toAffineApp x t
-  return $
-    C.UpElim ans e $
-      C.UpElim hole discardUnusedVar $
-        C.UpIntro (C.VarLocal ans)
-
 insertHeader ::
   Context m =>
   Ident ->
@@ -53,24 +40,14 @@ insertHeader ::
   C.Comp ->
   C.Comp ->
   m C.Comp
-insertHeader x occurrence zs t e = do
+insertHeader x z1 zs t e = do
   case zs of
     [] ->
-      case occurrence of
-        OccurrenceNormal z1 ->
-          return $ C.UpElim z1 (C.UpIntro (C.VarLocal x)) e
-        OccurrenceIdeal z1 -> do
-          e' <- insertFooter z1 t e
-          return $ C.UpElim z1 (C.UpIntro (C.VarLocal x)) e'
+      return $ C.UpElim z1 (C.UpIntro (C.VarLocal x)) e
     z2 : rest -> do
-      case occurrence of
-        OccurrenceNormal z1 -> do
-          e' <- insertHeader x z2 rest t e
-          copyRelevantVar <- toRelevantApp x t
-          return $ C.UpElim z1 copyRelevantVar e'
-        OccurrenceIdeal z1 -> do
-          e' <- insertHeader x z2 rest t e
-          return $ C.UpElim z1 (C.UpIntro (C.VarLocal x)) e'
+      e' <- insertHeader x z2 rest t e
+      copyRelevantVar <- toRelevantApp x t
+      return $ C.UpElim z1 copyRelevantVar e'
 
 distinguishValue :: Context m => Ident -> C.Value -> m ([Occurrence], C.Value)
 distinguishValue z term =
@@ -80,13 +57,7 @@ distinguishValue z term =
         then return ([], term)
         else do
           x' <- newIdentFromIdent x
-          return ([OccurrenceNormal x'], C.VarLocal x')
-    C.VarLocalIdeal x ->
-      if x /= z
-        then return ([], term)
-        else do
-          x' <- newIdentFromIdent x
-          return ([OccurrenceIdeal x'], C.VarLocal x')
+          return ([x'], C.VarLocal x')
     C.SigmaIntro ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat vss, C.SigmaIntro ds')

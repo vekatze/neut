@@ -55,13 +55,6 @@ substValue sub nenv term =
           e
       | otherwise ->
           term
-    C.VarLocalIdeal x
-      | Just x' <- IntMap.lookup (Ident.toInt x) nenv ->
-          C.VarLocalIdeal x'
-      | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-          e
-      | otherwise ->
-          term
     C.VarGlobal {} ->
       term
     C.SigmaIntro vs -> do

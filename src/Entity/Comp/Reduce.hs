@@ -58,9 +58,6 @@ reduce term =
     C.UpElim x e1 e2 -> do
       e1' <- reduce e1
       case e1' of
-        C.UpIntro (C.VarLocalIdeal _) -> do
-          e2' <- reduce e2
-          return $ C.UpElim x e1' e2'
         C.UpIntro v -> do
           let sub = IntMap.fromList [(Ident.toInt x, v)]
           subst sub IntMap.empty e2 >>= reduce
