@@ -1,52 +1,52 @@
 module Entity.Comp.FreeVars (freeVars) where
 
 import qualified Data.Set as S
-import Entity.Comp
+import qualified Entity.Comp as C
 import Entity.Ident
 
-freeVars :: Comp -> S.Set Ident
+freeVars :: C.Comp -> S.Set Ident
 freeVars =
   freeVarsComp
 
-freeVarsComp :: Comp -> S.Set Ident
+freeVarsComp :: C.Comp -> S.Set Ident
 freeVarsComp c =
   case c of
-    CompPiElimDownElim v vs ->
+    C.PiElimDownElim v vs ->
       S.unions $ map freeVarsValue (v : vs)
-    CompSigmaElim _ xs v e -> do
+    C.SigmaElim _ xs v e -> do
       let s1 = freeVarsValue v
       let s2 = S.filter (`notElem` xs) $ freeVarsComp e
       S.union s1 s2
-    CompUpIntro v ->
+    C.UpIntro v ->
       freeVarsValue v
-    CompUpElim x e1 e2 -> do
+    C.UpElim x e1 e2 -> do
       let s1 = freeVarsComp e1
       let s2 = S.filter (/= x) $ freeVarsComp e2
       S.union s1 s2
-    CompEnumElim v caseList -> do
+    C.EnumElim v caseList -> do
       let s1 = freeVarsValue v
       let (_, es) = unzip caseList
       let s2 = S.unions (map freeVarsComp es)
       S.union s1 s2
-    CompArrayAccess _ array index ->
+    C.ArrayAccess _ array index ->
       S.union (freeVarsValue array) (freeVarsValue index)
-    CompPrimitive prim ->
+    C.Primitive prim ->
       case prim of
-        PrimitivePrimOp _ vs ->
+        C.PrimOp _ vs ->
           S.unions $ map freeVarsValue vs
-        PrimitiveMagic der ->
+        C.Magic der ->
           foldMap freeVarsValue der
 
-freeVarsValue :: Value -> S.Set Ident
+freeVarsValue :: C.Value -> S.Set Ident
 freeVarsValue v =
   case v of
-    ValueVarLocal x ->
+    C.VarLocal x ->
       S.singleton x
-    ValueVarLocalIdeal x ->
+    C.VarLocalIdeal x ->
       S.singleton x
-    ValueSigmaIntro vs ->
+    C.SigmaIntro vs ->
       S.unions $ map freeVarsValue vs
-    ValueArrayIntro _ vs ->
+    C.ArrayIntro _ vs ->
       S.unions $ map freeVarsValue vs
     _ ->
       S.empty

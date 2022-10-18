@@ -12,7 +12,7 @@ where
 
 import Control.Comonad.Cofree
 import qualified Data.Text as T
-import Entity.Comp
+import qualified Entity.Comp as C
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
@@ -55,10 +55,10 @@ newIdentFromIdent x =
   newIdentFromText (Ident.toText x)
 
 {-# INLINE newValueVarLocalWith #-}
-newValueVarLocalWith :: Context m => T.Text -> m (Ident, Value)
+newValueVarLocalWith :: Context m => T.Text -> m (Ident, C.Value)
 newValueVarLocalWith name = do
   x <- newIdentFromText name
-  return (x, ValueVarLocal x)
+  return (x, C.VarLocal x)
 
 {-# INLINE newTextualIdentFromText #-}
 newTextualIdentFromText :: Context m => T.Text -> m Ident

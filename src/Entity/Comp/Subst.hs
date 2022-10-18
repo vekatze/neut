@@ -2,87 +2,87 @@ module Entity.Comp.Subst (subst) where
 
 import Context.Gensym
 import qualified Data.IntMap as IntMap
-import Entity.Comp
+import qualified Entity.Comp as C
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 
 type NameEnv = IntMap.IntMap Ident
 
-subst :: Context m => SubstValue -> NameEnv -> Comp -> m Comp
+subst :: Context m => C.SubstValue -> NameEnv -> C.Comp -> m C.Comp
 subst =
   substComp
 
-substComp :: Context m => SubstValue -> NameEnv -> Comp -> m Comp
+substComp :: Context m => C.SubstValue -> NameEnv -> C.Comp -> m C.Comp
 substComp sub nenv term =
   case term of
-    CompPrimitive theta -> do
+    C.Primitive theta -> do
       let theta' = substPrimitive sub nenv theta
-      return $ CompPrimitive theta'
-    CompPiElimDownElim v ds -> do
+      return $ C.Primitive theta'
+    C.PiElimDownElim v ds -> do
       let v' = substValue sub nenv v
       let ds' = map (substValue sub nenv) ds
-      return $ CompPiElimDownElim v' ds'
-    CompSigmaElim b xs v e -> do
+      return $ C.PiElimDownElim v' ds'
+    C.SigmaElim b xs v e -> do
       let v' = substValue sub nenv v
       xs' <- mapM newIdentFromIdent xs
       let nenv' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) xs')) nenv
       e' <- substComp sub nenv' e
-      return $ CompSigmaElim b xs' v' e'
-    CompUpIntro v -> do
+      return $ C.SigmaElim b xs' v' e'
+    C.UpIntro v -> do
       let v' = substValue sub nenv v
-      return $ CompUpIntro v'
-    CompUpElim x e1 e2 -> do
+      return $ C.UpIntro v'
+    C.UpElim x e1 e2 -> do
       e1' <- substComp sub nenv e1
       x' <- newIdentFromIdent x
       let nenv' = IntMap.insert (Ident.toInt x) x' nenv
       e2' <- substComp sub nenv' e2
-      return $ CompUpElim x' e1' e2'
-    CompEnumElim v branchList -> do
+      return $ C.UpElim x' e1' e2'
+    C.EnumElim v branchList -> do
       let v' = substValue sub nenv v
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub nenv) es
-      return $ CompEnumElim v' (zip cs es')
-    CompArrayAccess primNum v index ->
-      return $ CompArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)
+      return $ C.EnumElim v' (zip cs es')
+    C.ArrayAccess primNum v index ->
+      return $ C.ArrayAccess primNum (substValue sub nenv v) (substValue sub nenv index)
 
-substValue :: SubstValue -> NameEnv -> Value -> Value
+substValue :: C.SubstValue -> NameEnv -> C.Value -> C.Value
 substValue sub nenv term =
   case term of
-    ValueVarLocal x
+    C.VarLocal x
       | Just x' <- IntMap.lookup (Ident.toInt x) nenv ->
-        ValueVarLocal x'
+          C.VarLocal x'
       | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-        e
+          e
       | otherwise ->
-        term
-    ValueVarLocalIdeal x
+          term
+    C.VarLocalIdeal x
       | Just x' <- IntMap.lookup (Ident.toInt x) nenv ->
-        ValueVarLocalIdeal x'
+          C.VarLocalIdeal x'
       | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-        e
+          e
       | otherwise ->
-        term
-    ValueVarGlobal {} ->
+          term
+    C.VarGlobal {} ->
       term
-    ValueSigmaIntro vs -> do
+    C.SigmaIntro vs -> do
       let vs' = map (substValue sub nenv) vs
-      ValueSigmaIntro vs'
-    ValueArrayIntro elemType vs -> do
+      C.SigmaIntro vs'
+    C.ArrayIntro elemType vs -> do
       let vs' = map (substValue sub nenv) vs
-      ValueArrayIntro elemType vs'
-    ValueInt {} ->
+      C.ArrayIntro elemType vs'
+    C.Int {} ->
       term
-    ValueFloat {} ->
+    C.Float {} ->
       term
-    ValueEnumIntro {} ->
+    C.EnumIntro {} ->
       term
 
-substPrimitive :: SubstValue -> NameEnv -> Primitive -> Primitive
+substPrimitive :: C.SubstValue -> NameEnv -> C.Primitive -> C.Primitive
 substPrimitive sub nenv c =
   case c of
-    PrimitivePrimOp op vs -> do
+    C.PrimOp op vs -> do
       let vs' = map (substValue sub nenv) vs
-      PrimitivePrimOp op vs'
-    PrimitiveMagic der -> do
+      C.PrimOp op vs'
+    C.Magic der -> do
       let der' = fmap (substValue sub nenv) der
-      PrimitiveMagic der'
+      C.Magic der'

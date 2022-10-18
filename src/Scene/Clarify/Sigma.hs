@@ -15,7 +15,7 @@ import qualified Context.Locator as Locator
 import Control.Monad
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
-import Entity.Comp
+import qualified Entity.Comp as C
 import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Scene.Clarify.Context
@@ -24,8 +24,8 @@ import Scene.Clarify.Utility
 
 registerImmediateS4 :: Context m => m ()
 registerImmediateS4 = do
-  let immediateT _ = return $ CompUpIntro $ ValueSigmaIntro []
-  let immediate4 arg = return $ CompUpIntro arg
+  let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
+  let immediate4 arg = return $ C.UpIntro arg
   registerSwitcher DD.imm immediateT immediate4
 
 registerClosureS4 :: Context m => m ()
@@ -33,35 +33,35 @@ registerClosureS4 = do
   (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
     DD.cls
-    [Right (env, returnImmediateS4), Left (CompUpIntro envVar), Left returnImmediateS4]
+    [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
 
 registerCellS4 :: Context m => m ()
 registerCellS4 = do
   (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
     DD.cell
-    [Right (env, returnImmediateS4), Left (CompUpIntro envVar)] -- Sigma [A: tau, _: A]
+    [Right (env, returnImmediateS4), Left (C.UpIntro envVar)] -- Sigma [A: tau, _: A]
 
-returnImmediateS4 :: Comp
+returnImmediateS4 :: C.Comp
 returnImmediateS4 = do
-  CompUpIntro immediateS4
+  C.UpIntro immediateS4
 
-returnClosureS4 :: Comp
+returnClosureS4 :: C.Comp
 returnClosureS4 = do
-  CompUpIntro $ ValueVarGlobal DD.cls A.arityS4
+  C.UpIntro $ C.VarGlobal DD.cls A.arityS4
 
-returnCellS4 :: Comp
+returnCellS4 :: C.Comp
 returnCellS4 = do
-  CompUpIntro $ ValueVarGlobal DD.cell A.arityS4
+  C.UpIntro $ C.VarGlobal DD.cell A.arityS4
 
-immediateS4 :: Value
+immediateS4 :: C.Value
 immediateS4 = do
-  ValueVarGlobal DD.imm A.arityS4
+  C.VarGlobal DD.imm A.arityS4
 
 registerSigmaS4 ::
   Context m =>
   DD.DefiniteDescription ->
-  [Either Comp (Ident, Comp)] ->
+  [Either C.Comp (Ident, C.Comp)] ->
   m ()
 registerSigmaS4 name mxts = do
   registerSwitcher name (sigmaT mxts) (sigma4 mxts)
@@ -83,16 +83,16 @@ registerSigmaS4 name mxts = do
 --
 sigmaT ::
   Gensym.Context m =>
-  [Either Comp (Ident, Comp)] ->
-  Value ->
-  m Comp
+  [Either C.Comp (Ident, C.Comp)] ->
+  C.Value ->
+  m C.Comp
 sigmaT mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
   as <- forM xts $ uncurry toAffineApp
   ys <- mapM (const $ Gensym.newIdentFromText "arg") xts
-  body' <- linearize xts $ bindLet (zip ys as) $ CompUpIntro $ ValueSigmaIntro []
-  return $ CompSigmaElim True (map fst xts) argVar body'
+  body' <- linearize xts $ bindLet (zip ys as) $ C.UpIntro $ C.SigmaIntro []
+  return $ C.SigmaElim True (map fst xts) argVar body'
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigma4 NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -110,16 +110,16 @@ sigmaT mxts argVar = do
 --     return (x1', ..., xn')
 sigma4 ::
   Gensym.Context m =>
-  [Either Comp (Ident, Comp)] ->
-  Value ->
-  m Comp
+  [Either C.Comp (Ident, C.Comp)] ->
+  C.Value ->
+  m C.Comp
 sigma4 mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]
   as <- forM xts $ uncurry toRelevantApp
   (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith "pair") xts
-  body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
-  return $ CompSigmaElim False (map fst xts) argVar body'
+  body' <- linearize xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
+  return $ C.SigmaElim False (map fst xts) argVar body'
 
 supplyName :: Gensym.Context m => Either b (Ident, b) -> m (Ident, b)
 supplyName mName =
@@ -132,8 +132,8 @@ supplyName mName =
 
 closureEnvS4 ::
   Context m =>
-  [Either Comp (Ident, Comp)] ->
-  m Value
+  [Either C.Comp (Ident, C.Comp)] ->
+  m C.Value
 closureEnvS4 mxts =
   case mxts of
     [] ->
@@ -142,4 +142,4 @@ closureEnvS4 mxts =
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.sigmaName i
       registerSwitcher name (sigmaT mxts) (sigma4 mxts)
-      return $ ValueVarGlobal name A.arityS4
+      return $ C.VarGlobal name A.arityS4

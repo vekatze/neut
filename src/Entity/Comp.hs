@@ -12,31 +12,31 @@ import Entity.PrimNumSize
 import Entity.PrimOp
 
 data Value
-  = ValueVarLocal Ident
-  | ValueVarLocalIdeal Ident
-  | ValueVarGlobal DD.DefiniteDescription Arity
-  | ValueSigmaIntro [Value]
-  | ValueArrayIntro PrimNum [Value]
-  | ValueInt IntSize Integer
-  | ValueFloat FloatSize Double
-  | ValueEnumIntro EnumLabel
+  = VarLocal Ident
+  | VarLocalIdeal Ident
+  | VarGlobal DD.DefiniteDescription Arity
+  | SigmaIntro [Value]
+  | ArrayIntro PrimNum [Value]
+  | Int IntSize Integer
+  | Float FloatSize Double
+  | EnumIntro EnumLabel
   deriving (Show)
 
 data Comp
-  = CompPiElimDownElim Value [Value] -- ((force v) v1 ... vn)
-  | CompSigmaElim ShouldDeallocate [Ident] Value Comp
-  | CompUpIntro Value
-  | CompUpElim Ident Comp Comp
-  | CompEnumElim Value [(CompEnumCase, Comp)]
-  | CompArrayAccess PrimNum Value Value
-  | CompPrimitive Primitive
+  = PiElimDownElim Value [Value] -- ((force v) v1 ... vn)
+  | SigmaElim ShouldDeallocate [Ident] Value Comp
+  | UpIntro Value
+  | UpElim Ident Comp Comp
+  | EnumElim Value [(CompEnumCase, Comp)]
+  | ArrayAccess PrimNum Value Value
+  | Primitive Primitive
   deriving (Show)
 
 type ShouldDeallocate = Bool
 
 data Primitive
-  = PrimitivePrimOp PrimOp [Value]
-  | PrimitiveMagic (Magic Value)
+  = PrimOp PrimOp [Value]
+  | Magic (Magic Value)
   deriving (Show)
 
 type SubstValue =

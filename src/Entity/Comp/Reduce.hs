@@ -8,7 +8,7 @@ import qualified Context.CompDefinition as CompDefinition
 import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree.Class
 import qualified Data.IntMap as IntMap
-import Entity.Comp
+import qualified Entity.Comp as C
 import Entity.Comp.Subst
 import Entity.EnumCase
 import Entity.Ident
@@ -17,14 +17,14 @@ import Entity.Opacity
 
 class (CompDefinition.Context m, Gensym.Context m) => Context m
 
-reduce :: Context m => Comp -> m Comp
+reduce :: Context m => C.Comp -> m C.Comp
 reduce term =
   case term of
-    CompPrimitive _ ->
+    C.Primitive _ ->
       return term
-    CompPiElimDownElim v ds -> do
+    C.PiElimDownElim v ds -> do
       case v of
-        ValueVarGlobal x _ -> do
+        C.VarGlobal x _ -> do
           mDefValue <- CompDefinition.lookup x
           case mDefValue of
             Just (OpacityTransparent, xs, body) -> do
@@ -34,58 +34,58 @@ reduce term =
               return term
         _ ->
           return term
-    CompSigmaElim shouldDeallocate xs v e ->
+    C.SigmaElim shouldDeallocate xs v e ->
       case v of
-        ValueSigmaIntro ds
+        C.SigmaIntro ds
           | length ds == length xs -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
               subst sub IntMap.empty e >>= reduce
         _ -> do
           e' <- reduce e
           case e' of
-            CompUpIntro (ValueSigmaIntro ds)
+            C.UpIntro (C.SigmaIntro ds)
               | Just ys <- mapM extractIdent ds,
                 xs == ys ->
-                  return $ CompUpIntro v -- eta-reduce
+                  return $ C.UpIntro v -- eta-reduce
             _ ->
               case xs of
                 [] ->
                   return e'
                 _ ->
-                  return $ CompSigmaElim shouldDeallocate xs v e'
-    CompUpIntro _ ->
+                  return $ C.SigmaElim shouldDeallocate xs v e'
+    C.UpIntro _ ->
       return term
-    CompUpElim x e1 e2 -> do
+    C.UpElim x e1 e2 -> do
       e1' <- reduce e1
       case e1' of
-        CompUpIntro (ValueVarLocalIdeal _) -> do
+        C.UpIntro (C.VarLocalIdeal _) -> do
           e2' <- reduce e2
-          return $ CompUpElim x e1' e2'
-        CompUpIntro v -> do
+          return $ C.UpElim x e1' e2'
+        C.UpIntro v -> do
           let sub = IntMap.fromList [(Ident.toInt x, v)]
           subst sub IntMap.empty e2 >>= reduce
-        CompUpElim y ey1 ey2 ->
-          reduce $ CompUpElim y ey1 $ CompUpElim x ey2 e2 -- commutative conversion
-        CompSigmaElim b yts vy ey ->
-          reduce $ CompSigmaElim b yts vy $ CompUpElim x ey e2 -- commutative conversion
+        C.UpElim y ey1 ey2 ->
+          reduce $ C.UpElim y ey1 $ C.UpElim x ey2 e2 -- commutative conversion
+        C.SigmaElim b yts vy ey ->
+          reduce $ C.SigmaElim b yts vy $ C.UpElim x ey e2 -- commutative conversion
         _ -> do
           e2' <- reduce e2
           case e2' of
-            CompUpIntro (ValueVarLocal y)
+            C.UpIntro (C.VarLocal y)
               | x == y ->
                   return e1' -- eta-reduce
             _ ->
-              return $ CompUpElim x e1' e2'
-    CompEnumElim v les -> do
+              return $ C.UpElim x e1' e2'
+    C.EnumElim v les -> do
       let (ls, es) = unzip les
       let les' = zip (map unwrap ls) es
       case v of
-        ValueEnumIntro label
+        C.EnumIntro label
           | Just body <- lookup (EnumCaseLabel label) les' ->
               reduce body
           | Just body <- lookup EnumCaseDefault les' ->
               reduce body
-        ValueInt _ l
+        C.Int _ l
           | Just body <- lookup (EnumCaseInt (fromInteger l)) les' ->
               reduce body
           | Just body <- lookup EnumCaseDefault les' ->
@@ -96,21 +96,21 @@ reduce term =
               -- print les
               -- let (ls, es) = unzip les
               es' <- mapM reduce es
-              return $ CompEnumElim v (zip ls es')
+              return $ C.EnumElim v (zip ls es')
         _ -> do
           -- p "other"
           -- p' v
           -- p' les
           -- let (ls, es) = unzip les
           es' <- mapM reduce es
-          return $ CompEnumElim v (zip ls es')
-    CompArrayAccess {} ->
+          return $ C.EnumElim v (zip ls es')
+    C.ArrayAccess {} ->
       return term
 
-extractIdent :: Value -> Maybe Ident
+extractIdent :: C.Value -> Maybe Ident
 extractIdent term =
   case term of
-    ValueVarLocal x ->
+    C.VarLocal x ->
       Just x
     _ ->
       Nothing
