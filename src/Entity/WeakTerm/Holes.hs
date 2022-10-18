@@ -4,65 +4,65 @@ import Control.Comonad.Cofree
 import qualified Data.Set as S
 import Entity.Binder
 import Entity.HoleID
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 
-holes :: WeakTerm -> S.Set HoleID
+holes :: WT.WeakTerm -> S.Set HoleID
 holes term =
   case term of
-    _ :< WeakTermTau ->
+    _ :< WT.Tau ->
       S.empty
-    _ :< WeakTermVar {} ->
+    _ :< WT.Var {} ->
       S.empty
-    _ :< WeakTermVarGlobal {} ->
+    _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WeakTermPi xts t ->
+    _ :< WT.Pi xts t ->
       holes' xts [t]
-    _ :< WeakTermPiIntro _ xts e ->
+    _ :< WT.PiIntro _ xts e ->
       holes' xts [e]
-    _ :< WeakTermPiElim e es ->
+    _ :< WT.PiElim e es ->
       S.unions $ map holes $ e : es
-    _ :< WeakTermSigma xts ->
+    _ :< WT.Sigma xts ->
       holes' xts []
-    _ :< WeakTermSigmaIntro es ->
+    _ :< WT.SigmaIntro es ->
       S.unions $ map holes es
-    _ :< WeakTermSigmaElim xts e1 e2 -> do
+    _ :< WT.SigmaElim xts e1 e2 -> do
       let set1 = holes e1
       let set2 = holes' xts [e2]
       S.union set1 set2
-    _ :< WeakTermLet mxt e1 e2 -> do
+    _ :< WT.Let mxt e1 e2 -> do
       let set1 = holes e1
       let set2 = holes' [mxt] [e2]
       S.union set1 set2
-    _ :< WeakTermAster h es ->
+    _ :< WT.Aster h es ->
       S.insert h $ S.unions $ map holes es
-    _ :< WeakTermPrim _ ->
+    _ :< WT.Prim _ ->
       S.empty
-    _ :< WeakTermInt t _ ->
+    _ :< WT.Int t _ ->
       holes t
-    _ :< WeakTermFloat t _ ->
+    _ :< WT.Float t _ ->
       holes t
-    _ :< WeakTermEnum {} ->
+    _ :< WT.Enum {} ->
       S.empty
-    _ :< WeakTermEnumIntro {} ->
+    _ :< WT.EnumIntro {} ->
       S.empty
-    _ :< WeakTermEnumElim (e, t) les -> do
+    _ :< WT.EnumElim (e, t) les -> do
       let set1 = holes e
       let set2 = holes t
       let set3 = S.unions $ map (\(_, body) -> holes body) les
       S.unions [set1, set2, set3]
-    _ :< WeakTermQuestion e t -> do
+    _ :< WT.Question e t -> do
       let set1 = holes e
       let set2 = holes t
       S.union set1 set2
-    _ :< WeakTermMagic der ->
+    _ :< WT.Magic der ->
       foldMap holes der
-    _ :< WeakTermMatch (e, t) patList -> do
+    _ :< WT.Match (e, t) patList -> do
       let xs1 = holes e
       let xs2 = holes t
       let xs3 = S.unions $ map (\((_, _, _, xts), body) -> holes' xts [body]) patList
       S.unions [xs1, xs2, xs3]
 
-holes' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set HoleID
+holes' :: [BinderF WT.WeakTerm] -> [WT.WeakTerm] -> S.Set HoleID
 holes' binder es =
   case binder of
     [] ->

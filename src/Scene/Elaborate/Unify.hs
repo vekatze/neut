@@ -25,7 +25,7 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Log
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
@@ -34,18 +34,18 @@ import qualified Entity.WeakTerm.Subst as Subst
 import Entity.WeakTerm.ToText
 
 class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where
-  insertSubst :: HID.HoleID -> [Ident] -> WeakTerm -> m ()
+  insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> m ()
   setConstraintQueue :: Q.MinQueue SuspendedConstraint -> m ()
   insertConstraint :: SuspendedConstraint -> m ()
   getConstraintQueue :: m SuspendedConstraintQueue
   getDefMap :: m DefMap
 
-type DefMap = Map.HashMap DD.DefiniteDescription WeakTerm
+type DefMap = Map.HashMap DD.DefiniteDescription WT.WeakTerm
 
 data Stuck
-  = StuckPiElimVarLocal Ident [(Hint, [WeakTerm])]
-  | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WeakTerm])]
-  | StuckPiElimAster HID.HoleID [WeakTerm]
+  = StuckPiElimVarLocal Ident [(Hint, [WT.WeakTerm])]
+  | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WT.WeakTerm])]
+  | StuckPiElimAster HID.HoleID [WT.WeakTerm]
 
 unify :: Context m => [Constraint] -> m HS.HoleSubst
 unify constraintList = do
@@ -83,10 +83,10 @@ throwTypeErrors = do
     actual' <- fill sub actual >>= reduce
     -- expected' <- subst sub l >>= reduce
     -- actual' <- subst sub r >>= reduce
-    return $ logError (fromHint (metaOf actual)) $ constructErrorMsg actual' expected'
+    return $ logError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
   Throw.throw $ Error errorList
 
-constructErrorMsg :: WeakTerm -> WeakTerm -> T.Text
+constructErrorMsg :: WT.WeakTerm -> WT.WeakTerm -> T.Text
 constructErrorMsg e1 e2 =
   "couldn't verify the definitional equality of the following two terms:\n- "
     <> toText e1
@@ -102,21 +102,21 @@ simplify constraintList =
       expected <- reduce $ fst c
       actual <- reduce $ snd c
       case (expected, actual) of
-        (_ :< WeakTermTau, _ :< WeakTermTau) ->
+        (_ :< WT.Tau, _ :< WT.Tau) ->
           simplify cs
-        (_ :< WeakTermVar x1, _ :< WeakTermVar x2)
+        (_ :< WT.Var x1, _ :< WT.Var x2)
           | x1 == x2 ->
               simplify cs
-        (_ :< WeakTermVarGlobal g1 _, _ :< WeakTermVarGlobal g2 _)
+        (_ :< WT.VarGlobal g1 _, _ :< WT.VarGlobal g2 _)
           | g1 == g2 ->
               simplify cs
-        (m1 :< WeakTermPi xts1 cod1, m2 :< WeakTermPi xts2 cod2)
+        (m1 :< WT.Pi xts1 cod1, m2 :< WT.Pi xts2 cod2)
           | length xts1 == length xts2 -> do
               xt1 <- asWeakBinder m1 cod1
               xt2 <- asWeakBinder m2 cod2
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
-        (m1 :< WeakTermPiIntro kind1 xts1 e1, m2 :< WeakTermPiIntro kind2 xts2 e2)
+        (m1 :< WT.PiIntro kind1 xts1 e1, m2 :< WT.PiIntro kind2 xts2 e2)
           | LamKindFix xt1@(_, x1, _) <- kind1,
             LamKindFix xt2@(_, x2, _) <- kind2,
             x1 == x2,
@@ -142,29 +142,29 @@ simplify constraintList =
               xt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
-        (_ :< WeakTermSigma xts1, _ :< WeakTermSigma xts2)
+        (_ :< WT.Sigma xts1, _ :< WT.Sigma xts2)
           | length xts1 == length xts2 -> do
               cs' <- simplifyBinder orig xts1 xts2
               simplify $ cs' ++ cs
-        (_ :< WeakTermSigmaIntro es1, _ :< WeakTermSigmaIntro es2)
+        (_ :< WT.SigmaIntro es1, _ :< WT.SigmaIntro es2)
           | length es1 == length es2 -> do
               simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
-        (_ :< WeakTermPrim a1, _ :< WeakTermPrim a2)
+        (_ :< WT.Prim a1, _ :< WT.Prim a2)
           | a1 == a2 ->
               simplify cs
-        (_ :< WeakTermInt t1 l1, _ :< WeakTermInt t2 l2)
+        (_ :< WT.Int t1 l1, _ :< WT.Int t2 l2)
           | l1 == l2 ->
               simplify $ ((t1, t2), orig) : cs
-        (_ :< WeakTermFloat t1 l1, _ :< WeakTermFloat t2 l2)
+        (_ :< WT.Float t1 l1, _ :< WT.Float t2 l2)
           | l1 == l2 ->
               simplify $ ((t1, t2), orig) : cs
-        (_ :< WeakTermEnum a1, _ :< WeakTermEnum a2)
+        (_ :< WT.Enum a1, _ :< WT.Enum a2)
           | a1 == a2 ->
               simplify cs
-        (_ :< WeakTermEnumIntro label1, _ :< WeakTermEnumIntro label2)
+        (_ :< WT.EnumIntro label1, _ :< WT.EnumIntro label2)
           | label1 == label2 ->
               simplify cs
-        (_ :< WeakTermQuestion e1 t1, _ :< WeakTermQuestion e2 t2) ->
+        (_ :< WT.Question e1 t1, _ :< WT.Question e2 t2) ->
           simplify $ ((e1, e2), orig) : ((t1, t2), orig) : cs
         (e1, e2) -> do
           sub <- Env.getHoleSubst
@@ -240,7 +240,7 @@ simplify constraintList =
                   simplify cs
 
 {-# INLINE resolveHole #-}
-resolveHole :: Context m => HID.HoleID -> [Ident] -> WeakTerm -> [(Constraint, Constraint)] -> m ()
+resolveHole :: Context m => HID.HoleID -> [Ident] -> WT.WeakTerm -> [(Constraint, Constraint)] -> m ()
 resolveHole h1 xs e2' cs = do
   insertSubst h1 xs e2'
   suspendedConstraintQueue <- getConstraintQueue
@@ -252,8 +252,8 @@ resolveHole h1 xs e2' cs = do
 simplifyBinder ::
   Context m =>
   Constraint ->
-  [BinderF WeakTerm] ->
-  [BinderF WeakTerm] ->
+  [BinderF WT.WeakTerm] ->
+  [BinderF WT.WeakTerm] ->
   m [(Constraint, Constraint)]
 simplifyBinder orig =
   simplifyBinder' orig IntMap.empty
@@ -261,29 +261,29 @@ simplifyBinder orig =
 simplifyBinder' ::
   Context m =>
   Constraint ->
-  SubstWeakTerm ->
-  [BinderF WeakTerm] ->
-  [BinderF WeakTerm] ->
+  WT.SubstWeakTerm ->
+  [BinderF WT.WeakTerm] ->
+  [BinderF WT.WeakTerm] ->
   m [(Constraint, Constraint)]
 simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
       t2' <- Subst.subst sub t2
-      let sub' = IntMap.insert (Ident.toInt x2) (m1 :< WeakTermVar x1) sub
+      let sub' = IntMap.insert (Ident.toInt x2) (m1 :< WT.Var x1) sub
       rest <- simplifyBinder' orig sub' xts1 xts2
       return $ ((t1, t2'), orig) : rest
     _ ->
       return []
 
-asWeakBinder :: Context m => Hint -> WeakTerm -> m (BinderF WeakTerm)
+asWeakBinder :: Context m => Hint -> WT.WeakTerm -> m (BinderF WT.WeakTerm)
 asWeakBinder m t = do
   h <- Gensym.newIdentFromText "aster"
   return (m, h, t)
 
 asPairList ::
-  [[WeakTerm]] ->
-  [[WeakTerm]] ->
-  Maybe [(WeakTerm, WeakTerm)]
+  [[WT.WeakTerm]] ->
+  [[WT.WeakTerm]] ->
+  Maybe [(WT.WeakTerm, WT.WeakTerm)]
 asPairList list1 list2 =
   case (list1, list2) of
     ([], []) ->
@@ -297,16 +297,16 @@ asPairList list1 list2 =
     _ ->
       Nothing
 
-asStuckedTerm :: WeakTerm -> Maybe Stuck
+asStuckedTerm :: WT.WeakTerm -> Maybe Stuck
 asStuckedTerm term =
   case term of
-    (_ :< WeakTermVar x) ->
+    (_ :< WT.Var x) ->
       Just $ StuckPiElimVarLocal x []
-    (_ :< WeakTermVarGlobal g _) ->
+    (_ :< WT.VarGlobal g _) ->
       Just $ StuckPiElimVarGlobal g []
-    (_ :< WeakTermAster h es) ->
+    (_ :< WT.Aster h es) ->
       Just $ StuckPiElimAster h es
-    (m :< WeakTermPiElim e es) ->
+    (m :< WT.PiElim e es) ->
       case asStuckedTerm e of
         Just (StuckPiElimVarLocal x ess) ->
           Just $ StuckPiElimVarLocal x $ ess ++ [(m, es)]
@@ -317,18 +317,18 @@ asStuckedTerm term =
     _ ->
       Nothing
 
-toPiElim :: WeakTerm -> [(Hint, [WeakTerm])] -> WeakTerm
+toPiElim :: WT.WeakTerm -> [(Hint, [WT.WeakTerm])] -> WT.WeakTerm
 toPiElim e args =
   case args of
     [] ->
       e
     (m, es) : ess ->
-      toPiElim (m :< WeakTermPiElim e es) ess
+      toPiElim (m :< WT.PiElim e es) ess
 
-asIdent :: WeakTerm -> Maybe Ident
+asIdent :: WT.WeakTerm -> Maybe Ident
 asIdent e =
   case e of
-    _ :< WeakTermVar x ->
+    _ :< WT.Var x ->
       return x
     _ ->
       Nothing
@@ -349,7 +349,7 @@ toLinearIdentSet' xs acc =
       | otherwise ->
           toLinearIdentSet' rest (S.insert x acc)
 
-lookupAny :: [HID.HoleID] -> HS.HoleSubst -> Maybe (HID.HoleID, ([Ident], WeakTerm))
+lookupAny :: [HID.HoleID] -> HS.HoleSubst -> Maybe (HID.HoleID, ([Ident], WT.WeakTerm))
 lookupAny is sub =
   case is of
     [] ->

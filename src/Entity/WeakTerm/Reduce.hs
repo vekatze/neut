@@ -6,22 +6,22 @@ import qualified Data.IntMap as IntMap
 import Entity.EnumCase
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.FreeVars
 import qualified Entity.WeakTerm.Subst as Subst
 
-reduce :: Subst.Context m => WeakTerm -> m WeakTerm
+reduce :: Subst.Context m => WT.WeakTerm -> m WT.WeakTerm
 reduce term =
   case term of
-    m :< WeakTermPi xts cod -> do
+    m :< WT.Pi xts cod -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
       cod' <- reduce cod
-      return $ m :< WeakTermPi (zip3 ms xs ts') cod'
-    m :< WeakTermPiIntro kind xts e
+      return $ m :< WT.Pi (zip3 ms xs ts') cod'
+    m :< WT.PiIntro kind xts e
       | LamKindFix (_, x, _) <- kind,
         x `notElem` freeVars e ->
-          reduce $ m :< WeakTermPiIntro LamKindNormal xts e
+          reduce $ m :< WT.PiIntro LamKindNormal xts e
       | otherwise -> do
           let (ms, xs, ts) = unzip3 xts
           ts' <- mapM reduce ts
@@ -29,43 +29,43 @@ reduce term =
           case kind of
             LamKindFix (mx, x, t) -> do
               t' <- reduce t
-              return (m :< WeakTermPiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+              return (m :< WT.PiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
             _ ->
-              return (m :< WeakTermPiIntro kind (zip3 ms xs ts') e')
-    m :< WeakTermPiElim e es -> do
+              return (m :< WT.PiIntro kind (zip3 ms xs ts') e')
+    m :< WT.PiElim e es -> do
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< WeakTermPiIntro LamKindNormal xts body)
+        (_ :< WT.PiIntro LamKindNormal xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es'
               Subst.subst sub body >>= reduce
         _ ->
-          return $ m :< WeakTermPiElim e' es'
-    m :< WeakTermSigma xts -> do
+          return $ m :< WT.PiElim e' es'
+    m :< WT.Sigma xts -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
-      return $ m :< WeakTermSigma (zip3 ms xs ts')
-    m :< WeakTermSigmaIntro es -> do
+      return $ m :< WT.Sigma (zip3 ms xs ts')
+    m :< WT.SigmaIntro es -> do
       es' <- mapM reduce es
-      return $ m :< WeakTermSigmaIntro es'
-    m :< WeakTermSigmaElim xts e1 e2 -> do
+      return $ m :< WT.SigmaIntro es'
+    m :< WT.SigmaElim xts e1 e2 -> do
       e1' <- reduce e1
       case e1' of
-        _ :< WeakTermSigmaIntro es
+        _ :< WT.SigmaIntro es
           | length xts == length es -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es
               Subst.subst sub e2 >>= reduce
         _ -> do
           e2' <- reduce e2
-          return $ m :< WeakTermSigmaElim xts e1' e2'
-    _ :< WeakTermLet (_, x, _) e1 e2 -> do
+          return $ m :< WT.SigmaElim xts e1' e2'
+    _ :< WT.Let (_, x, _) e1 e2 -> do
       e1' <- reduce e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
       Subst.subst sub e2
-    m :< WeakTermEnumElim (e, t) les -> do
+    m :< WT.EnumElim (e, t) les -> do
       e' <- reduce e
       let (ls, es) = unzip les
       es' <- mapM reduce es
@@ -73,7 +73,7 @@ reduce term =
       let les'' = zip (map unwrap ls) es'
       t' <- reduce t
       case e' of
-        (_ :< WeakTermEnumIntro label) ->
+        (_ :< WT.EnumIntro label) ->
           case lookup (EnumCaseLabel label) les'' of
             Just body ->
               reduce body
@@ -82,15 +82,15 @@ reduce term =
                 Just body ->
                   reduce body
                 Nothing ->
-                  return $ m :< WeakTermEnumElim (e', t') les'
+                  return $ m :< WT.EnumElim (e', t') les'
         _ ->
-          return $ m :< WeakTermEnumElim (e', t') les'
-    _ :< WeakTermQuestion e _ ->
+          return $ m :< WT.EnumElim (e', t') les'
+    _ :< WT.Question e _ ->
       reduce e
-    m :< WeakTermMagic der -> do
+    m :< WT.Magic der -> do
       der' <- mapM reduce der
-      return $ m :< WeakTermMagic der'
-    m :< WeakTermMatch (e, t) clauseList -> do
+      return $ m :< WT.Magic der'
+    m :< WT.Match (e, t) clauseList -> do
       e' <- reduce e
       -- let lamList = map (toLamList m) clauseList
       -- dataEnv <- readIORef dataEnvRef
@@ -106,7 +106,7 @@ reduce term =
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         body' <- reduce body
         return ((mPat, name, arity, xts), body')
-      return $ m :< WeakTermMatch (e', t') clauseList'
+      return $ m :< WT.Match (e', t') clauseList'
     _ ->
       return term
 

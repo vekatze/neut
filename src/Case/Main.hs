@@ -87,7 +87,7 @@ import qualified Entity.StrictGlobalLocator as SGL
 import qualified Entity.TargetPlatform as TP
 import qualified Entity.Term.Subst as Subst (Context (..))
 import Entity.VisitInfo
-import qualified Entity.WeakTerm as WeakTerm
+import qualified Entity.WeakTerm as WT
 import Path
 import Path.IO
 import qualified Scene.Clarify as Clarify (Context)
@@ -122,23 +122,23 @@ data Env = Env
     shouldCancelAlloc :: FastRef Bool,
     nopFreeSet :: FastRef (S.Set Int),
     sourceAliasMap :: FastRef SourceAliasMap,
-    constraintEnv :: FastRef [(WeakTerm.WeakTerm, WeakTerm.WeakTerm)],
+    constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
     holeSubst :: FastRef HS.HoleSubst,
     sourceChildrenMap :: FastRef (Map.HashMap (Path Abs File) [Source.Source]),
     traceSourceList :: FastRef [Source.Source],
-    weakTypeEnv :: FastRef (IntMap.IntMap WeakTerm.WeakTerm),
-    holeEnv :: FastRef (IntMap.IntMap (WeakTerm.WeakTerm, WeakTerm.WeakTerm)),
+    weakTypeEnv :: FastRef (IntMap.IntMap WT.WeakTerm),
+    holeEnv :: FastRef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
     constraintQueue :: FastRef (Q.MinQueue SuspendedConstraint),
     hasObjectSet :: FastRef (S.Set (Path Abs File)),
     hasCacheSet :: FastRef (S.Set (Path Abs File)),
     visitEnv :: FastRef (Map.HashMap (Path Abs File) VisitInfo),
-    defMap :: FastRef (Map.HashMap DD.DefiniteDescription WeakTerm.WeakTerm),
+    defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
     impEnv :: FastRef (Map.HashMap DD.DefiniteDescription I.ImpArgNum),
     compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)),
-    typeEnv :: FastRef (Map.HashMap DD.DefiniteDescription WeakTerm.WeakTerm),
+    typeEnv :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: FastRef [SGL.StrictGlobalLocator],
     activeDefiniteLocatorList :: FastRef [DL.DefiniteLocator],
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
@@ -500,7 +500,7 @@ instance Definition.Context App where
       asks defMap >>= \ref ->
         liftIO $
           modifyIORef ref $
-            Map.insert name (m :< WeakTerm.WeakTermPiIntro LamKindNormal xts e)
+            Map.insert name (m :< WT.PiIntro LamKindNormal xts e)
 
 instance Implicit.Context App where
   insert k v =

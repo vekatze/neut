@@ -28,7 +28,7 @@ import qualified Entity.PreTerm as PT
 import qualified Entity.Prim as Prim
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 
 class
   ( Throw.Context m,
@@ -62,15 +62,15 @@ discernStmtList stmtList =
         return $ innerStmtList' ++ rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern :: Context m => NameEnv -> PT.PreTerm -> m WeakTerm
+discern :: Context m => NameEnv -> PT.PreTerm -> m WT.WeakTerm
 discern nenv term =
   case term of
     m :< PT.Tau ->
-      return $ m :< WeakTermTau
+      return $ m :< WT.Tau
     m :< PT.Var (I (s, _)) -> do
       case lookup s nenv of
         Just (_, name) ->
-          return $ m :< WeakTermVar name
+          return $ m :< WT.Var name
         Nothing -> do
           resolveName m s
     m :< PT.VarGlobal globalLocator localLocator -> do
@@ -80,52 +80,52 @@ discern nenv term =
       resolveDefiniteDescription m dd
     m :< PT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
-      return $ m :< WeakTermPi xts' t'
+      return $ m :< WT.Pi xts' t'
     m :< PT.PiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
-          return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
+          return $ m :< WT.PiIntro (LamKindFix xt') xts' e'
         LamKindCons dataName consName consNumber dataType -> do
           dataType' <- discern nenv dataType
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WeakTermPiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
+          return $ m :< WT.PiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
         LamKindNormal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WeakTermPiIntro LamKindNormal xts' e'
+          return $ m :< WT.PiIntro LamKindNormal xts' e'
     m :< PT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
-      return $ m :< WeakTermPiElim e' es'
+      return $ m :< WT.PiElim e' es'
     m :< PT.Sigma xts -> do
       (xts', _) <- discernBinderWithBody nenv xts (m :< PT.Tau)
-      return $ m :< WeakTermSigma xts'
+      return $ m :< WT.Sigma xts'
     m :< PT.SigmaIntro es -> do
       es' <- mapM (discern nenv) es
-      return $ m :< WeakTermSigmaIntro es'
+      return $ m :< WT.SigmaIntro es'
     m :< PT.SigmaElim xts e1 e2 -> do
       e1' <- discern nenv e1
       (xts', e2') <- discernBinderWithBody nenv xts e2
-      return $ m :< WeakTermSigmaElim xts' e1' e2'
+      return $ m :< WT.SigmaElim xts' e1' e2'
     m :< PT.Let mxt e1 e2 -> do
       e1' <- discern nenv e1
       (mxt', _, e2') <- discernBinderWithBody' nenv mxt [] e2
-      return $ m :< WeakTermLet mxt' e1' e2'
+      return $ m :< WT.Let mxt' e1' e2'
     m :< PT.Prim prim ->
-      return $ m :< WeakTermPrim prim
+      return $ m :< WT.Prim prim
     m :< PT.Aster k ->
-      return $ m :< WeakTermAster k (map (\(_, (mx, x)) -> mx :< WeakTermVar x) nenv)
+      return $ m :< WT.Aster k (map (\(_, (mx, x)) -> mx :< WT.Var x) nenv)
     m :< PT.Int t x -> do
       t' <- discern nenv t
-      return $ m :< WeakTermInt t' x
+      return $ m :< WT.Int t' x
     m :< PT.Float t x -> do
       t' <- discern nenv t
-      return $ m :< WeakTermFloat t' x
+      return $ m :< WT.Float t' x
     m :< PT.Enum t ->
-      return $ m :< WeakTermEnum t
+      return $ m :< WT.Enum t
     m :< PT.EnumIntro label -> do
       label' <- discernEnumLabel m label
-      return $ m :< WeakTermEnumIntro label'
+      return $ m :< WT.EnumIntro label'
     m :< PT.EnumElim (e, t) caseList -> do
       e' <- discern nenv e
       t' <- discern nenv t
@@ -134,32 +134,32 @@ discern nenv term =
           enumCase' <- discernEnumCase enumCase
           body' <- discern nenv body
           return (enumCase', body')
-      return $ m :< WeakTermEnumElim (e', t') caseList'
+      return $ m :< WT.EnumElim (e', t') caseList'
     m :< PT.Question e t -> do
       e' <- discern nenv e
       t' <- discern nenv t
-      return $ m :< WeakTermQuestion e' t'
+      return $ m :< WT.Question e' t'
     m :< PT.Magic der -> do
       der' <- traverse (discern nenv) der
-      return $ m :< WeakTermMagic der'
+      return $ m :< WT.Magic der'
     m :< PT.Match (e, t) clauseList -> do
       e' <- discern nenv e
       t' <- discern nenv t
       clauseList' <- forM clauseList $ \((mCons, cons, xts), body) -> do
         (cons', unresolvedConsName) <- resolveConstructor mCons cons
         case cons' of
-          _ :< WeakTermVarGlobal consName arity -> do
+          _ :< WT.VarGlobal consName arity -> do
             (xts', body') <- discernBinderWithBody nenv xts body
             return ((mCons, consName, arity, xts'), body')
           _ ->
             Throw.raiseError m $ "no such constructor is defined: " <> unresolvedConsName
-      return $ m :< WeakTermMatch (e', t') clauseList'
+      return $ m :< WT.Match (e', t') clauseList'
 
 discernBinder ::
   Context m =>
   NameEnv ->
   [BinderF PT.PreTerm] ->
-  m ([BinderF WeakTerm], NameEnv)
+  m ([BinderF WT.WeakTerm], NameEnv)
 discernBinder nenv binder =
   case binder of
     [] -> do
@@ -175,7 +175,7 @@ discernBinderWithBody ::
   NameEnv ->
   [BinderF PT.PreTerm] ->
   PT.PreTerm ->
-  m ([BinderF WeakTerm], WeakTerm)
+  m ([BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody nenv binder e = do
   (binder', nenv') <- discernBinder nenv binder
   e' <- discern nenv' e
@@ -187,7 +187,7 @@ discernBinderWithBody' ::
   BinderF PT.PreTerm ->
   [BinderF PT.PreTerm] ->
   PT.PreTerm ->
-  m (BinderF WeakTerm, [BinderF WeakTerm], WeakTerm)
+  m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody' nenv (mx, x, t) binder e = do
   t' <- discern nenv t
   x' <- Gensym.newIdentFromIdent x
@@ -198,7 +198,7 @@ discernEnumLabel :: Context m => Hint -> PreEnumLabel -> m EnumLabel
 discernEnumLabel m (PreEnumLabel _ _ (UN.UnresolvedName name)) = do
   term <- resolveName m name
   case term of
-    _ :< WeakTermEnumIntro label ->
+    _ :< WT.EnumIntro label ->
       return label
     _ ->
       Throw.raiseError m $
@@ -215,7 +215,7 @@ discernEnumCase enumCase =
     m :< EnumCaseDefault -> do
       return $ m :< EnumCaseDefault
 
-resolveName :: Context m => Hint -> T.Text -> m WeakTerm
+resolveName :: Context m => Hint -> T.Text -> m WT.WeakTerm
 resolveName m name = do
   localLocator <- LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
@@ -225,17 +225,17 @@ resolveName m name = do
     [] ->
       Throw.raiseError m $ "undefined variable: " <> name
     [(dd, GN.TopLevelFunc arity)] ->
-      return $ m :< WeakTermVarGlobal dd arity
+      return $ m :< WT.VarGlobal dd arity
     [(dd, GN.Data arity _)] ->
-      return $ m :< WeakTermVarGlobal dd arity
+      return $ m :< WT.VarGlobal dd arity
     [(name', GN.EnumType _)] ->
-      return $ m :< WeakTermEnum (ET.EnumTypeName name')
+      return $ m :< WT.Enum (ET.EnumTypeName name')
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
-      return $ m :< WeakTermEnumIntro (EnumLabel enumTypeName discriminant (EV.EnumValueName name'))
+      return $ m :< WT.EnumIntro (EnumLabel enumTypeName discriminant (EV.EnumValueName name'))
     [(_, GN.PrimType primNum)] ->
-      return $ m :< WeakTermPrim (Prim.Type primNum)
+      return $ m :< WT.Prim (Prim.Type primNum)
     [(_, GN.PrimOp primOp)] ->
-      return $ m :< WeakTermPrim (Prim.Op primOp)
+      return $ m :< WT.Prim (Prim.Op primOp)
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       Throw.raiseError m $
@@ -245,22 +245,22 @@ candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =
   fmap (from,) mTo
 
-resolveDefiniteDescription :: Context m => Hint -> DD.DefiniteDescription -> m WeakTerm
+resolveDefiniteDescription :: Context m => Hint -> DD.DefiniteDescription -> m WT.WeakTerm
 resolveDefiniteDescription m dd = do
   kind <- Global.lookup dd
   case kind of
     Just (GN.TopLevelFunc arity) ->
-      return $ m :< WeakTermVarGlobal dd arity
+      return $ m :< WT.VarGlobal dd arity
     Just (GN.Data arity _) ->
-      return $ m :< WeakTermVarGlobal dd arity
+      return $ m :< WT.VarGlobal dd arity
     Just (GN.EnumType _) ->
-      return $ m :< WeakTermEnum (ET.EnumTypeName dd)
+      return $ m :< WT.Enum (ET.EnumTypeName dd)
     Just (GN.EnumIntro enumTypeName discriminant) ->
-      return $ m :< WeakTermEnumIntro (EnumLabel enumTypeName discriminant (EV.EnumValueName dd))
+      return $ m :< WT.EnumIntro (EnumLabel enumTypeName discriminant (EV.EnumValueName dd))
     Just (GN.PrimType primNum) ->
-      return $ m :< WeakTermPrim (Prim.Type primNum)
+      return $ m :< WT.Prim (Prim.Type primNum)
     Just (GN.PrimOp primOp) ->
-      return $ m :< WeakTermPrim (Prim.Op primOp)
+      return $ m :< WT.Prim (Prim.Op primOp)
     Nothing ->
       Throw.raiseError m $ "undefined definite description: " <> DD.reify dd
 
@@ -268,7 +268,7 @@ resolveConstructor ::
   Context m =>
   Hint ->
   Either UN.UnresolvedName DD.DefiniteDescription ->
-  m (WeakTerm, T.Text)
+  m (WT.WeakTerm, T.Text)
 resolveConstructor m cons = do
   case cons of
     Left (UN.UnresolvedName consName') -> do

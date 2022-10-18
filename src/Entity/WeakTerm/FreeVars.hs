@@ -6,67 +6,67 @@ import qualified Data.Set as S
 import Entity.Binder
 import Entity.Ident
 import Entity.LamKind
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 
-freeVars :: WeakTerm -> S.Set Ident
+freeVars :: WT.WeakTerm -> S.Set Ident
 freeVars term =
   case term of
-    _ :< WeakTermTau ->
+    _ :< WT.Tau ->
       S.empty
-    _ :< WeakTermVar x ->
+    _ :< WT.Var x ->
       S.singleton x
-    _ :< WeakTermVarGlobal {} ->
+    _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WeakTermPi xts t ->
+    _ :< WT.Pi xts t ->
       freeVars' xts [t]
-    _ :< WeakTermPiIntro k xts e ->
+    _ :< WT.PiIntro k xts e ->
       freeVars' (catMaybes [fromLamKind k] ++ xts) [e]
-    _ :< WeakTermPiElim e es -> do
+    _ :< WT.PiElim e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es
       S.union xs ys
-    _ :< WeakTermSigma xts ->
+    _ :< WT.Sigma xts ->
       freeVars' xts []
-    _ :< WeakTermSigmaIntro es ->
+    _ :< WT.SigmaIntro es ->
       S.unions $ map freeVars es
-    _ :< WeakTermSigmaElim xts e1 e2 -> do
+    _ :< WT.SigmaElim xts e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVars' xts [e2]
       S.union set1 set2
-    _ :< WeakTermLet mxt e1 e2 -> do
+    _ :< WT.Let mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] [e2]
       S.union set1 set2
-    _ :< WeakTermPrim _ ->
+    _ :< WT.Prim _ ->
       S.empty
-    _ :< WeakTermAster _ es ->
+    _ :< WT.Aster _ es ->
       S.unions $ map freeVars es
-    _ :< WeakTermInt t _ ->
+    _ :< WT.Int t _ ->
       freeVars t
-    _ :< WeakTermFloat t _ ->
+    _ :< WT.Float t _ ->
       freeVars t
-    _ :< WeakTermEnum {} ->
+    _ :< WT.Enum {} ->
       S.empty
-    _ :< WeakTermEnumIntro {} ->
+    _ :< WT.EnumIntro {} ->
       S.empty
-    _ :< WeakTermEnumElim (e, t) les -> do
+    _ :< WT.EnumElim (e, t) les -> do
       let xs = freeVars t
       let ys = freeVars e
       let zs = S.unions $ map (freeVars . snd) les
       S.unions [xs, ys, zs]
-    _ :< WeakTermQuestion e t -> do
+    _ :< WT.Question e t -> do
       let set1 = freeVars e
       let set2 = freeVars t
       S.union set1 set2
-    _ :< WeakTermMagic der ->
+    _ :< WT.Magic der ->
       foldMap freeVars der
-    _ :< WeakTermMatch (e, t) patList -> do
+    _ :< WT.Match (e, t) patList -> do
       let xs1 = freeVars e
       let xs2 = freeVars t
       let xs3 = S.unions $ map (\((_, _, _, xts), body) -> freeVars' xts [body]) patList
       S.unions [xs1, xs2, xs3]
 
-freeVars' :: [BinderF WeakTerm] -> [WeakTerm] -> S.Set Ident
+freeVars' :: [BinderF WT.WeakTerm] -> [WT.WeakTerm] -> S.Set Ident
 freeVars' binder es =
   case binder of
     [] ->

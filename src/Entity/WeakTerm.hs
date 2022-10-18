@@ -20,41 +20,41 @@ import Entity.PrimNumSize
 type WeakTerm = Cofree WeakTermF Hint
 
 data WeakTermF a
-  = WeakTermTau
-  | WeakTermVar Ident
-  | WeakTermVarGlobal DD.DefiniteDescription Arity
-  | WeakTermPi [BinderF a] a
-  | WeakTermPiIntro (LamKindF a) [BinderF a] a
-  | WeakTermPiElim a [a]
-  | WeakTermSigma [BinderF a]
-  | WeakTermSigmaIntro [a]
-  | WeakTermSigmaElim [BinderF a] a a
-  | WeakTermLet (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | WeakTermAster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
-  | WeakTermPrim Prim.Prim
-  | WeakTermInt a Integer
-  | WeakTermFloat a Double
-  | WeakTermEnum EnumTypeName
-  | WeakTermEnumIntro EnumLabel
-  | WeakTermEnumElim (a, a) [(EnumCase, a)]
-  | WeakTermQuestion a a -- e : t (output the type `t` as note)
-  | WeakTermMagic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | WeakTermMatch (a, a) [(PatternF a, a)] -- (pattern-matched value, its type) [(pattern, body)]
+  = Tau
+  | Var Ident
+  | VarGlobal DD.DefiniteDescription Arity
+  | Pi [BinderF a] a
+  | PiIntro (LamKindF a) [BinderF a] a
+  | PiElim a [a]
+  | Sigma [BinderF a]
+  | SigmaIntro [a]
+  | SigmaElim [BinderF a] a a
+  | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
+  | Aster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
+  | Prim Prim.Prim
+  | Int a Integer
+  | Float a Double
+  | Enum EnumTypeName
+  | EnumIntro EnumLabel
+  | EnumElim (a, a) [(EnumCase, a)]
+  | Question a a -- e : t (output the type `t` as note)
+  | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
+  | Match (a, a) [(PatternF a, a)] -- (pattern-matched value, its type) [(pattern, body)]
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm
 
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =
-  m :< WeakTermVar x
+  m :< Var x
 
 i8 :: Hint -> WeakTerm
 i8 m =
-  m :< WeakTermPrim (Prim.Type $ PrimNumInt $ IntSize 8)
+  m :< Prim (Prim.Type $ PrimNumInt $ IntSize 8)
 
 i64 :: Hint -> WeakTerm
 i64 m =
-  m :< WeakTermPrim (Prim.Type $ PrimNumInt $ IntSize 64)
+  m :< Prim (Prim.Type $ PrimNumInt $ IntSize 64)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =
@@ -63,7 +63,7 @@ metaOf (m :< _) =
 asVar :: WeakTerm -> Maybe Ident
 asVar term =
   case term of
-    (_ :< WeakTermVar x) ->
+    (_ :< Var x) ->
       Just x
     _ ->
       Nothing

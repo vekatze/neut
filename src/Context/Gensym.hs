@@ -18,7 +18,7 @@ import Entity.HoleID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.PreTerm as PT
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 
 class Monad m => Context m where
   newCount :: m Int
@@ -38,10 +38,10 @@ newPreAster m = do
   return $ m :< PT.Aster i
 
 {-# INLINE newAster #-}
-newAster :: Context m => Hint -> [WeakTerm] -> m WeakTerm
+newAster :: Context m => Hint -> [WT.WeakTerm] -> m WT.WeakTerm
 newAster m varSeq = do
   i <- HoleID <$> newCount
-  return $ m :< WeakTermAster i varSeq
+  return $ m :< WT.Aster i varSeq
 
 {-# INLINE newIdentFromText #-}
 newIdentFromText :: Context m => T.Text -> m Ident

@@ -13,7 +13,7 @@ import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
 import Entity.Term
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 import GHC.Generics
 import Path
 
@@ -25,7 +25,7 @@ data PreStmt
   | PreStmtSection Section.Section [PreStmt]
 
 data WeakStmt
-  = WeakStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WeakTerm] WeakTerm WeakTerm
+  = WeakStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WT.WeakTerm] WT.WeakTerm WT.WeakTerm
 
 type Program =
   (Source.Source, [Stmt])

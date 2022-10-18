@@ -11,90 +11,90 @@ import qualified Data.IntMap as IntMap
 import Entity.Binder
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 
-subst :: Context m => SubstWeakTerm -> WeakTerm -> m WeakTerm
+subst :: Context m => WT.SubstWeakTerm -> WT.WeakTerm -> m WT.WeakTerm
 subst sub term =
   case term of
-    _ :< WeakTermTau ->
+    _ :< WT.Tau ->
       return term
-    _ :< WeakTermVar x
+    _ :< WT.Var x
       | Just e <- IntMap.lookup (Ident.toInt x) sub ->
           return e
       | otherwise ->
           return term
-    _ :< WeakTermVarGlobal {} ->
+    _ :< WT.VarGlobal {} ->
       return term
-    m :< WeakTermPi xts t -> do
+    m :< WT.Pi xts t -> do
       (xts', t') <- subst' sub xts t
-      return $ m :< WeakTermPi xts' t'
-    m :< WeakTermPiIntro kind xts e -> do
+      return $ m :< WT.Pi xts' t'
+    m :< WT.PiIntro kind xts e -> do
       case kind of
         LamKindFix xt -> do
           (xt', xts', e') <- subst'' sub xt xts e
-          return $ m :< WeakTermPiIntro (LamKindFix xt') xts' e'
+          return $ m :< WT.PiIntro (LamKindFix xt') xts' e'
         _ -> do
           (xts', e') <- subst' sub xts e
-          return $ m :< WeakTermPiIntro kind xts' e'
-    m :< WeakTermPiElim e es -> do
+          return $ m :< WT.PiIntro kind xts' e'
+    m :< WT.PiElim e es -> do
       e' <- subst sub e
       es' <- mapM (subst sub) es
-      return $ m :< WeakTermPiElim e' es'
-    m :< WeakTermSigma xts -> do
-      (xts', _) <- subst' sub xts (m :< WeakTermTau)
-      return $ m :< WeakTermSigma xts'
-    m :< WeakTermSigmaIntro es -> do
+      return $ m :< WT.PiElim e' es'
+    m :< WT.Sigma xts -> do
+      (xts', _) <- subst' sub xts (m :< WT.Tau)
+      return $ m :< WT.Sigma xts'
+    m :< WT.SigmaIntro es -> do
       es' <- mapM (subst sub) es
-      return $ m :< WeakTermSigmaIntro es'
-    m :< WeakTermSigmaElim xts e1 e2 -> do
+      return $ m :< WT.SigmaIntro es'
+    m :< WT.SigmaElim xts e1 e2 -> do
       e1' <- subst sub e1
       (xts', e2') <- subst' sub xts e2
-      return $ m :< WeakTermSigmaElim xts' e1' e2'
-    m :< WeakTermLet mxt e1 e2 -> do
+      return $ m :< WT.SigmaElim xts' e1' e2'
+    m :< WT.Let mxt e1 e2 -> do
       e1' <- subst sub e1
       (mxt', _, e2') <- subst'' sub mxt [] e2
-      return $ m :< WeakTermLet mxt' e1' e2'
-    _ :< WeakTermPrim _ ->
+      return $ m :< WT.Let mxt' e1' e2'
+    _ :< WT.Prim _ ->
       return term
-    _ :< WeakTermAster {} ->
+    _ :< WT.Aster {} ->
       return term
-    m :< WeakTermInt t x -> do
+    m :< WT.Int t x -> do
       t' <- subst sub t
-      return $ m :< WeakTermInt t' x
-    m :< WeakTermFloat t x -> do
+      return $ m :< WT.Int t' x
+    m :< WT.Float t x -> do
       t' <- subst sub t
-      return $ m :< WeakTermFloat t' x
-    _ :< WeakTermEnum {} ->
+      return $ m :< WT.Float t' x
+    _ :< WT.Enum {} ->
       return term
-    _ :< WeakTermEnumIntro {} ->
+    _ :< WT.EnumIntro {} ->
       return term
-    m :< WeakTermEnumElim (e, t) branchList -> do
+    m :< WT.EnumElim (e, t) branchList -> do
       t' <- subst sub t
       e' <- subst sub e
       let (caseList, es) = unzip branchList
       es' <- mapM (subst sub) es
-      return $ m :< WeakTermEnumElim (e', t') (zip caseList es')
-    m :< WeakTermQuestion e t -> do
+      return $ m :< WT.EnumElim (e', t') (zip caseList es')
+    m :< WT.Question e t -> do
       e' <- subst sub e
       t' <- subst sub t
-      return $ m :< WeakTermQuestion e' t'
-    m :< WeakTermMagic der -> do
+      return $ m :< WT.Question e' t'
+    m :< WT.Magic der -> do
       der' <- mapM (subst sub) der
-      return $ m :< WeakTermMagic der'
-    m :< WeakTermMatch (e, t) clauseList -> do
+      return $ m :< WT.Magic der'
+    m :< WT.Match (e, t) clauseList -> do
       e' <- subst sub e
       t' <- subst sub t
       clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
         (xts', body') <- subst' sub xts body
         return ((mPat, name, arity, xts'), body')
-      return $ m :< WeakTermMatch (e', t') clauseList'
+      return $ m :< WT.Match (e', t') clauseList'
 
 subst' ::
   Context m =>
-  SubstWeakTerm ->
-  [BinderF WeakTerm] ->
-  WeakTerm ->
-  m ([BinderF WeakTerm], WeakTerm)
+  WT.SubstWeakTerm ->
+  [BinderF WT.WeakTerm] ->
+  WT.WeakTerm ->
+  m ([BinderF WT.WeakTerm], WT.WeakTerm)
 subst' sub binder e =
   case binder of
     [] -> do
@@ -103,21 +103,21 @@ subst' sub binder e =
     ((m, x, t) : xts) -> do
       t' <- subst sub t
       x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (Ident.toInt x) (m :< WeakTermVar x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (m :< WT.Var x') sub
       (xts', e') <- subst' sub' xts e
       return ((m, x', t') : xts', e')
 
 subst'' ::
   Context m =>
-  SubstWeakTerm ->
-  BinderF WeakTerm ->
-  [BinderF WeakTerm] ->
-  WeakTerm ->
-  m (BinderF WeakTerm, [BinderF WeakTerm], WeakTerm)
+  WT.SubstWeakTerm ->
+  BinderF WT.WeakTerm ->
+  [BinderF WT.WeakTerm] ->
+  WT.WeakTerm ->
+  m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 subst'' sub (m, x, t) binder e = do
   t' <- subst sub t
   x' <- newIdentFromIdent x
-  let sub' = IntMap.insert (Ident.toInt x) (m :< WeakTermVar x') sub
+  let sub' = IntMap.insert (Ident.toInt x) (m :< WT.Var x') sub
   (xts', e') <- subst' sub' binder e
   return ((m, x, t'), xts', e')
 
@@ -128,6 +128,6 @@ subst'' sub (m, x, t) binder e = do
 --   ((m, x, t) : xts) -> do
 --     t' <- subst sub t
 --     x' <- newIdentFromIdent x
---     let sub' = IntMap.insert (Ident.toInt x) (m :< WeakTermVar x') sub
+--     let sub' = IntMap.insert (Ident.toInt x) (m :< WT.Var x') sub
 --     (xts', e') <- subst' sub' xts e
 --     return ((m, x', t') : xts', e')

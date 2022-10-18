@@ -14,19 +14,19 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import Entity.Pattern
-import Entity.WeakTerm
+import qualified Entity.WeakTerm as WT
 
-toText :: WeakTerm -> T.Text
+toText :: WT.WeakTerm -> T.Text
 toText term =
   case term of
-    _ :< WeakTermTau ->
+    _ :< WT.Tau ->
       "tau"
-    _ :< WeakTermVar x ->
+    _ :< WT.Var x ->
       showVariable x
-    _ :< WeakTermVarGlobal x _ ->
+    _ :< WT.VarGlobal x _ ->
       DD.reify x
-    _ :< WeakTermPi xts cod
-      | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WeakTermPi yts _)] <- xts ->
+    _ :< WT.Pi xts cod
+      | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WT.Pi yts _)] <- xts ->
           case splitLast yts of
             Nothing ->
               "(product)"
@@ -34,7 +34,7 @@ toText term =
               showCons ["∑", inParen $ showTypeArgs zts, toText t]
       | otherwise ->
           showCons ["Π", inParen $ showTypeArgs xts, toText cod]
-    _ :< WeakTermPiIntro kind xts e -> do
+    _ :< WT.PiIntro kind xts e -> do
       case kind of
         LamKindFix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
@@ -46,50 +46,50 @@ toText term =
         _ -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["λ", argStr, toText e]
-    _ :< WeakTermPiElim e es ->
+    _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
-    _ :< WeakTermSigma xts ->
+    _ :< WT.Sigma xts ->
       showCons ["sigma", showItems $ map showArg xts]
-    _ :< WeakTermSigmaIntro es ->
+    _ :< WT.SigmaIntro es ->
       showCons $ "sigma-intro" : map toText es
-    _ :< WeakTermSigmaElim {} ->
+    _ :< WT.SigmaElim {} ->
       "<sigma-elim>"
-    _ :< WeakTermLet {} -> do
+    _ :< WT.Let {} -> do
       "<let>"
-    _ :< WeakTermPrim prim ->
+    _ :< WT.Prim prim ->
       T.pack $ show prim -- fixme
-    _ :< WeakTermAster i es ->
+    _ :< WT.Aster i es ->
       showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
-    _ :< WeakTermInt _ a ->
+    _ :< WT.Int _ a ->
       T.pack $ show a
-    _ :< WeakTermFloat _ a ->
+    _ :< WT.Float _ a ->
       T.pack $ show a
-    _ :< WeakTermEnum l ->
+    _ :< WT.Enum l ->
       DD.reify $ ET.reify l
-    _ :< WeakTermEnumIntro (EnumLabel _ _ v) ->
+    _ :< WT.EnumIntro (EnumLabel _ _ v) ->
       DD.reify $ EV.reify v
-    _ :< WeakTermEnumElim (e, _) mles -> do
+    _ :< WT.EnumElim (e, _) mles -> do
       showCons ["switch", toText e, showItems (map showClause mles)]
-    _ :< WeakTermQuestion e _ ->
+    _ :< WT.Question e _ ->
       toText e
-    _ :< WeakTermMagic m -> do
+    _ :< WT.Magic m -> do
       let a = fmap toText m
       T.pack $ show a
     -- "<magic>"
     -- let es' = map toText es
     -- showCons $ "magic" : T.pack (show i) : es'
-    _ :< WeakTermMatch (e, _) caseClause -> do
+    _ :< WT.Match (e, _) caseClause -> do
       showCons $ "case" : toText e : map showCaseClause caseClause
 
 inParen :: T.Text -> T.Text
 inParen s =
   "(" <> s <> ")"
 
-showArg :: (Hint, Ident, WeakTerm) -> T.Text
+showArg :: (Hint, Ident, WT.WeakTerm) -> T.Text
 showArg (_, x, t) =
   inParen $ showVariable x <> " " <> toText t
 
-showTypeArgs :: [BinderF WeakTerm] -> T.Text
+showTypeArgs :: [BinderF WT.WeakTerm] -> T.Text
 showTypeArgs args =
   case args of
     [] ->
@@ -105,11 +105,11 @@ showVariable :: Ident -> T.Text
 showVariable =
   Ident.toText'
 
-showCaseClause :: (PatternF WeakTerm, WeakTerm) -> T.Text
+showCaseClause :: (PatternF WT.WeakTerm, WT.WeakTerm) -> T.Text
 showCaseClause (pat, e) =
   inParen $ showPattern pat <> " " <> toText e
 
-showPattern :: (Hint, DD.DefiniteDescription, Arity, [BinderF WeakTerm]) -> T.Text
+showPattern :: (Hint, DD.DefiniteDescription, Arity, [BinderF WT.WeakTerm]) -> T.Text
 showPattern (_, f, _, xts) = do
   case xts of
     [] ->
@@ -118,7 +118,7 @@ showPattern (_, f, _, xts) = do
       let xs = map (\(_, x, _) -> x) xts
       inParen $ DD.reify f <> " " <> T.intercalate " " (map showVariable xs)
 
-showClause :: (EnumCase, WeakTerm) -> T.Text
+showClause :: (EnumCase, WT.WeakTerm) -> T.Text
 showClause (c, e) =
   inParen $ showCase c <> " " <> toText e
 
