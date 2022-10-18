@@ -88,7 +88,7 @@ distinguishValue z term =
           x' <- newIdentFromIdent x
           return ([OccurrenceIdeal x'], ValueVarLocal x')
     ValueSigmaIntro ds -> do
-      (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
+      (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat vss, ValueSigmaIntro ds')
     _ ->
       return ([], term)
@@ -101,7 +101,7 @@ distinguishComp z term =
       return (vs, CompPrimitive theta')
     CompPiElimDownElim d ds -> do
       (vs, d') <- distinguishValue z d
-      (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
+      (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat $ vs : vss, CompPiElimDownElim d' ds')
     CompSigmaElim b xs d e -> do
       (vs1, d') <- distinguishValue z d
@@ -138,7 +138,7 @@ distinguishPrimitive :: Context m => Ident -> Primitive -> m ([Occurrence], Prim
 distinguishPrimitive z term =
   case term of
     PrimitivePrimOp op ds -> do
-      (vss, ds') <- unzip <$> mapM (distinguishValue z) ds
+      (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat vss, PrimitivePrimOp op ds')
     PrimitiveMagic der -> do
       case der of
@@ -155,8 +155,8 @@ distinguishPrimitive z term =
           (vs, pointer') <- distinguishValue z pointer
           return (vs, PrimitiveMagic (MagicLoad lt pointer'))
         MagicSyscall syscallNum args -> do
-          (vss, args') <- unzip <$> mapM (distinguishValue z) args
+          (vss, args') <- mapAndUnzipM (distinguishValue z) args
           return (concat vss, PrimitiveMagic (MagicSyscall syscallNum args'))
         MagicExternal extFunName args -> do
-          (vss, args') <- unzip <$> mapM (distinguishValue z) args
+          (vss, args') <- mapAndUnzipM (distinguishValue z) args
           return (concat vss, PrimitiveMagic (MagicExternal extFunName args'))

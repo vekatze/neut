@@ -117,7 +117,7 @@ sigma4 mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]
   as <- forM xts $ uncurry toRelevantApp
-  (varNameList, varList) <- unzip <$> mapM (const $ Gensym.newValueVarLocalWith "pair") xts
+  (varNameList, varList) <- mapAndUnzipM (const $ Gensym.newValueVarLocalWith "pair") xts
   body' <- linearize xts $ bindLet (zip varNameList as) $ CompUpIntro $ ValueSigmaIntro varList
   return $ CompSigmaElim True (map fst xts) argVar body'
 

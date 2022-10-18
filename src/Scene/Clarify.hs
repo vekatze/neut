@@ -361,7 +361,7 @@ nubFreeVariables =
 clarifyPrimOp :: Context m => TypeEnv -> PrimOp -> Hint -> m Comp
 clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
-  (xs, varList) <- unzip <$> mapM (const (Gensym.newValueVarLocalWith "prim")) domList
+  (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
   returnClosure tenv OpacityTransparent LamKindNormal [] mxts $ CompPrimitive (PrimitivePrimOp op varList)
 
