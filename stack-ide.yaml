@@ -1,0 +1,6 @@
+resolver: lts-19.29
+
+packages:
+  - .
+
+work-dir: .stack-ide
