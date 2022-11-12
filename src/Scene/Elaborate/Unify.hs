@@ -15,7 +15,7 @@ import qualified Data.PQueue.Min as Q
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
-import Entity.Constraint
+import qualified Entity.Constraint as C
 import qualified Entity.DefiniteDescription as DD
 import Entity.FilePos
 import Entity.Hint
@@ -35,9 +35,9 @@ import Entity.WeakTerm.ToText
 
 class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where
   insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> m ()
-  setConstraintQueue :: Q.MinQueue SuspendedConstraint -> m ()
-  insertConstraint :: SuspendedConstraint -> m ()
-  getConstraintQueue :: m SuspendedConstraintQueue
+  setConstraintQueue :: Q.MinQueue C.SuspendedConstraint -> m ()
+  insertConstraint :: C.SuspendedConstraint -> m ()
+  getConstraintQueue :: m C.SuspendedConstraintQueue
   getDefMap :: m DefMap
 
 type DefMap = Map.HashMap DD.DefiniteDescription WT.WeakTerm
@@ -47,12 +47,12 @@ data Stuck
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WT.WeakTerm])]
   | StuckPiElimAster HID.HoleID [WT.WeakTerm]
 
-unify :: Context m => [Constraint] -> m HS.HoleSubst
+unify :: Context m => [C.Constraint] -> m HS.HoleSubst
 unify constraintList = do
   analyze constraintList >> synthesize
   Env.getHoleSubst
 
-analyze :: Context m => [Constraint] -> m ()
+analyze :: Context m => [C.Constraint] -> m ()
 analyze constraintList =
   simplify $ zip constraintList constraintList
 
@@ -62,18 +62,18 @@ synthesize = do
   case Q.minView suspendedConstraintQueue of
     Nothing ->
       return ()
-    Just (SuspendedConstraint (_, ConstraintKindDelta c, (_, orig)), cs') -> do
+    Just (C.SuspendedConstraint (_, C.Delta c, (_, orig)), cs') -> do
       setConstraintQueue cs'
       simplify [(c, orig)]
       synthesize
-    Just (SuspendedConstraint (_, ConstraintKindOther, _), _) ->
+    Just (C.SuspendedConstraint (_, C.Other, _), _) ->
       throwTypeErrors
 
 throwTypeErrors :: Context m => m a
 throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
   sub <- Env.getHoleSubst
-  errorList <- forM (Q.toList suspendedConstraintQueue) $ \(SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
+  errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     -- p' foo
     -- p $ T.unpack $ toText l
     -- p $ T.unpack $ toText r
@@ -93,7 +93,7 @@ constructErrorMsg e1 e2 =
     <> "\n- "
     <> toText e2
 
-simplify :: Context m => [(Constraint, Constraint)] -> m ()
+simplify :: Context m => [(C.Constraint, C.Constraint)] -> m ()
 simplify constraintList =
   case constraintList of
     [] ->
@@ -220,12 +220,12 @@ simplify constraintList =
                       simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
                   | Just lam <- Map.lookup g1 defMap -> do
-                      let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (toPiElim lam mess1, e2), headConstraint)
+                      let uc = C.SuspendedConstraint (fmvs, C.Delta (toPiElim lam mess1, e2), headConstraint)
                       insertConstraint uc
                       simplify cs
                 (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap -> do
-                      let uc = SuspendedConstraint (fmvs, ConstraintKindDelta (e1, toPiElim lam mess2), headConstraint)
+                      let uc = C.SuspendedConstraint (fmvs, C.Delta (e1, toPiElim lam mess2), headConstraint)
                       insertConstraint uc
                       simplify cs
                 (Just (StuckPiElimVarGlobal g1 mess1), _)
@@ -235,36 +235,36 @@ simplify constraintList =
                   | Just lam <- Map.lookup g2 defMap ->
                       simplify $ ((e1, toPiElim lam mess2), orig) : cs
                 _ -> do
-                  let uc = SuspendedConstraint (fmvs, ConstraintKindOther, headConstraint)
+                  let uc = C.SuspendedConstraint (fmvs, C.Other, headConstraint)
                   insertConstraint uc
                   simplify cs
 
 {-# INLINE resolveHole #-}
-resolveHole :: Context m => HID.HoleID -> [Ident] -> WT.WeakTerm -> [(Constraint, Constraint)] -> m ()
+resolveHole :: Context m => HID.HoleID -> [Ident] -> WT.WeakTerm -> [(C.Constraint, C.Constraint)] -> m ()
 resolveHole h1 xs e2' cs = do
   insertSubst h1 xs e2'
   suspendedConstraintQueue <- getConstraintQueue
-  let (sus1, sus2) = Q.partition (\(SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
+  let (sus1, sus2) = Q.partition (\(C.SuspendedConstraint (hs, _, _)) -> S.member h1 hs) suspendedConstraintQueue
   setConstraintQueue sus2
-  let sus1' = map (\(SuspendedConstraint (_, _, c)) -> c) $ Q.toList sus1
+  let sus1' = map (\(C.SuspendedConstraint (_, _, c)) -> c) $ Q.toList sus1
   simplify $ sus1' ++ cs
 
 simplifyBinder ::
   Context m =>
-  Constraint ->
+  C.Constraint ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  m [(Constraint, Constraint)]
+  m [(C.Constraint, C.Constraint)]
 simplifyBinder orig =
   simplifyBinder' orig IntMap.empty
 
 simplifyBinder' ::
   Context m =>
-  Constraint ->
+  C.Constraint ->
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  m [(Constraint, Constraint)]
+  m [(C.Constraint, C.Constraint)]
 simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do

@@ -9,8 +9,8 @@ type Constraint =
   (WeakTerm, WeakTerm) -- (expected-type, actual-type)
 
 data ConstraintKind
-  = ConstraintKindDelta Constraint
-  | ConstraintKindOther
+  = Delta Constraint
+  | Other
 
 type MetaVarSet =
   S.Set HID.HoleID
@@ -32,7 +32,7 @@ type SuspendedConstraintQueue =
 kindToInt :: ConstraintKind -> Int
 kindToInt k =
   case k of
-    ConstraintKindDelta {} ->
+    Delta {} ->
       0
-    ConstraintKindOther {} ->
+    Other {} ->
       1
