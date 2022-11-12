@@ -12,11 +12,11 @@ where
 import qualified Data.Text as T
 import Entity.FilePos
 import Entity.Hint
-import Entity.Log
+import qualified Entity.Log as L
 
 class Monad m => Context m where
-  throw :: forall a. Error -> m a
-  try :: forall a. m a -> m (Either Error a)
+  throw :: forall a. L.Error -> m a
+  try :: forall a. m a -> m (Either L.Error a)
   run :: m a -> m a
 
 -- run :: Context m => (Log -> m ()) -> m a -> m a
@@ -30,19 +30,19 @@ class Monad m => Context m where
 
 raiseError :: Context m => Hint -> T.Text -> m a
 raiseError m text =
-  throw $ Error [logError (Entity.FilePos.fromHint m) text]
+  throw $ L.MakeError [L.logError (Entity.FilePos.fromHint m) text]
 
 raiseError' :: Context m => T.Text -> m a
 raiseError' text =
-  throw $ Error [logError' text]
+  throw $ L.MakeError [L.logError' text]
 
 raiseCritical :: Context m => Hint -> T.Text -> m a
 raiseCritical m text =
-  throw $ Error [logCritical (Entity.FilePos.fromHint m) text]
+  throw $ L.MakeError [L.logCritical (Entity.FilePos.fromHint m) text]
 
 raiseCritical' :: Context m => T.Text -> m a
 raiseCritical' text =
-  throw $ Error [logCritical' text]
+  throw $ L.MakeError [L.logCritical' text]
 
 raiseSyntaxError :: Context m => Hint -> T.Text -> m a
 raiseSyntaxError m form =

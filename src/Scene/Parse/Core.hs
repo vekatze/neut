@@ -13,7 +13,7 @@ import Entity.Const
 import Entity.FilePos
 import Entity.Hint
 import qualified Entity.Hint.Reflect as Hint
-import Entity.Log
+import qualified Entity.Log as L
 import Entity.TargetPlatform
 import Path
 import Text.Megaparsec
@@ -40,12 +40,12 @@ run parser path = do
     Left errorBundle ->
       Throw.throw $ createParseError errorBundle
 
-createParseError :: ParseErrorBundle T.Text Void -> Error
+createParseError :: ParseErrorBundle T.Text Void -> L.Error
 createParseError errorBundle = do
   let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
   let hint = Hint.fromSourcePos $ pstateSourcePos posState
   let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
-  Error [logError (fromHint hint) message]
+  L.MakeError [L.logError (fromHint hint) message]
 
 getCurrentHint :: Parser m Hint
 getCurrentHint =

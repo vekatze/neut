@@ -24,7 +24,7 @@ import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
-import Entity.Log
+import qualified Entity.Log as L
 import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
@@ -83,8 +83,8 @@ throwTypeErrors = do
     actual' <- fill sub actual >>= reduce
     -- expected' <- subst sub l >>= reduce
     -- actual' <- subst sub r >>= reduce
-    return $ logError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
-  Throw.throw $ Error errorList
+    return $ L.logError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
+  Throw.throw $ L.MakeError errorList
 
 constructErrorMsg :: WT.WeakTerm -> WT.WeakTerm -> T.Text
 constructErrorMsg e1 e2 =

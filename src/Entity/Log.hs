@@ -6,12 +6,12 @@ import Entity.FilePos
 import System.Console.ANSI
 
 data LogLevel
-  = LogLevelNote
-  | LogLevelWarning
-  | LogLevelError
-  | LogLevelCritical -- "impossible" happened
-  | LogLevelPass -- for test
-  | LogLevelFail -- for test
+  = Note
+  | Warning
+  | Error
+  | Critical -- "impossible" happened
+  | Pass -- for test
+  | Fail -- for test
   deriving (Show, Eq)
 
 type Log =
@@ -22,7 +22,7 @@ type ColorFlag =
 
 -- fixme: ErrorSyntax, ErrorType, ...
 newtype Error
-  = Error [Log]
+  = MakeError [Log]
   deriving (Show)
 
 instance Exception Error
@@ -30,33 +30,33 @@ instance Exception Error
 logLevelToText :: LogLevel -> T.Text
 logLevelToText level =
   case level of
-    LogLevelNote ->
+    Note ->
       "note"
-    LogLevelPass ->
+    Pass ->
       "pass"
-    LogLevelWarning ->
+    Warning ->
       "warning"
-    LogLevelError ->
+    Error ->
       "error"
-    LogLevelFail ->
+    Fail ->
       "fail"
-    LogLevelCritical ->
+    Critical ->
       "critical"
 
 logLevelToSGR :: LogLevel -> [SGR]
 logLevelToSGR level =
   case level of
-    LogLevelNote ->
+    Note ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
-    LogLevelPass ->
+    Pass ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
-    LogLevelWarning ->
+    Warning ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Yellow]
-    LogLevelError ->
+    Error ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
-    LogLevelFail ->
+    Fail ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
-    LogLevelCritical ->
+    Critical ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
 
 forgetFilePosIfNecessary :: Bool -> Log -> Log
@@ -65,28 +65,28 @@ forgetFilePosIfNecessary _ (_, l, t) =
 
 logNote :: FilePos -> T.Text -> Log
 logNote pos text =
-  (Just pos, LogLevelNote, text)
+  (Just pos, Note, text)
 
 logNote' :: T.Text -> Log
 logNote' text =
-  (Nothing, LogLevelNote, text)
+  (Nothing, Note, text)
 
 logWarning :: FilePos -> T.Text -> Log
 logWarning pos text =
-  (Just pos, LogLevelWarning, text)
+  (Just pos, Warning, text)
 
 logError :: FilePos -> T.Text -> Log
 logError pos text =
-  (Just pos, LogLevelError, text)
+  (Just pos, Error, text)
 
 logError' :: T.Text -> Log
 logError' text =
-  (Nothing, LogLevelError, text)
+  (Nothing, Error, text)
 
 logCritical :: FilePos -> T.Text -> Log
 logCritical pos text =
-  (Just pos, LogLevelCritical, text)
+  (Just pos, Critical, text)
 
 logCritical' :: T.Text -> Log
 logCritical' text =
-  (Nothing, LogLevelCritical, text)
+  (Nothing, Critical, text)
