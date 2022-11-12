@@ -3,6 +3,10 @@ module Entity.PrimNumSize where
 import Data.Binary
 import qualified GHC.Generics as G
 
+data PrimNumSize
+  = PrimIntSize IntSize
+  | PrimFloatSize FloatSize
+
 newtype IntSize
   = IntSize Int
   deriving (Eq, Ord, Show, G.Generic)
