@@ -13,7 +13,7 @@ import Control.Monad.Catch hiding (try)
 import Control.Monad.Trans
 import Data.Maybe
 import qualified Data.Text as T
-import Entity.AliasInfo
+import qualified Entity.AliasInfo as AI
 import Entity.Const
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalLocatorAlias as GLA
@@ -28,14 +28,14 @@ import Text.Megaparsec
 
 class (Throw.Context m, Module.Context m, Alias.Context m, P.Context m, MonadThrow m) => Context m
 
-parseImportSequence :: Context m => P.Parser m ([Source.Source], [AliasInfo])
+parseImportSequence :: Context m => P.Parser m ([Source.Source], [AI.AliasInfo])
 parseImportSequence = do
   let p1 = P.importBlock (P.manyList parseSingleImport)
   let p2 = return []
   (sourceList, mInfoList) <- unzip <$> choice [p1, p2]
   return (sourceList, catMaybes mInfoList)
 
-parseSingleImport :: Context m => P.Parser m (Source.Source, Maybe AliasInfo)
+parseSingleImport :: Context m => P.Parser m (Source.Source, Maybe AI.AliasInfo)
 parseSingleImport = do
   choice
     [ try parseImportQualified,
@@ -56,7 +56,7 @@ skipImportSequence = do
       return ()
     ]
 
-parseImportSimple :: Context m => P.Parser m (Source.Source, Maybe AliasInfo)
+parseImportSimple :: Context m => P.Parser m (Source.Source, Maybe AI.AliasInfo)
 parseImportSimple = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
@@ -70,7 +70,7 @@ skipImportSimple = do
   _ <- P.symbol
   return ()
 
-parseImportQualified :: Context m => P.Parser m (Source.Source, Maybe AliasInfo)
+parseImportQualified :: Context m => P.Parser m (Source.Source, Maybe AI.AliasInfo)
 parseImportQualified = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
@@ -79,7 +79,7 @@ parseImportQualified = do
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
   source <- getSource m strictGlobalLocator locatorText
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
-  return (source, Just $ AliasInfoPrefix m globalLocatorAlias strictGlobalLocator)
+  return (source, Just $ AI.Prefix m globalLocatorAlias strictGlobalLocator)
 
 skipImportQualified :: Context m => P.Parser m ()
 skipImportQualified = do

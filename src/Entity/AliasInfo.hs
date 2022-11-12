@@ -13,7 +13,7 @@ import qualified Entity.StrictGlobalLocator as SGL
 import Path
 
 data AliasInfo
-  = AliasInfoPrefix Hint GLA.GlobalLocatorAlias SGL.StrictGlobalLocator
+  = Prefix Hint GLA.GlobalLocatorAlias SGL.StrictGlobalLocator
   deriving (Show)
 
 type SourceAliasMap = Map.HashMap (Path Abs File) [AliasInfo]
@@ -25,5 +25,5 @@ activateAliasInfo aliasInfoList = do
 activateAliasInfoOfCurrentFile' :: Alias.Context m => AliasInfo -> m ()
 activateAliasInfoOfCurrentFile' aliasInfo =
   case aliasInfo of
-    AliasInfoPrefix m from to ->
+    Prefix m from to ->
       Alias.registerGlobalLocatorAlias m from to
