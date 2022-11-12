@@ -7,11 +7,11 @@ import Entity.LowType
 import qualified GHC.Generics as G
 
 data Magic a
-  = MagicCast a a a
-  | MagicStore LowType a a
-  | MagicLoad LowType a
-  | MagicSyscall Integer [a]
-  | MagicExternal EN.ExternalName [a]
+  = Cast a a a
+  | Store LowType a a
+  | Load LowType a
+  | Syscall Integer [a]
+  | External EN.ExternalName [a]
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic a)
@@ -19,55 +19,55 @@ instance (Binary a) => Binary (Magic a)
 instance Functor Magic where
   fmap f der =
     case der of
-      MagicCast from to value ->
-        MagicCast (f from) (f to) (f value)
-      MagicStore lt pointer value ->
-        MagicStore lt (f pointer) (f value)
-      MagicLoad lt pointer ->
-        MagicLoad lt (f pointer)
-      MagicSyscall syscallNum args ->
-        MagicSyscall syscallNum $ fmap f args
-      MagicExternal extFunName args ->
-        MagicExternal extFunName $ fmap f args
+      Cast from to value ->
+        Cast (f from) (f to) (f value)
+      Store lt pointer value ->
+        Store lt (f pointer) (f value)
+      Load lt pointer ->
+        Load lt (f pointer)
+      Syscall syscallNum args ->
+        Syscall syscallNum $ fmap f args
+      External extFunName args ->
+        External extFunName $ fmap f args
 
 instance Foldable Magic where
   foldMap f der =
     case der of
-      MagicCast from to value ->
+      Cast from to value ->
         f from <> f to <> f value
-      MagicStore _ pointer value ->
+      Store _ pointer value ->
         f pointer <> f value
-      MagicLoad _ pointer ->
+      Load _ pointer ->
         f pointer
-      MagicSyscall _ args ->
+      Syscall _ args ->
         foldMap f args
-      MagicExternal _ args ->
+      External _ args ->
         foldMap f args
 
 instance Traversable Magic where
   traverse f der =
     case der of
-      MagicCast from to value ->
-        MagicCast <$> f from <*> f to <*> f value
-      MagicStore lt pointer value ->
-        MagicStore lt <$> f pointer <*> f value
-      MagicLoad lt pointer ->
-        MagicLoad lt <$> f pointer
-      MagicSyscall syscallNum args ->
-        MagicSyscall syscallNum <$> traverse f args
-      MagicExternal extFunName args ->
-        MagicExternal extFunName <$> traverse f args
+      Cast from to value ->
+        Cast <$> f from <*> f to <*> f value
+      Store lt pointer value ->
+        Store lt <$> f pointer <*> f value
+      Load lt pointer ->
+        Load lt <$> f pointer
+      Syscall syscallNum args ->
+        Syscall syscallNum <$> traverse f args
+      External extFunName args ->
+        External extFunName <$> traverse f args
 
 getMagicName :: Magic a -> T.Text
 getMagicName d =
   case d of
-    MagicSyscall {} ->
+    Syscall {} ->
       "syscall"
-    MagicExternal {} ->
+    External {} ->
       "external"
-    MagicLoad {} ->
+    Load {} ->
       "load"
-    MagicStore {} ->
+    Store {} ->
       "store"
-    MagicCast {} ->
+    Cast {} ->
       "nop"

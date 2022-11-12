@@ -27,7 +27,7 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
 import qualified Entity.LamKind as LK
-import Entity.Magic
+import qualified Entity.Magic as M
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimOp
@@ -168,12 +168,12 @@ infer' varEnv term =
       return (m :< WT.Question e' te, te)
     m :< WT.Magic der -> do
       case der of
-        MagicCast from to value -> do
+        M.Cast from to value -> do
           from' <- inferType' varEnv from
           to' <- inferType' varEnv to
           (value', t) <- infer' varEnv value
           Env.insConstraintEnv t from'
-          return (m :< WT.Magic (MagicCast from' to' value'), to')
+          return (m :< WT.Magic (M.Cast from' to' value'), to')
         _ -> do
           der' <- mapM (infer' varEnv >=> return . fst) der
           resultType <- newAster m varEnv

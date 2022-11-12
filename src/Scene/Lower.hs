@@ -19,7 +19,7 @@ import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.LowComp as LC
 import qualified Entity.LowType as LT
-import Entity.Magic
+import qualified Entity.Magic as M
 import Entity.PrimNum
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
@@ -163,21 +163,21 @@ lowerCompPrimitive codeOp =
       lowerCompPrimOp op vs
     C.Magic der -> do
       case der of
-        MagicCast _ _ value -> do
+        M.Cast _ _ value -> do
           lowerValue value
-        MagicStore valueLowType pointer value -> do
+        M.Store valueLowType pointer value -> do
           ptrVar <- lowerValueLetCast pointer (LT.Pointer valueLowType)
           valVar <- lowerValueLetCast value valueLowType
           extend $ return . LC.Cont (LC.Store valueLowType valVar ptrVar)
           return LC.Null
-        MagicLoad valueLowType pointer -> do
+        M.Load valueLowType pointer -> do
           castedPointer <- lowerValueLetCast pointer (LT.Pointer valueLowType)
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
-        MagicSyscall i args -> do
+        M.Syscall i args -> do
           args' <- mapM lowerValue args
           reflect $ LC.Syscall i args'
-        MagicExternal name args -> do
+        M.External name args -> do
           args' <- mapM lowerValue args
           lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'
           reflect $ LC.Call (LC.VarExternal name) args'

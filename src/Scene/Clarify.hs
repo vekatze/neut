@@ -29,7 +29,7 @@ import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
-import Entity.Magic
+import qualified Entity.Magic as M
 import Entity.Opacity
 import Entity.Pattern
 import qualified Entity.Prim as Prim
@@ -171,37 +171,37 @@ clarifyTerm tenv term =
           C.SigmaElim True [typeVarName, envVarName, tagVarName] dataVar $
             C.EnumElim tagVar clauseList'
 
-clarifyMagic :: Context m => TM.TypeEnv -> Magic TM.Term -> m C.Comp
+clarifyMagic :: Context m => TM.TypeEnv -> M.Magic TM.Term -> m C.Comp
 clarifyMagic tenv der =
   case der of
-    MagicCast from to value -> do
+    M.Cast from to value -> do
       (fromVarName, from', fromVar) <- clarifyPlus tenv from
       (toVarName, to', toVar) <- clarifyPlus tenv to
       (valueVarName, value', valueVar) <- clarifyPlus tenv value
       return $
         bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
-          C.Primitive (C.Magic (MagicCast fromVar toVar valueVar))
-    MagicStore lt pointer value -> do
+          C.Primitive (C.Magic (M.Cast fromVar toVar valueVar))
+    M.Store lt pointer value -> do
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       (valueVarName, value', valueVar) <- clarifyPlus tenv value
       return $
         bindLet [(pointerVarName, pointer'), (valueVarName, value')] $
-          C.Primitive (C.Magic (MagicStore lt pointerVar valueVar))
-    MagicLoad lt pointer -> do
+          C.Primitive (C.Magic (M.Store lt pointerVar valueVar))
+    M.Load lt pointer -> do
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       return $
         bindLet [(pointerVarName, pointer')] $
-          C.Primitive (C.Magic (MagicLoad lt pointerVar))
-    MagicSyscall syscallNum args -> do
+          C.Primitive (C.Magic (M.Load lt pointerVar))
+    M.Syscall syscallNum args -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
       return $
         bindLet (zip xs args') $
-          C.Primitive (C.Magic (MagicSyscall syscallNum xsAsVars))
-    MagicExternal extFunName args -> do
+          C.Primitive (C.Magic (M.Syscall syscallNum xsAsVars))
+    M.External extFunName args -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
       return $
         bindLet (zip xs args') $
-          C.Primitive (C.Magic (MagicExternal extFunName xsAsVars))
+          C.Primitive (C.Magic (M.External extFunName xsAsVars))
 
 clarifyLambda ::
   Context m =>

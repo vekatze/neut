@@ -29,7 +29,7 @@ import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.LowType as LT
-import Entity.Magic
+import qualified Entity.Magic as M
 import Entity.Pattern
 import qualified Entity.PreTerm as PT
 import Entity.PrimNum.FromText
@@ -295,7 +295,7 @@ preTermMagicCast m = do
     castFrom <- preTerm
     castTo <- delimiter "," >> preTerm
     value <- delimiter "," >> preTerm
-    return $ m :< PT.Magic (MagicCast castFrom castTo value)
+    return $ m :< PT.Magic (M.Cast castFrom castTo value)
 
 preTermMagicStore :: Context m => Hint -> Parser m PT.PreTerm
 preTermMagicStore m = do
@@ -303,28 +303,28 @@ preTermMagicStore m = do
     lt <- lowType
     pointer <- delimiter "," >> preTerm
     value <- delimiter "," >> preTerm
-    return $ m :< PT.Magic (MagicStore lt pointer value)
+    return $ m :< PT.Magic (M.Store lt pointer value)
 
 preTermMagicLoad :: Context m => Hint -> Parser m PT.PreTerm
 preTermMagicLoad m = do
   preTermMagicBase "load" $ do
     lt <- lowType
     pointer <- delimiter "," >> preTerm
-    return $ m :< PT.Magic (MagicLoad lt pointer)
+    return $ m :< PT.Magic (M.Load lt pointer)
 
 preTermMagicSyscall :: Context m => Hint -> Parser m PT.PreTerm
 preTermMagicSyscall m = do
   preTermMagicBase "syscall" $ do
     syscallNum <- integer
     es <- many (delimiter "," >> preTerm)
-    return $ m :< PT.Magic (MagicSyscall syscallNum es)
+    return $ m :< PT.Magic (M.Syscall syscallNum es)
 
 preTermMagicExternal :: Context m => Hint -> Parser m PT.PreTerm
 preTermMagicExternal m = do
   preTermMagicBase "external" $ do
     extFunName <- symbol
     es <- many (delimiter "," >> preTerm)
-    return $ m :< PT.Magic (MagicExternal (EN.ExternalName extFunName) es)
+    return $ m :< PT.Magic (M.External (EN.ExternalName extFunName) es)
 
 -- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: Context m => Parser m LT.LowType

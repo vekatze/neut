@@ -7,7 +7,7 @@ import Context.Gensym
 import Control.Monad
 import qualified Entity.Comp as C
 import Entity.Ident
-import Entity.Magic
+import qualified Entity.Magic as M
 import Scene.Clarify.Utility
 
 type Occurrence = Ident
@@ -109,21 +109,21 @@ distinguishPrimitive z term =
       return (concat vss, C.PrimOp op ds')
     C.Magic der -> do
       case der of
-        MagicCast from to value -> do
+        M.Cast from to value -> do
           (vs1, from') <- distinguishValue z from
           (vs2, to') <- distinguishValue z to
           (vs3, value') <- distinguishValue z value
-          return (vs1 <> vs2 <> vs3, C.Magic (MagicCast from' to' value'))
-        MagicStore lt pointer value -> do
+          return (vs1 <> vs2 <> vs3, C.Magic (M.Cast from' to' value'))
+        M.Store lt pointer value -> do
           (vs1, pointer') <- distinguishValue z pointer
           (vs2, value') <- distinguishValue z value
-          return (vs1 <> vs2, C.Magic (MagicStore lt pointer' value'))
-        MagicLoad lt pointer -> do
+          return (vs1 <> vs2, C.Magic (M.Store lt pointer' value'))
+        M.Load lt pointer -> do
           (vs, pointer') <- distinguishValue z pointer
-          return (vs, C.Magic (MagicLoad lt pointer'))
-        MagicSyscall syscallNum args -> do
+          return (vs, C.Magic (M.Load lt pointer'))
+        M.Syscall syscallNum args -> do
           (vss, args') <- mapAndUnzipM (distinguishValue z) args
-          return (concat vss, C.Magic (MagicSyscall syscallNum args'))
-        MagicExternal extFunName args -> do
+          return (concat vss, C.Magic (M.Syscall syscallNum args'))
+        M.External extFunName args -> do
           (vss, args') <- mapAndUnzipM (distinguishValue z) args
-          return (concat vss, C.Magic (MagicExternal extFunName args'))
+          return (concat vss, C.Magic (M.External extFunName args'))
