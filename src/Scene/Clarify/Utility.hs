@@ -6,7 +6,7 @@ import qualified Entity.Comp as C
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
 import Entity.Ident
-import Entity.Opacity
+import qualified Entity.Opacity as O
 import Entity.PrimNumSize
 import Scene.Clarify.Context
 
@@ -73,4 +73,4 @@ registerSwitcher ::
   m ()
 registerSwitcher name aff rel = do
   (args, e) <- makeSwitcher aff rel
-  insertToAuxEnv name (OpacityTransparent, args, e)
+  insertToAuxEnv name (O.Transparent, args, e)

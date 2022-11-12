@@ -32,7 +32,7 @@ import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
-import Entity.Opacity
+import qualified Entity.Opacity as O
 import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
@@ -154,8 +154,8 @@ parseStmt = do
   choice
     [ parseDefineData,
       parseDefineCodata,
-      return <$> parseDefine OpacityTransparent,
-      return <$> parseDefine OpacityOpaque,
+      return <$> parseDefine O.Transparent,
+      return <$> parseDefine O.Opaque,
       return <$> parseSection
     ]
 
@@ -188,13 +188,13 @@ parseSection = do
     return $ PreStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Context m => Opacity -> P.Parser m PreStmt
+parseDefine :: Context m => O.Opacity -> P.Parser m PreStmt
 parseDefine opacity = do
   try $
     case opacity of
-      OpacityOpaque ->
+      O.Opaque ->
         P.keyword "define"
-      OpacityTransparent ->
+      O.Transparent ->
         P.keyword "define-inline"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
@@ -203,7 +203,7 @@ parseDefine opacity = do
 
 defineFunction ::
   Context m =>
-  Opacity ->
+  O.Opacity ->
   Hint ->
   DD.DefiniteDescription ->
   I.ImpArgNum ->
@@ -235,7 +235,7 @@ defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   setAsData m dataName (A.fromInt (length dataArgs)) consInfoList'
   let consType = m :< PT.Pi [] (m :< PT.Tau)
-  let formRule = PreStmtDefine OpacityOpaque m dataName (I.fromInt 0) dataArgs (m :< PT.Tau) consType
+  let formRule = PreStmtDefine O.Opaque m dataName (I.fromInt 0) dataArgs (m :< PT.Tau) consType
   introRuleList <- parseDefineDataConstructor dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -265,7 +265,7 @@ parseDefineDataConstructor dataName dataArgs consInfoList discriminant = do
       let dataType = constructDataType m dataName dataArgs
       introRule <-
         defineFunction
-          OpacityTransparent
+          O.Transparent
           m
           consName
           (I.fromInt $ length dataArgs)
@@ -324,7 +324,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
   projectionName <- DD.extend m dataName $ Ident.toText elemName
   let newDD = DD.extendLL dataName $ LL.new [] BN.new
   defineFunction
-    OpacityOpaque
+    O.Opaque
     m
     projectionName -- e.g. some-lib.foo::my-record.element-x
     (I.fromInt $ length dataArgs)

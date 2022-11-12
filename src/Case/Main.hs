@@ -80,7 +80,7 @@ import qualified Entity.Module as M
 import qualified Entity.Module as Module
 import qualified Entity.ModuleAlias as MA
 import qualified Entity.ModuleChecksum as MC
-import Entity.Opacity
+import qualified Entity.Opacity as O
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
 import qualified Entity.StrictGlobalLocator as SGL
@@ -133,11 +133,11 @@ data Env = Env
     hasCacheSet :: FastRef (S.Set (Path Abs File)),
     visitEnv :: FastRef (Map.HashMap (Path Abs File) VisitInfo),
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
-    compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)),
+    compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
     impEnv :: FastRef (Map.HashMap DD.DefiniteDescription I.ImpArgNum),
-    compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (Opacity, [Ident], Comp)),
+    compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: FastRef [SGL.StrictGlobalLocator],
     activeDefiniteLocatorList :: FastRef [DL.DefiniteLocator],
@@ -496,7 +496,7 @@ instance Definition.Context App where
   lookup =
     return Map.lookup
   insert opacity m name xts e =
-    when (opacity == OpacityTransparent) $
+    when (opacity == O.Transparent) $
       asks defMap >>= \ref ->
         liftIO $
           modifyIORef ref $

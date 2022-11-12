@@ -4,8 +4,8 @@ import Data.Binary
 import GHC.Generics
 
 data Opacity
-  = OpacityOpaque
-  | OpacityTransparent
+  = Opaque
+  | Transparent
   deriving (Show, Eq, Generic)
 
 instance Binary Opacity
@@ -13,7 +13,7 @@ instance Binary Opacity
 isOpaque :: Opacity -> Bool
 isOpaque o =
   case o of
-    OpacityOpaque ->
+    Opaque ->
       True
     _ ->
       False

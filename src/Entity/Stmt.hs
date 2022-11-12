@@ -8,7 +8,7 @@ import qualified Entity.DefiniteDescription as DD
 import Entity.EnumInfo
 import Entity.Hint
 import qualified Entity.ImpArgNum as I
-import Entity.Opacity
+import qualified Entity.Opacity as O
 import qualified Entity.PreTerm as PT
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
@@ -21,17 +21,17 @@ type PreProgram =
   (Path Abs File, [PreStmt])
 
 data PreStmt
-  = PreStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
+  = PreStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
   | PreStmtSection Section.Section [PreStmt]
 
 data WeakStmt
-  = WeakStmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WT.WeakTerm] WT.WeakTerm WT.WeakTerm
+  = WeakStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WT.WeakTerm] WT.WeakTerm WT.WeakTerm
 
 type Program =
   (Source.Source, [Stmt])
 
 data Stmt
-  = StmtDefine Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF TM.Term] TM.Term TM.Term
+  = StmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF TM.Term] TM.Term TM.Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -51,7 +51,7 @@ compress stmt =
   case stmt of
     StmtDefine opacity m functionName impArgNum args codType _ ->
       case opacity of
-        OpacityOpaque ->
+        O.Opaque ->
           StmtDefine opacity m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt

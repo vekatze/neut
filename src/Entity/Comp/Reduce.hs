@@ -13,7 +13,7 @@ import Entity.Comp.Subst
 import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.Opacity
+import qualified Entity.Opacity as O
 
 class (CompDefinition.Context m, Gensym.Context m) => Context m
 
@@ -27,7 +27,7 @@ reduce term =
         C.VarGlobal x _ -> do
           mDefValue <- CompDefinition.lookup x
           case mDefValue of
-            Just (OpacityTransparent, xs, body) -> do
+            Just (O.Transparent, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
               subst sub IntMap.empty body >>= reduce
             _ ->

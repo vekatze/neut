@@ -30,7 +30,7 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.Magic as M
-import Entity.Opacity
+import qualified Entity.Opacity as O
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNumSize
@@ -86,7 +86,7 @@ withSpecializedCtx action = do
   Clarify.initialize
   action
 
-clarifyDef :: Context m => Stmt -> m (DD.DefiniteDescription, (Opacity, [Ident], C.Comp))
+clarifyDef :: Context m => Stmt -> m (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
     StmtDefine opacity _ f _ xts _ e -> do
@@ -216,11 +216,11 @@ clarifyLambda tenv kind mxts e fvs = do
   case kind of
     LK.Fix (_, x, _)
       | S.member x (freeVars e') ->
-          returnClosure tenv OpacityOpaque kind fvs mxts e'
+          returnClosure tenv O.Opaque kind fvs mxts e'
       | otherwise ->
-          returnClosure tenv OpacityTransparent LK.Normal fvs mxts e'
+          returnClosure tenv O.Transparent LK.Normal fvs mxts e'
     _ ->
-      returnClosure tenv OpacityTransparent kind fvs mxts e'
+      returnClosure tenv O.Transparent kind fvs mxts e'
 
 newClosureNames :: Gensym.Context m => m ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do
@@ -258,7 +258,7 @@ chainFromTermList tenv es =
 
 alignFreeVariables :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> [C.Comp] -> m [C.Comp]
 alignFreeVariables tenv fvs es = do
-  es' <- mapM (returnClosure tenv OpacityTransparent LK.Normal fvs []) es
+  es' <- mapM (returnClosure tenv O.Transparent LK.Normal fvs []) es
   mapM (`callClosure` []) es'
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
@@ -270,12 +270,12 @@ clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv OpacityTransparent LK.Normal [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure tenv O.Transparent LK.Normal [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Context m =>
   TM.TypeEnv ->
-  Opacity -> -- whether the closure is reducible
+  O.Opacity -> -- whether the closure is reducible
   LK.LamKindF TM.Term -> -- the name of newly created closure
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
@@ -303,13 +303,13 @@ returnClosure tenv opacity kind fvs xts e = do
       name' <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt name
       let cls = C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name' arity]
       e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
-      registerIfNecessary name' OpacityOpaque xts'' fvs'' e'
+      registerIfNecessary name' O.Opaque xts'' fvs'' e'
       return $ C.UpIntro cls
 
 registerIfNecessary ::
   Context m =>
   DD.DefiniteDescription ->
-  Opacity ->
+  O.Opacity ->
   [(Ident, C.Comp)] ->
   [(Ident, C.Comp)] ->
   C.Comp ->
