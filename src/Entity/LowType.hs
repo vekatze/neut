@@ -2,12 +2,12 @@ module Entity.LowType where
 
 import Data.Binary
 import qualified Entity.Arity as A
-import Entity.PrimNum
 import Entity.PrimNumSize
+import qualified Entity.PrimNumType as PNT
 import qualified GHC.Generics as G
 
 data LowType
-  = PrimNum PrimNum
+  = PrimNum PNT.PrimNumType
   | Pointer LowType
   | Array Int LowType -- [n x LOWTYPE]
   | Struct [LowType]
@@ -19,7 +19,7 @@ instance Binary LowType
 voidPtr :: LowType
 voidPtr =
   Pointer
-    (PrimNum (PrimNumInt (IntSize 8)))
+    (PrimNum (PNT.Int (IntSize 8)))
 
 toVoidPtrSeq :: A.Arity -> [LowType]
 toVoidPtrSeq arity =

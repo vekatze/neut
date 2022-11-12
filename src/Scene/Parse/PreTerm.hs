@@ -32,7 +32,7 @@ import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import Entity.Pattern
 import qualified Entity.PreTerm as PT
-import Entity.PrimNum.FromText
+import qualified Entity.PrimNumType.FromText as PNT
 import qualified Entity.TargetPlatform as TP
 import qualified Entity.UnresolvedName as UN
 import Scene.Parse.Core
@@ -362,7 +362,7 @@ lowTypeStruct = do
 lowTypeNumber :: Context m => Parser m LT.LowType
 lowTypeNumber = do
   sizeString <- symbol
-  case fromText sizeString of
+  case PNT.fromText sizeString of
     Just primNum ->
       return $ LT.PrimNum primNum
     _ -> do

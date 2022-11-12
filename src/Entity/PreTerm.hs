@@ -16,8 +16,8 @@ import qualified Entity.LocalLocator as LL
 import Entity.Magic
 import Entity.Pattern
 import qualified Entity.Prim as Prim
-import Entity.PrimNum
 import Entity.PrimNumSize
+import qualified Entity.PrimNumType as PNT
 
 type PreTerm = Cofree PreTermF Hint
 
@@ -52,8 +52,8 @@ type TopDefInfo =
 
 i8 :: Hint -> PreTerm
 i8 m =
-  m :< Prim (Prim.Type $ PrimNumInt $ IntSize 8)
+  m :< Prim (Prim.Type $ PNT.Int $ IntSize 8)
 
 i64 :: Hint -> PreTerm
 i64 m =
-  m :< Prim (Prim.Type $ PrimNumInt $ IntSize 64)
+  m :< Prim (Prim.Type $ PNT.Int $ IntSize 64)

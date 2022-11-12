@@ -22,7 +22,7 @@ import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
 import qualified Entity.Hint as Hint
-import qualified Entity.PrimNum.FromText as PrimNum
+import qualified Entity.PrimNumType.FromText as PNT
 import qualified Entity.PrimOp.FromText as PrimOp
 import Prelude hiding (lookup)
 
@@ -108,7 +108,7 @@ lookup name = do
     Just kind ->
       return $ Just kind
     Nothing
-      | Just primType <- PrimNum.fromDefiniteDescription name ->
+      | Just primType <- PNT.fromDefiniteDescription name ->
           return $ Just $ GN.PrimType primType
       | Just primOp <- PrimOp.fromDefiniteDescription name ->
           return $ Just $ GN.PrimOp primOp

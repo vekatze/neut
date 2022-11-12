@@ -28,16 +28,14 @@ module Entity.BaseName
   )
 where
 
--- import Entity.BaseName.Internal
-
 import qualified Context.Throw as Throw
 import Data.Binary
 import Data.Hashable
 import qualified Data.Text as T
 import Entity.Const
 import qualified Entity.Hint as H
-import qualified Entity.PrimNum as PN
-import qualified Entity.PrimNum.ToText as PN
+import qualified Entity.PrimNumType as PNT
+import qualified Entity.PrimNumType.ToText as PNT
 import GHC.Generics
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
@@ -146,9 +144,9 @@ free :: BaseName
 free =
   MakeBaseName "free"
 
-arrayType :: PN.PrimNum -> BaseName
+arrayType :: PNT.PrimNumType -> BaseName
 arrayType elemType =
-  MakeBaseName $ "unsafe-" <> PN.toText elemType <> "-array-internal"
+  MakeBaseName $ "unsafe-" <> PNT.toText elemType <> "-array-internal"
 
 internalBaseName :: BaseName
 internalBaseName =

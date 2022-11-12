@@ -30,7 +30,7 @@ import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import Entity.Pattern
 import qualified Entity.Prim as Prim
-import Entity.PrimNum
+import qualified Entity.PrimNumType as PNT
 import qualified Entity.Source as Source
 import Entity.Stmt
 import qualified Entity.Term as TM
@@ -183,7 +183,7 @@ elaborate' term =
     m :< WT.Int t x -> do
       t' <- elaborate' t >>= Term.reduce
       case t' of
-        _ :< TM.Prim (Prim.Type (PrimNumInt size)) ->
+        _ :< TM.Prim (Prim.Type (PNT.Int size)) ->
           return $ m :< TM.Int size x
         _ -> do
           Throw.raiseError m $
@@ -194,7 +194,7 @@ elaborate' term =
     m :< WT.Float t x -> do
       t' <- elaborate' t >>= Term.reduce
       case t' of
-        _ :< TM.Prim (Prim.Type (PrimNumFloat size)) ->
+        _ :< TM.Prim (Prim.Type (PNT.Float size)) ->
           return $ m :< TM.Float size x
         _ ->
           Throw.raiseError m $
