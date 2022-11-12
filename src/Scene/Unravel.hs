@@ -22,7 +22,7 @@ import qualified Data.Text as T
 import Entity.Hint
 import qualified Entity.OutputKind as OK
 import qualified Entity.Source as Source
-import Entity.VisitInfo
+import qualified Entity.VisitInfo as VI
 import Path
 import qualified Scene.Parse.Core as ParseCore
 import qualified Scene.Parse.Import as Parse
@@ -55,19 +55,19 @@ unravel' source = do
   visitEnv <- Env.getVisitEnv
   let path = Source.sourceFilePath source
   case Map.lookup path visitEnv of
-    Just VisitInfoActive ->
+    Just VI.Active ->
       raiseCyclicPath source
-    Just VisitInfoFinish -> do
+    Just VI.Finish -> do
       hasCacheSet <- Env.getHasCacheSet
       hasObjectSet <- Env.getHasObjectSet
       return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
-      Env.insertToVisitEnv path VisitInfoActive
+      Env.insertToVisitEnv path VI.Active
       Env.pushToTraceSourceList source
       children <- getChildren source
       (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM unravel' children
       _ <- Env.popFromTraceSourceList
-      Env.insertToVisitEnv path VisitInfoFinish
+      Env.insertToVisitEnv path VI.Finish
       isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
       isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
       return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
