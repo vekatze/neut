@@ -15,7 +15,7 @@ import qualified Entity.Comp as C
 import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.LowComp as LC
 import qualified Entity.LowType as LT
@@ -257,7 +257,7 @@ lowerValue v =
       uncast (LC.Int l) $ LT.PrimNum $ PrimNumInt size
     C.Float size f ->
       uncast (LC.Float size f) $ LT.PrimNum $ PrimNumFloat size
-    C.EnumIntro (EnumLabel _ d _) -> do
+    C.EnumIntro (EC.EnumLabel _ d _) -> do
       uncast (LC.Int $ D.reify d) $ LT.PrimNum $ PrimNumInt $ IntSize 64
 
 getElemPtr :: Context m => LC.Value -> LT.LowType -> [Integer] -> Lower m LC.Value
@@ -276,19 +276,19 @@ reflectCont op = do
   extend $ return . LC.Cont op
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Context m => [(CompEnumCase, C.Comp)] -> m (Maybe (LC.Comp, [(Integer, LC.Comp)]))
+constructSwitch :: Context m => [(EC.CompEnumCase, C.Comp)] -> m (Maybe (LC.Comp, [(Integer, LC.Comp)]))
 constructSwitch switch =
   case switch of
     [] ->
       return Nothing
-    (_ :< EnumCaseDefault, code) : _ -> do
+    (_ :< EC.Default, code) : _ -> do
       code' <- lowerComp code
       return $ Just (code', [])
     [(m :< _, code)] -> do
-      constructSwitch [(m :< EnumCaseDefault, code)]
-    (m :< EnumCaseLabel (EnumLabel _ d _), code) : rest -> do
-      constructSwitch $ (m :< EnumCaseInt (D.reify d), code) : rest
-    (_ :< EnumCaseInt i, code) : rest -> do
+      constructSwitch [(m :< EC.Default, code)]
+    (m :< EC.Label (EC.EnumLabel _ d _), code) : rest -> do
+      constructSwitch $ (m :< EC.Int (D.reify d), code) : rest
+    (_ :< EC.Int i, code) : rest -> do
       code' <- lowerComp code
       mSwitch <- constructSwitch rest
       return $ do

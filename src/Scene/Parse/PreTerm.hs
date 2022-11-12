@@ -19,7 +19,7 @@ import qualified Data.Text as T
 import Entity.Binder
 import Entity.Const
 import qualified Entity.Discriminant as D
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.EnumInfo
 import qualified Entity.ExternalName as EN
 import qualified Entity.GlobalLocator as GL
@@ -243,7 +243,7 @@ preTermEnumElim = do
   h <- lift $ Gensym.newPreAster m
   return $ m :< PT.EnumElim (e, h) clauseList
 
-preTermEnumClause :: Context m => Parser m (PreEnumCase, PT.PreTerm)
+preTermEnumClause :: Context m => Parser m (EC.PreEnumCase, PT.PreTerm)
 preTermEnumClause = do
   m <- getCurrentHint
   delimiter "-"
@@ -252,13 +252,13 @@ preTermEnumClause = do
   body <- preTerm
   case c of
     "default" ->
-      return (m :< EnumCaseDefault, body)
+      return (m :< EC.Default, body)
     _ ->
-      return (m :< EnumCaseLabel (dummyLabel c), body)
+      return (m :< EC.Label (dummyLabel c), body)
 
-dummyLabel :: T.Text -> PreEnumLabel
+dummyLabel :: T.Text -> EC.PreEnumLabel
 dummyLabel c =
-  PreEnumLabel
+  EC.PreEnumLabel
     (UN.UnresolvedName "base.top::unit")
     D.zero
     (UN.UnresolvedName c)
@@ -444,8 +444,8 @@ foldIf m ifCond ifBody elseIfList elseBody =
         m
           :< PT.EnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel (weakenEnumLabel enumLabelBoolTrue), ifBody),
-              (m :< EnumCaseLabel (weakenEnumLabel enumLabelBoolFalse), elseBody)
+            [ (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolTrue), ifBody),
+              (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolFalse), elseBody)
             ]
     ((elseIfCond, elseIfBody) : rest) -> do
       cont <- foldIf m elseIfCond elseIfBody rest elseBody
@@ -454,8 +454,8 @@ foldIf m ifCond ifBody elseIfList elseBody =
         m
           :< PT.EnumElim
             (ifCond, h)
-            [ (m :< EnumCaseLabel (weakenEnumLabel enumLabelBoolTrue), ifBody),
-              (m :< EnumCaseLabel (weakenEnumLabel enumLabelBoolFalse), cont)
+            [ (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolTrue), ifBody),
+              (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolFalse), cont)
             ]
 
 preTermParen :: Context m => Parser m PT.PreTerm

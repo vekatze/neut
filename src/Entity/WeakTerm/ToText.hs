@@ -5,7 +5,7 @@ import qualified Data.Text as T
 import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import Entity.Hint
@@ -66,7 +66,7 @@ toText term =
       T.pack $ show a
     _ :< WT.Enum l ->
       DD.reify $ ET.reify l
-    _ :< WT.EnumIntro (EnumLabel _ _ v) ->
+    _ :< WT.EnumIntro (EC.EnumLabel _ _ v) ->
       DD.reify $ EV.reify v
     _ :< WT.EnumElim (e, _) mles -> do
       showCons ["switch", toText e, showItems (map showClause mles)]
@@ -118,18 +118,18 @@ showPattern (_, f, _, xts) = do
       let xs = map (\(_, x, _) -> x) xts
       inParen $ DD.reify f <> " " <> T.intercalate " " (map showVariable xs)
 
-showClause :: (EnumCase, WT.WeakTerm) -> T.Text
+showClause :: (EC.EnumCase, WT.WeakTerm) -> T.Text
 showClause (c, e) =
   inParen $ showCase c <> " " <> toText e
 
-showCase :: EnumCase -> T.Text
+showCase :: EC.EnumCase -> T.Text
 showCase c =
   case c of
-    _ :< EnumCaseLabel (EnumLabel _ _ l) ->
+    _ :< EC.Label (EC.EnumLabel _ _ l) ->
       DD.reify $ EV.reify l
-    _ :< EnumCaseDefault ->
+    _ :< EC.Default ->
       "default"
-    _ :< EnumCaseInt i ->
+    _ :< EC.Int i ->
       T.pack (show i)
 
 showItems :: [T.Text] -> T.Text

@@ -10,7 +10,7 @@ import Control.Comonad.Cofree.Class
 import qualified Data.IntMap as IntMap
 import qualified Entity.Comp as C
 import Entity.Comp.Subst
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import Entity.Opacity
@@ -78,14 +78,14 @@ reduce term =
       let les' = zip (map unwrap ls) es
       case v of
         C.EnumIntro label
-          | Just body <- lookup (EnumCaseLabel label) les' ->
+          | Just body <- lookup (EC.Label label) les' ->
               reduce body
-          | Just body <- lookup EnumCaseDefault les' ->
+          | Just body <- lookup EC.Default les' ->
               reduce body
         C.Int _ l
-          | Just body <- lookup (EnumCaseInt (fromInteger l)) les' ->
+          | Just body <- lookup (EC.Int (fromInteger l)) les' ->
               reduce body
-          | Just body <- lookup EnumCaseDefault les' ->
+          | Just body <- lookup EC.Default les' ->
               reduce body
           | otherwise -> do
               -- putStrLn "other"

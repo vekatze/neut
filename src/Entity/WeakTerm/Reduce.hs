@@ -3,7 +3,7 @@ module Entity.WeakTerm.Reduce (reduce) where
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import qualified Entity.Ident.Reify as Ident
 import Entity.LamKind
 import qualified Entity.WeakTerm as WT
@@ -74,11 +74,11 @@ reduce term =
       t' <- reduce t
       case e' of
         (_ :< WT.EnumIntro label) ->
-          case lookup (EnumCaseLabel label) les'' of
+          case lookup (EC.Label label) les'' of
             Just body ->
               reduce body
             Nothing ->
-              case lookup EnumCaseDefault les'' of
+              case lookup EC.Default les'' of
                 Just body ->
                   reduce body
                 Nothing ->

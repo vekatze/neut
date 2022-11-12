@@ -19,7 +19,7 @@ import Data.List
 import qualified Data.Text as T
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.EnumInfo
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
@@ -296,7 +296,7 @@ elaborateKind kind =
       xt' <- elaborateWeakBinder xt
       return $ LamKindFix xt'
 
-checkSwitchExaustiveness :: Context m => Hint -> ET.EnumTypeName -> [EnumCase] -> m ()
+checkSwitchExaustiveness :: Context m => Hint -> ET.EnumTypeName -> [EC.EnumCase] -> m ()
 checkSwitchExaustiveness m enumTypeName caseList = do
   let containsDefaultCase = doesContainDefaultCase caseList
   enumSet <- lookupEnumSet m enumTypeName
@@ -314,12 +314,12 @@ lookupEnumSet m enumTypeName = do
     _ ->
       Throw.raiseError m $ "no such enum defined: " <> DD.reify name
 
-doesContainDefaultCase :: [EnumCase] -> Bool
+doesContainDefaultCase :: [EC.EnumCase] -> Bool
 doesContainDefaultCase enumCaseList =
   case enumCaseList of
     [] ->
       False
-    (_ :< EnumCaseDefault) : _ ->
+    (_ :< EC.Default) : _ ->
       True
     _ : rest ->
       doesContainDefaultCase rest

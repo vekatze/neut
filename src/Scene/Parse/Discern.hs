@@ -15,7 +15,7 @@ import qualified Data.Maybe as Maybe
 import qualified Data.Text as T
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
@@ -194,8 +194,8 @@ discernBinderWithBody' nenv (mx, x, t) binder e = do
   (binder', e') <- discernBinderWithBody ((Ident.toText x, (mx, x')) : nenv) binder e
   return ((mx, x', t'), binder', e')
 
-discernEnumLabel :: Context m => Hint -> PreEnumLabel -> m EnumLabel
-discernEnumLabel m (PreEnumLabel _ _ (UN.UnresolvedName name)) = do
+discernEnumLabel :: Context m => Hint -> EC.PreEnumLabel -> m EC.EnumLabel
+discernEnumLabel m (EC.PreEnumLabel _ _ (UN.UnresolvedName name)) = do
   term <- resolveName m name
   case term of
     _ :< WT.EnumIntro label ->
@@ -204,16 +204,16 @@ discernEnumLabel m (PreEnumLabel _ _ (UN.UnresolvedName name)) = do
       Throw.raiseError m $
         "no such enum-value is defined: " <> name
 
-discernEnumCase :: Context m => PreEnumCase -> m EnumCase
+discernEnumCase :: Context m => EC.PreEnumCase -> m EC.EnumCase
 discernEnumCase enumCase =
   case enumCase of
-    m :< EnumCaseLabel l -> do
+    m :< EC.Label l -> do
       l' <- discernEnumLabel m l
-      return $ m :< EnumCaseLabel l'
-    m :< EnumCaseInt i -> do
-      return $ m :< EnumCaseInt i
-    m :< EnumCaseDefault -> do
-      return $ m :< EnumCaseDefault
+      return $ m :< EC.Label l'
+    m :< EC.Int i -> do
+      return $ m :< EC.Int i
+    m :< EC.Default -> do
+      return $ m :< EC.Default
 
 resolveName :: Context m => Hint -> T.Text -> m WT.WeakTerm
 resolveName m name = do
@@ -231,7 +231,7 @@ resolveName m name = do
     [(name', GN.EnumType _)] ->
       return $ m :< WT.Enum (ET.EnumTypeName name')
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
-      return $ m :< WT.EnumIntro (EnumLabel enumTypeName discriminant (EV.EnumValueName name'))
+      return $ m :< WT.EnumIntro (EC.EnumLabel enumTypeName discriminant (EV.EnumValueName name'))
     [(_, GN.PrimType primNum)] ->
       return $ m :< WT.Prim (Prim.Type primNum)
     [(_, GN.PrimOp primOp)] ->
@@ -256,7 +256,7 @@ resolveDefiniteDescription m dd = do
     Just (GN.EnumType _) ->
       return $ m :< WT.Enum (ET.EnumTypeName dd)
     Just (GN.EnumIntro enumTypeName discriminant) ->
-      return $ m :< WT.EnumIntro (EnumLabel enumTypeName discriminant (EV.EnumValueName dd))
+      return $ m :< WT.EnumIntro (EC.EnumLabel enumTypeName discriminant (EV.EnumValueName dd))
     Just (GN.PrimType primNum) ->
       return $ m :< WT.Prim (Prim.Type primNum)
     Just (GN.PrimOp primOp) ->

@@ -24,7 +24,7 @@ import qualified Entity.Comp.Reduce as Reduce
 import Entity.Comp.Subst
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
@@ -161,7 +161,7 @@ clarifyTerm tenv term =
         closure <- clarifyLambda tenv LamKindNormal xts body fvs
         (closureVarName, closureVar) <- Gensym.newValueVarLocalWith "clause"
         return
-          ( () :< EnumCaseInt i,
+          ( () :< EC.Int i,
             C.UpElim closureVarName closure $
               C.PiElimDownElim (C.VarGlobal (DD.getConsDD consName) arity) [closureVar, envVar]
           )
@@ -414,12 +414,12 @@ insTypeEnv xts tenv =
     (_, x, t) : rest ->
       insTypeEnv rest $ IntMap.insert (Ident.toInt x) t tenv
 
-forgetHint :: EnumCase -> CompEnumCase
+forgetHint :: EC.EnumCase -> EC.CompEnumCase
 forgetHint (_ :< enumCase) =
   case enumCase of
-    EnumCaseLabel label ->
-      () :< EnumCaseLabel label
-    EnumCaseInt i ->
-      () :< EnumCaseInt i
-    EnumCaseDefault ->
-      () :< EnumCaseDefault
+    EC.Label label ->
+      () :< EC.Label label
+    EC.Int i ->
+      () :< EC.Int i
+    EC.Default ->
+      () :< EC.Default

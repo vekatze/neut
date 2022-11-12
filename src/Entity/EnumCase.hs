@@ -26,31 +26,31 @@ data PreEnumLabel
 instance Binary PreEnumLabel
 
 data EnumCaseF e a
-  = EnumCaseLabel e
-  | EnumCaseInt Integer
-  | EnumCaseDefault
+  = Label e
+  | Int Integer
+  | Default
   deriving (Show, Eq, Ord, Generic)
 
 instance Functor (EnumCaseF e) where
   fmap _ v =
     case v of
-      EnumCaseLabel label ->
-        EnumCaseLabel label
-      EnumCaseInt i ->
-        EnumCaseInt i
-      EnumCaseDefault ->
-        EnumCaseDefault
+      Label label ->
+        Label label
+      Int i ->
+        Int i
+      Default ->
+        Default
 
 instance Eq e => Eq1 (EnumCaseF e) where
   liftEq _ v1 v2 =
     case (v1, v2) of
-      (EnumCaseLabel l1, EnumCaseLabel l2)
+      (Label l1, Label l2)
         | l1 == l2 ->
-          True
-      (EnumCaseInt i1, EnumCaseInt i2)
+            True
+      (Int i1, Int i2)
         | i1 == i2 ->
-          True
-      (EnumCaseDefault, EnumCaseDefault) ->
+            True
+      (Default, Default) ->
         False
       _ ->
         False
@@ -58,11 +58,11 @@ instance Eq e => Eq1 (EnumCaseF e) where
 instance Show e => Show1 (EnumCaseF e) where
   liftShowsPrec _ _ _ someValue =
     case someValue of
-      EnumCaseLabel label ->
+      Label label ->
         showString $ show label
-      EnumCaseInt i ->
+      Int i ->
         showString $ show i
-      EnumCaseDefault ->
+      Default ->
         showString "default"
 
 instance (Binary a, Binary e) => Binary (EnumCaseF e a)

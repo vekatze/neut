@@ -4,7 +4,7 @@ import qualified Context.Gensym as Gensym
 import Control.Comonad.Cofree
 import qualified Entity.Comp as C
 import qualified Entity.DefiniteDescription as DD
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.Ident
 import Entity.Opacity
 import Entity.PrimNumSize
@@ -44,9 +44,9 @@ bindLet binder cont =
     (x, e) : xes ->
       C.UpElim x e $ bindLet xes cont
 
-switch :: C.Comp -> C.Comp -> [(CompEnumCase, C.Comp)]
+switch :: C.Comp -> C.Comp -> [(EC.CompEnumCase, C.Comp)]
 switch e1 e2 =
-  [(() :< EnumCaseInt 0, e1), (() :< EnumCaseDefault, e2)]
+  [(() :< EC.Int 0, e1), (() :< EC.Default, e2)]
 
 makeSwitcher ::
   Gensym.Context m =>

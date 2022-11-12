@@ -19,7 +19,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
-import Entity.EnumCase
+import qualified Entity.EnumCase as EC
 import Entity.EnumInfo
 import Entity.Hint
 import qualified Entity.HoleID as HID
@@ -152,7 +152,7 @@ infer' varEnv term =
       return (m :< WT.Float t' f, t')
     m :< WT.Enum _ ->
       return (term, m :< WT.Tau)
-    m :< WT.EnumIntro (EnumLabel k _ _) -> do
+    m :< WT.EnumIntro (EC.EnumLabel k _ _) -> do
       return (term, m :< WT.Enum k)
     m :< WT.EnumElim (e, _) ces -> do
       (e', t') <- infer' varEnv e
@@ -324,15 +324,15 @@ newTypeAsterList varEnv ids =
       ts <- newTypeAsterList ((m, x, t) : varEnv) rest
       return $ (m, x, t) : ts
 
-inferEnumCase :: Context m => BoundVarEnv -> EnumCase -> m (EnumCase, WT.WeakTerm)
+inferEnumCase :: Context m => BoundVarEnv -> EC.EnumCase -> m (EC.EnumCase, WT.WeakTerm)
 inferEnumCase varEnv weakCase =
   case weakCase of
-    m :< EnumCaseLabel (EnumLabel k _ _) -> do
+    m :< EC.Label (EC.EnumLabel k _ _) -> do
       return (weakCase, m :< WT.Enum k)
-    m :< EnumCaseDefault -> do
+    m :< EC.Default -> do
       h <- newAster m varEnv
-      return (m :< EnumCaseDefault, h)
-    m :< EnumCaseInt _ ->
+      return (m :< EC.Default, h)
+    m :< EC.Int _ ->
       Throw.raiseCritical m "enum-case-int shouldn't be used in the target language"
 
 primOpToType :: Context m => Hint -> PrimOp -> m TM.Term
