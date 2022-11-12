@@ -28,7 +28,7 @@ import Entity.Ident
 import qualified Entity.Ident.Reflect as Ident
 import Entity.LamKind
 import qualified Entity.LocalLocator as LL
-import Entity.LowType
+import qualified Entity.LowType as LT
 import Entity.Magic
 import Entity.Pattern
 import qualified Entity.PreTerm as PT
@@ -327,7 +327,7 @@ preTermMagicExternal m = do
     return $ m :< PT.Magic (MagicExternal (EN.ExternalName extFunName) es)
 
 -- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
-lowType :: Context m => Parser m LowType
+lowType :: Context m => Parser m LT.LowType
 lowType = do
   choice
     [ lowTypePointer,
@@ -336,35 +336,35 @@ lowType = do
       lowTypeSimple
     ]
 
-lowTypeSimple :: Context m => Parser m LowType
+lowTypeSimple :: Context m => Parser m LT.LowType
 lowTypeSimple =
   choice
     [ betweenParen lowType,
       lowTypeNumber
     ]
 
-lowTypePointer :: Context m => Parser m LowType
+lowTypePointer :: Context m => Parser m LT.LowType
 lowTypePointer = do
   keyword "pointer"
   lowTypeSimple
 
-lowTypeArray :: Context m => Parser m LowType
+lowTypeArray :: Context m => Parser m LT.LowType
 lowTypeArray = do
   keyword "array"
   intValue <- integer
-  LowTypeArray (fromInteger intValue) <$> lowTypeSimple
+  LT.Array (fromInteger intValue) <$> lowTypeSimple
 
-lowTypeStruct :: Context m => Parser m LowType
+lowTypeStruct :: Context m => Parser m LT.LowType
 lowTypeStruct = do
   keyword "struct"
-  LowTypeStruct <$> many lowTypeSimple
+  LT.Struct <$> many lowTypeSimple
 
-lowTypeNumber :: Context m => Parser m LowType
+lowTypeNumber :: Context m => Parser m LT.LowType
 lowTypeNumber = do
   sizeString <- symbol
   case fromText sizeString of
     Just primNum ->
-      return $ LowTypePrimNum primNum
+      return $ LT.PrimNum primNum
     _ -> do
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 

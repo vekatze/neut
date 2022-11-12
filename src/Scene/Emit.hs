@@ -24,7 +24,7 @@ import qualified Entity.ExternalName as EN
 import Entity.Ident
 import qualified Entity.LowComp as LC
 import qualified Entity.LowComp.Reduce as LowComp
-import Entity.LowType
+import qualified Entity.LowType as LT
 import Entity.PrimNum
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
@@ -72,7 +72,7 @@ emitMain mainTerm = do
   Env.setNopFreeSet is
   emitDefinition "i64" "main" [] mainTerm'
 
-declToBuilder :: (DN.DeclarationName, ([LowType], LowType)) -> Builder
+declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
   let name' = DN.toBuilder name
   "declare fastcc "
@@ -199,7 +199,7 @@ emitLowOp lowOp =
         (True, _, _, _) ->
           emitUnaryOp (head domList) op' (head args)
         (_, True, _, _) ->
-          emitConvOp op' (head args) (LowTypePrimNum $ head domList) (LowTypePrimNum cod)
+          emitConvOp op' (head args) (LT.PrimNum $ head domList) (LT.PrimNum cod)
         (_, _, True, _) ->
           emitBinaryOp (head domList) op' (head args) (args !! 1)
         (_, _, _, True) ->
@@ -216,7 +216,7 @@ emitBinaryOp t inst d1 d2 =
   return $
     unwordsL [inst, showPrimNumForEmit t, showLowValue d1 <> ",", showLowValue d2]
 
-emitConvOp :: Monad m => Builder -> LC.Value -> LowType -> LowType -> m Builder
+emitConvOp :: Monad m => Builder -> LC.Value -> LT.LowType -> LT.LowType -> m Builder
 emitConvOp cast d dom cod =
   return $
     unwordsL [cast, showLowType dom, showLowValue d, "to", showLowType cod]
@@ -226,13 +226,13 @@ emitSyscallOp num ds = do
   regList <- getRegList
   case System.arch of
     "x86_64" -> do
-      let args = (LC.Int num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
+      let args = (LC.Int num, LT.PrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat LT.voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
     "aarch64" -> do
-      let args = (LC.Int num, LowTypePrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat voidPtr)
+      let args = (LC.Int num, LT.PrimNum $ PrimNumInt (IntSize 64)) : zip ds (repeat LT.voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
@@ -270,11 +270,11 @@ showRegList regList =
     (s : ss) ->
       ",{" <> s <> "}" <> showRegList ss
 
-showBranchList :: LowType -> [(Integer, Ident)] -> Builder
+showBranchList :: LT.LowType -> [(Integer, Ident)] -> Builder
 showBranchList lowType xs =
   "[" <> unwordsL (map (uncurry (showBranch lowType)) xs) <> "]"
 
-showIndex :: [(LC.Value, LowType)] -> Builder
+showIndex :: [(LC.Value, LT.LowType)] -> Builder
 showIndex idxList =
   case idxList of
     [] ->
@@ -284,7 +284,7 @@ showIndex idxList =
     ((d, t) : dts) ->
       showIndex [(d, t)] <> ", " <> showIndex dts
 
-showBranch :: LowType -> Integer -> Ident -> Builder
+showBranch :: LT.LowType -> Integer -> Ident -> Builder
 showBranch lowType i label =
   showLowType lowType
     <> " "
@@ -308,23 +308,23 @@ showLocals :: [Builder] -> Builder
 showLocals ds =
   "(" <> showItems showLocal ds <> ")"
 
-showLowTypeAsIfPtr :: LowType -> Builder
+showLowTypeAsIfPtr :: LT.LowType -> Builder
 showLowTypeAsIfPtr t =
   showLowType t <> "*"
 
-showLowTypeAsIfNonPtr :: LowType -> Builder
+showLowTypeAsIfNonPtr :: LT.LowType -> Builder
 showLowTypeAsIfNonPtr lowType =
   case lowType of
-    LowTypePrimNum primNum ->
+    LT.PrimNum primNum ->
       showPrimNumForEmit primNum
-    LowTypeStruct ts ->
+    LT.Struct ts ->
       "{" <> showItems showLowType ts <> "}"
-    LowTypeFunction ts t ->
+    LT.Function ts t ->
       showLowType t <> " (" <> showItems showLowType ts <> ")"
-    LowTypeArray i t -> do
+    LT.Array i t -> do
       let s = showLowType t
       "[" <> intDec i <> " x " <> s <> "]"
-    LowTypePointer t ->
+    LT.Pointer t ->
       showLowType t
 
 getRegList :: Context m => m [Builder]
@@ -341,19 +341,19 @@ getRegList = do
     _ ->
       Throw.raiseError' $ "unsupported target: " <> T.pack platform
 
-showLowType :: LowType -> Builder
+showLowType :: LT.LowType -> Builder
 showLowType lowType =
   case lowType of
-    LowTypePrimNum primNum ->
+    LT.PrimNum primNum ->
       showPrimNumForEmit primNum
-    LowTypeStruct ts ->
+    LT.Struct ts ->
       "{" <> showItems showLowType ts <> "}"
-    LowTypeFunction ts t ->
+    LT.Function ts t ->
       showLowType t <> " (" <> showItems showLowType ts <> ")"
-    LowTypeArray i t -> do
+    LT.Array i t -> do
       let s = showLowType t
       "[" <> intDec i <> " x " <> s <> "]"
-    LowTypePointer t ->
+    LT.Pointer t ->
       showLowType t <> "*"
 
 showPrimNumForEmit :: PrimNum -> Builder

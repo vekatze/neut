@@ -12,7 +12,7 @@ import qualified Data.Set as S
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LowComp as LC
 import Entity.LowComp.Subst
-import Entity.LowType
+import qualified Entity.LowType as LT
 
 type SizeMap =
   Map.Map LC.SizeInfo [(Int, LC.Value)]
@@ -37,10 +37,10 @@ reduce' sub sizeMap lowComp = do
           | from == to -> do
               let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
               reduce' sub' sizeMap cont
-        LC.Alloc _ (LowTypePointer (LowTypeArray 0 _)) -> do
+        LC.Alloc _ (LT.Pointer (LT.Array 0 _)) -> do
           let sub' = IntMap.insert (Ident.toInt x) LC.Null sub
           reduce' sub' sizeMap cont
-        LC.Alloc _ (LowTypePointer (LowTypeStruct [])) -> do
+        LC.Alloc _ (LT.Pointer (LT.Struct [])) -> do
           let sub' = IntMap.insert (Ident.toInt x) LC.Null sub
           reduce' sub' sizeMap cont
         LC.Alloc _ size
