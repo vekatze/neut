@@ -8,7 +8,7 @@ import Control.Comonad.Cofree
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.LamKind as LK
-import qualified Entity.PrimNumType as PNT
+import qualified Entity.PrimType as PT
 import qualified Entity.Term as TM
 import Entity.Term.FromPrimNum
 import qualified Entity.WeakTerm as WT
@@ -44,9 +44,9 @@ weaken term =
     m :< TM.Prim x ->
       m :< WT.Prim x
     m :< TM.Int size x ->
-      m :< WT.Int (weaken $ fromPrimNum m (PNT.Int size)) x
+      m :< WT.Int (weaken $ fromPrimNum m (PT.Int size)) x
     m :< TM.Float size x ->
-      m :< WT.Float (weaken $ fromPrimNum m (PNT.Float size)) x
+      m :< WT.Float (weaken $ fromPrimNum m (PT.Float size)) x
     m :< TM.Enum x ->
       m :< WT.Enum x
     m :< TM.EnumIntro label ->

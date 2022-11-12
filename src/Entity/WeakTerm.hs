@@ -15,7 +15,7 @@ import Entity.Magic
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNumSize
-import qualified Entity.PrimNumType as PNT
+import qualified Entity.PrimType as PT
 
 type WeakTerm = Cofree WeakTermF Hint
 
@@ -50,11 +50,11 @@ toVar m x =
 
 i8 :: Hint -> WeakTerm
 i8 m =
-  m :< Prim (Prim.Type $ PNT.Int $ IntSize 8)
+  m :< Prim (Prim.Type $ PT.Int $ IntSize 8)
 
 i64 :: Hint -> WeakTerm
 i64 m =
-  m :< Prim (Prim.Type $ PNT.Int $ IntSize 64)
+  m :< Prim (Prim.Type $ PT.Int $ IntSize 64)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =

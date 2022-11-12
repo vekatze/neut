@@ -27,7 +27,7 @@ import qualified Entity.DefiniteLocator as DL
 import qualified Entity.Hint as H
 import qualified Entity.LocalLocator as LL
 import qualified Entity.ModuleID as MID
-import qualified Entity.PrimNumType as PNT
+import qualified Entity.PrimType as PT
 import qualified Entity.Section as Section
 import qualified Entity.SourceLocator as SL
 import qualified Entity.StrictGlobalLocator as SGL
@@ -110,7 +110,7 @@ cell :: DefiniteDescription
 cell =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.cell
 
-array :: PNT.PrimNumType -> DefiniteDescription
+array :: PT.PrimType -> DefiniteDescription
 array elemType =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] $ BN.arrayType elemType
 

@@ -22,8 +22,8 @@ import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
 import qualified Entity.Hint as Hint
-import qualified Entity.PrimNumType.FromText as PNT
 import qualified Entity.PrimOp.FromText as PrimOp
+import qualified Entity.PrimType.FromText as PT
 import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
@@ -108,7 +108,7 @@ lookup name = do
     Just kind ->
       return $ Just kind
     Nothing
-      | Just primType <- PNT.fromDefiniteDescription name ->
+      | Just primType <- PT.fromDefiniteDescription name ->
           return $ Just $ GN.PrimType primType
       | Just primOp <- PrimOp.fromDefiniteDescription name ->
           return $ Just $ GN.PrimOp primOp

@@ -31,8 +31,8 @@ import qualified Entity.LocalLocator as LL
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import Entity.Pattern
+import qualified Entity.PrimType.FromText as PT
 import qualified Entity.RawTerm as RT
-import qualified Entity.PrimNumType.FromText as PNT
 import qualified Entity.TargetPlatform as TP
 import qualified Entity.UnresolvedName as UN
 import Scene.Parse.Core
@@ -362,7 +362,7 @@ lowTypeStruct = do
 lowTypeNumber :: Context m => Parser m LT.LowType
 lowTypeNumber = do
   sizeString <- symbol
-  case PNT.fromText sizeString of
+  case PT.fromText sizeString of
     Just primNum ->
       return $ LT.PrimNum primNum
     _ -> do
@@ -664,4 +664,3 @@ preVar m str =
 preVar' :: Hint -> Ident -> RT.RawTerm
 preVar' m ident =
   m :< RT.Var ident
-

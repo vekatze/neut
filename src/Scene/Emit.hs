@@ -27,9 +27,9 @@ import qualified Entity.LowComp.Reduce as LowComp
 import qualified Entity.LowType as LT
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
-import qualified Entity.PrimNumType as PNT
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
+import qualified Entity.PrimType as PT
 import qualified Entity.TargetPlatform as TP
 import Numeric.Half
 import qualified System.Info as System
@@ -207,11 +207,11 @@ emitLowOp lowOp =
         _ ->
           Throw.raiseCritical' $ "unknown primitive: " <> op
 
-emitUnaryOp :: Monad m => PNT.PrimNumType -> Builder -> LC.Value -> m Builder
+emitUnaryOp :: Monad m => PT.PrimType -> Builder -> LC.Value -> m Builder
 emitUnaryOp t inst d =
   return $ unwordsL [inst, showPrimNumForEmit t, showLowValue d]
 
-emitBinaryOp :: Monad m => PNT.PrimNumType -> Builder -> LC.Value -> LC.Value -> m Builder
+emitBinaryOp :: Monad m => PT.PrimType -> Builder -> LC.Value -> LC.Value -> m Builder
 emitBinaryOp t inst d1 d2 =
   return $
     unwordsL [inst, showPrimNumForEmit t, showLowValue d1 <> ",", showLowValue d2]
@@ -226,13 +226,13 @@ emitSyscallOp num ds = do
   regList <- getRegList
   case System.arch of
     "x86_64" -> do
-      let args = (LC.Int num, LT.PrimNum $ PNT.Int (IntSize 64)) : zip ds (repeat LT.voidPtr)
+      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : zip ds (repeat LT.voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
     "aarch64" -> do
-      let args = (LC.Int num, LT.PrimNum $ PNT.Int (IntSize 64)) : zip ds (repeat LT.voidPtr)
+      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : zip ds (repeat LT.voidPtr)
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
@@ -356,16 +356,16 @@ showLowType lowType =
     LT.Pointer t ->
       showLowType t <> "*"
 
-showPrimNumForEmit :: PNT.PrimNumType -> Builder
+showPrimNumForEmit :: PT.PrimType -> Builder
 showPrimNumForEmit lowType =
   case lowType of
-    PNT.Int i ->
+    PT.Int i ->
       "i" <> intDec (intSizeToInt i)
-    PNT.Float FloatSize16 ->
+    PT.Float FloatSize16 ->
       "half"
-    PNT.Float FloatSize32 ->
+    PT.Float FloatSize32 ->
       "float"
-    PNT.Float FloatSize64 ->
+    PT.Float FloatSize64 ->
       "double"
 
 showLowValue :: LC.Value -> Builder

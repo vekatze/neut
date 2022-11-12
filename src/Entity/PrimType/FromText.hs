@@ -1,15 +1,15 @@
-module Entity.PrimNumType.FromText (fromDefiniteDescription, fromText) where
+module Entity.PrimType.FromText (fromDefiniteDescription, fromText) where
 
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.LocalLocator as LL
 import Entity.PrimNumSize
-import qualified Entity.PrimNumType as PNT
+import qualified Entity.PrimType as PT
 import qualified Entity.StrictGlobalLocator as SGL
 import Text.Read
 
-fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PNT.PrimNumType
+fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PT.PrimType
 fromDefiniteDescription dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
@@ -17,12 +17,12 @@ fromDefiniteDescription dd = do
     then Nothing
     else fromText $ BN.reify $ LL.baseName ll
 
-fromText :: T.Text -> Maybe PNT.PrimNumType
+fromText :: T.Text -> Maybe PT.PrimType
 fromText name
   | Just intSize <- asLowInt name =
-      Just $ PNT.Int intSize
+      Just $ PT.Int intSize
   | Just floatSize <- asLowFloat name =
-      Just $ PNT.Float floatSize
+      Just $ PT.Float floatSize
   | otherwise =
       Nothing
 

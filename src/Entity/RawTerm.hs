@@ -24,7 +24,7 @@ import Entity.Magic
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNumSize
-import qualified Entity.PrimNumType as PNT
+import qualified Entity.PrimType as PT
 
 type RawTerm = Cofree RawTermF Hint
 
@@ -59,4 +59,4 @@ type TopDefInfo =
 
 i64 :: Hint -> RawTerm
 i64 m =
-  m :< Prim (Prim.Type $ PNT.Int $ IntSize 64)
+  m :< Prim (Prim.Type $ PT.Int $ IntSize 64)

@@ -34,8 +34,8 @@ import Data.Hashable
 import qualified Data.Text as T
 import Entity.Const
 import qualified Entity.Hint as H
-import qualified Entity.PrimNumType as PNT
-import qualified Entity.PrimNumType.ToText as PNT
+import qualified Entity.PrimType as PT
+import qualified Entity.PrimType.ToText as PT
 import GHC.Generics
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
@@ -144,9 +144,9 @@ free :: BaseName
 free =
   MakeBaseName "free"
 
-arrayType :: PNT.PrimNumType -> BaseName
+arrayType :: PT.PrimType -> BaseName
 arrayType elemType =
-  MakeBaseName $ "unsafe-" <> PNT.toText elemType <> "-array-internal"
+  MakeBaseName $ "unsafe-" <> PT.toText elemType <> "-array-internal"
 
 internalBaseName :: BaseName
 internalBaseName =

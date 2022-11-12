@@ -22,8 +22,8 @@ import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
-import qualified Entity.PrimNumType as PNT
 import Entity.PrimOp
+import qualified Entity.PrimType as PT
 
 -- fixme: remove WriterT
 type Lower m = WriterT (Cont m) m
@@ -69,7 +69,7 @@ lower (defList, mMainTerm) = do
       mainTerm'' <- lowerComp mainTerm
       -- the result of "main" must be i64, not i8*
       (result, resultVar) <- Gensym.newValueVarLocalWith "result"
-      castResult <- runLower $ lowerValueLetCast resultVar (LT.PrimNum $ PNT.Int $ IntSize 64)
+      castResult <- runLower $ lowerValueLetCast resultVar (LT.PrimNum $ PT.Int $ IntSize 64)
       -- let result: i8* := (main-term) in {cast result to i64}
       mainTerm''' <- Just <$> commConv result mainTerm'' castResult
       declEnv <- getDeclEnv
@@ -119,7 +119,7 @@ lowerComp term =
           return LC.Unreachable
         Just (defaultCase, caseList) -> do
           runLowerComp $ do
-            let t = LT.PrimNum $ PNT.Int $ IntSize 64
+            let t = LT.PrimNum $ PT.Int $ IntSize 64
             castedValue <- lowerValueLetCast v t
             return $ LC.Switch (castedValue, t) defaultCase caseList
 
@@ -188,7 +188,7 @@ lowerCompPrimOp op@(PrimOp _ domList cod) vs = do
   result <- reflect $ LC.PrimOp op argVarList
   uncast result $ LT.PrimNum cod
 
-lowerValueLetCastPrimArgs :: Context m => [(C.Value, PNT.PrimNumType)] -> Lower m [LC.Value]
+lowerValueLetCastPrimArgs :: Context m => [(C.Value, PT.PrimType)] -> Lower m [LC.Value]
 lowerValueLetCastPrimArgs dts =
   case dts of
     [] ->
@@ -202,11 +202,11 @@ cast :: Context m => LC.Value -> LT.LowType -> Lower m LC.Value
 cast v lowType = do
   (result, resultVar) <- lift $ newValueLocal "result"
   case lowType of
-    LT.PrimNum (PNT.Int _) -> do
+    LT.PrimNum (PT.Int _) -> do
       extend $ return . LC.Let result (LC.PointerToInt v LT.voidPtr lowType)
-    LT.PrimNum (PNT.Float size) -> do
-      let floatType = LT.PrimNum $ PNT.Float size
-      let intType = LT.PrimNum $ PNT.Int $ IntSize $ floatSizeToInt size
+    LT.PrimNum (PT.Float size) -> do
+      let floatType = LT.PrimNum $ PT.Float size
+      let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
       extend $
         return
@@ -220,11 +220,11 @@ uncast :: Context m => LC.Value -> LT.LowType -> Lower m LC.Value
 uncast castedValue lowType = do
   (result, resultVar) <- lift $ newValueLocal "uncast"
   case lowType of
-    LT.PrimNum (PNT.Int _) ->
+    LT.PrimNum (PT.Int _) ->
       extend $ return . LC.Let result (LC.IntToPointer castedValue lowType LT.voidPtr)
-    LT.PrimNum (PNT.Float i) -> do
-      let floatType = LT.PrimNum $ PNT.Float i
-      let intType = LT.PrimNum $ PNT.Int $ IntSize $ floatSizeToInt i
+    LT.PrimNum (PT.Float i) -> do
+      let floatType = LT.PrimNum $ PT.Float i
+      let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt i
       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
       extend $
         return
@@ -254,15 +254,15 @@ lowerValue v =
       let arrayType = AggPtrTypeArray (length ds) LT.voidPtr
       createAggData arrayType $ zip ds (repeat LT.voidPtr)
     C.Int size l -> do
-      uncast (LC.Int l) $ LT.PrimNum $ PNT.Int size
+      uncast (LC.Int l) $ LT.PrimNum $ PT.Int size
     C.Float size f ->
-      uncast (LC.Float size f) $ LT.PrimNum $ PNT.Float size
+      uncast (LC.Float size f) $ LT.PrimNum $ PT.Float size
     C.EnumIntro (EC.EnumLabel _ d _) -> do
-      uncast (LC.Int $ D.reify d) $ LT.PrimNum $ PNT.Int $ IntSize 64
+      uncast (LC.Int $ D.reify d) $ LT.PrimNum $ PT.Int $ IntSize 64
 
 getElemPtr :: Context m => LC.Value -> LT.LowType -> [Integer] -> Lower m LC.Value
 getElemPtr value valueType indexList = do
-  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PNT.Int $ IntSize 32)) indexList
+  let indexList' = map (\i -> (LC.Int i, LT.PrimNum $ PT.Int $ IntSize 32)) indexList
   reflect $ LC.GetElementPtr (value, valueType) indexList'
 
 reflect :: Context m => LC.Op -> Lower m LC.Value

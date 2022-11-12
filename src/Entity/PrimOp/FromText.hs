@@ -7,10 +7,10 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.LocalLocator as LL
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
-import qualified Entity.PrimNumType as PNT
-import qualified Entity.PrimNumType.FromText as PrimNum
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
+import qualified Entity.PrimType as PT
+import qualified Entity.PrimType.FromText as PT
 import qualified Entity.StrictGlobalLocator as SGL
 
 fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PrimOp
@@ -24,22 +24,22 @@ fromDefiniteDescription dd = do
 fromText :: T.Text -> Maybe PrimOp
 fromText name
   | Just ("fneg", typeStr) <- breakOnMaybe "-" name,
-    Just primNum@(PNT.Float _) <- PrimNum.fromText typeStr =
+    Just primNum@(PT.Float _) <- PT.fromText typeStr =
       Just $ PrimOp "fneg" [primNum] primNum
   | Just (convOpStr, rest) <- breakOnMaybe "-" name,
     Just (domTypeStr, codTypeStr) <- breakOnMaybe "-" rest,
-    Just domType <- PrimNum.fromText domTypeStr,
-    Just codType <- PrimNum.fromText codTypeStr,
+    Just domType <- PT.fromText domTypeStr,
+    Just codType <- PT.fromText codTypeStr,
     isValidConvOp convOpStr domType codType =
       Just $ PrimOp convOpStr [domType] codType
   | Just (opStr, typeStr) <- breakOnMaybe "-" name =
-      case PrimNum.fromText typeStr of
-        Just primNum@(PNT.Int _)
+      case PT.fromText typeStr of
+        Just primNum@(PT.Int _)
           | asLowICmpMaybe opStr ->
-              Just $ PrimOp ("icmp " <> opStr) [primNum, primNum] (PNT.Int $ IntSize 1)
-        Just primNum@(PNT.Float _)
+              Just $ PrimOp ("icmp " <> opStr) [primNum, primNum] (PT.Int $ IntSize 1)
+        Just primNum@(PT.Float _)
           | asLowFCmpMaybe opStr ->
-              Just $ PrimOp ("fcmp " <> opStr) [primNum, primNum] (PNT.Int $ IntSize 1)
+              Just $ PrimOp ("fcmp " <> opStr) [primNum, primNum] (PT.Int $ IntSize 1)
         Just primNum
           | asLowBinaryOpMaybe' opStr primNum ->
               Just $ PrimOp opStr [primNum, primNum] primNum
@@ -59,54 +59,54 @@ breakOnMaybe needle text =
         then Nothing
         else return (h, T.tail t)
 
-isValidConvOp :: T.Text -> PNT.PrimNumType -> PNT.PrimNumType -> Bool
+isValidConvOp :: T.Text -> PT.PrimType -> PT.PrimType -> Bool
 isValidConvOp name domType codType =
   case name of
     "trunc"
-      | PNT.Int i1 <- domType,
-        PNT.Int i2 <- codType ->
+      | PT.Int i1 <- domType,
+        PT.Int i2 <- codType ->
           intSizeToInt i1 > intSizeToInt i2
     "zext"
-      | PNT.Int i1 <- domType,
-        PNT.Int i2 <- codType ->
+      | PT.Int i1 <- domType,
+        PT.Int i2 <- codType ->
           intSizeToInt i1 < intSizeToInt i2
     "sext"
-      | PNT.Int i1 <- domType,
-        PNT.Int i2 <- codType ->
+      | PT.Int i1 <- domType,
+        PT.Int i2 <- codType ->
           intSizeToInt i1 < intSizeToInt i2
     "fptrunc"
-      | PNT.Float size1 <- domType,
-        PNT.Float size2 <- codType ->
+      | PT.Float size1 <- domType,
+        PT.Float size2 <- codType ->
           floatSizeToInt size1 > floatSizeToInt size2
     "fpext"
-      | PNT.Float size1 <- domType,
-        PNT.Float size2 <- codType ->
+      | PT.Float size1 <- domType,
+        PT.Float size2 <- codType ->
           floatSizeToInt size1 < floatSizeToInt size2
     "fptoui"
-      | PNT.Float _ <- domType,
-        PNT.Int _ <- codType ->
+      | PT.Float _ <- domType,
+        PT.Int _ <- codType ->
           True
     "fptosi"
-      | PNT.Float _ <- domType,
-        PNT.Int _ <- codType ->
+      | PT.Float _ <- domType,
+        PT.Int _ <- codType ->
           True
     "uitofp"
-      | PNT.Int _ <- domType,
-        PNT.Float _ <- codType ->
+      | PT.Int _ <- domType,
+        PT.Float _ <- codType ->
           True
     "sitofp"
-      | PNT.Int _ <- domType,
-        PNT.Float _ <- codType ->
+      | PT.Int _ <- domType,
+        PT.Float _ <- codType ->
           True
     _ ->
       False
 
-asLowBinaryOpMaybe' :: T.Text -> PNT.PrimNumType -> Bool
+asLowBinaryOpMaybe' :: T.Text -> PT.PrimType -> Bool
 asLowBinaryOpMaybe' name primNum =
   case primNum of
-    PNT.Int _ ->
+    PT.Int _ ->
       S.member name intBinaryOpSet
-    PNT.Float _ ->
+    PT.Float _ ->
       S.member name floatBinaryOpSet
 
 asLowICmpMaybe :: T.Text -> Bool
