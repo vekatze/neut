@@ -1,4 +1,11 @@
-module Entity.PreTerm where
+module Entity.RawTerm
+  ( RawTerm,
+    RawTermF (..),
+    DefInfo,
+    TopDefInfo,
+    i64,
+  )
+where
 
 import Control.Comonad.Cofree
 import qualified Data.Text as T
@@ -19,9 +26,9 @@ import qualified Entity.Prim as Prim
 import Entity.PrimNumSize
 import qualified Entity.PrimNumType as PNT
 
-type PreTerm = Cofree PreTermF Hint
+type RawTerm = Cofree RawTermF Hint
 
-data PreTermF a
+data RawTermF a
   = Tau
   | Var Ident
   | VarGlobal GL.GlobalLocator LL.LocalLocator
@@ -45,15 +52,11 @@ data PreTermF a
   | Match (a, a) [(PrePatternF a, a)] -- (pattern-matched value, its type)
 
 type DefInfo =
-  ((Hint, T.Text), [BinderF PreTerm], PreTerm, PreTerm)
+  ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)
 
 type TopDefInfo =
-  ((Hint, BN.BaseName), [BinderF PreTerm], [BinderF PreTerm], PreTerm, PreTerm)
+  ((Hint, BN.BaseName), [BinderF RawTerm], [BinderF RawTerm], RawTerm, RawTerm)
 
-i8 :: Hint -> PreTerm
-i8 m =
-  m :< Prim (Prim.Type $ PNT.Int $ IntSize 8)
-
-i64 :: Hint -> PreTerm
+i64 :: Hint -> RawTerm
 i64 m =
   m :< Prim (Prim.Type $ PNT.Int $ IntSize 64)

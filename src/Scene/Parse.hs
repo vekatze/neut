@@ -33,7 +33,7 @@ import qualified Entity.ImpArgNum as I
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.Opacity as O
-import qualified Entity.PreTerm as PT
+import qualified Entity.RawTerm as RT
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
 import Entity.Stmt
@@ -43,7 +43,7 @@ import qualified Scene.Parse.Core as P
 import qualified Scene.Parse.Discern as Discern
 import qualified Scene.Parse.Enum as Enum
 import qualified Scene.Parse.Import as Parse
-import Scene.Parse.PreTerm
+import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
 class
@@ -207,9 +207,9 @@ defineFunction ::
   Hint ->
   DD.DefiniteDescription ->
   I.ImpArgNum ->
-  [BinderF PT.PreTerm] ->
-  PT.PreTerm ->
-  PT.PreTerm ->
+  [BinderF RT.RawTerm] ->
+  RT.RawTerm ->
+  RT.RawTerm ->
   m PreStmt
 defineFunction opacity m name impArgNum binder codType e = do
   Global.registerTopLevelFunc m name (A.fromInt (length binder))
@@ -228,14 +228,14 @@ defineData ::
   Context m =>
   Hint ->
   DD.DefiniteDescription ->
-  [BinderF PT.PreTerm] ->
-  [(Hint, T.Text, [BinderF PT.PreTerm])] ->
+  [BinderF RT.RawTerm] ->
+  [(Hint, T.Text, [BinderF RT.RawTerm])] ->
   m [PreStmt]
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   setAsData m dataName (A.fromInt (length dataArgs)) consInfoList'
-  let consType = m :< PT.Pi [] (m :< PT.Tau)
-  let formRule = PreStmtDefine O.Opaque m dataName (I.fromInt 0) dataArgs (m :< PT.Tau) consType
+  let consType = m :< RT.Pi [] (m :< RT.Tau)
+  let formRule = PreStmtDefine O.Opaque m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) consType
   introRuleList <- parseDefineDataConstructor dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -243,8 +243,8 @@ modifyConstructorName ::
   Throw.Context m =>
   Hint ->
   DD.DefiniteDescription ->
-  (Hint, T.Text, [BinderF PT.PreTerm]) ->
-  m (Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])
+  (Hint, T.Text, [BinderF RT.RawTerm]) ->
+  m (Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])
 modifyConstructorName m dataDD (mb, consName, yts) = do
   consName' <- DD.extend m dataDD consName
   return (mb, consName', yts)
@@ -252,8 +252,8 @@ modifyConstructorName m dataDD (mb, consName, yts) = do
 parseDefineDataConstructor ::
   Context m =>
   DD.DefiniteDescription ->
-  [BinderF PT.PreTerm] ->
-  [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] ->
+  [BinderF RT.RawTerm] ->
+  [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
   m [PreStmt]
 parseDefineDataConstructor dataName dataArgs consInfoList discriminant = do
@@ -272,31 +272,31 @@ parseDefineDataConstructor dataName dataArgs consInfoList discriminant = do
           (dataArgs ++ consArgs)
           dataType
           $ m
-            :< PT.PiIntro
+            :< RT.PiIntro
               (LK.Cons dataName consName discriminant dataType)
-              [ (m, Ident.fromText (DD.reify consName), m :< PT.Pi consArgs (m :< PT.Tau))
+              [ (m, Ident.fromText (DD.reify consName), m :< RT.Pi consArgs (m :< RT.Tau))
               ]
-              (m :< PT.PiElim (preVar m (DD.reify consName)) consArgs')
+              (m :< RT.PiElim (preVar m (DD.reify consName)) consArgs')
       introRuleList <- parseDefineDataConstructor dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 
-constructDataType :: Hint -> DD.DefiniteDescription -> [BinderF PT.PreTerm] -> PT.PreTerm
+constructDataType :: Hint -> DD.DefiniteDescription -> [BinderF RT.RawTerm] -> RT.RawTerm
 constructDataType m dataName dataArgs =
-  m :< PT.PiElim (m :< PT.VarGlobalStrict dataName) (map identPlusToVar dataArgs)
+  m :< RT.PiElim (m :< RT.VarGlobalStrict dataName) (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: Context m => P.Parser m (Hint, T.Text, [BinderF PT.PreTerm])
+parseDefineDataClause :: Context m => P.Parser m (Hint, T.Text, [BinderF RT.RawTerm])
 parseDefineDataClause = do
   m <- P.getCurrentHint
   b <- P.symbol
   yts <- P.argList parseDefineDataClauseArg
   return (m, b, yts)
 
-parseDefineDataClauseArg :: Context m => P.Parser m (BinderF PT.PreTerm)
+parseDefineDataClauseArg :: Context m => P.Parser m (BinderF RT.RawTerm)
 parseDefineDataClauseArg = do
   m <- P.getCurrentHint
   choice
     [ try preAscription,
-      weakTermToWeakIdent m preTerm
+      weakTermToWeakIdent m rawTerm
     ]
 
 parseDefineCodata :: Context m => P.Parser m [PreStmt]
@@ -313,9 +313,9 @@ parseDefineCodata = do
 parseDefineCodataElim ::
   Context m =>
   DD.DefiniteDescription ->
-  [BinderF PT.PreTerm] ->
-  [BinderF PT.PreTerm] ->
-  BinderF PT.PreTerm ->
+  [BinderF RT.RawTerm] ->
+  [BinderF RT.RawTerm] ->
+  BinderF RT.RawTerm ->
   m PreStmt
 parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = constructDataType m dataName dataArgs
@@ -331,7 +331,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
     projArgs
     elemType
     $ m
-      :< PT.Match
+      :< RT.Match
         (preVar m recordVarText, codataType)
         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
 
@@ -340,17 +340,17 @@ setAsData ::
   Hint ->
   DD.DefiniteDescription ->
   A.Arity ->
-  [(Hint, DD.DefiniteDescription, [BinderF PT.PreTerm])] ->
+  [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   m ()
 setAsData m dataName arity consInfoList = do
   let consNameList = map (\(_, consName, _) -> consName) consInfoList
   Global.registerData m dataName arity consNameList
 
-identPlusToVar :: BinderF PT.PreTerm -> PT.PreTerm
+identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
-  m :< PT.Var x
+  m :< RT.Var x
 
-weakTermToWeakIdent :: Context m => Hint -> P.Parser m PT.PreTerm -> P.Parser m (BinderF PT.PreTerm)
+weakTermToWeakIdent :: Context m => Hint -> P.Parser m RT.RawTerm -> P.Parser m (BinderF RT.RawTerm)
 weakTermToWeakIdent m f = do
   a <- f
   h <- lift $ Gensym.newTextualIdentFromText "_"

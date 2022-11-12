@@ -1,6 +1,6 @@
-module Scene.Parse.PreTerm
-  ( preTerm,
-    preTermSimple,
+module Scene.Parse.RawTerm
+  ( rawTerm,
+    rawTermSimple,
     preBinder,
     preAscription,
     parseTopDefInfo,
@@ -31,7 +31,7 @@ import qualified Entity.LocalLocator as LL
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import Entity.Pattern
-import qualified Entity.PreTerm as PT
+import qualified Entity.RawTerm as RT
 import qualified Entity.PrimNumType.FromText as PNT
 import qualified Entity.TargetPlatform as TP
 import qualified Entity.UnresolvedName as UN
@@ -39,78 +39,78 @@ import Scene.Parse.Core
 import Text.Megaparsec
 
 --
--- parser for PT.PreTerm
+-- parser for RT.RawTerm
 --
 
-preTerm :: Context m => Parser m PT.PreTerm
-preTerm = do
+rawTerm :: Context m => Parser m RT.RawTerm
+rawTerm = do
   m <- getCurrentHint
-  e1 <- preTermEasy
+  e1 <- rawTermEasy
   choice
-    [ preTermVoid m e1,
-      preTermExplicitAscription m e1,
+    [ rawTermVoid m e1,
+      rawTermExplicitAscription m e1,
       return e1
     ]
 
 -- fixme: easy??
-preTermEasy :: Context m => Parser m PT.PreTerm
-preTermEasy = do
+rawTermEasy :: Context m => Parser m RT.RawTerm
+rawTermEasy = do
   choice
-    [ preTermPiIntro,
-      preTermPiIntroDef,
-      preTermSigma,
-      preTermSigmaIntro,
-      preTermEnumElim,
-      preTermIntrospect,
-      preTermQuestion,
-      preTermMagic,
-      preTermMatch,
-      preTermIf,
-      try preTermLetSigmaElim,
-      preTermLet,
-      preTermLetCoproduct,
-      try preTermPi,
-      try preTermPiElim,
-      try preTermPiElimInv,
-      preTermSimple
+    [ rawTermPiIntro,
+      rawTermPiIntroDef,
+      rawTermSigma,
+      rawTermSigmaIntro,
+      rawTermEnumElim,
+      rawTermIntrospect,
+      rawTermQuestion,
+      rawTermMagic,
+      rawTermMatch,
+      rawTermIf,
+      try rawTermLetSigmaElim,
+      rawTermLet,
+      rawTermLetCoproduct,
+      try rawTermPi,
+      try rawTermPiElim,
+      try rawTermPiElimInv,
+      rawTermSimple
     ]
 
-preTermSimple :: Context m => Parser m PT.PreTerm
-preTermSimple = do
+rawTermSimple :: Context m => Parser m RT.RawTerm
+rawTermSimple = do
   choice
-    [ preTermParen,
-      preTermTau,
-      preTermAdmitQuestion,
-      preTermAdmit,
-      preTermAster,
-      preTermInteger,
-      preTermFloat,
-      preTermDefiniteDescription,
-      preTermVar
+    [ rawTermParen,
+      rawTermTau,
+      rawTermAdmitQuestion,
+      rawTermAdmit,
+      rawTermAster,
+      rawTermInteger,
+      rawTermFloat,
+      rawTermDefiniteDescription,
+      rawTermVar
     ]
 
-preTermLet :: Context m => Parser m PT.PreTerm
-preTermLet = do
+rawTermLet :: Context m => Parser m RT.RawTerm
+rawTermLet = do
   m <- getCurrentHint
   try $ keyword "let"
-  x <- preTermLetVar
+  x <- rawTermLetVar
   delimiter "="
-  e1 <- preTerm
+  e1 <- rawTerm
   keyword "in"
-  e2 <- preTerm
-  return $ m :< PT.Let x e1 e2
+  e2 <- rawTerm
+  return $ m :< RT.Let x e1 e2
 
 -- let? x : A = e1 in e2
 -- let? x     = e1 in e2
-preTermLetCoproduct :: Context m => Parser m PT.PreTerm
-preTermLetCoproduct = do
+rawTermLetCoproduct :: Context m => Parser m RT.RawTerm
+rawTermLetCoproduct = do
   m <- getCurrentHint
   try $ keyword "let?"
-  x <- preTermLetVar
+  x <- rawTermLetVar
   delimiter "="
-  e1 <- preTerm
+  e1 <- rawTerm
   keyword "in"
-  e2 <- preTerm
+  e2 <- rawTerm
   err <- lift $ Gensym.newTextualIdentFromText "err"
   typeOfLeft <- lift $ Gensym.newPreAster m
   typeOfRight <- lift $ Gensym.newPreAster m
@@ -119,98 +119,98 @@ preTermLetCoproduct = do
   let sumLeftVar = Ident.fromText "sum.left"
   return $
     m
-      :< PT.Match
+      :< RT.Match
         (e1, doNotCare m)
         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
-            m :< PT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
+            m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
           ),
           ( (m, sumRight, [x]),
             e2
           )
         ]
 
-preTermVoid :: Context m => Hint -> PT.PreTerm -> Parser m PT.PreTerm
-preTermVoid m e1 = do
+rawTermVoid :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
+rawTermVoid m e1 = do
   delimiter ";"
-  e2 <- preTerm
+  e2 <- rawTerm
   f <- lift $ Gensym.newTextualIdentFromText "unit"
-  return $ bind (m, f, m :< PT.Enum constTop) e1 e2
+  return $ bind (m, f, m :< RT.Enum constTop) e1 e2
 
-preTermExplicitAscription :: Context m => Hint -> PT.PreTerm -> Parser m PT.PreTerm
-preTermExplicitAscription m e = do
+rawTermExplicitAscription :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
+rawTermExplicitAscription m e = do
   delimiter ":"
-  t <- preTermEasy
+  t <- rawTermEasy
   f <- lift $ Gensym.newTextualIdentFromText "unit"
-  return $ bind (m, f, t) e (m :< PT.Var f)
+  return $ bind (m, f, t) e (m :< RT.Var f)
 
-preTermTau :: Context m => Parser m PT.PreTerm
-preTermTau = do
+rawTermTau :: Context m => Parser m RT.RawTerm
+rawTermTau = do
   m <- getCurrentHint
   try $ keyword "tau"
-  return $ m :< PT.Tau
+  return $ m :< RT.Tau
 
-preTermAster :: Context m => Parser m PT.PreTerm
-preTermAster = do
+rawTermAster :: Context m => Parser m RT.RawTerm
+rawTermAster = do
   m <- getCurrentHint
   delimiter "?"
   lift $ Gensym.newPreAster m
 
-preTermPi :: Context m => Parser m PT.PreTerm
-preTermPi = do
+rawTermPi :: Context m => Parser m RT.RawTerm
+rawTermPi = do
   m <- getCurrentHint
   domList <- argList $ choice [try preAscription, typeWithoutIdent]
   delimiter "->"
-  cod <- preTerm
-  return $ m :< PT.Pi domList cod
+  cod <- rawTerm
+  return $ m :< RT.Pi domList cod
 
-preTermPiIntro :: Context m => Parser m PT.PreTerm
-preTermPiIntro = do
+rawTermPiIntro :: Context m => Parser m RT.RawTerm
+rawTermPiIntro = do
   m <- getCurrentHint
   try $ keyword "lambda"
   varList <- argList preBinder
-  e <- choice [preTermDotBind, doBlock preTerm]
+  e <- choice [rawTermDotBind, doBlock rawTerm]
   return $ lam m varList e
 
-preTermDotBind :: Context m => Parser m PT.PreTerm
-preTermDotBind = do
+rawTermDotBind :: Context m => Parser m RT.RawTerm
+rawTermDotBind = do
   delimiter "."
-  preTerm
+  rawTerm
 
-parseDefInfo :: Context m => Parser m PT.DefInfo
+parseDefInfo :: Context m => Parser m RT.DefInfo
 parseDefInfo = do
   functionVar <- var
   domInfoList <- argList preBinder
   delimiter ":"
-  codType <- preTerm
-  e <- asBlock preTerm
+  codType <- rawTerm
+  e <- asBlock rawTerm
   return (functionVar, domInfoList, codType, e)
 
-parseTopDefInfo :: Context m => Parser m PT.TopDefInfo
+parseTopDefInfo :: Context m => Parser m RT.TopDefInfo
 parseTopDefInfo = do
   m <- getCurrentHint
   funcBaseName <- baseName
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
   delimiter ":"
-  codType <- preTerm
-  e <- asBlock preTerm
+  codType <- rawTerm
+  e <- asBlock rawTerm
   return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
 
 -- define name(x1: A1, ..., xn: An)[: A] as e end
-preTermPiIntroDef :: Context m => Parser m PT.PreTerm
-preTermPiIntroDef = do
+rawTermPiIntroDef :: Context m => Parser m RT.RawTerm
+rawTermPiIntroDef = do
   m <- getCurrentHint
   try $ keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
-  let piType = mFun :< PT.Pi domBinderList codType
-  return $ m :< PT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
+  let piType = mFun :< RT.Pi domBinderList codType
+  return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
 
-preTermSigma :: Context m => Parser m PT.PreTerm
-preTermSigma = do
+rawTermSigma :: Context m => Parser m RT.RawTerm
+rawTermSigma = do
   m <- getCurrentHint
   try $ keyword "tuple"
   ts <- argList $ choice [try preAscription, typeWithoutIdent]
-  return $ m :< PT.Sigma ts
+  return $ m :< RT.Sigma ts
 
 parseDefiniteDescription :: Context m => Parser m (Hint, GL.GlobalLocator, LL.LocalLocator)
 parseDefiniteDescription = do
@@ -221,10 +221,10 @@ parseDefiniteDescription = do
   localLocator <- parseLocalLocator
   return (m, globalLocator', localLocator)
 
-preTermDefiniteDescription :: Context m => Parser m PT.PreTerm
-preTermDefiniteDescription = do
+rawTermDefiniteDescription :: Context m => Parser m RT.RawTerm
+rawTermDefiniteDescription = do
   (m, globalLocator, localLocator) <- try parseDefiniteDescription
-  return $ m :< PT.VarGlobal globalLocator localLocator
+  return $ m :< RT.VarGlobal globalLocator localLocator
 
 parseLocalLocator :: Context m => Parser m LL.LocalLocator
 parseLocalLocator = do
@@ -232,24 +232,24 @@ parseLocalLocator = do
   rawTxt <- symbol
   lift $ LL.reflect m rawTxt
 
-preTermEnumElim :: Context m => Parser m PT.PreTerm
-preTermEnumElim = do
+rawTermEnumElim :: Context m => Parser m RT.RawTerm
+rawTermEnumElim = do
   m <- getCurrentHint
   try $ keyword "switch"
-  e <- preTerm
+  e <- rawTerm
   keyword "with"
-  clauseList <- many preTermEnumClause
+  clauseList <- many rawTermEnumClause
   keyword "end"
   h <- lift $ Gensym.newPreAster m
-  return $ m :< PT.EnumElim (e, h) clauseList
+  return $ m :< RT.EnumElim (e, h) clauseList
 
-preTermEnumClause :: Context m => Parser m (EC.PreEnumCase, PT.PreTerm)
-preTermEnumClause = do
+rawTermEnumClause :: Context m => Parser m (EC.PreEnumCase, RT.RawTerm)
+rawTermEnumClause = do
   m <- getCurrentHint
   delimiter "-"
   c <- symbol
   delimiter "->"
-  body <- preTerm
+  body <- rawTerm
   case c of
     "default" ->
       return (m :< EC.Default, body)
@@ -264,67 +264,67 @@ dummyLabel c =
     (UN.UnresolvedName c)
 
 -- question e
-preTermQuestion :: Context m => Parser m PT.PreTerm
-preTermQuestion = do
+rawTermQuestion :: Context m => Parser m RT.RawTerm
+rawTermQuestion = do
   m <- getCurrentHint
   try $ keyword "question"
-  e <- preTerm
+  e <- rawTerm
   h <- lift $ Gensym.newPreAster m
-  return $ m :< PT.Question e h
+  return $ m :< RT.Question e h
 
-preTermMagic :: Context m => Parser m PT.PreTerm
-preTermMagic = do
+rawTermMagic :: Context m => Parser m RT.RawTerm
+rawTermMagic = do
   m <- getCurrentHint
   try $ keyword "magic"
   choice
-    [ preTermMagicCast m,
-      preTermMagicStore m,
-      preTermMagicLoad m,
-      preTermMagicSyscall m,
-      preTermMagicExternal m
+    [ rawTermMagicCast m,
+      rawTermMagicStore m,
+      rawTermMagicLoad m,
+      rawTermMagicSyscall m,
+      rawTermMagicExternal m
     ]
 
-preTermMagicBase :: Context m => T.Text -> Parser m PT.PreTerm -> Parser m PT.PreTerm
-preTermMagicBase k parser = do
+rawTermMagicBase :: Context m => T.Text -> Parser m RT.RawTerm -> Parser m RT.RawTerm
+rawTermMagicBase k parser = do
   keyword k
   betweenParen parser
 
-preTermMagicCast :: Context m => Hint -> Parser m PT.PreTerm
-preTermMagicCast m = do
-  preTermMagicBase "cast" $ do
-    castFrom <- preTerm
-    castTo <- delimiter "," >> preTerm
-    value <- delimiter "," >> preTerm
-    return $ m :< PT.Magic (M.Cast castFrom castTo value)
+rawTermMagicCast :: Context m => Hint -> Parser m RT.RawTerm
+rawTermMagicCast m = do
+  rawTermMagicBase "cast" $ do
+    castFrom <- rawTerm
+    castTo <- delimiter "," >> rawTerm
+    value <- delimiter "," >> rawTerm
+    return $ m :< RT.Magic (M.Cast castFrom castTo value)
 
-preTermMagicStore :: Context m => Hint -> Parser m PT.PreTerm
-preTermMagicStore m = do
-  preTermMagicBase "store" $ do
+rawTermMagicStore :: Context m => Hint -> Parser m RT.RawTerm
+rawTermMagicStore m = do
+  rawTermMagicBase "store" $ do
     lt <- lowType
-    pointer <- delimiter "," >> preTerm
-    value <- delimiter "," >> preTerm
-    return $ m :< PT.Magic (M.Store lt pointer value)
+    pointer <- delimiter "," >> rawTerm
+    value <- delimiter "," >> rawTerm
+    return $ m :< RT.Magic (M.Store lt pointer value)
 
-preTermMagicLoad :: Context m => Hint -> Parser m PT.PreTerm
-preTermMagicLoad m = do
-  preTermMagicBase "load" $ do
+rawTermMagicLoad :: Context m => Hint -> Parser m RT.RawTerm
+rawTermMagicLoad m = do
+  rawTermMagicBase "load" $ do
     lt <- lowType
-    pointer <- delimiter "," >> preTerm
-    return $ m :< PT.Magic (M.Load lt pointer)
+    pointer <- delimiter "," >> rawTerm
+    return $ m :< RT.Magic (M.Load lt pointer)
 
-preTermMagicSyscall :: Context m => Hint -> Parser m PT.PreTerm
-preTermMagicSyscall m = do
-  preTermMagicBase "syscall" $ do
+rawTermMagicSyscall :: Context m => Hint -> Parser m RT.RawTerm
+rawTermMagicSyscall m = do
+  rawTermMagicBase "syscall" $ do
     syscallNum <- integer
-    es <- many (delimiter "," >> preTerm)
-    return $ m :< PT.Magic (M.Syscall syscallNum es)
+    es <- many (delimiter "," >> rawTerm)
+    return $ m :< RT.Magic (M.Syscall syscallNum es)
 
-preTermMagicExternal :: Context m => Hint -> Parser m PT.PreTerm
-preTermMagicExternal m = do
-  preTermMagicBase "external" $ do
+rawTermMagicExternal :: Context m => Hint -> Parser m RT.RawTerm
+rawTermMagicExternal m = do
+  rawTermMagicBase "external" $ do
     extFunName <- symbol
-    es <- many (delimiter "," >> preTerm)
-    return $ m :< PT.Magic (M.External (EN.ExternalName extFunName) es)
+    es <- many (delimiter "," >> rawTerm)
+    return $ m :< RT.Magic (M.External (EN.ExternalName extFunName) es)
 
 -- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: Context m => Parser m LT.LowType
@@ -368,48 +368,48 @@ lowTypeNumber = do
     _ -> do
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 
-preTermMatch :: Context m => Parser m PT.PreTerm
-preTermMatch = do
+rawTermMatch :: Context m => Parser m RT.RawTerm
+rawTermMatch = do
   m <- getCurrentHint
   try $ keyword "match"
-  e <- preTerm
-  clauseList <- withBlock $ manyList preTermMatchClause
-  return $ m :< PT.Match (e, doNotCare m) clauseList
+  e <- rawTerm
+  clauseList <- withBlock $ manyList rawTermMatchClause
+  return $ m :< RT.Match (e, doNotCare m) clauseList
 
-preTermMatchClause :: Context m => Parser m (PrePatternF PT.PreTerm, PT.PreTerm)
-preTermMatchClause = do
-  pat <- preTermPattern
+rawTermMatchClause :: Context m => Parser m (PrePatternF RT.RawTerm, RT.RawTerm)
+rawTermMatchClause = do
+  pat <- rawTermPattern
   delimiter "->"
-  body <- preTerm
+  body <- rawTerm
   return (pat, body)
 
-preTermPattern :: Context m => Parser m (PrePatternF PT.PreTerm)
-preTermPattern = do
+rawTermPattern :: Context m => Parser m (PrePatternF RT.RawTerm)
+rawTermPattern = do
   m <- getCurrentHint
   c <- symbol
   patArgs <- argList preBinder
   return (m, Left $ UN.UnresolvedName c, patArgs)
 
 -- let (x1 : A1, ..., xn : An) = e1 in e2
-preTermLetSigmaElim :: Context m => Parser m PT.PreTerm
-preTermLetSigmaElim = do
+rawTermLetSigmaElim :: Context m => Parser m RT.RawTerm
+rawTermLetSigmaElim = do
   m <- getCurrentHint
   try $ keyword "let"
   xts <- argList preBinder
   delimiter "="
-  e1 <- preTerm
+  e1 <- rawTerm
   keyword "in"
-  e2 <- preTerm
-  return $ m :< PT.SigmaElim xts e1 e2
+  e2 <- rawTerm
+  return $ m :< RT.SigmaElim xts e1 e2
 
-preTermLetVar :: Context m => Parser m (BinderF PT.PreTerm)
-preTermLetVar = do
+rawTermLetVar :: Context m => Parser m (BinderF RT.RawTerm)
+rawTermLetVar = do
   m <- getCurrentHint
   choice
     [ try $ do
         x <- symbol
         delimiter ":"
-        a <- preTerm
+        a <- rawTerm
         return (m, Ident.fromText x, a),
       do
         x <- symbol
@@ -417,32 +417,32 @@ preTermLetVar = do
         return (m, Ident.fromText x, h)
     ]
 
-preTermIf :: Context m => Parser m PT.PreTerm
-preTermIf = do
+rawTermIf :: Context m => Parser m RT.RawTerm
+rawTermIf = do
   m <- getCurrentHint
   try $ keyword "if"
-  ifCond <- preTerm
+  ifCond <- rawTerm
   keyword "then"
-  ifBody <- preTerm
+  ifBody <- rawTerm
   elseIfList <- many $ do
     keyword "else-if"
-    elseIfCond <- preTerm
+    elseIfCond <- rawTerm
     keyword "then"
-    elseIfBody <- preTerm
+    elseIfBody <- rawTerm
     return (elseIfCond, elseIfBody)
   keyword "else"
-  elseBody <- preTerm
+  elseBody <- rawTerm
   keyword "end"
   foldIf m ifCond ifBody elseIfList elseBody
 
-foldIf :: Context m => Hint -> PT.PreTerm -> PT.PreTerm -> [(PT.PreTerm, PT.PreTerm)] -> PT.PreTerm -> Parser m PT.PreTerm
+foldIf :: Context m => Hint -> RT.RawTerm -> RT.RawTerm -> [(RT.RawTerm, RT.RawTerm)] -> RT.RawTerm -> Parser m RT.RawTerm
 foldIf m ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       h <- lift $ Gensym.newPreAster m
       return $
         m
-          :< PT.EnumElim
+          :< RT.EnumElim
             (ifCond, h)
             [ (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolTrue), ifBody),
               (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolFalse), elseBody)
@@ -452,125 +452,125 @@ foldIf m ifCond ifBody elseIfList elseBody =
       h <- lift $ Gensym.newPreAster m
       return $
         m
-          :< PT.EnumElim
+          :< RT.EnumElim
             (ifCond, h)
             [ (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolTrue), ifBody),
               (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolFalse), cont)
             ]
 
-preTermParen :: Context m => Parser m PT.PreTerm
-preTermParen = do
+rawTermParen :: Context m => Parser m RT.RawTerm
+rawTermParen = do
   m <- getCurrentHint
-  es <- argList preTerm
+  es <- argList rawTerm
   case es of
     [] ->
-      return $ m :< PT.SigmaIntro []
+      return $ m :< RT.SigmaIntro []
     [e] ->
       return e
     _ ->
-      return $ m :< PT.SigmaIntro es
+      return $ m :< RT.SigmaIntro es
 
 -- -- (e1, ..., en) (n >= 2)
-preTermSigmaIntro :: Context m => Parser m PT.PreTerm
-preTermSigmaIntro = do
+rawTermSigmaIntro :: Context m => Parser m RT.RawTerm
+rawTermSigmaIntro = do
   m <- getCurrentHint
   try $ keyword "tuple-new"
-  es <- argList preTerm
-  return $ m :< PT.SigmaIntro es
+  es <- argList rawTerm
+  return $ m :< RT.SigmaIntro es
 
-bind :: BinderF PT.PreTerm -> PT.PreTerm -> PT.PreTerm -> PT.PreTerm
+bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
-  m :< PT.Let mxt e cont
+  m :< RT.Let mxt e cont
 
-preTermAdmit :: Context m => Parser m PT.PreTerm
-preTermAdmit = do
+rawTermAdmit :: Context m => Parser m RT.RawTerm
+rawTermAdmit = do
   m <- getCurrentHint
   try $ keyword "admit"
   h <- lift $ Gensym.newPreAster m
   return $
     m
-      :< PT.PiElim
+      :< RT.PiElim
         (preVar m "core.os.exit")
         [ h,
-          m :< PT.Int (PT.i64 m) 1
+          m :< RT.Int (RT.i64 m) 1
         ]
 
-preTermAdmitQuestion :: Context m => Parser m PT.PreTerm
-preTermAdmitQuestion = do
+rawTermAdmitQuestion :: Context m => Parser m RT.RawTerm
+rawTermAdmitQuestion = do
   m <- getCurrentHint
   try $ keyword "?admit"
   h <- lift $ Gensym.newPreAster m
   return $
     m
-      :< PT.Question
+      :< RT.Question
         ( m
-            :< PT.PiElim
+            :< RT.PiElim
               (preVar m "os.exit")
               [ h,
-                m :< PT.Int (PT.i64 m) 1
+                m :< RT.Int (RT.i64 m) 1
               ]
         )
         h
 
-preTermPiElim :: Context m => Parser m PT.PreTerm
-preTermPiElim = do
+rawTermPiElim :: Context m => Parser m RT.RawTerm
+rawTermPiElim = do
   m <- getCurrentHint
-  e <- preTermSimple
-  impArgs <- impArgList preTerm
-  es <- argList preTerm
-  ess <- many $ argList preTerm
+  e <- rawTermSimple
+  impArgs <- impArgList rawTerm
+  es <- argList rawTerm
+  ess <- many $ argList rawTerm
   if null impArgs
-    then return $ foldl' (\base args -> m :< PT.PiElim base args) e $ es : ess
+    then return $ foldl' (\base args -> m :< RT.PiElim base args) e $ es : ess
     else do
       f <- lift $ Gensym.newTextualIdentFromText "func"
       h <- lift $ Gensym.newPreAster m
       return $
         m
-          :< PT.Let
+          :< RT.Let
             (m, f, h)
             e
             ( foldl'
-                (\base args -> m :< PT.PiElim base args)
-                (m :< PT.Var f)
+                (\base args -> m :< RT.PiElim base args)
+                (m :< RT.Var f)
                 ((impArgs ++ es) : ess)
             )
 
-preTermPiElimInv :: Context m => Parser m PT.PreTerm
-preTermPiElimInv = do
+rawTermPiElimInv :: Context m => Parser m RT.RawTerm
+rawTermPiElimInv = do
   m <- getCurrentHint
-  e <- preTermSimple
-  f <- betweenBracket preTerm
-  fs <- many $ betweenBracket preTerm
-  return $ foldl' (\base func -> m :< PT.PiElim func [base]) e $ f : fs
+  e <- rawTermSimple
+  f <- betweenBracket rawTerm
+  fs <- many $ betweenBracket rawTerm
+  return $ foldl' (\base func -> m :< RT.PiElim func [base]) e $ f : fs
 
 --
 -- term-related helper functions
 --
 
-preBinder :: Context m => Parser m (BinderF PT.PreTerm)
+preBinder :: Context m => Parser m (BinderF RT.RawTerm)
 preBinder =
   choice
     [ try preAscription,
       preAscription'
     ]
 
-preAscription :: Context m => Parser m (BinderF PT.PreTerm)
+preAscription :: Context m => Parser m (BinderF RT.RawTerm)
 preAscription = do
   m <- getCurrentHint
   x <- symbol
   delimiter ":"
-  a <- preTerm
+  a <- rawTerm
 
   return (m, Ident.fromText x, a)
 
-typeWithoutIdent :: Context m => Parser m (BinderF PT.PreTerm)
+typeWithoutIdent :: Context m => Parser m (BinderF RT.RawTerm)
 typeWithoutIdent = do
   m <- getCurrentHint
   x <- lift $ Gensym.newTextualIdentFromText "_"
-  t <- preTerm
+  t <- rawTerm
   return (m, x, t)
 
-preAscription' :: Context m => Parser m (BinderF PT.PreTerm)
+preAscription' :: Context m => Parser m (BinderF RT.RawTerm)
 preAscription' = do
   (m, x) <- preSimpleIdent
   h <- lift $ Gensym.newPreAster m
@@ -582,14 +582,14 @@ preSimpleIdent = do
   x <- symbol
   return (m, Ident.fromText x)
 
-preTermIntrospect :: Context m => Parser m PT.PreTerm
-preTermIntrospect = do
+rawTermIntrospect :: Context m => Parser m RT.RawTerm
+rawTermIntrospect = do
   m <- getCurrentHint
   try $ keyword "introspect"
   key <- symbol
   value <- lift $ getIntrospectiveValue m key
   keyword "with"
-  clauseList <- many preTermIntrospectiveClause
+  clauseList <- many rawTermIntrospectiveClause
   keyword "end"
   case lookup value clauseList of
     Just clause ->
@@ -597,12 +597,12 @@ preTermIntrospect = do
     Nothing -> do
       lift $ Throw.raiseError m $ "a clause for `" <> value <> "` is missing"
 
-preTermIntrospectiveClause :: Context m => Parser m (T.Text, PT.PreTerm)
-preTermIntrospectiveClause = do
+rawTermIntrospectiveClause :: Context m => Parser m (T.Text, RT.RawTerm)
+rawTermIntrospectiveClause = do
   delimiter "-"
   c <- symbol
   delimiter "->"
-  body <- preTerm
+  body <- rawTerm
   return (c, body)
 
 getIntrospectiveValue :: Context m => Hint -> T.Text -> m T.Text
@@ -618,49 +618,50 @@ getIntrospectiveValue m key = do
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 
-preTermVar :: Context m => Parser m PT.PreTerm
-preTermVar = do
+rawTermVar :: Context m => Parser m RT.RawTerm
+rawTermVar = do
   (m, x) <- var
   return (preVar m x)
 
--- preTermText :: Context m => Parser m PT.PreTerm
--- preTermText = do
+-- rawTermText :: Context m => Parser m RT.RawTerm
+-- rawTermText = do
 --   m <- getCurrentHint
 --   try $ keyword "text"
---   return $ m :< PT.Text
+--   return $ m :< RT.Text
 
--- preTermTextIntro :: Context m => Parser m PT.PreTerm
--- preTermTextIntro = do
+-- rawTermTextIntro :: Context m => Parser m RT.RawTerm
+-- rawTermTextIntro = do
 --   m <- getCurrentHint
 --   s <- string
---   return $ m :< PT.TextIntro s
+--   return $ m :< RT.TextIntro s
 
-preTermInteger :: Context m => Parser m PT.PreTerm
-preTermInteger = do
+rawTermInteger :: Context m => Parser m RT.RawTerm
+rawTermInteger = do
   m <- getCurrentHint
   intValue <- try integer
   h <- lift $ Gensym.newPreAster m
-  return $ m :< PT.Int h intValue
+  return $ m :< RT.Int h intValue
 
-preTermFloat :: Context m => Parser m PT.PreTerm
-preTermFloat = do
+rawTermFloat :: Context m => Parser m RT.RawTerm
+rawTermFloat = do
   m <- getCurrentHint
   floatValue <- try float
   h <- lift $ Gensym.newPreAster m
-  return $ m :< PT.Float h floatValue
+  return $ m :< RT.Float h floatValue
 
-doNotCare :: Hint -> PT.PreTerm
+doNotCare :: Hint -> RT.RawTerm
 doNotCare m =
-  m :< PT.Tau
+  m :< RT.Tau
 
-lam :: Hint -> [BinderF PT.PreTerm] -> PT.PreTerm -> PT.PreTerm
+lam :: Hint -> [BinderF RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
-  m :< PT.PiIntro LK.Normal varList e
+  m :< RT.PiIntro LK.Normal varList e
 
-preVar :: Hint -> T.Text -> PT.PreTerm
+preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
-  m :< PT.Var (Ident.fromText str)
+  m :< RT.Var (Ident.fromText str)
 
-preVar' :: Hint -> Ident -> PT.PreTerm
+preVar' :: Hint -> Ident -> RT.RawTerm
 preVar' m ident =
-  m :< PT.Var ident
+  m :< RT.Var ident
+

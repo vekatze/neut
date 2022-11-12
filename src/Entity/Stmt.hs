@@ -9,7 +9,7 @@ import Entity.EnumInfo
 import Entity.Hint
 import qualified Entity.ImpArgNum as I
 import qualified Entity.Opacity as O
-import qualified Entity.PreTerm as PT
+import qualified Entity.RawTerm as RT
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
 import qualified Entity.Term as TM
@@ -21,7 +21,7 @@ type PreProgram =
   (Path Abs File, [PreStmt])
 
 data PreStmt
-  = PreStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF PT.PreTerm] PT.PreTerm PT.PreTerm
+  = PreStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF RT.RawTerm] RT.RawTerm RT.RawTerm
   | PreStmtSection Section.Section [PreStmt]
 
 data WeakStmt

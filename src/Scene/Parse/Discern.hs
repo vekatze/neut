@@ -24,8 +24,8 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
-import qualified Entity.PreTerm as PT
 import qualified Entity.Prim as Prim
+import qualified Entity.RawTerm as RT
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
 import qualified Entity.WeakTerm as WT
@@ -62,26 +62,26 @@ discernStmtList stmtList =
         return $ innerStmtList' ++ rest'
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern :: Context m => NameEnv -> PT.PreTerm -> m WT.WeakTerm
+discern :: Context m => NameEnv -> RT.RawTerm -> m WT.WeakTerm
 discern nenv term =
   case term of
-    m :< PT.Tau ->
+    m :< RT.Tau ->
       return $ m :< WT.Tau
-    m :< PT.Var (I (s, _)) -> do
+    m :< RT.Var (I (s, _)) -> do
       case lookup s nenv of
         Just (_, name) ->
           return $ m :< WT.Var name
         Nothing -> do
           resolveName m s
-    m :< PT.VarGlobal globalLocator localLocator -> do
+    m :< RT.VarGlobal globalLocator localLocator -> do
       sgl <- Alias.resolveAlias m globalLocator
       resolveDefiniteDescription m $ DD.new sgl localLocator
-    m :< PT.VarGlobalStrict dd -> do
+    m :< RT.VarGlobalStrict dd -> do
       resolveDefiniteDescription m dd
-    m :< PT.Pi xts t -> do
+    m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
       return $ m :< WT.Pi xts' t'
-    m :< PT.PiIntro kind xts e -> do
+    m :< RT.PiIntro kind xts e -> do
       case kind of
         LK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
@@ -93,40 +93,40 @@ discern nenv term =
         LK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
           return $ m :< WT.PiIntro LK.Normal xts' e'
-    m :< PT.PiElim e es -> do
+    m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
       return $ m :< WT.PiElim e' es'
-    m :< PT.Sigma xts -> do
-      (xts', _) <- discernBinderWithBody nenv xts (m :< PT.Tau)
+    m :< RT.Sigma xts -> do
+      (xts', _) <- discernBinderWithBody nenv xts (m :< RT.Tau)
       return $ m :< WT.Sigma xts'
-    m :< PT.SigmaIntro es -> do
+    m :< RT.SigmaIntro es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.SigmaIntro es'
-    m :< PT.SigmaElim xts e1 e2 -> do
+    m :< RT.SigmaElim xts e1 e2 -> do
       e1' <- discern nenv e1
       (xts', e2') <- discernBinderWithBody nenv xts e2
       return $ m :< WT.SigmaElim xts' e1' e2'
-    m :< PT.Let mxt e1 e2 -> do
+    m :< RT.Let mxt e1 e2 -> do
       e1' <- discern nenv e1
       (mxt', _, e2') <- discernBinderWithBody' nenv mxt [] e2
       return $ m :< WT.Let mxt' e1' e2'
-    m :< PT.Prim prim ->
+    m :< RT.Prim prim ->
       return $ m :< WT.Prim prim
-    m :< PT.Aster k ->
+    m :< RT.Aster k ->
       return $ m :< WT.Aster k (map (\(_, (mx, x)) -> mx :< WT.Var x) nenv)
-    m :< PT.Int t x -> do
+    m :< RT.Int t x -> do
       t' <- discern nenv t
       return $ m :< WT.Int t' x
-    m :< PT.Float t x -> do
+    m :< RT.Float t x -> do
       t' <- discern nenv t
       return $ m :< WT.Float t' x
-    m :< PT.Enum t ->
+    m :< RT.Enum t ->
       return $ m :< WT.Enum t
-    m :< PT.EnumIntro label -> do
+    m :< RT.EnumIntro label -> do
       label' <- discernEnumLabel m label
       return $ m :< WT.EnumIntro label'
-    m :< PT.EnumElim (e, t) caseList -> do
+    m :< RT.EnumElim (e, t) caseList -> do
       e' <- discern nenv e
       t' <- discern nenv t
       caseList' <-
@@ -135,14 +135,14 @@ discern nenv term =
           body' <- discern nenv body
           return (enumCase', body')
       return $ m :< WT.EnumElim (e', t') caseList'
-    m :< PT.Question e t -> do
+    m :< RT.Question e t -> do
       e' <- discern nenv e
       t' <- discern nenv t
       return $ m :< WT.Question e' t'
-    m :< PT.Magic der -> do
+    m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
-    m :< PT.Match (e, t) clauseList -> do
+    m :< RT.Match (e, t) clauseList -> do
       e' <- discern nenv e
       t' <- discern nenv t
       clauseList' <- forM clauseList $ \((mCons, cons, xts), body) -> do
@@ -158,7 +158,7 @@ discern nenv term =
 discernBinder ::
   Context m =>
   NameEnv ->
-  [BinderF PT.PreTerm] ->
+  [BinderF RT.RawTerm] ->
   m ([BinderF WT.WeakTerm], NameEnv)
 discernBinder nenv binder =
   case binder of
@@ -173,8 +173,8 @@ discernBinder nenv binder =
 discernBinderWithBody ::
   Context m =>
   NameEnv ->
-  [BinderF PT.PreTerm] ->
-  PT.PreTerm ->
+  [BinderF RT.RawTerm] ->
+  RT.RawTerm ->
   m ([BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody nenv binder e = do
   (binder', nenv') <- discernBinder nenv binder
@@ -184,9 +184,9 @@ discernBinderWithBody nenv binder e = do
 discernBinderWithBody' ::
   Context m =>
   NameEnv ->
-  BinderF PT.PreTerm ->
-  [BinderF PT.PreTerm] ->
-  PT.PreTerm ->
+  BinderF RT.RawTerm ->
+  [BinderF RT.RawTerm] ->
+  RT.RawTerm ->
   m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody' nenv (mx, x, t) binder e = do
   t' <- discern nenv t

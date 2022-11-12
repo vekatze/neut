@@ -17,7 +17,7 @@ import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import qualified Entity.PreTerm as PT
+import qualified Entity.RawTerm as RT
 import qualified Entity.WeakTerm as WT
 
 class Monad m => Context m where
@@ -32,10 +32,10 @@ newText = do
   return $ ";" <> T.pack (show i)
 
 {-# INLINE newPreAster #-}
-newPreAster :: Context m => Hint -> m PT.PreTerm
+newPreAster :: Context m => Hint -> m RT.RawTerm
 newPreAster m = do
   i <- HoleID <$> newCount
-  return $ m :< PT.Aster i
+  return $ m :< RT.Aster i
 
 {-# INLINE newAster #-}
 newAster :: Context m => Hint -> [WT.WeakTerm] -> m WT.WeakTerm
