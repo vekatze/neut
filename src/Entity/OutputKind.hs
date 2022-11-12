@@ -1,18 +1,18 @@
 module Entity.OutputKind where
 
 data OutputKind
-  = OutputKindObject
-  | OutputKindLLVM
-  | OutputKindExecutable
-  | OutputKindAsm
+  = Object
+  | LLVM
+  | Executable
+  | Asm
   deriving (Show)
 
 instance Read OutputKind where
   readsPrec _ "object" =
-    [(OutputKindObject, [])]
+    [(Object, [])]
   readsPrec _ "llvm" =
-    [(OutputKindLLVM, [])]
+    [(LLVM, [])]
   readsPrec _ "asm" =
-    [(OutputKindAsm, [])]
+    [(Asm, [])]
   readsPrec _ _ =
     []

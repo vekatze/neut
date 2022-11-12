@@ -20,7 +20,7 @@ import Data.Sequence as Seq
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Hint
-import Entity.OutputKind
+import qualified Entity.OutputKind as OK
 import qualified Entity.Source as Source
 import Entity.VisitInfo
 import Path
@@ -97,7 +97,7 @@ isFreshCacheAvailable source = do
 
 isFreshObjectAvailable :: Context m => Source.Source -> m Bool
 isFreshObjectAvailable source = do
-  objectPath <- Source.sourceToOutputPath OutputKindObject source
+  objectPath <- Source.sourceToOutputPath OK.Object source
   isItemAvailable source objectPath
 
 isItemAvailable :: Context m => Source.Source -> Path Abs File -> m Bool

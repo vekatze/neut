@@ -20,7 +20,7 @@ import qualified Data.HashMap.Strict as Map
 import qualified Data.Set as S
 import Entity.Module
 import qualified Entity.Module.Reflect as Module
-import Entity.OutputKind
+import qualified Entity.OutputKind as OK
 import qualified Entity.Source as Source
 import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
@@ -108,11 +108,11 @@ loadTopLevelDefinitions source = do
 compile' :: Context m => Source.Source -> m ()
 compile' source = do
   llvmCode <- compileToLLVM source
-  outputPath <- Source.sourceToOutputPath OutputKindObject source
+  outputPath <- Source.sourceToOutputPath OK.Object source
   Path.ensureDir $ parent outputPath
-  llvmOutputPath <- Source.sourceToOutputPath OutputKindLLVM source
+  llvmOutputPath <- Source.sourceToOutputPath OK.LLVM source
   Path.writeByteString llvmOutputPath llvmCode
-  LLVM.emit OutputKindObject llvmCode outputPath
+  LLVM.emit OK.Object llvmCode outputPath
 
 compileToLLVM :: Context m => Source.Source -> m L.ByteString
 compileToLLVM source = do
@@ -125,7 +125,7 @@ compileToLLVM source = do
 link :: Context m => Target -> Module -> [Source.Source] -> m ()
 link target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
-  objectPathList <- mapM (Source.sourceToOutputPath OutputKindObject) sourceList
+  objectPathList <- mapM (Source.sourceToOutputPath OK.Object) sourceList
   LLVM.link objectPathList outputPath
 
 getMainSource :: Module -> Path Abs File -> Source.Source

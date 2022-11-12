@@ -13,7 +13,7 @@ import Control.Monad.IO.Unlift
 import qualified Data.ByteString.Lazy as L
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
-import Entity.OutputKind
+import qualified Entity.OutputKind as OK
 import GHC.IO.Handle
 import Path
 import Path.IO
@@ -33,11 +33,11 @@ class
   ) =>
   Context m
 
-emit :: Context m => OutputKind -> LLVMCode -> Path Abs File -> m ()
+emit :: Context m => OK.OutputKind -> LLVMCode -> Path Abs File -> m ()
 emit kind llvmCode path = do
   clangOptString <- Env.getClangOptString
   case kind of
-    OutputKindAsm ->
+    OK.Asm ->
       emitInner ("-S" : words clangOptString) llvmCode path
     _ ->
       emitInner (words clangOptString) llvmCode path
