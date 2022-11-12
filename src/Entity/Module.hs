@@ -7,7 +7,7 @@ import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Const
-import Entity.Ens
+import qualified Entity.Ens as E
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import qualified Entity.ModuleID as MID
@@ -78,17 +78,17 @@ addDependency alias url checksum someModule =
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
-  let entryPoint = Map.map (\x -> () :< EnsString (SGL.getRelPathText x)) $ moduleTarget someModule
+  let entryPoint = Map.map (\x -> () :< E.String (SGL.getRelPathText x)) $ moduleTarget someModule
   let dependency = flip Map.map (moduleDependency someModule) $ \(ModuleURL url, ModuleChecksum checksum) -> do
-        let urlEns = () :< EnsString url
-        let checksumEns = () :< EnsString checksum
-        () :< EnsDictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])
-  let extraContents = map (\x -> () :< EnsString (ppExtraContent x)) $ moduleExtraContents someModule
-  ppEnsTopLevel $
+        let urlEns = () :< E.String url
+        let checksumEns = () :< E.String checksum
+        () :< E.Dictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])
+  let extraContents = map (\x -> () :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
+  E.ppEnsTopLevel $
     Map.fromList
-      [ ("dependency", () :< EnsDictionary (Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency)),
-        ("target", () :< EnsDictionary (Map.mapKeys (\(Target.Target key) -> key) entryPoint)),
-        ("extra-content", () :< EnsList extraContents)
+      [ ("dependency", () :< E.Dictionary (Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency)),
+        ("target", () :< E.Dictionary (Map.mapKeys (\(Target.Target key) -> key) entryPoint)),
+        ("extra-content", () :< E.List extraContents)
       ]
 
 ppExtraContent :: SomePath -> T.Text
@@ -106,4 +106,8 @@ getID mainModule currentModule = do
     else
       MID.Library $
         ModuleChecksum $
-          T.pack $ FP.dropTrailingPathSeparator $ toFilePath $ dirname $ parent (moduleLocation currentModule)
+          T.pack $
+            FP.dropTrailingPathSeparator $
+              toFilePath $
+                dirname $
+                  parent (moduleLocation currentModule)

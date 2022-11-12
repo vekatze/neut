@@ -19,25 +19,18 @@ import qualified Data.HashMap.Strict as M
 import Data.Int
 import Data.List
 import qualified Data.Text as T
+import qualified Entity.EnsType as ET
 import Entity.Hint
 
 data EnsF a
-  = EnsInt64 Int64
-  | EnsFloat64 Double
-  | EnsBool Bool
-  | EnsString T.Text
-  | EnsList [a]
-  | EnsDictionary (M.HashMap T.Text a)
+  = Int64 Int64
+  | Float64 Double
+  | Bool Bool
+  | String T.Text
+  | List [a]
+  | Dictionary (M.HashMap T.Text a)
 
 type Ens = Cofree EnsF Hint
-
-data EnsType
-  = EnsTypeInt64
-  | EnsTypeFloat64
-  | EnsTypeBool
-  | EnsTypeString
-  | EnsTypeList
-  | EnsTypeDictionary
 
 access :: Context m => T.Text -> Ens -> m Ens
 access k entity@(m :< _) = do
@@ -51,82 +44,66 @@ access k entity@(m :< _) = do
 toInt64 :: Context m => Ens -> m Int64
 toInt64 entity@(m :< _) =
   case entity of
-    _ :< EnsInt64 s ->
+    _ :< Int64 s ->
       return s
     _ ->
-      raiseTypeError m EnsTypeInt64 (typeOf entity)
+      ET.raiseTypeError m ET.Int64 (typeOf entity)
 
 toFloat64 :: Context m => Ens -> m Double
 toFloat64 entity@(m :< _) =
   case entity of
-    _ :< EnsFloat64 s ->
+    _ :< Float64 s ->
       return s
     _ ->
-      raiseTypeError m EnsTypeFloat64 (typeOf entity)
+      ET.raiseTypeError m ET.Float64 (typeOf entity)
 
 toBool :: Context m => Ens -> m Bool
 toBool entity@(m :< _) =
   case entity of
-    _ :< EnsBool x ->
+    _ :< Bool x ->
       return x
     _ ->
-      raiseTypeError m EnsTypeBool (typeOf entity)
+      ET.raiseTypeError m ET.Bool (typeOf entity)
 
 toString :: Context m => Ens -> m (Hint, T.Text)
 toString entity@(m :< _) =
   case entity of
-    _ :< EnsString s ->
+    _ :< String s ->
       return (m, s)
     _ ->
-      raiseTypeError m EnsTypeString (typeOf entity)
+      ET.raiseTypeError m ET.String (typeOf entity)
 
 toDictionary :: Context m => Ens -> m (Hint, M.HashMap T.Text Ens)
 toDictionary entity@(m :< _) =
   case entity of
-    _ :< EnsDictionary e ->
+    _ :< Dictionary e ->
       return (m, e)
     _ ->
-      raiseTypeError m EnsTypeDictionary (typeOf entity)
+      ET.raiseTypeError m ET.Dictionary (typeOf entity)
 
 toList :: Context m => Ens -> m [Ens]
 toList entity@(m :< _) =
   case entity of
-    _ :< EnsList e ->
+    _ :< List e ->
       return e
     _ ->
-      raiseTypeError m EnsTypeList (typeOf entity)
+      ET.raiseTypeError m ET.List (typeOf entity)
 
-typeOf :: Ens -> EnsType
+typeOf :: Ens -> ET.EnsType
 typeOf v =
   case v of
-    _ :< EnsInt64 _ ->
-      EnsTypeInt64
-    _ :< EnsFloat64 _ ->
-      EnsTypeFloat64
-    _ :< EnsBool _ ->
-      EnsTypeBool
-    _ :< EnsString _ ->
-      EnsTypeString
-    _ :< EnsList _ ->
-      EnsTypeList
-    _ :< EnsDictionary _ ->
-      EnsTypeDictionary
-
-showEnsType :: EnsType -> T.Text
-showEnsType entityType =
-  case entityType of
-    EnsTypeInt64 ->
-      "i64"
-    EnsTypeFloat64 ->
-      "f64"
-    EnsTypeBool ->
-      "bool"
-    EnsTypeString ->
-      "string"
-    EnsTypeList ->
-      "list"
-    EnsTypeDictionary ->
-      "dictionary"
+    _ :< Int64 _ ->
+      ET.Int64
+    _ :< Float64 _ ->
+      ET.Float64
+    _ :< Bool _ ->
+      ET.Bool
+    _ :< String _ ->
+      ET.String
+    _ :< List _ ->
+      ET.List
+    _ :< Dictionary _ ->
+      ET.Dictionary
 
 raiseKeyNotFoundError :: Context m => Hint -> T.Text -> m a
 raiseKeyNotFoundError m k =
@@ -134,15 +111,6 @@ raiseKeyNotFoundError m k =
     "couldn't find the required key `"
       <> k
       <> "`."
-
-raiseTypeError :: Context m => Hint -> EnsType -> EnsType -> m a
-raiseTypeError m expectedType actualType =
-  raiseError m $
-    "the value here is expected to be of type `"
-      <> showEnsType expectedType
-      <> "`, but is: `"
-      <> showEnsType actualType
-      <> "`"
 
 showWithOffset :: Int -> T.Text -> T.Text
 showWithOffset n text =
@@ -191,17 +159,17 @@ ppDictionaryEntry n key value = do
 ppEns :: Int -> Cofree EnsF a -> T.Text
 ppEns n entity = do
   case entity of
-    _ :< EnsInt64 i ->
+    _ :< Int64 i ->
       ppInt64 i
-    _ :< EnsFloat64 i ->
+    _ :< Float64 i ->
       ppFloat64 i
-    _ :< EnsBool b ->
+    _ :< Bool b ->
       ppBool b
-    _ :< EnsString s ->
+    _ :< String s ->
       ppString s
-    _ :< EnsList xs -> do
+    _ :< List xs -> do
       ppList n xs
-    _ :< EnsDictionary dict -> do
+    _ :< Dictionary dict -> do
       ppDictionary n dict
 
 ppEnsTopLevel :: M.HashMap T.Text (Cofree EnsF a) -> T.Text
