@@ -62,7 +62,7 @@ createMainFile = do
   newModule <- Env.getMainModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath sgl
-    Path.writeText mainFilePath "define main() : i64 as\n  0\nend\n"
+    Path.writeText mainFilePath "define main(): i64 as\n  0\nend\n"
 
 constructDefaultModule :: Context m => T.Text -> m Module
 constructDefaultModule name = do
