@@ -37,14 +37,10 @@ freeVars term =
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] [e2]
       S.union set1 set2
-    _ :< WT.Prim _ ->
-      S.empty
+    _ :< WT.Prim prim ->
+      foldMap freeVars prim
     _ :< WT.Aster _ es ->
       S.unions $ map freeVars es
-    _ :< WT.Int t _ ->
-      freeVars t
-    _ :< WT.Float t _ ->
-      freeVars t
     _ :< WT.Enum {} ->
       S.empty
     _ :< WT.EnumIntro {} ->

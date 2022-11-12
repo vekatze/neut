@@ -8,9 +8,13 @@ import Control.Comonad.Cofree
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.LamKind as LK
+import qualified Entity.Prim as P
 import qualified Entity.PrimType as PT
+import qualified Entity.PrimValue as PV
 import qualified Entity.Term as TM
 import Entity.Term.FromPrimNum
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 
 weaken :: TM.Term -> WT.WeakTerm
@@ -41,12 +45,8 @@ weaken term =
       m :< WT.SigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
     m :< TM.Let mxt e1 e2 ->
       m :< WT.Let (weakenBinder mxt) (weaken e1) (weaken e2)
-    m :< TM.Prim x ->
-      m :< WT.Prim x
-    m :< TM.Int size x ->
-      m :< WT.Int (weaken $ fromPrimNum m (PT.Int size)) x
-    m :< TM.Float size x ->
-      m :< WT.Float (weaken $ fromPrimNum m (PT.Float size)) x
+    m :< TM.Prim prim ->
+      m :< WT.Prim (weakenPrim m prim)
     m :< TM.Enum x ->
       m :< WT.Enum x
     m :< TM.EnumIntro label ->
@@ -79,3 +79,18 @@ weakenKind kind =
       LK.Cons dataName consName consNumber (weaken dataType)
     LK.Fix xt ->
       LK.Fix (weakenBinder xt)
+
+weakenPrim :: Hint -> P.Prim -> WP.WeakPrim WT.WeakTerm
+weakenPrim m prim =
+  case prim of
+    P.Op op ->
+      WP.Op op
+    P.Type t ->
+      WP.Type t
+    P.Value v ->
+      WP.Value $
+        case v of
+          PV.Int size integer ->
+            WPV.Int (weaken (fromPrimNum m (PT.Int size))) integer
+          PV.Float size float ->
+            WPV.Float (weaken (fromPrimNum m (PT.Float size))) float

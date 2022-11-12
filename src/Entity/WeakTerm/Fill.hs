@@ -55,8 +55,9 @@ fill sub term =
       (mxt', _, e2') <- fill'' sub mxt [] e2
       -- ([mxt'], e2') <- fill' sub [mxt] e2
       return $ m :< WT.Let mxt' e1' e2'
-    _ :< WT.Prim _ ->
-      return term
+    m :< WT.Prim prim -> do
+      prim' <- mapM (fill sub) prim
+      return $ m :< WT.Prim prim'
     m :< WT.Aster i es -> do
       es' <- mapM (fill sub) es
       case lookup i sub of
@@ -68,12 +69,6 @@ fill sub term =
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
           return $ m :< WT.Aster i es'
-    m :< WT.Int t x -> do
-      t' <- fill sub t
-      return $ m :< WT.Int t' x
-    m :< WT.Float t x -> do
-      t' <- fill sub t
-      return $ m :< WT.Float t' x
     _ :< WT.Enum {} ->
       return term
     _ :< WT.EnumIntro {} ->

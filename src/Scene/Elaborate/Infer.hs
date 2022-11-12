@@ -29,12 +29,13 @@ import qualified Entity.ImpArgNum as I
 import qualified Entity.LamKind as LK
 import qualified Entity.Magic as M
 import Entity.Pattern
-import qualified Entity.Prim as Prim
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
 import qualified Entity.Term as TM
 import qualified Entity.Term.FromPrimNum as Term
 import Entity.Term.Weaken
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 import qualified Entity.WeakTerm.Subst as Subst
 
@@ -139,17 +140,19 @@ infer' varEnv term =
           insHoleEnv rawHoleID term holeType
           return (term, holeType)
     m :< WT.Prim prim
-      | Prim.Type _ <- prim ->
+      | WP.Type _ <- prim ->
           return (term, m :< WT.Tau)
-      | Prim.Op op <- prim -> do
+      | WP.Op op <- prim -> do
           primOpType <- primOpToType m op
           return (term, weaken primOpType)
-    m :< WT.Int t i -> do
-      t' <- inferType' [] t -- varEnv == [] since t' should be i64, i8, etc. (i.e. t must be closed)
-      return (m :< WT.Int t' i, t')
-    m :< WT.Float t f -> do
-      t' <- inferType' [] t -- t must be closed
-      return (m :< WT.Float t' f, t')
+      | WP.Value primValue <- prim ->
+          case primValue of
+            WPV.Int t v -> do
+              t' <- inferType' [] t
+              return (m :< WT.Prim (WP.Value (WPV.Int t' v)), t')
+            WPV.Float t v -> do
+              t' <- inferType' [] t
+              return (m :< WT.Prim (WP.Value (WPV.Float t' v)), t')
     m :< WT.Enum _ ->
       return (term, m :< WT.Tau)
     m :< WT.EnumIntro (EC.EnumLabel k _ _) -> do

@@ -29,14 +29,17 @@ import qualified Entity.HoleSubst as HS
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import Entity.Pattern
-import qualified Entity.Prim as Prim
+import qualified Entity.Prim as P
 import qualified Entity.PrimType as PT
+import qualified Entity.PrimValue as PV
 import qualified Entity.Source as Source
 import Entity.Stmt
 import qualified Entity.Term as TM
 import qualified Entity.Term.Reduce as Term
 import qualified Entity.Term.Subst as Subst
 import Entity.Term.Weaken
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 import qualified Entity.WeakTerm.Subst as WT
 import Entity.WeakTerm.ToText
@@ -178,30 +181,36 @@ elaborate' term =
               WT.subst s e >>= elaborate'
           | otherwise ->
               Throw.raiseError m "arity mismatch"
-    m :< WT.Prim x ->
-      return $ m :< TM.Prim x
-    m :< WT.Int t x -> do
-      t' <- elaborate' t >>= Term.reduce
-      case t' of
-        _ :< TM.Prim (Prim.Type (PT.Int size)) ->
-          return $ m :< TM.Int size x
-        _ -> do
-          Throw.raiseError m $
-            "the term `"
-              <> T.pack (show x)
-              <> "` is an integer, but its type is: "
-              <> toText (weaken t')
-    m :< WT.Float t x -> do
-      t' <- elaborate' t >>= Term.reduce
-      case t' of
-        _ :< TM.Prim (Prim.Type (PT.Float size)) ->
-          return $ m :< TM.Float size x
-        _ ->
-          Throw.raiseError m $
-            "the term `"
-              <> T.pack (show x)
-              <> "` is a float, but its type is:\n"
-              <> toText (weaken t')
+    m :< WT.Prim prim ->
+      case prim of
+        WP.Op op ->
+          return $ m :< TM.Prim (P.Op op)
+        WP.Type t ->
+          return $ m :< TM.Prim (P.Type t)
+        WP.Value primValue ->
+          case primValue of
+            WPV.Int t x -> do
+              t' <- elaborate' t >>= Term.reduce
+              case t' of
+                _ :< TM.Prim (P.Type (PT.Int size)) ->
+                  return $ m :< TM.Prim (P.Value (PV.Int size x))
+                _ -> do
+                  Throw.raiseError m $
+                    "the term `"
+                      <> T.pack (show x)
+                      <> "` is an integer, but its type is: "
+                      <> toText (weaken t')
+            WPV.Float t x -> do
+              t' <- elaborate' t >>= Term.reduce
+              case t' of
+                _ :< TM.Prim (P.Type (PT.Float size)) ->
+                  return $ m :< TM.Prim (P.Value (PV.Float size x))
+                _ -> do
+                  Throw.raiseError m $
+                    "the term `"
+                      <> T.pack (show x)
+                      <> "` is a float, but its type is: "
+                      <> toText (weaken t')
     m :< WT.Enum k ->
       return $ m :< TM.Enum k
     m :< WT.EnumIntro label ->

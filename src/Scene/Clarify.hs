@@ -32,9 +32,10 @@ import qualified Entity.LamKind as LK
 import qualified Entity.Magic as M
 import qualified Entity.Opacity as O
 import Entity.Pattern
-import qualified Entity.Prim as Prim
+import qualified Entity.Prim as P
 import Entity.PrimNumSize
 import Entity.PrimOp
+import qualified Entity.PrimValue as PV
 import qualified Entity.Source as Source
 import Entity.Stmt
 import qualified Entity.Term as TM
@@ -134,14 +135,16 @@ clarifyTerm tenv term =
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LK.Normal [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
-        Prim.Op op ->
+        P.Op op ->
           clarifyPrimOp tenv op m
-        Prim.Type _ ->
+        P.Type _ ->
           return returnImmediateS4
-    _ :< TM.Int size l ->
-      return $ C.UpIntro (C.Int size l)
-    _ :< TM.Float size l ->
-      return $ C.UpIntro (C.Float size l)
+        P.Value primValue ->
+          case primValue of
+            PV.Int size l ->
+              return $ C.UpIntro (C.Int size l)
+            PV.Float size l ->
+              return $ C.UpIntro (C.Float size l)
     _ :< TM.Enum {} ->
       return returnImmediateS4
     _ :< TM.EnumIntro label ->
@@ -369,10 +372,6 @@ chainOf tenv term =
       let xs2 = chainOf' tenv [mxt] [e2]
       xs1 ++ xs2
     _ :< TM.Prim _ ->
-      []
-    _ :< TM.Int _ _ ->
-      []
-    _ :< TM.Float _ _ ->
       []
     _ :< TM.Enum {} ->
       []

@@ -35,6 +35,8 @@ import qualified Entity.PrimType.FromText as PT
 import qualified Entity.RawTerm as RT
 import qualified Entity.TargetPlatform as TP
 import qualified Entity.UnresolvedName as UN
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import Scene.Parse.Core
 import Text.Megaparsec
 
@@ -492,7 +494,8 @@ rawTermAdmit = do
       :< RT.PiElim
         (preVar m "core.os.exit")
         [ h,
-          m :< RT.Int (RT.i64 m) 1
+          m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
+          -- m :< RT.Int (RT.i64 m) 1
         ]
 
 rawTermAdmitQuestion :: Context m => Parser m RT.RawTerm
@@ -507,7 +510,8 @@ rawTermAdmitQuestion = do
             :< RT.PiElim
               (preVar m "os.exit")
               [ h,
-                m :< RT.Int (RT.i64 m) 1
+                m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
+                -- m :< RT.Int (RT.i64 m) 1
               ]
         )
         h
@@ -640,14 +644,14 @@ rawTermInteger = do
   m <- getCurrentHint
   intValue <- try integer
   h <- lift $ Gensym.newPreAster m
-  return $ m :< RT.Int h intValue
+  return $ m :< RT.Prim (WP.Value (WPV.Int h intValue))
 
 rawTermFloat :: Context m => Parser m RT.RawTerm
 rawTermFloat = do
   m <- getCurrentHint
   floatValue <- try float
   h <- lift $ Gensym.newPreAster m
-  return $ m :< RT.Float h floatValue
+  return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
 
 doNotCare :: Hint -> RT.RawTerm
 doNotCare m =

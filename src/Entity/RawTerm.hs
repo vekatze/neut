@@ -22,9 +22,9 @@ import Entity.LamKind
 import qualified Entity.LocalLocator as LL
 import Entity.Magic
 import Entity.Pattern
-import qualified Entity.Prim as Prim
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
+import qualified Entity.WeakPrim as WP
 
 type RawTerm = Cofree RawTermF Hint
 
@@ -41,9 +41,7 @@ data RawTermF a
   | SigmaElim [BinderF a] a a
   | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | Aster HoleID
-  | Prim Prim.Prim
-  | Int a Integer
-  | Float a Double
+  | Prim (WP.WeakPrim a)
   | Enum EnumTypeName
   | EnumIntro PreEnumLabel
   | EnumElim (a, a) [(PreEnumCase, a)]
@@ -59,4 +57,4 @@ type TopDefInfo =
 
 i64 :: Hint -> RawTerm
 i64 m =
-  m :< Prim (Prim.Type $ PT.Int $ IntSize 64)
+  m :< Prim (WP.Type $ PT.Int $ IntSize 64)

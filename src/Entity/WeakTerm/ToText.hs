@@ -14,6 +14,10 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import Entity.Pattern
+import qualified Entity.PrimOp as PO
+import qualified Entity.PrimType.ToText as PT
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 
 toText :: WT.WeakTerm -> T.Text
@@ -57,13 +61,9 @@ toText term =
     _ :< WT.Let {} -> do
       "<let>"
     _ :< WT.Prim prim ->
-      T.pack $ show prim -- fixme
+      showPrim prim
     _ :< WT.Aster i es ->
       showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
-    _ :< WT.Int _ a ->
-      T.pack $ show a
-    _ :< WT.Float _ a ->
-      T.pack $ show a
     _ :< WT.Enum l ->
       DD.reify $ ET.reify l
     _ :< WT.EnumIntro (EC.EnumLabel _ _ v) ->
@@ -135,6 +135,20 @@ showCase c =
 showItems :: [T.Text] -> T.Text
 showItems =
   T.intercalate " "
+
+showPrim :: WP.WeakPrim WT.WeakTerm -> T.Text
+showPrim prim =
+  case prim of
+    WP.Type t ->
+      PT.toText t
+    WP.Op (PO.PrimOp opName _ _) ->
+      opName
+    WP.Value primValue ->
+      case primValue of
+        WPV.Int _ v ->
+          T.pack (show v)
+        WPV.Float _ v ->
+          T.pack (show v)
 
 showCons :: [T.Text] -> T.Text
 showCons =

@@ -24,10 +24,10 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
-import qualified Entity.Prim as Prim
 import qualified Entity.RawTerm as RT
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
+import qualified Entity.WeakPrim as WP
 import qualified Entity.WeakTerm as WT
 
 class
@@ -111,16 +111,11 @@ discern nenv term =
       e1' <- discern nenv e1
       (mxt', _, e2') <- discernBinderWithBody' nenv mxt [] e2
       return $ m :< WT.Let mxt' e1' e2'
-    m :< RT.Prim prim ->
-      return $ m :< WT.Prim prim
+    m :< RT.Prim prim -> do
+      prim' <- mapM (discern nenv) prim
+      return $ m :< WT.Prim prim'
     m :< RT.Aster k ->
       return $ m :< WT.Aster k (map (\(_, (mx, x)) -> mx :< WT.Var x) nenv)
-    m :< RT.Int t x -> do
-      t' <- discern nenv t
-      return $ m :< WT.Int t' x
-    m :< RT.Float t x -> do
-      t' <- discern nenv t
-      return $ m :< WT.Float t' x
     m :< RT.Enum t ->
       return $ m :< WT.Enum t
     m :< RT.EnumIntro label -> do
@@ -233,9 +228,9 @@ resolveName m name = do
     [(name', GN.EnumIntro enumTypeName discriminant)] ->
       return $ m :< WT.EnumIntro (EC.EnumLabel enumTypeName discriminant (EV.EnumValueName name'))
     [(_, GN.PrimType primNum)] ->
-      return $ m :< WT.Prim (Prim.Type primNum)
+      return $ m :< WT.Prim (WP.Type primNum)
     [(_, GN.PrimOp primOp)] ->
-      return $ m :< WT.Prim (Prim.Op primOp)
+      return $ m :< WT.Prim (WP.Op primOp)
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       Throw.raiseError m $
@@ -258,9 +253,9 @@ resolveDefiniteDescription m dd = do
     Just (GN.EnumIntro enumTypeName discriminant) ->
       return $ m :< WT.EnumIntro (EC.EnumLabel enumTypeName discriminant (EV.EnumValueName dd))
     Just (GN.PrimType primNum) ->
-      return $ m :< WT.Prim (Prim.Type primNum)
+      return $ m :< WT.Prim (WP.Type primNum)
     Just (GN.PrimOp primOp) ->
-      return $ m :< WT.Prim (Prim.Op primOp)
+      return $ m :< WT.Prim (WP.Op primOp)
     Nothing ->
       Throw.raiseError m $ "undefined definite description: " <> DD.reify dd
 

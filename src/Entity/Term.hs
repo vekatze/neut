@@ -13,8 +13,7 @@ import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
-import qualified Entity.Prim as Prim
-import Entity.PrimNumSize
+import qualified Entity.Prim as P
 import GHC.Generics (Generic)
 
 type Term = Cofree TermF Hint
@@ -30,9 +29,7 @@ data TermF a
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
   | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
-  | Prim Prim.Prim
-  | Int IntSize Integer
-  | Float FloatSize Double
+  | Prim P.Prim
   | Enum EnumTypeName
   | EnumIntro EnumLabel
   | EnumElim (a, a) [(EnumCase, a)]

@@ -13,9 +13,9 @@ import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
 import Entity.Pattern
-import qualified Entity.Prim as Prim
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
+import qualified Entity.WeakPrim as WP
 
 type WeakTerm = Cofree WeakTermF Hint
 
@@ -31,9 +31,7 @@ data WeakTermF a
   | SigmaElim [BinderF a] a a
   | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | Aster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
-  | Prim Prim.Prim
-  | Int a Integer
-  | Float a Double
+  | Prim (WP.WeakPrim a)
   | Enum EnumTypeName
   | EnumIntro EnumLabel
   | EnumElim (a, a) [(EnumCase, a)]
@@ -50,11 +48,11 @@ toVar m x =
 
 i8 :: Hint -> WeakTerm
 i8 m =
-  m :< Prim (Prim.Type $ PT.Int $ IntSize 8)
+  m :< Prim (WP.Type $ PT.Int $ IntSize 8)
 
 i64 :: Hint -> WeakTerm
 i64 m =
-  m :< Prim (Prim.Type $ PT.Int $ IntSize 64)
+  m :< Prim (WP.Type $ PT.Int $ IntSize 64)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =

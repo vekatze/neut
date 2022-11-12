@@ -62,10 +62,6 @@ subst sub term =
       return $ m :< TM.Let mxt' e1' e2'
     (_ :< TM.Prim _) ->
       return term
-    (_ :< TM.Int {}) ->
-      return term
-    (_ :< TM.Float {}) ->
-      return term
     (_ :< TM.Enum {}) ->
       return term
     (_ :< TM.EnumIntro {}) ->

@@ -54,16 +54,11 @@ subst sub term =
       e1' <- subst sub e1
       (mxt', _, e2') <- subst'' sub mxt [] e2
       return $ m :< WT.Let mxt' e1' e2'
-    _ :< WT.Prim _ ->
-      return term
+    m :< WT.Prim prim -> do
+      prim' <- mapM (subst sub) prim
+      return $ m :< WT.Prim prim'
     _ :< WT.Aster {} ->
       return term
-    m :< WT.Int t x -> do
-      t' <- subst sub t
-      return $ m :< WT.Int t' x
-    m :< WT.Float t x -> do
-      t' <- subst sub t
-      return $ m :< WT.Float t' x
     _ :< WT.Enum {} ->
       return term
     _ :< WT.EnumIntro {} ->

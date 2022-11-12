@@ -25,6 +25,8 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.Log as L
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
@@ -150,13 +152,21 @@ simplify constraintList =
           | length es1 == length es2 -> do
               simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)
-          | a1 == a2 ->
+          | WP.Op op1 <- a1,
+            WP.Op op2 <- a2,
+            op1 == op2 ->
               simplify cs
-        (_ :< WT.Int t1 l1, _ :< WT.Int t2 l2)
-          | l1 == l2 ->
+          | WP.Type t1 <- a1,
+            WP.Type t2 <- a2,
+            t1 == t2 ->
+              simplify cs
+          | WP.Value (WPV.Int t1 l1) <- a1,
+            WP.Value (WPV.Int t2 l2) <- a2,
+            l1 == l2 ->
               simplify $ ((t1, t2), orig) : cs
-        (_ :< WT.Float t1 l1, _ :< WT.Float t2 l2)
-          | l1 == l2 ->
+          | WP.Value (WPV.Float t1 l1) <- a1,
+            WP.Value (WPV.Float t2 l2) <- a2,
+            l1 == l2 ->
               simplify $ ((t1, t2), orig) : cs
         (_ :< WT.Enum a1, _ :< WT.Enum a2)
           | a1 == a2 ->

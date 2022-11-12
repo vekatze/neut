@@ -35,12 +35,8 @@ holes term =
       S.union set1 set2
     _ :< WT.Aster h es ->
       S.insert h $ S.unions $ map holes es
-    _ :< WT.Prim _ ->
-      S.empty
-    _ :< WT.Int t _ ->
-      holes t
-    _ :< WT.Float t _ ->
-      holes t
+    _ :< WT.Prim prim ->
+      foldMap holes prim
     _ :< WT.Enum {} ->
       S.empty
     _ :< WT.EnumIntro {} ->
