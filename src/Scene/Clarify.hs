@@ -28,7 +28,7 @@ import qualified Entity.EnumCase as EC
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import Entity.Magic
 import Entity.Opacity
 import Entity.Pattern
@@ -125,13 +125,13 @@ clarifyTerm tenv term =
       clarifyTerm tenv $
         m
           :< TM.PiIntro
-            LamKindNormal
+            LK.Normal
             [(m, k, m :< TM.Pi [] (m :< TM.Tau))]
             (m :< TM.PiElim (m :< TM.Var k) es)
     m :< TM.SigmaElim xts e1 e2 -> do
-      clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro LamKindNormal xts e2]
+      clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro LK.Normal xts e2]
     m :< TM.Let mxt e1 e2 -> do
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LamKindNormal [mxt] e2) [e1]
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LK.Normal [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
         Prim.Op op ->
@@ -158,7 +158,7 @@ clarifyTerm tenv term =
       ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
       let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
       clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, arity, xts), body), i) -> do
-        closure <- clarifyLambda tenv LamKindNormal xts body fvs
+        closure <- clarifyLambda tenv LK.Normal xts body fvs
         (closureVarName, closureVar) <- Gensym.newValueVarLocalWith "clause"
         return
           ( () :< EC.Int i,
@@ -206,19 +206,19 @@ clarifyMagic tenv der =
 clarifyLambda ::
   Context m =>
   TM.TypeEnv ->
-  LamKindF TM.Term ->
+  LK.LamKindF TM.Term ->
   [(Hint, Ident, TM.Term)] ->
   TM.Term ->
   [BinderF TM.Term] ->
   m C.Comp
 clarifyLambda tenv kind mxts e fvs = do
-  e' <- clarifyTerm (insTypeEnv (catMaybes [fromLamKind kind] ++ mxts) tenv) e
+  e' <- clarifyTerm (insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
   case kind of
-    LamKindFix (_, x, _)
+    LK.Fix (_, x, _)
       | S.member x (freeVars e') ->
           returnClosure tenv OpacityOpaque kind fvs mxts e'
       | otherwise ->
-          returnClosure tenv OpacityTransparent LamKindNormal fvs mxts e'
+          returnClosure tenv OpacityTransparent LK.Normal fvs mxts e'
     _ ->
       returnClosure tenv OpacityTransparent kind fvs mxts e'
 
@@ -234,7 +234,7 @@ caseClauseToLambda :: (PatternF TM.Term, TM.Term) -> TM.Term
 caseClauseToLambda pat =
   case pat of
     ((mPat, _, _, xts), body) ->
-      mPat :< TM.PiIntro LamKindNormal xts body
+      mPat :< TM.PiIntro LK.Normal xts body
 
 clarifyPlus :: Context m => TM.TypeEnv -> TM.Term -> m (Ident, C.Comp, C.Value)
 clarifyPlus tenv e = do
@@ -258,7 +258,7 @@ chainFromTermList tenv es =
 
 alignFreeVariables :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> [C.Comp] -> m [C.Comp]
 alignFreeVariables tenv fvs es = do
-  es' <- mapM (returnClosure tenv OpacityTransparent LamKindNormal fvs []) es
+  es' <- mapM (returnClosure tenv OpacityTransparent LK.Normal fvs []) es
   mapM (`callClosure` []) es'
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
@@ -270,13 +270,13 @@ clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv OpacityTransparent LamKindNormal [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure tenv OpacityTransparent LK.Normal [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Context m =>
   TM.TypeEnv ->
   Opacity -> -- whether the closure is reducible
-  LamKindF TM.Term -> -- the name of newly created closure
+  LK.LamKindF TM.Term -> -- the name of newly created closure
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
@@ -290,16 +290,16 @@ returnClosure tenv opacity kind fvs xts e = do
   let fvEnv = C.SigmaIntro (map (\(_, x, _) -> C.VarLocal x) fvs')
   let arity = A.fromInt $ length xts'' + 1 -- arity == count(xts) + env
   case kind of
-    LamKindNormal -> do
+    LK.Normal -> do
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.lambdaName i
       registerIfNecessary name opacity xts'' fvs'' e
       return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name arity]
-    LamKindCons _ consName discriminant _ -> do
+    LK.Cons _ consName discriminant _ -> do
       let consDD = DD.getConsDD consName
       registerIfNecessary consDD opacity xts'' fvs'' e
       return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.Int (IntSize 64) (D.reify discriminant)]
-    LamKindFix (_, name, _) -> do
+    LK.Fix (_, name, _) -> do
       name' <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt name
       let cls = C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name' arity]
       e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
@@ -351,7 +351,7 @@ chainOf tenv term =
     _ :< TM.Pi {} ->
       []
     _ :< TM.PiIntro kind xts e ->
-      chainOf' tenv (catMaybes [fromLamKind kind] ++ xts) [e]
+      chainOf' tenv (catMaybes [LK.fromLamKind kind] ++ xts) [e]
     _ :< TM.PiElim e es -> do
       let xs1 = chainOf tenv e
       let xs2 = concatMap (chainOf tenv) es

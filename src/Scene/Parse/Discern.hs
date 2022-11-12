@@ -22,7 +22,7 @@ import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.PreTerm as PT
 import qualified Entity.Prim as Prim
@@ -83,16 +83,16 @@ discern nenv term =
       return $ m :< WT.Pi xts' t'
     m :< PT.PiIntro kind xts e -> do
       case kind of
-        LamKindFix xt -> do
+        LK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
-          return $ m :< WT.PiIntro (LamKindFix xt') xts' e'
-        LamKindCons dataName consName consNumber dataType -> do
+          return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
+        LK.Cons dataName consName consNumber dataType -> do
           dataType' <- discern nenv dataType
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro (LamKindCons dataName consName consNumber dataType') xts' e'
-        LamKindNormal -> do
+          return $ m :< WT.PiIntro (LK.Cons dataName consName consNumber dataType') xts' e'
+        LK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro LamKindNormal xts' e'
+          return $ m :< WT.PiIntro LK.Normal xts' e'
     m :< PT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e

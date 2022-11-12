@@ -12,7 +12,7 @@ import Entity.Hint
 import qualified Entity.HoleID as HID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import Entity.Pattern
 import qualified Entity.WeakTerm as WT
 
@@ -36,10 +36,10 @@ toText term =
           showCons ["Π", inParen $ showTypeArgs xts, toText cod]
     _ :< WT.PiIntro kind xts e -> do
       case kind of
-        LamKindFix (_, x, _) -> do
+        LK.Fix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["fix", showVariable x, argStr, toText e]
-        LamKindCons {} -> do
+        LK.Cons {} -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["λ", argStr, toText e]
         -- "<cons>"

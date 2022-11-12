@@ -10,7 +10,7 @@ import Control.Monad
 import qualified Data.IntMap as IntMap
 import Entity.Binder
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.WeakTerm as WT
 
 subst :: Context m => WT.SubstWeakTerm -> WT.WeakTerm -> m WT.WeakTerm
@@ -30,9 +30,9 @@ subst sub term =
       return $ m :< WT.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
       case kind of
-        LamKindFix xt -> do
+        LK.Fix xt -> do
           (xt', xts', e') <- subst'' sub xt xts e
-          return $ m :< WT.PiIntro (LamKindFix xt') xts' e'
+          return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
         _ -> do
           (xts', e') <- subst' sub xts e
           return $ m :< WT.PiIntro kind xts' e'

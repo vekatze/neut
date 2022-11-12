@@ -27,7 +27,7 @@ import qualified Entity.GlobalName as GN
 import Entity.Hint
 import qualified Entity.HoleSubst as HS
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import Entity.Pattern
 import qualified Entity.Prim as Prim
 import Entity.PrimNum
@@ -284,17 +284,17 @@ elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: Context m => LamKindF WT.WeakTerm -> m (LamKindF TM.Term)
+elaborateKind :: Context m => LK.LamKindF WT.WeakTerm -> m (LK.LamKindF TM.Term)
 elaborateKind kind =
   case kind of
-    LamKindNormal ->
-      return LamKindNormal
-    LamKindCons dataName consName consNumber dataType -> do
+    LK.Normal ->
+      return LK.Normal
+    LK.Cons dataName consName consNumber dataType -> do
       dataType' <- elaborate' dataType
-      return $ LamKindCons dataName consName consNumber dataType'
-    LamKindFix xt -> do
+      return $ LK.Cons dataName consName consNumber dataType'
+    LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
-      return $ LamKindFix xt'
+      return $ LK.Fix xt'
 
 checkSwitchExaustiveness :: Context m => Hint -> ET.EnumTypeName -> [EC.EnumCase] -> m ()
 checkSwitchExaustiveness m enumTypeName caseList = do

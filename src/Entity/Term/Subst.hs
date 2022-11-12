@@ -10,7 +10,7 @@ import qualified Data.IntMap as IntMap
 import Entity.Binder
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.Term as TM
 
 type SubstTerm =
@@ -36,9 +36,9 @@ subst sub term =
       return (m :< TM.Pi xts' t')
     (m :< TM.PiIntro kind xts e) -> do
       case kind of
-        LamKindFix xt -> do
+        LK.Fix xt -> do
           (xt' : xts', e') <- subst' sub (xt : xts) e
-          return (m :< TM.PiIntro (LamKindFix xt') xts' e')
+          return (m :< TM.PiIntro (LK.Fix xt') xts' e')
         _ -> do
           (xts', e') <- subst' sub xts e
           return (m :< TM.PiIntro kind xts' e')

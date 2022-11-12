@@ -7,7 +7,7 @@ where
 import Control.Comonad.Cofree
 import Entity.Hint
 import Entity.Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import Entity.PrimNum
 import qualified Entity.Term as TM
 import Entity.Term.FromPrimNum
@@ -70,12 +70,12 @@ weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
   (m, x, weaken t)
 
-weakenKind :: LamKindF TM.Term -> LamKindF WT.WeakTerm
+weakenKind :: LK.LamKindF TM.Term -> LK.LamKindF WT.WeakTerm
 weakenKind kind =
   case kind of
-    LamKindNormal ->
-      LamKindNormal
-    LamKindCons dataName consName consNumber dataType ->
-      LamKindCons dataName consName consNumber (weaken dataType)
-    LamKindFix xt ->
-      LamKindFix (weakenBinder xt)
+    LK.Normal ->
+      LK.Normal
+    LK.Cons dataName consName consNumber dataType ->
+      LK.Cons dataName consName consNumber (weaken dataType)
+    LK.Fix xt ->
+      LK.Fix (weakenBinder xt)

@@ -23,7 +23,7 @@ import qualified Entity.HoleID as HID
 import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import Entity.Log
 import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.Fill
@@ -117,23 +117,23 @@ simplify constraintList =
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
         (m1 :< WT.PiIntro kind1 xts1 e1, m2 :< WT.PiIntro kind2 xts2 e2)
-          | LamKindFix xt1@(_, x1, _) <- kind1,
-            LamKindFix xt2@(_, x2, _) <- kind2,
+          | LK.Fix xt1@(_, x1, _) <- kind1,
+            LK.Fix xt2@(_, x2, _) <- kind2,
             x1 == x2,
             length xts1 == length xts2 -> do
               yt1 <- asWeakBinder m1 e1
               yt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
               simplify $ cs' ++ cs
-          | LamKindNormal <- kind1,
-            LamKindNormal <- kind2,
+          | LK.Normal <- kind1,
+            LK.Normal <- kind2,
             length xts1 == length xts2 -> do
               xt1 <- asWeakBinder m1 e1
               xt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
-          | LamKindCons dataName1 consName1 consNumber1 dataType1 <- kind1,
-            LamKindCons dataName2 consName2 consNumber2 dataType2 <- kind2,
+          | LK.Cons dataName1 consName1 consNumber1 dataType1 <- kind1,
+            LK.Cons dataName2 consName2 consNumber2 dataType2 <- kind2,
             dataName1 == dataName2,
             consName1 == consName2,
             consNumber1 == consNumber2,

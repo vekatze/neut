@@ -5,7 +5,7 @@ import Control.Monad
 import qualified Data.IntMap as IntMap
 import qualified Entity.EnumCase as EC
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.FreeVars
 import qualified Entity.WeakTerm.Subst as Subst
@@ -19,24 +19,24 @@ reduce term =
       cod' <- reduce cod
       return $ m :< WT.Pi (zip3 ms xs ts') cod'
     m :< WT.PiIntro kind xts e
-      | LamKindFix (_, x, _) <- kind,
+      | LK.Fix (_, x, _) <- kind,
         x `notElem` freeVars e ->
-          reduce $ m :< WT.PiIntro LamKindNormal xts e
+          reduce $ m :< WT.PiIntro LK.Normal xts e
       | otherwise -> do
           let (ms, xs, ts) = unzip3 xts
           ts' <- mapM reduce ts
           e' <- reduce e
           case kind of
-            LamKindFix (mx, x, t) -> do
+            LK.Fix (mx, x, t) -> do
               t' <- reduce t
-              return (m :< WT.PiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+              return (m :< WT.PiIntro (LK.Fix (mx, x, t')) (zip3 ms xs ts') e')
             _ ->
               return (m :< WT.PiIntro kind (zip3 ms xs ts') e')
     m :< WT.PiElim e es -> do
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< WT.PiIntro LamKindNormal xts body)
+        (_ :< WT.PiIntro LK.Normal xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es'

@@ -73,7 +73,7 @@ import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.LowComp.Reduce as LowComp (Context)
 import qualified Entity.LowType as LT
 import qualified Entity.Module as M
@@ -500,7 +500,7 @@ instance Definition.Context App where
       asks defMap >>= \ref ->
         liftIO $
           modifyIORef ref $
-            Map.insert name (m :< WT.PiIntro LamKindNormal xts e)
+            Map.insert name (m :< WT.PiIntro LK.Normal xts e)
 
 instance Implicit.Context App where
   insert k v =

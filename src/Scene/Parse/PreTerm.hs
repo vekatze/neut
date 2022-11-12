@@ -26,7 +26,7 @@ import qualified Entity.GlobalLocator as GL
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reflect as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.LowType as LT
 import Entity.Magic
@@ -203,7 +203,7 @@ preTermPiIntroDef = do
   try $ keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
   let piType = mFun :< PT.Pi domBinderList codType
-  return $ m :< PT.PiIntro (LamKindFix (mFun, Ident.fromText functionName, piType)) domBinderList e
+  return $ m :< PT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
 
 preTermSigma :: Context m => Parser m PT.PreTerm
 preTermSigma = do
@@ -655,7 +655,7 @@ doNotCare m =
 
 lam :: Hint -> [BinderF PT.PreTerm] -> PT.PreTerm -> PT.PreTerm
 lam m varList e =
-  m :< PT.PiIntro LamKindNormal varList e
+  m :< PT.PiIntro LK.Normal varList e
 
 preVar :: Hint -> T.Text -> PT.PreTerm
 preVar m str =

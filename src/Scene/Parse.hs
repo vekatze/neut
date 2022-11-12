@@ -30,7 +30,7 @@ import Entity.Hint
 import qualified Entity.Ident.Reflect as Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import Entity.Opacity
 import qualified Entity.PreTerm as PT
@@ -273,7 +273,7 @@ parseDefineDataConstructor dataName dataArgs consInfoList discriminant = do
           dataType
           $ m
             :< PT.PiIntro
-              (LamKindCons dataName consName discriminant dataType)
+              (LK.Cons dataName consName discriminant dataType)
               [ (m, Ident.fromText (DD.reify consName), m :< PT.Pi consArgs (m :< PT.Tau))
               ]
               (m :< PT.PiElim (preVar m (DD.reify consName)) consArgs')

@@ -10,7 +10,7 @@ import Data.Maybe
 import Entity.Binder
 import Entity.HoleSubst
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.Reduce
 import Entity.WeakTerm.Subst
@@ -30,9 +30,9 @@ fill sub term =
       return $ m :< WT.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
       case kind of
-        LamKindFix xt -> do
+        LK.Fix xt -> do
           (xt', xts', e') <- fill'' sub xt xts e
-          return $ m :< WT.PiIntro (LamKindFix xt') xts' e'
+          return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
         _ -> do
           (xts', e') <- fill' sub xts e
           return $ m :< WT.PiIntro kind xts' e'

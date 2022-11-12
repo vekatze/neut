@@ -7,9 +7,9 @@ import qualified Entity.Discriminant as D
 import GHC.Generics
 
 data LamKindF a
-  = LamKindNormal
-  | LamKindCons DD.DefiniteDescription DD.DefiniteDescription D.Discriminant a
-  | LamKindFix (BinderF a)
+  = Normal
+  | Cons DD.DefiniteDescription DD.DefiniteDescription D.Discriminant a
+  | Fix (BinderF a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (LamKindF a)
@@ -17,7 +17,7 @@ instance (Binary a) => Binary (LamKindF a)
 fromLamKind :: LamKindF a -> Maybe (BinderF a)
 fromLamKind k =
   case k of
-    LamKindFix x ->
+    Fix x ->
       Just x
     _ ->
       Nothing

@@ -26,7 +26,7 @@ import qualified Entity.HoleID as HID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import Entity.Magic
 import Entity.Pattern
 import qualified Entity.Prim as Prim
@@ -79,17 +79,17 @@ infer' varEnv term =
       return (m :< WT.Pi xts' t', m :< WT.Tau)
     m :< WT.PiIntro kind xts e -> do
       case kind of
-        LamKindFix (mx, x, t) -> do
+        LK.Fix (mx, x, t) -> do
           t' <- inferType' varEnv t
           insWeakTypeEnv x t'
           (xts', (e', tCod)) <- inferBinder varEnv xts e
           let piType = m :< WT.Pi xts' tCod
           Env.insConstraintEnv piType t'
-          return (m :< WT.PiIntro (LamKindFix (mx, x, t')) xts' e', piType)
-        LamKindCons dataName consName discriminant dataType -> do
+          return (m :< WT.PiIntro (LK.Fix (mx, x, t')) xts' e', piType)
+        LK.Cons dataName consName discriminant dataType -> do
           dataType' <- inferType' varEnv dataType
           (xts', (e', _)) <- inferBinder varEnv xts e
-          return (m :< WT.PiIntro (LamKindCons dataName consName discriminant dataType') xts' e', dataType')
+          return (m :< WT.PiIntro (LK.Cons dataName consName discriminant dataType') xts' e', dataType')
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
           return (m :< WT.PiIntro kind xts' e', m :< WT.Pi xts' t')

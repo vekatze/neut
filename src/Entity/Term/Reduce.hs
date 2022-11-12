@@ -5,7 +5,7 @@ import Control.Monad
 import qualified Data.IntMap as IntMap
 import qualified Entity.EnumCase as EC
 import qualified Entity.Ident.Reify as Ident
-import Entity.LamKind
+import qualified Entity.LamKind as LK
 import qualified Entity.Term as TM
 import qualified Entity.Term.Subst as Subst
 
@@ -22,9 +22,9 @@ reduce term =
       ts' <- mapM reduce ts
       e' <- reduce e
       case kind of
-        LamKindFix (mx, x, t) -> do
+        LK.Fix (mx, x, t) -> do
           t' <- reduce t
-          return (m :< TM.PiIntro (LamKindFix (mx, x, t')) (zip3 ms xs ts') e')
+          return (m :< TM.PiIntro (LK.Fix (mx, x, t')) (zip3 ms xs ts') e')
         _ ->
           return (m :< TM.PiIntro kind (zip3 ms xs ts') e')
     (m :< TM.PiElim e es) -> do
@@ -33,7 +33,7 @@ reduce term =
       let app = TM.PiElim e' es'
       case e' of
         -- (_ :< TM.PiIntro opacity LamKindNormal xts body)
-        (_ :< TM.PiIntro LamKindNormal xts (_ :< body))
+        (_ :< TM.PiIntro LK.Normal xts (_ :< body))
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es'
