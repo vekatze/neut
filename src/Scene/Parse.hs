@@ -149,7 +149,7 @@ parseLocator = do
       Right <$> parseGlobalLocator
     ]
 
-parseStmt :: Context m => P.Parser m [PreStmt]
+parseStmt :: Context m => P.Parser m [RawStmt]
 parseStmt = do
   choice
     [ parseDefineData,
@@ -178,17 +178,17 @@ parseGlobalLocator = do
 -- parser for statements
 --
 
-parseSection :: Context m => P.Parser m PreStmt
+parseSection :: Context m => P.Parser m RawStmt
 parseSection = do
   try $ P.keyword "section"
   section <- Section.Section <$> P.baseName
   Locator.withLiftedSection section $ do
     stmtList <- concat <$> many parseStmt
     P.keyword "end"
-    return $ PreStmtSection section stmtList
+    return $ RawStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Context m => O.Opacity -> P.Parser m PreStmt
+parseDefine :: Context m => O.Opacity -> P.Parser m RawStmt
 parseDefine opacity = do
   try $
     case opacity of
@@ -210,12 +210,12 @@ defineFunction ::
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm ->
-  m PreStmt
+  m RawStmt
 defineFunction opacity m name impArgNum binder codType e = do
   Global.registerTopLevelFunc m name (A.fromInt (length binder))
-  return $ PreStmtDefine opacity m name impArgNum binder codType e
+  return $ RawStmtDefine opacity m name impArgNum binder codType e
 
-parseDefineData :: Context m => P.Parser m [PreStmt]
+parseDefineData :: Context m => P.Parser m [RawStmt]
 parseDefineData = do
   m <- P.getCurrentHint
   try $ P.keyword "define-data"
@@ -230,12 +230,12 @@ defineData ::
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [(Hint, T.Text, [BinderF RT.RawTerm])] ->
-  m [PreStmt]
+  m [RawStmt]
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   setAsData m dataName (A.fromInt (length dataArgs)) consInfoList'
   let consType = m :< RT.Pi [] (m :< RT.Tau)
-  let formRule = PreStmtDefine O.Opaque m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) consType
+  let formRule = RawStmtDefine O.Opaque m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) consType
   introRuleList <- parseDefineDataConstructor dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -255,7 +255,7 @@ parseDefineDataConstructor ::
   [BinderF RT.RawTerm] ->
   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
-  m [PreStmt]
+  m [RawStmt]
 parseDefineDataConstructor dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
@@ -299,7 +299,7 @@ parseDefineDataClauseArg = do
       weakTermToWeakIdent m rawTerm
     ]
 
-parseDefineCodata :: Context m => P.Parser m [PreStmt]
+parseDefineCodata :: Context m => P.Parser m [RawStmt]
 parseDefineCodata = do
   m <- P.getCurrentHint
   try $ P.keyword "define-codata"
@@ -316,7 +316,7 @@ parseDefineCodataElim ::
   [BinderF RT.RawTerm] ->
   [BinderF RT.RawTerm] ->
   BinderF RT.RawTerm ->
-  m PreStmt
+  m RawStmt
 parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = constructDataType m dataName dataArgs
   recordVarText <- Gensym.newText

@@ -18,11 +18,11 @@ import GHC.Generics
 import Path
 
 type PreProgram =
-  (Path Abs File, [PreStmt])
+  (Path Abs File, [RawStmt])
 
-data PreStmt
-  = PreStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF RT.RawTerm] RT.RawTerm RT.RawTerm
-  | PreStmtSection Section.Section [PreStmt]
+data RawStmt
+  = RawStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF RT.RawTerm] RT.RawTerm RT.RawTerm
+  | RawStmtSection Section.Section [RawStmt]
 
 data WeakStmt
   = WeakStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WT.WeakTerm] WT.WeakTerm WT.WeakTerm

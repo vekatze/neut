@@ -44,18 +44,18 @@ type NameEnv = [(T.Text, (Hint, Ident))]
 empty :: NameEnv
 empty = []
 
-discernStmtList :: Context m => [PreStmt] -> m [WeakStmt]
+discernStmtList :: Context m => [RawStmt] -> m [WeakStmt]
 discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    PreStmtDefine isReducible m functionName impArgNum xts codType e : rest -> do
+    RawStmtDefine isReducible m functionName impArgNum xts codType e : rest -> do
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
       e' <- discern nenv e
       rest' <- discernStmtList rest
       return $ WeakStmtDefine isReducible m functionName impArgNum xts' codType' e' : rest'
-    PreStmtSection section innerStmtList : rest -> do
+    RawStmtSection section innerStmtList : rest -> do
       Locator.withSection section $ do
         innerStmtList' <- discernStmtList innerStmtList
         rest' <- discernStmtList rest
