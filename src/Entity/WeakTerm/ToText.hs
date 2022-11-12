@@ -141,14 +141,14 @@ showPrim prim =
   case prim of
     WP.Type t ->
       PT.toText t
-    WP.Op (PO.PrimOp opName _ _) ->
-      opName
     WP.Value primValue ->
       case primValue of
         WPV.Int _ v ->
           T.pack (show v)
         WPV.Float _ v ->
           T.pack (show v)
+        WPV.Op (PO.PrimOp opName _ _) ->
+          opName
 
 showCons :: [T.Text] -> T.Text
 showCons =

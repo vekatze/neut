@@ -135,8 +135,6 @@ clarifyTerm tenv term =
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LK.Normal [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
-        P.Op op ->
-          clarifyPrimOp tenv op m
         P.Type _ ->
           return returnImmediateS4
         P.Value primValue ->
@@ -145,6 +143,8 @@ clarifyTerm tenv term =
               return $ C.UpIntro (C.Int size l)
             PV.Float size l ->
               return $ C.UpIntro (C.Float size l)
+            PV.Op op ->
+              clarifyPrimOp tenv op m
     _ :< TM.Enum {} ->
       return returnImmediateS4
     _ :< TM.EnumIntro label ->

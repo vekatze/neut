@@ -142,9 +142,6 @@ infer' varEnv term =
     m :< WT.Prim prim
       | WP.Type _ <- prim ->
           return (term, m :< WT.Tau)
-      | WP.Op op <- prim -> do
-          primOpType <- primOpToType m op
-          return (term, weaken primOpType)
       | WP.Value primValue <- prim ->
           case primValue of
             WPV.Int t v -> do
@@ -153,6 +150,9 @@ infer' varEnv term =
             WPV.Float t v -> do
               t' <- inferType' [] t
               return (m :< WT.Prim (WP.Value (WPV.Float t' v)), t')
+            WPV.Op op -> do
+              primOpType <- primOpToType m op
+              return (term, weaken primOpType)
     m :< WT.Enum _ ->
       return (term, m :< WT.Tau)
     m :< WT.EnumIntro (EC.EnumLabel k _ _) -> do

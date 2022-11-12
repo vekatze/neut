@@ -28,6 +28,7 @@ import qualified Entity.RawTerm as RT
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
 import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 
 class
@@ -230,7 +231,7 @@ resolveName m name = do
     [(_, GN.PrimType primNum)] ->
       return $ m :< WT.Prim (WP.Type primNum)
     [(_, GN.PrimOp primOp)] ->
-      return $ m :< WT.Prim (WP.Op primOp)
+      return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       Throw.raiseError m $
@@ -255,7 +256,7 @@ resolveDefiniteDescription m dd = do
     Just (GN.PrimType primNum) ->
       return $ m :< WT.Prim (WP.Type primNum)
     Just (GN.PrimOp primOp) ->
-      return $ m :< WT.Prim (WP.Op primOp)
+      return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     Nothing ->
       Throw.raiseError m $ "undefined definite description: " <> DD.reify dd
 

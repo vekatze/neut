@@ -152,10 +152,6 @@ simplify constraintList =
           | length es1 == length es2 -> do
               simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)
-          | WP.Op op1 <- a1,
-            WP.Op op2 <- a2,
-            op1 == op2 ->
-              simplify cs
           | WP.Type t1 <- a1,
             WP.Type t2 <- a2,
             t1 == t2 ->
@@ -168,6 +164,10 @@ simplify constraintList =
             WP.Value (WPV.Float t2 l2) <- a2,
             l1 == l2 ->
               simplify $ ((t1, t2), orig) : cs
+          | WP.Value (WPV.Op op1) <- a1,
+            WP.Value (WPV.Op op2) <- a2,
+            op1 == op2 ->
+              simplify cs
         (_ :< WT.Enum a1, _ :< WT.Enum a2)
           | a1 == a2 ->
               simplify cs

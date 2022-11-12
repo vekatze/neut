@@ -183,8 +183,6 @@ elaborate' term =
               Throw.raiseError m "arity mismatch"
     m :< WT.Prim prim ->
       case prim of
-        WP.Op op ->
-          return $ m :< TM.Prim (P.Op op)
         WP.Type t ->
           return $ m :< TM.Prim (P.Type t)
         WP.Value primValue ->
@@ -211,6 +209,8 @@ elaborate' term =
                       <> T.pack (show x)
                       <> "` is a float, but its type is: "
                       <> toText (weaken t')
+            WPV.Op op ->
+              return $ m :< TM.Prim (P.Value (PV.Op op))
     m :< WT.Enum k ->
       return $ m :< TM.Enum k
     m :< WT.EnumIntro label ->

@@ -83,8 +83,6 @@ weakenKind kind =
 weakenPrim :: Hint -> P.Prim -> WP.WeakPrim WT.WeakTerm
 weakenPrim m prim =
   case prim of
-    P.Op op ->
-      WP.Op op
     P.Type t ->
       WP.Type t
     P.Value v ->
@@ -94,3 +92,5 @@ weakenPrim m prim =
             WPV.Int (weaken (fromPrimNum m (PT.Int size))) integer
           PV.Float size float ->
             WPV.Float (weaken (fromPrimNum m (PT.Float size))) float
+          PV.Op op ->
+            WPV.Op op
