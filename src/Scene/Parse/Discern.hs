@@ -12,18 +12,27 @@ import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import qualified Data.Maybe as Maybe
+import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Vector as V
+import qualified Entity.Arity as A
 import Entity.Binder
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
+import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
+import qualified Entity.Pattern as PAT
+import qualified Entity.Pattern.Fallback as PATF
+import qualified Entity.Pattern.Specialize as PATS
+import qualified Entity.RawPattern as RP
 import qualified Entity.RawTerm as RT
 import Entity.Stmt
 import qualified Entity.UnresolvedName as UN
@@ -36,7 +45,9 @@ class
     Gensym.Context m,
     Global.Context m,
     Locator.Context m,
-    Alias.Context m
+    Alias.Context m,
+    PATF.Context m,
+    PATS.Context m
   ) =>
   Context m
 
@@ -138,18 +149,12 @@ discern nenv term =
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
-    m :< RT.Match (e, t) clauseList -> do
-      e' <- discern nenv e
-      t' <- discern nenv t
-      clauseList' <- forM clauseList $ \((mCons, cons, xts), body) -> do
-        (cons', unresolvedConsName) <- resolveConstructor mCons cons
-        case cons' of
-          _ :< WT.VarGlobal consName arity -> do
-            (xts', body') <- discernBinderWithBody nenv xts body
-            return ((mCons, consName, arity, xts'), body')
-          _ ->
-            Throw.raiseError m $ "no such constructor is defined: " <> unresolvedConsName
-      return $ m :< WT.Match (e', t') clauseList'
+    m :< RT.DataElim es patternMatrix -> do
+      os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
+      es' <- mapM (discern nenv) es
+      ts <- mapM (const $ Gensym.newAster m []) es'
+      decisionTree <- discernPatternMatrix nenv m patternMatrix >>= compilePatternMatrix m (V.fromList os)
+      return $ m :< WT.DataElim (zip3 os es' ts) decisionTree
 
 discernBinder ::
   Context m =>
@@ -263,13 +268,124 @@ resolveDefiniteDescription m dd = do
 resolveConstructor ::
   Context m =>
   Hint ->
-  Either UN.UnresolvedName DD.DefiniteDescription ->
+  Either UN.UnresolvedName (GL.GlobalLocator, LL.LocalLocator) ->
   m (WT.WeakTerm, T.Text)
 resolveConstructor m cons = do
   case cons of
     Left (UN.UnresolvedName consName') -> do
       term <- resolveName m consName'
       return (term, consName')
-    Right dd -> do
+    Right (globalLocator, localLocator) -> do
+      sgl <- Alias.resolveAlias m globalLocator
+      let dd = DD.new sgl localLocator
       term <- resolveDefiniteDescription m dd
       return (term, DD.reify dd)
+
+discernPatternMatrix ::
+  Context m =>
+  NameEnv ->
+  Hint ->
+  RP.RawPatternMatrix RT.RawTerm ->
+  m (PAT.PatternMatrix ([Ident], WT.WeakTerm))
+discernPatternMatrix nenv m patternMatrix =
+  case RP.unconsRow patternMatrix of
+    Nothing ->
+      return $ PAT.new []
+    Just (row, rows) -> do
+      row' <- discernPatternRow nenv m row
+      rows' <- discernPatternMatrix nenv m rows
+      return $ PAT.consRow row' rows'
+
+discernPatternRow ::
+  Context m =>
+  NameEnv ->
+  Hint ->
+  RP.RawPatternRow RT.RawTerm ->
+  m (PAT.PatternRow ([Ident], WT.WeakTerm))
+discernPatternRow nenv m (patList, body) = do
+  let vars = RP.rowVars patList
+  vars' <- mapM (Gensym.newIdentFromIdent . snd) vars
+  when (S.size (S.fromList vars') /= length vars') $ do
+    Throw.raiseError m "found a non-linear pattern"
+  let nenv' = zipWith (\(mv, var) var' -> (Ident.toText var, (mv, var'))) vars vars'
+  patList' <- mapM (discernPattern nenv') patList
+  body' <- discern (nenv' ++ nenv) body
+  return (patList', ([], body'))
+
+discernPattern ::
+  Context m =>
+  NameEnv ->
+  (Hint, RP.RawPattern) ->
+  m (Hint, PAT.Pattern)
+discernPattern nenv (m, pat) =
+  case pat of
+    RP.Var x ->
+      case lookup (Ident.toText x) nenv of
+        Nothing ->
+          return (m, PAT.Var x)
+        Just (_, x') ->
+          return (m, PAT.Var x')
+    RP.Cons cons args -> do
+      (cons', origName) <- resolveConstructor m cons
+      case cons' of
+        _ :< WT.VarGlobal consName arity -> do
+          args' <- mapM (discernPattern nenv) args
+          return (m, PAT.Cons consName arity args')
+        _ ->
+          Throw.raiseError m $ "no such constructor is defined: " <> origName
+
+-- This translation is based on:
+--   https://dl.acm.org/doi/10.1145/1411304.1411311
+compilePatternMatrix ::
+  Context m =>
+  Hint ->
+  V.Vector Ident ->
+  PAT.PatternMatrix ([Ident], WT.WeakTerm) ->
+  m (DT.DecisionTree WT.WeakTerm)
+compilePatternMatrix m occurrences mat =
+  case PAT.unconsRow mat of
+    Nothing ->
+      return DT.Unreachable
+    Just (row, _) ->
+      case PAT.getClauseBody row of
+        Right (usedVars, (freedVars, body)) -> do
+          DT.Leaf freedVars <$> bindLet m (zip (V.toList occurrences) usedVars) body
+        Left i ->
+          if i > 0
+            then do
+              occurrences' <- swapOccurrenceColumn m i occurrences
+              mat' <- PAT.swapColumn m i mat
+              compilePatternMatrix m occurrences' mat'
+            else do
+              let headConstructors = PAT.getHeadConstructors mat
+              let cursor = V.head occurrences
+              clauseList <- forM (S.toList headConstructors) $ \(cons, arity) -> do
+                vars <- mapM (const $ Gensym.newIdentFromText "arity") [1 .. A.reify arity]
+                let occurrences' = V.fromList vars <> V.tail occurrences
+                specialMatrix <- PATS.specialize cursor (cons, arity) mat
+                specialDecisionTree <- compilePatternMatrix m occurrences' specialMatrix
+                holes <- mapM (const $ Gensym.newAster m []) vars
+                let binder = zipWith (\var hole -> (m, var, hole)) vars holes
+                return (DT.Cons cons arity binder specialDecisionTree)
+              fallbackMatrix <- PATF.getFallbackMatrix cursor mat
+              fallbackClause <- compilePatternMatrix m (V.tail occurrences) fallbackMatrix
+              return $ DT.Switch (fallbackClause, clauseList)
+
+bindLet :: Context m => Hint -> [(Ident, Maybe Ident)] -> WT.WeakTerm -> m WT.WeakTerm
+bindLet m binder cont =
+  case binder of
+    [] ->
+      return cont
+    (_, Nothing) : xes -> do
+      bindLet m xes cont
+    (from, Just to) : xes -> do
+      h <- Gensym.newAster m []
+      cont' <- bindLet m xes cont
+      return $ m :< WT.Let (m, from, h) (m :< WT.Var to) cont'
+
+swapOccurrenceColumn :: Throw.Context m => Hint -> Int -> V.Vector Ident -> m (V.Vector Ident)
+swapOccurrenceColumn m i xs = do
+  let len = length xs
+  if not (0 <= i && i < len)
+    then Throw.raiseCritical m $ T.pack $ "the index " ++ show i ++ " exceeds the list size " ++ show len ++ "."
+    else return $ V.update xs $ V.fromList [(0, xs V.! i), (i, xs V.! 0)]

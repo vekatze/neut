@@ -56,7 +56,7 @@ freeVars term =
       S.union set1 set2
     _ :< WT.Magic der ->
       foldMap freeVars der
-    _ :< WT.Match (e, t) patList -> do
+    _ :< WT.DataElim oets patList -> do
       let xs1 = freeVars e
       let xs2 = freeVars t
       let xs3 = S.unions $ map (\((_, _, _, xts), body) -> freeVars' xts [body]) patList

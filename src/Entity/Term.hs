@@ -5,6 +5,7 @@ import Data.Binary
 import qualified Data.IntMap as IntMap
 import Entity.Arity
 import Entity.Binder
+import Entity.DecisionTree
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumTypeName
@@ -12,7 +13,6 @@ import Entity.Hint
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
-import Entity.Pattern
 import qualified Entity.Prim as P
 import GHC.Generics (Generic)
 
@@ -34,7 +34,7 @@ data TermF a
   | EnumIntro EnumLabel
   | EnumElim (a, a) [(EnumCase, a)]
   | Magic (Magic a)
-  | Match (a, a) [(PatternF a, a)]
+  | Match (a, a) (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

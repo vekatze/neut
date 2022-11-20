@@ -149,14 +149,18 @@ importBlock :: Context m => Parser m a -> Parser m a
 importBlock =
   between (keyword "import") (keyword "end")
 
+commaList :: Context m => Parser m a -> Parser m [a]
+commaList f = do
+  sepBy f (delimiter ",")
+
 argList :: Context m => Parser m a -> Parser m [a]
 argList f = do
-  betweenParen $ sepBy f (delimiter ",")
+  betweenParen $ commaList f
 
 impArgList :: Context m => Parser m a -> Parser m [a]
 impArgList f =
   choice
-    [ betweenAngle $ sepBy f (delimiter ","),
+    [ betweenAngle $ commaList f,
       return []
     ]
 

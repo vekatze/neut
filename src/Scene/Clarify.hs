@@ -132,6 +132,9 @@ clarifyTerm tenv term =
     m :< TM.SigmaElim xts e1 e2 -> do
       clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro LK.Normal xts e2]
     m :< TM.Let mxt e1 e2 -> do
+      -- fixme: do the following instead:
+      --   bind x = clarify(e1) in
+      --   linearize(chain(x), clarify(e2))
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LK.Normal [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of

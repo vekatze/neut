@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import qualified Data.IntMap as IntMap
 import Entity.Arity
 import Entity.Binder
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import Entity.EnumCase
 import Entity.EnumTypeName
@@ -12,7 +13,6 @@ import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
-import Entity.Pattern
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
 import qualified Entity.WeakPrim as WP
@@ -37,7 +37,7 @@ data WeakTermF a
   | EnumElim (a, a) [(EnumCase, a)]
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | Match (a, a) [(PatternF a, a)] -- (pattern-matched value, its type) [(pattern, body)]
+  | DataElim [(Ident, a, a)] (DT.DecisionTree a)
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm

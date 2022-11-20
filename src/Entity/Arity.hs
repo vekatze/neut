@@ -4,7 +4,7 @@ import Data.Binary
 import GHC.Generics (Generic)
 
 newtype Arity = Arity {reify :: Integer}
-  deriving (Show, Generic)
+  deriving (Show, Generic, Ord, Eq)
 
 instance Binary Arity
 

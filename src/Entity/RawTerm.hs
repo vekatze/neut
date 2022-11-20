@@ -21,9 +21,9 @@ import Entity.Ident
 import Entity.LamKind
 import qualified Entity.LocalLocator as LL
 import Entity.Magic
-import Entity.Pattern
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
+import qualified Entity.RawPattern as RP
 import qualified Entity.WeakPrim as WP
 
 type RawTerm = Cofree RawTermF Hint
@@ -36,6 +36,7 @@ data RawTermF a
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
+  | DataElim [a] (RP.RawPatternMatrix a) -- (pattern-matched value, its type)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
@@ -47,7 +48,6 @@ data RawTermF a
   | EnumElim (a, a) [(PreEnumCase, a)]
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | Match (a, a) [(PrePatternF a, a)] -- (pattern-matched value, its type)
 
 type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)

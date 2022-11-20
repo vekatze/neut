@@ -16,6 +16,7 @@ import Control.Monad.Trans
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import Entity.Binder
 import Entity.Const
 import qualified Entity.Discriminant as D
@@ -30,8 +31,8 @@ import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
-import Entity.Pattern
 import qualified Entity.PrimType.FromText as PT
+import qualified Entity.RawPattern as RP
 import qualified Entity.RawTerm as RT
 import qualified Entity.TargetPlatform as TP
 import qualified Entity.UnresolvedName as UN
@@ -70,7 +71,7 @@ rawTermEasy = do
       rawTermIf,
       try rawTermLetSigmaElim,
       rawTermLet,
-      rawTermLetCoproduct,
+      -- rawTermLetCoproduct,
       try rawTermPi,
       try rawTermPiElim,
       try rawTermPiElimInv,
@@ -104,32 +105,32 @@ rawTermLet = do
 
 -- let? x : A = e1 in e2
 -- let? x     = e1 in e2
-rawTermLetCoproduct :: Context m => Parser m RT.RawTerm
-rawTermLetCoproduct = do
-  m <- getCurrentHint
-  try $ keyword "let?"
-  x <- rawTermLetVar
-  delimiter "="
-  e1 <- rawTerm
-  keyword "in"
-  e2 <- rawTerm
-  err <- lift $ Gensym.newTextualIdentFromText "err"
-  typeOfLeft <- lift $ Gensym.newPreAster m
-  typeOfRight <- lift $ Gensym.newPreAster m
-  let sumLeft = Left $ UN.UnresolvedName "base.sum::left"
-  let sumRight = Left $ UN.UnresolvedName "base.sum::right"
-  let sumLeftVar = Ident.fromText "sum.left"
-  return $
-    m
-      :< RT.Match
-        (e1, doNotCare m)
-        [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
-            m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
-          ),
-          ( (m, sumRight, [x]),
-            e2
-          )
-        ]
+-- rawTermLetCoproduct :: Context m => Parser m RT.RawTerm
+-- rawTermLetCoproduct = do
+--   m <- getCurrentHint
+--   try $ keyword "let?"
+--   x <- rawTermLetVar
+--   delimiter "="
+--   e1 <- rawTerm
+--   keyword "in"
+--   e2 <- rawTerm
+--   err <- lift $ Gensym.newTextualIdentFromText "err"
+--   typeOfLeft <- lift $ Gensym.newPreAster m
+--   typeOfRight <- lift $ Gensym.newPreAster m
+--   let sumLeft = Left $ UN.UnresolvedName "base.sum::left"
+--   let sumRight = Left $ UN.UnresolvedName "base.sum::right"
+--   let sumLeftVar = Ident.fromText "sum.left"
+--   return $
+--     m
+--       :< RT.Match
+--         (e1, doNotCare m)
+--         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
+--             m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
+--           ),
+--           ( (m, sumRight, [x]),
+--             e2
+--           )
+--         ]
 
 rawTermVoid :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
 rawTermVoid m e1 = do
@@ -370,27 +371,43 @@ lowTypeNumber = do
     _ -> do
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 
-rawTermMatch :: Context m => Parser m RT.RawTerm
+rawTermMatch :: (Context m, Throw.Context m) => Parser m RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
   try $ keyword "match"
-  e <- rawTerm
-  clauseList <- withBlock $ manyList rawTermMatchClause
-  return $ m :< RT.Match (e, doNotCare m) clauseList
+  es <- commaList rawTerm
+  patternRowList <- withBlock $ manyList rawTermPatternRow
+  return $ m :< RT.DataElim es (RP.new patternRowList)
 
-rawTermMatchClause :: Context m => Parser m (PrePatternF RT.RawTerm, RT.RawTerm)
-rawTermMatchClause = do
-  pat <- rawTermPattern
+rawTermPatternRow :: Context m => Parser m (RP.RawPatternRow RT.RawTerm)
+rawTermPatternRow = do
+  patternList <- many rawTermPattern
   delimiter "->"
   body <- rawTerm
-  return (pat, body)
+  return (V.fromList patternList, body)
 
-rawTermPattern :: Context m => Parser m (PrePatternF RT.RawTerm)
+rawTermPattern :: Context m => Parser m (Hint, RP.RawPattern)
 rawTermPattern = do
+  choice [try rawTermPatternConsStrict, try rawTermPatternCons, rawTermPatternVar]
+
+rawTermPatternConsStrict :: Context m => Parser m (Hint, RP.RawPattern)
+rawTermPatternConsStrict = do
+  (m, globalLocator, localLocator) <- parseDefiniteDescription
+  patArgs <- argList rawTermPattern
+  return (m, RP.Cons (Right (globalLocator, localLocator)) patArgs)
+
+rawTermPatternCons :: Context m => Parser m (Hint, RP.RawPattern)
+rawTermPatternCons = do
   m <- getCurrentHint
   c <- symbol
-  patArgs <- argList preBinder
-  return (m, Left $ UN.UnresolvedName c, patArgs)
+  patArgs <- argList rawTermPattern
+  return (m, RP.Cons (Left $ UN.UnresolvedName c) patArgs)
+
+rawTermPatternVar :: Context m => Parser m (Hint, RP.RawPattern)
+rawTermPatternVar = do
+  m <- getCurrentHint
+  varText <- symbol
+  return (m, RP.Var (Ident.fromText varText))
 
 -- let (x1 : A1, ..., xn : An) = e1 in e2
 rawTermLetSigmaElim :: Context m => Parser m RT.RawTerm
@@ -653,9 +670,9 @@ rawTermFloat = do
   h <- lift $ Gensym.newPreAster m
   return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
 
-doNotCare :: Hint -> RT.RawTerm
-doNotCare m =
-  m :< RT.Tau
+-- doNotCare :: Hint -> RT.RawTerm
+-- doNotCare m =
+--   m :< RT.Tau
 
 lam :: Hint -> [BinderF RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
@@ -665,6 +682,6 @@ preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
   m :< RT.Var (Ident.fromText str)
 
-preVar' :: Hint -> Ident -> RT.RawTerm
-preVar' m ident =
-  m :< RT.Var ident
+-- preVar' :: Hint -> Ident -> RT.RawTerm
+-- preVar' m ident =
+--   m :< RT.Var ident

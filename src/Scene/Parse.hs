@@ -306,34 +306,35 @@ parseDefineCodata = do
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   elemInfoList <- P.asBlock $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
-  elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
-  return $ formRule ++ elimRuleList
+  -- formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
 
-parseDefineCodataElim ::
-  Context m =>
-  DD.DefiniteDescription ->
-  [BinderF RT.RawTerm] ->
-  [BinderF RT.RawTerm] ->
-  BinderF RT.RawTerm ->
-  m RawStmt
-parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
-  let codataType = constructDataType m dataName dataArgs
-  recordVarText <- Gensym.newText
-  let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
-  projectionName <- DD.extend m dataName $ Ident.toText elemName
-  let newDD = DD.extendLL dataName $ LL.new [] BN.new
-  defineFunction
-    O.Opaque
-    m
-    projectionName -- e.g. some-lib.foo::my-record.element-x
-    (I.fromInt $ length dataArgs)
-    projArgs
-    elemType
-    $ m
-      :< RT.Match
-        (preVar m recordVarText, codataType)
-        [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
+-- elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
+-- return $ formRule ++ elimRuleList
+-- parseDefineCodataElim ::
+--   Context m =>
+--   DD.DefiniteDescription ->
+--   [BinderF RT.RawTerm] ->
+--   [BinderF RT.RawTerm] ->
+--   BinderF RT.RawTerm ->
+--   m RawStmt
+-- parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
+--   let codataType = constructDataType m dataName dataArgs
+--   recordVarText <- Gensym.newText
+--   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
+--   projectionName <- DD.extend m dataName $ Ident.toText elemName
+--   let newDD = DD.extendLL dataName $ LL.new [] BN.new
+--   defineFunction
+--     O.Opaque
+--     m
+--     projectionName -- e.g. some-lib.foo::my-record.element-x
+--     (I.fromInt $ length dataArgs)
+--     projArgs
+--     elemType
+--     $ m
+--       :< RT.Match
+--         (preVar m recordVarText, codataType)
+--         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
 
 setAsData ::
   Global.Context m =>
