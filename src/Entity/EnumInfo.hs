@@ -69,9 +69,9 @@ isLinear' found input =
       True
     (x : xs)
       | x `S.member` found ->
-        False
+          False
       | otherwise ->
-        isLinear' (S.insert x found) xs
+          isLinear' (S.insert x found) xs
 
 constBottom :: EnumTypeName
 constBottom =

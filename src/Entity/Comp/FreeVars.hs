@@ -23,17 +23,20 @@ freeVarsComp c =
       let s1 = freeVarsComp e1
       let s2 = S.filter (/= x) $ freeVarsComp e2
       S.union s1 s2
-    C.EnumElim v caseList -> do
+    C.EnumElim v defaultBranch caseList -> do
       let s1 = freeVarsValue v
       let (_, es) = unzip caseList
-      let s2 = S.unions (map freeVarsComp es)
-      S.union s1 s2
+      let s2 = freeVarsComp defaultBranch
+      let s3 = S.unions (map freeVarsComp es)
+      S.unions [s1, s2, s3]
     C.Primitive prim ->
       case prim of
         C.PrimOp _ vs ->
           S.unions $ map freeVarsValue vs
         C.Magic der ->
           foldMap freeVarsValue der
+    C.Unreachable ->
+      S.empty
 
 freeVarsValue :: C.Value -> S.Set Ident
 freeVarsValue v =

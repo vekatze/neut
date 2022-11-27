@@ -12,6 +12,7 @@ where
 import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
+import Control.Monad
 import Control.Monad.Trans
 import Data.List
 import qualified Data.Set as S
@@ -71,7 +72,7 @@ rawTermEasy = do
       rawTermIf,
       try rawTermLetSigmaElim,
       rawTermLet,
-      -- rawTermLetCoproduct,
+      rawTermLetCoproduct,
       try rawTermPi,
       try rawTermPiElim,
       try rawTermPiElimInv,
@@ -103,34 +104,35 @@ rawTermLet = do
   e2 <- rawTerm
   return $ m :< RT.Let x e1 e2
 
--- let? x : A = e1 in e2
 -- let? x     = e1 in e2
--- rawTermLetCoproduct :: Context m => Parser m RT.RawTerm
--- rawTermLetCoproduct = do
---   m <- getCurrentHint
---   try $ keyword "let?"
---   x <- rawTermLetVar
---   delimiter "="
---   e1 <- rawTerm
---   keyword "in"
---   e2 <- rawTerm
---   err <- lift $ Gensym.newTextualIdentFromText "err"
---   typeOfLeft <- lift $ Gensym.newPreAster m
---   typeOfRight <- lift $ Gensym.newPreAster m
---   let sumLeft = Left $ UN.UnresolvedName "base.sum::left"
---   let sumRight = Left $ UN.UnresolvedName "base.sum::right"
---   let sumLeftVar = Ident.fromText "sum.left"
---   return $
---     m
---       :< RT.Match
---         (e1, doNotCare m)
---         [ ( (m, sumLeft, [(m, err, typeOfLeft)]),
---             m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
---           ),
---           ( (m, sumRight, [x]),
---             e2
---           )
---         ]
+rawTermLetCoproduct :: Context m => Parser m RT.RawTerm
+rawTermLetCoproduct = do
+  m <- getCurrentHint
+  try $ keyword "let?"
+  x <- Ident.fromText <$> symbol
+  delimiter "="
+  e1 <- rawTerm
+  keyword "in"
+  e2 <- rawTerm
+  err <- lift $ Gensym.newTextualIdentFromText "err"
+  typeOfLeft <- lift $ Gensym.newPreAster m
+  typeOfRight <- lift $ Gensym.newPreAster m
+  let sumLeft = Left $ UN.UnresolvedName "base.sum::left"
+  let sumRight = Left $ UN.UnresolvedName "base.sum::right"
+  let sumLeftVar = Ident.fromText "sum.left"
+  return $
+    m
+      :< RT.DataElim
+        [e1]
+        ( RP.new
+            [ ( V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])],
+                m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
+              ),
+              ( V.fromList [(m, RP.Cons sumRight [(m, RP.Var x)])],
+                e2
+              )
+            ]
+        )
 
 rawTermVoid :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
 rawTermVoid m e1 = do
@@ -253,11 +255,12 @@ rawTermEnumClause = do
   c <- symbol
   delimiter "->"
   body <- rawTerm
-  case c of
-    "default" ->
-      return (m :< EC.Default, body)
-    _ ->
-      return (m :< EC.Label (dummyLabel c), body)
+  return (m :< EC.Label (dummyLabel c), body)
+
+-- case c of
+--   -- "default" ->
+--   --   return (m :< EC.Default, body)
+--   _ ->
 
 dummyLabel :: T.Text -> EC.PreEnumLabel
 dummyLabel c =
@@ -376,12 +379,15 @@ rawTermMatch = do
   m <- getCurrentHint
   try $ keyword "match"
   es <- commaList rawTerm
-  patternRowList <- withBlock $ manyList rawTermPatternRow
+  patternRowList <- withBlock $ manyList $ rawTermPatternRow $ length es
   return $ m :< RT.DataElim es (RP.new patternRowList)
 
-rawTermPatternRow :: Context m => Parser m (RP.RawPatternRow RT.RawTerm)
-rawTermPatternRow = do
+rawTermPatternRow :: Context m => Int -> Parser m (RP.RawPatternRow RT.RawTerm)
+rawTermPatternRow patternSize = do
+  m <- getCurrentHint
   patternList <- many rawTermPattern
+  unless (length patternList == patternSize) $ do
+    lift $ Throw.raiseError m "the size of the pattern row doesn't match with its input size"
   delimiter "->"
   body <- rawTerm
   return (V.fromList patternList, body)
@@ -670,10 +676,6 @@ rawTermFloat = do
   h <- lift $ Gensym.newPreAster m
   return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
 
--- doNotCare :: Hint -> RT.RawTerm
--- doNotCare m =
---   m :< RT.Tau
-
 lam :: Hint -> [BinderF RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
   m :< RT.PiIntro LK.Normal varList e
@@ -682,6 +684,6 @@ preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
   m :< RT.Var (Ident.fromText str)
 
--- preVar' :: Hint -> Ident -> RT.RawTerm
--- preVar' m ident =
---   m :< RT.Var ident
+preVar' :: Hint -> Ident -> RT.RawTerm
+preVar' m ident =
+  m :< RT.Var ident

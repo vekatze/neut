@@ -17,7 +17,9 @@ import qualified Data.IntMap as IntMap
 import Data.Maybe (fromMaybe)
 import qualified Data.Set as S
 import qualified Data.Text as T
+import qualified Entity.Arity as A
 import Entity.Binder
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
 import Entity.EnumInfo
@@ -28,7 +30,6 @@ import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
 import qualified Entity.LamKind as LK
 import qualified Entity.Magic as M
-import Entity.Pattern
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
 import qualified Entity.Term as TM
@@ -87,10 +88,10 @@ infer' varEnv term =
           let piType = m :< WT.Pi xts' tCod
           Env.insConstraintEnv piType t'
           return (m :< WT.PiIntro (LK.Fix (mx, x, t')) xts' e', piType)
-        LK.Cons dataName consName discriminant dataType -> do
-          dataType' <- inferType' varEnv dataType
-          (xts', (e', _)) <- inferBinder varEnv xts e
-          return (m :< WT.PiIntro (LK.Cons dataName consName discriminant dataType') xts' e', dataType')
+        -- LK.Cons dataName consName discriminant dataType -> do
+        --   dataType' <- inferType' varEnv dataType
+        --   (xts', (e', _)) <- inferBinder varEnv xts e
+        --   return (m :< WT.PiIntro (LK.Cons dataName consName discriminant dataType') xts' e', dataType')
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
           return (m :< WT.PiIntro kind xts' e', m :< WT.Pi xts' t')
@@ -108,6 +109,28 @@ infer' varEnv term =
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
       inferPiElim varEnv m etl etls
+    m :< WT.Data name es -> do
+      (es', _) <- mapAndUnzipM (infer' varEnv) es
+      return (m :< WT.Data name es', m :< WT.Tau)
+    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      (dataArgs', _) <- mapAndUnzipM (infer' varEnv) dataArgs
+      (consArgs', _) <- mapAndUnzipM (infer' varEnv) consArgs
+      return (m :< WT.DataIntro dataName consName disc dataArgs' consArgs', m :< WT.Data dataName dataArgs')
+    m :< WT.DataElim oets tree -> do
+      let (os, es, _) = unzip3 oets
+      (es', ts') <- mapAndUnzipM (infer' varEnv) es
+      forM_ (zip os ts') $ uncurry insWeakTypeEnv
+      (tree', treeType) <- inferDecisionTree m varEnv tree
+      return (m :< WT.DataElim (zip3 os es' ts') tree', treeType)
+    -- resultType <- newAster m varEnv
+    -- (e', t') <- infer' varEnv e
+    -- clauseList' <- forM clauseList $ \(pat@(mPat, name, arity, xts), body) -> do
+    --   (xts', (body', tBody)) <- inferBinder varEnv xts body
+    --   Env.insConstraintEnv resultType tBody
+    --   (_, tPat) <- infer' varEnv $ patternToTerm pat
+    --   Env.insConstraintEnv tPat t'
+    --   return ((mPat, name, arity, xts'), body')
+    -- return (m :< WT.DataElim (e', t') clauseList', resultType)
     m :< WT.Sigma xts -> do
       (xts', _) <- inferPi varEnv xts (m :< WT.Tau)
       return (m :< WT.Sigma xts', m :< WT.Tau)
@@ -160,7 +183,7 @@ infer' varEnv term =
     m :< WT.EnumElim (e, _) ces -> do
       (e', t') <- infer' varEnv e
       let (cs, es) = unzip ces
-      (cs', tcs) <- mapAndUnzipM (inferEnumCase varEnv) cs
+      (cs', tcs) <- mapAndUnzipM inferEnumCase cs
       forM_ (zip tcs (repeat t')) $ uncurry Env.insConstraintEnv
       (es', ts) <- mapAndUnzipM (infer' varEnv) es
       h <- newAster m varEnv
@@ -181,16 +204,6 @@ infer' varEnv term =
           der' <- mapM (infer' varEnv >=> return . fst) der
           resultType <- newAster m varEnv
           return (m :< WT.Magic der', resultType)
-    m :< WT.Match (e, _) clauseList -> do
-      resultType <- newAster m varEnv
-      (e', t') <- infer' varEnv e
-      clauseList' <- forM clauseList $ \(pat@(mPat, name, arity, xts), body) -> do
-        (xts', (body', tBody)) <- inferBinder varEnv xts body
-        Env.insConstraintEnv resultType tBody
-        (_, tPat) <- infer' varEnv $ patternToTerm pat
-        Env.insConstraintEnv tPat t'
-        return ((mPat, name, arity, xts'), body')
-      return (m :< WT.Match (e', t') clauseList', resultType)
 
 inferArgs ::
   Context m =>
@@ -241,14 +254,23 @@ inferBinder ::
   WT.WeakTerm ->
   m ([BinderF WT.WeakTerm], (WT.WeakTerm, WT.WeakTerm))
 inferBinder varEnv binder e =
+  inferBinder' varEnv binder (`infer'` e)
+
+inferBinder' ::
+  Context m =>
+  BoundVarEnv ->
+  [BinderF WT.WeakTerm] ->
+  ([BinderF WT.WeakTerm] -> m a) ->
+  m ([BinderF WT.WeakTerm], a)
+inferBinder' varEnv binder comp =
   case binder of
     [] -> do
-      etl' <- infer' varEnv e
-      return ([], etl')
+      result <- comp varEnv
+      return ([], result)
     ((mx, x, t) : xts) -> do
       t' <- inferType' varEnv t
       insWeakTypeEnv x t'
-      (xts', etl') <- inferBinder ((mx, x, t') : varEnv) xts e
+      (xts', etl') <- inferBinder' ((mx, x, t') : varEnv) xts comp
       return ((mx, x, t') : xts', etl')
 
 inferPiElim ::
@@ -327,14 +349,11 @@ newTypeAsterList varEnv ids =
       ts <- newTypeAsterList ((m, x, t) : varEnv) rest
       return $ (m, x, t) : ts
 
-inferEnumCase :: Context m => BoundVarEnv -> EC.EnumCase -> m (EC.EnumCase, WT.WeakTerm)
-inferEnumCase varEnv weakCase =
+inferEnumCase :: Context m => EC.EnumCase -> m (EC.EnumCase, WT.WeakTerm)
+inferEnumCase weakCase =
   case weakCase of
     m :< EC.Label (EC.EnumLabel k _ _) -> do
       return (weakCase, m :< WT.Enum k)
-    m :< EC.Default -> do
-      h <- newAster m varEnv
-      return (m :< EC.Default, h)
     m :< EC.Int _ ->
       Throw.raiseCritical m "enum-case-int shouldn't be used in the target language"
 
@@ -351,7 +370,56 @@ primOpToType m (PrimOp op domList cod) = do
       let cod' = Term.fromPrimNum m cod
       return $ m :< TM.Pi xts cod'
 
-patternToTerm :: PatternF WT.WeakTerm -> WT.WeakTerm
-patternToTerm (m, name, arity, args) = do
-  let args' = map (\(mx, x, _) -> mx :< WT.Var x) args
-  m :< WT.PiElim (m :< WT.VarGlobal name arity) args'
+inferDecisionTree ::
+  Context m =>
+  Hint ->
+  BoundVarEnv ->
+  DT.DecisionTree WT.WeakTerm ->
+  m (DT.DecisionTree WT.WeakTerm, WT.WeakTerm)
+inferDecisionTree m varEnv tree =
+  case tree of
+    DT.Leaf ys body -> do
+      (body', answerType) <- infer' varEnv body
+      return (DT.Leaf ys body', answerType)
+    DT.Unreachable -> do
+      h <- newAster m varEnv
+      return (DT.Unreachable, h)
+    DT.Switch (cursor, _) clauseList -> do
+      cursorType <- lookupWeakTypeEnv m cursor
+      (clauseList', answerType) <- inferClauseList m varEnv cursorType clauseList
+      return (DT.Switch (cursor, cursorType) clauseList', answerType)
+
+inferClauseList ::
+  Context m =>
+  Hint ->
+  BoundVarEnv ->
+  WT.WeakTerm ->
+  DT.CaseList WT.WeakTerm ->
+  m (DT.CaseList WT.WeakTerm, WT.WeakTerm)
+inferClauseList m varEnv cursorType (fallbackClause, clauseList) = do
+  (fallbackClause', fallbackAnswerType) <- inferDecisionTree m varEnv fallbackClause
+  (clauseList', answerTypeList) <- mapAndUnzipM (inferClause m varEnv cursorType) clauseList
+  forM_ answerTypeList $ \answerType -> Env.insConstraintEnv answerType fallbackAnswerType
+  return ((fallbackClause', clauseList'), fallbackAnswerType)
+
+inferClause ::
+  Context m =>
+  Hint ->
+  BoundVarEnv ->
+  WT.WeakTerm ->
+  DT.Case WT.WeakTerm ->
+  m (DT.Case WT.WeakTerm, WT.WeakTerm)
+inferClause m varEnv cursorType (DT.Cons consName disc dataArgs consArgs body) = do
+  (xts', (body', tBody)) <- inferBinder' varEnv (dataArgs ++ consArgs) $ \extendedVarEnv ->
+    inferDecisionTree m extendedVarEnv body
+  (_, tPat) <-
+    infer' varEnv $
+      m
+        :< WT.PiElim
+          (m :< WT.VarGlobal consName (A.fromInt $ length consArgs))
+          (map (\(mx, x, _) -> mx :< WT.Var x) consArgs)
+  Env.insConstraintEnv tPat cursorType
+  let len = length dataArgs
+  let dataArgs' = take len xts'
+  let consArgs' = drop len xts'
+  return (DT.Cons consName disc dataArgs' consArgs' body', tBody)

@@ -5,12 +5,14 @@ import Data.Binary
 import qualified Data.IntMap as IntMap
 import Entity.Arity
 import Entity.Binder
-import Entity.DecisionTree
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.EnumTypeName
 import Entity.Hint
 import Entity.Ident
+import Entity.Ident.Reify
 import Entity.LamKind
 import Entity.Magic
 import qualified Entity.Prim as P
@@ -25,16 +27,18 @@ data TermF a
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
+  | Data DD.DefiniteDescription [a]
+  | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
+  | DataElim [(Ident, a, a)] (DT.DecisionTree a)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
-  | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
+  | Let (BinderF a) a a -- これ、もう不要かも。
   | Prim P.Prim
   | Enum EnumTypeName
   | EnumIntro EnumLabel
   | EnumElim (a, a) [(EnumCase, a)]
   | Magic (Magic a)
-  | Match (a, a) (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -43,3 +47,11 @@ instance Binary Term
 
 type TypeEnv =
   IntMap.IntMap Term
+
+insTypeEnv :: [BinderF Term] -> TypeEnv -> TypeEnv
+insTypeEnv xts tenv =
+  case xts of
+    [] ->
+      tenv
+    (_, x, t) : rest ->
+      insTypeEnv rest $ IntMap.insert (toInt x) t tenv

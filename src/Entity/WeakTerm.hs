@@ -6,6 +6,7 @@ import Entity.Arity
 import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.EnumTypeName
 import Entity.Hint
@@ -26,6 +27,9 @@ data WeakTermF a
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
+  | Data DD.DefiniteDescription [a]
+  | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
+  | DataElim [(Ident, a, a)] (DT.DecisionTree a)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
@@ -37,7 +41,6 @@ data WeakTermF a
   | EnumElim (a, a) [(EnumCase, a)]
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | DataElim [(Ident, a, a)] (DT.DecisionTree a)
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm

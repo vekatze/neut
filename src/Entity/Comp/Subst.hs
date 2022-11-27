@@ -37,11 +37,14 @@ substComp sub nenv term =
       let nenv' = IntMap.insert (Ident.toInt x) x' nenv
       e2' <- substComp sub nenv' e2
       return $ C.UpElim x' e1' e2'
-    C.EnumElim v branchList -> do
+    C.EnumElim v defaultBranch branchList -> do
       let v' = substValue sub nenv v
+      defaultBranch' <- substComp sub nenv defaultBranch
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub nenv) es
-      return $ C.EnumElim v' (zip cs es')
+      return $ C.EnumElim v' defaultBranch' (zip cs es')
+    C.Unreachable ->
+      return term
 
 substValue :: C.SubstValue -> NameEnv -> C.Value -> C.Value
 substValue sub nenv term =

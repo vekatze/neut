@@ -1,8 +1,8 @@
 module Entity.Term.Reduce (reduce) where
 
 import Control.Comonad.Cofree
-import Control.Monad
 import qualified Data.IntMap as IntMap
+import qualified Entity.DecisionTree as DT
 import qualified Entity.EnumCase as EC
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
@@ -32,7 +32,6 @@ reduce term =
       es' <- mapM reduce es
       let app = TM.PiElim e' es'
       case e' of
-        -- (_ :< TM.PiIntro opacity LamKindNormal xts body)
         (_ :< TM.PiIntro LK.Normal xts (_ :< body))
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
@@ -40,6 +39,19 @@ reduce term =
               Subst.subst sub (m :< body) >>= reduce
         _ ->
           return (m :< app)
+    m :< TM.Data name es -> do
+      es' <- mapM reduce es
+      return $ m :< TM.Data name es'
+    m :< TM.DataIntro dataName consName disc dataArgs consArgs -> do
+      dataArgs' <- mapM reduce dataArgs
+      consArgs' <- mapM reduce consArgs
+      return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
+    m :< TM.DataElim oets decisionTree -> do
+      let (os, es, ts) = unzip3 oets
+      es' <- mapM reduce es
+      ts' <- mapM reduce ts
+      decisionTree' <- reduceDecisionTree decisionTree
+      return $ m :< TM.DataElim (zip3 os es' ts') decisionTree'
     m :< TM.Sigma xts -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
@@ -75,47 +87,53 @@ reduce term =
             Just (_ :< body) ->
               reduce (m :< body)
             Nothing ->
-              case lookup EC.Default les'' of
-                Just (_ :< body) ->
-                  reduce (m :< body)
-                Nothing ->
-                  return (m :< TM.EnumElim (e', t') les')
+              error "enum-elim (Entity.Term.Reduce)"
+        -- case lookup EC.Default les'' of
+        --   Just (_ :< body) ->
+        --     reduce (m :< body)
+        --   Nothing ->
+        --     return (m :< TM.EnumElim (e', t') les')
         _ ->
           return (m :< TM.EnumElim (e', t') les')
     (m :< TM.Magic der) -> do
       der' <- traverse reduce der
       return (m :< TM.Magic der')
-    (m :< TM.Match (e, t) clauseList) -> do
-      e' <- reduce e
-      -- let lamList = map (toLamList m) clauseList
-      -- dataEnv <- readIORef dataEnvRef
-      -- case e' of
-      -- (_ :< TM.PiIntro (LamKindCons dataName consName _ _) _ _)
-      --   | Just consNameList <- Map.lookup dataName dataEnv,
-      --     consName `elem` consNameList,
-      --     checkClauseListSanity consNameList clauseList -> do
-      --     let app = m :< TM.PiElim e' lamList
-      --     reduce app
-      -- _ -> do
-      t' <- reduce t
-      clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
-        body' <- reduce body
-        return ((mPat, name, arity, xts), body')
-      return (m :< TM.Match (e', t') clauseList')
     _ ->
       return term
 
--- checkClauseListSanity :: [T.Text] -> [(PatternF Term, Term)] -> Bool
--- checkClauseListSanity consNameList clauseList =
---   case (consNameList, clauseList) of
---     ([], []) ->
---       True
---     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
---       | consName == name ->
---         checkClauseListSanity restConsNameList restClauseList
---     _ ->
---       False
+reduceDecisionTree ::
+  Subst.Context m =>
+  DT.DecisionTree TM.Term ->
+  m (DT.DecisionTree TM.Term)
+reduceDecisionTree tree =
+  case tree of
+    DT.Leaf xs e -> do
+      e' <- reduce e
+      return $ DT.Leaf xs e'
+    DT.Unreachable ->
+      return DT.Unreachable
+    DT.Switch (cursorVar, cursor) clauseList -> do
+      cursor' <- reduce cursor
+      clauseList' <- reduceCaseList clauseList
+      return $ DT.Switch (cursorVar, cursor') clauseList'
 
--- toLamList :: Hint -> (PatternF Term, Term) -> Term
--- toLamList m ((_, _, xts), body) =
---   m :< TM.PiIntro LamKindNormal xts body
+reduceCaseList ::
+  Subst.Context m =>
+  DT.CaseList TM.Term ->
+  m (DT.CaseList TM.Term)
+reduceCaseList (fallbackTree, clauseList) = do
+  fallbackTree' <- reduceDecisionTree fallbackTree
+  clauseList' <- mapM reduceCase clauseList
+  return (fallbackTree', clauseList')
+
+reduceCase ::
+  Subst.Context m =>
+  DT.Case TM.Term ->
+  m (DT.Case TM.Term)
+reduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
+  let (ms1, xs1, ts1) = unzip3 dataArgs
+  let (ms2, xs2, ts2) = unzip3 consArgs
+  ts1' <- mapM reduce ts1
+  ts2' <- mapM reduce ts2
+  tree' <- reduceDecisionTree tree
+  return $ DT.Cons dd disc (zip3 ms1 xs1 ts1') (zip3 ms2 xs2 ts2') tree'

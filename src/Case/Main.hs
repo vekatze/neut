@@ -32,6 +32,7 @@ import qualified Case.Main.Path as MainPath
 import qualified Case.Main.Throw as MainThrow
 import qualified Context.Alias as Alias
 import qualified Context.CompDefinition as CompDefinition
+import qualified Context.DataDefinition as DataDefinition
 import qualified Context.Definition as Definition
 import qualified Context.Env as Env
 import qualified Context.External as External
@@ -61,12 +62,14 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.AliasInfo
+import Entity.Binder
 import Entity.Comp
 import qualified Entity.Comp.Reduce as Comp (Context)
 import Entity.Constraint
 import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.DefiniteLocator as DL
+import qualified Entity.Discriminant as D
 import qualified Entity.GlobalLocatorAlias as GLA
 import qualified Entity.GlobalName as GN
 import qualified Entity.HoleSubst as HS
@@ -81,10 +84,13 @@ import qualified Entity.Module as Module
 import qualified Entity.ModuleAlias as MA
 import qualified Entity.ModuleChecksum as MC
 import qualified Entity.Opacity as O
+import qualified Entity.Pattern.Fallback as PatternFallback
+import qualified Entity.Pattern.Specialize as PatternSpecialize
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
 import qualified Entity.StrictGlobalLocator as SGL
 import qualified Entity.TargetPlatform as TP
+import qualified Entity.Term as TM
 import qualified Entity.Term.Subst as Subst (Context (..))
 import Entity.VisitInfo
 import qualified Entity.WeakTerm as WT
@@ -134,6 +140,7 @@ data Env = Env
     visitEnv :: FastRef (Map.HashMap (Path Abs File) VisitInfo),
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
+    dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
     impEnv :: FastRef (Map.HashMap DD.DefiniteDescription I.ImpArgNum),
@@ -230,6 +237,7 @@ newEnv = do
   visitEnv <- newFastRef
   defMap <- newFastRef
   compDefMap <- newFastRef
+  dataDefMap <- newFastRef
   declEnv <- newFastRef
   impEnv <- newFastRef
   compEnv <- newFastRef
@@ -285,6 +293,10 @@ instance ParseCore.Context App where
       Throw.raiseError' $ T.pack $ "no such file exists: " <> toFilePath path
 
 instance ParseDiscern.Context App
+
+instance PatternSpecialize.Context App
+
+instance PatternFallback.Context App
 
 instance ParseEnum.Context App
 
@@ -479,6 +491,7 @@ instance Global.Context App where
   registerTopLevelFunc = MainGlobal.registerTopLevelFunc
   registerEnum = MainGlobal.registerEnum
   registerData = MainGlobal.registerData
+  registerDataIntro = MainGlobal.registerDataIntro
   lookup = MainGlobal.lookup
   initialize = MainGlobal.initialize
 
@@ -489,6 +502,25 @@ instance Gensym.Context App where
     asks counter >>= liftIO . readIORefU
   writeCount v =
     asks counter >>= \ref -> liftIO $ writeIORefU ref v
+
+instance DataDefinition.Context App where
+  insert dataName discriminant dataArgs consArgs = do
+    mDataInfo <- DataDefinition.lookup dataName
+    asks dataDefMap >>= \ref -> do
+      liftIO $ do
+        hashMap <- readIORef ref
+        case mDataInfo of
+          Nothing ->
+            writeIORef ref (Map.insert dataName [(discriminant, dataArgs, consArgs)] hashMap)
+          Just dataInfo ->
+            writeIORef ref (Map.insert dataName ((discriminant, dataArgs, consArgs) : dataInfo) hashMap)
+  lookup dataName = do
+    Map.lookup dataName <$> (asks dataDefMap >>= liftIO . readIORef)
+
+-- let yo = dataDefMap env
+-- undefined
+
+-- Map.lookup k <$> (asks dataDefMap >>= liftIO . readIORef)
 
 instance Definition.Context App where
   read =

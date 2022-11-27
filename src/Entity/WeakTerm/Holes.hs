@@ -3,6 +3,7 @@ module Entity.WeakTerm.Holes (holes) where
 import Control.Comonad.Cofree
 import qualified Data.Set as S
 import Entity.Binder
+import qualified Entity.DecisionTree as DT
 import Entity.HoleID
 import qualified Entity.WeakTerm as WT
 
@@ -16,22 +17,32 @@ holes term =
     _ :< WT.VarGlobal {} ->
       S.empty
     _ :< WT.Pi xts t ->
-      holes' xts [t]
+      holes' xts (holes t)
     _ :< WT.PiIntro _ xts e ->
-      holes' xts [e]
+      holes' xts (holes e)
     _ :< WT.PiElim e es ->
       S.unions $ map holes $ e : es
+    _ :< WT.Data _ es ->
+      S.unions $ map holes es
+    _ :< WT.DataIntro _ _ _ dataArgs consArgs -> do
+      S.unions $ map holes $ dataArgs ++ consArgs
+    m :< WT.DataElim oets decisionTree -> do
+      let (os, es, ts) = unzip3 oets
+      let xs1 = S.unions $ map holes es
+      let binder = zipWith (\o t -> (m, o, t)) os ts
+      let xs2 = holes' binder (holesDecisionTree decisionTree)
+      S.union xs1 xs2
     _ :< WT.Sigma xts ->
-      holes' xts []
+      holes' xts S.empty
     _ :< WT.SigmaIntro es ->
       S.unions $ map holes es
     _ :< WT.SigmaElim xts e1 e2 -> do
       let set1 = holes e1
-      let set2 = holes' xts [e2]
+      let set2 = holes' xts (holes e2)
       S.union set1 set2
     _ :< WT.Let mxt e1 e2 -> do
       let set1 = holes e1
-      let set2 = holes' [mxt] [e2]
+      let set2 = holes' [mxt] (holes e2)
       S.union set1 set2
     _ :< WT.Aster h es ->
       S.insert h $ S.unions $ map holes es
@@ -52,18 +63,33 @@ holes term =
       S.union set1 set2
     _ :< WT.Magic der ->
       foldMap holes der
-    _ :< WT.Match (e, t) patList -> do
-      let xs1 = holes e
-      let xs2 = holes t
-      let xs3 = S.unions $ map (\((_, _, _, xts), body) -> holes' xts [body]) patList
-      S.unions [xs1, xs2, xs3]
 
-holes' :: [BinderF WT.WeakTerm] -> [WT.WeakTerm] -> S.Set HoleID
-holes' binder es =
+holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID
+holes' binder zs =
   case binder of
     [] ->
-      S.unions $ map holes es
+      zs
     ((_, _, t) : xts) -> do
       let set1 = holes t
-      let set2 = holes' xts es
+      let set2 = holes' xts zs
       S.union set1 set2
+
+holesDecisionTree :: DT.DecisionTree WT.WeakTerm -> S.Set HoleID
+holesDecisionTree tree =
+  case tree of
+    DT.Leaf _ e ->
+      holes e
+    DT.Unreachable ->
+      S.empty
+    DT.Switch (_, cursor) caseList ->
+      S.union (holes cursor) (holesCaseList caseList)
+
+holesCaseList :: DT.CaseList WT.WeakTerm -> S.Set HoleID
+holesCaseList (fallbackClause, clauseList) = do
+  let xs1 = holesDecisionTree fallbackClause
+  let xs2 = S.unions $ map holesCase clauseList
+  S.union xs1 xs2
+
+holesCase :: DT.Case WT.WeakTerm -> S.Set HoleID
+holesCase (DT.Cons _ _ _ xts tree) =
+  holes' xts $ holesDecisionTree tree

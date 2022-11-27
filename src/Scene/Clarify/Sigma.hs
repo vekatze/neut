@@ -7,17 +7,23 @@ module Scene.Clarify.Sigma
     returnClosureS4,
     returnCellS4,
     closureEnvS4,
+    returnSigmaDataS4,
   )
 where
 
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
+import Control.Comonad.Cofree
 import Control.Monad
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import qualified Entity.Comp as C
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
+import qualified Entity.EnumCase as EC
 import Entity.Ident
+import qualified Entity.LowType as LT
+import qualified Entity.Magic as M
 import Scene.Clarify.Context
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
@@ -143,3 +149,54 @@ closureEnvS4 mxts =
       name <- Locator.attachCurrentLocator $ BN.sigmaName i
       registerSwitcher name (sigmaT mxts) (sigma4 mxts)
       return $ C.VarGlobal name A.arityS4
+
+returnSigmaDataS4 ::
+  Context m =>
+  DD.DefiniteDescription ->
+  [(D.Discriminant, [(Ident, C.Comp)])] ->
+  m C.Comp
+returnSigmaDataS4 dataName dataInfo = do
+  let aff = sigmaDataT dataInfo
+  let rel = sigmaData4 dataInfo
+  let dataName' = DD.getConsDD dataName
+  registerSwitcher dataName' aff rel
+  return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
+
+sigmaData4 :: Context m => [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> m C.Comp
+sigmaData4 = do
+  sigmaData sigmaBinder4
+
+sigmaBinder4 :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
+sigmaBinder4 xts v = do
+  sigma4 (Left returnImmediateS4 : map Right xts) v
+
+sigmaDataT :: Context m => [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> m C.Comp
+sigmaDataT = do
+  sigmaData sigmaBinderT
+
+sigmaData ::
+  Context m =>
+  ([(Ident, C.Comp)] -> C.Value -> m C.Comp) ->
+  [(D.Discriminant, [(Ident, C.Comp)])] ->
+  C.Value ->
+  m C.Comp
+sigmaData resourceHandler dataInfo arg = do
+  case dataInfo of
+    [] ->
+      return $ C.UpIntro arg
+    _ -> do
+      let (discriminantList, binderList) = unzip dataInfo
+      let discriminantList' = map discriminantToEnumCase discriminantList
+      binderList' <- mapM (`resourceHandler` arg) binderList
+      discriminantVar <- Gensym.newIdentFromText "discriminant"
+      return $
+        C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr arg))) $
+          C.EnumElim (C.VarLocal discriminantVar) (last binderList') (zip discriminantList' (init binderList'))
+
+sigmaBinderT :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
+sigmaBinderT xts v = do
+  sigmaT (Left returnImmediateS4 : map Right xts) v
+
+discriminantToEnumCase :: D.Discriminant -> EC.CompEnumCase
+discriminantToEnumCase discriminant =
+  () :< EC.Int (D.reify discriminant)

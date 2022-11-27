@@ -134,16 +134,30 @@ simplify constraintList =
               xt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
-          | LK.Cons dataName1 consName1 consNumber1 dataType1 <- kind1,
-            LK.Cons dataName2 consName2 consNumber2 dataType2 <- kind2,
-            dataName1 == dataName2,
+        (_ :< WT.Data name1 es1, _ :< WT.Data name2 es2)
+          | name1 == name2,
+            length es1 == length es2 -> do
+              let cs' = zip (zip es1 es2) (repeat orig)
+              simplify $ cs' ++ cs
+        (_ :< WT.DataIntro dataName1 consName1 _ dataArgs1 consArgs1, _ :< WT.DataIntro dataName2 consName2 _ dataArgs2 consArgs2)
+          | dataName1 == dataName2,
             consName1 == consName2,
-            consNumber1 == consNumber2,
-            length xts1 == length xts2 -> do
-              xt1 <- asWeakBinder m1 e1
-              xt2 <- asWeakBinder m2 e2
-              cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
-              simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
+            length dataArgs1 == length dataArgs2,
+            length consArgs1 == length consArgs2 -> do
+              let es1 = dataArgs1 ++ consArgs1
+              let es2 = dataArgs2 ++ consArgs2
+              let cs' = zip (zip es1 es2) (repeat orig)
+              simplify $ cs' ++ cs
+        --  LK.Cons dataName1 consName1 consNumber1 dataType1 <- kind1,
+        --   LK.Cons dataName2 consName2 consNumber2 dataType2 <- kind2,
+        --   dataName1 == dataName2,
+        --   consName1 == consName2,
+        --   consNumber1 == consNumber2,
+        --   length xts1 == length xts2 -> do
+        --     xt1 <- asWeakBinder m1 e1
+        --     xt2 <- asWeakBinder m2 e2
+        --     cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+        --     simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
         (_ :< WT.Sigma xts1, _ :< WT.Sigma xts2)
           | length xts1 == length xts2 -> do
               cs' <- simplifyBinder orig xts1 xts2

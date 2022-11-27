@@ -24,8 +24,9 @@ data Comp
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
   | UpElim Ident Comp Comp
-  | EnumElim Value [(CompEnumCase, Comp)]
+  | EnumElim Value Comp [(CompEnumCase, Comp)]
   | Primitive Primitive
+  | Unreachable
   deriving (Show)
 
 type ShouldDeallocate = Bool

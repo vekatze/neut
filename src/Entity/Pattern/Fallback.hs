@@ -32,7 +32,7 @@ fallbackRow cursor (patternVector, (freedVars, body)) =
       Throw.raiseCritical m "specialization against a wildcard shouldn't happen"
     Just ((m, Var x), rest) -> do
       h <- Gensym.newAster m []
-      let body' = m :< WT.Let (m, cursor, h) (m :< WT.Var x) body
+      let body' = m :< WT.Let (m, x, h) (m :< WT.Var cursor) body
       return $ Just (rest, (freedVars, body'))
     Just ((_, Cons {}), _) ->
       return Nothing

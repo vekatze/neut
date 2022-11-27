@@ -28,7 +28,7 @@ instance Binary PreEnumLabel
 data EnumCaseF e a
   = Label e
   | Int Integer
-  | Default
+  -- Default
   deriving (Show, Eq, Ord, Generic)
 
 instance Functor (EnumCaseF e) where
@@ -38,8 +38,9 @@ instance Functor (EnumCaseF e) where
         Label label
       Int i ->
         Int i
-      Default ->
-        Default
+
+-- Default ->
+--   Default
 
 instance Eq e => Eq1 (EnumCaseF e) where
   liftEq _ v1 v2 =
@@ -50,8 +51,8 @@ instance Eq e => Eq1 (EnumCaseF e) where
       (Int i1, Int i2)
         | i1 == i2 ->
             True
-      (Default, Default) ->
-        False
+      -- (Default, Default) ->
+      --   False
       _ ->
         False
 
@@ -62,8 +63,9 @@ instance Show e => Show1 (EnumCaseF e) where
         showString $ show label
       Int i ->
         showString $ show i
-      Default ->
-        showString "default"
+
+-- Default ->
+--   showString "default"
 
 instance (Binary a, Binary e) => Binary (EnumCaseF e a)
 

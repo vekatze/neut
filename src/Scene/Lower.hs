@@ -112,16 +112,18 @@ lowerComp term =
       e1' <- lowerComp e1
       e2' <- lowerComp e2
       commConv x e1' e2'
-    C.EnumElim v branchList -> do
-      m <- constructSwitch branchList
-      case m of
-        Nothing ->
-          return LC.Unreachable
-        Just (defaultCase, caseList) -> do
-          runLowerComp $ do
-            let t = LT.PrimNum $ PT.Int $ IntSize 64
-            castedValue <- lowerValueLetCast v t
-            return $ LC.Switch (castedValue, t) defaultCase caseList
+    C.EnumElim v defaultBranch branchList -> do
+      (defaultCase, caseList) <- constructSwitch defaultBranch branchList
+      -- case m of
+      --   Nothing ->
+      --     return LC.Unreachable
+      --   Just (defaultCase, caseList) -> do
+      runLowerComp $ do
+        let t = LT.PrimNum $ PT.Int $ IntSize 64
+        castedValue <- lowerValueLetCast v t
+        return $ LC.Switch (castedValue, t) defaultCase caseList
+    C.Unreachable ->
+      return LC.Unreachable
 
 load :: Context m => LT.LowType -> LC.Value -> Lower m LC.Value
 load elemType pointer = do
@@ -276,24 +278,27 @@ reflectCont op = do
   extend $ return . LC.Cont op
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Context m => [(EC.CompEnumCase, C.Comp)] -> m (Maybe (LC.Comp, [(Integer, LC.Comp)]))
-constructSwitch switch =
+constructSwitch :: Context m => C.Comp -> [(EC.CompEnumCase, C.Comp)] -> m (LC.Comp, [(Integer, LC.Comp)])
+constructSwitch defaultBranch switch =
   case switch of
-    [] ->
-      return Nothing
-    (_ :< EC.Default, code) : _ -> do
-      code' <- lowerComp code
-      return $ Just (code', [])
-    [(m :< _, code)] -> do
-      constructSwitch [(m :< EC.Default, code)]
+    [] -> do
+      defaultBranch' <- lowerComp defaultBranch
+      return (defaultBranch', [])
+    -- (_ :< EC.Default, code) : _ -> do
+    --   code' <- lowerComp code
+    --   return $ Just (code', [])
+    -- [(m :< _, code)] -> do
+    --   constructSwitch [(m :< EC.Default, code)]
     (m :< EC.Label (EC.EnumLabel _ d _), code) : rest -> do
-      constructSwitch $ (m :< EC.Int (D.reify d), code) : rest
+      constructSwitch defaultBranch $ (m :< EC.Int (D.reify d), code) : rest
     (_ :< EC.Int i, code) : rest -> do
       code' <- lowerComp code
-      mSwitch <- constructSwitch rest
-      return $ do
-        (defaultCase, caseList) <- mSwitch
-        return (defaultCase, (i, code') : caseList)
+      (defaultBranch', caseList) <- constructSwitch defaultBranch rest
+      return (defaultBranch', (i, code') : caseList)
+
+-- return $ do
+--   (defaultCase, caseList) <- mSwitch
+--   return (defaultCase, (i, code') : caseList)
 
 data AggPtrType
   = AggPtrTypeArray Int LT.LowType

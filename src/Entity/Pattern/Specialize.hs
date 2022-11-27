@@ -37,9 +37,10 @@ specializeRow cursor (dd, arity) (patternVector, (freedVars, body)) =
     Just ((m, Var x), rest) -> do
       let wildcards = V.fromList $ replicate (fromInteger $ A.reify arity) (m, WildcardVar)
       h <- Gensym.newAster m []
-      let body' = m :< WT.Let (m, cursor, h) (m :< WT.Var x) body
+      let body' = m :< WT.Let (m, x, h) (m :< WT.Var cursor) body
+      -- let body' = m :< WT.Let (m, cursor, h) (m :< WT.Var x) body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
-    Just ((_, Cons dd' _ args), rest) ->
+    Just ((_, Cons dd' _ _ _ args), rest) ->
       if dd == dd'
         then return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
         else return Nothing

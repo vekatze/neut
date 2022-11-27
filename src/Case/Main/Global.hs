@@ -2,6 +2,7 @@ module Case.Main.Global
   ( registerTopLevelFunc,
     registerEnum,
     registerData,
+    registerDataIntro,
     lookup,
     initialize,
     Context,
@@ -94,6 +95,19 @@ registerData m dataName arity consList = do
   topNameMap <- Env.getNameMap
   ensureFreshness m topNameMap dataName
   Env.insertToNameMap dataName $ GN.Data arity consList
+
+registerDataIntro ::
+  Context m =>
+  Hint.Hint ->
+  DD.DefiniteDescription ->
+  Arity ->
+  Arity ->
+  D.Discriminant ->
+  m ()
+registerDataIntro m consName dataArity consArity disc = do
+  topNameMap <- Env.getNameMap
+  ensureFreshness m topNameMap consName
+  Env.insertToNameMap consName $ GN.DataIntro dataArity consArity disc
 
 ensureFreshness :: Context m => Hint.Hint -> NameMap -> DD.DefiniteDescription -> m ()
 ensureFreshness m topNameMap name = do

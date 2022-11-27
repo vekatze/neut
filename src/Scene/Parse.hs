@@ -27,11 +27,7 @@ import Entity.EnumInfo
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
-import qualified Entity.Ident.Reflect as Ident
-import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
-import qualified Entity.LamKind as LK
-import qualified Entity.LocalLocator as LL
 import qualified Entity.Opacity as O
 import qualified Entity.RawTerm as RT
 import qualified Entity.Section as Section
@@ -90,8 +86,16 @@ parseSource source = do
       let stmtList = cacheStmtList cache
       forM_ stmtList $ \stmt -> do
         case stmt of
-          StmtDefine _ _ name _ args _ _ ->
-            Global.registerTopLevelFunc hint name $ A.fromInt (length args)
+          StmtDefine stmtKind m name _ args _ _ ->
+            case stmtKind of
+              Normal _ ->
+                Global.registerTopLevelFunc m name $ A.fromInt (length args)
+              Data arity dataName consNameList ->
+                Global.registerData m dataName arity consNameList
+              DataIntro _ dataArgs consArgs discriminant -> do
+                let dataArity = A.fromInt (length dataArgs)
+                let consArity = A.fromInt (length consArgs)
+                Global.registerDataIntro m name dataArity consArity discriminant
       return $ Left stmtList
     Nothing -> do
       sourceAliasMap <- Env.getSourceAliasMap
@@ -199,11 +203,11 @@ parseDefine opacity = do
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction opacity m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
+  lift $ defineFunction (Normal opacity) m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
   Context m =>
-  O.Opacity ->
+  StmtKindF RT.RawTerm ->
   Hint ->
   DD.DefiniteDescription ->
   I.ImpArgNum ->
@@ -211,9 +215,9 @@ defineFunction ::
   RT.RawTerm ->
   RT.RawTerm ->
   m RawStmt
-defineFunction opacity m name impArgNum binder codType e = do
+defineFunction stmtKind m name impArgNum binder codType e = do
   Global.registerTopLevelFunc m name (A.fromInt (length binder))
-  return $ RawStmtDefine opacity m name impArgNum binder codType e
+  return $ RawStmtDefine stmtKind m name impArgNum binder codType e
 
 parseDefineData :: Context m => P.Parser m [RawStmt]
 parseDefineData = do
@@ -233,10 +237,14 @@ defineData ::
   m [RawStmt]
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
-  setAsData m dataName (A.fromInt (length dataArgs)) consInfoList'
-  let consType = m :< RT.Pi [] (m :< RT.Tau)
-  let formRule = RawStmtDefine O.Opaque m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) consType
-  introRuleList <- parseDefineDataConstructor dataName dataArgs consInfoList' D.zero
+  let consNameList = map (\(_, name, _) -> name) consInfoList'
+  -- setAsData m dataName (A.fromInt (length dataArgs)) consInfoList'
+  let arity = A.fromInt (length dataArgs)
+  Global.registerData m dataName arity consNameList
+  let stmtKind = Data arity dataName consNameList
+  let dataType = constructDataType m dataName dataArgs
+  let formRule = RawStmtDefine stmtKind m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) dataType
+  introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
 modifyConstructorName ::
@@ -251,38 +259,42 @@ modifyConstructorName m dataDD (mb, consName, yts) = do
 
 parseDefineDataConstructor ::
   Context m =>
+  RT.RawTerm ->
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
   m [RawStmt]
-parseDefineDataConstructor dataName dataArgs consInfoList discriminant = do
+parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
       return []
     (m, consName, consArgs) : rest -> do
+      let dataArgs' = map identPlusToVar dataArgs
       let consArgs' = map identPlusToVar consArgs
-      let dataType = constructDataType m dataName dataArgs
-      introRule <-
-        defineFunction
-          O.Transparent
-          m
-          consName
-          (I.fromInt $ length dataArgs)
-          (dataArgs ++ consArgs)
-          dataType
-          $ m
-            :< RT.PiIntro
-              (LK.Cons dataName consName discriminant dataType)
-              [ (m, Ident.fromText (DD.reify consName), m :< RT.Pi consArgs (m :< RT.Tau))
-              ]
-              (m :< RT.PiElim (preVar m (DD.reify consName)) consArgs')
-      introRuleList <- parseDefineDataConstructor dataName dataArgs rest (D.increment discriminant)
+      let args = dataArgs ++ consArgs
+      let introRule =
+            RawStmtDefine
+              (DataIntro dataName dataArgs consArgs discriminant)
+              m
+              consName
+              (I.fromInt $ length dataArgs)
+              args
+              dataType
+              $ m :< RT.DataIntro dataName consName discriminant dataArgs' consArgs'
+      let dataArity = A.fromInt $ length dataArgs'
+      let consArity = A.fromInt $ length consArgs'
+      Global.registerDataIntro m consName dataArity consArity discriminant
+      introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 
-constructDataType :: Hint -> DD.DefiniteDescription -> [BinderF RT.RawTerm] -> RT.RawTerm
-constructDataType m dataName dataArgs =
-  m :< RT.PiElim (m :< RT.VarGlobalStrict dataName) (map identPlusToVar dataArgs)
+constructDataType ::
+  Hint ->
+  DD.DefiniteDescription ->
+  [BinderF RT.RawTerm] ->
+  RT.RawTerm
+constructDataType m dataName dataArgs = do
+  m :< RT.Data dataName (map identPlusToVar dataArgs)
 
 parseDefineDataClause :: Context m => P.Parser m (Hint, T.Text, [BinderF RT.RawTerm])
 parseDefineDataClause = do
@@ -336,16 +348,16 @@ parseDefineCodata = do
 --         (preVar m recordVarText, codataType)
 --         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
 
-setAsData ::
-  Global.Context m =>
-  Hint ->
-  DD.DefiniteDescription ->
-  A.Arity ->
-  [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
-  m ()
-setAsData m dataName arity consInfoList = do
-  let consNameList = map (\(_, consName, _) -> consName) consInfoList
-  Global.registerData m dataName arity consNameList
+-- setAsData ::
+--   Global.Context m =>
+--   Hint ->
+--   DD.DefiniteDescription ->
+--   A.Arity ->
+--   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
+--   m ()
+-- setAsData m dataName arity consInfoList = do
+--   let consNameList = map (\(_, consName, _) -> consName) consInfoList
+--   Global.registerData m dataName arity consNameList
 
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =

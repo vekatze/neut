@@ -44,9 +44,11 @@ bindLet binder cont =
     (x, e) : xes ->
       C.UpElim x e $ bindLet xes cont
 
-switch :: C.Comp -> C.Comp -> [(EC.CompEnumCase, C.Comp)]
-switch e1 e2 =
-  [(() :< EC.Int 0, e1), (() :< EC.Default, e2)]
+-- switch :: C.Comp -> C.Comp -> [(EC.CompEnumCase, C.Comp)]
+-- switch e1 e2 =
+--   undefined
+
+-- [(() :< EC.Int 0, e1), (() :< EC.Default, e2)]
 
 makeSwitcher ::
   Gensym.Context m =>
@@ -62,7 +64,9 @@ makeSwitcher compAff compRel = do
     ( [switchVarName, argVarName],
       C.EnumElim
         switchVar
-        (switch aff rel)
+        rel
+        [(() :< EC.Int 0, aff)]
+        -- (switch aff rel)
     )
 
 registerSwitcher ::

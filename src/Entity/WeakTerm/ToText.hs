@@ -2,7 +2,6 @@ module Entity.WeakTerm.ToText (toText) where
 
 import Control.Comonad.Cofree
 import qualified Data.Text as T
-import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
@@ -13,7 +12,6 @@ import qualified Entity.HoleID as HID
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
-import Entity.Pattern
 import qualified Entity.PrimOp as PO
 import qualified Entity.PrimType.ToText as PT
 import qualified Entity.WeakPrim as WP
@@ -43,15 +41,17 @@ toText term =
         LK.Fix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["fix", showVariable x, argStr, toText e]
-        LK.Cons {} -> do
-          let argStr = inParen $ showItems $ map showArg xts
-          showCons ["λ", argStr, toText e]
-        -- "<cons>"
         _ -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["λ", argStr, toText e]
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
+    _ :< WT.Data name es -> do
+      showCons $ DD.reify name : map toText es
+    _ :< WT.DataIntro _ consName _ _ consArgs -> do
+      showCons (DD.reify consName : map toText consArgs)
+    _ :< WT.DataElim {} -> do
+      "<match>"
     _ :< WT.Sigma xts ->
       showCons ["sigma", showItems $ map showArg xts]
     _ :< WT.SigmaIntro es ->
@@ -75,11 +75,6 @@ toText term =
     _ :< WT.Magic m -> do
       let a = fmap toText m
       T.pack $ show a
-    -- "<magic>"
-    -- let es' = map toText es
-    -- showCons $ "magic" : T.pack (show i) : es'
-    _ :< WT.Match (e, _) caseClause -> do
-      showCons $ "case" : toText e : map showCaseClause caseClause
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -105,19 +100,6 @@ showVariable :: Ident -> T.Text
 showVariable =
   Ident.toText'
 
-showCaseClause :: (PatternF WT.WeakTerm, WT.WeakTerm) -> T.Text
-showCaseClause (pat, e) =
-  inParen $ showPattern pat <> " " <> toText e
-
-showPattern :: (Hint, DD.DefiniteDescription, Arity, [BinderF WT.WeakTerm]) -> T.Text
-showPattern (_, f, _, xts) = do
-  case xts of
-    [] ->
-      inParen $ DD.reify f
-    _ -> do
-      let xs = map (\(_, x, _) -> x) xts
-      inParen $ DD.reify f <> " " <> T.intercalate " " (map showVariable xs)
-
 showClause :: (EC.EnumCase, WT.WeakTerm) -> T.Text
 showClause (c, e) =
   inParen $ showCase c <> " " <> toText e
@@ -127,8 +109,6 @@ showCase c =
   case c of
     _ :< EC.Label (EC.EnumLabel _ _ l) ->
       DD.reify $ EV.reify l
-    _ :< EC.Default ->
-      "default"
     _ :< EC.Int i ->
       T.pack (show i)
 

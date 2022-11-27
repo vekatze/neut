@@ -20,13 +20,14 @@ import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Entity.Arity as A
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Hint hiding (new)
 import Entity.Ident
 
 data Pattern
   = Var Ident
   | WildcardVar
-  | Cons DD.DefiniteDescription A.Arity [(Hint, Pattern)]
+  | Cons DD.DefiniteDescription D.Discriminant A.Arity A.Arity [(Hint, Pattern)]
 
 type PatternRow a =
   (V.Vector (Hint, Pattern), a)
@@ -55,7 +56,7 @@ new :: [PatternRow a] -> PatternMatrix a
 new rows =
   MakePatternMatrix $ V.fromList rows
 
-getHeadConstructors :: PatternMatrix a -> S.Set (DD.DefiniteDescription, A.Arity)
+getHeadConstructors :: PatternMatrix a -> S.Set (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -67,15 +68,15 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-getColumnConstructors :: PatternColumn -> S.Set (DD.DefiniteDescription, A.Arity)
+getColumnConstructors :: PatternColumn -> S.Set (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
 getColumnConstructors col =
   S.fromList $ mapMaybe (getColumnConstructor . snd) col
 
-getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, A.Arity)
+getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
 getColumnConstructor pat =
   case pat of
-    Cons dd arity _ ->
-      return (dd, arity)
+    Cons dd disc dataArity consArity _ ->
+      return (dd, disc, dataArity, consArity)
     _ ->
       Nothing
 

@@ -1,21 +1,32 @@
 module Entity.Term.Weaken
   ( weaken,
     weakenBinder,
+    weakenStmt,
   )
 where
 
 import Control.Comonad.Cofree
+import qualified Entity.DecisionTree as DT
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.Prim as P
 import qualified Entity.PrimType as PT
 import qualified Entity.PrimValue as PV
+import Entity.Stmt
 import qualified Entity.Term as TM
 import Entity.Term.FromPrimNum
 import qualified Entity.WeakPrim as WP
 import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
+
+weakenStmt :: Stmt -> WeakStmt
+weakenStmt (StmtDefine stmtKind m name impArgNum xts codType e) = do
+  let stmtKind' = weakenStmtKind stmtKind
+  let xts' = map weakenBinder xts
+  let codType' = weaken codType
+  let e' = weaken e
+  WeakStmtDefine stmtKind' m name impArgNum xts' codType' e'
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =
@@ -37,6 +48,19 @@ weaken term =
       let e' = weaken e
       let es' = map weaken es
       m :< WT.PiElim e' es'
+    m :< TM.Data name es -> do
+      let es' = map weaken es
+      m :< WT.Data name es'
+    m :< TM.DataIntro dataName consName disc dataArgs consArgs -> do
+      let dataArgs' = map weaken dataArgs
+      let consArgs' = map weaken consArgs
+      m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
+    m :< TM.DataElim oets tree -> do
+      let (os, es, ts) = unzip3 oets
+      let es' = map weaken es
+      let ts' = map weaken ts
+      let tree' = weakenDecisionTree tree
+      m :< WT.DataElim (zip3 os es' ts') tree'
     m :< TM.Sigma xts ->
       m :< WT.Sigma (map weakenBinder xts)
     m :< TM.SigmaIntro es ->
@@ -60,11 +84,6 @@ weaken term =
       m :< WT.EnumElim (e', t') (zip caseList es')
     m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
-    m :< TM.Match (e, t) patList -> do
-      let e' = weaken e
-      let t' = weaken t
-      let patList' = map (\((mp, p, arity, xts), body) -> ((mp, p, arity, map weakenBinder xts), weaken body)) patList
-      m :< WT.Match (e', t') patList'
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
@@ -75,8 +94,6 @@ weakenKind kind =
   case kind of
     LK.Normal ->
       LK.Normal
-    LK.Cons dataName consName consNumber dataType ->
-      LK.Cons dataName consName consNumber (weaken dataType)
     LK.Fix xt ->
       LK.Fix (weakenBinder xt)
 
@@ -94,3 +111,41 @@ weakenPrim m prim =
             WPV.Float (weaken (fromPrimNum m (PT.Float size))) float
           PV.Op op ->
             WPV.Op op
+
+weakenDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree WT.WeakTerm
+weakenDecisionTree tree =
+  case tree of
+    DT.Leaf xs e -> do
+      let e' = weaken e
+      DT.Leaf xs e'
+    DT.Unreachable ->
+      DT.Unreachable
+    DT.Switch (cursorVar, cursor) caseList -> do
+      let cursor' = weaken cursor
+      let caseList' = weakenCaseList caseList
+      DT.Switch (cursorVar, cursor') caseList'
+
+weakenCaseList :: DT.CaseList TM.Term -> DT.CaseList WT.WeakTerm
+weakenCaseList (fallbackClause, clauseList) = do
+  let fallbackClause' = weakenDecisionTree fallbackClause
+  let clauseList' = map weakenCase clauseList
+  (fallbackClause', clauseList')
+
+weakenCase :: DT.Case TM.Term -> DT.Case WT.WeakTerm
+weakenCase (DT.Cons dd disc dataArgs consArgs tree) = do
+  let dataArgs' = map weakenBinder dataArgs
+  let consArgs' = map weakenBinder consArgs
+  let tree' = weakenDecisionTree tree
+  DT.Cons dd disc dataArgs' consArgs' tree'
+
+weakenStmtKind :: StmtKindF TM.Term -> StmtKindF WT.WeakTerm
+weakenStmtKind stmtKind =
+  case stmtKind of
+    Normal opacity ->
+      Normal opacity
+    Data arity dataName consNameList ->
+      Data arity dataName consNameList
+    DataIntro dataName dataArgs consArgs discriminant -> do
+      let dataArgs' = map weakenBinder dataArgs
+      let consArgs' = map weakenBinder consArgs
+      DataIntro dataName dataArgs' consArgs' discriminant

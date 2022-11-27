@@ -5,6 +5,7 @@ module Scene.Clarify
 where
 
 import qualified Context.CompDefinition as CompDefinition
+import qualified Context.DataDefinition as DataDefinition
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
@@ -12,7 +13,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
 import qualified Data.IntMap as IntMap
-import Data.List
 import Data.Maybe
 import qualified Data.Set as S
 import qualified Entity.Arity as A
@@ -22,6 +22,7 @@ import qualified Entity.Comp as C
 import Entity.Comp.FreeVars
 import qualified Entity.Comp.Reduce as Reduce
 import Entity.Comp.Subst
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import qualified Entity.EnumCase as EC
@@ -29,9 +30,9 @@ import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
+import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import qualified Entity.Opacity as O
-import Entity.Pattern
 import qualified Entity.Prim as P
 import Entity.PrimNumSize
 import Entity.PrimOp
@@ -39,6 +40,7 @@ import qualified Entity.PrimValue as PV
 import qualified Entity.Source as Source
 import Entity.Stmt
 import qualified Entity.Term as TM
+import qualified Entity.Term.Chain as TM
 import Entity.Term.FromPrimNum
 import qualified Scene.Clarify.Context as Clarify
 import Scene.Clarify.Linearize
@@ -48,7 +50,8 @@ import Scene.Clarify.Utility
 class
   ( Clarify.Context m,
     Reduce.Context m,
-    Throw.Context m
+    Throw.Context m,
+    DataDefinition.Context m
   ) =>
   Context m
 
@@ -90,11 +93,11 @@ withSpecializedCtx action = do
 clarifyDef :: Context m => Stmt -> m (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
-    StmtDefine opacity _ f _ xts _ e -> do
-      e' <- clarifyTerm (insTypeEnv xts IntMap.empty) e
+    StmtDefine stmtKind _ f _ xts _ e -> do
+      e' <- clarifyTerm (TM.insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= Reduce.reduce
-      return (f, (opacity, map fst xts', e''))
+      return (f, (toOpacity stmtKind, map fst xts', e''))
 
 clarifyTerm :: Context m => TM.TypeEnv -> TM.Term -> m C.Comp
 clarifyTerm tenv term =
@@ -114,11 +117,33 @@ clarifyTerm tenv term =
     _ :< TM.Pi {} ->
       return returnClosureS4
     _ :< TM.PiIntro kind mxts e -> do
-      clarifyLambda tenv kind mxts e $ nubFreeVariables $ chainOf tenv term
+      clarifyLambda tenv kind mxts e $ TM.chainOf tenv [term]
     _ :< TM.PiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
+    m :< TM.Data name _ -> do
+      mDataInfo <- DataDefinition.lookup name
+      case mDataInfo of
+        Nothing ->
+          Throw.raiseCritical m "mDataInfo"
+        Just dataInfo -> do
+          dataInfo' <- mapM clarifyDataClause dataInfo
+          returnSigmaDataS4 name dataInfo'
+    _ :< TM.DataIntro _ _ disc dataArgs consArgs -> do
+      (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
+      return $
+        bindLet (zip zs es) $
+          C.UpIntro $
+            C.SigmaIntro $
+              C.Int (IntSize 64) (D.reify disc) : xs
+    m :< TM.DataElim xets tree -> do
+      let (xs, es, ts) = unzip3 xets
+      let mxts = zipWith (\x t -> (m, x, t)) xs ts
+      es' <- mapM (clarifyTerm tenv) es
+      tree' <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) IntMap.empty tree
+      return $
+        bindLet (zip xs es') tree'
     _ :< TM.Sigma {} -> do
       return returnClosureS4
     m :< TM.SigmaIntro es -> do
@@ -132,9 +157,6 @@ clarifyTerm tenv term =
     m :< TM.SigmaElim xts e1 e2 -> do
       clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro LK.Normal xts e2]
     m :< TM.Let mxt e1 e2 -> do
-      -- fixme: do the following instead:
-      --   bind x = clarify(e1) in
-      --   linearize(chain(x), clarify(e2))
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LK.Normal [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
@@ -152,30 +174,100 @@ clarifyTerm tenv term =
       return returnImmediateS4
     _ :< TM.EnumIntro label ->
       return $ C.UpIntro $ C.EnumIntro label
-    _ :< TM.EnumElim (e, _) bs -> do
-      let (enumCaseList, es) = unzip bs
-      let fvs = chainFromTermList tenv es
-      es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
-      (y, e', yVar) <- clarifyPlus tenv e
-      return $ bindLet [(y, e')] $ C.EnumElim yVar (zip (map forgetHint enumCaseList) es')
+    _ :< TM.EnumElim {} -> do
+      -- _ :< TM.EnumElim (e, _) bs -> do
+      -- let (enumCaseList, es) = unzip bs
+      -- let fvs = TM.chainOf tenv es
+      -- es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
+      -- (y, e', yVar) <- clarifyPlus tenv e
+      error "enum-elim"
+    -- return $ bindLet [(y, e')] $ C.EnumElim yVar (zip (map forgetHint enumCaseList) es')
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
-    _ :< TM.Match (e, _) clauseList -> do
-      ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
-      let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
-      clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, arity, xts), body), i) -> do
-        closure <- clarifyLambda tenv LK.Normal xts body fvs
-        (closureVarName, closureVar) <- Gensym.newValueVarLocalWith "clause"
-        return
-          ( () :< EC.Int i,
-            C.UpElim closureVarName closure $
-              C.PiElimDownElim (C.VarGlobal (DD.getConsDD consName) arity) [closureVar, envVar]
-          )
-      dataTerm <- clarifyTerm tenv e
+
+type DataArgsMap = IntMap.IntMap [BinderF TM.Term]
+
+clarifyDataClause ::
+  Context m =>
+  (D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
+  m (D.Discriminant, [(Ident, C.Comp)])
+clarifyDataClause (discriminant, dataArgs, consArgs) = do
+  let args = dataArgs ++ consArgs
+  args' <- dropFst <$> clarifyBinder IntMap.empty args
+  return (discriminant, args')
+
+clarifyDecisionTree :: Context m => TM.TypeEnv -> DataArgsMap -> DT.DecisionTree TM.Term -> m C.Comp
+clarifyDecisionTree tenv bmap tree =
+  case tree of
+    DT.Leaf consumedCursorList cont -> do
+      cont' <- clarifyTerm tenv cont
+      tidyCursorList bmap consumedCursorList cont'
+    DT.Unreachable ->
+      return C.Unreachable
+    DT.Switch (cursor, _) (fallbackClause, clauseList) -> do
+      let chain = TM.chainOfClauseList tenv (fallbackClause, clauseList)
+      let linearizer = linearizeClause tenv chain
+      fallbackClause' <- clarifyDecisionTree tenv bmap fallbackClause >>= linearizer
+      (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv bmap cursor) clauseList
+      clauseList'' <- mapM linearizer clauseList'
+      discriminantVar <- Gensym.newIdentFromText "discriminant"
       return $
-        C.UpElim dataVarName dataTerm $
-          C.SigmaElim True [typeVarName, envVarName, tagVarName] dataVar $
-            C.EnumElim tagVar clauseList'
+        C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
+          C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
+
+clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
+clarifyCase tenv bmap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
+  let bmap' = IntMap.insert (Ident.toInt cursor) dataArgs bmap
+  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs tenv) bmap' cont
+  discriminantVar <- Gensym.newIdentFromText "discriminant"
+  return
+    ( () :< EC.Int (D.reify disc),
+      C.SigmaElim
+        False
+        (discriminantVar : map (\(_, x, _) -> x) (dataArgs ++ consArgs))
+        (C.VarLocal cursor)
+        body'
+    )
+
+linearizeClause :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> m C.Comp
+linearizeClause tenv fvs e = do
+  fvs' <- dropFst <$> clarifyBinder tenv fvs
+  linearize fvs' e
+
+tidyCursorList :: Context m => DataArgsMap -> [Ident] -> C.Comp -> m C.Comp
+tidyCursorList bmap consumedCursorList cont =
+  case consumedCursorList of
+    [] ->
+      return cont
+    cursor : rest -> do
+      cont' <- tidyCursorList bmap rest cont
+      tidyCursor bmap cursor cont'
+
+tidyCursor :: Context m => DataArgsMap -> Ident -> C.Comp -> m C.Comp
+tidyCursor bmap consumedCursor cont =
+  case IntMap.lookup (Ident.toInt consumedCursor) bmap of
+    Nothing ->
+      error "tidyCursor"
+    Just dataArgs -> do
+      dataArgs' <- dropFst <$> clarifyBinder IntMap.empty dataArgs
+      linearize dataArgs' $ C.SigmaElim True [] (C.VarLocal consumedCursor) cont
+
+-- _ :< TM.Match (e, _) clauseList -> do
+--   ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
+--   let fvs = chainFromTermList tenv $ map caseClauseToLambda clauseList
+--   clauseList' <- forM (zip clauseList [0 ..]) $ \(((_, consName, arity, xts), body), i) -> do
+--     closure <- clarifyLambda tenv LK.Normal xts body fvs
+--     (closureVarName, closureVar) <- Gensym.newValueVarLocalWith "clause"
+--     return
+--       ( () :< EC.Int i,
+--         C.UpElim closureVarName closure $
+--           C.PiElimDownElim (C.VarGlobal (DD.getConsDD consName) arity) [closureVar, envVar]
+--       )
+--   dataTerm <- clarifyTerm tenv e
+--   return $
+--     C.UpElim dataVarName dataTerm $
+--       C.SigmaElim True [typeVarName, envVarName, tagVarName] dataVar $
+--         C.EnumElim tagVar clauseList'
 
 clarifyMagic :: Context m => TM.TypeEnv -> M.Magic TM.Term -> m C.Comp
 clarifyMagic tenv der =
@@ -218,7 +310,7 @@ clarifyLambda ::
   [BinderF TM.Term] ->
   m C.Comp
 clarifyLambda tenv kind mxts e fvs = do
-  e' <- clarifyTerm (insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
+  e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
   case kind of
     LK.Fix (_, x, _)
       | S.member x (freeVars e') ->
@@ -236,12 +328,6 @@ newClosureNames = do
   lamVarInfo <- Gensym.newValueVarLocalWith "thunk"
   return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
 
-caseClauseToLambda :: (PatternF TM.Term, TM.Term) -> TM.Term
-caseClauseToLambda pat =
-  case pat of
-    ((mPat, _, _, xts), body) ->
-      mPat :< TM.PiIntro LK.Normal xts body
-
 clarifyPlus :: Context m => TM.TypeEnv -> TM.Term -> m (Ident, C.Comp, C.Value)
 clarifyPlus tenv e = do
   e' <- clarifyTerm tenv e
@@ -258,18 +344,10 @@ clarifyBinder tenv binder =
       xts' <- clarifyBinder (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
-chainFromTermList :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
-chainFromTermList tenv es =
-  nubFreeVariables $ concatMap (chainOf tenv) es
-
-alignFreeVariables :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> [C.Comp] -> m [C.Comp]
-alignFreeVariables tenv fvs es = do
-  es' <- mapM (returnClosure tenv O.Transparent LK.Normal fvs []) es
-  mapM (`callClosure` []) es'
-
-nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
-nubFreeVariables =
-  nubBy (\(_, x, _) (_, y, _) -> x == y)
+-- alignFreeVariables :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> [C.Comp] -> m [C.Comp]
+-- alignFreeVariables tenv fvs es = do
+--   es' <- mapM (returnClosure tenv O.Transparent LK.Normal fvs []) es
+--   mapM (`callClosure` []) es'
 
 clarifyPrimOp :: Context m => TM.TypeEnv -> PrimOp -> Hint -> m C.Comp
 clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
@@ -288,12 +366,10 @@ returnClosure ::
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   m C.Comp
 returnClosure tenv opacity kind fvs xts e = do
-  fvs' <- clarifyBinder tenv fvs
-  xts' <- clarifyBinder tenv xts
-  let xts'' = dropFst xts'
-  let fvs'' = dropFst fvs'
+  fvs'' <- dropFst <$> clarifyBinder tenv fvs
+  xts'' <- dropFst <$> clarifyBinder tenv xts
   fvEnvSigma <- closureEnvS4 $ map Right fvs''
-  let fvEnv = C.SigmaIntro (map (\(_, x, _) -> C.VarLocal x) fvs')
+  let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let arity = A.fromInt $ length xts'' + 1 -- arity == count(xts) + env
   case kind of
     LK.Normal -> do
@@ -301,10 +377,6 @@ returnClosure tenv opacity kind fvs xts e = do
       name <- Locator.attachCurrentLocator $ BN.lambdaName i
       registerIfNecessary name opacity xts'' fvs'' e
       return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name arity]
-    LK.Cons _ consName discriminant _ -> do
-      let consDD = DD.getConsDD consName
-      registerIfNecessary consDD opacity xts'' fvs'' e
-      return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.Int (IntSize 64) (D.reify discriminant)]
     LK.Fix (_, name, _) -> do
       name' <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt name
       let cls = C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name' arity]
@@ -343,85 +415,15 @@ callClosure e zexes = do
           (C.PiElimDownElim lamVar (xs ++ [envVar]))
       )
 
-chainOf :: TM.TypeEnv -> TM.Term -> [BinderF TM.Term]
-chainOf tenv term =
-  case term of
-    _ :< TM.Tau ->
-      []
-    m :< TM.Var x -> do
-      let t = (IntMap.!) tenv (Ident.toInt x)
-      let xts = chainOf tenv t
-      xts ++ [(m, x, t)]
-    _ :< TM.VarGlobal {} ->
-      []
-    _ :< TM.Pi {} ->
-      []
-    _ :< TM.PiIntro kind xts e ->
-      chainOf' tenv (catMaybes [LK.fromLamKind kind] ++ xts) [e]
-    _ :< TM.PiElim e es -> do
-      let xs1 = chainOf tenv e
-      let xs2 = concatMap (chainOf tenv) es
-      xs1 ++ xs2
-    _ :< TM.Sigma xts ->
-      chainOf' tenv xts []
-    _ :< TM.SigmaIntro es ->
-      concatMap (chainOf tenv) es
-    _ :< TM.SigmaElim xts e1 e2 -> do
-      let xs1 = chainOf tenv e1
-      let xs2 = chainOf' tenv xts [e2]
-      xs1 ++ xs2
-    _ :< TM.Let mxt e1 e2 -> do
-      let xs1 = chainOf tenv e1
-      let xs2 = chainOf' tenv [mxt] [e2]
-      xs1 ++ xs2
-    _ :< TM.Prim _ ->
-      []
-    _ :< TM.Enum {} ->
-      []
-    _ :< TM.EnumIntro {} ->
-      []
-    _ :< TM.EnumElim (e, t) les -> do
-      let xs0 = chainOf tenv t
-      let xs1 = chainOf tenv e
-      let es = map snd les
-      let xs2 = concatMap (chainOf tenv) es
-      xs0 ++ xs1 ++ xs2
-    _ :< TM.Magic der ->
-      foldMap (chainOf tenv) der
-    _ :< TM.Match (e, _) patList -> do
-      let xs1 = chainOf tenv e
-      let xs2 = concatMap (\((_, _, _, xts), body) -> chainOf' tenv xts [body]) patList
-      xs1 ++ xs2
-
-chainOf' :: TM.TypeEnv -> [BinderF TM.Term] -> [TM.Term] -> [BinderF TM.Term]
-chainOf' tenv binder es =
-  case binder of
-    [] ->
-      concatMap (chainOf tenv) es
-    (_, x, t) : xts -> do
-      let xs1 = chainOf tenv t
-      let xs2 = chainOf' (IntMap.insert (Ident.toInt x) t tenv) xts es
-      xs1 ++ filter (\(_, y, _) -> y /= x) xs2
-
 dropFst :: [(a, b, c)] -> [(b, c)]
 dropFst xyzs = do
   let (_, ys, zs) = unzip3 xyzs
   zip ys zs
 
-insTypeEnv :: [BinderF TM.Term] -> TM.TypeEnv -> TM.TypeEnv
-insTypeEnv xts tenv =
-  case xts of
-    [] ->
-      tenv
-    (_, x, t) : rest ->
-      insTypeEnv rest $ IntMap.insert (Ident.toInt x) t tenv
-
-forgetHint :: EC.EnumCase -> EC.CompEnumCase
-forgetHint (_ :< enumCase) =
-  case enumCase of
-    EC.Label label ->
-      () :< EC.Label label
-    EC.Int i ->
-      () :< EC.Int i
-    EC.Default ->
-      () :< EC.Default
+-- forgetHint :: EC.EnumCase -> EC.CompEnumCase
+-- forgetHint (_ :< enumCase) =
+--   case enumCase of
+--     EC.Label label ->
+--       () :< EC.Label label
+--     EC.Int i ->
+--       () :< EC.Int i

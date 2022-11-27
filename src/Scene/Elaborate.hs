@@ -4,6 +4,7 @@ module Scene.Elaborate
   )
 where
 
+import qualified Context.DataDefinition as DataDefinition
 import qualified Context.Definition as Definition
 import qualified Context.Env as Env
 import qualified Context.Global as Global
@@ -16,8 +17,10 @@ import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
 import Data.List
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
 import Entity.EnumInfo
@@ -28,7 +31,6 @@ import Entity.Hint
 import qualified Entity.HoleSubst as HS
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
-import Entity.Pattern
 import qualified Entity.Prim as P
 import qualified Entity.PrimType as PT
 import qualified Entity.PrimValue as PV
@@ -53,7 +55,8 @@ class
     Log.Context m,
     Locator.Context m,
     Global.Context m,
-    Definition.Context m
+    Definition.Context m,
+    DataDefinition.Context m
   ) =>
   Context m
   where
@@ -65,37 +68,31 @@ elaborate source cacheOrStmt = do
   initialize
   case cacheOrStmt of
     Left cache -> do
-      forM_ cache registerTopLevelDef
+      forM_ cache insertStmt
       return cache
     Right (defList, enumInfoList) -> do
       mMainDefiniteDescription <- Locator.getMainDefiniteDescription source
       -- infer
-      defList' <- mapM setupDef defList
-      defList'' <- mapM (inferStmt mMainDefiniteDescription) defList'
+      forM_ defList insertWeakStmt
+      -- defList' <- mapM setupDef defList
+      defList' <- mapM (inferStmt mMainDefiniteDescription) defList
       constraintList <- Env.getConstraintEnv
       -- unify
       Unify.unify constraintList >>= Env.setHoleSubst
       -- elaborate
-      defList''' <- elaborateStmtList defList''
-      saveCache (source, defList''') enumInfoList
-      return defList'''
+      defList'' <- elaborateStmtList defList'
+      forM_ defList'' insertStmt
+      saveCache (source, defList'') enumInfoList
+      return defList''
 
-registerTopLevelDef :: Context m => Stmt -> m ()
-registerTopLevelDef stmt = do
-  case stmt of
-    StmtDefine opacity m x impArgNum xts codType e -> do
-      Implicit.insert x impArgNum
-      Type.insert x $ weaken $ m :< TM.Pi xts codType
-      Definition.insert opacity m x (map weakenBinder xts) (weaken e)
-
-setupDef :: Context m => WeakStmt -> m WeakStmt
-setupDef def =
-  case def of
-    WeakStmtDefine opacity m f impArgNum xts codType e -> do
-      Type.insert f $ m :< WT.Pi xts codType
-      Implicit.insert f impArgNum
-      Definition.insert opacity m f xts e
-      return $ WeakStmtDefine opacity m f impArgNum xts codType e
+-- setupDef :: Context m => WeakStmt -> m WeakStmt
+-- setupDef def =
+--   case def of
+--     WeakStmtDefine stmtKind m f impArgNum xts codType e -> do
+--       Type.insert f $ m :< WT.Pi xts codType
+--       Implicit.insert f impArgNum
+--       Definition.insert (toOpacity stmtKind) m f xts e
+--       return $ WeakStmtDefine stmtKind m f impArgNum xts codType e
 
 inferStmt :: Infer.Context m => Maybe DD.DefiniteDescription -> WeakStmt -> m WeakStmt
 inferStmt mMainDD stmt = do
@@ -123,14 +120,54 @@ elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDefine opacity m x impArgNum xts codType e : rest -> do
+    WeakStmtDefine stmtKind m x impArgNum xts codType e : rest -> do
+      stmtKind' <- elaborateStmtKind stmtKind
       e' <- elaborate' e
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= Term.reduce
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
-      Definition.insert opacity m x (map weakenBinder xts') (weaken e')
+      let stmt = StmtDefine stmtKind' m x impArgNum xts' codType' e'
+      -- insertStmt stmt
+      -- Definition.insert (toOpacity stmtKind) m x (map weakenBinder xts') (weaken e')
       rest' <- elaborateStmtList rest
-      return $ StmtDefine opacity m x impArgNum xts' codType' e' : rest'
+      return $ stmt : rest'
+
+insertWeakStmt :: Context m => WeakStmt -> m ()
+insertWeakStmt (WeakStmtDefine stmtKind m f impArgNum xts codType e) = do
+  Type.insert f $ m :< WT.Pi xts codType
+  Implicit.insert f impArgNum
+  Definition.insert (toOpacity stmtKind) m f xts e
+
+-- fixme: implement via insertWeakStmt & weaken
+insertStmt :: Context m => Stmt -> m ()
+insertStmt stmt = do
+  insertWeakStmt $ weakenStmt stmt
+  insertStmtKindInfo stmt
+
+insertStmtKindInfo :: Context m => Stmt -> m ()
+insertStmtKindInfo (StmtDefine stmtKind _ _ _ _ _ _) = do
+  case stmtKind of
+    DataIntro dataName dataArgs consArgs discriminant ->
+      DataDefinition.insert dataName discriminant dataArgs consArgs
+    _ ->
+      return ()
+
+-- insertStmt (StmtDefine stmtKind' m name impArgNum xts codType e) = do
+-- Type.insert name $ weaken $ m :< TM.Pi xts codType
+-- Implicit.insert name impArgNum
+-- Definition.insert (toOpacity stmtKind') m name (map weakenBinder xts) (weaken e)
+
+elaborateStmtKind :: Context m => StmtKindF WT.WeakTerm -> m (StmtKindF TM.Term)
+elaborateStmtKind stmtKind =
+  case stmtKind of
+    Normal opacity ->
+      return $ Normal opacity
+    Data arity dataName consNameList ->
+      return $ Data arity dataName consNameList
+    DataIntro dataName dataArgs consArgs discriminant -> do
+      dataArgs' <- mapM elaborateWeakBinder dataArgs
+      consArgs' <- mapM elaborateWeakBinder consArgs
+      return $ DataIntro dataName dataArgs' consArgs' discriminant
 
 elaborate' :: Context m => WT.WeakTerm -> m TM.Term
 elaborate' term =
@@ -154,6 +191,19 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
+    m :< WT.Data name es -> do
+      es' <- mapM elaborate' es
+      return $ m :< TM.Data name es'
+    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      dataArgs' <- mapM elaborate' dataArgs
+      consArgs' <- mapM elaborate' consArgs
+      return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
+    m :< WT.DataElim oets tree -> do
+      let (os, es, ts) = unzip3 oets
+      es' <- mapM elaborate' es
+      ts' <- mapM elaborate' ts
+      tree' <- elaborateDecisionTree m tree
+      return $ m :< TM.DataElim (zip3 os es' ts') tree'
     m :< WT.Sigma xts -> do
       xts' <- mapM elaborateWeakBinder xts
       return $ m :< TM.Sigma xts'
@@ -238,55 +288,6 @@ elaborate' term =
     m :< WT.Magic der -> do
       der' <- mapM elaborate' der
       return $ m :< TM.Magic der'
-    m :< WT.Match (e, t) patList -> do
-      e' <- elaborate' e
-      t' <- elaborate' t >>= Term.reduce
-      case t' of
-        _ :< TM.PiElim (_ :< TM.VarGlobal name _) _ -> do
-          mConsInfoList <- Global.lookup name
-          case mConsInfoList of
-            Just (GN.Data _ consInfoList) -> do
-              patList' <- elaboratePatternList m consInfoList patList
-              return $ m :< TM.Match (e', t') patList'
-            _ ->
-              Throw.raiseError (WT.metaOf t) $
-                "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
-        _ -> do
-          Throw.raiseError (WT.metaOf t) $
-            "the type of this term must be a data-type, but its type is:\n" <> toText (weaken t')
-
--- for now
-elaboratePatternList ::
-  Context m =>
-  Hint ->
-  [DD.DefiniteDescription] ->
-  [(PatternF WT.WeakTerm, WT.WeakTerm)] ->
-  m [(PatternF TM.Term, TM.Term)]
-elaboratePatternList m bs patList = do
-  patList' <- forM patList $ \((mPat, c, arity, xts), body) -> do
-    xts' <- mapM elaborateWeakBinder xts
-    body' <- elaborate' body
-    return ((mPat, c, arity, xts'), body')
-  checkCaseSanity m bs patList'
-  return patList'
-
-checkCaseSanity :: Context m => Hint -> [DD.DefiniteDescription] -> [(PatternF TM.Term, TM.Term)] -> m ()
-checkCaseSanity m bs patList =
-  case (bs, patList) of
-    ([], []) ->
-      return ()
-    (b : bsRest, ((mPat, b', _, _), _) : patListRest) -> do
-      if b /= b'
-        then
-          Throw.raiseError mPat $
-            "the constructor here is supposed to be `" <> DD.reify b <> "`, but is: `" <> DD.reify b' <> "`"
-        else checkCaseSanity m bsRest patListRest
-    (b : _, []) ->
-      Throw.raiseError m $
-        "found a non-exhaustive pattern; the clause for `" <> DD.reify b <> "` is missing"
-    ([], ((mPat, b, _, _), _) : _) ->
-      Throw.raiseError mPat $
-        "found a redundant pattern; this clause for `" <> DD.reify b <> "` is redundant"
 
 elaborateWeakBinder :: Context m => BinderF WT.WeakTerm -> m (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
@@ -298,9 +299,6 @@ elaborateKind kind =
   case kind of
     LK.Normal ->
       return LK.Normal
-    LK.Cons dataName consName consNumber dataType -> do
-      dataType' <- elaborate' dataType
-      return $ LK.Cons dataName consName consNumber dataType'
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LK.Fix xt'
@@ -328,8 +326,6 @@ doesContainDefaultCase enumCaseList =
   case enumCaseList of
     [] ->
       False
-    (_ :< EC.Default) : _ ->
-      True
     _ : rest ->
       doesContainDefaultCase rest
 
@@ -339,3 +335,56 @@ doesContainDefaultCase enumCaseList =
 --   p $ T.unpack $ toText e1
 --   p $ T.unpack $ toText e2
 --   p "---------------------"
+
+elaborateDecisionTree :: Context m => Hint -> DT.DecisionTree WT.WeakTerm -> m (DT.DecisionTree TM.Term)
+elaborateDecisionTree m tree =
+  case tree of
+    DT.Leaf xs body -> do
+      body' <- elaborate' body
+      return $ DT.Leaf xs body'
+    DT.Unreachable ->
+      return DT.Unreachable
+    DT.Switch (cursor, cursorType) clauseList -> do
+      cursorType' <- elaborate' cursorType >>= Term.reduce
+      clauseList' <- elaborateClauseList m clauseList
+      ensureExhaustiveness m cursorType' clauseList'
+      return $ DT.Switch (cursor, cursorType') clauseList'
+
+elaborateClauseList :: Context m => Hint -> DT.CaseList WT.WeakTerm -> m (DT.CaseList TM.Term)
+elaborateClauseList m (fallbackClause, clauseList) = do
+  fallbackClause' <- elaborateDecisionTree m fallbackClause
+  clauseList' <- mapM (elaborateClause m) clauseList
+  return (fallbackClause', clauseList')
+
+elaborateClause :: Context m => Hint -> DT.Case WT.WeakTerm -> m (DT.Case TM.Term)
+elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
+  dataArgs' <- mapM elaborateWeakBinder dataArgs
+  consArgs' <- mapM elaborateWeakBinder consArgs
+  cont' <- elaborateDecisionTree m cont
+  return $ DT.Cons consName disc dataArgs' consArgs' cont'
+
+ensureExhaustiveness :: Context m => Hint -> TM.Term -> DT.CaseList TM.Term -> m ()
+ensureExhaustiveness m cursorType (fallbackClause, clauseList) = do
+  consList <- extractConstructorList m cursorType
+  let activeConsList = DT.getConstructors clauseList
+  let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
+  case (S.size diff == 0, fallbackClause) of
+    (True, _) ->
+      return ()
+    (_, DT.Unreachable) ->
+      Throw.raiseError m "encountered a non-exhaustive pattern matching"
+    _ ->
+      return ()
+
+extractConstructorList :: Context m => Hint -> TM.Term -> m [DD.DefiniteDescription]
+extractConstructorList m cursorType = do
+  case cursorType of
+    _ :< TM.Data dataName _ -> do
+      kind <- Global.lookup dataName
+      case kind of
+        Just (GN.Data _ consList) ->
+          return consList
+        _ ->
+          Throw.raiseCritical m "extractConstructorList"
+    _ ->
+      Throw.raiseError m "the type of this term is expected to be an ADT, but it's not."

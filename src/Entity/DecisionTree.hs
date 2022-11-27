@@ -1,26 +1,37 @@
-module Entity.DecisionTree where
+module Entity.DecisionTree
+  ( DecisionTree (..),
+    CaseList,
+    Case (..),
+    getConstructors,
+  )
+where
 
 import Data.Binary
-import Entity.Arity
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Ident
 import GHC.Generics (Generic)
 
 data DecisionTree a
   = Leaf [Ident] a
   | Unreachable
-  | Switch (CaseList a)
+  | Switch (Ident, a) (CaseList a)
   deriving (Show, Generic)
 
 data Case a
-  = Cons DD.DefiniteDescription Arity [BinderF a] (DecisionTree a)
+  = Cons DD.DefiniteDescription D.Discriminant [BinderF a] [BinderF a] (DecisionTree a)
   deriving (Show, Generic)
-
-type DefaultDecisionTree a = DecisionTree a
 
 type CaseList a = (DecisionTree a, [Case a])
 
 instance (Binary a) => Binary (DecisionTree a)
 
 instance (Binary a) => Binary (Case a)
+
+getConstructors :: [Case a] -> [DD.DefiniteDescription]
+getConstructors clauseList = do
+  map getConstructor clauseList
+
+getConstructor :: Case a -> DD.DefiniteDescription
+getConstructor (Cons name _ _ _ _) = name

@@ -12,6 +12,7 @@ import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.EnumCase
 import Entity.EnumTypeName
 import qualified Entity.GlobalLocator as GL
@@ -32,11 +33,12 @@ data RawTermF a
   = Tau
   | Var Ident
   | VarGlobal GL.GlobalLocator LL.LocalLocator
-  | VarGlobalStrict DD.DefiniteDescription
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
-  | DataElim [a] (RP.RawPatternMatrix a) -- (pattern-matched value, its type)
+  | Data DD.DefiniteDescription [a]
+  | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
+  | DataElim [a] (RP.RawPatternMatrix a)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a

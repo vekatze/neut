@@ -73,34 +73,41 @@ reduce term =
                   return e1' -- eta-reduce
             _ ->
               return $ C.UpElim x e1' e2'
-    C.EnumElim v les -> do
+    C.EnumElim v defaultBranch les -> do
       let (ls, es) = unzip les
       let les' = zip (map unwrap ls) es
       case v of
         C.EnumIntro label
           | Just body <- lookup (EC.Label label) les' ->
               reduce body
-          | Just body <- lookup EC.Default les' ->
-              reduce body
+          | otherwise ->
+              reduce defaultBranch
+        -- \| Just body <- lookup EC.Default les' ->
+        --     reduce body
         C.Int _ l
           | Just body <- lookup (EC.Int (fromInteger l)) les' ->
               reduce body
-          | Just body <- lookup EC.Default les' ->
-              reduce body
-          | otherwise -> do
-              -- putStrLn "other"
-              -- print v
-              -- print les
-              -- let (ls, es) = unzip les
-              es' <- mapM reduce es
-              return $ C.EnumElim v (zip ls es')
+          | otherwise ->
+              reduce defaultBranch
+        -- \| Just body <- lookup EC.Default les' ->
+        --     reduce body
+        -- \| otherwise -> do
+        --     -- putStrLn "other"
+        --     -- print v
+        --     -- print les
+        --     -- let (ls, es) = unzip les
+        --     es' <- mapM reduce es
+        --     return $ C.EnumElim v (zip ls es')
         _ -> do
           -- p "other"
           -- p' v
           -- p' les
           -- let (ls, es) = unzip les
+          defaultBranch' <- reduce defaultBranch
           es' <- mapM reduce es
-          return $ C.EnumElim v (zip ls es')
+          return $ C.EnumElim v defaultBranch' (zip ls es')
+    C.Unreachable ->
+      return term
 
 extractIdent :: C.Value -> Maybe Ident
 extractIdent term =

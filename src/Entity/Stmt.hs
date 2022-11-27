@@ -3,8 +3,10 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.Set as S
+import qualified Entity.Arity as A
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.EnumInfo
 import Entity.Hint
 import qualified Entity.ImpArgNum as I
@@ -20,18 +22,55 @@ import Path
 type PreProgram =
   (Path Abs File, [RawStmt])
 
+data StmtKindF a
+  = Normal O.Opacity
+  | Data A.Arity DD.DefiniteDescription [DD.DefiniteDescription]
+  | DataIntro DD.DefiniteDescription [BinderF a] [BinderF a] D.Discriminant
+  deriving (Generic)
+
+toOpacity :: StmtKindF a -> O.Opacity
+toOpacity stmtKind =
+  case stmtKind of
+    Normal opacity ->
+      opacity
+    _ ->
+      O.Transparent
+
+instance Binary a => Binary (StmtKindF a)
+
 data RawStmt
-  = RawStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF RT.RawTerm] RT.RawTerm RT.RawTerm
+  = RawStmtDefine
+      (StmtKindF RT.RawTerm)
+      Hint
+      DD.DefiniteDescription
+      I.ImpArgNum
+      [BinderF RT.RawTerm]
+      RT.RawTerm
+      RT.RawTerm
   | RawStmtSection Section.Section [RawStmt]
 
 data WeakStmt
-  = WeakStmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF WT.WeakTerm] WT.WeakTerm WT.WeakTerm
+  = WeakStmtDefine
+      (StmtKindF WT.WeakTerm)
+      Hint
+      DD.DefiniteDescription
+      I.ImpArgNum
+      [BinderF WT.WeakTerm]
+      WT.WeakTerm
+      WT.WeakTerm
 
 type Program =
   (Source.Source, [Stmt])
 
 data Stmt
-  = StmtDefine O.Opacity Hint DD.DefiniteDescription I.ImpArgNum [BinderF TM.Term] TM.Term TM.Term
+  = StmtDefine
+      (StmtKindF TM.Term)
+      Hint
+      DD.DefiniteDescription
+      I.ImpArgNum
+      [BinderF TM.Term]
+      TM.Term
+      TM.Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -49,9 +88,9 @@ instance Binary Cache
 compress :: Stmt -> Stmt
 compress stmt =
   case stmt of
-    StmtDefine opacity m functionName impArgNum args codType _ ->
-      case opacity of
-        O.Opaque ->
-          StmtDefine opacity m functionName impArgNum args codType (m :< TM.Tau)
+    StmtDefine stmtKind m functionName impArgNum args codType _ ->
+      case stmtKind of
+        Normal O.Opaque ->
+          StmtDefine stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt

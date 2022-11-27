@@ -1,8 +1,8 @@
 module Entity.WeakTerm.Reduce (reduce) where
 
 import Control.Comonad.Cofree
-import Control.Monad
 import qualified Data.IntMap as IntMap
+import qualified Entity.DecisionTree as DT
 import qualified Entity.EnumCase as EC
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
@@ -43,6 +43,19 @@ reduce term =
               Subst.subst sub body >>= reduce
         _ ->
           return $ m :< WT.PiElim e' es'
+    m :< WT.Data name es -> do
+      es' <- mapM reduce es
+      return $ m :< WT.Data name es'
+    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      dataArgs' <- mapM reduce dataArgs
+      consArgs' <- mapM reduce consArgs
+      return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
+    m :< WT.DataElim oets decisionTree -> do
+      let (os, es, ts) = unzip3 oets
+      es' <- mapM reduce es
+      ts' <- mapM reduce ts
+      decisionTree' <- reduceDecisionTree decisionTree
+      return $ m :< WT.DataElim (zip3 os es' ts') decisionTree'
     m :< WT.Sigma xts -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
@@ -78,11 +91,12 @@ reduce term =
             Just body ->
               reduce body
             Nothing ->
-              case lookup EC.Default les'' of
-                Just body ->
-                  reduce body
-                Nothing ->
-                  return $ m :< WT.EnumElim (e', t') les'
+              error "enum-elim (Entity.WeakTerm.Reduce)"
+        -- case lookup EC.Default les'' of
+        --   Just body ->
+        --     reduce body
+        --   Nothing ->
+        --     return $ m :< WT.EnumElim (e', t') les'
         _ ->
           return $ m :< WT.EnumElim (e', t') les'
     _ :< WT.Question e _ ->
@@ -90,37 +104,42 @@ reduce term =
     m :< WT.Magic der -> do
       der' <- mapM reduce der
       return $ m :< WT.Magic der'
-    m :< WT.Match (e, t) clauseList -> do
-      e' <- reduce e
-      -- let lamList = map (toLamList m) clauseList
-      -- dataEnv <- readIORef dataEnvRef
-      -- case e' of
-      --   (_ :< WeakTermPiIntro (LamKindCons dataName consName _ _) _ _)
-      --     | Just consNameList <- Map.lookup dataName dataEnv,
-      --       consName `elem` consNameList,
-      --       checkClauseListSanity consNameList clauseList -> do
-      --       reduce $ m :< WeakTermPiElim e' (resultType : lamList)
-      --   _ -> do
-      -- resultType' <- reduce resultType
-      t' <- reduce t
-      clauseList' <- forM clauseList $ \((mPat, name, arity, xts), body) -> do
-        body' <- reduce body
-        return ((mPat, name, arity, xts), body')
-      return $ m :< WT.Match (e', t') clauseList'
     _ ->
       return term
 
--- checkClauseListSanity :: [T.Text] -> [(PatternF WeakTerm, WeakTerm)] -> Bool
--- checkClauseListSanity consNameList clauseList =
---   case (consNameList, clauseList) of
---     ([], []) ->
---       True
---     (consName : restConsNameList, ((_, name, _), _) : restClauseList)
---       | consName == name ->
---         checkClauseListSanity restConsNameList restClauseList
---     _ ->
---       False
+reduceDecisionTree ::
+  Subst.Context m =>
+  DT.DecisionTree WT.WeakTerm ->
+  m (DT.DecisionTree WT.WeakTerm)
+reduceDecisionTree tree =
+  case tree of
+    DT.Leaf xs e -> do
+      e' <- reduce e
+      return $ DT.Leaf xs e'
+    DT.Unreachable ->
+      return DT.Unreachable
+    DT.Switch (cursorVar, cursor) clauseList -> do
+      cursor' <- reduce cursor
+      clauseList' <- reduceCaseList clauseList
+      return $ DT.Switch (cursorVar, cursor') clauseList'
 
--- toLamList :: Hint -> (PatternF WeakTerm, WeakTerm) -> WeakTerm
--- toLamList m ((_, _, xts), body) =
---   m :< WeakTermPiIntro LamKindNormal xts body
+reduceCaseList ::
+  Subst.Context m =>
+  DT.CaseList WT.WeakTerm ->
+  m (DT.CaseList WT.WeakTerm)
+reduceCaseList (fallbackTree, clauseList) = do
+  fallbackTree' <- reduceDecisionTree fallbackTree
+  clauseList' <- mapM reduceCase clauseList
+  return (fallbackTree', clauseList')
+
+reduceCase ::
+  Subst.Context m =>
+  DT.Case WT.WeakTerm ->
+  m (DT.Case WT.WeakTerm)
+reduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
+  let (ms1, xs1, ts1) = unzip3 dataArgs
+  let (ms2, xs2, ts2) = unzip3 consArgs
+  ts1' <- mapM reduce ts1
+  ts2' <- mapM reduce ts2
+  tree' <- reduceDecisionTree tree
+  return $ DT.Cons dd disc (zip3 ms1 xs1 ts1') (zip3 ms2 xs2 ts2') tree'
