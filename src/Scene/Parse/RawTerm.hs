@@ -377,18 +377,26 @@ lowTypeNumber = do
 rawTermMatch :: (Context m, Throw.Context m) => Parser m RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
-  try $ keyword "match"
-  es <- commaList rawTerm
-  patternRowList <- withBlock $ manyList $ rawTermPatternRow $ length es
+  keyword "match"
+  es <- sepByTill rawTerm (delimiter ",") (keyword "with")
+  patternRowList <- manyList $ rawTermPatternRow (length es)
+  keyword "end"
   return $ m :< RT.DataElim es (RP.new patternRowList)
 
 rawTermPatternRow :: Context m => Int -> Parser m (RP.RawPatternRow RT.RawTerm)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
-  patternList <- many rawTermPattern
+  patternList <- sepByTill rawTermPattern (delimiter ",") (delimiter "->")
   unless (length patternList == patternSize) $ do
-    lift $ Throw.raiseError m "the size of the pattern row doesn't match with its input size"
-  delimiter "->"
+    lift $
+      Throw.raiseError m $
+        "the size of the pattern row `"
+          <> T.pack (show (length patternList))
+          <> "` doesn't match with its input size `"
+          <> T.pack (show patternSize)
+          <> "`"
+          <> "\n"
+          <> T.pack (show patternList)
   body <- rawTerm
   return (V.fromList patternList, body)
 

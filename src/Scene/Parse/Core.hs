@@ -168,6 +168,21 @@ manyList :: Context m => Parser m a -> Parser m [a]
 manyList f =
   many $ delimiter "-" >> f
 
+sepByTill :: Context m => Parser m a -> Parser m b -> Parser m c -> Parser m [a]
+sepByTill p sep end = do
+  choice
+    [ try end >> return [],
+      sepByTill' [] p sep end
+    ]
+
+sepByTill' :: Context m => [a] -> Parser m a -> Parser m b -> Parser m c -> Parser m [a]
+sepByTill' acc p sep end = do
+  v <- p
+  choice
+    [ try sep >> sepByTill' (v : acc) p sep end,
+      end >> return (Prelude.reverse (v : acc))
+    ]
+
 var :: Context m => Parser m (Hint, T.Text)
 var = do
   m <- getCurrentHint
