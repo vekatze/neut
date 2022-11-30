@@ -14,8 +14,8 @@ module Entity.Pattern
 where
 
 import qualified Context.Throw as Throw
+import Data.List
 import Data.Maybe
-import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
 import qualified Entity.Arity as A
@@ -56,7 +56,7 @@ new :: [PatternRow a] -> PatternMatrix a
 new rows =
   MakePatternMatrix $ V.fromList rows
 
-getHeadConstructors :: PatternMatrix a -> S.Set (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
+getHeadConstructors :: PatternMatrix a -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -68,9 +68,19 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-getColumnConstructors :: PatternColumn -> S.Set (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
+getColumnConstructors :: PatternColumn -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)]
 getColumnConstructors col =
-  S.fromList $ mapMaybe (getColumnConstructor . snd) col
+  nub $ getHeadJusts $ map (getColumnConstructor . snd) col
+
+getHeadJusts :: [Maybe a] -> [a]
+getHeadJusts xs =
+  case xs of
+    [] ->
+      []
+    Just a : rest ->
+      a : getHeadJusts rest
+    _ ->
+      []
 
 getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
 getColumnConstructor pat =
