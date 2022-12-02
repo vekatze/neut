@@ -70,17 +70,7 @@ getHeadConstructors' (rows, _) =
 
 getColumnConstructors :: PatternColumn -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)]
 getColumnConstructors col =
-  nub $ getHeadJusts $ map (getColumnConstructor . snd) col
-
-getHeadJusts :: [Maybe a] -> [a]
-getHeadJusts xs =
-  case xs of
-    [] ->
-      []
-    Just a : rest ->
-      a : getHeadJusts rest
-    _ ->
-      []
+  nub $ mapMaybe (getColumnConstructor . snd) col
 
 getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
 getColumnConstructor pat =
