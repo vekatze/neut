@@ -159,8 +159,6 @@ substCase ::
   DT.Case TM.Term ->
   m (DT.Case TM.Term)
 substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
-  (xts', tree') <- subst'' sub (dataArgs ++ consArgs) tree
-  let len = length dataArgs
-  let dataArgs' = take len xts'
-  let consArgs' = drop len xts'
+  dataArgs' <- mapM (subst sub) dataArgs
+  (consArgs', tree') <- subst'' sub consArgs tree
   return $ DT.Cons dd disc dataArgs' consArgs' tree'

@@ -9,6 +9,7 @@ where
 import qualified Context.Env as Env
 import qualified Context.Gensym as Gensym
 import qualified Context.Implicit as Implicit
+import qualified Context.Log as Log
 import qualified Context.Throw as Throw
 import qualified Context.Type as Type
 import Control.Comonad.Cofree
@@ -39,6 +40,7 @@ import qualified Entity.WeakPrim as WP
 import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 import qualified Entity.WeakTerm.Subst as Subst
+import Entity.WeakTerm.ToText
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -48,7 +50,8 @@ class
     Subst.Context m,
     Gensym.Context m,
     Implicit.Context m,
-    Env.Context m
+    Env.Context m,
+    Log.Context m
   ) =>
   Context m
   where
@@ -410,16 +413,10 @@ inferClause ::
   DT.Case WT.WeakTerm ->
   m (DT.Case WT.WeakTerm, WT.WeakTerm)
 inferClause m varEnv cursorType (DT.Cons consName disc dataArgs consArgs body) = do
-  (xts', (body', tBody)) <- inferBinder' varEnv (dataArgs ++ consArgs) $ \extendedVarEnv ->
+  typedDataArgs' <- mapM (infer' varEnv) dataArgs
+  (consArgs', (body', tBody)) <- inferBinder' varEnv consArgs $ \extendedVarEnv ->
     inferDecisionTree m extendedVarEnv body
-  (_, tPat) <-
-    infer' varEnv $
-      m
-        :< WT.PiElim
-          (m :< WT.VarGlobal consName (A.fromInt $ length consArgs))
-          (map (\(mx, x, _) -> mx :< WT.Var x) consArgs)
+  et <- infer' varEnv $ m :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
+  (_, tPat) <- inferPiElim varEnv m et $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   Env.insConstraintEnv tPat cursorType
-  let len = length dataArgs
-  let dataArgs' = take len xts'
-  let consArgs' = drop len xts'
-  return (DT.Cons consName disc dataArgs' consArgs' body', tBody)
+  return (DT.Cons consName disc (map fst typedDataArgs') consArgs' body', tBody)

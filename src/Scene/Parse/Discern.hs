@@ -30,6 +30,7 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
+import Entity.NominalEnv
 import qualified Entity.Pattern as PAT
 import qualified Entity.Pattern.Fallback as PATF
 import qualified Entity.Pattern.Specialize as PATS
@@ -52,11 +53,6 @@ class
     PATS.Context m
   ) =>
   Context m
-
-type NameEnv = [(T.Text, (Hint, Ident))]
-
-empty :: NameEnv
-empty = []
 
 discernStmtList :: Context m => [RawStmt] -> m [WeakStmt]
 discernStmtList stmtList =
@@ -89,7 +85,7 @@ discernStmtKind stmtKind =
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern :: Context m => NameEnv -> RT.RawTerm -> m WT.WeakTerm
+discern :: Context m => NominalEnv -> RT.RawTerm -> m WT.WeakTerm
 discern nenv term =
   case term of
     m :< RT.Tau ->
@@ -127,8 +123,8 @@ discern nenv term =
     m :< RT.DataElim es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv) es
-      ts <- mapM (const $ Gensym.newAster m []) es'
-      decisionTree <- discernPatternMatrix nenv m patternMatrix >>= compilePatternMatrix m (V.fromList os)
+      ts <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) es'
+      decisionTree <- discernPatternMatrix nenv m patternMatrix >>= compilePatternMatrix nenv m (V.fromList os)
       return $ m :< WT.DataElim (zip3 os es' ts) decisionTree
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
@@ -152,7 +148,7 @@ discern nenv term =
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
     m :< RT.Aster k ->
-      return $ m :< WT.Aster k (map (\(_, (mx, x)) -> mx :< WT.Var x) nenv)
+      return $ m :< WT.Aster k (asHoleArgs nenv)
     m :< RT.Enum t ->
       return $ m :< WT.Enum t
     m :< RT.EnumIntro label -> do
@@ -177,9 +173,9 @@ discern nenv term =
 
 discernBinder ::
   Context m =>
-  NameEnv ->
+  NominalEnv ->
   [BinderF RT.RawTerm] ->
-  m ([BinderF WT.WeakTerm], NameEnv)
+  m ([BinderF WT.WeakTerm], NominalEnv)
 discernBinder nenv binder =
   case binder of
     [] -> do
@@ -192,7 +188,7 @@ discernBinder nenv binder =
 
 discernBinderWithBody ::
   Context m =>
-  NameEnv ->
+  NominalEnv ->
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
   m ([BinderF WT.WeakTerm], WT.WeakTerm)
@@ -203,7 +199,7 @@ discernBinderWithBody nenv binder e = do
 
 discernBinderWithBody' ::
   Context m =>
-  NameEnv ->
+  NominalEnv ->
   BinderF RT.RawTerm ->
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
@@ -312,7 +308,7 @@ resolveConstructor' m dd gn =
 
 discernPatternMatrix ::
   Context m =>
-  NameEnv ->
+  NominalEnv ->
   Hint ->
   RP.RawPatternMatrix RT.RawTerm ->
   m (PAT.PatternMatrix ([Ident], WT.WeakTerm))
@@ -327,7 +323,7 @@ discernPatternMatrix nenv m patternMatrix =
 
 discernPatternRow ::
   Context m =>
-  NameEnv ->
+  NominalEnv ->
   Hint ->
   RP.RawPatternRow RT.RawTerm ->
   m (PAT.PatternRow ([Ident], WT.WeakTerm))
@@ -343,7 +339,7 @@ discernPatternRow nenv m (patList, body) = do
 
 discernPattern ::
   Context m =>
-  NameEnv ->
+  NominalEnv ->
   (Hint, RP.RawPattern) ->
   m (Hint, PAT.Pattern)
 discernPattern nenv (m, pat) =
@@ -363,51 +359,70 @@ discernPattern nenv (m, pat) =
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
 compilePatternMatrix ::
   Context m =>
+  NominalEnv ->
   Hint ->
   V.Vector Ident ->
   PAT.PatternMatrix ([Ident], WT.WeakTerm) ->
   m (DT.DecisionTree WT.WeakTerm)
-compilePatternMatrix m occurrences mat =
+compilePatternMatrix nenv m occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
       return DT.Unreachable
     Just (row, _) ->
       case PAT.getClauseBody row of
         Right (usedVars, (freedVars, body)) -> do
-          DT.Leaf freedVars <$> bindLet m (zip (V.toList occurrences) usedVars) body
+          DT.Leaf freedVars <$> bindLet nenv m (zip usedVars (V.toList occurrences)) body
         Left i ->
           if i > 0
             then do
               occurrences' <- V.swap m i occurrences
               mat' <- PAT.swapColumn m i mat
-              compilePatternMatrix m occurrences' mat'
+              compilePatternMatrix nenv m occurrences' mat'
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM (S.toList headConstructors) $ \(cons, disc, dataArity, consArity) -> do
-                dataVars <- mapM (const $ Gensym.newIdentFromText "arity") [1 .. A.reify dataArity]
-                consVars <- mapM (const $ Gensym.newIdentFromText "arity") [1 .. A.reify consArity]
-                consHoles <- mapM (const $ Gensym.newAster m []) consVars
-                dataHoles <- mapM (const $ Gensym.newAster m []) dataVars
-                let dataArgs = zipWith (\var hole -> (m, var, hole)) dataVars dataHoles
-                let consArgs = zipWith (\var hole -> (m, var, hole)) consVars consHoles
+              clauseList <- forM headConstructors $ \(cons, disc, dataArity, consArity) -> do
+                dataHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
+                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
+                (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize cursor (cons, consArity) mat
-                specialDecisionTree <- compilePatternMatrix m occurrences' specialMatrix
-                return (DT.Cons cons disc dataArgs consArgs specialDecisionTree)
-              fallbackMatrix <- PATF.getFallbackMatrix cursor mat
-              fallbackClause <- compilePatternMatrix m (V.tail occurrences) fallbackMatrix
-              t <- Gensym.newAster m []
+                specialMatrix <- PATS.specialize nenv cursor (cons, consArity) mat
+                specialDecisionTree <- compilePatternMatrix nenv' m occurrences' specialMatrix
+                return (DT.Cons cons disc dataHoles consArgs' specialDecisionTree)
+              fallbackMatrix <- PATF.getFallbackMatrix nenv cursor mat
+              fallbackClause <- compilePatternMatrix nenv m (V.tail occurrences) fallbackMatrix
+              t <- Gensym.newAster m (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
-bindLet :: Context m => Hint -> [(Ident, Maybe Ident)] -> WT.WeakTerm -> m WT.WeakTerm
-bindLet m binder cont =
+alignConsArgs ::
+  Context m =>
+  NominalEnv ->
+  [(Hint, Ident)] ->
+  m ([BinderF WT.WeakTerm], NominalEnv)
+alignConsArgs nenv binder =
+  case binder of
+    [] -> do
+      return ([], nenv)
+    (mx, x) : xts -> do
+      t <- Gensym.newPreAster mx
+      t' <- discern nenv t
+      (xts', nenv') <- alignConsArgs ((Ident.toText x, (mx, x)) : nenv) xts
+      return ((mx, x, t') : xts', nenv')
+
+bindLet ::
+  Context m =>
+  NominalEnv ->
+  Hint ->
+  [(Maybe Ident, Ident)] ->
+  WT.WeakTerm ->
+  m WT.WeakTerm
+bindLet nenv m binder cont =
   case binder of
     [] ->
       return cont
-    (_, Nothing) : xes -> do
-      bindLet m xes cont
-    (from, Just to) : xes -> do
-      h <- Gensym.newAster m []
-      cont' <- bindLet m xes cont
+    (Nothing, _) : xes -> do
+      bindLet nenv m xes cont
+    (Just from, to) : xes -> do
+      h <- Gensym.newAster m (asHoleArgs nenv)
+      cont' <- bindLet nenv m xes cont
       return $ m :< WT.Let (m, from, h) (m :< WT.Var to) cont'

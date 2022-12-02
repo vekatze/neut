@@ -131,9 +131,8 @@ reduceCase ::
   DT.Case TM.Term ->
   m (DT.Case TM.Term)
 reduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
-  let (ms1, xs1, ts1) = unzip3 dataArgs
-  let (ms2, xs2, ts2) = unzip3 consArgs
-  ts1' <- mapM reduce ts1
-  ts2' <- mapM reduce ts2
+  dataArgs' <- mapM reduce dataArgs
+  let (ms, xs, ts) = unzip3 consArgs
+  ts' <- mapM reduce ts
   tree' <- reduceDecisionTree tree
-  return $ DT.Cons dd disc (zip3 ms1 xs1 ts1') (zip3 ms2 xs2 ts2') tree'
+  return $ DT.Cons dd disc dataArgs' (zip3 ms xs ts') tree'

@@ -3,7 +3,9 @@ module Entity.WeakTerm.ToText (toText) where
 import Control.Comonad.Cofree
 import qualified Data.Text as T
 import Entity.Binder
+import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import qualified Entity.EnumCase as EC
 import qualified Entity.EnumTypeName as ET
 import qualified Entity.EnumValueName as EV
@@ -50,16 +52,17 @@ toText term =
       showCons $ DD.reify name : map toText es
     _ :< WT.DataIntro _ consName _ _ consArgs -> do
       showCons (DD.reify consName : map toText consArgs)
-    _ :< WT.DataElim {} -> do
-      "<match>"
+    _ :< WT.DataElim xets tree -> do
+      let (xs, es, _) = unzip3 xets
+      showCons ["match", showMatchArgs (zip xs es), showDecisionTree tree]
     _ :< WT.Sigma xts ->
       showCons ["sigma", showItems $ map showArg xts]
     _ :< WT.SigmaIntro es ->
       showCons $ "sigma-intro" : map toText es
     _ :< WT.SigmaElim {} ->
       "<sigma-elim>"
-    _ :< WT.Let {} -> do
-      "<let>"
+    _ :< WT.Let (_, x, _) e1 e2 -> do
+      showCons ["let", showVariable x, toText e1, toText e2]
     _ :< WT.Prim prim ->
       showPrim prim
     _ :< WT.Aster i es ->
@@ -139,3 +142,35 @@ splitLast xs =
   if null xs
     then Nothing
     else Just (init xs, last xs)
+
+showMatchArgs :: [(Ident, WT.WeakTerm)] -> T.Text
+showMatchArgs xes = do
+  showCons $ map showMatchArg xes
+
+showMatchArg :: (Ident, WT.WeakTerm) -> T.Text
+showMatchArg (x, e) = do
+  showCons [showVariable x, toText e]
+
+showDecisionTree :: DT.DecisionTree WT.WeakTerm -> T.Text
+showDecisionTree tree =
+  case tree of
+    DT.Leaf xs cont ->
+      showCons ["leaf", showCons (map showVariable xs), toText cont]
+    DT.Unreachable ->
+      "UNREACHABLE"
+    DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
+      showCons $
+        "switch"
+          : showCons [showCons [showVariable cursor, toText cursorType]]
+          : showDecisionTree fallbackClause
+          : map showClauseList clauseList
+
+showClauseList :: DT.Case WT.WeakTerm -> T.Text
+showClauseList (DT.Cons consName d dataArgs consArgs cont) = do
+  showCons
+    [ DD.reify consName,
+      T.pack (show (D.reify d)),
+      showCons $ map toText dataArgs,
+      inParen $ showTypeArgs consArgs,
+      showDecisionTree cont
+    ]

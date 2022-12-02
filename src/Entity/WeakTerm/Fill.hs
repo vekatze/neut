@@ -178,8 +178,6 @@ fillCase ::
   DT.Case WT.WeakTerm ->
   m (DT.Case WT.WeakTerm)
 fillCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
-  (xts', tree') <- fill''' sub (dataArgs ++ consArgs) tree
-  let len = length dataArgs
-  let dataArgs' = take len xts'
-  let consArgs' = drop len xts'
+  dataArgs' <- mapM (fill sub) dataArgs
+  (consArgs', tree') <- fill''' sub consArgs tree
   return $ DT.Cons dd disc dataArgs' consArgs' tree'
