@@ -344,42 +344,42 @@ elaborateDecisionTree m tree =
       return $ DT.Leaf xs body'
     DT.Unreachable ->
       return DT.Unreachable
-    DT.Switch (cursor, cursorType) clauseList -> do
+    DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
       cursorType' <- elaborate' cursorType >>= Term.reduce
-      clauseList' <- elaborateClauseList m clauseList
-      ensureExhaustiveness m cursorType' clauseList'
-      return $ DT.Switch (cursor, cursorType') clauseList'
-
-elaborateClauseList :: Context m => Hint -> DT.CaseList WT.WeakTerm -> m (DT.CaseList TM.Term)
-elaborateClauseList m (fallbackClause, clauseList) = do
-  fallbackClause' <- elaborateDecisionTree m fallbackClause
-  clauseList' <- mapM (elaborateClause m) clauseList
-  return (fallbackClause', clauseList')
+      consList <- extractConstructorList m cursorType'
+      let activeConsList = DT.getConstructors clauseList
+      let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
+      if S.size diff == 0
+        then do
+          clauseList' <- mapM (elaborateClause m) clauseList
+          return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
+        else do
+          case fallbackClause of
+            DT.Unreachable ->
+              Throw.raiseError m "encountered a non-exhaustive pattern matching"
+            _ -> do
+              fallbackClause' <- elaborateDecisionTree m fallbackClause
+              clauseList' <- mapM (elaborateClause m) clauseList
+              return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
 elaborateClause :: Context m => Hint -> DT.Case WT.WeakTerm -> m (DT.Case TM.Term)
 elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
-  dataArgs' <- mapM elaborateWeakBinder dataArgs
+  dataArgs' <- mapM elaborate' dataArgs
   consArgs' <- mapM elaborateWeakBinder consArgs
   cont' <- elaborateDecisionTree m cont
   return $ DT.Cons consName disc dataArgs' consArgs' cont'
 
-ensureExhaustiveness :: Context m => Hint -> TM.Term -> DT.CaseList TM.Term -> m ()
-ensureExhaustiveness m cursorType (fallbackClause, clauseList) = do
-  consList <- extractConstructorList m cursorType
-  let activeConsList = DT.getConstructors clauseList
-  let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
-  case (S.size diff == 0, fallbackClause) of
-    (True, _) ->
-      return ()
-    (_, DT.Unreachable) ->
-      Throw.raiseError m "encountered a non-exhaustive pattern matching"
-    _ ->
-      return ()
-
 extractConstructorList :: Context m => Hint -> TM.Term -> m [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
-    _ :< TM.Data dataName _ -> do
+    _ :< TM.PiElim (_ :< TM.Data dataName _) _ -> do
+      kind <- Global.lookup dataName
+      case kind of
+        Just (GN.Data _ consList) ->
+          return consList
+        _ ->
+          Throw.raiseCritical m "extractConstructorList"
+    _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
       kind <- Global.lookup dataName
       case kind of
         Just (GN.Data _ consList) ->
@@ -387,4 +387,4 @@ extractConstructorList m cursorType = do
         _ ->
           Throw.raiseCritical m "extractConstructorList"
     _ ->
-      Throw.raiseError m "the type of this term is expected to be an ADT, but it's not."
+      Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)
