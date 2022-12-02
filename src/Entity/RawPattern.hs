@@ -19,6 +19,7 @@ import qualified Entity.UnresolvedName as UN
 data RawPattern
   = Var Ident
   | Cons (Either UN.UnresolvedName (GL.GlobalLocator, LL.LocalLocator)) [(Hint, RawPattern)]
+  deriving (Show)
 
 type RawPatternRow a =
   (V.Vector (Hint, RawPattern), a)
