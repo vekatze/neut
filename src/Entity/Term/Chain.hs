@@ -87,20 +87,10 @@ chainOfBinder' tenv mxts f =
   case mxts of
     [] ->
       f tenv
-    ((_, x, t) : xts) -> do
+    (mxt@(_, x, t) : xts) -> do
       let hs1 = chainOf' tenv t
-      let hs2 = chainOfBinder' tenv xts f
+      let hs2 = chainOfBinder' (TM.insTypeEnv [mxt] tenv) xts f
       hs1 ++ filter (\(_, y, _) -> y /= x) hs2
-
--- S.union hs1 $ S.filter (/= x) hs2
-
--- insTypeEnv :: [BinderF TM.Term] -> TM.TypeEnv -> TM.TypeEnv
--- insTypeEnv xts tenv =
---   case xts of
---     [] ->
---       tenv
---     (_, x, t) : rest ->
---       insTypeEnv rest $ IntMap.insert (Ident.toInt x) t tenv
 
 chainOfDecisionTree :: TM.TypeEnv -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
 chainOfDecisionTree tenv tree =
@@ -123,8 +113,10 @@ chainOfCaseList tenv (fallbackClause, clauseList) = do
   xs1 ++ xs2
 
 chainOfCase :: TM.TypeEnv -> DT.Case TM.Term -> [BinderF TM.Term]
-chainOfCase tenv (DT.Cons _ _ dataArgs consArgs tree) =
-  concatMap (chainOf' tenv) dataArgs ++ chainOfDecisionTree' tenv consArgs tree
+chainOfCase tenv (DT.Cons _ _ dataArgs consArgs tree) = do
+  let xs1 = concatMap (chainOf' tenv) dataArgs
+  let xs2 = chainOfDecisionTree' tenv consArgs tree
+  xs1 ++ xs2
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =
