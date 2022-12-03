@@ -71,8 +71,9 @@ subst sub term =
     m :< WT.Prim prim -> do
       prim' <- mapM (subst sub) prim
       return $ m :< WT.Prim prim'
-    _ :< WT.Aster {} ->
-      return term
+    m :< WT.Aster holeID args -> do
+      args' <- mapM (subst sub) args
+      return $ m :< WT.Aster holeID args'
     _ :< WT.Enum {} ->
       return term
     _ :< WT.EnumIntro {} ->
