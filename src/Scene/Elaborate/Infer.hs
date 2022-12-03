@@ -91,23 +91,19 @@ infer' varEnv term =
           let piType = m :< WT.Pi xts' tCod
           Env.insConstraintEnv piType t'
           return (m :< WT.PiIntro (LK.Fix (mx, x, t')) xts' e', piType)
-        -- LK.Cons dataName consName discriminant dataType -> do
-        --   dataType' <- inferType' varEnv dataType
-        --   (xts', (e', _)) <- inferBinder varEnv xts e
-        --   return (m :< WT.PiIntro (LK.Cons dataName consName discriminant dataType') xts' e', dataType')
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
           return (m :< WT.PiIntro kind xts' e', m :< WT.Pi xts' t')
     m :< WT.PiElim e@(_ :< WT.VarGlobal name _) es -> do
-      etls <- mapM (infer' varEnv) es
+      ets <- mapM (infer' varEnv) es
       t <- Type.lookup m name
       mImpArgNum <- Implicit.lookup name
       case mImpArgNum of
         Nothing -> do
-          inferPiElim varEnv m (e, t) etls
+          inferPiElim varEnv m (e, t) ets
         Just i -> do
           holes <- forM [1 .. I.reify i] $ const $ newTypedAster varEnv m
-          inferPiElim varEnv m (e, t) $ holes ++ etls
+          inferPiElim varEnv m (e, t) $ holes ++ ets
     m :< WT.PiElim e es -> do
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
