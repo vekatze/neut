@@ -2,6 +2,7 @@ module Entity.Term.Weaken
   ( weaken,
     weakenBinder,
     weakenStmt,
+    weakenDecisionTree,
   )
 where
 
