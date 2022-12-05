@@ -249,8 +249,9 @@ tidyCursor bmap consumedCursor cont =
     Nothing ->
       error "tidyCursor"
     Just dataArgs -> do
-      dataArgs' <- dropFst <$> clarifyBinder IntMap.empty dataArgs
-      linearize dataArgs' $ C.SigmaElim True [] (C.VarLocal consumedCursor) cont
+      unitVar <- Gensym.newIdentFromText "unit"
+      linearize dataArgs $
+        C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal consumedCursor]))) cont
 
 -- _ :< TM.Match (e, _) clauseList -> do
 --   ((dataVarName, dataVar), typeVarName, (envVarName, envVar), (tagVarName, tagVar)) <- newClosureNames
