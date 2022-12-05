@@ -1,4 +1,4 @@
-module Entity.WeakTerm.ToText (toText) where
+module Entity.WeakTerm.ToText (toText, showDecisionTree) where
 
 import Control.Comonad.Cofree
 import qualified Data.Text as T
@@ -49,20 +49,20 @@ toText term =
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
     _ :< WT.Data name es -> do
-      showCons $ DD.reify name : map toText es
+      showCons $ "{data}" <> DD.reify name : map toText es
     _ :< WT.DataIntro _ consName _ _ consArgs -> do
-      showCons (DD.reify consName : map toText consArgs)
+      showCons ("{data-intro}" <> DD.reify consName : map toText consArgs)
     _ :< WT.DataElim xets tree -> do
-      let (xs, es, _) = unzip3 xets
-      showCons ["match", showMatchArgs (zip xs es), showDecisionTree tree]
+      -- let (xs, es, _) = unzip3 xets
+      showCons ["match", showMatchArgs xets, showDecisionTree tree]
     _ :< WT.Sigma xts ->
       showCons ["sigma", showItems $ map showArg xts]
     _ :< WT.SigmaIntro es ->
       showCons $ "sigma-intro" : map toText es
     _ :< WT.SigmaElim {} ->
       "<sigma-elim>"
-    _ :< WT.Let (_, x, _) e1 e2 -> do
-      showCons ["let", showVariable x, toText e1, toText e2]
+    _ :< WT.Let (_, x, t) e1 e2 -> do
+      showCons ["let", showVariable x, toText t, toText e1, toText e2]
     _ :< WT.Prim prim ->
       showPrim prim
     _ :< WT.Aster i es ->
@@ -143,13 +143,13 @@ splitLast xs =
     then Nothing
     else Just (init xs, last xs)
 
-showMatchArgs :: [(Ident, WT.WeakTerm)] -> T.Text
-showMatchArgs xes = do
-  showCons $ map showMatchArg xes
+showMatchArgs :: [(Ident, WT.WeakTerm, WT.WeakTerm)] -> T.Text
+showMatchArgs xets = do
+  showCons $ map showMatchArg xets
 
-showMatchArg :: (Ident, WT.WeakTerm) -> T.Text
-showMatchArg (x, e) = do
-  showCons [showVariable x, toText e]
+showMatchArg :: (Ident, WT.WeakTerm, WT.WeakTerm) -> T.Text
+showMatchArg (x, e, t) = do
+  showCons [showVariable x, toText e, toText t]
 
 showDecisionTree :: DT.DecisionTree WT.WeakTerm -> T.Text
 showDecisionTree tree =
