@@ -1,8 +1,0 @@
-include "../../../foundation.neut"
-
-define foo (x : tau) : i64 -> i64 =
-  let f = lambda x. lambda x. add-i64 x 10 in
-  let g = lambda (y : x). x in
-  f g
-
-reduce (foo tau) 100
