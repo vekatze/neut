@@ -10,6 +10,8 @@ import Data.List
 import Data.Maybe
 import Entity.Binder
 import qualified Entity.DecisionTree as DT
+import Entity.Hint
+import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.Term as TM
@@ -18,9 +20,9 @@ chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =
   nubFreeVariables $ concatMap (chainOf' tenv) term
 
-chainOfClauseList :: TM.TypeEnv -> DT.CaseList TM.Term -> [BinderF TM.Term]
-chainOfClauseList tenv clauseList =
-  nubFreeVariables $ chainOfCaseList tenv clauseList
+chainOfClauseList :: TM.TypeEnv -> Hint -> DT.CaseList TM.Term -> [BinderF TM.Term]
+chainOfClauseList tenv m clauseList =
+  nubFreeVariables $ chainOfCaseList tenv m clauseList
 
 chainOf' :: TM.TypeEnv -> TM.Term -> [BinderF TM.Term]
 chainOf' tenv term =
@@ -28,9 +30,10 @@ chainOf' tenv term =
     _ :< TM.Tau ->
       []
     m :< TM.Var x -> do
-      let t = (IntMap.!) tenv (Ident.toInt x)
-      let xts = chainOf' tenv t
-      xts ++ [(m, x, t)]
+      chainOfVar tenv m x
+    -- let t = (IntMap.!) tenv (Ident.toInt x)
+    -- let xts = chainOf' tenv t
+    -- xts ++ [(m, x, t)]
     _ :< TM.VarGlobal {} ->
       []
     _ :< TM.Pi {} ->
@@ -49,7 +52,7 @@ chainOf' tenv term =
       let (xs, es, ts) = unzip3 xets
       let xs1 = concatMap (chainOf' tenv) es
       let mxts = zipWith (\x t -> (m, x, t)) xs ts
-      let xs2 = chainOfDecisionTree' tenv mxts tree
+      let xs2 = chainOfDecisionTree' tenv m mxts tree
       xs1 ++ xs2
     _ :< TM.Sigma xts ->
       chainOfBinder tenv xts []
@@ -92,34 +95,41 @@ chainOfBinder' tenv mxts f =
       let hs2 = chainOfBinder' (TM.insTypeEnv [mxt] tenv) xts f
       hs1 ++ filter (\(_, y, _) -> y /= x) hs2
 
-chainOfDecisionTree :: TM.TypeEnv -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
-chainOfDecisionTree tenv tree =
+chainOfDecisionTree :: TM.TypeEnv -> Hint -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
+chainOfDecisionTree tenv m tree =
   case tree of
-    DT.Leaf _ e ->
-      chainOf' tenv e
+    DT.Leaf xs e -> do
+      let xs' = map (m,,m :< TM.Tau) xs
+      xs' ++ chainOf' tenv e
     DT.Unreachable ->
       []
     DT.Switch (_, cursor) caseList ->
-      chainOf' tenv cursor ++ chainOfCaseList tenv caseList
+      chainOf' tenv cursor ++ chainOfCaseList tenv m caseList
 
-chainOfDecisionTree' :: TM.TypeEnv -> [BinderF TM.Term] -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
-chainOfDecisionTree' tenv xts tree =
-  chainOfBinder' tenv xts $ \tenv' -> chainOfDecisionTree tenv' tree
+chainOfDecisionTree' :: TM.TypeEnv -> Hint -> [BinderF TM.Term] -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
+chainOfDecisionTree' tenv m xts tree =
+  chainOfBinder' tenv xts $ \tenv' -> chainOfDecisionTree tenv' m tree
 
-chainOfCaseList :: TM.TypeEnv -> DT.CaseList TM.Term -> [BinderF TM.Term]
-chainOfCaseList tenv (fallbackClause, clauseList) = do
-  let xs1 = chainOfDecisionTree tenv fallbackClause
-  let xs2 = concatMap (chainOfCase tenv) clauseList
+chainOfCaseList :: TM.TypeEnv -> Hint -> DT.CaseList TM.Term -> [BinderF TM.Term]
+chainOfCaseList tenv m (fallbackClause, clauseList) = do
+  let xs1 = chainOfDecisionTree tenv m fallbackClause
+  let xs2 = concatMap (chainOfCase tenv m) clauseList
   xs1 ++ xs2
 
-chainOfCase :: TM.TypeEnv -> DT.Case TM.Term -> [BinderF TM.Term]
-chainOfCase tenv (DT.Cons _ _ dataArgs consArgs tree) = do
+chainOfCase :: TM.TypeEnv -> Hint -> DT.Case TM.Term -> [BinderF TM.Term]
+chainOfCase tenv m (DT.Cons _ _ dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   let xs1 = concatMap (chainOf' tenv) dataTerms
   let xs2 = concatMap (chainOf' tenv) dataTypes
-  let xs3 = chainOfDecisionTree' tenv consArgs tree
+  let xs3 = chainOfDecisionTree' tenv m consArgs tree
   xs1 ++ xs2 ++ xs3
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =
   nubBy (\(_, x, _) (_, y, _) -> x == y)
+
+chainOfVar :: TM.TypeEnv -> Hint -> Ident -> [BinderF TM.Term]
+chainOfVar tenv m x = do
+  let t = (IntMap.!) tenv (Ident.toInt x)
+  let xts = chainOf' tenv t
+  xts ++ [(m, x, t)]

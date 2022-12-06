@@ -216,8 +216,8 @@ clarifyDecisionTree tenv dataArgsMap tree =
     DT.Unreachable -> do
       return C.Unreachable
     DT.Switch (cursor, m :< _) (fallbackClause, clauseList) -> do
-      let chain = TM.chainOfClauseList tenv (fallbackClause, clauseList)
-      let aligner = alignFreeVariable tenv dataArgsMap m cursor chain
+      let chain = TM.chainOfClauseList tenv m (fallbackClause, clauseList)
+      let aligner = alignFreeVariable tenv dataArgsMap m chain
       fallbackClause' <- clarifyDecisionTree tenv dataArgsMap fallbackClause >>= aligner
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
@@ -267,10 +267,10 @@ tidyCursor tenv dataArgsMap consumedCursor cont =
 -- p str =
 --   trace str (return ())
 
-alignFreeVariable :: Context m => TM.TypeEnv -> DataArgsMap -> Hint -> Ident -> [BinderF TM.Term] -> C.Comp -> m C.Comp
-alignFreeVariable tenv dataArgsMap m cursor fvs e = do
+alignFreeVariable :: Context m => TM.TypeEnv -> DataArgsMap -> Hint -> [BinderF TM.Term] -> C.Comp -> m C.Comp
+alignFreeVariable tenv dataArgsMap m fvs e = do
   let dataArgVars = map fst $ concatMap snd $ IntMap.toList dataArgsMap
-  let quasiFreeVars = map (m,,m :< TM.Tau) $ cursor : dataArgVars
+  let quasiFreeVars = map (m,,m :< TM.Tau) dataArgVars
   e' <- returnClosure tenv O.Transparent LK.Normal (quasiFreeVars ++ fvs) [] e
   callClosure e' []
 
