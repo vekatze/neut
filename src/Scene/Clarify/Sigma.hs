@@ -158,7 +158,7 @@ returnSigmaDataS4 ::
 returnSigmaDataS4 dataName dataInfo = do
   let aff = sigmaDataT dataInfo
   let rel = sigmaData4 dataInfo
-  let dataName' = DD.getConsDD dataName
+  let dataName' = DD.getFormDD dataName
   registerSwitcher dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
 

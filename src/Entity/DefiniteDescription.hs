@@ -5,7 +5,7 @@ module Entity.DefiniteDescription
     newByDefiniteLocator,
     extend,
     extendLL,
-    getConsDD,
+    getFormDD,
     imm,
     cls,
     cell,
@@ -94,9 +94,9 @@ wrapWithQuote x =
 
 -- this.core::nat.succ
 -- ~> this.core::nat.succ.#.cons
-getConsDD :: DefiniteDescription -> DefiniteDescription
-getConsDD dd =
-  extendLL dd $ LL.new Section.dummySectionStack BN.cons
+getFormDD :: DefiniteDescription -> DefiniteDescription
+getFormDD dd =
+  extendLL dd $ LL.new Section.dummySectionStack BN.form
 
 imm :: DefiniteDescription
 imm =

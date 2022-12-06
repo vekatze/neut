@@ -4,6 +4,7 @@ module Entity.BaseName
     reify,
     reflect,
     reflect',
+    form,
     bottom,
     top,
     topUnit,
@@ -135,6 +136,10 @@ lambdaName i =
 cons :: BaseName
 cons =
   MakeBaseName "cons"
+
+form :: BaseName
+form =
+  MakeBaseName "form"
 
 malloc :: BaseName
 malloc =
