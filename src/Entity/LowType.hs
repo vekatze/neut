@@ -12,7 +12,10 @@ data LowType
   | Array Int LowType -- [n x LOWTYPE]
   | Struct [LowType]
   | Function [LowType] LowType
-  deriving (Eq, Ord, Show, G.Generic)
+  deriving (Eq, Ord, G.Generic)
+
+instance Show LowType where
+  show _ = "<LT>"
 
 instance Binary LowType
 

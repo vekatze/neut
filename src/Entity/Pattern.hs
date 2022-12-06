@@ -28,6 +28,7 @@ data Pattern
   = Var Ident
   | WildcardVar
   | Cons DD.DefiniteDescription D.Discriminant A.Arity A.Arity [(Hint, Pattern)]
+  deriving (Show)
 
 type PatternRow a =
   (V.Vector (Hint, Pattern), a)
@@ -37,6 +38,7 @@ type PatternColumn =
 
 newtype PatternMatrix a
   = MakePatternMatrix (V.Vector (PatternRow a))
+  deriving (Show)
 
 mapMaybeRowM :: Monad m => (PatternRow a -> m (Maybe (PatternRow b))) -> PatternMatrix a -> m (PatternMatrix b)
 mapMaybeRowM f (MakePatternMatrix mat) = do
@@ -56,7 +58,7 @@ new :: [PatternRow a] -> PatternMatrix a
 new rows =
   MakePatternMatrix $ V.fromList rows
 
-getHeadConstructors :: PatternMatrix a -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)]
+getHeadConstructors :: PatternMatrix a -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)])]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -68,15 +70,15 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-getColumnConstructors :: PatternColumn -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)]
+getColumnConstructors :: PatternColumn -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)])]
 getColumnConstructors col =
-  nub $ mapMaybe (getColumnConstructor . snd) col
+  nubBy (\(dd1, _, _, _, _) (dd2, _, _, _, _) -> dd1 == dd2) $ mapMaybe (getColumnConstructor . snd) col
 
-getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity)
+getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)])
 getColumnConstructor pat =
   case pat of
-    Cons dd disc dataArity consArity _ ->
-      return (dd, disc, dataArity, consArity)
+    Cons dd disc dataArity consArity args ->
+      return (dd, disc, dataArity, consArity, args)
     _ ->
       Nothing
 

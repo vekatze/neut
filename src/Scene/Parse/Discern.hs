@@ -381,14 +381,16 @@ compilePatternMatrix nenv m occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(cons, disc, dataArity, consArity) -> do
+              clauseList <- forM headConstructors $ \(cons, disc, dataArity, _, args) -> do
+                let consArity = length args
                 dataHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
+                dataTypeHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
+                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. consArity]
                 (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize nenv cursor (cons, consArity) mat
+                specialMatrix <- PATS.specialize nenv cursor (cons, A.fromInt consArity) mat
                 specialDecisionTree <- compilePatternMatrix nenv' m occurrences' specialMatrix
-                return (DT.Cons cons disc dataHoles consArgs' specialDecisionTree)
+                return (DT.Cons cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix nenv cursor mat
               fallbackClause <- compilePatternMatrix nenv m (V.tail occurrences) fallbackMatrix
               t <- Gensym.newAster m (asHoleArgs nenv)
