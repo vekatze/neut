@@ -74,7 +74,6 @@ elaborate source cacheOrStmt = do
       mMainDefiniteDescription <- Locator.getMainDefiniteDescription source
       -- infer
       forM_ defList insertWeakStmt
-      -- defList' <- mapM setupDef defList
       defList' <- mapM (inferStmt mMainDefiniteDescription) defList
       constraintList <- Env.getConstraintEnv
       -- unify
@@ -85,14 +84,6 @@ elaborate source cacheOrStmt = do
       saveCache (source, defList'') enumInfoList
       return defList''
 
--- setupDef :: Context m => WeakStmt -> m WeakStmt
--- setupDef def =
---   case def of
---     WeakStmtDefine stmtKind m f impArgNum xts codType e -> do
---       Type.insert f $ m :< WT.Pi xts codType
---       Implicit.insert f impArgNum
---       Definition.insert (toOpacity stmtKind) m f xts e
---       return $ WeakStmtDefine stmtKind m f impArgNum xts codType e
 
 inferStmt :: Infer.Context m => Maybe DD.DefiniteDescription -> WeakStmt -> m WeakStmt
 inferStmt mMainDD stmt = do
@@ -138,7 +129,6 @@ insertWeakStmt (WeakStmtDefine stmtKind m f impArgNum xts codType e) = do
   Implicit.insert f impArgNum
   Definition.insert (toOpacity stmtKind) m f xts e
 
--- fixme: implement via insertWeakStmt & weaken
 insertStmt :: Context m => Stmt -> m ()
 insertStmt stmt = do
   insertWeakStmt $ weakenStmt stmt
@@ -151,11 +141,6 @@ insertStmtKindInfo (StmtDefine stmtKind _ _ _ _ _ _) = do
       DataDefinition.insert dataName discriminant dataArgs consArgs
     _ ->
       return ()
-
--- insertStmt (StmtDefine stmtKind' m name impArgNum xts codType e) = do
--- Type.insert name $ weaken $ m :< TM.Pi xts codType
--- Implicit.insert name impArgNum
--- Definition.insert (toOpacity stmtKind') m name (map weakenBinder xts) (weaken e)
 
 elaborateStmtKind :: Context m => StmtKindF WT.WeakTerm -> m (StmtKindF TM.Term)
 elaborateStmtKind stmtKind =
