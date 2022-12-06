@@ -40,7 +40,6 @@ import qualified Entity.WeakPrim as WP
 import qualified Entity.WeakPrimValue as WPV
 import qualified Entity.WeakTerm as WT
 import qualified Entity.WeakTerm.Subst as Subst
-import Entity.WeakTerm.ToText
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -281,20 +280,30 @@ inferPiElim ::
   m (WT.WeakTerm, WT.WeakTerm)
 inferPiElim varEnv m (e, t) ets = do
   let es = map fst ets
+  (xts, cod) <- getPiType varEnv m (e, t) $ length ets
+  _ :< cod' <- inferArgs IntMap.empty m ets xts cod
+  return (m :< WT.PiElim e es, m :< cod')
+
+getPiType ::
+  Context m =>
+  BoundVarEnv ->
+  Hint ->
+  (WT.WeakTerm, WT.WeakTerm) ->
+  Int ->
+  m ([BinderF WT.WeakTerm], WT.WeakTerm)
+getPiType varEnv m (e, t) numOfArgs =
   case t of
-    (_ :< WT.Pi xts (_ :< cod))
-      | length xts == length ets -> do
-          cod' <- inferArgs IntMap.empty m ets xts (m :< cod)
-          return (m :< WT.PiElim e es, cod')
-      | otherwise -> do
-          raiseArityMismatchError e (length xts) (length ets)
+    _ :< WT.Pi xts cod
+      | length xts == numOfArgs ->
+          return (xts, cod)
+      | otherwise ->
+          raiseArityMismatchError e (length xts) numOfArgs
     _ -> do
-      ys <- mapM (const $ Gensym.newIdentFromText "arg") es
-      yts <- newTypeAsterList varEnv $ zip ys (map WT.metaOf es)
+      ys <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. numOfArgs]
+      yts <- newTypeAsterList varEnv $ zip ys (replicate numOfArgs m)
       cod <- newAster m (yts ++ varEnv)
       Env.insConstraintEnv (WT.metaOf e :< WT.Pi yts cod) t
-      cod' <- inferArgs IntMap.empty m ets yts cod
-      return (m :< WT.PiElim e es, cod')
+      return (yts, cod)
 
 raiseArityMismatchError :: Context m => WT.WeakTerm -> Int -> Int -> m a
 raiseArityMismatchError function expected actual = do
