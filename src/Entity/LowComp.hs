@@ -1,8 +1,10 @@
 module Entity.LowComp where
 
+import qualified Data.Text as T
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.ExternalName as EN
 import Entity.Ident
+import Entity.Ident.Reify
 import Entity.LowType
 import Entity.PrimNumSize
 import Entity.PrimOp
@@ -14,7 +16,22 @@ data Value
   | Int Integer
   | Float FloatSize Double
   | Null
-  deriving (Show)
+
+instance Show Value where
+  show v =
+    case v of
+      VarLocal x ->
+        T.unpack $ toText' x
+      VarGlobal dd ->
+        T.unpack $ DD.reify dd
+      VarExternal x ->
+        T.unpack $ EN.reify x
+      Int i ->
+        show i
+      Float _ f ->
+        show f
+      Null ->
+        "null"
 
 data Comp
   = Return Value -- UpIntro
