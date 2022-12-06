@@ -66,7 +66,6 @@ makeSwitcher compAff compRel = do
         switchVar
         rel
         [(() :< EC.Int 0, aff)]
-        -- (switch aff rel)
     )
 
 registerSwitcher ::

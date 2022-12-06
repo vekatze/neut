@@ -87,12 +87,7 @@ distinguishComp z term =
       return (vs1 ++ vs2, C.UpElim x e1' e2')
     C.EnumElim d defaultBranch branchList -> do
       (vs, d') <- distinguishValue z d
-      -- case branchList of
-      --   [] ->
-      --     return (vs, C.EnumElim d' [])
-      --   _ -> do
       let (cs, es) = unzip branchList
-      -- countBefore <- readmRef countRef
       countBefore <- readCount
       (vss, es') <- fmap unzip $
         forM es $ \e -> do
@@ -103,20 +98,6 @@ distinguishComp z term =
       return (vs ++ head vss, C.EnumElim d' defaultBranch' (zip cs es'))
     C.Unreachable ->
       return ([], term)
-
--- case branchList of
---   [] ->
---     return (vs, C.EnumElim d' [])
---   _ -> do
---     let (cs, es) = unzip branchList
---     -- countBefore <- readmRef countRef
---     countBefore <- readCount
---     (vss, es') <- fmap unzip $
---       forM es $ \e -> do
---         writeCount countBefore
---         -- writemRef countRef countBefore
---         distinguishComp z e
---     return (vs ++ head vss, C.EnumElim d' (zip cs es'))
 
 distinguishPrimitive :: Context m => Ident -> C.Primitive -> m ([Occurrence], C.Primitive)
 distinguishPrimitive z term =
