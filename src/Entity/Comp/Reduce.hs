@@ -47,6 +47,8 @@ reduce term =
               | Just ys <- mapM extractIdent ds,
                 xs == ys ->
                   return $ C.UpIntro v -- eta-reduce
+            C.Unreachable ->
+              return C.Unreachable
             _ ->
               case xs of
                 [] ->
@@ -71,6 +73,8 @@ reduce term =
             C.UpIntro (C.VarLocal y)
               | x == y ->
                   return e1' -- eta-reduce
+            C.Unreachable ->
+              return C.Unreachable
             _ ->
               return $ C.UpElim x e1' e2'
     C.EnumElim v defaultBranch les -> do
