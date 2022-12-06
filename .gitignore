@@ -4,3 +4,4 @@ neut.cabal
 .DS_Store
 test/res
 *.prof
+target/

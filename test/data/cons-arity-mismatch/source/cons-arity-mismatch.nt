@@ -1,0 +1,18 @@
+use this.cons-arity-mismatch::item
+
+define-data item() as
+- cons()
+end
+
+define f(xs: item(), ys: item()): item() as
+  match xs, ys with
+  - cons(), zs ->
+    zs
+  - cons(x), zs ->
+    zs
+  end
+end
+
+define main(): i64 as
+  0
+end

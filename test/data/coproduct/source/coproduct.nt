@@ -1,0 +1,17 @@
+define-data coproduct(a: tau, b: tau) as
+- left(a)
+- right(b)
+end
+
+define view<a, b>(x: coproduct(a, b)): i64 as
+  match x with
+  - coproduct.left(a) ->
+    1
+  - coproduct.right(b) ->
+    2
+  end
+end
+
+define main(): i64 as
+  view<i64, i32>(coproduct.left(10))
+end

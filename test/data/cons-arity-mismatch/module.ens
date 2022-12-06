@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  cons-arity-mismatch = "cons-arity-mismatch.nt"
+}

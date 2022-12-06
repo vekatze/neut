@@ -1,0 +1,34 @@
+use this.merge-lists::list
+
+define-data list(a: tau) as
+- nil()
+- cons(a, list(a))
+end
+
+define merge<a>(xs: list(a), ys: list(a)): list(a) as
+  match xs, ys with
+  - nil(), ys ->
+    ys
+  - xs, nil() ->
+    xs
+  - cons(x, rx), ys ->
+    cons(x, merge(rx, ys))
+  end
+end
+
+define length<a>(xs: list(a)): i64 as
+  match xs with
+  - list.nil() ->
+    0
+  - list.cons(y, ys) ->
+    add-i64(1, length(ys))
+  end
+end
+
+
+define main(): i64 as
+  let xs = cons(1, cons(2, nil())) in
+  let ys = cons(3, cons(4, cons(5, nil()))) in
+  let zs = merge<i64>(xs, ys) in
+  length(zs)
+end

@@ -1,0 +1,28 @@
+use this.calc::expr
+
+define-data expr() as
+- num(i64)
+- add(expr(), expr())
+- sub(expr(), expr())
+- mul(expr(), expr())
+end
+
+define interpret(e: expr()): i64 as
+  match e with
+  - add(e1, e2) ->
+    add-i64(interpret(e1), interpret(e2))
+  - num(x) ->
+    x
+  - sub(e1, e2) ->
+    sub-i64(interpret(e1), interpret(e2))
+  - mul(e1, e2) ->
+    mul-i64(interpret(e1), interpret(e2))
+  end
+end
+
+define main(): i64 as
+  let e1 = add(num(1), num(2)) in
+  let e2 = mul(num(3), num(1023)) in
+  let e3 = sub(e2, e1) in
+  interpret(e3)
+end

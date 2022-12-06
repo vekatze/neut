@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  data-with-type-args = "data-with-type-args.nt"
+}

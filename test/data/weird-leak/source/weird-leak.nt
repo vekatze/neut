@@ -1,0 +1,24 @@
+use this.weird-leak::list
+
+define-data list() as
+- nil()
+- cons()
+end
+
+define f(xs: list(), ys: list()): list() as
+  match xs, ys with
+  - nil(), ys ->
+    ys
+  - xs, nil() ->
+    xs
+  - cons(), zs ->
+    nil()
+  end
+end
+
+define main(): i64 as
+  let xs = cons() in
+  let ys = cons() in
+  let zs = f(xs, ys) in
+  0
+end

@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  cons-args = "cons-args.nt"
+}
