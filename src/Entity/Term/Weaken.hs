@@ -7,6 +7,7 @@ module Entity.Term.Weaken
 where
 
 import Control.Comonad.Cofree
+import Data.Bifunctor
 import qualified Entity.DecisionTree as DT
 import Entity.Hint
 import Entity.Ident
@@ -134,7 +135,7 @@ weakenCaseList (fallbackClause, clauseList) = do
 
 weakenCase :: DT.Case TM.Term -> DT.Case WT.WeakTerm
 weakenCase (DT.Cons dd disc dataArgs consArgs tree) = do
-  let dataArgs' = map weaken dataArgs
+  let dataArgs' = map (bimap weaken weaken) dataArgs
   let consArgs' = map weakenBinder consArgs
   let tree' = weakenDecisionTree tree
   DT.Cons dd disc dataArgs' consArgs' tree'

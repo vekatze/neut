@@ -159,6 +159,8 @@ substCase ::
   DT.Case TM.Term ->
   m (DT.Case TM.Term)
 substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
-  dataArgs' <- mapM (subst sub) dataArgs
+  let (dataTerms, dataTypes) = unzip dataArgs
+  dataTerms' <- mapM (subst sub) dataTerms
+  dataTypes' <- mapM (subst sub) dataTypes
   (consArgs', tree') <- subst'' sub consArgs tree
-  return $ DT.Cons dd disc dataArgs' consArgs' tree'
+  return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'

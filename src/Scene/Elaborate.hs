@@ -364,10 +364,12 @@ elaborateDecisionTree m tree =
 
 elaborateClause :: Context m => Hint -> DT.Case WT.WeakTerm -> m (DT.Case TM.Term)
 elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
-  dataArgs' <- mapM elaborate' dataArgs
+  let (dataTerms, dataTypes) = unzip dataArgs
+  dataTerms' <- mapM elaborate' dataTerms
+  dataTypes' <- mapM elaborate' dataTypes
   consArgs' <- mapM elaborateWeakBinder consArgs
   cont' <- elaborateDecisionTree m cont
-  return $ DT.Cons consName disc dataArgs' consArgs' cont'
+  return $ DT.Cons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
 extractConstructorList :: Context m => Hint -> TM.Term -> m [DD.DefiniteDescription]
 extractConstructorList m cursorType = do

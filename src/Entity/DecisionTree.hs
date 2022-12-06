@@ -20,7 +20,7 @@ data DecisionTree a
   deriving (Show, Generic)
 
 data Case a
-  = Cons DD.DefiniteDescription D.Discriminant [a] [BinderF a] (DecisionTree a)
+  = Cons DD.DefiniteDescription D.Discriminant [(a, a)] [BinderF a] (DecisionTree a)
   deriving (Show, Generic)
 
 type CaseList a = (DecisionTree a, [Case a])

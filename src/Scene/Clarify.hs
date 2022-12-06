@@ -216,15 +216,17 @@ clarifyDecisionTree tenv bmap tree =
           C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
 
 clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
-clarifyCase tenv bmap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
-  let bmap' = IntMap.insert (Ident.toInt cursor) dataArgs bmap
-  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs tenv) bmap' cont
+clarifyCase tenv dataArgsMap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
+  let (_, dataTypes) = unzip dataArgs
+  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
+  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap
+  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs tenv) dataArgsMap' cont
   discriminantVar <- Gensym.newIdentFromText "discriminant"
   return
     ( () :< EC.Int (D.reify disc),
       C.SigmaElim
         False
-        (discriminantVar : map (\(_, x, _) -> x) (dataArgs ++ consArgs))
+        (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
         (C.VarLocal cursor)
         body'
     )
@@ -243,14 +245,16 @@ tidyCursorList bmap consumedCursorList cont =
       cont' <- tidyCursorList bmap rest cont
       tidyCursor bmap cursor cont'
 
-tidyCursor :: Context m => DataArgsMap -> Ident -> C.Comp -> m C.Comp
-tidyCursor bmap consumedCursor cont =
-  case IntMap.lookup (Ident.toInt consumedCursor) bmap of
+tidyCursor :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> C.Comp -> m C.Comp
+tidyCursor tenv dataArgsMap consumedCursor cont =
+  case IntMap.lookup (Ident.toInt consumedCursor) dataArgsMap of
     Nothing ->
       error "tidyCursor"
     Just dataArgs -> do
-      unitVar <- Gensym.newIdentFromText "unit"
-      linearize dataArgs $
+      let (dataArgVars, dataTypes) = unzip dataArgs
+      dataTypes' <- mapM (clarifyTerm tenv) dataTypes
+      unitVar <- Gensym.newIdentFromText "unit-tidy"
+      linearize (zip dataArgVars dataTypes') $
         C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal consumedCursor]))) cont
 
 -- _ :< TM.Match (e, _) clauseList -> do

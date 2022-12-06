@@ -409,10 +409,11 @@ inferClause ::
   DT.Case WT.WeakTerm ->
   m (DT.Case WT.WeakTerm, WT.WeakTerm)
 inferClause m varEnv cursorType (DT.Cons consName disc dataArgs consArgs body) = do
-  typedDataArgs' <- mapM (infer' varEnv) dataArgs
+  let (dataTerm, _) = unzip dataArgs
+  typedDataArgs' <- mapM (infer' varEnv) dataTerm
   (consArgs', (body', tBody)) <- inferBinder' varEnv consArgs $ \extendedVarEnv ->
     inferDecisionTree m extendedVarEnv body
   et <- infer' varEnv $ m :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
   (_, tPat) <- inferPiElim varEnv m et $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   Env.insConstraintEnv tPat cursorType
-  return (DT.Cons consName disc (map fst typedDataArgs') consArgs' body', tBody)
+  return (DT.Cons consName disc typedDataArgs' consArgs' body', tBody)

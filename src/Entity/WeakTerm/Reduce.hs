@@ -137,8 +137,10 @@ reduceCase ::
   DT.Case WT.WeakTerm ->
   m (DT.Case WT.WeakTerm)
 reduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
-  dataArgs' <- mapM reduce dataArgs
+  let (dataTerms, dataTypes) = unzip dataArgs
+  dataTerms' <- mapM reduce dataTerms
+  dataTypes' <- mapM reduce dataTypes
   let (ms, xs, ts) = unzip3 consArgs
   ts' <- mapM reduce ts
   tree' <- reduceDecisionTree tree
-  return $ DT.Cons dd disc dataArgs' (zip3 ms xs ts') tree'
+  return $ DT.Cons dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'

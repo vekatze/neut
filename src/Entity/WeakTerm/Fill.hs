@@ -178,6 +178,8 @@ fillCase ::
   DT.Case WT.WeakTerm ->
   m (DT.Case WT.WeakTerm)
 fillCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
-  dataArgs' <- mapM (fill sub) dataArgs
+  let (dataTerms, dataTypes) = unzip dataArgs
+  dataTerms' <- mapM (fill sub) dataTerms
+  dataTypes' <- mapM (fill sub) dataTypes
   (consArgs', tree') <- fill''' sub consArgs tree
-  return $ DT.Cons dd disc dataArgs' consArgs' tree'
+  return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'

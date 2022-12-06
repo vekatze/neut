@@ -170,7 +170,7 @@ showClauseList (DT.Cons consName d dataArgs consArgs cont) = do
   showCons
     [ DD.reify consName,
       T.pack (show (D.reify d)),
-      showCons $ map toText dataArgs,
+      showCons $ map (\(e, t) -> showCons [toText e, toText t]) dataArgs,
       inParen $ showTypeArgs consArgs,
       showDecisionTree cont
     ]

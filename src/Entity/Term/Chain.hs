@@ -114,9 +114,11 @@ chainOfCaseList tenv (fallbackClause, clauseList) = do
 
 chainOfCase :: TM.TypeEnv -> DT.Case TM.Term -> [BinderF TM.Term]
 chainOfCase tenv (DT.Cons _ _ dataArgs consArgs tree) = do
-  let xs1 = concatMap (chainOf' tenv) dataArgs
-  let xs2 = chainOfDecisionTree' tenv consArgs tree
-  xs1 ++ xs2
+  let (dataTerms, dataTypes) = unzip dataArgs
+  let xs1 = concatMap (chainOf' tenv) dataTerms
+  let xs2 = concatMap (chainOf' tenv) dataTypes
+  let xs3 = chainOfDecisionTree' tenv consArgs tree
+  xs1 ++ xs2 ++ xs3
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =
