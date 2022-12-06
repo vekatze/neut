@@ -81,9 +81,13 @@ elaborate source cacheOrStmt = do
       -- elaborate
       defList'' <- elaborateStmtList defList'
       forM_ defList'' insertStmt
+      -- mapM_ (viewStmt . weakenStmt) defList''
       saveCache (source, defList'') enumInfoList
       return defList''
 
+-- viewStmt :: Context m => WeakStmt -> m ()
+-- viewStmt (WeakStmtDefine _ m x _ xts codType e) = do
+--   Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
 
 inferStmt :: Infer.Context m => Maybe DD.DefiniteDescription -> WeakStmt -> m WeakStmt
 inferStmt mMainDD stmt = do
