@@ -1,4 +1,0 @@
-include "../header.neut"
-
-reduce
-  string.print "hello, world!"

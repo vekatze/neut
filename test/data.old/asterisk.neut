@@ -1,9 +1,0 @@
-include "../header.neut"
-
-define x : ? =
-  let a : i64 = 1 in
-  a
-
-define y : ? =
-  let z : ? = x in
-  z
