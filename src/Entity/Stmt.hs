@@ -3,6 +3,7 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import qualified Data.Set as S
+import qualified Data.Text as T
 import qualified Entity.Arity as A
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
@@ -16,6 +17,7 @@ import qualified Entity.Section as Section
 import qualified Entity.Source as Source
 import qualified Entity.Term as TM
 import qualified Entity.WeakTerm as WT
+import qualified Entity.WeakTerm.ToText as WT
 import GHC.Generics
 import Path
 
@@ -94,3 +96,7 @@ compress stmt =
           StmtDefine stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt
+
+showStmt :: WeakStmt -> T.Text
+showStmt (WeakStmtDefine _ m x _ xts codType e) = do
+  DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
