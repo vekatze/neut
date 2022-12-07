@@ -5,6 +5,7 @@ where
 
 import Context.Gensym
 import Control.Monad
+import Debug.Trace
 import qualified Entity.Comp as C
 import Entity.Ident
 import qualified Entity.Magic as M
@@ -49,15 +50,20 @@ insertHeader x z1 zs t e = do
       copyRelevantVar <- toRelevantApp x t
       return $ C.UpElim z1 copyRelevantVar e'
 
+distinguishVar :: Context m => Ident -> Ident -> m ([Occurrence], Ident)
+distinguishVar z x =
+  if x /= z
+    then return ([], x)
+    else do
+      x' <- newIdentFromIdent x
+      return ([x'], x')
+
 distinguishValue :: Context m => Ident -> C.Value -> m ([Occurrence], C.Value)
 distinguishValue z term =
   case term of
-    C.VarLocal x ->
-      if x /= z
-        then return ([], term)
-        else do
-          x' <- newIdentFromIdent x
-          return ([x'], C.VarLocal x')
+    C.VarLocal x -> do
+      (vs, x') <- distinguishVar z x
+      return (vs, C.VarLocal x')
     C.SigmaIntro ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat vss, C.SigmaIntro ds')
@@ -96,6 +102,12 @@ distinguishComp z term =
       writeCount countBefore
       (_, defaultBranch') <- distinguishComp z defaultBranch
       return (vs ++ head vss, C.EnumElim d' defaultBranch' (zip cs es'))
+    C.Discard d x -> do
+      (vs, x') <- distinguishVar z x
+      return (vs, C.Discard d x')
+    C.Copy d x -> do
+      (vs, x') <- distinguishVar z x
+      return (vs, C.Copy d x')
     C.Unreachable ->
       return ([], term)
 

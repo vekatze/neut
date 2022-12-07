@@ -122,6 +122,10 @@ lowerComp term =
         let t = LT.PrimNum $ PT.Int $ IntSize 64
         castedValue <- lowerValueLetCast v t
         return $ LC.Switch (castedValue, t) defaultCase caseList
+    C.Discard d x ->
+      lowerComp $ C.PiElimDownElim d [C.Int (IntSize 64) 0, C.VarLocal x]
+    C.Copy d x ->
+      lowerComp $ C.PiElimDownElim d [C.Int (IntSize 64) 1, C.VarLocal x]
     C.Unreachable ->
       return LC.Unreachable
 

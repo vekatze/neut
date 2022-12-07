@@ -110,6 +110,10 @@ reduce term =
           defaultBranch' <- reduce defaultBranch
           es' <- mapM reduce es
           return $ C.EnumElim v defaultBranch' (zip ls es')
+    C.Discard {} ->
+      return term
+    C.Copy {} ->
+      return term
     C.Unreachable ->
       return term
 

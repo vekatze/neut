@@ -44,6 +44,8 @@ data Comp
   | UpElim Ident Comp Comp
   | EnumElim Value Comp [(CompEnumCase, Comp)]
   | Primitive Primitive
+  | Discard Value Ident
+  | Copy Value Ident
   | Unreachable
 
 instance Show Comp where
@@ -62,6 +64,10 @@ instance Show Comp where
         "switch " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList)
       Primitive prim ->
         "(" ++ show prim ++ ")"
+      Discard d x ->
+        show $ PiElimDownElim d [VarLocal x]
+      Copy d x ->
+        show $ PiElimDownElim d [VarLocal x]
       Unreachable ->
         "⊥"
 

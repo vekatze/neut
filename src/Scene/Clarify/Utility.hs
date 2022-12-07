@@ -7,34 +7,23 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.Opacity as O
-import Entity.PrimNumSize
 import Scene.Clarify.Context
-
-toApp :: Gensym.Context m => Integer -> Ident -> C.Comp -> m C.Comp
-toApp switcher x t = do
-  (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $
-    C.UpElim
-      expVarName
-      t
-      ( C.PiElimDownElim
-          expVar
-          [C.Int (IntSize 64) switcher, C.VarLocal x]
-      )
 
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
 toAffineApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
-toAffineApp =
-  toApp 0
+toAffineApp x t = do
+  (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
+  return $ C.UpElim expVarName t (C.Discard expVar x)
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
 toRelevantApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
-toRelevantApp =
-  toApp 1
+toRelevantApp x t = do
+  (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
+  return $ C.UpElim expVarName t (C.Copy expVar x)
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet binder cont =
@@ -43,12 +32,6 @@ bindLet binder cont =
       cont
     (x, e) : xes ->
       C.UpElim x e $ bindLet xes cont
-
--- switch :: C.Comp -> C.Comp -> [(EC.CompEnumCase, C.Comp)]
--- switch e1 e2 =
---   undefined
-
--- [(() :< EC.Int 0, e1), (() :< EC.Default, e2)]
 
 makeSwitcher ::
   Gensym.Context m =>
