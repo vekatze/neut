@@ -1,23 +1,12 @@
-// import
-// - this.entity
-// - this.nil-cons
-// - this.cons-nil
-// end
-
 define-data nat() as
-// - zero()
+- zero()
 - succ(nat())
 end
 
-// define-data nat() as
-// - nil()
-// - cons(nat())
-// end
-
 define nil-cons-cons(xs: nat()): i64 as
   match xs with
-  // - nat.zero() ->
-  //   1
+  - nat.zero() ->
+    1
   - nat.succ(nat.succ(cs)) ->
     2
   - nat.succ(c) ->
@@ -26,5 +15,11 @@ define nil-cons-cons(xs: nat()): i64 as
 end
 
 define main(): i64 as
-  0
+  let n0 = nat.zero() in
+  let n1 = nat.succ(n0) in
+  let n2 = nat.succ(nat.succ(nat.zero())) in
+  let z0 = nil-cons-cons(n0) in
+  let z1 = nil-cons-cons(n1) in
+  let z2 = nil-cons-cons(n2) in
+  add-i64(z0, add-i64(z1, z2))
 end

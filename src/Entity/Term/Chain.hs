@@ -99,12 +99,11 @@ chainOfDecisionTree :: TM.TypeEnv -> Hint -> DT.DecisionTree TM.Term -> [BinderF
 chainOfDecisionTree tenv m tree =
   case tree of
     DT.Leaf xs e -> do
-      let xs' = map (m,,m :< TM.Tau) xs
-      xs' ++ chainOf' tenv e
+      concatMap (chainOfVar tenv m) xs ++ chainOf' tenv e
     DT.Unreachable ->
       []
-    DT.Switch (_, cursor) caseList ->
-      chainOf' tenv cursor ++ chainOfCaseList tenv m caseList
+    DT.Switch (cursor, cursorType) caseList ->
+      chainOf' tenv cursorType ++ [(m, cursor, cursorType)] ++ chainOfCaseList tenv m caseList
 
 chainOfDecisionTree' :: TM.TypeEnv -> Hint -> [BinderF TM.Term] -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
 chainOfDecisionTree' tenv m xts tree =

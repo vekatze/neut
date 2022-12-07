@@ -87,6 +87,9 @@ clarifyDefList stmtList = do
   CompDefinition.union auxEnv
   stmtList'' <- forM stmtList' $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
+    -- Log.printNote' $ DD.reify x
+    -- Log.printNote' $ T.pack $ show args
+    -- Log.printNote' $ T.pack $ show e
     return (x, (opacity, args, e'))
   forM_ stmtList'' $ uncurry CompDefinition.insert
   return $ stmtList'' ++ Map.toList auxEnv
@@ -217,7 +220,8 @@ clarifyDecisionTree tenv dataArgsMap tree =
       return C.Unreachable
     DT.Switch (cursor, m :< _) (fallbackClause, clauseList) -> do
       let chain = TM.chainOfClauseList tenv m (fallbackClause, clauseList)
-      let aligner = alignFreeVariable tenv dataArgsMap m chain
+      -- p $ "chain: " <> show (map (\(_, x, _) -> x) chain)
+      let aligner = alignFreeVariable tenv chain
       fallbackClause' <- clarifyDecisionTree tenv dataArgsMap fallbackClause >>= aligner
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
@@ -225,22 +229,6 @@ clarifyDecisionTree tenv dataArgsMap tree =
       return $
         C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
           C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
-
-clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
-clarifyCase tenv dataArgsMap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
-  let (_, dataTypes) = unzip dataArgs
-  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
-  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap
-  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs tenv) dataArgsMap' cont
-  discriminantVar <- Gensym.newIdentFromText "discriminant"
-  return
-    ( () :< EC.Int (D.reify disc),
-      C.SigmaElim
-        False
-        (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
-        (C.VarLocal cursor)
-        body'
-    )
 
 tidyCursorList :: Context m => TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> m C.Comp
 tidyCursorList tenv dataArgsMap consumedCursorList cont =
@@ -263,16 +251,31 @@ tidyCursor tenv dataArgsMap consumedCursor cont =
       linearize (zip dataArgVars dataTypes') $
         C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal consumedCursor]))) cont
 
+clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
+clarifyCase tenv dataArgsMap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
+  let (_, dataTypes) = unzip dataArgs
+  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
+  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap
+  let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
+  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) dataArgsMap' cont
+  discriminantVar <- Gensym.newIdentFromText "discriminant"
+  return
+    ( () :< EC.Int (D.reify disc),
+      C.SigmaElim
+        False
+        (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+        (C.VarLocal cursor)
+        body'
+    )
+
 -- p :: Monad m => String -> m ()
 -- p str =
 --   trace str (return ())
 
-alignFreeVariable :: Context m => TM.TypeEnv -> DataArgsMap -> Hint -> [BinderF TM.Term] -> C.Comp -> m C.Comp
-alignFreeVariable tenv dataArgsMap m fvs e = do
-  let dataArgVars = map fst $ concatMap snd $ IntMap.toList dataArgsMap
-  let quasiFreeVars = map (m,,m :< TM.Tau) dataArgVars
-  e' <- returnClosure tenv O.Transparent LK.Normal (quasiFreeVars ++ fvs) [] e
-  callClosure e' []
+alignFreeVariable :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> m C.Comp
+alignFreeVariable tenv fvs e = do
+  fvs' <- dropFst <$> clarifyBinder tenv fvs
+  linearize fvs' e
 
 clarifyMagic :: Context m => TM.TypeEnv -> M.Magic TM.Term -> m C.Comp
 clarifyMagic tenv der =
