@@ -236,20 +236,16 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
     [] ->
       return cont
     cursor : rest -> do
-      cont' <- tidyCursorList tenv dataArgsMap rest cont
-      tidyCursor tenv dataArgsMap cursor cont'
-
-tidyCursor :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> C.Comp -> m C.Comp
-tidyCursor tenv dataArgsMap consumedCursor cont =
-  case IntMap.lookup (Ident.toInt consumedCursor) dataArgsMap of
-    Nothing ->
-      error "tidyCursor"
-    Just dataArgs -> do
-      let (dataArgVars, dataTypes) = unzip dataArgs
-      dataTypes' <- mapM (clarifyTerm tenv) dataTypes
-      unitVar <- Gensym.newIdentFromText "unit-tidy"
-      linearize (zip dataArgVars dataTypes') $
-        C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal consumedCursor]))) cont
+      case IntMap.lookup (Ident.toInt cursor) dataArgsMap of
+        Nothing ->
+          error "tidyCursor"
+        Just dataArgs -> do
+          let (dataArgVars, dataTypes) = unzip dataArgs
+          dataTypes' <- mapM (clarifyTerm tenv) dataTypes
+          unitVar <- Gensym.newIdentFromText "unit-tidy"
+          cont' <- tidyCursorList tenv dataArgsMap rest cont
+          linearize (zip dataArgVars dataTypes') $
+            C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
 
 clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
 clarifyCase tenv dataArgsMap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
