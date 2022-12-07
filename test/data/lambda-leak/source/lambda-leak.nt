@@ -1,0 +1,7 @@
+define main(): i64 as
+  let fv = lambda (). tau in
+  let yo = lambda (). fv in
+  let foo = yo in
+  let bar = yo in
+  0
+end

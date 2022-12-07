@@ -1,0 +1,12 @@
+define make-adder(x: i64): (i64) -> i64 as
+  let adder =
+    lambda (y) do
+      add-i64(x, y)
+    end
+  in
+  adder
+end
+
+define main(): i64 as
+  make-adder(3)(7)
+end
