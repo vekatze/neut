@@ -19,11 +19,11 @@ data DecisionTree a
   | Switch (Ident, a) (CaseList a)
   deriving (Show, Generic)
 
+type CaseList a = (DecisionTree a, [Case a])
+
 data Case a
   = Cons DD.DefiniteDescription D.Discriminant [(a, a)] [BinderF a] (DecisionTree a)
   deriving (Show, Generic)
-
-type CaseList a = (DecisionTree a, [Case a])
 
 instance (Binary a) => Binary (DecisionTree a)
 
