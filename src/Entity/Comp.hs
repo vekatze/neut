@@ -52,7 +52,7 @@ instance Show Comp where
       PiElimDownElim v vs ->
         show v ++ "(" ++ intercalate "," (map show vs) ++ ")"
       SigmaElim b xs v cont -> do
-        let h = if b then "let-noetic" else "let"
+        let h = if b then "let" else "let-noetic"
         h ++ " (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
       UpIntro v ->
         "return " ++ show v
