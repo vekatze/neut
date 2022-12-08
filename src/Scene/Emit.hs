@@ -131,7 +131,7 @@ emitLowComp retType lowComp =
             ]
       let asmList = map snd branchList
       xs <-
-        forM (zip labelList asmList <> [(defaultLabel, defaultBranch)]) $
+        forM ((defaultLabel, defaultBranch) : zip labelList asmList) $
           uncurry (emitBlock retType)
       return $ op <> concat xs
     LC.Cont op cont -> do
