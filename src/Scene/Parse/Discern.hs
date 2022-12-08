@@ -234,7 +234,7 @@ interpretDefiniteDescription m dd = do
     Just gn ->
       return gn
     Nothing ->
-      Throw.raiseError m $ "undefined definite description: " <> DD.reify dd
+      Throw.raiseError m $ "undefined constant: " <> DD.reify dd
 
 resolveConstructor ::
   Context m =>
