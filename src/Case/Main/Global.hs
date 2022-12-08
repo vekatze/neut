@@ -1,6 +1,5 @@
 module Case.Main.Global
   ( registerTopLevelFunc,
-    registerEnum,
     registerData,
     registerDataIntro,
     lookup,
@@ -15,12 +14,9 @@ import Control.Monad
 import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
 import Data.Maybe
-import Entity.Arity
+import qualified Entity.Arity as A
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import Entity.EnumInfo hiding (new)
-import qualified Entity.EnumTypeName as ET
-import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
 import qualified Entity.Hint as Hint
 import qualified Entity.PrimOp.FromText as PrimOp
@@ -36,59 +32,30 @@ class
   ) =>
   Context m
 
--- new :: Context m => m Global.Context
--- new = do
---   nameMapRef <- newIORef Map.empty
---   forM_ defaultEnumEnv $ \(typeName, enumItemList) ->
---     modifyIORef' nameMapRef $ Map.union $ createEnumMap typeName enumItemList
---   return
---     Global.Context
---       { Global.registerTopLevelFunc =
---           registerTopLevelFunc (Global.throwCtx cfg) nameMapRef,
---         Global.registerEnum =
---           registerEnum (Global.throwCtx cfg) nameMapRef,
---         Global.registerData =
---           registerData (Global.throwCtx cfg) nameMapRef,
---         Global.registerResource =
---           registerResource (Global.throwCtx cfg) nameMapRef,
---         Global.lookup =
---           lookup nameMapRef
---       }
-
 initialize :: Context m => m ()
 initialize = do
   Env.setNameMap Map.empty
-  forM_ defaultEnumEnv $ \(typeName, enumItemList) ->
-    forM_ (createEnumMap typeName enumItemList) $
-      uncurry Env.insertToNameMap
+
+-- forM_ defaultDataEnv $ \(typeName, enumItemList) ->
+--   forM_ (createDataMap typeName enumItemList) $
+--     uncurry Env.insertToNameMap
 
 registerTopLevelFunc ::
   Context m =>
   Hint.Hint ->
   DD.DefiniteDescription ->
-  Arity ->
+  A.Arity ->
   m ()
 registerTopLevelFunc m topLevelName arity = do
   topNameMap <- Env.getNameMap
   ensureFreshness m topNameMap topLevelName
   Env.insertToNameMap topLevelName $ GN.TopLevelFunc arity
 
-registerEnum ::
-  Context m =>
-  Hint.Hint ->
-  ET.EnumTypeName ->
-  [EnumValue] ->
-  m ()
-registerEnum hint typeName@(ET.EnumTypeName typeNameString) enumItemList = do
-  topNameMap <- Env.getNameMap
-  ensureFreshness hint topNameMap typeNameString
-  forM_ (createEnumMap typeName enumItemList) $ uncurry Env.insertToNameMap
-
 registerData ::
   Context m =>
   Hint.Hint ->
   DD.DefiniteDescription ->
-  Arity ->
+  A.Arity ->
   [DD.DefiniteDescription] ->
   m ()
 registerData m dataName arity consList = do
@@ -100,8 +67,8 @@ registerDataIntro ::
   Context m =>
   Hint.Hint ->
   DD.DefiniteDescription ->
-  Arity ->
-  Arity ->
+  A.Arity ->
+  A.Arity ->
   D.Discriminant ->
   m ()
 registerDataIntro m consName dataArity consArity disc = do
@@ -129,15 +96,15 @@ lookup name = do
       | otherwise -> do
           return Nothing
 
-createEnumMap :: ET.EnumTypeName -> [EnumValue] -> [(DD.DefiniteDescription, GN.GlobalName)]
-createEnumMap typeName@(ET.EnumTypeName typeNameInner) enumItemList = do
-  let (labels, discriminants) = unzip enumItemList
-  let labels' = map (\(EV.EnumValueName v) -> v) labels
-  (typeNameInner, GN.EnumType enumItemList) : zip labels' (map (GN.EnumIntro typeName) discriminants)
+-- createDataMap :: DD.DefiniteDescription -> [DI.DataValue] -> [(DD.DefiniteDescription, GN.GlobalName)]
+-- createDataMap dataName consInfoList = do
+--   let (consNameList, discriminants) = unzip consInfoList
+--   let zero = A.fromInt 0
+--   (dataName, GN.Data zero consNameList) : zip consNameList (map (GN.DataIntro zero zero) discriminants)
 
-defaultEnumEnv :: [(ET.EnumTypeName, [EnumValue])]
-defaultEnumEnv =
-  [ (constBottom, []),
-    (constTop, [(constTopUnit, D.zero)]),
-    (constBool, [(constBoolFalse, D.zero), (constBoolTrue, D.increment D.zero)])
-  ]
+-- defaultDataEnv :: [(DD.DefiniteDescription, [DI.DataValue])]
+-- defaultDataEnv =
+--   [ (DI.constBottom, []),
+--     (DI.constTop, [(DI.constTopUnit, D.zero)]),
+--     (DI.constBool, [(DI.constBoolFalse, D.zero), (DI.constBoolTrue, D.increment D.zero)])
+--   ]

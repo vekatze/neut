@@ -8,8 +8,6 @@ import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import Entity.EnumCase
-import Entity.EnumTypeName
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify
@@ -35,9 +33,6 @@ data TermF a
   | SigmaElim [BinderF a] a a
   | Let (BinderF a) a a -- これ、もう不要かも。
   | Prim P.Prim
-  | Enum EnumTypeName
-  | EnumIntro EnumLabel
-  | EnumElim (a, a) [(EnumCase, a)]
   | Magic (Magic a)
   deriving (Show, Generic)
 

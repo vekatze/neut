@@ -6,9 +6,6 @@ import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import qualified Entity.EnumCase as EC
-import qualified Entity.EnumTypeName as ET
-import qualified Entity.EnumValueName as EV
 import Entity.Hint
 import qualified Entity.HoleID as HID
 import Entity.Ident
@@ -67,12 +64,6 @@ toText term =
       showPrim prim
     _ :< WT.Aster i es ->
       showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
-    _ :< WT.Enum l ->
-      DD.reify $ ET.reify l
-    _ :< WT.EnumIntro (EC.EnumLabel _ _ v) ->
-      DD.reify $ EV.reify v
-    _ :< WT.EnumElim (e, _) mles -> do
-      showCons ["switch", toText e, showItems (map showClause mles)]
     _ :< WT.Question e _ ->
       toText e
     _ :< WT.Magic m -> do
@@ -102,18 +93,6 @@ showTypeArgs args =
 showVariable :: Ident -> T.Text
 showVariable =
   Ident.toText'
-
-showClause :: (EC.EnumCase, WT.WeakTerm) -> T.Text
-showClause (c, e) =
-  inParen $ showCase c <> " " <> toText e
-
-showCase :: EC.EnumCase -> T.Text
-showCase c =
-  case c of
-    _ :< EC.Label (EC.EnumLabel _ _ l) ->
-      DD.reify $ EV.reify l
-    _ :< EC.Int i ->
-      T.pack (show i)
 
 showItems :: [T.Text] -> T.Text
 showItems =

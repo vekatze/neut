@@ -52,15 +52,6 @@ freeVars term =
       foldMap freeVars prim
     _ :< WT.Aster _ es ->
       S.unions $ map freeVars es
-    _ :< WT.Enum {} ->
-      S.empty
-    _ :< WT.EnumIntro {} ->
-      S.empty
-    _ :< WT.EnumElim (e, t) les -> do
-      let xs = freeVars t
-      let ys = freeVars e
-      let zs = S.unions $ map (freeVars . snd) les
-      S.unions [xs, ys, zs]
     _ :< WT.Question e t -> do
       let set1 = freeVars e
       let set2 = freeVars t

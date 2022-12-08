@@ -20,10 +20,9 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Entity.Arity as A
 import Entity.Binder
+import qualified Entity.DataInfo as DI
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
-import qualified Entity.EnumCase as EC
-import Entity.EnumInfo
 import Entity.Hint
 import qualified Entity.HoleID as HID
 import Entity.Ident
@@ -120,15 +119,6 @@ infer' varEnv term =
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', treeType) <- inferDecisionTree m varEnv tree
       return (m :< WT.DataElim (zip3 os es' ts') tree', treeType)
-    -- resultType <- newAster m varEnv
-    -- (e', t') <- infer' varEnv e
-    -- clauseList' <- forM clauseList $ \(pat@(mPat, name, arity, xts), body) -> do
-    --   (xts', (body', tBody)) <- inferBinder varEnv xts body
-    --   Env.insConstraintEnv resultType tBody
-    --   (_, tPat) <- infer' varEnv $ patternToTerm pat
-    --   Env.insConstraintEnv tPat t'
-    --   return ((mPat, name, arity, xts'), body')
-    -- return (m :< WT.DataElim (e', t') clauseList', resultType)
     m :< WT.Sigma xts -> do
       (xts', _) <- inferPi varEnv xts (m :< WT.Tau)
       return (m :< WT.Sigma xts', m :< WT.Tau)
@@ -174,19 +164,6 @@ infer' varEnv term =
             WPV.Op op -> do
               primOpType <- primOpToType m op
               return (term, weaken primOpType)
-    m :< WT.Enum _ ->
-      return (term, m :< WT.Tau)
-    m :< WT.EnumIntro (EC.EnumLabel k _ _) -> do
-      return (term, m :< WT.Enum k)
-    m :< WT.EnumElim (e, _) ces -> do
-      (e', t') <- infer' varEnv e
-      let (cs, es) = unzip ces
-      (cs', tcs) <- mapAndUnzipM inferEnumCase cs
-      forM_ (zip tcs (repeat t')) $ uncurry Env.insConstraintEnv
-      (es', ts) <- mapAndUnzipM (infer' varEnv) es
-      h <- newAster m varEnv
-      forM_ (zip (repeat h) ts) $ uncurry Env.insConstraintEnv
-      return (m :< WT.EnumElim (e', t') (zip cs' es'), h)
     m :< WT.Question e _ -> do
       (e', te) <- infer' varEnv e
       return (m :< WT.Question e' te, te)
@@ -357,14 +334,6 @@ newTypeAsterList varEnv ids =
       ts <- newTypeAsterList ((m, x, t) : varEnv) rest
       return $ (m, x, t) : ts
 
-inferEnumCase :: Context m => EC.EnumCase -> m (EC.EnumCase, WT.WeakTerm)
-inferEnumCase weakCase =
-  case weakCase of
-    m :< EC.Label (EC.EnumLabel k _ _) -> do
-      return (weakCase, m :< WT.Enum k)
-    m :< EC.Int _ ->
-      Throw.raiseCritical m "enum-case-int shouldn't be used in the target language"
-
 primOpToType :: Context m => Hint -> PrimOp -> m TM.Term
 primOpToType m (PrimOp op domList cod) = do
   let domList' = map (Term.fromPrimNum m) domList
@@ -372,7 +341,7 @@ primOpToType m (PrimOp op domList cod) = do
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
   if S.member op cmpOpSet
     then do
-      let cod' = m :< TM.Enum constBool
+      let cod' = m :< TM.Data DI.constBool []
       return $ m :< TM.Pi xts cod'
     else do
       let cod' = Term.fromPrimNum m cod

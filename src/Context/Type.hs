@@ -11,7 +11,3 @@ import Entity.WeakTerm
 class Throw.Context m => Context m where
   lookup :: Hint -> DD.DefiniteDescription -> m WeakTerm
   insert :: DD.DefiniteDescription -> WeakTerm -> m ()
-
--- newtype Config = Config
---   { throwCtx :: Throw.Context
---   }

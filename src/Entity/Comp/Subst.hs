@@ -87,8 +87,6 @@ substValue sub nenv term =
       term
     C.Float {} ->
       term
-    C.EnumIntro {} ->
-      term
 
 substPrimitive :: C.SubstValue -> NameEnv -> C.Primitive -> C.Primitive
 substPrimitive sub nenv c =

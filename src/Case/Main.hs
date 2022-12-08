@@ -108,7 +108,6 @@ import qualified Scene.Lower as Lower (Context (..))
 import qualified Scene.Parse as Parse (Context (..))
 import qualified Scene.Parse.Core as ParseCore (Context (..))
 import qualified Scene.Parse.Discern as ParseDiscern (Context)
-import qualified Scene.Parse.Enum as ParseEnum (Context)
 import qualified Scene.Parse.Import as ParseImport (Context)
 import qualified Scene.Unravel as Unravel (Context)
 
@@ -301,8 +300,6 @@ instance PatternSpecialize.Context App
 
 instance PatternFallback.Context App
 
-instance ParseEnum.Context App
-
 instance ParseImport.Context App
 
 instance Elaborate.Context App where
@@ -492,7 +489,6 @@ instance MainGlobal.Context App
 
 instance Global.Context App where
   registerTopLevelFunc = MainGlobal.registerTopLevelFunc
-  registerEnum = MainGlobal.registerEnum
   registerData = MainGlobal.registerData
   registerDataIntro = MainGlobal.registerDataIntro
   lookup = MainGlobal.lookup

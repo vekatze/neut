@@ -76,16 +76,6 @@ subst sub term =
       return $ m :< TM.Let mxt' e1' e2'
     (_ :< TM.Prim _) ->
       return term
-    (_ :< TM.Enum {}) ->
-      return term
-    (_ :< TM.EnumIntro {}) ->
-      return term
-    (m :< TM.EnumElim (e, t) branchList) -> do
-      t' <- subst sub t
-      e' <- subst sub e
-      let (caseList, es) = unzip branchList
-      es' <- mapM (subst sub) es
-      return (m :< TM.EnumElim (e', t') (zip caseList es'))
     (m :< TM.Magic der) -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')

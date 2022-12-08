@@ -1,13 +1,13 @@
-module Entity.EnumTypeName
-  ( EnumTypeName (..),
-  )
-where
+module Entity.EnumTypeName where
 
-import Data.Binary
-import qualified Entity.DefiniteDescription as DD
-import GHC.Generics
+-- ( EnumTypeName (..),
+-- )
 
-newtype EnumTypeName = EnumTypeName {reify :: DD.DefiniteDescription}
-  deriving (Show, Generic, Eq, Ord)
+-- import Data.Binary
+-- import qualified Entity.DefiniteDescription as DD
+-- import GHC.Generics
 
-instance Binary EnumTypeName
+-- newtype EnumTypeName = EnumTypeName {reify :: DD.DefiniteDescription}
+--   deriving (Show, Generic, Eq, Ord)
+
+-- instance Binary EnumTypeName

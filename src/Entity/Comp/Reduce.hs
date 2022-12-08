@@ -6,7 +6,6 @@ where
 
 import qualified Context.CompDefinition as CompDefinition
 import qualified Context.Gensym as Gensym
-import Control.Comonad.Cofree.Class
 import qualified Data.IntMap as IntMap
 import qualified Entity.Comp as C
 import Entity.Comp.Subst
@@ -78,35 +77,16 @@ reduce term =
             _ ->
               return $ C.UpElim x e1' e2'
     C.EnumElim v defaultBranch les -> do
-      let (ls, es) = unzip les
-      let les' = zip (map unwrap ls) es
+      -- let (ls, es) = unzip les
+      -- let les' = zip ls es
       case v of
-        C.EnumIntro label
-          | Just body <- lookup (EC.Label label) les' ->
-              reduce body
-          | otherwise ->
-              reduce defaultBranch
-        -- \| Just body <- lookup EC.Default les' ->
-        --     reduce body
         C.Int _ l
-          | Just body <- lookup (EC.Int (fromInteger l)) les' ->
+          | Just body <- lookup (EC.Int (fromInteger l)) les ->
               reduce body
           | otherwise ->
               reduce defaultBranch
-        -- \| Just body <- lookup EC.Default les' ->
-        --     reduce body
-        -- \| otherwise -> do
-        --     -- putStrLn "other"
-        --     -- print v
-        --     -- print les
-        --     -- let (ls, es) = unzip les
-        --     es' <- mapM reduce es
-        --     return $ C.EnumElim v (zip ls es')
         _ -> do
-          -- p "other"
-          -- p' v
-          -- p' les
-          -- let (ls, es) = unzip les
+          let (ls, es) = unzip les
           defaultBranch' <- reduce defaultBranch
           es' <- mapM reduce es
           return $ C.EnumElim v defaultBranch' (zip ls es')

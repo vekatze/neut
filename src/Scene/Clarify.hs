@@ -200,18 +200,6 @@ clarifyTerm tenv term =
               return $ C.UpIntro (C.Float size l)
             PV.Op op ->
               clarifyPrimOp tenv op m
-    _ :< TM.Enum {} ->
-      return returnImmediateS4
-    _ :< TM.EnumIntro label ->
-      return $ C.UpIntro $ C.EnumIntro label
-    _ :< TM.EnumElim {} -> do
-      -- _ :< TM.EnumElim (e, _) bs -> do
-      -- let (enumCaseList, es) = unzip bs
-      -- let fvs = TM.chainOf tenv es
-      -- es' <- (mapM (clarifyTerm tenv) >=> alignFreeVariables tenv fvs) es
-      -- (y, e', yVar) <- clarifyPlus tenv e
-      error "enum-elim"
-    -- return $ bindLet [(y, e')] $ C.EnumElim yVar (zip (map forgetHint enumCaseList) es')
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
 
@@ -278,7 +266,7 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
           linearize (zip dataArgVars dataTypes') $
             C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
 
-clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
+clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.EnumCase, C.Comp)
 clarifyCase tenv dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs cont) = do
   let (_, dataTypes) = unzip dataArgs
   dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
@@ -287,11 +275,11 @@ clarifyCase tenv dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs con
   body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) dataArgsMap' cont
   b <- Enum.isMember consName
   if b
-    then return (() :< EC.Int (D.reify disc), body')
+    then return (EC.Int (D.reify disc), body')
     else do
       discriminantVar <- Gensym.newIdentFromText "discriminant"
       return
-        ( () :< EC.Int (D.reify disc),
+        ( EC.Int (D.reify disc),
           C.SigmaElim
             False
             (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)

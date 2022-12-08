@@ -7,8 +7,6 @@ import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import Entity.EnumCase
-import Entity.EnumTypeName
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
@@ -36,9 +34,6 @@ data WeakTermF a
   | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
   | Aster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Prim (WP.WeakPrim a)
-  | Enum EnumTypeName
-  | EnumIntro EnumLabel
-  | EnumElim (a, a) [(EnumCase, a)]
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
 

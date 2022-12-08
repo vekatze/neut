@@ -35,6 +35,10 @@ freeVarsComp c =
           S.unions $ map freeVarsValue vs
         C.Magic der ->
           foldMap freeVarsValue der
+    C.Discard v x ->
+      S.insert x $ freeVarsValue v
+    C.Copy v x ->
+      S.insert x $ freeVarsValue v
     C.Unreachable ->
       S.empty
 

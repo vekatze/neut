@@ -73,17 +73,6 @@ weaken term =
       m :< WT.Let (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
-    m :< TM.Enum x ->
-      m :< WT.Enum x
-    m :< TM.EnumIntro label ->
-      m :< WT.EnumIntro label
-    m :< TM.EnumElim (e, t) branchList -> do
-      let t' = weaken t
-      let e' = weaken e
-      let (caseList, es) = unzip branchList
-      -- let caseList' = map (\(me, ec) -> (me, weakenEnumCase ec)) caseList
-      let es' = map weaken es
-      m :< WT.EnumElim (e', t') (zip caseList es')
     m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
 

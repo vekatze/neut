@@ -13,7 +13,6 @@ where
 
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
-import Control.Comonad.Cofree
 import Control.Monad
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
@@ -197,6 +196,6 @@ sigmaBinderT :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
 sigmaBinderT xts v = do
   sigmaT (Left returnImmediateS4 : map Right xts) v
 
-discriminantToEnumCase :: D.Discriminant -> EC.CompEnumCase
+discriminantToEnumCase :: D.Discriminant -> EC.EnumCase
 discriminantToEnumCase discriminant =
-  () :< EC.Int (D.reify discriminant)
+  EC.Int (D.reify discriminant)

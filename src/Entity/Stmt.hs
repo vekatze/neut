@@ -8,7 +8,6 @@ import qualified Entity.Arity as A
 import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import Entity.EnumInfo
 import Entity.Hint
 import qualified Entity.ImpArgNum as I
 import qualified Entity.Opacity as O
@@ -79,9 +78,8 @@ instance Binary Stmt
 
 type PathSet = S.Set (Path Abs File)
 
-data Cache = Cache
-  { cacheStmtList :: [Stmt],
-    cacheEnumInfo :: [EnumInfo]
+newtype Cache = Cache
+  { cacheStmtList :: [Stmt]
   }
   deriving (Generic)
 

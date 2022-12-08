@@ -24,7 +24,6 @@ import Entity.Const
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.DefiniteLocator as DL
 import qualified Entity.Discriminant as D
-import Entity.EnumInfo
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
@@ -62,7 +61,7 @@ class
 -- core functions
 --
 
-parse :: Context m => Source.Source -> m (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parse :: Context m => Source.Source -> m (Either [Stmt] [WeakStmt])
 parse source = do
   result <- parseSource source
   mMainDD <- Locator.getMainDefiniteDescription source
@@ -74,15 +73,12 @@ parse source = do
     Nothing ->
       return result
 
-parseSource :: Context m => Source.Source -> m (Either [Stmt] ([WeakStmt], [EnumInfo]))
+parseSource :: Context m => Source.Source -> m (Either [Stmt] [WeakStmt])
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- loadCache source hasCacheSet
   case mCache of
     Just cache -> do
-      let hint = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
-      forM_ (cacheEnumInfo cache) $ \enumInfo ->
-        uncurry (Global.registerEnum hint) (fromEnumInfo enumInfo)
       let stmtList = cacheStmtList cache
       forM_ stmtList $ \stmt -> do
         case stmt of
@@ -104,8 +100,8 @@ parseSource source = do
           Throw.raiseCritical' "[activateAliasInfoOfCurrentFile] (compiler bug)"
         Just aliasInfoList ->
           activateAliasInfo aliasInfoList
-      (defList, enumInfoList) <- P.run program $ Source.sourceFilePath source
-      return $ Right (defList, enumInfoList)
+      defList <- P.run program $ Source.sourceFilePath source
+      return $ Right defList
 
 ensureMain :: Context m => Hint -> DD.DefiniteDescription -> m ()
 ensureMain m mainFunctionName = do
@@ -116,20 +112,18 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Context m => P.Parser m ([WeakStmt], [EnumInfo])
+program :: Context m => P.Parser m [WeakStmt]
 program = do
   Parse.skipImportSequence
   program' <* eof
 
-program' :: Context m => P.Parser m ([WeakStmt], [EnumInfo])
+program' :: Context m => P.Parser m [WeakStmt]
 program' =
   choice
     [ do
         parseStmtUse
         program',
-      do
-        stmtList <- many parseStmt >>= lift . Discern.discernStmtList . concat
-        return (stmtList, [])
+      many parseStmt >>= lift . Discern.discernStmtList . concat
     ]
 
 parseStmtUse :: Context m => P.Parser m ()

@@ -5,7 +5,6 @@ where
 
 import Context.Gensym
 import Control.Monad
-import Debug.Trace
 import qualified Entity.Comp as C
 import Entity.Ident
 import qualified Entity.Magic as M

@@ -74,16 +74,6 @@ subst sub term =
     m :< WT.Aster holeID args -> do
       args' <- mapM (subst sub) args
       return $ m :< WT.Aster holeID args'
-    _ :< WT.Enum {} ->
-      return term
-    _ :< WT.EnumIntro {} ->
-      return term
-    m :< WT.EnumElim (e, t) branchList -> do
-      t' <- subst sub t
-      e' <- subst sub e
-      let (caseList, es) = unzip branchList
-      es' <- mapM (subst sub) es
-      return $ m :< WT.EnumElim (e', t') (zip caseList es')
     m :< WT.Question e t -> do
       e' <- subst sub e
       t' <- subst sub t

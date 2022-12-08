@@ -5,7 +5,6 @@ module Scene.Lower
 where
 
 import qualified Context.Gensym as Gensym
-import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import qualified Data.Set as S
@@ -14,7 +13,6 @@ import qualified Entity.Arity as A
 import qualified Entity.Comp as C
 import qualified Entity.DeclarationName as DN
 import qualified Entity.DefiniteDescription as DD
-import qualified Entity.Discriminant as D
 import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.LowComp as LC
@@ -114,10 +112,6 @@ lowerComp term =
       commConv x e1' e2'
     C.EnumElim v defaultBranch branchList -> do
       (defaultCase, caseList) <- constructSwitch defaultBranch branchList
-      -- case m of
-      --   Nothing ->
-      --     return LC.Unreachable
-      --   Just (defaultCase, caseList) -> do
       runLowerComp $ do
         let t = LT.PrimNum $ PT.Int $ IntSize 64
         castedValue <- lowerValueLetCast v t
@@ -263,8 +257,6 @@ lowerValue v =
       uncast (LC.Int l) $ LT.PrimNum $ PT.Int size
     C.Float size f ->
       uncast (LC.Float size f) $ LT.PrimNum $ PT.Float size
-    C.EnumIntro (EC.EnumLabel _ d _) -> do
-      uncast (LC.Int $ D.reify d) $ LT.PrimNum $ PT.Int $ IntSize 64
 
 getElemPtr :: Context m => LC.Value -> LT.LowType -> [Integer] -> Lower m LC.Value
 getElemPtr value valueType indexList = do
@@ -282,20 +274,15 @@ reflectCont op = do
   extend $ return . LC.Cont op
 
 -- returns Nothing iff the branch list is empty
-constructSwitch :: Context m => C.Comp -> [(EC.CompEnumCase, C.Comp)] -> m (LC.Comp, [(Integer, LC.Comp)])
+constructSwitch :: Context m => C.Comp -> [(EC.EnumCase, C.Comp)] -> m (LC.Comp, [(Integer, LC.Comp)])
 constructSwitch defaultBranch switch =
   case switch of
     [] -> do
       defaultBranch' <- lowerComp defaultBranch
       return (defaultBranch', [])
-    -- (_ :< EC.Default, code) : _ -> do
-    --   code' <- lowerComp code
-    --   return $ Just (code', [])
-    -- [(m :< _, code)] -> do
-    --   constructSwitch [(m :< EC.Default, code)]
-    (m :< EC.Label (EC.EnumLabel _ d _), code) : rest -> do
-      constructSwitch defaultBranch $ (m :< EC.Int (D.reify d), code) : rest
-    (_ :< EC.Int i, code) : rest -> do
+    -- (m :< EC.Label (EC.EnumLabel _ d _), code) : rest -> do
+    --   constructSwitch defaultBranch $ (m :< EC.Int (D.reify d), code) : rest
+    (EC.Int i, code) : rest -> do
       code' <- lowerComp code
       (defaultBranch', caseList) <- constructSwitch defaultBranch rest
       return (defaultBranch', (i, code') : caseList)

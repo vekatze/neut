@@ -48,15 +48,6 @@ holes term =
       S.insert h $ S.unions $ map holes es
     _ :< WT.Prim prim ->
       foldMap holes prim
-    _ :< WT.Enum {} ->
-      S.empty
-    _ :< WT.EnumIntro {} ->
-      S.empty
-    _ :< WT.EnumElim (e, t) les -> do
-      let set1 = holes e
-      let set2 = holes t
-      let set3 = S.unions $ map (\(_, body) -> holes body) les
-      S.unions [set1, set2, set3]
     _ :< WT.Question e t -> do
       let set1 = holes e
       let set2 = holes t

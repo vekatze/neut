@@ -3,7 +3,6 @@ module Entity.WeakTerm.Reduce (reduce) where
 import Control.Comonad.Cofree
 import qualified Data.IntMap as IntMap
 import qualified Entity.DecisionTree as DT
-import qualified Entity.EnumCase as EC
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.WeakTerm as WT
@@ -78,27 +77,6 @@ reduce term =
       e1' <- reduce e1
       let sub = IntMap.fromList [(Ident.toInt x, e1')]
       Subst.subst sub e2
-    m :< WT.EnumElim (e, t) les -> do
-      e' <- reduce e
-      let (ls, es) = unzip les
-      es' <- mapM reduce es
-      let les' = zip ls es'
-      let les'' = zip (map unwrap ls) es'
-      t' <- reduce t
-      case e' of
-        (_ :< WT.EnumIntro label) ->
-          case lookup (EC.Label label) les'' of
-            Just body ->
-              reduce body
-            Nothing ->
-              error "enum-elim (Entity.WeakTerm.Reduce)"
-        -- case lookup EC.Default les'' of
-        --   Just body ->
-        --     reduce body
-        --   Nothing ->
-        --     return $ m :< WT.EnumElim (e', t') les'
-        _ ->
-          return $ m :< WT.EnumElim (e', t') les'
     _ :< WT.Question e _ ->
       reduce e
     m :< WT.Magic der -> do

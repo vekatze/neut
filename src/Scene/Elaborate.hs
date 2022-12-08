@@ -16,16 +16,11 @@ import qualified Context.Type as Type
 import Control.Comonad.Cofree
 import Control.Monad
 import qualified Data.IntMap as IntMap
-import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
-import qualified Entity.EnumCase as EC
-import Entity.EnumInfo
-import qualified Entity.EnumTypeName as ET
-import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalName as GN
 import Entity.Hint
 import qualified Entity.HoleSubst as HS
@@ -61,16 +56,16 @@ class
   Context m
   where
   initialize :: m ()
-  saveCache :: Program -> [EnumInfo] -> m ()
+  saveCache :: Program -> m ()
 
-elaborate :: Context m => Source.Source -> Either [Stmt] ([WeakStmt], [EnumInfo]) -> m [Stmt]
+elaborate :: Context m => Source.Source -> Either [Stmt] [WeakStmt] -> m [Stmt]
 elaborate source cacheOrStmt = do
   initialize
   case cacheOrStmt of
     Left cache -> do
       forM_ cache insertStmt
       return cache
-    Right (defList, enumInfoList) -> do
+    Right defList -> do
       mMainDefiniteDescription <- Locator.getMainDefiniteDescription source
       -- infer
       forM_ defList insertWeakStmt
@@ -82,7 +77,7 @@ elaborate source cacheOrStmt = do
       defList'' <- elaborateStmtList defList'
       forM_ defList'' insertStmt
       -- mapM_ (viewStmt . weakenStmt) defList''
-      saveCache (source, defList'') enumInfoList
+      saveCache (source, defList'')
       return defList''
 
 -- viewStmt :: Context m => WeakStmt -> m ()
@@ -250,25 +245,6 @@ elaborate' term =
                       <> toText (weaken t')
             WPV.Op op ->
               return $ m :< TM.Prim (P.Value (PV.Op op))
-    m :< WT.Enum k ->
-      return $ m :< TM.Enum k
-    m :< WT.EnumIntro label ->
-      return $ m :< TM.EnumIntro label
-    m :< WT.EnumElim (e, t) les -> do
-      e' <- elaborate' e
-      let (ls, es) = unzip les
-      es' <- mapM elaborate' es
-      t' <- elaborate' t >>= Term.reduce
-      case t' of
-        _ :< TM.Enum x -> do
-          checkSwitchExaustiveness m x ls
-          return $ m :< TM.EnumElim (e', t') (zip ls es')
-        _ ->
-          Throw.raiseError m $
-            "the type of `"
-              <> toText (weaken e')
-              <> "` must be an enum type, but is:\n"
-              <> toText (weaken t')
     m :< WT.Question e t -> do
       e' <- elaborate' e
       t' <- elaborate' t
@@ -291,32 +267,6 @@ elaborateKind kind =
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LK.Fix xt'
-
-checkSwitchExaustiveness :: Context m => Hint -> ET.EnumTypeName -> [EC.EnumCase] -> m ()
-checkSwitchExaustiveness m enumTypeName caseList = do
-  let containsDefaultCase = doesContainDefaultCase caseList
-  enumSet <- lookupEnumSet m enumTypeName
-  let len = toInteger $ length (nub caseList)
-  unless (toInteger (length enumSet) <= len || containsDefaultCase) $
-    Throw.raiseError m "this switch is ill-constructed in that it is not exhaustive"
-
-lookupEnumSet :: Context m => Hint -> ET.EnumTypeName -> m [EV.EnumValueName]
-lookupEnumSet m enumTypeName = do
-  let name = ET.reify enumTypeName
-  mEnumItems <- Global.lookup name
-  case mEnumItems of
-    Just (GN.EnumType enumItems) ->
-      return $ map fst enumItems
-    _ ->
-      Throw.raiseError m $ "no such enum defined: " <> DD.reify name
-
-doesContainDefaultCase :: [EC.EnumCase] -> Bool
-doesContainDefaultCase enumCaseList =
-  case enumCaseList of
-    [] ->
-      False
-    _ : rest ->
-      doesContainDefaultCase rest
 
 -- cs <- readIORef constraintEnv
 -- p "==========================================================="

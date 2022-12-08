@@ -68,16 +68,6 @@ chainOf' tenv term =
       xs1 ++ xs2
     _ :< TM.Prim _ ->
       []
-    _ :< TM.Enum {} ->
-      []
-    _ :< TM.EnumIntro {} ->
-      []
-    _ :< TM.EnumElim (e, t) les -> do
-      let xs0 = chainOf' tenv t
-      let xs1 = chainOf' tenv e
-      let es = map snd les
-      let xs2 = concatMap (chainOf' tenv) es
-      xs0 ++ xs1 ++ xs2
     _ :< TM.Magic der ->
       foldMap (chainOf' tenv) der
 

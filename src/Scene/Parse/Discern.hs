@@ -20,9 +20,6 @@ import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import qualified Entity.EnumCase as EC
-import qualified Entity.EnumTypeName as ET
-import qualified Entity.EnumValueName as EV
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
@@ -149,20 +146,6 @@ discern nenv term =
       return $ m :< WT.Prim prim'
     m :< RT.Aster k ->
       return $ m :< WT.Aster k (asHoleArgs nenv)
-    m :< RT.Enum t ->
-      return $ m :< WT.Enum t
-    m :< RT.EnumIntro label -> do
-      label' <- discernEnumLabel m label
-      return $ m :< WT.EnumIntro label'
-    m :< RT.EnumElim (e, t) caseList -> do
-      e' <- discern nenv e
-      t' <- discern nenv t
-      caseList' <-
-        forM caseList $ \(enumCase, body) -> do
-          enumCase' <- discernEnumCase enumCase
-          body' <- discern nenv body
-          return (enumCase', body')
-      return $ m :< WT.EnumElim (e', t') caseList'
     m :< RT.Question e t -> do
       e' <- discern nenv e
       t' <- discern nenv t
@@ -210,26 +193,6 @@ discernBinderWithBody' nenv (mx, x, t) binder e = do
   (binder', e') <- discernBinderWithBody ((Ident.toText x, (mx, x')) : nenv) binder e
   return ((mx, x', t'), binder', e')
 
-discernEnumLabel :: Context m => Hint -> EC.PreEnumLabel -> m EC.EnumLabel
-discernEnumLabel m (EC.PreEnumLabel _ _ (UN.UnresolvedName name)) = do
-  (dd, gn) <- resolveName m name
-  term <- interpretGlobalName m dd gn
-  case term of
-    _ :< WT.EnumIntro label ->
-      return label
-    _ ->
-      Throw.raiseError m $
-        "no such enum-value is defined: " <> name
-
-discernEnumCase :: Context m => EC.PreEnumCase -> m EC.EnumCase
-discernEnumCase enumCase =
-  case enumCase of
-    m :< EC.Label l -> do
-      l' <- discernEnumLabel m l
-      return $ m :< EC.Label l'
-    m :< EC.Int i -> do
-      return $ m :< EC.Int i
-
 resolveName :: Context m => Hint -> T.Text -> m (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
   localLocator <- LL.reflect m name
@@ -255,10 +218,6 @@ interpretGlobalName m dd gn =
       return $ m :< WT.VarGlobal dd arity
     GN.DataIntro dataArity consArity _ ->
       return $ m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
-    GN.EnumType _ ->
-      return $ m :< WT.Enum (ET.EnumTypeName dd)
-    GN.EnumIntro enumTypeName discriminant ->
-      return $ m :< WT.EnumIntro (EC.EnumLabel enumTypeName discriminant (EV.EnumValueName dd))
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
     GN.PrimOp primOp ->

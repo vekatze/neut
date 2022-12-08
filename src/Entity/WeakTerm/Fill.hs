@@ -83,16 +83,6 @@ fill sub term =
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
           return $ m :< WT.Aster i es'
-    _ :< WT.Enum {} ->
-      return term
-    _ :< WT.EnumIntro {} ->
-      return term
-    m :< WT.EnumElim (e, t) branchList -> do
-      t' <- fill sub t
-      e' <- fill sub e
-      let (caseList, es) = unzip branchList
-      es' <- mapM (fill sub) es
-      return $ m :< WT.EnumElim (e', t') (zip caseList es')
     m :< WT.Question e t -> do
       e' <- fill sub e
       t' <- fill sub t

@@ -60,15 +60,6 @@ freeVars term =
       S.union set1 set2
     _ :< TM.Prim _ ->
       S.empty
-    _ :< TM.Enum {} ->
-      S.empty
-    _ :< TM.EnumIntro {} ->
-      S.empty
-    _ :< TM.EnumElim (e, t) les -> do
-      let xs = freeVars t
-      let ys = freeVars e
-      let zs = S.unions $ map (freeVars . snd) les
-      S.unions [xs, ys, zs]
     _ :< TM.Magic der ->
       foldMap freeVars der
 

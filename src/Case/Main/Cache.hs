@@ -8,7 +8,6 @@ where
 import Control.Monad.IO.Class
 import Data.Binary
 import qualified Data.Set as S
-import Entity.EnumInfo
 import qualified Entity.Source as Source
 import Entity.Stmt
 import Path
@@ -16,11 +15,11 @@ import Path.IO
 
 class (Source.Context m, MonadIO m) => Context m
 
-saveCache :: Context m => Program -> [EnumInfo] -> m ()
-saveCache (source, stmtList) enumInfoList = do
+saveCache :: Context m => Program -> m ()
+saveCache (source, stmtList) = do
   cachePath <- Source.getSourceCachePath source
   ensureDir $ parent cachePath
-  liftIO $ encodeFile (toFilePath cachePath) (stmtList, enumInfoList)
+  liftIO $ encodeFile (toFilePath cachePath) $ Cache stmtList
 
 loadCache :: Context m => Source.Source -> PathSet -> m (Maybe Cache)
 loadCache source hasCacheSet = do

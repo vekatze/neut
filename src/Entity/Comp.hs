@@ -19,7 +19,6 @@ data Value
   | SigmaIntro [Value]
   | Int IntSize Integer
   | Float FloatSize Double
-  | EnumIntro EnumLabel
 
 instance Show Value where
   show v =
@@ -34,15 +33,13 @@ instance Show Value where
         show i
       Entity.Comp.Float _ f ->
         show f
-      EnumIntro (EnumLabel _ discriminant _) ->
-        show discriminant
 
 data Comp
   = PiElimDownElim Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
   | UpElim Ident Comp Comp
-  | EnumElim Value Comp [(CompEnumCase, Comp)]
+  | EnumElim Value Comp [(EnumCase, Comp)]
   | Primitive Primitive
   | Discard Value Ident
   | Copy Value Ident
@@ -71,7 +68,7 @@ instance Show Comp where
       Unreachable ->
         "⊥"
 
-showEnumCase :: (CompEnumCase, Comp) -> String
+showEnumCase :: (EnumCase, Comp) -> String
 showEnumCase (ec, c) = do
   "\n<" ++ show ec ++ ">\n" ++ show c
 

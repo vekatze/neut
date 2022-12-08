@@ -1,7 +1,6 @@
 module Scene.Clarify.Utility where
 
 import qualified Context.Gensym as Gensym
-import Control.Comonad.Cofree
 import qualified Entity.Comp as C
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
@@ -48,7 +47,7 @@ makeSwitcher compAff compRel = do
       C.EnumElim
         switchVar
         rel
-        [(() :< EC.Int 0, aff)]
+        [(EC.Int 0, aff)]
     )
 
 registerSwitcher ::
