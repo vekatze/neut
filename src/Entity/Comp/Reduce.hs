@@ -77,8 +77,6 @@ reduce term =
             _ ->
               return $ C.UpElim x e1' e2'
     C.EnumElim v defaultBranch les -> do
-      -- let (ls, es) = unzip les
-      -- let les' = zip ls es
       case v of
         C.Int _ l
           | Just body <- lookup (EC.Int (fromInteger l)) les ->

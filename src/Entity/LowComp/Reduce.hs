@@ -46,7 +46,6 @@ reduce' sub sizeMap lowComp = do
         LC.Alloc _ size
           | cancelAllocFlag,
             Just ((j, d) : rest) <- Map.lookup size sizeMap -> do
-              -- modifyIORef' nopFreeSetRef $ S.insert j
               Env.insertToNopFreeSet j
               let sizeMap' = Map.insert size rest sizeMap
               let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub

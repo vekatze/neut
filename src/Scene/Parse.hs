@@ -228,7 +228,6 @@ defineData ::
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   let consNameList = map (\(_, name, _) -> name) consInfoList'
-  -- setAsData m dataName (A.fromInt (length dataArgs)) consInfoList'
   let arity = A.fromInt (length dataArgs)
   Global.registerData m dataName arity consNameList
   let stmtKind = Data arity dataName consNameList
@@ -344,17 +343,6 @@ parseDefineCodata = do
 --       :< RT.Match
 --         (preVar m recordVarText, codataType)
 --         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
-
--- setAsData ::
---   Global.Context m =>
---   Hint ->
---   DD.DefiniteDescription ->
---   A.Arity ->
---   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
---   m ()
--- setAsData m dataName arity consInfoList = do
---   let consNameList = map (\(_, consName, _) -> consName) consInfoList
---   Global.registerData m dataName arity consNameList
 
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =

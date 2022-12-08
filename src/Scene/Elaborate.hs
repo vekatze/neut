@@ -117,8 +117,6 @@ elaborateStmtList stmtList = do
       codType' <- elaborate' codType >>= Term.reduce
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
       let stmt = StmtDefine stmtKind' m x impArgNum xts' codType' e'
-      -- insertStmt stmt
-      -- Definition.insert (toOpacity stmtKind) m x (map weakenBinder xts') (weaken e')
       rest' <- elaborateStmtList rest
       return $ stmt : rest'
 

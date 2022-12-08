@@ -76,15 +76,8 @@ throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
   sub <- Env.getHoleSubst
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
-    -- p' foo
-    -- p $ T.unpack $ toText l
-    -- p $ T.unpack $ toText r
-    -- p' (expected, actual)
-    -- p' sub
     expected' <- fill sub expected >>= reduce
     actual' <- fill sub actual >>= reduce
-    -- expected' <- subst sub l >>= reduce
-    -- actual' <- subst sub r >>= reduce
     return $ L.logError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
   Throw.throw $ L.MakeError errorList
 
@@ -148,16 +141,6 @@ simplify constraintList =
               let es2 = dataArgs2 ++ consArgs2
               let cs' = zip (zip es1 es2) (repeat orig)
               simplify $ cs' ++ cs
-        --  LK.Cons dataName1 consName1 consNumber1 dataType1 <- kind1,
-        --   LK.Cons dataName2 consName2 consNumber2 dataType2 <- kind2,
-        --   dataName1 == dataName2,
-        --   consName1 == consName2,
-        --   consNumber1 == consNumber2,
-        --   length xts1 == length xts2 -> do
-        --     xt1 <- asWeakBinder m1 e1
-        --     xt2 <- asWeakBinder m2 e2
-        --     cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
-        --     simplify $ ((dataType1, dataType2), orig) : cs' ++ cs
         (_ :< WT.Sigma xts1, _ :< WT.Sigma xts2)
           | length xts1 == length xts2 -> do
               cs' <- simplifyBinder orig xts1 xts2

@@ -417,9 +417,7 @@ registerIfNecessary ::
 registerIfNecessary name opacity xts1 xts2 e = do
   b <- Clarify.isAlreadyRegistered name
   unless b $ do
-    -- Log.printNote' $ T.pack $ "linearize-before:\n" <> show e
     e' <- linearize (xts2 ++ xts1) e
-    -- Log.printNote' $ T.pack $ "linearize-after:\n" <> show e'
     (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
     let args = map fst xts1 ++ [envVarName]
     body <- Reduce.reduce $ C.SigmaElim True (map fst xts2) envVar e'

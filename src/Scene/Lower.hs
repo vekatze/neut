@@ -280,16 +280,10 @@ constructSwitch defaultBranch switch =
     [] -> do
       defaultBranch' <- lowerComp defaultBranch
       return (defaultBranch', [])
-    -- (m :< EC.Label (EC.EnumLabel _ d _), code) : rest -> do
-    --   constructSwitch defaultBranch $ (m :< EC.Int (D.reify d), code) : rest
     (EC.Int i, code) : rest -> do
       code' <- lowerComp code
       (defaultBranch', caseList) <- constructSwitch defaultBranch rest
       return (defaultBranch', (i, code') : caseList)
-
--- return $ do
---   (defaultCase, caseList) <- mSwitch
---   return (defaultCase, (i, code') : caseList)
 
 data AggPtrType
   = AggPtrTypeArray Int LT.LowType
