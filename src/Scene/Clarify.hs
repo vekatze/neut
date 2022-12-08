@@ -6,6 +6,7 @@ where
 
 import qualified Context.CompDefinition as CompDefinition
 import qualified Context.DataDefinition as DataDefinition
+import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import qualified Context.Log as Log
@@ -58,6 +59,7 @@ class
     Reduce.Context m,
     Throw.Context m,
     Log.Context m,
+    Enum.Context m,
     DataDefinition.Context m
   ) =>
   Context m
@@ -87,10 +89,16 @@ clarifyDefList stmtList = do
   CompDefinition.union auxEnv
   stmtList'' <- forM stmtList' $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
+    -- Log.printNote' "==================="
     -- Log.printNote' $ DD.reify x
     -- Log.printNote' $ T.pack $ show args
     -- Log.printNote' $ T.pack $ show e
     return (x, (opacity, args, e'))
+  -- forM_ (Map.toList auxEnv) $ \(x, (_, args, e)) -> do
+  --   Log.printNote' "==================="
+  --   Log.printNote' $ DD.reify x
+  --   Log.printNote' $ T.pack $ show args
+  --   Log.printNote' $ T.pack $ show e
   forM_ stmtList'' $ uncurry CompDefinition.insert
   return $ stmtList'' ++ Map.toList auxEnv
 
@@ -138,20 +146,28 @@ clarifyTerm tenv term =
       e' <- clarifyTerm tenv e
       callClosure e' es'
     m :< TM.Data name _ -> do
-      mDataInfo <- DataDefinition.lookup name
-      case mDataInfo of
-        Nothing ->
-          Throw.raiseCritical m "mDataInfo"
-        Just dataInfo -> do
-          dataInfo' <- mapM clarifyDataClause dataInfo
-          returnSigmaDataS4 name dataInfo'
-    _ :< TM.DataIntro _ _ disc dataArgs consArgs -> do
-      (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
-      return $
-        bindLet (zip zs es) $
-          C.UpIntro $
-            C.SigmaIntro $
-              C.Int (IntSize 64) (D.reify disc) : xs
+      isEnum <- Enum.isMember name
+      if isEnum
+        then return returnImmediateS4
+        else do
+          mDataInfo <- DataDefinition.lookup name
+          case mDataInfo of
+            Nothing ->
+              Throw.raiseCritical m "mDataInfo"
+            Just dataInfo -> do
+              dataInfo' <- mapM clarifyDataClause dataInfo
+              returnSigmaDataS4 name dataInfo'
+    _ :< TM.DataIntro _ consName disc dataArgs consArgs -> do
+      isEnum <- Enum.isMember consName
+      if isEnum
+        then return $ C.UpIntro $ C.Int (IntSize 64) (D.reify disc)
+        else do
+          (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
+          return $
+            bindLet (zip zs es) $
+              C.UpIntro $
+                C.SigmaIntro $
+                  C.Int (IntSize 64) (D.reify disc) : xs
     m :< TM.DataElim xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -218,17 +234,32 @@ clarifyDecisionTree tenv dataArgsMap tree =
       tidyCursorList tenv dataArgsMap consumedCursorList cont'
     DT.Unreachable -> do
       return C.Unreachable
-    DT.Switch (cursor, m :< _) (fallbackClause, clauseList) -> do
+    DT.Switch (cursor, t@(m :< _)) (fallbackClause, clauseList) -> do
       let chain = TM.chainOfClauseList tenv m (fallbackClause, clauseList)
-      -- p $ "chain: " <> show (map (\(_, x, _) -> x) chain)
       let aligner = alignFreeVariable tenv chain
       fallbackClause' <- clarifyDecisionTree tenv dataArgsMap fallbackClause >>= aligner
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
-      discriminantVar <- Gensym.newIdentFromText "discriminant"
-      return $
-        C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
-          C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
+      b <- isEnumType t
+      if b
+        then return $ C.EnumElim (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
+        else do
+          discriminantVar <- Gensym.newIdentFromText "discriminant"
+          return $
+            C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
+              C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
+
+isEnumType :: Context m => TM.Term -> m Bool
+isEnumType term =
+  case term of
+    _ :< TM.Data dataName _ -> do
+      Enum.isMember dataName
+    _ :< TM.PiElim (_ :< TM.Data dataName _) _ -> do
+      Enum.isMember dataName
+    _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
+      Enum.isMember dataName
+    _ ->
+      Throw.raiseCritical' "Clarify.isEnumType"
 
 tidyCursorList :: Context m => TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> m C.Comp
 tidyCursorList tenv dataArgsMap consumedCursorList cont =
@@ -248,25 +279,29 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
             C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
 
 clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.CompEnumCase, C.Comp)
-clarifyCase tenv dataArgsMap cursor (DT.Cons _ disc dataArgs consArgs cont) = do
+clarifyCase tenv dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs cont) = do
   let (_, dataTypes) = unzip dataArgs
   dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
   let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap
   let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
   body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) dataArgsMap' cont
-  discriminantVar <- Gensym.newIdentFromText "discriminant"
-  return
-    ( () :< EC.Int (D.reify disc),
-      C.SigmaElim
-        False
-        (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
-        (C.VarLocal cursor)
-        body'
-    )
+  b <- Enum.isMember consName
+  if b
+    then return (() :< EC.Int (D.reify disc), body')
+    else do
+      discriminantVar <- Gensym.newIdentFromText "discriminant"
+      return
+        ( () :< EC.Int (D.reify disc),
+          C.SigmaElim
+            False
+            (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+            (C.VarLocal cursor)
+            body'
+        )
 
--- p :: Monad m => String -> m ()
--- p str =
---   trace str (return ())
+p :: Monad m => String -> m ()
+p str =
+  trace str (return ())
 
 alignFreeVariable :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> m C.Comp
 alignFreeVariable tenv fvs e = do
@@ -394,7 +429,9 @@ registerIfNecessary ::
 registerIfNecessary name opacity xts1 xts2 e = do
   b <- Clarify.isAlreadyRegistered name
   unless b $ do
+    -- Log.printNote' $ T.pack $ "linearize-before:\n" <> show e
     e' <- linearize (xts2 ++ xts1) e
+    -- Log.printNote' $ T.pack $ "linearize-after:\n" <> show e'
     (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
     let args = map fst xts1 ++ [envVarName]
     body <- Reduce.reduce $ C.SigmaElim True (map fst xts2) envVar e'

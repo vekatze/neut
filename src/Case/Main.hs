@@ -34,6 +34,7 @@ import qualified Context.Alias as Alias
 import qualified Context.CompDefinition as CompDefinition
 import qualified Context.DataDefinition as DataDefinition
 import qualified Context.Definition as Definition
+import qualified Context.Enum as Enum
 import qualified Context.Env as Env
 import qualified Context.External as External
 import qualified Context.Gensym as Gensym
@@ -141,6 +142,7 @@ data Env = Env
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
+    enumSet :: FastRef (S.Set DD.DefiniteDescription),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
     impEnv :: FastRef (Map.HashMap DD.DefiniteDescription I.ImpArgNum),
@@ -238,6 +240,7 @@ newEnv = do
   defMap <- newFastRef
   compDefMap <- newFastRef
   dataDefMap <- newFastRef
+  enumSet <- newFastRef
   declEnv <- newFastRef
   impEnv <- newFastRef
   compEnv <- newFastRef
@@ -569,6 +572,14 @@ instance CompDefinition.Context App where
       Nothing -> do
         aenv <- asks compDefMap >>= liftIO . readIORef
         return $ Map.lookup k aenv
+
+instance Enum.Context App where
+  insert dd =
+    asks enumSet >>= \ref -> liftIO $ modifyIORef' ref $ S.insert dd
+  isMember dd =
+    asks enumSet >>= \ref -> liftIO $ do
+      enumSet <- readIORef ref
+      return $ S.member dd enumSet
 
 instance MainLocator.Context App where
   setActiveGlobalLocatorList v =

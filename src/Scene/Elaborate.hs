@@ -363,6 +363,13 @@ elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
 extractConstructorList :: Context m => Hint -> TM.Term -> m [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
+    _ :< TM.Data dataName _ -> do
+      kind <- Global.lookup dataName
+      case kind of
+        Just (GN.Data _ consList) ->
+          return consList
+        _ ->
+          Throw.raiseCritical m "extractConstructorList"
     _ :< TM.PiElim (_ :< TM.Data dataName _) _ -> do
       kind <- Global.lookup dataName
       case kind of

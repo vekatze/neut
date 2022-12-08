@@ -1,5 +1,6 @@
 module Entity.Pattern.Specialize (specialize, Context) where
 
+import qualified Context.Enum as Enum
 import qualified Context.Gensym as Gensym
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
@@ -11,7 +12,12 @@ import Entity.NominalEnv
 import Entity.Pattern
 import qualified Entity.WeakTerm as WT
 
-class (Gensym.Context m, Throw.Context m) => Context m
+class
+  ( Gensym.Context m,
+    Throw.Context m,
+    Enum.Context m
+  ) =>
+  Context m
 
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 specialize ::
@@ -46,5 +52,9 @@ specializeRow nenv cursor (dd, arity) (patternVector, (freedVars, body)) =
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
     Just ((_, Cons dd' _ _ _ args), rest) ->
       if dd == dd'
-        then return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
+        then do
+          b <- Enum.isMember dd'
+          if b
+            then return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
+            else return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
         else return Nothing

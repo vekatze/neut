@@ -5,6 +5,7 @@ module Scene.Parse
 where
 
 import qualified Context.Alias as Alias
+import qualified Context.Enum as Enum
 import qualified Context.Env as Env
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
@@ -37,7 +38,6 @@ import qualified Entity.StrictGlobalLocator as SGL
 import Path
 import qualified Scene.Parse.Core as P
 import qualified Scene.Parse.Discern as Discern
-import qualified Scene.Parse.Enum as Enum
 import qualified Scene.Parse.Import as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
@@ -125,10 +125,6 @@ program' :: Context m => P.Parser m ([WeakStmt], [EnumInfo])
 program' =
   choice
     [ do
-        enumInfo <- Enum.parseDefineEnum
-        (defList, enumInfoList) <- program'
-        return (defList, enumInfo : enumInfoList),
-      do
         parseStmtUse
         program',
       do
@@ -245,7 +241,14 @@ defineData m dataName dataArgs consInfoList = do
   let dataType = constructDataType m dataName dataArgs
   let formRule = RawStmtDefine stmtKind m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
+  when (hasNoArgs dataArgs consInfoList') $ do
+    Enum.insert dataName
+    mapM_ (Enum.insert . (\(_, consName, _) -> consName)) consInfoList'
   return $ formRule : introRuleList
+
+hasNoArgs :: [BinderF RT.RawTerm] -> [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] -> Bool
+hasNoArgs dataArgs consInfoList =
+  null dataArgs && null (concatMap (\(_, _, consArgs) -> consArgs) consInfoList)
 
 modifyConstructorName ::
   Throw.Context m =>
