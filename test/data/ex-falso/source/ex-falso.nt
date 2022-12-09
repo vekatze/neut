@@ -1,0 +1,12 @@
+define-data empty() as
+end
+
+define ex-falso<a>(e: empty()): a as
+  match e with
+  end
+end
+
+
+define main(): i64 as
+  0
+end
