@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  enum = "enum.nt"
+}

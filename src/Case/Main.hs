@@ -490,7 +490,6 @@ instance MainGlobal.Context App
 instance Global.Context App where
   registerTopLevelFunc = MainGlobal.registerTopLevelFunc
   registerData = MainGlobal.registerData
-  registerDataIntro = MainGlobal.registerDataIntro
   lookup = MainGlobal.lookup
   initialize = MainGlobal.initialize
 
@@ -503,23 +502,14 @@ instance Gensym.Context App where
     asks counter >>= \ref -> liftIO $ writeIORefU ref v
 
 instance DataDefinition.Context App where
-  insert dataName discriminant dataArgs consArgs = do
-    mDataInfo <- DataDefinition.lookup dataName
+  insert dataName dataArgs consInfoList = do
     asks dataDefMap >>= \ref -> do
       liftIO $ do
         hashMap <- readIORef ref
-        case mDataInfo of
-          Nothing ->
-            writeIORef ref (Map.insert dataName [(discriminant, dataArgs, consArgs)] hashMap)
-          Just dataInfo ->
-            writeIORef ref (Map.insert dataName ((discriminant, dataArgs, consArgs) : dataInfo) hashMap)
+        let value = map (\(_, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+        writeIORef ref (Map.insert dataName value hashMap)
   lookup dataName = do
     Map.lookup dataName <$> (asks dataDefMap >>= liftIO . readIORef)
-
--- let yo = dataDefMap env
--- undefined
-
--- Map.lookup k <$> (asks dataDefMap >>= liftIO . readIORef)
 
 instance Definition.Context App where
   read =

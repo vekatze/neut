@@ -1,7 +1,6 @@
 module Case.Main.Global
   ( registerTopLevelFunc,
     registerData,
-    registerDataIntro,
     lookup,
     initialize,
     Context,
@@ -15,6 +14,7 @@ import Control.Monad.IO.Class
 import qualified Data.HashMap.Strict as Map
 import Data.Maybe
 import qualified Entity.Arity as A
+import Entity.Binder
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import qualified Entity.GlobalName as GN
@@ -36,10 +36,6 @@ initialize :: Context m => m ()
 initialize = do
   Env.setNameMap Map.empty
 
--- forM_ defaultDataEnv $ \(typeName, enumItemList) ->
---   forM_ (createDataMap typeName enumItemList) $
---     uncurry Env.insertToNameMap
-
 registerTopLevelFunc ::
   Context m =>
   Hint.Hint ->
@@ -55,26 +51,20 @@ registerData ::
   Context m =>
   Hint.Hint ->
   DD.DefiniteDescription ->
-  A.Arity ->
-  [DD.DefiniteDescription] ->
+  [BinderF a] ->
+  [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
   m ()
-registerData m dataName arity consList = do
+registerData m dataName dataArgs consInfoList = do
   topNameMap <- Env.getNameMap
   ensureFreshness m topNameMap dataName
-  Env.insertToNameMap dataName $ GN.Data arity consList
-
-registerDataIntro ::
-  Context m =>
-  Hint.Hint ->
-  DD.DefiniteDescription ->
-  A.Arity ->
-  A.Arity ->
-  D.Discriminant ->
-  m ()
-registerDataIntro m consName dataArity consArity disc = do
-  topNameMap <- Env.getNameMap
-  ensureFreshness m topNameMap consName
-  Env.insertToNameMap consName $ GN.DataIntro dataArity consArity disc
+  let consList = map (\(consName, _, _) -> consName) consInfoList
+  let dataArity = A.fromInt $ length dataArgs
+  Env.insertToNameMap dataName $ GN.Data dataArity consList
+  forM_ consInfoList $ \(consName, consArgs, discriminant) -> do
+    topNameMap' <- Env.getNameMap
+    ensureFreshness m topNameMap' consName
+    let consArity = A.fromInt $ length consArgs
+    Env.insertToNameMap consName $ GN.DataIntro dataArity consArity discriminant
 
 ensureFreshness :: Context m => Hint.Hint -> NameMap -> DD.DefiniteDescription -> m ()
 ensureFreshness m topNameMap name = do
@@ -95,16 +85,3 @@ lookup name = do
           return $ Just $ GN.PrimOp primOp
       | otherwise -> do
           return Nothing
-
--- createDataMap :: DD.DefiniteDescription -> [DI.DataValue] -> [(DD.DefiniteDescription, GN.GlobalName)]
--- createDataMap dataName consInfoList = do
---   let (consNameList, discriminants) = unzip consInfoList
---   let zero = A.fromInt 0
---   (dataName, GN.Data zero consNameList) : zip consNameList (map (GN.DataIntro zero zero) discriminants)
-
--- defaultDataEnv :: [(DD.DefiniteDescription, [DI.DataValue])]
--- defaultDataEnv =
---   [ (DI.constBottom, []),
---     (DI.constTop, [(DI.constTopUnit, D.zero)]),
---     (DI.constBool, [(DI.constBoolFalse, D.zero), (DI.constBoolTrue, D.increment D.zero)])
---   ]

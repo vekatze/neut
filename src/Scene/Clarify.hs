@@ -73,7 +73,7 @@ clarify source defList = do
         registerImmediateS4
         registerClosureS4
         Clarify.getAuxEnv
-      defList' <- clarifyDefList defList
+      defList' <- clarifyDefList $ defList ++ initialStmtList
       mainTerm <- Reduce.reduce $ C.PiElimDownElim (C.VarGlobal mainName (A.Arity 0)) []
       return (defList' ++ Map.toList auxEnv, Just mainTerm)
     Nothing -> do
@@ -152,8 +152,8 @@ clarifyTerm tenv term =
         else do
           mDataInfo <- DataDefinition.lookup name
           case mDataInfo of
-            Nothing ->
-              Throw.raiseCritical m "mDataInfo"
+            Nothing -> do
+              Throw.raiseCritical m $ "mDataInfo: " <> DD.reify name
             Just dataInfo -> do
               dataInfo' <- mapM clarifyDataClause dataInfo
               returnSigmaDataS4 name dataInfo'

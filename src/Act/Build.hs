@@ -22,6 +22,7 @@ import Entity.Module
 import qualified Entity.Module.Reflect as Module
 import qualified Entity.OutputKind as OK
 import qualified Entity.Source as Source
+import qualified Entity.Stmt as Stmt
 import qualified Entity.StrictGlobalLocator as SGL
 import Entity.Target
 import Path
@@ -83,6 +84,8 @@ build' target mainModule = do
   let mainSource = getMainSource mainModule mainFilePath
   (_, isObjectAvailable, dependenceSeq) <- Unravel.unravel mainSource
   Global.initialize
+  Parse.parseCachedStmtList Stmt.initialStmtList
+  forM_ Stmt.initialStmtList Elaborate.insertStmt
   mapM_ compile dependenceSeq
   unless isObjectAvailable $ link target mainModule $ toList dependenceSeq
 

@@ -1,6 +1,7 @@
 module Scene.Elaborate
   ( elaborate,
     Context (..),
+    insertStmt,
   )
 where
 
@@ -134,9 +135,11 @@ insertStmt stmt = do
 insertStmtKindInfo :: Context m => Stmt -> m ()
 insertStmtKindInfo (StmtDefine stmtKind _ _ _ _ _ _) = do
   case stmtKind of
-    DataIntro dataName dataArgs consArgs discriminant ->
-      DataDefinition.insert dataName discriminant dataArgs consArgs
-    _ ->
+    Normal _ ->
+      return ()
+    Data dataName dataArgs consInfoList -> do
+      DataDefinition.insert dataName dataArgs consInfoList
+    DataIntro {} ->
       return ()
 
 elaborateStmtKind :: Context m => StmtKindF WT.WeakTerm -> m (StmtKindF TM.Term)
@@ -144,8 +147,11 @@ elaborateStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       return $ Normal opacity
-    Data arity dataName consNameList ->
-      return $ Data arity dataName consNameList
+    Data dataName dataArgs consInfoList -> do
+      dataArgs' <- mapM elaborateWeakBinder dataArgs
+      let (consNameList, consArgsList, discriminantList) = unzip3 consInfoList
+      consArgsList' <- mapM (mapM elaborateWeakBinder) consArgsList
+      return $ Data dataName dataArgs' $ zip3 consNameList consArgsList' discriminantList
     DataIntro dataName dataArgs consArgs discriminant -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs
       consArgs' <- mapM elaborateWeakBinder consArgs

@@ -1,6 +1,7 @@
 module Scene.Parse
   ( parse,
     Context (..),
+    parseCachedStmtList,
   )
 where
 
@@ -80,18 +81,7 @@ parseSource source = do
   case mCache of
     Just cache -> do
       let stmtList = cacheStmtList cache
-      forM_ stmtList $ \stmt -> do
-        case stmt of
-          StmtDefine stmtKind m name _ args _ _ ->
-            case stmtKind of
-              Normal _ ->
-                Global.registerTopLevelFunc m name $ A.fromInt (length args)
-              Data arity dataName consNameList ->
-                Global.registerData m dataName arity consNameList
-              DataIntro _ dataArgs consArgs discriminant -> do
-                let dataArity = A.fromInt (length dataArgs)
-                let consArity = A.fromInt (length consArgs)
-                Global.registerDataIntro m name dataArity consArity discriminant
+      parseCachedStmtList stmtList
       return $ Left stmtList
     Nothing -> do
       sourceAliasMap <- Env.getSourceAliasMap
@@ -102,6 +92,20 @@ parseSource source = do
           activateAliasInfo aliasInfoList
       defList <- P.run program $ Source.sourceFilePath source
       return $ Right defList
+
+parseCachedStmtList :: Context m => [Stmt] -> m ()
+parseCachedStmtList stmtList = do
+  forM_ stmtList $ \stmt -> do
+    case stmt of
+      StmtDefine stmtKind m name _ args _ _ ->
+        case stmtKind of
+          Normal _ ->
+            Global.registerTopLevelFunc m name $ A.fromInt (length args)
+          Data dataName dataArgs consInfoList -> do
+            Global.registerData m dataName dataArgs consInfoList
+            registerAsEnumIfNecessary dataName dataArgs consInfoList
+          DataIntro {} ->
+            return ()
 
 ensureMain :: Context m => Hint -> DD.DefiniteDescription -> m ()
 ensureMain m mainFunctionName = do
@@ -227,21 +231,40 @@ defineData ::
   m [RawStmt]
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
-  let consNameList = map (\(_, name, _) -> name) consInfoList'
-  let arity = A.fromInt (length dataArgs)
-  Global.registerData m dataName arity consNameList
-  let stmtKind = Data arity dataName consNameList
+  let consInfoList'' = modifyConsInfo D.zero consInfoList'
+  Global.registerData m dataName dataArgs consInfoList''
+  let stmtKind = Data dataName dataArgs consInfoList''
   let dataType = constructDataType m dataName dataArgs
   let formRule = RawStmtDefine stmtKind m dataName (I.fromInt 0) dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
-  when (hasNoArgs dataArgs consInfoList') $ do
-    Enum.insert dataName
-    mapM_ (Enum.insert . (\(_, consName, _) -> consName)) consInfoList'
+  registerAsEnumIfNecessary dataName dataArgs consInfoList''
   return $ formRule : introRuleList
 
-hasNoArgs :: [BinderF RT.RawTerm] -> [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] -> Bool
+registerAsEnumIfNecessary ::
+  Context m =>
+  DD.DefiniteDescription ->
+  [BinderF a] ->
+  [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
+  m ()
+registerAsEnumIfNecessary dataName dataArgs consInfoList =
+  when (hasNoArgs dataArgs consInfoList) $ do
+    Enum.insert dataName
+    mapM_ (Enum.insert . (\(consName, _, _) -> consName)) consInfoList
+
+modifyConsInfo ::
+  D.Discriminant ->
+  [(a, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
+  [(DD.DefiniteDescription, [BinderF RT.RawTerm], D.Discriminant)]
+modifyConsInfo d consInfoList =
+  case consInfoList of
+    [] ->
+      []
+    (_, consName, consArgs) : rest ->
+      (consName, consArgs, d) : modifyConsInfo (D.increment d) rest
+
+hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
-  null dataArgs && null (concatMap (\(_, _, consArgs) -> consArgs) consInfoList)
+  null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
 
 modifyConstructorName ::
   Throw.Context m =>
@@ -271,16 +294,13 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let args = dataArgs ++ consArgs
       let introRule =
             RawStmtDefine
-              (DataIntro dataName dataArgs consArgs discriminant)
+              (Normal O.Transparent)
               m
               consName
               (I.fromInt $ length dataArgs)
               args
               dataType
               $ m :< RT.DataIntro dataName consName discriminant dataArgs' consArgs'
-      let dataArity = A.fromInt $ length dataArgs'
-      let consArity = A.fromInt $ length consArgs'
-      Global.registerDataIntro m consName dataArity consArity discriminant
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 

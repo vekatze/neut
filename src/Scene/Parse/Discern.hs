@@ -74,8 +74,11 @@ discernStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       return $ Normal opacity
-    Data arity dataName consNameList ->
-      return $ Data arity dataName consNameList
+    Data dataName dataArgs consInfoList -> do
+      (dataArgs', nenv) <- discernBinder empty dataArgs
+      let (consNameList, consArgsList, discriminantList) = unzip3 consInfoList
+      consArgsList' <- map fst <$> mapM (discernBinder nenv) consArgsList
+      return $ Data dataName dataArgs' $ zip3 consNameList consArgsList' discriminantList
     DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       (consArgs', _) <- discernBinder nenv consArgs

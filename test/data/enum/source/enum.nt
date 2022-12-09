@@ -1,0 +1,9 @@
+define main(): i64 as
+  let foo = base.bool::bool.false() in
+  match foo with
+  - base.bool::bool.true() ->
+    1
+  - base.bool::bool.false() ->
+    2
+  end
+end

@@ -33,3 +33,10 @@ new l c path =
     { metaFileName = path,
       metaLocation = (l, c)
     }
+
+internalHint :: Hint
+internalHint =
+  Hint
+    { metaFileName = "<internal>",
+      metaLocation = (0, 0)
+    }
