@@ -11,6 +11,9 @@ module Entity.BaseName
     bool,
     boolTrue,
     boolFalse,
+    coproduct,
+    coproductLeft,
+    coproductRight,
     sigmaName,
     lambdaName,
     main,
@@ -96,6 +99,18 @@ boolTrue =
 boolFalse :: BaseName
 boolFalse =
   MakeBaseName "false"
+
+coproduct :: BaseName
+coproduct =
+  MakeBaseName "coproduct"
+
+coproductLeft :: BaseName
+coproductLeft =
+  MakeBaseName "left"
+
+coproductRight :: BaseName
+coproductRight =
+  MakeBaseName "right"
 
 this :: BaseName
 this =

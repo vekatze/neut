@@ -20,7 +20,6 @@ import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
-import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
@@ -242,16 +241,19 @@ interpretDefiniteDescription m dd = do
 resolveConstructor ::
   Context m =>
   Hint ->
-  Either UN.UnresolvedName (GL.GlobalLocator, LL.LocalLocator) ->
+  RP.RawConsName ->
   m (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
 resolveConstructor m cons = do
   case cons of
-    Left (UN.UnresolvedName consName') -> do
+    RP.UnresolvedName (UN.UnresolvedName consName') -> do
       (dd, gn) <- resolveName m consName'
       resolveConstructor' m dd gn
-    Right (globalLocator, localLocator) -> do
+    RP.LocatorPair globalLocator localLocator -> do
       sgl <- Alias.resolveAlias m globalLocator
       let dd = DD.new sgl localLocator
+      gn <- interpretDefiniteDescription m dd
+      resolveConstructor' m dd gn
+    RP.DefiniteDescription dd -> do
       gn <- interpretDefiniteDescription m dd
       resolveConstructor' m dd gn
 

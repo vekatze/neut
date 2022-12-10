@@ -7,6 +7,7 @@ module Entity.SourceLocator
     bottomLocator,
     topLocator,
     boolLocator,
+    coproductLocator,
     llvmLocator,
     internalLocator,
   )
@@ -56,6 +57,10 @@ topLocator =
 boolLocator :: SourceLocator
 boolLocator =
   SourceLocator $(mkRelFile "bool")
+
+coproductLocator :: SourceLocator
+coproductLocator =
+  SourceLocator $(mkRelFile "coproduct")
 
 llvmLocator :: SourceLocator
 llvmLocator =

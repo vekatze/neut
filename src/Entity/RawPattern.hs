@@ -1,5 +1,6 @@
 module Entity.RawPattern
   ( RawPattern (..),
+    RawConsName (..),
     RawPatternRow,
     RawPatternMatrix,
     new,
@@ -10,6 +11,7 @@ module Entity.RawPattern
 where
 
 import qualified Data.Vector as V
+import qualified Entity.DefiniteDescription as DD
 import qualified Entity.GlobalLocator as GL
 import Entity.Hint hiding (new)
 import Entity.Ident
@@ -18,7 +20,13 @@ import qualified Entity.UnresolvedName as UN
 
 data RawPattern
   = Var Ident
-  | Cons (Either UN.UnresolvedName (GL.GlobalLocator, LL.LocalLocator)) [(Hint, RawPattern)]
+  | Cons RawConsName [(Hint, RawPattern)]
+  deriving (Show)
+
+data RawConsName
+  = UnresolvedName UN.UnresolvedName
+  | LocatorPair GL.GlobalLocator LL.LocalLocator
+  | DefiniteDescription DD.DefiniteDescription
   deriving (Show)
 
 type RawPatternRow a =

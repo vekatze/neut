@@ -8,6 +8,9 @@ module Entity.DataInfo
     constBool,
     constBoolTrue,
     constBoolFalse,
+    constCoproduct,
+    constCoproductLeft,
+    constCoproductRight,
   )
 where
 
@@ -53,3 +56,18 @@ constBoolTrue =
 constBoolFalse :: DD.DefiniteDescription
 constBoolFalse =
   DD.extendLL constBool $ LL.new [] BN.boolFalse
+
+{-# INLINE constCoproduct #-}
+constCoproduct :: DD.DefiniteDescription
+constCoproduct =
+  DD.newByGlobalLocator (SGL.baseGlobalLocatorOf SL.coproductLocator) [] BN.coproduct
+
+{-# INLINE constCoproductLeft #-}
+constCoproductLeft :: DD.DefiniteDescription
+constCoproductLeft =
+  DD.extendLL constCoproduct $ LL.new [] BN.coproductLeft
+
+{-# INLINE constCoproductRight #-}
+constCoproductRight :: DD.DefiniteDescription
+constCoproductRight =
+  DD.extendLL constCoproduct $ LL.new [] BN.coproductRight

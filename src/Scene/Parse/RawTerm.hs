@@ -66,7 +66,7 @@ rawTermEasy = do
       rawTermQuestion,
       rawTermMagic,
       rawTermMatch,
-      -- rawTermIf,
+      rawTermIf,
       try rawTermLetSigmaElim,
       rawTermLet,
       rawTermLetCoproduct,
@@ -114,18 +114,16 @@ rawTermLetCoproduct = do
   err <- lift $ Gensym.newTextualIdentFromText "err"
   typeOfLeft <- lift $ Gensym.newPreAster m
   typeOfRight <- lift $ Gensym.newPreAster m
-  let sumLeft = Left $ UN.UnresolvedName "base.sum::left"
-  let sumRight = Left $ UN.UnresolvedName "base.sum::right"
   let sumLeftVar = Ident.fromText "sum.left"
   return $
     m
       :< RT.DataElim
         [e1]
         ( RP.new
-            [ ( V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])],
+            [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductLeft) [(m, RP.Var err)])],
                 m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
               ),
-              ( V.fromList [(m, RP.Cons sumRight [(m, RP.Var x)])],
+              ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductRight) [(m, RP.Var x)])],
                 e2
               )
             ]
@@ -137,8 +135,6 @@ rawTermVoid m e1 = do
   e2 <- rawTerm
   f <- lift $ Gensym.newTextualIdentFromText "unit"
   return $ bind (m, f, m :< RT.Data DI.constTop []) e1 e2
-
--- return $ bind (m, f, m :< RT.Enum constTop) e1 e2
 
 rawTermExplicitAscription :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
 rawTermExplicitAscription m e = do
@@ -375,14 +371,14 @@ rawTermPatternConsStrict :: Context m => Parser m (Hint, RP.RawPattern)
 rawTermPatternConsStrict = do
   (m, globalLocator, localLocator) <- parseDefiniteDescription
   patArgs <- argList rawTermPattern
-  return (m, RP.Cons (Right (globalLocator, localLocator)) patArgs)
+  return (m, RP.Cons (RP.LocatorPair globalLocator localLocator) patArgs)
 
 rawTermPatternCons :: Context m => Parser m (Hint, RP.RawPattern)
 rawTermPatternCons = do
   m <- getCurrentHint
   c <- symbol
   patArgs <- argList rawTermPattern
-  return (m, RP.Cons (Left $ UN.UnresolvedName c) patArgs)
+  return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName c) patArgs)
 
 rawTermPatternVar :: Context m => Parser m (Hint, RP.RawPattern)
 rawTermPatternVar = do
@@ -417,46 +413,46 @@ rawTermLetVar = do
         return (m, Ident.fromText x, h)
     ]
 
--- rawTermIf :: Context m => Parser m RT.RawTerm
--- rawTermIf = do
---   m <- getCurrentHint
---   try $ keyword "if"
---   ifCond <- rawTerm
---   keyword "then"
---   ifBody <- rawTerm
---   elseIfList <- many $ do
---     keyword "else-if"
---     elseIfCond <- rawTerm
---     keyword "then"
---     elseIfBody <- rawTerm
---     return (elseIfCond, elseIfBody)
---   keyword "else"
---   elseBody <- rawTerm
---   keyword "end"
---   foldIf m ifCond ifBody elseIfList elseBody
+rawTermIf :: Context m => Parser m RT.RawTerm
+rawTermIf = do
+  m <- getCurrentHint
+  try $ keyword "if"
+  ifCond <- rawTerm
+  keyword "then"
+  ifBody <- rawTerm
+  elseIfList <- many $ do
+    keyword "else-if"
+    elseIfCond <- rawTerm
+    keyword "then"
+    elseIfBody <- rawTerm
+    return (elseIfCond, elseIfBody)
+  keyword "else"
+  elseBody <- rawTerm
+  keyword "end"
+  return $ foldIf m ifCond ifBody elseIfList elseBody
 
--- foldIf :: Context m => Hint -> RT.RawTerm -> RT.RawTerm -> [(RT.RawTerm, RT.RawTerm)] -> RT.RawTerm -> Parser m RT.RawTerm
--- foldIf m ifCond ifBody elseIfList elseBody =
---   case elseIfList of
---     [] -> do
---       h <- lift $ Gensym.newPreAster m
---       return $
---         m
---           :< RT.EnumElim
---             (ifCond, h)
---             [ (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolTrue), ifBody),
---               (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolFalse), elseBody)
---             ]
---     ((elseIfCond, elseIfBody) : rest) -> do
---       cont <- foldIf m elseIfCond elseIfBody rest elseBody
---       h <- lift $ Gensym.newPreAster m
---       return $
---         m
---           :< RT.EnumElim
---             (ifCond, h)
---             [ (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolTrue), ifBody),
---               (m :< EC.Label (EC.weakenEnumLabel EC.enumLabelBoolFalse), cont)
---             ]
+foldIf :: Hint -> RT.RawTerm -> RT.RawTerm -> [(RT.RawTerm, RT.RawTerm)] -> RT.RawTerm -> RT.RawTerm
+foldIf m ifCond ifBody elseIfList elseBody =
+  case elseIfList of
+    [] -> do
+      m
+        :< RT.DataElim
+          [ifCond]
+          ( RP.new
+              [ (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolTrue) [])], ifBody),
+                (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolFalse) [])], elseBody)
+              ]
+          )
+    ((elseIfCond, elseIfBody) : rest) -> do
+      let cont = foldIf m elseIfCond elseIfBody rest elseBody
+      m
+        :< RT.DataElim
+          [ifCond]
+          ( RP.new
+              [ (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolTrue) [])], ifBody),
+                (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolFalse) [])], cont)
+              ]
+          )
 
 rawTermParen :: Context m => Parser m RT.RawTerm
 rawTermParen = do
