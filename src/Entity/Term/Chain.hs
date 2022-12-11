@@ -92,8 +92,9 @@ chainOfDecisionTree tenv m tree =
       concatMap (chainOfVar tenv m) xs ++ chainOf' tenv e
     DT.Unreachable ->
       []
-    DT.Switch (cursor, cursorType) caseList ->
-      chainOf' tenv cursorType ++ [(m, cursor, cursorType)] ++ chainOfCaseList tenv m caseList
+    DT.Switch (cursor, _) caseList ->
+      -- the cursor must be treated as an immediate
+      (m, cursor, m :< TM.Tau) : chainOfCaseList tenv m caseList
 
 chainOfDecisionTree' :: TM.TypeEnv -> Hint -> [BinderF TM.Term] -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
 chainOfDecisionTree' tenv m xts tree =
