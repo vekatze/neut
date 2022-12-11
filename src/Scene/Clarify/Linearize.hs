@@ -105,10 +105,10 @@ distinguishComp z term =
       (_, defaultBranch') <- distinguishComp z defaultBranch
       return (vs ++ head vss, C.EnumElim d' defaultBranch' (zip cs es'))
     C.Discard d x -> do
-      (vs, x') <- distinguishVar z x
+      (vs, x') <- distinguishValue z x
       return (vs, C.Discard d x')
     C.Copy d x -> do
-      (vs, x') <- distinguishVar z x
+      (vs, x') <- distinguishValue z x
       return (vs, C.Copy d x')
     C.Unreachable ->
       return ([], term)

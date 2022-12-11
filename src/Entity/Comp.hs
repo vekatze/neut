@@ -41,8 +41,8 @@ data Comp
   | UpElim Ident Comp Comp
   | EnumElim Value Comp [(EnumCase, Comp)]
   | Primitive Primitive
-  | Discard Value Ident
-  | Copy Value Ident
+  | Discard Value Value
+  | Copy Value Value
   | Unreachable
 
 instance Show Comp where
@@ -62,9 +62,9 @@ instance Show Comp where
       Primitive prim ->
         "(" ++ show prim ++ ")"
       Discard d x ->
-        show $ PiElimDownElim d [VarLocal x]
+        "discard(" ++ show d ++ ", " ++ show x ++ ")"
       Copy d x ->
-        show $ PiElimDownElim d [VarLocal x]
+        "copy(" ++ show d ++ ", " ++ show x ++ ")"
       Unreachable ->
         "⊥"
 

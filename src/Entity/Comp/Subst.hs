@@ -43,28 +43,14 @@ substComp sub nenv term =
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub nenv) es
       return $ C.EnumElim v' defaultBranch' (zip cs es')
-    C.Discard d x -> do
+    C.Discard d v -> do
       let d' = substValue sub nenv d
-      case (IntMap.lookup (Ident.toInt x) nenv, IntMap.lookup (Ident.toInt x) sub) of
-        (Just x', _) ->
-          return $ C.Discard d' x'
-        (Nothing, Just (C.VarLocal x')) ->
-          return $ C.Discard d' x'
-        (Nothing, Just _) ->
-          return $ C.UpIntro $ C.SigmaIntro []
-        (Nothing, Nothing) ->
-          return $ C.Discard d' x
-    C.Copy d x -> do
+      let v' = substValue sub nenv v
+      return $ C.Discard d' v'
+    C.Copy d v -> do
       let d' = substValue sub nenv d
-      case (IntMap.lookup (Ident.toInt x) nenv, IntMap.lookup (Ident.toInt x) sub) of
-        (Just x', _) ->
-          return $ C.Copy d' x'
-        (Nothing, Just (C.VarLocal x')) ->
-          return $ C.Copy d' x'
-        (Nothing, Just e) ->
-          return $ C.UpIntro e
-        (Nothing, Nothing) ->
-          return $ C.Copy d' x
+      let v' = substValue sub nenv v
+      return $ C.Copy d' v'
     C.Unreachable ->
       return term
 
