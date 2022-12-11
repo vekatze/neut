@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  nat-fact = "nat-fact.nt"
+}

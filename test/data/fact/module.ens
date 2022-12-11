@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  fact = "fact.nt"
+}

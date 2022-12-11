@@ -1,0 +1,23 @@
+use this.match-unbound::nat
+
+define-data nat() as
+- zero()
+end
+
+define cond(n1: nat()): base.bool::bool() as
+  base.bool::bool.false()
+end
+
+define f(): nat() as
+  let x = zero() in
+  if cond(x) then
+    zero()
+  else
+    let _ = x in x
+  end
+end
+
+define main(): i64 as
+  let a = f() in
+  0
+end
