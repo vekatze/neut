@@ -7,6 +7,7 @@ import Context.Gensym
 import Control.Monad
 import qualified Entity.Comp as C
 import Entity.Ident
+import Entity.Ident.Reify
 import qualified Entity.Magic as M
 import Scene.Clarify.Utility
 
@@ -29,8 +30,10 @@ linearize binder e =
           hole <- newIdentFromText "unit"
           discardUnusedVar <- toAffineApp x t
           return $ C.UpElim hole discardUnusedVar e''
-        z : zs ->
-          insertHeader x z zs t e''
+        z : zs -> do
+          localName <- newIdentFromText $ toText x <> "-local"
+          e''' <- insertHeader localName z zs t e''
+          return $ C.UpElim localName (C.UpIntro (C.VarLocal x)) e'''
 
 insertHeader ::
   Context m =>
@@ -40,13 +43,13 @@ insertHeader ::
   C.Comp ->
   C.Comp ->
   m C.Comp
-insertHeader x z1 zs t e = do
+insertHeader localName z1 zs t e = do
   case zs of
     [] ->
-      return $ C.UpElim z1 (C.UpIntro (C.VarLocal x)) e
+      return $ C.UpElim z1 (C.UpIntro (C.VarLocal localName)) e
     z2 : rest -> do
-      e' <- insertHeader x z2 rest t e
-      copyRelevantVar <- toRelevantApp x t
+      e' <- insertHeader localName z2 rest t e
+      copyRelevantVar <- toRelevantApp localName t
       return $ C.UpElim z1 copyRelevantVar e'
 
 distinguishVar :: Context m => Ident -> Ident -> m ([Occurrence], Ident)
