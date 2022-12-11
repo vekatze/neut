@@ -68,8 +68,8 @@ rawTermEasy = do
       rawTermMatch,
       rawTermIf,
       try rawTermLetSigmaElim,
-      rawTermLet,
       rawTermLetCoproduct,
+      rawTermLet,
       try rawTermPi,
       try rawTermPiElim,
       try rawTermPiElimInv,
@@ -112,16 +112,16 @@ rawTermLetCoproduct = do
   keyword "in"
   e2 <- rawTerm
   err <- lift $ Gensym.newTextualIdentFromText "err"
-  typeOfLeft <- lift $ Gensym.newPreAster m
-  typeOfRight <- lift $ Gensym.newPreAster m
-  let sumLeftVar = Ident.fromText "sum.left"
+  globalLocator <- lift $ GL.reflect m "base.coproduct"
+  localLocator <- lift $ LL.reflect m "coproduct.left"
+  let sumLeftVar = m :< RT.VarGlobal globalLocator localLocator
   return $
     m
       :< RT.DataElim
         [e1]
         ( RP.new
             [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductLeft) [(m, RP.Var err)])],
-                m :< RT.PiElim (preVar' m sumLeftVar) [typeOfLeft, typeOfRight, preVar' m err]
+                m :< RT.PiElim sumLeftVar [preVar' m err]
               ),
               ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductRight) [(m, RP.Var x)])],
                 e2

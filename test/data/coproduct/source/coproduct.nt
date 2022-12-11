@@ -1,21 +1,53 @@
-define-data coproduct(a: tau, b: tau) as
-- left(a)
-- right(b)
+use base.coproduct
+use base.coproduct::coproduct
+use this.coproduct::nat
+
+define-data nat() as
+- zero()
+- succ(nat())
+end
+
+define interpret(n: nat()): i64 as
+  match n with
+  - nat.zero() ->
+    0
+  - nat.succ(m) ->
+    add-i64(1, interpret(m))
+  end
 end
 
 define view<a, b>(x: coproduct(a, b)): i64 as
   match x with
-  - coproduct.left(a) ->
+  - left(c) ->
     1
-  - coproduct.right(b) ->
+  - right(d) ->
     2
   end
 end
 
+define computation-with-error(x: i64): coproduct(nat(), i64) as
+  if eq-i64(x, 0) then
+    left(succ(zero()))
+  else
+    right(interpret(succ(succ(zero()))))
+  end
+end
+
+define let-coproduct(x: i64): coproduct(nat(), i64) as
+  let? foo = computation-with-error(x) in
+  let? bar = computation-with-error(add-i64(foo, 1)) in
+  right(bar)
+end
+
 define main(): i64 as
-  let x = view<i64, i32>(coproduct.left(10)) in
-  let y = view<i64, i32>(coproduct.right(10)) in
-  let z = x in
-  let w = x in
-  1
+  match let-coproduct(10) with
+  - left(e) ->
+    interpret(e)
+  - right(v) ->
+    let x = view<i64, i32>(left(10)) in
+    let y = view<i64, i32>(right(10)) in
+    let z = x in
+    let w = x in
+    add-i64(v, 1)
+  end
 end

@@ -9,6 +9,7 @@ import qualified Entity.DataInfo as DI
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import Entity.Hint
+import Entity.Ident
 import qualified Entity.ImpArgNum as I
 import qualified Entity.Opacity as O
 import qualified Entity.RawTerm as RT
@@ -109,7 +110,7 @@ initialStmtList = do
     formInfo' : introInfoList'
 
 defineEnum :: DD.DefiniteDescription -> [BinderF TM.Term] -> [ConsInfo] -> Stmt
-defineEnum dataName dataArgs consInfoList =
+defineEnum dataName dataArgs consInfoList = do
   StmtDefine
     (Data dataName dataArgs consInfoList)
     internalHint
@@ -117,7 +118,11 @@ defineEnum dataName dataArgs consInfoList =
     I.zero
     dataArgs
     (internalHint :< TM.Tau)
-    (internalHint :< TM.Data dataName [])
+    (internalHint :< TM.Data dataName (map argToTerm dataArgs))
+
+argToTerm :: BinderF TM.Term -> TM.Term
+argToTerm (m, x, _) =
+  m :< TM.Var x
 
 defineEnumIntro ::
   DD.DefiniteDescription ->
@@ -131,8 +136,8 @@ defineEnumIntro dataName dataArgs (consName, consArgs, discriminant) =
     consName
     (I.fromInt $ length dataArgs)
     (dataArgs ++ consArgs)
-    (internalHint :< TM.Data dataName [])
-    (internalHint :< TM.DataIntro dataName consName discriminant [] [])
+    (internalHint :< TM.Data dataName (map argToTerm dataArgs))
+    (internalHint :< TM.DataIntro dataName consName discriminant (map argToTerm dataArgs) (map argToTerm consArgs))
 
 enrichedEnumInfo :: [((DD.DefiniteDescription, [BinderF TM.Term]), [ConsInfo])]
 enrichedEnumInfo =
@@ -155,5 +160,18 @@ enumInfo :: [((DD.DefiniteDescription, [BinderF TM.Term]), [(DD.DefiniteDescript
 enumInfo =
   [ ((DI.constBottom, []), []),
     ((DI.constTop, []), [(DI.constTopUnit, [])]),
-    ((DI.constBool, []), [(DI.constBoolFalse, []), (DI.constBoolTrue, [])])
+    ((DI.constBool, []), [(DI.constBoolFalse, []), (DI.constBoolTrue, [])]),
+    ( ( DI.constCoproduct,
+        [ (internalHint, I ("a", 0), internalHint :< TM.Tau),
+          (internalHint, I ("b", 1), internalHint :< TM.Tau)
+        ]
+      ),
+      [ ( DI.constCoproductLeft,
+          [(internalHint, I ("x", 2), internalHint :< TM.Var (I ("a", 0)))]
+        ),
+        ( DI.constCoproductRight,
+          [(internalHint, I ("y", 3), internalHint :< TM.Var (I ("b", 1)))]
+        )
+      ]
+    )
   ]
