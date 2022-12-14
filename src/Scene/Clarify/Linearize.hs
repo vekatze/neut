@@ -33,7 +33,7 @@ linearize binder e =
         z : zs -> do
           localName <- newIdentFromText $ toText x <> "-local"
           e''' <- insertHeader localName z zs t e''
-          return $ C.UpElim localName (C.UpIntro (C.VarLocal x)) e'''
+          return $ C.UpElim localName (C.UpIntroLocal (C.VarLocal x)) e'''
 
 insertHeader ::
   Context m =>
@@ -89,6 +89,9 @@ distinguishComp z term =
     C.UpIntro d -> do
       (vs, d') <- distinguishValue z d
       return (vs, C.UpIntro d')
+    C.UpIntroLocal d -> do
+      (vs, d') <- distinguishValue z d
+      return (vs, C.UpIntroLocal d')
     C.UpElim x e1 e2 -> do
       (vs1, e1') <- distinguishComp z e1
       (vs2, e2') <- distinguishComp z e2
@@ -104,12 +107,6 @@ distinguishComp z term =
       writeCount countBefore
       (_, defaultBranch') <- distinguishComp z defaultBranch
       return (vs ++ head vss, C.EnumElim d' defaultBranch' (zip cs es'))
-    C.Discard d x -> do
-      (vs, x') <- distinguishValue z x
-      return (vs, C.Discard d x')
-    C.Copy d x -> do
-      (vs, x') <- distinguishValue z x
-      return (vs, C.Copy d x')
     C.Unreachable ->
       return ([], term)
 

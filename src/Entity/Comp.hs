@@ -38,33 +38,30 @@ data Comp
   = PiElimDownElim Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
+  | UpIntroLocal Value
   | UpElim Ident Comp Comp
   | EnumElim Value Comp [(EnumCase, Comp)]
   | Primitive Primitive
-  | Discard Value Value
-  | Copy Value Value
   | Unreachable
 
 instance Show Comp where
   show c =
     case c of
       PiElimDownElim v vs ->
-        show v ++ "(" ++ intercalate "," (map show vs) ++ ")"
+        show v ++ "@(" ++ intercalate "," (map show vs) ++ ")"
       SigmaElim b xs v cont -> do
         let h = if b then "let" else "let-noetic"
         h ++ " (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
       UpIntro v ->
         "return " ++ show v
+      UpIntroLocal v ->
+        "return* " ++ show v
       UpElim x c1 c2 ->
         "let " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
       EnumElim v c1 caseList -> do
         "switch " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList)
       Primitive prim ->
         "(" ++ show prim ++ ")"
-      Discard d x ->
-        "discard(" ++ show d ++ ", " ++ show x ++ ")"
-      Copy d x ->
-        "copy(" ++ show d ++ ", " ++ show x ++ ")"
       Unreachable ->
         "⊥"
 

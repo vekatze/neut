@@ -9,7 +9,6 @@ import Control.Monad
 import Control.Monad.Writer.Lazy
 import qualified Data.Set as S
 import qualified Data.Text as T
-import Debug.Trace
 import qualified Entity.Arity as A
 import qualified Entity.Comp as C
 import qualified Entity.DeclarationName as DN
@@ -107,6 +106,8 @@ lowerComp term =
         lift $ lowerComp e
     C.UpIntro d ->
       runLower $ lowerValue d
+    C.UpIntroLocal d ->
+      lowerComp $ C.UpIntro d
     C.UpElim x e1 e2 -> do
       e1' <- lowerComp e1
       e2' <- lowerComp e2
@@ -117,18 +118,6 @@ lowerComp term =
         let t = LT.PrimNum $ PT.Int $ IntSize 64
         castedValue <- lowerValueLetCast v t
         return $ LC.Switch (castedValue, t) defaultCase caseList
-    C.Discard d v -> do
-      case v of
-        C.VarLocal _ ->
-          lowerComp $ C.PiElimDownElim d [C.Int (IntSize 64) 0, v]
-        _ ->
-          lowerComp $ C.UpIntro $ C.SigmaIntro []
-    C.Copy d v -> do
-      case v of
-        C.VarLocal _ ->
-          lowerComp $ C.PiElimDownElim d [C.Int (IntSize 64) 1, v]
-        _ ->
-          lowerComp $ C.UpIntro v
     C.Unreachable ->
       return LC.Unreachable
 

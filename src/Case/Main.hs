@@ -552,12 +552,7 @@ instance CompDefinition.Context App where
     asks compEnv >>= \ref -> liftIO $ modifyIORef' ref $ Map.union otherEnv
   lookup k = do
     cenv <- asks compEnv >>= liftIO . readIORef
-    case Map.lookup k cenv of
-      v@(Just _) ->
-        return v
-      Nothing -> do
-        aenv <- asks compDefMap >>= liftIO . readIORef
-        return $ Map.lookup k aenv
+    return $ Map.lookup k cenv
 
 instance Enum.Context App where
   insert dd =

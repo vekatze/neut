@@ -6,6 +6,7 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.EnumCase as EC
 import Entity.Ident
 import qualified Entity.Opacity as O
+import Entity.PrimNumSize
 import Scene.Clarify.Context
 
 -- toAffineApp meta x t ~>
@@ -14,7 +15,7 @@ import Scene.Clarify.Context
 toAffineApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
 toAffineApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $ C.UpElim expVarName t (C.Discard expVar (C.VarLocal x))
+  return $ C.UpElim expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 0, C.VarLocal x])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
@@ -22,7 +23,7 @@ toAffineApp x t = do
 toRelevantApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
 toRelevantApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $ C.UpElim expVarName t (C.Copy expVar (C.VarLocal x))
+  return $ C.UpElim expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet binder cont =

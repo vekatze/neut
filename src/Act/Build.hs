@@ -86,6 +86,7 @@ build' target mainModule = do
   Global.initialize
   Parse.parseCachedStmtList Stmt.initialStmtList
   forM_ Stmt.initialStmtList Elaborate.insertStmt
+  Clarify.registerFoundationalTypes
   mapM_ compile dependenceSeq
   unless isObjectAvailable $ link target mainModule $ toList dependenceSeq
 

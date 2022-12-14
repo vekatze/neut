@@ -56,6 +56,8 @@ reduce term =
                   return $ C.SigmaElim shouldDeallocate xs v e'
     C.UpIntro _ ->
       return term
+    C.UpIntroLocal _ ->
+      return term
     C.UpElim x e1 e2 -> do
       e1' <- reduce e1
       case e1' of
@@ -88,10 +90,6 @@ reduce term =
           defaultBranch' <- reduce defaultBranch
           es' <- mapM reduce es
           return $ C.EnumElim v defaultBranch' (zip ls es')
-    C.Discard {} ->
-      return term
-    C.Copy {} ->
-      return term
     C.Unreachable ->
       return term
 

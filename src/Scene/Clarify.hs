@@ -1,5 +1,6 @@
 module Scene.Clarify
   ( clarify,
+    registerFoundationalTypes,
     Context,
   )
 where
@@ -92,15 +93,18 @@ clarifyDefList stmtList = do
     -- Log.printNote' "==================="
     -- Log.printNote' $ DD.reify x
     -- Log.printNote' $ T.pack $ show args
-    -- Log.printNote' $ T.pack $ show e
+    -- Log.printNote' $ T.pack $ show e'
+    CompDefinition.insert x (opacity, args, e')
     return (x, (opacity, args, e'))
-  -- forM_ (Map.toList auxEnv) $ \(x, (_, args, e)) -> do
-  --   Log.printNote' "==================="
-  --   Log.printNote' $ DD.reify x
-  --   Log.printNote' $ T.pack $ show args
-  --   Log.printNote' $ T.pack $ show e
-  forM_ stmtList'' $ uncurry CompDefinition.insert
   return $ stmtList'' ++ Map.toList auxEnv
+
+registerFoundationalTypes :: Context m => m ()
+registerFoundationalTypes = do
+  auxEnv <- withSpecializedCtx $ do
+    registerImmediateS4
+    registerClosureS4
+    Clarify.getAuxEnv
+  forM_ (Map.toList auxEnv) $ uncurry CompDefinition.insert
 
 reduceDefMap :: Context m => CompDefinition.DefMap -> m CompDefinition.DefMap
 reduceDefMap defMap = do
@@ -120,7 +124,7 @@ clarifyDef stmt =
       e' <- clarifyTerm (TM.insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= Reduce.reduce
-      return (f, (toOpacity stmtKind, map fst xts', e''))
+      return (f, (toLowOpacity stmtKind, map fst xts', e''))
 
 clarifyTerm :: Context m => TM.TypeEnv -> TM.Term -> m C.Comp
 clarifyTerm tenv term =

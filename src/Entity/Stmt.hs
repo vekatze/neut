@@ -32,11 +32,23 @@ data StmtKindF a
   | DataIntro DD.DefiniteDescription [BinderF a] [BinderF a] D.Discriminant
   deriving (Generic)
 
+-- opacity for elaboration
 toOpacity :: StmtKindF a -> O.Opacity
 toOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
       opacity
+    _ ->
+      O.Transparent
+
+-- opacity for clarification
+toLowOpacity :: StmtKindF a -> O.Opacity
+toLowOpacity stmtKind =
+  case stmtKind of
+    Normal opacity ->
+      opacity
+    Data {} ->
+      O.Opaque -- so as not to reduce recursive terms
     _ ->
       O.Transparent
 
