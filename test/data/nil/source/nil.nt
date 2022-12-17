@@ -1,0 +1,9 @@
+define-data item() as
+- nil()
+- cons(i64)
+end
+
+define main(): i64 as
+  let x = item.nil() in
+  1
+end
