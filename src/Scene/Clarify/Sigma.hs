@@ -14,6 +14,7 @@ where
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
+import Debug.Trace
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import qualified Entity.Comp as C
@@ -21,6 +22,7 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import qualified Entity.EnumCase as EC
 import Entity.Ident
+import Entity.Ident.Reify
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import Scene.Clarify.Context
@@ -186,11 +188,13 @@ sigmaData resourceHandler dataInfo arg = do
     _ -> do
       let (discriminantList, binderList) = unzip dataInfo
       let discriminantList' = map discriminantToEnumCase discriminantList
-      binderList' <- mapM (`resourceHandler` arg) binderList
+      localName <- Gensym.newIdentFromText "local"
+      binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
       discriminantVar <- Gensym.newIdentFromText "discriminant"
       return $
-        C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr arg))) $
-          C.EnumElim (C.VarLocal discriminantVar) (last binderList') (zip discriminantList' (init binderList'))
+        C.UpElim localName (C.UpIntroLocal arg) $
+          C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) $
+            C.EnumElim (C.VarLocal discriminantVar) (last binderList') (zip discriminantList' (init binderList'))
 
 sigmaBinderT :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
 sigmaBinderT xts v = do
