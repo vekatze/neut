@@ -34,26 +34,31 @@ reduce term =
         _ ->
           return term
     C.SigmaElim shouldDeallocate xs v e ->
-      case v of
-        C.SigmaIntro ds
-          | length ds == length xs -> do
-              let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-              subst sub IntMap.empty e >>= reduce
-        _ -> do
+      if not shouldDeallocate
+        then do
           e' <- reduce e
-          case e' of
-            C.UpIntro (C.SigmaIntro ds)
-              | Just ys <- mapM extractIdent ds,
-                xs == ys ->
-                  return $ C.UpIntro v -- eta-reduce
-            C.Unreachable ->
-              return C.Unreachable
-            _ ->
-              case xs of
-                [] ->
-                  return e'
+          return $ C.SigmaElim shouldDeallocate xs v e'
+        else do
+          case v of
+            C.SigmaIntro ds
+              | length ds == length xs -> do
+                  let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
+                  subst sub IntMap.empty e >>= reduce
+            _ -> do
+              e' <- reduce e
+              case e' of
+                C.UpIntro (C.SigmaIntro ds)
+                  | Just ys <- mapM extractIdent ds,
+                    xs == ys ->
+                      return $ C.UpIntro v -- eta-reduce
+                C.Unreachable ->
+                  return C.Unreachable
                 _ ->
-                  return $ C.SigmaElim shouldDeallocate xs v e'
+                  case xs of
+                    [] ->
+                      return e'
+                    _ ->
+                      return $ C.SigmaElim shouldDeallocate xs v e'
     C.UpIntro _ ->
       return term
     C.UpIntroLocal _ ->
