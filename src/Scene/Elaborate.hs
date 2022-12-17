@@ -113,7 +113,7 @@ elaborateStmtList stmtList = do
       return []
     WeakStmtDefine stmtKind m x impArgNum xts codType e : rest -> do
       stmtKind' <- elaborateStmtKind stmtKind
-      e' <- elaborate' e
+      e' <- elaborate' e >>= Term.reduce
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= Term.reduce
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'

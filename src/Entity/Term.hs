@@ -50,3 +50,23 @@ insTypeEnv xts tenv =
       tenv
     (_, x, t) : rest ->
       insTypeEnv rest $ IntMap.insert (toInt x) t tenv
+
+isValue :: Term -> Bool
+isValue term =
+  case term of
+    _ :< Tau ->
+      True
+    _ :< Pi {} ->
+      True
+    _ :< PiIntro {} ->
+      True
+    _ :< Data {} ->
+      True
+    _ :< DataIntro _ _ _ dataArgs consArgs ->
+      all isValue $ dataArgs ++ consArgs
+    _ :< Sigma {} ->
+      True
+    _ :< SigmaIntro es ->
+      all isValue es
+    _ ->
+      False

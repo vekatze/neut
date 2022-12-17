@@ -29,15 +29,15 @@ reduce term =
     (m :< TM.PiElim e es) -> do
       e' <- reduce e
       es' <- mapM reduce es
-      let app = TM.PiElim e' es'
       case e' of
         (_ :< TM.PiIntro LK.Normal xts (_ :< body))
-          | length xts == length es' -> do
+          | length xts == length es',
+            all TM.isValue es -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es'
               Subst.subst sub (m :< body) >>= reduce
         _ ->
-          return (m :< app)
+          return (m :< TM.PiElim e' es')
     m :< TM.Data name es -> do
       es' <- mapM reduce es
       return $ m :< TM.Data name es'
@@ -62,17 +62,24 @@ reduce term =
       e1' <- reduce e1
       case e1' of
         _ :< TM.SigmaIntro es
-          | length xts == length es -> do
+          | length xts == length es,
+            all TM.isValue es -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es
               Subst.subst sub e2 >>= reduce
         _ -> do
           e2' <- reduce e2
           return $ m :< TM.SigmaElim xts e1' e2'
-    _ :< TM.Let (_, x, _) e1 e2 -> do
+    m :< TM.Let (mx, x, t) e1 e2 -> do
       e1' <- reduce e1
-      let sub = IntMap.fromList [(Ident.toInt x, e1')]
-      Subst.subst sub e2
+      if TM.isValue e1'
+        then do
+          let sub = IntMap.fromList [(Ident.toInt x, e1')]
+          Subst.subst sub e2
+        else do
+          t' <- reduce t
+          e2' <- reduce e2
+          return $ m :< TM.Let (mx, x, t') e1' e2'
     (m :< TM.Magic der) -> do
       der' <- traverse reduce der
       return (m :< TM.Magic der')
