@@ -18,8 +18,6 @@ import qualified Data.HashMap.Strict as Map
 import qualified Data.IntMap as IntMap
 import Data.Maybe
 import qualified Data.Set as S
-import qualified Data.Text as T
-import Debug.Trace
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Binder
@@ -48,8 +46,6 @@ import Entity.Stmt
 import qualified Entity.Term as TM
 import qualified Entity.Term.Chain as TM
 import Entity.Term.FromPrimNum
-import qualified Entity.Term.Weaken as TM
-import qualified Entity.WeakTerm.ToText as WT
 import qualified Scene.Clarify.Context as Clarify
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
@@ -290,10 +286,6 @@ clarifyCase tenv dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs con
             (C.VarLocal cursor)
             body'
         )
-
-p :: Monad m => String -> m ()
-p str =
-  trace str (return ())
 
 alignFreeVariable :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> m C.Comp
 alignFreeVariable tenv fvs e = do

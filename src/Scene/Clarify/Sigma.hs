@@ -14,7 +14,6 @@ where
 import qualified Context.Gensym as Gensym
 import qualified Context.Locator as Locator
 import Control.Monad
-import Debug.Trace
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import qualified Entity.Comp as C
@@ -22,7 +21,6 @@ import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
 import qualified Entity.EnumCase as EC
 import Entity.Ident
-import Entity.Ident.Reify
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
 import Scene.Clarify.Context

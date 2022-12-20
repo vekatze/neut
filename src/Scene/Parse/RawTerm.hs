@@ -489,7 +489,6 @@ rawTermAdmit = do
         (preVar m "core.os.exit")
         [ h,
           m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
-          -- m :< RT.Int (RT.i64 m) 1
         ]
 
 rawTermAdmitQuestion :: Context m => Parser m RT.RawTerm
@@ -505,7 +504,6 @@ rawTermAdmitQuestion = do
               (preVar m "os.exit")
               [ h,
                 m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
-                -- m :< RT.Int (RT.i64 m) 1
               ]
         )
         h
