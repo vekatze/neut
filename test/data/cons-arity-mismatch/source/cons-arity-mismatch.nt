@@ -1,10 +1,10 @@
 use this.cons-arity-mismatch::item
 
-define-data item() as
+define-data item() =
 - cons()
 end
 
-define f(xs: item(), ys: item()): item() as
+define f(xs: item(), ys: item()): item() =
   match xs, ys with
   - cons(), zs ->
     zs
@@ -13,6 +13,6 @@ define f(xs: item(), ys: item()): item() as
   end
 end
 
-define main(): i64 as
+define main(): i64 =
   0
 end

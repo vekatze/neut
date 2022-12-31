@@ -1,9 +1,9 @@
-define-data list(a: tau) as
+define-data list(a: tau) =
 - nil()
 - cons(a, list(a))
 end
 
-define length(xs: &list(i64)): i64 as
+define length(xs: &list(i64)): i64 =
   let a = xs in
   let b = xs in
   let c = xs in
@@ -15,7 +15,7 @@ define length(xs: &list(i64)): i64 as
   end
 end
 
-define main(): i64 as
+define main(): i64 =
   let xs = list.cons(1, list.cons(2, list.nil())) in
   let some-value on xs = length(xs) in
   some-value

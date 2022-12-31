@@ -201,7 +201,7 @@ parseDefInfo = do
   domInfoList <- argList preBinder
   delimiter ":"
   codType <- rawTerm
-  e <- asBlock rawTerm
+  e <- equalBlock rawTerm
   return (functionVar, domInfoList, codType, e)
 
 parseTopDefInfo :: Context m => Parser m RT.TopDefInfo
@@ -212,7 +212,7 @@ parseTopDefInfo = do
   domInfoList <- argList preBinder
   delimiter ":"
   codType <- rawTerm
-  e <- asBlock rawTerm
+  e <- equalBlock rawTerm
   return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
 
 -- define name(x1: A1, ..., xn: An)[: A] as e end

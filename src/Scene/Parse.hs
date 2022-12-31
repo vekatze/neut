@@ -219,7 +219,7 @@ parseDefineData = do
   try $ P.keyword "define-data"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  consInfoList <- P.asBlock $ P.manyList parseDefineDataClause
+  consInfoList <- P.equalBlock $ P.manyList parseDefineDataClause
   lift $ defineData m a dataArgs consInfoList
 
 defineData ::
@@ -333,7 +333,7 @@ parseDefineCodata = do
   try $ P.keyword "define-codata"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  elemInfoList <- P.asBlock $ P.manyList preAscription
+  elemInfoList <- P.equalBlock $ P.manyList preAscription
   -- formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
   lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
 

@@ -1,12 +1,12 @@
-define-data empty() as
+define-data empty() =
 end
 
-define ex-falso<a>(e: empty()): a as
+define ex-falso<a>(e: empty()): a =
   match e with
   end
 end
 
 
-define main(): i64 as
+define main(): i64 =
   0
 end

@@ -1,9 +1,9 @@
-define-data list(a: tau) as
+define-data list(a: tau) =
 - nil()
 - cons(a, list(a))
 end
 
-define length<a>(xs: list(a)): i64 as
+define length<a>(xs: list(a)): i64 =
   match xs with
   - list.nil() ->
     0
@@ -12,6 +12,6 @@ define length<a>(xs: list(a)): i64 as
   end
 end
 
-define main(): i64 as
+define main(): i64 =
   length(list.cons(1, list.cons(2, list.nil<i64>())))
 end

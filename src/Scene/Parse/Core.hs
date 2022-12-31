@@ -133,9 +133,9 @@ betweenBracket :: Context m => Parser m a -> Parser m a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
-asBlock :: Context m => Parser m a -> Parser m a
-asBlock =
-  between (keyword "as") (keyword "end")
+equalBlock :: Context m => Parser m a -> Parser m a
+equalBlock =
+  between (delimiter "=") (keyword "end")
 
 doBlock :: Context m => Parser m a -> Parser m a
 doBlock =

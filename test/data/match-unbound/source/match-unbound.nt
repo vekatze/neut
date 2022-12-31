@@ -1,14 +1,14 @@
 use this.match-unbound::nat
 
-define-data nat() as
+define-data nat() =
 - zero()
 end
 
-define cond(n1: nat()): base.bool::bool() as
+define cond(n1: nat()): base.bool::bool() =
   base.bool::bool.false()
 end
 
-define f(): nat() as
+define f(): nat() =
   let x = zero() in
   if cond(x) then
     zero()
@@ -17,7 +17,7 @@ define f(): nat() as
   end
 end
 
-define main(): i64 as
+define main(): i64 =
   let a = f() in
   0
 end

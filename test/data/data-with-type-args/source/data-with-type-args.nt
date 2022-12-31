@@ -1,9 +1,9 @@
-define-data list(a: tau) as
+define-data list(a: tau) =
 - nil()
 - cons(a, list(a))
 end
 
-define f(xs: list(i64)): i64 as
+define f(xs: list(i64)): i64 =
   match xs with
   - list.nil() ->
     0
@@ -12,6 +12,6 @@ define f(xs: list(i64)): i64 as
   end
 end
 
-define main(): i64 as
+define main(): i64 =
   f(list.cons(10, list.cons(20, list.nil())))
 end

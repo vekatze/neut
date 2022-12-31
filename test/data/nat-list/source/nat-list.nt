@@ -1,17 +1,17 @@
 use this.nat-list::nat
 use this.nat-list::list
 
-define-data nat() as
+define-data nat() =
 - zero()
 - succ(nat())
 end
 
-define-data list(a: tau) as
+define-data list(a: tau) =
 - nil()
 - cons(a, list(a))
 end
 
-define interpret(n: nat()): i64 as
+define interpret(n: nat()): i64 =
   match n with
   - nat.zero() ->
     0
@@ -20,7 +20,7 @@ define interpret(n: nat()): i64 as
   end
 end
 
-define nat-list-sum(xs: list(nat())): i64 as
+define nat-list-sum(xs: list(nat())): i64 =
   match xs with
   - this.nat-list::list.nil() ->
     0
@@ -30,6 +30,6 @@ define nat-list-sum(xs: list(nat())): i64 as
 end
 
 
-define main(): i64 as
+define main(): i64 =
   nat-list-sum(cons(succ(zero()), cons(succ(zero()), nil())))
 end
