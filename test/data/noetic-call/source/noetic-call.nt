@@ -3,14 +3,20 @@ define-data list(a: tau) as
 - cons(a, list(a))
 end
 
-define dummy(xs: &list(i64)): i64 as
-  let a1 = xs in
-  let a2 = xs in
-  1
+define length(xs: &list(i64)): i64 as
+  let a = xs in
+  let b = xs in
+  let c = xs in
+  match-noetic c with
+  - list.nil() ->
+    0
+  - list.cons(y, ys) ->
+    add-i64(1, length(ys))
+  end
 end
 
 define main(): i64 as
   let xs = list.cons(1, list.cons(2, list.nil())) in
-  let some-value on xs = dummy(xs) in
-  0
+  let some-value on xs = length(xs) in
+  some-value
 end

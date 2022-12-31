@@ -12,6 +12,7 @@ import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
+import qualified Entity.Noema as N
 import qualified Entity.Opacity as O
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
@@ -28,7 +29,7 @@ data WeakTermF a
   | PiElim a [a]
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
-  | DataElim [(Ident, a, a)] (DT.DecisionTree a)
+  | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a

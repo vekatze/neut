@@ -48,13 +48,13 @@ fill sub term =
       dataArgs' <- mapM (fill sub) dataArgs
       consArgs' <- mapM (fill sub) consArgs
       return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< WT.DataElim oets decisionTree -> do
+    m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (fill sub) es
       let binder = zipWith (\o t -> (m, o, t)) os ts
       (binder', decisionTree') <- fill''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
-      return $ m :< WT.DataElim (zip3 os' es' ts') decisionTree'
+      return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
     m :< WT.Sigma xts -> do
       (xts', _) <- fill' sub xts (m :< WT.Tau)
       return $ m :< WT.Sigma xts'

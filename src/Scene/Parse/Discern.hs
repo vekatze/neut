@@ -27,6 +27,7 @@ import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.Magic as M
+import qualified Entity.Noema as N
 import Entity.NominalEnv
 import qualified Entity.Opacity as O
 import qualified Entity.Pattern as PAT
@@ -121,12 +122,13 @@ discern nenv term =
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< RT.DataElim es patternMatrix -> do
+    m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv) es
+      es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic) es
       ts <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) es'
-      decisionTree <- discernPatternMatrix nenv m patternMatrix >>= compilePatternMatrix nenv m (V.fromList os)
-      return $ m :< WT.DataElim (zip3 os es' ts) decisionTree
+      patternMatrix' <- discernPatternMatrix nenv m patternMatrix
+      decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
+      return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
@@ -213,6 +215,18 @@ castFromNoema nenv e@(m :< _) = do
   t <- Gensym.newAster m (asHoleArgs nenv)
   let tNoema = m :< WT.Noema t
   return $ m :< WT.Magic (M.Cast tNoema t e)
+
+castToNoema' :: Context m => NominalEnv -> N.IsNoetic -> WT.WeakTerm -> m WT.WeakTerm
+castToNoema' nenv isNoetic e =
+  if isNoetic
+    then castToNoema nenv e
+    else return e
+
+castFromNoema' :: Context m => NominalEnv -> N.IsNoetic -> WT.WeakTerm -> m WT.WeakTerm
+castFromNoema' nenv isNoetic e =
+  if isNoetic
+    then castFromNoema nenv e
+    else return e
 
 discernBinder ::
   Context m =>
@@ -382,24 +396,26 @@ discernPattern nenv (m, pat) =
 compilePatternMatrix ::
   Context m =>
   NominalEnv ->
+  N.IsNoetic ->
   Hint ->
   V.Vector Ident ->
   PAT.PatternMatrix ([Ident], WT.WeakTerm) ->
   m (DT.DecisionTree WT.WeakTerm)
-compilePatternMatrix nenv m occurrences mat =
+compilePatternMatrix nenv isNoetic m occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
       return DT.Unreachable
     Just (row, _) ->
       case PAT.getClauseBody row of
         Right (usedVars, (freedVars, body)) -> do
-          DT.Leaf freedVars <$> bindLet nenv m (zip usedVars (V.toList occurrences)) body
+          cursorVars <- mapM (alignLetBody nenv isNoetic m) (V.toList occurrences)
+          DT.Leaf freedVars <$> bindLet nenv m (zip usedVars cursorVars) body
         Left i ->
           if i > 0
             then do
               occurrences' <- V.swap m i occurrences
               mat' <- PAT.swapColumn m i mat
-              compilePatternMatrix nenv m occurrences' mat'
+              compilePatternMatrix nenv isNoetic m occurrences' mat'
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
@@ -411,12 +427,16 @@ compilePatternMatrix nenv m occurrences mat =
                 (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
                 specialMatrix <- PATS.specialize nenv cursor (cons, A.fromInt consArity) mat
-                specialDecisionTree <- compilePatternMatrix nenv' m occurrences' specialMatrix
+                specialDecisionTree <- compilePatternMatrix nenv' isNoetic m occurrences' specialMatrix
                 return (DT.Cons cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix nenv cursor mat
-              fallbackClause <- compilePatternMatrix nenv m (V.tail occurrences) fallbackMatrix
+              fallbackClause <- compilePatternMatrix nenv isNoetic m (V.tail occurrences) fallbackMatrix
               t <- Gensym.newAster m (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
+
+alignLetBody :: Context m => NominalEnv -> N.IsNoetic -> Hint -> Ident -> m WT.WeakTerm
+alignLetBody nenv isNoetic m x =
+  castToNoema' nenv isNoetic $ m :< WT.Var x
 
 alignConsArgs ::
   Context m =>
@@ -437,7 +457,7 @@ bindLet ::
   Context m =>
   NominalEnv ->
   Hint ->
-  [(Maybe Ident, Ident)] ->
+  [(Maybe Ident, WT.WeakTerm)] ->
   WT.WeakTerm ->
   m WT.WeakTerm
 bindLet nenv m binder cont =
@@ -449,4 +469,22 @@ bindLet nenv m binder cont =
     (Just from, to) : xes -> do
       h <- Gensym.newAster m (asHoleArgs nenv)
       cont' <- bindLet nenv m xes cont
-      return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'
+      return $ m :< WT.Let O.Transparent (m, from, h) to cont'
+
+-- bindLet ::
+--   Context m =>
+--   NominalEnv ->
+--   Hint ->
+--   [(Maybe Ident, Ident)] ->
+--   WT.WeakTerm ->
+--   m WT.WeakTerm
+-- bindLet nenv m binder cont =
+--   case binder of
+--     [] ->
+--       return cont
+--     (Nothing, _) : xes -> do
+--       bindLet nenv m xes cont
+--     (Just from, to) : xes -> do
+--       h <- Gensym.newAster m (asHoleArgs nenv)
+--       cont' <- bindLet nenv m xes cont
+--       return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'

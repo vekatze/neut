@@ -57,12 +57,12 @@ weaken term =
       let dataArgs' = map weaken dataArgs
       let consArgs' = map weaken consArgs
       m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< TM.DataElim oets tree -> do
+    m :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es
       let ts' = map weaken ts
       let tree' = weakenDecisionTree tree
-      m :< WT.DataElim (zip3 os es' ts') tree'
+      m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
     m :< TM.Sigma xts ->
       m :< WT.Sigma (map weakenBinder xts)
     m :< TM.SigmaIntro es ->

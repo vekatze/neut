@@ -50,12 +50,12 @@ reduce term =
       dataArgs' <- mapM reduce dataArgs
       consArgs' <- mapM reduce consArgs
       return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< WT.DataElim oets decisionTree -> do
+    m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM reduce es
       ts' <- mapM reduce ts
       decisionTree' <- reduceDecisionTree decisionTree
-      return $ m :< WT.DataElim (zip3 os es' ts') decisionTree'
+      return $ m :< WT.DataElim isNoetic (zip3 os es' ts') decisionTree'
     m :< WT.Sigma xts -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts

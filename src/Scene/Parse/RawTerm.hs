@@ -68,6 +68,7 @@ rawTermEasy = do
       rawTermIntrospect,
       rawTermQuestion,
       rawTermMagic,
+      rawTermMatchNoetic,
       rawTermMatch,
       rawTermIf,
       try rawTermLetSigmaElim,
@@ -135,6 +136,7 @@ rawTermLetCoproduct = do
   return $
     m
       :< RT.DataElim
+        False
         [e1]
         ( RP.new
             [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductLeft) [(m, RP.Var err)])],
@@ -361,7 +363,16 @@ rawTermMatch = do
   es <- sepByTill rawTerm (delimiter ",") (keyword "with")
   patternRowList <- manyList $ rawTermPatternRow (length es)
   keyword "end"
-  return $ m :< RT.DataElim es (RP.new patternRowList)
+  return $ m :< RT.DataElim False es (RP.new patternRowList)
+
+rawTermMatchNoetic :: (Context m, Throw.Context m) => Parser m RT.RawTerm
+rawTermMatchNoetic = do
+  m <- getCurrentHint
+  keyword "match-noetic"
+  es <- sepByTill rawTerm (delimiter ",") (keyword "with")
+  patternRowList <- manyList $ rawTermPatternRow (length es)
+  keyword "end"
+  return $ m :< RT.DataElim True es (RP.new patternRowList)
 
 rawTermPatternRow :: Context m => Int -> Parser m (RP.RawPatternRow RT.RawTerm)
 rawTermPatternRow patternSize = do
@@ -454,6 +465,7 @@ foldIf m ifCond ifBody elseIfList elseBody =
     [] -> do
       m
         :< RT.DataElim
+          False
           [ifCond]
           ( RP.new
               [ (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolTrue) [])], ifBody),
@@ -464,6 +476,7 @@ foldIf m ifCond ifBody elseIfList elseBody =
       let cont = foldIf m elseIfCond elseIfBody rest elseBody
       m
         :< RT.DataElim
+          False
           [ifCond]
           ( RP.new
               [ (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolTrue) [])], ifBody),
@@ -681,3 +694,16 @@ preVar m str =
 preVar' :: Hint -> Ident -> RT.RawTerm
 preVar' m ident =
   m :< RT.Var ident
+
+-- castFromNoema :: Context m => RT.RawTerm -> m RT.RawTerm
+-- castFromNoema tree@(m :< _) = do
+--   baseType <- Gensym.newPreAster m
+--   return $ m :< RT.Magic (M.Cast (wrapWithNoema baseType) baseType tree)
+
+-- castToNoema :: RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+-- castToNoema baseType tree@(m :< _) = do
+--   m :< RT.Magic (M.Cast baseType (wrapWithNoema baseType) tree)
+
+-- wrapWithNoema :: RT.RawTerm -> RT.RawTerm
+-- wrapWithNoema baseType@(m :< _) = do
+--   m :< RT.Noema baseType

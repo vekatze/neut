@@ -186,12 +186,12 @@ elaborate' term =
       dataArgs' <- mapM elaborate' dataArgs
       consArgs' <- mapM elaborate' consArgs
       return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< WT.DataElim oets tree -> do
+    m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM elaborate' es
       ts' <- mapM elaborate' ts
       tree' <- elaborateDecisionTree m tree
-      return $ m :< TM.DataElim (zip3 os es' ts') tree'
+      return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Sigma xts -> do
       xts' <- mapM elaborateWeakBinder xts
       return $ m :< TM.Sigma xts'

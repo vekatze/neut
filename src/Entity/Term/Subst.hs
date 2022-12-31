@@ -53,13 +53,13 @@ subst sub term =
       dataArgs' <- mapM (subst sub) dataArgs
       consArgs' <- mapM (subst sub) consArgs
       return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< TM.DataElim oets decisionTree -> do
+    m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst sub) es
       let binder = zipWith (\o t -> (m, o, t)) os ts
       (binder', decisionTree') <- subst'' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
-      return $ m :< TM.DataElim (zip3 os' es' ts') decisionTree'
+      return $ m :< TM.DataElim isNoetic (zip3 os' es' ts') decisionTree'
     m :< TM.Sigma xts -> do
       (xts', _) <- subst' sub xts (m :< TM.Tau)
       return $ m :< TM.Sigma xts'

@@ -20,6 +20,7 @@ import Entity.Ident
 import Entity.LamKind
 import qualified Entity.LocalLocator as LL
 import Entity.Magic
+import qualified Entity.Noema as N
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
 import qualified Entity.RawPattern as RP
@@ -36,7 +37,7 @@ data RawTermF a
   | PiElim a [a]
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
-  | DataElim [a] (RP.RawPatternMatrix a)
+  | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a

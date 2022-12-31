@@ -46,12 +46,12 @@ reduce term =
       dataArgs' <- mapM reduce dataArgs
       consArgs' <- mapM reduce consArgs
       return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
-    m :< TM.DataElim oets decisionTree -> do
+    m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM reduce es
       ts' <- mapM reduce ts
       decisionTree' <- reduceDecisionTree decisionTree
-      return $ m :< TM.DataElim (zip3 os es' ts') decisionTree'
+      return $ m :< TM.DataElim isNoetic (zip3 os es' ts') decisionTree'
     m :< TM.Sigma xts -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts

@@ -13,6 +13,7 @@ import Entity.Ident
 import Entity.Ident.Reify
 import Entity.LamKind
 import Entity.Magic
+import qualified Entity.Noema as N
 import qualified Entity.Opacity as O
 import qualified Entity.Prim as P
 import GHC.Generics (Generic)
@@ -28,7 +29,7 @@ data TermF a
   | PiElim a [a]
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
-  | DataElim [(Ident, a, a)] (DT.DecisionTree a)
+  | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a

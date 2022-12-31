@@ -49,9 +49,10 @@ toText term =
       showCons $ "{data}" <> DD.reify name : map toText es
     _ :< WT.DataIntro _ consName _ _ consArgs -> do
       showCons ("{data-intro}" <> DD.reify consName : map toText consArgs)
-    _ :< WT.DataElim xets tree -> do
-      -- let (xs, es, _) = unzip3 xets
-      showCons ["match", showMatchArgs xets, showDecisionTree tree]
+    _ :< WT.DataElim isNoetic xets tree -> do
+      if isNoetic
+        then showCons ["match-noetic", showMatchArgs xets, showDecisionTree tree]
+        else showCons ["match", showMatchArgs xets, showDecisionTree tree]
     _ :< WT.Sigma xts ->
       showCons ["sigma", showItems $ map showArg xts]
     _ :< WT.SigmaIntro es ->

@@ -30,7 +30,7 @@ freeVars term =
       S.unions $ map freeVars es
     _ :< WT.DataIntro _ _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
-    m :< WT.DataElim oets decisionTree -> do
+    m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
       let binder = zipWith (\o t -> (m, o, t)) os ts

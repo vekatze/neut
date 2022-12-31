@@ -36,6 +36,7 @@ import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
+import qualified Entity.Noema as N
 import qualified Entity.Opacity as O
 import qualified Entity.Prim as P
 import Entity.PrimNumSize
@@ -168,11 +169,11 @@ clarifyTerm tenv term =
               C.UpIntro $
                 C.SigmaIntro $
                   C.Int (IntSize 64) (D.reify disc) : xs
-    m :< TM.DataElim xets tree -> do
+    m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
       es' <- mapM (clarifyTerm tenv) es
-      tree' <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) IntMap.empty tree
+      tree' <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
       return $ bindLet (zip xs es') tree'
     _ :< TM.Sigma {} -> do
       return returnClosureS4
@@ -216,19 +217,21 @@ clarifyDataClause (discriminant, dataArgs, consArgs) = do
   args' <- dropFst <$> clarifyBinder IntMap.empty args
   return (discriminant, args')
 
-clarifyDecisionTree :: Context m => TM.TypeEnv -> DataArgsMap -> DT.DecisionTree TM.Term -> m C.Comp
-clarifyDecisionTree tenv dataArgsMap tree =
+clarifyDecisionTree :: Context m => TM.TypeEnv -> N.IsNoetic -> DataArgsMap -> DT.DecisionTree TM.Term -> m C.Comp
+clarifyDecisionTree tenv isNoetic dataArgsMap tree =
   case tree of
     DT.Leaf consumedCursorList cont -> do
       cont' <- clarifyTerm tenv cont
-      tidyCursorList tenv dataArgsMap consumedCursorList cont'
+      if isNoetic
+        then return cont'
+        else tidyCursorList tenv dataArgsMap consumedCursorList cont'
     DT.Unreachable -> do
       return C.Unreachable
     DT.Switch (cursor, t@(m :< _)) (fallbackClause, clauseList) -> do
       let chain = TM.chainOfClauseList tenv m (fallbackClause, clauseList)
       let aligner = alignFreeVariable tenv chain
-      fallbackClause' <- clarifyDecisionTree tenv dataArgsMap fallbackClause >>= aligner
-      (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv dataArgsMap cursor) clauseList
+      fallbackClause' <- clarifyDecisionTree tenv isNoetic dataArgsMap fallbackClause >>= aligner
+      (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
       b <- isEnumType t
       if b
@@ -268,13 +271,20 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
           linearize (zip dataArgVars dataTypes') $
             C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
 
-clarifyCase :: Context m => TM.TypeEnv -> DataArgsMap -> Ident -> DT.Case TM.Term -> m (EC.EnumCase, C.Comp)
-clarifyCase tenv dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs cont) = do
+clarifyCase ::
+  Context m =>
+  TM.TypeEnv ->
+  N.IsNoetic ->
+  DataArgsMap ->
+  Ident ->
+  DT.Case TM.Term ->
+  m (EC.EnumCase, C.Comp)
+clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs cont) = do
   let (_, dataTypes) = unzip dataArgs
   dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
   let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap
   let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
-  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) dataArgsMap' cont
+  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
   b <- Enum.isMember consName
   if b
     then return (EC.Int (D.reify disc), body')

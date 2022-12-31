@@ -113,12 +113,12 @@ infer' varEnv term =
       (dataArgs', _) <- mapAndUnzipM (infer' varEnv) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer' varEnv) consArgs
       return (m :< WT.DataIntro dataName consName disc dataArgs' consArgs', m :< WT.Data dataName dataArgs')
-    m :< WT.DataElim oets tree -> do
+    m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer' varEnv) es
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', treeType) <- inferDecisionTree m varEnv tree
-      return (m :< WT.DataElim (zip3 os es' ts') tree', treeType)
+      return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
     m :< WT.Sigma xts -> do
       (xts', _) <- inferPi varEnv xts (m :< WT.Tau)
       return (m :< WT.Sigma xts', m :< WT.Tau)
