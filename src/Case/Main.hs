@@ -521,7 +521,7 @@ instance Definition.Context App where
       asks defMap >>= \ref ->
         liftIO $
           modifyIORef ref $
-            Map.insert name (m :< WT.PiIntro LK.Normal xts e)
+            Map.insert name (m :< WT.PiIntro (LK.Normal opacity) xts e)
 
 instance Implicit.Context App where
   insert k v =

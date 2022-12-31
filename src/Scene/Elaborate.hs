@@ -203,11 +203,14 @@ elaborate' term =
       xts' <- mapM elaborateWeakBinder xts
       e2' <- elaborate' e2
       return $ m :< TM.SigmaElim xts' e1' e2'
-    m :< WT.Let mxt e1 e2 -> do
+    m :< WT.Noema t -> do
+      t' <- elaborate' t
+      return $ m :< TM.Noema t'
+    m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- elaborate' e1
       mxt' <- elaborateWeakBinder mxt
       e2' <- elaborate' e2
-      return $ m :< TM.Let mxt' e1' e2'
+      return $ m :< TM.Let opacity mxt' e1' e2'
     m :< WT.Aster h es -> do
       holeSubst <- Env.getHoleSubst
       case HS.lookup h holeSubst of
@@ -266,8 +269,8 @@ elaborateWeakBinder (m, x, t) = do
 elaborateKind :: Context m => LK.LamKindF WT.WeakTerm -> m (LK.LamKindF TM.Term)
 elaborateKind kind =
   case kind of
-    LK.Normal ->
-      return LK.Normal
+    LK.Normal opacity ->
+      return $ LK.Normal opacity
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LK.Fix xt'

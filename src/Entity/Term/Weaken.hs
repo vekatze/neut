@@ -69,8 +69,10 @@ weaken term =
       m :< WT.SigmaIntro (map weaken es)
     m :< TM.SigmaElim xts e1 e2 -> do
       m :< WT.SigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
-    m :< TM.Let mxt e1 e2 ->
-      m :< WT.Let (weakenBinder mxt) (weaken e1) (weaken e2)
+    m :< TM.Noema t ->
+      m :< WT.Noema (weaken t)
+    m :< TM.Let opacity mxt e1 e2 ->
+      m :< WT.Let opacity (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
     m :< TM.Magic der -> do
@@ -83,8 +85,8 @@ weakenBinder (m, x, t) =
 weakenKind :: LK.LamKindF TM.Term -> LK.LamKindF WT.WeakTerm
 weakenKind kind =
   case kind of
-    LK.Normal ->
-      LK.Normal
+    LK.Normal opacity ->
+      LK.Normal opacity
     LK.Fix xt ->
       LK.Fix (weakenBinder xt)
 

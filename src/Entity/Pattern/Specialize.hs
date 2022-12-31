@@ -9,6 +9,7 @@ import qualified Entity.Arity as A
 import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Entity.NominalEnv
+import qualified Entity.Opacity as O
 import Entity.Pattern
 import qualified Entity.WeakTerm as WT
 
@@ -47,7 +48,7 @@ specializeRow nenv cursor (dd, arity) (patternVector, (freedVars, body)) =
     Just ((m, Var x), rest) -> do
       let wildcards = V.fromList $ replicate (fromInteger $ A.reify arity) (m, WildcardVar)
       h <- Gensym.newAster m (asHoleArgs nenv)
-      let body' = m :< WT.Let (m, x, h) (m :< WT.Var cursor) body
+      let body' = m :< WT.Let O.Transparent (m, x, h) (m :< WT.Var cursor) body
       -- let body' = m :< WT.Let (m, cursor, h) (m :< WT.Var x) body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
     Just ((_, Cons dd' _ _ _ args), rest) ->

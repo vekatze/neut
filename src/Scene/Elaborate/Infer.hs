@@ -133,13 +133,16 @@ infer' varEnv term =
       (xts', (e2', t)) <- inferBinder varEnv xts e2
       Env.insConstraintEnv (m :< WT.Sigma xts') t1'
       return (m :< WT.SigmaElim xts' e1' e2', t)
-    m :< WT.Let (mx, x, t) e1 e2 -> do
+    m :< WT.Noema t -> do
+      t' <- inferType' varEnv t
+      return (m :< WT.Noema t', m :< WT.Tau)
+    m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer' varEnv e1
       t' <- inferType' varEnv t
       Env.insConstraintEnv t' t1'
       insWeakTypeEnv x t'
       (e2', t2') <- infer' varEnv e2 -- no context extension
-      return (m :< WT.Let (mx, x, t') e1' e2', t2')
+      return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Aster x es -> do
       let rawHoleID = HID.reify x
       mAsterInfo <- lookupHoleEnv rawHoleID

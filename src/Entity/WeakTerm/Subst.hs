@@ -64,10 +64,13 @@ subst sub term =
       e1' <- subst sub e1
       (xts', e2') <- subst' sub xts e2
       return $ m :< WT.SigmaElim xts' e1' e2'
-    m :< WT.Let mxt e1 e2 -> do
+    m :< WT.Noema t -> do
+      t' <- subst sub t
+      return $ m :< WT.Noema t'
+    m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- subst sub e1
       (mxt', _, e2') <- subst'' sub mxt [] e2
-      return $ m :< WT.Let mxt' e1' e2'
+      return $ m :< WT.Let opacity mxt' e1' e2'
     m :< WT.Prim prim -> do
       prim' <- mapM (subst sub) prim
       return $ m :< WT.Prim prim'

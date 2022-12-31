@@ -5,6 +5,7 @@ import qualified Data.IntMap as IntMap
 import qualified Entity.DecisionTree as DT
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
+import qualified Entity.Opacity as O
 import qualified Entity.Term as TM
 import qualified Entity.Term.Subst as Subst
 
@@ -30,7 +31,7 @@ reduce term =
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< TM.PiIntro LK.Normal xts (_ :< body))
+        (_ :< TM.PiIntro (LK.Normal O.Transparent) xts (_ :< body))
           | length xts == length es',
             all TM.isValue es -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
@@ -70,16 +71,16 @@ reduce term =
         _ -> do
           e2' <- reduce e2
           return $ m :< TM.SigmaElim xts e1' e2'
-    m :< TM.Let (mx, x, t) e1 e2 -> do
+    m :< TM.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- reduce e1
-      if TM.isValue e1'
+      if TM.isValue e1' && not (O.isOpaque opacity)
         then do
           let sub = IntMap.fromList [(Ident.toInt x, e1')]
           Subst.subst sub e2
         else do
           t' <- reduce t
           e2' <- reduce e2
-          return $ m :< TM.Let (mx, x, t') e1' e2'
+          return $ m :< TM.Let opacity (mx, x, t') e1' e2'
     (m :< TM.Magic der) -> do
       der' <- traverse reduce der
       return (m :< TM.Magic der')

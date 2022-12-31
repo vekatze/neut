@@ -13,6 +13,7 @@ import Entity.Ident
 import Entity.Ident.Reify
 import Entity.LamKind
 import Entity.Magic
+import qualified Entity.Opacity as O
 import qualified Entity.Prim as P
 import GHC.Generics (Generic)
 
@@ -31,7 +32,8 @@ data TermF a
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
-  | Let (BinderF a) a a -- これ、もう不要かも。
+  | Noema a
+  | Let O.Opacity (BinderF a) a a
   | Prim P.Prim
   | Magic (Magic a)
   deriving (Show, Generic)

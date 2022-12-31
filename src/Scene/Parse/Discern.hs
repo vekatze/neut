@@ -26,7 +26,9 @@ import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
+import qualified Entity.Magic as M
 import Entity.NominalEnv
+import qualified Entity.Opacity as O
 import qualified Entity.Pattern as PAT
 import qualified Entity.Pattern.Fallback as PATF
 import qualified Entity.Pattern.Specialize as PATS
@@ -109,9 +111,9 @@ discern nenv term =
         LK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
-        LK.Normal -> do
+        LK.Normal opacity -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro LK.Normal xts' e'
+          return $ m :< WT.PiIntro (LK.Normal opacity) xts' e'
     m :< RT.Data name es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name es'
@@ -139,10 +141,11 @@ discern nenv term =
       e1' <- discern nenv e1
       (xts', e2') <- discernBinderWithBody nenv xts e2
       return $ m :< WT.SigmaElim xts' e1' e2'
-    m :< RT.Let mxt e1 e2 -> do
-      e1' <- discern nenv e1
-      (mxt', _, e2') <- discernBinderWithBody' nenv mxt [] e2
-      return $ m :< WT.Let mxt' e1' e2'
+    m :< RT.Noema t -> do
+      t' <- discern nenv t
+      return $ m :< WT.Noema t'
+    m :< RT.Let mxt mys e1 e2 -> do
+      discernLet nenv m mxt mys e1 e2
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -155,6 +158,61 @@ discern nenv term =
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
+
+discernLet ::
+  Context m =>
+  NominalEnv ->
+  Hint ->
+  BinderF RT.RawTerm ->
+  [(Hint, Ident)] ->
+  RT.RawTerm ->
+  RT.RawTerm ->
+  m WT.WeakTerm
+discernLet nenv m mxt mys e1 e2 = do
+  let (ms, ys) = unzip mys
+  ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
+  ysLocal <- mapM Gensym.newIdentFromIdent ys
+  ysCont <- mapM Gensym.newIdentFromIdent ys
+  let nenvLocal = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms ysLocal ++ nenv
+  let nenvCont = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont ++ nenv
+  e1' <- discern nenvLocal e1
+  (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
+  e2'' <- attachSuffix nenv (zip ysCont ysLocal) e2'
+  attachPrefix nenv (zip ysLocal ysActual) $ m :< WT.Let O.Transparent mxt' e1' e2''
+
+attachPrefix :: Context m => NominalEnv -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> m WT.WeakTerm
+attachPrefix nenv binder cont@(m :< _) =
+  case binder of
+    [] ->
+      return cont
+    (y, e) : rest -> do
+      e' <- castToNoema nenv e
+      cont' <- attachPrefix nenv rest cont
+      h <- Gensym.newAster m (asHoleArgs nenv)
+      return $ m :< WT.Let O.Opaque (m, y, h) e' cont'
+
+attachSuffix :: Context m => NominalEnv -> [(Ident, Ident)] -> WT.WeakTerm -> m WT.WeakTerm
+attachSuffix nenv binder cont@(m :< _) =
+  case binder of
+    [] ->
+      return cont
+    (yCont, yLocal) : rest -> do
+      yLocal' <- castFromNoema nenv (m :< WT.Var yLocal)
+      cont' <- attachSuffix nenv rest cont
+      h <- Gensym.newAster m (asHoleArgs nenv)
+      return $ m :< WT.Let O.Opaque (m, yCont, h) yLocal' cont'
+
+castToNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
+castToNoema nenv e@(m :< _) = do
+  t <- Gensym.newAster m (asHoleArgs nenv)
+  let tNoema = m :< WT.Noema t
+  return $ m :< WT.Magic (M.Cast t tNoema e)
+
+castFromNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
+castFromNoema nenv e@(m :< _) = do
+  t <- Gensym.newAster m (asHoleArgs nenv)
+  let tNoema = m :< WT.Noema t
+  return $ m :< WT.Magic (M.Cast tNoema t e)
 
 discernBinder ::
   Context m =>
@@ -391,4 +449,4 @@ bindLet nenv m binder cont =
     (Just from, to) : xes -> do
       h <- Gensym.newAster m (asHoleArgs nenv)
       cont' <- bindLet nenv m xes cont
-      return $ m :< WT.Let (m, from, h) (m :< WT.Var to) cont'
+      return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'

@@ -40,7 +40,8 @@ data RawTermF a
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
-  | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
+  | Noema a
+  | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Aster HoleID
   | Prim (WP.WeakPrim a)
   | Question a a -- e : t (output the type `t` as note)

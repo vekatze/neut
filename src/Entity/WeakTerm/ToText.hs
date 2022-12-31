@@ -58,7 +58,9 @@ toText term =
       showCons $ "sigma-intro" : map toText es
     _ :< WT.SigmaElim {} ->
       "<sigma-elim>"
-    _ :< WT.Let (_, x, t) e1 e2 -> do
+    _ :< WT.Noema t ->
+      showCons ["noema", toText t]
+    _ :< WT.Let _ (_, x, t) e1 e2 -> do
       showCons ["let", showVariable x, toText t, toText e1, toText e2]
     _ :< WT.Prim prim ->
       showPrim prim

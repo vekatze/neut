@@ -181,13 +181,15 @@ clarifyTerm tenv term =
       clarifyTerm tenv $
         m
           :< TM.PiIntro
-            LK.Normal
+            (LK.Normal O.Transparent)
             [(m, k, m :< TM.Pi [] (m :< TM.Tau))]
             (m :< TM.PiElim (m :< TM.Var k) es)
     m :< TM.SigmaElim xts e1 e2 -> do
-      clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro LK.Normal xts e2]
-    m :< TM.Let mxt e1 e2 -> do
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro LK.Normal [mxt] e2) [e1]
+      clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro (LK.Normal O.Transparent) xts e2]
+    _ :< TM.Noema {} ->
+      return returnImmediateS4
+    m :< TM.Let opacity mxt e1 e2 -> do
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro (LK.Normal opacity) [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
         P.Type _ ->
@@ -337,11 +339,11 @@ clarifyLambda tenv kind mxts e fvs = do
   case kind of
     LK.Fix (_, x, _)
       | S.member x (freeVars e') ->
-          returnClosure tenv O.Opaque kind fvs mxts e'
+          returnClosure tenv kind fvs mxts e'
       | otherwise ->
-          returnClosure tenv O.Transparent LK.Normal fvs mxts e'
+          returnClosure tenv (LK.Normal O.Transparent) fvs mxts e'
     _ ->
-      returnClosure tenv O.Transparent kind fvs mxts e'
+      returnClosure tenv kind fvs mxts e'
 
 newClosureNames :: Gensym.Context m => m ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do
@@ -372,25 +374,24 @@ clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv O.Transparent LK.Normal [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure tenv (LK.Normal O.Transparent) [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   Context m =>
   TM.TypeEnv ->
-  O.Opacity -> -- whether the closure is reducible
   LK.LamKindF TM.Term -> -- the name of newly created closure
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   m C.Comp
-returnClosure tenv opacity kind fvs xts e = do
+returnClosure tenv kind fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder tenv fvs
   xts'' <- dropFst <$> clarifyBinder tenv xts
   fvEnvSigma <- closureEnvS4 $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let arity = A.fromInt $ length xts'' + 1 -- arity == count(xts) + env
   case kind of
-    LK.Normal -> do
+    LK.Normal opacity -> do
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.lambdaName i
       registerIfNecessary name opacity xts'' fvs'' e

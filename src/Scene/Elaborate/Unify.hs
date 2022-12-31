@@ -120,8 +120,9 @@ simplify constraintList =
               yt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
               simplify $ cs' ++ cs
-          | LK.Normal <- kind1,
-            LK.Normal <- kind2,
+          | LK.Normal opacity1 <- kind1,
+            LK.Normal opacity2 <- kind2,
+            opacity1 == opacity2,
             length xts1 == length xts2 -> do
               xt1 <- asWeakBinder m1 e1
               xt2 <- asWeakBinder m2 e2
@@ -148,6 +149,8 @@ simplify constraintList =
         (_ :< WT.SigmaIntro es1, _ :< WT.SigmaIntro es2)
           | length es1 == length es2 -> do
               simplify $ zipWith (curry (orig,)) es1 es2 ++ cs
+        (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
+          simplify $ ((t1, t2), orig) : cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)
           | WP.Type t1 <- a1,
             WP.Type t2 <- a2,

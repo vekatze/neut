@@ -12,6 +12,7 @@ import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
+import qualified Entity.Opacity as O
 import Entity.PrimNumSize
 import qualified Entity.PrimType as PT
 import qualified Entity.WeakPrim as WP
@@ -31,7 +32,8 @@ data WeakTermF a
   | Sigma [BinderF a]
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
-  | Let (BinderF a) a a -- let x = e1 in e2 (with no context extension)
+  | Noema a
+  | Let O.Opacity (BinderF a) a a
   | Aster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Prim (WP.WeakPrim a)
   | Question a a -- e : t (output the type `t` as note)

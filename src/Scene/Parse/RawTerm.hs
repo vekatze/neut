@@ -14,6 +14,7 @@ import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
+import Data.Bifunctor
 import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -30,6 +31,7 @@ import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
 import qualified Entity.LowType as LT
 import qualified Entity.Magic as M
+import qualified Entity.Opacity as O
 import qualified Entity.PrimType.FromText as PT
 import qualified Entity.RawPattern as RP
 import qualified Entity.RawTerm as RT
@@ -62,6 +64,7 @@ rawTermEasy = do
       rawTermPiIntroDef,
       rawTermSigma,
       rawTermSigmaIntro,
+      rawTermNoema,
       rawTermIntrospect,
       rawTermQuestion,
       rawTermMagic,
@@ -69,6 +72,7 @@ rawTermEasy = do
       rawTermIf,
       try rawTermLetSigmaElim,
       rawTermLetCoproduct,
+      try rawTermLetOn,
       rawTermLet,
       try rawTermPi,
       try rawTermPiElim,
@@ -90,6 +94,19 @@ rawTermSimple = do
       rawTermVar
     ]
 
+rawTermLetOn :: Context m => Parser m RT.RawTerm
+rawTermLetOn = do
+  m <- getCurrentHint
+  try $ keyword "let"
+  x <- rawTermLetVar
+  try $ keyword "on"
+  noeticVarList <- map (second Ident.fromText) <$> commaList var
+  delimiter "="
+  e1 <- rawTerm
+  keyword "in"
+  e2 <- rawTerm
+  return $ m :< RT.Let x noeticVarList e1 e2
+
 rawTermLet :: Context m => Parser m RT.RawTerm
 rawTermLet = do
   m <- getCurrentHint
@@ -99,7 +116,7 @@ rawTermLet = do
   e1 <- rawTerm
   keyword "in"
   e2 <- rawTerm
-  return $ m :< RT.Let x e1 e2
+  return $ m :< RT.Let x [] e1 e2
 
 -- let? x     = e1 in e2
 rawTermLetCoproduct :: Context m => Parser m RT.RawTerm
@@ -476,7 +493,14 @@ rawTermSigmaIntro = do
 
 bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
-  m :< RT.Let mxt e cont
+  m :< RT.Let mxt [] e cont
+
+rawTermNoema :: Context m => Parser m RT.RawTerm
+rawTermNoema = do
+  m <- getCurrentHint
+  delimiter "&"
+  t <- rawTermEasy
+  return $ m :< RT.Noema t
 
 rawTermAdmit :: Context m => Parser m RT.RawTerm
 rawTermAdmit = do
@@ -524,6 +548,7 @@ rawTermPiElim = do
         m
           :< RT.Let
             (m, f, h)
+            []
             e
             ( foldl'
                 (\base args -> m :< RT.PiElim base args)
@@ -647,7 +672,7 @@ rawTermFloat = do
 
 lam :: Hint -> [BinderF RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
-  m :< RT.PiIntro LK.Normal varList e
+  m :< RT.PiIntro (LK.Normal O.Transparent) varList e
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =

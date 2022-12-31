@@ -44,7 +44,9 @@ freeVars term =
       let set1 = freeVars e1
       let set2 = freeVars' xts (freeVars e2)
       S.union set1 set2
-    _ :< WT.Let mxt e1 e2 -> do
+    _ :< WT.Noema t ->
+      freeVars t
+    _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] (freeVars e2)
       S.union set1 set2

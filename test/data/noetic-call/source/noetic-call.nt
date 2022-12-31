@@ -1,0 +1,16 @@
+define-data list(a: tau) as
+- nil()
+- cons(a, list(a))
+end
+
+define dummy(xs: &list(i64)): i64 as
+  let a1 = xs in
+  let a2 = xs in
+  1
+end
+
+define main(): i64 as
+  let xs = list.cons(1, list.cons(2, list.nil())) in
+  let some-value on xs = dummy(xs) in
+  0
+end

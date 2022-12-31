@@ -70,10 +70,13 @@ subst sub term =
       e1' <- subst sub e1
       (xts', e2') <- subst' sub xts e2
       return $ m :< TM.SigmaElim xts' e1' e2'
-    m :< TM.Let mxt e1 e2 -> do
+    m :< TM.Noema t -> do
+      t' <- subst sub t
+      return $ m :< TM.Noema t'
+    m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst sub e1
       ([mxt'], e2') <- subst' sub [mxt] e2
-      return $ m :< TM.Let mxt' e1' e2'
+      return $ m :< TM.Let opacity mxt' e1' e2'
     (_ :< TM.Prim _) ->
       return term
     (m :< TM.Magic der) -> do

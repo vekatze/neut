@@ -65,10 +65,13 @@ fill sub term =
       e1' <- fill sub e1
       (xts', e2') <- fill' sub xts e2
       return $ m :< WT.SigmaElim xts' e1' e2'
-    m :< WT.Let mxt e1 e2 -> do
+    m :< WT.Noema t -> do
+      t' <- fill sub t
+      return $ m :< WT.Noema t'
+    m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- fill sub e1
       (mxt', _, e2') <- fill'' sub mxt [] e2
-      return $ m :< WT.Let mxt' e1' e2'
+      return $ m :< WT.Let opacity mxt' e1' e2'
     m :< WT.Prim prim -> do
       prim' <- mapM (fill sub) prim
       return $ m :< WT.Prim prim'

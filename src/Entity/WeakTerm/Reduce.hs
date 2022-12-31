@@ -5,6 +5,7 @@ import qualified Data.IntMap as IntMap
 import qualified Entity.DecisionTree as DT
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
+import qualified Entity.Opacity as O
 import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.FreeVars
 import qualified Entity.WeakTerm.Subst as Subst
@@ -20,7 +21,7 @@ reduce term =
     m :< WT.PiIntro kind xts e
       | LK.Fix (_, x, _) <- kind,
         x `notElem` freeVars e ->
-          reduce $ m :< WT.PiIntro LK.Normal xts e
+          reduce $ m :< WT.PiIntro (LK.Normal O.Transparent) xts e
       | otherwise -> do
           let (ms, xs, ts) = unzip3 xts
           ts' <- mapM reduce ts
@@ -35,7 +36,7 @@ reduce term =
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< WT.PiIntro LK.Normal xts body)
+        (_ :< WT.PiIntro (LK.Normal O.Transparent) xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs es'
@@ -73,10 +74,18 @@ reduce term =
         _ -> do
           e2' <- reduce e2
           return $ m :< WT.SigmaElim xts e1' e2'
-    _ :< WT.Let (_, x, _) e1 e2 -> do
+    m :< WT.Noema t -> do
+      t' <- reduce t
+      return $ m :< WT.Noema t'
+    m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce e1
-      let sub = IntMap.fromList [(Ident.toInt x, e1')]
-      Subst.subst sub e2
+      case opacity of
+        O.Opaque -> do
+          e2' <- reduce e2
+          return $ m :< WT.Let opacity mxt e1' e2'
+        O.Transparent -> do
+          let sub = IntMap.fromList [(Ident.toInt x, e1')]
+          Subst.subst sub e2
     _ :< WT.Question e _ ->
       reduce e
     m :< WT.Magic der -> do
