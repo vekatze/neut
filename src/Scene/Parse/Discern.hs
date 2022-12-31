@@ -29,7 +29,6 @@ import qualified Entity.LocalLocator as LL
 import qualified Entity.Magic as M
 import qualified Entity.Noema as N
 import Entity.NominalEnv
-import qualified Entity.Opacity as O
 import qualified Entity.Pattern as PAT
 import qualified Entity.Pattern.Fallback as PATF
 import qualified Entity.Pattern.Specialize as PATS
@@ -180,7 +179,8 @@ discernLet nenv m mxt mys e1 e2 = do
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
   e2'' <- attachSuffix nenv (zip ysCont ysLocal) e2'
-  attachPrefix nenv (zip ysLocal ysActual) $ m :< WT.Let O.Transparent mxt' e1' e2''
+  let opacity = if null mys then WT.Transparent else WT.Noetic
+  attachPrefix nenv (zip ysLocal ysActual) $ m :< WT.Let opacity mxt' e1' e2''
 
 attachPrefix :: Context m => NominalEnv -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> m WT.WeakTerm
 attachPrefix nenv binder cont@(m :< _) =
@@ -191,7 +191,7 @@ attachPrefix nenv binder cont@(m :< _) =
       e' <- castToNoema nenv e
       cont' <- attachPrefix nenv rest cont
       h <- Gensym.newAster m (asHoleArgs nenv)
-      return $ m :< WT.Let O.Opaque (m, y, h) e' cont'
+      return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
 
 attachSuffix :: Context m => NominalEnv -> [(Ident, Ident)] -> WT.WeakTerm -> m WT.WeakTerm
 attachSuffix nenv binder cont@(m :< _) =
@@ -202,7 +202,7 @@ attachSuffix nenv binder cont@(m :< _) =
       yLocal' <- castFromNoema nenv (m :< WT.Var yLocal)
       cont' <- attachSuffix nenv rest cont
       h <- Gensym.newAster m (asHoleArgs nenv)
-      return $ m :< WT.Let O.Opaque (m, yCont, h) yLocal' cont'
+      return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
 
 castToNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
 castToNoema nenv e@(m :< _) = do
@@ -469,7 +469,7 @@ bindLet nenv m binder cont =
     (Just from, to) : xes -> do
       h <- Gensym.newAster m (asHoleArgs nenv)
       cont' <- bindLet nenv m xes cont
-      return $ m :< WT.Let O.Transparent (m, from, h) to cont'
+      return $ m :< WT.Let WT.Transparent (m, from, h) to cont'
 
 -- bindLet ::
 --   Context m =>

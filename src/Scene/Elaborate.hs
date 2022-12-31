@@ -208,9 +208,20 @@ elaborate' term =
       return $ m :< TM.Noema t'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- elaborate' e1
-      mxt' <- elaborateWeakBinder mxt
+      mxt'@(_, _, t) <- elaborateWeakBinder mxt
       e2' <- elaborate' e2
-      return $ m :< TM.Let opacity mxt' e1' e2'
+      case opacity of
+        WT.Noetic -> do
+          case (TM.containsNoema t, TM.containsPi t) of
+            (True, _) ->
+              Throw.raiseError m "the answer type of let-on cannot contain noemas"
+            (_, True) ->
+              Throw.raiseError m "the answer type of let-on cannot contain universal quantifications"
+            _ ->
+              return ()
+        _ ->
+          return ()
+      return $ m :< TM.Let (WT.reifyOpacity opacity) mxt' e1' e2'
     m :< WT.Aster h es -> do
       holeSubst <- Env.getHoleSubst
       case HS.lookup h holeSubst of

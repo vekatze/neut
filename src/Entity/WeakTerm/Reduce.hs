@@ -80,10 +80,10 @@ reduce term =
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce e1
       case opacity of
-        O.Opaque -> do
+        WT.Opaque -> do
           e2' <- reduce e2
           return $ m :< WT.Let opacity mxt e1' e2'
-        O.Transparent -> do
+        _ -> do
           let sub = IntMap.fromList [(Ident.toInt x, e1')]
           Subst.subst sub e2
     _ :< WT.Question e _ ->

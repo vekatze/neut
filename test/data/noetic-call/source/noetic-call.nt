@@ -15,8 +15,17 @@ define length(xs: &list(i64)): i64 =
   end
 end
 
+define tail(xs: &list(i64)): &list(i64) =
+  match-noetic xs with
+  - list.nil() ->
+    xs
+  - list.cons(y, ys) ->
+    ys
+  end
+end
+
 define main(): i64 =
-  let xs = list.cons(1, list.cons(2, list.nil())) in
-  let some-value on xs = length(xs) in
+  let xs = list.cons(3, list.cons(1, list.cons(2, list.nil()))) in
+  let some-value on xs = length(tail(xs)) in
   some-value
 end

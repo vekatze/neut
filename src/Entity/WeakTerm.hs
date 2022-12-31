@@ -34,7 +34,7 @@ data WeakTermF a
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
   | Noema a
-  | Let O.Opacity (BinderF a) a a
+  | Let LetOpacity (BinderF a) a a
   | Aster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Prim (WP.WeakPrim a)
   | Question a a -- e : t (output the type `t` as note)
@@ -42,6 +42,30 @@ data WeakTermF a
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm
+
+data LetOpacity
+  = Opaque
+  | Transparent
+  | Noetic
+  deriving (Show, Eq)
+
+reifyOpacity :: LetOpacity -> O.Opacity
+reifyOpacity letOpacity =
+  case letOpacity of
+    Opaque ->
+      O.Opaque
+    Transparent ->
+      O.Transparent
+    Noetic ->
+      O.Transparent
+
+reflectOpacity :: O.Opacity -> LetOpacity
+reflectOpacity opacity =
+  case opacity of
+    O.Opaque ->
+      Opaque
+    O.Transparent ->
+      Transparent
 
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =

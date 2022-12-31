@@ -72,7 +72,7 @@ weaken term =
     m :< TM.Noema t ->
       m :< WT.Noema (weaken t)
     m :< TM.Let opacity mxt e1 e2 ->
-      m :< WT.Let opacity (weakenBinder mxt) (weaken e1) (weaken e2)
+      m :< WT.Let (WT.reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
     m :< TM.Magic der -> do

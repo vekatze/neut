@@ -6,7 +6,6 @@ import Control.Comonad.Cofree
 import qualified Data.Vector as V
 import Entity.Ident
 import Entity.NominalEnv
-import qualified Entity.Opacity as O
 import Entity.Pattern
 import qualified Entity.WeakTerm as WT
 
@@ -36,7 +35,7 @@ fallbackRow nenv cursor (patternVector, (freedVars, body)) =
       return $ Just (rest, (freedVars, body))
     Just ((m, Var x), rest) -> do
       h <- Gensym.newAster m (asHoleArgs nenv)
-      let body' = m :< WT.Let O.Transparent (m, x, h) (m :< WT.Var cursor) body
+      let body' = m :< WT.Let WT.Transparent (m, x, h) (m :< WT.Var cursor) body
       return $ Just (rest, (freedVars, body'))
     Just ((_, Cons {}), _) ->
       return Nothing
