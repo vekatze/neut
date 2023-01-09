@@ -11,6 +11,7 @@ import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Data.List
 import qualified Data.Maybe as Maybe
 import qualified Data.Set as S
 import qualified Data.Text as T
@@ -20,12 +21,14 @@ import Entity.Binder
 import qualified Entity.DecisionTree as DT
 import qualified Entity.DefiniteDescription as DD
 import qualified Entity.Discriminant as D
+import Entity.FilePos
 import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
 import qualified Entity.Ident.Reify as Ident
 import qualified Entity.LamKind as LK
 import qualified Entity.LocalLocator as LL
+import qualified Entity.Log as L
 import qualified Entity.Magic as M
 import qualified Entity.Noema as N
 import Entity.NominalEnv
@@ -125,7 +128,7 @@ discern nenv term =
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic) es
       ts <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) es'
-      patternMatrix' <- discernPatternMatrix nenv m patternMatrix
+      patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
@@ -346,33 +349,51 @@ resolveConstructor' m dd gn =
 discernPatternMatrix ::
   Context m =>
   NominalEnv ->
-  Hint ->
   RP.RawPatternMatrix RT.RawTerm ->
   m (PAT.PatternMatrix ([Ident], WT.WeakTerm))
-discernPatternMatrix nenv m patternMatrix =
+discernPatternMatrix nenv patternMatrix =
   case RP.unconsRow patternMatrix of
     Nothing ->
       return $ PAT.new []
     Just (row, rows) -> do
-      row' <- discernPatternRow nenv m row
-      rows' <- discernPatternMatrix nenv m rows
+      row' <- discernPatternRow nenv row
+      rows' <- discernPatternMatrix nenv rows
       return $ PAT.consRow row' rows'
 
 discernPatternRow ::
   Context m =>
   NominalEnv ->
-  Hint ->
   RP.RawPatternRow RT.RawTerm ->
   m (PAT.PatternRow ([Ident], WT.WeakTerm))
-discernPatternRow nenv m (patList, body) = do
+discernPatternRow nenv (patList, body) = do
   let vars = RP.rowVars patList
+  ensurePatternVariableLinearity vars
   vars' <- mapM (Gensym.newIdentFromIdent . snd) vars
-  when (S.size (S.fromList vars') /= length vars') $ do
-    Throw.raiseError m "found a non-linear pattern"
   let nenv' = zipWith (\(mv, var) var' -> (Ident.toText var, (mv, var'))) vars vars'
   patList' <- mapM (discernPattern nenv') patList
   body' <- discern (nenv' ++ nenv) body
   return (patList', ([], body'))
+
+ensurePatternVariableLinearity :: Context m => [(Hint, Ident)] -> m ()
+ensurePatternVariableLinearity vars = do
+  let linearityErrors = getNonLinearOccurrences vars S.empty []
+  unless (null linearityErrors) $ Throw.throw $ L.MakeError linearityErrors
+
+getNonLinearOccurrences :: [(Hint, Ident)] -> S.Set T.Text -> [(Hint, T.Text)] -> [L.Log]
+getNonLinearOccurrences vars found nonLinear =
+  case vars of
+    [] -> do
+      let nonLinearVars = reverse $ nubBy (\x y -> snd x == snd y) nonLinear
+      flip map nonLinearVars $ \(m, x) ->
+        L.logError (fromHint m) $
+          "the pattern variable `"
+            <> x
+            <> "` is used non-linearly"
+    (m, v) : rest
+      | S.member (Ident.toText v) found ->
+          getNonLinearOccurrences rest found ((m, Ident.toText v) : nonLinear)
+      | otherwise ->
+          getNonLinearOccurrences rest (S.insert (Ident.toText v) found) nonLinear
 
 discernPattern ::
   Context m =>
