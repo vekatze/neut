@@ -1,0 +1,6 @@
+dependency = {}
+extra-content = [
+]
+target = {
+  codata-basic = "codata-basic.nt"
+}

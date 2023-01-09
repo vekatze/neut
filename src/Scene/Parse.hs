@@ -17,6 +17,7 @@ import Control.Monad
 import Control.Monad.Trans
 import qualified Data.HashMap.Strict as Map
 import qualified Data.Text as T
+import qualified Data.Vector as V
 import Entity.AliasInfo
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
@@ -28,8 +29,12 @@ import qualified Entity.Discriminant as D
 import qualified Entity.GlobalLocator as GL
 import qualified Entity.GlobalName as GN
 import Entity.Hint
+import qualified Entity.Ident.Reflect as Ident
+import qualified Entity.Ident.Reify as Ident
 import qualified Entity.ImpArgNum as I
+import qualified Entity.LocalLocator as LL
 import qualified Entity.Opacity as O
+import qualified Entity.RawPattern as RP
 import qualified Entity.RawTerm as RT
 import qualified Entity.Section as Section
 import qualified Entity.Source as Source
@@ -334,35 +339,42 @@ parseDefineCodata = do
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   elemInfoList <- P.equalBlock $ P.manyList preAscription
-  -- formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
-  lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
+  return $ formRule ++ elimRuleList
 
--- elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
--- return $ formRule ++ elimRuleList
--- parseDefineCodataElim ::
---   Context m =>
---   DD.DefiniteDescription ->
---   [BinderF RT.RawTerm] ->
---   [BinderF RT.RawTerm] ->
---   BinderF RT.RawTerm ->
---   m RawStmt
--- parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
---   let codataType = constructDataType m dataName dataArgs
---   recordVarText <- Gensym.newText
---   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
---   projectionName <- DD.extend m dataName $ Ident.toText elemName
---   let newDD = DD.extendLL dataName $ LL.new [] BN.new
---   defineFunction
---     O.Opaque
---     m
---     projectionName -- e.g. some-lib.foo::my-record.element-x
---     (I.fromInt $ length dataArgs)
---     projArgs
---     elemType
---     $ m
---       :< RT.Match
---         (preVar m recordVarText, codataType)
---         [((m, Right newDD, elemInfoList), preVar m (Ident.toText elemName))]
+-- noetic projection
+parseDefineCodataElim ::
+  Context m =>
+  DD.DefiniteDescription ->
+  [BinderF RT.RawTerm] ->
+  [BinderF RT.RawTerm] ->
+  BinderF RT.RawTerm ->
+  m RawStmt
+parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
+  let codataType = m :< RT.Noema (constructDataType m dataName dataArgs)
+  recordVarText <- Gensym.newText
+  let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
+  projectionName <- DD.extend m dataName $ Ident.toText elemName
+  let newDD = DD.extendLL dataName $ LL.new [] BN.new
+  let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var x)
+  defineFunction
+    (Normal O.Opaque)
+    m
+    projectionName -- e.g. some-lib.foo::my-record.element-x
+    (I.fromInt $ length dataArgs)
+    projArgs
+    (m :< RT.Noema elemType)
+    $ m
+      :< RT.DataElim
+        True
+        [preVar m recordVarText]
+        ( RP.new
+            [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription newDD) argList)],
+                preVar m (Ident.toText elemName)
+              )
+            ]
+        )
 
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
