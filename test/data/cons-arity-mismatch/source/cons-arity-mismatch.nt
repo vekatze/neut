@@ -6,9 +6,9 @@ end
 
 define f(xs: item(), ys: item()): item() =
   match xs, ys with
+  // - cons(x), zs ->
+  //   zs
   - cons(), zs ->
-    zs
-  - cons(x), zs ->
     zs
   end
 end

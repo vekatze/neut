@@ -126,6 +126,7 @@ discern nenv term =
       es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic) es
       ts <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) es'
       patternMatrix' <- discernPatternMatrix nenv m patternMatrix
+      ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
     m :< RT.PiElim e es -> do
@@ -391,6 +392,38 @@ discernPattern nenv (m, pat) =
       args' <- mapM (discernPattern nenv) args
       return (m, PAT.Cons consName disc dataArity consArity args')
 
+ensurePatternMatrixSanity :: Context m => PAT.PatternMatrix a -> m ()
+ensurePatternMatrixSanity mat =
+  case PAT.unconsRow mat of
+    Nothing ->
+      return ()
+    Just (row, rest) -> do
+      ensurePatternRowSanity row
+      ensurePatternMatrixSanity rest
+
+ensurePatternRowSanity :: Context m => PAT.PatternRow a -> m ()
+ensurePatternRowSanity (patternVector, _) = do
+  mapM_ ensurePatternSanity $ V.toList patternVector
+
+ensurePatternSanity :: Context m => (Hint, PAT.Pattern) -> m ()
+ensurePatternSanity (m, pat) =
+  case pat of
+    PAT.Var {} ->
+      return ()
+    PAT.WildcardVar {} ->
+      return ()
+    PAT.Cons cons _ _ consArity args -> do
+      let argNum = length args
+      when (argNum /= fromInteger (A.reify consArity)) $
+        Throw.raiseError m $
+          "the constructor `"
+            <> DD.reify cons
+            <> "` expects "
+            <> T.pack (show (A.reify consArity))
+            <> " arguments, but found "
+            <> T.pack (show argNum)
+            <> "."
+
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
 compilePatternMatrix ::
@@ -419,14 +452,13 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(cons, disc, dataArity, _, args) -> do
-                let consArity = length args
+              clauseList <- forM headConstructors $ \(cons, disc, dataArity, consArity, _) -> do
                 dataHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
                 dataTypeHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. consArity]
+                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
                 (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize nenv cursor (cons, A.fromInt consArity) mat
+                specialMatrix <- PATS.specialize nenv cursor (cons, consArity) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic m occurrences' specialMatrix
                 return (DT.Cons cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix nenv cursor mat
