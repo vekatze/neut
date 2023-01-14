@@ -46,7 +46,7 @@ specializeRow nenv cursor (dd, arity) (patternVector, (freedVars, body)) =
       return $ Just (V.concat [wildcards, rest], (freedVars, body))
     Just ((m, Var x), rest) -> do
       let wildcards = V.fromList $ replicate (fromInteger $ A.reify arity) (m, WildcardVar)
-      h <- Gensym.newAster m (asHoleArgs nenv)
+      h <- Gensym.newHole m (asHoleArgs nenv)
       let body' = m :< WT.Let WT.Transparent (m, x, h) (m :< WT.Var cursor) body
       -- let body' = m :< WT.Let (m, cursor, h) (m :< WT.Var x) body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))

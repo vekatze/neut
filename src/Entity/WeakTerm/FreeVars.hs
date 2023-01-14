@@ -52,7 +52,7 @@ freeVars term =
       S.union set1 set2
     _ :< WT.Prim prim ->
       foldMap freeVars prim
-    _ :< WT.Aster _ es ->
+    _ :< WT.Hole _ es ->
       S.unions $ map freeVars es
     _ :< WT.Question e t -> do
       let set1 = freeVars e

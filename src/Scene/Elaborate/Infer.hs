@@ -100,7 +100,7 @@ infer' varEnv term =
         Nothing -> do
           inferPiElim varEnv m (e, t) ets
         Just i -> do
-          holes <- forM [1 .. I.reify i] $ const $ newTypedAster varEnv m
+          holes <- forM [1 .. I.reify i] $ const $ newTypedHole varEnv m
           inferPiElim varEnv m (e, t) $ holes ++ ets
     m :< WT.PiElim e es -> do
       etls <- mapM (infer' varEnv) es
@@ -125,7 +125,7 @@ infer' varEnv term =
     m :< WT.SigmaIntro es -> do
       ets <- mapM (infer' varEnv) es
       ys <- mapM (const $ Gensym.newIdentFromText "arg") es
-      yts <- newTypeAsterList varEnv $ zip ys (map WT.metaOf es)
+      yts <- newTypeHoleList varEnv $ zip ys (map WT.metaOf es)
       _ <- inferArgs IntMap.empty m ets yts (m :< WT.Tau)
       return (m :< WT.SigmaIntro (map fst ets), m :< WT.Sigma yts)
     m :< WT.SigmaElim xts e1 e2 -> do
@@ -143,14 +143,14 @@ infer' varEnv term =
       insWeakTypeEnv x t'
       (e2', t2') <- infer' varEnv e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
-    m :< WT.Aster x es -> do
+    m :< WT.Hole x es -> do
       let rawHoleID = HID.reify x
-      mAsterInfo <- lookupHoleEnv rawHoleID
-      case mAsterInfo of
-        Just asterInfo ->
-          return asterInfo
+      mHoleInfo <- lookupHoleEnv rawHoleID
+      case mHoleInfo of
+        Just holeInfo ->
+          return holeInfo
         Nothing -> do
-          holeType <- Gensym.newAster m es
+          holeType <- Gensym.newHole m es
           insHoleEnv rawHoleID term holeType
           return (term, holeType)
     m :< WT.Prim prim
@@ -180,7 +180,7 @@ infer' varEnv term =
           return (m :< WT.Magic (M.Cast from' to' value'), to')
         _ -> do
           der' <- mapM (infer' varEnv >=> return . fst) der
-          resultType <- newAster m varEnv
+          resultType <- newHole m varEnv
           return (m :< WT.Magic der', resultType)
 
 inferArgs ::
@@ -280,8 +280,8 @@ getPiType varEnv m (e, t) numOfArgs =
           raiseArityMismatchError e (length xts) numOfArgs
     _ -> do
       ys <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. numOfArgs]
-      yts <- newTypeAsterList varEnv $ zip ys (replicate numOfArgs m)
-      cod <- newAster m (yts ++ varEnv)
+      yts <- newTypeHoleList varEnv $ zip ys (replicate numOfArgs m)
+      cod <- newHole m (yts ++ varEnv)
       Env.insConstraintEnv (WT.metaOf e :< WT.Pi yts cod) t
       return (yts, cod)
 
@@ -307,17 +307,17 @@ raiseArityMismatchError function expected actual = do
           <> T.pack (show actual)
           <> "."
 
-newAster :: Context m => Hint -> BoundVarEnv -> m WT.WeakTerm
-newAster m varEnv = do
-  Gensym.newAster m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+newHole :: Context m => Hint -> BoundVarEnv -> m WT.WeakTerm
+newHole m varEnv = do
+  Gensym.newHole m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
 
-newTypedAster :: Context m => BoundVarEnv -> Hint -> m (WT.WeakTerm, WT.WeakTerm)
-newTypedAster varEnv m = do
-  app <- newAster m varEnv
-  higherApp <- newAster m varEnv
+newTypedHole :: Context m => BoundVarEnv -> Hint -> m (WT.WeakTerm, WT.WeakTerm)
+newTypedHole varEnv m = do
+  app <- newHole m varEnv
+  higherApp <- newHole m varEnv
   return (app, higherApp)
 
--- In context varEnv == [x1, ..., xn], `newTypeAsterList varEnv [y1, ..., ym]` generates
+-- In context varEnv == [x1, ..., xn], `newTypeHoleList varEnv [y1, ..., ym]` generates
 -- the following list:
 --
 --   [(y1,   ?M1   @ (x1, ..., xn)),
@@ -326,15 +326,15 @@ newTypedAster varEnv m = do
 --    (y{m}, ?M{m} @ (x1, ..., xn, y1, ..., y{m-1}))]
 --
 -- inserting type information `yi : ?Mi @ (x1, ..., xn, y1, ..., y{i-1})
-newTypeAsterList :: Context m => BoundVarEnv -> [(Ident, Hint)] -> m [BinderF WT.WeakTerm]
-newTypeAsterList varEnv ids =
+newTypeHoleList :: Context m => BoundVarEnv -> [(Ident, Hint)] -> m [BinderF WT.WeakTerm]
+newTypeHoleList varEnv ids =
   case ids of
     [] ->
       return []
     ((x, m) : rest) -> do
-      t <- newAster m varEnv
+      t <- newHole m varEnv
       insWeakTypeEnv x t
-      ts <- newTypeAsterList ((m, x, t) : varEnv) rest
+      ts <- newTypeHoleList ((m, x, t) : varEnv) rest
       return $ (m, x, t) : ts
 
 primOpToType :: Context m => Hint -> PrimOp -> m TM.Term
@@ -362,7 +362,7 @@ inferDecisionTree m varEnv tree =
       (body', answerType) <- infer' varEnv body
       return (DT.Leaf ys body', answerType)
     DT.Unreachable -> do
-      h <- newAster m varEnv
+      h <- newHole m varEnv
       return (DT.Unreachable, h)
     DT.Switch (cursor, _) clauseList -> do
       cursorType <- lookupWeakTypeEnv m cursor

@@ -75,7 +75,7 @@ fill sub term =
     m :< WT.Prim prim -> do
       prim' <- mapM (fill sub) prim
       return $ m :< WT.Prim prim'
-    m :< WT.Aster i es -> do
+    m :< WT.Hole i es -> do
       es' <- mapM (fill sub) es
       case lookup i sub of
         Just (xs, body)
@@ -85,7 +85,7 @@ fill sub term =
           | otherwise ->
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
-          return $ m :< WT.Aster i es'
+          return $ m :< WT.Hole i es'
     m :< WT.Question e t -> do
       e' <- fill sub e
       t' <- fill sub t

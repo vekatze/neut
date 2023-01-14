@@ -47,7 +47,7 @@ type DefMap = Map.HashMap DD.DefiniteDescription WT.WeakTerm
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WT.WeakTerm])]
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WT.WeakTerm])]
-  | StuckPiElimAster HID.HoleID [WT.WeakTerm]
+  | StuckPiElimHole HID.HoleID [WT.WeakTerm]
 
 unify :: Context m => [C.Constraint] -> m HS.HoleSubst
 unify constraintList = do
@@ -195,13 +195,13 @@ simplify constraintList =
               defMap <- getDefMap
               let fmvs = S.union fmvs1 fmvs2
               case (asStuckedTerm e1, asStuckedTerm e2) of
-                (Just (StuckPiElimAster h1 ies1), _)
+                (Just (StuckPiElimHole h1 ies1), _)
                   | Just xss1 <- mapM asIdent ies1,
                     Just argSet1 <- toLinearIdentSet xss1,
                     h1 `S.notMember` fmvs2,
                     fvs2 `S.isSubsetOf` argSet1 ->
                       resolveHole h1 xss1 e2 cs
-                (_, Just (StuckPiElimAster h2 ies2))
+                (_, Just (StuckPiElimHole h2 ies2))
                   | Just xss2 <- mapM asIdent ies2,
                     Just argSet2 <- toLinearIdentSet xss2,
                     h2 `S.notMember` fmvs1,
@@ -222,12 +222,12 @@ simplify constraintList =
                   | Just lam1 <- Map.lookup g1 defMap,
                     Just lam2 <- Map.lookup g2 defMap ->
                       simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
-                (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimAster {})
+                (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimHole {})
                   | Just lam <- Map.lookup g1 defMap -> do
                       let uc = C.SuspendedConstraint (fmvs, C.Delta (toPiElim lam mess1, e2), headConstraint)
                       insertConstraint uc
                       simplify cs
-                (Just StuckPiElimAster {}, Just (StuckPiElimVarGlobal g2 mess2))
+                (Just StuckPiElimHole {}, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap -> do
                       let uc = C.SuspendedConstraint (fmvs, C.Delta (e1, toPiElim lam mess2), headConstraint)
                       insertConstraint uc
@@ -281,7 +281,7 @@ simplifyBinder' orig sub args1 args2 =
 
 asWeakBinder :: Context m => Hint -> WT.WeakTerm -> m (BinderF WT.WeakTerm)
 asWeakBinder m t = do
-  h <- Gensym.newIdentFromText "aster"
+  h <- Gensym.newIdentFromText "hole"
   return (m, h, t)
 
 asPairList ::
@@ -308,8 +308,8 @@ asStuckedTerm term =
       Just $ StuckPiElimVarLocal x []
     (_ :< WT.VarGlobal g _) ->
       Just $ StuckPiElimVarGlobal g []
-    (_ :< WT.Aster h es) ->
-      Just $ StuckPiElimAster h es
+    (_ :< WT.Hole h es) ->
+      Just $ StuckPiElimHole h es
     (m :< WT.PiElim e es) ->
       case asStuckedTerm e of
         Just (StuckPiElimVarLocal x ess) ->

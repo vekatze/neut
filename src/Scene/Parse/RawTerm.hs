@@ -89,7 +89,7 @@ rawTermSimple = do
       rawTermTau,
       rawTermAdmitQuestion,
       rawTermAdmit,
-      rawTermAster,
+      rawTermHole,
       rawTermInteger,
       rawTermFloat,
       rawTermDefiniteDescription,
@@ -154,7 +154,7 @@ rawTermEmbody = do
   m <- getCurrentHint
   delimiter "*"
   e <- rawTermSimple
-  t <- lift $ Gensym.newPreAster m
+  t <- lift $ Gensym.newPreHole m
   raw <- lift $ Gensym.newTextualIdentFromText "raw"
   copied <- lift $ Gensym.newTextualIdentFromText "copied"
   original <- lift $ Gensym.newTextualIdentFromText "original"
@@ -184,11 +184,11 @@ rawTermTau = do
   try $ keyword "tau"
   return $ m :< RT.Tau
 
-rawTermAster :: Context m => Parser m RT.RawTerm
-rawTermAster = do
+rawTermHole :: Context m => Parser m RT.RawTerm
+rawTermHole = do
   m <- getCurrentHint
   delimiter "?"
-  lift $ Gensym.newPreAster m
+  lift $ Gensym.newPreHole m
 
 rawTermPi :: Context m => Parser m RT.RawTerm
 rawTermPi = do
@@ -273,7 +273,7 @@ rawTermQuestion = do
   m <- getCurrentHint
   try $ keyword "question"
   e <- rawTerm
-  h <- lift $ Gensym.newPreAster m
+  h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Question e h
 
 rawTermMagic :: Context m => Parser m RT.RawTerm
@@ -453,7 +453,7 @@ rawTermLetVar = do
         return (m, Ident.fromText x, a),
       do
         x <- symbol
-        h <- lift $ Gensym.newPreAster m
+        h <- lift $ Gensym.newPreHole m
         return (m, Ident.fromText x, h)
     ]
 
@@ -535,7 +535,7 @@ rawTermAdmit :: Context m => Parser m RT.RawTerm
 rawTermAdmit = do
   m <- getCurrentHint
   try $ keyword "admit"
-  h <- lift $ Gensym.newPreAster m
+  h <- lift $ Gensym.newPreHole m
   return $
     m
       :< RT.PiElim
@@ -548,7 +548,7 @@ rawTermAdmitQuestion :: Context m => Parser m RT.RawTerm
 rawTermAdmitQuestion = do
   m <- getCurrentHint
   try $ keyword "?admit"
-  h <- lift $ Gensym.newPreAster m
+  h <- lift $ Gensym.newPreHole m
   return $
     m
       :< RT.Question
@@ -572,7 +572,7 @@ rawTermPiElim = do
     then return $ foldl' (\base args -> m :< RT.PiElim base args) e $ es : ess
     else do
       f <- lift $ Gensym.newTextualIdentFromText "func"
-      h <- lift $ Gensym.newPreAster m
+      h <- lift $ Gensym.newPreHole m
       return $
         m
           :< RT.Let
@@ -623,7 +623,7 @@ typeWithoutIdent = do
 preAscription' :: Context m => Parser m (BinderF RT.RawTerm)
 preAscription' = do
   (m, x) <- preSimpleIdent
-  h <- lift $ Gensym.newPreAster m
+  h <- lift $ Gensym.newPreHole m
   return (m, x, h)
 
 preSimpleIdent :: Context m => Parser m (Hint, Ident)
@@ -689,14 +689,14 @@ rawTermInteger :: Context m => Parser m RT.RawTerm
 rawTermInteger = do
   m <- getCurrentHint
   intValue <- try integer
-  h <- lift $ Gensym.newPreAster m
+  h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Int h intValue))
 
 rawTermFloat :: Context m => Parser m RT.RawTerm
 rawTermFloat = do
   m <- getCurrentHint
   floatValue <- try float
-  h <- lift $ Gensym.newPreAster m
+  h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
 
 lam :: Hint -> [BinderF RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
@@ -713,7 +713,7 @@ preVar' m ident =
 
 -- castFromNoema :: Context m => RT.RawTerm -> m RT.RawTerm
 -- castFromNoema tree@(m :< _) = do
---   baseType <- Gensym.newPreAster m
+--   baseType <- Gensym.newPreHole m
 --   return $ m :< RT.Magic (M.Cast (wrapWithNoema baseType) baseType tree)
 
 -- castToNoema :: RT.RawTerm -> RT.RawTerm -> RT.RawTerm

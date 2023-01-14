@@ -34,7 +34,7 @@ fallbackRow nenv cursor (patternVector, (freedVars, body)) =
     Just ((_, WildcardVar), rest) ->
       return $ Just (rest, (freedVars, body))
     Just ((m, Var x), rest) -> do
-      h <- Gensym.newAster m (asHoleArgs nenv)
+      h <- Gensym.newHole m (asHoleArgs nenv)
       let body' = m :< WT.Let WT.Transparent (m, x, h) (m :< WT.Var cursor) body
       return $ Just (rest, (freedVars, body'))
     Just ((_, Cons {}), _) ->

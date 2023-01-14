@@ -74,9 +74,9 @@ subst sub term =
     m :< WT.Prim prim -> do
       prim' <- mapM (subst sub) prim
       return $ m :< WT.Prim prim'
-    m :< WT.Aster holeID args -> do
+    m :< WT.Hole holeID args -> do
       args' <- mapM (subst sub) args
-      return $ m :< WT.Aster holeID args'
+      return $ m :< WT.Hole holeID args'
     m :< WT.Question e t -> do
       e' <- subst sub e
       t' <- subst sub t

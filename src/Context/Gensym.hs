@@ -1,8 +1,8 @@
 module Context.Gensym
   ( Context (..),
     newText,
-    newAster,
-    newPreAster,
+    newHole,
+    newPreHole,
     newIdentFromText,
     newIdentFromIdent,
     newValueVarLocalWith,
@@ -31,17 +31,17 @@ newText = do
   i <- newCount
   return $ ";" <> T.pack (show i)
 
-{-# INLINE newPreAster #-}
-newPreAster :: Context m => Hint -> m RT.RawTerm
-newPreAster m = do
+{-# INLINE newPreHole #-}
+newPreHole :: Context m => Hint -> m RT.RawTerm
+newPreHole m = do
   i <- HoleID <$> newCount
-  return $ m :< RT.Aster i
+  return $ m :< RT.Hole i
 
-{-# INLINE newAster #-}
-newAster :: Context m => Hint -> [WT.WeakTerm] -> m WT.WeakTerm
-newAster m varSeq = do
+{-# INLINE newHole #-}
+newHole :: Context m => Hint -> [WT.WeakTerm] -> m WT.WeakTerm
+newHole m varSeq = do
   i <- HoleID <$> newCount
-  return $ m :< WT.Aster i varSeq
+  return $ m :< WT.Hole i varSeq
 
 {-# INLINE newIdentFromText #-}
 newIdentFromText :: Context m => T.Text -> m Ident

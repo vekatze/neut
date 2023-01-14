@@ -35,7 +35,7 @@ data WeakTermF a
   | SigmaElim [BinderF a] a a
   | Noema a
   | Let LetOpacity (BinderF a) a a
-  | Aster HoleID [WeakTerm] -- ?M @ (e1, ..., en)
+  | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Prim (WP.WeakPrim a)
   | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)

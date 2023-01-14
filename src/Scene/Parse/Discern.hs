@@ -127,7 +127,7 @@ discern nenv term =
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic) es
-      ts <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) es'
+      ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
@@ -154,8 +154,8 @@ discern nenv term =
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
-    m :< RT.Aster k ->
-      return $ m :< WT.Aster k (asHoleArgs nenv)
+    m :< RT.Hole k ->
+      return $ m :< WT.Hole k (asHoleArgs nenv)
     m :< RT.Question e t -> do
       e' <- discern nenv e
       t' <- discern nenv t
@@ -194,7 +194,7 @@ attachPrefix nenv binder cont@(m :< _) =
     (y, e) : rest -> do
       e' <- castToNoema nenv e
       cont' <- attachPrefix nenv rest cont
-      h <- Gensym.newAster m (asHoleArgs nenv)
+      h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
 
 attachSuffix :: Context m => NominalEnv -> [(Ident, Ident)] -> WT.WeakTerm -> m WT.WeakTerm
@@ -205,18 +205,18 @@ attachSuffix nenv binder cont@(m :< _) =
     (yCont, yLocal) : rest -> do
       yLocal' <- castFromNoema nenv (m :< WT.Var yLocal)
       cont' <- attachSuffix nenv rest cont
-      h <- Gensym.newAster m (asHoleArgs nenv)
+      h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
 
 castToNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
 castToNoema nenv e@(m :< _) = do
-  t <- Gensym.newAster m (asHoleArgs nenv)
+  t <- Gensym.newHole m (asHoleArgs nenv)
   let tNoema = m :< WT.Noema t
   return $ m :< WT.Magic (M.Cast t tNoema e)
 
 castFromNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
 castFromNoema nenv e@(m :< _) = do
-  t <- Gensym.newAster m (asHoleArgs nenv)
+  t <- Gensym.newHole m (asHoleArgs nenv)
   let tNoema = m :< WT.Noema t
   return $ m :< WT.Magic (M.Cast tNoema t e)
 
@@ -474,8 +474,8 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
               clauseList <- forM headConstructors $ \(cons, disc, dataArity, consArity, _) -> do
-                dataHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
-                dataTypeHoles <- mapM (const $ Gensym.newAster m (asHoleArgs nenv)) [1 .. A.reify dataArity]
+                dataHoles <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify dataArity]
+                dataTypeHoles <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify dataArity]
                 consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
                 (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
@@ -484,7 +484,7 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
                 return (DT.Cons cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix nenv cursor mat
               fallbackClause <- compilePatternMatrix nenv isNoetic m (V.tail occurrences) fallbackMatrix
-              t <- Gensym.newAster m (asHoleArgs nenv)
+              t <- Gensym.newHole m (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
 alignLetBody :: Context m => NominalEnv -> N.IsNoetic -> Hint -> Ident -> m WT.WeakTerm
@@ -501,7 +501,7 @@ alignConsArgs nenv binder =
     [] -> do
       return ([], nenv)
     (mx, x) : xts -> do
-      t <- Gensym.newPreAster mx
+      t <- Gensym.newPreHole mx
       t' <- discern nenv t
       (xts', nenv') <- alignConsArgs ((Ident.toText x, (mx, x)) : nenv) xts
       return ((mx, x, t') : xts', nenv')
@@ -520,7 +520,7 @@ bindLet nenv m binder cont =
     (Nothing, _) : xes -> do
       bindLet nenv m xes cont
     (Just from, to) : xes -> do
-      h <- Gensym.newAster m (asHoleArgs nenv)
+      h <- Gensym.newHole m (asHoleArgs nenv)
       cont' <- bindLet nenv m xes cont
       return $ m :< WT.Let WT.Transparent (m, from, h) to cont'
 
@@ -538,6 +538,6 @@ bindLet nenv m binder cont =
 --     (Nothing, _) : xes -> do
 --       bindLet nenv m xes cont
 --     (Just from, to) : xes -> do
---       h <- Gensym.newAster m (asHoleArgs nenv)
+--       h <- Gensym.newHole m (asHoleArgs nenv)
 --       cont' <- bindLet nenv m xes cont
 --       return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'

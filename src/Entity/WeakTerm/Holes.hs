@@ -46,7 +46,7 @@ holes term =
       let set1 = holes e1
       let set2 = holes' [mxt] (holes e2)
       S.union set1 set2
-    _ :< WT.Aster h es ->
+    _ :< WT.Hole h es ->
       S.insert h $ S.unions $ map holes es
     _ :< WT.Prim prim ->
       foldMap holes prim
