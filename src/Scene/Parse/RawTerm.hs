@@ -75,6 +75,7 @@ rawTermEasy = do
       rawTermLetCoproduct,
       try rawTermLetOn,
       rawTermLet,
+      rawTermEmbody,
       try rawTermPi,
       try rawTermPiElim,
       try rawTermPiElimInv,
@@ -147,6 +148,21 @@ rawTermLetCoproduct = do
               )
             ]
         )
+
+rawTermEmbody :: Context m => Parser m RT.RawTerm
+rawTermEmbody = do
+  m <- getCurrentHint
+  delimiter "*"
+  e <- rawTermSimple
+  t <- lift $ Gensym.newPreAster m
+  raw <- lift $ Gensym.newTextualIdentFromText "raw"
+  copied <- lift $ Gensym.newTextualIdentFromText "copied"
+  original <- lift $ Gensym.newTextualIdentFromText "original"
+  return $
+    bind (m, raw, t) (m :< RT.Magic (M.Cast (m :< RT.Noema t) t e)) $
+      bind (m, original, m :< RT.Noema t) (m :< RT.Magic (M.Cast t (m :< RT.Noema t) (m :< RT.Var raw))) $
+        bind (m, copied, t) (m :< RT.Var raw) $
+          m :< RT.Var copied
 
 rawTermVoid :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
 rawTermVoid m e1 = do

@@ -7,12 +7,9 @@ define main(): i64 =
   let config-record = foo.new(3, 8) in
   let k on config-record =
     let s1 = foo.value-1(config-record) in
-    let s2 = foo.value-1(config-record) in
+    let s2 = *(foo.value-1(config-record)) in
     let s3 = foo.value-1(config-record) in
-    let s1 = magic cast(?, ?, s1) in
-    let s2 = magic cast(?, ?, s2) in
-    let s3 = magic cast(?, ?, s3) in
-    add-i64(s1, add-i64(s2, s3))
+    add-i64(*s1, add-i64(s2, *s3))
   in
   k
 end
