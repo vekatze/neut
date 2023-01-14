@@ -710,16 +710,3 @@ preVar m str =
 preVar' :: Hint -> Ident -> RT.RawTerm
 preVar' m ident =
   m :< RT.Var ident
-
--- castFromNoema :: Context m => RT.RawTerm -> m RT.RawTerm
--- castFromNoema tree@(m :< _) = do
---   baseType <- Gensym.newPreHole m
---   return $ m :< RT.Magic (M.Cast (wrapWithNoema baseType) baseType tree)
-
--- castToNoema :: RT.RawTerm -> RT.RawTerm -> RT.RawTerm
--- castToNoema baseType tree@(m :< _) = do
---   m :< RT.Magic (M.Cast baseType (wrapWithNoema baseType) tree)
-
--- wrapWithNoema :: RT.RawTerm -> RT.RawTerm
--- wrapWithNoema baseType@(m :< _) = do
---   m :< RT.Noema baseType

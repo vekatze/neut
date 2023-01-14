@@ -21,7 +21,3 @@ class Monad m => Context m where
   writeText :: Path Abs File -> T.Text -> m ()
   parseRelFile :: FilePath -> m (Path Rel File)
   removeDirRecur :: Path Abs Dir -> m ()
-
--- newtype Config = Config
---   { throwCtx :: Throw.Context
---   }

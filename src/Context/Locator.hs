@@ -42,21 +42,3 @@ class Monad m => Context m where
   withSection :: S.Section -> m a -> m a
   withSection section action =
     runIdentityT $ withLiftedSection section $ lift action
-
--- withSection :: forall a m. MonadIO m => S.Section -> m a -> m a
--- data Config = Config
---   { mainModule :: Module,
---     currentSource :: Source,
---     throwCtx :: Throw.Context,
---     pathCtx :: Path.Context,
---     moduleCtx :: Module.Context
---   }
-
--- getMainDefiniteDescription :: Context -> IO DD.DefiniteDescription
--- getMainDefiniteDescription ctx = do
---   attachCurrentLocator ctx BN.main
-
--- isMainFile :: Context -> Source -> IO Bool
--- isMainFile ctx source = do
---   sourcePathList <- mapM (getSourcePath ctx) $ Map.elems $ moduleTarget (sourceModule source)
---   return $ elem (sourceFilePath source) sourcePathList
