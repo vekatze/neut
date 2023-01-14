@@ -8,6 +8,7 @@ import qualified Context.Path as Path
 import Context.Throw
 import Control.Monad
 import qualified Data.HashMap.Strict as Map
+import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Entity.BaseName as BN
 import Entity.Ens
@@ -65,6 +66,11 @@ interpretDependencyDict ::
 interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
     k' <- BN.reflect m k
+    when (S.member k' BN.reservedAlias) $
+      raiseError m $
+        "the reserved name `"
+          <> BN.reify k'
+          <> "` cannot be used as an alias of a module"
     (_, url) <- access "URL" ens >>= toString
     (_, checksum) <- access "checksum" ens >>= toString
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))

@@ -29,12 +29,14 @@ module Entity.BaseName
     arrayType,
     malloc,
     free,
+    reservedAlias,
   )
 where
 
 import qualified Context.Throw as Throw
 import Data.Binary
 import Data.Hashable
+import qualified Data.Set as S
 import qualified Data.Text as T
 import Entity.Const
 import qualified Entity.Hint as H
@@ -183,3 +185,10 @@ fromText txt =
         "Entity.BaseName.fromText: given text `"
           <> T.unpack txt
           <> "` contains '.'"
+
+reservedAlias :: S.Set BaseName
+reservedAlias =
+  S.fromList
+    [ this,
+      base
+    ]
