@@ -64,7 +64,6 @@ rawTermEasy = do
       rawTermPiIntroDef,
       rawTermNoema,
       rawTermIntrospect,
-      rawTermQuestion,
       rawTermMagic,
       rawTermMatchNoetic,
       rawTermMatch,
@@ -84,7 +83,6 @@ rawTermSimple = do
   choice
     [ rawTermParen,
       rawTermTau,
-      rawTermAdmitQuestion,
       rawTermAdmit,
       rawTermHole,
       rawTermInteger,
@@ -256,15 +254,6 @@ parseLocalLocator = do
   m <- getCurrentHint
   rawTxt <- symbol
   lift $ LL.reflect m rawTxt
-
--- question e
-rawTermQuestion :: Context m => Parser m RT.RawTerm
-rawTermQuestion = do
-  m <- getCurrentHint
-  try $ keyword "question"
-  e <- rawTerm
-  h <- lift $ Gensym.newPreHole m
-  return $ m :< RT.Question e h
 
 rawTermMagic :: Context m => Parser m RT.RawTerm
 rawTermMagic = do
@@ -511,23 +500,6 @@ rawTermAdmit = do
         [ h,
           m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
         ]
-
-rawTermAdmitQuestion :: Context m => Parser m RT.RawTerm
-rawTermAdmitQuestion = do
-  m <- getCurrentHint
-  try $ keyword "?admit"
-  h <- lift $ Gensym.newPreHole m
-  return $
-    m
-      :< RT.Question
-        ( m
-            :< RT.PiElim
-              (preVar m "os.exit")
-              [ h,
-                m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
-              ]
-        )
-        h
 
 rawTermPiElim :: Context m => Parser m RT.RawTerm
 rawTermPiElim = do

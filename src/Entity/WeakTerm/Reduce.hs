@@ -68,8 +68,6 @@ reduce term =
         _ -> do
           let sub = IntMap.fromList [(Ident.toInt x, e1')]
           Subst.subst sub e2
-    _ :< WT.Question e _ ->
-      reduce e
     m :< WT.Magic der -> do
       der' <- mapM reduce der
       return $ m :< WT.Magic der'

@@ -146,10 +146,6 @@ discern nenv term =
       return $ m :< WT.Prim prim'
     m :< RT.Hole k ->
       return $ m :< WT.Hole k (asHoleArgs nenv)
-    m :< RT.Question e t -> do
-      e' <- discern nenv e
-      t' <- discern nenv t
-      return $ m :< WT.Question e' t'
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'

@@ -161,8 +161,6 @@ simplify constraintList =
             WP.Value (WPV.Op op2) <- a2,
             op1 == op2 ->
               simplify cs
-        (_ :< WT.Question e1 t1, _ :< WT.Question e2 t2) ->
-          simplify $ ((e1, e2), orig) : ((t1, t2), orig) : cs
         (e1, e2) -> do
           sub <- Env.getHoleSubst
           let fvs1 = freeVars e1

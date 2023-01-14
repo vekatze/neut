@@ -42,10 +42,6 @@ holes term =
       S.insert h $ S.unions $ map holes es
     _ :< WT.Prim prim ->
       foldMap holes prim
-    _ :< WT.Question e t -> do
-      let set1 = holes e
-      let set2 = holes t
-      S.union set1 set2
     _ :< WT.Magic der ->
       foldMap holes der
 

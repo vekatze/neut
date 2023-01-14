@@ -42,7 +42,6 @@ data RawTermF a
   | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Hole HoleID
   | Prim (WP.WeakPrim a)
-  | Question a a -- e : t (output the type `t` as note)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
 
 type DefInfo =

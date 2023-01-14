@@ -61,8 +61,6 @@ toText term =
       showPrim prim
     _ :< WT.Hole i es ->
       showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
-    _ :< WT.Question e _ ->
-      toText e
     _ :< WT.Magic m -> do
       let a = fmap toText m
       showCons [T.pack $ show a]

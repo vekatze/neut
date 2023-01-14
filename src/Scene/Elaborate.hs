@@ -253,11 +253,6 @@ elaborate' term =
                       <> toText (weaken t')
             WPV.Op op ->
               return $ m :< TM.Prim (P.Value (PV.Op op))
-    m :< WT.Question e t -> do
-      e' <- elaborate' e
-      t' <- elaborate' t
-      Log.printNote m $ toText (weaken t')
-      return e'
     m :< WT.Magic der -> do
       der' <- mapM elaborate' der
       return $ m :< TM.Magic der'

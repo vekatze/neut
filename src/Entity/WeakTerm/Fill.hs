@@ -76,10 +76,6 @@ fill sub term =
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
           return $ m :< WT.Hole i es'
-    m :< WT.Question e t -> do
-      e' <- fill sub e
-      t' <- fill sub t
-      return $ m :< WT.Question e' t'
     m :< WT.Magic der -> do
       der' <- mapM (fill sub) der
       return $ m :< WT.Magic der'

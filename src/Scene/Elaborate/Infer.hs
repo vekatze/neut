@@ -153,9 +153,6 @@ infer' varEnv term =
             WPV.Op op -> do
               primOpType <- primOpToType m op
               return (term, weaken primOpType)
-    m :< WT.Question e _ -> do
-      (e', te) <- infer' varEnv e
-      return (m :< WT.Question e' te, te)
     m :< WT.Magic der -> do
       case der of
         M.Cast from to value -> do

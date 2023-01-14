@@ -67,10 +67,6 @@ subst sub term =
     m :< WT.Hole holeID args -> do
       args' <- mapM (subst sub) args
       return $ m :< WT.Hole holeID args'
-    m :< WT.Question e t -> do
-      e' <- subst sub e
-      t' <- subst sub t
-      return $ m :< WT.Question e' t'
     m :< WT.Magic der -> do
       der' <- mapM (subst sub) der
       return $ m :< WT.Magic der'
