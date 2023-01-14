@@ -119,20 +119,6 @@ infer' varEnv term =
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', treeType) <- inferDecisionTree m varEnv tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
-    m :< WT.Sigma xts -> do
-      (xts', _) <- inferPi varEnv xts (m :< WT.Tau)
-      return (m :< WT.Sigma xts', m :< WT.Tau)
-    m :< WT.SigmaIntro es -> do
-      ets <- mapM (infer' varEnv) es
-      ys <- mapM (const $ Gensym.newIdentFromText "arg") es
-      yts <- newTypeHoleList varEnv $ zip ys (map WT.metaOf es)
-      _ <- inferArgs IntMap.empty m ets yts (m :< WT.Tau)
-      return (m :< WT.SigmaIntro (map fst ets), m :< WT.Sigma yts)
-    m :< WT.SigmaElim xts e1 e2 -> do
-      (e1', t1') <- infer' varEnv e1
-      (xts', (e2', t)) <- inferBinder varEnv xts e2
-      Env.insConstraintEnv (m :< WT.Sigma xts') t1'
-      return (m :< WT.SigmaElim xts' e1' e2', t)
     m :< WT.Noema t -> do
       t' <- inferType' varEnv t
       return (m :< WT.Noema t', m :< WT.Tau)

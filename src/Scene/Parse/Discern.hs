@@ -136,16 +136,6 @@ discern nenv term =
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
       return $ m :< WT.PiElim e' es'
-    m :< RT.Sigma xts -> do
-      (xts', _) <- discernBinderWithBody nenv xts (m :< RT.Tau)
-      return $ m :< WT.Sigma xts'
-    m :< RT.SigmaIntro es -> do
-      es' <- mapM (discern nenv) es
-      return $ m :< WT.SigmaIntro es'
-    m :< RT.SigmaElim xts e1 e2 -> do
-      e1' <- discern nenv e1
-      (xts', e2') <- discernBinderWithBody nenv xts e2
-      return $ m :< WT.SigmaElim xts' e1' e2'
     m :< RT.Noema t -> do
       t' <- discern nenv t
       return $ m :< WT.Noema t'

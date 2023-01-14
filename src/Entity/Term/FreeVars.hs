@@ -46,14 +46,6 @@ freeVars term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< TM.Sigma xts ->
-      freeVars' xts S.empty
-    _ :< TM.SigmaIntro es ->
-      S.unions $ map freeVars es
-    _ :< TM.SigmaElim xts e1 e2 -> do
-      let set1 = freeVars e1
-      let set2 = freeVars' xts (freeVars e2)
-      S.union set1 set2
     _ :< TM.Noema t ->
       freeVars t
     _ :< TM.Prim _ ->

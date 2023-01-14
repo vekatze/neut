@@ -63,12 +63,6 @@ weaken term =
       let ts' = map weaken ts
       let tree' = weakenDecisionTree tree
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< TM.Sigma xts ->
-      m :< WT.Sigma (map weakenBinder xts)
-    m :< TM.SigmaIntro es ->
-      m :< WT.SigmaIntro (map weaken es)
-    m :< TM.SigmaElim xts e1 e2 -> do
-      m :< WT.SigmaElim (map weakenBinder xts) (weaken e1) (weaken e2)
     m :< TM.Noema t ->
       m :< WT.Noema (weaken t)
     m :< TM.Prim prim ->

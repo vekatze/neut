@@ -54,16 +54,6 @@ subst sub term =
       (binder', decisionTree') <- subst''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.Sigma xts -> do
-      (xts', _) <- subst' sub xts (m :< WT.Tau)
-      return $ m :< WT.Sigma xts'
-    m :< WT.SigmaIntro es -> do
-      es' <- mapM (subst sub) es
-      return $ m :< WT.SigmaIntro es'
-    m :< WT.SigmaElim xts e1 e2 -> do
-      e1' <- subst sub e1
-      (xts', e2') <- subst' sub xts e2
-      return $ m :< WT.SigmaElim xts' e1' e2'
     m :< WT.Noema t -> do
       t' <- subst sub t
       return $ m :< WT.Noema t'

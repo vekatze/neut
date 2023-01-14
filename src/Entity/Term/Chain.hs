@@ -54,14 +54,6 @@ chainOf' tenv term =
       let mxts = zipWith (\x t -> (m, x, t)) xs ts
       let xs2 = chainOfDecisionTree' tenv m mxts tree
       xs1 ++ xs2
-    _ :< TM.Sigma xts ->
-      chainOfBinder tenv xts []
-    _ :< TM.SigmaIntro es ->
-      concatMap (chainOf' tenv) es
-    _ :< TM.SigmaElim xts e1 e2 -> do
-      let xs1 = chainOf' tenv e1
-      let xs2 = chainOfBinder tenv xts [e2]
-      xs1 ++ xs2
     _ :< TM.Noema t ->
       chainOf' tenv t
     _ :< TM.Prim _ ->

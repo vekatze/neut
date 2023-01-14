@@ -175,18 +175,6 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyTerm tenv) es
       tree' <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
       return $ bindLet (zip xs es') tree'
-    _ :< TM.Sigma {} -> do
-      return returnClosureS4
-    m :< TM.SigmaIntro es -> do
-      k <- Gensym.newIdentFromText "sigma"
-      clarifyTerm tenv $
-        m
-          :< TM.PiIntro
-            (LK.Normal O.Transparent)
-            [(m, k, m :< TM.Pi [] (m :< TM.Tau))]
-            (m :< TM.PiElim (m :< TM.Var k) es)
-    m :< TM.SigmaElim xts e1 e2 -> do
-      clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro (LK.Normal O.Transparent) xts e2]
     _ :< TM.Noema {} ->
       return returnImmediateS4
     m :< TM.Prim prim ->

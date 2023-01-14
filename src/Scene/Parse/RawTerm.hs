@@ -62,8 +62,6 @@ rawTermEasy = do
   choice
     [ rawTermPiIntro,
       rawTermPiIntroDef,
-      rawTermSigma,
-      rawTermSigmaIntro,
       rawTermNoema,
       rawTermIntrospect,
       rawTermQuestion,
@@ -71,7 +69,6 @@ rawTermEasy = do
       rawTermMatchNoetic,
       rawTermMatch,
       rawTermIf,
-      try rawTermLetSigmaElim,
       rawTermLetCoproduct,
       try rawTermLetOn,
       rawTermLet,
@@ -239,13 +236,6 @@ rawTermPiIntroDef = do
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
   let piType = mFun :< RT.Pi domBinderList codType
   return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
-
-rawTermSigma :: Context m => Parser m RT.RawTerm
-rawTermSigma = do
-  m <- getCurrentHint
-  try $ keyword "tuple"
-  ts <- argList $ choice [try preAscription, typeWithoutIdent]
-  return $ m :< RT.Sigma ts
 
 parseDefiniteDescription :: Context m => Parser m (Hint, GL.GlobalLocator, LL.LocalLocator)
 parseDefiniteDescription = do
@@ -430,18 +420,6 @@ rawTermPatternVar = do
   varText <- symbol
   return (m, RP.Var (Ident.fromText varText))
 
--- let (x1 : A1, ..., xn : An) = e1 in e2
-rawTermLetSigmaElim :: Context m => Parser m RT.RawTerm
-rawTermLetSigmaElim = do
-  m <- getCurrentHint
-  try $ keyword "let"
-  xts <- argList preBinder
-  delimiter "="
-  e1 <- rawTerm
-  keyword "in"
-  e2 <- rawTerm
-  return $ m :< RT.SigmaElim xts e1 e2
-
 rawTermLetVar :: Context m => Parser m (BinderF RT.RawTerm)
 rawTermLetVar = do
   m <- getCurrentHint
@@ -505,20 +483,10 @@ rawTermParen = do
   m <- getCurrentHint
   es <- argList rawTerm
   case es of
-    [] ->
-      return $ m :< RT.SigmaIntro []
     [e] ->
       return e
     _ ->
-      return $ m :< RT.SigmaIntro es
-
--- -- (e1, ..., en) (n >= 2)
-rawTermSigmaIntro :: Context m => Parser m RT.RawTerm
-rawTermSigmaIntro = do
-  m <- getCurrentHint
-  try $ keyword "tuple-new"
-  es <- argList rawTerm
-  return $ m :< RT.SigmaIntro es
+      lift $ Throw.raiseError m "found a non-singleton tuple"
 
 bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =

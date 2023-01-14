@@ -56,24 +56,6 @@ reduce term =
       ts' <- mapM reduce ts
       decisionTree' <- reduceDecisionTree decisionTree
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts') decisionTree'
-    m :< WT.Sigma xts -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduce ts
-      return $ m :< WT.Sigma (zip3 ms xs ts')
-    m :< WT.SigmaIntro es -> do
-      es' <- mapM reduce es
-      return $ m :< WT.SigmaIntro es'
-    m :< WT.SigmaElim xts e1 e2 -> do
-      e1' <- reduce e1
-      case e1' of
-        _ :< WT.SigmaIntro es
-          | length xts == length es -> do
-              let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs es
-              Subst.subst sub e2 >>= reduce
-        _ -> do
-          e2' <- reduce e2
-          return $ m :< WT.SigmaElim xts e1' e2'
     m :< WT.Noema t -> do
       t' <- reduce t
       return $ m :< WT.Noema t'

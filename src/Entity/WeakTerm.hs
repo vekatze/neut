@@ -30,9 +30,6 @@ data WeakTermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Sigma [BinderF a]
-  | SigmaIntro [a]
-  | SigmaElim [BinderF a] a a
   | Noema a
   | Let LetOpacity (BinderF a) a a
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)

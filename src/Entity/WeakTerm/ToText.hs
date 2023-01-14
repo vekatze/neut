@@ -53,12 +53,6 @@ toText term =
       if isNoetic
         then showCons ["match-noetic", showMatchArgs xets, showDecisionTree tree]
         else showCons ["match", showMatchArgs xets, showDecisionTree tree]
-    _ :< WT.Sigma xts ->
-      showCons ["sigma", showItems $ map showArg xts]
-    _ :< WT.SigmaIntro es ->
-      showCons $ "sigma-intro" : map toText es
-    _ :< WT.SigmaElim {} ->
-      "<sigma-elim>"
     _ :< WT.Noema t ->
       showCons ["noema", toText t]
     _ :< WT.Let _ (_, x, t) e1 e2 -> do

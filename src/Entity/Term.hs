@@ -30,9 +30,6 @@ data TermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Sigma [BinderF a]
-  | SigmaIntro [a]
-  | SigmaElim [BinderF a] a a
   | Noema a
   | Prim P.Prim
   | Magic (Magic a)
@@ -66,10 +63,6 @@ isValue term =
       True
     _ :< DataIntro _ _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
-    _ :< Sigma {} ->
-      True
-    _ :< SigmaIntro es ->
-      all isValue es
     _ ->
       False
 
@@ -101,13 +94,6 @@ containsNoema term =
     _ :< DataElim _ oets decisionTree -> do
       let (_, es, ts) = unzip3 oets
       any containsNoema (es ++ ts) || containsNoemaDecisionTree decisionTree
-    _ :< Sigma xts -> do
-      any (containsNoema . (\(_, _, t) -> t)) xts
-    _ :< SigmaIntro es ->
-      any containsNoema es
-    _ :< SigmaElim xts e1 e2 -> do
-      let ts = map (\(_, _, t) -> t) xts
-      any containsNoema $ e1 : e2 : ts
     _ :< Noema {} ->
       True
     _ :< Prim {} ->
@@ -176,13 +162,6 @@ containsPi term =
     _ :< DataElim _ oets decisionTree -> do
       let (_, es, ts) = unzip3 oets
       any containsPi (es ++ ts) || containsPiDecisionTree decisionTree
-    _ :< Sigma xts -> do
-      any (containsPi . (\(_, _, t) -> t)) xts
-    _ :< SigmaIntro es ->
-      any containsPi es
-    _ :< SigmaElim xts e1 e2 -> do
-      let ts = map (\(_, _, t) -> t) xts
-      any containsPi $ e1 : e2 : ts
     _ :< Noema t ->
       containsPi t
     _ :< Prim {} ->

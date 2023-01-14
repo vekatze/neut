@@ -192,17 +192,6 @@ elaborate' term =
       ts' <- mapM elaborate' ts
       tree' <- elaborateDecisionTree m tree
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< WT.Sigma xts -> do
-      xts' <- mapM elaborateWeakBinder xts
-      return $ m :< TM.Sigma xts'
-    m :< WT.SigmaIntro es -> do
-      es' <- mapM elaborate' es
-      return $ m :< TM.SigmaIntro es'
-    m :< WT.SigmaElim xts e1 e2 -> do
-      e1' <- elaborate' e1
-      xts' <- mapM elaborateWeakBinder xts
-      e2' <- elaborate' e2
-      return $ m :< TM.SigmaElim xts' e1' e2'
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'

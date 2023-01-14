@@ -38,9 +38,6 @@ data RawTermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
-  | Sigma [BinderF a]
-  | SigmaIntro [a]
-  | SigmaElim [BinderF a] a a
   | Noema a
   | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Hole HoleID
