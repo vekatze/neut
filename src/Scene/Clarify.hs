@@ -18,6 +18,7 @@ import qualified Data.HashMap.Strict as Map
 import qualified Data.IntMap as IntMap
 import Data.Maybe
 import qualified Data.Set as S
+import qualified Data.Text as T
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Binder
@@ -409,7 +410,7 @@ returnClosure tenv kind fvs xts e = do
     LK.Fix (_, name, _) -> do
       name' <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt name
       let cls = C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name' arity]
-      e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) IntMap.empty e
+      e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) e
       registerIfNecessary name' O.Opaque xts'' fvs'' e'
       return $ C.UpIntro cls
 

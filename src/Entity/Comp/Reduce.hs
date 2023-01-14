@@ -28,7 +28,7 @@ reduce term =
           case mDefValue of
             Just (O.Transparent, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-              subst sub IntMap.empty body >>= reduce
+              subst sub body >>= reduce
             _ ->
               return term
         _ ->
@@ -43,7 +43,7 @@ reduce term =
             C.SigmaIntro ds
               | length ds == length xs -> do
                   let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
-                  subst sub IntMap.empty e >>= reduce
+                  subst sub e >>= reduce
             _ -> do
               e' <- reduce e
               case e' of
@@ -68,7 +68,7 @@ reduce term =
       case e1' of
         C.UpIntro v -> do
           let sub = IntMap.fromList [(Ident.toInt x, v)]
-          subst sub IntMap.empty e2 >>= reduce
+          subst sub e2 >>= reduce
         C.UpElim y ey1 ey2 ->
           reduce $ C.UpElim y ey1 $ C.UpElim x ey2 e2 -- commutative conversion
         C.SigmaElim b yts vy ey ->
