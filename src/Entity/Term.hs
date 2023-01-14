@@ -15,7 +15,6 @@ import Entity.LamKind
 import qualified Entity.LamKind as LK
 import Entity.Magic
 import qualified Entity.Noema as N
-import qualified Entity.Opacity as O
 import qualified Entity.Prim as P
 import GHC.Generics (Generic)
 
@@ -35,7 +34,6 @@ data TermF a
   | SigmaIntro [a]
   | SigmaElim [BinderF a] a a
   | Noema a
-  | Let O.Opacity (BinderF a) a a
   | Prim P.Prim
   | Magic (Magic a)
   deriving (Show, Generic)
@@ -112,8 +110,6 @@ containsNoema term =
       any containsNoema $ e1 : e2 : ts
     _ :< Noema {} ->
       True
-    _ :< Let _ (_, _, t) e1 e2 ->
-      any containsNoema [t, e1, e2]
     _ :< Prim {} ->
       False
     _ :< Magic magic ->
@@ -189,8 +185,6 @@ containsPi term =
       any containsPi $ e1 : e2 : ts
     _ :< Noema t ->
       containsPi t
-    _ :< Let _ (_, _, t) e1 e2 ->
-      any containsPi [t, e1, e2]
     _ :< Prim {} ->
       False
     _ :< Magic magic ->

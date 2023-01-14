@@ -56,10 +56,6 @@ freeVars term =
       S.union set1 set2
     _ :< TM.Noema t ->
       freeVars t
-    _ :< TM.Let _ mxt e1 e2 -> do
-      let set1 = freeVars e1
-      let set2 = freeVars' [mxt] (freeVars e2)
-      S.union set1 set2
     _ :< TM.Prim _ ->
       S.empty
     _ :< TM.Magic der ->

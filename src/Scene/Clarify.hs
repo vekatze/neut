@@ -18,7 +18,6 @@ import qualified Data.HashMap.Strict as Map
 import qualified Data.IntMap as IntMap
 import Data.Maybe
 import qualified Data.Set as S
-import qualified Data.Text as T
 import qualified Entity.Arity as A
 import qualified Entity.BaseName as BN
 import Entity.Binder
@@ -190,8 +189,6 @@ clarifyTerm tenv term =
       clarifyTerm tenv $ m :< TM.PiElim e1 [m :< TM.PiIntro (LK.Normal O.Transparent) xts e2]
     _ :< TM.Noema {} ->
       return returnImmediateS4
-    m :< TM.Let opacity mxt e1 e2 -> do
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro (LK.Normal opacity) [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
         P.Type _ ->

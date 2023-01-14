@@ -221,7 +221,8 @@ elaborate' term =
               return ()
         _ ->
           return ()
-      return $ m :< TM.Let (WT.reifyOpacity opacity) mxt' e1' e2'
+      let lamKind = LK.Normal (WT.reifyOpacity opacity)
+      return $ m :< TM.PiElim (m :< TM.PiIntro lamKind [mxt'] e2') [e1']
     m :< WT.Aster h es -> do
       holeSubst <- Env.getHoleSubst
       case HS.lookup h holeSubst of

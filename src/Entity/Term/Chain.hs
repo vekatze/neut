@@ -64,10 +64,6 @@ chainOf' tenv term =
       xs1 ++ xs2
     _ :< TM.Noema t ->
       chainOf' tenv t
-    _ :< TM.Let _ mxt e1 e2 -> do
-      let xs1 = chainOf' tenv e1
-      let xs2 = chainOfBinder tenv [mxt] [e2]
-      xs1 ++ xs2
     _ :< TM.Prim _ ->
       []
     _ :< TM.Magic der ->

@@ -71,16 +71,6 @@ reduce term =
         _ -> do
           e2' <- reduce e2
           return $ m :< TM.SigmaElim xts e1' e2'
-    m :< TM.Let opacity (mx, x, t) e1 e2 -> do
-      e1' <- reduce e1
-      if TM.isValue e1' && not (O.isOpaque opacity)
-        then do
-          let sub = IntMap.fromList [(Ident.toInt x, e1')]
-          Subst.subst sub e2
-        else do
-          t' <- reduce t
-          e2' <- reduce e2
-          return $ m :< TM.Let opacity (mx, x, t') e1' e2'
     (m :< TM.Magic der) -> do
       der' <- traverse reduce der
       return (m :< TM.Magic der')
