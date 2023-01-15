@@ -10,6 +10,29 @@ define-codata bar(a: tau) =
 - value: a
 end
 
+define-codata stream(a: tau) =
+- head: a
+- tail: () -> stream(a)
+end
+
+define int-stream(x: i64): stream(i64) =
+  stream.new(x, lambda (). int-stream(add-i64(x, 1)))
+end
+
+define tail<a>(s: stream(a)): stream(a) =
+  match s with
+  - stream.new(_, tail-generator) ->
+    tail-generator()
+  end
+end
+
+define head<a>(s: stream(a)): a =
+  match s with
+  - stream.new(v, _) ->
+    v
+  end
+end
+
 define main(): i64 =
   let inner = bar.new(10) in
   let config = foo.new(3, 8, inner) in
@@ -20,5 +43,7 @@ define main(): i64 =
     let s4 = config[value-3][bar.value] in
     add-i64(*s1, add-i64(s2, add-i64(*s3, *s4)))
   in
-  k
+  let some-stream = int-stream(3) in
+  let value = some-stream[tail][tail][tail][tail][tail][head] in
+  add-i64(k, value)
 end

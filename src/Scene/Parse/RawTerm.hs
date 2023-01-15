@@ -15,7 +15,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
 import Data.Bifunctor
-import Data.List
 import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Vector as V
@@ -79,7 +78,6 @@ rawTermBasic' = do
     [ rawTermNoema,
       rawTermEmbody,
       try rawTermPiElim,
-      try rawTermPiElimInv,
       rawTermSimple
     ]
 
@@ -517,33 +515,41 @@ rawTermPiElim :: Context m => Parser m RT.RawTerm
 rawTermPiElim = do
   m <- getCurrentHint
   e <- rawTermSimple
-  impArgs <- impArgList rawTerm
-  es <- argList rawTerm
-  ess <- many $ argList rawTerm
-  if null impArgs
-    then return $ foldl' (\base args -> m :< RT.PiElim base args) e $ es : ess
-    else do
-      f <- lift $ Gensym.newTextualIdentFromText "func"
-      h <- lift $ Gensym.newPreHole m
-      return $
-        m
-          :< RT.Let
-            (m, f, h)
-            []
-            e
-            ( foldl'
-                (\base args -> m :< RT.PiElim base args)
-                (m :< RT.Var f)
-                ((impArgs ++ es) : ess)
-            )
+  elems <- some $ choice [rawTermPiElimForwardBracket, rawTermPiElimBackwardBracket]
+  foldPiElimBracket m e elems
 
-rawTermPiElimInv :: Context m => Parser m RT.RawTerm
-rawTermPiElimInv = do
-  m <- getCurrentHint
-  e <- rawTermSimple
+data PiElimBracket
+  = PiElimBracketForward [RT.RawTerm] [RT.RawTerm] -- f<imp-arg-1, ..., imp-arg-n>(arg-1, ..., arg-m)
+  | PiElimBracketBackward RT.RawTerm -- e[f]
+
+rawTermPiElimForwardBracket :: Context m => Parser m PiElimBracket
+rawTermPiElimForwardBracket = do
+  impBrackets <- impArgList rawTerm
+  es <- argList rawTerm
+  return $ PiElimBracketForward impBrackets es
+
+rawTermPiElimBackwardBracket :: Context m => Parser m PiElimBracket
+rawTermPiElimBackwardBracket = do
   f <- betweenBracket rawTerm
-  fs <- many $ betweenBracket rawTerm
-  return $ foldl' (\base func -> m :< RT.PiElim func [base]) e $ f : fs
+  return $ PiElimBracketBackward f
+
+foldPiElimBracket :: Context m => Hint -> RT.RawTerm -> [PiElimBracket] -> Parser m RT.RawTerm
+foldPiElimBracket m e elemList =
+  case elemList of
+    [] ->
+      return e
+    bracket : rest ->
+      case bracket of
+        PiElimBracketForward impArgs args ->
+          if null impArgs
+            then foldPiElimBracket m (m :< RT.PiElim e args) rest
+            else do
+              f <- lift $ Gensym.newTextualIdentFromText "func"
+              h <- lift $ Gensym.newPreHole m
+              let e' = m :< RT.Let (m, f, h) [] e (m :< RT.PiElim (m :< RT.Var f) (impArgs ++ args))
+              foldPiElimBracket m e' rest
+        PiElimBracketBackward func ->
+          foldPiElimBracket m (m :< RT.PiElim func [e]) rest
 
 --
 -- term-related helper functions
