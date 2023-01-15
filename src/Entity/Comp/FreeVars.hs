@@ -19,9 +19,7 @@ freeVarsComp c =
       S.union s1 s2
     C.UpIntro v ->
       freeVarsValue v
-    C.UpIntroLocal v ->
-      freeVarsValue v
-    C.UpElim x e1 e2 -> do
+    C.UpElim _ x e1 e2 -> do
       let s1 = freeVarsComp e1
       let s2 = S.filter (/= x) $ freeVarsComp e2
       S.union s1 s2

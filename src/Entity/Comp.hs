@@ -34,12 +34,13 @@ instance Show Value where
       Entity.Comp.Float _ f ->
         show f
 
+type IsReducible = Bool
+
 data Comp
   = PiElimDownElim Value [Value] -- ((force v) v1 ... vn)
   | SigmaElim ShouldDeallocate [Ident] Value Comp
   | UpIntro Value
-  | UpIntroLocal Value
-  | UpElim Ident Comp Comp
+  | UpElim IsReducible Ident Comp Comp
   | EnumElim Value Comp [(EnumCase, Comp)]
   | Primitive Primitive
   | Unreachable
@@ -54,10 +55,9 @@ instance Show Comp where
         h ++ " (" ++ intercalate "," (map show xs) ++ ") = " ++ show v ++ "\n" ++ show cont
       UpIntro v ->
         "return " ++ show v
-      UpIntroLocal v ->
-        "return* " ++ show v
-      UpElim x c1 c2 ->
-        "let " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
+      UpElim isReducible x c1 c2 -> do
+        let modifier = if isReducible then "" else "*"
+        "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
       EnumElim v c1 caseList -> do
         "switch " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList)
       Primitive prim ->

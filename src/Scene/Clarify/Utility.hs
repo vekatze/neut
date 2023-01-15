@@ -15,7 +15,7 @@ import Scene.Clarify.Context
 toAffineApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
 toAffineApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $ C.UpElim expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 0, C.VarLocal x])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 0, C.VarLocal x])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
@@ -23,7 +23,7 @@ toAffineApp x t = do
 toRelevantApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
 toRelevantApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $ C.UpElim expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 1, C.VarLocal x])
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet binder cont =
@@ -31,7 +31,7 @@ bindLet binder cont =
     [] ->
       cont
     (x, e) : xes ->
-      C.UpElim x e $ bindLet xes cont
+      C.UpElim True x e $ bindLet xes cont
 
 makeSwitcher ::
   Gensym.Context m =>

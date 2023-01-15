@@ -106,9 +106,7 @@ lowerComp term =
         lift $ lowerComp e
     C.UpIntro d ->
       runLower $ lowerValue d
-    C.UpIntroLocal d ->
-      lowerComp $ C.UpIntro d
-    C.UpElim x e1 e2 -> do
+    C.UpElim _ x e1 e2 -> do
       e1' <- lowerComp e1
       e2' <- lowerComp e2
       commConv x e1' e2'

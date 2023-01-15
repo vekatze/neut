@@ -28,15 +28,12 @@ substComp sub term =
     C.UpIntro v -> do
       let v' = substValue sub v
       return $ C.UpIntro v'
-    C.UpIntroLocal v -> do
-      let v' = substValue sub v
-      return $ C.UpIntroLocal v'
-    C.UpElim x e1 e2 -> do
+    C.UpElim isReducible x e1 e2 -> do
       e1' <- substComp sub e1
       x' <- newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp sub' e2
-      return $ C.UpElim x' e1' e2'
+      return $ C.UpElim isReducible x' e1' e2'
     C.EnumElim v defaultBranch branchList -> do
       let v' = substValue sub v
       defaultBranch' <- substComp sub defaultBranch

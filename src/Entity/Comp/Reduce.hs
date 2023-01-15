@@ -61,28 +61,28 @@ reduce term =
                       return $ C.SigmaElim shouldDeallocate xs v e'
     C.UpIntro _ ->
       return term
-    C.UpIntroLocal _ ->
-      return term
-    C.UpElim x e1 e2 -> do
+    C.UpElim isReducible x e1 e2 -> do
       e1' <- reduce e1
       case e1' of
-        C.UpIntro v -> do
-          let sub = IntMap.fromList [(Ident.toInt x, v)]
-          subst sub e2 >>= reduce
-        C.UpElim y ey1 ey2 ->
-          reduce $ C.UpElim y ey1 $ C.UpElim x ey2 e2 -- commutative conversion
+        C.UpIntro v
+          | isReducible -> do
+              let sub = IntMap.fromList [(Ident.toInt x, v)]
+              subst sub e2 >>= reduce
+        C.UpElim isReducible' y ey1 ey2 ->
+          reduce $ C.UpElim isReducible' y ey1 $ C.UpElim isReducible x ey2 e2 -- commutative conversion
         C.SigmaElim b yts vy ey ->
-          reduce $ C.SigmaElim b yts vy $ C.UpElim x ey e2 -- commutative conversion
+          reduce $ C.SigmaElim b yts vy $ C.UpElim isReducible x ey e2 -- commutative conversion
         _ -> do
           e2' <- reduce e2
           case e2' of
             C.UpIntro (C.VarLocal y)
-              | x == y ->
+              | x == y,
+                isReducible ->
                   return e1' -- eta-reduce
             C.Unreachable ->
               return C.Unreachable
             _ ->
-              return $ C.UpElim x e1' e2'
+              return $ C.UpElim isReducible x e1' e2'
     C.EnumElim v defaultBranch les -> do
       case v of
         C.Int _ l

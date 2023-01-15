@@ -225,7 +225,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
         else do
           discriminantVar <- Gensym.newIdentFromText "discriminant"
           return $
-            C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
+            C.UpElim True discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
               C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
 
 isEnumType :: Context m => TM.Term -> m Bool
@@ -255,7 +255,7 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
           unitVar <- Gensym.newIdentFromText "unit-tidy"
           cont' <- tidyCursorList tenv dataArgsMap rest cont
           linearize (zip dataArgVars dataTypes') $
-            C.UpElim unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
+            C.UpElim True unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
 
 clarifyCase ::
   Context m =>

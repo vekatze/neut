@@ -29,11 +29,11 @@ linearize binder e =
         [] -> do
           hole <- newIdentFromText "unit"
           discardUnusedVar <- toAffineApp x t
-          return $ C.UpElim hole discardUnusedVar e''
+          return $ C.UpElim True hole discardUnusedVar e''
         z : zs -> do
           localName <- newIdentFromText $ toText x <> "-local"
           e''' <- insertHeader localName z zs t e''
-          return $ C.UpElim localName (C.UpIntroLocal (C.VarLocal x)) e'''
+          return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
 
 insertHeader ::
   Context m =>
@@ -46,11 +46,11 @@ insertHeader ::
 insertHeader localName z1 zs t e = do
   case zs of
     [] ->
-      return $ C.UpElim z1 (C.UpIntro (C.VarLocal localName)) e
+      return $ C.UpElim True z1 (C.UpIntro (C.VarLocal localName)) e
     z2 : rest -> do
       e' <- insertHeader localName z2 rest t e
       copyRelevantVar <- toRelevantApp localName t
-      return $ C.UpElim z1 copyRelevantVar e'
+      return $ C.UpElim True z1 copyRelevantVar e'
 
 distinguishVar :: Context m => Ident -> Ident -> m ([Occurrence], Ident)
 distinguishVar z x =
@@ -89,13 +89,10 @@ distinguishComp z term =
     C.UpIntro d -> do
       (vs, d') <- distinguishValue z d
       return (vs, C.UpIntro d')
-    C.UpIntroLocal d -> do
-      (vs, d') <- distinguishValue z d
-      return (vs, C.UpIntroLocal d')
-    C.UpElim x e1 e2 -> do
+    C.UpElim isReducible x e1 e2 -> do
       (vs1, e1') <- distinguishComp z e1
       (vs2, e2') <- distinguishComp z e2
-      return (vs1 ++ vs2, C.UpElim x e1' e2')
+      return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
     C.EnumElim d defaultBranch branchList -> do
       (vs, d') <- distinguishValue z d
       let (cs, es) = unzip branchList

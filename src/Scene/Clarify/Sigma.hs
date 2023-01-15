@@ -190,8 +190,8 @@ sigmaData resourceHandler dataInfo arg = do
       binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
       discriminantVar <- Gensym.newIdentFromText "discriminant"
       return $
-        C.UpElim localName (C.UpIntroLocal arg) $
-          C.UpElim discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) $
+        C.UpElim False localName (C.UpIntro arg) $
+          C.UpElim True discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) $
             C.EnumElim (C.VarLocal discriminantVar) (last binderList') (zip discriminantList' (init binderList'))
 
 sigmaBinderT :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
