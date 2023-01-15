@@ -1,15 +1,24 @@
+use this.codata-basic::foo
+
 define-codata foo() =
 - value-1: i64
 - value-2: i32
+- value-3: bar(i64)
+end
+
+define-codata bar(a: tau) =
+- value: a
 end
 
 define main(): i64 =
-  let config-record = foo.new(3, 8) in
-  let k on config-record =
-    let s1 = foo.value-1(config-record) in
-    let s2 = *(foo.value-1(config-record)) in
-    let s3 = foo.value-1(config-record) in
-    add-i64(*s1, add-i64(s2, *s3))
+  let inner = bar.new(10) in
+  let config = foo.new(3, 8, inner) in
+  let k on config =
+    let s1 = foo.value-1(config) in
+    let s2 = *config[value-1] in
+    let s3 = config[foo.value-1] in
+    let s4 = config[value-3][bar.value] in
+    add-i64(*s1, add-i64(s2, add-i64(*s3, *s4)))
   in
   k
 end

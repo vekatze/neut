@@ -51,7 +51,7 @@ rawTerm = do
   m <- getCurrentHint
   e1 <- rawTermBasic
   choice
-    [ rawTermVoid m e1,
+    [ rawTermSeq m e1,
       rawTermExplicitAscription m e1,
       return e1
     ]
@@ -61,7 +61,6 @@ rawTermBasic = do
   choice
     [ rawTermPiIntro,
       rawTermPiIntroDef,
-      rawTermNoema,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
@@ -70,8 +69,15 @@ rawTermBasic = do
       rawTermLetCoproduct,
       try rawTermLetOn,
       rawTermLet,
-      rawTermEmbody,
       try rawTermPi,
+      rawTermBasic'
+    ]
+
+rawTermBasic' :: Context m => Parser m RT.RawTerm
+rawTermBasic' = do
+  choice
+    [ rawTermNoema,
+      rawTermEmbody,
       try rawTermPiElim,
       try rawTermPiElimInv,
       rawTermSimple
@@ -147,7 +153,7 @@ rawTermEmbody :: Context m => Parser m RT.RawTerm
 rawTermEmbody = do
   m <- getCurrentHint
   delimiter "*"
-  e <- rawTermSimple
+  e <- rawTermBasic'
   t <- lift $ Gensym.newPreHole m
   raw <- lift $ Gensym.newTextualIdentFromText "raw"
   copied <- lift $ Gensym.newTextualIdentFromText "copied"
@@ -158,8 +164,8 @@ rawTermEmbody = do
         bind (m, copied, t) (m :< RT.Var raw) $
           m :< RT.Var copied
 
-rawTermVoid :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
-rawTermVoid m e1 = do
+rawTermSeq :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
+rawTermSeq m e1 = do
   delimiter ";"
   e2 <- rawTerm
   f <- lift $ Gensym.newTextualIdentFromText "unit"
@@ -187,7 +193,14 @@ rawTermHole = do
 rawTermPi :: Context m => Parser m RT.RawTerm
 rawTermPi = do
   m <- getCurrentHint
-  domList <- argList $ choice [try preAscription, typeWithoutIdent]
+  domList <-
+    choice
+      [ argList $ choice [try preAscription, typeWithoutIdent],
+        do
+          x <- lift $ Gensym.newTextualIdentFromText "_"
+          t <- rawTermBasic'
+          return [(m, x, t)]
+      ]
   delimiter "->"
   cod <- rawTerm
   return $ m :< RT.Pi domList cod
@@ -484,7 +497,7 @@ rawTermNoema :: Context m => Parser m RT.RawTerm
 rawTermNoema = do
   m <- getCurrentHint
   delimiter "&"
-  t <- rawTermBasic
+  t <- rawTermBasic'
   return $ m :< RT.Noema t
 
 rawTermAdmit :: Context m => Parser m RT.RawTerm
@@ -549,7 +562,6 @@ preAscription = do
   x <- symbol
   delimiter ":"
   a <- rawTerm
-
   return (m, Ident.fromText x, a)
 
 typeWithoutIdent :: Context m => Parser m (BinderF RT.RawTerm)
