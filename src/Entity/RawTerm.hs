@@ -43,6 +43,7 @@ data RawTermF a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
+  | New T.Text [(Hint, T.Text, RawTerm)] -- auxiliary syntax for codata introduction
 
 type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)

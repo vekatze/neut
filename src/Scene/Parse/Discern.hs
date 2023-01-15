@@ -5,12 +5,14 @@ module Scene.Parse.Discern
 where
 
 import qualified Context.Alias as Alias
+import qualified Context.CodataDefinition as CodataDefinition
 import qualified Context.Gensym as Gensym
 import qualified Context.Global as Global
 import qualified Context.Locator as Locator
 import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import qualified Data.HashMap.Strict as Map
 import Data.List
 import qualified Data.Maybe as Maybe
 import qualified Data.Set as S
@@ -51,7 +53,8 @@ class
     Locator.Context m,
     Alias.Context m,
     PATF.Context m,
-    PATS.Context m
+    PATS.Context m,
+    CodataDefinition.Context m
   ) =>
   Context m
 
@@ -117,6 +120,10 @@ discern nenv term =
         LK.Normal opacity -> do
           (xts', e') <- discernBinderWithBody nenv xts e
           return $ m :< WT.PiIntro (LK.Normal opacity) xts' e'
+    m :< RT.PiElim e es -> do
+      es' <- mapM (discern nenv) es
+      e' <- discern nenv e
+      return $ m :< WT.PiElim e' es'
     m :< RT.Data name es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name es'
@@ -132,10 +139,6 @@ discern nenv term =
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
-    m :< RT.PiElim e es -> do
-      es' <- mapM (discern nenv) es
-      e' <- discern nenv e
-      return $ m :< WT.PiElim e' es'
     m :< RT.Noema t -> do
       t' <- discern nenv t
       return $ m :< WT.Noema t'
@@ -149,6 +152,75 @@ discern nenv term =
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
+    m :< RT.New name kvs -> do
+      dd <- fst <$> resolveName m name
+      let (_, ks, vs) = unzip3 kvs
+      ks' <- mapM (resolveField m) ks
+      ensureFieldLinearity m ks' S.empty S.empty
+      -- when (length ks /= length (nub ks)) $
+      --   Throw.raiseError m "duplicate key"
+      -- ks' <- mapM (resolveName m >=> return . fst) ks
+      ((constructor, arity), keyList) <- CodataDefinition.lookup m dd
+      vs' <- mapM (discern nenv) vs
+      args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
+      return $ m :< WT.PiElim (m :< WT.VarGlobal constructor arity) args
+
+ensureFieldLinearity ::
+  Context m =>
+  Hint ->
+  [DD.DefiniteDescription] ->
+  S.Set DD.DefiniteDescription ->
+  S.Set DD.DefiniteDescription ->
+  m ()
+ensureFieldLinearity m ks found nonLinear =
+  case ks of
+    [] ->
+      if S.null nonLinear
+        then return ()
+        else
+          Throw.raiseError m $
+            "the following fields are defined more than once:\n"
+              <> T.intercalate "\n" (map (\k -> "- " <> DD.reify k) (S.toList nonLinear))
+    k : rest -> do
+      if S.member k found
+        then ensureFieldLinearity m rest found (S.insert k nonLinear)
+        else ensureFieldLinearity m rest (S.insert k found) nonLinear
+
+resolveField :: Context m => Hint -> T.Text -> m DD.DefiniteDescription
+resolveField m name = do
+  localLocator <- LL.reflect m name
+  candList <- Locator.getPossibleReferents localLocator
+  candList' <- mapM Global.lookup candList
+  let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
+  case foundNameList of
+    [] ->
+      Throw.raiseError m $ "undefined field: " <> name
+    [(field, _)] ->
+      return field
+    _ -> do
+      let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
+      Throw.raiseError m $
+        "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
+
+reorderArgs :: Context m => Hint -> [DD.DefiniteDescription] -> Map.HashMap DD.DefiniteDescription a -> m [a]
+reorderArgs m keyList kvs =
+  case keyList of
+    []
+      | Map.null kvs ->
+          return []
+      | otherwise -> do
+          let ks = map fst $ Map.toList kvs
+          Throw.raiseError m $ "the following fields are redundant: " <> showKeyList ks
+    key : keyRest
+      | Just v <- Map.lookup key kvs -> do
+          vs <- reorderArgs m keyRest (Map.delete key kvs)
+          return $ v : vs
+      | otherwise ->
+          Throw.raiseError m $ "the field `" <> DD.reify key <> "` is missing"
+
+showKeyList :: [DD.DefiniteDescription] -> T.Text
+showKeyList ks =
+  T.intercalate "\n" $ map (\k -> "- " <> DD.reify k) ks
 
 discernLet ::
   Context m =>

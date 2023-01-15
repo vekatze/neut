@@ -31,6 +31,7 @@ import qualified Case.Main.Module as MainModule
 import qualified Case.Main.Path as MainPath
 import qualified Case.Main.Throw as MainThrow
 import qualified Context.Alias as Alias
+import qualified Context.CodataDefinition as CodataDefinition
 import qualified Context.CompDefinition as CompDefinition
 import qualified Context.DataDefinition as DataDefinition
 import qualified Context.Definition as Definition
@@ -63,6 +64,7 @@ import qualified Data.Set as S
 import qualified Data.Text as T
 import qualified Data.Text.IO as TIO
 import Entity.AliasInfo
+import qualified Entity.Arity as A
 import Entity.Binder
 import Entity.Comp
 import qualified Entity.Comp.Reduce as Comp (Context)
@@ -141,6 +143,7 @@ data Env = Env
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
+    codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity), [DD.DefiniteDescription])),
     enumSet :: FastRef (S.Set DD.DefiniteDescription),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
@@ -239,6 +242,7 @@ newEnv = do
   defMap <- newFastRef
   compDefMap <- newFastRef
   dataDefMap <- newFastRef
+  codataDefMap <- newFastRef
   enumSet <- newFastRef
   declEnv <- newFastRef
   impEnv <- newFastRef
@@ -510,6 +514,20 @@ instance DataDefinition.Context App where
         writeIORef ref (Map.insert dataName value hashMap)
   lookup dataName = do
     Map.lookup dataName <$> (asks dataDefMap >>= liftIO . readIORef)
+
+instance CodataDefinition.Context App where
+  insert dataName dataNewInfo consNameList =
+    asks codataDefMap >>= \ref -> do
+      liftIO $ do
+        hashMap <- readIORef ref
+        writeIORef ref (Map.insert dataName (dataNewInfo, consNameList) hashMap)
+  lookup m dataName = do
+    mValue <- Map.lookup dataName <$> (asks codataDefMap >>= liftIO . readIORef)
+    case mValue of
+      Just value ->
+        return value
+      Nothing ->
+        Throw.raiseError m $ "no such codata is defined: " <> DD.reify dataName
 
 instance Definition.Context App where
   read =

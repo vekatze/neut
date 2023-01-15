@@ -64,6 +64,7 @@ rawTermBasic = do
       rawTermMagic,
       rawTermMatchNoetic,
       rawTermMatch,
+      rawTermNew,
       rawTermIf,
       rawTermLetCoproduct,
       try rawTermLetOn,
@@ -418,6 +419,24 @@ rawTermPatternVar = do
   m <- getCurrentHint
   varText <- symbol
   return (m, RP.Var (Ident.fromText varText))
+
+rawTermNew :: (Context m, Throw.Context m) => Parser m RT.RawTerm
+rawTermNew = do
+  m <- getCurrentHint
+  keyword "new"
+  name <- symbol
+  keyword "with"
+  rowList <- manyList rawTermNewRow
+  keyword "end"
+  return $ m :< RT.New name rowList
+
+rawTermNewRow :: Context m => Parser m (Hint, T.Text, RT.RawTerm)
+rawTermNewRow = do
+  m <- getCurrentHint
+  key <- symbol
+  delimiter "<-"
+  value <- rawTerm
+  return (m, key, value)
 
 rawTermLetVar :: Context m => Parser m (BinderF RT.RawTerm)
 rawTermLetVar = do

@@ -23,7 +23,13 @@ import qualified Text.Read as R
 
 type Parser m = ParsecT Void T.Text m
 
-class (Throw.Context m, Gensym.Context m, Locator.Context m) => Context m where
+class
+  ( Throw.Context m,
+    Gensym.Context m,
+    Locator.Context m
+  ) =>
+  Context m
+  where
   getTargetPlatform :: m TargetPlatform
   readSourceFile :: Path Abs File -> m T.Text
   ensureExistence :: Path Abs File -> m ()

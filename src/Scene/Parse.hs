@@ -6,6 +6,7 @@ module Scene.Parse
 where
 
 import qualified Context.Alias as Alias
+import qualified Context.CodataDefinition as CodataDefinition
 import qualified Context.Enum as Enum
 import qualified Context.Env as Env
 import qualified Context.Gensym as Gensym
@@ -57,7 +58,8 @@ class
     Enum.Context m,
     Discern.Context m,
     Parse.Context m,
-    P.Context m
+    P.Context m,
+    CodataDefinition.Context m
   ) =>
   Context m
   where
@@ -341,6 +343,13 @@ parseDefineCodata = do
   elemInfoList <- P.equalBlock $ P.manyList preAscription
   formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
+  -- register codata info for `new-with-end`
+  dataNewName <- lift $ DD.extend m dataName "new"
+  let arity = A.fromInt $ length dataArgs + length elemInfoList
+  let (_, consInfoList, _) = unzip3 elemInfoList
+  consNameList <- mapM (lift . DD.extend m dataName . Ident.toText) consInfoList
+  lift $ CodataDefinition.insert dataName (dataNewName, arity) consNameList
+  -- ... then return
   return $ formRule ++ elimRuleList
 
 -- noetic projection
