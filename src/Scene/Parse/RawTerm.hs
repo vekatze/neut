@@ -49,16 +49,15 @@ import Text.Megaparsec
 rawTerm :: Context m => Parser m RT.RawTerm
 rawTerm = do
   m <- getCurrentHint
-  e1 <- rawTermEasy
+  e1 <- rawTermBasic
   choice
     [ rawTermVoid m e1,
       rawTermExplicitAscription m e1,
       return e1
     ]
 
--- fixme: easy??
-rawTermEasy :: Context m => Parser m RT.RawTerm
-rawTermEasy = do
+rawTermBasic :: Context m => Parser m RT.RawTerm
+rawTermBasic = do
   choice
     [ rawTermPiIntro,
       rawTermPiIntroDef,
@@ -169,7 +168,7 @@ rawTermVoid m e1 = do
 rawTermExplicitAscription :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
 rawTermExplicitAscription m e = do
   delimiter ":"
-  t <- rawTermEasy
+  t <- rawTermBasic
   f <- lift $ Gensym.newTextualIdentFromText "unit"
   return $ bind (m, f, t) e (m :< RT.Var f)
 
@@ -485,7 +484,7 @@ rawTermNoema :: Context m => Parser m RT.RawTerm
 rawTermNoema = do
   m <- getCurrentHint
   delimiter "&"
-  t <- rawTermEasy
+  t <- rawTermBasic
   return $ m :< RT.Noema t
 
 rawTermAdmit :: Context m => Parser m RT.RawTerm

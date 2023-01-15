@@ -32,9 +32,9 @@ data WeakTermF a
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Let LetOpacity (BinderF a) a a
-  | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
+  | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
 
 type SubstWeakTerm =
   IntMap.IntMap WeakTerm

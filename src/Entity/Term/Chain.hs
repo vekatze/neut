@@ -31,9 +31,6 @@ chainOf' tenv term =
       []
     m :< TM.Var x -> do
       chainOfVar tenv m x
-    -- let t = (IntMap.!) tenv (Ident.toInt x)
-    -- let xts = chainOf' tenv t
-    -- xts ++ [(m, x, t)]
     _ :< TM.VarGlobal {} ->
       []
     _ :< TM.Pi {} ->

@@ -40,9 +40,9 @@ data RawTermF a
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
-  | Hole HoleID
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
+  | Hole HoleID
 
 type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)

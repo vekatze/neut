@@ -25,6 +25,3 @@ new m r c es =
             columns = c,
             elements = V.fromList es
           }
-
--- insert :: a -> Matrix a -> Matrix a
--- insert v mat = mat { }
