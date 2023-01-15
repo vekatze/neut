@@ -34,29 +34,6 @@ class
   ) =>
   Context m
 
--- new :: Module.Config -> IO Module.Context
--- new cfg = do
---   moduleCacheMapRef <- newIORef Map.empty
---   return $
---     Module.Context
---       { Module.getModuleFilePath =
---           getModuleFilePath
---             (Module.throwCtx cfg)
---             (Module.pathCtx cfg)
---             (Module.mainModule cfg),
---         Module.getModule =
---           getModule
---             (Module.throwCtx cfg)
---             (Module.pathCtx cfg)
---             (Module.mainModule cfg)
---             moduleCacheMapRef,
---         Module.getSourcePath =
---           getSourcePath
---             (Module.throwCtx cfg)
---             (Module.pathCtx cfg)
---             (Module.mainModule cfg)
---       }
-
 getModuleFilePath :: Context m => Maybe H.Hint -> MID.ModuleID -> m (Path Abs File)
 getModuleFilePath mHint moduleID = do
   moduleDir <- getModuleDirByID mHint moduleID

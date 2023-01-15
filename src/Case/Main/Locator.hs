@@ -59,38 +59,6 @@ initialize = do
   setActiveGlobalLocatorList [currentGlobalLocator, SGL.llvmGlobalLocator]
   setActiveDefiniteLocatorList []
 
--- new :: Locator.Config -> m Locator.Context
--- new cfg = do
---   currentGlobalLocator <- getGlobalLocator (Locator.mainModule cfg) (Locator.currentSource cfg)
---   currentGlobalLocatorRef <- newIORef currentGlobalLocator
---   currentSectionStackRef <- newIORef []
---   activeGlobalLocatorListRef <- newIORef [currentGlobalLocator, SGL.llvmGlobalLocator]
---   activeDefiniteLocatorListRef <- newIORef []
---   return
---     Locator.Context
---       { Locator.withSection =
---           withSection currentSectionStackRef,
---         Locator.attachCurrentLocator =
---           attachCurrentLocator currentGlobalLocatorRef currentSectionStackRef,
---         Locator.activateGlobalLocator =
---           modifyIORef' activeGlobalLocatorListRef . (:),
---         Locator.activateDefiniteLocator =
---           modifyIORef' activeDefiniteLocatorListRef . (:),
---         Locator.clearActiveLocators =
---           clearActiveLocators activeGlobalLocatorListRef activeDefiniteLocatorListRef,
---         Locator.getPossibleReferents =
---           getPossibleReferents
---             currentGlobalLocatorRef
---             currentSectionStackRef
---             activeGlobalLocatorListRef
---             activeDefiniteLocatorListRef,
---         Locator.getMainDefiniteDescription =
---           getMainDefiniteDescription
---             (Locator.cfg)
---             currentGlobalLocatorRef
---             currentSectionStackRef
---       }
-
 activateGlobalLocator :: Context m => SGL.StrictGlobalLocator -> m ()
 activateGlobalLocator sgl = do
   activeGlobalLocatorList <- getActiveGlobalLocatorList
@@ -105,22 +73,16 @@ withSection :: Context m => S.Section -> m a -> m a
 withSection section computation = do
   currentSectionStack <- Env.getCurrentSectionStack
   Env.setCurrentSectionStack $ section : currentSectionStack
-  -- liftIO $ modifyIORef' currentSectionStackRef $ const $ section : currentSectionStack
   result <- computation
   Env.setCurrentSectionStack currentSectionStack
-  -- Env.popFromCurrentSectionStack
-  -- liftIO $ writeIORef currentSectionStackRef currentSectionStack
   return result
 
 withLiftedSection :: (Context m, MonadTrans t, Monad (t m)) => S.Section -> t m a -> t m a
 withLiftedSection section computation = do
   currentSectionStack <- lift Env.getCurrentSectionStack
   lift $ Env.setCurrentSectionStack $ section : currentSectionStack
-  -- liftIO $ modifyIORef' currentSectionStackRef $ const $ section : currentSectionStack
   result <- computation
   lift $ Env.setCurrentSectionStack currentSectionStack
-  -- Env.popFromCurrentSectionStack
-  -- liftIO $ writeIORef currentSectionStackRef currentSectionStack
   return result
 
 attachCurrentLocator ::
@@ -129,21 +91,15 @@ attachCurrentLocator ::
   m DD.DefiniteDescription
 attachCurrentLocator name = do
   currentGlobalLocator <- getCurrentGlobalLocator
-  -- currentGlobalLocator <- readIORef currentGlobalLocatorRef
   currentSectionStack <- Env.getCurrentSectionStack
   return $
     DD.new currentGlobalLocator $
       LL.new currentSectionStack name
 
-clearActiveLocators ::
-  Context m =>
-  m ()
+clearActiveLocators :: Context m => m ()
 clearActiveLocators = do
-  -- writeIORef activeGlobalLocatorListRef []
   setActiveGlobalLocatorList []
   setActiveDefiniteLocatorList []
-
--- writeIORef activeDefiniteLocatorListRef []
 
 getPossibleReferents ::
   Context m =>
@@ -152,12 +108,10 @@ getPossibleReferents ::
 getPossibleReferents localLocator = do
   currentGlobalLocator <- getCurrentGlobalLocator
   currentSectionStack <- Env.getCurrentSectionStack
-  -- globalLocatorList <- readIORef activeGlobalLocatorListRef
   globalLocatorList <- getActiveGlobalLocatorList
   definiteLocatorList <- getActiveDefiniteLocatorList
   let dds1 = map (`DD.new` localLocator) globalLocatorList
   let dds2 = map (`DD.newByDefiniteLocator` localLocator) definiteLocatorList
-  -- let dds3 = getSectionalNameList currentGlobalLocator currentSectionStack name
   let dd = getDefaultDefiniteDescription currentGlobalLocator currentSectionStack localLocator
   return $ ListUtils.nubOrd $ dd : dds1 ++ dds2
 
@@ -165,15 +119,6 @@ getDefaultDefiniteDescription :: SGL.StrictGlobalLocator -> [S.Section] -> LL.Lo
 getDefaultDefiniteDescription gl sectionStack ll =
   DD.new gl $
     LL.new (LL.sectionStack ll ++ sectionStack) (LL.baseName ll)
-
--- getSectionalNameList :: SGL.StrictGlobalLocator -> [S.Section] -> T.Text -> [DD.DefiniteDescription]
--- getSectionalNameList gl currentSectionStack name = do
---   flip map currentSectionStack $ \sectionStack ->
---     DD.new gl $
---       LL.LocalLocator
---         { LL.sectionStack = sectionStack,
---           LL.baseName = name
---         }
 
 constructGlobalLocator :: Context m => Module.Module -> Source.Source -> m SGL.StrictGlobalLocator
 constructGlobalLocator mainModule source = do
@@ -207,21 +152,3 @@ isMainFile ::
 isMainFile source = do
   sourcePathList <- mapM Module.getSourcePath $ Map.elems $ Module.moduleTarget (Source.sourceModule source)
   return $ elem (Source.sourceFilePath source) sourcePathList
-
--- getMainDefiniteDescription :: Context -> m DD.DefiniteDescription
--- getMainDefiniteDescription ctx = do
---   attachCurrentLocator ctx BN.main
-
--- b <- isMainFile (App.ctx) source
--- if b
---   then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
---   else return Nothing
-
--- getMainFunctionName :: App.Context -> Source -> m (Maybe DD.DefiniteDescription)
--- getMainFunctionName ctx source = do
---   b <- isMainFile (App.ctx) source
---   if b
---     then return <$> Locator.getMainDefiniteDescription (App.locator ctx)
---     else return Nothing
-
--- getSourcePath (Module.throwCtx cfg) (Module.pathCtx cfg) (Module.mainModule cfg)

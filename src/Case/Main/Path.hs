@@ -20,20 +20,6 @@ class
   ) =>
   Context m
 
--- class Monad m => Context m where
---   getLibraryDirPath :: m (Path Abs Dir)
---   getCurrentDir :: m (Path Abs Dir)
---   ensureNotInLibDir :: m ()
---   resolveDir :: Path Abs Dir -> FilePath -> m (Path Abs Dir)
---   resolveFile :: Path Abs Dir -> FilePath -> m (Path Abs File)
---   doesDirExist :: Path Abs Dir -> m Bool
---   doesFileExist :: Path Abs File -> m Bool
---   ensureDir :: Path Abs Dir -> m ()
---   stripPrefix :: Path b Dir -> Path b t -> m (Path Rel t)
---   writeByteString :: Path Abs File -> L.ByteString -> m ()
---   parseRelFile :: FilePath -> m (Path Rel File)
---   removeDirRecur :: Path Abs Dir -> m ()
-
 getLibraryDirPath :: Context m => m (Path Abs Dir)
 getLibraryDirPath = do
   basePath <- getCacheDirPath

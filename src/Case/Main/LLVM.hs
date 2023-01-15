@@ -64,13 +64,6 @@ link objectPathList outputPath = do
   ensureDir $ parent outputPath
   External.run "clang" $ clangLinkOpt objectPathList outputPath clangOptString
 
--- let clangCmd = proc "clang" $ clangLinkOpt objectPathList outputPath clangOptString
--- withRunInIO $ \runInIO ->
---   withCreateProcess clangCmd {std_err = CreatePipe} $
---     \_ _ (Just clangErrorHandler) clangHandler -> do
---       clangExitCode <- waitForProcess clangHandler
---       runInIO $ raiseIfProcessFailed "clang" clangExitCode clangErrorHandler
-
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =
   [ "-xir",
