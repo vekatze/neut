@@ -1,9 +1,9 @@
 module Entity.Comp.Subst (subst) where
 
 import Context.Gensym
-import qualified Data.IntMap as IntMap
-import qualified Entity.Comp as C
-import qualified Entity.Ident.Reify as Ident
+import Data.IntMap qualified as IntMap
+import Entity.Comp qualified as C
+import Entity.Ident.Reify qualified as Ident
 
 subst :: Context m => C.SubstValue -> C.Comp -> m C.Comp
 subst =

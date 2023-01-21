@@ -1,7 +1,7 @@
 module Entity.HoleSubst where
 
-import qualified Data.IntMap as IntMap
-import qualified Entity.HoleID as HID
+import Data.IntMap qualified as IntMap
+import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.WeakTerm
 

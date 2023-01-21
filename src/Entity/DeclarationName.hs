@@ -1,11 +1,11 @@
 module Entity.DeclarationName where
 
 import Data.ByteString.Builder
-import qualified Data.HashMap.Strict as Map
+import Data.HashMap.Strict qualified as Map
 import Data.Hashable
-import qualified Data.Text.Encoding as TE
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.ExternalName as EN
+import Data.Text.Encoding qualified as TE
+import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.LowType
 import GHC.Generics
 

@@ -8,19 +8,13 @@ maintainer: "vekatze@icloud.com"
 extra-source-files:
   - readme.org
 
+language: GHC2021
+
 default-extensions:
   - ApplicativeDo
-  - DeriveGeneric
-  - ExistentialQuantification
-  - FlexibleInstances
-  - FunctionalDependencies
-  - GeneralizedNewtypeDeriving
   - OverloadedStrings
-  - RankNTypes
   - RecordWildCards
   - StrictData
-  - TupleSections
-  - TypeFamilies
 
 dependencies:
   - ansi-terminal

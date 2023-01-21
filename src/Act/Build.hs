@@ -5,33 +5,33 @@ module Act.Build
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Global as Global
-import qualified Context.LLVM as LLVM
-import qualified Context.Locator as Locator
-import qualified Context.Log as Log
-import qualified Context.Module as Module
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.Global qualified as Global
+import Context.LLVM qualified as LLVM
+import Context.Locator qualified as Locator
+import Context.Log qualified as Log
+import Context.Module qualified as Module
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad
-import qualified Data.ByteString.Lazy as L
+import Data.ByteString.Lazy qualified as L
 import Data.Foldable
-import qualified Data.HashMap.Strict as Map
-import qualified Data.Set as S
+import Data.HashMap.Strict qualified as Map
+import Data.Set qualified as S
 import Entity.Module
-import qualified Entity.Module.Reflect as Module
-import qualified Entity.OutputKind as OK
-import qualified Entity.Source as Source
-import qualified Entity.Stmt as Stmt
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.Module.Reflect qualified as Module
+import Entity.OutputKind qualified as OK
+import Entity.Source qualified as Source
+import Entity.Stmt qualified as Stmt
+import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
-import qualified Scene.Clarify as Clarify
-import qualified Scene.Elaborate as Elaborate
-import qualified Scene.Emit as Emit
-import qualified Scene.Lower as Lower
-import qualified Scene.Parse as Parse
-import qualified Scene.Unravel as Unravel
+import Scene.Clarify qualified as Clarify
+import Scene.Elaborate qualified as Elaborate
+import Scene.Emit qualified as Emit
+import Scene.Lower qualified as Lower
+import Scene.Parse qualified as Parse
+import Scene.Unravel qualified as Unravel
 import Prelude hiding (log)
 
 data Config = Config

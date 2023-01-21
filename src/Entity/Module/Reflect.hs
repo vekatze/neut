@@ -4,26 +4,26 @@ module Entity.Module.Reflect
   )
 where
 
-import qualified Context.Path as Path
+import Context.Path qualified as Path
 import Context.Throw
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Entity.BaseName as BN
+import Data.HashMap.Strict qualified as Map
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.Ens
-import qualified Entity.Ens.Reflect as Ens
-import qualified Entity.Hint as H
+import Entity.Ens.Reflect qualified as Ens
+import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
-import qualified Entity.ModuleID as MID
+import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
-import qualified Entity.SourceLocator as SL
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.SourceLocator qualified as SL
+import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
-import qualified Scene.Parse.Core as Parse
+import Scene.Parse.Core qualified as Parse
 
 fromFilePath :: (Parse.Context m, Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module
 fromFilePath moduleID moduleFilePath = do

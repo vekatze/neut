@@ -3,8 +3,8 @@ module Context.CodataDefinition
   )
 where
 
-import qualified Entity.Arity as A
-import qualified Entity.DefiniteDescription as DD
+import Entity.Arity qualified as A
+import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Prelude hiding (lookup, read)
 

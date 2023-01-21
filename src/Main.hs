@@ -1,17 +1,17 @@
 module Main (main) where
 
-import qualified Act.Build as Build
-import qualified Act.Check as Check
-import qualified Act.Clean as Clean
-import qualified Act.Get as Get
-import qualified Act.Init as Init
-import qualified Act.Release as Release
-import qualified Act.Run as Run
-import qualified Act.Tidy as Tidy
-import qualified Act.Version as Version
-import qualified Case.Main as Main
-import qualified Context.Log as Log
-import qualified Data.Text as T
+import Act.Build qualified as Build
+import Act.Check qualified as Check
+import Act.Clean qualified as Clean
+import Act.Get qualified as Get
+import Act.Init qualified as Init
+import Act.Release qualified as Release
+import Act.Run qualified as Run
+import Act.Tidy qualified as Tidy
+import Act.Version qualified as Version
+import Case.Main qualified as Main
+import Context.Log qualified as Log
+import Data.Text qualified as T
 import Entity.ModuleURL
 import Entity.Target
 import Options.Applicative

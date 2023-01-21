@@ -5,14 +5,14 @@ where
 
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.IntMap as IntMap
+import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.Binder
-import qualified Entity.DecisionTree as DT
+import Entity.DecisionTree qualified as DT
 import Entity.HoleSubst
-import qualified Entity.Ident.Reify as Ident
-import qualified Entity.LamKind as LK
-import qualified Entity.WeakTerm as WT
+import Entity.Ident.Reify qualified as Ident
+import Entity.LamKind qualified as LK
+import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.Reduce
 import Entity.WeakTerm.Subst
 import Prelude hiding (lookup)

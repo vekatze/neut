@@ -5,19 +5,19 @@ module Act.Init
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Log as Log
-import qualified Context.Module as Module
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.Log qualified as Log
+import Context.Module qualified as Module
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
-import qualified Data.Text as T
+import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Entity.Const
 import Entity.Module
-import qualified Entity.ModuleID as MID
-import qualified Entity.SourceLocator as SL
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.ModuleID qualified as MID
+import Entity.SourceLocator qualified as SL
+import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path (parent, (</>))
 

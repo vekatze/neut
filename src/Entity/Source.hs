@@ -2,7 +2,7 @@ module Entity.Source where
 
 import Control.Monad.Catch
 import Entity.Module
-import qualified Entity.OutputKind as OK
+import Entity.OutputKind qualified as OK
 import Path
 
 data Source = Source

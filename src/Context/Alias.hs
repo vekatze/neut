@@ -1,9 +1,9 @@
 module Context.Alias where
 
-import qualified Entity.GlobalLocator as GL
-import qualified Entity.GlobalLocatorAlias as GLA
+import Entity.GlobalLocator qualified as GL
+import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.StrictGlobalLocator qualified as SGL
 
 class Monad m => Context m where
   registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> SGL.StrictGlobalLocator -> m ()

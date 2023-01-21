@@ -5,8 +5,8 @@ module Entity.DefiniteLocator
 where
 
 import Data.Binary
-import qualified Entity.Section as S
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.Section qualified as S
+import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics
 
 data DefiniteLocator = MakeDefiniteLocator

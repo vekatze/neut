@@ -1,7 +1,7 @@
 module Entity.PrimNumSize where
 
 import Data.Binary
-import qualified GHC.Generics as G
+import GHC.Generics qualified as G
 
 -- data PrimNumSize
 --   = PrimIntSize IntSize

@@ -1,6 +1,6 @@
 module Entity.ModuleURL where
 
-import qualified Data.Text as T
+import Data.Text qualified as T
 
 newtype ModuleURL
   = ModuleURL T.Text

@@ -3,8 +3,8 @@ module Context.Implicit
   )
 where
 
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.ImpArgNum as I
+import Entity.DefiniteDescription qualified as DD
+import Entity.ImpArgNum qualified as I
 
 class Monad m => Context m where
   insert :: DD.DefiniteDescription -> I.ImpArgNum -> m ()

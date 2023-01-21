@@ -6,21 +6,21 @@ module Case.Main.Alias
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
-import qualified Data.HashMap.Strict as Map
-import qualified Data.Maybe as Maybe
-import qualified Entity.BaseName as BN
-import qualified Entity.GlobalLocator as GL
-import qualified Entity.GlobalLocatorAlias as GLA
+import Data.HashMap.Strict qualified as Map
+import Data.Maybe qualified as Maybe
+import Entity.BaseName qualified as BN
+import Entity.GlobalLocator qualified as GL
+import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint hiding (new)
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
-import qualified Entity.ModuleID as MID
-import qualified Entity.Source as Source
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.ModuleID qualified as MID
+import Entity.Source qualified as Source
+import Entity.StrictGlobalLocator qualified as SGL
 
 class
   ( Throw.Context m,
@@ -90,12 +90,12 @@ resolveModuleAlias m moduleAlias = do
       return $ MID.Library checksum
     Nothing
       | moduleAlias == defaultModulePrefix ->
-        return MID.Main
+          return MID.Main
       | moduleAlias == baseModulePrefix ->
-        return MID.Base
+          return MID.Base
       | otherwise ->
-        Throw.raiseError m $
-          "no such module alias is defined: " <> BN.reify (extract moduleAlias)
+          Throw.raiseError m $
+            "no such module alias is defined: " <> BN.reify (extract moduleAlias)
 
 getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
 getModuleChecksumAliasList baseModule = do

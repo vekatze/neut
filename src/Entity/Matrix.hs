@@ -1,7 +1,7 @@
 module Entity.Matrix where
 
-import qualified Context.Throw as Throw
-import qualified Data.Vector as V
+import Context.Throw qualified as Throw
+import Data.Vector qualified as V
 import Entity.Hint
 
 data Matrix a = M

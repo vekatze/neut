@@ -2,11 +2,11 @@ module Entity.ModuleChecksum where
 
 import Crypto.Hash.SHA256 as SHA256
 import Data.Binary
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Base64.URL as Base64
+import Data.ByteString qualified as B
+import Data.ByteString.Base64.URL qualified as Base64
 import Data.Hashable
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import GHC.Generics
 
 newtype ModuleChecksum

@@ -11,107 +11,107 @@ module Case.Main
   )
 where
 
-import qualified Act.Build as Build
-import qualified Act.Check as Check
-import qualified Act.Clean as Clean
-import qualified Act.Get as Get
-import qualified Act.Init as Init
-import qualified Act.Release as Release
-import qualified Act.Run as Run
-import qualified Act.Tidy as Tidy
-import qualified Act.Version as Version
-import qualified Case.Main.Alias as MainAlias
-import qualified Case.Main.Cache as MainCache
-import qualified Case.Main.External as MainExternal
-import qualified Case.Main.Global as MainGlobal
-import qualified Case.Main.LLVM as MainLLVM
-import qualified Case.Main.Locator as MainLocator
-import qualified Case.Main.Log as MainLog
-import qualified Case.Main.Module as MainModule
-import qualified Case.Main.Path as MainPath
-import qualified Case.Main.Throw as MainThrow
-import qualified Context.Alias as Alias
-import qualified Context.CodataDefinition as CodataDefinition
-import qualified Context.CompDefinition as CompDefinition
-import qualified Context.DataDefinition as DataDefinition
-import qualified Context.Definition as Definition
-import qualified Context.Enum as Enum
-import qualified Context.Env as Env
-import qualified Context.External as External
-import qualified Context.Gensym as Gensym
-import qualified Context.Global as Global
-import qualified Context.Implicit as Implicit
-import qualified Context.LLVM as LLVM
-import qualified Context.Locator as Locator
-import qualified Context.Log as Log
-import qualified Context.Module as Module
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
-import qualified Context.Type as Type
+import Act.Build qualified as Build
+import Act.Check qualified as Check
+import Act.Clean qualified as Clean
+import Act.Get qualified as Get
+import Act.Init qualified as Init
+import Act.Release qualified as Release
+import Act.Run qualified as Run
+import Act.Tidy qualified as Tidy
+import Act.Version qualified as Version
+import Case.Main.Alias qualified as MainAlias
+import Case.Main.Cache qualified as MainCache
+import Case.Main.External qualified as MainExternal
+import Case.Main.Global qualified as MainGlobal
+import Case.Main.LLVM qualified as MainLLVM
+import Case.Main.Locator qualified as MainLocator
+import Case.Main.Log qualified as MainLog
+import Case.Main.Module qualified as MainModule
+import Case.Main.Path qualified as MainPath
+import Case.Main.Throw qualified as MainThrow
+import Context.Alias qualified as Alias
+import Context.CodataDefinition qualified as CodataDefinition
+import Context.CompDefinition qualified as CompDefinition
+import Context.DataDefinition qualified as DataDefinition
+import Context.Definition qualified as Definition
+import Context.Enum qualified as Enum
+import Context.Env qualified as Env
+import Context.External qualified as External
+import Context.Gensym qualified as Gensym
+import Context.Global qualified as Global
+import Context.Implicit qualified as Implicit
+import Context.LLVM qualified as LLVM
+import Context.Locator qualified as Locator
+import Context.Log qualified as Log
+import Context.Module qualified as Module
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
+import Context.Type qualified as Type
 import Control.Comonad.Cofree
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Control.Monad.Reader
-import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as L
-import qualified Data.HashMap.Strict as Map
+import Data.ByteString qualified as B
+import Data.ByteString.Lazy qualified as L
+import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IORef.Unboxed
-import qualified Data.IntMap as IntMap
-import qualified Data.PQueue.Min as Q
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+import Data.IntMap qualified as IntMap
+import Data.PQueue.Min qualified as Q
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Data.Text.IO qualified as TIO
 import Entity.AliasInfo
-import qualified Entity.Arity as A
+import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Comp
-import qualified Entity.Comp.Reduce as Comp (Context)
+import Entity.Comp.Reduce qualified as Comp (Context)
 import Entity.Constraint
-import qualified Entity.DeclarationName as DN
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.DefiniteLocator as DL
-import qualified Entity.Discriminant as D
-import qualified Entity.GlobalLocatorAlias as GLA
-import qualified Entity.GlobalName as GN
-import qualified Entity.HoleSubst as HS
+import Entity.DeclarationName qualified as DN
+import Entity.DefiniteDescription qualified as DD
+import Entity.DefiniteLocator qualified as DL
+import Entity.Discriminant qualified as D
+import Entity.GlobalLocatorAlias qualified as GLA
+import Entity.GlobalName qualified as GN
+import Entity.HoleSubst qualified as HS
 import Entity.Ident
-import qualified Entity.Ident.Reify as Ident
-import qualified Entity.ImpArgNum as I
-import qualified Entity.LamKind as LK
-import qualified Entity.LowComp.Reduce as LowComp (Context)
-import qualified Entity.LowType as LT
-import qualified Entity.Module as M
-import qualified Entity.Module as Module
-import qualified Entity.ModuleAlias as MA
-import qualified Entity.ModuleChecksum as MC
-import qualified Entity.Opacity as O
-import qualified Entity.Pattern.Fallback as PatternFallback
-import qualified Entity.Pattern.Specialize as PatternSpecialize
-import qualified Entity.Section as Section
-import qualified Entity.Source as Source
-import qualified Entity.StrictGlobalLocator as SGL
-import qualified Entity.TargetPlatform as TP
-import qualified Entity.Term as TM
-import qualified Entity.Term.Subst as Subst (Context (..))
+import Entity.Ident.Reify qualified as Ident
+import Entity.ImpArgNum qualified as I
+import Entity.LamKind qualified as LK
+import Entity.LowComp.Reduce qualified as LowComp (Context)
+import Entity.LowType qualified as LT
+import Entity.Module qualified as M
+import Entity.Module qualified as Module
+import Entity.ModuleAlias qualified as MA
+import Entity.ModuleChecksum qualified as MC
+import Entity.Opacity qualified as O
+import Entity.Pattern.Fallback qualified as PatternFallback
+import Entity.Pattern.Specialize qualified as PatternSpecialize
+import Entity.Section qualified as Section
+import Entity.Source qualified as Source
+import Entity.StrictGlobalLocator qualified as SGL
+import Entity.TargetPlatform qualified as TP
+import Entity.Term qualified as TM
+import Entity.Term.Subst qualified as Subst (Context (..))
 import Entity.VisitInfo
-import qualified Entity.WeakTerm as WT
+import Entity.WeakTerm qualified as WT
 import Path
 import Path.IO
-import qualified Scene.Clarify as Clarify (Context)
-import qualified Scene.Clarify.Context as ClarifyBase (Context (..))
-import qualified Scene.Elaborate as Elaborate (Context (..))
-import qualified Scene.Elaborate.Infer as ElaborateInfer (Context (..))
-import qualified Scene.Elaborate.Unify as ElaborateUnify (Context (..))
-import qualified Scene.Emit as Emit (Context)
-import qualified Scene.Fetch as Fetch (Context (..))
-import qualified Scene.Lower as Lower (Context (..))
-import qualified Scene.Parse as Parse (Context (..))
-import qualified Scene.Parse.Core as ParseCore (Context (..))
-import qualified Scene.Parse.Discern as ParseDiscern (Context)
-import qualified Scene.Parse.Import as ParseImport (Context)
-import qualified Scene.Unravel as Unravel (Context)
+import Scene.Clarify qualified as Clarify (Context)
+import Scene.Clarify.Context qualified as ClarifyBase (Context (..))
+import Scene.Elaborate qualified as Elaborate (Context (..))
+import Scene.Elaborate.Infer qualified as ElaborateInfer (Context (..))
+import Scene.Elaborate.Unify qualified as ElaborateUnify (Context (..))
+import Scene.Emit qualified as Emit (Context)
+import Scene.Fetch qualified as Fetch (Context (..))
+import Scene.Lower qualified as Lower (Context (..))
+import Scene.Parse qualified as Parse (Context (..))
+import Scene.Parse.Core qualified as ParseCore (Context (..))
+import Scene.Parse.Discern qualified as ParseDiscern (Context)
+import Scene.Parse.Import qualified as ParseImport (Context)
+import Scene.Unravel qualified as Unravel (Context)
 
 type Ref a = IORef (Maybe a)
 

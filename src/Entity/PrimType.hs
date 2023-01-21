@@ -2,7 +2,7 @@ module Entity.PrimType where
 
 import Data.Binary
 import Entity.PrimNumSize
-import qualified GHC.Generics as G
+import GHC.Generics qualified as G
 
 data PrimType
   = Int IntSize
@@ -10,4 +10,3 @@ data PrimType
   deriving (Show, G.Generic, Eq, Ord)
 
 instance Binary PrimType
-

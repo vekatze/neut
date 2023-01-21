@@ -1,13 +1,13 @@
 module Entity.Pattern.Fallback (getFallbackMatrix, Context) where
 
-import qualified Context.Gensym as Gensym
-import qualified Context.Throw as Throw
+import Context.Gensym qualified as Gensym
+import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
-import qualified Data.Vector as V
+import Data.Vector qualified as V
 import Entity.Ident
 import Entity.NominalEnv
 import Entity.Pattern
-import qualified Entity.WeakTerm as WT
+import Entity.WeakTerm qualified as WT
 
 class (Gensym.Context m, Throw.Context m) => Context m
 

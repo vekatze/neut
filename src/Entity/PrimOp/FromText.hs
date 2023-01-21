@@ -1,17 +1,17 @@
 module Entity.PrimOp.FromText (fromDefiniteDescription) where
 
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Entity.BaseName as BN
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.LocalLocator as LL
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Entity.BaseName qualified as BN
+import Entity.DefiniteDescription qualified as DD
+import Entity.LocalLocator qualified as LL
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
-import qualified Entity.PrimType as PT
-import qualified Entity.PrimType.FromText as PT
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.PrimType qualified as PT
+import Entity.PrimType.FromText qualified as PT
+import Entity.StrictGlobalLocator qualified as SGL
 
 fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PrimOp
 fromDefiniteDescription dd = do

@@ -3,8 +3,8 @@ module Entity.ExternalName where
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Hashable
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import GHC.Generics
 
 newtype ExternalName = ExternalName {reify :: T.Text}

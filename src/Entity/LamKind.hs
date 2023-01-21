@@ -2,7 +2,7 @@ module Entity.LamKind where
 
 import Data.Binary
 import Entity.Binder
-import qualified Entity.Opacity as O
+import Entity.Opacity qualified as O
 import GHC.Generics
 
 data LamKindF a

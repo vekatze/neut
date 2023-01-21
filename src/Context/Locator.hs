@@ -2,12 +2,12 @@ module Context.Locator where
 
 import Control.Monad.Identity
 import Control.Monad.Trans
-import qualified Entity.BaseName as BN
-import qualified Entity.DefiniteDescription as DD
+import Entity.BaseName qualified as BN
+import Entity.DefiniteDescription qualified as DD
 import Entity.DefiniteLocator as DL
-import qualified Entity.LocalLocator as LL
-import qualified Entity.Section as S
-import qualified Entity.Source as Source
+import Entity.LocalLocator qualified as LL
+import Entity.Section qualified as S
+import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator as SGL
 
 -- the structure of a name of a global variable:

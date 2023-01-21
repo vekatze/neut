@@ -5,49 +5,49 @@ module Scene.Clarify
   )
 where
 
-import qualified Context.CompDefinition as CompDefinition
-import qualified Context.DataDefinition as DataDefinition
-import qualified Context.Enum as Enum
-import qualified Context.Gensym as Gensym
-import qualified Context.Locator as Locator
-import qualified Context.Log as Log
-import qualified Context.Throw as Throw
+import Context.CompDefinition qualified as CompDefinition
+import Context.DataDefinition qualified as DataDefinition
+import Context.Enum qualified as Enum
+import Context.Gensym qualified as Gensym
+import Context.Locator qualified as Locator
+import Context.Log qualified as Log
+import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.HashMap.Strict as Map
-import qualified Data.IntMap as IntMap
+import Data.HashMap.Strict qualified as Map
+import Data.IntMap qualified as IntMap
 import Data.Maybe
-import qualified Data.Set as S
-import qualified Entity.Arity as A
-import qualified Entity.BaseName as BN
+import Data.Set qualified as S
+import Entity.Arity qualified as A
+import Entity.BaseName qualified as BN
 import Entity.Binder
-import qualified Entity.Comp as C
+import Entity.Comp qualified as C
 import Entity.Comp.FreeVars
-import qualified Entity.Comp.Reduce as Reduce
+import Entity.Comp.Reduce qualified as Reduce
 import Entity.Comp.Subst
-import qualified Entity.DecisionTree as DT
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.Discriminant as D
-import qualified Entity.EnumCase as EC
-import qualified Entity.ExternalName as EN
+import Entity.DecisionTree qualified as DT
+import Entity.DefiniteDescription qualified as DD
+import Entity.Discriminant qualified as D
+import Entity.EnumCase qualified as EC
+import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Ident
-import qualified Entity.Ident.Reify as Ident
-import qualified Entity.LamKind as LK
-import qualified Entity.LowType as LT
-import qualified Entity.Magic as M
-import qualified Entity.Noema as N
-import qualified Entity.Opacity as O
-import qualified Entity.Prim as P
+import Entity.Ident.Reify qualified as Ident
+import Entity.LamKind qualified as LK
+import Entity.LowType qualified as LT
+import Entity.Magic qualified as M
+import Entity.Noema qualified as N
+import Entity.Opacity qualified as O
+import Entity.Prim qualified as P
 import Entity.PrimNumSize
 import Entity.PrimOp
-import qualified Entity.PrimValue as PV
-import qualified Entity.Source as Source
+import Entity.PrimValue qualified as PV
+import Entity.Source qualified as Source
 import Entity.Stmt
-import qualified Entity.Term as TM
-import qualified Entity.Term.Chain as TM
+import Entity.Term qualified as TM
+import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum
-import qualified Scene.Clarify.Context as Clarify
+import Scene.Clarify.Context qualified as Clarify
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility

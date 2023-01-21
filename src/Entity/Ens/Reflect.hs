@@ -1,10 +1,10 @@
 module Entity.Ens.Reflect (fromFilePath) where
 
-import qualified Context.Throw as Throw
+import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
-import qualified Data.HashMap.Strict as M
-import qualified Data.Text as T
-import qualified Entity.Ens as E
+import Data.HashMap.Strict qualified as M
+import Data.Text qualified as T
+import Entity.Ens qualified as E
 import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)

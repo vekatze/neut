@@ -1,10 +1,10 @@
 module Entity.LowType where
 
 import Data.Binary
-import qualified Entity.Arity as A
+import Entity.Arity qualified as A
 import Entity.PrimNumSize
-import qualified Entity.PrimType as PT
-import qualified GHC.Generics as G
+import Entity.PrimType qualified as PT
+import GHC.Generics qualified as G
 
 data LowType
   = PrimNum PT.PrimType

@@ -5,44 +5,44 @@ module Scene.Elaborate
   )
 where
 
-import qualified Context.DataDefinition as DataDefinition
-import qualified Context.Definition as Definition
-import qualified Context.Env as Env
-import qualified Context.Global as Global
-import qualified Context.Implicit as Implicit
-import qualified Context.Locator as Locator
-import qualified Context.Log as Log
-import qualified Context.Throw as Throw
-import qualified Context.Type as Type
+import Context.DataDefinition qualified as DataDefinition
+import Context.Definition qualified as Definition
+import Context.Env qualified as Env
+import Context.Global qualified as Global
+import Context.Implicit qualified as Implicit
+import Context.Locator qualified as Locator
+import Context.Log qualified as Log
+import Context.Throw qualified as Throw
+import Context.Type qualified as Type
 import Control.Comonad.Cofree
 import Control.Monad
-import qualified Data.IntMap as IntMap
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Data.IntMap qualified as IntMap
+import Data.Set qualified as S
+import Data.Text qualified as T
 import Entity.Binder
-import qualified Entity.DecisionTree as DT
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.GlobalName as GN
+import Entity.DecisionTree qualified as DT
+import Entity.DefiniteDescription qualified as DD
+import Entity.GlobalName qualified as GN
 import Entity.Hint
-import qualified Entity.HoleSubst as HS
-import qualified Entity.Ident.Reify as Ident
-import qualified Entity.LamKind as LK
-import qualified Entity.Prim as P
-import qualified Entity.PrimType as PT
-import qualified Entity.PrimValue as PV
-import qualified Entity.Source as Source
+import Entity.HoleSubst qualified as HS
+import Entity.Ident.Reify qualified as Ident
+import Entity.LamKind qualified as LK
+import Entity.Prim qualified as P
+import Entity.PrimType qualified as PT
+import Entity.PrimValue qualified as PV
+import Entity.Source qualified as Source
 import Entity.Stmt
-import qualified Entity.Term as TM
-import qualified Entity.Term.Reduce as Term
-import qualified Entity.Term.Subst as Subst
+import Entity.Term qualified as TM
+import Entity.Term.Reduce qualified as Term
+import Entity.Term.Subst qualified as Subst
 import Entity.Term.Weaken
-import qualified Entity.WeakPrim as WP
-import qualified Entity.WeakPrimValue as WPV
-import qualified Entity.WeakTerm as WT
-import qualified Entity.WeakTerm.Subst as WT
+import Entity.WeakPrim qualified as WP
+import Entity.WeakPrimValue qualified as WPV
+import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.Subst qualified as WT
 import Entity.WeakTerm.ToText
-import qualified Scene.Elaborate.Infer as Infer
-import qualified Scene.Elaborate.Unify as Unify
+import Scene.Elaborate.Infer qualified as Infer
+import Scene.Elaborate.Unify qualified as Unify
 
 class
   ( Infer.Context m,

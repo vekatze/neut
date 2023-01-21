@@ -2,8 +2,8 @@ module Context.Global where
 
 import Entity.Arity
 import Entity.Binder
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.Discriminant as D
+import Entity.DefiniteDescription qualified as DD
+import Entity.Discriminant qualified as D
 import Entity.GlobalName
 import Entity.Hint
 

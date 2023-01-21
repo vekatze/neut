@@ -4,35 +4,35 @@ module Scene.Emit
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Gensym as Gensym
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.Gensym qualified as Gensym
+import Context.Throw qualified as Throw
 import Control.Monad
 import Data.ByteString.Builder
-import qualified Data.ByteString.Builder as L
-import qualified Data.ByteString.Lazy as L
-import qualified Data.HashMap.Strict as HashMap
-import qualified Data.IntMap as IntMap
-import qualified Data.List as List
-import qualified Data.Map as Map
-import qualified Data.Set as S
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Entity.DeclarationName as DN
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.ExternalName as EN
+import Data.ByteString.Builder qualified as L
+import Data.ByteString.Lazy qualified as L
+import Data.HashMap.Strict qualified as HashMap
+import Data.IntMap qualified as IntMap
+import Data.List qualified as List
+import Data.Map qualified as Map
+import Data.Set qualified as S
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
+import Entity.DeclarationName qualified as DN
+import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.Ident
-import qualified Entity.LowComp as LC
-import qualified Entity.LowComp.Reduce as LowComp
-import qualified Entity.LowType as LT
+import Entity.LowComp qualified as LC
+import Entity.LowComp.Reduce qualified as LowComp
+import Entity.LowType qualified as LT
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
-import qualified Entity.PrimType as PT
-import qualified Entity.TargetPlatform as TP
+import Entity.PrimType qualified as PT
+import Entity.TargetPlatform qualified as TP
 import Numeric.Half
-import qualified System.Info as System
+import System.Info qualified as System
 
 class
   ( Gensym.Context m,

@@ -2,7 +2,7 @@ module Entity.Section where
 
 import Data.Binary
 import Data.Hashable
-import qualified Entity.BaseName as BN
+import Entity.BaseName qualified as BN
 import GHC.Generics
 
 type SectionStack = [Section]

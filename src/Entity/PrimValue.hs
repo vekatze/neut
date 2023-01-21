@@ -3,10 +3,10 @@ module Entity.PrimValue
   )
 where
 
-import GHC.Generics (Generic)
 import Data.Binary
 import Entity.PrimNumSize
 import Entity.PrimOp
+import GHC.Generics (Generic)
 
 data PrimValue
   = Int IntSize Integer
@@ -15,4 +15,3 @@ data PrimValue
   deriving (Show, Generic)
 
 instance Binary PrimValue
-

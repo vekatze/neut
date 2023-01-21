@@ -5,13 +5,13 @@ module Act.Run
   )
 where
 
-import qualified Act.Build as Build
-import qualified Context.Env as Env
-import qualified Context.External as External
-import qualified Context.Log as Log
-import qualified Context.Throw as Throw
+import Act.Build qualified as Build
+import Context.Env qualified as Env
+import Context.External qualified as External
+import Context.Log qualified as Log
+import Context.Throw qualified as Throw
 import Entity.Module
-import qualified Entity.Module.Reflect as Module
+import Entity.Module.Reflect qualified as Module
 import Entity.Target
 import Path
 

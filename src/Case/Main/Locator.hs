@@ -12,24 +12,24 @@ module Case.Main.Locator
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Module as Module
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.Module qualified as Module
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.Trans
-import qualified Data.Containers.ListUtils as ListUtils
-import qualified Data.HashMap.Strict as Map
-import qualified Entity.BaseName as BN
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.DefiniteLocator as DL
-import qualified Entity.LocalLocator as LL
-import qualified Entity.Module as Module
-import qualified Entity.Section as S
-import qualified Entity.Source as Source
+import Data.Containers.ListUtils qualified as ListUtils
+import Data.HashMap.Strict qualified as Map
+import Entity.BaseName qualified as BN
+import Entity.DefiniteDescription qualified as DD
+import Entity.DefiniteLocator qualified as DL
+import Entity.LocalLocator qualified as LL
+import Entity.Module qualified as Module
+import Entity.Section qualified as S
+import Entity.Source qualified as Source
 import Entity.SourceLocator as SL
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.StrictGlobalLocator qualified as SGL
 import Path
 
 class

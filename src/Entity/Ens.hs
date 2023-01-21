@@ -15,11 +15,11 @@ where
 
 import Context.Throw
 import Control.Comonad.Cofree
-import qualified Data.HashMap.Strict as M
+import Data.HashMap.Strict qualified as M
 import Data.Int
 import Data.List
-import qualified Data.Text as T
-import qualified Entity.EnsType as ET
+import Data.Text qualified as T
+import Entity.EnsType qualified as ET
 import Entity.Hint
 
 data EnsF a

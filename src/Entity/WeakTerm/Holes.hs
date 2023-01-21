@@ -1,11 +1,11 @@
 module Entity.WeakTerm.Holes (holes) where
 
 import Control.Comonad.Cofree
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Entity.Binder
-import qualified Entity.DecisionTree as DT
+import Entity.DecisionTree qualified as DT
 import Entity.HoleID
-import qualified Entity.WeakTerm as WT
+import Entity.WeakTerm qualified as WT
 
 holes :: WT.WeakTerm -> S.Set HoleID
 holes term =

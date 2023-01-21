@@ -6,8 +6,8 @@ where
 
 import Data.Binary
 import Data.Hashable
-import qualified Data.Text as T
-import qualified Entity.ModuleChecksum as MC
+import Data.Text qualified as T
+import Entity.ModuleChecksum qualified as MC
 import GHC.Generics
 
 data ModuleID

@@ -1,15 +1,15 @@
 module Entity.GlobalLocator where
 
-import qualified Context.Throw as Throw
+import Context.Throw qualified as Throw
 import Data.Binary
 import Data.Hashable
-import qualified Data.Text as T
-import qualified Entity.BaseName as BN
+import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.Const
-import qualified Entity.GlobalLocatorAlias as GLA
-import qualified Entity.Hint as H
+import Entity.GlobalLocatorAlias qualified as GLA
+import Entity.Hint qualified as H
 import Entity.ModuleAlias
-import qualified Entity.SourceLocator as SL
+import Entity.SourceLocator qualified as SL
 import GHC.Generics
 
 data GlobalLocator
@@ -40,6 +40,6 @@ reflect m rawTxt = do
       return $ GlobalLocatorAlias (GLA.GlobalLocatorAlias baseName)
     prefix : rest
       | Just locator <- SL.fromBaseNameList rest ->
-        return (GlobalLocator (ModuleAlias prefix) locator)
+          return (GlobalLocator (ModuleAlias prefix) locator)
     _ ->
       Throw.raiseError m $ "invalid global locator: `" <> rawTxt <> "`"

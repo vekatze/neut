@@ -3,10 +3,10 @@ module Entity.StrictGlobalLocator where
 import Control.Monad.Catch
 import Data.Binary
 import Data.Hashable
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Entity.Const
-import qualified Entity.ModuleID as MID
-import qualified Entity.SourceLocator as SL
+import Entity.ModuleID qualified as MID
+import Entity.SourceLocator qualified as SL
 import GHC.Generics
 import Path
 

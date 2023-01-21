@@ -5,15 +5,15 @@ module Case.Main.LLVM
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.External as External
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.External qualified as External
+import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import qualified Data.ByteString.Lazy as L
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
-import qualified Entity.OutputKind as OK
+import Data.ByteString.Lazy qualified as L
+import Data.Text qualified as T
+import Data.Text.IO qualified as TIO
+import Entity.OutputKind qualified as OK
 import GHC.IO.Handle
 import Path
 import Path.IO
@@ -42,16 +42,22 @@ emit kind llvmCode path = do
     _ ->
       emitInner (words clangOptString) llvmCode path
 
-emitInner :: [ClangOption] -> Context m => L.ByteString -> Path Abs File -> m ()
+emitInner :: Context m => [ClangOption] -> L.ByteString -> Path Abs File -> m ()
 emitInner additionalClangOptions llvm outputPath = do
   let clangCmd = proc "clang" $ clangBaseOpt outputPath ++ additionalClangOptions
   withRunInIO $ \runInIO ->
     withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $
-      \(Just stdin) _ (Just clangErrorHandler) clangProcessHandler -> do
-        L.hPut stdin llvm
-        hClose stdin
-        clangExitCode <- waitForProcess clangProcessHandler
-        runInIO $ raiseIfProcessFailed "clang" clangExitCode clangErrorHandler
+      \mStdin _ mClangErrorHandler clangProcessHandler -> do
+        case (mStdin, mClangErrorHandler) of
+          (Just stdin, Just clangErrorHandler) -> do
+            L.hPut stdin llvm
+            hClose stdin
+            clangExitCode <- waitForProcess clangProcessHandler
+            runInIO $ raiseIfProcessFailed "clang" clangExitCode clangErrorHandler
+          (Nothing, _) ->
+            runInIO $ Throw.raiseError' "couldn't obtain stdin"
+          (_, Nothing) ->
+            runInIO $ Throw.raiseError' "couldn't obtain stderr"
 
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do

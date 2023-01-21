@@ -2,12 +2,12 @@ module Entity.WeakTerm.FreeVars (freeVars) where
 
 import Control.Comonad.Cofree
 import Data.Maybe
-import qualified Data.Set as S
+import Data.Set qualified as S
 import Entity.Binder
-import qualified Entity.DecisionTree as DT
+import Entity.DecisionTree qualified as DT
 import Entity.Ident
 import Entity.LamKind
-import qualified Entity.WeakTerm as WT
+import Entity.WeakTerm qualified as WT
 
 freeVars :: WT.WeakTerm -> S.Set Ident
 freeVars term =

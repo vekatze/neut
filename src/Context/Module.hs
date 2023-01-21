@@ -1,10 +1,10 @@
 module Context.Module where
 
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Entity.Hint
 import Entity.Module
 import Entity.ModuleID
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.StrictGlobalLocator qualified as SGL
 import Path
 
 class Monad m => Context m where

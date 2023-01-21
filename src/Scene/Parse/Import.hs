@@ -5,25 +5,25 @@ module Scene.Parse.Import
   )
 where
 
-import qualified Context.Alias as Alias
-import qualified Context.Module as Module
-import qualified Context.Throw as Throw
+import Context.Alias qualified as Alias
+import Context.Module qualified as Module
+import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Catch hiding (try)
 import Control.Monad.Trans
 import Data.Maybe
-import qualified Data.Text as T
-import qualified Entity.AliasInfo as AI
+import Data.Text qualified as T
+import Entity.AliasInfo qualified as AI
 import Entity.Const
-import qualified Entity.GlobalLocator as GL
-import qualified Entity.GlobalLocatorAlias as GLA
+import Entity.GlobalLocator qualified as GL
+import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
 import Entity.Module
-import qualified Entity.Source as Source
-import qualified Entity.SourceLocator as SL
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.Source qualified as Source
+import Entity.SourceLocator qualified as SL
+import Entity.StrictGlobalLocator qualified as SGL
 import Path
-import qualified Scene.Parse.Core as P
+import Scene.Parse.Core qualified as P
 import Text.Megaparsec
 
 class (Throw.Context m, Module.Context m, Alias.Context m, P.Context m, MonadThrow m) => Context m

@@ -10,13 +10,13 @@ module Entity.RawPattern
   )
 where
 
-import qualified Data.Vector as V
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.GlobalLocator as GL
+import Data.Vector qualified as V
+import Entity.DefiniteDescription qualified as DD
+import Entity.GlobalLocator qualified as GL
 import Entity.Hint hiding (new)
 import Entity.Ident
-import qualified Entity.LocalLocator as LL
-import qualified Entity.UnresolvedName as UN
+import Entity.LocalLocator qualified as LL
+import Entity.UnresolvedName qualified as UN
 
 data RawPattern
   = Var Ident

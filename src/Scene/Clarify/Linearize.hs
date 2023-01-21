@@ -5,10 +5,10 @@ where
 
 import Context.Gensym
 import Control.Monad
-import qualified Entity.Comp as C
+import Entity.Comp qualified as C
 import Entity.Ident
 import Entity.Ident.Reify
-import qualified Entity.Magic as M
+import Entity.Magic qualified as M
 import Scene.Clarify.Utility
 
 type Occurrence = Ident

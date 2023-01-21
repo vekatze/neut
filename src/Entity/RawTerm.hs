@@ -8,23 +8,23 @@ module Entity.RawTerm
 where
 
 import Control.Comonad.Cofree
-import qualified Data.Text as T
-import qualified Entity.BaseName as BN
+import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.Binder
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.Discriminant as D
-import qualified Entity.GlobalLocator as GL
+import Entity.DefiniteDescription qualified as DD
+import Entity.Discriminant qualified as D
+import Entity.GlobalLocator qualified as GL
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
-import qualified Entity.LocalLocator as LL
+import Entity.LocalLocator qualified as LL
 import Entity.Magic
-import qualified Entity.Noema as N
+import Entity.Noema qualified as N
 import Entity.PrimNumSize
-import qualified Entity.PrimType as PT
-import qualified Entity.RawPattern as RP
-import qualified Entity.WeakPrim as WP
+import Entity.PrimType qualified as PT
+import Entity.RawPattern qualified as RP
+import Entity.WeakPrim qualified as WP
 
 type RawTerm = Cofree RawTermF Hint
 

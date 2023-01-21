@@ -5,17 +5,17 @@ module Act.Release
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.External as External
-import qualified Context.Log as Log
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.External qualified as External
+import Context.Log qualified as Log
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Entity.Module
-import qualified Entity.Module.Reflect as Module
+import Entity.Module.Reflect qualified as Module
 import Path
-import qualified Scene.Parse.Core as ParseCore
+import Scene.Parse.Core qualified as ParseCore
 
 data Config = Config
   { getReleaseName :: T.Text,

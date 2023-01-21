@@ -1,7 +1,7 @@
 module Entity.Log where
 
 import Control.Exception.Safe
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Entity.FilePos
 import System.Console.ANSI
 

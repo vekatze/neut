@@ -7,14 +7,14 @@ module Entity.LocalLocator
   )
 where
 
-import qualified Context.Throw as Throw
+import Context.Throw qualified as Throw
 import Data.Binary
 import Data.Hashable
-import qualified Data.Text as T
-import qualified Entity.BaseName as BN
+import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.Const
-import qualified Entity.Hint as H
-import qualified Entity.Section as S
+import Entity.Hint qualified as H
+import Entity.Section qualified as S
 import GHC.Generics
 
 data LocalLocator = MakeLocalLocator

@@ -15,22 +15,22 @@ module Entity.DefiniteDescription
   )
 where
 
-import qualified Context.Throw as Throw
+import Context.Throw qualified as Throw
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Hashable
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
-import qualified Entity.BaseName as BN
+import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
+import Entity.BaseName qualified as BN
 import Entity.Const
-import qualified Entity.DefiniteLocator as DL
-import qualified Entity.Hint as H
-import qualified Entity.LocalLocator as LL
-import qualified Entity.ModuleID as MID
-import qualified Entity.PrimType as PT
-import qualified Entity.Section as Section
-import qualified Entity.SourceLocator as SL
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.DefiniteLocator qualified as DL
+import Entity.Hint qualified as H
+import Entity.LocalLocator qualified as LL
+import Entity.ModuleID qualified as MID
+import Entity.PrimType qualified as PT
+import Entity.Section qualified as Section
+import Entity.SourceLocator qualified as SL
+import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics
 
 data DefiniteDescription = MakeDefiniteDescription

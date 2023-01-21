@@ -1,8 +1,8 @@
 module Entity.Vector where
 
-import qualified Context.Throw as Throw
-import qualified Data.Text as T
-import qualified Data.Vector as V
+import Context.Throw qualified as Throw
+import Data.Text qualified as T
+import Data.Vector qualified as V
 import Entity.Hint
 
 swap :: Throw.Context m => Hint -> Int -> V.Vector a -> m (V.Vector a)

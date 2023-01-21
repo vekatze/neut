@@ -2,20 +2,20 @@ module Entity.Term where
 
 import Control.Comonad.Cofree
 import Data.Binary
-import qualified Data.IntMap as IntMap
+import Data.IntMap qualified as IntMap
 import Entity.Arity
 import Entity.Binder
-import qualified Entity.DecisionTree as DT
-import qualified Entity.DefiniteDescription as DD
-import qualified Entity.Discriminant as D
+import Entity.DecisionTree qualified as DT
+import Entity.DefiniteDescription qualified as DD
+import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify
 import Entity.LamKind
-import qualified Entity.LamKind as LK
+import Entity.LamKind qualified as LK
 import Entity.Magic
-import qualified Entity.Noema as N
-import qualified Entity.Prim as P
+import Entity.Noema qualified as N
+import Entity.Prim qualified as P
 import GHC.Generics (Generic)
 
 type Term = Cofree TermF Hint

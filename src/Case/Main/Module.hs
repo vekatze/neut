@@ -6,24 +6,24 @@ module Case.Main.Module
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
+import Context.Env qualified as Env
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
-import qualified Data.HashMap.Strict as Map
-import qualified Data.Text as T
+import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Entity.Const
-import qualified Entity.Hint as H
+import Entity.Hint qualified as H
 import Entity.Module
-import qualified Entity.Module.Reflect as Module
-import qualified Entity.ModuleChecksum as MC
-import qualified Entity.ModuleID as MID
-import qualified Entity.SourceLocator as SL
-import qualified Entity.StrictGlobalLocator as SGL
+import Entity.Module.Reflect qualified as Module
+import Entity.ModuleChecksum qualified as MC
+import Entity.ModuleID qualified as MID
+import Entity.SourceLocator qualified as SL
+import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Path.IO
-import qualified Scene.Parse.Core as Parse (Context)
+import Scene.Parse.Core qualified as Parse (Context)
 
 class
   ( Throw.Context m,

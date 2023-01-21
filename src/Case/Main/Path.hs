@@ -8,7 +8,7 @@ module Case.Main.Path
   )
 where
 
-import qualified Context.Throw as Throw
+import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Path

@@ -5,14 +5,14 @@ module Act.Tidy
   )
 where
 
-import qualified Context.Env as Env
-import qualified Context.Log as Log
-import qualified Context.Module as Module
-import qualified Context.Path as Path
-import qualified Context.Throw as Throw
-import qualified Entity.Module.Reflect as Module
-import qualified Scene.Fetch as F
-import qualified Scene.Parse.Core as ParseCore
+import Context.Env qualified as Env
+import Context.Log qualified as Log
+import Context.Module qualified as Module
+import Context.Path qualified as Path
+import Context.Throw qualified as Throw
+import Entity.Module.Reflect qualified as Module
+import Scene.Fetch qualified as F
+import Scene.Parse.Core qualified as ParseCore
 import Prelude hiding (log)
 
 newtype Config = Config

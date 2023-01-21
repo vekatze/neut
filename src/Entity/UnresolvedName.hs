@@ -1,7 +1,7 @@
 module Entity.UnresolvedName where
 
 import Data.Binary
-import qualified Data.Text as T
+import Data.Text qualified as T
 import GHC.Generics
 
 newtype UnresolvedName = UnresolvedName {reify :: T.Text}
