@@ -9,6 +9,7 @@ where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
+import Entity.ArrayKind qualified as AK
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
@@ -38,6 +39,9 @@ data RawTermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
+  | Array (AK.ArrayKind a)
+  | ArrayIntro [a]
+  | ArrayElim a Integer
   | Noema a
   | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Prim (WP.WeakPrim a)
