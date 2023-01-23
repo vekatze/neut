@@ -18,6 +18,7 @@ import Data.Bifunctor
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.ArrayKind as AK
 import Entity.Binder
 import Entity.Const
 import Entity.DataInfo qualified as DI
@@ -31,6 +32,7 @@ import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
+import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
@@ -60,6 +62,9 @@ rawTermBasic = do
   choice
     [ rawTermPiIntro,
       rawTermPiIntroDef,
+      rawTermArray,
+      rawTermVector,
+      rawTermArrayIntro,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
@@ -70,6 +75,7 @@ rawTermBasic = do
       try rawTermLetOn,
       rawTermLet,
       try rawTermPi,
+      try rawTermArrayElim,
       rawTermBasic'
     ]
 
@@ -355,10 +361,14 @@ lowTypeStruct = do
 
 lowTypeNumber :: Context m => Parser m LT.LowType
 lowTypeNumber = do
+  LT.PrimNum <$> primType
+
+primType :: Context m => Parser m PT.PrimType
+primType = do
   sizeString <- symbol
   case PT.fromText sizeString of
     Just primNum ->
-      return $ LT.PrimNum primNum
+      return primNum
     _ -> do
       failure (Just (asTokens sizeString)) (S.fromList [asLabel "i{n}", asLabel "f{n}"])
 
@@ -607,6 +617,34 @@ preSimpleIdent = do
   m <- getCurrentHint
   x <- symbol
   return (m, Ident.fromText x)
+
+rawTermArray :: Context m => Parser m RT.RawTerm
+rawTermArray = do
+  m <- getCurrentHint
+  keyword "array"
+  pt <- betweenParen primType
+  return $ m :< RT.Array (AK.ArrayKindPrimType pt)
+
+rawTermVector :: Context m => Parser m RT.RawTerm
+rawTermVector = do
+  m <- getCurrentHint
+  keyword "vector"
+  t <- betweenParen rawTerm
+  return $ m :< RT.Array (AK.ArrayKindGeneral t)
+
+rawTermArrayIntro :: Context m => Parser m RT.RawTerm
+rawTermArrayIntro = do
+  m <- getCurrentHint
+  es <- betweenBracket $ commaList rawTerm
+  return $ m :< RT.ArrayIntro es
+
+rawTermArrayElim :: Context m => Parser m RT.RawTerm
+rawTermArrayElim = do
+  m <- getCurrentHint
+  array <- rawTerm
+  keyword "at"
+  index <- rawTerm
+  return $ m :< RT.ArrayElim array index
 
 rawTermIntrospect :: Context m => Parser m RT.RawTerm
 rawTermIntrospect = do

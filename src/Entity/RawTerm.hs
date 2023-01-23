@@ -41,7 +41,7 @@ data RawTermF a
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Array (AK.ArrayKind a)
   | ArrayIntro [a]
-  | ArrayElim a Integer
+  | ArrayElim a a
   | Noema a
   | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Prim (WP.WeakPrim a)
