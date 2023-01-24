@@ -3,6 +3,7 @@ module Entity.WeakTerm where
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.Arity
+import Entity.ArrayKind qualified as AK
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -30,6 +31,9 @@ data WeakTermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
+  | Array (AK.ArrayKind a)
+  | ArrayIntro a [a]
+  | ArrayElim a a a
   | Noema a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)

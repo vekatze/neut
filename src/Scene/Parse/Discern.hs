@@ -19,6 +19,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Arity qualified as A
+import Entity.ArrayKind qualified as AK
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -139,6 +140,18 @@ discern nenv term =
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
+    m :< RT.Array ak -> do
+      ak' <- discernArrayKind nenv ak
+      return $ m :< WT.Array ak'
+    m :< RT.ArrayIntro es -> do
+      t <- Gensym.newHole m (asHoleArgs nenv)
+      es' <- mapM (discern nenv) es
+      return $ m :< WT.ArrayIntro t es'
+    m :< RT.ArrayElim e index -> do
+      t <- Gensym.newHole m (asHoleArgs nenv)
+      e' <- discern nenv e
+      index' <- discern nenv index
+      return $ m :< WT.ArrayElim t e' index'
     m :< RT.Noema t -> do
       t' <- discern nenv t
       return $ m :< WT.Noema t'
@@ -164,6 +177,15 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
       return $ m :< WT.PiElim (m :< WT.VarGlobal constructor arity) args
+
+discernArrayKind :: Context m => NominalEnv -> AK.ArrayKind RT.RawTerm -> m (AK.ArrayKind WT.WeakTerm)
+discernArrayKind nenv ak = do
+  case ak of
+    AK.ArrayKindPrimType pt ->
+      return $ AK.ArrayKindPrimType pt
+    AK.ArrayKindGeneral t -> do
+      t' <- discern nenv t
+      return $ AK.ArrayKindGeneral t'
 
 ensureFieldLinearity ::
   Context m =>
