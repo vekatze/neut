@@ -641,9 +641,9 @@ rawTermArrayIntro = do
 rawTermArrayElim :: Context m => Parser m RT.RawTerm
 rawTermArrayElim = do
   m <- getCurrentHint
-  array <- rawTerm
-  keyword "at"
-  index <- rawTerm
+  array <- rawTermBasic'
+  delimiter "@"
+  index <- rawTermBasic'
   return $ m :< RT.ArrayElim array index
 
 rawTermIntrospect :: Context m => Parser m RT.RawTerm
