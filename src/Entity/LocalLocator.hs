@@ -21,7 +21,7 @@ data LocalLocator = MakeLocalLocator
   { sectionStack :: [S.Section],
     baseName :: BN.BaseName
   }
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq)
 
 instance Binary LocalLocator
 
