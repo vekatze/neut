@@ -72,6 +72,8 @@ toText term =
       showPrim prim
     _ :< WT.Hole i es ->
       showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
+    _ :< WT.ResourceType name ->
+      DD.reify name
     _ :< WT.Magic m -> do
       let a = fmap toText m
       showCons [T.pack $ show a]

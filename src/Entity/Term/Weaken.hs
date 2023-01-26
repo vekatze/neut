@@ -23,12 +23,18 @@ import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 
 weakenStmt :: Stmt -> WeakStmt
-weakenStmt (StmtDefine stmtKind m name impArgNum xts codType e) = do
-  let stmtKind' = weakenStmtKind stmtKind
-  let xts' = map weakenBinder xts
-  let codType' = weaken codType
-  let e' = weaken e
-  WeakStmtDefine stmtKind' m name impArgNum xts' codType' e'
+weakenStmt stmt = do
+  case stmt of
+    StmtDefine stmtKind m name impArgNum xts codType e -> do
+      let stmtKind' = weakenStmtKind stmtKind
+      let xts' = map weakenBinder xts
+      let codType' = weaken codType
+      let e' = weaken e
+      WeakStmtDefine stmtKind' m name impArgNum xts' codType' e'
+    StmtDefineResource m name discarder copier -> do
+      let discarder' = weaken discarder
+      let copier' = weaken copier
+      WeakStmtDefineResource m name discarder' copier'
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =
@@ -67,6 +73,8 @@ weaken term =
       m :< WT.Noema (weaken t)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
+    m :< TM.ResourceType name ->
+      m :< WT.ResourceType name
     m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
 

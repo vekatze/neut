@@ -79,6 +79,8 @@ subst sub term =
     m :< WT.Hole holeID args -> do
       args' <- mapM (subst sub) args
       return $ m :< WT.Hole holeID args'
+    _ :< WT.ResourceType {} ->
+      return term
     m :< WT.Magic der -> do
       der' <- mapM (subst sub) der
       return $ m :< WT.Magic der'

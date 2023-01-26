@@ -3,6 +3,7 @@ module Scene.Elaborate.Infer
     infer,
     inferType,
     inferBinder,
+    inferDefineResource,
   )
 where
 
@@ -34,6 +35,7 @@ import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
 import Entity.PrimType qualified as PT
+import Entity.Stmt
 import Entity.Term qualified as TM
 import Entity.Term.FromPrimNum qualified as Term
 import Entity.Term.Weaken
@@ -68,6 +70,17 @@ infer =
 inferType :: Context m => WT.WeakTerm -> m WT.WeakTerm
 inferType =
   inferType' []
+
+inferDefineResource :: Context m => Hint -> DD.DefiniteDescription -> WT.WeakTerm -> WT.WeakTerm -> m WeakStmt
+inferDefineResource m name discarder copier = do
+  (discarder', td) <- infer discarder
+  (copier', tc) <- infer copier
+  x <- Gensym.newIdentFromText "_"
+  let botTop = m :< WT.Pi [(m, x, m :< WT.Data DI.constBottom [])] (m :< WT.Data DI.constTop [])
+  let botBot = m :< WT.Pi [(m, x, m :< WT.Data DI.constBottom [])] (m :< WT.Data DI.constBottom [])
+  Env.insConstraintEnv botTop td
+  Env.insConstraintEnv botBot tc
+  return $ WeakStmtDefineResource m name discarder' copier'
 
 infer' :: Context m => BoundVarEnv -> WT.WeakTerm -> m (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
@@ -172,6 +185,8 @@ infer' varEnv term =
             WPV.Op op -> do
               primOpType <- primOpToType m op
               return (term, weaken primOpType)
+    m :< WT.ResourceType {} ->
+      return (term, m :< WT.Tau)
     m :< WT.Magic der -> do
       case der of
         M.Cast from to value -> do

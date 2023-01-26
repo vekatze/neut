@@ -88,6 +88,8 @@ fill sub term =
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
           return $ m :< WT.Hole i es'
+    _ :< WT.ResourceType {} ->
+      return term
     m :< WT.Magic der -> do
       der' <- mapM (fill sub) der
       return $ m :< WT.Magic der'

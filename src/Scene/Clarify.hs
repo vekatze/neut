@@ -122,6 +122,18 @@ clarifyDef stmt =
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= Reduce.reduce
       return (f, (toLowOpacity stmtKind, map fst xts', e''))
+    StmtDefineResource m name discarder copier -> do
+      switchValue <- Gensym.newIdentFromText "switchValue"
+      value <- Gensym.newIdentFromText "value"
+      discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
+      copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce
+      return
+        ( name,
+          ( O.Transparent,
+            [switchValue, value],
+            C.EnumElim (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
+          )
+        )
 
 clarifyTerm :: Context m => TM.TypeEnv -> TM.Term -> m C.Comp
 clarifyTerm tenv term =
@@ -189,6 +201,8 @@ clarifyTerm tenv term =
               return $ C.UpIntro (C.Float size l)
             PV.Op op ->
               clarifyPrimOp tenv op m
+    _ :< TM.ResourceType name -> do
+      return $ C.UpIntro $ C.VarGlobal name A.arityS4
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
 

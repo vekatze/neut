@@ -12,4 +12,5 @@ data GlobalName
   | PrimOp PrimOp
   | Data Arity [DD.DefiniteDescription]
   | DataIntro Arity Arity D.Discriminant
+  | Resource
   deriving (Show)

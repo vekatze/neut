@@ -63,7 +63,9 @@ subst sub term =
     m :< TM.Noema t -> do
       t' <- subst sub t
       return $ m :< TM.Noema t'
-    (_ :< TM.Prim _) ->
+    _ :< TM.ResourceType {} ->
+      return term
+    _ :< TM.Prim _ ->
       return term
     (m :< TM.Magic der) -> do
       der' <- traverse (subst sub) der

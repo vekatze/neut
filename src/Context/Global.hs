@@ -15,5 +15,6 @@ class Monad m => Context m where
     [BinderF a] ->
     [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
     m ()
+  registerResource :: Hint -> DD.DefiniteDescription -> m ()
   lookup :: DD.DefiniteDescription -> m (Maybe GlobalName)
   initialize :: m ()

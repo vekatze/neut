@@ -55,6 +55,8 @@ chainOf' tenv term =
       chainOf' tenv t
     _ :< TM.Prim _ ->
       []
+    _ :< TM.ResourceType {} ->
+      []
     _ :< TM.Magic der ->
       foldMap (chainOf' tenv) der
 

@@ -494,6 +494,7 @@ instance MainGlobal.Context App
 instance Global.Context App where
   registerTopLevelFunc = MainGlobal.registerTopLevelFunc
   registerData = MainGlobal.registerData
+  registerResource = MainGlobal.registerResource
   lookup = MainGlobal.lookup
   initialize = MainGlobal.initialize
 

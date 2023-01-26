@@ -95,6 +95,8 @@ inferStmt mMainDD stmt = do
       when (Just x == mMainDD) $
         Env.insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts codType)
       return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
+    WeakStmtDefineResource m name discarder copier ->
+      Infer.inferDefineResource m name discarder copier
 
 inferStmtDefine ::
   Infer.Context m =>
@@ -122,12 +124,21 @@ elaborateStmtList stmtList = do
       let stmt = StmtDefine stmtKind' m x impArgNum xts' codType' e'
       rest' <- elaborateStmtList rest
       return $ stmt : rest'
+    WeakStmtDefineResource m name discarder copier : rest -> do
+      discarder' <- elaborate' discarder
+      copier' <- elaborate' copier
+      rest' <- elaborateStmtList rest
+      return $ StmtDefineResource m name discarder' copier' : rest'
 
 insertWeakStmt :: Context m => WeakStmt -> m ()
-insertWeakStmt (WeakStmtDefine stmtKind m f impArgNum xts codType e) = do
-  Type.insert f $ m :< WT.Pi xts codType
-  Implicit.insert f impArgNum
-  Definition.insert (toOpacity stmtKind) m f xts e
+insertWeakStmt stmt = do
+  case stmt of
+    WeakStmtDefine stmtKind m f impArgNum xts codType e -> do
+      Type.insert f $ m :< WT.Pi xts codType
+      Implicit.insert f impArgNum
+      Definition.insert (toOpacity stmtKind) m f xts e
+    WeakStmtDefineResource m name _ _ ->
+      Type.insert name $ m :< WT.Tau
 
 insertStmt :: Context m => Stmt -> m ()
 insertStmt stmt = do
@@ -135,13 +146,17 @@ insertStmt stmt = do
   insertStmtKindInfo stmt
 
 insertStmtKindInfo :: Context m => Stmt -> m ()
-insertStmtKindInfo (StmtDefine stmtKind _ _ _ _ _ _) = do
-  case stmtKind of
-    Normal _ ->
-      return ()
-    Data dataName dataArgs consInfoList -> do
-      DataDefinition.insert dataName dataArgs consInfoList
-    DataIntro {} ->
+insertStmtKindInfo stmt = do
+  case stmt of
+    StmtDefine stmtKind _ _ _ _ _ _ -> do
+      case stmtKind of
+        Normal _ ->
+          return ()
+        Data dataName dataArgs consInfoList -> do
+          DataDefinition.insert dataName dataArgs consInfoList
+        DataIntro {} ->
+          return ()
+    StmtDefineResource {} ->
       return ()
 
 elaborateStmtKind :: Context m => StmtKindF WT.WeakTerm -> m (StmtKindF TM.Term)
@@ -267,6 +282,8 @@ elaborate' term =
                       <> toText (weaken t')
             WPV.Op op ->
               return $ m :< TM.Prim (P.Value (PV.Op op))
+    m :< WT.ResourceType name ->
+      return $ m :< TM.ResourceType name
     m :< WT.Magic der -> do
       der' <- mapM elaborate' der
       return $ m :< TM.Magic der'

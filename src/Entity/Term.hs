@@ -36,6 +36,7 @@ data TermF a
   | ArrayElim (AK.ArrayKind a) a a
   | Noema a
   | Prim P.Prim
+  | ResourceType DD.DefiniteDescription
   | Magic (Magic a)
   deriving (Show, Generic)
 
@@ -101,6 +102,8 @@ containsNoema term =
     _ :< Noema {} ->
       True
     _ :< Prim {} ->
+      False
+    _ :< ResourceType {} ->
       False
     _ :< Magic magic ->
       case magic of
@@ -169,6 +172,8 @@ containsPi term =
     _ :< Noema t ->
       containsPi t
     _ :< Prim {} ->
+      False
+    _ :< ResourceType {} ->
       False
     _ :< Magic magic ->
       case magic of

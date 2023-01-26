@@ -3,6 +3,7 @@ module Case.Main.Global
     registerData,
     lookup,
     initialize,
+    registerResource,
     Context,
   )
 where
@@ -65,6 +66,16 @@ registerData m dataName dataArgs consInfoList = do
     ensureFreshness m topNameMap' consName
     let consArity = A.fromInt $ length consArgs
     Env.insertToNameMap consName $ GN.DataIntro dataArity consArity discriminant
+
+registerResource ::
+  Context m =>
+  Hint.Hint ->
+  DD.DefiniteDescription ->
+  m ()
+registerResource m resourceName = do
+  topNameMap <- Env.getNameMap
+  ensureFreshness m topNameMap resourceName
+  Env.insertToNameMap resourceName GN.Resource
 
 ensureFreshness :: Context m => Hint.Hint -> NameMap -> DD.DefiniteDescription -> m ()
 ensureFreshness m topNameMap name = do

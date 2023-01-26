@@ -76,6 +76,11 @@ discernStmtList stmtList =
         innerStmtList' <- discernStmtList innerStmtList
         rest' <- discernStmtList rest
         return $ innerStmtList' ++ rest'
+    RawStmtDefineResource m name discarder copier : rest -> do
+      discarder' <- discern empty discarder
+      copier' <- discern empty copier
+      rest' <- discernStmtList rest
+      return $ WeakStmtDefineResource m name discarder' copier' : rest'
 
 discernStmtKind :: Context m => StmtKindF RT.RawTerm -> m (StmtKindF WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -375,6 +380,8 @@ interpretGlobalName m dd gn =
       return $ m :< WT.Prim (WP.Type primNum)
     GN.PrimOp primOp ->
       return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+    GN.Resource ->
+      return $ m :< WT.ResourceType dd
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =

@@ -113,6 +113,8 @@ parseCachedStmtList stmtList = do
             registerAsEnumIfNecessary dataName dataArgs consInfoList
           DataIntro {} ->
             return ()
+      StmtDefineResource m name _ _ ->
+        Global.registerResource m name
 
 ensureMain :: Context m => Hint -> DD.DefiniteDescription -> m ()
 ensureMain m mainFunctionName = do
@@ -159,6 +161,7 @@ parseStmt = do
   choice
     [ parseDefineData,
       parseDefineCodata,
+      return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
       return <$> parseDefine O.Opaque,
       return <$> parseSection
@@ -384,6 +387,18 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
               )
             ]
         )
+
+parseDefineResource :: Context m => P.Parser m RawStmt
+parseDefineResource = do
+  try $ P.keyword "define-resource"
+  m <- P.getCurrentHint
+  name <- P.baseName
+  name' <- lift $ Locator.attachCurrentLocator name
+  P.equalBlock $ do
+    discarder <- P.delimiter "-" >> rawTerm
+    copier <- P.delimiter "-" >> rawTerm
+    lift $ Global.registerResource m name'
+    return $ RawStmtDefineResource m name' discarder copier
 
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =

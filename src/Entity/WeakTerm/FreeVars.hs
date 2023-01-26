@@ -54,6 +54,8 @@ freeVars term =
       foldMap freeVars prim
     _ :< WT.Hole _ es ->
       S.unions $ map freeVars es
+    _ :< WT.ResourceType {} ->
+      S.empty
     _ :< WT.Magic der ->
       foldMap freeVars der
 

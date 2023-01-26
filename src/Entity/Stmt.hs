@@ -64,6 +64,7 @@ data RawStmt
       RT.RawTerm
       RT.RawTerm
   | RawStmtSection Section.Section [RawStmt]
+  | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
 
 data WeakStmt
   = WeakStmtDefine
@@ -74,6 +75,7 @@ data WeakStmt
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
+  | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
 
 type Program =
   (Source.Source, [Stmt])
@@ -87,6 +89,7 @@ data Stmt
       [BinderF TM.Term]
       TM.Term
       TM.Term
+  | StmtDefineResource Hint DD.DefiniteDescription TM.Term TM.Term
   deriving (Generic)
 
 instance Binary Stmt
@@ -109,10 +112,16 @@ compress stmt =
           StmtDefine stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt
+    StmtDefineResource {} ->
+      stmt
 
 showStmt :: WeakStmt -> T.Text
-showStmt (WeakStmtDefine _ m x _ xts codType e) = do
-  DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
+showStmt stmt =
+  case stmt of
+    WeakStmtDefine _ m x _ xts codType e ->
+      DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
+    _ ->
+      "<define-resource>"
 
 initialStmtList :: [Stmt]
 initialStmtList = do

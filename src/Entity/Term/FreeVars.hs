@@ -48,6 +48,8 @@ freeVars term =
       S.union xs1 xs2
     _ :< TM.Noema t ->
       freeVars t
+    _ :< TM.ResourceType {} ->
+      S.empty
     _ :< TM.Prim _ ->
       S.empty
     _ :< TM.Magic der ->

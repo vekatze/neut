@@ -37,6 +37,7 @@ data WeakTermF a
   | Noema a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
+  | ResourceType DD.DefiniteDescription
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
 
