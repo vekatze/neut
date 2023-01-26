@@ -8,7 +8,7 @@ import GHC.Generics
 type SectionStack = [Section]
 
 newtype Section = Section {reify :: BN.BaseName}
-  deriving (Generic, Show)
+  deriving (Generic, Show, Eq)
 
 instance Binary Section
 

@@ -5,3 +5,4 @@ neut.cabal
 test/res
 *.prof
 target/
+dist-newstyle/
