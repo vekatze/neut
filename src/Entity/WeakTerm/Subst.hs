@@ -43,6 +43,18 @@ subst sub term =
     m :< WT.Data name es -> do
       es' <- mapM (subst sub) es
       return $ m :< WT.Data name es'
+    m :< WT.Array ak -> do
+      ak' <- mapM (subst sub) ak
+      return $ m :< WT.Array ak'
+    m :< WT.ArrayIntro ak es -> do
+      ak' <- mapM (subst sub) ak
+      es' <- mapM (subst sub) es
+      return $ m :< WT.ArrayIntro ak' es'
+    m :< WT.ArrayElim ak array index -> do
+      ak' <- mapM (subst sub) ak
+      array' <- subst sub array
+      index' <- subst sub index
+      return $ m :< WT.ArrayElim ak' array' index'
     m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
       dataArgs' <- mapM (subst sub) dataArgs
       consArgs' <- mapM (subst sub) consArgs

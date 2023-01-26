@@ -19,6 +19,7 @@ import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.ArrayKind qualified as AK
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -36,6 +37,7 @@ import Entity.Term qualified as TM
 import Entity.Term.Reduce qualified as Term
 import Entity.Term.Subst qualified as Subst
 import Entity.Term.Weaken
+import Entity.WeakArrayKind qualified as WAK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -192,6 +194,18 @@ elaborate' term =
       ts' <- mapM elaborate' ts
       tree' <- elaborateDecisionTree m tree
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
+    m :< WT.Array ak -> do
+      ak' <- elaborateArrayKind m ak
+      return $ m :< TM.Array ak'
+    m :< WT.ArrayIntro ak es -> do
+      ak' <- elaborateArrayKind m ak
+      es' <- mapM elaborate' es
+      return $ m :< TM.ArrayIntro ak' es'
+    m :< WT.ArrayElim ak array index -> do
+      ak' <- elaborateArrayKind m ak
+      array' <- elaborate' array
+      index' <- elaborate' index
+      return $ m :< TM.ArrayElim ak' array' index'
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'
@@ -270,6 +284,22 @@ elaborateKind kind =
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LK.Fix xt'
+
+elaborateArrayKind :: Context m => Hint -> WAK.WeakArrayKind WT.WeakTerm -> m (AK.ArrayKind TM.Term)
+elaborateArrayKind m ak =
+  case ak of
+    WAK.PrimType t -> do
+      t' <- elaborate' t >>= Term.reduce
+      case t' of
+        _ :< TM.Prim (P.Type pt) ->
+          return $ AK.PrimType pt
+        _ ->
+          Throw.raiseError m $
+            "the element type of an array must be integer or float, but found: `"
+              <> toText (weaken t')
+    WAK.General t -> do
+      t' <- elaborate' t
+      return $ AK.General t'
 
 -- cs <- readIORef constraintEnv
 -- p "==========================================================="

@@ -36,6 +36,14 @@ freeVars term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
+    _ :< WT.Array ak -> do
+      foldMap freeVars ak
+    _ :< WT.ArrayIntro ak es -> do
+      let s1 = foldMap freeVars ak
+      let s2 = S.unions $ map freeVars es
+      S.union s1 s2
+    _ :< WT.ArrayElim ak array index ->
+      S.unions $ foldMap freeVars ak : map freeVars [array, index]
     _ :< WT.Noema t ->
       freeVars t
     _ :< WT.Let _ mxt e1 e2 -> do

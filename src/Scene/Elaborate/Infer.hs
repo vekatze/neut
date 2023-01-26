@@ -30,11 +30,14 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.ImpArgNum qualified as I
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
+import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
+import Entity.PrimType qualified as PT
 import Entity.Term qualified as TM
 import Entity.Term.FromPrimNum qualified as Term
 import Entity.Term.Weaken
+import Entity.WeakArrayKind qualified as WAK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -119,6 +122,22 @@ infer' varEnv term =
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', treeType) <- inferDecisionTree m varEnv tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
+    m :< WT.Array ak -> do
+      ak' <- inferArrayKind varEnv ak
+      return (m :< WT.Array ak', m :< WT.Tau)
+    m :< WT.ArrayIntro ak es -> do
+      ak' <- inferArrayKind varEnv ak
+      let tElem = WAK.extract ak'
+      (es', ts) <- mapAndUnzipM (infer' varEnv) es
+      forM_ ts $ Env.insConstraintEnv tElem
+      return (m :< WT.ArrayIntro ak' es', m :< WT.Array ak')
+    m :< WT.ArrayElim ak array index -> do
+      ak' <- inferArrayKind varEnv ak
+      (array', tArray) <- infer' varEnv array
+      (index', tIndex) <- infer' varEnv index
+      Env.insConstraintEnv (m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))) tIndex
+      Env.insConstraintEnv (m :< WT.Noema (m :< WT.Array ak')) tArray
+      return (m :< WT.ArrayElim ak' array' index', m :< WT.Noema (WAK.extract ak'))
     m :< WT.Noema t -> do
       t' <- inferType' varEnv t
       return (m :< WT.Noema t', m :< WT.Tau)
@@ -165,6 +184,22 @@ infer' varEnv term =
           der' <- mapM (infer' varEnv >=> return . fst) der
           resultType <- newHole m varEnv
           return (m :< WT.Magic der', resultType)
+
+inferArrayKind ::
+  Context m =>
+  BoundVarEnv ->
+  WAK.WeakArrayKind WT.WeakTerm ->
+  m (WAK.WeakArrayKind WT.WeakTerm)
+inferArrayKind varEnv = do
+  mapM (inferType' varEnv)
+
+-- case ak of
+--   WAK.PrimType t -> do
+--     t' <- inferType' varEnv t
+--     return $ WAK.PrimType t'
+--   WAK.General t -> do
+--     t' <- inferType' varEnv t
+--     return $ WAK.General t'
 
 inferArgs ::
   Context m =>
