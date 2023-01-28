@@ -335,31 +335,26 @@ lowType = do
     [ lowTypePointer,
       lowTypeArray,
       lowTypeStruct,
-      lowTypeSimple
-    ]
-
-lowTypeSimple :: Context m => Parser m LT.LowType
-lowTypeSimple =
-  choice
-    [ betweenParen lowType,
       lowTypeNumber
     ]
 
 lowTypePointer :: Context m => Parser m LT.LowType
 lowTypePointer = do
   keyword "pointer"
-  lowTypeSimple
+  LT.Pointer <$> betweenParen lowType
 
 lowTypeArray :: Context m => Parser m LT.LowType
 lowTypeArray = do
   keyword "array"
-  intValue <- integer
-  LT.Array (fromInteger intValue) <$> lowTypeSimple
+  betweenParen $ do
+    intValue <- integer
+    delimiter ","
+    LT.Array (fromInteger intValue) <$> lowType
 
 lowTypeStruct :: Context m => Parser m LT.LowType
 lowTypeStruct = do
   keyword "struct"
-  LT.Struct <$> many lowTypeSimple
+  LT.Struct <$> argList lowType
 
 lowTypeNumber :: Context m => Parser m LT.LowType
 lowTypeNumber = do
