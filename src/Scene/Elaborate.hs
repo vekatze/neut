@@ -82,8 +82,12 @@ elaborate source cacheOrStmt = do
       return defList''
 
 -- viewStmt :: Context m => WeakStmt -> m ()
--- viewStmt (WeakStmtDefine _ m x _ xts codType e) = do
---   Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
+-- viewStmt stmt = do
+--   case stmt of
+--     WeakStmtDefine _ m x _ xts codType e ->
+--       Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
+--     WeakStmtDefineResource m name discarder copier ->
+--       Log.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
 inferStmt :: Infer.Context m => Maybe DD.DefiniteDescription -> WeakStmt -> m WeakStmt
 inferStmt mMainDD stmt = do
