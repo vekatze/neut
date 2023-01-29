@@ -2,7 +2,6 @@
 
 module Case.Main.Path
   ( getLibraryDirPath,
-    getCacheDirPath,
     ensureNotInLibDir,
     Context,
   )
