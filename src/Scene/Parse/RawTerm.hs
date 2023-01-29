@@ -66,6 +66,7 @@ rawTermBasic = do
       -- rawTermArrayElim,
       -- rawTermVector,
       -- rawTermVectorIntro,
+      rawTermListIntro,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
@@ -634,6 +635,20 @@ preSimpleIdent = do
 --   es <- betweenBracket $ commaList rawTerm
 --   t <- lift $ Gensym.newPreHole m
 --   return $ m :< RT.ArrayIntro (WAK.General t) es
+
+rawTermListIntro :: Context m => Parser m RT.RawTerm
+rawTermListIntro = do
+  m <- getCurrentHint
+  es <- betweenBracket $ commaList rawTerm
+  return $ foldListApp m es
+
+foldListApp :: Hint -> [RT.RawTerm] -> RT.RawTerm
+foldListApp m es =
+  case es of
+    [] ->
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.nil")) []
+    e : rest ->
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [e, foldListApp m rest]
 
 -- rawTermArrayIntro :: Context m => Parser m RT.RawTerm
 -- rawTermArrayIntro = do
