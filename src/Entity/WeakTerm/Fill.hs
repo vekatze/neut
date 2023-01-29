@@ -55,18 +55,6 @@ fill sub term =
       (binder', decisionTree') <- fill''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.Array ak -> do
-      ak' <- mapM (fill sub) ak
-      return $ m :< WT.Array ak'
-    m :< WT.ArrayIntro t es -> do
-      t' <- mapM (fill sub) t
-      es' <- mapM (fill sub) es
-      return $ m :< WT.ArrayIntro t' es'
-    m :< WT.ArrayElim t array index -> do
-      t' <- mapM (fill sub) t
-      array' <- fill sub array
-      index' <- fill sub index
-      return $ m :< WT.ArrayElim t' array' index'
     m :< WT.Noema t -> do
       t' <- fill sub t
       return $ m :< WT.Noema t'

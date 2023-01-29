@@ -25,7 +25,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Log qualified as L
-import Entity.WeakArrayKind qualified as WAK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -143,24 +142,6 @@ simplify constraintList =
               let es2 = dataArgs2 ++ consArgs2
               let cs' = zip (zip es1 es2) (repeat orig)
               simplify $ cs' ++ cs
-        (_ :< WT.Array ak1, _ :< WT.Array ak2)
-          | WAK.PrimType t1 <- ak1,
-            WAK.PrimType t2 <- ak2 ->
-              simplify $ ((t1, t2), orig) : cs
-          | WAK.General t1 <- ak1,
-            WAK.General t2 <- ak2 ->
-              simplify $ ((t1, t2), orig) : cs
-        (_ :< WT.ArrayIntro ak1 es1, _ :< WT.ArrayIntro ak2 es2)
-          | length es1 == length es2,
-            WAK.PrimType t1 <- ak1,
-            WAK.PrimType t2 <- ak2 -> do
-              let cs' = zip (zip es1 es2) (repeat orig)
-              simplify $ ((t1, t2), orig) : cs' ++ cs
-          | length es1 == length es2,
-            WAK.General t1 <- ak1,
-            WAK.General t2 <- ak2 -> do
-              let cs' = zip (zip es1 es2) (repeat orig)
-              simplify $ ((t1, t2), orig) : cs' ++ cs
         (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
           simplify $ ((t1, t2), orig) : cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)

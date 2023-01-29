@@ -13,7 +13,6 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
-import Entity.WeakArrayKind qualified as WAK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -54,16 +53,6 @@ toText term =
       if isNoetic
         then showCons ["match-noetic", showMatchArgs xets, showDecisionTree tree]
         else showCons ["match", showMatchArgs xets, showDecisionTree tree]
-    _ :< WT.Array ak ->
-      case ak of
-        WAK.PrimType t ->
-          showCons ["array", toText t]
-        WAK.General t ->
-          showCons ["vector", toText t]
-    _ :< WT.ArrayIntro _ es ->
-      showCons $ "#arr" : map toText es
-    _ :< WT.ArrayElim _ array index ->
-      showCons ["access", toText array, toText index]
     _ :< WT.Noema t ->
       showCons ["noema", toText t]
     _ :< WT.Let _ (_, x, t) e1 e2 -> do

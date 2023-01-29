@@ -32,12 +32,6 @@ holes term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = holes' binder (holesDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< WT.Array ak -> do
-      foldMap holes ak
-    _ :< WT.ArrayIntro ak es ->
-      S.unions $ foldMap holes ak : map holes es
-    _ :< WT.ArrayElim ak array index ->
-      S.unions $ foldMap holes ak : map holes [array, index]
     _ :< WT.Noema t ->
       holes t
     _ :< WT.Let _ mxt e1 e2 -> do

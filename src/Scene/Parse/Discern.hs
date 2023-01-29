@@ -42,7 +42,6 @@ import Entity.RawTerm qualified as RT
 import Entity.Stmt
 import Entity.UnresolvedName qualified as UN
 import Entity.Vector qualified as V
-import Entity.WeakArrayKind qualified as WAK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -145,18 +144,6 @@ discern nenv term =
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
-    m :< RT.Array ak -> do
-      ak' <- discernArrayKind nenv ak
-      return $ m :< WT.Array ak'
-    m :< RT.ArrayIntro ak es -> do
-      ak' <- discernArrayKind nenv ak
-      es' <- mapM (discern nenv) es
-      return $ m :< WT.ArrayIntro ak' es'
-    m :< RT.ArrayElim ak e index -> do
-      ak' <- discernArrayKind nenv ak
-      e' <- discern nenv e
-      index' <- discern nenv index
-      return $ m :< WT.ArrayElim ak' e' index'
     m :< RT.Noema t -> do
       t' <- discern nenv t
       return $ m :< WT.Noema t'
@@ -182,10 +169,6 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
       return $ m :< WT.PiElim (m :< WT.VarGlobal constructor arity) args
-
-discernArrayKind :: Context m => NominalEnv -> WAK.WeakArrayKind RT.RawTerm -> m (WAK.WeakArrayKind WT.WeakTerm)
-discernArrayKind nenv ak = do
-  mapM (discern nenv) ak
 
 ensureFieldLinearity ::
   Context m =>

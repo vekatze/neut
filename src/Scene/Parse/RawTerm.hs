@@ -37,7 +37,6 @@ import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.TargetPlatform qualified as TP
 import Entity.UnresolvedName qualified as UN
-import Entity.WeakArrayKind as WAK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
@@ -62,22 +61,22 @@ rawTermBasic = do
   choice
     [ rawTermPiIntro,
       rawTermPiIntroDef,
-      rawTermArray,
-      rawTermArrayIntro,
-      rawTermArrayElim,
-      rawTermVector,
-      rawTermVectorIntro,
+      -- rawTermArray,
+      -- rawTermArrayIntro,
+      -- rawTermArrayElim,
+      -- rawTermVector,
+      -- rawTermVectorIntro,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
       rawTermMatch,
-      rawTermNew,
+      try rawTermNew,
       rawTermIf,
       rawTermLetCoproduct,
       try rawTermLetOn,
       rawTermLet,
       try rawTermPi,
-      try rawTermVectorElim,
+      -- try rawTermVectorElim,
       rawTermBasic'
     ]
 
@@ -286,7 +285,7 @@ rawTermMagic = do
       rawTermMagicExternal m
     ]
 
-rawTermMagicBase :: Context m => T.Text -> Parser m RT.RawTerm -> Parser m RT.RawTerm
+rawTermMagicBase :: Context m => T.Text -> Parser m a -> Parser m a
 rawTermMagicBase k parser = do
   keyword k
   betweenParen parser
@@ -615,59 +614,59 @@ preSimpleIdent = do
   x <- symbol
   return (m, Ident.fromText x)
 
-rawTermVector :: Context m => Parser m RT.RawTerm
-rawTermVector = do
-  m <- getCurrentHint
-  keyword "vector"
-  t <- betweenParen rawTerm
-  return $ m :< RT.Array (WAK.General t)
+-- rawTermVector :: Context m => Parser m RT.RawTerm
+-- rawTermVector = do
+--   m <- getCurrentHint
+--   keyword "vector"
+--   t <- betweenParen rawTerm
+--   return $ m :< RT.Array (WAK.General t)
 
-rawTermArray :: Context m => Parser m RT.RawTerm
-rawTermArray = do
-  m <- getCurrentHint
-  keyword "array"
-  t <- betweenParen rawTerm
-  return $ m :< RT.Array (WAK.PrimType t)
+-- rawTermArray :: Context m => Parser m RT.RawTerm
+-- rawTermArray = do
+--   m <- getCurrentHint
+--   keyword "array"
+--   t <- betweenParen rawTerm
+--   return $ m :< RT.Array (WAK.PrimType t)
 
-rawTermVectorIntro :: Context m => Parser m RT.RawTerm
-rawTermVectorIntro = do
-  m <- getCurrentHint
-  es <- betweenBracket $ commaList rawTerm
-  t <- lift $ Gensym.newPreHole m
-  return $ m :< RT.ArrayIntro (WAK.General t) es
+-- rawTermVectorIntro :: Context m => Parser m RT.RawTerm
+-- rawTermVectorIntro = do
+--   m <- getCurrentHint
+--   es <- betweenBracket $ commaList rawTerm
+--   t <- lift $ Gensym.newPreHole m
+--   return $ m :< RT.ArrayIntro (WAK.General t) es
 
-rawTermArrayIntro :: Context m => Parser m RT.RawTerm
-rawTermArrayIntro = do
-  m <- getCurrentHint
-  keyword "new-array"
-  es <- betweenBracket $ commaList rawTerm
-  t <- lift $ Gensym.newPreHole m
-  return $ m :< RT.ArrayIntro (WAK.PrimType t) es
+-- rawTermArrayIntro :: Context m => Parser m RT.RawTerm
+-- rawTermArrayIntro = do
+--   m <- getCurrentHint
+--   keyword "new-array"
+--   es <- betweenBracket $ commaList rawTerm
+--   t <- lift $ Gensym.newPreHole m
+--   return $ m :< RT.ArrayIntro (WAK.PrimType t) es
 
-rawTermVectorElim :: Context m => Parser m RT.RawTerm
-rawTermVectorElim = do
-  m <- getCurrentHint
-  array <- rawTermBasic'
-  delimiter "@"
-  index <- rawTermBasic'
-  t <- lift $ Gensym.newPreHole m
-  return $ m :< RT.ArrayElim (WAK.General t) array index
+-- rawTermVectorElim :: Context m => Parser m RT.RawTerm
+-- rawTermVectorElim = do
+--   m <- getCurrentHint
+--   array <- rawTermBasic'
+--   delimiter "@"
+--   index <- rawTermBasic'
+--   t <- lift $ Gensym.newPreHole m
+--   return $ m :< RT.ArrayElim (WAK.General t) array index
 
-rawTermArrayElim :: Context m => Parser m RT.RawTerm
-rawTermArrayElim = do
-  m <- getCurrentHint
-  keyword "access-array"
-  arrayAndIndex <- betweenBracket $ commaList rawTerm
-  case arrayAndIndex of
-    [array, index] -> do
-      t <- lift $ Gensym.newPreHole m
-      return $ m :< RT.ArrayElim (WAK.PrimType t) array index
-    _ ->
-      lift $
-        Throw.raiseError m $
-          "array-access requires exactly 2 arguments, but found "
-            <> T.pack (show (length arrayAndIndex))
-            <> "."
+-- rawTermArrayElim :: Context m => Parser m RT.RawTerm
+-- rawTermArrayElim = do
+--   m <- getCurrentHint
+--   keyword "access-array"
+--   arrayAndIndex <- betweenBracket $ commaList rawTerm
+--   case arrayAndIndex of
+--     [array, index] -> do
+--       t <- lift $ Gensym.newPreHole m
+--       return $ m :< RT.ArrayElim (WAK.PrimType t) array index
+--     _ ->
+--       lift $
+--         Throw.raiseError m $
+--           "array-access requires exactly 2 arguments, but found "
+--             <> T.pack (show (length arrayAndIndex))
+--             <> "."
 
 -- array <- rawTermBasic'
 -- index <- rawTermBasic'
