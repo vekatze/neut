@@ -76,10 +76,11 @@ inferDefineResource m name discarder copier = do
   (discarder', td) <- infer discarder
   (copier', tc) <- infer copier
   x <- Gensym.newIdentFromText "_"
-  let botTop = m :< WT.Pi [(m, x, m :< WT.Data DI.constBottom [])] (m :< WT.Data DI.constTop [])
-  let botBot = m :< WT.Pi [(m, x, m :< WT.Data DI.constBottom [])] (m :< WT.Data DI.constBottom [])
-  Env.insConstraintEnv botTop td
-  Env.insConstraintEnv botBot tc
+  let i64 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))
+  let tDiscard = m :< WT.Pi [(m, x, i64)] (m :< WT.Data DI.constTop [])
+  let tCopy = m :< WT.Pi [(m, x, i64)] i64
+  Env.insConstraintEnv tDiscard td
+  Env.insConstraintEnv tCopy tc
   return $ WeakStmtDefineResource m name discarder' copier'
 
 infer' :: Context m => BoundVarEnv -> WT.WeakTerm -> m (WT.WeakTerm, WT.WeakTerm)
