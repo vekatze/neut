@@ -21,6 +21,10 @@ definiteSep :: T.Text
 definiteSep =
   "::"
 
+envVarCacheDir :: String
+envVarCacheDir =
+  "NEUT_CACHE_DIR"
+
 moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")
