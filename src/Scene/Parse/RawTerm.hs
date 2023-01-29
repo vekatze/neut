@@ -9,6 +9,7 @@ module Scene.Parse.RawTerm
   )
 where
 
+import Codec.Binary.UTF8.String
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -31,6 +32,7 @@ import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
+import Entity.PrimNumSize qualified as PNS
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawPattern qualified as RP
@@ -88,6 +90,7 @@ rawTermSimple :: Context m => Parser m RT.RawTerm
 rawTermSimple = do
   choice
     [ rawTermParen,
+      rawTermTextIntro,
       rawTermTau,
       rawTermAdmit,
       rawTermHole,
@@ -664,17 +667,14 @@ rawTermVar = do
   (m, x) <- var
   return (preVar m x)
 
--- rawTermText :: Context m => Parser m RT.RawTerm
--- rawTermText = do
---   m <- getCurrentHint
---   try $ keyword "text"
---   return $ m :< RT.Text
-
--- rawTermTextIntro :: Context m => Parser m RT.RawTerm
--- rawTermTextIntro = do
---   m <- getCurrentHint
---   s <- string
---   return $ m :< RT.TextIntro s
+rawTermTextIntro :: Context m => Parser m RT.RawTerm
+rawTermTextIntro = do
+  m <- getCurrentHint
+  s <- string
+  let i8s = encode $ T.unpack s
+  let i8 = m :< RT.Prim (WP.Type (PT.Int (PNS.IntSize 8)))
+  let i8s' = map (\x -> m :< RT.Prim (WP.Value (WPV.Int i8 (toInteger x)))) i8s
+  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "text-new")) [foldListApp m i8s']
 
 rawTermInteger :: Context m => Parser m RT.RawTerm
 rawTermInteger = do
