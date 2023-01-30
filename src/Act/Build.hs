@@ -14,6 +14,7 @@ import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.State
 import Data.ByteString.Lazy qualified as L
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
@@ -38,6 +39,8 @@ data Config = Config
   { mTarget :: Maybe Target,
     mClangOptString :: Maybe String,
     logCfg :: Log.Config,
+    outputKindList :: [OK.OutputKind],
+    shouldSkipLink :: Bool,
     shouldCancelAlloc :: Bool
   }
 
@@ -53,6 +56,7 @@ class
     Clarify.Context m,
     Lower.Context m,
     Emit.Context m,
+    MonadIO m,
     Unravel.Context m
   ) =>
   Context m
@@ -61,25 +65,27 @@ build :: Context m => Config -> m ()
 build cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
+  Env.setTargetPlatform
   Throw.run $ do
     mainModule <- Module.fromCurrentPath
     Path.ensureNotInLibDir
     Env.setMainModule mainModule
     Env.setShouldCancelAlloc $ shouldCancelAlloc cfg
-    Env.setTargetPlatform
     case mTarget cfg of
       Just target ->
-        build' target mainModule
+        build' target mainModule (outputKindList cfg) (shouldSkipLink cfg)
       Nothing -> do
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-          build' target mainModule
+          build' target mainModule (outputKindList cfg) (shouldSkipLink cfg)
 
 build' ::
   Context m =>
   Target ->
   Module ->
+  [OK.OutputKind] ->
+  Bool ->
   m ()
-build' target mainModule = do
+build' target mainModule outputKindList shouldSkipLink = do
   sgl <- resolveTarget mainModule target
   mainFilePath <- Module.getSourcePath sgl
   let mainSource = getMainSource mainModule mainFilePath
@@ -88,20 +94,24 @@ build' target mainModule = do
   Parse.parseCachedStmtList Stmt.initialStmtList
   forM_ Stmt.initialStmtList Elaborate.insertStmt
   Clarify.registerFoundationalTypes
-  mapM_ compile dependenceSeq
-  unless isObjectAvailable $ link target mainModule $ toList dependenceSeq
+  mapM_ (compile outputKindList) dependenceSeq
+  isExecutableAvailable <- getExecutableOutputPath target mainModule >>= Path.doesFileExist
+  if shouldSkipLink || (isObjectAvailable && isExecutableAvailable)
+    then return ()
+    else link target mainModule $ toList dependenceSeq
 
 compile ::
   Context m =>
+  [OK.OutputKind] ->
   Source.Source ->
   m ()
-compile source = do
+compile outputKindList source = do
   Env.setCurrentSource source
   Locator.initialize
   hasObjectSet <- Env.getHasObjectSet
   if S.member (Source.sourceFilePath source) hasObjectSet
     then loadTopLevelDefinitions source
-    else compile' source
+    else compile' outputKindList source
 
 loadTopLevelDefinitions :: Context m => Source.Source -> m ()
 loadTopLevelDefinitions source = do
@@ -110,14 +120,17 @@ loadTopLevelDefinitions source = do
       >>= Elaborate.elaborate source
       >>= Clarify.clarify source
 
-compile' :: Context m => Source.Source -> m ()
-compile' source = do
+compile' :: Context m => [OK.OutputKind] -> Source.Source -> m ()
+compile' outputKindList source = do
   llvmCode <- compileToLLVM source
-  outputPath <- Source.sourceToOutputPath OK.Object source
-  Path.ensureDir $ parent outputPath
-  llvmOutputPath <- Source.sourceToOutputPath OK.LLVM source
-  Path.writeByteString llvmOutputPath llvmCode
-  LLVM.emit OK.Object llvmCode outputPath
+  kindPathList <- zipWithM attachOutputPath outputKindList (repeat source)
+  forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
+  LLVM.emit llvmCode kindPathList
+
+attachOutputPath :: Context m => OK.OutputKind -> Source.Source -> m (OK.OutputKind, Path Abs File)
+attachOutputPath outputKind source = do
+  outputPath <- Source.sourceToOutputPath outputKind source
+  return (outputKind, outputPath)
 
 compileToLLVM :: Context m => Source.Source -> m L.ByteString
 compileToLLVM source = do

@@ -3,9 +3,8 @@ module Entity.OutputKind where
 data OutputKind
   = Object
   | LLVM
-  | Executable
   | Asm
-  deriving (Show)
+  deriving (Show, Eq)
 
 instance Read OutputKind where
   readsPrec _ "object" =

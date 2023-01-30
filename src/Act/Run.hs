@@ -12,6 +12,7 @@ import Context.Log qualified as Log
 import Context.Throw qualified as Throw
 import Entity.Module
 import Entity.Module.Reflect qualified as Module
+import Entity.OutputKind qualified as OK
 import Entity.Target
 import Path
 
@@ -37,7 +38,9 @@ toBuildConfig cfg =
     { Build.mTarget = Just $ target cfg,
       Build.mClangOptString = mClangOptString cfg,
       Build.shouldCancelAlloc = shouldCancelAlloc cfg,
-      Build.logCfg = logCfg cfg
+      Build.logCfg = logCfg cfg,
+      Build.outputKindList = [OK.Object],
+      shouldSkipLink = False
     }
 
 run :: Context m => Config -> m ()

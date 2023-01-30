@@ -13,6 +13,7 @@ import Case.Main qualified as Main
 import Context.Log qualified as Log
 import Data.Text qualified as T
 import Entity.ModuleURL
+import Entity.OutputKind qualified as OK
 import Entity.Target
 import Options.Applicative
 
@@ -75,13 +76,17 @@ parseBuildOpt = do
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
   logCfg <- logConfigOpt
   shouldCancelAlloc <- cancelAllocOpt
+  outputKindList <- outputKindListOpt
+  shouldSkipLink <- shouldSkipLinkOpt
   pure $
     Build
       Build.Config
         { Build.mTarget = Target <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.logCfg = logCfg,
-          Build.shouldCancelAlloc = shouldCancelAlloc
+          Build.shouldCancelAlloc = shouldCancelAlloc,
+          Build.outputKindList = outputKindList,
+          Build.shouldSkipLink = shouldSkipLink
         }
 
 parseRunOpt :: Parser Command
@@ -191,6 +196,43 @@ cancelAllocOpt =
           help "Set this to disable cancelling malloc/free"
         ]
     )
+
+shouldSkipLinkOpt :: Parser Bool
+shouldSkipLinkOpt =
+  flag
+    False
+    True
+    ( mconcat
+        [ long "skip-link",
+          help "Set this to skip linking"
+        ]
+    )
+
+outputKindListOpt :: Parser [OK.OutputKind]
+outputKindListOpt = do
+  option outputKindListReader $ mconcat [long "emit", metavar "EMIT", help "llvm, asm, or object", value [OK.Object]]
+
+outputKindListReader :: ReadM [OK.OutputKind]
+outputKindListReader =
+  eitherReader $ \input ->
+    readOutputKinds $ T.splitOn "," $ T.pack input
+
+readOutputKinds :: [T.Text] -> Either String [OK.OutputKind]
+readOutputKinds kindStrList =
+  case kindStrList of
+    [] ->
+      return []
+    kindStr : rest -> do
+      tmp <- readOutputKinds rest
+      case kindStr of
+        "llvm" ->
+          return $ OK.LLVM : tmp
+        "asm" ->
+          return $ OK.Asm : tmp
+        "object" ->
+          return $ OK.Object : tmp
+        _ ->
+          Left $ T.unpack $ "no such output kind exists: " <> kindStr
 
 parseReleaseOpt :: Parser Command
 parseReleaseOpt = do

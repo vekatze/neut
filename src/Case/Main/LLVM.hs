@@ -7,6 +7,7 @@ where
 
 import Context.Env qualified as Env
 import Context.External qualified as External
+import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
@@ -28,18 +29,30 @@ class
   ( Throw.Context m,
     Env.Context m,
     MonadIO m,
+    Path.Context m,
     External.Context m,
     MonadUnliftIO m
   ) =>
   Context m
 
-emit :: Context m => OK.OutputKind -> LLVMCode -> Path Abs File -> m ()
-emit kind llvmCode path = do
+emit :: Context m => LLVMCode -> [(OK.OutputKind, Path Abs File)] -> m ()
+emit llvmCode kindPathList = do
+  case kindPathList of
+    [] ->
+      return ()
+    (kind, path) : rest -> do
+      emit' llvmCode kind path
+      emit llvmCode rest
+
+emit' :: Context m => LLVMCode -> OK.OutputKind -> Path Abs File -> m ()
+emit' llvmCode kind path = do
   clangOptString <- Env.getClangOptString
   case kind of
+    OK.LLVM -> do
+      Path.writeByteString path llvmCode
     OK.Asm ->
       emitInner ("-S" : words clangOptString) llvmCode path
-    _ ->
+    OK.Object ->
       emitInner (words clangOptString) llvmCode path
 
 emitInner :: Context m => [ClangOption] -> L.ByteString -> Path Abs File -> m ()

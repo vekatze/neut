@@ -10,5 +10,5 @@ import Path
 type OutputPath = Path Abs File
 
 class Monad m => Context m where
-  emit :: OutputKind -> L.ByteString -> OutputPath -> m ()
+  emit :: L.ByteString -> [(OutputKind, OutputPath)] -> m ()
   link :: [Path Abs File] -> OutputPath -> m ()
