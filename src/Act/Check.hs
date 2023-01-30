@@ -46,6 +46,7 @@ check cfg = do
     Path.ensureNotInLibDir
     mainModule <- Module.fromCurrentPath
     Env.setMainModule mainModule
+    Env.setTargetPlatform
     case mFilePathString cfg of
       Just filePathStr -> do
         sgl <- SGL.reflectInMainModule filePathStr

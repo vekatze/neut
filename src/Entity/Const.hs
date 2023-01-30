@@ -25,6 +25,14 @@ envVarCacheDir :: String
 envVarCacheDir =
   "NEUT_CACHE_DIR"
 
+envVarTargetOS :: String
+envVarTargetOS =
+  "NEUT_TARGET_OS"
+
+envVarTargetArch :: String
+envVarTargetArch =
+  "NEUT_TARGET_ARCH"
+
 moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")

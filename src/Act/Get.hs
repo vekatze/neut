@@ -39,6 +39,7 @@ get cfg = do
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
   Throw.run $ do
     Module.fromCurrentPath >>= Env.setMainModule
+    Env.setTargetPlatform
     baseName <- BN.reflect' $ moduleAliasText cfg
     F.insertDependency
       (ModuleAlias baseName)

@@ -7,18 +7,23 @@ module Case.Main.Path
   )
 where
 
+import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Class
+import Data.Version qualified as V
 import Entity.Const
+import Entity.TargetPlatform as TP
 import Path
 import Path.IO
+import Paths_neut
 import System.Environment
 
 class
   ( Throw.Context m,
     MonadThrow m,
+    Env.Context m,
     MonadIO m
   ) =>
   Context m
@@ -26,7 +31,20 @@ class
 getLibraryDirPath :: Context m => m (Path Abs Dir)
 getLibraryDirPath = do
   cacheDirPath <- getCacheDirPath
-  returnDirectory $ cacheDirPath </> $(mkRelDir "library")
+  relLibDirPath <- getLibDirRelPath
+  returnDirectory $ cacheDirPath </> relLibDirPath
+
+getLibDirRelPath :: Context m => m (Path Rel Dir)
+getLibDirRelPath = do
+  prefix <- getCacheDirPrefix
+  return $ prefix </> $(mkRelDir "library")
+
+getCacheDirPrefix :: Context m => m (Path Rel Dir)
+getCacheDirPrefix = do
+  tp <- Env.getTargetPlatform
+  platformDir <- parseRelDir $ TP.platform tp
+  versionDir <- parseRelDir $ V.showVersion version
+  return $ platformDir </> versionDir
 
 getCacheDirPath :: Context m => m (Path Abs Dir)
 getCacheDirPath = do

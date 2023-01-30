@@ -59,6 +59,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IORef.Unboxed
 import Data.IntMap qualified as IntMap
+import Data.Maybe
 import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -68,6 +69,7 @@ import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Comp
 import Entity.Comp.Reduce qualified as Comp (Context)
+import Entity.Const
 import Entity.Constraint
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
@@ -112,6 +114,8 @@ import Scene.Parse.Core qualified as ParseCore (Context (..))
 import Scene.Parse.Discern qualified as ParseDiscern (Context)
 import Scene.Parse.Import qualified as ParseImport (Context)
 import Scene.Unravel qualified as Unravel (Context)
+import System.Environment
+import System.Info qualified as SI
 
 type Ref a = IORef (Maybe a)
 
@@ -410,7 +414,12 @@ instance Env.Context App where
   setHoleSubst = writeRef' holeSubst
   insertSubst holeID xs e = modifyRef' holeSubst $ HS.insert holeID xs e
   getHoleSubst = readRef' holeSubst
-  setTargetPlatform = writeRef targetPlatform
+  setTargetPlatform = do
+    mTargetArch <- liftIO $ lookupEnv envVarTargetArch
+    mTargetOS <- liftIO $ lookupEnv envVarTargetOS
+    let targetOS = fromMaybe SI.os mTargetOS
+    let targetArch = fromMaybe SI.arch mTargetArch
+    writeRef targetPlatform $ TP.TargetPlatform {os = targetOS, arch = targetArch}
   getTargetPlatform = readRef "targetPlatform" targetPlatform
   insertToSourceChildrenMap k v = modifyRef' sourceChildrenMap $ Map.insert k v
   getSourceChildrenMap = readRef' sourceChildrenMap

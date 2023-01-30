@@ -66,6 +66,7 @@ build cfg = do
     Path.ensureNotInLibDir
     Env.setMainModule mainModule
     Env.setShouldCancelAlloc $ shouldCancelAlloc cfg
+    Env.setTargetPlatform
     case mTarget cfg of
       Just target ->
         build' target mainModule

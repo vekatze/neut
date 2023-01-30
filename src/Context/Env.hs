@@ -58,7 +58,7 @@ class MonadFail m => Context m where
   setHoleSubst :: HS.HoleSubst -> m ()
   insertSubst :: HID.HoleID -> [Ident] -> WeakTerm -> m ()
   getHoleSubst :: m HS.HoleSubst
-  setTargetPlatform :: TargetPlatform -> m ()
+  setTargetPlatform :: m ()
   getTargetPlatform :: m TargetPlatform
   insertToSourceChildrenMap :: Path Abs File -> [Source.Source] -> m ()
   getSourceChildrenMap :: m (Map.HashMap (Path Abs File) [Source.Source])
