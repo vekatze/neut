@@ -304,7 +304,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let args = dataArgs ++ consArgs
       let introRule =
             RawStmtDefine
-              (Normal O.Transparent)
+              (DataIntro consName dataArgs consArgs discriminant)
               m
               consName
               (I.fromInt $ length dataArgs)

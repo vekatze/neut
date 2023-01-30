@@ -77,7 +77,7 @@ checkIfCacheIsAvailable isCacheAvailableList source = do
   b <- isFreshCacheAvailable source
   let isCacheAvailable = and $ b : isCacheAvailableList
   when isCacheAvailable $
-    Env.insertToHasObjectSet $
+    Env.insertToHasCacheSet $
       Source.sourceFilePath source
   return isCacheAvailable
 
