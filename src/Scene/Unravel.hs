@@ -11,6 +11,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
+import Data.List (unzip4)
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -33,6 +34,9 @@ type IsCacheAvailable =
 type IsObjectAvailable =
   Bool
 
+type IsLLVMAvailable =
+  Bool
+
 class
   ( Throw.Context m,
     Path.Context m,
@@ -46,11 +50,11 @@ class
 unravel ::
   Context m =>
   Source.Source ->
-  m (IsCacheAvailable, IsObjectAvailable, Seq Source.Source)
+  m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
 unravel source = do
   unravel' source
 
-unravel' :: Context m => Source.Source -> m (IsCacheAvailable, IsObjectAvailable, Seq Source.Source)
+unravel' :: Context m => Source.Source -> m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
 unravel' source = do
   visitEnv <- Env.getVisitEnv
   let path = Source.sourceFilePath source
@@ -59,41 +63,55 @@ unravel' source = do
       raiseCyclicPath source
     Just VI.Finish -> do
       hasCacheSet <- Env.getHasCacheSet
+      hasLLVMSet <- Env.getHasObjectSet
       hasObjectSet <- Env.getHasObjectSet
-      return (path `S.member` hasCacheSet, path `S.member` hasObjectSet, Seq.empty)
+      return (path `S.member` hasCacheSet, path `S.member` hasLLVMSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
       Env.insertToVisitEnv path VI.Active
       Env.pushToTraceSourceList source
       children <- getChildren source
-      (isCacheAvailableList, isObjectAvailableList, seqList) <- unzip3 <$> mapM unravel' children
+      (isCacheAvailableList, isLLVMAvailableList, isObjectAvailableList, seqList) <- unzip4 <$> mapM unravel' children
       _ <- Env.popFromTraceSourceList
       Env.insertToVisitEnv path VI.Finish
       isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
+      isLLVMAvailable <- checkIfLLVMIsAvailable isLLVMAvailableList source
       isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
-      return (isCacheAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
+      return (isCacheAvailable, isLLVMAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
 
 checkIfCacheIsAvailable :: Context m => [IsCacheAvailable] -> Source.Source -> m IsCacheAvailable
-checkIfCacheIsAvailable isCacheAvailableList source = do
-  b <- isFreshCacheAvailable source
-  let isCacheAvailable = and $ b : isCacheAvailableList
-  when isCacheAvailable $
-    Env.insertToHasCacheSet $
-      Source.sourceFilePath source
-  return isCacheAvailable
+checkIfCacheIsAvailable = do
+  checkIfItemIsAvailable isFreshCacheAvailable Env.insertToHasCacheSet
+
+checkIfLLVMIsAvailable :: Context m => [IsLLVMAvailable] -> Source.Source -> m IsLLVMAvailable
+checkIfLLVMIsAvailable = do
+  checkIfItemIsAvailable isFreshLLVMAvailable Env.insertToHasLLVMSet
 
 checkIfObjectIsAvailable :: Context m => [IsObjectAvailable] -> Source.Source -> m IsObjectAvailable
-checkIfObjectIsAvailable isObjectAvailableList source = do
-  b <- isFreshObjectAvailable source
+checkIfObjectIsAvailable = do
+  checkIfItemIsAvailable isFreshObjectAvailable Env.insertToHasObjectSet
+
+checkIfItemIsAvailable ::
+  Context m =>
+  (Source.Source -> m Bool) ->
+  (Path Abs File -> m ()) ->
+  [IsObjectAvailable] ->
+  Source.Source ->
+  m IsObjectAvailable
+checkIfItemIsAvailable isFreshItemAvailable inserter isObjectAvailableList source = do
+  b <- isFreshItemAvailable source
   let isObjectAvailable = and $ b : isObjectAvailableList
-  when isObjectAvailable $
-    Env.insertToHasObjectSet $
-      Source.sourceFilePath source
+  when isObjectAvailable $ inserter $ Source.sourceFilePath source
   return isObjectAvailable
 
 isFreshCacheAvailable :: Context m => Source.Source -> m Bool
 isFreshCacheAvailable source = do
   cachePath <- Source.getSourceCachePath source
   isItemAvailable source cachePath
+
+isFreshLLVMAvailable :: Context m => Source.Source -> m Bool
+isFreshLLVMAvailable source = do
+  llvmPath <- Source.sourceToOutputPath OK.LLVM source
+  isItemAvailable source llvmPath
 
 isFreshObjectAvailable :: Context m => Source.Source -> m Bool
 isFreshObjectAvailable source = do

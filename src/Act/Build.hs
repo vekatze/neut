@@ -89,7 +89,7 @@ build' target mainModule outputKindList shouldSkipLink = do
   sgl <- resolveTarget mainModule target
   mainFilePath <- Module.getSourcePath sgl
   let mainSource = getMainSource mainModule mainFilePath
-  (_, isObjectAvailable, dependenceSeq) <- Unravel.unravel mainSource
+  (_, _, isObjectAvailable, dependenceSeq) <- Unravel.unravel mainSource
   Global.initialize
   Parse.parseCachedStmtList Stmt.initialStmtList
   forM_ Stmt.initialStmtList Elaborate.insertStmt
@@ -108,10 +108,30 @@ compile ::
 compile outputKindList source = do
   Env.setCurrentSource source
   Locator.initialize
-  hasObjectSet <- Env.getHasObjectSet
-  if S.member (Source.sourceFilePath source) hasObjectSet
+  b <- isCompilationSkippable outputKindList source
+  if b
     then loadTopLevelDefinitions source
     else compile' outputKindList source
+
+isCompilationSkippable :: Context m => [OK.OutputKind] -> Source.Source -> m Bool
+isCompilationSkippable outputKindList source =
+  case outputKindList of
+    [] ->
+      return True
+    kind : rest -> do
+      case kind of
+        OK.LLVM -> do
+          hasLLVMSet <- Env.getHasLLVMSet
+          let b1 = S.member (Source.sourceFilePath source) hasLLVMSet
+          b2 <- isCompilationSkippable rest source
+          return $ b1 && b2
+        OK.Asm ->
+          isCompilationSkippable rest source
+        OK.Object -> do
+          hasObjectSet <- Env.getHasObjectSet
+          let b1 = S.member (Source.sourceFilePath source) hasObjectSet
+          b2 <- isCompilationSkippable rest source
+          return $ b1 && b2
 
 loadTopLevelDefinitions :: Context m => Source.Source -> m ()
 loadTopLevelDefinitions source = do

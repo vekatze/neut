@@ -64,7 +64,7 @@ check' sgl mainModule = do
   filePath <- Module.getSourcePath sgl
   ensureFileModuleSanity filePath mainModule
   let initialSource = Source.Source {Source.sourceModule = mainModule, Source.sourceFilePath = filePath}
-  (_, _, dependenceSeq) <- Unravel.unravel initialSource
+  (_, _, _, dependenceSeq) <- Unravel.unravel initialSource
   forM_ dependenceSeq $ \source -> do
     void $ Parse.parse source >>= Elaborate.elaborate source
 

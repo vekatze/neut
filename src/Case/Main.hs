@@ -143,6 +143,7 @@ data Env = Env
     constraintQueue :: FastRef (Q.MinQueue SuspendedConstraint),
     hasObjectSet :: FastRef (S.Set (Path Abs File)),
     hasCacheSet :: FastRef (S.Set (Path Abs File)),
+    hasLLVMSet :: FastRef (S.Set (Path Abs File)),
     visitEnv :: FastRef (Map.HashMap (Path Abs File) VisitInfo),
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -240,6 +241,7 @@ newEnv = do
   constraintQueue <- newFastRef
   traceSourceList <- newFastRef
   hasObjectSet <- newFastRef
+  hasLLVMSet <- newFastRef
   definedNameSet <- newFastRef
   hasCacheSet <- newFastRef
   visitEnv <- newFastRef
@@ -430,6 +432,8 @@ instance Env.Context App where
   insertToHasObjectSet v = modifyRef' hasObjectSet $ S.insert v
   getHasObjectSet = readRef' hasObjectSet
   insertToHasCacheSet v = modifyRef' hasCacheSet $ S.insert v
+  getHasLLVMSet = readRef' hasLLVMSet
+  insertToHasLLVMSet v = modifyRef' hasLLVMSet $ S.insert v
   getHasCacheSet = readRef' hasCacheSet
   insertToVisitEnv k v = modifyRef' visitEnv $ Map.insert k v
   getVisitEnv = readRef' visitEnv

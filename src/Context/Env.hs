@@ -67,8 +67,10 @@ class MonadFail m => Context m where
   popFromTraceSourceList :: m ()
   getTraceSourceList :: m [Source.Source]
   getHasObjectSet :: m PathSet
+  getHasLLVMSet :: m PathSet
   insertToHasObjectSet :: Path Abs File -> m ()
   insertToHasCacheSet :: Path Abs File -> m ()
+  insertToHasLLVMSet :: Path Abs File -> m ()
   getHasCacheSet :: m PathSet
   insertToVisitEnv :: Path Abs File -> VisitInfo -> m ()
   getVisitEnv :: m (Map.HashMap (Path Abs File) VisitInfo)
