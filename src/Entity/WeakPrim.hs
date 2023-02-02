@@ -1,9 +1,9 @@
 module Entity.WeakPrim where
 
 import Data.Binary
-import Entity.PrimType qualified as PT
-import Entity.WeakPrimValue qualified as PV
-import GHC.Generics qualified as G
+import qualified Entity.PrimType as PT
+import qualified Entity.WeakPrimValue as PV
+import qualified GHC.Generics as G
 
 data WeakPrim a
   = Type PT.PrimType

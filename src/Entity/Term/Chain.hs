@@ -5,16 +5,16 @@ module Entity.Term.Chain
 where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
+import qualified Data.IntMap as IntMap
 import Data.List
 import Data.Maybe
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
+import qualified Entity.DecisionTree as DT
 import Entity.Hint
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Term qualified as TM
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.Term as TM
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =

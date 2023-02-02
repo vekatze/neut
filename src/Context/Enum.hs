@@ -3,7 +3,7 @@ module Context.Enum
   )
 where
 
-import Entity.DefiniteDescription qualified as DD
+import qualified Entity.DefiniteDescription as DD
 
 class Monad m => Context m where
   insert :: DD.DefiniteDescription -> m ()

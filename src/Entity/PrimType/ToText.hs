@@ -1,8 +1,8 @@
 module Entity.PrimType.ToText (toText) where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.PrimNumSize.ToText
-import Entity.PrimType qualified as PT
+import qualified Entity.PrimType as PT
 
 toText :: PT.PrimType -> T.Text
 toText primNum =

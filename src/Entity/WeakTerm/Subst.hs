@@ -6,12 +6,12 @@ where
 
 import Context.Gensym
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
+import qualified Data.IntMap as IntMap
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.WeakTerm qualified as WT
+import qualified Entity.DecisionTree as DT
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.WeakTerm as WT
 
 subst :: Context m => WT.SubstWeakTerm -> WT.WeakTerm -> m WT.WeakTerm
 subst sub term =

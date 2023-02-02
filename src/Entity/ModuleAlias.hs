@@ -2,7 +2,7 @@ module Entity.ModuleAlias where
 
 import Data.Binary
 import Data.Hashable
-import Entity.BaseName qualified as BN
+import qualified Entity.BaseName as BN
 import GHC.Generics (Generic)
 
 newtype ModuleAlias = ModuleAlias {extract :: BN.BaseName}

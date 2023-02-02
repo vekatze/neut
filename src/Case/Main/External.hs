@@ -4,12 +4,12 @@ module Case.Main.External
   )
 where
 
-import Context.Env qualified as Env
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.Throw as Throw
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import GHC.IO.Handle
 import System.Exit
 import System.Process

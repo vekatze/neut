@@ -2,12 +2,12 @@ module Entity.Term.FreeVars (freeVars, matchFreeVarSets) where
 
 import Control.Comonad.Cofree
 import Data.Maybe
-import Data.Set qualified as S
+import qualified Data.Set as S
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
+import qualified Entity.DecisionTree as DT
 import Entity.Ident
 import Entity.LamKind
-import Entity.Term qualified as TM
+import qualified Entity.Term as TM
 
 matchFreeVarSets :: DT.CaseList TM.Term -> (S.Set Ident, [S.Set Ident])
 matchFreeVarSets (fallbackClause, clauseList) = do

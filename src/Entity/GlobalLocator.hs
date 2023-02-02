@@ -1,15 +1,15 @@
 module Entity.GlobalLocator where
 
-import Context.Throw qualified as Throw
+import qualified Context.Throw as Throw
 import Data.Binary
 import Data.Hashable
-import Data.Text qualified as T
-import Entity.BaseName qualified as BN
+import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Const
-import Entity.GlobalLocatorAlias qualified as GLA
-import Entity.Hint qualified as H
+import qualified Entity.GlobalLocatorAlias as GLA
+import qualified Entity.Hint as H
 import Entity.ModuleAlias
-import Entity.SourceLocator qualified as SL
+import qualified Entity.SourceLocator as SL
 import GHC.Generics
 
 data GlobalLocator

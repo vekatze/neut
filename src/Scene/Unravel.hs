@@ -4,13 +4,13 @@ module Scene.Unravel
   )
 where
 
-import Context.Env qualified as Env
-import Context.Module qualified as Module
-import Context.Path qualified as Path
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.Module as Module
+import qualified Context.Path as Path
+import qualified Context.Throw as Throw
 import Control.Monad
 import Data.Foldable
-import Data.HashMap.Strict qualified as Map
+import qualified Data.HashMap.Strict as Map
 import Data.List (unzip4)
 import Data.Sequence as Seq
   ( Seq,
@@ -18,15 +18,15 @@ import Data.Sequence as Seq
     (><),
     (|>),
   )
-import Data.Set qualified as S
-import Data.Text qualified as T
+import qualified Data.Set as S
+import qualified Data.Text as T
 import Entity.Hint
-import Entity.OutputKind qualified as OK
-import Entity.Source qualified as Source
-import Entity.VisitInfo qualified as VI
+import qualified Entity.OutputKind as OK
+import qualified Entity.Source as Source
+import qualified Entity.VisitInfo as VI
 import Path
-import Scene.Parse.Core qualified as ParseCore
-import Scene.Parse.Import qualified as Parse
+import qualified Scene.Parse.Core as ParseCore
+import qualified Scene.Parse.Import as Parse
 
 type IsCacheAvailable =
   Bool

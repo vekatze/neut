@@ -3,8 +3,8 @@ module Context.Type
   )
 where
 
-import Context.Throw qualified as Throw
-import Entity.DefiniteDescription qualified as DD
+import qualified Context.Throw as Throw
+import qualified Entity.DefiniteDescription as DD
 import Entity.Hint
 import Entity.WeakTerm
 

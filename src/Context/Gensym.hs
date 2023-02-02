@@ -11,14 +11,14 @@ module Context.Gensym
 where
 
 import Control.Comonad.Cofree
-import Data.Text qualified as T
-import Entity.Comp qualified as C
+import qualified Data.Text as T
+import qualified Entity.Comp as C
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.RawTerm qualified as RT
-import Entity.WeakTerm qualified as WT
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.RawTerm as RT
+import qualified Entity.WeakTerm as WT
 
 class Monad m => Context m where
   newCount :: m Int

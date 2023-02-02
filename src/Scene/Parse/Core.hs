@@ -1,25 +1,25 @@
 module Scene.Parse.Core where
 
-import Context.Gensym qualified as Gensym
-import Context.Locator qualified as Locator
-import Context.Throw qualified as Throw
+import qualified Context.Gensym as Gensym
+import qualified Context.Locator as Locator
+import qualified Context.Throw as Throw
 import Control.Monad
 import Data.List.NonEmpty
-import Data.Set qualified as S
-import Data.Text qualified as T
+import qualified Data.Set as S
+import qualified Data.Text as T
 import Data.Void
-import Entity.BaseName qualified as BN
+import qualified Entity.BaseName as BN
 import Entity.Const
 import Entity.FilePos
 import Entity.Hint
-import Entity.Hint.Reflect qualified as Hint
-import Entity.Log qualified as L
+import qualified Entity.Hint.Reflect as Hint
+import qualified Entity.Log as L
 import Entity.TargetPlatform
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char
-import Text.Megaparsec.Char.Lexer qualified as L
-import Text.Read qualified as R
+import qualified Text.Megaparsec.Char.Lexer as L
+import qualified Text.Read as R
 
 type Parser m = ParsecT Void T.Text m
 

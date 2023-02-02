@@ -1,11 +1,11 @@
 module Scene.Clarify.Utility where
 
-import Context.Gensym qualified as Gensym
-import Entity.Comp qualified as C
-import Entity.DefiniteDescription qualified as DD
-import Entity.EnumCase qualified as EC
+import qualified Context.Gensym as Gensym
+import qualified Entity.Comp as C
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.EnumCase as EC
 import Entity.Ident
-import Entity.Opacity qualified as O
+import qualified Entity.Opacity as O
 import Entity.PrimNumSize
 import Scene.Clarify.Context
 

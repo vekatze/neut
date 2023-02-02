@@ -7,42 +7,42 @@ module Scene.Elaborate.Infer
   )
 where
 
-import Context.Env qualified as Env
-import Context.Gensym qualified as Gensym
-import Context.Implicit qualified as Implicit
-import Context.Log qualified as Log
-import Context.Throw qualified as Throw
-import Context.Type qualified as Type
+import qualified Context.Env as Env
+import qualified Context.Gensym as Gensym
+import qualified Context.Implicit as Implicit
+import qualified Context.Log as Log
+import qualified Context.Throw as Throw
+import qualified Context.Type as Type
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.IntMap qualified as IntMap
+import qualified Data.IntMap as IntMap
 import Data.Maybe (fromMaybe)
-import Data.Set qualified as S
-import Data.Text qualified as T
-import Entity.Arity qualified as A
+import qualified Data.Set as S
+import qualified Data.Text as T
+import qualified Entity.Arity as A
 import Entity.Binder
-import Entity.DataInfo qualified as DI
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
+import qualified Entity.DataInfo as DI
+import qualified Entity.DecisionTree as DT
+import qualified Entity.DefiniteDescription as DD
 import Entity.Hint
-import Entity.HoleID qualified as HID
+import qualified Entity.HoleID as HID
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.ImpArgNum qualified as I
-import Entity.LamKind qualified as LK
-import Entity.Magic qualified as M
-import Entity.PrimNumSize qualified as PNS
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.ImpArgNum as I
+import qualified Entity.LamKind as LK
+import qualified Entity.Magic as M
+import qualified Entity.PrimNumSize as PNS
 import Entity.PrimOp
 import Entity.PrimOp.OpSet
-import Entity.PrimType qualified as PT
+import qualified Entity.PrimType as PT
 import Entity.Stmt
-import Entity.Term qualified as TM
-import Entity.Term.FromPrimNum qualified as Term
+import qualified Entity.Term as TM
+import qualified Entity.Term.FromPrimNum as Term
 import Entity.Term.Weaken
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.Subst qualified as Subst
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
+import qualified Entity.WeakTerm as WT
+import qualified Entity.WeakTerm.Subst as Subst
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

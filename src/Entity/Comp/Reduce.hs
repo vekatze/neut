@@ -4,15 +4,15 @@ module Entity.Comp.Reduce
   )
 where
 
-import Context.CompDefinition qualified as CompDefinition
-import Context.Gensym qualified as Gensym
-import Data.IntMap qualified as IntMap
-import Entity.Comp qualified as C
+import qualified Context.CompDefinition as CompDefinition
+import qualified Context.Gensym as Gensym
+import qualified Data.IntMap as IntMap
+import qualified Entity.Comp as C
 import Entity.Comp.Subst
-import Entity.EnumCase qualified as EC
+import qualified Entity.EnumCase as EC
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.Opacity qualified as O
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.Opacity as O
 
 class (CompDefinition.Context m, Gensym.Context m) => Context m
 

@@ -5,46 +5,46 @@ module Scene.Parse
   )
 where
 
-import Context.Alias qualified as Alias
-import Context.CodataDefinition qualified as CodataDefinition
-import Context.Enum qualified as Enum
-import Context.Env qualified as Env
-import Context.Gensym qualified as Gensym
-import Context.Global qualified as Global
-import Context.Locator qualified as Locator
-import Context.Throw qualified as Throw
+import qualified Context.Alias as Alias
+import qualified Context.CodataDefinition as CodataDefinition
+import qualified Context.Enum as Enum
+import qualified Context.Env as Env
+import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
+import qualified Context.Locator as Locator
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
-import Data.Vector qualified as V
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Text as T
+import qualified Data.Vector as V
 import Entity.AliasInfo
-import Entity.Arity qualified as A
-import Entity.BaseName qualified as BN
+import qualified Entity.Arity as A
+import qualified Entity.BaseName as BN
 import Entity.Binder
 import Entity.Const
-import Entity.DefiniteDescription qualified as DD
-import Entity.DefiniteLocator qualified as DL
-import Entity.Discriminant qualified as D
-import Entity.GlobalLocator qualified as GL
-import Entity.GlobalName qualified as GN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.DefiniteLocator as DL
+import qualified Entity.Discriminant as D
+import qualified Entity.GlobalLocator as GL
+import qualified Entity.GlobalName as GN
 import Entity.Hint
-import Entity.Ident.Reflect qualified as Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.ImpArgNum qualified as I
-import Entity.LocalLocator qualified as LL
-import Entity.Opacity qualified as O
-import Entity.RawPattern qualified as RP
-import Entity.RawTerm qualified as RT
-import Entity.Section qualified as Section
-import Entity.Source qualified as Source
+import qualified Entity.Ident.Reflect as Ident
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.ImpArgNum as I
+import qualified Entity.LocalLocator as LL
+import qualified Entity.Opacity as O
+import qualified Entity.RawPattern as RP
+import qualified Entity.RawTerm as RT
+import qualified Entity.Section as Section
+import qualified Entity.Source as Source
 import Entity.Stmt
-import Entity.StrictGlobalLocator qualified as SGL
+import qualified Entity.StrictGlobalLocator as SGL
 import Path
-import Scene.Parse.Core qualified as P
-import Scene.Parse.Discern qualified as Discern
-import Scene.Parse.Import qualified as Parse
+import qualified Scene.Parse.Core as P
+import qualified Scene.Parse.Discern as Discern
+import qualified Scene.Parse.Import as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 

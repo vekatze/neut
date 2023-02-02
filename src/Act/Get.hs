@@ -5,17 +5,17 @@ module Act.Get
   )
 where
 
-import Context.Env qualified as Env
-import Context.Log qualified as Log
-import Context.Module qualified as Module
-import Context.Path qualified as Path
-import Context.Throw qualified as Throw
-import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.Module.Reflect qualified as Module
+import qualified Context.Env as Env
+import qualified Context.Log as Log
+import qualified Context.Module as Module
+import qualified Context.Path as Path
+import qualified Context.Throw as Throw
+import qualified Data.Text as T
+import qualified Entity.BaseName as BN
+import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
 import Entity.ModuleURL
-import Scene.Fetch qualified as F
+import qualified Scene.Fetch as F
 import Prelude hiding (log)
 
 data Config = Config

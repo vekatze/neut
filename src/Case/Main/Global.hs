@@ -8,20 +8,20 @@ module Case.Main.Global
   )
 where
 
-import Context.Env qualified as Env
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.Throw as Throw
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.HashMap.Strict qualified as Map
+import qualified Data.HashMap.Strict as Map
 import Data.Maybe
-import Entity.Arity qualified as A
+import qualified Entity.Arity as A
 import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.GlobalName qualified as GN
-import Entity.Hint qualified as Hint
-import Entity.PrimOp.FromText qualified as PrimOp
-import Entity.PrimType.FromText qualified as PT
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
+import qualified Entity.GlobalName as GN
+import qualified Entity.Hint as Hint
+import qualified Entity.PrimOp.FromText as PrimOp
+import qualified Entity.PrimType.FromText as PT
 import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName

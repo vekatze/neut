@@ -15,12 +15,12 @@ module Entity.DataInfo
 where
 
 import Data.Binary
-import Entity.BaseName qualified as BN
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.LocalLocator qualified as LL
-import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
+import qualified Entity.LocalLocator as LL
+import qualified Entity.SourceLocator as SL
+import qualified Entity.StrictGlobalLocator as SGL
 import GHC.Generics
 
 type DataValue = (DD.DefiniteDescription, D.Discriminant)

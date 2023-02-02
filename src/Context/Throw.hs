@@ -8,10 +8,10 @@ module Context.Throw
   )
 where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.FilePos
 import Entity.Hint
-import Entity.Log qualified as L
+import qualified Entity.Log as L
 
 class Monad m => Context m where
   throw :: forall a. L.Error -> m a

@@ -5,13 +5,13 @@ module Entity.Term.Subst
 where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
+import qualified Data.IntMap as IntMap
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
+import qualified Entity.DecisionTree as DT
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Term qualified as TM
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.Term as TM
 
 type SubstTerm =
   IntMap.IntMap TM.Term

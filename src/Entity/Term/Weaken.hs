@@ -8,19 +8,19 @@ where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor
-import Entity.DecisionTree qualified as DT
+import qualified Entity.DecisionTree as DT
 import Entity.Hint
 import Entity.Ident
-import Entity.LamKind qualified as LK
-import Entity.Prim qualified as P
-import Entity.PrimType qualified as PT
-import Entity.PrimValue qualified as PV
+import qualified Entity.LamKind as LK
+import qualified Entity.Prim as P
+import qualified Entity.PrimType as PT
+import qualified Entity.PrimValue as PV
 import Entity.Stmt
-import Entity.Term qualified as TM
+import qualified Entity.Term as TM
 import Entity.Term.FromPrimNum
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
+import qualified Entity.WeakTerm as WT
 
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do

@@ -1,14 +1,14 @@
 module Entity.WeakTerm.Reduce (reduce) where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
-import Entity.DecisionTree qualified as DT
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Opacity qualified as O
-import Entity.WeakTerm qualified as WT
+import qualified Data.IntMap as IntMap
+import qualified Entity.DecisionTree as DT
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.Opacity as O
+import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.FreeVars
-import Entity.WeakTerm.Subst qualified as Subst
+import qualified Entity.WeakTerm.Subst as Subst
 
 reduce :: Subst.Context m => WT.WeakTerm -> m WT.WeakTerm
 reduce term =

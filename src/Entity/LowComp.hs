@@ -1,8 +1,8 @@
 module Entity.LowComp where
 
-import Data.Text qualified as T
-import Entity.DefiniteDescription qualified as DD
-import Entity.ExternalName qualified as EN
+import qualified Data.Text as T
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.ExternalName as EN
 import Entity.Ident
 import Entity.Ident.Reify
 import Entity.LowType

@@ -2,7 +2,7 @@
 
 module Entity.Const where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Path
 
 sourceFileExtension :: String

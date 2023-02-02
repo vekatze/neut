@@ -1,9 +1,9 @@
 module Entity.Prim where
 
 import Data.Binary
-import Entity.PrimType qualified as PT
-import Entity.PrimValue qualified as PV
-import GHC.Generics qualified as G
+import qualified Entity.PrimType as PT
+import qualified Entity.PrimValue as PV
+import qualified GHC.Generics as G
 
 data Prim
   = Type PT.PrimType

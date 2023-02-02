@@ -5,16 +5,16 @@ module Case.Main.LLVM
   )
 where
 
-import Context.Env qualified as Env
-import Context.External qualified as External
-import Context.Path qualified as Path
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.External as External
+import qualified Context.Path as Path
+import qualified Context.Throw as Throw
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
-import Data.ByteString.Lazy qualified as L
-import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
-import Entity.OutputKind qualified as OK
+import qualified Data.ByteString.Lazy as L
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
+import qualified Entity.OutputKind as OK
 import GHC.IO.Handle
 import Path
 import Path.IO

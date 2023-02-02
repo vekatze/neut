@@ -10,37 +10,37 @@ module Scene.Parse.RawTerm
 where
 
 import Codec.Binary.UTF8.String
-import Context.Gensym qualified as Gensym
-import Context.Throw qualified as Throw
+import qualified Context.Gensym as Gensym
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
 import Data.Bifunctor
-import Data.Set qualified as S
-import Data.Text qualified as T
-import Data.Vector qualified as V
+import qualified Data.Set as S
+import qualified Data.Text as T
+import qualified Data.Vector as V
 import Entity.Binder
 import Entity.Const
-import Entity.DataInfo qualified as DI
-import Entity.ExternalName qualified as EN
-import Entity.GlobalLocator qualified as GL
+import qualified Entity.DataInfo as DI
+import qualified Entity.ExternalName as EN
+import qualified Entity.GlobalLocator as GL
 import Entity.Hint
 import Entity.Ident
-import Entity.Ident.Reflect qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.LocalLocator qualified as LL
-import Entity.LowType qualified as LT
-import Entity.Magic qualified as M
-import Entity.Opacity qualified as O
-import Entity.PrimNumSize qualified as PNS
-import Entity.PrimType qualified as PT
-import Entity.PrimType.FromText qualified as PT
-import Entity.RawPattern qualified as RP
-import Entity.RawTerm qualified as RT
-import Entity.TargetPlatform qualified as TP
-import Entity.UnresolvedName qualified as UN
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
+import qualified Entity.Ident.Reflect as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.LocalLocator as LL
+import qualified Entity.LowType as LT
+import qualified Entity.Magic as M
+import qualified Entity.Opacity as O
+import qualified Entity.PrimNumSize as PNS
+import qualified Entity.PrimType as PT
+import qualified Entity.PrimType.FromText as PT
+import qualified Entity.RawPattern as RP
+import qualified Entity.RawTerm as RT
+import qualified Entity.TargetPlatform as TP
+import qualified Entity.UnresolvedName as UN
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
 import Scene.Parse.Core
 import Text.Megaparsec
 

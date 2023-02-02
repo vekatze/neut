@@ -4,35 +4,35 @@ module Scene.Elaborate.Unify
   )
 where
 
-import Context.Env qualified as Env
-import Context.Gensym qualified as Gensym
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.Gensym as Gensym
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.HashMap.Strict qualified as Map
-import Data.IntMap qualified as IntMap
-import Data.PQueue.Min qualified as Q
-import Data.Set qualified as S
-import Data.Text qualified as T
+import qualified Data.HashMap.Strict as Map
+import qualified Data.IntMap as IntMap
+import qualified Data.PQueue.Min as Q
+import qualified Data.Set as S
+import qualified Data.Text as T
 import Entity.Binder
-import Entity.Constraint qualified as C
-import Entity.DefiniteDescription qualified as DD
+import qualified Entity.Constraint as C
+import qualified Entity.DefiniteDescription as DD
 import Entity.FilePos
 import Entity.Hint
-import Entity.HoleID qualified as HID
-import Entity.HoleSubst qualified as HS
+import qualified Entity.HoleID as HID
+import qualified Entity.HoleSubst as HS
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.Log qualified as L
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.Log as L
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
+import qualified Entity.WeakTerm as WT
 import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
 import Entity.WeakTerm.Reduce
-import Entity.WeakTerm.Subst qualified as Subst
+import qualified Entity.WeakTerm.Subst as Subst
 import Entity.WeakTerm.ToText
 
 class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where

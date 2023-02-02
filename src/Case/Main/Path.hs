@@ -7,12 +7,12 @@ module Case.Main.Path
   )
 where
 
-import Context.Env qualified as Env
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.Throw as Throw
 import Control.Monad
 import Control.Monad.Catch
 import Control.Monad.IO.Class
-import Data.Version qualified as V
+import qualified Data.Version as V
 import Entity.Const
 import Entity.TargetPlatform as TP
 import Path

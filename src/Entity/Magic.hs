@@ -1,10 +1,10 @@
 module Entity.Magic where
 
 import Data.Binary
-import Data.Text qualified as T
-import Entity.ExternalName qualified as EN
+import qualified Data.Text as T
+import qualified Entity.ExternalName as EN
 import Entity.LowType
-import GHC.Generics qualified as G
+import qualified GHC.Generics as G
 
 data Magic a
   = Cast a a a

@@ -1,7 +1,7 @@
 module Entity.PrimOp.OpSet where
 
-import Data.Set qualified as S
-import Data.Text qualified as T
+import qualified Data.Set as S
+import qualified Data.Text as T
 
 unaryOpSet :: S.Set T.Text
 unaryOpSet =

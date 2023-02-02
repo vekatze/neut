@@ -5,7 +5,7 @@ module Act.Version
   )
 where
 
-import Data.Version qualified as V
+import qualified Data.Version as V
 import Paths_neut
 
 data Config = Config {}

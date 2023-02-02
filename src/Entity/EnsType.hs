@@ -1,7 +1,7 @@
 module Entity.EnsType where
 
 import Context.Throw
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.Hint
 
 data EnsType

@@ -3,7 +3,7 @@ module Context.LLVM
   )
 where
 
-import Data.ByteString.Lazy qualified as L
+import qualified Data.ByteString.Lazy as L
 import Entity.OutputKind
 import Path
 

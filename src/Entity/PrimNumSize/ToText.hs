@@ -4,7 +4,7 @@ module Entity.PrimNumSize.ToText
   )
 where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 

@@ -13,14 +13,14 @@ module Entity.Pattern
   )
 where
 
-import Context.Throw qualified as Throw
+import qualified Context.Throw as Throw
 import Data.List
 import Data.Maybe
-import Data.Text qualified as T
-import Data.Vector qualified as V
-import Entity.Arity qualified as A
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
+import qualified Data.Text as T
+import qualified Data.Vector as V
+import qualified Entity.Arity as A
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Hint hiding (new)
 import Entity.Ident
 

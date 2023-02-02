@@ -1,22 +1,22 @@
 module Entity.WeakTerm where
 
 import Control.Comonad.Cofree
-import Data.IntMap qualified as IntMap
+import qualified Data.IntMap as IntMap
 import Entity.Arity
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
+import qualified Entity.DecisionTree as DT
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
-import Entity.Noema qualified as N
-import Entity.Opacity qualified as O
+import qualified Entity.Noema as N
+import qualified Entity.Opacity as O
 import Entity.PrimNumSize
-import Entity.PrimType qualified as PT
-import Entity.WeakPrim qualified as WP
+import qualified Entity.PrimType as PT
+import qualified Entity.WeakPrim as WP
 
 type WeakTerm = Cofree WeakTermF Hint
 

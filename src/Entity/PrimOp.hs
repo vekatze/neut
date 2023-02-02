@@ -1,9 +1,9 @@
 module Entity.PrimOp where
 
 import Data.Binary
-import Data.Text qualified as T
-import Entity.PrimType qualified as PT
-import GHC.Generics qualified as G
+import qualified Data.Text as T
+import qualified Entity.PrimType as PT
+import qualified GHC.Generics as G
 
 data PrimOp
   = PrimOp T.Text [PT.PrimType] PT.PrimType

@@ -6,11 +6,11 @@ module Case.Main.Throw
   )
 where
 
-import Context.Log qualified as Log
-import Context.Throw qualified as Throw
-import Control.Exception.Safe qualified as Safe
+import qualified Context.Log as Log
+import qualified Context.Throw as Throw
+import qualified Control.Exception.Safe as Safe
 import Control.Monad.IO.Class
-import Entity.Log qualified as L
+import qualified Entity.Log as L
 import System.Exit
 
 class

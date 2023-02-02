@@ -1,21 +1,21 @@
 module Entity.WeakTerm.ToText (toText, showDecisionTree) where
 
 import Control.Comonad.Cofree
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
+import qualified Entity.DecisionTree as DT
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Hint
-import Entity.HoleID qualified as HID
+import qualified Entity.HoleID as HID
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.PrimOp qualified as PO
-import Entity.PrimType.ToText qualified as PT
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.PrimOp as PO
+import qualified Entity.PrimType.ToText as PT
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
+import qualified Entity.WeakTerm as WT
 
 toText :: WT.WeakTerm -> T.Text
 toText term =

@@ -1,8 +1,8 @@
 module Entity.Constraint where
 
-import Data.PQueue.Min qualified as Q
-import Data.Set qualified as S
-import Entity.HoleID qualified as HID
+import qualified Data.PQueue.Min as Q
+import qualified Data.Set as S
+import qualified Entity.HoleID as HID
 import Entity.WeakTerm
 
 type Constraint =

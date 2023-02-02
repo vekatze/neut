@@ -3,9 +3,9 @@ module Context.Definition
   )
 where
 
-import Data.HashMap.Strict qualified as Map
+import qualified Data.HashMap.Strict as Map
 import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
+import qualified Entity.DefiniteDescription as DD
 import Entity.Hint
 import Entity.Opacity
 import Entity.WeakTerm

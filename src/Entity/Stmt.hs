@@ -2,22 +2,22 @@ module Entity.Stmt where
 
 import Control.Comonad.Cofree
 import Data.Binary
-import Data.Set qualified as S
-import Data.Text qualified as T
+import qualified Data.Set as S
+import qualified Data.Text as T
 import Entity.Binder
-import Entity.DataInfo qualified as DI
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
+import qualified Entity.DataInfo as DI
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Hint
 import Entity.Ident
-import Entity.ImpArgNum qualified as I
-import Entity.Opacity qualified as O
-import Entity.RawTerm qualified as RT
-import Entity.Section qualified as Section
-import Entity.Source qualified as Source
-import Entity.Term qualified as TM
-import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText qualified as WT
+import qualified Entity.ImpArgNum as I
+import qualified Entity.Opacity as O
+import qualified Entity.RawTerm as RT
+import qualified Entity.Section as Section
+import qualified Entity.Source as Source
+import qualified Entity.Term as TM
+import qualified Entity.WeakTerm as WT
+import qualified Entity.WeakTerm.ToText as WT
 import GHC.Generics
 import Path
 

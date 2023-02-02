@@ -1,10 +1,10 @@
 module Entity.NominalEnv where
 
 import Control.Comonad.Cofree
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.Hint
 import Entity.Ident
-import Entity.WeakTerm qualified as WT
+import qualified Entity.WeakTerm as WT
 
 type NominalEnv = [(T.Text, (Hint, Ident))]
 

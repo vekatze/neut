@@ -1,12 +1,12 @@
 module Entity.PrimType.FromText (fromDefiniteDescription, fromText) where
 
-import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.DefiniteDescription qualified as DD
-import Entity.LocalLocator qualified as LL
+import qualified Data.Text as T
+import qualified Entity.BaseName as BN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.LocalLocator as LL
 import Entity.PrimNumSize
-import Entity.PrimType qualified as PT
-import Entity.StrictGlobalLocator qualified as SGL
+import qualified Entity.PrimType as PT
+import qualified Entity.StrictGlobalLocator as SGL
 import Text.Read
 
 fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PT.PrimType

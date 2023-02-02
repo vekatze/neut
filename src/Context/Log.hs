@@ -16,11 +16,11 @@ module Context.Log
   )
 where
 
-import Context.Env qualified as Env
-import Data.Text qualified as T
-import Entity.FilePos qualified as FilePos
+import qualified Context.Env as Env
+import qualified Data.Text as T
+import qualified Entity.FilePos as FilePos
 import Entity.Hint
-import Entity.Log qualified as L
+import qualified Entity.Log as L
 
 data Config = Config
   { shouldColorize :: Bool,

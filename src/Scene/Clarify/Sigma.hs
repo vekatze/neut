@@ -11,18 +11,18 @@ module Scene.Clarify.Sigma
   )
 where
 
-import Context.Gensym qualified as Gensym
-import Context.Locator qualified as Locator
+import qualified Context.Gensym as Gensym
+import qualified Context.Locator as Locator
 import Control.Monad
-import Entity.Arity qualified as A
-import Entity.BaseName qualified as BN
-import Entity.Comp qualified as C
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.EnumCase qualified as EC
+import qualified Entity.Arity as A
+import qualified Entity.BaseName as BN
+import qualified Entity.Comp as C
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
+import qualified Entity.EnumCase as EC
 import Entity.Ident
-import Entity.LowType qualified as LT
-import Entity.Magic qualified as M
+import qualified Entity.LowType as LT
+import qualified Entity.Magic as M
 import Scene.Clarify.Context
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility

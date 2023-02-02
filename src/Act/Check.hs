@@ -5,21 +5,21 @@ module Act.Check
   )
 where
 
-import Context.Env qualified as Env
-import Context.Log qualified as Log
-import Context.Module qualified as Module
-import Context.Path qualified as Path
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.Log as Log
+import qualified Context.Module as Module
+import qualified Context.Path as Path
+import qualified Context.Throw as Throw
 import Control.Monad
-import Data.HashMap.Strict qualified as Map
+import qualified Data.HashMap.Strict as Map
 import Entity.Module
-import Entity.Module.Reflect qualified as Module
-import Entity.Source qualified as Source
-import Entity.StrictGlobalLocator qualified as SGL
+import qualified Entity.Module.Reflect as Module
+import qualified Entity.Source as Source
+import qualified Entity.StrictGlobalLocator as SGL
 import Path
-import Scene.Elaborate qualified as Elaborate
-import Scene.Parse qualified as Parse
-import Scene.Unravel qualified as Unravel
+import qualified Scene.Elaborate as Elaborate
+import qualified Scene.Parse as Parse
+import qualified Scene.Unravel as Unravel
 
 data Config = Config
   { mFilePathString :: Maybe FilePath,

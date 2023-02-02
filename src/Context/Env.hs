@@ -1,22 +1,22 @@
 module Context.Env where
 
-import Data.HashMap.Strict qualified as Map
-import Data.Set qualified as S
-import Data.Text qualified as T
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Set as S
+import qualified Data.Text as T
 import Entity.AliasInfo
-import Entity.DefiniteDescription qualified as DD
-import Entity.GlobalLocatorAlias qualified as GLA
-import Entity.GlobalName qualified as GN
-import Entity.HoleID qualified as HID
-import Entity.HoleSubst qualified as HS
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.GlobalLocatorAlias as GLA
+import qualified Entity.GlobalName as GN
+import qualified Entity.HoleID as HID
+import qualified Entity.HoleSubst as HS
 import Entity.Ident
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
-import Entity.Section qualified as Section
-import Entity.Source qualified as Source
+import qualified Entity.Section as Section
+import qualified Entity.Source as Source
 import Entity.Stmt
-import Entity.StrictGlobalLocator qualified as SGL
+import qualified Entity.StrictGlobalLocator as SGL
 import Entity.TargetPlatform
 import Entity.VisitInfo
 import Entity.WeakTerm

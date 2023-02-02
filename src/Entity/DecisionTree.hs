@@ -8,8 +8,8 @@ where
 
 import Data.Binary
 import Entity.Binder
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.Ident
 import GHC.Generics (Generic)
 

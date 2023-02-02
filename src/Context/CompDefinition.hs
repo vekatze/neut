@@ -6,9 +6,9 @@ module Context.CompDefinition
   )
 where
 
-import Data.HashMap.Strict qualified as Map
+import qualified Data.HashMap.Strict as Map
 import Entity.Comp
-import Entity.DefiniteDescription qualified as DD
+import qualified Entity.DefiniteDescription as DD
 import Entity.Ident
 import Entity.Opacity
 import Prelude hiding (lookup, read)

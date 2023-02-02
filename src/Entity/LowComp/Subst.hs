@@ -5,9 +5,9 @@ module Entity.LowComp.Subst
   )
 where
 
-import Data.IntMap qualified as IntMap
+import qualified Data.IntMap as IntMap
 import Entity.Ident.Reify
-import Entity.LowComp qualified as LC
+import qualified Entity.LowComp as LC
 
 type SubstLowComp =
   IntMap.IntMap LC.Value

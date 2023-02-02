@@ -4,47 +4,47 @@ module Scene.Parse.Discern
   )
 where
 
-import Context.Alias qualified as Alias
-import Context.CodataDefinition qualified as CodataDefinition
-import Context.Gensym qualified as Gensym
-import Context.Global qualified as Global
-import Context.Locator qualified as Locator
-import Context.Throw qualified as Throw
+import qualified Context.Alias as Alias
+import qualified Context.CodataDefinition as CodataDefinition
+import qualified Context.Gensym as Gensym
+import qualified Context.Global as Global
+import qualified Context.Locator as Locator
+import qualified Context.Throw as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Data.HashMap.Strict qualified as Map
+import qualified Data.HashMap.Strict as Map
 import Data.List
-import Data.Maybe qualified as Maybe
-import Data.Set qualified as S
-import Data.Text qualified as T
-import Data.Vector qualified as V
-import Entity.Arity qualified as A
+import qualified Data.Maybe as Maybe
+import qualified Data.Set as S
+import qualified Data.Text as T
+import qualified Data.Vector as V
+import qualified Entity.Arity as A
 import Entity.Binder
-import Entity.DecisionTree qualified as DT
-import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
+import qualified Entity.DecisionTree as DT
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.Discriminant as D
 import Entity.FilePos
-import Entity.GlobalName qualified as GN
+import qualified Entity.GlobalName as GN
 import Entity.Hint
 import Entity.Ident
-import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.LocalLocator qualified as LL
-import Entity.Log qualified as L
-import Entity.Magic qualified as M
-import Entity.Noema qualified as N
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LamKind as LK
+import qualified Entity.LocalLocator as LL
+import qualified Entity.Log as L
+import qualified Entity.Magic as M
+import qualified Entity.Noema as N
 import Entity.NominalEnv
-import Entity.Pattern qualified as PAT
-import Entity.Pattern.Fallback qualified as PATF
-import Entity.Pattern.Specialize qualified as PATS
-import Entity.RawPattern qualified as RP
-import Entity.RawTerm qualified as RT
+import qualified Entity.Pattern as PAT
+import qualified Entity.Pattern.Fallback as PATF
+import qualified Entity.Pattern.Specialize as PATS
+import qualified Entity.RawPattern as RP
+import qualified Entity.RawTerm as RT
 import Entity.Stmt
-import Entity.UnresolvedName qualified as UN
-import Entity.Vector qualified as V
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
-import Entity.WeakTerm qualified as WT
+import qualified Entity.UnresolvedName as UN
+import qualified Entity.Vector as V
+import qualified Entity.WeakPrim as WP
+import qualified Entity.WeakPrimValue as WPV
+import qualified Entity.WeakTerm as WT
 
 class
   ( Throw.Context m,

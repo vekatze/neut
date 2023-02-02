@@ -4,10 +4,10 @@ module Case.Main.Log
   )
 where
 
-import Context.Env qualified as Env
+import qualified Context.Env as Env
 import Control.Monad.IO.Class
-import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Entity.FilePos
 import Entity.Log
 import System.Console.ANSI

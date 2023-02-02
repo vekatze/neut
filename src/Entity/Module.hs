@@ -1,21 +1,21 @@
 module Entity.Module where
 
-import Context.Path qualified as Path
+import qualified Context.Path as Path
 import Context.Throw
 import Control.Comonad.Cofree
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
-import Entity.BaseName qualified as BN
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Text as T
+import qualified Entity.BaseName as BN
 import Entity.Const
-import Entity.Ens qualified as E
+import qualified Entity.Ens as E
 import Entity.ModuleAlias
 import Entity.ModuleChecksum
-import Entity.ModuleID qualified as MID
+import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
-import Entity.StrictGlobalLocator qualified as SGL
-import Entity.Target qualified as Target
+import qualified Entity.StrictGlobalLocator as SGL
+import qualified Entity.Target as Target
 import Path
-import System.FilePath qualified as FP
+import qualified System.FilePath as FP
 
 type SomePath =
   Either (Path Abs Dir) (Path Abs File)

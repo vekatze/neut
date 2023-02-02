@@ -1,6 +1,6 @@
 module Entity.Ident.Reify where
 
-import Data.Text qualified as T
+import qualified Data.Text as T
 import Entity.Ident
 
 toText :: Ident -> T.Text

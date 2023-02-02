@@ -5,25 +5,25 @@ module Scene.Fetch
   )
 where
 
-import Context.Env qualified as Env
-import Context.External qualified as External
-import Context.Log qualified as Log
-import Context.Module qualified as Module
-import Context.Path qualified as Path
-import Context.Throw qualified as Throw
+import qualified Context.Env as Env
+import qualified Context.External as External
+import qualified Context.Log as Log
+import qualified Context.Module as Module
+import qualified Context.Path as Path
+import qualified Context.Throw as Throw
 import Control.Monad
-import Data.ByteString qualified as B
-import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
-import Entity.BaseName qualified as BN
-import Entity.Module qualified as M
-import Entity.Module.Reflect qualified as Module
+import qualified Data.ByteString as B
+import qualified Data.HashMap.Strict as Map
+import qualified Data.Text as T
+import qualified Entity.BaseName as BN
+import qualified Entity.Module as M
+import qualified Entity.Module.Reflect as Module
 import Entity.ModuleAlias
-import Entity.ModuleChecksum qualified as MC
-import Entity.ModuleID qualified as MID
+import qualified Entity.ModuleChecksum as MC
+import qualified Entity.ModuleID as MID
 import Entity.ModuleURL
 import Path
-import Scene.Parse.Core qualified as Parse
+import qualified Scene.Parse.Core as Parse
 import System.IO
 import Prelude hiding (log)
 

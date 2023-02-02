@@ -3,10 +3,10 @@ module Scene.Clarify.Context
   )
 where
 
-import Context.CompDefinition qualified as CompDefinition
-import Context.Gensym qualified as Gensym
-import Context.Locator qualified as Locator
-import Entity.DefiniteDescription qualified as DD
+import qualified Context.CompDefinition as CompDefinition
+import qualified Context.Gensym as Gensym
+import qualified Context.Locator as Locator
+import qualified Entity.DefiniteDescription as DD
 
 class
   ( CompDefinition.Context m,

@@ -7,8 +7,8 @@ where
 
 import Control.Monad.IO.Class
 import Data.Binary
-import Data.Set qualified as S
-import Entity.Source qualified as Source
+import qualified Data.Set as S
+import qualified Entity.Source as Source
 import Entity.Stmt
 import Path
 import Path.IO

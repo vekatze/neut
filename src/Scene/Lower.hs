@@ -4,24 +4,24 @@ module Scene.Lower
   )
 where
 
-import Context.Gensym qualified as Gensym
+import qualified Context.Gensym as Gensym
 import Control.Monad
 import Control.Monad.Writer.Lazy
-import Data.Set qualified as S
-import Data.Text qualified as T
-import Entity.Arity qualified as A
-import Entity.Comp qualified as C
-import Entity.DeclarationName qualified as DN
-import Entity.DefiniteDescription qualified as DD
-import Entity.EnumCase qualified as EC
+import qualified Data.Set as S
+import qualified Data.Text as T
+import qualified Entity.Arity as A
+import qualified Entity.Comp as C
+import qualified Entity.DeclarationName as DN
+import qualified Entity.DefiniteDescription as DD
+import qualified Entity.EnumCase as EC
 import Entity.Ident
-import Entity.LowComp qualified as LC
-import Entity.LowType qualified as LT
-import Entity.Magic qualified as M
+import qualified Entity.LowComp as LC
+import qualified Entity.LowType as LT
+import qualified Entity.Magic as M
 import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
-import Entity.PrimType qualified as PT
+import qualified Entity.PrimType as PT
 
 -- fixme: remove WriterT
 type Lower m = WriterT (Cont m) m

@@ -4,15 +4,15 @@ module Entity.LowComp.Reduce
   )
 where
 
-import Context.Env qualified as Env
-import Context.Gensym qualified as Gensym
-import Data.IntMap qualified as IntMap
-import Data.Map qualified as Map
-import Data.Set qualified as S
-import Entity.Ident.Reify qualified as Ident
-import Entity.LowComp qualified as LC
+import qualified Context.Env as Env
+import qualified Context.Gensym as Gensym
+import qualified Data.IntMap as IntMap
+import qualified Data.Map as Map
+import qualified Data.Set as S
+import qualified Entity.Ident.Reify as Ident
+import qualified Entity.LowComp as LC
 import Entity.LowComp.Subst
-import Entity.LowType qualified as LT
+import qualified Entity.LowType as LT
 
 type SizeMap =
   Map.Map LC.SizeInfo [(Int, LC.Value)]
