@@ -4,6 +4,7 @@ module Scene.Unravel
   )
 where
 
+import Context.Alias qualified as Alias
 import Context.Env qualified as Env
 import Context.Module qualified as Module
 import Context.Path qualified as Path
@@ -43,6 +44,7 @@ class
     Module.Context m,
     Env.Context m,
     Source.Context m,
+    Alias.Context m,
     Parse.Context m
   ) =>
   Context m
@@ -157,6 +159,8 @@ showCyclicPath' pathList =
 
 getChildren :: Context m => Source.Source -> m [Source.Source]
 getChildren currentSource = do
+  Env.setCurrentSource currentSource
+  Alias.initializeAliasMap
   sourceChildrenMap <- Env.getSourceChildrenMap
   let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of

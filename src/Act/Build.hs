@@ -5,6 +5,7 @@ module Act.Build
   )
 where
 
+import Context.Alias qualified as Alias
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.LLVM qualified as LLVM
@@ -46,6 +47,7 @@ data Config = Config
 
 class
   ( LLVM.Context m,
+    Alias.Context m,
     Throw.Context m,
     Log.Context m,
     Path.Context m,
@@ -107,6 +109,7 @@ compile ::
   m ()
 compile outputKindList source = do
   Env.setCurrentSource source
+  Alias.initializeAliasMap
   Locator.initialize
   b <- isCompilationSkippable outputKindList source
   if b
