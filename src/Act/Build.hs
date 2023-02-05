@@ -19,12 +19,12 @@ import Control.Monad.State
 import Data.ByteString.Lazy qualified as L
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
+import Data.Maybe
 import Data.Set qualified as S
 import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
-import Entity.Stmt qualified as Stmt
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
@@ -75,10 +75,10 @@ build cfg = do
     Env.setShouldCancelAlloc $ shouldCancelAlloc cfg
     case mTarget cfg of
       Just target ->
-        build' target mainModule (outputKindList cfg) (shouldSkipLink cfg)
+        build' target mainModule (outputKindList cfg) (shouldSkipLink cfg) (mClangOptString cfg)
       Nothing -> do
         forM_ (Map.keys $ moduleTarget mainModule) $ \target ->
-          build' target mainModule (outputKindList cfg) (shouldSkipLink cfg)
+          build' target mainModule (outputKindList cfg) (shouldSkipLink cfg) (mClangOptString cfg)
 
 build' ::
   Context m =>
@@ -86,21 +86,20 @@ build' ::
   Module ->
   [OK.OutputKind] ->
   Bool ->
+  Maybe String ->
   m ()
-build' target mainModule outputKindList shouldSkipLink = do
+build' target mainModule outputKindList shouldSkipLink mClangOptString = do
   sgl <- resolveTarget mainModule target
   mainFilePath <- Module.getSourcePath sgl
   let mainSource = getMainSource mainModule mainFilePath
   (_, _, isObjectAvailable, dependenceSeq) <- Unravel.unravel mainSource
   Global.initialize
-  Parse.parseCachedStmtList Stmt.initialStmtList
-  forM_ Stmt.initialStmtList Elaborate.insertStmt
   Clarify.registerFoundationalTypes
   mapM_ (compile outputKindList) dependenceSeq
   isExecutableAvailable <- getExecutableOutputPath target mainModule >>= Path.doesFileExist
   if shouldSkipLink || (isObjectAvailable && isExecutableAvailable)
     then return ()
-    else link target mainModule $ toList dependenceSeq
+    else link mClangOptString target mainModule $ toList dependenceSeq
 
 compile ::
   Context m =>
@@ -163,11 +162,11 @@ compileToLLVM source = do
     >>= Lower.lower
     >>= Emit.emit
 
-link :: Context m => Target -> Module -> [Source.Source] -> m ()
-link target mainModule sourceList = do
+link :: Context m => Maybe String -> Target -> Module -> [Source.Source] -> m ()
+link mClangOptString target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (Source.sourceToOutputPath OK.Object) sourceList
-  LLVM.link objectPathList outputPath
+  LLVM.link (fromMaybe "" mClangOptString) objectPathList outputPath
 
 getMainSource :: Module -> Path Abs File -> Source.Source
 getMainSource mainModule mainSourceFilePath = do

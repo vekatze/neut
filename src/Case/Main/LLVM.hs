@@ -77,11 +77,12 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
   let pathList = map toFilePath objectPathList
   ["-Wno-override-module", "-O2", "-o", toFilePath outputPath] ++ pathList ++ words additionalOptionStr
 
-link :: Context m => [Path Abs File] -> Path Abs File -> m ()
-link objectPathList outputPath = do
+link :: Context m => String -> [Path Abs File] -> Path Abs File -> m ()
+link additionalLinkOpt objectPathList outputPath = do
   clangOptString <- Env.getClangOptString
   ensureDir $ parent outputPath
-  External.run "clang" $ clangLinkOpt objectPathList outputPath clangOptString
+  liftIO $ print $ words additionalLinkOpt ++ clangLinkOpt objectPathList outputPath clangOptString
+  External.run "clang" $ words additionalLinkOpt ++ clangLinkOpt objectPathList outputPath clangOptString
 
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =
