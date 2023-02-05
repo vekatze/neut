@@ -33,6 +33,10 @@ envVarTargetArch :: String
 envVarTargetArch =
   "NEUT_TARGET_ARCH"
 
+envVarClang :: String
+envVarClang =
+  "NEUT_CLANG"
+
 moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")

@@ -14,10 +14,12 @@ import Control.Monad.IO.Unlift
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Entity.Const
 import Entity.OutputKind qualified as OK
 import GHC.IO.Handle
 import Path
 import Path.IO
+import System.Environment
 import System.Exit
 import System.Process
 
@@ -57,7 +59,8 @@ emit' llvmCode kind path = do
 
 emitInner :: Context m => [ClangOption] -> L.ByteString -> Path Abs File -> m ()
 emitInner additionalClangOptions llvm outputPath = do
-  let clangCmd = proc "clang" $ clangBaseOpt outputPath ++ additionalClangOptions
+  clang <- liftIO getClang
+  let clangCmd = proc clang $ clangBaseOpt outputPath ++ additionalClangOptions
   withRunInIO $ \runInIO ->
     withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $
       \mStdin _ mClangErrorHandler clangProcessHandler -> do
@@ -66,7 +69,7 @@ emitInner additionalClangOptions llvm outputPath = do
             L.hPut stdin llvm
             hClose stdin
             clangExitCode <- waitForProcess clangProcessHandler
-            runInIO $ raiseIfProcessFailed "clang" clangExitCode clangErrorHandler
+            runInIO $ raiseIfProcessFailed (T.pack clang) clangExitCode clangErrorHandler
           (Nothing, _) ->
             runInIO $ Throw.raiseError' "couldn't obtain stdin"
           (_, Nothing) ->
@@ -79,10 +82,10 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
 
 link :: Context m => String -> [Path Abs File] -> Path Abs File -> m ()
 link additionalLinkOpt objectPathList outputPath = do
+  clang <- liftIO getClang
   clangOptString <- Env.getClangOptString
   ensureDir $ parent outputPath
-  liftIO $ print $ words additionalLinkOpt ++ clangLinkOpt objectPathList outputPath clangOptString
-  External.run "clang" $ words additionalLinkOpt ++ clangLinkOpt objectPathList outputPath clangOptString
+  External.run clang $ words additionalLinkOpt ++ clangLinkOpt objectPathList outputPath clangOptString
 
 clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =
@@ -109,3 +112,12 @@ raiseIfProcessFailed procName exitCode h =
           <> T.pack (show i)
           <> "):\n"
           <> errStr
+
+getClang :: IO String
+getClang = do
+  mClang <- lookupEnv envVarClang
+  case mClang of
+    Just clang ->
+      return clang
+    Nothing ->
+      return "clang"
