@@ -1,0 +1,68 @@
+import
+- core.top
+- core.bool
+end
+
+use core.top
+use core.top::top
+
+define-data list(a: tau) =
+- nil()
+- cons(a, list(a))
+end
+
+define-inline add-pointer(x: i64, offset: i64): i64 =
+  let ptr = magic cast(i64, i64, x) in
+  magic cast(i64, i64, add-i64(ptr, offset))
+end
+
+define copy-i8-array(content-pointer: i64, new-content-pointer: i64, counter: i64, length: i64): top() =
+  if eq-i64(counter, length) then
+    unit()
+  else
+    let value-pointer = add-pointer(content-pointer, counter) in
+    let value: i8 = magic load(i8, value-pointer) in
+    let new-value-pointer = add-pointer(new-content-pointer, counter) in
+    let _: i64 = magic store(i8, new-value-pointer, value) in
+    copy-i8-array(content-pointer, new-content-pointer, add-i64(counter, 1), length)
+  end
+end
+
+define-resource i8-array =
+- lambda(x: i64) do
+    let address = magic cast(i64, i64, x) in
+    let content-pointer: i64 = magic load(pointer(i8), add-i64(address, 8)) in
+    let _: i64 = magic external(free, content-pointer) in
+    magic external(free, x)
+  end
+- lambda(x: i64) do
+    let length: i64 = magic load(i64, x) in
+    let content-pointer: i64 = magic load(pointer(i8), add-pointer(x, 8)) in
+    let new-content-pointer: i64 = magic external(malloc, length) in
+    let _ = copy-i8-array(content-pointer, new-content-pointer, 0, length) in
+    let result-pointer: i64 = magic external(malloc, 16: i64) in
+    let _: i64 = magic store(i64, result-pointer, length) in
+    let _: i64 = magic store(pointer(i8), add-pointer(result-pointer, 8), new-content-pointer) in
+    result-pointer
+  end
+end
+
+define main(): i64 =
+  let base-pointer: i64 = magic external(malloc, 16: i64) in
+  let content-pointer: i64 = magic external(malloc, 3: i64) in
+  let _: i64 = magic store(i8, add-i64(content-pointer, 2), 4: i8) in
+  let _: i64 = magic store(i64, base-pointer, 3: i64) in
+  let _: i64 = magic store(pointer(i8), add-i64(base-pointer, 8), content-pointer) in
+  let my-array = magic cast(i64, i8-array, base-pointer) in
+  let a = my-array in
+  let b = my-array in
+  let c = my-array in
+  let d = my-array in
+  let e = my-array in
+  let f = my-array in
+  let f-ptr = magic cast(i8-array, i64, f) in
+  let f-content-pointer = magic load(pointer(i8), add-i64(f-ptr, 8)) in
+  let value: i8 = magic load(i8, add-i64(f-content-pointer, 2)) in
+  let _ = magic cast(i64, i8-array, f-ptr) in
+  magic cast(i8, i64, value)
+end
