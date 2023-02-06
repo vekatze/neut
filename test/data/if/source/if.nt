@@ -1,5 +1,9 @@
+import
+- core.bool
+end
+
 define main(): i64 =
-  if base.bool::bool.false() then
+  if core.bool::bool.false() then
     1
   else-if slt-i64(0, 10) then
     2

@@ -1,9 +1,13 @@
+import
+- core.bool
+end
+
 define main(): i64 =
-  let foo = base.bool::bool.false() in
+  let foo = core.bool::bool.false() in
   match foo with
-  - base.bool::bool.true() ->
+  - core.bool::bool.true() ->
     1
-  - base.bool::bool.false() ->
+  - core.bool::bool.false() ->
     2
   end
 end

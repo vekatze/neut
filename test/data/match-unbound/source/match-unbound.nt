@@ -1,11 +1,15 @@
+import
+- core.bool
+end
+
 use this.match-unbound::nat
 
 define-data nat() =
 - zero()
 end
 
-define cond(n1: nat()): base.bool::bool() =
-  base.bool::bool.false()
+define cond(n1: nat()): core.bool::bool() =
+  core.bool::bool.false()
 end
 
 define f(): nat() =

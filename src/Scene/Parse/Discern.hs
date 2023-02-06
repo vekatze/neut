@@ -20,10 +20,12 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Arity qualified as A
 import Entity.Binder
+import Entity.Const qualified as C
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.FilePos
+import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident
@@ -37,6 +39,10 @@ import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
 import Entity.Pattern.Fallback qualified as PATF
 import Entity.Pattern.Specialize qualified as PATS
+import Entity.PrimNumSize qualified as PNS
+import Entity.PrimOp qualified as PO
+import Entity.PrimOp.OpSet qualified as POS
+import Entity.PrimType qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Stmt
@@ -107,13 +113,9 @@ discern nenv term =
         Just (_, name) ->
           return $ m :< WT.Var name
         Nothing -> do
-          (dd, gn) <- resolveName m s
-          interpretGlobalName m dd gn
+          resolveName m s >>= uncurry (interpretGlobalName m)
     m :< RT.VarGlobal globalLocator localLocator -> do
-      sgl <- Alias.resolveAlias m globalLocator
-      let dd = DD.new sgl localLocator
-      gn <- interpretDefiniteDescription m dd
-      interpretGlobalName m dd gn
+      discernGlobal m globalLocator localLocator
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
       return $ m :< WT.Pi xts' t'
@@ -361,8 +363,10 @@ interpretGlobalName m dd gn =
       return $ m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
-    GN.PrimOp primOp ->
-      return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+    GN.PrimOp primOp@(PO.PrimOp name _ _) ->
+      if S.member name POS.cmpOpSet
+        then castFromIntToBool $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
+        else return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
 
@@ -606,3 +610,21 @@ bindLet nenv m binder cont =
 --       h <- Gensym.newHole m (asHoleArgs nenv)
 --       cont' <- bindLet nenv m xes cont
 --       return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'
+
+castFromIntToBool :: Context m => WT.WeakTerm -> m WT.WeakTerm
+castFromIntToBool e@(m :< _) = do
+  let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
+  (gl, ll) <- DD.getLocatorPair m C.coreBool
+  bool <- discernGlobal m gl ll
+  t <- Gensym.newHole m []
+  x1 <- Gensym.newIdentFromText "arg"
+  x2 <- Gensym.newIdentFromText "arg"
+  let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
+  return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType (m :< WT.PiElim bool [])) e)
+
+discernGlobal :: Context m => Hint -> GL.GlobalLocator -> LL.LocalLocator -> m WT.WeakTerm
+discernGlobal m gl ll = do
+  sgl <- Alias.resolveAlias m gl
+  let dd = DD.new sgl ll
+  gn <- interpretDefiniteDescription m dd
+  interpretGlobalName m dd gn

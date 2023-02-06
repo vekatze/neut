@@ -5,15 +5,6 @@ module Entity.BaseName
     reflect,
     reflect',
     form,
-    bottom,
-    top,
-    topUnit,
-    bool,
-    boolTrue,
-    boolFalse,
-    coproduct,
-    coproductLeft,
-    coproductRight,
     sigmaName,
     lambdaName,
     main,
@@ -33,15 +24,15 @@ module Entity.BaseName
   )
 where
 
-import qualified Context.Throw as Throw
+import Context.Throw qualified as Throw
 import Data.Binary
 import Data.Hashable
-import qualified Data.Set as S
-import qualified Data.Text as T
+import Data.Set qualified as S
+import Data.Text qualified as T
 import Entity.Const
-import qualified Entity.Hint as H
-import qualified Entity.PrimType as PT
-import qualified Entity.PrimType.ToText as PT
+import Entity.Hint qualified as H
+import Entity.PrimType qualified as PT
+import Entity.PrimType.ToText qualified as PT
 import GHC.Generics
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
@@ -77,42 +68,6 @@ reflect' rawTxt = do
 empty :: BaseName
 empty =
   MakeBaseName ""
-
-bottom :: BaseName
-bottom =
-  MakeBaseName "bottom"
-
-top :: BaseName
-top =
-  MakeBaseName "top"
-
-topUnit :: BaseName
-topUnit =
-  MakeBaseName "unit"
-
-bool :: BaseName
-bool =
-  MakeBaseName "bool"
-
-boolTrue :: BaseName
-boolTrue =
-  MakeBaseName "true"
-
-boolFalse :: BaseName
-boolFalse =
-  MakeBaseName "false"
-
-coproduct :: BaseName
-coproduct =
-  MakeBaseName "coproduct"
-
-coproductLeft :: BaseName
-coproductLeft =
-  MakeBaseName "left"
-
-coproductRight :: BaseName
-coproductRight =
-  MakeBaseName "right"
 
 this :: BaseName
 this =

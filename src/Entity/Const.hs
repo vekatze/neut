@@ -60,3 +60,24 @@ artifactRelDir =
 executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
+
+core :: T.Text
+core = "core"
+
+coreTop :: T.Text
+coreTop = core <> T.singleton nsSepChar <> "top" <> definiteSep <> "top"
+
+coreBool :: T.Text
+coreBool = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool"
+
+coreBoolTrue :: T.Text
+coreBoolTrue = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "true"
+
+coreBoolFalse :: T.Text
+coreBoolFalse = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "false"
+
+coreSumLeft :: T.Text
+coreSumLeft = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "left"
+
+coreSumRight :: T.Text
+coreSumRight = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "right"

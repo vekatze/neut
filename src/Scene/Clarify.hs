@@ -71,7 +71,7 @@ clarify source defList = do
         registerImmediateS4
         registerClosureS4
         Clarify.getAuxEnv
-      defList' <- clarifyDefList $ defList ++ initialStmtList
+      defList' <- clarifyDefList defList
       mainTerm <- Reduce.reduce $ C.PiElimDownElim (C.VarGlobal mainName (A.Arity 0)) []
       return (defList' ++ Map.toList auxEnv, Just mainTerm)
     Nothing -> do

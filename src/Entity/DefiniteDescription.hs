@@ -1,6 +1,7 @@
 module Entity.DefiniteDescription
   ( DefiniteDescription (..),
     new,
+    getLocatorPair,
     newByGlobalLocator,
     newByDefiniteLocator,
     extend,
@@ -24,6 +25,7 @@ import Data.Text.Encoding qualified as TE
 import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.DefiniteLocator qualified as DL
+import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
 import Entity.ModuleID qualified as MID
@@ -121,3 +123,17 @@ isBaseDefiniteDescription dd =
 toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =
   TE.encodeUtf8Builder $ toLowName dd
+
+getLocatorPair :: Throw.Context m => H.Hint -> T.Text -> m (GL.GlobalLocator, LL.LocalLocator)
+getLocatorPair m text = do
+  if T.null text
+    then Throw.raiseError m "the definite description shouldn't be empty"
+    else do
+      let (globalLocator, localLocatorWithSep) = T.breakOn definiteSep text
+      if localLocatorWithSep == ""
+        then Throw.raiseError m $ "the definite separator isn't found in: " <> text
+        else do
+          let localLocator = T.drop (T.length definiteSep) localLocatorWithSep
+          globalLocator' <- GL.reflect m globalLocator
+          localLocator' <- LL.reflect m localLocator
+          return (globalLocator', localLocator')

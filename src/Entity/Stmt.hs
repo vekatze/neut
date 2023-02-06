@@ -5,11 +5,9 @@ import Data.Binary
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Binder
-import Entity.DataInfo qualified as DI
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
-import Entity.Ident
 import Entity.ImpArgNum qualified as I
 import Entity.Opacity qualified as O
 import Entity.RawTerm qualified as RT
@@ -123,13 +121,6 @@ showStmt stmt =
     _ ->
       "<define-resource>"
 
-initialStmtList :: [Stmt]
-initialStmtList = do
-  flip concatMap enrichedEnumInfo $ \((dataName, dataArgs), introInfoList) -> do
-    let formInfo' = defineEnum dataName dataArgs introInfoList
-    let introInfoList' = map (defineEnumIntro dataName dataArgs) introInfoList
-    formInfo' : introInfoList'
-
 defineEnum :: DD.DefiniteDescription -> [BinderF TM.Term] -> [ConsInfo] -> Stmt
 defineEnum dataName dataArgs consInfoList = do
   StmtDefine
@@ -160,10 +151,6 @@ defineEnumIntro dataName dataArgs (consName, consArgs, discriminant) =
     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
     (internalHint :< TM.DataIntro dataName consName discriminant (map argToTerm dataArgs) (map argToTerm consArgs))
 
-enrichedEnumInfo :: [((DD.DefiniteDescription, [BinderF TM.Term]), [ConsInfo])]
-enrichedEnumInfo =
-  addDiscriminants enumInfo
-
 addDiscriminants :: [(a, [(b, c)])] -> [(a, [(b, c, D.Discriminant)])]
 addDiscriminants info = do
   let (formInfo, introInfo) = unzip info
@@ -176,23 +163,3 @@ addDiscriminants' d xs =
       []
     (x, y) : rest ->
       (x, y, d) : addDiscriminants' (D.increment d) rest
-
-enumInfo :: [((DD.DefiniteDescription, [BinderF TM.Term]), [(DD.DefiniteDescription, [BinderF TM.Term])])]
-enumInfo =
-  [ ((DI.constBottom, []), []),
-    ((DI.constTop, []), [(DI.constTopUnit, [])]),
-    ((DI.constBool, []), [(DI.constBoolFalse, []), (DI.constBoolTrue, [])]),
-    ( ( DI.constCoproduct,
-        [ (internalHint, I ("a", 0), internalHint :< TM.Tau),
-          (internalHint, I ("b", 1), internalHint :< TM.Tau)
-        ]
-      ),
-      [ ( DI.constCoproductLeft,
-          [(internalHint, I ("x", 2), internalHint :< TM.Var (I ("a", 0)))]
-        ),
-        ( DI.constCoproductRight,
-          [(internalHint, I ("y", 3), internalHint :< TM.Var (I ("b", 1)))]
-        )
-      ]
-    )
-  ]

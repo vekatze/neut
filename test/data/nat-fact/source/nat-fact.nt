@@ -1,3 +1,7 @@
+import
+- core.bool
+end
+
 use this.nat-fact::nat
 
 define-data nat() =
@@ -23,14 +27,14 @@ define mul-nat(x: nat(), y: nat()): nat() =
   end
 end
 
-define eq-nat(n1: nat(), n2: nat()): base.bool::bool() =
+define eq-nat(n1: nat(), n2: nat()): core.bool::bool() =
   match n1, n2 with
   - zero(), zero() ->
-    base.bool::bool.true()
+    core.bool::bool.true()
   - succ(m1), succ(m2) ->
     eq-nat(m1, m2)
   - n1, n2 ->
-    base.bool::bool.false()
+    core.bool::bool.false()
   end
 end
 

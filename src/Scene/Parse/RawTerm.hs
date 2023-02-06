@@ -21,7 +21,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Binder
 import Entity.Const
-import Entity.DataInfo qualified as DI
+import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint
@@ -135,21 +135,17 @@ rawTermLetCoproduct = do
   keyword "in"
   e2 <- rawTerm
   err <- lift $ Gensym.newTextualIdentFromText "err"
-  globalLocator <- lift $ GL.reflect m "base.coproduct"
-  localLocator <- lift $ LL.reflect m "coproduct.left"
-  let sumLeftVar = m :< RT.VarGlobal globalLocator localLocator
+  sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
+  sumRight <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumRight
+  sumLeftVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSumLeft
   return $
     m
       :< RT.DataElim
         False
         [e1]
         ( RP.new
-            [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductLeft) [(m, RP.Var err)])],
-                m :< RT.PiElim sumLeftVar [preVar' m err]
-              ),
-              ( V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constCoproductRight) [(m, RP.Var x)])],
-                e2
-              )
+            [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])], m :< RT.PiElim sumLeftVar [preVar' m err]),
+              (V.fromList [(m, RP.Cons sumRight [(m, RP.Var x)])], e2)
             ]
         )
 
@@ -173,7 +169,8 @@ rawTermSeq m e1 = do
   delimiter ";"
   e2 <- rawTerm
   f <- lift $ Gensym.newTextualIdentFromText "unit"
-  return $ bind (m, f, m :< RT.Data DI.constTop []) e1 e2
+  top <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreTop
+  return $ bind (m, f, m :< RT.PiElim top []) e1 e2
 
 rawTermExplicitAscription :: Context m => Hint -> RT.RawTerm -> Parser m RT.RawTerm
 rawTermExplicitAscription m e = do
@@ -473,10 +470,20 @@ rawTermIf = do
   keyword "else"
   elseBody <- rawTerm
   keyword "end"
-  return $ foldIf m ifCond ifBody elseIfList elseBody
+  boolTrue <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolTrue
+  boolFalse <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolFalse
+  return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
 
-foldIf :: Hint -> RT.RawTerm -> RT.RawTerm -> [(RT.RawTerm, RT.RawTerm)] -> RT.RawTerm -> RT.RawTerm
-foldIf m ifCond ifBody elseIfList elseBody =
+foldIf ::
+  Hint ->
+  RP.RawConsName ->
+  RP.RawConsName ->
+  RT.RawTerm ->
+  RT.RawTerm ->
+  [(RT.RawTerm, RT.RawTerm)] ->
+  RT.RawTerm ->
+  RT.RawTerm
+foldIf m true false ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       m
@@ -484,19 +491,19 @@ foldIf m ifCond ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolTrue) [])], ifBody),
-                (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolFalse) [])], elseBody)
+              [ (V.fromList [(m, RP.Cons true [])], ifBody),
+                (V.fromList [(m, RP.Cons false [])], elseBody)
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
-      let cont = foldIf m elseIfCond elseIfBody rest elseBody
+      let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
       m
         :< RT.DataElim
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolTrue) [])], ifBody),
-                (V.fromList [(m, RP.Cons (RP.DefiniteDescription DI.constBoolFalse) [])], cont)
+              [ (V.fromList [(m, RP.Cons true [])], ifBody),
+                (V.fromList [(m, RP.Cons false [])], cont)
               ]
           )
 
@@ -701,3 +708,13 @@ preVar m str =
 preVar' :: Hint -> Ident -> RT.RawTerm
 preVar' m ident =
   m :< RT.Var ident
+
+handleDefiniteDescriptionIntoRawConsName :: Throw.Context m => Hint -> T.Text -> m RP.RawConsName
+handleDefiniteDescriptionIntoRawConsName m text = do
+  (gl, ll) <- DD.getLocatorPair m text
+  return $ RP.LocatorPair gl ll
+
+handleDefiniteDescriptionIntoVarGlobal :: Throw.Context m => Hint -> T.Text -> m RT.RawTerm
+handleDefiniteDescriptionIntoVarGlobal m text = do
+  (gl, ll) <- DD.getLocatorPair m text
+  return $ m :< RT.VarGlobal gl ll

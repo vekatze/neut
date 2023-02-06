@@ -1,4 +1,9 @@
-dependency = {}
+dependency = {
+  core = {
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.1.2.tar.zst"
+    checksum = "luRKP6gkjxvWEpWySv-Q5n_aDp_EgKLVOPcXr3JH5C0="
+  }
+}
 extra-content = [
 ]
 target = {

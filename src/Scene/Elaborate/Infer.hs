@@ -17,11 +17,9 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.Binder
-import Entity.DataInfo qualified as DI
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
@@ -33,7 +31,6 @@ import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
-import Entity.PrimOp.OpSet
 import Entity.PrimType qualified as PT
 import Entity.Stmt
 import Entity.Term qualified as TM
@@ -76,7 +73,7 @@ inferDefineResource m name discarder copier = do
   (copier', tc) <- infer copier
   x <- Gensym.newIdentFromText "_"
   let i64 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))
-  let tDiscard = m :< WT.Pi [(m, x, i64)] (m :< WT.Data DI.constTop [])
+  let tDiscard = m :< WT.Pi [(m, x, i64)] i64 -- return arbitrary integer
   let tCopy = m :< WT.Pi [(m, x, i64)] i64
   Env.insConstraintEnv tDiscard td
   Env.insConstraintEnv tCopy tc
@@ -339,17 +336,12 @@ newTypeHoleList varEnv ids =
       return $ (m, x, t) : ts
 
 primOpToType :: Context m => Hint -> PrimOp -> m TM.Term
-primOpToType m (PrimOp op domList cod) = do
+primOpToType m (PrimOp _ domList cod) = do
   let domList' = map (Term.fromPrimNum m) domList
   xs <- mapM (const (Gensym.newIdentFromText "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'
-  if S.member op cmpOpSet
-    then do
-      let cod' = m :< TM.Data DI.constBool []
-      return $ m :< TM.Pi xts cod'
-    else do
-      let cod' = Term.fromPrimNum m cod
-      return $ m :< TM.Pi xts cod'
+  let cod' = Term.fromPrimNum m cod
+  return $ m :< TM.Pi xts cod'
 
 inferDecisionTree ::
   Context m =>
