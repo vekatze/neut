@@ -8,7 +8,7 @@ use core.sum::sum
 
 use this.coproduct::nat
 
-define-data nat() =
+define-data nat() with
 - zero()
 - succ(nat())
 end

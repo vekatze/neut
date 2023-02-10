@@ -6,7 +6,7 @@ end
 use core.top
 use core.top::top
 
-define-data list(a: tau) =
+define-data list(a: tau) with
 - nil()
 - cons(a, list(a))
 end
@@ -28,7 +28,7 @@ define copy-i8-array(content-pointer: i64, new-content-pointer: i64, counter: i6
   end
 end
 
-define-resource i8-array =
+define-resource i8-array with
 - lambda(x: i64) do
     let address = magic cast(i64, i64, x) in
     let content-pointer: i64 = magic load(pointer(i8), add-i64(address, 8)) in

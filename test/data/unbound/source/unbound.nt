@@ -1,6 +1,6 @@
 use this.unbound::list
 
-define-data list(a: tau) =
+define-data list(a: tau) with
 - nil()
 - cons()
 end

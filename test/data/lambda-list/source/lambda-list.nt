@@ -1,7 +1,7 @@
 use this.lambda-list::list
 use this.lambda-list::nat
 
-define-data nat() =
+define-data nat() with
 - zero()
 - succ(nat())
 end
@@ -33,7 +33,7 @@ define mul-nat(x: nat(), y: nat()): nat() =
   end
 end
 
-define-data list(a: tau) =
+define-data list(a: tau) with
 - nil()
 - cons(a, list(a))
 end

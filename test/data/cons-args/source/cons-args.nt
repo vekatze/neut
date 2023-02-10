@@ -1,4 +1,4 @@
-define-data item(a: tau) =
+define-data item(a: tau) with
 - cons(a)
 end
 

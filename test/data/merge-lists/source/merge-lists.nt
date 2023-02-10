@@ -1,6 +1,6 @@
 use this.merge-lists::list
 
-define-data list(a: tau) =
+define-data list(a: tau) with
 - nil()
 - cons(a, list(a))
 end

@@ -1,4 +1,4 @@
-define-data nat() =
+define-data nat() with
 - zero()
 - succ(nat())
 end

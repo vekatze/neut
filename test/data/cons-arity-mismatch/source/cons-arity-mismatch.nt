@@ -1,6 +1,6 @@
 use this.cons-arity-mismatch::item
 
-define-data item() =
+define-data item() with
 - cons()
 end
 

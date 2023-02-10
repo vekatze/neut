@@ -1,12 +1,12 @@
 use this.fold-tails::list
 use this.fold-tails::nat
 
-define-data nat() =
+define-data nat() with
 - zero()
 - succ(nat())
 end
 
-define-data list(a: tau) =
+define-data list(a: tau) with
 - nil()
 - cons(a, list(a))
 end

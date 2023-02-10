@@ -1,4 +1,4 @@
-define-data empty() =
+define-data empty() with
 end
 
 define ex-falso<a>(e: empty()): a =

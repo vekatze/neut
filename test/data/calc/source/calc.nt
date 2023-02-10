@@ -1,6 +1,6 @@
 use this.calc::expr
 
-define-data expr() =
+define-data expr() with
 - num(i64)
 - add(expr(), expr())
 - sub(expr(), expr())

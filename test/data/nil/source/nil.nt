@@ -1,4 +1,4 @@
-define-data item() =
+define-data item() with
 - nil()
 - cons(i64)
 end

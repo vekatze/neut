@@ -229,7 +229,7 @@ parseDefineData = do
   try $ P.keyword "define-data"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  consInfoList <- P.equalBlock $ P.manyList parseDefineDataClause
+  consInfoList <- P.withBlock $ P.manyList parseDefineDataClause
   lift $ defineData m a dataArgs consInfoList
 
 defineData ::
@@ -343,7 +343,7 @@ parseDefineCodata = do
   try $ P.keyword "define-codata"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  elemInfoList <- P.equalBlock $ P.manyList preAscription
+  elemInfoList <- P.withBlock $ P.manyList preAscription
   formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
@@ -394,7 +394,7 @@ parseDefineResource = do
   m <- P.getCurrentHint
   name <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
-  P.equalBlock $ do
+  P.withBlock $ do
     discarder <- P.delimiter "-" >> rawTerm
     copier <- P.delimiter "-" >> rawTerm
     lift $ Global.registerResource m name'

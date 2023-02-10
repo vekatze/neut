@@ -4,7 +4,7 @@ end
 
 use this.match-unbound::nat
 
-define-data nat() =
+define-data nat() with
 - zero()
 end
 

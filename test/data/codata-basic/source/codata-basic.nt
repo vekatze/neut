@@ -1,16 +1,16 @@
 use this.codata-basic::foo
 
-define-codata foo() =
+define-codata foo() with
 - value-1: i64
 - value-2: i32
 - value-3: bar(i64)
 end
 
-define-codata bar(a: tau) =
+define-codata bar(a: tau) with
 - value: a
 end
 
-define-codata stream(a: tau) =
+define-codata stream(a: tau) with
 - head: a
 - tail: () -> stream(a)
 end

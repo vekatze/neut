@@ -1,6 +1,6 @@
 use this.weird-leak::list
 
-define-data list() =
+define-data list() with
 - nil()
 - cons()
 end
