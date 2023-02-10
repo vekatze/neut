@@ -1,7 +1,7 @@
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.1.2.tar.zst"
-    checksum = "luRKP6gkjxvWEpWySv-Q5n_aDp_EgKLVOPcXr3JH5C0="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.1.3.tar.zst"
+    checksum = "VxjF1OKsyAV-i-OdcrTXp7vj41hYtXIaupWwDuxb5LA="
   }
 }
 extra-content = [
