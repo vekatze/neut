@@ -3,8 +3,10 @@ import
 - core.bool
 end
 
-use core.top
-use core.top::top
+use
+- core.top
+- core.top::top
+end
 
 define-data list(a: tau) with
 - nil()

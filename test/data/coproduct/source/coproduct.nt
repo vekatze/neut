@@ -3,10 +3,11 @@ import
 - core.bool
 end
 
-use core.sum
-use core.sum::sum
-
-use this.coproduct::nat
+use
+- core.sum
+- core.sum::sum
+- this.coproduct::nat
+end
 
 define-data nat() with
 - zero()

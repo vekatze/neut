@@ -2,7 +2,9 @@ import
 - core.bool
 end
 
-use this.match-unbound::nat
+use
+- this.match-unbound::nat
+end
 
 define-data nat() with
 - zero()

@@ -1,4 +1,6 @@
-use this.unbound::list
+use
+- this.unbound::list
+end
 
 define-data list(a: tau) with
 - nil()

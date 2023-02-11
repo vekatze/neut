@@ -128,26 +128,20 @@ ensureMain m mainFunctionName = do
 program :: Context m => P.Parser m [WeakStmt]
 program = do
   Parse.skipImportSequence
-  program' <* eof
+  parseStmtUseSequence
+  (many parseStmt >>= lift . Discern.discernStmtList . concat) <* eof
 
-program' :: Context m => P.Parser m [WeakStmt]
-program' =
-  choice
-    [ do
-        parseStmtUse
-        program',
-      many parseStmt >>= lift . Discern.discernStmtList . concat
-    ]
-
-parseStmtUse :: Context m => P.Parser m ()
-parseStmtUse = do
-  try $ P.keyword "use"
-  loc <- parseLocator
-  case loc of
-    Left partialLocator ->
-      lift $ Locator.activateDefiniteLocator partialLocator
-    Right globalLocator ->
-      lift $ Locator.activateGlobalLocator globalLocator
+parseStmtUseSequence :: Context m => P.Parser m ()
+parseStmtUseSequence = do
+  let p1 = P.useBlock (P.manyList parseLocator)
+  let p2 = return []
+  locatorList <- choice [p1, p2]
+  forM_ locatorList $ \loc -> do
+    case loc of
+      Left partialLocator ->
+        lift $ Locator.activateDefiniteLocator partialLocator
+      Right globalLocator ->
+        lift $ Locator.activateGlobalLocator globalLocator
 
 parseLocator :: Context m => P.Parser m (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
 parseLocator = do

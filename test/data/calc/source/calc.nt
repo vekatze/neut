@@ -1,4 +1,6 @@
-use this.calc::expr
+use
+- this.calc::expr
+end
 
 define-data expr() with
 - num(i64)

@@ -155,6 +155,10 @@ importBlock :: Context m => Parser m a -> Parser m a
 importBlock =
   between (keyword "import") (keyword "end")
 
+useBlock :: Context m => Parser m a -> Parser m a
+useBlock =
+  between (keyword "use") (keyword "end")
+
 commaList :: Context m => Parser m a -> Parser m [a]
 commaList f = do
   sepBy f (delimiter ",")

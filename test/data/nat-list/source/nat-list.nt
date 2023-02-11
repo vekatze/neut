@@ -1,5 +1,7 @@
-use this.nat-list::nat
-use this.nat-list::list
+use
+- this.nat-list::nat
+- this.nat-list::list
+end
 
 define-data nat() with
 - zero()

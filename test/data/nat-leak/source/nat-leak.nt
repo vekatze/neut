@@ -1,4 +1,6 @@
-use this.nat-leak::nat
+use
+- this.nat-leak::nat
+end
 
 define-data nat() with
 - zero()

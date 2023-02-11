@@ -4,3 +4,13 @@ extra-content = [
 target = {
   weird-leak = "weird-leak.nt"
 }
+use = [
+  "this.weird-leak::list"
+  "core.list"
+  "core.string"
+]
+alias = {
+  core.list = "L"
+  this.weird-leak = "WWW"
+  this.other-library = "WWW"
+}

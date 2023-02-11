@@ -1,4 +1,6 @@
-use this.merge-lists::list
+use
+- this.merge-lists::list
+end
 
 define-data list(a: tau) with
 - nil()

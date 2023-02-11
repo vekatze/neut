@@ -2,7 +2,9 @@ import
 - core.bool
 end
 
-use this.nat-fact::nat
+use
+- this.nat-fact::nat
+end
 
 define-data nat() with
 - zero()

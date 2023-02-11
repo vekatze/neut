@@ -1,4 +1,6 @@
-use this.weird-leak::list
+use
+- this.weird-leak::list
+end
 
 define-data list() with
 - nil()

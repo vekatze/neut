@@ -1,4 +1,6 @@
-use this.codata-basic::foo
+use
+- this.codata-basic::foo
+end
 
 define-codata foo() with
 - value-1: i64
