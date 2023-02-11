@@ -1,9 +1,9 @@
 import
-- core.bool
+- core.bool -> B
 end
 
 define main(): i64 =
-  if core.bool::bool.false() then
+  if B::bool.false() then
     1
   else-if slt-i64(0, 10) then
     2
