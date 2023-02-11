@@ -184,6 +184,7 @@ parseSection :: Context m => P.Parser m RawStmt
 parseSection = do
   try $ P.keyword "section"
   section <- Section.Section <$> P.baseName
+  P.keyword "do"
   Locator.withLiftedSection section $ do
     stmtList <- concat <$> many parseStmt
     P.keyword "end"

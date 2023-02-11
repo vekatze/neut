@@ -1,0 +1,13 @@
+define main(): i64 =
+  internal.some-function()
+end
+
+section internal do
+  define some-function(): i64 =
+    bar()
+  end
+
+  define bar(): i64 =
+    20
+  end
+end
