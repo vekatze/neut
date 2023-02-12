@@ -1,4 +1,4 @@
-module Case.Main.Global
+module Context.Case.Main.Global
   ( registerTopLevelFunc,
     registerData,
     lookup,

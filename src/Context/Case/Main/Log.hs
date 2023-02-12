@@ -1,4 +1,4 @@
-module Case.Main.Log
+module Context.Case.Main.Log
   ( printLogIO,
     Context,
   )

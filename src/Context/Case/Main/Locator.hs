@@ -1,4 +1,4 @@
-module Case.Main.Locator
+module Context.Case.Main.Locator
   ( Context (..),
     initialize,
     withSection,

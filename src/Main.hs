@@ -9,7 +9,7 @@ import Act.Release qualified as Release
 import Act.Run qualified as Run
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
-import Case.Main qualified as Main
+import Context.Case.Main qualified as Main
 import Context.Log qualified as Log
 import Data.Text qualified as T
 import Entity.ModuleURL

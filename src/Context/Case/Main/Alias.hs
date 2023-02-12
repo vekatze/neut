@@ -1,4 +1,4 @@
-module Case.Main.Alias
+module Context.Case.Main.Alias
   ( registerGlobalLocatorAlias,
     resolveAlias,
     initializeAliasMap,

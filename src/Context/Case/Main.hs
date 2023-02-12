@@ -1,4 +1,4 @@
-module Case.Main
+module Context.Case.Main
   ( build,
     check,
     clean,
@@ -20,17 +20,17 @@ import Act.Release qualified as Release
 import Act.Run qualified as Run
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
-import Case.Main.Alias qualified as MainAlias
-import Case.Main.Cache qualified as MainCache
-import Case.Main.External qualified as MainExternal
-import Case.Main.Global qualified as MainGlobal
-import Case.Main.LLVM qualified as MainLLVM
-import Case.Main.Locator qualified as MainLocator
-import Case.Main.Log qualified as MainLog
-import Case.Main.Module qualified as MainModule
-import Case.Main.Path qualified as MainPath
-import Case.Main.Throw qualified as MainThrow
 import Context.Alias qualified as Alias
+import Context.Case.Main.Alias qualified as MainAlias
+import Context.Case.Main.Cache qualified as MainCache
+import Context.Case.Main.External qualified as MainExternal
+import Context.Case.Main.Global qualified as MainGlobal
+import Context.Case.Main.LLVM qualified as MainLLVM
+import Context.Case.Main.Locator qualified as MainLocator
+import Context.Case.Main.Log qualified as MainLog
+import Context.Case.Main.Module qualified as MainModule
+import Context.Case.Main.Path qualified as MainPath
+import Context.Case.Main.Throw qualified as MainThrow
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.CompDefinition qualified as CompDefinition
 import Context.DataDefinition qualified as DataDefinition

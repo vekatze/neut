@@ -1,4 +1,4 @@
-module Case.Main.Module
+module Context.Case.Main.Module
   ( getModuleFilePath,
     getModule,
     getSourcePath,

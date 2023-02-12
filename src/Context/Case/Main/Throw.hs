@@ -1,4 +1,4 @@
-module Case.Main.Throw
+module Context.Case.Main.Throw
   ( throw,
     try,
     run,

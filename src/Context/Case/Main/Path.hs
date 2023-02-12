@@ -1,6 +1,6 @@
 {-# LANGUAGE TemplateHaskell #-}
 
-module Case.Main.Path
+module Context.Case.Main.Path
   ( getLibraryDirPath,
     ensureNotInLibDir,
     Context,

@@ -1,4 +1,4 @@
-module Case.Main.LLVM
+module Context.Case.Main.LLVM
   ( emit,
     link,
     Context,

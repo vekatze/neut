@@ -1,4 +1,4 @@
-module Case.Main.External
+module Context.Case.Main.External
   ( run,
     Context,
   )
