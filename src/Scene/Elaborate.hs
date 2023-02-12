@@ -5,6 +5,7 @@ module Scene.Elaborate
   )
 where
 
+import Context.Cache qualified as Cache
 import Context.DataDefinition qualified as DataDefinition
 import Context.Definition qualified as Definition
 import Context.Env qualified as Env
@@ -50,13 +51,13 @@ class
     Log.Context m,
     Locator.Context m,
     Global.Context m,
+    Cache.Context m,
     Definition.Context m,
     DataDefinition.Context m
   ) =>
   Context m
   where
   initialize :: m ()
-  saveCache :: Program -> m ()
 
 elaborate :: Context m => Either [Stmt] [WeakStmt] -> m [Stmt]
 elaborate cacheOrStmt = do
@@ -78,7 +79,7 @@ elaborate cacheOrStmt = do
       defList'' <- elaborateStmtList defList'
       forM_ defList'' insertStmt
       -- mapM_ (viewStmt . weakenStmt) defList''
-      saveCache (source, defList'')
+      Cache.saveCache (source, defList'')
       return defList''
 
 -- viewStmt :: Context m => WeakStmt -> m ()

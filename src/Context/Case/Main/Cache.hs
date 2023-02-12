@@ -1,19 +1,28 @@
 module Context.Case.Main.Cache
   ( saveCache,
     loadCache,
+    whenCompilationNecessary,
     Context,
   )
 where
 
+import Context.Env qualified as Env
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.Binary
 import Data.Set qualified as S
+import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
 import Entity.Stmt
 import Path
 import Path.IO
 
-class (Source.Context m, MonadIO m) => Context m
+class
+  ( Source.Context m,
+    Env.Context m,
+    MonadIO m
+  ) =>
+  Context m
 
 saveCache :: Context m => Program -> m ()
 saveCache (source, stmtList) = do
@@ -38,3 +47,10 @@ loadCache source hasCacheSet = do
               return Nothing
             Right content ->
               return $ Just content
+
+whenCompilationNecessary :: Context m => [OK.OutputKind] -> Source.Source -> m () -> m ()
+whenCompilationNecessary outputKindList source comp = do
+  hasLLVMSet <- Env.getHasLLVMSet
+  hasObjectSet <- Env.getHasObjectSet
+  unless (Source.isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source) $ do
+    comp

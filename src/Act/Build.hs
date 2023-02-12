@@ -4,14 +4,13 @@ module Act.Build
   )
 where
 
+import Context.Cache qualified as Cache
 import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Control.Monad
 import Data.Foldable
 import Data.Maybe
 import Entity.Config.Build
-import Entity.OutputKind qualified as OK
-import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
@@ -24,7 +23,8 @@ import Scene.Unravel qualified as Unravel
 import Prelude hiding (log)
 
 class
-  ( Clarify.Context m,
+  ( Cache.Context m,
+    Clarify.Context m,
     Collect.Context m,
     Elaborate.Context m,
     Emit.Context m,
@@ -45,19 +45,9 @@ build cfg = do
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
     (_, _, isObjectAvailable, dependenceSeq) <- Unravel.unravel target
-    mapM_ (compile (outputKindList cfg)) dependenceSeq
+    forM_ dependenceSeq $ \source -> do
+      Initialize.initializeForSource source
+      virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
+      Cache.whenCompilationNecessary (outputKindList cfg) source $ do
+        Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit (outputKindList cfg)
     Link.link target (fromMaybe "" (mClangOptString cfg)) (shouldSkipLink cfg) isObjectAvailable (toList dependenceSeq)
-
-compile ::
-  Context m =>
-  [OK.OutputKind] ->
-  Source.Source ->
-  m ()
-compile outputKindList source = do
-  Initialize.initializeForSource source
-  hasLLVMSet <- Env.getHasLLVMSet
-  hasObjectSet <- Env.getHasObjectSet
-  virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
-  if Source.isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source
-    then return ()
-    else Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit outputKindList

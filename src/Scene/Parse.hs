@@ -1,11 +1,12 @@
 module Scene.Parse
   ( parse,
-    Context (..),
+    Context (),
     parseCachedStmtList,
   )
 where
 
 import Context.Alias qualified as Alias
+import Context.Cache qualified as Cache
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.Enum qualified as Enum
 import Context.Env qualified as Env
@@ -54,6 +55,7 @@ class
     Global.Context m,
     Locator.Context m,
     Throw.Context m,
+    Cache.Context m,
     Env.Context m,
     Enum.Context m,
     Discern.Context m,
@@ -62,8 +64,6 @@ class
     CodataDefinition.Context m
   ) =>
   Context m
-  where
-  loadCache :: Source.Source -> PathSet -> m (Maybe Cache)
 
 --
 -- core functions
@@ -85,7 +85,7 @@ parse = do
 parseSource :: Context m => Source.Source -> m (Either [Stmt] [WeakStmt])
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
-  mCache <- loadCache source hasCacheSet
+  mCache <- Cache.loadCache source hasCacheSet
   case mCache of
     Just cache -> do
       let stmtList = cacheStmtList cache

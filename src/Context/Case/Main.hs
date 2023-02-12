@@ -13,6 +13,7 @@ import Act.Run qualified as Run
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
 import Context.Alias qualified as Alias
+import Context.Cache qualified as Cache
 import Context.Case.Main.Alias qualified as MainAlias
 import Context.Case.Main.Cache qualified as MainCache
 import Context.Case.Main.External qualified as MainExternal
@@ -98,6 +99,7 @@ import Path
 import Path.IO
 import Scene.Clarify qualified as Clarify (Context)
 import Scene.Clarify.Context qualified as ClarifyBase (Context (..))
+import Scene.Collect qualified as Collect (Context)
 import Scene.Elaborate qualified as Elaborate (Context (..))
 import Scene.Elaborate.Infer qualified as ElaborateInfer (Context (..))
 import Scene.Elaborate.Unify qualified as ElaborateUnify (Context (..))
@@ -106,7 +108,7 @@ import Scene.Fetch qualified as Fetch (Context (..))
 import Scene.Initialize qualified as Initialize (Context)
 import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower (Context (..))
-import Scene.Parse qualified as Parse (Context (..))
+import Scene.Parse qualified as Parse (Context ())
 import Scene.Parse.Core qualified as ParseCore (Context (..))
 import Scene.Parse.Discern qualified as ParseDiscern (Context)
 import Scene.Parse.Import qualified as ParseImport (Context)
@@ -252,6 +254,8 @@ instance Initialize.Context App
 
 instance Link.Context App
 
+instance Collect.Context App
+
 instance Build.Context App
 
 instance Check.Context App
@@ -281,8 +285,12 @@ instance Fetch.Context App where
   getHandleContents =
     liftIO . B.hGetContents
 
-instance Parse.Context App where
+instance Parse.Context App
+
+instance Cache.Context App where
   loadCache = MainCache.loadCache
+  saveCache = MainCache.saveCache
+  whenCompilationNecessary = MainCache.whenCompilationNecessary
 
 instance ParseCore.Context App where
   getTargetPlatform =
@@ -307,8 +315,6 @@ instance Elaborate.Context App where
     Env.setConstraintEnv []
     writeRef' weakTypeEnv IntMap.empty
     writeRef' holeEnv IntMap.empty
-  saveCache =
-    MainCache.saveCache
 
 instance ElaborateInfer.Context App where
   insWeakTypeEnv k v =
