@@ -18,14 +18,10 @@ where
 
 import Context.Env qualified as Env
 import Data.Text qualified as T
+import Entity.Config.Log
 import Entity.FilePos qualified as FilePos
 import Entity.Hint
 import Entity.Log qualified as L
-
-data Config = Config
-  { shouldColorize :: Bool,
-    endOfEntry :: T.Text
-  }
 
 class Env.Context m => Context m where
   printLog :: L.Log -> m ()

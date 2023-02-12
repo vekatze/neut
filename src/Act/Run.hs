@@ -10,18 +10,12 @@ import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.Log qualified as Log
 import Context.Throw qualified as Throw
+import Entity.Config.Build qualified as Build
+import Entity.Config.Run
 import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Entity.OutputKind qualified as OK
-import Entity.Target
 import Path
-
-data Config = Config
-  { target :: Target,
-    mClangOptString :: Maybe String,
-    shouldCancelAlloc :: Bool,
-    logCfg :: Log.Config
-  }
 
 class
   ( Throw.Context m,

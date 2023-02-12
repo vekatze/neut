@@ -12,15 +12,11 @@ import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Text qualified as T
+import Entity.Config.Release
 import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Path
 import Scene.Parse.Core qualified as ParseCore
-
-data Config = Config
-  { getReleaseName :: T.Text,
-    logCfg :: Log.Config
-  }
 
 class
   ( Throw.Context m,

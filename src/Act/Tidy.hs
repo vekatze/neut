@@ -10,14 +10,11 @@ import Context.Log qualified as Log
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Entity.Config.Tidy
 import Entity.Module.Reflect qualified as Module
 import Scene.Fetch qualified as F
 import Scene.Parse.Core qualified as ParseCore
 import Prelude hiding (log)
-
-newtype Config = Config
-  { logCfg :: Log.Config
-  }
 
 class
   ( Throw.Context m,

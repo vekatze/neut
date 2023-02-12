@@ -6,9 +6,8 @@ module Act.Version
 where
 
 import Data.Version qualified as V
+import Entity.Config.Version
 import Paths_neut
-
-data Config = Config {}
 
 class Monad m => Context m where
   printString :: String -> m ()

@@ -12,6 +12,7 @@ import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Entity.Config.Check
 import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Entity.Source qualified as Source
@@ -20,11 +21,6 @@ import Path
 import Scene.Elaborate qualified as Elaborate
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
-
-data Config = Config
-  { mFilePathString :: Maybe FilePath,
-    logCfg :: Log.Config
-  }
 
 class
   ( Throw.Context m,

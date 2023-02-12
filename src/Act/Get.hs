@@ -10,19 +10,12 @@ import Context.Log qualified as Log
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
-import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.Config.Get
 import Entity.Module.Reflect qualified as Module
 import Entity.ModuleAlias
-import Entity.ModuleURL
 import Scene.Fetch qualified as F
 import Prelude hiding (log)
-
-data Config = Config
-  { moduleAliasText :: T.Text,
-    moduleURL :: ModuleURL,
-    logCfg :: Log.Config
-  }
 
 class
   ( Throw.Context m,

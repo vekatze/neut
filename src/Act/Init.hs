@@ -13,6 +13,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Entity.Config.Init
 import Entity.Const
 import Entity.Module
 import Entity.ModuleID qualified as MID
@@ -20,11 +21,6 @@ import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path (parent, (</>))
-
-data Config = Config
-  { moduleName :: T.Text,
-    logCfg :: Log.Config
-  }
 
 class
   ( Throw.Context m,

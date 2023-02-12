@@ -1,13 +1,5 @@
 module Context.Case.Main
-  ( build,
-    check,
-    clean,
-    get,
-    initialize,
-    release,
-    run,
-    tidy,
-    version,
+  ( execute,
   )
 where
 
@@ -29,6 +21,7 @@ import Context.Case.Main.LLVM qualified as MainLLVM
 import Context.Case.Main.Locator qualified as MainLocator
 import Context.Case.Main.Log qualified as MainLog
 import Context.Case.Main.Module qualified as MainModule
+import Context.Case.Main.OptParse qualified as MainOptParse
 import Context.Case.Main.Path qualified as MainPath
 import Context.Case.Main.Throw qualified as MainThrow
 import Context.CodataDefinition qualified as CodataDefinition
@@ -45,6 +38,7 @@ import Context.LLVM qualified as LLVM
 import Context.Locator qualified as Locator
 import Context.Log qualified as Log
 import Context.Module qualified as Module
+import Context.OptParse qualified as OptParse
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
@@ -67,6 +61,7 @@ import Data.Text.IO qualified as TIO
 import Entity.AliasInfo
 import Entity.Arity qualified as A
 import Entity.Binder
+import Entity.Command qualified as C
 import Entity.Comp
 import Entity.Comp.Reduce qualified as Comp (Context)
 import Entity.Const
@@ -179,41 +174,29 @@ newtype App a = App
       MonadMask
     )
 
-build :: Build.Config -> IO ()
-build cfg = do
-  runApp $ Build.build cfg
-
-check :: Check.Config -> IO ()
-check cfg = do
-  runApp $ Check.check cfg
-
-clean :: Clean.Config -> IO ()
-clean cfg = do
-  runApp $ Clean.clean cfg
-
-get :: Get.Config -> IO ()
-get cfg = do
-  runApp $ Get.get cfg
-
-initialize :: Init.Config -> IO ()
-initialize cfg = do
-  runApp $ Init.initialize cfg
-
-release :: Release.Config -> IO ()
-release cfg = do
-  runApp $ Release.release cfg
-
-run :: Run.Config -> IO ()
-run cfg = do
-  runApp $ Run.run cfg
-
-tidy :: Tidy.Config -> IO ()
-tidy cfg = do
-  runApp $ Tidy.tidy cfg
-
-version :: Version.Config -> IO ()
-version cfg = do
-  runApp $ Version.showVersion cfg
+execute :: IO ()
+execute = do
+  runApp $ do
+    c <- OptParse.parseCommand
+    case c of
+      C.Build cfg -> do
+        Build.build cfg
+      C.Run cfg -> do
+        Run.run cfg
+      C.Check cfg -> do
+        Check.check cfg
+      C.Clean cfg ->
+        Clean.clean cfg
+      C.Release cfg ->
+        Release.release cfg
+      C.Init cfg ->
+        Init.initialize cfg
+      C.Get cfg ->
+        Get.get cfg
+      C.Tidy cfg ->
+        Tidy.tidy cfg
+      C.ShowVersion cfg ->
+        Version.showVersion cfg
 
 runApp :: App a -> IO a
 runApp app = do
@@ -453,6 +436,10 @@ instance MainLog.Context App
 instance Log.Context App where
   printLog =
     MainLog.printLogIO
+
+instance OptParse.Context App where
+  parseCommand =
+    MainOptParse.parseCommand
 
 instance MainLLVM.Context App
 

@@ -1,6 +1,5 @@
 module Act.Build
   ( build,
-    Config (..),
     Context,
   )
 where
@@ -21,6 +20,7 @@ import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Set qualified as S
+import Entity.Config.Build
 import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Entity.OutputKind qualified as OK
@@ -35,15 +35,6 @@ import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
 import Prelude hiding (log)
-
-data Config = Config
-  { mTarget :: Maybe Target,
-    mClangOptString :: Maybe String,
-    logCfg :: Log.Config,
-    outputKindList :: [OK.OutputKind],
-    shouldSkipLink :: Bool,
-    shouldCancelAlloc :: Bool
-  }
 
 class
   ( LLVM.Context m,
