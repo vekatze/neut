@@ -69,8 +69,9 @@ class
 -- core functions
 --
 
-parse :: Context m => Source.Source -> m (Either [Stmt] [WeakStmt])
-parse source = do
+parse :: Context m => m (Either [Stmt] [WeakStmt])
+parse = do
+  source <- Env.getCurrentSource
   result <- parseSource source
   mMainDD <- Locator.getMainDefiniteDescription source
   case mMainDD of

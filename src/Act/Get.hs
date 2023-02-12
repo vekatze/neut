@@ -30,10 +30,9 @@ get :: Context m => Config -> m ()
 get cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  Throw.run $ do
-    Module.fromCurrentPath >>= Env.setMainModule
-    Env.setTargetPlatform
-    baseName <- BN.reflect' $ moduleAliasText cfg
-    F.insertDependency
-      (ModuleAlias baseName)
-      (moduleURL cfg)
+  Module.fromCurrentPath >>= Env.setMainModule
+  Env.setTargetPlatform
+  baseName <- BN.reflect' $ moduleAliasText cfg
+  F.insertDependency
+    (ModuleAlias baseName)
+    (moduleURL cfg)

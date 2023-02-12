@@ -111,3 +111,11 @@ getID mainModule currentModule = do
               toFilePath $
                 dirname $
                   parent (moduleLocation currentModule)
+
+getTargetList :: Module -> Maybe Target.Target -> [Target.Target]
+getTargetList someModule mTarget =
+  case mTarget of
+    Just target ->
+      [target]
+    Nothing -> do
+      Map.keys $ moduleTarget someModule

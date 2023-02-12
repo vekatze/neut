@@ -31,7 +31,6 @@ tidy :: Context m => Config -> m ()
 tidy cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  Throw.run $ do
-    mainModule <- Module.fromCurrentPath
-    Env.setMainModule mainModule
-    F.fetch mainModule
+  mainModule <- Module.fromCurrentPath
+  Env.setMainModule mainModule
+  F.fetch mainModule

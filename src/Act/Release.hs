@@ -31,25 +31,24 @@ release :: Context m => Config -> m ()
 release cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  Throw.run $ do
-    mainModule <- Module.fromCurrentPath
-    let moduleRootDir = parent $ moduleLocation mainModule
-    releaseFile <- getReleaseFile mainModule (getReleaseName cfg)
-    let tarRootDir = parent moduleRootDir
-    relModuleSourceDir <- Path.stripPrefix tarRootDir $ getSourceDir mainModule
-    relModuleFile <- Path.stripPrefix tarRootDir $ moduleLocation mainModule
-    extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
-    External.run "tar" $
-      [ "-c",
-        "--zstd",
-        "-f",
-        toFilePath releaseFile,
-        "-C",
-        toFilePath tarRootDir,
-        toFilePath relModuleSourceDir,
-        toFilePath relModuleFile
-      ]
-        ++ extraContents
+  mainModule <- Module.fromCurrentPath
+  let moduleRootDir = parent $ moduleLocation mainModule
+  releaseFile <- getReleaseFile mainModule (getReleaseName cfg)
+  let tarRootDir = parent moduleRootDir
+  relModuleSourceDir <- Path.stripPrefix tarRootDir $ getSourceDir mainModule
+  relModuleFile <- Path.stripPrefix tarRootDir $ moduleLocation mainModule
+  extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
+  External.run "tar" $
+    [ "-c",
+      "--zstd",
+      "-f",
+      toFilePath releaseFile,
+      "-C",
+      toFilePath tarRootDir,
+      toFilePath relModuleSourceDir,
+      toFilePath relModuleFile
+    ]
+      ++ extraContents
 
 arrangeExtraContentPath :: Context m => Path Abs Dir -> SomePath -> m FilePath
 arrangeExtraContentPath tarRootDir somePath =

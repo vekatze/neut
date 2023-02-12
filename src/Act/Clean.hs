@@ -28,8 +28,7 @@ clean :: Context m => Config -> m ()
 clean cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  Throw.run $ do
-    mainModule <- Module.fromCurrentPath
-    let targetDir = getTargetDir mainModule
-    b <- Path.doesDirExist targetDir
-    when b $ Path.removeDirRecur $ getTargetDir mainModule
+  mainModule <- Module.fromCurrentPath
+  let targetDir = getTargetDir mainModule
+  b <- Path.doesDirExist targetDir
+  when b $ Path.removeDirRecur $ getTargetDir mainModule

@@ -30,7 +30,6 @@ import Entity.LamKind qualified as LK
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
-import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.Term qualified as TM
 import Entity.Term.Reduce qualified as Term
@@ -59,14 +58,15 @@ class
   initialize :: m ()
   saveCache :: Program -> m ()
 
-elaborate :: Context m => Source.Source -> Either [Stmt] [WeakStmt] -> m [Stmt]
-elaborate source cacheOrStmt = do
+elaborate :: Context m => Either [Stmt] [WeakStmt] -> m [Stmt]
+elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
     Left cache -> do
       forM_ cache insertStmt
       return cache
     Right defList -> do
+      source <- Env.getCurrentSource
       mMainDefiniteDescription <- Locator.getMainDefiniteDescription source
       -- infer
       forM_ defList insertWeakStmt

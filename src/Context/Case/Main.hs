@@ -103,6 +103,8 @@ import Scene.Elaborate.Infer qualified as ElaborateInfer (Context (..))
 import Scene.Elaborate.Unify qualified as ElaborateUnify (Context (..))
 import Scene.Emit qualified as Emit (Context)
 import Scene.Fetch qualified as Fetch (Context (..))
+import Scene.Initialize qualified as Initialize (Context)
+import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower (Context (..))
 import Scene.Parse qualified as Parse (Context (..))
 import Scene.Parse.Core qualified as ParseCore (Context (..))
@@ -178,25 +180,26 @@ execute :: IO ()
 execute = do
   runApp $ do
     c <- OptParse.parseCommand
-    case c of
-      C.Build cfg -> do
-        Build.build cfg
-      C.Run cfg -> do
-        Run.run cfg
-      C.Check cfg -> do
-        Check.check cfg
-      C.Clean cfg ->
-        Clean.clean cfg
-      C.Release cfg ->
-        Release.release cfg
-      C.Init cfg ->
-        Init.initialize cfg
-      C.Get cfg ->
-        Get.get cfg
-      C.Tidy cfg ->
-        Tidy.tidy cfg
-      C.ShowVersion cfg ->
-        Version.showVersion cfg
+    Throw.run $ do
+      case c of
+        C.Build cfg -> do
+          Build.build cfg
+        C.Run cfg -> do
+          Run.run cfg
+        C.Check cfg -> do
+          Check.check cfg
+        C.Clean cfg ->
+          Clean.clean cfg
+        C.Release cfg ->
+          Release.release cfg
+        C.Init cfg ->
+          Init.initialize cfg
+        C.Get cfg ->
+          Get.get cfg
+        C.Tidy cfg ->
+          Tidy.tidy cfg
+        C.ShowVersion cfg ->
+          Version.showVersion cfg
 
 runApp :: App a -> IO a
 runApp app = do
@@ -244,6 +247,10 @@ newEnv = do
   mainModule <- newRef
   targetPlatform <- newRef
   return Env {..}
+
+instance Initialize.Context App
+
+instance Link.Context App
 
 instance Build.Context App
 

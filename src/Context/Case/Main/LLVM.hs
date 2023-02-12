@@ -9,6 +9,7 @@ import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Data.ByteString.Lazy qualified as L
@@ -16,6 +17,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Entity.Const
 import Entity.OutputKind qualified as OK
+import Entity.Source qualified as Source
 import GHC.IO.Handle
 import Path
 import Path.IO
@@ -32,19 +34,27 @@ class
     Env.Context m,
     MonadIO m,
     Path.Context m,
+    Source.Context m,
     External.Context m,
     MonadUnliftIO m
   ) =>
   Context m
 
-emit :: Context m => LLVMCode -> [(OK.OutputKind, Path Abs File)] -> m ()
-emit llvmCode kindPathList = do
+emit :: Context m => [OK.OutputKind] -> L.ByteString -> m ()
+emit outputKindList llvmCode = do
+  source <- Env.getCurrentSource
+  kindPathList <- zipWithM Source.attachOutputPath outputKindList (repeat source)
+  forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
+  emitAll llvmCode kindPathList
+
+emitAll :: Context m => LLVMCode -> [(OK.OutputKind, Path Abs File)] -> m ()
+emitAll llvmCode kindPathList = do
   case kindPathList of
     [] ->
       return ()
     (kind, path) : rest -> do
       emit' llvmCode kind path
-      emit llvmCode rest
+      emitAll llvmCode rest
 
 emit' :: Context m => LLVMCode -> OK.OutputKind -> Path Abs File -> m ()
 emit' llvmCode kind path = do

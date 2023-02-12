@@ -8,6 +8,7 @@ where
 import Context.CompDefinition qualified as CompDefinition
 import Context.DataDefinition qualified as DataDefinition
 import Context.Enum qualified as Enum
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.Log qualified as Log
@@ -42,7 +43,6 @@ import Entity.Prim qualified as P
 import Entity.PrimNumSize
 import Entity.PrimOp
 import Entity.PrimValue qualified as PV
-import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.Term qualified as TM
 import Entity.Term.Chain qualified as TM
@@ -62,9 +62,9 @@ class
   ) =>
   Context m
 
-clarify :: Context m => Source.Source -> [Stmt] -> m ([C.CompDef], Maybe C.Comp)
-clarify source defList = do
-  mMainDefiniteDescription <- Locator.getMainDefiniteDescription source
+clarify :: Context m => [Stmt] -> m ([C.CompDef], Maybe C.Comp)
+clarify defList = do
+  mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
     Just mainName -> do
       auxEnv <- withSpecializedCtx $ do

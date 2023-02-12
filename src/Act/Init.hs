@@ -34,18 +34,17 @@ initialize :: Context m => Config -> m ()
 initialize cfg = do
   Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
   Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  Throw.run $ do
-    newModule <- constructDefaultModule (moduleName cfg)
-    Env.setMainModule newModule
-    moduleDirExists <- Path.doesDirExist $ parent $ moduleLocation newModule
-    if moduleDirExists
-      then do
-        Throw.raiseError' $ "the directory `" <> moduleName cfg <> "` already exists"
-      else do
-        Path.ensureDir $ parent $ moduleLocation newModule
-        Path.ensureDir $ getSourceDir newModule
-        createModuleFile
-        createMainFile
+  newModule <- constructDefaultModule (moduleName cfg)
+  Env.setMainModule newModule
+  moduleDirExists <- Path.doesDirExist $ parent $ moduleLocation newModule
+  if moduleDirExists
+    then do
+      Throw.raiseError' $ "the directory `" <> moduleName cfg <> "` already exists"
+    else do
+      Path.ensureDir $ parent $ moduleLocation newModule
+      Path.ensureDir $ getSourceDir newModule
+      createModuleFile
+      createMainFile
 
 createModuleFile :: Context m => m ()
 createModuleFile = do
