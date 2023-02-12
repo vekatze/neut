@@ -25,7 +25,6 @@ import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
-import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
 import Scene.Clarify qualified as Clarify
@@ -80,10 +79,7 @@ build' ::
   Maybe String ->
   m ()
 build' target mainModule outputKindList shouldSkipLink mClangOptString = do
-  sgl <- resolveTarget mainModule target
-  mainFilePath <- Module.getSourcePath sgl
-  let mainSource = getMainSource mainModule mainFilePath
-  (_, _, isObjectAvailable, dependenceSeq) <- Unravel.unravel mainSource
+  (_, _, isObjectAvailable, dependenceSeq) <- Unravel.unravel target
   Global.initialize
   Clarify.registerFoundationalTypes
   mapM_ (compile outputKindList) dependenceSeq
@@ -158,18 +154,3 @@ link mClangOptString target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (Source.sourceToOutputPath OK.Object) sourceList
   LLVM.link (fromMaybe "" mClangOptString) objectPathList outputPath
-
-getMainSource :: Module -> Path Abs File -> Source.Source
-getMainSource mainModule mainSourceFilePath = do
-  Source.Source
-    { Source.sourceModule = mainModule,
-      Source.sourceFilePath = mainSourceFilePath
-    }
-
-resolveTarget :: Throw.Context m => Module -> Target -> m SGL.StrictGlobalLocator
-resolveTarget mainModule target = do
-  case Map.lookup target (moduleTarget mainModule) of
-    Just path ->
-      return path
-    Nothing ->
-      Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"

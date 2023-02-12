@@ -1,5 +1,6 @@
 module Scene.Unravel
   ( unravel,
+    unravel',
     Context,
   )
 where
@@ -22,8 +23,11 @@ import Data.Sequence as Seq
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Hint
+import Entity.Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
+import Entity.StrictGlobalLocator qualified as SGL
+import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
@@ -51,10 +55,24 @@ class
 
 unravel ::
   Context m =>
-  Source.Source ->
+  Target ->
   m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
-unravel source = do
-  unravel' source
+unravel target = do
+  mainModule <- Env.getMainModule
+  mainFilePath <- resolveTarget mainModule target >>= Module.getSourcePath
+  unravel' $
+    Source.Source
+      { Source.sourceModule = mainModule,
+        Source.sourceFilePath = mainFilePath
+      }
+
+resolveTarget :: Throw.Context m => Module -> Target -> m SGL.StrictGlobalLocator
+resolveTarget mainModule target = do
+  case Map.lookup target (moduleTarget mainModule) of
+    Just path ->
+      return path
+    Nothing ->
+      Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
 
 unravel' :: Context m => Source.Source -> m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
 unravel' source = do
