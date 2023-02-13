@@ -13,7 +13,6 @@ import Entity.Config.Get qualified as Get
 import Entity.Config.Init qualified as Init
 import Entity.Config.Log qualified as Log
 import Entity.Config.Release qualified as Release
-import Entity.Config.Run qualified as Run
 import Entity.Config.Tidy qualified as Tidy
 import Entity.Config.Version qualified as Version
 import Entity.ModuleURL
@@ -30,7 +29,6 @@ parseOpt = do
   subparser $
     mconcat
       [ cmd "build" parseBuildOpt "build given target",
-        cmd "run" parseRunOpt "build and run given target",
         cmd "clean" parseCleanOpt "remove the resulting files",
         cmd "check" parseCheckOpt "type-check specified file",
         cmd "release" parseReleaseOpt "create a release tar from a given path",
@@ -52,6 +50,7 @@ parseBuildOpt = do
   shouldCancelAlloc <- cancelAllocOpt
   outputKindList <- outputKindListOpt
   shouldSkipLink <- shouldSkipLinkOpt
+  shouldExecute <- shouldExecuteOpt
   pure $
     Build $
       Build.Config
@@ -60,22 +59,8 @@ parseBuildOpt = do
           Build.logCfg = logCfg,
           Build.shouldCancelAlloc = shouldCancelAlloc,
           Build.outputKindList = outputKindList,
-          Build.shouldSkipLink = shouldSkipLink
-        }
-
-parseRunOpt :: Parser Command
-parseRunOpt = do
-  target <- argument str $ mconcat [metavar "TARGET", help "The build target"]
-  mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
-  logCfg <- logConfigOpt
-  shouldCancelAlloc <- cancelAllocOpt
-  pure $
-    Run $
-      Run.Config
-        { Run.target = Target target,
-          Run.mClangOptString = mClangOpt,
-          Run.logCfg = logCfg,
-          Run.shouldCancelAlloc = shouldCancelAlloc
+          Build.shouldSkipLink = shouldSkipLink,
+          Build.shouldExecute = shouldExecute
         }
 
 parseCleanOpt :: Parser Command
@@ -203,6 +188,17 @@ shouldSkipLinkOpt =
     ( mconcat
         [ long "skip-link",
           help "Set this to skip linking"
+        ]
+    )
+
+shouldExecuteOpt :: Parser Bool
+shouldExecuteOpt =
+  flag
+    False
+    True
+    ( mconcat
+        [ long "execute",
+          help "Run the executable after compilation"
         ]
     )
 

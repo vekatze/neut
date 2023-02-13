@@ -5,6 +5,7 @@ module Act.Build
 where
 
 import Context.Cache qualified as Cache
+import Context.External qualified as External
 import Context.LLVM qualified as LLVM
 import Control.Monad
 import Data.Foldable
@@ -14,6 +15,7 @@ import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
 import Scene.Emit qualified as Emit
+import Scene.Execute qualified as Execute
 import Scene.Initialize qualified as Initialize
 import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower
@@ -30,6 +32,8 @@ class
     Initialize.Context m,
     LLVM.Context m,
     Link.Context m,
+    External.Context m,
+    Execute.Context m,
     Lower.Context m,
     Parse.Context m,
     Unravel.Context m
@@ -49,3 +53,5 @@ build cfg = do
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
         Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit (outputKindList cfg)
     Link.link target (fromMaybe "" (mClangOptString cfg)) (shouldSkipLink cfg) isObjectAvailable (toList dependenceSeq)
+    when (shouldExecute cfg) $
+      Execute.execute target

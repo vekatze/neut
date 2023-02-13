@@ -6,13 +6,11 @@ import Entity.Config.Clean qualified as Clean
 import Entity.Config.Get qualified as Get
 import Entity.Config.Init qualified as Init
 import Entity.Config.Release qualified as Release
-import Entity.Config.Run qualified as Run
 import Entity.Config.Tidy qualified as Tidy
 import Entity.Config.Version qualified as Version
 
 data Command
   = Build Build.Config
-  | Run Run.Config
   | Check Check.Config
   | Clean Clean.Config
   | Release Release.Config

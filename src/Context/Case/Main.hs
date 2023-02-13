@@ -9,7 +9,6 @@ import Act.Clean qualified as Clean
 import Act.Get qualified as Get
 import Act.Init qualified as Init
 import Act.Release qualified as Release
-import Act.Run qualified as Run
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
 import Context.Alias qualified as Alias
@@ -106,6 +105,7 @@ import Scene.Elaborate qualified as Elaborate (Context (..))
 import Scene.Elaborate.Infer qualified as ElaborateInfer (Context (..))
 import Scene.Elaborate.Unify qualified as ElaborateUnify (Context (..))
 import Scene.Emit qualified as Emit (Context)
+import Scene.Execute qualified as Execute
 import Scene.Fetch qualified as Fetch (Context (..))
 import Scene.Initialize qualified as Initialize (Context)
 import Scene.Link qualified as Link
@@ -189,8 +189,6 @@ execute = do
       case c of
         C.Build cfg -> do
           Build.build cfg
-        C.Run cfg -> do
-          Run.run cfg
         C.Check cfg -> do
           Check.check cfg
         C.Clean cfg ->
@@ -259,6 +257,8 @@ instance Link.Context App
 
 instance Collect.Context App
 
+instance Execute.Context App
+
 instance Build.Context App
 
 instance Check.Context App
@@ -276,8 +276,6 @@ instance Init.Context App
 instance Archive.Context App
 
 instance Release.Context App
-
-instance Run.Context App
 
 instance Tidy.Context App
 
