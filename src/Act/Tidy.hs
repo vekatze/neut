@@ -6,31 +6,19 @@ module Act.Tidy
 where
 
 import Context.Env qualified as Env
-import Context.Log qualified as Log
-import Context.Module qualified as Module
-import Context.Path qualified as Path
-import Context.Throw qualified as Throw
 import Entity.Config.Tidy
-import Entity.Module.Reflect qualified as Module
-import Scene.Fetch qualified as F
-import Scene.Parse.Core qualified as ParseCore
+import Scene.Fetch qualified as Fetch
+import Scene.Initialize qualified as Initialize
 import Prelude hiding (log)
 
 class
-  ( Throw.Context m,
-    Log.Context m,
-    Path.Context m,
-    Module.Context m,
-    Env.Context m,
-    ParseCore.Context m,
-    F.Context m
+  ( Env.Context m,
+    Initialize.Context m,
+    Fetch.Context m
   ) =>
   Context m
 
 tidy :: Context m => Config -> m ()
 tidy cfg = do
-  Env.setEndOfEntry $ Log.endOfEntry $ logCfg cfg
-  Env.setShouldColorize $ Log.shouldColorize $ logCfg cfg
-  mainModule <- Module.fromCurrentPath
-  Env.setMainModule mainModule
-  F.fetch mainModule
+  Initialize.initializeCompiler (logCfg cfg) True
+  Env.getMainModule >>= Fetch.fetch
