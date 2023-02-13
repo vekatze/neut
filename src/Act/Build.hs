@@ -5,7 +5,6 @@ module Act.Build
 where
 
 import Context.Cache qualified as Cache
-import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Control.Monad
 import Data.Foldable
@@ -28,7 +27,6 @@ class
     Collect.Context m,
     Elaborate.Context m,
     Emit.Context m,
-    Env.Context m,
     Initialize.Context m,
     LLVM.Context m,
     Link.Context m,

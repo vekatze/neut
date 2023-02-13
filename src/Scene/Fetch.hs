@@ -49,8 +49,9 @@ fetch baseModule = do
   forM_ dependency $ \(alias, (url, checksum)) ->
     installIfNecessary alias url checksum
 
-insertDependency :: Context m => ModuleAlias -> ModuleURL -> m ()
-insertDependency alias url = do
+insertDependency :: Context m => T.Text -> ModuleURL -> m ()
+insertDependency aliasName url = do
+  alias <- ModuleAlias <$> BN.reflect' aliasName
   mainModule <- Env.getMainModule
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
