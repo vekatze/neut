@@ -99,6 +99,7 @@ import Path
 import Path.IO
 import Scene.Clarify qualified as Clarify (Context)
 import Scene.Clarify.Context qualified as ClarifyBase (Context (..))
+import Scene.Clean qualified as SceneClean
 import Scene.Collect qualified as Collect (Context)
 import Scene.Elaborate qualified as Elaborate (Context (..))
 import Scene.Elaborate.Infer qualified as ElaborateInfer (Context (..))
@@ -259,6 +260,8 @@ instance Collect.Context App
 instance Build.Context App
 
 instance Check.Context App
+
+instance SceneClean.Context App
 
 instance Clean.Context App
 
