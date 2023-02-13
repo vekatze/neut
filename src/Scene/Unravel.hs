@@ -1,6 +1,6 @@
 module Scene.Unravel
   ( unravel,
-    unravel',
+    unravelFromSGL,
     Context,
   )
 where
@@ -65,6 +65,22 @@ unravel target = do
       { Source.sourceModule = mainModule,
         Source.sourceFilePath = mainFilePath
       }
+
+unravelFromSGL ::
+  Context m =>
+  SGL.StrictGlobalLocator ->
+  m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+unravelFromSGL sgl = do
+  mainModule <- Env.getMainModule
+  path <- Module.getSourcePath sgl
+  ensureFileModuleSanity path mainModule
+  let initialSource = Source.Source {Source.sourceModule = mainModule, Source.sourceFilePath = path}
+  unravel' initialSource
+
+ensureFileModuleSanity :: Throw.Context m => Path Abs File -> Module -> m ()
+ensureFileModuleSanity filePath mainModule = do
+  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
+    Throw.raiseError' "the specified file is not in the current module"
 
 resolveTarget :: Throw.Context m => Module -> Target -> m SGL.StrictGlobalLocator
 resolveTarget mainModule target = do
