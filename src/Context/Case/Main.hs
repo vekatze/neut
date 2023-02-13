@@ -97,6 +97,7 @@ import Entity.VisitInfo
 import Entity.WeakTerm qualified as WT
 import Path
 import Path.IO
+import Scene.Archive qualified as Archive
 import Scene.Clarify qualified as Clarify (Context)
 import Scene.Clarify.Context qualified as ClarifyBase (Context (..))
 import Scene.Clean qualified as SceneClean
@@ -271,6 +272,8 @@ instance Get.Context App
 instance New.Context App
 
 instance Init.Context App
+
+instance Archive.Context App
 
 instance Release.Context App
 
