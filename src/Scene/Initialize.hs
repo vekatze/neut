@@ -1,6 +1,7 @@
 module Scene.Initialize
   ( Context (),
     initializeCompiler,
+    initializeCompilerWithModule,
     initializeForTarget,
     initializeForSource,
   )
@@ -14,6 +15,7 @@ import Context.Log qualified as Log
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Entity.Module
 import Entity.Module.Reflect qualified as Module
 import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
@@ -34,13 +36,17 @@ class
 
 initializeCompiler :: Context m => Log.Config -> Bool -> m ()
 initializeCompiler cfg shouldCancelAlloc = do
+  mainModule <- Module.fromCurrentPath
+  initializeCompilerWithModule mainModule cfg shouldCancelAlloc
+
+initializeCompilerWithModule :: Context m => Module -> Log.Config -> Bool -> m ()
+initializeCompilerWithModule newModule cfg shouldCancelAlloc = do
   Env.setEndOfEntry $ Log.endOfEntry cfg
   Env.setShouldColorize $ Log.shouldColorize cfg
   Env.setShouldCancelAlloc shouldCancelAlloc
   Env.setTargetPlatform
   Path.ensureNotInLibDir
-  mainModule <- Module.fromCurrentPath
-  Env.setMainModule mainModule
+  Env.setMainModule newModule
 
 initializeForTarget :: Context m => m ()
 initializeForTarget = do

@@ -109,6 +109,7 @@ import Scene.Fetch qualified as Fetch (Context (..))
 import Scene.Initialize qualified as Initialize (Context)
 import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower (Context (..))
+import Scene.New qualified as New
 import Scene.Parse qualified as Parse (Context ())
 import Scene.Parse.Core qualified as ParseCore (Context (..))
 import Scene.Parse.Discern qualified as ParseDiscern (Context)
@@ -266,6 +267,8 @@ instance SceneClean.Context App
 instance Clean.Context App
 
 instance Get.Context App
+
+instance New.Context App
 
 instance Init.Context App
 
