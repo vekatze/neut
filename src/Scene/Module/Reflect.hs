@@ -28,9 +28,9 @@ import Scene.Parse.Core qualified as Parse
 fromFilePath :: (Parse.Context m, Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module
 fromFilePath moduleID moduleFilePath = do
   entity <- Ens.fromFilePath moduleFilePath
-  (_, entryPointEns) <- access "target" entity >>= toDictionary
-  dependencyEns <- access "dependency" entity >>= toDictionary
-  extraContentsEns <- access "extra-content" entity >>= toList
+  (_, entryPointEns) <- liftEither $ access "target" entity >>= toDictionary
+  dependencyEns <- liftEither $ access "dependency" entity >>= toDictionary
+  extraContentsEns <- liftEither $ access "extra-content" entity >>= toList
   target <- mapM (interpretRelFilePath moduleID) entryPointEns
   dependency <- interpretDependencyDict dependencyEns
   extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
@@ -48,7 +48,7 @@ fromCurrentPath =
 
 interpretRelFilePath :: Context m => MID.ModuleID -> Ens -> m SGL.StrictGlobalLocator
 interpretRelFilePath moduleID ens = do
-  (m, pathString) <- toString ens
+  (m, pathString) <- liftEither $ toString ens
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return
@@ -71,14 +71,14 @@ interpretDependencyDict (m, dep) = do
         "the reserved name `"
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
-    (_, url) <- access "URL" ens >>= toString
-    (_, checksum) <- access "checksum" ens >>= toString
+    (_, url) <- liftEither $ access "URL" ens >>= toString
+    (_, checksum) <- liftEither $ access "checksum" ens >>= toString
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
   return $ Map.fromList items
 
 interpretExtraPath :: (Parse.Context m, Path.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
 interpretExtraPath moduleRootDir entity = do
-  (m, itemPathText) <- toString entity
+  (m, itemPathText) <- liftEither $ toString entity
   if T.last itemPathText == '/'
     then do
       dirPath <- Path.resolveDir moduleRootDir $ T.unpack itemPathText

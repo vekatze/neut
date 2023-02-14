@@ -1,8 +1,6 @@
 module Entity.EnsType where
 
-import Context.Throw
 import Data.Text qualified as T
-import Entity.Hint
 
 data EnsType
   = Int64
@@ -27,12 +25,3 @@ showEnsType entityType =
       "list"
     Dictionary ->
       "dictionary"
-
-raiseTypeError :: Context m => Hint -> EnsType -> EnsType -> m a
-raiseTypeError m expectedType actualType =
-  raiseError m $
-    "the value here is expected to be of type `"
-      <> showEnsType expectedType
-      <> "`, but is: `"
-      <> showEnsType actualType
-      <> "`"

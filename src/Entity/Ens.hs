@@ -13,7 +13,6 @@ module Entity.Ens
   )
 where
 
-import Context.Throw
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as M
 import Data.Int
@@ -21,6 +20,7 @@ import Data.List
 import Data.Text qualified as T
 import Entity.EnsType qualified as ET
 import Entity.Hint
+import Entity.Log
 
 data EnsF a
   = Int64 Int64
@@ -32,7 +32,7 @@ data EnsF a
 
 type Ens = Cofree EnsF Hint
 
-access :: Context m => T.Text -> Ens -> m Ens
+access :: T.Text -> Ens -> Either Error Ens
 access k entity@(m :< _) = do
   (_, dictionary) <- toDictionary entity
   case M.lookup k dictionary of
@@ -41,53 +41,53 @@ access k entity@(m :< _) = do
     Nothing ->
       raiseKeyNotFoundError m k
 
-toInt64 :: Context m => Ens -> m Int64
+toInt64 :: Ens -> Either Error Int64
 toInt64 entity@(m :< _) =
   case entity of
     _ :< Int64 s ->
       return s
     _ ->
-      ET.raiseTypeError m ET.Int64 (typeOf entity)
+      raiseTypeError m ET.Int64 (typeOf entity)
 
-toFloat64 :: Context m => Ens -> m Double
+toFloat64 :: Ens -> Either Error Double
 toFloat64 entity@(m :< _) =
   case entity of
     _ :< Float64 s ->
       return s
     _ ->
-      ET.raiseTypeError m ET.Float64 (typeOf entity)
+      raiseTypeError m ET.Float64 (typeOf entity)
 
-toBool :: Context m => Ens -> m Bool
+toBool :: Ens -> Either Error Bool
 toBool entity@(m :< _) =
   case entity of
     _ :< Bool x ->
       return x
     _ ->
-      ET.raiseTypeError m ET.Bool (typeOf entity)
+      raiseTypeError m ET.Bool (typeOf entity)
 
-toString :: Context m => Ens -> m (Hint, T.Text)
+toString :: Ens -> Either Error (Hint, T.Text)
 toString entity@(m :< _) =
   case entity of
     _ :< String s ->
       return (m, s)
     _ ->
-      ET.raiseTypeError m ET.String (typeOf entity)
+      raiseTypeError m ET.String (typeOf entity)
 
-toDictionary :: Context m => Ens -> m (Hint, M.HashMap T.Text Ens)
+toDictionary :: Ens -> Either Error (Hint, M.HashMap T.Text Ens)
 toDictionary entity@(m :< _) =
   case entity of
     _ :< Dictionary e ->
       return (m, e)
     _ ->
-      ET.raiseTypeError m ET.Dictionary (typeOf entity)
+      raiseTypeError m ET.Dictionary (typeOf entity)
 
-toList :: Context m => Ens -> m [Ens]
+toList :: Ens -> Either Error [Ens]
 toList entity@(m :< _) =
   case entity of
     _ :< List e ->
       return e
     _ ->
-      ET.raiseTypeError m ET.List (typeOf entity)
+      raiseTypeError m ET.List (typeOf entity)
 
 typeOf :: Ens -> ET.EnsType
 typeOf v =
@@ -105,12 +105,23 @@ typeOf v =
     _ :< Dictionary _ ->
       ET.Dictionary
 
-raiseKeyNotFoundError :: Context m => Hint -> T.Text -> m a
+raiseTypeError :: Hint -> ET.EnsType -> ET.EnsType -> Either Error a
+raiseTypeError m expectedType actualType =
+  Left $
+    newError m $
+      "the value here is expected to be of type `"
+        <> ET.showEnsType expectedType
+        <> "`, but is: `"
+        <> ET.showEnsType actualType
+        <> "`"
+
+raiseKeyNotFoundError :: Hint -> T.Text -> Either Error a
 raiseKeyNotFoundError m k =
-  raiseError m $
-    "couldn't find the required key `"
-      <> k
-      <> "`."
+  Left $
+    newError m $
+      "couldn't find the required key `"
+        <> k
+        <> "`."
 
 showWithOffset :: Int -> T.Text -> T.Text
 showWithOffset n text =
