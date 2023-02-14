@@ -16,9 +16,9 @@ import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Entity.Module
-import Entity.Module.Reflect qualified as Module
 import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
+import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as Parse
 
 class

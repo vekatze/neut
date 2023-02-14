@@ -1,4 +1,4 @@
-module Entity.Module.Reflect
+module Scene.Module.Reflect
   ( fromFilePath,
     fromCurrentPath,
   )

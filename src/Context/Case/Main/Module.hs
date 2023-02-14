@@ -16,13 +16,13 @@ import Data.Text qualified as T
 import Entity.Const
 import Entity.Hint qualified as H
 import Entity.Module
-import Entity.Module.Reflect qualified as Module
 import Entity.ModuleChecksum qualified as MC
 import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Path.IO
+import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as Parse (Context)
 
 class

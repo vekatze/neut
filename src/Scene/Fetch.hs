@@ -17,12 +17,12 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Module qualified as M
-import Entity.Module.Reflect qualified as Module
 import Entity.ModuleAlias
 import Entity.ModuleChecksum qualified as MC
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Path
+import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as Parse
 import System.IO
 import Prelude hiding (log)
