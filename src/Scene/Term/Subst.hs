@@ -1,4 +1,4 @@
-module Entity.Term.Subst
+module Scene.Term.Subst
   ( subst,
     Context (..),
   )

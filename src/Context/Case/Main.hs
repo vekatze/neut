@@ -91,7 +91,6 @@ import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.TargetPlatform qualified as TP
 import Entity.Term qualified as TM
-import Entity.Term.Subst qualified as Subst (Context (..))
 import Entity.VisitInfo
 import Entity.WeakTerm qualified as WT
 import Path
@@ -115,6 +114,7 @@ import Scene.Parse qualified as Parse (Context ())
 import Scene.Parse.Core qualified as ParseCore (Context (..))
 import Scene.Parse.Discern qualified as ParseDiscern (Context)
 import Scene.Parse.Import qualified as ParseImport (Context)
+import Scene.Term.Subst qualified as Subst (Context (..))
 import Scene.Unravel qualified as Unravel (Context)
 import System.Environment
 import System.Info qualified as SI

@@ -33,8 +33,6 @@ import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.Term qualified as TM
-import Entity.Term.Reduce qualified as Term
-import Entity.Term.Subst qualified as Subst
 import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
@@ -42,6 +40,8 @@ import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
+import Scene.Term.Reduce qualified as Term
+import Scene.Term.Subst qualified as Subst
 import Scene.WeakTerm.Subst qualified as WT
 
 class

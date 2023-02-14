@@ -1,4 +1,4 @@
-module Entity.Term.Reduce (reduce) where
+module Scene.Term.Reduce (reduce) where
 
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
@@ -7,7 +7,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Opacity qualified as O
 import Entity.Term qualified as TM
-import Entity.Term.Subst qualified as Subst
+import Scene.Term.Subst qualified as Subst
 
 reduce :: Subst.Context m => TM.Term -> m TM.Term
 reduce term =
