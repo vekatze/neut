@@ -31,9 +31,9 @@ parseOpt = do
       [ cmd "build" parseBuildOpt "build given target",
         cmd "clean" parseCleanOpt "remove the resulting files",
         cmd "check" parseCheckOpt "type-check specified file",
-        cmd "release" parseReleaseOpt "create a release tar from a given path",
+        cmd "release" parseReleaseOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
-        cmd "get" parseGetOpt "get a release tar",
+        cmd "get" parseGetOpt "get a tarball",
         cmd "tidy" parseTidyOpt "tidy the module dependency",
         cmd "version" parseVersionOpt "show version info"
       ]
