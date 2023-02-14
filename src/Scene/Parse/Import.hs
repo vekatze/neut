@@ -60,7 +60,7 @@ parseImportSimple :: Context m => P.Parser m (Source.Source, Maybe AI.AliasInfo)
 parseImportSimple = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
-  globalLocator <- lift $ GL.reflect m locatorText
+  globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
   source <- getSource m strictGlobalLocator locatorText
   return (source, Nothing)
@@ -75,7 +75,7 @@ parseImportQualified = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
   P.delimiter "->"
-  globalLocator <- lift $ GL.reflect m locatorText
+  globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
   source <- getSource m strictGlobalLocator locatorText
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName

@@ -195,7 +195,7 @@ ensureFieldLinearity m ks found nonLinear =
 
 resolveField :: Context m => Hint -> T.Text -> m DD.DefiniteDescription
 resolveField m name = do
-  localLocator <- LL.reflect m name
+  localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
   candList' <- mapM Global.lookup candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
@@ -338,7 +338,7 @@ discernBinderWithBody' nenv (mx, x, t) binder e = do
 
 resolveName :: Context m => Hint -> T.Text -> m (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
-  localLocator <- LL.reflect m name
+  localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
   candList' <- mapM Global.lookup candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
@@ -614,7 +614,7 @@ bindLet nenv m binder cont =
 castFromIntToBool :: Context m => WT.WeakTerm -> m WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
-  (gl, ll) <- DD.getLocatorPair m C.coreBool
+  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
   bool <- discernGlobal m gl ll
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"

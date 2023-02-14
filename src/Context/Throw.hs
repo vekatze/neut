@@ -5,6 +5,7 @@ module Context.Throw
     raiseCritical,
     raiseCritical',
     raiseSyntaxError,
+    liftEither,
   )
 where
 
@@ -37,3 +38,11 @@ raiseCritical' text =
 raiseSyntaxError :: Context m => Hint -> T.Text -> m a
 raiseSyntaxError m form =
   raiseError m $ "couldn't match the input with the expected form: " <> form
+
+liftEither :: Context m => Either L.Error a -> m a
+liftEither errOrResult =
+  case errOrResult of
+    Left err ->
+      throw err
+    Right result ->
+      return result

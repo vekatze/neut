@@ -65,7 +65,7 @@ interpretDependencyDict ::
   m (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
 interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
-    k' <- BN.reflect m k
+    k' <- liftEither $ BN.reflect m k
     when (S.member k' BN.reservedAlias) $
       raiseError m $
         "the reserved name `"

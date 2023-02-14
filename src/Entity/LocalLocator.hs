@@ -7,13 +7,13 @@ module Entity.LocalLocator
   )
 where
 
-import Context.Throw qualified as Throw
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Hint qualified as H
+import Entity.Log
 import Entity.Section qualified as S
 import GHC.Generics
 
@@ -39,7 +39,7 @@ reify' ss acc =
     S.Section s : rest ->
       reify' rest $ BN.reify s <> nsSep <> acc
 
-reflect :: Throw.Context m => H.Hint -> T.Text -> m LocalLocator
+reflect :: H.Hint -> T.Text -> Either Error LocalLocator
 reflect m rawTxt = do
   items <- BN.bySplit m rawTxt
   case unsnoc items of
@@ -52,7 +52,7 @@ reflect m rawTxt = do
     Nothing ->
       -- every result of `T.split` is known to be non-empty, but unfortunately
       -- the fact is not represented in its cod type.
-      Throw.raiseError m $ "invalid local locator: `" <> rawTxt <> "`"
+      Left $ newCritical m $ "invalid local locator: `" <> rawTxt <> "`"
 
 new :: [S.Section] -> BN.BaseName -> LocalLocator
 new ss base =

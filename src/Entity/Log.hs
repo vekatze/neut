@@ -2,7 +2,8 @@ module Entity.Log where
 
 import Control.Exception.Safe
 import Data.Text qualified as T
-import Entity.FilePos
+import Entity.FilePos qualified as FP
+import Entity.Hint
 import System.Console.ANSI
 
 data LogLevel
@@ -15,7 +16,7 @@ data LogLevel
   deriving (Show, Eq)
 
 type Log =
-  (Maybe FilePos, LogLevel, T.Text)
+  (Maybe FP.FilePos, LogLevel, T.Text)
 
 type ColorFlag =
   Bool
@@ -26,6 +27,22 @@ newtype Error
   deriving (Show)
 
 instance Exception Error
+
+fromHint :: LogLevel -> Hint -> T.Text -> Error
+fromHint level m txt = do
+  MakeError [(Just (FP.fromHint m), level, txt)]
+
+newError :: Hint -> T.Text -> Error
+newError m txt = do
+  MakeError [(Just (FP.fromHint m), Error, txt)]
+
+newError' :: T.Text -> Error
+newError' txt = do
+  MakeError [(Nothing, Error, txt)]
+
+newCritical :: Hint -> T.Text -> Error
+newCritical m txt = do
+  MakeError [(Just (FP.fromHint m), Critical, txt)]
 
 logLevelToText :: LogLevel -> T.Text
 logLevelToText level =
@@ -63,7 +80,7 @@ forgetFilePosIfNecessary :: Bool -> Log -> Log
 forgetFilePosIfNecessary _ (_, l, t) =
   (Nothing, l, t)
 
-logNote :: FilePos -> T.Text -> Log
+logNote :: FP.FilePos -> T.Text -> Log
 logNote pos text =
   (Just pos, Note, text)
 
@@ -71,11 +88,11 @@ logNote' :: T.Text -> Log
 logNote' text =
   (Nothing, Note, text)
 
-logWarning :: FilePos -> T.Text -> Log
+logWarning :: FP.FilePos -> T.Text -> Log
 logWarning pos text =
   (Just pos, Warning, text)
 
-logError :: FilePos -> T.Text -> Log
+logError :: FP.FilePos -> T.Text -> Log
 logError pos text =
   (Just pos, Error, text)
 
@@ -83,7 +100,7 @@ logError' :: T.Text -> Log
 logError' text =
   (Nothing, Error, text)
 
-logCritical :: FilePos -> T.Text -> Log
+logCritical :: FP.FilePos -> T.Text -> Log
 logCritical pos text =
   (Just pos, Critical, text)
 

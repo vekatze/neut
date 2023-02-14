@@ -1,6 +1,5 @@
 module Entity.GlobalLocator where
 
-import Context.Throw qualified as Throw
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
@@ -8,6 +7,7 @@ import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint qualified as H
+import Entity.Log
 import Entity.ModuleAlias
 import Entity.SourceLocator qualified as SL
 import GHC.Generics
@@ -32,7 +32,7 @@ reify gl =
     GlobalLocatorAlias alias ->
       BN.reify $ GLA.reify alias
 
-reflect :: Throw.Context m => H.Hint -> T.Text -> m GlobalLocator
+reflect :: H.Hint -> T.Text -> Either Error GlobalLocator
 reflect m rawTxt = do
   baseNameList <- BN.bySplit m rawTxt
   case baseNameList of
@@ -42,4 +42,4 @@ reflect m rawTxt = do
       | Just locator <- SL.fromBaseNameList rest ->
           return (GlobalLocator (ModuleAlias prefix) locator)
     _ ->
-      Throw.raiseError m $ "invalid global locator: `" <> rawTxt <> "`"
+      Left $ newError m $ "invalid global locator: `" <> rawTxt <> "`"

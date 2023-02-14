@@ -51,7 +51,7 @@ fetch baseModule = do
 
 insertDependency :: Context m => T.Text -> ModuleURL -> m ()
 insertDependency aliasName url = do
-  alias <- ModuleAlias <$> BN.reflect' aliasName
+  alias <- ModuleAlias <$> (Throw.liftEither $ BN.reflect' aliasName)
   mainModule <- Env.getMainModule
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url

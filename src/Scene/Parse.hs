@@ -164,16 +164,16 @@ parseStmt = do
 parseDefiniteLocator :: Context m => P.Parser m DL.DefiniteLocator
 parseDefiniteLocator = do
   m <- P.getCurrentHint
-  globalLocator <- P.symbol >>= lift . (GL.reflect m >=> Alias.resolveAlias m)
+  globalLocator <- P.symbol >>= lift . (Throw.liftEither . GL.reflect m >=> Alias.resolveAlias m)
   P.delimiter definiteSep
   localLocator <- P.symbol
-  baseNameList <- lift $ BN.bySplit m localLocator
+  baseNameList <- lift $ Throw.liftEither $ BN.bySplit m localLocator
   return $ DL.new globalLocator $ map Section.Section baseNameList
 
 parseGlobalLocator :: Context m => P.Parser m SGL.StrictGlobalLocator
 parseGlobalLocator = do
   m <- P.getCurrentHint
-  gl <- P.symbol >>= lift . GL.reflect m
+  gl <- P.symbol >>= lift . Throw.liftEither . GL.reflect m
   lift $ Alias.resolveAlias m gl
 
 --
@@ -278,7 +278,7 @@ modifyConstructorName ::
   (Hint, T.Text, [BinderF RT.RawTerm]) ->
   m (Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])
 modifyConstructorName m dataDD (mb, consName, yts) = do
-  consName' <- DD.extend m dataDD consName
+  consName' <- Throw.liftEither $ DD.extend m dataDD consName
   return (mb, consName', yts)
 
 parseDefineDataConstructor ::
@@ -342,10 +342,10 @@ parseDefineCodata = do
   formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
-  dataNewName <- lift $ DD.extend m dataName "new"
+  dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "new"
   let arity = A.fromInt $ length dataArgs + length elemInfoList
   let (_, consInfoList, _) = unzip3 elemInfoList
-  consNameList <- mapM (lift . DD.extend m dataName . Ident.toText) consInfoList
+  consNameList <- mapM (lift . Throw.liftEither . DD.extend m dataName . Ident.toText) consInfoList
   lift $ CodataDefinition.insert dataName (dataNewName, arity) consNameList
   -- ... then return
   return $ formRule ++ elimRuleList
@@ -362,7 +362,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
   let codataType = m :< RT.Noema (constructDataType m dataName dataArgs)
   recordVarText <- Gensym.newText
   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
-  projectionName <- DD.extend m dataName $ Ident.toText elemName
+  projectionName <- Throw.liftEither $ DD.extend m dataName $ Ident.toText elemName
   let newDD = DD.extendLL dataName $ LL.new [] BN.new
   let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var x)
   defineFunction

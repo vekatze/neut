@@ -16,7 +16,6 @@ module Entity.DefiniteDescription
   )
 where
 
-import Context.Throw qualified as Throw
 import Data.Binary
 import Data.ByteString.Builder
 import Data.Hashable
@@ -28,6 +27,7 @@ import Entity.DefiniteLocator qualified as DL
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
+import Entity.Log
 import Entity.ModuleID qualified as MID
 import Entity.PrimType qualified as PT
 import Entity.Section qualified as Section
@@ -69,14 +69,6 @@ newByDefiniteLocator dl ll = do
   let gl = DL.globalLocator dl
   let ll' = LL.new (LL.sectionStack ll ++ DL.sectionStack dl) (LL.baseName ll)
   new gl ll'
-
-extend :: Throw.Context m => H.Hint -> DefiniteDescription -> T.Text -> m DefiniteDescription
-extend m dd newName = do
-  let gl = globalLocator dd
-  let outer = localLocator dd
-  inner <- LL.reflect m newName
-  let ll = LL.extend outer inner
-  return $ new gl ll
 
 extendLL :: DefiniteDescription -> LL.LocalLocator -> DefiniteDescription
 extendLL dd inner = do
@@ -124,14 +116,22 @@ toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =
   TE.encodeUtf8Builder $ toLowName dd
 
-getLocatorPair :: Throw.Context m => H.Hint -> T.Text -> m (GL.GlobalLocator, LL.LocalLocator)
+extend :: H.Hint -> DefiniteDescription -> T.Text -> Either Error DefiniteDescription
+extend m dd newName = do
+  let gl = globalLocator dd
+  let outer = localLocator dd
+  inner <- LL.reflect m newName
+  let ll = LL.extend outer inner
+  return $ new gl ll
+
+getLocatorPair :: H.Hint -> T.Text -> Either Error (GL.GlobalLocator, LL.LocalLocator)
 getLocatorPair m text = do
   if T.null text
-    then Throw.raiseError m "the definite description shouldn't be empty"
+    then Left $ newError m "the definite description shouldn't be empty"
     else do
       let (globalLocator, localLocatorWithSep) = T.breakOn definiteSep text
       if localLocatorWithSep == ""
-        then Throw.raiseError m $ "the definite separator isn't found in: " <> text
+        then Left $ newError m $ "the definite separator isn't found in: " <> text
         else do
           let localLocator = T.drop (T.length definiteSep) localLocatorWithSep
           globalLocator' <- GL.reflect m globalLocator

@@ -24,13 +24,13 @@ module Entity.BaseName
   )
 where
 
-import Context.Throw qualified as Throw
 import Data.Binary
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Const
 import Entity.Hint qualified as H
+import Entity.Log
 import Entity.PrimType qualified as PT
 import Entity.PrimType.ToText qualified as PT
 import GHC.Generics
@@ -42,28 +42,28 @@ instance Binary BaseName
 
 instance Hashable BaseName
 
-bySplit :: Throw.Context m => H.Hint -> T.Text -> m [BaseName]
+bySplit :: H.Hint -> T.Text -> Either Error [BaseName]
 bySplit m name = do
   let cand = map MakeBaseName $ T.split (nsSepChar ==) name
   if empty `notElem` cand
     then return $ map MakeBaseName $ T.split (nsSepChar ==) name
-    else Throw.raiseError m $ "invalid signature: " <> name
+    else Left (newError m $ "invalid signature: " <> name)
 
-reflect :: Throw.Context m => H.Hint -> T.Text -> m BaseName
+reflect :: H.Hint -> T.Text -> Either Error BaseName
 reflect m rawTxt = do
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
       return baseName
     _ ->
-      Throw.raiseError m $ "invalid signature: " <> rawTxt
+      Left $ newError m $ "invalid signature: " <> rawTxt
 
-reflect' :: Throw.Context m => T.Text -> m BaseName
+reflect' :: T.Text -> Either Error BaseName
 reflect' rawTxt = do
   case map MakeBaseName $ T.split (nsSepChar ==) rawTxt of
     [baseName] ->
       return baseName
     _ ->
-      Throw.raiseError' $ "invalid signature: " <> rawTxt
+      Left $ newError' $ "invalid signature: " <> rawTxt
 
 empty :: BaseName
 empty =

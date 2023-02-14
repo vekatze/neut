@@ -252,7 +252,7 @@ parseDefiniteDescription :: Context m => Parser m (Hint, GL.GlobalLocator, LL.Lo
 parseDefiniteDescription = do
   m <- getCurrentHint
   globalLocator <- symbol
-  globalLocator' <- lift $ GL.reflect m globalLocator
+  globalLocator' <- lift $ Throw.liftEither $ GL.reflect m globalLocator
   delimiter definiteSep
   localLocator <- parseLocalLocator
   return (m, globalLocator', localLocator)
@@ -266,7 +266,7 @@ parseLocalLocator :: Context m => Parser m LL.LocalLocator
 parseLocalLocator = do
   m <- getCurrentHint
   rawTxt <- symbol
-  lift $ LL.reflect m rawTxt
+  lift $ Throw.liftEither $ LL.reflect m rawTxt
 
 rawTermMagic :: Context m => Parser m RT.RawTerm
 rawTermMagic = do
@@ -711,10 +711,10 @@ preVar' m ident =
 
 handleDefiniteDescriptionIntoRawConsName :: Throw.Context m => Hint -> T.Text -> m RP.RawConsName
 handleDefiniteDescriptionIntoRawConsName m text = do
-  (gl, ll) <- DD.getLocatorPair m text
+  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ RP.LocatorPair gl ll
 
 handleDefiniteDescriptionIntoVarGlobal :: Throw.Context m => Hint -> T.Text -> m RT.RawTerm
 handleDefiniteDescriptionIntoVarGlobal m text = do
-  (gl, ll) <- DD.getLocatorPair m text
+  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ m :< RT.VarGlobal gl ll
