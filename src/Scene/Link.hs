@@ -12,6 +12,7 @@ import Entity.Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
 import Entity.Target
+import Scene.Module.Path
 
 class
   ( Throw.Context m,

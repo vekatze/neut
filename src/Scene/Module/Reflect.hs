@@ -11,6 +11,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.Const (moduleFile)
 import Entity.Ens
 import Entity.Hint qualified as H
 import Entity.Module
@@ -102,3 +103,19 @@ ensureExistence m moduleRootDir path existenceChecker kindText = do
   unless b $ do
     relPathFromModuleRoot <- Path.stripPrefix moduleRootDir path
     raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
+
+findModuleFile :: (Path.Context m, Context m) => Path Abs Dir -> m (Path Abs File)
+findModuleFile moduleRootDirCandidate = do
+  let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
+  moduleFileExists <- Path.doesFileExist moduleFileCandidate
+  case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
+    (True, _) ->
+      return moduleFileCandidate
+    (_, True) ->
+      findModuleFile $ parent moduleRootDirCandidate
+    _ ->
+      raiseError' "couldn't find a module file."
+
+getCurrentModuleFilePath :: (Path.Context m, Context m) => m (Path Abs File)
+getCurrentModuleFilePath =
+  Path.getCurrentDir >>= findModuleFile

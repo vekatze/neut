@@ -6,10 +6,10 @@ where
 
 import Context.Env qualified as Env
 import Context.External qualified as External
-import Entity.Module
 import Entity.Target
 import Path
 import Scene.Initialize qualified as Initialize
+import Scene.Module.Path
 
 class
   ( Env.Context m,

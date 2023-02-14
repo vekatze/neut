@@ -1,7 +1,5 @@
 module Entity.Module where
 
-import Context.Path qualified as Path
-import Context.Throw
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -48,29 +46,9 @@ getExecutableDir :: Module -> Path Abs Dir
 getExecutableDir baseModule =
   getTargetDir baseModule </> executableRelDir
 
-getExecutableOutputPath :: (Path.Context m) => Target.Target -> Module -> m (Path Abs File)
-getExecutableOutputPath target mainModule =
-  Path.resolveFile (getExecutableDir mainModule) $ T.unpack $ Target.extract target
-
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
-
-findModuleFile :: (Path.Context m, Context m) => Path Abs Dir -> m (Path Abs File)
-findModuleFile moduleRootDirCandidate = do
-  let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
-  moduleFileExists <- Path.doesFileExist moduleFileCandidate
-  case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
-    (True, _) ->
-      return moduleFileCandidate
-    (_, True) ->
-      findModuleFile $ parent moduleRootDirCandidate
-    _ ->
-      raiseError' "couldn't find a module file."
-
-getCurrentModuleFilePath :: (Path.Context m, Context m) => m (Path Abs File)
-getCurrentModuleFilePath =
-  Path.getCurrentDir >>= findModuleFile
 
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
 addDependency alias url checksum someModule =
