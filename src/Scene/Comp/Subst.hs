@@ -1,4 +1,4 @@
-module Entity.Comp.Subst (subst) where
+module Scene.Comp.Subst (subst) where
 
 import Context.Gensym
 import Data.IntMap qualified as IntMap

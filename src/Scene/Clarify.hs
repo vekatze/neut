@@ -24,8 +24,6 @@ import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
 import Entity.Comp.FreeVars
-import Entity.Comp.Reduce qualified as Reduce
-import Entity.Comp.Subst
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -51,6 +49,8 @@ import Scene.Clarify.Context qualified as Clarify
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
+import Scene.Comp.Reduce qualified as Reduce
+import Scene.Comp.Subst
 
 class
   ( Clarify.Context m,

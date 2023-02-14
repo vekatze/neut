@@ -63,7 +63,6 @@ import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Command qualified as C
 import Entity.Comp
-import Entity.Comp.Reduce qualified as Comp (Context)
 import Entity.Const
 import Entity.Constraint
 import Entity.DeclarationName qualified as DN
@@ -100,6 +99,7 @@ import Scene.Clarify qualified as Clarify (Context)
 import Scene.Clarify.Context qualified as ClarifyBase (Context (..))
 import Scene.Clean qualified as SceneClean
 import Scene.Collect qualified as Collect (Context)
+import Scene.Comp.Reduce qualified as Comp (Context)
 import Scene.Elaborate qualified as Elaborate (Context (..))
 import Scene.Elaborate.Infer qualified as ElaborateInfer (Context (..))
 import Scene.Elaborate.Unify qualified as ElaborateUnify (Context (..))

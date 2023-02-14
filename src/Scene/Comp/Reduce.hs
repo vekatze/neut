@@ -1,4 +1,4 @@
-module Entity.Comp.Reduce
+module Scene.Comp.Reduce
   ( reduce,
     Context,
   )
@@ -8,11 +8,11 @@ import Context.CompDefinition qualified as CompDefinition
 import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
 import Entity.Comp qualified as C
-import Entity.Comp.Subst
 import Entity.EnumCase qualified as EC
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Opacity qualified as O
+import Scene.Comp.Subst
 
 class (CompDefinition.Context m, Gensym.Context m) => Context m
 
