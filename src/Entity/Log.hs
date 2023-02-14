@@ -1,6 +1,6 @@
 module Entity.Log where
 
-import Control.Exception.Safe
+import Control.Exception
 import Data.Text qualified as T
 import Entity.FilePos qualified as FP
 import Entity.Hint

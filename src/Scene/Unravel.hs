@@ -11,6 +11,7 @@ import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.Catch
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.List (unzip4)
@@ -47,7 +48,7 @@ class
     Path.Context m,
     Module.Context m,
     Env.Context m,
-    Source.Context m,
+    MonadThrow m,
     Alias.Context m,
     Parse.Context m
   ) =>

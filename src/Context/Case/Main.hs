@@ -496,8 +496,6 @@ instance Module.Context App where
 
 instance MainCache.Context App
 
-instance Source.Context App
-
 instance Comp.Context App
 
 instance LowComp.Context App

@@ -8,6 +8,7 @@ import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Control.Monad.Catch
 import Entity.Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
@@ -17,7 +18,7 @@ import Scene.Module.Path
 class
   ( Throw.Context m,
     Path.Context m,
-    Source.Context m,
+    MonadThrow m,
     LLVM.Context m,
     Env.Context m
   ) =>

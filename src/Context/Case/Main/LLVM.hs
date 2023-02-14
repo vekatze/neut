@@ -10,6 +10,7 @@ import Context.External qualified as External
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
 import Data.ByteString.Lazy qualified as L
@@ -34,8 +35,8 @@ class
     Env.Context m,
     MonadIO m,
     Path.Context m,
-    Source.Context m,
     External.Context m,
+    MonadThrow m,
     MonadUnliftIO m
   ) =>
   Context m

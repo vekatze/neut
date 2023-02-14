@@ -8,6 +8,7 @@ where
 
 import Context.Env qualified as Env
 import Control.Monad
+import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Binary
 import Data.Set qualified as S
@@ -18,8 +19,8 @@ import Path
 import Path.IO
 
 class
-  ( Source.Context m,
-    Env.Context m,
+  ( Env.Context m,
+    MonadThrow m,
     MonadIO m
   ) =>
   Context m
