@@ -13,7 +13,6 @@ module Entity.Pattern
   )
 where
 
-import Context.Throw qualified as Throw
 import Data.List
 import Data.Maybe
 import Data.Text qualified as T
@@ -23,6 +22,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint hiding (new)
 import Entity.Ident
+import Entity.Log
 
 data Pattern
   = Var Ident
@@ -83,15 +83,15 @@ getColumnConstructor pat =
       Nothing
 
 -- swap column i and 0.
-swapColumn :: Throw.Context m => Hint -> Int -> PatternMatrix a -> m (PatternMatrix a)
+swapColumn :: Hint -> Int -> PatternMatrix a -> Either Error (PatternMatrix a)
 swapColumn m i (MakePatternMatrix rows) =
   MakePatternMatrix <$> mapM (swapColumn' m i) rows
 
-swapColumn' :: Throw.Context m => Hint -> Int -> PatternRow a -> m (PatternRow a)
+swapColumn' :: Hint -> Int -> PatternRow a -> Either Error (PatternRow a)
 swapColumn' m i (row, e) = do
   let len = V.length row
   if not (0 <= i && i < len)
-    then Throw.raiseCritical m $ T.pack $ "the index " ++ show i ++ " exceeds the vector size " ++ show len ++ "."
+    then Left $ newCritical m $ T.pack $ "the index " ++ show i ++ " exceeds the vector size " ++ show len ++ "."
     else return (V.update row $ V.fromList [(0, row V.! i), (i, row V.! 0)], e)
 
 -- get leaf if the first row doesn't contain any cons; otherwise return

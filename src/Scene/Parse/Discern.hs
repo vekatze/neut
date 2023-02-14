@@ -537,7 +537,7 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
           if i > 0
             then do
               occurrences' <- V.swap m i occurrences
-              mat' <- PAT.swapColumn m i mat
+              mat' <- Throw.liftEither $ PAT.swapColumn m i mat
               compilePatternMatrix nenv isNoetic m occurrences' mat'
             else do
               let headConstructors = PAT.getHeadConstructors mat
