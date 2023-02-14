@@ -23,9 +23,9 @@ import Entity.Ident
 import Entity.LowComp qualified as LC
 import Entity.LowComp.EmitOp qualified as EOP
 import Entity.LowComp.EmitValue
-import Entity.LowComp.Reduce qualified as LowComp
 import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
+import Scene.LowComp.Reduce qualified as LowComp
 
 class
   ( Gensym.Context m,

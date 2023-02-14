@@ -1,4 +1,4 @@
-module Entity.LowComp.Reduce
+module Scene.LowComp.Reduce
   ( reduce,
     Context (),
   )

@@ -76,7 +76,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.ImpArgNum qualified as I
 import Entity.LamKind qualified as LK
-import Entity.LowComp.Reduce qualified as LowComp (Context)
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
@@ -108,6 +107,7 @@ import Scene.Execute qualified as Execute
 import Scene.Fetch qualified as Fetch (Context (..))
 import Scene.Initialize qualified as Initialize (Context)
 import Scene.Link qualified as Link
+import Scene.LowComp.Reduce qualified as LowComp (Context)
 import Scene.Lower qualified as Lower (Context (..))
 import Scene.New qualified as New
 import Scene.Parse qualified as Parse (Context ())
