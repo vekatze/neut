@@ -12,7 +12,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Ens
-import Entity.Ens.Reflect qualified as Ens
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleAlias
@@ -23,6 +22,7 @@ import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
+import Scene.Ens.Reflect qualified as Ens
 import Scene.Parse.Core qualified as Parse
 
 fromFilePath :: (Parse.Context m, Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module

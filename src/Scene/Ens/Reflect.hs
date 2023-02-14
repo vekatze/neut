@@ -1,4 +1,4 @@
-module Entity.Ens.Reflect (fromFilePath) where
+module Scene.Ens.Reflect (fromFilePath) where
 
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
