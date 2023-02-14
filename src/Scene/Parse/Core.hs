@@ -1,7 +1,6 @@
 module Scene.Parse.Core where
 
 import Context.Gensym qualified as Gensym
-import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.List.NonEmpty
@@ -25,8 +24,7 @@ type Parser m = ParsecT Void T.Text m
 
 class
   ( Throw.Context m,
-    Gensym.Context m,
-    Locator.Context m
+    Gensym.Context m
   ) =>
   Context m
   where

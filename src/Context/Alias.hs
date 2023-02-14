@@ -1,22 +1,105 @@
-module Context.Alias where
+module Context.Alias
+  ( registerGlobalLocatorAlias,
+    resolveAlias,
+    initializeAliasMap,
+    activateAliasInfo,
+  )
+where
 
+import Context.App
+import Context.App.Internal
+import Context.Throw qualified as Throw
+import Data.HashMap.Strict qualified as Map
+import Data.Maybe qualified as Maybe
 import Entity.AliasInfo
+import Entity.BaseName qualified as BN
 import Entity.GlobalLocator qualified as GL
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
+import Entity.Module
+import Entity.ModuleAlias
+import Entity.ModuleChecksum
+import Entity.ModuleID qualified as MID
+import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 
-class Monad m => Context m where
-  registerGlobalLocatorAlias :: Hint -> GLA.GlobalLocatorAlias -> SGL.StrictGlobalLocator -> m ()
-  resolveAlias :: Hint -> GL.GlobalLocator -> m SGL.StrictGlobalLocator
-  initializeAliasMap :: m ()
+registerGlobalLocatorAlias ::
+  Hint ->
+  GLA.GlobalLocatorAlias ->
+  SGL.StrictGlobalLocator ->
+  App ()
+registerGlobalLocatorAlias m from to = do
+  aliasEnv <- readRef' locatorAliasMap
+  if Map.member from aliasEnv
+    then Throw.raiseError m $ "the global locator `" <> BN.reify (GLA.reify from) <> "` is already registered" --
+    else modifyRef' locatorAliasMap $ Map.insert from to
 
-activateAliasInfo :: Context m => [AliasInfo] -> m ()
+resolveAlias ::
+  Hint ->
+  GL.GlobalLocator ->
+  App SGL.StrictGlobalLocator
+resolveAlias m gl = do
+  case gl of
+    GL.GlobalLocator moduleAlias sourceLocator -> do
+      moduleID <- resolveModuleAlias m moduleAlias
+      return $
+        SGL.StrictGlobalLocator
+          { SGL.moduleID = moduleID,
+            SGL.sourceLocator = sourceLocator
+          }
+    GL.GlobalLocatorAlias alias -> do
+      aliasMap <- readRef' locatorAliasMap
+      case Map.lookup alias aliasMap of
+        Just sgl ->
+          return sgl
+        Nothing ->
+          Throw.raiseError m $
+            "no such global locator alias is defined: " <> BN.reify (GLA.reify alias)
+
+resolveModuleAlias :: Hint -> ModuleAlias -> App MID.ModuleID
+resolveModuleAlias m moduleAlias = do
+  aliasMap <- readRef' moduleAliasMap
+  case Map.lookup moduleAlias aliasMap of
+    Just checksum ->
+      return $ MID.Library checksum
+    Nothing
+      | moduleAlias == defaultModulePrefix ->
+          return MID.Main
+      | moduleAlias == baseModulePrefix ->
+          return MID.Base
+      | otherwise ->
+          Throw.raiseError m $
+            "no such module alias is defined: " <> BN.reify (extract moduleAlias)
+
+getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
+getModuleChecksumAliasList baseModule = do
+  let dependencyList = Map.toList $ moduleDependency baseModule
+  map (\(key, (_, checksum)) -> (key, checksum)) dependencyList
+
+activateAliasInfo :: [AliasInfo] -> App ()
 activateAliasInfo aliasInfoList = do
   mapM_ activateAliasInfoOfCurrentFile' aliasInfoList
 
-activateAliasInfoOfCurrentFile' :: Context m => AliasInfo -> m ()
+activateAliasInfoOfCurrentFile' :: AliasInfo -> App ()
 activateAliasInfoOfCurrentFile' aliasInfo =
   case aliasInfo of
     Prefix m from to ->
       registerGlobalLocatorAlias m from to
+
+initializeAliasMap :: App ()
+initializeAliasMap = do
+  currentModule <- Source.sourceModule <$> readRef "currentSource" currentSource
+  mainModule <- readRef "mainModule" mainModule
+  let additionalChecksumAlias = getAlias mainModule currentModule
+  let aliasMap = Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ getModuleChecksumAliasList currentModule
+  writeRef' moduleAliasMap aliasMap
+
+getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
+getAlias mainModule currentModule = do
+  case getID mainModule currentModule of
+    MID.Library checksum ->
+      return (defaultModulePrefix, checksum)
+    MID.Main ->
+      Nothing
+    MID.Base ->
+      Nothing

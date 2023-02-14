@@ -1,6 +1,5 @@
-module Scene.Ens.Reflect (fromFilePath) where
+module Context.Ens (fromFilePath) where
 
--- import Context.Throw qualified as Throw
 import Context.App
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as M

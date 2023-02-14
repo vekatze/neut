@@ -24,9 +24,8 @@ import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
 import Scene.Ens.Reflect qualified as Ens
-import Scene.Parse.Core qualified as Parse
 
-fromFilePath :: (Parse.Context m, Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module
+fromFilePath :: (Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module
 fromFilePath moduleID moduleFilePath = do
   entity <- Ens.fromFilePath moduleFilePath
   (_, entryPointEns) <- liftEither $ access "target" entity >>= toDictionary
@@ -43,7 +42,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
-fromCurrentPath :: (Parse.Context m, Path.Context m, Context m) => m Module
+fromCurrentPath :: (Path.Context m, Context m) => m Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
@@ -77,7 +76,7 @@ interpretDependencyDict (m, dep) = do
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
   return $ Map.fromList items
 
-interpretExtraPath :: (Parse.Context m, Path.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
+interpretExtraPath :: (Path.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ toString entity
   if T.last itemPathText == '/'

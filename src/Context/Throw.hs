@@ -1,5 +1,7 @@
 module Context.Throw
-  ( Context (..),
+  ( throw,
+    try,
+    run,
     raiseError,
     raiseError',
     raiseCritical,
@@ -9,37 +11,54 @@ module Context.Throw
   )
 where
 
+import Context.App
+import Context.Log qualified as Log
+import Control.Exception.Safe qualified as Safe
+import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Entity.FilePos
 import Entity.Hint
 import Entity.Log qualified as L
+import System.Exit
 
-class Monad m => Context m where
-  throw :: forall a. L.Error -> m a
-  try :: forall a. m a -> m (Either L.Error a)
-  run :: m a -> m a
+throw :: forall a. L.Error -> App a
+throw =
+  Safe.throw
 
-raiseError :: Context m => Hint -> T.Text -> m a
+try :: App a -> App (Either L.Error a)
+try =
+  Safe.try
+
+run :: App a -> App a
+run c = do
+  resultOrErr <- try c
+  case resultOrErr of
+    Left (L.MakeError err) ->
+      foldr ((>>) . Log.printLog) (liftIO $ exitWith (ExitFailure 1)) err
+    Right result ->
+      return result
+
+raiseError :: Hint -> T.Text -> App a
 raiseError m text =
   throw $ L.MakeError [L.logError (Entity.FilePos.fromHint m) text]
 
-raiseError' :: Context m => T.Text -> m a
+raiseError' :: T.Text -> App a
 raiseError' text =
   throw $ L.MakeError [L.logError' text]
 
-raiseCritical :: Context m => Hint -> T.Text -> m a
+raiseCritical :: Hint -> T.Text -> App a
 raiseCritical m text =
   throw $ L.MakeError [L.logCritical (Entity.FilePos.fromHint m) text]
 
-raiseCritical' :: Context m => T.Text -> m a
+raiseCritical' :: T.Text -> App a
 raiseCritical' text =
   throw $ L.MakeError [L.logCritical' text]
 
-raiseSyntaxError :: Context m => Hint -> T.Text -> m a
+raiseSyntaxError :: Hint -> T.Text -> App a
 raiseSyntaxError m form =
   raiseError m $ "couldn't match the input with the expected form: " <> form
 
-liftEither :: Context m => Either L.Error a -> m a
+liftEither :: Either L.Error a -> App a
 liftEither errOrResult =
   case errOrResult of
     Left err ->

@@ -1,14 +1,23 @@
 module Context.DataDefinition
-  ( Context (..),
+  ( insert,
+    lookup,
   )
 where
 
+import Context.App
+import Context.App.Internal
+import Data.HashMap.Strict qualified as Map
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Term
 import Prelude hiding (lookup, read)
 
-class Monad m => Context m where
-  insert :: DD.DefiniteDescription -> [BinderF Term] -> [(DD.DefiniteDescription, [BinderF Term], D.Discriminant)] -> m ()
-  lookup :: DD.DefiniteDescription -> m (Maybe [(D.Discriminant, [BinderF Term], [BinderF Term])])
+insert :: DD.DefiniteDescription -> [BinderF Term] -> [(DD.DefiniteDescription, [BinderF Term], D.Discriminant)] -> App ()
+insert dataName dataArgs consInfoList = do
+  let value = map (\(_, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+  modifyRef' dataDefMap $ Map.insert dataName value
+
+lookup :: DD.DefiniteDescription -> App (Maybe [(D.Discriminant, [BinderF Term], [BinderF Term])])
+lookup dataName = do
+  Map.lookup dataName <$> readRef' dataDefMap
