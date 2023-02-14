@@ -536,7 +536,7 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
         Left i ->
           if i > 0
             then do
-              occurrences' <- V.swap m i occurrences
+              occurrences' <- Throw.liftEither $ V.swap m i occurrences
               mat' <- Throw.liftEither $ PAT.swapColumn m i mat
               compilePatternMatrix nenv isNoetic m occurrences' mat'
             else do
