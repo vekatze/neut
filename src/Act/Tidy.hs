@@ -20,5 +20,5 @@ class
 
 tidy :: Context m => Config -> m ()
 tidy cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True
+  Initialize.initializeCompiler (logCfg cfg) True Nothing
   Env.getMainModule >>= Fetch.fetch

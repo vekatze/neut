@@ -15,6 +15,7 @@ import Context.Log qualified as Log
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Data.Maybe
 import Entity.Module
 import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
@@ -34,17 +35,18 @@ class
   ) =>
   Context m
 
-initializeCompiler :: Context m => Log.Config -> Bool -> m ()
-initializeCompiler cfg shouldCancelAlloc = do
+initializeCompiler :: Context m => Log.Config -> Bool -> Maybe String -> m ()
+initializeCompiler cfg shouldCancelAlloc mClangOptString = do
   mainModule <- Module.fromCurrentPath
-  initializeCompilerWithModule mainModule cfg shouldCancelAlloc
+  initializeCompilerWithModule mainModule cfg shouldCancelAlloc mClangOptString
 
-initializeCompilerWithModule :: Context m => Module -> Log.Config -> Bool -> m ()
-initializeCompilerWithModule newModule cfg shouldCancelAlloc = do
+initializeCompilerWithModule :: Context m => Module -> Log.Config -> Bool -> Maybe String -> m ()
+initializeCompilerWithModule newModule cfg shouldCancelAlloc mClangOptString = do
   Env.setEndOfEntry $ Log.endOfEntry cfg
   Env.setShouldColorize $ Log.shouldColorize cfg
   Env.setShouldCancelAlloc shouldCancelAlloc
   Env.setTargetPlatform
+  Env.setClangOptString (fromMaybe "" mClangOptString)
   Path.ensureNotInLibDir
   Env.setMainModule newModule
 

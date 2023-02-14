@@ -24,16 +24,16 @@ class
   ) =>
   Context m
 
-link :: Context m => Target -> String -> Bool -> Bool -> [Source.Source] -> m ()
-link target clangOptString shouldSkipLink isObjectAvailable sourceList = do
+link :: Context m => Target -> Bool -> Bool -> [Source.Source] -> m ()
+link target shouldSkipLink isObjectAvailable sourceList = do
   mainModule <- Env.getMainModule
   isExecutableAvailable <- getExecutableOutputPath target mainModule >>= Path.doesFileExist
   if shouldSkipLink || (isObjectAvailable && isExecutableAvailable)
     then return ()
-    else link' clangOptString target mainModule sourceList
+    else link' target mainModule sourceList
 
-link' :: Context m => String -> Target -> Module -> [Source.Source] -> m ()
-link' clangOptString target mainModule sourceList = do
+link' :: Context m => Target -> Module -> [Source.Source] -> m ()
+link' target mainModule sourceList = do
   outputPath <- getExecutableOutputPath target mainModule
   objectPathList <- mapM (Source.sourceToOutputPath OK.Object) sourceList
-  LLVM.link clangOptString objectPathList outputPath
+  LLVM.link objectPathList outputPath

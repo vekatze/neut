@@ -26,5 +26,5 @@ class
 create :: Context m => Config -> m ()
 create cfg = do
   newModule <- New.constructDefaultModule (moduleName cfg)
-  Initialize.initializeCompilerWithModule newModule (logCfg cfg) True
+  Initialize.initializeCompilerWithModule newModule (logCfg cfg) True Nothing
   New.createNewProject (moduleName cfg) newModule

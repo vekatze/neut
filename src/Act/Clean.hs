@@ -18,5 +18,5 @@ class
 
 clean :: Context m => Config -> m ()
 clean cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True
+  Initialize.initializeCompiler (logCfg cfg) True Nothing
   Clean.clean

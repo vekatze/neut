@@ -24,7 +24,7 @@ class
 
 check :: Context m => Config -> m ()
 check cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True
+  Initialize.initializeCompiler (logCfg cfg) True Nothing
   sgls <- Collect.collectSourceList (mFilePathString cfg)
   forM_ sgls $ \sgl -> do
     (_, _, _, dependenceSeq) <- Unravel.unravelFromSGL sgl

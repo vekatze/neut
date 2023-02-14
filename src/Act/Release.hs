@@ -19,6 +19,6 @@ class
 
 release :: Context m => Config -> m ()
 release cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True
+  Initialize.initializeCompiler (logCfg cfg) True Nothing
   files <- Collect.collectModuleFiles
   Archive.archive (getReleaseName cfg) files

@@ -9,7 +9,6 @@ import Context.External qualified as External
 import Context.LLVM qualified as LLVM
 import Control.Monad
 import Data.Foldable
-import Data.Maybe
 import Entity.Config.Build
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
@@ -42,7 +41,7 @@ class
 
 build :: Context m => Config -> m ()
 build cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True
+  Initialize.initializeCompiler (logCfg cfg) True (mClangOptString cfg)
   targetList <- Collect.collectTargetList $ mTarget cfg
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
@@ -52,6 +51,6 @@ build cfg = do
       virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
         Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit (outputKindList cfg)
-    Link.link target (fromMaybe "" (mClangOptString cfg)) (shouldSkipLink cfg) isObjectAvailable (toList dependenceSeq)
+    Link.link target (shouldSkipLink cfg) isObjectAvailable (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target

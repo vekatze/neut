@@ -18,5 +18,5 @@ class
 
 get :: Context m => Config -> m ()
 get cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True
+  Initialize.initializeCompiler (logCfg cfg) True Nothing
   Fetch.insertDependency (moduleAliasText cfg) (moduleURL cfg)
