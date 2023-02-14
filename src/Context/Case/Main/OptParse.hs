@@ -9,8 +9,8 @@ import Entity.Command
 import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
+import Entity.Config.Create qualified as Create
 import Entity.Config.Get qualified as Get
-import Entity.Config.Init qualified as Init
 import Entity.Config.Log qualified as Log
 import Entity.Config.Release qualified as Release
 import Entity.Config.Tidy qualified as Tidy
@@ -32,7 +32,7 @@ parseOpt = do
         cmd "clean" parseCleanOpt "remove the resulting files",
         cmd "check" parseCheckOpt "type-check specified file",
         cmd "release" parseReleaseOpt "create a release tar from a given path",
-        cmd "init" parseInitOpt "create a new module",
+        cmd "create" parseCreateOpt "create a new module",
         cmd "get" parseGetOpt "get a release tar",
         cmd "tidy" parseTidyOpt "tidy the module dependency",
         cmd "version" parseVersionOpt "show version info"
@@ -94,15 +94,15 @@ parseTidyOpt = do
         { Tidy.logCfg = logCfg
         }
 
-parseInitOpt :: Parser Command
-parseInitOpt = do
+parseCreateOpt :: Parser Command
+parseCreateOpt = do
   moduleName <- argument str (mconcat [metavar "MODULE", help "The name of the module"])
   logCfg <- logConfigOpt
   pure $
-    Init $
-      Init.Config
-        { Init.moduleName = T.pack moduleName,
-          Init.logCfg = logCfg
+    Create $
+      Create.Config
+        { Create.moduleName = T.pack moduleName,
+          Create.logCfg = logCfg
         }
 
 parseVersionOpt :: Parser Command

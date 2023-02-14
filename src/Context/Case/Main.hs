@@ -6,8 +6,8 @@ where
 import Act.Build qualified as Build
 import Act.Check qualified as Check
 import Act.Clean qualified as Clean
+import Act.Create qualified as Create
 import Act.Get qualified as Get
-import Act.Init qualified as Init
 import Act.Release qualified as Release
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
@@ -195,8 +195,8 @@ execute = do
           Clean.clean cfg
         C.Release cfg ->
           Release.release cfg
-        C.Init cfg ->
-          Init.initialize cfg
+        C.Create cfg ->
+          Create.create cfg
         C.Get cfg ->
           Get.get cfg
         C.Tidy cfg ->
@@ -271,7 +271,7 @@ instance Get.Context App
 
 instance New.Context App
 
-instance Init.Context App
+instance Create.Context App
 
 instance Archive.Context App
 

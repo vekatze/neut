@@ -1,4 +1,4 @@
-module Entity.Config.Init (Config (..)) where
+module Entity.Config.Create (Config (..)) where
 
 import Data.Text qualified as T
 import Entity.Config.Log qualified as Log
