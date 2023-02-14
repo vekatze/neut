@@ -28,12 +28,12 @@ import Entity.Log qualified as L
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.Fill
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
-import Entity.WeakTerm.Reduce
-import Entity.WeakTerm.Subst qualified as Subst
 import Entity.WeakTerm.ToText
+import Scene.WeakTerm.Fill
+import Scene.WeakTerm.Reduce
+import Scene.WeakTerm.Subst qualified as Subst
 
 class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where
   insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> m ()

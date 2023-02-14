@@ -1,164 +1,166 @@
-module Entity.WeakTerm.Subst
-  ( subst,
-    Context (..),
+module Scene.WeakTerm.Fill
+  ( fill,
   )
 where
 
-import Context.Gensym
 import Control.Comonad.Cofree
+import Control.Monad
 import Data.IntMap qualified as IntMap
+import Data.Maybe
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
+import Entity.HoleSubst
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.WeakTerm qualified as WT
+import Scene.WeakTerm.Reduce
+import Scene.WeakTerm.Subst
+import Prelude hiding (lookup)
 
-subst :: Context m => WT.SubstWeakTerm -> WT.WeakTerm -> m WT.WeakTerm
-subst sub term =
+fill :: Context m => HoleSubst -> WT.WeakTerm -> m WT.WeakTerm
+fill sub term =
   case term of
     _ :< WT.Tau ->
       return term
-    _ :< WT.Var x
-      | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-          return e
-      | otherwise ->
-          return term
+    _ :< WT.Var {} ->
+      return term
     _ :< WT.VarGlobal {} ->
       return term
     m :< WT.Pi xts t -> do
-      (xts', t') <- subst' sub xts t
+      (xts', t') <- fill' sub xts t
       return $ m :< WT.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
       case kind of
         LK.Fix xt -> do
-          (xt', xts', e') <- subst'' sub xt xts e
+          (xt', xts', e') <- fill'' sub xt xts e
           return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
         _ -> do
-          (xts', e') <- subst' sub xts e
+          (xts', e') <- fill' sub xts e
           return $ m :< WT.PiIntro kind xts' e'
     m :< WT.PiElim e es -> do
-      e' <- subst sub e
-      es' <- mapM (subst sub) es
+      e' <- fill sub e
+      es' <- mapM (fill sub) es
       return $ m :< WT.PiElim e' es'
     m :< WT.Data name es -> do
-      es' <- mapM (subst sub) es
+      es' <- mapM (fill sub) es
       return $ m :< WT.Data name es'
     m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
-      dataArgs' <- mapM (subst sub) dataArgs
-      consArgs' <- mapM (subst sub) consArgs
+      dataArgs' <- mapM (fill sub) dataArgs
+      consArgs' <- mapM (fill sub) consArgs
       return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
-      es' <- mapM (subst sub) es
+      es' <- mapM (fill sub) es
       let binder = zipWith (\o t -> (m, o, t)) os ts
-      (binder', decisionTree') <- subst''' sub binder decisionTree
+      (binder', decisionTree') <- fill''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
     m :< WT.Noema t -> do
-      t' <- subst sub t
+      t' <- fill sub t
       return $ m :< WT.Noema t'
     m :< WT.Let opacity mxt e1 e2 -> do
-      e1' <- subst sub e1
-      (mxt', _, e2') <- subst'' sub mxt [] e2
+      e1' <- fill sub e1
+      (mxt', _, e2') <- fill'' sub mxt [] e2
       return $ m :< WT.Let opacity mxt' e1' e2'
     m :< WT.Prim prim -> do
-      prim' <- mapM (subst sub) prim
+      prim' <- mapM (fill sub) prim
       return $ m :< WT.Prim prim'
-    m :< WT.Hole holeID args -> do
-      args' <- mapM (subst sub) args
-      return $ m :< WT.Hole holeID args'
+    m :< WT.Hole i es -> do
+      es' <- mapM (fill sub) es
+      case lookup i sub of
+        Just (xs, body)
+          | length xs == length es -> do
+              let varList = map Ident.toInt xs
+              subst (IntMap.fromList $ zip varList es') body >>= reduce
+          | otherwise ->
+              error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
+        Nothing ->
+          return $ m :< WT.Hole i es'
     _ :< WT.ResourceType {} ->
       return term
     m :< WT.Magic der -> do
-      der' <- mapM (subst sub) der
+      der' <- mapM (fill sub) der
       return $ m :< WT.Magic der'
 
-subst' ::
+fill' ::
   Context m =>
-  WT.SubstWeakTerm ->
+  HoleSubst ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
   m ([BinderF WT.WeakTerm], WT.WeakTerm)
-subst' sub binder e =
+fill' sub binder e =
   case binder of
     [] -> do
-      e' <- subst sub e
+      e' <- fill sub e
       return ([], e')
     ((m, x, t) : xts) -> do
-      t' <- subst sub t
-      x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (Ident.toInt x) (m :< WT.Var x') sub
-      (xts', e') <- subst' sub' xts e
-      return ((m, x', t') : xts', e')
+      (xts', e') <- fill' sub xts e
+      t' <- fill sub t
+      return ((m, x, t') : xts', e')
 
-subst'' ::
+fill'' ::
   Context m =>
-  WT.SubstWeakTerm ->
+  HoleSubst ->
   BinderF WT.WeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
   m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
-subst'' sub (m, x, t) binder e = do
-  t' <- subst sub t
-  x' <- newIdentFromIdent x
-  let sub' = IntMap.insert (Ident.toInt x) (m :< WT.Var x') sub
-  (xts', e') <- subst' sub' binder e
+fill'' sub (m, x, t) binder e = do
+  (xts', e') <- fill' sub binder e
+  t' <- fill sub t
   return ((m, x, t'), xts', e')
 
-subst''' ::
+fill''' ::
   Context m =>
-  WT.SubstWeakTerm ->
+  HoleSubst ->
   [BinderF WT.WeakTerm] ->
   DT.DecisionTree WT.WeakTerm ->
   m ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
-subst''' sub binder decisionTree =
+fill''' sub binder decisionTree =
   case binder of
     [] -> do
-      decisionTree' <- substDecisionTree sub decisionTree
+      decisionTree' <- fillDecisionTree sub decisionTree
       return ([], decisionTree')
     ((m, x, t) : xts) -> do
-      t' <- subst sub t
-      x' <- newIdentFromIdent x
-      let sub' = IntMap.insert (Ident.toInt x) (m :< WT.Var x') sub
-      (xts', e') <- subst''' sub' xts decisionTree
-      return ((m, x', t') : xts', e')
+      t' <- fill sub t
+      (xts', e') <- fill''' sub xts decisionTree
+      return ((m, x, t') : xts', e')
 
-substDecisionTree ::
+fillDecisionTree ::
   Context m =>
-  WT.SubstWeakTerm ->
+  HoleSubst ->
   DT.DecisionTree WT.WeakTerm ->
   m (DT.DecisionTree WT.WeakTerm)
-substDecisionTree sub tree =
+fillDecisionTree sub tree =
   case tree of
     DT.Leaf xs e -> do
-      e' <- subst sub e
-      let xs' = filter (\x -> Ident.toInt x `IntMap.notMember` sub) xs
-      return $ DT.Leaf xs' e'
+      e' <- fill sub e
+      return $ DT.Leaf xs e'
     DT.Unreachable ->
       return tree
     DT.Switch (cursorVar, cursor) caseList -> do
-      cursor' <- subst sub cursor
-      caseList' <- substCaseList sub caseList
+      cursor' <- fill sub cursor
+      caseList' <- fillCaseList sub caseList
       return $ DT.Switch (cursorVar, cursor') caseList'
 
-substCaseList ::
+fillCaseList ::
   Context m =>
-  WT.SubstWeakTerm ->
+  HoleSubst ->
   DT.CaseList WT.WeakTerm ->
   m (DT.CaseList WT.WeakTerm)
-substCaseList sub (fallbackClause, clauseList) = do
-  fallbackClause' <- substDecisionTree sub fallbackClause
-  clauseList' <- mapM (substCase sub) clauseList
+fillCaseList sub (fallbackClause, clauseList) = do
+  fallbackClause' <- fillDecisionTree sub fallbackClause
+  clauseList' <- mapM (fillCase sub) clauseList
   return (fallbackClause', clauseList')
 
-substCase ::
+fillCase ::
   Context m =>
-  WT.SubstWeakTerm ->
+  HoleSubst ->
   DT.Case WT.WeakTerm ->
   m (DT.Case WT.WeakTerm)
-substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
+fillCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM (subst sub) dataTerms
-  dataTypes' <- mapM (subst sub) dataTypes
-  (consArgs', tree') <- subst''' sub consArgs tree
+  dataTerms' <- mapM (fill sub) dataTerms
+  dataTypes' <- mapM (fill sub) dataTypes
+  (consArgs', tree') <- fill''' sub consArgs tree
   return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'

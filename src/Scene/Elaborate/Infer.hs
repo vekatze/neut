@@ -39,7 +39,7 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.Subst qualified as Subst
+import Scene.WeakTerm.Subst qualified as Subst
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

@@ -20,7 +20,6 @@ import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.AliasInfo
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -97,7 +96,7 @@ parseSource source = do
         Nothing ->
           Throw.raiseCritical' "[activateAliasInfoOfCurrentFile] (compiler bug)"
         Just aliasInfoList ->
-          activateAliasInfo aliasInfoList
+          Alias.activateAliasInfo aliasInfoList
       defList <- P.run program $ Source.sourceFilePath source
       return $ Right defList
 

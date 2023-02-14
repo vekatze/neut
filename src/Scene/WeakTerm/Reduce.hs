@@ -1,4 +1,4 @@
-module Entity.WeakTerm.Reduce (reduce) where
+module Scene.WeakTerm.Reduce (reduce) where
 
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
@@ -8,7 +8,7 @@ import Entity.LamKind qualified as LK
 import Entity.Opacity qualified as O
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.FreeVars
-import Entity.WeakTerm.Subst qualified as Subst
+import Scene.WeakTerm.Subst qualified as Subst
 
 reduce :: Subst.Context m => WT.WeakTerm -> m WT.WeakTerm
 reduce term =

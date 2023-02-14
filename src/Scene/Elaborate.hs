@@ -39,10 +39,10 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.Subst qualified as WT
 import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
+import Scene.WeakTerm.Subst qualified as WT
 
 class
   ( Infer.Context m,
