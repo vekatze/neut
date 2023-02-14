@@ -1,4 +1,4 @@
-module Entity.Pattern.Fallback (getFallbackMatrix, Context) where
+module Scene.Parse.Discern.Fallback (getFallbackMatrix, Context) where
 
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw

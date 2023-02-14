@@ -82,8 +82,6 @@ import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
 import Entity.ModuleChecksum qualified as MC
 import Entity.Opacity qualified as O
-import Entity.Pattern.Fallback qualified as PatternFallback
-import Entity.Pattern.Specialize qualified as PatternSpecialize
 import Entity.Section qualified as Section
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
@@ -113,6 +111,8 @@ import Scene.New qualified as New
 import Scene.Parse qualified as Parse (Context ())
 import Scene.Parse.Core qualified as ParseCore (Context (..))
 import Scene.Parse.Discern qualified as ParseDiscern (Context)
+import Scene.Parse.Discern.Fallback qualified as PatternFallback
+import Scene.Parse.Discern.Specialize qualified as PatternSpecialize
 import Scene.Parse.Import qualified as ParseImport (Context)
 import Scene.Term.Subst qualified as Subst (Context (..))
 import Scene.Unravel qualified as Unravel (Context)

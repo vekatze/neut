@@ -1,4 +1,4 @@
-module Entity.Pattern.Specialize (specialize, Context) where
+module Scene.Parse.Discern.Specialize (specialize, Context) where
 
 import Context.Enum qualified as Enum
 import Context.Gensym qualified as Gensym

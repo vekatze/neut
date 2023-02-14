@@ -37,8 +37,6 @@ import Entity.Magic qualified as M
 import Entity.Noema qualified as N
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
-import Entity.Pattern.Fallback qualified as PATF
-import Entity.Pattern.Specialize qualified as PATS
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp qualified as PO
 import Entity.PrimOp.OpSet qualified as POS
@@ -51,6 +49,8 @@ import Entity.Vector qualified as V
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Scene.Parse.Discern.Fallback qualified as PATF
+import Scene.Parse.Discern.Specialize qualified as PATS
 
 class
   ( Throw.Context m,
