@@ -565,24 +565,6 @@ bindLet nenv m binder cont =
       cont' <- bindLet nenv m xes cont
       return $ m :< WT.Let WT.Transparent (m, from, h) to cont'
 
--- bindLet ::
---   Context m =>
---   NominalEnv ->
---   Hint ->
---   [(Maybe Ident, Ident)] ->
---   WT.WeakTerm ->
---   m WT.WeakTerm
--- bindLet nenv m binder cont =
---   case binder of
---     [] ->
---       return cont
---     (Nothing, _) : xes -> do
---       bindLet nenv m xes cont
---     (Just from, to) : xes -> do
---       h <- Gensym.newHole m (asHoleArgs nenv)
---       cont' <- bindLet nenv m xes cont
---       return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'
-
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))

@@ -49,52 +49,31 @@ import Path
 --     - active global locator: a global locator that is used when resolving global names
 --     - active local locator: a local locator that is used when resolving global names
 
--- class Monad m => Context m where
---   initialize :: m ()
---   withLiftedSection :: (MonadTrans t, Monad (t m)) => S.Section -> t m a -> t m a
---   attachCurrentLocator :: BN.BaseName -> App DD.DefiniteDescription
---   activateGlobalLocator :: SGL.StrictGlobalLocator -> App ()
---   activateDefiniteLocator :: DL.DefiniteLocator -> App ()
---   clearActiveLocators :: m ()
---   getPossibleReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
---   getMainDefiniteDescription :: Source.Source -> App (Maybe DD.DefiniteDescription)
-
 initialize :: App ()
 initialize = do
   mainModule <- readRef "mainModule" mainModule
   currentSource <- readRef "currentSource" currentSource
   cgl <- constructGlobalLocator mainModule currentSource
-  -- setCurrenetGlobalLocator currentGlobalLocator
   writeRef currentGlobalLocator cgl
   writeRef' currentSectionStack []
-  -- Env.setCurrentSectionStack []
   writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
-  -- setActiveGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
-  -- setActiveDefiniteLocatorList []
   writeRef' activeDefiniteLocatorList []
 
 activateGlobalLocator :: SGL.StrictGlobalLocator -> App ()
 activateGlobalLocator sgl = do
-  -- activeGlobalLocatorList <- getActiveGlobalLocatorList
   agls <- readRef' activeGlobalLocatorList
-  -- setActiveGlobalLocatorList $ sgl : activeGlobalLocatorList
   writeRef' activeGlobalLocatorList $ sgl : agls
 
 activateDefiniteLocator :: DL.DefiniteLocator -> App ()
 activateDefiniteLocator sgl = do
-  -- activeDefiniteLocatorList <- getActiveDefiniteLocatorList
   adls <- readRef' activeDefiniteLocatorList
-  -- setActiveDefiniteLocatorList $ sgl : activeDefiniteLocatorList
   writeRef' activeDefiniteLocatorList $ sgl : adls
 
 withLiftedSection :: (MonadTrans t, Monad (t App)) => S.Section -> t App a -> t App a
 withLiftedSection section computation = do
-  -- currentSectionStack <- lift Env.getCurrentSectionStack
   c <- lift $ readRef' currentSectionStack
-  -- lift $ Env.setCurrentSectionStack $ section : currentSectionStack
   lift $ writeRef' currentSectionStack $ section : c
   result <- computation
-  -- lift $ Env.setCurrentSectionStack currentSectionStack
   lift $ writeRef' currentSectionStack c
   return result
 
@@ -102,24 +81,18 @@ attachCurrentLocator ::
   BN.BaseName ->
   App DD.DefiniteDescription
 attachCurrentLocator name = do
-  -- currentGlobalLocator <- getCurrentGlobalLocator
   cgl <- readRef "currentGlobalLocator" currentGlobalLocator
-  -- currentSectionStack <- Env.getCurrentSectionStack
   currentSectionStack <- readRef' currentSectionStack
   return $ DD.new cgl $ LL.new currentSectionStack name
 
 clearActiveLocators :: App ()
 clearActiveLocators = do
-  -- setActiveGlobalLocatorList []
   writeRef' activeGlobalLocatorList []
-  -- setActiveDefiniteLocatorList []
   writeRef' activeDefiniteLocatorList []
 
 getPossibleReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
 getPossibleReferents localLocator = do
-  -- currentGlobalLocator <- getCurrentGlobalLocator
   cgl <- readRef "currentGlobalLocator" currentGlobalLocator
-  -- currentSectionStack <- Env.getCurrentSectionStack
   currentSectionStack <- readRef' currentSectionStack
   agls <- readRef' activeGlobalLocatorList
   adls <- readRef' activeDefiniteLocatorList
@@ -165,11 +138,3 @@ isMainFile source = do
 withSection :: S.Section -> App a -> App a
 withSection section action =
   runIdentityT $ withLiftedSection section $ lift action
-
--- withSection :: S.Section -> App a -> App a
--- withSection section computation = do
---   currentSectionStack <- Env.getCurrentSectionStack
---   Env.setCurrentSectionStack $ section : currentSectionStack
---   result <- computation
---   Env.setCurrentSectionStack currentSectionStack
---   return result

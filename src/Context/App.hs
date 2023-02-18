@@ -34,29 +34,6 @@ writeRef accessor value = do
   ref <- asks accessor
   liftIO $ writeIORef ref (Just value)
 
--- execute :: IO ()
--- execute = do
---   runApp $ do
---     c <- OptParse.parseCommand
---     Throw.run $ do
---       case c of
---         C.Build cfg -> do
---           Build.build cfg
---         C.Check cfg -> do
---           Check.check cfg
---         C.Clean cfg ->
---           Clean.clean cfg
---         C.Release cfg ->
---           Release.release cfg
---         C.Create cfg ->
---           Create.create cfg
---         C.Get cfg ->
---           Get.get cfg
---         C.Tidy cfg ->
---           Tidy.tidy cfg
---         C.ShowVersion cfg ->
---           Version.showVersion cfg
-
 readRef' :: (Env -> FastRef a) -> App a
 readRef' accessor = do
   asks accessor >>= liftIO . readIORef

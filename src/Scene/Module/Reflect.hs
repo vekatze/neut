@@ -36,7 +36,6 @@ getModule ::
   App Module
 getModule m moduleID locatorText = do
   nextModuleFilePath <- Module.getModuleFilePath (Just m) moduleID
-  -- mcm <- readRef' moduleCacheMap
   mcm <- Module.getModuleCacheMap
   case Map.lookup nextModuleFilePath mcm of
     Just nextModule ->
@@ -50,13 +49,7 @@ getModule m moduleID locatorText = do
             <> "`"
       nextModule <- fromFilePath moduleID nextModuleFilePath
       Module.insertToModuleCacheMap nextModuleFilePath nextModule
-      -- modifyRef' moduleCacheMap $ Map.insert nextModuleFilePath nextModule
       return nextModule
-
--- getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
--- getModuleFilePath mHint moduleID = do
---   moduleDir <- Module.getModuleDirByID mHint moduleID
---   return $ moduleDir </> moduleFile
 
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do

@@ -27,8 +27,6 @@ import Entity.PrimType qualified as PT
 -- fixme: remove WriterT
 type Lower = WriterT (Cont App) App
 
--- type Lower = WriterT (Cont m) m
-
 newtype Cont m = Cont (LC.Comp -> App LC.Comp)
 
 instance Semigroup (Cont m) where

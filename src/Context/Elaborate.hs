@@ -88,14 +88,3 @@ getHoleSubst =
 setHoleSubst :: HS.HoleSubst -> App ()
 setHoleSubst =
   writeRef' holeSubst
-
---   insertSubst =
---     Env.insertSubst
---   setConstraintQueue =
---     writeRef' constraintQueue
---   insertConstraint sc =
---     modifyRef' constraintQueue $ Q.insert sc
---   getConstraintQueue =
---     readRef' constraintQueue
---   getDefMap =
---     Definition.read
