@@ -28,15 +28,8 @@ toText term =
       showVariable x
     _ :< WT.VarGlobal x _ ->
       showGlobalVariable x
-    _ :< WT.Pi xts cod
-      | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WT.Pi yts _)] <- xts ->
-          case splitLast yts of
-            Nothing ->
-              "(product)"
-            Just (zts, (_, _, t)) ->
-              showCons ["∑", inParen $ showTypeArgs zts, toText t]
-      | otherwise ->
-          showCons ["Π", inParen $ showTypeArgs xts, toText cod]
+    _ :< WT.Pi xts cod ->
+      showCons ["Π", inParen $ showTypeArgs xts, toText cod]
     _ :< WT.PiIntro kind xts e -> do
       case kind of
         LK.Fix (_, x, _) -> do
@@ -118,12 +111,6 @@ showPrim prim =
 showCons :: [T.Text] -> T.Text
 showCons =
   inParen . T.intercalate " "
-
-splitLast :: [a] -> Maybe ([a], a)
-splitLast xs =
-  if null xs
-    then Nothing
-    else Just (init xs, last xs)
 
 showMatchArgs :: [(Ident, WT.WeakTerm, WT.WeakTerm)] -> T.Text
 showMatchArgs xets = do
