@@ -1,17 +1,17 @@
 module Scene.Unravel
   ( unravel,
     unravelFromSGL,
-    Context,
   )
 where
 
 import Context.Alias qualified as Alias
+import Context.App
 import Context.Env qualified as Env
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Context.Unravel qualified as Unravel
 import Control.Monad
-import Control.Monad.Catch
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.List (unzip4)
@@ -43,23 +43,9 @@ type IsObjectAvailable =
 type IsLLVMAvailable =
   Bool
 
-class
-  ( Throw.Context m,
-    Path.Context m,
-    Module.Context m,
-    Env.Context m,
-    MonadThrow m,
-    Alias.Context m,
-    Parse.Context m
-  ) =>
-  Context m
-
-unravel ::
-  Context m =>
-  Target ->
-  m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+unravel :: Target -> App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
 unravel target = do
-  mainModule <- Env.getMainModule
+  mainModule <- Module.getMainModule
   mainFilePath <- resolveTarget mainModule target >>= Module.getSourcePath
   unravel' $
     Source.Source
@@ -68,22 +54,21 @@ unravel target = do
       }
 
 unravelFromSGL ::
-  Context m =>
   SGL.StrictGlobalLocator ->
-  m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+  App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
 unravelFromSGL sgl = do
-  mainModule <- Env.getMainModule
+  mainModule <- Module.getMainModule
   path <- Module.getSourcePath sgl
   ensureFileModuleSanity path mainModule
   let initialSource = Source.Source {Source.sourceModule = mainModule, Source.sourceFilePath = path}
   unravel' initialSource
 
-ensureFileModuleSanity :: Throw.Context m => Path Abs File -> Module -> m ()
+ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     Throw.raiseError' "the specified file is not in the current module"
 
-resolveTarget :: Throw.Context m => Module -> Target -> m SGL.StrictGlobalLocator
+resolveTarget :: Module -> Target -> App SGL.StrictGlobalLocator
 resolveTarget mainModule target = do
   case Map.lookup target (moduleTarget mainModule) of
     Just path ->
@@ -91,9 +76,9 @@ resolveTarget mainModule target = do
     Nothing ->
       Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
 
-unravel' :: Context m => Source.Source -> m (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+unravel' :: Source.Source -> App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
 unravel' source = do
-  visitEnv <- Env.getVisitEnv
+  visitEnv <- Unravel.getVisitEnv
   let path = Source.sourceFilePath source
   case Map.lookup path visitEnv of
     Just VI.Active ->
@@ -104,58 +89,57 @@ unravel' source = do
       hasObjectSet <- Env.getHasObjectSet
       return (path `S.member` hasCacheSet, path `S.member` hasLLVMSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
-      Env.insertToVisitEnv path VI.Active
-      Env.pushToTraceSourceList source
+      Unravel.insertToVisitEnv path VI.Active
+      Unravel.pushToTraceSourceList source
       children <- getChildren source
       (isCacheAvailableList, isLLVMAvailableList, isObjectAvailableList, seqList) <- unzip4 <$> mapM unravel' children
-      _ <- Env.popFromTraceSourceList
-      Env.insertToVisitEnv path VI.Finish
+      _ <- Unravel.popFromTraceSourceList
+      Unravel.insertToVisitEnv path VI.Finish
       isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
       isLLVMAvailable <- checkIfLLVMIsAvailable isLLVMAvailableList source
       isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
       return (isCacheAvailable, isLLVMAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
 
-checkIfCacheIsAvailable :: Context m => [IsCacheAvailable] -> Source.Source -> m IsCacheAvailable
+checkIfCacheIsAvailable :: [IsCacheAvailable] -> Source.Source -> App IsCacheAvailable
 checkIfCacheIsAvailable = do
   checkIfItemIsAvailable isFreshCacheAvailable Env.insertToHasCacheSet
 
-checkIfLLVMIsAvailable :: Context m => [IsLLVMAvailable] -> Source.Source -> m IsLLVMAvailable
+checkIfLLVMIsAvailable :: [IsLLVMAvailable] -> Source.Source -> App IsLLVMAvailable
 checkIfLLVMIsAvailable = do
   checkIfItemIsAvailable isFreshLLVMAvailable Env.insertToHasLLVMSet
 
-checkIfObjectIsAvailable :: Context m => [IsObjectAvailable] -> Source.Source -> m IsObjectAvailable
+checkIfObjectIsAvailable :: [IsObjectAvailable] -> Source.Source -> App IsObjectAvailable
 checkIfObjectIsAvailable = do
   checkIfItemIsAvailable isFreshObjectAvailable Env.insertToHasObjectSet
 
 checkIfItemIsAvailable ::
-  Context m =>
-  (Source.Source -> m Bool) ->
-  (Path Abs File -> m ()) ->
+  (Source.Source -> App Bool) ->
+  (Path Abs File -> App ()) ->
   [IsObjectAvailable] ->
   Source.Source ->
-  m IsObjectAvailable
+  App IsObjectAvailable
 checkIfItemIsAvailable isFreshItemAvailable inserter isObjectAvailableList source = do
   b <- isFreshItemAvailable source
   let isObjectAvailable = and $ b : isObjectAvailableList
   when isObjectAvailable $ inserter $ Source.sourceFilePath source
   return isObjectAvailable
 
-isFreshCacheAvailable :: Context m => Source.Source -> m Bool
+isFreshCacheAvailable :: Source.Source -> App Bool
 isFreshCacheAvailable source = do
   cachePath <- Source.getSourceCachePath source
   isItemAvailable source cachePath
 
-isFreshLLVMAvailable :: Context m => Source.Source -> m Bool
+isFreshLLVMAvailable :: Source.Source -> App Bool
 isFreshLLVMAvailable source = do
   llvmPath <- Source.sourceToOutputPath OK.LLVM source
   isItemAvailable source llvmPath
 
-isFreshObjectAvailable :: Context m => Source.Source -> m Bool
+isFreshObjectAvailable :: Source.Source -> App Bool
 isFreshObjectAvailable source = do
   objectPath <- Source.sourceToOutputPath OK.Object source
   isItemAvailable source objectPath
 
-isItemAvailable :: Context m => Source.Source -> Path Abs File -> m Bool
+isItemAvailable :: Source.Source -> Path Abs File -> App Bool
 isItemAvailable source itemPath = do
   existsItem <- Path.doesFileExist itemPath
   if not existsItem
@@ -165,9 +149,9 @@ isItemAvailable source itemPath = do
       itemModTime <- Path.getModificationTime itemPath
       return $ itemModTime > srcModTime
 
-raiseCyclicPath :: Context m => Source.Source -> m a
+raiseCyclicPath :: Source.Source -> App a
 raiseCyclicPath source = do
-  traceSourceList <- Env.getTraceSourceList
+  traceSourceList <- Unravel.getTraceSourceList
   let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
   let cyclicPathList = map Source.sourceFilePath $ reverse $ source : traceSourceList
   Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
@@ -192,11 +176,11 @@ showCyclicPath' pathList =
     path : ps ->
       "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
 
-getChildren :: Context m => Source.Source -> m [Source.Source]
+getChildren :: Source.Source -> App [Source.Source]
 getChildren currentSource = do
   Env.setCurrentSource currentSource
   Alias.initializeAliasMap
-  sourceChildrenMap <- Env.getSourceChildrenMap
+  sourceChildrenMap <- Unravel.getSourceChildrenMap
   let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
     Just sourceList ->
@@ -204,6 +188,6 @@ getChildren currentSource = do
     Nothing -> do
       let path = Source.sourceFilePath currentSource
       (sourceList, aliasInfoList) <- ParseCore.run Parse.parseImportSequence path
-      Env.insertToSourceChildrenMap currentSourceFilePath sourceList
+      Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
       Env.insertToSourceAliasMap currentSourceFilePath aliasInfoList
       return sourceList

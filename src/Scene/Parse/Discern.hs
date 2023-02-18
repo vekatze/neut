@@ -1,10 +1,7 @@
-module Scene.Parse.Discern
-  ( discernStmtList,
-    Context,
-  )
-where
+module Scene.Parse.Discern (discernStmtList) where
 
 import Context.Alias qualified as Alias
+import Context.App
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
@@ -52,19 +49,7 @@ import Entity.WeakTerm qualified as WT
 import Scene.Parse.Discern.Fallback qualified as PATF
 import Scene.Parse.Discern.Specialize qualified as PATS
 
-class
-  ( Throw.Context m,
-    Gensym.Context m,
-    Global.Context m,
-    Locator.Context m,
-    Alias.Context m,
-    PATF.Context m,
-    PATS.Context m,
-    CodataDefinition.Context m
-  ) =>
-  Context m
-
-discernStmtList :: Context m => [RawStmt] -> m [WeakStmt]
+discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList stmtList =
   case stmtList of
     [] ->
@@ -87,7 +72,7 @@ discernStmtList stmtList =
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
 
-discernStmtKind :: Context m => StmtKindF RT.RawTerm -> m (StmtKindF WT.WeakTerm)
+discernStmtKind :: StmtKindF RT.RawTerm -> App (StmtKindF WT.WeakTerm)
 discernStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
@@ -103,7 +88,7 @@ discernStmtKind stmtKind =
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
 -- Alpha-convert all the variables so that different variables have different names.
-discern :: Context m => NominalEnv -> RT.RawTerm -> m WT.WeakTerm
+discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =
   case term of
     m :< RT.Tau ->
@@ -173,12 +158,11 @@ discern nenv term =
       return $ m :< WT.PiElim (m :< WT.VarGlobal constructor arity) args
 
 ensureFieldLinearity ::
-  Context m =>
   Hint ->
   [DD.DefiniteDescription] ->
   S.Set DD.DefiniteDescription ->
   S.Set DD.DefiniteDescription ->
-  m ()
+  App ()
 ensureFieldLinearity m ks found nonLinear =
   case ks of
     [] ->
@@ -193,7 +177,7 @@ ensureFieldLinearity m ks found nonLinear =
         then ensureFieldLinearity m rest found (S.insert k nonLinear)
         else ensureFieldLinearity m rest (S.insert k found) nonLinear
 
-resolveField :: Context m => Hint -> T.Text -> m DD.DefiniteDescription
+resolveField :: Hint -> T.Text -> App DD.DefiniteDescription
 resolveField m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
@@ -209,7 +193,7 @@ resolveField m name = do
       Throw.raiseError m $
         "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
-reorderArgs :: Context m => Hint -> [DD.DefiniteDescription] -> Map.HashMap DD.DefiniteDescription a -> m [a]
+reorderArgs :: Hint -> [DD.DefiniteDescription] -> Map.HashMap DD.DefiniteDescription a -> App [a]
 reorderArgs m keyList kvs =
   case keyList of
     []
@@ -230,14 +214,13 @@ showKeyList ks =
   T.intercalate "\n" $ map (\k -> "- " <> DD.reify k) ks
 
 discernLet ::
-  Context m =>
   NominalEnv ->
   Hint ->
   BinderF RT.RawTerm ->
   [(Hint, Ident)] ->
   RT.RawTerm ->
   RT.RawTerm ->
-  m WT.WeakTerm
+  App WT.WeakTerm
 discernLet nenv m mxt mys e1 e2 = do
   let (ms, ys) = unzip mys
   ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
@@ -251,7 +234,7 @@ discernLet nenv m mxt mys e1 e2 = do
   let opacity = if null mys then WT.Transparent else WT.Noetic
   attachPrefix nenv (zip ysLocal ysActual) $ m :< WT.Let opacity mxt' e1' e2''
 
-attachPrefix :: Context m => NominalEnv -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> m WT.WeakTerm
+attachPrefix :: NominalEnv -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> App WT.WeakTerm
 attachPrefix nenv binder cont@(m :< _) =
   case binder of
     [] ->
@@ -262,7 +245,7 @@ attachPrefix nenv binder cont@(m :< _) =
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
 
-attachSuffix :: Context m => NominalEnv -> [(Ident, Ident)] -> WT.WeakTerm -> m WT.WeakTerm
+attachSuffix :: NominalEnv -> [(Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm
 attachSuffix nenv binder cont@(m :< _) =
   case binder of
     [] ->
@@ -273,35 +256,34 @@ attachSuffix nenv binder cont@(m :< _) =
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
 
-castToNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
+castToNoema :: NominalEnv -> WT.WeakTerm -> App WT.WeakTerm
 castToNoema nenv e@(m :< _) = do
   t <- Gensym.newHole m (asHoleArgs nenv)
   let tNoema = m :< WT.Noema t
   return $ m :< WT.Magic (M.Cast t tNoema e)
 
-castFromNoema :: Context m => NominalEnv -> WT.WeakTerm -> m WT.WeakTerm
+castFromNoema :: NominalEnv -> WT.WeakTerm -> App WT.WeakTerm
 castFromNoema nenv e@(m :< _) = do
   t <- Gensym.newHole m (asHoleArgs nenv)
   let tNoema = m :< WT.Noema t
   return $ m :< WT.Magic (M.Cast tNoema t e)
 
-castToNoema' :: Context m => NominalEnv -> N.IsNoetic -> WT.WeakTerm -> m WT.WeakTerm
+castToNoema' :: NominalEnv -> N.IsNoetic -> WT.WeakTerm -> App WT.WeakTerm
 castToNoema' nenv isNoetic e =
   if isNoetic
     then castToNoema nenv e
     else return e
 
-castFromNoema' :: Context m => NominalEnv -> N.IsNoetic -> WT.WeakTerm -> m WT.WeakTerm
+castFromNoema' :: NominalEnv -> N.IsNoetic -> WT.WeakTerm -> App WT.WeakTerm
 castFromNoema' nenv isNoetic e =
   if isNoetic
     then castFromNoema nenv e
     else return e
 
 discernBinder ::
-  Context m =>
   NominalEnv ->
   [BinderF RT.RawTerm] ->
-  m ([BinderF WT.WeakTerm], NominalEnv)
+  App ([BinderF WT.WeakTerm], NominalEnv)
 discernBinder nenv binder =
   case binder of
     [] -> do
@@ -313,30 +295,28 @@ discernBinder nenv binder =
       return ((mx, x', t') : xts', nenv')
 
 discernBinderWithBody ::
-  Context m =>
   NominalEnv ->
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
-  m ([BinderF WT.WeakTerm], WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody nenv binder e = do
   (binder', nenv') <- discernBinder nenv binder
   e' <- discern nenv' e
   return (binder', e')
 
 discernBinderWithBody' ::
-  Context m =>
   NominalEnv ->
   BinderF RT.RawTerm ->
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
-  m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
+  App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody' nenv (mx, x, t) binder e = do
   t' <- discern nenv t
   x' <- Gensym.newIdentFromIdent x
   (binder', e') <- discernBinderWithBody ((Ident.toText x, (mx, x')) : nenv) binder e
   return ((mx, x', t'), binder', e')
 
-resolveName :: Context m => Hint -> T.Text -> m (DD.DefiniteDescription, GN.GlobalName)
+resolveName :: Hint -> T.Text -> App (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
@@ -352,7 +332,7 @@ resolveName m name = do
       Throw.raiseError m $
         "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
-interpretGlobalName :: Context m => Hint -> DD.DefiniteDescription -> GN.GlobalName -> m WT.WeakTerm
+interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName m dd gn =
   case gn of
     GN.TopLevelFunc arity ->
@@ -374,7 +354,7 @@ candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =
   fmap (from,) mTo
 
-interpretDefiniteDescription :: Context m => Hint -> DD.DefiniteDescription -> m GN.GlobalName
+interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
 interpretDefiniteDescription m dd = do
   mgn <- Global.lookup dd
   case mgn of
@@ -384,10 +364,9 @@ interpretDefiniteDescription m dd = do
       Throw.raiseError m $ "undefined constant: " <> DD.reify dd
 
 resolveConstructor ::
-  Context m =>
   Hint ->
   RP.RawConsName ->
-  m (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
+  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
 resolveConstructor m cons = do
   case cons of
     RP.UnresolvedName (UN.UnresolvedName consName') -> do
@@ -403,11 +382,10 @@ resolveConstructor m cons = do
       resolveConstructor' m dd gn
 
 resolveConstructor' ::
-  Context m =>
   Hint ->
   DD.DefiniteDescription ->
   GN.GlobalName ->
-  m (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
+  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
 resolveConstructor' m dd gn =
   case gn of
     GN.DataIntro dataArity consArity disc ->
@@ -416,10 +394,9 @@ resolveConstructor' m dd gn =
       Throw.raiseError m $ DD.reify dd <> " is not a constructor"
 
 discernPatternMatrix ::
-  Context m =>
   NominalEnv ->
   RP.RawPatternMatrix RT.RawTerm ->
-  m (PAT.PatternMatrix ([Ident], WT.WeakTerm))
+  App (PAT.PatternMatrix ([Ident], WT.WeakTerm))
 discernPatternMatrix nenv patternMatrix =
   case RP.unconsRow patternMatrix of
     Nothing ->
@@ -430,10 +407,9 @@ discernPatternMatrix nenv patternMatrix =
       return $ PAT.consRow row' rows'
 
 discernPatternRow ::
-  Context m =>
   NominalEnv ->
   RP.RawPatternRow RT.RawTerm ->
-  m (PAT.PatternRow ([Ident], WT.WeakTerm))
+  App (PAT.PatternRow ([Ident], WT.WeakTerm))
 discernPatternRow nenv (patList, body) = do
   let vars = RP.rowVars patList
   ensurePatternVariableLinearity vars
@@ -443,7 +419,7 @@ discernPatternRow nenv (patList, body) = do
   body' <- discern (nenv' ++ nenv) body
   return (patList', ([], body'))
 
-ensurePatternVariableLinearity :: Context m => [(Hint, Ident)] -> m ()
+ensurePatternVariableLinearity :: [(Hint, Ident)] -> App ()
 ensurePatternVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
   unless (null linearityErrors) $ Throw.throw $ L.MakeError linearityErrors
@@ -465,10 +441,9 @@ getNonLinearOccurrences vars found nonLinear =
           getNonLinearOccurrences rest (S.insert (Ident.toText v) found) nonLinear
 
 discernPattern ::
-  Context m =>
   NominalEnv ->
   (Hint, RP.RawPattern) ->
-  m (Hint, PAT.Pattern)
+  App (Hint, PAT.Pattern)
 discernPattern nenv (m, pat) =
   case pat of
     RP.Var x ->
@@ -482,7 +457,7 @@ discernPattern nenv (m, pat) =
       args' <- mapM (discernPattern nenv) args
       return (m, PAT.Cons consName disc dataArity consArity args')
 
-ensurePatternMatrixSanity :: Context m => PAT.PatternMatrix a -> m ()
+ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity mat =
   case PAT.unconsRow mat of
     Nothing ->
@@ -491,11 +466,11 @@ ensurePatternMatrixSanity mat =
       ensurePatternRowSanity row
       ensurePatternMatrixSanity rest
 
-ensurePatternRowSanity :: Context m => PAT.PatternRow a -> m ()
+ensurePatternRowSanity :: PAT.PatternRow a -> App ()
 ensurePatternRowSanity (patternVector, _) = do
   mapM_ ensurePatternSanity $ V.toList patternVector
 
-ensurePatternSanity :: Context m => (Hint, PAT.Pattern) -> m ()
+ensurePatternSanity :: (Hint, PAT.Pattern) -> App ()
 ensurePatternSanity (m, pat) =
   case pat of
     PAT.Var {} ->
@@ -517,13 +492,12 @@ ensurePatternSanity (m, pat) =
 -- This translation is based on:
 --   https://dl.acm.org/doi/10.1145/1411304.1411311
 compilePatternMatrix ::
-  Context m =>
   NominalEnv ->
   N.IsNoetic ->
   Hint ->
   V.Vector Ident ->
   PAT.PatternMatrix ([Ident], WT.WeakTerm) ->
-  m (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 compilePatternMatrix nenv isNoetic m occurrences mat =
   case PAT.unconsRow mat of
     Nothing ->
@@ -556,15 +530,14 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
               t <- Gensym.newHole m (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
-alignLetBody :: Context m => NominalEnv -> N.IsNoetic -> Hint -> Ident -> m WT.WeakTerm
+alignLetBody :: NominalEnv -> N.IsNoetic -> Hint -> Ident -> App WT.WeakTerm
 alignLetBody nenv isNoetic m x =
   castToNoema' nenv isNoetic $ m :< WT.Var x
 
 alignConsArgs ::
-  Context m =>
   NominalEnv ->
   [(Hint, Ident)] ->
-  m ([BinderF WT.WeakTerm], NominalEnv)
+  App ([BinderF WT.WeakTerm], NominalEnv)
 alignConsArgs nenv binder =
   case binder of
     [] -> do
@@ -576,12 +549,11 @@ alignConsArgs nenv binder =
       return ((mx, x, t') : xts', nenv')
 
 bindLet ::
-  Context m =>
   NominalEnv ->
   Hint ->
   [(Maybe Ident, WT.WeakTerm)] ->
   WT.WeakTerm ->
-  m WT.WeakTerm
+  App WT.WeakTerm
 bindLet nenv m binder cont =
   case binder of
     [] ->
@@ -611,7 +583,7 @@ bindLet nenv m binder cont =
 --       cont' <- bindLet nenv m xes cont
 --       return $ m :< WT.Let O.Transparent (m, from, h) (m :< WT.Var to) cont'
 
-castFromIntToBool :: Context m => WT.WeakTerm -> m WT.WeakTerm
+castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
@@ -622,7 +594,7 @@ castFromIntToBool e@(m :< _) = do
   let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType (m :< WT.PiElim bool [])) e)
 
-discernGlobal :: Context m => Hint -> GL.GlobalLocator -> LL.LocalLocator -> m WT.WeakTerm
+discernGlobal :: Hint -> GL.GlobalLocator -> LL.LocalLocator -> App WT.WeakTerm
 discernGlobal m gl ll = do
   sgl <- Alias.resolveAlias m gl
   let dd = DD.new sgl ll

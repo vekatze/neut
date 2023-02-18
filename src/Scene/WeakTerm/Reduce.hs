@@ -1,5 +1,6 @@
 module Scene.WeakTerm.Reduce (reduce) where
 
+import Context.App
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.DecisionTree qualified as DT
@@ -10,7 +11,7 @@ import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.FreeVars
 import Scene.WeakTerm.Subst qualified as Subst
 
-reduce :: Subst.Context m => WT.WeakTerm -> m WT.WeakTerm
+reduce :: WT.WeakTerm -> App WT.WeakTerm
 reduce term =
   case term of
     m :< WT.Pi xts cod -> do
@@ -75,9 +76,8 @@ reduce term =
       return term
 
 reduceDecisionTree ::
-  Subst.Context m =>
   DT.DecisionTree WT.WeakTerm ->
-  m (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 reduceDecisionTree tree =
   case tree of
     DT.Leaf xs e -> do
@@ -91,18 +91,16 @@ reduceDecisionTree tree =
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 reduceCaseList ::
-  Subst.Context m =>
   DT.CaseList WT.WeakTerm ->
-  m (DT.CaseList WT.WeakTerm)
+  App (DT.CaseList WT.WeakTerm)
 reduceCaseList (fallbackTree, clauseList) = do
   fallbackTree' <- reduceDecisionTree fallbackTree
   clauseList' <- mapM reduceCase clauseList
   return (fallbackTree', clauseList')
 
 reduceCase ::
-  Subst.Context m =>
   DT.Case WT.WeakTerm ->
-  m (DT.Case WT.WeakTerm)
+  App (DT.Case WT.WeakTerm)
 reduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM reduce dataTerms

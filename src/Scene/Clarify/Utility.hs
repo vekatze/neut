@@ -1,5 +1,7 @@
 module Scene.Clarify.Utility where
 
+import Context.App
+import Context.Clarify
 import Context.Gensym qualified as Gensym
 import Entity.Comp qualified as C
 import Entity.DefiniteDescription qualified as DD
@@ -7,12 +9,11 @@ import Entity.EnumCase qualified as EC
 import Entity.Ident
 import Entity.Opacity qualified as O
 import Entity.PrimNumSize
-import Scene.Clarify.Context
 
 -- toAffineApp meta x t ~>
 --   bind exp := t in
 --   exp @ (0, x)
-toAffineApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
+toAffineApp :: Ident -> C.Comp -> App C.Comp
 toAffineApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 0, C.VarLocal x])
@@ -20,7 +21,7 @@ toAffineApp x t = do
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
 --   exp @ (1, x)
-toRelevantApp :: Gensym.Context m => Ident -> C.Comp -> m C.Comp
+toRelevantApp :: Ident -> C.Comp -> App C.Comp
 toRelevantApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 1, C.VarLocal x])
@@ -34,10 +35,9 @@ bindLet binder cont =
       C.UpElim True x e $ bindLet xes cont
 
 makeSwitcher ::
-  Gensym.Context m =>
-  (C.Value -> m C.Comp) ->
-  (C.Value -> m C.Comp) ->
-  m ([Ident], C.Comp)
+  (C.Value -> App C.Comp) ->
+  (C.Value -> App C.Comp) ->
+  App ([Ident], C.Comp)
 makeSwitcher compAff compRel = do
   (switchVarName, switchVar) <- Gensym.newValueVarLocalWith "switch"
   (argVarName, argVar) <- Gensym.newValueVarLocalWith "arg"
@@ -52,11 +52,10 @@ makeSwitcher compAff compRel = do
     )
 
 registerSwitcher ::
-  Context m =>
   DD.DefiniteDescription ->
-  (C.Value -> m C.Comp) ->
-  (C.Value -> m C.Comp) ->
-  m ()
+  (C.Value -> App C.Comp) ->
+  (C.Value -> App C.Comp) ->
+  App ()
 registerSwitcher name aff rel = do
   (args, e) <- makeSwitcher aff rel
   insertToAuxEnv name (O.Transparent, args, e)

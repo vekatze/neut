@@ -1,5 +1,6 @@
-module Scene.Parse.Discern.Fallback (getFallbackMatrix, Context) where
+module Scene.Parse.Discern.Fallback (getFallbackMatrix) where
 
+import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -9,24 +10,20 @@ import Entity.NominalEnv
 import Entity.Pattern
 import Entity.WeakTerm qualified as WT
 
-class (Gensym.Context m, Throw.Context m) => Context m
-
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 getFallbackMatrix ::
-  Context m =>
   NominalEnv ->
   Ident ->
   PatternMatrix ([Ident], WT.WeakTerm) ->
-  m (PatternMatrix ([Ident], WT.WeakTerm))
+  App (PatternMatrix ([Ident], WT.WeakTerm))
 getFallbackMatrix nenv cursor mat = do
   mapMaybeRowM (fallbackRow nenv cursor) mat
 
 fallbackRow ::
-  Context m =>
   NominalEnv ->
   Ident ->
   PatternRow ([Ident], WT.WeakTerm) ->
-  m (Maybe (PatternRow ([Ident], WT.WeakTerm)))
+  App (Maybe (PatternRow ([Ident], WT.WeakTerm)))
 fallbackRow nenv cursor (patternVector, (freedVars, body)) =
   case V.uncons patternVector of
     Nothing ->

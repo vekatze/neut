@@ -1,15 +1,16 @@
 module Scene.Comp.Subst (subst) where
 
-import Context.Gensym
+import Context.App
+import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
 import Entity.Comp qualified as C
 import Entity.Ident.Reify qualified as Ident
 
-subst :: Context m => C.SubstValue -> C.Comp -> m C.Comp
+subst :: C.SubstValue -> C.Comp -> App C.Comp
 subst =
   substComp
 
-substComp :: Context m => C.SubstValue -> C.Comp -> m C.Comp
+substComp :: C.SubstValue -> C.Comp -> App C.Comp
 substComp sub term =
   case term of
     C.Primitive theta -> do
@@ -21,7 +22,7 @@ substComp sub term =
       return $ C.PiElimDownElim v' ds'
     C.SigmaElim b xs v e -> do
       let v' = substValue sub v
-      xs' <- mapM newIdentFromIdent xs
+      xs' <- mapM Gensym.newIdentFromIdent xs
       let sub' = IntMap.union (IntMap.fromList (zip (map Ident.toInt xs) (map C.VarLocal xs'))) sub
       e' <- substComp sub' e
       return $ C.SigmaElim b xs' v' e'
@@ -30,7 +31,7 @@ substComp sub term =
       return $ C.UpIntro v'
     C.UpElim isReducible x e1 e2 -> do
       e1' <- substComp sub e1
-      x' <- newIdentFromIdent x
+      x' <- Gensym.newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp sub' e2
       return $ C.UpElim isReducible x' e1' e2'

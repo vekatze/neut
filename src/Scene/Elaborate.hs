@@ -1,18 +1,18 @@
 module Scene.Elaborate
   ( elaborate,
-    Context (..),
     insertStmt,
   )
 where
 
+import Context.App
 import Context.Cache qualified as Cache
 import Context.DataDefinition qualified as DataDefinition
 import Context.Definition qualified as Definition
+import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Implicit qualified as Implicit
 import Context.Locator qualified as Locator
-import Context.Log qualified as Log
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Control.Comonad.Cofree
@@ -41,25 +41,24 @@ import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Reduce qualified as Term
-import Scene.Term.Subst qualified as Subst
 import Scene.WeakTerm.Subst qualified as WT
 
-class
-  ( Infer.Context m,
-    Unify.Context m,
-    Subst.Context m,
-    Log.Context m,
-    Locator.Context m,
-    Global.Context m,
-    Cache.Context m,
-    Definition.Context m,
-    DataDefinition.Context m
-  ) =>
-  Context m
-  where
-  initialize :: m ()
+-- class
+--   ( Infer.Context m,
+--     Unify.Context m,
+--     Subst.Context m,
+--     Log.Context m,
+--     Locator.Context m,
+--     Global.Context m,
+--     Cache.Context m,
+--     Definition.Context m,
+--     DataDefinition.Context m
+--   ) =>
+--   Context m
+--   where
+--   initialize :: m ()
 
-elaborate :: Context m => Either [Stmt] [WeakStmt] -> m [Stmt]
+elaborate :: Either [Stmt] [WeakStmt] -> App [Stmt]
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -72,9 +71,9 @@ elaborate cacheOrStmt = do
       -- infer
       forM_ defList insertWeakStmt
       defList' <- mapM (inferStmt mMainDefiniteDescription) defList
-      constraintList <- Env.getConstraintEnv
+      constraintList <- getConstraintEnv
       -- unify
-      Unify.unify constraintList >>= Env.setHoleSubst
+      Unify.unify constraintList >>= setHoleSubst
       -- elaborate
       defList'' <- elaborateStmtList defList'
       forM_ defList'' insertStmt
@@ -82,7 +81,7 @@ elaborate cacheOrStmt = do
       Cache.saveCache (source, defList'')
       return defList''
 
--- viewStmt :: Context m => WeakStmt -> m ()
+-- viewStmt ::WeakStmt -> App ()
 -- viewStmt stmt = do
 --   case stmt of
 --     WeakStmtDefine _ m x _ xts codType e ->
@@ -90,30 +89,29 @@ elaborate cacheOrStmt = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Log.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-inferStmt :: Infer.Context m => Maybe DD.DefiniteDescription -> WeakStmt -> m WeakStmt
+inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt = do
   case stmt of
     WeakStmtDefine isReducible m x impArgNum xts codType e -> do
       (xts', e', codType') <- inferStmtDefine xts e codType
       when (Just x == mMainDD) $
-        Env.insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts codType)
+        insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts codType)
       return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier ->
       Infer.inferDefineResource m name discarder copier
 
 inferStmtDefine ::
-  Infer.Context m =>
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
   WT.WeakTerm ->
-  m ([BinderF WT.WeakTerm], WT.WeakTerm, WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], WT.WeakTerm, WT.WeakTerm)
 inferStmtDefine xts e codType = do
   (xts', (e', te)) <- Infer.inferBinder [] xts e
   codType' <- Infer.inferType codType
-  Env.insConstraintEnv codType' te
+  insConstraintEnv codType' te
   return (xts', e', codType')
 
-elaborateStmtList :: Context m => [WeakStmt] -> m [Stmt]
+elaborateStmtList :: [WeakStmt] -> App [Stmt]
 elaborateStmtList stmtList = do
   case stmtList of
     [] ->
@@ -133,7 +131,7 @@ elaborateStmtList stmtList = do
       rest' <- elaborateStmtList rest
       return $ StmtDefineResource m name discarder' copier' : rest'
 
-insertWeakStmt :: Context m => WeakStmt -> m ()
+insertWeakStmt :: WeakStmt -> App ()
 insertWeakStmt stmt = do
   case stmt of
     WeakStmtDefine stmtKind m f impArgNum xts codType e -> do
@@ -143,12 +141,12 @@ insertWeakStmt stmt = do
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
 
-insertStmt :: Context m => Stmt -> m ()
+insertStmt :: Stmt -> App ()
 insertStmt stmt = do
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
-insertStmtKindInfo :: Context m => Stmt -> m ()
+insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
   case stmt of
     StmtDefine stmtKind _ _ _ _ _ _ -> do
@@ -162,7 +160,7 @@ insertStmtKindInfo stmt = do
     StmtDefineResource {} ->
       return ()
 
-elaborateStmtKind :: Context m => StmtKindF WT.WeakTerm -> m (StmtKindF TM.Term)
+elaborateStmtKind :: StmtKindF WT.WeakTerm -> App (StmtKindF TM.Term)
 elaborateStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
@@ -177,7 +175,7 @@ elaborateStmtKind stmtKind =
       consArgs' <- mapM elaborateWeakBinder consArgs
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
-elaborate' :: Context m => WT.WeakTerm -> m TM.Term
+elaborate' :: WT.WeakTerm -> App TM.Term
 elaborate' term =
   case term of
     m :< WT.Tau ->
@@ -233,7 +231,7 @@ elaborate' term =
       let lamKind = LK.Normal (WT.reifyOpacity opacity)
       return $ m :< TM.PiElim (m :< TM.PiIntro lamKind [mxt'] e2') [e1']
     m :< WT.Hole h es -> do
-      holeSubst <- Env.getHoleSubst
+      holeSubst <- getHoleSubst
       case HS.lookup h holeSubst of
         Nothing ->
           Throw.raiseError m "couldn't instantiate the hole here"
@@ -279,12 +277,12 @@ elaborate' term =
       der' <- mapM elaborate' der
       return $ m :< TM.Magic der'
 
-elaborateWeakBinder :: Context m => BinderF WT.WeakTerm -> m (BinderF TM.Term)
+elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: Context m => LK.LamKindF WT.WeakTerm -> m (LK.LamKindF TM.Term)
+elaborateKind :: LK.LamKindF WT.WeakTerm -> App (LK.LamKindF TM.Term)
 elaborateKind kind =
   case kind of
     LK.Normal opacity ->
@@ -300,7 +298,7 @@ elaborateKind kind =
 --   p $ T.unpack $ toText e2
 --   p "---------------------"
 
-elaborateDecisionTree :: Context m => Hint -> DT.DecisionTree WT.WeakTerm -> m (DT.DecisionTree TM.Term)
+elaborateDecisionTree :: Hint -> DT.DecisionTree WT.WeakTerm -> App (DT.DecisionTree TM.Term)
 elaborateDecisionTree m tree =
   case tree of
     DT.Leaf xs body -> do
@@ -326,7 +324,7 @@ elaborateDecisionTree m tree =
               clauseList' <- mapM (elaborateClause m) clauseList
               return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Context m => Hint -> DT.Case WT.WeakTerm -> m (DT.Case TM.Term)
+elaborateClause :: Hint -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM elaborate' dataTerms
@@ -335,7 +333,7 @@ elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
   cont' <- elaborateDecisionTree m cont
   return $ DT.Cons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
-extractConstructorList :: Context m => Hint -> TM.Term -> m [DD.DefiniteDescription]
+extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
     _ :< TM.Data dataName _ -> do

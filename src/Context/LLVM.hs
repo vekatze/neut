@@ -1,11 +1,14 @@
 module Context.LLVM
   ( emit,
     link,
+    getClangOptString,
+    setClangOptString,
   )
 where
 
 import Context.App
 import Context.App.Internal
+import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -31,7 +34,7 @@ type LLVMCode = L.ByteString
 
 emit :: [OK.OutputKind] -> L.ByteString -> App ()
 emit outputKindList llvmCode = do
-  source <- readRef "currentSource" currentSource
+  source <- Env.getCurrentSource
   kindPathList <- zipWithM Source.attachOutputPath outputKindList (repeat source)
   forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
   emitAll llvmCode kindPathList
@@ -47,7 +50,7 @@ emitAll llvmCode kindPathList = do
 
 emit' :: LLVMCode -> OK.OutputKind -> Path Abs File -> App ()
 emit' llvmCode kind path = do
-  clangOptString <- readRef' clangOptString
+  clangOptString <- getClangOptString
   case kind of
     OK.LLVM -> do
       Path.writeByteString path llvmCode
@@ -82,7 +85,7 @@ clangLinkOpt objectPathList outputPath additionalOptionStr = do
 link :: [Path Abs File] -> Path Abs File -> App ()
 link objectPathList outputPath = do
   clang <- liftIO getClang
-  clangOptString <- readRef' clangOptString
+  clangOptString <- getClangOptString
   ensureDir $ parent outputPath
   External.run clang $ clangLinkOpt objectPathList outputPath clangOptString
 
@@ -120,3 +123,11 @@ getClang = do
       return clang
     Nothing ->
       return "clang"
+
+getClangOptString :: App String
+getClangOptString =
+  readRef' clangOptString
+
+setClangOptString :: String -> App ()
+setClangOptString =
+  writeRef' clangOptString

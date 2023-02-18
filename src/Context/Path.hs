@@ -15,6 +15,7 @@ module Context.Path
     writeText,
     parseRelFile,
     removeDirRecur,
+    getExecutableOutputPath,
   )
 where
 
@@ -29,6 +30,8 @@ import Data.Text.IO qualified as TIO
 import Data.Time
 import Data.Version qualified as V
 import Entity.Const
+import Entity.Module
+import Entity.Target qualified as Target
 import Entity.TargetPlatform as TP
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
@@ -122,3 +125,7 @@ getCacheDirPrefix = do
   platformDir <- P.parseRelDir $ TP.platform tp
   versionDir <- P.parseRelDir $ V.showVersion version
   return $ platformDir </> versionDir
+
+getExecutableOutputPath :: Target.Target -> Module -> App (Path Abs File)
+getExecutableOutputPath target mainModule =
+  resolveFile (getExecutableDir mainModule) $ T.unpack $ Target.extract target

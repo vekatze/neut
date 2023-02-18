@@ -1,11 +1,10 @@
 module Scene.Comp.Reduce
   ( reduce,
-    Context,
   )
 where
 
+import Context.App
 import Context.CompDefinition qualified as CompDefinition
-import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
 import Entity.Comp qualified as C
 import Entity.EnumCase qualified as EC
@@ -14,9 +13,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.Opacity qualified as O
 import Scene.Comp.Subst
 
-class (CompDefinition.Context m, Gensym.Context m) => Context m
-
-reduce :: Context m => C.Comp -> m C.Comp
+reduce :: C.Comp -> App C.Comp
 reduce term =
   case term of
     C.Primitive _ ->

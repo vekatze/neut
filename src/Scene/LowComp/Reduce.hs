@@ -1,9 +1,6 @@
-module Scene.LowComp.Reduce
-  ( reduce,
-    Context (),
-  )
-where
+module Scene.LowComp.Reduce (reduce) where
 
+import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
@@ -17,15 +14,13 @@ import Entity.LowType qualified as LT
 type SizeMap =
   Map.Map LC.SizeInfo [(Int, LC.Value)]
 
-class (Gensym.Context m, Env.Context m) => Context m
-
-reduce :: Context m => SubstLowComp -> SizeMap -> LC.Comp -> m (S.Set Int, LC.Comp)
+reduce :: SubstLowComp -> SizeMap -> LC.Comp -> App (S.Set Int, LC.Comp)
 reduce sub sizeMap lowComp = do
   result <- reduce' sub sizeMap lowComp
   nopFreeSet <- Env.getNopFreeSet
   return (nopFreeSet, result)
 
-reduce' :: Context m => SubstLowComp -> SizeMap -> LC.Comp -> m LC.Comp
+reduce' :: SubstLowComp -> SizeMap -> LC.Comp -> App LC.Comp
 reduce' sub sizeMap lowComp = do
   cancelAllocFlag <- Env.getShouldCancelAlloc
   case lowComp of

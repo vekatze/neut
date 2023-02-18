@@ -1,14 +1,11 @@
-module Scene.Term.Subst
-  ( subst,
-    Context (..),
-  )
-where
+module Scene.Term.Subst (subst) where
 
+import Context.App
+import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
-import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Term qualified as TM
@@ -16,10 +13,7 @@ import Entity.Term qualified as TM
 type SubstTerm =
   IntMap.IntMap TM.Term
 
-class MonadFail m => Context m where
-  newIdentFromIdent :: Ident -> m Ident
-
-subst :: Context m => SubstTerm -> TM.Term -> m TM.Term
+subst :: SubstTerm -> TM.Term -> App TM.Term
 subst sub term =
   case term of
     (_ :< TM.Tau) ->
@@ -72,11 +66,10 @@ subst sub term =
       return (m :< TM.Magic der')
 
 subst' ::
-  Context m =>
   SubstTerm ->
   [BinderF TM.Term] ->
   TM.Term ->
-  m ([BinderF TM.Term], TM.Term)
+  App ([BinderF TM.Term], TM.Term)
 subst' sub binder e =
   case binder of
     [] -> do
@@ -84,17 +77,16 @@ subst' sub binder e =
       return ([], e')
     ((m, x, t) : xts) -> do
       t' <- subst sub t
-      x' <- newIdentFromIdent x
+      x' <- Gensym.newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (m :< TM.Var x') sub
       (xts', e') <- subst' sub' xts e
       return ((m, x', t') : xts', e')
 
 subst'' ::
-  Context m =>
   SubstTerm ->
   [BinderF TM.Term] ->
   DT.DecisionTree TM.Term ->
-  m ([BinderF TM.Term], DT.DecisionTree TM.Term)
+  App ([BinderF TM.Term], DT.DecisionTree TM.Term)
 subst'' sub binder decisionTree =
   case binder of
     [] -> do
@@ -102,16 +94,15 @@ subst'' sub binder decisionTree =
       return ([], decisionTree')
     ((m, x, t) : xts) -> do
       t' <- subst sub t
-      x' <- newIdentFromIdent x
+      x' <- Gensym.newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (m :< TM.Var x') sub
       (xts', e') <- subst'' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
 substDecisionTree ::
-  Context m =>
   SubstTerm ->
   DT.DecisionTree TM.Term ->
-  m (DT.DecisionTree TM.Term)
+  App (DT.DecisionTree TM.Term)
 substDecisionTree sub tree =
   case tree of
     DT.Leaf xs e -> do
@@ -125,20 +116,18 @@ substDecisionTree sub tree =
       return $ DT.Switch cursor caseList'
 
 substCaseList ::
-  Context m =>
   SubstTerm ->
   DT.CaseList TM.Term ->
-  m (DT.CaseList TM.Term)
+  App (DT.CaseList TM.Term)
 substCaseList sub (fallbackClause, clauseList) = do
   fallbackClause' <- substDecisionTree sub fallbackClause
   clauseList' <- mapM (substCase sub) clauseList
   return (fallbackClause', clauseList')
 
 substCase ::
-  Context m =>
   SubstTerm ->
   DT.Case TM.Term ->
-  m (DT.Case TM.Term)
+  App (DT.Case TM.Term)
 substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM (subst sub) dataTerms

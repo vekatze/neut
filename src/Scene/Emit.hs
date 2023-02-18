@@ -1,9 +1,6 @@
-module Scene.Emit
-  ( emit,
-    Context,
-  )
-where
+module Scene.Emit (emit) where
 
+import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
@@ -27,15 +24,7 @@ import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
 import Scene.LowComp.Reduce qualified as LowComp
 
-class
-  ( Gensym.Context m,
-    Throw.Context m,
-    Env.Context m,
-    LowComp.Context m
-  ) =>
-  Context m
-
-emit :: Context m => (DN.DeclEnv, [LC.Def], Maybe LC.Comp) -> m L.ByteString
+emit :: (DN.DeclEnv, [LC.Def], Maybe LC.Comp) -> App L.ByteString
 emit (declEnv, defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
@@ -52,14 +41,14 @@ emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
   map declToBuilder $ List.sort $ HashMap.toList declEnv
 
-emitDefinitions :: Context m => LC.Def -> m [Builder]
+emitDefinitions :: LC.Def -> App [Builder]
 emitDefinitions (name, (args, body)) = do
   let args' = map (emitValue . LC.VarLocal) args
   (is, body') <- LowComp.reduce IntMap.empty Map.empty body
   Env.setNopFreeSet is
   emitDefinition "i8*" (DD.toBuilder name) args' body'
 
-emitMain :: Context m => LC.Comp -> m [Builder]
+emitMain :: LC.Comp -> App [Builder]
 emitMain mainTerm = do
   (is, mainTerm') <- LowComp.reduce IntMap.empty Map.empty mainTerm
   Env.setNopFreeSet is
@@ -76,7 +65,7 @@ declToBuilder (name, (dom, cod)) = do
     <> unwordsC (map emitLowType dom)
     <> ")"
 
-emitDefinition :: Context m => Builder -> Builder -> [Builder] -> LC.Comp -> m [Builder]
+emitDefinition :: Builder -> Builder -> [Builder] -> LC.Comp -> App [Builder]
 emitDefinition retType name args asm = do
   let header = sig retType name args <> " {"
   content <- emitLowComp retType asm
@@ -87,12 +76,12 @@ sig :: Builder -> Builder -> [Builder] -> Builder
 sig retType name args =
   "define fastcc " <> retType <> " @" <> name <> showLocals args
 
-emitBlock :: Context m => Builder -> Ident -> LC.Comp -> m [Builder]
+emitBlock :: Builder -> Ident -> LC.Comp -> App [Builder]
 emitBlock funName (I (_, i)) asm = do
   a <- emitLowComp funName asm
   return $ emitLabel ("_" <> intDec i) : a
 
-emitLowComp :: Context m => Builder -> LC.Comp -> m [Builder]
+emitLowComp :: Builder -> LC.Comp -> App [Builder]
 emitLowComp retType lowComp =
   case lowComp of
     LC.Return d ->
@@ -158,7 +147,7 @@ emitLabel :: Builder -> Builder
 emitLabel s =
   s <> ":"
 
-constructLabelList :: Gensym.Context m => [a] -> m [Ident]
+constructLabelList :: [a] -> App [Ident]
 constructLabelList input =
   case input of
     [] ->

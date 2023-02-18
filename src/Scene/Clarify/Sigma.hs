@@ -11,6 +11,7 @@ module Scene.Clarify.Sigma
   )
 where
 
+import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Control.Monad
@@ -23,24 +24,23 @@ import Entity.EnumCase qualified as EC
 import Entity.Ident
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
-import Scene.Clarify.Context
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
-registerImmediateS4 :: Context m => m ()
+registerImmediateS4 :: App ()
 registerImmediateS4 = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
   registerSwitcher DD.imm immediateT immediate4
 
-registerClosureS4 :: Context m => m ()
+registerClosureS4 :: App ()
 registerClosureS4 = do
   (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
     DD.cls
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
 
-registerCellS4 :: Context m => m ()
+registerCellS4 :: App ()
 registerCellS4 = do
   (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
@@ -64,10 +64,9 @@ immediateS4 = do
   C.VarGlobal DD.imm A.arityS4
 
 registerSigmaS4 ::
-  Context m =>
   DD.DefiniteDescription ->
   [Either C.Comp (Ident, C.Comp)] ->
-  m ()
+  App ()
 registerSigmaS4 name mxts = do
   registerSwitcher name (sigmaT mxts) (sigma4 mxts)
 
@@ -87,10 +86,9 @@ registerSigmaS4 name mxts = do
 --     return ()                                     ---        ---
 --
 sigmaT ::
-  Gensym.Context m =>
   [Either C.Comp (Ident, C.Comp)] ->
   C.Value ->
-  m C.Comp
+  App C.Comp
 sigmaT mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]   (`a` here stands for `app`)
@@ -114,10 +112,9 @@ sigmaT mxts argVar = do
 --       fn @ (1, xn) in              ---  APP-n                       ---       ---
 --     return (x1', ..., xn')
 sigma4 ::
-  Gensym.Context m =>
   [Either C.Comp (Ident, C.Comp)] ->
   C.Value ->
-  m C.Comp
+  App C.Comp
 sigma4 mxts argVar = do
   xts <- mapM supplyName mxts
   -- as == [APP-1, ..., APP-n]
@@ -126,7 +123,7 @@ sigma4 mxts argVar = do
   body' <- linearize xts $ bindLet (zip varNameList as) $ C.UpIntro $ C.SigmaIntro varList
   return $ C.SigmaElim False (map fst xts) argVar body'
 
-supplyName :: Gensym.Context m => Either b (Ident, b) -> m (Ident, b)
+supplyName :: Either b (Ident, b) -> App (Ident, b)
 supplyName mName =
   case mName of
     Right (x, t) ->
@@ -136,9 +133,8 @@ supplyName mName =
       return (x, t)
 
 closureEnvS4 ::
-  Context m =>
   [Either C.Comp (Ident, C.Comp)] ->
-  m C.Value
+  App C.Value
 closureEnvS4 mxts =
   case mxts of
     [] ->
@@ -150,10 +146,9 @@ closureEnvS4 mxts =
       return $ C.VarGlobal name A.arityS4
 
 returnSigmaDataS4 ::
-  Context m =>
   DD.DefiniteDescription ->
   [(D.Discriminant, [(Ident, C.Comp)])] ->
-  m C.Comp
+  App C.Comp
 returnSigmaDataS4 dataName dataInfo = do
   let aff = sigmaDataT dataInfo
   let rel = sigmaData4 dataInfo
@@ -161,24 +156,23 @@ returnSigmaDataS4 dataName dataInfo = do
   registerSwitcher dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
 
-sigmaData4 :: Context m => [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> m C.Comp
+sigmaData4 :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
 sigmaData4 = do
   sigmaData sigmaBinder4
 
-sigmaBinder4 :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
+sigmaBinder4 :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinder4 xts v = do
   sigma4 (Left returnImmediateS4 : map Right xts) v
 
-sigmaDataT :: Context m => [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> m C.Comp
+sigmaDataT :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
 sigmaDataT = do
   sigmaData sigmaBinderT
 
 sigmaData ::
-  Context m =>
-  ([(Ident, C.Comp)] -> C.Value -> m C.Comp) ->
+  ([(Ident, C.Comp)] -> C.Value -> App C.Comp) ->
   [(D.Discriminant, [(Ident, C.Comp)])] ->
   C.Value ->
-  m C.Comp
+  App C.Comp
 sigmaData resourceHandler dataInfo arg = do
   case dataInfo of
     [] ->
@@ -194,7 +188,7 @@ sigmaData resourceHandler dataInfo arg = do
           C.UpElim True discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) $
             C.EnumElim (C.VarLocal discriminantVar) (last binderList') (zip discriminantList' (init binderList'))
 
-sigmaBinderT :: Context m => [(Ident, C.Comp)] -> C.Value -> m C.Comp
+sigmaBinderT :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinderT xts v = do
   sigmaT (Left returnImmediateS4 : map Right xts) v
 

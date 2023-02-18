@@ -3,6 +3,7 @@ module Scene.Clarify.Linearize
   )
 where
 
+import Context.App
 import Context.Gensym
 import Control.Monad
 import Entity.Comp qualified as C
@@ -14,10 +15,9 @@ import Scene.Clarify.Utility
 type Occurrence = Ident
 
 linearize ::
-  Context m =>
   [(Ident, C.Comp)] -> -- [(x1, t1), ..., (xn, tn)]  (closed chain)
   C.Comp -> -- a term that can contain non-linear occurrences of xi
-  m C.Comp -- a term in which all the variables in the closed chain occur linearly
+  App C.Comp -- a term in which all the variables in the closed chain occur linearly
 linearize binder e =
   case binder of
     [] ->
@@ -36,13 +36,12 @@ linearize binder e =
           return $ C.UpElim False localName (C.UpIntro (C.VarLocal x)) e'''
 
 insertHeader ::
-  Context m =>
   Ident ->
   Occurrence ->
   [Occurrence] ->
   C.Comp ->
   C.Comp ->
-  m C.Comp
+  App C.Comp
 insertHeader localName z1 zs t e = do
   case zs of
     [] ->
@@ -52,7 +51,7 @@ insertHeader localName z1 zs t e = do
       copyRelevantVar <- toRelevantApp localName t
       return $ C.UpElim True z1 copyRelevantVar e'
 
-distinguishVar :: Context m => Ident -> Ident -> m ([Occurrence], Ident)
+distinguishVar :: Ident -> Ident -> App ([Occurrence], Ident)
 distinguishVar z x =
   if x /= z
     then return ([], x)
@@ -60,7 +59,7 @@ distinguishVar z x =
       x' <- newIdentFromIdent x
       return ([x'], x')
 
-distinguishValue :: Context m => Ident -> C.Value -> m ([Occurrence], C.Value)
+distinguishValue :: Ident -> C.Value -> App ([Occurrence], C.Value)
 distinguishValue z term =
   case term of
     C.VarLocal x -> do
@@ -72,7 +71,7 @@ distinguishValue z term =
     _ ->
       return ([], term)
 
-distinguishComp :: Context m => Ident -> C.Comp -> m ([Occurrence], C.Comp)
+distinguishComp :: Ident -> C.Comp -> App ([Occurrence], C.Comp)
 distinguishComp z term =
   case term of
     C.Primitive theta -> do
@@ -107,7 +106,7 @@ distinguishComp z term =
     C.Unreachable ->
       return ([], term)
 
-distinguishPrimitive :: Context m => Ident -> C.Primitive -> m ([Occurrence], C.Primitive)
+distinguishPrimitive :: Ident -> C.Primitive -> App ([Occurrence], C.Primitive)
 distinguishPrimitive z term =
   case term of
     C.PrimOp op ds -> do

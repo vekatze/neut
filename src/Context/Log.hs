@@ -1,5 +1,6 @@
 module Context.Log
-  ( printLog,
+  ( printString,
+    printLog,
     printNote,
     printNote',
     printWarning,
@@ -12,6 +13,10 @@ module Context.Log
     printPass',
     printFail,
     printFail',
+    setEndOfEntry,
+    getEndOfEntry,
+    setShouldColorize,
+    getShouldColorize,
   )
 where
 
@@ -27,8 +32,13 @@ import Entity.Log
 import Entity.Log qualified as L
 import System.Console.ANSI
 
+printString :: String -> App ()
+printString =
+  liftIO . putStrLn
+
 printLog :: L.Log -> App ()
-printLog = printLogIO
+printLog =
+  printLogIO
 
 printNote :: Hint -> T.Text -> App ()
 printNote =
@@ -105,7 +115,7 @@ outputLogLocation mpos = do
 
 outputFooter :: App ()
 outputFooter = do
-  eoe <- readRef' endOfEntry
+  eoe <- getEndOfEntry
   if eoe == ""
     then return ()
     else liftIO $ TIO.putStrLn eoe
@@ -134,7 +144,23 @@ stylizeLogText str pad = do
 
 withSGR :: [SGR] -> App () -> App ()
 withSGR arg f = do
-  shouldColorize <- readRef' shouldColorize
+  shouldColorize <- getShouldColorize
   if shouldColorize
     then liftIO (setSGR arg) >> f >> liftIO (setSGR [Reset])
     else f
+
+setEndOfEntry :: T.Text -> App ()
+setEndOfEntry =
+  writeRef' endOfEntry
+
+getEndOfEntry :: App T.Text
+getEndOfEntry =
+  readRef' endOfEntry
+
+setShouldColorize :: Bool -> App ()
+setShouldColorize =
+  writeRef' shouldColorize
+
+getShouldColorize :: App Bool
+getShouldColorize =
+  readRef' shouldColorize

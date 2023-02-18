@@ -1,9 +1,6 @@
-module Scene.WeakTerm.Subst
-  ( subst,
-    Context (..),
-  )
-where
+module Scene.WeakTerm.Subst (subst) where
 
+import Context.App
 import Context.Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
@@ -13,7 +10,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.WeakTerm qualified as WT
 
-subst :: Context m => WT.SubstWeakTerm -> WT.WeakTerm -> m WT.WeakTerm
+subst :: WT.SubstWeakTerm -> WT.WeakTerm -> App WT.WeakTerm
 subst sub term =
   case term of
     _ :< WT.Tau ->
@@ -74,11 +71,10 @@ subst sub term =
       return $ m :< WT.Magic der'
 
 subst' ::
-  Context m =>
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  m ([BinderF WT.WeakTerm], WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], WT.WeakTerm)
 subst' sub binder e =
   case binder of
     [] -> do
@@ -92,12 +88,11 @@ subst' sub binder e =
       return ((m, x', t') : xts', e')
 
 subst'' ::
-  Context m =>
   WT.SubstWeakTerm ->
   BinderF WT.WeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
+  App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 subst'' sub (m, x, t) binder e = do
   t' <- subst sub t
   x' <- newIdentFromIdent x
@@ -106,11 +101,10 @@ subst'' sub (m, x, t) binder e = do
   return ((m, x, t'), xts', e')
 
 subst''' ::
-  Context m =>
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   DT.DecisionTree WT.WeakTerm ->
-  m ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
 subst''' sub binder decisionTree =
   case binder of
     [] -> do
@@ -124,10 +118,9 @@ subst''' sub binder decisionTree =
       return ((m, x', t') : xts', e')
 
 substDecisionTree ::
-  Context m =>
   WT.SubstWeakTerm ->
   DT.DecisionTree WT.WeakTerm ->
-  m (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 substDecisionTree sub tree =
   case tree of
     DT.Leaf xs e -> do
@@ -142,20 +135,18 @@ substDecisionTree sub tree =
       return $ DT.Switch (cursorVar, cursor') caseList'
 
 substCaseList ::
-  Context m =>
   WT.SubstWeakTerm ->
   DT.CaseList WT.WeakTerm ->
-  m (DT.CaseList WT.WeakTerm)
+  App (DT.CaseList WT.WeakTerm)
 substCaseList sub (fallbackClause, clauseList) = do
   fallbackClause' <- substDecisionTree sub fallbackClause
   clauseList' <- mapM (substCase sub) clauseList
   return (fallbackClause', clauseList')
 
 substCase ::
-  Context m =>
   WT.SubstWeakTerm ->
   DT.Case WT.WeakTerm ->
-  m (DT.Case WT.WeakTerm)
+  App (DT.Case WT.WeakTerm)
 substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM (subst sub) dataTerms

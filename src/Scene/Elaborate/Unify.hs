@@ -1,10 +1,11 @@
 module Scene.Elaborate.Unify
   ( unify,
-    Context (..),
   )
 where
 
-import Context.Env qualified as Env
+import Context.App
+import Context.Definition qualified as Definition
+import Context.Elaborate
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -35,30 +36,21 @@ import Scene.WeakTerm.Fill
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst qualified as Subst
 
-class (Subst.Context m, Gensym.Context m, Throw.Context m, Env.Context m) => Context m where
-  insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> m ()
-  setConstraintQueue :: Q.MinQueue C.SuspendedConstraint -> m ()
-  insertConstraint :: C.SuspendedConstraint -> m ()
-  getConstraintQueue :: m C.SuspendedConstraintQueue
-  getDefMap :: m DefMap
-
-type DefMap = Map.HashMap DD.DefiniteDescription WT.WeakTerm
-
 data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WT.WeakTerm])]
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WT.WeakTerm])]
   | StuckPiElimHole HID.HoleID [WT.WeakTerm]
 
-unify :: Context m => [C.Constraint] -> m HS.HoleSubst
+unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
   analyze constraintList >> synthesize
-  Env.getHoleSubst
+  getHoleSubst
 
-analyze :: Context m => [C.Constraint] -> m ()
+analyze :: [C.Constraint] -> App ()
 analyze constraintList =
   simplify $ zip constraintList constraintList
 
-synthesize :: Context m => m ()
+synthesize :: App ()
 synthesize = do
   suspendedConstraintQueue <- getConstraintQueue
   case Q.minView suspendedConstraintQueue of
@@ -71,10 +63,10 @@ synthesize = do
     Just (C.SuspendedConstraint (_, C.Other, _), _) ->
       throwTypeErrors
 
-throwTypeErrors :: Context m => m a
+throwTypeErrors :: App a
 throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
-  sub <- Env.getHoleSubst
+  sub <- getHoleSubst
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     expected' <- fill sub expected >>= reduce
     actual' <- fill sub actual >>= reduce
@@ -88,7 +80,7 @@ constructErrorMsg e1 e2 =
     <> "\n- "
     <> toText e2
 
-simplify :: Context m => [(C.Constraint, C.Constraint)] -> m ()
+simplify :: [(C.Constraint, C.Constraint)] -> App ()
 simplify constraintList =
   case constraintList of
     [] ->
@@ -165,7 +157,7 @@ simplify constraintList =
           | name1 == name2 ->
               simplify cs
         (e1, e2) -> do
-          sub <- Env.getHoleSubst
+          sub <- getHoleSubst
           let fvs1 = freeVars e1
           let fvs2 = freeVars e2
           let fmvs1 = holes e1 -- fmvs: free meta-variables
@@ -186,7 +178,8 @@ simplify constraintList =
               e2' <- fill s2 e2
               simplify $ ((e1, e2'), orig) : cs
             (Nothing, Nothing) -> do
-              defMap <- getDefMap
+              defMap <- Definition.read
+              -- defMap <- getDefMap
               let fmvs = S.union fmvs1 fmvs2
               case (asStuckedTerm e1, asStuckedTerm e2) of
                 (Just (StuckPiElimHole h1 ies1), _)
@@ -238,7 +231,7 @@ simplify constraintList =
                   simplify cs
 
 {-# INLINE resolveHole #-}
-resolveHole :: Context m => HID.HoleID -> [Ident] -> WT.WeakTerm -> [(C.Constraint, C.Constraint)] -> m ()
+resolveHole :: HID.HoleID -> [Ident] -> WT.WeakTerm -> [(C.Constraint, C.Constraint)] -> App ()
 resolveHole h1 xs e2' cs = do
   insertSubst h1 xs e2'
   suspendedConstraintQueue <- getConstraintQueue
@@ -248,21 +241,19 @@ resolveHole h1 xs e2' cs = do
   simplify $ sus1' ++ cs
 
 simplifyBinder ::
-  Context m =>
   C.Constraint ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  m [(C.Constraint, C.Constraint)]
+  App [(C.Constraint, C.Constraint)]
 simplifyBinder orig =
   simplifyBinder' orig IntMap.empty
 
 simplifyBinder' ::
-  Context m =>
   C.Constraint ->
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   [BinderF WT.WeakTerm] ->
-  m [(C.Constraint, C.Constraint)]
+  App [(C.Constraint, C.Constraint)]
 simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
@@ -273,7 +264,7 @@ simplifyBinder' orig sub args1 args2 =
     _ ->
       return []
 
-asWeakBinder :: Context m => Hint -> WT.WeakTerm -> m (BinderF WT.WeakTerm)
+asWeakBinder :: Hint -> WT.WeakTerm -> App (BinderF WT.WeakTerm)
 asWeakBinder m t = do
   h <- Gensym.newIdentFromText "hole"
   return (m, h, t)

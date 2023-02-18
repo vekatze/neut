@@ -1,5 +1,6 @@
 module Scene.Term.Reduce (reduce) where
 
+import Context.App
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.DecisionTree qualified as DT
@@ -9,7 +10,7 @@ import Entity.Opacity qualified as O
 import Entity.Term qualified as TM
 import Scene.Term.Subst qualified as Subst
 
-reduce :: Subst.Context m => TM.Term -> m TM.Term
+reduce :: TM.Term -> App TM.Term
 reduce term =
   case term of
     (m :< TM.Pi xts cod) -> do
@@ -59,9 +60,8 @@ reduce term =
       return term
 
 reduceDecisionTree ::
-  Subst.Context m =>
   DT.DecisionTree TM.Term ->
-  m (DT.DecisionTree TM.Term)
+  App (DT.DecisionTree TM.Term)
 reduceDecisionTree tree =
   case tree of
     DT.Leaf xs e -> do
@@ -75,18 +75,16 @@ reduceDecisionTree tree =
       return $ DT.Switch (cursorVar, cursor') clauseList'
 
 reduceCaseList ::
-  Subst.Context m =>
   DT.CaseList TM.Term ->
-  m (DT.CaseList TM.Term)
+  App (DT.CaseList TM.Term)
 reduceCaseList (fallbackTree, clauseList) = do
   fallbackTree' <- reduceDecisionTree fallbackTree
   clauseList' <- mapM reduceCase clauseList
   return (fallbackTree', clauseList')
 
 reduceCase ::
-  Subst.Context m =>
   DT.Case TM.Term ->
-  m (DT.Case TM.Term)
+  App (DT.Case TM.Term)
 reduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM reduce dataTerms

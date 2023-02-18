@@ -1,5 +1,6 @@
-module Scene.Parse.Discern.Specialize (specialize, Context) where
+module Scene.Parse.Discern.Specialize (specialize) where
 
+import Context.App
 import Context.Enum qualified as Enum
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
@@ -12,31 +13,22 @@ import Entity.NominalEnv
 import Entity.Pattern
 import Entity.WeakTerm qualified as WT
 
-class
-  ( Gensym.Context m,
-    Throw.Context m,
-    Enum.Context m
-  ) =>
-  Context m
-
 -- `cursor` is the variable `x` in `match x, y, z with (...) end`.
 specialize ::
-  Context m =>
   NominalEnv ->
   Ident ->
   (DD.DefiniteDescription, A.Arity) ->
   PatternMatrix ([Ident], WT.WeakTerm) ->
-  m (PatternMatrix ([Ident], WT.WeakTerm))
+  App (PatternMatrix ([Ident], WT.WeakTerm))
 specialize nenv cursor cons mat = do
   mapMaybeRowM (specializeRow nenv cursor cons) mat
 
 specializeRow ::
-  Context m =>
   NominalEnv ->
   Ident ->
   (DD.DefiniteDescription, A.Arity) ->
   PatternRow ([Ident], WT.WeakTerm) ->
-  m (Maybe (PatternRow ([Ident], WT.WeakTerm)))
+  App (Maybe (PatternRow ([Ident], WT.WeakTerm)))
 specializeRow nenv cursor (dd, arity) (patternVector, (freedVars, body)) =
   case V.uncons patternVector of
     Nothing ->

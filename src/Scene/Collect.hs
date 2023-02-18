@@ -1,15 +1,14 @@
 module Scene.Collect
-  ( Context,
-    collectTargetList,
+  ( collectTargetList,
     collectSourceList,
     collectModuleFiles,
   )
 where
 
-import Context.Env qualified as Env
+import Context.App
+import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
-import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Entity.Module
@@ -18,20 +17,13 @@ import Entity.Target
 import Path
 import Prelude hiding (log)
 
-class
-  ( Env.Context m,
-    Path.Context m,
-    MonadThrow m
-  ) =>
-  Context m
-
-collectTargetList :: Context m => Maybe Target -> m [Target]
+collectTargetList :: Maybe Target -> App [Target]
 collectTargetList mTarget = do
-  flip getTargetList mTarget <$> Env.getMainModule
+  flip getTargetList mTarget <$> Module.getMainModule
 
-collectSourceList :: Context m => Maybe FilePath -> m [SGL.StrictGlobalLocator]
+collectSourceList :: Maybe FilePath -> App [SGL.StrictGlobalLocator]
 collectSourceList mFilePathStr = do
-  mainModule <- Env.getMainModule
+  mainModule <- Module.getMainModule
   case mFilePathStr of
     Just filePathStr -> do
       sgl <- SGL.reflectInMainModule filePathStr
@@ -39,9 +31,9 @@ collectSourceList mFilePathStr = do
     Nothing -> do
       return (Map.elems $ moduleTarget mainModule)
 
-collectModuleFiles :: Context m => m [FilePath]
+collectModuleFiles :: App [FilePath]
 collectModuleFiles = do
-  mainModule <- Env.getMainModule
+  mainModule <- Module.getMainModule
   let moduleRootDir = parent $ moduleLocation mainModule
   let tarRootDir = parent moduleRootDir
   relModuleSourceDir <- Path.stripPrefix tarRootDir $ getSourceDir mainModule
@@ -49,7 +41,7 @@ collectModuleFiles = do
   extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
   return $ toFilePath relModuleFile : toFilePath relModuleSourceDir : extraContents
 
-arrangeExtraContentPath :: Context m => Path Abs Dir -> SomePath -> m FilePath
+arrangeExtraContentPath :: Path Abs Dir -> SomePath -> App FilePath
 arrangeExtraContentPath tarRootDir somePath =
   case somePath of
     Left dirPath ->

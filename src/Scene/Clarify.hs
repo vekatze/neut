@@ -1,17 +1,17 @@
 module Scene.Clarify
   ( clarify,
     registerFoundationalTypes,
-    Context,
   )
 where
 
+import Context.App
+import Context.Clarify qualified as Clarify
 import Context.CompDefinition qualified as CompDefinition
 import Context.DataDefinition qualified as DataDefinition
 import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
-import Context.Log qualified as Log
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -45,24 +45,13 @@ import Entity.Stmt
 import Entity.Term qualified as TM
 import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum
-import Scene.Clarify.Context qualified as Clarify
 import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Comp.Subst
 
-class
-  ( Clarify.Context m,
-    Reduce.Context m,
-    Throw.Context m,
-    Log.Context m,
-    Enum.Context m,
-    DataDefinition.Context m
-  ) =>
-  Context m
-
-clarify :: Context m => [Stmt] -> m ([C.CompDef], Maybe C.Comp)
+clarify :: [Stmt] -> App ([C.CompDef], Maybe C.Comp)
 clarify defList = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
@@ -78,7 +67,7 @@ clarify defList = do
       defList' <- clarifyDefList defList
       return (defList', Nothing)
 
-clarifyDefList :: Context m => [Stmt] -> m [C.CompDef]
+clarifyDefList :: [Stmt] -> App [C.CompDef]
 clarifyDefList stmtList = do
   (stmtList', auxEnv) <- withSpecializedCtx $ do
     stmtList' <- mapM clarifyDef stmtList
@@ -95,7 +84,7 @@ clarifyDefList stmtList = do
     return (x, (opacity, args, e'))
   return $ stmtList'' ++ Map.toList auxEnv
 
-registerFoundationalTypes :: Context m => m ()
+registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
   auxEnv <- withSpecializedCtx $ do
     registerImmediateS4
@@ -103,18 +92,18 @@ registerFoundationalTypes = do
     Clarify.getAuxEnv
   forM_ (Map.toList auxEnv) $ uncurry CompDefinition.insert
 
-reduceDefMap :: Context m => CompDefinition.DefMap -> m CompDefinition.DefMap
+reduceDefMap :: CompDefinition.DefMap -> App CompDefinition.DefMap
 reduceDefMap defMap = do
   forM defMap $ \(opacity, args, e) -> do
     e' <- Reduce.reduce e
     return (opacity, args, e')
 
-withSpecializedCtx :: Context m => m a -> m a
+withSpecializedCtx :: App a -> App a
 withSpecializedCtx action = do
   Clarify.initialize
   action
 
-clarifyDef :: Context m => Stmt -> m (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
+clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
     StmtDefine stmtKind _ f _ xts _ e -> do
@@ -135,7 +124,7 @@ clarifyDef stmt =
           )
         )
 
-clarifyTerm :: Context m => TM.TypeEnv -> TM.Term -> m C.Comp
+clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
 clarifyTerm tenv term =
   case term of
     _ :< TM.Tau ->
@@ -209,15 +198,14 @@ clarifyTerm tenv term =
 type DataArgsMap = IntMap.IntMap [(Ident, TM.Term)]
 
 clarifyDataClause ::
-  Context m =>
   (D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
-  m (D.Discriminant, [(Ident, C.Comp)])
+  App (D.Discriminant, [(Ident, C.Comp)])
 clarifyDataClause (discriminant, dataArgs, consArgs) = do
   let args = dataArgs ++ consArgs
   args' <- dropFst <$> clarifyBinder IntMap.empty args
   return (discriminant, args')
 
-clarifyDecisionTree :: Context m => TM.TypeEnv -> N.IsNoetic -> DataArgsMap -> DT.DecisionTree TM.Term -> m C.Comp
+clarifyDecisionTree :: TM.TypeEnv -> N.IsNoetic -> DataArgsMap -> DT.DecisionTree TM.Term -> App C.Comp
 clarifyDecisionTree tenv isNoetic dataArgsMap tree =
   case tree of
     DT.Leaf consumedCursorList cont -> do
@@ -242,7 +230,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
             C.UpElim True discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
               C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
 
-isEnumType :: Context m => TM.Term -> m Bool
+isEnumType :: TM.Term -> App Bool
 isEnumType term =
   case term of
     _ :< TM.Data dataName _ -> do
@@ -254,7 +242,7 @@ isEnumType term =
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
 
-tidyCursorList :: Context m => TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> m C.Comp
+tidyCursorList :: TM.TypeEnv -> DataArgsMap -> [Ident] -> C.Comp -> App C.Comp
 tidyCursorList tenv dataArgsMap consumedCursorList cont =
   case consumedCursorList of
     [] ->
@@ -272,13 +260,12 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
             C.UpElim True unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
 
 clarifyCase ::
-  Context m =>
   TM.TypeEnv ->
   N.IsNoetic ->
   DataArgsMap ->
   Ident ->
   DT.Case TM.Term ->
-  m (EC.EnumCase, C.Comp)
+  App (EC.EnumCase, C.Comp)
 clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs cont) = do
   let (_, dataTypes) = unzip dataArgs
   dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
@@ -299,12 +286,12 @@ clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons consName disc dataArgs con
             body'
         )
 
-alignFreeVariable :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> m C.Comp
+alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable tenv fvs e = do
   fvs' <- dropFst <$> clarifyBinder tenv fvs
   linearize fvs' e
 
-clarifyMagic :: Context m => TM.TypeEnv -> M.Magic TM.Term -> m C.Comp
+clarifyMagic :: TM.TypeEnv -> M.Magic TM.Term -> App C.Comp
 clarifyMagic tenv der =
   case der of
     M.Cast from to value -> do
@@ -337,13 +324,12 @@ clarifyMagic tenv der =
           C.Primitive (C.Magic (M.External extFunName xsAsVars))
 
 clarifyLambda ::
-  Context m =>
   TM.TypeEnv ->
   LK.LamKindF TM.Term ->
   [(Hint, Ident, TM.Term)] ->
   TM.Term ->
   [BinderF TM.Term] ->
-  m C.Comp
+  App C.Comp
 clarifyLambda tenv kind mxts e fvs = do
   e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
   case kind of
@@ -355,7 +341,7 @@ clarifyLambda tenv kind mxts e fvs = do
     _ ->
       returnClosure tenv kind fvs mxts e'
 
-newClosureNames :: Gensym.Context m => m ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
+newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do
   closureVarInfo <- Gensym.newValueVarLocalWith "closure"
   typeVarName <- Gensym.newIdentFromText "exp"
@@ -363,13 +349,13 @@ newClosureNames = do
   lamVarInfo <- Gensym.newValueVarLocalWith "thunk"
   return (closureVarInfo, typeVarName, envVarInfo, lamVarInfo)
 
-clarifyPlus :: Context m => TM.TypeEnv -> TM.Term -> m (Ident, C.Comp, C.Value)
+clarifyPlus :: TM.TypeEnv -> TM.Term -> App (Ident, C.Comp, C.Value)
 clarifyPlus tenv e = do
   e' <- clarifyTerm tenv e
   (varName, var) <- Gensym.newValueVarLocalWith "var"
   return (varName, e', var)
 
-clarifyBinder :: Context m => TM.TypeEnv -> [BinderF TM.Term] -> m [(Hint, Ident, C.Comp)]
+clarifyBinder :: TM.TypeEnv -> [BinderF TM.Term] -> App [(Hint, Ident, C.Comp)]
 clarifyBinder tenv binder =
   case binder of
     [] ->
@@ -379,7 +365,7 @@ clarifyBinder tenv binder =
       xts' <- clarifyBinder (IntMap.insert (Ident.toInt x) t tenv) xts
       return $ (m, x, t') : xts'
 
-clarifyPrimOp :: Context m => TM.TypeEnv -> PrimOp -> Hint -> m C.Comp
+clarifyPrimOp :: TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
 clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
@@ -387,13 +373,12 @@ clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
   returnClosure tenv (LK.Normal O.Transparent) [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
-  Context m =>
   TM.TypeEnv ->
   LK.LamKindF TM.Term -> -- the name of newly created closure
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
-  m C.Comp
+  App C.Comp
 returnClosure tenv kind fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder tenv fvs
   xts'' <- dropFst <$> clarifyBinder tenv xts
@@ -414,13 +399,12 @@ returnClosure tenv kind fvs xts e = do
       return $ C.UpIntro cls
 
 registerIfNecessary ::
-  Context m =>
   DD.DefiniteDescription ->
   O.Opacity ->
   [(Ident, C.Comp)] ->
   [(Ident, C.Comp)] ->
   C.Comp ->
-  m ()
+  App ()
 registerIfNecessary name opacity xts1 xts2 e = do
   b <- Clarify.isAlreadyRegistered name
   unless b $ do
@@ -430,7 +414,7 @@ registerIfNecessary name opacity xts1 xts2 e = do
     body <- Reduce.reduce $ C.SigmaElim True (map fst xts2) envVar e'
     Clarify.insertToAuxEnv name (opacity, args, body)
 
-callClosure :: Gensym.Context m => C.Comp -> [(Ident, C.Comp, C.Value)] -> m C.Comp
+callClosure :: C.Comp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
 callClosure e zexes = do
   let (zs, es', xs) = unzip3 zexes
   ((closureVarName, closureVar), typeVarName, (envVarName, envVar), (lamVarName, lamVar)) <- newClosureNames

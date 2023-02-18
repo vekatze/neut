@@ -1,11 +1,7 @@
-module Act.Build
-  ( build,
-    Context,
-  )
-where
+module Act.Build (build) where
 
+import Context.App
 import Context.Cache qualified as Cache
-import Context.External qualified as External
 import Context.LLVM qualified as LLVM
 import Control.Monad
 import Data.Foldable
@@ -22,24 +18,7 @@ import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
 import Prelude hiding (log)
 
-class
-  ( Cache.Context m,
-    Clarify.Context m,
-    Collect.Context m,
-    Elaborate.Context m,
-    Emit.Context m,
-    Initialize.Context m,
-    LLVM.Context m,
-    Link.Context m,
-    External.Context m,
-    Execute.Context m,
-    Lower.Context m,
-    Parse.Context m,
-    Unravel.Context m
-  ) =>
-  Context m
-
-build :: Context m => Config -> m ()
+build :: Config -> App ()
 build cfg = do
   Initialize.initializeCompiler (logCfg cfg) True (mClangOptString cfg)
   targetList <- Collect.collectTargetList $ mTarget cfg

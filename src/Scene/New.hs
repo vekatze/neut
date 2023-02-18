@@ -1,11 +1,10 @@
 module Scene.New
   ( createNewProject,
     constructDefaultModule,
-    Context,
   )
 where
 
-import Context.Env qualified as Env
+import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -20,15 +19,7 @@ import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path (parent, (</>))
 
-class
-  ( Env.Context m,
-    Throw.Context m,
-    Path.Context m,
-    Module.Context m
-  ) =>
-  Context m
-
-createNewProject :: Context m => T.Text -> Module -> m ()
+createNewProject :: T.Text -> Module -> App ()
 createNewProject moduleName newModule = do
   let moduleDir = parent $ moduleLocation newModule
   moduleDirExists <- Path.doesDirExist moduleDir
@@ -38,7 +29,7 @@ createNewProject moduleName newModule = do
       createModuleFile
       createMainFile
 
-constructDefaultModule :: Context m => T.Text -> m Module
+constructDefaultModule :: T.Text -> App Module
 constructDefaultModule name = do
   currentDir <- Path.getCurrentDir
   moduleRootDir <- Path.resolveDir currentDir $ T.unpack name
@@ -59,15 +50,15 @@ constructDefaultModule name = do
         moduleLocation = moduleRootDir </> moduleFile
       }
 
-createModuleFile :: Context m => m ()
+createModuleFile :: App ()
 createModuleFile = do
-  newModule <- Env.getMainModule
+  newModule <- Module.getMainModule
   Path.ensureDir $ parent $ moduleLocation newModule
   Path.writeText (moduleLocation newModule) $ ppModule newModule
 
-createMainFile :: Context m => m ()
+createMainFile :: App ()
 createMainFile = do
-  newModule <- Env.getMainModule
+  newModule <- Module.getMainModule
   Path.ensureDir $ getSourceDir newModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath sgl

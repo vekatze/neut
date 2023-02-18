@@ -1,9 +1,12 @@
 module Scene.Module.Reflect
-  ( fromFilePath,
+  ( getModule,
+    fromFilePath,
     fromCurrentPath,
   )
 where
 
+import Context.App
+import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw
 import Control.Monad
@@ -23,9 +26,39 @@ import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
+import Path.IO
 import Scene.Ens.Reflect qualified as Ens
 
-fromFilePath :: (Path.Context m, Context m) => MID.ModuleID -> Path Abs File -> m Module
+getModule ::
+  H.Hint ->
+  MID.ModuleID ->
+  T.Text ->
+  App Module
+getModule m moduleID locatorText = do
+  nextModuleFilePath <- Module.getModuleFilePath (Just m) moduleID
+  -- mcm <- readRef' moduleCacheMap
+  mcm <- Module.getModuleCacheMap
+  case Map.lookup nextModuleFilePath mcm of
+    Just nextModule ->
+      return nextModule
+    Nothing -> do
+      moduleFileExists <- doesFileExist nextModuleFilePath
+      unless moduleFileExists $ do
+        raiseError m $
+          T.pack "could not find the module file for `"
+            <> locatorText
+            <> "`"
+      nextModule <- fromFilePath moduleID nextModuleFilePath
+      Module.insertToModuleCacheMap nextModuleFilePath nextModule
+      -- modifyRef' moduleCacheMap $ Map.insert nextModuleFilePath nextModule
+      return nextModule
+
+-- getModuleFilePath :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs File)
+-- getModuleFilePath mHint moduleID = do
+--   moduleDir <- Module.getModuleDirByID mHint moduleID
+--   return $ moduleDir </> moduleFile
+
+fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   entity <- Ens.fromFilePath moduleFilePath
   (_, entryPointEns) <- liftEither $ access "target" entity >>= toDictionary
@@ -42,11 +75,11 @@ fromFilePath moduleID moduleFilePath = do
         moduleLocation = moduleFilePath
       }
 
-fromCurrentPath :: (Path.Context m, Context m) => m Module
+fromCurrentPath :: App Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
-interpretRelFilePath :: Context m => MID.ModuleID -> Ens -> m SGL.StrictGlobalLocator
+interpretRelFilePath :: MID.ModuleID -> Ens -> App SGL.StrictGlobalLocator
 interpretRelFilePath moduleID ens = do
   (m, pathString) <- liftEither $ toString ens
   case parseRelFile $ T.unpack pathString of
@@ -60,9 +93,8 @@ interpretRelFilePath moduleID ens = do
       raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  (Context m) =>
   (H.Hint, Map.HashMap T.Text Ens) ->
-  m (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
+  App (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
 interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
@@ -76,7 +108,7 @@ interpretDependencyDict (m, dep) = do
     return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
   return $ Map.fromList items
 
-interpretExtraPath :: (Path.Context m, Context m) => Path Abs Dir -> Ens -> m SomePath
+interpretExtraPath :: Path Abs Dir -> Ens -> App SomePath
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ toString entity
   if T.last itemPathText == '/'
@@ -90,20 +122,19 @@ interpretExtraPath moduleRootDir entity = do
       return $ Right filePath
 
 ensureExistence ::
-  (Context m, Path.Context m) =>
   H.Hint ->
   Path Abs Dir ->
   Path Abs t ->
-  (Path Abs t -> m Bool) ->
+  (Path Abs t -> App Bool) ->
   T.Text ->
-  m ()
+  App ()
 ensureExistence m moduleRootDir path existenceChecker kindText = do
   b <- existenceChecker path
   unless b $ do
     relPathFromModuleRoot <- Path.stripPrefix moduleRootDir path
     raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
 
-findModuleFile :: (Path.Context m, Context m) => Path Abs Dir -> m (Path Abs File)
+findModuleFile :: Path Abs Dir -> App (Path Abs File)
 findModuleFile moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
   moduleFileExists <- Path.doesFileExist moduleFileCandidate
@@ -115,6 +146,6 @@ findModuleFile moduleRootDirCandidate = do
     _ ->
       raiseError' "couldn't find a module file."
 
-getCurrentModuleFilePath :: (Path.Context m, Context m) => m (Path Abs File)
+getCurrentModuleFilePath :: App (Path Abs File)
 getCurrentModuleFilePath =
   Path.getCurrentDir >>= findModuleFile

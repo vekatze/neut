@@ -1,6 +1,7 @@
 module Scene.Parse.Core where
 
-import Context.Gensym qualified as Gensym
+import Context.App
+import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.List.NonEmpty
@@ -13,26 +14,15 @@ import Entity.FilePos
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
 import Entity.Log qualified as L
-import Entity.TargetPlatform
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
 
-type Parser m = ParsecT Void T.Text m
+type Parser = ParsecT Void T.Text App
 
-class
-  ( Throw.Context m,
-    Gensym.Context m
-  ) =>
-  Context m
-  where
-  getTargetPlatform :: m TargetPlatform
-  readSourceFile :: Path Abs File -> m T.Text
-  ensureExistence :: Path Abs File -> m ()
-
-run :: (Throw.Context m, Context m) => Parser m a -> Path Abs File -> m a
+run :: Parser a -> Path Abs File -> App a
 run parser path = do
   ensureExistence path
   let filePath = toFilePath path
@@ -51,52 +41,52 @@ createParseError errorBundle = do
   let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ toList foo
   L.MakeError [L.logError (fromHint hint) message]
 
-getCurrentHint :: Parser m Hint
+getCurrentHint :: Parser Hint
 getCurrentHint =
   Hint.fromSourcePos <$> getSourcePos
 
-spaceConsumer :: Parser m ()
+spaceConsumer :: Parser ()
 spaceConsumer =
   L.space
     space1
     (L.skipLineComment "//")
     (L.skipBlockCommentNested "/-" "-/")
 
-lexeme :: Context m => Parser m a -> Parser m a
+lexeme :: Parser a -> Parser a
 lexeme =
   L.lexeme spaceConsumer
 
--- symbol :: Context m => Parser m a
-symbol :: Context m => Parser m T.Text
+-- symbol :: Parser a
+symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
-baseName :: Context m => Parser m BN.BaseName
+baseName :: Parser BN.BaseName
 baseName = do
   bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
   lexeme $ return $ BN.fromText bn
 
-keyword :: Context m => T.Text -> Parser m ()
+keyword :: T.Text -> Parser ()
 keyword expected = do
   void $ chunk expected
   notFollowedBy nonSymbolChar
   spaceConsumer
 
-delimiter :: Context m => T.Text -> Parser m ()
+delimiter :: T.Text -> Parser ()
 delimiter expected = do
   lexeme $ void $ chunk expected
 
-nonSymbolChar :: Context m => Parser m Char
+nonSymbolChar :: Parser Char
 nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
 
-string :: Context m => Parser m T.Text
+string :: Parser T.Text
 string = do
   lexeme $ do
     _ <- char '\"'
     T.pack <$> manyTill L.charLiteral (char '\"')
 
-integer :: Context m => Parser m Integer
+integer :: Parser Integer
 integer = do
   s <- symbol
   case R.readMaybe (T.unpack s) of
@@ -105,7 +95,7 @@ integer = do
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
-float :: Context m => Parser m Double
+float :: Parser Double
 float = do
   s <- symbol
   case R.readMaybe (T.unpack s) of
@@ -114,7 +104,7 @@ float = do
     Nothing -> do
       failure (Just (asTokens s)) (S.fromList [asLabel "float"])
 
-bool :: Context m => Parser m Bool
+bool :: Parser Bool
 bool = do
   s <- symbol
   case s of
@@ -125,65 +115,65 @@ bool = do
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
-betweenParen :: Context m => Parser m a -> Parser m a
+betweenParen :: Parser a -> Parser a
 betweenParen =
   between (delimiter "(") (delimiter ")")
 
-betweenAngle :: Context m => Parser m a -> Parser m a
+betweenAngle :: Parser a -> Parser a
 betweenAngle =
   between (delimiter "<") (delimiter ">")
 
-betweenBracket :: Context m => Parser m a -> Parser m a
+betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
-equalBlock :: Context m => Parser m a -> Parser m a
+equalBlock :: Parser a -> Parser a
 equalBlock =
   between (delimiter "=") (keyword "end")
 
-doBlock :: Context m => Parser m a -> Parser m a
+doBlock :: Parser a -> Parser a
 doBlock =
   between (keyword "do") (keyword "end")
 
-withBlock :: Context m => Parser m a -> Parser m a
+withBlock :: Parser a -> Parser a
 withBlock =
   between (keyword "with") (keyword "end")
 
-importBlock :: Context m => Parser m a -> Parser m a
+importBlock :: Parser a -> Parser a
 importBlock =
   between (keyword "import") (keyword "end")
 
-useBlock :: Context m => Parser m a -> Parser m a
+useBlock :: Parser a -> Parser a
 useBlock =
   between (keyword "use") (keyword "end")
 
-commaList :: Context m => Parser m a -> Parser m [a]
+commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")
 
-argList :: Context m => Parser m a -> Parser m [a]
+argList :: Parser a -> Parser [a]
 argList f = do
   betweenParen $ commaList f
 
-impArgList :: Context m => Parser m a -> Parser m [a]
+impArgList :: Parser a -> Parser [a]
 impArgList f =
   choice
     [ betweenAngle $ commaList f,
       return []
     ]
 
-manyList :: Context m => Parser m a -> Parser m [a]
+manyList :: Parser a -> Parser [a]
 manyList f =
   many $ delimiter "-" >> f
 
-sepByTill :: Context m => Parser m a -> Parser m b -> Parser m c -> Parser m [a]
+sepByTill :: Parser a -> Parser b -> Parser c -> Parser [a]
 sepByTill p sep end = do
   choice
     [ try end >> return [],
       sepByTill' [] p sep end
     ]
 
-sepByTill' :: Context m => [a] -> Parser m a -> Parser m b -> Parser m c -> Parser m [a]
+sepByTill' :: [a] -> Parser a -> Parser b -> Parser c -> Parser [a]
 sepByTill' acc p sep end = do
   v <- p
   choice
@@ -191,7 +181,7 @@ sepByTill' acc p sep end = do
       end >> return (Prelude.reverse (v : acc))
     ]
 
-var :: Context m => Parser m (Hint, T.Text)
+var :: Parser (Hint, T.Text)
 var = do
   m <- getCurrentHint
   x <- symbol

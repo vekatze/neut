@@ -1,22 +1,12 @@
-module Act.Clean
-  ( clean,
-    Config (..),
-    Context,
-  )
-where
+module Act.Clean (clean) where
 
+import Context.App
 import Entity.Config.Clean
 import Scene.Clean qualified as Clean
 import Scene.Initialize qualified as Initialize
 import Prelude hiding (log)
 
-class
-  ( Initialize.Context m,
-    Clean.Context m
-  ) =>
-  Context m
-
-clean :: Context m => Config -> m ()
+clean :: Config -> App ()
 clean cfg = do
   Initialize.initializeCompiler (logCfg cfg) True Nothing
   Clean.clean

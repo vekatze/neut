@@ -1,23 +1,12 @@
-module Act.Release
-  ( release,
-    Config (..),
-    Context,
-  )
-where
+module Act.Release (release) where
 
+import Context.App
 import Entity.Config.Release
 import Scene.Archive qualified as Archive
 import Scene.Collect qualified as Collect
 import Scene.Initialize qualified as Initialize
 
-class
-  ( Initialize.Context m,
-    Archive.Context m,
-    Collect.Context m
-  ) =>
-  Context m
-
-release :: Context m => Config -> m ()
+release :: Config -> App ()
 release cfg = do
   Initialize.initializeCompiler (logCfg cfg) True Nothing
   files <- Collect.collectModuleFiles

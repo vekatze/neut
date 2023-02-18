@@ -1,11 +1,11 @@
 module Scene.Parse
   ( parse,
-    Context (),
     parseCachedStmtList,
   )
 where
 
 import Context.Alias qualified as Alias
+import Context.App
 import Context.Cache qualified as Cache
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.Enum qualified as Enum
@@ -48,27 +48,11 @@ import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
-class
-  ( Alias.Context m,
-    Gensym.Context m,
-    Global.Context m,
-    Locator.Context m,
-    Throw.Context m,
-    Cache.Context m,
-    Env.Context m,
-    Enum.Context m,
-    Discern.Context m,
-    Parse.Context m,
-    P.Context m,
-    CodataDefinition.Context m
-  ) =>
-  Context m
-
 --
 -- core functions
 --
 
-parse :: Context m => m (Either [Stmt] [WeakStmt])
+parse :: App (Either [Stmt] [WeakStmt])
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -81,7 +65,7 @@ parse = do
     Nothing ->
       return result
 
-parseSource :: Context m => Source.Source -> m (Either [Stmt] [WeakStmt])
+parseSource :: Source.Source -> App (Either [Stmt] [WeakStmt])
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- Cache.loadCache source hasCacheSet
@@ -100,7 +84,7 @@ parseSource source = do
       defList <- P.run program $ Source.sourceFilePath source
       return $ Right defList
 
-parseCachedStmtList :: Context m => [Stmt] -> m ()
+parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
@@ -116,7 +100,7 @@ parseCachedStmtList stmtList = do
       StmtDefineResource m name _ _ ->
         Global.registerResource m name
 
-ensureMain :: Context m => Hint -> DD.DefiniteDescription -> m ()
+ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
   mMain <- Global.lookup mainFunctionName
   case mMain of
@@ -125,13 +109,13 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Context m => P.Parser m [WeakStmt]
+program :: P.Parser [WeakStmt]
 program = do
   Parse.skipImportSequence
   parseStmtUseSequence
   (many parseStmt >>= lift . Discern.discernStmtList . concat) <* eof
 
-parseStmtUseSequence :: Context m => P.Parser m ()
+parseStmtUseSequence :: P.Parser ()
 parseStmtUseSequence = do
   let p1 = P.useBlock (P.manyList parseLocator)
   let p2 = return []
@@ -143,14 +127,14 @@ parseStmtUseSequence = do
       Right globalLocator ->
         lift $ Locator.activateGlobalLocator globalLocator
 
-parseLocator :: Context m => P.Parser m (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
+parseLocator :: P.Parser (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
 parseLocator = do
   choice
     [ Left <$> try parseDefiniteLocator,
       Right <$> parseGlobalLocator
     ]
 
-parseStmt :: Context m => P.Parser m [RawStmt]
+parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
     [ parseDefineData,
@@ -161,7 +145,7 @@ parseStmt = do
       return <$> parseSection
     ]
 
-parseDefiniteLocator :: Context m => P.Parser m DL.DefiniteLocator
+parseDefiniteLocator :: P.Parser DL.DefiniteLocator
 parseDefiniteLocator = do
   m <- P.getCurrentHint
   globalLocator <- P.symbol >>= lift . (Throw.liftEither . GL.reflect m >=> Alias.resolveAlias m)
@@ -170,7 +154,7 @@ parseDefiniteLocator = do
   baseNameList <- lift $ Throw.liftEither $ BN.bySplit m localLocator
   return $ DL.new globalLocator $ map Section.Section baseNameList
 
-parseGlobalLocator :: Context m => P.Parser m SGL.StrictGlobalLocator
+parseGlobalLocator :: P.Parser SGL.StrictGlobalLocator
 parseGlobalLocator = do
   m <- P.getCurrentHint
   gl <- P.symbol >>= lift . Throw.liftEither . GL.reflect m
@@ -180,7 +164,7 @@ parseGlobalLocator = do
 -- parser for statements
 --
 
-parseSection :: Context m => P.Parser m RawStmt
+parseSection :: P.Parser RawStmt
 parseSection = do
   try $ P.keyword "section"
   section <- Section.Section <$> P.baseName
@@ -191,7 +175,7 @@ parseSection = do
     return $ RawStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
-parseDefine :: Context m => O.Opacity -> P.Parser m RawStmt
+parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
   try $
     case opacity of
@@ -205,7 +189,6 @@ parseDefine opacity = do
   lift $ defineFunction (Normal opacity) m name' (I.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
-  Context m =>
   StmtKindF RT.RawTerm ->
   Hint ->
   DD.DefiniteDescription ->
@@ -213,12 +196,12 @@ defineFunction ::
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm ->
-  m RawStmt
+  App RawStmt
 defineFunction stmtKind m name impArgNum binder codType e = do
   Global.registerTopLevelFunc m name (A.fromInt (length binder))
   return $ RawStmtDefine stmtKind m name impArgNum binder codType e
 
-parseDefineData :: Context m => P.Parser m [RawStmt]
+parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
   m <- P.getCurrentHint
   try $ P.keyword "define-data"
@@ -228,12 +211,11 @@ parseDefineData = do
   lift $ defineData m a dataArgs consInfoList
 
 defineData ::
-  Context m =>
   Hint ->
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [(Hint, T.Text, [BinderF RT.RawTerm])] ->
-  m [RawStmt]
+  App [RawStmt]
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
@@ -246,11 +228,10 @@ defineData m dataName dataArgs consInfoList = do
   return $ formRule : introRuleList
 
 registerAsEnumIfNecessary ::
-  Context m =>
   DD.DefiniteDescription ->
   [BinderF a] ->
   [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
-  m ()
+  App ()
 registerAsEnumIfNecessary dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
     Enum.insert dataName
@@ -272,23 +253,21 @@ hasNoArgs dataArgs consInfoList =
   null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
 
 modifyConstructorName ::
-  Throw.Context m =>
   Hint ->
   DD.DefiniteDescription ->
   (Hint, T.Text, [BinderF RT.RawTerm]) ->
-  m (Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])
+  App (Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])
 modifyConstructorName m dataDD (mb, consName, yts) = do
   consName' <- Throw.liftEither $ DD.extend m dataDD consName
   return (mb, consName', yts)
 
 parseDefineDataConstructor ::
-  Context m =>
   RT.RawTerm ->
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
-  m [RawStmt]
+  App [RawStmt]
 parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
@@ -317,14 +296,14 @@ constructDataType ::
 constructDataType m dataName dataArgs = do
   m :< RT.Data dataName (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: Context m => P.Parser m (Hint, T.Text, [BinderF RT.RawTerm])
+parseDefineDataClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
 parseDefineDataClause = do
   m <- P.getCurrentHint
   b <- P.symbol
   yts <- P.argList parseDefineDataClauseArg
   return (m, b, yts)
 
-parseDefineDataClauseArg :: Context m => P.Parser m (BinderF RT.RawTerm)
+parseDefineDataClauseArg :: P.Parser (BinderF RT.RawTerm)
 parseDefineDataClauseArg = do
   m <- P.getCurrentHint
   choice
@@ -332,7 +311,7 @@ parseDefineDataClauseArg = do
       weakTermToWeakIdent m rawTerm
     ]
 
-parseDefineCodata :: Context m => P.Parser m [RawStmt]
+parseDefineCodata :: P.Parser [RawStmt]
 parseDefineCodata = do
   m <- P.getCurrentHint
   try $ P.keyword "define-codata"
@@ -352,12 +331,11 @@ parseDefineCodata = do
 
 -- noetic projection
 parseDefineCodataElim ::
-  Context m =>
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [BinderF RT.RawTerm] ->
   BinderF RT.RawTerm ->
-  m RawStmt
+  App RawStmt
 parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
   let codataType = m :< RT.Noema (constructDataType m dataName dataArgs)
   recordVarText <- Gensym.newText
@@ -383,7 +361,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
             ]
         )
 
-parseDefineResource :: Context m => P.Parser m RawStmt
+parseDefineResource :: P.Parser RawStmt
 parseDefineResource = do
   try $ P.keyword "define-resource"
   m <- P.getCurrentHint
@@ -399,7 +377,7 @@ identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
   m :< RT.Var x
 
-weakTermToWeakIdent :: Context m => Hint -> P.Parser m RT.RawTerm -> P.Parser m (BinderF RT.RawTerm)
+weakTermToWeakIdent :: Hint -> P.Parser RT.RawTerm -> P.Parser (BinderF RT.RawTerm)
 weakTermToWeakIdent m f = do
   a <- f
   h <- lift $ Gensym.newTextualIdentFromText "_"

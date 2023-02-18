@@ -3,6 +3,7 @@ module Scene.WeakTerm.Fill
   )
 where
 
+import Context.App
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
@@ -17,7 +18,7 @@ import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst
 import Prelude hiding (lookup)
 
-fill :: Context m => HoleSubst -> WT.WeakTerm -> m WT.WeakTerm
+fill :: HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fill sub term =
   case term of
     _ :< WT.Tau ->
@@ -83,11 +84,10 @@ fill sub term =
       return $ m :< WT.Magic der'
 
 fill' ::
-  Context m =>
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  m ([BinderF WT.WeakTerm], WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], WT.WeakTerm)
 fill' sub binder e =
   case binder of
     [] -> do
@@ -99,23 +99,21 @@ fill' sub binder e =
       return ((m, x, t') : xts', e')
 
 fill'' ::
-  Context m =>
   HoleSubst ->
   BinderF WT.WeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
-  m (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
+  App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 fill'' sub (m, x, t) binder e = do
   (xts', e') <- fill' sub binder e
   t' <- fill sub t
   return ((m, x, t'), xts', e')
 
 fill''' ::
-  Context m =>
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
   DT.DecisionTree WT.WeakTerm ->
-  m ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
+  App ([BinderF WT.WeakTerm], DT.DecisionTree WT.WeakTerm)
 fill''' sub binder decisionTree =
   case binder of
     [] -> do
@@ -127,10 +125,9 @@ fill''' sub binder decisionTree =
       return ((m, x, t') : xts', e')
 
 fillDecisionTree ::
-  Context m =>
   HoleSubst ->
   DT.DecisionTree WT.WeakTerm ->
-  m (DT.DecisionTree WT.WeakTerm)
+  App (DT.DecisionTree WT.WeakTerm)
 fillDecisionTree sub tree =
   case tree of
     DT.Leaf xs e -> do
@@ -144,20 +141,18 @@ fillDecisionTree sub tree =
       return $ DT.Switch (cursorVar, cursor') caseList'
 
 fillCaseList ::
-  Context m =>
   HoleSubst ->
   DT.CaseList WT.WeakTerm ->
-  m (DT.CaseList WT.WeakTerm)
+  App (DT.CaseList WT.WeakTerm)
 fillCaseList sub (fallbackClause, clauseList) = do
   fallbackClause' <- fillDecisionTree sub fallbackClause
   clauseList' <- mapM (fillCase sub) clauseList
   return (fallbackClause', clauseList')
 
 fillCase ::
-  Context m =>
   HoleSubst ->
   DT.Case WT.WeakTerm ->
-  m (DT.Case WT.WeakTerm)
+  App (DT.Case WT.WeakTerm)
 fillCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM (fill sub) dataTerms
