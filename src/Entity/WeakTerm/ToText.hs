@@ -2,6 +2,7 @@ module Entity.WeakTerm.ToText (toText, showDecisionTree) where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -11,6 +12,7 @@ import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
+import Entity.LocalLocator qualified as LL
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
 import Entity.WeakPrim qualified as WP
@@ -25,7 +27,7 @@ toText term =
     _ :< WT.Var x ->
       showVariable x
     _ :< WT.VarGlobal x _ ->
-      DD.reify x
+      showGlobalVariable x
     _ :< WT.Pi xts cod
       | [(_, I ("internal.sigma-tau", _), _), (_, _, _ :< WT.Pi yts _)] <- xts ->
           case splitLast yts of
@@ -46,9 +48,9 @@ toText term =
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
     _ :< WT.Data name es -> do
-      showCons $ "{data}" <> DD.reify name : map toText es
+      showCons $ "{data}" <> showGlobalVariable name : map toText es
     _ :< WT.DataIntro _ consName _ _ consArgs -> do
-      showCons ("{data-intro}" <> DD.reify consName : map toText consArgs)
+      showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
         then showCons ["match-noetic", showMatchArgs xets, showDecisionTree tree]
@@ -62,7 +64,7 @@ toText term =
     _ :< WT.Hole i es ->
       showCons $ "?M" <> T.pack (show (HID.reify i)) : map toText es
     _ :< WT.ResourceType name ->
-      DD.reify name
+      showGlobalVariable name
     _ :< WT.Magic m -> do
       let a = fmap toText m
       showCons [T.pack $ show a]
@@ -90,6 +92,10 @@ showTypeArgs args =
 showVariable :: Ident -> T.Text
 showVariable =
   Ident.toText'
+
+showGlobalVariable :: DD.DefiniteDescription -> T.Text
+showGlobalVariable dd =
+  BN.reify $ LL.baseName $ DD.localLocator dd
 
 showItems :: [T.Text] -> T.Text
 showItems =
@@ -144,7 +150,7 @@ showDecisionTree tree =
 showClauseList :: DT.Case WT.WeakTerm -> T.Text
 showClauseList (DT.Cons consName d dataArgs consArgs cont) = do
   showCons
-    [ DD.reify consName,
+    [ showGlobalVariable consName,
       T.pack (show (D.reify d)),
       showCons $ map (\(e, t) -> showCons [toText e, toText t]) dataArgs,
       inParen $ showTypeArgs consArgs,
