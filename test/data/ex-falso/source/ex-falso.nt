@@ -1,7 +1,7 @@
 define-data empty() with
 end
 
-define ex-falso<a>(e: empty()): a =
+define ex-falso(a: tau, e: empty()): a =
   match e with
   end
 end

@@ -20,7 +20,6 @@ import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
-import Entity.ImpArgNum qualified as I
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
@@ -67,7 +66,6 @@ data Env = Env
     enumSet :: FastRef (S.Set DD.DefiniteDescription),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
-    impEnv :: FastRef (Map.HashMap DD.DefiniteDescription I.ImpArgNum),
     compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: FastRef [SGL.StrictGlobalLocator],
@@ -122,7 +120,6 @@ newEnv = do
   codataDefMap <- newFastRef
   enumSet <- newFastRef
   declEnv <- newFastRef
-  impEnv <- newFastRef
   compEnv <- newFastRef
   typeEnv <- newFastRef
   activeGlobalLocatorList <- newFastRef

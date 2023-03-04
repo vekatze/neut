@@ -49,7 +49,7 @@ type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)
 
 type TopDefInfo =
-  ((Hint, BN.BaseName), [BinderF RawTerm], [BinderF RawTerm], RawTerm, RawTerm)
+  ((Hint, BN.BaseName), [BinderF RawTerm], RawTerm, RawTerm)
 
 i64 :: Hint -> RawTerm
 i64 m =

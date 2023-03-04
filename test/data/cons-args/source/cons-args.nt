@@ -10,5 +10,5 @@ define view(x: item((_: i64) -> i64)): i64 =
 end
 
 define main(): i64 =
-  view(item.cons(lambda (x). x))
+  view(item.cons(?, lambda (x). x))
 end

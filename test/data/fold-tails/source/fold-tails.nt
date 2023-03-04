@@ -43,36 +43,36 @@ end
 define gen(n: nat()): list(nat()) =
   match n with
   - zero() ->
-    nil()
+    nil(?)
   - succ(m) ->
-    cons(n, gen(m))
+    cons(?, n, gen(m))
   end
 end
 
-define fold-r<a, b>(f: (b, a) -> a, acc: a, xs: list(b)): a =
+define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a =
   match xs with
   - nil() ->
     acc
   - cons(y, ys) ->
-    f(y, fold-r(f, acc, ys))
+    f(y, fold-r(a, b, f, acc, ys))
   end
 end
 
-define tails<a>(xs: list(a)): list(list(a)) =
+define tails(a: tau, xs: list(a)): list(list(a)) =
   match xs with
   - nil() ->
-    cons(nil(), nil())
+    cons(?, nil(?), nil(?))
   - cons(x, xs) ->
-    cons(xs, tails(xs))
+    cons(?, xs, tails(a, xs))
   end
 end
 
-define map<a, b>(f: (a) -> b, xs: list(a)): list(b) =
+define map(a: tau, b: tau, f: (a) -> b, xs: list(a)): list(b) =
   match xs with
   - nil() ->
-    nil()
+    nil(?)
   - cons(y, ys) ->
-    cons(f(y), map(f, ys))
+    cons(?, f(y), map(a, b, f, ys))
   end
 end
 
@@ -94,16 +94,16 @@ define main(): i64 =
   let m-copy1 = m in
   let m-copy2 = m in
   let xs = gen(m) in
-  let yss = tails(xs) in
+  let yss = tails(?, xs) in
   let yss-copy1 = yss in
   let yss-copy2 = yss in
-  let zs = map(lambda (l). head(l), yss) in
+  let zs = map(?, ?, lambda (l). head(l), yss) in
   let zs-copy1 = zs in
   let zs-copy2 = zs in
   let zs-copy3 = zs in
   let zs-copy4 = zs in
   let zs-copy5 = zs in
-  let result-nat = fold-r(lambda (a, b). add-nat(a, b), zero(), zs) in
+  let result-nat = fold-r(?, ?, lambda (a, b). add-nat(a, b), zero(), zs) in
   let result-nat-copy1 = result-nat in
   let result-nat-copy2 = result-nat in
   let result = interpret(result-nat) in

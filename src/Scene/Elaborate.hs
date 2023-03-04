@@ -11,7 +11,6 @@ import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Global qualified as Global
-import Context.Implicit qualified as Implicit
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
@@ -42,21 +41,6 @@ import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Subst qualified as WT
-
--- class
---   ( Infer.Context m,
---     Unify.Context m,
---     Subst.Context m,
---     Log.Context m,
---     Locator.Context m,
---     Global.Context m,
---     Cache.Context m,
---     Definition.Context m,
---     DataDefinition.Context m
---   ) =>
---   Context m
---   where
---   initialize :: m ()
 
 elaborate :: Either [Stmt] [WeakStmt] -> App [Stmt]
 elaborate cacheOrStmt = do
@@ -92,11 +76,11 @@ elaborate cacheOrStmt = do
 inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt = do
   case stmt of
-    WeakStmtDefine isReducible m x impArgNum xts codType e -> do
+    WeakStmtDefine isReducible m x xts codType e -> do
       (xts', e', codType') <- inferStmtDefine xts e codType
       when (Just x == mMainDD) $
         insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts codType)
-      return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
+      return $ WeakStmtDefine isReducible m x xts' codType' e'
     WeakStmtDefineResource m name discarder copier ->
       Infer.inferDefineResource m name discarder copier
 
@@ -116,13 +100,13 @@ elaborateStmtList stmtList = do
   case stmtList of
     [] ->
       return []
-    WeakStmtDefine stmtKind m x impArgNum xts codType e : rest -> do
+    WeakStmtDefine stmtKind m x xts codType e : rest -> do
       stmtKind' <- elaborateStmtKind stmtKind
       e' <- elaborate' e >>= Term.reduce
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= Term.reduce
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
-      let stmt = StmtDefine stmtKind' m x impArgNum xts' codType' e'
+      let stmt = StmtDefine stmtKind' m x xts' codType' e'
       rest' <- elaborateStmtList rest
       return $ stmt : rest'
     WeakStmtDefineResource m name discarder copier : rest -> do
@@ -134,9 +118,8 @@ elaborateStmtList stmtList = do
 insertWeakStmt :: WeakStmt -> App ()
 insertWeakStmt stmt = do
   case stmt of
-    WeakStmtDefine stmtKind m f impArgNum xts codType e -> do
+    WeakStmtDefine stmtKind m f xts codType e -> do
       Type.insert f $ m :< WT.Pi xts codType
-      Implicit.insert f impArgNum
       Definition.insert (toOpacity stmtKind) m f xts e
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
@@ -149,7 +132,7 @@ insertStmt stmt = do
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
   case stmt of
-    StmtDefine stmtKind _ _ _ _ _ _ -> do
+    StmtDefine stmtKind _ _ _ _ _ -> do
       case stmtKind of
         Normal _ ->
           return ()

@@ -23,7 +23,7 @@ define interpret(n: nat()): i64 =
   end
 end
 
-define view<a, b>(x: sum(a, b)): i64 =
+define view(a: tau, b: tau, x: sum(a, b)): i64 =
   match x with
   - left(c) ->
     1
@@ -34,16 +34,16 @@ end
 
 define computation-with-error(x: i64): sum(nat(), i64) =
   if eq-i64(x, 0) then
-    left(succ(zero()))
+    left(?, ?, succ(zero()))
   else
-    right(interpret(succ(succ(zero()))))
+    right(?, ?, interpret(succ(succ(zero()))))
   end
 end
 
 define let-sum(x: i64): sum(nat(), i64) =
   let? foo = computation-with-error(x) in
   let? bar = computation-with-error(add-i64(foo, 1)) in
-  right(bar)
+  right(?, ?, bar)
 end
 
 define main(): i64 =
@@ -51,8 +51,8 @@ define main(): i64 =
   - left(e) ->
     interpret(e)
   - right(v) ->
-    let x = view<i64, i32>(left(10)) in
-    let y = view<i64, i32>(right(10)) in
+    let x = view(i64, i32, left(?, ?, 10)) in
+    let y = view(i64, i32, right(?, ?, 10)) in
     let z = x in
     let w = x in
     add-i64(v, 1)

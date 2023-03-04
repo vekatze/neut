@@ -8,7 +8,6 @@ import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
-import Entity.ImpArgNum qualified as I
 import Entity.Opacity qualified as O
 import Entity.RawTerm qualified as RT
 import Entity.Section qualified as Section
@@ -57,7 +56,6 @@ data RawStmt
       (StmtKindF RT.RawTerm)
       Hint
       DD.DefiniteDescription
-      I.ImpArgNum
       [BinderF RT.RawTerm]
       RT.RawTerm
       RT.RawTerm
@@ -69,7 +67,6 @@ data WeakStmt
       (StmtKindF WT.WeakTerm)
       Hint
       DD.DefiniteDescription
-      I.ImpArgNum
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
@@ -83,7 +80,6 @@ data Stmt
       (StmtKindF TM.Term)
       Hint
       DD.DefiniteDescription
-      I.ImpArgNum
       [BinderF TM.Term]
       TM.Term
       TM.Term
@@ -104,10 +100,10 @@ instance Binary Cache
 compress :: Stmt -> Stmt
 compress stmt =
   case stmt of
-    StmtDefine stmtKind m functionName impArgNum args codType _ ->
+    StmtDefine stmtKind m functionName args codType _ ->
       case stmtKind of
         Normal O.Opaque ->
-          StmtDefine stmtKind m functionName impArgNum args codType (m :< TM.Tau)
+          StmtDefine stmtKind m functionName args codType (m :< TM.Tau)
         _ ->
           stmt
     StmtDefineResource {} ->
@@ -116,7 +112,7 @@ compress stmt =
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =
   case stmt of
-    WeakStmtDefine _ m x _ xts codType e ->
+    WeakStmtDefine _ m x xts codType e ->
       DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
     _ ->
       "<define-resource>"
@@ -127,7 +123,6 @@ defineEnum dataName dataArgs consInfoList = do
     (Data dataName dataArgs consInfoList)
     internalHint
     dataName
-    I.zero
     dataArgs
     (internalHint :< TM.Tau)
     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
@@ -146,7 +141,6 @@ defineEnumIntro dataName dataArgs (consName, consArgs, discriminant) =
     (DataIntro dataName dataArgs consArgs discriminant)
     internalHint
     consName
-    (I.fromInt $ length dataArgs)
     (dataArgs ++ consArgs)
     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
     (internalHint :< TM.DataIntro dataName consName discriminant (map argToTerm dataArgs) (map argToTerm consArgs))

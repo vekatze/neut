@@ -40,14 +40,14 @@ define-data list(a: tau) with
 - cons(a, list(a))
 end
 
-define fold<a>(fs: list((_: a) -> a), x: a): a =
+define fold(a: tau, fs: list((_: a) -> a), x: a): a =
   match fs with
   - nil() ->
     x
   - cons(f, rest) ->
     let yo = rest in
     let hey = rest in
-    f(fold(rest, x))
+    f(fold(a, rest, x))
   end
 end
 
@@ -64,10 +64,10 @@ define main(): i64 =
   let unused-add2 = lambda (x). add-i64(x, 2) in
   let unused-mul3 = lambda (x). mul-i64(x, 3) in
   let unused-sub1 = lambda (x). sub-i64(x, 1) in
-  let fs = cons(add2, cons(mul3, cons(mul9, nil()))) in
+  let fs = cons(?, add2, cons(?, mul3, cons(?, mul9, nil(?)))) in
   let gs = fs in
   let hs = gs in
-  interpret(fold(hs, n3))
+  interpret(fold(?, hs, n3))
   // 0
   // fold(hs, 10)
 end

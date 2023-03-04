@@ -3,15 +3,15 @@ define-data list(a: tau) with
 - cons(a, list(a))
 end
 
-define length<a>(xs: list(a)): i64 =
+define length(a: tau, xs: list(a)): i64 =
   match xs with
   - list.nil() ->
     0
   - list.cons(y, ys) ->
-    add-i64(1, length(ys))
+    add-i64(1, length(a,  ys))
   end
 end
 
 define main(): i64 =
-  length(list.cons(1, list.cons(2, list.nil<i64>())))
+  length(?, list.cons(?, 1, list.cons(?, 2, list.nil(i64))))
 end

@@ -9,13 +9,11 @@ where
 import Context.App
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
-import Context.Implicit qualified as Implicit
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
-import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.Binder
@@ -25,7 +23,6 @@ import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
-import Entity.ImpArgNum qualified as I
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.PrimNumSize qualified as PNS
@@ -88,16 +85,6 @@ infer' varEnv term =
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
           return (m :< WT.PiIntro kind xts' e', m :< WT.Pi xts' t')
-    m :< WT.PiElim e@(_ :< WT.VarGlobal name _) es -> do
-      ets <- mapM (infer' varEnv) es
-      t <- Type.lookup m name
-      mImpArgNum <- Implicit.lookup name
-      case mImpArgNum of
-        Nothing -> do
-          inferPiElim varEnv m (e, t) ets
-        Just i -> do
-          holes <- forM [1 .. I.reify i] $ const $ newTypedHole varEnv m
-          inferPiElim varEnv m (e, t) $ holes ++ ets
     m :< WT.PiElim e es -> do
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
@@ -264,15 +251,13 @@ raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
 raiseArityMismatchError function expected actual = do
   case function of
     m :< WT.VarGlobal name _ -> do
-      mImpArgNum <- Implicit.lookup name
-      let k = I.reify $ fromMaybe I.zero mImpArgNum
       Throw.raiseError m $
         "the function `"
           <> DD.reify name
           <> "` expects "
-          <> T.pack (show (expected - k))
+          <> T.pack (show expected)
           <> " arguments, but found "
-          <> T.pack (show (actual - k))
+          <> T.pack (show actual)
           <> "."
     m :< _ ->
       Throw.raiseError m $
@@ -285,12 +270,6 @@ raiseArityMismatchError function expected actual = do
 newHole :: Hint -> BoundVarEnv -> App WT.WeakTerm
 newHole m varEnv = do
   Gensym.newHole m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
-
-newTypedHole :: BoundVarEnv -> Hint -> App (WT.WeakTerm, WT.WeakTerm)
-newTypedHole varEnv m = do
-  app <- newHole m varEnv
-  higherApp <- newHole m varEnv
-  return (app, higherApp)
 
 -- In context varEnv == [x1, ..., xn], `newTypeHoleList varEnv [y1, ..., ym]` generates
 -- the following list:

@@ -54,13 +54,13 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    RawStmtDefine stmtKind m functionName impArgNum xts codType e : rest -> do
+    RawStmtDefine stmtKind m functionName xts codType e : rest -> do
       stmtKind' <- discernStmtKind stmtKind
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
       e' <- discern nenv e
       rest' <- discernStmtList rest
-      return $ WeakStmtDefine stmtKind' m functionName impArgNum xts' codType' e' : rest'
+      return $ WeakStmtDefine stmtKind' m functionName xts' codType' e' : rest'
     RawStmtSection section innerStmtList : rest -> do
       Locator.withSection section $ do
         innerStmtList' <- discernStmtList innerStmtList

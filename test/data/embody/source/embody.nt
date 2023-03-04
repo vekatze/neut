@@ -26,7 +26,8 @@ define sum-of-list(xs: &list(i64)): i64 =
 end
 
 define main(): i64 =
-  let xs = list.cons(3, list.cons(1, list.cons(20, list.nil()))) in
+  // let xs = list.cons(3, list.cons(1, list.cons(20, list.nil()))) in
+  let xs = [3, 1, 20] in
   let some-value on xs = length(xs) in
   let sum-value on xs = add-i64(sum-of-list(xs), some-value) in
   sum-value

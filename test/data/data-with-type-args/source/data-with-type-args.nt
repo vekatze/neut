@@ -13,5 +13,5 @@ define f(xs: list(i64)): i64 =
 end
 
 define main(): i64 =
-  f(list.cons(10, list.cons(20, list.nil())))
+  f(list.cons(?, 10, list.cons(?, 20, list.nil(?))))
 end

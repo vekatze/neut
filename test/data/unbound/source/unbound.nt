@@ -14,13 +14,13 @@ define f(xs: list(i64), ys: list(i64)): list(i64) =
   - xs, nil() ->
     xs
   - cons(), zs ->
-    nil()
+    nil(?)
   end
 end
 
 define main(): i64 =
-  let xs = cons() in
-  let ys = cons() in
+  let xs = cons(?) in
+  let ys = cons(?) in
   let zs = f(xs, ys) in
   0
 end

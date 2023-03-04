@@ -33,5 +33,5 @@ end
 
 
 define main(): i64 =
-  nat-list-sum(cons(succ(zero()), cons(succ(zero()), nil())))
+  nat-list-sum(cons(?, succ(zero()), cons(?, succ(zero()), nil(?))))
 end

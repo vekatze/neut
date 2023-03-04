@@ -137,6 +137,8 @@ rawTermLetCoproduct = do
   keyword "in"
   e2 <- rawTerm
   err <- lift $ Gensym.newTextualIdentFromText "err"
+  t1 <- lift $ Gensym.newPreHole m
+  t2 <- lift $ Gensym.newPreHole m
   sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
   sumRight <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumRight
   sumLeftVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSumLeft
@@ -146,7 +148,7 @@ rawTermLetCoproduct = do
         False
         [e1]
         ( RP.new
-            [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])], m :< RT.PiElim sumLeftVar [preVar' m err]),
+            [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])], m :< RT.PiElim sumLeftVar [t1, t2, preVar' m err]),
               (V.fromList [(m, RP.Cons sumRight [(m, RP.Var x)])], e2)
             ]
         )
@@ -233,11 +235,10 @@ parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
   m <- getCurrentHint
   funcBaseName <- baseName
-  impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
   codType <- parseDefInfoCod m
   e <- equalBlock rawTerm
-  return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
+  return ((m, funcBaseName), domInfoList, codType, e)
 
 parseDefInfoCod :: Hint -> Parser RT.RawTerm
 parseDefInfoCod m =
@@ -558,14 +559,13 @@ rawTermPiElim = do
   foldPiElimBracket m e elems
 
 data PiElimBracket
-  = PiElimBracketForward [RT.RawTerm] [RT.RawTerm] -- f<imp-arg-1, ..., imp-arg-n>(arg-1, ..., arg-m)
+  = PiElimBracketForward [RT.RawTerm] -- f<imp-arg-1, ..., imp-arg-n>(arg-1, ..., arg-m)
   | PiElimBracketBackward RT.RawTerm -- e[f]
 
 rawTermPiElimForwardBracket :: Parser PiElimBracket
 rawTermPiElimForwardBracket = do
-  impBrackets <- impArgList rawTerm
   es <- argList rawTerm
-  return $ PiElimBracketForward impBrackets es
+  return $ PiElimBracketForward es
 
 rawTermPiElimBackwardBracket :: Parser PiElimBracket
 rawTermPiElimBackwardBracket = do
@@ -579,14 +579,8 @@ foldPiElimBracket m e elemList =
       return e
     bracket : rest ->
       case bracket of
-        PiElimBracketForward impArgs args ->
-          if null impArgs
-            then foldPiElimBracket m (m :< RT.PiElim e args) rest
-            else do
-              f <- lift $ Gensym.newTextualIdentFromText "func"
-              h <- lift $ Gensym.newPreHole m
-              let e' = m :< RT.Let (m, f, h) [] e (m :< RT.PiElim (m :< RT.Var f) (impArgs ++ args))
-              foldPiElimBracket m e' rest
+        PiElimBracketForward args ->
+          foldPiElimBracket m (m :< RT.PiElim e args) rest
         PiElimBracketBackward func ->
           foldPiElimBracket m (m :< RT.PiElim func [e]) rest
 
@@ -631,16 +625,17 @@ preSimpleIdent = do
 rawTermListIntro :: Parser RT.RawTerm
 rawTermListIntro = do
   m <- getCurrentHint
+  t <- lift $ Gensym.newPreHole m
   es <- betweenBracket $ commaList rawTerm
-  return $ foldListApp m es
+  return $ foldListApp m t es
 
-foldListApp :: Hint -> [RT.RawTerm] -> RT.RawTerm
-foldListApp m es =
+foldListApp :: Hint -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
+foldListApp m t es =
   case es of
     [] ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.nil")) []
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.nil")) [t]
     e : rest ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [e, foldListApp m rest]
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [t, e, foldListApp m t rest]
 
 rawTermIntrospect :: Parser RT.RawTerm
 rawTermIntrospect = do
@@ -690,7 +685,7 @@ rawTermTextIntro = do
   let i8s = encode $ T.unpack s
   let i8 = m :< RT.Prim (WP.Type (PT.Int (PNS.IntSize 8)))
   let i8s' = map (\x -> m :< RT.Prim (WP.Value (WPV.Int i8 (toInteger x)))) i8s
-  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "text-new")) [foldListApp m i8s']
+  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "text-new")) [foldListApp m i8 i8s']
 
 rawTermInteger :: Parser RT.RawTerm
 rawTermInteger = do
