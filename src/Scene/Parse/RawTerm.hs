@@ -221,12 +221,11 @@ rawTermDotBind = do
   delimiter "."
   rawTerm
 
-parseDefInfo :: Parser RT.DefInfo
-parseDefInfo = do
+parseDefInfo :: Hint -> Parser RT.DefInfo
+parseDefInfo m = do
   functionVar <- var
   domInfoList <- argList preBinder
-  delimiter ":"
-  codType <- rawTerm
+  codType <- parseDefInfoCod m
   e <- equalBlock rawTerm
   return (functionVar, domInfoList, codType, e)
 
@@ -236,17 +235,25 @@ parseTopDefInfo = do
   funcBaseName <- baseName
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
-  delimiter ":"
-  codType <- rawTerm
+  codType <- parseDefInfoCod m
   e <- equalBlock rawTerm
   return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
+
+parseDefInfoCod :: Hint -> Parser RT.RawTerm
+parseDefInfoCod m =
+  choice
+    [ do
+        delimiter ":"
+        rawTerm,
+      lift $ Gensym.newPreHole m
+    ]
 
 -- define name(x1: A1, ..., xn: An)[: A] as e end
 rawTermPiIntroDef :: Parser RT.RawTerm
 rawTermPiIntroDef = do
   m <- getCurrentHint
   try $ keyword "define"
-  ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo
+  ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
   let piType = mFun :< RT.Pi domBinderList codType
   return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
 
