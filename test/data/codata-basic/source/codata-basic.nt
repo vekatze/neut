@@ -2,14 +2,14 @@ use
 - this.codata-basic::foo
 end
 
+define-codata bar(a: tau) with
+- value: a
+end
+
 define-codata foo() with
 - value-1: i64
 - value-2: i32
 - value-3: bar(i64)
-end
-
-define-codata bar(a: tau) with
-- value: a
 end
 
 define-codata stream(a: tau) with
