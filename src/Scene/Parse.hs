@@ -8,7 +8,6 @@ import Context.Alias qualified as Alias
 import Context.App
 import Context.Cache qualified as Cache
 import Context.CodataDefinition qualified as CodataDefinition
-import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
@@ -88,16 +87,9 @@ parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
       StmtDefine stmtKind m name args _ _ ->
-        case stmtKind of
-          Normal _ ->
-            Global.registerTopLevelFunc m name $ A.fromInt (length args)
-          Data dataName dataArgs consInfoList -> do
-            Global.registerData m dataName dataArgs consInfoList
-            registerAsEnumIfNecessary dataName dataArgs consInfoList
-          DataIntro {} ->
-            return ()
+        Global.registerStmtDefine m stmtKind name $ A.fromInt (length args)
       StmtDefineResource m name _ _ ->
-        Global.registerResource m name
+        Global.registerStmtDefineResource m name
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -196,7 +188,6 @@ defineFunction ::
   RT.RawTerm ->
   App RawStmt
 defineFunction stmtKind m name binder codType e = do
-  Global.registerTopLevelFunc m name (A.fromInt (length binder))
   return $ RawStmtDefine stmtKind m name binder codType e
 
 parseDefineData :: P.Parser [RawStmt]
@@ -217,23 +208,11 @@ defineData ::
 defineData m dataName dataArgs consInfoList = do
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
-  Global.registerData m dataName dataArgs consInfoList''
   let stmtKind = Data dataName dataArgs consInfoList''
   let dataType = constructDataType m dataName dataArgs
   let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
-  registerAsEnumIfNecessary dataName dataArgs consInfoList''
   return $ formRule : introRuleList
-
-registerAsEnumIfNecessary ::
-  DD.DefiniteDescription ->
-  [BinderF a] ->
-  [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
-  App ()
-registerAsEnumIfNecessary dataName dataArgs consInfoList =
-  when (hasNoArgs dataArgs consInfoList) $ do
-    Enum.insert dataName
-    mapM_ (Enum.insert . (\(consName, _, _) -> consName)) consInfoList
 
 modifyConsInfo ::
   D.Discriminant ->
@@ -245,10 +224,6 @@ modifyConsInfo d consInfoList =
       []
     (_, consName, consArgs) : rest ->
       (consName, consArgs, d) : modifyConsInfo (D.increment d) rest
-
-hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] -> Bool
-hasNoArgs dataArgs consInfoList =
-  null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
 
 modifyConstructorName ::
   Hint ->
@@ -367,7 +342,6 @@ parseDefineResource = do
   P.withBlock $ do
     discarder <- P.delimiter "-" >> rawTerm
     copier <- P.delimiter "-" >> rawTerm
-    lift $ Global.registerResource m name'
     return $ RawStmtDefineResource m name' discarder copier
 
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm

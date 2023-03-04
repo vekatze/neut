@@ -1,5 +1,6 @@
 module Context.Elaborate
   ( initialize,
+    initializeInferenceEnv,
     insConstraintEnv,
     getConstraintEnv,
     insWeakTypeEnv,
@@ -31,8 +32,12 @@ import Entity.WeakTerm qualified as WT
 
 initialize :: App ()
 initialize = do
-  writeRef' constraintEnv []
+  initializeInferenceEnv
   writeRef' weakTypeEnv IntMap.empty
+
+initializeInferenceEnv :: App ()
+initializeInferenceEnv = do
+  writeRef' constraintEnv []
   writeRef' holeEnv IntMap.empty
 
 insConstraintEnv :: WeakTerm -> WeakTerm -> App ()

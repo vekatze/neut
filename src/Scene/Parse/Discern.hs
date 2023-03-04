@@ -55,9 +55,10 @@ discernStmtList stmtList =
     [] ->
       return []
     RawStmtDefine stmtKind m functionName xts codType e : rest -> do
-      stmtKind' <- discernStmtKind stmtKind
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
+      Global.registerStmtDefine m stmtKind functionName $ A.fromInt (length xts)
+      stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
       rest' <- discernStmtList rest
       return $ WeakStmtDefine stmtKind' m functionName xts' codType' e' : rest'
@@ -69,6 +70,7 @@ discernStmtList stmtList =
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
+      Global.registerStmtDefineResource m name
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
 

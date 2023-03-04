@@ -1,7 +1,6 @@
 module Context.Global
-  ( registerTopLevelFunc,
-    registerData,
-    registerResource,
+  ( registerStmtDefine,
+    registerStmtDefineResource,
     lookup,
     initialize,
   )
@@ -9,6 +8,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Enum qualified as Enum
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -23,9 +23,35 @@ import Entity.Hint
 import Entity.Hint qualified as Hint
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
+import Entity.Stmt as ST
 import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
+
+registerStmtDefine :: Hint -> ST.StmtKindF a -> DD.DefiniteDescription -> A.Arity -> App ()
+registerStmtDefine m stmtKind name arity = do
+  case stmtKind of
+    ST.Normal _ ->
+      registerTopLevelFunc m name arity
+    ST.Data dataName dataArgs consInfoList -> do
+      registerData m dataName dataArgs consInfoList
+      registerAsEnumIfNecessary dataName dataArgs consInfoList
+    ST.DataIntro {} ->
+      return ()
+
+registerAsEnumIfNecessary ::
+  DD.DefiniteDescription ->
+  [BinderF a] ->
+  [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
+  App ()
+registerAsEnumIfNecessary dataName dataArgs consInfoList =
+  when (hasNoArgs dataArgs consInfoList) $ do
+    Enum.insert dataName
+    mapM_ (Enum.insert . (\(consName, _, _) -> consName)) consInfoList
+
+hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] -> Bool
+hasNoArgs dataArgs consInfoList =
+  null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
 
 registerTopLevelFunc :: Hint -> DD.DefiniteDescription -> Arity -> App ()
 registerTopLevelFunc m topLevelName arity = do
@@ -51,8 +77,8 @@ registerData m dataName dataArgs consInfoList = do
     let consArity = A.fromInt $ length consArgs
     modifyRef' nameMap $ Map.insert consName $ GN.DataIntro dataArity consArity discriminant
 
-registerResource :: Hint -> DD.DefiniteDescription -> App ()
-registerResource m resourceName = do
+registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
+registerStmtDefineResource m resourceName = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap resourceName
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
