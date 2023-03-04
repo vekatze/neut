@@ -3,6 +3,7 @@ module Act.Build (build) where
 import Context.App
 import Context.Cache qualified as Cache
 import Context.LLVM qualified as LLVM
+import Context.Module qualified as Module
 import Control.Monad
 import Data.Foldable
 import Entity.Config.Build
@@ -11,6 +12,7 @@ import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
 import Scene.Emit qualified as Emit
 import Scene.Execute qualified as Execute
+import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize
 import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower
@@ -21,6 +23,7 @@ import Prelude hiding (log)
 build :: Config -> App ()
 build cfg = do
   Initialize.initializeCompiler (logCfg cfg) True (mClangOptString cfg)
+  Module.getMainModule >>= Fetch.fetch
   targetList <- Collect.collectTargetList $ mTarget cfg
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
