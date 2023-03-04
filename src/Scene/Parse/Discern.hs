@@ -152,10 +152,11 @@ discern nenv term =
       -- when (length ks /= length (nub ks)) $
       --   Throw.raiseError m "duplicate key"
       -- ks' <- mapM (resolveName m >=> return . fst) ks
-      ((constructor, arity), keyList) <- CodataDefinition.lookup m dd
+      ((constructor, numOfDataArgs, numOfFields), keyList) <- CodataDefinition.lookup m dd
+      ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify numOfDataArgs]
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
-      return $ m :< WT.PiElim (m :< WT.VarGlobal constructor arity) args
+      return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) (ts ++ args)
 
 ensureFieldLinearity ::
   Hint ->

@@ -13,11 +13,11 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Prelude hiding (lookup, read)
 
-insert :: DD.DefiniteDescription -> (DD.DefiniteDescription, A.Arity) -> [DD.DefiniteDescription] -> App ()
+insert :: DD.DefiniteDescription -> (DD.DefiniteDescription, A.Arity, A.Arity) -> [DD.DefiniteDescription] -> App ()
 insert dataName dataNewInfo consNameList =
   modifyRef' codataDefMap $ Map.insert dataName (dataNewInfo, consNameList)
 
-lookup :: Hint -> DD.DefiniteDescription -> App ((DD.DefiniteDescription, A.Arity), [DD.DefiniteDescription])
+lookup :: Hint -> DD.DefiniteDescription -> App ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])
 lookup m dataName = do
   mValue <- Map.lookup dataName <$> readRef' codataDefMap
   case mValue of

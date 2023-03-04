@@ -319,10 +319,11 @@ parseDefineCodata = do
   elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
   dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "new"
-  let arity = A.fromInt $ length dataArgs + length elemInfoList
+  let numOfDataArgs = A.fromInt $ length dataArgs
+  let numOfFields = A.fromInt $ length elemInfoList
   let (_, consInfoList, _) = unzip3 elemInfoList
   consNameList <- mapM (lift . Throw.liftEither . DD.extend m dataName . Ident.toText) consInfoList
-  lift $ CodataDefinition.insert dataName (dataNewName, arity) consNameList
+  lift $ CodataDefinition.insert dataName (dataNewName, numOfDataArgs, numOfFields) consNameList
   -- ... then return
   return $ formRule ++ elimRuleList
 

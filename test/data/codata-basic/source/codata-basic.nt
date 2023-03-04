@@ -18,7 +18,14 @@ define-codata stream(a: tau) with
 end
 
 define int-stream(x: i64): stream(i64) =
-  stream.new(?, x, lambda (). int-stream(add-i64(x, 1)))
+  new stream with
+  - stream.head <-
+    x
+  - stream.tail <-
+    lambda () do
+      int-stream(add-i64(x, 1))
+    end
+  end
 end
 
 define tail(a: tau, s: stream(a)): stream(a) =

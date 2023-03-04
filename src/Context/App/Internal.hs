@@ -62,7 +62,7 @@ data Env = Env
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
-    codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity), [DD.DefiniteDescription])),
+    codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
     enumSet :: FastRef (S.Set DD.DefiniteDescription),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
