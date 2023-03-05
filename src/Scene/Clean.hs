@@ -12,4 +12,6 @@ clean = do
   mainModule <- Module.getMainModule
   let targetDir = getTargetDir mainModule
   b <- Path.doesDirExist targetDir
-  when b $ Path.removeDirRecur $ getTargetDir mainModule
+  when b $ do
+    Path.removeDirRecur targetDir
+  Path.ensureDir targetDir
