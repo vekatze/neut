@@ -9,10 +9,11 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Enum qualified as Enum
+import Context.Implicit qualified as Implicit
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Entity.Arity
+import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
@@ -28,11 +29,11 @@ import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
 
-registerStmtDefine :: Hint -> ST.StmtKindF a -> DD.DefiniteDescription -> A.Arity -> App ()
-registerStmtDefine m stmtKind name arity = do
+registerStmtDefine :: Hint -> ST.StmtKindF a -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
+registerStmtDefine m stmtKind name impArgNum allArgNum = do
   case stmtKind of
     ST.Normal _ ->
-      registerTopLevelFunc m name arity
+      registerTopLevelFunc m name impArgNum allArgNum
     ST.Data dataName dataArgs consInfoList -> do
       registerData m dataName dataArgs consInfoList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
@@ -53,11 +54,14 @@ hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, [BinderF a], D.Discriminan
 hasNoArgs dataArgs consInfoList =
   null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
 
-registerTopLevelFunc :: Hint -> DD.DefiniteDescription -> Arity -> App ()
-registerTopLevelFunc m topLevelName arity = do
+registerTopLevelFunc :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
+registerTopLevelFunc m topLevelName impArgNum allArgNum = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap topLevelName
+  let arity = A.fromInt (AN.reify allArgNum)
+  -- let arity = A.fromInt (AN.reify impArgNum + AN.reify expArgNum)
   modifyRef' nameMap $ Map.insert topLevelName $ GN.TopLevelFunc arity
+  Implicit.insert topLevelName impArgNum
 
 registerData ::
   Hint ->
@@ -70,12 +74,14 @@ registerData m dataName dataArgs consInfoList = do
   ensureFreshness m topNameMap dataName
   let consList = map (\(consName, _, _) -> consName) consInfoList
   let dataArity = A.fromInt $ length dataArgs
+  let dataArgNum = AN.fromInt (length dataArgs)
   modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList
   forM_ consInfoList $ \(consName, consArgs, discriminant) -> do
     topNameMap' <- readRef' nameMap
     ensureFreshness m topNameMap' consName
     let consArity = A.fromInt $ length consArgs
     modifyRef' nameMap $ Map.insert consName $ GN.DataIntro dataArity consArity discriminant
+    Implicit.insert consName dataArgNum
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do

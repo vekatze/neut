@@ -64,7 +64,7 @@ define main(): i64 =
   // let add2 = lambda (x). add-i64(x, 2) in
   // let mul3 = lambda (x). mul-i64(x, 3) in
   // let sub1 = lambda (x). sub-i64(x, 1) in
-  let fs = cons(?, add2, cons(?, mul3, cons(?, mul9, nil(?)))) in
+  let fs = cons(add2, cons(mul3, cons(mul9, nil()))) in
   let gs = fs in
   let hs = gs in
   interpret(fold(?, hs, n3))

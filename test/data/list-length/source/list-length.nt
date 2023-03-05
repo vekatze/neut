@@ -13,5 +13,5 @@ define length(a: tau, xs: list(a)): i64 =
 end
 
 define main(): i64 =
-  length(?, list.cons(?, 1, list.cons(?, 2, list.nil(i64))))
+  length(i64, list.cons(1, list.cons(2, list.nil())))
 end

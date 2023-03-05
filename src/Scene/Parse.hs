@@ -19,6 +19,7 @@ import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -86,8 +87,8 @@ parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
-      StmtDefine stmtKind m name args _ _ ->
-        Global.registerStmtDefine m stmtKind name $ A.fromInt (length args)
+      StmtDefine stmtKind m name impArgNum args _ _ -> do
+        Global.registerStmtDefine m stmtKind name impArgNum $ AN.fromInt (length args)
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
 
@@ -175,20 +176,23 @@ parseDefine opacity = do
       O.Transparent ->
         P.keyword "define-inline"
   m <- P.getCurrentHint
-  ((_, name), expArgs, codType, e) <- parseTopDefInfo
+  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction (Normal opacity) m name' expArgs codType e
+  lift $ defineFunction (Normal opacity) m name' (AN.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
+
+-- lift $ defineFunction (Normal opacity) m name' expArgs codType e
 
 defineFunction ::
   StmtKindF RT.RawTerm ->
   Hint ->
   DD.DefiniteDescription ->
+  AN.ArgNum ->
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App RawStmt
-defineFunction stmtKind m name binder codType e = do
-  return $ RawStmtDefine stmtKind m name binder codType e
+defineFunction stmtKind m name impArgNum binder codType e = do
+  return $ RawStmtDefine stmtKind m name impArgNum binder codType e
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -210,7 +214,8 @@ defineData m dataName dataArgs consInfoList = do
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = Data dataName dataArgs consInfoList''
   let dataType = constructDataType m dataName dataArgs
-  let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
+  let formRule = RawStmtDefine stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
+  -- let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -254,6 +259,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               (DataIntro consName dataArgs consArgs discriminant)
               m
               consName
+              (AN.fromInt $ length dataArgs)
               args
               dataType
               $ m :< RT.DataIntro dataName consName discriminant dataArgs' consArgs'
@@ -320,6 +326,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
     (Normal O.Opaque)
     m
     projectionName -- e.g. some-lib.foo::my-record.element-x
+    (AN.fromInt $ length dataArgs)
     projArgs
     (m :< RT.Noema elemType)
     $ m

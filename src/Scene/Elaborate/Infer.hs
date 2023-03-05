@@ -1,10 +1,4 @@
-module Scene.Elaborate.Infer
-  ( infer,
-    inferType,
-    inferBinder,
-    inferDefineResource,
-  )
-where
+module Scene.Elaborate.Infer (inferStmt) where
 
 import Context.App
 import Context.Elaborate
@@ -21,7 +15,6 @@ import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID qualified as HID
-import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
@@ -39,25 +32,30 @@ import Scene.WeakTerm.Subst qualified as Subst
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
-infer :: WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
-infer =
-  infer' []
-
-inferType :: WT.WeakTerm -> App WT.WeakTerm
-inferType =
-  inferType' []
-
-inferDefineResource :: Hint -> DD.DefiniteDescription -> WT.WeakTerm -> WT.WeakTerm -> App WeakStmt
-inferDefineResource m name discarder copier = do
-  (discarder', td) <- infer discarder
-  (copier', tc) <- infer copier
-  x <- Gensym.newIdentFromText "_"
-  let i64 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))
-  let tDiscard = m :< WT.Pi [(m, x, i64)] i64 -- return arbitrary integer
-  let tCopy = m :< WT.Pi [(m, x, i64)] i64
-  insConstraintEnv tDiscard td
-  insConstraintEnv tCopy tc
-  return $ WeakStmtDefineResource m name discarder' copier'
+inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
+inferStmt mMainDD stmt =
+  case stmt of
+    WeakStmtDefine isReducible m x impArgNum xts codType e -> do
+      Type.insert x $ m :< WT.Pi xts codType
+      (xts', (codType', e')) <- inferBinder' [] xts $ \varEnv -> do
+        codType' <- inferType' varEnv codType
+        (e', te) <- infer' varEnv e
+        insConstraintEnv codType' te
+        return (codType', e')
+      when (mMainDD == Just x) $
+        insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts' codType')
+      return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
+    WeakStmtDefineResource m name discarder copier -> do
+      Type.insert name $ m :< WT.Tau
+      (discarder', td) <- infer' [] discarder
+      (copier', tc) <- infer' [] copier
+      x <- Gensym.newIdentFromText "_"
+      let i64 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))
+      let tDiscard = m :< WT.Pi [(m, x, i64)] i64 -- return arbitrary integer
+      let tCopy = m :< WT.Pi [(m, x, i64)] i64
+      insConstraintEnv tDiscard td
+      insConstraintEnv tCopy tc
+      return $ WeakStmtDefineResource m name discarder' copier'
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
@@ -266,30 +264,6 @@ raiseArityMismatchError function expected actual = do
           <> " arguments, but found "
           <> T.pack (show actual)
           <> "."
-
-newHole :: Hint -> BoundVarEnv -> App WT.WeakTerm
-newHole m varEnv = do
-  Gensym.newHole m $ map (\(mx, x, _) -> mx :< WT.Var x) varEnv
-
--- In context varEnv == [x1, ..., xn], `newTypeHoleList varEnv [y1, ..., ym]` generates
--- the following list:
---
---   [(y1,   ?M1   @ (x1, ..., xn)),
---    (y2,   ?M2   @ (x1, ..., xn, y1),
---    ...,
---    (y{m}, ?M{m} @ (x1, ..., xn, y1, ..., y{m-1}))]
---
--- inserting type information `yi : ?Mi @ (x1, ..., xn, y1, ..., y{i-1})
-newTypeHoleList :: BoundVarEnv -> [(Ident, Hint)] -> App [BinderF WT.WeakTerm]
-newTypeHoleList varEnv ids =
-  case ids of
-    [] ->
-      return []
-    ((x, m) : rest) -> do
-      t <- newHole m varEnv
-      insWeakTypeEnv x t
-      ts <- newTypeHoleList ((m, x, t) : varEnv) rest
-      return $ (m, x, t) : ts
 
 primOpToType :: Hint -> PrimOp -> App TM.Term
 primOpToType m (PrimOp _ domList cod) = do

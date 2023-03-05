@@ -15,6 +15,7 @@ import Data.Maybe qualified as Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Const qualified as C
@@ -54,14 +55,14 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    RawStmtDefine stmtKind m functionName xts codType e : rest -> do
+    RawStmtDefine stmtKind m functionName impArgNum xts codType e : rest -> do
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
-      Global.registerStmtDefine m stmtKind functionName $ A.fromInt (length xts)
+      Global.registerStmtDefine m stmtKind functionName impArgNum $ AN.fromInt (length xts)
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
       rest' <- discernStmtList rest
-      return $ WeakStmtDefine stmtKind' m functionName xts' codType' e' : rest'
+      return $ WeakStmtDefine stmtKind' m functionName impArgNum xts' codType' e' : rest'
     RawStmtSection section innerStmtList : rest -> do
       Locator.withSection section $ do
         innerStmtList' <- discernStmtList innerStmtList
@@ -155,10 +156,12 @@ discern nenv term =
       --   Throw.raiseError m "duplicate key"
       -- ks' <- mapM (resolveName m >=> return . fst) ks
       ((constructor, numOfDataArgs, numOfFields), keyList) <- CodataDefinition.lookup m dd
-      ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify numOfDataArgs]
+      -- ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify numOfDataArgs]
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
-      return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) (ts ++ args)
+      return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) args
+
+-- return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) (ts ++ args)
 
 ensureFieldLinearity ::
   Hint ->

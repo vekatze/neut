@@ -8,6 +8,7 @@ import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.AliasInfo
+import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Comp
@@ -64,6 +65,7 @@ data Env = Env
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
     enumSet :: FastRef (S.Set DD.DefiniteDescription),
+    impArgEnv :: FastRef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
     compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -119,6 +121,7 @@ newEnv = do
   dataDefMap <- newFastRef
   codataDefMap <- newFastRef
   enumSet <- newFastRef
+  impArgEnv <- newFastRef
   declEnv <- newFastRef
   compEnv <- newFastRef
   typeEnv <- newFastRef

@@ -106,7 +106,7 @@ withSpecializedCtx action = do
 clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
-    StmtDefine stmtKind _ f xts _ e -> do
+    StmtDefine stmtKind _ f _ xts _ e -> do
       e' <- clarifyTerm (TM.insTypeEnv xts IntMap.empty) e
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       e'' <- linearize xts' e' >>= Reduce.reduce

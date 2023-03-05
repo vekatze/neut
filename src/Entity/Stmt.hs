@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -56,6 +57,7 @@ data RawStmt
       (StmtKindF RT.RawTerm)
       Hint
       DD.DefiniteDescription
+      AN.ArgNum
       [BinderF RT.RawTerm]
       RT.RawTerm
       RT.RawTerm
@@ -67,6 +69,7 @@ data WeakStmt
       (StmtKindF WT.WeakTerm)
       Hint
       DD.DefiniteDescription
+      AN.ArgNum
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
@@ -80,6 +83,7 @@ data Stmt
       (StmtKindF TM.Term)
       Hint
       DD.DefiniteDescription
+      AN.ArgNum
       [BinderF TM.Term]
       TM.Term
       TM.Term
@@ -100,10 +104,10 @@ instance Binary Cache
 compress :: Stmt -> Stmt
 compress stmt =
   case stmt of
-    StmtDefine stmtKind m functionName args codType _ ->
+    StmtDefine stmtKind m functionName impArgNum args codType _ ->
       case stmtKind of
         Normal O.Opaque ->
-          StmtDefine stmtKind m functionName args codType (m :< TM.Tau)
+          StmtDefine stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt
     StmtDefineResource {} ->
@@ -112,38 +116,38 @@ compress stmt =
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =
   case stmt of
-    WeakStmtDefine _ m x xts codType e ->
+    WeakStmtDefine _ m x _ xts codType e ->
       DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
     _ ->
       "<define-resource>"
 
-defineEnum :: DD.DefiniteDescription -> [BinderF TM.Term] -> [ConsInfo] -> Stmt
-defineEnum dataName dataArgs consInfoList = do
-  StmtDefine
-    (Data dataName dataArgs consInfoList)
-    internalHint
-    dataName
-    dataArgs
-    (internalHint :< TM.Tau)
-    (internalHint :< TM.Data dataName (map argToTerm dataArgs))
+-- defineEnum :: DD.DefiniteDescription -> [BinderF TM.Term] -> [ConsInfo] -> Stmt
+-- defineEnum dataName dataArgs consInfoList = do
+--   StmtDefine
+--     (Data dataName dataArgs consInfoList)
+--     internalHint
+--     dataName
+--     dataArgs
+--     (internalHint :< TM.Tau)
+--     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
 
 argToTerm :: BinderF TM.Term -> TM.Term
 argToTerm (m, x, _) =
   m :< TM.Var x
 
-defineEnumIntro ::
-  DD.DefiniteDescription ->
-  [BinderF TM.Term] ->
-  ConsInfo ->
-  Stmt
-defineEnumIntro dataName dataArgs (consName, consArgs, discriminant) =
-  StmtDefine
-    (DataIntro dataName dataArgs consArgs discriminant)
-    internalHint
-    consName
-    (dataArgs ++ consArgs)
-    (internalHint :< TM.Data dataName (map argToTerm dataArgs))
-    (internalHint :< TM.DataIntro dataName consName discriminant (map argToTerm dataArgs) (map argToTerm consArgs))
+-- defineEnumIntro ::
+--   DD.DefiniteDescription ->
+--   [BinderF TM.Term] ->
+--   ConsInfo ->
+--   Stmt
+-- defineEnumIntro dataName dataArgs (consName, consArgs, discriminant) =
+--   StmtDefine
+--     (DataIntro dataName dataArgs consArgs discriminant)
+--     internalHint
+--     consName
+--     (dataArgs ++ consArgs)
+--     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
+--     (internalHint :< TM.DataIntro dataName consName discriminant (map argToTerm dataArgs) (map argToTerm consArgs))
 
 addDiscriminants :: [(a, [(b, c)])] -> [(a, [(b, c, D.Discriminant)])]
 addDiscriminants info = do

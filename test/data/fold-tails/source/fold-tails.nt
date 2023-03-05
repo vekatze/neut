@@ -43,9 +43,9 @@ end
 define gen(n: nat()): list(nat()) =
   match n with
   - zero() ->
-    nil(?)
+    nil()
   - succ(m) ->
-    cons(?, n, gen(m))
+    cons(n, gen(m))
   end
 end
 
@@ -61,18 +61,18 @@ end
 define tails(a: tau, xs: list(a)): list(list(a)) =
   match xs with
   - nil() ->
-    cons(?, nil(?), nil(?))
+    cons(nil(), nil())
   - cons(x, xs) ->
-    cons(?, xs, tails(a, xs))
+    cons(xs, tails(a, xs))
   end
 end
 
 define map(a: tau, b: tau, f: (a) -> b, xs: list(a)): list(b) =
   match xs with
   - nil() ->
-    nil(?)
+    nil()
   - cons(y, ys) ->
-    cons(?, f(y), map(a, b, f, ys))
+    cons(f(y), map(a, b, f, ys))
   end
 end
 
