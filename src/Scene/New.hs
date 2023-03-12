@@ -63,4 +63,4 @@ createMainFile = do
   Path.ensureDir $ getSourceDir newModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath sgl
-    Path.writeText mainFilePath "define main(): i64 =\n  0\nend\n"
+    Path.writeText mainFilePath "define main(): i64 {\n  0\n}\n"

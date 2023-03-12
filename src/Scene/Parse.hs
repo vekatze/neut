@@ -160,10 +160,8 @@ parseSection :: P.Parser RawStmt
 parseSection = do
   try $ P.keyword "section"
   section <- Section.Section <$> P.baseName
-  P.keyword "do"
   Locator.withLiftedSection section $ do
-    stmtList <- concat <$> many parseStmt
-    P.keyword "end"
+    stmtList <- concat <$> P.betweenBrace (many parseStmt)
     return $ RawStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
@@ -200,7 +198,7 @@ parseDefineData = do
   try $ P.keyword "define-data"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  consInfoList <- P.withBlock $ P.manyList parseDefineDataClause
+  consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
   lift $ defineData m a dataArgs consInfoList
 
 defineData ::
@@ -295,7 +293,7 @@ parseDefineCodata = do
   try $ P.keyword "define-codata"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  elemInfoList <- P.withBlock $ P.manyList preAscription
+  elemInfoList <- P.betweenBrace $ P.manyList preAscription
   formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
@@ -346,7 +344,7 @@ parseDefineResource = do
   m <- P.getCurrentHint
   name <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
-  P.withBlock $ do
+  P.betweenBrace $ do
     discarder <- P.delimiter "-" >> rawTerm
     copier <- P.delimiter "-" >> rawTerm
     return $ RawStmtDefineResource m name' discarder copier

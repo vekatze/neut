@@ -213,20 +213,15 @@ rawTermPiIntro = do
   m <- getCurrentHint
   try $ keyword "lambda"
   varList <- argList preBinder
-  e <- choice [rawTermDotBind, doBlock rawTerm]
+  e <- betweenBrace rawTerm
   return $ lam m varList e
-
-rawTermDotBind :: Parser RT.RawTerm
-rawTermDotBind = do
-  delimiter "."
-  rawTerm
 
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do
   functionVar <- var
   domInfoList <- argList preBinder
   codType <- parseDefInfoCod m
-  e <- equalBlock rawTerm
+  e <- betweenBrace rawTerm
   return (functionVar, domInfoList, codType, e)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
@@ -236,7 +231,7 @@ parseTopDefInfo = do
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
   codType <- parseDefInfoCod m
-  e <- equalBlock rawTerm
+  e <- betweenBrace rawTerm
   return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
 
 parseDefInfoCod :: Hint -> Parser RT.RawTerm
@@ -376,24 +371,22 @@ rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
   keyword "match"
-  es <- sepByTill rawTerm (delimiter ",") (keyword "with")
-  patternRowList <- manyList $ rawTermPatternRow (length es)
-  keyword "end"
+  es <- commaList rawTerm
+  patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim False es (RP.new patternRowList)
 
 rawTermMatchNoetic :: Parser RT.RawTerm
 rawTermMatchNoetic = do
   m <- getCurrentHint
   keyword "match-noetic"
-  es <- sepByTill rawTerm (delimiter ",") (keyword "with")
-  patternRowList <- manyList $ rawTermPatternRow (length es)
-  keyword "end"
+  es <- commaList rawTerm
+  patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim True es (RP.new patternRowList)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
-  patternList <- sepByTill rawTermPattern (delimiter ",") (delimiter "->")
+  patternList <- commaList rawTermPattern
   unless (length patternList == patternSize) $ do
     lift $
       Throw.raiseError m $
@@ -404,6 +397,7 @@ rawTermPatternRow patternSize = do
           <> "`"
           <> "\n"
           <> T.pack (show patternList)
+  delimiter "=>"
   body <- rawTerm
   return (V.fromList patternList, body)
 
@@ -435,16 +429,14 @@ rawTermNew = do
   m <- getCurrentHint
   keyword "new"
   name <- symbol
-  keyword "with"
-  rowList <- manyList rawTermNewRow
-  keyword "end"
+  rowList <- betweenBrace $ manyList rawTermNewRow
   return $ m :< RT.New name rowList
 
 rawTermNewRow :: Parser (Hint, T.Text, RT.RawTerm)
 rawTermNewRow = do
   m <- getCurrentHint
   key <- symbol
-  delimiter "<-"
+  delimiter "<="
   value <- rawTerm
   return (m, key, value)
 
@@ -468,17 +460,14 @@ rawTermIf = do
   m <- getCurrentHint
   try $ keyword "if"
   ifCond <- rawTerm
-  keyword "then"
-  ifBody <- rawTerm
+  ifBody <- betweenBrace $ rawTerm
   elseIfList <- many $ do
     keyword "else-if"
     elseIfCond <- rawTerm
-    keyword "then"
-    elseIfBody <- rawTerm
+    elseIfBody <- betweenBrace $ rawTerm
     return (elseIfCond, elseIfBody)
   keyword "else"
-  elseBody <- rawTerm
-  keyword "end"
+  elseBody <- betweenBrace $ rawTerm
   boolTrue <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolTrue
   boolFalse <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolFalse
   return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
@@ -641,9 +630,7 @@ rawTermIntrospect = do
   try $ keyword "introspect"
   key <- symbol
   value <- lift $ getIntrospectiveValue m key
-  keyword "with"
-  clauseList <- many rawTermIntrospectiveClause
-  keyword "end"
+  clauseList <- betweenBrace $ manyList rawTermIntrospectiveClause
   case lookup value clauseList of
     Just clause ->
       return clause
@@ -652,9 +639,8 @@ rawTermIntrospect = do
 
 rawTermIntrospectiveClause :: Parser (T.Text, RT.RawTerm)
 rawTermIntrospectiveClause = do
-  delimiter "-"
   c <- symbol
-  delimiter "->"
+  delimiter "=>"
   body <- rawTerm
   return (c, body)
 

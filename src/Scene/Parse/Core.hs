@@ -123,29 +123,23 @@ betweenAngle :: Parser a -> Parser a
 betweenAngle =
   between (delimiter "<") (delimiter ">")
 
+betweenBrace :: Parser a -> Parser a
+betweenBrace =
+  between (delimiter "{") (delimiter "}")
+
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
-equalBlock :: Parser a -> Parser a
-equalBlock =
-  between (delimiter "=") (keyword "end")
-
-doBlock :: Parser a -> Parser a
-doBlock =
-  between (keyword "do") (keyword "end")
-
-withBlock :: Parser a -> Parser a
-withBlock =
-  between (keyword "with") (keyword "end")
-
 importBlock :: Parser a -> Parser a
-importBlock =
-  between (keyword "import") (keyword "end")
+importBlock p = do
+  keyword "import"
+  betweenBrace p
 
 useBlock :: Parser a -> Parser a
-useBlock =
-  between (keyword "use") (keyword "end")
+useBlock p = do
+  keyword "use"
+  betweenBrace p
 
 commaList :: Parser a -> Parser [a]
 commaList f = do
@@ -166,21 +160,6 @@ manyList :: Parser a -> Parser [a]
 manyList f =
   many $ delimiter "-" >> f
 
-sepByTill :: Parser a -> Parser b -> Parser c -> Parser [a]
-sepByTill p sep end = do
-  choice
-    [ try end >> return [],
-      sepByTill' [] p sep end
-    ]
-
-sepByTill' :: [a] -> Parser a -> Parser b -> Parser c -> Parser [a]
-sepByTill' acc p sep end = do
-  v <- p
-  choice
-    [ try sep >> sepByTill' (v : acc) p sep end,
-      end >> return (Prelude.reverse (v : acc))
-    ]
-
 var :: Parser (Hint, T.Text)
 var = do
   m <- getCurrentHint
@@ -190,7 +169,7 @@ var = do
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "() \"\n\t:;,!?<>[]{}"
+  S.fromList "=() \"\n\t:;,!?<>[]{}"
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char
