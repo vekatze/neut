@@ -1,64 +1,64 @@
-import
+import {
 - core.bool
-end
+}
 
-use
+use {
 - this.nat-fact::nat
-end
+}
 
-define-data nat() with
+data nat() {
 - zero()
 - succ(nat())
-end
+}
 
-define add-nat(x: nat(), y: nat()): nat() =
-  match x with
-  - zero() ->
+define add-nat(x: nat(), y: nat()): nat() {
+  match x {
+  - zero() =>
     y
-  - succ(m) ->
+  - succ(m) =>
     add-nat(m, succ(y))
-  end
-end
+  }
+}
 
-define mul-nat(x: nat(), y: nat()): nat() =
-  match x with
-  - zero() ->
+define mul-nat(x: nat(), y: nat()): nat() {
+  match x {
+  - zero() =>
     zero()
-  - succ(m) ->
+  - succ(m) =>
     add-nat(mul-nat(m, y), y)
-  end
-end
+  }
+}
 
-define eq-nat(n1: nat(), n2: nat()): core.bool::bool() =
-  match n1, n2 with
-  - zero(), zero() ->
+define eq-nat(n1: nat(), n2: nat()): core.bool::bool() {
+  match n1, n2 {
+  - zero(), zero() =>
     core.bool::bool.true()
-  - succ(m1), succ(m2) ->
+  - succ(m1), succ(m2) =>
     eq-nat(m1, m2)
-  - n1, n2 ->
+  - n1, n2 =>
     core.bool::bool.false()
-  end
-end
+  }
+}
 
-define fact(n: nat()): nat() =
-  match n with
-  - zero() ->
+define fact(n: nat()): nat() {
+  match n {
+  - zero() =>
     succ(zero())
-  - succ(m) ->
+  - succ(m) =>
     mul-nat(n, fact(m))
-  end
-end
+  }
+}
 
-define interpret(n: nat()): i64 =
-  match n with
-  - nat.zero() ->
+define interpret(n: nat()): i64 {
+  match n {
+  - nat.zero() =>
     0
-  - nat.succ(m) ->
+  - nat.succ(m) =>
     add-i64(1, interpret(m))
-  end
-end
+  }
+}
 
-define main(): i64 =
-  let n5 = succ(succ(succ(succ(succ(zero()))))) in
+define main(): i64 {
+  let n5 = succ(succ(succ(succ(succ(zero())))))
   interpret(fact(n5))
-end
+}

@@ -1,14 +1,14 @@
-define-data item() with
-- nil()
-end
+data item() {
+- nil(i64)
+}
 
-define f(xs: item()): i64 =
-  match xs with
-  - item.nil() ->
+define f(xs: item()): i64 {
+  match xs {
+  - item.nil(x) =>
     0
-  end
-end
+  }
+}
 
-define main(): i64 =
-  f(item.nil())
-end
+define main(): i64 {
+  f(item.nil(10))
+}

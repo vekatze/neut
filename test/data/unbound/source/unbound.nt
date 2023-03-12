@@ -1,26 +1,26 @@
-use
+use {
 - this.unbound::list
-end
+}
 
-define-data list(a: tau) with
+data list(a: tau) {
 - nil()
 - cons()
-end
+}
 
-define f(xs: list(i64), ys: list(i64)): list(i64) =
-  match xs, ys with
-  - nil(), ys ->
+define f(xs: list(i64), ys: list(i64)): list(i64) {
+  match xs, ys {
+  - nil(), ys =>
     ys
-  - xs, nil() ->
+  - xs, nil() =>
     xs
-  - cons(), zs ->
+  - cons(), zs =>
     nil()
-  end
-end
+  }
+}
 
-define main(): i64 =
-  let xs = cons() in
-  let ys = cons() in
-  let zs = f(xs, ys) in
+define main(): i64 {
+  let xs = cons()
+  let ys = cons()
+  let zs = f(xs, ys)
   0
-end
+}

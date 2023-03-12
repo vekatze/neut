@@ -1,13 +1,13 @@
-import
+import {
 - core.bool
-end
+}
 
-define main(): i64 =
-  let foo = core.bool::bool.false() in
-  match foo with
-  - core.bool::bool.true() ->
+define main(): i64 {
+  let foo = core.bool::bool.false()
+  match foo {
+  - core.bool::bool.true() =>
     1
-  - core.bool::bool.false() ->
+  - core.bool::bool.false() =>
     2
-  end
-end
+  }
+}

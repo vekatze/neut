@@ -1,111 +1,111 @@
-use
+use {
 - this.fold-tails::list
 - this.fold-tails::nat
-end
+}
 
-define-data nat() with
+data nat() {
 - zero()
 - succ(nat())
-end
+}
 
-define-data list(a: tau) with
+data list(a: tau) {
 - nil()
 - cons(a, list(a))
-end
+}
 
-define add-nat(x: nat(), y: nat()): nat() =
-  match x with
-  - zero() ->
+define add-nat(x: nat(), y: nat()): nat() {
+  match x {
+  - zero() =>
     y
-  - succ(m) ->
+  - succ(m) =>
     add-nat(m, succ(y))
-  end
-end
+  }
+}
 
-define mul-nat(x: nat(), y: nat()): nat() =
-  match x with
-  - zero() ->
+define mul-nat(x: nat(), y: nat()): nat() {
+  match x {
+  - zero() =>
     zero()
-  - succ(m) ->
+  - succ(m) =>
     add-nat(mul-nat(m, y), y)
-  end
-end
+  }
+}
 
-define interpret(n: nat()): i64 =
-  match n with
-  - zero() ->
+define interpret(n: nat()): i64 {
+  match n {
+  - zero() =>
     0
-  - succ(m) ->
+  - succ(m) =>
     add-i64(1, interpret(m))
-  end
-end
+  }
+}
 
-define gen(n: nat()): list(nat()) =
-  match n with
-  - zero() ->
+define gen(n: nat()): list(nat()) {
+  match n {
+  - zero() =>
     nil()
-  - succ(m) ->
+  - succ(m) =>
     cons(n, gen(m))
-  end
-end
+  }
+}
 
-define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a =
-  match xs with
-  - nil() ->
+define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
+  match xs {
+  - nil() =>
     acc
-  - cons(y, ys) ->
+  - cons(y, ys) =>
     f(y, fold-r(a, b, f, acc, ys))
-  end
-end
+  }
+}
 
-define tails(a: tau, xs: list(a)): list(list(a)) =
-  match xs with
-  - nil() ->
+define tails(a: tau, xs: list(a)): list(list(a)) {
+  match xs {
+  - nil() =>
     cons(nil(), nil())
-  - cons(x, xs) ->
+  - cons(x, xs) =>
     cons(xs, tails(a, xs))
-  end
-end
+  }
+}
 
-define map(a: tau, b: tau, f: (a) -> b, xs: list(a)): list(b) =
-  match xs with
-  - nil() ->
+define map(a: tau, b: tau, f: (a) -> b, xs: list(a)): list(b) {
+  match xs {
+  - nil() =>
     nil()
-  - cons(y, ys) ->
+  - cons(y, ys) =>
     cons(f(y), map(a, b, f, ys))
-  end
-end
+  }
+}
 
-define head(xs: list(nat())): nat() =
-  match xs with
-  - nil() ->
+define head(xs: list(nat())): nat() {
+  match xs {
+  - nil() =>
     zero()
-  - cons(y, ys) ->
+  - cons(y, ys) =>
     y
-  end
-end
+  }
+}
 
-define main(): i64 =
-  let n = succ(succ(succ(zero()))) in
-  let n-copy1 = n in
-  let n-copy2 = n in
-  let n-copy3 = n in
-  let m = mul-nat(n, mul-nat(n, n)) in
-  let m-copy1 = m in
-  let m-copy2 = m in
-  let xs = gen(m) in
-  let yss = tails(?, xs) in
-  let yss-copy1 = yss in
-  let yss-copy2 = yss in
-  let zs = map(?, ?, lambda (l). head(l), yss) in
-  let zs-copy1 = zs in
-  let zs-copy2 = zs in
-  let zs-copy3 = zs in
-  let zs-copy4 = zs in
-  let zs-copy5 = zs in
-  let result-nat = fold-r(?, ?, lambda (a, b). add-nat(a, b), zero(), zs) in
-  let result-nat-copy1 = result-nat in
-  let result-nat-copy2 = result-nat in
-  let result = interpret(result-nat) in
+define main(): i64 {
+  let n = succ(succ(succ(zero())))
+  let n-copy1 = n
+  let n-copy2 = n
+  let n-copy3 = n
+  let m = mul-nat(n, mul-nat(n, n))
+  let m-copy1 = m
+  let m-copy2 = m
+  let xs = gen(m)
+  let yss = tails(?, xs)
+  let yss-copy1 = yss
+  let yss-copy2 = yss
+  let zs = map(?, ?, lambda (l) { head(l) }, yss)
+  let zs-copy1 = zs
+  let zs-copy2 = zs
+  let zs-copy3 = zs
+  let zs-copy4 = zs
+  let zs-copy5 = zs
+  let result-nat = fold-r(?, ?, lambda (a, b) { add-nat(a, b) }, zero(), zs)
+  let result-nat-copy1 = result-nat
+  let result-nat-copy2 = result-nat
+  let result = interpret(result-nat)
   result
-end
+}

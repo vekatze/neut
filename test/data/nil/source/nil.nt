@@ -1,9 +1,9 @@
-define-data item() with
+data item() {
 - nil()
 - cons(i64)
-end
+}
 
-define main(): i64 =
-  let x = item.nil() in
+define main(): i64 {
+  let x = item.nil()
   1
-end
+}

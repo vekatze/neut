@@ -1,13 +1,13 @@
-section internal do
-  define bar(): i64 =
+section internal {
+  define bar(): i64 {
     20
-  end
+  }
 
-  define some-function(): i64 =
+  define some-function(): i64 {
     bar()
-  end
-end
+  }
+}
 
-define main(): i64 =
+define main(): i64 {
   internal.some-function()
-end
+}

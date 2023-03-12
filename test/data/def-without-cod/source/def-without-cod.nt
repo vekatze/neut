@@ -1,7 +1,7 @@
-define id(a: tau, x: a) =
+define id(a: tau, x: a) {
   x
-end
+}
 
-define main(): i64 =
+define main(): i64 {
   id(i64, 0)
-end
+}

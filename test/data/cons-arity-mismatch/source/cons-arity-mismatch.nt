@@ -1,20 +1,20 @@
-use
+use {
 - this.cons-arity-mismatch::item
-end
+}
 
-define-data item() with
+data item() {
 - cons()
-end
+}
 
-define f(xs: item(), ys: item()): item() =
-  match xs, ys with
-  // - cons(x), zs ->
+define f(xs: item(), ys: item()): item() {
+  match xs, ys {
+  // - cons(x), zs =>
   //   zs
-  - cons(), zs ->
+  - cons(), zs =>
     zs
-  end
-end
+  }
+}
 
-define main(): i64 =
+define main(): i64 {
   0
-end
+}

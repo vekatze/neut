@@ -1,64 +1,62 @@
-use
+use {
 - this.codata-basic::foo
-end
+}
 
-define-codata bar(a: tau) with
+record bar(a: tau) {
 - value: a
-end
+}
 
-define-codata foo() with
+record foo() {
 - value-1: i64
 - value-2: i32
 - value-3: bar(i64)
-end
+}
 
-define-codata stream(a: tau) with
+record stream(a: tau) {
 - head: a
 - tail: () -> stream(a)
-end
+}
 
-define int-stream(x: i64): stream(i64) =
-  new stream with
-  - stream.head <-
+define int-stream(x: i64): stream(i64) {
+  new stream {
+  - stream.head <=
     x
-  - stream.tail <-
-    lambda () do
+  - stream.tail <=
+    lambda () {
       int-stream(add-i64(x, 1))
-    end
-  end
-end
+    }
+  }
+}
 
-define tail<a>(s: stream(a)): stream(a) =
-  match s with
-  - stream.new(_, tail-generator) ->
+define tail<a>(s: stream(a)): stream(a) {
+  match s {
+  - stream.new(_, tail-generator) =>
     tail-generator()
-  end
-end
+  }
+}
 
-define head<a>(s: stream(a)): a =
-  match s with
-  - stream.new(v, _) ->
+define head<a>(s: stream(a)): a {
+  match s {
+  - stream.new(v, _) =>
     v
-  end
-end
+  }
+}
 
-define main(): i64 =
-  let inner = bar.new(10) in
+define main(): i64 {
+  let inner = bar.new(10)
   let config =
-    new foo with
-    - value-1 <- 3
-    - foo.value-3 <- inner
-    - value-2 <- 8
-    end
-  in
+    new foo {
+    - value-1 <= 3
+    - foo.value-3 <= inner
+    - value-2 <= 8
+    }
   let k on config =
-    let s1 = foo.value-1(config) in
-    let s2 = *config[value-1] in
-    let s3 = config[foo.value-1] in
-    let s4 = config[value-3][bar.value] in
+    let s1 = foo.value-1(config)
+    let s2 = *config[value-1]
+    let s3 = config[foo.value-1]
+    let s4 = config[value-3][bar.value]
     add-i64(*s1, add-i64(s2, add-i64(*s3, *s4)))
-  in
-  let some-stream = int-stream(3) in
-  let value = some-stream[tail][tail][head] in
+  let some-stream = int-stream(3)
+  let value = some-stream[tail][tail][head]
   add-i64(k, value)
-end
+}

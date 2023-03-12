@@ -1,12 +1,10 @@
-define-data empty() with
-end
+data empty() {}
 
-define ex-falso(a: tau, e: empty()): a =
-  match e with
-  end
-end
+define ex-falso(a: tau, e: empty()): a {
+  match e {}
+}
 
 
-define main(): i64 =
+define main(): i64 {
   0
-end
+}

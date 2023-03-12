@@ -1,34 +1,34 @@
-define-data list(a: tau) with
+data list(a: tau) {
 - nil()
 - cons(a, list(a))
-end
+}
 
-define length-embodied(xs: list(i64)): i64 =
-  match xs with
-  - list.nil() ->
+define length-embodied(xs: list(i64)): i64 {
+  match xs {
+  - list.nil() =>
     0
-  - list.cons(y, ys) ->
+  - list.cons(y, ys) =>
     add-i64(1, length-embodied(ys))
-  end
-end
+  }
+}
 
-define length(xs: &list(i64)): i64 =
+define length(xs: &list(i64)): i64 {
   length-embodied(*xs)
-end
+}
 
-define sum-of-list(xs: &list(i64)): i64 =
-  match-noetic xs with
-  - list.nil() ->
+define sum-of-list(xs: &list(i64)): i64 {
+  case xs {
+  - list.nil() =>
     0
-  - list.cons(y, ys) ->
+  - list.cons(y, ys) =>
     add-i64(*y, sum-of-list(ys))
-  end
-end
+  }
+}
 
-define main(): i64 =
+define main(): i64 {
   // let xs = list.cons(3, list.cons(1, list.cons(20, list.nil()))) in
-  let xs = [3, 1, 20] in
-  let some-value on xs = length(xs) in
-  let sum-value on xs = add-i64(sum-of-list(xs), some-value) in
+  let xs = [3, 1, 20]
+  let some-value on xs = length(xs)
+  let sum-value on xs = add-i64(sum-of-list(xs), some-value)
   sum-value
-end
+}

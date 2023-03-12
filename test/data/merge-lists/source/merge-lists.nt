@@ -1,36 +1,35 @@
-use
+use {
 - this.merge-lists::list
-end
+}
 
-define-data list(a: tau) with
+data list(a: tau) {
 - nil()
 - cons(a, list(a))
-end
+}
 
-define merge(a: tau, xs: list(a), ys: list(a)): list(a) =
-  match xs, ys with
-  - nil(), ys ->
+define merge(a: tau, xs: list(a), ys: list(a)): list(a) {
+  match xs, ys {
+  - nil(), ys =>
     ys
-  - xs, nil() ->
+  - xs, nil() =>
     xs
-  - cons(x, rx), ys ->
+  - cons(x, rx), ys =>
     cons(x, merge(a, rx, ys))
-  end
-end
+  }
+}
 
-define length<a>(xs: list(a)): i64 =
-  match xs with
-  - list.nil() ->
+define length<a>(xs: list(a)): i64 {
+  match xs {
+  - list.nil() =>
     0
-  - list.cons(y, ys) ->
+  - list.cons(y, ys) =>
     add-i64(1, length(ys))
-  end
-end
+  }
+}
 
-
-define main(): i64 =
-  let xs = cons(1, cons(2, nil())) in
-  let ys = cons(3, cons(4, cons(5, nil()))) in
-  let zs = merge(i64, xs, ys) in
+define main(): i64 {
+  let xs = cons(1, cons(2, nil()))
+  let ys = cons(3, cons(4, cons(5, nil())))
+  let zs = merge(i64, xs, ys)
   length(zs)
-end
+}

@@ -1,14 +1,14 @@
-define-data item(a: tau) with
+data item(a: tau) {
 - cons(a)
-end
+}
 
-define view(x: item((_: i64) -> i64)): i64 =
-  match x with
-  - item.cons(a) ->
+define view(x: item((_: i64) -> i64)): i64 {
+  match x {
+  - item.cons(a) =>
     1
-  end
-end
+  }
+}
 
-define main(): i64 =
-  view(item.cons(lambda (x). x))
-end
+define main(): i64 {
+  view(item.cons(lambda (x) { x }))
+}

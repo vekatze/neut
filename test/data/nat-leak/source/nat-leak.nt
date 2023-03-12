@@ -1,23 +1,23 @@
-use
+use {
 - this.nat-leak::nat
-end
+}
 
-define-data nat() with
+data nat() {
 - zero()
 - succ(nat())
-end
+}
 
-define eq-nat(n1: nat(), n2: nat()): i64 =
-  match n1, n2 with
-  - zero(), zero() ->
+define eq-nat(n1: nat(), n2: nat()): i64 {
+  match n1, n2 {
+  - zero(), zero() =>
     1
-  - succ(m1), succ(m2) ->
+  - succ(m1), succ(m2) =>
     2
-  - n1, n2 ->
+  - n1, n2 =>
     0
-  end
-end
+  }
+}
 
-define main(): i64 =
+define main(): i64 {
   eq-nat(zero(), zero())
-end
+}

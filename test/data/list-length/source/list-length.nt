@@ -1,17 +1,17 @@
-define-data list(a: tau) with
+data list(a: tau) {
 - nil()
 - cons(a, list(a))
-end
+}
 
-define length(a: tau, xs: list(a)): i64 =
-  match xs with
-  - list.nil() ->
+define length(a: tau, xs: list(a)): i64 {
+  match xs {
+  - list.nil() =>
     0
-  - list.cons(y, ys) ->
+  - list.cons(y, ys) =>
     add-i64(1, length(a,  ys))
-  end
-end
+  }
+}
 
-define main(): i64 =
+define main(): i64 {
   length(i64, list.cons(1, list.cons(2, list.nil())))
-end
+}

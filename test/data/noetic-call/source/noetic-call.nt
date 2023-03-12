@@ -1,31 +1,31 @@
-define-data list(a: tau) with
+data list(a: tau) {
 - nil()
 - cons(a, list(a))
-end
+}
 
-define length(xs: &list(i64)): i64 =
-  let a = xs in
-  let b = xs in
-  let c = xs in
-  match-noetic c with
-  - list.nil() ->
+define length(xs: &list(i64)): i64 {
+  let a = xs
+  let b = xs
+  let c = xs
+  case c {
+  - list.nil() =>
     0
-  - list.cons(y, ys) ->
+  - list.cons(y, ys) =>
     add-i64(1, length(ys))
-  end
-end
+  }
+}
 
-define tail(xs: &list(i64)): &list(i64) =
-  match-noetic xs with
-  - list.nil() ->
+define tail(xs: &list(i64)): &list(i64) {
+  case xs {
+  - list.nil() =>
     xs
-  - list.cons(y, ys) ->
+  - list.cons(y, ys) =>
     ys
-  end
-end
+  }
+}
 
-define main(): i64 =
-  let xs = list.cons(3, list.cons(1, list.cons(2, list.nil()))) in
-  let some-value on xs = length(tail(xs)) in
+define main(): i64 {
+  let xs = list.cons(3, list.cons(1, list.cons(2, list.nil())))
+  let some-value on xs = length(tail(xs))
   some-value
-end
+}

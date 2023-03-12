@@ -1,29 +1,30 @@
-import
+import {
 - core.bool
-end
+}
 
-use
+use {
 - this.match-unbound::nat
-end
+}
 
-define-data nat() with
+data nat() {
 - zero()
-end
+}
 
-define cond(n1: nat()): core.bool::bool() =
+define cond(n1: nat()): core.bool::bool() {
   core.bool::bool.false()
-end
+}
 
-define f(): nat() =
-  let x = zero() in
-  if cond(x) then
+define f(): nat() {
+  let x = zero()
+  if cond(x) {
     zero()
-  else
-    let _ = x in x
-  end
-end
+  } else {
+    let _ = x
+    x
+  }
+}
 
-define main(): i64 =
-  let a = f() in
+define main(): i64 {
+  let a = f()
   0
-end
+}
