@@ -111,7 +111,6 @@ rawTermLetOn = do
   noeticVarList <- map (second Ident.fromText) <$> commaList var
   delimiter "="
   e1 <- rawTerm
-  keyword "in"
   e2 <- rawTerm
   return $ m :< RT.Let x noeticVarList e1 e2
 
@@ -122,7 +121,6 @@ rawTermLet = do
   x <- rawTermLetVar
   delimiter "="
   e1 <- rawTerm
-  keyword "in"
   e2 <- rawTerm
   return $ m :< RT.Let x [] e1 e2
 
@@ -134,7 +132,6 @@ rawTermLetCoproduct = do
   x <- Ident.fromText <$> symbol
   delimiter "="
   e1 <- rawTerm
-  keyword "in"
   e2 <- rawTerm
   err <- lift $ Gensym.newTextualIdentFromText "err"
   sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
