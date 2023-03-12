@@ -375,7 +375,7 @@ rawTermMatch = do
 rawTermMatchNoetic :: Parser RT.RawTerm
 rawTermMatchNoetic = do
   m <- getCurrentHint
-  keyword "match-noetic"
+  keyword "case"
   es <- commaList rawTerm
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim True es (RP.new patternRowList)

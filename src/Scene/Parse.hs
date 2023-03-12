@@ -195,7 +195,7 @@ defineFunction stmtKind m name impArgNum binder codType e = do
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
   m <- P.getCurrentHint
-  try $ P.keyword "define-data"
+  try $ P.keyword "data"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
@@ -290,7 +290,7 @@ parseDefineDataClauseArg = do
 parseDefineCodata :: P.Parser [RawStmt]
 parseDefineCodata = do
   m <- P.getCurrentHint
-  try $ P.keyword "define-codata"
+  try $ P.keyword "record"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
@@ -340,7 +340,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
 
 parseDefineResource :: P.Parser RawStmt
 parseDefineResource = do
-  try $ P.keyword "define-resource"
+  try $ P.keyword "resource"
   m <- P.getCurrentHint
   name <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
