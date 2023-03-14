@@ -50,7 +50,7 @@ spaceConsumer =
   L.space
     space1
     (L.skipLineComment "//")
-    (L.skipBlockCommentNested "/-" "-/")
+    empty
 
 lexeme :: Parser a -> Parser a
 lexeme =
