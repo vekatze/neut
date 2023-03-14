@@ -457,14 +457,14 @@ rawTermIf = do
   m <- getCurrentHint
   try $ keyword "if"
   ifCond <- rawTerm
-  ifBody <- betweenBrace $ rawTerm
+  ifBody <- betweenBrace rawTerm
   elseIfList <- many $ do
     keyword "else-if"
     elseIfCond <- rawTerm
-    elseIfBody <- betweenBrace $ rawTerm
+    elseIfBody <- betweenBrace rawTerm
     return (elseIfCond, elseIfBody)
   keyword "else"
-  elseBody <- betweenBrace $ rawTerm
+  elseBody <- betweenBrace rawTerm
   boolTrue <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolTrue
   boolFalse <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolFalse
   return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody

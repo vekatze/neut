@@ -56,7 +56,6 @@ lexeme :: Parser a -> Parser a
 lexeme =
   L.lexeme spaceConsumer
 
--- symbol :: Parser a
 symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
