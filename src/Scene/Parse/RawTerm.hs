@@ -92,8 +92,8 @@ rawTerm = do
       rawTermPiOrBasic
     ]
 
-rawTerm' :: Parser RT.RawTerm
-rawTerm' = do
+rawTermBasic :: Parser RT.RawTerm
+rawTermBasic = do
   choice
     [ rawTermNoema,
       rawTermEmbody,
@@ -160,7 +160,7 @@ rawTermEmbody :: Parser RT.RawTerm
 rawTermEmbody = do
   m <- getCurrentHint
   delimiter "*"
-  e <- rawTerm'
+  e <- rawTermBasic
   t <- lift $ Gensym.newPreHole m
   raw <- lift $ Gensym.newTextualIdentFromText "raw"
   copied <- lift $ Gensym.newTextualIdentFromText "copied"
@@ -194,7 +194,7 @@ rawTermPiGeneral = do
 rawTermPiOrBasic :: Parser RT.RawTerm
 rawTermPiOrBasic = do
   m <- getCurrentHint
-  t <- rawTerm'
+  t <- rawTermBasic
   choice
     [ do
         delimiter "->"
@@ -510,7 +510,7 @@ rawTermNoema :: Parser RT.RawTerm
 rawTermNoema = do
   m <- getCurrentHint
   delimiter "&"
-  t <- rawTerm'
+  t <- rawTermBasic
   return $ m :< RT.Noema t
 
 rawTermAdmit :: Parser RT.RawTerm
