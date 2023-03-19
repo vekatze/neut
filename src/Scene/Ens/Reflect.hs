@@ -23,7 +23,7 @@ parseFile = do
 parseKeyValuePair :: Parser (T.Text, E.Ens)
 parseKeyValuePair = do
   k <- symbol
-  keyword "="
+  delimiter "="
   v <- parseEns
   return (k, v)
 
@@ -43,12 +43,12 @@ parseEns = do
 
 parseDictionary :: Parser (M.HashMap T.Text E.Ens)
 parseDictionary = do
-  keyword "{"
-  M.fromList <$> manyTill parseKeyValuePair (keyword "}")
+  delimiter "{"
+  M.fromList <$> manyTill parseKeyValuePair (delimiter "}")
 
 parseList :: Parser [E.Ens]
 parseList = do
-  keyword "["
+  delimiter "["
   vs <- many parseEns
-  keyword "]"
+  delimiter "]"
   return vs
