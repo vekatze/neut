@@ -45,13 +45,27 @@ getCurrentHint :: Parser Hint
 getCurrentHint =
   Hint.fromSourcePos <$> getSourcePos
 
+{-# INLINE spaceConsumer #-}
 spaceConsumer :: Parser ()
 spaceConsumer =
-  L.space
-    space1
-    (L.skipLineComment "//")
-    empty
+  L.space asciiSpaceOrNewLine1 (L.skipLineComment "//") empty
 
+{-# INLINE isAsciiSpace #-}
+isAsciiSpace :: Char -> Bool
+isAsciiSpace c =
+  c == ' '
+
+{-# INLINE asciiSpaceOrNewLine1 #-}
+asciiSpaceOrNewLine1 :: Parser ()
+asciiSpaceOrNewLine1 =
+  void $ takeWhile1P (Just "space or newline") isAsciiSpaceOrNewLine
+
+{-# INLINE isAsciiSpaceOrNewLine #-}
+isAsciiSpaceOrNewLine :: Char -> Bool
+isAsciiSpaceOrNewLine c =
+  c == ' ' || c == '\n'
+
+{-# INLINE lexeme #-}
 lexeme :: Parser a -> Parser a
 lexeme =
   L.lexeme spaceConsumer
@@ -67,17 +81,19 @@ baseName = do
 
 keyword :: T.Text -> Parser ()
 keyword expected = do
-  void $ chunk expected
-  notFollowedBy nonSymbolChar
-  spaceConsumer
-
-delimiter :: T.Text -> Parser ()
-delimiter expected = do
-  lexeme $ void $ chunk expected
+  try $ do
+    s <- symbol
+    if s == expected
+      then return ()
+      else failure (Just (asTokens s)) (S.fromList [asLabel expected])
 
 nonSymbolChar :: Parser Char
 nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
+
+delimiter :: T.Text -> Parser ()
+delimiter expected = do
+  lexeme $ void $ chunk expected
 
 string :: Parser T.Text
 string = do
@@ -161,6 +177,7 @@ manyList f =
 
 var :: Parser (Hint, T.Text)
 var = do
+  notFollowedBy (char '-')
   m <- getCurrentHint
   x <- symbol
   return (m, x)
@@ -168,7 +185,7 @@ var = do
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "=() \"\n\t:;,!?<>[]{}"
+  S.fromList "=() \"\n\t:;,<>[]{}"
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char

@@ -345,8 +345,8 @@ parseDefineResource = do
   name <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
   P.betweenBrace $ do
-    discarder <- P.delimiter "-" >> rawTerm
-    copier <- P.delimiter "-" >> rawTerm
+    discarder <- P.delimiter "-" >> rawExpr
+    copier <- P.delimiter "-" >> rawExpr
     return $ RawStmtDefineResource m name' discarder copier
 
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm

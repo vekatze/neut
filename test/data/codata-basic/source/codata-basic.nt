@@ -50,12 +50,13 @@ define main(): i64 {
     - foo.value-3 <= inner
     - value-2 <= 8
     }
-  let k on config =
+  let k on config = {
     let s1 = foo.value-1(config)
     let s2 = *config[value-1]
     let s3 = config[foo.value-1]
     let s4 = config[value-3][bar.value]
     add-i64(*s1, add-i64(s2, add-i64(*s3, *s4)))
+  }
   let some-stream = int-stream(3)
   let value = some-stream[tail][tail][head]
   add-i64(k, value)

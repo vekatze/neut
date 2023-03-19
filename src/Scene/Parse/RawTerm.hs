@@ -1,7 +1,6 @@
 module Scene.Parse.RawTerm
-  ( rawTerm,
-    rawTermSimple,
-    preBinder,
+  ( rawExpr,
+    rawTerm,
     preAscription,
     parseTopDefInfo,
     parseDefiniteDescription,
@@ -50,48 +49,61 @@ import Text.Megaparsec
 -- parser for RT.RawTerm
 --
 
-rawTerm :: Parser RT.RawTerm
-rawTerm = do
+rawExpr :: Parser RT.RawTerm
+rawExpr = do
   m <- getCurrentHint
-  e1 <- rawTermBasic
   choice
-    [ rawTermSeq m e1,
-      rawTermExplicitAscription m e1,
+    [ rawExprLet m,
+      rawExprSeqOrTerm m
+    ]
+
+rawExprLet :: Hint -> Parser RT.RawTerm
+rawExprLet m = do
+  choice
+    [ try $ rawTermLetCoproduct m,
+      rawTermLetOrLetOn m
+    ]
+
+rawExprSeqOrTerm :: Hint -> Parser RT.RawTerm
+rawExprSeqOrTerm m = do
+  e1 <- rawTerm
+  choice
+    [ do
+        e2 <- rawExpr
+        f <- lift $ Gensym.newTextualIdentFromText "unit"
+        top <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreTop
+        return $ bind (m, f, m :< RT.PiElim top []) e1 e2,
       return e1
     ]
 
-rawTermBasic :: Parser RT.RawTerm
-rawTermBasic = do
+rawTerm :: Parser RT.RawTerm
+rawTerm = do
   choice
     [ rawTermPiIntro,
       rawTermPiIntroDef,
-      rawTermListIntro,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
       rawTermMatch,
-      try rawTermNew,
+      rawTermNew,
       rawTermIf,
-      rawTermLetCoproduct,
-      try rawTermLetOn,
-      rawTermLet,
-      try rawTermPi,
-      rawTermBasic'
+      rawTermListIntro,
+      rawTermPiGeneral,
+      rawTermPiOrBasic
     ]
 
-rawTermBasic' :: Parser RT.RawTerm
-rawTermBasic' = do
+rawTerm' :: Parser RT.RawTerm
+rawTerm' = do
   choice
     [ rawTermNoema,
       rawTermEmbody,
-      try rawTermPiElim,
-      rawTermSimple
+      rawTermAscOrPiElimOrSimple
     ]
 
 rawTermSimple :: Parser RT.RawTerm
 rawTermSimple = do
   choice
-    [ rawTermParen,
+    [ rawTermBrace,
       rawTermTextIntro,
       rawTermTau,
       rawTermAdmit,
@@ -102,37 +114,33 @@ rawTermSimple = do
       rawTermVar
     ]
 
-rawTermLetOn :: Parser RT.RawTerm
-rawTermLetOn = do
-  m <- getCurrentHint
-  try $ keyword "let"
+rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
+rawTermLetOrLetOn m = do
+  keyword "let"
   x <- rawTermLetVar
-  try $ keyword "on"
-  noeticVarList <- map (second Ident.fromText) <$> commaList var
-  delimiter "="
-  e1 <- rawTerm
-  e2 <- rawTerm
-  return $ m :< RT.Let x noeticVarList e1 e2
+  choice
+    [ do
+        keyword "on"
+        noeticVarList <- map (second Ident.fromText) <$> commaList var
+        delimiter "="
+        e1 <- rawTerm
+        e2 <- rawExpr
+        return $ m :< RT.Let x noeticVarList e1 e2,
+      do
+        delimiter "="
+        e1 <- rawTerm
+        e2 <- rawExpr
+        return $ m :< RT.Let x [] e1 e2
+    ]
 
-rawTermLet :: Parser RT.RawTerm
-rawTermLet = do
-  m <- getCurrentHint
-  try $ keyword "let"
-  x <- rawTermLetVar
-  delimiter "="
-  e1 <- rawTerm
-  e2 <- rawTerm
-  return $ m :< RT.Let x [] e1 e2
-
--- let? x     = e1 in e2
-rawTermLetCoproduct :: Parser RT.RawTerm
-rawTermLetCoproduct = do
-  m <- getCurrentHint
-  try $ keyword "let?"
+-- let? x = e1 in e2
+rawTermLetCoproduct :: Hint -> Parser RT.RawTerm
+rawTermLetCoproduct m = do
+  keyword "let?"
   x <- Ident.fromText <$> symbol
   delimiter "="
   e1 <- rawTerm
-  e2 <- rawTerm
+  e2 <- rawExpr
   err <- lift $ Gensym.newTextualIdentFromText "err"
   sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
   sumRight <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumRight
@@ -152,7 +160,7 @@ rawTermEmbody :: Parser RT.RawTerm
 rawTermEmbody = do
   m <- getCurrentHint
   delimiter "*"
-  e <- rawTermBasic'
+  e <- rawTerm'
   t <- lift $ Gensym.newPreHole m
   raw <- lift $ Gensym.newTextualIdentFromText "raw"
   copied <- lift $ Gensym.newTextualIdentFromText "copied"
@@ -163,25 +171,10 @@ rawTermEmbody = do
         bind (m, copied, t) (m :< RT.Var raw) $
           m :< RT.Var copied
 
-rawTermSeq :: Hint -> RT.RawTerm -> Parser RT.RawTerm
-rawTermSeq m e1 = do
-  delimiter ";"
-  e2 <- rawTerm
-  f <- lift $ Gensym.newTextualIdentFromText "unit"
-  top <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreTop
-  return $ bind (m, f, m :< RT.PiElim top []) e1 e2
-
-rawTermExplicitAscription :: Hint -> RT.RawTerm -> Parser RT.RawTerm
-rawTermExplicitAscription m e = do
-  delimiter ":"
-  t <- rawTermBasic
-  f <- lift $ Gensym.newTextualIdentFromText "unit"
-  return $ bind (m, f, t) e (m :< RT.Var f)
-
 rawTermTau :: Parser RT.RawTerm
 rawTermTau = do
   m <- getCurrentHint
-  try $ keyword "tau"
+  keyword "tau"
   return $ m :< RT.Tau
 
 rawTermHole :: Parser RT.RawTerm
@@ -190,27 +183,33 @@ rawTermHole = do
   delimiter "?"
   lift $ Gensym.newPreHole m
 
-rawTermPi :: Parser RT.RawTerm
-rawTermPi = do
+rawTermPiGeneral :: Parser RT.RawTerm
+rawTermPiGeneral = do
   m <- getCurrentHint
-  domList <-
-    choice
-      [ argList $ choice [try preAscription, typeWithoutIdent],
-        do
-          x <- lift $ Gensym.newTextualIdentFromText "_"
-          t <- rawTermBasic'
-          return [(m, x, t)]
-      ]
+  domList <- argList $ choice [try preAscription, typeWithoutIdent]
   delimiter "->"
   cod <- rawTerm
   return $ m :< RT.Pi domList cod
 
+rawTermPiOrBasic :: Parser RT.RawTerm
+rawTermPiOrBasic = do
+  m <- getCurrentHint
+  t <- rawTerm'
+  choice
+    [ do
+        delimiter "->"
+        x <- lift $ Gensym.newTextualIdentFromText "_"
+        cod <- rawTerm
+        return $ m :< RT.Pi [(m, x, t)] cod,
+      return t
+    ]
+
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
   m <- getCurrentHint
-  try $ keyword "lambda"
+  keyword "lambda"
   varList <- argList preBinder
-  e <- betweenBrace rawTerm
+  e <- betweenBrace rawExpr
   return $ lam m varList e
 
 parseDefInfo :: Hint -> Parser RT.DefInfo
@@ -218,7 +217,7 @@ parseDefInfo m = do
   functionVar <- var
   domInfoList <- argList preBinder
   codType <- parseDefInfoCod m
-  e <- betweenBrace rawTerm
+  e <- betweenBrace rawExpr
   return (functionVar, domInfoList, codType, e)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
@@ -228,7 +227,7 @@ parseTopDefInfo = do
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
   codType <- parseDefInfoCod m
-  e <- betweenBrace rawTerm
+  e <- betweenBrace rawExpr
   return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
 
 parseDefInfoCod :: Hint -> Parser RT.RawTerm
@@ -244,7 +243,7 @@ parseDefInfoCod m =
 rawTermPiIntroDef :: Parser RT.RawTerm
 rawTermPiIntroDef = do
   m <- getCurrentHint
-  try $ keyword "define"
+  keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
   let piType = mFun :< RT.Pi domBinderList codType
   return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
@@ -272,7 +271,7 @@ parseLocalLocator = do
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
   m <- getCurrentHint
-  try $ keyword "magic"
+  keyword "magic"
   choice
     [ rawTermMagicCast m,
       rawTermMagicStore m,
@@ -395,7 +394,7 @@ rawTermPatternRow patternSize = do
           <> "\n"
           <> T.pack (show patternList)
   delimiter "=>"
-  body <- rawTerm
+  body <- rawExpr
   return (V.fromList patternList, body)
 
 rawTermPattern :: Parser (Hint, RP.RawPattern)
@@ -417,9 +416,8 @@ rawTermPatternCons = do
 
 rawTermPatternVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternVar = do
-  m <- getCurrentHint
-  varText <- symbol
-  return (m, RP.Var (Ident.fromText varText))
+  (m, x) <- var
+  return (m, RP.Var (Ident.fromText x))
 
 rawTermNew :: Parser RT.RawTerm
 rawTermNew = do
@@ -434,20 +432,18 @@ rawTermNewRow = do
   m <- getCurrentHint
   key <- symbol
   delimiter "<="
-  value <- rawTerm
+  value <- rawExpr
   return (m, key, value)
 
 rawTermLetVar :: Parser (BinderF RT.RawTerm)
 rawTermLetVar = do
-  m <- getCurrentHint
+  (m, x) <- var
   choice
     [ try $ do
-        x <- symbol
         delimiter ":"
         a <- rawTerm
         return (m, Ident.fromText x, a),
       do
-        x <- symbol
         h <- lift $ Gensym.newPreHole m
         return (m, Ident.fromText x, h)
     ]
@@ -455,16 +451,16 @@ rawTermLetVar = do
 rawTermIf :: Parser RT.RawTerm
 rawTermIf = do
   m <- getCurrentHint
-  try $ keyword "if"
+  keyword "if"
   ifCond <- rawTerm
-  ifBody <- betweenBrace rawTerm
+  ifBody <- betweenBrace rawExpr
   elseIfList <- many $ do
     keyword "else-if"
     elseIfCond <- rawTerm
-    elseIfBody <- betweenBrace rawTerm
+    elseIfBody <- betweenBrace rawExpr
     return (elseIfCond, elseIfBody)
   keyword "else"
-  elseBody <- betweenBrace rawTerm
+  elseBody <- betweenBrace rawExpr
   boolTrue <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolTrue
   boolFalse <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolFalse
   return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
@@ -502,15 +498,9 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
               ]
           )
 
-rawTermParen :: Parser RT.RawTerm
-rawTermParen = do
-  m <- getCurrentHint
-  es <- argList rawTerm
-  case es of
-    [e] ->
-      return e
-    _ ->
-      lift $ Throw.raiseError m "found a non-singleton tuple"
+rawTermBrace :: Parser RT.RawTerm
+rawTermBrace =
+  betweenBrace rawExpr
 
 bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
@@ -520,13 +510,13 @@ rawTermNoema :: Parser RT.RawTerm
 rawTermNoema = do
   m <- getCurrentHint
   delimiter "&"
-  t <- rawTermBasic'
+  t <- rawTerm'
   return $ m :< RT.Noema t
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
   m <- getCurrentHint
-  try $ keyword "admit"
+  keyword "admit"
   h <- lift $ Gensym.newPreHole m
   return $
     m
@@ -536,12 +526,20 @@ rawTermAdmit = do
           m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
         ]
 
-rawTermPiElim :: Parser RT.RawTerm
-rawTermPiElim = do
+rawTermAscOrPiElimOrSimple :: Parser RT.RawTerm
+rawTermAscOrPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
-  elems <- some $ choice [rawTermPiElimForwardBracket, rawTermPiElimBackwardBracket]
-  foldPiElimBracket m e elems
+  choice
+    [ do
+        delimiter ":"
+        t <- rawTerm
+        f <- lift $ Gensym.newTextualIdentFromText "unit"
+        return $ bind (m, f, t) e (m :< RT.Var f),
+      do
+        elems <- many $ choice [rawTermPiElimForwardBracket, rawTermPiElimBackwardBracket]
+        foldPiElimBracket m e elems
+    ]
 
 data PiElimBracket
   = PiElimBracketForward [RT.RawTerm] -- f<imp-arg-1, ..., imp-arg-n>(arg-1, ..., arg-m)
@@ -582,8 +580,7 @@ preBinder =
 
 preAscription :: Parser (BinderF RT.RawTerm)
 preAscription = do
-  m <- getCurrentHint
-  x <- symbol
+  (m, x) <- var
   delimiter ":"
   a <- rawTerm
   return (m, Ident.fromText x, a)
@@ -603,8 +600,7 @@ preAscription' = do
 
 preSimpleIdent :: Parser (Hint, Ident)
 preSimpleIdent = do
-  m <- getCurrentHint
-  x <- symbol
+  (m, x) <- var
   return (m, Ident.fromText x)
 
 rawTermListIntro :: Parser RT.RawTerm
@@ -624,7 +620,7 @@ foldListApp m es =
 rawTermIntrospect :: Parser RT.RawTerm
 rawTermIntrospect = do
   m <- getCurrentHint
-  try $ keyword "introspect"
+  keyword "introspect"
   key <- symbol
   value <- lift $ getIntrospectiveValue m key
   clauseList <- betweenBrace $ manyList rawTermIntrospectiveClause
@@ -638,7 +634,7 @@ rawTermIntrospectiveClause :: Parser (T.Text, RT.RawTerm)
 rawTermIntrospectiveClause = do
   c <- symbol
   delimiter "=>"
-  body <- rawTerm
+  body <- rawExpr
   return (c, body)
 
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
