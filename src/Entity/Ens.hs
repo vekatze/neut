@@ -147,10 +147,13 @@ ppString x =
 
 ppList :: Int -> [Cofree EnsF a] -> T.Text
 ppList n xs = do
-  let header = "["
-  let xs' = map (showWithOffset (n + 1) . ppEns (n + 1)) xs
-  let footer = showWithOffset n "]"
-  T.intercalate "\n" $ [header] <> xs' <> [footer]
+  if null xs
+    then "[]"
+    else do
+      let header = "["
+      let xs' = map (showWithOffset (n + 1) . ppEns (n + 1)) xs
+      let footer = showWithOffset n "]"
+      T.intercalate "\n" $ [header] <> xs' <> [footer]
 
 ppDictionary :: Int -> M.HashMap T.Text (Cofree EnsF a) -> T.Text
 ppDictionary n dict = do
