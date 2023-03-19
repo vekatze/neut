@@ -90,7 +90,6 @@ discernStmtKind stmtKind =
       (consArgs', _) <- discernBinder nenv consArgs
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
--- Alpha-convert all the variables so that different variables have different names.
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =
   case term of
