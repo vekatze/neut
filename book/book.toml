@@ -1,0 +1,14 @@
+[book]
+authors = ["vekatze"]
+language = "en"
+multilingual = false
+src = "src"
+title = "Neut Programming Language"
+
+[build]
+build-dir = "dist"
+
+[output.html]
+git-repository-url = "https://github.com/vekatze/neut"
+copy-fonts = false
+curly-quotes = false

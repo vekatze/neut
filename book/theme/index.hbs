@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="{{language}}">
+  <head>
+    <meta charset="UTF-8" />
+    <title>{{title}}</title>
+    {{#if base_url}}
+      <base href="{{base_url}}" />
+    {{/if}}
+    <meta name="description" content="{{description}}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="{{path_to_root}}favicon.svg" />
+    <link rel="stylesheet" href="{{path_to_root}}css/general.css" />
+    <link rel="stylesheet" href="{{path_to_root}}highlight.css" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="{{path_to_root}}">
+            {{book_title}}
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+          {{#if git_repository_url}}
+            <a href="{{git_repository_url}}" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+          {{/if}}
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            {{#toc}}{{/toc}}
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            {{{content}}}
+            <footer id="footer-paginator">
+              {{#previous}}
+              <a rel="prev" href="{{ path_to_root }}{{link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+              {{/previous}}
+
+              <div id="footer-spacer"></div>
+
+              {{#next}}
+              <a rel="next" href="{{ path_to_root }}{{link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+              {{/next}}
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              {{#toc}}{{/toc}}
+            </footer>
+          </div>
+        </main>
+      </div>
+
+      {{#if live_reload_endpoint}}
+        <!-- Livereload script (if served using the cli tool) -->
+        <script>
+          const wsProtocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+          const wsAddress = wsProtocol + "//" + location.host + "/" + "{{{live_reload_endpoint}}}";
+          const socket = new WebSocket(wsAddress); socket.onmessage = function
+          (event) { if (event.data === "reload") { socket.close();
+          location.reload(); } }; window.onbeforeunload = function() {
+          socket.close(); }
+        </script>
+      {{/if}}
+
+      <script src="{{path_to_root}}clipboard.min.js"></script>
+      <script src="{{path_to_root}}highlight.js"></script>
+      <script src="{{path_to_root}}book.js"></script>
+    </div>
+  </body>
+</html>
