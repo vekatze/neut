@@ -69,6 +69,12 @@ body {
   }
 }
 
+@media (max-width: 680px) {
+  body {
+    font-size: 1.35rem;
+  }
+}
+
 a {
   color: var(--links);
   background-color: var(--dark-blue);
