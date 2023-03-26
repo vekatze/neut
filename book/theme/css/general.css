@@ -3,7 +3,7 @@
   --page-padding: 15px;
   --content-max-width: 680px;
   --menu-bar-height: 60px;
-  --menu-bar-space: 2rem;
+  --side-space: 2rem;
   --main-font: Seravek, -apple-system, BlinkMacSystemFont, Open Sans, Arial,
     sans-serif;
   --mono-font: ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas,
@@ -62,7 +62,6 @@ body {
   margin: 0;
   font-weight: normal;
   font-size: 1.6rem;
-  overflow-x: hidden;
 }
 
 @media (min-width: 680px) {
@@ -143,10 +142,15 @@ h5 {
 
 #content {
   position: relative;
-  overflow-y: auto;
   padding: 50px 0;
-  /* padding: 0 5px 50px 5px; */
+  min-width: 0;
 }
+@media (min-width: 900px) {
+  #content {
+    overflow-y: auto;
+  }
+}
+
 #nav-wide-wrapper {
   position: absolute;
   top: 0;
@@ -158,7 +162,7 @@ h5 {
   margin-right: auto;
   max-width: var(--content-max-width);
   overflow-wrap: break-word;
-  padding: 0 10px;
+  padding: 0 var(--side-space);
 }
 
 p {
@@ -245,7 +249,12 @@ em {
 #body-container {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+}
+
+@media (min-width: 900px) {
+  #body-container {
+    height: 100vh;
+  }
 }
 
 #content-box {
@@ -254,13 +263,18 @@ em {
   flex: 1;
 }
 
+@media (min-width: 900px) {
+  #content-box {
+    overflow: hidden;
+  }
+}
+
 #content-box #sidebar {
   flex: 0 0 var(--sidebar-width);
   border-right: 1px solid var(--mid-blue);
 }
 
 #content-box #content {
-  overflow-y: overlay;
   flex: 1;
 }
 
@@ -326,7 +340,7 @@ em {
 
 #sidebar .sidebar-scrollbox {
   overflow-y: scroll;
-  margin-left: 2rem;
+  margin-left: var(--side-space);
   height: 100%;
 }
 
@@ -350,18 +364,18 @@ em {
 }
 
 .headline {
-  margin-left: 2rem;
+  margin-left: var(--side-space);
   font-weight: 200;
   color: var(--gray);
   font-style: italic;
 }
 
 .menubar-item {
-  margin-left: 2rem;
+  margin-left: var(--side-space);
 }
 
 .menu-title {
-  margin: 0 var(--menu-bar-space);
+  margin: 0 var(--side-space);
   display: inline-block;
   font-weight: normal;
   font-size: 1.6rem;
@@ -372,7 +386,7 @@ em {
   text-overflow: ellipsis;
 }
 .right-buttons {
-  margin: 0 var(--menu-bar-space);
+  margin: 0 var(--side-space);
   flex: 0 0 auto;
   line-height: var(--menu-bar-height);
 }
@@ -444,7 +458,7 @@ pre > code {
   margin-left: auto;
   margin-right: auto;
   max-width: var(--content-max-width);
-  padding: 0 10px;
+  padding: 0 var(--side-space);
   overflow-wrap: break-word;
 }
 

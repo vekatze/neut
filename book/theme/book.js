@@ -172,4 +172,8 @@ hljs.registerLanguage("neut", function (hljs) {
   });
 })();
 
-document.querySelector("#content").focus();
+if (window.matchMedia('(max-width: 900px)').matches) {
+  document.querySelector("#body-container").focus();
+} else {
+  document.querySelector("#content").focus();
+}
