@@ -170,9 +170,9 @@ elaborate' term =
       ts' <- mapM elaborate' ts
       tree' <- elaborateDecisionTree m tree
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< WT.Noema t -> do
+    m :< WT.Noema mutability t -> do
       t' <- elaborate' t
-      return $ m :< TM.Noema t'
+      return $ m :< TM.Noema mutability t'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- elaborate' e1
       mxt'@(_, _, t) <- elaborateWeakBinder mxt

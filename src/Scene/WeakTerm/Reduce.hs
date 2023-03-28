@@ -57,9 +57,9 @@ reduce term =
       ts' <- mapM reduce ts
       decisionTree' <- reduceDecisionTree decisionTree
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts') decisionTree'
-    m :< WT.Noema t -> do
+    m :< WT.Noema mutability t -> do
       t' <- reduce t
-      return $ m :< WT.Noema t'
+      return $ m :< WT.Noema mutability t'
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce e1
       case opacity of

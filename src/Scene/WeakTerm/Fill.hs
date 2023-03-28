@@ -56,9 +56,9 @@ fill sub term =
       (binder', decisionTree') <- fill''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.Noema t -> do
+    m :< WT.Noema mutability t -> do
       t' <- fill sub t
-      return $ m :< WT.Noema t'
+      return $ m :< WT.Noema mutability t'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- fill sub e1
       (mxt', _, e2') <- fill'' sub mxt [] e2

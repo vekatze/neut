@@ -51,9 +51,9 @@ subst sub term =
       (binder', decisionTree') <- subst''' sub binder decisionTree
       let (_, os', ts') = unzip3 binder'
       return $ m :< WT.DataElim isNoetic (zip3 os' es' ts') decisionTree'
-    m :< WT.Noema t -> do
+    m :< WT.Noema mutability t -> do
       t' <- subst sub t
-      return $ m :< WT.Noema t'
+      return $ m :< WT.Noema mutability t'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- subst sub e1
       (mxt', _, e2') <- subst'' sub mxt [] e2

@@ -13,6 +13,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
+import Entity.Mutability
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
 import Entity.WeakPrim qualified as WP
@@ -48,8 +49,12 @@ toText term =
       if isNoetic
         then showCons ["match-noetic", showMatchArgs xets, showDecisionTree tree]
         else showCons ["match", showMatchArgs xets, showDecisionTree tree]
-    _ :< WT.Noema t ->
-      showCons ["noema", toText t]
+    _ :< WT.Noema mutability t ->
+      case mutability of
+        Mutable ->
+          showCons ["mutable", toText t]
+        Immutable ->
+          showCons ["noema", toText t]
     _ :< WT.Let _ (_, x, t) e1 e2 -> do
       showCons ["let", showVariable x, toText t, toText e1, toText e2]
     _ :< WT.Prim prim ->

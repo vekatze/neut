@@ -36,7 +36,7 @@ freeVars term =
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< WT.Noema t ->
+    _ :< WT.Noema _ t ->
       freeVars t
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1

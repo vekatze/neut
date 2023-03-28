@@ -86,9 +86,9 @@ reveal' varEnv term =
       ts' <- mapM (reveal' varEnv) ts
       tree' <- revealDecisionTree m varEnv tree
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
-    m :< WT.Noema t -> do
+    m :< WT.Noema mutability t -> do
       t' <- reveal' varEnv t
-      return $ m :< WT.Noema t'
+      return $ m :< WT.Noema mutability t'
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- reveal' varEnv e1
       t' <- reveal' varEnv t

@@ -33,6 +33,7 @@ import Entity.Hint
 import Entity.Ident.Reflect qualified as Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LocalLocator qualified as LL
+import Entity.Mutability
 import Entity.Opacity qualified as O
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
@@ -314,7 +315,7 @@ parseDefineCodataElim ::
   BinderF RT.RawTerm ->
   App RawStmt
 parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
-  let codataType = m :< RT.Noema (constructDataType m dataName dataArgs)
+  let codataType = m :< RT.Noema Immutable (constructDataType m dataName dataArgs)
   recordVarText <- Gensym.newText
   let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
   projectionName <- Throw.liftEither $ DD.extend m dataName $ Ident.toText elemName
@@ -326,7 +327,7 @@ parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
     projectionName -- e.g. some-lib.foo::my-record.element-x
     (AN.fromInt $ length dataArgs)
     projArgs
-    (m :< RT.Noema elemType)
+    (m :< RT.Noema Immutable elemType)
     $ m
       :< RT.DataElim
         True

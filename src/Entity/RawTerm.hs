@@ -20,6 +20,7 @@ import Entity.Ident
 import Entity.LamKind
 import Entity.LocalLocator qualified as LL
 import Entity.Magic
+import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
@@ -38,7 +39,7 @@ data RawTermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
-  | Noema a
+  | Noema Mutability a
   | Let (BinderF a) [(Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)

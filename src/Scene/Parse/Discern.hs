@@ -32,6 +32,7 @@ import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
 import Entity.Log qualified as L
 import Entity.Magic qualified as M
+import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
@@ -127,17 +128,17 @@ discern nenv term =
       return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic) es
+      es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic Immutable) es
       ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
-    m :< RT.Noema t -> do
+    m :< RT.Noema mutability t -> do
       t' <- discern nenv t
-      return $ m :< WT.Noema t'
+      return $ m :< WT.Noema mutability t'
     m :< RT.Let mxt mys e1 e2 -> do
-      discernLet nenv m mxt mys e1 e2
+      discernLet nenv Immutable m mxt mys e1 e2 -- fixme
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -220,13 +221,14 @@ showKeyList ks =
 
 discernLet ::
   NominalEnv ->
+  Mutability ->
   Hint ->
   BinderF RT.RawTerm ->
   [(Hint, Ident)] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App WT.WeakTerm
-discernLet nenv m mxt mys e1 e2 = do
+discernLet nenv mutability m mxt mys e1 e2 = do
   let (ms, ys) = unzip mys
   ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
   ysLocal <- mapM Gensym.newIdentFromIdent ys
@@ -235,54 +237,54 @@ discernLet nenv m mxt mys e1 e2 = do
   let nenvCont = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont ++ nenv
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
-  e2'' <- attachSuffix nenv (zip ysCont ysLocal) e2'
+  e2'' <- attachSuffix nenv mutability (zip ysCont ysLocal) e2'
   let opacity = if null mys then WT.Transparent else WT.Noetic
-  attachPrefix nenv (zip ysLocal ysActual) $ m :< WT.Let opacity mxt' e1' e2''
+  attachPrefix nenv mutability (zip ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
 
-attachPrefix :: NominalEnv -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> App WT.WeakTerm
-attachPrefix nenv binder cont@(m :< _) =
+attachPrefix :: NominalEnv -> Mutability -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> App WT.WeakTerm
+attachPrefix nenv mutability binder cont@(m :< _) =
   case binder of
     [] ->
       return cont
     (y, e) : rest -> do
-      e' <- castToNoema nenv e
-      cont' <- attachPrefix nenv rest cont
+      e' <- castToNoema nenv mutability e
+      cont' <- attachPrefix nenv mutability rest cont
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
 
-attachSuffix :: NominalEnv -> [(Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm
-attachSuffix nenv binder cont@(m :< _) =
+attachSuffix :: NominalEnv -> Mutability -> [(Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm
+attachSuffix nenv mutability binder cont@(m :< _) =
   case binder of
     [] ->
       return cont
     (yCont, yLocal) : rest -> do
-      yLocal' <- castFromNoema nenv (m :< WT.Var yLocal)
-      cont' <- attachSuffix nenv rest cont
+      yLocal' <- castFromNoema nenv mutability (m :< WT.Var yLocal)
+      cont' <- attachSuffix nenv mutability rest cont
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
 
-castToNoema :: NominalEnv -> WT.WeakTerm -> App WT.WeakTerm
-castToNoema nenv e@(m :< _) = do
+castToNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
+castToNoema nenv mutability e@(m :< _) = do
   t <- Gensym.newHole m (asHoleArgs nenv)
-  let tNoema = m :< WT.Noema t
+  let tNoema = m :< WT.Noema mutability t
   return $ m :< WT.Magic (M.Cast t tNoema e)
 
-castFromNoema :: NominalEnv -> WT.WeakTerm -> App WT.WeakTerm
-castFromNoema nenv e@(m :< _) = do
+castFromNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
+castFromNoema nenv mutability e@(m :< _) = do
   t <- Gensym.newHole m (asHoleArgs nenv)
-  let tNoema = m :< WT.Noema t
+  let tNoema = m :< WT.Noema mutability t
   return $ m :< WT.Magic (M.Cast tNoema t e)
 
-castToNoema' :: NominalEnv -> N.IsNoetic -> WT.WeakTerm -> App WT.WeakTerm
-castToNoema' nenv isNoetic e =
+castToNoema' :: NominalEnv -> N.IsNoetic -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
+castToNoema' nenv isNoetic mutability e =
   if isNoetic
-    then castToNoema nenv e
+    then castToNoema nenv mutability e
     else return e
 
-castFromNoema' :: NominalEnv -> N.IsNoetic -> WT.WeakTerm -> App WT.WeakTerm
-castFromNoema' nenv isNoetic e =
+castFromNoema' :: NominalEnv -> N.IsNoetic -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
+castFromNoema' nenv isNoetic mutability e =
   if isNoetic
-    then castFromNoema nenv e
+    then castFromNoema nenv mutability e
     else return e
 
 discernBinder ::
@@ -510,7 +512,7 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
     Just (row, _) ->
       case PAT.getClauseBody row of
         Right (usedVars, (freedVars, body)) -> do
-          cursorVars <- mapM (alignLetBody nenv isNoetic m) (V.toList occurrences)
+          cursorVars <- mapM (alignLetBody nenv isNoetic Immutable m) (V.toList occurrences)
           DT.Leaf freedVars <$> bindLet nenv m (zip usedVars cursorVars) body
         Left i ->
           if i > 0
@@ -535,9 +537,9 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
               t <- Gensym.newHole m (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
-alignLetBody :: NominalEnv -> N.IsNoetic -> Hint -> Ident -> App WT.WeakTerm
-alignLetBody nenv isNoetic m x =
-  castToNoema' nenv isNoetic $ m :< WT.Var x
+alignLetBody :: NominalEnv -> N.IsNoetic -> Mutability -> Hint -> Ident -> App WT.WeakTerm
+alignLetBody nenv isNoetic mutability m x =
+  castToNoema' nenv isNoetic mutability (m :< WT.Var x)
 
 alignConsArgs ::
   NominalEnv ->

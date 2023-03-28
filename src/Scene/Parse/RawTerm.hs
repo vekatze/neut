@@ -32,6 +32,7 @@ import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
+import Entity.Mutability
 import Entity.Opacity qualified as O
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimType qualified as PT
@@ -165,9 +166,10 @@ rawTermEmbody = do
   raw <- lift $ Gensym.newTextualIdentFromText "raw"
   copied <- lift $ Gensym.newTextualIdentFromText "copied"
   original <- lift $ Gensym.newTextualIdentFromText "original"
+  let noema = m :< RT.Noema Immutable t
   return $
-    bind (m, raw, t) (m :< RT.Magic (M.Cast (m :< RT.Noema t) t e)) $
-      bind (m, original, m :< RT.Noema t) (m :< RT.Magic (M.Cast t (m :< RT.Noema t) (m :< RT.Var raw))) $
+    bind (m, raw, t) (m :< RT.Magic (M.Cast noema t e)) $
+      bind (m, original, noema) (m :< RT.Magic (M.Cast t noema (m :< RT.Var raw))) $
         bind (m, copied, t) (m :< RT.Var raw) $
           m :< RT.Var copied
 
@@ -511,7 +513,7 @@ rawTermNoema = do
   m <- getCurrentHint
   delimiter "&"
   t <- rawTermBasic
-  return $ m :< RT.Noema t
+  return $ m :< RT.Noema Immutable t
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do

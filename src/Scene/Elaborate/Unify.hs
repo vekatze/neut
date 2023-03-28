@@ -134,8 +134,9 @@ simplify constraintList =
               let es2 = dataArgs2 ++ consArgs2
               let cs' = zip (zip es1 es2) (repeat orig)
               simplify $ cs' ++ cs
-        (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
-          simplify $ ((t1, t2), orig) : cs
+        (_ :< WT.Noema mutability1 t1, _ :< WT.Noema mutability2 t2)
+          | mutability1 == mutability2 ->
+              simplify $ ((t1, t2), orig) : cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)
           | WP.Type t1 <- a1,
             WP.Type t2 <- a2,

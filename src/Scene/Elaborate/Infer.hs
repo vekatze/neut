@@ -100,9 +100,9 @@ infer' varEnv term =
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
       (tree', treeType) <- inferDecisionTree m varEnv tree
       return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
-    m :< WT.Noema t -> do
+    m :< WT.Noema mutability t -> do
       t' <- inferType' varEnv t
-      return (m :< WT.Noema t', m :< WT.Tau)
+      return (m :< WT.Noema mutability t', m :< WT.Tau)
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer' varEnv e1
       t' <- inferType' varEnv t
