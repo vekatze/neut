@@ -47,8 +47,7 @@ define main(): i64 {
     mutate(xs, lambda (xs) {
       list.cons(4, xs)
     })
-    let len3 = bar(xs)
-    len3
+    bar(xs)
   }
   result
 }
