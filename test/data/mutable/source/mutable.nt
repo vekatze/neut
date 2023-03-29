@@ -7,7 +7,7 @@ data list(a: tau) {
 - cons(a, list(a))
 }
 
-define-inline get<a>(x: cell a): a {
+define-inline get<a>(x: !a): a {
   let value: &a = magic load(pointer(i8), x)
   let raw = magic cast(&a, a, value)
   let orig = magic cast(a, &a, raw)
