@@ -97,6 +97,7 @@ rawTermBasic :: Parser RT.RawTerm
 rawTermBasic = do
   choice
     [ rawTermNoema,
+      rawTermCell,
       rawTermEmbody,
       rawTermAscOrPiElimOrSimple
     ]
@@ -178,7 +179,7 @@ rawTermEmbody = do
   raw <- lift $ Gensym.newTextualIdentFromText "raw"
   copied <- lift $ Gensym.newTextualIdentFromText "copied"
   original <- lift $ Gensym.newTextualIdentFromText "original"
-  let noema = m :< RT.Noema Immutable t
+  let noema = m :< RT.Noema t
   return $
     bind (m, raw, t) (m :< RT.Magic (M.Cast noema t e)) $
       bind (m, original, noema) (m :< RT.Magic (M.Cast t noema (m :< RT.Var raw))) $
@@ -525,7 +526,14 @@ rawTermNoema = do
   m <- getCurrentHint
   delimiter "&"
   t <- rawTermBasic
-  return $ m :< RT.Noema Immutable t
+  return $ m :< RT.Noema t
+
+rawTermCell :: Parser RT.RawTerm
+rawTermCell = do
+  m <- getCurrentHint
+  delimiter "!"
+  t <- rawTermBasic
+  return $ m :< RT.Cell t
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do

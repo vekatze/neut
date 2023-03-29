@@ -51,8 +51,14 @@ chainOf' tenv term =
       let mxts = zipWith (\x t -> (m, x, t)) xs ts
       let xs2 = chainOfDecisionTree' tenv m mxts tree
       xs1 ++ xs2
-    _ :< TM.Noema _ t ->
+    _ :< TM.Noema t ->
       chainOf' tenv t
+    _ :< TM.Cell t ->
+      chainOf' tenv t
+    _ :< TM.CellIntro e ->
+      chainOf' tenv e
+    _ :< TM.CellElim e ->
+      chainOf' tenv e
     _ :< TM.Prim _ ->
       []
     _ :< TM.ResourceType {} ->

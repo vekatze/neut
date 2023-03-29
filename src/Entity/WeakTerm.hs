@@ -12,7 +12,6 @@ import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.Magic
-import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
 import Entity.PrimNumSize
@@ -41,7 +40,10 @@ data WeakTermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Noema Mutability a
+  | Noema a
+  | Cell a
+  | CellIntro a
+  | CellElim a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
   | ResourceType DD.DefiniteDescription

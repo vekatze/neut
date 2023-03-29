@@ -14,7 +14,6 @@ import Entity.Ident.Reify
 import Entity.LamKind
 import Entity.LamKind qualified as LK
 import Entity.Magic
-import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.Prim qualified as P
 import GHC.Generics (Generic)
@@ -31,7 +30,10 @@ data TermF a
   | Data DD.DefiniteDescription [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
-  | Noema Mutability a
+  | Noema a
+  | Cell a
+  | CellIntro a
+  | CellElim a
   | Prim P.Prim
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a)
@@ -98,6 +100,12 @@ containsNoema term =
       any containsNoema (es ++ ts) || containsNoemaDecisionTree decisionTree
     _ :< Noema {} ->
       True
+    _ :< Cell {} ->
+      True
+    _ :< CellIntro e ->
+      containsNoema e
+    _ :< CellElim e ->
+      containsNoema e
     _ :< Prim {} ->
       False
     _ :< ResourceType {} ->
@@ -166,8 +174,14 @@ containsPi term =
     _ :< DataElim _ oets decisionTree -> do
       let (_, es, ts) = unzip3 oets
       any containsPi (es ++ ts) || containsPiDecisionTree decisionTree
-    _ :< Noema _ t ->
+    _ :< Noema t ->
       containsPi t
+    _ :< Cell t ->
+      containsPi t
+    _ :< CellIntro e ->
+      containsPi e
+    _ :< CellElim e ->
+      containsPi e
     _ :< Prim {} ->
       False
     _ :< ResourceType {} ->

@@ -134,9 +134,12 @@ discern nenv term =
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
-    m :< RT.Noema mutability t -> do
+    m :< RT.Noema t -> do
       t' <- discern nenv t
-      return $ m :< WT.Noema mutability t'
+      return $ m :< WT.Noema t'
+    m :< RT.Cell t -> do
+      t' <- discern nenv t
+      return $ m :< WT.Cell t'
     m :< RT.Let mxt mys e1 e2 -> do
       discernLet nenv m mxt mys e1 e2
     m :< RT.Prim prim -> do
@@ -265,14 +268,22 @@ attachSuffix nenv binder cont@(m :< _) =
 castToNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
 castToNoema nenv mutability e@(m :< _) = do
   t <- Gensym.newHole m (asHoleArgs nenv)
-  let tNoema = m :< WT.Noema mutability t
-  return $ m :< WT.Magic (M.Cast t tNoema e)
+  case mutability of
+    Mutable ->
+      return $ m :< WT.CellIntro e
+    Immutable -> do
+      let tNoema = m :< WT.Noema t
+      return $ m :< WT.Magic (M.Cast t tNoema e)
 
 castFromNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
 castFromNoema nenv mutability e@(m :< _) = do
   t <- Gensym.newHole m (asHoleArgs nenv)
-  let tNoema = m :< WT.Noema mutability t
-  return $ m :< WT.Magic (M.Cast tNoema t e)
+  case mutability of
+    Mutable ->
+      return $ m :< WT.CellElim e
+    Immutable -> do
+      let tNoema = m :< WT.Noema t
+      return $ m :< WT.Magic (M.Cast tNoema t e)
 
 castToNoema' :: NominalEnv -> N.IsNoetic -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
 castToNoema' nenv isNoetic mutability e =

@@ -178,6 +178,20 @@ clarifyTerm tenv term =
       return $ bindLet (zip xs es') tree'
     _ :< TM.Noema {} ->
       return returnImmediateS4
+    _ :< TM.Cell {} ->
+      return returnImmediateS4
+    _ :< TM.CellIntro e -> do
+      (contentVarName, content', contentVar) <- clarifyPlus tenv e
+      return $
+        bindLet [(contentVarName, content')] $
+          C.UpIntro (C.SigmaIntro [contentVar])
+    _ :< TM.CellElim e -> do
+      (contentVarName, content', contentVar) <- clarifyPlus tenv e
+      resultVar <- Gensym.newIdentFromText "discriminant"
+      return $
+        bindLet [(contentVarName, content')] $
+          C.SigmaElim True [resultVar] contentVar $
+            C.UpIntro (C.VarLocal resultVar)
     m :< TM.Prim prim ->
       case prim of
         P.Type _ ->

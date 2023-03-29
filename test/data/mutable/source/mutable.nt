@@ -1,0 +1,54 @@
+import {
+- core.top
+}
+
+data list(a: tau) {
+- nil()
+- cons(a, list(a))
+}
+
+define-inline get<a>(x: cell a): a {
+  let value: &a = magic load(pointer(i8), x)
+  let raw = magic cast(&a, a, value)
+  let orig = magic cast(a, &a, raw)
+  raw
+}
+
+define-inline mutate<a>(x: !a, mutator: a -> a): core.top::top() {
+  let value: a = magic load(pointer(i8), x)
+  let mutated-value = mutator(value)
+  magic store(pointer(i8), x, mutated-value)
+}
+
+define length(xs: list(i64)): i64 {
+  match xs {
+  - list.nil() =>
+    0
+  - list.cons(y, ys) =>
+    add-i64(1, length(ys))
+  }
+}
+
+define bar(xs: !list(i64)): i64 {
+  length(get(xs))
+}
+
+define main(): i64 {
+  let xs: list(i64) = [1, 2]
+  let result on !xs = {
+    let len1 = bar(xs)
+    mutate(xs, lambda (xs) {
+      list.cons(4, xs)
+    })
+    let len2 = bar(xs)
+    mutate(xs, lambda (xs) {
+      list.nil()
+    })
+    mutate(xs, lambda (xs) {
+      list.cons(4, xs)
+    })
+    let len3 = bar(xs)
+    len3
+  }
+  result
+}
