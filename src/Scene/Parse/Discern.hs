@@ -138,7 +138,7 @@ discern nenv term =
       t' <- discern nenv t
       return $ m :< WT.Noema mutability t'
     m :< RT.Let mxt mys e1 e2 -> do
-      discernLet nenv Immutable m mxt mys e1 e2 -- fixme
+      discernLet nenv m mxt mys e1 e2
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -221,15 +221,14 @@ showKeyList ks =
 
 discernLet ::
   NominalEnv ->
-  Mutability ->
   Hint ->
   BinderF RT.RawTerm ->
-  [(Hint, Ident)] ->
+  [(Mutability, Hint, Ident)] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App WT.WeakTerm
-discernLet nenv mutability m mxt mys e1 e2 = do
-  let (ms, ys) = unzip mys
+discernLet nenv m mxt mys e1 e2 = do
+  let (mutabilityList, ms, ys) = unzip3 mys
   ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
   ysLocal <- mapM Gensym.newIdentFromIdent ys
   ysCont <- mapM Gensym.newIdentFromIdent ys
@@ -237,29 +236,29 @@ discernLet nenv mutability m mxt mys e1 e2 = do
   let nenvCont = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont ++ nenv
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
-  e2'' <- attachSuffix nenv mutability (zip ysCont ysLocal) e2'
+  e2'' <- attachSuffix nenv (zip3 mutabilityList ysCont ysLocal) e2'
   let opacity = if null mys then WT.Transparent else WT.Noetic
-  attachPrefix nenv mutability (zip ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
+  attachPrefix nenv (zip3 mutabilityList ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
 
-attachPrefix :: NominalEnv -> Mutability -> [(Ident, WT.WeakTerm)] -> WT.WeakTerm -> App WT.WeakTerm
-attachPrefix nenv mutability binder cont@(m :< _) =
+attachPrefix :: NominalEnv -> [(Mutability, Ident, WT.WeakTerm)] -> WT.WeakTerm -> App WT.WeakTerm
+attachPrefix nenv binder cont@(m :< _) =
   case binder of
     [] ->
       return cont
-    (y, e) : rest -> do
+    (mutability, y, e) : rest -> do
       e' <- castToNoema nenv mutability e
-      cont' <- attachPrefix nenv mutability rest cont
+      cont' <- attachPrefix nenv rest cont
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
 
-attachSuffix :: NominalEnv -> Mutability -> [(Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm
-attachSuffix nenv mutability binder cont@(m :< _) =
+attachSuffix :: NominalEnv -> [(Mutability, Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm
+attachSuffix nenv binder cont@(m :< _) =
   case binder of
     [] ->
       return cont
-    (yCont, yLocal) : rest -> do
+    (mutability, yCont, yLocal) : rest -> do
       yLocal' <- castFromNoema nenv mutability (m :< WT.Var yLocal)
-      cont' <- attachSuffix nenv mutability rest cont
+      cont' <- attachSuffix nenv rest cont
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
 

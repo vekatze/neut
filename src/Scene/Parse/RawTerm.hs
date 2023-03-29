@@ -122,7 +122,7 @@ rawTermLetOrLetOn m = do
   choice
     [ do
         keyword "on"
-        noeticVarList <- map (second Ident.fromText) <$> commaList var
+        noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
         delimiter "="
         e1 <- rawTerm
         e2 <- rawExpr
@@ -132,6 +132,18 @@ rawTermLetOrLetOn m = do
         e1 <- rawTerm
         e2 <- rawExpr
         return $ m :< RT.Let x [] e1 e2
+    ]
+
+rawTermNoeticVar :: Parser (Mutability, Hint, T.Text)
+rawTermNoeticVar =
+  choice
+    [ do
+        delimiter "!"
+        (m, x) <- var
+        return (Mutable, m, x),
+      do
+        (m, x) <- var
+        return (Immutable, m, x)
     ]
 
 -- let? x = e1 in e2
