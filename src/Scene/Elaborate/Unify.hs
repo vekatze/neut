@@ -123,7 +123,7 @@ simplify constraintList =
         (_ :< WT.Data name1 es1, _ :< WT.Data name2 es2)
           | name1 == name2,
             length es1 == length es2 -> do
-              let cs' = zip (zip es1 es2) (repeat orig)
+              let cs' = zipWith (curry (,orig)) es1 es2
               simplify $ cs' ++ cs
         (_ :< WT.DataIntro dataName1 consName1 _ dataArgs1 consArgs1, _ :< WT.DataIntro dataName2 consName2 _ dataArgs2 consArgs2)
           | dataName1 == dataName2,
@@ -132,7 +132,7 @@ simplify constraintList =
             length consArgs1 == length consArgs2 -> do
               let es1 = dataArgs1 ++ consArgs1
               let es2 = dataArgs2 ++ consArgs2
-              let cs' = zip (zip es1 es2) (repeat orig)
+              let cs' = zipWith (curry (,orig)) es1 es2
               simplify $ cs' ++ cs
         (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
           simplify $ ((t1, t2), orig) : cs

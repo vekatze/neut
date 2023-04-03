@@ -93,7 +93,7 @@ lowerComp term =
       runLowerComp $ do
         basePointer <- lowerValue v
         castedBasePointer <- cast basePointer baseType
-        ds <- loadElements castedBasePointer baseType $ take (length xs) $ zip [0 ..] (repeat LT.voidPtr)
+        ds <- loadElements castedBasePointer baseType $ take (length xs) $ map (,LT.voidPtr) [0 ..]
         when shouldDeallocate $ do
           free castedBasePointer baseType
         forM_ (zip xs ds) $ \(x, d) -> do
@@ -242,7 +242,7 @@ lowerValue v =
       return $ LC.VarLocal y
     C.SigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) LT.voidPtr
-      createAggData arrayType $ zip ds (repeat LT.voidPtr)
+      createAggData arrayType $ map (,LT.voidPtr) ds
     C.Int size l -> do
       uncast (LC.Int l) $ LT.PrimNum $ PT.Int size
     C.Float size f ->

@@ -91,13 +91,13 @@ emitSyscallOp targetPlatform num ds = do
   regList <- getRegList targetPlatform
   case TP.arch targetPlatform of
     "x86_64" -> do
-      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : zip ds (repeat LT.voidPtr)
+      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
     "aarch64" -> do
-      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : zip ds (repeat LT.voidPtr)
+      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $

@@ -51,7 +51,7 @@ reveal' varEnv term =
           | AN.reify impArgNum > 0 -> do
               suppliedHoles <- mapM (const $ newHole m varEnv) [1 .. AN.reify impArgNum]
               args <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. fromInteger (A.reify arity) - AN.reify impArgNum]
-              let enrichedArgs = zip args (repeat m)
+              let enrichedArgs = map (,m) args
               binder <- newTypeHoleList varEnv enrichedArgs
               let app = m :< WT.PiElim term (suppliedHoles ++ map (\(x, mx) -> mx :< WT.Var x) enrichedArgs)
               return $ m :< WT.PiIntro (LK.Normal O.Transparent) binder app
