@@ -1,4 +1,4 @@
-data list(a: tau) {
+enum list(a: tau) {
 - nil()
 - cons(a, list(a))
 }

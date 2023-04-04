@@ -3,12 +3,12 @@ use {
 - this.fold-tails::nat
 }
 
-data nat() {
+enum nat() {
 - zero()
 - succ(nat())
 }
 
-data list(a: tau) {
+enum list(a: tau) {
 - nil()
 - cons(a, list(a))
 }

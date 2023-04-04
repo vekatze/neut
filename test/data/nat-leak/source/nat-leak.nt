@@ -2,7 +2,7 @@ use {
 - this.nat-leak::nat
 }
 
-data nat() {
+enum nat() {
 - zero()
 - succ(nat())
 }

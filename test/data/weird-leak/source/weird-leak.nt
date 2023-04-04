@@ -2,7 +2,7 @@ use {
 - this.weird-leak::list
 }
 
-data list() {
+enum list() {
 - nil()
 - cons()
 }

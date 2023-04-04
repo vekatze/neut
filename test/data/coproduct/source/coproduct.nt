@@ -9,7 +9,7 @@ use {
 - this.coproduct::nat
 }
 
-data nat() {
+enum nat() {
 - zero()
 - succ(nat())
 }

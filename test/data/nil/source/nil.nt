@@ -1,4 +1,4 @@
-data item() {
+enum item() {
 - nil()
 - cons(i64)
 }

@@ -6,7 +6,7 @@ use {
 - this.nat-fact::nat
 }
 
-data nat() {
+enum nat() {
 - zero()
 - succ(nat())
 }

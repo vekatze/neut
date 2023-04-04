@@ -3,12 +3,12 @@ use {
 - this.nat-list::list
 }
 
-data nat() {
+enum nat() {
 - zero()
 - succ(nat())
 }
 
-data list(a: tau) {
+enum list(a: tau) {
 - nil()
 - cons(a, list(a))
 }

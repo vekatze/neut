@@ -1,11 +1,10 @@
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.1.7.tar.zst"
-    checksum = "hdPMI_pAec-e7c8KKixqcpBcpWJ0F8CLScLqjK2KFSg="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.1.8.tar.zst"
+    checksum = "m_6mVxD4wNih7RwwHhh7CQzNDOt7uQFgFv9FiUKAzdg="
   }
 }
-extra-content = [
-]
+extra-content = []
 target = {
   enum = "enum.nt"
 }

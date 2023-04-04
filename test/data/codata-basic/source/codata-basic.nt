@@ -2,17 +2,17 @@ use {
 - this.codata-basic::foo
 }
 
-record bar(a: tau) {
+struct bar(a: tau) {
 - value: a
 }
 
-record foo() {
+struct foo() {
 - value-1: i64
 - value-2: i32
 - value-3: bar(i64)
 }
 
-record stream(a: tau) {
+struct stream(a: tau) {
 - head: a
 - tail: () -> stream(a)
 }

@@ -3,7 +3,7 @@ use {
 - this.lambda-leak::nat
 }
 
-data nat() {
+enum nat() {
 - zero()
 - succ(nat())
 }
@@ -35,7 +35,7 @@ define mul-nat(x: nat(), y: nat()): nat() {
   }
 }
 
-data list(a: tau) {
+enum list(a: tau) {
 - nil()
 - cons(a, list(a))
 }

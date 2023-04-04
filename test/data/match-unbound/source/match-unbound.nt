@@ -6,7 +6,7 @@ use {
 - this.match-unbound::nat
 }
 
-data nat() {
+enum nat() {
 - zero()
 }
 

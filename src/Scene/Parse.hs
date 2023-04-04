@@ -129,8 +129,8 @@ parseLocator = do
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
-    [ parseDefineData,
-      parseDefineCodata,
+    [ parseDefineEnum,
+      parseDefineStruct,
       return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
       return <$> parseDefine O.Opaque,
@@ -192,13 +192,13 @@ defineFunction ::
 defineFunction stmtKind m name impArgNum binder codType e = do
   return $ RawStmtDefine stmtKind m name impArgNum binder codType e
 
-parseDefineData :: P.Parser [RawStmt]
-parseDefineData = do
+parseDefineEnum :: P.Parser [RawStmt]
+parseDefineEnum = do
   m <- P.getCurrentHint
-  try $ P.keyword "data"
+  try $ P.keyword "enum"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
-  consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
+  consInfoList <- P.betweenBrace $ P.manyList parseDefineEnumClause
   lift $ defineData m a dataArgs consInfoList
 
 defineData ::
@@ -214,7 +214,7 @@ defineData m dataName dataArgs consInfoList = do
   let dataType = constructDataType m dataName dataArgs
   let formRule = RawStmtDefine stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
   -- let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
-  introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
+  introRuleList <- parseDefineEnumConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
 modifyConsInfo ::
@@ -237,14 +237,14 @@ modifyConstructorName m dataDD (mb, consName, yts) = do
   consName' <- Throw.liftEither $ DD.extend m dataDD consName
   return (mb, consName', yts)
 
-parseDefineDataConstructor ::
+parseDefineEnumConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
   App [RawStmt]
-parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
+parseDefineEnumConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
       return []
@@ -261,7 +261,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               args
               dataType
               $ m :< RT.DataIntro dataName consName discriminant dataArgs' consArgs'
-      introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
+      introRuleList <- parseDefineEnumConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 
 constructDataType ::
@@ -272,30 +272,30 @@ constructDataType ::
 constructDataType m dataName dataArgs = do
   m :< RT.Data dataName (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
-parseDefineDataClause = do
+parseDefineEnumClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
+parseDefineEnumClause = do
   m <- P.getCurrentHint
   b <- P.symbol
-  yts <- P.argList parseDefineDataClauseArg
+  yts <- P.argList parseDefineEnumClauseArg
   return (m, b, yts)
 
-parseDefineDataClauseArg :: P.Parser (BinderF RT.RawTerm)
-parseDefineDataClauseArg = do
+parseDefineEnumClauseArg :: P.Parser (BinderF RT.RawTerm)
+parseDefineEnumClauseArg = do
   m <- P.getCurrentHint
   choice
     [ try preAscription,
       weakTermToWeakIdent m rawTerm
     ]
 
-parseDefineCodata :: P.Parser [RawStmt]
-parseDefineCodata = do
+parseDefineStruct :: P.Parser [RawStmt]
+parseDefineStruct = do
   m <- P.getCurrentHint
-  try $ P.keyword "record"
+  try $ P.keyword "struct"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preAscription
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
   formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
-  elimRuleList <- mapM (lift . parseDefineCodataElim dataName dataArgs elemInfoList) elemInfoList
+  elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
   dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "new"
   let numOfDataArgs = A.fromInt $ length dataArgs
@@ -307,30 +307,30 @@ parseDefineCodata = do
   return $ formRule ++ elimRuleList
 
 -- noetic projection
-parseDefineCodataElim ::
+parseDefineStructElim ::
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [BinderF RT.RawTerm] ->
   BinderF RT.RawTerm ->
   App RawStmt
-parseDefineCodataElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
-  let codataType = m :< RT.Noema (constructDataType m dataName dataArgs)
-  recordVarText <- Gensym.newText
-  let projArgs = dataArgs ++ [(m, Ident.fromText recordVarText, codataType)]
+parseDefineStructElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
+  let structType = m :< RT.Noema (constructDataType m dataName dataArgs)
+  structVarText <- Gensym.newText
+  let projArgs = dataArgs ++ [(m, Ident.fromText structVarText, structType)]
   projectionName <- Throw.liftEither $ DD.extend m dataName $ Ident.toText elemName
   let newDD = DD.extendLL dataName $ LL.new [] BN.new
   let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var x)
   defineFunction
     (Normal O.Opaque)
     m
-    projectionName -- e.g. some-lib.foo::my-record.element-x
+    projectionName -- e.g. some-lib.foo::my-struct.element-x
     (AN.fromInt $ length dataArgs)
     projArgs
     (m :< RT.Noema elemType)
     $ m
       :< RT.DataElim
         True
-        [preVar m recordVarText]
+        [preVar m structVarText]
         ( RP.new
             [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription newDD) argList)],
                 preVar m (Ident.toText elemName)

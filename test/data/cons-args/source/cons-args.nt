@@ -1,4 +1,4 @@
-data item(a: tau) {
+enum item(a: tau) {
 - cons(a)
 }
 

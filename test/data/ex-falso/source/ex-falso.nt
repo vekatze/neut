@@ -1,4 +1,4 @@
-data empty() {}
+enum empty() {}
 
 define ex-falso(a: tau, e: empty()): a {
   match e {}
