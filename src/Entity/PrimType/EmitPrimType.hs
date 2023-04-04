@@ -10,6 +10,8 @@ emitPrimType lowType =
   case lowType of
     PT.Int i ->
       "i" <> intDec (intSizeToInt i)
+    PT.UInt i ->
+      "i" <> intDec (intSizeToInt i)
     PT.Float FloatSize16 ->
       "half"
     PT.Float FloatSize32 ->

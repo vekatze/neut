@@ -38,7 +38,6 @@ import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp qualified as PO
-import Entity.PrimOp.OpSet qualified as POS
 import Entity.PrimType qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
@@ -360,10 +359,12 @@ interpretGlobalName m dd gn =
       return $ m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
-    GN.PrimOp primOp@(PO.PrimOp name _ _) ->
-      if S.member name POS.cmpOpSet
-        then castFromIntToBool $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
-        else return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
+    GN.PrimOp primOp ->
+      case primOp of
+        PO.PrimCmpOp {} ->
+          castFromIntToBool $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
+        _ ->
+          return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
 

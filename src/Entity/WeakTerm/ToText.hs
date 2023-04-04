@@ -111,8 +111,16 @@ showPrim prim =
           T.pack (show v)
         WPV.Float _ v ->
           T.pack (show v)
-        WPV.Op (PO.PrimOp opName _ _) ->
-          opName
+        WPV.Op op ->
+          case op of
+            PO.PrimUnaryOp name _ _ ->
+              name
+            PO.PrimBinaryOp name _ _ ->
+              name
+            PO.PrimCmpOp name _ _ ->
+              name
+            PO.PrimConvOp name _ _ ->
+              name
 
 showCons :: [T.Text] -> T.Text
 showCons =

@@ -6,6 +6,7 @@ import GHC.Generics qualified as G
 
 data PrimType
   = Int IntSize
+  | UInt IntSize
   | Float FloatSize
   deriving (Show, G.Generic, Eq, Ord)
 

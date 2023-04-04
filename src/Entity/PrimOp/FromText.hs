@@ -1,14 +1,12 @@
 module Entity.PrimOp.FromText (fromDefiniteDescription) where
 
-import Data.Set qualified as S
+import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.LocalLocator qualified as LL
-import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
-import Entity.PrimOp.OpSet
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.StrictGlobalLocator qualified as SGL
@@ -23,28 +21,15 @@ fromDefiniteDescription dd = do
 
 fromText :: T.Text -> Maybe PrimOp
 fromText name
-  | Just ("fneg", typeStr) <- breakOnMaybe "-" name,
-    Just primNum@(PT.Float _) <- PT.fromText typeStr =
-      Just $ PrimOp "fneg" [primNum] primNum
   | Just (convOpStr, rest) <- breakOnMaybe "-" name,
     Just (domTypeStr, codTypeStr) <- breakOnMaybe "-" rest,
     Just domType <- PT.fromText domTypeStr,
     Just codType <- PT.fromText codTypeStr,
     isValidConvOp convOpStr domType codType =
-      Just $ PrimOp convOpStr [domType] codType
-  | Just (opStr, typeStr) <- breakOnMaybe "-" name =
-      case PT.fromText typeStr of
-        Just primNum@(PT.Int _)
-          | asLowICmpMaybe opStr ->
-              Just $ PrimOp ("icmp " <> opStr) [primNum, primNum] (PT.Int $ IntSize 1)
-        Just primNum@(PT.Float _)
-          | asLowFCmpMaybe opStr ->
-              Just $ PrimOp ("fcmp " <> opStr) [primNum, primNum] (PT.Int $ IntSize 1)
-        Just primNum
-          | asLowBinaryOpMaybe' opStr primNum ->
-              Just $ PrimOp opStr [primNum, primNum] primNum
-        _ ->
-          Nothing
+      Just $ PrimConvOp convOpStr domType codType
+  | Just (opStr, typeStr) <- breakOnMaybe "-" name,
+    Just primType <- PT.fromText typeStr =
+      getOp1 opStr primType
   | otherwise =
       Nothing
 
@@ -101,18 +86,85 @@ isValidConvOp name domType codType =
     _ ->
       False
 
-asLowBinaryOpMaybe' :: T.Text -> PT.PrimType -> Bool
-asLowBinaryOpMaybe' name primNum =
-  case primNum of
-    PT.Int _ ->
-      S.member name intBinaryOpSet
-    PT.Float _ ->
-      S.member name floatBinaryOpSet
+-- turn "<op>-<type>" (e.g. add-u64) into a PrimOp
+getOp1 :: T.Text -> PT.PrimType -> Maybe PrimOp
+getOp1 rawOpName primType =
+  case primType of
+    PT.Int {}
+      | Just primOpGen <- Map.lookup rawOpName signedIntOpDict ->
+          return $ primOpGen primType
+    PT.UInt {}
+      | Just primOpGen <- Map.lookup rawOpName unsignedIntOpDict ->
+          return $ primOpGen primType
+    PT.Float {}
+      | Just primOpGen <- Map.lookup rawOpName floatOpDict ->
+          return $ primOpGen primType
+    _ ->
+      Nothing
 
-asLowICmpMaybe :: T.Text -> Bool
-asLowICmpMaybe name =
-  S.member name intCmpOpSet
+signedIntOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
+signedIntOpDict =
+  Map.union baseIntOpDict $
+    Map.fromList
+      [ ("div", binOp "sdiv"),
+        ("rem", binOp "srem"),
+        ("gt", cmpOp "sgt"),
+        ("ge", cmpOp "sge"),
+        ("lt", cmpOp "slt"),
+        ("le", cmpOp "sle")
+      ]
 
-asLowFCmpMaybe :: T.Text -> Bool
-asLowFCmpMaybe name =
-  S.member name floatCmpOpSet
+unsignedIntOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
+unsignedIntOpDict =
+  Map.union baseIntOpDict $
+    Map.fromList
+      [ ("div", binOp "udiv"),
+        ("rem", binOp "urem"),
+        ("gt", cmpOp "ugt"),
+        ("ge", cmpOp "uge"),
+        ("lt", cmpOp "ult"),
+        ("le", cmpOp "ule")
+      ]
+
+baseIntOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
+baseIntOpDict =
+  Map.fromList
+    [ ("add", binOp "add"),
+      ("sub", binOp "sub"),
+      ("mul", binOp "mul"),
+      ("and", binOp "and"),
+      ("or", binOp "or"),
+      ("xor", binOp "xor"),
+      ("shl", binOp "shl"),
+      ("lshr", binOp "lshr"),
+      ("ashr", binOp "ashr"),
+      ("eq", cmpOp "eq"),
+      ("ne", cmpOp "ne")
+    ]
+
+floatOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
+floatOpDict =
+  Map.fromList
+    [ ("neg", unaryOp "fneg"),
+      ("add", binOp "fadd"),
+      ("sub", binOp "fsub"),
+      ("mul", binOp "fmul"),
+      ("div", binOp "fdiv"),
+      ("rem", binOp "frem"),
+      ("oeq", cmpOp "oeq"),
+      ("one", cmpOp "one"),
+      ("ogt", cmpOp "ogt"),
+      ("oge", cmpOp "oge"),
+      ("olt", cmpOp "olt"),
+      ("ole", cmpOp "ole"),
+      ("ueq", cmpOp "ueq"),
+      ("ugt", cmpOp "ugt"),
+      ("uge", cmpOp "uge"),
+      ("ult", cmpOp "ult"),
+      ("ule", cmpOp "ule"),
+      ("une", cmpOp "une"),
+      ("ord", cmpOp "ord"),
+      ("uno", cmpOp "uno"),
+      ("false", cmpOp "false"),
+      ("true", cmpOp "true")
+    ]

@@ -2,7 +2,6 @@ module Entity.LowComp.EmitOp (emitLowOp) where
 
 import Data.ByteString.Builder
 import Data.Set qualified as S
-import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.LowComp qualified as LC
 import Entity.LowComp.EmitValue
@@ -10,7 +9,6 @@ import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
 import Entity.PrimNumSize
 import Entity.PrimOp
-import Entity.PrimOp.OpSet
 import Entity.PrimType qualified as PT
 import Entity.PrimType.EmitPrimType
 import Entity.TargetPlatform qualified as TP
@@ -60,19 +58,20 @@ emitLowOp targetPlatform nopFreeSet lowOp =
         else return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> emitValue d <> ")"]
     LC.Syscall num ds ->
       emitSyscallOp targetPlatform num ds
-    LC.PrimOp (PrimOp op domList cod) args -> do
-      let op' = TE.encodeUtf8Builder op
-      case (S.member op unaryOpSet, S.member op convOpSet, S.member op binaryOpSet, S.member op cmpOpSet) of
-        (True, _, _, _) ->
-          return $ emitUnaryOp (head domList) op' (head args)
-        (_, True, _, _) ->
-          return $ emitConvOp op' (head args) (LT.PrimNum $ head domList) (LT.PrimNum cod)
-        (_, _, True, _) ->
-          return $ emitBinaryOp (head domList) op' (head args) (args !! 1)
-        (_, _, _, True) ->
-          return $ emitBinaryOp (head domList) op' (head args) (args !! 1)
-        _ ->
-          Left $ "unknown primitive: " <> T.unpack op
+    LC.PrimOp op args -> do
+      case op of
+        PrimUnaryOp name dom _ -> do
+          let name' = TE.encodeUtf8Builder name
+          return $ emitUnaryOp dom name' (head args)
+        PrimBinaryOp name dom _ -> do
+          let name' = TE.encodeUtf8Builder name
+          return $ emitBinaryOp dom name' (head args) (args !! 1)
+        PrimCmpOp name dom _ -> do
+          let name' = TE.encodeUtf8Builder name
+          return $ emitBinaryOp dom name' (head args) (args !! 1)
+        PrimConvOp name dom cod -> do
+          let name' = TE.encodeUtf8Builder name
+          return $ emitConvOp name' (head args) (LT.PrimNum dom) (LT.PrimNum cod)
 
 emitUnaryOp :: PT.PrimType -> Builder -> LC.Value -> Builder
 emitUnaryOp t inst d =

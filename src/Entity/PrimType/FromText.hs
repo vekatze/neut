@@ -19,26 +19,35 @@ fromDefiniteDescription dd = do
 
 fromText :: T.Text -> Maybe PT.PrimType
 fromText name
-  | Just intSize <- asLowInt name =
+  | Just intSize <- asLowSignedInt name =
       Just $ PT.Int intSize
+  | Just intSize <- asLowUnsignedInt name =
+      Just $ PT.UInt intSize
   | Just floatSize <- asLowFloat name =
       Just $ PT.Float floatSize
   | otherwise =
       Nothing
 
-asLowInt :: T.Text -> Maybe IntSize
-asLowInt s =
+asLowInt :: Char -> T.Text -> Maybe IntSize
+asLowInt headChar s =
   case T.uncons s of
     Nothing ->
       Nothing
-    Just (c, rest) ->
-      case c of
-        'i'
-          | Just n <- readMaybe $ T.unpack rest,
-            Just size <- asIntSize n ->
-              Just size
-        _ ->
-          Nothing
+    Just (c, rest)
+      | c == headChar,
+        Just n <- readMaybe $ T.unpack rest,
+        Just size <- asIntSize n ->
+          Just size
+    _ ->
+      Nothing
+
+asLowSignedInt :: T.Text -> Maybe IntSize
+asLowSignedInt =
+  asLowInt 'i'
+
+asLowUnsignedInt :: T.Text -> Maybe IntSize
+asLowUnsignedInt =
+  asLowInt 'u'
 
 asLowFloat :: T.Text -> Maybe FloatSize
 asLowFloat s =

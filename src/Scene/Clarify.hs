@@ -200,6 +200,8 @@ clarifyTerm tenv term =
           case primValue of
             PV.Int size l ->
               return $ C.UpIntro (C.Int size l)
+            PV.UInt size l ->
+              return $ C.UpIntro (C.Int size l)
             PV.Float size l ->
               return $ C.UpIntro (C.Float size l)
             PV.Op op ->
@@ -380,7 +382,8 @@ clarifyBinder tenv binder =
       return $ (m, x, t') : xts'
 
 clarifyPrimOp :: TM.TypeEnv -> PrimOp -> Hint -> App C.Comp
-clarifyPrimOp tenv op@(PrimOp _ domList _) m = do
+clarifyPrimOp tenv op m = do
+  let (domList, _) = getTypeInfo op
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList

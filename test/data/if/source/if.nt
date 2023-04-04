@@ -5,7 +5,7 @@ import {
 define main(): i64 {
   if B::bool.false() {
     1
-  } else-if slt-i64(0, 10) {
+  } else-if lt-i64(0, 10) {
     2
   } else {
     3

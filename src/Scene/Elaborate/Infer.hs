@@ -277,7 +277,8 @@ raiseArityMismatchError function expected actual = do
           <> "."
 
 primOpToType :: Hint -> PrimOp -> App TM.Term
-primOpToType m (PrimOp _ domList cod) = do
+primOpToType m op = do
+  let (domList, cod) = getTypeInfo op
   let domList' = map (Term.fromPrimNum m) domList
   xs <- mapM (const (Gensym.newIdentFromText "_")) domList'
   let xts = zipWith (\x t -> (m, x, t)) xs domList'

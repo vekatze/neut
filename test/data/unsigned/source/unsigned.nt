@@ -1,0 +1,6 @@
+define main(): i64 {
+  let n: u64 = -100
+  let m1 = add-u64(n, 10)
+  let m2 = div-u64(m1, 3)
+  magic cast(u64, i64, m2)
+}

@@ -10,6 +10,7 @@ import GHC.Generics (Generic)
 
 data PrimValue
   = Int IntSize Integer
+  | UInt IntSize Integer
   | Float FloatSize Double
   | Op PrimOp
   deriving (Show, Generic)
