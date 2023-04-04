@@ -1,0 +1,32 @@
+import {
+- core.bool
+}
+
+use {
+- core.bool
+}
+
+define is-even-base(x: i64, f: i64 -> bool()): bool() {
+  if eq-i64(x, 0) {
+    bool.true()
+  } else {
+    f(sub-i64(x, 1))
+  }
+}
+
+define is-odd(x: i64): bool() {
+  if eq-i64(x, 0) {
+    bool.false()
+  } else {
+    is-even-base(sub-i64(x, 1), is-odd)
+  }
+}
+
+define is-even(x: i64): bool() {
+  is-even-base(x, is-odd)
+}
+
+define main(): i64 {
+  let b = is-even(1234)
+  0
+}
