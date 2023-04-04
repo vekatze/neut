@@ -1,6 +1,7 @@
 module Context.LLVM
   ( emit,
     link,
+    ensureSetupSanity,
     getClangOptString,
     setClangOptString,
   )
@@ -18,6 +19,7 @@ import Control.Monad.IO.Unlift
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Entity.Config.Build
 import Entity.Const
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
@@ -31,6 +33,13 @@ import System.Process
 type ClangOption = String
 
 type LLVMCode = L.ByteString
+
+ensureSetupSanity :: Config -> App ()
+ensureSetupSanity cfg = do
+  let willBuildObjects = OK.Object `elem` outputKindList cfg
+  let willLink = not $ shouldSkipLink cfg
+  when (not willBuildObjects && willLink) $
+    Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
 emit :: [OK.OutputKind] -> L.ByteString -> App ()
 emit outputKindList llvmCode = do
