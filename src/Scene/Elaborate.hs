@@ -51,30 +51,28 @@ elaborate cacheOrStmt = do
       forM_ cache insertStmt
       return cache
     Right defList -> do
-      source <- Env.getCurrentSource
-      mMainDefiniteDescription <- Locator.getMainDefiniteDescription source
-      defList' <- mapM (processStmt mMainDefiniteDescription) defList
-      -- mapM_ (viewStmt . weakenStmt) defList'
-      Cache.saveCache (source, defList')
-      return defList'
+      (analyzeDefList >=> synthesizeDefList) defList
 
--- viewStmt :: WeakStmt -> App ()
--- viewStmt stmt = do
---   case stmt of
---     WeakStmtDefine _ m x _ xts codType e ->
---       Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
---     WeakStmtDefineResource m name discarder copier ->
---       Log.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
+analyzeDefList :: [WeakStmt] -> App [WeakStmt]
+analyzeDefList defList = do
+  defList' <- forM defList $ \stmt -> do
+    stmt' <- Reveal.revealStmt stmt
+    insertWeakStmt stmt'
+    return stmt'
+  source <- Env.getCurrentSource
+  mMainDD <- Locator.getMainDefiniteDescription source
+  mapM (Infer.inferStmt mMainDD) defList'
 
-processStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App Stmt
-processStmt mMainDD stmt = do
-  initializeInferenceEnv
-  stmt' <- Reveal.revealStmt stmt >>= Infer.inferStmt mMainDD
-  elaborateStmt stmt'
+synthesizeDefList :: [WeakStmt] -> App [Stmt]
+synthesizeDefList defList = do
+  getConstraintEnv >>= Unify.unify >>= setHoleSubst
+  defList' <- mapM elaborateStmt defList
+  source <- Env.getCurrentSource
+  Cache.saveCache (source, defList')
+  return defList'
 
 elaborateStmt :: WeakStmt -> App Stmt
 elaborateStmt stmt = do
-  getConstraintEnv >>= Unify.unify >>= setHoleSubst
   case stmt of
     WeakStmtDefine stmtKind m x impArgNum xts codType e -> do
       stmtKind' <- elaborateStmtKind stmtKind

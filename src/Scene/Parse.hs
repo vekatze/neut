@@ -81,7 +81,8 @@ parseSource source = do
         Just aliasInfoList ->
           Alias.activateAliasInfo aliasInfoList
       defList <- P.run program $ Source.sourceFilePath source
-      return $ Right defList
+      Discern.registerTopLevelNames defList
+      Right <$> Discern.discernStmtList defList
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
@@ -101,11 +102,11 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: P.Parser [WeakStmt]
+program :: P.Parser [RawStmt]
 program = do
   Parse.skipImportSequence
   parseStmtUseSequence
-  (many parseStmt >>= lift . Discern.discernStmtList . concat) <* eof
+  concat <$> many parseStmt <* eof
 
 parseStmtUseSequence :: P.Parser ()
 parseStmtUseSequence = do

@@ -1,4 +1,8 @@
-module Scene.Parse.Discern (discernStmtList) where
+module Scene.Parse.Discern
+  ( discernStmtList,
+    registerTopLevelNames,
+  )
+where
 
 import Context.Alias qualified as Alias
 import Context.App
@@ -58,7 +62,6 @@ discernStmtList stmtList =
     RawStmtDefine stmtKind m functionName impArgNum xts codType e : rest -> do
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
-      Global.registerStmtDefine m stmtKind functionName impArgNum $ AN.fromInt (length xts)
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
       rest' <- discernStmtList rest
@@ -71,9 +74,24 @@ discernStmtList stmtList =
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
-      Global.registerStmtDefineResource m name
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
+
+registerTopLevelNames :: [RawStmt] -> App ()
+registerTopLevelNames stmtList =
+  case stmtList of
+    [] ->
+      return ()
+    RawStmtDefine stmtKind m functionName impArgNum xts _ _ : rest -> do
+      Global.registerStmtDefine m stmtKind functionName impArgNum $ AN.fromInt (length xts)
+      registerTopLevelNames rest
+    RawStmtSection section innerStmtList : rest -> do
+      Locator.withSection section $ do
+        registerTopLevelNames innerStmtList
+        registerTopLevelNames rest
+    RawStmtDefineResource m name _ _ : rest -> do
+      Global.registerStmtDefineResource m name
+      registerTopLevelNames rest
 
 discernStmtKind :: StmtKindF RT.RawTerm -> App (StmtKindF WT.WeakTerm)
 discernStmtKind stmtKind =
