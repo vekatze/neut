@@ -13,9 +13,6 @@ subst =
 substComp :: C.SubstValue -> C.Comp -> App C.Comp
 substComp sub term =
   case term of
-    C.Primitive theta -> do
-      let theta' = substPrimitive sub theta
-      return $ C.Primitive theta'
     C.PiElimDownElim v ds -> do
       let v' = substValue sub v
       let ds' = map (substValue sub) ds
@@ -41,6 +38,9 @@ substComp sub term =
       let (cs, es) = unzip branchList
       es' <- mapM (substComp sub) es
       return $ C.EnumElim v' defaultBranch' (zip cs es')
+    C.Primitive theta -> do
+      let theta' = substPrimitive sub theta
+      return $ C.Primitive theta'
     C.Unreachable ->
       return term
 
