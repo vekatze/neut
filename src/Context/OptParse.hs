@@ -46,7 +46,6 @@ parseBuildOpt = do
   mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
   logCfg <- logConfigOpt
-  shouldCancelAlloc <- cancelAllocOpt
   outputKindList <- outputKindListOpt
   shouldSkipLink <- shouldSkipLinkOpt
   shouldExecute <- shouldExecuteOpt
@@ -56,7 +55,6 @@ parseBuildOpt = do
         { Build.mTarget = Target <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.logCfg = logCfg,
-          Build.shouldCancelAlloc = shouldCancelAlloc,
           Build.outputKindList = outputKindList,
           Build.shouldSkipLink = shouldSkipLink,
           Build.shouldExecute = shouldExecute
@@ -141,17 +139,6 @@ logConfigOpt = do
       { Log.shouldColorize = shouldColorize,
         Log.endOfEntry = eoe
       }
-
-cancelAllocOpt :: Parser Bool
-cancelAllocOpt =
-  flag
-    True
-    False
-    ( mconcat
-        [ long "no-cancel-alloc",
-          help "Set this to disable cancelling malloc/free"
-        ]
-    )
 
 outputKindListOpt :: Parser [OK.OutputKind]
 outputKindListOpt = do

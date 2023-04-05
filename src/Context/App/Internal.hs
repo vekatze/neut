@@ -46,8 +46,6 @@ data Env = Env
     locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     currentSectionStack :: FastRef [Section.Section],
-    shouldCancelAlloc :: FastRef Bool,
-    nopFreeSet :: FastRef (S.Set Int),
     sourceAliasMap :: FastRef SourceAliasMap,
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
     holeSubst :: FastRef HS.HoleSubst,
@@ -101,8 +99,6 @@ newEnv = do
   locatorAliasMap <- newFastRef
   nameMap <- newFastRef
   currentSectionStack <- newFastRef
-  shouldCancelAlloc <- newIORef True
-  nopFreeSet <- newFastRef
   sourceAliasMap <- newFastRef
   constraintEnv <- newFastRef
   holeSubst <- newFastRef

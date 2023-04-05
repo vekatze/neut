@@ -11,7 +11,6 @@ import Data.ByteString.Lazy qualified as L
 import Data.HashMap.Strict qualified as HashMap
 import Data.IntMap qualified as IntMap
 import Data.List qualified as List
-import Data.Map qualified as Map
 import Data.Text qualified as T
 import Entity.Builder
 import Entity.DeclarationName qualified as DN
@@ -44,14 +43,12 @@ emitDeclarations declEnv = do
 emitDefinitions :: LC.Def -> App [Builder]
 emitDefinitions (name, (args, body)) = do
   let args' = map (emitValue . LC.VarLocal) args
-  (is, body') <- LowComp.reduce IntMap.empty Map.empty body
-  Env.setNopFreeSet is
+  body' <- LowComp.reduce IntMap.empty body
   emitDefinition "i8*" (DD.toBuilder name) args' body'
 
 emitMain :: LC.Comp -> App [Builder]
 emitMain mainTerm = do
-  (is, mainTerm') <- LowComp.reduce IntMap.empty Map.empty mainTerm
-  Env.setNopFreeSet is
+  mainTerm' <- LowComp.reduce IntMap.empty mainTerm
   emitDefinition "i64" "main" [] mainTerm'
 
 declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
@@ -118,8 +115,7 @@ emitLowComp retType lowComp =
       return $ op <> concat xs
     LC.Cont op cont -> do
       targetPlatform <- Env.getTargetPlatform
-      nopFreeSet <- Env.getNopFreeSet
-      case EOP.emitLowOp targetPlatform nopFreeSet op of
+      case EOP.emitLowOp targetPlatform op of
         Left err ->
           Throw.raiseCritical' $ T.pack err
         Right s -> do
@@ -128,8 +124,7 @@ emitLowComp retType lowComp =
           return $ str <> a
     LC.Let x op cont -> do
       targetPlatform <- Env.getTargetPlatform
-      nopFreeSet <- Env.getNopFreeSet
-      case EOP.emitLowOp targetPlatform nopFreeSet op of
+      case EOP.emitLowOp targetPlatform op of
         Left err ->
           Throw.raiseCritical' $ T.pack err
         Right s -> do

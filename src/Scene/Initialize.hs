@@ -22,16 +22,15 @@ import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
 import Scene.Module.Reflect qualified as Module
 
-initializeCompiler :: Log.Config -> Bool -> Maybe String -> App ()
-initializeCompiler cfg shouldCancelAlloc mClangOptString = do
+initializeCompiler :: Log.Config -> Maybe String -> App ()
+initializeCompiler cfg mClangOptString = do
   mainModule <- Module.fromCurrentPath
-  initializeCompilerWithModule mainModule cfg shouldCancelAlloc mClangOptString
+  initializeCompilerWithModule mainModule cfg mClangOptString
 
-initializeCompilerWithModule :: Module -> Log.Config -> Bool -> Maybe String -> App ()
-initializeCompilerWithModule newModule cfg shouldCancelAlloc mClangOptString = do
+initializeCompilerWithModule :: Module -> Log.Config -> Maybe String -> App ()
+initializeCompilerWithModule newModule cfg mClangOptString = do
   Log.setEndOfEntry $ Log.endOfEntry cfg
   Log.setShouldColorize $ Log.shouldColorize cfg
-  Env.setShouldCancelAlloc shouldCancelAlloc
   Env.setTargetPlatform
   LLVM.setClangOptString (fromMaybe "" mClangOptString)
   Path.ensureNotInLibDir

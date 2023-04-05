@@ -1,7 +1,6 @@
 module Entity.LowComp.EmitOp (emitLowOp) where
 
 import Data.ByteString.Builder
-import Data.Set qualified as S
 import Data.Text.Encoding qualified as TE
 import Entity.LowComp qualified as LC
 import Entity.LowComp.EmitValue
@@ -13,8 +12,8 @@ import Entity.PrimType qualified as PT
 import Entity.PrimType.EmitPrimType
 import Entity.TargetPlatform qualified as TP
 
-emitLowOp :: TP.TargetPlatform -> S.Set Int -> LC.Op -> Either String Builder
-emitLowOp targetPlatform nopFreeSet lowOp =
+emitLowOp :: TP.TargetPlatform -> LC.Op -> Either String Builder
+emitLowOp targetPlatform lowOp =
   case lowOp of
     LC.Call d ds ->
       return $ unwordsL ["call fastcc i8*", emitValue d <> showArgs ds]
@@ -52,10 +51,8 @@ emitLowOp targetPlatform nopFreeSet lowOp =
           ]
     LC.Alloc d _ ->
       return $ unwordsL ["call fastcc", "i8*", "@malloc(i8* " <> emitValue d <> ")"]
-    LC.Free d _ j -> do
-      if S.member j nopFreeSet
-        then return "bitcast i8* null to i8*" -- nop
-        else return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> emitValue d <> ")"]
+    LC.Free d -> do
+      return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> emitValue d <> ")"]
     LC.Syscall num ds ->
       emitSyscallOp targetPlatform num ds
     LC.PrimOp op args -> do

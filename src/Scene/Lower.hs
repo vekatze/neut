@@ -143,8 +143,7 @@ loadElements basePointer baseType values =
 free :: LC.Value -> LT.LowType -> Lower ()
 free pointer pointerType = do
   uncastedPointer <- uncast pointer pointerType
-  j <- lift Gensym.newCount
-  reflectCont $ LC.Free uncastedPointer pointerType j
+  reflectCont $ LC.Free uncastedPointer
 
 lowerCompPrimitive :: C.Primitive -> Lower LC.Value
 lowerCompPrimitive codeOp =

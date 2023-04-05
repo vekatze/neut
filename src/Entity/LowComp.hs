@@ -58,7 +58,7 @@ data Op
   | Load Value LowType
   | Store LowType Value Value
   | Alloc Value SizeInfo
-  | Free Value SizeInfo Int -- (var, size-of-var, name-of-free)   (name-of-free is only for optimization)
+  | Free Value
   | PrimOp PrimOp [Value]
   | Syscall
       Integer -- syscall number

@@ -11,6 +11,5 @@ data Config = Config
     logCfg :: Log.Config,
     outputKindList :: [OK.OutputKind],
     shouldSkipLink :: Bool,
-    shouldCancelAlloc :: Bool,
     shouldExecute :: Bool
   }

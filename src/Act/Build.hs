@@ -23,7 +23,7 @@ import Prelude hiding (log)
 build :: Config -> App ()
 build cfg = do
   LLVM.ensureSetupSanity cfg
-  Initialize.initializeCompiler (logCfg cfg) True (mClangOptString cfg)
+  Initialize.initializeCompiler (logCfg cfg) (mClangOptString cfg)
   Module.getMainModule >>= Fetch.fetch
   targetList <- Collect.collectTargetList $ mTarget cfg
   forM_ targetList $ \target -> do

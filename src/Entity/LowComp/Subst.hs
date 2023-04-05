@@ -43,9 +43,8 @@ substOp sub llvmOp =
     LC.Alloc d sizeInfo -> do
       let d' = substLowValue sub d
       LC.Alloc d' sizeInfo
-    LC.Free d sizeInfo i -> do
-      let d' = substLowValue sub d
-      LC.Free d' sizeInfo i
+    LC.Free d -> do
+      LC.Free $ substLowValue sub d
     LC.PrimOp op ds -> do
       let ds' = map (substLowValue sub) ds
       LC.PrimOp op ds'

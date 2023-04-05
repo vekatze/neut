@@ -8,6 +8,6 @@ import Scene.Initialize qualified as Initialize
 
 release :: Config -> App ()
 release cfg = do
-  Initialize.initializeCompiler (logCfg cfg) True Nothing
+  Initialize.initializeCompiler (logCfg cfg) Nothing
   files <- Collect.collectModuleFiles
   Archive.archive (getReleaseName cfg) files

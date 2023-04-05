@@ -14,14 +14,6 @@ import Path
 import System.Environment
 import System.Info qualified as SI
 
-getNopFreeSet :: App (S.Set Int)
-getNopFreeSet =
-  readRef' nopFreeSet
-
-setNopFreeSet :: S.Set Int -> App ()
-setNopFreeSet =
-  writeRef' nopFreeSet
-
 getTargetPlatform :: App TargetPlatform
 getTargetPlatform =
   readRef "targetPlatform" targetPlatform
@@ -33,18 +25,6 @@ setTargetPlatform = do
   let targetOS = fromMaybe SI.os mTargetOS
   let targetArch = fromMaybe SI.arch mTargetArch
   writeRef targetPlatform $ TargetPlatform {os = targetOS, arch = targetArch}
-
-insertToNopFreeSet :: Int -> App ()
-insertToNopFreeSet i =
-  modifyRef' nopFreeSet $ S.insert i
-
-getShouldCancelAlloc :: App Bool
-getShouldCancelAlloc =
-  readRef' shouldCancelAlloc
-
-setShouldCancelAlloc :: Bool -> App ()
-setShouldCancelAlloc =
-  writeRef' shouldCancelAlloc
 
 setCurrentSource :: Source.Source -> App ()
 setCurrentSource =
