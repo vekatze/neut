@@ -3,6 +3,7 @@ module Context.Clarify
     getAuxEnv,
     insertToAuxEnv,
     isAlreadyRegistered,
+    lookup,
   )
 where
 
@@ -11,6 +12,7 @@ import Context.App.Internal
 import Context.CompDefinition qualified as CompDefinition
 import Data.HashMap.Strict qualified as Map
 import Entity.DefiniteDescription qualified as DD
+import Prelude hiding (lookup)
 
 initialize :: App ()
 initialize = do
@@ -27,3 +29,8 @@ insertToAuxEnv k v =
 isAlreadyRegistered :: DD.DefiniteDescription -> App Bool
 isAlreadyRegistered dd =
   Map.member dd <$> getAuxEnv
+
+lookup :: CompDefinition.DefKey -> App (Maybe CompDefinition.DefValue)
+lookup k = do
+  cenv <- readRef' compDefMap
+  return $ Map.lookup k cenv
