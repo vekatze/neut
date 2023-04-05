@@ -204,7 +204,7 @@ elaborate' term =
           Throw.raiseError m "couldn't instantiate the hole here"
         Just (xs, e)
           | length xs == length es -> do
-              let s = IntMap.fromList $ zip (map Ident.toInt xs) es
+              let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
               WT.subst s e >>= elaborate'
           | otherwise ->
               Throw.raiseError m "arity mismatch"

@@ -40,7 +40,7 @@ reduce term =
         (_ :< WT.PiIntro (LK.Normal O.Transparent) xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs es'
+              let sub = IntMap.fromList $ zip xs (map Right es')
               Subst.subst sub body >>= reduce
         _ ->
           return $ m :< WT.PiElim e' es'
@@ -76,7 +76,7 @@ reduce term =
           e2' <- reduce e2
           return $ m :< WT.Let opacity mxt e1' e2'
         _ -> do
-          let sub = IntMap.fromList [(Ident.toInt x, e1')]
+          let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
           Subst.subst sub e2
     m :< WT.Magic der -> do
       der' <- mapM reduce der

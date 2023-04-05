@@ -36,7 +36,7 @@ reduce term =
           | length xts == length es',
             all TM.isValue es -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs es'
+              let sub = IntMap.fromList $ zip xs (map Right es')
               Subst.subst sub (m :< body) >>= reduce
         _ ->
           return (m :< TM.PiElim e' es')

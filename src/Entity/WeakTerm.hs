@@ -51,7 +51,7 @@ data WeakTermF a
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
 
 type SubstWeakTerm =
-  IntMap.IntMap WeakTerm
+  IntMap.IntMap (Either Ident WeakTerm)
 
 data LetOpacity
   = Opaque

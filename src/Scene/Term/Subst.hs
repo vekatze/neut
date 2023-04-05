@@ -6,21 +6,26 @@ import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
+import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Term qualified as TM
 
 type SubstTerm =
-  IntMap.IntMap TM.Term
+  IntMap.IntMap (Either Ident TM.Term)
 
 subst :: SubstTerm -> TM.Term -> App TM.Term
 subst sub term =
   case term of
     (_ :< TM.Tau) ->
       return term
-    (_ :< TM.Var x)
-      | Just e <- IntMap.lookup (Ident.toInt x) sub ->
-          return e
+    (m :< TM.Var x)
+      | Just varOrTerm <- IntMap.lookup (Ident.toInt x) sub ->
+          case varOrTerm of
+            Left x' ->
+              return $ m :< TM.Var x'
+            Right e ->
+              return e
       | otherwise ->
           return term
     (_ :< TM.VarGlobal {}) ->
@@ -87,7 +92,7 @@ subst' sub binder e =
     ((m, x, t) : xts) -> do
       t' <- subst sub t
       x' <- Gensym.newIdentFromIdent x
-      let sub' = IntMap.insert (Ident.toInt x) (m :< TM.Var x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', e') <- subst' sub' xts e
       return ((m, x', t') : xts', e')
 
@@ -104,7 +109,7 @@ subst'' sub binder decisionTree =
     ((m, x, t) : xts) -> do
       t' <- subst sub t
       x' <- Gensym.newIdentFromIdent x
-      let sub' = IntMap.insert (Ident.toInt x) (m :< TM.Var x') sub
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', e') <- subst'' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
@@ -120,9 +125,11 @@ substDecisionTree sub tree =
       return $ DT.Leaf xs' e'
     DT.Unreachable ->
       return tree
-    DT.Switch cursor caseList -> do
+    DT.Switch (cursorVar, cursor) caseList -> do
+      let cursorVar' = substVar sub cursorVar
+      cursor' <- subst sub cursor
       caseList' <- substCaseList sub caseList
-      return $ DT.Switch cursor caseList'
+      return $ DT.Switch (cursorVar', cursor') caseList'
 
 substCaseList ::
   SubstTerm ->
@@ -143,3 +150,11 @@ substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
   dataTypes' <- mapM (subst sub) dataTypes
   (consArgs', tree') <- subst'' sub consArgs tree
   return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'
+
+substVar :: SubstTerm -> Ident -> Ident
+substVar sub x =
+  case IntMap.lookup (Ident.toInt x) sub of
+    Just (Left x') ->
+      x'
+    _ ->
+      x

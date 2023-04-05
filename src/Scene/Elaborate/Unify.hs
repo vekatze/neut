@@ -262,7 +262,7 @@ simplifyBinder' orig sub args1 args2 =
   case (args1, args2) of
     ((m1, x1, t1) : xts1, (_, x2, t2) : xts2) -> do
       t2' <- Subst.subst sub t2
-      let sub' = IntMap.insert (Ident.toInt x2) (m1 :< WT.Var x1) sub
+      let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.Var x1)) sub
       rest <- simplifyBinder' orig sub' xts1 xts2
       return $ ((t1, t2'), orig) : rest
     _ ->

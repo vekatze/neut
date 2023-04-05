@@ -81,7 +81,7 @@ fill sub term =
         Just (xs, body)
           | length xs == length es -> do
               let varList = map Ident.toInt xs
-              subst (IntMap.fromList $ zip varList es') body >>= reduce
+              subst (IntMap.fromList $ zip varList (map Right es')) body >>= reduce
           | otherwise ->
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->

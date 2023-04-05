@@ -174,7 +174,7 @@ inferArgs sub m args1 args2 cod =
     ((e, t) : ets, (_, x, tx) : xts) -> do
       tx' <- Subst.subst sub tx
       insConstraintEnv tx' t
-      inferArgs (IntMap.insert (Ident.toInt x) e sub) m ets xts cod
+      inferArgs (IntMap.insert (Ident.toInt x) (Right e) sub) m ets xts cod
     _ ->
       Throw.raiseCritical m "invalid argument passed to inferArgs"
 
