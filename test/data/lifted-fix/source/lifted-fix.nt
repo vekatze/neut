@@ -1,0 +1,42 @@
+import {
+- core.bool
+}
+
+enum list() {
+- nil()
+- cons(i64, list())
+}
+
+// enum my-bool() {
+// - true()
+// - false()
+// }
+
+// define free-vars-in-recursion-lifted(xs: list(), ws: list()): i64 {
+//   if eq-i64(0, 0) {
+//     let fv-1 = xs
+//     1
+//   } else {
+//     let fv-4 = ws
+//     { lambda () { free-vars-in-recursion-lifted(xs, ws) } }()
+//   }
+// }
+
+define main(): i64 {
+  let xs = list.nil()
+  let ws = xs
+  let multiple-free-var =
+    // lambda () { free-vars-in-recursion-lifted(xs, ws) }
+    define loop(): i64 {
+      // match magic cast(i1, core.bool::bool(), add-i1(0, 1)) {
+      match eq-i64(0, 0) {
+      - core.bool::bool.true() =>
+        let fv-1 = xs
+        1
+      - core.bool::bool.false() =>
+        let fv-4 = ws
+        loop()
+      }
+    }
+  multiple-free-var()
+}

@@ -1,0 +1,62 @@
+import {
+- core.bool
+}
+
+enum list() {
+- nil()
+- cons(i64, list())
+}
+
+define length(xs: list()): i64 {
+  match xs {
+  - list.nil() =>
+    0
+  - list.cons(y, ys) =>
+    add-i64(1, length(ys))
+  }
+}
+
+define main(): i64 {
+  let xs = list.nil()
+  let no-free-var =
+    define foo(c: i64): i64 {
+      if eq-i64(c, 0) {
+        1
+      } else {
+        foo(sub-i64(c, 1))
+      }
+    }
+  let val-1 = no-free-var(3)
+  let single-free-var =
+    define free-vars-in-recursion(c: i64): i64 {
+      if eq-i64(c, 0) {
+        let fv-1 = xs
+        let n = length(xs)
+        1
+      } else {
+        free-vars-in-recursion(sub-i64(c, 1))
+      }
+    }
+  let val-2 = single-free-var(3)
+  let ys = xs
+  let zs = xs
+  let ws = list.nil()
+  let multiple-free-var =
+    define free-vars-in-recursion(c: i64): i64 {
+      if eq-i64(c, 0) {
+        let fv-1 = xs
+        let fv-2 = xs
+        let fv-3 = ys
+        let x = length(ys)
+        let x = length(zs)
+        let fv-4 = zs
+        1
+      } else {
+        let fv-2 = xs
+        let fv-3 = ys
+        let fv-4 = ws
+        free-vars-in-recursion(sub-i64(c, 1))
+      }
+    }
+  multiple-free-var(3)
+}
