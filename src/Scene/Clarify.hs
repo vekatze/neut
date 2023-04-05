@@ -18,12 +18,10 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Data.Set qualified as S
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
-import Entity.Comp.FreeVars
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -49,7 +47,7 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
-import Scene.Comp.Subst
+import Scene.Term.Subst qualified as TM
 
 clarify :: [Stmt] -> App ([C.CompDef], Maybe C.Comp)
 clarify defList = do
@@ -76,10 +74,6 @@ clarifyDefList stmtList = do
   CompDefinition.union auxEnv
   stmtList'' <- forM stmtList' $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
-    -- Log.printNote' "==================="
-    -- Log.printNote' $ DD.reify x
-    -- Log.printNote' $ T.pack $ show args
-    -- Log.printNote' $ T.pack $ show e'
     CompDefinition.insert x (opacity, args, e')
     return (x, (opacity, args, e'))
   return $ stmtList'' ++ Map.toList auxEnv
@@ -107,10 +101,8 @@ clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
     StmtDefine stmtKind _ f _ xts _ e -> do
-      e' <- clarifyTerm (TM.insTypeEnv xts IntMap.empty) e
-      xts' <- dropFst <$> clarifyBinder IntMap.empty xts
-      e'' <- linearize xts' e' >>= Reduce.reduce
-      return (f, (toLowOpacity stmtKind, map fst xts', e''))
+      (xts', e') <- clarifyStmtDefine xts e
+      return (f, (toLowOpacity stmtKind, xts', e'))
     StmtDefineResource m name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
@@ -123,6 +115,16 @@ clarifyDef stmt =
             C.EnumElim (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
           )
         )
+
+clarifyStmtDefine ::
+  [BinderF TM.Term] ->
+  TM.Term ->
+  App ([Ident], C.Comp)
+clarifyStmtDefine xts e = do
+  xts' <- dropFst <$> clarifyBinder IntMap.empty xts
+  e' <- clarifyTerm (TM.insTypeEnv xts IntMap.empty) e
+  e'' <- linearize xts' e' >>= Reduce.reduce
+  return (map fst xts', e'')
 
 clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
 clarifyTerm tenv term =
@@ -142,7 +144,7 @@ clarifyTerm tenv term =
     _ :< TM.Pi {} ->
       return returnClosureS4
     _ :< TM.PiIntro kind mxts e -> do
-      clarifyLambda tenv kind mxts e $ TM.chainOf tenv [term]
+      clarifyLambda tenv kind (TM.chainOf tenv [term]) mxts e
     _ :< TM.PiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -342,20 +344,25 @@ clarifyMagic tenv der =
 clarifyLambda ::
   TM.TypeEnv ->
   LK.LamKindF TM.Term ->
-  [(Hint, Ident, TM.Term)] ->
-  TM.Term ->
   [BinderF TM.Term] ->
+  [BinderF TM.Term] ->
+  TM.Term ->
   App C.Comp
-clarifyLambda tenv kind mxts e fvs = do
-  e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
+clarifyLambda tenv kind fvs mxts e@(m :< _) = do
   case kind of
-    LK.Fix (_, x, _)
-      | S.member x (freeVars e') ->
-          returnClosure tenv kind fvs mxts e'
-      | otherwise ->
-          returnClosure tenv (LK.Normal O.Transparent) fvs mxts e'
-    _ ->
-      returnClosure tenv kind fvs mxts e'
+    LK.Fix (_, recFuncName, _) -> do
+      liftedName <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt recFuncName
+      let appArgs = fvs ++ mxts
+      let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
+      let arity = A.fromInt $ length appArgs'
+      let lamApp = m :< TM.PiIntro (LK.Normal O.Transparent) mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName arity) appArgs')
+      liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
+      (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
+      Clarify.insertToAuxEnv liftedName (O.Opaque, liftedArgs, liftedBody')
+      clarifyTerm tenv lamApp
+    LK.Normal opacity -> do
+      e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
+      returnClosure tenv opacity fvs mxts e'
 
 newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do
@@ -387,49 +394,39 @@ clarifyPrimOp tenv op m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv (LK.Normal O.Transparent) [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure tenv O.Transparent [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   TM.TypeEnv ->
-  LK.LamKindF TM.Term -> -- the name of newly created closure
+  O.Opacity ->
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure tenv kind fvs xts e = do
+returnClosure tenv opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder tenv fvs
   xts'' <- dropFst <$> clarifyBinder tenv xts
   fvEnvSigma <- closureEnvS4 $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let arity = A.fromInt $ length xts'' + 1 -- arity == count(xts) + env
-  case kind of
-    LK.Normal opacity -> do
-      i <- Gensym.newCount
-      name <- Locator.attachCurrentLocator $ BN.lambdaName i
-      registerIfNecessary name opacity xts'' fvs'' e
-      return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name arity]
-    LK.Fix (_, name, _) -> do
-      name' <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt name
-      let cls = C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name' arity]
-      e' <- subst (IntMap.fromList [(Ident.toInt name, cls)]) e
-      registerIfNecessary name' O.Opaque xts'' fvs'' e'
-      return $ C.UpIntro cls
+  i <- Gensym.newCount
+  name <- Locator.attachCurrentLocator $ BN.lambdaName i
+  registerClosure name opacity xts'' fvs'' e
+  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name arity]
 
-registerIfNecessary ::
+registerClosure ::
   DD.DefiniteDescription ->
   O.Opacity ->
   [(Ident, C.Comp)] ->
   [(Ident, C.Comp)] ->
   C.Comp ->
   App ()
-registerIfNecessary name opacity xts1 xts2 e = do
-  b <- Clarify.isAlreadyRegistered name
-  unless b $ do
-    e' <- linearize (xts2 ++ xts1) e
-    (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
-    let args = map fst xts1 ++ [envVarName]
-    body <- Reduce.reduce $ C.SigmaElim True (map fst xts2) envVar e'
-    Clarify.insertToAuxEnv name (opacity, args, body)
+registerClosure name opacity xts1 xts2 e = do
+  e' <- linearize (xts2 ++ xts1) e
+  (envVarName, envVar) <- Gensym.newValueVarLocalWith "env"
+  let args = map fst xts1 ++ [envVarName]
+  body <- Reduce.reduce $ C.SigmaElim True (map fst xts2) envVar e'
+  Clarify.insertToAuxEnv name (opacity, args, body)
 
 callClosure :: C.Comp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
 callClosure e zexes = do
