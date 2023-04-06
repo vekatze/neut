@@ -293,7 +293,7 @@ parseDefineStruct = do
   m <- P.getCurrentHint
   try $ P.keyword "struct"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
-  dataArgs <- P.argList preAscription
+  dataArgs <- P.argList preBinder
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
   formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
