@@ -52,10 +52,11 @@ makeSwitcher compAff compRel = do
     )
 
 registerSwitcher ::
+  O.Opacity ->
   DD.DefiniteDescription ->
   (C.Value -> App C.Comp) ->
   (C.Value -> App C.Comp) ->
   App ()
-registerSwitcher name aff rel = do
+registerSwitcher opacity name aff rel = do
   (args, e) <- makeSwitcher aff rel
-  insertToAuxEnv name (O.Transparent, args, e)
+  insertToAuxEnv name (opacity, args, e)

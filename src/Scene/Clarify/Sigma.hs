@@ -24,6 +24,7 @@ import Entity.EnumCase qualified as EC
 import Entity.Ident
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
+import Entity.Opacity qualified as O
 import Scene.Clarify.Linearize
 import Scene.Clarify.Utility
 
@@ -31,7 +32,7 @@ registerImmediateS4 :: App ()
 registerImmediateS4 = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
-  registerSwitcher DD.imm immediateT immediate4
+  registerSwitcher O.Transparent DD.imm immediateT immediate4
 
 registerClosureS4 :: App ()
 registerClosureS4 = do
@@ -68,7 +69,7 @@ registerSigmaS4 ::
   [Either C.Comp (Ident, C.Comp)] ->
   App ()
 registerSigmaS4 name mxts = do
-  registerSwitcher name (sigmaT mxts) (sigma4 mxts)
+  registerSwitcher O.Opaque name (sigmaT mxts) (sigma4 mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>
@@ -142,7 +143,7 @@ closureEnvS4 mxts =
     _ -> do
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.sigmaName i
-      registerSwitcher name (sigmaT mxts) (sigma4 mxts)
+      registerSwitcher O.Transparent name (sigmaT mxts) (sigma4 mxts)
       return $ C.VarGlobal name A.arityS4
 
 returnSigmaDataS4 ::
@@ -153,7 +154,7 @@ returnSigmaDataS4 dataName dataInfo = do
   let aff = sigmaDataT dataInfo
   let rel = sigmaData4 dataInfo
   let dataName' = DD.getFormDD dataName
-  registerSwitcher dataName' aff rel
+  registerSwitcher O.Opaque dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
 
 sigmaData4 :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
