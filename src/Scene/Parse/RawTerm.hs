@@ -2,6 +2,7 @@ module Scene.Parse.RawTerm
   ( rawExpr,
     rawTerm,
     preAscription,
+    preBinder,
     parseTopDefInfo,
     parseDefiniteDescription,
     preVar,

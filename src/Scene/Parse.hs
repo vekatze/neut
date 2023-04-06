@@ -198,7 +198,7 @@ parseDefineEnum = do
   m <- P.getCurrentHint
   try $ P.keyword "enum"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
-  dataArgs <- P.argList preAscription
+  dataArgs <- P.argList preBinder
   consInfoList <- P.betweenBrace $ P.manyList parseDefineEnumClause
   lift $ defineData m a dataArgs consInfoList
 
