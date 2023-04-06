@@ -1,0 +1,28 @@
+import {
+- core.top
+}
+
+enum list(a: tau) {
+- nil()
+- cons(list(a))
+}
+
+define-inline get<a>(x: !a): a {
+  let value: &a = magic load(pointer(i8), x)
+  *value
+}
+
+define-inline mutate<a>(x: !a, mutator: a -> a): core.top::top() {
+  let value: a = magic load(pointer(i8), x)
+  let mutated-value = mutator(value)
+  magic store(pointer(i8), x, mutated-value)
+}
+
+define main(): i64 {
+  let xs: list(i64) = list.nil()
+  let result on !xs = {
+    mutate(xs, lambda (x) { get(xs) })
+    1
+  }
+  result
+}
