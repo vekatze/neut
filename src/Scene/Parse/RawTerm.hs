@@ -125,6 +125,7 @@ rawTermLetOrLetOn m = do
     [ do
         keyword "on"
         noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
+        lift $ ensureNoeticVarLinearity m S.empty $ map (\(_, _, v) -> v) noeticVarList
         delimiter "="
         e1 <- rawTerm
         e2 <- rawExpr
@@ -135,6 +136,17 @@ rawTermLetOrLetOn m = do
         e2 <- rawExpr
         return $ m :< RT.Let x [] e1 e2
     ]
+
+ensureNoeticVarLinearity :: Hint -> S.Set T.Text -> [Ident] -> App ()
+ensureNoeticVarLinearity m foundVarSet vs =
+  case vs of
+    [] ->
+      return ()
+    I (name, _) : rest
+      | S.member name foundVarSet ->
+          Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
+      | otherwise ->
+          ensureNoeticVarLinearity m (S.insert name foundVarSet) rest
 
 rawTermNoeticVar :: Parser (Mutability, Hint, T.Text)
 rawTermNoeticVar =
