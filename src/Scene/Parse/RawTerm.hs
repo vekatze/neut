@@ -100,6 +100,7 @@ rawTermBasic = do
     [ rawTermNoema,
       rawTermCell,
       rawTermEmbody,
+      rawTermLazy,
       rawTermAscOrPiElimOrSimple
     ]
 
@@ -198,6 +199,13 @@ rawTermEmbody = do
       bind (m, original, noema) (m :< RT.Magic (M.Cast t noema (m :< RT.Var raw))) $
         bind (m, copied, t) (m :< RT.Var raw) $
           m :< RT.Var copied
+
+rawTermLazy :: Parser RT.RawTerm
+rawTermLazy = do
+  m <- getCurrentHint
+  delimiter "'"
+  t <- rawTermBasic
+  return $ m :< RT.Pi [] t
 
 rawTermTau :: Parser RT.RawTerm
 rawTermTau = do
