@@ -4,6 +4,7 @@ import Context.App
 import Context.Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
+import Data.Maybe (mapMaybe)
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
@@ -139,7 +140,7 @@ substDecisionTree sub tree =
   case tree of
     DT.Leaf xs e -> do
       e' <- subst sub e
-      let xs' = filter (\x -> Ident.toInt x `IntMap.notMember` sub) xs
+      let xs' = mapMaybe (substLeafVar sub) xs
       return $ DT.Leaf xs' e'
     DT.Unreachable ->
       return tree
@@ -168,6 +169,16 @@ substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
   dataTypes' <- mapM (subst sub) dataTypes
   (consArgs', tree') <- subst''' sub consArgs tree
   return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'
+
+substLeafVar :: WT.SubstWeakTerm -> Ident -> Maybe Ident
+substLeafVar sub leafVar =
+  case IntMap.lookup (Ident.toInt leafVar) sub of
+    Just (Left leafVar') ->
+      return leafVar'
+    Just (Right _) ->
+      error "substLeafVar: critical compiler bug (leaf variables shouldn't be substituted to actual terms)"
+    Nothing ->
+      return leafVar
 
 substVar :: WT.SubstWeakTerm -> Ident -> Ident
 substVar sub x =

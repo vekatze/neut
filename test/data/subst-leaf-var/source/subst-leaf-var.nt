@@ -1,0 +1,11 @@
+enum option() {
+- some(i64)
+}
+
+define main(): i64 {
+  let sect = tau
+  match option.some(2) {
+  - option.some(2) =>
+    10
+  }
+}
