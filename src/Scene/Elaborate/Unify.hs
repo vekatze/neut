@@ -4,10 +4,10 @@ module Scene.Elaborate.Unify
 where
 
 import Context.App
-import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
+import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -182,7 +182,7 @@ simplify constraintList =
               e2' <- fill s2 e2
               simplify $ ((e1, e2'), orig) : cs
             (Nothing, Nothing) -> do
-              defMap <- Definition.read
+              defMap <- WeakDefinition.read
               -- defMap <- getDefMap
               let fmvs = S.union fmvs1 fmvs2
               case (asStuckedTerm e1, asStuckedTerm e2) of

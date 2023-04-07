@@ -1,8 +1,4 @@
-module Scene.Elaborate
-  ( elaborate,
-    insertStmt,
-  )
-where
+module Scene.Elaborate (elaborate) where
 
 import Context.App
 import Context.Cache qualified as Cache
@@ -14,6 +10,7 @@ import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
+import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
@@ -40,6 +37,7 @@ import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Reveal qualified as Reveal
 import Scene.Elaborate.Unify qualified as Unify
+import Scene.Term.PureReduce qualified as TM
 import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Subst qualified as WT
 
@@ -92,6 +90,12 @@ elaborateStmt stmt = do
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
+  case stmt of
+    StmtDefine stmtKind m f _ xts _ e -> do
+      let lamKind = LK.Normal $ toOpacity stmtKind
+      Definition.insert (toOpacity stmtKind) f (m :< TM.PiIntro lamKind xts e)
+    StmtDefineResource {} ->
+      return ()
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
@@ -100,7 +104,7 @@ insertWeakStmt stmt = do
   case stmt of
     WeakStmtDefine stmtKind m f _ xts codType e -> do
       Type.insert f $ m :< WT.Pi xts codType
-      Definition.insert (toOpacity stmtKind) m f xts e
+      WeakDefinition.insert (toOpacity stmtKind) m f xts e
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
 
@@ -276,7 +280,7 @@ elaborateDecisionTree m tree =
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
-      cursorType' <- elaborate' cursorType >>= Term.reduce
+      cursorType' <- elaborate' cursorType >>= reduceDataType
       consList <- extractConstructorList m cursorType'
       let activeConsList = DT.getConstructors clauseList
       let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
@@ -302,6 +306,20 @@ elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
   cont' <- elaborateDecisionTree m cont
   return $ DT.Cons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
+reduceDataType :: TM.Term -> App TM.Term
+reduceDataType e = do
+  e' <- TM.pureReduce e
+  case e' of
+    m :< TM.PiElim (_ :< TM.VarGlobal dataName _) args -> do
+      mLam <- Definition.lookup dataName
+      case mLam of
+        Just lam ->
+          reduceDataType $ m :< TM.PiElim lam args
+        Nothing ->
+          return e'
+    _ ->
+      return e'
+
 extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
@@ -310,21 +328,7 @@ extractConstructorList m cursorType = do
       case kind of
         Just (GN.Data _ consList) ->
           return consList
-        _ ->
-          Throw.raiseCritical m "extractConstructorList"
-    _ :< TM.PiElim (_ :< TM.Data dataName _) _ -> do
-      kind <- Global.lookup dataName
-      case kind of
-        Just (GN.Data _ consList) ->
-          return consList
-        _ ->
-          Throw.raiseCritical m "extractConstructorList"
-    _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
-      kind <- Global.lookup dataName
-      case kind of
-        Just (GN.Data _ consList) ->
-          return consList
-        _ ->
-          Throw.raiseCritical m "extractConstructorList"
+        _ -> do
+          Throw.raiseCritical m $ "the datatype `" <> DD.reify dataName <> "` isn't defined"
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)

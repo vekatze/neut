@@ -67,6 +67,12 @@ isValue term =
       True
     _ :< DataIntro _ _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
+    _ :< Noema {} ->
+      True
+    _ :< Cell {} ->
+      True
+    _ :< ResourceType {} ->
+      True
     _ ->
       False
 
