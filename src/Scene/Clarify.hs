@@ -177,7 +177,7 @@ clarifyTerm tenv term =
       let mxts = map (m,,m :< TM.Tau) xs
       es' <- mapM (clarifyTerm tenv) es
       tree' <- clarifyDecisionTree (TM.insTypeEnv mxts tenv) isNoetic IntMap.empty tree
-      return $ bindLet (zip xs es') tree'
+      return $ irreducibleBindLet (zip xs es') tree'
     _ :< TM.Noema {} ->
       return returnImmediateS4
     _ :< TM.Cell {} ->

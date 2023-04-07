@@ -34,6 +34,14 @@ bindLet binder cont =
     (x, e) : xes ->
       C.UpElim True x e $ bindLet xes cont
 
+irreducibleBindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
+irreducibleBindLet binder cont =
+  case binder of
+    [] ->
+      cont
+    (x, e) : xes ->
+      C.UpElim False x e $ bindLet xes cont
+
 makeSwitcher ::
   (C.Value -> App C.Comp) ->
   (C.Value -> App C.Comp) ->

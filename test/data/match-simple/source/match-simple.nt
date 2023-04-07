@@ -1,0 +1,10 @@
+enum item() {
+- cons(i64)
+}
+
+define main(): i64 {
+  match item.cons(2) {
+  - item.cons(w) =>
+    w
+  }
+}
