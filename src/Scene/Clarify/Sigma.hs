@@ -1,11 +1,9 @@
 module Scene.Clarify.Sigma
   ( registerImmediateS4,
     registerClosureS4,
-    registerCellS4,
     immediateS4,
     returnImmediateS4,
     returnClosureS4,
-    returnCellS4,
     closureEnvS4,
     returnSigmaDataS4,
   )
@@ -41,13 +39,6 @@ registerClosureS4 = do
     DD.cls
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
 
-registerCellS4 :: App ()
-registerCellS4 = do
-  (env, envVar) <- Gensym.newValueVarLocalWith "env"
-  registerSigmaS4
-    DD.cell
-    [Right (env, returnImmediateS4), Left (C.UpIntro envVar)] -- Sigma [A: tau, _: A]
-
 returnImmediateS4 :: C.Comp
 returnImmediateS4 = do
   C.UpIntro immediateS4
@@ -55,10 +46,6 @@ returnImmediateS4 = do
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
   C.UpIntro $ C.VarGlobal DD.cls A.arityS4
-
-returnCellS4 :: C.Comp
-returnCellS4 = do
-  C.UpIntro $ C.VarGlobal DD.cell A.arityS4
 
 immediateS4 :: C.Value
 immediateS4 = do

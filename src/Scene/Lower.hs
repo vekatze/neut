@@ -70,7 +70,6 @@ lower (defList, mMainTerm) = do
     Nothing -> do
       insDeclEnv (DN.In DD.imm) A.arityS4
       insDeclEnv (DN.In DD.cls) A.arityS4
-      insDeclEnv (DN.In DD.cell) A.arityS4
       defList' <- forM defList $ \(name, (_, args, e)) -> do
         e' <- lowerComp e
         return (name, (args, e'))

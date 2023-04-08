@@ -9,7 +9,6 @@ module Entity.DefiniteDescription
     getFormDD,
     imm,
     cls,
-    cell,
     array,
     isBaseDefiniteDescription,
     toBuilder,
@@ -99,10 +98,6 @@ imm =
 cls :: DefiniteDescription
 cls =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.cls
-
-cell :: DefiniteDescription
-cell =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.cell
 
 array :: PT.PrimType -> DefiniteDescription
 array elemType =
