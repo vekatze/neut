@@ -1,0 +1,25 @@
+use {
+- this.noetic-nested-pattern::tree
+}
+
+enum tree() {
+- E()
+- N(tree())
+}
+
+define find-min(t: &tree()): i64 {
+  case t {
+  - E() =>
+    1
+  - N(E()) =>
+    2
+  - N(left) =>
+    let x: &tree() = left
+    3
+  }
+}
+
+
+define main(): i64 {
+  0
+}
