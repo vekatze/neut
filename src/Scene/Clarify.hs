@@ -101,8 +101,13 @@ clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
     StmtDefine stmtKind _ f _ xts _ e -> do
-      (xts', e') <- clarifyStmtDefine xts e
-      return (f, (toLowOpacity stmtKind, xts', e'))
+      case stmtKind of
+        Data name dataArgs consInfoList -> do
+          dataType <- clarifyData name dataArgs consInfoList
+          return (name, (O.Transparent, [], dataType))
+        _ -> do
+          (xts', e') <- clarifyStmtDefine xts e
+          return (f, (toLowOpacity stmtKind, xts', e'))
     StmtDefineResource m name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
@@ -115,6 +120,16 @@ clarifyDef stmt =
             C.EnumElim (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
           )
         )
+
+clarifyData :: DD.DefiniteDescription -> [BinderF TM.Term] -> [(DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)] -> App C.Comp
+clarifyData name dataArgs consInfoList = do
+  isEnum <- Enum.isMember name
+  if isEnum
+    then return returnImmediateS4
+    else do
+      let dataInfo = map (\(_, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+      dataInfo' <- mapM clarifyDataClause dataInfo
+      returnSigmaDataS4 name dataInfo'
 
 clarifyStmtDefine ::
   [BinderF TM.Term] ->
@@ -149,18 +164,8 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    m :< TM.Data name _ -> do
-      isEnum <- Enum.isMember name
-      if isEnum
-        then return returnImmediateS4
-        else do
-          mDataInfo <- DataDefinition.lookup name
-          case mDataInfo of
-            Nothing -> do
-              Throw.raiseCritical m $ "mDataInfo: " <> DD.reify name
-            Just dataInfo -> do
-              dataInfo' <- mapM clarifyDataClause dataInfo
-              returnSigmaDataS4 name dataInfo'
+    _ :< TM.Data name dataArgs -> do
+      return $ C.PiElimDownElim (C.VarGlobal name $ A.fromInt $ length dataArgs) []
     _ :< TM.DataIntro _ consName disc dataArgs consArgs -> do
       isEnum <- Enum.isMember consName
       if isEnum
