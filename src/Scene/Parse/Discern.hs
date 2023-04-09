@@ -52,6 +52,7 @@ import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Scene.Parse.Discern.Fallback qualified as PATF
+import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.Specialize qualified as PATS
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
@@ -145,7 +146,7 @@ discern nenv term =
       return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv >=> castFromNoema' nenv isNoetic Immutable) es
+      es' <- mapM (discern nenv >=> castFromNoemaIfNecessary nenv isNoetic) es
       ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
@@ -275,38 +276,6 @@ attachSuffix nenv binder cont@(m :< _) =
       cont' <- attachSuffix nenv rest cont
       h <- Gensym.newHole m (asHoleArgs nenv)
       return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
-
-castToNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
-castToNoema nenv mutability e@(m :< _) = do
-  t <- Gensym.newHole m (asHoleArgs nenv)
-  case mutability of
-    Mutable ->
-      return $ m :< WT.CellIntro e
-    Immutable -> do
-      let tNoema = m :< WT.Noema t
-      return $ m :< WT.Magic (M.Cast t tNoema e)
-
-castFromNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
-castFromNoema nenv mutability e@(m :< _) = do
-  t <- Gensym.newHole m (asHoleArgs nenv)
-  case mutability of
-    Mutable ->
-      return $ m :< WT.CellElim e
-    Immutable -> do
-      let tNoema = m :< WT.Noema t
-      return $ m :< WT.Magic (M.Cast tNoema t e)
-
-castToNoema' :: NominalEnv -> N.IsNoetic -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
-castToNoema' nenv isNoetic mutability e =
-  if isNoetic
-    then castToNoema nenv mutability e
-    else return e
-
-castFromNoema' :: NominalEnv -> N.IsNoetic -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
-castFromNoema' nenv isNoetic mutability e =
-  if isNoetic
-    then castFromNoema nenv mutability e
-    else return e
 
 discernBinder ::
   NominalEnv ->
@@ -535,7 +504,8 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
     Just (row, _) ->
       case PAT.getClauseBody row of
         Right (usedVars, (freedVars, body)) -> do
-          cursorVars <- mapM (alignLetBody nenv isNoetic Immutable m) (V.toList occurrences)
+          let occurrences' = map (\o -> m :< WT.Var o) $ V.toList occurrences
+          cursorVars <- mapM (castToNoemaIfNecessary nenv isNoetic) occurrences'
           DT.Leaf freedVars <$> bindLet nenv m (zip usedVars cursorVars) body
         Left i ->
           if i > 0
@@ -552,17 +522,13 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
                 consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
                 (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize nenv cursor (cons, consArity) mat
+                specialMatrix <- PATS.specialize isNoetic nenv cursor (cons, consArity) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic m occurrences' specialMatrix
                 return (DT.Cons cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
-              fallbackMatrix <- PATF.getFallbackMatrix nenv cursor mat
+              fallbackMatrix <- PATF.getFallbackMatrix isNoetic nenv cursor mat
               fallbackClause <- compilePatternMatrix nenv isNoetic m (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole m (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
-
-alignLetBody :: NominalEnv -> N.IsNoetic -> Mutability -> Hint -> Ident -> App WT.WeakTerm
-alignLetBody nenv isNoetic mutability m x =
-  castToNoema' nenv isNoetic mutability (m :< WT.Var x)
 
 alignConsArgs ::
   NominalEnv ->
