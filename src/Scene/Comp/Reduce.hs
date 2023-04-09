@@ -91,6 +91,8 @@ reduce term =
               return C.Unreachable
             _ ->
               return $ C.UpElim isReducible x e1' e2'
+    C.EnumElim _ defaultBranch [] -> do
+      reduce defaultBranch
     C.EnumElim v defaultBranch les -> do
       case v of
         C.Int _ l
