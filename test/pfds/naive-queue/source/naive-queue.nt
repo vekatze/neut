@@ -1,0 +1,106 @@
+import {
+- core.list
+- core.bool
+- core.option
+- core.sum
+}
+
+use {
+- core.list
+- core.bool
+- core.option
+}
+
+struct product(a, b) {
+- left: a
+- right: b
+}
+
+define-inline queue(a: tau): tau {
+  product(list(a), list(a))
+}
+
+define empty<a>(): queue(a) {
+  product.new(list.nil(), list.nil())
+}
+
+define reverse<a>(xs: list(a)): list(a) {
+  let f =
+    define helper(ys: list(a), acc: list(a)): list(a) {
+      match ys {
+      - list.nil() =>
+        acc
+      - list.cons(z, zs) =>
+        helper(zs, list.cons(z, acc))
+      }
+    }
+  f(xs, list.nil())
+}
+
+define head<a>(q: &queue(a)): option(a) {
+  case q {
+  - product.new(list.cons(x, rest), ys) =>
+    some(*x)
+  - otherwise =>
+    none()
+  }
+}
+
+define-inline sanitize<a>(q: queue(a)): queue(a) {
+  match q {
+  - product.new(list.nil(), ys) =>
+    product.new(reverse(ys), list.nil())
+  - q =>
+    q
+  }
+}
+
+define tail<a>(q: queue(a)): option(queue(a)) {
+  match q {
+  - product.new(list.cons(x, rest), ys) =>
+    some(sanitize(product.new(rest, ys)))
+  - otherwise =>
+    none()
+  }
+}
+
+define snoc<a>(v: a, q: queue(a)): queue(a) {
+  match q {
+  - product.new(xs, ys) =>
+    sanitize(product.new(xs, list.cons(v, ys)))
+  }
+}
+
+define sum(xs: &list(i64)): i64 {
+  case xs {
+  - list.nil() =>
+    0
+  - list.cons(v, rest) =>
+    add-i64(*v, sum(rest))
+  }
+}
+
+define main(): i64 {
+  let q: queue(list(i64)) = empty()
+  let q = snoc([2], q)
+  let q = snoc([5], q)
+  let q = snoc([1], q)
+  let mv1 on q = head(q)
+  let mq = tail(q)
+  match mq {
+  - core.sum::sum.left(_) =>
+    1
+  - core.sum::sum.right(q) =>
+    let q = snoc([3], q)
+    let q = snoc([8], q)
+    let mv2 on q = head(q)
+    match mv1, mv2 {
+    - core.sum::sum.right(xs1), core.sum::sum.right(xs2) =>
+      let v1 on xs1 = sum(xs1)
+      let v2 on xs2 = sum(xs2)
+      add-i64(v1, v2)
+    - mv1, mv2 =>
+      10
+    }
+  }
+}

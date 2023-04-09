@@ -1,0 +1,79 @@
+import {
+- core.bool
+- core.top
+- core.option
+- core.sum
+}
+
+use {
+- core.bool
+- core.top
+- core.sum
+}
+
+struct product(a, b) {
+- first: a
+- second: b
+}
+
+enum custom-stack(a) {
+- nil()
+- cons(product(a, a), custom-stack(a))
+}
+
+define empty<a>(): custom-stack(a) {
+  custom-stack.nil()
+}
+
+define is-empty<a>(xs: &custom-stack(a)): bool() {
+  case xs {
+  - custom-stack.nil() =>
+    bool.true()
+  - custom-stack.cons(y, rest) =>
+    bool.false()
+  }
+}
+
+define head<a>(xs: &custom-stack(a)): core.option::option(&product(a, a)) {
+  case xs {
+  - custom-stack.nil() =>
+    core.option::none()
+  - custom-stack.cons(a, rest) =>
+    core.option::some(a)
+  }
+}
+
+define tail<a>(xs: &custom-stack(a)): core.option::option(&custom-stack(a)) {
+  case xs {
+  - custom-stack.nil() =>
+    core.option::none()
+  - custom-stack.cons(a, rest) =>
+    core.option::some(rest)
+  }
+}
+
+define main(): i64 {
+  let xs = empty()
+  let v =
+    new product {
+    - product.first <= lambda () { 1 }
+    - product.second <= lambda () { 2: i64 }
+    }
+  let ys = custom-stack.cons(v, xs)
+  let zs = custom-stack.cons(v, custom-stack.cons(v, ys))
+  let calc on zs, xs = {
+    let b = is-empty(zs)
+    let b2 = is-empty(xs)
+    let h = head(zs)
+    let h2 = head(xs)
+    let t = tail(zs)
+    let t2 = tail(zs)
+    match h {
+    - sum.left(l) =>
+      1
+    - sum.right(pair) =>
+      {*pair[product.second]}()
+    }
+  }
+  calc
+}

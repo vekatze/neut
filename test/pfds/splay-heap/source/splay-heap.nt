@@ -1,0 +1,158 @@
+import {
+- core.bool
+- core.option
+- core.list
+- core.sum
+}
+
+use {
+- this.splay-heap::heap
+- core.option
+- core.list
+}
+
+enum heap(a) {
+- leaf()
+- node(heap(a), a, heap(a))
+}
+
+enum order() {
+- lt()
+- eq()
+- gt()
+}
+
+struct tuple(a, b) {
+- left: a
+- right: b
+}
+
+define insert<a>(cmp: (a, a) -> order(), x: a, t: heap(a)): heap(a) {
+  match split(cmp, x, t) {
+  - tuple.new(smaller, bigger) =>
+    node(smaller, x, bigger)
+  }
+}
+
+define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
+  match t {
+  - leaf() =>
+    tuple.new(leaf(), leaf())
+  - node(left, v, right) =>
+    match cmp(v, pivot) {
+    // go right
+    - order.lt() =>
+      match right {
+      - leaf() =>
+        tuple.new(node(left, v, leaf()), leaf())
+      - node(right-left, w, right-right) =>
+        match cmp(w, pivot) {
+        // go right
+        - order.lt() =>
+          match split(cmp, pivot, right-right) {
+          - tuple.new(right-right-small, right-right-big) =>
+            tuple.new(node(node(left, v, right-right-small), w, right-right-small), right-right-big)
+          }
+        // go left
+        - otherwise =>
+          match split(cmp, pivot, right-left) {
+          - tuple.new(right-left-small, right-left-big) =>
+            tuple.new(node(left, v, right-left-small), node(right-left-big, w, right-right))
+          }
+        }
+      }
+    // go left
+    - otherwise =>
+      match left {
+      - leaf() =>
+        tuple.new(leaf(), node(leaf(), v, right))
+      - node(left-left, w, left-right) =>
+        match cmp(w, pivot) {
+        // go right
+        - order.lt() =>
+          match split(cmp, pivot, left-right) {
+          - tuple.new(left-right-small, left-right-big) =>
+            tuple.new(node(left-left, w, left-right-small), node(left-right-big, v, right))
+          }
+        // go left
+        - otherwise =>
+          match split(cmp, pivot, left-left) {
+          - tuple.new(left-left-small, left-left-big) =>
+            tuple.new(left-left-small, node(left-left-big, w, node(left-right, v, right)))
+          }
+        }
+      }
+    }
+  }
+}
+
+define find-min<a>(t: &heap(a)): option(a) {
+  case t {
+  - leaf() =>
+    none()
+  - node(leaf(), x, right) =>
+    some(*x)
+  - node(left, x, right) =>
+    find-min(left)
+  }
+}
+
+define delete-min<a>(t: heap(a)): option(heap(a)) {
+  match t {
+  - leaf() =>
+    none()
+  - node(leaf(), x, right) =>
+    some(right)
+  - node(node(leaf(), x, t12), y, t2) =>
+    some(node(t12, y, t2))
+  - node(node(t11, x, t12), y, t2) =>
+    let? t11 = delete-min(t11)
+    some(node(t11, x, node(t12, y, t2)))
+  }
+}
+
+define compare-int-list(xs: list(i64), ys: list(i64)): order() {
+  let x on xs = sum(xs)
+  let y on ys = sum(ys)
+  if lt-i64(x, y) {
+    order.lt()
+  } else-if gt-i64(x, y) {
+    order.gt()
+  } else {
+    order.eq()
+  }
+}
+
+define sum(xs: &list(i64)): i64 {
+  case xs {
+  - list.nil() =>
+    0
+  - list.cons(y, ys) =>
+    add-i64(*y, sum(ys))
+  }
+}
+
+define main(): i64 {
+  let h: heap(list(i64)) = leaf()
+  let h = insert(compare-int-list, [1, 2], h)
+  let h = insert(compare-int-list, [10], h)
+  let h = insert(compare-int-list, [5], h)
+  let mv1 on h = find-min(h)
+  let mh = delete-min(h)
+  match mh {
+  - core.sum::sum.left(_) =>
+    3
+  - core.sum::sum.right(h) =>
+    let h = insert(compare-int-list, [4, 8], h)
+    let h = insert(compare-int-list, [1, 1], h)
+    let mv2 on h = find-min(h)
+    match mv1, mv2 {
+    - core.sum::sum.right(xs), core.sum::sum.right(ys) =>
+      let v1 on xs = sum(xs)
+      let v2 on ys = sum(ys)
+      add-i64(v1, v2)
+    - mv1, mv2 =>
+      2
+    }
+  }
+}

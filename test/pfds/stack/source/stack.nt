@@ -1,0 +1,99 @@
+import {
+- core.bool
+- core.option
+}
+
+use {
+- core.bool
+- core.option
+}
+
+enum stack(a) {
+- nil()
+- cons(a, stack(a))
+}
+
+define empty<a>(): stack(a) {
+  stack.nil()
+}
+
+define is-empty<a>(xs: &stack(a)): bool() {
+  case xs {
+  - stack.nil() =>
+    bool.true()
+  - stack.cons(y, rest) =>
+    bool.false()
+  }
+}
+
+define head<a>(xs: &stack(a)): option(&a) {
+  case xs {
+  - stack.nil() =>
+    none()
+  - stack.cons(a, rest) =>
+    some(a)
+  }
+}
+
+define tail<a>(xs: &stack(a)): option(&stack(a)) {
+  case xs {
+  - stack.nil() =>
+    none()
+  - stack.cons(a, rest) =>
+    some(rest)
+  }
+}
+
+define update<a>(xs: stack(a), index: i64, value: a): stack(a) {
+  match xs {
+  - stack.nil() =>
+    stack.nil()
+  - stack.cons(y, ys) =>
+    if eq-i64(index, 0) {
+      stack.cons(value, ys)
+    } else {
+      stack.cons(y, update(ys, sub-i64(index, 1), value))
+    }
+  }
+}
+
+define suffixes<a>(xs: stack(a)): stack(stack(a)) {
+  match xs {
+  - stack.nil() =>
+    stack.nil()
+  - stack.cons(y, ys) =>
+    stack.cons(xs, suffixes(ys))
+  }
+}
+
+define suffixes-noetic<a>(xs: &stack(a)): stack(&stack(a)) {
+  case xs {
+  - stack.nil() =>
+    stack.nil()
+  - stack.cons(y, ys) =>
+    stack.cons(xs, suffixes-noetic(ys))
+  }
+}
+
+define main(): i64 {
+  let xs = empty()
+  let ys = stack.cons(10: i64, xs)
+  let zs = stack.cons(30, stack.cons(20, ys))
+  let zs = update(zs, 1, 20000)
+  let ws = suffixes(zs)
+  let calc on zs, xs = {
+    let b = is-empty(zs)
+    let b2 = is-empty(xs)
+    let h = head(zs)
+    let zs-suffixes = suffixes-noetic(zs)
+    let h2 = head(xs)
+    let t = tail(zs)
+    let t2 = tail(zs)
+    if b {
+      1
+    } else {
+      2
+    }
+  }
+  calc
+}

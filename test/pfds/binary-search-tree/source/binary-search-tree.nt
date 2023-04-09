@@ -1,0 +1,92 @@
+import {
+- core.bool
+}
+
+use {
+- core.bool
+- this.binary-search-tree::set
+}
+
+enum order() {
+- lt()
+- eq()
+- gt()
+}
+
+enum set(a) {
+- leaf()
+- node(set(a), a, set(a))
+}
+
+struct set-signature(a) {
+- empty: set(a)
+- insert: (a, set(a)) -> set(a)
+- member: (a, &set(a)) -> bool()
+}
+
+define make-set-signature<a>(compare: (a, a) -> order()): set-signature(a) {
+  new set-signature {
+  - set-signature.empty <=
+    set.leaf()
+  - set-signature.insert <=
+    define insert(new-value: a, haystack: set(a)): set(a) {
+      match haystack {
+      - set.leaf() =>
+        set.node(leaf(), new-value, leaf())
+      - node(left, x, right) =>
+        match compare(new-value, x) {
+        - order.lt() =>
+          node(insert(new-value, left), x, right)
+        - order.eq() =>
+          node(left, x, right)
+        - order.gt() =>
+          node(left, x, insert(new-value, right))
+        }
+      }
+    }
+  - set-signature.member <=
+    define member(needle: a, haystack: &set(a)) {
+      case haystack {
+      - set.leaf() =>
+        bool.false()
+      - set.node(left, x, right) =>
+        match compare(needle, *x) {
+        - order.lt() =>
+          member(needle, left)
+        - order.eq() =>
+          bool.true()
+        - order.gt() =>
+          member(needle, right)
+        }
+      }
+    }
+  }
+}
+
+define compare-int(x: i64, y: i64): order() {
+  if lt-i64(x, y) {
+    order.lt()
+  } else-if gt-i64(x, y) {
+    order.gt()
+  } else {
+    order.eq()
+  }
+}
+
+define main(): i64 {
+  let int-set-signature = make-set-signature(compare-int)
+  match int-set-signature {
+  - set-signature.new(empty, insert, member) =>
+    let my-set = insert(10, empty)
+    let my-set = insert(20, my-set)
+    let my-set = insert(20, my-set)
+    let my-set = insert(20, my-set)
+    let my-set = insert(30, my-set)
+    let result on my-set = member(5, my-set)
+    if result {
+      1
+    } else {
+      2
+    }
+  }
+}

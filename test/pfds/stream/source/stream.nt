@@ -1,0 +1,44 @@
+import {
+- core.bool
+}
+
+enum stream-cell(a) {
+- nil()
+- cons(a, stream(a))
+}
+
+define-inline stream(a: tau): tau {
+  'stream-cell(a)
+}
+
+define append<a>(xs: stream(a), ys: stream(a)): stream(a) {
+  match xs() {
+  - stream-cell.nil() =>
+    ys
+  - stream-cell.cons(x1, rest) =>
+    lambda () {
+      stream-cell.cons(x1, append(rest, ys))
+    }
+  }
+}
+
+define take<a>(n: i64, xs: stream(a)): stream(a) {
+  if eq-i64(n, 0) {
+    lambda () { stream-cell.nil() }
+  } else {
+    match xs() {
+    - stream-cell.nil() =>
+      lambda () { stream-cell.nil() }
+    - stream-cell.cons(x, rest) =>
+      lambda () {
+        stream-cell.cons(x, take(sub-i64(n, 1), rest))
+      }
+    }
+  }
+}
+
+define main(): i64 {
+  let my-stream: stream(i64) =
+    lambda () { stream-cell.cons(1, lambda () { stream-cell.nil() }) }
+  0
+}

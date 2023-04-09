@@ -1,0 +1,198 @@
+import {
+- core.bool
+- core.option
+- core.sum
+}
+
+use {
+- core.bool
+- core.option
+- this.binomial-heap::tree
+}
+
+enum list(a) {
+- nil()
+- cons(a, list(a))
+}
+
+define reverse<a>(xs: list(a)): list(a) {
+  let helper =
+    define self(ys: list(a), acc: list(a)): list(a) {
+      match ys {
+      - list.nil() =>
+        acc
+      - list.cons(y, rest) =>
+        self(rest, list.cons(y, acc))
+      }
+    }
+  helper(xs, list.nil())
+}
+
+enum tree(a) {
+  // the list is in *decreasing* order of rank
+- node(i64, a, list(tree(a)))
+}
+
+define-inline heap(a: tau): tau {
+  // the list is in *increasing* order of rank
+  list(tree(a))
+}
+
+enum order() {
+- lt()
+- eq()
+- gt()
+}
+
+define link<a>(cmp: (a, a) -> order(), t1: tree(a), t2: tree(a)): tree(a) {
+  match t1, t2 {
+  - node(r1, x1, children1), node(r2, x2, children2) =>
+    match cmp(x1, x2) {
+    - order.lt() =>
+      node(add-i64(r1, 1), x1, list.cons(node(r2, x2, children2), children1))
+    - otherwise =>
+      node(add-i64(r1, 1), x2, list.cons(node(r1, x1, children1), children2))
+    }
+  }
+}
+
+define rank<a>(t: &tree(a)): i64 {
+  case t {
+  - node(r, v, children) =>
+    *r
+  }
+}
+
+define insert-tree<a>(cmp: (a, a) -> order(), t: tree(a), h: heap(a)): heap(a) {
+  match h {
+  - list.nil() =>
+    list.cons(t, list.nil())
+  - list.cons(t1, rest) =>
+    let r on t = rank(t)
+    let r1 on t1 = rank(t1)
+    if lt-i64(r, r1) {
+      list.cons(t, list.cons(t1, rest))
+    } else {
+      // the link here corresponds to a carry in binary arithmetic
+      insert-tree(cmp, link(cmp, t, t1), rest)
+    }
+  }
+}
+
+define insert<a>(cmp: (a, a) -> order(), value: a, h: heap(a)): heap(a) {
+  insert-tree(cmp, node(0, value, list.nil()), h)
+}
+
+define merge<a>(cmp: (a, a) -> order(), h1: heap(a), h2: heap(a)): heap(a) {
+  match h1, h2 {
+  - list.nil(), h2 =>
+    h2
+  - h1, list.nil() =>
+    h1
+  - list.cons(t1, ts1), list.cons(t2, ts2) =>
+    let r1 on t1 = rank(t1)
+    let r2 on t2 = rank(t2)
+    if lt-i64(r1, r2) {
+      list.cons(t1, merge(cmp, ts1, list.cons(t2, ts2)))
+    } else-if gt-i64(r1, r2) {
+      list.cons(t2, merge(cmp, list.cons(t1, ts1), ts2))
+    } else {
+      insert-tree(cmp, link(cmp, t1, t2), merge(cmp, ts1, ts2))
+    }
+  }
+}
+
+define root<a>(t: &tree(a)): a {
+  case t {
+  - node(r, v, children) =>
+    *v
+  }
+}
+
+enum tuple(a, b) {
+- new(a, b)
+}
+
+define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): option(a) {
+  let helper =
+    define self(cand: a, h: &heap(a)): a {
+      case h {
+      - list.nil() =>
+        cand
+      - list.cons(t, ts) =>
+        let root-head = root(t)
+        match cmp(root-head, cand) {
+        - order.lt() =>
+          self(root-head, ts)
+        - otherwise =>
+          self(cand, ts)
+        }
+      }
+    }
+  case h {
+  - list.nil() =>
+    none()
+  - list.cons(t, ts) =>
+    let r = root(t)
+    some(helper(r, ts))
+  }
+}
+
+define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): option(tuple(tree(a), heap(a))) {
+  match h {
+  - list.nil() =>
+    none()
+  - list.cons(t, list.nil()) =>
+    some(tuple.new(t, list.nil()))
+  - list.cons(t, ts) =>
+    let? pair = remove-min-tree(cmp, ts)
+    match pair {
+    - tuple.new(cand, ts-adjusted) =>
+      let root-head on t = root(t)
+      let root-cand on cand = root(cand)
+      match cmp(root-head, root-cand) {
+      - order.lt() =>
+        some(tuple.new(t, list.cons(cand, ts-adjusted)))
+      - otherwise =>
+        some(tuple.new(cand, list.cons(t, ts-adjusted)))
+      }
+    }
+  }
+}
+
+define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): option(heap(a)) {
+  let? pair = remove-min-tree(cmp, h)
+  match pair {
+  - tuple.new(node(r, x, ts1), ts2) =>
+    some(merge(cmp, reverse(ts1), ts2))
+  }
+}
+
+define compare-int(x: i64, y: i64): order() {
+  if lt-i64(x, y) {
+    order.lt()
+  } else-if gt-i64(x, y) {
+    order.gt()
+  } else {
+    order.eq()
+  }
+}
+
+define main(): i64 {
+  let h: heap(i64) = list.nil()
+  let h = insert(compare-int, 3, h)
+  let h = insert(compare-int, 4, h)
+  let h = insert(compare-int, 2, h)
+  let h = insert(compare-int, 9, h)
+  let h = insert(compare-int, 100, h)
+  let h = insert(compare-int, 8, h)
+  let h = insert(compare-int, 1, h)
+  let h = merge(compare-int, h, h)
+  let maybe-min on h = find-min(compare-int, h)
+  match maybe-min {
+  - core.sum::sum.left(v) =>
+    10
+  - core.sum::  sum.right(min) =>
+    min
+  }
+}
