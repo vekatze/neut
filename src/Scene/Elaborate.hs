@@ -186,21 +186,22 @@ elaborate' term =
       return $ m :< TM.CellElim e'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- elaborate' e1
-      mxt'@(_, _, t) <- elaborateWeakBinder mxt
+      (mx, x, t) <- elaborateWeakBinder mxt
       e2' <- elaborate' e2
+      t' <- reduceType t
       case opacity of
         WT.Noetic -> do
-          case (TM.containsNoema t, TM.containsPi t) of
+          case (TM.containsNoema t', TM.containsPi t') of
             (True, _) ->
               Throw.raiseError m "the answer type of let-on cannot contain noemas"
-            (_, True) ->
+            (_, True) -> do
               Throw.raiseError m "the answer type of let-on cannot contain universal quantifications"
-            _ ->
+            _ -> do
               return ()
         _ ->
           return ()
       let lamKind = LK.Normal (WT.reifyOpacity opacity)
-      return $ m :< TM.PiElim (m :< TM.PiIntro lamKind [mxt'] e2') [e1']
+      return $ m :< TM.PiElim (m :< TM.PiIntro lamKind [(mx, x, t')] e2') [e1']
     m :< WT.Hole h es -> do
       holeSubst <- getHoleSubst
       case HS.lookup h holeSubst of
@@ -280,7 +281,7 @@ elaborateDecisionTree m tree =
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
-      cursorType' <- elaborate' cursorType >>= reduceDataType
+      cursorType' <- elaborate' cursorType >>= reduceType
       consList <- extractConstructorList m cursorType'
       let activeConsList = DT.getConstructors clauseList
       let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
@@ -306,15 +307,15 @@ elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
   cont' <- elaborateDecisionTree m cont
   return $ DT.Cons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
-reduceDataType :: TM.Term -> App TM.Term
-reduceDataType e = do
+reduceType :: TM.Term -> App TM.Term
+reduceType e = do
   e' <- TM.pureReduce e
   case e' of
-    m :< TM.PiElim (_ :< TM.VarGlobal dataName _) args -> do
-      mLam <- Definition.lookup dataName
+    m :< TM.PiElim (_ :< TM.VarGlobal name _) args -> do
+      mLam <- Definition.lookup name
       case mLam of
         Just lam ->
-          reduceDataType $ m :< TM.PiElim lam args
+          reduceType $ m :< TM.PiElim lam args
         Nothing ->
           return e'
     _ ->
