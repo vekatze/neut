@@ -61,10 +61,20 @@ analyzeDefList defList = do
   mMainDD <- Locator.getMainDefiniteDescription source
   mapM (Infer.inferStmt mMainDD) defList'
 
+-- viewStmt :: WeakStmt -> App ()
+-- viewStmt stmt = do
+--   case stmt of
+--     WeakStmtDefine _ m x _ xts codType e ->
+--       Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
+--     WeakStmtDefineResource m name discarder copier ->
+--       Log.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
+
 synthesizeDefList :: [WeakStmt] -> App [Stmt]
 synthesizeDefList defList = do
+  -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
+  -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   Cache.saveCache (source, defList')
   return defList'

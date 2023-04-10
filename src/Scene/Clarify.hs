@@ -7,7 +7,6 @@ where
 import Context.App
 import Context.Clarify qualified as Clarify
 import Context.CompDefinition qualified as CompDefinition
-import Context.DataDefinition qualified as DataDefinition
 import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
@@ -74,6 +73,10 @@ clarifyDefList stmtList = do
   CompDefinition.union auxEnv
   stmtList'' <- forM stmtList' $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
+    -- printNote' "==================="
+    -- printNote' $ DD.reify x
+    -- printNote' $ T.pack $ show args
+    -- printNote' $ T.pack $ show e'
     CompDefinition.insert x (opacity, args, e')
     return (x, (opacity, args, e'))
   return $ stmtList'' ++ Map.toList auxEnv
