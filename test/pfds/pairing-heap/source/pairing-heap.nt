@@ -1,0 +1,97 @@
+import {
+- core.list
+- core.option
+- core.bool
+}
+
+use {
+- this.pairing-heap::heap
+- core.bool
+- core.list
+- core.option
+}
+
+enum heap(a) {
+- leaf()
+- node(a, list(heap(a)))
+}
+
+enum Order() {
+- LT()
+- EQ()
+- GT()
+}
+
+define find-min<a>(h: &heap(a)): option(a) {
+  case h {
+  - leaf() =>
+    none(): option(a)
+  - node(v, hs) =>
+    some(*v)
+  }
+}
+
+define merge<a>(cmp: (a, a) -> Order(), h1: heap(a), h2: heap(a)): heap(a) {
+  match h1, h2 {
+  - leaf(), h2 =>
+    h2
+  - h1, leaf() =>
+    h1
+  - node(x1, hs1), node(x2, hs2) =>
+    match cmp(x1, x2) {
+    - Order.LT() =>
+      node(x1, node(x2, hs2) :: hs1)
+    - otherwise =>
+      node(x2, node(x1, hs1) :: hs2)
+    }
+  }
+}
+
+define insert<a>(cmp: (a, a) -> Order(), x: a, h: heap(a)): heap(a) {
+  merge(cmp, node(x, []), h)
+}
+
+define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
+  match hs {
+  - list.nil() =>
+    leaf()
+  - list.cons(h, list.nil()) =>
+    h
+  - list.cons(h1, list.cons(h2, rest)) =>
+    merge(cmp, merge(cmp, h1, h2), merge-pairs(cmp, rest))
+  }
+}
+
+define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): option(heap(a)) {
+  match h {
+  - leaf() =>
+    none()
+  - node(x, hs) =>
+    some(merge-pairs(cmp, hs))
+  }
+}
+
+define compare-int(x: i64, y: i64): Order() {
+  if lt-i64(x, y) {
+    Order.LT()
+  } else-if gt-i64(x, y) {
+    Order.GT()
+  } else {
+    Order.EQ()
+  }
+}
+
+define main(): i64 {
+  let h: heap(i64) = leaf()
+  let h = insert(compare-int, 10, h)
+  let h = insert(compare-int, 3, h)
+  let h = insert(compare-int, 8, h)
+  let h = insert(compare-int, 2, h)
+  let maybe-min on h = find-min(h)
+  match maybe-min {
+  - core.sum::sum.left(v) =>
+    10
+  - core.sum::sum.right(min) =>
+    min
+  }
+}
