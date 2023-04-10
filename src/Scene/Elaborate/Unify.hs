@@ -68,17 +68,24 @@ throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
   sub <- getHoleSubst
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
-    expected' <- fill sub expected >>= reduce
-    actual' <- fill sub actual >>= reduce
+    expected' <- fillAsMuchAsPossible sub expected
+    actual' <- fillAsMuchAsPossible sub actual
     return $ L.logError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
   Throw.throw $ L.MakeError errorList
 
+fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
+fillAsMuchAsPossible sub e = do
+  e' <- reduce e
+  if HS.fillable e' sub
+    then fill sub e' >>= fillAsMuchAsPossible sub
+    else return e'
+
 constructErrorMsg :: WT.WeakTerm -> WT.WeakTerm -> T.Text
-constructErrorMsg e1 e2 =
+constructErrorMsg actual expected =
   "couldn't verify the definitional equality of the following two terms:\n- "
-    <> toText e1
+    <> toText actual
     <> "\n- "
-    <> toText e2
+    <> toText expected
 
 simplify :: [(C.Constraint, C.Constraint)] -> App ()
 simplify constraintList =

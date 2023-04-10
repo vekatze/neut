@@ -4,6 +4,7 @@ import Data.IntMap qualified as IntMap
 import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.WeakTerm
+import Entity.WeakTerm.Holes
 
 newtype HoleSubst = HoleSubst (IntMap.IntMap ([Ident], WeakTerm))
   deriving (Semigroup, Monoid)
@@ -23,3 +24,8 @@ empty =
 singleton :: HID.HoleID -> [Ident] -> WeakTerm -> HoleSubst
 singleton (HID.HoleID h) xs e =
   HoleSubst $ IntMap.singleton h (xs, e)
+
+fillable :: WeakTerm -> HoleSubst -> Bool
+fillable e (HoleSubst sub) = do
+  let fmvs = holes e
+  any (\(HID.HoleID fmv) -> IntMap.member fmv sub) fmvs
