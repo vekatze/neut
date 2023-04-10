@@ -121,33 +121,9 @@ showStmt stmt =
     _ ->
       "<define-resource>"
 
--- defineEnum :: DD.DefiniteDescription -> [BinderF TM.Term] -> [ConsInfo] -> Stmt
--- defineEnum dataName dataArgs consInfoList = do
---   StmtDefine
---     (Data dataName dataArgs consInfoList)
---     internalHint
---     dataName
---     dataArgs
---     (internalHint :< TM.Tau)
---     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
-
 argToTerm :: BinderF TM.Term -> TM.Term
 argToTerm (m, x, _) =
   m :< TM.Var x
-
--- defineEnumIntro ::
---   DD.DefiniteDescription ->
---   [BinderF TM.Term] ->
---   ConsInfo ->
---   Stmt
--- defineEnumIntro dataName dataArgs (consName, consArgs, discriminant) =
---   StmtDefine
---     (DataIntro dataName dataArgs consArgs discriminant)
---     internalHint
---     consName
---     (dataArgs ++ consArgs)
---     (internalHint :< TM.Data dataName (map argToTerm dataArgs))
---     (internalHint :< TM.DataIntro dataName consName discriminant (map argToTerm dataArgs) (map argToTerm consArgs))
 
 addDiscriminants :: [(a, [(b, c)])] -> [(a, [(b, c, D.Discriminant)])]
 addDiscriminants info = do
