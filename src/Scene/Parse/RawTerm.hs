@@ -91,7 +91,7 @@ rawTerm = do
       rawTermIf,
       rawTermListIntro,
       rawTermPiGeneral,
-      rawTermPiOrBasic
+      rawTermPiOrAscOrBasic
     ]
 
 rawTermBasic :: Parser RT.RawTerm
@@ -101,7 +101,7 @@ rawTermBasic = do
       rawTermCell,
       rawTermEmbody,
       rawTermLazy,
-      rawTermAscOrPiElimOrSimple
+      rawTermPiElimOrSimple
     ]
 
 rawTermSimple :: Parser RT.RawTerm
@@ -227,17 +227,22 @@ rawTermPiGeneral = do
   cod <- rawTerm
   return $ m :< RT.Pi domList cod
 
-rawTermPiOrBasic :: Parser RT.RawTerm
-rawTermPiOrBasic = do
+rawTermPiOrAscOrBasic :: Parser RT.RawTerm
+rawTermPiOrAscOrBasic = do
   m <- getCurrentHint
-  t <- rawTermBasic
+  basic <- rawTermBasic
   choice
     [ do
         delimiter "->"
         x <- lift $ Gensym.newTextualIdentFromText "_"
         cod <- rawTerm
-        return $ m :< RT.Pi [(m, x, t)] cod,
-      return t
+        return $ m :< RT.Pi [(m, x, basic)] cod,
+      do
+        delimiter ":"
+        t <- rawTerm
+        f <- lift $ Gensym.newTextualIdentFromText "unit"
+        return $ bind (m, f, t) basic (m :< RT.Var f),
+      return basic
     ]
 
 rawTermPiIntro :: Parser RT.RawTerm
@@ -569,20 +574,12 @@ rawTermAdmit = do
           m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
         ]
 
-rawTermAscOrPiElimOrSimple :: Parser RT.RawTerm
-rawTermAscOrPiElimOrSimple = do
+rawTermPiElimOrSimple :: Parser RT.RawTerm
+rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
-  choice
-    [ do
-        delimiter ":"
-        t <- rawTerm
-        f <- lift $ Gensym.newTextualIdentFromText "unit"
-        return $ bind (m, f, t) e (m :< RT.Var f),
-      do
-        elems <- many $ choice [rawTermPiElimForwardBracket, rawTermPiElimBackwardBracket]
-        foldPiElimBracket m e elems
-    ]
+  elems <- many $ choice [rawTermPiElimForwardBracket, rawTermPiElimBackwardBracket]
+  foldPiElimBracket m e elems
 
 data PiElimBracket
   = PiElimBracketForward [RT.RawTerm] -- f<imp-arg-1, ..., imp-arg-n>(arg-1, ..., arg-m)
