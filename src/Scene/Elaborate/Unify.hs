@@ -43,7 +43,8 @@ data Stuck
 
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
-  analyze constraintList >> synthesize
+  -- the `reverse` here is to resolve constraints starting from the ends of functions
+  analyze (reverse constraintList) >> synthesize
   getHoleSubst
 
 analyze :: [C.Constraint] -> App ()

@@ -42,7 +42,7 @@ inferStmt mMainDD stmt =
         (e', te) <- infer' varEnv e
         insConstraintEnv codType' te
         return (codType', e')
-      when (mMainDD == Just x) $
+      when (mMainDD == Just x) $ do
         insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
@@ -51,7 +51,7 @@ inferStmt mMainDD stmt =
       (copier', tc) <- infer' [] copier
       x <- Gensym.newIdentFromText "_"
       let i64 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))
-      let tDiscard = m :< WT.Pi [(m, x, i64)] i64 -- return arbitrary integer
+      let tDiscard = m :< WT.Pi [(m, x, i64)] i64
       let tCopy = m :< WT.Pi [(m, x, i64)] i64
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
@@ -98,8 +98,8 @@ infer' varEnv term =
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer' varEnv) es
       forM_ (zip os ts') $ uncurry insWeakTypeEnv
-      (tree', treeType) <- inferDecisionTree m varEnv tree
-      return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', treeType)
+      (tree', _ :< treeType) <- inferDecisionTree m varEnv tree
+      return (m :< WT.DataElim isNoetic (zip3 os es' ts') tree', m :< treeType)
     m :< WT.Noema t -> do
       t' <- inferType' varEnv t
       return (m :< WT.Noema t', m :< WT.Tau)
@@ -117,16 +117,16 @@ infer' varEnv term =
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer' varEnv e1
       t' <- inferType' varEnv t
-      insConstraintEnv t' t1'
       insWeakTypeEnv x t'
+      insConstraintEnv t' t1' -- run this before `infer' varEnv e2`
       (e2', t2') <- infer' varEnv e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole x es -> do
       let rawHoleID = HID.reify x
       mHoleInfo <- lookupHoleEnv rawHoleID
       case mHoleInfo of
-        Just holeInfo ->
-          return holeInfo
+        Just (_ :< holeTerm, _ :< holeType) ->
+          return (m :< holeTerm, m :< holeType)
         Nothing -> do
           holeType <- Gensym.newHole m es
           insHoleEnv rawHoleID term holeType
@@ -151,10 +151,10 @@ infer' varEnv term =
       case der of
         M.Cast from to value -> do
           from' <- inferType' varEnv from
-          to' <- inferType' varEnv to
+          to'@(_ :< toInner) <- inferType' varEnv to
           (value', t) <- infer' varEnv value
-          insConstraintEnv t from'
-          return (m :< WT.Magic (M.Cast from' to' value'), to')
+          insConstraintEnv from' t
+          return (m :< WT.Magic (M.Cast from' to' value'), m :< toInner)
         _ -> do
           der' <- mapM (infer' varEnv >=> return . fst) der
           resultType <- newHole m varEnv
@@ -310,23 +310,23 @@ inferClauseList ::
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm, WT.WeakTerm)
 inferClauseList m varEnv cursorType (fallbackClause, clauseList) = do
+  (clauseList', answerTypeList) <- mapAndUnzipM (inferClause varEnv cursorType) clauseList
   (fallbackClause', fallbackAnswerType) <- inferDecisionTree m varEnv fallbackClause
-  (clauseList', answerTypeList) <- mapAndUnzipM (inferClause m varEnv cursorType) clauseList
-  forM_ answerTypeList $ \answerType -> insConstraintEnv answerType fallbackAnswerType
+  h <- newHole m varEnv
+  forM_ (answerTypeList ++ [fallbackAnswerType]) $ insConstraintEnv h
   return ((fallbackClause', clauseList'), fallbackAnswerType)
 
 inferClause ::
-  Hint ->
   BoundVarEnv ->
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause m varEnv cursorType (DT.Cons consName disc dataArgs consArgs body) = do
-  let (dataTerm, _) = unzip dataArgs
-  typedDataArgs' <- mapM (infer' varEnv) dataTerm
+inferClause varEnv cursorType (DT.Cons mCons consName disc dataArgs consArgs body) = do
+  let (dataTermList, _) = unzip dataArgs
+  typedDataArgs' <- mapM (infer' varEnv) dataTermList
   (consArgs', (body', tBody)) <- inferBinder' varEnv consArgs $ \extendedVarEnv ->
-    inferDecisionTree m extendedVarEnv body
-  et <- infer' varEnv $ m :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
-  (_, tPat) <- inferPiElim varEnv m et $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
-  insConstraintEnv tPat cursorType
-  return (DT.Cons consName disc typedDataArgs' consArgs' body', tBody)
+    inferDecisionTree mCons extendedVarEnv body
+  consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
+  (_, tPat) <- inferPiElim varEnv mCons consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  insConstraintEnv cursorType tPat
+  return (DT.Cons mCons consName disc typedDataArgs' consArgs' body', tBody)

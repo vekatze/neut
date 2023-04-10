@@ -149,7 +149,7 @@ showDecisionTree tree =
           : map showClauseList clauseList
 
 showClauseList :: DT.Case WT.WeakTerm -> T.Text
-showClauseList (DT.Cons consName d dataArgs consArgs cont) = do
+showClauseList (DT.Cons _ consName d dataArgs consArgs cont) = do
   showCons
     [ showGlobalVariable consName,
       T.pack (show (D.reify d)),

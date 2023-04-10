@@ -84,11 +84,11 @@ pureReduceCaseList (fallbackTree, clauseList) = do
 pureReduceCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
-pureReduceCase (DT.Cons dd disc dataArgs consArgs tree) = do
+pureReduceCase (DT.Cons m dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM pureReduce dataTerms
   dataTypes' <- mapM pureReduce dataTypes
   let (ms, xs, ts) = unzip3 consArgs
   ts' <- mapM pureReduce ts
   tree' <- pureReduceDecisionTree tree
-  return $ DT.Cons dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
+  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'

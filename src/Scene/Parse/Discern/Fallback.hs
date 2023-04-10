@@ -28,16 +28,16 @@ fallbackRow ::
   Ident ->
   PatternRow ([Ident], WT.WeakTerm) ->
   App (Maybe (PatternRow ([Ident], WT.WeakTerm)))
-fallbackRow isNoetic nenv cursor (patternVector, (freedVars, body)) =
+fallbackRow isNoetic nenv cursor (patternVector, (freedVars, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
       Throw.raiseCritical' "defaulting against the empty pattern matrix shouldn't happen"
     Just ((_, WildcardVar), rest) ->
       return $ Just (rest, (freedVars, body))
-    Just ((m, Var x), rest) -> do
-      h <- Gensym.newHole m (asHoleArgs nenv)
-      adjustedCursor <- castToNoemaIfNecessary nenv isNoetic (m :< WT.Var cursor)
-      let body' = m :< WT.Let WT.Transparent (m, x, h) adjustedCursor body
+    Just ((_, Var x), rest) -> do
+      h <- Gensym.newHole mBody (asHoleArgs nenv)
+      adjustedCursor <- castToNoemaIfNecessary nenv isNoetic (mBody :< WT.Var cursor)
+      let body' = mBody :< WT.Let WT.Transparent (mBody, x, h) adjustedCursor body
       return $ Just (rest, (freedVars, body'))
     Just ((_, Cons {}), _) ->
       return Nothing

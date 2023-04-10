@@ -287,7 +287,7 @@ elaborateDecisionTree m tree =
       let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
       if S.size diff == 0
         then do
-          clauseList' <- mapM (elaborateClause m) clauseList
+          clauseList' <- mapM elaborateClause clauseList
           return $ DT.Switch (cursor, cursorType') (DT.Unreachable, clauseList')
         else do
           case fallbackClause of
@@ -295,17 +295,17 @@ elaborateDecisionTree m tree =
               Throw.raiseError m "encountered a non-exhaustive pattern matching"
             _ -> do
               fallbackClause' <- elaborateDecisionTree m fallbackClause
-              clauseList' <- mapM (elaborateClause m) clauseList
+              clauseList' <- mapM elaborateClause clauseList
               return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
-elaborateClause :: Hint -> DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
-elaborateClause m (DT.Cons consName disc dataArgs consArgs cont) = do
+elaborateClause :: DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
+elaborateClause (DT.Cons mCons consName disc dataArgs consArgs cont) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM elaborate' dataTerms
   dataTypes' <- mapM elaborate' dataTypes
   consArgs' <- mapM elaborateWeakBinder consArgs
-  cont' <- elaborateDecisionTree m cont
-  return $ DT.Cons consName disc (zip dataTerms' dataTypes') consArgs' cont'
+  cont' <- elaborateDecisionTree mCons cont
+  return $ DT.Cons mCons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
 reduceType :: TM.Term -> App TM.Term
 reduceType e = do

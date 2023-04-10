@@ -289,7 +289,7 @@ clarifyCase ::
   Ident ->
   DT.Case TM.Term ->
   App (EC.EnumCase, C.Comp)
-clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons consName disc dataArgs consArgs cont) = do
+clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons _ consName disc dataArgs consArgs cont) = do
   let (_, dataTypes) = unzip dataArgs
   dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
   let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap

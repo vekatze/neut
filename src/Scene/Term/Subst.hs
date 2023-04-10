@@ -145,12 +145,12 @@ substCase ::
   SubstTerm ->
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
-substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
+substCase sub (DT.Cons m dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM (subst sub) dataTerms
   dataTypes' <- mapM (subst sub) dataTypes
   (consArgs', tree') <- subst'' sub consArgs tree
-  return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'
+  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
 
 substLeafVar :: SubstTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

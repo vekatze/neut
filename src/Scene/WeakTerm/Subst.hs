@@ -29,7 +29,7 @@ subst sub term =
     _ :< WT.VarGlobal {} ->
       return term
     m :< WT.Pi xts t -> do
-      (xts', t') <- subst' sub xts t
+      (xts', t') <- substBinder sub xts t
       return $ m :< WT.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
       case kind of
@@ -37,7 +37,7 @@ subst sub term =
           (xt', xts', e') <- subst'' sub xt xts e
           return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
         _ -> do
-          (xts', e') <- subst' sub xts e
+          (xts', e') <- substBinder sub xts e
           return $ m :< WT.PiIntro kind xts' e'
     m :< WT.PiElim e es -> do
       e' <- subst sub e
@@ -85,12 +85,12 @@ subst sub term =
       der' <- mapM (subst sub) der
       return $ m :< WT.Magic der'
 
-subst' ::
+substBinder ::
   WT.SubstWeakTerm ->
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
   App ([BinderF WT.WeakTerm], WT.WeakTerm)
-subst' sub binder e =
+substBinder sub binder e =
   case binder of
     [] -> do
       e' <- subst sub e
@@ -99,7 +99,7 @@ subst' sub binder e =
       t' <- subst sub t
       x' <- newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
-      (xts', e') <- subst' sub' xts e
+      (xts', e') <- substBinder sub' xts e
       return ((m, x', t') : xts', e')
 
 subst'' ::
@@ -112,7 +112,7 @@ subst'' sub (m, x, t) binder e = do
   t' <- subst sub t
   x' <- newIdentFromIdent x
   let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
-  (xts', e') <- subst' sub' binder e
+  (xts', e') <- substBinder sub' binder e
   return ((m, x, t'), xts', e')
 
 subst''' ::
@@ -163,12 +163,12 @@ substCase ::
   WT.SubstWeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-substCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
+substCase sub (DT.Cons m dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM (subst sub) dataTerms
   dataTypes' <- mapM (subst sub) dataTypes
   (consArgs', tree') <- subst''' sub consArgs tree
-  return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'
+  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
 
 substLeafVar :: WT.SubstWeakTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

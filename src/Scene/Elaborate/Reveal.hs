@@ -12,7 +12,6 @@ import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
-import Entity.Hint
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
@@ -84,7 +83,7 @@ reveal' varEnv term =
       let (os, es, ts) = unzip3 oets
       es' <- mapM (reveal' varEnv) es
       ts' <- mapM (reveal' varEnv) ts
-      tree' <- revealDecisionTree m varEnv tree
+      tree' <- revealDecisionTree varEnv tree
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Noema t -> do
       t' <- reveal' varEnv t
@@ -173,11 +172,10 @@ revealBinder' varEnv binder comp =
       return ((mx, x, t') : xts', etl')
 
 revealDecisionTree ::
-  Hint ->
   BoundVarEnv ->
   DT.DecisionTree WT.WeakTerm ->
   App (DT.DecisionTree WT.WeakTerm)
-revealDecisionTree m varEnv tree =
+revealDecisionTree varEnv tree =
   case tree of
     DT.Leaf ys body -> do
       body' <- reveal' varEnv body
@@ -186,28 +184,26 @@ revealDecisionTree m varEnv tree =
       return DT.Unreachable
     DT.Switch (cursor, cursorType) clauseList -> do
       cursorType' <- reveal' varEnv cursorType
-      clauseList' <- revealClauseList m varEnv clauseList
+      clauseList' <- revealClauseList varEnv clauseList
       return $ DT.Switch (cursor, cursorType') clauseList'
 
 revealClauseList ::
-  Hint ->
   BoundVarEnv ->
   DT.CaseList WT.WeakTerm ->
   App (DT.CaseList WT.WeakTerm)
-revealClauseList m varEnv (fallbackClause, clauseList) = do
-  fallbackClause' <- revealDecisionTree m varEnv fallbackClause
-  clauseList' <- mapM (revealClause m varEnv) clauseList
+revealClauseList varEnv (fallbackClause, clauseList) = do
+  fallbackClause' <- revealDecisionTree varEnv fallbackClause
+  clauseList' <- mapM (revealClause varEnv) clauseList
   return (fallbackClause', clauseList')
 
 revealClause ::
-  Hint ->
   BoundVarEnv ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-revealClause m varEnv (DT.Cons consName disc dataArgs consArgs body) = do
+revealClause varEnv (DT.Cons mCons consName disc dataArgs consArgs body) = do
   let (dataTerms, dataTypeTerms) = unzip dataArgs
   dataTerms' <- mapM (reveal' varEnv) dataTerms
   dataTypeTerms' <- mapM (reveal' varEnv) dataTypeTerms
   (consArgs', body') <- revealBinder' varEnv consArgs $ \extendedVarEnv ->
-    revealDecisionTree m extendedVarEnv body
-  return (DT.Cons consName disc (zip dataTerms' dataTypeTerms') consArgs' body')
+    revealDecisionTree extendedVarEnv body
+  return (DT.Cons mCons consName disc (zip dataTerms' dataTypeTerms') consArgs' body')

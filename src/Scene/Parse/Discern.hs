@@ -506,28 +506,29 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
         Right (usedVars, (freedVars, body)) -> do
           let occurrences' = map (\o -> m :< WT.Var o) $ V.toList occurrences
           cursorVars <- mapM (castToNoemaIfNecessary nenv isNoetic) occurrences'
-          DT.Leaf freedVars <$> bindLet nenv m (zip usedVars cursorVars) body
-        Left i ->
+          DT.Leaf freedVars <$> bindLet nenv (zip usedVars cursorVars) body
+        Left (mCol, i) -> do
           if i > 0
             then do
-              occurrences' <- Throw.liftEither $ V.swap m i occurrences
-              mat' <- Throw.liftEither $ PAT.swapColumn m i mat
-              compilePatternMatrix nenv isNoetic m occurrences' mat'
+              occurrences' <- Throw.liftEither $ V.swap mCol i occurrences
+              mat' <- Throw.liftEither $ PAT.swapColumn mCol i mat
+              compilePatternMatrix nenv isNoetic mCol occurrences' mat'
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(cons, disc, dataArity, consArity, _) -> do
-                dataHoles <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify dataArity]
-                dataTypeHoles <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) [1 .. A.reify dataArity]
+              clauseList <- forM headConstructors $ \(mPat, (cons, disc, dataArity, consArity, args)) -> do
+                dataHoles <- mapM (const $ Gensym.newHole mPat (asHoleArgs nenv)) [1 .. A.reify dataArity]
+                dataTypeHoles <- mapM (const $ Gensym.newHole mPat (asHoleArgs nenv)) [1 .. A.reify dataArity]
                 consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
-                (consArgs', nenv') <- alignConsArgs nenv $ map (m,) consVars
+                let ms = map fst args
+                (consArgs', nenv') <- alignConsArgs nenv $ zip ms consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
                 specialMatrix <- PATS.specialize isNoetic nenv cursor (cons, consArity) mat
-                specialDecisionTree <- compilePatternMatrix nenv' isNoetic m occurrences' specialMatrix
-                return (DT.Cons cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
+                specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
+                return (DT.Cons mPat cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic nenv cursor mat
-              fallbackClause <- compilePatternMatrix nenv isNoetic m (V.tail occurrences) fallbackMatrix
-              t <- Gensym.newHole m (asHoleArgs nenv)
+              fallbackClause <- compilePatternMatrix nenv isNoetic mCol (V.tail occurrences) fallbackMatrix
+              t <- Gensym.newHole mCol (asHoleArgs nenv)
               return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
 
 alignConsArgs ::
@@ -546,19 +547,18 @@ alignConsArgs nenv binder =
 
 bindLet ::
   NominalEnv ->
-  Hint ->
-  [(Maybe Ident, WT.WeakTerm)] ->
+  [(Maybe (Hint, Ident), WT.WeakTerm)] ->
   WT.WeakTerm ->
   App WT.WeakTerm
-bindLet nenv m binder cont =
+bindLet nenv binder cont =
   case binder of
     [] ->
       return cont
     (Nothing, _) : xes -> do
-      bindLet nenv m xes cont
-    (Just from, to) : xes -> do
+      bindLet nenv xes cont
+    (Just (m, from), to) : xes -> do
       h <- Gensym.newHole m (asHoleArgs nenv)
-      cont' <- bindLet nenv m xes cont
+      cont' <- bindLet nenv xes cont
       return $ m :< WT.Let WT.Transparent (m, from, h) to cont'
 
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm

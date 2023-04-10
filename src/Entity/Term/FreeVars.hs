@@ -86,6 +86,6 @@ freeVarsClauseList' clauses = do
   S.unions $ freeVarsClauseList clauses
 
 freeVarsCase :: DT.Case TM.Term -> S.Set Ident
-freeVarsCase (DT.Cons _ _ dataArgs consArgs tree) = do
+freeVarsCase (DT.Cons _ _ _ dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   S.unions $ freeVars' consArgs (freeVarsDecisionTree tree) : map freeVars dataTerms ++ map freeVars dataTypes

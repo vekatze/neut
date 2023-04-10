@@ -162,9 +162,9 @@ fillCase ::
   HoleSubst ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-fillCase sub (DT.Cons dd disc dataArgs consArgs tree) = do
+fillCase sub (DT.Cons mCons dd disc dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   dataTerms' <- mapM (fill sub) dataTerms
   dataTypes' <- mapM (fill sub) dataTypes
   (consArgs', tree') <- fill''' sub consArgs tree
-  return $ DT.Cons dd disc (zip dataTerms' dataTypes') consArgs' tree'
+  return $ DT.Cons mCons dd disc (zip dataTerms' dataTypes') consArgs' tree'

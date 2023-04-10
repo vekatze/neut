@@ -10,6 +10,7 @@ import Data.Binary
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Hint
 import Entity.Ident
 import GHC.Generics (Generic)
 
@@ -22,7 +23,7 @@ data DecisionTree a
 type CaseList a = (DecisionTree a, [Case a])
 
 data Case a
-  = Cons DD.DefiniteDescription D.Discriminant [(a, a)] [BinderF a] (DecisionTree a)
+  = Cons Hint DD.DefiniteDescription D.Discriminant [(a, a)] [BinderF a] (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (DecisionTree a)
@@ -34,4 +35,4 @@ getConstructors clauseList = do
   map getConstructor clauseList
 
 getConstructor :: Case a -> DD.DefiniteDescription
-getConstructor (Cons name _ _ _ _) = name
+getConstructor (Cons _ name _ _ _ _) = name

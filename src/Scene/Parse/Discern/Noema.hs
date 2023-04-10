@@ -22,8 +22,7 @@ castToNoema nenv mutability e@(m :< _) = do
     Mutable ->
       return $ m :< WT.CellIntro e
     Immutable -> do
-      let tNoema = m :< WT.Noema t
-      return $ m :< WT.Magic (M.Cast t tNoema e)
+      return $ m :< WT.Magic (M.Cast t (m :< WT.Noema t) e)
 
 castFromNoema :: NominalEnv -> Mutability -> WT.WeakTerm -> App WT.WeakTerm
 castFromNoema nenv mutability e@(m :< _) = do
@@ -32,8 +31,7 @@ castFromNoema nenv mutability e@(m :< _) = do
     Mutable ->
       return $ m :< WT.CellElim e
     Immutable -> do
-      let tNoema = m :< WT.Noema t
-      return $ m :< WT.Magic (M.Cast tNoema t e)
+      return $ m :< WT.Magic (M.Cast (m :< WT.Noema t) t e)
 
 castToNoemaIfNecessary :: NominalEnv -> N.IsNoetic -> WT.WeakTerm -> App WT.WeakTerm
 castToNoemaIfNecessary nenv isNoetic e =

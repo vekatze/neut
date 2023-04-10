@@ -146,7 +146,7 @@ containsNoemaCaseList (fallbackClause, clauseList) = do
   xs1 || xs2
 
 containsNoemaCase :: DT.Case Term -> Bool
-containsNoemaCase (DT.Cons _ _ dataArgs consArgs tree) = do
+containsNoemaCase (DT.Cons _ _ _ dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   let b1 = any containsNoema $ dataTerms ++ dataTypes
   let b2 = any (containsNoema . (\(_, _, t) -> t)) consArgs
@@ -222,7 +222,7 @@ containsPiCaseList (fallbackClause, clauseList) = do
   xs1 || xs2
 
 containsPiCase :: DT.Case Term -> Bool
-containsPiCase (DT.Cons _ _ dataArgs consArgs tree) = do
+containsPiCase (DT.Cons _ _ _ dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   let b1 = any containsPi $ dataTerms ++ dataTypes
   let b2 = any (containsPi . (\(_, _, t) -> t)) consArgs

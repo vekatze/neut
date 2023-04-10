@@ -58,7 +58,9 @@ new :: [PatternRow a] -> PatternMatrix a
 new rows =
   MakePatternMatrix $ V.fromList rows
 
-getHeadConstructors :: PatternMatrix a -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)])]
+getHeadConstructors ::
+  PatternMatrix a ->
+  [(Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -70,15 +72,19 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-getColumnConstructors :: PatternColumn -> [(DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)])]
+getColumnConstructors ::
+  PatternColumn ->
+  [(Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))]
 getColumnConstructors col =
-  nubBy (\(dd1, _, _, _, _) (dd2, _, _, _, _) -> dd1 == dd2) $ mapMaybe (getColumnConstructor . snd) col
+  nubBy (\(_, (dd1, _, _, _, _)) (_, (dd2, _, _, _, _)) -> dd1 == dd2) $ mapMaybe getColumnConstructor col
 
-getColumnConstructor :: Pattern -> Maybe (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)])
-getColumnConstructor pat =
+getColumnConstructor ::
+  (Hint, Pattern) ->
+  Maybe (Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))
+getColumnConstructor (mPat, pat) =
   case pat of
     Cons dd disc dataArity consArity args ->
-      return (dd, disc, dataArity, consArity, args)
+      return (mPat, (dd, disc, dataArity, consArity, args))
     _ ->
       Nothing
 
@@ -94,25 +100,30 @@ swapColumn' m i (row, e) = do
     then Left $ newCritical m $ T.pack $ "the index " ++ show i ++ " exceeds the vector size " ++ show len ++ "."
     else return (V.update row $ V.fromList [(0, row V.! i), (i, row V.! 0)], e)
 
--- get leaf if the first row doesn't contain any cons; otherwise return
+-- get leaf if the row doesn't contain any cons; otherwise return
 -- the index of the column that contains a cons
-getClauseBody :: PatternRow a -> Either Int ([Maybe Ident], a)
+getClauseBody :: PatternRow a -> Either (Hint, Int) ([Maybe (Hint, Ident)], a)
 getClauseBody patternRow =
   case patternRow of
     (patList, e) ->
       getClauseBody' 0 [] patList e
 
-getClauseBody' :: Int -> [Maybe Ident] -> V.Vector (Hint, Pattern) -> a -> Either Int ([Maybe Ident], a)
+getClauseBody' ::
+  Int ->
+  [Maybe (Hint, Ident)] ->
+  V.Vector (Hint, Pattern) ->
+  a ->
+  Either (Hint, Int) ([Maybe (Hint, Ident)], a)
 getClauseBody' index varList patList e =
   case V.uncons patList of
     Nothing ->
       Right (reverse varList, e)
-    Just ((_, Var x), rest) ->
-      getClauseBody' (index + 1) (Just x : varList) rest e
+    Just ((m, Var x), rest) ->
+      getClauseBody' (index + 1) (Just (m, x) : varList) rest e
     Just ((_, WildcardVar), rest) ->
       getClauseBody' (index + 1) (Nothing : varList) rest e
-    _ ->
-      Left index
+    Just ((m, _), _) ->
+      Left (m, index)
 
 findRowM :: Monad m => (PatternRow a -> m (Maybe b)) -> PatternMatrix a -> m (Maybe b)
 findRowM f (MakePatternMatrix rows) =

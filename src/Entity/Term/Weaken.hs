@@ -133,11 +133,11 @@ weakenCaseList (fallbackClause, clauseList) = do
   (fallbackClause', clauseList')
 
 weakenCase :: DT.Case TM.Term -> DT.Case WT.WeakTerm
-weakenCase (DT.Cons dd disc dataArgs consArgs tree) = do
+weakenCase (DT.Cons m dd disc dataArgs consArgs tree) = do
   let dataArgs' = map (bimap weaken weaken) dataArgs
   let consArgs' = map weakenBinder consArgs
   let tree' = weakenDecisionTree tree
-  DT.Cons dd disc dataArgs' consArgs' tree'
+  DT.Cons m dd disc dataArgs' consArgs' tree'
 
 weakenStmtKind :: StmtKindF TM.Term -> StmtKindF WT.WeakTerm
 weakenStmtKind stmtKind =

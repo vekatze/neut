@@ -33,18 +33,18 @@ specializeRow ::
   (DD.DefiniteDescription, A.Arity) ->
   PatternRow ([Ident], WT.WeakTerm) ->
   App (Maybe (PatternRow ([Ident], WT.WeakTerm)))
-specializeRow isNoetic nenv cursor (dd, arity) (patternVector, (freedVars, body)) =
+specializeRow isNoetic nenv cursor (dd, arity) (patternVector, (freedVars, body@(mBody :< _))) =
   case V.uncons patternVector of
     Nothing ->
       Throw.raiseCritical' "specialization against the empty pattern matrix shouldn't happen"
     Just ((m, WildcardVar), rest) -> do
       let wildcards = V.fromList $ replicate (fromInteger $ A.reify arity) (m, WildcardVar)
       return $ Just (V.concat [wildcards, rest], (freedVars, body))
-    Just ((m, Var x), rest) -> do
-      let wildcards = V.fromList $ replicate (fromInteger $ A.reify arity) (m, WildcardVar)
-      h <- Gensym.newHole m (asHoleArgs nenv)
-      adjustedCursor <- castToNoemaIfNecessary nenv isNoetic (m :< WT.Var cursor)
-      let body' = m :< WT.Let WT.Transparent (m, x, h) adjustedCursor body
+    Just ((_, Var x), rest) -> do
+      let wildcards = V.fromList $ replicate (fromInteger $ A.reify arity) (mBody, WildcardVar)
+      h <- Gensym.newHole mBody (asHoleArgs nenv)
+      adjustedCursor <- castToNoemaIfNecessary nenv isNoetic (mBody :< WT.Var cursor)
+      let body' = mBody :< WT.Let WT.Transparent (mBody, x, h) adjustedCursor body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
     Just ((_, Cons dd' _ _ _ args), rest) ->
       if dd == dd'

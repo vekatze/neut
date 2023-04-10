@@ -102,7 +102,7 @@ chainOfCaseList tenv m (fallbackClause, clauseList) = do
   xs1 ++ xs2
 
 chainOfCase :: TM.TypeEnv -> Hint -> DT.Case TM.Term -> [BinderF TM.Term]
-chainOfCase tenv m (DT.Cons _ _ dataArgs consArgs tree) = do
+chainOfCase tenv m (DT.Cons _ _ _ dataArgs consArgs tree) = do
   let (dataTerms, dataTypes) = unzip dataArgs
   let xs1 = concatMap (chainOf' tenv) dataTerms
   let xs2 = concatMap (chainOf' tenv) dataTypes
