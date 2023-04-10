@@ -104,7 +104,9 @@ clarifyDef stmt =
       case stmtKind of
         Data name dataArgs consInfoList -> do
           dataType <- clarifyData name dataArgs consInfoList
-          return (name, (O.Transparent, [], dataType))
+          xts' <- dropFst <$> clarifyBinder IntMap.empty xts
+          dataType' <- linearize xts' dataType >>= Reduce.reduce
+          return (name, (O.Transparent, map fst xts', dataType'))
         _ -> do
           (xts', e') <- clarifyStmtDefine xts e
           return (f, (toLowOpacity stmtKind, xts', e'))
@@ -125,7 +127,7 @@ clarifyData :: DD.DefiniteDescription -> [BinderF TM.Term] -> [(DD.DefiniteDescr
 clarifyData name dataArgs consInfoList = do
   isEnum <- Enum.isMember name
   if isEnum
-    then return returnImmediateS4
+    then returnEnumS4 name
     else do
       let dataInfo = map (\(_, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
       dataInfo' <- mapM clarifyDataClause dataInfo
@@ -164,8 +166,9 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    _ :< TM.Data name dataArgs -> do
-      return $ C.PiElimDownElim (C.VarGlobal name $ A.fromInt $ length dataArgs) []
+    _ :< TM.Data name _ -> do
+      let name' = DD.getFormDD name
+      return $ C.UpIntro $ C.VarGlobal name' A.arityS4
     _ :< TM.DataIntro _ consName disc dataArgs consArgs -> do
       isEnum <- Enum.isMember consName
       if isEnum

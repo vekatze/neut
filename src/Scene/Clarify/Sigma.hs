@@ -6,6 +6,7 @@ module Scene.Clarify.Sigma
     returnClosureS4,
     closureEnvS4,
     returnSigmaDataS4,
+    returnEnumS4,
   )
 where
 
@@ -142,6 +143,16 @@ returnSigmaDataS4 dataName dataInfo = do
   let rel = sigmaData4 dataInfo
   let dataName' = DD.getFormDD dataName
   registerSwitcher O.Opaque dataName' aff rel
+  return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
+
+returnEnumS4 ::
+  DD.DefiniteDescription ->
+  App C.Comp
+returnEnumS4 dataName = do
+  let aff _ = return $ C.UpIntro $ C.SigmaIntro []
+  let rel arg = return $ C.UpIntro arg
+  let dataName' = DD.getFormDD dataName
+  registerSwitcher O.Transparent dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
 
 sigmaData4 :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
