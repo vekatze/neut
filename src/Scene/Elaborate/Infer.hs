@@ -35,7 +35,7 @@ type BoundVarEnv = [BinderF WT.WeakTerm]
 inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt =
   case stmt of
-    WeakStmtDefine isReducible m x impArgNum xts codType e -> do
+    WeakStmtDefine stmtKind m x impArgNum xts codType e -> do
       Type.insert x $ m :< WT.Pi xts codType
       (xts', (codType', e')) <- inferBinder' [] xts $ \varEnv -> do
         codType' <- inferType' varEnv codType
@@ -44,7 +44,7 @@ inferStmt mMainDD stmt =
         return (codType', e')
       when (mMainDD == Just x) $ do
         insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts' codType')
-      return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
+      return $ WeakStmtDefine stmtKind m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
       Type.insert name $ m :< WT.Tau
       (discarder', td) <- infer' [] discarder
