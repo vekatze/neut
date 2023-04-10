@@ -238,6 +238,10 @@ rawTermPiOrAscOrBasic = do
         cod <- rawTerm
         return $ m :< RT.Pi [(m, x, basic)] cod,
       do
+        delimiter "::"
+        rest <- rawTerm
+        return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [basic, rest],
+      do
         delimiter ":"
         t <- rawTerm
         f <- lift $ Gensym.newTextualIdentFromText "unit"
