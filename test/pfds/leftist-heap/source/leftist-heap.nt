@@ -135,13 +135,15 @@ define main(): i64 {
       100
     - core.sum::sum.right(h) =>
       let h = insert(9, h)
-      let min on h = find-min(h)
-      match min {
-      - core.sum::sum.left(v) =>
-        100
-      - core.sum::sum.right(value) =>
-        value
+      let min on h = {
+        match find-min(h) {
+        - core.sum::sum.left(v) =>
+          100
+        - core.sum::sum.right(value) =>
+          value
+        }
       }
+      min
     }
   }
 }

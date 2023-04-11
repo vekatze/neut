@@ -14,6 +14,7 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
+import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Binder
@@ -200,14 +201,8 @@ elaborate' term =
       e2' <- elaborate' e2
       t' <- reduceType t
       case opacity of
-        WT.Noetic -> do
-          case (TM.containsNoema t', TM.containsPi t') of
-            (True, _) ->
-              Throw.raiseError m "the answer type of let-on cannot contain noemas"
-            (_, True) -> do
-              Throw.raiseError m "the answer type of let-on cannot contain universal quantifications"
-            _ -> do
-              return ()
+        WT.Noetic ->
+          ensureTypeLucidity m t' t'
         _ ->
           return ()
       let lamKind = LK.Normal (WT.reifyOpacity opacity)
@@ -335,11 +330,83 @@ extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
     _ :< TM.Data dataName _ -> do
-      kind <- Global.lookup dataName
-      case kind of
-        Just (GN.Data _ consList) ->
-          return consList
-        _ -> do
-          Throw.raiseCritical m $ "the datatype `" <> DD.reify dataName <> "` isn't defined"
+      getConstructorList m dataName
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)
+
+getConstructorList :: Hint -> DD.DefiniteDescription -> App [DD.DefiniteDescription]
+getConstructorList m dataName = do
+  kind <- Global.lookup dataName
+  case kind of
+    Just (GN.Data _ consList) ->
+      return consList
+    _ -> do
+      Throw.raiseCritical m $ "the datatype `" <> DD.reify dataName <> "` isn't defined"
+
+ensureTypeLucidity :: Hint -> TM.Term -> TM.Term -> App ()
+ensureTypeLucidity m orig t = do
+  case t of
+    _ :< TM.Tau ->
+      return ()
+    _ :< TM.Var _ ->
+      return () -- opaque type variable
+    _ :< TM.Data dataName dataArgs -> do
+      ensureDataLucidity m orig dataName
+      dataArgs' <- mapM reduceType dataArgs
+      forM_ dataArgs' $ ensureTypeLucidity m orig
+    _ :< TM.Prim (P.Type {}) ->
+      return ()
+    _ :< TM.ResourceType _ ->
+      return ()
+    _ ->
+      Throw.raiseError m $ "the answer type of let-on must be lucid, but it's not:\n" <> toText (weaken orig)
+
+ensureDataLucidity :: Hint -> TM.Term -> DD.DefiniteDescription -> App ()
+ensureDataLucidity m orig dataName = do
+  consList <- getConstructorList m dataName
+  mLucidConsList <- mapM (getNonLucidConsName m) consList
+  case catMaybes mLucidConsList of
+    [] ->
+      return ()
+    lucidConsNames ->
+      Throw.raiseError m $
+        "the `"
+          <> showGlobalVariable dataName
+          <> "` in `"
+          <> toText (weaken orig)
+          <> "` contains the following non-lucid constructors:\n"
+          <> showNonLucidConstructorList lucidConsNames
+
+getNonLucidConsName ::
+  Hint ->
+  DD.DefiniteDescription ->
+  App (Maybe DD.DefiniteDescription)
+getNonLucidConsName m consName = do
+  t <- Type.lookup m consName >>= elaborate' >>= reduceType
+  case t of
+    _ :< TM.Pi xts _ -> do
+      isLucidArgFlagList <- forM xts $ \(_, _, dom) -> do
+        reduceType dom >>= isLucidArgument
+      if and isLucidArgFlagList
+        then return Nothing
+        else return $ Just consName
+    _ ->
+      Throw.raiseCritical m $ "the type of a constructor must be a Π-type, but it's not:\n" <> toText (weaken t)
+
+isLucidArgument :: TM.Term -> App Bool
+isLucidArgument t = do
+  case t of
+    _ :< TM.Pi {} -> do
+      return False
+    _ ->
+      return True
+
+showNonLucidConstructorList :: [DD.DefiniteDescription] -> T.Text
+showNonLucidConstructorList ddList =
+  case ddList of
+    [] ->
+      ""
+    [d] ->
+      "- " <> showGlobalVariable d
+    d : rest ->
+      "- " <> showGlobalVariable d <> "\n" <> showNonLucidConstructorList rest

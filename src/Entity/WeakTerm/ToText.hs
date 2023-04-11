@@ -1,4 +1,4 @@
-module Entity.WeakTerm.ToText (toText, showDecisionTree) where
+module Entity.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable) where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T

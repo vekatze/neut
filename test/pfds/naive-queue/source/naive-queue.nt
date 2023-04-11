@@ -85,7 +85,15 @@ define main(): i64 {
   let q = snoc([2], q)
   let q = snoc([5], q)
   let q = snoc([1], q)
-  let mv1 on q = head(q)
+  let v1 on q = {
+    match head(q) {
+    - core.sum::sum.right(xs1) =>
+      let v1 on xs1 = sum(xs1)
+      v1
+    - core.sum::sum.left(v) =>
+      4
+    }
+  }
   let mq = tail(q)
   match mq {
   - core.sum::sum.left(_) =>
@@ -93,14 +101,15 @@ define main(): i64 {
   - core.sum::sum.right(q) =>
     let q = snoc([3], q)
     let q = snoc([8], q)
-    let mv2 on q = head(q)
-    match mv1, mv2 {
-    - core.sum::sum.right(xs1), core.sum::sum.right(xs2) =>
-      let v1 on xs1 = sum(xs1)
-      let v2 on xs2 = sum(xs2)
-      add-i64(v1, v2)
-    - mv1, mv2 =>
-      10
+    let v2 on q = {
+      match head(q) {
+      - core.sum::sum.right(xs) =>
+        let v on xs = sum(xs)
+        v
+      - core.sum::sum.left(v) =>
+        4
+      }
     }
+    add-i64(v1, v2)
   }
 }

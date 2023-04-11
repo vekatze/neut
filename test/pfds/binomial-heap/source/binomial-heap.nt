@@ -188,11 +188,17 @@ define main(): i64 {
   let h = insert(compare-int, 8, h)
   let h = insert(compare-int, 1, h)
   let h = merge(compare-int, h, h)
-  let maybe-min on h = find-min(compare-int, h)
-  match maybe-min {
-  - core.sum::sum.left(v) =>
-    10
-  - core.sum::  sum.right(min) =>
-    min
+  let maybe-min on h = {
+    match find-min(compare-int, h) {
+    - core.sum::sum.left(v) =>
+      10
+    - core.sum::sum.right(min) =>
+      min
+    }
   }
+  maybe-min
+}
+
+enum test(a: tau, x: () -> i64) {
+// - New(a)
 }

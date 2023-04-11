@@ -93,17 +93,19 @@ define main(): i64 {
     let mymap = insert(3, [() -> i64], mymap)
     let aoeu = mymap
     let hoge = mymap
-    let result on mymap = lookup(2, mymap)
-    match result {
-    - core.sum::sum.left(v) =>
-      1
-    - core.sum::sum.right(xs) =>
-      match xs {
-      - list.nil() =>
-        10
-      - list.cons(a, b) =>
-        20
+    let result on mymap = {
+      match lookup(2, mymap) {
+      - core.sum::sum.left(v) =>
+        1
+      - core.sum::sum.right(xs) =>
+        match xs {
+        - list.nil() =>
+          10
+        - list.cons(a, b) =>
+          20
+        }
       }
     }
+    result
   }
 }

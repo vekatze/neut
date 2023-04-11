@@ -137,7 +137,15 @@ define main(): i64 {
   let h = insert(compare-int-list, [1, 2], h)
   let h = insert(compare-int-list, [10], h)
   let h = insert(compare-int-list, [5], h)
-  let mv1 on h = find-min(h)
+  let v1 on h = {
+    match find-min(h) {
+    - core.sum::sum.right(xs) =>
+      let v on xs = sum(xs)
+      v
+    - core.sum::sum.left(v) =>
+      4
+    }
+  }
   let mh = delete-min(h)
   match mh {
   - core.sum::sum.left(_) =>
@@ -145,14 +153,15 @@ define main(): i64 {
   - core.sum::sum.right(h) =>
     let h = insert(compare-int-list, [4, 8], h)
     let h = insert(compare-int-list, [1, 1], h)
-    let mv2 on h = find-min(h)
-    match mv1, mv2 {
-    - core.sum::sum.right(xs), core.sum::sum.right(ys) =>
-      let v1 on xs = sum(xs)
-      let v2 on ys = sum(ys)
-      add-i64(v1, v2)
-    - mv1, mv2 =>
-      2
+    let v2 on h = {
+      match find-min(h) {
+      - core.sum::sum.right(xs) =>
+        let v on xs = sum(xs)
+        v
+      - core.sum::sum.left(v) =>
+        4
+      }
     }
+    add-i64(v1, v2)
   }
 }

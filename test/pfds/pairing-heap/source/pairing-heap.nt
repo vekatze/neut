@@ -87,11 +87,13 @@ define main(): i64 {
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 8, h)
   let h = insert(compare-int, 2, h)
-  let maybe-min on h = find-min(h)
-  match maybe-min {
-  - core.sum::sum.left(v) =>
-    10
-  - core.sum::sum.right(min) =>
-    min
+  let maybe-min on h = {
+    match find-min(h) {
+    - core.sum::sum.left(v) =>
+      10
+    - core.sum::sum.right(min) =>
+      min
+    }
   }
+  maybe-min
 }
