@@ -56,6 +56,7 @@ rawExpr = do
   m <- getCurrentHint
   choice
     [ rawExprLet m,
+      rawTermBind m,
       rawExprSeqOrTerm m
     ]
 
@@ -137,6 +138,15 @@ rawTermLetOrLetOn m = do
         e2 <- rawExpr
         return $ m :< RT.Let x [] e1 e2
     ]
+
+rawTermBind :: Hint -> Parser RT.RawTerm
+rawTermBind m = do
+  keyword "bind"
+  pat <- rawTermPattern
+  delimiter "="
+  e1 <- rawTerm
+  e2 <- rawExpr
+  return $ m :< RT.DataElim False [e1] (RP.new [(V.fromList [pat], e2)])
 
 ensureNoeticVarLinearity :: Hint -> S.Set T.Text -> [Ident] -> App ()
 ensureNoeticVarLinearity m foundVarSet vs =
