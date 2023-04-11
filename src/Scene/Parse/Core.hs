@@ -1,9 +1,11 @@
 module Scene.Parse.Core where
 
 import Context.App
+import Context.Gensym qualified as Gensym
 import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.Trans
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -180,7 +182,11 @@ var = do
   notFollowedBy (char '-')
   m <- getCurrentHint
   x <- symbol
-  return (m, x)
+  if x /= "_"
+    then return (m, x)
+    else do
+      unusedVar <- lift Gensym.newText
+      return (m, unusedVar)
 
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
