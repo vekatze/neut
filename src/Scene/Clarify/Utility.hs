@@ -27,20 +27,20 @@ toRelevantApp x t = do
   return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
-bindLet binder cont =
-  case binder of
-    [] ->
-      cont
-    (x, e) : xes ->
-      C.UpElim True x e $ bindLet xes cont
+bindLet =
+  bindLetWithReducibility True
 
 irreducibleBindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
-irreducibleBindLet binder cont =
+irreducibleBindLet =
+  bindLetWithReducibility False
+
+bindLetWithReducibility :: C.IsReducible -> [(Ident, C.Comp)] -> C.Comp -> C.Comp
+bindLetWithReducibility isReducible binder cont =
   case binder of
     [] ->
       cont
     (x, e) : xes ->
-      C.UpElim False x e $ bindLet xes cont
+      C.UpElim isReducible x e $ bindLetWithReducibility isReducible xes cont
 
 makeSwitcher ::
   (C.Value -> App C.Comp) ->

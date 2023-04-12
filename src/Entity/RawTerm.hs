@@ -40,6 +40,7 @@ data RawTermF a
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
+  | Embody a
   | Cell a
   | Let (BinderF a) [(Mutability, Hint, Ident)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Prim (WP.WeakPrim a)

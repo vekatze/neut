@@ -88,6 +88,10 @@ reveal' varEnv term =
     m :< WT.Noema t -> do
       t' <- reveal' varEnv t
       return $ m :< WT.Noema t'
+    m :< WT.Embody t e -> do
+      t' <- reveal' varEnv t
+      e' <- reveal' varEnv e
+      return $ m :< WT.Embody t' e'
     m :< WT.Cell t -> do
       t' <- reveal' varEnv t
       return $ m :< WT.Cell t'

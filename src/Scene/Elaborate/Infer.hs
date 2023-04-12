@@ -103,6 +103,11 @@ infer' varEnv term =
     m :< WT.Noema t -> do
       t' <- inferType' varEnv t
       return (m :< WT.Noema t', m :< WT.Tau)
+    m :< WT.Embody _ e -> do
+      (e', noemaType) <- infer' varEnv e
+      resultType <- newHole m varEnv
+      insConstraintEnv (m :< WT.Noema resultType) noemaType
+      return (m :< WT.Embody resultType e', resultType)
     m :< WT.Cell t -> do
       t' <- inferType' varEnv t
       return (m :< WT.Cell t', m :< WT.Tau)

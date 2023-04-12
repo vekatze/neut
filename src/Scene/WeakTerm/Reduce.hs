@@ -60,6 +60,10 @@ reduce term =
     m :< WT.Noema t -> do
       t' <- reduce t
       return $ m :< WT.Noema t'
+    m :< WT.Embody t e -> do
+      t' <- reduce t
+      e' <- reduce e
+      return $ m :< WT.Embody t' e'
     m :< WT.Cell t -> do
       t' <- reduce t
       return $ m :< WT.Cell t'

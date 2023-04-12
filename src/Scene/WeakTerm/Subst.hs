@@ -60,6 +60,10 @@ subst sub term =
     m :< WT.Noema t -> do
       t' <- subst sub t
       return $ m :< WT.Noema t'
+    m :< WT.Embody t e -> do
+      t' <- subst sub t
+      e' <- subst sub e
+      return $ m :< WT.Embody t' e'
     m :< WT.Cell t -> do
       t' <- subst sub t
       return $ m :< WT.Cell t'

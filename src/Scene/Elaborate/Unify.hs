@@ -144,6 +144,8 @@ simplify constraintList =
               simplify $ cs' ++ cs
         (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
           simplify $ ((t1, t2), orig) : cs
+        (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
+          simplify $ ((t1, t2), orig) : ((e1, e2), orig) : cs
         (_ :< WT.Cell t1, _ :< WT.Cell t2) ->
           simplify $ ((t1, t2), orig) : cs
         (_ :< WT.CellIntro e1, _ :< WT.CellIntro e2) ->

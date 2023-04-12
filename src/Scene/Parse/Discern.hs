@@ -155,6 +155,10 @@ discern nenv term =
     m :< RT.Noema t -> do
       t' <- discern nenv t
       return $ m :< WT.Noema t'
+    m :< RT.Embody e -> do
+      e' <- discern nenv e
+      let doNotCare = m :< WT.Tau -- discarded at Infer
+      return $ m :< WT.Embody doNotCare e'
     m :< RT.Cell t -> do
       t' <- discern nenv t
       return $ m :< WT.Cell t'

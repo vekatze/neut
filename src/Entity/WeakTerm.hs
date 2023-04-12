@@ -41,6 +41,7 @@ data WeakTermF a
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
+  | Embody a a
   | Cell a
   | CellIntro a
   | CellElim a

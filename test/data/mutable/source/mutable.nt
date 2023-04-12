@@ -8,10 +8,8 @@ enum list(a: tau) {
 }
 
 define-inline get<a>(x: !a): a {
-  let value: &a = magic load(pointer(i8), x)
-  let raw = magic cast(&a, a, value)
-  let orig = magic cast(a, &a, raw)
-  raw
+  let value-noema: &a = magic load(pointer(i8), x)
+  *value-noema
 }
 
 define-inline mutate<a>(x: !a, mutator: a -> a): core.top::top() {

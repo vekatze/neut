@@ -186,6 +186,10 @@ elaborate' term =
     m :< WT.Noema t -> do
       t' <- elaborate' t
       return $ m :< TM.Noema t'
+    m :< WT.Embody t e -> do
+      t' <- elaborate' t
+      e' <- elaborate' e
+      return $ m :< TM.Embody t' e'
     m :< WT.Cell t -> do
       t' <- elaborate' t
       return $ m :< TM.Cell t'

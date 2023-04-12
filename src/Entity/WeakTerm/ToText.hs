@@ -50,6 +50,8 @@ toText term =
         else showCons ["match", showMatchArgs xets, showDecisionTree tree]
     _ :< WT.Noema t ->
       showCons ["noema", toText t]
+    _ :< WT.Embody _ e ->
+      "*" <> toText e
     _ :< WT.Cell t ->
       showCons ["cell", toText t]
     _ :< WT.CellIntro e ->

@@ -11,12 +11,14 @@ import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
+import Context.Log (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -33,6 +35,7 @@ import Entity.LamKind qualified as LK
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Noema qualified as N
+import Entity.Opacity (isOpaque)
 import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import Entity.PrimNumSize
@@ -191,6 +194,12 @@ clarifyTerm tenv term =
       return $ irreducibleBindLet (zip xs es') tree'
     _ :< TM.Noema {} ->
       return returnImmediateS4
+    _ :< TM.Embody t e -> do
+      (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
+      (valueVarName, value, valueVar) <- clarifyPlus tenv e
+      return $
+        bindLet [(typeExpVarName, typeExp), (valueVarName, value)] $
+          C.PiElimDownElim typeExpVar [C.Int (IntSize 64) 1, valueVar]
     _ :< TM.Cell {} ->
       return returnImmediateS4
     _ :< TM.CellIntro e -> do
@@ -205,9 +214,12 @@ clarifyTerm tenv term =
         bindLet [(contentVarName, content')] $
           C.SigmaElim True [resultVar] contentVar $
             C.UpIntro (C.VarLocal resultVar)
-    m :< TM.Let opacity mxt e1 e2 -> do
-      let lamKind = LK.Normal opacity
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro lamKind [mxt] e2) [e1]
+    _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
+      e2' <- clarifyTerm (TM.insTypeEnv [mxt] tenv) e2
+      mxts' <- dropFst <$> clarifyBinder tenv [mxt]
+      e2'' <- linearize mxts' e2'
+      e1' <- clarifyTerm tenv e1
+      return $ bindLetWithReducibility (not $ isOpaque opacity) [(x, e1')] e2''
     m :< TM.Prim prim ->
       case prim of
         P.Type _ ->

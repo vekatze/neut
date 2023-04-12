@@ -59,6 +59,10 @@ fill sub term =
     m :< WT.Noema t -> do
       t' <- fill sub t
       return $ m :< WT.Noema t'
+    m :< WT.Embody t e -> do
+      t' <- fill sub t
+      e' <- fill sub e
+      return $ m :< WT.Embody t' e'
     m :< WT.Cell t -> do
       t' <- fill sub t
       return $ m :< WT.Cell t'

@@ -38,6 +38,8 @@ freeVars term =
       S.union xs1 xs2
     _ :< WT.Noema t ->
       freeVars t
+    _ :< WT.Embody t e ->
+      S.union (freeVars t) (freeVars e)
     _ :< WT.Cell t ->
       freeVars t
     _ :< WT.CellIntro e ->

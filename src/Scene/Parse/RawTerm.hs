@@ -236,16 +236,7 @@ rawTermEmbody = do
   m <- getCurrentHint
   delimiter "*"
   e <- rawTermBasic
-  t <- lift $ Gensym.newPreHole m
-  raw <- lift $ Gensym.newTextualIdentFromText "raw"
-  copied <- lift $ Gensym.newTextualIdentFromText "copied"
-  original <- lift $ Gensym.newTextualIdentFromText "original"
-  let noema = m :< RT.Noema t
-  return $
-    bind (m, raw, t) (m :< RT.Magic (M.Cast noema t e)) $
-      bind (m, original, noema) (m :< RT.Magic (M.Cast t noema (m :< RT.Var raw))) $
-        bind (m, copied, t) (m :< RT.Var raw) $
-          m :< RT.Var copied
+  return $ m :< RT.Embody e
 
 rawTermLazy :: Parser RT.RawTerm
 rawTermLazy = do

@@ -34,6 +34,8 @@ holes term =
       S.union xs1 xs2
     _ :< WT.Noema t ->
       holes t
+    _ :< WT.Embody t e ->
+      S.union (holes t) (holes e)
     _ :< WT.Cell t ->
       holes t
     _ :< WT.CellIntro e ->

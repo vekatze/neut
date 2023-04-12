@@ -63,6 +63,10 @@ subst sub term =
     m :< TM.Noema t -> do
       t' <- subst sub t
       return $ m :< TM.Noema t'
+    m :< TM.Embody t e -> do
+      t' <- subst sub t
+      e' <- subst sub e
+      return $ m :< TM.Embody t' e'
     m :< TM.Cell t -> do
       t' <- subst sub t
       return $ m :< TM.Cell t'

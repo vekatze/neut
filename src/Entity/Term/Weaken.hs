@@ -72,6 +72,8 @@ weaken term =
       m :< WT.DataElim isNoetic (zip3 os es' ts') tree'
     m :< TM.Noema t ->
       m :< WT.Noema (weaken t)
+    m :< TM.Embody t e ->
+      m :< WT.Embody (weaken t) (weaken e)
     m :< TM.Cell t ->
       m :< WT.Cell (weaken t)
     m :< TM.CellIntro e ->

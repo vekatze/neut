@@ -53,6 +53,10 @@ chainOf' tenv term =
       xs1 ++ xs2
     _ :< TM.Noema t ->
       chainOf' tenv t
+    _ :< TM.Embody t e -> do
+      let xs1 = chainOf' tenv t
+      let xs2 = chainOf' tenv e
+      xs1 ++ xs2
     _ :< TM.Cell t ->
       chainOf' tenv t
     _ :< TM.CellIntro e ->
