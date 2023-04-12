@@ -67,6 +67,6 @@ define main(): i64 {
   let fs = cons(add2, cons(mul3, cons(mul9, nil())))
   let gs = fs
   let hs = gs
-  interpret(fold(?, hs, n3))
+  interpret(fold(_, hs, n3))
   // fold(hs, 10)
 }
