@@ -1,0 +1,191 @@
+// random access list via numerical representation
+// (complete binary tree + dense representation)
+
+import {
+- core.option => opt
+- core.sum => sum
+- core.bool
+}
+
+use {
+- this.random-access-list::digit
+- this.random-access-list::R-list
+}
+
+struct tuple(a, b) {
+- left: a
+- right: b
+}
+
+enum tree(a) {
+- Leaf(a)
+- Node(i64, tree(a), tree(a))
+}
+
+enum digit(a) {
+- Zero()
+- One(tree(a))
+}
+
+enum list(a) {
+- nil()
+- cons(a, list(a))
+}
+
+enum R-list(a) {
+- New(list(digit(a)))
+}
+
+define size<a>(t: &tree(a)): i64 {
+  case t {
+  - tree.Leaf(_) =>
+    1
+  - tree.Node(w, _, _) =>
+    *w
+  }
+}
+
+define link<a>(t1: tree(a), t2: tree(a)): tree(a) {
+  let s1 on t1 = size(t1)
+  let s2 on t2 = size(t2)
+  tree.Node(add-i64(s1, s2), t1, t2)
+}
+
+define cons-tree<a>(t: tree(a), ts: R-list(a)): R-list(a) {
+  match ts {
+  - New(list.nil()) =>
+    New([One(t)])
+  - New(list.cons(Zero(), rest)) =>
+    New(One(t) :: rest)
+  - New(list.cons(One(t0), rest)) =>
+    let New(ts-new) = cons-tree(link(t, t0), New(rest))
+    New(Zero() :: ts-new)
+  }
+}
+
+define cons<a>(x: a, ts: R-list(a)): R-list(a) {
+  cons-tree(tree.Leaf(x), ts)
+}
+
+define uncons-tree<a>(ts: R-list(a)): opt::option(tuple(tree(a), R-list(a))) {
+  let New(xs) = ts
+  match xs {
+  - list.nil() =>
+    opt::none()
+  - list.cons(One(y), list.nil()) =>
+    opt::some(tuple.new(y, New([])))
+  - list.cons(One(y), rest) =>
+    opt::some(tuple.new(y, New(Zero() :: rest)))
+  - list.cons(Zero(), rest) =>
+    match uncons-tree(New(rest)) {
+    - sum::sum.left(_) =>
+      opt::none()
+    - sum::sum.right(tuple.new(new-tree, New(new-ts))) =>
+      match new-tree {
+      - tree.Leaf(_) =>
+        opt::none()
+      - tree.Node(_, t1, t2) =>
+        opt::some(tuple.new(t1, New(One(t2) :: new-ts)))
+      }
+    }
+  }
+}
+
+define lookup-tree<a>(i: i64, t: &tree(a)): opt::option(a) {
+  case t {
+  - tree.Leaf(v) =>
+    if eq-i64(i, 0) {
+      opt::some(*v)
+    } else {
+      opt::none()
+    }
+  - tree.Node(w, t1, t2) =>
+    let w-div-2 = div-i64(*w, 2)
+    if lt-i64(i, w-div-2) {
+      lookup-tree(i, t1)
+    } else {
+      lookup-tree(sub-i64(i, w-div-2), t2)
+    }
+  }
+}
+
+define lookup-list<a>(i: i64, xs: &list(digit(a))): opt::option(a) {
+  case xs {
+  - list.nil() =>
+    opt::none()
+  - list.cons(Zero(), rest) =>
+    lookup-list(i, rest)
+  - list.cons(One(t), rest) =>
+    let s = size(t)
+    if lt-i64(i, s) {
+      lookup-tree(i, t)
+    } else {
+      lookup-list(sub-i64(i, s), rest)
+    }
+  }
+}
+
+define lookup<a>(i: i64, xs: &R-list(a)): opt::option(a) {
+  bind New(xs) = xs
+  lookup-list(i, xs)
+}
+
+define update-tree<a>(i: i64, x: a, t: tree(a)): tree(a) {
+  match t {
+  - tree.Leaf(v) =>
+    if eq-i64(i, 0) {
+      tree.Leaf(x)
+    } else {
+      tree.Leaf(v)
+    }
+  - tree.Node(w, t1, t2) =>
+    let w-div-2 = div-i64(w, 2)
+    if lt-i64(i, w-div-2) {
+      tree.Node(w, update-tree(i, x, t1), t2)
+    } else {
+      tree.Node(w, t1, update-tree(sub-i64(i, w-div-2), x, t2))
+    }
+  }
+}
+
+define update<a>(i: i64, x: a, xs: R-list(a)): R-list(a) {
+  match xs {
+  - New(list.nil()) =>
+    New([])
+  - New(list.cons(Zero(), ts)) =>
+    let New(new-xs) = update(i, x, New(ts))
+    New(Zero() :: new-xs)
+  - New(list.cons(One(t), ts)) =>
+    let s on t = size(t)
+    if lt-i64(i, s) {
+      New(One(update-tree(i, x, t)) :: ts)
+    } else {
+      let New(new-xs) = update(sub-i64(i, s), x, New(ts))
+      New(One(t) :: new-xs)
+    }
+  }
+}
+
+define find-and-get(i: i64, xs: &R-list(i64)): i64 {
+  match lookup(i, xs) {
+  - sum::sum.left(_) =>
+    0
+  - sum::sum.right(v) =>
+    v
+  }
+}
+
+define main(): i64 {
+  let xs = New(list.nil()): R-list(i64)
+  let xs = cons(3, xs)
+  let xs = cons(2, xs)
+  let xs = cons(4, xs)
+  let xs = cons(1, xs)
+  let v1 on xs = find-and-get(0, xs) // 1
+  let v2 on xs = find-and-get(1, xs) // 4
+  let _ on xs = find-and-get(2, xs) // 2
+  let v4 on xs = find-and-get(3, xs) // 3
+  let xs = update(2, 10, xs)
+  let v3-modified on xs = find-and-get(2, xs) // 10
+  add-i64(v1, add-i64(v2, add-i64(v3-modified, v4))) // 1 + 4 + 10 + 3 = 18
+}
