@@ -30,7 +30,7 @@ enum finite-map(a, b) {
 struct finite-map-signature(a, b) {
 - empty: finite-map(a, b)
 - insert: (a, b, finite-map(a, b)) -> finite-map(a, b)
-- lookup: (a, &finite-map(a, b)) -> option(b)
+- lookup: (a, &finite-map(a, b)) -> ?b
 }
 
 define make-finite-map<a, b>(compare: (a, a) -> order()): finite-map-signature(a, b) {
@@ -54,7 +54,7 @@ define make-finite-map<a, b>(compare: (a, a) -> order()): finite-map-signature(a
       }
     }
   - finite-map-signature.lookup <=
-    define lookup(key: a, haystack: &finite-map(a, b)): option(b) {
+    define lookup(key: a, haystack: &finite-map(a, b)): ?b {
       case haystack {
       - leaf() =>
         none()

@@ -28,8 +28,8 @@ struct heap-signature(a) {
 - is-empty: &heap(a) -> bool()
 - insert: (a, heap(a)) -> heap(a)
 - merge: (heap(a), heap(a)) -> heap(a)
-- find-min: &heap(a) -> option(a)
-- delete-min: heap(a) -> option(heap(a))
+- find-min: &heap(a) -> ?a
+- delete-min: heap(a) -> ?heap(a)
 }
 
 define make-heap-signature<a>(compare: (a, a) -> order()): heap-signature(a) {

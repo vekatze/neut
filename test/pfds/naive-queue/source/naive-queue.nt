@@ -37,7 +37,7 @@ define reverse<a>(xs: list(a)): list(a) {
   f(xs, list.nil())
 }
 
-define head<a>(q: &queue(a)): option(a) {
+define head<a>(q: &queue(a)): ?a {
   case q {
   - product.new(list.cons(x, rest), ys) =>
     some(*x)
@@ -55,7 +55,7 @@ define-inline sanitize<a>(q: queue(a)): queue(a) {
   }
 }
 
-define tail<a>(q: queue(a)): option(queue(a)) {
+define tail<a>(q: queue(a)): ?queue(a) {
   match q {
   - product.new(list.cons(x, rest), ys) =>
     some(sanitize(product.new(rest, ys)))

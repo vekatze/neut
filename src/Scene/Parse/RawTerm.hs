@@ -100,6 +100,7 @@ rawTermBasic = do
   choice
     [ rawTermNoema,
       rawTermCell,
+      rawTermOption,
       rawTermEmbody,
       rawTermLazy,
       rawTermPiElimOrSimple
@@ -624,6 +625,13 @@ rawTermCell = do
   delimiter "!"
   t <- rawTermBasic
   return $ m :< RT.Cell t
+
+rawTermOption :: Parser RT.RawTerm
+rawTermOption = do
+  m <- getCurrentHint
+  delimiter "?"
+  t <- rawTermBasic
+  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "option")) [t]
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do

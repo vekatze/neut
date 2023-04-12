@@ -86,7 +86,7 @@ define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): tuple(heap(a), he
   }
 }
 
-define find-min<a>(t: &heap(a)): option(a) {
+define find-min<a>(t: &heap(a)): ?a {
   case t {
   - leaf() =>
     none()
@@ -97,7 +97,7 @@ define find-min<a>(t: &heap(a)): option(a) {
   }
 }
 
-define delete-min<a>(t: heap(a)): option(heap(a)) {
+define delete-min<a>(t: heap(a)): ?heap(a) {
   match t {
   - leaf() =>
     none()

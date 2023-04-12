@@ -22,10 +22,10 @@ enum Order() {
 - GT()
 }
 
-define find-min<a>(h: &heap(a)): option(a) {
+define find-min<a>(h: &heap(a)): ?a {
   case h {
   - leaf() =>
-    none(): option(a)
+    none(): ?a
   - node(v, hs) =>
     some(*v)
   }
@@ -62,7 +62,7 @@ define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
   }
 }
 
-define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): option(heap(a)) {
+define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): ?heap(a) {
   match h {
   - leaf() =>
     none()
@@ -74,7 +74,7 @@ define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): option(heap(a)) {
 define compare-int(x: i64, y: i64): Order() {
   if lt-i64(x, y) {
     Order.LT()
-  } else-if gt-i64(x, y) {
+      } else-if gt-i64(x, y) {
     Order.GT()
   } else {
     Order.EQ()

@@ -113,7 +113,7 @@ enum tuple(a, b) {
 - new(a, b)
 }
 
-define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): option(a) {
+define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
   let helper =
     define self(cand: a, h: &heap(a)): a {
       case h {
@@ -138,7 +138,7 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): option(a) {
   }
 }
 
-define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): option(tuple(tree(a), heap(a))) {
+define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?tuple(tree(a), heap(a)) {
   match h {
   - [] =>
     none()
@@ -160,7 +160,7 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): option(tuple(tree
   }
 }
 
-define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): option(heap(a)) {
+define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): ?heap(a) {
   let? pair = remove-min-tree(cmp, h)
   match pair {
   - tuple.new(node(r, x, ts1), ts2) =>
