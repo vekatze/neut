@@ -12,6 +12,7 @@ import Entity.DefiniteDescription as DD
 import Entity.EnumCase qualified as EC
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
+import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
 import Scene.Comp.Subst
 
@@ -27,8 +28,12 @@ chainLookup name = do
 reduce :: C.Comp -> App C.Comp
 reduce term =
   case term of
-    C.Primitive _ ->
-      return term
+    C.Primitive prim ->
+      case prim of
+        C.Magic (M.Cast _ _ value) ->
+          return $ C.UpIntro value
+        _ ->
+          return term
     C.PiElimDownElim v ds -> do
       case v of
         C.VarGlobal x _ -> do
