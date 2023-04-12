@@ -122,21 +122,59 @@ rawTermSimple = do
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
   keyword "let"
-  x <- rawTermLetVar
+  pat <- rawTermPattern
+  case pat of
+    (mx, RP.Var x) -> do
+      t <- rawTermLetVarAscription mx
+      let mxt = (mx, x, t)
+      choice
+        [ do
+            keyword "on"
+            noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
+            lift $ ensureNoeticVarLinearity m S.empty $ map (\(_, _, v) -> v) noeticVarList
+            delimiter "="
+            e1 <- rawTerm
+            e2 <- rawExpr
+            return $ m :< RT.Let mxt noeticVarList e1 e2,
+          do
+            delimiter "="
+            e1 <- rawTerm
+            e2 <- rawExpr
+            return $ m :< RT.Let mxt [] e1 e2
+        ]
+    _ -> do
+      mt <- rawTermLetVarAscription'
+      delimiter "="
+      e1 <- rawTerm
+      e2 <- rawExpr
+      e1' <- annotateIfNecessary m mt e1
+      return $ m :< RT.DataElim False [e1'] (RP.new [(V.fromList [pat], e2)])
+
+rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
+rawTermLetVarAscription m = do
+  mt <- rawTermLetVarAscription'
+  case mt of
+    Just t ->
+      return t
+    Nothing ->
+      lift $ Gensym.newPreHole m
+
+annotateIfNecessary :: Hint -> Maybe RT.RawTerm -> RT.RawTerm -> Parser RT.RawTerm
+annotateIfNecessary m mt e =
+  case mt of
+    Just t -> do
+      tmp <- lift $ Gensym.newTextualIdentFromText "tmp"
+      return $ bind (m, tmp, t) e (m :< RT.Var tmp)
+    Nothing ->
+      return e
+
+rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm)
+rawTermLetVarAscription' =
   choice
-    [ do
-        keyword "on"
-        noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
-        lift $ ensureNoeticVarLinearity m S.empty $ map (\(_, _, v) -> v) noeticVarList
-        delimiter "="
-        e1 <- rawTerm
-        e2 <- rawExpr
-        return $ m :< RT.Let x noeticVarList e1 e2,
-      do
-        delimiter "="
-        e1 <- rawTerm
-        e2 <- rawExpr
-        return $ m :< RT.Let x [] e1 e2
+    [ try $ do
+        delimiter ":"
+        Just <$> rawTerm,
+      return Nothing
     ]
 
 rawTermBind :: Hint -> Parser RT.RawTerm
@@ -146,7 +184,7 @@ rawTermBind m = do
   delimiter "="
   e1 <- rawTerm
   e2 <- rawExpr
-  return $ m :< RT.DataElim False [e1] (RP.new [(V.fromList [pat], e2)])
+  return $ m :< RT.DataElim True [e1] (RP.new [(V.fromList [pat], e2)])
 
 ensureNoeticVarLinearity :: Hint -> S.Set T.Text -> [Ident] -> App ()
 ensureNoeticVarLinearity m foundVarSet vs =
@@ -254,8 +292,7 @@ rawTermPiOrAscOrBasic = do
       do
         delimiter ":"
         t <- rawTerm
-        f <- lift $ Gensym.newTextualIdentFromText "unit"
-        return $ bind (m, f, t) basic (m :< RT.Var f),
+        annotateIfNecessary m (Just t) basic,
       return basic
     ]
 
@@ -489,19 +526,6 @@ rawTermNewRow = do
   delimiter "<="
   value <- rawExpr
   return (m, key, value)
-
-rawTermLetVar :: Parser (BinderF RT.RawTerm)
-rawTermLetVar = do
-  (m, x) <- var
-  choice
-    [ try $ do
-        delimiter ":"
-        a <- rawTerm
-        return (m, Ident.fromText x, a),
-      do
-        h <- lift $ Gensym.newPreHole m
-        return (m, Ident.fromText x, h)
-    ]
 
 rawTermIf :: Parser RT.RawTerm
 rawTermIf = do
