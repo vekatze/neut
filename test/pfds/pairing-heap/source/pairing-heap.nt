@@ -53,11 +53,11 @@ define insert<a>(cmp: (a, a) -> Order(), x: a, h: heap(a)): heap(a) {
 
 define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
   match hs {
-  - list.nil() =>
+  - [] =>
     leaf()
-  - list.cons(h, list.nil()) =>
+  - [h] =>
     h
-  - list.cons(h1, list.cons(h2, rest)) =>
+  - h1 :: h2 :: rest =>
     merge(cmp, merge(cmp, h1, h2), merge-pairs(cmp, rest))
   }
 }

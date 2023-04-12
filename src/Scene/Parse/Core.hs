@@ -76,6 +76,10 @@ symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
+definiteDescriptionSymbol :: Parser T.Text
+definiteDescriptionSymbol = do
+  lexeme $ takeWhile1P Nothing (`S.notMember` nonDefiniteDescriptionCharSet)
+
 baseName :: Parser BN.BaseName
 baseName = do
   bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
@@ -188,10 +192,15 @@ var = do
       unusedVar <- lift Gensym.newText
       return (m, unusedVar)
 
+{-# INLINE nonDefiniteDescriptionCharSet #-}
+nonDefiniteDescriptionCharSet :: S.Set Char
+nonDefiniteDescriptionCharSet =
+  S.fromList "=() '\"\n\t;,<>[]{}"
+
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "=() '\"\n\t:;,<>[]{}"
+  S.insert ':' nonDefiniteDescriptionCharSet
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char

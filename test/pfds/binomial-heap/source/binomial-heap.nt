@@ -19,13 +19,13 @@ define reverse<a>(xs: list(a)): list(a) {
   let helper =
     define self(ys: list(a), acc: list(a)): list(a) {
       match ys {
-      - list.nil() =>
+      - [] =>
         acc
-      - list.cons(y, rest) =>
-        self(rest, list.cons(y, acc))
+      - y :: rest =>
+        self(rest, y :: acc)
       }
     }
-  helper(xs, list.nil())
+  helper(xs, [])
 }
 
 enum tree(a) {
@@ -49,9 +49,9 @@ define link<a>(cmp: (a, a) -> order(), t1: tree(a), t2: tree(a)): tree(a) {
   - node(r1, x1, children1), node(r2, x2, children2) =>
     match cmp(x1, x2) {
     - order.lt() =>
-      node(add-i64(r1, 1), x1, list.cons(node(r2, x2, children2), children1))
+      node(add-i64(r1, 1), x1, node(r2, x2, children2) :: children1)
     - otherwise =>
-      node(add-i64(r1, 1), x2, list.cons(node(r1, x1, children1), children2))
+      node(add-i64(r1, 1), x2, node(r1, x1, children1) :: children2)
     }
   }
 }
@@ -65,13 +65,13 @@ define rank<a>(t: &tree(a)): i64 {
 
 define insert-tree<a>(cmp: (a, a) -> order(), t: tree(a), h: heap(a)): heap(a) {
   match h {
-  - list.nil() =>
-    list.cons(t, list.nil())
-  - list.cons(t1, rest) =>
+  - [] =>
+    [t]
+  - t1 :: rest =>
     let r on t = rank(t)
     let r1 on t1 = rank(t1)
     if lt-i64(r, r1) {
-      list.cons(t, list.cons(t1, rest))
+      t :: t1 :: rest
     } else {
       // the link here corresponds to a carry in binary arithmetic
       insert-tree(cmp, link(cmp, t, t1), rest)
@@ -80,22 +80,22 @@ define insert-tree<a>(cmp: (a, a) -> order(), t: tree(a), h: heap(a)): heap(a) {
 }
 
 define insert<a>(cmp: (a, a) -> order(), value: a, h: heap(a)): heap(a) {
-  insert-tree(cmp, node(0, value, list.nil()), h)
+  insert-tree(cmp, node(0, value, []), h)
 }
 
 define merge<a>(cmp: (a, a) -> order(), h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
-  - list.nil(), h2 =>
+  - [], h2 =>
     h2
-  - h1, list.nil() =>
+  - h1, [] =>
     h1
-  - list.cons(t1, ts1), list.cons(t2, ts2) =>
+  - t1 :: ts1, t2 :: ts2 =>
     let r1 on t1 = rank(t1)
     let r2 on t2 = rank(t2)
     if lt-i64(r1, r2) {
-      list.cons(t1, merge(cmp, ts1, list.cons(t2, ts2)))
+      t1 :: merge(cmp, ts1, t2 :: ts2)
     } else-if gt-i64(r1, r2) {
-      list.cons(t2, merge(cmp, list.cons(t1, ts1), ts2))
+      t2 :: merge(cmp, t1 :: ts1, ts2)
     } else {
       insert-tree(cmp, link(cmp, t1, t2), merge(cmp, ts1, ts2))
     }
@@ -117,9 +117,9 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): option(a) {
   let helper =
     define self(cand: a, h: &heap(a)): a {
       case h {
-      - list.nil() =>
+      - [] =>
         cand
-      - list.cons(t, ts) =>
+      - t :: ts =>
         let root-head = root(t)
         match cmp(root-head, cand) {
         - order.lt() =>
@@ -130,9 +130,9 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): option(a) {
       }
     }
   case h {
-  - list.nil() =>
+  - [] =>
     none()
-  - list.cons(t, ts) =>
+  - t :: ts =>
     let r = root(t)
     some(helper(r, ts))
   }
@@ -140,11 +140,11 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): option(a) {
 
 define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): option(tuple(tree(a), heap(a))) {
   match h {
-  - list.nil() =>
+  - [] =>
     none()
-  - list.cons(t, list.nil()) =>
-    some(tuple.new(t, list.nil()))
-  - list.cons(t, ts) =>
+  - [t] =>
+    some(tuple.new(t, []))
+  - t :: ts =>
     let? pair = remove-min-tree(cmp, ts)
     match pair {
     - tuple.new(cand, ts-adjusted) =>
@@ -152,9 +152,9 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): option(tuple(tree
       let root-cand on cand = root(cand)
       match cmp(root-head, root-cand) {
       - order.lt() =>
-        some(tuple.new(t, list.cons(cand, ts-adjusted)))
+        some(tuple.new(t, cand :: ts-adjusted))
       - otherwise =>
-        some(tuple.new(cand, list.cons(t, ts-adjusted)))
+        some(tuple.new(cand, t :: ts-adjusted))
       }
     }
   }
@@ -179,7 +179,7 @@ define compare-int(x: i64, y: i64): order() {
 }
 
 define main(): i64 {
-  let h: heap(i64) = list.nil()
+  let h: heap(i64) = []
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 4, h)
   let h = insert(compare-int, 2, h)

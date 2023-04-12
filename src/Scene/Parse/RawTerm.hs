@@ -4,7 +4,6 @@ module Scene.Parse.RawTerm
     preAscription,
     preBinder,
     parseTopDefInfo,
-    parseDefiniteDescription,
     preVar,
   )
 where
@@ -46,6 +45,7 @@ import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
 import Text.Megaparsec
+import Text.Megaparsec.Char (char)
 
 --
 -- parser for RT.RawTerm
@@ -92,7 +92,7 @@ rawTerm = do
       rawTermIf,
       rawTermListIntro,
       rawTermPiGeneral,
-      rawTermPiOrAscOrBasic
+      rawTermPiOrConsOrAscOrBasic
     ]
 
 rawTermBasic :: Parser RT.RawTerm
@@ -115,8 +115,7 @@ rawTermSimple = do
       rawTermHole,
       rawTermInteger,
       rawTermFloat,
-      rawTermDefiniteDescription,
-      rawTermVar
+      rawTermVarOrDefiniteDescription
     ]
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
@@ -275,8 +274,8 @@ rawTermPiGeneral = do
   cod <- rawTerm
   return $ m :< RT.Pi domList cod
 
-rawTermPiOrAscOrBasic :: Parser RT.RawTerm
-rawTermPiOrAscOrBasic = do
+rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
+rawTermPiOrConsOrAscOrBasic = do
   m <- getCurrentHint
   basic <- rawTermBasic
   choice
@@ -342,23 +341,17 @@ rawTermPiIntroDef = do
 
 parseDefiniteDescription :: Parser (Hint, GL.GlobalLocator, LL.LocalLocator)
 parseDefiniteDescription = do
+  notFollowedBy (char '-')
   m <- getCurrentHint
-  globalLocator <- symbol
-  globalLocator' <- lift $ Throw.liftEither $ GL.reflect m globalLocator
-  delimiter definiteSep
-  localLocator <- parseLocalLocator
-  return (m, globalLocator', localLocator)
-
-rawTermDefiniteDescription :: Parser RT.RawTerm
-rawTermDefiniteDescription = do
-  (m, globalLocator, localLocator) <- try parseDefiniteDescription
-  return $ m :< RT.VarGlobal globalLocator localLocator
-
-parseLocalLocator :: Parser LL.LocalLocator
-parseLocalLocator = do
-  m <- getCurrentHint
-  rawTxt <- symbol
-  lift $ Throw.liftEither $ LL.reflect m rawTxt
+  baseSymbol <- definiteDescriptionSymbol
+  let (beforeSep, rest) = T.breakOn definiteSep baseSymbol
+  if T.null rest
+    then failure (Just (asTokens baseSymbol)) (S.fromList [asLabel "definite description"])
+    else do
+      let afterSep = T.drop (T.length definiteSep) rest
+      globalLocator <- lift $ Throw.liftEither $ GL.reflect m beforeSep
+      localLocator <- lift $ Throw.liftEither $ LL.reflect m afterSep
+      return (m, globalLocator, localLocator)
 
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
@@ -491,25 +484,67 @@ rawTermPatternRow patternSize = do
 
 rawTermPattern :: Parser (Hint, RP.RawPattern)
 rawTermPattern = do
-  choice [try rawTermPatternConsStrict, try rawTermPatternCons, rawTermPatternVar]
-
-rawTermPatternConsStrict :: Parser (Hint, RP.RawPattern)
-rawTermPatternConsStrict = do
-  (m, globalLocator, localLocator) <- parseDefiniteDescription
-  patArgs <- argList rawTermPattern
-  return (m, RP.Cons (RP.LocatorPair globalLocator localLocator) patArgs)
-
-rawTermPatternCons :: Parser (Hint, RP.RawPattern)
-rawTermPatternCons = do
   m <- getCurrentHint
-  c <- symbol
-  patArgs <- argList rawTermPattern
-  return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName c) patArgs)
+  headPat <- rawTermPatternBasic
+  choice
+    [ try $ do
+        delimiter "::"
+        pat <- rawTermPattern
+        return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.cons") [headPat, pat]),
+      return headPat
+    ]
 
-rawTermPatternVar :: Parser (Hint, RP.RawPattern)
-rawTermPatternVar = do
-  (m, x) <- var
-  return (m, RP.Var (Ident.fromText x))
+rawTermPatternBasic :: Parser (Hint, RP.RawPattern)
+rawTermPatternBasic =
+  choice
+    [ rawTermPatternListIntro,
+      rawTermPatternConsOrVar
+    ]
+
+rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
+rawTermPatternListIntro = do
+  m <- getCurrentHint
+  patList <- betweenBracket $ commaList rawTermPattern
+  return $ foldListAppPat m patList
+
+foldListAppPat :: Hint -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
+foldListAppPat m es =
+  case es of
+    [] ->
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.nil") []) -- nil
+    e : rest -> do
+      let rest' = foldListAppPat m rest
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.cons") [e, rest'])
+
+parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
+parseVarOrDefiniteDescription = do
+  choice
+    [ try $ do
+        (m, globalLocator, localLocator) <- parseDefiniteDescription
+        return $ Right (m, globalLocator, localLocator),
+      do
+        (m, x) <- var
+        return $ Left (m, x)
+    ]
+
+rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
+rawTermPatternConsOrVar = do
+  varOrDefiniteDescription <- parseVarOrDefiniteDescription
+  choice
+    [ do
+        patArgs <- argList rawTermPattern
+        case varOrDefiniteDescription of
+          Left (m, c) -> do
+            return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName c) patArgs)
+          Right (m, globalLocator, localLocator) -> do
+            return (m, RP.Cons (RP.LocatorPair globalLocator localLocator) patArgs),
+      do
+        case varOrDefiniteDescription of
+          Left (m, c) ->
+            return (m, RP.Var (Ident.fromText c))
+          Right (m, _, _) ->
+            lift $ Throw.raiseError m "found a raw definite description in a pattern"
+    ]
 
 rawTermNew :: Parser RT.RawTerm
 rawTermNew = do
@@ -728,10 +763,14 @@ getIntrospectiveValue m key = do
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 
-rawTermVar :: Parser RT.RawTerm
-rawTermVar = do
-  (m, x) <- var
-  return (preVar m x)
+rawTermVarOrDefiniteDescription :: Parser RT.RawTerm
+rawTermVarOrDefiniteDescription = do
+  varOrDefiniteDescription <- parseVarOrDefiniteDescription
+  case varOrDefiniteDescription of
+    Left (m, x) ->
+      return (preVar m x)
+    Right (m, globalLocator, localLocator) ->
+      return $ m :< RT.VarGlobal globalLocator localLocator
 
 rawTermTextIntro :: Parser RT.RawTerm
 rawTermTextIntro = do
