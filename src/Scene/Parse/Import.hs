@@ -70,7 +70,7 @@ parseImportQualified :: P.Parser (Source.Source, Maybe AI.AliasInfo)
 parseImportQualified = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
-  P.delimiter "->"
+  P.delimiter "=>"
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
   source <- getSource m strictGlobalLocator locatorText
@@ -80,7 +80,7 @@ parseImportQualified = do
 skipImportQualified :: P.Parser ()
 skipImportQualified = do
   _ <- P.symbol
-  P.delimiter "->"
+  P.delimiter "=>"
   _ <- P.symbol
   return ()
 

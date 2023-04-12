@@ -1,5 +1,5 @@
 import {
-- core.bool -> B
+- core.bool => B
 }
 
 define main(): i64 {
