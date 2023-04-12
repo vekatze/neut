@@ -72,6 +72,10 @@ subst sub term =
     m :< TM.CellElim e -> do
       e' <- subst sub e
       return $ m :< TM.CellElim e'
+    m :< TM.Let opacity mxt e1 e2 -> do
+      e1' <- subst sub e1
+      ([mxt'], e2') <- subst' sub [mxt] e2
+      return $ m :< TM.Let opacity mxt' e1' e2'
     _ :< TM.ResourceType {} ->
       return term
     _ :< TM.Prim _ ->

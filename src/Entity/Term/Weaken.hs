@@ -20,6 +20,7 @@ import Entity.Term qualified as TM
 import Entity.Term.FromPrimNum
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
+import Entity.WeakTerm (reflectOpacity)
 import Entity.WeakTerm qualified as WT
 
 weakenStmt :: Stmt -> WeakStmt
@@ -77,6 +78,8 @@ weaken term =
       m :< WT.CellIntro (weaken e)
     m :< TM.CellElim e ->
       m :< WT.CellElim (weaken e)
+    m :< TM.Let opacity mxt e1 e2 ->
+      m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
     m :< TM.ResourceType name ->

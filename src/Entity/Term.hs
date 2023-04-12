@@ -14,6 +14,7 @@ import Entity.Ident.Reify
 import Entity.LamKind
 import Entity.Magic
 import Entity.Noema qualified as N
+import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import GHC.Generics (Generic)
 
@@ -33,6 +34,7 @@ data TermF a
   | Cell a
   | CellIntro a
   | CellElim a
+  | Let O.Opacity (BinderF a) a a
   | Prim P.Prim
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a)

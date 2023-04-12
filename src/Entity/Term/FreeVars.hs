@@ -54,6 +54,10 @@ freeVars term =
       freeVars e
     _ :< TM.CellElim e ->
       freeVars e
+    _ :< TM.Let _ mxt e1 e2 -> do
+      let xs = freeVars e1
+      let ys = freeVars' [mxt] (freeVars e2)
+      S.union xs ys
     _ :< TM.ResourceType {} ->
       S.empty
     _ :< TM.Prim _ ->

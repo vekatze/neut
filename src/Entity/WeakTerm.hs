@@ -69,6 +69,14 @@ reifyOpacity letOpacity =
     Noetic ->
       O.Transparent
 
+reflectOpacity :: O.Opacity -> LetOpacity
+reflectOpacity opacity =
+  case opacity of
+    O.Opaque ->
+      Opaque
+    O.Transparent ->
+      Transparent
+
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =
   m :< Var x

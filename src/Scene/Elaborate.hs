@@ -205,8 +205,7 @@ elaborate' term =
           ensureTypeLucidity m t' t'
         _ ->
           return ()
-      let lamKind = LK.Normal (WT.reifyOpacity opacity)
-      return $ m :< TM.PiElim (m :< TM.PiIntro lamKind [(mx, x, t')] e2') [e1']
+      return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
     m :< WT.Hole h es -> do
       holeSubst <- getHoleSubst
       case HS.lookup h holeSubst of

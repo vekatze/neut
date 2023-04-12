@@ -205,6 +205,9 @@ clarifyTerm tenv term =
         bindLet [(contentVarName, content')] $
           C.SigmaElim True [resultVar] contentVar $
             C.UpIntro (C.VarLocal resultVar)
+    m :< TM.Let opacity mxt e1 e2 -> do
+      let lamKind = LK.Normal opacity
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.PiIntro lamKind [mxt] e2) [e1]
     m :< TM.Prim prim ->
       case prim of
         P.Type _ ->
