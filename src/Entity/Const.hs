@@ -76,6 +76,15 @@ coreBoolTrue = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" 
 coreBoolFalse :: T.Text
 coreBoolFalse = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "False"
 
+coreOption :: T.Text
+coreOption = core <> T.singleton nsSepChar <> "option" <> definiteSep <> "option"
+
+coreOptionNone :: T.Text
+coreOptionNone = core <> T.singleton nsSepChar <> "option" <> definiteSep <> "option" <> T.singleton nsSepChar <> "None"
+
+coreOptionSome :: T.Text
+coreOptionSome = core <> T.singleton nsSepChar <> "option" <> definiteSep <> "option" <> T.singleton nsSepChar <> "Some"
+
 coreSum :: T.Text
 coreSum = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum"
 

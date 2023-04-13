@@ -64,7 +64,8 @@ rawExpr = do
 rawExprLet :: Hint -> Parser RT.RawTerm
 rawExprLet m = do
   choice
-    [ try $ rawTermLetCoproduct m,
+    [ try $ rawTermLetOption m,
+      try $ rawTermLetCoproduct m,
       rawTermLetOrLetOn m
     ]
 
@@ -214,10 +215,35 @@ rawTermNoeticVar =
         return (Immutable, m, x)
     ]
 
--- let? x = e1 in e2
+rawTermLetOption :: Hint -> Parser RT.RawTerm
+rawTermLetOption m = do
+  keyword "let?"
+  pat@(mx, _) <- rawTermPattern
+  resultType <- rawTermLetVarAscription mx
+  delimiter "="
+  e1 <- rawTerm
+  optionTypeDD <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOption
+  let optionType = m :< RT.PiElim optionTypeDD [resultType]
+  e1' <- annotateIfNecessary m (Just optionType) e1
+  e2 <- rawExpr
+  optionNone <- lift $ handleDefiniteDescriptionIntoRawConsName m coreOptionNone
+  optionNoneVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOptionNone
+  optionSome <- lift $ handleDefiniteDescriptionIntoRawConsName m coreOptionSome
+  return $
+    m
+      :< RT.DataElim
+        False
+        [e1']
+        ( RP.new
+            [ (V.fromList [(m, RP.Cons optionNone [])], m :< RT.PiElim optionNoneVar []),
+              (V.fromList [(m, RP.Cons optionSome [pat])], e2)
+            ]
+        )
+
+-- let+ x = e1 in e2
 rawTermLetCoproduct :: Hint -> Parser RT.RawTerm
 rawTermLetCoproduct m = do
-  keyword "let?"
+  keyword "let+"
   pat@(mx, _) <- rawTermPattern
   rightType <- rawTermLetVarAscription mx
   delimiter "="
