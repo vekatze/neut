@@ -130,7 +130,7 @@ parseLocator = do
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
-    [ parseDefineEnum,
+    [ parseDefineVariant,
       parseDefineStruct,
       return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
@@ -193,13 +193,13 @@ defineFunction ::
 defineFunction stmtKind m name impArgNum binder codType e = do
   return $ RawStmtDefine stmtKind m name impArgNum binder codType e
 
-parseDefineEnum :: P.Parser [RawStmt]
-parseDefineEnum = do
+parseDefineVariant :: P.Parser [RawStmt]
+parseDefineVariant = do
   m <- P.getCurrentHint
-  try $ P.keyword "enum"
+  try $ P.keyword "variant"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preBinder
-  consInfoList <- P.betweenBrace $ P.manyList parseDefineEnumClause
+  consInfoList <- P.betweenBrace $ P.manyList parseDefineVariantClause
   lift $ defineData m a dataArgs consInfoList
 
 defineData ::
@@ -215,7 +215,7 @@ defineData m dataName dataArgs consInfoList = do
   let dataType = constructDataType m dataName dataArgs
   let formRule = RawStmtDefine stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
   -- let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
-  introRuleList <- parseDefineEnumConstructor dataType dataName dataArgs consInfoList' D.zero
+  introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
 modifyConsInfo ::
@@ -238,14 +238,14 @@ modifyConstructorName m dataDD (mb, consName, yts) = do
   consName' <- Throw.liftEither $ DD.extend m dataDD consName
   return (mb, consName', yts)
 
-parseDefineEnumConstructor ::
+parseDefineVariantConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
   App [RawStmt]
-parseDefineEnumConstructor dataType dataName dataArgs consInfoList discriminant = do
+parseDefineVariantConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
       return []
@@ -262,7 +262,7 @@ parseDefineEnumConstructor dataType dataName dataArgs consInfoList discriminant 
               args
               dataType
               $ m :< RT.DataIntro dataName consName discriminant dataArgs' consArgs'
-      introRuleList <- parseDefineEnumConstructor dataType dataName dataArgs rest (D.increment discriminant)
+      introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 
 constructDataType ::
@@ -273,15 +273,15 @@ constructDataType ::
 constructDataType m dataName dataArgs = do
   m :< RT.Data dataName (map identPlusToVar dataArgs)
 
-parseDefineEnumClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
-parseDefineEnumClause = do
+parseDefineVariantClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
+parseDefineVariantClause = do
   m <- P.getCurrentHint
   consName <- P.symbolCapitalized
-  consArgs <- P.argList parseDefineEnumClauseArg
+  consArgs <- P.argList parseDefineVariantClauseArg
   return (m, consName, consArgs)
 
-parseDefineEnumClauseArg :: P.Parser (BinderF RT.RawTerm)
-parseDefineEnumClauseArg = do
+parseDefineVariantClauseArg :: P.Parser (BinderF RT.RawTerm)
+parseDefineVariantClauseArg = do
   m <- P.getCurrentHint
   choice
     [ try preAscription,
