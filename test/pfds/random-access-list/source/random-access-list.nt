@@ -80,7 +80,7 @@ define uncons-tree<a>(ts: R-list(a)): opt::option(tree(a) * R-list(a)) {
     match uncons-tree(New(rest)) {
     - sum::sum.left(_) =>
       opt::none()
-    - sum::sum.right(product.new(new-tree, New(new-ts))) =>
+    - sum::sum.right(tuple(new-tree, New(new-ts))) =>
       match new-tree {
       - tree.Leaf(_) =>
         opt::none()

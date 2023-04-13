@@ -68,7 +68,7 @@ define main(): i64 {
     - core.sum::sum.left(l) =>
       1
     - core.sum::sum.right(pair) =>
-      bind product.new(left, right) = pair
+      bind tuple(left, right) = pair
       {!right}()
     }
   }

@@ -28,10 +28,8 @@ struct product(a, b) {
 }
 
 define insert<a>(cmp: (a, a) -> order(), x: a, t: heap(a)): heap(a) {
-  match split(cmp, x, t) {
-  - product.new(smaller, bigger) =>
-    node(smaller, x, bigger)
-  }
+  let tuple(smaller, bigger) = split(cmp, x, t)
+  node(smaller, x, bigger)
 }
 
 define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): heap(a) * heap(a) {
@@ -49,16 +47,12 @@ define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): heap(a) * heap(a)
         match cmp(w, pivot) {
         // go right
         - order.lt() =>
-          match split(cmp, pivot, right-right) {
-          - product.new(right-right-small, right-right-big) =>
-            tuple(node(node(left, v, right-right-small), w, right-right-small), right-right-big)
-          }
+          let tuple(right-right-small, right-right-big) = split(cmp, pivot, right-right)
+          tuple(node(node(left, v, right-right-small), w, right-right-small), right-right-big)
         // go left
         - otherwise =>
-          match split(cmp, pivot, right-left) {
-          - product.new(right-left-small, right-left-big) =>
-            tuple(node(left, v, right-left-small), node(right-left-big, w, right-right))
-          }
+          let tuple(right-left-small, right-left-big) = split(cmp, pivot, right-left)
+          tuple(node(left, v, right-left-small), node(right-left-big, w, right-right))
         }
       }
     // go left
@@ -70,16 +64,12 @@ define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): heap(a) * heap(a)
         match cmp(w, pivot) {
         // go right
         - order.lt() =>
-          match split(cmp, pivot, left-right) {
-          - product.new(left-right-small, left-right-big) =>
-            tuple(node(left-left, w, left-right-small), node(left-right-big, v, right))
-          }
+          let tuple(left-right-small, left-right-big) = split(cmp, pivot, left-right)
+          tuple(node(left-left, w, left-right-small), node(left-right-big, v, right))
         // go left
         - otherwise =>
-          match split(cmp, pivot, left-left) {
-          - product.new(left-left-small, left-left-big) =>
-            tuple(left-left-small, node(left-left-big, w, node(left-right, v, right)))
-          }
+          let tuple(left-left-small, left-left-big) = split(cmp, pivot, left-left)
+          tuple(left-left-small, node(left-left-big, w, node(left-right, v, right)))
         }
       }
     }

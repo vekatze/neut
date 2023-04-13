@@ -505,6 +505,7 @@ rawTermPatternBasic :: Parser (Hint, RP.RawPattern)
 rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
+      try rawTermPatternProductIntro,
       rawTermPatternConsOrVar
     ]
 
@@ -522,6 +523,24 @@ foldListAppPat m es =
     e : rest -> do
       let rest' = foldListAppPat m rest
       (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.cons") [e, rest'])
+
+rawTermPatternProductIntro :: Parser (Hint, RP.RawPattern)
+rawTermPatternProductIntro = do
+  m <- getCurrentHint
+  keyword "tuple"
+  patList <- betweenParen $ commaList rawTermPattern
+  return $ foldTuplePat m patList
+
+foldTuplePat :: Hint -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
+foldTuplePat m es =
+  case es of
+    [] ->
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "top.unit") [])
+    [e] ->
+      e
+    e : rest -> do
+      let rest' = foldTuplePat m rest
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "product.new") [e, rest'])
 
 parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
 parseVarOrDefiniteDescription = do

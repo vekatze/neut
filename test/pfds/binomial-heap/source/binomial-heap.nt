@@ -147,26 +147,22 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(
     some(tuple(t, []))
   - t :: ts =>
     let? pair = remove-min-tree(cmp, ts)
-    match pair {
-    - product.new(cand, ts-adjusted) =>
-      let root-head on t = root(t)
-      let root-cand on cand = root(cand)
-      match cmp(root-head, root-cand) {
-      - order.lt() =>
-        some(tuple(t, cand :: ts-adjusted))
-      - otherwise =>
-        some(tuple(cand, t :: ts-adjusted))
-      }
+    let tuple(cand, ts-adjusted) = pair
+    let root-head on t = root(t)
+    let root-cand on cand = root(cand)
+    match cmp(root-head, root-cand) {
+    - order.lt() =>
+      some(tuple(t, cand :: ts-adjusted))
+    - otherwise =>
+      some(tuple(cand, t :: ts-adjusted))
     }
   }
 }
 
 define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): ?heap(a) {
   let? pair = remove-min-tree(cmp, h)
-  match pair {
-  - product.new(node(r, x, ts1), ts2) =>
-    some(merge(cmp, reverse(ts1), ts2))
-  }
+  let tuple(node(r, x, ts1), ts2) = pair
+  some(merge(cmp, reverse(ts1), ts2))
 }
 
 define compare-int(x: i64, y: i64): order() {
