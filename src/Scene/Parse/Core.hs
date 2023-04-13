@@ -226,4 +226,4 @@ asTokens s =
 
 asLabel :: T.Text -> ErrorItem Char
 asLabel s =
-  Tokens $ fromList $ T.unpack s
+  Label $ fromList $ T.unpack s
