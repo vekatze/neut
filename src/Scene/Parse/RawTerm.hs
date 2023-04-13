@@ -103,6 +103,7 @@ rawTermBasic = do
       rawTermOption,
       rawTermEmbody,
       rawTermLazy,
+      rawTermTuple,
       rawTermPiElimOrSimple
     ]
 
@@ -281,11 +282,25 @@ rawTermPiOrConsOrAscOrBasic = do
         rest <- rawTerm
         return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [basic, rest],
       do
+        delimiter "*"
+        ts <- sepBy1 rawTermBasic (delimiter "*")
+        return $ foldByOp m "product" (basic : ts),
+      do
         delimiter ":"
         t <- rawTerm
         annotateIfNecessary m (Just t) basic,
       return basic
     ]
+
+foldByOp :: Hint -> T.Text -> [RT.RawTerm] -> RT.RawTerm
+foldByOp m opName es =
+  case es of
+    [] ->
+      error "RawTerm.foldProduct: invalid argument"
+    [e] ->
+      e
+    e : rest ->
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText opName)) [e, foldByOp m opName rest]
 
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
@@ -607,6 +622,19 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
 rawTermBrace :: Parser RT.RawTerm
 rawTermBrace =
   betweenBrace rawExpr
+
+rawTermTuple :: Parser RT.RawTerm
+rawTermTuple = do
+  m <- getCurrentHint
+  keyword "tuple"
+  es <- betweenParen $ commaList rawExpr
+  case es of
+    [] ->
+      return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "top.unit")) []
+    [e] ->
+      return e
+    _ ->
+      return $ foldByOp m "product.new" es
 
 bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =

@@ -8,12 +8,12 @@ import {
 use {
 - core.bool
 - core.top
-- core.sum
+- core.option
 }
 
 struct product(a, b) {
-- first: a
-- second: b
+- left: a
+- right: b
 }
 
 enum custom-stack(a) {
@@ -34,7 +34,7 @@ define is-empty<a>(xs: &custom-stack(a)): bool() {
   }
 }
 
-define head<a>(xs: &custom-stack(a)): core.option::option(&product(a, a)) {
+define head<a>(xs: &custom-stack(a)): ?&{a * a} {
   case xs {
   - custom-stack.nil() =>
     core.option::none()
@@ -43,7 +43,7 @@ define head<a>(xs: &custom-stack(a)): core.option::option(&product(a, a)) {
   }
 }
 
-define tail<a>(xs: &custom-stack(a)): core.option::option(&custom-stack(a)) {
+define tail<a>(xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
   - custom-stack.nil() =>
     core.option::none()
@@ -54,11 +54,7 @@ define tail<a>(xs: &custom-stack(a)): core.option::option(&custom-stack(a)) {
 
 define main(): i64 {
   let xs = empty()
-  let v =
-    new product {
-    - product.first <= lambda () { 1 }
-    - product.second <= lambda () { 2: i64 }
-    }
+  let v = tuple(lambda () { 1 }, lambda () { 2: i64 })
   let ys = custom-stack.cons(v, xs)
   let zs = custom-stack.cons(v, custom-stack.cons(v, ys))
   let calc on zs, xs = {
@@ -69,10 +65,11 @@ define main(): i64 {
     let t = tail(zs)
     let t2 = tail(zs)
     match h {
-    - sum.left(l) =>
+    - core.sum::sum.left(l) =>
       1
-    - sum.right(pair) =>
-      {!pair[product.second]}()
+    - core.sum::sum.right(pair) =>
+      bind product.new(left, right) = pair
+      {!right}()
     }
   }
   calc

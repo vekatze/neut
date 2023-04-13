@@ -17,29 +17,29 @@ struct product(a, b) {
 }
 
 define-inline queue(a: tau): tau {
-  product(list(a), list(a))
+  list(a) * list(a)
 }
 
 define empty<a>(): queue(a) {
-  product.new(list.nil(), list.nil())
+  tuple([], [])
 }
 
 define reverse<a>(xs: list(a)): list(a) {
   let f =
     define helper(ys: list(a), acc: list(a)): list(a) {
       match ys {
-      - list.nil() =>
+      - [] =>
         acc
-      - list.cons(z, zs) =>
-        helper(zs, list.cons(z, acc))
+      - z :: zs =>
+        helper(zs, z :: acc)
       }
     }
-  f(xs, list.nil())
+  f(xs, [])
 }
 
 define head<a>(q: &queue(a)): ?a {
   case q {
-  - product.new(list.cons(x, rest), ys) =>
+  - product.new(x :: rest, ys) =>
     some(!x)
   - otherwise =>
     none()
@@ -48,8 +48,8 @@ define head<a>(q: &queue(a)): ?a {
 
 define-inline sanitize<a>(q: queue(a)): queue(a) {
   match q {
-  - product.new(list.nil(), ys) =>
-    product.new(reverse(ys), list.nil())
+  - product.new([], ys) =>
+    tuple(reverse(ys), [])
   - q =>
     q
   }
@@ -57,8 +57,8 @@ define-inline sanitize<a>(q: queue(a)): queue(a) {
 
 define tail<a>(q: queue(a)): ?queue(a) {
   match q {
-  - product.new(list.cons(x, rest), ys) =>
-    some(sanitize(product.new(rest, ys)))
+  - product.new(x :: rest, ys) =>
+    some(sanitize(tuple(rest, ys)))
   - otherwise =>
     none()
   }
@@ -67,15 +67,15 @@ define tail<a>(q: queue(a)): ?queue(a) {
 define snoc<a>(v: a, q: queue(a)): queue(a) {
   match q {
   - product.new(xs, ys) =>
-    sanitize(product.new(xs, list.cons(v, ys)))
+    sanitize(tuple(xs, v :: ys))
   }
 }
 
 define sum(xs: &list(i64)): i64 {
   case xs {
-  - list.nil() =>
+  - [] =>
     0
-  - list.cons(v, rest) =>
+  - v :: rest =>
     add-i64(!v, sum(rest))
   }
 }

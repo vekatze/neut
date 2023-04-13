@@ -67,7 +67,7 @@ define tails(a: tau, xs: list(a)): list(list(a)) {
   }
 }
 
-define map(a: tau, b: tau, f: (a) -> b, xs: list(a)): list(b) {
+define map(a: tau, b: tau, f: a -> b, xs: list(a)): list(b) {
   match xs {
   - nil() =>
     nil()

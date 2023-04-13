@@ -40,7 +40,7 @@ enum list(a: tau) {
 - cons(a, list(a))
 }
 
-define fold(a: tau, fs: list((_: a) -> a), x: a): a {
+define fold(a: tau, fs: list(a -> a), x: a): a {
   match fs {
   - nil() =>
     x

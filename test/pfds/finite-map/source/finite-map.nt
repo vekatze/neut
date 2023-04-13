@@ -99,9 +99,9 @@ define main(): i64 {
         1
       - core.sum::sum.right(xs) =>
         match xs {
-        - list.nil() =>
+        - [] =>
           10
-        - list.cons(a, b) =>
+        - _ :: _ =>
           20
         }
       }

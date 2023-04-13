@@ -12,7 +12,7 @@ use {
 - this.random-access-list::R-list
 }
 
-struct tuple(a, b) {
+struct product(a, b) {
 - left: a
 - right: b
 }
@@ -53,11 +53,11 @@ define link<a>(t1: tree(a), t2: tree(a)): tree(a) {
 
 define cons-tree<a>(t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
-  - New(list.nil()) =>
+  - New([]) =>
     New([One(t)])
-  - New(list.cons(Zero(), rest)) =>
+  - New(Zero() :: rest) =>
     New(One(t) :: rest)
-  - New(list.cons(One(t0), rest)) =>
+  - New(One(t0) :: rest) =>
     let New(ts-new) = cons-tree(link(t, t0), New(rest))
     New(Zero() :: ts-new)
   }
@@ -67,25 +67,25 @@ define cons<a>(x: a, ts: R-list(a)): R-list(a) {
   cons-tree(tree.Leaf(x), ts)
 }
 
-define uncons-tree<a>(ts: R-list(a)): opt::option(tuple(tree(a), R-list(a))) {
+define uncons-tree<a>(ts: R-list(a)): opt::option(tree(a) * R-list(a)) {
   let New(xs) = ts
   match xs {
-  - list.nil() =>
+  - [] =>
     opt::none()
-  - list.cons(One(y), list.nil()) =>
-    opt::some(tuple.new(y, New([])))
-  - list.cons(One(y), rest) =>
-    opt::some(tuple.new(y, New(Zero() :: rest)))
-  - list.cons(Zero(), rest) =>
+  - One(y) :: [] =>
+    opt::some(tuple(y, New([])))
+  - One(y) :: rest =>
+    opt::some(tuple(y, New(Zero() :: rest)))
+  - Zero() :: rest =>
     match uncons-tree(New(rest)) {
     - sum::sum.left(_) =>
       opt::none()
-    - sum::sum.right(tuple.new(new-tree, New(new-ts))) =>
+    - sum::sum.right(product.new(new-tree, New(new-ts))) =>
       match new-tree {
       - tree.Leaf(_) =>
         opt::none()
       - tree.Node(_, t1, t2) =>
-        opt::some(tuple.new(t1, New(One(t2) :: new-ts)))
+        opt::some(tuple(t1, New(One(t2) :: new-ts)))
       }
     }
   }
@@ -111,11 +111,11 @@ define lookup-tree<a>(i: i64, t: &tree(a)): opt::option(a) {
 
 define lookup-list<a>(i: i64, xs: &list(digit(a))): opt::option(a) {
   case xs {
-  - list.nil() =>
+  - [] =>
     opt::none()
-  - list.cons(Zero(), rest) =>
+  - Zero() :: rest =>
     lookup-list(i, rest)
-  - list.cons(One(t), rest) =>
+  - One(t) :: rest =>
     let s = size(t)
     if lt-i64(i, s) {
       lookup-tree(i, t)
@@ -150,12 +150,12 @@ define update-tree<a>(i: i64, x: a, t: tree(a)): tree(a) {
 
 define update<a>(i: i64, x: a, xs: R-list(a)): R-list(a) {
   match xs {
-  - New(list.nil()) =>
+  - New([]) =>
     New([])
-  - New(list.cons(Zero(), ts)) =>
+  - New(Zero() :: ts) =>
     let New(new-xs) = update(i, x, New(ts))
     New(Zero() :: new-xs)
-  - New(list.cons(One(t), ts)) =>
+  - New(One(t) :: ts) =>
     let s on t = size(t)
     if lt-i64(i, s) {
       New(One(update-tree(i, x, t)) :: ts)
@@ -176,7 +176,7 @@ define find-and-get(i: i64, xs: &R-list(i64)): i64 {
 }
 
 define main(): i64 {
-  let xs = New(list.nil()): R-list(i64)
+  let xs = New([]): R-list(i64)
   let xs = cons(3, xs)
   let xs = cons(2, xs)
   let xs = cons(4, xs)

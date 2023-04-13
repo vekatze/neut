@@ -1,0 +1,5 @@
+dependency = {}
+extra-content = []
+target = {
+  product = "product.nt"
+}

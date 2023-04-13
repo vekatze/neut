@@ -2,7 +2,7 @@ enum item(a: tau) {
 - cons(a)
 }
 
-define view(x: item((_: i64) -> i64)): i64 {
+define view(x: item(i64 -> i64)): i64 {
   match x {
   - item.cons(a) =>
     1

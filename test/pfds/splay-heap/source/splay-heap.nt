@@ -22,42 +22,42 @@ enum order() {
 - gt()
 }
 
-struct tuple(a, b) {
+struct product(a, b) {
 - left: a
 - right: b
 }
 
 define insert<a>(cmp: (a, a) -> order(), x: a, t: heap(a)): heap(a) {
   match split(cmp, x, t) {
-  - tuple.new(smaller, bigger) =>
+  - product.new(smaller, bigger) =>
     node(smaller, x, bigger)
   }
 }
 
-define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
+define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): heap(a) * heap(a) {
   match t {
   - leaf() =>
-    tuple.new(leaf(), leaf())
+    tuple(leaf(), leaf())
   - node(left, v, right) =>
     match cmp(v, pivot) {
     // go right
     - order.lt() =>
       match right {
       - leaf() =>
-        tuple.new(node(left, v, leaf()), leaf())
+        tuple(node(left, v, leaf()), leaf())
       - node(right-left, w, right-right) =>
         match cmp(w, pivot) {
         // go right
         - order.lt() =>
           match split(cmp, pivot, right-right) {
-          - tuple.new(right-right-small, right-right-big) =>
-            tuple.new(node(node(left, v, right-right-small), w, right-right-small), right-right-big)
+          - product.new(right-right-small, right-right-big) =>
+            tuple(node(node(left, v, right-right-small), w, right-right-small), right-right-big)
           }
         // go left
         - otherwise =>
           match split(cmp, pivot, right-left) {
-          - tuple.new(right-left-small, right-left-big) =>
-            tuple.new(node(left, v, right-left-small), node(right-left-big, w, right-right))
+          - product.new(right-left-small, right-left-big) =>
+            tuple(node(left, v, right-left-small), node(right-left-big, w, right-right))
           }
         }
       }
@@ -65,20 +65,20 @@ define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): tuple(heap(a), he
     - otherwise =>
       match left {
       - leaf() =>
-        tuple.new(leaf(), node(leaf(), v, right))
+        tuple(leaf(), node(leaf(), v, right))
       - node(left-left, w, left-right) =>
         match cmp(w, pivot) {
         // go right
         - order.lt() =>
           match split(cmp, pivot, left-right) {
-          - tuple.new(left-right-small, left-right-big) =>
-            tuple.new(node(left-left, w, left-right-small), node(left-right-big, v, right))
+          - product.new(left-right-small, left-right-big) =>
+            tuple(node(left-left, w, left-right-small), node(left-right-big, v, right))
           }
         // go left
         - otherwise =>
           match split(cmp, pivot, left-left) {
-          - tuple.new(left-left-small, left-left-big) =>
-            tuple.new(left-left-small, node(left-left-big, w, node(left-right, v, right)))
+          - product.new(left-left-small, left-left-big) =>
+            tuple(left-left-small, node(left-left-big, w, node(left-right, v, right)))
           }
         }
       }
@@ -125,9 +125,9 @@ define compare-int-list(xs: list(i64), ys: list(i64)): order() {
 
 define sum(xs: &list(i64)): i64 {
   case xs {
-  - list.nil() =>
+  - [] =>
     0
-  - list.cons(y, ys) =>
+  - y :: ys =>
     add-i64(!y, sum(ys))
   }
 }

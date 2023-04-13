@@ -15,6 +15,11 @@ enum list(a) {
 - cons(a, list(a))
 }
 
+struct product(a, b) {
+- left: a
+- right: b
+}
+
 define reverse<a>(xs: list(a)): list(a) {
   let helper =
     define self(ys: list(a), acc: list(a)): list(a) {
@@ -109,10 +114,6 @@ define root<a>(t: &tree(a)): a {
   }
 }
 
-enum tuple(a, b) {
-- new(a, b)
-}
-
 define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
   let helper =
     define self(cand: a, h: &heap(a)): a {
@@ -138,23 +139,23 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
   }
 }
 
-define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?tuple(tree(a), heap(a)) {
+define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(a)} {
   match h {
   - [] =>
     none()
   - [t] =>
-    some(tuple.new(t, []))
+    some(tuple(t, []))
   - t :: ts =>
     let? pair = remove-min-tree(cmp, ts)
     match pair {
-    - tuple.new(cand, ts-adjusted) =>
+    - product.new(cand, ts-adjusted) =>
       let root-head on t = root(t)
       let root-cand on cand = root(cand)
       match cmp(root-head, root-cand) {
       - order.lt() =>
-        some(tuple.new(t, cand :: ts-adjusted))
+        some(tuple(t, cand :: ts-adjusted))
       - otherwise =>
-        some(tuple.new(cand, t :: ts-adjusted))
+        some(tuple(cand, t :: ts-adjusted))
       }
     }
   }
@@ -163,7 +164,7 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?tuple(tree(a), h
 define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): ?heap(a) {
   let? pair = remove-min-tree(cmp, h)
   match pair {
-  - tuple.new(node(r, x, ts1), ts2) =>
+  - product.new(node(r, x, ts1), ts2) =>
     some(merge(cmp, reverse(ts1), ts2))
   }
 }
