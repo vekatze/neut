@@ -9,7 +9,7 @@ enum list(a: tau) {
 
 define-inline get<a>(x: cell a): a {
   let value: &a = magic load(pointer(i8), x)
-  *value
+  !value
 }
 
 define-inline mutate<a>(x: cell a, mutator: a -> a): core.top::top() {

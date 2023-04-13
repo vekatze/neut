@@ -36,7 +36,7 @@ define member<a>(cmp: Cmp(a), x: a, t: &tree(a)): bool() {
   - leaf() =>
     bool.false()
   - node(c, t1, v, t2) =>
-    match cmp(x, *v) {
+    match cmp(x, !v) {
     - order.lt() =>
       member(cmp, x, t1)
     - order.eq() =>

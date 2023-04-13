@@ -72,7 +72,7 @@ define main(): i64 {
     - sum.left(l) =>
       1
     - sum.right(pair) =>
-      {*pair[product.second]}()
+      {!pair[product.second]}()
     }
   }
   calc

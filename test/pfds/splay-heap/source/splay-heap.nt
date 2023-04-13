@@ -91,7 +91,7 @@ define find-min<a>(t: &heap(a)): ?a {
   - leaf() =>
     none()
   - node(leaf(), x, right) =>
-    some(*x)
+    some(!x)
   - node(left, x, right) =>
     find-min(left)
   }
@@ -128,7 +128,7 @@ define sum(xs: &list(i64)): i64 {
   - list.nil() =>
     0
   - list.cons(y, ys) =>
-    add-i64(*y, sum(ys))
+    add-i64(!y, sum(ys))
   }
 }
 

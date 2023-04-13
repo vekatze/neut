@@ -29,12 +29,12 @@ define reverse<a>(xs: list(a)): list(a) {
 }
 
 enum tree(a) {
-  // the list is in *decreasing* order of rank
+  // the list is in !decreasing! order of rank
 - node(i64, a, list(tree(a)))
 }
 
 define-inline heap(a: tau): tau {
-  // the list is in *increasing* order of rank
+  // the list is in !increasing! order of rank
   list(tree(a))
 }
 
@@ -59,7 +59,7 @@ define link<a>(cmp: (a, a) -> order(), t1: tree(a), t2: tree(a)): tree(a) {
 define rank<a>(t: &tree(a)): i64 {
   case t {
   - node(r, v, children) =>
-    *r
+    !r
   }
 }
 
@@ -105,7 +105,7 @@ define merge<a>(cmp: (a, a) -> order(), h1: heap(a), h2: heap(a)): heap(a) {
 define root<a>(t: &tree(a)): a {
   case t {
   - node(r, v, children) =>
-    *v
+    !v
   }
 }
 

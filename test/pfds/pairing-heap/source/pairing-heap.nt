@@ -27,7 +27,7 @@ define find-min<a>(h: &heap(a)): ?a {
   - leaf() =>
     none(): ?a
   - node(v, hs) =>
-    some(*v)
+    some(!v)
   }
 }
 

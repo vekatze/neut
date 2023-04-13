@@ -50,7 +50,7 @@ define make-set-signature<a>(compare: (a, a) -> order()): set-signature(a) {
       - set.leaf() =>
         bool.false()
       - set.node(left, x, right) =>
-        match compare(needle, *x) {
+        match compare(needle, !x) {
         - order.lt() =>
           member(needle, left)
         - order.eq() =>

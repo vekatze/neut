@@ -41,7 +41,7 @@ define size<a>(t: &tree(a)): i64 {
   - tree.Leaf(_) =>
     1
   - tree.Node(w, _, _) =>
-    *w
+    !w
   }
 }
 
@@ -95,12 +95,12 @@ define lookup-tree<a>(i: i64, t: &tree(a)): opt::option(a) {
   case t {
   - tree.Leaf(v) =>
     if eq-i64(i, 0) {
-      opt::some(*v)
+      opt::some(!v)
     } else {
       opt::none()
     }
   - tree.Node(w, t1, t2) =>
-    let w-div-2 = div-i64(*w, 2)
+    let w-div-2 = div-i64(!w, 2)
     if lt-i64(i, w-div-2) {
       lookup-tree(i, t1)
     } else {

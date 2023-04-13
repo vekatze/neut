@@ -40,7 +40,7 @@ define reverse<a>(xs: list(a)): list(a) {
 define head<a>(q: &queue(a)): ?a {
   case q {
   - product.new(list.cons(x, rest), ys) =>
-    some(*x)
+    some(!x)
   - otherwise =>
     none()
   }
@@ -76,7 +76,7 @@ define sum(xs: &list(i64)): i64 {
   - list.nil() =>
     0
   - list.cons(v, rest) =>
-    add-i64(*v, sum(rest))
+    add-i64(!v, sum(rest))
   }
 }
 
