@@ -22,6 +22,7 @@ import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
 import Entity.Hint
+import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
@@ -38,8 +39,8 @@ import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Reveal qualified as Reveal
 import Scene.Elaborate.Unify qualified as Unify
-import Scene.Term.PureReduce qualified as TM
 import Scene.Term.Reduce qualified as Term
+import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
 elaborate :: Either [Stmt] [WeakStmt] -> App [Stmt]
@@ -199,11 +200,10 @@ elaborate' term =
     m :< WT.CellElim e -> do
       e' <- elaborate' e
       return $ m :< TM.CellElim e'
-    m :< WT.Let opacity mxt e1 e2 -> do
+    m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- elaborate' e1
-      (mx, x, t) <- elaborateWeakBinder mxt
-      e2' <- elaborate' e2
       t' <- reduceType t
+      e2' <- elaborate' e2
       case opacity of
         WT.Noetic ->
           ensureTypeLucidity m t' t'
@@ -211,16 +211,7 @@ elaborate' term =
           return ()
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
     m :< WT.Hole h es -> do
-      holeSubst <- getHoleSubst
-      case HS.lookup h holeSubst of
-        Nothing ->
-          Throw.raiseError m "couldn't instantiate the hole here"
-        Just (xs, e)
-          | length xs == length es -> do
-              let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-              WT.subst s e >>= elaborate'
-          | otherwise ->
-              Throw.raiseError m "arity mismatch"
+      fillHole m h es >>= elaborate'
     m :< WT.Prim prim ->
       case prim of
         WP.Type t ->
@@ -273,6 +264,23 @@ elaborateKind kind =
       xt' <- elaborateWeakBinder xt
       return $ LK.Fix xt'
 
+fillHole ::
+  Hint ->
+  HID.HoleID ->
+  [WT.WeakTerm] ->
+  App WT.WeakTerm
+fillHole m h es = do
+  holeSubst <- getHoleSubst
+  case HS.lookup h holeSubst of
+    Nothing ->
+      Throw.raiseError m "couldn't instantiate the hole here"
+    Just (xs, e)
+      | length xs == length es -> do
+          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
+          WT.subst s e
+      | otherwise ->
+          Throw.raiseError m "arity mismatch"
+
 -- cs <- readIORef constraintEnv
 -- p "==========================================================="
 -- forM_ cs $ \(e1, e2) -> do
@@ -289,7 +297,7 @@ elaborateDecisionTree m tree =
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do
-      cursorType' <- elaborate' cursorType >>= reduceType
+      cursorType' <- reduceWeakType cursorType >>= elaborate'
       consList <- extractConstructorList m cursorType'
       let activeConsList = DT.getConstructors clauseList
       let diff = S.difference (S.fromList consList) (S.fromList activeConsList)
@@ -315,16 +323,22 @@ elaborateClause (DT.Cons mCons consName disc dataArgs consArgs cont) = do
   cont' <- elaborateDecisionTree mCons cont
   return $ DT.Cons mCons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
-reduceType :: TM.Term -> App TM.Term
+reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do
-  e' <- TM.pureReduce e
+  reduceWeakType e >>= elaborate'
+
+reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType e = do
+  e' <- WT.reduce e
   case e' of
-    m :< TM.PiElim (_ :< TM.VarGlobal name _) args -> do
-      mLam <- Definition.lookup name
+    m :< WT.Hole h es ->
+      fillHole m h es >>= reduceWeakType
+    m :< WT.PiElim (_ :< WT.VarGlobal name _) args -> do
+      mLam <- WeakDefinition.lookup name
       case mLam of
         Just lam ->
-          reduceType $ m :< TM.PiElim lam args
-        Nothing ->
+          reduceWeakType $ m :< WT.PiElim lam args
+        Nothing -> do
           return e'
     _ ->
       return e'
@@ -355,7 +369,7 @@ ensureTypeLucidity m orig t = do
       return () -- opaque type variable
     _ :< TM.Data dataName dataArgs -> do
       ensureDataLucidity m orig dataName
-      dataArgs' <- mapM reduceType dataArgs
+      dataArgs' <- mapM (reduceType . weaken) dataArgs
       forM_ dataArgs' $ ensureTypeLucidity m orig
     _ :< TM.Prim (P.Type {}) ->
       return ()
@@ -385,11 +399,11 @@ getNonLucidConsName ::
   DD.DefiniteDescription ->
   App (Maybe DD.DefiniteDescription)
 getNonLucidConsName m consName = do
-  t <- Type.lookup m consName >>= elaborate' >>= reduceType
+  t <- Type.lookup m consName >>= reduceType
   case t of
     _ :< TM.Pi xts _ -> do
       isLucidArgFlagList <- forM xts $ \(_, _, dom) -> do
-        reduceType dom >>= isLucidArgument
+        reduceType (weaken dom) >>= isLucidArgument
       if and isLucidArgFlagList
         then return Nothing
         else return $ Just consName

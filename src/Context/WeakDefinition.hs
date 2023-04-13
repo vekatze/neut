@@ -1,6 +1,7 @@
 module Context.WeakDefinition
   ( insert,
     read,
+    lookup,
   )
 where
 
@@ -30,3 +31,8 @@ insert opacity m name xts e =
 read :: App DefMap
 read =
   readRef' weakDefMap
+
+lookup :: DD.DefiniteDescription -> App (Maybe WeakTerm)
+lookup name = do
+  denv <- readRef' weakDefMap
+  return $ Map.lookup name denv
