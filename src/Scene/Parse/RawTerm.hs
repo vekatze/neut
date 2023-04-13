@@ -89,6 +89,7 @@ rawTerm = do
       rawTermMatchNoetic,
       rawTermMatch,
       rawTermNew,
+      rawTermCell,
       rawTermIf,
       rawTermListIntro,
       rawTermPiGeneral,
@@ -99,7 +100,6 @@ rawTermBasic :: Parser RT.RawTerm
 rawTermBasic = do
   choice
     [ rawTermNoema,
-      rawTermCell,
       rawTermOption,
       rawTermEmbody,
       rawTermLazy,
@@ -201,7 +201,7 @@ rawTermNoeticVar :: Parser (Mutability, Hint, T.Text)
 rawTermNoeticVar =
   choice
     [ do
-        delimiter "!"
+        keyword "mutable"
         (m, x) <- var
         return (Mutable, m, x),
       do
@@ -622,8 +622,8 @@ rawTermNoema = do
 rawTermCell :: Parser RT.RawTerm
 rawTermCell = do
   m <- getCurrentHint
-  delimiter "!"
-  t <- rawTermBasic
+  delimiter "cell"
+  t <- rawTerm
   return $ m :< RT.Cell t
 
 rawTermOption :: Parser RT.RawTerm
