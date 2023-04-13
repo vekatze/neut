@@ -34,12 +34,12 @@ define reverse<a>(xs: list(a)): list(a) {
 }
 
 enum tree(a) {
-  // the list is in !decreasing! order of rank
+  // the list is in *decreasing* order of rank
 - node(i64, a, list(tree(a)))
 }
 
 define-inline heap(a: tau): tau {
-  // the list is in !increasing! order of rank
+  // the list is in *increasing* order of rank
   list(tree(a))
 }
 
