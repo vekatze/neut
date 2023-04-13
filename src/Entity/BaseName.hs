@@ -83,7 +83,7 @@ main =
 
 new :: BaseName
 new =
-  MakeBaseName "new"
+  MakeBaseName "New"
 
 imm :: BaseName
 imm =

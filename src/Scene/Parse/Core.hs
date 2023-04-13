@@ -6,6 +6,7 @@ import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
+import Data.Char
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -75,6 +76,13 @@ lexeme =
 symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+
+symbolCapitalized :: Parser T.Text
+symbolCapitalized = do
+  varText <- symbol
+  if isUpper (T.head varText)
+    then return varText
+    else failure (Just (asTokens varText)) (S.fromList [asLabel "capitalized symbol"])
 
 definiteDescriptionSymbol :: Parser T.Text
 definiteDescriptionSymbol = do

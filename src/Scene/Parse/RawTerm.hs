@@ -289,7 +289,7 @@ rawTermPiOrConsOrAscOrBasic = do
       do
         delimiter "::"
         rest <- rawTerm
-        return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [basic, rest],
+        return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.Cons")) [basic, rest],
       do
         delimiter "*"
         ts <- sepBy1 rawTermBasic (delimiter "*")
@@ -506,7 +506,7 @@ rawTermPattern = do
     [ try $ do
         delimiter "::"
         pat <- rawTermPattern
-        return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.cons") [headPat, pat]),
+        return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.Cons") [headPat, pat]),
       return headPat
     ]
 
@@ -528,10 +528,10 @@ foldListAppPat :: Hint -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
 foldListAppPat m es =
   case es of
     [] ->
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.nil") []) -- nil
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.Nil") []) -- nil
     e : rest -> do
       let rest' = foldListAppPat m rest
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.cons") [e, rest'])
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.Cons") [e, rest'])
 
 rawTermPatternProductIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternProductIntro = do
@@ -544,12 +544,12 @@ foldTuplePat :: Hint -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
 foldTuplePat m es =
   case es of
     [] ->
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "top.unit") [])
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "top.Unit") [])
     [e] ->
       e
     e : rest -> do
       let rest' = foldTuplePat m rest
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "product.new") [e, rest'])
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "product.New") [e, rest'])
 
 parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
 parseVarOrDefiniteDescription = do
@@ -658,11 +658,11 @@ rawTermTuple = do
   es <- betweenParen $ commaList rawExpr
   case es of
     [] ->
-      return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "top.unit")) []
+      return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "top.Unit")) []
     [e] ->
       return e
     _ ->
-      return $ foldByOp m "product.new" es
+      return $ foldByOp m "product.New" es
 
 bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
@@ -781,9 +781,9 @@ foldListApp :: Hint -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m es =
   case es of
     [] ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.nil")) []
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.Nil")) []
     e : rest ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.cons")) [e, foldListApp m rest]
+      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.Cons")) [e, foldListApp m rest]
 
 rawTermIntrospect :: Parser RT.RawTerm
 rawTermIntrospect = do

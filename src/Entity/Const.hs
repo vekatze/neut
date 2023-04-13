@@ -71,16 +71,16 @@ coreBool :: T.Text
 coreBool = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool"
 
 coreBoolTrue :: T.Text
-coreBoolTrue = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "true"
+coreBoolTrue = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "True"
 
 coreBoolFalse :: T.Text
-coreBoolFalse = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "false"
+coreBoolFalse = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "False"
 
 coreSum :: T.Text
 coreSum = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum"
 
 coreSumLeft :: T.Text
-coreSumLeft = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "left"
+coreSumLeft = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "Left"
 
 coreSumRight :: T.Text
-coreSumRight = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "right"
+coreSumRight = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "Right"

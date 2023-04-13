@@ -276,9 +276,9 @@ constructDataType m dataName dataArgs = do
 parseDefineEnumClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
 parseDefineEnumClause = do
   m <- P.getCurrentHint
-  b <- P.symbol
-  yts <- P.argList parseDefineEnumClauseArg
-  return (m, b, yts)
+  consName <- P.symbolCapitalized
+  consArgs <- P.argList parseDefineEnumClauseArg
+  return (m, consName, consArgs)
 
 parseDefineEnumClauseArg :: P.Parser (BinderF RT.RawTerm)
 parseDefineEnumClauseArg = do
@@ -295,10 +295,10 @@ parseDefineStruct = do
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgs <- P.argList preBinder
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgs [(m, "new", elemInfoList)]
+  formRule <- lift $ defineData m dataName dataArgs [(m, "New", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
-  dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "new"
+  dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "New"
   let numOfDataArgs = A.fromInt $ length dataArgs
   let numOfFields = A.fromInt $ length elemInfoList
   let (_, consInfoList, _) = unzip3 elemInfoList
