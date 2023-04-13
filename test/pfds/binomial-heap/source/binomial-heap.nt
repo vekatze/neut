@@ -146,8 +146,7 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(
   - [t] =>
     some(tuple(t, []))
   - t :: ts =>
-    let? pair = remove-min-tree(cmp, ts)
-    let tuple(cand, ts-adjusted) = pair
+    let? tuple(cand, ts-adjusted) = remove-min-tree(cmp, ts)
     let root-head on t = root(t)
     let root-cand on cand = root(cand)
     match cmp(root-head, root-cand) {
@@ -160,8 +159,7 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(
 }
 
 define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): ?heap(a) {
-  let? pair = remove-min-tree(cmp, h)
-  let tuple(node(r, x, ts1), ts2) = pair
+  let? tuple(node(r, x, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
   some(merge(cmp, reverse(ts1), ts2))
 }
 

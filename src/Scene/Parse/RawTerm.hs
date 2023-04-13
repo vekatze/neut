@@ -33,6 +33,7 @@ import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Mutability
+import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimType qualified as PT
@@ -123,33 +124,34 @@ rawTermSimple = do
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
   keyword "let"
-  pat <- rawTermPattern
+  pat@(mx, _) <- rawTermPattern
+  (x, modifier) <- getContinuationModifier pat
+  t <- rawTermLetVarAscription mx
+  let mxt = (mx, x, t)
+  choice
+    [ do
+        keyword "on"
+        noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
+        lift $ ensureNoeticVarLinearity m S.empty $ map (\(_, _, v) -> v) noeticVarList
+        delimiter "="
+        e1 <- rawTerm
+        e2 <- rawExpr
+        return $ m :< RT.Let mxt noeticVarList e1 (modifier False e2),
+      do
+        delimiter "="
+        e1 <- rawTerm
+        e2 <- rawExpr
+        return $ m :< RT.Let mxt [] e1 (modifier False e2)
+    ]
+
+getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (Ident, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
+getContinuationModifier pat@(m, _) =
   case pat of
-    (mx, RP.Var x) -> do
-      t <- rawTermLetVarAscription mx
-      let mxt = (mx, x, t)
-      choice
-        [ do
-            keyword "on"
-            noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
-            lift $ ensureNoeticVarLinearity m S.empty $ map (\(_, _, v) -> v) noeticVarList
-            delimiter "="
-            e1 <- rawTerm
-            e2 <- rawExpr
-            return $ m :< RT.Let mxt noeticVarList e1 e2,
-          do
-            delimiter "="
-            e1 <- rawTerm
-            e2 <- rawExpr
-            return $ m :< RT.Let mxt [] e1 e2
-        ]
+    (_, RP.Var x) ->
+      return (x, \_ e -> e)
     _ -> do
-      mt <- rawTermLetVarAscription'
-      delimiter "="
-      e1 <- rawTerm
-      e2 <- rawExpr
-      e1' <- annotateIfNecessary m mt e1
-      return $ m :< RT.DataElim False [e1'] (RP.new [(V.fromList [pat], e2)])
+      tmp <- lift $ Gensym.newTextualIdentFromText "tmp"
+      return (tmp, \isNoetic e -> m :< RT.DataElim isNoetic [m :< RT.Var tmp] (RP.new [(V.fromList [pat], e)]))
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
@@ -181,11 +183,13 @@ rawTermLetVarAscription' =
 rawTermBind :: Hint -> Parser RT.RawTerm
 rawTermBind m = do
   keyword "bind"
-  pat <- rawTermPattern
+  pat@(mx, _) <- rawTermPattern
+  (x, modifier) <- getContinuationModifier pat
+  t <- rawTermLetVarAscription mx
   delimiter "="
   e1 <- rawTerm
   e2 <- rawExpr
-  return $ m :< RT.DataElim True [e1] (RP.new [(V.fromList [pat], e2)])
+  return $ m :< RT.Let (mx, x, t) [] e1 (modifier True e2)
 
 ensureNoeticVarLinearity :: Hint -> S.Set T.Text -> [Ident] -> App ()
 ensureNoeticVarLinearity m foundVarSet vs =
@@ -214,9 +218,14 @@ rawTermNoeticVar =
 rawTermLetCoproduct :: Hint -> Parser RT.RawTerm
 rawTermLetCoproduct m = do
   keyword "let?"
-  x <- Ident.fromText <$> symbol
+  pat@(mx, _) <- rawTermPattern
+  rightType <- rawTermLetVarAscription mx
   delimiter "="
   e1 <- rawTerm
+  sumTypeDD <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSum
+  leftType <- lift $ Gensym.newPreHole m
+  let sumType = m :< RT.PiElim sumTypeDD [leftType, rightType]
+  e1' <- annotateIfNecessary m (Just sumType) e1
   e2 <- rawExpr
   err <- lift $ Gensym.newTextualIdentFromText "err"
   sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
@@ -226,10 +235,10 @@ rawTermLetCoproduct m = do
     m
       :< RT.DataElim
         False
-        [e1]
+        [e1']
         ( RP.new
             [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])], m :< RT.PiElim sumLeftVar [preVar' m err]),
-              (V.fromList [(m, RP.Cons sumRight [(m, RP.Var x)])], e2)
+              (V.fromList [(m, RP.Cons sumRight [pat])], e2)
             ]
         )
 

@@ -126,7 +126,7 @@ define lookup-list<a>(i: i64, xs: &list(digit(a))): opt::option(a) {
 }
 
 define lookup<a>(i: i64, xs: &R-list(a)): opt::option(a) {
-  bind New(xs) = xs
+  bind New(xs): &R-list(a) = xs
   lookup-list(i, xs)
 }
 
