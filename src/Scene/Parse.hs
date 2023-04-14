@@ -133,6 +133,7 @@ parseStmt = do
   choice
     [ parseDefineVariant,
       parseDefineStruct,
+      return <$> parseAlias,
       return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
       return <$> parseDefine O.Opaque,
@@ -358,6 +359,17 @@ parseDefineStructElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
               )
             ]
         )
+
+parseAlias :: P.Parser RawStmt
+parseAlias = do
+  m <- P.getCurrentHint
+  try $ P.keyword "alias"
+  aliasName <- P.baseName
+  aliasName' <- lift $ Locator.attachCurrentLocator aliasName
+  P.betweenBrace $ do
+    t <- rawExpr
+    let stmtKind = Normal O.Transparent
+    return $ RawStmtDefine True stmtKind m aliasName' AN.zero [] (m :< RT.Tau) t
 
 parseDefineResource :: P.Parser RawStmt
 parseDefineResource = do
