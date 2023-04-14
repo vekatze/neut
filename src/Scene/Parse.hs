@@ -313,10 +313,9 @@ parseDefineStruct = do
   try $ P.keyword "struct"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgsOrNone <- parseDataArgs
-  let dataArgs = fromMaybe [] dataArgsOrNone
-  let isConstLike = isNothing dataArgsOrNone
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, "New", isConstLike, elemInfoList)]
+  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, "New", False, elemInfoList)]
+  let dataArgs = fromMaybe [] dataArgsOrNone
   elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
   dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "New"
