@@ -129,13 +129,17 @@ clarifyDef stmt =
           )
         )
 
-clarifyData :: DD.DefiniteDescription -> [BinderF TM.Term] -> [(DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)] -> App C.Comp
+clarifyData ::
+  DD.DefiniteDescription ->
+  [BinderF TM.Term] ->
+  [(DD.DefiniteDescription, IsConstLike, [BinderF TM.Term], D.Discriminant)] ->
+  App C.Comp
 clarifyData name dataArgs consInfoList = do
   isEnum <- Enum.isMember name
   if isEnum
     then returnEnumS4 name
     else do
-      let dataInfo = map (\(_, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+      let dataInfo = map (\(_, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
       dataInfo' <- mapM clarifyDataClause dataInfo
       returnSigmaDataS4 name dataInfo'
 

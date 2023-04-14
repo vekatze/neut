@@ -80,9 +80,9 @@ discernStmtKind stmtKind =
       return $ Normal opacity
     Data dataName dataArgs consInfoList -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
-      let (consNameList, consArgsList, discriminantList) = unzip3 consInfoList
+      let (consNameList, isConstLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       consArgsList' <- map fst <$> mapM (discernBinder nenv) consArgsList
-      return $ Data dataName dataArgs' $ zip3 consNameList consArgsList' discriminantList
+      return $ Data dataName dataArgs' $ zip4 consNameList isConstLikeList consArgsList' discriminantList
     DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       (consArgs', _) <- discernBinder nenv consArgs
@@ -298,19 +298,27 @@ discernBinderWithBody' nenv (mx, x, t) binder e = do
 
 resolveName :: Hint -> T.Text -> App (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
+  nameOrErr <- resolveNameOrErr m name
+  case nameOrErr of
+    Left err ->
+      Throw.raiseError m err
+    Right pair ->
+      return pair
+
+resolveNameOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
+resolveNameOrErr m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
   candList' <- mapM Global.lookup candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
-      Throw.raiseError m $ "undefined variable: " <> name
+      return $ Left $ "undefined variable: " <> name
     [pair] ->
-      return pair
+      return $ Right pair
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
-      Throw.raiseError m $
-        "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
+      return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName m dd gn =
@@ -323,8 +331,11 @@ interpretGlobalName m dd gn =
       if isConstLike
         then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
         else return $ m :< WT.VarGlobal dd arity
-    GN.DataIntro dataArity consArity _ ->
-      return $ m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
+    GN.DataIntro dataArity consArity _ isConstLike -> do
+      let e = m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
+      if isConstLike
+        then return $ m :< WT.PiElim e []
+        else return e
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
     GN.PrimOp primOp ->
@@ -352,7 +363,7 @@ interpretDefiniteDescription m dd = do
 resolveConstructor ::
   Hint ->
   RP.RawConsName ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
+  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
 resolveConstructor m cons = do
   case cons of
     RP.UnresolvedName (UN.UnresolvedName consName') -> do
@@ -367,15 +378,27 @@ resolveConstructor m cons = do
       gn <- interpretDefiniteDescription m dd
       resolveConstructor' m dd gn
 
+resolveConstructorMaybe ::
+  Hint ->
+  T.Text ->
+  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
+resolveConstructorMaybe m name = do
+  locatorOrErr <- resolveNameOrErr m name
+  case locatorOrErr of
+    Right (dd, GN.DataIntro dataArity consArity disc isConstLike) ->
+      return $ Just (dd, dataArity, consArity, disc, isConstLike)
+    _ ->
+      return Nothing
+
 resolveConstructor' ::
   Hint ->
   DD.DefiniteDescription ->
   GN.GlobalName ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant)
+  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
 resolveConstructor' m dd gn =
   case gn of
-    GN.DataIntro dataArity consArity disc ->
-      return (dd, dataArity, consArity, disc)
+    GN.DataIntro dataArity consArity disc isConstLike ->
+      return (dd, dataArity, consArity, disc, isConstLike)
     _ ->
       Throw.raiseError m $ DD.reify dd <> " is not a constructor"
 
@@ -396,21 +419,34 @@ discernPatternRow ::
   NominalEnv ->
   RP.RawPatternRow RT.RawTerm ->
   App (PAT.PatternRow ([Ident], WT.WeakTerm))
-discernPatternRow nenv (patList, body) = do
-  let vars = RP.rowVars patList
-  ensurePatternVariableLinearity vars
-  vars' <- mapM (Gensym.newIdentFromIdent . snd) vars
-  let nenv' = zipWith (\(mv, var) var' -> (Ident.toText var, (mv, var'))) vars vars'
-  patList' <- mapM (discernPattern nenv') patList
-  body' <- discern (nenv' ++ nenv) body
-  return (patList', ([], body'))
+discernPatternRow nenv (patVec, body) = do
+  let patList = V.toList patVec
+  (patList', body') <- discernPatternRow' nenv patList [] body
+  return (V.fromList patList', body')
 
-ensurePatternVariableLinearity :: [(Hint, Ident)] -> App ()
-ensurePatternVariableLinearity vars = do
+discernPatternRow' ::
+  NominalEnv ->
+  [(Hint, RP.RawPattern)] ->
+  NominalEnv ->
+  RT.RawTerm ->
+  App ([(Hint, PAT.Pattern)], ([Ident], WT.WeakTerm))
+discernPatternRow' nenv patList newVarList body = do
+  case patList of
+    [] -> do
+      ensureVariableLinearity newVarList
+      body' <- discern (newVarList ++ nenv) body
+      return ([], ([], body'))
+    pat : rest -> do
+      (pat', varsInPat) <- discernPattern pat
+      (rest', body') <- discernPatternRow' nenv rest (varsInPat ++ newVarList) body
+      return (pat' : rest', body')
+
+ensureVariableLinearity :: NominalEnv -> App ()
+ensureVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
   unless (null linearityErrors) $ Throw.throw $ L.MakeError linearityErrors
 
-getNonLinearOccurrences :: [(Hint, Ident)] -> S.Set T.Text -> [(Hint, T.Text)] -> [L.Log]
+getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [L.Log]
 getNonLinearOccurrences vars found nonLinear =
   case vars of
     [] -> do
@@ -420,28 +456,35 @@ getNonLinearOccurrences vars found nonLinear =
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"
-    (m, v) : rest
-      | S.member (Ident.toText v) found ->
-          getNonLinearOccurrences rest found ((m, Ident.toText v) : nonLinear)
+    (from, (m, _)) : rest
+      | S.member from found ->
+          getNonLinearOccurrences rest found ((m, from) : nonLinear)
       | otherwise ->
-          getNonLinearOccurrences rest (S.insert (Ident.toText v) found) nonLinear
+          getNonLinearOccurrences rest (S.insert from found) nonLinear
 
 discernPattern ::
-  NominalEnv ->
   (Hint, RP.RawPattern) ->
-  App (Hint, PAT.Pattern)
-discernPattern nenv (m, pat) =
+  App ((Hint, PAT.Pattern), NominalEnv)
+discernPattern (m, pat) =
   case pat of
-    RP.Var x ->
-      case lookup (Ident.toText x) nenv of
-        Nothing ->
-          return (m, PAT.Var x)
-        Just (_, x') ->
-          return (m, PAT.Var x')
+    RP.Var (I (x, _)) -> do
+      mConsInfo <- resolveConstructorMaybe m x
+      case mConsInfo of
+        Nothing -> do
+          x' <- Gensym.newIdentFromText x
+          return ((m, PAT.Var x'), [(x, (m, x'))])
+        Just (consName, dataArity, consArity, disc, isConstLike) -> do
+          unless isConstLike $
+            Throw.raiseError m $
+              "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
+          return ((m, PAT.Cons consName disc dataArity consArity []), [])
     RP.Cons cons args -> do
-      (consName, dataArity, consArity, disc) <- resolveConstructor m cons
-      args' <- mapM (discernPattern nenv) args
-      return (m, PAT.Cons consName disc dataArity consArity args')
+      (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
+      when isConstLike $
+        Throw.raiseError m $
+          "the constructor `" <> RP.showRawConsName cons <> "` can't have any arguments"
+      (args', nenvList) <- mapAndUnzipM discernPattern args
+      return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
 
 ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity mat =

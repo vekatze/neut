@@ -42,17 +42,17 @@ define-inline heap(a: tau): tau {
   list(tree(a))
 }
 
-variant order() {
-- LT()
-- EQ()
-- GT()
+variant order {
+- LT
+- EQ
+- GT
 }
 
-define link<a>(cmp: (a, a) -> order(), t1: tree(a), t2: tree(a)): tree(a) {
+define link<a>(cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
   - Node(r1, x1, children1), Node(r2, x2, children2) =>
     match cmp(x1, x2) {
-    - order.LT() =>
+    - order.LT =>
       Node(add-i64(r1, 1), x1, Node(r2, x2, children2) :: children1)
     - otherwise =>
       Node(add-i64(r1, 1), x2, Node(r1, x1, children1) :: children2)
@@ -67,7 +67,7 @@ define rank<a>(t: &tree(a)): i64 {
   }
 }
 
-define insert-tree<a>(cmp: (a, a) -> order(), t: tree(a), h: heap(a)): heap(a) {
+define insert-tree<a>(cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a) {
   match h {
   - [] =>
     [t]
@@ -83,11 +83,11 @@ define insert-tree<a>(cmp: (a, a) -> order(), t: tree(a), h: heap(a)): heap(a) {
   }
 }
 
-define insert<a>(cmp: (a, a) -> order(), value: a, h: heap(a)): heap(a) {
+define insert<a>(cmp: (a, a) -> order, value: a, h: heap(a)): heap(a) {
   insert-tree(cmp, Node(0, value, []), h)
 }
 
-define merge<a>(cmp: (a, a) -> order(), h1: heap(a), h2: heap(a)): heap(a) {
+define merge<a>(cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   - [], h2 =>
     h2
@@ -113,7 +113,7 @@ define root<a>(t: &tree(a)): a {
   }
 }
 
-define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
+define find-min<a>(cmp: (a, a) -> order, h: &heap(a)): ?a {
   let helper =
     define self(cand: a, h: &heap(a)): a {
       case h {
@@ -122,7 +122,7 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
       - t :: ts =>
         let root-head = root(t)
         match cmp(root-head, cand) {
-        - order.LT() =>
+        - order.LT =>
           self(root-head, ts)
         - otherwise =>
           self(cand, ts)
@@ -138,7 +138,7 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
   }
 }
 
-define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(a)} {
+define remove-min-tree<a>(cmp: (a, a) -> order, h: heap(a)): ?{tree(a) * heap(a)} {
   match h {
   - [] =>
     option.None()
@@ -149,7 +149,7 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(
     let root-head on t = root(t)
     let root-cand on cand = root(cand)
     match cmp(root-head, root-cand) {
-    - order.LT() =>
+    - order.LT =>
       option.Some(tuple(t, cand :: ts-adjusted))
     - otherwise =>
       option.Some(tuple(cand, t :: ts-adjusted))
@@ -157,18 +157,18 @@ define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(
   }
 }
 
-define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): ?heap(a) {
+define delete-min<a>(cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   let? tuple(Node(r, x, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
   option.Some(merge(cmp, reverse(ts1), ts2))
 }
 
-define compare-int(x: i64, y: i64): order() {
+define compare-int(x: i64, y: i64): order {
   if lt-i64(x, y) {
-    order.LT()
+    order.LT
   } else-if gt-i64(x, y) {
-    order.GT()
+    order.GT
   } else {
-    order.EQ()
+    order.EQ
   }
 }
 

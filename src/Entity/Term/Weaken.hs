@@ -8,6 +8,7 @@ where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor
+import Data.List
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -151,9 +152,9 @@ weakenStmtKind stmtKind =
       Normal opacity
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
-      let (consNameList, consArgsList, discriminantList) = unzip3 consInfoList
+      let (consNameList, constLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       let consArgsList' = map (map weakenBinder) consArgsList
-      Data dataName dataArgs' $ zip3 consNameList consArgsList' discriminantList
+      Data dataName dataArgs' $ zip4 consNameList constLikeList consArgsList' discriminantList
     DataIntro dataName dataArgs consArgs discriminant -> do
       let dataArgs' = map weakenBinder dataArgs
       let consArgs' = map weakenBinder consArgs

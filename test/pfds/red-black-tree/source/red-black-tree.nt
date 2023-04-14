@@ -8,56 +8,56 @@ use {
 - this.red-black-tree::tree
 }
 
-variant color() {
-- Red()
-- Black()
+variant color {
+- Red
+- Black
 }
 
 variant tree(a) {
-- Leaf() // ← considered to be Black
-- Node(color(), tree(a), a, tree(a))
+- Leaf // Black
+- Node(color, tree(a), a, tree(a))
 }
 
 // Invariant 1. No Red Node has a Red child.
 // Invariant 2. Every path from the root to an empty Node contains the same number of Black Nodes.
 
-variant order() {
-- LT()
-- EQ()
-- GT()
+variant order {
+- LT
+- EQ
+- GT
 }
 
 define-inline Cmp(a: tau): tau {
-  (a, a) -> order()
+  (a, a) -> order
 }
 
 define member<a>(cmp: Cmp(a), x: a, t: &tree(a)): bool() {
   case t {
-  - Leaf() =>
+  - Leaf =>
     bool.False()
   - Node(c, t1, v, t2) =>
     match cmp(x, !v) {
-    - order.LT() =>
+    - order.LT =>
       member(cmp, x, t1)
-    - order.EQ() =>
+    - order.EQ =>
       bool.True()
-    - order.GT() =>
+    - order.GT =>
       member(cmp, x, t2)
     }
   }
 }
 
 // detect and repair each Red-Red violation
-define balance<a>(c: color(), t1: tree(a), v: a, t2: tree(a)): tree(a) {
+define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   match c, t1, t2 {
-  - Black(), Node(Red(), Node(Red(), l11, v11, r11), x1, t12), t2 =>
-    Node(Red(), Node(Black(), l11, v11, r11), x1, Node(Black(), t12, v, t2))
-  - Black(), Node(Red(), t11, x1, Node(Red(), l12, v12, r12)), t2 =>
-    Node(Red(), Node(Black(), t11, x1, l12), v12, Node(Black(), r12, v, t2))
-  - Black(), t1, Node(Red(), Node(Red(), l21, v21, r21), x2, t22) =>
-    Node(Red(), Node(Black(), t1, v, l21), v21, Node(Black(), r21, x2, t22))
-  - Black(), t1, Node(Red(), t21, x2, Node(Red(), l22, v22, r22)) =>
-    Node(Red(), Node(Black(), t1, v, t21), x2, Node(Black(), l22, v22, r22))
+  - Black, Node(Red, Node(Red, l11, v11, r11), x1, t12), t2 =>
+    Node(Red, Node(Black, l11, v11, r11), x1, Node(Black, t12, v, t2))
+  - Black, Node(Red, t11, x1, Node(Red, l12, v12, r12)), t2 =>
+    Node(Red, Node(Black, t11, x1, l12), v12, Node(Black, r12, v, t2))
+  - Black, t1, Node(Red, Node(Red, l21, v21, r21), x2, t22) =>
+    Node(Red, Node(Black, t1, v, l21), v21, Node(Black, r21, x2, t22))
+  - Black, t1, Node(Red, t21, x2, Node(Red, l22, v22, r22)) =>
+    Node(Red, Node(Black, t1, v, t21), x2, Node(Black, l22, v22, r22))
   - c, t1, t2 =>
     Node(c, t1, v, t2)
   }
@@ -67,39 +67,39 @@ define insert<a>(cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
-      - Leaf() =>
-        Node(color.Red(), Leaf(), x, Leaf())
+      - Leaf =>
+        Node(color.Red, Leaf, x, Leaf)
       - Node(c, left, y, right) =>
         match cmp(x, y) {
-        - order.LT() =>
+        - order.LT =>
           balance(c, self(left), y, right)
-        - order.EQ() =>
+        - order.EQ =>
           Node(c, left, y, right)
-        - order.GT() =>
+        - order.GT =>
           balance(c, left, y, self(right))
         }
       }
     }
   match helper(t) {
-  - Leaf() =>
-    Leaf() // shouldn't occur
+  - Leaf =>
+    Leaf // shouldn't occur
   - Node(c, left, v, right) =>
-    Node(color.Black(), left, v, right)
+    Node(color.Black, left, v, right)
   }
 }
 
-define compare-int(x: 'i64, y: 'i64): order() {
+define compare-int(x: 'i64, y: 'i64): order {
   if lt-i64(x(), y()) {
-    order.LT()
+    order.LT
   } else-if gt-i64(x(), y()) {
-    order.GT()
+    order.GT
   } else {
-    order.EQ()
+    order.EQ
   }
 }
 
 define main(): i64 {
-  let t: tree('i64) = tree.Leaf()
+  let t: tree('i64) = tree.Leaf
   let t = insert(compare-int, lambda () {3}, t)
   let t = insert(compare-int, lambda () {4}, t)
   let t = insert(compare-int, lambda () {2}, t)

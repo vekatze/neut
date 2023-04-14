@@ -10,12 +10,17 @@ import Data.HashMap.Strict qualified as Map
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Stmt (IsConstLike)
 import Entity.Term
 import Prelude hiding (lookup, read)
 
-insert :: DD.DefiniteDescription -> [BinderF Term] -> [(DD.DefiniteDescription, [BinderF Term], D.Discriminant)] -> App ()
+insert ::
+  DD.DefiniteDescription ->
+  [BinderF Term] ->
+  [(DD.DefiniteDescription, IsConstLike, [BinderF Term], D.Discriminant)] ->
+  App ()
 insert dataName dataArgs consInfoList = do
-  let value = map (\(_, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+  let value = map (\(_, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
   modifyRef' dataDefMap $ Map.insert dataName value
 
 lookup :: DD.DefiniteDescription -> App (Maybe [(D.Discriminant, [BinderF Term], [BinderF Term])])

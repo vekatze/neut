@@ -12,6 +12,6 @@ data GlobalName
   | PrimType PT.PrimType
   | PrimOp PrimOp
   | Data Arity [DD.DefiniteDescription] IsConstLike
-  | DataIntro Arity Arity D.Discriminant
+  | DataIntro Arity Arity D.Discriminant IsConstLike
   | Resource
   deriving (Show)

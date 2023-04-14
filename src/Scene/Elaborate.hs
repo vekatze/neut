@@ -14,6 +14,7 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
+import Data.List
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -141,9 +142,9 @@ elaborateStmtKind stmtKind =
       return $ Normal opacity
     Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs
-      let (consNameList, consArgsList, discriminantList) = unzip3 consInfoList
+      let (consNameList, constLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       consArgsList' <- mapM (mapM elaborateWeakBinder) consArgsList
-      return $ Data dataName dataArgs' $ zip3 consNameList consArgsList' discriminantList
+      return $ Data dataName dataArgs' $ zip4 consNameList constLikeList consArgsList' discriminantList
     DataIntro dataName dataArgs consArgs discriminant -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs
       consArgs' <- mapM elaborateWeakBinder consArgs

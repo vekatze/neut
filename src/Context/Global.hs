@@ -50,16 +50,16 @@ registerStmtDefine isConstLike m stmtKind name impArgNum allArgNum = do
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
   [BinderF a] ->
-  [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
+  [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] ->
   App ()
 registerAsEnumIfNecessary dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
     Enum.insert dataName
-    mapM_ (Enum.insert . (\(consName, _, _) -> consName)) consInfoList
+    mapM_ (Enum.insert . (\(consName, _, _, _) -> consName)) consInfoList
 
-hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] -> Bool
+hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, b, [BinderF a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
-  null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
+  null dataArgs && null (concatMap (\(_, _, consArgs, _) -> consArgs) consInfoList)
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
 registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
@@ -75,20 +75,20 @@ registerData ::
   Hint ->
   DD.DefiniteDescription ->
   [BinderF a] ->
-  [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
+  [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] ->
   App ()
 registerData isConstLike m dataName dataArgs consInfoList = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap dataName
-  let consList = map (\(consName, _, _) -> consName) consInfoList
+  let consList = map (\(consName, _, _, _) -> consName) consInfoList
   let dataArity = A.fromInt $ length dataArgs
   let dataArgNum = AN.fromInt (length dataArgs)
   modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList isConstLike
-  forM_ consInfoList $ \(consName, consArgs, discriminant) -> do
+  forM_ consInfoList $ \(consName, isConstLikeCons, consArgs, discriminant) -> do
     topNameMap' <- readRef' nameMap
     ensureFreshness m topNameMap' consName
     let consArity = A.fromInt $ length consArgs
-    modifyRef' nameMap $ Map.insert consName $ GN.DataIntro dataArity consArity discriminant
+    modifyRef' nameMap $ Map.insert consName $ GN.DataIntro dataArity consArity discriminant isConstLikeCons
     Implicit.insert consName dataArgNum
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()

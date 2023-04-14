@@ -23,7 +23,7 @@ variant tree(a) {
 }
 
 variant digit(a) {
-- Zero()
+- Zero
 - One(tree(a))
 }
 
@@ -55,11 +55,11 @@ define Cons-tree<a>(t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
   - New([]) =>
     New([One(t)])
-  - New(Zero() :: rest) =>
+  - New(Zero :: rest) =>
     New(One(t) :: rest)
   - New(One(t0) :: rest) =>
     let New(ts-new) = Cons-tree(link(t, t0), New(rest))
-    New(Zero() :: ts-new)
+    New(Zero :: ts-new)
   }
 }
 
@@ -75,8 +75,8 @@ define unCons-tree<a>(ts: R-list(a)): opt::option(tree(a) * R-list(a)) {
   - One(y) :: [] =>
     opt::option.Some(tuple(y, New([])))
   - One(y) :: rest =>
-    opt::option.Some(tuple(y, New(Zero() :: rest)))
-  - Zero() :: rest =>
+    opt::option.Some(tuple(y, New(Zero :: rest)))
+  - Zero :: rest =>
     match unCons-tree(New(rest)) {
     - opt::option.None() =>
       opt::option.None()
@@ -113,7 +113,7 @@ define lookup-list<a>(i: i64, xs: &list(digit(a))): opt::option(a) {
   case xs {
   - [] =>
     opt::option.None()
-  - Zero() :: rest =>
+  - Zero :: rest =>
     lookup-list(i, rest)
   - One(t) :: rest =>
     let s = size(t)
@@ -152,9 +152,9 @@ define update<a>(i: i64, x: a, xs: R-list(a)): R-list(a) {
   match xs {
   - New([]) =>
     New([])
-  - New(Zero() :: ts) =>
+  - New(Zero :: ts) =>
     let New(new-xs) = update(i, x, New(ts))
-    New(Zero() :: new-xs)
+    New(Zero :: new-xs)
   - New(One(t) :: ts) =>
     let s on t = size(t)
     if lt-i64(i, s) {

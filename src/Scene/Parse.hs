@@ -180,8 +180,6 @@ parseDefine opacity = do
   name' <- lift $ Locator.attachCurrentLocator name
   lift $ defineFunction (Normal opacity) m name' (AN.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
 
--- lift $ defineFunction (Normal opacity) m name' expArgs codType e
-
 defineFunction ::
   StmtKindF RT.RawTerm ->
   Hint ->
@@ -214,7 +212,7 @@ defineData ::
   Hint ->
   DD.DefiniteDescription ->
   Maybe [BinderF RT.RawTerm] ->
-  [(Hint, T.Text, [BinderF RT.RawTerm])] ->
+  [(Hint, T.Text, IsConstLike, [BinderF RT.RawTerm])] ->
   App [RawStmt]
 defineData m dataName dataArgsOrNone consInfoList = do
   let dataArgs = fromMaybe [] dataArgsOrNone
@@ -230,40 +228,39 @@ defineData m dataName dataArgsOrNone consInfoList = do
 
 modifyConsInfo ::
   D.Discriminant ->
-  [(a, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
-  [(DD.DefiniteDescription, [BinderF RT.RawTerm], D.Discriminant)]
+  [(a, DD.DefiniteDescription, b, [BinderF RT.RawTerm])] ->
+  [(DD.DefiniteDescription, b, [BinderF RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
-    (_, consName, consArgs) : rest ->
-      (consName, consArgs, d) : modifyConsInfo (D.increment d) rest
+    (_, consName, isConstLike, consArgs) : rest ->
+      (consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
   Hint ->
   DD.DefiniteDescription ->
-  (Hint, T.Text, [BinderF RT.RawTerm]) ->
-  App (Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])
-modifyConstructorName m dataDD (mb, consName, yts) = do
+  (Hint, T.Text, IsConstLike, [BinderF RT.RawTerm]) ->
+  App (Hint, DD.DefiniteDescription, IsConstLike, [BinderF RT.RawTerm])
+modifyConstructorName m dataDD (mb, consName, isConstLike, yts) = do
   consName' <- Throw.liftEither $ DD.extend m dataDD consName
-  return (mb, consName', yts)
+  return (mb, consName', isConstLike, yts)
 
 parseDefineVariantConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
-  [(Hint, DD.DefiniteDescription, [BinderF RT.RawTerm])] ->
+  [(Hint, DD.DefiniteDescription, IsConstLike, [BinderF RT.RawTerm])] ->
   D.Discriminant ->
   App [RawStmt]
 parseDefineVariantConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
       return []
-    (m, consName, consArgs) : rest -> do
+    (m, consName, isConstLike, consArgs) : rest -> do
       let dataArgs' = map identPlusToVar dataArgs
       let consArgs' = map identPlusToVar consArgs
       let args = dataArgs ++ consArgs
-      let isConstLike = False
       let introRule =
             RawStmtDefine
               isConstLike
@@ -285,12 +282,21 @@ constructDataType ::
 constructDataType m dataName dataArgs = do
   m :< RT.Data dataName (map identPlusToVar dataArgs)
 
-parseDefineVariantClause :: P.Parser (Hint, T.Text, [BinderF RT.RawTerm])
+parseDefineVariantClause :: P.Parser (Hint, T.Text, IsConstLike, [BinderF RT.RawTerm])
 parseDefineVariantClause = do
   m <- P.getCurrentHint
   consName <- P.symbolCapitalized
-  consArgs <- P.argList parseDefineVariantClauseArg
-  return (m, consName, consArgs)
+  consArgsOrNone <- parseConsArgs
+  let consArgs = fromMaybe [] consArgsOrNone
+  let isConstLike = isNothing consArgsOrNone
+  return (m, consName, isConstLike, consArgs)
+
+parseConsArgs :: P.Parser (Maybe [BinderF RT.RawTerm])
+parseConsArgs = do
+  choice
+    [ Just <$> P.argList parseDefineVariantClauseArg,
+      return Nothing
+    ]
 
 parseDefineVariantClauseArg :: P.Parser (BinderF RT.RawTerm)
 parseDefineVariantClauseArg = do
@@ -305,11 +311,11 @@ parseDefineStruct = do
   m <- P.getCurrentHint
   try $ P.keyword "struct"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
-  -- dataArgs <- P.argList preBinder
   dataArgsOrNone <- parseDataArgs
   let dataArgs = fromMaybe [] dataArgsOrNone
+  let isConstLike = isNothing dataArgsOrNone
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, "New", elemInfoList)]
+  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, "New", isConstLike, elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
   dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "New"

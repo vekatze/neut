@@ -5,6 +5,7 @@ module Entity.Pattern
     new,
     getHeadConstructors,
     swapColumn,
+    rowVars,
     getClauseBody,
     mapMaybeRowM,
     consRow,
@@ -44,6 +45,20 @@ mapMaybeRowM :: Monad m => (PatternRow a -> m (Maybe (PatternRow b))) -> Pattern
 mapMaybeRowM f (MakePatternMatrix mat) = do
   mat' <- mapM f mat
   return $ MakePatternMatrix $ V.catMaybes mat'
+
+rowVars :: V.Vector (Hint, Pattern) -> [(Hint, Ident)]
+rowVars vec =
+  concatMap patVars $ V.toList vec
+
+patVars :: (Hint, Pattern) -> [(Hint, Ident)]
+patVars (m, pat) =
+  case pat of
+    Var x ->
+      [(m, x)]
+    WildcardVar ->
+      []
+    Cons _ _ _ _ patList ->
+      concatMap patVars patList
 
 consRow :: PatternRow a -> PatternMatrix a -> PatternMatrix a
 consRow row (MakePatternMatrix mat) =

@@ -26,7 +26,7 @@ type PreProgram =
 
 data StmtKindF a
   = Normal O.Opacity
-  | Data DD.DefiniteDescription [BinderF a] [(DD.DefiniteDescription, [BinderF a], D.Discriminant)]
+  | Data DD.DefiniteDescription [BinderF a] [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)]
   | DataIntro DD.DefiniteDescription [BinderF a] [BinderF a] D.Discriminant
   deriving (Generic)
 

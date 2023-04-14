@@ -4,13 +4,15 @@ module Entity.RawPattern
     RawPatternRow,
     RawPatternMatrix,
     new,
+    showRawConsName,
     consRow,
-    rowVars,
     unconsRow,
   )
 where
 
+import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.Const (definiteSep)
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint hiding (new)
@@ -28,6 +30,16 @@ data RawConsName
   | LocatorPair GL.GlobalLocator LL.LocalLocator
   | DefiniteDescription DD.DefiniteDescription
   deriving (Show)
+
+showRawConsName :: RawConsName -> T.Text
+showRawConsName consName =
+  case consName of
+    UnresolvedName (UN.UnresolvedName value) ->
+      value
+    LocatorPair gl ll ->
+      GL.reify gl <> definiteSep <> LL.reify ll
+    DefiniteDescription dd ->
+      LL.reify (DD.localLocator dd)
 
 type RawPatternRow a =
   (V.Vector (Hint, RawPattern), a)
@@ -47,15 +59,3 @@ unconsRow :: RawPatternMatrix a -> Maybe (RawPatternRow a, RawPatternMatrix a)
 unconsRow (MakeRawPatternMatrix mat) = do
   (headRow, rest) <- V.uncons mat
   return (headRow, MakeRawPatternMatrix rest)
-
-vars :: (Hint, RawPattern) -> [(Hint, Ident)]
-vars (m, pat) =
-  case pat of
-    Var x ->
-      [(m, x)]
-    Cons _ pats ->
-      concatMap vars pats
-
-rowVars :: V.Vector (Hint, RawPattern) -> [(Hint, Ident)]
-rowVars =
-  concatMap vars
