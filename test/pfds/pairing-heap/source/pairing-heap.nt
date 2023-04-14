@@ -16,7 +16,7 @@ variant heap(a) {
 - Node(a, list(heap(a)))
 }
 
-variant Order() {
+variant order {
 - LT()
 - EQ()
 - GT()
@@ -31,7 +31,7 @@ define find-min<a>(h: &heap(a)): ?a {
   }
 }
 
-define merge<a>(cmp: (a, a) -> Order(), h1: heap(a), h2: heap(a)): heap(a) {
+define merge<a>(cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   - Leaf(), h2 =>
     h2
@@ -39,7 +39,7 @@ define merge<a>(cmp: (a, a) -> Order(), h1: heap(a), h2: heap(a)): heap(a) {
     h1
   - Node(x1, hs1), Node(x2, hs2) =>
     match cmp(x1, x2) {
-    - Order.LT() =>
+    - order.LT() =>
       Node(x1, Node(x2, hs2) :: hs1)
     - otherwise =>
       Node(x2, Node(x1, hs1) :: hs2)
@@ -47,11 +47,11 @@ define merge<a>(cmp: (a, a) -> Order(), h1: heap(a), h2: heap(a)): heap(a) {
   }
 }
 
-define insert<a>(cmp: (a, a) -> Order(), x: a, h: heap(a)): heap(a) {
+define insert<a>(cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
   merge(cmp, Node(x, []), h)
 }
 
-define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
+define merge-pairs<a>(cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
   match hs {
   - [] =>
     Leaf()
@@ -62,7 +62,7 @@ define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
   }
 }
 
-define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): ?heap(a) {
+define delete-min<a>(cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   match h {
   - Leaf() =>
     option.None()
@@ -71,13 +71,13 @@ define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): ?heap(a) {
   }
 }
 
-define compare-int(x: i64, y: i64): Order() {
+define compare-int(x: i64, y: i64): order {
   if lt-i64(x, y) {
-    Order.LT()
+    order.LT()
       } else-if gt-i64(x, y) {
-    Order.GT()
+    order.GT()
   } else {
-    Order.EQ()
+    order.EQ()
   }
 }
 

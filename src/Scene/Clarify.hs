@@ -106,7 +106,7 @@ withSpecializedCtx action = do
 clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
 clarifyDef stmt =
   case stmt of
-    StmtDefine stmtKind _ f _ xts _ e -> do
+    StmtDefine _ stmtKind _ f _ xts _ e -> do
       case stmtKind of
         Data name dataArgs consInfoList -> do
           dataType <- clarifyData name dataArgs consInfoList

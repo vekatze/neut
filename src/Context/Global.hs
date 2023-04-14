@@ -29,13 +29,20 @@ import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
 
-registerStmtDefine :: Hint -> ST.StmtKindF a -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
-registerStmtDefine m stmtKind name impArgNum allArgNum = do
+registerStmtDefine ::
+  IsConstLike ->
+  Hint ->
+  ST.StmtKindF a ->
+  DD.DefiniteDescription ->
+  AN.ArgNum ->
+  AN.ArgNum ->
+  App ()
+registerStmtDefine isConstLike m stmtKind name impArgNum allArgNum = do
   case stmtKind of
     ST.Normal _ ->
-      registerTopLevelFunc m name impArgNum allArgNum
+      registerTopLevelFunc isConstLike m name impArgNum allArgNum
     ST.Data dataName dataArgs consInfoList -> do
-      registerData m dataName dataArgs consInfoList
+      registerData isConstLike m dataName dataArgs consInfoList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
     ST.DataIntro {} ->
       return ()
@@ -54,28 +61,29 @@ hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, [BinderF a], D.Discriminan
 hasNoArgs dataArgs consInfoList =
   null dataArgs && null (concatMap (\(_, consArgs, _) -> consArgs) consInfoList)
 
-registerTopLevelFunc :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
-registerTopLevelFunc m topLevelName impArgNum allArgNum = do
+registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
+registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap topLevelName
   let arity = A.fromInt (AN.reify allArgNum)
   -- let arity = A.fromInt (AN.reify impArgNum + AN.reify expArgNum)
-  modifyRef' nameMap $ Map.insert topLevelName $ GN.TopLevelFunc arity
+  modifyRef' nameMap $ Map.insert topLevelName $ GN.TopLevelFunc arity isConstLike
   Implicit.insert topLevelName impArgNum
 
 registerData ::
+  IsConstLike ->
   Hint ->
   DD.DefiniteDescription ->
   [BinderF a] ->
   [(DD.DefiniteDescription, [BinderF a], D.Discriminant)] ->
   App ()
-registerData m dataName dataArgs consInfoList = do
+registerData isConstLike m dataName dataArgs consInfoList = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap dataName
   let consList = map (\(consName, _, _) -> consName) consInfoList
   let dataArity = A.fromInt $ length dataArgs
   let dataArgNum = AN.fromInt (length dataArgs)
-  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList
+  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList isConstLike
   forM_ consInfoList $ \(consName, consArgs, discriminant) -> do
     topNameMap' <- readRef' nameMap
     ensureFreshness m topNameMap' consName

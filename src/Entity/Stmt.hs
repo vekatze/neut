@@ -52,8 +52,12 @@ toLowOpacity stmtKind =
 
 instance Binary a => Binary (StmtKindF a)
 
+type IsConstLike =
+  Bool
+
 data RawStmt
   = RawStmtDefine
+      IsConstLike
       (StmtKindF RT.RawTerm)
       Hint
       DD.DefiniteDescription
@@ -66,6 +70,7 @@ data RawStmt
 
 data WeakStmt
   = WeakStmtDefine
+      IsConstLike
       (StmtKindF WT.WeakTerm)
       Hint
       DD.DefiniteDescription
@@ -80,6 +85,7 @@ type Program =
 
 data Stmt
   = StmtDefine
+      IsConstLike
       (StmtKindF TM.Term)
       Hint
       DD.DefiniteDescription
@@ -104,10 +110,10 @@ instance Binary Cache
 compress :: Stmt -> Stmt
 compress stmt =
   case stmt of
-    StmtDefine stmtKind m functionName impArgNum args codType _ ->
+    StmtDefine isConstLike stmtKind m functionName impArgNum args codType _ ->
       case stmtKind of
         Normal O.Opaque ->
-          StmtDefine stmtKind m functionName impArgNum args codType (m :< TM.Tau)
+          StmtDefine isConstLike stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt
     StmtDefineResource {} ->
@@ -116,7 +122,7 @@ compress stmt =
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =
   case stmt of
-    WeakStmtDefine _ m x _ xts codType e ->
+    WeakStmtDefine _ _ m x _ xts codType e ->
       DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
     _ ->
       "<define-resource>"

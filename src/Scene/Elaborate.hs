@@ -84,13 +84,13 @@ synthesizeDefList defList = do
 elaborateStmt :: WeakStmt -> App Stmt
 elaborateStmt stmt = do
   case stmt of
-    WeakStmtDefine stmtKind m x impArgNum xts codType e -> do
+    WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
       stmtKind' <- elaborateStmtKind stmtKind
       e' <- elaborate' e >>= Term.reduce
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= Term.reduce
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
-      let result = StmtDefine stmtKind' m x impArgNum xts' codType' e'
+      let result = StmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
       insertStmt result
       return result
     WeakStmtDefineResource m name discarder copier -> do
@@ -103,7 +103,7 @@ elaborateStmt stmt = do
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
   case stmt of
-    StmtDefine stmtKind m f _ xts _ e -> do
+    StmtDefine _ stmtKind m f _ xts _ e -> do
       let lamKind = LK.Normal $ toOpacity stmtKind
       Definition.insert (toOpacity stmtKind) f (m :< TM.PiIntro lamKind xts e)
     StmtDefineResource {} ->
@@ -114,7 +114,7 @@ insertStmt stmt = do
 insertWeakStmt :: WeakStmt -> App ()
 insertWeakStmt stmt = do
   case stmt of
-    WeakStmtDefine stmtKind m f _ xts codType e -> do
+    WeakStmtDefine _ stmtKind m f _ xts codType e -> do
       Type.insert f $ m :< WT.Pi xts codType
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
     WeakStmtDefineResource m name _ _ ->
@@ -123,7 +123,7 @@ insertWeakStmt stmt = do
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
   case stmt of
-    StmtDefine stmtKind _ _ _ _ _ _ -> do
+    StmtDefine _ stmtKind _ _ _ _ _ _ -> do
       case stmtKind of
         Normal _ ->
           return ()
@@ -355,7 +355,7 @@ getConstructorList :: Hint -> DD.DefiniteDescription -> App [DD.DefiniteDescript
 getConstructorList m dataName = do
   kind <- Global.lookup dataName
   case kind of
-    Just (GN.Data _ consList) ->
+    Just (GN.Data _ consList _) ->
       return consList
     _ -> do
       Throw.raiseCritical m $ "the datatype `" <> DD.reify dataName <> "` isn't defined"

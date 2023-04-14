@@ -25,12 +25,12 @@ type BoundVarEnv = [BinderF WT.WeakTerm]
 revealStmt :: WeakStmt -> App WeakStmt
 revealStmt stmt =
   case stmt of
-    WeakStmtDefine isReducible m x impArgNum xts codType e -> do
+    WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
       (xts', (codType', e')) <- revealBinder' [] xts $ \varEnv -> do
         codType' <- reveal' varEnv codType
         e' <- reveal' varEnv e
         return (codType', e')
-      return $ WeakStmtDefine isReducible m x impArgNum xts' codType' e'
+      return $ WeakStmtDefine isConstLike stmtKind m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier

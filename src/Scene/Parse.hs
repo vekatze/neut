@@ -17,6 +17,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
+import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
@@ -81,15 +82,15 @@ parseSource source = do
         Just aliasInfoList ->
           Alias.activateAliasInfo aliasInfoList
       defList <- P.run program $ Source.sourceFilePath source
-      Discern.registerTopLevelNames defList
+      registerTopLevelNames defList
       Right <$> Discern.discernStmtList defList
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
-      StmtDefine stmtKind m name impArgNum args _ _ -> do
-        Global.registerStmtDefine m stmtKind name impArgNum $ AN.fromInt (length args)
+      StmtDefine isConstLike stmtKind m name impArgNum args _ _ -> do
+        Global.registerStmtDefine isConstLike m stmtKind name impArgNum $ AN.fromInt (length args)
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
 
@@ -97,7 +98,7 @@ ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
   mMain <- Global.lookup mainFunctionName
   case mMain of
-    Just (GN.TopLevelFunc _) ->
+    Just (GN.TopLevelFunc _ _) ->
       return ()
     _ ->
       Throw.raiseError m "`main` is missing"
@@ -191,29 +192,38 @@ defineFunction ::
   RT.RawTerm ->
   App RawStmt
 defineFunction stmtKind m name impArgNum binder codType e = do
-  return $ RawStmtDefine stmtKind m name impArgNum binder codType e
+  return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
 
 parseDefineVariant :: P.Parser [RawStmt]
 parseDefineVariant = do
   m <- P.getCurrentHint
   try $ P.keyword "variant"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
-  dataArgs <- P.argList preBinder
+  dataArgsOrNone <- parseDataArgs
   consInfoList <- P.betweenBrace $ P.manyList parseDefineVariantClause
-  lift $ defineData m a dataArgs consInfoList
+  lift $ defineData m a dataArgsOrNone consInfoList
+
+parseDataArgs :: P.Parser (Maybe [BinderF RT.RawTerm])
+parseDataArgs = do
+  choice
+    [ Just <$> P.argList preBinder,
+      return Nothing
+    ]
 
 defineData ::
   Hint ->
   DD.DefiniteDescription ->
-  [BinderF RT.RawTerm] ->
+  Maybe [BinderF RT.RawTerm] ->
   [(Hint, T.Text, [BinderF RT.RawTerm])] ->
   App [RawStmt]
-defineData m dataName dataArgs consInfoList = do
+defineData m dataName dataArgsOrNone consInfoList = do
+  let dataArgs = fromMaybe [] dataArgsOrNone
   consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = Data dataName dataArgs consInfoList''
   let dataType = constructDataType m dataName dataArgs
-  let formRule = RawStmtDefine stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
+  let isConstLike = isNothing dataArgsOrNone
+  let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
   -- let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
@@ -253,8 +263,10 @@ parseDefineVariantConstructor dataType dataName dataArgs consInfoList discrimina
       let dataArgs' = map identPlusToVar dataArgs
       let consArgs' = map identPlusToVar consArgs
       let args = dataArgs ++ consArgs
+      let isConstLike = False
       let introRule =
             RawStmtDefine
+              isConstLike
               (DataIntro consName dataArgs consArgs discriminant)
               m
               consName
@@ -293,9 +305,11 @@ parseDefineStruct = do
   m <- P.getCurrentHint
   try $ P.keyword "struct"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
-  dataArgs <- P.argList preBinder
+  -- dataArgs <- P.argList preBinder
+  dataArgsOrNone <- parseDataArgs
+  let dataArgs = fromMaybe [] dataArgsOrNone
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgs [(m, "New", elemInfoList)]
+  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, "New", elemInfoList)]
   elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
   dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "New"
@@ -359,3 +373,19 @@ weakTermToWeakIdent m f = do
   a <- f
   h <- lift $ Gensym.newTextualIdentFromText "_"
   return (m, h, a)
+
+registerTopLevelNames :: [RawStmt] -> App ()
+registerTopLevelNames stmtList =
+  case stmtList of
+    [] ->
+      return ()
+    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ : rest -> do
+      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum $ AN.fromInt (length xts)
+      registerTopLevelNames rest
+    RawStmtSection section innerStmtList : rest -> do
+      Locator.withSection section $ do
+        registerTopLevelNames innerStmtList
+        registerTopLevelNames rest
+    RawStmtDefineResource m name _ _ : rest -> do
+      Global.registerStmtDefineResource m name
+      registerTopLevelNames rest

@@ -1,8 +1,4 @@
-module Scene.Parse.Discern
-  ( discernStmtList,
-    registerTopLevelNames,
-  )
-where
+module Scene.Parse.Discern (discernStmtList) where
 
 import Context.Alias qualified as Alias
 import Context.App
@@ -19,7 +15,6 @@ import Data.Maybe qualified as Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Const qualified as C
@@ -60,13 +55,13 @@ discernStmtList stmtList =
   case stmtList of
     [] ->
       return []
-    RawStmtDefine stmtKind m functionName impArgNum xts codType e : rest -> do
+    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e : rest -> do
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
       rest' <- discernStmtList rest
-      return $ WeakStmtDefine stmtKind' m functionName impArgNum xts' codType' e' : rest'
+      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
     RawStmtSection section innerStmtList : rest -> do
       Locator.withSection section $ do
         innerStmtList' <- discernStmtList innerStmtList
@@ -77,22 +72,6 @@ discernStmtList stmtList =
       copier' <- discern empty copier
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
-
-registerTopLevelNames :: [RawStmt] -> App ()
-registerTopLevelNames stmtList =
-  case stmtList of
-    [] ->
-      return ()
-    RawStmtDefine stmtKind m functionName impArgNum xts _ _ : rest -> do
-      Global.registerStmtDefine m stmtKind functionName impArgNum $ AN.fromInt (length xts)
-      registerTopLevelNames rest
-    RawStmtSection section innerStmtList : rest -> do
-      Locator.withSection section $ do
-        registerTopLevelNames innerStmtList
-        registerTopLevelNames rest
-    RawStmtDefineResource m name _ _ : rest -> do
-      Global.registerStmtDefineResource m name
-      registerTopLevelNames rest
 
 discernStmtKind :: StmtKindF RT.RawTerm -> App (StmtKindF WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -336,10 +315,14 @@ resolveName m name = do
 interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName m dd gn =
   case gn of
-    GN.TopLevelFunc arity ->
-      return $ m :< WT.VarGlobal dd arity
-    GN.Data arity _ ->
-      return $ m :< WT.VarGlobal dd arity
+    GN.TopLevelFunc arity isConstLike ->
+      if isConstLike
+        then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
+        else return $ m :< WT.VarGlobal dd arity
+    GN.Data arity _ isConstLike ->
+      if isConstLike
+        then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
+        else return $ m :< WT.VarGlobal dd arity
     GN.DataIntro dataArity consArity _ ->
       return $ m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
     GN.PrimType primNum ->
