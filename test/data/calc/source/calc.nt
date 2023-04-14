@@ -2,29 +2,29 @@ use {
 - this.calc::expr
 }
 
-enum expr() {
-- num(i64)
-- add(expr(), expr())
-- sub(expr(), expr())
-- mul(expr(), expr())
+variant expr() {
+- Num(i64)
+- Add(expr(), expr())
+- Sub(expr(), expr())
+- Mul(expr(), expr())
 }
 
 define interpret(e: expr()): i64 {
   match e {
-  - add(e1, e2) =>
+  - Add(e1, e2) =>
     add-i64(interpret(e1), interpret(e2))
-  - num(x) =>
+  - Num(x) =>
     x
-  - sub(e1, e2) =>
+  - Sub(e1, e2) =>
     sub-i64(interpret(e1), interpret(e2))
-  - mul(e1, e2) =>
+  - Mul(e1, e2) =>
     mul-i64(interpret(e1), interpret(e2))
   }
 }
 
 define main(): i64 {
-  let e1 = add(num(1), num(2))
-  let e2 = mul(num(3), num(1023))
-  let e3 = sub(e2, e1)
+  let e1 = Add(Num(1), Num(2))
+  let e2 = Mul(Num(3), Num(1023))
+  let e3 = Sub(e2, e1)
   interpret(e3)
 }

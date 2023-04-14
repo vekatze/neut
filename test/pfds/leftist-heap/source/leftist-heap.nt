@@ -1,6 +1,5 @@
 import {
 - core.bool
-- core.sum
 - core.option
 }
 
@@ -11,16 +10,16 @@ use {
 }
 
 
-enum order() {
-- lt()
-- eq()
-- gt()
+variant order() {
+- LT()
+- EQ()
+- GT()
 }
 
 // leftist heap
-enum heap(a) {
-- leaf()
-- node(i64, a, heap(a), heap(a)) // i64 stands for the rank of the node
+variant heap(a) {
+- Leaf()
+- Node(i64, a, heap(a), heap(a)) // i64 stands for the rank of the Node
 }
 
 struct heap-signature(a) {
@@ -37,72 +36,72 @@ define make-heap-signature<a>(compare: (a, a) -> order()): heap-signature(a) {
     let rank =
       lambda (h: &heap(a)) {
         case h {
-        - leaf() =>
+        - Leaf() =>
           0
-        - node(r, v, left, right) =>
+        - Node(r, v, left, right) =>
           !r
         }
       }
-    let make-node =
+    let make-Node =
       lambda (x: a, l: heap(a), r: heap(a)) {
         let rank1 on l = rank(l)
         let rank2 on r = rank(r)
         if ge-i64(rank1, rank2) {
-          node(add-i64(rank2, 1), x, l, r)
+          Node(add-i64(rank2, 1), x, l, r)
         } else {
-          node(add-i64(rank1, 1), x, r, l)
+          Node(add-i64(rank1, 1), x, r, l)
         }
       }
     define merge(h1: heap(a), h2: heap(a)): heap(a) {
       match h1, h2 {
-      - h1, leaf() =>
+      - h1, Leaf() =>
         h1
-      - leaf(), h2 =>
+      - Leaf(), h2 =>
         h2
-      - node(rank1, value1, left1, right1), node(rank2, value2, left2, right2) =>
+      - Node(rank1, value1, left1, right1), Node(rank2, value2, left2, right2) =>
         match compare(value1, value2) {
-        - order.lt() =>
-          make-node(value1, left1, merge(right1, node(rank2, value2, left2, right2)))
+        - order.LT() =>
+          make-Node(value1, left1, merge(right1, Node(rank2, value2, left2, right2)))
         - otherwise =>
-          make-node(value2, left2, merge(node(rank1, value1, left1, right1), right2))
+          make-Node(value2, left2, merge(Node(rank1, value1, left1, right1), right2))
         }
       }
     }
   }
   new heap-signature {
   - heap-signature.empty <=
-    heap.leaf()
+    heap.Leaf()
   - heap-signature.is-empty <=
     lambda (h: &heap(a)) {
       case h {
-      - leaf() =>
-        bool.true()
-      - node(rank, value, left, right) =>
-        bool.false()
+      - Leaf() =>
+        bool.True()
+      - Node(rank, value, left, right) =>
+        bool.False()
       }
     }
   - heap-signature.insert <=
     lambda (x: a, h: heap(a)) {
-      merge(node(1, x, leaf(), leaf()), h)
+      merge(Node(1, x, Leaf(), Leaf()), h)
     }
   - heap-signature.merge <=
     merge
   - heap-signature.find-min <=
     lambda (h: &heap(a)) {
       case h {
-      - leaf() =>
-        none()
-      - node(rank, value, left, right) =>
-        some(!value)
+      - Leaf() =>
+        option.None()
+      - Node(rank, value, left, right) =>
+        option.Some(!value)
       }
     }
   - heap-signature.delete-min <=
     lambda (h: heap(a)) {
       match h {
-      - leaf() =>
-        none()
-      - node(rank, value, left, right) =>
-        some(merge(left, right))
+      - Leaf() =>
+        option.None()
+      - Node(rank, value, left, right) =>
+        option.Some(merge(left, right))
       }
     }
   }
@@ -110,40 +109,38 @@ define make-heap-signature<a>(compare: (a, a) -> order()): heap-signature(a) {
 
 define compare-int(x: i64, y: i64): order() {
   if lt-i64(x, y) {
-    order.lt()
+    order.LT()
   } else-if gt-i64(x, y) {
-    order.gt()
+    order.GT()
   } else {
-    order.eq()
+    order.EQ()
   }
 }
 
 define main(): i64 {
   let int-heap-signature = make-heap-signature(compare-int)
-  match int-heap-signature {
-  - heap-signature.new(empty, is-empty, insert, merge, find-min, delete-min) =>
-    let h = empty
-    let h = insert(10, h)
-    let h = insert(2, h)
-    let h = insert(5, h)
-    let h = insert(8, h)
-    let h = insert(1, h)
-    let h = insert(3, h)
-    let mh = delete-min(h)
-    match mh {
-    - core.sum::sum.left(v) =>
-      100
-    - core.sum::sum.right(h) =>
-      let h = insert(9, h)
-      let min on h = {
-        match find-min(h) {
-        - core.sum::sum.left(v) =>
-          100
-        - core.sum::sum.right(value) =>
-          value
-        }
+  let heap-signature.New(empty, is-empty, insert, merge, find-min, delete-min) = int-heap-signature
+  let h = empty
+  let h = insert(10, h)
+  let h = insert(2, h)
+  let h = insert(5, h)
+  let h = insert(8, h)
+  let h = insert(1, h)
+  let h = insert(3, h)
+  let mh = delete-min(h)
+  match mh {
+  - option.None() =>
+    100
+  - option.Some(h) =>
+    let h = insert(9, h)
+    let min on h = {
+      match find-min(h) {
+      - option.None() =>
+        100
+      - option.Some(value) =>
+        value
       }
-      min
     }
+    min
   }
 }

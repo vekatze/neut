@@ -2,22 +2,22 @@ import {
 - core.bool
 }
 
-enum list() {
-- nil()
-- cons(i64, list())
+variant list() {
+- Nil()
+- Cons(i64, list())
 }
 
 define length(xs: list()): i64 {
   match xs {
-  - list.nil() =>
+  - list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     add-i64(1, length(ys))
   }
 }
 
 define main(): i64 {
-  let xs = list.nil()
+  let xs = list.Nil()
   let no-free-var =
     define foo(c: i64): i64 {
       if eq-i64(c, 0) {
@@ -40,7 +40,7 @@ define main(): i64 {
   let val-2 = single-free-var(3)
   let ys = xs
   let zs = xs
-  let ws = list.nil()
+  let ws = list.Nil()
   let multiple-free-var =
     define free-vars-in-recursion(c: i64): i64 {
       if eq-i64(c, 0) {

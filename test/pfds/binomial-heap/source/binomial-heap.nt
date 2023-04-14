@@ -1,7 +1,6 @@
 import {
 - core.bool
 - core.option
-- core.sum
 }
 
 use {
@@ -10,9 +9,9 @@ use {
 - this.binomial-heap::tree
 }
 
-enum list(a) {
-- nil()
-- cons(a, list(a))
+variant list(a) {
+- Nil()
+- Cons(a, list(a))
 }
 
 struct product(a, b) {
@@ -33,9 +32,9 @@ define reverse<a>(xs: list(a)): list(a) {
   helper(xs, [])
 }
 
-enum tree(a) {
+variant tree(a) {
   // the list is in *decreasing* order of rank
-- node(i64, a, list(tree(a)))
+- Node(i64, a, list(tree(a)))
 }
 
 define-inline heap(a: tau): tau {
@@ -43,27 +42,27 @@ define-inline heap(a: tau): tau {
   list(tree(a))
 }
 
-enum order() {
-- lt()
-- eq()
-- gt()
+variant order() {
+- LT()
+- EQ()
+- GT()
 }
 
 define link<a>(cmp: (a, a) -> order(), t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
-  - node(r1, x1, children1), node(r2, x2, children2) =>
+  - Node(r1, x1, children1), Node(r2, x2, children2) =>
     match cmp(x1, x2) {
-    - order.lt() =>
-      node(add-i64(r1, 1), x1, node(r2, x2, children2) :: children1)
+    - order.LT() =>
+      Node(add-i64(r1, 1), x1, Node(r2, x2, children2) :: children1)
     - otherwise =>
-      node(add-i64(r1, 1), x2, node(r1, x1, children1) :: children2)
+      Node(add-i64(r1, 1), x2, Node(r1, x1, children1) :: children2)
     }
   }
 }
 
 define rank<a>(t: &tree(a)): i64 {
   case t {
-  - node(r, v, children) =>
+  - Node(r, v, children) =>
     !r
   }
 }
@@ -85,7 +84,7 @@ define insert-tree<a>(cmp: (a, a) -> order(), t: tree(a), h: heap(a)): heap(a) {
 }
 
 define insert<a>(cmp: (a, a) -> order(), value: a, h: heap(a)): heap(a) {
-  insert-tree(cmp, node(0, value, []), h)
+  insert-tree(cmp, Node(0, value, []), h)
 }
 
 define merge<a>(cmp: (a, a) -> order(), h1: heap(a), h2: heap(a)): heap(a) {
@@ -109,7 +108,7 @@ define merge<a>(cmp: (a, a) -> order(), h1: heap(a), h2: heap(a)): heap(a) {
 
 define root<a>(t: &tree(a)): a {
   case t {
-  - node(r, v, children) =>
+  - Node(r, v, children) =>
     !v
   }
 }
@@ -123,7 +122,7 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
       - t :: ts =>
         let root-head = root(t)
         match cmp(root-head, cand) {
-        - order.lt() =>
+        - order.LT() =>
           self(root-head, ts)
         - otherwise =>
           self(cand, ts)
@@ -132,44 +131,44 @@ define find-min<a>(cmp: (a, a) -> order(), h: &heap(a)): ?a {
     }
   case h {
   - [] =>
-    none()
+    option.None()
   - t :: ts =>
     let r = root(t)
-    some(helper(r, ts))
+    option.Some(helper(r, ts))
   }
 }
 
 define remove-min-tree<a>(cmp: (a, a) -> order(), h: heap(a)): ?{tree(a) * heap(a)} {
   match h {
   - [] =>
-    none()
+    option.None()
   - [t] =>
-    some(tuple(t, []))
+    option.Some(tuple(t, []))
   - t :: ts =>
     let? tuple(cand, ts-adjusted) = remove-min-tree(cmp, ts)
     let root-head on t = root(t)
     let root-cand on cand = root(cand)
     match cmp(root-head, root-cand) {
-    - order.lt() =>
-      some(tuple(t, cand :: ts-adjusted))
+    - order.LT() =>
+      option.Some(tuple(t, cand :: ts-adjusted))
     - otherwise =>
-      some(tuple(cand, t :: ts-adjusted))
+      option.Some(tuple(cand, t :: ts-adjusted))
     }
   }
 }
 
 define delete-min<a>(cmp: (a, a) -> order(), h: heap(a)): ?heap(a) {
-  let? tuple(node(r, x, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
-  some(merge(cmp, reverse(ts1), ts2))
+  let? tuple(Node(r, x, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
+  option.Some(merge(cmp, reverse(ts1), ts2))
 }
 
 define compare-int(x: i64, y: i64): order() {
   if lt-i64(x, y) {
-    order.lt()
+    order.LT()
   } else-if gt-i64(x, y) {
-    order.gt()
+    order.GT()
   } else {
-    order.eq()
+    order.EQ()
   }
 }
 
@@ -185,15 +184,11 @@ define main(): i64 {
   let h = merge(compare-int, h, h)
   let maybe-min on h = {
     match find-min(compare-int, h) {
-    - core.sum::sum.left(v) =>
+    - core.option::option.None() =>
       10
-    - core.sum::sum.right(min) =>
+    - core.option::option.Some(min) =>
       min
     }
   }
   maybe-min
-}
-
-enum test(a: tau, x: () -> i64) {
-// - New(a)
 }

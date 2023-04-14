@@ -1,9 +1,9 @@
-enum item() {
-- nil()
-- cons(i64)
+variant item() {
+- Nil()
+- Cons(i64)
 }
 
 define main(): i64 {
-  let x = item.nil()
+  let x = item.Nil()
   1
 }

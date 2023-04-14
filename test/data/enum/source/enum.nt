@@ -3,11 +3,11 @@ import {
 }
 
 define main(): i64 {
-  let foo = core.bool::bool.false()
+  let foo = core.bool::bool.False()
   match foo {
-  - core.bool::bool.true() =>
+  - core.bool::bool.True() =>
     1
-  - core.bool::bool.false() =>
+  - core.bool::bool.False() =>
     2
   }
 }

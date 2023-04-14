@@ -9,50 +9,50 @@ use {
 - this.coproduct::nat
 }
 
-enum nat() {
-- zero()
-- succ(nat())
+variant nat() {
+- Zero()
+- Succ(nat())
 }
 
 define interpret(n: nat()): i64 {
   match n {
-  - nat.zero() =>
+  - nat.Zero() =>
     0
-  - nat.succ(m) =>
+  - nat.Succ(m) =>
     add-i64(1, interpret(m))
   }
 }
 
 define view(a: tau, b: tau, x: sum(a, b)): i64 {
   match x {
-  - left(c) =>
+  - Left(c) =>
     1
-  - right(d) =>
+  - Right(d) =>
     2
   }
 }
 
 define computation-with-error(x: i64): sum(nat(), i64) {
   if eq-i64(x, 0) {
-    left(succ(zero()))
+    Left(Succ(Zero()))
   } else {
-    right(interpret(succ(succ(zero()))))
+    Right(interpret(Succ(Succ(Zero()))))
   }
 }
 
 define let-sum(x: i64): sum(nat(), i64) {
-  let? foo = computation-with-error(x)
-  let? bar = computation-with-error(add-i64(foo, 1))
-  right(bar)
+  let+ foo = computation-with-error(x)
+  let+ bar = computation-with-error(add-i64(foo, 1))
+  Right(bar)
 }
 
 define main(): i64 {
   match let-sum(10) {
-  - left(e) =>
+  - Left(e) =>
     interpret(e)
-  - right(v) =>
-    let x = view(i64, i32, left(10))
-    let y = view(i64, i32, right(10))
+  - Right(v) =>
+    let x = view(i64, i32, Left(10))
+    let y = view(i64, i32, Right(10))
     let z = x
     let w = x
     add-i64(v, 1)

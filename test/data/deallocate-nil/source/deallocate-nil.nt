@@ -1,14 +1,14 @@
-enum item() {
-- nil(i64)
+variant item() {
+- Nil(i64)
 }
 
 define f(xs: item()): i64 {
   match xs {
-  - item.nil(x) =>
+  - item.Nil(x) =>
     0
   }
 }
 
 define main(): i64 {
-  f(item.nil(10))
+  f(item.Nil(10))
 }

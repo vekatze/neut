@@ -2,9 +2,9 @@ import {
 - core.top
 }
 
-enum list(a: tau) {
-- nil()
-- cons(list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(list(a))
 }
 
 define-inline get<a>(x: cell a): a {
@@ -19,7 +19,7 @@ define-inline mutate<a>(x: cell a, mutator: a -> a): core.top::top() {
 }
 
 define main(): i64 {
-  let xs: list(i64) = list.nil()
+  let xs: list(i64) = list.Nil()
   let result on mutable xs = {
     mutate(xs, lambda (x) { get(xs) })
     1

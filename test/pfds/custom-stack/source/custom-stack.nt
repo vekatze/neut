@@ -2,7 +2,6 @@ import {
 - core.bool
 - core.top
 - core.option
-- core.sum
 }
 
 use {
@@ -16,47 +15,47 @@ struct product(a, b) {
 - right: b
 }
 
-enum custom-stack(a) {
-- nil()
-- cons(product(a, a), custom-stack(a))
+variant custom-stack(a) {
+- Nil()
+- Cons(product(a, a), custom-stack(a))
 }
 
 define empty<a>(): custom-stack(a) {
-  custom-stack.nil()
+  custom-stack.Nil()
 }
 
 define is-empty<a>(xs: &custom-stack(a)): bool() {
   case xs {
-  - custom-stack.nil() =>
-    bool.true()
-  - custom-stack.cons(y, rest) =>
-    bool.false()
+  - custom-stack.Nil() =>
+    bool.True()
+  - custom-stack.Cons(y, rest) =>
+    bool.False()
   }
 }
 
 define head<a>(xs: &custom-stack(a)): ?&{a * a} {
   case xs {
-  - custom-stack.nil() =>
-    core.option::none()
-  - custom-stack.cons(a, rest) =>
-    core.option::some(a)
+  - custom-stack.Nil() =>
+    core.option::option.None()
+  - custom-stack.Cons(a, rest) =>
+    core.option::option.Some(a)
   }
 }
 
 define tail<a>(xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
-  - custom-stack.nil() =>
-    core.option::none()
-  - custom-stack.cons(a, rest) =>
-    core.option::some(rest)
+  - custom-stack.Nil() =>
+    option.None()
+  - custom-stack.Cons(a, rest) =>
+    option.Some(rest)
   }
 }
 
 define main(): i64 {
   let xs = empty()
   let v = tuple(lambda () { 1 }, lambda () { 2: i64 })
-  let ys = custom-stack.cons(v, xs)
-  let zs = custom-stack.cons(v, custom-stack.cons(v, ys))
+  let ys = custom-stack.Cons(v, xs)
+  let zs = custom-stack.Cons(v, custom-stack.Cons(v, ys))
   let calc on zs, xs = {
     let b = is-empty(zs)
     let b2 = is-empty(xs)
@@ -65,9 +64,9 @@ define main(): i64 {
     let t = tail(zs)
     let t2 = tail(zs)
     match h {
-    - core.sum::sum.left(l) =>
+    - option.None() =>
       1
-    - core.sum::sum.right(pair) =>
+    - option.Some(pair) =>
       bind tuple(left, right) = pair
       {!right}()
     }

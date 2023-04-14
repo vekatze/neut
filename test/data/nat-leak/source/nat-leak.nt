@@ -2,16 +2,16 @@ use {
 - this.nat-leak::nat
 }
 
-enum nat() {
-- zero()
-- succ(nat())
+variant nat() {
+- Zero()
+- Succ(nat())
 }
 
 define eq-nat(n1: nat(), n2: nat()): i64 {
   match n1, n2 {
-  - zero(), zero() =>
+  - Zero(), Zero() =>
     1
-  - succ(m1), succ(m2) =>
+  - Succ(m1), Succ(m2) =>
     2
   - n1, n2 =>
     0
@@ -19,5 +19,5 @@ define eq-nat(n1: nat(), n2: nat()): i64 {
 }
 
 define main(): i64 {
-  eq-nat(zero(), zero())
+  eq-nat(Zero(), Zero())
 }

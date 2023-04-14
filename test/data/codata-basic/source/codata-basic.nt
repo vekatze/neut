@@ -30,20 +30,20 @@ define int-stream(x: i64): stream(i64) {
 
 define tail<a>(s: stream(a)): stream(a) {
   match s {
-  - stream.new(_, tail-generator) =>
+  - stream.New(_, tail-generator) =>
     tail-generator()
   }
 }
 
 define head<a>(s: stream(a)): a {
   match s {
-  - stream.new(v, _) =>
+  - stream.New(v, _) =>
     v
   }
 }
 
 define main(): i64 {
-  let inner = bar.new(10)
+  let inner = bar.New(10)
   let config =
     new foo {
     - value-1 <= 3

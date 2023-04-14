@@ -2,7 +2,6 @@ import {
 - core.bool
 - core.option
 - core.list
-- core.sum
 }
 
 use {
@@ -11,15 +10,15 @@ use {
 - core.list
 }
 
-enum heap(a) {
-- leaf()
-- node(heap(a), a, heap(a))
+variant heap(a) {
+- Leaf()
+- Node(heap(a), a, heap(a))
 }
 
-enum order() {
-- lt()
-- eq()
-- gt()
+variant order() {
+- LT()
+- EQ()
+- GT()
 }
 
 struct product(a, b) {
@@ -29,47 +28,47 @@ struct product(a, b) {
 
 define insert<a>(cmp: (a, a) -> order(), x: a, t: heap(a)): heap(a) {
   let tuple(smaller, bigger) = split(cmp, x, t)
-  node(smaller, x, bigger)
+  Node(smaller, x, bigger)
 }
 
 define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): heap(a) * heap(a) {
   match t {
-  - leaf() =>
-    tuple(leaf(), leaf())
-  - node(left, v, right) =>
+  - Leaf() =>
+    tuple(Leaf(), Leaf())
+  - Node(left, v, right) =>
     match cmp(v, pivot) {
     // go right
-    - order.lt() =>
+    - order.LT() =>
       match right {
-      - leaf() =>
-        tuple(node(left, v, leaf()), leaf())
-      - node(right-left, w, right-right) =>
+      - Leaf() =>
+        tuple(Node(left, v, Leaf()), Leaf())
+      - Node(right-left, w, right-right) =>
         match cmp(w, pivot) {
         // go right
-        - order.lt() =>
+        - order.LT() =>
           let tuple(right-right-small, right-right-big) = split(cmp, pivot, right-right)
-          tuple(node(node(left, v, right-right-small), w, right-right-small), right-right-big)
+          tuple(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
         // go left
         - otherwise =>
           let tuple(right-left-small, right-left-big) = split(cmp, pivot, right-left)
-          tuple(node(left, v, right-left-small), node(right-left-big, w, right-right))
+          tuple(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
     // go left
     - otherwise =>
       match left {
-      - leaf() =>
-        tuple(leaf(), node(leaf(), v, right))
-      - node(left-left, w, left-right) =>
+      - Leaf() =>
+        tuple(Leaf(), Node(Leaf(), v, right))
+      - Node(left-left, w, left-right) =>
         match cmp(w, pivot) {
         // go right
-        - order.lt() =>
+        - order.LT() =>
           let tuple(left-right-small, left-right-big) = split(cmp, pivot, left-right)
-          tuple(node(left-left, w, left-right-small), node(left-right-big, v, right))
+          tuple(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
         // go left
         - otherwise =>
           let tuple(left-left-small, left-left-big) = split(cmp, pivot, left-left)
-          tuple(left-left-small, node(left-left-big, w, node(left-right, v, right)))
+          tuple(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
         }
       }
     }
@@ -78,26 +77,26 @@ define split<a>(cmp: (a, a) -> order(), pivot: a, t: heap(a)): heap(a) * heap(a)
 
 define find-min<a>(t: &heap(a)): ?a {
   case t {
-  - leaf() =>
-    none()
-  - node(leaf(), x, right) =>
-    some(!x)
-  - node(left, x, right) =>
+  - Leaf() =>
+    option.None()
+  - Node(Leaf(), x, right) =>
+    option.Some(!x)
+  - Node(left, x, right) =>
     find-min(left)
   }
 }
 
 define delete-min<a>(t: heap(a)): ?heap(a) {
   match t {
-  - leaf() =>
-    none()
-  - node(leaf(), x, right) =>
-    some(right)
-  - node(node(leaf(), x, t12), y, t2) =>
-    some(node(t12, y, t2))
-  - node(node(t11, x, t12), y, t2) =>
+  - Leaf() =>
+    option.None()
+  - Node(Leaf(), x, right) =>
+    option.Some(right)
+  - Node(Node(Leaf(), x, t12), y, t2) =>
+    option.Some(Node(t12, y, t2))
+  - Node(Node(t11, x, t12), y, t2) =>
     let? t11 = delete-min(t11)
-    some(node(t11, x, node(t12, y, t2)))
+    option.Some(Node(t11, x, Node(t12, y, t2)))
   }
 }
 
@@ -105,11 +104,11 @@ define compare-int-list(xs: list(i64), ys: list(i64)): order() {
   let x on xs = sum(xs)
   let y on ys = sum(ys)
   if lt-i64(x, y) {
-    order.lt()
+    order.LT()
   } else-if gt-i64(x, y) {
-    order.gt()
+    order.GT()
   } else {
-    order.eq()
+    order.EQ()
   }
 }
 
@@ -123,32 +122,32 @@ define sum(xs: &list(i64)): i64 {
 }
 
 define main(): i64 {
-  let h: heap(list(i64)) = leaf()
+  let h: heap(list(i64)) = Leaf()
   let h = insert(compare-int-list, [1, 2], h)
   let h = insert(compare-int-list, [10], h)
   let h = insert(compare-int-list, [5], h)
   let v1 on h = {
     match find-min(h) {
-    - core.sum::sum.right(xs) =>
+    - option.Some(xs) =>
       let v on xs = sum(xs)
       v
-    - core.sum::sum.left(v) =>
+    - option.None() =>
       4
     }
   }
   let mh = delete-min(h)
   match mh {
-  - core.sum::sum.left(_) =>
+  - option.None() =>
     3
-  - core.sum::sum.right(h) =>
+  - option.Some(h) =>
     let h = insert(compare-int-list, [4, 8], h)
     let h = insert(compare-int-list, [1, 1], h)
     let v2 on h = {
       match find-min(h) {
-      - core.sum::sum.right(xs) =>
+      - option.Some(xs) =>
         let v on xs = sum(xs)
         v
-      - core.sum::sum.left(v) =>
+      - option.None() =>
         4
       }
     }

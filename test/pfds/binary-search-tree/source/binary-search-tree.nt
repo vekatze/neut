@@ -7,15 +7,15 @@ use {
 - this.binary-search-tree::set
 }
 
-enum order() {
-- lt()
-- eq()
-- gt()
+variant order() {
+- LT()
+- EQ()
+- GT()
 }
 
-enum set(a) {
-- leaf()
-- node(set(a), a, set(a))
+variant set(a) {
+- Leaf()
+- Node(set(a), a, set(a))
 }
 
 struct set-signature(a) {
@@ -27,35 +27,35 @@ struct set-signature(a) {
 define make-set-signature<a>(compare: (a, a) -> order()): set-signature(a) {
   new set-signature {
   - set-signature.empty <=
-    set.leaf()
+    set.Leaf()
   - set-signature.insert <=
     define insert(new-value: a, haystack: set(a)): set(a) {
       match haystack {
-      - set.leaf() =>
-        set.node(leaf(), new-value, leaf())
-      - node(left, x, right) =>
+      - set.Leaf() =>
+        set.Node(Leaf(), new-value, Leaf())
+      - Node(left, x, right) =>
         match compare(new-value, x) {
-        - order.lt() =>
-          node(insert(new-value, left), x, right)
-        - order.eq() =>
-          node(left, x, right)
-        - order.gt() =>
-          node(left, x, insert(new-value, right))
+        - order.LT() =>
+          Node(insert(new-value, left), x, right)
+        - order.EQ() =>
+          Node(left, x, right)
+        - order.GT() =>
+          Node(left, x, insert(new-value, right))
         }
       }
     }
   - set-signature.member <=
     define member(needle: a, haystack: &set(a)) {
       case haystack {
-      - set.leaf() =>
-        bool.false()
-      - set.node(left, x, right) =>
+      - set.Leaf() =>
+        bool.False()
+      - set.Node(left, x, right) =>
         match compare(needle, !x) {
-        - order.lt() =>
+        - order.LT() =>
           member(needle, left)
-        - order.eq() =>
-          bool.true()
-        - order.gt() =>
+        - order.EQ() =>
+          bool.True()
+        - order.GT() =>
           member(needle, right)
         }
       }
@@ -65,18 +65,18 @@ define make-set-signature<a>(compare: (a, a) -> order()): set-signature(a) {
 
 define compare-int(x: i64, y: i64): order() {
   if lt-i64(x, y) {
-    order.lt()
+    order.LT()
   } else-if gt-i64(x, y) {
-    order.gt()
+    order.GT()
   } else {
-    order.eq()
+    order.EQ()
   }
 }
 
 define main(): i64 {
   let int-set-signature = make-set-signature(compare-int)
   match int-set-signature {
-  - set-signature.new(empty, insert, member) =>
+  - set-signature.New(empty, insert, member) =>
     let my-set = insert(10, empty)
     let my-set = insert(20, my-set)
     let my-set = insert(20, my-set)

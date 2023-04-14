@@ -3,35 +3,35 @@ use {
 - this.nat-list::list
 }
 
-enum nat() {
-- zero()
-- succ(nat())
+variant nat() {
+- Zero()
+- Succ(nat())
 }
 
-enum list(a: tau) {
-- nil()
-- cons(a, list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(a, list(a))
 }
 
 define interpret(n: nat()): i64 {
   match n {
-  - nat.zero() =>
+  - nat.Zero() =>
     0
-  - nat.succ(m) =>
+  - nat.Succ(m) =>
     add-i64(1, interpret(m))
   }
 }
 
 define nat-list-sum(xs: list(nat())): i64 {
   match xs {
-  - this.nat-list::list.nil() =>
+  - this.nat-list::list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     add-i64(interpret(y), nat-list-sum(ys))
   }
 }
 
 
 define main(): i64 {
-  nat-list-sum(cons(succ(zero()), cons(succ(zero()), nil())))
+  nat-list-sum(Cons(Succ(Zero()), Cons(Succ(Zero()), Nil())))
 }

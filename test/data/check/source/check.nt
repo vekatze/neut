@@ -1,23 +1,23 @@
-enum nat() {
-- zero()
-- succ(nat())
+variant nat() {
+- Zero()
+- Succ(nat())
 }
 
 define nil-cons-cons(xs: nat()): i64 {
   match xs {
-  - nat.zero() =>
+  - nat.Zero() =>
     1
-  - nat.succ(nat.succ(cs)) =>
+  - nat.Succ(nat.Succ(cs)) =>
     2
-  - nat.succ(c) =>
+  - nat.Succ(c) =>
     3
   }
 }
 
 define main(): i64 {
-  let n0 = nat.zero()
-  let n1 = nat.succ(n0)
-  let n2 = nat.succ(nat.succ(nat.zero()))
+  let n0 = nat.Zero()
+  let n1 = nat.Succ(n0)
+  let n2 = nat.Succ(nat.Succ(nat.Zero()))
   let z0 = nil-cons-cons(n0)
   let z1 = nil-cons-cons(n1)
   let z2 = nil-cons-cons(n2)

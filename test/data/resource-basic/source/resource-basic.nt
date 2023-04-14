@@ -8,9 +8,9 @@ use {
 - core.top::top
 }
 
-enum list(a: tau) {
-- nil()
-- cons(a, list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(a, list(a))
 }
 
 define-inline add-pointer(x: i64, offset: i64): i64 {
@@ -20,7 +20,7 @@ define-inline add-pointer(x: i64, offset: i64): i64 {
 
 define copy-i8-array(content-pointer: i64, new-content-pointer: i64, counter: i64, length: i64): top() {
   if eq-i64(counter, length) {
-    unit()
+    Unit()
   } else {
     let value-pointer = add-pointer(content-pointer, counter)
     let value: i8 = magic load(i8, value-pointer)

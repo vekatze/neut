@@ -1,10 +1,10 @@
-enum item() {
-- cons(i64)
+variant item() {
+- Cons(i64)
 }
 
 define main(): i64 {
-  match item.cons(2) {
-  - item.cons(w) =>
+  match item.Cons(2) {
+  - item.Cons(w) =>
     w
   }
 }

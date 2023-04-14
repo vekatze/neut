@@ -6,18 +6,18 @@ use {
 - this.match-unbound::nat
 }
 
-enum nat() {
-- zero()
+variant nat() {
+- Zero()
 }
 
 define cond(n1: nat()): core.bool::bool() {
-  core.bool::bool.false()
+  core.bool::bool.False()
 }
 
 define f(): nat() {
-  let x = zero()
+  let x = Zero()
   if cond(x) {
-    zero()
+    Zero()
   } else {
     let _ = x
     x

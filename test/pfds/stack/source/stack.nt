@@ -8,77 +8,77 @@ use {
 - core.option
 }
 
-enum stack(a) {
-- nil()
-- cons(a, stack(a))
+variant stack(a) {
+- Nil()
+- Cons(a, stack(a))
 }
 
 define empty<a>(): stack(a) {
-  stack.nil()
+  stack.Nil()
 }
 
 define is-empty<a>(xs: &stack(a)): bool() {
   case xs {
-  - stack.nil() =>
-    bool.true()
-  - stack.cons(y, rest) =>
-    bool.false()
+  - stack.Nil() =>
+    bool.True()
+  - stack.Cons(y, rest) =>
+    bool.False()
   }
 }
 
 define head<a>(xs: &stack(a)): option(&a) {
   case xs {
-  - stack.nil() =>
-    none()
-  - stack.cons(a, rest) =>
-    some(a)
+  - stack.Nil() =>
+    option.None()
+  - stack.Cons(a, rest) =>
+    option.Some(a)
   }
 }
 
 define tail<a>(xs: &stack(a)): option(&stack(a)) {
   case xs {
-  - stack.nil() =>
-    none()
-  - stack.cons(a, rest) =>
-    some(rest)
+  - stack.Nil() =>
+    option.None()
+  - stack.Cons(a, rest) =>
+    option.Some(rest)
   }
 }
 
 define update<a>(xs: stack(a), index: i64, value: a): stack(a) {
   match xs {
-  - stack.nil() =>
-    stack.nil()
-  - stack.cons(y, ys) =>
+  - stack.Nil() =>
+    stack.Nil()
+  - stack.Cons(y, ys) =>
     if eq-i64(index, 0) {
-      stack.cons(value, ys)
+      stack.Cons(value, ys)
     } else {
-      stack.cons(y, update(ys, sub-i64(index, 1), value))
+      stack.Cons(y, update(ys, sub-i64(index, 1), value))
     }
   }
 }
 
 define suffixes<a>(xs: stack(a)): stack(stack(a)) {
   match xs {
-  - stack.nil() =>
-    stack.nil()
-  - stack.cons(y, ys) =>
-    stack.cons(xs, suffixes(ys))
+  - stack.Nil() =>
+    stack.Nil()
+  - stack.Cons(y, ys) =>
+    stack.Cons(xs, suffixes(ys))
   }
 }
 
 define suffixes-noetic<a>(xs: &stack(a)): stack(&stack(a)) {
   case xs {
-  - stack.nil() =>
-    stack.nil()
-  - stack.cons(y, ys) =>
-    stack.cons(xs, suffixes-noetic(ys))
+  - stack.Nil() =>
+    stack.Nil()
+  - stack.Cons(y, ys) =>
+    stack.Cons(xs, suffixes-noetic(ys))
   }
 }
 
 define main(): i64 {
   let xs = empty()
-  let ys = stack.cons(10: i64, xs)
-  let zs = stack.cons(30, stack.cons(20, ys))
+  let ys = stack.Cons(10: i64, xs)
+  let zs = stack.Cons(30, stack.Cons(20, ys))
   let zs = update(zs, 1, 20000)
   let ws = suffixes(zs)
   let calc on zs, xs = {

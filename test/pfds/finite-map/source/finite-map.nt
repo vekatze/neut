@@ -1,7 +1,6 @@
 import {
 - core.bool
 - core.option
-- core.sum
 }
 
 use {
@@ -10,21 +9,21 @@ use {
 - this.finite-map::finite-map
 }
 
-enum order() {
-- lt()
-- eq()
-- gt()
+variant order() {
+- LT()
+- EQ()
+- GT()
 }
 
 // for some non-trivial resource value
-enum list(a) {
-- nil()
-- cons(a, list(a))
+variant list(a) {
+- Nil()
+- Cons(a, list(a))
 }
 
-enum finite-map(a, b) {
-- leaf()
-- node(finite-map(a, b), a, b, finite-map(a, b))
+variant finite-map(a, b) {
+- Leaf()
+- Node(finite-map(a, b), a, b, finite-map(a, b))
 }
 
 struct finite-map-signature(a, b) {
@@ -36,35 +35,35 @@ struct finite-map-signature(a, b) {
 define make-finite-map<a, b>(compare: (a, a) -> order()): finite-map-signature(a, b) {
   new finite-map-signature {
   - finite-map-signature.empty <=
-    leaf()
+    Leaf()
   - finite-map-signature.insert <=
     define insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
       match haystack {
-      - leaf() =>
-        node(leaf(), key, value, leaf())
-      - node(left, k, v, right) =>
+      - Leaf() =>
+        Node(Leaf(), key, value, Leaf())
+      - Node(left, k, v, right) =>
         match compare(key, k) {
-        - order.lt() =>
-          node(insert(key, value, left), k, v, right)
-        - order.eq() =>
-          node(left, k, value, right)
-        - order.gt() =>
-          node(left, k, v, insert(key, value, right))
+        - order.LT() =>
+          Node(insert(key, value, left), k, v, right)
+        - order.EQ() =>
+          Node(left, k, value, right)
+        - order.GT() =>
+          Node(left, k, v, insert(key, value, right))
         }
       }
     }
   - finite-map-signature.lookup <=
     define lookup(key: a, haystack: &finite-map(a, b)): ?b {
       case haystack {
-      - leaf() =>
-        none()
-      - node(left, k, v, right) =>
+      - Leaf() =>
+        option.None()
+      - Node(left, k, v, right) =>
         match compare(key, !k) {
-        - order.lt() =>
+        - order.LT() =>
           lookup(key, left)
-        - order.eq() =>
-          some(!v)
-        - order.gt() =>
+        - order.EQ() =>
+          option.Some(!v)
+        - order.GT() =>
           lookup(key, right)
         }
       }
@@ -74,38 +73,35 @@ define make-finite-map<a, b>(compare: (a, a) -> order()): finite-map-signature(a
 
 define compare-int(x: i64, y: i64): order() {
   if lt-i64(x, y) {
-    order.lt()
+    order.LT()
   } else-if gt-i64(x, y) {
-    order.gt()
+    order.GT()
   } else {
-    order.eq()
+    order.EQ()
   }
 }
 
 define main(): i64 {
-  let intmap = make-finite-map(compare-int)
-  match intmap {
-  - finite-map-signature.new(empty, insert, lookup) =>
-    let mymap = insert(1, [tau], empty)
-    let mymap = insert(2, [tau, tau], mymap)
-    let mymap = insert(2, [tau, tau], mymap)
-    let mymap = insert(2, [i64], mymap)
-    let mymap = insert(3, [() -> i64], mymap)
-    let aoeu = mymap
-    let hoge = mymap
-    let result on mymap = {
-      match lookup(2, mymap) {
-      - core.sum::sum.left(v) =>
-        1
-      - core.sum::sum.right(xs) =>
-        match xs {
-        - [] =>
-          10
-        - _ :: _ =>
-          20
-        }
+  let finite-map-signature.New(empty, insert, lookup) = make-finite-map(compare-int)
+  let mymap = insert(1, [tau], empty)
+  let mymap = insert(2, [tau, tau], mymap)
+  let mymap = insert(2, [tau, tau], mymap)
+  let mymap = insert(2, [i64], mymap)
+  let mymap = insert(3, [() -> i64], mymap)
+  let aoeu = mymap
+  let hoge = mymap
+  let result on mymap = {
+    match lookup(2, mymap) {
+    - option.None() =>
+      1
+    - option.Some(xs) =>
+      match xs {
+      - [] =>
+        10
+      - _ :: _ =>
+        20
       }
     }
-    result
   }
+  result
 }

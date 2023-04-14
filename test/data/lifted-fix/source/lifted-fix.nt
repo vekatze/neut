@@ -2,9 +2,9 @@ import {
 - core.bool
 }
 
-enum list() {
-- nil()
-- cons(i64, list())
+variant list() {
+- Nil()
+- Cons(i64, list())
 }
 
 // enum my-bool() {
@@ -23,17 +23,17 @@ enum list() {
 // }
 
 define main(): i64 {
-  let xs = list.nil()
+  let xs = list.Nil()
   let ws = xs
   let multiple-free-var =
     // lambda () { free-vars-in-recursion-lifted(xs, ws) }
     define loop(): i64 {
       // match magic cast(i1, core.bool::bool(), add-i1(0, 1)) {
       match eq-i64(0, 0) {
-      - core.bool::bool.true() =>
+      - core.bool::bool.True() =>
         let fv-1 = xs
         1
-      - core.bool::bool.false() =>
+      - core.bool::bool.False() =>
         let fv-4 = ws
         loop()
       }

@@ -1,17 +1,17 @@
-enum list(a: tau) {
-- nil()
-- cons(a, list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(a, list(a))
 }
 
 define f(xs: list(i64)): i64 {
   match xs {
-  - list.nil() =>
+  - list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     1
   }
 }
 
 define main(): i64 {
-  f(list.cons(10, list.cons(20, list.nil())))
+  f(list.Cons(10, list.Cons(20, list.Nil())))
 }

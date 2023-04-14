@@ -1,11 +1,11 @@
-enum option() {
-- some(i64)
+variant option() {
+- Some(i64)
 }
 
 define main(): i64 {
   let sect = tau
-  match option.some(2) {
-  - option.some(2) =>
+  match option.Some(2) {
+  - option.Some(2) =>
     10
   }
 }

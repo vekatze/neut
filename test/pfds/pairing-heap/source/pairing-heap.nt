@@ -11,12 +11,12 @@ use {
 - core.option
 }
 
-enum heap(a) {
-- leaf()
-- node(a, list(heap(a)))
+variant heap(a) {
+- Leaf()
+- Node(a, list(heap(a)))
 }
 
-enum Order() {
+variant Order() {
 - LT()
 - EQ()
 - GT()
@@ -24,37 +24,37 @@ enum Order() {
 
 define find-min<a>(h: &heap(a)): ?a {
   case h {
-  - leaf() =>
-    none(): ?a
-  - node(v, hs) =>
-    some(!v)
+  - Leaf() =>
+    option.None(): ?a
+  - Node(v, hs) =>
+    option.Some(!v)
   }
 }
 
 define merge<a>(cmp: (a, a) -> Order(), h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
-  - leaf(), h2 =>
+  - Leaf(), h2 =>
     h2
-  - h1, leaf() =>
+  - h1, Leaf() =>
     h1
-  - node(x1, hs1), node(x2, hs2) =>
+  - Node(x1, hs1), Node(x2, hs2) =>
     match cmp(x1, x2) {
     - Order.LT() =>
-      node(x1, node(x2, hs2) :: hs1)
+      Node(x1, Node(x2, hs2) :: hs1)
     - otherwise =>
-      node(x2, node(x1, hs1) :: hs2)
+      Node(x2, Node(x1, hs1) :: hs2)
     }
   }
 }
 
 define insert<a>(cmp: (a, a) -> Order(), x: a, h: heap(a)): heap(a) {
-  merge(cmp, node(x, []), h)
+  merge(cmp, Node(x, []), h)
 }
 
 define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
   match hs {
   - [] =>
-    leaf()
+    Leaf()
   - [h] =>
     h
   - h1 :: h2 :: rest =>
@@ -64,10 +64,10 @@ define merge-pairs<a>(cmp: (a, a) -> Order(), hs: list(heap(a))): heap(a) {
 
 define delete-min<a>(cmp: (a, a) -> Order(), h: heap(a)): ?heap(a) {
   match h {
-  - leaf() =>
-    none()
-  - node(x, hs) =>
-    some(merge-pairs(cmp, hs))
+  - Leaf() =>
+    option.None()
+  - Node(x, hs) =>
+    option.Some(merge-pairs(cmp, hs))
   }
 }
 
@@ -82,16 +82,16 @@ define compare-int(x: i64, y: i64): Order() {
 }
 
 define main(): i64 {
-  let h: heap(i64) = leaf()
+  let h: heap(i64) = Leaf()
   let h = insert(compare-int, 10, h)
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 8, h)
   let h = insert(compare-int, 2, h)
   let maybe-min on h = {
     match find-min(h) {
-    - core.sum::sum.left(v) =>
+    - option.None() =>
       10
-    - core.sum::sum.right(min) =>
+    - option.Some(min) =>
       min
     }
   }

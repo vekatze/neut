@@ -2,7 +2,6 @@ import {
 - core.list
 - core.bool
 - core.option
-- core.sum
 }
 
 use {
@@ -40,9 +39,9 @@ define reverse<a>(xs: list(a)): list(a) {
 define head<a>(q: &queue(a)): ?a {
   case q {
   - tuple(x :: rest, ys) =>
-    some(!x)
+    option.Some(!x)
   - otherwise =>
-    none()
+    option.None()
   }
 }
 
@@ -58,9 +57,9 @@ define-inline sanitize<a>(q: queue(a)): queue(a) {
 define tail<a>(q: queue(a)): ?queue(a) {
   match q {
   - tuple(x :: rest, ys) =>
-    some(sanitize(tuple(rest, ys)))
+    option.Some(sanitize(tuple(rest, ys)))
   - otherwise =>
-    none()
+    option.None()
   }
 }
 
@@ -85,26 +84,26 @@ define main(): i64 {
   let q = snoc([1], q)
   let v1 on q = {
     match head(q) {
-    - core.sum::sum.right(xs1) =>
+    - option.Some(xs1) =>
       let v1 on xs1 = sum(xs1)
       v1
-    - core.sum::sum.left(v) =>
+    - option.None() =>
       4
     }
   }
   let mq = tail(q)
   match mq {
-  - core.sum::sum.left(_) =>
+  - option.None() =>
     1
-  - core.sum::sum.right(q) =>
+  - option.Some(q) =>
     let q = snoc([3], q)
     let q = snoc([8], q)
     let v2 on q = {
       match head(q) {
-      - core.sum::sum.right(xs) =>
+      - option.Some(xs) =>
         let v on xs = sum(xs)
         v
-      - core.sum::sum.left(v) =>
+      - option.None() =>
         4
       }
     }

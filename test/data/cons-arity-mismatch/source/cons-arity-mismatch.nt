@@ -2,15 +2,15 @@ use {
 - this.cons-arity-mismatch::item
 }
 
-enum item() {
-- cons()
+variant item() {
+- Cons()
 }
 
 define f(xs: item(), ys: item()): item() {
   match xs, ys {
-  // - cons(x), zs =>
+  // - Cons(x), zs =>
   //   zs
-  - cons(), zs =>
+  - Cons(), zs =>
     zs
   }
 }

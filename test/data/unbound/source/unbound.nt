@@ -2,25 +2,25 @@ use {
 - this.unbound::list
 }
 
-enum list(a: tau) {
-- nil()
-- cons()
+variant list(a: tau) {
+- Nil()
+- Cons()
 }
 
 define f(xs: list(i64), ys: list(i64)): list(i64) {
   match xs, ys {
-  - nil(), ys =>
+  - Nil(), ys =>
     ys
-  - xs, nil() =>
+  - xs, Nil() =>
     xs
-  - cons(), zs =>
-    nil()
+  - Cons(), zs =>
+    Nil()
   }
 }
 
 define main(): i64 {
-  let xs = cons()
-  let ys = cons()
+  let xs = Cons()
+  let ys = Cons()
   let zs = f(xs, ys)
   0
 }

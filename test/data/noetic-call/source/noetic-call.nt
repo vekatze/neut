@@ -1,6 +1,6 @@
-enum list(a: tau) {
-- nil()
-- cons(a, list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(a, list(a))
 }
 
 define length(xs: &list(i64)): i64 {
@@ -8,24 +8,24 @@ define length(xs: &list(i64)): i64 {
   let b = xs
   let c = xs
   case c {
-  - list.nil() =>
+  - list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     add-i64(1, length(ys))
   }
 }
 
 define tail(xs: &list(i64)): &list(i64) {
   case xs {
-  - list.nil() =>
+  - list.Nil() =>
     xs
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     ys
   }
 }
 
 define main(): i64 {
-  let xs = list.cons(3, list.cons(1, list.cons(2, list.nil())))
+  let xs = list.Cons(3, list.Cons(1, list.Cons(2, list.Nil())))
   let some-value on xs = length(tail(xs))
   some-value
 }

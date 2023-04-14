@@ -1,17 +1,17 @@
-enum list(a: tau) {
-- nil()
-- cons(a, list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(a, list(a))
 }
 
 define length(a: tau, xs: list(a)): i64 {
   match xs {
-  - list.nil() =>
+  - list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     add-i64(1, length(a,  ys))
   }
 }
 
 define main(): i64 {
-  length(i64, list.cons(1, list.cons(2, list.nil())))
+  length(i64, list.Cons(1, list.Cons(2, list.Nil())))
 }

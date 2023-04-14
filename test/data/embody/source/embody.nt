@@ -1,13 +1,13 @@
-enum list(a: tau) {
-- nil()
-- cons(a, list(a))
+variant list(a: tau) {
+- Nil()
+- Cons(a, list(a))
 }
 
 define length-embodied(xs: list(i64)): i64 {
   match xs {
-  - list.nil() =>
+  - list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     add-i64(1, length-embodied(ys))
   }
 }
@@ -18,15 +18,15 @@ define length(xs: &list(i64)): i64 {
 
 define sum-of-list(xs: &list(i64)): i64 {
   case xs {
-  - list.nil() =>
+  - list.Nil() =>
     0
-  - list.cons(y, ys) =>
+  - list.Cons(y, ys) =>
     add-i64(!y, sum-of-list(ys))
   }
 }
 
 define main(): i64 {
-  // let xs = list.cons(3, list.cons(1, list.cons(20, list.nil()))) in
+  // let xs = list.Cons(3, list.Cons(1, list.Cons(20, list.Nil()))) in
   let xs = [3, 1, 20]
   let some-value on xs = length(xs)
   let sum-value on xs = add-i64(sum-of-list(xs), some-value)

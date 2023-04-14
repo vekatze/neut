@@ -1,14 +1,14 @@
-enum item(a: tau) {
-- cons(a)
+variant item(a: tau) {
+- Cons(a)
 }
 
 define view(x: item(i64 -> i64)): i64 {
   match x {
-  - item.cons(a) =>
+  - item.Cons(a) =>
     1
   }
 }
 
 define main(): i64 {
-  view(item.cons(lambda (x) { x }))
+  view(item.Cons(lambda (x) { x }))
 }
