@@ -312,7 +312,7 @@ rawTermPiOrConsOrAscOrBasic = do
         cod <- rawTerm
         return $ m :< RT.Pi [(m, x, basic)] cod,
       do
-        delimiter "::"
+        delimiter ":<"
         rest <- rawTerm
         listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
         return $ m :< RT.PiElim listCons [basic, rest],
@@ -516,9 +516,10 @@ rawTermPattern = do
   headPat <- rawTermPatternBasic
   choice
     [ try $ do
-        delimiter "::"
+        delimiter ":<"
         pat <- rawTermPattern
-        return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.Cons") [headPat, pat]),
+        listCons <- lift $ handleDefiniteDescriptionIntoRawConsName m coreListCons
+        return (m, RP.Cons listCons [headPat, pat]),
       return headPat
     ]
 
