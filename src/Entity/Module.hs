@@ -19,7 +19,8 @@ type SomePath =
   Either (Path Abs Dir) (Path Abs File)
 
 data Module = Module
-  { moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
+  { moduleID :: MID.ModuleID,
+    moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
     moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
     moduleAntecedents :: [ModuleChecksum],

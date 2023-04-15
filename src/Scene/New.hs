@@ -36,7 +36,8 @@ constructDefaultModule name = do
   mainFile <- Path.parseRelFile $ T.unpack name <> sourceFileExtension
   return $
     Module
-      { moduleTarget =
+      { moduleID = MID.Main,
+        moduleTarget =
           Map.fromList
             [ ( Target name,
                 SGL.StrictGlobalLocator

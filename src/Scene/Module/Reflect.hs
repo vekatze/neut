@@ -64,7 +64,8 @@ fromFilePath moduleID moduleFilePath = do
   antecedents <- mapM interpretAntecedent antecedentsEns
   return
     Module
-      { moduleTarget = Map.mapKeys Target target,
+      { moduleID = moduleID,
+        moduleTarget = Map.mapKeys Target target,
         moduleDependency = dependency,
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
