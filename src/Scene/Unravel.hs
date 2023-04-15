@@ -199,9 +199,8 @@ getChildren currentSource = do
       return sourceList
     Nothing -> do
       let path = Source.sourceFilePath currentSource
-      (sourceList, aliasInfoList) <- ParseCore.run Parse.parseImportSequence path
+      sourceList <- ParseCore.run Parse.parseImportSequence path
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
-      Env.insertToSourceAliasMap currentSourceFilePath aliasInfoList
       return sourceList
 
 registerAntecedentInfo :: [Source.Source] -> App ()

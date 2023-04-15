@@ -7,7 +7,6 @@ import Data.IntMap qualified as IntMap
 import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.AliasInfo
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
@@ -46,7 +45,6 @@ data Env = Env
     locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     currentSectionStack :: FastRef [Section.Section],
-    sourceAliasMap :: FastRef SourceAliasMap,
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
     holeSubst :: FastRef HS.HoleSubst,
@@ -101,7 +99,6 @@ newEnv = do
   locatorAliasMap <- newFastRef
   nameMap <- newFastRef
   currentSectionStack <- newFastRef
-  sourceAliasMap <- newFastRef
   antecedentMap <- newFastRef
   constraintEnv <- newFastRef
   holeSubst <- newFastRef

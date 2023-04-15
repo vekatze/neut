@@ -1,14 +1,13 @@
 module Scene.Parse.Import
   ( parseImportSequence,
-    skipImportSequence,
+    skimImportSequence,
   )
 where
 
 import Context.Alias qualified as Alias
 import Context.Throw qualified as Throw
-import Control.Monad
 import Control.Monad.Trans
-import Data.Maybe
+import Data.Either
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
 import Entity.Const
@@ -24,65 +23,72 @@ import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as P
 import Text.Megaparsec
 
-parseImportSequence :: P.Parser ([Source.Source], [AI.AliasInfo])
+parseImportSequence :: P.Parser [Source.Source]
 parseImportSequence = do
   let p1 = P.importBlock (P.manyList parseSingleImport)
   let p2 = return []
-  (sourceList, mInfoList) <- unzip <$> choice [p1, p2]
-  return (sourceList, catMaybes mInfoList)
+  choice [p1, p2]
 
-parseSingleImport :: P.Parser (Source.Source, Maybe AI.AliasInfo)
+parseSingleImport :: P.Parser Source.Source
 parseSingleImport = do
   choice
     [ try parseImportQualified,
       parseImportSimple
     ]
 
-skipSingleImport :: P.Parser ()
-skipSingleImport = do
+skimImportSequence :: P.Parser ([SGL.StrictGlobalLocator], [AI.AliasInfo])
+skimImportSequence = do
   choice
-    [ try skipImportQualified,
-      skipImportSimple
+    [ fmap partitionEithers $ P.importBlock $ P.manyList skimSingleImport,
+      return ([], [])
     ]
 
-skipImportSequence :: P.Parser ()
-skipImportSequence = do
+skimSingleImport :: P.Parser (Either SGL.StrictGlobalLocator AI.AliasInfo)
+skimSingleImport =
   choice
-    [ void $ P.importBlock $ P.manyList skipSingleImport,
-      return ()
+    [ Right <$> try parseImportQualified',
+      Left <$> parseImportSimple'
     ]
 
-parseImportSimple :: P.Parser (Source.Source, Maybe AI.AliasInfo)
+parseImportSimple :: P.Parser Source.Source
 parseImportSimple = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
-  source <- getSource m strictGlobalLocator locatorText
-  return (source, Nothing)
+  getSource m strictGlobalLocator locatorText
 
-skipImportSimple :: P.Parser ()
-skipImportSimple = do
-  _ <- P.symbol
-  return ()
+-- return (source, Nothing)
 
-parseImportQualified :: P.Parser (Source.Source, Maybe AI.AliasInfo)
+parseImportSimple' :: P.Parser SGL.StrictGlobalLocator
+parseImportSimple' = do
+  m <- P.getCurrentHint
+  locatorText <- P.symbol
+  globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
+  lift $ Alias.resolveAlias m globalLocator
+
+-- source <- getSource m strictGlobalLocator locatorText
+-- return (source, Nothing)
+
+parseImportQualified :: P.Parser Source.Source
 parseImportQualified = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
   P.delimiter "=>"
+  _ <- GLA.GlobalLocatorAlias <$> P.baseName
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
-  source <- getSource m strictGlobalLocator locatorText
-  globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
-  return (source, Just $ AI.Prefix m globalLocatorAlias strictGlobalLocator)
+  getSource m strictGlobalLocator locatorText
 
-skipImportQualified :: P.Parser ()
-skipImportQualified = do
-  _ <- P.symbol
+parseImportQualified' :: P.Parser AI.AliasInfo
+parseImportQualified' = do
+  m <- P.getCurrentHint
+  locatorText <- P.symbol
   P.delimiter "=>"
-  _ <- P.symbol
-  return ()
+  globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
+  globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
+  strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
+  return $ AI.Prefix m globalLocatorAlias strictGlobalLocator
 
 getSource :: Hint -> SGL.StrictGlobalLocator -> T.Text -> P.Parser Source.Source
 getSource m sgl locatorText = do

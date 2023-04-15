@@ -16,7 +16,6 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
-import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
@@ -73,12 +72,6 @@ parseSource source = do
       parseCachedStmtList stmtList
       return $ Left stmtList
     Nothing -> do
-      sourceAliasMap <- Env.getSourceAliasMap
-      case Map.lookup (Source.sourceFilePath source) sourceAliasMap of
-        Nothing ->
-          Throw.raiseCritical' "[activateAliasInfoOfCurrentFile] (compiler bug)"
-        Just aliasInfoList ->
-          Alias.activateAliasInfo aliasInfoList
       defList <- P.run program $ Source.sourceFilePath source
       registerTopLevelNames defList
       Right <$> Discern.discernStmtList defList
@@ -103,7 +96,9 @@ ensureMain m mainFunctionName = do
 
 program :: P.Parser [RawStmt]
 program = do
-  Parse.skipImportSequence
+  (globalLocatorList, aliasInfoList) <- Parse.skimImportSequence
+  forM_ globalLocatorList $ lift . Locator.activateGlobalLocator
+  lift $ Alias.activateAliasInfo aliasInfoList
   parseStmtUseSequence
   concat <$> many parseStmt <* eof
 

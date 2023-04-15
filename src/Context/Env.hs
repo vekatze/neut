@@ -3,10 +3,8 @@ module Context.Env where
 import Context.App
 import Context.App.Internal
 import Control.Monad.IO.Class
-import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
-import Entity.AliasInfo
 import Entity.Const
 import Entity.Source qualified as Source
 import Entity.TargetPlatform
@@ -59,11 +57,3 @@ insertToHasCacheSet v =
 insertToHasLLVMSet :: Path Abs File -> App ()
 insertToHasLLVMSet v =
   modifyRef' hasLLVMSet $ S.insert v
-
-getSourceAliasMap :: App SourceAliasMap
-getSourceAliasMap =
-  readRef' sourceAliasMap
-
-insertToSourceAliasMap :: Path Abs File -> [AliasInfo] -> App ()
-insertToSourceAliasMap k v =
-  modifyRef' sourceAliasMap $ Map.insert k v
