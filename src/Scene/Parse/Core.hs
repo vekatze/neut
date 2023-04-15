@@ -144,10 +144,6 @@ betweenParen :: Parser a -> Parser a
 betweenParen =
   between (delimiter "(") (delimiter ")")
 
-betweenAngle :: Parser a -> Parser a
-betweenAngle =
-  between (delimiter "<") (delimiter ">")
-
 betweenBrace :: Parser a -> Parser a
 betweenBrace =
   between (delimiter "{") (delimiter "}")
@@ -177,7 +173,7 @@ argList f = do
 impArgList :: Parser a -> Parser [a]
 impArgList f =
   choice
-    [ betweenAngle $ commaList f,
+    [ betweenBracket $ commaList f,
       return []
     ]
 
