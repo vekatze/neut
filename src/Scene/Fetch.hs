@@ -107,4 +107,4 @@ addDependencyToModuleFile targetModule alias url checksum = do
       <> BN.reify (extract alias)
       <> "` to the module file"
   let targetModule' = M.addDependency alias url checksum targetModule
-  writeModule targetModule'
+  Module.save targetModule'

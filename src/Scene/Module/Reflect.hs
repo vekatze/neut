@@ -57,14 +57,17 @@ fromFilePath moduleID moduleFilePath = do
   (_, entryPointEns) <- liftEither $ access "target" entity >>= toDictionary
   dependencyEns <- liftEither $ access "dependency" entity >>= toDictionary
   extraContentsEns <- liftEither $ access "extra-content" entity >>= toList
+  antecedentsEns <- liftEither $ access "antecedents" entity >>= toList
   target <- mapM (interpretRelFilePath moduleID) entryPointEns
   dependency <- interpretDependencyDict dependencyEns
   extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
+  antecedents <- mapM interpretAntecedent antecedentsEns
   return
     Module
       { moduleTarget = Map.mapKeys Target target,
         moduleDependency = dependency,
         moduleExtraContents = extraContents,
+        moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath
       }
 
@@ -113,6 +116,11 @@ interpretExtraPath moduleRootDir entity = do
       filePath <- Path.resolveFile moduleRootDir $ T.unpack itemPathText
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
+
+interpretAntecedent :: Ens -> App ModuleChecksum
+interpretAntecedent ens = do
+  (_, checksumText) <- liftEither $ toString ens
+  return $ ModuleChecksum checksumText
 
 ensureExistence ::
   H.Hint ->

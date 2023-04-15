@@ -13,6 +13,7 @@ module Context.Path
     stripPrefix,
     writeByteString,
     writeText,
+    getBaseName,
     parseRelFile,
     removeDirRecur,
     getExecutableOutputPath,
@@ -80,6 +81,12 @@ getModificationTime =
 ensureDir :: Path Abs Dir -> App ()
 ensureDir =
   P.ensureDir
+
+getBaseName :: Path Abs File -> App T.Text
+getBaseName path = do
+  let dirPath = P.parent path
+  filename <- P.stripProperPrefix dirPath path
+  return $ T.replace packageFileExtension "" $ T.pack $ P.toFilePath filename
 
 stripPrefix :: Path b Dir -> Path b t -> App (Path Rel t)
 stripPrefix =

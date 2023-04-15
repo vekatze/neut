@@ -6,6 +6,7 @@ module Context.Module
     setMainModule,
     getModuleCacheMap,
     insertToModuleCacheMap,
+    save,
   )
 where
 
@@ -68,3 +69,7 @@ getModuleDirByID mHint moduleID = do
     MID.Library (MC.ModuleChecksum checksum) -> do
       libraryDir <- Path.getLibraryDirPath
       resolveDir libraryDir $ T.unpack checksum
+
+save :: Module -> App ()
+save targetModule =
+  Path.writeText (moduleLocation targetModule) $ ppModule targetModule

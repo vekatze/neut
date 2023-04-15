@@ -47,6 +47,7 @@ constructDefaultModule name = do
             ],
         moduleDependency = Map.empty,
         moduleExtraContents = [],
+        moduleAntecedents = [],
         moduleLocation = moduleRootDir </> moduleFile
       }
 
@@ -54,7 +55,7 @@ createModuleFile :: App ()
 createModuleFile = do
   newModule <- Module.getMainModule
   Path.ensureDir $ parent $ moduleLocation newModule
-  Path.writeText (moduleLocation newModule) $ ppModule newModule
+  Module.save newModule
   Path.ensureDir $ getTargetDir newModule
 
 createMainFile :: App ()

@@ -22,6 +22,7 @@ data Module = Module
   { moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
     moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
     moduleExtraContents :: [SomePath],
+    moduleAntecedents :: [ModuleChecksum],
     moduleLocation :: Path Abs File
   }
   deriving (Show)
@@ -62,12 +63,18 @@ ppModule someModule = do
         let checksumEns = () :< E.String checksum
         () :< E.Dictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])
   let extraContents = map (\x -> () :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
+  let antecedents = map (\x -> () :< E.String (ppAntecedent x)) $ moduleAntecedents someModule
   E.ppEnsTopLevel $
     Map.fromList
       [ ("dependency", () :< E.Dictionary (Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency)),
         ("target", () :< E.Dictionary (Map.mapKeys (\(Target.Target key) -> key) entryPoint)),
-        ("extra-content", () :< E.List extraContents)
+        ("extra-content", () :< E.List extraContents),
+        ("antecedents", () :< E.List antecedents)
       ]
+
+ppAntecedent :: ModuleChecksum -> T.Text
+ppAntecedent (ModuleChecksum checksum) =
+  checksum
 
 ppExtraContent :: SomePath -> T.Text
 ppExtraContent somePath =

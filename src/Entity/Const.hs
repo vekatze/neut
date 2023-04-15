@@ -9,6 +9,10 @@ sourceFileExtension :: String
 sourceFileExtension =
   ".nt"
 
+packageFileExtension :: T.Text
+packageFileExtension =
+  ".tar.zst"
+
 nsSepChar :: Char
 nsSepChar =
   '.'
