@@ -51,7 +51,7 @@ new gl ll =
   MakeDefiniteDescription
     { globalLocator = gl,
       localLocator = ll,
-      reify = SGL.reify gl <> definiteSep <> LL.reify ll
+      reify = SGL.reify gl <> nsSep <> LL.reify ll
     }
 
 newByGlobalLocator :: SGL.StrictGlobalLocator -> BN.BaseName -> DefiniteDescription
@@ -97,15 +97,25 @@ toBuilder dd =
   TE.encodeUtf8Builder $ toLowName dd
 
 getLocatorPair :: H.Hint -> T.Text -> Either Error (GL.GlobalLocator, LL.LocalLocator)
-getLocatorPair m text = do
-  if T.null text
-    then Left $ newError m "the definite description shouldn't be empty"
-    else do
-      let (globalLocator, localLocatorWithSep) = T.breakOn definiteSep text
-      if localLocatorWithSep == ""
-        then Left $ newError m $ "the definite separator isn't found in: " <> text
-        else do
-          let localLocator = T.drop (T.length definiteSep) localLocatorWithSep
-          globalLocator' <- GL.reflect m globalLocator
-          localLocator' <- LL.reflect m localLocator
-          return (globalLocator', localLocator')
+getLocatorPair m varText = do
+  let nameList = T.splitOn "." varText
+  case initLast nameList of
+    Nothing ->
+      Left $ newError m "Entity.DefiniteDescription.getLocatorPair: empty variable name"
+    Just ([], _) ->
+      Left $ newError m $ "the symbol `" <> varText <> "` doesn't contain a global locator"
+    Just (initElems, lastElem) -> do
+      globalLocator <- GL.reflect m $ T.intercalate "." initElems
+      localLocator <- LL.reflect m lastElem
+      return (globalLocator, localLocator)
+
+initLast :: [a] -> Maybe ([a], a)
+initLast xs =
+  case xs of
+    [] ->
+      Nothing
+    [x] ->
+      return ([], x)
+    x : rest -> do
+      (initElems, lastElem) <- initLast rest
+      return (x : initElems, lastElem)

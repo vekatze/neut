@@ -21,10 +21,6 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
-definiteSep :: T.Text
-definiteSep =
-  "::"
-
 envVarCacheDir :: String
 envVarCacheDir =
   "NEUT_CACHE_DIR"
@@ -66,34 +62,45 @@ executableRelDir =
   $(mkRelDir "executable")
 
 core :: T.Text
-core = "core"
+core =
+  "core"
 
 coreTop :: T.Text
-coreTop = core <> T.singleton nsSepChar <> "top" <> definiteSep <> "top"
+coreTop =
+  core <> nsSep <> "top" <> nsSep <> "top"
 
 coreBool :: T.Text
-coreBool = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool"
+coreBool =
+  core <> nsSep <> "bool" <> nsSep <> "bool"
 
 coreBoolTrue :: T.Text
-coreBoolTrue = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "True"
+coreBoolTrue =
+  core <> nsSep <> "bool" <> nsSep <> "True"
 
 coreBoolFalse :: T.Text
-coreBoolFalse = core <> T.singleton nsSepChar <> "bool" <> definiteSep <> "bool" <> T.singleton nsSepChar <> "False"
+coreBoolFalse =
+  core <> nsSep <> "bool" <> nsSep <> "False"
 
 coreOption :: T.Text
-coreOption = core <> T.singleton nsSepChar <> "option" <> definiteSep <> "option"
+coreOption =
+  core <> nsSep <> "option" <> nsSep <> "option"
 
 coreOptionNone :: T.Text
-coreOptionNone = core <> T.singleton nsSepChar <> "option" <> definiteSep <> "option" <> T.singleton nsSepChar <> "None"
+coreOptionNone =
+  core <> nsSep <> "option" <> nsSep <> "None"
 
 coreOptionSome :: T.Text
-coreOptionSome = core <> T.singleton nsSepChar <> "option" <> definiteSep <> "option" <> T.singleton nsSepChar <> "Some"
+coreOptionSome =
+  core <> nsSep <> "option" <> nsSep <> "Some"
 
 coreSum :: T.Text
-coreSum = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum"
+coreSum =
+  core <> nsSep <> "sum" <> nsSep <> "sum"
 
 coreSumLeft :: T.Text
-coreSumLeft = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "Left"
+coreSumLeft =
+  core <> nsSep <> "sum" <> nsSep <> "Left"
 
 coreSumRight :: T.Text
-coreSumRight = core <> T.singleton nsSepChar <> "sum" <> definiteSep <> "sum" <> T.singleton nsSepChar <> "Right"
+coreSumRight =
+  core <> nsSep <> "sum" <> nsSep <> "Right"

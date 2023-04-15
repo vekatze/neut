@@ -12,7 +12,7 @@ where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Const (definiteSep)
+import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint hiding (new)
@@ -37,7 +37,7 @@ showRawConsName consName =
     UnresolvedName (UN.UnresolvedName value) ->
       value
     LocatorPair gl ll ->
-      GL.reify gl <> definiteSep <> LL.reify ll
+      GL.reify gl <> nsSep <> LL.reify ll
     DefiniteDescription dd ->
       LL.reify (DD.localLocator dd)
 

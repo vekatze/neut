@@ -46,7 +46,6 @@ import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
 import Text.Megaparsec
-import Text.Megaparsec.Char (char)
 
 --
 -- parser for RT.RawTerm
@@ -381,20 +380,6 @@ rawTermPiIntroDef = do
   let piType = mFun :< RT.Pi domBinderList codType
   return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
 
-parseDefiniteDescription :: Parser (Hint, GL.GlobalLocator, LL.LocalLocator)
-parseDefiniteDescription = do
-  notFollowedBy (char '-')
-  m <- getCurrentHint
-  baseSymbol <- definiteDescriptionSymbol
-  let (beforeSep, rest) = T.breakOn definiteSep baseSymbol
-  if T.null rest
-    then failure (Just (asTokens baseSymbol)) (S.fromList [asLabel "definite description"])
-    else do
-      let afterSep = T.drop (T.length definiteSep) rest
-      globalLocator <- lift $ Throw.liftEither $ GL.reflect m beforeSep
-      localLocator <- lift $ Throw.liftEither $ LL.reflect m afterSep
-      return (m, globalLocator, localLocator)
-
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
   m <- getCurrentHint
@@ -579,14 +564,12 @@ foldTuplePat m es =
 
 parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
 parseVarOrDefiniteDescription = do
-  choice
-    [ try $ do
-        (m, globalLocator, localLocator) <- parseDefiniteDescription
-        return $ Right (m, globalLocator, localLocator),
-      do
-        (m, x) <- var
-        return $ Left (m, x)
-    ]
+  (m, varText) <- var
+  case DD.getLocatorPair m varText of
+    Left _ ->
+      return $ Left (m, varText)
+    Right (gl, ll) ->
+      return $ Right (m, gl, ll)
 
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
