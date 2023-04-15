@@ -724,34 +724,16 @@ rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
-  elems <- many $ choice [rawTermPiElimForwardBracket, rawTermPiElimBackwardBracket]
-  foldPiElimBracket m e elems
+  elems <- many $ argList rawTerm
+  foldPiElim m e elems
 
-data PiElimBracket
-  = PiElimBracketForward [RT.RawTerm] -- f<imp-arg-1, ..., imp-arg-n>(arg-1, ..., arg-m)
-  | PiElimBracketBackward RT.RawTerm -- e[f]
-
-rawTermPiElimForwardBracket :: Parser PiElimBracket
-rawTermPiElimForwardBracket = do
-  es <- argList rawTerm
-  return $ PiElimBracketForward es
-
-rawTermPiElimBackwardBracket :: Parser PiElimBracket
-rawTermPiElimBackwardBracket = do
-  f <- betweenBracket rawTerm
-  return $ PiElimBracketBackward f
-
-foldPiElimBracket :: Hint -> RT.RawTerm -> [PiElimBracket] -> Parser RT.RawTerm
-foldPiElimBracket m e elemList =
+foldPiElim :: Hint -> RT.RawTerm -> [[RT.RawTerm]] -> Parser RT.RawTerm
+foldPiElim m e elemList =
   case elemList of
     [] ->
       return e
-    bracket : rest ->
-      case bracket of
-        PiElimBracketForward args ->
-          foldPiElimBracket m (m :< RT.PiElim e args) rest
-        PiElimBracketBackward func ->
-          foldPiElimBracket m (m :< RT.PiElim func [e]) rest
+    args : rest ->
+      foldPiElim m (m :< RT.PiElim e args) rest
 
 --
 -- term-related helper functions
@@ -840,12 +822,29 @@ getIntrospectiveValue m key = do
 
 rawTermVarOrDefiniteDescription :: Parser RT.RawTerm
 rawTermVarOrDefiniteDescription = do
+  m <- getCurrentHint
+  e <- rawTermParseSymbol
+  funcVarList <- many $ do
+    delimiter "::"
+    rawTermParseSymbol
+  return $ foldReversePiElim m e funcVarList
+
+rawTermParseSymbol :: Parser RT.RawTerm
+rawTermParseSymbol = do
   varOrDefiniteDescription <- parseVarOrDefiniteDescription
   case varOrDefiniteDescription of
     Left (m, x) ->
       return (preVar m x)
     Right (m, globalLocator, localLocator) ->
       return $ m :< RT.VarGlobal globalLocator localLocator
+
+foldReversePiElim :: Hint -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
+foldReversePiElim m e funcVarList =
+  case funcVarList of
+    [] ->
+      e
+    func : rest ->
+      foldReversePiElim m (m :< RT.PiElim func [e]) rest
 
 rawTermTextIntro :: Parser RT.RawTerm
 rawTermTextIntro = do
