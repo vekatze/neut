@@ -5,6 +5,7 @@ module Scene.Unravel
 where
 
 import Context.Alias qualified as Alias
+import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.Env qualified as Env
 import Context.Module qualified as Module
@@ -25,7 +26,9 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Hint
 import Entity.Module
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
+import Entity.Source (Source (sourceModule))
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
@@ -43,11 +46,11 @@ type IsObjectAvailable =
 type IsLLVMAvailable =
   Bool
 
-unravel :: Target -> App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+unravel :: Target -> App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, [Source.Source])
 unravel target = do
   mainModule <- Module.getMainModule
   mainFilePath <- resolveTarget mainModule target >>= Module.getSourcePath
-  unravel' $
+  unravel' >=> adjustUnravelResult $
     Source.Source
       { Source.sourceModule = mainModule,
         Source.sourceFilePath = mainFilePath
@@ -55,13 +58,22 @@ unravel target = do
 
 unravelFromSGL ::
   SGL.StrictGlobalLocator ->
-  App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+  App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, [Source.Source])
 unravelFromSGL sgl = do
   mainModule <- Module.getMainModule
   path <- Module.getSourcePath sgl
   ensureFileModuleSanity path mainModule
   let initialSource = Source.Source {Source.sourceModule = mainModule, Source.sourceFilePath = path}
-  unravel' initialSource
+  unravel' >=> adjustUnravelResult $ initialSource
+
+adjustUnravelResult ::
+  (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source) ->
+  App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, [Source.Source])
+adjustUnravelResult (b1, b2, b3, sourceSeq) = do
+  let sourceList = toList sourceSeq
+  registerAntecedentInfo sourceList
+  sourceList' <- mapM getLatestAlternative sourceList
+  return (b1, b2, b3, sanitizeSourceList sourceList')
 
 ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath mainModule = do
@@ -191,3 +203,51 @@ getChildren currentSource = do
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
       Env.insertToSourceAliasMap currentSourceFilePath aliasInfoList
       return sourceList
+
+registerAntecedentInfo :: [Source.Source] -> App ()
+registerAntecedentInfo sourceList =
+  forM_ sourceList $ \source -> do
+    let newModule = Source.sourceModule source
+    let antecedents = moduleAntecedents newModule
+    forM_ antecedents $ \antecedent ->
+      Antecedent.insert antecedent newModule
+
+sanitizeSourceList :: [Source.Source] -> [Source.Source]
+sanitizeSourceList =
+  sanitizeSourceList' S.empty
+
+sanitizeSourceList' :: S.Set (Path Abs File) -> [Source.Source] -> [Source.Source]
+sanitizeSourceList' pathSet sourceList =
+  case sourceList of
+    [] ->
+      []
+    source : rest -> do
+      let path = Source.sourceFilePath source
+      if S.member path pathSet
+        then sanitizeSourceList' pathSet rest
+        else source : sanitizeSourceList' (S.insert path pathSet) rest
+
+getLatestAlternative :: Source.Source -> App Source.Source
+getLatestAlternative source = do
+  case moduleID $ sourceModule source of
+    MID.Main ->
+      return source
+    MID.Base ->
+      return source
+    MID.Library checksum -> do
+      mNewChecksum <- Antecedent.lookup checksum
+      case mNewChecksum of
+        Nothing ->
+          return source
+        Just newModule -> do
+          getNewerSource source newModule >>= getLatestAlternative
+
+getNewerSource :: Source.Source -> Module -> App Source.Source
+getNewerSource source newModule = do
+  relSourceFilePath <- Source.getRelPathFromSourceDir source
+  let newSourceFilePath = getSourceDir newModule </> relSourceFilePath
+  let newSource = Source.Source {sourceFilePath = newSourceFilePath, sourceModule = newModule}
+  b <- Path.doesFileExist newSourceFilePath
+  if b
+    then return newSource
+    else Throw.raiseError' "the module foo declares incompatible versions to be compatible"

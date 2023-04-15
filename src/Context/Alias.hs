@@ -6,9 +6,12 @@ module Context.Alias
   )
 where
 
+import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
+import Context.Module qualified as Module
 import Context.Throw qualified as Throw
+import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe qualified as Maybe
 import Entity.AliasInfo
@@ -71,10 +74,25 @@ resolveModuleAlias m moduleAlias = do
           Throw.raiseError m $
             "no such module alias is defined: " <> BN.reify (extract moduleAlias)
 
-getModuleChecksumAliasList :: Module -> [(ModuleAlias, ModuleChecksum)]
+getModuleChecksumAliasList :: Module -> App [(ModuleAlias, ModuleChecksum)]
 getModuleChecksumAliasList baseModule = do
   let dependencyList = Map.toList $ moduleDependency baseModule
-  map (\(key, (_, checksum)) -> (key, checksum)) dependencyList
+  forM dependencyList $ \(key, (_, checksum)) -> do
+    checksum' <- getLatestCompatibleChecksum checksum
+    return (key, checksum')
+
+getLatestCompatibleChecksum :: ModuleChecksum -> App ModuleChecksum
+getLatestCompatibleChecksum mc = do
+  mNewerModule <- Antecedent.lookup mc
+  case mNewerModule of
+    Just newerModule ->
+      case moduleID newerModule of
+        MID.Library newerChecksum ->
+          getLatestCompatibleChecksum newerChecksum
+        _ ->
+          return mc
+    Nothing ->
+      return mc
 
 activateAliasInfo :: [AliasInfo] -> App ()
 activateAliasInfo aliasInfoList = do
@@ -89,9 +107,10 @@ activateAliasInfoOfCurrentFile' aliasInfo =
 initializeAliasMap :: App ()
 initializeAliasMap = do
   currentModule <- Source.sourceModule <$> readRef "currentSource" currentSource
-  mainModule <- readRef "mainModule" mainModule
+  mainModule <- Module.getMainModule
   let additionalChecksumAlias = getAlias mainModule currentModule
-  let aliasMap = Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ getModuleChecksumAliasList currentModule
+  currentAliasList <- getModuleChecksumAliasList currentModule
+  let aliasMap = Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ currentAliasList
   writeRef' moduleAliasMap aliasMap
 
 getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)

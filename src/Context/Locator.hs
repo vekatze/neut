@@ -51,7 +51,7 @@ import Path
 
 initialize :: App ()
 initialize = do
-  mainModule <- readRef "mainModule" mainModule
+  mainModule <- Module.getMainModule
   currentSource <- readRef "currentSource" currentSource
   cgl <- constructGlobalLocator mainModule currentSource
   writeRef currentGlobalLocator cgl

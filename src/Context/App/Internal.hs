@@ -47,6 +47,7 @@ data Env = Env
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     currentSectionStack :: FastRef [Section.Section],
     sourceAliasMap :: FastRef SourceAliasMap,
+    antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
     holeSubst :: FastRef HS.HoleSubst,
     sourceChildrenMap :: FastRef (Map.HashMap (Path Abs File) [Source.Source]),
@@ -101,6 +102,7 @@ newEnv = do
   nameMap <- newFastRef
   currentSectionStack <- newFastRef
   sourceAliasMap <- newFastRef
+  antecedentMap <- newFastRef
   constraintEnv <- newFastRef
   holeSubst <- newFastRef
   sourceChildrenMap <- newFastRef
