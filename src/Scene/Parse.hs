@@ -22,11 +22,8 @@ import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
-import Entity.Const
 import Entity.DefiniteDescription qualified as DD
-import Entity.DefiniteLocator qualified as DL
 import Entity.Discriminant qualified as D
-import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reflect qualified as Ident
@@ -37,7 +34,6 @@ import Entity.RawTerm qualified as RT
 import Entity.Section qualified as Section
 import Entity.Source qualified as Source
 import Entity.Stmt
-import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
@@ -99,27 +95,7 @@ program = do
   (globalLocatorList, aliasInfoList) <- Parse.skimImportSequence
   forM_ globalLocatorList $ lift . Locator.activateGlobalLocator
   lift $ Alias.activateAliasInfo aliasInfoList
-  parseStmtUseSequence
   concat <$> many parseStmt <* eof
-
-parseStmtUseSequence :: P.Parser ()
-parseStmtUseSequence = do
-  let p1 = P.useBlock (P.manyList parseLocator)
-  let p2 = return []
-  locatorList <- choice [p1, p2]
-  forM_ locatorList $ \loc -> do
-    case loc of
-      Left partialLocator ->
-        lift $ Locator.activateDefiniteLocator partialLocator
-      Right globalLocator ->
-        lift $ Locator.activateGlobalLocator globalLocator
-
-parseLocator :: P.Parser (Either DL.DefiniteLocator SGL.StrictGlobalLocator)
-parseLocator = do
-  choice
-    [ Left <$> try parseDefiniteLocator,
-      Right <$> parseGlobalLocator
-    ]
 
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
@@ -132,21 +108,6 @@ parseStmt = do
       return <$> parseDefine O.Opaque,
       return <$> parseSection
     ]
-
-parseDefiniteLocator :: P.Parser DL.DefiniteLocator
-parseDefiniteLocator = do
-  m <- P.getCurrentHint
-  globalLocator <- P.symbol >>= lift . (Throw.liftEither . GL.reflect m >=> Alias.resolveAlias m)
-  P.delimiter definiteSep
-  localLocator <- P.symbol
-  baseNameList <- lift $ Throw.liftEither $ BN.bySplit m localLocator
-  return $ DL.new globalLocator $ map Section.Section baseNameList
-
-parseGlobalLocator :: P.Parser SGL.StrictGlobalLocator
-parseGlobalLocator = do
-  m <- P.getCurrentHint
-  gl <- P.symbol >>= lift . Throw.liftEither . GL.reflect m
-  lift $ Alias.resolveAlias m gl
 
 --
 -- parser for statements
