@@ -22,6 +22,7 @@ import Entity.UnresolvedName qualified as UN
 
 data RawPattern
   = Var Ident
+  | NullaryCons GL.GlobalLocator LL.LocalLocator
   | Cons RawConsName [(Hint, RawPattern)]
   deriving (Show)
 

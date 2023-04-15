@@ -473,6 +473,16 @@ discernPattern (m, pat) =
             Throw.raiseError m $
               "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
           return ((m, PAT.Cons consName disc dataArity consArity []), [])
+    RP.NullaryCons gl ll -> do
+      sgl <- Alias.resolveAlias m gl
+      let consName = DD.new sgl ll
+      gn <- interpretDefiniteDescription m consName
+      case gn of
+        GN.DataIntro dataArity consArity disc _ ->
+          return ((m, PAT.Cons consName disc dataArity consArity []), [])
+        _ ->
+          Throw.raiseCritical m $
+            "the symbol `" <> DD.reify consName <> "` isn't defined as a constuctor"
     RP.Cons cons args -> do
       (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
       when isConstLike $

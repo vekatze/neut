@@ -104,3 +104,15 @@ coreSumLeft =
 coreSumRight :: T.Text
 coreSumRight =
   core <> nsSep <> "sum" <> nsSep <> "Right"
+
+coreList :: T.Text
+coreList =
+  core <> nsSep <> "list" <> nsSep <> "list"
+
+coreListNil :: T.Text
+coreListNil =
+  core <> nsSep <> "list" <> nsSep <> "Nil"
+
+coreListCons :: T.Text
+coreListCons =
+  core <> nsSep <> "list" <> nsSep <> "Cons"

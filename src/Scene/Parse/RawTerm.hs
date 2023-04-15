@@ -314,7 +314,8 @@ rawTermPiOrConsOrAscOrBasic = do
       do
         delimiter "::"
         rest <- rawTerm
-        return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.Cons")) [basic, rest],
+        listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
+        return $ m :< RT.PiElim listCons [basic, rest],
       do
         delimiter "*"
         ts <- sepBy1 rawTermBasic (delimiter "*")
@@ -533,16 +534,23 @@ rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do
   m <- getCurrentHint
   patList <- betweenBracket $ commaList rawTermPattern
-  return $ foldListAppPat m patList
+  listNil <- lift $ Throw.liftEither $ DD.getLocatorPair m coreListNil
+  listCons <- lift $ handleDefiniteDescriptionIntoRawConsName m coreListCons
+  return $ foldListAppPat m listNil listCons patList
 
-foldListAppPat :: Hint -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
-foldListAppPat m es =
+foldListAppPat ::
+  Hint ->
+  (GL.GlobalLocator, LL.LocalLocator) ->
+  RP.RawConsName ->
+  [(Hint, RP.RawPattern)] ->
+  (Hint, RP.RawPattern)
+foldListAppPat m listNil@(ngl, nll) listCons es =
   case es of
     [] ->
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.Nil") []) -- nil
+      (m, RP.NullaryCons ngl nll)
     e : rest -> do
-      let rest' = foldListAppPat m rest
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "list.Cons") [e, rest'])
+      let rest' = foldListAppPat m listNil listCons rest
+      (m, RP.Cons listCons [e, rest'])
 
 rawTermPatternProductIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternProductIntro = do
@@ -784,15 +792,17 @@ rawTermListIntro :: Parser RT.RawTerm
 rawTermListIntro = do
   m <- getCurrentHint
   es <- betweenBracket $ commaList rawTerm
-  return $ foldListApp m es
+  listNil <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListNil
+  listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
+  return $ foldListApp m listNil listCons es
 
-foldListApp :: Hint -> [RT.RawTerm] -> RT.RawTerm
-foldListApp m es =
+foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
+foldListApp m listNil listCons es =
   case es of
     [] ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.Nil")) []
+      listNil
     e : rest ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText "list.Cons")) [e, foldListApp m rest]
+      m :< RT.PiElim listCons [e, foldListApp m listNil listCons rest]
 
 rawTermIntrospect :: Parser RT.RawTerm
 rawTermIntrospect = do
@@ -843,7 +853,9 @@ rawTermTextIntro = do
   let i8s = encode $ T.unpack s
   let i8 = m :< RT.Prim (WP.Type (PT.Int (PNS.IntSize 8)))
   let i8s' = map (\x -> m :< RT.Prim (WP.Value (WPV.Int i8 (toInteger x)))) i8s
-  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "text-new")) [foldListApp m i8s']
+  listNil <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListNil
+  listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
+  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "text-new")) [foldListApp m listNil listCons i8s']
 
 rawTermInteger :: Parser RT.RawTerm
 rawTermInteger = do
