@@ -77,13 +77,6 @@ symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
-symbolCapitalized :: Parser T.Text
-symbolCapitalized = do
-  varText <- symbol
-  if isUpper (T.head varText)
-    then return varText
-    else failure (Just (asTokens varText)) (S.fromList [asLabel "capitalized symbol"])
-
 definiteDescriptionSymbol :: Parser T.Text
 definiteDescriptionSymbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonDefiniteDescriptionCharSet)
@@ -92,6 +85,13 @@ baseName :: Parser BN.BaseName
 baseName = do
   bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
   lexeme $ return $ BN.fromText bn
+
+baseNameCapitalized :: Parser BN.BaseName
+baseNameCapitalized = do
+  bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+  if isUpper (T.head bn)
+    then lexeme $ return $ BN.fromText bn
+    else failure (Just (asTokens bn)) (S.fromList [asLabel "capitalized symbol"])
 
 keyword :: T.Text -> Parser ()
 keyword expected = do

@@ -18,7 +18,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
-import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
@@ -33,7 +32,6 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reflect qualified as Ident
 import Entity.Ident.Reify qualified as Ident
-import Entity.LocalLocator qualified as LL
 import Entity.Opacity qualified as O
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
@@ -213,11 +211,11 @@ defineData ::
   Hint ->
   DD.DefiniteDescription ->
   Maybe [BinderF RT.RawTerm] ->
-  [(Hint, T.Text, IsConstLike, [BinderF RT.RawTerm])] ->
+  [(Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm])] ->
   App [RawStmt]
 defineData m dataName dataArgsOrNone consInfoList = do
   let dataArgs = fromMaybe [] dataArgsOrNone
-  consInfoList' <- mapM (modifyConstructorName m dataName) consInfoList
+  consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = Data dataName dataArgs consInfoList''
   let dataType = constructDataType m dataName dataArgs
@@ -239,12 +237,10 @@ modifyConsInfo d consInfoList =
       (consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
-  Hint ->
-  DD.DefiniteDescription ->
-  (Hint, T.Text, IsConstLike, [BinderF RT.RawTerm]) ->
+  (Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm]) ->
   App (Hint, DD.DefiniteDescription, IsConstLike, [BinderF RT.RawTerm])
-modifyConstructorName m dataDD (mb, consName, isConstLike, yts) = do
-  consName' <- Throw.liftEither $ DD.extend m dataDD consName
+modifyConstructorName (mb, consName, isConstLike, yts) = do
+  consName' <- Locator.attachCurrentLocator consName
   return (mb, consName', isConstLike, yts)
 
 parseDefineVariantConstructor ::
@@ -283,10 +279,10 @@ constructDataType ::
 constructDataType m dataName dataArgs = do
   m :< RT.Data dataName (map identPlusToVar dataArgs)
 
-parseDefineVariantClause :: P.Parser (Hint, T.Text, IsConstLike, [BinderF RT.RawTerm])
+parseDefineVariantClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm])
 parseDefineVariantClause = do
   m <- P.getCurrentHint
-  consName <- P.symbolCapitalized
+  consName <- P.baseNameCapitalized
   consArgsOrNone <- parseConsArgs
   let consArgs = fromMaybe [] consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
@@ -313,17 +309,19 @@ parseDefineStruct = do
   try $ P.keyword "struct"
   dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgsOrNone <- parseDataArgs
+  P.keyword "by"
+  consName <- P.baseNameCapitalized
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, "New", False, elemInfoList)]
+  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, consName, False, elemInfoList)]
   let dataArgs = fromMaybe [] dataArgsOrNone
-  elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs elemInfoList) elemInfoList
+  consName' <- lift $ Locator.attachCurrentLocator consName
+  elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs consName' elemInfoList) elemInfoList
   -- register codata info for `new-with-end`
-  dataNewName <- lift $ Throw.liftEither $ DD.extend m dataName "New"
   let numOfDataArgs = A.fromInt $ length dataArgs
   let numOfFields = A.fromInt $ length elemInfoList
   let (_, consInfoList, _) = unzip3 elemInfoList
   consNameList <- mapM (lift . Throw.liftEither . DD.extend m dataName . Ident.toText) consInfoList
-  lift $ CodataDefinition.insert dataName (dataNewName, numOfDataArgs, numOfFields) consNameList
+  lift $ CodataDefinition.insert dataName (consName', numOfDataArgs, numOfFields) consNameList
   -- ... then return
   return $ formRule ++ elimRuleList
 
@@ -331,15 +329,16 @@ parseDefineStruct = do
 parseDefineStructElim ::
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
+  DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   BinderF RT.RawTerm ->
   App RawStmt
-parseDefineStructElim dataName dataArgs elemInfoList (m, elemName, elemType) = do
+parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elemType) = do
   let structType = m :< RT.Noema (constructDataType m dataName dataArgs)
   structVarText <- Gensym.newText
   let projArgs = dataArgs ++ [(m, Ident.fromText structVarText, structType)]
-  projectionName <- Throw.liftEither $ DD.extend m dataName $ Ident.toText elemName
-  let newDD = DD.extendLL dataName $ LL.new [] BN.new
+  elemName' <- Throw.liftEither $ BN.reflect m $ Ident.toText elemName
+  projectionName <- Locator.attachCurrentLocator elemName'
   let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var x)
   defineFunction
     (Normal O.Opaque)
@@ -353,7 +352,7 @@ parseDefineStructElim dataName dataArgs elemInfoList (m, elemName, elemType) = d
         True
         [preVar m structVarText]
         ( RP.new
-            [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription newDD) argList)],
+            [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription consName) argList)],
                 preVar m (Ident.toText elemName)
               )
             ]
