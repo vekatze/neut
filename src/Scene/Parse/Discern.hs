@@ -62,11 +62,6 @@ discernStmtList stmtList =
       e' <- discern nenv e
       rest' <- discernStmtList rest
       return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
-    RawStmtSection section innerStmtList : rest -> do
-      Locator.withSection section $ do
-        innerStmtList' <- discernStmtList innerStmtList
-        rest' <- discernStmtList rest
-        return $ innerStmtList' ++ rest'
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier

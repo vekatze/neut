@@ -15,7 +15,7 @@ fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PrimOp
 fromDefiniteDescription dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
-  if SGL.llvmGlobalLocator /= sgl || not (null (LL.sectionStack ll))
+  if SGL.llvmGlobalLocator /= sgl
     then Nothing
     else fromText $ BN.reify $ LL.baseName ll
 

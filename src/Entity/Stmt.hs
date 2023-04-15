@@ -11,7 +11,6 @@ import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.Opacity qualified as O
 import Entity.RawTerm qualified as RT
-import Entity.Section qualified as Section
 import Entity.Source qualified as Source
 import Entity.Term qualified as TM
 import Entity.WeakTerm qualified as WT
@@ -65,7 +64,6 @@ data RawStmt
       [BinderF RT.RawTerm]
       RT.RawTerm
       RT.RawTerm
-  | RawStmtSection Section.Section [RawStmt]
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
 
 data WeakStmt

@@ -21,6 +21,7 @@ module Entity.BaseName
     malloc,
     free,
     reservedAlias,
+    extend,
   )
 where
 
@@ -147,3 +148,7 @@ reservedAlias =
     [ this,
       base
     ]
+
+extend :: BaseName -> BaseName -> BaseName
+extend (MakeBaseName b1) (MakeBaseName b2) =
+  MakeBaseName $ b1 <> "#" <> b2

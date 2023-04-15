@@ -14,7 +14,6 @@ import Entity.Comp
 import Entity.Constraint
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
-import Entity.DefiniteLocator qualified as DL
 import Entity.Discriminant qualified as D
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
@@ -26,7 +25,6 @@ import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
 import Entity.ModuleChecksum qualified as MC
 import Entity.Opacity qualified as O
-import Entity.Section qualified as Section
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.TargetPlatform qualified as TP
@@ -44,7 +42,6 @@ data Env = Env
     moduleAliasMap :: FastRef (Map.HashMap MA.ModuleAlias MC.ModuleChecksum),
     locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
-    currentSectionStack :: FastRef [Section.Section],
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
     holeSubst :: FastRef HS.HoleSubst,
@@ -69,7 +66,6 @@ data Env = Env
     compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: FastRef [SGL.StrictGlobalLocator],
-    activeDefiniteLocatorList :: FastRef [DL.DefiniteLocator],
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
     mainModule :: Ref Module.Module,
@@ -98,7 +94,6 @@ newEnv = do
   moduleAliasMap <- newFastRef
   locatorAliasMap <- newFastRef
   nameMap <- newFastRef
-  currentSectionStack <- newFastRef
   antecedentMap <- newFastRef
   constraintEnv <- newFastRef
   holeSubst <- newFastRef
@@ -123,7 +118,6 @@ newEnv = do
   compEnv <- newFastRef
   typeEnv <- newFastRef
   activeGlobalLocatorList <- newFastRef
-  activeDefiniteLocatorList <- newFastRef
   currentGlobalLocator <- newRef
   currentSource <- newRef
   mainModule <- newRef

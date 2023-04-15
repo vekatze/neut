@@ -12,6 +12,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -31,7 +32,6 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.Opacity qualified as O
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
-import Entity.Section qualified as Section
 import Entity.Source qualified as Source
 import Entity.Stmt
 import Path
@@ -105,21 +105,12 @@ parseStmt = do
       return <$> parseAlias,
       return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
-      return <$> parseDefine O.Opaque,
-      return <$> parseSection
+      return <$> parseDefine O.Opaque
     ]
 
 --
 -- parser for statements
 --
-
-parseSection :: P.Parser RawStmt
-parseSection = do
-  try $ P.keyword "section"
-  section <- Section.Section <$> P.baseName
-  Locator.withLiftedSection section $ do
-    stmtList <- concat <$> P.betweenBrace (many parseStmt)
-    return $ RawStmtSection section stmtList
 
 -- define name (x1 : A1) ... (xn : An) : A = e
 parseDefine :: O.Opacity -> P.Parser RawStmt
@@ -276,7 +267,8 @@ parseDefineStruct = do
   let numOfDataArgs = A.fromInt $ length dataArgs
   let numOfFields = A.fromInt $ length elemInfoList
   let (_, consInfoList, _) = unzip3 elemInfoList
-  consNameList <- mapM (lift . Throw.liftEither . DD.extend m dataName . Ident.toText) consInfoList
+  consInfoList' <- lift $ mapM (liftEither . BN.reflect m . Ident.toText) consInfoList
+  consNameList <- lift $ mapM Locator.attachCurrentLocator consInfoList'
   lift $ CodataDefinition.insert dataName (consName', numOfDataArgs, numOfFields) consNameList
   -- ... then return
   return $ formRule ++ elimRuleList
@@ -354,10 +346,6 @@ registerTopLevelNames stmtList =
     RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ : rest -> do
       Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum $ AN.fromInt (length xts)
       registerTopLevelNames rest
-    RawStmtSection section innerStmtList : rest -> do
-      Locator.withSection section $ do
-        registerTopLevelNames innerStmtList
-        registerTopLevelNames rest
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
       registerTopLevelNames rest

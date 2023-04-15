@@ -3,9 +3,6 @@ module Entity.DefiniteDescription
     new,
     getLocatorPair,
     newByGlobalLocator,
-    newByDefiniteLocator,
-    extend,
-    extendLL,
     getFormDD,
     imm,
     cls,
@@ -22,14 +19,12 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.BaseName qualified as BN
 import Entity.Const
-import Entity.DefiniteLocator qualified as DL
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
 import Entity.Log
 import Entity.ModuleID qualified as MID
 import Entity.PrimType qualified as PT
-import Entity.Section qualified as Section
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics
@@ -59,21 +54,9 @@ new gl ll =
       reify = SGL.reify gl <> definiteSep <> LL.reify ll
     }
 
-newByGlobalLocator :: SGL.StrictGlobalLocator -> [Section.Section] -> BN.BaseName -> DefiniteDescription
-newByGlobalLocator gl sectionStack name = do
-  new gl $ LL.new sectionStack name
-
-newByDefiniteLocator :: DL.DefiniteLocator -> LL.LocalLocator -> DefiniteDescription
-newByDefiniteLocator dl ll = do
-  let gl = DL.globalLocator dl
-  let ll' = LL.new (LL.sectionStack ll ++ DL.sectionStack dl) (LL.baseName ll)
-  new gl ll'
-
-extendLL :: DefiniteDescription -> LL.LocalLocator -> DefiniteDescription
-extendLL dd inner = do
-  let gl = globalLocator dd
-  let outer = localLocator dd
-  new gl $ LL.extend outer inner
+newByGlobalLocator :: SGL.StrictGlobalLocator -> BN.BaseName -> DefiniteDescription
+newByGlobalLocator gl name = do
+  new gl $ LL.new name
 
 {-# INLINE toLowName #-}
 toLowName :: DefiniteDescription -> T.Text
@@ -88,20 +71,22 @@ wrapWithQuote x =
 -- this.core::nat.succ
 -- ~> this.core::nat.succ.#.cons
 getFormDD :: DefiniteDescription -> DefiniteDescription
-getFormDD dd =
-  extendLL dd $ LL.new Section.dummySectionStack BN.form
+getFormDD dd = do
+  let gl = globalLocator dd
+  let ll = LL.extend (localLocator dd) BN.form
+  new gl ll
 
 imm :: DefiniteDescription
 imm =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.imm
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.imm
 
 cls :: DefiniteDescription
 cls =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] BN.cls
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.cls
 
 array :: PT.PrimType -> DefiniteDescription
 array elemType =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) [] $ BN.arrayType elemType
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) $ BN.arrayType elemType
 
 isBaseDefiniteDescription :: DefiniteDescription -> Bool
 isBaseDefiniteDescription dd =
@@ -110,14 +95,6 @@ isBaseDefiniteDescription dd =
 toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =
   TE.encodeUtf8Builder $ toLowName dd
-
-extend :: H.Hint -> DefiniteDescription -> T.Text -> Either Error DefiniteDescription
-extend m dd newName = do
-  let gl = globalLocator dd
-  let outer = localLocator dd
-  inner <- LL.reflect m newName
-  let ll = LL.extend outer inner
-  return $ new gl ll
 
 getLocatorPair :: H.Hint -> T.Text -> Either Error (GL.GlobalLocator, LL.LocalLocator)
 getLocatorPair m text = do
