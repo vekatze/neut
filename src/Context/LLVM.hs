@@ -22,7 +22,6 @@ import Data.Text.IO qualified as TIO
 import Entity.Config.Build
 import Entity.Const
 import Entity.OutputKind qualified as OK
-import Entity.Source qualified as Source
 import GHC.IO.Handle
 import Path
 import Path.IO
@@ -44,7 +43,7 @@ ensureSetupSanity cfg = do
 emit :: [OK.OutputKind] -> L.ByteString -> App ()
 emit outputKindList llvmCode = do
   source <- Env.getCurrentSource
-  kindPathList <- zipWithM Source.attachOutputPath outputKindList (repeat source)
+  kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
   forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
   emitAll llvmCode kindPathList
 

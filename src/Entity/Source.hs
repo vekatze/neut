@@ -17,20 +17,6 @@ getRelPathFromSourceDir source = do
   let sourceDir = getSourceDir $ sourceModule source
   stripProperPrefix sourceDir (sourceFilePath source)
 
-sourceToOutputPath :: MonadThrow m => OK.OutputKind -> Source -> m (Path Abs File)
-sourceToOutputPath kind source = do
-  let artifactDir = getArtifactDir $ sourceModule source
-  relPath <- getRelPathFromSourceDir source
-  (relPathWithoutExtension, _) <- splitExtension relPath
-  attachExtension (artifactDir </> relPathWithoutExtension) kind
-
-getSourceCachePath :: MonadThrow m => Source -> m (Path Abs File)
-getSourceCachePath source = do
-  let artifactDir = getArtifactDir $ sourceModule source
-  relPath <- getRelPathFromSourceDir source
-  (relPathWithoutExtension, _) <- splitExtension relPath
-  addExtension ".i" (artifactDir </> relPathWithoutExtension)
-
 attachExtension :: MonadThrow m => Path Abs File -> OK.OutputKind -> m (Path Abs File)
 attachExtension file kind =
   case kind of
@@ -40,11 +26,6 @@ attachExtension file kind =
       addExtension ".s" file
     OK.Object -> do
       addExtension ".o" file
-
-attachOutputPath :: MonadThrow m => OK.OutputKind -> Source -> m (OK.OutputKind, Path Abs File)
-attachOutputPath outputKind source = do
-  outputPath <- sourceToOutputPath outputKind source
-  return (outputKind, outputPath)
 
 isCompilationSkippable :: S.Set (Path Abs File) -> S.Set (Path Abs File) -> [OK.OutputKind] -> Source -> Bool
 isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source =

@@ -23,5 +23,5 @@ link target shouldSkipLink isObjectAvailable sourceList = do
 link' :: Target -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   outputPath <- Path.getExecutableOutputPath target mainModule
-  objectPathList <- mapM (Source.sourceToOutputPath OK.Object) sourceList
+  objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
   LLVM.link objectPathList outputPath

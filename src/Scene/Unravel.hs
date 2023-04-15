@@ -138,17 +138,17 @@ checkIfItemIsAvailable isFreshItemAvailable inserter isObjectAvailableList sourc
 
 isFreshCacheAvailable :: Source.Source -> App Bool
 isFreshCacheAvailable source = do
-  cachePath <- Source.getSourceCachePath source
+  cachePath <- Path.getSourceCachePath source
   isItemAvailable source cachePath
 
 isFreshLLVMAvailable :: Source.Source -> App Bool
 isFreshLLVMAvailable source = do
-  llvmPath <- Source.sourceToOutputPath OK.LLVM source
+  llvmPath <- Path.sourceToOutputPath OK.LLVM source
   isItemAvailable source llvmPath
 
 isFreshObjectAvailable :: Source.Source -> App Bool
 isFreshObjectAvailable source = do
-  objectPath <- Source.sourceToOutputPath OK.Object source
+  objectPath <- Path.sourceToOutputPath OK.Object source
   isItemAvailable source objectPath
 
 isItemAvailable :: Source.Source -> Path Abs File -> App Bool

@@ -32,21 +32,9 @@ getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
   getModuleRootDir baseModule </> sourceRelDir
 
-getTargetDir :: Module -> Path Abs Dir
-getTargetDir baseModule =
-  getModuleRootDir baseModule </> targetRelDir
-
 getReleaseDir :: Module -> Path Abs Dir
 getReleaseDir baseModule =
   getModuleRootDir baseModule </> releaseRelDir
-
-getArtifactDir :: Module -> Path Abs Dir
-getArtifactDir baseModule =
-  getTargetDir baseModule </> artifactRelDir
-
-getExecutableDir :: Module -> Path Abs Dir
-getExecutableDir baseModule =
-  getTargetDir baseModule </> executableRelDir
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =

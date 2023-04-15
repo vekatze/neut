@@ -17,6 +17,11 @@ module Context.Path
     parseRelFile,
     removeDirRecur,
     getExecutableOutputPath,
+    getTargetDir,
+    getArtifactDir,
+    sourceToOutputPath,
+    getSourceCachePath,
+    attachOutputPath,
   )
 where
 
@@ -32,6 +37,8 @@ import Data.Time
 import Data.Version qualified as V
 import Entity.Const
 import Entity.Module
+import Entity.OutputKind qualified as OK
+import Entity.Source qualified as Src
 import Entity.Target qualified as Target
 import Entity.TargetPlatform as TP
 import Path (Abs, Dir, File, Path, Rel, (</>))
@@ -119,20 +126,55 @@ getCacheDirPath = do
 
 getLibDirRelPath :: App (Path Rel Dir)
 getLibDirRelPath = do
-  prefix <- getCacheDirPrefix
+  prefix <- getPlatformPrefix
   return $ prefix </> $(P.mkRelDir "library")
 
 returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
   P.ensureDir path >> return path
 
-getCacheDirPrefix :: App (Path Rel Dir)
-getCacheDirPrefix = do
+getPlatformPrefix :: App (Path Rel Dir)
+getPlatformPrefix = do
   tp <- readRef "targetPlatform" targetPlatform
   platformDir <- P.parseRelDir $ TP.platform tp
   versionDir <- P.parseRelDir $ V.showVersion version
   return $ platformDir </> versionDir
 
 getExecutableOutputPath :: Target.Target -> Module -> App (Path Abs File)
-getExecutableOutputPath target mainModule =
-  resolveFile (getExecutableDir mainModule) $ T.unpack $ Target.extract target
+getExecutableOutputPath target mainModule = do
+  executableDir <- getExecutableDir mainModule
+  resolveFile executableDir $ T.unpack $ Target.extract target
+
+getTargetDir :: Module -> App (Path Abs Dir)
+getTargetDir baseModule = do
+  prefix <- getPlatformPrefix
+  return $ getModuleRootDir baseModule </> targetRelDir </> prefix
+
+getArtifactDir :: Module -> App (Path Abs Dir)
+getArtifactDir baseModule = do
+  targetDir <- getTargetDir baseModule
+  return $ targetDir </> artifactRelDir
+
+getExecutableDir :: Module -> App (Path Abs Dir)
+getExecutableDir baseModule = do
+  targetDir <- getTargetDir baseModule
+  return $ targetDir </> executableRelDir
+
+sourceToOutputPath :: OK.OutputKind -> Src.Source -> App (Path Abs File)
+sourceToOutputPath kind source = do
+  artifactDir <- getArtifactDir $ Src.sourceModule source
+  relPath <- Src.getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- P.splitExtension relPath
+  Src.attachExtension (artifactDir </> relPathWithoutExtension) kind
+
+getSourceCachePath :: Src.Source -> App (Path Abs File)
+getSourceCachePath source = do
+  artifactDir <- getArtifactDir $ Src.sourceModule source
+  relPath <- Src.getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- P.splitExtension relPath
+  P.addExtension ".i" (artifactDir </> relPathWithoutExtension)
+
+attachOutputPath :: OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs File)
+attachOutputPath outputKind source = do
+  outputPath <- sourceToOutputPath outputKind source
+  return (outputKind, outputPath)
