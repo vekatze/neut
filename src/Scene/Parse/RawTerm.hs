@@ -640,7 +640,7 @@ foldIf ::
   [(RT.RawTerm, RT.RawTerm)] ->
   RT.RawTerm ->
   RT.RawTerm
-foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond ifBody elseIfList elseBody =
+foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond@(mIf :< _) ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       m
@@ -648,8 +648,8 @@ foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond ifBody elseIfList
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(m, RP.NullaryCons trueGL trueLL)], ifBody),
-                (V.fromList [(m, RP.NullaryCons falseGL falseLL)], elseBody)
+              [ (V.fromList [(mIf, RP.NullaryCons trueGL trueLL)], ifBody),
+                (V.fromList [(mIf, RP.NullaryCons falseGL falseLL)], elseBody)
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
@@ -659,8 +659,8 @@ foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond ifBody elseIfList
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(m, RP.NullaryCons trueGL trueLL)], ifBody),
-                (V.fromList [(m, RP.NullaryCons falseGL falseLL)], cont)
+              [ (V.fromList [(mIf, RP.NullaryCons trueGL trueLL)], ifBody),
+                (V.fromList [(mIf, RP.NullaryCons falseGL falseLL)], cont)
               ]
           )
 
