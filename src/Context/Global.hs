@@ -2,7 +2,11 @@ module Context.Global
   ( registerStmtDefine,
     registerStmtDefineResource,
     lookup,
+    lookupStrict,
     initialize,
+    insertToSourceNameMap,
+    lookupSourceNameMap,
+    activateNamesInSource,
   )
 where
 
@@ -13,6 +17,7 @@ import Context.Implicit qualified as Implicit
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
@@ -24,7 +29,9 @@ import Entity.Hint
 import Entity.Hint qualified as Hint
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
+import Entity.Source qualified as Source
 import Entity.Stmt as ST
+import Path
 import Prelude hiding (lookup)
 
 type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
@@ -111,6 +118,15 @@ lookup name = do
       | otherwise -> do
           return Nothing
 
+lookupStrict :: Hint.Hint -> DD.DefiniteDescription -> App GlobalName
+lookupStrict m name = do
+  mGlobalName <- lookup name
+  case mGlobalName of
+    Just globalName ->
+      return globalName
+    Nothing ->
+      Throw.raiseCritical m $ "the top-level " <> DD.reify name <> " doesn't have its global name"
+
 initialize :: App ()
 initialize = do
   writeRef' nameMap Map.empty
@@ -120,3 +136,21 @@ ensureFreshness m topNameMap name = do
   when (Map.member name topNameMap) $
     Throw.raiseError m $
       "`" <> DD.reify name <> "` is already defined"
+
+insertToSourceNameMap :: Path Abs File -> [(DD.DefiniteDescription, GN.GlobalName)] -> App ()
+insertToSourceNameMap sourcePath topLevelNameInfo = do
+  modifyRef' sourceNameMap $ Map.insert sourcePath $ Map.fromList topLevelNameInfo
+
+lookupSourceNameMap :: Hint.Hint -> Path Abs File -> App (Map.HashMap DD.DefiniteDescription GN.GlobalName)
+lookupSourceNameMap m sourcePath = do
+  smap <- readRef' sourceNameMap
+  case Map.lookup sourcePath smap of
+    Just topLevelNameInfo ->
+      return topLevelNameInfo
+    Nothing ->
+      Throw.raiseCritical m $ "top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
+
+activateNamesInSource :: Hint.Hint -> Source.Source -> App ()
+activateNamesInSource m source = do
+  namesInSource <- lookupSourceNameMap m $ Source.sourceFilePath source
+  modifyRef' nameMap $ Map.union namesInSource

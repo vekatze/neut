@@ -26,9 +26,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Hint
 import Entity.Module
-import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
-import Entity.Source (Source (sourceModule))
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
@@ -36,6 +34,7 @@ import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
 import Scene.Parse.Import qualified as Parse
+import Scene.Source.ShiftToLatest qualified as Source
 
 type IsCacheAvailable =
   Bool
@@ -72,7 +71,7 @@ adjustUnravelResult ::
 adjustUnravelResult (b1, b2, b3, sourceSeq) = do
   let sourceList = toList sourceSeq
   registerAntecedentInfo sourceList
-  sourceList' <- mapM getLatestAlternative sourceList
+  sourceList' <- mapM Source.shiftToLatest sourceList
   return (b1, b2, b3, sanitizeSourceList sourceList')
 
 ensureFileModuleSanity :: Path Abs File -> Module -> App ()
@@ -225,28 +224,3 @@ sanitizeSourceList' pathSet sourceList =
       if S.member path pathSet
         then sanitizeSourceList' pathSet rest
         else source : sanitizeSourceList' (S.insert path pathSet) rest
-
-getLatestAlternative :: Source.Source -> App Source.Source
-getLatestAlternative source = do
-  case moduleID $ sourceModule source of
-    MID.Main ->
-      return source
-    MID.Base ->
-      return source
-    MID.Library checksum -> do
-      mNewChecksum <- Antecedent.lookup checksum
-      case mNewChecksum of
-        Nothing ->
-          return source
-        Just newModule -> do
-          getNewerSource source newModule >>= getLatestAlternative
-
-getNewerSource :: Source.Source -> Module -> App Source.Source
-getNewerSource source newModule = do
-  relSourceFilePath <- Source.getRelPathFromSourceDir source
-  let newSourceFilePath = getSourceDir newModule </> relSourceFilePath
-  let newSource = Source.Source {sourceFilePath = newSourceFilePath, sourceModule = newModule}
-  b <- Path.doesFileExist newSourceFilePath
-  if b
-    then return newSource
-    else Throw.raiseError' "the module foo declares incompatible versions to be compatible"

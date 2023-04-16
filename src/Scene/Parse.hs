@@ -59,19 +59,29 @@ parse = do
     Nothing ->
       return result
 
+rememberCurrentNameSet :: Hint -> Path Abs File -> [DD.DefiniteDescription] -> App ()
+rememberCurrentNameSet m currentPath nameList = do
+  globalNameList <- mapM (Global.lookupStrict m) nameList
+  Global.insertToSourceNameMap currentPath $ zip nameList globalNameList
+
 parseSource :: Source.Source -> App (Either [Stmt] [WeakStmt])
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- Cache.loadCache source hasCacheSet
+  let path = Source.sourceFilePath source
+  let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
   case mCache of
     Just cache -> do
       let stmtList = cacheStmtList cache
       parseCachedStmtList stmtList
+      rememberCurrentNameSet m path $ map getNameFromStmt stmtList
       return $ Left stmtList
     Nothing -> do
       defList <- P.run program $ Source.sourceFilePath source
       registerTopLevelNames defList
-      Right <$> Discern.discernStmtList defList
+      stmtList <- Discern.discernStmtList defList
+      rememberCurrentNameSet m path $ map getNameFromWeakStmt stmtList
+      return $ Right stmtList
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do

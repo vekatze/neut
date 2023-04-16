@@ -117,6 +117,22 @@ compress stmt =
     StmtDefineResource {} ->
       stmt
 
+getNameFromStmt :: Stmt -> DD.DefiniteDescription
+getNameFromStmt stmt =
+  case stmt of
+    StmtDefine _ _ _ functionName _ _ _ _ ->
+      functionName
+    StmtDefineResource _ resourceName _ _ ->
+      resourceName
+
+getNameFromWeakStmt :: WeakStmt -> DD.DefiniteDescription
+getNameFromWeakStmt stmt =
+  case stmt of
+    WeakStmtDefine _ _ _ functionName _ _ _ _ ->
+      functionName
+    WeakStmtDefineResource _ resourceName _ _ ->
+      resourceName
+
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =
   case stmt of

@@ -41,6 +41,7 @@ data Env = Env
     moduleCacheMap :: FastRef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: FastRef (Map.HashMap MA.ModuleAlias MC.ModuleChecksum),
     locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
+    sourceNameMap :: FastRef (Map.HashMap (Path Abs File) (Map.HashMap DD.DefiniteDescription GN.GlobalName)),
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
@@ -94,6 +95,7 @@ newEnv = do
   moduleCacheMap <- newFastRef
   moduleAliasMap <- newFastRef
   locatorAliasMap <- newFastRef
+  sourceNameMap <- newFastRef
   nameMap <- newFastRef
   antecedentMap <- newFastRef
   constraintEnv <- newFastRef

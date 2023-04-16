@@ -38,11 +38,11 @@ initializeCompilerWithModule newModule cfg mClangOptString = do
 
 initializeForTarget :: App ()
 initializeForTarget = do
-  Global.initialize
   Clarify.registerFoundationalTypes
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
+  Global.initialize
   Env.setCurrentSource source
   Alias.initializeAliasMap
   Locator.initialize

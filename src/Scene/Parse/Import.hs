@@ -5,6 +5,7 @@ module Scene.Parse.Import
 where
 
 import Context.Alias qualified as Alias
+import Context.Global
 import Context.Throw qualified as Throw
 import Control.Monad.Trans
 import Data.Either
@@ -21,6 +22,7 @@ import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as P
+import Scene.Source.ShiftToLatest
 import Text.Megaparsec
 
 parseImportSequence :: P.Parser [Source.Source]
@@ -47,7 +49,8 @@ skimSingleImport :: P.Parser (Either SGL.StrictGlobalLocator AI.AliasInfo)
 skimSingleImport =
   choice
     [ Right <$> try parseImportQualified',
-      Left <$> parseImportSimple'
+      fmap Left $ do
+        parseImportSimple'
     ]
 
 parseImportSimple :: P.Parser Source.Source
@@ -58,17 +61,14 @@ parseImportSimple = do
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
   getSource m strictGlobalLocator locatorText
 
--- return (source, Nothing)
-
 parseImportSimple' :: P.Parser SGL.StrictGlobalLocator
 parseImportSimple' = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
-  lift $ Alias.resolveAlias m globalLocator
-
--- source <- getSource m strictGlobalLocator locatorText
--- return (source, Nothing)
+  strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
+  activateNames m strictGlobalLocator locatorText
+  return strictGlobalLocator
 
 parseImportQualified :: P.Parser Source.Source
 parseImportQualified = do
@@ -88,6 +88,7 @@ parseImportQualified' = do
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
+  activateNames m strictGlobalLocator locatorText
   return $ AI.Prefix m globalLocatorAlias strictGlobalLocator
 
 getSource :: Hint -> SGL.StrictGlobalLocator -> T.Text -> P.Parser Source.Source
@@ -99,3 +100,8 @@ getSource m sgl locatorText = do
       { Source.sourceModule = nextModule,
         Source.sourceFilePath = getSourceDir nextModule </> relPath
       }
+
+activateNames :: Hint -> SGL.StrictGlobalLocator -> T.Text -> P.Parser ()
+activateNames m strictGlobalLocator locatorText = do
+  source <- getSource m strictGlobalLocator locatorText >>= lift . shiftToLatest
+  lift $ activateNamesInSource m source
