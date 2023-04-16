@@ -18,6 +18,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
+import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
@@ -102,7 +103,8 @@ parseStmt = do
   choice
     [ parseDefineVariant,
       parseDefineStruct,
-      return <$> parseAlias,
+      return <$> parseAliasOpaque,
+      return <$> parseAliasTransparent,
       return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
       return <$> parseDefine O.Opaque
@@ -306,15 +308,23 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
             ]
         )
 
-parseAlias :: P.Parser RawStmt
-parseAlias = do
+parseAliasTransparent :: P.Parser RawStmt
+parseAliasTransparent = do
+  parseType "alias" O.Transparent
+
+parseAliasOpaque :: P.Parser RawStmt
+parseAliasOpaque = do
+  parseType "alias-opaque" O.Opaque
+
+parseType :: T.Text -> O.Opacity -> P.Parser RawStmt
+parseType keywordText opacity = do
   m <- P.getCurrentHint
-  try $ P.keyword "alias"
+  try $ P.keyword keywordText
   aliasName <- P.baseName
   aliasName' <- lift $ Locator.attachCurrentLocator aliasName
   P.betweenBrace $ do
     t <- rawExpr
-    let stmtKind = Normal O.Transparent
+    let stmtKind = Normal opacity
     return $ RawStmtDefine True stmtKind m aliasName' AN.zero [] (m :< RT.Tau) t
 
 parseDefineResource :: P.Parser RawStmt
