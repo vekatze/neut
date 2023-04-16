@@ -567,7 +567,7 @@ foldTuplePat m es =
       e
     e : rest -> do
       let rest' = foldTuplePat m rest
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "product.New") [e, rest'])
+      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "Product") [e, rest'])
 
 parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
 parseVarOrDefiniteDescription = do
@@ -678,7 +678,7 @@ rawTermTuple = do
     [e] ->
       return e
     _ ->
-      return $ foldByOp m "product.New" es
+      return $ foldByOp m "Product" es
 
 bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
