@@ -4,13 +4,7 @@ import {
 - core.option
 }
 
-use {
-- core.list
-- core.bool
-- core.option
-}
-
-struct product(a, b) {
+struct product(a, b) by Product {
 - left: a
 - right: b
 }
@@ -19,33 +13,33 @@ define-inline queue(a: tau): tau {
   list(a) * list(a)
 }
 
-define empty<a>(): queue(a) {
+define empty[a](): queue(a) {
   tuple([], [])
 }
 
-define reverse<a>(xs: list(a)): list(a) {
+define reverse[a](xs: list(a)): list(a) {
   let f =
     define helper(ys: list(a), acc: list(a)): list(a) {
       match ys {
       - [] =>
         acc
-      - z :: zs =>
-        helper(zs, z :: acc)
+      - z :< zs =>
+        helper(zs, z :< acc)
       }
     }
   f(xs, [])
 }
 
-define head<a>(q: &queue(a)): ?a {
+define head[a](q: &queue(a)): ?a {
   case q {
-  - tuple(x :: rest, ys) =>
-    option.Some(!x)
+  - tuple(x :< rest, ys) =>
+    Some(!x)
   - otherwise =>
-    option.None()
+    None
   }
 }
 
-define-inline sanitize<a>(q: queue(a)): queue(a) {
+define-inline sanitize[a](q: queue(a)): queue(a) {
   match q {
   - tuple([], ys) =>
     tuple(reverse(ys), [])
@@ -54,25 +48,25 @@ define-inline sanitize<a>(q: queue(a)): queue(a) {
   }
 }
 
-define tail<a>(q: queue(a)): ?queue(a) {
+define tail[a](q: queue(a)): ?queue(a) {
   match q {
-  - tuple(x :: rest, ys) =>
-    option.Some(sanitize(tuple(rest, ys)))
+  - tuple(x :< rest, ys) =>
+    Some(sanitize(tuple(rest, ys)))
   - otherwise =>
-    option.None()
+    None
   }
 }
 
-define snoc<a>(v: a, q: queue(a)): queue(a) {
+define snoc[a](v: a, q: queue(a)): queue(a) {
   let tuple(xs, ys) = q
-  sanitize(tuple(xs, v :: ys))
+  sanitize(tuple(xs, v :< ys))
 }
 
 define sum(xs: &list(i64)): i64 {
   case xs {
   - [] =>
     0
-  - v :: rest =>
+  - v :< rest =>
     add-i64(!v, sum(rest))
   }
 }
@@ -84,26 +78,26 @@ define main(): i64 {
   let q = snoc([1], q)
   let v1 on q = {
     match head(q) {
-    - option.Some(xs1) =>
+    - Some(xs1) =>
       let v1 on xs1 = sum(xs1)
       v1
-    - option.None() =>
+    - None =>
       4
     }
   }
   let mq = tail(q)
   match mq {
-  - option.None() =>
+  - None =>
     1
-  - option.Some(q) =>
+  - Some(q) =>
     let q = snoc([3], q)
     let q = snoc([8], q)
     let v2 on q = {
       match head(q) {
-      - option.Some(xs) =>
+      - Some(xs) =>
         let v on xs = sum(xs)
         v
-      - option.None() =>
+      - None =>
         4
       }
     }

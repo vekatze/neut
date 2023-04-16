@@ -4,58 +4,52 @@ import {
 - core.option
 }
 
-use {
-- core.bool
-- core.top
-- core.option
-}
-
-struct product(a, b) {
+struct product(a, b) by Product {
 - left: a
 - right: b
 }
 
 variant custom-stack(a) {
-- Nil()
+- Nil
 - Cons(product(a, a), custom-stack(a))
 }
 
-define empty<a>(): custom-stack(a) {
-  custom-stack.Nil()
+define empty[a](): custom-stack(a) {
+  Nil
 }
 
-define is-empty<a>(xs: &custom-stack(a)): bool() {
+define is-empty[a](xs: &custom-stack(a)): bool {
   case xs {
-  - custom-stack.Nil() =>
-    bool.True()
-  - custom-stack.Cons(y, rest) =>
-    bool.False()
+  - Nil =>
+    True
+  - Cons(y, rest) =>
+    False
   }
 }
 
-define head<a>(xs: &custom-stack(a)): ?&{a * a} {
+define head[a](xs: &custom-stack(a)): ?&{a * a} {
   case xs {
-  - custom-stack.Nil() =>
-    core.option::option.None()
-  - custom-stack.Cons(a, rest) =>
-    core.option::option.Some(a)
+  - Nil =>
+    None
+  - Cons(a, rest) =>
+    Some(a)
   }
 }
 
-define tail<a>(xs: &custom-stack(a)): ?&custom-stack(a) {
+define tail[a](xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
-  - custom-stack.Nil() =>
-    option.None()
-  - custom-stack.Cons(a, rest) =>
-    option.Some(rest)
+  - Nil =>
+    None
+  - Cons(a, rest) =>
+    Some(rest)
   }
 }
 
 define main(): i64 {
   let xs = empty()
   let v = tuple(lambda () { 1 }, lambda () { 2: i64 })
-  let ys = custom-stack.Cons(v, xs)
-  let zs = custom-stack.Cons(v, custom-stack.Cons(v, ys))
+  let ys = Cons(v, xs)
+  let zs = Cons(v, Cons(v, ys))
   let calc on zs, xs = {
     let b = is-empty(zs)
     let b2 = is-empty(xs)
@@ -64,9 +58,9 @@ define main(): i64 {
     let t = tail(zs)
     let t2 = tail(zs)
     match h {
-    - option.None() =>
+    - None =>
       1
-    - option.Some(pair) =>
+    - Some(pair) =>
       bind tuple(left, right) = pair
       {!right}()
     }

@@ -3,7 +3,7 @@ import {
 }
 
 variant stream-cell(a) {
-- Nil()
+- Nil
 - Cons(a, stream(a))
 }
 
@@ -11,27 +11,27 @@ define-inline stream(a: tau): tau {
   'stream-cell(a)
 }
 
-define append<a>(xs: stream(a), ys: stream(a)): stream(a) {
+define append[a](xs: stream(a), ys: stream(a)): stream(a) {
   match xs() {
-  - stream-cell.Nil() =>
+  - Nil =>
     ys
-  - stream-cell.Cons(x1, rest) =>
+  - Cons(x1, rest) =>
     lambda () {
-      stream-cell.Cons(x1, append(rest, ys))
+      Cons(x1, append(rest, ys))
     }
   }
 }
 
-define take<a>(n: i64, xs: stream(a)): stream(a) {
+define take[a](n: i64, xs: stream(a)): stream(a) {
   if eq-i64(n, 0) {
-    lambda () { stream-cell.Nil() }
+    lambda () { Nil }
   } else {
     match xs() {
-    - stream-cell.Nil() =>
-      lambda () { stream-cell.Nil() }
-    - stream-cell.Cons(x, rest) =>
+    - Nil =>
+      lambda () { Nil }
+    - Cons(x, rest) =>
       lambda () {
-        stream-cell.Cons(x, take(sub-i64(n, 1), rest))
+        Cons(x, take(sub-i64(n, 1), rest))
       }
     }
   }
@@ -39,6 +39,6 @@ define take<a>(n: i64, xs: stream(a)): stream(a) {
 
 define main(): i64 {
   let my-stream: stream(i64) =
-    lambda () { stream-cell.Cons(1, lambda () { stream-cell.Nil() }) }
+    lambda () { Cons(1, lambda () { Nil }) }
   0
 }

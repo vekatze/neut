@@ -3,16 +3,11 @@
 
 import {
 - core.option => opt
-- core.sum => sum
+- core.list
 - core.bool
 }
 
-use {
-- this.random-access-list::digit
-- this.random-access-list::R-list
-}
-
-struct product(a, b) {
+struct product(a, b) by Product {
 - left: a
 - right: b
 }
@@ -27,79 +22,74 @@ variant digit(a) {
 - One(tree(a))
 }
 
-variant list(a) {
-- Nil()
-- Cons(a, list(a))
-}
-
 variant R-list(a) {
 - New(list(digit(a)))
 }
 
-define size<a>(t: &tree(a)): i64 {
+define size[a](t: &tree(a)): i64 {
   case t {
-  - tree.Leaf(_) =>
+  - Leaf(_) =>
     1
-  - tree.Node(w, _, _) =>
+  - Node(w, _, _) =>
     !w
   }
 }
 
-define link<a>(t1: tree(a), t2: tree(a)): tree(a) {
+define link[a](t1: tree(a), t2: tree(a)): tree(a) {
   let s1 on t1 = size(t1)
   let s2 on t2 = size(t2)
-  tree.Node(add-i64(s1, s2), t1, t2)
+  Node(add-i64(s1, s2), t1, t2)
 }
 
-define Cons-tree<a>(t: tree(a), ts: R-list(a)): R-list(a) {
+define cons-tree[a](t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
   - New([]) =>
     New([One(t)])
-  - New(Zero :: rest) =>
-    New(One(t) :: rest)
-  - New(One(t0) :: rest) =>
-    let New(ts-new) = Cons-tree(link(t, t0), New(rest))
-    New(Zero :: ts-new)
+  - New(Zero :< rest) =>
+    New(One(t) :< rest)
+  - New(One(t0) :< rest) =>
+    let New(ts-new) = cons-tree(link(t, t0), New(rest))
+    New(Zero :< ts-new)
   }
 }
 
-define Cons<a>(x: a, ts: R-list(a)): R-list(a) {
-  Cons-tree(tree.Leaf(x), ts)
+define cons[a](x: a, ts: R-list(a)): R-list(a) {
+  cons-tree(Leaf(x), ts)
 }
 
-define unCons-tree<a>(ts: R-list(a)): opt::option(tree(a) * R-list(a)) {
+define uncons-tree[a](ts: R-list(a)): opt.option(tree(a) * R-list(a)) {
   let New(xs) = ts
   match xs {
   - [] =>
-    opt::option.None()
-  - One(y) :: [] =>
-    opt::option.Some(tuple(y, New([])))
-  - One(y) :: rest =>
-    opt::option.Some(tuple(y, New(Zero :: rest)))
-  - Zero :: rest =>
-    match unCons-tree(New(rest)) {
-    - opt::option.None() =>
-      opt::option.None()
-    - opt::option.Some(tuple(new-tree, New(new-ts))) =>
+    opt.None
+  - One(y) :< [] =>
+    opt.Some(tuple(y, New([])))
+  - One(y) :< rest =>
+    opt.Some(tuple(y, New(Zero :< rest)))
+  - Zero :< rest =>
+    match uncons-tree(New(rest)) {
+    - opt.None =>
+      opt.None
+    - opt.Some(tuple(new-tree, New(new-ts))) =>
       match new-tree {
-      - tree.Leaf(_) =>
-        opt::option.None()
-      - tree.Node(_, t1, t2) =>
-        opt::option.Some(tuple(t1, New(One(t2) :: new-ts)))
+      - Leaf(_) =>
+        opt.None
+      - Node(_, t1, t2) =>
+        opt.Some(tuple(t1, New(One(t2) :< new-ts)))
       }
     }
   }
 }
 
-define lookup-tree<a>(i: i64, t: &tree(a)): opt::option(a) {
+define lookup-tree[a](i: i64, t: &tree(a)): opt.option(a) {
   case t {
-  - tree.Leaf(v) =>
+  - Leaf(v) =>
     if eq-i64(i, 0) {
-      opt::option.Some(!v)
+      opt.Some(!v)
     } else {
-      opt::option.None()
+      opt.None
     }
-  - tree.Node(w, t1, t2) =>
+  - Node(w, t1, t2) =>
     let w-div-2 = div-i64(!w, 2)
     if lt-i64(i, w-div-2) {
       lookup-tree(i, t1)
@@ -109,13 +99,13 @@ define lookup-tree<a>(i: i64, t: &tree(a)): opt::option(a) {
   }
 }
 
-define lookup-list<a>(i: i64, xs: &list(digit(a))): opt::option(a) {
+define lookup-list[a](i: i64, xs: &list(digit(a))): opt.option(a) {
   case xs {
   - [] =>
-    opt::option.None()
-  - Zero :: rest =>
+    opt.None
+  - Zero :< rest =>
     lookup-list(i, rest)
-  - One(t) :: rest =>
+  - One(t) :< rest =>
     let s = size(t)
     if lt-i64(i, s) {
       lookup-tree(i, t)
@@ -125,62 +115,62 @@ define lookup-list<a>(i: i64, xs: &list(digit(a))): opt::option(a) {
   }
 }
 
-define lookup<a>(i: i64, xs: &R-list(a)): opt::option(a) {
+define lookup[a](i: i64, xs: &R-list(a)): opt.option(a) {
   bind New(xs): &R-list(a) = xs
   lookup-list(i, xs)
 }
 
-define update-tree<a>(i: i64, x: a, t: tree(a)): tree(a) {
+define update-tree[a](i: i64, x: a, t: tree(a)): tree(a) {
   match t {
-  - tree.Leaf(v) =>
+  - Leaf(v) =>
     if eq-i64(i, 0) {
-      tree.Leaf(x)
+      Leaf(x)
     } else {
-      tree.Leaf(v)
+      Leaf(v)
     }
-  - tree.Node(w, t1, t2) =>
+  - Node(w, t1, t2) =>
     let w-div-2 = div-i64(w, 2)
     if lt-i64(i, w-div-2) {
-      tree.Node(w, update-tree(i, x, t1), t2)
+      Node(w, update-tree(i, x, t1), t2)
     } else {
-      tree.Node(w, t1, update-tree(sub-i64(i, w-div-2), x, t2))
+      Node(w, t1, update-tree(sub-i64(i, w-div-2), x, t2))
     }
   }
 }
 
-define update<a>(i: i64, x: a, xs: R-list(a)): R-list(a) {
+define update[a](i: i64, x: a, xs: R-list(a)): R-list(a) {
   match xs {
   - New([]) =>
     New([])
-  - New(Zero :: ts) =>
+  - New(Zero :< ts) =>
     let New(new-xs) = update(i, x, New(ts))
-    New(Zero :: new-xs)
-  - New(One(t) :: ts) =>
+    New(Zero :< new-xs)
+  - New(One(t) :< ts) =>
     let s on t = size(t)
     if lt-i64(i, s) {
-      New(One(update-tree(i, x, t)) :: ts)
+      New(One(update-tree(i, x, t)) :< ts)
     } else {
       let New(new-xs) = update(sub-i64(i, s), x, New(ts))
-      New(One(t) :: new-xs)
+      New(One(t) :< new-xs)
     }
   }
 }
 
 define find-and-get(i: i64, xs: &R-list(i64)): i64 {
   match lookup(i, xs) {
-  - opt::option.None() =>
+  - opt.None =>
     0
-  - opt::option.Some(v) =>
+  - opt.Some(v) =>
     v
   }
 }
 
 define main(): i64 {
   let xs = New([]): R-list(i64)
-  let xs = Cons(3, xs)
-  let xs = Cons(2, xs)
-  let xs = Cons(4, xs)
-  let xs = Cons(1, xs)
+  let xs = cons(3, xs)
+  let xs = cons(2, xs)
+  let xs = cons(4, xs)
+  let xs = cons(1, xs)
   let v1 on xs = find-and-get(0, xs) // 1
   let v2 on xs = find-and-get(1, xs) // 4
   let _ on xs = find-and-get(2, xs) // 2

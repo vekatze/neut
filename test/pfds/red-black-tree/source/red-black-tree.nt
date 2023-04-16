@@ -2,12 +2,6 @@ import {
 - core.bool
 }
 
-use {
-- core.bool
-- this.red-black-tree::color
-- this.red-black-tree::tree
-}
-
 variant color {
 - Red
 - Black
@@ -31,24 +25,24 @@ define-inline Cmp(a: tau): tau {
   (a, a) -> order
 }
 
-define member<a>(cmp: Cmp(a), x: a, t: &tree(a)): bool() {
+define member[a](cmp: Cmp(a), x: a, t: &tree(a)): bool {
   case t {
   - Leaf =>
-    bool.False()
+    False
   - Node(c, t1, v, t2) =>
     match cmp(x, !v) {
-    - order.LT =>
+    - LT =>
       member(cmp, x, t1)
-    - order.EQ =>
-      bool.True()
-    - order.GT =>
+    - EQ =>
+      True
+    - GT =>
       member(cmp, x, t2)
     }
   }
 }
 
 // detect and repair each Red-Red violation
-define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
+define balance[a](c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   match c, t1, t2 {
   - Black, Node(Red, Node(Red, l11, v11, r11), x1, t12), t2 =>
     Node(Red, Node(Black, l11, v11, r11), x1, Node(Black, t12, v, t2))
@@ -63,19 +57,19 @@ define balance<a>(c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert<a>(cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
+define insert[a](cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
       - Leaf =>
-        Node(color.Red, Leaf, x, Leaf)
+        Node(Red, Leaf, x, Leaf)
       - Node(c, left, y, right) =>
         match cmp(x, y) {
-        - order.LT =>
+        - LT =>
           balance(c, self(left), y, right)
-        - order.EQ =>
+        - EQ =>
           Node(c, left, y, right)
-        - order.GT =>
+        - GT =>
           balance(c, left, y, self(right))
         }
       }
@@ -84,22 +78,22 @@ define insert<a>(cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
   - Leaf =>
     Leaf // shouldn't occur
   - Node(c, left, v, right) =>
-    Node(color.Black, left, v, right)
+    Node(Black, left, v, right)
   }
 }
 
 define compare-int(x: 'i64, y: 'i64): order {
   if lt-i64(x(), y()) {
-    order.LT
+    LT
   } else-if gt-i64(x(), y()) {
-    order.GT
+    GT
   } else {
-    order.EQ
+    EQ
   }
 }
 
 define main(): i64 {
-  let t: tree('i64) = tree.Leaf
+  let t: tree('i64) = Leaf
   let t = insert(compare-int, lambda () {3}, t)
   let t = insert(compare-int, lambda () {4}, t)
   let t = insert(compare-int, lambda () {2}, t)

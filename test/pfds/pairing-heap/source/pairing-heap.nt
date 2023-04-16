@@ -4,13 +4,6 @@ import {
 - core.bool
 }
 
-use {
-- this.pairing-heap::heap
-- core.bool
-- core.list
-- core.option
-}
-
 variant heap(a) {
 - Leaf
 - Node(a, list(heap(a)))
@@ -22,16 +15,16 @@ variant order {
 - GT
 }
 
-define find-min<a>(h: &heap(a)): ?a {
+define find-min[a](h: &heap(a)): ?a {
   case h {
   - Leaf =>
-    option.None(): ?a
+    None: ?a
   - Node(v, hs) =>
-    option.Some(!v)
+    Some(!v)
   }
 }
 
-define merge<a>(cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
+define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   - Leaf, h2 =>
     h2
@@ -39,45 +32,45 @@ define merge<a>(cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
     h1
   - Node(x1, hs1), Node(x2, hs2) =>
     match cmp(x1, x2) {
-    - order.LT =>
-      Node(x1, Node(x2, hs2) :: hs1)
+    - LT =>
+      Node(x1, Node(x2, hs2) :< hs1)
     - otherwise =>
-      Node(x2, Node(x1, hs1) :: hs2)
+      Node(x2, Node(x1, hs1) :< hs2)
     }
   }
 }
 
-define insert<a>(cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
+define insert[a](cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
   merge(cmp, Node(x, []), h)
 }
 
-define merge-pairs<a>(cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
+define merge-pairs[a](cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
   match hs {
   - [] =>
     Leaf
   - [h] =>
     h
-  - h1 :: h2 :: rest =>
+  - h1 :< h2 :< rest =>
     merge(cmp, merge(cmp, h1, h2), merge-pairs(cmp, rest))
   }
 }
 
-define delete-min<a>(cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
+define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   match h {
   - Leaf =>
-    option.None()
+    None
   - Node(x, hs) =>
-    option.Some(merge-pairs(cmp, hs))
+    Some(merge-pairs(cmp, hs))
   }
 }
 
 define compare-int(x: i64, y: i64): order {
   if lt-i64(x, y) {
-    order.LT
+    LT
   } else-if gt-i64(x, y) {
-    order.GT
+    GT
   } else {
-    order.EQ
+    EQ
   }
 }
 
@@ -89,9 +82,9 @@ define main(): i64 {
   let h = insert(compare-int, 2, h)
   let maybe-min on h = {
     match find-min(h) {
-    - option.None() =>
+    - None =>
       10
-    - option.Some(min) =>
+    - Some(min) =>
       min
     }
   }

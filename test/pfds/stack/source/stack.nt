@@ -3,82 +3,77 @@ import {
 - core.option
 }
 
-use {
-- core.bool
-- core.option
-}
-
 variant stack(a) {
-- Nil()
+- Nil
 - Cons(a, stack(a))
 }
 
-define empty<a>(): stack(a) {
-  stack.Nil()
+define empty[a](): stack(a) {
+  Nil
 }
 
-define is-empty<a>(xs: &stack(a)): bool() {
+define is-empty[a](xs: &stack(a)): bool {
   case xs {
-  - stack.Nil() =>
-    bool.True()
-  - stack.Cons(y, rest) =>
-    bool.False()
+  - Nil =>
+    True
+  - Cons(y, rest) =>
+    False
   }
 }
 
-define head<a>(xs: &stack(a)): option(&a) {
+define head[a](xs: &stack(a)): option(&a) {
   case xs {
-  - stack.Nil() =>
-    option.None()
-  - stack.Cons(a, rest) =>
-    option.Some(a)
+  - Nil =>
+    None
+  - Cons(a, rest) =>
+    Some(a)
   }
 }
 
-define tail<a>(xs: &stack(a)): option(&stack(a)) {
+define tail[a](xs: &stack(a)): option(&stack(a)) {
   case xs {
-  - stack.Nil() =>
-    option.None()
-  - stack.Cons(a, rest) =>
-    option.Some(rest)
+  - Nil =>
+    None
+  - Cons(a, rest) =>
+    Some(rest)
   }
 }
 
-define update<a>(xs: stack(a), index: i64, value: a): stack(a) {
+define update[a](xs: stack(a), index: i64, value: a): stack(a) {
   match xs {
-  - stack.Nil() =>
-    stack.Nil()
-  - stack.Cons(y, ys) =>
+  - Nil =>
+    Nil
+  - Cons(y, ys) =>
     if eq-i64(index, 0) {
-      stack.Cons(value, ys)
+      Cons(value, ys)
     } else {
-      stack.Cons(y, update(ys, sub-i64(index, 1), value))
+      Cons(y, update(ys, sub-i64(index, 1), value))
     }
   }
 }
 
-define suffixes<a>(xs: stack(a)): stack(stack(a)) {
+define suffixes[a](xs: stack(a)): stack(stack(a)) {
   match xs {
-  - stack.Nil() =>
-    stack.Nil()
-  - stack.Cons(y, ys) =>
-    stack.Cons(xs, suffixes(ys))
+  - Nil =>
+    Nil
+  - Cons(y, ys) =>
+    Cons(xs, suffixes(ys))
   }
 }
 
-define suffixes-noetic<a>(xs: &stack(a)): stack(&stack(a)) {
+define suffixes-noetic[a](xs: &stack(a)): stack(&stack(a)) {
   case xs {
-  - stack.Nil() =>
-    stack.Nil()
-  - stack.Cons(y, ys) =>
-    stack.Cons(xs, suffixes-noetic(ys))
+  - Nil =>
+    Nil
+  - Cons(y, ys) =>
+    Cons(xs, suffixes-noetic(ys))
   }
 }
 
 define main(): i64 {
   let xs = empty()
-  let ys = stack.Cons(10: i64, xs)
-  let zs = stack.Cons(30, stack.Cons(20, ys))
+  let ys = Cons(10: i64, xs)
+  let zs = Cons(30, Cons(20, ys))
   let zs = update(zs, 1, 20000)
   let ws = suffixes(zs)
   let calc on zs, xs = {
