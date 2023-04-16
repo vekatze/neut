@@ -69,6 +69,10 @@ coreTop :: T.Text
 coreTop =
   core <> nsSep <> "top" <> nsSep <> "top"
 
+coreTopUnit :: T.Text
+coreTopUnit =
+  core <> nsSep <> "top" <> nsSep <> "Unit"
+
 coreBool :: T.Text
 coreBool =
   core <> nsSep <> "bool" <> nsSep <> "bool"
