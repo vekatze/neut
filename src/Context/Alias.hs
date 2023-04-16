@@ -71,7 +71,7 @@ resolveModuleAlias m moduleAlias = do
       | moduleAlias == baseModulePrefix ->
           return MID.Base
       | moduleAlias == coreModulePrefix ->
-          return MID.Main
+          resolveModuleAlias m defaultModulePrefix
       | otherwise ->
           Throw.raiseError m $
             "no such module alias is defined: " <> BN.reify (extract moduleAlias)
