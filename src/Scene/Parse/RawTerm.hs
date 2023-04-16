@@ -595,8 +595,8 @@ rawTermPatternConsOrVar = do
         case varOrDefiniteDescription of
           Left (m, c) ->
             return (m, RP.Var (Ident.fromText c))
-          Right (m, _, _) ->
-            lift $ Throw.raiseError m "found a raw definite description in a pattern"
+          Right (m, gl, ll) ->
+            return (m, RP.NullaryCons gl ll)
     ]
 
 rawTermNew :: Parser RT.RawTerm
