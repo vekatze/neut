@@ -4,15 +4,17 @@ module Entity.PrimValue
 where
 
 import Data.Binary
+import Data.Text qualified as T
 import Entity.PrimNumSize
 import Entity.PrimOp
 import GHC.Generics (Generic)
 
-data PrimValue
+data PrimValue a
   = Int IntSize Integer
   | UInt IntSize Integer
   | Float FloatSize Double
   | Op PrimOp
+  | StaticText a T.Text
   deriving (Show, Generic)
 
-instance Binary PrimValue
+instance Binary a => Binary (PrimValue a)

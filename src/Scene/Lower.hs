@@ -6,6 +6,7 @@ where
 import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Lower
+import Context.StaticText
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.Set qualified as S
@@ -51,8 +52,10 @@ runLowerComp m = do
   (a, Cont b) <- runWriterT m
   b a
 
-lower :: ([C.CompDef], Maybe C.Comp) -> App (DN.DeclEnv, [LC.Def], Maybe LC.Comp)
-lower (defList, mMainTerm) = do
+lower ::
+  ([C.CompDef], Maybe C.Comp, [StaticTextInfo]) ->
+  App (DN.DeclEnv, [LC.Def], Maybe LC.Comp, [StaticTextInfo])
+lower (defList, mMainTerm, staticTextList) = do
   initialize $ map fst defList
   case mMainTerm of
     Just mainTerm -> do
@@ -66,7 +69,7 @@ lower (defList, mMainTerm) = do
       -- let result: i8* := (main-term) in {cast result to i64}
       mainTerm''' <- Just <$> commConv result mainTerm'' castResult
       declEnv <- getDeclEnv
-      return (declEnv, defList', mainTerm''')
+      return (declEnv, defList', mainTerm''', staticTextList)
     Nothing -> do
       insDeclEnv (DN.In DD.imm) A.arityS4
       insDeclEnv (DN.In DD.cls) A.arityS4
@@ -74,7 +77,7 @@ lower (defList, mMainTerm) = do
         e' <- lowerComp e
         return (name, (args, e'))
       declEnv <- getDeclEnv
-      return (declEnv, defList', Nothing)
+      return (declEnv, defList', Nothing, staticTextList)
 
 lowerComp :: C.Comp -> App LC.Comp
 lowerComp term =
@@ -243,6 +246,8 @@ lowerValue v =
       uncast (LC.VarGlobal globalName) (toFunPtrType' arity)
     C.VarLocal y ->
       return $ LC.VarLocal y
+    C.VarStaticText globalName len ->
+      uncast (LC.VarGlobal globalName) $ LT.Pointer $ LT.textType len
     C.SigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) LT.voidPtr
       createAggData arrayType $ map (,LT.voidPtr) ds

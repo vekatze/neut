@@ -123,6 +123,8 @@ showPrim prim =
               name
             PO.PrimConvOp name _ _ ->
               name
+        WPV.StaticText _ text ->
+          T.pack $ show text
 
 showCons :: [T.Text] -> T.Text
 showCons =

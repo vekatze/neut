@@ -102,7 +102,7 @@ weakenKind kind =
     LK.Fix xt ->
       LK.Fix (weakenBinder xt)
 
-weakenPrim :: Hint -> P.Prim -> WP.WeakPrim WT.WeakTerm
+weakenPrim :: Hint -> P.Prim TM.Term -> WP.WeakPrim WT.WeakTerm
 weakenPrim m prim =
   case prim of
     P.Type t ->
@@ -118,6 +118,8 @@ weakenPrim m prim =
             WPV.Float (weaken (fromPrimNum m (PT.Float size))) float
           PV.Op op ->
             WPV.Op op
+          PV.StaticText t text ->
+            WPV.StaticText (weaken t) text
 
 weakenDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree WT.WeakTerm
 weakenDecisionTree tree =

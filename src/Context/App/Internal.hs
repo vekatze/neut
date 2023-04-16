@@ -56,6 +56,7 @@ data Env = Env
     visitEnv :: FastRef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription TM.Term),
+    staticTextList :: FastRef [(DD.DefiniteDescription, (T.Text, Int))],
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
@@ -109,6 +110,7 @@ newEnv = do
   visitEnv <- newFastRef
   weakDefMap <- newFastRef
   defMap <- newFastRef
+  staticTextList <- newFastRef
   compDefMap <- newFastRef
   dataDefMap <- newFastRef
   codataDefMap <- newFastRef

@@ -150,6 +150,9 @@ infer' varEnv term =
             WPV.Op op -> do
               primOpType <- primOpToType m op
               return (term, weaken primOpType)
+            WPV.StaticText t text -> do
+              t' <- inferType' [] t
+              return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
     m :< WT.ResourceType {} ->
       return (term, m :< WT.Tau)
     m :< WT.Magic der -> do

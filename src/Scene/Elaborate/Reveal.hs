@@ -122,6 +122,8 @@ reveal' varEnv term =
               return $ m :< WT.Prim (WP.Value (WPV.Float t' v))
             WPV.Op {} ->
               return term
+            WPV.StaticText {} ->
+              return term
     _ :< WT.ResourceType {} ->
       return term
     m :< WT.Magic der -> do

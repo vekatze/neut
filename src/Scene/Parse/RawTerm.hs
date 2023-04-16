@@ -8,7 +8,6 @@ module Scene.Parse.RawTerm
   )
 where
 
-import Codec.Binary.UTF8.String
 import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
@@ -35,7 +34,6 @@ import Entity.Magic qualified as M
 import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
-import Entity.PrimNumSize qualified as PNS
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawPattern qualified as RP
@@ -850,12 +848,8 @@ rawTermTextIntro :: Parser RT.RawTerm
 rawTermTextIntro = do
   m <- getCurrentHint
   s <- string
-  let i8s = encode $ T.unpack s
-  let i8 = m :< RT.Prim (WP.Type (PT.Int (PNS.IntSize 8)))
-  let i8s' = map (\x -> m :< RT.Prim (WP.Value (WPV.Int i8 (toInteger x)))) i8s
-  listNil <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListNil
-  listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
-  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "text-new")) [foldListApp m listNil listCons i8s']
+  textType <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreText
+  return $ m :< RT.Prim (WP.Value (WPV.StaticText textType s))
 
 rawTermInteger :: Parser RT.RawTerm
 rawTermInteger = do

@@ -7,6 +7,7 @@ module Entity.BaseName
     form,
     sigmaName,
     lambdaName,
+    textName,
     main,
     fromText,
     this,
@@ -110,6 +111,10 @@ sigmaName i =
 lambdaName :: Int -> BaseName
 lambdaName i =
   MakeBaseName $ "lambda;" <> T.pack (show i)
+
+textName :: Int -> BaseName
+textName i =
+  MakeBaseName $ "text;" <> T.pack (show i)
 
 cons :: BaseName
 cons =

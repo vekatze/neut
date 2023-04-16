@@ -116,3 +116,7 @@ coreListNil =
 coreListCons :: T.Text
 coreListCons =
   core <> nsSep <> "list" <> nsSep <> "Cons"
+
+coreText :: T.Text
+coreText =
+  core <> nsSep <> "text" <> nsSep <> "text"

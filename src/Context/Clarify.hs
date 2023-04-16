@@ -17,6 +17,7 @@ import Prelude hiding (lookup)
 initialize :: App ()
 initialize = do
   writeRef' compDefMap mempty
+  writeRef' staticTextList []
 
 getAuxEnv :: App CompDefinition.DefMap
 getAuxEnv =

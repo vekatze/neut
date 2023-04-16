@@ -245,6 +245,9 @@ elaborate' term =
                       <> toText (weaken t')
             WPV.Op op ->
               return $ m :< TM.Prim (P.Value (PV.Op op))
+            WPV.StaticText t text -> do
+              t' <- elaborate' t
+              return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
     m :< WT.ResourceType name ->
       return $ m :< TM.ResourceType name
     m :< WT.Magic der -> do

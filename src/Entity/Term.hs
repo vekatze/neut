@@ -36,7 +36,7 @@ data TermF a
   | CellIntro a
   | CellElim a
   | Let O.Opacity (BinderF a) a a
-  | Prim P.Prim
+  | Prim (P.Prim a)
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a)
   deriving (Show, Generic)

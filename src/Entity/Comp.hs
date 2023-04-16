@@ -1,10 +1,10 @@
 module Entity.Comp where
 
-import qualified Data.IntMap as IntMap
+import Data.IntMap qualified as IntMap
 import Data.List (intercalate)
-import qualified Data.Text as T
+import Data.Text qualified as T
 import Entity.Arity
-import qualified Entity.DefiniteDescription as DD
+import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase
 import Entity.Ident
 import Entity.Ident.Reify
@@ -16,6 +16,7 @@ import Entity.PrimOp
 data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription Arity
+  | VarStaticText DD.DefiniteDescription Int
   | SigmaIntro [Value]
   | Int IntSize Integer
   | Float FloatSize Double
@@ -26,6 +27,8 @@ instance Show Value where
       VarLocal x ->
         T.unpack $ toText' x
       VarGlobal dd _ ->
+        T.unpack $ DD.reify dd
+      VarStaticText dd _ ->
         T.unpack $ DD.reify dd
       SigmaIntro vs ->
         "(" ++ intercalate ", " (map show vs) ++ ")"

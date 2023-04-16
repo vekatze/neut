@@ -3,6 +3,7 @@ module Scene.Emit (emit) where
 import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.StaticText (StaticTextInfo)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.ByteString.Builder
@@ -12,6 +13,7 @@ import Data.HashMap.Strict qualified as HashMap
 import Data.IntMap qualified as IntMap
 import Data.List qualified as List
 import Data.Text qualified as T
+import Data.Text.Encoding qualified as TE
 import Entity.Builder
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
@@ -23,18 +25,34 @@ import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
 import Scene.LowComp.Reduce qualified as LowComp
 
-emit :: (DN.DeclEnv, [LC.Def], Maybe LC.Comp) -> App L.ByteString
-emit (declEnv, defList, mMainTerm) = do
+emit :: (DN.DeclEnv, [LC.Def], Maybe LC.Comp, [StaticTextInfo]) -> App L.ByteString
+emit (declEnv, defList, mMainTerm, staticTextList) = do
+  let staticTextList' = map emitStaticText staticTextList
   case mMainTerm of
     Just mainTerm -> do
       let declStrList = emitDeclarations declEnv
       mainStrList <- emitMain mainTerm
       defStrList <- concat <$> mapM emitDefinitions defList
-      return $ L.toLazyByteString $ unlinesL $ declStrList <> mainStrList <> defStrList
+      return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> mainStrList <> defStrList
     Nothing -> do
       let declStrList = emitDeclarations declEnv
       defStrList <- concat <$> mapM emitDefinitions defList
-      return $ L.toLazyByteString $ unlinesL $ declStrList <> defStrList
+      return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> defStrList
+
+emitStaticText :: StaticTextInfo -> Builder
+emitStaticText (from, (text, len)) = do
+  "@"
+    <> DD.toBuilder from
+    <> " = private unnamed_addr constant "
+    <> emitLowType (LT.textType len)
+    <> " {i64 "
+    <> intDec len
+    <> ", "
+    <> emitLowType (LT.textTypeInner len)
+    <> " c\""
+    <> TE.encodeUtf8Builder text
+    <> "\""
+    <> "}"
 
 emitDeclarations :: DN.DeclEnv -> [Builder]
 emitDeclarations declEnv = do
