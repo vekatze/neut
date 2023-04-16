@@ -4,11 +4,11 @@ variant item(a: tau) {
 
 define view(x: item(i64 -> i64)): i64 {
   match x {
-  - item.Cons(a) =>
+  - Cons(a) =>
     1
   }
 }
 
 define main(): i64 {
-  view(item.Cons(lambda (x) { x }))
+  view(Cons(lambda (x) { x }))
 }

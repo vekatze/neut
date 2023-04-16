@@ -4,6 +4,6 @@ variant item() {
 }
 
 define main(): i64 {
-  let x = item.Nil()
+  let x = Nil()
   1
 }

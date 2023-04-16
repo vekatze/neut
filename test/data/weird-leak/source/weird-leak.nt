@@ -1,7 +1,3 @@
-use {
-- this.weird-leak::list
-}
-
 variant list() {
 - Nil()
 - Cons()

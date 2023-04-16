@@ -1,7 +1,3 @@
-use {
-- this.noetic-nested-pattern::tree
-}
-
 variant tree() {
 - E()
 - N(tree())

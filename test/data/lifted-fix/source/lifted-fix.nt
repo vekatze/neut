@@ -23,17 +23,17 @@ variant list() {
 // }
 
 define main(): i64 {
-  let xs = list.Nil()
+  let xs = Nil()
   let ws = xs
   let multiple-free-var =
     // lambda () { free-vars-in-recursion-lifted(xs, ws) }
     define loop(): i64 {
       // match magic cast(i1, core.bool::bool(), add-i1(0, 1)) {
       match eq-i64(0, 0) {
-      - core.bool::bool.True() =>
+      - True =>
         let fv-1 = xs
         1
-      - core.bool::bool.False() =>
+      - core.bool.False =>
         let fv-4 = ws
         loop()
       }

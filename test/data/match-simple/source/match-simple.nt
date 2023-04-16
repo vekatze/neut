@@ -3,8 +3,8 @@ variant item() {
 }
 
 define main(): i64 {
-  match item.Cons(2) {
-  - item.Cons(w) =>
+  match Cons(2) {
+  - Cons(w) =>
     w
   }
 }

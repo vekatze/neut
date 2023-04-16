@@ -2,16 +2,12 @@ import {
 - core.bool
 }
 
-use {
-- this.match-unbound::nat
-}
-
 variant nat() {
 - Zero()
 }
 
-define cond(n1: nat()): core.bool::bool() {
-  core.bool::bool.False()
+define cond(n1: nat()): bool {
+  False
 }
 
 define f(): nat() {

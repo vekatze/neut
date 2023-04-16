@@ -1,11 +1,6 @@
-use {
-- this.fold-tails::list
-- this.fold-tails::nat
-}
-
-variant nat() {
-- Zero()
-- Succ(nat())
+variant nat {
+- Zero
+- Succ(nat)
 }
 
 variant list(a: tau) {
@@ -13,36 +8,36 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define add-nat(x: nat(), y: nat()): nat() {
+define add-nat(x: nat, y: nat): nat {
   match x {
-  - Zero() =>
+  - Zero =>
     y
   - Succ(m) =>
     add-nat(m, Succ(y))
   }
 }
 
-define mul-nat(x: nat(), y: nat()): nat() {
+define mul-nat(x: nat, y: nat): nat {
   match x {
-  - Zero() =>
-    Zero()
+  - Zero =>
+    Zero
   - Succ(m) =>
     add-nat(mul-nat(m, y), y)
   }
 }
 
-define interpret(n: nat()): i64 {
+define interpret(n: nat): i64 {
   match n {
-  - Zero() =>
+  - Zero =>
     0
   - Succ(m) =>
     add-i64(1, interpret(m))
   }
 }
 
-define gen(n: nat()): list(nat()) {
+define gen(n: nat): list(nat) {
   match n {
-  - Zero() =>
+  - Zero =>
     Nil()
   - Succ(m) =>
     Cons(n, gen(m))
@@ -76,17 +71,17 @@ define map(a: tau, b: tau, f: a -> b, xs: list(a)): list(b) {
   }
 }
 
-define head(xs: list(nat())): nat() {
+define head(xs: list(nat)): nat {
   match xs {
   - Nil() =>
-    Zero()
+    Zero
   - Cons(y, ys) =>
     y
   }
 }
 
 define main(): i64 {
-  let n = Succ(Succ(Succ(Zero())))
+  let n = Succ(Succ(Succ(Zero)))
   let n-copy1 = n
   let n-copy2 = n
   let n-copy3 = n
@@ -103,7 +98,7 @@ define main(): i64 {
   let zs-copy3 = zs
   let zs-copy4 = zs
   let zs-copy5 = zs
-  let result-nat = fold-r(_, _, lambda (a, b) { add-nat(a, b) }, Zero(), zs)
+  let result-nat = fold-r(_, _, lambda (a, b) { add-nat(a, b) }, Zero, zs)
   let result-nat-copy1 = result-nat
   let result-nat-copy2 = result-nat
   let result = interpret(result-nat)

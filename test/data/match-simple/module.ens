@@ -1,3 +1,4 @@
+antecedents = []
 dependency = {}
 extra-content = []
 target = {

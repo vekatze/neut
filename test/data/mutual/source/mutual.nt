@@ -2,10 +2,6 @@ import {
 - core.bool
 }
 
-use {
-- core.bool
-}
-
 define is-even(x: i64): i64 {
   if eq-i64(x, 0) {
     2

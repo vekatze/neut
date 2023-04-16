@@ -4,8 +4,8 @@ variant option() {
 
 define main(): i64 {
   let sect = tau
-  match option.Some(2) {
-  - option.Some(2) =>
+  match Some(2) {
+  - Some(2) =>
     10
   }
 }

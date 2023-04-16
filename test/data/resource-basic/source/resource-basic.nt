@@ -3,11 +3,6 @@ import {
 - core.bool
 }
 
-use {
-- core.top
-- core.top::top
-}
-
 variant list(a: tau) {
 - Nil()
 - Cons(a, list(a))
@@ -18,9 +13,9 @@ define-inline add-pointer(x: i64, offset: i64): i64 {
   magic cast(i64, i64, add-i64(ptr, offset))
 }
 
-define copy-i8-array(content-pointer: i64, new-content-pointer: i64, counter: i64, length: i64): top() {
+define copy-i8-array(content-pointer: i64, new-content-pointer: i64, counter: i64, length: i64): top {
   if eq-i64(counter, length) {
-    Unit()
+    Unit
   } else {
     let value-pointer = add-pointer(content-pointer, counter)
     let value: i8 = magic load(i8, value-pointer)

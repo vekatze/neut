@@ -1,23 +1,23 @@
-variant nat() {
+variant nat {
 - Zero()
-- Succ(nat())
+- Succ(nat)
 }
 
-define nil-cons-cons(xs: nat()): i64 {
+define nil-cons-cons(xs: nat): i64 {
   match xs {
-  - nat.Zero() =>
+  - Zero() =>
     1
-  - nat.Succ(nat.Succ(cs)) =>
+  - Succ(Succ(cs)) =>
     2
-  - nat.Succ(c) =>
+  - Succ(c) =>
     3
   }
 }
 
 define main(): i64 {
-  let n0 = nat.Zero()
-  let n1 = nat.Succ(n0)
-  let n2 = nat.Succ(nat.Succ(nat.Zero()))
+  let n0 = Zero()
+  let n1 = Succ(n0)
+  let n2 = Succ(Succ(Zero()))
   let z0 = nil-cons-cons(n0)
   let z1 = nil-cons-cons(n1)
   let z2 = nil-cons-cons(n2)

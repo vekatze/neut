@@ -1,63 +1,60 @@
-use {
-- this.codata-basic::foo
-}
-
-struct bar(a: tau) {
+struct bar(a: tau) by Bar {
 - value: a
 }
 
-struct foo() {
+struct foo() by Foo {
 - value-1: i64
 - value-2: i32
 - value-3: bar(i64)
 }
 
-struct stream(a: tau) {
+struct stream(a: tau) by Stream {
 - head: a
 - tail: () -> stream(a)
 }
 
 define int-stream(x: i64): stream(i64) {
   new stream {
-  - stream.head <=
+  - head <=
     x
-  - stream.tail <=
+  - tail <=
     lambda () {
       int-stream(add-i64(x, 1))
     }
   }
 }
 
-define tail<a>(s: stream(a)): stream(a) {
+define get-tail[a](s: stream(a)): stream(a) {
   match s {
-  - stream.New(_, tail-generator) =>
+  - Stream(_, tail-generator) =>
     tail-generator()
   }
 }
 
-define head<a>(s: stream(a)): a {
+define get-head[a](s: stream(a)): a {
   match s {
-  - stream.New(v, _) =>
+  - Stream(v, _) =>
     v
   }
 }
 
 define main(): i64 {
-  let inner = bar.New(10)
+  let inner = Bar(10)
   let config =
     new foo {
     - value-1 <= 3
-    - foo.value-3 <= inner
+    - value-3 <= inner
     - value-2 <= 8
     }
   let k on config = {
-    let s1 = foo.value-1(config)
-    let s2 = !config[value-1]
-    let s3 = config[foo.value-1]
-    let s4 = config[value-3][bar.value]
+    let s1 = value-1(config)
+    let s2 = !config::value-1
+    let s3 = config::value-1
+    let s4 = config::value-3::value
     add-i64(!s1, add-i64(s2, add-i64(!s3, !s4)))
   }
   let some-stream = int-stream(3)
-  let value = some-stream[tail][tail][head]
+  // let value = some-stream[get-tail][tail][head]
+  let value = some-stream::get-tail::get-tail::get-head
   add-i64(k, value)
 }

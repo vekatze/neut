@@ -1,4 +1,4 @@
-struct product(a, b) {
+struct product(a, b) by Product {
 - left: a
 - right: b
 }

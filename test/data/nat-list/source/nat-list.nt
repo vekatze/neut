@@ -1,11 +1,6 @@
-use {
-- this.nat-list::nat
-- this.nat-list::list
-}
-
-variant nat() {
+variant nat {
 - Zero()
-- Succ(nat())
+- Succ(nat)
 }
 
 variant list(a: tau) {
@@ -13,20 +8,20 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define interpret(n: nat()): i64 {
+define interpret(n: nat): i64 {
   match n {
-  - nat.Zero() =>
+  - Zero() =>
     0
-  - nat.Succ(m) =>
+  - Succ(m) =>
     add-i64(1, interpret(m))
   }
 }
 
-define nat-list-sum(xs: list(nat())): i64 {
+define nat-list-sum(xs: list(nat)): i64 {
   match xs {
-  - this.nat-list::list.Nil() =>
+  - Nil() =>
     0
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     add-i64(interpret(y), nat-list-sum(ys))
   }
 }

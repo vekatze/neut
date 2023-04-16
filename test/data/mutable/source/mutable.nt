@@ -7,12 +7,12 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define-inline get<a>(x: cell a): a {
+define-inline get[a](x: cell a): a {
   let value-noema: &a = magic load(pointer(i8), x)
   !value-noema
 }
 
-define-inline mutate<a>(x: cell a, mutator: a -> a): core.top::top() {
+define-inline mutate[a](x: cell a, mutator: a -> a): top {
   let value: a = magic load(pointer(i8), x)
   let mutated-value = mutator(value)
   magic store(pointer(i8), x, mutated-value)
@@ -20,9 +20,9 @@ define-inline mutate<a>(x: cell a, mutator: a -> a): core.top::top() {
 
 define length(xs: list(i64)): i64 {
   match xs {
-  - list.Nil() =>
+  - Nil() =>
     0
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     add-i64(1, length(ys))
   }
 }
@@ -32,18 +32,18 @@ define bar(xs: cell list(i64)): i64 {
 }
 
 define main(): i64 {
-  let xs: list(i64) = [1, 2]
+  let xs: list(i64) = Cons(1, Cons(2, Nil()))
   let result on mutable xs = {
     let len1 = bar(xs)
     mutate(xs, lambda (xs) {
-      list.Cons(4, xs)
+      Cons(4, xs)
     })
     let len2 = bar(xs)
     mutate(xs, lambda (xs) {
-      list.Nil()
+      Nil()
     })
     mutate(xs, lambda (xs) {
-      list.Cons(4, xs)
+      Cons(4, xs)
     })
     bar(xs)
   }

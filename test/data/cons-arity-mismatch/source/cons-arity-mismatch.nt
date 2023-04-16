@@ -1,7 +1,3 @@
-use {
-- this.cons-arity-mismatch::item
-}
-
 variant item() {
 - Cons()
 }

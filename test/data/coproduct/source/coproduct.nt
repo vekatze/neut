@@ -3,22 +3,16 @@ import {
 - core.bool
 }
 
-use {
-- core.sum
-- core.sum::sum
-- this.coproduct::nat
+variant nat {
+- Zero
+- Succ(nat)
 }
 
-variant nat() {
-- Zero()
-- Succ(nat())
-}
-
-define interpret(n: nat()): i64 {
+define interpret(n: nat): i64 {
   match n {
-  - nat.Zero() =>
+  - Zero =>
     0
-  - nat.Succ(m) =>
+  - Succ(m) =>
     add-i64(1, interpret(m))
   }
 }
@@ -32,15 +26,15 @@ define view(a: tau, b: tau, x: sum(a, b)): i64 {
   }
 }
 
-define computation-with-error(x: i64): sum(nat(), i64) {
+define computation-with-error(x: i64): sum(nat, i64) {
   if eq-i64(x, 0) {
-    Left(Succ(Zero()))
+    Left(Succ(Zero))
   } else {
-    Right(interpret(Succ(Succ(Zero()))))
+    Right(interpret(Succ(Succ(Zero))))
   }
 }
 
-define let-sum(x: i64): sum(nat(), i64) {
+define let-sum(x: i64): sum(nat, i64) {
   let+ foo = computation-with-error(x)
   let+ bar = computation-with-error(add-i64(foo, 1))
   Right(bar)

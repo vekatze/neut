@@ -9,15 +9,15 @@ variant list() {
 
 define length(xs: list()): i64 {
   match xs {
-  - list.Nil() =>
+  - Nil() =>
     0
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     add-i64(1, length(ys))
   }
 }
 
 define main(): i64 {
-  let xs = list.Nil()
+  let xs = Nil()
   let no-free-var =
     define foo(c: i64): i64 {
       if eq-i64(c, 0) {
@@ -40,7 +40,7 @@ define main(): i64 {
   let val-2 = single-free-var(3)
   let ys = xs
   let zs = xs
-  let ws = list.Nil()
+  let ws = Nil()
   let multiple-free-var =
     define free-vars-in-recursion(c: i64): i64 {
       if eq-i64(c, 0) {

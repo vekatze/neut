@@ -4,11 +4,11 @@ variant item() {
 
 define f(xs: item()): i64 {
   match xs {
-  - item.Nil(x) =>
+  - Nil(x) =>
     0
   }
 }
 
 define main(): i64 {
-  f(item.Nil(10))
+  f(Nil(10))
 }

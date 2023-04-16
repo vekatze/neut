@@ -1,7 +1,3 @@
-use {
-- this.unbound::list
-}
-
 variant list(a: tau) {
 - Nil()
 - Cons()

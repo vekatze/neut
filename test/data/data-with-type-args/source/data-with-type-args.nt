@@ -5,13 +5,13 @@ variant list(a: tau) {
 
 define f(xs: list(i64)): i64 {
   match xs {
-  - list.Nil() =>
+  - Nil() =>
     0
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     1
   }
 }
 
 define main(): i64 {
-  f(list.Cons(10, list.Cons(20, list.Nil())))
+  f(Cons(10, Cons(20, Nil())))
 }

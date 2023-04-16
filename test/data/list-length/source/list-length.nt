@@ -5,13 +5,13 @@ variant list(a: tau) {
 
 define length(a: tau, xs: list(a)): i64 {
   match xs {
-  - list.Nil() =>
+  - Nil() =>
     0
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     add-i64(1, length(a,  ys))
   }
 }
 
 define main(): i64 {
-  length(i64, list.Cons(1, list.Cons(2, list.Nil())))
+  length(i64, Cons(1, Cons(2, Nil())))
 }

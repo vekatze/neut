@@ -8,24 +8,24 @@ define length(xs: &list(i64)): i64 {
   let b = xs
   let c = xs
   case c {
-  - list.Nil() =>
+  - Nil() =>
     0
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     add-i64(1, length(ys))
   }
 }
 
 define tail(xs: &list(i64)): &list(i64) {
   case xs {
-  - list.Nil() =>
+  - Nil() =>
     xs
-  - list.Cons(y, ys) =>
+  - Cons(y, ys) =>
     ys
   }
 }
 
 define main(): i64 {
-  let xs = list.Cons(3, list.Cons(1, list.Cons(2, list.Nil())))
+  let xs = Cons(3, Cons(1, Cons(2, Nil())))
   let some-value on xs = length(tail(xs))
   some-value
 }

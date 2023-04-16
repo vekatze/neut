@@ -1,7 +1,3 @@
-use {
-- this.calc::expr
-}
-
 variant expr() {
 - Num(i64)
 - Add(expr(), expr())
