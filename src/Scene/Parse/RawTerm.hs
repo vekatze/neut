@@ -628,20 +628,20 @@ rawTermIf = do
     return (elseIfCond, elseIfBody)
   keyword "else"
   elseBody <- betweenBrace rawExpr
-  boolTrue <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolTrue
-  boolFalse <- lift $ handleDefiniteDescriptionIntoRawConsName m coreBoolFalse
+  boolTrue <- lift $ Throw.liftEither $ DD.getLocatorPair m coreBoolTrue
+  boolFalse <- lift $ Throw.liftEither $ DD.getLocatorPair m coreBoolFalse
   return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
 
 foldIf ::
   Hint ->
-  RP.RawConsName ->
-  RP.RawConsName ->
+  (GL.GlobalLocator, LL.LocalLocator) ->
+  (GL.GlobalLocator, LL.LocalLocator) ->
   RT.RawTerm ->
   RT.RawTerm ->
   [(RT.RawTerm, RT.RawTerm)] ->
   RT.RawTerm ->
   RT.RawTerm
-foldIf m true false ifCond ifBody elseIfList elseBody =
+foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       m
@@ -649,8 +649,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(m, RP.Cons true [])], ifBody),
-                (V.fromList [(m, RP.Cons false [])], elseBody)
+              [ (V.fromList [(m, RP.NullaryCons trueGL trueLL)], ifBody),
+                (V.fromList [(m, RP.NullaryCons falseGL falseLL)], elseBody)
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
@@ -660,8 +660,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(m, RP.Cons true [])], ifBody),
-                (V.fromList [(m, RP.Cons false [])], cont)
+              [ (V.fromList [(m, RP.NullaryCons trueGL trueLL)], ifBody),
+                (V.fromList [(m, RP.NullaryCons falseGL falseLL)], cont)
               ]
           )
 

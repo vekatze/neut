@@ -605,7 +605,7 @@ castFromIntToBool e@(m :< _) = do
   x1 <- Gensym.newIdentFromText "arg"
   x2 <- Gensym.newIdentFromText "arg"
   let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
-  return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType (m :< WT.PiElim bool [])) e)
+  return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 discernGlobal :: Hint -> GL.GlobalLocator -> LL.LocalLocator -> App WT.WeakTerm
 discernGlobal m gl ll = do
