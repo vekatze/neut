@@ -8,13 +8,18 @@ where
 import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Throw qualified as Throw
 import Control.Monad
+import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Entity.Module
+import Entity.ModuleID qualified as MID
+import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path
+import Path.IO
 import Prelude hiding (log)
 
 collectTargetList :: Maybe Target -> App [Target]
@@ -26,8 +31,13 @@ collectSourceList mFilePathStr = do
   mainModule <- Module.getMainModule
   case mFilePathStr of
     Just filePathStr -> do
-      sgl <- SGL.reflectInMainModule filePathStr
-      return [sgl]
+      path <- parseSourcePathRelativeToSourceDir filePathStr
+      return
+        [ SGL.StrictGlobalLocator
+            { moduleID = MID.Main,
+              sourceLocator = SL.SourceLocator path
+            }
+        ]
     Nothing -> do
       return (Map.elems $ moduleTarget mainModule)
 
@@ -48,3 +58,15 @@ arrangeExtraContentPath tarRootDir somePath =
       toFilePath <$> Path.stripPrefix tarRootDir dirPath
     Right filePath ->
       toFilePath <$> Path.stripPrefix tarRootDir filePath
+
+parseSourcePathRelativeToSourceDir :: FilePath -> App (Path Rel File)
+parseSourcePathRelativeToSourceDir filePathStr = do
+  path <- resolveFile' filePathStr
+  mainModule <- Module.getMainModule
+  let sourceDir = getSourceDir mainModule
+  catch (stripProperPrefix sourceDir path) $ \stripProperPrefixException ->
+    case stripProperPrefixException of
+      NotAProperPrefix _ _ ->
+        Throw.raiseError' "specified file isn't a part of current package"
+      _ ->
+        throwM stripProperPrefixException
