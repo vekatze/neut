@@ -6,7 +6,6 @@ import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
-import Data.Char
 import Data.List.NonEmpty
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -84,18 +83,17 @@ baseName = do
 
 baseNameCapitalized :: Parser BN.BaseName
 baseNameCapitalized = do
-  bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
-  if isUpper (T.head bn)
-    then lexeme $ return $ BN.fromText bn
-    else failure (Just (asTokens bn)) (S.fromList [asLabel "capitalized symbol"])
+  lexeme $ do
+    c <- upperChar
+    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+    return $ BN.fromText $ T.singleton c <> bn
 
 keyword :: T.Text -> Parser ()
 keyword expected = do
-  try $ do
-    s <- symbol
-    if s == expected
-      then return ()
-      else failure (Just (asTokens s)) (S.fromList [asLabel expected])
+  try $
+    lexeme $ do
+      _ <- chunk expected
+      label (T.unpack expected) $ notFollowedBy symbol
 
 nonSymbolChar :: Parser Char
 nonSymbolChar =
@@ -155,11 +153,6 @@ betweenBracket =
 importBlock :: Parser a -> Parser a
 importBlock p = do
   keyword "import"
-  betweenBrace p
-
-useBlock :: Parser a -> Parser a
-useBlock p = do
-  keyword "use"
   betweenBrace p
 
 commaList :: Parser a -> Parser [a]
