@@ -50,8 +50,7 @@ import System.Environment
 getLibraryDirPath :: App (Path Abs Dir)
 getLibraryDirPath = do
   cacheDirPath <- getCacheDirPath
-  relLibDirPath <- getLibDirRelPath
-  returnDirectory $ cacheDirPath </> relLibDirPath
+  returnDirectory $ cacheDirPath </> $(P.mkRelDir "library")
 
 getCurrentDir :: App (Path Abs Dir)
 getCurrentDir =
@@ -123,11 +122,6 @@ getCacheDirPath = do
       P.parseAbsDir cacheDirPathString >>= returnDirectory
     Nothing ->
       P.getXdgDir P.XdgCache (Just $(P.mkRelDir "neut")) >>= returnDirectory
-
-getLibDirRelPath :: App (Path Rel Dir)
-getLibDirRelPath = do
-  prefix <- getPlatformPrefix
-  return $ prefix </> $(P.mkRelDir "library")
 
 returnDirectory :: Path Abs Dir -> App (Path Abs Dir)
 returnDirectory path =
