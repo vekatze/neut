@@ -223,7 +223,7 @@ rawTermLetOption m = do
   let optionType = m :< RT.PiElim optionTypeDD [resultType]
   e1' <- annotateIfNecessary m (Just optionType) e1
   e2 <- rawExpr
-  optionNone <- lift $ handleDefiniteDescriptionIntoRawConsName m coreOptionNone
+  (optionNoneGL, optionNoneLL) <- lift $ Throw.liftEither $ DD.getLocatorPair m coreOptionNone
   optionNoneVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOptionNone
   optionSome <- lift $ handleDefiniteDescriptionIntoRawConsName m coreOptionSome
   return $
@@ -232,7 +232,7 @@ rawTermLetOption m = do
         False
         [e1']
         ( RP.new
-            [ (V.fromList [(m, RP.Cons optionNone [])], m :< RT.PiElim optionNoneVar []),
+            [ (V.fromList [(m, RP.NullaryCons optionNoneGL optionNoneLL)], optionNoneVar),
               (V.fromList [(m, RP.Cons optionSome [pat])], e2)
             ]
         )
