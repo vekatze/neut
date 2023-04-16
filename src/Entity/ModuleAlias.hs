@@ -16,6 +16,10 @@ defaultModulePrefix :: ModuleAlias
 defaultModulePrefix =
   ModuleAlias BN.this
 
+coreModulePrefix :: ModuleAlias
+coreModulePrefix =
+  ModuleAlias BN.core
+
 baseModulePrefix :: ModuleAlias
 baseModulePrefix =
   ModuleAlias BN.base

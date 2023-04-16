@@ -12,6 +12,7 @@ module Entity.BaseName
     this,
     new,
     base,
+    core,
     internalBaseName,
     cons,
     imm,
@@ -29,7 +30,7 @@ import Data.Binary
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.Const
+import Entity.Const hiding (core)
 import Entity.Hint qualified as H
 import Entity.Log
 import Entity.PrimType qualified as PT
@@ -77,6 +78,10 @@ this =
 base :: BaseName
 base =
   MakeBaseName "base"
+
+core :: BaseName
+core =
+  MakeBaseName "core"
 
 main :: BaseName
 main =
