@@ -77,7 +77,7 @@ parseSource source = do
       rememberCurrentNameSet m path $ map getNameFromStmt stmtList
       return $ Left stmtList
     Nothing -> do
-      defList <- P.run program $ Source.sourceFilePath source
+      defList <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       rememberCurrentNameSet m path $ map getNameFromWeakStmt stmtList
@@ -101,9 +101,9 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: P.Parser [RawStmt]
-program = do
-  (globalLocatorList, aliasInfoList) <- Parse.skimImportSequence
+program :: Source.Source -> P.Parser [RawStmt]
+program currentSource = do
+  (globalLocatorList, aliasInfoList) <- Parse.skimImportSequence currentSource
   forM_ globalLocatorList $ lift . Locator.activateGlobalLocator
   lift $ Alias.activateAliasInfo aliasInfoList
   concat <$> many parseStmt <* eof

@@ -1,8 +1,10 @@
 module Entity.Source where
 
 import Control.Monad.Catch
+import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Entity.Module
+import Entity.ModuleAlias
 import Entity.OutputKind qualified as OK
 import Path
 
@@ -26,6 +28,10 @@ attachExtension file kind =
       addExtension ".s" file
     OK.Object -> do
       addExtension ".o" file
+
+hasCore :: Source -> Bool
+hasCore source =
+  Map.member coreModulePrefix $ moduleDependency $ sourceModule source
 
 isCompilationSkippable :: S.Set (Path Abs File) -> S.Set (Path Abs File) -> [OK.OutputKind] -> Source -> Bool
 isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source =

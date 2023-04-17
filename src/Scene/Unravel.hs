@@ -198,7 +198,7 @@ getChildren currentSource = do
       return sourceList
     Nothing -> do
       let path = Source.sourceFilePath currentSource
-      sourceList <- ParseCore.run Parse.parseImportSequence path
+      sourceList <- ParseCore.run (Parse.parseImportSequence currentSource) path
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
       return sourceList
 

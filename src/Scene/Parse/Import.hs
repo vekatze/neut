@@ -25,11 +25,13 @@ import Scene.Parse.Core qualified as P
 import Scene.Source.ShiftToLatest
 import Text.Megaparsec
 
-parseImportSequence :: P.Parser [Source.Source]
-parseImportSequence = do
+parseImportSequence :: Source.Source -> P.Parser [Source.Source]
+parseImportSequence currentSource = do
   let p1 = P.importBlock (P.manyList parseSingleImport)
   let p2 = return []
-  choice [p1, p2]
+  baseChildren <- choice [p1, p2]
+  additionalChildren <- loadDefaultImports currentSource
+  return $ baseChildren ++ additionalChildren
 
 parseSingleImport :: P.Parser Source.Source
 parseSingleImport = do
@@ -38,12 +40,15 @@ parseSingleImport = do
       parseImportSimple
     ]
 
-skimImportSequence :: P.Parser ([SGL.StrictGlobalLocator], [AI.AliasInfo])
-skimImportSequence = do
-  choice
-    [ fmap partitionEithers $ P.importBlock $ P.manyList skimSingleImport,
-      return ([], [])
-    ]
+skimImportSequence :: Source.Source -> P.Parser ([SGL.StrictGlobalLocator], [AI.AliasInfo])
+skimImportSequence currentSource = do
+  (baseGlobalLocatorInfo, baseAliasInfo) <-
+    choice
+      [ fmap partitionEithers $ P.importBlock $ P.manyList skimSingleImport,
+        return ([], [])
+      ]
+  additionalGlobalLocatorInfo <- skimDefaultImports currentSource
+  return (baseGlobalLocatorInfo ++ additionalGlobalLocatorInfo, baseAliasInfo)
 
 skimSingleImport :: P.Parser (Either SGL.StrictGlobalLocator AI.AliasInfo)
 skimSingleImport =
@@ -57,6 +62,10 @@ parseImportSimple :: P.Parser Source.Source
 parseImportSimple = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
+  importByLocator m locatorText
+
+importByLocator :: Hint -> T.Text -> P.Parser Source.Source
+importByLocator m locatorText = do
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
   getSource m strictGlobalLocator locatorText
@@ -65,9 +74,13 @@ parseImportSimple' :: P.Parser SGL.StrictGlobalLocator
 parseImportSimple' = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
+  getUseInfoByLocator m locatorText
+
+getUseInfoByLocator :: Hint -> T.Text -> P.Parser SGL.StrictGlobalLocator
+getUseInfoByLocator m locatorText = do
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
-  activateNames m strictGlobalLocator locatorText
+  activateTopLevelNames m strictGlobalLocator locatorText
   return strictGlobalLocator
 
 parseImportQualified :: P.Parser Source.Source
@@ -88,7 +101,7 @@ parseImportQualified' = do
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
   globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
   strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
-  activateNames m strictGlobalLocator locatorText
+  activateTopLevelNames m strictGlobalLocator locatorText
   return $ AI.Prefix m globalLocatorAlias strictGlobalLocator
 
 getSource :: Hint -> SGL.StrictGlobalLocator -> T.Text -> P.Parser Source.Source
@@ -101,7 +114,36 @@ getSource m sgl locatorText = do
         Source.sourceFilePath = getSourceDir nextModule </> relPath
       }
 
-activateNames :: Hint -> SGL.StrictGlobalLocator -> T.Text -> P.Parser ()
-activateNames m strictGlobalLocator locatorText = do
+activateTopLevelNames :: Hint -> SGL.StrictGlobalLocator -> T.Text -> P.Parser ()
+activateTopLevelNames m strictGlobalLocator locatorText = do
   source <- getSource m strictGlobalLocator locatorText >>= lift . shiftToLatest
-  lift $ activateNamesInSource m source
+  lift $ activateTopLevelNamesInSource m source
+
+skimDefaultImports :: Source.Source -> P.Parser [SGL.StrictGlobalLocator]
+skimDefaultImports source =
+  if not (Source.hasCore source)
+    then return []
+    else do
+      m <- P.getCurrentHint
+      mapM (getUseInfoByLocator m) defaultImports
+
+loadDefaultImports :: Source.Source -> P.Parser [Source.Source]
+loadDefaultImports source =
+  if not (Source.hasCore source)
+    then return []
+    else do
+      m <- P.getCurrentHint
+      mapM (importByLocator m) defaultImports
+
+defaultImports :: [T.Text]
+defaultImports =
+  [ "core.bool",
+    "core.bottom",
+    "core.i8-array",
+    "core.list",
+    "core.option",
+    "core.sum",
+    "core.text",
+    "core.top",
+    "core.vector"
+  ]

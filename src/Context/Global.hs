@@ -6,7 +6,7 @@ module Context.Global
     initialize,
     insertToSourceNameMap,
     lookupSourceNameMap,
-    activateNamesInSource,
+    activateTopLevelNamesInSource,
   )
 where
 
@@ -150,7 +150,7 @@ lookupSourceNameMap m sourcePath = do
     Nothing ->
       Throw.raiseCritical m $ "top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
 
-activateNamesInSource :: Hint.Hint -> Source.Source -> App ()
-activateNamesInSource m source = do
+activateTopLevelNamesInSource :: Hint.Hint -> Source.Source -> App ()
+activateTopLevelNamesInSource m source = do
   namesInSource <- lookupSourceNameMap m $ Source.sourceFilePath source
   modifyRef' nameMap $ Map.union namesInSource
