@@ -20,6 +20,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.Arch qualified as Arch
 import Entity.Binder
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
@@ -35,6 +36,7 @@ import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Mutability
 import Entity.Noema qualified as N
+import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
@@ -816,11 +818,11 @@ getIntrospectiveValue m key = do
   tp <- Env.getTargetPlatform
   case key of
     "target-platform" -> do
-      return $ T.pack (TP.platform tp)
+      return $ TP.reify tp
     "target-arch" ->
-      return $ T.pack (TP.arch tp)
+      return $ Arch.reify (TP.arch tp)
     "target-os" ->
-      return $ T.pack (TP.os tp)
+      return $ OS.reify (TP.os tp)
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 

@@ -5,7 +5,10 @@ import Context.App.Internal
 import Control.Monad.IO.Class
 import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
+import Data.Text qualified as T
+import Entity.Arch qualified as Arch
 import Entity.Const
+import Entity.OS qualified as OS
 import Entity.Source qualified as Source
 import Entity.TargetPlatform
 import Path
@@ -20,9 +23,9 @@ setTargetPlatform :: App ()
 setTargetPlatform = do
   mTargetArch <- liftIO $ lookupEnv envVarTargetArch
   mTargetOS <- liftIO $ lookupEnv envVarTargetOS
-  let targetOS = fromMaybe SI.os mTargetOS
-  let targetArch = fromMaybe SI.arch mTargetArch
-  writeRef targetPlatform $ TargetPlatform {os = targetOS, arch = targetArch}
+  let targetOS = T.pack $ fromMaybe SI.os mTargetOS
+  let targetArch = T.pack $ fromMaybe SI.arch mTargetArch
+  writeRef targetPlatform $ TargetPlatform {os = OS.reflect targetOS, arch = Arch.reflect targetArch}
 
 setCurrentSource :: Source.Source -> App ()
 setCurrentSource =

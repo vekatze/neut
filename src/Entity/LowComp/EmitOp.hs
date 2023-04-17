@@ -1,11 +1,14 @@
 module Entity.LowComp.EmitOp (emitLowOp) where
 
 import Data.ByteString.Builder
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
+import Entity.Arch qualified as Arch
 import Entity.LowComp qualified as LC
 import Entity.LowComp.EmitValue
 import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
+import Entity.OS qualified as OS
 import Entity.PrimNumSize
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
@@ -86,33 +89,32 @@ emitSyscallOp :: TP.TargetPlatform -> Integer -> [LC.Value] -> Either String Bui
 emitSyscallOp targetPlatform num ds = do
   regList <- getRegList targetPlatform
   case TP.arch targetPlatform of
-    "x86_64" -> do
+    Arch.Amd64 -> do
       let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
-    "aarch64" -> do
+    Arch.Arm64 -> do
       let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc i8* asm sideeffect \"svc 0\",", regStr, argStr]
-    targetArch ->
-      Left $ "unsupported target arch: " <> targetArch
+    Arch.Unknown name ->
+      Left $ "unsupported target architecture: " <> T.unpack name
 
 getRegList :: TP.TargetPlatform -> Either String [Builder]
 getRegList targetPlatform = do
-  let platform = TP.platform targetPlatform
-  case platform of
-    "x86_64-linux" ->
+  case (TP.arch targetPlatform, TP.os targetPlatform) of
+    (Arch.Amd64, OS.Linux) ->
       return ["rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"]
-    "arm64-linux" ->
+    (Arch.Arm64, OS.Linux) ->
       return ["x8", "x0", "x1", "x2", "x3", "x4", "x5"]
-    "x86_64-darwin" ->
+    (Arch.Amd64, OS.Darwin) ->
       return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
     _ ->
-      Left $ "unsupported target: " <> platform
+      Left $ "unsupported target: " <> T.unpack (TP.reify targetPlatform)
 
 {-# INLINE unwordsL #-}
 unwordsL :: [Builder] -> Builder

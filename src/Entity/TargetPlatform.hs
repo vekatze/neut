@@ -1,14 +1,18 @@
 module Entity.TargetPlatform
   ( TargetPlatform (..),
-    platform,
+    reify,
   )
 where
 
+import Data.Text qualified as T
+import Entity.Arch qualified as Arch
+import Entity.OS qualified as OS
+
 data TargetPlatform = TargetPlatform
-  { os :: String,
-    arch :: String
+  { os :: OS.OS,
+    arch :: Arch.Arch
   }
 
-platform :: TargetPlatform -> String
-platform target =
-  arch target <> "-" <> os target
+reify :: TargetPlatform -> T.Text
+reify target =
+  Arch.reify (arch target) <> "-" <> OS.reify (os target)
