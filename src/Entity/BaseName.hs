@@ -32,10 +32,10 @@ import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Const hiding (core)
+import Entity.Error
 import Entity.Hint qualified as H
 import Entity.PrimType qualified as PT
 import Entity.PrimType.ToText qualified as PT
-import Entity.Remark
 import GHC.Generics
 
 newtype BaseName = MakeBaseName {reify :: T.Text}

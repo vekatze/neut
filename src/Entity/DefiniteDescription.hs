@@ -19,12 +19,12 @@ import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.BaseName qualified as BN
 import Entity.Const
+import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
 import Entity.ModuleID qualified as MID
 import Entity.PrimType qualified as PT
-import Entity.Remark
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics

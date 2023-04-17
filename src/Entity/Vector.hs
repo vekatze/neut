@@ -2,8 +2,8 @@ module Entity.Vector where
 
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.Error
 import Entity.Hint
-import Entity.Remark
 
 swap :: Hint -> Int -> V.Vector a -> Either Error (V.Vector a)
 swap m i xs = do

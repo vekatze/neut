@@ -19,8 +19,8 @@ import Data.Int
 import Data.List
 import Data.Text qualified as T
 import Entity.EnsType qualified as ET
+import Entity.Error
 import Entity.Hint
-import Entity.Remark
 
 data EnsF a
   = Int64 Int64

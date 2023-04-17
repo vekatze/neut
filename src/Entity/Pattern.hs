@@ -21,9 +21,9 @@ import Data.Vector qualified as V
 import Entity.Arity qualified as A
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Error
 import Entity.Hint hiding (new)
 import Entity.Ident
-import Entity.Remark
 
 data Pattern
   = Var Ident

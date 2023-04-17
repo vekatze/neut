@@ -24,7 +24,7 @@ import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
-import Entity.FilePos qualified as FP
+import Entity.Error qualified as E
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleID qualified as HID
@@ -275,7 +275,7 @@ elaborate' term =
         AN.Type t -> do
           t' <- elaborate' t
           let message = "admitting `" <> toText (weaken t') <> "`"
-          let typeRemark = Remark.newRemark (Just (FP.fromHint m)) remarkLevel message
+          let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
 
@@ -432,8 +432,8 @@ raiseAnswerTypeError m orig errorList = do
   if null errorList
     then return ()
     else do
-      let errorList' = map (Remark.remarkError (FP.fromHint m) . showAnswerTypeError orig) errorList
-      Throw.throw $ Remark.MakeError errorList'
+      let errorList' = map (Remark.newRemark m Remark.Error . showAnswerTypeError orig) errorList
+      Throw.throw $ E.MakeError errorList'
 
 showAnswerTypeError :: TM.Term -> AnswerTypeError -> T.Text
 showAnswerTypeError orig err =

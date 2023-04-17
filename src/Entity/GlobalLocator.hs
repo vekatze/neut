@@ -5,10 +5,10 @@ import Data.Hashable
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
+import Entity.Error
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint qualified as H
 import Entity.ModuleAlias
-import Entity.Remark
 import Entity.SourceLocator qualified as SL
 import GHC.Generics
 

@@ -18,7 +18,7 @@ import Data.Text qualified as T
 import Entity.Binder
 import Entity.Constraint qualified as C
 import Entity.DefiniteDescription qualified as DD
-import Entity.FilePos
+import Entity.Error qualified as E
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -71,8 +71,8 @@ throwTypeErrors = do
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     expected' <- fillAsMuchAsPossible sub expected
     actual' <- fillAsMuchAsPossible sub actual
-    return $ R.remarkError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
-  Throw.throw $ R.MakeError errorList
+    return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMsg actual' expected'
+  Throw.throw $ E.MakeError errorList
 
 fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible sub e = do

@@ -11,8 +11,8 @@ import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.Error
 import Entity.Hint qualified as H
-import Entity.Remark
 import GHC.Generics
 
 newtype LocalLocator = MakeLocalLocator

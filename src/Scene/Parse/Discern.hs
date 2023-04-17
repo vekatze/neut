@@ -22,7 +22,7 @@ import Entity.Const qualified as C
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.FilePos
+import Entity.Error qualified as E
 import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -446,7 +446,7 @@ discernPatternRow' nenv patList newVarList body = do
 ensureVariableLinearity :: NominalEnv -> App ()
 ensureVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
-  unless (null linearityErrors) $ Throw.throw $ R.MakeError linearityErrors
+  unless (null linearityErrors) $ Throw.throw $ E.MakeError linearityErrors
 
 getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [R.Remark]
 getNonLinearOccurrences vars found nonLinear =
@@ -454,7 +454,7 @@ getNonLinearOccurrences vars found nonLinear =
     [] -> do
       let nonLinearVars = reverse $ nubBy (\x y -> snd x == snd y) nonLinear
       flip map nonLinearVars $ \(m, x) ->
-        R.remarkError (fromHint m) $
+        R.newRemark m R.Error $
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"
