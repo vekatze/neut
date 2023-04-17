@@ -26,13 +26,13 @@ import Prelude hiding (log)
 
 fetch :: M.Module -> App ()
 fetch baseModule = do
-  Log.printNote' $ "context: " <> T.pack (toFilePath (M.moduleLocation baseModule))
   let dependency = Map.toList $ M.moduleDependency baseModule
   forM_ dependency $ \(alias, (url, checksum)) ->
     installIfNecessary alias url checksum
 
 insertDependency :: T.Text -> ModuleURL -> App ()
-insertDependency aliasName url = do
+insertDependency aliasName url@(ModuleURL urlText) = do
+  Log.printNote' $ "getting `" <> aliasName <> "` from " <> urlText
   alias <- ModuleAlias <$> Throw.liftEither (BN.reflect' aliasName)
   mainModule <- Module.getMainModule
   withTempFile $ \tempFilePath tempFileHandle -> do
@@ -46,7 +46,8 @@ insertDependency aliasName url = do
 installIfNecessary :: ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
 installIfNecessary alias url checksum = do
   isInstalled <- checkIfInstalled checksum
-  unless isInstalled $
+  unless isInstalled $ do
+    Log.printNote' $ "installing `" <> BN.reify (extract alias) <> "` (" <> MC.reify checksum <> ")"
     withTempFile $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias url
       archive <- getHandleContents tempFileHandle
@@ -84,27 +85,16 @@ getLibraryModule alias checksum = do
           <> ")."
 
 download :: Path Abs File -> ModuleAlias -> ModuleURL -> App ()
-download tempFilePath alias (ModuleURL url) = do
-  Log.printNote' $ "downloading `" <> BN.reify (extract alias) <> "` from " <> url
+download tempFilePath _ (ModuleURL url) = do
   External.run "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
 
 extractToLibDir :: Path Abs File -> ModuleAlias -> MC.ModuleChecksum -> App ()
-extractToLibDir tempFilePath alias checksum = do
+extractToLibDir tempFilePath _ checksum = do
   targetDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library checksum)
   Path.ensureDir targetDirPath
-  Log.printNote' $
-    "extracting `"
-      <> BN.reify (extract alias)
-      <> "` ("
-      <> MC.reify checksum
-      <> ")"
   External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
 
 addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
 addDependencyToModuleFile targetModule alias url checksum = do
-  Log.printNote' $
-    "adding the dependency of `"
-      <> BN.reify (extract alias)
-      <> "` to the module file"
   let targetModule' = M.addDependency alias url checksum targetModule
   Module.save targetModule'
