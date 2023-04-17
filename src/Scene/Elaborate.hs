@@ -21,12 +21,14 @@ import Data.Text qualified as T
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
+import Entity.FilePos qualified as FP
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
+import Entity.Log
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -67,7 +69,7 @@ analyzeDefList defList = do
 -- viewStmt :: WeakStmt -> App ()
 -- viewStmt stmt = do
 --   case stmt of
---     WeakStmtDefine _ m x _ xts codType e ->
+--     WeakStmtDefine _ _ m x _ xts codType e ->
 --       Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
 --     WeakStmtDefineResource m name discarder copier ->
 --       Log.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
@@ -206,8 +208,9 @@ elaborate' term =
       t' <- reduceType t
       e2' <- elaborate' e2
       case opacity of
-        WT.Noetic ->
-          ensureTypeLucidity mx t' t'
+        WT.Noetic -> do
+          answerTypeErrors <- detectAnswerTypeError mx t'
+          raiseAnswerTypeError mx t' answerTypeErrors
         _ ->
           return ()
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
@@ -364,70 +367,106 @@ getConstructorList m dataName = do
     _ -> do
       Throw.raiseCritical m $ "the datatype `" <> DD.reify dataName <> "` isn't defined"
 
-ensureTypeLucidity :: Hint -> TM.Term -> TM.Term -> App ()
-ensureTypeLucidity m orig t = do
+data AnswerTypeError
+  = AbstractData DD.DefiniteDescription [DD.DefiniteDescription]
+  | FunctionType TM.Term
+  | NoemaType TM.Term
+  | IrreducibleType TM.Term
+
+detectAnswerTypeError :: Hint -> TM.Term -> App [AnswerTypeError]
+detectAnswerTypeError m t = do
   case t of
     _ :< TM.Tau ->
-      return ()
+      return []
     _ :< TM.Var _ ->
-      return () -- opaque type variable
+      return [] -- opaque type variable
+    _ :< TM.Pi {} ->
+      return [FunctionType t]
     _ :< TM.Data dataName dataArgs -> do
-      ensureDataLucidity m orig dataName
-      dataArgs' <- mapM (reduceType . weaken) dataArgs
-      forM_ dataArgs' $ ensureTypeLucidity m orig
+      abstractConstructors <- getAbstractConstructors m dataName
+      if not (null abstractConstructors)
+        then return [AbstractData dataName abstractConstructors]
+        else do
+          dataArgs' <- mapM (reduceType . weaken) dataArgs
+          innerErrors <- fmap concat $ forM dataArgs' $ detectAnswerTypeError m
+          if null innerErrors
+            then return []
+            else return innerErrors
     _ :< TM.Prim (P.Type {}) ->
-      return ()
+      return []
     _ :< TM.ResourceType _ ->
-      return ()
+      return []
+    _ :< TM.Noema {} ->
+      return [NoemaType t]
     _ ->
-      Throw.raiseError m $ "the answer type of let-on must be lucid, but it's not:\n" <> toText (weaken orig)
+      return [IrreducibleType t]
 
-ensureDataLucidity :: Hint -> TM.Term -> DD.DefiniteDescription -> App ()
-ensureDataLucidity m orig dataName = do
+raiseAnswerTypeError :: Hint -> TM.Term -> [AnswerTypeError] -> App ()
+raiseAnswerTypeError m orig errorList = do
+  if null errorList
+    then return ()
+    else do
+      let errorList' = map (logError (FP.fromHint m) . showAnswerTypeError orig) errorList
+      Throw.throw $ MakeError errorList'
+
+showAnswerTypeError :: TM.Term -> AnswerTypeError -> T.Text
+showAnswerTypeError orig err =
+  case err of
+    AbstractData dataName ddList ->
+      "the `"
+        <> showGlobalVariable dataName
+        <> "` in the answer-type `"
+        <> toText (weaken orig)
+        <> "` contains the following abstract constructors:\n"
+        <> showAbstractConstructorList ddList
+    FunctionType t ->
+      "the answer-type `"
+        <> toText (weaken orig)
+        <> "` contains a function type:\n"
+        <> toText (weaken t)
+    NoemaType t ->
+      "the answer-type `"
+        <> toText (weaken orig)
+        <> "` contains a noema type:\n"
+        <> toText (weaken t)
+    IrreducibleType t ->
+      "the answer-type `"
+        <> toText (weaken orig)
+        <> "` contains an irreducible type:\n"
+        <> toText (weaken t)
+
+getAbstractConstructors :: Hint -> DD.DefiniteDescription -> App [DD.DefiniteDescription]
+getAbstractConstructors m dataName = do
   consList <- getConstructorList m dataName
-  mLucidConsList <- mapM (getNonLucidConsName m) consList
-  case catMaybes mLucidConsList of
-    [] ->
-      return ()
-    lucidConsNames ->
-      Throw.raiseError m $
-        "the `"
-          <> showGlobalVariable dataName
-          <> "` in `"
-          <> toText (weaken orig)
-          <> "` contains the following non-lucid constructors:\n"
-          <> showNonLucidConstructorList lucidConsNames
+  catMaybes <$> mapM (getAbstractConsName m) consList
 
-getNonLucidConsName ::
+getAbstractConsName ::
   Hint ->
   DD.DefiniteDescription ->
   App (Maybe DD.DefiniteDescription)
-getNonLucidConsName m consName = do
+getAbstractConsName m consName = do
   t <- Type.lookup m consName >>= reduceType
   case t of
     _ :< TM.Pi xts _ -> do
-      isLucidArgFlagList <- forM xts $ \(_, _, dom) -> do
-        reduceType (weaken dom) >>= isLucidArgument
-      if and isLucidArgFlagList
+      isConcreteArgFlagList <- forM xts $ \(_, _, dom) -> do
+        reduceType (weaken dom) >>= isConcreteArgument m
+      if and isConcreteArgFlagList
         then return Nothing
         else return $ Just consName
     _ ->
       Throw.raiseCritical m $ "the type of a constructor must be a Π-type, but it's not:\n" <> toText (weaken t)
 
-isLucidArgument :: TM.Term -> App Bool
-isLucidArgument t = do
-  case t of
-    _ :< TM.Pi {} -> do
-      return False
-    _ ->
-      return True
+isConcreteArgument :: Hint -> TM.Term -> App Bool
+isConcreteArgument m t = do
+  answerTypeErrors <- detectAnswerTypeError m t
+  return $ null answerTypeErrors
 
-showNonLucidConstructorList :: [DD.DefiniteDescription] -> T.Text
-showNonLucidConstructorList ddList =
+showAbstractConstructorList :: [DD.DefiniteDescription] -> T.Text
+showAbstractConstructorList ddList =
   case ddList of
     [] ->
       ""
     [d] ->
       "- " <> showGlobalVariable d
     d : rest ->
-      "- " <> showGlobalVariable d <> "\n" <> showNonLucidConstructorList rest
+      "- " <> showGlobalVariable d <> "\n" <> showAbstractConstructorList rest
