@@ -288,7 +288,7 @@ rawTermTau = do
 rawTermHole :: Parser RT.RawTerm
 rawTermHole = do
   m <- getCurrentHint
-  delimiter "_"
+  keyword "_"
   lift $ Gensym.newPreHole m
 
 rawTermPiGeneral :: Parser RT.RawTerm
