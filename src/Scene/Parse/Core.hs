@@ -85,7 +85,7 @@ baseNameCapitalized :: Parser BN.BaseName
 baseNameCapitalized = do
   lexeme $ do
     c <- upperChar
-    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+    bn <- takeWhileP Nothing (`S.notMember` nonBaseNameCharSet)
     return $ BN.fromText $ T.singleton c <> bn
 
 keyword :: T.Text -> Parser ()
