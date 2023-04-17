@@ -207,7 +207,7 @@ elaborate' term =
       e2' <- elaborate' e2
       case opacity of
         WT.Noetic ->
-          ensureTypeLucidity m t' t'
+          ensureTypeLucidity mx t' t'
         _ ->
           return ()
       return $ m :< TM.Let (WT.reifyOpacity opacity) (mx, x, t') e1' e2'
