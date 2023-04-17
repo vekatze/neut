@@ -9,6 +9,7 @@ where
 import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
+import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Throw qualified as Throw
 import Control.Monad
@@ -96,15 +97,13 @@ getLatestCompatibleChecksum mc = do
     Nothing ->
       return mc
 
-activateAliasInfo :: [AliasInfo] -> App ()
-activateAliasInfo aliasInfoList = do
-  mapM_ activateAliasInfoOfCurrentFile' aliasInfoList
-
-activateAliasInfoOfCurrentFile' :: AliasInfo -> App ()
-activateAliasInfoOfCurrentFile' aliasInfo =
+activateAliasInfo :: AliasInfo -> App ()
+activateAliasInfo aliasInfo =
   case aliasInfo of
     Prefix m from to ->
       registerGlobalLocatorAlias m from to
+    Use strictGlobalLocator ->
+      Locator.activateGlobalLocator strictGlobalLocator
 
 initializeAliasMap :: App ()
 initializeAliasMap = do

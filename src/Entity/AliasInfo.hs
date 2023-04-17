@@ -12,6 +12,7 @@ import Path
 
 data AliasInfo
   = Prefix Hint GLA.GlobalLocatorAlias SGL.StrictGlobalLocator
+  | Use SGL.StrictGlobalLocator
   deriving (Show)
 
 type SourceAliasMap = Map.HashMap (Path Abs File) [AliasInfo]

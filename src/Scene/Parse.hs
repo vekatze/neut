@@ -103,9 +103,11 @@ ensureMain m mainFunctionName = do
 
 program :: Source.Source -> P.Parser [RawStmt]
 program currentSource = do
-  (globalLocatorList, aliasInfoList) <- Parse.skimImportSequence currentSource
-  forM_ globalLocatorList $ lift . Locator.activateGlobalLocator
-  lift $ Alias.activateAliasInfo aliasInfoList
+  m <- P.getCurrentHint
+  sourceInfoList <- Parse.parseImportBlock currentSource
+  forM_ sourceInfoList $ \(source, aliasInfo) -> do
+    lift $ Global.activateTopLevelNamesInSource m source
+    lift $ Alias.activateAliasInfo aliasInfo
   concat <$> many parseStmt <* eof
 
 parseStmt :: P.Parser [RawStmt]

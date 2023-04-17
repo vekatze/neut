@@ -124,3 +124,16 @@ coreListCons =
 coreText :: T.Text
 coreText =
   core <> nsSep <> "text" <> nsSep <> "text"
+
+defaultImports :: [T.Text]
+defaultImports =
+  [ "core.bool",
+    "core.bottom",
+    "core.i8-array",
+    "core.list",
+    "core.option",
+    "core.sum",
+    "core.text",
+    "core.top",
+    "core.vector"
+  ]
