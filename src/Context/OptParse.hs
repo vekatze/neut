@@ -111,11 +111,13 @@ parseVersionOpt =
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
   inputFilePath <- optional $ argument str (mconcat [metavar "INPUT", help "The path of input file"])
+  padOpt <- flag True False (mconcat [long "no-padding", help "Set this to disable padding of the output"])
   logCfg <- logConfigOpt
   pure $
     Check $
       Check.Config
         { Check.mFilePathString = inputFilePath,
+          Check.shouldInsertPadding = padOpt,
           Check.logCfg = logCfg
         }
 

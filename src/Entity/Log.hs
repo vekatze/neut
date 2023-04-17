@@ -16,7 +16,10 @@ data LogLevel
   deriving (Show, Eq)
 
 type Log =
-  (Maybe FP.FilePos, LogLevel, T.Text)
+  (Maybe FP.FilePos, ShouldInsertPadding, LogLevel, T.Text)
+
+type ShouldInsertPadding =
+  Bool
 
 type ColorFlag =
   Bool
@@ -29,20 +32,28 @@ newtype Error
 instance Exception Error
 
 fromHint :: LogLevel -> Hint -> T.Text -> Error
-fromHint level m txt = do
-  MakeError [(Just (FP.fromHint m), level, txt)]
+fromHint level m text = do
+  MakeError [(Just (FP.fromHint m), True, level, text)]
+
+newLog :: Maybe FP.FilePos -> LogLevel -> T.Text -> Log
+newLog pos level text = do
+  (pos, True, level, text)
+
+deactivatePadding :: Log -> Log
+deactivatePadding (mpos, _, level, text) =
+  (mpos, False, level, text)
 
 newError :: Hint -> T.Text -> Error
-newError m txt = do
-  MakeError [(Just (FP.fromHint m), Error, txt)]
+newError m text = do
+  MakeError [newLog (Just (FP.fromHint m)) Error text]
 
 newError' :: T.Text -> Error
-newError' txt = do
-  MakeError [(Nothing, Error, txt)]
+newError' text = do
+  MakeError [newLog Nothing Error text]
 
 newCritical :: Hint -> T.Text -> Error
-newCritical m txt = do
-  MakeError [(Just (FP.fromHint m), Critical, txt)]
+newCritical m text = do
+  MakeError [newLog (Just (FP.fromHint m)) Critical text]
 
 logLevelToText :: LogLevel -> T.Text
 logLevelToText level =
@@ -76,34 +87,30 @@ logLevelToSGR level =
     Critical ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
 
-forgetFilePosIfNecessary :: Bool -> Log -> Log
-forgetFilePosIfNecessary _ (_, l, t) =
-  (Nothing, l, t)
-
 logNote :: FP.FilePos -> T.Text -> Log
-logNote pos text =
-  (Just pos, Note, text)
+logNote pos =
+  newLog (Just pos) Note
 
 logNote' :: T.Text -> Log
-logNote' text =
-  (Nothing, Note, text)
+logNote' =
+  newLog Nothing Note
 
 logWarning :: FP.FilePos -> T.Text -> Log
-logWarning pos text =
-  (Just pos, Warning, text)
+logWarning pos =
+  newLog (Just pos) Warning
 
 logError :: FP.FilePos -> T.Text -> Log
-logError pos text =
-  (Just pos, Error, text)
+logError pos =
+  newLog (Just pos) Error
 
 logError' :: T.Text -> Log
-logError' text =
-  (Nothing, Error, text)
+logError' =
+  newLog Nothing Error
 
 logCritical :: FP.FilePos -> T.Text -> Log
-logCritical pos text =
-  (Just pos, Critical, text)
+logCritical pos =
+  newLog (Just pos) Critical
 
 logCritical' :: T.Text -> Log
-logCritical' text =
-  (Nothing, Critical, text)
+logCritical' =
+  newLog Nothing Critical

@@ -2,6 +2,7 @@ module Context.Throw
   ( throw,
     try,
     run,
+    run',
     raiseError,
     raiseError',
     raiseCritical,
@@ -35,6 +36,16 @@ run c = do
   case resultOrErr of
     Left (L.MakeError err) ->
       foldr ((>>) . Log.printLog) (liftIO $ exitWith (ExitFailure 1)) err
+    Right result ->
+      return result
+
+run' :: App a -> App a
+run' c = do
+  resultOrErr <- try c
+  case resultOrErr of
+    Left (L.MakeError err) -> do
+      let err' = map L.deactivatePadding err
+      foldr ((>>) . Log.printLog) (liftIO $ exitWith (ExitFailure 1)) err'
     Right result ->
       return result
 

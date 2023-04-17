@@ -90,17 +90,17 @@ printFail' =
 
 printLogWithFilePos :: L.LogLevel -> Hint -> T.Text -> App ()
 printLogWithFilePos level m txt = do
-  printLog (Just (FilePos.fromHint m), level, txt)
+  printLog (Just (FilePos.fromHint m), True, level, txt)
 
 printLogWithoutFilePos :: L.LogLevel -> T.Text -> App ()
 printLogWithoutFilePos level txt =
-  printLog (Nothing, level, txt)
+  printLog (Nothing, True, level, txt)
 
 printLogIO :: L.Log -> App ()
-printLogIO (mpos, l, t) = do
+printLogIO (mpos, shouldInsertPadding, l, t) = do
   outputLogLocation mpos
   outputLogLevel l
-  outputLogText t (logLevelToPad l)
+  outputLogText t (logLevelToPad shouldInsertPadding l)
   outputFooter
 
 outputLogLocation :: Maybe FilePos -> App ()
@@ -131,9 +131,11 @@ outputLogText str padComp = do
   pad <- padComp
   liftIO $ TIO.putStrLn $ stylizeLogText str pad
 
-logLevelToPad :: LogLevel -> App T.Text
-logLevelToPad level = do
-  return $ T.replicate (T.length (logLevelToText level) + 2) " "
+logLevelToPad :: ShouldInsertPadding -> LogLevel -> App T.Text
+logLevelToPad shouldInsertPadding level = do
+  if shouldInsertPadding
+    then return $ T.replicate (T.length (logLevelToText level) + 2) " "
+    else return ""
 
 stylizeLogText :: T.Text -> T.Text -> T.Text
 stylizeLogText str pad = do

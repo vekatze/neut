@@ -1,6 +1,7 @@
 module Act.Check (check) where
 
 import Context.App
+import Context.Throw qualified as Throw
 import Control.Monad
 import Entity.Config.Check
 import Scene.Collect qualified as Collect
@@ -11,10 +12,12 @@ import Scene.Unravel qualified as Unravel
 
 check :: Config -> App ()
 check cfg = do
-  Initialize.initializeCompiler (logCfg cfg) Nothing
-  sgls <- Collect.collectSourceList (mFilePathString cfg)
-  forM_ sgls $ \sgl -> do
-    (_, _, _, dependenceSeq) <- Unravel.unravelFromSGL sgl
-    forM_ dependenceSeq $ \source -> do
-      Initialize.initializeForSource source
-      void $ Parse.parse >>= Elaborate.elaborate
+  let runner = if shouldInsertPadding cfg then id else Throw.run'
+  runner $ do
+    Initialize.initializeCompiler (logCfg cfg) Nothing
+    sgls <- Collect.collectSourceList (mFilePathString cfg)
+    forM_ sgls $ \sgl -> do
+      (_, _, _, dependenceSeq) <- Unravel.unravelFromSGL sgl
+      forM_ dependenceSeq $ \source -> do
+        Initialize.initializeForSource source
+        void $ Parse.parse >>= Elaborate.elaborate
