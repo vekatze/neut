@@ -1,6 +1,10 @@
 module Context.Log
-  ( printString,
+  ( initialize,
+    insertRemark,
+    getRemarkList,
+    printString,
     printLog,
+    printLogList,
     printNote,
     printNote',
     printWarning,
@@ -32,6 +36,10 @@ import Entity.Log
 import Entity.Log qualified as L
 import System.Console.ANSI
 
+initialize :: App ()
+initialize = do
+  writeRef' remarkList []
+
 printString :: String -> App ()
 printString =
   liftIO . putStrLn
@@ -39,6 +47,10 @@ printString =
 printLog :: L.Log -> App ()
 printLog =
   printLogIO
+
+printLogList :: [L.Log] -> App ()
+printLogList logList = do
+  foldr ((>>) . printLog) (return ()) logList
 
 printNote :: Hint -> T.Text -> App ()
 printNote =
@@ -166,3 +178,11 @@ setShouldColorize =
 getShouldColorize :: App Bool
 getShouldColorize =
   readRef' shouldColorize
+
+insertRemark :: Log -> App ()
+insertRemark r = do
+  modifyRef' remarkList $ (:) r
+
+getRemarkList :: App [Log]
+getRemarkList = do
+  readRef' remarkList

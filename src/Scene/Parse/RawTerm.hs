@@ -19,16 +19,19 @@ import Data.Bifunctor
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.Annotation qualified as AN
 import Entity.Binder
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint
+import Entity.Hint.Reify
 import Entity.Ident
 import Entity.Ident.Reflect qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
+import Entity.Log
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Mutability
@@ -706,14 +709,20 @@ rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
   m <- getCurrentHint
   keyword "admit"
-  h <- lift $ Gensym.newPreHole m
+  admit <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSystemAdmit
+  textType <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreText
   return $
     m
-      :< RT.PiElim
-        (preVar m "core.os.exit")
-        [ h,
-          m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1))
-        ]
+      :< RT.Annotation
+        Warning
+        (AN.Type ())
+        ( m
+            :< RT.PiElim
+              admit
+              [ m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1)),
+                m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))
+              ]
+        )
 
 rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do

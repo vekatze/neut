@@ -1,9 +1,11 @@
 module Entity.Log where
 
 import Control.Exception
+import Data.Binary
 import Data.Text qualified as T
 import Entity.FilePos qualified as FP
 import Entity.Hint
+import GHC.Generics (Generic)
 import System.Console.ANSI
 
 data LogLevel
@@ -13,7 +15,9 @@ data LogLevel
   | Critical -- "impossible" happened
   | Pass -- for test
   | Fail -- for test
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+
+instance Binary LogLevel
 
 type Log =
   (Maybe FP.FilePos, ShouldInsertPadding, LogLevel, T.Text)
@@ -79,7 +83,7 @@ logLevelToSGR level =
     Pass ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
     Warning ->
-      [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Yellow]
+      [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Magenta]
     Error ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
     Fail ->

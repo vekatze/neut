@@ -19,6 +19,7 @@ import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
+import Entity.Log qualified as Log
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
@@ -45,6 +46,7 @@ data Env = Env
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
+    remarkList :: FastRef [Log.Log],
     holeSubst :: FastRef HS.HoleSubst,
     sourceChildrenMap :: FastRef (Map.HashMap (Path Abs File) [Source.Source]),
     traceSourceList :: FastRef [Source.Source],
@@ -96,6 +98,7 @@ newEnv = do
   moduleAliasMap <- newFastRef
   locatorAliasMap <- newFastRef
   sourceNameMap <- newFastRef
+  remarkList <- newFastRef
   nameMap <- newFastRef
   antecedentMap <- newFastRef
   constraintEnv <- newFastRef

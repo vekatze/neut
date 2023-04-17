@@ -3,6 +3,7 @@ module Entity.WeakTerm.FreeVars (freeVars) where
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
+import Entity.Annotation qualified as AN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
@@ -58,6 +59,12 @@ freeVars term =
       S.empty
     _ :< WT.Magic der ->
       foldMap freeVars der
+    _ :< WT.Annotation _ annot e -> do
+      let xs1 = freeVars e
+      case annot of
+        AN.Type t -> do
+          let xs2 = freeVars t
+          S.union xs1 xs2
 
 freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

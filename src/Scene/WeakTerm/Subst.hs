@@ -5,6 +5,7 @@ import Context.Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
+import Entity.Annotation qualified as AN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
@@ -88,6 +89,12 @@ subst sub term =
     m :< WT.Magic der -> do
       der' <- mapM (subst sub) der
       return $ m :< WT.Magic der'
+    m :< WT.Annotation logLevel annot e -> do
+      e' <- subst sub e
+      case annot of
+        AN.Type t -> do
+          t' <- subst sub t
+          return $ m :< WT.Annotation logLevel (AN.Type t') e'
 
 substBinder ::
   WT.SubstWeakTerm ->

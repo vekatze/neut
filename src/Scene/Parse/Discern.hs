@@ -15,6 +15,7 @@ import Data.Maybe qualified as Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Const qualified as C
@@ -155,6 +156,12 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
       return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) args
+    m :< RT.Annotation logLevel annot e -> do
+      e' <- discern nenv e
+      case annot of
+        AN.Type _ -> do
+          let doNotCare = m :< WT.Tau -- discarded at Infer
+          return $ m :< WT.Annotation logLevel (AN.Type doNotCare) e'
 
 ensureFieldLinearity ::
   Hint ->

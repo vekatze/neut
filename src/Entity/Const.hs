@@ -125,6 +125,10 @@ coreText :: T.Text
 coreText =
   core <> nsSep <> "text" <> nsSep <> "text"
 
+coreSystemAdmit :: T.Text
+coreSystemAdmit =
+  core <> nsSep <> "system" <> nsSep <> "admit"
+
 defaultImports :: [T.Text]
 defaultImports =
   [ "core.bool",

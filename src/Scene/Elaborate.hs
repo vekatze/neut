@@ -8,6 +8,7 @@ import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.Log qualified as Log
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -18,7 +19,9 @@ import Data.List
 import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.Annotation qualified as AN
 import Entity.Binder
+import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.FilePos qualified as FP
@@ -29,6 +32,7 @@ import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Log
+import Entity.Log qualified as Log
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -46,13 +50,15 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either [Stmt] [WeakStmt] -> App [Stmt]
+elaborate :: Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
     Left cache -> do
-      forM_ cache insertStmt
-      return cache
+      let stmtList = Cache.stmtList cache
+      forM_ stmtList insertStmt
+      Log.printLogList $ Cache.logList cache
+      return stmtList
     Right defList -> do
       (analyzeDefList >=> synthesizeDefList) defList
 
@@ -81,7 +87,9 @@ synthesizeDefList defList = do
   defList' <- mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
-  Cache.saveCache (source, defList')
+  remarkList <- Log.getRemarkList
+  Cache.saveCache source $ Cache.Cache {Cache.stmtList = defList', Cache.logList = remarkList}
+  Log.printLogList remarkList
   return defList'
 
 elaborateStmt :: WeakStmt -> App Stmt
@@ -262,6 +270,15 @@ elaborate' term =
     m :< WT.Magic der -> do
       der' <- mapM elaborate' der
       return $ m :< TM.Magic der'
+    m :< WT.Annotation logLevel annot e -> do
+      e' <- elaborate' e
+      case annot of
+        AN.Type t -> do
+          t' <- elaborate' t
+          let message = "admitting `" <> toText (weaken t') <> "`"
+          let typeLog = Log.newLog (Just (FP.fromHint m)) logLevel message
+          Log.insertRemark typeLog
+          return e'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

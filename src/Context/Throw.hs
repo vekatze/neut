@@ -34,8 +34,9 @@ run :: App a -> App a
 run c = do
   resultOrErr <- try c
   case resultOrErr of
-    Left (L.MakeError err) ->
-      foldr ((>>) . Log.printLog) (liftIO $ exitWith (ExitFailure 1)) err
+    Left (L.MakeError err) -> do
+      Log.printLogList err
+      liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result
 

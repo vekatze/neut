@@ -69,6 +69,8 @@ toText term =
     _ :< WT.Magic m -> do
       let a = fmap toText m
       showCons [T.pack $ show a]
+    _ :< WT.Annotation _ _ e ->
+      toText e
 
 inParen :: T.Text -> T.Text
 inParen s =

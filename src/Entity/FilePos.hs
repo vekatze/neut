@@ -1,9 +1,14 @@
 module Entity.FilePos where
 
+import Data.Binary
 import Entity.Hint
+import GHC.Generics
 
 data FilePos
   = FilePos FilePath Loc
+  deriving (Generic)
+
+instance Binary FilePos
 
 fromHint :: Hint -> FilePos
 fromHint m =

@@ -8,6 +8,7 @@ import Context.Elaborate
 import Context.Gensym qualified as Gensym
 import Context.Implicit qualified as Implicit
 import Control.Comonad.Cofree
+import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
@@ -136,6 +137,12 @@ reveal' varEnv term =
         _ -> do
           der' <- mapM (reveal' varEnv) der
           return $ m :< WT.Magic der'
+    m :< WT.Annotation logLevel annot e -> do
+      e' <- reveal' varEnv e
+      case annot of
+        AN.Type t -> do
+          t' <- reveal' varEnv t
+          return $ m :< WT.Annotation logLevel (AN.Type t') e'
 
 revealPi ::
   BoundVarEnv ->

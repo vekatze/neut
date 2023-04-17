@@ -2,6 +2,7 @@ module Entity.WeakTerm where
 
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
+import Entity.Annotation qualified as AN
 import Entity.Arity
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -11,6 +12,7 @@ import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
+import Entity.Log
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
@@ -50,6 +52,7 @@ data WeakTermF a
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
+  | Annotation LogLevel (AN.Annotation a) a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

@@ -98,13 +98,6 @@ instance Binary Stmt
 
 type PathSet = S.Set (Path Abs File)
 
-newtype Cache = Cache
-  { cacheStmtList :: [Stmt]
-  }
-  deriving (Generic)
-
-instance Binary Cache
-
 compress :: Stmt -> Stmt
 compress stmt =
   case stmt of

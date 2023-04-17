@@ -2,6 +2,7 @@ module Entity.WeakTerm.Holes (holes) where
 
 import Control.Comonad.Cofree
 import Data.Set qualified as S
+import Entity.Annotation qualified as AN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleID
@@ -54,6 +55,12 @@ holes term =
       foldMap holes prim
     _ :< WT.Magic der ->
       foldMap holes der
+    _ :< WT.Annotation _ annot e -> do
+      let xs1 = holes e
+      case annot of
+        AN.Type t -> do
+          let xs2 = holes t
+          S.union xs1 xs2
 
 holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID
 holes' binder zs =

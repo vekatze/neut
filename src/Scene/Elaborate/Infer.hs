@@ -9,6 +9,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
+import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -167,6 +168,11 @@ infer' varEnv term =
           der' <- mapM (infer' varEnv >=> return . fst) der
           resultType <- newHole m varEnv
           return (m :< WT.Magic der', resultType)
+    m :< WT.Annotation logLevel annot e -> do
+      (e', t) <- infer' varEnv e
+      case annot of
+        AN.Type _ -> do
+          return (m :< WT.Annotation logLevel (AN.Type t) e', t)
 
 inferArgs ::
   WT.SubstWeakTerm ->

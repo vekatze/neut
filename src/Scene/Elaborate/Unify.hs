@@ -170,6 +170,10 @@ simplify constraintList =
         (_ :< WT.ResourceType name1, _ :< WT.ResourceType name2)
           | name1 == name2 ->
               simplify cs
+        (_ :< WT.Annotation _ _ e1, e2) ->
+          simplify $ ((e1, e2), orig) : cs
+        (e1, _ :< WT.Annotation _ _ e2) ->
+          simplify $ ((e1, e2), orig) : cs
         (e1, e2) -> do
           sub <- getHoleSubst
           let fvs1 = freeVars e1

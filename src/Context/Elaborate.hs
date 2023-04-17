@@ -21,16 +21,13 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Gensym qualified as Gensym
-import Context.Log
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.PQueue.Min qualified as Q
-import Data.Text qualified as T
 import Entity.Binder
 import Entity.Constraint qualified as C
 import Entity.Hint
-import Entity.Hint.Reify
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident

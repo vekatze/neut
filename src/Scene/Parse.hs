@@ -24,6 +24,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
+import Entity.Cache qualified as Cache
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName qualified as GN
@@ -46,7 +47,7 @@ import Text.Megaparsec hiding (parse)
 -- core functions
 --
 
-parse :: App (Either [Stmt] [WeakStmt])
+parse :: App (Either Cache.Cache [WeakStmt])
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -64,7 +65,7 @@ rememberCurrentNameSet m currentPath nameList = do
   globalNameList <- mapM (Global.lookupStrict m) nameList
   Global.insertToSourceNameMap currentPath $ zip nameList globalNameList
 
-parseSource :: Source.Source -> App (Either [Stmt] [WeakStmt])
+parseSource :: Source.Source -> App (Either Cache.Cache [WeakStmt])
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- Cache.loadCache source hasCacheSet
@@ -72,10 +73,10 @@ parseSource source = do
   let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
   case mCache of
     Just cache -> do
-      let stmtList = cacheStmtList cache
+      let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       rememberCurrentNameSet m path $ map getNameFromStmt stmtList
-      return $ Left stmtList
+      return $ Left cache
     Nothing -> do
       defList <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList

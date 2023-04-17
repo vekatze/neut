@@ -42,6 +42,7 @@ initializeForTarget = do
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
+  Log.initialize
   Global.initialize
   Env.setCurrentSource source
   Alias.initializeAliasMap

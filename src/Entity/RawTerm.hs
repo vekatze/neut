@@ -9,6 +9,7 @@ where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
+import Entity.Annotation qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
@@ -19,6 +20,7 @@ import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.LocalLocator qualified as LL
+import Entity.Log
 import Entity.Magic
 import Entity.Mutability
 import Entity.Noema qualified as N
@@ -47,6 +49,7 @@ data RawTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | New T.Text [(Hint, T.Text, RawTerm)] -- auxiliary syntax for codata introduction
+  | Annotation LogLevel (AN.Annotation ()) a
 
 type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)

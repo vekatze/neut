@@ -8,6 +8,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Entity.Annotation qualified as AN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleSubst
@@ -95,6 +96,12 @@ fill sub term =
     m :< WT.Magic der -> do
       der' <- mapM (fill sub) der
       return $ m :< WT.Magic der'
+    m :< WT.Annotation logLevel annot e -> do
+      e' <- fill sub e
+      case annot of
+        AN.Type t -> do
+          t' <- fill sub t
+          return $ m :< WT.Annotation logLevel (AN.Type t') e'
 
 fill' ::
   HoleSubst ->
