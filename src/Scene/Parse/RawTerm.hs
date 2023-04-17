@@ -160,14 +160,10 @@ rawTermLetVarAscription m = do
     Nothing ->
       lift $ Gensym.newPreHole m
 
-annotateIfNecessary :: Hint -> Maybe RT.RawTerm -> RT.RawTerm -> Parser RT.RawTerm
-annotateIfNecessary m mt e =
-  case mt of
-    Just t -> do
-      tmp <- lift $ Gensym.newTextualIdentFromText "tmp"
-      return $ bind (m, tmp, t) e (m :< RT.Var tmp)
-    Nothing ->
-      return e
+ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> Parser RT.RawTerm
+ascribe m t e = do
+  tmp <- lift $ Gensym.newTextualIdentFromText "tmp"
+  return $ bind (m, tmp, t) e (m :< RT.Var tmp)
 
 rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm)
 rawTermLetVarAscription' =
@@ -221,7 +217,7 @@ rawTermLetOption m = do
   e1 <- rawTerm
   optionTypeDD <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOption
   let optionType = m :< RT.PiElim optionTypeDD [resultType]
-  e1' <- annotateIfNecessary m (Just optionType) e1
+  e1' <- ascribe m optionType e1
   e2 <- rawExpr
   (optionNoneGL, optionNoneLL) <- lift $ Throw.liftEither $ DD.getLocatorPair m coreOptionNone
   optionNoneVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOptionNone
@@ -248,7 +244,7 @@ rawTermLetCoproduct m = do
   sumTypeDD <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSum
   leftType <- lift $ Gensym.newPreHole m
   let sumType = m :< RT.PiElim sumTypeDD [leftType, rightType]
-  e1' <- annotateIfNecessary m (Just sumType) e1
+  e1' <- ascribe m sumType e1
   e2 <- rawExpr
   err <- lift $ Gensym.newTextualIdentFromText "err"
   sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
@@ -321,7 +317,7 @@ rawTermPiOrConsOrAscOrBasic = do
       do
         delimiter ":"
         t <- rawTerm
-        annotateIfNecessary m (Just t) basic,
+        ascribe m t basic,
       return basic
     ]
 
