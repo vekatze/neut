@@ -1,6 +1,7 @@
 import {
 - core.bool
 - core.option
+- core.list => L
 }
 
 variant stack(a) {

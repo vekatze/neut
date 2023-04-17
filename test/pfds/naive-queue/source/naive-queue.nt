@@ -2,6 +2,7 @@ import {
 - core.list
 - core.bool
 - core.option
+- core.sum => S
 }
 
 struct product(a, b) by Product {
