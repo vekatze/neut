@@ -186,6 +186,12 @@ elaborate' term =
       es' <- mapM elaborate' es
       ts' <- mapM elaborate' ts
       tree' <- elaborateDecisionTree m tree
+      when (DT.isUnreachable tree') $ do
+        forM_ ts' $ \t -> do
+          t' <- reduceType (weaken t)
+          consList <- extractConstructorList m t'
+          unless (null consList) $
+            raiseNonExhaustivePatternMatching m
       return $ m :< TM.DataElim isNoetic (zip3 os es' ts') tree'
     m :< WT.Noema t -> do
       t' <- elaborate' t
@@ -315,7 +321,7 @@ elaborateDecisionTree m tree =
         else do
           case fallbackClause of
             DT.Unreachable ->
-              Throw.raiseError m "encountered a non-exhaustive pattern matching"
+              raiseNonExhaustivePatternMatching m
             _ -> do
               fallbackClause' <- elaborateDecisionTree m fallbackClause
               clauseList' <- mapM elaborateClause clauseList
@@ -329,6 +335,10 @@ elaborateClause (DT.Cons mCons consName disc dataArgs consArgs cont) = do
   consArgs' <- mapM elaborateWeakBinder consArgs
   cont' <- elaborateDecisionTree mCons cont
   return $ DT.Cons mCons consName disc (zip dataTerms' dataTypes') consArgs' cont'
+
+raiseNonExhaustivePatternMatching :: Hint -> App a
+raiseNonExhaustivePatternMatching m =
+  Throw.raiseError m "encountered a non-exhaustive pattern matching"
 
 reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do

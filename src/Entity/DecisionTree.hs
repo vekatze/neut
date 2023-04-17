@@ -3,6 +3,7 @@ module Entity.DecisionTree
     CaseList,
     Case (..),
     getConstructors,
+    isUnreachable,
   )
 where
 
@@ -36,3 +37,11 @@ getConstructors clauseList = do
 
 getConstructor :: Case a -> DD.DefiniteDescription
 getConstructor (Cons _ name _ _ _ _) = name
+
+isUnreachable :: DecisionTree a -> Bool
+isUnreachable tree =
+  case tree of
+    Unreachable ->
+      True
+    _ ->
+      False
