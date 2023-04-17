@@ -797,7 +797,7 @@ rawTermIntrospect = do
     Just clause ->
       return clause
     Nothing -> do
-      lift $ Throw.raiseError m $ "a clause for `" <> value <> "` is missing"
+      lift $ Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
 
 rawTermIntrospectiveClause :: Parser (T.Text, RT.RawTerm)
 rawTermIntrospectiveClause = do
