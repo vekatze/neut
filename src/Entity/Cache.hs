@@ -1,13 +1,13 @@
 module Entity.Cache where
 
 import Data.Binary
-import Entity.Log
+import Entity.Remark
 import Entity.Stmt
 import GHC.Generics
 
 data Cache = Cache
   { stmtList :: [Stmt],
-    logList :: [Log]
+    remarkList :: [Remark]
   }
   deriving (Generic)
 

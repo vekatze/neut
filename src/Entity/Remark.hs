@@ -1,4 +1,4 @@
-module Entity.Log where
+module Entity.Remark where
 
 import Control.Exception
 import Data.Binary
@@ -8,7 +8,7 @@ import Entity.Hint
 import GHC.Generics (Generic)
 import System.Console.ANSI
 
-data LogLevel
+data RemarkLevel
   = Note
   | Warning
   | Error
@@ -17,10 +17,10 @@ data LogLevel
   | Fail -- for test
   deriving (Show, Eq, Generic)
 
-instance Binary LogLevel
+instance Binary RemarkLevel
 
-type Log =
-  (Maybe FP.FilePos, ShouldInsertPadding, LogLevel, T.Text)
+type Remark =
+  (Maybe FP.FilePos, ShouldInsertPadding, RemarkLevel, T.Text)
 
 type ShouldInsertPadding =
   Bool
@@ -30,37 +30,37 @@ type ColorFlag =
 
 -- fixme: ErrorSyntax, ErrorType, ...
 newtype Error
-  = MakeError [Log]
+  = MakeError [Remark]
   deriving (Show)
 
 instance Exception Error
 
-fromHint :: LogLevel -> Hint -> T.Text -> Error
+fromHint :: RemarkLevel -> Hint -> T.Text -> Error
 fromHint level m text = do
   MakeError [(Just (FP.fromHint m), True, level, text)]
 
-newLog :: Maybe FP.FilePos -> LogLevel -> T.Text -> Log
-newLog pos level text = do
+newRemark :: Maybe FP.FilePos -> RemarkLevel -> T.Text -> Remark
+newRemark pos level text = do
   (pos, True, level, text)
 
-deactivatePadding :: Log -> Log
+deactivatePadding :: Remark -> Remark
 deactivatePadding (mpos, _, level, text) =
   (mpos, False, level, text)
 
 newError :: Hint -> T.Text -> Error
 newError m text = do
-  MakeError [newLog (Just (FP.fromHint m)) Error text]
+  MakeError [newRemark (Just (FP.fromHint m)) Error text]
 
 newError' :: T.Text -> Error
 newError' text = do
-  MakeError [newLog Nothing Error text]
+  MakeError [newRemark Nothing Error text]
 
 newCritical :: Hint -> T.Text -> Error
 newCritical m text = do
-  MakeError [newLog (Just (FP.fromHint m)) Critical text]
+  MakeError [newRemark (Just (FP.fromHint m)) Critical text]
 
-logLevelToText :: LogLevel -> T.Text
-logLevelToText level =
+remarkLevelToText :: RemarkLevel -> T.Text
+remarkLevelToText level =
   case level of
     Note ->
       "note"
@@ -75,8 +75,8 @@ logLevelToText level =
     Critical ->
       "critical"
 
-logLevelToSGR :: LogLevel -> [SGR]
-logLevelToSGR level =
+remarkLevelToSGR :: RemarkLevel -> [SGR]
+remarkLevelToSGR level =
   case level of
     Note ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Blue]
@@ -91,30 +91,30 @@ logLevelToSGR level =
     Critical ->
       [SetConsoleIntensity BoldIntensity, SetColor Foreground Vivid Red]
 
-logNote :: FP.FilePos -> T.Text -> Log
-logNote pos =
-  newLog (Just pos) Note
+remarkNote :: FP.FilePos -> T.Text -> Remark
+remarkNote pos =
+  newRemark (Just pos) Note
 
-logNote' :: T.Text -> Log
-logNote' =
-  newLog Nothing Note
+remarkNote' :: T.Text -> Remark
+remarkNote' =
+  newRemark Nothing Note
 
-logWarning :: FP.FilePos -> T.Text -> Log
-logWarning pos =
-  newLog (Just pos) Warning
+remarkWarning :: FP.FilePos -> T.Text -> Remark
+remarkWarning pos =
+  newRemark (Just pos) Warning
 
-logError :: FP.FilePos -> T.Text -> Log
-logError pos =
-  newLog (Just pos) Error
+remarkError :: FP.FilePos -> T.Text -> Remark
+remarkError pos =
+  newRemark (Just pos) Error
 
-logError' :: T.Text -> Log
-logError' =
-  newLog Nothing Error
+remarkError' :: T.Text -> Remark
+remarkError' =
+  newRemark Nothing Error
 
-logCritical :: FP.FilePos -> T.Text -> Log
-logCritical pos =
-  newLog (Just pos) Critical
+remarkCritical :: FP.FilePos -> T.Text -> Remark
+remarkCritical pos =
+  newRemark (Just pos) Critical
 
-logCritical' :: T.Text -> Log
-logCritical' =
-  newLog Nothing Critical
+remarkCritical' :: T.Text -> Remark
+remarkCritical' =
+  newRemark Nothing Critical

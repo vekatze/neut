@@ -25,7 +25,7 @@ import Entity.HoleSubst qualified as HS
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
-import Entity.Log qualified as L
+import Entity.Remark qualified as R
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -71,8 +71,8 @@ throwTypeErrors = do
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
     expected' <- fillAsMuchAsPossible sub expected
     actual' <- fillAsMuchAsPossible sub actual
-    return $ L.logError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
-  Throw.throw $ L.MakeError errorList
+    return $ R.remarkError (fromHint (WT.metaOf actual)) $ constructErrorMsg actual' expected'
+  Throw.throw $ R.MakeError errorList
 
 fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
 fillAsMuchAsPossible sub e = do

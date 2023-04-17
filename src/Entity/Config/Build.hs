@@ -1,14 +1,14 @@
 module Entity.Config.Build (Config (..)) where
 
-import Entity.Config.Log qualified as Log
+import Entity.Config.Remark qualified as Remark
 import Entity.OutputKind qualified as OK
 import Entity.Target
-import Prelude hiding (log)
+import Prelude hiding (remark)
 
 data Config = Config
   { mTarget :: Maybe Target,
     mClangOptString :: Maybe String,
-    logCfg :: Log.Config,
+    remarkCfg :: Remark.Config,
     outputKindList :: [OK.OutputKind],
     shouldSkipLink :: Bool,
     shouldExecute :: Bool

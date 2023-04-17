@@ -9,8 +9,8 @@ import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
-import Entity.Config.Log qualified as Log
 import Entity.Config.Release qualified as Release
+import Entity.Config.Remark qualified as Remark
 import Entity.Config.Tidy qualified as Tidy
 import Entity.Config.Version qualified as Version
 import Entity.ModuleURL
@@ -45,7 +45,7 @@ parseBuildOpt :: Parser Command
 parseBuildOpt = do
   mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   outputKindList <- outputKindListOpt
   shouldSkipLink <- shouldSkipLinkOpt
   shouldExecute <- shouldExecuteOpt
@@ -54,7 +54,7 @@ parseBuildOpt = do
       Build.Config
         { Build.mTarget = Target <$> mTarget,
           Build.mClangOptString = mClangOpt,
-          Build.logCfg = logCfg,
+          Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,
           Build.shouldSkipLink = shouldSkipLink,
           Build.shouldExecute = shouldExecute
@@ -62,44 +62,44 @@ parseBuildOpt = do
 
 parseCleanOpt :: Parser Command
 parseCleanOpt = do
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   pure $
     Clean $
       Clean.Config
-        { Clean.logCfg = logCfg
+        { Clean.remarkCfg = remarkCfg
         }
 
 parseGetOpt :: Parser Command
 parseGetOpt = do
   moduleAlias <- argument str (mconcat [metavar "ALIAS", help "The alias of the module"])
   moduleURL <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   pure $
     Add $
       Add.Config
         { Add.moduleAliasText = T.pack moduleAlias,
           Add.moduleURL = ModuleURL $ T.pack moduleURL,
-          Add.logCfg = logCfg
+          Add.remarkCfg = remarkCfg
         }
 
 parseTidyOpt :: Parser Command
 parseTidyOpt = do
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   pure $
     Tidy $
       Tidy.Config
-        { Tidy.logCfg = logCfg
+        { Tidy.remarkCfg = remarkCfg
         }
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do
   moduleName <- argument str (mconcat [metavar "MODULE", help "The name of the module"])
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   pure $
     Create $
       Create.Config
         { Create.moduleName = T.pack moduleName,
-          Create.logCfg = logCfg
+          Create.remarkCfg = remarkCfg
         }
 
 parseVersionOpt :: Parser Command
@@ -112,34 +112,34 @@ parseCheckOpt :: Parser Command
 parseCheckOpt = do
   inputFilePath <- optional $ argument str (mconcat [metavar "INPUT", help "The path of input file"])
   padOpt <- flag True False (mconcat [long "no-padding", help "Set this to disable padding of the output"])
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   pure $
     Check $
       Check.Config
         { Check.mFilePathString = inputFilePath,
           Check.shouldInsertPadding = padOpt,
-          Check.logCfg = logCfg
+          Check.remarkCfg = remarkCfg
         }
 
 parseReleaseOpt :: Parser Command
 parseReleaseOpt = do
   releaseName <- argument str (mconcat [metavar "NAME", help "The name of the release"])
-  logCfg <- logConfigOpt
+  remarkCfg <- remarkConfigOpt
   pure $
     Release $
       Release.Config
         { Release.getReleaseName = releaseName,
-          Release.logCfg = logCfg
+          Release.remarkCfg = remarkCfg
         }
 
-logConfigOpt :: Parser Log.Config
-logConfigOpt = do
+remarkConfigOpt :: Parser Remark.Config
+remarkConfigOpt = do
   shouldColorize <- colorizeOpt
   eoe <- T.pack <$> endOfEntryOpt
   pure
-    Log.Config
-      { Log.shouldColorize = shouldColorize,
-        Log.endOfEntry = eoe
+    Remark.Config
+      { Remark.shouldColorize = shouldColorize,
+        Remark.endOfEntry = eoe
       }
 
 outputKindListOpt :: Parser [OK.OutputKind]

@@ -11,7 +11,7 @@ import Scene.PackageVersion.Reflect qualified as PV
 
 release :: Config -> App ()
 release cfg = do
-  Initialize.initializeCompiler (logCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg) Nothing
   packageVersion <- PV.reflect (getReleaseName cfg)
   currentModule <- Module.getMainModule
   Module.getMainModule >>= updateAntecedents packageVersion

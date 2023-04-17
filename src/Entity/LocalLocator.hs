@@ -12,7 +12,7 @@ import Data.Hashable
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Hint qualified as H
-import Entity.Log
+import Entity.Remark
 import GHC.Generics
 
 newtype LocalLocator = MakeLocalLocator

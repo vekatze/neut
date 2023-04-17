@@ -31,7 +31,6 @@ import Entity.Ident
 import Entity.Ident.Reflect qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
-import Entity.Log
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Mutability
@@ -41,6 +40,7 @@ import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
+import Entity.Remark
 import Entity.TargetPlatform qualified as TP
 import Entity.UnresolvedName qualified as UN
 import Entity.WeakPrim qualified as WP

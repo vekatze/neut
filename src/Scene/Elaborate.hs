@@ -8,7 +8,7 @@ import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Log qualified as Log
+import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -31,11 +31,10 @@ import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
-import Entity.Log
-import Entity.Log qualified as Log
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
+import Entity.Remark qualified as Remark
 import Entity.Stmt
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
@@ -57,7 +56,7 @@ elaborate cacheOrStmt = do
     Left cache -> do
       let stmtList = Cache.stmtList cache
       forM_ stmtList insertStmt
-      Log.printLogList $ Cache.logList cache
+      Remark.printRemarkList $ Cache.remarkList cache
       return stmtList
     Right defList -> do
       (analyzeDefList >=> synthesizeDefList) defList
@@ -76,9 +75,9 @@ analyzeDefList defList = do
 -- viewStmt stmt = do
 --   case stmt of
 --     WeakStmtDefine _ _ m x _ xts codType e ->
---       Log.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
+--       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
 --     WeakStmtDefineResource m name discarder copier ->
---       Log.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
+--       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
 synthesizeDefList :: [WeakStmt] -> App [Stmt]
 synthesizeDefList defList = do
@@ -87,9 +86,9 @@ synthesizeDefList defList = do
   defList' <- mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
-  remarkList <- Log.getRemarkList
-  Cache.saveCache source $ Cache.Cache {Cache.stmtList = defList', Cache.logList = remarkList}
-  Log.printLogList remarkList
+  remarkList <- Remark.getRemarkList
+  Cache.saveCache source $ Cache.Cache {Cache.stmtList = defList', Cache.remarkList = remarkList}
+  Remark.printRemarkList remarkList
   return defList'
 
 elaborateStmt :: WeakStmt -> App Stmt
@@ -270,14 +269,14 @@ elaborate' term =
     m :< WT.Magic der -> do
       der' <- mapM elaborate' der
       return $ m :< TM.Magic der'
-    m :< WT.Annotation logLevel annot e -> do
+    m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of
         AN.Type t -> do
           t' <- elaborate' t
           let message = "admitting `" <> toText (weaken t') <> "`"
-          let typeLog = Log.newLog (Just (FP.fromHint m)) logLevel message
-          Log.insertRemark typeLog
+          let typeRemark = Remark.newRemark (Just (FP.fromHint m)) remarkLevel message
+          Remark.insertRemark typeRemark
           return e'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
@@ -433,8 +432,8 @@ raiseAnswerTypeError m orig errorList = do
   if null errorList
     then return ()
     else do
-      let errorList' = map (logError (FP.fromHint m) . showAnswerTypeError orig) errorList
-      Throw.throw $ MakeError errorList'
+      let errorList' = map (Remark.remarkError (FP.fromHint m) . showAnswerTypeError orig) errorList
+      Throw.throw $ Remark.MakeError errorList'
 
 showAnswerTypeError :: TM.Term -> AnswerTypeError -> T.Text
 showAnswerTypeError orig err =

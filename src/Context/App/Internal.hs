@@ -19,13 +19,13 @@ import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
-import Entity.Log qualified as Log
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
 import Entity.ModuleChecksum qualified as MC
 import Entity.Opacity qualified as O
+import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.TargetPlatform qualified as TP
@@ -46,7 +46,7 @@ data Env = Env
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
-    remarkList :: FastRef [Log.Log],
+    remarkList :: FastRef [Remark.Remark],
     holeSubst :: FastRef HS.HoleSubst,
     sourceChildrenMap :: FastRef (Map.HashMap (Path Abs File) [Source.Source]),
     traceSourceList :: FastRef [Source.Source],

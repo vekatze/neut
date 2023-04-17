@@ -20,13 +20,13 @@ import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
 import Entity.LocalLocator qualified as LL
-import Entity.Log
 import Entity.Magic
 import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import Entity.RawPattern qualified as RP
+import Entity.Remark
 import Entity.WeakPrim qualified as WP
 
 type RawTerm = Cofree RawTermF Hint
@@ -49,7 +49,7 @@ data RawTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | New T.Text [(Hint, T.Text, RawTerm)] -- auxiliary syntax for codata introduction
-  | Annotation LogLevel (AN.Annotation ()) a
+  | Annotation RemarkLevel (AN.Annotation ()) a
 
 type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)

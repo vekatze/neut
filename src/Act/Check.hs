@@ -14,7 +14,7 @@ check :: Config -> App ()
 check cfg = do
   let runner = if shouldInsertPadding cfg then id else Throw.run'
   runner $ do
-    Initialize.initializeCompiler (logCfg cfg) Nothing
+    Initialize.initializeCompiler (remarkCfg cfg) Nothing
     sgls <- Collect.collectSourceList (mFilePathString cfg)
     forM_ sgls $ \sgl -> do
       (_, _, _, dependenceSeq) <- Unravel.unravelFromSGL sgl

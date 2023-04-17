@@ -23,7 +23,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint hiding (new)
 import Entity.Ident
-import Entity.Log
+import Entity.Remark
 
 data Pattern
   = Var Ident

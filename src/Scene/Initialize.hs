@@ -12,25 +12,25 @@ import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.LLVM qualified as LLVM
 import Context.Locator qualified as Locator
-import Context.Log qualified as Log
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Remark qualified as Remark
 import Data.Maybe
-import Entity.Config.Log qualified as Log
+import Entity.Config.Remark qualified as Remark
 import Entity.Module
 import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
 import Scene.Module.Reflect qualified as Module
 
-initializeCompiler :: Log.Config -> Maybe String -> App ()
+initializeCompiler :: Remark.Config -> Maybe String -> App ()
 initializeCompiler cfg mClangOptString = do
   mainModule <- Module.fromCurrentPath
   initializeCompilerWithModule mainModule cfg mClangOptString
 
-initializeCompilerWithModule :: Module -> Log.Config -> Maybe String -> App ()
+initializeCompilerWithModule :: Module -> Remark.Config -> Maybe String -> App ()
 initializeCompilerWithModule newModule cfg mClangOptString = do
-  Log.setEndOfEntry $ Log.endOfEntry cfg
-  Log.setShouldColorize $ Log.shouldColorize cfg
+  Remark.setEndOfEntry $ Remark.endOfEntry cfg
+  Remark.setShouldColorize $ Remark.shouldColorize cfg
   Env.setTargetPlatform
   LLVM.setClangOptString (fromMaybe "" mClangOptString)
   Path.ensureNotInLibDir
@@ -42,7 +42,7 @@ initializeForTarget = do
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
-  Log.initialize
+  Remark.initialize
   Global.initialize
   Env.setCurrentSource source
   Alias.initializeAliasMap

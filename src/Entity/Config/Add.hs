@@ -1,12 +1,12 @@
 module Entity.Config.Add (Config (..)) where
 
 import Data.Text qualified as T
-import Entity.Config.Log qualified as Log
+import Entity.Config.Remark qualified as Remark
 import Entity.ModuleURL
-import Prelude hiding (log)
+import Prelude hiding (remark)
 
 data Config = Config
   { moduleAliasText :: T.Text,
     moduleURL :: ModuleURL,
-    logCfg :: Log.Config
+    remarkCfg :: Remark.Config
   }

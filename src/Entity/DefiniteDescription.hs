@@ -22,9 +22,9 @@ import Entity.Const
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
-import Entity.Log
 import Entity.ModuleID qualified as MID
 import Entity.PrimType qualified as PT
+import Entity.Remark
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics

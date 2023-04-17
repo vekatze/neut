@@ -7,9 +7,9 @@ where
 import Context.App
 import Context.External qualified as External
 import Context.Fetch
-import Context.Log qualified as Log
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -22,7 +22,6 @@ import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Path
 import Scene.Module.Reflect qualified as Module
-import Prelude hiding (log)
 
 fetch :: M.Module -> App ()
 fetch baseModule = do
@@ -46,7 +45,7 @@ installIfNecessary :: ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
 installIfNecessary alias url checksum = do
   isInstalled <- checkIfInstalled checksum
   unless isInstalled $ do
-    Log.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
+    Remark.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
     withTempFile $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias url
       archive <- getHandleContents tempFileHandle
@@ -97,4 +96,4 @@ addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleCh
 addDependencyToModuleFile targetModule alias url checksum = do
   let targetModule' = M.addDependency alias url checksum targetModule
   Module.save targetModule'
-  Log.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
+  Remark.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"

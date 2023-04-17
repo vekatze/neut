@@ -1,10 +1,10 @@
-module Context.Log
+module Context.Remark
   ( initialize,
     insertRemark,
     getRemarkList,
     printString,
-    printLog,
-    printLogList,
+    printRemark,
+    printRemarkList,
     printNote,
     printNote',
     printWarning,
@@ -32,8 +32,7 @@ import Data.Text.IO qualified as TIO
 import Entity.FilePos
 import Entity.FilePos qualified as FilePos
 import Entity.Hint
-import Entity.Log
-import Entity.Log qualified as L
+import Entity.Remark qualified as R
 import System.Console.ANSI
 
 initialize :: App ()
@@ -44,79 +43,79 @@ printString :: String -> App ()
 printString =
   liftIO . putStrLn
 
-printLog :: L.Log -> App ()
-printLog =
-  printLogIO
+printRemark :: R.Remark -> App ()
+printRemark =
+  printRemarkIO
 
-printLogList :: [L.Log] -> App ()
-printLogList logList = do
-  foldr ((>>) . printLog) (return ()) logList
+printRemarkList :: [R.Remark] -> App ()
+printRemarkList remarkList = do
+  foldr ((>>) . printRemark) (return ()) remarkList
 
 printNote :: Hint -> T.Text -> App ()
 printNote =
-  printLogWithFilePos L.Note
+  printRemarkWithFilePos R.Note
 
 printNote' :: T.Text -> App ()
 printNote' =
-  printLogWithoutFilePos L.Note
+  printRemarkWithoutFilePos R.Note
 
 printWarning :: Hint -> T.Text -> App ()
 printWarning =
-  printLogWithFilePos L.Warning
+  printRemarkWithFilePos R.Warning
 
 printWarning' :: T.Text -> App ()
 printWarning' =
-  printLogWithoutFilePos L.Warning
+  printRemarkWithoutFilePos R.Warning
 
 printError :: Hint -> T.Text -> App ()
 printError =
-  printLogWithFilePos L.Error
+  printRemarkWithFilePos R.Error
 
 printError' :: T.Text -> App ()
 printError' =
-  printLogWithoutFilePos L.Error
+  printRemarkWithoutFilePos R.Error
 
 printCritical :: Hint -> T.Text -> App ()
 printCritical =
-  printLogWithFilePos L.Critical
+  printRemarkWithFilePos R.Critical
 
 printCritical' :: T.Text -> App ()
 printCritical' =
-  printLogWithoutFilePos L.Critical
+  printRemarkWithoutFilePos R.Critical
 
 printPass :: Hint -> T.Text -> App ()
 printPass =
-  printLogWithFilePos L.Pass
+  printRemarkWithFilePos R.Pass
 
 printPass' :: T.Text -> App ()
 printPass' =
-  printLogWithoutFilePos L.Pass
+  printRemarkWithoutFilePos R.Pass
 
 printFail :: Hint -> T.Text -> App ()
 printFail =
-  printLogWithFilePos L.Fail
+  printRemarkWithFilePos R.Fail
 
 printFail' :: T.Text -> App ()
 printFail' =
-  printLogWithoutFilePos L.Fail
+  printRemarkWithoutFilePos R.Fail
 
-printLogWithFilePos :: L.LogLevel -> Hint -> T.Text -> App ()
-printLogWithFilePos level m txt = do
-  printLog (Just (FilePos.fromHint m), True, level, txt)
+printRemarkWithFilePos :: R.RemarkLevel -> Hint -> T.Text -> App ()
+printRemarkWithFilePos level m txt = do
+  printRemark (Just (FilePos.fromHint m), True, level, txt)
 
-printLogWithoutFilePos :: L.LogLevel -> T.Text -> App ()
-printLogWithoutFilePos level txt =
-  printLog (Nothing, True, level, txt)
+printRemarkWithoutFilePos :: R.RemarkLevel -> T.Text -> App ()
+printRemarkWithoutFilePos level txt =
+  printRemark (Nothing, True, level, txt)
 
-printLogIO :: L.Log -> App ()
-printLogIO (mpos, shouldInsertPadding, l, t) = do
-  outputLogLocation mpos
-  outputLogLevel l
-  outputLogText t (logLevelToPad shouldInsertPadding l)
+printRemarkIO :: R.Remark -> App ()
+printRemarkIO (mpos, shouldInsertPadding, l, t) = do
+  outputRemarkLocation mpos
+  outputRemarkLevel l
+  outputRemarkText t (remarkLevelToPad shouldInsertPadding l)
   outputFooter
 
-outputLogLocation :: Maybe FilePos -> App ()
-outputLogLocation mpos = do
+outputRemarkLocation :: Maybe FilePos -> App ()
+outputRemarkLocation mpos = do
   case mpos of
     Just pos ->
       withSGR [SetConsoleIntensity BoldIntensity] $ do
@@ -132,25 +131,25 @@ outputFooter = do
     then return ()
     else liftIO $ TIO.putStrLn eoe
 
-outputLogLevel :: LogLevel -> App ()
-outputLogLevel l =
-  withSGR (logLevelToSGR l) $ do
-    liftIO $ TIO.putStr $ logLevelToText l
+outputRemarkLevel :: R.RemarkLevel -> App ()
+outputRemarkLevel l =
+  withSGR (R.remarkLevelToSGR l) $ do
+    liftIO $ TIO.putStr $ R.remarkLevelToText l
     liftIO $ TIO.putStr ": "
 
-outputLogText :: T.Text -> App T.Text -> App ()
-outputLogText str padComp = do
+outputRemarkText :: T.Text -> App T.Text -> App ()
+outputRemarkText str padComp = do
   pad <- padComp
-  liftIO $ TIO.putStrLn $ stylizeLogText str pad
+  liftIO $ TIO.putStrLn $ stylizeRemarkText str pad
 
-logLevelToPad :: ShouldInsertPadding -> LogLevel -> App T.Text
-logLevelToPad shouldInsertPadding level = do
+remarkLevelToPad :: R.ShouldInsertPadding -> R.RemarkLevel -> App T.Text
+remarkLevelToPad shouldInsertPadding level = do
   if shouldInsertPadding
-    then return $ T.replicate (T.length (logLevelToText level) + 2) " "
+    then return $ T.replicate (T.length (R.remarkLevelToText level) + 2) " "
     else return ""
 
-stylizeLogText :: T.Text -> T.Text -> T.Text
-stylizeLogText str pad = do
+stylizeRemarkText :: T.Text -> T.Text -> T.Text
+stylizeRemarkText str pad = do
   let ls = T.lines str
   if null ls
     then str
@@ -179,10 +178,10 @@ getShouldColorize :: App Bool
 getShouldColorize =
   readRef' shouldColorize
 
-insertRemark :: Log -> App ()
+insertRemark :: R.Remark -> App ()
 insertRemark r = do
   modifyRef' remarkList $ (:) r
 
-getRemarkList :: App [Log]
+getRemarkList :: App [R.Remark]
 getRemarkList = do
   readRef' remarkList

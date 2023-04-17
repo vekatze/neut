@@ -20,7 +20,7 @@ import Data.List
 import Data.Text qualified as T
 import Entity.EnsType qualified as ET
 import Entity.Hint
-import Entity.Log
+import Entity.Remark
 
 data EnsF a
   = Int64 Int64

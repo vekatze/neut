@@ -9,5 +9,5 @@ import Prelude hiding (log)
 
 tidy :: Config -> App ()
 tidy cfg = do
-  Initialize.initializeCompiler (logCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg) Nothing
   Module.getMainModule >>= Fetch.fetch

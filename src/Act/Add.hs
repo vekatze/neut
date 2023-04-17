@@ -8,5 +8,5 @@ import Prelude hiding (log)
 
 add :: Config -> App ()
 add cfg = do
-  Initialize.initializeCompiler (logCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg) Nothing
   Fetch.insertDependency (moduleAliasText cfg) (moduleURL cfg)

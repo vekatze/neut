@@ -8,5 +8,5 @@ import Prelude hiding (log)
 
 clean :: Config -> App ()
 clean cfg = do
-  Initialize.initializeCompiler (logCfg cfg) Nothing
+  Initialize.initializeCompiler (remarkCfg cfg) Nothing
   Clean.clean

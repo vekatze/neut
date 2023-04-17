@@ -30,7 +30,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
-import Entity.Log qualified as L
 import Entity.Magic qualified as M
 import Entity.Mutability
 import Entity.Noema qualified as N
@@ -41,6 +40,7 @@ import Entity.PrimOp qualified as PO
 import Entity.PrimType qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
+import Entity.Remark qualified as R
 import Entity.Stmt
 import Entity.UnresolvedName qualified as UN
 import Entity.Vector qualified as V
@@ -156,12 +156,12 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
       return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) args
-    m :< RT.Annotation logLevel annot e -> do
+    m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern nenv e
       case annot of
         AN.Type _ -> do
           let doNotCare = m :< WT.Tau -- discarded at Infer
-          return $ m :< WT.Annotation logLevel (AN.Type doNotCare) e'
+          return $ m :< WT.Annotation remarkLevel (AN.Type doNotCare) e'
 
 ensureFieldLinearity ::
   Hint ->
@@ -446,15 +446,15 @@ discernPatternRow' nenv patList newVarList body = do
 ensureVariableLinearity :: NominalEnv -> App ()
 ensureVariableLinearity vars = do
   let linearityErrors = getNonLinearOccurrences vars S.empty []
-  unless (null linearityErrors) $ Throw.throw $ L.MakeError linearityErrors
+  unless (null linearityErrors) $ Throw.throw $ R.MakeError linearityErrors
 
-getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [L.Log]
+getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [R.Remark]
 getNonLinearOccurrences vars found nonLinear =
   case vars of
     [] -> do
       let nonLinearVars = reverse $ nubBy (\x y -> snd x == snd y) nonLinear
       flip map nonLinearVars $ \(m, x) ->
-        L.logError (fromHint m) $
+        R.remarkError (fromHint m) $
           "the pattern variable `"
             <> x
             <> "` is used non-linearly"

@@ -1,9 +1,9 @@
 module Entity.Config.Check (Config (..)) where
 
-import Entity.Config.Log qualified as Log
+import Entity.Config.Remark qualified as Remark
 
 data Config = Config
   { mFilePathString :: Maybe FilePath,
     shouldInsertPadding :: Bool,
-    logCfg :: Log.Config
+    remarkCfg :: Remark.Config
   }

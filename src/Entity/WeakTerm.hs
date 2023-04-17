@@ -12,12 +12,12 @@ import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
 import Entity.LamKind
-import Entity.Log
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
+import Entity.Remark
 import Entity.WeakPrim qualified as WP
 
 type WeakTerm = Cofree WeakTermF Hint
@@ -52,7 +52,7 @@ data WeakTermF a
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
-  | Annotation LogLevel (AN.Annotation a) a
+  | Annotation RemarkLevel (AN.Annotation a) a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

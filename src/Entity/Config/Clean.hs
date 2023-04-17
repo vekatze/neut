@@ -1,8 +1,8 @@
 module Entity.Config.Clean (Config (..)) where
 
-import Entity.Config.Log qualified as Log
-import Prelude hiding (log)
+import Entity.Config.Remark qualified as Remark
+import Prelude hiding (remark)
 
 newtype Config = Config
-  { logCfg :: Log.Config
+  { remarkCfg :: Remark.Config
   }
