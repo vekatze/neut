@@ -4,11 +4,11 @@ import Context.App
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Entity.Command
+import Entity.Config.Add qualified as Add
 import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
-import Entity.Config.Get qualified as Get
 import Entity.Config.Log qualified as Log
 import Entity.Config.Release qualified as Release
 import Entity.Config.Tidy qualified as Tidy
@@ -32,7 +32,7 @@ parseOpt = do
         cmd "check" parseCheckOpt "type-check specified file",
         cmd "release" parseReleaseOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
-        cmd "get" parseGetOpt "get a tarball",
+        cmd "add" parseGetOpt "add a dependency",
         cmd "tidy" parseTidyOpt "tidy the module dependency",
         cmd "version" parseVersionOpt "show version info"
       ]
@@ -75,11 +75,11 @@ parseGetOpt = do
   moduleURL <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
   logCfg <- logConfigOpt
   pure $
-    Get $
-      Get.Config
-        { Get.moduleAliasText = T.pack moduleAlias,
-          Get.moduleURL = ModuleURL $ T.pack moduleURL,
-          Get.logCfg = logCfg
+    Add $
+      Add.Config
+        { Add.moduleAliasText = T.pack moduleAlias,
+          Add.moduleURL = ModuleURL $ T.pack moduleURL,
+          Add.logCfg = logCfg
         }
 
 parseTidyOpt :: Parser Command

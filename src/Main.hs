@@ -1,10 +1,10 @@
 module Main (main) where
 
+import Act.Add qualified as Add
 import Act.Build qualified as Build
 import Act.Check qualified as Check
 import Act.Clean qualified as Clean
 import Act.Create qualified as Create
-import Act.Get qualified as Get
 import Act.Release qualified as Release
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
@@ -33,8 +33,8 @@ execute = do
           Release.release cfg
         C.Create cfg ->
           Create.create cfg
-        C.Get cfg ->
-          Get.get cfg
+        C.Add cfg ->
+          Add.add cfg
         C.Tidy cfg ->
           Tidy.tidy cfg
         C.ShowVersion cfg ->

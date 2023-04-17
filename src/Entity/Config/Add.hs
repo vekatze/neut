@@ -1,4 +1,4 @@
-module Entity.Config.Get (Config (..)) where
+module Entity.Config.Add (Config (..)) where
 
 import Data.Text qualified as T
 import Entity.Config.Log qualified as Log

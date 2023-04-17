@@ -31,8 +31,7 @@ fetch baseModule = do
     installIfNecessary alias url checksum
 
 insertDependency :: T.Text -> ModuleURL -> App ()
-insertDependency aliasName url@(ModuleURL urlText) = do
-  Log.printNote' $ "getting `" <> aliasName <> "` from " <> urlText
+insertDependency aliasName url = do
   alias <- ModuleAlias <$> Throw.liftEither (BN.reflect' aliasName)
   mainModule <- Module.getMainModule
   withTempFile $ \tempFilePath tempFileHandle -> do
@@ -47,7 +46,7 @@ installIfNecessary :: ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
 installIfNecessary alias url checksum = do
   isInstalled <- checkIfInstalled checksum
   unless isInstalled $ do
-    Log.printNote' $ "installing `" <> BN.reify (extract alias) <> "` (" <> MC.reify checksum <> ")"
+    Log.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
     withTempFile $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias url
       archive <- getHandleContents tempFileHandle
@@ -98,3 +97,4 @@ addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleCh
 addDependencyToModuleFile targetModule alias url checksum = do
   let targetModule' = M.addDependency alias url checksum targetModule
   Module.save targetModule'
+  Log.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
