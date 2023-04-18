@@ -15,6 +15,7 @@ import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Remark qualified as Remark
+import Context.UnusedVariable qualified as UnusedVariable
 import Data.Maybe
 import Entity.Config.Remark qualified as Remark
 import Entity.Module
@@ -42,6 +43,7 @@ initializeForTarget = do
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
+  UnusedVariable.initialize
   Remark.initialize
   Global.initialize
   Env.setCurrentSource source

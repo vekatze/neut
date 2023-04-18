@@ -6,7 +6,9 @@ import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
+import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -47,6 +49,7 @@ import Entity.Vector qualified as V
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.ToText (toText)
 import Scene.Parse.Discern.Fallback qualified as PATF
 import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.Specialize qualified as PATS
@@ -77,11 +80,15 @@ discernStmtKind stmtKind =
     Data dataName dataArgs consInfoList -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       let (consNameList, isConstLikeList, consArgsList, discriminantList) = unzip4 consInfoList
-      consArgsList' <- map fst <$> mapM (discernBinder nenv) consArgsList
+      (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
+      forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
+        UnusedVariable.delete newVar
       return $ Data dataName dataArgs' $ zip4 consNameList isConstLikeList consArgsList' discriminantList
     DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
-      (consArgs', _) <- discernBinder nenv consArgs
+      (consArgs', nenv') <- discernBinder nenv consArgs
+      forM_ nenv' $ \(_, (_, newVar)) -> do
+        UnusedVariable.delete newVar
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
@@ -91,7 +98,8 @@ discern nenv term =
       return $ m :< WT.Tau
     m :< RT.Var (I (s, _)) -> do
       case lookup s nenv of
-        Just (_, name) ->
+        Just (_, name) -> do
+          UnusedVariable.delete name
           return $ m :< WT.Var name
         Nothing -> do
           resolveName m s >>= uncurry (interpretGlobalName m)
@@ -232,8 +240,10 @@ discernLet nenv m mxt mys e1 e2 = do
   ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
   ysLocal <- mapM Gensym.newIdentFromIdent ys
   ysCont <- mapM Gensym.newIdentFromIdent ys
-  let nenvLocal = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms ysLocal ++ nenv
-  let nenvCont = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont ++ nenv
+  let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms ysLocal
+  nenvLocal <- joinNominalEnv localAddition nenv
+  let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont
+  nenvCont <- joinNominalEnv contAddition nenv
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
   e2'' <- attachSuffix nenv (zip3 mutabilityList ysCont ysLocal) e2'
@@ -273,8 +283,9 @@ discernBinder nenv binder =
     (mx, x, t) : xts -> do
       t' <- discern nenv t
       x' <- Gensym.newIdentFromIdent x
-      (xts', nenv') <- discernBinder ((Ident.toText x, (mx, x')) : nenv) xts
-      return ((mx, x', t') : xts', nenv')
+      nenv' <- extendNominalEnv mx x' nenv
+      (xts', nenv'') <- discernBinder nenv' xts
+      return ((mx, x', t') : xts', nenv'')
 
 discernBinderWithBody ::
   NominalEnv ->
@@ -292,11 +303,13 @@ discernBinderWithBody' ::
   [BinderF RT.RawTerm] ->
   RT.RawTerm ->
   App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
-discernBinderWithBody' nenv (mx, x, t) binder e = do
-  t' <- discern nenv t
+discernBinderWithBody' nenv (mx, x, codType) binder e = do
+  (binder'', nenv') <- discernBinder nenv binder
+  codType' <- discern nenv' codType
   x' <- Gensym.newIdentFromIdent x
-  (binder', e') <- discernBinderWithBody ((Ident.toText x, (mx, x')) : nenv) binder e
-  return ((mx, x', t'), binder', e')
+  nenv'' <- extendNominalEnv mx x' nenv'
+  e' <- discern nenv'' e
+  return ((mx, x', codType'), binder'', e')
 
 resolveName :: Hint -> T.Text -> App (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
@@ -436,7 +449,8 @@ discernPatternRow' nenv patList newVarList body = do
   case patList of
     [] -> do
       ensureVariableLinearity newVarList
-      body' <- discern (newVarList ++ nenv) body
+      nenv' <- joinNominalEnv newVarList nenv
+      body' <- discern nenv' body
       return ([], ([], body'))
     pat : rest -> do
       (pat', varsInPat) <- discernPattern pat
@@ -584,8 +598,9 @@ alignConsArgs nenv binder =
     (mx, x) : xts -> do
       t <- Gensym.newPreHole mx
       t' <- discern nenv t
-      (xts', nenv') <- alignConsArgs ((Ident.toText x, (mx, x)) : nenv) xts
-      return ((mx, x, t') : xts', nenv')
+      let nenv' = extendNominalEnvWithoutInsert mx x nenv
+      (xts', nenv'') <- alignConsArgs nenv' xts
+      return ((mx, x, t') : xts', nenv'')
 
 bindLet ::
   NominalEnv ->
@@ -620,3 +635,21 @@ discernGlobal m gl ll = do
   let dd = DD.new sgl ll
   gn <- interpretDefiniteDescription m dd
   interpretGlobalName m dd gn
+
+extendNominalEnv :: Hint -> Ident -> NominalEnv -> App NominalEnv
+extendNominalEnv m newVar nenv = do
+  UnusedVariable.insert m newVar
+  return $ (Ident.toText newVar, (m, newVar)) : nenv
+
+extendNominalEnvWithoutInsert :: Hint -> Ident -> NominalEnv -> NominalEnv
+extendNominalEnvWithoutInsert m newVar nenv = do
+  (Ident.toText newVar, (m, newVar)) : nenv
+
+joinNominalEnv :: NominalEnv -> NominalEnv -> App NominalEnv
+joinNominalEnv newNominalEnv oldNominalEnv = do
+  case newNominalEnv of
+    [] ->
+      return oldNominalEnv
+    (_, (m, x)) : rest -> do
+      oldNominalEnv' <- extendNominalEnv m x oldNominalEnv
+      joinNominalEnv rest oldNominalEnv'

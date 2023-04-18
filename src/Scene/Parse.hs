@@ -14,6 +14,7 @@ import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
+import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
@@ -29,6 +30,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName qualified as GN
 import Entity.Hint
+import Entity.Ident qualified as Ident
 import Entity.Ident.Reflect qualified as Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Opacity qualified as O
@@ -82,6 +84,7 @@ parseSource source = do
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       rememberCurrentNameSet m path $ map getNameFromWeakStmt stmtList
+      UnusedVariable.registerRemarks
       return $ Right stmtList
 
 parseCachedStmtList :: [Stmt] -> App ()
@@ -259,10 +262,9 @@ parseConsArgs = do
 
 parseDefineVariantClauseArg :: P.Parser (BinderF RT.RawTerm)
 parseDefineVariantClauseArg = do
-  m <- P.getCurrentHint
   choice
     [ try preAscription,
-      weakTermToWeakIdent m rawTerm
+      typeWithoutIdent
     ]
 
 parseDefineStruct :: P.Parser [RawStmt]
@@ -302,7 +304,7 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
   let projArgs = dataArgs ++ [(m, Ident.fromText structVarText, structType)]
   elemName' <- Throw.liftEither $ BN.reflect m $ Ident.toText elemName
   projectionName <- Locator.attachCurrentLocator elemName'
-  let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var x)
+  let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var (Ident.attachHolePrefix x))
   defineFunction
     (Normal O.Opaque)
     m
@@ -316,7 +318,7 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
         [preVar m structVarText]
         ( RP.new
             [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription consName) argList)],
-                preVar m (Ident.toText elemName)
+                preVar' m (Ident.attachHolePrefix elemName)
               )
             ]
         )
@@ -354,12 +356,6 @@ parseDefineResource = do
 identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
   m :< RT.Var x
-
-weakTermToWeakIdent :: Hint -> P.Parser RT.RawTerm -> P.Parser (BinderF RT.RawTerm)
-weakTermToWeakIdent m f = do
-  a <- f
-  h <- lift $ Gensym.newTextualIdentFromText "_"
-  return (m, h, a)
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

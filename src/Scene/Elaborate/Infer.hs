@@ -79,13 +79,14 @@ infer' varEnv term =
       return (m :< WT.Pi xts' t', m :< WT.Tau)
     m :< WT.PiIntro kind xts e -> do
       case kind of
-        LK.Fix (mx, x, t) -> do
-          t' <- inferType' varEnv t
-          insWeakTypeEnv x t'
-          (xts', (e', tCod)) <- inferBinder varEnv xts e
-          let piType = m :< WT.Pi xts' tCod
-          insConstraintEnv piType t'
-          return (m :< WT.PiIntro (LK.Fix (mx, x, t')) xts' e', piType)
+        LK.Fix (mx, x, codType) -> do
+          (xts', extendedVarEnv) <- inferBinder'' varEnv xts
+          codType' <- inferType' extendedVarEnv codType
+          let piType = m :< WT.Pi xts' codType'
+          insWeakTypeEnv x piType
+          (e', tBody) <- infer' extendedVarEnv e
+          insConstraintEnv codType' tBody
+          return (m :< WT.PiIntro (LK.Fix (mx, x, codType')) xts' e', piType)
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
           return (m :< WT.PiIntro kind xts' e', m :< WT.Pi xts' t')
@@ -242,6 +243,20 @@ inferBinder' varEnv binder comp =
       insWeakTypeEnv x t'
       (xts', etl') <- inferBinder' ((mx, x, t') : varEnv) xts comp
       return ((mx, x, t') : xts', etl')
+
+inferBinder'' ::
+  BoundVarEnv ->
+  [BinderF WT.WeakTerm] ->
+  App ([BinderF WT.WeakTerm], BoundVarEnv)
+inferBinder'' varEnv binder =
+  case binder of
+    [] -> do
+      return ([], varEnv)
+    ((mx, x, t) : xts) -> do
+      t' <- inferType' varEnv t
+      insWeakTypeEnv x t'
+      (xts', newVarEnv) <- inferBinder'' ((mx, x, t') : varEnv) xts
+      return ((mx, x, t') : xts', newVarEnv)
 
 inferPiElim ::
   BoundVarEnv ->

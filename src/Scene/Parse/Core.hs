@@ -181,7 +181,7 @@ var = do
   if x /= "_"
     then return (m, x)
     else do
-      unusedVar <- lift Gensym.newText
+      unusedVar <- lift Gensym.newTextForHole
       return (m, unusedVar)
 
 {-# INLINE nonSymbolCharSet #-}

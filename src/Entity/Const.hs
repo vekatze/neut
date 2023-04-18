@@ -141,3 +141,7 @@ defaultImports =
     "core.top",
     "core.vector"
   ]
+
+holeVarPrefix :: T.Text
+holeVarPrefix =
+  "{}"

@@ -2,6 +2,7 @@ module Entity.Ident where
 
 import Data.Binary
 import Data.Text qualified as T
+import Entity.Const
 import GHC.Generics
 
 newtype Ident
@@ -16,3 +17,7 @@ instance Show Ident where
     T.unpack s ++ "-" ++ show i
 
 instance Binary Ident
+
+attachHolePrefix :: Ident -> Ident
+attachHolePrefix (I (varName, i)) =
+  I (holeVarPrefix <> varName, i)

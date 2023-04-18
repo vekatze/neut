@@ -3,6 +3,8 @@ module Context.Gensym
     readCount,
     writeCount,
     newText,
+    newTextForHole,
+    newIdentForHole,
     newHole,
     newPreHole,
     newIdentFromText,
@@ -19,6 +21,7 @@ import Control.Monad.Reader
 import Data.IORef.Unboxed
 import Data.Text qualified as T
 import Entity.Comp qualified as C
+import Entity.Const
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
@@ -43,6 +46,19 @@ newText :: App T.Text
 newText = do
   i <- newCount
   return $ ";" <> T.pack (show i)
+
+{-# INLINE newTextForHole #-}
+newTextForHole :: App T.Text
+newTextForHole = do
+  i <- newCount
+  return $ holeVarPrefix <> ";" <> T.pack (show i)
+
+{-# INLINE newIdentForHole #-}
+newIdentForHole :: App Ident
+newIdentForHole = do
+  text <- newTextForHole
+  i <- newCount
+  return $ I (text, i)
 
 {-# INLINE newPreHole #-}
 newPreHole :: Hint -> App RT.RawTerm

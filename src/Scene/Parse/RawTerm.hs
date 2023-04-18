@@ -4,7 +4,9 @@ module Scene.Parse.RawTerm
     preAscription,
     preBinder,
     parseTopDefInfo,
+    typeWithoutIdent,
     preVar,
+    preVar',
   )
 where
 
@@ -77,7 +79,7 @@ rawExprSeqOrTerm m = do
   choice
     [ do
         e2 <- rawExpr
-        f <- lift $ Gensym.newTextualIdentFromText "unit"
+        f <- lift Gensym.newIdentForHole
         top <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreTop
         return $ bind (m, f, top) e1 e2,
       return e1
@@ -307,7 +309,7 @@ rawTermPiOrConsOrAscOrBasic = do
   choice
     [ do
         delimiter "->"
-        x <- lift $ Gensym.newTextualIdentFromText "_"
+        x <- lift Gensym.newIdentForHole
         cod <- rawTerm
         return $ m :< RT.Pi [(m, x, basic)] cod,
       do
@@ -377,8 +379,7 @@ rawTermPiIntroDef = do
   m <- getCurrentHint
   keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
-  let piType = mFun :< RT.Pi domBinderList codType
-  return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, piType)) domBinderList e
+  return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, codType)) domBinderList e
 
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
@@ -762,7 +763,7 @@ preAscription = do
 typeWithoutIdent :: Parser (BinderF RT.RawTerm)
 typeWithoutIdent = do
   m <- getCurrentHint
-  x <- lift $ Gensym.newTextualIdentFromText "_"
+  x <- lift Gensym.newIdentForHole
   t <- rawTerm
   return (m, x, t)
 
