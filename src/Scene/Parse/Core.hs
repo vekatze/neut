@@ -149,11 +149,6 @@ betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
-importBlock :: Parser a -> Parser a
-importBlock p = do
-  keyword "import"
-  betweenBrace p
-
 commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")

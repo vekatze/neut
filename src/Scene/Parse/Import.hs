@@ -25,7 +25,11 @@ type LocatorText =
 
 parseImportBlock :: Source.Source -> P.Parser [(Source.Source, AI.AliasInfo)]
 parseImportBlock currentSource = do
-  locatorAndSourceInfo <- P.importBlock (P.manyList parseImport) <|> return []
+  locatorAndSourceInfo <-
+    choice
+      [ P.keyword "import" >> P.betweenBrace (P.manyList parseImport),
+        return []
+      ]
   let (foundLocators, sourceInfo) = unzip locatorAndSourceInfo
   coreSourceInfo <- loadDefaultImports currentSource foundLocators
   return $ sourceInfo ++ coreSourceInfo
