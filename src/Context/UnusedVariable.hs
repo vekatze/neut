@@ -44,4 +44,4 @@ registerRemarks :: App ()
 registerRemarks = do
   unusedVars <- get
   forM_ unusedVars $ \(mx, x) ->
-    Remark.insertRemark $ newRemark mx Warning $ "defined but not used: `" <> toText' x <> "`"
+    Remark.insertRemark $ newRemark mx Warning $ "defined but not used: `" <> toText x <> "`"
