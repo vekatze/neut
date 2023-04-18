@@ -111,10 +111,8 @@ getRegList targetPlatform = do
       return ["rax", "rdi", "rsi", "rdx", "rcx", "r8", "r9"]
     (Arch.Arm64, OS.Linux) ->
       return ["x8", "x0", "x1", "x2", "x3", "x4", "x5"]
-    (Arch.Amd64, OS.Darwin) ->
-      return ["rax", "rdi", "rsi", "rdx", "r10", "r8", "r9"]
     _ ->
-      Left $ "unsupported target: " <> T.unpack (TP.reify targetPlatform)
+      Left $ "found a syscall in an invalid platform: " <> T.unpack (TP.reify targetPlatform)
 
 {-# INLINE unwordsL #-}
 unwordsL :: [Builder] -> Builder
