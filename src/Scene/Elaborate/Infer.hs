@@ -37,11 +37,10 @@ inferStmt mMainDD stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
       Type.insert x $ m :< WT.Pi xts codType
-      (xts', (codType', e')) <- inferBinder' [] xts $ \varEnv -> do
-        codType' <- inferType' varEnv codType
-        (e', te) <- infer' varEnv e
-        insConstraintEnv codType' te
-        return (codType', e')
+      (xts', varEnv) <- inferBinder' [] xts
+      codType' <- inferType' varEnv codType
+      (e', te) <- infer' varEnv e
+      insConstraintEnv codType' te
       when (mMainDD == Just x) $ do
         intType <- getIntType m
         insConstraintEnv (m :< WT.Pi [] intType) (m :< WT.Pi xts' codType')
@@ -80,7 +79,7 @@ infer' varEnv term =
     m :< WT.PiIntro kind xts e -> do
       case kind of
         LK.Fix (mx, x, codType) -> do
-          (xts', extendedVarEnv) <- inferBinder'' varEnv xts
+          (xts', extendedVarEnv) <- inferBinder' varEnv xts
           codType' <- inferType' extendedVarEnv codType
           let piType = m :< WT.Pi xts' codType'
           insWeakTypeEnv x piType
@@ -225,37 +224,23 @@ inferBinder ::
   [BinderF WT.WeakTerm] ->
   WT.WeakTerm ->
   App ([BinderF WT.WeakTerm], (WT.WeakTerm, WT.WeakTerm))
-inferBinder varEnv binder e =
-  inferBinder' varEnv binder (`infer'` e)
+inferBinder varEnv binder e = do
+  (binder', extendedVarEnv) <- inferBinder' varEnv binder
+  et <- infer' extendedVarEnv e
+  return (binder', et)
 
 inferBinder' ::
   BoundVarEnv ->
   [BinderF WT.WeakTerm] ->
-  ([BinderF WT.WeakTerm] -> App a) ->
-  App ([BinderF WT.WeakTerm], a)
-inferBinder' varEnv binder comp =
-  case binder of
-    [] -> do
-      result <- comp varEnv
-      return ([], result)
-    ((mx, x, t) : xts) -> do
-      t' <- inferType' varEnv t
-      insWeakTypeEnv x t'
-      (xts', etl') <- inferBinder' ((mx, x, t') : varEnv) xts comp
-      return ((mx, x, t') : xts', etl')
-
-inferBinder'' ::
-  BoundVarEnv ->
-  [BinderF WT.WeakTerm] ->
   App ([BinderF WT.WeakTerm], BoundVarEnv)
-inferBinder'' varEnv binder =
+inferBinder' varEnv binder =
   case binder of
     [] -> do
       return ([], varEnv)
     ((mx, x, t) : xts) -> do
       t' <- inferType' varEnv t
       insWeakTypeEnv x t'
-      (xts', newVarEnv) <- inferBinder'' ((mx, x, t') : varEnv) xts
+      (xts', newVarEnv) <- inferBinder' ((mx, x, t') : varEnv) xts
       return ((mx, x, t') : xts', newVarEnv)
 
 inferPiElim ::
@@ -358,8 +343,8 @@ inferClause ::
 inferClause varEnv cursorType (DT.Cons mCons consName disc dataArgs consArgs body) = do
   let (dataTermList, _) = unzip dataArgs
   typedDataArgs' <- mapM (infer' varEnv) dataTermList
-  (consArgs', (body', tBody)) <- inferBinder' varEnv consArgs $ \extendedVarEnv ->
-    inferDecisionTree mCons extendedVarEnv body
+  (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
+  (body', tBody) <- inferDecisionTree mCons extendedVarEnv body
   consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
   (_, tPat) <- inferPiElim varEnv mCons consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
