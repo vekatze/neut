@@ -2,6 +2,7 @@ module Scene.Elaborate.Infer (inferStmt) where
 
 import Context.App
 import Context.Elaborate
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
@@ -12,6 +13,7 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
+import Entity.DataSize qualified as DS
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
@@ -19,9 +21,7 @@ import Entity.HoleID qualified as HID
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
-import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
-import Entity.PrimType qualified as PT
 import Entity.Stmt
 import Entity.Term qualified as TM
 import Entity.Term.FromPrimNum qualified as Term
@@ -44,19 +44,27 @@ inferStmt mMainDD stmt =
         insConstraintEnv codType' te
         return (codType', e')
       when (mMainDD == Just x) $ do
-        insConstraintEnv (m :< WT.Pi [] (WT.i64 m)) (m :< WT.Pi xts' codType')
+        intType <- getIntType m
+        insConstraintEnv (m :< WT.Pi [] intType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
       Type.insert name $ m :< WT.Tau
       (discarder', td) <- infer' [] discarder
       (copier', tc) <- infer' [] copier
       x <- Gensym.newIdentFromText "_"
-      let i64 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 64)))
-      let tDiscard = m :< WT.Pi [(m, x, i64)] i64
-      let tCopy = m :< WT.Pi [(m, x, i64)] i64
+      intType <- getIntType m
+      let tDiscard = m :< WT.Pi [(m, x, intType)] intType
+      let tCopy = m :< WT.Pi [(m, x, intType)] intType
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return $ WeakStmtDefineResource m name discarder' copier'
+
+getIntType :: Hint -> App WT.WeakTerm
+getIntType m = do
+  dataSize <- Env.getDataSize m
+  case dataSize of
+    DS.DataSize64 ->
+      return (WT.i64 m)
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
