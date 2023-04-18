@@ -7,9 +7,9 @@ define eq-nat(n1: nat, n2: nat): i64 {
   match n1, n2 {
   - Zero, Zero =>
     1
-  - Succ(m1), Succ(m2) =>
+  - Succ(_), Succ(_) =>
     2
-  - n1, n2 =>
+  - _, _ =>
     0
   }
 }

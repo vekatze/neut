@@ -10,7 +10,7 @@ define find-min(t: &tree()): i64 {
   - N(E()) =>
     2
   - N(left) =>
-    let x: &tree() = left
+    let _: &tree() = left
     3
   }
 }

@@ -6,7 +6,7 @@ variant nat() {
 - Zero()
 }
 
-define cond(n1: nat()): bool {
+define cond(_: nat()): bool {
   False
 }
 
@@ -21,6 +21,6 @@ define f(): nat() {
 }
 
 define main(): i64 {
-  let a = f()
+  let _ = f()
   0
 }

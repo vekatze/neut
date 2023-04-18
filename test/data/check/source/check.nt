@@ -7,9 +7,9 @@ define nil-cons-cons(xs: nat): i64 {
   match xs {
   - Zero() =>
     1
-  - Succ(Succ(cs)) =>
+  - Succ(Succ(_)) =>
     2
-  - Succ(c) =>
+  - Succ(_) =>
     3
   }
 }

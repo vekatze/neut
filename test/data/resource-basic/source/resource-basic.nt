@@ -1,6 +1,8 @@
 import {
 - core.top
 - core.bool
+- core.list => L
+- core.i8-array => i8
 }
 
 variant list(a: tau) {
@@ -51,11 +53,11 @@ define main(): i64 {
   let _: i64 = magic store(i64, base-pointer, 3: i64)
   let _: i64 = magic store(pointer(i8), add-i64(base-pointer, 8), content-pointer)
   let my-array = magic cast(i64, i8-array, base-pointer)
-  let a = my-array
-  let b = my-array
-  let c = my-array
-  let d = my-array
-  let e = my-array
+  let _ = my-array
+  let _ = my-array
+  let _ = my-array
+  let _ = my-array
+  let _ = my-array
   let f = my-array
   let f-ptr = magic cast(i8-array, i64, f)
   let f-content-pointer = magic load(pointer(i8), add-i64(f-ptr, 8))

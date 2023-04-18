@@ -35,7 +35,7 @@ define eq-nat(n1: nat, n2: nat): bool {
     True
   - Succ(m1), Succ(m2) =>
     eq-nat(m1, m2)
-  - n1, n2 =>
+  - _, _ =>
     False
   }
 }

@@ -3,9 +3,9 @@ variant option() {
 }
 
 define main(): i64 {
-  let sect = tau
+  let _ = tau
   match Some(2) {
-  - Some(2) =>
+  - Some(_) =>
     10
   }
 }

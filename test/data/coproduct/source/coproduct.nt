@@ -19,9 +19,9 @@ define interpret(n: nat): i64 {
 
 define view(a: tau, b: tau, x: sum(a, b)): i64 {
   match x {
-  - Left(c) =>
+  - Left(_) =>
     1
-  - Right(d) =>
+  - Right(_) =>
     2
   }
 }
@@ -46,9 +46,9 @@ define main(): i64 {
     interpret(e)
   - Right(v) =>
     let x = view(i64, i32, Left(10))
-    let y = view(i64, i32, Right(10))
-    let z = x
-    let w = x
+    let _ = view(i64, i32, Right(10))
+    let _ = x
+    let _ = x
     add-i64(v, 1)
   }
 }

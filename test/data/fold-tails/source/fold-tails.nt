@@ -57,7 +57,7 @@ define tails(a: tau, xs: list(a)): list(list(a)) {
   match xs {
   - Nil() =>
     Cons(Nil(), Nil())
-  - Cons(x, xs) =>
+  - Cons(_, xs) =>
     Cons(xs, tails(a, xs))
   }
 }
@@ -75,32 +75,32 @@ define head(xs: list(nat)): nat {
   match xs {
   - Nil() =>
     Zero
-  - Cons(y, ys) =>
+  - Cons(y, _) =>
     y
   }
 }
 
 define main(): i64 {
   let n = Succ(Succ(Succ(Zero)))
-  let n-copy1 = n
-  let n-copy2 = n
-  let n-copy3 = n
+  let _ = n
+  let _ = n
+  let _ = n
   let m = mul-nat(n, mul-nat(n, n))
-  let m-copy1 = m
-  let m-copy2 = m
+  let _ = m
+  let _ = m
   let xs = gen(m)
   let yss = tails(_, xs)
-  let yss-copy1 = yss
-  let yss-copy2 = yss
+  let _ = yss
+  let _ = yss
   let zs = map(_, _, lambda (l) { head(l) }, yss)
-  let zs-copy1 = zs
-  let zs-copy2 = zs
-  let zs-copy3 = zs
-  let zs-copy4 = zs
-  let zs-copy5 = zs
+  let _ = zs
+  let _ = zs
+  let _ = zs
+  let _ = zs
+  let _ = zs
   let result-nat = fold-r(_, _, lambda (a, b) { add-nat(a, b) }, Zero, zs)
-  let result-nat-copy1 = result-nat
-  let result-nat-copy2 = result-nat
+  let _ = result-nat
+  let _ = result-nat
   let result = interpret(result-nat)
   result
 }

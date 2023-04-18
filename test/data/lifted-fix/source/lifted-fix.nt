@@ -1,5 +1,6 @@
 import {
 - core.bool
+- core.list => L
 }
 
 variant list() {
@@ -31,10 +32,10 @@ define main(): i64 {
       // match magic cast(i1, core.bool::bool(), add-i1(0, 1)) {
       match eq-i64(0, 0) {
       - True =>
-        let fv-1 = xs
+        let _ = xs
         1
       - core.bool.False =>
-        let fv-4 = ws
+        let _ = ws
         loop()
       }
     }

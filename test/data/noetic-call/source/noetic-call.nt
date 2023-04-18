@@ -4,13 +4,13 @@ variant list(a: tau) {
 }
 
 define length(xs: &list(i64)): i64 {
-  let a = xs
-  let b = xs
+  let _ = xs
+  let _ = xs
   let c = xs
   case c {
   - Nil() =>
     0
-  - Cons(y, ys) =>
+  - Cons(_, ys) =>
     add-i64(1, length(ys))
   }
 }
@@ -19,7 +19,7 @@ define tail(xs: &list(i64)): &list(i64) {
   case xs {
   - Nil() =>
     xs
-  - Cons(y, ys) =>
+  - Cons(_, ys) =>
     ys
   }
 }
@@ -27,5 +27,6 @@ define tail(xs: &list(i64)): &list(i64) {
 define main(): i64 {
   let xs = Cons(3, Cons(1, Cons(2, Nil())))
   let some-value on xs = length(tail(xs))
+  let _ = xs
   some-value
 }

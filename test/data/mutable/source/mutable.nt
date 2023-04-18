@@ -1,5 +1,7 @@
 import {
 - core.top
+- core.list => L
+- core.vector => V
 }
 
 variant list(a: tau) {
@@ -22,7 +24,7 @@ define length(xs: list(i64)): i64 {
   match xs {
   - Nil() =>
     0
-  - Cons(y, ys) =>
+  - Cons(_, ys) =>
     add-i64(1, length(ys))
   }
 }
@@ -34,12 +36,12 @@ define bar(xs: cell list(i64)): i64 {
 define main(): i64 {
   let xs: list(i64) = Cons(1, Cons(2, Nil()))
   let result on mutable xs = {
-    let len1 = bar(xs)
+    let _ = bar(xs)
     mutate(xs, lambda (xs) {
       Cons(4, xs)
     })
-    let len2 = bar(xs)
-    mutate(xs, lambda (xs) {
+    let _ = bar(xs)
+    mutate(xs, lambda (_) {
       Nil()
     })
     mutate(xs, lambda (xs) {
@@ -47,5 +49,6 @@ define main(): i64 {
     })
     bar(xs)
   }
+  let _ = xs
   result
 }

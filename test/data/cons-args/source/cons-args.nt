@@ -4,7 +4,7 @@ variant item(a: tau) {
 
 define view(x: item(i64 -> i64)): i64 {
   match x {
-  - Cons(a) =>
+  - Cons(_) =>
     1
   }
 }

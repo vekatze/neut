@@ -44,7 +44,7 @@ define link[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
     match cmp(x1, x2) {
     - LT =>
       Node(add-i64(r1, 1), x1, Node(r2, x2, children2) :< children1)
-    - otherwise =>
+    - _ =>
       Node(add-i64(r1, 1), x2, Node(r1, x1, children1) :< children2)
     }
   }
@@ -52,7 +52,7 @@ define link[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
 
 define rank[a](t: &tree(a)): i64 {
   case t {
-  - Node(r, v, children) =>
+  - Node(r, _, _) =>
     !r
   }
 }
@@ -96,9 +96,10 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   }
 }
 
+
 define root[a](t: &tree(a)): a {
   case t {
-  - Node(r, v, children) =>
+  - Node(_, v, _) =>
     !v
   }
 }
@@ -114,7 +115,7 @@ define find-min[a](cmp: (a, a) -> order, h: &heap(a)): ?a {
         match cmp(root-head, cand) {
         - LT =>
           self(root-head, ts)
-        - otherwise =>
+        - _ =>
           self(cand, ts)
         }
       }
@@ -141,14 +142,14 @@ define remove-min-tree[a](cmp: (a, a) -> order, h: heap(a)): ?{tree(a) * heap(a)
     match cmp(root-head, root-cand) {
     - LT =>
       Some(tuple(t, cand :< ts-adjusted))
-    - otherwise =>
+    - _ =>
       Some(tuple(cand, t :< ts-adjusted))
     }
   }
 }
 
 define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
-  let? tuple(Node(r, x, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
+  let? tuple(Node(_, _, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
   Some(merge(cmp, reverse(ts1), ts2))
 }
 
@@ -180,5 +181,6 @@ define main(): i64 {
       min
     }
   }
+  let _ = h
   maybe-min
 }

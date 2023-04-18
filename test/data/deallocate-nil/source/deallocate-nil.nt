@@ -4,7 +4,7 @@ variant item() {
 
 define f(xs: item()): i64 {
   match xs {
-  - Nil(x) =>
+  - Nil(_) =>
     0
   }
 }

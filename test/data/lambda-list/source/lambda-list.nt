@@ -40,8 +40,8 @@ define fold(a: tau, fs: list(a -> a), x: a): a {
   - Nil() =>
     x
   - Cons(f, rest) =>
-    let yo = rest
-    let hey = rest
+    let _ = rest
+    let _ = rest
     f(fold(a, rest, x))
   }
 }
@@ -53,7 +53,7 @@ define main(): i64 {
   let add2 = lambda (x) { add-nat(x, n2) }
   let mul3 = lambda (x) { mul-nat(x, n3) }
   let mul9 = lambda (x) { mul-nat(x, mul-nat(n3, n3)) }
-  let mul9-unused = mul9
+  let _ = mul9
   // let mul9-unused2 = mul9
 
   // let add2 = lambda (x). add-i64(x, 2)

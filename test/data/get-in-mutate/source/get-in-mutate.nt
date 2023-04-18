@@ -1,5 +1,6 @@
 import {
 - core.top
+- core.list => L
 }
 
 variant list(a: tau) {
@@ -21,8 +22,9 @@ define-inline mutate[a](x: cell a, mutator: a -> a): core.top.top {
 define main(): i64 {
   let xs: list(i64) = Nil()
   let result on mutable xs = {
-    mutate(xs, lambda (x) { get(xs) })
+    mutate(xs, lambda (_) { get(xs) })
     1
   }
+  let _ = xs
   result
 }

@@ -9,7 +9,7 @@ define f(xs: list(i64), ys: list(i64)): list(i64) {
     ys
   - xs, Nil() =>
     xs
-  - Cons(), zs =>
+  - Cons(), _ =>
     Nil()
   }
 }
@@ -17,6 +17,6 @@ define f(xs: list(i64), ys: list(i64)): list(i64) {
 define main(): i64 {
   let xs = Cons()
   let ys = Cons()
-  let zs = f(xs, ys)
+  let _ = f(xs, ys)
   0
 }
