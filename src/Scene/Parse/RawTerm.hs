@@ -723,9 +723,7 @@ rawTermAdmit = do
         ( m
             :< RT.PiElim
               admit
-              [ m :< RT.Prim (WP.Value (WPV.Int (RT.i64 m) 1)),
-                m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))
-              ]
+              [m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
         )
 
 rawTermPiElimOrSimple :: Parser RT.RawTerm
