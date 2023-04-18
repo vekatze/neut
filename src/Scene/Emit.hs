@@ -27,7 +27,8 @@ import Scene.LowComp.Reduce qualified as LowComp
 
 emit :: (DN.DeclEnv, [LC.Def], Maybe LC.Comp, [StaticTextInfo]) -> App L.ByteString
 emit (declEnv, defList, mMainTerm, staticTextList) = do
-  let staticTextList' = map emitStaticText staticTextList
+  baseSize <- Env.getBaseSize'
+  let staticTextList' = map (emitStaticText baseSize) staticTextList
   case mMainTerm of
     Just mainTerm -> do
       let declStrList = emitDeclarations declEnv
@@ -39,13 +40,15 @@ emit (declEnv, defList, mMainTerm, staticTextList) = do
       defStrList <- concat <$> mapM emitDefinitions defList
       return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> defStrList
 
-emitStaticText :: StaticTextInfo -> Builder
-emitStaticText (from, (text, len)) = do
+emitStaticText :: Int -> StaticTextInfo -> Builder
+emitStaticText baseSize (from, (text, len)) = do
   "@"
     <> DD.toBuilder from
     <> " = private unnamed_addr constant "
-    <> emitLowType (LT.textType len)
-    <> " {i64 "
+    <> emitLowType (LT.textType baseSize len)
+    <> " {i"
+    <> intDec baseSize
+    <> " "
     <> intDec len
     <> ", "
     <> emitLowType (LT.textTypeInner len)
@@ -67,7 +70,8 @@ emitDefinitions (name, (args, body)) = do
 emitMain :: LC.Comp -> App [Builder]
 emitMain mainTerm = do
   mainTerm' <- LowComp.reduce IntMap.empty mainTerm
-  emitDefinition "i64" "main" [] mainTerm'
+  mainType <- Env.getMainType
+  emitDefinition (TE.encodeUtf8Builder mainType) "main" [] mainTerm'
 
 declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do

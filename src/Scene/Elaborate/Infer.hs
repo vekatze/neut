@@ -13,7 +13,6 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
-import Entity.DataSize qualified as DS
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
@@ -61,10 +60,8 @@ inferStmt mMainDD stmt =
 
 getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do
-  dataSize <- Env.getDataSize m
-  case dataSize of
-    DS.DataSize64 ->
-      return (WT.i64 m)
+  baseSize <- Env.getBaseSize m
+  return $ WT.intTypeBySize m baseSize
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =

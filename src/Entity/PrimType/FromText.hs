@@ -24,7 +24,7 @@ fromText dataSize name
       Just $ PT.Int intSize
   | Just intSize <- asLowUnsignedInt dataSize name =
       Just $ PT.UInt intSize
-  | Just floatSize <- asLowFloat name =
+  | Just floatSize <- asLowFloat dataSize name =
       Just $ PT.Float floatSize
   | otherwise =
       Nothing
@@ -50,8 +50,8 @@ asLowUnsignedInt :: DS.DataSize -> T.Text -> Maybe IntSize
 asLowUnsignedInt dataSize =
   asLowInt dataSize 'u'
 
-asLowFloat :: T.Text -> Maybe FloatSize
-asLowFloat s =
+asLowFloat :: DS.DataSize -> T.Text -> Maybe FloatSize
+asLowFloat dataSize s =
   case T.uncons s of
     Nothing ->
       Nothing
@@ -59,7 +59,7 @@ asLowFloat s =
       case c of
         'f'
           | Just n <- readMaybe $ T.unpack rest,
-            Just size <- asFloatSize n ->
+            Just size <- asFloatSize dataSize n ->
               Just size
         _ ->
           Nothing
@@ -70,14 +70,16 @@ asIntSize dataSize size =
     then Just $ IntSize size
     else Nothing
 
-asFloatSize :: Int -> Maybe FloatSize
-asFloatSize size =
-  case size of
-    16 ->
-      Just FloatSize16
-    32 ->
-      Just FloatSize32
-    64 ->
-      Just FloatSize64
-    _ ->
-      Nothing
+asFloatSize :: DS.DataSize -> Int -> Maybe FloatSize
+asFloatSize dataSize size =
+  if size > DS.reify dataSize
+    then Nothing
+    else case size of
+      16 ->
+        Just FloatSize16
+      32 ->
+        Just FloatSize32
+      64 ->
+        Just FloatSize64
+      _ ->
+        Nothing

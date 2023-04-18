@@ -4,6 +4,7 @@ module Scene.Lower
 where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Lower
 import Context.StaticText
@@ -63,10 +64,11 @@ lower (defList, mMainTerm, staticTextList) = do
         e' <- lowerComp e
         return (name, (args, e'))
       mainTerm'' <- lowerComp mainTerm
-      -- the result of "main" must be i64, not i8*
+      -- the result of "main" isn't i8*
+      baseSize <- Env.getBaseSize'
       (result, resultVar) <- Gensym.newValueVarLocalWith "result"
-      castResult <- runLower $ lowerValueLetCast resultVar (LT.PrimNum $ PT.Int $ IntSize 64)
-      -- let result: i8* := (main-term) in {cast result to i64}
+      castResult <- runLower $ lowerValueLetCast resultVar (LT.PrimNum $ PT.Int $ IntSize baseSize)
+      -- let result: i8* := (main-term) in {cast result to int}
       mainTerm''' <- Just <$> commConv result mainTerm'' castResult
       declEnv <- getDeclEnv
       return (declEnv, defList', mainTerm''', staticTextList)
@@ -110,7 +112,8 @@ lowerComp term =
     C.EnumElim v defaultBranch branchList -> do
       (defaultCase, caseList) <- constructSwitch defaultBranch branchList
       runLowerComp $ do
-        let t = LT.PrimNum $ PT.Int $ IntSize 64
+        baseSize <- lift Env.getBaseSize'
+        let t = LT.PrimNum $ PT.Int $ IntSize baseSize
         castedValue <- lowerValueLetCast v t
         return $ LC.Switch (castedValue, t) defaultCase caseList
     C.Unreachable ->
@@ -246,8 +249,9 @@ lowerValue v =
       uncast (LC.VarGlobal globalName) (toFunPtrType' arity)
     C.VarLocal y ->
       return $ LC.VarLocal y
-    C.VarStaticText globalName len ->
-      uncast (LC.VarGlobal globalName) $ LT.Pointer $ LT.textType len
+    C.VarStaticText globalName len -> do
+      baseSize <- lift Env.getBaseSize'
+      uncast (LC.VarGlobal globalName) $ LT.Pointer $ LT.textType baseSize len
     C.SigmaIntro ds -> do
       let arrayType = AggPtrTypeArray (length ds) LT.voidPtr
       createAggData arrayType $ map (,LT.voidPtr) ds

@@ -35,8 +35,8 @@ parseEns = do
       [ E.Dictionary <$> parseDictionary,
         E.List <$> parseList,
         E.String <$> string,
-        E.Int64 <$> try (fromInteger <$> integer),
-        E.Float64 <$> try float,
+        E.Int <$> try (fromInteger <$> integer),
+        E.Float <$> try float,
         E.Bool <$> bool
       ]
   return $ m :< v

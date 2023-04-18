@@ -3,7 +3,6 @@ module Entity.RawTerm
     RawTermF (..),
     DefInfo,
     TopDefInfo,
-    i64,
   )
 where
 
@@ -23,8 +22,6 @@ import Entity.LocalLocator qualified as LL
 import Entity.Magic
 import Entity.Mutability
 import Entity.Noema qualified as N
-import Entity.PrimNumSize
-import Entity.PrimType qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.Remark
 import Entity.WeakPrim qualified as WP
@@ -56,7 +53,3 @@ type DefInfo =
 
 type TopDefInfo =
   ((Hint, BN.BaseName), [BinderF RawTerm], [BinderF RawTerm], RawTerm, RawTerm)
-
-i64 :: Hint -> RawTerm
-i64 m =
-  m :< Prim (WP.Type $ PT.Int $ IntSize 64)

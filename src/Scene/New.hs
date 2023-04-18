@@ -5,6 +5,7 @@ module Scene.New
 where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -66,4 +67,5 @@ createMainFile = do
   Path.ensureDir $ getSourceDir newModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath sgl
-    Path.writeText mainFilePath "define main(): i64 {\n  0\n}\n"
+    mainType <- Env.getMainType
+    Path.writeText mainFilePath $ "define main(): " <> mainType <> " {\n  0\n}\n"

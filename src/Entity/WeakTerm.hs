@@ -85,13 +85,9 @@ toVar :: Hint -> Ident -> WeakTerm
 toVar m x =
   m :< Var x
 
-i8 :: Hint -> WeakTerm
-i8 m =
-  m :< Prim (WP.Type $ PT.Int $ IntSize 8)
-
-i64 :: Hint -> WeakTerm
-i64 m =
-  m :< Prim (WP.Type $ PT.Int $ IntSize 64)
+intTypeBySize :: Hint -> Int -> WeakTerm
+intTypeBySize m size =
+  m :< Prim (WP.Type $ PT.Int $ IntSize size)
 
 metaOf :: WeakTerm -> Hint
 metaOf (m :< _) =

@@ -66,10 +66,38 @@ insertToHasLLVMSet v =
 
 getDataSize :: Hint -> App DS.DataSize
 getDataSize m = do
+  getDataSize'' (Just m)
+
+getDataSize' :: App DS.DataSize
+getDataSize' = do
+  getDataSize'' Nothing
+
+getDataSize'' :: Maybe Hint -> App DS.DataSize
+getDataSize'' mm = do
   tp <- getTargetPlatform
   let mDataSize = Arch.dataSizeOf (arch tp)
   case mDataSize of
     Just dataSize ->
       return dataSize
-    Nothing ->
-      Throw.raiseError m $ "the data size of the target platform `" <> reify tp <> "` is unknown"
+    Nothing -> do
+      let message = "the data size of the target platform `" <> reify tp <> "` is unknown"
+      case mm of
+        Just m ->
+          Throw.raiseError m message
+        Nothing ->
+          Throw.raiseError' message
+
+getMainType :: App T.Text
+getMainType = do
+  dataSize <- getDataSize'
+  case dataSize of
+    DS.DataSize64 ->
+      return "i64"
+
+getBaseSize :: Hint -> App Int
+getBaseSize m = do
+  DS.reify <$> getDataSize m
+
+getBaseSize' :: App Int
+getBaseSize' = do
+  DS.reify <$> getDataSize'

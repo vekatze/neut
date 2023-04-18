@@ -182,17 +182,18 @@ clarifyTerm tenv term =
     _ :< TM.Data name _ -> do
       let name' = DD.getFormDD name
       return $ C.UpIntro $ C.VarGlobal name' A.arityS4
-    _ :< TM.DataIntro _ consName disc dataArgs consArgs -> do
+    m :< TM.DataIntro _ consName disc dataArgs consArgs -> do
       isEnum <- Enum.isMember consName
+      baseSize <- Env.getBaseSize m
       if isEnum
-        then return $ C.UpIntro $ C.Int (IntSize 64) (D.reify disc)
+        then return $ C.UpIntro $ C.Int (IntSize baseSize) (D.reify disc)
         else do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
             bindLet (zip zs es) $
               C.UpIntro $
                 C.SigmaIntro $
-                  C.Int (IntSize 64) (D.reify disc) : xs
+                  C.Int (IntSize baseSize) (D.reify disc) : xs
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -201,12 +202,13 @@ clarifyTerm tenv term =
       return $ irreducibleBindLet (zip xs es') tree'
     _ :< TM.Noema {} ->
       return returnImmediateS4
-    _ :< TM.Embody t e -> do
+    m :< TM.Embody t e -> do
       (typeExpVarName, typeExp, typeExpVar) <- clarifyPlus tenv t
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
+      baseSize <- Env.getBaseSize m
       return $
         bindLet [(typeExpVarName, typeExp), (valueVarName, value)] $
-          C.PiElimDownElim typeExpVar [C.Int (IntSize 64) 1, valueVar]
+          C.PiElimDownElim typeExpVar [C.Int (IntSize baseSize) 1, valueVar]
     _ :< TM.Cell {} ->
       return returnImmediateS4
     _ :< TM.CellIntro e -> do

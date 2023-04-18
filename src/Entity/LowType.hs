@@ -28,10 +28,10 @@ toVoidPtrSeq :: A.Arity -> [LowType]
 toVoidPtrSeq arity =
   map (const voidPtr) [1 .. A.reify arity]
 
-textType :: Int -> LowType
-textType len =
+textType :: Int -> Int -> LowType
+textType baseSize len =
   Struct
-    [ PrimNum $ PT.Int $ IntSize 64,
+    [ PrimNum $ PT.Int $ IntSize baseSize,
       textTypeInner len
     ]
 

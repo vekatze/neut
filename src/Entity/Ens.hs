@@ -1,8 +1,8 @@
 module Entity.Ens
   ( Ens,
     EnsF (..),
-    toInt64,
-    toFloat64,
+    toInt,
+    toFloat,
     toBool,
     toString,
     toList,
@@ -15,7 +15,6 @@ where
 
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as M
-import Data.Int
 import Data.List
 import Data.Text qualified as T
 import Entity.EnsType qualified as ET
@@ -23,8 +22,8 @@ import Entity.Error
 import Entity.Hint
 
 data EnsF a
-  = Int64 Int64
-  | Float64 Double
+  = Int Int
+  | Float Double
   | Bool Bool
   | String T.Text
   | List [a]
@@ -41,21 +40,21 @@ access k entity@(m :< _) = do
     Nothing ->
       raiseKeyNotFoundError m k
 
-toInt64 :: Ens -> Either Error Int64
-toInt64 entity@(m :< _) =
+toInt :: Ens -> Either Error Int
+toInt entity@(m :< _) =
   case entity of
-    _ :< Int64 s ->
+    _ :< Int s ->
       return s
     _ ->
-      raiseTypeError m ET.Int64 (typeOf entity)
+      raiseTypeError m ET.Int (typeOf entity)
 
-toFloat64 :: Ens -> Either Error Double
-toFloat64 entity@(m :< _) =
+toFloat :: Ens -> Either Error Double
+toFloat entity@(m :< _) =
   case entity of
-    _ :< Float64 s ->
+    _ :< Float s ->
       return s
     _ ->
-      raiseTypeError m ET.Float64 (typeOf entity)
+      raiseTypeError m ET.Float (typeOf entity)
 
 toBool :: Ens -> Either Error Bool
 toBool entity@(m :< _) =
@@ -92,10 +91,10 @@ toList entity@(m :< _) =
 typeOf :: Ens -> ET.EnsType
 typeOf v =
   case v of
-    _ :< Int64 _ ->
-      ET.Int64
-    _ :< Float64 _ ->
-      ET.Float64
+    _ :< Int _ ->
+      ET.Int
+    _ :< Float _ ->
+      ET.Float
     _ :< Bool _ ->
       ET.Bool
     _ :< String _ ->
@@ -127,12 +126,12 @@ showWithOffset :: Int -> T.Text -> T.Text
 showWithOffset n text =
   T.replicate n "  " <> text
 
-ppInt64 :: Int64 -> T.Text
-ppInt64 i =
+ppInt :: Int -> T.Text
+ppInt i =
   T.pack (show i)
 
-ppFloat64 :: Double -> T.Text
-ppFloat64 i =
+ppFloat :: Double -> T.Text
+ppFloat i =
   T.pack (show i)
 
 ppBool :: Bool -> T.Text
@@ -173,10 +172,10 @@ ppDictionaryEntry n key value = do
 ppEns :: Int -> Cofree EnsF a -> T.Text
 ppEns n entity = do
   case entity of
-    _ :< Int64 i ->
-      ppInt64 i
-    _ :< Float64 i ->
-      ppFloat64 i
+    _ :< Int i ->
+      ppInt i
+    _ :< Float i ->
+      ppFloat i
     _ :< Bool b ->
       ppBool b
     _ :< String s ->

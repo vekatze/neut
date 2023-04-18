@@ -2,6 +2,7 @@ module Scene.Clarify.Utility where
 
 import Context.App
 import Context.Clarify
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Entity.Comp qualified as C
 import Entity.DefiniteDescription qualified as DD
@@ -16,7 +17,8 @@ import Entity.PrimNumSize
 toAffineApp :: Ident -> C.Comp -> App C.Comp
 toAffineApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 0, C.VarLocal x])
+  baseSize <- Env.getBaseSize'
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize baseSize) 0, C.VarLocal x])
 
 -- toRelevantApp meta x t ~>
 --   bind exp := t in
@@ -24,7 +26,8 @@ toAffineApp x t = do
 toRelevantApp :: Ident -> C.Comp -> App C.Comp
 toRelevantApp x t = do
   (expVarName, expVar) <- Gensym.newValueVarLocalWith "exp"
-  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize 64) 1, C.VarLocal x])
+  baseSize <- Env.getBaseSize'
+  return $ C.UpElim True expVarName t (C.PiElimDownElim expVar [C.Int (IntSize baseSize) 1, C.VarLocal x])
 
 bindLet :: [(Ident, C.Comp)] -> C.Comp -> C.Comp
 bindLet =
