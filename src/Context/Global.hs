@@ -13,6 +13,7 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Enum qualified as Enum
+import Context.Env qualified as Env
 import Context.Implicit qualified as Implicit
 import Context.Throw qualified as Throw
 import Control.Monad
@@ -104,23 +105,24 @@ registerStmtDefineResource m resourceName = do
   ensureFreshness m topNameMap resourceName
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
 
-lookup :: DD.DefiniteDescription -> App (Maybe GlobalName)
-lookup name = do
+lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
+lookup m name = do
   nameMap <- readRef' nameMap
+  dataSize <- Env.getDataSize m
   case Map.lookup name nameMap of
     Just kind ->
       return $ Just kind
     Nothing
-      | Just primType <- PT.fromDefiniteDescription name ->
+      | Just primType <- PT.fromDefiniteDescription dataSize name ->
           return $ Just $ GN.PrimType primType
-      | Just primOp <- PrimOp.fromDefiniteDescription name ->
+      | Just primOp <- PrimOp.fromDefiniteDescription dataSize name ->
           return $ Just $ GN.PrimOp primOp
       | otherwise -> do
           return Nothing
 
 lookupStrict :: Hint.Hint -> DD.DefiniteDescription -> App GlobalName
 lookupStrict m name = do
-  mGlobalName <- lookup name
+  mGlobalName <- lookup m name
   case mGlobalName of
     Just globalName ->
       return globalName

@@ -95,7 +95,7 @@ parseCachedStmtList stmtList = do
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
-  mMain <- Global.lookup mainFunctionName
+  mMain <- Global.lookup m mainFunctionName
   case mMain of
     Just (GN.TopLevelFunc _ _) ->
       return ()

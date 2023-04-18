@@ -397,7 +397,7 @@ extractConstructorList m cursorType = do
 
 getConstructorList :: Hint -> DD.DefiniteDescription -> App [DD.DefiniteDescription]
 getConstructorList m dataName = do
-  kind <- Global.lookup dataName
+  kind <- Global.lookup m dataName
   case kind of
     Just (GN.Data _ consList _) ->
       return consList

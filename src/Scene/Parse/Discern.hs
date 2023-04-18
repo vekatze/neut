@@ -187,7 +187,7 @@ resolveField :: Hint -> T.Text -> App DD.DefiniteDescription
 resolveField m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
-  candList' <- mapM Global.lookup candList
+  candList' <- mapM (Global.lookup m) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
@@ -311,7 +311,7 @@ resolveNameOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription
 resolveNameOrErr m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
-  candList' <- mapM Global.lookup candList
+  candList' <- mapM (Global.lookup m) candList
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
@@ -355,7 +355,7 @@ candFilter (from, mTo) =
 
 interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
 interpretDefiniteDescription m dd = do
-  mgn <- Global.lookup dd
+  mgn <- Global.lookup m dd
   case mgn of
     Just gn ->
       return gn

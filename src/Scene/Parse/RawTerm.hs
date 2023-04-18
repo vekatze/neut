@@ -468,8 +468,10 @@ lowTypeNumber = do
 
 primType :: Parser PT.PrimType
 primType = do
+  m <- getCurrentHint
   sizeString <- symbol
-  case PT.fromText sizeString of
+  dataSize <- lift $ Env.getDataSize m
+  case PT.fromText dataSize sizeString of
     Just primNum ->
       return primNum
     _ -> do

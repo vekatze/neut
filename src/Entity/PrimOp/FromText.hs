@@ -3,6 +3,7 @@ module Entity.PrimOp.FromText (fromDefiniteDescription) where
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.DataSize qualified as DS
 import Entity.DefiniteDescription qualified as DD
 import Entity.LocalLocator qualified as LL
 import Entity.PrimNumSize.ToInt
@@ -11,24 +12,24 @@ import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.StrictGlobalLocator qualified as SGL
 
-fromDefiniteDescription :: DD.DefiniteDescription -> Maybe PrimOp
-fromDefiniteDescription dd = do
+fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PrimOp
+fromDefiniteDescription dataSize dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
   if SGL.llvmGlobalLocator /= sgl
     then Nothing
-    else fromText $ BN.reify $ LL.baseName ll
+    else fromText dataSize $ BN.reify $ LL.baseName ll
 
-fromText :: T.Text -> Maybe PrimOp
-fromText name
+fromText :: DS.DataSize -> T.Text -> Maybe PrimOp
+fromText dataSize name
   | Just (convOpStr, rest) <- breakOnMaybe "-" name,
     Just (domTypeStr, codTypeStr) <- breakOnMaybe "-" rest,
-    Just domType <- PT.fromText domTypeStr,
-    Just codType <- PT.fromText codTypeStr,
+    Just domType <- PT.fromText dataSize domTypeStr,
+    Just codType <- PT.fromText dataSize codTypeStr,
     isValidConvOp convOpStr domType codType =
       Just $ PrimConvOp convOpStr domType codType
   | Just (opStr, typeStr) <- breakOnMaybe "-" name,
-    Just primType <- PT.fromText typeStr =
+    Just primType <- PT.fromText dataSize typeStr =
       getOp1 opStr primType
   | otherwise =
       Nothing

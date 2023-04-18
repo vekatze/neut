@@ -2,11 +2,12 @@ module Entity.Arch
   ( Arch (..),
     reify,
     reflect,
-    addressBitSize,
+    dataSizeOf,
   )
 where
 
 import Data.Text qualified as T
+import Entity.DataSize qualified as DS
 
 -- names are chosen as in https://wiki.debian.org/SupportedArchitectures
 data Arch
@@ -38,12 +39,12 @@ reflect name =
     _ ->
       Unknown name
 
-addressBitSize :: Arch -> Maybe Int
-addressBitSize arch =
+dataSizeOf :: Arch -> Maybe DS.DataSize
+dataSizeOf arch =
   case arch of
     Amd64 ->
-      Just 64
+      Just DS.DataSize64
     Arm64 ->
-      Just 64
-    Unknown _ ->
+      Just DS.DataSize64
+    _ ->
       Nothing
