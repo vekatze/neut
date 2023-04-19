@@ -1,3 +1,5 @@
+import {}
+
 variant sample-1 {
 - Foo
 - Bar(i64)
@@ -13,9 +15,12 @@ define some-private-function(_: sample-1): tau {
 }
 
 export {
-- sample-1 => my-sample-1
-- this.private.sample-2
-- Foo
-- Bar2
+- sample-2 {
+  - Bar2
+  - Foo2
+  }
+- sample-1 => my-sample {
+  - Foo => Foo-Alias
+  }
 - some-private-function
 }

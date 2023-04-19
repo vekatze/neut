@@ -4,7 +4,7 @@ import {
 }
 
 define do-something(): tau {
-  L.some-function(Foo)
+  L.some-function(Foo-Alias)
 }
 
 define do-next(): this.private.sample-2(tau) {
@@ -12,6 +12,11 @@ define do-next(): this.private.sample-2(tau) {
 }
 
 define main(): i64 {
-  let _ = L.my-sample-1-modified
+  let _ = L.my-sample-alias
+  // let _ = L.Foo2
   0
+}
+
+export {
+- L.Bar2
 }

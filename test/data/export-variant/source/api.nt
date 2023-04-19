@@ -7,8 +7,11 @@ define my-function(): tau {
 }
 
 export {
-- my-sample-1 => my-sample-1-modified
-- Foo
-- Bar2
+- my-sample => my-sample-alias {
+  - Foo-Alias
+  }
+- sample-2 {
+  - Bar2
+  }
 - some-private-function => some-function
 }
