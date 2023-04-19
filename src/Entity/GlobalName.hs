@@ -1,11 +1,13 @@
 module Entity.GlobalName (GlobalName (..)) where
 
+import Data.Binary
 import Entity.Arity
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.IsConstLike
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
-import Entity.Stmt
+import GHC.Generics (Generic)
 
 data GlobalName
   = TopLevelFunc Arity IsConstLike
@@ -14,4 +16,7 @@ data GlobalName
   | Data Arity [DD.DefiniteDescription] IsConstLike
   | DataIntro Arity Arity D.Discriminant IsConstLike
   | Resource
-  deriving (Show)
+  | Alias DD.DefiniteDescription GlobalName
+  deriving (Show, Generic)
+
+instance Binary GlobalName

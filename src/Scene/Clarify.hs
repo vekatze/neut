@@ -32,6 +32,7 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
+import Entity.IsConstLike
 import Entity.LamKind qualified as LK
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
@@ -77,7 +78,7 @@ clarifyDefList stmtList = do
     auxEnv <- Clarify.getAuxEnv >>= reduceDefMap
     return (stmtList', auxEnv)
   CompDefinition.union auxEnv
-  stmtList'' <- forM stmtList' $ \(x, (opacity, args, e)) -> do
+  stmtList'' <- forM (catMaybes stmtList') $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
     -- printNote' "==================="
     -- printNote' $ DD.reify x
@@ -106,7 +107,7 @@ withSpecializedCtx action = do
   Clarify.initialize
   action
 
-clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
+clarifyDef :: Stmt -> App (Maybe (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp)))
 clarifyDef stmt =
   case stmt of
     StmtDefine _ stmtKind _ f _ xts _ e -> do
@@ -115,22 +116,25 @@ clarifyDef stmt =
           dataType <- clarifyData name dataArgs consInfoList
           xts' <- dropFst <$> clarifyBinder IntMap.empty xts
           dataType' <- linearize xts' dataType >>= Reduce.reduce
-          return (name, (O.Transparent, map fst xts', dataType'))
+          return $ Just (name, (O.Transparent, map fst xts', dataType'))
         _ -> do
           (xts', e') <- clarifyStmtDefine xts e
-          return (f, (toLowOpacity stmtKind, xts', e'))
+          return $ Just (f, (toLowOpacity stmtKind, xts', e'))
     StmtDefineResource m name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
       discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
       copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce
-      return
-        ( name,
-          ( O.Transparent,
-            [switchValue, value],
-            C.EnumElim (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
+      return $
+        Just
+          ( name,
+            ( O.Transparent,
+              [switchValue, value],
+              C.EnumElim (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
+            )
           )
-        )
+    StmtExport {} ->
+      return Nothing
 
 clarifyData ::
   DD.DefiniteDescription ->

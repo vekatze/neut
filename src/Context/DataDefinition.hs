@@ -10,7 +10,7 @@ import Data.HashMap.Strict qualified as Map
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.Stmt (IsConstLike)
+import Entity.IsConstLike
 import Entity.Term
 import Prelude hiding (lookup, read)
 

@@ -1,6 +1,7 @@
 module Context.Global
   ( registerStmtDefine,
     registerStmtDefineResource,
+    registerStmtExport,
     lookup,
     lookupStrict,
     initialize,
@@ -28,6 +29,7 @@ import Entity.GlobalName
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Hint qualified as Hint
+import Entity.IsConstLike
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
 import Entity.Source qualified as Source
@@ -104,6 +106,12 @@ registerStmtDefineResource m resourceName = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap resourceName
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
+
+registerStmtExport :: Hint -> DD.DefiniteDescription -> DD.DefiniteDescription -> GN.GlobalName -> App ()
+registerStmtExport m alias original gn = do
+  topNameMap <- readRef' nameMap
+  ensureFreshness m topNameMap alias
+  modifyRef' nameMap $ Map.insert alias $ GN.Alias original gn
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
 lookup m name = do

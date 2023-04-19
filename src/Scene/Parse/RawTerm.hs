@@ -7,6 +7,7 @@ module Scene.Parse.RawTerm
     typeWithoutIdent,
     preVar,
     preVar',
+    parseVarOrDefiniteDescription,
   )
 where
 
@@ -574,31 +575,32 @@ foldTuplePat m topUnit@(topUnitGL, topUnitLL) es =
       let rest' = foldTuplePat m topUnit rest
       (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "Product") [e, rest'])
 
-parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
+-- parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
+parseVarOrDefiniteDescription :: Parser (Hint, Either T.Text (GL.GlobalLocator, LL.LocalLocator))
 parseVarOrDefiniteDescription = do
   (m, varText) <- var
   case DD.getLocatorPair m varText of
     Left _ ->
-      return $ Left (m, varText)
+      return (m, Left varText)
     Right (gl, ll) ->
-      return $ Right (m, gl, ll)
+      return (m, Right (gl, ll))
 
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
-  varOrDefiniteDescription <- parseVarOrDefiniteDescription
+  (m, varOrDefiniteDescription) <- parseVarOrDefiniteDescription
   choice
     [ do
         patArgs <- argList rawTermPattern
         case varOrDefiniteDescription of
-          Left (m, c) -> do
+          Left c -> do
             return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName c) patArgs)
-          Right (m, globalLocator, localLocator) -> do
+          Right (globalLocator, localLocator) -> do
             return (m, RP.Cons (RP.LocatorPair globalLocator localLocator) patArgs),
       do
         case varOrDefiniteDescription of
-          Left (m, c) ->
+          Left c ->
             return (m, RP.Var (Ident.fromText c))
-          Right (m, gl, ll) ->
+          Right (gl, ll) ->
             return (m, RP.NullaryCons gl ll)
     ]
 
@@ -838,11 +840,11 @@ rawTermVarOrDefiniteDescription = do
 
 rawTermParseSymbol :: Parser RT.RawTerm
 rawTermParseSymbol = do
-  varOrDefiniteDescription <- parseVarOrDefiniteDescription
+  (m, varOrDefiniteDescription) <- parseVarOrDefiniteDescription
   case varOrDefiniteDescription of
-    Left (m, x) ->
+    Left x ->
       return (preVar m x)
-    Right (m, globalLocator, localLocator) ->
+    Right (globalLocator, localLocator) ->
       return $ m :< RT.VarGlobal globalLocator localLocator
 
 foldReversePiElim :: Hint -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm

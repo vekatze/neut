@@ -37,6 +37,8 @@ weakenStmt stmt = do
       let discarder' = weaken discarder
       let copier' = weaken copier
       WeakStmtDefineResource m name discarder' copier'
+    StmtExport m alias dd gn ->
+      WeakStmtExport m alias dd gn
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =

@@ -33,14 +33,17 @@ import Entity.Hint
 import Entity.Ident qualified as Ident
 import Entity.Ident.Reflect qualified as Ident
 import Entity.Ident.Reify qualified as Ident
+import Entity.IsConstLike
 import Entity.Opacity qualified as O
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.Stmt
+import Entity.Term.Weaken qualified as TM
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
+import Scene.Parse.Export qualified as Parse
 import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
@@ -62,10 +65,12 @@ parse = do
     Nothing ->
       return result
 
-rememberCurrentNameSet :: Hint -> Path Abs File -> [DD.DefiniteDescription] -> App ()
-rememberCurrentNameSet m currentPath nameList = do
-  globalNameList <- mapM (Global.lookupStrict m) nameList
-  Global.insertToSourceNameMap currentPath $ zip nameList globalNameList
+saveCurrentNameSet :: Hint -> Path Abs File -> [DD.DefiniteDescription] -> App ()
+saveCurrentNameSet m currentPath nameList = do
+  nameList' <- forM nameList $ \name -> do
+    globalName <- Global.lookupStrict m name
+    return (name, globalName)
+  Global.insertToSourceNameMap currentPath nameList'
 
 parseSource :: Source.Source -> App (Either Cache.Cache [WeakStmt])
 parseSource source = do
@@ -77,13 +82,13 @@ parseSource source = do
     Just cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      rememberCurrentNameSet m path $ map getNameFromStmt stmtList
+      saveCurrentNameSet m path $ map (getNameFromWeakStmt . TM.weakenStmt) stmtList
       return $ Left cache
     Nothing -> do
       defList <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      rememberCurrentNameSet m path $ map getNameFromWeakStmt stmtList
+      saveCurrentNameSet m path $ map getNameFromWeakStmt stmtList
       UnusedVariable.registerRemarks
       return $ Right stmtList
 
@@ -95,6 +100,8 @@ parseCachedStmtList stmtList = do
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum $ AN.fromInt (length args)
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
+      StmtExport m alias dd gn ->
+        Global.registerStmtExport m alias dd gn
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -112,7 +119,9 @@ program currentSource = do
   forM_ sourceInfoList $ \(source, aliasInfo) -> do
     lift $ Global.activateTopLevelNamesInSource m source
     lift $ Alias.activateAliasInfo aliasInfo
-  concat <$> many parseStmt <* eof
+  defList <- concat <$> many parseStmt
+  exportList <- choice [parseExport, return []] <* eof
+  return $ defList ++ exportList
 
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
@@ -323,6 +332,12 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
             ]
         )
 
+parseExport :: P.Parser [RawStmt]
+parseExport = do
+  exportInfo <- Parse.parseExportBlock
+  forM exportInfo $ \(m, alias, varOrDD) -> do
+    return $ RawStmtExport m alias varOrDD
+
 parseAliasTransparent :: P.Parser RawStmt
 parseAliasTransparent = do
   parseType "alias" O.Transparent
@@ -367,4 +382,6 @@ registerTopLevelNames stmtList =
       registerTopLevelNames rest
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
+      registerTopLevelNames rest
+    RawStmtExport {} : rest -> do
       registerTopLevelNames rest

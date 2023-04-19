@@ -56,6 +56,8 @@ inferStmt mMainDD stmt =
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return $ WeakStmtDefineResource m name discarder' copier'
+    WeakStmtExport {} ->
+      return stmt
 
 getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do

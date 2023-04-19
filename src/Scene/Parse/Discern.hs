@@ -6,7 +6,6 @@ import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
@@ -30,6 +29,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
+import Entity.IsConstLike
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
 import Entity.Magic qualified as M
@@ -49,7 +49,6 @@ import Entity.Vector qualified as V
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText (toText)
 import Scene.Parse.Discern.Fallback qualified as PATF
 import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.Specialize qualified as PATS
@@ -71,6 +70,16 @@ discernStmtList stmtList =
       copier' <- discern empty copier
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
+    RawStmtExport m alias varOrDefiniteDescription : rest -> do
+      (dd, gn) <-
+        case varOrDefiniteDescription of
+          Left var -> do
+            resolveName m var
+          Right (gl, ll) -> do
+            resolveLocator m gl ll
+      Global.registerStmtExport m alias dd gn
+      rest' <- discernStmtList rest
+      return $ WeakStmtExport m alias dd gn : rest'
 
 discernStmtKind :: StmtKindF RT.RawTerm -> App (StmtKindF WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -311,6 +320,17 @@ discernBinderWithBody' nenv (mx, x, codType) binder e = do
   e' <- discern nenv'' e
   return ((mx, x', codType'), binder'', e')
 
+resolveLocator ::
+  Hint ->
+  GL.GlobalLocator ->
+  LL.LocalLocator ->
+  App (DD.DefiniteDescription, GN.GlobalName)
+resolveLocator m gl ll = do
+  sgl <- Alias.resolveAlias m gl
+  let dd = DD.new sgl ll
+  gn <- interpretDefiniteDescription m dd
+  return (dd, gn)
+
 resolveName :: Hint -> T.Text -> App (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
   nameOrErr <- resolveNameOrErr m name
@@ -361,6 +381,8 @@ interpretGlobalName m dd gn =
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
+    GN.Alias dd' gn' -> do
+      interpretGlobalName m dd' gn'
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =
@@ -631,9 +653,7 @@ castFromIntToBool e@(m :< _) = do
 
 discernGlobal :: Hint -> GL.GlobalLocator -> LL.LocalLocator -> App WT.WeakTerm
 discernGlobal m gl ll = do
-  sgl <- Alias.resolveAlias m gl
-  let dd = DD.new sgl ll
-  gn <- interpretDefiniteDescription m dd
+  (dd, gn) <- resolveLocator m gl ll
   interpretGlobalName m dd gn
 
 extendNominalEnv :: Hint -> Ident -> NominalEnv -> App NominalEnv

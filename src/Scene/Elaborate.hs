@@ -112,6 +112,8 @@ elaborateStmt stmt = do
       let result = StmtDefineResource m name discarder' copier'
       insertStmt result
       return result
+    WeakStmtExport m alias dd gn ->
+      return $ StmtExport m alias dd gn
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
@@ -120,6 +122,8 @@ insertStmt stmt = do
       let lamKind = LK.Normal $ toOpacity stmtKind
       Definition.insert (toOpacity stmtKind) f (m :< TM.PiIntro lamKind xts e)
     StmtDefineResource {} ->
+      return ()
+    StmtExport {} ->
       return ()
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
@@ -132,6 +136,8 @@ insertWeakStmt stmt = do
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
+    WeakStmtExport {} ->
+      return ()
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -145,6 +151,8 @@ insertStmtKindInfo stmt = do
         DataIntro {} ->
           return ()
     StmtDefineResource {} ->
+      return ()
+    StmtExport {} ->
       return ()
 
 elaborateStmtKind :: StmtKindF WT.WeakTerm -> App (StmtKindF TM.Term)
