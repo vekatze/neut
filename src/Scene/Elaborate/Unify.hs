@@ -128,12 +128,12 @@ simplify constraintList =
               xt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
-        (_ :< WT.Data name1 es1, _ :< WT.Data name2 es2)
+        (_ :< WT.Data name1 _ es1, _ :< WT.Data name2 _ es2)
           | name1 == name2,
             length es1 == length es2 -> do
               let cs' = zipWith (curry (,orig)) es1 es2
               simplify $ cs' ++ cs
-        (_ :< WT.DataIntro dataName1 consName1 _ dataArgs1 consArgs1, _ :< WT.DataIntro dataName2 consName2 _ dataArgs2 consArgs2)
+        (_ :< WT.DataIntro dataName1 consName1 _ _ dataArgs1 consArgs1, _ :< WT.DataIntro dataName2 consName2 _ _ dataArgs2 consArgs2)
           | dataName1 == dataName2,
             consName1 == consName2,
             length dataArgs1 == length dataArgs2,

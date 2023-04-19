@@ -1,0 +1,11 @@
+import {
+- this.api
+}
+
+define do-something(): tau {
+  some-function(Foo)
+}
+
+define main(): i64 {
+  0
+}

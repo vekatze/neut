@@ -23,9 +23,9 @@ holes term =
       holes' xts (holes e)
     _ :< WT.PiElim e es ->
       S.unions $ map holes $ e : es
-    _ :< WT.Data _ es ->
+    _ :< WT.Data _ _ es ->
       S.unions $ map holes es
-    _ :< WT.DataIntro _ _ _ dataArgs consArgs -> do
+    _ :< WT.DataIntro _ _ _ _ dataArgs consArgs -> do
       S.unions $ map holes $ dataArgs ++ consArgs
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets

@@ -27,8 +27,8 @@ data TermF a
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
-  | Data DD.DefiniteDescription [a]
-  | DataIntro DD.DefiniteDescription DD.DefiniteDescription D.Discriminant [a] [a]
+  | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
+  | DataIntro DD.DefiniteDescription DD.DefiniteDescription [DD.DefiniteDescription] D.Discriminant [a] [a]
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
@@ -67,7 +67,7 @@ isValue term =
       True
     _ :< Data {} ->
       True
-    _ :< DataIntro _ _ _ dataArgs consArgs ->
+    _ :< DataIntro _ _ _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
     _ :< Noema {} ->
       True

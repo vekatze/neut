@@ -1,0 +1,13 @@
+variant sample-1 {
+- Foo
+- Bar(i64)
+}
+
+variant sample-2(a) {
+- Foo2
+- Bar2(i64, a)
+}
+
+define some-private-function(_: sample-1): tau {
+  tau
+}

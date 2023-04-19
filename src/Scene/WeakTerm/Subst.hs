@@ -44,13 +44,13 @@ subst sub term =
       e' <- subst sub e
       es' <- mapM (subst sub) es
       return $ m :< WT.PiElim e' es'
-    m :< WT.Data name es -> do
+    m :< WT.Data name consNameList es -> do
       es' <- mapM (subst sub) es
-      return $ m :< WT.Data name es'
-    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      return $ m :< WT.Data name consNameList es'
+    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM (subst sub) dataArgs
       consArgs' <- mapM (subst sub) consArgs
-      return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst sub) es

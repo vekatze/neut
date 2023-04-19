@@ -95,13 +95,14 @@ infer' varEnv term =
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
       inferPiElim varEnv m etl etls
-    m :< WT.Data name es -> do
+    m :< WT.Data name consNameList es -> do
       (es', _) <- mapAndUnzipM (infer' varEnv) es
-      return (m :< WT.Data name es', m :< WT.Tau)
-    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      return (m :< WT.Data name consNameList es', m :< WT.Tau)
+    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       (dataArgs', _) <- mapAndUnzipM (infer' varEnv) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer' varEnv) consArgs
-      return (m :< WT.DataIntro dataName consName disc dataArgs' consArgs', m :< WT.Data dataName dataArgs')
+      let dataType = m :< WT.Data dataName consNameList dataArgs'
+      return (m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer' varEnv) es

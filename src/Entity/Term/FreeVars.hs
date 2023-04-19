@@ -36,9 +36,9 @@ freeVars term =
       let xs = freeVars e
       let ys = S.unions $ map freeVars es
       S.union xs ys
-    _ :< TM.Data _ es ->
+    _ :< TM.Data _ _ es ->
       S.unions $ map freeVars es
-    _ :< TM.DataIntro _ _ _ dataArgs consArgs -> do
+    _ :< TM.DataIntro _ _ _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
     m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets

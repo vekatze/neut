@@ -129,13 +129,13 @@ discern nenv term =
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
       return $ m :< WT.PiElim e' es'
-    m :< RT.Data name es -> do
+    m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
-      return $ m :< WT.Data name es'
-    m :< RT.DataIntro dataName consName disc dataArgs consArgs -> do
+      return $ m :< WT.Data name consNameList es'
+    m :< RT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
-      return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv >=> castFromNoemaIfNecessary nenv isNoetic) es
@@ -417,13 +417,15 @@ resolveConstructor m cons = do
 
 resolveConstructorMaybe ::
   Hint ->
-  T.Text ->
+  DD.DefiniteDescription ->
+  GN.GlobalName ->
   App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
-resolveConstructorMaybe m name = do
-  locatorOrErr <- resolveNameOrErr m name
-  case locatorOrErr of
-    Right (dd, GN.DataIntro dataArity consArity disc isConstLike) ->
+resolveConstructorMaybe m dd gn = do
+  case gn of
+    GN.DataIntro dataArity consArity disc isConstLike ->
       return $ Just (dd, dataArity, consArity, disc, isConstLike)
+    GN.Alias from gn' ->
+      resolveConstructorMaybe m from gn'
     _ ->
       return Nothing
 
@@ -432,11 +434,12 @@ resolveConstructor' ::
   DD.DefiniteDescription ->
   GN.GlobalName ->
   App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
-resolveConstructor' m dd gn =
-  case gn of
-    GN.DataIntro dataArity consArity disc isConstLike ->
-      return (dd, dataArity, consArity, disc, isConstLike)
-    _ ->
+resolveConstructor' m dd gn = do
+  mCons <- resolveConstructorMaybe m dd gn
+  case mCons of
+    Just v ->
+      return v
+    Nothing ->
       Throw.raiseError m $ DD.reify dd <> " is not a constructor"
 
 discernPatternMatrix ::
@@ -506,26 +509,27 @@ discernPattern ::
 discernPattern (m, pat) =
   case pat of
     RP.Var (I (x, _)) -> do
-      mConsInfo <- resolveConstructorMaybe m x
-      case mConsInfo of
-        Nothing -> do
+      errOrLocator <- resolveNameOrErr m x
+      case errOrLocator of
+        Left _ -> do
           x' <- Gensym.newIdentFromText x
           return ((m, PAT.Var x'), [(x, (m, x'))])
-        Just (consName, dataArity, consArity, disc, isConstLike) -> do
-          unless isConstLike $
-            Throw.raiseError m $
-              "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
-          return ((m, PAT.Cons consName disc dataArity consArity []), [])
+        Right (dd, gn) -> do
+          mCons <- resolveConstructorMaybe m dd gn
+          case mCons of
+            Nothing -> do
+              x' <- Gensym.newIdentFromText x
+              return ((m, PAT.Var x'), [(x, (m, x'))])
+            Just (consName, dataArity, consArity, disc, isConstLike) -> do
+              unless isConstLike $
+                Throw.raiseError m $
+                  "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
+              return ((m, PAT.Cons consName disc dataArity consArity []), [])
     RP.NullaryCons gl ll -> do
       sgl <- Alias.resolveAlias m gl
       let consName = DD.new sgl ll
       gn <- interpretDefiniteDescription m consName
-      case gn of
-        GN.DataIntro dataArity consArity disc _ ->
-          return ((m, PAT.Cons consName disc dataArity consArity []), [])
-        _ ->
-          Throw.raiseCritical m $
-            "the symbol `" <> DD.reify consName <> "` isn't defined as a constuctor"
+      traceDataIntro m consName gn
     RP.Cons cons args -> do
       (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
       when isConstLike $
@@ -533,6 +537,17 @@ discernPattern (m, pat) =
           "the constructor `" <> RP.showRawConsName cons <> "` can't have any arguments"
       (args', nenvList) <- mapAndUnzipM discernPattern args
       return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+
+traceDataIntro :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App ((Hint, PAT.Pattern), NominalEnv)
+traceDataIntro m consName gn =
+  case gn of
+    GN.DataIntro dataArity consArity disc _ ->
+      return ((m, PAT.Cons consName disc dataArity consArity []), [])
+    GN.Alias from gn' ->
+      traceDataIntro m from gn'
+    _ ->
+      Throw.raiseCritical m $
+        "the symbol `" <> DD.reify consName <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
 
 ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity mat =

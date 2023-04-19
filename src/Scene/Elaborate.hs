@@ -6,7 +6,6 @@ import Context.DataDefinition qualified as DataDefinition
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
-import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
@@ -25,7 +24,6 @@ import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
-import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -192,13 +190,13 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
-    m :< WT.Data name es -> do
+    m :< WT.Data name consNameList es -> do
       es' <- mapM elaborate' es
-      return $ m :< TM.Data name es'
-    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      return $ m :< TM.Data name consNameList es'
+    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM elaborate' dataArgs
       consArgs' <- mapM elaborate' consArgs
-      return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
+      return $ m :< TM.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM elaborate' es
@@ -398,19 +396,10 @@ reduceWeakType e = do
 extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
-    _ :< TM.Data dataName _ -> do
-      getConstructorList m dataName
+    _ :< TM.Data _ consNameList _ -> do
+      return consNameList
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)
-
-getConstructorList :: Hint -> DD.DefiniteDescription -> App [DD.DefiniteDescription]
-getConstructorList m dataName = do
-  kind <- Global.lookup m dataName
-  case kind of
-    Just (GN.Data _ consList _) ->
-      return consList
-    _ -> do
-      Throw.raiseCritical m $ "the datatype `" <> DD.reify dataName <> "` isn't defined"
 
 data AnswerTypeError
   = AbstractData DD.DefiniteDescription [DD.DefiniteDescription]
@@ -427,8 +416,8 @@ detectAnswerTypeError m t = do
       return [] -- opaque type variable
     _ :< TM.Pi {} ->
       return [FunctionType t]
-    _ :< TM.Data dataName dataArgs -> do
-      abstractConstructors <- getAbstractConstructors m dataName
+    _ :< TM.Data dataName consNameList dataArgs -> do
+      abstractConstructors <- catMaybes <$> mapM (getAbstractConsName m) consNameList
       if not (null abstractConstructors)
         then return [AbstractData dataName abstractConstructors]
         else do
@@ -479,11 +468,6 @@ showAnswerTypeError orig err =
         <> toText (weaken orig)
         <> "` contains an irreducible type:\n"
         <> toText (weaken t)
-
-getAbstractConstructors :: Hint -> DD.DefiniteDescription -> App [DD.DefiniteDescription]
-getAbstractConstructors m dataName = do
-  consList <- getConstructorList m dataName
-  catMaybes <$> mapM (getAbstractConsName m) consList
 
 getAbstractConsName ::
   Hint ->

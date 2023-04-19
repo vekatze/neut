@@ -183,10 +183,10 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    _ :< TM.Data name _ -> do
+    _ :< TM.Data name _ _ -> do
       let name' = DD.getFormDD name
       return $ C.UpIntro $ C.VarGlobal name' A.arityS4
-    m :< TM.DataIntro _ consName disc dataArgs consArgs -> do
+    m :< TM.DataIntro _ consName _ disc dataArgs consArgs -> do
       isEnum <- Enum.isMember consName
       baseSize <- Env.getBaseSize m
       if isEnum
@@ -301,9 +301,9 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
 isEnumType :: TM.Term -> App Bool
 isEnumType term =
   case term of
-    _ :< TM.Data dataName _ -> do
+    _ :< TM.Data dataName _ _ -> do
       Enum.isMember dataName
-    _ :< TM.PiElim (_ :< TM.Data dataName _) _ -> do
+    _ :< TM.PiElim (_ :< TM.Data dataName _ _) _ -> do
       Enum.isMember dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
       Enum.isMember dataName

@@ -40,9 +40,9 @@ toText term =
           showCons ["λ", argStr, toText e]
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
-    _ :< WT.Data name es -> do
+    _ :< WT.Data name _ es -> do
       showCons $ "{data}" <> showGlobalVariable name : map toText es
-    _ :< WT.DataIntro _ consName _ _ consArgs -> do
+    _ :< WT.DataIntro _ consName _ _ _ consArgs -> do
       showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic

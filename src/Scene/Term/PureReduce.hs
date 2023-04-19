@@ -39,13 +39,13 @@ pureReduce term =
               Subst.subst sub (m :< body) >>= pureReduce
         _ ->
           return (m :< TM.PiElim e' es')
-    m :< TM.Data name es -> do
+    m :< TM.Data name consNameList es -> do
       es' <- mapM pureReduce es
-      return $ m :< TM.Data name es'
-    m :< TM.DataIntro dataName consName disc dataArgs consArgs -> do
+      return $ m :< TM.Data name consNameList es'
+    m :< TM.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM pureReduce dataArgs
       consArgs' <- mapM pureReduce consArgs
-      return $ m :< TM.DataIntro dataName consName disc dataArgs' consArgs'
+      return $ m :< TM.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM pureReduce es

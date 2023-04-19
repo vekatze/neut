@@ -41,9 +41,9 @@ chainOf' tenv term =
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOf' tenv) es
       xs1 ++ xs2
-    _ :< TM.Data _ es ->
+    _ :< TM.Data _ _ es ->
       concatMap (chainOf' tenv) es
-    _ :< TM.DataIntro _ _ _ dataArgs consArgs ->
+    _ :< TM.DataIntro _ _ _ _ dataArgs consArgs ->
       concatMap (chainOf' tenv) $ dataArgs ++ consArgs
     m :< TM.DataElim _ xets tree -> do
       let (xs, es, ts) = unzip3 xets

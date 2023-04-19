@@ -192,7 +192,8 @@ defineData m dataName dataArgsOrNone consInfoList = do
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = Data dataName dataArgs consInfoList''
-  let dataType = constructDataType m dataName dataArgs
+  let consNameList = map (\(consName, _, _, _) -> consName) consInfoList''
+  let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
   let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
   -- let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
@@ -231,6 +232,7 @@ parseDefineVariantConstructor dataType dataName dataArgs consInfoList discrimina
     (m, consName, isConstLike, consArgs) : rest -> do
       let dataArgs' = map identPlusToVar dataArgs
       let consArgs' = map identPlusToVar consArgs
+      let consNameList = map (\(_, c, _, _) -> c) consInfoList
       let args = dataArgs ++ consArgs
       let introRule =
             RawStmtDefine
@@ -241,17 +243,18 @@ parseDefineVariantConstructor dataType dataName dataArgs consInfoList discrimina
               (AN.fromInt $ length dataArgs)
               args
               dataType
-              $ m :< RT.DataIntro dataName consName discriminant dataArgs' consArgs'
+              $ m :< RT.DataIntro dataName consName consNameList discriminant dataArgs' consArgs'
       introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 
 constructDataType ::
   Hint ->
   DD.DefiniteDescription ->
+  [DD.DefiniteDescription] ->
   [BinderF RT.RawTerm] ->
   RT.RawTerm
-constructDataType m dataName dataArgs = do
-  m :< RT.Data dataName (map identPlusToVar dataArgs)
+constructDataType m dataName consNameList dataArgs = do
+  m :< RT.Data dataName consNameList (map identPlusToVar dataArgs)
 
 parseDefineVariantClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm])
 parseDefineVariantClause = do
@@ -308,7 +311,7 @@ parseDefineStructElim ::
   BinderF RT.RawTerm ->
   App RawStmt
 parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elemType) = do
-  let structType = m :< RT.Noema (constructDataType m dataName dataArgs)
+  let structType = m :< RT.Noema (constructDataType m dataName [consName] dataArgs)
   structVarText <- Gensym.newText
   let projArgs = dataArgs ++ [(m, Ident.fromText structVarText, structType)]
   elemName' <- Throw.liftEither $ BN.reflect m $ Ident.toText elemName

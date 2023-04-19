@@ -43,13 +43,13 @@ fill sub term =
       e' <- fill sub e
       es' <- mapM (fill sub) es
       return $ m :< WT.PiElim e' es'
-    m :< WT.Data name es -> do
+    m :< WT.Data name consNameList es -> do
       es' <- mapM (fill sub) es
-      return $ m :< WT.Data name es'
-    m :< WT.DataIntro dataName consName disc dataArgs consArgs -> do
+      return $ m :< WT.Data name consNameList es'
+    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM (fill sub) dataArgs
       consArgs' <- mapM (fill sub) consArgs
-      return $ m :< WT.DataIntro dataName consName disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (fill sub) es
