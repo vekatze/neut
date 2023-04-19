@@ -9,7 +9,7 @@ import GHC.Generics
 data Cache = Cache
   { stmtList :: [Stmt],
     remarkList :: [Remark],
-    exportInfoList :: [ExportInfo]
+    exportInfoList :: [ExportClause]
   }
   deriving (Generic)
 

@@ -51,7 +51,7 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [ExportInfo]) -> App [Stmt]
+elaborate :: Either Cache.Cache ([WeakStmt], [ExportClause]) -> App [Stmt]
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -81,7 +81,7 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [ExportInfo] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList :: [ExportClause] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList exportInfoList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst

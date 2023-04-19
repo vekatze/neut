@@ -25,6 +25,7 @@ import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ExportInfo
 import Entity.GlobalName
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -107,17 +108,28 @@ registerStmtDefineResource m resourceName = do
   ensureFreshness m topNameMap resourceName
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
 
-registerStmtExport :: Hint -> DD.DefiniteDescription -> DD.DefiniteDescription -> GN.GlobalName -> App ()
-registerStmtExport m alias original gn = do
+registerStmtExport :: ExportClause -> App ()
+registerStmtExport clause = do
+  case clause of
+    Function ((m, alias), (_, original, gn)) -> do
+      registerStmtExport' m alias original $ GN.Alias original gn
+    Variant ((mData, dataAlias), (_, dataDD, dataGN)) consClauseList consNameList -> do
+      registerStmtExport' mData dataAlias dataDD $ GN.AliasData dataDD consNameList dataGN
+      mapM_ (registerStmtExport . Function) consClauseList
+
+registerStmtExport' ::
+  Hint ->
+  DD.DefiniteDescription ->
+  DD.DefiniteDescription ->
+  GlobalName ->
+  App ()
+registerStmtExport' m alias original gn = do
   if alias == original
     then return ()
     else do
       topNameMap <- readRef' nameMap
       ensureFreshness m topNameMap alias
-      modifyRef' nameMap $ Map.insert alias $ GN.Alias original gn
-      if Map.member alias topNameMap
-        then return ()
-        else modifyRef' nameMap $ Map.insert alias $ GN.Alias original gn
+      modifyRef' nameMap $ Map.insert alias gn
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
 lookup m name = do

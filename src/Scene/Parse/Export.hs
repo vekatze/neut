@@ -15,15 +15,22 @@ import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm qualified as P
 import Text.Megaparsec
 
-parseExportBlock :: P.Parser [WeakExportInfo]
+parseExportBlock :: P.Parser [WeakExportClause]
 parseExportBlock = do
   choice
     [ P.keyword "export" >> P.betweenBrace (P.manyList parseExport),
       return []
     ]
 
-parseExport :: P.Parser WeakExportInfo
+parseExport :: P.Parser WeakExportClause
 parseExport =
+  choice
+    [ try parseExportForVariant,
+      Function <$> parseExport'
+    ]
+
+parseExport' :: P.Parser WeakExportInfo
+parseExport' =
   choice
     [ try parseExportWithAlias,
       parseExportWithoutAlias
@@ -31,18 +38,24 @@ parseExport =
 
 parseExportWithAlias :: P.Parser WeakExportInfo
 parseExportWithAlias = do
-  (_, originalName) <- P.parseVarOrDefiniteDescription
+  (mOrig, originalName) <- P.parseVarOrDefiniteDescription
   P.delimiter "=>"
-  m <- P.getCurrentHint
+  mAlias <- P.getCurrentHint
   specifiedAlias <- P.baseName
   aliasDD <- lift $ Locator.attachCurrentLocator specifiedAlias
-  return (m, aliasDD, originalName)
+  return ((mAlias, aliasDD), (mOrig, originalName))
+
+parseExportForVariant :: P.Parser WeakExportClause
+parseExportForVariant = do
+  dataClause <- parseExport'
+  clauseList <- P.betweenBrace $ P.manyList parseExport'
+  return $ Variant dataClause clauseList []
 
 parseExportWithoutAlias :: P.Parser WeakExportInfo
 parseExportWithoutAlias = do
   (m, original) <- P.parseVarOrDefiniteDescription
   autoAliasDD <- getAutoAlias m original
-  return (m, autoAliasDD, original)
+  return ((m, autoAliasDD), (m, original))
 
 getAutoAlias :: Hint -> VarOrDD -> P.Parser DD.DefiniteDescription
 getAutoAlias m varOrDefiniteDescription = do

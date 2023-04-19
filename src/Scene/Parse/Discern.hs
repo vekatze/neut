@@ -378,6 +378,8 @@ interpretGlobalName m dd gn = do
       return $ m :< WT.ResourceType dd
     GN.Alias dd' gn' ->
       interpretGlobalName m dd' gn'
+    GN.AliasData dd' _ gn' ->
+      interpretGlobalName m dd' gn'
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)
 candFilter (from, mTo) =

@@ -17,6 +17,7 @@ data GlobalName
   | DataIntro Arity Arity D.Discriminant IsConstLike
   | Resource
   | Alias DD.DefiniteDescription GlobalName
+  | AliasData DD.DefiniteDescription [DD.DefiniteDescription] GlobalName
   deriving (Show, Generic)
 
 instance Binary GlobalName
