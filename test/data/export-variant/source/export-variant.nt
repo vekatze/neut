@@ -1,9 +1,14 @@
 import {
-- this.api
+- this.api => L
+- this.private
 }
 
 define do-something(): tau {
-  some-function(Foo)
+  L.some-function(Foo)
+}
+
+define do-next(): this.private.sample-2(tau) {
+  Bar2(3, tau)
 }
 
 define main(): i64 {

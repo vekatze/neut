@@ -5,7 +5,6 @@ import {
 export {
 - sample-1
 - Foo
-- sample-2
 - Bar2
 - some-private-function => some-function
 }

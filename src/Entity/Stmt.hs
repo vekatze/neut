@@ -11,7 +11,6 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
-import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
@@ -68,10 +67,6 @@ data RawStmt
       RT.RawTerm
       RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtExport
-      Hint
-      DD.DefiniteDescription -- alias
-      (Either T.Text (GL.GlobalLocator, LL.LocalLocator)) -- original
 
 getBaseName :: Hint -> Either T.Text (GL.GlobalLocator, LL.LocalLocator) -> Either Error BN.BaseName
 getBaseName m varOrDefiniteDescription =
@@ -92,7 +87,6 @@ data WeakStmt
       WT.WeakTerm
       WT.WeakTerm
   | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtExport Hint DD.DefiniteDescription DD.DefiniteDescription GN.GlobalName
 
 type Program =
   (Source.Source, [Stmt])
@@ -108,7 +102,6 @@ data Stmt
       TM.Term
       TM.Term
   | StmtDefineResource Hint DD.DefiniteDescription TM.Term TM.Term
-  | StmtExport Hint DD.DefiniteDescription DD.DefiniteDescription GN.GlobalName
   deriving (Generic)
 
 instance Binary Stmt
@@ -125,8 +118,6 @@ compress stmt =
         _ ->
           stmt
     StmtDefineResource {} ->
-      stmt
-    StmtExport {} ->
       stmt
 
 -- getNameFromStmt :: Stmt -> (DD.DefiniteDescription, Maybe GN.GlobalName)
@@ -146,8 +137,9 @@ getNameFromWeakStmt stmt =
       functionName
     WeakStmtDefineResource _ resourceName _ _ ->
       resourceName
-    WeakStmtExport _ aliasName _ _ ->
-      aliasName
+
+-- WeakStmtExport _ aliasName _ _ ->
+--   aliasName
 
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =

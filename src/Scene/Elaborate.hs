@@ -24,6 +24,7 @@ import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
+import Entity.ExportInfo
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -50,7 +51,7 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache [WeakStmt] -> App [Stmt]
+elaborate :: Either Cache.Cache ([WeakStmt], [ExportInfo]) -> App [Stmt]
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -59,8 +60,8 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       Remark.printRemarkList $ Cache.remarkList cache
       return stmtList
-    Right defList -> do
-      (analyzeDefList >=> synthesizeDefList) defList
+    Right (defList, exportInfoList) -> do
+      (analyzeDefList >=> synthesizeDefList exportInfoList) defList
 
 analyzeDefList :: [WeakStmt] -> App [WeakStmt]
 analyzeDefList defList = do
@@ -80,15 +81,20 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [WeakStmt] -> App [Stmt]
-synthesizeDefList defList = do
+synthesizeDefList :: [ExportInfo] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList exportInfoList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
-  Cache.saveCache source $ Cache.Cache {Cache.stmtList = defList', Cache.remarkList = remarkList}
+  Cache.saveCache source $
+    Cache.Cache
+      { Cache.stmtList = defList',
+        Cache.remarkList = remarkList,
+        Cache.exportInfoList = exportInfoList
+      }
   Remark.printRemarkList remarkList
   return defList'
 
@@ -110,8 +116,6 @@ elaborateStmt stmt = do
       let result = StmtDefineResource m name discarder' copier'
       insertStmt result
       return result
-    WeakStmtExport m alias dd gn ->
-      return $ StmtExport m alias dd gn
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
@@ -120,8 +124,6 @@ insertStmt stmt = do
       let lamKind = LK.Normal $ toOpacity stmtKind
       Definition.insert (toOpacity stmtKind) f (m :< TM.PiIntro lamKind xts e)
     StmtDefineResource {} ->
-      return ()
-    StmtExport {} ->
       return ()
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
@@ -134,8 +136,6 @@ insertWeakStmt stmt = do
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
-    WeakStmtExport {} ->
-      return ()
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -149,8 +149,6 @@ insertStmtKindInfo stmt = do
         DataIntro {} ->
           return ()
     StmtDefineResource {} ->
-      return ()
-    StmtExport {} ->
       return ()
 
 elaborateStmtKind :: StmtKindF WT.WeakTerm -> App (StmtKindF TM.Term)

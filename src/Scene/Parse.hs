@@ -28,6 +28,7 @@ import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ExportInfo
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident qualified as Ident
@@ -52,7 +53,7 @@ import Text.Megaparsec hiding (parse)
 -- core functions
 --
 
-parse :: App (Either Cache.Cache [WeakStmt])
+parse :: App (Either Cache.Cache ([WeakStmt], [ExportInfo]))
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -65,14 +66,19 @@ parse = do
     Nothing ->
       return result
 
-saveCurrentNameSet :: Hint -> Path Abs File -> [DD.DefiniteDescription] -> App ()
-saveCurrentNameSet m currentPath nameList = do
-  nameList' <- forM nameList $ \name -> do
-    globalName <- Global.lookupStrict m name
-    return (name, globalName)
+saveCurrentNameSet :: Hint -> Path Abs File -> [WeakStmt] -> [ExportInfo] -> App ()
+saveCurrentNameSet m currentPath stmtList exportInfoList = do
+  nameList' <- forM (map Left stmtList ++ map Right exportInfoList) $ \x -> do
+    case x of
+      Left stmt -> do
+        let name = getNameFromWeakStmt stmt
+        globalName <- Global.lookupStrict m name
+        return (name, globalName)
+      Right (_, aliasName, origName, globalName) ->
+        return (aliasName, GN.Alias origName globalName)
   Global.insertToSourceNameMap currentPath nameList'
 
-parseSource :: Source.Source -> App (Either Cache.Cache [WeakStmt])
+parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [ExportInfo]))
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- Cache.loadCache source hasCacheSet
@@ -82,15 +88,19 @@ parseSource source = do
     Just cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      saveCurrentNameSet m path $ map (getNameFromWeakStmt . TM.weakenStmt) stmtList
+      let stmtList' = map TM.weakenStmt stmtList
+      mapM_ registerExportInfo $ Cache.exportInfoList cache
+      saveCurrentNameSet m path stmtList' $ Cache.exportInfoList cache
       return $ Left cache
     Nothing -> do
-      defList <- P.run (program source) $ Source.sourceFilePath source
+      (defList, exportInfoList) <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      saveCurrentNameSet m path $ map getNameFromWeakStmt stmtList
+      exportInfoList' <- mapM resolveExportInfo exportInfoList
+      mapM_ registerExportInfo exportInfoList'
+      saveCurrentNameSet m path stmtList exportInfoList'
       UnusedVariable.registerRemarks
-      return $ Right stmtList
+      return $ Right (stmtList, exportInfoList')
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
@@ -100,8 +110,10 @@ parseCachedStmtList stmtList = do
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum $ AN.fromInt (length args)
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
-      StmtExport m alias dd gn ->
-        Global.registerStmtExport m alias dd gn
+
+registerExportInfo :: ExportInfo -> App ()
+registerExportInfo (m, alias, dd, gn) =
+  Global.registerStmtExport m alias dd gn
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -112,7 +124,7 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser [RawStmt]
+program :: Source.Source -> P.Parser ([RawStmt], [WeakExportInfo])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
@@ -120,8 +132,8 @@ program currentSource = do
     lift $ Global.activateTopLevelNamesInSource m source
     lift $ Alias.activateAliasInfo aliasInfo
   defList <- concat <$> many parseStmt
-  exportList <- choice [parseExport, return []] <* eof
-  return $ defList ++ exportList
+  exportList <- choice [Parse.parseExportBlock, return []] <* eof
+  return (defList, exportList)
 
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
@@ -335,12 +347,6 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
             ]
         )
 
-parseExport :: P.Parser [RawStmt]
-parseExport = do
-  exportInfo <- Parse.parseExportBlock
-  forM exportInfo $ \(m, alias, varOrDD) -> do
-    return $ RawStmtExport m alias varOrDD
-
 parseAliasTransparent :: P.Parser RawStmt
 parseAliasTransparent = do
   parseType "alias" O.Transparent
@@ -386,5 +392,13 @@ registerTopLevelNames stmtList =
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
       registerTopLevelNames rest
-    RawStmtExport {} : rest -> do
-      registerTopLevelNames rest
+
+resolveExportInfo :: WeakExportInfo -> App ExportInfo
+resolveExportInfo (m, alias, varOrDefiniteDescription) = do
+  (dd, gn) <-
+    case varOrDefiniteDescription of
+      Left var -> do
+        Discern.resolveName m var
+      Right (gl, ll) -> do
+        Discern.resolveLocator m gl ll
+  return (m, alias, dd, gn)

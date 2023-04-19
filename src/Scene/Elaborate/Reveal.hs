@@ -36,8 +36,6 @@ revealStmt stmt =
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier
       return $ WeakStmtDefineResource m name discarder' copier'
-    WeakStmtExport m alias dd gn ->
-      return $ WeakStmtExport m alias dd gn
 
 reveal' :: BoundVarEnv -> WT.WeakTerm -> App WT.WeakTerm
 reveal' varEnv term =

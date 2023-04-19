@@ -1,4 +1,9 @@
-module Scene.Parse.Discern (discernStmtList) where
+module Scene.Parse.Discern
+  ( discernStmtList,
+    resolveName,
+    resolveLocator,
+  )
+where
 
 import Context.Alias qualified as Alias
 import Context.App
@@ -70,16 +75,6 @@ discernStmtList stmtList =
       copier' <- discern empty copier
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
-    RawStmtExport m alias varOrDefiniteDescription : rest -> do
-      (dd, gn) <-
-        case varOrDefiniteDescription of
-          Left var -> do
-            resolveName m var
-          Right (gl, ll) -> do
-            resolveLocator m gl ll
-      Global.registerStmtExport m alias dd gn
-      rest' <- discernStmtList rest
-      return $ WeakStmtExport m alias dd gn : rest'
 
 discernStmtKind :: StmtKindF RT.RawTerm -> App (StmtKindF WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -356,7 +351,7 @@ resolveNameOrErr m name = do
       return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
 interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
-interpretGlobalName m dd gn =
+interpretGlobalName m dd gn = do
   case gn of
     GN.TopLevelFunc arity isConstLike ->
       if isConstLike
@@ -381,7 +376,7 @@ interpretGlobalName m dd gn =
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
-    GN.Alias dd' gn' -> do
+    GN.Alias dd' gn' ->
       interpretGlobalName m dd' gn'
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)

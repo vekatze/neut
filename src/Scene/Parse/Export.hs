@@ -7,6 +7,7 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error
+import Entity.ExportInfo
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
@@ -14,27 +15,21 @@ import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm qualified as P
 import Text.Megaparsec
 
-type VarOrDD =
-  (Either T.Text (GL.GlobalLocator, LL.LocalLocator))
-
-type AliasName =
-  DD.DefiniteDescription
-
-parseExportBlock :: P.Parser [(Hint, AliasName, VarOrDD)]
+parseExportBlock :: P.Parser [WeakExportInfo]
 parseExportBlock = do
   choice
     [ P.keyword "export" >> P.betweenBrace (P.manyList parseExport),
       return []
     ]
 
-parseExport :: P.Parser (Hint, AliasName, VarOrDD)
+parseExport :: P.Parser WeakExportInfo
 parseExport =
   choice
     [ try parseExportWithAlias,
       parseExportWithoutAlias
     ]
 
-parseExportWithAlias :: P.Parser (Hint, AliasName, VarOrDD)
+parseExportWithAlias :: P.Parser WeakExportInfo
 parseExportWithAlias = do
   (_, originalName) <- P.parseVarOrDefiniteDescription
   P.delimiter "=>"
@@ -43,7 +38,7 @@ parseExportWithAlias = do
   aliasDD <- lift $ Locator.attachCurrentLocator specifiedAlias
   return (m, aliasDD, originalName)
 
-parseExportWithoutAlias :: P.Parser (Hint, AliasName, VarOrDD)
+parseExportWithoutAlias :: P.Parser WeakExportInfo
 parseExportWithoutAlias = do
   (m, original) <- P.parseVarOrDefiniteDescription
   autoAliasDD <- getAutoAlias m original
