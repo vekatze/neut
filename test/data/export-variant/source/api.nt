@@ -2,8 +2,12 @@ import {
 - this.private
 }
 
+define my-function(): tau {
+  tau
+}
+
 export {
-- sample-1
+- my-sample-1 => my-sample-1-modified
 - Foo
 - Bar2
 - some-private-function => some-function

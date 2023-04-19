@@ -109,9 +109,15 @@ registerStmtDefineResource m resourceName = do
 
 registerStmtExport :: Hint -> DD.DefiniteDescription -> DD.DefiniteDescription -> GN.GlobalName -> App ()
 registerStmtExport m alias original gn = do
-  topNameMap <- readRef' nameMap
-  ensureFreshness m topNameMap alias
-  modifyRef' nameMap $ Map.insert alias $ GN.Alias original gn
+  if alias == original
+    then return ()
+    else do
+      topNameMap <- readRef' nameMap
+      ensureFreshness m topNameMap alias
+      modifyRef' nameMap $ Map.insert alias $ GN.Alias original gn
+      if Map.member alias topNameMap
+        then return ()
+        else modifyRef' nameMap $ Map.insert alias $ GN.Alias original gn
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
 lookup m name = do

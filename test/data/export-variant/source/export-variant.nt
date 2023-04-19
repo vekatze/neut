@@ -12,5 +12,6 @@ define do-next(): this.private.sample-2(tau) {
 }
 
 define main(): i64 {
+  let _ = L.my-sample-1-modified
   0
 }

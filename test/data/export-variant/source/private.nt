@@ -11,3 +11,11 @@ variant sample-2(a) {
 define some-private-function(_: sample-1): tau {
   tau
 }
+
+export {
+- sample-1 => my-sample-1
+- this.private.sample-2
+- Foo
+- Bar2
+- some-private-function
+}

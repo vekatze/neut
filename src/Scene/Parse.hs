@@ -19,6 +19,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
@@ -76,7 +77,9 @@ saveCurrentNameSet m currentPath stmtList exportInfoList = do
         return (name, globalName)
       Right (_, aliasName, origName, globalName) ->
         return (aliasName, GN.Alias origName globalName)
-  Global.insertToSourceNameMap currentPath nameList'
+  let exportedNameSet = S.fromList $ map (\(_, name, _, _) -> name) exportInfoList
+  let exportedNameList = filter (\(dom, _) -> S.member dom exportedNameSet) nameList'
+  Global.insertToSourceNameMap currentPath exportedNameList
 
 parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [ExportInfo]))
 parseSource source = do
