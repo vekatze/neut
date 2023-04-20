@@ -8,6 +8,7 @@ import Context.Alias qualified as Alias
 import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.Env qualified as Env
+import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -33,7 +34,8 @@ import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
-import Scene.Parse.Import qualified as Parse
+import Scene.Parse.Export
+import Scene.Parse.Import
 import Scene.Source.ShiftToLatest qualified as Source
 
 type IsCacheAvailable =
@@ -198,9 +200,14 @@ getChildren currentSource = do
       return sourceList
     Nothing -> do
       let path = Source.sourceFilePath currentSource
-      (sourceList, _) <- unzip <$> ParseCore.run (Parse.parseImportBlock currentSource) path
+      sourceList <- parseSourceHeader currentSource path
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
       return sourceList
+
+parseSourceHeader :: Source.Source -> Path Abs File -> App [Source.Source]
+parseSourceHeader currentSource path = do
+  Locator.initialize
+  map fst <$> ParseCore.run (parseImportBlock currentSource <* parseExportBlock) path
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =

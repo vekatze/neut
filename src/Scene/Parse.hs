@@ -110,11 +110,11 @@ program :: Source.Source -> P.Parser ([RawStmt], [NA.RawNameArrow])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
+  nameArrowList <- Parse.parseExportBlock
   forM_ sourceInfoList $ \(source, aliasInfo) -> do
     lift $ Global.activateTopLevelNamesInSource m source
     lift $ Alias.activateAliasInfo aliasInfo
-  defList <- concat <$> many parseStmt
-  nameArrowList <- choice [Parse.parseExportBlock, return []] <* eof
+  defList <- concat <$> many parseStmt <* eof
   return (defList, nameArrowList)
 
 parseStmt :: P.Parser [RawStmt]

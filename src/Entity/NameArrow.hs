@@ -27,11 +27,12 @@ data RawNameArrow
   | Variant
       InnerRawNameArrow -- original name
       VariantRelatedArrows -- arrows for constructors/destructors
-  deriving (Generic)
+  deriving (Generic, Show)
 
 data VariantRelatedArrows
   = Explicit [InnerRawNameArrow]
   | Automatic Hint -- "{..}"
+  deriving (Show)
 
 type RawNameArrowCod =
   (Hint, VarOrLocator)

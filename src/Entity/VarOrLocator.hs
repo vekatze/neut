@@ -7,3 +7,4 @@ import Entity.LocalLocator qualified as LL
 data VarOrLocator
   = Var T.Text
   | Locator GL.GlobalLocator LL.LocalLocator
+  deriving (Show)

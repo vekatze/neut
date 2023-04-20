@@ -24,15 +24,19 @@ parseExportBlock = do
     ]
 
 parseExport :: P.Parser NA.RawNameArrow
-parseExport =
+parseExport = do
+  nameArrow <- parseNameArrow
   choice
-    [ try parseExportForVariantWithWildcard,
-      try parseExportForVariant,
-      NA.Function <$> parseExport'
+    [ P.betweenBrace $ do
+        choice
+          [ try $ parseExportForVariantWithWildcard nameArrow,
+            parseExportForVariant nameArrow
+          ],
+      return $ NA.Function nameArrow
     ]
 
-parseExport' :: P.Parser NA.InnerRawNameArrow
-parseExport' =
+parseNameArrow :: P.Parser NA.InnerRawNameArrow
+parseNameArrow =
   choice
     [ try parseExportWithAlias,
       parseExportWithoutAlias
@@ -53,18 +57,16 @@ parseExportWithAlias = do
   aliasDD <- lift $ Locator.attachPublicCurrentLocator specifiedAlias' -- exported names are public
   return ((mAlias, aliasDD), (mOrig, originalName))
 
-parseExportForVariant :: P.Parser NA.RawNameArrow
-parseExportForVariant = do
-  dataClause <- parseExport'
-  clauseList <- P.betweenBrace $ P.manyList parseExport'
-  return $ NA.Variant dataClause (NA.Explicit clauseList)
+parseExportForVariant :: NA.InnerRawNameArrow -> P.Parser NA.RawNameArrow
+parseExportForVariant dataNameArrow = do
+  clauseList <- P.manyList parseNameArrow
+  return $ NA.Variant dataNameArrow (NA.Explicit clauseList)
 
-parseExportForVariantWithWildcard :: P.Parser NA.RawNameArrow
-parseExportForVariantWithWildcard = do
-  dataClause <- parseExport'
+parseExportForVariantWithWildcard :: NA.InnerRawNameArrow -> P.Parser NA.RawNameArrow
+parseExportForVariantWithWildcard dataNameArrow = do
   m <- P.getCurrentHint
-  P.betweenBrace $ P.delimiter ".."
-  return $ NA.Variant dataClause $ NA.Automatic m
+  P.delimiter ".."
+  return $ NA.Variant dataNameArrow $ NA.Automatic m
 
 parseExportWithoutAlias :: P.Parser NA.InnerRawNameArrow
 parseExportWithoutAlias = do
