@@ -331,21 +331,19 @@ discernNameArrow :: NA.RawNameArrow -> App NA.NameArrow
 discernNameArrow clause = do
   case clause of
     NA.Function clauseInfo -> do
-      nameArrow@(_, (m, dd, gn)) <- discernInnerNameArrow clauseInfo
-      (_, _, gn') <- resolveAlias m dd gn
-      ensureNonConstructor m gn'
+      nameArrow@(_, (m, consGN)) <- discernInnerNameArrow clauseInfo
+      ensureNonConstructor m $ traceGlobalName consGN
       return $ NA.Function nameArrow
-    NA.Variant (from, (mOrig, origVarOrLocator)) consClauseInfoList _ -> do
+    NA.Variant (from, (mOrig, origVarOrLocator)) consArrowList -> do
       (_, dataDD, dataGN) <- resolveVarOrLocator mOrig origVarOrLocator
       availableConsList <- getConsListByGlobalName mOrig dataGN
-      consClauseInfoList' <- mapM discernInnerNameArrow consClauseInfoList
-      suppliedConsList <- getSuppliedConsList availableConsList consClauseInfoList'
-      return $ NA.Variant (from, (mOrig, dataDD, dataGN)) consClauseInfoList' suppliedConsList
+      consArrowList' <- mapM discernInnerNameArrow consArrowList
+      suppliedConsList <- getSuppliedConsList availableConsList consArrowList'
+      return $ NA.Variant (from, (mOrig, GN.AliasData dataDD suppliedConsList dataGN)) consArrowList'
 
 getSuppliedConsList :: [DD.DefiniteDescription] -> [NA.InnerNameArrow] -> App [DD.DefiniteDescription]
-getSuppliedConsList availableConsList consClauseInfoList' = do
-  resolvedConsInfoList <- forM consClauseInfoList' $ \(_, (m, consDD, consGN)) -> do
-    resolveAlias m consDD consGN
+getSuppliedConsList availableConsList consArrowList = do
+  resolvedConsInfoList <- mapM traceInnerNameArrow consArrowList
   forM_ resolvedConsInfoList $ \(mCons, consDD, consGN) ->
     case (consDD `elem` availableConsList, consGN) of
       (False, _) ->
@@ -366,9 +364,28 @@ ensureNonConstructor m gn =
     _ ->
       return ()
 
+traceGlobalName :: GN.GlobalName -> GN.GlobalName
+traceGlobalName gn =
+  case gn of
+    GN.Alias _ gn' ->
+      traceGlobalName gn'
+    GN.AliasData _ _ gn' ->
+      traceGlobalName gn'
+    _ ->
+      gn
+
+traceInnerNameArrow :: NA.InnerNameArrow -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
+traceInnerNameArrow ((mAlias, aliasDD), (mOrig, origGN)) =
+  case origGN of
+    GN.Alias newDD gn' ->
+      traceInnerNameArrow ((mAlias, newDD), (mOrig, gn'))
+    _ ->
+      return (mAlias, aliasDD, origGN)
+
 discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.InnerNameArrow
-discernInnerNameArrow nameArrow = do
-  mapM (uncurry resolveVarOrLocator) nameArrow
+discernInnerNameArrow (dom, (m, varOrLocator)) = do
+  (_, dd, gn) <- resolveVarOrLocator m varOrLocator
+  return (dom, (m, GN.Alias dd gn))
 
 getConsListByGlobalName :: Hint -> GN.GlobalName -> App [DD.DefiniteDescription]
 getConsListByGlobalName m gn =

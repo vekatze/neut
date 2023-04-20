@@ -19,7 +19,6 @@ data NameArrowF a
   | Variant
       a -- original name
       [a] -- arrows for constructors/destructors
-      [DD.DefiniteDescription] -- a list of (possibly restricted) constructors
   deriving (Generic)
 
 instance Binary a => Binary (NameArrowF a)
@@ -43,4 +42,4 @@ type RawNameArrowCod =
   (Hint, VarOrLocator)
 
 type NameArrowCod =
-  (Hint, DD.DefiniteDescription, GN.GlobalName)
+  (Hint, GN.GlobalName)

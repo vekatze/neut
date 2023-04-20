@@ -111,10 +111,10 @@ registerStmtDefineResource m resourceName = do
 registerStmtExport :: NA.NameArrow -> App ()
 registerStmtExport arrow = do
   case arrow of
-    NA.Function ((m, alias), (_, original, gn)) -> do
-      registerStmtExport' m alias $ GN.Alias original gn
-    NA.Variant ((mData, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList -> do
-      registerStmtExport' mData dataAlias $ GN.AliasData dataDD consNameList dataGN
+    NA.Function ((m, alias), (_, origGN)) -> do
+      registerStmtExport' m alias origGN
+    NA.Variant ((mData, dataAlias), (_, dataGN)) consArrowList -> do
+      registerStmtExport' mData dataAlias dataGN
       mapM_ (registerStmtExport . NA.Function) consArrowList
 
 registerStmtExport' ::
@@ -185,12 +185,11 @@ saveCurrentNameSet currentPath nameArrowList = do
     case nameArrow of
       NA.Function innerNameArrow ->
         return [reifyNameArrow innerNameArrow]
-      NA.Variant ((_, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList -> do
-        let gn = GN.AliasData dataDD consNameList dataGN
+      NA.Variant domArrow consArrowList -> do
         let consInfoList' = map reifyNameArrow consArrowList
-        return $ (dataAlias, gn) : consInfoList'
+        return $ reifyNameArrow domArrow : consInfoList'
   insertToSourceNameMap currentPath nameList'
 
 reifyNameArrow :: NA.InnerNameArrow -> (DD.DefiniteDescription, GN.GlobalName)
-reifyNameArrow ((_, aliasName), (_, origName, globalName)) = do
-  (aliasName, GN.Alias origName globalName)
+reifyNameArrow ((_, aliasName), (_, origDD)) = do
+  (aliasName, origDD)

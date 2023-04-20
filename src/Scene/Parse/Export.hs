@@ -48,7 +48,7 @@ parseExportForVariant :: P.Parser NA.RawNameArrow
 parseExportForVariant = do
   dataClause <- parseExport'
   clauseList <- P.betweenBrace $ P.manyList parseExport'
-  return $ NA.Variant dataClause clauseList []
+  return $ NA.Variant dataClause clauseList
 
 parseExportWithoutAlias :: P.Parser NA.InnerRawNameArrow
 parseExportWithoutAlias = do
