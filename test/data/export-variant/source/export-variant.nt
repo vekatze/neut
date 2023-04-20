@@ -8,15 +8,18 @@ define do-something(): tau {
 }
 
 define do-next(): this.private.sample-2(tau) {
-  Bar2(3, tau)
+  Foo2
 }
 
 define main(): i64 {
   let _ = L.my-sample-alias
-  // let _ = L.Foo2
+  // match L.Foo2: L.sample-2(tau) {
+  // }
   0
+  // let _ = L.Foo2
+  // 0
 }
 
-export {
-- L.Bar2
-}
+// export {
+// - Foo-Alias
+// }

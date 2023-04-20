@@ -11,7 +11,9 @@ export {
   - Foo-Alias
   }
 - sample-2 {
-  - Bar2
+  - Foo2
   }
+- my-function
 - some-private-function => some-function
+// - other-private-function => test
 }

@@ -14,13 +14,17 @@ define some-private-function(_: sample-1): tau {
   tau
 }
 
+define other-private-function(): tau {
+  tau
+}
+
 export {
 - sample-2 {
-  - Bar2
   - Foo2
   }
 - sample-1 => my-sample {
   - Foo => Foo-Alias
+  - Bar
   }
 - some-private-function
 }
