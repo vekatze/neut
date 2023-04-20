@@ -4,6 +4,7 @@ module Entity.BaseName
     reify,
     reflect,
     reflect',
+    hole,
     form,
     sigmaName,
     lambdaName,
@@ -75,6 +76,10 @@ empty =
 this :: BaseName
 this =
   MakeBaseName "this"
+
+hole :: BaseName
+hole =
+  MakeBaseName "_"
 
 base :: BaseName
 base =

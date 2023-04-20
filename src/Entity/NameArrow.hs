@@ -1,5 +1,6 @@
 module Entity.NameArrow
   ( RawNameArrow (..),
+    VariantRelatedArrows (..),
     NameArrow,
     InnerRawNameArrow,
     reify,
@@ -25,8 +26,12 @@ data RawNameArrow
   = Function InnerRawNameArrow
   | Variant
       InnerRawNameArrow -- original name
-      [InnerRawNameArrow] -- arrows for constructors/destructors
+      VariantRelatedArrows -- arrows for constructors/destructors
   deriving (Generic)
+
+data VariantRelatedArrows
+  = Explicit [InnerRawNameArrow]
+  | Automatic Hint -- "{..}"
 
 type RawNameArrowCod =
   (Hint, VarOrLocator)

@@ -1,5 +1,7 @@
 module Scene.Parse.Export (parseExportBlock) where
 
+import Context.App
+import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Control.Monad.Trans
@@ -24,7 +26,8 @@ parseExportBlock = do
 parseExport :: P.Parser NA.RawNameArrow
 parseExport =
   choice
-    [ try parseExportForVariant,
+    [ try parseExportForVariantWithWildcard,
+      try parseExportForVariant,
       NA.Function <$> parseExport'
     ]
 
@@ -41,25 +44,38 @@ parseExportWithAlias = do
   P.delimiter "=>"
   mAlias <- P.getCurrentHint
   specifiedAlias <- P.baseName
-  aliasDD <- lift $ Locator.attachPublicCurrentLocator specifiedAlias -- exported names are public
+  specifiedAlias' <-
+    if specifiedAlias /= BN.hole
+      then return specifiedAlias
+      else do
+        unusedVar <- lift Gensym.newTextForHole
+        return $ BN.fromText unusedVar
+  aliasDD <- lift $ Locator.attachPublicCurrentLocator specifiedAlias' -- exported names are public
   return ((mAlias, aliasDD), (mOrig, originalName))
 
 parseExportForVariant :: P.Parser NA.RawNameArrow
 parseExportForVariant = do
   dataClause <- parseExport'
   clauseList <- P.betweenBrace $ P.manyList parseExport'
-  return $ NA.Variant dataClause clauseList
+  return $ NA.Variant dataClause (NA.Explicit clauseList)
+
+parseExportForVariantWithWildcard :: P.Parser NA.RawNameArrow
+parseExportForVariantWithWildcard = do
+  dataClause <- parseExport'
+  m <- P.getCurrentHint
+  P.betweenBrace $ P.delimiter ".."
+  return $ NA.Variant dataClause $ NA.Automatic m
 
 parseExportWithoutAlias :: P.Parser NA.InnerRawNameArrow
 parseExportWithoutAlias = do
   (m, original) <- P.parseVarOrLocator
-  autoAliasDD <- getAutoAlias m original
+  autoAliasDD <- lift $ getDefaultAlias m original
   return ((m, autoAliasDD), (m, original))
 
-getAutoAlias :: Hint -> VarOrLocator -> P.Parser DD.DefiniteDescription
-getAutoAlias m varOrLocator = do
-  baseName <- lift $ Throw.liftEither $ getBaseName m varOrLocator
-  lift $ Locator.attachPublicCurrentLocator baseName -- exported names are public
+getDefaultAlias :: Hint -> VarOrLocator -> App DD.DefiniteDescription
+getDefaultAlias m varOrLocator = do
+  baseName <- Throw.liftEither $ getBaseName m varOrLocator
+  Locator.attachPublicCurrentLocator baseName -- exported names are public
 
 getBaseName :: Hint -> VarOrLocator -> Either Error BN.BaseName
 getBaseName m varOrLocator =
