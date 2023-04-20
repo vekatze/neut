@@ -1,4 +1,9 @@
-module Entity.GlobalName (GlobalName (..)) where
+module Entity.GlobalName
+  ( GlobalName (..),
+    AliasConsName,
+    ResolvedConsName,
+  )
+where
 
 import Data.Binary
 import Entity.Arity
@@ -17,8 +22,14 @@ data GlobalName
   | DataIntro Arity Arity D.Discriminant IsConstLike
   | Resource
   | Alias DD.DefiniteDescription GlobalName
-  | AliasData DD.DefiniteDescription [DD.DefiniteDescription] GlobalName
+  | AliasData DD.DefiniteDescription [(AliasConsName, ResolvedConsName)] GlobalName
   | Projection Arity IsConstLike
   deriving (Show, Generic)
+
+type AliasConsName =
+  DD.DefiniteDescription
+
+type ResolvedConsName =
+  DD.DefiniteDescription
 
 instance Binary GlobalName
