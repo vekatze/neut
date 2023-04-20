@@ -5,15 +5,11 @@ import Data.Binary
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
-import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.Error
-import Entity.GlobalLocator qualified as GL
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.LocalLocator qualified as LL
 import Entity.Opacity qualified as O
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
@@ -68,14 +64,6 @@ data RawStmt
       RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
 
-getBaseName :: Hint -> Either T.Text (GL.GlobalLocator, LL.LocalLocator) -> Either Error BN.BaseName
-getBaseName m varOrDefiniteDescription =
-  case varOrDefiniteDescription of
-    Left var ->
-      BN.reflect m var
-    Right (_, ll) ->
-      Right $ LL.baseName ll
-
 data WeakStmt
   = WeakStmtDefine
       IsConstLike
@@ -120,16 +108,6 @@ compress stmt =
     StmtDefineResource {} ->
       stmt
 
--- getNameFromStmt :: Stmt -> (DD.DefiniteDescription, Maybe GN.GlobalName)
--- getNameFromStmt stmt =
---   case stmt of
---     StmtDefine _ _ _ functionName _ _ _ _ ->
---       (functionName, Nothing)
---     StmtDefineResource _ resourceName _ _ ->
---       (resourceName, Nothing)
---     StmtExport _ name globalName ->
---       (name, Just globalName)
-
 getNameFromWeakStmt :: WeakStmt -> DD.DefiniteDescription
 getNameFromWeakStmt stmt =
   case stmt of
@@ -137,9 +115,6 @@ getNameFromWeakStmt stmt =
       functionName
     WeakStmtDefineResource _ resourceName _ _ ->
       resourceName
-
--- WeakStmtExport _ aliasName _ _ ->
---   aliasName
 
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =

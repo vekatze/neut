@@ -24,13 +24,13 @@ import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
-import Entity.ExportInfo
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as Magic
+import Entity.NameArrow qualified as NA
 import Entity.OS qualified as OS
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
@@ -51,7 +51,7 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [ExportClause]) -> App [Stmt]
+elaborate :: Either Cache.Cache ([WeakStmt], [NA.NameArrow]) -> App [Stmt]
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -60,8 +60,8 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       Remark.printRemarkList $ Cache.remarkList cache
       return stmtList
-    Right (defList, exportInfoList) -> do
-      (analyzeDefList >=> synthesizeDefList exportInfoList) defList
+    Right (defList, nameArrowList) -> do
+      (analyzeDefList >=> synthesizeDefList nameArrowList) defList
 
 analyzeDefList :: [WeakStmt] -> App [WeakStmt]
 analyzeDefList defList = do
@@ -81,8 +81,8 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [ExportClause] -> [WeakStmt] -> App [Stmt]
-synthesizeDefList exportInfoList defList = do
+synthesizeDefList :: [NA.NameArrow] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList nameArrowList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
@@ -93,7 +93,7 @@ synthesizeDefList exportInfoList defList = do
     Cache.Cache
       { Cache.stmtList = defList',
         Cache.remarkList = remarkList,
-        Cache.exportInfoList = exportInfoList
+        Cache.nameArrowList = nameArrowList
       }
   Remark.printRemarkList remarkList
   return defList'

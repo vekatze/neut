@@ -1,7 +1,7 @@
 module Entity.Cache where
 
 import Data.Binary
-import Entity.ExportInfo
+import Entity.NameArrow qualified as NA
 import Entity.Remark
 import Entity.Stmt
 import GHC.Generics
@@ -9,7 +9,7 @@ import GHC.Generics
 data Cache = Cache
   { stmtList :: [Stmt],
     remarkList :: [Remark],
-    exportInfoList :: [ExportClause]
+    nameArrowList :: [NA.NameArrow]
   }
   deriving (Generic)
 

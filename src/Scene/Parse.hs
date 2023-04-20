@@ -20,7 +20,6 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
@@ -30,13 +29,13 @@ import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.ExportInfo
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident qualified as Ident
 import Entity.Ident.Reflect qualified as Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.IsConstLike
+import Entity.NameArrow qualified as NA
 import Entity.Opacity qualified as O
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
@@ -55,7 +54,7 @@ import Text.Megaparsec hiding (parse)
 -- core functions
 --
 
-parse :: App (Either Cache.Cache ([WeakStmt], [ExportClause]))
+parse :: App (Either Cache.Cache ([WeakStmt], [NA.NameArrow]))
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -68,30 +67,7 @@ parse = do
     Nothing ->
       return result
 
-saveCurrentNameSet :: Hint -> Path Abs File -> [WeakStmt] -> [ExportClause] -> App ()
-saveCurrentNameSet m currentPath stmtList exportInfoList = do
-  nameListList' <- forM (map Left stmtList ++ map Right exportInfoList) $ \x -> do
-    case x of
-      Left stmt -> do
-        let name = getNameFromWeakStmt stmt
-        globalName <- Global.lookupStrict m name
-        return [(name, globalName)]
-      Right (Function exportInfo) ->
-        return [reifyExportInfo exportInfo]
-      Right (Variant ((_, dataAlias), (_, dataDD, dataGN)) consClauseList consNameList) -> do
-        let gn = GN.AliasData dataDD consNameList dataGN
-        let consInfoList' = map reifyExportInfo consClauseList
-        return $ (dataAlias, gn) : consInfoList'
-  let nameList' = concat nameListList'
-  let exportedNameSet = S.fromList $ extractName exportInfoList
-  let exportedNameList = filter (\(dom, _) -> S.member dom exportedNameSet) nameList'
-  Global.insertToSourceNameMap currentPath exportedNameList
-
-reifyExportInfo :: ExportInfo -> (DD.DefiniteDescription, GN.GlobalName)
-reifyExportInfo ((_, aliasName), (_, origName, globalName)) = do
-  (aliasName, GN.Alias origName globalName)
-
-parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [ExportClause]))
+parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [NA.NameArrow]))
 parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- Cache.loadCache source hasCacheSet
@@ -102,18 +78,18 @@ parseSource source = do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       let stmtList' = map TM.weakenStmt stmtList
-      mapM_ registerExportClause $ Cache.exportInfoList cache
-      saveCurrentNameSet m path stmtList' $ Cache.exportInfoList cache
+      mapM_ Global.registerStmtExport $ Cache.nameArrowList cache
+      Global.saveCurrentNameSet m path stmtList' $ Cache.nameArrowList cache
       return $ Left cache
     Nothing -> do
-      (defList, exportInfoList) <- P.run (program source) $ Source.sourceFilePath source
+      (defList, nameArrowList) <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      exportInfoList' <- mapM resolveExportClause exportInfoList
-      mapM_ registerExportClause exportInfoList'
-      saveCurrentNameSet m path stmtList exportInfoList'
+      nameArrowList' <- mapM Discern.discernNameArrow nameArrowList
+      mapM_ Global.registerStmtExport nameArrowList'
+      Global.saveCurrentNameSet m path stmtList nameArrowList'
       UnusedVariable.registerRemarks
-      return $ Right (stmtList, exportInfoList')
+      return $ Right (stmtList, nameArrowList')
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
@@ -124,10 +100,6 @@ parseCachedStmtList stmtList = do
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
 
-registerExportClause :: ExportClause -> App ()
-registerExportClause =
-  Global.registerStmtExport
-
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
   mMain <- Global.lookup m mainFunctionName
@@ -137,7 +109,7 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [WeakExportClause])
+program :: Source.Source -> P.Parser ([RawStmt], [NA.RawNameArrow])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
@@ -145,8 +117,8 @@ program currentSource = do
     lift $ Global.activateTopLevelNamesInSource m source
     lift $ Alias.activateAliasInfo aliasInfo
   defList <- concat <$> many parseStmt
-  exportList <- choice [Parse.parseExportBlock, return []] <* eof
-  return (defList, exportList)
+  nameArrowList <- choice [Parse.parseExportBlock, return []] <* eof
+  return (defList, nameArrowList)
 
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
@@ -405,81 +377,3 @@ registerTopLevelNames stmtList =
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
       registerTopLevelNames rest
-
-resolveExportClause :: WeakExportClause -> App ExportClause
-resolveExportClause clause = do
-  case clause of
-    Function clauseInfo -> do
-      exportInfo@(_, (m, _, gn)) <- resolveClauseInfo clauseInfo
-      ensureNonConstructor m gn
-      return $ Function exportInfo
-    Variant (from, (mOrig, origVarOrDD)) consClauseInfoList _ -> do
-      (_, dataDD, dataGN) <- resolveClauseInfo' mOrig origVarOrDD
-      availableConsList <- getConsListByGlobalName mOrig dataGN
-      consClauseInfoList' <- mapM resolveClauseInfo consClauseInfoList
-      resolvedConsInfoList <- forM consClauseInfoList' $ \(_, (m, consDD, consGN)) -> do
-        resolveAlias m consDD consGN
-      forM_ resolvedConsInfoList $ \(mCons, consDD, consGN) ->
-        case (consDD `elem` availableConsList, consGN) of
-          (False, _) ->
-            Throw.raiseError mCons "specified cons doesn't belong to the variant type"
-          (True, GN.DataIntro {}) ->
-            return ()
-          (True, _) ->
-            Throw.raiseError mCons "not a cons"
-      let suppliedConsList = map (\(_, consDD, _) -> consDD) resolvedConsInfoList
-      return $ Variant (from, (mOrig, dataDD, dataGN)) consClauseInfoList' suppliedConsList
-
-ensureNonConstructor :: Hint -> GN.GlobalName -> App ()
-ensureNonConstructor m gn =
-  case gn of
-    GN.Data {} ->
-      Throw.raiseError m "variant types can only be exported via `variant-type {...}`"
-    GN.AliasData {} ->
-      Throw.raiseError m "variant types can only be exported via `variant-type {...}`"
-    GN.DataIntro {} ->
-      Throw.raiseError m "constructors can only be exported via `variant-type {...}`"
-    GN.Alias _ gn' ->
-      ensureNonConstructor m gn'
-    _ ->
-      return ()
-
-resolveClauseInfo :: WeakExportInfo -> App ExportInfo
-resolveClauseInfo (from, (mOrig, varOrDefiniteDescription)) = do
-  (dd, gn) <-
-    case varOrDefiniteDescription of
-      Left var -> do
-        Discern.resolveName mOrig var
-      Right (gl, ll) -> do
-        Discern.resolveLocator mOrig gl ll
-  return (from, (mOrig, dd, gn))
-
-resolveClauseInfo' :: Hint -> VarOrDD -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
-resolveClauseInfo' mOrig varOrDefiniteDescription = do
-  (dd, gn) <-
-    case varOrDefiniteDescription of
-      Left var -> do
-        Discern.resolveName mOrig var
-      Right (gl, ll) -> do
-        Discern.resolveLocator mOrig gl ll
-  return (mOrig, dd, gn)
-
-resolveAlias :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
-resolveAlias m dd gn =
-  case gn of
-    GN.Alias dd' gn' ->
-      resolveAlias m dd' gn'
-    GN.AliasData dd' _ gn' ->
-      resolveAlias m dd' gn'
-    _ ->
-      return (m, dd, gn)
-
-getConsListByGlobalName :: Hint -> GN.GlobalName -> App [DD.DefiniteDescription]
-getConsListByGlobalName m gn =
-  case gn of
-    GN.Data _ consList _ ->
-      return consList
-    GN.AliasData _ consList _ ->
-      return consList
-    _ ->
-      Throw.raiseError m "this isn't a variant type"

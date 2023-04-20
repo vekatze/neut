@@ -5,9 +5,9 @@ module Context.Global
     lookup,
     lookupStrict,
     initialize,
-    insertToSourceNameMap,
     lookupSourceNameMap,
     activateTopLevelNamesInSource,
+    saveCurrentNameSet,
   )
 where
 
@@ -19,18 +19,19 @@ import Context.Implicit qualified as Implicit
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.ExportInfo
 import Entity.GlobalName
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Hint qualified as Hint
 import Entity.IsConstLike
+import Entity.NameArrow qualified as NA
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
 import Entity.Source qualified as Source
@@ -108,14 +109,14 @@ registerStmtDefineResource m resourceName = do
   ensureFreshness m topNameMap resourceName
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
 
-registerStmtExport :: ExportClause -> App ()
-registerStmtExport clause = do
-  case clause of
-    Function ((m, alias), (_, original, gn)) -> do
+registerStmtExport :: NA.NameArrow -> App ()
+registerStmtExport arrow = do
+  case arrow of
+    NA.Function ((m, alias), (_, original, gn)) -> do
       registerStmtExport' m alias original $ GN.Alias original gn
-    Variant ((mData, dataAlias), (_, dataDD, dataGN)) consClauseList consNameList -> do
+    NA.Variant ((mData, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList -> do
       registerStmtExport' mData dataAlias dataDD $ GN.AliasData dataDD consNameList dataGN
-      mapM_ (registerStmtExport . Function) consClauseList
+      mapM_ (registerStmtExport . NA.Function) consArrowList
 
 registerStmtExport' ::
   Hint ->
@@ -182,3 +183,25 @@ activateTopLevelNamesInSource :: Hint.Hint -> Source.Source -> App ()
 activateTopLevelNamesInSource m source = do
   namesInSource <- lookupSourceNameMap m $ Source.sourceFilePath source
   modifyRef' nameMap $ Map.union namesInSource
+
+saveCurrentNameSet :: Hint -> Path Abs File -> [WeakStmt] -> [NA.NameArrow] -> App ()
+saveCurrentNameSet m currentPath stmtList nameArrowList = do
+  nameList' <- fmap concat $ forM (map Left stmtList ++ map Right nameArrowList) $ \x -> do
+    case x of
+      Left stmt -> do
+        let name = getNameFromWeakStmt stmt
+        globalName <- lookupStrict m name
+        return [(name, globalName)]
+      Right (NA.Function nameArrow) ->
+        return [reifyNameArrow nameArrow]
+      Right (NA.Variant ((_, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList) -> do
+        let gn = GN.AliasData dataDD consNameList dataGN
+        let consInfoList' = map reifyNameArrow consArrowList
+        return $ (dataAlias, gn) : consInfoList'
+  let exportedNameSet = S.fromList $ NA.getAllDomNames nameArrowList
+  let exportedNameList = filter (\(dom, _) -> S.member dom exportedNameSet) nameList'
+  insertToSourceNameMap currentPath exportedNameList
+
+reifyNameArrow :: NA.InnerNameArrow -> (DD.DefiniteDescription, GN.GlobalName)
+reifyNameArrow ((_, aliasName), (_, origName, globalName)) = do
+  (aliasName, GN.Alias origName globalName)

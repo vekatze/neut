@@ -7,7 +7,7 @@ module Scene.Parse.RawTerm
     typeWithoutIdent,
     preVar,
     preVar',
-    parseVarOrDefiniteDescription,
+    parseVarOrLocator,
   )
 where
 
@@ -48,6 +48,7 @@ import Entity.RawTerm qualified as RT
 import Entity.Remark
 import Entity.TargetPlatform qualified as TP
 import Entity.UnresolvedName qualified as UN
+import Entity.VarOrLocator
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
@@ -124,7 +125,7 @@ rawTermSimple = do
       rawTermHole,
       rawTermInteger,
       rawTermFloat,
-      rawTermVarOrDefiniteDescription
+      rawTermPiElimOrSymbol
     ]
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
@@ -575,32 +576,41 @@ foldTuplePat m topUnit@(topUnitGL, topUnitLL) es =
       let rest' = foldTuplePat m topUnit rest
       (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "Product") [e, rest'])
 
--- parseVarOrDefiniteDescription :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
-parseVarOrDefiniteDescription :: Parser (Hint, Either T.Text (GL.GlobalLocator, LL.LocalLocator))
-parseVarOrDefiniteDescription = do
+-- parseVarOrLocator :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
+parseVarOrLocator :: Parser (Hint, VarOrLocator)
+parseVarOrLocator = do
   (m, varText) <- var
   case DD.getLocatorPair m varText of
     Left _ ->
-      return (m, Left varText)
+      return (m, Var varText)
     Right (gl, ll) ->
-      return (m, Right (gl, ll))
+      return (m, Locator gl ll)
+
+-- parseVarOrLocator :: Parser (Hint, Either T.Text (GL.GlobalLocator, LL.LocalLocator))
+-- parseVarOrLocator = do
+--   (m, varText) <- var
+--   case DD.getLocatorPair m varText of
+--     Left _ ->
+--       return (m, Left varText)
+--     Right (gl, ll) ->
+--       return (m, Right (gl, ll))
 
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
-  (m, varOrDefiniteDescription) <- parseVarOrDefiniteDescription
+  (m, varOrLocator) <- parseVarOrLocator
   choice
     [ do
         patArgs <- argList rawTermPattern
-        case varOrDefiniteDescription of
-          Left c -> do
+        case varOrLocator of
+          Var c -> do
             return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName c) patArgs)
-          Right (globalLocator, localLocator) -> do
+          Locator globalLocator localLocator -> do
             return (m, RP.Cons (RP.LocatorPair globalLocator localLocator) patArgs),
       do
-        case varOrDefiniteDescription of
-          Left c ->
+        case varOrLocator of
+          Var c ->
             return (m, RP.Var (Ident.fromText c))
-          Right (gl, ll) ->
+          Locator gl ll ->
             return (m, RP.NullaryCons gl ll)
     ]
 
@@ -829,8 +839,8 @@ getIntrospectiveValue m key = do
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 
-rawTermVarOrDefiniteDescription :: Parser RT.RawTerm
-rawTermVarOrDefiniteDescription = do
+rawTermPiElimOrSymbol :: Parser RT.RawTerm
+rawTermPiElimOrSymbol = do
   m <- getCurrentHint
   e <- rawTermParseSymbol
   funcVarList <- many $ do
@@ -840,11 +850,11 @@ rawTermVarOrDefiniteDescription = do
 
 rawTermParseSymbol :: Parser RT.RawTerm
 rawTermParseSymbol = do
-  (m, varOrDefiniteDescription) <- parseVarOrDefiniteDescription
-  case varOrDefiniteDescription of
-    Left x ->
+  (m, varOrLocator) <- parseVarOrLocator
+  case varOrLocator of
+    Var x ->
       return (preVar m x)
-    Right (globalLocator, localLocator) ->
+    Locator globalLocator localLocator ->
       return $ m :< RT.VarGlobal globalLocator localLocator
 
 foldReversePiElim :: Hint -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm

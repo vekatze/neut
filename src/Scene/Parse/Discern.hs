@@ -1,5 +1,6 @@
 module Scene.Parse.Discern
   ( discernStmtList,
+    discernNameArrow,
     resolveName,
     resolveLocator,
   )
@@ -9,54 +10,39 @@ import Context.Alias qualified as Alias
 import Context.App
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
-import Context.Global qualified as Global
-import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.List
-import Data.Maybe qualified as Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
-import Entity.Const qualified as C
-import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
 import Entity.Error qualified as E
-import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
-import Entity.IsConstLike
 import Entity.LamKind qualified as LK
-import Entity.LocalLocator qualified as LL
-import Entity.Magic qualified as M
 import Entity.Mutability
-import Entity.Noema qualified as N
+import Entity.NameArrow qualified as NA
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
-import Entity.PrimNumSize qualified as PNS
-import Entity.PrimOp qualified as PO
-import Entity.PrimType qualified as PT
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
 import Entity.Stmt
-import Entity.UnresolvedName qualified as UN
-import Entity.Vector qualified as V
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Scene.Parse.Discern.Fallback qualified as PATF
 import Scene.Parse.Discern.Noema
-import Scene.Parse.Discern.Specialize qualified as PATS
+import Scene.Parse.Discern.NominalEnv
+import Scene.Parse.Discern.PatternMatrix
+import Scene.Parse.Discern.Struct
+import Scene.Parse.Discern.Symbol
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList stmtList =
@@ -108,7 +94,9 @@ discern nenv term =
         Nothing -> do
           resolveName m s >>= uncurry (interpretGlobalName m)
     m :< RT.VarGlobal globalLocator localLocator -> do
-      discernGlobal m globalLocator localLocator
+      (dd, gn) <- resolveLocator m globalLocator localLocator
+      interpretGlobalName m dd gn
+    -- discernGlobal m globalLocator localLocator
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
       return $ m :< WT.Pi xts' t'
@@ -175,62 +163,6 @@ discern nenv term =
           let doNotCare = m :< WT.Tau -- discarded at Infer
           return $ m :< WT.Annotation remarkLevel (AN.Type doNotCare) e'
 
-ensureFieldLinearity ::
-  Hint ->
-  [DD.DefiniteDescription] ->
-  S.Set DD.DefiniteDescription ->
-  S.Set DD.DefiniteDescription ->
-  App ()
-ensureFieldLinearity m ks found nonLinear =
-  case ks of
-    [] ->
-      if S.null nonLinear
-        then return ()
-        else
-          Throw.raiseError m $
-            "the following fields are defined more than once:\n"
-              <> T.intercalate "\n" (map (\k -> "- " <> DD.reify k) (S.toList nonLinear))
-    k : rest -> do
-      if S.member k found
-        then ensureFieldLinearity m rest found (S.insert k nonLinear)
-        else ensureFieldLinearity m rest (S.insert k found) nonLinear
-
-resolveField :: Hint -> T.Text -> App DD.DefiniteDescription
-resolveField m name = do
-  localLocator <- Throw.liftEither $ LL.reflect m name
-  candList <- Locator.getPossibleReferents localLocator
-  candList' <- mapM (Global.lookup m) candList
-  let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
-  case foundNameList of
-    [] ->
-      Throw.raiseError m $ "undefined field: " <> name
-    [(field, _)] ->
-      return field
-    _ -> do
-      let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
-      Throw.raiseError m $
-        "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
-
-reorderArgs :: Hint -> [DD.DefiniteDescription] -> Map.HashMap DD.DefiniteDescription a -> App [a]
-reorderArgs m keyList kvs =
-  case keyList of
-    []
-      | Map.null kvs ->
-          return []
-      | otherwise -> do
-          let ks = map fst $ Map.toList kvs
-          Throw.raiseError m $ "the following fields are redundant: " <> showKeyList ks
-    key : keyRest
-      | Just v <- Map.lookup key kvs -> do
-          vs <- reorderArgs m keyRest (Map.delete key kvs)
-          return $ v : vs
-      | otherwise ->
-          Throw.raiseError m $ "the field `" <> DD.reify key <> "` is missing"
-
-showKeyList :: [DD.DefiniteDescription] -> T.Text
-showKeyList ks =
-  T.intercalate "\n" $ map (\k -> "- " <> DD.reify k) ks
-
 discernLet ::
   NominalEnv ->
   Hint ->
@@ -253,28 +185,6 @@ discernLet nenv m mxt mys e1 e2 = do
   e2'' <- attachSuffix nenv (zip3 mutabilityList ysCont ysLocal) e2'
   let opacity = if null mys then WT.Transparent else WT.Noetic
   attachPrefix nenv (zip3 mutabilityList ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
-
-attachPrefix :: NominalEnv -> [(Mutability, Ident, WT.WeakTerm)] -> WT.WeakTerm -> App WT.WeakTerm
-attachPrefix nenv binder cont@(m :< _) =
-  case binder of
-    [] ->
-      return cont
-    (mutability, y, e) : rest -> do
-      e' <- castToNoema nenv mutability e
-      cont' <- attachPrefix nenv rest cont
-      h <- Gensym.newHole m (asHoleArgs nenv)
-      return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
-
-attachSuffix :: NominalEnv -> [(Mutability, Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm
-attachSuffix nenv binder cont@(m :< _) =
-  case binder of
-    [] ->
-      return cont
-    (mutability, yCont, yLocal) : rest -> do
-      yLocal' <- castFromNoema nenv mutability (m :< WT.Var yLocal)
-      cont' <- attachSuffix nenv rest cont
-      h <- Gensym.newHole m (asHoleArgs nenv)
-      return $ m :< WT.Let WT.Opaque (m, yCont, h) yLocal' cont'
 
 discernBinder ::
   NominalEnv ->
@@ -314,130 +224,6 @@ discernBinderWithBody' nenv (mx, x, codType) binder e = do
   nenv'' <- extendNominalEnv mx x' nenv'
   e' <- discern nenv'' e
   return ((mx, x', codType'), binder'', e')
-
-resolveLocator ::
-  Hint ->
-  GL.GlobalLocator ->
-  LL.LocalLocator ->
-  App (DD.DefiniteDescription, GN.GlobalName)
-resolveLocator m gl ll = do
-  sgl <- Alias.resolveAlias m gl
-  let dd = DD.new sgl ll
-  gn <- interpretDefiniteDescription m dd
-  return (dd, gn)
-
-resolveName :: Hint -> T.Text -> App (DD.DefiniteDescription, GN.GlobalName)
-resolveName m name = do
-  nameOrErr <- resolveNameOrErr m name
-  case nameOrErr of
-    Left err ->
-      Throw.raiseError m err
-    Right pair ->
-      return pair
-
-resolveNameOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
-resolveNameOrErr m name = do
-  localLocator <- Throw.liftEither $ LL.reflect m name
-  candList <- Locator.getPossibleReferents localLocator
-  candList' <- mapM (Global.lookup m) candList
-  let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
-  case foundNameList of
-    [] ->
-      return $ Left $ "undefined variable: " <> name
-    [pair] ->
-      return $ Right pair
-    _ -> do
-      let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
-      return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
-
-interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
-interpretGlobalName m dd gn = do
-  case gn of
-    GN.TopLevelFunc arity isConstLike ->
-      if isConstLike
-        then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
-        else return $ m :< WT.VarGlobal dd arity
-    GN.Data arity _ isConstLike ->
-      if isConstLike
-        then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
-        else return $ m :< WT.VarGlobal dd arity
-    GN.DataIntro dataArity consArity _ isConstLike -> do
-      let e = m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
-      if isConstLike
-        then return $ m :< WT.PiElim e []
-        else return e
-    GN.PrimType primNum ->
-      return $ m :< WT.Prim (WP.Type primNum)
-    GN.PrimOp primOp ->
-      case primOp of
-        PO.PrimCmpOp {} ->
-          castFromIntToBool $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
-        _ ->
-          return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
-    GN.Resource ->
-      return $ m :< WT.ResourceType dd
-    GN.Alias dd' gn' ->
-      interpretGlobalName m dd' gn'
-    GN.AliasData dd' _ gn' ->
-      interpretGlobalName m dd' gn'
-
-candFilter :: (a, Maybe b) -> Maybe (a, b)
-candFilter (from, mTo) =
-  fmap (from,) mTo
-
-interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
-interpretDefiniteDescription m dd = do
-  mgn <- Global.lookup m dd
-  case mgn of
-    Just gn ->
-      return gn
-    Nothing ->
-      Throw.raiseError m $ "undefined constant: " <> DD.reify dd
-
-resolveConstructor ::
-  Hint ->
-  RP.RawConsName ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
-resolveConstructor m cons = do
-  case cons of
-    RP.UnresolvedName (UN.UnresolvedName consName') -> do
-      (dd, gn) <- resolveName m consName'
-      resolveConstructor' m dd gn
-    RP.LocatorPair globalLocator localLocator -> do
-      sgl <- Alias.resolveAlias m globalLocator
-      let dd = DD.new sgl localLocator
-      gn <- interpretDefiniteDescription m dd
-      resolveConstructor' m dd gn
-    RP.DefiniteDescription dd -> do
-      gn <- interpretDefiniteDescription m dd
-      resolveConstructor' m dd gn
-
-resolveConstructorMaybe ::
-  Hint ->
-  DD.DefiniteDescription ->
-  GN.GlobalName ->
-  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
-resolveConstructorMaybe m dd gn = do
-  case gn of
-    GN.DataIntro dataArity consArity disc isConstLike ->
-      return $ Just (dd, dataArity, consArity, disc, isConstLike)
-    GN.Alias from gn' ->
-      resolveConstructorMaybe m from gn'
-    _ ->
-      return Nothing
-
-resolveConstructor' ::
-  Hint ->
-  DD.DefiniteDescription ->
-  GN.GlobalName ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
-resolveConstructor' m dd gn = do
-  mCons <- resolveConstructorMaybe m dd gn
-  case mCons of
-    Just v ->
-      return v
-    Nothing ->
-      Throw.raiseError m $ DD.reify dd <> " is not a constructor"
 
 discernPatternMatrix ::
   NominalEnv ->
@@ -526,7 +312,13 @@ discernPattern (m, pat) =
       sgl <- Alias.resolveAlias m gl
       let consName = DD.new sgl ll
       gn <- interpretDefiniteDescription m consName
-      traceDataIntro m consName gn
+      (_, consName', gn') <- resolveAlias m consName gn
+      case gn' of
+        GN.DataIntro dataArity consArity disc _ ->
+          return ((m, PAT.Cons consName' disc dataArity consArity []), [])
+        _ ->
+          Throw.raiseCritical m $
+            "the symbol `" <> DD.reify consName <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
     RP.Cons cons args -> do
       (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
       when isConstLike $
@@ -535,153 +327,55 @@ discernPattern (m, pat) =
       (args', nenvList) <- mapAndUnzipM discernPattern args
       return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
 
-traceDataIntro :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App ((Hint, PAT.Pattern), NominalEnv)
-traceDataIntro m consName gn =
+discernNameArrow :: NA.RawNameArrow -> App NA.NameArrow
+discernNameArrow clause = do
+  case clause of
+    NA.Function clauseInfo -> do
+      nameArrow@(_, (m, dd, gn)) <- discernInnerNameArrow clauseInfo
+      (_, _, gn') <- resolveAlias m dd gn
+      ensureNonConstructor m gn'
+      return $ NA.Function nameArrow
+    NA.Variant (from, (mOrig, origVarOrLocator)) consClauseInfoList _ -> do
+      (_, dataDD, dataGN) <- resolveVarOrLocator mOrig origVarOrLocator
+      availableConsList <- getConsListByGlobalName mOrig dataGN
+      consClauseInfoList' <- mapM discernInnerNameArrow consClauseInfoList
+      suppliedConsList <- getSuppliedConsList availableConsList consClauseInfoList'
+      return $ NA.Variant (from, (mOrig, dataDD, dataGN)) consClauseInfoList' suppliedConsList
+
+getSuppliedConsList :: [DD.DefiniteDescription] -> [NA.InnerNameArrow] -> App [DD.DefiniteDescription]
+getSuppliedConsList availableConsList consClauseInfoList' = do
+  resolvedConsInfoList <- forM consClauseInfoList' $ \(_, (m, consDD, consGN)) -> do
+    resolveAlias m consDD consGN
+  forM_ resolvedConsInfoList $ \(mCons, consDD, consGN) ->
+    case (consDD `elem` availableConsList, consGN) of
+      (False, _) ->
+        Throw.raiseError mCons "specified cons doesn't belong to the variant type"
+      (True, GN.DataIntro {}) ->
+        return ()
+      (True, _) ->
+        Throw.raiseError mCons "not a cons"
+  return $ map (\(_, consDD, _) -> consDD) resolvedConsInfoList
+
+ensureNonConstructor :: Hint -> GN.GlobalName -> App ()
+ensureNonConstructor m gn =
   case gn of
-    GN.DataIntro dataArity consArity disc _ ->
-      return ((m, PAT.Cons consName disc dataArity consArity []), [])
-    GN.Alias from gn' ->
-      traceDataIntro m from gn'
+    GN.Data {} ->
+      Throw.raiseError m "variant types can only be exported via `variant-type {...}`"
+    GN.DataIntro {} ->
+      Throw.raiseError m "constructors can only be exported via `variant-type {...}`"
     _ ->
-      Throw.raiseCritical m $
-        "the symbol `" <> DD.reify consName <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
-
-ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
-ensurePatternMatrixSanity mat =
-  case PAT.unconsRow mat of
-    Nothing ->
       return ()
-    Just (row, rest) -> do
-      ensurePatternRowSanity row
-      ensurePatternMatrixSanity rest
 
-ensurePatternRowSanity :: PAT.PatternRow a -> App ()
-ensurePatternRowSanity (patternVector, _) = do
-  mapM_ ensurePatternSanity $ V.toList patternVector
+discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.InnerNameArrow
+discernInnerNameArrow nameArrow = do
+  mapM (uncurry resolveVarOrLocator) nameArrow
 
-ensurePatternSanity :: (Hint, PAT.Pattern) -> App ()
-ensurePatternSanity (m, pat) =
-  case pat of
-    PAT.Var {} ->
-      return ()
-    PAT.WildcardVar {} ->
-      return ()
-    PAT.Cons cons _ _ consArity args -> do
-      let argNum = length args
-      when (argNum /= fromInteger (A.reify consArity)) $
-        Throw.raiseError m $
-          "the constructor `"
-            <> DD.reify cons
-            <> "` expects "
-            <> T.pack (show (A.reify consArity))
-            <> " arguments, but found "
-            <> T.pack (show argNum)
-            <> "."
-
--- This translation is based on:
---   https://dl.acm.org/doi/10.1145/1411304.1411311
-compilePatternMatrix ::
-  NominalEnv ->
-  N.IsNoetic ->
-  Hint ->
-  V.Vector Ident ->
-  PAT.PatternMatrix ([Ident], WT.WeakTerm) ->
-  App (DT.DecisionTree WT.WeakTerm)
-compilePatternMatrix nenv isNoetic m occurrences mat =
-  case PAT.unconsRow mat of
-    Nothing ->
-      return DT.Unreachable
-    Just (row, _) ->
-      case PAT.getClauseBody row of
-        Right (usedVars, (freedVars, body)) -> do
-          let occurrences' = map (\o -> m :< WT.Var o) $ V.toList occurrences
-          cursorVars <- mapM (castToNoemaIfNecessary nenv isNoetic) occurrences'
-          DT.Leaf freedVars <$> bindLet nenv (zip usedVars cursorVars) body
-        Left (mCol, i) -> do
-          if i > 0
-            then do
-              occurrences' <- Throw.liftEither $ V.swap mCol i occurrences
-              mat' <- Throw.liftEither $ PAT.swapColumn mCol i mat
-              compilePatternMatrix nenv isNoetic mCol occurrences' mat'
-            else do
-              let headConstructors = PAT.getHeadConstructors mat
-              let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(mPat, (cons, disc, dataArity, consArity, args)) -> do
-                dataHoles <- mapM (const $ Gensym.newHole mPat (asHoleArgs nenv)) [1 .. A.reify dataArity]
-                dataTypeHoles <- mapM (const $ Gensym.newHole mPat (asHoleArgs nenv)) [1 .. A.reify dataArity]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
-                let ms = map fst args
-                (consArgs', nenv') <- alignConsArgs nenv $ zip ms consVars
-                let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize isNoetic nenv cursor (cons, consArity) mat
-                specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
-                return (DT.Cons mPat cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
-              fallbackMatrix <- PATF.getFallbackMatrix isNoetic nenv cursor mat
-              fallbackClause <- compilePatternMatrix nenv isNoetic mCol (V.tail occurrences) fallbackMatrix
-              t <- Gensym.newHole mCol (asHoleArgs nenv)
-              return $ DT.Switch (cursor, t) (fallbackClause, clauseList)
-
-alignConsArgs ::
-  NominalEnv ->
-  [(Hint, Ident)] ->
-  App ([BinderF WT.WeakTerm], NominalEnv)
-alignConsArgs nenv binder =
-  case binder of
-    [] -> do
-      return ([], nenv)
-    (mx, x) : xts -> do
-      t <- Gensym.newPreHole mx
-      t' <- discern nenv t
-      let nenv' = extendNominalEnvWithoutInsert mx x nenv
-      (xts', nenv'') <- alignConsArgs nenv' xts
-      return ((mx, x, t') : xts', nenv'')
-
-bindLet ::
-  NominalEnv ->
-  [(Maybe (Hint, Ident), WT.WeakTerm)] ->
-  WT.WeakTerm ->
-  App WT.WeakTerm
-bindLet nenv binder cont =
-  case binder of
-    [] ->
-      return cont
-    (Nothing, _) : xes -> do
-      bindLet nenv xes cont
-    (Just (m, from), to) : xes -> do
-      h <- Gensym.newHole m (asHoleArgs nenv)
-      cont' <- bindLet nenv xes cont
-      return $ m :< WT.Let WT.Transparent (m, from, h) to cont'
-
-castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
-castFromIntToBool e@(m :< _) = do
-  let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
-  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
-  bool <- discernGlobal m gl ll
-  t <- Gensym.newHole m []
-  x1 <- Gensym.newIdentFromText "arg"
-  x2 <- Gensym.newIdentFromText "arg"
-  let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
-  return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType bool) e)
-
-discernGlobal :: Hint -> GL.GlobalLocator -> LL.LocalLocator -> App WT.WeakTerm
-discernGlobal m gl ll = do
-  (dd, gn) <- resolveLocator m gl ll
-  interpretGlobalName m dd gn
-
-extendNominalEnv :: Hint -> Ident -> NominalEnv -> App NominalEnv
-extendNominalEnv m newVar nenv = do
-  UnusedVariable.insert m newVar
-  return $ (Ident.toText newVar, (m, newVar)) : nenv
-
-extendNominalEnvWithoutInsert :: Hint -> Ident -> NominalEnv -> NominalEnv
-extendNominalEnvWithoutInsert m newVar nenv = do
-  (Ident.toText newVar, (m, newVar)) : nenv
-
-joinNominalEnv :: NominalEnv -> NominalEnv -> App NominalEnv
-joinNominalEnv newNominalEnv oldNominalEnv = do
-  case newNominalEnv of
-    [] ->
-      return oldNominalEnv
-    (_, (m, x)) : rest -> do
-      oldNominalEnv' <- extendNominalEnv m x oldNominalEnv
-      joinNominalEnv rest oldNominalEnv'
+getConsListByGlobalName :: Hint -> GN.GlobalName -> App [DD.DefiniteDescription]
+getConsListByGlobalName m gn =
+  case gn of
+    GN.Data _ consList _ ->
+      return consList
+    GN.AliasData _ consList _ ->
+      return consList
+    _ ->
+      Throw.raiseError m "this isn't a variant type"
