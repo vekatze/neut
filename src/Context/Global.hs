@@ -16,6 +16,7 @@ import Context.App.Internal
 import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Implicit qualified as Implicit
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -52,11 +53,13 @@ registerStmtDefine isConstLike m stmtKind name impArgNum allArgNum = do
   case stmtKind of
     ST.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum
-    ST.Data dataName dataArgs consInfoList -> do
-      registerData isConstLike m dataName dataArgs consInfoList
+    ST.Data dataName dataArgs consInfoList projectionList -> do
+      registerData isConstLike m dataName dataArgs consInfoList projectionList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
     ST.DataIntro {} ->
       return ()
+    ST.Projection ->
+      registerProjection isConstLike m name impArgNum allArgNum
 
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
@@ -74,11 +77,19 @@ hasNoArgs dataArgs consInfoList =
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
 registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
+  let arity = A.fromInt (AN.reify allArgNum)
+  registerTopLevelFunc' m topLevelName impArgNum $ GN.TopLevelFunc arity isConstLike
+
+registerProjection :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
+registerProjection isConstLike m topLevelName impArgNum allArgNum = do
+  let arity = A.fromInt (AN.reify allArgNum)
+  registerTopLevelFunc' m topLevelName impArgNum $ GN.Projection arity isConstLike
+
+registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.GlobalName -> App ()
+registerTopLevelFunc' m topLevelName impArgNum gn = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap topLevelName
-  let arity = A.fromInt (AN.reify allArgNum)
-  -- let arity = A.fromInt (AN.reify impArgNum + AN.reify expArgNum)
-  modifyRef' nameMap $ Map.insert topLevelName $ GN.TopLevelFunc arity isConstLike
+  modifyRef' nameMap $ Map.insert topLevelName gn
   Implicit.insert topLevelName impArgNum
 
 registerData ::
@@ -87,14 +98,15 @@ registerData ::
   DD.DefiniteDescription ->
   [BinderF a] ->
   [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] ->
+  [DD.DefiniteDescription] ->
   App ()
-registerData isConstLike m dataName dataArgs consInfoList = do
+registerData isConstLike m dataName dataArgs consInfoList projectionList = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap dataName
   let consList = map (\(consName, _, _, _) -> consName) consInfoList
   let dataArity = A.fromInt $ length dataArgs
   let dataArgNum = AN.fromInt (length dataArgs)
-  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList isConstLike
+  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity (consList ++ projectionList) isConstLike
   forM_ consInfoList $ \(consName, isConstLikeCons, consArgs, discriminant) -> do
     topNameMap' <- readRef' nameMap
     ensureFreshness m topNameMap' consName

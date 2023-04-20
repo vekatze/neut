@@ -18,6 +18,7 @@ data GlobalName
   | Resource
   | Alias DD.DefiniteDescription GlobalName
   | AliasData DD.DefiniteDescription [DD.DefiniteDescription] GlobalName
+  | Projection Arity IsConstLike
   deriving (Show, Generic)
 
 instance Binary GlobalName

@@ -12,7 +12,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Remark (printNote')
+import Context.Remark
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -166,7 +166,7 @@ parseDefineVariant = do
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgsOrNone <- parseDataArgs
   consInfoList <- P.betweenBrace $ P.manyList parseDefineVariantClause
-  lift $ defineData m a dataArgsOrNone consInfoList
+  lift $ defineData m a dataArgsOrNone consInfoList []
 
 parseDataArgs :: P.Parser (Maybe [BinderF RT.RawTerm])
 parseDataArgs = do
@@ -180,12 +180,13 @@ defineData ::
   DD.DefiniteDescription ->
   Maybe [BinderF RT.RawTerm] ->
   [(Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm])] ->
+  [DD.DefiniteDescription] ->
   App [RawStmt]
-defineData m dataName dataArgsOrNone consInfoList = do
+defineData m dataName dataArgsOrNone consInfoList projectionList = do
   let dataArgs = fromMaybe [] dataArgsOrNone
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
-  let stmtKind = Data dataName dataArgs consInfoList''
+  let stmtKind = Data dataName dataArgs consInfoList'' projectionList
   let consNameList = map (\(consName, _, _, _) -> consName) consInfoList''
   let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
@@ -282,10 +283,11 @@ parseDefineStruct = do
   P.keyword "by"
   consName <- P.baseNameCapitalized
   elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, consName, False, elemInfoList)]
   let dataArgs = fromMaybe [] dataArgsOrNone
   consName' <- lift $ Locator.attachCurrentLocator consName
-  elimRuleList <- mapM (lift . parseDefineStructElim dataName dataArgs consName' elemInfoList) elemInfoList
+  let structElimHandler = parseDefineStructElim dataName dataArgs consName' elemInfoList
+  (elimRuleList, projList) <- mapAndUnzipM (lift . structElimHandler) elemInfoList
+  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, consName, False, elemInfoList)] projList
   -- register codata info for `new-with-end`
   let numOfDataArgs = A.fromInt $ length dataArgs
   let numOfFields = A.fromInt $ length elemInfoList
@@ -303,7 +305,7 @@ parseDefineStructElim ::
   DD.DefiniteDescription ->
   [BinderF RT.RawTerm] ->
   BinderF RT.RawTerm ->
-  App RawStmt
+  App (RawStmt, DD.DefiniteDescription)
 parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elemType) = do
   let structType = m :< RT.Noema (constructDataType m dataName [consName] dataArgs)
   structVarText <- Gensym.newText
@@ -311,23 +313,26 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
   elemName' <- Throw.liftEither $ BN.reflect m $ Ident.toText elemName
   projectionName <- Locator.attachCurrentLocator elemName'
   let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var (Ident.attachHolePrefix x))
-  defineFunction
-    (Normal O.Opaque)
-    m
-    projectionName -- e.g. some-lib.foo::my-struct.element-x
-    (AN.fromInt $ length dataArgs)
-    projArgs
-    (m :< RT.Noema elemType)
-    $ m
-      :< RT.DataElim
-        True
-        [preVar m structVarText]
-        ( RP.new
-            [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription consName) argList)],
-                preVar' m (Ident.attachHolePrefix elemName)
-              )
-            ]
-        )
+  stmt <-
+    defineFunction
+      -- (Normal O.Opaque)
+      Projection
+      m
+      projectionName -- e.g. some-lib.foo::my-struct.element-x
+      (AN.fromInt $ length dataArgs)
+      projArgs
+      (m :< RT.Noema elemType)
+      $ m
+        :< RT.DataElim
+          True
+          [preVar m structVarText]
+          ( RP.new
+              [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription consName) argList)],
+                  preVar' m (Ident.attachHolePrefix elemName)
+                )
+              ]
+          )
+  return (stmt, projectionName)
 
 parseAliasTransparent :: P.Parser RawStmt
 parseAliasTransparent = do

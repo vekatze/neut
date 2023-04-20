@@ -112,7 +112,7 @@ clarifyDef stmt =
   case stmt of
     StmtDefine _ stmtKind _ f _ xts _ e -> do
       case stmtKind of
-        Data name dataArgs consInfoList -> do
+        Data name dataArgs consInfoList _ -> do
           dataType <- clarifyData name dataArgs consInfoList
           xts' <- dropFst <$> clarifyBinder IntMap.empty xts
           dataType' <- linearize xts' dataType >>= Reduce.reduce

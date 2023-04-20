@@ -18,6 +18,16 @@ define do-next(): this.private.sample-2(tau) {
   Foo2
 }
 
+struct config by Config {
+- sample: i64
+- test: L.my-sample-alias
+}
+
+variant hogehoge {
+- Pohe
+- Hoge(i64)
+}
+
 define main(): i64 {
   let _ = L.my-sample-alias
   let _ = Bar
@@ -28,6 +38,9 @@ define main(): i64 {
   // 0
 }
 
-// export {
-// - Foo-Alias
-// }
+export {
+- config {
+  - test
+  - Config
+  }
+}

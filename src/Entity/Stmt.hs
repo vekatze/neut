@@ -26,8 +26,13 @@ type PreProgram =
 
 data StmtKindF a
   = Normal O.Opacity
-  | Data DD.DefiniteDescription [BinderF a] [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)]
+  | Data
+      DD.DefiniteDescription -- the name of the variant type
+      [BinderF a] -- variant args
+      [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] -- constructors
+      [DD.DefiniteDescription] -- list of destructors (if any)
   | DataIntro DD.DefiniteDescription [BinderF a] [BinderF a] D.Discriminant
+  | Projection
   deriving (Generic)
 
 -- opacity for elaboration
@@ -36,6 +41,8 @@ toOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
       opacity
+    Projection ->
+      O.Opaque
     _ ->
       O.Transparent
 
@@ -47,8 +54,10 @@ toLowOpacity stmtKind =
       opacity
     Data {} ->
       O.Opaque -- so as not to reduce recursive terms
-    _ ->
+    DataIntro {} ->
       O.Transparent
+    Projection ->
+      O.Opaque
 
 instance Binary a => Binary (StmtKindF a)
 

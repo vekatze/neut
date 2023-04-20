@@ -67,19 +67,22 @@ discernStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       return $ Normal opacity
-    Data dataName dataArgs consInfoList -> do
+    Data dataName dataArgs consInfoList projectionList -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       let (consNameList, isConstLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
       forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
-      return $ Data dataName dataArgs' $ zip4 consNameList isConstLikeList consArgsList' discriminantList
+      let consInfoList' = zip4 consNameList isConstLikeList consArgsList' discriminantList
+      return $ Data dataName dataArgs' consInfoList' projectionList
     DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       (consArgs', nenv') <- discernBinder nenv consArgs
       forM_ nenv' $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       return $ DataIntro dataName dataArgs' consArgs' discriminant
+    Projection ->
+      return Projection
 
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =
@@ -332,35 +335,39 @@ discernNameArrow clause = do
   case clause of
     NA.Function clauseInfo -> do
       nameArrow@(_, (m, consGN)) <- discernInnerNameArrow clauseInfo
-      ensureNonConstructor m $ traceGlobalName consGN
+      ensureNotRule m $ traceGlobalName consGN
       return [nameArrow]
-    NA.Variant (from, (mOrig, origVarOrLocator)) consArrowList -> do
+    NA.Variant (from, (mOrig, origVarOrLocator)) ruleArrowList -> do
       (_, dataDD, dataGN) <- resolveVarOrLocator mOrig origVarOrLocator
-      availableConsList <- getConsListByGlobalName mOrig dataGN
-      consArrowList' <- mapM discernInnerNameArrow consArrowList
-      suppliedConsList <- getSuppliedConsList availableConsList consArrowList'
-      return $ (from, (mOrig, GN.AliasData dataDD suppliedConsList dataGN)) : consArrowList'
+      availableRuleList <- getConsListByGlobalName mOrig dataGN
+      ruleArrowList' <- mapM discernInnerNameArrow ruleArrowList
+      suppliedRuleList <- getSuppliedRuleList availableRuleList ruleArrowList'
+      return $ (from, (mOrig, GN.AliasData dataDD suppliedRuleList dataGN)) : ruleArrowList'
 
-getSuppliedConsList :: [DD.DefiniteDescription] -> [NA.NameArrow] -> App [DD.DefiniteDescription]
-getSuppliedConsList availableConsList consArrowList = do
-  resolvedConsInfoList <- mapM traceInnerNameArrow consArrowList
-  forM_ resolvedConsInfoList $ \(mCons, consDD, consGN) ->
-    case (consDD `elem` availableConsList, consGN) of
+getSuppliedRuleList :: [DD.DefiniteDescription] -> [NA.NameArrow] -> App [DD.DefiniteDescription]
+getSuppliedRuleList availableRuleList ruleArrowList = do
+  resolvedRuleInfoList <- mapM traceInnerNameArrow ruleArrowList
+  forM_ resolvedRuleInfoList $ \(mRule, consDD, consGN) ->
+    case (consDD `elem` availableRuleList, consGN) of
       (False, _) ->
-        Throw.raiseError mCons "specified cons doesn't belong to the variant type"
+        Throw.raiseError mRule "specified rule doesn't belong to the variant type"
       (True, GN.DataIntro {}) ->
         return ()
+      (True, GN.Projection {}) ->
+        return ()
       (True, _) ->
-        Throw.raiseError mCons "not a cons"
-  return $ map (\(_, consDD, _) -> consDD) resolvedConsInfoList
+        Throw.raiseError mRule "not a variant rule"
+  return $ map (\(_, ruleDD, _) -> ruleDD) resolvedRuleInfoList
 
-ensureNonConstructor :: Hint -> GN.GlobalName -> App ()
-ensureNonConstructor m gn =
+ensureNotRule :: Hint -> GN.GlobalName -> App ()
+ensureNotRule m gn =
   case gn of
     GN.Data {} ->
       Throw.raiseError m "variant types can only be exported via `variant-type {...}`"
     GN.DataIntro {} ->
       Throw.raiseError m "constructors can only be exported via `variant-type {...}`"
+    GN.Projection {} ->
+      Throw.raiseError m "projections can only be exported via `variant-type {...}`"
     _ ->
       return ()
 

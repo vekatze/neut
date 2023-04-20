@@ -147,13 +147,9 @@ interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT
 interpretGlobalName m dd gn = do
   case gn of
     GN.TopLevelFunc arity isConstLike ->
-      if isConstLike
-        then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
-        else return $ m :< WT.VarGlobal dd arity
+      interpretTopLevelFunc m dd arity isConstLike
     GN.Data arity _ isConstLike ->
-      if isConstLike
-        then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
-        else return $ m :< WT.VarGlobal dd arity
+      interpretTopLevelFunc m dd arity isConstLike
     GN.DataIntro dataArity consArity _ isConstLike -> do
       let e = m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
       if isConstLike
@@ -173,23 +169,30 @@ interpretGlobalName m dd gn = do
       interpretGlobalName m dd' gn'
     GN.AliasData dd' _ gn' ->
       interpretGlobalName m dd' gn'
+    GN.Projection arity isConstLike ->
+      interpretTopLevelFunc m dd arity isConstLike
+
+interpretTopLevelFunc ::
+  Hint ->
+  DD.DefiniteDescription ->
+  A.Arity ->
+  Bool ->
+  App WT.WeakTerm
+interpretTopLevelFunc m dd arity isConstLike = do
+  if isConstLike
+    then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
+    else return $ m :< WT.VarGlobal dd arity
 
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
-  -- bool <- discernGlobal m gl ll
   bool <- resolveLocator m gl ll >>= uncurry (interpretGlobalName m)
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"
   x2 <- Gensym.newIdentFromText "arg"
   let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType bool) e)
-
--- discernGlobal :: Hint -> GL.GlobalLocator -> LL.LocalLocator -> App WT.WeakTerm
--- discernGlobal m gl ll = do
---   (dd, gn) <- resolveLocator m gl ll
---   interpretGlobalName m dd gn
 
 resolveAlias ::
   Hint ->

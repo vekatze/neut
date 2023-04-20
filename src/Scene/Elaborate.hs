@@ -144,9 +144,11 @@ insertStmtKindInfo stmt = do
       case stmtKind of
         Normal _ ->
           return ()
-        Data dataName dataArgs consInfoList -> do
+        Data dataName dataArgs consInfoList _ -> do
           DataDefinition.insert dataName dataArgs consInfoList
         DataIntro {} ->
+          return ()
+        Projection ->
           return ()
     StmtDefineResource {} ->
       return ()
@@ -156,15 +158,18 @@ elaborateStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       return $ Normal opacity
-    Data dataName dataArgs consInfoList -> do
+    Data dataName dataArgs consInfoList projectionList -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs
       let (consNameList, constLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       consArgsList' <- mapM (mapM elaborateWeakBinder) consArgsList
-      return $ Data dataName dataArgs' $ zip4 consNameList constLikeList consArgsList' discriminantList
+      let consInfoList' = zip4 consNameList constLikeList consArgsList' discriminantList
+      return $ Data dataName dataArgs' consInfoList' projectionList
     DataIntro dataName dataArgs consArgs discriminant -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs
       consArgs' <- mapM elaborateWeakBinder consArgs
       return $ DataIntro dataName dataArgs' consArgs' discriminant
+    Projection ->
+      return Projection
 
 elaborate' :: WT.WeakTerm -> App TM.Term
 elaborate' term =
