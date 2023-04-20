@@ -1,0 +1,7 @@
+import {
+- this.file-1
+}
+
+export {
+- test
+}

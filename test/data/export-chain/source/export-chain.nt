@@ -1,0 +1,9 @@
+import {
+- this.file-4
+}
+
+define main(): i64 {
+  let _ = test()
+  let _ = tau
+  0
+}
