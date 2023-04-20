@@ -43,3 +43,15 @@ reflect m rawTxt = do
           return (GlobalLocator (ModuleAlias prefix) locator)
     _ ->
       Left $ newError m $ "invalid global locator: `" <> rawTxt <> "`"
+
+reflectLocator :: H.Hint -> T.Text -> Either Error (ModuleAlias, SL.SourceLocator)
+reflectLocator m rawTxt = do
+  baseNameList <- BN.bySplit m rawTxt
+  case baseNameList of
+    [_] ->
+      Left $ newError m $ "invalid source specifier: `" <> rawTxt <> "`"
+    prefix : rest
+      | Just locator <- SL.fromBaseNameList rest ->
+          return (ModuleAlias prefix, locator)
+    _ ->
+      Left $ newError m $ "invalid global locator: `" <> rawTxt <> "`"

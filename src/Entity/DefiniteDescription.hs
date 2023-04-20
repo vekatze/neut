@@ -37,7 +37,10 @@ data DefiniteDescription = MakeDefiniteDescription
   deriving (Generic, Show)
 
 instance Eq DefiniteDescription where
-  dd1 == dd2 = reify dd1 == reify dd2
+  dd1 == dd2 = do
+    let b1 = reify dd1 == reify dd2
+    let b2 = SGL.isPublic (globalLocator dd1) == SGL.isPublic (globalLocator dd2)
+    b1 && b2
 
 instance Ord DefiniteDescription where
   compare dd1 dd2 = compare (reify dd1) (reify dd2)

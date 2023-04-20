@@ -41,7 +41,7 @@ parseExportWithAlias = do
   P.delimiter "=>"
   mAlias <- P.getCurrentHint
   specifiedAlias <- P.baseName
-  aliasDD <- lift $ Locator.attachCurrentLocator specifiedAlias
+  aliasDD <- lift $ Locator.attachPublicCurrentLocator specifiedAlias -- exported names are public
   return ((mAlias, aliasDD), (mOrig, originalName))
 
 parseExportForVariant :: P.Parser NA.RawNameArrow
@@ -59,7 +59,7 @@ parseExportWithoutAlias = do
 getAutoAlias :: Hint -> VarOrLocator -> P.Parser DD.DefiniteDescription
 getAutoAlias m varOrLocator = do
   baseName <- lift $ Throw.liftEither $ getBaseName m varOrLocator
-  lift $ Locator.attachCurrentLocator baseName
+  lift $ Locator.attachPublicCurrentLocator baseName -- exported names are public
 
 getBaseName :: Hint -> VarOrLocator -> Either Error BN.BaseName
 getBaseName m varOrLocator =

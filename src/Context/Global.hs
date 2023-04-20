@@ -184,23 +184,17 @@ activateTopLevelNamesInSource m source = do
   namesInSource <- lookupSourceNameMap m $ Source.sourceFilePath source
   modifyRef' nameMap $ Map.union namesInSource
 
-saveCurrentNameSet :: Hint -> Path Abs File -> [WeakStmt] -> [NA.NameArrow] -> App ()
-saveCurrentNameSet m currentPath stmtList nameArrowList = do
-  nameList' <- fmap concat $ forM (map Left stmtList ++ map Right nameArrowList) $ \x -> do
-    case x of
-      Left stmt -> do
-        let name = getNameFromWeakStmt stmt
-        globalName <- lookupStrict m name
-        return [(name, globalName)]
-      Right (NA.Function nameArrow) ->
-        return [reifyNameArrow nameArrow]
-      Right (NA.Variant ((_, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList) -> do
+saveCurrentNameSet :: Path Abs File -> [NA.NameArrow] -> App ()
+saveCurrentNameSet currentPath nameArrowList = do
+  nameList' <- fmap concat $ forM nameArrowList $ \nameArrow -> do
+    case nameArrow of
+      NA.Function innerNameArrow ->
+        return [reifyNameArrow innerNameArrow]
+      NA.Variant ((_, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList -> do
         let gn = GN.AliasData dataDD consNameList dataGN
         let consInfoList' = map reifyNameArrow consArrowList
         return $ (dataAlias, gn) : consInfoList'
-  let exportedNameSet = S.fromList $ NA.getAllDomNames nameArrowList
-  let exportedNameList = filter (\(dom, _) -> S.member dom exportedNameSet) nameList'
-  insertToSourceNameMap currentPath exportedNameList
+  insertToSourceNameMap currentPath nameList'
 
 reifyNameArrow :: NA.InnerNameArrow -> (DD.DefiniteDescription, GN.GlobalName)
 reifyNameArrow ((_, aliasName), (_, origName, globalName)) = do

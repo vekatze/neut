@@ -4,7 +4,6 @@ module Entity.NameArrow
     NameArrow,
     InnerRawNameArrow,
     InnerNameArrow,
-    getAllDomNames,
   )
 where
 
@@ -45,13 +44,3 @@ type RawNameArrowCod =
 
 type NameArrowCod =
   (Hint, DD.DefiniteDescription, GN.GlobalName)
-
-getAllDomNames :: [NameArrow] -> [DD.DefiniteDescription]
-getAllDomNames clauseList =
-  case clauseList of
-    [] ->
-      []
-    Function ((_, alias), _) : rest ->
-      alias : getAllDomNames rest
-    Variant ((_, dataAlias), _) consClauseList _ : rest ->
-      dataAlias : getAllDomNames (map Function consClauseList ++ rest)

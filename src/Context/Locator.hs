@@ -1,6 +1,8 @@
 module Context.Locator
   ( initialize,
     attachCurrentLocator,
+    attachPublicCurrentLocator,
+    getCurrentGlobalLocator,
     activateGlobalLocator,
     clearActiveLocators,
     getPossibleReferents,
@@ -47,8 +49,19 @@ attachCurrentLocator ::
   BN.BaseName ->
   App DD.DefiniteDescription
 attachCurrentLocator name = do
-  cgl <- readRef "currentGlobalLocator" currentGlobalLocator
+  cgl <- getCurrentGlobalLocator
+  return $ DD.new (SGL.makePrivate cgl) $ LL.new name
+
+attachPublicCurrentLocator ::
+  BN.BaseName ->
+  App DD.DefiniteDescription
+attachPublicCurrentLocator name = do
+  cgl <- getCurrentGlobalLocator
   return $ DD.new cgl $ LL.new name
+
+getCurrentGlobalLocator :: App SGL.StrictGlobalLocator
+getCurrentGlobalLocator =
+  readRef "currentGlobalLocator" currentGlobalLocator
 
 clearActiveLocators :: App ()
 clearActiveLocators = do
@@ -56,10 +69,10 @@ clearActiveLocators = do
 
 getPossibleReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
 getPossibleReferents localLocator = do
-  cgl <- readRef "currentGlobalLocator" currentGlobalLocator
+  cgl <- getCurrentGlobalLocator
   agls <- readRef' activeGlobalLocatorList
   let dds = map (`DD.new` localLocator) agls
-  let dd = DD.new cgl localLocator
+  let dd = DD.new (SGL.makePrivate cgl) localLocator
   return $ ListUtils.nubOrd $ dd : dds
 
 constructGlobalLocator :: Module.Module -> Source.Source -> App SGL.StrictGlobalLocator
@@ -68,7 +81,8 @@ constructGlobalLocator mainModule source = do
   return $
     SGL.StrictGlobalLocator
       { SGL.moduleID = Module.getID mainModule $ Source.sourceModule source,
-        SGL.sourceLocator = sourceLocator
+        SGL.sourceLocator = sourceLocator,
+        SGL.isPublic = True
       }
 
 getSourceLocator :: Source.Source -> App SL.SourceLocator

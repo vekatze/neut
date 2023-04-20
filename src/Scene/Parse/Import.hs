@@ -59,8 +59,8 @@ parseImportWithoutAlias = do
 
 parseLocatorText :: Hint -> T.Text -> P.Parser (Source.Source, SGL.StrictGlobalLocator)
 parseLocatorText m locatorText = do
-  globalLocator <- lift $ Throw.liftEither $ GL.reflect m locatorText
-  strictGlobalLocator <- lift $ Alias.resolveAlias m globalLocator
+  (moduleAlias, sourceLocator) <- lift $ Throw.liftEither $ GL.reflectLocator m locatorText
+  strictGlobalLocator <- lift $ Alias.resolveLocatorAlias m moduleAlias sourceLocator
   source <- getSource m strictGlobalLocator locatorText >>= lift . shiftToLatest
   return (source, strictGlobalLocator)
 

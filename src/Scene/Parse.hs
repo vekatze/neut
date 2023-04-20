@@ -41,7 +41,6 @@ import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.Stmt
-import Entity.Term.Weaken qualified as TM
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
@@ -72,14 +71,12 @@ parseSource source = do
   hasCacheSet <- Env.getHasCacheSet
   mCache <- Cache.loadCache source hasCacheSet
   let path = Source.sourceFilePath source
-  let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
   case mCache of
     Just cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      let stmtList' = map TM.weakenStmt stmtList
       mapM_ Global.registerStmtExport $ Cache.nameArrowList cache
-      Global.saveCurrentNameSet m path stmtList' $ Cache.nameArrowList cache
+      Global.saveCurrentNameSet path $ Cache.nameArrowList cache
       return $ Left cache
     Nothing -> do
       (defList, nameArrowList) <- P.run (program source) $ Source.sourceFilePath source
@@ -87,7 +84,7 @@ parseSource source = do
       stmtList <- Discern.discernStmtList defList
       nameArrowList' <- mapM Discern.discernNameArrow nameArrowList
       mapM_ Global.registerStmtExport nameArrowList'
-      Global.saveCurrentNameSet m path stmtList nameArrowList'
+      Global.saveCurrentNameSet path nameArrowList'
       UnusedVariable.registerRemarks
       return $ Right (stmtList, nameArrowList')
 

@@ -4,10 +4,6 @@ module Entity.SourceLocator
   ( SourceLocator (..),
     toText,
     fromBaseNameList,
-    bottomLocator,
-    topLocator,
-    boolLocator,
-    coproductLocator,
     llvmLocator,
     internalLocator,
   )
@@ -45,22 +41,6 @@ fromBaseNameList :: [BN.BaseName] -> Maybe SourceLocator
 fromBaseNameList baseNameList = do
   path <- parseRelFile $ T.unpack $ T.intercalate "/" $ map BN.reify baseNameList
   return $ SourceLocator path
-
-bottomLocator :: SourceLocator
-bottomLocator =
-  SourceLocator $(mkRelFile "bottom")
-
-topLocator :: SourceLocator
-topLocator =
-  SourceLocator $(mkRelFile "top")
-
-boolLocator :: SourceLocator
-boolLocator =
-  SourceLocator $(mkRelFile "bool")
-
-coproductLocator :: SourceLocator
-coproductLocator =
-  SourceLocator $(mkRelFile "coproduct")
 
 llvmLocator :: SourceLocator
 llvmLocator =

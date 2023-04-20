@@ -35,7 +35,8 @@ collectSourceList mFilePathStr = do
       return
         [ SGL.StrictGlobalLocator
             { moduleID = MID.Main,
-              sourceLocator = SL.SourceLocator path
+              sourceLocator = SL.SourceLocator path,
+              isPublic = True
             }
         ]
     Nothing -> do

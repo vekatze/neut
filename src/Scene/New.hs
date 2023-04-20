@@ -43,7 +43,8 @@ constructDefaultModule name = do
             [ ( Target name,
                 SGL.StrictGlobalLocator
                   { SGL.moduleID = MID.Main,
-                    SGL.sourceLocator = SL.SourceLocator mainFile
+                    SGL.sourceLocator = SL.SourceLocator mainFile,
+                    SGL.isPublic = True
                   }
               )
             ],

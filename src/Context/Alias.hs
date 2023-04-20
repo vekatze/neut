@@ -1,6 +1,7 @@
 module Context.Alias
   ( registerGlobalLocatorAlias,
     resolveAlias,
+    resolveLocatorAlias,
     initializeAliasMap,
     activateAliasInfo,
   )
@@ -25,6 +26,7 @@ import Entity.ModuleAlias
 import Entity.ModuleChecksum
 import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
+import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 
 registerGlobalLocatorAlias ::
@@ -46,10 +48,13 @@ resolveAlias m gl = do
   case gl of
     GL.GlobalLocator moduleAlias sourceLocator -> do
       moduleID <- resolveModuleAlias m moduleAlias
+      cgl <- Locator.getCurrentGlobalLocator
+      let isPrivate = SGL.moduleID cgl == moduleID && SGL.sourceLocator cgl == sourceLocator
       return $
         SGL.StrictGlobalLocator
           { SGL.moduleID = moduleID,
-            SGL.sourceLocator = sourceLocator
+            SGL.sourceLocator = sourceLocator,
+            SGL.isPublic = not isPrivate
           }
     GL.GlobalLocatorAlias alias -> do
       aliasMap <- readRef' locatorAliasMap
@@ -59,6 +64,20 @@ resolveAlias m gl = do
         Nothing ->
           Throw.raiseError m $
             "no such global locator alias is defined: " <> BN.reify (GLA.reify alias)
+
+resolveLocatorAlias ::
+  Hint ->
+  ModuleAlias ->
+  SL.SourceLocator ->
+  App SGL.StrictGlobalLocator
+resolveLocatorAlias m moduleAlias sourceLocator = do
+  moduleID <- resolveModuleAlias m moduleAlias
+  return $
+    SGL.StrictGlobalLocator
+      { SGL.moduleID = moduleID,
+        SGL.sourceLocator = sourceLocator,
+        SGL.isPublic = True
+      }
 
 resolveModuleAlias :: Hint -> ModuleAlias -> App MID.ModuleID
 resolveModuleAlias m moduleAlias = do
