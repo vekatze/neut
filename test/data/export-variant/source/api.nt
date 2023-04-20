@@ -2,18 +2,24 @@ import {
 - this.private
 }
 
-define my-function(): tau {
-  tau
-}
-
 export {
 - my-sample => my-sample-alias {
   - Foo-Alias
   }
 - sample-2 {
-  - Foo2
+  - Foo2 => FooFoo2
   }
+- config {
+  - value-1
+  - value-3
+  }
+- sample-3 {..}
 - my-function
 - some-private-function => some-function
-// - other-private-function => test
+}
+
+define my-function(): tau {
+  let _ = Config
+  let _ = value-1
+  tau
 }

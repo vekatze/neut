@@ -1,5 +1,21 @@
 import {}
 
+export {
+- sample-2 {
+  - Foo2
+  }
+- sample-1 => my-sample  {
+  - Foo => Foo-Alias
+  - Bar
+  }
+- sample-3 {
+  - Foo3
+  - Bar3 => Bar3-Alias
+  }
+- config {..}
+- some-private-function
+}
+
 variant sample-1 {
 - Foo
 - Bar(i64)
@@ -10,21 +26,22 @@ variant sample-2(a) {
 - Bar2(i64, a)
 }
 
+variant sample-3() {
+- Foo3
+- Bar3
+- Buz3
+}
+
+struct config by Config {
+- value-1: tau
+- value-2: i64
+- value-3: u64
+}
+
 define some-private-function(_: sample-1): tau {
   tau
 }
 
 define other-private-function(): tau {
   tau
-}
-
-export {
-- sample-2 {
-  - Foo2
-  }
-- sample-1 => my-sample {
-  - Foo => Foo-Alias
-  - Bar
-  }
-- some-private-function
 }
