@@ -1,3 +1,5 @@
+// export-variant.nt
+
 import {
 - this.api => L
 - this.private
@@ -7,12 +9,18 @@ define do-something(): tau {
   L.some-function(Foo-Alias)
 }
 
+define k(): L.my-sample-alias {
+  Bar(3)
+  // L.Foo-Alias
+}
+
 define do-next(): this.private.sample-2(tau) {
   Foo2
 }
 
 define main(): i64 {
   let _ = L.my-sample-alias
+  let _ = Bar
   // match L.Foo2: L.sample-2(tau) {
   // }
   0
