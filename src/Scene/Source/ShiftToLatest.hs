@@ -29,7 +29,12 @@ getNewerSource :: Source.Source -> Module -> App Source.Source
 getNewerSource source newModule = do
   relSourceFilePath <- Source.getRelPathFromSourceDir source
   let newSourceFilePath = getSourceDir newModule </> relSourceFilePath
-  let newSource = Source.Source {sourceFilePath = newSourceFilePath, sourceModule = newModule}
+  let newSource =
+        Source.Source
+          { sourceFilePath = newSourceFilePath,
+            sourceModule = newModule,
+            sourceHint = Source.sourceHint source
+          }
   b <- Path.doesFileExist newSourceFilePath
   if b
     then return newSource

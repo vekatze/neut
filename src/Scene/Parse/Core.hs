@@ -25,7 +25,6 @@ type Parser = ParsecT Void T.Text App
 
 run :: Parser a -> Path Abs File -> App a
 run parser path = do
-  ensureExistence path
   let filePath = toFilePath path
   fileContent <- readSourceFile path
   result <- runParserT (spaceConsumer >> parser) filePath fileContent

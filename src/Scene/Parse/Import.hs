@@ -71,7 +71,8 @@ getSource m sgl locatorText = do
   return $
     Source.Source
       { Source.sourceModule = nextModule,
-        Source.sourceFilePath = getSourceDir nextModule </> relPath
+        Source.sourceFilePath = getSourceDir nextModule </> relPath,
+        Source.sourceHint = Just m
       }
 
 loadDefaultImports :: Source.Source -> [LocatorText] -> P.Parser [(Source.Source, AI.AliasInfo)]

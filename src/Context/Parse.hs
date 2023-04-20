@@ -10,6 +10,7 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Entity.Source
 import Path
 import Path.IO
 
@@ -17,8 +18,13 @@ readSourceFile :: Path Abs File -> App T.Text
 readSourceFile =
   liftIO . TIO.readFile . toFilePath
 
-ensureExistence :: Path Abs File -> App ()
-ensureExistence path = do
+ensureExistence :: Source -> App ()
+ensureExistence source = do
+  let path = sourceFilePath source
   fileExists <- doesFileExist path
   unless fileExists $ do
-    Throw.raiseError' $ T.pack $ "no such file exists: " <> toFilePath path
+    case sourceHint source of
+      Just m ->
+        Throw.raiseError m $ T.pack $ "no such file exists: " <> toFilePath path
+      Nothing ->
+        Throw.raiseError' $ T.pack $ "no such file exists: " <> toFilePath path

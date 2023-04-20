@@ -3,6 +3,7 @@ module Entity.Source where
 import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
+import Entity.Hint
 import Entity.Module
 import Entity.ModuleAlias
 import Entity.OutputKind qualified as OK
@@ -10,7 +11,8 @@ import Path
 
 data Source = Source
   { sourceFilePath :: Path Abs File,
-    sourceModule :: Module
+    sourceModule :: Module,
+    sourceHint :: Maybe Hint
   }
   deriving (Show)
 

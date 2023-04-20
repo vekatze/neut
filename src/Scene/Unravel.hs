@@ -10,6 +10,7 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
+import Context.Parse qualified as Parse
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
@@ -54,7 +55,8 @@ unravel target = do
   unravel' >=> adjustUnravelResult $
     Source.Source
       { Source.sourceModule = mainModule,
-        Source.sourceFilePath = mainFilePath
+        Source.sourceFilePath = mainFilePath,
+        Source.sourceHint = Nothing
       }
 
 unravelFromSGL ::
@@ -64,7 +66,12 @@ unravelFromSGL sgl = do
   mainModule <- Module.getMainModule
   path <- Module.getSourcePath sgl
   ensureFileModuleSanity path mainModule
-  let initialSource = Source.Source {Source.sourceModule = mainModule, Source.sourceFilePath = path}
+  let initialSource =
+        Source.Source
+          { Source.sourceModule = mainModule,
+            Source.sourceFilePath = path,
+            Source.sourceHint = Nothing
+          }
   unravel' >=> adjustUnravelResult $ initialSource
 
 adjustUnravelResult ::
@@ -199,14 +206,15 @@ getChildren currentSource = do
     Just sourceList ->
       return sourceList
     Nothing -> do
-      let path = Source.sourceFilePath currentSource
-      sourceList <- parseSourceHeader currentSource path
+      sourceList <- parseSourceHeader currentSource
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
       return sourceList
 
-parseSourceHeader :: Source.Source -> Path Abs File -> App [Source.Source]
-parseSourceHeader currentSource path = do
+parseSourceHeader :: Source.Source -> App [Source.Source]
+parseSourceHeader currentSource = do
   Locator.initialize
+  Parse.ensureExistence currentSource
+  let path = Source.sourceFilePath currentSource
   map fst <$> ParseCore.run (parseImportBlock currentSource <* parseExportBlock) path
 
 registerAntecedentInfo :: [Source.Source] -> App ()
