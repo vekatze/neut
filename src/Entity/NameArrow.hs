@@ -1,45 +1,39 @@
 module Entity.NameArrow
-  ( NameArrowF (..),
-    RawNameArrow,
+  ( RawNameArrow (..),
     NameArrow,
     InnerRawNameArrow,
-    InnerNameArrow,
+    reify,
   )
 where
 
-import Data.Binary
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.VarOrLocator
 import GHC.Generics
 
-data NameArrowF a
-  = Function a
-  | Variant
-      a -- original name
-      [a] -- arrows for constructors/destructors
-  deriving (Generic)
-
-instance Binary a => Binary (NameArrowF a)
-
-type RawNameArrow =
-  NameArrowF InnerRawNameArrow
-
 type NameArrow =
-  NameArrowF InnerNameArrow
-
-type InnerRawNameArrow =
-  (NameArrowDom, RawNameArrowCod)
-
-type InnerNameArrow =
   (NameArrowDom, NameArrowCod)
 
 type NameArrowDom =
   (Hint, DD.DefiniteDescription)
 
+type NameArrowCod =
+  (Hint, GN.GlobalName)
+
+data RawNameArrow
+  = Function InnerRawNameArrow
+  | Variant
+      InnerRawNameArrow -- original name
+      [InnerRawNameArrow] -- arrows for constructors/destructors
+  deriving (Generic)
+
 type RawNameArrowCod =
   (Hint, VarOrLocator)
 
-type NameArrowCod =
-  (Hint, GN.GlobalName)
+type InnerRawNameArrow =
+  (NameArrowDom, RawNameArrowCod)
+
+reify :: NameArrow -> (DD.DefiniteDescription, GN.GlobalName)
+reify ((_, aliasName), (_, origDD)) = do
+  (aliasName, origDD)

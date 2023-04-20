@@ -109,23 +109,10 @@ registerStmtDefineResource m resourceName = do
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
 
 registerStmtExport :: NA.NameArrow -> App ()
-registerStmtExport arrow = do
-  case arrow of
-    NA.Function ((m, alias), (_, origGN)) -> do
-      registerStmtExport' m alias origGN
-    NA.Variant ((mData, dataAlias), (_, dataGN)) consArrowList -> do
-      registerStmtExport' mData dataAlias dataGN
-      mapM_ (registerStmtExport . NA.Function) consArrowList
-
-registerStmtExport' ::
-  Hint ->
-  DD.DefiniteDescription ->
-  GlobalName ->
-  App ()
-registerStmtExport' m alias gn = do
+registerStmtExport ((m, alias), (_, origGN)) = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap alias
-  modifyRef' nameMap $ Map.insert alias gn
+  modifyRef' nameMap $ Map.insert alias origGN
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
 lookup m name = do
@@ -181,15 +168,4 @@ activateTopLevelNamesInSource m source = do
 
 saveCurrentNameSet :: Path Abs File -> [NA.NameArrow] -> App ()
 saveCurrentNameSet currentPath nameArrowList = do
-  nameList' <- fmap concat $ forM nameArrowList $ \nameArrow -> do
-    case nameArrow of
-      NA.Function innerNameArrow ->
-        return [reifyNameArrow innerNameArrow]
-      NA.Variant domArrow consArrowList -> do
-        let consInfoList' = map reifyNameArrow consArrowList
-        return $ reifyNameArrow domArrow : consInfoList'
-  insertToSourceNameMap currentPath nameList'
-
-reifyNameArrow :: NA.InnerNameArrow -> (DD.DefiniteDescription, GN.GlobalName)
-reifyNameArrow ((_, aliasName), (_, origDD)) = do
-  (aliasName, origDD)
+  insertToSourceNameMap currentPath $ map NA.reify nameArrowList

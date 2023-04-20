@@ -82,7 +82,7 @@ parseSource source = do
       (defList, nameArrowList) <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      nameArrowList' <- mapM Discern.discernNameArrow nameArrowList
+      nameArrowList' <- concat <$> mapM Discern.discernNameArrow nameArrowList
       mapM_ Global.registerStmtExport nameArrowList'
       Global.saveCurrentNameSet path nameArrowList'
       UnusedVariable.registerRemarks

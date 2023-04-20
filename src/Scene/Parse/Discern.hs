@@ -327,21 +327,21 @@ discernPattern (m, pat) =
       (args', nenvList) <- mapAndUnzipM discernPattern args
       return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
 
-discernNameArrow :: NA.RawNameArrow -> App NA.NameArrow
+discernNameArrow :: NA.RawNameArrow -> App [NA.NameArrow]
 discernNameArrow clause = do
   case clause of
     NA.Function clauseInfo -> do
       nameArrow@(_, (m, consGN)) <- discernInnerNameArrow clauseInfo
       ensureNonConstructor m $ traceGlobalName consGN
-      return $ NA.Function nameArrow
+      return [nameArrow]
     NA.Variant (from, (mOrig, origVarOrLocator)) consArrowList -> do
       (_, dataDD, dataGN) <- resolveVarOrLocator mOrig origVarOrLocator
       availableConsList <- getConsListByGlobalName mOrig dataGN
       consArrowList' <- mapM discernInnerNameArrow consArrowList
       suppliedConsList <- getSuppliedConsList availableConsList consArrowList'
-      return $ NA.Variant (from, (mOrig, GN.AliasData dataDD suppliedConsList dataGN)) consArrowList'
+      return $ (from, (mOrig, GN.AliasData dataDD suppliedConsList dataGN)) : consArrowList'
 
-getSuppliedConsList :: [DD.DefiniteDescription] -> [NA.InnerNameArrow] -> App [DD.DefiniteDescription]
+getSuppliedConsList :: [DD.DefiniteDescription] -> [NA.NameArrow] -> App [DD.DefiniteDescription]
 getSuppliedConsList availableConsList consArrowList = do
   resolvedConsInfoList <- mapM traceInnerNameArrow consArrowList
   forM_ resolvedConsInfoList $ \(mCons, consDD, consGN) ->
@@ -374,7 +374,7 @@ traceGlobalName gn =
     _ ->
       gn
 
-traceInnerNameArrow :: NA.InnerNameArrow -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
+traceInnerNameArrow :: NA.NameArrow -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
 traceInnerNameArrow ((mAlias, aliasDD), (mOrig, origGN)) =
   case origGN of
     GN.Alias newDD gn' ->
@@ -382,7 +382,7 @@ traceInnerNameArrow ((mAlias, aliasDD), (mOrig, origGN)) =
     _ ->
       return (mAlias, aliasDD, origGN)
 
-discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.InnerNameArrow
+discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.NameArrow
 discernInnerNameArrow (dom, (m, varOrLocator)) = do
   (_, dd, gn) <- resolveVarOrLocator m varOrLocator
   return (dom, (m, GN.Alias dd gn))
