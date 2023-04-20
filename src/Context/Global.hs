@@ -19,7 +19,6 @@ import Context.Implicit qualified as Implicit
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
@@ -113,24 +112,20 @@ registerStmtExport :: NA.NameArrow -> App ()
 registerStmtExport arrow = do
   case arrow of
     NA.Function ((m, alias), (_, original, gn)) -> do
-      registerStmtExport' m alias original $ GN.Alias original gn
+      registerStmtExport' m alias $ GN.Alias original gn
     NA.Variant ((mData, dataAlias), (_, dataDD, dataGN)) consArrowList consNameList -> do
-      registerStmtExport' mData dataAlias dataDD $ GN.AliasData dataDD consNameList dataGN
+      registerStmtExport' mData dataAlias $ GN.AliasData dataDD consNameList dataGN
       mapM_ (registerStmtExport . NA.Function) consArrowList
 
 registerStmtExport' ::
   Hint ->
   DD.DefiniteDescription ->
-  DD.DefiniteDescription ->
   GlobalName ->
   App ()
-registerStmtExport' m alias original gn = do
-  if alias == original
-    then return ()
-    else do
-      topNameMap <- readRef' nameMap
-      ensureFreshness m topNameMap alias
-      modifyRef' nameMap $ Map.insert alias gn
+registerStmtExport' m alias gn = do
+  topNameMap <- readRef' nameMap
+  ensureFreshness m topNameMap alias
+  modifyRef' nameMap $ Map.insert alias gn
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
 lookup m name = do
