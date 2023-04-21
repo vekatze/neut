@@ -124,7 +124,7 @@ subst'' sub (m, x, t) binder e = do
   x' <- newIdentFromIdent x
   let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
   (xts', e') <- substBinder sub' binder e
-  return ((m, x, t'), xts', e')
+  return ((m, x', t'), xts', e')
 
 subst''' ::
   WT.SubstWeakTerm ->
