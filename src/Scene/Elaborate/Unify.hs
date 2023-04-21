@@ -3,6 +3,7 @@ module Scene.Elaborate.Unify (unify) where
 import Context.App
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -28,6 +29,7 @@ import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.FreeVars
+import Entity.WeakTerm.FreeVarsWithHint qualified as WT
 import Entity.WeakTerm.Holes
 import Entity.WeakTerm.ToText
 import Scene.WeakTerm.Fill
@@ -71,6 +73,9 @@ throwTypeErrors = do
       C.Immutable t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageImmutable t'
+      C.ImmutableTerm e -> do
+        e' <- fillAsMuchAsPossible sub e
+        return $ R.newRemark (WT.metaOf e) R.Error $ constructErrorMessageImmutableTerm e'
       C.Actual t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
@@ -99,6 +104,11 @@ constructErrorMessageImmutable t =
   "a term of the following type might be mutable:\n"
     <> toText t
 
+constructErrorMessageImmutableTerm :: WT.WeakTerm -> T.Text
+constructErrorMessageImmutableTerm e =
+  "this term contains an uninstantiated hole:\n"
+    <> toText e
+
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =
   "a term of the following type might be noetic:\n"
@@ -109,6 +119,8 @@ simplify constraintList =
   case constraintList of
     [] ->
       return ()
+    (C.ImmutableTerm e, orig) : cs -> do
+      simplifyImmutableTerm e orig cs
     (C.Immutable t, orig) : cs -> do
       simplifyImmutable (WT.metaOf t) S.empty t orig
       simplify cs
@@ -388,6 +400,28 @@ lookupAny is sub =
           Just (j, v)
         _ ->
           lookupAny js sub
+
+simplifyImmutableTerm :: WT.WeakTerm -> C.Constraint -> [(C.Constraint, C.Constraint)] -> App ()
+simplifyImmutableTerm e orig cs = do
+  let fmvs = holes e
+  if S.null fmvs
+    then do
+      let (ms, fvs) = unzip $ S.toList $ WT.freeVarsWithHint e
+      freeVarTypes <- mapM (lookupWeakTypeEnv (WT.metaOf e)) fvs
+      let freeVarTypes' = zipWith (\mt (_ :< t) -> mt :< t) ms freeVarTypes
+      let newConstraints = map C.Immutable freeVarTypes'
+      simplify $ map (,orig) newConstraints ++ cs
+    else do
+      sub <- getHoleSubst
+      case lookupAny (S.toList fmvs) sub of
+        Just (h, (xs, body)) -> do
+          let s = HS.singleton h xs body
+          e' <- fill s e
+          simplifyImmutableTerm e' orig cs
+        Nothing -> do
+          let uc = C.SuspendedConstraint (fmvs, C.Other, (C.ImmutableTerm e, orig))
+          insertConstraint uc
+          simplify cs
 
 simplifyImmutable ::
   Hint ->

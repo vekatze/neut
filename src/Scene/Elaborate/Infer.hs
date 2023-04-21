@@ -80,10 +80,6 @@ infer' varEnv term =
       (xts', t') <- inferPi varEnv xts t
       return (m :< WT.Pi xts' t', m :< WT.Tau)
     m :< WT.PiIntro kind xts e -> do
-      let (ms, fvs) = unzip $ S.toList $ WT.freeVarsWithHint term
-      freeVarTypes <- mapM (lookupWeakTypeEnv m) fvs
-      let freeVarTypes' = zipWith (\mt (_ :< t) -> mt :< t) ms freeVarTypes
-      forM_ freeVarTypes' insertImmutablityConstraint
       case kind of
         LK.Fix (mx, x, codType) -> do
           (xts', extendedVarEnv) <- inferBinder' varEnv xts
@@ -92,10 +88,14 @@ infer' varEnv term =
           insWeakTypeEnv x piType
           (e', tBody) <- infer' extendedVarEnv e
           insConstraintEnv codType' tBody
-          return (m :< WT.PiIntro (LK.Fix (mx, x, codType')) xts' e', piType)
+          let term' = m :< WT.PiIntro (LK.Fix (mx, x, codType')) xts' e'
+          insertTermImmutabilityConstraint term'
+          return (term', piType)
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
-          return (m :< WT.PiIntro kind xts' e', m :< WT.Pi xts' t')
+          let term' = m :< WT.PiIntro kind xts' e'
+          insertTermImmutabilityConstraint term'
+          return (term', m :< WT.Pi xts' t')
     m :< WT.PiElim e es -> do
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e

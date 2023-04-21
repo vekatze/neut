@@ -2,7 +2,7 @@ module Context.Elaborate
   ( initialize,
     initializeInferenceEnv,
     insConstraintEnv,
-    insertImmutablityConstraint,
+    insertTermImmutabilityConstraint,
     insertActualityConstraint,
     getConstraintEnv,
     insWeakTypeEnv,
@@ -25,7 +25,6 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Gensym qualified as Gensym
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
@@ -56,9 +55,9 @@ insConstraintEnv :: WeakTerm -> WeakTerm -> App ()
 insConstraintEnv expected actual = do
   modifyRef' constraintEnv $ (:) (C.Eq expected actual)
 
-insertImmutablityConstraint :: WeakTerm -> App ()
-insertImmutablityConstraint t = do
-  modifyRef' constraintEnv $ (:) (C.Immutable t)
+insertTermImmutabilityConstraint :: WeakTerm -> App ()
+insertTermImmutabilityConstraint e = do
+  modifyRef' constraintEnv $ (:) (C.ImmutableTerm e)
 
 insertActualityConstraint :: WeakTerm -> App ()
 insertActualityConstraint t = do
