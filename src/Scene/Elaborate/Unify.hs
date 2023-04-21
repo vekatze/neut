@@ -466,6 +466,8 @@ simplifyImmutable m dataNameSet t orig = do
             Just (StuckPiElimVarGlobal dd args)
               | Just lam <- Map.lookup dd defMap -> do
                   simplifyImmutable m dataNameSet (toPiElim lam args) orig
+              | otherwise ->
+                  return ()
             _ -> do
               let uc = C.SuspendedConstraint (fmvs, C.Other, (C.Immutable t', orig))
               insertConstraint uc
@@ -509,6 +511,8 @@ simplifyActual m dataNameSet t orig = do
             Just (StuckPiElimVarGlobal dd args)
               | Just lam <- Map.lookup dd defMap -> do
                   simplifyActual m dataNameSet (toPiElim lam args) orig
+              | otherwise ->
+                  return ()
             _ -> do
               let uc = C.SuspendedConstraint (fmvs, C.Other, (C.Actual t', orig))
               insertConstraint uc

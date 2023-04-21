@@ -21,6 +21,12 @@ define-inline mutate[a](x: cell a, mutator: a -> a): core.top.top {
 
 define main(): i64 {
   let xs: my-list(i64) = Nil()
+  let str = "text"
+  let val = !str
+  let f = lambda () { val }
+  let result on f = val
+  let _ = result
+  let _ = f
   let result on mutable xs = {
     // mutate(xs, lambda (_) { get(xs) })
     mutate(xs, lambda (_) { Nil() })
