@@ -83,7 +83,7 @@ infer' varEnv term =
       let (ms, fvs) = unzip $ S.toList $ WT.freeVarsWithHint term
       freeVarTypes <- mapM (lookupWeakTypeEnv m) fvs
       let freeVarTypes' = zipWith (\mt (_ :< t) -> mt :< t) ms freeVarTypes
-      forM_ freeVarTypes' insertNonCellConstraint
+      forM_ freeVarTypes' insertImmutableConstraint
       case kind of
         LK.Fix (mx, x, codType) -> do
           (xts', extendedVarEnv) <- inferBinder' varEnv xts

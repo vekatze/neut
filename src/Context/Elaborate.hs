@@ -2,7 +2,7 @@ module Context.Elaborate
   ( initialize,
     initializeInferenceEnv,
     insConstraintEnv,
-    insertNonCellConstraint,
+    insertImmutableConstraint,
     getConstraintEnv,
     insWeakTypeEnv,
     lookupWeakTypeEnv,
@@ -52,9 +52,9 @@ insConstraintEnv :: WeakTerm -> WeakTerm -> App ()
 insConstraintEnv expected actual = do
   modifyRef' constraintEnv $ (:) (C.Eq expected actual)
 
-insertNonCellConstraint :: WeakTerm -> App ()
-insertNonCellConstraint t = do
-  modifyRef' constraintEnv $ (:) (C.NotCell t)
+insertImmutableConstraint :: WeakTerm -> App ()
+insertImmutableConstraint t = do
+  modifyRef' constraintEnv $ (:) (C.Immutable t)
 
 getConstraintEnv :: App [C.Constraint]
 getConstraintEnv =

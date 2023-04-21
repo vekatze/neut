@@ -68,9 +68,9 @@ throwTypeErrors = do
   sub <- getHoleSubst
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, c))) -> do
     case c of
-      C.NotCell t -> do
+      C.Immutable t -> do
         t' <- fillAsMuchAsPossible sub t
-        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageNotCell t'
+        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageImmutable t'
       C.Eq expected actual -> do
         expected' <- fillAsMuchAsPossible sub expected
         actual' <- fillAsMuchAsPossible sub actual
@@ -91,9 +91,9 @@ constructErrorMessageEq actual expected =
     <> "\n- "
     <> toText expected
 
-constructErrorMessageNotCell :: WT.WeakTerm -> T.Text
-constructErrorMessageNotCell t =
-  "couldn't verify that the following type doesn't contain a cell:\n "
+constructErrorMessageImmutable :: WT.WeakTerm -> T.Text
+constructErrorMessageImmutable t =
+  "the terms of the following type might be mutable:\n"
     <> toText t
 
 simplify :: [(C.Constraint, C.Constraint)] -> App ()
@@ -101,8 +101,8 @@ simplify constraintList =
   case constraintList of
     [] ->
       return ()
-    (C.NotCell t, orig) : cs -> do
-      simplifyNotCell (WT.metaOf t) S.empty t orig
+    (C.Immutable t, orig) : cs -> do
+      simplifyImmutable (WT.metaOf t) S.empty t orig
       simplify cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       expected' <- reduce expected
@@ -379,13 +379,13 @@ lookupAny is sub =
         _ ->
           lookupAny js sub
 
-simplifyNotCell ::
+simplifyImmutable ::
   Hint ->
   S.Set DD.DefiniteDescription ->
   WT.WeakTerm ->
   C.Constraint ->
   App ()
-simplifyNotCell m dataNameSet t orig = do
+simplifyImmutable m dataNameSet t orig = do
   t' <- reduce t
   case t' of
     _ :< WT.Tau ->
@@ -401,7 +401,7 @@ simplifyNotCell m dataNameSet t orig = do
           then return []
           else concat <$> mapM (getConsConstraints m) consNameList
       forM_ (ts1 ++ ts2) $ \t1 -> do
-        simplifyNotCell m (S.insert dataName dataNameSet) t1 orig
+        simplifyImmutable m (S.insert dataName dataNameSet) t1 orig
     _ :< WT.Prim {} ->
       return ()
     _ :< WT.ResourceType _ ->
@@ -415,15 +415,15 @@ simplifyNotCell m dataNameSet t orig = do
         Just (h, (xs, body)) -> do
           let s = HS.singleton h xs body
           t'' <- fill s t'
-          simplifyNotCell m dataNameSet t'' orig
+          simplifyImmutable m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
           case asStuckedTerm t' of
             Just (StuckPiElimVarGlobal dd args)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyNotCell m dataNameSet (toPiElim lam args) orig
+                  simplifyImmutable m dataNameSet (toPiElim lam args) orig
             _ -> do
-              let uc = C.SuspendedConstraint (fmvs, C.Other, (C.NotCell t', orig))
+              let uc = C.SuspendedConstraint (fmvs, C.Other, (C.Immutable t', orig))
               insertConstraint uc
 
 getConsConstraints ::
