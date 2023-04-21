@@ -4,6 +4,7 @@ import Context.App
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Control.Comonad.Cofree
@@ -29,7 +30,6 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.FreeVars qualified as WT
 import Entity.WeakTerm.FreeVarsWithHint qualified as WT
 import Scene.WeakTerm.Subst qualified as Subst
 
@@ -140,16 +140,17 @@ infer' varEnv term =
       insConstraintEnv t' t1' -- run this before `infer' varEnv e2`
       (e2', t2') <- infer' varEnv e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
-    m :< WT.Hole x es -> do
-      let rawHoleID = HID.reify x
+    m :< WT.Hole holeID _ -> do
+      let rawHoleID = HID.reify holeID
       mHoleInfo <- lookupHoleEnv rawHoleID
       case mHoleInfo of
         Just (_ :< holeTerm, _ :< holeType) ->
           return (m :< holeTerm, m :< holeType)
         Nothing -> do
-          holeType <- Gensym.newHole m es
-          insHoleEnv rawHoleID term holeType
-          return (term, holeType)
+          let holeTerm = m :< WT.Hole holeID (map (\(mx, x, _) -> mx :< WT.Var x) varEnv)
+          holeType <- newHole m varEnv
+          insHoleEnv rawHoleID holeTerm holeType
+          return (holeTerm, holeType)
     m :< WT.Prim prim
       | WP.Type _ <- prim ->
           return (term, m :< WT.Tau)

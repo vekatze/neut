@@ -11,7 +11,6 @@ import Context.App
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
@@ -127,8 +126,8 @@ discern nenv term =
       return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv >=> castFromNoemaIfNecessary nenv isNoetic) es
-      ts <- mapM (const $ Gensym.newHole m (asHoleArgs nenv)) es'
+      es' <- mapM (discern nenv >=> castFromNoemaIfNecessary isNoetic) es
+      ts <- mapM (const $ Gensym.newHole m []) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
@@ -149,7 +148,7 @@ discern nenv term =
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
     m :< RT.Hole k ->
-      return $ m :< WT.Hole k (asHoleArgs nenv)
+      return $ m :< WT.Hole k []
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
@@ -188,9 +187,9 @@ discernLet nenv m mxt mys e1 e2 = do
   nenvCont <- joinNominalEnv contAddition nenv
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
-  e2'' <- attachSuffix nenv (zip3 mutabilityList ysCont ysLocal) e2'
+  e2'' <- attachSuffix (zip3 mutabilityList ysCont ysLocal) e2'
   let opacity = if null mys then WT.Transparent else WT.Noetic
-  attachPrefix nenv (zip3 mutabilityList ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
+  attachPrefix (zip3 mutabilityList ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
 
 discernBinder ::
   NominalEnv ->

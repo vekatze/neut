@@ -3,9 +3,9 @@ import {
 - core.list => L
 }
 
-variant list(a: tau) {
+variant my-list(a: tau) {
 - Nil()
-- Cons(list(a))
+- Cons(my-list(a))
 }
 
 define-inline get[a](x: cell a): a {
@@ -20,9 +20,10 @@ define-inline mutate[a](x: cell a, mutator: a -> a): core.top.top {
 }
 
 define main(): i64 {
-  let xs: list(i64) = Nil()
+  let xs: my-list(i64) = Nil()
   let result on mutable xs = {
-    mutate(xs, lambda (_) { get(xs) })
+    // mutate(xs, lambda (_) { get(xs) })
+    mutate(xs, lambda (_) { Nil() })
     1
   }
   let _ = xs
