@@ -7,12 +7,16 @@ import Context.App
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
 import Context.Implicit qualified as Implicit
+import Context.Remark (printNote')
 import Control.Comonad.Cofree
+import Control.Monad
+import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
+import Entity.HoleID qualified as HID
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
@@ -20,6 +24,7 @@ import Entity.Stmt
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.ToText (toText)
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -27,15 +32,34 @@ revealStmt :: WeakStmt -> App WeakStmt
 revealStmt stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
+      stmtKind' <- revealStmtKind stmtKind
       (xts', (codType', e')) <- revealBinder' [] xts $ \varEnv -> do
         codType' <- reveal' varEnv codType
         e' <- reveal' varEnv e
         return (codType', e')
-      return $ WeakStmtDefine isConstLike stmtKind m x impArgNum xts' codType' e'
+      return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier
       return $ WeakStmtDefineResource m name discarder' copier'
+
+revealStmtKind :: StmtKindF WT.WeakTerm -> App (StmtKindF WT.WeakTerm)
+revealStmtKind stmtKind =
+  case stmtKind of
+    Normal {} ->
+      return stmtKind
+    Data dataName dataArgs consInfoList projections -> do
+      (dataArgs', varEnv) <- revealBinder'' [] dataArgs
+      consInfoList' <- forM consInfoList $ \(dd, constLike, consArgs, discriminant) -> do
+        (consArgs', _) <- revealBinder'' varEnv consArgs
+        return (dd, constLike, consArgs', discriminant)
+      return $ Data dataName dataArgs' consInfoList' projections
+    DataIntro consName dataArgs consArgs discriminant -> do
+      (dataArgs', varEnv) <- revealBinder'' [] dataArgs
+      (consArgs', _) <- revealBinder'' varEnv consArgs
+      return $ DataIntro consName dataArgs' consArgs' discriminant
+    Projection {} ->
+      return stmtKind
 
 reveal' :: BoundVarEnv -> WT.WeakTerm -> App WT.WeakTerm
 reveal' varEnv term =
@@ -107,9 +131,16 @@ reveal' varEnv term =
       t' <- reveal' varEnv t
       e2' <- reveal' varEnv e2 -- no context extension
       return $ m :< WT.Let opacity (mx, x, t') e1' e2'
-    m :< WT.Hole x es -> do
-      es' <- mapM (reveal' varEnv) es
-      return $ m :< WT.Hole x es'
+    m :< WT.Hole holeID _ -> do
+      let rawHoleID = HID.reify holeID
+      mHoleInfo <- lookupPreHoleEnv rawHoleID
+      case mHoleInfo of
+        Just (_ :< holeTerm) -> do
+          return $ m :< holeTerm
+        Nothing -> do
+          let holeTerm = m :< WT.Hole holeID (map (\(mx, x, _) -> mx :< WT.Var x) varEnv)
+          insPreHoleEnv rawHoleID holeTerm
+          return holeTerm
     m :< WT.Prim prim
       | WP.Type _ <- prim ->
           return term
@@ -183,6 +214,20 @@ revealBinder' varEnv binder comp =
       insWeakTypeEnv x t'
       (xts', etl') <- revealBinder' ((mx, x, t') : varEnv) xts comp
       return ((mx, x, t') : xts', etl')
+
+revealBinder'' ::
+  BoundVarEnv ->
+  [BinderF WT.WeakTerm] ->
+  App ([BinderF WT.WeakTerm], BoundVarEnv)
+revealBinder'' varEnv binder =
+  case binder of
+    [] -> do
+      return ([], varEnv)
+    ((mx, x, t) : xts) -> do
+      t' <- reveal' varEnv t
+      insWeakTypeEnv x t'
+      (xts', newVarEnv) <- revealBinder'' ((mx, x, t') : varEnv) xts
+      return ((mx, x, t') : xts', newVarEnv)
 
 revealDecisionTree ::
   BoundVarEnv ->

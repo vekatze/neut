@@ -53,6 +53,7 @@ data Env = Env
     sourceChildrenMap :: FastRef (Map.HashMap (Path Abs File) [Source.Source]),
     traceSourceList :: FastRef [Source.Source],
     weakTypeEnv :: FastRef (IntMap.IntMap WT.WeakTerm),
+    preHoleEnv :: FastRef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: FastRef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
     constraintQueue :: FastRef (Q.MinQueue C.SuspendedConstraint),
     hasObjectSet :: FastRef (S.Set (Path Abs File)),
@@ -108,6 +109,7 @@ newEnv = do
   holeSubst <- newFastRef
   sourceChildrenMap <- newFastRef
   weakTypeEnv <- newFastRef
+  preHoleEnv <- newFastRef
   holeEnv <- newFastRef
   constraintQueue <- newFastRef
   traceSourceList <- newFastRef
