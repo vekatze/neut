@@ -4,7 +4,6 @@ import Context.App
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Control.Comonad.Cofree

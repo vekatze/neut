@@ -15,7 +15,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.List
-import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
@@ -23,7 +22,6 @@ import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
-import Entity.Error qualified as E
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS

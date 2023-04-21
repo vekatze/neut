@@ -219,7 +219,6 @@ simplify constraintList =
               simplify $ (C.Eq e1 e2', orig) : cs
             (Nothing, Nothing) -> do
               defMap <- WeakDefinition.read
-              -- defMap <- getDefMap
               let fmvs = S.union fmvs1 fmvs2
               case (asStuckedTerm e1, asStuckedTerm e2) of
                 (Just (StuckPiElimHole h1 ies1), _)

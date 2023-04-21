@@ -101,7 +101,6 @@ discern nenv term =
     m :< RT.VarGlobal globalLocator localLocator -> do
       (dd, gn) <- resolveLocator m globalLocator localLocator
       interpretGlobalName m dd gn
-    -- discernGlobal m globalLocator localLocator
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
       return $ m :< WT.Pi xts' t'
