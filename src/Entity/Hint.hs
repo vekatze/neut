@@ -24,6 +24,9 @@ instance Show Hint where
   show _ =
     "_"
 
+instance Ord Hint where
+  _ `compare` _ = EQ
+
 instance Eq Hint where
   _ == _ = True
 

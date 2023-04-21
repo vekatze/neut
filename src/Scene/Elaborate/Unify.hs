@@ -4,6 +4,7 @@ import Context.App
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
+import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
@@ -65,10 +66,15 @@ throwTypeErrors :: App a
 throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
   sub <- getHoleSubst
-  errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, C.Eq expected actual))) -> do
-    expected' <- fillAsMuchAsPossible sub expected
-    actual' <- fillAsMuchAsPossible sub actual
-    return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMsg actual' expected'
+  errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, c))) -> do
+    case c of
+      C.NotCell t -> do
+        t' <- fillAsMuchAsPossible sub t
+        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageNotCell t'
+      C.Eq expected actual -> do
+        expected' <- fillAsMuchAsPossible sub expected
+        actual' <- fillAsMuchAsPossible sub actual
+        return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMessageEq actual' expected'
   Throw.throw $ E.MakeError errorList
 
 fillAsMuchAsPossible :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
@@ -78,18 +84,26 @@ fillAsMuchAsPossible sub e = do
     then fill sub e' >>= fillAsMuchAsPossible sub
     else return e'
 
-constructErrorMsg :: WT.WeakTerm -> WT.WeakTerm -> T.Text
-constructErrorMsg actual expected =
+constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
+constructErrorMessageEq actual expected =
   "couldn't verify the definitional equality of the following two terms:\n- "
     <> toText actual
     <> "\n- "
     <> toText expected
+
+constructErrorMessageNotCell :: WT.WeakTerm -> T.Text
+constructErrorMessageNotCell t =
+  "couldn't verify that the following type doesn't contain a cell:\n "
+    <> toText t
 
 simplify :: [(C.Constraint, C.Constraint)] -> App ()
 simplify constraintList =
   case constraintList of
     [] ->
       return ()
+    (C.NotCell t, orig) : cs -> do
+      simplifyNotCell (WT.metaOf t) S.empty t orig
+      simplify cs
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       expected' <- reduce expected
       actual' <- reduce actual
@@ -364,3 +378,62 @@ lookupAny is sub =
           Just (j, v)
         _ ->
           lookupAny js sub
+
+simplifyNotCell ::
+  Hint ->
+  S.Set DD.DefiniteDescription ->
+  WT.WeakTerm ->
+  C.Constraint ->
+  App ()
+simplifyNotCell m dataNameSet t orig = do
+  t' <- reduce t
+  case t' of
+    _ :< WT.Tau ->
+      return ()
+    _ :< WT.Var _ ->
+      return () -- opaque type variable
+    _ :< WT.Pi {} ->
+      return ()
+    _ :< WT.Data dataName consNameList dataArgs -> do
+      let ts1 = dataArgs
+      ts2 <-
+        if S.member dataName dataNameSet
+          then return []
+          else concat <$> mapM (getConsConstraints m) consNameList
+      forM_ (ts1 ++ ts2) $ \t1 -> do
+        simplifyNotCell m (S.insert dataName dataNameSet) t1 orig
+    _ :< WT.Prim {} ->
+      return ()
+    _ :< WT.ResourceType _ ->
+      return ()
+    _ :< WT.Noema {} ->
+      return ()
+    _ -> do
+      sub <- getHoleSubst
+      let fmvs = holes t'
+      case lookupAny (S.toList fmvs) sub of
+        Just (h, (xs, body)) -> do
+          let s = HS.singleton h xs body
+          t'' <- fill s t'
+          simplifyNotCell m dataNameSet t'' orig
+        Nothing -> do
+          defMap <- WeakDefinition.read
+          case asStuckedTerm t' of
+            Just (StuckPiElimVarGlobal dd args)
+              | Just lam <- Map.lookup dd defMap -> do
+                  simplifyNotCell m dataNameSet (toPiElim lam args) orig
+            _ -> do
+              let uc = C.SuspendedConstraint (fmvs, C.Other, (C.NotCell t', orig))
+              insertConstraint uc
+
+getConsConstraints ::
+  Hint ->
+  DD.DefiniteDescription ->
+  App [WT.WeakTerm]
+getConsConstraints m consName = do
+  t <- Type.lookup m consName
+  case t of
+    _ :< WT.Pi xts _ -> do
+      return $ map (\(_, _, dom) -> dom) xts
+    _ ->
+      Throw.raiseCritical m $ "the type of a constructor must be a Π-type, but it's not:\n" <> toText t

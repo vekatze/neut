@@ -7,6 +7,7 @@ import Entity.WeakTerm
 
 data Constraint
   = Eq WeakTerm WeakTerm -- (expected-type, actual-type)
+  | NotCell WeakTerm
 
 data ConstraintKind
   = Delta Constraint

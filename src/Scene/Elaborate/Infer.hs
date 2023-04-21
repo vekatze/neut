@@ -9,6 +9,7 @@ import Context.Type qualified as Type
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
@@ -28,6 +29,8 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.FreeVars qualified as WT
+import Entity.WeakTerm.FreeVarsWithHint qualified as WT
 import Scene.WeakTerm.Subst qualified as Subst
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
@@ -77,6 +80,10 @@ infer' varEnv term =
       (xts', t') <- inferPi varEnv xts t
       return (m :< WT.Pi xts' t', m :< WT.Tau)
     m :< WT.PiIntro kind xts e -> do
+      let (ms, fvs) = unzip $ S.toList $ WT.freeVarsWithHint term
+      freeVarTypes <- mapM (lookupWeakTypeEnv m) fvs
+      let freeVarTypes' = zipWith (\mt (_ :< t) -> mt :< t) ms freeVarTypes
+      forM_ freeVarTypes' insertNonCellConstraint
       case kind of
         LK.Fix (mx, x, codType) -> do
           (xts', extendedVarEnv) <- inferBinder' varEnv xts
