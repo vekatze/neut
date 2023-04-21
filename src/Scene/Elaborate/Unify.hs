@@ -410,7 +410,7 @@ simplifyImmutableTerm e orig cs = do
       freeVarTypes <- mapM (lookupWeakTypeEnv (WT.metaOf e)) fvs
       let freeVarTypes' = zipWith (\mt (_ :< t) -> mt :< t) ms freeVarTypes
       let newConstraints = map C.Immutable freeVarTypes'
-      simplify $ map (,orig) newConstraints ++ cs
+      simplify $ zip newConstraints newConstraints ++ cs
     else do
       sub <- getHoleSubst
       case lookupAny (S.toList fmvs) sub of
