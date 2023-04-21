@@ -11,7 +11,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Comp
-import Entity.Constraint
+import Entity.Constraint qualified as C
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -46,7 +46,7 @@ data Env = Env
     sourceNameMap :: FastRef (Map.HashMap (Path Abs File) (Map.HashMap DD.DefiniteDescription GN.GlobalName)),
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),
-    constraintEnv :: FastRef [(WT.WeakTerm, WT.WeakTerm)],
+    constraintEnv :: FastRef [C.Constraint],
     remarkList :: FastRef [Remark.Remark],
     unusedVariableMap :: FastRef (IntMap.IntMap (Hint, Ident)),
     holeSubst :: FastRef HS.HoleSubst,
@@ -54,7 +54,7 @@ data Env = Env
     traceSourceList :: FastRef [Source.Source],
     weakTypeEnv :: FastRef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: FastRef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
-    constraintQueue :: FastRef (Q.MinQueue SuspendedConstraint),
+    constraintQueue :: FastRef (Q.MinQueue C.SuspendedConstraint),
     hasObjectSet :: FastRef (S.Set (Path Abs File)),
     hasCacheSet :: FastRef (S.Set (Path Abs File)),
     hasLLVMSet :: FastRef (S.Set (Path Abs File)),

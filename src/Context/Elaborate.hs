@@ -49,9 +49,9 @@ initializeInferenceEnv = do
 
 insConstraintEnv :: WeakTerm -> WeakTerm -> App ()
 insConstraintEnv expected actual = do
-  modifyRef' constraintEnv $ (:) (expected, actual)
+  modifyRef' constraintEnv $ (:) (C.Eq expected actual)
 
-getConstraintEnv :: App [(WeakTerm, WeakTerm)]
+getConstraintEnv :: App [C.Constraint]
 getConstraintEnv =
   readRef' constraintEnv
 

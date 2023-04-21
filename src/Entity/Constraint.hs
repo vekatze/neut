@@ -5,8 +5,8 @@ import Data.Set qualified as S
 import Entity.HoleID qualified as HID
 import Entity.WeakTerm
 
-type Constraint =
-  (WeakTerm, WeakTerm) -- (expected-type, actual-type)
+data Constraint
+  = Eq WeakTerm WeakTerm -- (expected-type, actual-type)
 
 data ConstraintKind
   = Delta Constraint

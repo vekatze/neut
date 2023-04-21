@@ -1,7 +1,4 @@
-module Scene.Elaborate.Unify
-  ( unify,
-  )
-where
+module Scene.Elaborate.Unify (unify) where
 
 import Context.App
 import Context.Elaborate
@@ -68,7 +65,7 @@ throwTypeErrors :: App a
 throwTypeErrors = do
   suspendedConstraintQueue <- getConstraintQueue
   sub <- getHoleSubst
-  errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, (expected, actual)))) -> do
+  errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, C.Eq expected actual))) -> do
     expected' <- fillAsMuchAsPossible sub expected
     actual' <- fillAsMuchAsPossible sub actual
     return $ R.newRemark (WT.metaOf actual) R.Error $ constructErrorMsg actual' expected'
@@ -93,10 +90,10 @@ simplify constraintList =
   case constraintList of
     [] ->
       return ()
-    headConstraint@(c, orig) : cs -> do
-      expected <- reduce $ fst c
-      actual <- reduce $ snd c
-      case (expected, actual) of
+    headConstraint@(C.Eq expected actual, orig) : cs -> do
+      expected' <- reduce expected
+      actual' <- reduce actual
+      case (expected', actual') of
         (_ :< WT.Tau, _ :< WT.Tau) ->
           simplify cs
         (_ :< WT.Var x1, _ :< WT.Var x2)
@@ -131,7 +128,7 @@ simplify constraintList =
         (_ :< WT.Data name1 _ es1, _ :< WT.Data name2 _ es2)
           | name1 == name2,
             length es1 == length es2 -> do
-              let cs' = zipWith (curry (,orig)) es1 es2
+              let cs' = map (,orig) (zipWith C.Eq es1 es2)
               simplify $ cs' ++ cs
         (_ :< WT.DataIntro dataName1 consName1 _ _ dataArgs1 consArgs1, _ :< WT.DataIntro dataName2 consName2 _ _ dataArgs2 consArgs2)
           | dataName1 == dataName2,
@@ -140,16 +137,16 @@ simplify constraintList =
             length consArgs1 == length consArgs2 -> do
               let es1 = dataArgs1 ++ consArgs1
               let es2 = dataArgs2 ++ consArgs2
-              let cs' = zipWith (curry (,orig)) es1 es2
+              let cs' = map (,orig) (zipWith C.Eq es1 es2)
               simplify $ cs' ++ cs
         (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
-          simplify $ ((t1, t2), orig) : cs
+          simplify $ (C.Eq t1 t2, orig) : cs
         (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
-          simplify $ ((t1, t2), orig) : ((e1, e2), orig) : cs
+          simplify $ (C.Eq t1 t2, orig) : (C.Eq e1 e2, orig) : cs
         (_ :< WT.Cell t1, _ :< WT.Cell t2) ->
-          simplify $ ((t1, t2), orig) : cs
+          simplify $ (C.Eq t1 t2, orig) : cs
         (_ :< WT.CellIntro e1, _ :< WT.CellIntro e2) ->
-          simplify $ ((e1, e2), orig) : cs
+          simplify $ (C.Eq e1 e2, orig) : cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)
           | WP.Type t1 <- a1,
             WP.Type t2 <- a2,
@@ -158,11 +155,11 @@ simplify constraintList =
           | WP.Value (WPV.Int t1 l1) <- a1,
             WP.Value (WPV.Int t2 l2) <- a2,
             l1 == l2 ->
-              simplify $ ((t1, t2), orig) : cs
+              simplify $ (C.Eq t1 t2, orig) : cs
           | WP.Value (WPV.Float t1 l1) <- a1,
             WP.Value (WPV.Float t2 l2) <- a2,
             l1 == l2 ->
-              simplify $ ((t1, t2), orig) : cs
+              simplify $ (C.Eq t1 t2, orig) : cs
           | WP.Value (WPV.Op op1) <- a1,
             WP.Value (WPV.Op op2) <- a2,
             op1 == op2 ->
@@ -171,9 +168,9 @@ simplify constraintList =
           | name1 == name2 ->
               simplify cs
         (_ :< WT.Annotation _ _ e1, e2) ->
-          simplify $ ((e1, e2), orig) : cs
+          simplify $ (C.Eq e1 e2, orig) : cs
         (e1, _ :< WT.Annotation _ _ e2) ->
-          simplify $ ((e1, e2), orig) : cs
+          simplify $ (C.Eq e1 e2, orig) : cs
         (e1, e2) -> do
           sub <- getHoleSubst
           let fvs1 = freeVars e1
@@ -186,15 +183,15 @@ simplify constraintList =
               let s2 = HS.singleton h2 xs2 body2
               e1' <- fill s1 e1
               e2' <- fill s2 e2
-              simplify $ ((e1', e2'), orig) : cs
+              simplify $ (C.Eq e1' e2', orig) : cs
             (Just (h1, (xs1, body1)), Nothing) -> do
               let s1 = HS.singleton h1 xs1 body1
               e1' <- fill s1 e1
-              simplify $ ((e1', e2), orig) : cs
+              simplify $ (C.Eq e1' e2, orig) : cs
             (Nothing, Just (h2, (xs2, body2))) -> do
               let s2 = HS.singleton h2 xs2 body2
               e2' <- fill s2 e2
-              simplify $ ((e1, e2'), orig) : cs
+              simplify $ (C.Eq e1 e2', orig) : cs
             (Nothing, Nothing) -> do
               defMap <- WeakDefinition.read
               -- defMap <- getDefMap
@@ -223,26 +220,26 @@ simplify constraintList =
                       simplify $ map (,orig) pairList ++ cs
                   | g1 == g2,
                     Just lam <- Map.lookup g1 defMap ->
-                      simplify $ ((toPiElim lam mess1, toPiElim lam mess2), orig) : cs
+                      simplify $ (C.Eq (toPiElim lam mess1) (toPiElim lam mess2), orig) : cs
                   | Just lam1 <- Map.lookup g1 defMap,
                     Just lam2 <- Map.lookup g2 defMap ->
-                      simplify $ ((toPiElim lam1 mess1, toPiElim lam2 mess2), orig) : cs
+                      simplify $ (C.Eq (toPiElim lam1 mess1) (toPiElim lam2 mess2), orig) : cs
                 (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimHole {})
                   | Just lam <- Map.lookup g1 defMap -> do
-                      let uc = C.SuspendedConstraint (fmvs, C.Delta (toPiElim lam mess1, e2), headConstraint)
+                      let uc = C.SuspendedConstraint (fmvs, C.Delta (C.Eq (toPiElim lam mess1) e2), headConstraint)
                       insertConstraint uc
                       simplify cs
                 (Just StuckPiElimHole {}, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap -> do
-                      let uc = C.SuspendedConstraint (fmvs, C.Delta (e1, toPiElim lam mess2), headConstraint)
+                      let uc = C.SuspendedConstraint (fmvs, C.Delta (C.Eq e1 (toPiElim lam mess2)), headConstraint)
                       insertConstraint uc
                       simplify cs
                 (Just (StuckPiElimVarGlobal g1 mess1), _)
                   | Just lam <- Map.lookup g1 defMap ->
-                      simplify $ ((toPiElim lam mess1, e2), orig) : cs
+                      simplify $ (C.Eq (toPiElim lam mess1) e2, orig) : cs
                 (_, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap ->
-                      simplify $ ((e1, toPiElim lam mess2), orig) : cs
+                      simplify $ (C.Eq e1 (toPiElim lam mess2), orig) : cs
                 _ -> do
                   let uc = C.SuspendedConstraint (fmvs, C.Other, headConstraint)
                   insertConstraint uc
@@ -278,7 +275,7 @@ simplifyBinder' orig sub args1 args2 =
       t2' <- Subst.subst sub t2
       let sub' = IntMap.insert (Ident.toInt x2) (Right (m1 :< WT.Var x1)) sub
       rest <- simplifyBinder' orig sub' xts1 xts2
-      return $ ((t1, t2'), orig) : rest
+      return $ (C.Eq t1 t2', orig) : rest
     _ ->
       return []
 
@@ -290,7 +287,7 @@ asWeakBinder m t = do
 asPairList ::
   [[WT.WeakTerm]] ->
   [[WT.WeakTerm]] ->
-  Maybe [(WT.WeakTerm, WT.WeakTerm)]
+  Maybe [C.Constraint]
 asPairList list1 list2 =
   case (list1, list2) of
     ([], []) ->
@@ -300,7 +297,7 @@ asPairList list1 list2 =
           Nothing
       | otherwise -> do
           pairList <- asPairList mess1 mess2
-          return $ zip es1 es2 ++ pairList
+          return $ zipWith C.Eq es1 es2 ++ pairList
     _ ->
       Nothing
 
