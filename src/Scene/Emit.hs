@@ -46,7 +46,11 @@ emitStaticText baseSize (from, (text, len)) = do
     <> DD.toBuilder from
     <> " = private unnamed_addr constant "
     <> emitLowType (LT.textType baseSize len)
-    <> " {i"
+    <> " {"
+    <> "i"
+    <> intDec baseSize
+    <> " 0, "
+    <> "i"
     <> intDec baseSize
     <> " "
     <> intDec len

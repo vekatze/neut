@@ -32,6 +32,7 @@ textType :: Int -> Int -> LowType
 textType baseSize len =
   Struct
     [ PrimNum $ PT.Int $ IntSize baseSize,
+      PrimNum $ PT.Int $ IntSize baseSize,
       textTypeInner len
     ]
 
