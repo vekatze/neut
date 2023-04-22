@@ -181,7 +181,7 @@ var = do
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "=() '\"\n\t:;,<>[]{}"
+  S.fromList "=() \"\n\t:;,<>[]{}"
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char

@@ -110,7 +110,6 @@ rawTermBasic = do
     [ rawTermNoema,
       rawTermOption,
       rawTermEmbody,
-      rawTermLazy,
       rawTermTuple,
       rawTermPiElimOrSimple
     ]
@@ -276,13 +275,6 @@ rawTermEmbody = do
   delimiter "!"
   e <- rawTermBasic
   return $ m :< RT.Embody e
-
-rawTermLazy :: Parser RT.RawTerm
-rawTermLazy = do
-  m <- getCurrentHint
-  delimiter "'"
-  t <- rawTermBasic
-  return $ m :< RT.Pi [] t
 
 rawTermTau :: Parser RT.RawTerm
 rawTermTau = do
