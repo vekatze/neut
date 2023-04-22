@@ -132,6 +132,7 @@ initializeAliasMap = do
   currentAliasList <- getModuleChecksumAliasList currentModule
   let aliasMap = Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ currentAliasList
   writeRef' moduleAliasMap aliasMap
+  writeRef' locatorAliasMap Map.empty
 
 getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
 getAlias mainModule currentModule = do
