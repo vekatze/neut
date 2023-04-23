@@ -703,7 +703,7 @@ rawTermNoema = do
 rawTermCell :: Parser RT.RawTerm
 rawTermCell = do
   m <- getCurrentHint
-  delimiter "cell"
+  keyword "cell"
   t <- rawTerm
   return $ m :< RT.Cell t
 
