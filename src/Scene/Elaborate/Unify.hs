@@ -94,7 +94,7 @@ fillAsMuchAsPossible sub e = do
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
 constructErrorMessageEq actual expected =
-  "couldn't verify the definitional equality of the following two terms:\n- "
+  "type mismatch:\n- "
     <> toText actual
     <> "\n- "
     <> toText expected
