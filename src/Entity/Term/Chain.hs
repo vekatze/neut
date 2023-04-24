@@ -73,11 +73,11 @@ chainOf' tenv term =
       []
     _ :< TM.Magic der ->
       foldMap (chainOf' tenv) der
-    _ :< TM.Promise _ t ->
+    _ :< TM.Flow _ t ->
       chainOf' tenv t
-    _ :< TM.PromiseIntro _ _ (e, t) ->
+    _ :< TM.FlowIntro _ _ (e, t) ->
       concatMap (chainOf' tenv) [e, t]
-    _ :< TM.PromiseElim _ _ (e, t) ->
+    _ :< TM.FlowElim _ _ (e, t) ->
       concatMap (chainOf' tenv) [e, t]
 
 chainOfBinder :: TM.TypeEnv -> [BinderF TM.Term] -> [TM.Term] -> [BinderF TM.Term]

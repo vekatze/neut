@@ -165,20 +165,20 @@ discern nenv term =
         AN.Type _ -> do
           -- let doNotCare = m :< WT.Tau -- discarded at Infer
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Promise pVar t -> do
+    m :< RT.Flow pVar t -> do
       pVar' <- uncurry (resolveLocator' m) pVar
       t' <- discern nenv t
-      return $ m :< WT.Promise pVar' t'
-    m :< RT.PromiseIntro pVar var e -> do
+      return $ m :< WT.Flow pVar' t'
+    m :< RT.FlowIntro pVar var e -> do
       pVar' <- uncurry (resolveLocator' m) pVar
       var' <- uncurry (resolveLocator' m) var
       e' <- discern nenv e
-      return $ m :< WT.PromiseIntro pVar' var' (e', doNotCare m)
-    m :< RT.PromiseElim pVar var e -> do
+      return $ m :< WT.FlowIntro pVar' var' (e', doNotCare m)
+    m :< RT.FlowElim pVar var e -> do
       pVar' <- uncurry (resolveLocator' m) pVar
       var' <- uncurry (resolveLocator' m) var
       e' <- discern nenv e
-      return $ m :< WT.PromiseElim pVar' var' (e', doNotCare m)
+      return $ m :< WT.FlowElim pVar' var' (e', doNotCare m)
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =

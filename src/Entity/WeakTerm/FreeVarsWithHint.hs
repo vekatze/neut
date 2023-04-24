@@ -66,13 +66,13 @@ freeVarsWithHint term =
         AN.Type t -> do
           let xs2 = freeVarsWithHint t
           S.union xs1 xs2
-    _ :< WT.Promise _ t -> do
+    _ :< WT.Flow _ t -> do
       freeVarsWithHint t
-    _ :< WT.PromiseIntro _ _ (e, t) -> do
+    _ :< WT.FlowIntro _ _ (e, t) -> do
       let xs1 = freeVarsWithHint e
       let xs2 = freeVarsWithHint t
       S.unions [xs1, xs2]
-    _ :< WT.PromiseElim _ _ (e, t) -> do
+    _ :< WT.FlowElim _ _ (e, t) -> do
       let xs1 = freeVarsWithHint e
       let xs2 = freeVarsWithHint t
       S.unions [xs1, xs2]

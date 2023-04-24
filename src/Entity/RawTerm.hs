@@ -47,17 +47,17 @@ data RawTermF a
   | Hole HoleID
   | New T.Text [(Hint, T.Text, RawTerm)] -- auxiliary syntax for codata introduction
   | Annotation RemarkLevel (AN.Annotation ()) a
-  | Promise
-      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.promise-inner"
+  | Flow
+      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.flow-inner"
       a -- actual-argument
-  | PromiseIntro
-      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.promise-inner"
+  | FlowIntro
+      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.flow-inner"
       (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.run"
       a -- lambda
-  | PromiseElim
-      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.promise-inner"
+  | FlowElim
+      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.flow-inner"
       (GL.GlobalLocator, LL.LocalLocator) -- , "core.thread.wait"
-      a -- promise
+      a -- flow
 
 type DefInfo =
   ((Hint, T.Text), [BinderF RawTerm], RawTerm, RawTerm)

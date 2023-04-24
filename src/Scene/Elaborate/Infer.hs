@@ -188,20 +188,20 @@ infer' varEnv term =
       case annot of
         AN.Type _ -> do
           return (m :< WT.Annotation logLevel (AN.Type t) e', t)
-    m :< WT.Promise var t -> do
+    m :< WT.Flow var t -> do
       t' <- inferType' varEnv t
-      return (m :< WT.Promise var t', m :< WT.Tau)
-    m :< WT.PromiseIntro pVar var (e, _) -> do
+      return (m :< WT.Flow var t', m :< WT.Tau)
+    m :< WT.FlowIntro pVar var (e, _) -> do
       (e', t) <- infer' varEnv e
       h <- newHole m varEnv
       insConstraintEnv (m :< WT.Pi [] h) t
-      -- return (m :< WT.PromiseIntro pVar var (e', t), m :< WT.Promise pVar t)
-      return (m :< WT.PromiseIntro pVar var (e', t), m :< WT.Promise pVar h)
-    m :< WT.PromiseElim pVar var (e, _) -> do
+      -- return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar t)
+      return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar h)
+    m :< WT.FlowElim pVar var (e, _) -> do
       (e', t) <- infer' varEnv e
       h <- newHole m varEnv
-      insConstraintEnv (m :< WT.Promise pVar h) t
-      return (m :< WT.PromiseElim pVar var (e', t), h)
+      insConstraintEnv (m :< WT.Flow pVar h) t
+      return (m :< WT.FlowElim pVar var (e', t), h)
 
 inferArgs ::
   WT.SubstWeakTerm ->

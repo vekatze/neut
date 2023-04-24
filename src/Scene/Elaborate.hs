@@ -290,17 +290,17 @@ elaborate' term =
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
-    m :< WT.Promise pVar t -> do
+    m :< WT.Flow pVar t -> do
       t' <- elaborate' t
-      return $ m :< TM.Promise pVar t'
-    m :< WT.PromiseIntro pVar var (e, t) -> do
+      return $ m :< TM.Flow pVar t'
+    m :< WT.FlowIntro pVar var (e, t) -> do
       e' <- elaborate' e
       t' <- elaborate' t
-      return $ m :< TM.PromiseIntro pVar var (e', t')
-    m :< WT.PromiseElim pVar var (e, t) -> do
+      return $ m :< TM.FlowIntro pVar var (e', t')
+    m :< WT.FlowElim pVar var (e, t) -> do
       e' <- elaborate' e
       t' <- elaborate' t
-      return $ m :< TM.PromiseElim pVar var (e', t')
+      return $ m :< TM.FlowElim pVar var (e', t')
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

@@ -87,17 +87,17 @@ subst sub term =
     m :< TM.Magic der -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')
-    m :< TM.Promise pVar t -> do
+    m :< TM.Flow pVar t -> do
       t' <- subst sub t
-      return $ m :< TM.Promise pVar t'
-    m :< TM.PromiseIntro pVar var (e, t) -> do
+      return $ m :< TM.Flow pVar t'
+    m :< TM.FlowIntro pVar var (e, t) -> do
       e' <- subst sub e
       t' <- subst sub t
-      return $ m :< TM.PromiseIntro pVar var (e', t')
-    m :< TM.PromiseElim pVar var (e, t) -> do
+      return $ m :< TM.FlowIntro pVar var (e', t')
+    m :< TM.FlowElim pVar var (e, t) -> do
       e' <- subst sub e
       t' <- subst sub t
-      return $ m :< TM.PromiseElim pVar var (e', t')
+      return $ m :< TM.FlowElim pVar var (e', t')
 
 subst' ::
   SubstTerm ->

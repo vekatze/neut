@@ -208,11 +208,11 @@ simplify constraintList =
           simplify $ (C.Eq e1 e2, orig) : cs
         (e1, _ :< WT.Annotation _ _ e2) ->
           simplify $ (C.Eq e1 e2, orig) : cs
-        (_ :< WT.Promise _ t1, _ :< WT.Promise _ t2) ->
+        (_ :< WT.Flow _ t1, _ :< WT.Flow _ t2) ->
           simplify $ (C.Eq t1 t2, orig) : cs
-        (_ :< WT.PromiseIntro _ _ (lam1, t1), _ :< WT.PromiseIntro _ _ (lam2, t2)) ->
+        (_ :< WT.FlowIntro _ _ (lam1, t1), _ :< WT.FlowIntro _ _ (lam2, t2)) ->
           simplify $ (C.Eq lam1 lam2, orig) : (C.Eq t1 t2, orig) : cs
-        (_ :< WT.PromiseElim _ _ (lam1, t1), _ :< WT.PromiseElim _ _ (lam2, t2)) ->
+        (_ :< WT.FlowElim _ _ (lam1, t1), _ :< WT.FlowElim _ _ (lam2, t2)) ->
           simplify $ (C.Eq lam1 lam2, orig) : (C.Eq t1 t2, orig) : cs
         (e1, e2) -> do
           sub <- getHoleSubst
@@ -458,7 +458,7 @@ simplifyImmutable m dataNameSet t orig = do
       return ()
     _ :< WT.Noema {} ->
       return ()
-    _ :< WT.Promise {} ->
+    _ :< WT.Flow {} ->
       return ()
     _ -> do
       sub <- getHoleSubst

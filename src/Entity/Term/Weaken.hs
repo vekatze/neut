@@ -89,12 +89,12 @@ weaken term =
       m :< WT.ResourceType name
     m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
-    m :< TM.Promise pVar t ->
-      m :< WT.Promise pVar (weaken t)
-    m :< TM.PromiseIntro pVar var (e, t) ->
-      m :< WT.PromiseIntro pVar var (weaken e, weaken t)
-    m :< TM.PromiseElim pVar var (e, t) ->
-      m :< WT.PromiseElim pVar var (weaken e, weaken t)
+    m :< TM.Flow pVar t ->
+      m :< WT.Flow pVar (weaken t)
+    m :< TM.FlowIntro pVar var (e, t) ->
+      m :< WT.FlowIntro pVar var (weaken e, weaken t)
+    m :< TM.FlowElim pVar var (e, t) ->
+      m :< WT.FlowElim pVar var (weaken e, weaken t)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

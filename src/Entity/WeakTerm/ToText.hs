@@ -71,11 +71,11 @@ toText term =
       showCons [T.pack $ show a]
     _ :< WT.Annotation _ _ e ->
       toText e
-    _ :< WT.Promise _ t -> do
-      showCons ["promise", toText t]
-    _ :< WT.PromiseIntro _ _ (e, _) -> do
+    _ :< WT.Flow _ t -> do
+      showCons ["flow", toText t]
+    _ :< WT.FlowIntro _ _ (e, _) -> do
       showCons ["run", toText e]
-    _ :< WT.PromiseElim _ _ (e, _) -> do
+    _ :< WT.FlowElim _ _ (e, _) -> do
       showCons ["wait", toText e]
 
 inParen :: T.Text -> T.Text

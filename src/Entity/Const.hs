@@ -129,9 +129,9 @@ coreSystemAdmit :: T.Text
 coreSystemAdmit =
   core <> nsSep <> "system" <> nsSep <> "admit"
 
-coreThreadPromiseInner :: T.Text
-coreThreadPromiseInner =
-  core <> nsSep <> "thread" <> nsSep <> "promise-inner"
+coreThreadFlowInner :: T.Text
+coreThreadFlowInner =
+  core <> nsSep <> "thread" <> nsSep <> "flow-inner"
 
 coreThreadDetach :: T.Text
 coreThreadDetach =

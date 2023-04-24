@@ -98,9 +98,9 @@ rawTerm = do
       rawTermMatch,
       rawTermNew,
       rawTermCell,
-      rawTermPromise,
-      rawTermPromiseIntro,
-      rawTermPromiseElim,
+      rawTermFlow,
+      rawTermFlowIntro,
+      rawTermFlowElim,
       rawTermIf,
       rawTermListIntro,
       rawTermPiGeneral,
@@ -710,31 +710,31 @@ rawTermCell = do
   t <- rawTerm
   return $ m :< RT.Cell t
 
-rawTermPromise :: Parser RT.RawTerm
-rawTermPromise = do
+rawTermFlow :: Parser RT.RawTerm
+rawTermFlow = do
   m <- getCurrentHint
-  keyword "promise"
-  promiseVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadPromiseInner
+  keyword "flow"
+  flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   t <- rawTerm
-  return $ m :< RT.Promise promiseVar t
+  return $ m :< RT.Flow flowVar t
 
-rawTermPromiseIntro :: Parser RT.RawTerm
-rawTermPromiseIntro = do
+rawTermFlowIntro :: Parser RT.RawTerm
+rawTermFlowIntro = do
   m <- getCurrentHint
   keyword "detach"
-  promiseVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadPromiseInner
+  flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   detachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadDetach
   e <- betweenBrace rawExpr
-  return $ m :< RT.PromiseIntro promiseVar detachVar (m :< RT.PiIntro (LK.Normal O.Opaque) [] e)
+  return $ m :< RT.FlowIntro flowVar detachVar (m :< RT.PiIntro (LK.Normal O.Opaque) [] e)
 
-rawTermPromiseElim :: Parser RT.RawTerm
-rawTermPromiseElim = do
+rawTermFlowElim :: Parser RT.RawTerm
+rawTermFlowElim = do
   m <- getCurrentHint
   keyword "attach"
-  promiseVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadPromiseInner
+  flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   attachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadAttach
   e <- rawTerm
-  return $ m :< RT.PromiseElim promiseVar attachVar e
+  return $ m :< RT.FlowElim flowVar attachVar e
 
 rawTermOption :: Parser RT.RawTerm
 rawTermOption = do
