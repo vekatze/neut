@@ -84,9 +84,20 @@ subst sub term =
       return term
     _ :< TM.Prim _ ->
       return term
-    (m :< TM.Magic der) -> do
+    m :< TM.Magic der -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')
+    m :< TM.Promise pVar t -> do
+      t' <- subst sub t
+      return $ m :< TM.Promise pVar t'
+    m :< TM.PromiseIntro pVar var (e, t) -> do
+      e' <- subst sub e
+      t' <- subst sub t
+      return $ m :< TM.PromiseIntro pVar var (e', t')
+    m :< TM.PromiseElim pVar var (e, t) -> do
+      e' <- subst sub e
+      t' <- subst sub t
+      return $ m :< TM.PromiseElim pVar var (e', t')
 
 subst' ::
   SubstTerm ->

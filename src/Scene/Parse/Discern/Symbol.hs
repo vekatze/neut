@@ -3,6 +3,7 @@ module Scene.Parse.Discern.Symbol
     resolveNameOrErr,
     resolveVarOrLocator,
     resolveLocator,
+    resolveLocator',
     resolveConstructor,
     resolveConstructorMaybe,
     resolveAlias,
@@ -84,10 +85,18 @@ resolveLocator ::
   LL.LocalLocator ->
   App (DD.DefiniteDescription, GN.GlobalName)
 resolveLocator m gl ll = do
-  sgl <- Alias.resolveAlias m gl
-  let dd = DD.new sgl ll
+  dd <- resolveLocator' m gl ll
   gn <- interpretDefiniteDescription m dd
   return (dd, gn)
+
+resolveLocator' ::
+  Hint ->
+  GL.GlobalLocator ->
+  LL.LocalLocator ->
+  App DD.DefiniteDescription
+resolveLocator' m gl ll = do
+  sgl <- Alias.resolveAlias m gl
+  return $ DD.new sgl ll
 
 interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
 interpretDefiniteDescription m dd = do

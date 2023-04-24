@@ -66,6 +66,12 @@ freeVars term =
       S.empty
     _ :< TM.Magic der ->
       foldMap freeVars der
+    _ :< TM.Promise _ t ->
+      freeVars t
+    _ :< TM.PromiseIntro _ _ (e, t) ->
+      S.unions $ map freeVars [e, t]
+    _ :< TM.PromiseElim _ _ (e, t) ->
+      S.unions $ map freeVars [e, t]
 
 freeVars' :: [BinderF TM.Term] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

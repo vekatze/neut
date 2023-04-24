@@ -65,6 +65,16 @@ freeVars term =
         AN.Type t -> do
           let xs2 = freeVars t
           S.union xs1 xs2
+    _ :< WT.Promise _ t -> do
+      freeVars t
+    _ :< WT.PromiseIntro _ _ (e, t) -> do
+      let xs1 = freeVars e
+      let xs2 = freeVars t
+      S.unions [xs1, xs2]
+    _ :< WT.PromiseElim _ _ (e, t) -> do
+      let xs1 = freeVars e
+      let xs2 = freeVars t
+      S.unions [xs1, xs2]
 
 freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

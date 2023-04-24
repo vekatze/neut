@@ -61,6 +61,16 @@ holes term =
         AN.Type t -> do
           let xs2 = holes t
           S.union xs1 xs2
+    _ :< WT.Promise _ t -> do
+      holes t
+    _ :< WT.PromiseIntro _ _ (e, t) -> do
+      let xs1 = holes e
+      let xs2 = holes t
+      S.unions [xs1, xs2]
+    _ :< WT.PromiseElim _ _ (e, t) -> do
+      let xs1 = holes e
+      let xs2 = holes t
+      S.unions [xs1, xs2]
 
 holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID
 holes' binder zs =

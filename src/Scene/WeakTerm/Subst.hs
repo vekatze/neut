@@ -95,6 +95,17 @@ subst sub term =
         AN.Type t -> do
           t' <- subst sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
+    m :< WT.Promise var t -> do
+      t' <- subst sub t
+      return $ m :< WT.Promise var t'
+    m :< WT.PromiseIntro pVar var (e, t) -> do
+      e' <- subst sub e
+      t' <- subst sub t
+      return $ m :< WT.PromiseIntro pVar var (e', t')
+    m :< WT.PromiseElim pVar var (e, t) -> do
+      e' <- subst sub e
+      t' <- subst sub t
+      return $ m :< WT.PromiseElim pVar var (e', t')
 
 substBinder ::
   WT.SubstWeakTerm ->

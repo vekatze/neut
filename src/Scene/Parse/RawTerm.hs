@@ -98,6 +98,9 @@ rawTerm = do
       rawTermMatch,
       rawTermNew,
       rawTermCell,
+      rawTermPromise,
+      rawTermPromiseIntro,
+      rawTermPromiseElim,
       rawTermIf,
       rawTermListIntro,
       rawTermPiGeneral,
@@ -706,6 +709,32 @@ rawTermCell = do
   keyword "cell"
   t <- rawTerm
   return $ m :< RT.Cell t
+
+rawTermPromise :: Parser RT.RawTerm
+rawTermPromise = do
+  m <- getCurrentHint
+  keyword "promise"
+  promiseVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadPromiseInner
+  t <- rawTerm
+  return $ m :< RT.Promise promiseVar t
+
+rawTermPromiseIntro :: Parser RT.RawTerm
+rawTermPromiseIntro = do
+  m <- getCurrentHint
+  keyword "detach"
+  promiseVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadPromiseInner
+  detachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadDetach
+  e <- betweenBrace rawExpr
+  return $ m :< RT.PromiseIntro promiseVar detachVar (m :< RT.PiIntro (LK.Normal O.Opaque) [] e)
+
+rawTermPromiseElim :: Parser RT.RawTerm
+rawTermPromiseElim = do
+  m <- getCurrentHint
+  keyword "attach"
+  promiseVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadPromiseInner
+  attachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadAttach
+  e <- rawTerm
+  return $ m :< RT.PromiseElim promiseVar attachVar e
 
 rawTermOption :: Parser RT.RawTerm
 rawTermOption = do

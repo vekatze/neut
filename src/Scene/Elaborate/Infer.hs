@@ -4,13 +4,11 @@ import Context.App
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
@@ -30,7 +28,6 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.FreeVarsWithHint qualified as WT
 import Scene.WeakTerm.Subst qualified as Subst
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
@@ -191,6 +188,20 @@ infer' varEnv term =
       case annot of
         AN.Type _ -> do
           return (m :< WT.Annotation logLevel (AN.Type t) e', t)
+    m :< WT.Promise var t -> do
+      t' <- inferType' varEnv t
+      return (m :< WT.Promise var t', m :< WT.Tau)
+    m :< WT.PromiseIntro pVar var (e, _) -> do
+      (e', t) <- infer' varEnv e
+      h <- newHole m varEnv
+      insConstraintEnv (m :< WT.Pi [] h) t
+      -- return (m :< WT.PromiseIntro pVar var (e', t), m :< WT.Promise pVar t)
+      return (m :< WT.PromiseIntro pVar var (e', t), m :< WT.Promise pVar h)
+    m :< WT.PromiseElim pVar var (e, _) -> do
+      (e', t) <- infer' varEnv e
+      h <- newHole m varEnv
+      insConstraintEnv (m :< WT.Promise pVar h) t
+      return (m :< WT.PromiseElim pVar var (e', t), h)
 
 inferArgs ::
   WT.SubstWeakTerm ->

@@ -129,6 +129,18 @@ coreSystemAdmit :: T.Text
 coreSystemAdmit =
   core <> nsSep <> "system" <> nsSep <> "admit"
 
+coreThreadPromiseInner :: T.Text
+coreThreadPromiseInner =
+  core <> nsSep <> "thread" <> nsSep <> "promise-inner"
+
+coreThreadDetach :: T.Text
+coreThreadDetach =
+  core <> nsSep <> "thread" <> nsSep <> "detach"
+
+coreThreadAttach :: T.Text
+coreThreadAttach =
+  core <> nsSep <> "thread" <> nsSep <> "attach"
+
 defaultImports :: [T.Text]
 defaultImports =
   [ "core.bool",

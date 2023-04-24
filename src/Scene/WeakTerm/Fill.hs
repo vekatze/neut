@@ -102,6 +102,17 @@ fill sub term =
         AN.Type t -> do
           t' <- fill sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
+    m :< WT.Promise var t -> do
+      t' <- fill sub t
+      return $ m :< WT.Promise var t'
+    m :< WT.PromiseIntro pVar var (e, t) -> do
+      e' <- fill sub e
+      t' <- fill sub t
+      return $ m :< WT.PromiseIntro pVar var (e', t')
+    m :< WT.PromiseElim pVar var (e, t) -> do
+      e' <- fill sub e
+      t' <- fill sub t
+      return $ m :< WT.PromiseElim pVar var (e', t')
 
 fill' ::
   HoleSubst ->

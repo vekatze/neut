@@ -136,8 +136,7 @@ discern nenv term =
       return $ m :< WT.Noema t'
     m :< RT.Embody e -> do
       e' <- discern nenv e
-      let doNotCare = m :< WT.Tau -- discarded at Infer
-      return $ m :< WT.Embody doNotCare e'
+      return $ m :< WT.Embody (doNotCare m) e'
     m :< RT.Cell t -> do
       t' <- discern nenv t
       return $ m :< WT.Cell t'
@@ -164,8 +163,26 @@ discern nenv term =
       e' <- discern nenv e
       case annot of
         AN.Type _ -> do
-          let doNotCare = m :< WT.Tau -- discarded at Infer
-          return $ m :< WT.Annotation remarkLevel (AN.Type doNotCare) e'
+          -- let doNotCare = m :< WT.Tau -- discarded at Infer
+          return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
+    m :< RT.Promise pVar t -> do
+      pVar' <- uncurry (resolveLocator' m) pVar
+      t' <- discern nenv t
+      return $ m :< WT.Promise pVar' t'
+    m :< RT.PromiseIntro pVar var e -> do
+      pVar' <- uncurry (resolveLocator' m) pVar
+      var' <- uncurry (resolveLocator' m) var
+      e' <- discern nenv e
+      return $ m :< WT.PromiseIntro pVar' var' (e', doNotCare m)
+    m :< RT.PromiseElim pVar var e -> do
+      pVar' <- uncurry (resolveLocator' m) pVar
+      var' <- uncurry (resolveLocator' m) var
+      e' <- discern nenv e
+      return $ m :< WT.PromiseElim pVar' var' (e', doNotCare m)
+
+doNotCare :: Hint -> WT.WeakTerm
+doNotCare m =
+  m :< WT.Tau
 
 discernLet ::
   NominalEnv ->

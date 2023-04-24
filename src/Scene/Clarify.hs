@@ -250,6 +250,14 @@ clarifyTerm tenv term =
       return $ C.UpIntro $ C.VarGlobal name A.arityS4
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
+    m :< TM.Promise pVar _ -> do
+      clarifyTerm tenv $ m :< TM.ResourceType pVar
+    m :< TM.PromiseIntro _ var (e, t) -> do
+      let arity = A.fromInt 2
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
+    m :< TM.PromiseElim _ var (e, t) -> do
+      let arity = A.fromInt 2
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
 
 clarifyText :: T.Text -> App C.Comp
 clarifyText text = do

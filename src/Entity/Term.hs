@@ -39,6 +39,15 @@ data TermF a
   | Prim (P.Prim a)
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a)
+  | Promise DD.DefiniteDescription a -- ("core.thread.promise-inner", (actual-argument, arg-type))
+  | PromiseIntro
+      DD.DefiniteDescription -- "core.thread.promise-inner"
+      DD.DefiniteDescription -- "core.thread.run"
+      (a, a) -- (lambda, lam-type)
+  | PromiseElim
+      DD.DefiniteDescription -- "core.thread.promise-inner"
+      DD.DefiniteDescription -- "core.thread.wait"
+      (a, a) -- (promise, promise-type)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

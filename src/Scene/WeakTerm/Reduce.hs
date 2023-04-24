@@ -85,6 +85,17 @@ reduce term =
     m :< WT.Magic der -> do
       der' <- mapM reduce der
       return $ m :< WT.Magic der'
+    m :< WT.Promise var t -> do
+      t' <- reduce t
+      return $ m :< WT.Promise var t'
+    m :< WT.PromiseIntro pVar var (e, t) -> do
+      e' <- reduce e
+      t' <- reduce t
+      return $ m :< WT.PromiseIntro pVar var (e', t')
+    m :< WT.PromiseElim pVar var (e, t) -> do
+      e' <- reduce e
+      t' <- reduce t
+      return $ m :< WT.PromiseElim pVar var (e', t')
     _ ->
       return term
 
