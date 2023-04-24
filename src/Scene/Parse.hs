@@ -12,7 +12,6 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Remark
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -191,7 +190,6 @@ defineData m dataName dataArgsOrNone consInfoList projectionList = do
   let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
   let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
-  -- let formRule = RawStmtDefine stmtKind m dataName dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 

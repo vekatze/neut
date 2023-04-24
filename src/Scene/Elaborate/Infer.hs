@@ -195,7 +195,6 @@ infer' varEnv term =
       (e', t) <- infer' varEnv e
       h <- newHole m varEnv
       insConstraintEnv (m :< WT.Pi [] h) t
-      -- return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar t)
       return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar h)
     m :< WT.FlowElim pVar var (e, _) -> do
       (e', t) <- infer' varEnv e

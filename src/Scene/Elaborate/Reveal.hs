@@ -7,10 +7,8 @@ import Context.App
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
 import Context.Implicit qualified as Implicit
-import Context.Remark (printNote')
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
@@ -24,7 +22,6 @@ import Entity.Stmt
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText (toText)
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 

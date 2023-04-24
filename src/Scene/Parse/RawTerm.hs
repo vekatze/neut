@@ -571,7 +571,6 @@ foldTuplePat m topUnit@(topUnitGL, topUnitLL) es =
       let rest' = foldTuplePat m topUnit rest
       (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "Product") [e, rest'])
 
--- parseVarOrLocator :: Parser (Either (Hint, T.Text) (Hint, GL.GlobalLocator, LL.LocalLocator))
 parseVarOrLocator :: Parser (Hint, VarOrLocator)
 parseVarOrLocator = do
   (m, varText) <- var
@@ -580,15 +579,6 @@ parseVarOrLocator = do
       return (m, Var varText)
     Right (gl, ll) ->
       return (m, Locator gl ll)
-
--- parseVarOrLocator :: Parser (Hint, Either T.Text (GL.GlobalLocator, LL.LocalLocator))
--- parseVarOrLocator = do
---   (m, varText) <- var
---   case DD.getLocatorPair m varText of
---     Left _ ->
---       return (m, Left varText)
---     Right (gl, ll) ->
---       return (m, Right (gl, ll))
 
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
