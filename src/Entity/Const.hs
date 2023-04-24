@@ -150,6 +150,7 @@ defaultImports =
     "core.option",
     "core.sum",
     "core.text",
+    "core.text.io",
     "core.top",
     "core.vector"
   ]
