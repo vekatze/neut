@@ -45,9 +45,9 @@ sourceRelDir :: Path Rel Dir
 sourceRelDir =
   $(mkRelDir "source")
 
-targetRelDir :: Path Rel Dir
-targetRelDir =
-  $(mkRelDir "target")
+buildRelDir :: Path Rel Dir
+buildRelDir =
+  $(mkRelDir ".build")
 
 releaseRelDir :: Path Rel Dir
 releaseRelDir =

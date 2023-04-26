@@ -88,9 +88,9 @@ download tempFilePath _ (ModuleURL url) = do
 
 extractToLibDir :: Path Abs File -> ModuleAlias -> MC.ModuleChecksum -> App ()
 extractToLibDir tempFilePath _ checksum = do
-  targetDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library checksum)
-  Path.ensureDir targetDirPath
-  External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath targetDirPath, "--strip-components=1"]
+  moduleDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library checksum)
+  Path.ensureDir moduleDirPath
+  External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath moduleDirPath, "--strip-components=1"]
 
 addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
 addDependencyToModuleFile targetModule alias url checksum = do

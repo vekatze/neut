@@ -17,7 +17,7 @@ module Context.Path
     parseRelFile,
     removeDirRecur,
     getExecutableOutputPath,
-    getTargetDir,
+    getBuildDir,
     getArtifactDir,
     sourceToOutputPath,
     getSourceCachePath,
@@ -139,20 +139,20 @@ getExecutableOutputPath target mainModule = do
   executableDir <- getExecutableDir mainModule
   resolveFile executableDir $ T.unpack $ Target.extract target
 
-getTargetDir :: Module -> App (Path Abs Dir)
-getTargetDir baseModule = do
+getBuildDir :: Module -> App (Path Abs Dir)
+getBuildDir baseModule = do
   prefix <- getPlatformPrefix
-  return $ getModuleRootDir baseModule </> targetRelDir </> prefix
+  return $ getModuleRootDir baseModule </> buildRelDir </> prefix
 
 getArtifactDir :: Module -> App (Path Abs Dir)
 getArtifactDir baseModule = do
-  targetDir <- getTargetDir baseModule
-  return $ targetDir </> artifactRelDir
+  buildDir <- getBuildDir baseModule
+  return $ buildDir </> artifactRelDir
 
 getExecutableDir :: Module -> App (Path Abs Dir)
 getExecutableDir baseModule = do
-  targetDir <- getTargetDir baseModule
-  return $ targetDir </> executableRelDir
+  buildDir <- getBuildDir baseModule
+  return $ buildDir </> executableRelDir
 
 sourceToOutputPath :: OK.OutputKind -> Src.Source -> App (Path Abs File)
 sourceToOutputPath kind source = do
