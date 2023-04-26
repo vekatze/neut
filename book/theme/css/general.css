@@ -179,6 +179,11 @@ ol {
 ul {
   line-height: var(--content-line-height);
 }
+li.part-title {
+  margin-top: 1em;
+  margin-bottom: 1em;
+  color: var(--gray);
+}
 figcaption {
   margin-top: 1rem;
   line-height: var(--content-line-height);
@@ -219,6 +224,7 @@ blockquote {
   padding: 0rem 1rem;
   background: var(--sumi);
   border: 1px solid var(--mid-blue);
+  font-style: italic;
 }
 
 kbd {

@@ -45,6 +45,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "switch",
         "then",
         "use",
+        "variant",
         "with",
       ].join(" "),
     },
