@@ -3,6 +3,7 @@
 - [Overview](./overview.md)
 - [What Ignited This Language](./what-ignited-this-language.md)
 - [Main Ideas](./main-ideas.md)
+  - [Paradise of Linearity](./paradise-of-linearity.md)
   - [Executing Types](./executing-types.md)
   - [Noetic Optimization](./noetic-optimization.md)
 - [Language Tour](./language-tour.md)
