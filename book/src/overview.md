@@ -8,20 +8,6 @@ Also, and here comes the interesting point, both of the features come *without e
 
 What follows is a brief overview of Neut. It also explains the structure of this book.
 
-## How is it Interesting?
-
-The following three key features should make it interesting:
-
-- 🌟 Full λ-calculus without restrictions
-- 🌟 Static memory management (i.e. no explicit malloc/free, no GC, no regions)
-- 🌟 Both of the above come without extra annotations to the type system
-
-If you need more on its background motivation, see [the Chapter 2 (What Ignited This Language)](./what-ignited-this-language.md).
-
----
-
-You might also find the module (package) management system of Neut interesting. *It distinguishes modules using the checksum of a tarball*, and defines module identity using semantic version. This is actually not the main point of Neut (and I'm ready to retract it immediately if I found a critical flaw), but still might be of interest. For more, see [the Section 4.3 (Namespaces and Modules)](./namespaces-and-modules.md).
-
 ## How Does it Basically Look Like?
 
 Skim this:
@@ -50,6 +36,20 @@ define foo[a](xs: my-item(a)): i64 {
 }
 ```
 
+## How is it Interesting?
+
+The following three key features should make it interesting:
+
+- 🌟 Full λ-calculus without restrictions
+- 🌟 Static memory management (i.e. no explicit malloc/free, no GC, no regions)
+- 🌟 Both of the above come without extra annotations to the type system
+
+If you need more on its background motivation, see [the Chapter 2 (What Ignited This Language)](./what-ignited-this-language.md).
+
+---
+
+You might also find the module (package) management system of Neut interesting. *It distinguishes modules using the checksum of a tarball*, and defines module identity using semantic version. This is actually not the main point of Neut (and I'm ready to retract it immediately if I found a critical flaw), but still might be of interest. For more, see [the Section 4.3 (Namespaces and Modules)](./namespaces-and-modules.md).
+
 ## Static Memory Management — But How?
 
 *Neut translates a type into a function* that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.
@@ -67,11 +67,11 @@ let xs-copy = copy-term-of-type-list-A(xs)
 foo(xs-copy, xs) // now `xs` is used once (ignoring the call above to copy it)
 ```
 
-If you need more, see [the Chapter 3 (Main Ideas)](/chapter_1.html).
+If you need more, see [the Chapter 3 (Main Ideas)](./main-ideas.md).
 
 ---
 
-Your wise brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. If you hear the voice, you can also check [the Section 3.2 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world.
+Your wise brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. If you hear the voice, you can also check [the Section 3.2 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world. The idea is adding a new type `&A`, the noema of `A`, which is basically the same as `A` except that it isn't consumed even after using it, and utilize it like a reference in the great ST monad.
 
 ## Quickstart?
 

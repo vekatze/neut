@@ -20,3 +20,4 @@
   - [Resource Type](./resource-type.md)
 - [Experimental Features](./experimental-features.md)
   - [Parallelism](./parallelism.md)
+- [Executing the Function Type](./executing-the-function-type.md)

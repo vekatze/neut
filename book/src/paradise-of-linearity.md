@@ -16,7 +16,7 @@ f(4)
 
 Note that every variable (`x`, `y`, `z`, and `f`) is used exactly once. Such a use of a variable is called "linear".
 
-If we were to write, for example, `y + x` at `(A)`, it should result in an error, because `x` is used twice in that case. `y + 3` also should result in an error, because `z` isn't used in that case.
+If we were to write, for example, `y + z + x` at `(A)`, it should result in an error, because `x` is used twice in that case. `y + 3` also should result in an error, because `z` isn't used in that case.
 
 In such a language, we just have to allocate memory when a value is introduced, and deallocate it after the value is used. This is because, in such a language, we know that a value won't be used ever again if once used.
 
@@ -52,9 +52,9 @@ free(f) // deallocates the outer tuple of `f`
 pointer-to-closure-label(x, pointer-to-free-variables)
 ```
 
-The point here is the existence of `free(f)`. This deallocation is allowed thanks to the linearity of the language. Without linearity, it might be possible that a closure `f` is used after `f(x)`.
+The point here is the existence of `free(f)`. This deallocation is allowed thanks to the linearity of the language; We know that this closure won't be used in the continuation. Without linearity, it might be possible that a closure `f` is used after `f(x)`.
 
-In short, we can say a value is "consumed" when a value is used in a linear language. Static memory management in such a language is trivial; We just have to deallocate memory region when a value is consumed.
+In short, under linearity, we can say a value is "consumed" when a value is used. Static memory management in such a language is trivial; We just have to deallocate memory when a value is consumed.
 
 ## Paradise Broken Into Pieces
 
@@ -84,6 +84,8 @@ and this must be achieved without annotation to the language. Every lambda term 
 That is to say, we humans must find a linearizer *inside* the λ-calculus, instead of annotating additional notes to the language for our convenience. —And still, the resulting language must also have a good predictable behavior in cooperation with our beloved von Neumann architecture. As a mere mortal, we want a great kawaii programming language that runs fast, after all.
 
 Yes, a picky child's request...
+
+// FIXME: verbose, unclear
 
 ## To Gather Paradise
 
