@@ -17,6 +17,12 @@ hljs.registerLanguage("neut", function (hljs) {
     keywords: {
       $pattern: /[\w-:=<>]+/,
       keyword: [
+        "async",
+        "await",
+        "detach",
+        "attach",
+        "send",
+        "receive",
         "case",
         "codata",
         "data",
@@ -26,6 +32,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "else-if",
         "end",
         "enum",
+        "export",
         "fix",
         "if",
         "import",
@@ -33,6 +40,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "introspect",
         "lambda",
         "let",
+        "by",
         "let?",
         "match",
         "match-noetic",
@@ -51,7 +59,7 @@ hljs.registerLanguage("neut", function (hljs) {
     },
     contains: [
       { className: "type",
-        begin: "tau|&",
+        begin: "tau|&|:<|channel|[A-Z][a-z0-9A-Z]+",
       },
       {
         className: "string",
@@ -62,7 +70,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|:|&|-(?=\\s)",
+        begin: "<=|->|=>|:|&|-(?=\\s)|tuple",
       },
       hljs.COMMENT(
         "//", // begin
@@ -89,23 +97,22 @@ hljs.registerLanguage("neut", function (hljs) {
     hljs.highlightBlock(block);
   });
 
-  Array.from(document.querySelectorAll("pre code")).forEach(function (block) {
-    var pre_block = block.parentNode;
-    var buttons = pre_block.querySelector(".buttons");
-    if (!buttons) {
-      buttons = document.createElement("div");
-      buttons.className = "buttons";
-      pre_block.insertBefore(buttons, pre_block.firstChild);
-    }
+  // Array.from(document.querySelectorAll("pre code")).forEach(function (block) {
+  //   var pre_block = block.parentNode;
+  //   var buttons = pre_block.querySelector(".buttons");
+  //   if (!buttons) {
+  //     buttons = document.createElement("div");
+  //     buttons.className = "buttons";
+  //     pre_block.insertBefore(buttons, pre_block.firstChild);
+  //   }
 
-    var clipButton = document.createElement("button");
-    clipButton.className = "clip-button";
-    clipButton.title = "Copy to clipboard";
-    clipButton.setAttribute("aria-label", clipButton.title);
-    clipButton.innerHTML = "<span>Copy</span>";
-    buttons.insertBefore(clipButton, buttons.firstChild);
-    // }
-  });
+  //   var clipButton = document.createElement("button");
+  //   clipButton.className = "clip-button";
+  //   clipButton.title = "Copy to clipboard";
+  //   clipButton.setAttribute("aria-label", clipButton.title);
+  //   clipButton.innerHTML = "<span>Copy</span>";
+  //   buttons.insertBefore(clipButton, buttons.firstChild);
+  // });
 })();
 
 (function chapterNavigation() {
