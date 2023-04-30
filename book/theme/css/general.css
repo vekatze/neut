@@ -78,6 +78,7 @@ body {
 a {
   color: var(--links);
   background-color: var(--dark-blue);
+  text-decoration: none;
 }
 
 a:hover {
