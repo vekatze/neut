@@ -41,7 +41,7 @@ define foo[a](xs: my-item(a)): i64 {
 The following three key features should make it interesting:
 
 - 🌟 Full λ-calculus without restrictions
-- 🌟 Static memory management (i.e. no explicit malloc/free, no GC, no regions)
+- 🌟 Static memory management (i.e. no explicit malloc/free, no GC)
 - 🌟 Both of the above come without extra annotations to the type system
 
 If you need more on its background motivation, see [the Chapter 2 (What Ignited This Language)](./what-ignited-this-language.md).
