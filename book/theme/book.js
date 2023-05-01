@@ -59,7 +59,7 @@ hljs.registerLanguage("neut", function (hljs) {
     },
     contains: [
       { className: "type",
-        begin: "tau|&|:<|channel|[A-Z][a-z0-9A-Z]+",
+        begin: "tau|&|:<|channel|[A-Z][a-z0-9A-Z]*",
       },
       {
         className: "string",
@@ -70,7 +70,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|:|&|-(?=\\s)|tuple",
+        begin: "<=|->|=>|!|:|this|&|-(?=\\s)|tuple",
       },
       hljs.COMMENT(
         "//", // begin
