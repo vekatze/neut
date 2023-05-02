@@ -21,9 +21,19 @@ let a = magic syscall(SYSCALL-NUM, arg-1, ..., arg-n)
 ...
 ```
 
-These can be exploited to realize, for example, platform-dependent behaviors.
+A `magic` can be exploited to realize, for example, platform-dependent behaviors.
 
-The first argument of `store` must be `low-type`, where:
+## Notes on Types
+
+Except for `cast`, the resulting type of a `magic` is not specified. Thus, you often need to annotate types like below:
+
+```neut
+let result: i64 = magic syscall(12345, arg-1, arg-2)
+```
+
+## On the Syntax of Store and Load
+
+The first arguments of `store` and `load` must be `low-type`, where:
 
 ```neut
 low-type ::= integer-type (= i1, i2, i3, ..., i64)
@@ -31,4 +41,4 @@ low-type ::= integer-type (= i1, i2, i3, ..., i64)
            | *low-type // pointer-type
 ```
 
-The actual semantics of `store`, `load` is the same as that of [LLVM](https://llvm.org/docs/LangRef.html).
+The actual behaviors of `store` and `load` are the same as that of [LLVM](https://llvm.org/docs/LangRef.html).
