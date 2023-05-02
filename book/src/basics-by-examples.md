@@ -186,6 +186,53 @@ When `match` is used against a value of variant type, the inner values of given 
 2. the `pointer-to-a` is discarded along its type `tau`, and
 3. the outer 4-word tuple is freed.
 
+---
+
+Also, if the variant type and all its constructor doesn't need any arguments, the internal representation of the variant type is optimized into enum. For example, consider the following code:
+
+```neut
+variant color {
+- Red
+- Blue
+- Green
+}
+```
+
+Then, the internal representation of `Red` is optimized into `0`. That of `Blue` is optimized into `1`, and so on.
+
+### A Sidenote About Naming Constructor
+
+When you define a variant type, I recommend you *not* to prefix constructors like below:
+
+```neut
+variant term {
+- TermVar(ident)
+- TermAbs(ident, term)
+- TermApp(term, term)
+}
+```
+
+Rather, create a new file for the variant type, then simply write:
+
+```neut
+variant term {
+- Var(ident)
+- Abs(ident, term)
+- App(term, term)
+}
+```
+
+and use it via qualified imports that you'll see later. Please [design your functions/types for qualified import](https://mail.haskell.org/pipermail/haskell-cafe/2008-June/043986.html). When using the `term`, the code should look like below:
+
+```neut
+import {
+- this.path.to.file => T // qualified import
+}
+
+define my-app() {
+  T.App(T.Abs("x", some-term), T.Var("x"))
+}
+```
 
 ## Using a Struct
 
@@ -378,6 +425,52 @@ struct product(a, b) by Product {
 Basic operations for those types are also defined in the library. For more, see the library definition (FIXME: insert a link here).
 
 ## Miscs
+
+### Inline Functions
+
+You can define an inline functions as follows:
+
+```neut
+define-inline increment(x: i64): i64 {
+  add-i64(x, 1)
+}
+```
+
+Inline functions are reduced at compile time.
+
+### Type Alias
+
+You can define a type alias as follows:
+
+```neut
+alias my-int {
+  i64
+}
+```
+
+The above is essentially the same as below:
+
+```neut
+define-inline my-int(): tau {
+  i64
+}
+```
+
+The difference lies in the fact that you don't have to "call" the type if you use `alias`:
+
+```neut
+// when you use `alias`
+define use-my-int(x: my-int) {
+  ...
+}
+
+// when you use `define-inline`
+define use-my-int(x: my-int()) {
+  ...
+}
+```
+
+which relieves code cluttering.
 
 ### Tail Call Optimization
 
