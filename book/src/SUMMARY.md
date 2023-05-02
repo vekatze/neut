@@ -10,6 +10,7 @@
   - [Basics by Examples](./basics-by-examples.md)
   - [Noetic Programming](./noetic-programming.md)
   - [Namespaces and Modules](./namespaces-and-modules.md)
+  - [Parallelism and Mutability](./parallelism-and-mutability.md)
 
 # Appendix
 
@@ -17,6 +18,4 @@
   - [Introspection](./introspection.md)
   - [Magic](./magic.md)
   - [Resource Type](./resource-type.md)
-- [Experimental Features](./experimental-features.md)
-  - [Parallelism and Mutability](./parallelism-and-mutability.md)
 - [Executing the Function Type](./executing-the-function-type.md)
