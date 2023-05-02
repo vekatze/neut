@@ -200,40 +200,6 @@ variant color {
 
 Then, the internal representation of `Red` is optimized into `0`. That of `Blue` is optimized into `1`, and so on.
 
-### A Sidenote About Naming Constructor
-
-When you define a variant type, I recommend you *not* to prefix constructors like below:
-
-```neut
-variant term {
-- TermVar(ident)
-- TermAbs(ident, term)
-- TermApp(term, term)
-}
-```
-
-Rather, create a new file for the variant type, then simply write:
-
-```neut
-variant term {
-- Var(ident)
-- Abs(ident, term)
-- App(term, term)
-}
-```
-
-and use it via qualified imports that you'll see later. Please [design your functions/types for qualified import](https://mail.haskell.org/pipermail/haskell-cafe/2008-June/043986.html). When using the `term`, the code should look like below:
-
-```neut
-import {
-- this.path.to.file => T // qualified import
-}
-
-define my-app() {
-  T.App(T.Abs("x", some-term), T.Var("x"))
-}
-```
-
 ## Using a Struct
 
 ### Basics

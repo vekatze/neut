@@ -222,6 +222,28 @@ define main(): i64 {
 }
 ```
 
+By the way, when you define a variant type, I recommend you *not* to prefix constructors like below:
+
+```neut
+variant term {
+- TermVar(ident)
+- TermAbs(ident, term)
+- TermApp(term, term)
+}
+```
+
+Rather, create a new file for the variant type (if necessary), then simply write:
+
+```neut
+variant term {
+- Var(ident)
+- Abs(ident, term)
+- App(term, term)
+}
+```
+
+and use them via qualified import. The same goes for functions. Please [name your functions and types for qualified import](https://mail.haskell.org/pipermail/haskell-cafe/2008-June/043986.html).
+
 ### Importing & Re-Exporting Names
 
 You can also re-export names from other files:
