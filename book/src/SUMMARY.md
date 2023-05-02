@@ -9,7 +9,8 @@
   - [Installation](./installation.md)
   - [Basics by Examples](./basics-by-examples.md)
   - [Noetic Programming](./noetic-programming.md)
-  - [Namespaces and Modules](./namespaces-and-modules.md)
+  - [Modules and Their Identity](./modules-and-their-identity.md)
+  - [Export and Import](./export-and-import.md)
   - [Parallelism and Mutability](./parallelism-and-mutability.md)
 
 # Appendix
