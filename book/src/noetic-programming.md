@@ -4,7 +4,7 @@ In this section, we'll see how to avoid undesirable copying/discarding.
 
 ## The Type of a Noema
 
-For any type `A` in Neut, you can construct a new type `&A`, the noema type of `A`. We'll call a value a noema if the type of the value is of the form `&A`. The internal representaiton of a noema with type `&A` is exactly the same as a value with type `A`.
+For any type `A` in Neut, you can construct a new type `&A`, the noema type of `A`. We'll call a value a noema if the type of the value is of the form `&A`. The internal representaiton of a noema of type `&A` is exactly the same as a value with type `A`.
 
 The point of a noema lies in the fact that *a noema isn't consumed even after it is used*. Let's see how it behaves.
 
