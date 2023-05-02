@@ -2,7 +2,7 @@
 
 Neut is a dependently-typed programming language with static memory management.
 
-The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized, non-restricted form. The "static" part means that its memory behavior is *predictable at compile-time*.
+The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized, non-restricted form. The "static" part means that its *memory behavior is predictable at compile-time*.
 
 Also, and here comes the interesting point, both of the features come *without extra annotations* to its type system. In this sense, Neut is an attempt to "find" a memory-predictable λ-calculus in an ordinary type system.
 
@@ -44,8 +44,6 @@ The following three key features should make it interesting:
 - 🌟 Static memory management (i.e. no explicit malloc/free, no GC)
 - 🌟 Both of the above come without extra annotations to the type system
 
-If you need more on its background motivation, see [the Chapter 2 (What Ignited This Language)](./what-ignited-this-language.md).
-
 ---
 
 You might also find the module (package) management system of Neut interesting. *It distinguishes modules using the checksum of a tarball*, and defines module identity using semantic version. This is actually not the main point of Neut (and I'm ready to retract it immediately if I found a critical flaw), but still might be of interest. For more, see [the Section 4.3 (Namespaces and Modules)](./namespaces-and-modules.md).
@@ -71,7 +69,7 @@ If you need more, see [the Chapter 3 (Main Ideas)](./main-ideas.md).
 
 ---
 
-Your wise brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. If you hear the voice, you can also check [the Section 3.2 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world. The idea is adding a new type `&A`, the noema of `A`, which is basically the same as `A` except that it isn't consumed even after using it, and utilize it like a reference in the great ST monad.
+Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. If you hear the voice, you can also check [the Section 3.2 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world. The idea is adding a new type `&A`, the noema of `A`, which is basically the same as `A` except that it isn't consumed even after using it, and utilize it like a reference in the great ST monad.
 
 ## Quickstart?
 
@@ -172,8 +170,6 @@ variant FooText {
 ```
 
 In that case, the internal representation will be `(0, 3, True)`. We'll have to be careful about what we have to pay for polymorphism.
-
-To learn more, see [the Chapter 5 (The Good & The Bad)](./the-good-and-the-bad).
 
 ## ... But What After All is This Thing?
 
