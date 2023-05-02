@@ -18,5 +18,5 @@
   - [Magic](./magic.md)
   - [Resource Type](./resource-type.md)
 - [Experimental Features](./experimental-features.md)
-  - [Parallelism](./parallelism.md)
+  - [Parallelism and Mutability](./parallelism-and-mutability.md)
 - [Executing the Function Type](./executing-the-function-type.md)
