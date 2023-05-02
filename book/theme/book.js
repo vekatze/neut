@@ -24,6 +24,8 @@ hljs.registerLanguage("neut", function (hljs) {
         "send",
         "receive",
         "case",
+        "define-inline",
+        "alias",
         "codata",
         "data",
         "default",
@@ -70,7 +72,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|!|:|this|&|-(?=\\s)|tuple",
+        begin: "<=|->|=>|!|:|this|&|-(?=\\s)|tuple|magic",
       },
       hljs.COMMENT(
         "//", // begin
