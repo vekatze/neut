@@ -149,7 +149,7 @@ h5 {
 }
 @media (min-width: 900px) {
   #content {
-    overflow-y: auto;
+    overflow-y: scroll;
   }
 }
 
