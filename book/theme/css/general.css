@@ -411,8 +411,9 @@ em {
 
 :not(pre) > .hljs {
   display: inline;
-  padding: 0.1em 0.3em;
+  padding: 0.1em 0.2em;
   margin: 0 0.3em;
+  border: 1px dotted var(--mid-blue);
 }
 
 :not(pre):not(a) > .hljs {
