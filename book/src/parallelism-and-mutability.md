@@ -8,12 +8,12 @@ Neut has a feature for parallelism. It is a thin layer over pthread, and works l
 
 ```neut
 let f1: flow(i64) = detach { // like async
-   print("fA")
-   1
+  print("fA")
+  1
 }
 let f2: flow(i64) = detach { // like async
-   print("fb")
-   2
+  print("fb")
+  2
 }
 let v1 = attach f1 // like await
 let v2 = attach f2 // like await
