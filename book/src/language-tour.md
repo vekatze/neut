@@ -8,8 +8,6 @@ In this chapter, we'll see how to use the language in practice. After finishing 
 
 [The Section 3.3 (Noetic Programming)](./noetic-programming.md) explains how to use a noema. Using a noema, you can avoid unnecessary cloning operations. This is essential when you write an efficient program.
 
-[The Section 3.4 (Namespaces and Modules)](./namespaces-and-modules.md) explains how namespaces and modules work in Neut. The module system of Neut is special in that it takes advantage of checksums. The section also explains how to share your works with others. You'll see how the Semantic Versioning has practical significance in Neut.
-
-[The Section 3.5 (Parallelism and Mutability)](./parallelism-and-mutability.md) explains how to accomplish parallelism in Neut. You'll also see how channels can be used as mutable variables.
+[The Section 3.4 (Parallelism and Mutability)](./parallelism-and-mutability.md) explains how to accomplish parallelism in Neut. You'll also see how channels can be used as mutable variables.
 
 A ticket for this language tour is free of charge. Just click the "Next Page" and you'll get one. Enjoy.
