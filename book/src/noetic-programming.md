@@ -1,6 +1,6 @@
 # Noetic Programming
 
-In this section, we'll see how to avoid undesirable copying/discarding.
+In this section, we'll see how to avoid undesirable copying/discarding. We'll do something like borrowing in other languages.
 
 ## The Type of a Noema
 

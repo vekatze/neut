@@ -2,9 +2,11 @@
 
 Neut is a dependently-typed programming language with static memory management.
 
-The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized, non-restricted form. The "static" part means that its *memory behavior is predictable at compile-time*.
+The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized form.
 
-Also, and here comes the interesting point, both of the features come *without extra annotations* to its type system. In this sense, Neut is an attempt to "find" a memory-predictable λ-calculus in an ordinary type system.
+The "static" part means that its *memory behavior is predictable at compile-time*.
+
+The interesting point is that both of the features come *without extra annotations* to the type system. In this sense, Neut is an attempt to find memory-predictability "inside" the usual λ-calculus.
 
 What follows is a brief overview of Neut. It also explains the structure of this book.
 

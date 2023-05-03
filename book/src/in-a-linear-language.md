@@ -29,8 +29,8 @@ increment(increment(3)) // error: `increment` is used twice
 
 So we need a remedy here. The possible approaches are
 
-- stay inside linearity, or
-- go out of linearity.
+- staying inside linearity, or
+- going out of linearity.
 
 The former way requires us to introduce some machineries for recovering expressiveness. Since Neut's main aim is to realize the ordinary λ-calculus in a static manner, this option can't be taken now. The resulting language must be something that allows every λ-term.
 
@@ -38,7 +38,7 @@ Neut takes the latter way. It starts from a non-linear language, our usual λ-ca
 
 ## To Gather Paradise
 
-Luckily, Neut found a linearizer inside the λ-calculus. Found a way to translate a non-linear language into a linear one. The key is to execute types. *Using a type to copy/discard the terms of the type*.
+Luckily, Neut found a way inside the λ-calculus that translates a non-linear language into a linear one. The key is to execute types. *Using a type to copy/discard the terms of the type*.
 
 If we can copy/discard values, we can adjust the use variables so that all of them are linear. Indeed, if a variable isn't used, we can insert `discard(x)`. If a variable is used more that twice, we can insert `copy(x)` as necessary.
 
