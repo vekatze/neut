@@ -1,4 +1,4 @@
-# Concept: Executing Types
+# Executing Types
 
 ## Types as Exponential
 

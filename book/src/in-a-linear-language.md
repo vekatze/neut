@@ -38,10 +38,10 @@ Neut takes the latter way. It starts from a non-linear language, our usual λ-ca
 
 ## To Gather Paradise
 
-Luckily, Neut found such a linearizer inside the λ-calculus. The key is executing types. *Using a type to copy/discard the terms of the type*.
+Luckily, Neut found a linearizer inside the λ-calculus. Found a way to translate a non-linear language into a linear one. The key is to execute types. *Using a type to copy/discard the terms of the type*.
 
-If we can copy/discard values freely, we can adjust the use variables so that all of them are linear. Indeed, if a variable isn't used, we can insert `discard(x)`. If a variable is used more that twice, we can insert `copy(x)` as necessary.
+If we can copy/discard values, we can adjust the use variables so that all of them are linear. Indeed, if a variable isn't used, we can insert `discard(x)`. If a variable is used more that twice, we can insert `copy(x)` as necessary.
 
 After linearizing the language, we can enjoy the paradise of linearity; static memory management is almost trivial now.
 
-In the next section, we'll see how types can be used to copy its values.
+In the next section, we'll see how types can be used to copy/discard their values.

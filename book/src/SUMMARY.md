@@ -2,9 +2,9 @@
 
 - [Overview](./overview.md)
 - [Main Ideas](./main-ideas.md)
-  - [Paradise of Linearity](./paradise-of-linearity.md)
-  - [Concept: Executing Types](./executing-types.md)
-  - [Exponentials](./exponentials.md)
+  - [In a Linear Language](./in-a-linear-language.md)
+  - [Executing Types](./executing-types.md)
+  - [Exponentials in Action](./exponentials-in-action.md)
   - [Noetic Optimization](./noetic-optimization.md)
 - [Language Tour](./language-tour.md)
   - [Installation](./installation.md)

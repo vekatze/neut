@@ -1,4 +1,4 @@
-# Exponentials
+# Exponentials in Action
 
 ## Exponential for Immediates
 
