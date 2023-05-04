@@ -84,7 +84,7 @@ The `import` and `export` are covered later. Here, we'll see basic programming c
 
 Also, the order of functions doesn't matter in Neut.
 
-## Variable Linearization
+## Linearization of Variable Usage
 
 In Neut, a variable is copied/discarded when used non-linearly. Consider the following code:
 

@@ -2,7 +2,7 @@
 
 In this chapter, we'll see how Neut realizes static memory management.
 
-[The Section 2.1 (In a Linear Language)](./paradise-of-linearity.md) briefly examines a linear language to see how things behaves in a simplified scenario. Starting from here, we'll look for the way to exploit the power of linearity from a non-linear language.
+[The Section 2.1 (In a Linear Language)](./in-a-linear-language.md) briefly examines a linear language to see how things behaves in a simplified scenario. Starting from here, we'll look for the way to exploit the power of linearity from a non-linear language.
 
 [The Section 2.2 (Executing Types)](./executing-types.md) explains the idea of translating types into functions that can copy and discard the terms of the types. Neut's approach for static memory management is twofold, and this section is about the *"fair"* part of it.
 
