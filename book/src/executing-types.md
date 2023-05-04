@@ -34,7 +34,7 @@ free(v)
 let v-copy-x = malloc({2-words})
 let v-copy-y = malloc({2-words})
 
-// store values to new pointers
+// store values to the new pointers
 store(v-copy-x[0], v1)
 store(v-copy-y[0], v1)
 store(v-copy-x[1], v2)

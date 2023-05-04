@@ -14,7 +14,7 @@ define exp-immediate(selector, v) {
 }
 ```
 
-It might be worth noting that, since these fake exponentials are inlined at compile time, there's no runtime cost. For explanation purpose, inlining is omitted here.
+It might be worth noting that, since these fake exponentials are inlined at compile time, there's no runtime cost. Inlining is omitted here for explanatory purposes.
 
 ## Exponential for Types
 
@@ -46,7 +46,7 @@ variant list(a) {
 }
 ```
 
-There is one caveat here, however. Since an exponential is a *closed* function, the values of a variant type must be able to be copied/discarded using a closed function. This means that the information of `a` in `list(a)` must be contained in the values.
+There is one caveat here, however. Since an exponential is a closed function, the values of a variant type must be able to be copied/discarded using a closed function. This means that the information of `a` in `list(a)` must be contained in the values.
 
 That is, for example, the internal representation of `Nil` is something like below:
 
@@ -136,6 +136,6 @@ if cond(len) {
 foo(xs)
 ```
 
-That is, the whole list `xs`, including all the elements, is copied *just to obtain its length*. This is nothing but a tragedy. Worse, this kind of procedure is pervasive. The list one isn't special at all. Flowers wither. The sky falls. We need something like a loophole, or every wish is crushed into pieces.
+That is, the whole list `xs`, including all the elements, is copied *just to obtain its length*. This is nothing but a tragedy. Worse, this kind of procedure is pervasive. The list one isn't special at all. We need something like a loophole, or every wish is crushed into pieces.
 
 This is the topic covered in the next section. We'll see some "noetic" operations there.
