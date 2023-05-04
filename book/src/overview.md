@@ -94,7 +94,7 @@ To learn more about how to use the language, follow [the Chapter 3 (Language Tou
 - Call by Value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, or binary
-  - The typesystem ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
+- The typesystem ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
   - (That is, the usual one in functional programming, but a bit generalized)
 
 ## Anything Else?
