@@ -1,8 +1,4 @@
-# Some Random Notes
-
-## Why Types are Chosen as Linearizer?
-
-To utilize the other side of the logical harmony (in the sense of Michael Dummett).
+# Some Backstage Notes
 
 ## Why is it Named as Neut?
 
@@ -18,11 +14,6 @@ variant Foo(a) {
 - ConsA(i64, bool) // e.g. ConsA(3, True): Foo(a)
 - ConsB(a)
 }
-
-// Haskell counterpart:
-//   data Foo a
-//     = ConsA Int64 Bool
-//     | ConsB a
 ```
 
 In an ordinary language, the internal representation of `ConsA(3, True)` will be something like:
@@ -49,6 +40,18 @@ variant FooText {
 ```
 
 In that case, the internal representation will be `(0, 3, True)`. We'll have to be careful about what we have to pay for polymorphism.
+
+## How Did Neut Find the Approach?
+
+By trying to utilize the other side of logical harmony in the sense of Michael Dummett.
+
+From the viewpoint of natural deduction, executing a program is reducing detours in a proof tree, as is well known (the lovely Curry-Howard correspondence). Such a reduction of a proof tree can be seen as a utilization of local soundness.
+
+On the other hand, the flip side of harmony, namely local completeness, is often ignored when thinking about programs. At least, that was how it seemed to me N years ago. It made me wonder: Why does local completeness seem to play almost no role in a program when local soundness handles the time aspect of a program, which is of great importance?
+
+Leaded by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, which is a fruit of local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
+
+A good lecture note on harmony can be found [here](https://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/03-harmony.pdf).
 
 ## ... But What After All is This Thing?
 

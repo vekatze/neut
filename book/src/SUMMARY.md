@@ -25,4 +25,4 @@
   - [Magic](./magic.md)
   - [Resource Type](./resource-type.md)
 - [Executing the Function Type](./executing-the-function-type.md)
-- [Some Random Notes](./some-random-notes.md)
+- [Some Backstage Notes](./some-backstage-notes.md)
