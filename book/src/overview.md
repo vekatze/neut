@@ -10,14 +10,6 @@ The following three key features should make it interesting:
 
 I believe the last one is especially interesting. In that sense, Neut is an attempt to find memory predictability *inside* the usual λ-calculus.
 
-<!-- The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized form. -->
-
-<!-- The "static" part means that its *memory behavior is predictable at compile-time*. -->
-
-<!-- The interesting point is that both of the features come *without extra annotations* to the type system. In this sense, Neut is an attempt to find memory-predictability "inside" the usual λ-calculus. -->
-
-<!-- What follows is a brief overview of Neut. It also explains the structure of this book. -->
-
 ## How Does it Basically Look Like?
 
 Skim this:
@@ -40,14 +32,6 @@ define noisy-length[a](xs: my-list(a)): i64 {
   }
 }
 ```
-
-<!-- ## How is it Interesting? -->
-
-<!-- The following three key features should make it interesting: -->
-
-<!-- - 🌟 Full λ-calculus without restrictions -->
-<!-- - 🌟 Static memory management (i.e. no explicit malloc/free, no GC) -->
-<!-- - 🌟 Both of the above come without extra annotations to the type system -->
 
 ## Static Memory Management — But How?
 
