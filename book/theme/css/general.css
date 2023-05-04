@@ -176,6 +176,12 @@ ol {
 ul {
   line-height: var(--content-line-height);
 }
+ul.star-list {
+  list-style-type: "🌟";
+}
+ul.star-list > li {
+  padding-left: 8px;
+}
 li.part-title {
   margin-top: 1em;
   margin-bottom: 1em;

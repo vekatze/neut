@@ -4,15 +4,17 @@ Neut is a *dependently-typed* programming language with *static memory managemen
 
 The following three key features should make it interesting:
 
-- 🌟 Full λ-calculus without restrictions
-- 🌟 Static memory management (i.e. no explicit malloc/free, no GC)
-- 🌟 Both of the above come without annotations to its type system
+<ul class="star-list">
+  <li>Full λ-calculus without restrictions</li>
+  <li>Static memory management</li>
+  <li>Both of the above come without annotations to its type system</li>
+</ul>
 
-I believe the last one is especially interesting. In that sense, Neut is an attempt to find memory predictability *inside* the usual λ-calculus.
+I believe the last one is interesting in particular. In that sense, Neut is an attempt to find memory predictability *inside* the usual λ-calculus.
 
 ## How Does it Basically Look Like?
 
-Skim this:
+Like below:
 
 ```neut
 // algebraic data types
