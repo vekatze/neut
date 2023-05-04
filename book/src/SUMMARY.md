@@ -20,8 +20,9 @@
 
 # Appendix
 
-- [Executing the Function Type](./executing-the-function-type.md)
 - [Lower Level Programming](./lower-level-programming.md)
   - [Introspection](./introspection.md)
   - [Magic](./magic.md)
   - [Resource Type](./resource-type.md)
+- [Executing the Function Type](./executing-the-function-type.md)
+- [Some Random Notes](./some-random-notes.md)

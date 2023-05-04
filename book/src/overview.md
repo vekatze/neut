@@ -1,50 +1,53 @@
 # Neut Programming Language
 
-Neut is a dependently-typed programming language with static memory management.
+Neut is a *dependently-typed* programming language with *static memory management*.
 
-The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized form.
+The following three key features should make it interesting:
 
-The "static" part means that its *memory behavior is predictable at compile-time*.
+- 🌟 Full λ-calculus without restrictions
+- 🌟 Static memory management (i.e. no explicit malloc/free, no GC)
+- 🌟 Both of the above come without annotations to its type system
 
-The interesting point is that both of the features come *without extra annotations* to the type system. In this sense, Neut is an attempt to find memory-predictability "inside" the usual λ-calculus.
+I believe the last one is especially interesting. In that sense, Neut is an attempt to find memory predictability *inside* the usual λ-calculus.
 
-What follows is a brief overview of Neut. It also explains the structure of this book.
+<!-- The "dependently-typed" part means that the language is based on a *typed λ-calculus*, in its highly generalized form. -->
+
+<!-- The "static" part means that its *memory behavior is predictable at compile-time*. -->
+
+<!-- The interesting point is that both of the features come *without extra annotations* to the type system. In this sense, Neut is an attempt to find memory-predictability "inside" the usual λ-calculus. -->
+
+<!-- What follows is a brief overview of Neut. It also explains the structure of this book. -->
 
 ## How Does it Basically Look Like?
 
 Skim this:
 
 ```neut
-// algebraic data types (not GADT, at least for now)
-variant my-item(a: tau) {
+// algebraic data types
+variant my-list(a: tau) {
 - Nil
-- Cons(a, my-item(a))
+- Cons(a, my-list(a))
 }
 
-// a nonsense function just to show how the language looks like
-define foo[a](xs: my-item(a)): i64 {
-  let s = some-function(foo)
-  let other-function =
-    lambda (x: A, y: B, z: c) {
-      do-something(x, y, z)
-    }
-  print("hello\n")
+// a recursive function with pattern matching
+define noisy-length[a](xs: my-list(a)): i64 {
   match xs {
   - Nil =>
     0
   - Cons(_, ys) =>
-    add-i64(1, foo(ys))
+    print("hey\n")
+    add-i64(1, noisy-length(ys))
   }
 }
 ```
 
-## How is it Interesting?
+<!-- ## How is it Interesting? -->
 
-The following three key features should make it interesting:
+<!-- The following three key features should make it interesting: -->
 
-- 🌟 Full λ-calculus without restrictions
-- 🌟 Static memory management (i.e. no explicit malloc/free, no GC)
-- 🌟 Both of the above come without extra annotations to the type system
+<!-- - 🌟 Full λ-calculus without restrictions -->
+<!-- - 🌟 Static memory management (i.e. no explicit malloc/free, no GC) -->
+<!-- - 🌟 Both of the above come without extra annotations to the type system -->
 
 ## Static Memory Management — But How?
 
@@ -67,7 +70,7 @@ If you need more, see [the Chapter 2 (Main Ideas)](./main-ideas.md).
 
 ---
 
-Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [the Section 2.3 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world. The idea is adding a new type `&A`, the noema of `A`, which is basically the same as `A` except that it isn't consumed even after using it, and utilize it like a reference in the great ST monad.
+Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [the Section 2.4 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world. The idea is adding a new type `&A`, the noema of `A`, which is basically the same as `A` except that it isn't consumed even after used, and utilize it like a reference in the great ST monad.
 
 ## Quickstart?
 
@@ -86,12 +89,8 @@ $ neut create hello && tree hello && cd hello
 #    │  └── hello.nt
 #    └── module.ens
 
-# add module dependencies
-$ neut add core https://github.com/vekatze/neut-core/raw/main/release/0.2.0.4.tar.zst
-# => note: added a dependency: core (jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=)
-
 # the mandatory hello world
-$ tee some-file << END
+$ tee source/hello.nt << END
 define main(): i64 {
   print("Hello, world!\n")
   0
@@ -101,19 +100,6 @@ END
 # build the project and execute it
 $ neut build --execute
 # => Hello, world!
-
-# copy the resulting binary to PATH and execute it
-$ cp .build/amd64-darwin/0.2.0.0/executable/hello ~/.local/bin && hello
-# => Hello, world!
-
-# create a tarball to release this project as a module
-$ neut release 0.1.0.0 && tree
-# => ./
-#    ├── release/
-#    │  └── 0.1.0.0.tar.zst (← you can commit and push this tarball to publish it)
-#    ├── source/
-#    │  └── hello.nt
-#    └── module.ens
 ```
 
 To learn more about how to use the language, follow [the Chapter 3 (Language Tour)](./language-tour.md).
@@ -124,65 +110,9 @@ To learn more about how to use the language, follow [the Chapter 3 (Language Tou
 - Call by Value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, or binary
-- The typesystem ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
+  - The typesystem ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
   - (That is, the usual one in functional programming, but a bit generalized)
 
 ## Anything Else?
 
 You might also find the module system of Neut interesting. *It distinguishes modules using the checksums of tarballs*, and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if I found a critical flaw), it still might be of interest. For more, see [the Chapter 4 (Module System)](./module-system.md).
-
-## What are Possible Drawbacks? Caveats?
-
-The prominent one that come to my mind is that, when you use a polymorphic variant type, its type arguments must be stored in its values. For example, consider something like below:
-
-```neut
-// a syntax to define an ADT
-variant Foo(a) {
-- ConsA(i64, bool) // e.g. ConsA(3, True): Foo(a)
-- ConsB(a)
-}
-
-// Haskell counterpart:
-//   data Foo a
-//     = ConsA Int64 Bool
-//     | ConsB a
-```
-
-In an ordinary language, the internal representation of `ConsA(3, True)` will be something like:
-
-```neut
-// `0` is a tag to distinguish constructors
-(0, 3, True)
-```
-
-However, in Neut, the type information must also be stored:
-
-```neut
-// `TYPE` is the address of the type (as function) `a`
-(0, TYPE, 3, True)
-```
-
-This means that in Neut you must pay additional spaces to use parameterized variant types. So, it might be necessary to use non-parameterized variant types in performance critical situations, like:
-
-```neut
-variant FooText {
-- ConsA(i64, bool) // e.g. ConsA(3, True): Foo(a)
-- ConsB(text)
-}
-```
-
-In that case, the internal representation will be `(0, 3, True)`. We'll have to be careful about what we have to pay for polymorphism.
-
-## ... But What After All is This Thing?
-
-I've always wanted something like this, but couldn't find one. As usual, according to the noble law of our majestic solar system, I had to make it exist by myself, spending quite a lot of time. Neut is the outcome of the process I had to go through.
-
-—Well, yes, the above is true, but I feel like it doesn't quite capture the whole story. Let me retry.
-
-To tell the truth, this language is actually a painting. A small painting, redrawn again and again, alone, for like 7 years or longer, seeking my own understanding of beauty™, that happened to take the form of a programming language. Of course, this isn't a heroic thing or whatever, but rather a symptom, if I name it. This painting is entirely dedicated to my conceited obsession. Still, I now believe that the resulting language has something sparkling in its concept, and also I don't have any reason to keep it secret in my atelier.
-
-I'd be happy if you were inspired by skimming this book over this weekend for example, or even happier if you chose to try it on your PC. Such a chain of reactions is a little lucky and lovely accident, which I believe is the fundamental element that colors our world.
-
-A lot of pieces of mirrors here, reflecting each other.
-
-The painting is now a mirror.
