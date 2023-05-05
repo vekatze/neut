@@ -2,15 +2,15 @@
 
 Neut is a *dependently-typed* programming language with *static memory management*.
 
-The following three key features should make it interesting:
+The key features include:
 
 <ul class="star-list">
   <li>Full λ-calculus without restrictions</li>
   <li>Static memory management</li>
-  <li>Both of the above come without annotations to its type system</li>
+  <li>Both of the above come <em>without annotations to its type system</em></li>
 </ul>
 
-I believe the last one is interesting in particular. In that sense, Neut is an attempt to find memory predictability *inside* the usual λ-calculus.
+I believe the last one is especially interesting, as it means Neut had the good fortune to find memory predictability *inside* the λ-calculus. Static memory management has been there since the beginning.
 
 ## How Does it Basically Look Like?
 
@@ -39,24 +39,24 @@ define noisy-length[a](xs: my-list(a)): i64 {
 
 *Neut translates a type into a function* that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.
 
-For example, if a variable is used twice, a translation like the following will happen:
+For example, if a variable is used twice, a translation like below will happen:
 
 ```neut
-let xs: list(A) = create-some-list()
+let xs: list(a) = [value-1, value-2]
 foo(xs, xs) // `xs` is used twice
 
 // ↓
 
-let xs: list(A) = create-some-list()
+let xs: list(a) = [value-1, value-2]
 let xs-copy = copy-term-of-type-list-A(xs)
-foo(xs-copy, xs) // now `xs` is used once (ignoring the call above to copy it)
+foo(xs-copy, xs) // now `xs` is used once (ignoring the "copying" call)
 ```
 
-If you need more, see [the Chapter 2 (Main Ideas)](./main-ideas.md).
+If you need more, see [Chapter 2 (Main Ideas)](./main-ideas.md).
 
 ---
 
-Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [the Section 2.4 (Noetic Optimization)](./noetic-optimization.md). It might sound fishy, but you'll find that we can actually save the world. The idea is adding a new type `&A`, the noema of `A`, which is basically the same as `A` except that it isn't consumed even after used, and utilize it like a reference in the great ST monad.
+Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&A`, the noema type of `A`, which is the same as `A` except that it isn't consumed even after used, and to utilize it like a reference in the great ST monad.
 
 ## Quickstart?
 
@@ -88,20 +88,20 @@ $ neut build --execute
 # => Hello, world!
 ```
 
-To learn more about how to use the language, follow [the Chapter 3 (Language Tour)](./language-tour.md).
+To learn more about how to use the language, follow [Chapter 3 (Language Tour)](./language-tour.md).
 
 ## List of Other Basic Characteristics?
 
 - A compiled language
 - Call by Value
 - Impure
-- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, or binary
-- The typesystem ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
+- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
+- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
   - That is, the usual one in functional programming, but a bit generalized
 
 ## Anything Else?
 
-You might also find the module system of Neut interesting. *It distinguishes modules using the checksums of tarballs*, and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if I found a critical flaw), it still might be of interest. For more, see [the Chapter 4 (Module System)](./module-system.md).
+You might also find the module system of Neut interesting. *It distinguishes modules using the checksums of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
 ## ... But What After All is This Thing?
 

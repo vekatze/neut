@@ -2,7 +2,7 @@
 
 ## Types as Exponential
 
-Here, we'll see how a type can be used to copy/discard the terms of the type. Let's take a simple variant type for example to see the basic idea:
+Here, we'll see how a type can be used to copy/discard the terms of the type. To see the basic idea, let's take a simple variant type for example:
 
 ```neut
 variant item {
@@ -51,8 +51,10 @@ The type `item` combines both of the two like below:
 ```neut
 define exp-item(selector, v) {
   if selector == 0 {
+    // discard
     free(v)
   } else {
+    // copy
     let v1 = v[0]
     let v2 = v[1]
     free(v)
@@ -67,14 +69,14 @@ define exp-item(selector, v) {
 }
 ```
 
-Thas is, `exp-item(selector, v)` discards `v` if `selector` is 0. Otherwise, `exp-item` consumes `v`, creates two new copies, and then returns them as a tuple.
+`exp-item(selector, v)` discards `v` if `selector` is 0. Otherwise, `exp-item` consumes `v`, creates two new copies, and then returns them as a tuple.
 
-Also, `item` in original source files are compiled into pointers to `exp-item`.
+Also, `item` in source files are compiled into pointers to `exp-item`.
 
-More generally, the type `a` is translated into something like below:
+More generally, a type `A` is translated into something like below:
 
 ```neut
-define exp-a(selector, v) {
+define exp-A(selector, v) {
   if selector == 0 {
     // a proceduce that discards v
   } else {
@@ -83,32 +85,9 @@ define exp-a(selector, v) {
 }
 ```
 
-<!-- (Note: Obviously, the copying part is doing avoidable memory allocations/deallocations. We'll soon see that things are optimized in the actual implementation) -->
-
-<!-- Incidentally, it might also be illuminating to see how a term that contains `item` is compiled: -->
-
-<!-- ```neut -->
-<!-- let my-type = item -->
-<!-- print("hello") -->
-<!-- cont -->
-
-<!-- // ↓ compile -->
-
-<!-- let my-type = exp-item // lowered to a pointer to `exp-item` -->
-<!-- print("hello") -->
-<!-- cont -->
-
-<!-- // ... also, the function below is added to the resulting LLVM IR -->
-<!-- define exp-item(selector, v) { -->
-<!--   // (... the definition that we've just seen ...) -->
-<!-- } -->
-<!-- ``` -->
-
-<!-- A new function for the type is created, and the type itself is lowered to a pointer to the function. -->
-
 ### Example Behavior of Types
 
-This `exp-item` is utilized when a variable is used relevantly (more than once) as follows:
+This `exp-item` is called when a variable is used relevantly (= more than once) as follows:
 
 ```neut
 let x = New(10, 20)
@@ -128,7 +107,7 @@ let c = buz(x3)
 cont(a, b, c)
 ```
 
-`exp-item` is also utilized when a variable is used affinely (unused) as follows:
+`exp-item` is also called when a variable is used affinely (= unused) as follows:
 
 ```neut
 let x = New(10, 20)
@@ -141,13 +120,13 @@ let () = exp-item(0, x) // discard `x` by passing 0 as `selector`
 print("hello")
 ```
 
-Note that the variable `x` is used lineary after translation. Every variable in Neut is linearized in this way. Thus, we can now enjoy the power of a linearity; *A value is simply consumed when it is used*.
+Note that the variable `x` is used linearly after translation. Every variable in Neut is linearized in this way. Thus, we can now enjoy the power of linearity; *A value is simply consumed when it is used*.
 
-This *copying/discarding procedure happens immediately after a variable is defined*. This is also a source of the memory predictability of Neut.
+This copying/discarding procedure happens *immediately after a variable is defined*. This is also a source of the memory predictability of Neut.
 
 ## Actual Faster Behavior
 
-The behavior of an exponential is a bit different in the actual implementation. A variable is actually copied as follows:
+The behavior of an exponential is a bit different in the actual implementation. There, a variable is copied as follows:
 
 ```neut
 let x = New(10, 20)
@@ -164,9 +143,9 @@ let b = bar(x)
 cont(a, b)
 ```
 
-That is, the copying part of `exp-item` is reformulated so that it returns only a clone. This avoids creating unnecessary tuples. Although the resulting code contains multiple use of `x` now, this is safe because we reformulate `exp-item` so that it won't deallocate `x`.
+That is, the copying part of `exp-item` is reformulated so that it returns only a clone. This avoids creating unnecessary tuples. Although the resulting code contains multiple uses of `x` now, this is safe because we reformulate `exp-item` so that it won't deallocate `x`.
 
-All in all, the actual implementation of `exp-item` will be something like below:
+All in all, the actual implementation of `exp-item` will be something like the below:
 
 ```neut
 define exp-item(selector, v) {
@@ -183,7 +162,7 @@ define exp-item(selector, v) {
 }
 ```
 
-Or, more generally, the type `A` is translated into something like below:
+Or, more generally, type `A` is translated into something like below:
 
 ```neut
 // note: exp-A cannot contain any free variables

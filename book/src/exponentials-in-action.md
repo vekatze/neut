@@ -2,7 +2,7 @@
 
 ## Exponential for Immediates
 
-Immediates like integers or floats can be used multiple times safely since they don't need malloc/free. That is, they actually don't need to be copied/discarded. This fact is reflected by their corresponding exponentials. Both `i64` and `f64` (and other immediate types) are translated into something like below:
+Immediates like integers or floats can be used multiple times safely since they don't need malloc/free. This fact is reflected by their corresponding exponentials. Both `i64` and `f64` (and other immediate types) are translated into something like the below:
 
 ```neut
 define exp-immediate(selector, v) {
@@ -27,17 +27,17 @@ let b = g(t)
 ...
 ```
 
-where the `tau` is the type of types.
+where the `tau` is the type of the types.
 
-This means that we need to translate the `tau` into a function. You may be wondering how, but this is actually fairly easy. Since a type is translated into a closed function as we've seen, things like `i64` or `text -> bool` are lowered to pointers to the function at runtime, which is nothing but an immediate. Types are therefore translated into the pointer to `exp-immediate` that we've just seen.
+This means that we need to translate the `tau` into a function. It might sound difficult, but it's easy in reality. Since a type is translated into a closed function as we've seen, things like `i64` or `text -> bool` are lowered to pointers to the function at runtime, which is nothing but an immediate. Types are therefore translated into the pointer to `exp-immediate` that we've just seen.
 
 ## Exponential for Closures
 
-This type exponential can also be constructed for closures. Although this is one of the most interesting point of Neut, since it could be a bit complicated, I put it in the appendix. See [the Chapter in the Appendix](./executing-the-function-type.md) if you're interested in it.
+A type-exponential can also be constructed for closures. Although this is one of the most interesting points of Neut, since it could be a bit complicated, I put it in the appendix. See [the Chapter in the Appendix](./executing-the-function-type.md) if you're interested in it.
 
-## Exporential for Variant Types
+## Exponential for Variant Types
 
-Variant types like below also have exponentials, of course:
+Variant types like the below also have exponentials, of course:
 
 ```neut
 variant list(a) {
@@ -46,7 +46,7 @@ variant list(a) {
 }
 ```
 
-There is one caveat here, however. Since an exponential is a closed function, the values of a variant type must be able to be copied/discarded using a closed function. This means that the information of `a` in `list(a)` must be contained in the values.
+There is one caveat here, however. Since an exponential is a closed function, the values of a variant type must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
 
 That is, for example, the internal representation of `Nil` is something like below:
 
@@ -62,7 +62,7 @@ where the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
 
 where the `1` is the discriminant for `Cons`.
 
-With that in mind, the actual exponential for `list(a)` will be something like below (A bit lengthy; Skip it and just read the succeeding note if you aren't really interested in details):
+With that in mind, the actual exponential for `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't really interested in details):
 
 ```neut
 define exp-list(selector, v) {
@@ -122,7 +122,7 @@ if cond(len) {
 foo(xs)
 ```
 
-What causes a problem is the fact that the `xs` is used non-linearly in the code above. The first occurrence is at `length(xs)`, and the second one is at `foo(xs)`. This means the code above is translated into something like this:
+What causes a problem is the fact that the `xs` is used non-linearly in the code above. The first occurrence is at `length(xs)`, and the second one is at `foo(xs)`. This means the code above is translated into something like the below:
 
 ```neut
 let xs: list(i64) = [1, 2, 3]

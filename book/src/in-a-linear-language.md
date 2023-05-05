@@ -16,7 +16,7 @@ f(4)
 
 The variables `x`, `y`, `z`, and `f` are used exactly once. Such a use of a variable is called "linear".
 
-In such a language, we just have to allocate memory when a value is introduced, and deallocate unnecessary part after the value is used. This can be done because, in such a language, we know that a value won't be used ever again if once used. In a linear language, static memory management is almost trivial.
+In such a language, we just have to allocate memory when a value is introduced and deallocate unnecessary parts after the value is used. This can be done because, in such a language, we know that a value won't be used ever again if once used. In a linear language, static memory management is almost trivial.
 
 ## Going Out of Linearity
 
@@ -32,7 +32,7 @@ So we need a remedy here. The possible approaches are
 - staying inside linearity, or
 - going out of linearity.
 
-The former way requires us to introduce some machineries for recovering expressiveness. Since Neut's main aim is to realize the ordinary λ-calculus in a static manner, this option can't be taken now. The resulting language must be something that allows every λ-term.
+The former way requires us to introduce some machinery for recovering expressiveness. Since one of Neut's main aims is to realize the ordinary λ-calculus in a memory-predictable manner, this option can't be taken now. The resulting language must be something that allows every λ-term.
 
 Neut takes the latter way. It starts from a non-linear language, our usual λ-calculus, and tries to recover the power of linearity, without annotating the type system.
 
@@ -40,7 +40,7 @@ Neut takes the latter way. It starts from a non-linear language, our usual λ-ca
 
 Luckily, Neut found a way inside the λ-calculus that translates a non-linear language into a linear one. The key is to execute types. *Using a type to copy/discard the terms of the type*.
 
-If we can copy/discard values, we can adjust the use variables so that all of them are linear. Indeed, if a variable isn't used, we can insert `discard(x)`. If a variable is used more that twice, we can insert `copy(x)` as necessary.
+If we can copy/discard values, we can adjust the use variables so that all of them are linear. Indeed, if a variable isn't used, we can insert `discard(x)`. If a variable is used more than twice, we can insert `copy(x)` as necessary.
 
 After linearizing the language, we can enjoy the paradise of linearity; static memory management is almost trivial now.
 
