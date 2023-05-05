@@ -5,12 +5,12 @@ Neut is a *dependently-typed* programming language with *static memory managemen
 The key features include:
 
 <ul class="star-list">
-  <li>Full λ-calculus without restrictions</li>
+  <li>Full λ-calculus</li>
   <li>Static memory management</li>
-  <li>Both of the above come <em>without annotations to its type system</em></li>
+  <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
 </ul>
 
-I believe the last one is especially interesting, as it means Neut had the good fortune to find memory predictability *inside* the λ-calculus. Static memory management has been there since the beginning.
+I believe the last one is especially interesting, as it means Neut found memory predictability *inside* the usual λ-calculus. The predictability has been there from the beginning.
 
 ## How Does it Basically Look Like?
 
