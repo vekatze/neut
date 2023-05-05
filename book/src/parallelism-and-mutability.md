@@ -24,11 +24,11 @@ When `detach { ... }` is executed, a new thread is created and the content of `d
 
 The type of `detach { e }` is `flow(a)` if the type of `e` is `a`. Other languages might call this type a promise or a future.
 
-`attach e` is like await. `attach` waits the control flow `e` to complete, and get its resulting value. Thus, the type of `attach e` is `a` when `e: flow(a)`.
+`attach e` is like await. `attach` waits for the control flow `e` to complete, and get its resulting value. Thus, the type of `attach e` is `a` when `e: flow(a)`.
 
 ## Communication Between Control Flows
 
-Flows can send/receive values using channels. The channels in Neut resemble to those of Go.
+Flows can send/receive values using channels. The channels in Neut are similar to those of Go.
 
 You can create a channel using `let-on`, and send/receive values using those channels.
 
@@ -58,7 +58,7 @@ You can send a value into a channel using `send`, and receive a value from a cha
 
 When you call `receive`, if the queue isn't empty, the first element of the queue is popped. Otherwise, `receive` blocks until a value is pushed to the queue.
 
-As mentioned above, the channels in Neut resemble to those of Go (and indeed inspired by Go to some extent), but actually the main inspiration was from [Par Means Parallell: Multiplicative Linear Logic Proofs as Concurrent Functional Programs](https://dl.acm.org/doi/10.1145/3371086).
+As mentioned above, the channels in Neut are similar to those of Go (and indeed inspired by Go to some extent), but actually, the main inspiration was from [Par Means Parallel: Multiplicative Linear Logic Proofs as Concurrent Functional Programs](https://dl.acm.org/doi/10.1145/3371086).
 
 ## Mutable Variables
 

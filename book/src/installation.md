@@ -6,29 +6,29 @@ Neut depends on `tar`, `curl`, and `clang (>= 14.0.0)`. Make sure all of them ar
 
 ## Using a Prebuilt Binary
 
-If you're using Linux and the architecture is amd64 or arm64, you can use the following prebuilt binary:
+If you're using Linux and the architecture is amd64 or arm64, you can use one of the following prebuilt binaries:
 
 ```sh
 # insert link here
 ```
 
-If you're using macOS and the architecture is amd64 or arm64, you can use the following prebuilt binary:
+If you're using macOS and the architecture is amd64 or arm64, you can use one of the following prebuilt binaries:
 
 ```sh
 # insert link here
 ```
 
-Put one of them to your PATH like `~/.local/bin/`.
+Put one of them into your PATH like `~/.local/bin/`.
 
 ## Build by Yourself
 
-You can build Neut by yourself. You need to install [the Haskell Tool Stack](https://docs.haskellstack.org/en/stable/) to build Neut. With stack, installed, do the following:
+You can build Neut by yourself. You need to install [the Haskell Tool Stack](https://docs.haskellstack.org/en/stable/) to build the language. With stack installed, do the following:
 
 ```sh
 git clone https://github.com/vekatze/neut
 cd neut
 git checkout 0.3.0.0
-stack install # => the binary goes into ~/.local/bin
+stack install # => the binary goes into ~/.local/bin/
 neut version # => 0.3.0.0
 ```
 

@@ -19,7 +19,7 @@ define main(): i64 {
 }
 ```
 
-Rewrite the file to something like below:
+Rewrite the file to something like the below:
 
 ```neut
 define main(): i64 {
@@ -46,7 +46,7 @@ target = {
 }
 ```
 
-This defines the entry point for a target named `hello`. The command `neut build TARGET` starts compilation assuming that the entrypoint is in `"hello.nt"`. That is, the file `"hello.nt"` must define a function named `main`.
+This defines the entry point for a target named `hello`. The command `neut build TARGET` starts compilation assuming that the entry point is in `"hello.nt"`. That is, the file `"hello.nt"` must define a function named `main`.
 
 If you omit `TARGET`, `neut build` simply builds all the targets.
 
@@ -100,8 +100,8 @@ define foo(): my-list(i64) {
 }
 ```
 
-In this example, since the variable `c` is used for three times, `c` is copied twice. This will happen immediately after a variable is defined. In our example, the content of `c` is copied twice at `(X)`.
+In this example, since the variable `c` is used three times, `c` is copied twice. This will happen immediately after a variable is defined. In our example, the content of `c` is copied twice at `(X)`.
 
 Also, since the variables `c1` and `c2` aren't used, the contents of them are discarded. Again, this will happen immediately after a variable is defined. In our running example, the content of `c1` is discarded at `(Y)`, and that of `c2` is discarded at `(Z)`.
 
-Try to use variables as linearly as possible for better performance. When you can't avoid non-linearlity, you'll use a noema, which is explained later in this chapter. Before that, let's see how non-noetic fragment of the language behaves.
+Try to use variables as linearly as possible for better performance. When you can't avoid non-linearity, you'll use a noema, which is explained later in this chapter. Before that, let's see how the non-noetic fragment of the language behaves.

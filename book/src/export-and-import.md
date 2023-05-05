@@ -1,25 +1,5 @@
 # Export and Import
 
-<!-- Here we'll see how Neut organizes names and modules. -->
-
-<!-- FIXME: reorganize -->
-
-<!-- ## The Structure of Global Names -->
-
-<!-- Every global name of Neut has the following structure: -->
-
-<!-- ```neut -->
-<!-- module-name.path.to.source.file.top-level-name -->
-<!-- ``` -->
-
-<!-- We call this the definite description of a global variable. -->
-
-<!-- For example, the definite description of a function `my-func` defined in a file `source/foo/item.nt` is: -->
-
-<!-- - `this.foo.item.my-func`, if the module is the main module -->
-<!-- - `CHECKSUM-OF-TARBALL.foo.item.my-func`, if the module is a library module -->
-
-
 ## Exporting Names
 
 By default, every name in a file can't be seen from any other files (i.e. private). You can make names public by using `export`:
@@ -41,7 +21,7 @@ define some-private-func(): i64 {
 }
 ```
 
-Variant types and its constructors can be exported as follows:
+Variant types and their constructors can be exported as follows:
 
 ```neut
 export {
@@ -96,33 +76,6 @@ define main(): i64 {
 }
 ```
 
-<!-- You can import a file by writing `this.yo`, where `this` means the current module. In this case, `this` is our project `hey`. -->
-
-<!-- Here, `this` means the current module. -->
-
-<!-- The `yo` part of `this.yo` denotes the relative path from the directory `/source/`. Suppose we have a file `/source/foo/item.nt`: -->
-
-<!-- ```sh -->
-<!-- tree hey -->
-<!-- # => hey/ -->
-<!-- #    ├── source/ -->
-<!-- #    │  ├── foo/ -->
-<!-- #    │  │  └── item.nt -->
-<!-- #    │  ├── hey.nt -->
-<!-- #    │  └── yo.nt -->
-<!-- #    └── module.ens -->
-<!-- ``` -->
-
-<!-- This `item.nt` can be imported by specifying `this.foo.item`: -->
-
-<!-- ```neut -->
-<!-- import { -->
-<!-- - this.foo.item // importing foo/item.nt -->
-<!-- } -->
-
-<!-- // ... -->
-<!-- ``` -->
-
 ### From a Library Module
 
 Suppose that you have added a library module to your module:
@@ -152,8 +105,10 @@ define sample() {
 
 Here, the module alias is `core`, and the relative path is `text.io`. Internally, when compiling a library module, the compiler adds the following correspondence from the current module's `module.ens`:
 
-```
-core => jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=
+```sh
+core => CHECKSUM_OF_THE_LIBRARY
+
+# core => jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=
 ```
 
 and do the following name resolution:
@@ -222,7 +177,7 @@ define main(): i64 {
 }
 ```
 
-By the way, when you define a variant type, I recommend you *not* to prefix constructors like below:
+By the way, when you define a variant type, I recommend you *not* to prefix constructors like the below:
 
 ```neut
 variant term {
@@ -281,4 +236,4 @@ define foo(): i64 {
 ## Other Notes on Namespaces and Modules
 
 - A module named `core` is treated specially (the prelude library)
-- Compiled objects, caches, etc. are stored in the directory `.build` of a module
+- Compiled objects, caches, etc. are stored in `.build/` of the corresponding module

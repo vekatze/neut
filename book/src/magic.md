@@ -21,11 +21,11 @@ let a = magic syscall(SYSCALL-NUM, arg-1, ..., arg-n)
 ...
 ```
 
-A `magic` can be exploited to realize, for example, platform-dependent behaviors.
+`magic` can be exploited to realize, for example, platform-dependent behaviors.
 
 ## Notes on Types
 
-Except for `cast`, the resulting type of a `magic` is not specified. Thus, you often need to annotate types like below:
+Except for `cast`, the resulting type of a `magic` is not specified. Thus, you often need to annotate types like the below:
 
 ```neut
 let result: i64 = magic syscall(12345, arg-1, arg-2)

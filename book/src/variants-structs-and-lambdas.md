@@ -28,7 +28,7 @@ variant test {
 }
 ```
 
-and use it like below:
+and use it like the below:
 
 ```neut
 define create-my-list(): my-list(i64) {
@@ -64,7 +64,7 @@ define get-length(a: tau, xs: my-list(a)): i64 {
 }
 ```
 
-which might not be what you want, because in this case you need to specify the type `a` every time you call this function.
+which might not be what you want, because you need to pass the type `a` every time you call this function.
 
 You can specify multiple implicit arguments by writing, for example, `[a, b, c, d]`.
 
@@ -76,17 +76,17 @@ When calling a constructor, memory for the constructor is allocated. The interna
 (pointer-to-a, discriminant, 1, pointer-to-Nil) // 4-word tuple
 ```
 
-where the `discriminant` is an integer that is used to distinguish constructors; In this case the actual value for `MyCons` will be 1. That of `MyNil` will be 0.
+where the `discriminant` is an integer that is used to distinguish constructors; In this case, the actual value for `MyCons` will be 1. That of `MyNil` will be 0.
 
-When `match` is used against a value of variant type, the inner values of given value is extracted, and the unnecessary data is freed. For example, if the given value is `MyCons(1, Nil)`, the following will happen:
+When `match` is used against a value of variant type, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if the given value is `MyCons(1, Nil)`, the following will happen:
 
-1. the `1` and `pointer-to-Nil` is extracted to be used later,
+1. the `1` and `pointer-to-Nil` are extracted to be used later,
 2. the `pointer-to-a` is discarded along its type `tau`, and
 3. the outer 4-word tuple is freed.
 
 ---
 
-Also, if the variant type and all its constructor doesn't need any arguments, the internal representation of the variant type is optimized into enum. For example, consider the following code:
+Also, if the variant type and all its constructor don't need any arguments, the internal representation of the variant type is optimized into an enum. For example, consider the following code:
 
 ```neut
 variant color {
@@ -102,7 +102,7 @@ Then, the internal representation of `Red` is optimized into `0`. That of `Blue`
 
 ### Basics
 
-You can define a struct type like bellow:
+You can define a struct type like the below:
 
 ```neut
 // Define a struct.
@@ -158,7 +158,7 @@ The same as the corresponding variant type.
 
 ### Basics
 
-You can create an annonymous function by using `lambda`, and use it as an ordinary function:
+You can create an anonymous function by using `lambda`, and use it as an ordinary function:
 
 ```neut
 define sample(): i64 {
@@ -180,7 +180,7 @@ define sample(): i64 {
 
 ### Memory Behavior
 
-A `lambda` is compiled into three-word tuple:
+A `lambda` is compiled into a three-word tuple:
 
 ```neut
 (type-of-free-variables, (freevar-1, ..., freevar-n), pointer-to-closed-function)
@@ -200,10 +200,10 @@ free(cls) // free the outer tuple
 closed-function(a, b, c, free-variables)
 ```
 
-## Other Primitive Types
+## Other Basic Types
 
-Types like integers, floats, or bools are also available in Neut, of course. This will be covered in [the last section of this chapter](./other-built-in-utilities.md).
+Basic types (integers, floats, bools, etc.) are also available in Neut, of course. This will be covered in [the last section of this chapter](./other-built-in-utilities.md).
 
 ## How Can I Say Hello to The World?
 
-The above should cover the basics of Neut. Still it won't suffice; We can't even do the beloved Hello World now. This is because the type of a text is a noetic type, which is covered in the next section. Let's go ahead.
+The above should cover the basics of Neut. Still, it won't suffice; We can't even do the beloved Hello World now. This is because the type of static text is a noetic type, which is covered in the next section. Let's go ahead.

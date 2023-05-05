@@ -1,8 +1,8 @@
 # Some Backstage Notes
 
-## What are Possible Drawbacks of Neut's Approach?
+## What are the Possible Drawbacks of Neut's Approach?
 
-The prominent one that come to my mind is that, when you use a polymorphic variant type, its type arguments must be stored in its values. For example, consider something like below:
+The prominent one that comes to my mind is that, when you use a polymorphic variant type, its type arguments must be stored in its values. For example, consider something like below:
 
 ```neut
 // a syntax to define an ADT
@@ -12,7 +12,7 @@ variant Foo(a) {
 }
 ```
 
-In an ordinary language, the internal representation of `ConsA(3, True)` will be something like:
+In most language, the internal representation of `ConsA(3, True)` will be something like:
 
 ```neut
 // `0` is a tag to distinguish constructors
@@ -26,7 +26,7 @@ However, in Neut, the type information must also be stored:
 (0, TYPE, 3, True)
 ```
 
-This means that in Neut you must pay additional spaces to use parameterized variant types. So, it might be necessary to use non-parameterized variant types in performance critical situations, like:
+This means that in Neut you must pay additional spaces to use parameterized variant types. So, it might be necessary to use non-parameterized variant types in performance-critical situations, like:
 
 ```neut
 variant FooText {
@@ -37,7 +37,7 @@ variant FooText {
 
 In that case, the internal representation will be `(0, 3, True)`. We'll have to be careful about what we have to pay for polymorphism.
 
-## Why was it Named as Neut?
+## Why was it Named Neut?
 
 During compilation, every program in Neut is polarized into its positive fragment and its negative fragment, as done in [Call-by-Push-Value](https://www.cs.bham.ac.uk/~pbl/papers/thesisqmwphd.pdf). From this perspective, every term in a source file of this language can be seen as neutral. So, just as `.txt` is used as the file extension for texts, I chose to use `.neut` (which is now `.nt`) as the file extension for neutral terms. Over time, it started to look like a proper noun, and I decided to adopt it as the name of the language.
 
@@ -51,6 +51,6 @@ From the viewpoint of natural deduction, executing a program is reducing detours
 
 On the other hand, the flip side of harmony, namely local completeness, is often ignored when thinking about programs. At least, that was how it seemed to me N years ago. It made me wonder: Why does local completeness seem to play almost no role in a program when local soundness handles the time aspect of a program, which is of great importance?
 
-Leaded by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, which is a fruit of local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
+Led by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, which is a fruit of local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
 
 A good lecture note on harmony can be found [here](https://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/03-harmony.pdf).

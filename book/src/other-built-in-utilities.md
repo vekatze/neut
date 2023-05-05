@@ -16,7 +16,7 @@ define fact(x: i64): i64 {
 }
 ```
 
-The above used `i64` for an integer type. There are other number types in Neut;:
+The above uses `i64` for an integer type. Other number types are also available:
 
 - signed integer types: `iN (= i1, i2, i3, ..., i64)`
 - unsigned integer types: `uN (= u1, u2, u3, ..., u64)`
@@ -29,21 +29,20 @@ These types have a lot of primitive operations. These inherit from LLVM IR:
 | arithmetics | add, sub, mul, div, rem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                      |
 | comparison  | eq, ne, gt, ge, lt, le                            | oeq, ogt, oge, olt, ole, one, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
-For example, all of `add-u32`, `neg-f64`, `eq-i64`, and `oeq-f32` are available.
+For example, all `add-u32`, `neg-f64`, `eq-i64`, and `oeq-f32` are available.
 
 
-For the detailed behaviors of them, please refer to [the language reference of LLVM](https://llvm.org/docs/LangRef.html). Also, as usual, please be careful when you compare floats. I can actually hear a faint voice from deep within my heart saying "I want to rename `oeq` into `I-know-what-I-am-doing-and-still-want-to-check-if-two-floats-are-ordered-and-equal` or something like that".
+For their detailed behaviors, please refer to [the language reference of LLVM](https://llvm.org/docs/LangRef.html). Also, as usual, please be careful when you compare floats. I can actually hear a faint voice from deep within my heart saying "I want to rename `oeq` into `I-know-what-I-am-doing-and-still-want-to-check-if-two-floats-are-ordered-and-equal` or something like that".
 
-By the way, LLVM IR in itself doesn't distinguish signed integer types with unsigned integer types. Rather, it has operations for signed/unsigned integers. For example, LLVM has an operation `udiv` that calculates the quotient of two operands, regarding both of them as unsigned integers. Neut, on the other hand, distinguishes these two types, and provides operations for both of them. The `udiv` in LLVM is `div-uN` in Neut. The `div` in LLVM is `div-iN`. And so on.
+By the way, LLVM IR in itself doesn't distinguish signed integer types from unsigned integer types. Rather, it has operations for signed/unsigned integers. For example, LLVM has an operation `udiv` that calculates the quotient of two operands, regarding both of them as unsigned integers. Neut, on the other hand, distinguishes these two types and provides operations for both of them. The `udiv` in LLVM is `div-uN` in Neut. The `div` in LLVM is `div-iN`. And so on.
 
 ### Memory Behavior
 
-Primitive values are stored as it is, copied by using the original value, and won't be discarded.
-<!-- The value is stored in the stack. Primitive values aren't actually copied or discarded even if they are used non-linearly. -->
+A primitive value is stored as it is. Its copy is itself, and won't be discarded.
 
 ## Core Types
 
-The core library (something like Prelude in other languages) is imported automatically and provides basic variant types and functions. Things like below are defined in the library:
+The core library (something like Prelude in other languages) is imported automatically and provides basic variant types and functions. Things like the below are defined in the library:
 
 ```neut
 variant bottom {}
@@ -86,7 +85,7 @@ Basic operations for those types are also defined in the library. For more, see 
 
 ### Inline Functions
 
-You can define an inline functions as follows:
+You can define inline functions as follows:
 
 ```neut
 define-inline increment(x: i64): i64 {

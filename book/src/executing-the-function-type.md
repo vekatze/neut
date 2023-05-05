@@ -4,7 +4,7 @@ Here, we'll see how a closure is compiled in Neut. Then, we'll see how a functio
 
 ## Compiling a Lambda
 
-Suppose we have a function like below:
+Suppose we have a function like the below:
 
 ```neut
 define foo(a: tau): i64 {
@@ -46,7 +46,7 @@ doesn't contain any free variables.
 
 ### Closure Conversion
 
-We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuples like below:
+We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like below:
 
 ```text
 (Σ (a: tau, x: i64, y: tau). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)

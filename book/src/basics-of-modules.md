@@ -13,7 +13,7 @@ tree hey
 #    └── module.ens
 ```
 
-Incidentally, compiled objects, caches, etc. are stored into the module's `.build/`.
+Incidentally, compiled objects, caches, etc. are stored in the module's `.build/`.
 
 ### Main Module and Library Module
 
@@ -45,7 +45,9 @@ dependency = {
 }
 ```
 
-Note that *the name of a library is defined by the user of the library*, not the creator of the library. We thus sometimes call a name like `core` as a module alias.
+<!-- Note that the name of a library is defined *by the user of the library*, not the creator of the library. -->
+
+Note that an alias for a library is chosen *by a user of the library*. The "real" name of the library is its checksum, and this is not something that can be chosen arbitrarily by the creator of the library.
 
 ### Other Remarks
 
