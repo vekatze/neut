@@ -541,7 +541,7 @@ length-internal (a : tau) (xs : noema (list a)) :=
     nil ->
       0
     cons y ys ->
-      length-internal a ys
+      1 + length-internal a ys
 
 -- length : (tau, list a) -> (list a) * i64
 length (a : tau) (xs (list a)) :=
