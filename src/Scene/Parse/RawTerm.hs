@@ -705,7 +705,7 @@ rawTermFlow = do
   m <- getCurrentHint
   keyword "flow"
   flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
-  t <- rawTerm
+  t <- betweenParen rawTerm
   return $ m :< RT.Flow flowVar t
 
 rawTermFlowIntro :: Parser RT.RawTerm
