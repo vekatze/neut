@@ -49,14 +49,14 @@ data RawTermF a
   | Annotation RemarkLevel (AN.Annotation ()) a
   | Flow
       (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.flow-inner"
-      a -- actual-argument
+      a -- inner type
   | FlowIntro
       (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.flow-inner"
-      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.run"
+      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.detach"
       a -- lambda
   | FlowElim
       (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.flow-inner"
-      (GL.GlobalLocator, LL.LocalLocator) -- , "core.thread.wait"
+      (GL.GlobalLocator, LL.LocalLocator) -- "core.thread.attach"
       a -- flow
 
 type DefInfo =
