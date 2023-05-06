@@ -168,6 +168,8 @@ defaultImports =
     "core.text",
     "core.text.io",
     "core.thread",
+    "core.channel",
+    "core.cell",
     "core.top"
   ]
 
