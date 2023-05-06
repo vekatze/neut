@@ -5,6 +5,8 @@ module Context.Module
     getMainModule,
     setMainModule,
     getModuleCacheMap,
+    getCoreModuleURL,
+    getCoreModuleChecksum,
     insertToModuleCacheMap,
     save,
   )
@@ -14,17 +16,21 @@ import Context.App
 import Context.App.Internal
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Const
 import Entity.Hint qualified as H
 import Entity.Module
+import Entity.ModuleChecksum
 import Entity.ModuleChecksum qualified as MC
 import Entity.ModuleID qualified as MID
+import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Path.IO
+import System.Environment
 
 getMainModule :: App Module
 getMainModule =
@@ -73,3 +79,21 @@ getModuleDirByID mHint moduleID = do
 save :: Module -> App ()
 save targetModule =
   Path.writeText (moduleLocation targetModule) $ ppModule targetModule
+
+getCoreModuleURL :: App ModuleURL
+getCoreModuleURL = do
+  mCoreModuleURL <- liftIO $ lookupEnv envVarCoreModuleURL
+  case mCoreModuleURL of
+    Just coreModuleURL ->
+      return $ ModuleURL $ T.pack coreModuleURL
+    Nothing ->
+      Throw.raiseError' $ "the URL of the core module isn't specified; set it via " <> T.pack envVarCoreModuleURL
+
+getCoreModuleChecksum :: App ModuleChecksum
+getCoreModuleChecksum = do
+  mCoreModuleChecksum <- liftIO $ lookupEnv envVarCoreModuleChecksum
+  case mCoreModuleChecksum of
+    Just coreModuleChecksum ->
+      return $ ModuleChecksum $ T.pack coreModuleChecksum
+    Nothing ->
+      Throw.raiseError' $ "the checksum of the core module isn't specified; set it via " <> T.pack envVarCoreModuleURL

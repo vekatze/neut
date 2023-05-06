@@ -86,12 +86,12 @@ resolveModuleAlias m moduleAlias = do
     Just checksum ->
       return $ MID.Library checksum
     Nothing
-      | moduleAlias == defaultModulePrefix ->
+      | moduleAlias == defaultModuleAlias ->
           return MID.Main
-      | moduleAlias == baseModulePrefix ->
+      | moduleAlias == baseModuleAlias ->
           return MID.Base
-      | moduleAlias == coreModulePrefix ->
-          resolveModuleAlias m defaultModulePrefix
+      | moduleAlias == coreModuleAlias ->
+          resolveModuleAlias m defaultModuleAlias
       | otherwise ->
           Throw.raiseError m $
             "no such module alias is defined: " <> BN.reify (extract moduleAlias)
@@ -138,7 +138,7 @@ getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
 getAlias mainModule currentModule = do
   case getID mainModule currentModule of
     MID.Library checksum ->
-      return (defaultModulePrefix, checksum)
+      return (defaultModuleAlias, checksum)
     MID.Main ->
       Nothing
     MID.Base ->

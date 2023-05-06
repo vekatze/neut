@@ -33,6 +33,14 @@ envVarTargetArch :: String
 envVarTargetArch =
   "NEUT_TARGET_ARCH"
 
+envVarCoreModuleURL :: String
+envVarCoreModuleURL =
+  "NEUT_CORE_MODULE_URL"
+
+envVarCoreModuleChecksum :: String
+envVarCoreModuleChecksum =
+  "NEUT_CORE_MODULE_CHECKSUM"
+
 envVarClang :: String
 envVarClang =
   "NEUT_CLANG"

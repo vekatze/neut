@@ -12,14 +12,14 @@ instance Hashable ModuleAlias
 
 instance Binary ModuleAlias
 
-defaultModulePrefix :: ModuleAlias
-defaultModulePrefix =
+defaultModuleAlias :: ModuleAlias
+defaultModuleAlias =
   ModuleAlias BN.this
 
-coreModulePrefix :: ModuleAlias
-coreModulePrefix =
+coreModuleAlias :: ModuleAlias
+coreModuleAlias =
   ModuleAlias BN.core
 
-baseModulePrefix :: ModuleAlias
-baseModulePrefix =
+baseModuleAlias :: ModuleAlias
+baseModuleAlias =
   ModuleAlias BN.base

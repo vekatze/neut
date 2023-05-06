@@ -7,6 +7,7 @@ module Scene.Parse.Discern.Symbol
     resolveConstructor,
     resolveConstructorMaybe,
     resolveAlias,
+    resolveExportedName,
     interpretDefiniteDescription,
     interpretGlobalName,
   )
@@ -180,6 +181,16 @@ interpretGlobalName m dd gn = do
       interpretGlobalName m dd' gn'
     GN.Projection arity isConstLike ->
       interpretTopLevelFunc m dd arity isConstLike
+
+resolveExportedName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> DD.DefiniteDescription
+resolveExportedName m dd gn =
+  case gn of
+    GN.Alias dd' gn' ->
+      resolveExportedName m dd' gn'
+    GN.AliasData dd' _ gn' ->
+      resolveExportedName m dd' gn'
+    _ ->
+      dd
 
 interpretTopLevelFunc ::
   Hint ->

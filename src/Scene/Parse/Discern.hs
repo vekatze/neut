@@ -165,20 +165,20 @@ discern nenv term =
         AN.Type _ -> do
           -- let doNotCare = m :< WT.Tau -- discarded at Infer
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Flow pVar t -> do
-      pVar' <- uncurry (resolveLocator' m) pVar
+    m :< RT.Flow (flowGL, flowLL) t -> do
+      flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
       t' <- discern nenv t
-      return $ m :< WT.Flow pVar' t'
-    m :< RT.FlowIntro pVar var e -> do
-      pVar' <- uncurry (resolveLocator' m) pVar
-      var' <- uncurry (resolveLocator' m) var
+      return $ m :< WT.Flow flowDD t'
+    m :< RT.FlowIntro (flowGL, flowLL) (detachGL, detachLL) e -> do
+      flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
+      detachDD <- uncurry (resolveExportedName m) <$> resolveLocator m detachGL detachLL
       e' <- discern nenv e
-      return $ m :< WT.FlowIntro pVar' var' (e', doNotCare m)
-    m :< RT.FlowElim pVar var e -> do
-      pVar' <- uncurry (resolveLocator' m) pVar
-      var' <- uncurry (resolveLocator' m) var
+      return $ m :< WT.FlowIntro flowDD detachDD (e', doNotCare m)
+    m :< RT.FlowElim (flowGL, flowLL) (attachGL, attachLL) e -> do
+      flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
+      attachDD <- uncurry (resolveExportedName m) <$> resolveLocator m attachGL attachLL
       e' <- discern nenv e
-      return $ m :< WT.FlowElim pVar' var' (e', doNotCare m)
+      return $ m :< WT.FlowElim flowDD attachDD (e', doNotCare m)
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =

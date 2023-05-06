@@ -1,6 +1,7 @@
 module Scene.Fetch
   ( fetch,
     insertDependency,
+    insertCoreDependency,
   )
 where
 
@@ -40,6 +41,14 @@ insertDependency aliasName url = do
     extractToLibDir tempFilePath alias checksum
     addDependencyToModuleFile mainModule alias url checksum
     getLibraryModule alias checksum >>= fetch
+
+insertCoreDependency :: App ()
+insertCoreDependency = do
+  coreModuleURL <- Module.getCoreModuleURL
+  checksum <- Module.getCoreModuleChecksum
+  mainModule <- Module.getMainModule
+  addDependencyToModuleFile mainModule coreModuleAlias coreModuleURL checksum
+  installIfNecessary coreModuleAlias coreModuleURL checksum
 
 installIfNecessary :: ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
 installIfNecessary alias url checksum = do

@@ -33,7 +33,7 @@ attachExtension file kind =
 
 hasCore :: Source -> Bool
 hasCore source =
-  Map.member coreModulePrefix $ moduleDependency $ sourceModule source
+  Map.member coreModuleAlias $ moduleDependency $ sourceModule source
 
 isCompilationSkippable :: S.Set (Path Abs File) -> S.Set (Path Abs File) -> [OK.OutputKind] -> Source -> Bool
 isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source =

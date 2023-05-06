@@ -32,6 +32,15 @@ stack install # => the binary goes into ~/.local/bin/
 neut version # => 0.3.0.0
 ```
 
+## Setting Up
+
+You need to set the URL and the checksum of the core module:
+
+```sh
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0.2.0.6.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="vkcQlmGqmRE6XDwvz03Hse_C0TxbdX2MfSS2BxNajRk="
+```
+
 ## Check If Installed Correctly
 
 Let's create a sample project and build it to check if your installation is correct. Do the following:

@@ -8,6 +8,7 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -29,6 +30,7 @@ createNewProject moduleName newModule = do
     else do
       createModuleFile
       createMainFile
+      Remark.printNote' $ "created a module: " <> moduleName
 
 constructDefaultModule :: T.Text -> App Module
 constructDefaultModule name = do
