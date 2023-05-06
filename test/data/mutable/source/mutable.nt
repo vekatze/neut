@@ -9,46 +9,36 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define-inline get[a](x: cell a): a {
-  let value-noema: &a = magic load(pointer(i8), x)
-  !value-noema
-}
-
-define-inline mutate[a](x: cell a, mutator: a -> a): top {
-  let value: a = magic load(pointer(i8), x)
-  let mutated-value = mutator(value)
-  magic store(pointer(i8), x, mutated-value)
-}
-
-define length(xs: list(i64)): i64 {
-  match xs {
+define my-length(xs: &list(i64)): i64 {
+  case xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, length(ys))
+    add-i64(1, my-length(ys))
   }
 }
 
-define bar(xs: cell list(i64)): i64 {
-  length(get(xs))
+define bar(xs-cell: &cell(list(i64))): i64 {
+  borrow(xs-cell, my-length)
 }
 
 define main(): i64 {
   let xs: list(i64) = Cons(1, Cons(2, Nil()))
-  let result on mutable xs = {
-    let _ = bar(xs)
-    mutate(xs, lambda (xs) {
+  let xs-cell = new-cell(xs)
+  let result on xs-cell = {
+    let _ = bar(xs-cell)
+    mutate(xs-cell, lambda (xs) {
       Cons(4, xs)
     })
-    let _ = bar(xs)
-    mutate(xs, lambda (_) {
+    let _ = bar(xs-cell)
+    mutate(xs-cell, lambda (_) {
       Nil()
     })
-    mutate(xs, lambda (xs) {
+    mutate(xs-cell, lambda (xs) {
       Cons(4, xs)
     })
-    bar(xs)
+    bar(xs-cell)
   }
-  let _ = xs
+  let _ = xs-cell
   result
 }

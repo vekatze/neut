@@ -3,11 +3,7 @@ import {
 - core.bool
 - core.option
 - core.sum => S
-}
-
-struct product(a, b) by Product {
-- left: a
-- right: b
+- core.text => T
 }
 
 define-inline queue(a: tau): tau {
@@ -16,19 +12,6 @@ define-inline queue(a: tau): tau {
 
 define empty[a](): queue(a) {
   tuple([], [])
-}
-
-define reverse[a](xs: list(a)): list(a) {
-  let f =
-    define helper(ys: list(a), acc: list(a)): list(a) {
-      match ys {
-      - [] =>
-        acc
-      - z :< zs =>
-        helper(zs, z :< acc)
-      }
-    }
-  f(xs, [])
 }
 
 define head[a](q: &queue(a)): ?a {

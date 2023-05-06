@@ -3,11 +3,7 @@ import {
 - core.top
 - core.option
 - core.list => L
-}
-
-struct product(a, b) by Product {
-- left: a
-- right: b
+- core.text => T
 }
 
 variant custom-stack(a) {

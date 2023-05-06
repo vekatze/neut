@@ -4,24 +4,6 @@ import {
 - core.list
 }
 
-struct product(a, b) by Product {
-- left: a
-- right: b
-}
-
-define reverse[a](xs: list(a)): list(a) {
-  let helper =
-    define self(ys: list(a), acc: list(a)): list(a) {
-      match ys {
-      - [] =>
-        acc
-      - y :< rest =>
-        self(rest, y :< acc)
-      }
-    }
-  helper(xs, [])
-}
-
 variant tree(a) {
   // the list is in *decreasing* order of rank
 - Node(i64, a, list(tree(a)))

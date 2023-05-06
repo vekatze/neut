@@ -1,5 +1,6 @@
 import {
 - core.bool
+- core.text => T
 }
 
 variant order {

@@ -16,11 +16,6 @@ variant order {
 - GT
 }
 
-struct product(a, b) by Product {
-- left: a
-- right: b
-}
-
 define insert[a](cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
   let tuple(smaller, bigger) = split(cmp, x, t)
   Node(smaller, x, bigger)

@@ -9,12 +9,12 @@ variant list() {
 - Cons(i64, list())
 }
 
-define length(xs: list()): i64 {
+define my-length(xs: list()): i64 {
   match xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, length(ys))
+    add-i64(1, my-length(ys))
   }
 }
 
@@ -33,7 +33,7 @@ define main(): i64 {
     define free-vars-in-recursion(c: i64): i64 {
       if eq-i64(c, 0) {
         let _ = xs
-        let _ = length(xs)
+        let _ = my-length(xs)
         1
       } else {
         free-vars-in-recursion(sub-i64(c, 1))
@@ -49,8 +49,8 @@ define main(): i64 {
         let _ = xs
         let _ = xs
         let _ = ys
-        let _ = length(ys)
-        let _ = length(zs)
+        let _ = my-length(ys)
+        let _ = my-length(zs)
         let _ = zs
         1
       } else {

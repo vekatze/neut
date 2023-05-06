@@ -2,6 +2,7 @@ import {
 - core.bool
 - core.option
 - core.list => L
+- core.text => T
 }
 
 variant stack(a) {

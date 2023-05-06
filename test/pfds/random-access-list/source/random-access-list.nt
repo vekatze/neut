@@ -7,11 +7,6 @@ import {
 - core.bool
 }
 
-struct product(a, b) by Product {
-- left: a
-- right: b
-}
-
 variant tree(a) {
 - Leaf(a)
 - Node(i64, tree(a), tree(a))

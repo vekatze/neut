@@ -1,6 +1,7 @@
 import {
 - core.bool
 - core.list => L
+- core.text => T
 }
 
 variant stream-cell(a) {
@@ -9,7 +10,7 @@ variant stream-cell(a) {
 }
 
 define-inline stream(a: tau): tau {
-  'stream-cell(a)
+  () -> stream-cell(a)
 }
 
 define append[a](xs: stream(a), ys: stream(a)): stream(a) {

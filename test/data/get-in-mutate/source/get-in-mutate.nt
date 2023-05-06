@@ -8,30 +8,23 @@ variant my-list(a: tau) {
 - Cons(my-list(a))
 }
 
-define-inline get[a](x: cell a): a {
-  let value: &a = magic load(pointer(i8), x)
-  !value
-}
-
-define-inline mutate[a](x: cell a, mutator: a -> a): core.top.top {
-  let value: a = magic load(pointer(i8), x)
-  let mutated-value = mutator(value)
-  magic store(pointer(i8), x, mutated-value)
-}
-
 define main(): i64 {
   let xs: my-list(i64) = Nil()
   let str = "text"
   let val = !str
   let f = lambda () { val }
-  let result on f = val
+  let result on f = {
+    let _ = f
+    val
+  }
   let _ = result
   let _ = f
-  let result on mutable xs = {
+  let xs-cell = new-cell(xs)
+  let result on xs-cell = {
     // mutate(xs, lambda (_) { get(xs) })
-    mutate(xs, lambda (_) { Nil() })
+    mutate(xs-cell, lambda (_) { Nil() })
     1
   }
-  let _ = xs
+  let _ = xs-cell
   result
 }
