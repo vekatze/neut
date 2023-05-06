@@ -210,20 +210,6 @@ clarifyTerm tenv term =
       return $
         bindLet [(typeExpVarName, typeExp), (valueVarName, value)] $
           C.PiElimDownElim typeExpVar [C.Int (IntSize baseSize) 1, valueVar]
-    _ :< TM.Cell {} ->
-      return returnImmediateS4
-    _ :< TM.CellIntro e -> do
-      (contentVarName, content', contentVar) <- clarifyPlus tenv e
-      return $
-        bindLet [(contentVarName, content')] $
-          C.UpIntro (C.SigmaIntro [contentVar])
-    _ :< TM.CellElim e -> do
-      (contentVarName, content', contentVar) <- clarifyPlus tenv e
-      resultVar <- Gensym.newIdentFromText "discriminant"
-      return $
-        bindLet [(contentVarName, content')] $
-          C.SigmaElim True [resultVar] contentVar $
-            C.UpIntro (C.VarLocal resultVar)
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder tenv [mxt]

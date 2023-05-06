@@ -50,12 +50,6 @@ freeVars term =
       freeVars t
     _ :< TM.Embody t e ->
       S.union (freeVars t) (freeVars e)
-    _ :< TM.Cell t ->
-      freeVars t
-    _ :< TM.CellIntro e ->
-      freeVars e
-    _ :< TM.CellElim e ->
-      freeVars e
     _ :< TM.Let _ mxt e1 e2 -> do
       let xs = freeVars e1
       let ys = freeVars' [mxt] (freeVars e2)

@@ -32,9 +32,6 @@ data TermF a
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
-  | Cell a
-  | CellIntro a
-  | CellElim a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | ResourceType DD.DefiniteDescription
@@ -79,8 +76,6 @@ isValue term =
     _ :< DataIntro _ _ _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
     _ :< Noema {} ->
-      True
-    _ :< Cell {} ->
       True
     _ :< ResourceType {} ->
       True

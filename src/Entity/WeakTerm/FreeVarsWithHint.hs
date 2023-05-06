@@ -42,12 +42,6 @@ freeVarsWithHint term =
       freeVarsWithHint t
     _ :< WT.Embody t e ->
       S.union (freeVarsWithHint t) (freeVarsWithHint e)
-    _ :< WT.Cell t ->
-      freeVarsWithHint t
-    _ :< WT.CellIntro e ->
-      freeVarsWithHint e
-    _ :< WT.CellElim e ->
-      freeVarsWithHint e
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = freeVarsWithHint e1
       let set2 = freeVarsWithHint' [mxt] (freeVarsWithHint e2)

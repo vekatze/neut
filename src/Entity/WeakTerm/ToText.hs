@@ -52,12 +52,6 @@ toText term =
       showCons ["noema", toText t]
     _ :< WT.Embody _ e ->
       "*" <> toText e
-    _ :< WT.Cell t ->
-      showCons ["cell", toText t]
-    _ :< WT.CellIntro e ->
-      showCons ["cell-intro", toText e]
-    _ :< WT.CellElim e ->
-      showCons ["cell-elim", toText e]
     _ :< WT.Let _ (_, x, t) e1 e2 -> do
       showCons ["let", showVariable x, toText t, toText e1, toText e2]
     _ :< WT.Prim prim ->

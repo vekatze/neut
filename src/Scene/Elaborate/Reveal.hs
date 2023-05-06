@@ -114,15 +114,6 @@ reveal' varEnv term =
       t' <- reveal' varEnv t
       e' <- reveal' varEnv e
       return $ m :< WT.Embody t' e'
-    m :< WT.Cell t -> do
-      t' <- reveal' varEnv t
-      return $ m :< WT.Cell t'
-    m :< WT.CellIntro e -> do
-      e' <- reveal' varEnv e
-      return $ m :< WT.CellIntro e'
-    m :< WT.CellElim e -> do
-      e' <- reveal' varEnv e
-      return $ m :< WT.CellElim e'
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- reveal' varEnv e1
       t' <- reveal' varEnv t

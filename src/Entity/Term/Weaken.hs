@@ -75,12 +75,6 @@ weaken term =
       m :< WT.Noema (weaken t)
     m :< TM.Embody t e ->
       m :< WT.Embody (weaken t) (weaken e)
-    m :< TM.Cell t ->
-      m :< WT.Cell (weaken t)
-    m :< TM.CellIntro e ->
-      m :< WT.CellIntro (weaken e)
-    m :< TM.CellElim e ->
-      m :< WT.CellElim (weaken e)
     m :< TM.Let opacity mxt e1 e2 ->
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->

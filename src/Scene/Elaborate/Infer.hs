@@ -119,17 +119,6 @@ infer' varEnv term =
       resultType <- newHole m varEnv
       insConstraintEnv (m :< WT.Noema resultType) noemaType
       return (m :< WT.Embody resultType e', resultType)
-    m :< WT.Cell t -> do
-      t' <- inferType' varEnv t
-      return (m :< WT.Cell t', m :< WT.Tau)
-    m :< WT.CellIntro e -> do
-      (e', t) <- infer' varEnv e
-      return (m :< WT.CellIntro e', m :< WT.Cell t)
-    m :< WT.CellElim e -> do
-      (e', t) <- infer' varEnv e
-      resultType <- newHole m varEnv
-      insConstraintEnv (m :< WT.Cell resultType) t
-      return (m :< WT.CellElim e', resultType)
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer' varEnv e1
       t' <- inferType' varEnv t

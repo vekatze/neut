@@ -37,7 +37,6 @@ import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
-import Entity.Mutability
 import Entity.Noema qualified as N
 import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
@@ -97,7 +96,6 @@ rawTerm = do
       rawTermMatchNoetic,
       rawTermMatch,
       rawTermNew,
-      rawTermCell,
       rawTermFlow,
       rawTermFlowIntro,
       rawTermFlowElim,
@@ -141,7 +139,7 @@ rawTermLetOrLetOn m = do
     [ do
         keyword "on"
         noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
-        lift $ ensureNoeticVarLinearity m S.empty $ map (\(_, _, v) -> v) noeticVarList
+        lift $ ensureNoeticVarLinearity m S.empty $ map snd noeticVarList
         delimiter "="
         e1 <- rawTerm
         e2 <- rawExpr
@@ -207,17 +205,10 @@ ensureNoeticVarLinearity m foundVarSet vs =
       | otherwise ->
           ensureNoeticVarLinearity m (S.insert name foundVarSet) rest
 
-rawTermNoeticVar :: Parser (Mutability, Hint, T.Text)
-rawTermNoeticVar =
-  choice
-    [ do
-        keyword "mutable"
-        (m, x) <- var
-        return (Mutable, m, x),
-      do
-        (m, x) <- var
-        return (Immutable, m, x)
-    ]
+rawTermNoeticVar :: Parser (Hint, T.Text)
+rawTermNoeticVar = do
+  (m, x) <- var
+  return (m, x)
 
 rawTermLetOption :: Hint -> Parser RT.RawTerm
 rawTermLetOption m = do
@@ -692,13 +683,6 @@ rawTermNoema = do
   delimiter "&"
   t <- rawTermBasic
   return $ m :< RT.Noema t
-
-rawTermCell :: Parser RT.RawTerm
-rawTermCell = do
-  m <- getCurrentHint
-  keyword "cell"
-  t <- rawTerm
-  return $ m :< RT.Cell t
 
 rawTermFlow :: Parser RT.RawTerm
 rawTermFlow = do

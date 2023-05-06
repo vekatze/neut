@@ -31,7 +31,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
-import Entity.Mutability
 import Entity.NameArrow qualified as NA
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
@@ -137,9 +136,6 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Cell t -> do
-      t' <- discern nenv t
-      return $ m :< WT.Cell t'
     m :< RT.Let mxt mys e1 e2 -> do
       discernLet nenv m mxt mys e1 e2
     m :< RT.Prim prim -> do
@@ -162,8 +158,7 @@ discern nenv term =
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern nenv e
       case annot of
-        AN.Type _ -> do
-          -- let doNotCare = m :< WT.Tau -- discarded at Infer
+        AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
     m :< RT.Flow (flowGL, flowLL) t -> do
       flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
@@ -188,12 +183,12 @@ discernLet ::
   NominalEnv ->
   Hint ->
   BinderF RT.RawTerm ->
-  [(Mutability, Hint, Ident)] ->
+  [(Hint, Ident)] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App WT.WeakTerm
 discernLet nenv m mxt mys e1 e2 = do
-  let (mutabilityList, ms, ys) = unzip3 mys
+  let (ms, ys) = unzip mys
   ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
   ysLocal <- mapM Gensym.newIdentFromIdent ys
   ysCont <- mapM Gensym.newIdentFromIdent ys
@@ -203,9 +198,9 @@ discernLet nenv m mxt mys e1 e2 = do
   nenvCont <- joinNominalEnv contAddition nenv
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
-  e2'' <- attachSuffix (zip3 mutabilityList ysCont ysLocal) e2'
+  e2'' <- attachSuffix (zip ysCont ysLocal) e2'
   let opacity = if null mys then WT.Transparent else WT.Noetic
-  attachPrefix (zip3 mutabilityList ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
+  attachPrefix (zip ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
 
 discernBinder ::
   NominalEnv ->

@@ -3,7 +3,6 @@ module Scene.Elaborate.Unify (unify) where
 import Context.App
 import Context.Elaborate
 import Context.Gensym qualified as Gensym
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -180,10 +179,6 @@ simplify constraintList =
           simplify $ (C.Eq t1 t2, orig) : cs
         (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
           simplify $ (C.Eq t1 t2, orig) : (C.Eq e1 e2, orig) : cs
-        (_ :< WT.Cell t1, _ :< WT.Cell t2) ->
-          simplify $ (C.Eq t1 t2, orig) : cs
-        (_ :< WT.CellIntro e1, _ :< WT.CellIntro e2) ->
-          simplify $ (C.Eq e1 e2, orig) : cs
         (_ :< WT.Prim a1, _ :< WT.Prim a2)
           | WP.Type t1 <- a1,
             WP.Type t2 <- a2,

@@ -64,15 +64,6 @@ fill sub term =
       t' <- fill sub t
       e' <- fill sub e
       return $ m :< WT.Embody t' e'
-    m :< WT.Cell t -> do
-      t' <- fill sub t
-      return $ m :< WT.Cell t'
-    m :< WT.CellIntro e -> do
-      e' <- fill sub e
-      return $ m :< WT.CellIntro e'
-    m :< WT.CellElim e -> do
-      e' <- fill sub e
-      return $ m :< WT.CellElim e'
     m :< WT.Let opacity mxt e1 e2 -> do
       e1' <- fill sub e1
       (mxt', _, e2') <- fill'' sub mxt [] e2

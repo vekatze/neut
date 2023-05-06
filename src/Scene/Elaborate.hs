@@ -217,15 +217,6 @@ elaborate' term =
       t' <- elaborate' t
       e' <- elaborate' e
       return $ m :< TM.Embody t' e'
-    m :< WT.Cell t -> do
-      t' <- elaborate' t
-      return $ m :< TM.Cell t'
-    m :< WT.CellIntro e -> do
-      e' <- elaborate' e
-      return $ m :< TM.CellIntro e'
-    m :< WT.CellElim e -> do
-      e' <- elaborate' e
-      return $ m :< TM.CellElim e'
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- elaborate' e1
       t' <- reduceType t

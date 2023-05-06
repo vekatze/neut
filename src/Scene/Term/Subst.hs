@@ -67,15 +67,6 @@ subst sub term =
       t' <- subst sub t
       e' <- subst sub e
       return $ m :< TM.Embody t' e'
-    m :< TM.Cell t -> do
-      t' <- subst sub t
-      return $ m :< TM.Cell t'
-    m :< TM.CellIntro e -> do
-      e' <- subst sub e
-      return $ m :< TM.CellIntro e'
-    m :< TM.CellElim e -> do
-      e' <- subst sub e
-      return $ m :< TM.CellElim e'
     m :< TM.Let opacity mxt e1 e2 -> do
       e1' <- subst sub e1
       ([mxt'], e2') <- subst' sub [mxt] e2

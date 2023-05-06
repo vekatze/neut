@@ -37,12 +37,6 @@ holes term =
       holes t
     _ :< WT.Embody t e ->
       S.union (holes t) (holes e)
-    _ :< WT.Cell t ->
-      holes t
-    _ :< WT.CellIntro e ->
-      holes e
-    _ :< WT.CellElim e ->
-      holes e
     _ :< WT.Let _ mxt e1 e2 -> do
       let set1 = holes e1
       let set2 = holes' [mxt] (holes e2)

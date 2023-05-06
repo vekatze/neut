@@ -44,9 +44,6 @@ data WeakTermF a
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
-  | Cell a
-  | CellIntro a
-  | CellElim a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
   | ResourceType DD.DefiniteDescription

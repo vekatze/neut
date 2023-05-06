@@ -16,7 +16,6 @@ import Context.App.Internal
 import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Implicit qualified as Implicit
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
