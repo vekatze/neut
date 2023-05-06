@@ -65,95 +65,89 @@ core :: T.Text
 core =
   "core"
 
+corePreface :: T.Text
+corePreface =
+  "core" <> nsSep <> "preface"
+
 coreTop :: T.Text
 coreTop =
-  core <> nsSep <> "top" <> nsSep <> "top"
+  corePreface <> nsSep <> "top"
 
 coreTopUnit :: T.Text
 coreTopUnit =
-  core <> nsSep <> "top" <> nsSep <> "Unit"
+  corePreface <> nsSep <> "Unit"
 
 coreBool :: T.Text
 coreBool =
-  core <> nsSep <> "bool" <> nsSep <> "bool"
+  corePreface <> nsSep <> "bool"
 
 coreBoolTrue :: T.Text
 coreBoolTrue =
-  core <> nsSep <> "bool" <> nsSep <> "True"
+  corePreface <> nsSep <> "True"
 
 coreBoolFalse :: T.Text
 coreBoolFalse =
-  core <> nsSep <> "bool" <> nsSep <> "False"
+  corePreface <> nsSep <> "False"
 
 coreOption :: T.Text
 coreOption =
-  core <> nsSep <> "option" <> nsSep <> "option"
+  corePreface <> nsSep <> "option"
 
 coreOptionNone :: T.Text
 coreOptionNone =
-  core <> nsSep <> "option" <> nsSep <> "None"
+  corePreface <> nsSep <> "None"
 
 coreOptionSome :: T.Text
 coreOptionSome =
-  core <> nsSep <> "option" <> nsSep <> "Some"
+  corePreface <> nsSep <> "Some"
 
 coreSum :: T.Text
 coreSum =
-  core <> nsSep <> "sum" <> nsSep <> "sum"
+  corePreface <> nsSep <> "sum"
 
 coreSumLeft :: T.Text
 coreSumLeft =
-  core <> nsSep <> "sum" <> nsSep <> "Left"
+  corePreface <> nsSep <> "Left"
 
 coreSumRight :: T.Text
 coreSumRight =
-  core <> nsSep <> "sum" <> nsSep <> "Right"
+  corePreface <> nsSep <> "Right"
 
 coreList :: T.Text
 coreList =
-  core <> nsSep <> "list" <> nsSep <> "list"
+  corePreface <> nsSep <> "list"
 
 coreListNil :: T.Text
 coreListNil =
-  core <> nsSep <> "list" <> nsSep <> "Nil"
+  corePreface <> nsSep <> "Nil"
 
 coreListCons :: T.Text
 coreListCons =
-  core <> nsSep <> "list" <> nsSep <> "Cons"
+  corePreface <> nsSep <> "Cons"
 
 coreText :: T.Text
 coreText =
-  core <> nsSep <> "text" <> nsSep <> "text"
+  corePreface <> nsSep <> "text"
 
 coreSystemAdmit :: T.Text
 coreSystemAdmit =
-  core <> nsSep <> "system" <> nsSep <> "admit"
+  corePreface <> nsSep <> "admit"
 
 coreThreadFlowInner :: T.Text
 coreThreadFlowInner =
-  core <> nsSep <> "thread" <> nsSep <> "flow-inner"
+  corePreface <> nsSep <> "flow-inner"
 
 coreThreadDetach :: T.Text
 coreThreadDetach =
-  core <> nsSep <> "thread" <> nsSep <> "detach"
+  corePreface <> nsSep <> "detach"
 
 coreThreadAttach :: T.Text
 coreThreadAttach =
-  core <> nsSep <> "thread" <> nsSep <> "attach"
+  corePreface <> nsSep <> "attach"
 
 defaultImports :: [T.Text]
 defaultImports =
-  [ "core.bool",
-    "core.bottom",
-    "core.i8-array",
-    "core.list",
-    "core.option",
-    "core.sum",
-    "core.text",
-    "core.text.io",
-    "core.top",
-    "core.vector"
-  ]
+  [corePreface]
 
 holeVarPrefix :: T.Text
 holeVarPrefix =
