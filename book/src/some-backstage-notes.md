@@ -12,7 +12,7 @@ variant Foo(a) {
 }
 ```
 
-In most language, the internal representation of `ConsA(3, True)` will be something like:
+In most languages, the internal representation of `ConsA(3, True)` will be something like:
 
 ```neut
 // `0` is a tag to distinguish constructors
