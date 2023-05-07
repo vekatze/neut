@@ -33,18 +33,20 @@ Flows can send/receive values using channels. The channels in Neut are similar t
 You can create a channel using `let-on`, and send/receive values using those channels.
 
 ```neut
+let ch0 = new-channel(i64)
+let ch1 = new-channel(i64)
 // channels as queues
-let result on channel c0, channel c1 = {
+let result on ch0, ch1 = {
   let f = detach {
-    let message0 = receive c0
-    send c1 <= add-i64(message0, 1)
+    let message0 = receive(ch0)
+    send(ch1, add-i64(message0, 1))
     message0
   }
   let g = detach {
-    let message1 = receive c1
+    let message1 = receive(ch1)
     add-i64(message1, 1)
   }
-  send c0 <= 0
+  send(ch0, 0)
   let v1 = attach f // v1 == 1
   let v2 = attach g // v2 == 2
   print("hey")
@@ -52,38 +54,71 @@ let result on channel c0, channel c1 = {
 // ... cont ...
 ```
 
-The type of a channel is `channel(a)`, where the `a` is the type of values that are sent/received. A channel isn't copied/discarded even if it is used non-linearly; A channel, including its content, is discarded after its `let-on`.
+The type of a channel is `channel(a)`, where the `a` is the type of values that are sent/received. You'll typically use the noema of a channel because both `send` and `receive` expect the noema of a channel.
 
-You can send a value into a channel using `send`, and receive a value from a channel using `receive`. A channel internally has a queue, and `send` stores a value to that queue.
+<!-- A channel isn't copied/discarded even if it is used non-linearly; A channel, including its content, is discarded after its `let-on`. -->
 
-When you call `receive`, if the queue isn't empty, the first element of the queue is popped. Otherwise, `receive` blocks until a value is pushed to the queue.
+You can send a value into a channel using `send`, and receive one using `receive`.
+
+A channel internally has a queue, and `send` stores a value to that queue.
+
+When you call `receive`, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, `receive` blocks until a value is sent to the queue.
 
 As mentioned above, the channels in Neut are similar to those of Go (and indeed inspired by Go to some extent), but actually, the main inspiration was from [Par Means Parallel: Multiplicative Linear Logic Proofs as Concurrent Functional Programs](https://dl.acm.org/doi/10.1145/3371086).
 
 ## Mutable Variables
 
-`channel(a)` can be used as a mutable version of `a`. A mutation function can be defined as follows, conceptually:
+`channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is a wrapper of such a channel:
 
 ```neut
-define mutate[a](c: channel(a), f: a -> a): top {
-  let v = receive c
-  send c <= f(v)
-  Unit
+define sample(): i64 {
+  let xs: list(i64) = []
+
+  // create a new cell
+  let xs-cell = new-cell(xs)
+
+  // create a noema of a cell
+  let result on xs-cell = {
+    // mutate the cell (add an element)
+    mutate(xs-cell, lambda (xs) { 1 :< xs })
+
+    // get the length of the list in the cell
+    let len1 = borrow(xs-cell, lambda (xs) { length(xs) })
+    // (len1 == 1)
+
+    // mutate again
+    mutate(xs-cell, lambda (xs) { 2 :< xs })
+
+    // get the length of the list in the cell, again
+    let len2 = borrow(xs-cell, lambda (xs) { length(xs) })
+    // (len2 == 2)
+  }
+  ...
 }
 ```
 
-This `mutate` can then be used like below:
+Here, the type of related wrapper functions are:
 
 ```neut
-let result on channel mut-xs = {
-  send mut-xs <= [1] // write
-  mutate(mut-xs, lambda (xs) {
-    2 :< xs
-  })
-  mutate(mut-xs, lambda (xs) {
-    3 :< xs
-  })
-  let v = receive(xs) // read
-  v // == [3, 2, 1]
+// create a new channel
+new-cell[a](x: a): cell(a)
+
+// mutate the content of a cell
+mutate[a](ch: &cell(a), f: a -> a): top
+
+// borrow the content of a cell and do something
+borrow[a, b](ch: &cell(a), f: &a -> b): b
+
+// clone the content of a cell
+clone[a](ch: &cell(a)): a
+```
+
+The definition of, for example, `mutate` is like the below:
+
+```neut
+define mutate[a](ch: &cell(a), f: a -> a): top {
+  let ch = magic.cast(&cell(a), &channel(a), ch)
+  let v = receive(ch)
+  send(ch, f(v))
 }
 ```
