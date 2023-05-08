@@ -1,0 +1,12 @@
+import {
+- core.file.flag => FF
+- core.file.mode => FM
+}
+
+define main(): i64 {
+  let file = open("./test", FF.for-rw(), FM.default-file-mode())
+  let _ = write("hey\n", file)
+  let _ = read(file)
+  close(file)
+  0
+}
