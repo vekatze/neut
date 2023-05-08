@@ -1,8 +1,12 @@
 #!/bin/zsh
 
-# e.g. TARGET_PLATFORM=aarch64-darwin COMPILER_VERSION=0.2.0.0 ./test-aarch64-darwin.sh
+# e.g. ./update-core.sh ./data
+
 OLD_VERSION=0.2.0.7
 NEW_VERSION=0.2.0.8
+
+TARGET_DIR=$(cd "$1"; pwd)
+cd $TARGET_DIR
 
 for i in $(find . -d 1 -type d | sort); do
   cd $i
