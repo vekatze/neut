@@ -2,7 +2,7 @@
 
 ## External Dependencies
 
-Neut depends on `tar`, `curl`, and `clang (>= 14.0.0)`. Make sure all of them are installed.
+Neut depends on `curl`, `tar`, `zstd` and `clang (>= 14.0.0)`. Make sure all of them are installed.
 
 ## Using a Prebuilt Binary
 
@@ -37,8 +37,8 @@ neut version # => 0.3.0.0
 You need to set the URL and the checksum of the core module:
 
 ```sh
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0.2.0.7.tar.zst"
-export NEUT_CORE_MODULE_CHECKSUM="F_ST8PtL9dLCDWVZ4GpuS7sviUU0_-TUz2s6iw-86KU="
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0.2.0.8.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="dHn2znjF6etZQyhxRP-ohnBkFRrD5eota6f7OqY6Kqc="
 ```
 
 ## Check If Installed Correctly
