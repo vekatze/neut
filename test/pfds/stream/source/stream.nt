@@ -42,5 +42,6 @@ define take[a](n: i64, xs: stream(a)): stream(a) {
 define main(): i64 {
   let my-stream: stream(i64) =
     lambda () { Cons(1, lambda () { Nil }) }
+  let _ = my-stream
   0
 }

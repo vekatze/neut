@@ -16,9 +16,9 @@ define empty[a](): queue(a) {
 
 define head[a](q: &queue(a)): ?a {
   case q {
-  - tuple(x :< rest, ys) =>
+  - tuple(x :< _, _) =>
     Some(!x)
-  - otherwise =>
+  - _ =>
     None
   }
 }
@@ -34,9 +34,9 @@ define-inline sanitize[a](q: queue(a)): queue(a) {
 
 define tail[a](q: queue(a)): ?queue(a) {
   match q {
-  - tuple(x :< rest, ys) =>
+  - tuple(_ :< rest, ys) =>
     Some(sanitize(tuple(rest, ys)))
-  - otherwise =>
+  - _ =>
     None
   }
 }
@@ -64,6 +64,7 @@ define main(): i64 {
     match head(q) {
     - Some(xs1) =>
       let v1 on xs1 = sum(xs1)
+      let _ = xs1
       v1
     - None =>
       4
@@ -80,11 +81,13 @@ define main(): i64 {
       match head(q) {
       - Some(xs) =>
         let v on xs = sum(xs)
+        let _ = xs
         v
       - None =>
         4
       }
     }
+    let _ = q
     add-i64(v1, v2)
   }
 }

@@ -39,13 +39,13 @@ define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): heap(a) * heap(a) {
           let tuple(right-right-small, right-right-big) = split(cmp, pivot, right-right)
           tuple(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
         // go left
-        - otherwise =>
+        - _ =>
           let tuple(right-left-small, right-left-big) = split(cmp, pivot, right-left)
           tuple(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
     // go left
-    - otherwise =>
+    - _ =>
       match left {
       - Leaf =>
         tuple(Leaf, Node(Leaf, v, right))
@@ -56,7 +56,7 @@ define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): heap(a) * heap(a) {
           let tuple(left-right-small, left-right-big) = split(cmp, pivot, left-right)
           tuple(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
         // go left
-        - otherwise =>
+        - _ =>
           let tuple(left-left-small, left-left-big) = split(cmp, pivot, left-left)
           tuple(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
         }
@@ -69,9 +69,9 @@ define find-min[a](t: &heap(a)): ?a {
   case t {
   - Leaf =>
     None
-  - Node(Leaf, x, right) =>
+  - Node(Leaf, x, _) =>
     Some(!x)
-  - Node(left, x, right) =>
+  - Node(left, _, _) =>
     find-min(left)
   }
 }
@@ -80,9 +80,9 @@ define delete-min[a](t: heap(a)): ?heap(a) {
   match t {
   - Leaf =>
     None
-  - Node(Leaf, x, right) =>
+  - Node(Leaf, _, right) =>
     Some(right)
-  - Node(Node(Leaf, x, t12), y, t2) =>
+  - Node(Node(Leaf, _, t12), y, t2) =>
     Some(Node(t12, y, t2))
   - Node(Node(t11, x, t12), y, t2) =>
     let? t11 = delete-min(t11)
@@ -93,6 +93,8 @@ define delete-min[a](t: heap(a)): ?heap(a) {
 define compare-int-list(xs: list(i64), ys: list(i64)): order {
   let x on xs = sum(xs)
   let y on ys = sum(ys)
+  let _ = xs
+  let _ = ys
   if lt-i64(x, y) {
     LT
   } else-if gt-i64(x, y) {
@@ -120,6 +122,7 @@ define main(): i64 {
     match find-min(h) {
     - Some(xs) =>
       let v on xs = sum(xs)
+      let _ = xs
       v
     - None =>
       4
@@ -136,11 +139,13 @@ define main(): i64 {
       match find-min(h) {
       - Some(xs) =>
         let v on xs = sum(xs)
+        let _ = xs
         v
       - None =>
         4
       }
     }
+    let _ = h
     add-i64(v1, v2)
   }
 }

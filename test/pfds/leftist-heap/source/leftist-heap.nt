@@ -32,7 +32,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         case h {
         - Leaf =>
           0
-        - Node(r, v, left, right) =>
+        - Node(r, _, _, _) =>
           !r
         }
       }
@@ -56,7 +56,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         match compare(value1, value2) {
         - LT =>
           make-Node(value1, left1, merge(right1, Node(rank2, value2, left2, right2)))
-        - otherwise =>
+        - _ =>
           make-Node(value2, left2, merge(Node(rank1, value1, left1, right1), right2))
         }
       }
@@ -70,7 +70,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       case h {
       - Leaf =>
         True
-      - Node(rank, value, left, right) =>
+      - Node(_, _, _, _) =>
         False
       }
     }
@@ -85,7 +85,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       case h {
       - Leaf =>
         None
-      - Node(rank, value, left, right) =>
+      - Node(_, value, _, _) =>
         Some(!value)
       }
     }
@@ -94,7 +94,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       match h {
       - Leaf =>
         None
-      - Node(rank, value, left, right) =>
+      - Node(_, _, left, right) =>
         Some(merge(left, right))
       }
     }
@@ -113,7 +113,7 @@ define compare-int(x: i64, y: i64): order {
 
 define main(): i64 {
   let int-heap-signature = make-heap-signature(compare-int)
-  let Heap(empty, is-empty, insert, merge, find-min, delete-min) = int-heap-signature
+  let Heap(empty, _, insert, _, find-min, delete-min) = int-heap-signature
   let h = empty
   let h = insert(10, h)
   let h = insert(2, h)
@@ -135,6 +135,7 @@ define main(): i64 {
         value
       }
     }
+    let _ = h
     min
   }
 }

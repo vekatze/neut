@@ -18,7 +18,7 @@ define is-empty[a](xs: &stack(a)): bool {
   case xs {
   - Nil =>
     True
-  - Cons(y, rest) =>
+  - Cons(_, _) =>
     False
   }
 }
@@ -27,7 +27,7 @@ define head[a](xs: &stack(a)): option(&a) {
   case xs {
   - Nil =>
     None
-  - Cons(a, rest) =>
+  - Cons(a, _) =>
     Some(a)
   }
 }
@@ -36,7 +36,7 @@ define tail[a](xs: &stack(a)): option(&stack(a)) {
   case xs {
   - Nil =>
     None
-  - Cons(a, rest) =>
+  - Cons(_, rest) =>
     Some(rest)
   }
 }
@@ -58,7 +58,7 @@ define suffixes[a](xs: stack(a)): stack(stack(a)) {
   match xs {
   - Nil =>
     Nil
-  - Cons(y, ys) =>
+  - Cons(_, ys) =>
     Cons(xs, suffixes(ys))
   }
 }
@@ -67,7 +67,7 @@ define suffixes-noetic[a](xs: &stack(a)): stack(&stack(a)) {
   case xs {
   - Nil =>
     Nil
-  - Cons(y, ys) =>
+  - Cons(_, ys) =>
     Cons(xs, suffixes-noetic(ys))
   }
 }
@@ -77,20 +77,22 @@ define main(): i64 {
   let ys = Cons(10: i64, xs)
   let zs = Cons(30, Cons(20, ys))
   let zs = update(zs, 1, 20000)
-  let ws = suffixes(zs)
+  let _ = suffixes(zs)
   let calc on zs, xs = {
     let b = is-empty(zs)
-    let b2 = is-empty(xs)
-    let h = head(zs)
-    let zs-suffixes = suffixes-noetic(zs)
-    let h2 = head(xs)
-    let t = tail(zs)
-    let t2 = tail(zs)
+    let _ = is-empty(xs)
+    let _ = head(zs)
+    let _ = suffixes-noetic(zs)
+    let _ = head(xs)
+    let _ = tail(zs)
+    let _ = tail(zs)
     if b {
       1
     } else {
       2
     }
   }
+  let _ = zs
+  let _ = xs
   calc
 }

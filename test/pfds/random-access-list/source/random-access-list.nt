@@ -172,5 +172,6 @@ define main(): i64 {
   let v4 on xs = find-and-get(3, xs) // 3
   let xs = update(2, 10, xs)
   let v3-modified on xs = find-and-get(2, xs) // 10
+  let _ = xs
   add-i64(v1, add-i64(v2, add-i64(v3-modified, v4))) // 1 + 4 + 10 + 3 = 18
 }

@@ -79,6 +79,7 @@ define main(): i64 {
     let my-set = insert(20, my-set)
     let my-set = insert(30, my-set)
     let result on my-set = member(5, my-set)
+    let _ = my-set
     if result {
       1
     } else {

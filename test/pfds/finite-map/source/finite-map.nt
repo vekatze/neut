@@ -78,8 +78,8 @@ define main(): i64 {
   let mymap = insert(2, [tau, tau], mymap)
   let mymap = insert(2, [i64], mymap)
   let mymap = insert(3, [() -> i64], mymap)
-  let aoeu = mymap
-  let hoge = mymap
+  let _ = mymap
+  let _ = mymap
   let result on mymap = {
     match lookup(2, mymap) {
     - None =>
@@ -93,5 +93,6 @@ define main(): i64 {
       }
     }
   }
+  let _ = mymap
   result
 }

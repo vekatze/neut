@@ -19,7 +19,7 @@ define is-empty[a](xs: &custom-stack(a)): bool {
   case xs {
   - Nil =>
     True
-  - Cons(y, rest) =>
+  - Cons(_, _) =>
     False
   }
 }
@@ -28,7 +28,7 @@ define head[a](xs: &custom-stack(a)): ?&{a * a} {
   case xs {
   - Nil =>
     None
-  - Cons(a, rest) =>
+  - Cons(a, _) =>
     Some(a)
   }
 }
@@ -37,7 +37,7 @@ define tail[a](xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
   - Nil =>
     None
-  - Cons(a, rest) =>
+  - Cons(_, rest) =>
     Some(rest)
   }
 }
@@ -48,19 +48,21 @@ define main(): i64 {
   let ys = Cons(v, xs)
   let zs = Cons(v, Cons(v, ys))
   let calc on zs, xs = {
-    let b = is-empty(zs)
-    let b2 = is-empty(xs)
+    let _ = is-empty(zs)
+    let _ = is-empty(xs)
     let h = head(zs)
-    let h2 = head(xs)
-    let t = tail(zs)
-    let t2 = tail(zs)
+    let _ = head(xs)
+    let _ = tail(zs)
+    let _ = tail(zs)
     match h {
     - None =>
       1
     - Some(pair) =>
-      bind tuple(left, right) = pair
+      bind tuple(_, right) = pair
       {!right}()
     }
   }
+  let _ = zs
+  let _ = xs
   calc
 }

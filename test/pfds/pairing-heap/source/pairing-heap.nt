@@ -19,7 +19,7 @@ define find-min[a](h: &heap(a)): ?a {
   case h {
   - Leaf =>
     None: ?a
-  - Node(v, hs) =>
+  - Node(v, _) =>
     Some(!v)
   }
 }
@@ -34,7 +34,7 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
     match cmp(x1, x2) {
     - LT =>
       Node(x1, Node(x2, hs2) :< hs1)
-    - otherwise =>
+    - _ =>
       Node(x2, Node(x1, hs1) :< hs2)
     }
   }
@@ -59,7 +59,7 @@ define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   match h {
   - Leaf =>
     None
-  - Node(x, hs) =>
+  - Node(_, hs) =>
     Some(merge-pairs(cmp, hs))
   }
 }
@@ -88,5 +88,6 @@ define main(): i64 {
       min
     }
   }
+  let _ = h
   maybe-min
 }
