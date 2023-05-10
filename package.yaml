@@ -25,6 +25,7 @@ dependencies:
   - bytestring
   - containers
   - cryptohash-sha256
+  - directory
   - exceptions
   - filepath
   - free

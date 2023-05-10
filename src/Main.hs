@@ -9,6 +9,7 @@ import Act.Release qualified as Release
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
 import Context.App
+import Context.External qualified as External
 import Context.OptParse qualified as OptParse
 import Context.Throw qualified as Throw
 import Entity.Command qualified as C
@@ -22,6 +23,7 @@ execute = do
   runApp $ do
     c <- OptParse.parseCommand
     Throw.run $ do
+      External.ensureExecutables
       case c of
         C.Build cfg -> do
           Build.build cfg
