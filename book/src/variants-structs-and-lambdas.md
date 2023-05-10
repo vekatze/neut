@@ -118,12 +118,8 @@ and use the type as follows:
 ```neut
 define create-struct(): config(my-list(i64)) {
   // create a struct
-  new config {
-  - foo <= 30
-  - bar <= MyNil
-  - some-value <= MyCons(3, MyNil)
-  }
-  // you can also write `Config(30, MyNil, MyCons(3, MyNil))`
+  // you can also use keyword arguments, as described later
+  Config(30, MyNil, MyCons(3, MyNil))
 }
 
 define use-struct(c: config(a)): i64 {
@@ -175,6 +171,40 @@ define sample(): i64 {
   let type2 = (i64, bool) -> i64 // receives i64 and bool / returns i64
   let type3 = () -> i64          // receives nothing      / returns i64
   0
+}
+```
+
+### Keyword Arguments
+
+Neut has keyword arguments like below:
+
+```neut
+define some-function(a: i64, some-argument: tau, b: tau): i64 {
+  // ...
+}
+
+define caller(): i64 {
+  let _ =
+    some-function {
+    - b <= tau
+    - a <= 20
+    - some-argument <= tau
+    }
+  0
+}
+
+```
+
+Keyword arguments can be used with a constructor:
+
+```neut
+define create-struct(): config(my-list(i64)) {
+  // create a struct using keyword arguments
+  Config {
+  - foo <= 30
+  - bar <= MyNil
+  - some-value <= MyCons(3, MyNil)
+  }
 }
 ```
 

@@ -21,7 +21,7 @@ struct set-signature(a) by Set {
 }
 
 define make-set-signature[a](compare: (a, a) -> order): set-signature(a) {
-  new set-signature {
+  Set {
   - empty <=
     Leaf
   - insert <=

@@ -16,6 +16,7 @@ import Context.App.Internal
 import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Implicit qualified as Implicit
+import Context.KeyArg qualified as KeyArg
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -29,6 +30,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Hint qualified as Hint
 import Entity.IsConstLike
+import Entity.Key
 import Entity.NameArrow qualified as NA
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
@@ -45,9 +47,12 @@ registerStmtDefine ::
   SK.BaseStmtKind x t ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
-  AN.ArgNum ->
+  [Key] ->
   App ()
-registerStmtDefine isConstLike m stmtKind name impArgNum allArgNum = do
+registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
+  let allArgNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
+  let arity = A.fromInt (AN.reify allArgNum)
+  KeyArg.insert name arity expArgNames
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum

@@ -27,6 +27,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Hint.Reify
+import Entity.Key
 import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
@@ -90,13 +91,13 @@ rawTerm = do
       rawTermMagic,
       rawTermMatchNoetic,
       rawTermMatch,
-      rawTermNew,
       rawTermFlow,
       rawTermFlowIntro,
       rawTermFlowElim,
       rawTermIf,
       rawTermListIntro,
       rawTermPiGeneral,
+      try rawTermPiElimByKey,
       rawTermPiOrConsOrAscOrBasic
     ]
 
@@ -465,7 +466,7 @@ rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
   keyword "match"
-  es <- commaList rawTerm
+  es <- commaList rawTermBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim False es (RP.new patternRowList)
 
@@ -473,7 +474,7 @@ rawTermMatchNoetic :: Parser RT.RawTerm
 rawTermMatchNoetic = do
   m <- getCurrentHint
   keyword "case"
-  es <- commaList rawTerm
+  es <- commaList rawTermBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim True es (RP.new patternRowList)
 
@@ -576,21 +577,6 @@ rawTermPatternConsOrVar = do
       do
         return (m, RP.Var varOrLocator)
     ]
-
-rawTermNew :: Parser RT.RawTerm
-rawTermNew = do
-  m <- getCurrentHint
-  keyword "new"
-  name <- snd <$> parseName
-  rowList <- betweenBrace $ manyList rawTermNewRow
-  return $ m :< RT.New name rowList
-
-rawTermNewRow :: Parser (Hint, Name, RT.RawTerm)
-rawTermNewRow = do
-  (m, key) <- parseName
-  delimiter "<="
-  value <- rawExpr
-  return (m, key, value)
 
 rawTermIf :: Parser RT.RawTerm
 rawTermIf = do
@@ -726,6 +712,20 @@ rawTermPiElimOrSimple = do
   e <- rawTermSimple
   elems <- many $ argList rawTerm
   foldPiElim m e elems
+
+rawTermPiElimByKey :: Parser RT.RawTerm
+rawTermPiElimByKey = do
+  m <- getCurrentHint
+  name <- snd <$> parseName
+  rowList <- betweenBrace $ manyList rawTermKeyValuePair
+  return $ m :< RT.PiElimByKey name rowList
+
+rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
+rawTermKeyValuePair = do
+  (m, key) <- var
+  delimiter "<="
+  value <- rawExpr
+  return (m, key, value)
 
 foldPiElim :: Hint -> RT.RawTerm -> [[RT.RawTerm]] -> Parser RT.RawTerm
 foldPiElim m e elemList =

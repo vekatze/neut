@@ -1,0 +1,9 @@
+export {
+- foo
+}
+
+define foo(a: i64, some-argument: tau, b: tau): i64 {
+  let _ = some-argument
+  let _ = b
+  a
+}

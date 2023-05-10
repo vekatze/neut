@@ -23,7 +23,7 @@ struct finite-map-signature(a, b) by Finite-Map {
 }
 
 define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, b) {
-  new finite-map-signature {
+  Finite-Map {
   - empty <=
     Leaf
   - insert <=

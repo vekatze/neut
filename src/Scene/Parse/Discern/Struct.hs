@@ -12,14 +12,15 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
+import Entity.Key
 import Entity.Name
 import Scene.Parse.Discern.Name (resolveName)
 
 ensureFieldLinearity ::
   Hint ->
-  [DD.DefiniteDescription] ->
-  S.Set DD.DefiniteDescription ->
-  S.Set DD.DefiniteDescription ->
+  [Key] ->
+  S.Set Key ->
+  S.Set Key ->
   App ()
 ensureFieldLinearity m ks found nonLinear =
   case ks of
@@ -29,7 +30,7 @@ ensureFieldLinearity m ks found nonLinear =
         else
           Throw.raiseError m $
             "the following fields are defined more than once:\n"
-              <> T.intercalate "\n" (map (\k -> "- " <> DD.reify k) (S.toList nonLinear))
+              <> T.intercalate "\n" (map ("- " <>) (S.toList nonLinear))
     k : rest -> do
       if S.member k found
         then ensureFieldLinearity m rest found (S.insert k nonLinear)
@@ -40,7 +41,7 @@ resolveField m varOrLocator = do
   (dd, _) <- resolveName m varOrLocator
   return dd
 
-reorderArgs :: Hint -> [DD.DefiniteDescription] -> Map.HashMap DD.DefiniteDescription a -> App [a]
+reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> App [a]
 reorderArgs m keyList kvs =
   case keyList of
     []
@@ -54,8 +55,8 @@ reorderArgs m keyList kvs =
           vs <- reorderArgs m keyRest (Map.delete key kvs)
           return $ v : vs
       | otherwise ->
-          Throw.raiseError m $ "the field `" <> DD.reify key <> "` is missing"
+          Throw.raiseError m $ "the field `" <> key <> "` is missing"
 
-showKeyList :: [DD.DefiniteDescription] -> T.Text
+showKeyList :: [Key] -> T.Text
 showKeyList ks =
-  T.intercalate "\n" $ map (\k -> "- " <> DD.reify k) ks
+  T.intercalate "\n" $ map ("- " <>) ks

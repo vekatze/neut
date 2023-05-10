@@ -20,6 +20,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
+import Entity.Key
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
@@ -66,6 +67,7 @@ data Env = Env
     compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
+    keyArgMap :: FastRef (Map.HashMap DD.DefiniteDescription (A.Arity, [Key])),
     enumSet :: FastRef (S.Set DD.DefiniteDescription),
     impArgEnv :: FastRef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
@@ -124,6 +126,7 @@ newEnv = do
   compDefMap <- newFastRef
   dataDefMap <- newFastRef
   codataDefMap <- newFastRef
+  keyArgMap <- newFastRef
   enumSet <- newFastRef
   impArgEnv <- newFastRef
   declEnv <- newFastRef

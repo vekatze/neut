@@ -14,7 +14,7 @@ struct stream(a: tau) by Stream {
 }
 
 define int-stream(x: i64): stream(i64) {
-  new stream {
+  Stream {
   - head <=
     x
   - tail <=
@@ -41,7 +41,7 @@ define get-head[a](s: stream(a)): a {
 define main(): i64 {
   let inner = Bar(10)
   let config =
-    new foo {
+    Foo {
     - value-1 <= 3
     - value-3 <= inner
     - value-2 <= 8

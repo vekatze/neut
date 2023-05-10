@@ -14,6 +14,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.HoleID
+import Entity.Key
 import Entity.Locator as L
 import Entity.Magic
 import Entity.Name
@@ -33,6 +34,7 @@ data RawTermF a
   | Pi [RawBinder a] a
   | PiIntro (RawLamKind a) [RawBinder a] a
   | PiElim a [a]
+  | PiElimByKey Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
   | DataIntro DD.DefiniteDescription DD.DefiniteDescription [DD.DefiniteDescription] D.Discriminant [a] [a]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
@@ -42,7 +44,6 @@ data RawTermF a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
-  | New Name [(Hint, Name, RawTerm)] -- auxiliary syntax for codata introduction
   | Annotation RemarkLevel (AN.Annotation ()) a
   | Flow
       L.Locator -- "core.thread.flow-inner"

@@ -7,12 +7,10 @@ where
 import Context.Alias qualified as Alias
 import Context.App
 import Context.Cache qualified as Cache
-import Context.CodataDefinition qualified as CodataDefinition
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
@@ -22,7 +20,6 @@ import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
-import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
 import Entity.Const
@@ -30,6 +27,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName qualified as GN
 import Entity.Hint
+import Entity.Ident.Reify
 import Entity.IsConstLike
 import Entity.Name
 import Entity.NameArrow qualified as NA
@@ -92,7 +90,9 @@ parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
       StmtDefine isConstLike stmtKind m name impArgNum args _ _ -> do
-        Global.registerStmtDefine isConstLike m stmtKind name impArgNum $ AN.fromInt (length args)
+        let explicitArgs = drop (AN.reify impArgNum) args
+        let argNames = map (\(_, x, _) -> toText x) explicitArgs
+        Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
 
@@ -286,14 +286,6 @@ parseDefineStruct = do
   let structElimHandler = parseDefineStructElim dataName dataArgs consName' elemInfoList
   (elimRuleList, projList) <- mapAndUnzipM (lift . structElimHandler) elemInfoList
   formRule <- lift $ defineData m dataName dataArgsOrNone [(m, consName, False, elemInfoList)] projList
-  -- register codata info for `new-with-end`
-  let numOfDataArgs = A.fromInt $ length dataArgs
-  let numOfFields = A.fromInt $ length elemInfoList
-  let (_, consInfoList, _) = unzip3 elemInfoList
-  consInfoList' <- lift $ mapM (liftEither . BN.reflect m) consInfoList
-  consNameList <- lift $ mapM Locator.attachCurrentLocator consInfoList'
-  lift $ CodataDefinition.insert dataName (consName', numOfDataArgs, numOfFields) consNameList
-  -- ... then return
   return $ formRule ++ elimRuleList
 
 -- noetic projection
@@ -372,7 +364,9 @@ registerTopLevelNames stmtList =
     [] ->
       return ()
     RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ : rest -> do
-      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum $ AN.fromInt (length xts)
+      let explicitArgs = drop (AN.reify impArgNum) xts
+      let argNames = map (\(_, x, _) -> x) explicitArgs
+      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
       registerTopLevelNames rest
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name

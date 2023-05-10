@@ -5,8 +5,8 @@ module Scene.Parse.Discern
 where
 
 import Context.App
-import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
+import Context.KeyArg qualified as KeyArg
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -18,7 +18,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
-import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
@@ -116,6 +115,14 @@ discern nenv term =
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
       return $ m :< WT.PiElim e' es'
+    m :< RT.PiElimByKey name kvs -> do
+      (dd, _) <- resolveName m name
+      let (_, ks, vs) = unzip3 kvs
+      ensureFieldLinearity m ks S.empty S.empty
+      (arity, keyList) <- KeyArg.lookup m dd
+      vs' <- mapM (discern nenv) vs
+      args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
+      return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) args
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
@@ -147,15 +154,6 @@ discern nenv term =
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
-    m :< RT.New name kvs -> do
-      (dd, _) <- resolveName m name
-      let (_, ks, vs) = unzip3 kvs
-      ks' <- mapM (resolveField m) ks
-      ensureFieldLinearity m ks' S.empty S.empty
-      ((constructor, numOfDataArgs, numOfFields), keyList) <- CodataDefinition.lookup m dd
-      vs' <- mapM (discern nenv) vs
-      args <- reorderArgs m keyList $ Map.fromList $ zip ks' vs'
-      return $ m :< WT.PiElim (m :< WT.VarGlobal constructor (A.add numOfDataArgs numOfFields)) args
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern nenv e
       case annot of
