@@ -14,7 +14,7 @@ import Entity.Hint
 import Prelude hiding (lookup, read)
 
 insert :: DD.DefiniteDescription -> (DD.DefiniteDescription, A.Arity, A.Arity) -> [DD.DefiniteDescription] -> App ()
-insert dataName dataNewInfo consNameList =
+insert dataName dataNewInfo consNameList = do
   modifyRef' codataDefMap $ Map.insert dataName (dataNewInfo, consNameList)
 
 lookup :: Hint -> DD.DefiniteDescription -> App ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])
@@ -23,5 +23,5 @@ lookup m dataName = do
   case mValue of
     Just value ->
       return value
-    Nothing ->
+    Nothing -> do
       Throw.raiseError m $ "no such codata is defined: " <> DD.reify dataName

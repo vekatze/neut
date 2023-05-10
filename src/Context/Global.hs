@@ -22,7 +22,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
-import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName
@@ -34,7 +33,7 @@ import Entity.NameArrow qualified as NA
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
 import Entity.Source qualified as Source
-import Entity.Stmt as ST
+import Entity.StmtKind qualified as SK
 import Path
 import Prelude hiding (lookup)
 
@@ -43,34 +42,34 @@ type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
 registerStmtDefine ::
   IsConstLike ->
   Hint ->
-  ST.StmtKindF a ->
+  SK.BaseStmtKind x t ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
   AN.ArgNum ->
   App ()
 registerStmtDefine isConstLike m stmtKind name impArgNum allArgNum = do
   case stmtKind of
-    ST.Normal _ ->
+    SK.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum
-    ST.Data dataName dataArgs consInfoList projectionList -> do
+    SK.Data dataName dataArgs consInfoList projectionList -> do
       registerData isConstLike m dataName dataArgs consInfoList projectionList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
-    ST.DataIntro {} ->
+    SK.DataIntro {} ->
       return ()
-    ST.Projection ->
+    SK.Projection ->
       registerProjection isConstLike m name impArgNum allArgNum
 
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
-  [BinderF a] ->
-  [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] ->
+  [a] ->
+  [(DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerAsEnumIfNecessary dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
     Enum.insert dataName
     mapM_ (Enum.insert . (\(consName, _, _, _) -> consName)) consInfoList
 
-hasNoArgs :: [BinderF a] -> [(DD.DefiniteDescription, b, [BinderF a], D.Discriminant)] -> Bool
+hasNoArgs :: [a] -> [(DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
   null dataArgs && null (concatMap (\(_, _, consArgs, _) -> consArgs) consInfoList)
 
@@ -95,8 +94,8 @@ registerData ::
   IsConstLike ->
   Hint ->
   DD.DefiniteDescription ->
-  [BinderF a] ->
-  [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] ->
+  [a] ->
+  [(DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   [DD.DefiniteDescription] ->
   App ()
 registerData isConstLike m dataName dataArgs consInfoList projectionList = do

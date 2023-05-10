@@ -10,8 +10,8 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Error
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
+import Entity.Name
 import Entity.NameArrow qualified as NA
-import Entity.VarOrLocator
 import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm qualified as P
 import Text.Megaparsec
@@ -44,7 +44,7 @@ parseNameArrow =
 
 parseExportWithAlias :: P.Parser NA.InnerRawNameArrow
 parseExportWithAlias = do
-  (mOrig, originalName) <- P.parseVarOrLocator
+  (mOrig, originalName) <- P.parseName
   P.delimiter "=>"
   mAlias <- P.getCurrentHint
   specifiedAlias <- P.baseName
@@ -70,19 +70,21 @@ parseExportForVariantWithWildcard dataNameArrow = do
 
 parseExportWithoutAlias :: P.Parser NA.InnerRawNameArrow
 parseExportWithoutAlias = do
-  (m, original) <- P.parseVarOrLocator
+  (m, original) <- P.parseName
   autoAliasDD <- lift $ getDefaultAlias m original
   return ((m, autoAliasDD), (m, original))
 
-getDefaultAlias :: Hint -> VarOrLocator -> App DD.DefiniteDescription
+getDefaultAlias :: Hint -> Name -> App DD.DefiniteDescription
 getDefaultAlias m varOrLocator = do
   baseName <- Throw.liftEither $ getBaseName m varOrLocator
   Locator.attachPublicCurrentLocator baseName -- exported names are public
 
-getBaseName :: Hint -> VarOrLocator -> Either Error BN.BaseName
+getBaseName :: Hint -> Name -> Either Error BN.BaseName
 getBaseName m varOrLocator =
   case varOrLocator of
     Var var ->
       BN.reflect m var
-    Locator _ ll ->
+    Locator (_, ll) ->
       Right $ LL.baseName ll
+    DefiniteDescription dd ->
+      Right $ LL.baseName (DD.localLocator dd)

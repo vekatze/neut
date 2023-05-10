@@ -10,7 +10,7 @@ where
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
 import Entity.Hint
-import Entity.VarOrLocator
+import Entity.Name
 import GHC.Generics
 
 type NameArrow =
@@ -35,7 +35,7 @@ data VariantRelatedArrows
   deriving (Show)
 
 type RawNameArrowCod =
-  (Hint, VarOrLocator)
+  (Hint, Name)
 
 type InnerRawNameArrow =
   (NameArrowDom, RawNameArrowCod)

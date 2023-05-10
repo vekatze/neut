@@ -17,6 +17,7 @@ import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
+import Entity.StmtKind
 import Entity.Term qualified as TM
 import Entity.Term.FromPrimNum
 import Entity.WeakPrim qualified as WP
@@ -147,7 +148,7 @@ weakenCase (DT.Cons m dd disc dataArgs consArgs tree) = do
   let tree' = weakenDecisionTree tree
   DT.Cons m dd disc dataArgs' consArgs' tree'
 
-weakenStmtKind :: StmtKindF TM.Term -> StmtKindF WT.WeakTerm
+weakenStmtKind :: StmtKind TM.Term -> StmtKind WT.WeakTerm
 weakenStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->

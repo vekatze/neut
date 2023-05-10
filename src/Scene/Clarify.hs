@@ -44,6 +44,7 @@ import Entity.PrimNumSize
 import Entity.PrimOp
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
+import Entity.StmtKind
 import Entity.Term qualified as TM
 import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum

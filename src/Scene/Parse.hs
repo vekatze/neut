@@ -24,22 +24,22 @@ import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
-import Entity.Binder
 import Entity.Cache qualified as Cache
+import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName qualified as GN
 import Entity.Hint
-import Entity.Ident qualified as Ident
-import Entity.Ident.Reflect qualified as Ident
-import Entity.Ident.Reify qualified as Ident
 import Entity.IsConstLike
+import Entity.Name
 import Entity.NameArrow qualified as NA
 import Entity.Opacity qualified as O
+import Entity.RawBinder
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.Stmt
+import Entity.StmtKind qualified as SK
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
@@ -144,14 +144,14 @@ parseDefine opacity = do
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction (Normal opacity) m name' (AN.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
+  lift $ defineFunction (SK.Normal opacity) m name' (AN.fromInt $ length impArgs) (impArgs ++ expArgs) codType e
 
 defineFunction ::
-  StmtKindF RT.RawTerm ->
+  SK.RawStmtKind ->
   Hint ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
-  [BinderF RT.RawTerm] ->
+  [RawBinder RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App RawStmt
@@ -167,7 +167,7 @@ parseDefineVariant = do
   consInfoList <- P.betweenBrace $ P.manyList parseDefineVariantClause
   lift $ defineData m a dataArgsOrNone consInfoList []
 
-parseDataArgs :: P.Parser (Maybe [BinderF RT.RawTerm])
+parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseDataArgs = do
   choice
     [ Just <$> P.argList preBinder,
@@ -177,15 +177,15 @@ parseDataArgs = do
 defineData ::
   Hint ->
   DD.DefiniteDescription ->
-  Maybe [BinderF RT.RawTerm] ->
-  [(Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm])] ->
+  Maybe [RawBinder RT.RawTerm] ->
+  [(Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])] ->
   [DD.DefiniteDescription] ->
   App [RawStmt]
 defineData m dataName dataArgsOrNone consInfoList projectionList = do
   let dataArgs = fromMaybe [] dataArgsOrNone
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
-  let stmtKind = Data dataName dataArgs consInfoList'' projectionList
+  let stmtKind = SK.Data dataName dataArgs consInfoList'' projectionList
   let consNameList = map (\(consName, _, _, _) -> consName) consInfoList''
   let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
@@ -195,8 +195,8 @@ defineData m dataName dataArgsOrNone consInfoList projectionList = do
 
 modifyConsInfo ::
   D.Discriminant ->
-  [(a, DD.DefiniteDescription, b, [BinderF RT.RawTerm])] ->
-  [(DD.DefiniteDescription, b, [BinderF RT.RawTerm], D.Discriminant)]
+  [(a, DD.DefiniteDescription, b, [RawBinder RT.RawTerm])] ->
+  [(DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
@@ -205,8 +205,8 @@ modifyConsInfo d consInfoList =
       (consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
-  (Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm]) ->
-  App (Hint, DD.DefiniteDescription, IsConstLike, [BinderF RT.RawTerm])
+  (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm]) ->
+  App (Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])
 modifyConstructorName (mb, consName, isConstLike, yts) = do
   consName' <- Locator.attachCurrentLocator consName
   return (mb, consName', isConstLike, yts)
@@ -214,8 +214,8 @@ modifyConstructorName (mb, consName, isConstLike, yts) = do
 parseDefineVariantConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
-  [BinderF RT.RawTerm] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [BinderF RT.RawTerm])] ->
+  [RawBinder RT.RawTerm] ->
+  [(Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])] ->
   D.Discriminant ->
   App [RawStmt]
 parseDefineVariantConstructor dataType dataName dataArgs consInfoList discriminant = do
@@ -230,7 +230,7 @@ parseDefineVariantConstructor dataType dataName dataArgs consInfoList discrimina
       let introRule =
             RawStmtDefine
               isConstLike
-              (DataIntro consName dataArgs consArgs discriminant)
+              (SK.DataIntro consName dataArgs consArgs discriminant)
               m
               consName
               (AN.fromInt $ length dataArgs)
@@ -244,12 +244,12 @@ constructDataType ::
   Hint ->
   DD.DefiniteDescription ->
   [DD.DefiniteDescription] ->
-  [BinderF RT.RawTerm] ->
+  [RawBinder RT.RawTerm] ->
   RT.RawTerm
 constructDataType m dataName consNameList dataArgs = do
   m :< RT.Data dataName consNameList (map identPlusToVar dataArgs)
 
-parseDefineVariantClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [BinderF RT.RawTerm])
+parseDefineVariantClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])
 parseDefineVariantClause = do
   m <- P.getCurrentHint
   consName <- P.baseNameCapitalized
@@ -258,14 +258,14 @@ parseDefineVariantClause = do
   let isConstLike = isNothing consArgsOrNone
   return (m, consName, isConstLike, consArgs)
 
-parseConsArgs :: P.Parser (Maybe [BinderF RT.RawTerm])
+parseConsArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseConsArgs = do
   choice
     [ Just <$> P.argList parseDefineVariantClauseArg,
       return Nothing
     ]
 
-parseDefineVariantClauseArg :: P.Parser (BinderF RT.RawTerm)
+parseDefineVariantClauseArg :: P.Parser (RawBinder RT.RawTerm)
 parseDefineVariantClauseArg = do
   choice
     [ try preAscription,
@@ -290,7 +290,7 @@ parseDefineStruct = do
   let numOfDataArgs = A.fromInt $ length dataArgs
   let numOfFields = A.fromInt $ length elemInfoList
   let (_, consInfoList, _) = unzip3 elemInfoList
-  consInfoList' <- lift $ mapM (liftEither . BN.reflect m . Ident.toText) consInfoList
+  consInfoList' <- lift $ mapM (liftEither . BN.reflect m) consInfoList
   consNameList <- lift $ mapM Locator.attachCurrentLocator consInfoList'
   lift $ CodataDefinition.insert dataName (consName', numOfDataArgs, numOfFields) consNameList
   -- ... then return
@@ -299,22 +299,22 @@ parseDefineStruct = do
 -- noetic projection
 parseDefineStructElim ::
   DD.DefiniteDescription ->
-  [BinderF RT.RawTerm] ->
+  [RawBinder RT.RawTerm] ->
   DD.DefiniteDescription ->
-  [BinderF RT.RawTerm] ->
-  BinderF RT.RawTerm ->
+  [RawBinder RT.RawTerm] ->
+  RawBinder RT.RawTerm ->
   App (RawStmt, DD.DefiniteDescription)
 parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elemType) = do
   let structType = m :< RT.Noema (constructDataType m dataName [consName] dataArgs)
   structVarText <- Gensym.newText
-  let projArgs = dataArgs ++ [(m, Ident.fromText structVarText, structType)]
-  elemName' <- Throw.liftEither $ BN.reflect m $ Ident.toText elemName
+  let projArgs = dataArgs ++ [(m, structVarText, structType)]
+  elemName' <- Throw.liftEither $ BN.reflect m elemName
   projectionName <- Locator.attachCurrentLocator elemName'
-  let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var (Ident.attachHolePrefix x))
+  let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var (Var $ holeVarPrefix <> x))
   stmt <-
     defineFunction
       -- (Normal O.Opaque)
-      Projection
+      SK.Projection
       m
       projectionName -- e.g. some-lib.foo::my-struct.element-x
       (AN.fromInt $ length dataArgs)
@@ -325,8 +325,8 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
           True
           [preVar m structVarText]
           ( RP.new
-              [ ( V.fromList [(m, RP.Cons (RP.DefiniteDescription consName) argList)],
-                  preVar' m (Ident.attachHolePrefix elemName)
+              [ ( V.fromList [(m, RP.Cons (DefiniteDescription consName) argList)],
+                  preVar m (holeVarPrefix <> elemName)
                 )
               ]
           )
@@ -348,7 +348,7 @@ parseType keywordText opacity = do
   aliasName' <- lift $ Locator.attachCurrentLocator aliasName
   P.betweenBrace $ do
     t <- rawExpr
-    let stmtKind = Normal opacity
+    let stmtKind = SK.Normal opacity
     return $ RawStmtDefine True stmtKind m aliasName' AN.zero [] (m :< RT.Tau) t
 
 parseDefineResource :: P.Parser RawStmt
@@ -362,9 +362,9 @@ parseDefineResource = do
     copier <- P.delimiter "-" >> rawExpr
     return $ RawStmtDefineResource m name' discarder copier
 
-identPlusToVar :: BinderF RT.RawTerm -> RT.RawTerm
+identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
-  m :< RT.Var x
+  m :< RT.Var (Var x)
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

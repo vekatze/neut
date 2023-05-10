@@ -1,13 +1,9 @@
-module Scene.Parse.Discern.Symbol
+module Scene.Parse.Discern.Name
   ( resolveName,
-    resolveNameOrErr,
-    resolveVarOrLocator,
-    resolveLocator,
-    resolveLocator',
+    resolveNameOrError,
+    resolveNameSuspended,
     resolveConstructor,
     resolveConstructorMaybe,
-    resolveAlias,
-    resolveExportedName,
     interpretDefiniteDescription,
     interpretGlobalName,
   )
@@ -26,33 +22,59 @@ import Entity.Arity qualified as A
 import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
+import Entity.Locator qualified as L
 import Entity.Magic qualified as M
+import Entity.Name
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp qualified as PO
 import Entity.PrimType qualified as PT
-import Entity.RawPattern qualified as RP
-import Entity.UnresolvedName qualified as UN
-import Entity.VarOrLocator
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 
-resolveName :: Hint -> T.Text -> App (DD.DefiniteDescription, GN.GlobalName)
+{-# INLINE resolveName #-}
+resolveName :: Hint -> Name -> App (DD.DefiniteDescription, GN.GlobalName)
 resolveName m name = do
-  nameOrErr <- resolveNameOrErr m name
+  nameOrErr <- resolveNameOrError m name
   case nameOrErr of
     Left err ->
       Throw.raiseError m err
     Right pair ->
       return pair
 
-resolveNameOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
-resolveNameOrErr m name = do
+{-# INLINE resolveNameSuspended #-}
+resolveNameSuspended :: Hint -> Name -> App (DD.DefiniteDescription, GN.GlobalName)
+resolveNameSuspended m name = do
+  nameOrErr <- resolveNameOrErrorSuspended m name
+  case nameOrErr of
+    Left err ->
+      Throw.raiseError m err
+    Right pair ->
+      return pair
+
+{-# INLINE resolveNameOrError #-}
+resolveNameOrError :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
+resolveNameOrError m name =
+  fmap traceAliasChain <$> resolveNameOrErrorSuspended m name
+
+{-# INLINE resolveNameOrErrorSuspended #-}
+resolveNameOrErrorSuspended :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
+resolveNameOrErrorSuspended m name =
+  case name of
+    Var var -> do
+      resolveVarOrErr m var
+    Locator l -> do
+      Right <$> resolveLocator m l
+    DefiniteDescription dd -> do
+      gn <- interpretDefiniteDescription m dd
+      return $ Right (dd, gn)
+
+resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
+resolveVarOrErr m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
   candList' <- mapM (Global.lookup m) candList
@@ -66,38 +88,15 @@ resolveNameOrErr m name = do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
 
-candFilter :: (a, Maybe b) -> Maybe (a, b)
-candFilter (from, mTo) =
-  fmap (from,) mTo
-
-resolveVarOrLocator :: Hint -> VarOrLocator -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
-resolveVarOrLocator mOrig varOrLocator = do
-  (dd, gn) <-
-    case varOrLocator of
-      Var var -> do
-        resolveName mOrig var
-      Locator gl ll -> do
-        resolveLocator mOrig gl ll
-  return (mOrig, dd, gn)
-
 resolveLocator ::
   Hint ->
-  GL.GlobalLocator ->
-  LL.LocalLocator ->
+  L.Locator ->
   App (DD.DefiniteDescription, GN.GlobalName)
-resolveLocator m gl ll = do
-  dd <- resolveLocator' m gl ll
+resolveLocator m (gl, ll) = do
+  sgl <- Alias.resolveAlias m gl
+  let dd = DD.new sgl ll
   gn <- interpretDefiniteDescription m dd
   return (dd, gn)
-
-resolveLocator' ::
-  Hint ->
-  GL.GlobalLocator ->
-  LL.LocalLocator ->
-  App DD.DefiniteDescription
-resolveLocator' m gl ll = do
-  sgl <- Alias.resolveAlias m gl
-  return $ DD.new sgl ll
 
 interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
 interpretDefiniteDescription m dd = do
@@ -105,53 +104,45 @@ interpretDefiniteDescription m dd = do
   case mgn of
     Just gn ->
       return gn
-    Nothing ->
+    Nothing -> do
       Throw.raiseError m $ "undefined constant: " <> DD.reify dd
 
 resolveConstructor ::
   Hint ->
-  RP.RawConsName ->
+  Name ->
   App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
-resolveConstructor m cons = do
-  case cons of
-    RP.UnresolvedName (UN.UnresolvedName consName') -> do
-      (dd, gn) <- resolveName m consName'
-      resolveConstructor' m dd gn
-    RP.LocatorPair globalLocator localLocator -> do
-      sgl <- Alias.resolveAlias m globalLocator
-      let dd = DD.new sgl localLocator
-      gn <- interpretDefiniteDescription m dd
-      resolveConstructor' m dd gn
-    RP.DefiniteDescription dd -> do
-      gn <- interpretDefiniteDescription m dd
-      resolveConstructor' m dd gn
-
-resolveConstructorMaybe ::
-  Hint ->
-  DD.DefiniteDescription ->
-  GN.GlobalName ->
-  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
-resolveConstructorMaybe m dd gn = do
-  case gn of
-    GN.DataIntro dataArity consArity disc isConstLike ->
-      return $ Just (dd, dataArity, consArity, disc, isConstLike)
-    GN.Alias from gn' ->
-      resolveConstructorMaybe m from gn'
-    _ ->
-      return Nothing
-
-resolveConstructor' ::
-  Hint ->
-  DD.DefiniteDescription ->
-  GN.GlobalName ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
-resolveConstructor' m dd gn = do
-  mCons <- resolveConstructorMaybe m dd gn
+resolveConstructor m s = do
+  (dd, gn) <- resolveName m s
+  mCons <- resolveConstructorMaybe dd gn
   case mCons of
     Just v ->
       return v
     Nothing ->
       Throw.raiseError m $ DD.reify dd <> " is not a constructor"
+
+resolveConstructorMaybe ::
+  DD.DefiniteDescription ->
+  GN.GlobalName ->
+  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
+resolveConstructorMaybe dd gn = do
+  let (dd', gn') = traceAliasChain (dd, gn)
+  case gn' of
+    GN.DataIntro dataArity consArity disc isConstLike ->
+      return $ Just (dd', dataArity, consArity, disc, isConstLike)
+    _ ->
+      return Nothing
+
+traceAliasChain ::
+  (DD.DefiniteDescription, GN.GlobalName) ->
+  (DD.DefiniteDescription, GN.GlobalName)
+traceAliasChain (dd, gn) =
+  case gn of
+    GN.Alias dd' gn' ->
+      traceAliasChain (dd', gn')
+    GN.AliasData dd' _ gn' ->
+      traceAliasChain (dd', gn')
+    _ ->
+      (dd, gn)
 
 interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName m dd gn = do
@@ -182,16 +173,6 @@ interpretGlobalName m dd gn = do
     GN.Projection arity isConstLike ->
       interpretTopLevelFunc m dd arity isConstLike
 
-resolveExportedName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> DD.DefiniteDescription
-resolveExportedName m dd gn =
-  case gn of
-    GN.Alias dd' gn' ->
-      resolveExportedName m dd' gn'
-    GN.AliasData dd' _ gn' ->
-      resolveExportedName m dd' gn'
-    _ ->
-      dd
-
 interpretTopLevelFunc ::
   Hint ->
   DD.DefiniteDescription ->
@@ -206,24 +187,14 @@ interpretTopLevelFunc m dd arity isConstLike = do
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
-  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
-  bool <- resolveLocator m gl ll >>= uncurry (interpretGlobalName m)
+  l <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
+  bool <- resolveLocator m l >>= uncurry (interpretGlobalName m)
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"
   x2 <- Gensym.newIdentFromText "arg"
   let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType bool) e)
 
-resolveAlias ::
-  Hint ->
-  DD.DefiniteDescription ->
-  GN.GlobalName ->
-  App (Hint, DD.DefiniteDescription, GN.GlobalName)
-resolveAlias m dd gn =
-  case gn of
-    GN.Alias dd' gn' ->
-      resolveAlias m dd' gn'
-    GN.AliasData dd' _ gn' ->
-      resolveAlias m dd' gn'
-    _ ->
-      return (m, dd, gn)
+candFilter :: (a, Maybe b) -> Maybe (a, b)
+candFilter (from, mTo) =
+  fmap (from,) mTo

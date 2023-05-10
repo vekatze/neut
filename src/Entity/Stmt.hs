@@ -11,8 +11,10 @@ import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.Opacity qualified as O
+import Entity.RawBinder
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
+import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText qualified as WT
@@ -21,54 +23,14 @@ import Path
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
 
-type PreProgram =
-  (Path Abs File, [RawStmt])
-
-data StmtKindF a
-  = Normal O.Opacity
-  | Data
-      DD.DefiniteDescription -- the name of the variant type
-      [BinderF a] -- variant args
-      [(DD.DefiniteDescription, IsConstLike, [BinderF a], D.Discriminant)] -- constructors
-      [DD.DefiniteDescription] -- list of destructors (if any)
-  | DataIntro DD.DefiniteDescription [BinderF a] [BinderF a] D.Discriminant
-  | Projection
-  deriving (Generic)
-
--- opacity for elaboration
-toOpacity :: StmtKindF a -> O.Opacity
-toOpacity stmtKind =
-  case stmtKind of
-    Normal opacity ->
-      opacity
-    Projection ->
-      O.Opaque
-    _ ->
-      O.Transparent
-
--- opacity for clarification
-toLowOpacity :: StmtKindF a -> O.Opacity
-toLowOpacity stmtKind =
-  case stmtKind of
-    Normal opacity ->
-      opacity
-    Data {} ->
-      O.Opaque -- so as not to reduce recursive terms
-    DataIntro {} ->
-      O.Transparent
-    Projection ->
-      O.Opaque
-
-instance Binary a => Binary (StmtKindF a)
-
 data RawStmt
   = RawStmtDefine
       IsConstLike
-      (StmtKindF RT.RawTerm)
+      SK.RawStmtKind
       Hint
       DD.DefiniteDescription
       AN.ArgNum
-      [BinderF RT.RawTerm]
+      [RawBinder RT.RawTerm]
       RT.RawTerm
       RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
@@ -76,7 +38,7 @@ data RawStmt
 data WeakStmt
   = WeakStmtDefine
       IsConstLike
-      (StmtKindF WT.WeakTerm)
+      (SK.StmtKind WT.WeakTerm)
       Hint
       DD.DefiniteDescription
       AN.ArgNum
@@ -91,7 +53,7 @@ type Program =
 data Stmt
   = StmtDefine
       IsConstLike
-      (StmtKindF TM.Term)
+      (SK.StmtKind TM.Term)
       Hint
       DD.DefiniteDescription
       AN.ArgNum
@@ -110,7 +72,7 @@ compress stmt =
   case stmt of
     StmtDefine isConstLike stmtKind m functionName impArgNum args codType _ ->
       case stmtKind of
-        Normal O.Opaque ->
+        SK.Normal O.Opaque ->
           StmtDefine isConstLike stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt

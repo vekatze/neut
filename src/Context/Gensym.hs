@@ -3,6 +3,7 @@ module Context.Gensym
     readCount,
     writeCount,
     newText,
+    newTextFromText,
     newTextForHole,
     newIdentForHole,
     newHole,
@@ -46,6 +47,12 @@ newText :: App T.Text
 newText = do
   i <- newCount
   return $ ";" <> T.pack (show i)
+
+{-# INLINE newTextFromText #-}
+newTextFromText :: T.Text -> App T.Text
+newTextFromText base = do
+  i <- newCount
+  return $ ";" <> base <> T.pack (show i)
 
 {-# INLINE newTextForHole #-}
 newTextForHole :: App T.Text

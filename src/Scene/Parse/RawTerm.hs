@@ -6,8 +6,7 @@ module Scene.Parse.RawTerm
     parseTopDefInfo,
     typeWithoutIdent,
     preVar,
-    preVar',
-    parseVarOrLocator,
+    parseName,
   )
 where
 
@@ -18,36 +17,32 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
-import Data.Bifunctor
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.Arch qualified as Arch
-import Entity.Binder
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
-import Entity.GlobalLocator qualified as GL
 import Entity.Hint
 import Entity.Hint.Reify
-import Entity.Ident
-import Entity.Ident.Reflect qualified as Ident
-import Entity.LamKind qualified as LK
-import Entity.LocalLocator qualified as LL
+import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
+import Entity.Name
 import Entity.Noema qualified as N
 import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
+import Entity.RawBinder
+import Entity.RawIdent
+import Entity.RawLamKind qualified as LK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark
 import Entity.TargetPlatform qualified as TP
-import Entity.UnresolvedName qualified as UN
-import Entity.VarOrLocator
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
@@ -80,7 +75,7 @@ rawExprSeqOrTerm m = do
   choice
     [ do
         e2 <- rawExpr
-        f <- lift Gensym.newIdentForHole
+        f <- lift Gensym.newTextForHole
         top <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreTop
         return $ bind (m, f, top) e1 e2,
       return e1
@@ -138,7 +133,7 @@ rawTermLetOrLetOn m = do
   choice
     [ do
         keyword "on"
-        noeticVarList <- map (second Ident.fromText) <$> commaList rawTermNoeticVar
+        noeticVarList <- commaList rawTermNoeticVar
         lift $ ensureNoeticVarLinearity m S.empty $ map snd noeticVarList
         delimiter "="
         e1 <- rawTerm
@@ -151,14 +146,14 @@ rawTermLetOrLetOn m = do
         return $ m :< RT.Let mxt [] e1 (modifier False e2)
     ]
 
-getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (Ident, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
+getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat@(m, _) =
   case pat of
-    (_, RP.Var x) ->
+    (_, RP.Var (Var x)) ->
       return (x, \_ e -> e)
     _ -> do
-      tmp <- lift $ Gensym.newTextualIdentFromText "tmp"
-      return (tmp, \isNoetic e -> m :< RT.DataElim isNoetic [m :< RT.Var tmp] (RP.new [(V.fromList [pat], e)]))
+      tmp <- lift $ Gensym.newTextFromText "tmp"
+      return (tmp, \isNoetic e -> m :< RT.DataElim isNoetic [m :< RT.Var (Var tmp)] (RP.new [(V.fromList [pat], e)]))
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
@@ -171,8 +166,8 @@ rawTermLetVarAscription m = do
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> Parser RT.RawTerm
 ascribe m t e = do
-  tmp <- lift $ Gensym.newTextualIdentFromText "tmp"
-  return $ bind (m, tmp, t) e (m :< RT.Var tmp)
+  tmp <- lift $ Gensym.newTextFromText "tmp"
+  return $ bind (m, tmp, t) e (m :< RT.Var (Var tmp))
 
 rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm)
 rawTermLetVarAscription' =
@@ -194,12 +189,12 @@ rawTermBind m = do
   e2 <- rawExpr
   return $ m :< RT.Let (mx, x, t) [] e1 (modifier True e2)
 
-ensureNoeticVarLinearity :: Hint -> S.Set T.Text -> [Ident] -> App ()
+ensureNoeticVarLinearity :: Hint -> S.Set RawIdent -> [RawIdent] -> App ()
 ensureNoeticVarLinearity m foundVarSet vs =
   case vs of
     [] ->
       return ()
-    I (name, _) : rest
+    name : rest
       | S.member name foundVarSet ->
           Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
@@ -230,7 +225,7 @@ rawTermLetOption m = do
         False
         [e1']
         ( RP.new
-            [ (V.fromList [(m, RP.NullaryCons optionNoneGL optionNoneLL)], optionNoneVar),
+            [ (V.fromList [(m, RP.Var $ Locator (optionNoneGL, optionNoneLL))], optionNoneVar),
               (V.fromList [(m, RP.Cons optionSome [pat])], e2)
             ]
         )
@@ -248,7 +243,7 @@ rawTermLetCoproduct m = do
   let sumType = m :< RT.PiElim sumTypeDD [leftType, rightType]
   e1' <- ascribe m sumType e1
   e2 <- rawExpr
-  err <- lift $ Gensym.newTextualIdentFromText "err"
+  err <- lift Gensym.newText
   sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
   sumRight <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumRight
   sumLeftVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSumLeft
@@ -258,7 +253,7 @@ rawTermLetCoproduct m = do
         False
         [e1']
         ( RP.new
-            [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var err)])], m :< RT.PiElim sumLeftVar [preVar' m err]),
+            [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var (Var err))])], m :< RT.PiElim sumLeftVar [preVar m err]),
               (V.fromList [(m, RP.Cons sumRight [pat])], e2)
             ]
         )
@@ -297,7 +292,7 @@ rawTermPiOrConsOrAscOrBasic = do
   choice
     [ do
         delimiter "->"
-        x <- lift Gensym.newIdentForHole
+        x <- lift Gensym.newTextForHole
         cod <- rawTerm
         return $ m :< RT.Pi [(m, x, basic)] cod,
       do
@@ -308,7 +303,7 @@ rawTermPiOrConsOrAscOrBasic = do
       do
         delimiter "*"
         ts <- sepBy1 rawTermBasic (delimiter "*")
-        return $ foldByOp m "product" (basic : ts),
+        return $ foldByOp m (Var "product") (basic : ts),
       do
         delimiter ":"
         t <- rawTerm
@@ -316,15 +311,15 @@ rawTermPiOrConsOrAscOrBasic = do
       return basic
     ]
 
-foldByOp :: Hint -> T.Text -> [RT.RawTerm] -> RT.RawTerm
-foldByOp m opName es =
+foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
+foldByOp m op es =
   case es of
     [] ->
       error "RawTerm.foldProduct: invalid argument"
     [e] ->
       e
     e : rest ->
-      m :< RT.PiElim (m :< RT.Var (Ident.fromText opName)) [e, foldByOp m opName rest]
+      m :< RT.PiElim (m :< RT.Var op) [e, foldByOp m op rest]
 
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
@@ -367,7 +362,7 @@ rawTermPiIntroDef = do
   m <- getCurrentHint
   keyword "define"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
-  return $ m :< RT.PiIntro (LK.Fix (mFun, Ident.fromText functionName, codType)) domBinderList e
+  return $ m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) domBinderList e
 
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
@@ -531,14 +526,14 @@ rawTermPatternListIntro = do
 
 foldListAppPat ::
   Hint ->
-  (GL.GlobalLocator, LL.LocalLocator) ->
-  RP.RawConsName ->
+  L.Locator ->
+  Name ->
   [(Hint, RP.RawPattern)] ->
   (Hint, RP.RawPattern)
-foldListAppPat m listNil@(ngl, nll) listCons es =
+foldListAppPat m listNil listCons es =
   case es of
     [] ->
-      (m, RP.NullaryCons ngl nll)
+      (m, RP.Var $ Locator listNil)
     e : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
       (m, RP.Cons listCons [e, rest'])
@@ -549,59 +544,50 @@ rawTermPatternProductIntro = do
   keyword "tuple"
   patList <- betweenParen $ commaList rawTermPattern
   topUnit <- lift $ Throw.liftEither $ DD.getLocatorPair m coreTopUnit
-  return $ foldTuplePat m topUnit patList
+  return $ foldTuplePat m (Locator topUnit) patList
 
-foldTuplePat :: Hint -> (GL.GlobalLocator, LL.LocalLocator) -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
-foldTuplePat m topUnit@(topUnitGL, topUnitLL) es =
+foldTuplePat :: Hint -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
+foldTuplePat m topUnit es =
   case es of
     [] ->
-      (m, RP.NullaryCons topUnitGL topUnitLL)
+      (m, RP.Var topUnit)
     [e] ->
       e
     e : rest -> do
       let rest' = foldTuplePat m topUnit rest
-      (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName "Product") [e, rest'])
+      (m, RP.Cons (Var "Product") [e, rest'])
 
-parseVarOrLocator :: Parser (Hint, VarOrLocator)
-parseVarOrLocator = do
+parseName :: Parser (Hint, Name)
+parseName = do
   (m, varText) <- var
   case DD.getLocatorPair m varText of
     Left _ ->
       return (m, Var varText)
     Right (gl, ll) ->
-      return (m, Locator gl ll)
+      return (m, Locator (gl, ll))
 
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
-  (m, varOrLocator) <- parseVarOrLocator
+  (m, varOrLocator) <- parseName
   choice
     [ do
         patArgs <- argList rawTermPattern
-        case varOrLocator of
-          Var c -> do
-            return (m, RP.Cons (RP.UnresolvedName $ UN.UnresolvedName c) patArgs)
-          Locator globalLocator localLocator -> do
-            return (m, RP.Cons (RP.LocatorPair globalLocator localLocator) patArgs),
+        return (m, RP.Cons varOrLocator patArgs),
       do
-        case varOrLocator of
-          Var c ->
-            return (m, RP.Var (Ident.fromText c))
-          Locator gl ll ->
-            return (m, RP.NullaryCons gl ll)
+        return (m, RP.Var varOrLocator)
     ]
 
 rawTermNew :: Parser RT.RawTerm
 rawTermNew = do
   m <- getCurrentHint
   keyword "new"
-  name <- symbol
+  name <- snd <$> parseName
   rowList <- betweenBrace $ manyList rawTermNewRow
   return $ m :< RT.New name rowList
 
-rawTermNewRow :: Parser (Hint, T.Text, RT.RawTerm)
+rawTermNewRow :: Parser (Hint, Name, RT.RawTerm)
 rawTermNewRow = do
-  m <- getCurrentHint
-  key <- symbol
+  (m, key) <- parseName
   delimiter "<="
   value <- rawExpr
   return (m, key, value)
@@ -621,18 +607,18 @@ rawTermIf = do
   elseBody <- betweenBrace rawExpr
   boolTrue <- lift $ Throw.liftEither $ DD.getLocatorPair m coreBoolTrue
   boolFalse <- lift $ Throw.liftEither $ DD.getLocatorPair m coreBoolFalse
-  return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
+  return $ foldIf m (Locator boolTrue) (Locator boolFalse) ifCond ifBody elseIfList elseBody
 
 foldIf ::
   Hint ->
-  (GL.GlobalLocator, LL.LocalLocator) ->
-  (GL.GlobalLocator, LL.LocalLocator) ->
+  Name ->
+  Name ->
   RT.RawTerm ->
   RT.RawTerm ->
   [(RT.RawTerm, RT.RawTerm)] ->
   RT.RawTerm ->
   RT.RawTerm
-foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond@(mIf :< _) ifBody elseIfList elseBody =
+foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       m
@@ -640,8 +626,8 @@ foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond@(mIf :< _) ifBody
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(mIf, RP.NullaryCons trueGL trueLL)], ifBody),
-                (V.fromList [(mIf, RP.NullaryCons falseGL falseLL)], elseBody)
+              [ (V.fromList [(mIf, RP.Var true)], ifBody),
+                (V.fromList [(mIf, RP.Var false)], elseBody)
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
@@ -651,8 +637,8 @@ foldIf m true@(trueGL, trueLL) false@(falseGL, falseLL) ifCond@(mIf :< _) ifBody
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(mIf, RP.NullaryCons trueGL trueLL)], ifBody),
-                (V.fromList [(mIf, RP.NullaryCons falseGL falseLL)], cont)
+              [ (V.fromList [(mIf, RP.Var true)], ifBody),
+                (V.fromList [(mIf, RP.Var false)], cont)
               ]
           )
 
@@ -667,13 +653,13 @@ rawTermTuple = do
   es <- betweenParen $ commaList rawExpr
   case es of
     [] ->
-      return $ m :< RT.Var (Ident.fromText "top.Unit")
+      return $ m :< RT.Var (Var "top.Unit")
     [e] ->
       return e
     _ ->
-      return $ foldByOp m "Product" es
+      return $ foldByOp m (Var "Product") es
 
-bind :: BinderF RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
   m :< RT.Let mxt [] e cont
 
@@ -715,7 +701,7 @@ rawTermOption = do
   m <- getCurrentHint
   delimiter "?"
   t <- rawTermBasic
-  return $ m :< RT.PiElim (m :< RT.Var (Ident.fromText "option")) [t]
+  return $ m :< RT.PiElim (m :< RT.Var (Var "option")) [t]
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
@@ -753,37 +739,32 @@ foldPiElim m e elemList =
 -- term-related helper functions
 --
 
-preBinder :: Parser (BinderF RT.RawTerm)
+preBinder :: Parser (RawBinder RT.RawTerm)
 preBinder =
   choice
     [ try preAscription,
       preAscription'
     ]
 
-preAscription :: Parser (BinderF RT.RawTerm)
+preAscription :: Parser (RawBinder RT.RawTerm)
 preAscription = do
   (m, x) <- var
   delimiter ":"
   a <- rawTerm
-  return (m, Ident.fromText x, a)
+  return (m, x, a)
 
-typeWithoutIdent :: Parser (BinderF RT.RawTerm)
+typeWithoutIdent :: Parser (RawBinder RT.RawTerm)
 typeWithoutIdent = do
   m <- getCurrentHint
-  x <- lift Gensym.newIdentForHole
+  x <- lift Gensym.newTextForHole
   t <- rawTerm
   return (m, x, t)
 
-preAscription' :: Parser (BinderF RT.RawTerm)
+preAscription' :: Parser (RawBinder RT.RawTerm)
 preAscription' = do
-  (m, x) <- preSimpleIdent
+  (m, x) <- var
   h <- lift $ Gensym.newPreHole m
   return (m, x, h)
-
-preSimpleIdent :: Parser (Hint, Ident)
-preSimpleIdent = do
-  (m, x) <- var
-  return (m, Ident.fromText x)
 
 rawTermListIntro :: Parser RT.RawTerm
 rawTermListIntro = do
@@ -845,12 +826,8 @@ rawTermPiElimOrSymbol = do
 
 rawTermParseSymbol :: Parser RT.RawTerm
 rawTermParseSymbol = do
-  (m, varOrLocator) <- parseVarOrLocator
-  case varOrLocator of
-    Var x ->
-      return (preVar m x)
-    Locator globalLocator localLocator ->
-      return $ m :< RT.VarGlobal globalLocator localLocator
+  (m, varOrLocator) <- parseName
+  return $ m :< RT.Var varOrLocator
 
 foldReversePiElim :: Hint -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldReversePiElim m e funcVarList =
@@ -881,24 +858,20 @@ rawTermFloat = do
   h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
 
-lam :: Hint -> [BinderF RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
+lam :: Hint -> [RawBinder RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
   m :< RT.PiIntro (LK.Normal O.Transparent) varList e
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
-  m :< RT.Var (Ident.fromText str)
+  m :< RT.Var (Var str)
 
-preVar' :: Hint -> Ident -> RT.RawTerm
-preVar' m ident =
-  m :< RT.Var ident
-
-handleDefiniteDescriptionIntoRawConsName :: Hint -> T.Text -> App RP.RawConsName
+handleDefiniteDescriptionIntoRawConsName :: Hint -> T.Text -> App Name
 handleDefiniteDescriptionIntoRawConsName m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
-  return $ RP.LocatorPair gl ll
+  return $ Locator (gl, ll)
 
 handleDefiniteDescriptionIntoVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 handleDefiniteDescriptionIntoVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
-  return $ m :< RT.VarGlobal gl ll
+  return $ m :< RT.Var (Locator (gl, ll))

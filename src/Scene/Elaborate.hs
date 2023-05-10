@@ -35,6 +35,7 @@ import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Remark qualified as Remark
 import Entity.Stmt
+import Entity.StmtKind
 import Entity.TargetPlatform qualified as TP
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
@@ -151,7 +152,7 @@ insertStmtKindInfo stmt = do
     StmtDefineResource {} ->
       return ()
 
-elaborateStmtKind :: StmtKindF WT.WeakTerm -> App (StmtKindF TM.Term)
+elaborateStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind TM.Term)
 elaborateStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->

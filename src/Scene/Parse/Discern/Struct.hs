@@ -12,7 +12,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
-import Scene.Parse.Discern.Symbol (resolveNameOrErr)
+import Entity.Name
+import Scene.Parse.Discern.Name (resolveName)
 
 ensureFieldLinearity ::
   Hint ->
@@ -34,14 +35,10 @@ ensureFieldLinearity m ks found nonLinear =
         then ensureFieldLinearity m rest found (S.insert k nonLinear)
         else ensureFieldLinearity m rest (S.insert k found) nonLinear
 
-resolveField :: Hint -> T.Text -> App DD.DefiniteDescription
-resolveField m name = do
-  nameOrErr <- resolveNameOrErr m name
-  case nameOrErr of
-    Left err ->
-      Throw.raiseError m err
-    Right (field, _) ->
-      return field
+resolveField :: Hint -> Name -> App DD.DefiniteDescription
+resolveField m varOrLocator = do
+  (dd, _) <- resolveName m varOrLocator
+  return dd
 
 reorderArgs :: Hint -> [DD.DefiniteDescription] -> Map.HashMap DD.DefiniteDescription a -> App [a]
 reorderArgs m keyList kvs =

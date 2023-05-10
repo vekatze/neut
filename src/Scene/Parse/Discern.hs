@@ -1,12 +1,9 @@
 module Scene.Parse.Discern
   ( discernStmtList,
     discernNameArrow,
-    resolveName,
-    resolveLocator,
   )
 where
 
-import Context.Alias qualified as Alias
 import Context.App
 import Context.CodataDefinition qualified as CodataDefinition
 import Context.Gensym qualified as Gensym
@@ -31,19 +28,24 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
+import Entity.Name
 import Entity.NameArrow qualified as NA
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
+import Entity.RawBinder
+import Entity.RawIdent
+import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
 import Entity.Stmt
+import Entity.StmtKind qualified as SK
 import Entity.WeakTerm qualified as WT
+import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv
 import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
-import Scene.Parse.Discern.Symbol
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList stmtList =
@@ -63,52 +65,51 @@ discernStmtList stmtList =
       rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
 
-discernStmtKind :: StmtKindF RT.RawTerm -> App (StmtKindF WT.WeakTerm)
+discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
   case stmtKind of
-    Normal opacity ->
-      return $ Normal opacity
-    Data dataName dataArgs consInfoList projectionList -> do
+    SK.Normal opacity ->
+      return $ SK.Normal opacity
+    SK.Data dataName dataArgs consInfoList projectionList -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       let (consNameList, isConstLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
       forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       let consInfoList' = zip4 consNameList isConstLikeList consArgsList' discriminantList
-      return $ Data dataName dataArgs' consInfoList' projectionList
-    DataIntro dataName dataArgs consArgs discriminant -> do
+      return $ SK.Data dataName dataArgs' consInfoList' projectionList
+    SK.DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       (consArgs', nenv') <- discernBinder nenv consArgs
       forM_ nenv' $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
-      return $ DataIntro dataName dataArgs' consArgs' discriminant
-    Projection ->
-      return Projection
+      return $ SK.DataIntro dataName dataArgs' consArgs' discriminant
+    SK.Projection ->
+      return SK.Projection
 
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =
   case term of
     m :< RT.Tau ->
       return $ m :< WT.Tau
-    m :< RT.Var (I (s, _)) -> do
-      case lookup s nenv of
-        Just (_, name) -> do
-          UnusedVariable.delete name
-          return $ m :< WT.Var name
-        Nothing -> do
-          resolveName m s >>= uncurry (interpretGlobalName m)
-    m :< RT.VarGlobal globalLocator localLocator -> do
-      (dd, gn) <- resolveLocator m globalLocator localLocator
-      interpretGlobalName m dd gn
+    m :< RT.Var name ->
+      case name of
+        Var s
+          | Just (_, name') <- lookup s nenv -> do
+              UnusedVariable.delete name'
+              return $ m :< WT.Var name'
+        _ -> do
+          (dd, gn) <- resolveName m name
+          interpretGlobalName m dd gn
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
       return $ m :< WT.Pi xts' t'
     m :< RT.PiIntro kind xts e -> do
       case kind of
-        LK.Fix xt -> do
+        RLK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
-        LK.Normal opacity -> do
+        RLK.Normal opacity -> do
           (xts', e') <- discernBinderWithBody nenv xts e
           return $ m :< WT.PiIntro (LK.Normal opacity) xts' e'
     m :< RT.PiElim e es -> do
@@ -147,7 +148,7 @@ discern nenv term =
       der' <- traverse (discern nenv) der
       return $ m :< WT.Magic der'
     m :< RT.New name kvs -> do
-      dd <- fst <$> resolveName m name
+      (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ks' <- mapM (resolveField m) ks
       ensureFieldLinearity m ks' S.empty S.empty
@@ -160,18 +161,18 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Flow (flowGL, flowLL) t -> do
-      flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
+    m :< RT.Flow l t -> do
+      flowDD <- fst <$> resolveName m (Locator l)
       t' <- discern nenv t
       return $ m :< WT.Flow flowDD t'
-    m :< RT.FlowIntro (flowGL, flowLL) (detachGL, detachLL) e -> do
-      flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
-      detachDD <- uncurry (resolveExportedName m) <$> resolveLocator m detachGL detachLL
+    m :< RT.FlowIntro flowL detachL e -> do
+      flowDD <- fst <$> resolveName m (Locator flowL)
+      detachDD <- fst <$> resolveName m (Locator detachL)
       e' <- discern nenv e
       return $ m :< WT.FlowIntro flowDD detachDD (e', doNotCare m)
-    m :< RT.FlowElim (flowGL, flowLL) (attachGL, attachLL) e -> do
-      flowDD <- uncurry (resolveExportedName m) <$> resolveLocator m flowGL flowLL
-      attachDD <- uncurry (resolveExportedName m) <$> resolveLocator m attachGL attachLL
+    m :< RT.FlowElim flowL attachL e -> do
+      flowDD <- fst <$> resolveName m (Locator flowL)
+      attachDD <- fst <$> resolveName m (Locator attachL)
       e' <- discern nenv e
       return $ m :< WT.FlowElim flowDD attachDD (e', doNotCare m)
 
@@ -182,16 +183,16 @@ doNotCare m =
 discernLet ::
   NominalEnv ->
   Hint ->
-  BinderF RT.RawTerm ->
-  [(Hint, Ident)] ->
+  RawBinder RT.RawTerm ->
+  [(Hint, RawIdent)] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App WT.WeakTerm
 discernLet nenv m mxt mys e1 e2 = do
   let (ms, ys) = unzip mys
-  ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var y)) ms ys
-  ysLocal <- mapM Gensym.newIdentFromIdent ys
-  ysCont <- mapM Gensym.newIdentFromIdent ys
+  ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var (Var y))) ms ys
+  ysLocal <- mapM Gensym.newIdentFromText ys
+  ysCont <- mapM Gensym.newIdentFromText ys
   let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms ysLocal
   nenvLocal <- joinNominalEnv localAddition nenv
   let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont
@@ -204,7 +205,7 @@ discernLet nenv m mxt mys e1 e2 = do
 
 discernBinder ::
   NominalEnv ->
-  [BinderF RT.RawTerm] ->
+  [RawBinder RT.RawTerm] ->
   App ([BinderF WT.WeakTerm], NominalEnv)
 discernBinder nenv binder =
   case binder of
@@ -212,14 +213,14 @@ discernBinder nenv binder =
       return ([], nenv)
     (mx, x, t) : xts -> do
       t' <- discern nenv t
-      x' <- Gensym.newIdentFromIdent x
+      x' <- Gensym.newIdentFromText x
       nenv' <- extendNominalEnv mx x' nenv
       (xts', nenv'') <- discernBinder nenv' xts
       return ((mx, x', t') : xts', nenv'')
 
 discernBinderWithBody ::
   NominalEnv ->
-  [BinderF RT.RawTerm] ->
+  [RawBinder RT.RawTerm] ->
   RT.RawTerm ->
   App ([BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody nenv binder e = do
@@ -229,14 +230,14 @@ discernBinderWithBody nenv binder e = do
 
 discernBinderWithBody' ::
   NominalEnv ->
-  BinderF RT.RawTerm ->
-  [BinderF RT.RawTerm] ->
+  RawBinder RT.RawTerm ->
+  [RawBinder RT.RawTerm] ->
   RT.RawTerm ->
   App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 discernBinderWithBody' nenv (mx, x, codType) binder e = do
   (binder'', nenv') <- discernBinder nenv binder
   codType' <- discern nenv' codType
-  x' <- Gensym.newIdentFromIdent x
+  x' <- Gensym.newIdentFromText x
   nenv'' <- extendNominalEnv mx x' nenv'
   e' <- discern nenv'' e
   return ((mx, x', codType'), binder'', e')
@@ -307,39 +308,46 @@ discernPattern ::
   App ((Hint, PAT.Pattern), NominalEnv)
 discernPattern (m, pat) =
   case pat of
-    RP.Var (I (x, _)) -> do
-      errOrLocator <- resolveNameOrErr m x
-      case errOrLocator of
-        Left _ -> do
-          x' <- Gensym.newIdentFromText x
-          return ((m, PAT.Var x'), [(x, (m, x'))])
-        Right (dd, gn) -> do
-          mCons <- resolveConstructorMaybe m dd gn
-          case mCons of
-            Nothing -> do
+    RP.Var name -> do
+      case name of
+        Var x -> do
+          errOrLocator <- resolveNameOrError m $ Var x
+          case errOrLocator of
+            Left _ -> do
               x' <- Gensym.newIdentFromText x
               return ((m, PAT.Var x'), [(x, (m, x'))])
-            Just (consName, dataArity, consArity, disc, isConstLike) -> do
-              unless isConstLike $
-                Throw.raiseError m $
-                  "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
-              return ((m, PAT.Cons consName disc dataArity consArity []), [])
-    RP.NullaryCons gl ll -> do
-      sgl <- Alias.resolveAlias m gl
-      let consName = DD.new sgl ll
-      gn <- interpretDefiniteDescription m consName
-      (_, consName', gn') <- resolveAlias m consName gn
-      case gn' of
-        GN.DataIntro dataArity consArity disc _ ->
-          return ((m, PAT.Cons consName' disc dataArity consArity []), [])
-        _ ->
-          Throw.raiseCritical m $
-            "the symbol `" <> DD.reify consName <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
+            Right (dd, gn) -> do
+              mCons <- resolveConstructorMaybe dd gn
+              case mCons of
+                Nothing -> do
+                  x' <- Gensym.newIdentFromText x
+                  return ((m, PAT.Var x'), [(x, (m, x'))])
+                Just (consName, dataArity, consArity, disc, isConstLike) -> do
+                  unless isConstLike $
+                    Throw.raiseError m $
+                      "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
+                  return ((m, PAT.Cons consName disc dataArity consArity []), [])
+        Locator l -> do
+          (dd, gn) <- resolveName m $ Locator l
+          case gn of
+            GN.DataIntro dataArity consArity disc _ ->
+              return ((m, PAT.Cons dd disc dataArity consArity []), [])
+            _ ->
+              Throw.raiseCritical m $
+                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
+        DefiniteDescription dd -> do
+          gn <- interpretDefiniteDescription m dd
+          case gn of
+            GN.DataIntro dataArity consArity disc _ ->
+              return ((m, PAT.Cons dd disc dataArity consArity []), [])
+            _ ->
+              Throw.raiseCritical m $
+                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
     RP.Cons cons args -> do
       (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
       when isConstLike $
         Throw.raiseError m $
-          "the constructor `" <> RP.showRawConsName cons <> "` can't have any arguments"
+          "the constructor `" <> showName cons <> "` can't have any arguments"
       (args', nenvList) <- mapAndUnzipM discernPattern args
       return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
 
@@ -350,8 +358,8 @@ discernNameArrow clause = do
       nameArrow@(_, (m, consGN)) <- discernInnerNameArrow clauseInfo
       ensureNotRule m $ traceGlobalName consGN
       return [nameArrow]
-    NA.Variant (from, (mOrig, origVarOrLocator)) ruleArrowListOrWildCard -> do
-      (_, dataDD, dataGN) <- resolveVarOrLocator mOrig origVarOrLocator
+    NA.Variant (from, (mOrig, origSymbol)) ruleArrowListOrWildCard -> do
+      (dataDD, dataGN) <- resolveNameSuspended mOrig origSymbol
       (aliasNameList, availableRuleList) <- unzip <$> getRuleListByGlobalName mOrig dataGN
       case ruleArrowListOrWildCard of
         NA.Explicit ruleArrowList -> do
@@ -429,7 +437,7 @@ traceInnerNameArrow' ((mAlias, aliasDD), (mOrig, origGN)) =
 
 discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.NameArrow
 discernInnerNameArrow (dom, (m, varOrLocator)) = do
-  (_, dd, gn) <- resolveVarOrLocator m varOrLocator
+  (dd, gn) <- resolveName m varOrLocator
   return (dom, (m, GN.Alias dd gn))
 
 getRuleListByGlobalName :: Hint -> GN.GlobalName -> App [(DD.DefiniteDescription, DD.DefiniteDescription)]

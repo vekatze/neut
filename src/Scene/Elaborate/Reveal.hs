@@ -19,6 +19,7 @@ import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
 import Entity.Stmt
+import Entity.StmtKind
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -40,7 +41,7 @@ revealStmt stmt =
       copier' <- reveal' [] copier
       return $ WeakStmtDefineResource m name discarder' copier'
 
-revealStmtKind :: StmtKindF WT.WeakTerm -> App (StmtKindF WT.WeakTerm)
+revealStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 revealStmtKind stmtKind =
   case stmtKind of
     Normal {} ->
