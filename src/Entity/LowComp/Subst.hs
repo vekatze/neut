@@ -40,9 +40,9 @@ substOp sub llvmOp =
       let d1' = substLowValue sub d1
       let d2' = substLowValue sub d2
       LC.Store t d1' d2'
-    LC.Alloc d sizeInfo -> do
+    LC.Alloc d -> do
       let d' = substLowValue sub d
-      LC.Alloc d' sizeInfo
+      LC.Alloc d'
     LC.Free d -> do
       LC.Free $ substLowValue sub d
     LC.PrimOp op ds -> do

@@ -57,7 +57,7 @@ data Op
   | PointerToInt Value LowType LowType
   | Load Value LowType
   | Store LowType Value Value
-  | Alloc Value SizeInfo
+  | Alloc Value
   | Free Value
   | PrimOp PrimOp [Value]
   | Syscall

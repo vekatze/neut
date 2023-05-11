@@ -316,9 +316,16 @@ getSizeInfoOf aggType =
 
 allocateBasePointer :: AggType -> Lower LC.Value
 allocateBasePointer aggType = do
-  let (elemType, len) = getSizeInfoOf aggType
-  sizePointer <- getElemPtr LC.Null elemType [toInteger len]
-  reflect $ LC.Alloc sizePointer $ toLowType aggType
+  let lt = toLowType aggType
+  case lt of
+    LT.Array 0 _ ->
+      return LC.Null
+    LT.Struct [] ->
+      return LC.Null
+    _ -> do
+      let (elemType, len) = getSizeInfoOf aggType
+      sizePointer <- getElemPtr LC.Null elemType [toInteger len]
+      reflect $ LC.Alloc sizePointer
 
 storeElements ::
   LC.Value -> -- base pointer
