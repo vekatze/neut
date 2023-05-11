@@ -105,7 +105,7 @@ unravel' source = do
       raiseCyclicPath source
     Just VI.Finish -> do
       hasCacheSet <- Env.getHasCacheSet
-      hasLLVMSet <- Env.getHasObjectSet
+      hasLLVMSet <- Env.getHasLLVMSet
       hasObjectSet <- Env.getHasObjectSet
       return (path `S.member` hasCacheSet, path `S.member` hasLLVMSet, path `S.member` hasObjectSet, Seq.empty)
     Nothing -> do
