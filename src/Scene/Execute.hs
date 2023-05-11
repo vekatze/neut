@@ -7,8 +7,8 @@ import Context.Path qualified as Path
 import Entity.Target
 import Path
 
-execute :: Target -> App ()
-execute target = do
+execute :: Target -> [String] -> App ()
+execute target args = do
   mainModule <- Module.getMainModule
   outputPath <- Path.getExecutableOutputPath target mainModule
-  External.run (toFilePath outputPath) []
+  External.run (toFilePath outputPath) args

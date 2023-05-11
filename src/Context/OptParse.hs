@@ -49,6 +49,7 @@ parseBuildOpt = do
   outputKindList <- outputKindListOpt
   shouldSkipLink <- shouldSkipLinkOpt
   shouldExecute <- shouldExecuteOpt
+  rest <- (many . strArgument) (metavar "args")
   pure $
     Build $
       Build.Config
@@ -57,7 +58,8 @@ parseBuildOpt = do
           Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,
           Build.shouldSkipLink = shouldSkipLink,
-          Build.shouldExecute = shouldExecute
+          Build.shouldExecute = shouldExecute,
+          Build.args = rest
         }
 
 parseCleanOpt :: Parser Command

@@ -36,4 +36,4 @@ build cfg = do
         Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit (outputKindList cfg)
     Link.link target (shouldSkipLink cfg) isObjectAvailable (toList dependenceSeq)
     when (shouldExecute cfg) $
-      Execute.execute target
+      Execute.execute target (args cfg)

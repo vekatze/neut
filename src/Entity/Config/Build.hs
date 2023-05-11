@@ -3,7 +3,6 @@ module Entity.Config.Build (Config (..)) where
 import Entity.Config.Remark qualified as Remark
 import Entity.OutputKind qualified as OK
 import Entity.Target
-import Prelude hiding (remark)
 
 data Config = Config
   { mTarget :: Maybe Target,
@@ -11,5 +10,6 @@ data Config = Config
     remarkCfg :: Remark.Config,
     outputKindList :: [OK.OutputKind],
     shouldSkipLink :: Bool,
-    shouldExecute :: Bool
+    shouldExecute :: Bool,
+    args :: [String]
   }
