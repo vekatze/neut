@@ -18,7 +18,7 @@ emitValue :: LC.Value -> Builder
 emitValue lowValue =
   case lowValue of
     LC.VarLocal (I (_, i)) ->
-      "%" <> intDec i
+      "%_" <> intDec i
     LC.VarGlobal globalName ->
       "@" <> DD.toBuilder globalName
     LC.VarExternal extName ->

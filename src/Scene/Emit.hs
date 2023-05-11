@@ -15,8 +15,10 @@ import Data.List qualified as List
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.Builder
+import Entity.Const
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.Ident
 import Entity.LowComp qualified as LC
 import Entity.LowComp.EmitOp qualified as EOP
@@ -31,14 +33,34 @@ emit (declEnv, defList, mMainTerm, staticTextList) = do
   let staticTextList' = map (emitStaticText baseSize) staticTextList
   case mMainTerm of
     Just mainTerm -> do
+      let argc = emitGlobal unsafeArgcName LT.Pointer LC.Null
+      let argv = emitGlobal unsafeArgvName LT.Pointer LC.Null
       let declStrList = emitDeclarations declEnv
       mainStrList <- emitMain mainTerm
       defStrList <- concat <$> mapM emitDefinitions defList
-      return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> mainStrList <> defStrList
+      return $ L.toLazyByteString $ unlinesL $ declStrList ++ staticTextList' ++ [argc, argv] ++ mainStrList ++ defStrList
     Nothing -> do
+      let argc = emitGlobalExt unsafeArgcName LT.Pointer
+      let argv = emitGlobalExt unsafeArgvName LT.Pointer
       let declStrList = emitDeclarations declEnv
       defStrList <- concat <$> mapM emitDefinitions defList
-      return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> defStrList
+      return $ L.toLazyByteString $ unlinesL $ declStrList ++ staticTextList' ++ [argc, argv] ++ defStrList
+
+emitGlobal :: T.Text -> LT.LowType -> LC.Value -> Builder
+emitGlobal name lt v =
+  "@"
+    <> TE.encodeUtf8Builder name
+    <> " = global "
+    <> emitLowType lt
+    <> " "
+    <> emitValue v
+
+emitGlobalExt :: T.Text -> LT.LowType -> Builder
+emitGlobalExt name lt =
+  "@"
+    <> TE.encodeUtf8Builder name
+    <> " = external global "
+    <> emitLowType lt
 
 emitStaticText :: Int -> StaticTextInfo -> Builder
 emitStaticText baseSize (from, (text, len)) = do
@@ -75,7 +97,14 @@ emitMain :: LC.Comp -> App [Builder]
 emitMain mainTerm = do
   mainTerm' <- LowComp.reduce IntMap.empty mainTerm
   mainType <- Env.getMainType
-  emitDefinition (TE.encodeUtf8Builder mainType) "main" [] mainTerm'
+  argc <- Gensym.newIdentFromText "argc"
+  argv <- Gensym.newIdentFromText "argv"
+  let argcGlobal = LC.VarExternal (EN.ExternalName unsafeArgcName)
+  let argvGlobal = LC.VarExternal (EN.ExternalName unsafeArgvName)
+  let args' = map (emitValue . LC.VarLocal) [argc, argv]
+  emitDefinition (TE.encodeUtf8Builder mainType) "main" args' $
+    LC.Cont (LC.Store LT.Pointer (LC.VarLocal argc) argcGlobal) $
+      LC.Cont (LC.Store LT.Pointer (LC.VarLocal argv) argvGlobal) mainTerm'
 
 declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do

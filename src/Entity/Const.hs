@@ -180,3 +180,11 @@ defaultImports =
 holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"
+
+unsafeArgcName :: T.Text
+unsafeArgcName =
+  "neut-unsafe-argc"
+
+unsafeArgvName :: T.Text
+unsafeArgvName =
+  "neut-unsafe-argv"
