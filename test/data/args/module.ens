@@ -1,0 +1,11 @@
+antecedents = []
+dependency = {
+  core = {
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.2.0.9.tar.zst"
+    checksum = "uxcJijLVulSp8L2rFbBie46znThrTDiV962bKoKcolk="
+  }
+}
+extra-content = []
+target = {
+  args = "args.nt"
+}

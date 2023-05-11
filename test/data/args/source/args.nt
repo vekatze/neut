@@ -1,0 +1,4 @@
+define main(): i64 {
+  let _ = get-argv()
+  get-argc()
+}
