@@ -52,7 +52,9 @@ isCompilationSkippable artifactTime outputKindList source =
           let b2 = isCompilationSkippable artifactTime rest source
           b1 && b2
         OK.Asm -> do
-          isCompilationSkippable artifactTime rest source
+          let b1 = isJust $ A.asmTime artifactTime
+          let b2 = isCompilationSkippable artifactTime rest source
+          b1 && b2
         OK.Object -> do
           let b1 = isJust $ A.objectTime artifactTime
           let b2 = isCompilationSkippable artifactTime rest source

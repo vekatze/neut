@@ -41,6 +41,9 @@ type CacheTime =
 type LLVMTime =
   Maybe UTCTime
 
+type AsmTime =
+  Maybe UTCTime
+
 type ObjectTime =
   Maybe UTCTime
 
@@ -116,8 +119,15 @@ getArtifactTime :: [A.ArtifactTime] -> Source.Source -> App A.ArtifactTime
 getArtifactTime artifactTimeList source = do
   cacheTime <- getCacheTime (map A.cacheTime artifactTimeList) source
   llvmTime <- getLLVMTime (map A.llvmTime artifactTimeList) source
+  asmTime <- getAsmTime (map A.asmTime artifactTimeList) source
   objectTime <- getObjectTime (map A.objectTime artifactTimeList) source
-  let artifactTime = A.ArtifactTime {cacheTime = cacheTime, llvmTime = llvmTime, objectTime = objectTime}
+  let artifactTime =
+        A.ArtifactTime
+          { cacheTime = cacheTime,
+            llvmTime = llvmTime,
+            asmTime = asmTime,
+            objectTime = objectTime
+          }
   Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
   return artifactTime
 
@@ -128,6 +138,10 @@ getCacheTime = do
 getLLVMTime :: [LLVMTime] -> Source.Source -> App LLVMTime
 getLLVMTime = do
   getItemTime getFreshLLVMTime
+
+getAsmTime :: [AsmTime] -> Source.Source -> App AsmTime
+getAsmTime = do
+  getItemTime getFreshAsmTime
 
 getObjectTime :: [ObjectTime] -> Source.Source -> App ObjectTime
 getObjectTime = do
@@ -169,6 +183,11 @@ getFreshLLVMTime :: Source.Source -> App LLVMTime
 getFreshLLVMTime source = do
   llvmPath <- Path.sourceToOutputPath OK.LLVM source
   getFreshTime source llvmPath
+
+getFreshAsmTime :: Source.Source -> App ObjectTime
+getFreshAsmTime source = do
+  objectPath <- Path.sourceToOutputPath OK.Asm source
+  getFreshTime source objectPath
 
 getFreshObjectTime :: Source.Source -> App ObjectTime
 getFreshObjectTime source = do
