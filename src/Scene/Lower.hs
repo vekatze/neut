@@ -175,6 +175,8 @@ lowerCompPrimitive codeOp =
           args' <- mapM lowerValue args
           lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'
           reflect $ LC.Call (LC.VarExternal name) args'
+        M.Global lt name -> do
+          uncast (LC.VarExternal name) lt
 
 lowerCompPrimOp :: PrimOp -> [C.Value] -> Lower LC.Value
 lowerCompPrimOp op vs = do

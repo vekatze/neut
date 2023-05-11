@@ -112,8 +112,8 @@ distinguishPrimitive z term =
     C.PrimOp op ds -> do
       (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
       return (concat vss, C.PrimOp op ds')
-    C.Magic der -> do
-      case der of
+    C.Magic magic -> do
+      case magic of
         M.Cast from to value -> do
           (vs1, from') <- distinguishValue z from
           (vs2, to') <- distinguishValue z to
@@ -132,3 +132,5 @@ distinguishPrimitive z term =
         M.External extFunName args -> do
           (vss, args') <- mapAndUnzipM (distinguishValue z) args
           return (concat vss, C.Magic (M.External extFunName args'))
+        M.Global lt name -> do
+          return ([], C.Magic (M.Global lt name))

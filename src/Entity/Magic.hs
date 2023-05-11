@@ -12,6 +12,7 @@ data Magic a
   | Load LowType a
   | Syscall Integer [a]
   | External EN.ExternalName [a]
+  | Global LowType EN.ExternalName
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic a)
@@ -29,6 +30,8 @@ instance Functor Magic where
         Syscall syscallNum $ fmap f args
       External extFunName args ->
         External extFunName $ fmap f args
+      Global lt name ->
+        Global lt name
 
 instance Foldable Magic where
   foldMap f der =
@@ -43,6 +46,8 @@ instance Foldable Magic where
         foldMap f args
       External _ args ->
         foldMap f args
+      Global {} ->
+        mempty
 
 instance Traversable Magic where
   traverse f der =
@@ -57,6 +62,8 @@ instance Traversable Magic where
         Syscall syscallNum <$> traverse f args
       External extFunName args ->
         External extFunName <$> traverse f args
+      Global lt name ->
+        pure $ Global lt name
 
 getMagicName :: Magic a -> T.Text
 getMagicName d =
@@ -71,3 +78,5 @@ getMagicName d =
       "store"
     Cast {} ->
       "nop"
+    Global {} ->
+      "global"

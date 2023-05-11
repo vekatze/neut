@@ -374,7 +374,8 @@ rawTermMagic = do
       rawTermMagicStore m,
       rawTermMagicLoad m,
       rawTermMagicSyscall m,
-      rawTermMagicExternal m
+      rawTermMagicExternal m,
+      rawTermMagicGlobal m
     ]
 
 rawTermMagicBase :: T.Text -> Parser a -> Parser a
@@ -418,6 +419,14 @@ rawTermMagicExternal m = do
     extFunName <- symbol
     es <- many (delimiter "," >> rawTerm)
     return $ m :< RT.Magic (M.External (EN.ExternalName extFunName) es)
+
+rawTermMagicGlobal :: Hint -> Parser RT.RawTerm
+rawTermMagicGlobal m = do
+  rawTermMagicBase "global" $ do
+    globalVarName <- string
+    delimiter ","
+    lt <- lowType
+    return $ m :< RT.Magic (M.Global lt (EN.ExternalName globalVarName))
 
 -- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: Parser LT.LowType

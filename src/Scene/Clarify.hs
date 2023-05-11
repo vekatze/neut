@@ -382,6 +382,8 @@ clarifyMagic tenv der =
       return $
         bindLet (zip xs args') $
           C.Primitive (C.Magic (M.External extFunName xsAsVars))
+    M.Global lt name -> do
+      return $ C.Primitive (C.Magic (M.Global lt name))
 
 clarifyLambda ::
   TM.TypeEnv ->
