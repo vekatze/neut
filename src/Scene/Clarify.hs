@@ -66,7 +66,11 @@ clarify defList = do
       defList' <- clarifyDefList defList
       mainTerm <- Reduce.reduce $ C.PiElimDownElim (C.VarGlobal mainName (A.Arity 0)) []
       staticTextList <- StaticText.getAll
-      return (defList' ++ Map.toList auxEnv, Just mainTerm, staticTextList)
+      auxEnv' <- forM (Map.toList auxEnv) $ \(x, (opacity, args, e)) -> do
+        e' <- Reduce.reduce e
+        CompDefinition.insert x (opacity, args, e')
+        return (x, (opacity, args, e'))
+      return (defList' ++ auxEnv', Just mainTerm, staticTextList)
     Nothing -> do
       defList' <- clarifyDefList defList
       staticTextList <- StaticText.getAll
