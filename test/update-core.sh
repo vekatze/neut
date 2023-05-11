@@ -2,8 +2,8 @@
 
 # e.g. ./update-core.sh ./data
 
-OLD_VERSION=0.2.0.7
-NEW_VERSION=0.2.0.8
+OLD_VERSION=0.2.0.8
+NEW_VERSION=0.2.0.9
 
 TARGET_DIR=$(cd "$1"; pwd)
 cd $TARGET_DIR
