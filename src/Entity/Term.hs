@@ -67,6 +67,8 @@ isValue term =
   case term of
     _ :< Tau ->
       True
+    _ :< VarGlobal {} ->
+      True
     _ :< Pi {} ->
       True
     _ :< PiIntro {} ->
