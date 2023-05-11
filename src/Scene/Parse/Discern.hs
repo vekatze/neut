@@ -12,6 +12,7 @@ import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
 import Data.Set qualified as S
@@ -289,7 +290,7 @@ getNonLinearOccurrences :: NominalEnv -> S.Set T.Text -> [(Hint, T.Text)] -> [R.
 getNonLinearOccurrences vars found nonLinear =
   case vars of
     [] -> do
-      let nonLinearVars = reverse $ nubBy (\x y -> snd x == snd y) nonLinear
+      let nonLinearVars = reverse $ ListUtils.nubOrdOn snd nonLinear
       flip map nonLinearVars $ \(m, x) ->
         R.newRemark m R.Error $
           "the pattern variable `"

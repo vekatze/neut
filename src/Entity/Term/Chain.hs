@@ -5,8 +5,8 @@ module Entity.Term.Chain
 where
 
 import Control.Comonad.Cofree
+import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
-import Data.List
 import Data.Maybe
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -119,7 +119,7 @@ chainOfCase tenv m (DT.Cons _ _ _ dataArgs consArgs tree) = do
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =
-  nubBy (\(_, x, _) (_, y, _) -> x == y)
+  ListUtils.nubOrdOn (\(_, x, _) -> x)
 
 chainOfVar :: TM.TypeEnv -> Hint -> Ident -> [BinderF TM.Term]
 chainOfVar tenv m x = do

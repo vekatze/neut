@@ -14,7 +14,7 @@ module Entity.Pattern
   )
 where
 
-import Data.List
+import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -91,7 +91,7 @@ getColumnConstructors ::
   PatternColumn ->
   [(Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))]
 getColumnConstructors col =
-  nubBy (\(_, (dd1, _, _, _, _)) (_, (dd2, _, _, _, _)) -> dd1 == dd2) $ mapMaybe getColumnConstructor col
+  ListUtils.nubOrdOn (\(_, (dd, _, _, _, _)) -> dd) $ mapMaybe getColumnConstructor col
 
 getColumnConstructor ::
   (Hint, Pattern) ->

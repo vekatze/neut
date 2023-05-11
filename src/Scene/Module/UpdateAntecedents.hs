@@ -6,7 +6,7 @@ import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
 import Control.Monad.IO.Class
-import Data.List
+import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Entity.Const
 import Entity.Module
@@ -22,7 +22,7 @@ updateAntecedents :: PV.PackageVersion -> Module -> App ()
 updateAntecedents newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
-  antecedentList <- nub <$> mapM (getChecksum targetModule) antecedents
+  antecedentList <- ListUtils.nubOrd <$> mapM (getChecksum targetModule) antecedents
   Module.save $ targetModule {moduleAntecedents = antecedentList}
 
 getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
