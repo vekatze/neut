@@ -18,6 +18,7 @@ import Control.Monad
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
 import Data.List (unzip4)
+import Data.Maybe
 import Data.Sequence as Seq
   ( Seq,
     empty,
@@ -26,6 +27,7 @@ import Data.Sequence as Seq
   )
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Time
 import Entity.Hint
 import Entity.Module
 import Entity.OutputKind qualified as OK
@@ -47,6 +49,15 @@ type IsObjectAvailable =
 
 type IsLLVMAvailable =
   Bool
+
+type CacheTime =
+  Maybe UTCTime
+
+type LLVMTime =
+  Maybe UTCTime
+
+type ObjectTime =
+  Maybe UTCTime
 
 unravel :: Target -> App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, [Source.Source])
 unravel target = do
@@ -75,13 +86,13 @@ unravelFromSGL sgl = do
   unravel' >=> adjustUnravelResult $ initialSource
 
 adjustUnravelResult ::
-  (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source) ->
+  (CacheTime, LLVMTime, ObjectTime, Seq Source.Source) ->
   App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, [Source.Source])
 adjustUnravelResult (b1, b2, b3, sourceSeq) = do
   let sourceList = toList sourceSeq
   registerAntecedentInfo sourceList
   sourceList' <- mapM Source.shiftToLatest sourceList
-  return (b1, b2, b3, sanitizeSourceList sourceList')
+  return (isJust b1, isJust b2, isJust b3, sanitizeSourceList sourceList')
 
 ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath mainModule = do
@@ -96,7 +107,7 @@ resolveTarget mainModule target = do
     Nothing ->
       Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
 
-unravel' :: Source.Source -> App (IsCacheAvailable, IsLLVMAvailable, IsObjectAvailable, Seq Source.Source)
+unravel' :: Source.Source -> App (CacheTime, LLVMTime, ObjectTime, Seq Source.Source)
 unravel' source = do
   visitEnv <- Unravel.getVisitEnv
   let path = Source.sourceFilePath source
@@ -104,70 +115,90 @@ unravel' source = do
     Just VI.Active ->
       raiseCyclicPath source
     Just VI.Finish -> do
-      hasCacheSet <- Env.getHasCacheSet
-      hasLLVMSet <- Env.getHasLLVMSet
-      hasObjectSet <- Env.getHasObjectSet
-      return (path `S.member` hasCacheSet, path `S.member` hasLLVMSet, path `S.member` hasObjectSet, Seq.empty)
+      cacheTime <- Env.lookupCachePathTime path
+      llvmTime <- Env.lookupLLVMPathTime path
+      objectTime <- Env.lookupObjectPathTime path
+      return (cacheTime, llvmTime, objectTime, Seq.empty)
     Nothing -> do
       Unravel.insertToVisitEnv path VI.Active
       Unravel.pushToTraceSourceList source
       children <- getChildren source
-      (isCacheAvailableList, isLLVMAvailableList, isObjectAvailableList, seqList) <- unzip4 <$> mapM unravel' children
+      (cacheTimeList, llvmTimeList, objectTimeList, seqList) <- unzip4 <$> mapM unravel' children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
-      isCacheAvailable <- checkIfCacheIsAvailable isCacheAvailableList source
-      isLLVMAvailable <- checkIfLLVMIsAvailable isLLVMAvailableList source
-      isObjectAvailable <- checkIfObjectIsAvailable isObjectAvailableList source
-      return (isCacheAvailable, isLLVMAvailable, isObjectAvailable, foldl' (><) Seq.empty seqList |> source)
+      cacheTime <- getCacheTime cacheTimeList source
+      llvmTime <- getLLVMTime llvmTimeList source
+      objectTime <- getObjectTime objectTimeList source
+      return (cacheTime, llvmTime, objectTime, foldl' (><) Seq.empty seqList |> source)
 
-checkIfCacheIsAvailable :: [IsCacheAvailable] -> Source.Source -> App IsCacheAvailable
-checkIfCacheIsAvailable = do
-  checkIfItemIsAvailable isFreshCacheAvailable Env.insertToHasCacheSet
+getCacheTime :: [CacheTime] -> Source.Source -> App CacheTime
+getCacheTime = do
+  getItemTime getFreshCacheTime Env.insertToCacheTimeMap
 
-checkIfLLVMIsAvailable :: [IsLLVMAvailable] -> Source.Source -> App IsLLVMAvailable
-checkIfLLVMIsAvailable = do
-  checkIfItemIsAvailable isFreshLLVMAvailable Env.insertToHasLLVMSet
+getLLVMTime :: [LLVMTime] -> Source.Source -> App LLVMTime
+getLLVMTime = do
+  getItemTime getFreshLLVMTime Env.insertToLLVMTimeMap
 
-checkIfObjectIsAvailable :: [IsObjectAvailable] -> Source.Source -> App IsObjectAvailable
-checkIfObjectIsAvailable = do
-  checkIfItemIsAvailable isFreshObjectAvailable Env.insertToHasObjectSet
+getObjectTime :: [ObjectTime] -> Source.Source -> App ObjectTime
+getObjectTime = do
+  getItemTime getFreshObjectTime Env.insertToObjectTimeMap
 
-checkIfItemIsAvailable ::
-  (Source.Source -> App Bool) ->
-  (Path Abs File -> App ()) ->
-  [IsObjectAvailable] ->
+getItemTime ::
+  (Source.Source -> App (Maybe UTCTime)) ->
+  (Path Abs File -> UTCTime -> App ()) ->
+  [Maybe UTCTime] ->
   Source.Source ->
-  App IsObjectAvailable
-checkIfItemIsAvailable isFreshItemAvailable inserter isObjectAvailableList source = do
-  b <- isFreshItemAvailable source
-  let isObjectAvailable = and $ b : isObjectAvailableList
-  when isObjectAvailable $ inserter $ Source.sourceFilePath source
-  return isObjectAvailable
+  App (Maybe UTCTime)
+getItemTime relatedTimeGetter inserter mTimeList source = do
+  mTime <- relatedTimeGetter source
+  case (mTime, distributeMaybe mTimeList) of
+    (Nothing, _) ->
+      return Nothing
+    (_, Nothing) ->
+      return Nothing
+    (Just time, Just childTimeList) -> do
+      if all (time >) childTimeList
+        then do
+          inserter (Source.sourceFilePath source) time
+          return $ Just time
+        else return Nothing
 
-isFreshCacheAvailable :: Source.Source -> App Bool
-isFreshCacheAvailable source = do
+distributeMaybe :: [Maybe a] -> Maybe [a]
+distributeMaybe xs =
+  case xs of
+    [] ->
+      return []
+    my : rest -> do
+      y <- my
+      rest' <- distributeMaybe rest
+      return $ y : rest'
+
+getFreshCacheTime :: Source.Source -> App CacheTime
+getFreshCacheTime source = do
   cachePath <- Path.getSourceCachePath source
-  isItemAvailable source cachePath
+  getFreshTime source cachePath
 
-isFreshLLVMAvailable :: Source.Source -> App Bool
-isFreshLLVMAvailable source = do
+getFreshLLVMTime :: Source.Source -> App LLVMTime
+getFreshLLVMTime source = do
   llvmPath <- Path.sourceToOutputPath OK.LLVM source
-  isItemAvailable source llvmPath
+  getFreshTime source llvmPath
 
-isFreshObjectAvailable :: Source.Source -> App Bool
-isFreshObjectAvailable source = do
+getFreshObjectTime :: Source.Source -> App ObjectTime
+getFreshObjectTime source = do
   objectPath <- Path.sourceToOutputPath OK.Object source
-  isItemAvailable source objectPath
+  getFreshTime source objectPath
 
-isItemAvailable :: Source.Source -> Path Abs File -> App Bool
-isItemAvailable source itemPath = do
+getFreshTime :: Source.Source -> Path Abs File -> App (Maybe UTCTime)
+getFreshTime source itemPath = do
   existsItem <- Path.doesFileExist itemPath
   if not existsItem
-    then return False
+    then return Nothing
     else do
       srcModTime <- Path.getModificationTime $ Source.sourceFilePath source
       itemModTime <- Path.getModificationTime itemPath
-      return $ itemModTime > srcModTime
+      if itemModTime > srcModTime
+        then return $ Just itemModTime
+        else return Nothing
 
 raiseCyclicPath :: Source.Source -> App a
 raiseCyclicPath source = do

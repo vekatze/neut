@@ -4,9 +4,10 @@ import Context.App
 import Context.App.Internal
 import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
+import Data.HashMap.Strict qualified as Map
 import Data.Maybe (fromMaybe)
-import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Time
 import Entity.Arch qualified as Arch
 import Entity.Const
 import Entity.DataSize qualified as DS
@@ -38,31 +39,48 @@ getCurrentSource :: App Source.Source
 getCurrentSource =
   readRef "currentSource" currentSource
 
-type PathSet = S.Set (Path Abs File)
+type PathMap = Map.HashMap (Path Abs File) UTCTime
 
-getHasCacheSet :: App PathSet
-getHasCacheSet =
-  readRef' hasCacheSet
+lookupCachePathTime :: Path Abs File -> App (Maybe UTCTime)
+lookupCachePathTime path = do
+  lookupPathTime path cacheTimeMap
 
-getHasObjectSet :: App PathSet
-getHasObjectSet =
-  readRef' hasObjectSet
+lookupLLVMPathTime :: Path Abs File -> App (Maybe UTCTime)
+lookupLLVMPathTime path = do
+  lookupPathTime path llvmTimeMap
 
-getHasLLVMSet :: App PathSet
-getHasLLVMSet =
-  readRef' hasLLVMSet
+lookupObjectPathTime :: Path Abs File -> App (Maybe UTCTime)
+lookupObjectPathTime path = do
+  lookupPathTime path objectTimeMap
 
-insertToHasObjectSet :: Path Abs File -> App ()
-insertToHasObjectSet v =
-  modifyRef' hasObjectSet $ S.insert v
+lookupPathTime :: Path Abs File -> (Env -> FastRef PathMap) -> App (Maybe UTCTime)
+lookupPathTime path timeMapRef = do
+  timeMap <- readRef' timeMapRef
+  return $ Map.lookup path timeMap
 
-insertToHasCacheSet :: Path Abs File -> App ()
-insertToHasCacheSet v =
-  modifyRef' hasCacheSet $ S.insert v
+getCacheTimeMap :: App PathMap
+getCacheTimeMap =
+  readRef' cacheTimeMap
 
-insertToHasLLVMSet :: Path Abs File -> App ()
-insertToHasLLVMSet v =
-  modifyRef' hasLLVMSet $ S.insert v
+getLLVMTimeMap :: App PathMap
+getLLVMTimeMap =
+  readRef' llvmTimeMap
+
+getObjectTimeMap :: App PathMap
+getObjectTimeMap =
+  readRef' objectTimeMap
+
+insertToCacheTimeMap :: Path Abs File -> UTCTime -> App ()
+insertToCacheTimeMap path time =
+  modifyRef' cacheTimeMap $ Map.insert path time
+
+insertToLLVMTimeMap :: Path Abs File -> UTCTime -> App ()
+insertToLLVMTimeMap path time =
+  modifyRef' llvmTimeMap $ Map.insert path time
+
+insertToObjectTimeMap :: Path Abs File -> UTCTime -> App ()
+insertToObjectTimeMap path time =
+  modifyRef' objectTimeMap $ Map.insert path time
 
 getDataSize :: Hint -> App DS.DataSize
 getDataSize m = do

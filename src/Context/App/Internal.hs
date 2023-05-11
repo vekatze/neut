@@ -7,6 +7,7 @@ import Data.IntMap qualified as IntMap
 import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Data.Time
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
@@ -57,9 +58,9 @@ data Env = Env
     preHoleEnv :: FastRef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: FastRef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
     constraintQueue :: FastRef (Q.MinQueue C.SuspendedConstraint),
-    hasObjectSet :: FastRef (S.Set (Path Abs File)),
-    hasCacheSet :: FastRef (S.Set (Path Abs File)),
-    hasLLVMSet :: FastRef (S.Set (Path Abs File)),
+    objectTimeMap :: FastRef (Map.HashMap (Path Abs File) UTCTime),
+    cacheTimeMap :: FastRef (Map.HashMap (Path Abs File) UTCTime),
+    llvmTimeMap :: FastRef (Map.HashMap (Path Abs File) UTCTime),
     visitEnv :: FastRef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription TM.Term),
@@ -115,10 +116,10 @@ newEnv = do
   holeEnv <- newFastRef
   constraintQueue <- newFastRef
   traceSourceList <- newFastRef
-  hasObjectSet <- newFastRef
-  hasLLVMSet <- newFastRef
+  objectTimeMap <- newFastRef
+  llvmTimeMap <- newFastRef
   definedNameSet <- newFastRef
-  hasCacheSet <- newFastRef
+  cacheTimeMap <- newFastRef
   visitEnv <- newFastRef
   weakDefMap <- newFastRef
   defMap <- newFastRef

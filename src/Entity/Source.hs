@@ -2,7 +2,6 @@ module Entity.Source where
 
 import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
-import Data.Set qualified as S
 import Entity.Hint
 import Entity.Module
 import Entity.ModuleAlias
@@ -35,20 +34,25 @@ hasCore :: Source -> Bool
 hasCore source =
   Map.member coreModuleAlias $ moduleDependency $ sourceModule source
 
-isCompilationSkippable :: S.Set (Path Abs File) -> S.Set (Path Abs File) -> [OK.OutputKind] -> Source -> Bool
-isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source =
+isCompilationSkippable ::
+  Map.HashMap (Path Abs File) a ->
+  Map.HashMap (Path Abs File) a ->
+  [OK.OutputKind] ->
+  Source ->
+  Bool
+isCompilationSkippable llvmMap objectMap outputKindList source =
   case outputKindList of
     [] ->
       True
     kind : rest -> do
       case kind of
         OK.LLVM -> do
-          let b1 = S.member (sourceFilePath source) hasLLVMSet
-          let b2 = isCompilationSkippable hasLLVMSet hasObjectSet rest source
+          let b1 = Map.member (sourceFilePath source) llvmMap
+          let b2 = isCompilationSkippable llvmMap objectMap rest source
           b1 && b2
         OK.Asm ->
-          isCompilationSkippable hasLLVMSet hasObjectSet rest source
+          isCompilationSkippable llvmMap objectMap rest source
         OK.Object -> do
-          let b1 = S.member (sourceFilePath source) hasObjectSet
-          let b2 = isCompilationSkippable hasLLVMSet hasObjectSet rest source
+          let b1 = Map.member (sourceFilePath source) objectMap
+          let b2 = isCompilationSkippable llvmMap objectMap rest source
           b1 && b2

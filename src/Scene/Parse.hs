@@ -65,8 +65,7 @@ parse = do
 
 parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [NA.NameArrow]))
 parseSource source = do
-  hasCacheSet <- Env.getHasCacheSet
-  mCache <- Cache.loadCache source hasCacheSet
+  mCache <- Cache.loadCache source
   let path = Source.sourceFilePath source
   case mCache of
     Just cache -> do

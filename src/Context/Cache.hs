@@ -6,16 +6,15 @@ module Context.Cache
 where
 
 import Context.App
-import Context.App.Internal
+import Context.Env qualified as Env
 import Context.Path qualified as Path
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Binary
-import Data.Set qualified as S
+import Data.HashMap.Strict qualified as Map
 import Entity.Cache qualified as Cache
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
-import Entity.Stmt
 import Path
 import Path.IO
 
@@ -25,14 +24,15 @@ saveCache source cache = do
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) cache
 
-loadCache :: Source.Source -> PathSet -> App (Maybe Cache.Cache)
-loadCache source hasCacheSet = do
+loadCache :: Source.Source -> App (Maybe Cache.Cache)
+loadCache source = do
   cachePath <- Path.getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
     else do
-      if S.notMember (Source.sourceFilePath source) hasCacheSet
+      cacheTimeMap <- Env.getCacheTimeMap
+      if not $ Map.member (Source.sourceFilePath source) cacheTimeMap
         then return Nothing
         else do
           dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
@@ -45,7 +45,7 @@ loadCache source hasCacheSet = do
 
 whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App () -> App ()
 whenCompilationNecessary outputKindList source comp = do
-  hasLLVMSet <- readRef' hasLLVMSet
-  hasObjectSet <- readRef' hasObjectSet
-  unless (Source.isCompilationSkippable hasLLVMSet hasObjectSet outputKindList source) $ do
+  llvmTimeMap <- Env.getLLVMTimeMap
+  objectTimeMap <- Env.getObjectTimeMap
+  unless (Source.isCompilationSkippable llvmTimeMap objectTimeMap outputKindList source) $ do
     comp
