@@ -304,7 +304,6 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
   let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var (Var $ holeVarPrefix <> x))
   stmt <-
     defineFunction
-      -- (Normal O.Opaque)
       SK.Projection
       m
       projectionName -- e.g. some-lib.foo::my-struct.element-x
