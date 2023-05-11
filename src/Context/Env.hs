@@ -9,6 +9,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Data.Time
 import Entity.Arch qualified as Arch
+import Entity.Artifact qualified as A
 import Entity.Const
 import Entity.DataSize qualified as DS
 import Entity.Hint
@@ -41,46 +42,22 @@ getCurrentSource =
 
 type PathMap = Map.HashMap (Path Abs File) UTCTime
 
-lookupCachePathTime :: Path Abs File -> App (Maybe UTCTime)
-lookupCachePathTime path = do
-  lookupPathTime path cacheTimeMap
+lookupArtifactTime :: Path Abs File -> App A.ArtifactTime
+lookupArtifactTime path = do
+  amap <- readRef' artifactMap
+  case Map.lookup path amap of
+    Just artifactTime ->
+      return artifactTime
+    Nothing ->
+      Throw.raiseCritical' $ "no artifact time is registered for the source: " <> T.pack (toFilePath path)
 
-lookupLLVMPathTime :: Path Abs File -> App (Maybe UTCTime)
-lookupLLVMPathTime path = do
-  lookupPathTime path llvmTimeMap
+getArtifactMap :: App (Map.HashMap (Path Abs File) A.ArtifactTime)
+getArtifactMap =
+  readRef' artifactMap
 
-lookupObjectPathTime :: Path Abs File -> App (Maybe UTCTime)
-lookupObjectPathTime path = do
-  lookupPathTime path objectTimeMap
-
-lookupPathTime :: Path Abs File -> (Env -> FastRef PathMap) -> App (Maybe UTCTime)
-lookupPathTime path timeMapRef = do
-  timeMap <- readRef' timeMapRef
-  return $ Map.lookup path timeMap
-
-getCacheTimeMap :: App PathMap
-getCacheTimeMap =
-  readRef' cacheTimeMap
-
-getLLVMTimeMap :: App PathMap
-getLLVMTimeMap =
-  readRef' llvmTimeMap
-
-getObjectTimeMap :: App PathMap
-getObjectTimeMap =
-  readRef' objectTimeMap
-
-insertToCacheTimeMap :: Path Abs File -> UTCTime -> App ()
-insertToCacheTimeMap path time =
-  modifyRef' cacheTimeMap $ Map.insert path time
-
-insertToLLVMTimeMap :: Path Abs File -> UTCTime -> App ()
-insertToLLVMTimeMap path time =
-  modifyRef' llvmTimeMap $ Map.insert path time
-
-insertToObjectTimeMap :: Path Abs File -> UTCTime -> App ()
-insertToObjectTimeMap path time =
-  modifyRef' objectTimeMap $ Map.insert path time
+insertToArtifactMap :: Path Abs File -> A.ArtifactTime -> App ()
+insertToArtifactMap path artifactTime =
+  modifyRef' artifactMap $ Map.insert path artifactTime
 
 getDataSize :: Hint -> App DS.DataSize
 getDataSize m = do

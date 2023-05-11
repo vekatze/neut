@@ -2,6 +2,8 @@ module Entity.Source where
 
 import Control.Monad.Catch
 import Data.HashMap.Strict qualified as Map
+import Data.Maybe
+import Entity.Artifact qualified as A
 import Entity.Hint
 import Entity.Module
 import Entity.ModuleAlias
@@ -35,24 +37,23 @@ hasCore source =
   Map.member coreModuleAlias $ moduleDependency $ sourceModule source
 
 isCompilationSkippable ::
-  Map.HashMap (Path Abs File) a ->
-  Map.HashMap (Path Abs File) a ->
+  A.ArtifactTime ->
   [OK.OutputKind] ->
   Source ->
   Bool
-isCompilationSkippable llvmMap objectMap outputKindList source =
+isCompilationSkippable artifactTime outputKindList source =
   case outputKindList of
     [] ->
       True
     kind : rest -> do
       case kind of
         OK.LLVM -> do
-          let b1 = Map.member (sourceFilePath source) llvmMap
-          let b2 = isCompilationSkippable llvmMap objectMap rest source
+          let b1 = isJust $ A.llvmTime artifactTime
+          let b2 = isCompilationSkippable artifactTime rest source
           b1 && b2
-        OK.Asm ->
-          isCompilationSkippable llvmMap objectMap rest source
+        OK.Asm -> do
+          isCompilationSkippable artifactTime rest source
         OK.Object -> do
-          let b1 = Map.member (sourceFilePath source) objectMap
-          let b2 = isCompilationSkippable llvmMap objectMap rest source
+          let b1 = isJust $ A.objectTime artifactTime
+          let b2 = isCompilationSkippable artifactTime rest source
           b1 && b2

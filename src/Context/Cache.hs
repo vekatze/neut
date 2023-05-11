@@ -11,7 +11,7 @@ import Context.Path qualified as Path
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Binary
-import Data.HashMap.Strict qualified as Map
+import Entity.Artifact qualified as A
 import Entity.Cache qualified as Cache
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
@@ -31,10 +31,11 @@ loadCache source = do
   if not hasCache
     then return Nothing
     else do
-      cacheTimeMap <- Env.getCacheTimeMap
-      if not $ Map.member (Source.sourceFilePath source) cacheTimeMap
-        then return Nothing
-        else do
+      artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
+      case A.cacheTime artifactTime of
+        Nothing ->
+          return Nothing
+        Just _ -> do
           dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
@@ -45,7 +46,6 @@ loadCache source = do
 
 whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App () -> App ()
 whenCompilationNecessary outputKindList source comp = do
-  llvmTimeMap <- Env.getLLVMTimeMap
-  objectTimeMap <- Env.getObjectTimeMap
-  unless (Source.isCompilationSkippable llvmTimeMap objectTimeMap outputKindList source) $ do
+  artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
+  unless (Source.isCompilationSkippable artifactTime outputKindList source) $ do
     comp

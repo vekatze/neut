@@ -28,12 +28,12 @@ build cfg = do
   targetList <- Collect.collectTargetList $ mTarget cfg
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
-    (_, _, isObjectAvailable, dependenceSeq) <- Unravel.unravel target
+    (artifactTime, dependenceSeq) <- Unravel.unravel target
     forM_ dependenceSeq $ \source -> do
       Initialize.initializeForSource source
       virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
         Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit (outputKindList cfg)
-    Link.link target (shouldSkipLink cfg) isObjectAvailable (toList dependenceSeq)
+    Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target (args cfg)

@@ -17,7 +17,7 @@ check cfg = do
     Initialize.initializeCompiler (remarkCfg cfg) Nothing
     sgls <- Collect.collectSourceList (mFilePathString cfg)
     forM_ sgls $ \sgl -> do
-      (_, _, _, dependenceSeq) <- Unravel.unravelFromSGL sgl
+      (_, dependenceSeq) <- Unravel.unravelFromSGL sgl
       forM_ dependenceSeq $ \source -> do
         Initialize.initializeForSource source
         void $ Parse.parse >>= Elaborate.elaborate
