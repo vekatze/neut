@@ -23,10 +23,10 @@ reduce' sub lowComp = do
           | from == to -> do
               let sub' = IntMap.insert (Ident.toInt x) (substLowValue sub d) sub
               reduce' sub' cont
-        LC.Alloc _ (LT.Pointer (LT.Array 0 _)) -> do
+        LC.Alloc _ (LT.Array 0 _) -> do
           let sub' = IntMap.insert (Ident.toInt x) LC.Null sub
           reduce' sub' cont
-        LC.Alloc _ (LT.Pointer (LT.Struct [])) -> do
+        LC.Alloc _ (LT.Struct []) -> do
           let sub' = IntMap.insert (Ident.toInt x) LC.Null sub
           reduce' sub' cont
         _ -> do

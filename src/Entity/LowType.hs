@@ -8,7 +8,7 @@ import GHC.Generics qualified as G
 
 data LowType
   = PrimNum PT.PrimType
-  | Pointer LowType
+  | Pointer
   | Array Int LowType -- [n x LOWTYPE]
   | Struct [LowType]
   | Function [LowType] LowType
@@ -22,7 +22,6 @@ instance Binary LowType
 voidPtr :: LowType
 voidPtr =
   Pointer
-    (PrimNum (PT.Int (IntSize 8)))
 
 toVoidPtrSeq :: A.Arity -> [LowType]
 toVoidPtrSeq arity =

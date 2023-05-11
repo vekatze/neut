@@ -101,6 +101,8 @@ clangBaseOpt :: Path Abs File -> [String]
 clangBaseOpt outputPath =
   [ "-xir",
     "-Wno-override-module",
+    "-mllvm",
+    "-opaque-pointers",
     "-O2",
     "-c",
     "-",

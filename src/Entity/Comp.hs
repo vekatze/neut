@@ -16,7 +16,7 @@ import Entity.PrimOp
 data Value
   = VarLocal Ident
   | VarGlobal DD.DefiniteDescription Arity
-  | VarStaticText DD.DefiniteDescription Int
+  | VarStaticText DD.DefiniteDescription
   | SigmaIntro [Value]
   | Int IntSize Integer
   | Float FloatSize Double
@@ -28,7 +28,7 @@ instance Show Value where
         T.unpack $ toText' x
       VarGlobal dd _ ->
         T.unpack $ DD.reify dd
-      VarStaticText dd _ ->
+      VarStaticText dd ->
         T.unpack $ DD.reify dd
       SigmaIntro vs ->
         "(" ++ intercalate ", " (map show vs) ++ ")"

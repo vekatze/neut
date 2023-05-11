@@ -90,16 +90,15 @@ lowerComp term =
       runLowerComp $ do
         v' <- lowerValue v
         ds' <- mapM lowerValue ds
-        v'' <- cast v' $ toFunPtrType ds
+        v'' <- cast v' LT.Pointer
         return $ LC.TailCall v'' ds'
     C.SigmaElim shouldDeallocate xs v e -> do
-      let baseType = LT.Pointer $ LT.Array (length xs) LT.voidPtr
+      let baseType = LT.Array (length xs) LT.voidPtr
       runLowerComp $ do
         basePointer <- lowerValue v
-        castedBasePointer <- cast basePointer baseType
-        ds <- loadElements castedBasePointer baseType $ take (length xs) $ map (,LT.voidPtr) [0 ..]
+        ds <- loadElements basePointer baseType $ take (length xs) $ map (,LT.voidPtr) [0 ..]
         when shouldDeallocate $ do
-          free castedBasePointer baseType
+          free basePointer
         forM_ (zip xs ds) $ \(x, d) -> do
           extend $ return . LC.Let x (LC.Bitcast d LT.voidPtr LT.voidPtr)
         lift $ lowerComp e
@@ -121,7 +120,7 @@ lowerComp term =
 
 load :: LT.LowType -> LC.Value -> Lower LC.Value
 load elemType pointer = do
-  tmp <- reflect $ LC.Bitcast pointer LT.voidPtr (LT.Pointer elemType)
+  tmp <- reflect $ LC.Bitcast pointer LT.voidPtr LT.Pointer
   loaded <- reflect $ LC.Load tmp elemType
   uncast loaded elemType
 
@@ -140,15 +139,14 @@ loadElements basePointer baseType values =
       return []
     (valueIndex, valueType) : xis -> do
       valuePointer <- getElemPtr basePointer baseType [0, toInteger valueIndex]
-      uncastedValuePointer <- uncast valuePointer (LT.Pointer valueType) -- fixme: uncast this
+      uncastedValuePointer <- uncast valuePointer valueType
       x <- load valueType uncastedValuePointer
       xs <- loadElements basePointer baseType xis
       return $ x : xs
 
-free :: LC.Value -> LT.LowType -> Lower ()
-free pointer pointerType = do
-  uncastedPointer <- uncast pointer pointerType
-  reflectCont $ LC.Free uncastedPointer
+free :: LC.Value -> Lower ()
+free pointer = do
+  reflectCont $ LC.Free pointer
 
 lowerCompPrimitive :: C.Primitive -> Lower LC.Value
 lowerCompPrimitive codeOp =
@@ -160,12 +158,12 @@ lowerCompPrimitive codeOp =
         M.Cast _ _ value -> do
           lowerValue value
         M.Store valueLowType pointer value -> do
-          ptrVar <- lowerValueLetCast pointer (LT.Pointer valueLowType)
+          ptrVar <- lowerValueLetCast pointer LT.Pointer
           valVar <- lowerValueLetCast value valueLowType
           extend $ return . LC.Cont (LC.Store valueLowType valVar ptrVar)
           return LC.Null
         M.Load valueLowType pointer -> do
-          castedPointer <- lowerValueLetCast pointer (LT.Pointer valueLowType)
+          castedPointer <- lowerValueLetCast pointer LT.Pointer
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
         M.Syscall i args -> do
@@ -245,17 +243,15 @@ lowerValue v =
   case v of
     C.VarGlobal globalName arity -> do
       lowNameSet <- lift getDefinedNameSet
-      unless (S.member globalName lowNameSet) $
-        lift $
-          insDeclEnv (DN.In globalName) arity
-      uncast (LC.VarGlobal globalName) (toFunPtrType' arity)
+      unless (S.member globalName lowNameSet) $ do
+        lift $ insDeclEnv (DN.In globalName) arity
+      uncast (LC.VarGlobal globalName) LT.voidPtr
     C.VarLocal y ->
       return $ LC.VarLocal y
-    C.VarStaticText globalName len -> do
-      baseSize <- lift Env.getBaseSize'
-      uncast (LC.VarGlobal globalName) $ LT.Pointer $ LT.textType baseSize len
+    C.VarStaticText globalName -> do
+      uncast (LC.VarGlobal globalName) LT.Pointer
     C.SigmaIntro ds -> do
-      let arrayType = AggPtrTypeArray (length ds) LT.voidPtr
+      let arrayType = AggTypeArray (length ds) LT.voidPtr
       createAggData arrayType $ map (,LT.voidPtr) ds
     C.Int size l -> do
       uncast (LC.Int l) $ LT.PrimNum $ PT.Int size
@@ -289,42 +285,40 @@ constructSwitch defaultBranch switch =
       (defaultBranch', caseList) <- constructSwitch defaultBranch rest
       return (defaultBranch', (i, code') : caseList)
 
-data AggPtrType
-  = AggPtrTypeArray Int LT.LowType
-  | AggPtrTypeStruct [LT.LowType]
+data AggType
+  = AggTypeArray Int LT.LowType
+  | AggTypeStruct [LT.LowType]
 
-toLowType :: AggPtrType -> LT.LowType
-toLowType aggPtrType =
-  case aggPtrType of
-    AggPtrTypeArray i t ->
-      LT.Pointer $ LT.Array i t
-    AggPtrTypeStruct ts ->
-      LT.Pointer $ LT.Struct ts
+toLowType :: AggType -> LT.LowType
+toLowType aggType =
+  case aggType of
+    AggTypeArray i t ->
+      LT.Array i t
+    AggTypeStruct ts ->
+      LT.Struct ts
 
 createAggData ::
-  AggPtrType -> -- the type of the base pointer
+  AggType -> -- the type of the base pointer
   [(C.Value, LT.LowType)] ->
   Lower LC.Value
-createAggData aggPtrType dts = do
-  basePointer <- allocateBasePointer aggPtrType
-  castedBasePointer <- cast basePointer $ toLowType aggPtrType
-  storeElements castedBasePointer (toLowType aggPtrType) $ zip [0 ..] dts
+createAggData aggType dts = do
+  basePointer <- allocateBasePointer aggType
+  storeElements basePointer (toLowType aggType) $ zip [0 ..] dts
   return basePointer
 
-getSizeInfoOf :: AggPtrType -> (LT.LowType, Int)
-getSizeInfoOf aggPtrType =
-  case aggPtrType of
-    AggPtrTypeArray len t ->
+getSizeInfoOf :: AggType -> (LT.LowType, Int)
+getSizeInfoOf aggType =
+  case aggType of
+    AggTypeArray len t ->
       (t, len)
-    AggPtrTypeStruct ts ->
+    AggTypeStruct ts ->
       (LT.Struct ts, 1)
 
-allocateBasePointer :: AggPtrType -> Lower LC.Value
-allocateBasePointer aggPtrType = do
-  let (elemType, len) = getSizeInfoOf aggPtrType
-  sizePointer <- getElemPtr LC.Null (LT.Pointer elemType) [toInteger len]
-  c <- uncast sizePointer (LT.Pointer elemType)
-  reflect $ LC.Alloc c $ toLowType aggPtrType
+allocateBasePointer :: AggType -> Lower LC.Value
+allocateBasePointer aggType = do
+  let (elemType, len) = getSizeInfoOf aggType
+  sizePointer <- getElemPtr LC.Null elemType [toInteger len]
+  reflect $ LC.Alloc sizePointer $ toLowType aggType
 
 storeElements ::
   LC.Value -> -- base pointer
@@ -340,14 +334,6 @@ storeElements basePointer baseType values =
       elemPtr <- getElemPtr basePointer baseType [0, valueIndex]
       store valueType castedValue elemPtr
       storeElements basePointer baseType ids
-
-toFunPtrType :: [a] -> LT.LowType
-toFunPtrType xs =
-  LT.Pointer (LT.Function (map (const LT.voidPtr) xs) LT.voidPtr)
-
-toFunPtrType' :: A.Arity -> LT.LowType
-toFunPtrType' arity =
-  LT.Pointer (LT.Function (LT.toVoidPtrSeq arity) LT.voidPtr)
 
 newValueLocal :: T.Text -> App (Ident, LC.Value)
 newValueLocal name = do

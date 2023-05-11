@@ -441,7 +441,7 @@ lowType = do
 lowTypePointer :: Parser LT.LowType
 lowTypePointer = do
   keyword "pointer"
-  LT.Pointer <$> betweenParen lowType
+  return LT.Pointer
 
 lowTypeArray :: Parser LT.LowType
 lowTypeArray = do

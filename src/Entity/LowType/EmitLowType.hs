@@ -16,26 +16,5 @@ emitLowType lowType =
       emitLowType t <> " (" <> unwordsC (map emitLowType ts) <> ")"
     LT.Array i t -> do
       "[" <> intDec i <> " x " <> emitLowType t <> "]"
-    LT.Pointer t ->
-      emitLowType t <> "*"
-
-emitLowTypeAsIfPtr :: LT.LowType -> Builder
-emitLowTypeAsIfPtr t =
-  emitLowType t <> "*"
-
-emitLowTypeAsIfNonPtr :: LT.LowType -> Builder
-emitLowTypeAsIfNonPtr lowType =
-  case lowType of
-    LT.Pointer t ->
-      emitLowType t
-    _ ->
-      emitLowType lowType
-
--- LT.PrimNum primNum ->
---   emitPrimType primNum
--- LT.Struct ts ->
---   "{" <> unwordsC (map emitLowType ts) <> "}"
--- LT.Function ts t ->
---   emitLowType t <> " (" <> unwordsC (map emitLowType ts) <> ")"
--- LT.Array i t -> do
---   "[" <> intDec i <> " x " <> emitLowType t <> "]"
+    LT.Pointer ->
+      "ptr"

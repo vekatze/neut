@@ -69,7 +69,7 @@ emitDefinitions :: LC.Def -> App [Builder]
 emitDefinitions (name, (args, body)) = do
   let args' = map (emitValue . LC.VarLocal) args
   body' <- LowComp.reduce IntMap.empty body
-  emitDefinition "i8*" (DD.toBuilder name) args' body'
+  emitDefinition "ptr" (DD.toBuilder name) args' body'
 
 emitMain :: LC.Comp -> App [Builder]
 emitMain mainTerm = do
@@ -116,7 +116,7 @@ emitLowComp retType lowComp =
               unwordsL
                 [ emitValue (LC.VarLocal tmp),
                   "=",
-                  "tail call fastcc i8*",
+                  "tail call fastcc ptr",
                   emitValue f <> showArgs args
                 ]
       ret <- emitLowComp retType $ LC.Return (LC.VarLocal tmp)

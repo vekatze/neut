@@ -19,13 +19,13 @@ emitLowOp :: TP.TargetPlatform -> LC.Op -> Either String Builder
 emitLowOp targetPlatform lowOp =
   case lowOp of
     LC.Call d ds ->
-      return $ unwordsL ["call fastcc i8*", emitValue d <> showArgs ds]
+      return $ unwordsL ["call fastcc ptr", emitValue d <> showArgs ds]
     LC.GetElementPtr (basePtr, n) is ->
       return $
         unwordsL
           [ "getelementptr",
-            emitLowTypeAsIfNonPtr n <> ",",
-            emitLowType n,
+            emitLowType n <> ",",
+            emitLowType LT.Pointer,
             emitValue basePtr <> ",",
             showIndex is
           ]
@@ -40,7 +40,7 @@ emitLowOp targetPlatform lowOp =
         unwordsL
           [ "load",
             emitLowType lowType <> ",",
-            emitLowTypeAsIfPtr lowType,
+            emitLowType LT.Pointer,
             emitValue d
           ]
     LC.Store t d1 d2 ->
@@ -49,13 +49,13 @@ emitLowOp targetPlatform lowOp =
           [ "store",
             emitLowType t,
             emitValue d1 <> ",",
-            emitLowTypeAsIfPtr t,
+            emitLowType LT.Pointer,
             emitValue d2
           ]
-    LC.Alloc d _ ->
-      return $ unwordsL ["call fastcc", "i8*", "@malloc(i8* " <> emitValue d <> ")"]
+    LC.Alloc d ->
+      return $ unwordsL ["call fastcc", "ptr", "@malloc(ptr " <> emitValue d <> ")"]
     LC.Free d -> do
-      return $ unwordsL ["call fastcc", "i8*", "@free(i8* " <> emitValue d <> ")"]
+      return $ unwordsL ["call fastcc", "ptr", "@free(ptr " <> emitValue d <> ")"]
     LC.Syscall num ds ->
       emitSyscallOp targetPlatform num ds
     LC.PrimOp op args -> do
@@ -94,13 +94,13 @@ emitSyscallOp targetPlatform num ds = do
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
-        unwordsL ["call fastcc i8* asm sideeffect \"syscall\",", regStr, argStr]
+        unwordsL ["call fastcc ptr asm sideeffect \"syscall\",", regStr, argStr]
     Arch.Arm64 -> do
       let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
-        unwordsL ["call fastcc i8* asm sideeffect \"svc 0\",", regStr, argStr]
+        unwordsL ["call fastcc ptr asm sideeffect \"svc 0\",", regStr, argStr]
     Arch.Unknown name ->
       Left $ "unsupported target architecture: " <> T.unpack name
 

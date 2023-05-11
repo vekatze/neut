@@ -253,7 +253,7 @@ clarifyText text = do
   i <- Gensym.newCount
   name <- Locator.attachCurrentLocator $ BN.textName i
   StaticText.insert name text len
-  return $ C.UpIntro $ C.VarStaticText name len
+  return $ C.UpIntro $ C.VarStaticText name
 
 type DataArgsMap = IntMap.IntMap [(Ident, TM.Term)]
 

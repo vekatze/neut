@@ -43,7 +43,7 @@ showArgs ds =
 
 showLocal :: Builder -> Builder
 showLocal x =
-  "i8* " <> x
+  "ptr " <> x
 
 showLocals :: [Builder] -> Builder
 showLocals ds =
