@@ -1,6 +1,5 @@
 module Context.Throw
   ( throw,
-    try,
     run,
     run',
     raiseError,
@@ -15,6 +14,7 @@ where
 import Context.App
 import Context.Remark qualified as Remark
 import Control.Exception.Safe qualified as Safe
+import Control.Monad.Catch
 import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Entity.Error qualified as E
@@ -26,13 +26,9 @@ throw :: forall a. E.Error -> App a
 throw =
   Safe.throw
 
-try :: App a -> App (Either E.Error a)
-try =
-  Safe.try
-
 run :: App a -> App a
 run c = do
-  resultOrErr <- try c
+  resultOrErr <- Safe.try $ wrappingExternalExceptions c
   case resultOrErr of
     Left (E.MakeError err) -> do
       Remark.printRemarkList err
@@ -42,13 +38,23 @@ run c = do
 
 run' :: App a -> App a
 run' c = do
-  resultOrErr <- try c
+  resultOrErr <- Safe.try $ wrappingExternalExceptions c
   case resultOrErr of
     Left (E.MakeError err) -> do
       let err' = map R.deactivatePadding err
       foldr ((>>) . Remark.printRemark) (liftIO $ exitWith (ExitFailure 1)) err'
     Right result ->
       return result
+
+wrappingExternalExceptions :: App a -> App a
+wrappingExternalExceptions comp = do
+  catches
+    comp
+    [ Handler $ \(err :: E.Error) -> do
+        throw err,
+      Handler $ \(someException :: SomeException) -> do
+        raiseError' $ T.pack $ show someException
+    ]
 
 raiseError :: Hint -> T.Text -> App a
 raiseError m text =
