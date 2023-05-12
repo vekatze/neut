@@ -61,7 +61,7 @@ createModuleFile = do
   newModule <- Module.getMainModule
   Path.ensureDir $ parent $ moduleLocation newModule
   Module.save newModule
-  buildDir <- Path.getBuildDir newModule
+  buildDir <- Path.getBaseBuildDir newModule
   Path.ensureDir buildDir
 
 createMainFile :: App ()

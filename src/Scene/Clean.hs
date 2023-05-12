@@ -9,7 +9,7 @@ import Prelude hiding (log)
 clean :: App ()
 clean = do
   mainModule <- Module.getMainModule
-  buildDir <- Path.getBuildDir mainModule
+  buildDir <- Path.getBaseBuildDir mainModule
   b <- Path.doesDirExist buildDir
   when b $ do
     Path.removeDirRecur buildDir

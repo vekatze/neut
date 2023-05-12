@@ -17,6 +17,7 @@ module Context.Path
     parseRelFile,
     removeDirRecur,
     getExecutableOutputPath,
+    getBaseBuildDir,
     getBuildDir,
     getArtifactDir,
     sourceToOutputPath,
@@ -31,10 +32,12 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Lazy qualified as L
+import Data.ByteString.UTF8 qualified as B
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Time
 import Data.Version qualified as V
+import Entity.Checksum
 import Entity.Const
 import Entity.Module
 import Entity.OutputKind qualified as OK
@@ -131,7 +134,7 @@ getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
   tp <- readRef "targetPlatform" targetPlatform
   platformDir <- P.parseRelDir $ T.unpack $ TP.reify tp
-  versionDir <- P.parseRelDir $ V.showVersion version
+  versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
   return $ platformDir </> versionDir
 
 getExecutableOutputPath :: Target.Target -> Module -> App (Path Abs File)
@@ -139,10 +142,17 @@ getExecutableOutputPath target mainModule = do
   executableDir <- getExecutableDir mainModule
   resolveFile executableDir $ T.unpack $ Target.extract target
 
+getBaseBuildDir :: Module -> App (Path Abs Dir)
+getBaseBuildDir baseModule = do
+  platformPrefix <- getPlatformPrefix
+  return $ getModuleRootDir baseModule </> buildRelDir </> platformPrefix
+
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do
-  prefix <- getPlatformPrefix
-  return $ getModuleRootDir baseModule </> buildRelDir </> prefix
+  baseBuildDir <- getBaseBuildDir baseModule
+  optString <- B.fromString <$> readRef' clangOptString
+  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode optString)
+  return $ baseBuildDir </> buildOptionPrefix
 
 getArtifactDir :: Module -> App (Path Abs Dir)
 getArtifactDir baseModule = do
