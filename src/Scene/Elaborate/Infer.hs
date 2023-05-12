@@ -60,7 +60,7 @@ inferStmt mMainDD stmt =
 getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do
   baseSize <- Env.getBaseSize m
-  return $ WT.intTypeBySize m baseSize
+  return $ WT.uIntTypeBySize m baseSize
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =

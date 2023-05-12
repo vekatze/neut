@@ -236,8 +236,6 @@ elaborate' term =
               case t' of
                 _ :< TM.Prim (P.Type (PT.Int size)) ->
                   return $ m :< TM.Prim (P.Value (PV.Int size x))
-                _ :< TM.Prim (P.Type (PT.UInt size)) ->
-                  return $ m :< TM.Prim (P.Value (PV.UInt size x))
                 _ -> do
                   Throw.raiseError m $
                     "the term `"

@@ -113,8 +113,6 @@ weakenPrim m prim =
         case v of
           PV.Int size integer ->
             WPV.Int (weaken (fromPrimNum m (PT.Int size))) integer
-          PV.UInt size integer ->
-            WPV.Int (weaken (fromPrimNum m (PT.UInt size))) integer
           PV.Float size float ->
             WPV.Float (weaken (fromPrimNum m (PT.Float size))) float
           PV.Op op ->

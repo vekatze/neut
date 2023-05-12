@@ -199,8 +199,6 @@ cast v lowType = do
   case lowType of
     LT.PrimNum (PT.Int _) -> do
       extend $ return . LC.Let result (LC.PointerToInt v LT.voidPtr lowType)
-    LT.PrimNum (PT.UInt _) -> do
-      extend $ return . LC.Let result (LC.PointerToInt v LT.voidPtr lowType)
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
@@ -218,8 +216,6 @@ uncast castedValue lowType = do
   (result, resultVar) <- lift $ newValueLocal "uncast"
   case lowType of
     LT.PrimNum (PT.Int _) ->
-      extend $ return . LC.Let result (LC.IntToPointer castedValue lowType LT.voidPtr)
-    LT.PrimNum (PT.UInt _) ->
       extend $ return . LC.Let result (LC.IntToPointer castedValue lowType LT.voidPtr)
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i

@@ -20,35 +20,25 @@ fromDefiniteDescription dataSize dd = do
 
 fromText :: DS.DataSize -> T.Text -> Maybe PT.PrimType
 fromText dataSize name
-  | Just intSize <- asLowSignedInt dataSize name =
+  | Just intSize <- asLowInt dataSize name =
       Just $ PT.Int intSize
-  | Just intSize <- asLowUnsignedInt dataSize name =
-      Just $ PT.UInt intSize
   | Just floatSize <- asLowFloat dataSize name =
       Just $ PT.Float floatSize
   | otherwise =
       Nothing
 
-asLowInt :: DS.DataSize -> Char -> T.Text -> Maybe IntSize
-asLowInt dataSize headChar s =
+asLowInt :: DS.DataSize -> T.Text -> Maybe IntSize
+asLowInt dataSize s =
   case T.uncons s of
     Nothing ->
       Nothing
     Just (c, rest)
-      | c == headChar,
+      | c == 'i',
         Just n <- readMaybe $ T.unpack rest,
         Just size <- asIntSize dataSize n ->
           Just size
     _ ->
       Nothing
-
-asLowSignedInt :: DS.DataSize -> T.Text -> Maybe IntSize
-asLowSignedInt dataSize =
-  asLowInt dataSize 'i'
-
-asLowUnsignedInt :: DS.DataSize -> T.Text -> Maybe IntSize
-asLowUnsignedInt dataSize =
-  asLowInt dataSize 'u'
 
 asLowFloat :: DS.DataSize -> T.Text -> Maybe FloatSize
 asLowFloat dataSize s =

@@ -92,10 +92,7 @@ getOp1 :: T.Text -> PT.PrimType -> Maybe PrimOp
 getOp1 rawOpName primType =
   case primType of
     PT.Int {}
-      | Just primOpGen <- Map.lookup rawOpName signedIntOpDict ->
-          return $ primOpGen primType
-    PT.UInt {}
-      | Just primOpGen <- Map.lookup rawOpName unsignedIntOpDict ->
+      | Just primOpGen <- Map.lookup rawOpName intOpDict ->
           return $ primOpGen primType
     PT.Float {}
       | Just primOpGen <- Map.lookup rawOpName floatOpDict ->
@@ -103,32 +100,8 @@ getOp1 rawOpName primType =
     _ ->
       Nothing
 
-signedIntOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
-signedIntOpDict =
-  Map.union baseIntOpDict $
-    Map.fromList
-      [ ("div", binOp "sdiv"),
-        ("rem", binOp "srem"),
-        ("gt", cmpOp "sgt"),
-        ("ge", cmpOp "sge"),
-        ("lt", cmpOp "slt"),
-        ("le", cmpOp "sle")
-      ]
-
-unsignedIntOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
-unsignedIntOpDict =
-  Map.union baseIntOpDict $
-    Map.fromList
-      [ ("div", binOp "udiv"),
-        ("rem", binOp "urem"),
-        ("gt", cmpOp "ugt"),
-        ("ge", cmpOp "uge"),
-        ("lt", cmpOp "ult"),
-        ("le", cmpOp "ule")
-      ]
-
-baseIntOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
-baseIntOpDict =
+intOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)
+intOpDict =
   Map.fromList
     [ ("add", binOp "add"),
       ("sub", binOp "sub"),
@@ -140,7 +113,19 @@ baseIntOpDict =
       ("lshr", binOp "lshr"),
       ("ashr", binOp "ashr"),
       ("eq", cmpOp "eq"),
-      ("ne", cmpOp "ne")
+      ("ne", cmpOp "ne"),
+      ("div", binOp "sdiv"),
+      ("rem", binOp "srem"),
+      ("udiv", binOp "udiv"),
+      ("urem", binOp "urem"),
+      ("gt", cmpOp "sgt"),
+      ("ge", cmpOp "sge"),
+      ("lt", cmpOp "slt"),
+      ("le", cmpOp "sle"),
+      ("ugt", cmpOp "ugt"),
+      ("uge", cmpOp "uge"),
+      ("ult", cmpOp "ult"),
+      ("ule", cmpOp "ule")
     ]
 
 floatOpDict :: Map.HashMap T.Text (PT.PrimType -> PrimOp)

@@ -11,7 +11,6 @@ import GHC.Generics (Generic)
 
 data PrimValue a
   = Int IntSize Integer
-  | UInt IntSize Integer
   | Float FloatSize Double
   | Op PrimOp
   | StaticText a T.Text

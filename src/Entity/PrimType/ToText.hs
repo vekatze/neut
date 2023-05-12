@@ -8,8 +8,6 @@ toText :: PT.PrimType -> T.Text
 toText primNum =
   case primNum of
     PT.Int size ->
-      signedIntSizeToText size
-    PT.UInt size ->
-      unsignedIntSizeToText size
+      intSizeToText size
     PT.Float size ->
       floatSizeToText size

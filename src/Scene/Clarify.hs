@@ -229,8 +229,6 @@ clarifyTerm tenv term =
           case primValue of
             PV.Int size l ->
               return $ C.UpIntro (C.Int size l)
-            PV.UInt size l ->
-              return $ C.UpIntro (C.Int size l)
             PV.Float size l ->
               return $ C.UpIntro (C.Float size l)
             PV.Op op ->
