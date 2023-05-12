@@ -45,6 +45,7 @@ parseBuildOpt :: Parser Command
 parseBuildOpt = do
   mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
+  installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
   remarkCfg <- remarkConfigOpt
   outputKindList <- outputKindListOpt
   shouldSkipLink <- shouldSkipLinkOpt
@@ -59,6 +60,7 @@ parseBuildOpt = do
           Build.outputKindList = outputKindList,
           Build.shouldSkipLink = shouldSkipLink,
           Build.shouldExecute = shouldExecute,
+          Build.installDir = installDir,
           Build.args = rest
         }
 

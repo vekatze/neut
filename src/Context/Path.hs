@@ -19,6 +19,7 @@ module Context.Path
     getExecutableOutputPath,
     getBaseBuildDir,
     getBuildDir,
+    getInstallDir,
     getArtifactDir,
     sourceToOutputPath,
     getSourceCachePath,
@@ -182,3 +183,9 @@ attachOutputPath :: OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs 
 attachOutputPath outputKind source = do
   outputPath <- sourceToOutputPath outputKind source
   return (outputKind, outputPath)
+
+getInstallDir :: FilePath -> App (Path Abs Dir)
+getInstallDir filePath = do
+  path <- P.resolveDir' filePath
+  ensureDir path
+  return path

@@ -11,5 +11,6 @@ data Config = Config
     outputKindList :: [OK.OutputKind],
     shouldSkipLink :: Bool,
     shouldExecute :: Bool,
+    installDir :: Maybe FilePath,
     args :: [String]
   }

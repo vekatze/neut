@@ -4,6 +4,7 @@ import Context.App
 import Context.Cache qualified as Cache
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
+import Context.Path qualified as Path
 import Control.Monad
 import Data.Foldable
 import Entity.Config.Build
@@ -14,6 +15,7 @@ import Scene.Emit qualified as Emit
 import Scene.Execute qualified as Execute
 import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize
+import Scene.Install qualified as Install
 import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
@@ -25,6 +27,7 @@ build cfg = do
   LLVM.ensureSetupSanity cfg
   Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
   Module.getMainModule >>= Fetch.fetch
+  mDir <- mapM Path.getInstallDir (installDir cfg)
   targetList <- Collect.collectTargetList $ mTarget cfg
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
@@ -37,3 +40,4 @@ build cfg = do
     Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target (args cfg)
+    mapM_ (Install.install target) mDir
