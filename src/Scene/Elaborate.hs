@@ -232,7 +232,7 @@ elaborate' term =
         WP.Value primValue ->
           case primValue of
             WPV.Int t x -> do
-              t' <- elaborate' t >>= Term.reduce
+              t' <- reduceWeakType t >>= elaborate'
               case t' of
                 _ :< TM.Prim (P.Type (PT.Int size)) ->
                   return $ m :< TM.Prim (P.Value (PV.Int size x))
@@ -245,7 +245,7 @@ elaborate' term =
                       <> "` is an integer, but its type is: "
                       <> toText (weaken t')
             WPV.Float t x -> do
-              t' <- elaborate' t >>= Term.reduce
+              t' <- reduceWeakType t >>= elaborate'
               case t' of
                 _ :< TM.Prim (P.Type (PT.Float size)) ->
                   return $ m :< TM.Prim (P.Value (PV.Float size x))
