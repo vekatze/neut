@@ -79,7 +79,11 @@ isValue term =
       all isValue $ dataArgs ++ consArgs
     _ :< Noema {} ->
       True
+    _ :< Prim {} ->
+      True
     _ :< ResourceType {} ->
+      True
+    _ :< Flow {} ->
       True
     _ ->
       False
