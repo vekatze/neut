@@ -72,6 +72,7 @@ data Env = Env
     enumSet :: FastRef (S.Set DD.DefiniteDescription),
     impArgEnv :: FastRef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: FastRef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
+    extEnv :: FastRef (S.Set DD.DefiniteDescription),
     definedNameSet :: FastRef (S.Set DD.DefiniteDescription),
     compEnv :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
@@ -130,6 +131,7 @@ newEnv = do
   enumSet <- newFastRef
   impArgEnv <- newFastRef
   declEnv <- newFastRef
+  extEnv <- newFastRef
   compEnv <- newFastRef
   typeEnv <- newFastRef
   activeGlobalLocatorList <- newFastRef

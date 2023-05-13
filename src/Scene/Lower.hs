@@ -3,16 +3,20 @@ module Scene.Lower
   )
 where
 
+import Codec.Binary.UTF8.String
 import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.Locator qualified as Locator
 import Context.Lower
 import Context.StaticText
+import Context.StaticText qualified as StaticText
 import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Arity qualified as A
+import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
@@ -54,9 +58,9 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([C.CompDef], Maybe C.Comp, [StaticTextInfo]) ->
+  ([C.CompDef], Maybe C.Comp) ->
   App (DN.DeclEnv, [LC.Def], Maybe LC.Comp, [StaticTextInfo])
-lower (defList, mMainTerm, staticTextList) = do
+lower (defList, mMainTerm) = do
   initialize $ map fst defList
   case mMainTerm of
     Just mainTerm -> do
@@ -71,6 +75,7 @@ lower (defList, mMainTerm, staticTextList) = do
       -- let result: i8* := (main-term) in {cast result to int}
       mainTerm''' <- Just <$> commConv result mainTerm'' castResult
       declEnv <- getDeclEnv
+      staticTextList <- StaticText.getAll
       return (declEnv, defList', mainTerm''', staticTextList)
     Nothing -> do
       insDeclEnv (DN.In DD.imm) A.arityS4
@@ -79,6 +84,7 @@ lower (defList, mMainTerm, staticTextList) = do
         e' <- lowerComp e
         return (name, (args, e'))
       declEnv <- getDeclEnv
+      staticTextList <- StaticText.getAll
       return (declEnv, defList', Nothing, staticTextList)
 
 lowerComp :: C.Comp -> App LC.Comp
@@ -244,8 +250,13 @@ lowerValue v =
       uncast (LC.VarGlobal globalName) LT.voidPtr
     C.VarLocal y ->
       return $ LC.VarLocal y
-    C.VarStaticText globalName -> do
-      uncast (LC.VarGlobal globalName) LT.Pointer
+    C.VarStaticText text -> do
+      let i8s = encode $ T.unpack text
+      let len = length i8s
+      i <- lift Gensym.newCount
+      name <- lift $ Locator.attachCurrentLocator $ BN.textName i
+      lift $ StaticText.insert name text len
+      uncast (LC.VarGlobal name) LT.Pointer
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.voidPtr
       createAggData arrayType $ map (,LT.voidPtr) ds

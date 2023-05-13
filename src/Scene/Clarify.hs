@@ -4,7 +4,6 @@ module Scene.Clarify
   )
 where
 
-import Codec.Binary.UTF8.String
 import Context.App
 import Context.Clarify qualified as Clarify
 import Context.CompDefinition qualified as CompDefinition
@@ -12,14 +11,12 @@ import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
-import Context.StaticText qualified as StaticText
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -54,7 +51,7 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: [Stmt] -> App ([C.CompDef], Maybe C.Comp, [StaticText.StaticTextInfo])
+clarify :: [Stmt] -> App ([C.CompDef], Maybe C.Comp)
 clarify defList = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
@@ -65,16 +62,14 @@ clarify defList = do
         Clarify.getAuxEnv
       defList' <- clarifyDefList defList
       mainTerm <- Reduce.reduce $ C.PiElimDownElim (C.VarGlobal mainName (A.Arity 0)) []
-      staticTextList <- StaticText.getAll
       auxEnv' <- forM (Map.toList auxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
         CompDefinition.insert x (opacity, args, e')
         return (x, (opacity, args, e'))
-      return (defList' ++ auxEnv', Just mainTerm, staticTextList)
+      return (defList' ++ auxEnv', Just mainTerm)
     Nothing -> do
       defList' <- clarifyDefList defList
-      staticTextList <- StaticText.getAll
-      return (defList', Nothing, staticTextList)
+      return (defList', Nothing)
 
 clarifyDefList :: [Stmt] -> App [C.CompDef]
 clarifyDefList stmtList = do
@@ -234,7 +229,7 @@ clarifyTerm tenv term =
             PV.Op op ->
               clarifyPrimOp tenv op m
             PV.StaticText _ text ->
-              clarifyText text
+              return $ C.UpIntro $ C.VarStaticText text
     _ :< TM.ResourceType name -> do
       return $ C.UpIntro $ C.VarGlobal name A.arityS4
     _ :< TM.Magic der -> do
@@ -247,15 +242,6 @@ clarifyTerm tenv term =
     m :< TM.FlowElim _ var (e, t) -> do
       let arity = A.fromInt 2
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
-
-clarifyText :: T.Text -> App C.Comp
-clarifyText text = do
-  let i8s = encode $ T.unpack text
-  let len = length i8s
-  i <- Gensym.newCount
-  name <- Locator.attachCurrentLocator $ BN.textName i
-  StaticText.insert name text len
-  return $ C.UpIntro $ C.VarStaticText name
 
 type DataArgsMap = IntMap.IntMap [(Ident, TM.Term)]
 
