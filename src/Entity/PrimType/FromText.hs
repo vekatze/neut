@@ -29,16 +29,19 @@ fromText dataSize name
 
 asLowInt :: DS.DataSize -> T.Text -> Maybe IntSize
 asLowInt dataSize s =
-  case T.uncons s of
-    Nothing ->
-      Nothing
-    Just (c, rest)
-      | c == 'i',
-        Just n <- readMaybe $ T.unpack rest,
-        Just size <- asIntSize dataSize n ->
-          Just size
-    _ ->
-      Nothing
+  if s == "int"
+    then Just $ IntSize $ DS.reify dataSize
+    else do
+      case T.uncons s of
+        Nothing ->
+          Nothing
+        Just (c, rest)
+          | c == 'i',
+            Just n <- readMaybe $ T.unpack rest,
+            Just size <- asIntSize dataSize n ->
+              Just size
+        _ ->
+          Nothing
 
 asLowFloat :: DS.DataSize -> T.Text -> Maybe FloatSize
 asLowFloat dataSize s =

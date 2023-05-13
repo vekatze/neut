@@ -9,8 +9,6 @@ newtype IntSize
 
 instance Binary IntSize
 
--- fixme: provide a "smart constructor" for IntSize (ensure 1 <= size <= 64)
-
 data FloatSize
   = FloatSize16
   | FloatSize32
