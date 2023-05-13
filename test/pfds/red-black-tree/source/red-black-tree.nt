@@ -82,18 +82,18 @@ define insert[a](cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
   }
 }
 
-define compare-int(x: () -> i64, y: () -> i64): order {
-  if lt-i64(x(), y()) {
+define compare-int(x: () -> int, y: () -> int): order {
+  if lt-int(x(), y()) {
     LT
-  } else-if gt-i64(x(), y()) {
+  } else-if gt-int(x(), y()) {
     GT
   } else {
     EQ
   }
 }
 
-define main(): i64 {
-  let t: tree(() -> i64) = Leaf
+define main(): int {
+  let t: tree(() -> int) = Leaf
   let t = insert(compare-int, lambda () {3}, t)
   let t = insert(compare-int, lambda () {4}, t)
   let t = insert(compare-int, lambda () {2}, t)

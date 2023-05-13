@@ -8,16 +8,16 @@ variant nat {
 - Succ(nat)
 }
 
-define interpret(n: nat): i64 {
+define interpret(n: nat): int {
   match n {
   - Zero =>
     0
   - Succ(m) =>
-    add-i64(1, interpret(m))
+    add-int(1, interpret(m))
   }
 }
 
-define view(a: tau, b: tau, x: sum(a, b)): i64 {
+define view(a: tau, b: tau, x: sum(a, b)): int {
   match x {
   - Left(_) =>
     1
@@ -26,29 +26,29 @@ define view(a: tau, b: tau, x: sum(a, b)): i64 {
   }
 }
 
-define computation-with-error(x: i64): sum(nat, i64) {
-  if eq-i64(x, 0) {
+define computation-with-error(x: int): sum(nat, int) {
+  if eq-int(x, 0) {
     Left(Succ(Zero))
   } else {
     Right(interpret(Succ(Succ(Zero))))
   }
 }
 
-define let-sum(x: i64): sum(nat, i64) {
+define let-sum(x: int): sum(nat, int) {
   let+ foo = computation-with-error(x)
-  let+ bar = computation-with-error(add-i64(foo, 1))
+  let+ bar = computation-with-error(add-int(foo, 1))
   Right(bar)
 }
 
-define main(): i64 {
+define main(): int {
   match let-sum(10) {
   - Left(e) =>
     interpret(e)
   - Right(v) =>
-    let x = view(i64, i32, Left(10))
-    let _ = view(i64, i32, Right(10))
+    let x = view(int, i32, Left(10))
+    let _ = view(int, i32, Right(10))
     let _ = x
     let _ = x
-    add-i64(v, 1)
+    add-int(v, 1)
   }
 }

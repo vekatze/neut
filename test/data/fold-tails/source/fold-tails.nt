@@ -26,12 +26,12 @@ define mul-nat(x: nat, y: nat): nat {
   }
 }
 
-define interpret(n: nat): i64 {
+define interpret(n: nat): int {
   match n {
   - Zero =>
     0
   - Succ(m) =>
-    add-i64(1, interpret(m))
+    add-int(1, interpret(m))
   }
 }
 
@@ -80,7 +80,7 @@ define head(xs: list(nat)): nat {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let n = Succ(Succ(Succ(Zero)))
   let _ = n
   let _ = n

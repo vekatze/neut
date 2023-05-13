@@ -3,7 +3,7 @@ import {
 - core.file.mode => FM
 }
 
-define main(): i64 {
+define main(): int {
   let file = open("./test", FF.for-rw(), FM.default-file-mode())
   let _ = write("hey\n", file)
   let _ = read(file)

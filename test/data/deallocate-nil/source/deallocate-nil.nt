@@ -1,14 +1,14 @@
 variant item() {
-- Nil(i64)
+- Nil(int)
 }
 
-define f(xs: item()): i64 {
+define f(xs: item()): int {
   match xs {
   - Nil(_) =>
     0
   }
 }
 
-define main(): i64 {
+define main(): int {
   f(Nil(10))
 }

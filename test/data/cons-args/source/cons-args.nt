@@ -2,13 +2,13 @@ variant item(a: tau) {
 - Cons(a)
 }
 
-define view(x: item(i64 -> i64)): i64 {
+define view(x: item(int -> int)): int {
   match x {
   - Cons(_) =>
     1
   }
 }
 
-define main(): i64 {
+define main(): int {
   view(Cons(lambda (x) { x }))
 }

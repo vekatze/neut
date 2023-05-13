@@ -14,18 +14,18 @@ define merge(a: tau, xs: list(a), ys: list(a)): list(a) {
   }
 }
 
-define length[a](xs: list(a)): i64 {
+define length[a](xs: list(a)): int {
   match xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, length(ys))
+    add-int(1, length(ys))
   }
 }
 
-define main(): i64 {
+define main(): int {
   let xs = Cons(1, Cons(2, Nil()))
   let ys = Cons(3, Cons(4, Cons(5, Nil())))
-  let zs = merge(i64, xs, ys)
+  let zs = merge(int, xs, ys)
   length(zs)
 }

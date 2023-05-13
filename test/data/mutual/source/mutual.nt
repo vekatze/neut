@@ -2,22 +2,22 @@ import {
 - core.bool
 }
 
-define is-even(x: i64): i64 {
-  if eq-i64(x, 0) {
+define is-even(x: int): int {
+  if eq-int(x, 0) {
     2
   } else {
-    is-odd(sub-i64(x, 1))
+    is-odd(sub-int(x, 1))
   }
 }
 
-define is-odd(x: i64): i64 {
-  if eq-i64(x, 0) {
+define is-odd(x: int): int {
+  if eq-int(x, 0) {
     1
   } else {
-    is-even(sub-i64(x, 1))
+    is-even(sub-int(x, 1))
   }
 }
 
-define main(): i64 {
+define main(): int {
   is-even(12345)
 }

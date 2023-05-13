@@ -61,23 +61,23 @@ define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, 
   }
 }
 
-define compare-int(x: i64, y: i64): order {
-  if lt-i64(x, y) {
+define compare-int(x: int, y: int): order {
+  if lt-int(x, y) {
     LT
-  } else-if gt-i64(x, y) {
+  } else-if gt-int(x, y) {
     GT
   } else {
     EQ
   }
 }
 
-define main(): i64 {
+define main(): int {
   let Finite-Map(empty, insert, lookup) = make-finite-map(compare-int)
   let mymap = insert(1, [tau], empty)
   let mymap = insert(2, [tau, tau], mymap)
   let mymap = insert(2, [tau, tau], mymap)
-  let mymap = insert(2, [i64], mymap)
-  let mymap = insert(3, [() -> i64], mymap)
+  let mymap = insert(2, [int], mymap)
+  let mymap = insert(3, [() -> int], mymap)
   let _ = mymap
   let _ = mymap
   let result on mymap = {

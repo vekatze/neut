@@ -1,24 +1,24 @@
 variant expr() {
-- Num(i64)
+- Num(int)
 - Add(expr(), expr())
 - Sub(expr(), expr())
 - Mul(expr(), expr())
 }
 
-define interpret(e: expr()): i64 {
+define interpret(e: expr()): int {
   match e {
   - Add(e1, e2) =>
-    add-i64(interpret(e1), interpret(e2))
+    add-int(interpret(e1), interpret(e2))
   - Num(x) =>
     x
   - Sub(e1, e2) =>
-    sub-i64(interpret(e1), interpret(e2))
+    sub-int(interpret(e1), interpret(e2))
   - Mul(e1, e2) =>
-    mul-i64(interpret(e1), interpret(e2))
+    mul-int(interpret(e1), interpret(e2))
   }
 }
 
-define main(): i64 {
+define main(): int {
   let e1 = Add(Num(1), Num(2))
   let e2 = Mul(Num(3), Num(1023))
   let e3 = Sub(e2, e1)

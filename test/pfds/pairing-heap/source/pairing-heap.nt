@@ -64,18 +64,18 @@ define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   }
 }
 
-define compare-int(x: i64, y: i64): order {
-  if lt-i64(x, y) {
+define compare-int(x: int, y: int): order {
+  if lt-int(x, y) {
     LT
-  } else-if gt-i64(x, y) {
+  } else-if gt-int(x, y) {
     GT
   } else {
     EQ
   }
 }
 
-define main(): i64 {
-  let h: heap(i64) = Leaf
+define main(): int {
+  let h: heap(int) = Leaf
   let h = insert(compare-int, 10, h)
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 8, h)

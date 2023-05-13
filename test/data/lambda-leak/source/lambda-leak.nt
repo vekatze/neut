@@ -3,12 +3,12 @@ variant nat {
 - Succ(nat)
 }
 
-define interpret(n: nat): i64 {
+define interpret(n: nat): int {
   match n {
   - Zero =>
     0
   - Succ(m) =>
-    add-i64(1, interpret(m))
+    add-int(1, interpret(m))
   }
 }
 
@@ -46,7 +46,7 @@ define fold(a: tau, fs: list(a -> a), x: a): a {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let n1 = Succ(Zero)
   let n2 = Succ(n1)
   let n3 = Succ(n2)
@@ -56,9 +56,9 @@ define main(): i64 {
   let _ = mul9
   let _ = mul9
 
-  let _ = lambda (x) { add-i64(x, 2) }
-  let _ = lambda (x) { mul-i64(x, 3) }
-  let _ = lambda (x) { sub-i64(x, 1) }
+  let _ = lambda (x) { add-int(x, 2) }
+  let _ = lambda (x) { mul-int(x, 3) }
+  let _ = lambda (x) { sub-int(x, 1) }
   let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil())))
   let gs = fs
   let hs = gs

@@ -1,4 +1,4 @@
-define main(): i64 {
+define main(): int {
   let _ = get-argv()
   get-argc()
 }

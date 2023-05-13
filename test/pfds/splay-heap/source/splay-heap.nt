@@ -90,31 +90,31 @@ define delete-min[a](t: heap(a)): ?heap(a) {
   }
 }
 
-define compare-int-list(xs: list(i64), ys: list(i64)): order {
+define compare-int-list(xs: list(int), ys: list(int)): order {
   let x on xs = sum(xs)
   let y on ys = sum(ys)
   let _ = xs
   let _ = ys
-  if lt-i64(x, y) {
+  if lt-int(x, y) {
     LT
-  } else-if gt-i64(x, y) {
+  } else-if gt-int(x, y) {
     GT
   } else {
     EQ
   }
 }
 
-define sum(xs: &list(i64)): i64 {
+define sum(xs: &list(int)): int {
   case xs {
   - [] =>
     0
   - y :< ys =>
-    add-i64(!y, sum(ys))
+    add-int(!y, sum(ys))
   }
 }
 
-define main(): i64 {
-  let h: heap(list(i64)) = Leaf
+define main(): int {
+  let h: heap(list(int)) = Leaf
   let h = insert(compare-int-list, [1, 2], h)
   let h = insert(compare-int-list, [10], h)
   let h = insert(compare-int-list, [5], h)
@@ -146,6 +146,6 @@ define main(): i64 {
       }
     }
     let _ = h
-    add-i64(v1, v2)
+    add-int(v1, v2)
   }
 }

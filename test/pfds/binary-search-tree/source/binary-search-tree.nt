@@ -59,17 +59,17 @@ define make-set-signature[a](compare: (a, a) -> order): set-signature(a) {
   }
 }
 
-define compare-int(x: i64, y: i64): order {
-  if lt-i64(x, y) {
+define compare-int(x: int, y: int): order {
+  if lt-int(x, y) {
     LT
-  } else-if gt-i64(x, y) {
+  } else-if gt-int(x, y) {
     GT
   } else {
     EQ
   }
 }
 
-define main(): i64 {
+define main(): int {
   let int-set-signature = make-set-signature(compare-int)
   match int-set-signature {
   - Set(empty, insert, member) =>

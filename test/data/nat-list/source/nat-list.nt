@@ -8,25 +8,25 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define interpret(n: nat): i64 {
+define interpret(n: nat): int {
   match n {
   - Zero() =>
     0
   - Succ(m) =>
-    add-i64(1, interpret(m))
+    add-int(1, interpret(m))
   }
 }
 
-define nat-list-sum(xs: list(nat)): i64 {
+define nat-list-sum(xs: list(nat)): int {
   match xs {
   - Nil() =>
     0
   - Cons(y, ys) =>
-    add-i64(interpret(y), nat-list-sum(ys))
+    add-int(interpret(y), nat-list-sum(ys))
   }
 }
 
 
-define main(): i64 {
+define main(): int {
   nat-list-sum(Cons(Succ(Zero()), Cons(Succ(Zero()), Nil())))
 }

@@ -3,32 +3,32 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define length-embodied(xs: list(i64)): i64 {
+define length-embodied(xs: list(int)): int {
   match xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, length-embodied(ys))
+    add-int(1, length-embodied(ys))
   }
 }
 
-define length(xs: &list(i64)): i64 {
+define length(xs: &list(int)): int {
   length-embodied(!xs)
 }
 
-define sum-of-list(xs: &list(i64)): i64 {
+define sum-of-list(xs: &list(int)): int {
   case xs {
   - Nil() =>
     0
   - Cons(y, ys) =>
-    add-i64(!y, sum-of-list(ys))
+    add-int(!y, sum-of-list(ys))
   }
 }
 
-define main(): i64 {
+define main(): int {
   let xs = Cons(3, Cons(1, Cons(20, Nil())))
   let some-value on xs = length(xs)
-  let sum-value on xs = add-i64(sum-of-list(xs), some-value)
+  let sum-value on xs = add-int(sum-of-list(xs), some-value)
   let _ = xs
   sum-value
 }

@@ -18,12 +18,12 @@ export {
 
 variant sample-1 {
 - Foo
-- Bar(i64)
+- Bar(int)
 }
 
 variant sample-2(a) {
 - Foo2
-- Bar2(i64, a)
+- Bar2(int, a)
 }
 
 variant sample-3() {
@@ -34,8 +34,8 @@ variant sample-3() {
 
 struct config by Config {
 - value-1: tau
-- value-2: i64
-- value-3: u64
+- value-2: int
+- value-3: i32
 }
 
 define some-private-function(_: sample-1): tau {

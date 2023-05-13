@@ -3,7 +3,7 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define f(xs: list(i64)): i64 {
+define f(xs: list(int)): int {
   match xs {
   - Nil() =>
     0
@@ -12,6 +12,6 @@ define f(xs: list(i64)): i64 {
   }
 }
 
-define main(): i64 {
+define main(): int {
   f(Cons(10, Cons(20, Nil())))
 }

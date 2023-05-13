@@ -2,14 +2,14 @@ import {
 - core.bool
 }
 
-define fact(x: i64): i64 {
-  if eq-i64(x, 0) {
+define fact(x: int): int {
+  if eq-int(x, 0) {
     1
   } else {
-    mul-i64(x, fact(sub-i64(x, 1)))
+    mul-int(x, fact(sub-int(x, 1)))
   }
 }
 
-define main(): i64 {
+define main(): int {
   fact(5)
 }

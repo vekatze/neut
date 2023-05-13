@@ -14,7 +14,7 @@ define f(xs: list(), ys: list()): list() {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let xs = Cons()
   let ys = Cons()
   let _ = f(xs, ys)

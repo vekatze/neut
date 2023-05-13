@@ -8,8 +8,8 @@ variant my-list(a: tau) {
 - Cons(my-list(a))
 }
 
-define main(): i64 {
-  let xs: my-list(i64) = Nil()
+define main(): int {
+  let xs: my-list(int) = Nil()
   let str = "text"
   let val = !str
   let f = lambda () { val }

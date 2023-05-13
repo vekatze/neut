@@ -9,7 +9,7 @@ import {
 
 variant tree(a) {
 - Leaf(a)
-- Node(i64, tree(a), tree(a))
+- Node(int, tree(a), tree(a))
 }
 
 variant digit(a) {
@@ -21,7 +21,7 @@ variant R-list(a) {
 - New(list(digit(a)))
 }
 
-define size[a](t: &tree(a)): i64 {
+define size[a](t: &tree(a)): int {
   case t {
   - Leaf(_) =>
     1
@@ -33,7 +33,7 @@ define size[a](t: &tree(a)): i64 {
 define link[a](t1: tree(a), t2: tree(a)): tree(a) {
   let s1 on t1 = size(t1)
   let s2 on t2 = size(t2)
-  Node(add-i64(s1, s2), t1, t2)
+  Node(add-int(s1, s2), t1, t2)
 }
 
 define cons-tree[a](t: tree(a), ts: R-list(a)): R-list(a) {
@@ -76,25 +76,25 @@ define uncons-tree[a](ts: R-list(a)): opt.option(tree(a) * R-list(a)) {
   }
 }
 
-define lookup-tree[a](i: i64, t: &tree(a)): opt.option(a) {
+define lookup-tree[a](i: int, t: &tree(a)): opt.option(a) {
   case t {
   - Leaf(v) =>
-    if eq-i64(i, 0) {
+    if eq-int(i, 0) {
       opt.Some(!v)
     } else {
       opt.None
     }
   - Node(w, t1, t2) =>
-    let w-div-2 = div-i64(!w, 2)
-    if lt-i64(i, w-div-2) {
+    let w-div-2 = div-int(!w, 2)
+    if lt-int(i, w-div-2) {
       lookup-tree(i, t1)
     } else {
-      lookup-tree(sub-i64(i, w-div-2), t2)
+      lookup-tree(sub-int(i, w-div-2), t2)
     }
   }
 }
 
-define lookup-list[a](i: i64, xs: &list(digit(a))): opt.option(a) {
+define lookup-list[a](i: int, xs: &list(digit(a))): opt.option(a) {
   case xs {
   - [] =>
     opt.None
@@ -102,38 +102,38 @@ define lookup-list[a](i: i64, xs: &list(digit(a))): opt.option(a) {
     lookup-list(i, rest)
   - One(t) :< rest =>
     let s = size(t)
-    if lt-i64(i, s) {
+    if lt-int(i, s) {
       lookup-tree(i, t)
     } else {
-      lookup-list(sub-i64(i, s), rest)
+      lookup-list(sub-int(i, s), rest)
     }
   }
 }
 
-define lookup[a](i: i64, xs: &R-list(a)): opt.option(a) {
+define lookup[a](i: int, xs: &R-list(a)): opt.option(a) {
   bind New(xs): &R-list(a) = xs
   lookup-list(i, xs)
 }
 
-define update-tree[a](i: i64, x: a, t: tree(a)): tree(a) {
+define update-tree[a](i: int, x: a, t: tree(a)): tree(a) {
   match t {
   - Leaf(v) =>
-    if eq-i64(i, 0) {
+    if eq-int(i, 0) {
       Leaf(x)
     } else {
       Leaf(v)
     }
   - Node(w, t1, t2) =>
-    let w-div-2 = div-i64(w, 2)
-    if lt-i64(i, w-div-2) {
+    let w-div-2 = div-int(w, 2)
+    if lt-int(i, w-div-2) {
       Node(w, update-tree(i, x, t1), t2)
     } else {
-      Node(w, t1, update-tree(sub-i64(i, w-div-2), x, t2))
+      Node(w, t1, update-tree(sub-int(i, w-div-2), x, t2))
     }
   }
 }
 
-define update[a](i: i64, x: a, xs: R-list(a)): R-list(a) {
+define update[a](i: int, x: a, xs: R-list(a)): R-list(a) {
   match xs {
   - New([]) =>
     New([])
@@ -142,16 +142,16 @@ define update[a](i: i64, x: a, xs: R-list(a)): R-list(a) {
     New(Zero :< new-xs)
   - New(One(t) :< ts) =>
     let s on t = size(t)
-    if lt-i64(i, s) {
+    if lt-int(i, s) {
       New(One(update-tree(i, x, t)) :< ts)
     } else {
-      let New(new-xs) = update(sub-i64(i, s), x, New(ts))
+      let New(new-xs) = update(sub-int(i, s), x, New(ts))
       New(One(t) :< new-xs)
     }
   }
 }
 
-define find-and-get(i: i64, xs: &R-list(i64)): i64 {
+define find-and-get(i: int, xs: &R-list(int)): int {
   match lookup(i, xs) {
   - opt.None =>
     0
@@ -160,8 +160,8 @@ define find-and-get(i: i64, xs: &R-list(i64)): i64 {
   }
 }
 
-define main(): i64 {
-  let xs = New([]): R-list(i64)
+define main(): int {
+  let xs = New([]): R-list(int)
   let xs = cons(3, xs)
   let xs = cons(2, xs)
   let xs = cons(4, xs)
@@ -173,5 +173,5 @@ define main(): i64 {
   let xs = update(2, 10, xs)
   let v3-modified on xs = find-and-get(2, xs) // 10
   let _ = xs
-  add-i64(v1, add-i64(v2, add-i64(v3-modified, v4))) // 1 + 4 + 10 + 3 = 18
+  add-int(v1, add-int(v2, add-int(v3-modified, v4))) // 1 + 4 + 10 + 3 = 18
 }

@@ -13,7 +13,7 @@ variant order {
 // leftist heap
 variant heap(a) {
 - Leaf
-- Node(i64, a, heap(a), heap(a)) // i64 stands for the rank of the Node
+- Node(int, a, heap(a), heap(a)) // int stands for the rank of the Node
 }
 
 struct heap-signature(a) by Heap {
@@ -40,10 +40,10 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       lambda (x: a, l: heap(a), r: heap(a)) {
         let rank1 on l = rank(l)
         let rank2 on r = rank(r)
-        if ge-i64(rank1, rank2) {
-          Node(add-i64(rank2, 1), x, l, r)
+        if ge-int(rank1, rank2) {
+          Node(add-int(rank2, 1), x, l, r)
         } else {
-          Node(add-i64(rank1, 1), x, r, l)
+          Node(add-int(rank1, 1), x, r, l)
         }
       }
     define merge(h1: heap(a), h2: heap(a)): heap(a) {
@@ -101,17 +101,17 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
   }
 }
 
-define compare-int(x: i64, y: i64): order {
-  if lt-i64(x, y) {
+define compare-int(x: int, y: int): order {
+  if lt-int(x, y) {
     LT
-  } else-if gt-i64(x, y) {
+  } else-if gt-int(x, y) {
     GT
   } else {
     EQ
   }
 }
 
-define main(): i64 {
+define main(): int {
   let int-heap-signature = make-heap-signature(compare-int)
   let Heap(empty, _, insert, _, find-min, delete-min) = int-heap-signature
   let h = empty

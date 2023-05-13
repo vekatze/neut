@@ -3,7 +3,7 @@ variant nat {
 - Succ(nat)
 }
 
-define eq-nat(n1: nat, n2: nat): i64 {
+define eq-nat(n1: nat, n2: nat): int {
   match n1, n2 {
   - Zero, Zero =>
     1
@@ -14,6 +14,6 @@ define eq-nat(n1: nat, n2: nat): i64 {
   }
 }
 
-define main(): i64 {
+define main(): int {
   eq-nat(Zero, Zero)
 }

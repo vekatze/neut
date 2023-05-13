@@ -2,13 +2,13 @@ import {
 - this.foo
 }
 
-define sample(a: i64, some-argument: tau, b: tau): i64 {
+define sample(a: int, some-argument: tau, b: tau): int {
   let _ = some-argument
   let _ = b
   a
 }
 
-define main(): i64 {
+define main(): int {
   let _ =
     sample {
     - b <= tau

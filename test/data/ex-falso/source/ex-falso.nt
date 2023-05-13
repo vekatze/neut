@@ -5,6 +5,6 @@ define ex-falso(a: tau, e: empty()): a {
 }
 
 
-define main(): i64 {
+define main(): int {
   0
 }

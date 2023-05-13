@@ -3,7 +3,7 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define length(xs: &list(i64)): i64 {
+define length(xs: &list(int)): int {
   let _ = xs
   let _ = xs
   let c = xs
@@ -11,11 +11,11 @@ define length(xs: &list(i64)): i64 {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, length(ys))
+    add-int(1, length(ys))
   }
 }
 
-define tail(xs: &list(i64)): &list(i64) {
+define tail(xs: &list(int)): &list(int) {
   case xs {
   - Nil() =>
     xs
@@ -24,7 +24,7 @@ define tail(xs: &list(i64)): &list(i64) {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let xs = Cons(3, Cons(1, Cons(2, Nil())))
   let some-value on xs = length(tail(xs))
   let _ = xs

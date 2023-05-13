@@ -1,8 +1,8 @@
 variant item() {
-- Cons(i64)
+- Cons(int)
 }
 
-define main(): i64 {
+define main(): int {
   match Cons(2) {
   - Cons(w) =>
     w

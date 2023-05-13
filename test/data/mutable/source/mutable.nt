@@ -9,21 +9,21 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define my-length(xs: &list(i64)): i64 {
+define my-length(xs: &list(int)): int {
   case xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, my-length(ys))
+    add-int(1, my-length(ys))
   }
 }
 
-define bar(xs-cell: &cell(list(i64))): i64 {
+define bar(xs-cell: &cell(list(int))): int {
   borrow(xs-cell, my-length)
 }
 
-define main(): i64 {
-  let xs: list(i64) = Cons(1, Cons(2, Nil()))
+define main(): int {
+  let xs: list(int) = Cons(1, Cons(2, Nil()))
   let xs-cell = new-cell(xs)
   let result on xs-cell = {
     let _ = bar(xs-cell)

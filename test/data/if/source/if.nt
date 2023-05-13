@@ -2,10 +2,10 @@ import {
 - core.bool => B
 }
 
-define main(): i64 {
+define main(): int {
   if B.False {
     1
-  } else-if lt-i64(0, 10) {
+  } else-if lt-int(0, 10) {
     2
   } else {
     3

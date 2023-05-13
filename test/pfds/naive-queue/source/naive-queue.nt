@@ -46,17 +46,17 @@ define snoc[a](v: a, q: queue(a)): queue(a) {
   sanitize(tuple(xs, v :< ys))
 }
 
-define sum(xs: &list(i64)): i64 {
+define sum(xs: &list(int)): int {
   case xs {
   - [] =>
     0
   - v :< rest =>
-    add-i64(!v, sum(rest))
+    add-int(!v, sum(rest))
   }
 }
 
-define main(): i64 {
-  let q: queue(list(i64)) = empty()
+define main(): int {
+  let q: queue(list(int)) = empty()
   let q = snoc([2], q)
   let q = snoc([5], q)
   let q = snoc([1], q)
@@ -88,6 +88,6 @@ define main(): i64 {
       }
     }
     let _ = q
-    add-i64(v1, v2)
+    add-int(v1, v2)
   }
 }

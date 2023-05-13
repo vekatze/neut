@@ -3,7 +3,7 @@ variant tree() {
 - N(tree())
 }
 
-define find-min(t: &tree()): i64 {
+define find-min(t: &tree()): int {
   case t {
   - E() =>
     1
@@ -16,6 +16,6 @@ define find-min(t: &tree()): i64 {
 }
 
 
-define main(): i64 {
+define main(): int {
   0
 }

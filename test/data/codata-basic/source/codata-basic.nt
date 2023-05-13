@@ -3,9 +3,9 @@ struct bar(a: tau) by Bar {
 }
 
 struct foo() by Foo {
-- value-1: i64
+- value-1: int
 - value-2: i32
-- value-3: bar(i64)
+- value-3: bar(int)
 }
 
 struct stream(a: tau) by Stream {
@@ -13,13 +13,13 @@ struct stream(a: tau) by Stream {
 - tail: () -> stream(a)
 }
 
-define int-stream(x: i64): stream(i64) {
+define int-stream(x: int): stream(int) {
   Stream {
   - head <=
     x
   - tail <=
     lambda () {
-      int-stream(add-i64(x, 1))
+      int-stream(add-int(x, 1))
     }
   }
 }
@@ -38,7 +38,7 @@ define get-head[a](s: stream(a)): a {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let inner = Bar(10)
   let config =
     Foo {
@@ -51,11 +51,11 @@ define main(): i64 {
     let s2 = !config::value-1
     let s3 = config::value-1
     let s4 = config::value-3::value
-    add-i64(!s1, add-i64(s2, add-i64(!s3, !s4)))
+    add-int(!s1, add-int(s2, add-int(!s3, !s4)))
   }
   let _ = config
   let some-stream = int-stream(3)
   // let value = some-stream[get-tail][tail][head]
   let value = some-stream::get-tail::get-tail::get-head
-  add-i64(k, value)
+  add-int(k, value)
 }

@@ -6,7 +6,7 @@ import {
 
 variant tree(a) {
   // the list is in *decreasing* order of rank
-- Node(i64, a, list(tree(a)))
+- Node(int, a, list(tree(a)))
 }
 
 define-inline heap(a: tau): tau {
@@ -25,14 +25,14 @@ define link[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   - Node(r1, x1, children1), Node(r2, x2, children2) =>
     match cmp(x1, x2) {
     - LT =>
-      Node(add-i64(r1, 1), x1, Node(r2, x2, children2) :< children1)
+      Node(add-int(r1, 1), x1, Node(r2, x2, children2) :< children1)
     - _ =>
-      Node(add-i64(r1, 1), x2, Node(r1, x1, children1) :< children2)
+      Node(add-int(r1, 1), x2, Node(r1, x1, children1) :< children2)
     }
   }
 }
 
-define rank[a](t: &tree(a)): i64 {
+define rank[a](t: &tree(a)): int {
   case t {
   - Node(r, _, _) =>
     !r
@@ -46,7 +46,7 @@ define insert-tree[a](cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a) {
   - t1 :< rest =>
     let r on t = rank(t)
     let r1 on t1 = rank(t1)
-    if lt-i64(r, r1) {
+    if lt-int(r, r1) {
       t :< t1 :< rest
     } else {
       // the link here corresponds to a carry in binary arithmetic
@@ -68,9 +68,9 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   - t1 :< ts1, t2 :< ts2 =>
     let r1 on t1 = rank(t1)
     let r2 on t2 = rank(t2)
-    if lt-i64(r1, r2) {
+    if lt-int(r1, r2) {
       t1 :< merge(cmp, ts1, t2 :< ts2)
-    } else-if gt-i64(r1, r2) {
+    } else-if gt-int(r1, r2) {
       t2 :< merge(cmp, t1 :< ts1, ts2)
     } else {
       insert-tree(cmp, link(cmp, t1, t2), merge(cmp, ts1, ts2))
@@ -135,18 +135,18 @@ define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   Some(merge(cmp, reverse(ts1), ts2))
 }
 
-define compare-int(x: i64, y: i64): order {
-  if lt-i64(x, y) {
+define compare-int(x: int, y: int): order {
+  if lt-int(x, y) {
     LT
-  } else-if gt-i64(x, y) {
+  } else-if gt-int(x, y) {
     GT
   } else {
     EQ
   }
 }
 
-define main(): i64 {
-  let h: heap(i64) = []
+define main(): int {
+  let h: heap(int) = []
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 4, h)
   let h = insert(compare-int, 2, h)

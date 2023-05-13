@@ -3,7 +3,7 @@ variant list(a: tau) {
 - Cons()
 }
 
-define f(xs: list(i64), ys: list(i64)): list(i64) {
+define f(xs: list(int), ys: list(int)): list(int) {
   match xs, ys {
   - Nil(), ys =>
     ys
@@ -14,7 +14,7 @@ define f(xs: list(i64), ys: list(i64)): list(i64) {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let xs = Cons()
   let ys = Cons()
   let _ = f(xs, ys)

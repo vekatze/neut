@@ -2,6 +2,6 @@ define id(a: tau, x: a) {
   x
 }
 
-define main(): i64 {
-  id(i64, 0)
+define main(): int {
+  id(int, 0)
 }

@@ -2,7 +2,7 @@ export {
 - foo
 }
 
-define foo(a: i64, some-argument: tau, b: tau): i64 {
+define foo(a: int, some-argument: tau, b: tau): int {
   let _ = some-argument
   let _ = b
   a

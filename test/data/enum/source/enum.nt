@@ -2,7 +2,7 @@ import {
 - core.bool
 }
 
-define main(): i64 {
+define main(): int {
   let foo = False
   match foo {
   - True =>

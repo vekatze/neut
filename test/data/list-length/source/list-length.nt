@@ -3,15 +3,15 @@ variant list(a: tau) {
 - Cons(a, list(a))
 }
 
-define length(a: tau, xs: list(a)): i64 {
+define length(a: tau, xs: list(a)): int {
   match xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
-    add-i64(1, length(a,  ys))
+    add-int(1, length(a,  ys))
   }
 }
 
-define main(): i64 {
-  length(i64, Cons(1, Cons(2, Nil())))
+define main(): int {
+  length(int, Cons(1, Cons(2, Nil())))
 }

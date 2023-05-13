@@ -1,4 +1,4 @@
-define foo(f: i64 -> &i64 -> i64): i64 {
+define foo(f: int -> &int -> int): int {
   let x = 3
   let result on x =
     f(!x)(x)
@@ -6,7 +6,7 @@ define foo(f: i64 -> &i64 -> i64): i64 {
   result
 }
 
-define bar0(f: (i64, &i64) -> i64): i64 {
+define bar0(f: (int, &int) -> int): int {
   let x = 3
   let result on x =
     f(!x, x)
@@ -14,7 +14,7 @@ define bar0(f: (i64, &i64) -> i64): i64 {
   result
 }
 
-define bar1(f: (_: i64, &i64) -> i64): i64 {
+define bar1(f: (_: int, &int) -> int): int {
   let x = 3
   let result on x =
     f(!x, x)
@@ -22,7 +22,7 @@ define bar1(f: (_: i64, &i64) -> i64): i64 {
   result
 }
 
-define bar2(f: (i64, _: &i64) -> i64): i64 {
+define bar2(f: (int, _: &int) -> int): int {
   let x = 3
   let result on x =
     f(!x, x)
@@ -30,7 +30,7 @@ define bar2(f: (i64, _: &i64) -> i64): i64 {
   result
 }
 
-define bar3(f: (_: i64, _: &i64) -> i64): i64 {
+define bar3(f: (_: int, _: &int) -> int): int {
   let x = 3
   let result on x =
     f(!x, x)
@@ -38,6 +38,6 @@ define bar3(f: (_: i64, _: &i64) -> i64): i64 {
   result
 }
 
-define main(): i64 {
+define main(): int {
   0
 }

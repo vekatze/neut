@@ -41,15 +41,15 @@ define tail[a](xs: &stack(a)): option(&stack(a)) {
   }
 }
 
-define update[a](xs: stack(a), index: i64, value: a): stack(a) {
+define update[a](xs: stack(a), index: int, value: a): stack(a) {
   match xs {
   - Nil =>
     Nil
   - Cons(y, ys) =>
-    if eq-i64(index, 0) {
+    if eq-int(index, 0) {
       Cons(value, ys)
     } else {
-      Cons(y, update(ys, sub-i64(index, 1), value))
+      Cons(y, update(ys, sub-int(index, 1), value))
     }
   }
 }
@@ -72,9 +72,9 @@ define suffixes-noetic[a](xs: &stack(a)): stack(&stack(a)) {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let xs = empty()
-  let ys = Cons(10: i64, xs)
+  let ys = Cons(10: int, xs)
   let zs = Cons(30, Cons(20, ys))
   let zs = update(zs, 1, 20000)
   let _ = suffixes(zs)

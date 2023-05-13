@@ -1,8 +1,8 @@
 variant option() {
-- Some(i64)
+- Some(int)
 }
 
-define main(): i64 {
+define main(): int {
   let _ = tau
   match Some(2) {
   - Some(_) =>

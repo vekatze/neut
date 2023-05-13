@@ -5,7 +5,7 @@ import {
 
 variant list() {
 - Nil()
-- Cons(i64, list())
+- Cons(int, list())
 }
 
 // enum my-bool() {
@@ -13,8 +13,8 @@ variant list() {
 // - false()
 // }
 
-// define free-vars-in-recursion-lifted(xs: list(), ws: list()): i64 {
-//   if eq-i64(0, 0) {
+// define free-vars-in-recursion-lifted(xs: list(), ws: list()): int {
+//   if eq-int(0, 0) {
 //     let fv-1 = xs
 //     1
 //   } else {
@@ -23,14 +23,14 @@ variant list() {
 //   }
 // }
 
-define main(): i64 {
+define main(): int {
   let xs = Nil()
   let ws = xs
   let multiple-free-var =
     // lambda () { free-vars-in-recursion-lifted(xs, ws) }
-    define loop(): i64 {
+    define loop(): int {
       // match magic cast(i1, core.bool::bool(), add-i1(0, 1)) {
-      match eq-i64(0, 0) {
+      match eq-int(0, 0) {
       - True =>
         let _ = xs
         1

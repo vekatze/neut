@@ -11,6 +11,6 @@ define f(xs: item(), ys: item()): item() {
   }
 }
 
-define main(): i64 {
+define main(): int {
   0
 }

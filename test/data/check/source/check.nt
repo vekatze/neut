@@ -3,7 +3,7 @@ variant nat {
 - Succ(nat)
 }
 
-define nil-cons-cons(xs: nat): i64 {
+define nil-cons-cons(xs: nat): int {
   match xs {
   - Zero() =>
     1
@@ -14,12 +14,12 @@ define nil-cons-cons(xs: nat): i64 {
   }
 }
 
-define main(): i64 {
+define main(): int {
   let n0 = Zero()
   let n1 = Succ(n0)
   let n2 = Succ(Succ(Zero()))
   let z0 = nil-cons-cons(n0)
   let z1 = nil-cons-cons(n1)
   let z2 = nil-cons-cons(n2)
-  add-i64(z0, add-i64(z1, z2))
+  add-int(z0, add-int(z1, z2))
 }

@@ -1,11 +1,11 @@
-define make-adder(x: i64): i64 -> i64 {
+define make-adder(x: int): int -> int {
   let adder =
     lambda (y) {
-      add-i64(x, y)
+      add-int(x, y)
     }
   adder
 }
 
-define main(): i64 {
+define main(): int {
   make-adder(3)(7)
 }

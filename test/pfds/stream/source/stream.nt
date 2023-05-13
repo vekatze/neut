@@ -24,8 +24,8 @@ define append[a](xs: stream(a), ys: stream(a)): stream(a) {
   }
 }
 
-define take[a](n: i64, xs: stream(a)): stream(a) {
-  if eq-i64(n, 0) {
+define take[a](n: int, xs: stream(a)): stream(a) {
+  if eq-int(n, 0) {
     lambda () { Nil }
   } else {
     match xs() {
@@ -33,14 +33,14 @@ define take[a](n: i64, xs: stream(a)): stream(a) {
       lambda () { Nil }
     - Cons(x, rest) =>
       lambda () {
-        Cons(x, take(sub-i64(n, 1), rest))
+        Cons(x, take(sub-int(n, 1), rest))
       }
     }
   }
 }
 
-define main(): i64 {
-  let my-stream: stream(i64) =
+define main(): int {
+  let my-stream: stream(int) =
     lambda () { Cons(1, lambda () { Nil }) }
   let _ = my-stream
   0

@@ -1,9 +1,9 @@
 variant item() {
 - Nil()
-- Cons(i64)
+- Cons(int)
 }
 
-define main(): i64 {
+define main(): int {
   let _ = Nil()
   1
 }

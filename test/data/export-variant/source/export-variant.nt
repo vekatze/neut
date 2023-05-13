@@ -32,16 +32,16 @@ define do-next(): this.private.sample-2(tau) {
 }
 
 struct main-config by Main-Config {
-- sample: i64
+- sample: int
 - test: L.my-sample-alias
 }
 
 variant hogehoge {
 - Pohe
-- Hoge(i64)
+- Hoge(int)
 }
 
-define main(): i64 {
+define main(): int {
   let _ = L.sample-3
   let _ = L.Foo3
   let _ = L.Bar3-Alias
