@@ -22,6 +22,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.Arch qualified as Arch
+import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
@@ -95,6 +96,7 @@ rawTerm = do
       rawTermFlowIntro,
       rawTermFlowElim,
       rawTermIf,
+      rawTermAssert,
       rawTermListIntro,
       rawTermPiGeneral,
       try rawTermPiElimByKey,
@@ -715,6 +717,21 @@ rawTermAdmit = do
               [m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
         )
 
+rawTermAssert :: Parser RT.RawTerm
+rawTermAssert = do
+  m <- getCurrentHint
+  keyword "assert"
+  message <- string
+  e@(mCond :< _) <- betweenBrace rawExpr
+  assert <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSystemAssert
+  textType <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreText
+  let fullMessage = T.pack (toString m) <> "\nassertion failure: " <> message <> "\n"
+  return $
+    m
+      :< RT.PiElim
+        assert
+        [m :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), lam mCond [] e]
+
 rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
@@ -814,6 +831,7 @@ rawTermIntrospectiveClause = do
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
   tp <- Env.getTargetPlatform
+  bm <- Env.getBuildMode
   case key of
     "target-platform" -> do
       return $ TP.reify tp
@@ -821,6 +839,8 @@ getIntrospectiveValue m key = do
       return $ Arch.reify (TP.arch tp)
     "target-os" ->
       return $ OS.reify (TP.os tp)
+    "build-mode" ->
+      return $ BM.reify bm
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 

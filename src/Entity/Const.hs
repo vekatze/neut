@@ -141,6 +141,10 @@ coreSystemAdmit :: T.Text
 coreSystemAdmit =
   core <> nsSep <> "system" <> nsSep <> "admit"
 
+coreSystemAssert :: T.Text
+coreSystemAssert =
+  core <> nsSep <> "system" <> nsSep <> "assert"
+
 coreThreadFlowInner :: T.Text
 coreThreadFlowInner =
   core <> nsSep <> "thread" <> nsSep <> "flow-inner"
