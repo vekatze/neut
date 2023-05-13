@@ -815,18 +815,29 @@ rawTermIntrospect = do
   key <- symbol
   value <- lift $ getIntrospectiveValue m key
   clauseList <- betweenBrace $ manyList rawTermIntrospectiveClause
-  case lookup value clauseList of
-    Just clause ->
-      return clause
-    Nothing -> do
-      lift $ Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
+  lift $ lookupIntrospectiveClause m value clauseList
 
-rawTermIntrospectiveClause :: Parser (T.Text, RT.RawTerm)
+lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, RT.RawTerm)] -> App RT.RawTerm
+lookupIntrospectiveClause m value clauseList =
+  case clauseList of
+    [] ->
+      Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
+    (Just key, clause) : rest
+      | key == value ->
+          return clause
+      | otherwise ->
+          lookupIntrospectiveClause m value rest
+    (Nothing, clause) : _ ->
+      return clause
+
+rawTermIntrospectiveClause :: Parser (Maybe T.Text, RT.RawTerm)
 rawTermIntrospectiveClause = do
   c <- symbol
   delimiter "=>"
   body <- rawExpr
-  return (c, body)
+  if c /= "default"
+    then return (Just c, body)
+    else return (Nothing, body)
 
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
