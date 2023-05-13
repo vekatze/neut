@@ -10,6 +10,7 @@ import Data.Text qualified as T
 import Data.Time
 import Entity.Arch qualified as Arch
 import Entity.Artifact qualified as A
+import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DataSize qualified as DS
 import Entity.Hint
@@ -31,6 +32,14 @@ setTargetPlatform = do
   let targetOS = T.pack $ fromMaybe SI.os mTargetOS
   let targetArch = T.pack $ fromMaybe SI.arch mTargetArch
   writeRef targetPlatform $ TargetPlatform {os = OS.reflect targetOS, arch = Arch.reflect targetArch}
+
+setBuildMode :: BM.BuildMode -> App ()
+setBuildMode =
+  writeRef' buildMode
+
+getBuildMode :: App BM.BuildMode
+getBuildMode =
+  readRef' buildMode
 
 setCurrentSource :: Source.Source -> App ()
 setCurrentSource =

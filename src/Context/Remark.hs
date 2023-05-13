@@ -120,7 +120,7 @@ outputRemarkLocation mpos = do
     Just pos ->
       withSGR [SetConsoleIntensity BoldIntensity] $ do
         liftIO $ TIO.putStr $ T.pack (showFilePos pos)
-        liftIO $ TIO.putStrLn ":"
+        liftIO $ TIO.putStr "\n"
     _ ->
       return ()
 

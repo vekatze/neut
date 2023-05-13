@@ -11,6 +11,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Artifact qualified as AR
 import Entity.Binder
+import Entity.BuildMode qualified as BM
 import Entity.Comp
 import Entity.Constraint qualified as C
 import Entity.DeclarationName qualified as DN
@@ -42,6 +43,7 @@ data Env = Env
     endOfEntry :: FastRef T.Text,
     clangOptString :: FastRef String,
     shouldColorize :: FastRef Bool,
+    buildMode :: FastRef BM.BuildMode,
     moduleCacheMap :: FastRef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: FastRef (Map.HashMap MA.ModuleAlias MC.ModuleChecksum),
     locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
@@ -98,6 +100,7 @@ newEnv = do
   endOfEntry <- newFastRef
   clangOptString <- newFastRef
   shouldColorize <- newIORef True
+  buildMode <- newIORef BM.Develop
   moduleCacheMap <- newFastRef
   moduleAliasMap <- newFastRef
   locatorAliasMap <- newFastRef

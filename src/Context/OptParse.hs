@@ -3,6 +3,7 @@ module Context.OptParse (parseCommand) where
 import Context.App
 import Control.Monad.IO.Class
 import Data.Text qualified as T
+import Entity.BuildMode qualified as BM
 import Entity.Command
 import Entity.Config.Add qualified as Add
 import Entity.Config.Build qualified as Build
@@ -46,6 +47,7 @@ parseBuildOpt = do
   mTarget <- optional $ argument str $ mconcat [metavar "TARGET", help "The build target"]
   mClangOpt <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
   installDir <- optional $ strOption $ mconcat [long "install", metavar "DIRECTORY", help "Install the resulting binary to this directory"]
+  buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   remarkCfg <- remarkConfigOpt
   outputKindList <- outputKindListOpt
   shouldSkipLink <- shouldSkipLinkOpt
@@ -61,6 +63,7 @@ parseBuildOpt = do
           Build.shouldSkipLink = shouldSkipLink,
           Build.shouldExecute = shouldExecute,
           Build.installDir = installDir,
+          Build.buildMode = buildMode,
           Build.args = rest
         }
 
@@ -171,6 +174,20 @@ readOutputKinds kindStrList =
           return $ OK.Object : tmp
         _ ->
           Left $ T.unpack $ "no such output kind exists: " <> kindStr
+
+buildModeReader :: ReadM BM.BuildMode
+buildModeReader =
+  eitherReader readBuildMode
+
+readBuildMode :: String -> Either String BM.BuildMode
+readBuildMode input = do
+  case input of
+    "develop" ->
+      return BM.Develop
+    "release" ->
+      return BM.Release
+    _ ->
+      Left $ T.unpack $ "no such build mode exists: " <> T.pack input
 
 shouldSkipLinkOpt :: Parser Bool
 shouldSkipLinkOpt =

@@ -29,6 +29,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
@@ -38,6 +39,7 @@ import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
 import Data.Time
 import Data.Version qualified as V
+import Entity.BuildMode qualified as BM
 import Entity.Checksum
 import Entity.Const
 import Entity.Module
@@ -151,8 +153,10 @@ getBaseBuildDir baseModule = do
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do
   baseBuildDir <- getBaseBuildDir baseModule
-  optString <- B.fromString <$> readRef' clangOptString
-  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode optString)
+  optString <- readRef' clangOptString
+  buildMode <- Env.getBuildMode
+  let configString = B.fromString $ T.unpack (BM.reify buildMode) ++ " " ++ optString
+  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode configString)
   return $ baseBuildDir </> buildOptionPrefix
 
 getArtifactDir :: Module -> App (Path Abs Dir)

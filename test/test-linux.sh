@@ -10,6 +10,6 @@ for i in $(find . -maxdepth 1 -mindepth 1 -type d | sort); do
   echo $(basename $i)
   NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
   NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build --clang-option "-fsanitize=address"
-  ASAN_OPTIONS=detect_leaks=1 ./.build/$TARGET_ARCH-linux/compiler-$COMPILER_VERSION/build-option-rF8AhaYk5v3_QpQ1ErUpo1C-MO7U4-JJtuLrxsf6pWI=/executable/$(basename $i)
+  ASAN_OPTIONS=detect_leaks=1 ./.build/$TARGET_ARCH-linux/compiler-$COMPILER_VERSION/build-option-cLHs7km0Z68odNMcuhrD2pgQSCxXZuyQVSxpwrPsbVY=/executable/$(basename $i)
   cd ..
 done

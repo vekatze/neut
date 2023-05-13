@@ -17,6 +17,6 @@ for i in $(find . -d 1 -type d | sort); do
   NEUT_TARGET_ARCH=$TARGET_ARCH neut clean
   NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH neut build --clang-option "-fsanitize=address"
   # https://stackoverflow.com/questions/64126942
-  MallocNanoZone=0 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE ./.build/$TARGET_ARCH-darwin/compiler-$COMPILER_VERSION/build-option-rF8AhaYk5v3_QpQ1ErUpo1C-MO7U4-JJtuLrxsf6pWI=/executable/$(basename $i)
+  MallocNanoZone=0 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE ./.build/$TARGET_ARCH-darwin/compiler-$COMPILER_VERSION/build-option-cLHs7km0Z68odNMcuhrD2pgQSCxXZuyQVSxpwrPsbVY=/executable/$(basename $i)
   cd ..
 done

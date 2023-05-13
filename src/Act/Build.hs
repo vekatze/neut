@@ -2,6 +2,7 @@ module Act.Build (build) where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
@@ -26,6 +27,7 @@ build :: Config -> App ()
 build cfg = do
   LLVM.ensureSetupSanity cfg
   Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
+  Env.setBuildMode $ buildMode cfg
   Module.getMainModule >>= Fetch.fetch
   mDir <- mapM Path.getInstallDir (installDir cfg)
   targetList <- Collect.collectTargetList $ mTarget cfg
