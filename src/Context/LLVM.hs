@@ -88,7 +88,14 @@ emitInner additionalClangOptions llvm outputPath = do
 clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
 clangLinkOpt objectPathList outputPath additionalOptionStr = do
   let pathList = map toFilePath objectPathList
-  ["-Wno-override-module", "-O2", "-o", toFilePath outputPath] ++ pathList ++ words additionalOptionStr
+  [ "-Wno-override-module",
+    "-O2",
+    "-pthread",
+    "-o",
+    toFilePath outputPath
+    ]
+    ++ pathList
+    ++ words additionalOptionStr
 
 link :: [Path Abs File] -> Path Abs File -> App ()
 link objectPathList outputPath = do
