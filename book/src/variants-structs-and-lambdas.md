@@ -31,11 +31,11 @@ variant test {
 and use it like the below:
 
 ```neut
-define create-my-list(): my-list(i64) {
+define create-my-list(): my-list(int) {
   MyCons(1, MyCons(2, MyNil))
 }
 
-define get-length[a](xs: my-list(a)): i64 {
+define get-length[a](xs: my-list(a)): int {
   // pattern matching against a my-list
   match xs {
   - MyNil =>
@@ -43,7 +43,7 @@ define get-length[a](xs: my-list(a)): i64 {
   - MyCons(1, MyNil) => // nested pattern matching is available
     1
   - MyCons(_, rest) =>
-    add-i64(1, get-length(rest))
+    add-int(1, get-length(rest))
   }
 }
 ```
@@ -54,12 +54,12 @@ Incidentally, the `[a]` at the definition of `get-length` specifies implicit arg
 
 ```neut
 // `tau` is the type of types.
-define get-length(a: tau, xs: my-list(a)): i64 {
+define get-length(a: tau, xs: my-list(a)): int {
   match xs { // pattern matching against a my-list
   - MyNil =>
     1
   - MyCons(_, rest) =>
-    add-i64(1, get-length(a, rest)) // recursion
+    add-int(1, get-length(a, rest)) // recursion
   }
 }
 ```
@@ -107,22 +107,22 @@ You can define a struct type like the below:
 ```neut
 // Define a struct.
 struct config(a) by Config { // `by Config` specifies the name of the constructor
-- foo: i64
+- foo: int
 - bar: a
-- some-value: my-list(i64)
+- some-value: my-list(int)
 }
 ```
 
 and use the type as follows:
 
 ```neut
-define create-struct(): config(my-list(i64)) {
+define create-struct(): config(my-list(int)) {
   // create a struct
   // you can also use keyword arguments, as described later
   Config(30, MyNil, MyCons(3, MyNil))
 }
 
-define use-struct(c: config(a)): i64 {
+define use-struct(c: config(a)): int {
   let Config(x, y, z) = c // destructive bind
   0
 }
@@ -132,15 +132,15 @@ It might be illuminating to see that a struct is essentially just a syntax sugar
 
 ```neut
 struct config(a) by Config {
-- foo: i64
+- foo: int
 - bar: a
-- some-value: my-list(i64)
+- some-value: my-list(int)
 }
 
 ↓
 
 variant config(a) {
-- Config(foo: i64, bar: a, some-value: my-list(i64))
+- Config(foo: int, bar: a, some-value: my-list(int))
 }
 ```
 
@@ -157,8 +157,8 @@ The same as the corresponding variant type.
 You can create an anonymous function by using `lambda`, and use it as an ordinary function:
 
 ```neut
-define sample(): i64 {
-  let inc = lambda (x) { add-i64(x) } // create a lambda function i64 -> i64
+define sample(): int {
+  let inc = lambda (x) { add-int(x) } // create a lambda function int -> int
   inc(10) // and call it
 }
 ```
@@ -166,10 +166,10 @@ define sample(): i64 {
 Also, the type of functions is written as follows in Neut:
 
 ```neut
-define sample(): i64 {
-  let type1 = i64 -> i64         // receives i64          / returns i64
-  let type2 = (i64, bool) -> i64 // receives i64 and bool / returns i64
-  let type3 = () -> i64          // receives nothing      / returns i64
+define sample(): int {
+  let type1 = int -> int         // receives int          / returns int
+  let type2 = (int, bool) -> int // receives int and bool / returns int
+  let type3 = () -> int          // receives nothing      / returns int
   0
 }
 ```
@@ -179,11 +179,11 @@ define sample(): i64 {
 Neut has keyword arguments like below:
 
 ```neut
-define some-function(a: i64, some-argument: tau, b: tau): i64 {
+define some-function(a: int, some-argument: tau, b: tau): int {
   // ...
 }
 
-define caller(): i64 {
+define caller(): int {
   let _ =
     some-function {
     - b <= tau
@@ -198,7 +198,7 @@ define caller(): i64 {
 Keyword arguments can be used with a constructor:
 
 ```neut
-define create-struct(): config(my-list(i64)) {
+define create-struct(): config(my-list(int)) {
   // create a struct using keyword arguments
   Config {
   - foo <= 30

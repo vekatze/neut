@@ -7,11 +7,11 @@ Here, we'll see how parallelism in Neut works. Parallel control flows can commun
 Neut has a feature for parallelism. It is a thin layer over pthread, and works like async/await:
 
 ```neut
-let f1: flow(i64) = detach { // like async
+let f1: flow(int) = detach { // like async
   print("fA")
   1
 }
-let f2: flow(i64) = detach { // like async
+let f2: flow(int) = detach { // like async
   print("fb")
   2
 }
@@ -33,18 +33,18 @@ Flows can send/receive values using channels. The channels in Neut are similar t
 You can create a channel using `let-on`, and send/receive values using those channels.
 
 ```neut
-let ch0 = new-channel(i64)
-let ch1 = new-channel(i64)
+let ch0 = new-channel(int)
+let ch1 = new-channel(int)
 // channels as queues
 let result on ch0, ch1 = {
   let f = detach {
     let message0 = receive(ch0)
-    send(ch1, add-i64(message0, 1))
+    send(ch1, add-int(message0, 1))
     message0
   }
   let g = detach {
     let message1 = receive(ch1)
-    add-i64(message1, 1)
+    add-int(message1, 1)
   }
   send(ch0, 0)
   let v1 = attach f // v1 == 1
@@ -71,8 +71,8 @@ As mentioned above, the channels in Neut are similar to those of Go (and indeed 
 `channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is a wrapper of such a channel:
 
 ```neut
-define sample(): i64 {
-  let xs: list(i64) = []
+define sample(): int {
+  let xs: list(int) = []
 
   // create a new cell
   let xs-cell = new-cell(xs)

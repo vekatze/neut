@@ -6,7 +6,7 @@ Here, we'll see how a type can be used to copy/discard the terms of the type. To
 
 ```neut
 variant item {
-- New(i64, i64)
+- New(int, int)
 }
 ```
 

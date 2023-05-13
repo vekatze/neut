@@ -7,8 +7,8 @@ Here, we'll see how a closure is compiled in Neut. Then, we'll see how a functio
 Suppose we have a function like the below:
 
 ```neut
-define foo(a: tau): i64 {
-  let x: i64 = 10
+define foo(a: tau): int {
+  let x: int = 10
   let y = tau
   lambda (z: a) {
     let foo = x
@@ -33,13 +33,13 @@ First of all, the compiler collects all the free variables in the lambda. Here, 
 Here, consider annotating all the variables in the list by their variables, like below:
 
 ```neut
-[a: tau, x: i64, y: tau, z: a]
+[a: tau, x: int, y: tau, z: a]
 ```
 
 This list can be said as "closed" in that the term
 
 ```neut
-lambda (a: tau, x: i64, y: tau, z: a) { Unit }
+lambda (a: tau, x: int, y: tau, z: a) { Unit }
 ```
 
 doesn't contain any free variables.
@@ -49,7 +49,7 @@ doesn't contain any free variables.
 We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like below:
 
 ```text
-(Σ (a: tau, x: i64, y: tau). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
+(Σ (a: tau, x: int, y: tau). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
  -----------------------------   ------------
  the type of the environment     the closed chain (i.e. environment)
 ```
@@ -72,7 +72,7 @@ let label    = cls[2] // get the label to the function
 
 let env-clone = env-type(1, env) // copy the environment using the type of it
 
-let new-ptr = malloc(3)      // allocate new memory region for our new closure
+let new-ptr = malloc(mul-int(3, word-size)) // allocate new memory region for our new closure
 store(new-ptr[0], env-type)
 store(new-ptr[1], env-clone)
 store(new-ptr[2], label)
@@ -114,7 +114,7 @@ define exp-closure(action-selector, cls) {
     // copy the environment using the type of it
     let env-clone = env-type(1, env)
 
-    let new-ptr = malloc(3)
+    let new-ptr = malloc(mul-int(3, word-size))
     // copy the original values
     store(new-ptr[0], env-type)
     store(new-ptr[1], env-clone)

@@ -24,13 +24,13 @@ variant my-list(a: tau) {
 }
 
 // a recursive function with pattern matching
-define noisy-length[a](xs: my-list(a)): i64 {
+define noisy-length[a](xs: my-list(a)): int {
   match xs {
   - Nil =>
     0
   - Cons(_, ys) =>
     print("hey\n")
-    add-i64(1, noisy-length(ys))
+    add-int(1, noisy-length(ys))
   }
 }
 ```
@@ -77,7 +77,7 @@ $ neut create hello && tree hello && cd hello
 
 # the mandatory hello world
 $ tee source/hello.nt << END
-define main(): i64 {
+define main(): int {
   print("Hello, world!\n")
   0
 }

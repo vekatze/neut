@@ -14,7 +14,7 @@ cd hello
 The module should contain a file `hello.nt` with the following content:
 
 ```neut
-define main(): i64 {
+define main(): int {
   0
 }
 ```
@@ -22,7 +22,7 @@ define main(): i64 {
 Rewrite the file to something like the below:
 
 ```neut
-define main(): i64 {
+define main(): int {
   print("Hi!\n")
   0
 }
@@ -73,7 +73,7 @@ export {
 // ... and here comes the main section.
 // We'll define functions and types here.
 
-define func(arg-1: i64): i64 {
+define func(arg-1: int): int {
   arg-1
 }
 
@@ -89,7 +89,7 @@ Also, the order of functions doesn't matter in Neut.
 In Neut, a variable is copied/discarded when used non-linearly. Consider the following code:
 
 ```neut
-define foo(): my-list(i64) {
+define foo(): my-list(int) {
   let c = MyCons(1, MyCons(2, MyNil))
   // (X)
   let c1 = c

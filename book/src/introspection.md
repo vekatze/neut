@@ -3,7 +3,7 @@
 You can get some states of the compiler by using `introspect`. In particular, you can get the information about the target platform. This information can then be exploited to change the behavior of a function according to the target platform:
 
 ```neut
-define my-func(): i64 {
+define my-func(): int {
   introspect target-os {
   - linux =>
     1
@@ -12,7 +12,7 @@ define my-func(): i64 {
   }
 }
 
-define my-func-2(): i64 {
+define my-func-2(): int {
   introspect target-arch {
   - arm64 =>
     1
@@ -21,7 +21,7 @@ define my-func-2(): i64 {
   }
 }
 
-define my-func-3(): i64 {
+define my-func-3(): int {
   introspect target-platform {
   - arm64-linux =>
     1

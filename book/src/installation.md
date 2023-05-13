@@ -49,7 +49,7 @@ Let's create a sample project and build it to check if your installation is corr
 neut create test
 cd test
 cat source/test.nt
-# => define main(): i64 {
+# => define main(): int {
 #      0
 #    }
 neut build --execute

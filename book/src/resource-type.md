@@ -4,11 +4,11 @@ You can define a type by specifying what should happen when copying/discarding a
 
 ```neut
 resource type-name {
-- lambda (value: i64) {
+- lambda (value: int) {
     // discard `value: type-name` here
-    0 // return any i64; this is just a placeholder, and has no significance
+    0 // return any int; this is just a placeholder, and has no significance
   }
-- lambda (pointer: i64) {
+- lambda (pointer: int) {
     // copy `pointer: type-name` here
     copied-pointer // ... then return the address of newly-created value
   }
@@ -23,24 +23,24 @@ For example, the following is a definition of a "boxed" integer type, with some 
 
 ```neut
 resource boxed-int {
-- lambda (v: i64) {
+- lambda (v: int) {
     print("discarded!\n") // print a message for a try
-    magic external(free, v)
+    free(v)
     0
   }
-- lambda (v: i64) {
-    let orig-value: i64 = magic load(i64, v)
-    let new-ptr: i64 = magic external(malloc, 1: i64)
-    magic store(i64, new-ptr, orig-value)
+- lambda (v: int) {
+    let orig-value = load-int(v)
+    let new-ptr = malloc(1)
+    magic store(int, new-ptr, orig-value)
     v
   }
 }
 
 // provide a way to introduce new boxed integer
-define create-new-boxed-int(x: i64): boxed-int {
-  let new-ptr = magic external(malloc, 1)
+define create-new-boxed-int(x: int): boxed-int {
+  let new-ptr = malloc(1)
   magic store(new-ptr, x)
-  magic cast(i64, boxed-int, new-ptr)
+  magic cast(int, boxed-int, new-ptr)
 }
 ```
 

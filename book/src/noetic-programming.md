@@ -15,7 +15,7 @@ The point of a noema lies in the fact that *a noema isn't consumed even after it
 A noema can be created using `let-on`:
 
 ```neut
-define sample(xs: list(a)): i64 {
+define sample(xs: list(a)): int {
   let result on xs = {
     let foo = xs // foo: &list(a)
     1
@@ -59,12 +59,12 @@ By using a noema, we can perform something like "borrowing" in other languages.
 The content of a noema can be viewed, using `case`:
 
 ```neut
-define length[a](xs: &list(a)): i64 {
+define length[a](xs: &list(a)): int {
   case xs {
   - [] =>
     0
   - y :< ys =>
-    add-i64(1, length(ys))
+    add-int(1, length(ys))
   }
 }
 ```
@@ -78,17 +78,17 @@ The variables that are bound by a `case` are cast to be noetic. For example, the
 You can actualize a noema using `!e`:
 
 ```neut
-define sum-of-list(xs: &list(i64)): i64 {
+define sum-of-list(xs: &list(int)): int {
   case xs {
   - [] =>
     0
   - y :< ys =>
-    add-i64(!y, sum-of-list(ys)) // using !e
+    add-int(!y, sum-of-list(ys)) // using !e
   }
 }
 ```
 
-`!e` copies a noema along its inner type. For example, since the `y` above is of type `&i64`, `!y` is a `y`'s new copy of type `i64`.
+`!e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `!y` is a `y`'s new copy of type `int`.
 
 ## The Type of a Static Text
 

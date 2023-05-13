@@ -2,7 +2,7 @@
 
 ## Exponential for Immediates
 
-Immediates like integers or floats can be used multiple times safely since they don't need malloc/free. This fact is reflected by their corresponding exponentials. Both `i64` and `f64` (and other immediate types) are translated into something like the below:
+Immediates like integers or floats can be used multiple times safely since they don't need malloc/free. This fact is reflected by their corresponding exponentials. The types of integers and floats are translated into something like the below:
 
 ```neut
 define exp-immediate(selector, v) {
@@ -18,10 +18,10 @@ It might be worth noting that, since these fake exponentials are inlined at comp
 
 ## Exponential for Types
 
-Neut is a dependently-typed programming language. This means that types like `i64: tau` can also be used as ordinary values:
+Neut is a dependently-typed programming language. This means that types like `int: tau` can also be used as ordinary values:
 
 ```neut
-let t = i64
+let t = int
 let a = f(t)
 let b = g(t)
 ...
@@ -29,7 +29,7 @@ let b = g(t)
 
 where the `tau` is the type of the types.
 
-This means that we need to translate the `tau` into a function. It might sound difficult, but it's easy in reality. Since a type is translated into a closed function as we've seen, things like `i64` or `text -> bool` are lowered to pointers to the function at runtime, which is nothing but an immediate. Types are therefore translated into the pointer to `exp-immediate` that we've just seen.
+This means that we need to translate the `tau` into a function. It might sound difficult, but it's easy in reality. Since a type is translated into a closed function as we've seen, things like `int` or `text -> bool` are lowered to pointers to the function at runtime, which is nothing but an immediate. Types are therefore translated into the pointer to `exp-immediate` that we've just seen.
 
 ## Exponential for Closures
 
@@ -112,7 +112,7 @@ The point here is that *the type information in a value is loaded at runtime and
 ...So we have found a way to linearize the language. Does it finish the story? Unfortunately not, as in every storyline. Suppose we have a list `xs`, and want to choose what to do by its length:
 
 ```neut
-let xs: list(i64) = [1, 2, 3]
+let xs: list(int) = [1, 2, 3]
 let len = length(xs)
 if cond(len) {
   print("hey")
@@ -125,7 +125,7 @@ foo(xs)
 What causes a problem is the fact that the `xs` is used non-linearly in the code above. The first occurrence is at `length(xs)`, and the second one is at `foo(xs)`. This means the code above is translated into something like the below:
 
 ```neut
-let xs: list(i64) = [1, 2, 3]
+let xs: list(int) = [1, 2, 3]
 let xs-copy = exp-list(1, xs) // copy the original list
 let len = length(xs-copy) // ... and use it to get its length
 if cond(len) {

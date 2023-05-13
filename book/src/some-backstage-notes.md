@@ -7,7 +7,7 @@ The prominent one that comes to my mind is that, when you use a polymorphic vari
 ```neut
 // a syntax to define an ADT
 variant Foo(a) {
-- ConsA(i64, bool) // e.g. ConsA(3, True): Foo(a)
+- ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
 - ConsB(a)
 }
 ```
@@ -30,7 +30,7 @@ This means that in Neut you must pay additional spaces to use parameterized vari
 
 ```neut
 variant FooText {
-- ConsA(i64, bool) // e.g. ConsA(3, True): Foo(a)
+- ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
 - ConsB(text)
 }
 ```

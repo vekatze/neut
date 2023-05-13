@@ -11,12 +11,12 @@ export {
 - item-func // `item-func` can now be used from other files
 }
 
-define item-func(): i64 {
+define item-func(): int {
   some-private-func()
 }
 
 // this definition can't be seen from any other files
-define some-private-func(): i64 {
+define some-private-func(): int {
   2
 }
 ```
@@ -34,7 +34,7 @@ export {
 
 variant my-item(a) {
 - Foo
-- Bar(i64, a)
+- Bar(int, a)
 }
 
 variant other-item {
@@ -56,7 +56,7 @@ export {
 - yo-func
 }
 
-define yo-func(): i64 {
+define yo-func(): int {
   1
 }
 ```
@@ -70,7 +70,7 @@ import {
 - this.foo.yo // imports source/foo/yo.nt
 }
 
-define main(): i64 {
+define main(): int {
   yo-func()
   // you can also write this.foo.yo.yo-func()
 }
@@ -158,7 +158,7 @@ export {
 - item-func
 }
 
-define item-func(): i64 {
+define item-func(): int {
   2
 }
 
@@ -171,7 +171,7 @@ import {
 - this.foo.item => I
 }
 
-define main(): i64 {
+define main(): int {
   I.item-func()
   // `item-func()` will results in an error
 }
@@ -227,7 +227,7 @@ import {
 - this.exporter
 }
 
-define foo(): i64 {
+define foo(): int {
   let _ = item-func() // using re-exported name
   item-func-alias()   // using re-exported alias
 }

@@ -61,12 +61,12 @@ As you can see from the definition of `let-on`, a noema always has its "source" 
 Using a noema, for example, the length of a list can be obtained as follows:
 
 ```neut
-define length-noetic[a](xs: &list(a)): i64 {
+define length-noetic[a](xs: &list(a)): int {
   case xs {
   - [] =>
     0
   - y :< ys =>
-    add-i64(1, length-noetic(ys))
+    add-int(1, length-noetic(ys))
   }
 }
 ```
@@ -86,17 +86,17 @@ Note that, although the `y: &a` is unused in the code above, since `&a` is a noe
 Also, you can create a value of type `A` from a noema of type `&A`:
 
 ```neut
-define sum-of-list(xs: &list(i64)): i64 {
+define sum-of-list(xs: &list(int)): int {
   case xs {
   - [] =>
     0
   - y :< ys =>
-    add-i64(!y, sum-of-list(ys))
+    add-int(!y, sum-of-list(ys))
   }
 }
 ```
 
-`!e` copies the argument along its type, keeping the original noema intact. In the example above, a term of type `i64` is obtained from a term `y: &i64`, by writing `!y`.
+`!e` copies the argument along its type, keeping the original noema intact. In the example above, a term of type `int` is obtained from a term `y: &int`, by writing `!y`.
 
 ## Example: Get the Length of a List
 
@@ -104,8 +104,8 @@ Using `let-on` and `length-noetic`, we can obtain the length of a list as follow
 
 ```neut
 define test() {
-  let xs: list(i64) = [1, 2, 3]
-  let len on xs = length-noetic(xs) // xs: &list(i64)
+  let xs: list(int) = [1, 2, 3]
+  let len on xs = length-noetic(xs) // xs: &list(int)
   do-something(xs, len)
 }
 ```

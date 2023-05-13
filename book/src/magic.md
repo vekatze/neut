@@ -28,7 +28,7 @@ let a = magic syscall(SYSCALL-NUM, arg-1, ..., arg-n)
 Except for `cast`, the resulting type of a `magic` is not specified. Thus, you often need to annotate types like the below:
 
 ```neut
-let result: i64 = magic syscall(12345, arg-1, arg-2)
+let result: int = magic syscall(12345, arg-1, arg-2)
 ```
 
 ## On the Syntax of Store and Load
