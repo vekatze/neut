@@ -48,7 +48,7 @@ parseImportWithAlias = do
   P.delimiter "=>"
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
   (source, strictGlobalLocator) <- parseLocatorText m locatorText
-  return (locatorText, (source, AI.Prefix m globalLocatorAlias strictGlobalLocator))
+  return (locatorText, (source, AI.Prefix globalLocatorAlias strictGlobalLocator))
 
 parseImportWithoutAlias :: P.Parser (LocatorText, (Source.Source, AI.AliasInfo))
 parseImportWithoutAlias = do

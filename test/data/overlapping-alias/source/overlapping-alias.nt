@@ -1,0 +1,11 @@
+import {
+- this.itemA => X
+- this.itemB => X
+}
+
+define main(): int {
+  let _ = X.foo()
+  let _ = X.bar()
+  let _ = X.buz()
+  0
+}

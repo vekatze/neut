@@ -46,7 +46,7 @@ data Env = Env
     buildMode :: FastRef BM.BuildMode,
     moduleCacheMap :: FastRef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: FastRef (Map.HashMap MA.ModuleAlias MC.ModuleChecksum),
-    locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
+    locatorAliasMap :: FastRef (Map.HashMap GLA.GlobalLocatorAlias [SGL.StrictGlobalLocator]),
     sourceNameMap :: FastRef (Map.HashMap (Path Abs File) (Map.HashMap DD.DefiniteDescription GN.GlobalName)),
     nameMap :: FastRef (Map.HashMap DD.DefiniteDescription GN.GlobalName),
     antecedentMap :: FastRef (Map.HashMap MC.ModuleChecksum M.Module),

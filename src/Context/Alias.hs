@@ -29,32 +29,29 @@ import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 
 registerGlobalLocatorAlias ::
-  Hint ->
   GLA.GlobalLocatorAlias ->
   SGL.StrictGlobalLocator ->
   App ()
-registerGlobalLocatorAlias m from to = do
-  aliasEnv <- readRef' locatorAliasMap
-  if Map.member from aliasEnv
-    then Throw.raiseError m $ "the global locator `" <> BN.reify (GLA.reify from) <> "` is already registered" --
-    else modifyRef' locatorAliasMap $ Map.insert from to
+registerGlobalLocatorAlias from to = do
+  modifyRef' locatorAliasMap $ Map.insertWith (++) from [to]
 
 resolveAlias ::
   Hint ->
   GL.GlobalLocator ->
-  App SGL.StrictGlobalLocator
+  App [SGL.StrictGlobalLocator]
 resolveAlias m gl = do
   case gl of
     GL.GlobalLocator moduleAlias sourceLocator -> do
       moduleID <- resolveModuleAlias m moduleAlias
       cgl <- Locator.getCurrentGlobalLocator
       let isPrivate = SGL.moduleID cgl == moduleID && SGL.sourceLocator cgl == sourceLocator
-      return $
-        SGL.StrictGlobalLocator
-          { SGL.moduleID = moduleID,
-            SGL.sourceLocator = sourceLocator,
-            SGL.isPublic = not isPrivate
-          }
+      return
+        [ SGL.StrictGlobalLocator
+            { SGL.moduleID = moduleID,
+              SGL.sourceLocator = sourceLocator,
+              SGL.isPublic = not isPrivate
+            }
+        ]
     GL.GlobalLocatorAlias alias -> do
       aliasMap <- readRef' locatorAliasMap
       case Map.lookup alias aliasMap of
@@ -118,8 +115,8 @@ getLatestCompatibleChecksum mc = do
 activateAliasInfo :: AliasInfo -> App ()
 activateAliasInfo aliasInfo =
   case aliasInfo of
-    Prefix m from to ->
-      registerGlobalLocatorAlias m from to
+    Prefix from to ->
+      registerGlobalLocatorAlias from to
     Use strictGlobalLocator ->
       Locator.activateGlobalLocator strictGlobalLocator
 

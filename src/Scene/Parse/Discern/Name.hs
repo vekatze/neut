@@ -14,6 +14,7 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe qualified as Maybe
@@ -93,10 +94,18 @@ resolveLocator ::
   L.Locator ->
   App (DD.DefiniteDescription, GN.GlobalName)
 resolveLocator m (gl, ll) = do
-  sgl <- Alias.resolveAlias m gl
-  let dd = DD.new sgl ll
-  gn <- interpretDefiniteDescription m dd
-  return (dd, gn)
+  sgls <- Alias.resolveAlias m gl
+  let candList = map (`DD.new` ll) sgls
+  candList' <- mapM (Global.lookup m) candList
+  let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
+  case foundNameList of
+    [] ->
+      Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
+    [pair] ->
+      return pair
+    _ -> do
+      let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
+      Throw.raiseError m $ "this `" <> L.reify (gl, ll) <> "` is ambiguous since it could refer to:" <> candInfo
 
 interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
 interpretDefiniteDescription m dd = do

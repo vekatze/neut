@@ -1,0 +1,11 @@
+export {
+- bar
+}
+
+define bar(): tau {
+  tau
+}
+
+define buz(): tau {
+  tau
+}
