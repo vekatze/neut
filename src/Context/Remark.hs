@@ -33,7 +33,7 @@ import Entity.FilePos
 import Entity.FilePos qualified as FilePos
 import Entity.Hint
 import Entity.Remark qualified as R
-import System.Console.ANSI
+import System.Console.ANSI.Codes
 
 initialize :: App ()
 initialize = do
@@ -109,38 +109,36 @@ printRemarkWithoutFilePos level txt =
 
 printRemarkIO :: R.Remark -> App ()
 printRemarkIO (mpos, shouldInsertPadding, l, t) = do
-  outputRemarkLocation mpos
-  outputRemarkLevel l
-  outputRemarkText t (remarkLevelToPad shouldInsertPadding l)
-  outputFooter
+  locText <- getRemarkLocation mpos
+  levelText <- getRemarkLevel l
+  remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- getFooter
+  liftIO $ TIO.putStr $ locText <> levelText <> remarkText <> footerText
 
-outputRemarkLocation :: Maybe FilePos -> App ()
-outputRemarkLocation mpos = do
+getRemarkLocation :: Maybe FilePos -> App T.Text
+getRemarkLocation mpos = do
   case mpos of
-    Just pos ->
-      withSGR [SetConsoleIntensity BoldIntensity] $ do
-        liftIO $ TIO.putStr $ T.pack (showFilePos pos)
-        liftIO $ TIO.putStr "\n"
+    Just pos -> do
+      withSGR [SetConsoleIntensity BoldIntensity] $ T.pack $ showFilePos pos ++ "\n"
     _ ->
-      return ()
+      return ""
 
-outputFooter :: App ()
-outputFooter = do
+getFooter :: App T.Text
+getFooter = do
   eoe <- getEndOfEntry
   if eoe == ""
-    then return ()
-    else liftIO $ TIO.putStrLn eoe
+    then return ""
+    else return $ eoe <> "\n"
 
-outputRemarkLevel :: R.RemarkLevel -> App ()
-outputRemarkLevel l =
+getRemarkLevel :: R.RemarkLevel -> App T.Text
+getRemarkLevel l =
   withSGR (R.remarkLevelToSGR l) $ do
-    liftIO $ TIO.putStr $ R.remarkLevelToText l
-    liftIO $ TIO.putStr ": "
+    R.remarkLevelToText l <> ": "
 
-outputRemarkText :: T.Text -> App T.Text -> App ()
-outputRemarkText str padComp = do
-  pad <- padComp
-  liftIO $ TIO.putStrLn $ stylizeRemarkText str pad
+getRemarkText :: T.Text -> App T.Text -> App T.Text
+getRemarkText str padComp = do
+  remarkText <- stylizeRemarkText str <$> padComp
+  return $ remarkText <> "\n"
 
 remarkLevelToPad :: R.ShouldInsertPadding -> R.RemarkLevel -> App T.Text
 remarkLevelToPad shouldInsertPadding level = do
@@ -155,12 +153,12 @@ stylizeRemarkText str pad = do
     then str
     else T.intercalate "\n" $ head ls : map (pad <>) (tail ls)
 
-withSGR :: [SGR] -> App () -> App ()
-withSGR arg f = do
+withSGR :: [SGR] -> T.Text -> App T.Text
+withSGR arg str = do
   shouldColorize <- getShouldColorize
   if shouldColorize
-    then liftIO (setSGR arg) >> f >> liftIO (setSGR [Reset])
-    else f
+    then return $ T.pack (setSGRCode arg) <> str <> T.pack (setSGRCode [Reset])
+    else return str
 
 setEndOfEntry :: T.Text -> App ()
 setEndOfEntry =
