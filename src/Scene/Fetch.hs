@@ -23,11 +23,12 @@ import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Path
 import Scene.Module.Reflect qualified as Module
+import UnliftIO.Async
 
 fetch :: M.Module -> App ()
 fetch baseModule = do
   let dependency = Map.toList $ M.moduleDependency baseModule
-  forM_ dependency $ \(alias, (url, checksum)) ->
+  forConcurrently_ dependency $ \(alias, (url, checksum)) ->
     installIfNecessary alias url checksum
 
 insertDependency :: T.Text -> ModuleURL -> App ()
