@@ -1,7 +1,7 @@
 name: neut
 version: 0.2.0.0
 license: ISC
-license-file: license.org
+license-file: license.md
 author: "vekatze"
 maintainer: "vekatze@icloud.com"
 
