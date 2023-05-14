@@ -177,10 +177,6 @@ defaultImports =
     "core.top"
   ]
 
--- [ coreList,
---   corePreface
--- ]
-
 holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"
