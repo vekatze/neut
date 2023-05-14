@@ -8,6 +8,7 @@ import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
 import Data.Foldable
+import Data.Maybe
 import Entity.Config.Build
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
@@ -21,6 +22,7 @@ import Scene.Link qualified as Link
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
+import UnliftIO.Async
 import Prelude hiding (log)
 
 build :: Config -> App ()
@@ -34,11 +36,14 @@ build cfg = do
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
     (artifactTime, dependenceSeq) <- Unravel.unravel target
-    forM_ dependenceSeq $ \source -> do
+    llvmList <- forM dependenceSeq $ \source -> do
       Initialize.initializeForSource source
       virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
-        Lower.lower virtualCode >>= Emit.emit >>= LLVM.emit (outputKindList cfg)
+        llvm <- Lower.lower virtualCode >>= Emit.emit
+        return (llvm, source)
+    forConcurrently_ (catMaybes llvmList) $ \(llvm, source) -> do
+      LLVM.emit source (outputKindList cfg) llvm
     Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target (args cfg)

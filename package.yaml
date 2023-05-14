@@ -44,6 +44,7 @@ dependencies:
   - text
   - time
   - unboxed-ref
+  - unliftio
   - unliftio-core
   - unordered-containers
   - utf8-string

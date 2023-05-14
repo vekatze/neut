@@ -8,7 +8,6 @@ where
 import Context.App
 import Context.Env qualified as Env
 import Context.Path qualified as Path
-import Control.Monad
 import Control.Monad.IO.Class
 import Data.Binary
 import Entity.Artifact qualified as A
@@ -44,8 +43,9 @@ loadCache source = do
             Right content ->
               return $ Just content
 
-whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App () -> App ()
+whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
 whenCompilationNecessary outputKindList source comp = do
   artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
-  unless (Source.isCompilationSkippable artifactTime outputKindList source) $ do
-    comp
+  if Source.isCompilationSkippable artifactTime outputKindList source
+    then return Nothing
+    else Just <$> comp

@@ -9,7 +9,6 @@ where
 
 import Context.App
 import Context.App.Internal
-import Context.Env qualified as Env
 import Context.External qualified as External
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -22,6 +21,7 @@ import Data.Text.IO qualified as TIO
 import Entity.Config.Build
 import Entity.Const
 import Entity.OutputKind qualified as OK
+import Entity.Source
 import GHC.IO.Handle
 import Path
 import Path.IO
@@ -40,9 +40,8 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: [OK.OutputKind] -> L.ByteString -> App ()
-emit outputKindList llvmCode = do
-  source <- Env.getCurrentSource
+emit :: Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit source outputKindList llvmCode = do
   kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
   forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
   emitAll llvmCode kindPathList
