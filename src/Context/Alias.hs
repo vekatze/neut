@@ -1,6 +1,5 @@
 module Context.Alias
-  ( registerGlobalLocatorAlias,
-    resolveAlias,
+  ( resolveAlias,
     resolveLocatorAlias,
     initializeAliasMap,
     activateAliasInfo,
