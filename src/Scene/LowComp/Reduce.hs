@@ -31,12 +31,15 @@ reduce' sub lowComp = do
       let op' = substOp sub op
       cont' <- reduce' sub cont
       return $ LC.Cont op' cont'
-    LC.Switch (d, t) defaultBranch les -> do
+    LC.Switch (d, t) defaultBranch les (phi, cont) -> do
       let d' = substLowValue sub d
       let (ls, es) = unzip les
       defaultBranch' <- reduce' sub defaultBranch
       es' <- mapM (reduce' sub) es
-      return $ LC.Switch (d', t) defaultBranch' (zip ls es')
+      phi' <- Gensym.newIdentFromIdent phi
+      let sub' = IntMap.insert (Ident.toInt phi) (LC.VarLocal phi') sub
+      cont' <- reduce' sub' cont
+      return $ LC.Switch (d', t) defaultBranch' (zip ls es') (phi', cont')
     LC.TailCall d ds -> do
       let d' = substLowValue sub d
       let ds' = map (substLowValue sub) ds

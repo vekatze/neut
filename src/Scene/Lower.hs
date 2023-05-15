@@ -120,7 +120,8 @@ lowerComp term =
         baseSize <- lift Env.getBaseSize'
         let t = LT.PrimNum $ PT.Int $ IntSize baseSize
         castedValue <- lowerValueLetCast v t
-        return $ LC.Switch (castedValue, t) defaultCase caseList
+        (phi, phiVar) <- lift $ newValueLocal "phi"
+        return $ LC.Switch (castedValue, t) defaultCase caseList (phi, LC.Return phiVar)
     C.Unreachable ->
       return LC.Unreachable
 
@@ -365,12 +366,9 @@ commConv x lowComp cont2 =
     LC.Cont op cont1 -> do
       cont <- commConv x cont1 cont2
       return $ LC.Cont op cont
-    LC.Switch (d, t) defaultCase caseList -> do
-      let (ds, es) = unzip caseList
-      es' <- mapM (\e -> commConv x e cont2) es
-      let caseList' = zip ds es'
-      defaultCase' <- commConv x defaultCase cont2
-      return $ LC.Switch (d, t) defaultCase' caseList'
+    LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
+      cont' <- commConv x cont cont2
+      return $ LC.Switch (d, t) defaultCase caseList (phiVar, cont')
     LC.TailCall d ds ->
       return $ LC.Let x (LC.Call d ds) cont2
     LC.Unreachable ->
