@@ -65,7 +65,7 @@ data Env = Env
     weakDefMap :: FastRef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: FastRef (Map.HashMap DD.DefiniteDescription TM.Term),
     staticTextList :: FastRef [(DD.DefiniteDescription, (T.Text, Int))],
-    compDefMap :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
+    compAuxEnv :: FastRef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: FastRef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
     keyArgMap :: FastRef (Map.HashMap DD.DefiniteDescription (A.Arity, [Key])),
@@ -124,7 +124,7 @@ newEnv = do
   weakDefMap <- newFastRef
   defMap <- newFastRef
   staticTextList <- newFastRef
-  compDefMap <- newFastRef
+  compAuxEnv <- newFastRef
   dataDefMap <- newFastRef
   codataDefMap <- newFastRef
   keyArgMap <- newFastRef

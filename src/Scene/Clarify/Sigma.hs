@@ -38,6 +38,7 @@ registerClosureS4 = do
   (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
     DD.cls
+    O.Transparent
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
 
 returnImmediateS4 :: C.Comp
@@ -54,10 +55,11 @@ immediateS4 = do
 
 registerSigmaS4 ::
   DD.DefiniteDescription ->
+  O.Opacity ->
   [Either C.Comp (Ident, C.Comp)] ->
   App ()
-registerSigmaS4 name mxts = do
-  registerSwitcher O.Opaque name (sigmaT mxts) (sigma4 mxts)
+registerSigmaS4 name opacity mxts = do
+  registerSwitcher opacity name (sigmaT mxts) (sigma4 mxts)
 
 -- (Assuming `ti` = `return di` for some `di` such that `xi : di`)
 -- sigmaT NAME LOC [(x1, t1), ..., (xn, tn)]   ~>

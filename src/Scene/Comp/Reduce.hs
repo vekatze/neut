@@ -4,26 +4,15 @@ module Scene.Comp.Reduce
 where
 
 import Context.App
-import Context.Clarify qualified as Clarify
 import Context.CompDefinition qualified as CompDefinition
 import Data.IntMap qualified as IntMap
 import Entity.Comp qualified as C
-import Entity.DefiniteDescription as DD
 import Entity.EnumCase qualified as EC
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
 import Scene.Comp.Subst
-
-chainLookup :: DD.DefiniteDescription -> App (Maybe CompDefinition.DefValue)
-chainLookup name = do
-  mDefValue <- CompDefinition.lookup name
-  case mDefValue of
-    Just defValue ->
-      return $ Just defValue
-    Nothing ->
-      Clarify.lookup name
 
 reduce :: C.Comp -> App C.Comp
 reduce term =
@@ -37,7 +26,7 @@ reduce term =
     C.PiElimDownElim v ds -> do
       case v of
         C.VarGlobal x _ -> do
-          mDefValue <- chainLookup x
+          mDefValue <- CompDefinition.lookup x
           case mDefValue of
             Just (O.Transparent, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)

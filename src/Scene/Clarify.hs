@@ -55,37 +55,39 @@ clarify defList = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
     Just mainName -> do
-      auxEnv <- withSpecializedCtx $ do
+      baseAuxEnv <- withSpecializedCtx $ do
         registerImmediateS4
         registerClosureS4
         Clarify.getAuxEnv
       defList' <- clarifyDefList defList
       mainTerm <- Reduce.reduce $ C.PiElimDownElim (C.VarGlobal mainName (A.Arity 0)) []
-      auxEnv' <- forM (Map.toList auxEnv) $ \(x, (opacity, args, e)) -> do
+      baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
-        CompDefinition.insert x (opacity, args, e')
         return (x, (opacity, args, e'))
-      return (defList' ++ auxEnv', Just mainTerm)
+      return (defList' ++ baseAuxEnv', Just mainTerm)
     Nothing -> do
       defList' <- clarifyDefList defList
       return (defList', Nothing)
 
 clarifyDefList :: [Stmt] -> App [C.CompDef]
 clarifyDefList stmtList = do
-  (stmtList', auxEnv) <- withSpecializedCtx $ do
+  baseAuxEnv <- withSpecializedCtx $ do
+    registerImmediateS4
+    registerClosureS4
+    Map.toList <$> Clarify.getAuxEnv
+  stmtList' <- withSpecializedCtx $ do
     stmtList' <- mapM clarifyDef stmtList
-    auxEnv <- Clarify.getAuxEnv >>= reduceDefMap
-    return (stmtList', auxEnv)
-  CompDefinition.union auxEnv
-  stmtList'' <- forM stmtList' $ \(x, (opacity, args, e)) -> do
+    auxEnv <- Clarify.getAuxEnv
+    return $ stmtList' ++ Map.toList auxEnv
+  forM_ (stmtList' ++ baseAuxEnv) $ \(x, (opacity, args, e)) -> do
+    CompDefinition.insert x (opacity, args, e)
+  forM stmtList' $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
     -- printNote' "==================="
     -- printNote' $ DD.reify x
     -- printNote' $ T.pack $ show args
     -- printNote' $ T.pack $ show e'
-    CompDefinition.insert x (opacity, args, e')
     return (x, (opacity, args, e'))
-  return $ stmtList'' ++ Map.toList auxEnv
 
 registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
@@ -94,12 +96,6 @@ registerFoundationalTypes = do
     registerClosureS4
     Clarify.getAuxEnv
   forM_ (Map.toList auxEnv) $ uncurry CompDefinition.insert
-
-reduceDefMap :: CompDefinition.DefMap -> App CompDefinition.DefMap
-reduceDefMap defMap = do
-  forM defMap $ \(opacity, args, e) -> do
-    e' <- Reduce.reduce e
-    return (opacity, args, e')
 
 withSpecializedCtx :: App a -> App a
 withSpecializedCtx action = do

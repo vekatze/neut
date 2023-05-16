@@ -3,7 +3,6 @@ module Context.Clarify
     getAuxEnv,
     insertToAuxEnv,
     isAlreadyRegistered,
-    lookup,
   )
 where
 
@@ -16,21 +15,16 @@ import Prelude hiding (lookup)
 
 initialize :: App ()
 initialize = do
-  writeRef' compDefMap mempty
+  writeRef' compAuxEnv mempty
 
 getAuxEnv :: App CompDefinition.DefMap
 getAuxEnv =
-  readRef' compDefMap
+  readRef' compAuxEnv
 
 insertToAuxEnv :: CompDefinition.DefKey -> CompDefinition.DefValue -> App ()
 insertToAuxEnv k v =
-  modifyRef' compDefMap $ Map.insert k v
+  modifyRef' compAuxEnv $ Map.insert k v
 
 isAlreadyRegistered :: DD.DefiniteDescription -> App Bool
 isAlreadyRegistered dd =
   Map.member dd <$> getAuxEnv
-
-lookup :: CompDefinition.DefKey -> App (Maybe CompDefinition.DefValue)
-lookup k = do
-  cenv <- readRef' compDefMap
-  return $ Map.lookup k cenv
