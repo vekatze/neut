@@ -53,11 +53,11 @@ data WeakTermF a
   | Flow DD.DefiniteDescription a -- ("core.thread.flow-inner", (actual-argument, arg-type))
   | FlowIntro
       DD.DefiniteDescription -- "core.thread.flow-inner"
-      DD.DefiniteDescription -- "core.thread.run"
-      (a, a) -- (lambda, lam-type)
+      DD.DefiniteDescription -- "core.thread.detach"
+      (a, a) -- (flow-inner, inner-type)
   | FlowElim
       DD.DefiniteDescription -- "core.thread.flow-inner"
-      DD.DefiniteDescription -- "core.thread.wait"
+      DD.DefiniteDescription -- "core.thread.attach"
       (a, a) -- (flow, flow-type)
 
 type SubstWeakTerm =

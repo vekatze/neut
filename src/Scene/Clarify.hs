@@ -237,7 +237,8 @@ clarifyTerm tenv term =
       clarifyTerm tenv $ m :< TM.ResourceType pVar
     m :< TM.FlowIntro _ var (e, t) -> do
       let arity = A.fromInt 2
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
+      let lam = m :< TM.PiIntro (LK.Normal O.Opaque) [] e
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, lam]
     m :< TM.FlowElim _ var (e, t) -> do
       let arity = A.fromInt 2
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]

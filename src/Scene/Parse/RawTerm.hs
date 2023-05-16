@@ -682,7 +682,7 @@ rawTermFlowIntro = do
   flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   detachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadDetach
   e <- betweenBrace rawExpr
-  return $ m :< RT.FlowIntro flowVar detachVar (m :< RT.PiIntro (LK.Normal O.Opaque) [] e)
+  return $ m :< RT.FlowIntro flowVar detachVar e
 
 rawTermFlowElim :: Parser RT.RawTerm
 rawTermFlowElim = do

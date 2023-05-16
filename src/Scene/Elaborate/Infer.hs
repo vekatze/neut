@@ -182,9 +182,7 @@ infer' varEnv term =
       return (m :< WT.Flow var t', m :< WT.Tau)
     m :< WT.FlowIntro pVar var (e, _) -> do
       (e', t) <- infer' varEnv e
-      h <- newHole m varEnv
-      insConstraintEnv (m :< WT.Pi [] h) t
-      return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar h)
+      return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar t)
     m :< WT.FlowElim pVar var (e, _) -> do
       (e', t) <- infer' varEnv e
       h <- newHole m varEnv
