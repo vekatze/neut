@@ -44,6 +44,9 @@ data Comp
   | Unreachable -- for empty case analysis
   deriving (Show)
 
+type AllocID =
+  Int
+
 data Op
   = Call Value [Value] -- non-tail call
   | GetElementPtr
@@ -57,8 +60,8 @@ data Op
   | PointerToInt Value LowType LowType
   | Load Value LowType
   | Store LowType Value Value
-  | Alloc Value
-  | Free Value
+  | Alloc Value Int AllocID
+  | Free Value Int
   | PrimOp PrimOp [Value]
   | Syscall
       Integer -- syscall number

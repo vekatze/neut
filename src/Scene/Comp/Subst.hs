@@ -41,6 +41,10 @@ substComp sub term =
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'
+    C.Free x size cont -> do
+      let x' = substValue sub x
+      cont' <- substComp sub cont
+      return $ C.Free x' size cont'
     C.Unreachable ->
       return term
 

@@ -110,6 +110,9 @@ reduce term =
           defaultBranch' <- reduce defaultBranch
           es' <- mapM reduce es
           return $ C.EnumElim v defaultBranch' (zip ls es')
+    C.Free x size cont -> do
+      cont' <- reduce cont
+      return $ C.Free x size cont'
     C.Unreachable ->
       return term
 

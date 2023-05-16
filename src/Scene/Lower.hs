@@ -29,6 +29,7 @@ import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
+import Scene.Cancel
 
 -- fixme: remove WriterT
 type Lower = WriterT (Cont App) App
@@ -65,7 +66,7 @@ lower (defList, mMainTerm) = do
   case mMainTerm of
     Just mainTerm -> do
       defList' <- forM defList $ \(name, (_, args, e)) -> do
-        e' <- lowerComp e
+        e' <- lowerComp e >>= liftIO . cancel
         return (name, (args, e'))
       mainTerm'' <- lowerComp mainTerm
       -- the result of "main" isn't i8*
@@ -81,7 +82,7 @@ lower (defList, mMainTerm) = do
       insDeclEnv (DN.In DD.imm) A.arityS4
       insDeclEnv (DN.In DD.cls) A.arityS4
       defList' <- forM defList $ \(name, (_, args, e)) -> do
-        e' <- lowerComp e
+        e' <- lowerComp e >>= liftIO . cancel
         return (name, (args, e'))
       declEnv <- getDeclEnv
       staticTextList <- StaticText.getAll
@@ -104,7 +105,7 @@ lowerComp term =
         basePointer <- lowerValue v
         ds <- loadElements basePointer baseType $ take (length xs) $ map (,LT.voidPtr) [0 ..]
         when shouldDeallocate $ do
-          free basePointer
+          free basePointer (length xs)
         forM_ (zip xs ds) $ \(x, d) -> do
           extend $ return . LC.Let x (LC.Bitcast d LT.voidPtr LT.voidPtr)
         lift $ lowerComp e
@@ -122,6 +123,11 @@ lowerComp term =
         castedValue <- lowerValueLetCast v t
         (phi, phiVar) <- lift $ newValueLocal "phi"
         return $ LC.Switch (castedValue, t) defaultCase caseList (phi, LC.Return phiVar)
+    C.Free x size cont -> do
+      cont' <- lowerComp cont
+      runLowerComp $ do
+        x' <- lowerValue x
+        return $ LC.Cont (LC.Free x' size) cont'
     C.Unreachable ->
       return LC.Unreachable
 
@@ -151,9 +157,9 @@ loadElements basePointer baseType values =
       xs <- loadElements basePointer baseType xis
       return $ x : xs
 
-free :: LC.Value -> Lower ()
-free pointer = do
-  reflectCont $ LC.Free pointer
+free :: LC.Value -> Int -> Lower ()
+free pointer len = do
+  reflectCont $ LC.Free pointer len
 
 lowerCompPrimitive :: C.Primitive -> Lower LC.Value
 lowerCompPrimitive codeOp =
@@ -333,7 +339,8 @@ allocateBasePointer aggType = do
     _ -> do
       let (elemType, len) = getSizeInfoOf aggType
       sizePointer <- getElemPtr LC.Null elemType [toInteger len]
-      reflect $ LC.Alloc sizePointer
+      allocID <- lift Gensym.newCount
+      reflect $ LC.Alloc sizePointer len allocID
 
 storeElements ::
   LC.Value -> -- base pointer

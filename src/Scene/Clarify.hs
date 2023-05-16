@@ -25,7 +25,6 @@ import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.EnumCase qualified as EC
-import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
@@ -243,7 +242,10 @@ clarifyTerm tenv term =
       let arity = A.fromInt 2
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
 
-type DataArgsMap = IntMap.IntMap [(Ident, TM.Term)]
+type Size =
+  Int
+
+type DataArgsMap = IntMap.IntMap ([(Ident, TM.Term)], Size)
 
 clarifyDataClause ::
   (D.Discriminant, [BinderF TM.Term], [BinderF TM.Term]) ->
@@ -299,13 +301,12 @@ tidyCursorList tenv dataArgsMap consumedCursorList cont =
       case IntMap.lookup (Ident.toInt cursor) dataArgsMap of
         Nothing ->
           error "tidyCursor"
-        Just dataArgs -> do
+        Just (dataArgs, cursorSize) -> do
           let (dataArgVars, dataTypes) = unzip dataArgs
           dataTypes' <- mapM (clarifyTerm tenv) dataTypes
-          unitVar <- Gensym.newIdentFromText "unit-tidy"
           cont' <- tidyCursorList tenv dataArgsMap rest cont
-          linearize (zip dataArgVars dataTypes') $
-            C.UpElim True unitVar (C.Primitive (C.Magic (M.External EN.free [C.VarLocal cursor]))) cont'
+          linearize (zip dataArgVars dataTypes') $ do
+            C.Free (C.VarLocal cursor) cursorSize cont'
 
 clarifyCase ::
   TM.TypeEnv ->
@@ -317,7 +318,8 @@ clarifyCase ::
 clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons _ consName disc dataArgs consArgs cont) = do
   let (_, dataTypes) = unzip dataArgs
   dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
-  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes) dataArgsMap
+  let cursorSize = 1 + length dataArgVars + length consArgs
+  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
   let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
   body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
   b <- Enum.isMember consName

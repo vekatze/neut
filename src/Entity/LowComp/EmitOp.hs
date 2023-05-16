@@ -52,9 +52,9 @@ emitLowOp targetPlatform lowOp =
             emitLowType LT.Pointer,
             emitValue d2
           ]
-    LC.Alloc d ->
+    LC.Alloc d _ _ ->
       return $ unwordsL ["call fastcc", "ptr", "@malloc(ptr " <> emitValue d <> ")"]
-    LC.Free d -> do
+    LC.Free d _ -> do
       return $ unwordsL ["call fastcc", "ptr", "@free(ptr " <> emitValue d <> ")"]
     LC.Syscall num ds ->
       emitSyscallOp targetPlatform num ds

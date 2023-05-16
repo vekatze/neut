@@ -46,6 +46,7 @@ data Comp
   | UpElim IsReducible Ident Comp Comp
   | EnumElim Value Comp [(EnumCase, Comp)]
   | Primitive Primitive
+  | Free Value Int Comp
   | Unreachable
 
 instance Show Comp where
@@ -65,6 +66,8 @@ instance Show Comp where
         "switch " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList)
       Primitive prim ->
         "(" ++ show prim ++ ")"
+      Free x size cont ->
+        "free(" ++ show x ++ ", " ++ show size ++ ")\n" ++ show cont
       Unreachable ->
         "⊥"
 

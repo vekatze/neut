@@ -103,6 +103,10 @@ distinguishComp z term =
       writeCount countBefore
       (_, defaultBranch') <- distinguishComp z defaultBranch
       return (vs ++ head vss, C.EnumElim d' defaultBranch' (zip cs es'))
+    C.Free x size cont -> do
+      (vs1, x') <- distinguishValue z x
+      (vs2, cont') <- distinguishComp z cont
+      return (vs1 ++ vs2, C.Free x' size cont')
     C.Unreachable ->
       return ([], term)
 

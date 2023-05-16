@@ -40,11 +40,11 @@ substOp sub llvmOp =
       let d1' = substLowValue sub d1
       let d2' = substLowValue sub d2
       LC.Store t d1' d2'
-    LC.Alloc d -> do
+    LC.Alloc d size allocID -> do
       let d' = substLowValue sub d
-      LC.Alloc d'
-    LC.Free d -> do
-      LC.Free $ substLowValue sub d
+      LC.Alloc d' size allocID
+    LC.Free d size -> do
+      LC.Free (substLowValue sub d) size
     LC.PrimOp op ds -> do
       let ds' = map (substLowValue sub) ds
       LC.PrimOp op ds'
