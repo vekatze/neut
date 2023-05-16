@@ -7,8 +7,10 @@ import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
+import Control.Monad.IO.Class
 import Data.Foldable
 import Data.Maybe
+import Data.Time
 import Entity.Config.Build
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
@@ -42,8 +44,9 @@ build cfg = do
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
         llvm <- Lower.lower virtualCode >>= Emit.emit
         return (llvm, source)
+    currentTime <- liftIO getCurrentTime
     forConcurrently_ (catMaybes llvmList) $ \(llvm, source) -> do
-      LLVM.emit source (outputKindList cfg) llvm
+      LLVM.emit currentTime source (outputKindList cfg) llvm
     Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target (args cfg)

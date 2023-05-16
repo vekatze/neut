@@ -9,6 +9,7 @@ module Context.Path
     doesDirExist,
     doesFileExist,
     getModificationTime,
+    setModificationTime,
     ensureDir,
     stripPrefix,
     writeByteString,
@@ -89,6 +90,10 @@ doesFileExist =
 getModificationTime :: Path Abs File -> App UTCTime
 getModificationTime =
   P.getModificationTime
+
+setModificationTime :: Path Abs File -> UTCTime -> App ()
+setModificationTime =
+  P.setModificationTime
 
 ensureDir :: Path Abs Dir -> App ()
 ensureDir =

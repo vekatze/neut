@@ -160,7 +160,7 @@ getItemTime relatedTimeGetter mTimeList source = do
     (_, Nothing) ->
       return Nothing
     (Just time, Just childTimeList) -> do
-      if all (time >) childTimeList
+      if all (time >=) childTimeList
         then return $ Just time
         else return Nothing
 

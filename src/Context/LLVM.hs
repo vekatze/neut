@@ -18,6 +18,7 @@ import Control.Monad.IO.Unlift
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
 import Data.Text.IO qualified as TIO
+import Data.Time.Clock
 import Entity.Config.Build
 import Entity.Const
 import Entity.OutputKind qualified as OK
@@ -40,11 +41,13 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: Source -> [OK.OutputKind] -> L.ByteString -> App ()
-emit source outputKindList llvmCode = do
+emit :: UTCTime -> Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit timeStamp source outputKindList llvmCode = do
   kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
   forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
   emitAll llvmCode kindPathList
+  forM_ (map snd kindPathList) $ \path -> do
+    Path.setModificationTime path timeStamp
 
 emitAll :: LLVMCode -> [(OK.OutputKind, Path Abs File)] -> App ()
 emitAll llvmCode kindPathList = do
