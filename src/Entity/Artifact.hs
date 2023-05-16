@@ -8,3 +8,4 @@ data ArtifactTime = ArtifactTime
     asmTime :: Maybe UTCTime,
     objectTime :: Maybe UTCTime
   }
+  deriving (Show)

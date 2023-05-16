@@ -184,10 +184,10 @@ getFreshLLVMTime source = do
   llvmPath <- Path.sourceToOutputPath OK.LLVM source
   getFreshTime source llvmPath
 
-getFreshAsmTime :: Source.Source -> App ObjectTime
+getFreshAsmTime :: Source.Source -> App AsmTime
 getFreshAsmTime source = do
-  objectPath <- Path.sourceToOutputPath OK.Asm source
-  getFreshTime source objectPath
+  asmPath <- Path.sourceToOutputPath OK.Asm source
+  getFreshTime source asmPath
 
 getFreshObjectTime :: Source.Source -> App ObjectTime
 getFreshObjectTime source = do

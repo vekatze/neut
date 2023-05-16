@@ -14,7 +14,6 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe qualified as Maybe
