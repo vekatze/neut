@@ -12,7 +12,7 @@ digest=$(echo "develop $clang_option\c" | shasum -a 256 -b | xxd -r -p | base64 
 cd $SCRIPT_DIR/meta
 NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option
 
-exit_code=0
+pids=()
 
 for target_dir in "$@"; do
   cd $base_dir
@@ -22,6 +22,7 @@ for target_dir in "$@"; do
     cd $i
     echo $(basename $i)
     (
+      exit_code=0
       NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
       NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option
       # https://stackoverflow.com/questions/64126942
@@ -37,11 +38,21 @@ for target_dir in "$@"; do
         echo "\033[1;31merror:\033[0m found an unexpected result in: $(basename $i)\n$mismatch"
         exit_code=$last_exit_code
       fi
+      exit $exit_code
     ) &
+    pids+=($!)
     cd ..
   done
 done
 
-wait
+exit_code=0
+
+for pid in $pids; do
+  wait $pid
+  result=$?
+  if [ $result -ne 0 ]; then
+    exit_code=$result
+  fi
+done
 
 exit $exit_code
