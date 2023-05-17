@@ -63,5 +63,6 @@ define main(): int {
   let f-content-pointer = magic load(pointer, add-int(f-ptr, 8))
   let value: i8 = magic load(i8, add-int(f-content-pointer, 2))
   let _ = magic cast(int, i8-array, f-ptr)
-  magic cast(i8, int, value)
+  let _ = magic cast(i8, int, value)
+  0
 }

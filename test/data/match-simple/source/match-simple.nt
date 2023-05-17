@@ -3,8 +3,10 @@ variant item() {
 }
 
 define main(): int {
-  match Cons(2) {
-  - Cons(w) =>
-    w
-  }
+  let _ =
+    match Cons(2) {
+    - Cons(w) =>
+      w
+    }
+  0
 }

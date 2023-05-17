@@ -13,5 +13,6 @@ define f(xs: list(int)): int {
 }
 
 define main(): int {
-  f(Cons(10, Cons(20, Nil())))
+  let _ = f(Cons(10, Cons(20, Nil())))
+  0
 }

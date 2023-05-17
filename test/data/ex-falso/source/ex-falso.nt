@@ -4,7 +4,6 @@ define ex-falso(a: tau, e: empty()): a {
   match e {}
 }
 
-
 define main(): int {
   0
 }

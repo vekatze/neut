@@ -4,10 +4,12 @@ import {
 
 define main(): int {
   let foo = False
-  match foo {
-  - True =>
-    1
-  - core.bool.False =>
-    2
-  }
+  let _: int =
+    match foo {
+    - True =>
+      1
+    - core.bool.False =>
+      2
+    }
+  0
 }

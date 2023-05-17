@@ -103,9 +103,11 @@ define main(): int {
   let t = insert(compare-int, lambda () {1}, t)
   let b on t = member(compare-int, lambda () {5}, t)
   let _ = t
-  if b {
-    1
-  } else {
-    2
-  }
+  let _: int =
+    if b {
+      1
+    } else {
+      2
+    }
+  0
 }

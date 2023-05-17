@@ -40,5 +40,6 @@ define main(): int {
     bar(xs-cell)
   }
   let _ = xs-cell
-  result
+  let _ = result
+  0
 }

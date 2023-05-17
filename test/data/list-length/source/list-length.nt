@@ -13,5 +13,6 @@ define length(a: tau, xs: list(a)): int {
 }
 
 define main(): int {
-  length(int, Cons(1, Cons(2, Nil())))
+  let _ = length(int, Cons(1, Cons(2, Nil())))
+  0
 }

@@ -71,19 +71,21 @@ define compare-int(x: int, y: int): order {
 
 define main(): int {
   let int-set-signature = make-set-signature(compare-int)
-  match int-set-signature {
-  - Set(empty, insert, member) =>
-    let my-set = insert(10, empty)
-    let my-set = insert(20, my-set)
-    let my-set = insert(20, my-set)
-    let my-set = insert(20, my-set)
-    let my-set = insert(30, my-set)
-    let result on my-set = member(5, my-set)
-    let _ = my-set
-    if result {
-      1
-    } else {
-      2
+  let _: int =
+    match int-set-signature {
+    - Set(empty, insert, member) =>
+      let my-set = insert(10, empty)
+      let my-set = insert(20, my-set)
+      let my-set = insert(20, my-set)
+      let my-set = insert(20, my-set)
+      let my-set = insert(30, my-set)
+      let result on my-set = member(5, my-set)
+      let _ = my-set
+      if result {
+        1
+      } else {
+        2
+      }
     }
-  }
+  0
 }

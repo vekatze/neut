@@ -15,7 +15,6 @@ define find-min(t: &tree()): int {
   }
 }
 
-
 define main(): int {
   0
 }

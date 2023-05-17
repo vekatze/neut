@@ -71,23 +71,25 @@ define main(): int {
     }
   }
   let mq = tail(q)
-  match mq {
-  - None =>
-    1
-  - Some(q) =>
-    let q = snoc([3], q)
-    let q = snoc([8], q)
-    let v2 on q = {
-      match head(q) {
-      - Some(xs) =>
-        let v on xs = sum(xs)
-        let _ = xs
-        v
-      - None =>
-        4
+  let _ =
+    match mq {
+    - None =>
+      1
+    - Some(q) =>
+      let q = snoc([3], q)
+      let q = snoc([8], q)
+      let v2 on q = {
+        match head(q) {
+        - Some(xs) =>
+          let v on xs = sum(xs)
+          let _ = xs
+          v
+        - None =>
+          4
+        }
       }
+      let _ = q
+      add-int(v1, v2)
     }
-    let _ = q
-    add-int(v1, v2)
-  }
+  0
 }

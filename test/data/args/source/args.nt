@@ -1,4 +1,5 @@
 define main(): int {
   let _ = get-argv()
-  get-argc()
+  let _ = get-argc()
+  0
 }

@@ -122,20 +122,22 @@ define main(): int {
   let h = insert(1, h)
   let h = insert(3, h)
   let mh = delete-min(h)
-  match mh {
-  - None =>
-    100
-  - Some(h) =>
-    let h = insert(9, h)
-    let min on h = {
-      match find-min(h) {
-      - None =>
-        100
-      - Some(value) =>
-        value
+  let _: int =
+    match mh {
+    - None =>
+      100
+    - Some(h) =>
+      let h = insert(9, h)
+      let min on h = {
+        match find-min(h) {
+        - None =>
+          100
+        - Some(value) =>
+          value
+        }
       }
+      let _ = h
+      min
     }
-    let _ = h
-    min
-  }
+  0
 }

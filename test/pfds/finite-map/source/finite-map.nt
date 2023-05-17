@@ -94,5 +94,6 @@ define main(): int {
     }
   }
   let _ = mymap
-  result
+  let _: int = result
+  0
 }

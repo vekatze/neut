@@ -62,6 +62,7 @@ define main(): int {
   let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil())))
   let gs = fs
   let hs = gs
-  interpret(fold(_, hs, n3))
+  let _ = interpret(fold(_, hs, n3))
+  0
   // fold(hs, 10)
 }

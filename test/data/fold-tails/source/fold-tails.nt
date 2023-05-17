@@ -102,5 +102,6 @@ define main(): int {
   let _ = result-nat
   let _ = result-nat
   let result = interpret(result-nat)
-  result
+  let _ = result
+  0
 }

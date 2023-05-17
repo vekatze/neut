@@ -20,11 +20,12 @@ define main(): int {
   let _ = result
   let _ = f
   let xs-cell = new-cell(xs)
-  let result on xs-cell = {
+  let result: int on xs-cell = {
     // mutate(xs, lambda (_) { get(xs) })
     mutate(xs-cell, lambda (_) { Nil() })
     1
   }
   let _ = xs-cell
-  result
+  let _ = result
+  0
 }

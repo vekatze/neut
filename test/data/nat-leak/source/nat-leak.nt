@@ -15,5 +15,6 @@ define eq-nat(n1: nat, n2: nat): int {
 }
 
 define main(): int {
-  eq-nat(Zero, Zero)
+  let _ = eq-nat(Zero, Zero)
+  0
 }

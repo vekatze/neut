@@ -5,5 +5,5 @@ variant item() {
 
 define main(): int {
   let _ = Nil()
-  1
+  0
 }

@@ -10,5 +10,6 @@ define view(x: item(int -> int)): int {
 }
 
 define main(): int {
-  view(Cons(lambda (x) { x }))
+  let _ = view(Cons(lambda (x) { x }))
+  0
 }

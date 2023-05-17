@@ -22,5 +22,6 @@ define main(): int {
   let e1 = Add(Num(1), Num(2))
   let e2 = Mul(Num(3), Num(1023))
   let e3 = Sub(e2, e1)
-  interpret(e3)
+  let _ = interpret(e3)
+  0
 }

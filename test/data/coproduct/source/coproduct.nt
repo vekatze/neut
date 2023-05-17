@@ -41,14 +41,16 @@ define let-sum(x: int): sum(nat, int) {
 }
 
 define main(): int {
-  match let-sum(10) {
-  - Left(e) =>
-    interpret(e)
-  - Right(v) =>
-    let x = view(int, i32, Left(10))
-    let _ = view(int, i32, Right(10))
-    let _ = x
-    let _ = x
-    add-int(v, 1)
-  }
+  let _ =
+    match let-sum(10) {
+    - Left(e) =>
+      interpret(e)
+    - Right(v) =>
+      let x = view(int, i32, Left(10))
+      let _ = view(int, i32, Right(10))
+      let _ = x
+      let _ = x
+      add-int(v, 1)
+    }
+  0
 }

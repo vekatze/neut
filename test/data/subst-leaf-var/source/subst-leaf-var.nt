@@ -4,8 +4,10 @@ variant option() {
 
 define main(): int {
   let _ = tau
-  match Some(2) {
-  - Some(_) =>
-    10
-  }
+  let _: int =
+    match Some(2) {
+    - Some(_) =>
+      10
+    }
+  0
 }

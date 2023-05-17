@@ -28,5 +28,6 @@ define main(): int {
   let xs = Cons(3, Cons(1, Cons(2, Nil())))
   let some-value on xs = length(tail(xs))
   let _ = xs
-  some-value
+  let _ = some-value
+  0
 }

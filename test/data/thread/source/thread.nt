@@ -31,6 +31,5 @@ define main(): int {
     attach g
   }
   let _ = ch-clone
-
   0
 }

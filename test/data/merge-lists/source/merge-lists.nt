@@ -27,5 +27,6 @@ define main(): int {
   let xs = Cons(1, Cons(2, Nil()))
   let ys = Cons(3, Cons(4, Cons(5, Nil())))
   let zs = merge(int, xs, ys)
-  length(zs)
+  let _ = length(zs)
+  0
 }

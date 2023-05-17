@@ -19,5 +19,6 @@ define is-odd(x: int): int {
 }
 
 define main(): int {
-  is-even(12345)
+  let _ = is-even(12345)
+  0
 }

@@ -57,5 +57,6 @@ define main(): int {
   let some-stream = int-stream(3)
   // let value = some-stream[get-tail][tail][head]
   let value = some-stream::get-tail::get-tail::get-head
-  add-int(k, value)
+  let _ = add-int(k, value)
+  0
 }

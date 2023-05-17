@@ -89,5 +89,6 @@ define main(): int {
     }
   }
   let _ = h
-  maybe-min
+  let _ = maybe-min
+  0
 }

@@ -11,5 +11,6 @@ define fact(x: int): int {
 }
 
 define main(): int {
-  fact(5)
+  let _ = fact(5)
+  0
 }

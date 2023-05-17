@@ -10,5 +10,6 @@ define f(xs: item()): int {
 }
 
 define main(): int {
-  f(Nil(10))
+  let _ = f(Nil(10))
+  0
 }

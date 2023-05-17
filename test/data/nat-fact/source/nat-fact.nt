@@ -60,5 +60,6 @@ define interpret(n: nat): int {
 
 define main(): int {
   let n5 = Succ(Succ(Succ(Succ(Succ(Zero)))))
-  interpret(fact(n5))
+  let _ = interpret(fact(n5))
+  0
 }

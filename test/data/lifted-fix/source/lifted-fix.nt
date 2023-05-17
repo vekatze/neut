@@ -8,21 +8,6 @@ variant list() {
 - Cons(int, list())
 }
 
-// enum my-bool() {
-// - true()
-// - false()
-// }
-
-// define free-vars-in-recursion-lifted(xs: list(), ws: list()): int {
-//   if eq-int(0, 0) {
-//     let fv-1 = xs
-//     1
-//   } else {
-//     let fv-4 = ws
-//     { lambda () { free-vars-in-recursion-lifted(xs, ws) } }()
-//   }
-// }
-
 define main(): int {
   let xs = Nil()
   let ws = xs
@@ -39,5 +24,6 @@ define main(): int {
         loop()
       }
     }
-  multiple-free-var()
+  let _ = multiple-free-var()
+  0
 }

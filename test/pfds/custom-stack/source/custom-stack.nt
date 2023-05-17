@@ -64,5 +64,6 @@ define main(): int {
   }
   let _ = zs
   let _ = xs
-  calc
+  let _ = calc
+  0
 }

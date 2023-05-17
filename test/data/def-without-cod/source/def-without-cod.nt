@@ -3,5 +3,6 @@ define id(a: tau, x: a) {
 }
 
 define main(): int {
-  id(int, 0)
+  let _ = id(int, 0)
+  0
 }
