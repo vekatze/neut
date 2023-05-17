@@ -1,15 +1,15 @@
 variant item() {
-- Nil(int)
+- Leaf(int)
 }
 
 define f(xs: item()): int {
   match xs {
-  - Nil(_) =>
+  - Leaf(_) =>
     0
   }
 }
 
 define main(): int {
-  let _ = f(Nil(10))
+  let _ = f(Leaf(10))
   0
 }

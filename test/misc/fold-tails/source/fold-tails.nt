@@ -3,10 +3,10 @@ variant nat {
 - Succ(nat)
 }
 
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
+// variant list(a: tau) {
+// - Nil
+// - Cons(a, list(a))
+// }
 
 define add-nat(x: nat, y: nat): nat {
   match x {
@@ -38,7 +38,7 @@ define interpret(n: nat): int {
 define gen(n: nat): list(nat) {
   match n {
   - Zero =>
-    Nil()
+    Nil
   - Succ(m) =>
     Cons(n, gen(m))
   }
@@ -46,7 +46,7 @@ define gen(n: nat): list(nat) {
 
 define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
-  - Nil() =>
+  - Nil =>
     acc
   - Cons(y, ys) =>
     f(y, fold-r(a, b, f, acc, ys))
@@ -55,25 +55,16 @@ define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
 
 define tails(a: tau, xs: list(a)): list(list(a)) {
   match xs {
-  - Nil() =>
-    Cons(Nil(), Nil())
+  - Nil =>
+    Cons(Nil, Nil)
   - Cons(_, xs) =>
     Cons(xs, tails(a, xs))
   }
 }
 
-define map(a: tau, b: tau, f: a -> b, xs: list(a)): list(b) {
-  match xs {
-  - Nil() =>
-    Nil()
-  - Cons(y, ys) =>
-    Cons(f(y), map(a, b, f, ys))
-  }
-}
-
 define head(xs: list(nat)): nat {
   match xs {
-  - Nil() =>
+  - Nil =>
     Zero
   - Cons(y, _) =>
     y
@@ -92,7 +83,7 @@ define main(): int {
   let yss = tails(_, xs)
   let _ = yss
   let _ = yss
-  let zs = map(_, _, lambda (l) { head(l) }, yss)
+  let zs = map(lambda (l) { head(l) }, yss)
   let _ = zs
   let _ = zs
   let _ = zs

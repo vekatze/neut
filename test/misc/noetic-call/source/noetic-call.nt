@@ -1,23 +1,18 @@
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
-define length(xs: &list(int)): int {
+define my-length(xs: &list(int)): int {
   let _ = xs
   let _ = xs
   let c = xs
   case c {
-  - Nil() =>
+  - Nil =>
     0
   - Cons(_, ys) =>
-    add-int(1, length(ys))
+    add-int(1, my-length(ys))
   }
 }
 
 define tail(xs: &list(int)): &list(int) {
   case xs {
-  - Nil() =>
+  - Nil =>
     xs
   - Cons(_, ys) =>
     ys
@@ -25,8 +20,8 @@ define tail(xs: &list(int)): &list(int) {
 }
 
 define main(): int {
-  let xs = Cons(3, Cons(1, Cons(2, Nil())))
-  let some-value on xs = length(tail(xs))
+  let xs = Cons(3, Cons(1, Cons(2, Nil)))
+  let some-value on xs = my-length(tail(xs))
   let _ = xs
   let _ = some-value
   0

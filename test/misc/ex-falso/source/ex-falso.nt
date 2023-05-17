@@ -1,6 +1,6 @@
-variant empty() {}
+variant my-empty() {}
 
-define ex-falso(a: tau, e: empty()): a {
+define ex-falso(a: tau, e: my-empty()): a {
   match e {}
 }
 

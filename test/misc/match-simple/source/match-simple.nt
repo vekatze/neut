@@ -1,11 +1,11 @@
 variant item() {
-- Cons(int)
+- Val(int)
 }
 
 define main(): int {
   let _ =
-    match Cons(2) {
-    - Cons(w) =>
+    match Val(2) {
+    - Val(w) =>
       w
     }
   0

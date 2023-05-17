@@ -1,8 +1,3 @@
-struct product(a, b) by Product {
-- left: a
-- right: b
-}
-
 define some-item(x: int, y: i32, z: i48): int * i32 * i48 {
   tuple(x, y, z)
 }

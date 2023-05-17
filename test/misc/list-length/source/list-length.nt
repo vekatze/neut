@@ -1,18 +1,13 @@
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
-define length(a: tau, xs: list(a)): int {
+define my-length(a: tau, xs: list(a)): int {
   match xs {
-  - Nil() =>
+  - Nil =>
     0
   - Cons(_, ys) =>
-    add-int(1, length(a,  ys))
+    add-int(1, my-length(a,  ys))
   }
 }
 
 define main(): int {
-  let _ = length(int, Cons(1, Cons(2, Nil())))
+  let _ = my-length(int, Cons(1, Cons(2, Nil)))
   0
 }

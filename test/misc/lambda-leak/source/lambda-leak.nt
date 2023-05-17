@@ -30,14 +30,9 @@ define mul-nat(x: nat, y: nat): nat {
   }
 }
 
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
 define fold(a: tau, fs: list(a -> a), x: a): a {
   match fs {
-  - Nil() =>
+  - Nil =>
     x
   - Cons(f, rest) =>
     let _ = rest
@@ -59,7 +54,7 @@ define main(): int {
   let _ = lambda (x) { add-int(x, 2) }
   let _ = lambda (x) { mul-int(x, 3) }
   let _ = lambda (x) { sub-int(x, 1) }
-  let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil())))
+  let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil)))
   let gs = fs
   let hs = gs
   let _ = interpret(fold(_, hs, n3))

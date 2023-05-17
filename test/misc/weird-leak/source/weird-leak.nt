@@ -1,22 +1,22 @@
-variant list() {
-- Nil()
-- Cons()
+variant my-item() {
+- Foo()
+- Bar()
 }
 
-define f(xs: list(), ys: list()): list() {
+define f(xs: my-item(), ys: my-item()): my-item() {
   match xs, ys {
-  - Nil(), ys =>
+  - Foo(), ys =>
     ys
-  - xs, Nil() =>
+  - xs, Foo() =>
     xs
-  - Cons(), _ =>
-    Nil()
+  - Bar(), _ =>
+    Foo()
   }
 }
 
 define main(): int {
-  let xs = Cons()
-  let ys = Cons()
+  let xs = Bar()
+  let ys = Bar()
   let _ = f(xs, ys)
   0
 }

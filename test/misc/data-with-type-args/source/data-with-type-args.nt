@@ -1,11 +1,6 @@
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
 define f(xs: list(int)): int {
   match xs {
-  - Nil() =>
+  - Nil =>
     0
   - Cons(_, _) =>
     1
@@ -13,6 +8,6 @@ define f(xs: list(int)): int {
 }
 
 define main(): int {
-  let _ = f(Cons(10, Cons(20, Nil())))
+  let _ = f(Cons(10, Cons(20, Nil)))
   0
 }

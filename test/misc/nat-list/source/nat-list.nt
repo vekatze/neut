@@ -3,11 +3,6 @@ variant nat {
 - Succ(nat)
 }
 
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
 define interpret(n: nat): int {
   match n {
   - Zero() =>
@@ -19,7 +14,7 @@ define interpret(n: nat): int {
 
 define nat-list-sum(xs: list(nat)): int {
   match xs {
-  - Nil() =>
+  - Nil =>
     0
   - Cons(y, ys) =>
     add-int(interpret(y), nat-list-sum(ys))
@@ -28,6 +23,6 @@ define nat-list-sum(xs: list(nat)): int {
 
 
 define main(): int {
-  let _ = nat-list-sum(Cons(Succ(Zero()), Cons(Succ(Zero()), Nil())))
+  let _ = nat-list-sum(Cons(Succ(Zero()), Cons(Succ(Zero()), Nil)))
   0
 }

@@ -1,32 +1,27 @@
-variant list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
 define merge(a: tau, xs: list(a), ys: list(a)): list(a) {
   match xs, ys {
-  - Nil(), ys =>
+  - Nil, ys =>
     ys
-  - xs, Nil() =>
+  - xs, Nil =>
     xs
   - Cons(x, rx), ys =>
     Cons(x, merge(a, rx, ys))
   }
 }
 
-define length[a](xs: list(a)): int {
+define my-length[a](xs: list(a)): int {
   match xs {
-  - Nil() =>
+  - Nil =>
     0
   - Cons(_, ys) =>
-    add-int(1, length(ys))
+    add-int(1, my-length(ys))
   }
 }
 
 define main(): int {
-  let xs = Cons(1, Cons(2, Nil()))
-  let ys = Cons(3, Cons(4, Cons(5, Nil())))
+  let xs = Cons(1, Cons(2, Nil))
+  let ys = Cons(3, Cons(4, Cons(5, Nil)))
   let zs = merge(int, xs, ys)
-  let _ = length(zs)
+  let _ = my-length(zs)
   0
 }

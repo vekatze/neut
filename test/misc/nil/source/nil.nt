@@ -1,9 +1,0 @@
-variant item() {
-- Nil()
-- Cons(int)
-}
-
-define main(): int {
-  let _ = Nil()
-  0
-}

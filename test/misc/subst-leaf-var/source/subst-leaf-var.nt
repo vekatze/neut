@@ -1,11 +1,9 @@
-variant option() {
-- Some(int)
-}
-
 define main(): int {
   let _ = tau
   let _: int =
-    match Some(2) {
+    match Some(2: int) {
+    - None =>
+      20
     - Some(_) =>
       10
     }

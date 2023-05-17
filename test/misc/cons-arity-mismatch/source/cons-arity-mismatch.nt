@@ -1,12 +1,10 @@
 variant item() {
-- Cons()
+- Val()
 }
 
 define f(xs: item(), ys: item()): item() {
   match xs, ys {
-  // - Cons(x), zs =>
-  //   zs
-  - Cons(), zs =>
+  - Val(), zs =>
     zs
   }
 }

@@ -1,61 +1,61 @@
 variant joker {
-- Left(joker)
-- Right(int)
+- JLeft(joker)
+- JRight(int)
 }
 
 // cancel: x ~> {}
 define test(x: joker): joker {
   match x {
-  - Left(v1) =>
+  - JLeft(v1) =>
     // the `free(x)` inserted here is cancelled by ((A) + (B)) * (C)
     match v1 {
-    - Left(v2) =>
+    - JLeft(v2) =>
       match v2 {
-      - Left(v3) =>
-        Left(v3) // (A)
-      - Right(_) =>
-        Right(10) // (B)
+      - JLeft(v3) =>
+        JLeft(v3) // (A)
+      - JRight(_) =>
+        JRight(10) // (B)
       }
-    - Right(_) =>
-      Right(10) // (C)
+    - JRight(_) =>
+      JRight(10) // (C)
     }
-  - Right(_) =>
-    Right(3)
+  - JRight(_) =>
+    JRight(3)
   }
 }
 
 define test2(x: joker): int {
   match x {
-  - Left(v1) =>
+  - JLeft(v1) =>
     // the `free(x)` inserted here isn't cancelled
     match v1 {
-    - Left(v2) =>
+    - JLeft(v2) =>
       match v2 {
-      - Left(v3) =>
-        let _ = Left(v3)
+      - JLeft(v3) =>
+        let _ = JLeft(v3)
         1
-      - Right(_) =>
+      - JRight(_) =>
         1 // !
       }
-    - Right(_) =>
-      let _ = Right(10)
+    - JRight(_) =>
+      let _ = JRight(10)
       1
     }
-  - Right(_) =>
+  - JRight(_) =>
     3
   }
 }
 
 define main(): int {
-  let _ = test(Left(Left(Left(Left(Right(10))))))
-  let _ = test(Left(Left(Left(Right(10)))))
-  let _ = test(Left(Left(Right(10))))
-  let _ = test(Left(Right(10)))
-  let _ = test(Right(10))
-  let _ = test2(Left(Left(Left(Left(Right(10))))))
-  let _ = test2(Left(Left(Left(Right(10)))))
-  let _ = test2(Left(Left(Right(10))))
-  let _ = test2(Left(Right(10)))
-  let _ = test2(Right(10))
+  let _ = test(JLeft(JLeft(JLeft(JLeft(JRight(10))))))
+  let _ = test(JLeft(JLeft(JLeft(JRight(10)))))
+  let _ = test(JLeft(JLeft(JRight(10))))
+  let _ = test(JLeft(JRight(10)))
+  let _ = test(JRight(10))
+  let _ = test2(JLeft(JLeft(JLeft(JLeft(JRight(10))))))
+  let _ = test2(JLeft(JLeft(JLeft(JRight(10)))))
+  let _ = test2(JLeft(JLeft(JRight(10))))
+  let _ = test2(JLeft(JRight(10)))
+  let _ = test2(JRight(10))
   0
 }
