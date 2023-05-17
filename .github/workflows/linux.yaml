@@ -23,7 +23,8 @@ jobs:
           key: ${{ runner.os }}-${{ hashFiles('./Dockerfile') }}-${{ hashFiles('./package.yaml') }}-${{ hashFiles('./stack.yaml') }}
       - if: steps.cache-docker-image.outputs.cache-hit == 'true'
         run: docker load -i ${NEUT_DOCKER_PATH}
-      - run: just build-image-amd64-linux
+      - if: steps.cache-docker-image.outputs.cache-hit != 'true'
+        run: just build-image-amd64-linux
       - run: just build-compiler-amd64-linux
       - run: just test-amd64-linux
       - if: steps.cache-docker-image.outputs.cache-hit != 'true'
