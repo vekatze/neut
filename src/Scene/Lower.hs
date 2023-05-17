@@ -100,10 +100,12 @@ lowerComp term =
         v'' <- cast v' LT.Pointer
         return $ LC.TailCall v'' ds'
     C.SigmaElim shouldDeallocate xs v e -> do
-      let baseType = LT.Array (length xs) LT.voidPtr
+      let numOfElems = length xs
+      let baseType = LT.Array numOfElems LT.voidPtr
       runLowerComp $ do
         basePointer <- lowerValue v
-        ds <- loadElements basePointer baseType $ take (length xs) $ map (,LT.voidPtr) [0 ..]
+        valuePointerList <- getElemPtrList basePointer baseType numOfElems
+        ds <- loadElements basePointer $ map (,LT.voidPtr) valuePointerList
         when shouldDeallocate $ do
           free basePointer (length xs)
         forM_ (zip xs ds) $ \(x, d) -> do
@@ -143,18 +145,16 @@ store lowType value pointer =
 
 loadElements ::
   LC.Value -> -- base pointer
-  LT.LowType -> -- the type of base pointer
-  [(Int, LT.LowType)] -> -- [(the index of an element, the variable to keep the loaded content)]
+  [(LC.Value, LT.LowType)] -> -- [(the index of an element, the variable to keep the loaded content)]
   Lower [LC.Value]
-loadElements basePointer baseType values =
+loadElements basePointer values =
   case values of
     [] -> do
       return []
-    (valueIndex, valueType) : xis -> do
-      valuePointer <- getElemPtr basePointer baseType [0, toInteger valueIndex]
+    (valuePointer, valueType) : xis -> do
       uncastedValuePointer <- uncast valuePointer valueType
       x <- load valueType uncastedValuePointer
-      xs <- loadElements basePointer baseType xis
+      xs <- loadElements basePointer xis
       return $ x : xs
 
 free :: LC.Value -> Int -> Lower ()
@@ -317,7 +317,9 @@ createAggData ::
   Lower LC.Value
 createAggData aggType dts = do
   basePointer <- allocateBasePointer aggType
-  storeElements basePointer (toLowType aggType) $ zip [0 ..] dts
+  let baseType = toLowType aggType
+  valuePointerList <- getElemPtrList basePointer baseType (length dts)
+  storeElements basePointer $ zip valuePointerList dts
   return basePointer
 
 getSizeInfoOf :: AggType -> (LT.LowType, Int)
@@ -344,18 +346,20 @@ allocateBasePointer aggType = do
 
 storeElements ::
   LC.Value -> -- base pointer
-  LT.LowType -> -- the type of base pointer (like [n x u8]*, {i8*, i8*}*, etc.)
-  [(Integer, (C.Value, LT.LowType))] -> -- [(the index of an element, the element to be stored)]
+  [(LC.Value, (C.Value, LT.LowType))] -> -- [(the index of an element, the element to be stored)]
   Lower ()
-storeElements basePointer baseType values =
+storeElements basePointer values =
   case values of
     [] ->
       return ()
-    (valueIndex, (value, valueType)) : ids -> do
+    (elemPtr, (value, valueType)) : ids -> do
       castedValue <- lowerValueLetCast value valueType
-      elemPtr <- getElemPtr basePointer baseType [0, valueIndex]
       store valueType castedValue elemPtr
-      storeElements basePointer baseType ids
+      storeElements basePointer ids
+
+getElemPtrList :: LC.Value -> LT.LowType -> Int -> Lower [LC.Value]
+getElemPtrList basePointer baseType numOfElems =
+  forM [0 .. numOfElems - 1] $ \i -> getElemPtr basePointer baseType [0, toInteger i]
 
 newValueLocal :: T.Text -> App (Ident, LC.Value)
 newValueLocal name = do
