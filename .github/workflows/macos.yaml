@@ -20,7 +20,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: extractions/setup-just@v1
-      - uses: freckle/stack-action@v4
       - id: cache-llvm
         uses: actions/cache@v3
         with:
@@ -30,5 +29,6 @@ jobs:
         with:
           version: ${{ env.NEUT_LLVM_VERSION }}
           cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+      - uses: freckle/stack-action@v4
       - run: just build-compiler-amd64-darwin
       - run: just test-amd64-darwin
