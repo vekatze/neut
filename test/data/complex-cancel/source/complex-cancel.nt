@@ -1,0 +1,61 @@
+variant joker {
+- Left(joker)
+- Right(int)
+}
+
+// cancel: x ~> {}
+define test(x: joker): joker {
+  match x {
+  - Left(v1) =>
+    // the `free(x)` inserted here is cancelled by ((A) + (B)) * (C)
+    match v1 {
+    - Left(v2) =>
+      match v2 {
+      - Left(v3) =>
+        Left(v3) // (A)
+      - Right(_) =>
+        Right(10) // (B)
+      }
+    - Right(_) =>
+      Right(10) // (C)
+    }
+  - Right(_) =>
+    Right(3)
+  }
+}
+
+define test2(x: joker): int {
+  match x {
+  - Left(v1) =>
+    // the `free(x)` inserted here isn't cancelled
+    match v1 {
+    - Left(v2) =>
+      match v2 {
+      - Left(v3) =>
+        let _ = Left(v3)
+        1
+      - Right(_) =>
+        1 // !
+      }
+    - Right(_) =>
+      let _ = Right(10)
+      1
+    }
+  - Right(_) =>
+    3
+  }
+}
+
+define main(): int {
+  let _ = test(Left(Left(Left(Left(Right(10))))))
+  let _ = test(Left(Left(Left(Right(10)))))
+  let _ = test(Left(Left(Right(10))))
+  let _ = test(Left(Right(10)))
+  let _ = test(Right(10))
+  let _ = test2(Left(Left(Left(Left(Right(10))))))
+  let _ = test2(Left(Left(Left(Right(10)))))
+  let _ = test2(Left(Left(Right(10))))
+  let _ = test2(Left(Right(10)))
+  let _ = test2(Right(10))
+  0
+}

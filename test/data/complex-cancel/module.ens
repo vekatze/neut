@@ -1,0 +1,6 @@
+antecedents = []
+dependency = {}
+extra-content = []
+target = {
+  complex-cancel = "complex-cancel.nt"
+}
