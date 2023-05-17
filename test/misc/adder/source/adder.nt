@@ -7,6 +7,7 @@ define make-adder(x: int): int -> int {
 }
 
 define main(): int {
-  let _ = make-adder(3)(7)
+  print-int(make-adder(3)(7))
+  print("\n")
   0
 }

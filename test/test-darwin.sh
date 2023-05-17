@@ -17,7 +17,12 @@ for i in $(find . -d 1 -type d | sort); do
   NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
   NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option "-fsanitize=address"
   # https://stackoverflow.com/questions/64126942
-  MallocNanoZone=0 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE ./.build/$TARGET_ARCH-darwin/compiler-$COMPILER_VERSION/build-option-cLHs7km0Z68odNMcuhrD2pgQSCxXZuyQVSxpwrPsbVY=/executable/$(basename $i)
+  MallocNanoZone=0 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE ./.build/$TARGET_ARCH-darwin/compiler-$COMPILER_VERSION/build-option-cLHs7km0Z68odNMcuhrD2pgQSCxXZuyQVSxpwrPsbVY=/executable/$(basename $i) > actual
+  last_exit_code=$?
+  if [ $last_exit_code -ne 0 ]; then
+    exit_code=$last_exit_code
+  fi
+  diff expected actual
   last_exit_code=$?
   if [ $last_exit_code -ne 0 ]; then
     exit_code=$last_exit_code

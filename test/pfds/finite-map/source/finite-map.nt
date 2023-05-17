@@ -94,6 +94,7 @@ define main(): int {
     }
   }
   let _ = mymap
-  let _: int = result
+  print-int(result)
+  print("\n")
   0
 }

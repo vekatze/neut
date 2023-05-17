@@ -49,15 +49,10 @@ define main(): int {
   let mul3 = lambda (x) { mul-nat(x, n3) }
   let mul9 = lambda (x) { mul-nat(x, mul-nat(n3, n3)) }
   let _ = mul9
-  // let mul9-unused2 = mul9
-
-  // let add2 = lambda (x). add-int(x, 2)
-  // let mul3 = lambda (x). mul-int(x, 3)
-  // let sub1 = lambda (x). sub-int(x, 1)
   let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil)))
   let gs = fs
   let hs = gs
-  let _ = interpret(fold(_, hs, n3))
+  print-int(interpret(fold(_, hs, n3))) // 2 + (3 * (9 * 3)) = 83
+  print("\n")
   0
-  // fold(hs, 10)
 }

@@ -11,6 +11,7 @@ define fact(x: int): int {
 }
 
 define main(): int {
-  let _ = fact(5)
+  print-int(fact(5))
+  print("\n")
   0
 }

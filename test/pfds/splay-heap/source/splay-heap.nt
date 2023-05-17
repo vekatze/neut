@@ -118,36 +118,41 @@ define main(): int {
   let h = insert(compare-int-list, [1, 2], h)
   let h = insert(compare-int-list, [10], h)
   let h = insert(compare-int-list, [5], h)
+  // v1 = 3
   let v1 on h = {
     match find-min(h) {
     - Some(xs) =>
-      let v on xs = sum(xs)
+      let v on xs = sum(xs) // xs = [1, 2]
       let _ = xs
-      v
+      v // v = 3
     - None =>
       4
     }
   }
   let mh = delete-min(h)
-  let _ =
+  let result =
     match mh {
     - None =>
       3
     - Some(h) =>
       let h = insert(compare-int-list, [4, 8], h)
       let h = insert(compare-int-list, [1, 1], h)
+      // v2 = 2
       let v2 on h = {
         match find-min(h) {
         - Some(xs) =>
-          let v on xs = sum(xs)
+          let v on xs = sum(xs) // xs = [1, 1]
           let _ = xs
-          v
+          v // v = 2
         - None =>
           4
         }
       }
       let _ = h
+      // v1 + v2 = 3 + 2 = 5
       add-int(v1, v2)
     }
+  print-int(result)
+  print("\n")
   0
 }

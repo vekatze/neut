@@ -21,6 +21,7 @@ define main(): int {
   let z0 = nil-cons-cons(n0)
   let z1 = nil-cons-cons(n1)
   let z2 = nil-cons-cons(n2)
-  let _ = add-int(z0, add-int(z1, z2))
+  print-int(add-int(z0, add-int(z1, z2)))
+  print("\n")
   0
 }

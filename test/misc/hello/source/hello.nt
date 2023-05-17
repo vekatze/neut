@@ -1,0 +1,4 @@
+define main(): int {
+  print("hello, world!\n")
+  0
+}

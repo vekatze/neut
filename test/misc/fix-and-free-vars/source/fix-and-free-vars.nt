@@ -60,6 +60,7 @@ define main(): int {
         free-vars-in-recursion(sub-int(c, 1))
       }
     }
-  let _ = multiple-free-var(3)
+  print-int(multiple-free-var(3))
+  print("\n")
   0
 }

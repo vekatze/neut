@@ -60,6 +60,7 @@ define main(): int {
   let q = snoc([2], q)
   let q = snoc([5], q)
   let q = snoc([1], q)
+  // v1 == 2
   let v1 on q = {
     match head(q) {
     - Some(xs1) =>
@@ -71,13 +72,14 @@ define main(): int {
     }
   }
   let mq = tail(q)
-  let _ =
+  let result =
     match mq {
     - None =>
       1
     - Some(q) =>
       let q = snoc([3], q)
       let q = snoc([8], q)
+      // v2 = 5
       let v2 on q = {
         match head(q) {
         - Some(xs) =>
@@ -89,7 +91,10 @@ define main(): int {
         }
       }
       let _ = q
+      // 2 + 5 = 7
       add-int(v1, v2)
     }
+  print-int(result)
+  print("\n")
   0
 }

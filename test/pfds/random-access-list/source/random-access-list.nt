@@ -173,6 +173,7 @@ define main(): int {
   let xs = update(2, 10, xs)
   let v3-modified on xs = find-and-get(2, xs) // 10
   let _ = xs
-  let _ = add-int(v1, add-int(v2, add-int(v3-modified, v4))) // 1 + 4 + 10 + 3 = 18
+  print-int(add-int(v1, add-int(v2, add-int(v3-modified, v4)))) // 1 + 4 + 10 + 3 = 18
+  print("\n")
   0
 }

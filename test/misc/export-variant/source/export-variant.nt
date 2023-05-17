@@ -47,28 +47,8 @@ define main(): int {
   let _ = L.Bar3-Alias
   let _ = L.config
   let _ = L.value-1
-  // let _ = L.value-2
   let _ = L.value-3
-  // let _ = L.Buz3
-  // let _ = L.Foo3
-  // let _ = L.Buz3
   let _ = L.my-sample-alias
   let _ = Bar
-  // match L.Foo2: L.sample-2(tau) {
-  // }
   0
-  // let _ = L.Foo2
-  // 0
 }
-
-// export {
-// - config {
-//   - L.value-1
-//   - value-1 => test
-//   - value-2
-//   - Config
-//   }
-// - sample-2 => _ {
-//   - Foo2
-//   }
-// }

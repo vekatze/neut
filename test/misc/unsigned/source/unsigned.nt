@@ -1,6 +1,0 @@
-define main(): int {
-  let v: i4 = -1 // == 15
-  let _ = magic cast(i4, int, div-i4(v, 3)) // 0
-  let _ = magic cast(i4, int, udiv-i4(v, 3)) // 5
-  0
-}

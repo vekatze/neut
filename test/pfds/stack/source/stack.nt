@@ -94,6 +94,7 @@ define main(): int {
   }
   let _ = zs
   let _ = xs
-  let _: int = calc
+  print-int(calc)
+  print("\n")
   0
 }

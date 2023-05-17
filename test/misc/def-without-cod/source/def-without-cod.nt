@@ -1,8 +1,0 @@
-define id(a: tau, x: a) {
-  x
-}
-
-define main(): int {
-  let _ = id(int, 0)
-  0
-}

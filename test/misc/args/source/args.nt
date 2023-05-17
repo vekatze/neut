@@ -1,5 +1,7 @@
 define main(): int {
   let _ = get-argv()
-  let _ = get-argc()
+  let argc = get-argc()
+  print-int(argc)
+  print("\n")
   0
 }
