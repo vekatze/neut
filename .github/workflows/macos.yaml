@@ -12,7 +12,7 @@ on:
 
 env:
   NEUT_LLVM_PATH: ./neut-llvm
-  NEUT_LLVM_VERSION: 16.0.3
+  NEUT_LLVM_VERSION: 16
 
 jobs:
   build:
