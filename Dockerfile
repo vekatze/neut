@@ -10,6 +10,7 @@ RUN apt-get update && \
   software-properties-common=0.96.20.2-2 \
   tar=1.30+dfsg-6 \
   wget=1.20.1-1.1 \
+  xxd=2:8.1.0875-5+deb10u4 \
   zstd=1.3.8+dfsg-3+deb10u2 && \
   rm -rf /var/lib/apt/lists/*
 
