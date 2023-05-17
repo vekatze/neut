@@ -40,6 +40,9 @@ test-darwin:
     @NEUT={{justfile_directory()}}/bin/{{version}}/amd64-darwin/neut COMPILER_VERSION={{version}} ./test/test-darwin.sh ./test/misc
     @NEUT={{justfile_directory()}}/bin/{{version}}/amd64-darwin/neut COMPILER_VERSION={{version}} ./test/test-darwin.sh ./test/pfds
 
+test-amd64-darwin:
+    @NEUT={{justfile_directory()}}/bin/{{version}}/amd64-darwin/neut COMPILER_VERSION={{version}} ./test/test-amd64-darwin.sh ./test/misc ./test/pfds
+
 _run-amd64-linux *rest:
     @docker run -v $(pwd):/app --platform linux/amd64 --rm {{image-amd64}} sh -c "{{rest}}"
 
