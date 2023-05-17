@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
 
 env:
   NEUT_DOCKER_IMAGE: neut-haskell-amd64
