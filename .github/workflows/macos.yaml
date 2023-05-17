@@ -29,6 +29,7 @@ jobs:
         with:
           version: ${{ env.NEUT_LLVM_VERSION }}
           cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+          force-version: true
       - uses: freckle/stack-action@v4
       - run: just build-compiler-amd64-darwin
       - run: just test-amd64-darwin
