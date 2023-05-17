@@ -10,26 +10,22 @@ on:
       - 'bin/**'
       - 'book/**'
 
-env:
-  NEUT_LLVM_PATH: ./neut-llvm
-  NEUT_LLVM_VERSION: 16
-
 jobs:
   build:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v3
       - uses: extractions/setup-just@v1
-      - id: cache-llvm
-        uses: actions/cache@v3
+      - run: brew update --preinstall
+      - run: cp "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/llvm.rb" llvm.rb
+      - uses: actions/cache@v3
         with:
-          path: ${{ env.NEUT_LLVM_PATH }}
-          key: llvm-${{ env.NEUT_LLVM_VERSION }}
-      - uses: KyleMayes/install-llvm-action@v1
-        with:
-          version: ${{ env.NEUT_LLVM_VERSION }}
-          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
-          force-version: true
+          path: |
+            ~/Library/Caches/Homebrew
+            ~/Library/Caches/Homebrew/downloads
+          key: brew-${{ hashFiles('llvm.rb') }}
+      - name: Install Homebrew dependencies
+        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm
       - uses: freckle/stack-action@v4
       - run: just build-compiler-amd64-darwin
       - run: just test-amd64-darwin
