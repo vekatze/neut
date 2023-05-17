@@ -10,7 +10,7 @@ clang_option="-fsanitize=address"
 digest=$(echo "develop $clang_option\c" | shasum -a 256 -b | xxd -r -p | base64 | tr '/+' '_-' )
 
 cd $SCRIPT_DIR/meta
-NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build --clang-option $clang_option
+NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option
 
 exit_code=0
 
