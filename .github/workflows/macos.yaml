@@ -1,0 +1,34 @@
+name: Tests on macOS
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
+
+env:
+  NEUT_LLVM_PATH: ./neut-llvm
+  NEUT_LLVM_VERSION: 16.0.3
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: extractions/setup-just@v1
+      - uses: freckle/stack-action@v4
+      - id: cache-llvm
+        uses: actions/cache@v3
+        with:
+          path: ${{ env.NEUT_LLVM_PATH }}
+          key: llvm-${{ env.NEUT_LLVM_VERSION }}
+      - uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: ${{ env.NEUT_LLVM_VERSION }}
+          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
+      - run: just build-compiler-amd64-darwin
+      - run: just test-amd64-darwin
