@@ -1,7 +1,5 @@
 #!/bin/sh
 
-# TARGET_ARCH=amd64
-
 TARGET_DIR=$(cd "$1"; pwd)
 cd $TARGET_DIR
 
