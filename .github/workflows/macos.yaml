@@ -31,5 +31,7 @@ jobs:
           key: brew-${{ hashFiles('llvm.rb') }}
       - run: brew install llvm
       - uses: freckle/stack-action@v4
+        with:
+          pedantic: false
       - run: just build-compiler-amd64-darwin
       - run: just test-amd64-darwin
