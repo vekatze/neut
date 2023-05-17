@@ -20,13 +20,13 @@ build-compilers:
     @just build-compiler-amd64-darwin
 
 build-compiler-amd64-linux:
-    @just _run-amd64-linux stack install neut --local-bin-path ./bin/{{version}}/amd64-linux
+    @just _run-amd64-linux stack install neut --allow-different-user --local-bin-path ./bin/{{version}}/amd64-linux
 
 build-compiler-arm64-linux:
-    @just _run-arm64-linux stack install neut --local-bin-path ./bin/{{version}}/arm64-linux
+    @just _run-arm64-linux stack install neut --allow-different-user --local-bin-path ./bin/{{version}}/arm64-linux
 
 build-compiler-amd64-darwin:
-    @stack install neut --local-bin-path ./bin/{{version}}/amd64-darwin
+    @stack install neut --allow-different-user --local-bin-path ./bin/{{version}}/amd64-darwin
 
 test-amd64-linux:
     @just _run-amd64-linux NEUT=/app/bin/{{version}}/amd64-linux/neut COMPILER_VERSION={{version}} TARGET_ARCH=amd64 /app/test/test-linux.sh /app/test/data
