@@ -2,7 +2,6 @@ import {
 - core.bool
 - core.option
 - core.list
-- core.external => ext
 }
 
 variant tree(a) {
@@ -165,7 +164,6 @@ define main(): int {
     }
   }
   let _ = h
-  let _ = ext.malloc(3) // leak
   let _ = maybe-min
   0
 }
