@@ -10,6 +10,11 @@ on:
       - 'bin/**'
       - 'book/**'
 
+env:
+  HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
+  HOMEBREW_NO_AUTO_UPDATE: 1
+  HOMEBREW_NO_INSTALL_CLEANUP: 1
+
 jobs:
   build:
     runs-on: macos-latest
@@ -24,8 +29,7 @@ jobs:
             ~/Library/Caches/Homebrew
             ~/Library/Caches/Homebrew/downloads
           key: brew-${{ hashFiles('llvm.rb') }}
-      - name: Install Homebrew dependencies
-        run: HOMEBREW_NO_AUTO_UPDATE=1 brew install llvm
+      - run: brew install llvm zstd
       - uses: freckle/stack-action@v4
       - run: just build-compiler-amd64-darwin
       - run: just test-amd64-darwin
