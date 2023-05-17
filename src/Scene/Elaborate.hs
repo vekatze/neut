@@ -323,13 +323,6 @@ fillHole m h es = do
       | otherwise ->
           Throw.raiseError m "arity mismatch"
 
--- cs <- readIORef constraintEnv
--- p "==========================================================="
--- forM_ cs $ \(e1, e2) -> do
---   p $ T.unpack $ toText e1
---   p $ T.unpack $ toText e2
---   p "---------------------"
-
 elaborateDecisionTree :: Hint -> DT.DecisionTree WT.WeakTerm -> App (DT.DecisionTree TM.Term)
 elaborateDecisionTree m tree =
   case tree of
