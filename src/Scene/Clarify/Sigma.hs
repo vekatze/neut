@@ -187,7 +187,7 @@ sigmaData resourceHandler dataInfo arg = do
       enumElim <- getEnumElim [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) enumElim
+          C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal localName)))) enumElim
 
 sigmaBinderT :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinderT xts v = do

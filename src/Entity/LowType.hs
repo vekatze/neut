@@ -19,13 +19,9 @@ instance Show LowType where
 
 instance Binary LowType
 
-voidPtr :: LowType
-voidPtr =
-  Pointer
-
 toVoidPtrSeq :: A.Arity -> [LowType]
 toVoidPtrSeq arity =
-  map (const voidPtr) [1 .. A.reify arity]
+  map (const Pointer) [1 .. A.reify arity]
 
 textType :: Int -> Int -> LowType
 textType baseSize len =

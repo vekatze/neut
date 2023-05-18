@@ -269,7 +269,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
         else do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
-          return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) enumElim
+          return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim
 
 isEnumType :: TM.Term -> App Bool
 isEnumType term =

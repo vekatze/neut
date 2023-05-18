@@ -105,15 +105,15 @@ lowerComp term =
         return $ LC.TailCall v'' ds'
     C.SigmaElim shouldDeallocate xs v e -> do
       let numOfElems = length xs
-      let baseType = LT.Array numOfElems LT.voidPtr
+      let baseType = LT.Array numOfElems LT.Pointer
       runLowerComp $ do
         basePointer <- lowerValue v
         valuePointerList <- getElemPtrList basePointer baseType numOfElems
-        ds <- loadElements basePointer $ map (,LT.voidPtr) valuePointerList
+        ds <- loadElements basePointer $ map (,LT.Pointer) valuePointerList
         when shouldDeallocate $ do
           free basePointer (length xs)
         forM_ (zip xs ds) $ \(x, d) -> do
-          extend $ return . LC.Let x (LC.Bitcast d LT.voidPtr LT.voidPtr)
+          extend $ return . LC.Let x (LC.Bitcast d LT.Pointer LT.Pointer)
         lift $ lowerComp e
     C.UpIntro d ->
       runLower $ lowerValue d
@@ -144,7 +144,7 @@ lowerComp term =
 
 load :: LT.LowType -> LC.Value -> Lower LC.Value
 load elemType pointer = do
-  tmp <- reflect $ LC.Bitcast pointer LT.voidPtr LT.Pointer
+  tmp <- reflect $ LC.Bitcast pointer LT.Pointer LT.Pointer
   loaded <- reflect $ LC.Load tmp elemType
   uncast loaded elemType
 
@@ -220,17 +220,17 @@ cast v lowType = do
   (result, resultVar) <- lift $ newValueLocal "result"
   case lowType of
     LT.PrimNum (PT.Int _) -> do
-      extend $ return . LC.Let result (LC.PointerToInt v LT.voidPtr lowType)
+      extend $ return . LC.Let result (LC.PointerToInt v LT.Pointer lowType)
     LT.PrimNum (PT.Float size) -> do
       let floatType = LT.PrimNum $ PT.Float size
       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt size
       (tmp, tmpVar) <- lift $ newValueLocal "tmp"
       extend $
         return
-          . LC.Let tmp (LC.PointerToInt v LT.voidPtr intType)
+          . LC.Let tmp (LC.PointerToInt v LT.Pointer intType)
           . LC.Let result (LC.Bitcast tmpVar intType floatType)
     _ -> do
-      extend $ return . LC.Let result (LC.Bitcast v LT.voidPtr lowType)
+      extend $ return . LC.Let result (LC.Bitcast v LT.Pointer lowType)
   return resultVar
 
 uncast :: LC.Value -> LT.LowType -> Lower LC.Value
@@ -238,7 +238,7 @@ uncast castedValue lowType = do
   (result, resultVar) <- lift $ newValueLocal "uncast"
   case lowType of
     LT.PrimNum (PT.Int _) ->
-      extend $ return . LC.Let result (LC.IntToPointer castedValue lowType LT.voidPtr)
+      extend $ return . LC.Let result (LC.IntToPointer castedValue lowType LT.Pointer)
     LT.PrimNum (PT.Float i) -> do
       let floatType = LT.PrimNum $ PT.Float i
       let intType = LT.PrimNum $ PT.Int $ IntSize $ floatSizeToInt i
@@ -246,9 +246,9 @@ uncast castedValue lowType = do
       extend $
         return
           . LC.Let tmp (LC.Bitcast castedValue floatType intType)
-          . LC.Let result (LC.IntToPointer tmpVar intType LT.voidPtr)
+          . LC.Let result (LC.IntToPointer tmpVar intType LT.Pointer)
     _ ->
-      extend $ return . LC.Let result (LC.Bitcast castedValue lowType LT.voidPtr)
+      extend $ return . LC.Let result (LC.Bitcast castedValue lowType LT.Pointer)
   return resultVar
 
 lowerValueLetCast :: C.Value -> LT.LowType -> Lower LC.Value
@@ -263,7 +263,7 @@ lowerValue v =
       lowNameSet <- lift getDefinedNameSet
       unless (S.member globalName lowNameSet) $ do
         lift $ insDeclEnv (DN.In globalName) arity
-      uncast (LC.VarGlobal globalName) LT.voidPtr
+      uncast (LC.VarGlobal globalName) LT.Pointer
     C.VarLocal y ->
       return $ LC.VarLocal y
     C.VarStaticText text -> do
@@ -274,8 +274,8 @@ lowerValue v =
       lift $ StaticText.insert name text len
       uncast (LC.VarGlobal name) LT.Pointer
     C.SigmaIntro ds -> do
-      let arrayType = AggTypeArray (length ds) LT.voidPtr
-      createAggData arrayType $ map (,LT.voidPtr) ds
+      let arrayType = AggTypeArray (length ds) LT.Pointer
+      createAggData arrayType $ map (,LT.Pointer) ds
     C.Int size l -> do
       uncast (LC.Int l) $ LT.PrimNum $ PT.Int size
     C.Float size f ->
@@ -379,7 +379,7 @@ commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =
   case lowComp of
     LC.Return d ->
-      LC.Let x (LC.Bitcast d LT.voidPtr LT.voidPtr) cont2 -- nop
+      LC.Let x (LC.Bitcast d LT.Pointer LT.Pointer) cont2 -- nop
     LC.Let y op cont1 -> do
       let cont = commConv x cont1 cont2
       LC.Let y op cont

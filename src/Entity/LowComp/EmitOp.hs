@@ -90,13 +90,13 @@ emitSyscallOp targetPlatform num ds = do
   regList <- getRegList targetPlatform
   case TP.arch targetPlatform of
     Arch.Amd64 -> do
-      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
+      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.Pointer) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $
         unwordsL ["call fastcc ptr asm sideeffect \"syscall\",", regStr, argStr]
     Arch.Arm64 -> do
-      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.voidPtr) ds
+      let args = (LC.Int num, LT.PrimNum $ PT.Int (IntSize 64)) : map (,LT.Pointer) ds
       let argStr = "(" <> showIndex args <> ")"
       let regStr = "\"=r" <> showRegList (take (length args) regList) <> "\""
       return $

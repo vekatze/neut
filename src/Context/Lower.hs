@@ -24,8 +24,8 @@ initialize nameList = do
   writeRef' extEnv S.empty
   writeRef' declEnv $
     Map.fromList
-      [ (DN.malloc, ([LT.voidPtr], LT.voidPtr)),
-        (DN.free, ([LT.voidPtr], LT.voidPtr))
+      [ (DN.malloc, ([LT.Pointer], LT.Pointer)),
+        (DN.free, ([LT.Pointer], LT.Pointer))
       ]
 
 getDeclEnv :: App DN.DeclEnv
@@ -34,7 +34,7 @@ getDeclEnv =
 
 insDeclEnv :: DN.DeclarationName -> A.Arity -> App ()
 insDeclEnv k arity =
-  modifyRef' declEnv $ Map.insert k (LT.toVoidPtrSeq arity, LT.voidPtr)
+  modifyRef' declEnv $ Map.insert k (LT.toVoidPtrSeq arity, LT.Pointer)
 
 getExtEnv :: App (S.Set DD.DefiniteDescription)
 getExtEnv =
