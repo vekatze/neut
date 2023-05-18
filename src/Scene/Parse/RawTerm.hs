@@ -671,14 +671,6 @@ rawTermNoema = do
   t <- rawTermBasic
   return $ m :< RT.Noema t
 
--- rawTermUnit :: Parser RT.RawTerm
--- rawTermUnit = do
---   m <- getCurrentHint
---   keyword "unit"
---   unitVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadUnitInner
---   t <- betweenParen rawTerm
---   return $ m :< RT.Unit unitVar t
-
 rawTermFlow :: Parser RT.RawTerm
 rawTermFlow = do
   m <- getCurrentHint
