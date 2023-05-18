@@ -81,7 +81,8 @@ rawExprSeqOrTerm m = do
 rawTerm :: Parser RT.RawTerm
 rawTerm = do
   choice
-    [ rawTermPiIntro,
+    [ rawTermPi,
+      rawTermPiIntro,
       rawTermPiIntroDef,
       rawTermIntrospect,
       rawTermMagic,
@@ -90,7 +91,6 @@ rawTerm = do
       rawTermIf,
       rawTermAssert,
       rawTermListIntro,
-      rawTermPiGeneral,
       try rawTermPiElimByKey,
       rawTermPiOrConsOrAscOrBasic
     ]
@@ -253,14 +253,6 @@ rawTermHole = do
   keyword "_"
   lift $ Gensym.newPreHole m
 
-rawTermPiGeneral :: Parser RT.RawTerm
-rawTermPiGeneral = do
-  m <- getCurrentHint
-  domList <- argList $ choice [try preAscription, typeWithoutIdent]
-  delimiter "->"
-  cod <- rawTerm
-  return $ m :< RT.Pi domList cod
-
 rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
 rawTermPiOrConsOrAscOrBasic = do
   m <- getCurrentHint
@@ -293,13 +285,21 @@ foldByOp m op es =
     e : rest ->
       m :< RT.PiElim (m :< RT.Var op) [e, foldByOp m op rest]
 
+rawTermPi :: Parser RT.RawTerm
+rawTermPi = do
+  m <- getCurrentHint
+  keyword "arrow"
+  domList <- argList $ choice [try preAscription, typeWithoutIdent]
+  delimiter "->"
+  cod <- rawTerm
+  return $ m :< RT.Pi domList cod
+
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
   m <- getCurrentHint
   keyword "lambda"
   varList <- argList preBinder
-  e <- betweenBrace rawExpr
-  return $ lam m varList e
+  lam m varList <$> betweenBrace rawExpr
 
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do

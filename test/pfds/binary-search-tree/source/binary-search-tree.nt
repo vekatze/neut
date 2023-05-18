@@ -16,11 +16,11 @@ variant set(a) {
 
 struct set-signature(a) by Set {
 - empty: set(a)
-- insert: (a, set(a)) -> set(a)
-- member: (a, &set(a)) -> bool
+- insert: arrow (a, set(a)) -> set(a)
+- member: arrow (a, &set(a)) -> bool
 }
 
-define make-set-signature[a](compare: (a, a) -> order): set-signature(a) {
+define make-set-signature[a](compare: arrow (a, a) -> order): set-signature(a) {
   Set {
   - empty <=
     Leaf

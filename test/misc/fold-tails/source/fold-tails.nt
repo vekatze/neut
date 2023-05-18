@@ -39,7 +39,7 @@ define gen(n: nat): list(nat) {
   }
 }
 
-define fold-r[a, b](f: (b, a) -> a, acc: a, xs: list(b)): a {
+define fold-r[a, b](f: arrow (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
   - Nil =>
     acc

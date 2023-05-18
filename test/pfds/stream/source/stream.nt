@@ -10,7 +10,7 @@ variant stream-cell(a) {
 }
 
 define-inline stream(a: tau): tau {
-  () -> stream-cell(a)
+  arrow () -> stream-cell(a)
 }
 
 define append[a](xs: stream(a), ys: stream(a)): stream(a) {

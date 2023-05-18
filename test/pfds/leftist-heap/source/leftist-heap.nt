@@ -17,13 +17,13 @@ variant heap(a) {
 struct heap-signature(a) by Heap {
 - empty: heap(a)
 - is-empty: &heap(a) -> bool
-- insert: (a, heap(a)) -> heap(a)
-- merge: (heap(a), heap(a)) -> heap(a)
+- insert: arrow (a, heap(a)) -> heap(a)
+- merge: arrow (heap(a), heap(a)) -> heap(a)
 - find-min: &heap(a) -> ?a
 - delete-min: heap(a) -> ?heap(a)
 }
 
-define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
+define make-heap-signature[a](compare: arrow (a, a) -> order): heap-signature(a) {
   let merge = {
     let rank =
       lambda (h: &heap(a)) {

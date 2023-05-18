@@ -18,7 +18,7 @@ variant order {
 }
 
 define-inline Cmp(a: tau): tau {
-  (a, a) -> order
+  arrow (a, a) -> order
 }
 
 define member[a](cmp: Cmp(a), x: a, t: &tree(a)): bool {
@@ -78,7 +78,7 @@ define insert[a](cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
   }
 }
 
-define compare-int(x: () -> int, y: () -> int): order {
+define compare-int(x: arrow () -> int, y: arrow () -> int): order {
   if lt-int(x(), y()) {
     LT
   } else-if gt-int(x(), y()) {
@@ -89,7 +89,7 @@ define compare-int(x: () -> int, y: () -> int): order {
 }
 
 define main(): unit {
-  let t: tree(() -> int) = Leaf
+  let t: tree(arrow () -> int) = Leaf
   let t = insert(compare-int, lambda () {3}, t)
   let t = insert(compare-int, lambda () {4}, t)
   let t = insert(compare-int, lambda () {2}, t)

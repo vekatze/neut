@@ -15,11 +15,11 @@ variant finite-map(a, b) {
 
 struct finite-map-signature(a, b) by Finite-Map {
 - empty: finite-map(a, b)
-- insert: (a, b, finite-map(a, b)) -> finite-map(a, b)
-- lookup: (a, &finite-map(a, b)) -> ?b
+- insert: arrow (a, b, finite-map(a, b)) -> finite-map(a, b)
+- lookup: arrow (a, &finite-map(a, b)) -> ?b
 }
 
-define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, b) {
+define make-finite-map[a, b](compare: arrow (a, a) -> order): finite-map-signature(a, b) {
   Finite-Map {
   - empty <=
     Leaf
@@ -74,7 +74,7 @@ define main(): unit {
   let mymap = insert(2, [tau, tau], mymap)
   let mymap = insert(2, [tau, tau], mymap)
   let mymap = insert(2, [int], mymap)
-  let mymap = insert(3, [() -> int], mymap)
+  let mymap = insert(3, [arrow () -> int], mymap)
   let _ = mymap
   let _ = mymap
   let result on mymap = {

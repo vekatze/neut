@@ -1,23 +1,23 @@
 define test-syntax(): tau {
   // nullary
-  let _ = () -> tau
+  let _ = arrow () -> tau
   // general, non-dependent
-  let _ = (tau) -> tau
-  let _ = (() -> tau) -> tau
-  let _ = (() -> (tau) -> tau) -> tau
-  let _ = (((tau) -> tau) -> tau) -> tau
+  let _ = arrow (tau) -> tau
+  let _ = arrow (arrow () -> tau) -> tau
+  let _ = arrow (arrow () -> arrow (tau) -> tau) -> tau
+  let _ = arrow (arrow (arrow (tau) -> tau) -> tau) -> tau
   // general, dependent
-  let _ = (a: tau, _: a) -> a
-  let _ = (a: tau, a) -> a
-  let _ = (a: tau, a) -> list(tau)
-  let _ = (a: tau, list(tau)) -> a
-  let _ = (a: tau, a) -> &list(tau)
-  let _ = (a: tau, &list(tau)) -> a
-  let _ = (a: tau, a) -> flow(list(tau))
-  let _ = (a: tau, flow(list(tau))) -> a
-  let _ = (a: tau, a) -> tau
-  let _ = (a: tau, a -> a) -> tau
-  let _ = (a: tau, (a -> a) -> a) -> tau
+  let _ = arrow (a: tau, _: a) -> a
+  let _ = arrow (a: tau, a) -> a
+  let _ = arrow (a: tau, a) -> list(tau)
+  let _ = arrow (a: tau, list(tau)) -> a
+  let _ = arrow (a: tau, a) -> &list(tau)
+  let _ = arrow (a: tau, &list(tau)) -> a
+  let _ = arrow (a: tau, a) -> flow(list(tau))
+  let _ = arrow (a: tau, flow(list(tau))) -> a
+  let _ = arrow (a: tau, a) -> tau
+  let _ = arrow (a: tau, a -> a) -> tau
+  let _ = arrow (a: tau, arrow (a -> a) -> a) -> tau
   // simplified
   let _ = tau -> tau
   let _ = {tau -> tau} -> tau
@@ -35,7 +35,7 @@ define test-syntax(): tau {
   let _ = {tau -> tau} -> {{tau -> tau} -> {tau -> tau}}
   let _ = {{tau -> tau} -> {tau -> tau}} -> {{tau -> tau} -> {tau -> tau}}
   // complex
-  let _ = (a: tau, m: (tau, tau) -> tau) -> {(s: tau) -> a -> m(s, a)} -> a
+  let _ = arrow (a: tau, m: arrow (tau, tau) -> tau) -> {arrow (s: tau) -> a -> m(s, a)} -> a
   tau
 }
 

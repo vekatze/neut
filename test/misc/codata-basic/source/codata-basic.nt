@@ -10,7 +10,7 @@ struct foo() by Foo {
 
 struct stream(a: tau) by Stream {
 - head: a
-- tail: () -> stream(a)
+- tail: arrow () -> stream(a)
 }
 
 define int-stream(x: int): stream(int) {
