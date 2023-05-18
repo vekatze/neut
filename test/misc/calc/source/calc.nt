@@ -18,11 +18,10 @@ define interpret(e: expr()): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let e1 = Add(Num(1), Num(2)) // 3
   let e2 = Mul(Num(3), Num(1023))
   let e3 = Sub(e2, e1)
   print-int(interpret(e3))
   print("\n")
-  0
 }

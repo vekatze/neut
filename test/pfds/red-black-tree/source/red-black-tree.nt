@@ -92,7 +92,7 @@ define compare-int(x: () -> int, y: () -> int): order {
   }
 }
 
-define main(): int {
+define main(): unit {
   let t: tree(() -> int) = Leaf
   let t = insert(compare-int, lambda () {3}, t)
   let t = insert(compare-int, lambda () {4}, t)
@@ -111,5 +111,4 @@ define main(): int {
     }
   print-int(result)
   print("\n")
-  0
 }

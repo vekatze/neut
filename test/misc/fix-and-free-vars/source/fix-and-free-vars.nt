@@ -18,7 +18,7 @@ define my-length(xs: list()): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let xs = Nil()
   let no-free-var =
     define foo(c: int): int {
@@ -62,5 +62,4 @@ define main(): int {
     }
   print-int(multiple-free-var(3))
   print("\n")
-  0
 }

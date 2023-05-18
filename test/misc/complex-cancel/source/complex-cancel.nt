@@ -46,7 +46,7 @@ define test2(x: joker): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let _ = test(JLeft(JLeft(JLeft(JLeft(JRight(10))))))
   let _ = test(JLeft(JLeft(JLeft(JRight(10)))))
   let _ = test(JLeft(JLeft(JRight(10))))
@@ -57,5 +57,5 @@ define main(): int {
   let _ = test2(JLeft(JLeft(JRight(10))))
   let _ = test2(JLeft(JRight(10)))
   let _ = test2(JRight(10))
-  0
+  Unit
 }

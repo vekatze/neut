@@ -1,7 +1,6 @@
-define main(): int {
+define main(): unit {
   let _ = get-argv()
   let argc = get-argc()
   print-int(argc)
   print("\n")
-  0
 }

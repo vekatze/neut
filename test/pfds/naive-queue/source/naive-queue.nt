@@ -55,7 +55,7 @@ define sum(xs: &list(int)): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let q: queue(list(int)) = empty()
   let q = snoc([2], q)
   let q = snoc([5], q)
@@ -96,5 +96,4 @@ define main(): int {
     }
   print-int(result)
   print("\n")
-  0
 }

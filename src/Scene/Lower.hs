@@ -69,12 +69,8 @@ lower (defList, mMainTerm) = do
         e' <- lowerComp e >>= liftIO . cancel
         return (name, (args, e'))
       mainTerm'' <- lowerComp mainTerm
-      -- the result of "main" isn't i8*
-      baseSize <- Env.getBaseSize'
-      (result, resultVar) <- Gensym.newValueVarLocalWith "result"
-      castResult <- runLower $ lowerValueLetCast resultVar (LT.PrimNum $ PT.Int $ IntSize baseSize)
-      -- let result: i8* := (main-term) in {cast result to int}
-      mainTerm''' <- Just <$> commConv result mainTerm'' castResult
+      (result, _) <- Gensym.newValueVarLocalWith "result"
+      mainTerm''' <- Just <$> commConv result mainTerm'' (LC.Return (LC.Int 0))
       declEnv <- getDeclEnv
       staticTextList <- StaticText.getAll
       return (declEnv, defList', mainTerm''', staticTextList)

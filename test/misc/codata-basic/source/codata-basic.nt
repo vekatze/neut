@@ -38,7 +38,7 @@ define get-head[a](s: stream(a)): a {
   }
 }
 
-define main(): int {
+define main(): unit {
   let inner = Bar(10)
   let config =
     Foo {
@@ -60,5 +60,4 @@ define main(): int {
   let value = some-stream::get-tail::get-tail::get-head
   print-int(add-int(k, value)) // 24
   print("\n")
-  0
 }

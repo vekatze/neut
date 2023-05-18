@@ -74,7 +74,7 @@ define compare-int(x: int, y: int): order {
   }
 }
 
-define main(): int {
+define main(): unit {
   let h: heap(int) = Leaf
   let h = insert(compare-int, 10, h)
   let h = insert(compare-int, 3, h)
@@ -91,5 +91,4 @@ define main(): int {
   let _ = h
   print-int(maybe-min)
   print("\n")
-  0
 }

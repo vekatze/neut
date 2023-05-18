@@ -10,8 +10,7 @@ define fact(x: int): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   print-int(fact(5))
   print("\n")
-  0
 }

@@ -69,4 +69,4 @@ createMainFile = do
   Path.ensureDir $ getSourceDir newModule
   forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
     mainFilePath <- Module.getSourcePath sgl
-    Path.writeText mainFilePath "define main(): int {\n  0\n}\n"
+    Path.writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"

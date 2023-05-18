@@ -113,7 +113,7 @@ define sum(xs: &list(int)): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let h: heap(list(int)) = Leaf
   let h = insert(compare-int-list, [1, 2], h)
   let h = insert(compare-int-list, [10], h)
@@ -154,5 +154,4 @@ define main(): int {
     }
   print-int(result)
   print("\n")
-  0
 }

@@ -66,7 +66,7 @@ define head(xs: list(nat)): nat {
   }
 }
 
-define main(): int {
+define main(): unit {
   let n = Succ(Succ(Succ(Zero)))
   let _ = n
   let _ = n
@@ -90,5 +90,4 @@ define main(): int {
   let result = interpret(result-nat)
   print-int(result)
   print("\n")
-  0
 }

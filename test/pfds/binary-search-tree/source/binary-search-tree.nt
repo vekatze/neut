@@ -69,7 +69,7 @@ define compare-int(x: int, y: int): order {
   }
 }
 
-define main(): int {
+define main(): unit {
   let int-set-signature = make-set-signature(compare-int)
   match int-set-signature {
   - Set(empty, insert, member) =>
@@ -87,5 +87,4 @@ define main(): int {
     }
   }
   print("\n")
-  0
 }

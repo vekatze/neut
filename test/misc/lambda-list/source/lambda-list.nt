@@ -41,7 +41,7 @@ define fold(a: tau, fs: list(a -> a), x: a): a {
   }
 }
 
-define main(): int {
+define main(): unit {
   let n1 = Succ(Zero)
   let n2 = Succ(n1)
   let n3 = Succ(n2)
@@ -54,5 +54,4 @@ define main(): int {
   let hs = gs
   print-int(interpret(fold(_, hs, n3))) // 2 + (3 * (9 * 3)) = 83
   print("\n")
-  0
 }

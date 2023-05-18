@@ -13,6 +13,7 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Arity qualified as A
 import Entity.Binder
+import Entity.Const
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
@@ -20,6 +21,7 @@ import Entity.HoleID qualified as HID
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
+import Entity.Name qualified as N
 import Entity.PrimOp
 import Entity.Stmt
 import Entity.Term qualified as TM
@@ -28,6 +30,7 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Scene.Parse.Discern.Name qualified as N
 import Scene.WeakTerm.Subst qualified as Subst
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
@@ -42,8 +45,10 @@ inferStmt mMainDD stmt =
       (e', te) <- infer' varEnv e
       insConstraintEnv codType' te
       when (mMainDD == Just x) $ do
-        intType <- getIntType m
-        insConstraintEnv (m :< WT.Pi [] intType) (m :< WT.Pi xts' codType')
+        unitType <- getUnitType m
+        -- intType <- getIntType m
+        -- insConstraintEnv (m :< WT.Pi [] intType) (m :< WT.Pi xts' codType')
+        insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
       Type.insert name $ m :< WT.Tau
@@ -61,6 +66,16 @@ getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do
   baseSize <- Env.getBaseSize m
   return $ WT.uIntTypeBySize m baseSize
+
+getUnitType :: Hint -> App WT.WeakTerm
+getUnitType m = do
+  locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
+  (unitDD, _) <- N.resolveName m (N.Locator locator)
+  -- printNote' $ T.pack (show unitName)
+  return $ m :< WT.PiElim (m :< WT.VarGlobal unitDD (A.fromInt 0)) []
+
+-- baseSize <- Env.getBaseSize m
+-- return $ WT.uIntTypeBySize m baseSize
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =

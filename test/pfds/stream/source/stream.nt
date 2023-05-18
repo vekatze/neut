@@ -39,9 +39,9 @@ define take[a](n: int, xs: stream(a)): stream(a) {
   }
 }
 
-define main(): int {
+define main(): unit {
   let my-stream: stream(int) =
     lambda () { Cons(1, lambda () { Nil }) }
   let _ = my-stream
-  0
+  Unit
 }

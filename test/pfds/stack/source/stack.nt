@@ -72,7 +72,7 @@ define suffixes-noetic[a](xs: &stack(a)): stack(&stack(a)) {
   }
 }
 
-define main(): int {
+define main(): unit {
   let xs = empty()
   let ys = Cons(10: int, xs)
   let zs = Cons(30, Cons(20, ys))
@@ -96,5 +96,4 @@ define main(): int {
   let _ = xs
   print-int(calc)
   print("\n")
-  0
 }

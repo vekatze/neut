@@ -160,7 +160,7 @@ define find-and-get(i: int, xs: &R-list(int)): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let xs = New([]): R-list(int)
   let xs = cons(3, xs)
   let xs = cons(2, xs)
@@ -175,5 +175,4 @@ define main(): int {
   let _ = xs
   print-int(add-int(v1, add-int(v2, add-int(v3-modified, v4)))) // 1 + 4 + 10 + 3 = 18
   print("\n")
-  0
 }

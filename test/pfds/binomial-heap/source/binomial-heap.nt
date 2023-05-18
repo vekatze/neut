@@ -145,7 +145,7 @@ define compare-int(x: int, y: int): order {
   }
 }
 
-define main(): int {
+define main(): unit {
   let h: heap(int) = []
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 4, h)
@@ -166,5 +166,4 @@ define main(): int {
   let _ = h
   print-int(maybe-min)
   print("\n")
-  0
 }

@@ -14,7 +14,7 @@ define nil-cons-cons(xs: nat): int {
   }
 }
 
-define main(): int {
+define main(): unit {
   let n0 = Zero()
   let n1 = Succ(n0)
   let n2 = Succ(Succ(Zero()))
@@ -23,5 +23,4 @@ define main(): int {
   let z2 = nil-cons-cons(n2)
   print-int(add-int(z0, add-int(z1, z2)))
   print("\n")
-  0
 }

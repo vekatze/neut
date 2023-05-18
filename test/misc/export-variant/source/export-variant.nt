@@ -41,7 +41,7 @@ variant hogehoge {
 - Hoge(int)
 }
 
-define main(): int {
+define main(): unit {
   let _ = L.sample-3
   let _ = L.Foo3
   let _ = L.Bar3-Alias
@@ -50,5 +50,5 @@ define main(): int {
   let _ = L.value-3
   let _ = L.my-sample-alias
   let _ = Bar
-  0
+  Unit
 }

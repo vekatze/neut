@@ -21,7 +21,7 @@ define bar(xs-cell: &cell(list(int))): int {
   borrow(xs-cell, my-length)
 }
 
-define main(): int {
+define main(): unit {
   let xs: list(int) = Cons(1, Cons(2, Nil()))
   let xs-cell = new-cell(xs)
   let result on xs-cell = {
@@ -41,5 +41,4 @@ define main(): int {
   let _ = xs-cell
   print-int(result)
   print("\n")
-  0
 }

@@ -71,7 +71,7 @@ define compare-int(x: int, y: int): order {
   }
 }
 
-define main(): int {
+define main(): unit {
   let Finite-Map(empty, insert, lookup) = make-finite-map(compare-int)
   let mymap = insert(1, [tau], empty)
   let mymap = insert(2, [tau, tau], mymap)
@@ -96,5 +96,4 @@ define main(): int {
   let _ = mymap
   print-int(result)
   print("\n")
-  0
 }

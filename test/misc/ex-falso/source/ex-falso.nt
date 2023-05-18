@@ -4,6 +4,6 @@ define ex-falso(a: tau, e: my-empty()): a {
   match e {}
 }
 
-define main(): int {
-  0
+define main(): unit {
+  Unit
 }
