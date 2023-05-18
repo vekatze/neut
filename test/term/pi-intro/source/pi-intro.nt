@@ -1,0 +1,264 @@
+define test-syntax(): unit {
+  // nullary
+  let _ = lambda () { tau }
+  // unary
+  let _: tau -> tau = lambda (x) { x }
+  let _ = lambda (x: tau) { x }
+  // binary
+  let _: arrow (tau, tau) -> tau = lambda (x, _) { x }
+  let _: arrow (tau, tau) -> tau = lambda (_, y) { y }
+  let _: arrow (tau, tau) -> tau = lambda (x: tau, _) { x }
+  let _: arrow (tau, tau) -> tau = lambda (_, y: tau) { y }
+  let _: arrow (tau, tau) -> tau = lambda (x: tau, _) { x }
+  let _ = lambda (x: tau, y: tau) { Both(x, y) }
+  // (unnecessarily) complex type
+  let _ =
+    lambda (
+      x: {
+        let _ = tau
+        arrow (tau, tau) -> tau
+      },
+      _: {
+        tau -> tau
+      }
+    ) {
+      x
+    }
+  Unit
+}
+
+define test-resource(): unit {
+  affine-lam1()
+  relevant-lam1()
+  affine-lam2()
+  relevant-lam2()
+  affine-lam3()
+  relevant-lam3()
+  affine-lam4()
+  relevant-lam4()
+}
+
+define opaque[a](x: a) {
+  x
+}
+
+define affine-lam1(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let _ = lam1
+  Unit
+}
+
+define relevant-lam1(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let _ = lam1
+  let _ = lam1
+  Unit
+}
+
+
+define affine-lam2(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let lam2 =
+    opaque(
+      lambda () {
+        let v = lam1
+        v
+      }
+    )
+  let _ = lam2
+  Unit
+}
+
+define relevant-lam2(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let lam2 =
+    opaque(
+      lambda () {
+        let v = lam1
+        v
+      }
+    )
+  let _ = lam2
+  let _ = lam2
+  Unit
+}
+
+define affine-lam3(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let lam2 =
+    opaque(
+      lambda () {
+        let v = lam1
+        v
+      }
+    )
+  let lam3 =
+    opaque(
+      lambda (_: tau -> tau) {
+        let _ = lam1
+        let v2 = lam2
+        v2
+      }
+    )
+  let _ = lam3
+  Unit
+}
+
+define relevant-lam3(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let lam2 =
+    opaque(
+      lambda () {
+        let v = lam1
+        v
+      }
+    )
+  let lam3 =
+    opaque(
+      lambda (_: tau -> tau) {
+        let _ = lam1
+        let v2 = lam2
+        v2
+      }
+    )
+  let _ = lam3
+  let _ = lam3
+  Unit
+}
+
+define affine-lam4(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let lam2 =
+    opaque(
+      lambda () {
+        let v = lam1
+        v
+      }
+    )
+  let lam3 =
+    opaque(
+      lambda (_: tau -> tau) {
+        let _ = lam1
+        let v2 = lam2
+        v2
+      }
+    )
+  let _ = lam3
+  let lam4 =
+    opaque(
+      lambda (_: tau -> tau) {
+        let _ = lam1
+        let _ = lam2
+        let v3 = lam3
+        v3
+      }
+    )
+  let _ = lam4
+  Unit
+}
+
+define relevant-lam4(): unit {
+  let lam1 = opaque(lambda () { tau })
+  let lam2 =
+    opaque(
+      lambda () {
+        let v = lam1
+        v
+      }
+    )
+  let lam3 =
+    opaque(
+      lambda (_: tau -> tau) {
+        let _ = lam1
+        let v2 = lam2
+        v2
+      }
+    )
+  let _ = lam3
+  let lam4 =
+    opaque(
+      lambda (_: tau -> tau) {
+        let _ = lam1
+        let _ = lam2
+        let v3 = lam3
+        v3
+      }
+    )
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  let _ = lam4
+  Unit
+}
+
+define test-reduction(): unit {
+  Unit
+}
+
+define main(): unit {
+  test-syntax()
+  test-resource()
+}
