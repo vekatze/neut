@@ -87,9 +87,6 @@ rawTerm = do
       rawTermMagic,
       rawTermMatchNoetic,
       rawTermMatch,
-      rawTermFlow,
-      rawTermFlowIntro,
-      rawTermFlowElim,
       rawTermIf,
       rawTermAssert,
       rawTermListIntro,
@@ -102,6 +99,9 @@ rawTermBasic :: Parser RT.RawTerm
 rawTermBasic = do
   choice
     [ rawTermNoema,
+      rawTermFlow,
+      rawTermFlowIntro,
+      rawTermFlowElim,
       rawTermOption,
       rawTermOptionNone,
       rawTermOptionSome,
@@ -686,7 +686,7 @@ rawTermFlowIntro = do
   keyword "detach"
   flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   detachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadDetach
-  e <- betweenBrace rawExpr
+  e <- rawTermSimple
   return $ m :< RT.FlowIntro flowVar detachVar e
 
 rawTermFlowElim :: Parser RT.RawTerm
@@ -695,7 +695,7 @@ rawTermFlowElim = do
   keyword "attach"
   flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   attachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadAttach
-  e <- rawTerm
+  e <- rawTermSimple
   return $ m :< RT.FlowElim flowVar attachVar e
 
 rawTermOption :: Parser RT.RawTerm
