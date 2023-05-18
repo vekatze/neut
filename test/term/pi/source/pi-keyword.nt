@@ -1,0 +1,59 @@
+export {
+- test-syntax
+}
+
+define foo(FOO: bool, a: tau, 🌟🌟🌟: tau, 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int): tau {
+  let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね
+  if FOO {
+    a -> 🌟🌟🌟
+  } else {
+    🌟🌟🌟 -> tau
+  }
+}
+
+define test-syntax(): unit {
+  let _ =
+    foo {
+    - a <= int
+    - FOO <= True
+    - 🌟🌟🌟 <= list(void)
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね <= {
+        let x = 10
+        let y = 20
+        add-int(x, y)
+      }
+    }
+  let _ =
+    foo {
+    - a <= int
+    - 🌟🌟🌟 <= list(void)
+    - FOO <= False
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね <= {
+        let x = 10
+        let y = 20
+        add-int(x, y)
+      }
+    }
+  let _ =
+    foo {
+    - 🌟🌟🌟 <= list(void)
+    - a <=
+      foo {
+      - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね <= {
+          let x = 10
+          let y = 20
+          add-int(x, y)
+        }
+      - a <= int
+      - 🌟🌟🌟 <= list(void)
+      - FOO <= True
+      }
+    - FOO <= False
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね <= {
+        let x = 10
+        let y = 20
+        add-int(x, y)
+      }
+    }
+  Unit
+}
