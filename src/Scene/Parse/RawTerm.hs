@@ -78,7 +78,7 @@ rawExprSeqOrTerm m = do
     [ do
         e2 <- rawExpr
         f <- lift Gensym.newTextForHole
-        unit <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreUnit
+        unit <- lift $ locatorToVarGlobal m coreUnit
         return $ bind (m, f, unit) e1 e2,
       return e1
     ]
@@ -215,13 +215,13 @@ rawTermLetOption m = do
   resultType <- rawTermLetVarAscription mx
   delimiter "="
   e1 <- rawTerm
-  optionTypeDD <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOption
-  let optionType = m :< RT.PiElim optionTypeDD [resultType]
+  optionTypeInner <- lift $ locatorToVarGlobal m coreOption
+  let optionType = m :< RT.PiElim optionTypeInner [resultType]
   e1' <- ascribe m optionType e1
   e2 <- rawExpr
   (optionNoneGL, optionNoneLL) <- lift $ Throw.liftEither $ DD.getLocatorPair m coreOptionNone
-  optionNoneVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreOptionNone
-  optionSome <- lift $ handleDefiniteDescriptionIntoRawConsName m coreOptionSome
+  optionNoneVar <- lift $ locatorToVarGlobal m coreOptionNone
+  optionSome <- lift $ locatorToRawConsName m coreOptionSome
   return $
     m
       :< RT.DataElim
@@ -241,15 +241,15 @@ rawTermLetCoproduct m = do
   rightType <- rawTermLetVarAscription mx
   delimiter "="
   e1 <- rawTerm
-  sumTypeDD <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSum
+  sumTypeInner <- lift $ locatorToVarGlobal m coreSum
   leftType <- lift $ Gensym.newPreHole m
-  let sumType = m :< RT.PiElim sumTypeDD [leftType, rightType]
+  let sumType = m :< RT.PiElim sumTypeInner [leftType, rightType]
   e1' <- ascribe m sumType e1
   e2 <- rawExpr
   err <- lift Gensym.newText
-  sumLeft <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumLeft
-  sumRight <- lift $ handleDefiniteDescriptionIntoRawConsName m coreSumRight
-  sumLeftVar <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSumLeft
+  sumLeft <- lift $ locatorToRawConsName m coreSumLeft
+  sumRight <- lift $ locatorToRawConsName m coreSumRight
+  sumLeftVar <- lift $ locatorToVarGlobal m coreSumLeft
   return $
     m
       :< RT.DataElim
@@ -301,7 +301,7 @@ rawTermPiOrConsOrAscOrBasic = do
       do
         delimiter ":<"
         rest <- rawTerm
-        listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
+        listCons <- lift $ locatorToVarGlobal m coreListCons
         return $ m :< RT.PiElim listCons [basic, rest],
       do
         delimiter "*"
@@ -515,7 +515,7 @@ rawTermPattern = do
     [ try $ do
         delimiter ":<"
         pat <- rawTermPattern
-        listCons <- lift $ handleDefiniteDescriptionIntoRawConsName m coreListCons
+        listCons <- lift $ locatorToRawConsName m coreListCons
         return (m, RP.Cons listCons [headPat, pat]),
       return headPat
     ]
@@ -533,7 +533,7 @@ rawTermPatternListIntro = do
   m <- getCurrentHint
   patList <- betweenBracket $ commaList rawTermPattern
   listNil <- lift $ Throw.liftEither $ DD.getLocatorPair m coreListNil
-  listCons <- lift $ handleDefiniteDescriptionIntoRawConsName m coreListCons
+  listCons <- lift $ locatorToRawConsName m coreListCons
   return $ foldListAppPat m listNil listCons patList
 
 foldListAppPat ::
@@ -704,8 +704,8 @@ rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
   m <- getCurrentHint
   keyword "admit"
-  admit <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSystemAdmit
-  textType <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreText
+  admit <- lift $ locatorToVarGlobal m coreSystemAdmit
+  textType <- lift $ locatorToVarGlobal m coreText
   return $
     m
       :< RT.Annotation
@@ -723,8 +723,8 @@ rawTermAssert = do
   keyword "assert"
   message <- string
   e@(mCond :< _) <- betweenBrace rawExpr
-  assert <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreSystemAssert
-  textType <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreText
+  assert <- lift $ locatorToVarGlobal m coreSystemAssert
+  textType <- lift $ locatorToVarGlobal m coreText
   let fullMessage = T.pack (toString m) <> "\nassertion failure: " <> message <> "\n"
   return $
     m
@@ -796,8 +796,8 @@ rawTermListIntro :: Parser RT.RawTerm
 rawTermListIntro = do
   m <- getCurrentHint
   es <- betweenBracket $ commaList rawTerm
-  listNil <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListNil
-  listCons <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreListCons
+  listNil <- lift $ locatorToVarGlobal m coreListNil
+  listCons <- lift $ locatorToVarGlobal m coreListCons
   return $ foldListApp m listNil listCons es
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
@@ -881,7 +881,7 @@ rawTermTextIntro :: Parser RT.RawTerm
 rawTermTextIntro = do
   m <- getCurrentHint
   s <- string
-  textType <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreText
+  textType <- lift $ locatorToVarGlobal m coreText
   return $ m :< RT.Prim (WP.Value (WPV.StaticText textType s))
 
 rawTermInteger :: Parser RT.RawTerm
@@ -906,12 +906,12 @@ preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
   m :< RT.Var (Var str)
 
-handleDefiniteDescriptionIntoRawConsName :: Hint -> T.Text -> App Name
-handleDefiniteDescriptionIntoRawConsName m text = do
+locatorToRawConsName :: Hint -> T.Text -> App Name
+locatorToRawConsName m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ Locator (gl, ll)
 
-handleDefiniteDescriptionIntoVarGlobal :: Hint -> T.Text -> App RT.RawTerm
-handleDefiniteDescriptionIntoVarGlobal m text = do
+locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
+locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ m :< RT.Var (Locator (gl, ll))
