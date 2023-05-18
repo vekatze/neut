@@ -1,0 +1,69 @@
+define test-syntax(): tau {
+  // nullary
+  let _ = () -> tau
+  // general, non-dependent
+  let _ = (tau) -> tau
+  let _ = (() -> tau) -> tau
+  let _ = (() -> (tau) -> tau) -> tau
+  let _ = (((tau) -> tau) -> tau) -> tau
+  // general, dependent
+  let _ = (a: tau, _: a) -> a
+  let _ = (a: tau, a) -> a
+  let _ = (a: tau, a) -> list(tau)
+  let _ = (a: tau, list(tau)) -> a
+  let _ = (a: tau, a) -> &list(tau)
+  let _ = (a: tau, &list(tau)) -> a
+  let _ = (a: tau, a) -> flow(list(tau))
+  let _ = (a: tau, flow(list(tau))) -> a
+  let _ = (a: tau, a) -> tau
+  let _ = (a: tau, a -> a) -> tau
+  let _ = (a: tau, (a -> a) -> a) -> tau
+  // simplified
+  let _ = tau -> tau
+  let _ = {tau -> tau} -> tau
+  let _ = tau -> tau -> list(tau)
+  let _ = tau -> {tau -> tau}
+  let _ = tau -> {tau -> list(tau)}
+  let _ = tau -> {list(tau) -> tau}
+  let _ = tau -> {tau -> &list(tau)}
+  let _ = tau -> {&list(tau) -> tau}
+  let _ = tau -> {tau -> flow(list(tau))}
+  let _ = tau -> {flow(list(tau)) -> tau}
+  let _ = tau -> {{tau -> tau} -> tau}
+  let _ = tau -> {tau -> {tau -> tau}}
+  let _ = tau -> {{tau -> tau} -> {tau -> tau}}
+  let _ = {tau -> tau} -> {{tau -> tau} -> {tau -> tau}}
+  let _ = {{tau -> tau} -> {tau -> tau}} -> {{tau -> tau} -> {tau -> tau}}
+  // complex
+  let _ = (a: tau, m: (tau, tau) -> tau) -> {(s: tau) -> a -> m(s, a)} -> a
+  tau
+}
+
+define test-semantics(): tau {
+  let _ = affine-pi()
+  let _ = linear-pi()
+  let _ = relevant-pi()
+  tau
+}
+
+define affine-pi(): tau {
+  let _ = tau -> tau
+  tau
+}
+
+define linear-pi(): tau {
+  let x = tau -> tau
+  x
+}
+
+define relevant-pi(): tau {
+  let x = tau -> tau
+  let _ = x
+  x
+}
+
+define main(): unit {
+  let _ = test-syntax()
+  let _ = test-semantics()
+  Unit
+}
