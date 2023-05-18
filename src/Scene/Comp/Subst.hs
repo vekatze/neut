@@ -32,12 +32,11 @@ substComp sub term =
       let sub' = IntMap.insert (Ident.toInt x) (C.VarLocal x') sub
       e2' <- substComp sub' e2
       return $ C.UpElim isReducible x' e1' e2'
-    C.EnumElim v defaultBranch branchList -> do
+    C.EnumElim fvInfo v defaultBranch branchList -> do
+      let (is, ds) = unzip fvInfo
+      let ds' = map (substValue sub) ds
       let v' = substValue sub v
-      defaultBranch' <- substComp sub defaultBranch
-      let (cs, es) = unzip branchList
-      es' <- mapM (substComp sub) es
-      return $ C.EnumElim v' defaultBranch' (zip cs es')
+      return $ C.EnumElim (zip is ds') v' defaultBranch branchList
     C.Primitive theta -> do
       let theta' = substPrimitive sub theta
       return $ C.Primitive theta'

@@ -179,15 +179,15 @@ sigmaData resourceHandler dataInfo arg = do
     [] ->
       return $ C.UpIntro arg
     _ -> do
-      let (discriminantList, binderList) = unzip dataInfo
-      let discriminantList' = map discriminantToEnumCase discriminantList
+      let (discList, binderList) = unzip dataInfo
+      let discList' = map discriminantToEnumCase discList
       localName <- Gensym.newIdentFromText "local"
       binderList' <- mapM (`resourceHandler` C.VarLocal localName) binderList
-      discriminantVar <- Gensym.newIdentFromText "discriminant"
+      (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
+      enumElim <- getEnumElim [localName] discVar (last binderList') (zip discList' (init binderList'))
       return $
         C.UpElim False localName (C.UpIntro arg) $
-          C.UpElim True discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) $
-            C.EnumElim (C.VarLocal discriminantVar) (last binderList') (zip discriminantList' (init binderList'))
+          C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal localName)))) enumElim
 
 sigmaBinderT :: [(Ident, C.Comp)] -> C.Value -> App C.Comp
 sigmaBinderT xts v = do

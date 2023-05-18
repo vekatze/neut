@@ -13,6 +13,7 @@ import Context.StaticText
 import Context.StaticText qualified as StaticText
 import Control.Monad
 import Control.Monad.Writer.Lazy
+import Data.IntMap qualified as IntMap
 import Data.Maybe (isJust)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -33,6 +34,7 @@ import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
 import Scene.Cancel
+import Scene.Comp.Subst qualified as C
 
 -- fixme: remove WriterT
 type Lower = WriterT (Cont App) App
@@ -119,8 +121,13 @@ lowerComp term =
       e1' <- lowerComp e1
       e2' <- lowerComp e2
       return $ commConv x e1' e2'
-    C.EnumElim v defaultBranch branchList -> do
-      (defaultCase, caseList) <- constructSwitch defaultBranch branchList
+    C.EnumElim fvInfo v defaultBranch branchList -> do
+      let sub = IntMap.fromList fvInfo
+      defaultBranch' <- C.subst sub defaultBranch
+      let (keys, clauses) = unzip branchList
+      clauses' <- mapM (C.subst sub) clauses
+      let branchList' = zip keys clauses'
+      (defaultCase, caseList) <- constructSwitch defaultBranch' branchList'
       runLowerComp $ do
         baseSize <- lift Env.getBaseSize'
         let t = LT.PrimNum $ PT.Int $ IntSize baseSize

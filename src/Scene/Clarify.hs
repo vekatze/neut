@@ -119,13 +119,8 @@ clarifyDef stmt =
       value <- Gensym.newIdentFromText "value"
       discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
       copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce
-      return
-        ( name,
-          ( O.Transparent,
-            [switchValue, value],
-            C.EnumElim (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
-          )
-        )
+      enumElim <- getEnumElim [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
+      return (name, (O.Transparent, [switchValue, value], enumElim))
 
 clarifyData ::
   DD.DefiniteDescription ->
@@ -268,13 +263,13 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
       b <- isEnumType t
+      let idents = map (\(_, x, _) -> x) chain
       if b
-        then return $ C.EnumElim (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
+        then getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
         else do
-          discriminantVar <- Gensym.newIdentFromText "discriminant"
-          return $
-            C.UpElim True discriminantVar (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) $
-              C.EnumElim (C.VarLocal discriminantVar) fallbackClause' (zip enumCaseList clauseList'')
+          (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
+          enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
+          return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.voidPtr (C.VarLocal cursor)))) enumElim
 
 isEnumType :: TM.Term -> App Bool
 isEnumType term =

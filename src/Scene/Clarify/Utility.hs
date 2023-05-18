@@ -4,12 +4,16 @@ import Context.App
 import Context.Clarify
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Data.IntMap qualified as IntMap
 import Entity.Comp qualified as C
 import Entity.DefiniteDescription qualified as DD
+import Entity.EnumCase
 import Entity.EnumCase qualified as EC
 import Entity.Ident
+import Entity.Ident.Reify
 import Entity.Opacity qualified as O
 import Entity.PrimNumSize
+import Scene.Comp.Subst qualified as C
 
 -- toAffineApp meta x t ~>
 --   bind exp := t in
@@ -54,13 +58,8 @@ makeSwitcher compAff compRel = do
   (argVarName, argVar) <- Gensym.newValueVarLocalWith "arg"
   aff <- compAff argVar
   rel <- compRel argVar
-  return
-    ( [switchVarName, argVarName],
-      C.EnumElim
-        switchVar
-        rel
-        [(EC.Int 0, aff)]
-    )
+  enumElim <- getEnumElim [argVarName] switchVar rel [(EC.Int 0, aff)]
+  return ([switchVarName, argVarName], enumElim)
 
 registerSwitcher ::
   O.Opacity ->
@@ -71,3 +70,19 @@ registerSwitcher ::
 registerSwitcher opacity name aff rel = do
   (args, e) <- makeSwitcher aff rel
   insertToAuxEnv name (opacity, args, e)
+
+getEnumElim :: [Ident] -> C.Value -> C.Comp -> [(EnumCase, C.Comp)] -> App C.Comp
+getEnumElim idents d defaultBranch branchList = do
+  (newToOld, oldToNew) <- getSub idents
+  let sub = IntMap.fromList oldToNew
+  defaultBranch' <- C.subst sub defaultBranch
+  let (labels, clauses) = unzip branchList
+  clauses' <- mapM (C.subst sub) clauses
+  return $ C.EnumElim newToOld d defaultBranch' (zip labels clauses')
+
+getSub :: [Ident] -> App ([(Int, C.Value)], [(Int, C.Value)])
+getSub idents = do
+  newIdents <- mapM Gensym.newIdentFromIdent idents
+  let newToOld = zip (map toInt newIdents) (map C.VarLocal idents)
+  let oldToNew = zip (map toInt idents) (map C.VarLocal newIdents)
+  return (newToOld, oldToNew)

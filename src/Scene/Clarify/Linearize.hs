@@ -92,17 +92,12 @@ distinguishComp z term =
       (vs1, e1') <- distinguishComp z e1
       (vs2, e2') <- distinguishComp z e2
       return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
-    C.EnumElim d defaultBranch branchList -> do
-      (vs, d') <- distinguishValue z d
-      let (cs, es) = unzip branchList
-      countBefore <- readCount
-      (vss, es') <- fmap unzip $
-        forM es $ \e -> do
-          writeCount countBefore
-          distinguishComp z e
-      writeCount countBefore
-      (_, defaultBranch') <- distinguishComp z defaultBranch
-      return (vs ++ head vss, C.EnumElim d' defaultBranch' (zip cs es'))
+    C.EnumElim fvInfo d defaultBranch branchList -> do
+      let (vs, ds) = unzip fvInfo
+      (vss, ds') <- mapAndUnzipM (distinguishValue z) ds
+      let fvInfo' = zip vs ds'
+      (vs', d') <- distinguishValue z d
+      return (concat vss ++ vs', C.EnumElim fvInfo' d' defaultBranch branchList)
     C.Free x size cont -> do
       (vs1, x') <- distinguishValue z x
       (vs2, cont') <- distinguishComp z cont
