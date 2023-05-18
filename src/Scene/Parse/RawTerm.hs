@@ -546,19 +546,20 @@ rawTermPatternTupleIntro = do
   m <- getCurrentHint
   keyword "Tuple"
   patList <- betweenParen $ commaList rawTermPattern
-  unitUnit <- lift $ Throw.liftEither $ DD.getLocatorPair m coreUnitUnit
-  return $ foldTuplePat m (Locator unitUnit) patList
+  unitVar <- lift $ locatorToRawConsName m coreUnitUnit
+  bothVar <- lift $ locatorToRawConsName m coreBothBoth
+  return $ foldTuplePat m unitVar bothVar patList
 
-foldTuplePat :: Hint -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
-foldTuplePat m unitUnit es =
+foldTuplePat :: Hint -> Name -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
+foldTuplePat m unitVar bothVar es =
   case es of
     [] ->
-      (m, RP.Var unitUnit)
+      (m, RP.Var unitVar)
     [e] ->
       e
     e : rest -> do
-      let rest' = foldTuplePat m unitUnit rest
-      (m, RP.Cons (Var "Both") [e, rest'])
+      let rest' = foldTuplePat m unitVar bothVar rest
+      (m, RP.Cons bothVar [e, rest'])
 
 parseName :: Parser (Hint, Name)
 parseName = do
@@ -639,26 +640,30 @@ rawTermTuple = do
   m <- getCurrentHint
   keyword "tuple"
   es <- betweenParen $ commaList rawExpr
+  unitVar <- lift $ locatorToRawConsName m coreUnit
+  bothVar <- lift $ locatorToRawConsName m coreBoth
   case es of
     [] ->
-      return $ m :< RT.Var (Var "unit")
+      return $ m :< RT.Var unitVar
     [e] ->
       return e
     _ ->
-      return $ foldByOp m (Var "both") es
+      return $ foldByOp m bothVar es
 
 rawTermTupleIntro :: Parser RT.RawTerm
 rawTermTupleIntro = do
   m <- getCurrentHint
   keyword "Tuple"
   es <- betweenParen $ commaList rawExpr
+  unitVar <- lift $ locatorToRawConsName m coreUnitUnit
+  bothVar <- lift $ locatorToRawConsName m coreBothBoth
   case es of
     [] ->
-      return $ m :< RT.Var (Var "unit.Unit")
+      return $ m :< RT.Var unitVar
     [e] ->
       return e
     _ ->
-      return $ foldByOp m (Var "Both") es
+      return $ foldByOp m bothVar es
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
@@ -702,7 +707,8 @@ rawTermOption = do
   m <- getCurrentHint
   delimiter "?"
   t <- rawTermBasic
-  return $ m :< RT.PiElim (m :< RT.Var (Var "option")) [t]
+  optionVar <- lift $ locatorToVarGlobal m coreEitherOption
+  return $ m :< RT.PiElim optionVar [t]
 
 rawTermOptionNone :: Parser RT.RawTerm
 rawTermOptionNone = do

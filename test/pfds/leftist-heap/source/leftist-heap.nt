@@ -1,6 +1,4 @@
 import {
-- core.bool
-- core.option
 - core.text => T
 }
 

@@ -1,9 +1,3 @@
-import {
-- core.bool
-- core.option
-- core.list
-}
-
 variant tree(a) {
   // the list is in *decreasing* order of rank
 - Node(int, a, list(tree(a)))
@@ -111,27 +105,27 @@ define find-min[a](cmp: (a, a) -> order, h: &heap(a)): ?a {
   }
 }
 
-define remove-min-tree[a](cmp: (a, a) -> order, h: heap(a)): ?{tree(a) * heap(a)} {
+define remove-min-tree[a](cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a), heap(a)) {
   match h {
   - [] =>
     None
   - [t] =>
-    Some(tuple(t, []))
+    Some(Tuple(t, []))
   - t :< ts =>
-    let? tuple(cand, ts-adjusted) = remove-min-tree(cmp, ts)
+    let? Tuple(cand, ts-adjusted) = remove-min-tree(cmp, ts)
     let root-head on t = root(t)
     let root-cand on cand = root(cand)
     match cmp(root-head, root-cand) {
     - LT =>
-      Some(tuple(t, cand :< ts-adjusted))
+      Some(Tuple(t, cand :< ts-adjusted))
     - _ =>
-      Some(tuple(cand, t :< ts-adjusted))
+      Some(Tuple(cand, t :< ts-adjusted))
     }
   }
 }
 
 define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
-  let? tuple(Node(_, _, ts1), ts2): tree(a) * heap(a) = remove-min-tree(cmp, h)
+  let? Tuple(Node(_, _, ts1), ts2): tuple(tree(a), heap(a)) = remove-min-tree(cmp, h)
   Some(merge(cmp, reverse(ts1), ts2))
 }
 

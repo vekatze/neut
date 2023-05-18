@@ -1,12 +1,6 @@
 // random access list via numerical representation
 // (complete binary tree + dense representation)
 
-import {
-- core.option => opt
-- core.list
-- core.bool
-}
-
 variant tree(a) {
 - Leaf(a)
 - Node(int, tree(a), tree(a))
@@ -52,37 +46,37 @@ define cons[a](x: a, ts: R-list(a)): R-list(a) {
   cons-tree(Leaf(x), ts)
 }
 
-define uncons-tree[a](ts: R-list(a)): opt.option(tree(a) * R-list(a)) {
+define uncons-tree[a](ts: R-list(a)): option(tuple(tree(a), R-list(a))) {
   let New(xs) = ts
   match xs {
   - [] =>
-    opt.None
+    None
   - One(y) :< [] =>
-    opt.Some(tuple(y, New([])))
+    Some(Tuple(y, New([])))
   - One(y) :< rest =>
-    opt.Some(tuple(y, New(Zero :< rest)))
+    Some(Tuple(y, New(Zero :< rest)))
   - Zero :< rest =>
     match uncons-tree(New(rest)) {
-    - opt.None =>
-      opt.None
-    - opt.Some(tuple(new-tree, New(new-ts))) =>
+    - None =>
+      None
+    - Some(Tuple(new-tree, New(new-ts))) =>
       match new-tree {
       - Leaf(_) =>
-        opt.None
+        None
       - Node(_, t1, t2) =>
-        opt.Some(tuple(t1, New(One(t2) :< new-ts)))
+        Some(Tuple(t1, New(One(t2) :< new-ts)))
       }
     }
   }
 }
 
-define lookup-tree[a](i: int, t: &tree(a)): opt.option(a) {
+define lookup-tree[a](i: int, t: &tree(a)): option(a) {
   case t {
   - Leaf(v) =>
     if eq-int(i, 0) {
-      opt.Some(!v)
+      Some(!v)
     } else {
-      opt.None
+      None
     }
   - Node(w, t1, t2) =>
     let w-div-2 = div-int(!w, 2)
@@ -94,10 +88,10 @@ define lookup-tree[a](i: int, t: &tree(a)): opt.option(a) {
   }
 }
 
-define lookup-list[a](i: int, xs: &list(digit(a))): opt.option(a) {
+define lookup-list[a](i: int, xs: &list(digit(a))): option(a) {
   case xs {
   - [] =>
-    opt.None
+    None
   - Zero :< rest =>
     lookup-list(i, rest)
   - One(t) :< rest =>
@@ -110,7 +104,7 @@ define lookup-list[a](i: int, xs: &list(digit(a))): opt.option(a) {
   }
 }
 
-define lookup[a](i: int, xs: &R-list(a)): opt.option(a) {
+define lookup[a](i: int, xs: &R-list(a)): option(a) {
   bind New(xs): &R-list(a) = xs
   lookup-list(i, xs)
 }
@@ -153,9 +147,9 @@ define update[a](i: int, x: a, xs: R-list(a)): R-list(a) {
 
 define find-and-get(i: int, xs: &R-list(int)): int {
   match lookup(i, xs) {
-  - opt.None =>
+  - None =>
     0
-  - opt.Some(v) =>
+  - Some(v) =>
     v
   }
 }

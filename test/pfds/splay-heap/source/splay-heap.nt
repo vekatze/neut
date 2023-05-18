@@ -1,10 +1,3 @@
-import {
-- core.bool
-- core.option
-- core.list
-- core.sum => S
-}
-
 variant heap(a) {
 - Leaf
 - Node(heap(a), a, heap(a))
@@ -17,48 +10,48 @@ variant order {
 }
 
 define insert[a](cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
-  let tuple(smaller, bigger) = split(cmp, x, t)
+  let Tuple(smaller, bigger) = split(cmp, x, t)
   Node(smaller, x, bigger)
 }
 
-define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): heap(a) * heap(a) {
+define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
   match t {
   - Leaf =>
-    tuple(Leaf, Leaf)
+    Tuple(Leaf, Leaf)
   - Node(left, v, right) =>
     match cmp(v, pivot) {
     // go right
     - LT =>
       match right {
       - Leaf =>
-        tuple(Node(left, v, Leaf), Leaf)
+        Tuple(Node(left, v, Leaf), Leaf)
       - Node(right-left, w, right-right) =>
         match cmp(w, pivot) {
         // go right
         - LT =>
-          let tuple(right-right-small, right-right-big) = split(cmp, pivot, right-right)
-          tuple(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
+          let Tuple(right-right-small, right-right-big) = split(cmp, pivot, right-right)
+          Tuple(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
         // go left
         - _ =>
-          let tuple(right-left-small, right-left-big) = split(cmp, pivot, right-left)
-          tuple(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
+          let Tuple(right-left-small, right-left-big) = split(cmp, pivot, right-left)
+          Tuple(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
     // go left
     - _ =>
       match left {
       - Leaf =>
-        tuple(Leaf, Node(Leaf, v, right))
+        Tuple(Leaf, Node(Leaf, v, right))
       - Node(left-left, w, left-right) =>
         match cmp(w, pivot) {
         // go right
         - LT =>
-          let tuple(left-right-small, left-right-big) = split(cmp, pivot, left-right)
-          tuple(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
+          let Tuple(left-right-small, left-right-big) = split(cmp, pivot, left-right)
+          Tuple(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
         // go left
         - _ =>
-          let tuple(left-left-small, left-left-big) = split(cmp, pivot, left-left)
-          tuple(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
+          let Tuple(left-left-small, left-left-big) = split(cmp, pivot, left-left)
+          Tuple(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
         }
       }
     }

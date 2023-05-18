@@ -1,13 +1,12 @@
 import {
 - core.bool
-- core.option
 - core.list => L
 - core.text => T
 }
 
 variant custom-stack(a) {
 - Nil
-- Cons(product(a, a), custom-stack(a))
+- Cons(tuple(a, a), custom-stack(a))
 }
 
 define empty[a](): custom-stack(a) {
@@ -23,7 +22,7 @@ define is-empty[a](xs: &custom-stack(a)): bool {
   }
 }
 
-define head[a](xs: &custom-stack(a)): ?&{a * a} {
+define head[a](xs: &custom-stack(a)): ?&tuple(a, a) {
   case xs {
   - Nil =>
     None
@@ -43,7 +42,7 @@ define tail[a](xs: &custom-stack(a)): ?&custom-stack(a) {
 
 define main(): unit {
   let xs = empty()
-  let v = tuple(lambda () { 1 }, lambda () { 2: int })
+  let v = Tuple(lambda () { 1 }, lambda () { 2: int })
   let ys = Cons(v, xs)
   let zs = Cons(v, Cons(v, ys))
   let calc on zs, xs = {
@@ -57,7 +56,7 @@ define main(): unit {
     - None =>
       1
     - Some(pair) =>
-      bind tuple(_, right) = pair
+      bind Tuple(_, right) = pair
       {!right}()
     }
   }

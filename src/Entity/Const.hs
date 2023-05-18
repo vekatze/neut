@@ -97,18 +97,6 @@ coreBoolFalse :: T.Text
 coreBoolFalse =
   core <> nsSep <> "bool" <> nsSep <> "False"
 
-coreOption :: T.Text
-coreOption =
-  core <> nsSep <> "option" <> nsSep <> "option"
-
-coreEitherNoneInternal :: T.Text
-coreEitherNoneInternal =
-  core <> nsSep <> "either" <> nsSep <> "none-internal"
-
-coreEitherSomeInternal :: T.Text
-coreEitherSomeInternal =
-  core <> nsSep <> "either" <> nsSep <> "some-internal"
-
 coreEither :: T.Text
 coreEither =
   core <> nsSep <> "either" <> nsSep <> "either"
@@ -120,6 +108,26 @@ coreEitherLeft =
 coreEitherRight :: T.Text
 coreEitherRight =
   core <> nsSep <> "either" <> nsSep <> "Right"
+
+coreEitherOption :: T.Text
+coreEitherOption =
+  core <> nsSep <> "either" <> nsSep <> "option"
+
+coreEitherNoneInternal :: T.Text
+coreEitherNoneInternal =
+  core <> nsSep <> "either" <> nsSep <> "none-internal"
+
+coreEitherSomeInternal :: T.Text
+coreEitherSomeInternal =
+  core <> nsSep <> "either" <> nsSep <> "some-internal"
+
+coreBoth :: T.Text
+coreBoth =
+  core <> nsSep <> "both" <> nsSep <> "both"
+
+coreBothBoth :: T.Text
+coreBothBoth =
+  core <> nsSep <> "both" <> nsSep <> "Both"
 
 coreList :: T.Text
 coreList =

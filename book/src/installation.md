@@ -37,8 +37,8 @@ neut version # => 0.3.0.0
 You need to set the URL and the checksum of the core module:
 
 ```sh
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0.2.0.12.tar.zst"
-export NEUT_CORE_MODULE_CHECKSUM="c0rFwXDJ6SjbHbDUv3_OxTZve1aX5dgNBImf9RGwEtE="
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0.2.0.13.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="0S1pO_LoDlma3x6o769hLpGkSfoEcXHbz4jw2NkbabM="
 ```
 
 ## Check If Installed Correctly

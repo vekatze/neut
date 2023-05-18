@@ -1,8 +1,8 @@
 antecedents = []
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.2.0.12.tar.zst"
-    checksum = "c0rFwXDJ6SjbHbDUv3_OxTZve1aX5dgNBImf9RGwEtE="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.2.0.13.tar.zst"
+    checksum = "0S1pO_LoDlma3x6o769hLpGkSfoEcXHbz4jw2NkbabM="
   }
 }
 extra-content = []

@@ -1,22 +1,19 @@
 import {
-- core.list
-- core.bool
-- core.option
-- core.sum => S
+- core.either => S
 - core.text => T
 }
 
 define-inline queue(a: tau): tau {
-  list(a) * list(a)
+  tuple(list(a), list(a))
 }
 
 define empty[a](): queue(a) {
-  tuple([], [])
+  Tuple([], [])
 }
 
 define head[a](q: &queue(a)): ?a {
   case q {
-  - tuple(x :< _, _) =>
+  - Tuple(x :< _, _) =>
     Some(!x)
   - _ =>
     None
@@ -25,8 +22,8 @@ define head[a](q: &queue(a)): ?a {
 
 define-inline sanitize[a](q: queue(a)): queue(a) {
   match q {
-  - tuple([], ys) =>
-    tuple(reverse(ys), [])
+  - Tuple([], ys) =>
+    Tuple(reverse(ys), [])
   - q =>
     q
   }
@@ -34,16 +31,16 @@ define-inline sanitize[a](q: queue(a)): queue(a) {
 
 define tail[a](q: queue(a)): ?queue(a) {
   match q {
-  - tuple(_ :< rest, ys) =>
-    Some(sanitize(tuple(rest, ys)))
+  - Tuple(_ :< rest, ys) =>
+    Some(sanitize(Tuple(rest, ys)))
   - _ =>
     None
   }
 }
 
 define snoc[a](v: a, q: queue(a)): queue(a) {
-  let tuple(xs, ys) = q
-  sanitize(tuple(xs, v :< ys))
+  let Tuple(xs, ys) = q
+  sanitize(Tuple(xs, v :< ys))
 }
 
 define sum(xs: &list(int)): int {
