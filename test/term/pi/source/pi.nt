@@ -1,4 +1,8 @@
-define test-syntax(): tau {
+import {
+- this.pi-term => term
+}
+
+define test-syntax(): unit {
   // nullary
   let _ = arrow () -> tau
   // general, non-dependent
@@ -36,14 +40,14 @@ define test-syntax(): tau {
   let _ = {{tau -> tau} -> {tau -> tau}} -> {{tau -> tau} -> {tau -> tau}}
   // complex
   let _ = arrow (a: tau, m: arrow (tau, tau) -> tau) -> {arrow (s: tau) -> a -> m(s, a)} -> a
-  tau
+  Unit
 }
 
-define test-semantics(): tau {
+define test-resource(): unit {
   let _ = affine-pi()
   let _ = linear-pi()
   let _ = relevant-pi()
-  tau
+  Unit
 }
 
 define affine-pi(): tau {
@@ -63,7 +67,9 @@ define relevant-pi(): tau {
 }
 
 define main(): unit {
-  let _ = test-syntax()
-  let _ = test-semantics()
+  test-syntax()
+  test-resource()
+  term.test-syntax()
+  term.test-resource()
   Unit
 }
