@@ -72,4 +72,7 @@ type SizeInfo =
   LowType
 
 type Def =
-  (DD.DefiniteDescription, ([Ident], Comp))
+  (DD.DefiniteDescription, DefContent)
+
+type DefContent =
+  ([Ident], Comp)

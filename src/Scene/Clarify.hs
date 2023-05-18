@@ -50,7 +50,7 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: [Stmt] -> App ([C.CompDef], Maybe C.Comp)
+clarify :: [Stmt] -> App ([C.CompDef], Maybe DD.DefiniteDescription)
 clarify defList = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
@@ -60,11 +60,10 @@ clarify defList = do
         registerClosureS4
         Clarify.getAuxEnv
       defList' <- clarifyDefList defList
-      mainTerm <- Reduce.reduce $ C.PiElimDownElim (C.VarGlobal mainName (A.Arity 0)) []
       baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
         return (x, (opacity, args, e'))
-      return (defList' ++ baseAuxEnv', Just mainTerm)
+      return (defList' ++ baseAuxEnv', Just mainName)
     Nothing -> do
       defList' <- clarifyDefList defList
       return (defList', Nothing)

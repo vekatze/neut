@@ -20,7 +20,6 @@ import Entity.Builder
 import Entity.Const
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
-import Entity.ExternalName qualified as EN
 import Entity.Ident
 import Entity.Ident.Reify
 import Entity.LowComp qualified as LC
@@ -30,16 +29,16 @@ import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
 import Scene.LowComp.Reduce qualified as LowComp
 
-emit :: (DN.DeclEnv, [LC.Def], Maybe LC.Comp, [StaticTextInfo]) -> App L.ByteString
+emit :: (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo]) -> App L.ByteString
 emit (declEnv, defList, mMainTerm, staticTextList) = do
   baseSize <- Env.getBaseSize'
   let staticTextList' = map (emitStaticText baseSize) staticTextList
   case mMainTerm of
-    Just mainTerm -> do
+    Just mainDef -> do
       let argc = emitGlobal unsafeArgcName LT.Pointer LC.Null
       let argv = emitGlobal unsafeArgvName LT.Pointer LC.Null
       let declStrList = emitDeclarations declEnv
-      mainStrList <- emitMain mainTerm
+      mainStrList <- emitMain mainDef
       defStrList <- concat <$> mapM emitDefinitions defList
       return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> [argc, argv] <> mainStrList <> defStrList
     Nothing -> do
@@ -96,18 +95,11 @@ emitDefinitions (name, (args, body)) = do
   body' <- LowComp.reduce IntMap.empty body
   emitDefinition "ptr" (DD.toBuilder name) args' body'
 
-emitMain :: LC.Comp -> App [Builder]
-emitMain mainTerm = do
-  mainTerm' <- LowComp.reduce IntMap.empty mainTerm
+emitMain :: LC.DefContent -> App [Builder]
+emitMain (args, body) = do
   mainType <- Env.getMainType
-  argc <- Gensym.newIdentFromText "argc"
-  argv <- Gensym.newIdentFromText "argv"
-  let argcGlobal = LC.VarExternal (EN.ExternalName unsafeArgcName)
-  let argvGlobal = LC.VarExternal (EN.ExternalName unsafeArgvName)
-  let args' = map (emitValue . LC.VarLocal) [argc, argv]
-  emitDefinition (TE.encodeUtf8Builder mainType) "main" args' $
-    LC.Cont (LC.Store LT.Pointer (LC.VarLocal argc) argcGlobal) $
-      LC.Cont (LC.Store LT.Pointer (LC.VarLocal argv) argvGlobal) mainTerm'
+  let args' = map (emitValue . LC.VarLocal) args
+  emitDefinition (TE.encodeUtf8Builder mainType) "main" args' body
 
 declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do

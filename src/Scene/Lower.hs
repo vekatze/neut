@@ -18,9 +18,11 @@ import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
+import Entity.Const
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase qualified as EC
+import Entity.ExternalName qualified as EN
 import Entity.Ident
 import Entity.LowComp qualified as LC
 import Entity.LowType qualified as LT
@@ -59,21 +61,19 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([C.CompDef], Maybe C.Comp) ->
-  App (DN.DeclEnv, [LC.Def], Maybe LC.Comp, [StaticTextInfo])
-lower (defList, mMainTerm) = do
+  ([C.CompDef], Maybe DD.DefiniteDescription) ->
+  App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
+lower (defList, mMainName) = do
   initialize $ map fst defList
-  case mMainTerm of
-    Just mainTerm -> do
+  case mMainName of
+    Just mainName -> do
       defList' <- forM defList $ \(name, (_, args, e)) -> do
         e' <- lowerComp e >>= liftIO . cancel
         return (name, (args, e'))
-      mainTerm'' <- lowerComp mainTerm
-      (result, _) <- Gensym.newValueVarLocalWith "result"
-      let mainTerm''' = Just $ commConv result mainTerm'' (LC.Return (LC.Int 0))
+      mainDef <- constructMainTerm mainName
       declEnv <- getDeclEnv
       staticTextList <- StaticText.getAll
-      return (declEnv, defList', mainTerm''', staticTextList)
+      return (declEnv, defList', Just mainDef, staticTextList)
     Nothing -> do
       insDeclEnv (DN.In DD.imm) A.arityS4
       insDeclEnv (DN.In DD.cls) A.arityS4
@@ -83,6 +83,19 @@ lower (defList, mMainTerm) = do
       declEnv <- getDeclEnv
       staticTextList <- StaticText.getAll
       return (declEnv, defList', Nothing, staticTextList)
+
+constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent
+constructMainTerm mainName = do
+  argc <- Gensym.newIdentFromText "argc"
+  argv <- Gensym.newIdentFromText "argv"
+  let argcGlobal = LC.VarExternal (EN.ExternalName unsafeArgcName)
+  let argvGlobal = LC.VarExternal (EN.ExternalName unsafeArgvName)
+  let mainTerm =
+        LC.Cont (LC.Store LT.Pointer (LC.VarLocal argc) argcGlobal) $
+          LC.Cont (LC.Store LT.Pointer (LC.VarLocal argv) argvGlobal) $
+            LC.Cont (LC.Call (LC.VarGlobal mainName) []) $
+              LC.Return (LC.Int 0)
+  return ([argc, argv], mainTerm)
 
 lowerComp :: C.Comp -> App LC.Comp
 lowerComp term =
