@@ -1,0 +1,78 @@
+import {
+- core.vector
+}
+
+define test-syntax(): tau {
+  let _: tau = tau
+  let _: tau: tau = tau
+  let _: tau: tau: tau = tau
+  tau: tau: tau: tau: tau: tau: tau
+}
+
+define test-semantics(): tau {
+  let _ = affine-tau()
+  let _ = linear-tau()
+  let _ = relevant-tau()
+  let _ = tau-is-tau()
+  let _ = pi-is-tau()
+  let _ = variant-is-tau()
+  let _ = noema-is-tau(tau)
+  let _ = flow-is-tau(tau)
+  let _ = resource-is-tau()
+  tau
+}
+
+define affine-tau(): tau {
+  let _ = tau
+  tau
+}
+
+define linear-tau(): tau {
+  let x = tau
+  x
+}
+
+define relevant-tau(): tau {
+  let x = tau
+  let _ = x
+  x
+}
+
+define tau-is-tau(): tau {
+  tau
+}
+
+define pi-is-tau(): tau {
+  let _: tau = () -> tau
+  let _: tau = tau -> tau
+  let _: tau = (tau, tau, tau) -> tau
+  tau
+}
+
+define variant-is-tau(): tau {
+  let _: tau = void
+  let _: tau = unit
+  let _: tau = bool
+  let _: tau = list(tau)
+  tau
+}
+
+define noema-is-tau(a: tau): tau {
+  &a
+}
+
+define flow-is-tau(a: tau): tau {
+  flow(a)
+}
+
+define resource-is-tau(): tau {
+  let _: tau = text
+  let _: tau = vector(text)
+  tau
+}
+
+define main(): unit {
+  let _ = test-syntax()
+  let _ = test-semantics()
+  Unit
+}
