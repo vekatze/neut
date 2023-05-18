@@ -110,6 +110,7 @@ rawTermBasic = do
       rawTermOption,
       rawTermEmbody,
       rawTermTuple,
+      rawTermTupleIntro,
       rawTermPiElimOrSimple
     ]
 
@@ -304,10 +305,6 @@ rawTermPiOrConsOrAscOrBasic = do
         listCons <- lift $ locatorToVarGlobal m coreListCons
         return $ m :< RT.PiElim listCons [basic, rest],
       do
-        delimiter "*"
-        ts <- sepBy1 rawTermBasic (delimiter "*")
-        return $ foldByOp m (Var "product") (basic : ts),
-      do
         delimiter ":"
         t <- rawTerm
         ascribe m t basic,
@@ -318,7 +315,7 @@ foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
 foldByOp m op es =
   case es of
     [] ->
-      error "RawTerm.foldProduct: invalid argument"
+      error "RawTerm.foldByOp: invalid argument"
     [e] ->
       e
     e : rest ->
@@ -524,7 +521,7 @@ rawTermPatternBasic :: Parser (Hint, RP.RawPattern)
 rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
-      try rawTermPatternProductIntro,
+      try rawTermPatternTupleIntro,
       rawTermPatternConsOrVar
     ]
 
@@ -550,10 +547,10 @@ foldListAppPat m listNil listCons es =
       let rest' = foldListAppPat m listNil listCons rest
       (m, RP.Cons listCons [e, rest'])
 
-rawTermPatternProductIntro :: Parser (Hint, RP.RawPattern)
-rawTermPatternProductIntro = do
+rawTermPatternTupleIntro :: Parser (Hint, RP.RawPattern)
+rawTermPatternTupleIntro = do
   m <- getCurrentHint
-  keyword "tuple"
+  keyword "Tuple"
   patList <- betweenParen $ commaList rawTermPattern
   unitUnit <- lift $ Throw.liftEither $ DD.getLocatorPair m coreUnitUnit
   return $ foldTuplePat m (Locator unitUnit) patList
@@ -567,7 +564,7 @@ foldTuplePat m unitUnit es =
       e
     e : rest -> do
       let rest' = foldTuplePat m unitUnit rest
-      (m, RP.Cons (Var "Product") [e, rest'])
+      (m, RP.Cons (Var "Both") [e, rest'])
 
 parseName :: Parser (Hint, Name)
 parseName = do
@@ -650,11 +647,24 @@ rawTermTuple = do
   es <- betweenParen $ commaList rawExpr
   case es of
     [] ->
+      return $ m :< RT.Var (Var "unit")
+    [e] ->
+      return e
+    _ ->
+      return $ foldByOp m (Var "both") es
+
+rawTermTupleIntro :: Parser RT.RawTerm
+rawTermTupleIntro = do
+  m <- getCurrentHint
+  keyword "Tuple"
+  es <- betweenParen $ commaList rawExpr
+  case es of
+    [] ->
       return $ m :< RT.Var (Var "unit.Unit")
     [e] ->
       return e
     _ ->
-      return $ foldByOp m (Var "Product") es
+      return $ foldByOp m (Var "Both") es
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =

@@ -167,7 +167,7 @@ defaultImports =
     "core.function",
     "core.list",
     "core.option",
-    "core.product",
+    "core.both",
     "core.sum",
     "core.system",
     "core.text",
