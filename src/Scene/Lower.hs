@@ -70,7 +70,7 @@ lower (defList, mMainTerm) = do
         return (name, (args, e'))
       mainTerm'' <- lowerComp mainTerm
       (result, _) <- Gensym.newValueVarLocalWith "result"
-      mainTerm''' <- Just <$> commConv result mainTerm'' (LC.Return (LC.Int 0))
+      let mainTerm''' = Just $ commConv result mainTerm'' (LC.Return (LC.Int 0))
       declEnv <- getDeclEnv
       staticTextList <- StaticText.getAll
       return (declEnv, defList', mainTerm''', staticTextList)
@@ -112,7 +112,7 @@ lowerComp term =
     C.UpElim _ x e1 e2 -> do
       e1' <- lowerComp e1
       e2' <- lowerComp e2
-      commConv x e1' e2'
+      return $ commConv x e1' e2'
     C.EnumElim v defaultBranch branchList -> do
       (defaultCase, caseList) <- constructSwitch defaultBranch branchList
       runLowerComp $ do
@@ -362,21 +362,21 @@ newValueLocal name = do
   x <- Gensym.newIdentFromText name
   return (x, LC.VarLocal x)
 
-commConv :: Ident -> LC.Comp -> LC.Comp -> App LC.Comp
+commConv :: Ident -> LC.Comp -> LC.Comp -> LC.Comp
 commConv x lowComp cont2 =
   case lowComp of
     LC.Return d ->
-      return $ LC.Let x (LC.Bitcast d LT.voidPtr LT.voidPtr) cont2 -- nop
+      LC.Let x (LC.Bitcast d LT.voidPtr LT.voidPtr) cont2 -- nop
     LC.Let y op cont1 -> do
-      cont <- commConv x cont1 cont2
-      return $ LC.Let y op cont
+      let cont = commConv x cont1 cont2
+      LC.Let y op cont
     LC.Cont op cont1 -> do
-      cont <- commConv x cont1 cont2
-      return $ LC.Cont op cont
+      let cont = commConv x cont1 cont2
+      LC.Cont op cont
     LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
-      cont' <- commConv x cont cont2
-      return $ LC.Switch (d, t) defaultCase caseList (phiVar, cont')
+      let cont' = commConv x cont cont2
+      LC.Switch (d, t) defaultCase caseList (phiVar, cont')
     LC.TailCall d ds ->
-      return $ LC.Let x (LC.Call d ds) cont2
+      LC.Let x (LC.Call d ds) cont2
     LC.Unreachable ->
-      return LC.Unreachable
+      LC.Unreachable
