@@ -66,8 +66,7 @@ rawExpr = do
 rawExprLet :: Hint -> Parser RT.RawTerm
 rawExprLet m = do
   choice
-    [ try $ rawTermLetOption m,
-      try $ rawTermLetCoproduct m,
+    [ try rawTermLetEither,
       rawTermLetOrLetOn m
     ]
 
@@ -108,6 +107,8 @@ rawTermBasic = do
   choice
     [ rawTermNoema,
       rawTermOption,
+      rawTermOptionNone,
+      rawTermOptionSome,
       rawTermEmbody,
       rawTermTuple,
       rawTermTupleIntro,
@@ -209,56 +210,31 @@ rawTermNoeticVar = do
   (m, x) <- var
   return (m, x)
 
-rawTermLetOption :: Hint -> Parser RT.RawTerm
-rawTermLetOption m = do
+-- let? x = e1 e2
+rawTermLetEither :: Parser RT.RawTerm
+rawTermLetEither = do
   keyword "let?"
-  pat@(mx, _) <- rawTermPattern
-  resultType <- rawTermLetVarAscription mx
-  delimiter "="
-  e1 <- rawTerm
-  optionTypeInner <- lift $ locatorToVarGlobal m coreOption
-  let optionType = m :< RT.PiElim optionTypeInner [resultType]
-  e1' <- ascribe m optionType e1
-  e2 <- rawExpr
-  (optionNoneGL, optionNoneLL) <- lift $ Throw.liftEither $ DD.getLocatorPair m coreOptionNone
-  optionNoneVar <- lift $ locatorToVarGlobal m coreOptionNone
-  optionSome <- lift $ locatorToRawConsName m coreOptionSome
-  return $
-    m
-      :< RT.DataElim
-        False
-        [e1']
-        ( RP.new
-            [ (V.fromList [(m, RP.Var $ Locator (optionNoneGL, optionNoneLL))], optionNoneVar),
-              (V.fromList [(m, RP.Cons optionSome [pat])], e2)
-            ]
-        )
-
--- let+ x = e1 in e2
-rawTermLetCoproduct :: Hint -> Parser RT.RawTerm
-rawTermLetCoproduct m = do
-  keyword "let+"
   pat@(mx, _) <- rawTermPattern
   rightType <- rawTermLetVarAscription mx
   delimiter "="
-  e1 <- rawTerm
-  sumTypeInner <- lift $ locatorToVarGlobal m coreSum
-  leftType <- lift $ Gensym.newPreHole m
-  let sumType = m :< RT.PiElim sumTypeInner [leftType, rightType]
-  e1' <- ascribe m sumType e1
-  e2 <- rawExpr
+  e1@(m1 :< _) <- rawTerm
+  eitherTypeInner <- lift $ locatorToVarGlobal m1 coreEither
+  leftType <- lift $ Gensym.newPreHole m1
+  let eitherType = m1 :< RT.PiElim eitherTypeInner [leftType, rightType]
+  e1' <- ascribe m1 eitherType e1
+  e2@(m2 :< _) <- rawExpr
   err <- lift Gensym.newText
-  sumLeft <- lift $ locatorToRawConsName m coreSumLeft
-  sumRight <- lift $ locatorToRawConsName m coreSumRight
-  sumLeftVar <- lift $ locatorToVarGlobal m coreSumLeft
+  left <- lift $ locatorToRawConsName m2 coreEitherLeft
+  right <- lift $ locatorToRawConsName m2 coreEitherRight
+  leftVar <- lift $ locatorToVarGlobal m2 coreEitherLeft
   return $
-    m
+    m2
       :< RT.DataElim
         False
         [e1']
         ( RP.new
-            [ (V.fromList [(m, RP.Cons sumLeft [(m, RP.Var (Var err))])], m :< RT.PiElim sumLeftVar [preVar m err]),
-              (V.fromList [(m, RP.Cons sumRight [pat])], e2)
+            [ (V.fromList [(m2, RP.Cons left [(m2, RP.Var (Var err))])], m2 :< RT.PiElim leftVar [preVar m2 err]),
+              (V.fromList [(m2, RP.Cons right [pat])], e2)
             ]
         )
 
@@ -522,8 +498,26 @@ rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
       try rawTermPatternTupleIntro,
+      try rawTermPatternOptionSome,
+      try rawTermPatternOptionNone,
       rawTermPatternConsOrVar
     ]
+
+rawTermPatternOptionNone :: Parser (Hint, RP.RawPattern)
+rawTermPatternOptionNone = do
+  m <- getCurrentHint
+  keyword "None"
+  left <- lift $ locatorToRawConsName m coreEitherLeft
+  hole <- lift Gensym.newTextForHole
+  return (m, RP.Cons left [(m, RP.Var (Var hole))])
+
+rawTermPatternOptionSome :: Parser (Hint, RP.RawPattern)
+rawTermPatternOptionSome = do
+  m <- getCurrentHint
+  keyword "Some"
+  pat <- betweenParen rawTermPattern
+  right <- lift $ locatorToRawConsName m coreEitherRight
+  return (m, RP.Cons right [pat])
 
 rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do
@@ -717,6 +711,21 @@ rawTermOption = do
   delimiter "?"
   t <- rawTermBasic
   return $ m :< RT.PiElim (m :< RT.Var (Var "option")) [t]
+
+rawTermOptionNone :: Parser RT.RawTerm
+rawTermOptionNone = do
+  m <- getCurrentHint
+  keyword "None"
+  noneVar <- lift $ locatorToVarGlobal m coreEitherNoneInternal
+  return $ m :< RT.PiElim noneVar []
+
+rawTermOptionSome :: Parser RT.RawTerm
+rawTermOptionSome = do
+  m <- getCurrentHint
+  keyword "Some"
+  e <- betweenParen rawExpr
+  someVar <- lift $ locatorToVarGlobal m coreEitherSomeInternal
+  return $ m :< RT.PiElim someVar [e]
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do

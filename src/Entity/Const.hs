@@ -101,25 +101,25 @@ coreOption :: T.Text
 coreOption =
   core <> nsSep <> "option" <> nsSep <> "option"
 
-coreOptionNone :: T.Text
-coreOptionNone =
-  core <> nsSep <> "option" <> nsSep <> "None"
+coreEitherNoneInternal :: T.Text
+coreEitherNoneInternal =
+  core <> nsSep <> "either" <> nsSep <> "none-internal"
 
-coreOptionSome :: T.Text
-coreOptionSome =
-  core <> nsSep <> "option" <> nsSep <> "Some"
+coreEitherSomeInternal :: T.Text
+coreEitherSomeInternal =
+  core <> nsSep <> "either" <> nsSep <> "some-internal"
 
-coreSum :: T.Text
-coreSum =
-  core <> nsSep <> "sum" <> nsSep <> "sum"
+coreEither :: T.Text
+coreEither =
+  core <> nsSep <> "either" <> nsSep <> "either"
 
-coreSumLeft :: T.Text
-coreSumLeft =
-  core <> nsSep <> "sum" <> nsSep <> "Left"
+coreEitherLeft :: T.Text
+coreEitherLeft =
+  core <> nsSep <> "either" <> nsSep <> "Left"
 
-coreSumRight :: T.Text
-coreSumRight =
-  core <> nsSep <> "sum" <> nsSep <> "Right"
+coreEitherRight :: T.Text
+coreEitherRight =
+  core <> nsSep <> "either" <> nsSep <> "Right"
 
 coreList :: T.Text
 coreList =
@@ -160,15 +160,14 @@ coreThreadAttach =
 defaultImports :: [T.Text]
 defaultImports =
   [ "core.bool",
+    "core.both",
     "core.cell",
     "core.channel",
+    "core.either",
     "core.file",
     "core.file.descriptor",
     "core.function",
     "core.list",
-    "core.option",
-    "core.both",
-    "core.sum",
     "core.system",
     "core.text",
     "core.text.io",
