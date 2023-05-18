@@ -13,6 +13,7 @@ import Context.StaticText
 import Context.StaticText qualified as StaticText
 import Control.Monad
 import Control.Monad.Writer.Lazy
+import Data.Maybe (isJust)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Arity qualified as A
@@ -65,24 +66,16 @@ lower ::
   App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
 lower (defList, mMainName) = do
   initialize $ map fst defList
-  case mMainName of
-    Just mainName -> do
-      defList' <- forM defList $ \(name, (_, args, e)) -> do
-        e' <- lowerComp e >>= liftIO . cancel
-        return (name, (args, e'))
-      mainDef <- constructMainTerm mainName
-      declEnv <- getDeclEnv
-      staticTextList <- StaticText.getAll
-      return (declEnv, defList', Just mainDef, staticTextList)
-    Nothing -> do
-      insDeclEnv (DN.In DD.imm) A.arityS4
-      insDeclEnv (DN.In DD.cls) A.arityS4
-      defList' <- forM defList $ \(name, (_, args, e)) -> do
-        e' <- lowerComp e >>= liftIO . cancel
-        return (name, (args, e'))
-      declEnv <- getDeclEnv
-      staticTextList <- StaticText.getAll
-      return (declEnv, defList', Nothing, staticTextList)
+  unless (isJust mMainName) $ do
+    insDeclEnv (DN.In DD.imm) A.arityS4
+    insDeclEnv (DN.In DD.cls) A.arityS4
+  defList' <- forM defList $ \(name, (_, args, e)) -> do
+    e' <- lowerComp e >>= liftIO . cancel
+    return (name, (args, e'))
+  mMainDef <- mapM constructMainTerm mMainName
+  declEnv <- getDeclEnv
+  staticTextList <- StaticText.getAll
+  return (declEnv, defList', mMainDef, staticTextList)
 
 constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent
 constructMainTerm mainName = do
