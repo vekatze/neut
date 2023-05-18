@@ -50,10 +50,6 @@ import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
 import Text.Megaparsec
 
---
--- parser for RT.RawTerm
---
-
 rawExpr :: Parser RT.RawTerm
 rawExpr = do
   m <- getCurrentHint
@@ -785,10 +781,6 @@ foldPiElim m e elemList =
       return e
     args : rest ->
       foldPiElim m (m :< RT.PiElim e args) rest
-
---
--- term-related helper functions
---
 
 preBinder :: Parser (RawBinder RT.RawTerm)
 preBinder =

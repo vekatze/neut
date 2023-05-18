@@ -36,7 +36,6 @@ import Entity.PrimType qualified as PT
 import Scene.Cancel
 import Scene.Comp.Subst qualified as C
 
--- fixme: remove WriterT
 type Lower = WriterT (Cont App) App
 
 newtype Cont m = Cont (LC.Comp -> App LC.Comp)

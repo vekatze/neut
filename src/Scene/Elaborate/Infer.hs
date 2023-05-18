@@ -46,8 +46,6 @@ inferStmt mMainDD stmt =
       insConstraintEnv codType' te
       when (mMainDD == Just x) $ do
         unitType <- getUnitType m
-        -- intType <- getIntType m
-        -- insConstraintEnv (m :< WT.Pi [] intType) (m :< WT.Pi xts' codType')
         insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
@@ -71,11 +69,7 @@ getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- N.resolveName m (N.Locator locator)
-  -- printNote' $ T.pack (show unitName)
   return $ m :< WT.PiElim (m :< WT.VarGlobal unitDD (A.fromInt 0)) []
-
--- baseSize <- Env.getBaseSize m
--- return $ WT.uIntTypeBySize m baseSize
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
