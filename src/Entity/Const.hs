@@ -77,13 +77,13 @@ corePreface :: T.Text
 corePreface =
   "core" <> nsSep <> "preface"
 
-coreTop :: T.Text
-coreTop =
-  core <> nsSep <> "top" <> nsSep <> "top"
+coreUnit :: T.Text
+coreUnit =
+  core <> nsSep <> "unit" <> nsSep <> "unit"
 
-coreTopUnit :: T.Text
-coreTopUnit =
-  core <> nsSep <> "top" <> nsSep <> "Unit"
+coreUnitUnit :: T.Text
+coreUnitUnit =
+  core <> nsSep <> "unit" <> nsSep <> "Unit"
 
 coreBool :: T.Text
 coreBool =
@@ -160,7 +160,8 @@ coreThreadAttach =
 defaultImports :: [T.Text]
 defaultImports =
   [ "core.bool",
-    "core.bottom",
+    "core.cell",
+    "core.channel",
     "core.file",
     "core.file.descriptor",
     "core.function",
@@ -172,9 +173,8 @@ defaultImports =
     "core.text",
     "core.text.io",
     "core.thread",
-    "core.channel",
-    "core.cell",
-    "core.top"
+    "core.unit",
+    "core.void"
   ]
 
 holeVarPrefix :: T.Text

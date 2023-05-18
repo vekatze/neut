@@ -1,6 +1,5 @@
 import {
 - core.bool
-- core.top
 - core.option
 - core.list => L
 - core.text => T

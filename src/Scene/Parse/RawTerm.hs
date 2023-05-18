@@ -78,8 +78,8 @@ rawExprSeqOrTerm m = do
     [ do
         e2 <- rawExpr
         f <- lift Gensym.newTextForHole
-        top <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreTop
-        return $ bind (m, f, top) e1 e2,
+        unit <- lift $ handleDefiniteDescriptionIntoVarGlobal m coreUnit
+        return $ bind (m, f, unit) e1 e2,
       return e1
     ]
 
@@ -555,18 +555,18 @@ rawTermPatternProductIntro = do
   m <- getCurrentHint
   keyword "tuple"
   patList <- betweenParen $ commaList rawTermPattern
-  topUnit <- lift $ Throw.liftEither $ DD.getLocatorPair m coreTopUnit
-  return $ foldTuplePat m (Locator topUnit) patList
+  unitUnit <- lift $ Throw.liftEither $ DD.getLocatorPair m coreUnitUnit
+  return $ foldTuplePat m (Locator unitUnit) patList
 
 foldTuplePat :: Hint -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
-foldTuplePat m topUnit es =
+foldTuplePat m unitUnit es =
   case es of
     [] ->
-      (m, RP.Var topUnit)
+      (m, RP.Var unitUnit)
     [e] ->
       e
     e : rest -> do
-      let rest' = foldTuplePat m topUnit rest
+      let rest' = foldTuplePat m unitUnit rest
       (m, RP.Cons (Var "Product") [e, rest'])
 
 parseName :: Parser (Hint, Name)
@@ -650,7 +650,7 @@ rawTermTuple = do
   es <- betweenParen $ commaList rawExpr
   case es of
     [] ->
-      return $ m :< RT.Var (Var "top.Unit")
+      return $ m :< RT.Var (Var "unit.Unit")
     [e] ->
       return e
     _ ->

@@ -1,5 +1,4 @@
 import {
-- core.top
 - core.list => L
 - core.vector => V
 }
