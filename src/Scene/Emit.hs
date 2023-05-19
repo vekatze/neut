@@ -4,7 +4,6 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.StaticText (StaticTextInfo)
-import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.ByteString.Builder
@@ -153,7 +152,7 @@ emitLowComp ctx lowComp =
         Nothing ->
           return $ emitOp $ unwordsL ["ret", retType ctx, emitValue d]
         Just (phiSrcVar, rendezvous) -> do
-          lowOp <- emitLowOp (emitValue (LC.VarLocal phiSrcVar) <> " = ") $ LC.Bitcast d LT.Pointer LT.Pointer
+          let lowOp = emitLowOp (emitValue (LC.VarLocal phiSrcVar) <> " = ") $ LC.Bitcast d LT.Pointer LT.Pointer
           let brOp = emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal rendezvous)]
           return $ lowOp <> brOp
     LC.TailCall f args -> do
@@ -205,11 +204,11 @@ emitLowComp ctx lowComp =
         return $ emitLabel ("_" <> intDec (toInt confluenceLabel)) : phiOpStr <> a
       return $ switchOpStr <> concat blockAsmList <> rendezvousBlock
     LC.Cont op cont -> do
-      lowOp <- emitLowOp "" op
+      let lowOp = emitLowOp "" op
       a <- emitLowComp ctx cont
       return $ lowOp <> a
     LC.Let x op cont -> do
-      lowOp <- emitLowOp (emitValue (LC.VarLocal x) <> " = ") op
+      let lowOp = emitLowOp (emitValue (LC.VarLocal x) <> " = ") op
       a <- emitLowComp ctx cont
       return $ lowOp <> a
     LC.Unreachable -> do
@@ -227,14 +226,9 @@ resolveLabelList labelMap xs =
         Nothing ->
           x : resolveLabelList labelMap rest
 
-emitLowOp :: Builder -> LC.Op -> App [Builder]
+emitLowOp :: Builder -> LC.Op -> [Builder]
 emitLowOp prefix op = do
-  targetPlatform <- Env.getTargetPlatform
-  case EOP.emitLowOp targetPlatform op of
-    Left err ->
-      Throw.raiseCritical' $ T.pack err
-    Right s -> do
-      return $ emitOp $ prefix <> s
+  emitOp $ prefix <> EOP.emitLowOp op
 
 emitPhiList :: [(Ident, Ident)] -> Builder
 emitPhiList identLabelList =

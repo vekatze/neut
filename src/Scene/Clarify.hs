@@ -11,7 +11,6 @@ import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -354,11 +353,6 @@ clarifyMagic tenv der =
       return $
         bindLet [(pointerVarName, pointer')] $
           C.Primitive (C.Magic (M.Load lt pointerVar))
-    M.Syscall syscallNum args -> do
-      (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
-      return $
-        bindLet (zip xs args') $
-          C.Primitive (C.Magic (M.Syscall syscallNum xsAsVars))
     M.External extFunName args -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
       return $

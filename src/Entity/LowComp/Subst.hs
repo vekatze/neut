@@ -48,9 +48,6 @@ substOp sub llvmOp =
     LC.PrimOp op ds -> do
       let ds' = map (substLowValue sub) ds
       LC.PrimOp op ds'
-    LC.Syscall i ds -> do
-      let ds' = map (substLowValue sub) ds
-      LC.Syscall i ds'
 
 substLowValue :: SubstLowComp -> LC.Value -> LC.Value
 substLowValue sub llvmValue =

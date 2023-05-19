@@ -27,16 +27,13 @@ import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
-import Entity.Magic qualified as Magic
 import Entity.NameArrow qualified as NA
-import Entity.OS qualified as OS
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Remark qualified as Remark
 import Entity.Stmt
 import Entity.StmtKind
-import Entity.TargetPlatform qualified as TP
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
@@ -262,14 +259,6 @@ elaborate' term =
       return $ m :< TM.ResourceType name
     m :< WT.Magic magic -> do
       magic' <- mapM elaborate' magic
-      tp <- Env.getTargetPlatform
-      case (magic', TP.os tp) of
-        (Magic.Syscall {}, OS.Darwin) ->
-          Throw.raiseError m "Apple's XNU syscall ABI is virtually private; use the their system library instead."
-        (Magic.Syscall {}, OS.Unknown name) ->
-          Throw.raiseError m $ "unsupported target: " <> name
-        _ ->
-          return ()
       return $ m :< TM.Magic magic'
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e

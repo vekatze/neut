@@ -10,7 +10,6 @@ data Magic a
   = Cast a a a
   | Store LowType a a
   | Load LowType a
-  | Syscall Integer [a]
   | External EN.ExternalName [a]
   | Global LowType EN.ExternalName
   deriving (Show, Eq, G.Generic)
@@ -26,8 +25,6 @@ instance Functor Magic where
         Store lt (f pointer) (f value)
       Load lt pointer ->
         Load lt (f pointer)
-      Syscall syscallNum args ->
-        Syscall syscallNum $ fmap f args
       External extFunName args ->
         External extFunName $ fmap f args
       Global lt name ->
@@ -42,8 +39,6 @@ instance Foldable Magic where
         f pointer <> f value
       Load _ pointer ->
         f pointer
-      Syscall _ args ->
-        foldMap f args
       External _ args ->
         foldMap f args
       Global {} ->
@@ -58,8 +53,6 @@ instance Traversable Magic where
         Store lt <$> f pointer <*> f value
       Load lt pointer ->
         Load lt <$> f pointer
-      Syscall syscallNum args ->
-        Syscall syscallNum <$> traverse f args
       External extFunName args ->
         External extFunName <$> traverse f args
       Global lt name ->
@@ -68,8 +61,6 @@ instance Traversable Magic where
 getMagicName :: Magic a -> T.Text
 getMagicName d =
   case d of
-    Syscall {} ->
-      "syscall"
     External {} ->
       "external"
     Load {} ->

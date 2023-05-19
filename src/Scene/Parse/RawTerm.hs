@@ -344,7 +344,6 @@ rawTermMagic = do
     [ rawTermMagicCast m,
       rawTermMagicStore m,
       rawTermMagicLoad m,
-      rawTermMagicSyscall m,
       rawTermMagicExternal m,
       rawTermMagicGlobal m
     ]
@@ -376,13 +375,6 @@ rawTermMagicLoad m = do
     lt <- lowType
     pointer <- delimiter "," >> rawTerm
     return $ m :< RT.Magic (M.Load lt pointer)
-
-rawTermMagicSyscall :: Hint -> Parser RT.RawTerm
-rawTermMagicSyscall m = do
-  rawTermMagicBase "syscall" $ do
-    syscallNum <- integer
-    es <- many (delimiter "," >> rawTerm)
-    return $ m :< RT.Magic (M.Syscall syscallNum es)
 
 rawTermMagicExternal :: Hint -> Parser RT.RawTerm
 rawTermMagicExternal m = do

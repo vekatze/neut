@@ -194,9 +194,6 @@ lowerCompPrimitive codeOp =
           castedPointer <- lowerValueLetCast pointer LT.Pointer
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
-        M.Syscall i args -> do
-          args' <- mapM lowerValue args
-          reflect $ LC.Syscall i args'
         M.External name args -> do
           args' <- mapM lowerValue args
           lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'

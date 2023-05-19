@@ -63,9 +63,6 @@ data Op
   | Alloc Value Int AllocID
   | Free Value Int
   | PrimOp PrimOp [Value]
-  | Syscall
-      Integer -- syscall number
-      [Value] -- arguments
   deriving (Show)
 
 type SizeInfo =
