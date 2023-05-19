@@ -130,3 +130,4 @@ ensurePatternSanity (m, pat) =
             <> " arguments, but found "
             <> T.pack (show argNum)
             <> "."
+      mapM_ ensurePatternSanity args
