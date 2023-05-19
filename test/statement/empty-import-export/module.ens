@@ -1,0 +1,11 @@
+antecedents = []
+dependency = {
+  core = {
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.2.0.13.tar.zst"
+    checksum = "0S1pO_LoDlma3x6o769hLpGkSfoEcXHbz4jw2NkbabM="
+  }
+}
+extra-content = []
+target = {
+  empty-import-export = "empty-import-export.nt"
+}

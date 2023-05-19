@@ -1,0 +1,8 @@
+import {
+- this.foo
+- this.bar => B
+}
+
+define main(): unit {
+  Unit
+}

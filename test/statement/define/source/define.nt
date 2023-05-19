@@ -1,0 +1,54 @@
+define no-type-ascription() {
+  Unit
+}
+
+define hole-in-ascription(): _ {
+  Unit
+}
+
+define complex-term-in-ascription(): {
+  let _: tau = tau
+  unit
+} {
+  Unit
+}
+
+define-inline some-inline-func(): tau {
+  tau
+}
+
+define imp-0-exp-0[](): tau {
+  tau
+}
+
+define imp-1-exp-0[_: tau](): tau {
+  tau
+}
+
+define imp-0-exp-1[](_: tau): tau {
+  tau
+}
+
+define imp-1-exp-1[_: tau](_: tau): tau {
+  tau
+}
+
+define imp-2-exp-2[_: tau, _: tau](_: tau, _: tau): tau {
+  tau
+}
+
+define i(): tau {
+  tau
+}
+
+define but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore(): tau {
+  tau
+}
+
+define ♥️a🌟あ🌕α$-$`~!?@#%^&*/+|\_(): tau {
+  tau
+}
+
+define main(): unit {
+  Unit
+}
