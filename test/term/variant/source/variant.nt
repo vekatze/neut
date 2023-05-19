@@ -1,0 +1,227 @@
+variant empty {}
+
+variant nat {
+- Z
+- S(nat)
+}
+
+define test-resource(): unit {
+  affine-nat()
+  relevant-nat()
+  affine-list()
+  relevant-list()
+  affine-either()
+  relevant-either()
+}
+
+define affine-nat(): unit {
+  let _ = Z
+  let _ = S(Z)
+  let _ = S(S(Z))
+  Unit
+}
+
+define relevant-nat(): unit {
+  let zero = Z
+  let one = S(Z)
+  let two = S(S(Z))
+  let _ = zero
+  let _ = zero
+  let _ = one
+  let _ = one
+  let _ = two
+  let _ = two
+  Unit
+}
+
+define affine-list(): unit {
+  let _: list(nat) = []
+  let _ = [Z]
+  let _ = [S(Z), Z]
+  Unit
+}
+
+define relevant-list(): unit {
+  let zero: list(nat) = []
+  let one = [Z]
+  let two = [S(Z), Z]
+  let _ = zero
+  let _ = zero
+  let _ = one
+  let _ = one
+  let _ = two
+  let _ = two
+  Unit
+}
+
+define affine-either(): unit {
+  let _: either(bool, list(nat)) = Left(True)
+  let _: either(bool, list(nat)) = Right([Z])
+  let _: either(bool, list(nat)) = Right([S(Z), Z])
+  Unit
+}
+
+define relevant-either(): unit {
+  let foo: either(bool, list(nat)) = Left(True)
+  let bar: either(bool, list(nat)) = Right([Z])
+  let buz: either(bool, list(nat)) = Right([S(Z), Z])
+  let _ = foo
+  let _ = foo
+  let _ = bar
+  let _ = bar
+  let _ = buz
+  let _ = buz
+  Unit
+}
+
+variant term(a) {
+- Var(a)
+- Abs(a, term(a))
+- App(term(a), term(a))
+}
+
+define local-completeness[a](t: term(a)): term(a) {
+  match t {
+  - Var(v) =>
+    Var(v)
+  - Abs(x, t1) =>
+    Abs(x, t1)
+  - App(t1, t2) =>
+    App(t1, t2)
+  }
+}
+
+define nested-match[a](t: term(a)): term(a) {
+  match t {
+  - App(Abs(_, t'), _) =>
+    t'
+  - t =>
+    t
+  }
+}
+
+variant my-enum {
+- Foo
+- Bar
+}
+
+define nested-enum-match(t: term(my-enum)): my-enum {
+  let val =
+    match t {
+    - App(Abs(x, t'), Var(e)) =>
+      let _ = Var(e)
+      let _ = t'
+      let _ = x
+      let _ = Var(e)
+      let _ = t'
+      let _ = x
+      let _ = Var(e)
+      let _ = t'
+      let _ = x
+      let _ = Var(e)
+      let _ = x
+      let _ = Var(e)
+      let _ = x
+      x
+    - App(Abs(x, _), App(Var(_), App(_, App(_, _)))) =>
+      let _ = x
+      x
+    - App(Abs(x, _), App(App(_, App(_, _)), Var(_))) =>
+      x
+    - App(App(Abs(_, _), Var(_)), App(App(Abs(y, _), App(_, _)), Var(_))) =>
+      y
+    - App(App(Abs(x, _), Var(_)), App(App(_, App(_, _)), Var(_))) =>
+      x
+    - t =>
+      let _ = t
+      let _ = t
+      let _ = t
+      Foo
+    }
+  match val {
+  - Foo =>
+    let _ = val
+    Bar
+  - Bar =>
+    Foo
+  }
+}
+
+define unbalanced-freevars-in-branches[a](t: term(a)): term(a) {
+  let foo = Var("test")
+  let f = lambda () { foo }
+  let g = lambda () { foo }
+  let h = lambda () { foo }
+  match t {
+  - Var(x) =>
+    let _ = f
+    match t {
+    - Var(y) =>
+      let _ = g
+      let _ = x
+      Var(y)
+    - Abs(_, t) =>
+      t
+    - _ =>
+      t
+    }
+  - Abs(_, t) =>
+    match t {
+    - App(_, e2) =>
+      e2
+    - _ =>
+      let _ = t
+      let _ = t
+      t
+    }
+  - App(t1, _) =>
+    let _ = g
+    let k = if False { h } else { lambda () { Var("pohe") } }
+    let _ = k
+    let _ = k
+    let _ = k
+    t1
+  }
+}
+
+struct monoid(a) by Monoid {
+- m-empty: a
+- m-op: (a, a) -> a
+}
+
+define-inline list-monoid[a](): monoid(list(a)) {
+  Monoid {
+  - m-op <= core.list.append
+  - m-empty <= []
+  }
+}
+
+define test-match(): unit {
+  let t1 = Var("text")
+  let t2 = Abs("foo", Var("foo"))
+  let t3 = App(Abs("foo", Var("foo")), Var("buz"))
+  let _ = local-completeness(t1)
+  let _ = local-completeness(t2)
+  let _ = local-completeness(t3)
+  let _ = nested-match(t1)
+  let _ = nested-match(t2)
+  let _ = nested-match(t3)
+  let t1 = Var(Foo)
+  let t2 = Abs(Bar, Var(Bar))
+  let t3 = App(Abs(Bar, Var(Bar)), Var(Foo))
+  let t4 = Abs(Bar, App(Var(Bar), Var(Bar)))
+  let _ = nested-enum-match(t1)
+  let _ = nested-enum-match(t2)
+  let _ = nested-enum-match(t3)
+  let _ = nested-enum-match(t4)
+  let _ = unbalanced-freevars-in-branches(t1)
+  let _ = unbalanced-freevars-in-branches(t2)
+  let _ = unbalanced-freevars-in-branches(t3)
+  let _ = unbalanced-freevars-in-branches(t4)
+  Unit
+}
+
+define main(): unit {
+  test-resource()
+  test-match()
+}
