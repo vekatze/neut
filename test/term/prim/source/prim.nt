@@ -1,0 +1,100 @@
+define test-syntax(): unit {
+  let _ = i1
+  let _ = i2
+  let _ = i4
+  let _ = i8
+  let _ = i16
+  let _ = i32
+  let _ = i64
+  let _ = int
+
+  let _ = f16
+  let _ = f32
+  let _ = f64
+
+  let _: int = 3
+  let _: f32 = 3.0
+
+  Unit
+}
+
+define test-op(): unit {
+  let _ = add-int(50, 24)
+  let _ = sub-int(50, 24)
+  let _ = mul-int(50, 24)
+  let _ = div-int(50, 24)
+  let _ = rem-int(50, 24)
+  let _ = udiv-int(50, 8)
+  let _ = urem-int(50, 8)
+
+  let _ = and-int(50, 24)
+  let _ = or-int(50, 24)
+  let _ = xor-int(50, 24)
+  let _ = shl-int(50, 1)
+  let _ = lshr-int(50, 1)
+  let _ = ashr-int(50, 1)
+
+  let _ = eq-int(50, 8)
+  let _ = ne-int(50, 8)
+  let _ = lt-int(50, 8)
+  let _ = le-int(50, 8)
+  let _ = gt-int(50, 8)
+  let _ = ge-int(50, 8)
+  let _ = ult-int(50, 8)
+  let _ = ule-int(50, 8)
+  let _ = ugt-int(50, 8)
+  let _ = uge-int(50, 8)
+
+  let _ = neg-f64(1.3)
+  let _ = add-f64(1.3, 2.0)
+  let _ = sub-f64(1.3, 2.0)
+  let _ = mul-f64(1.3, 2.0)
+  let _ = div-f64(1.3, 2.0)
+  let _ = rem-f64(1.3, 2.0)
+  let _ = eq-f64(1.3, 2.0)
+  let _ = ne-f64(1.3, 2.0)
+  let _ = gt-f64(1.3, 2.0)
+  let _ = ge-f64(1.3, 2.0)
+  let _ = lt-f64(1.3, 2.0)
+  let _ = le-f64(1.3, 2.0)
+  let _ = ueq-f64(1.3, 2.0)
+  let _ = une-f64(1.3, 2.0)
+  let _ = ugt-f64(1.3, 2.0)
+  let _ = uge-f64(1.3, 2.0)
+  let _ = ult-f64(1.3, 2.0)
+  let _ = ule-f64(1.3, 2.0)
+  let _ = ord-f64(1.3, 2.0)
+  let _ = uno-f64(1.3, 2.0)
+  let _ = true-f64(1.3, 2.0)
+  let _ = false-f64(1.3, 2.0)
+
+  let _ = trunc-i64-i32(1234)
+  let _ = zext-i32-i64(1234)
+  let _ = sext-i32-i64(1234)
+  let _ = fptrunc-f64-f32(1.4142)
+  let _ = fpext-f32-f64(1.4142)
+  let _ = fptoui-f64-int(3.8)
+  let _ = fptosi-f64-int(3.8)
+  let _ = uitofp-int-f64(1234)
+  let _ = sitofp-int-f64(1234)
+
+  Unit
+}
+
+define opaque[a](x: a): a {
+  x
+}
+
+define test-string(): unit {
+  let _ = opaque("")
+  let _ = opaque("test")
+  let _ = opaque("🌟あ♥️a🌕亜\n\o33\x333")
+  Unit
+}
+
+define main(): unit {
+  test-syntax()
+  test-op()
+  test-string()
+  Unit
+}
