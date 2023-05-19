@@ -1,0 +1,156 @@
+import {
+- core.external => ext
+}
+
+define test-syntax(): unit {
+  let _ = flow(tau)
+  let _ = flow(tau) -> tau
+  let _ = tau -> flow(tau)
+  let _ = (_: flow(tau), flow(tau)) -> flow(tau) -> flow(tau)
+  let _ = flow(flow(tau))
+
+  let _ = detach Unit
+  let _ = detach { Unit }
+  let _ =
+    detach {
+      let _ = Unit
+      let _ = Unit
+      Unit
+    }
+  let _ =
+    lambda () {
+      let fl =
+        detach {
+          let _ = Unit
+          Unit
+        }
+      Unit
+      attach fl
+    }
+  let _ =
+    lambda (fl: flow(unit)) {
+      attach {
+        let _ = Unit
+        fl
+      }
+    }
+  Unit
+}
+
+define some-list(len: int, acc: list(int)): list(int) {
+  if eq-int(len, 0) {
+    acc
+  } else {
+    let val = len
+    some-list(sub-int(len, 1), Cons(val, acc))
+  }
+}
+
+define detach-send(x: int, ch: &channel(int)): flow(unit) {
+  detach {
+    send(ch, x)
+  }
+}
+
+define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(flow(unit)) {
+  match xs {
+  - [] =>
+    acc
+  - y :< rest =>
+    let fl = detach-send(y, ch)
+    send-all(rest, ch, fl :< acc)
+  }
+}
+
+define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
+  match xs {
+  - [] =>
+    Unit
+  - fl :< rest =>
+    let _ = attach fl
+    let _ = receive(ch)
+    receive-one-by-one(rest, ch)
+  }
+}
+
+define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
+  let wait-all =
+    define wait-all(ys: list(flow(unit))) {
+      match ys {
+      - [] =>
+        Unit
+      - z :< zs =>
+        let _ = attach z
+        wait-all(zs)
+      }
+    }
+  let size on xs = length(xs)
+  wait-all(xs)
+  let receive-all =
+    define receive-all(count: int) {
+      if eq-int(count, 0) {
+        Unit
+      } else {
+        let _ = receive(ch)
+        receive-all(sub-int(count, 1))
+      }
+    }
+  receive-all(size)
+}
+
+define test-behavior(): unit {
+  let ch = new-channel(int)
+  let _ on ch = {
+    let fl1 =
+      detach {
+        let xs = some-list(1000, [])
+        let fs = send-all(xs, ch, [])
+        receive-one-by-one(fs, ch)
+        Unit
+      }
+    let fl2 =
+      detach {
+        let xs = some-list(1000, [])
+        let fs = send-all(xs, ch, [])
+        receive-all-at-once(fs, ch)
+        Unit
+      }
+    attach fl1
+    attach fl2
+  }
+  let _ = ch
+
+  let ch = new-channel(() -> int)
+  let ch: channel(() -> int) = ch
+  let _ = ch
+  let _ on ch = send(ch, lambda () {1})
+  let ch = ch
+  let ch-clone = ch
+  let _ on ch-clone = send(ch-clone, lambda () {1})
+  let tmp on ch-clone = {
+    let f =
+      detach {
+        ext.sleep(1)
+        send(ch-clone, lambda () {3})
+      }
+    let g =
+      detach {
+        ext.sleep(1)
+        send(ch-clone, lambda () {4})
+      }
+    let _ = receive(ch-clone)
+    let _ = receive(ch-clone)
+    let _ = receive(ch-clone)
+    attach f
+    attach g
+  }
+  let _ = ch-clone
+  let _ = tmp
+  Unit
+}
+
+define main(): unit {
+  test-syntax()
+  test-behavior()
+  Unit
+}
