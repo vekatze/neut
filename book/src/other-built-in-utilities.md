@@ -26,9 +26,9 @@ These types have a lot of primitive operations. These inherit from LLVM IR:
 |             | integers                                                      | floats                                                                            |
 |             | ----                                                          | ----                                                                              |
 | arithmetics | add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                      |
-| comparison  | eq, ne, gt, ge, lt, le, ueq, une, ugt, uge, ult, ule          | oeq, ogt, oge, olt, ole, one, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
+| comparison  | eq, ne, gt, ge, lt, le, ueq, une, ugt, uge, ult, ule          | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
-For example, all `add-i32`, `neg-f64`, `eq-i64`, and `oeq-f32` are available.
+For example, all `add-i32`, `neg-f64`, `eq-i64`, and `gt-f32` are available.
 
 Neut uses LLVM's integer types and float types for its primitive types. This means, in particular, that the primitive integer types in Neut are "signless". That is, signedness of an integer type in Neut resides in operators, not in values.
 
