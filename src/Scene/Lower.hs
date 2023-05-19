@@ -34,6 +34,7 @@ import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
 import Scene.Cancel
+import Scene.Comp.Reduce qualified as C
 import Scene.Comp.Subst qualified as C
 
 type Lower = WriterT (Cont App) App
@@ -122,17 +123,23 @@ lowerComp term =
       return $ commConv x e1' e2'
     C.EnumElim fvInfo v defaultBranch branchList -> do
       let sub = IntMap.fromList fvInfo
-      defaultBranch' <- C.subst sub defaultBranch
+      defaultBranch' <- C.subst sub defaultBranch >>= C.reduce
       let (keys, clauses) = unzip branchList
-      clauses' <- mapM (C.subst sub) clauses
+      clauses' <- mapM (C.subst sub >=> C.reduce) clauses
       let branchList' = zip keys clauses'
-      (defaultCase, caseList) <- constructSwitch defaultBranch' branchList'
-      runLowerComp $ do
-        baseSize <- lift Env.getBaseSize'
-        let t = LT.PrimNum $ PT.Int $ IntSize baseSize
-        castedValue <- lowerValueLetCast v t
-        (phi, phiVar) <- lift $ newValueLocal "phi"
-        return $ LC.Switch (castedValue, t) defaultCase caseList (phi, LC.Return phiVar)
+      case (defaultBranch', clauses') of
+        (C.Unreachable, [clause]) ->
+          lowerComp clause
+        (_, []) ->
+          lowerComp defaultBranch'
+        _ -> do
+          (defaultCase, caseList) <- constructSwitch defaultBranch' branchList'
+          runLowerComp $ do
+            baseSize <- lift Env.getBaseSize'
+            let t = LT.PrimNum $ PT.Int $ IntSize baseSize
+            castedValue <- lowerValueLetCast v t
+            (phi, phiVar) <- lift $ newValueLocal "phi"
+            return $ LC.Switch (castedValue, t) defaultCase caseList (phi, LC.Return phiVar)
     C.Free x size cont -> do
       cont' <- lowerComp cont
       runLowerComp $ do
