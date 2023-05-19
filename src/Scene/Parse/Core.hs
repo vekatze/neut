@@ -74,6 +74,10 @@ symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
+symbolWithoutLexeme :: Parser T.Text
+symbolWithoutLexeme = do
+  takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+
 baseName :: Parser BN.BaseName
 baseName = do
   bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
@@ -93,6 +97,12 @@ keyword expected = do
       _ <- chunk expected
       label (T.unpack expected) $ notFollowedBy symbol
 
+keywordWithoutLexeme :: T.Text -> Parser ()
+keywordWithoutLexeme expected = do
+  try $ do
+    _ <- chunk expected
+    label (T.unpack expected) $ notFollowedBy symbol
+
 nonSymbolChar :: Parser Char
 nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
@@ -100,6 +110,10 @@ nonSymbolChar =
 delimiter :: T.Text -> Parser ()
 delimiter expected = do
   lexeme $ void $ chunk expected
+
+delimiterWithoutLexeme :: T.Text -> Parser ()
+delimiterWithoutLexeme expected = do
+  void $ chunk expected
 
 string :: Parser T.Text
 string = do
@@ -144,6 +158,10 @@ betweenBrace :: Parser a -> Parser a
 betweenBrace =
   between (delimiter "{") (delimiter "}")
 
+betweenBraceWithoutLexeme :: Parser a -> Parser a
+betweenBraceWithoutLexeme =
+  between (delimiter "{") (delimiterWithoutLexeme "}")
+
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
@@ -172,6 +190,17 @@ var = do
   notFollowedBy (char '-')
   m <- getCurrentHint
   x <- symbol
+  if x /= "_"
+    then return (m, x)
+    else do
+      unusedVar <- lift Gensym.newTextForHole
+      return (m, unusedVar)
+
+varWithoutLexeme :: Parser (Hint, T.Text)
+varWithoutLexeme = do
+  notFollowedBy (char '-')
+  m <- getCurrentHint
+  x <- symbolWithoutLexeme
   if x /= "_"
     then return (m, x)
     else do

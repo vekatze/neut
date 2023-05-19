@@ -9,12 +9,12 @@ variant order {
 - GT
 }
 
-define insert[a](cmp: arrow (a, a) -> order, x: a, t: heap(a)): heap(a) {
+define insert[a](cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
   let Tuple(smaller, bigger) = split(cmp, x, t)
   Node(smaller, x, bigger)
 }
 
-define split[a](cmp: arrow (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
+define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
   match t {
   - Leaf =>
     Tuple(Leaf, Leaf)

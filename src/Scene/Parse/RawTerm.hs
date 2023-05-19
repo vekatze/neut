@@ -81,8 +81,7 @@ rawExprSeqOrTerm m = do
 rawTerm :: Parser RT.RawTerm
 rawTerm = do
   choice
-    [ rawTermPi,
-      rawTermPiIntro,
+    [ rawTermPiIntro,
       rawTermPiIntroDef,
       rawTermIntrospect,
       rawTermMagic,
@@ -91,6 +90,7 @@ rawTerm = do
       rawTermIf,
       rawTermAssert,
       rawTermListIntro,
+      rawTermPiGeneral,
       try rawTermPiElimByKey,
       rawTermPiOrConsOrAscOrBasic
     ]
@@ -108,7 +108,8 @@ rawTermBasic = do
       rawTermEmbody,
       rawTermTuple,
       rawTermTupleIntro,
-      rawTermPiElimOrSimple
+      try rawTermPiElim,
+      rawTermSimple
     ]
 
 rawTermSimple :: Parser RT.RawTerm
@@ -121,8 +122,16 @@ rawTermSimple = do
       rawTermHole,
       rawTermInteger,
       rawTermFloat,
-      rawTermPiElimOrSymbol
+      lexeme rawTermPiElimOrSymbol
     ]
+
+rawTermPiGeneral :: Parser RT.RawTerm
+rawTermPiGeneral = do
+  m <- getCurrentHint
+  domList <- argList $ choice [try preAscription, typeWithoutIdent]
+  delimiter "->"
+  cod <- rawTerm
+  return $ m :< RT.Pi domList cod
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
@@ -284,15 +293,6 @@ foldByOp m op es =
       e
     e : rest ->
       m :< RT.PiElim (m :< RT.Var op) [e, foldByOp m op rest]
-
-rawTermPi :: Parser RT.RawTerm
-rawTermPi = do
-  m <- getCurrentHint
-  keyword "arrow"
-  domList <- argList $ choice [try preAscription, typeWithoutIdent]
-  delimiter "->"
-  cod <- rawTerm
-  return $ m :< RT.Pi domList cod
 
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
@@ -566,6 +566,15 @@ parseName = do
     Right (gl, ll) ->
       return (m, Locator (gl, ll))
 
+parseNameWithoutLexeme :: Parser (Hint, Name)
+parseNameWithoutLexeme = do
+  (m, varText) <- varWithoutLexeme
+  case DD.getLocatorPair m varText of
+    Left _ ->
+      return (m, Var varText)
+    Right (gl, ll) ->
+      return (m, Locator (gl, ll))
+
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
   (m, varOrLocator) <- parseName
@@ -630,6 +639,10 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
 rawTermBrace :: Parser RT.RawTerm
 rawTermBrace =
   betweenBrace rawExpr
+
+rawTermBraceWithoutLexeme :: Parser RT.RawTerm
+rawTermBraceWithoutLexeme =
+  betweenBraceWithoutLexeme rawExpr
 
 rawTermTuple :: Parser RT.RawTerm
 rawTermTuple = do
@@ -738,6 +751,23 @@ rawTermAdmit = do
               [m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
         )
 
+rawTermAdmitWithoutLexeme :: Parser RT.RawTerm
+rawTermAdmitWithoutLexeme = do
+  m <- getCurrentHint
+  keywordWithoutLexeme "admit"
+  admit <- lift $ locatorToVarGlobal m coreSystemAdmit
+  textType <- lift $ locatorToVarGlobal m coreText
+  return $
+    m
+      :< RT.Annotation
+        Warning
+        (AN.Type ())
+        ( m
+            :< RT.PiElim
+              admit
+              [m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
+        )
+
 rawTermAssert :: Parser RT.RawTerm
 rawTermAssert = do
   m <- getCurrentHint
@@ -753,11 +783,19 @@ rawTermAssert = do
         assert
         [m :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), lam mCond [] e]
 
-rawTermPiElimOrSimple :: Parser RT.RawTerm
-rawTermPiElimOrSimple = do
+rawTermPiElimHead :: Parser RT.RawTerm
+rawTermPiElimHead =
+  choice
+    [ rawTermBraceWithoutLexeme,
+      rawTermAdmitWithoutLexeme,
+      rawTermPiElimOrSymbol
+    ]
+
+rawTermPiElim :: Parser RT.RawTerm
+rawTermPiElim = do
   m <- getCurrentHint
-  e <- rawTermSimple
-  elems <- many $ argList rawTerm
+  e <- rawTermPiElimHead
+  elems <- some $ argList rawTerm
   foldPiElim m e elems
 
 rawTermPiElimByKey :: Parser RT.RawTerm
@@ -883,7 +921,7 @@ rawTermPiElimOrSymbol = do
 
 rawTermParseSymbol :: Parser RT.RawTerm
 rawTermParseSymbol = do
-  (m, varOrLocator) <- parseName
+  (m, varOrLocator) <- parseNameWithoutLexeme
   return $ m :< RT.Var varOrLocator
 
 foldReversePiElim :: Hint -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm

@@ -43,9 +43,9 @@ define tau-is-tau(): tau {
 }
 
 define pi-is-tau(): tau {
-  let _: tau = arrow () -> tau
+  let _: tau = () -> tau
   let _: tau = tau -> tau
-  let _: tau = arrow (tau, tau, tau) -> tau
+  let _: tau = (tau, tau, tau) -> tau
   tau
 }
 

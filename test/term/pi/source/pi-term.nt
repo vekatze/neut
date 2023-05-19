@@ -10,18 +10,19 @@ define test-syntax(): unit {
   let _: tau -> tau = lambda (x) { x }
   let _ = lambda (x: tau) { x }
   // binary
-  let _: arrow (tau, tau) -> tau = lambda (x, _) { x }
-  let _: arrow (tau, tau) -> tau = lambda (_, y) { y }
-  let _: arrow (tau, tau) -> tau = lambda (x: tau, _) { x }
-  let _: arrow (tau, tau) -> tau = lambda (_, y: tau) { y }
-  let _: arrow (tau, tau) -> tau = lambda (x: tau, _) { x }
+  let _: (tau, tau) -> tau = lambda (x, _) { x }
+  let _: (tau, tau) -> tau = lambda (_, y) { y }
+  let _: (tau, tau) -> tau = lambda (x: tau, _) { x }
+  let _: (tau, tau) -> tau = lambda (_, y: tau) { y }
+  let _: (tau, tau) -> tau = lambda (x: tau, _) { x }
   let _ = lambda (x: tau, y: tau) { Both(x, y) }
+  let _ = { lambda (x: tau) { x } }(tau)
   // (unnecessarily) complex type
   let _ =
     lambda (
       x: {
         let _ = tau
-        arrow (tau, tau) -> tau
+        (tau, tau) -> tau
       },
       _: {
         tau -> tau
@@ -41,6 +42,11 @@ define test-resource(): unit {
   relevant-lam3()
   affine-lam4()
   relevant-lam4()
+}
+
+define sample(): tau {
+  let _ = tau
+  (tau, tau) -> tau
 }
 
 define opaque[a](x: a) {
