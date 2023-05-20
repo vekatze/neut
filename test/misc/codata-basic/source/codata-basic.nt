@@ -15,9 +15,9 @@ struct stream(a: tau) by Stream {
 
 define int-stream(x: int): stream(int) {
   Stream {
-  - head <=
+  - head =
     x
-  - tail <=
+  - tail =
     () => {
       int-stream(add-int(x, 1))
     }
@@ -42,9 +42,9 @@ define main(): unit {
   let inner = Bar(10)
   let config =
     Foo {
-    - value-1 <= 3
-    - value-3 <= inner
-    - value-2 <= 8
+    - value-1 = 3
+    - value-3 = inner
+    - value-2 = 8
     }
   // k = value-1 + value-1 + value-1 + value-3 = 3 + 3 + 3 + 10 = 19
   let k on config = {

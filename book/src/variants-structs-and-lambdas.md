@@ -186,9 +186,9 @@ define some-function(a: int, some-argument: tau, b: tau): int {
 define caller(): int {
   let _ =
     some-function {
-    - b <= tau
-    - a <= 20
-    - some-argument <= tau
+    - b = tau
+    - a = 20
+    - some-argument = tau
     }
   0
 }
@@ -201,9 +201,9 @@ Keyword arguments can be used with a constructor:
 define create-struct(): config(my-list(int)) {
   // create a struct using keyword arguments
   Config {
-  - foo <= 30
-  - bar <= MyNil
-  - some-value <= MyCons(3, MyNil)
+  - foo = 30
+  - bar = MyNil
+  - some-value = MyCons(3, MyNil)
   }
 }
 ```

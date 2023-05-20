@@ -793,7 +793,7 @@ rawTermPiElimByKey = do
 rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
 rawTermKeyValuePair = do
   (m, key) <- var
-  delimiter "<="
+  delimiter "="
   value <- rawExpr
   return (m, key, value)
 
