@@ -1,0 +1,34 @@
+import {
+- core.external
+- core.memory
+}
+
+resource noisy-boxed-int {
+- lambda (v: int) {
+    print("discarded.\n")
+    free(v)
+    0
+  }
+- lambda (v: int) {
+    print("copied.\n")
+    let orig-value = load-int(v)
+    let new-ptr = malloc(1)
+    magic store(int, new-ptr, orig-value)
+    new-ptr
+  }
+}
+
+// provide a way to introduce new boxed integer
+define create-new-noisy-boxed-int(x: int): noisy-boxed-int {
+  let new-ptr = malloc(1)
+  store-int(new-ptr, x)
+  magic cast(int, noisy-boxed-int, new-ptr)
+}
+
+define main(): unit {
+  let i = create-new-noisy-boxed-int(10)
+  let _ = i
+  let _ = i
+  let _ = i
+  Unit
+}
