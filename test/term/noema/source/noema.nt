@@ -20,7 +20,7 @@ define test-syntax(): unit {
     case xs {
     - [] =>
       length(xs)
-    - _ :< ys =>
+    - _ :: ys =>
       length(ys)
     }
   }

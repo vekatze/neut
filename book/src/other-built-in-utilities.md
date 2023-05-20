@@ -66,7 +66,7 @@ variant bool {
 
 variant list(a) {
 - Nil
-- Cons(a, list(a))   // `Cons(x, xs)` can also be written as `x :< xs`
+- Cons(a, list(a))   // `Cons(x, xs)` can also be written as `x :: xs`
                      // `Cons(x, Cons(y, Nil))` can also be written as `[x, y]`
 }
 

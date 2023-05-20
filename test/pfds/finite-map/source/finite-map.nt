@@ -85,7 +85,7 @@ define main(): unit {
       match xs {
       - [] =>
         10
-      - _ :< _ =>
+      - _ :: _ =>
         20
       }
     }

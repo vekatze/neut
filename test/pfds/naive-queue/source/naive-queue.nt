@@ -13,7 +13,7 @@ define empty[a](): queue(a) {
 
 define head[a](q: &queue(a)): ?a {
   case q {
-  - Tuple(x :< _, _) =>
+  - Tuple(x :: _, _) =>
     Some(!x)
   - _ =>
     None
@@ -31,7 +31,7 @@ define-inline sanitize[a](q: queue(a)): queue(a) {
 
 define tail[a](q: queue(a)): ?queue(a) {
   match q {
-  - Tuple(_ :< rest, ys) =>
+  - Tuple(_ :: rest, ys) =>
     Some(sanitize(Tuple(rest, ys)))
   - _ =>
     None
@@ -40,14 +40,14 @@ define tail[a](q: queue(a)): ?queue(a) {
 
 define snoc[a](v: a, q: queue(a)): queue(a) {
   let Tuple(xs, ys) = q
-  sanitize(Tuple(xs, v :< ys))
+  sanitize(Tuple(xs, v :: ys))
 }
 
 define sum(xs: &list(int)): int {
   case xs {
   - [] =>
     0
-  - v :< rest =>
+  - v :: rest =>
     add-int(!v, sum(rest))
   }
 }

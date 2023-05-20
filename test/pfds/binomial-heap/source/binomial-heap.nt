@@ -19,9 +19,9 @@ define link[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   - Node(r1, x1, children1), Node(r2, x2, children2) =>
     match cmp(x1, x2) {
     - LT =>
-      Node(add-int(r1, 1), x1, Node(r2, x2, children2) :< children1)
+      Node(add-int(r1, 1), x1, Node(r2, x2, children2) :: children1)
     - _ =>
-      Node(add-int(r1, 1), x2, Node(r1, x1, children1) :< children2)
+      Node(add-int(r1, 1), x2, Node(r1, x1, children1) :: children2)
     }
   }
 }
@@ -37,11 +37,11 @@ define insert-tree[a](cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a) {
   match h {
   - [] =>
     [t]
-  - t1 :< rest =>
+  - t1 :: rest =>
     let r on t = rank(t)
     let r1 on t1 = rank(t1)
     if lt-int(r, r1) {
-      t :< t1 :< rest
+      t :: t1 :: rest
     } else {
       // the link here corresponds to a carry in binary arithmetic
       insert-tree(cmp, link(cmp, t, t1), rest)
@@ -59,13 +59,13 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
     h2
   - h1, [] =>
     h1
-  - t1 :< ts1, t2 :< ts2 =>
+  - t1 :: ts1, t2 :: ts2 =>
     let r1 on t1 = rank(t1)
     let r2 on t2 = rank(t2)
     if lt-int(r1, r2) {
-      t1 :< merge(cmp, ts1, t2 :< ts2)
+      t1 :: merge(cmp, ts1, t2 :: ts2)
     } else-if gt-int(r1, r2) {
-      t2 :< merge(cmp, t1 :< ts1, ts2)
+      t2 :: merge(cmp, t1 :: ts1, ts2)
     } else {
       insert-tree(cmp, link(cmp, t1, t2), merge(cmp, ts1, ts2))
     }
@@ -86,7 +86,7 @@ define find-min[a](cmp: (a, a) -> order, h: &heap(a)): ?a {
       case h {
       - [] =>
         cand
-      - t :< ts =>
+      - t :: ts =>
         let root-head = root(t)
         match cmp(root-head, cand) {
         - LT =>
@@ -99,7 +99,7 @@ define find-min[a](cmp: (a, a) -> order, h: &heap(a)): ?a {
   case h {
   - [] =>
     None
-  - t :< ts =>
+  - t :: ts =>
     let r = root(t)
     Some(helper(r, ts))
   }
@@ -111,15 +111,15 @@ define remove-min-tree[a](cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a), hea
     None
   - [t] =>
     Some(Tuple(t, []))
-  - t :< ts =>
+  - t :: ts =>
     let? Tuple(cand, ts-adjusted) = remove-min-tree(cmp, ts)
     let root-head on t = root(t)
     let root-cand on cand = root(cand)
     match cmp(root-head, root-cand) {
     - LT =>
-      Some(Tuple(t, cand :< ts-adjusted))
+      Some(Tuple(t, cand :: ts-adjusted))
     - _ =>
-      Some(Tuple(cand, t :< ts-adjusted))
+      Some(Tuple(cand, t :: ts-adjusted))
     }
   }
 }

@@ -116,14 +116,21 @@ delimiterWithoutLexeme expected = do
   void $ chunk expected
 
 string :: Parser T.Text
-string = do
-  lexeme $ do
-    _ <- char '\"'
-    T.pack <$> manyTill L.charLiteral (char '\"')
+string =
+  lexeme stringWithoutLexeme
+
+stringWithoutLexeme :: Parser T.Text
+stringWithoutLexeme = do
+  _ <- char '\"'
+  T.pack <$> manyTill L.charLiteral (char '\"')
 
 integer :: Parser Integer
 integer = do
-  s <- symbol
+  lexeme integerWithoutLexeme
+
+integerWithoutLexeme :: Parser Integer
+integerWithoutLexeme = do
+  s <- symbolWithoutLexeme
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -131,8 +138,12 @@ integer = do
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
 float :: Parser Double
-float = do
-  s <- symbol
+float =
+  lexeme floatWithoutLexeme
+
+floatWithoutLexeme :: Parser Double
+floatWithoutLexeme = do
+  s <- symbolWithoutLexeme
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -152,19 +163,30 @@ bool = do
 
 betweenParen :: Parser a -> Parser a
 betweenParen =
-  between (delimiter "(") (delimiter ")")
+  lexeme . betweenParenWithoutLexeme
+
+{-# INLINE betweenParenWithoutLexeme #-}
+betweenParenWithoutLexeme :: Parser a -> Parser a
+betweenParenWithoutLexeme =
+  between (delimiter "(") (delimiterWithoutLexeme ")")
 
 betweenBrace :: Parser a -> Parser a
 betweenBrace =
-  between (delimiter "{") (delimiter "}")
+  lexeme . betweenBraceWithoutLexeme
 
+{-# INLINE betweenBraceWithoutLexeme #-}
 betweenBraceWithoutLexeme :: Parser a -> Parser a
 betweenBraceWithoutLexeme =
   between (delimiter "{") (delimiterWithoutLexeme "}")
 
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
-  between (delimiter "[") (delimiter "]")
+  lexeme . betweenBracketWithoutLexeme
+
+{-# INLINE betweenBracketWithoutLexeme #-}
+betweenBracketWithoutLexeme :: Parser a -> Parser a
+betweenBracketWithoutLexeme =
+  between (delimiter "[") (delimiterWithoutLexeme "]")
 
 commaList :: Parser a -> Parser [a]
 commaList f = do
@@ -172,7 +194,12 @@ commaList f = do
 
 argList :: Parser a -> Parser [a]
 argList f = do
-  betweenParen $ commaList f
+  lexeme $ argListWithoutLexeme f
+
+{-# INLINE argListWithoutLexeme #-}
+argListWithoutLexeme :: Parser a -> Parser [a]
+argListWithoutLexeme f = do
+  betweenParenWithoutLexeme $ commaList f
 
 impArgList :: Parser a -> Parser [a]
 impArgList f =

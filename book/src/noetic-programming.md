@@ -63,7 +63,7 @@ define length[a](xs: &list(a)): int {
   case xs {
   - [] =>
     0
-  - y :< ys =>
+  - y :: ys =>
     add-int(1, length(ys))
   }
 }
@@ -82,7 +82,7 @@ define sum-of-list(xs: &list(int)): int {
   case xs {
   - [] =>
     0
-  - y :< ys =>
+  - y :: ys =>
     add-int(!y, sum-of-list(ys)) // using !e
   }
 }

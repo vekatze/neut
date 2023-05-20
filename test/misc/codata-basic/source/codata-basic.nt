@@ -49,15 +49,15 @@ define main(): unit {
   // k = value-1 + value-1 + value-1 + value-3 = 3 + 3 + 3 + 10 = 19
   let k on config = {
     let s1 = value-1(config)
-    let s2 = !config::value-1
-    let s3 = config::value-1
-    let s4 = config::value-3::value
+    let s2 = !value-1(config)
+    let s3 = value-1(config)
+    let s4 = value(value-3(config))
     add-int(!s1, add-int(s2, add-int(!s3, !s4)))
   }
   let _ = config
   let some-stream = int-stream(3)
   // value = 3 + 1 + 1 = 5
-  let value = some-stream::get-tail::get-tail::get-head
+  let value = get-head(get-tail(get-tail(some-stream)))
   print-int(add-int(k, value)) // 24
   print("\n")
 }

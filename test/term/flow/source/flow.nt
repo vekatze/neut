@@ -56,9 +56,9 @@ define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(f
   match xs {
   - [] =>
     acc
-  - y :< rest =>
+  - y :: rest =>
     let fl = detach-send(y, ch)
-    send-all(rest, ch, fl :< acc)
+    send-all(rest, ch, fl :: acc)
   }
 }
 
@@ -66,7 +66,7 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   match xs {
   - [] =>
     Unit
-  - fl :< rest =>
+  - fl :: rest =>
     let _ = attach fl
     let _ = receive(ch)
     receive-one-by-one(rest, ch)
@@ -79,7 +79,7 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
       match ys {
       - [] =>
         Unit
-      - z :< zs =>
+      - z :: zs =>
         let _ = attach z
         wait-all(zs)
       }

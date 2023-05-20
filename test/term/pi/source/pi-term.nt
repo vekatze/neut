@@ -30,6 +30,14 @@ define test-syntax(): unit {
     ) {
       x
     }
+  let f = lambda (_: tau, _: tau, _: tau) { tau }
+  let _ = f(
+    let _ = tau
+    tau,
+    tau,
+    let _ = tau
+    {lambda () { tau }}()
+  )
   Unit
 }
 

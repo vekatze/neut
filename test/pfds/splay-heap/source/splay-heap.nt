@@ -101,7 +101,7 @@ define sum(xs: &list(int)): int {
   case xs {
   - [] =>
     0
-  - y :< ys =>
+  - y :: ys =>
     add-int(!y, sum(ys))
   }
 }

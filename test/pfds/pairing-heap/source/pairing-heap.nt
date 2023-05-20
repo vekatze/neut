@@ -27,9 +27,9 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   - Node(x1, hs1), Node(x2, hs2) =>
     match cmp(x1, x2) {
     - LT =>
-      Node(x1, Node(x2, hs2) :< hs1)
+      Node(x1, Node(x2, hs2) :: hs1)
     - _ =>
-      Node(x2, Node(x1, hs1) :< hs2)
+      Node(x2, Node(x1, hs1) :: hs2)
     }
   }
 }
@@ -44,7 +44,7 @@ define merge-pairs[a](cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
     Leaf
   - [h] =>
     h
-  - h1 :< h2 :< rest =>
+  - h1 :: h2 :: rest =>
     merge(cmp, merge(cmp, h1, h2), merge-pairs(cmp, rest))
   }
 }
