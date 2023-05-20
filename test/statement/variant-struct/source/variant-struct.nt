@@ -1,0 +1,81 @@
+variant my-void {}
+
+variant data-Z-cons-Z {
+- FooZZ
+- BarZZ
+}
+
+variant data-Z-cons-0 {
+- FooZ0()
+- BarZ0()
+}
+
+variant data-Z-cons-1 {
+- FooZ1(int)
+- BarZ1(bool)
+}
+
+variant data-0-cons-Z() {
+- Foo0Z
+- Bar0Z
+}
+
+variant data-0-cons-0() {
+- Foo00()
+- Bar00()
+}
+
+variant data-0-cons-1() {
+- Foo01(int)
+- Bar01(bool)
+}
+
+variant data-1-cons-Z(_: tau) {
+- Foo1Z
+- Bar1Z
+}
+
+variant data-1-cons-0(_: tau) {
+- Foo10()
+- Bar10()
+}
+
+variant data-1-cons-1(_: tau) {
+- Foo11(int)
+- Bar11(bool)
+}
+
+variant simple(a: tau) {
+- New(a)
+}
+
+struct empty by Empty {}
+
+struct config by Config {
+- counter: int
+- path: &text
+- func: int -> int
+}
+
+variant top {
+- Top(a: tau, x: a)
+}
+
+define yo(x: top): unit {
+  let Top(_, _) = x
+  Unit
+}
+
+define foo(c: &config): &text {
+  let _: int = !c::counter
+  let _ = !counter(c)
+  let _ = {!c::func}(3)
+  let _ = !func(c)
+  !c::path
+}
+
+define main(): unit {
+  let _ = counter
+  let _ = path
+  Unit
+}
