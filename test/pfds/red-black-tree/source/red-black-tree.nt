@@ -55,7 +55,7 @@ define balance[a](c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
 
 define insert[a](cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
   let helper =
-    define self(t: tree(a)): tree(a) {
+    mu self(t: tree(a)): tree(a) {
       match t {
       - Leaf =>
         Node(Red, Leaf, x, Leaf)

@@ -338,7 +338,7 @@ parseDefInfoCod m =
 rawTermPiIntroDef :: Parser RT.RawTerm
 rawTermPiIntroDef = do
   m <- getCurrentHint
-  keyword "define"
+  keyword "mu"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
   return $ m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) domBinderList e
 

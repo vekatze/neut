@@ -44,7 +44,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
           Node(add-int(rank1, 1), x, r, l)
         }
       }
-    define merge(h1: heap(a), h2: heap(a)): heap(a) {
+    mu merge(h1: heap(a), h2: heap(a)): heap(a) {
       match h1, h2 {
       - h1, Leaf =>
         h1

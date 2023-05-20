@@ -21,7 +21,7 @@ define my-length(xs: list()): int {
 define main(): unit {
   let xs = Nil()
   let no-free-var =
-    define foo(c: int): int {
+    mu foo(c: int): int {
       if eq-int(c, 0) {
         1
       } else {
@@ -30,7 +30,7 @@ define main(): unit {
     }
   let _ = no-free-var(3)
   let single-free-var =
-    define free-vars-in-recursion(c: int): int {
+    mu free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
         let _ = xs
         let _ = my-length(xs)
@@ -44,7 +44,7 @@ define main(): unit {
   let zs = xs
   let ws = Nil()
   let multiple-free-var =
-    define free-vars-in-recursion(c: int): int {
+    mu free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
         let _ = xs
         let _ = xs

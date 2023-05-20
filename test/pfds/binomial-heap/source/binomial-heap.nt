@@ -82,7 +82,7 @@ define root[a](t: &tree(a)): a {
 
 define find-min[a](cmp: (a, a) -> order, h: &heap(a)): ?a {
   let helper =
-    define self(cand: a, h: &heap(a)): a {
+    mu self(cand: a, h: &heap(a)): a {
       case h {
       - [] =>
         cand
