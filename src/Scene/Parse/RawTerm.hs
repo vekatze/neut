@@ -907,7 +907,7 @@ rawTermPiElimOrSymbol = do
   m <- getCurrentHint
   e <- rawTermParseSymbol
   funcVarList <- many $ do
-    delimiter "::"
+    delimiterWithoutLexeme "::"
     rawTermParseSymbol
   return $ foldReversePiElim m e funcVarList
 
