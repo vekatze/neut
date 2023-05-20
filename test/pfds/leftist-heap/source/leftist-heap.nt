@@ -26,7 +26,7 @@ struct heap-signature(a) by Heap {
 define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
   let merge = {
     let rank =
-      lambda (h: &heap(a)) {
+      (h: &heap(a)) => {
         case h {
         - Leaf =>
           0
@@ -35,7 +35,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         }
       }
     let make-Node =
-      lambda (x: a, l: heap(a), r: heap(a)) {
+      (x: a, l: heap(a), r: heap(a)) => {
         let rank1 on l = rank(l)
         let rank2 on r = rank(r)
         if ge-int(rank1, rank2) {
@@ -64,7 +64,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
   - empty <=
     Leaf
   - is-empty <=
-    lambda (h: &heap(a)) {
+    (h: &heap(a)) => {
       case h {
       - Leaf =>
         True
@@ -73,13 +73,13 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       }
     }
   - insert <=
-    lambda (x: a, h: heap(a)) {
+    (x: a, h: heap(a)) => {
       merge(Node(1, x, Leaf, Leaf), h)
     }
   - merge <=
     merge
   - find-min <=
-    lambda (h: &heap(a)) {
+    (h: &heap(a)) => {
       case h {
       - Leaf =>
         None
@@ -88,7 +88,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       }
     }
   - delete-min <=
-    lambda (h: heap(a)) {
+    (h: heap(a)) => {
       match h {
       - Leaf =>
         None

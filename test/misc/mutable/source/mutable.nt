@@ -26,14 +26,14 @@ define main(): unit {
   let xs-cell = new-cell(xs)
   let result on xs-cell = {
     let _ = bar(xs-cell)
-    mutate(xs-cell, lambda (xs) {
+    mutate(xs-cell, (xs) => {
       Cons(4, xs)
     })
     let _ = bar(xs-cell)
-    mutate(xs-cell, lambda (_) {
+    mutate(xs-cell, (_) => {
       Nil()
     })
-    mutate(xs-cell, lambda (xs) {
+    mutate(xs-cell, (xs) => {
       Cons(4, xs)
     })
     bar(xs-cell)

@@ -18,7 +18,7 @@ define test-syntax(): unit {
       Unit
     }
   let _ =
-    lambda () {
+    () => {
       let fl =
         detach {
           let _ = Unit
@@ -28,7 +28,7 @@ define test-syntax(): unit {
       attach fl
     }
   let _ =
-    lambda (fl: flow(unit)) {
+    (fl: flow(unit)) => {
       attach {
         let _ = Unit
         fl
@@ -123,20 +123,20 @@ define test-behavior(): unit {
   let ch = new-channel(() -> int)
   let ch: channel(() -> int) = ch
   let _ = ch
-  let _ on ch = send(ch, lambda () {1})
+  let _ on ch = send(ch, () => {1})
   let ch = ch
   let ch-clone = ch
-  let _ on ch-clone = send(ch-clone, lambda () {1})
+  let _ on ch-clone = send(ch-clone, () => {1})
   let tmp on ch-clone = {
     let f =
       detach {
         ext.sleep(1)
-        send(ch-clone, lambda () {3})
+        send(ch-clone, () => {3})
       }
     let g =
       detach {
         ext.sleep(1)
-        send(ch-clone, lambda () {4})
+        send(ch-clone, () => {4})
       }
     let _ = receive(ch-clone)
     let _ = receive(ch-clone)

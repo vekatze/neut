@@ -18,7 +18,7 @@ define append[a](xs: stream(a), ys: stream(a)): stream(a) {
   - Nil =>
     ys
   - Cons(x1, rest) =>
-    lambda () {
+    () => {
       Cons(x1, append(rest, ys))
     }
   }
@@ -26,13 +26,13 @@ define append[a](xs: stream(a), ys: stream(a)): stream(a) {
 
 define take[a](n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
-    lambda () { Nil }
+    () => { Nil }
   } else {
     match xs() {
     - Nil =>
-      lambda () { Nil }
+      () => { Nil }
     - Cons(x, rest) =>
-      lambda () {
+      () => {
         Cons(x, take(sub-int(n, 1), rest))
       }
     }
@@ -41,7 +41,7 @@ define take[a](n: int, xs: stream(a)): stream(a) {
 
 define main(): unit {
   let my-stream: stream(int) =
-    lambda () { Cons(1, lambda () { Nil }) }
+    () => { Cons(1, () => { Nil }) }
   let _ = my-stream
   Unit
 }

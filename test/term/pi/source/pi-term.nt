@@ -5,21 +5,21 @@ export {
 
 define test-syntax(): unit {
   // nullary
-  let _ = lambda () { tau }
+  let _ = () => { tau }
   // unary
-  let _: tau -> tau = lambda (x) { x }
-  let _ = lambda (x: tau) { x }
+  let _: tau -> tau = (x) => { x }
+  let _ = (x: tau) => { x }
   // binary
-  let _: (tau, tau) -> tau = lambda (x, _) { x }
-  let _: (tau, tau) -> tau = lambda (_, y) { y }
-  let _: (tau, tau) -> tau = lambda (x: tau, _) { x }
-  let _: (tau, tau) -> tau = lambda (_, y: tau) { y }
-  let _: (tau, tau) -> tau = lambda (x: tau, _) { x }
-  let _ = lambda (x: tau, y: tau) { Both(x, y) }
-  let _ = { lambda (x: tau) { x } }(tau)
+  let _: (tau, tau) -> tau = (x, _) => { x }
+  let _: (tau, tau) -> tau = (_, y) => { y }
+  let _: (tau, tau) -> tau = (x: tau, _) => { x }
+  let _: (tau, tau) -> tau = (_, y: tau) => { y }
+  let _: (tau, tau) -> tau = (x: tau, _) => { x }
+  let _ = (x: tau, y: tau) => { Both(x, y) }
+  let _ = { (x: tau) => { x } }(tau)
   // (unnecessarily) complex type
   let _ =
-    lambda (
+    (
       x: {
         let _ = tau
         (tau, tau) -> tau
@@ -27,16 +27,16 @@ define test-syntax(): unit {
       _: {
         tau -> tau
       }
-    ) {
+    ) => {
       x
     }
-  let f = lambda (_: tau, _: tau, _: tau) { tau }
+  let f = (_: tau, _: tau, _: tau) => { tau }
   let _ = f(
     let _ = tau
     tau,
     tau,
     let _ = tau
-    {lambda () { tau }}()
+    {() => { tau }}()
   )
   Unit
 }
@@ -62,13 +62,13 @@ define opaque[a](x: a) {
 }
 
 define affine-lam1(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let _ = lam1
   Unit
 }
 
 define relevant-lam1(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let _ = lam1
   let _ = lam1
   Unit
@@ -76,10 +76,10 @@ define relevant-lam1(): unit {
 
 
 define affine-lam2(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let lam2 =
     opaque(
-      lambda () {
+      () => {
         let v = lam1
         v
       }
@@ -89,10 +89,10 @@ define affine-lam2(): unit {
 }
 
 define relevant-lam2(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let lam2 =
     opaque(
-      lambda () {
+      () => {
         let v = lam1
         v
       }
@@ -103,17 +103,17 @@ define relevant-lam2(): unit {
 }
 
 define affine-lam3(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let lam2 =
     opaque(
-      lambda () {
+      () => {
         let v = lam1
         v
       }
     )
   let lam3 =
     opaque(
-      lambda (_: tau -> tau) {
+      (_: tau -> tau) => {
         let _ = lam1
         let v2 = lam2
         v2
@@ -124,17 +124,17 @@ define affine-lam3(): unit {
 }
 
 define relevant-lam3(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let lam2 =
     opaque(
-      lambda () {
+      () => {
         let v = lam1
         v
       }
     )
   let lam3 =
     opaque(
-      lambda (_: tau -> tau) {
+      (_: tau -> tau) => {
         let _ = lam1
         let v2 = lam2
         v2
@@ -146,17 +146,17 @@ define relevant-lam3(): unit {
 }
 
 define affine-lam4(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let lam2 =
     opaque(
-      lambda () {
+      () => {
         let v = lam1
         v
       }
     )
   let lam3 =
     opaque(
-      lambda (_: tau -> tau) {
+      (_: tau -> tau) => {
         let _ = lam1
         let v2 = lam2
         v2
@@ -165,7 +165,7 @@ define affine-lam4(): unit {
   let _ = lam3
   let lam4 =
     opaque(
-      lambda (_: tau -> tau) {
+      (_: tau -> tau) => {
         let _ = lam1
         let _ = lam2
         let v3 = lam3
@@ -177,17 +177,17 @@ define affine-lam4(): unit {
 }
 
 define relevant-lam4(): unit {
-  let lam1 = opaque(lambda () { tau })
+  let lam1 = opaque(() => { tau })
   let lam2 =
     opaque(
-      lambda () {
+      () => {
         let v = lam1
         v
       }
     )
   let lam3 =
     opaque(
-      lambda (_: tau -> tau) {
+      (_: tau -> tau) => {
         let _ = lam1
         let v2 = lam2
         v2
@@ -196,7 +196,7 @@ define relevant-lam4(): unit {
   let _ = lam3
   let lam4 =
     opaque(
-      lambda (_: tau -> tau) {
+      (_: tau -> tau) => {
         let _ = lam1
         let _ = lam2
         let v3 = lam3

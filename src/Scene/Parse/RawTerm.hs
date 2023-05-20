@@ -81,8 +81,7 @@ rawExprSeqOrTerm m = do
 rawTerm :: Parser RT.RawTerm
 rawTerm = do
   choice
-    [ rawTermPiIntro,
-      rawTermPiIntroDef,
+    [ rawTermPiIntroDef,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
@@ -91,7 +90,8 @@ rawTerm = do
       rawTermWhen,
       rawTermAssert,
       rawTermListIntro,
-      rawTermPiGeneral,
+      try rawTermPiGeneral,
+      rawTermPiIntro,
       try rawTermPiElimByKey,
       rawTermPiOrConsOrAscOrBasic
     ]
@@ -138,6 +138,13 @@ rawTermPiGeneral = do
   delimiter "->"
   cod <- rawTerm
   return $ m :< RT.Pi domList cod
+
+rawTermPiIntro :: Parser RT.RawTerm
+rawTermPiIntro = do
+  m <- getCurrentHint
+  varList <- argList preBinder
+  delimiter "=>"
+  lam m varList <$> betweenBrace rawExpr
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
@@ -299,13 +306,6 @@ foldByOp m op es =
       e
     e : rest ->
       m :< RT.PiElim (m :< RT.Var op) [e, foldByOp m op rest]
-
-rawTermPiIntro :: Parser RT.RawTerm
-rawTermPiIntro = do
-  m <- getCurrentHint
-  keyword "lambda"
-  varList <- argList preBinder
-  lam m varList <$> betweenBrace rawExpr
 
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do

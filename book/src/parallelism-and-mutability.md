@@ -80,17 +80,17 @@ define sample(): int {
   // create a noema of a cell
   let result on xs-cell = {
     // mutate the cell (add an element)
-    mutate(xs-cell, lambda (xs) { 1 :: xs })
+    mutate(xs-cell, (xs) => { 1 :: xs })
 
     // get the length of the list in the cell
-    let len1 = borrow(xs-cell, lambda (xs) { length(xs) })
+    let len1 = borrow(xs-cell, (xs) => { length(xs) })
     // (len1 == 1)
 
     // mutate again
-    mutate(xs-cell, lambda (xs) { 2 :: xs })
+    mutate(xs-cell, (xs) => { 2 :: xs })
 
     // get the length of the list in the cell, again
-    let len2 = borrow(xs-cell, lambda (xs) { length(xs) })
+    let len2 = borrow(xs-cell, (xs) => { length(xs) })
     // (len2 == 2)
   }
   ...

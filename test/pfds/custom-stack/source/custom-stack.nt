@@ -42,7 +42,7 @@ define tail[a](xs: &custom-stack(a)): ?&custom-stack(a) {
 
 define main(): unit {
   let xs = empty()
-  let v = Tuple(lambda () { 1 }, lambda () { 2: int })
+  let v = Tuple(() => { 1 }, () => { 2: int })
   let ys = Cons(v, xs)
   let zs = Cons(v, Cons(v, ys))
   let calc on zs, xs = {

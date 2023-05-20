@@ -10,7 +10,7 @@ Suppose we have a function like the below:
 define foo(a: tau): int {
   let x: int = 10
   let y = tau
-  lambda (z: a) {
+  (z: a) => {
     let foo = x
     let bar = y
     let buz = z
@@ -39,7 +39,7 @@ Here, consider annotating all the variables in the list by their variables, like
 This list can be said as "closed" in that the term
 
 ```neut
-lambda (a: tau, x: int, y: tau, z: a) { Unit }
+(a: tau, x: int, y: tau, z: a) => { Unit }
 ```
 
 doesn't contain any free variables.

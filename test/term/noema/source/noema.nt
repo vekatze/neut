@@ -101,9 +101,9 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
 
 define unbalanced-freevars-in-branches[a](t: &term(a)): term(a) {
   let foo = Var("test")
-  let f = lambda () { foo }
-  let g = lambda () { foo }
-  let h = lambda () { foo }
+  let f = () => { foo }
+  let g = () => { foo }
+  let h = () => { foo }
   case t {
   - Var(x) =>
     let _ = f
@@ -133,7 +133,7 @@ define unbalanced-freevars-in-branches[a](t: &term(a)): term(a) {
     }
   - App(t1, _) =>
     let _ = g
-    let k = if False { h } else { lambda () { Var("pohe") } }
+    let k = if False { h } else { () => { Var("pohe") } }
     let _ = k
     let _ = k
     let _ = k
@@ -152,7 +152,7 @@ define with-ctx(c: &ctx): unit {
     print("stop\n")
   } else {
     print("loop\n")
-    mutate(counter, lambda (x) { sub-int(x, 1) })
+    mutate(counter, (x) => { sub-int(x, 1) })
     with-ctx(c)
   }
 }

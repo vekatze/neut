@@ -90,14 +90,14 @@ define compare-int(x: () -> int, y: () -> int): order {
 
 define main(): unit {
   let t: tree(() -> int) = Leaf
-  let t = insert(compare-int, lambda () {3}, t)
-  let t = insert(compare-int, lambda () {4}, t)
-  let t = insert(compare-int, lambda () {2}, t)
-  let t = insert(compare-int, lambda () {9}, t)
-  let t = insert(compare-int, lambda () {100}, t)
-  let t = insert(compare-int, lambda () {8}, t)
-  let t = insert(compare-int, lambda () {1}, t)
-  let b on t = member(compare-int, lambda () {5}, t)
+  let t = insert(compare-int, () => {3}, t)
+  let t = insert(compare-int, () => {4}, t)
+  let t = insert(compare-int, () => {2}, t)
+  let t = insert(compare-int, () => {9}, t)
+  let t = insert(compare-int, () => {100}, t)
+  let t = insert(compare-int, () => {8}, t)
+  let t = insert(compare-int, () => {1}, t)
+  let b on t = member(compare-int, () => {5}, t)
   let _ = t
   let result: int =
     if b {

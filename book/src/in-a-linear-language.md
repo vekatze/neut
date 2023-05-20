@@ -8,7 +8,7 @@ Consider a toy language in which every variable is used exactly once. Something 
 let x = 1
 let y = x + 2
 let f =
-  lambda (z) {
+  (z) => {
     y + z // (A)
   }
 f(4)
@@ -23,7 +23,7 @@ In such a language, we just have to allocate memory when a value is introduced a
 As you can easily tell, however, a naive linear language is fairly restrictive. You can't even, for example, apply the same lambda function twice:
 
 ```neut
-let increment = lambda (x) {x + 1}
+let increment = (x) => {x + 1}
 increment(increment(3)) // error: `increment` is used twice
 ```
 

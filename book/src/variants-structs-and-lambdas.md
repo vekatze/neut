@@ -154,11 +154,11 @@ The same as the corresponding variant type.
 
 ### Basics
 
-You can create an anonymous function by using `lambda`, and use it as an ordinary function:
+You can create a lambda abstraction (anonymous function) and use it as an ordinary function:
 
 ```neut
 define sample(): int {
-  let inc = lambda (x) { add-int(x) } // create a lambda function int -> int
+  let inc = (x) => { add-int(x) } // create a lambda function int -> int
   inc(10) // and call it
 }
 ```

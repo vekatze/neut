@@ -1,6 +1,6 @@
 define make-adder(x: int): int -> int {
   let adder =
-    lambda (y) {
+    (y) => {
       add-int(x, y)
     }
   adder

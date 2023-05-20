@@ -18,7 +18,7 @@ define int-stream(x: int): stream(int) {
   - head <=
     x
   - tail <=
-    lambda () {
+    () => {
       int-stream(add-int(x, 1))
     }
   }

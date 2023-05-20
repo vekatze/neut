@@ -45,9 +45,9 @@ define main(): unit {
   let n1 = Succ(Zero)
   let n2 = Succ(n1)
   let n3 = Succ(n2)
-  let add2 = lambda (x) { add-nat(x, n2) }
-  let mul3 = lambda (x) { mul-nat(x, n3) }
-  let mul9 = lambda (x) { mul-nat(x, mul-nat(n3, n3)) }
+  let add2 = (x) => { add-nat(x, n2) }
+  let mul3 = (x) => { mul-nat(x, n3) }
+  let mul9 = (x) => { mul-nat(x, mul-nat(n3, n3)) }
   let _ = mul9
   let fs = Cons(add2, Cons(mul3, Cons(mul9, Nil)))
   let gs = fs
