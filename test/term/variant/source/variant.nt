@@ -116,6 +116,10 @@ define using-if(): int {
     } else {
       Unit
     }
+  let some-cond = True
+  when some-cond {
+    print("hey")
+  }
   if False {
     1
   } else-if lt-int(0, 10) {

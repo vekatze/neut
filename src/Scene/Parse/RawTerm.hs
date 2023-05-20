@@ -88,6 +88,7 @@ rawTerm = do
       rawTermMatchNoetic,
       rawTermMatch,
       rawTermIf,
+      rawTermWhen,
       rawTermAssert,
       rawTermListIntro,
       rawTermPiGeneral,
@@ -234,8 +235,8 @@ rawTermLetEither = do
   e1' <- ascribe m1 eitherType e1
   e2@(m2 :< _) <- rawExpr
   err <- lift Gensym.newText
-  left <- lift $ locatorToRawConsName m2 coreEitherLeft
-  right <- lift $ locatorToRawConsName m2 coreEitherRight
+  left <- lift $ locatorToName m2 coreEitherLeft
+  right <- lift $ locatorToName m2 coreEitherRight
   leftVar <- lift $ locatorToVarGlobal m2 coreEitherLeft
   return $
     m2
@@ -481,7 +482,7 @@ rawTermPattern = do
     [ try $ do
         delimiter "::"
         pat <- rawTermPattern
-        listCons <- lift $ locatorToRawConsName m coreListCons
+        listCons <- lift $ locatorToName m coreListCons
         return (m, RP.Cons listCons [headPat, pat]),
       return headPat
     ]
@@ -500,7 +501,7 @@ rawTermPatternOptionNone :: Parser (Hint, RP.RawPattern)
 rawTermPatternOptionNone = do
   m <- getCurrentHint
   keyword "None"
-  left <- lift $ locatorToRawConsName m coreEitherLeft
+  left <- lift $ locatorToName m coreEitherLeft
   hole <- lift Gensym.newTextForHole
   return (m, RP.Cons left [(m, RP.Var (Var hole))])
 
@@ -509,7 +510,7 @@ rawTermPatternOptionSome = do
   m <- getCurrentHint
   keyword "Some"
   pat <- betweenParen rawTermPattern
-  right <- lift $ locatorToRawConsName m coreEitherRight
+  right <- lift $ locatorToName m coreEitherRight
   return (m, RP.Cons right [pat])
 
 rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
@@ -517,7 +518,7 @@ rawTermPatternListIntro = do
   m <- getCurrentHint
   patList <- betweenBracket $ commaList rawTermPattern
   listNil <- lift $ Throw.liftEither $ DD.getLocatorPair m coreListNil
-  listCons <- lift $ locatorToRawConsName m coreListCons
+  listCons <- lift $ locatorToName m coreListCons
   return $ foldListAppPat m listNil listCons patList
 
 foldListAppPat ::
@@ -539,8 +540,8 @@ rawTermPatternTupleIntro = do
   m <- getCurrentHint
   keyword "Tuple"
   patList <- betweenParen $ commaList rawTermPattern
-  unitVar <- lift $ locatorToRawConsName m coreUnitUnit
-  bothVar <- lift $ locatorToRawConsName m coreBothBoth
+  unitVar <- lift $ locatorToName m coreUnitUnit
+  bothVar <- lift $ locatorToName m coreBothBoth
   return $ foldTuplePat m unitVar bothVar patList
 
 foldTuplePat :: Hint -> Name -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
@@ -592,9 +593,20 @@ rawTermIf = do
     return (elseIfCond, elseIfBody)
   keyword "else"
   elseBody <- betweenBrace rawExpr
-  boolTrue <- lift $ Throw.liftEither $ DD.getLocatorPair m coreBoolTrue
-  boolFalse <- lift $ Throw.liftEither $ DD.getLocatorPair m coreBoolFalse
-  return $ foldIf m (Locator boolTrue) (Locator boolFalse) ifCond ifBody elseIfList elseBody
+  boolTrue <- lift $ locatorToName m coreBoolTrue
+  boolFalse <- lift $ locatorToName m coreBoolFalse
+  return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
+
+rawTermWhen :: Parser RT.RawTerm
+rawTermWhen = do
+  m <- getCurrentHint
+  keyword "when"
+  whenCond <- rawTerm
+  whenBody <- betweenBrace rawExpr
+  boolTrue <- lift $ locatorToName m coreBoolTrue
+  boolFalse <- lift $ locatorToName m coreBoolFalse
+  unitUnit <- lift $ locatorToVarGlobal m coreUnitUnit
+  return $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
 
 foldIf ::
   Hint ->
@@ -638,8 +650,8 @@ rawTermTuple = do
   m <- getCurrentHint
   keyword "tuple"
   es <- betweenParen $ commaList rawExpr
-  unitVar <- lift $ locatorToRawConsName m coreUnit
-  bothVar <- lift $ locatorToRawConsName m coreBoth
+  unitVar <- lift $ locatorToName m coreUnit
+  bothVar <- lift $ locatorToName m coreBoth
   case es of
     [] ->
       return $ m :< RT.Var unitVar
@@ -653,8 +665,8 @@ rawTermTupleIntro = do
   m <- getCurrentHint
   keyword "Tuple"
   es <- betweenParen $ commaList rawExpr
-  unitVar <- lift $ locatorToRawConsName m coreUnitUnit
-  bothVar <- lift $ locatorToRawConsName m coreBothBoth
+  unitVar <- lift $ locatorToName m coreUnitUnit
+  bothVar <- lift $ locatorToName m coreBothBoth
   case es of
     [] ->
       return $ m :< RT.Var unitVar
@@ -909,8 +921,8 @@ preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
   m :< RT.Var (Var str)
 
-locatorToRawConsName :: Hint -> T.Text -> App Name
-locatorToRawConsName m text = do
+locatorToName :: Hint -> T.Text -> App Name
+locatorToName m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ Locator (gl, ll)
 
