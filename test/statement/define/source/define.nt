@@ -49,6 +49,23 @@ define ♥️a🌟あ🌕α$-$`~!?@#%^&*/+|\_(): tau {
   tau
 }
 
+define is-even(x: int): int {
+  if eq-int(x, 0) {
+    2
+  } else {
+    is-odd(sub-int(x, 1))
+  }
+}
+
+define is-odd(x: int): int {
+  if eq-int(x, 0) {
+    1
+  } else {
+    is-even(sub-int(x, 1))
+  }
+}
+
 define main(): unit {
+  let _ = is-even(12345)
   Unit
 }
