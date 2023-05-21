@@ -57,7 +57,7 @@ define main(): unit {
       1
     - Some(pair) =>
       bind Tuple(_, right) = pair
-      {!right}()
+      {*right}()
     }
   }
   let _ = zs

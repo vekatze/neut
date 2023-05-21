@@ -14,7 +14,7 @@ define empty[a](): queue(a) {
 define head[a](q: &queue(a)): ?a {
   case q {
   - Tuple(x :: _, _) =>
-    Some(!x)
+    Some(*x)
   - _ =>
     None
   }
@@ -48,7 +48,7 @@ define sum(xs: &list(int)): int {
   - [] =>
     0
   - v :: rest =>
-    add-int(!v, sum(rest))
+    add-int(*v, sum(rest))
   }
 }
 

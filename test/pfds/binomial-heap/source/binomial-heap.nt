@@ -29,7 +29,7 @@ define link[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
 define rank[a](t: &tree(a)): int {
   case t {
   - Node(r, _, _) =>
-    !r
+    *r
   }
 }
 
@@ -76,7 +76,7 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
 define root[a](t: &tree(a)): a {
   case t {
   - Node(_, v, _) =>
-    !v
+    *v
   }
 }
 

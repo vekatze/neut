@@ -91,12 +91,12 @@ define sum-of-list(xs: &list(int)): int {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum-of-list(ys))
+    add-int(*y, sum-of-list(ys))
   }
 }
 ```
 
-`!e` copies the argument along its type, keeping the original noema intact. In the example above, a term of type `int` is obtained from a term `y: &int`, by writing `!y`.
+`*e` copies the argument along its type, keeping the original noema intact. In the example above, a term of type `int` is obtained from a term `y: &int`, by writing `*y`.
 
 ## Example: Get the Length of a List
 
@@ -156,7 +156,7 @@ let result on xs = hideX(xs) // the type of `result` is `jokerX` (dubious)
 let _ = xs                   // `xs` is discarded here
 match result {
 - HideX(xs) =>
-  !xs                        // CRASH: use-after-free!
+  *xs                        // CRASH: use-after-free!
 }
 ```
 
@@ -166,7 +166,7 @@ This restriction is checked at compile time by the type system of Neut.
 
 Some (including me) might find the above restriction rather ad-hoc. Indeed, there exists an alternative, more general approach. The approach essentially uses the ST monad; Every noetic type is now of the form `&s A`, where the `s` corresponds to the `s` in `STRef s a`.
 
-In this approach, `let-on` would internally use `runST: (forall s. ST s a) -> a` to ensure that the result doesn't depend on noetic values. Also, in this approach, the whole language will be made pure so that we can track every use of `!e` and `case`. This approach will be a variation of [Monadic State: Axiomatization and Type Safety](https://dl.acm.org/doi/abs/10.1145/258949.258970), or [Monadic Regions](https://dl.acm.org/doi/abs/10.1145/1016848.1016867).
+In this approach, `let-on` would internally use `runST: (forall s. ST s a) -> a` to ensure that the result doesn't depend on noetic values. Also, in this approach, the whole language will be made pure so that we can track every use of `*e` and `case`. This approach will be a variation of [Monadic State: Axiomatization and Type Safety](https://dl.acm.org/doi/abs/10.1145/258949.258970), or [Monadic Regions](https://dl.acm.org/doi/abs/10.1145/1016848.1016867).
 
 Then, why Neut didn't take this more general approach? This is because the virtue of all these noetic stuff lies in making our experience with certain fragments of the language better. Yes, we can make the language pure and change the formulation of noemata into `&s A`, but pursuing local generality here by modifying the whole language will go against the purpose of the optimization.
 

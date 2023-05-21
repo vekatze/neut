@@ -49,10 +49,10 @@ define main(): unit {
   // k = value-1 + value-1 + value-1 + value-3 = 3 + 3 + 3 + 10 = 19
   let k on config = {
     let s1 = value-1(config)
-    let s2 = !value-1(config)
+    let s2 = *value-1(config)
     let s3 = value-1(config)
     let s4 = value(value-3(config))
-    add-int(!s1, add-int(s2, add-int(!s3, !s4)))
+    add-int(*s1, add-int(s2, add-int(*s3, *s4)))
   }
   let _ = config
   let some-stream = int-stream(3)

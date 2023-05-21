@@ -26,7 +26,7 @@ define member[a](cmp: Cmp(a), x: a, t: &tree(a)): bool {
   - Leaf =>
     False
   - Node(_, t1, v, t2) =>
-    match cmp(x, !v) {
+    match cmp(x, *v) {
     - LT =>
       member(cmp, x, t1)
     - EQ =>

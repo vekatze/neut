@@ -45,11 +45,11 @@ define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, 
       - Leaf =>
         None
       - Node(left, k, v, right) =>
-        match compare(key, !k) {
+        match compare(key, *k) {
         - LT =>
           lookup(key, left)
         - EQ =>
-          Some(!v)
+          Some(*v)
         - GT =>
           lookup(key, right)
         }

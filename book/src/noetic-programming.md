@@ -75,7 +75,7 @@ The variables that are bound by a `case` are cast to be noetic. For example, the
 
 ## Using a Noema: Actualizing
 
-You can actualize a noema using `!e`:
+You can actualize a noema using `*e`:
 
 ```neut
 define sum-of-list(xs: &list(int)): int {
@@ -83,12 +83,12 @@ define sum-of-list(xs: &list(int)): int {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum-of-list(ys)) // using !e
+    add-int(*y, sum-of-list(ys)) // using *e
   }
 }
 ```
 
-`!e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `!y` is a `y`'s new copy of type `int`.
+`*e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `*y` is a `y`'s new copy of type `int`.
 
 ## The Type of a Static Text
 

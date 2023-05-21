@@ -31,7 +31,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         - Leaf =>
           0
         - Node(r, _, _, _) =>
-          !r
+          *r
         }
       }
     let make-Node =
@@ -84,7 +84,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       - Leaf =>
         None
       - Node(_, value, _, _) =>
-        Some(!value)
+        Some(*value)
       }
     }
   - delete-min =
