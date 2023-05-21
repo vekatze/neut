@@ -486,8 +486,6 @@ simplifyActual m dataNameSet t orig = do
   case t' of
     _ :< WT.Tau ->
       return ()
-    _ :< WT.Var _ ->
-      return () -- opaque type variable
     _ :< WT.Data dataName consNameList dataArgs -> do
       let ts1 = dataArgs
       ts2 <-
