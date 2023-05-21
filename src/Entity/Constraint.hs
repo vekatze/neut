@@ -7,8 +7,6 @@ import Entity.WeakTerm
 
 data Constraint
   = Eq WeakTerm WeakTerm -- (expected-type, actual-type)
-  | Immutable WeakTerm -- doesn't contain cells
-  | ImmutableTerm WeakTerm -- all the free variables in this term is immutable
   | Actual WeakTerm
 
 data ConstraintKind

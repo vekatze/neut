@@ -113,9 +113,12 @@ define remove-min-tree[a](cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a), hea
     Some(Tuple(t, []))
   - t :: ts =>
     let? Tuple(cand, ts-adjusted) = remove-min-tree(cmp, ts)
-    let root-head on t = root(t)
-    let root-cand on cand = root(cand)
-    match cmp(root-head, root-cand) {
+    let c on t, cand = {
+      let root-head = root(t)
+      let root-cand = root(cand)
+      cmp(root-head, root-cand)
+    }
+    match c {
     - LT =>
       Some(Tuple(t, cand :: ts-adjusted))
     - _ =>

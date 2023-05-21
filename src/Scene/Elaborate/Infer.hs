@@ -95,12 +95,10 @@ infer' varEnv term =
           (e', tBody) <- infer' extendedVarEnv e
           insConstraintEnv codType' tBody
           let term' = m :< WT.PiIntro (LK.Fix (mx, x, codType')) xts' e'
-          insertTermImmutabilityConstraint term'
           return (term', piType)
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
           let term' = m :< WT.PiIntro kind xts' e'
-          insertTermImmutabilityConstraint term'
           return (term', m :< WT.Pi xts' t')
     m :< WT.PiElim e es -> do
       etls <- mapM (infer' varEnv) es

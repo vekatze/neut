@@ -26,9 +26,9 @@ import Entity.LamKind qualified as LK
 import Entity.Remark qualified as R
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
+import Entity.WeakTerm qualified as Subst
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.FreeVars
-import Entity.WeakTerm.FreeVarsWithHint qualified as WT
 import Entity.WeakTerm.Holes
 import Entity.WeakTerm.ToText
 import Scene.WeakTerm.Fill
@@ -69,12 +69,6 @@ throwTypeErrors = do
   sub <- getHoleSubst
   errorList <- forM (Q.toList suspendedConstraintQueue) $ \(C.SuspendedConstraint (_, _, (_, c))) -> do
     case c of
-      C.Immutable t -> do
-        t' <- fillAsMuchAsPossible sub t
-        return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageImmutable t'
-      C.ImmutableTerm e -> do
-        e' <- fillAsMuchAsPossible sub e
-        return $ R.newRemark (WT.metaOf e) R.Error $ constructErrorMessageImmutableTerm e'
       C.Actual t -> do
         t' <- fillAsMuchAsPossible sub t
         return $ R.newRemark (WT.metaOf t) R.Error $ constructErrorMessageActual t'
@@ -98,16 +92,6 @@ constructErrorMessageEq actual expected =
     <> "\n- "
     <> toText expected
 
-constructErrorMessageImmutable :: WT.WeakTerm -> T.Text
-constructErrorMessageImmutable t =
-  "a term of the following type might be mutable:\n"
-    <> toText t
-
-constructErrorMessageImmutableTerm :: WT.WeakTerm -> T.Text
-constructErrorMessageImmutableTerm e =
-  "this term contains an uninstantiated hole:\n"
-    <> toText e
-
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =
   "a term of the following type might be noetic:\n"
@@ -118,11 +102,6 @@ simplify constraintList =
   case constraintList of
     [] ->
       return ()
-    (C.ImmutableTerm e, orig) : cs -> do
-      simplifyImmutableTerm e orig cs
-    (C.Immutable t, orig) : cs -> do
-      simplifyImmutable (WT.metaOf t) S.empty t orig
-      simplify cs
     (C.Actual t, orig) : cs -> do
       simplifyActual (WT.metaOf t) S.empty t orig
       simplify cs
@@ -402,79 +381,6 @@ lookupAny is sub =
         _ ->
           lookupAny js sub
 
-simplifyImmutableTerm :: WT.WeakTerm -> C.Constraint -> [(C.Constraint, C.Constraint)] -> App ()
-simplifyImmutableTerm e orig cs = do
-  let fmvs = holes e
-  if S.null fmvs
-    then do
-      let (ms, fvs) = unzip $ S.toList $ WT.freeVarsWithHint e
-      freeVarTypes <- mapM (lookupWeakTypeEnv (WT.metaOf e)) fvs
-      let freeVarTypes' = zipWith (\mt (_ :< t) -> mt :< t) ms freeVarTypes
-      let newConstraints = map C.Immutable freeVarTypes'
-      simplify $ zip newConstraints newConstraints ++ cs
-    else do
-      sub <- getHoleSubst
-      case lookupAny (S.toList fmvs) sub of
-        Just (h, (xs, body)) -> do
-          let s = HS.singleton h xs body
-          e' <- fill s e
-          simplifyImmutableTerm e' orig cs
-        Nothing -> do
-          let uc = C.SuspendedConstraint (fmvs, C.Other, (C.ImmutableTerm e, orig))
-          insertConstraint uc
-          simplify cs
-
-simplifyImmutable ::
-  Hint ->
-  S.Set DD.DefiniteDescription ->
-  WT.WeakTerm ->
-  C.Constraint ->
-  App ()
-simplifyImmutable m dataNameSet t orig = do
-  t' <- reduce t
-  case t' of
-    _ :< WT.Tau ->
-      return ()
-    _ :< WT.Var _ ->
-      return () -- opaque type variable
-    _ :< WT.Pi {} ->
-      return ()
-    _ :< WT.Data dataName consNameList dataArgs -> do
-      let ts1 = dataArgs
-      ts2 <-
-        if S.member dataName dataNameSet
-          then return []
-          else concat <$> mapM (getConsArgTypes m) consNameList
-      forM_ (ts1 ++ ts2) $ \t1 -> do
-        simplifyImmutable m (S.insert dataName dataNameSet) t1 orig
-    _ :< WT.Prim {} ->
-      return ()
-    _ :< WT.ResourceType _ ->
-      return ()
-    _ :< WT.Noema {} ->
-      return ()
-    _ :< WT.Flow {} ->
-      return ()
-    _ -> do
-      sub <- getHoleSubst
-      let fmvs = holes t'
-      case lookupAny (S.toList fmvs) sub of
-        Just (h, (xs, body)) -> do
-          let s = HS.singleton h xs body
-          t'' <- fill s t'
-          simplifyImmutable m dataNameSet t'' orig
-        Nothing -> do
-          defMap <- WeakDefinition.read
-          case asStuckedTerm t' of
-            Just (StuckPiElimVarGlobal dd args)
-              | Just lam <- Map.lookup dd defMap -> do
-                  simplifyImmutable m dataNameSet (toPiElim lam args) orig
-              | otherwise ->
-                  return ()
-            _ -> do
-              let uc = C.SuspendedConstraint (fmvs, C.Other, (C.Immutable t', orig))
-              insertConstraint uc
-
 simplifyActual ::
   Hint ->
   S.Set DD.DefiniteDescription ->
@@ -487,13 +393,17 @@ simplifyActual m dataNameSet t orig = do
     _ :< WT.Tau ->
       return ()
     _ :< WT.Data dataName consNameList dataArgs -> do
-      let ts1 = dataArgs
-      ts2 <-
+      let dataNameSet' = S.insert dataName dataNameSet
+      forM_ dataArgs $ \dataArg ->
+        simplifyActual m dataNameSet' dataArg orig
+      dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
-          else concat <$> mapM (getConsArgTypes m) consNameList
-      forM_ (ts1 ++ ts2) $ \t1 -> do
-        simplifyActual m (S.insert dataName dataNameSet) t1 orig
+          else mapM (getConsArgTypes m) consNameList
+      forM_ dataConsArgsList $ \dataConsArgs -> do
+        dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
+        forM_ dataConsArgs' $ \(_, _, consArg) -> do
+          simplifyActual m dataNameSet' consArg orig
     _ :< WT.Prim {} ->
       return ()
     _ :< WT.ResourceType _ ->
@@ -518,14 +428,26 @@ simplifyActual m dataNameSet t orig = do
               let uc = C.SuspendedConstraint (fmvs, C.Other, (C.Actual t', orig))
               insertConstraint uc
 
+substConsArgs :: Subst.SubstWeakTerm -> [BinderF WT.WeakTerm] -> App [BinderF WT.WeakTerm]
+substConsArgs sub consArgs =
+  case consArgs of
+    [] ->
+      return []
+    (m, x, t) : rest -> do
+      t' <- Subst.subst sub t
+      let opaque = m :< WT.Tau -- allow `a` in `Cons(a: tau, x: a)`
+      let sub' = IntMap.insert (Ident.toInt x) (Right opaque) sub
+      rest' <- substConsArgs sub' rest
+      return $ (m, x, t') : rest'
+
 getConsArgTypes ::
   Hint ->
   DD.DefiniteDescription ->
-  App [WT.WeakTerm]
+  App [BinderF WT.WeakTerm]
 getConsArgTypes m consName = do
   t <- Type.lookup m consName
   case t of
     _ :< WT.Pi xts _ -> do
-      return $ map (\(_, _, dom) -> dom) xts
+      return xts
     _ ->
       Throw.raiseCritical m $ "the type of a constructor must be a Π-type, but it's not:\n" <> toText t

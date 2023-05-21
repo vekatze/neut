@@ -2,7 +2,6 @@ module Context.Elaborate
   ( initialize,
     initializeInferenceEnv,
     insConstraintEnv,
-    insertTermImmutabilityConstraint,
     insertActualityConstraint,
     getConstraintEnv,
     insWeakTypeEnv,
@@ -54,10 +53,6 @@ initializeInferenceEnv = do
 insConstraintEnv :: WeakTerm -> WeakTerm -> App ()
 insConstraintEnv expected actual = do
   modifyRef' constraintEnv $ (:) (C.Eq expected actual)
-
-insertTermImmutabilityConstraint :: WeakTerm -> App ()
-insertTermImmutabilityConstraint e = do
-  modifyRef' constraintEnv $ (:) (C.ImmutableTerm e)
 
 insertActualityConstraint :: WeakTerm -> App ()
 insertActualityConstraint t = do
