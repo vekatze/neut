@@ -63,7 +63,7 @@ inferStmt mMainDD stmt =
 getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do
   baseSize <- Env.getBaseSize m
-  return $ WT.uIntTypeBySize m baseSize
+  return $ WT.intTypeBySize m baseSize
 
 getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do

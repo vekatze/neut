@@ -22,16 +22,6 @@ import Entity.WeakPrim qualified as WP
 
 type WeakTerm = Cofree WeakTermF Hint
 
-type MyWeakTerm a = Cofree WeakTermF Hint
-
-data Implicit
-
-data Explicit
-
-type ExpWeakTerm = MyWeakTerm Explicit
-
-type ImpWeakTerm = MyWeakTerm Implicit
-
 data WeakTermF a
   = Tau
   | Var Ident
@@ -91,8 +81,8 @@ toVar :: Hint -> Ident -> WeakTerm
 toVar m x =
   m :< Var x
 
-uIntTypeBySize :: Hint -> Int -> WeakTerm
-uIntTypeBySize m size =
+intTypeBySize :: Hint -> Int -> WeakTerm
+intTypeBySize m size =
   m :< Prim (WP.Type $ PT.Int $ IntSize size)
 
 metaOf :: WeakTerm -> Hint
