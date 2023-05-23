@@ -145,7 +145,7 @@ Neut optimizes all the tail calls. Thus, calculating length can be done faster u
 define length-of-my-list[a](xs: my-list(a)): int {
   let helper =
     // (you can also define a recursive function in a function)
-    define get-length(ys: my-list(a), acc: int): int {
+    mu get-length(ys: my-list(a), acc: int): int {
       match ys {
       - Nil =>
         acc

@@ -14,25 +14,16 @@ cd hello
 The module should contain a file `hello.nt` with the following content:
 
 ```neut
-define main(): int {
-  0
+define main(): unit {
+  print("Hello, world!\n")
 }
 ```
 
-Rewrite the file to something like the below:
-
-```neut
-define main(): int {
-  print("Hi!\n")
-  0
-}
-```
-
-Then compile and run the module:
+Let's compile and execute it:
 
 ```sh
 $ neut build --execute
-# => Hi!
+# => Hello, world!
 ```
 
 

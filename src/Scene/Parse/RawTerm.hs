@@ -1,6 +1,5 @@
 module Scene.Parse.RawTerm
   ( rawExpr,
-    rawTerm,
     preAscription,
     preBinder,
     parseTopDefInfo,
@@ -71,6 +70,7 @@ rawExprSeqOrTerm m = do
   e1 <- rawTerm
   choice
     [ do
+        notFollowedBy "-"
         e2 <- rawExpr
         f <- lift Gensym.newTextForHole
         unit <- lift $ locatorToVarGlobal m coreUnit
@@ -89,7 +89,6 @@ rawTerm = do
       rawTermIf,
       rawTermWhen,
       rawTermAssert,
-      rawTermListIntro,
       try rawTermPiGeneral,
       rawTermPiIntro,
       try rawTermPiElimByKey,
@@ -112,23 +111,19 @@ rawTermBasic = do
       rawTermPiElimOrSimple
     ]
 
-{-# INLINE rawTermSimple #-}
-rawTermSimple :: Parser RT.RawTerm
-rawTermSimple = do
-  lexeme rawTermSimpleWithoutLexeme
-
-{-# INLINE rawTermSimpleWithoutLexeme #-}
-rawTermSimpleWithoutLexeme :: Parser RT.RawTerm
-rawTermSimpleWithoutLexeme = do
+{-# INLINE rawTermSimple' #-}
+rawTermSimple' :: Parser RT.RawTerm
+rawTermSimple' = do
   choice
-    [ rawTermBraceWithoutLexeme,
-      rawTermTextIntroWithoutLexeme,
-      rawTermTauWithoutLexeme,
-      rawTermAdmitWithoutLexeme,
-      rawTermHoleWithoutLexeme,
-      rawTermIntegerWithoutLexeme,
-      rawTermFloatWithoutLexeme,
-      rawTermSymbolWithoutLexeme
+    [ rawTermBrace',
+      rawTermListIntro,
+      rawTermTextIntro',
+      rawTermTau',
+      rawTermAdmit',
+      rawTermHole',
+      rawTermInteger',
+      rawTermFloat',
+      rawTermSymbol'
     ]
 
 rawTermPiGeneral :: Parser RT.RawTerm
@@ -263,16 +258,16 @@ rawTermEmbody = do
   e <- rawTermBasic
   return $ m :< RT.Embody e
 
-rawTermTauWithoutLexeme :: Parser RT.RawTerm
-rawTermTauWithoutLexeme = do
+rawTermTau' :: Parser RT.RawTerm
+rawTermTau' = do
   m <- getCurrentHint
-  keywordWithoutLexeme "tau"
+  keyword' "tau"
   return $ m :< RT.Tau
 
-rawTermHoleWithoutLexeme :: Parser RT.RawTerm
-rawTermHoleWithoutLexeme = do
+rawTermHole' :: Parser RT.RawTerm
+rawTermHole' = do
   m <- getCurrentHint
-  keywordWithoutLexeme "_"
+  keyword' "_"
   lift $ Gensym.newPreHole m
 
 rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
@@ -397,7 +392,7 @@ rawTermMagicGlobal m = do
     lt <- lowType
     return $ m :< RT.Magic (M.Global lt (EN.ExternalName globalVarName))
 
--- -- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
+-- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: Parser LT.LowType
 lowType = do
   choice
@@ -416,7 +411,7 @@ lowTypeArray :: Parser LT.LowType
 lowTypeArray = do
   keyword "array"
   betweenParen $ do
-    intValue <- integer
+    intValue <- lexeme integer'
     delimiter ","
     LT.Array (fromInteger intValue) <$> lowType
 
@@ -444,7 +439,7 @@ rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
   keyword "match"
-  es <- commaList rawTermBasic
+  es <- commaList rawTermPiOrConsOrAscOrBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim False es (RP.new patternRowList)
 
@@ -556,13 +551,12 @@ foldTuplePat m unitVar bothVar es =
       (m, RP.Cons bothVar [e, rest'])
 
 parseName :: Parser (Hint, Name)
-parseName =
-  lexeme parseNameWithoutLexeme
+parseName = do
+  lexeme parseName'
 
-{-# INLINE parseNameWithoutLexeme #-}
-parseNameWithoutLexeme :: Parser (Hint, Name)
-parseNameWithoutLexeme = do
-  (m, varText) <- varWithoutLexeme
+parseName' :: Parser (Hint, Name)
+parseName' = do
+  (m, varText) <- var'
   case DD.getLocatorPair m varText of
     Left _ ->
       return (m, Var varText)
@@ -641,9 +635,9 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
               ]
           )
 
-rawTermBraceWithoutLexeme :: Parser RT.RawTerm
-rawTermBraceWithoutLexeme =
-  betweenBraceWithoutLexeme rawExpr
+rawTermBrace' :: Parser RT.RawTerm
+rawTermBrace' =
+  betweenBrace' rawExpr
 
 rawTermTuple :: Parser RT.RawTerm
 rawTermTuple = do
@@ -700,7 +694,7 @@ rawTermFlowIntro = do
   keyword "detach"
   flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   detachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadDetach
-  e <- rawTermSimple
+  e <- lexeme rawTermSimple'
   return $ m :< RT.FlowIntro flowVar detachVar e
 
 rawTermFlowElim :: Parser RT.RawTerm
@@ -709,7 +703,7 @@ rawTermFlowElim = do
   keyword "attach"
   flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
   attachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadAttach
-  e <- rawTermSimple
+  e <- lexeme rawTermSimple'
   return $ m :< RT.FlowElim flowVar attachVar e
 
 rawTermOption :: Parser RT.RawTerm
@@ -735,10 +729,10 @@ rawTermOptionSome = do
   someVar <- lift $ locatorToVarGlobal m coreEitherSomeInternal
   return $ m :< RT.PiElim someVar [e]
 
-rawTermAdmitWithoutLexeme :: Parser RT.RawTerm
-rawTermAdmitWithoutLexeme = do
+rawTermAdmit' :: Parser RT.RawTerm
+rawTermAdmit' = do
   m <- getCurrentHint
-  keywordWithoutLexeme "admit"
+  keyword' "admit"
   admit <- lift $ locatorToVarGlobal m coreSystemAdmit
   textType <- lift $ locatorToVarGlobal m coreText
   return $
@@ -770,8 +764,8 @@ rawTermAssert = do
 rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
-  e <- rawTermSimpleWithoutLexeme
-  argListList <- lexeme $ many $ argListWithoutLexeme rawExpr
+  e <- rawTermSimple'
+  argListList <- many $ argList' rawExpr
   spaceConsumer
   foldPiElim m e argListList
 
@@ -887,29 +881,29 @@ getIntrospectiveValue m key = do
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 
-rawTermSymbolWithoutLexeme :: Parser RT.RawTerm
-rawTermSymbolWithoutLexeme = do
-  (m, varOrLocator) <- parseNameWithoutLexeme
+rawTermSymbol' :: Parser RT.RawTerm
+rawTermSymbol' = do
+  (m, varOrLocator) <- parseName'
   return $ m :< RT.Var varOrLocator
 
-rawTermTextIntroWithoutLexeme :: Parser RT.RawTerm
-rawTermTextIntroWithoutLexeme = do
+rawTermTextIntro' :: Parser RT.RawTerm
+rawTermTextIntro' = do
   m <- getCurrentHint
-  s <- stringWithoutLexeme
+  s <- string'
   textType <- lift $ locatorToVarGlobal m coreText
   return $ m :< RT.Prim (WP.Value (WPV.StaticText textType s))
 
-rawTermIntegerWithoutLexeme :: Parser RT.RawTerm
-rawTermIntegerWithoutLexeme = do
+rawTermInteger' :: Parser RT.RawTerm
+rawTermInteger' = do
   m <- getCurrentHint
-  intValue <- try integerWithoutLexeme
+  intValue <- try integer'
   h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Int h intValue))
 
-rawTermFloatWithoutLexeme :: Parser RT.RawTerm
-rawTermFloatWithoutLexeme = do
+rawTermFloat' :: Parser RT.RawTerm
+rawTermFloat' = do
   m <- getCurrentHint
-  floatValue <- try float
+  floatValue <- try float'
   h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
 

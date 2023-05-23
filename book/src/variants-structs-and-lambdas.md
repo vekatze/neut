@@ -123,7 +123,7 @@ define create-struct(): config(my-list(int)) {
 }
 
 define use-struct(c: config(a)): int {
-  let Config(x, y, z) = c // destructive bind
+  let Config(x, y, z) = c in // destructive bind
   0
 }
 ```

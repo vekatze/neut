@@ -29,6 +29,7 @@ Except for `cast`, the resulting type of a `magic` is not specified. Thus, you o
 
 ```neut
 let result: int = magic syscall(12345, arg-1, arg-2)
+(...)
 ```
 
 ## On the Syntax of Store and Load

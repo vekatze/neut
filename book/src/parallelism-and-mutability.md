@@ -7,14 +7,16 @@ Here, we'll see how parallelism in Neut works. Parallel control flows can commun
 Neut has a feature for parallelism. It is a thin layer over pthread, and works like async/await:
 
 ```neut
-let f1: flow(int) = detach { // like async
-  print("fA")
-  1
-}
-let f2: flow(int) = detach { // like async
-  print("fb")
-  2
-}
+let f1: flow(int) =
+  detach { // like async
+    print("fA")
+    1
+  }
+let f2: flow(int) =
+  detach { // like async
+    print("fb")
+    2
+  }
 let v1 = attach f1 // like await
 let v2 = attach f2 // like await
 print("hey")
@@ -37,15 +39,17 @@ let ch0 = new-channel(int)
 let ch1 = new-channel(int)
 // channels as queues
 let result on ch0, ch1 = {
-  let f = detach {
-    let message0 = receive(ch0)
-    send(ch1, add-int(message0, 1))
-    message0
-  }
-  let g = detach {
-    let message1 = receive(ch1)
-    add-int(message1, 1)
-  }
+  let f =
+    detach {
+      let message0 = receive(ch0)
+      send(ch1, add-int(message0, 1))
+      message0
+    }
+  let g =
+    detach {
+      let message1 = receive(ch1)
+      add-int(message1, 1)
+    }
   send(ch0, 0)
   let v1 = attach f // v1 == 1
   let v2 = attach g // v2 == 2
@@ -92,6 +96,8 @@ define sample(): int {
     // get the length of the list in the cell, again
     let len2 = borrow(xs-cell, (xs) => { length(xs) })
     // (len2 == 2)
+
+    ...
   }
   ...
 }

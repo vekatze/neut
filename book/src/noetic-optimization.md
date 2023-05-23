@@ -118,9 +118,9 @@ A noema doesn't make sense if its hyle is discarded. This means, for example, we
 
 ```neut
 let xs = [1, 2]
-let result on xs = xs // the result of let-on is a noema `xs`
-let _ = xs // since the variable `_` isn't used,
-           // the source `xs` is discarded here
+let result on xs = xs  // the result of let-on is a noema `xs`
+let _ = xs     // since the variable `_` isn't used,
+               // the source `xs` is discarded here
 match result { // ... and thus this results in use-after-free!
 - [] =>
   print("hey")
@@ -133,6 +133,7 @@ Thus, we need to restrict the value `result` so that it can't contain any noemat
 
 This can be achieved by imposing the following restriction on the type of `result`:
 
+- it can't contain any free variables,
 - it can't contain any `&A`s,
 - it can't contain function types (since a noema can reside in it), and
 - it can't contain any "dubious" variant types.
@@ -141,11 +142,11 @@ Here, a "dubious" variant type is a variant type like the below:
 
 ```neut
 variant joker-x {
-- HideX(&A)
+- HideX(&A) // contains a noetic argument
 }
 
 variant joker-y {
-- HideY(int -> bool)
+- HideY(int -> bool) // contains a functional argument
 }
 ```
 

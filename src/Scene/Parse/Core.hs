@@ -17,7 +17,7 @@ import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
 import Path
 import Text.Megaparsec
-import Text.Megaparsec.Char
+import Text.Megaparsec.Char hiding (string')
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
 
@@ -72,16 +72,17 @@ lexeme =
 
 symbol :: Parser T.Text
 symbol = do
-  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+  lexeme symbol'
 
-symbolWithoutLexeme :: Parser T.Text
-symbolWithoutLexeme = do
+symbol' :: Parser T.Text
+symbol' = do
   takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
 baseName :: Parser BN.BaseName
 baseName = do
-  bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
-  lexeme $ return $ BN.fromText bn
+  lexeme $ do
+    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+    return $ BN.fromText bn
 
 baseNameCapitalized :: Parser BN.BaseName
 baseNameCapitalized = do
@@ -92,13 +93,10 @@ baseNameCapitalized = do
 
 keyword :: T.Text -> Parser ()
 keyword expected = do
-  try $
-    lexeme $ do
-      _ <- chunk expected
-      label (T.unpack expected) $ notFollowedBy symbol
+  lexeme $ keyword' expected
 
-keywordWithoutLexeme :: T.Text -> Parser ()
-keywordWithoutLexeme expected = do
+keyword' :: T.Text -> Parser ()
+keyword' expected = do
   try $ do
     _ <- chunk expected
     label (T.unpack expected) $ notFollowedBy symbol
@@ -108,29 +106,29 @@ nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
 
 delimiter :: T.Text -> Parser ()
-delimiter expected = do
-  lexeme $ void $ chunk expected
+delimiter = do
+  lexeme . delimiter'
 
-delimiterWithoutLexeme :: T.Text -> Parser ()
-delimiterWithoutLexeme expected = do
+delimiter' :: T.Text -> Parser ()
+delimiter' expected = do
   void $ chunk expected
 
 string :: Parser T.Text
 string =
-  lexeme stringWithoutLexeme
+  lexeme string'
 
-stringWithoutLexeme :: Parser T.Text
-stringWithoutLexeme = do
+string' :: Parser T.Text
+string' = do
   _ <- char '\"'
   T.pack <$> manyTill L.charLiteral (char '\"')
 
 integer :: Parser Integer
-integer = do
-  lexeme integerWithoutLexeme
+integer =
+  lexeme integer'
 
-integerWithoutLexeme :: Parser Integer
-integerWithoutLexeme = do
-  s <- symbolWithoutLexeme
+integer' :: Parser Integer
+integer' = do
+  s <- symbol'
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -139,11 +137,11 @@ integerWithoutLexeme = do
 
 float :: Parser Double
 float =
-  lexeme floatWithoutLexeme
+  lexeme float'
 
-floatWithoutLexeme :: Parser Double
-floatWithoutLexeme = do
-  s <- symbolWithoutLexeme
+float' :: Parser Double
+float' = do
+  s <- symbol'
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -163,43 +161,35 @@ bool = do
 
 betweenParen :: Parser a -> Parser a
 betweenParen =
-  lexeme . betweenParenWithoutLexeme
+  lexeme . betweenParen'
 
-{-# INLINE betweenParenWithoutLexeme #-}
-betweenParenWithoutLexeme :: Parser a -> Parser a
-betweenParenWithoutLexeme =
-  between (delimiter "(") (delimiterWithoutLexeme ")")
+betweenParen' :: Parser a -> Parser a
+betweenParen' =
+  between (delimiter "(") (delimiter' ")")
 
 betweenBrace :: Parser a -> Parser a
 betweenBrace =
-  lexeme . betweenBraceWithoutLexeme
+  lexeme . betweenBrace'
 
-{-# INLINE betweenBraceWithoutLexeme #-}
-betweenBraceWithoutLexeme :: Parser a -> Parser a
-betweenBraceWithoutLexeme =
-  between (delimiter "{") (delimiterWithoutLexeme "}")
+betweenBrace' :: Parser a -> Parser a
+betweenBrace' =
+  between (delimiter "{") (delimiter' "}")
 
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
-  lexeme . betweenBracketWithoutLexeme
-
-{-# INLINE betweenBracketWithoutLexeme #-}
-betweenBracketWithoutLexeme :: Parser a -> Parser a
-betweenBracketWithoutLexeme =
-  between (delimiter "[") (delimiterWithoutLexeme "]")
+  between (delimiter "[") (delimiter "]")
 
 commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")
 
 argList :: Parser a -> Parser [a]
-argList f = do
-  lexeme $ argListWithoutLexeme f
+argList = do
+  lexeme . argList'
 
-{-# INLINE argListWithoutLexeme #-}
-argListWithoutLexeme :: Parser a -> Parser [a]
-argListWithoutLexeme f = do
-  betweenParenWithoutLexeme $ commaList f
+argList' :: Parser a -> Parser [a]
+argList' f = do
+  betweenParen' $ commaList f
 
 impArgList :: Parser a -> Parser [a]
 impArgList f =
@@ -214,20 +204,12 @@ manyList f =
 
 var :: Parser (Hint, T.Text)
 var = do
-  notFollowedBy (char '-')
-  m <- getCurrentHint
-  x <- symbol
-  if x /= "_"
-    then return (m, x)
-    else do
-      unusedVar <- lift Gensym.newTextForHole
-      return (m, unusedVar)
+  lexeme var'
 
-varWithoutLexeme :: Parser (Hint, T.Text)
-varWithoutLexeme = do
-  notFollowedBy (char '-')
+var' :: Parser (Hint, T.Text)
+var' = do
   m <- getCurrentHint
-  x <- symbolWithoutLexeme
+  x <- symbol'
   if x /= "_"
     then return (m, x)
     else do
@@ -243,11 +225,6 @@ nonSymbolCharSet =
 nonBaseNameCharSet :: S.Set Char
 nonBaseNameCharSet =
   S.insert nsSepChar nonSymbolCharSet
-
-{-# INLINE spaceCharSet #-}
-spaceCharSet :: S.Set Char
-spaceCharSet =
-  S.fromList " \n\t"
 
 asTokens :: T.Text -> ErrorItem Char
 asTokens s =

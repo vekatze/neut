@@ -30,6 +30,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "export",
         "if",
         "import",
+        "in",
         "introspect",
         "lambda",
         "let",

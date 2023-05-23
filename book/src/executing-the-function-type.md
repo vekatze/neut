@@ -10,12 +10,13 @@ Suppose we have a function like the below:
 define foo(a: tau): int {
   let x: int = 10
   let y = tau
-  (z: a) => {
-    let foo = x
-    let bar = y
-    let buz = z
-    bar
-  }
+  let f =
+    (z: a) => { // lambda function
+      let foo = x
+      let bar = y
+      let buz = z
+      bar
+    }
   0
 }
 ```

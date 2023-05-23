@@ -125,14 +125,13 @@ define main(): unit {
     print-int(100)
   - Some(h) =>
     let h = insert(9, h)
-    let min on h = {
+    let min on h =
       match find-min(h) {
       - None =>
         print-int(100)
       - Some(value) =>
         print-int(value)
       }
-    }
     let _ = h
     let _ = min
     Unit

@@ -2,7 +2,7 @@
 
 # e.g. ./update-core.sh ./pfds
 
-NEW_VERSION=0.2.0.18
+NEW_VERSION=0.2.0.21
 
 TARGET_DIR=$(cd "$1"; pwd)
 cd $TARGET_DIR

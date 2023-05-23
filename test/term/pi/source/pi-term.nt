@@ -31,13 +31,14 @@ define test-syntax(): unit {
       x
     }
   let f = (_: tau, _: tau, _: tau) => { tau }
-  let _ = f(
-    let _ = tau
-    tau,
-    tau,
-    let _ = tau
-    {() => { tau }}()
-  )
+  let _ =
+    f(
+      let _ = tau
+      tau,
+      tau,
+      let _ = tau
+      {() => { tau }}()
+    )
   Unit
 }
 
@@ -54,6 +55,7 @@ define test-resource(): unit {
 
 define sample(): tau {
   let _ = tau
+  Unit
   (tau, tau) -> tau
 }
 

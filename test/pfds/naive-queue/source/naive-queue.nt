@@ -58,7 +58,7 @@ define main(): unit {
   let q = snoc([5], q)
   let q = snoc([1], q)
   // v1 == 2
-  let v1 on q = {
+  let v1 on q =
     match head(q) {
     - Some(xs1) =>
       let v1 on xs1 = sum(xs1)
@@ -67,7 +67,7 @@ define main(): unit {
     - None =>
       4
     }
-  }
+
   let mq = tail(q)
   let result =
     match mq {
@@ -77,7 +77,7 @@ define main(): unit {
       let q = snoc([3], q)
       let q = snoc([8], q)
       // v2 = 5
-      let v2 on q = {
+      let v2 on q =
         match head(q) {
         - Some(xs) =>
           let v on xs = sum(xs)
@@ -86,7 +86,6 @@ define main(): unit {
         - None =>
           4
         }
-      }
       let _ = q
       // 2 + 5 = 7
       add-int(v1, v2)

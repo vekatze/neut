@@ -74,14 +74,13 @@ define main(): unit {
   let h = insert(compare-int, 3, h)
   let h = insert(compare-int, 8, h)
   let h = insert(compare-int, 2, h)
-  let maybe-min on h = {
+  let maybe-min on h =
     match find-min(h) {
     - None =>
       10
     - Some(min) =>
       min
     }
-  }
   let _ = h
   print-int(maybe-min)
   print("\n")

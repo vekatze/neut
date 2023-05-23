@@ -162,6 +162,7 @@ define nested-enum-match(t: term(my-enum)): my-enum {
       let _ = t
       Foo
     }
+
   match val {
   - Foo =>
     let _ = val
