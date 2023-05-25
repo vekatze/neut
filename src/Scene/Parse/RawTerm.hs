@@ -81,7 +81,7 @@ rawExprSeqOrTerm m = do
 rawTerm :: Parser RT.RawTerm
 rawTerm = do
   choice
-    [ rawTermPiIntroDef,
+    [ rawTermMu,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatchNoetic,
@@ -330,8 +330,8 @@ parseDefInfoCod m =
     ]
 
 -- define name(x1: A1, ..., xn: An)[: A] as e end
-rawTermPiIntroDef :: Parser RT.RawTerm
-rawTermPiIntroDef = do
+rawTermMu :: Parser RT.RawTerm
+rawTermMu = do
   m <- getCurrentHint
   keyword "mu"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
