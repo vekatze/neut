@@ -190,7 +190,7 @@ rawTermLetOrLetOn m = do
     [ do
         keyword "on"
         noeticVarList <- commaList rawTermNoeticVar
-        lift $ ensureNoeticVarLinearity m S.empty $ map snd noeticVarList
+        lift $ ensureIdentLinearity m S.empty $ map snd noeticVarList
         delimiter "="
         e1 <- rawTerm
         e2 <- rawExpr
@@ -245,8 +245,8 @@ rawExprBind m = do
   e2 <- rawExpr
   return $ m :< RT.Let (mx, x, t) [] e1 (modifier True e2)
 
-ensureNoeticVarLinearity :: Hint -> S.Set RawIdent -> [RawIdent] -> App ()
-ensureNoeticVarLinearity m foundVarSet vs =
+ensureIdentLinearity :: Hint -> S.Set RawIdent -> [RawIdent] -> App ()
+ensureIdentLinearity m foundVarSet vs =
   case vs of
     [] ->
       return ()
@@ -254,7 +254,7 @@ ensureNoeticVarLinearity m foundVarSet vs =
       | S.member name foundVarSet ->
           Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
-          ensureNoeticVarLinearity m (S.insert name foundVarSet) rest
+          ensureIdentLinearity m (S.insert name foundVarSet) rest
 
 rawTermNoeticVar :: Parser (Hint, T.Text)
 rawTermNoeticVar = do
@@ -332,9 +332,21 @@ parseTopDefInfo = do
   funcBaseName <- baseName
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) domInfoList
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
   return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
+
+ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
+ensureArgumentLinearity foundVarSet vs =
+  case vs of
+    [] ->
+      return ()
+    (m, name) : rest
+      | S.member name foundVarSet ->
+          Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
+      | otherwise ->
+          ensureArgumentLinearity (S.insert name foundVarSet) rest
 
 parseDefInfoCod :: Hint -> Parser RT.RawTerm
 parseDefInfoCod m =
