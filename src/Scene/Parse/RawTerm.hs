@@ -333,9 +333,28 @@ parseTopDefInfo = do
   impDomInfoList <- impArgList preBinder
   domInfoList <- argList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) domInfoList
+  additionalDomInfoList <- many $ argList preBinder
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
-  return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
+  let codType' = foldPi m additionalDomInfoList codType
+  let e' = foldLam m additionalDomInfoList e
+  return ((m, funcBaseName), impDomInfoList, domInfoList, codType', e')
+
+foldLam :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
+foldLam m domInfoList e =
+  case domInfoList of
+    [] ->
+      e
+    domInfo : rest ->
+      lam m domInfo $ foldLam m rest e
+
+foldPi :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
+foldPi m domInfoList e =
+  case domInfoList of
+    [] ->
+      e
+    domInfo : rest ->
+      m :< RT.Pi domInfo (foldPi m rest e)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =

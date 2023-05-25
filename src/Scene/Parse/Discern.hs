@@ -103,6 +103,7 @@ discern nenv term =
           interpretGlobalName m dd gn
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
+      forM_ xts' $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi xts' t'
     m :< RT.PiIntro kind xts e -> do
       case kind of
