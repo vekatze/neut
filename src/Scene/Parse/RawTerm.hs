@@ -81,6 +81,14 @@ rawExprSeqOrTerm m = do
 rawTerm :: Parser RT.RawTerm
 rawTerm = do
   choice
+    [ try rawTermPiGeneral,
+      rawTermPiIntro,
+      rawTermPiOrConsOrAscOrBasic
+    ]
+
+rawTermBasic :: Parser RT.RawTerm
+rawTermBasic = do
+  choice
     [ rawTermMu,
       rawTermIntrospect,
       rawTermMagic,
@@ -89,16 +97,7 @@ rawTerm = do
       rawTermIf,
       rawTermWhen,
       rawTermAssert,
-      try rawTermPiGeneral,
-      rawTermPiIntro,
-      try rawTermPiElimByKey,
-      rawTermPiOrConsOrAscOrBasic
-    ]
-
-rawTermBasic :: Parser RT.RawTerm
-rawTermBasic = do
-  choice
-    [ rawTermNoema,
+      rawTermNoema,
       rawTermFlow,
       rawTermFlowIntro,
       rawTermFlowElim,
@@ -140,6 +139,45 @@ rawTermPiIntro = do
   varList <- argList preBinder
   delimiter "=>"
   lam m varList <$> betweenBrace rawExpr
+
+rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
+rawTermPiOrConsOrAscOrBasic = do
+  m <- getCurrentHint
+  basic <- rawTermBasic
+  choice
+    [ do
+        delimiter "->"
+        x <- lift Gensym.newTextForHole
+        cod <- rawTerm
+        return $ m :< RT.Pi [(m, x, basic)] cod,
+      do
+        delimiter "::"
+        rest <- rawTerm
+        listCons <- lift $ locatorToVarGlobal m coreListCons
+        return $ m :< RT.PiElim listCons [basic, rest],
+      do
+        delimiter ":"
+        t <- rawTerm
+        ascribe m t basic,
+      case basic of
+        _ :< RT.Var name -> do
+          choice
+            [ do
+                keyword "at"
+                rowList <- betweenBrace $ manyList rawTermKeyValuePair
+                return $ m :< RT.PiElimByKey name rowList,
+              return basic
+            ]
+        _ ->
+          return basic
+    ]
+
+rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
+rawTermKeyValuePair = do
+  (m, key) <- var
+  delimiter "=>"
+  value <- rawExpr
+  return (m, key, value)
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
@@ -269,28 +307,6 @@ rawTermHole' = do
   m <- getCurrentHint
   keyword' "_"
   lift $ Gensym.newPreHole m
-
-rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
-rawTermPiOrConsOrAscOrBasic = do
-  m <- getCurrentHint
-  basic <- rawTermBasic
-  choice
-    [ do
-        delimiter "->"
-        x <- lift Gensym.newTextForHole
-        cod <- rawTerm
-        return $ m :< RT.Pi [(m, x, basic)] cod,
-      do
-        delimiter "::"
-        rest <- rawTerm
-        listCons <- lift $ locatorToVarGlobal m coreListCons
-        return $ m :< RT.PiElim listCons [basic, rest],
-      do
-        delimiter ":"
-        t <- rawTerm
-        ascribe m t basic,
-      return basic
-    ]
 
 foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
 foldByOp m op es =
@@ -776,20 +792,6 @@ foldPiElim m e argListList =
       return e
     args : rest ->
       foldPiElim m (m :< RT.PiElim e args) rest
-
-rawTermPiElimByKey :: Parser RT.RawTerm
-rawTermPiElimByKey = do
-  m <- getCurrentHint
-  name <- snd <$> parseName
-  rowList <- betweenBrace $ manyList rawTermKeyValuePair
-  return $ m :< RT.PiElimByKey name rowList
-
-rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
-rawTermKeyValuePair = do
-  (m, key) <- var
-  delimiter "="
-  value <- rawExpr
-  return (m, key, value)
 
 preBinder :: Parser (RawBinder RT.RawTerm)
 preBinder =

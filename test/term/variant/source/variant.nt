@@ -215,9 +215,9 @@ struct monoid(a) by Monoid {
 }
 
 define-inline list-monoid[a](): monoid(list(a)) {
-  Monoid {
-  - m-op = core.list.append
-  - m-empty = []
+  Monoid at {
+  - m-op => core.list.append
+  - m-empty => []
   }
 }
 

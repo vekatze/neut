@@ -20,10 +20,10 @@ struct finite-map-signature(a, b) by Finite-Map {
 }
 
 define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, b) {
-  Finite-Map {
-  - empty =
+  Finite-Map at {
+  - empty =>
     Leaf
-  - insert =
+  - insert =>
     mu insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
       match haystack {
       - Leaf =>
@@ -39,7 +39,7 @@ define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, 
         }
       }
     }
-  - lookup =
+  - lookup =>
     mu lookup(key: a, haystack: &finite-map(a, b)): ?b {
       case haystack {
       - Leaf =>

@@ -60,10 +60,10 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       }
     }
   }
-  Heap {
-  - empty =
+  Heap at {
+  - empty =>
     Leaf
-  - is-empty =
+  - is-empty =>
     (h: &heap(a)) => {
       case h {
       - Leaf =>
@@ -72,13 +72,13 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         False
       }
     }
-  - insert =
+  - insert =>
     (x: a, h: heap(a)) => {
       merge(Node(1, x, Leaf, Leaf), h)
     }
-  - merge =
+  - merge =>
     merge
-  - find-min =
+  - find-min =>
     (h: &heap(a)) => {
       case h {
       - Leaf =>
@@ -87,7 +87,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         Some(*value)
       }
     }
-  - delete-min =
+  - delete-min =>
     (h: heap(a)) => {
       match h {
       - Leaf =>
