@@ -70,22 +70,20 @@ discernStmtKind stmtKind =
   case stmtKind of
     SK.Normal opacity ->
       return $ SK.Normal opacity
-    SK.Data dataName dataArgs consInfoList projectionList -> do
+    SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       let (consNameList, isConstLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
       forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       let consInfoList' = zip4 consNameList isConstLikeList consArgsList' discriminantList
-      return $ SK.Data dataName dataArgs' consInfoList' projectionList
+      return $ SK.Data dataName dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
       (consArgs', nenv') <- discernBinder nenv consArgs
       forM_ nenv' $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       return $ SK.DataIntro dataName dataArgs' consArgs' discriminant
-    SK.Projection ->
-      return SK.Projection
 
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =
@@ -403,8 +401,6 @@ getSuppliedRuleList availableRuleList ruleArrowList = do
         Throw.raiseError mRule "specified rule doesn't belong to the variant type"
       (True, GN.DataIntro {}) ->
         return ()
-      (True, GN.Projection {}) ->
-        return ()
       (True, _) ->
         Throw.raiseError mRule "not a variant rule"
   return $ map (\(_, aliasDD, ruleDD, _) -> (aliasDD, ruleDD)) resolvedRuleInfoList
@@ -416,8 +412,6 @@ ensureNotRule m gn =
       Throw.raiseError m "variant types can only be exported via `variant-type {...}`"
     GN.DataIntro {} ->
       Throw.raiseError m "constructors can only be exported via `variant-type {...}`"
-    GN.Projection {} ->
-      Throw.raiseError m "projections can only be exported via `variant-type {...}`"
     _ ->
       return ()
 

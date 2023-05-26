@@ -8,9 +8,6 @@ import {
 
 export {
 - config {
-  - L.value-1
-  - value-1 => test
-  - value-2
   - Config
   }
 - sample-2 => my-sample-2 {
@@ -24,16 +21,17 @@ define do-something(): tau {
 
 define k(): L.my-sample-alias {
   Bar(3)
-  // L.Foo-Alias
 }
 
 define do-next(): this.private.sample-2(tau) {
   Foo2
 }
 
-struct main-config by Main-Config {
-- sample: int
-- test: L.my-sample-alias
+variant main-config {
+- Main-Config(
+    sample: int,
+    test: L.my-sample-alias
+  )
 }
 
 variant hogehoge {
@@ -46,8 +44,6 @@ define main(): unit {
   let _ = L.Foo3
   let _ = L.Bar3-Alias
   let _ = L.config
-  let _ = L.value-1
-  let _ = L.value-3
   let _ = L.my-sample-alias
   let _ = Bar
   Unit

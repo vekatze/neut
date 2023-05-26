@@ -9,7 +9,7 @@
 - [Language Tour](./language-tour.md)
   - [Installation](./installation.md)
   - [Preliminaries](./preliminaries.md)
-  - [Variants, Structs, and Lambdas](./variants-structs-and-lambdas.md)
+  - [Variants and Lambdas](./variants-and-lambdas.md)
   - [Noetic Programming](./noetic-programming.md)
   - [Parallelism and Mutability](./parallelism-and-mutability.md)
   - [Other Built-in Utilities](./other-built-in-utilities.md)

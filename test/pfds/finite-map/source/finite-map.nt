@@ -13,10 +13,12 @@ variant finite-map(a, b) {
 - Node(finite-map(a, b), a, b, finite-map(a, b))
 }
 
-struct finite-map-signature(a, b) by Finite-Map {
-- empty: finite-map(a, b)
-- insert: (a, b, finite-map(a, b)) -> finite-map(a, b)
-- lookup: (a, &finite-map(a, b)) -> ?b
+variant finite-map-signature(a, b) {
+- Finite-Map(
+    empty: finite-map(a, b),
+    insert: (a, b, finite-map(a, b)) -> finite-map(a, b),
+    lookup: (a, &finite-map(a, b)) -> ?b
+  )
 }
 
 define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, b) {
@@ -69,7 +71,7 @@ define compare-int(x: int, y: int): order {
 }
 
 define main(): unit {
-  let Finite-Map(empty, insert, lookup) = make-finite-map(compare-int)
+  let Finite-Map(..) = make-finite-map(compare-int)
   let mymap = insert(1, [tau], empty)
   let mymap = insert(2, [tau, tau], mymap)
   let mymap = insert(2, [tau, tau], mymap)

@@ -56,13 +56,11 @@ registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum
-    SK.Data dataName dataArgs consInfoList projectionList -> do
-      registerData isConstLike m dataName dataArgs consInfoList projectionList
+    SK.Data dataName dataArgs consInfoList -> do
+      registerData isConstLike m dataName dataArgs consInfoList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
     SK.DataIntro {} ->
       return ()
-    SK.Projection ->
-      registerProjection isConstLike m name impArgNum allArgNum
 
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
@@ -83,11 +81,6 @@ registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
   let arity = A.fromInt (AN.reify allArgNum)
   registerTopLevelFunc' m topLevelName impArgNum $ GN.TopLevelFunc arity isConstLike
 
-registerProjection :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
-registerProjection isConstLike m topLevelName impArgNum allArgNum = do
-  let arity = A.fromInt (AN.reify allArgNum)
-  registerTopLevelFunc' m topLevelName impArgNum $ GN.Projection arity isConstLike
-
 registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.GlobalName -> App ()
 registerTopLevelFunc' m topLevelName impArgNum gn = do
   topNameMap <- readRef' nameMap
@@ -101,15 +94,14 @@ registerData ::
   DD.DefiniteDescription ->
   [a] ->
   [(DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
-  [DD.DefiniteDescription] ->
   App ()
-registerData isConstLike m dataName dataArgs consInfoList projectionList = do
+registerData isConstLike m dataName dataArgs consInfoList = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap dataName
   let consList = map (\(consName, _, _, _) -> consName) consInfoList
   let dataArity = A.fromInt $ length dataArgs
   let dataArgNum = AN.fromInt (length dataArgs)
-  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity (consList ++ projectionList) isConstLike
+  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList isConstLike
   forM_ consInfoList $ \(consName, isConstLikeCons, consArgs, discriminant) -> do
     topNameMap' <- readRef' nameMap
     ensureFreshness m topNameMap' consName

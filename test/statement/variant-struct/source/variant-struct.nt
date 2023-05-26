@@ -49,12 +49,16 @@ variant simple(a: tau) {
 - New(a)
 }
 
-struct empty by Empty {}
+variant empty {
+- Empty()
+}
 
-struct config by Config {
-- counter: int
-- path: &text
-- func: int -> int
+variant config {
+- Config(
+    counter: int,
+    path: &text,
+    func: int -> int
+  )
 }
 
 variant top {
@@ -67,15 +71,14 @@ define yo(x: top): unit {
 }
 
 define foo(c: &config): &text {
-  let _: int = *counter(c)
-  let _ = *counter(c)
-  let _ = {*func(c)}(3)
-  let _ = *func(c)
-  *path(c)
+  bind Config(..) = c
+  let _: int = *counter
+  let _ = *counter
+  let _ = {*func}(3)
+  let _ = *func
+  *path
 }
 
 define main(): unit {
-  let _ = counter
-  let _ = path
   Unit
 }

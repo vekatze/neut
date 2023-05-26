@@ -141,8 +141,8 @@ define unbalanced-freevars-in-branches[a](t: &term(a)): term(a) {
   }
 }
 
-struct ctx by Ctx {
-- counter: cell(int)
+variant ctx {
+- Ctx(counter: cell(int))
 }
 
 define with-ctx(c: &ctx): unit {

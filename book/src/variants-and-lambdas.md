@@ -1,6 +1,6 @@
-# Variants, Structs, and Lambdas
+# Variants and Lambdas
 
-In this section, we'll see how to use the key colors of Neut: variants, structs, and lambdas.
+In this section, we'll see how to use the key colors of Neut: variants and lambdas.
 
 Examples in this section can be downloaded as follows:
 
@@ -97,58 +97,6 @@ variant color {
 ```
 
 Then, the internal representation of `Red` is optimized into `0`. That of `Blue` is optimized into `1`, and so on.
-
-## Structs
-
-### Basics
-
-You can define a struct type like the below:
-
-```neut
-// Define a struct.
-struct config(a) by Config { // `by Config` specifies the name of the constructor
-- foo: int
-- bar: a
-- some-value: my-list(int)
-}
-```
-
-and use the type as follows:
-
-```neut
-define create-struct(): config(my-list(int)) {
-  // create a struct
-  // you can also use keyword arguments, as described later
-  Config(30, MyNil, MyCons(3, MyNil))
-}
-
-define use-struct(c: config(a)): int {
-  let Config(x, y, z) = c in // destructive bind
-  0
-}
-```
-
-It might be illuminating to see that a struct is essentially just a syntax sugar for a variant type:
-
-```neut
-struct config(a) by Config {
-- foo: int
-- bar: a
-- some-value: my-list(int)
-}
-
-↓
-
-variant config(a) {
-- Config(foo: int, bar: a, some-value: my-list(int))
-}
-```
-
-<!-- When defining a struct, projections for struct fields are also defined; This topic is covered in the next section. -->
-
-### Memory Behavior
-
-The same as the corresponding variant type.
 
 ## Lambdas
 

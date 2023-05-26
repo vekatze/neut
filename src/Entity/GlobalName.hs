@@ -23,7 +23,6 @@ data GlobalName
   | Resource
   | Alias DD.DefiniteDescription GlobalName
   | AliasData DD.DefiniteDescription [(AliasConsName, ResolvedConsName)] GlobalName
-  | Projection Arity IsConstLike
   deriving (Show, Generic)
 
 type AliasConsName =

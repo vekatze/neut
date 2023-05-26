@@ -151,15 +151,13 @@ weakenStmtKind stmtKind =
   case stmtKind of
     Normal opacity ->
       Normal opacity
-    Data dataName dataArgs consInfoList projectionList -> do
+    Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
       let (consNameList, constLikeList, consArgsList, discriminantList) = unzip4 consInfoList
       let consArgsList' = map (map weakenBinder) consArgsList
       let consInfoList' = zip4 consNameList constLikeList consArgsList' discriminantList
-      Data dataName dataArgs' consInfoList' projectionList
+      Data dataName dataArgs' consInfoList'
     DataIntro dataName dataArgs consArgs discriminant -> do
       let dataArgs' = map weakenBinder dataArgs
       let consArgs' = map weakenBinder consArgs
       DataIntro dataName dataArgs' consArgs' discriminant
-    Projection ->
-      Projection

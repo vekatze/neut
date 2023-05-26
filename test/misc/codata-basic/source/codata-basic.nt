@@ -1,16 +1,20 @@
-struct bar(a: tau) by Bar {
-- value: a
+variant bar(a: tau) {
+- Bar(value: a)
 }
 
-struct foo() by Foo {
-- value-1: int
-- value-2: i32
-- value-3: bar(int)
+variant foo() {
+- Foo(
+    value-1: int,
+    value-2: i32,
+    value-3: bar(int)
+  )
 }
 
-struct stream(a: tau) by Stream {
-- head: a
-- tail: () -> stream(a)
+variant stream(a: tau) {
+- Stream(
+    head: a,
+    tail: () -> stream(a)
+  )
 }
 
 define int-stream(x: int): stream(int) {
@@ -46,14 +50,11 @@ define main(): unit {
     - value-3 => inner
     - value-2 => 8
     }
-
   // k = value-1 + value-1 + value-1 + value-3 = 3 + 3 + 3 + 10 = 19
   let k on config = {
-    let s1 = value-1(config)
-    let s2 = *value-1(config)
-    let s3 = value-1(config)
-    let s4 = value(value-3(config))
-    add-int(*s1, add-int(s2, add-int(*s3, *s4)))
+    bind Foo(..) = config
+    bind Bar(..) = value-3
+    add-int(*value-1, add-int(*value-1, add-int(*value-1, *value)))
   }
   let _ = config
   let some-stream = int-stream(3)

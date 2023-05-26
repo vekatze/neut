@@ -8,7 +8,6 @@ import Context.Alias qualified as Alias
 import Context.App
 import Context.Cache qualified as Cache
 import Context.Env qualified as Env
-import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
@@ -18,11 +17,9 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe
 import Data.Text qualified as T
-import Data.Vector qualified as V
 import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
-import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName qualified as GN
@@ -33,7 +30,6 @@ import Entity.Name
 import Entity.NameArrow qualified as NA
 import Entity.Opacity qualified as O
 import Entity.RawBinder
-import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.Stmt
@@ -119,7 +115,6 @@ parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
     [ parseDefineVariant,
-      parseDefineStruct,
       return <$> parseAliasOpaque,
       return <$> parseAliasTransparent,
       return <$> parseDefineResource,
@@ -164,7 +159,7 @@ parseDefineVariant = do
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgsOrNone <- parseDataArgs
   consInfoList <- P.betweenBrace $ P.manyList parseDefineVariantClause
-  lift $ defineData m a dataArgsOrNone consInfoList []
+  lift $ defineData m a dataArgsOrNone consInfoList
 
 parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseDataArgs = do
@@ -178,13 +173,12 @@ defineData ::
   DD.DefiniteDescription ->
   Maybe [RawBinder RT.RawTerm] ->
   [(Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])] ->
-  [DD.DefiniteDescription] ->
   App [RawStmt]
-defineData m dataName dataArgsOrNone consInfoList projectionList = do
+defineData m dataName dataArgsOrNone consInfoList = do
   let dataArgs = fromMaybe [] dataArgsOrNone
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
-  let stmtKind = SK.Data dataName dataArgs consInfoList'' projectionList
+  let stmtKind = SK.Data dataName dataArgs consInfoList''
   let consNameList = map (\(consName, _, _, _) -> consName) consInfoList''
   let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
@@ -270,57 +264,6 @@ parseDefineVariantClauseArg = do
     [ try preAscription,
       typeWithoutIdent
     ]
-
-parseDefineStruct :: P.Parser [RawStmt]
-parseDefineStruct = do
-  m <- P.getCurrentHint
-  try $ P.keyword "struct"
-  dataName <- P.baseName >>= lift . Locator.attachCurrentLocator
-  dataArgsOrNone <- parseDataArgs
-  P.keyword "by"
-  consName <- P.baseNameCapitalized
-  elemInfoList <- P.betweenBrace $ P.manyList preAscription
-  let dataArgs = fromMaybe [] dataArgsOrNone
-  consName' <- lift $ Locator.attachCurrentLocator consName
-  let structElimHandler = parseDefineStructElim dataName dataArgs consName' elemInfoList
-  (elimRuleList, projList) <- mapAndUnzipM (lift . structElimHandler) elemInfoList
-  formRule <- lift $ defineData m dataName dataArgsOrNone [(m, consName, False, elemInfoList)] projList
-  return $ formRule ++ elimRuleList
-
--- noetic projection
-parseDefineStructElim ::
-  DD.DefiniteDescription ->
-  [RawBinder RT.RawTerm] ->
-  DD.DefiniteDescription ->
-  [RawBinder RT.RawTerm] ->
-  RawBinder RT.RawTerm ->
-  App (RawStmt, DD.DefiniteDescription)
-parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elemType) = do
-  let structType = m :< RT.Noema (constructDataType m dataName [consName] dataArgs)
-  structVarText <- Gensym.newText
-  let projArgs = dataArgs ++ [(m, structVarText, structType)]
-  elemName' <- Throw.liftEither $ BN.reflect m elemName
-  projectionName <- Locator.attachCurrentLocator elemName'
-  let argList = flip map elemInfoList $ \(mx, x, _) -> (mx, RP.Var (Var $ holeVarPrefix <> x))
-  stmt <-
-    defineFunction
-      SK.Projection
-      m
-      projectionName -- e.g. some-lib.foo::my-struct.element-x
-      (AN.fromInt $ length dataArgs)
-      projArgs
-      (m :< RT.Noema elemType)
-      $ m
-        :< RT.DataElim
-          True
-          [preVar m structVarText]
-          ( RP.new
-              [ ( V.fromList [(m, RP.Cons (DefiniteDescription consName) (Right argList))],
-                  preVar m (holeVarPrefix <> elemName)
-                )
-              ]
-          )
-  return (stmt, projectionName)
 
 parseAliasTransparent :: P.Parser RawStmt
 parseAliasTransparent = do

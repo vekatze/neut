@@ -178,8 +178,6 @@ interpretGlobalName m dd gn = do
       interpretGlobalName m dd' gn'
     GN.AliasData dd' _ gn' ->
       interpretGlobalName m dd' gn'
-    GN.Projection arity isConstLike ->
-      interpretTopLevelFunc m dd arity isConstLike
 
 interpretTopLevelFunc ::
   Hint ->

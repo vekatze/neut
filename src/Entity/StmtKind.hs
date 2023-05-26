@@ -24,9 +24,7 @@ data BaseStmtKind x t
       DD.DefiniteDescription -- the name of the variant type
       [(Hint, x, t)] -- variant args
       [(DD.DefiniteDescription, IsConstLike, [(Hint, x, t)], D.Discriminant)] -- constructors
-      [DD.DefiniteDescription] -- list of destructors (if any)
   | DataIntro DD.DefiniteDescription [(Hint, x, t)] [(Hint, x, t)] D.Discriminant
-  | Projection
   deriving (Generic)
 
 instance (Binary x, Binary t) => Binary (BaseStmtKind x t)
@@ -42,8 +40,6 @@ toOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
       opacity
-    Projection ->
-      O.Opaque
     _ ->
       O.Transparent
 
@@ -56,5 +52,3 @@ toLowOpacity stmtKind =
       O.Opaque -- so as not to reduce recursive terms
     DataIntro {} ->
       O.Transparent
-    Projection ->
-      O.Opaque

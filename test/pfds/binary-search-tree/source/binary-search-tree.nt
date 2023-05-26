@@ -14,10 +14,12 @@ variant set(a) {
 - Node(set(a), a, set(a))
 }
 
-struct set-signature(a) by Set {
-- empty: set(a)
-- insert: (a, set(a)) -> set(a)
-- member: (a, &set(a)) -> bool
+variant set-signature(a) {
+- Set(
+    empty: set(a),
+    insert: (a, set(a)) -> set(a),
+    member: (a, &set(a)) -> bool
+  )
 }
 
 define make-set-signature[a](compare: (a, a) -> order): set-signature(a) {
@@ -72,7 +74,7 @@ define compare-int(x: int, y: int): order {
 define main(): unit {
   let int-set-signature = make-set-signature(compare-int)
   match int-set-signature {
-  - Set(empty, insert, member) =>
+  - Set(..) =>
     let my-set = insert(10, empty)
     let my-set = insert(20, my-set)
     let my-set = insert(20, my-set)

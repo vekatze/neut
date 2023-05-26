@@ -14,13 +14,15 @@ variant heap(a) {
 - Node(int, a, heap(a), heap(a)) // int stands for the rank of the Node
 }
 
-struct heap-signature(a) by Heap {
-- empty: heap(a)
-- is-empty: &heap(a) -> bool
-- insert: (a, heap(a)) -> heap(a)
-- merge: (heap(a), heap(a)) -> heap(a)
-- find-min: &heap(a) -> ?a
-- delete-min: heap(a) -> ?heap(a)
+variant heap-signature(a) {
+- Heap(
+    empty: heap(a),
+    is-empty: &heap(a) -> bool,
+    insert: (a, heap(a)) -> heap(a),
+    merge: (heap(a), heap(a)) -> heap(a),
+    find-min: &heap(a) -> ?a,
+    delete-min: heap(a) -> ?heap(a)
+  )
 }
 
 define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
@@ -111,7 +113,7 @@ define compare-int(x: int, y: int): order {
 
 define main(): unit {
   let int-heap-signature = make-heap-signature(compare-int)
-  let Heap(empty, _, insert, _, find-min, delete-min) = int-heap-signature
+  let Heap(..) = int-heap-signature
   let h = empty
   let h = insert(10, h)
   let h = insert(2, h)

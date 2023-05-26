@@ -46,18 +46,16 @@ revealStmtKind stmtKind =
   case stmtKind of
     Normal {} ->
       return stmtKind
-    Data dataName dataArgs consInfoList projections -> do
+    Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- revealBinder'' [] dataArgs
       consInfoList' <- forM consInfoList $ \(dd, constLike, consArgs, discriminant) -> do
         (consArgs', _) <- revealBinder'' varEnv consArgs
         return (dd, constLike, consArgs', discriminant)
-      return $ Data dataName dataArgs' consInfoList' projections
+      return $ Data dataName dataArgs' consInfoList'
     DataIntro consName dataArgs consArgs discriminant -> do
       (dataArgs', varEnv) <- revealBinder'' [] dataArgs
       (consArgs', _) <- revealBinder'' varEnv consArgs
       return $ DataIntro consName dataArgs' consArgs' discriminant
-    Projection {} ->
-      return stmtKind
 
 reveal' :: BoundVarEnv -> WT.WeakTerm -> App WT.WeakTerm
 reveal' varEnv term =
