@@ -214,14 +214,14 @@ struct monoid(a) by Monoid {
 - m-op: (a, a) -> a
 }
 
-define-inline list-monoid[a](): monoid(list(a)) {
+inline list-monoid[a](): monoid(list(a)) {
   Monoid at {
   - m-op => core.list.append
   - m-empty => []
   }
 }
 
-define-inline use-struct[a](m: monoid(a)): a {
+inline use-struct[a](m: monoid(a)): a {
   let Monoid(..) = m
   m-op(m-empty, m-empty)
 }

@@ -139,7 +139,7 @@ parseDefine opacity = do
       O.Opaque ->
         P.keyword "define"
       O.Transparent ->
-        P.keyword "define-inline"
+        P.keyword "inline"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name

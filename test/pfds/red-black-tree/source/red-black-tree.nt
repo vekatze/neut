@@ -17,7 +17,7 @@ variant order {
 - GT
 }
 
-define-inline Cmp(a: tau): tau {
+inline Cmp(a: tau): tau {
   (a, a) -> order
 }
 

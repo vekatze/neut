@@ -23,7 +23,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "case",
         "default",
         "define",
-        "define-inline",
+        "inline",
         "detach",
         "else",
         "else-if",

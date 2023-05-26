@@ -96,7 +96,7 @@ Basic operations for those types are also defined in the library. For more, see 
 You can define inline functions as follows:
 
 ```neut
-define-inline increment(x: int): int {
+inline increment(x: int): int {
   add-int(x, 1)
 }
 ```
@@ -116,7 +116,7 @@ alias my-int {
 The above is essentially the same as below:
 
 ```neut
-define-inline my-int(): tau {
+inline my-int(): tau {
   i64
 }
 ```
@@ -129,7 +129,7 @@ define use-my-int(x: my-int) {
   ...
 }
 
-// when you use `define-inline`
+// when you use `inline`
 define use-my-int(x: my-int()) {
   ...
 }

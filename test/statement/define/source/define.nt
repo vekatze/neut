@@ -13,7 +13,7 @@ define complex-term-in-ascription(): {
   Unit
 }
 
-define-inline some-inline-func(): tau {
+inline some-inline-func(): tau {
   tau
 }
 

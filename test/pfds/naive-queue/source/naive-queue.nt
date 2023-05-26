@@ -3,7 +3,7 @@ import {
 - core.text => T
 }
 
-define-inline queue(a: tau): tau {
+inline queue(a: tau): tau {
   tuple(list(a), list(a))
 }
 
@@ -20,7 +20,7 @@ define head[a](q: &queue(a)): ?a {
   }
 }
 
-define-inline sanitize[a](q: queue(a)): queue(a) {
+inline sanitize[a](q: queue(a)): queue(a) {
   match q {
   - Tuple([], ys) =>
     Tuple(reverse(ys), [])

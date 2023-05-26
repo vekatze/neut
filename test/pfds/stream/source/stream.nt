@@ -9,7 +9,7 @@ variant stream-cell(a) {
 - Cons(a, stream(a))
 }
 
-define-inline stream(a: tau): tau {
+inline stream(a: tau): tau {
   () -> stream-cell(a)
 }
 

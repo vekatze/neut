@@ -3,7 +3,7 @@ variant tree(a) {
 - Node(int, a, list(tree(a)))
 }
 
-define-inline heap(a: tau): tau {
+inline heap(a: tau): tau {
   // the list is in *increasing* order of rank
   list(tree(a))
 }
