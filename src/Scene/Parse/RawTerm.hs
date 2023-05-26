@@ -203,13 +203,13 @@ rawTermLetOrLetOn m = do
     ]
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
-getContinuationModifier pat@(m, _) =
+getContinuationModifier pat =
   case pat of
     (_, RP.Var (Var x)) ->
       return (x, \_ e -> e)
     _ -> do
       tmp <- lift $ Gensym.newTextFromText "tmp"
-      return (tmp, \isNoetic e -> m :< RT.DataElim isNoetic [m :< RT.Var (Var tmp)] (RP.new [(V.fromList [pat], e)]))
+      return (tmp, \isNoetic e@(m :< _) -> m :< RT.DataElim isNoetic [m :< RT.Var (Var tmp)] (RP.new [(V.fromList [pat], e)]))
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
@@ -284,8 +284,8 @@ rawTermLetEither = do
         False
         [e1']
         ( RP.new
-            [ (V.fromList [(m2, RP.Cons left [(m2, RP.Var (Var err))])], m2 :< RT.PiElim leftVar [preVar m2 err]),
-              (V.fromList [(m2, RP.Cons right [pat])], e2)
+            [ (V.fromList [(m2, RP.Cons left (Right [(m2, RP.Var (Var err))]))], m2 :< RT.PiElim leftVar [preVar m2 err]),
+              (V.fromList [(m2, RP.Cons right (Right [pat]))], e2)
             ]
         )
 
@@ -525,7 +525,7 @@ rawTermPattern = do
         delimiter "::"
         pat <- rawTermPattern
         listCons <- lift $ locatorToName m coreListCons
-        return (m, RP.Cons listCons [headPat, pat]),
+        return (m, RP.Cons listCons (Right [headPat, pat])),
       return headPat
     ]
 
@@ -545,7 +545,7 @@ rawTermPatternOptionNone = do
   keyword "None"
   left <- lift $ locatorToName m coreEitherLeft
   hole <- lift Gensym.newTextForHole
-  return (m, RP.Cons left [(m, RP.Var (Var hole))])
+  return (m, RP.Cons left (Right [(m, RP.Var (Var hole))]))
 
 rawTermPatternOptionSome :: Parser (Hint, RP.RawPattern)
 rawTermPatternOptionSome = do
@@ -553,7 +553,7 @@ rawTermPatternOptionSome = do
   keyword "Some"
   pat <- betweenParen rawTermPattern
   right <- lift $ locatorToName m coreEitherRight
-  return (m, RP.Cons right [pat])
+  return (m, RP.Cons right (Right [pat]))
 
 rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do
@@ -575,7 +575,7 @@ foldListAppPat m listNil listCons es =
       (m, RP.Var $ Locator listNil)
     e : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons [e, rest'])
+      (m, RP.Cons listCons (Right [e, rest']))
 
 rawTermPatternTupleIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternTupleIntro = do
@@ -595,7 +595,7 @@ foldTuplePat m unitVar bothVar es =
       e
     e : rest -> do
       let rest' = foldTuplePat m unitVar bothVar rest
-      (m, RP.Cons bothVar [e, rest'])
+      (m, RP.Cons bothVar (Right [e, rest']))
 
 parseName :: Parser (Hint, Name)
 parseName = do
@@ -614,9 +614,12 @@ rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
   (m, varOrLocator) <- parseName
   choice
-    [ do
+    [ try $ do
+        mVar <- betweenParen $ getCurrentHint <* delimiter ".."
+        return (m, RP.Cons varOrLocator (Left mVar)),
+      do
         patArgs <- argList rawTermPattern
-        return (m, RP.Cons varOrLocator patArgs),
+        return (m, RP.Cons varOrLocator (Right patArgs)),
       do
         return (m, RP.Var varOrLocator)
     ]

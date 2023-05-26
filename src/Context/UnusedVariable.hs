@@ -11,6 +11,7 @@ import Context.App.Internal
 import Context.Remark qualified as Remark
 import Control.Monad
 import Data.IntMap qualified as IntMap
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Const
 import Entity.Hint
@@ -29,12 +30,13 @@ insert m x =
 
 delete :: Ident -> App ()
 delete x =
-  modifyRef' unusedVariableMap $ IntMap.delete (toInt x)
+  modifyRef' usedVariableSet $ S.insert (toInt x)
 
 get :: App [(Hint, Ident)]
 get = do
   uenv <- readRef' unusedVariableMap
-  return $ filter (\(_, var) -> not (isHoleVar var)) $ IntMap.elems uenv
+  set <- readRef' usedVariableSet
+  return $ filter (\(_, var) -> not (isHoleVar var) && S.notMember (toInt var) set) $ IntMap.elems uenv
 
 isHoleVar :: Ident -> Bool
 isHoleVar (I (varName, _)) =

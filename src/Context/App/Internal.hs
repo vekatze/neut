@@ -53,6 +53,7 @@ data Env = Env
     constraintEnv :: FastRef [C.Constraint],
     remarkList :: FastRef [Remark.Remark],
     unusedVariableMap :: FastRef (IntMap.IntMap (Hint, Ident)),
+    usedVariableSet :: FastRef (S.Set Int),
     holeSubst :: FastRef HS.HoleSubst,
     sourceChildrenMap :: FastRef (Map.HashMap (Path Abs File) [Source.Source]),
     traceSourceList :: FastRef [Source.Source],
@@ -108,6 +109,7 @@ newEnv = do
   sourceNameMap <- newFastRef
   remarkList <- newFastRef
   unusedVariableMap <- newFastRef
+  usedVariableSet <- newFastRef
   nameMap <- newFastRef
   antecedentMap <- newFastRef
   constraintEnv <- newFastRef

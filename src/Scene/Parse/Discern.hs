@@ -343,13 +343,22 @@ discernPattern (m, pat) =
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
-    RP.Cons cons args -> do
+    RP.Cons cons mArgs -> do
       (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
       when isConstLike $
         Throw.raiseError m $
           "the constructor `" <> showName cons <> "` can't have any arguments"
-      (args', nenvList) <- mapAndUnzipM discernPattern args
-      return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+      case mArgs of
+        Right args -> do
+          (args', nenvList) <- mapAndUnzipM discernPattern args
+          return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+        Left mVar -> do
+          (_, keyList) <- KeyArg.lookup m consName
+          let args = map (RP.Var . Var) keyList
+          (args', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) args
+          forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
+            UnusedVariable.delete newVar
+          return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
 
 discernNameArrow :: NA.RawNameArrow -> App [NA.NameArrow]
 discernNameArrow clause = do

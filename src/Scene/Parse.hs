@@ -315,7 +315,7 @@ parseDefineStructElim dataName dataArgs consName elemInfoList (m, elemName, elem
           True
           [preVar m structVarText]
           ( RP.new
-              [ ( V.fromList [(m, RP.Cons (DefiniteDescription consName) argList)],
+              [ ( V.fromList [(m, RP.Cons (DefiniteDescription consName) (Right argList))],
                   preVar m (holeVarPrefix <> elemName)
                 )
               ]

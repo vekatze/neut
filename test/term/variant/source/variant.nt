@@ -221,6 +221,11 @@ define-inline list-monoid[a](): monoid(list(a)) {
   }
 }
 
+define-inline use-struct[a](m: monoid(a)): a {
+  let Monoid(..) = m
+  m-op(m-empty, m-empty)
+}
+
 define test-match(): unit {
   let t1 = Var("text")
   let t2 = Abs("foo", Var("foo"))
@@ -243,6 +248,9 @@ define test-match(): unit {
   let _ = unbalanced-freevars-in-branches(t2)
   let _ = unbalanced-freevars-in-branches(t3)
   let _ = unbalanced-freevars-in-branches(t4)
+  let _: list(int) = use-struct(list-monoid())
+  let _: list(bool) = use-struct(list-monoid())
+  let _: list(() -> int) = use-struct(list-monoid())
   Unit
 }
 
