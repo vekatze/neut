@@ -1,6 +1,5 @@
 # Publishing Your Code
 
-
 ## Creating an Archive for Your Module
 
 You can create a tarball for your module using `neut release VERSION`:
@@ -27,7 +26,7 @@ As we've seen, Neut identifies a module using its tarball's checksum, which I be
 Now, suppose that you released a library with version `1.0.0`. The library contains a file like below:
 
 ```neut
-variant some-type {
+data some-type {
 - Foo
 - Bar(some-type)
 }

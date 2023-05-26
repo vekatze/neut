@@ -39,13 +39,13 @@ define test-syntax(): unit {
   Unit
 }
 
-variant term(a) {
+data term(a) {
 - Var(a)
 - Abs(a, term(a))
 - App(term(a), term(a))
 }
 
-variant my-enum {
+data my-enum {
 - Foo
 - Bar
 }
@@ -141,7 +141,7 @@ define unbalanced-freevars-in-branches[a](t: &term(a)): term(a) {
   }
 }
 
-variant ctx {
+data ctx {
 - Ctx(counter: cell(int))
 }
 

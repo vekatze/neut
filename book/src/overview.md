@@ -18,7 +18,7 @@ Like below:
 
 ```neut
 // algebraic data types
-variant my-list(a: tau) {
+data my-list(a: tau) {
 - Nil
 - Cons(a, my-list(a))
 }

@@ -15,7 +15,7 @@ define test-semantics(): tau {
   let _ = relevant-tau()
   let _ = tau-is-tau()
   let _ = pi-is-tau()
-  let _ = variant-is-tau()
+  let _ = data-is-tau()
   let _ = noema-is-tau(tau)
   let _ = flow-is-tau(tau)
   let _ = resource-is-tau()
@@ -49,7 +49,7 @@ define pi-is-tau(): tau {
   tau
 }
 
-define variant-is-tau(): tau {
+define data-is-tau(): tau {
   let _: tau = void
   let _: tau = unit
   let _: tau = bool

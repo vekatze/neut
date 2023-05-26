@@ -4,7 +4,7 @@ import {
 - core.vector => V
 }
 
-variant list() {
+data list() {
 - Nil()
 - Cons(int, list())
 }

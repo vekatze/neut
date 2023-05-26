@@ -2,18 +2,18 @@ import {
 - core.text => T
 }
 
-variant order {
+data order {
 - LT
 - EQ
 - GT
 }
 
-variant finite-map(a, b) {
+data finite-map(a, b) {
 - Leaf
 - Node(finite-map(a, b), a, b, finite-map(a, b))
 }
 
-variant finite-map-signature(a, b) {
+data finite-map-signature(a, b) {
 - Finite-Map(
     empty: finite-map(a, b),
     insert: (a, b, finite-map(a, b)) -> finite-map(a, b),

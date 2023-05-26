@@ -1,4 +1,4 @@
-variant tree(a) {
+data tree(a) {
   // the list is in *decreasing* order of rank
 - Node(int, a, list(tree(a)))
 }
@@ -8,7 +8,7 @@ inline heap(a: tau): tau {
   list(tree(a))
 }
 
-variant order {
+data order {
 - LT
 - EQ
 - GT

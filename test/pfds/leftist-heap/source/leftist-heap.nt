@@ -2,19 +2,19 @@ import {
 - core.text => T
 }
 
-variant order {
+data order {
 - LT
 - EQ
 - GT
 }
 
 // leftist heap
-variant heap(a) {
+data heap(a) {
 - Leaf
 - Node(int, a, heap(a), heap(a)) // int stands for the rank of the Node
 }
 
-variant heap-signature(a) {
+data heap-signature(a) {
 - Heap(
     empty: heap(a),
     is-empty: &heap(a) -> bool,

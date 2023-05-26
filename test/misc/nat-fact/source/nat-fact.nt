@@ -2,7 +2,7 @@ import {
 - core.bool
 }
 
-variant nat {
+data nat {
 - Zero
 - Succ(nat)
 }

@@ -35,18 +35,18 @@ This means that we need to translate the `tau` into a function. It might sound d
 
 A type-exponential can also be constructed for closures. Although this is one of the most interesting points of Neut, since it could be a bit complicated, I put it in the appendix. See [the Chapter in the Appendix](./executing-the-function-type.md) if you're interested in it.
 
-## Exponential for Variant Types
+## Exponential for ADTs
 
-Variant types like the below also have exponentials, of course:
+ADTs like the below also have exponentials, of course:
 
 ```neut
-variant list(a) {
+data list(a) {
 - Nil
 - Cons(a, list(a))
 }
 ```
 
-There is one caveat here, however. Since an exponential is a closed function, the values of a variant type must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
+There is one caveat here, however. Since an exponential is a closed function, the values of an ADT must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
 
 That is, for example, the internal representation of `Nil` is something like below:
 

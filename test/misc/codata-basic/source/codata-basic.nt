@@ -1,8 +1,8 @@
-variant bar(a: tau) {
+data bar(a: tau) {
 - Bar(value: a)
 }
 
-variant foo() {
+data foo() {
 - Foo(
     value-1: int,
     value-2: i32,
@@ -10,7 +10,7 @@ variant foo() {
   )
 }
 
-variant stream(a: tau) {
+data stream(a: tau) {
 - Stream(
     head: a,
     tail: () -> stream(a)

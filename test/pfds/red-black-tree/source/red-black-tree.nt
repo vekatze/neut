@@ -1,17 +1,17 @@
-variant color {
+data color {
 - Red
 - Black
 }
 
-variant tree(a) {
+data tree(a) {
 - Leaf // Black
 - Node(color, tree(a), a, tree(a))
 }
 
-// Invariant 1. No Red Node has a Red child.
-// Invariant 2. Every path from the root to an empty Node contains the same number of Black Nodes.
+// Indata 1. No Red Node has a Red child.
+// Indata 2. Every path from the root to an empty Node contains the same number of Black Nodes.
 
-variant order {
+data order {
 - LT
 - EQ
 - GT

@@ -2,10 +2,10 @@
 
 ## Types as Exponential
 
-Here, we'll see how a type can be used to copy/discard the terms of the type. To see the basic idea, let's take a simple variant type for example:
+Here, we'll see how a type can be used to copy/discard the terms of the type. To see the basic idea, let's take a simple ADT for example:
 
 ```neut
-variant item {
+data item {
 - New(int, int)
 }
 ```

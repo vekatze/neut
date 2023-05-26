@@ -73,7 +73,7 @@ define length-noetic[a](xs: &list(a)): int {
 
 Here, `case` does the same as `match` except that:
 
-- it expects noetic variant types like `&list(a)`, not variant types like `list(a)`,
+- it expects noetic ADTs like `&list(a)`, not ordinary ADTs like `list(a)`,
 - it doesn't deallocate its arguments (the `xs` here), and that
 - the types of the constructor arguments are automatically made noetic.
 
@@ -136,16 +136,16 @@ This can be achieved by imposing the following restriction on the type of `resul
 - it can't contain any free variables,
 - it can't contain any `&A`s,
 - it can't contain function types (since a noema can reside in it), and
-- it can't contain any "dubious" variant types.
+- it can't contain any "dubious" ADTs.
 
-Here, a "dubious" variant type is a variant type like the below:
+Here, a "dubious" ADT is an ADT like the below:
 
 ```neut
-variant joker-x {
+data joker-x {
 - HideX(&A) // contains a noetic argument
 }
 
-variant joker-y {
+data joker-y {
 - HideY(int -> bool) // contains a functional argument
 }
 ```

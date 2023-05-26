@@ -4,7 +4,7 @@ import {
 - core.text => T
 }
 
-variant stream-cell(a) {
+data stream-cell(a) {
 - Nil
 - Cons(a, stream(a))
 }

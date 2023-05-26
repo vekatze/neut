@@ -27,14 +27,14 @@ define do-next(): this.private.sample-2(tau) {
   Foo2
 }
 
-variant main-config {
+data main-config {
 - Main-Config(
     sample: int,
     test: L.my-sample-alias
   )
 }
 
-variant hogehoge {
+data hogehoge {
 - Pohe
 - Hoge(int)
 }

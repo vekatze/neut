@@ -1,4 +1,4 @@
-variant expr() {
+data expr() {
 - Num(int)
 - Add(expr(), expr())
 - Sub(expr(), expr())

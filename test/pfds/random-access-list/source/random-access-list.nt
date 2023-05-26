@@ -1,17 +1,17 @@
 // random access list via numerical representation
 // (complete binary tree + dense representation)
 
-variant tree(a) {
+data tree(a) {
 - Leaf(a)
 - Node(int, tree(a), tree(a))
 }
 
-variant digit(a) {
+data digit(a) {
 - Zero
 - One(tree(a))
 }
 
-variant R-list(a) {
+data R-list(a) {
 - New(list(digit(a)))
 }
 

@@ -4,7 +4,7 @@ import {
 - core.text => T
 }
 
-variant custom-stack(a) {
+data custom-stack(a) {
 - Nil
 - Cons(tuple(a, a), custom-stack(a))
 }

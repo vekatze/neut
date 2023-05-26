@@ -50,40 +50,47 @@ A primitive value is stored as it is. Its copy is itself, and won't be discarded
 
 ## Core Types
 
-The core library (something like Prelude in other languages) is imported automatically and provides basic variant types and functions. Things like the below are defined in the library:
+The core library (something like Prelude in other languages) is imported automatically and provides basic ADTs and functions. Things like the below are defined in the library:
 
 ```neut
-variant bottom {}
+data void {}
 
-variant top {
+data unit {
 - Unit
 }
 
-variant bool {
+data bool {
 - False
 - True
 }
 
-variant list(a) {
+data list(a) {
 - Nil
-- Cons(a, list(a))   // `Cons(x, xs)` can also be written as `x :: xs`
-                     // `Cons(x, Cons(y, Nil))` can also be written as `[x, y]`
+- Cons(a, list(a))
 }
 
-// you can write `option(a)` as `?a`
-variant option(a) {
+// Additional notes on `list`:
+// (1) you can write `x :: xs` instead of `Cons(x, xs)`
+// (2) you can write `[x, y]` instead of `Cons(x, Cons(y, Nil))`
+
+data option(a) {
 - None
 - Some(a)
 }
 
-variant sum(a, b) {
+data either(a, b) {
 - Left(a)
 - Right(b)
 }
 
-struct product(a, b) by Product {
-- left: a
-- right: b
+// Additional notes on `either`:
+// (1) you can write `option(a)` instead of `either(unit, a)`
+// (2) you can write `option(a)` as `?a`.
+// (3) you can write `None` instead of `Left(Unit)`
+// (4) you can write `Some(e)` instead of `Right(e)
+
+data both(a ,b) {
+- Both(left: a, right: b)
 }
 ```
 

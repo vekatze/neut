@@ -3,7 +3,7 @@ import {
 - core.text => T
 }
 
-variant stack(a) {
+data stack(a) {
 - Nil
 - Cons(a, stack(a))
 }

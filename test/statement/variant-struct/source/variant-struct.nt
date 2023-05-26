@@ -1,59 +1,59 @@
-variant my-void {}
+data my-void {}
 
-variant data-Z-cons-Z {
+data data-Z-cons-Z {
 - FooZZ
 - BarZZ
 }
 
-variant data-Z-cons-0 {
+data data-Z-cons-0 {
 - FooZ0()
 - BarZ0()
 }
 
-variant data-Z-cons-1 {
+data data-Z-cons-1 {
 - FooZ1(int)
 - BarZ1(bool)
 }
 
-variant data-0-cons-Z() {
+data data-0-cons-Z() {
 - Foo0Z
 - Bar0Z
 }
 
-variant data-0-cons-0() {
+data data-0-cons-0() {
 - Foo00()
 - Bar00()
 }
 
-variant data-0-cons-1() {
+data data-0-cons-1() {
 - Foo01(int)
 - Bar01(bool)
 }
 
-variant data-1-cons-Z(_: tau) {
+data data-1-cons-Z(_: tau) {
 - Foo1Z
 - Bar1Z
 }
 
-variant data-1-cons-0(_: tau) {
+data data-1-cons-0(_: tau) {
 - Foo10()
 - Bar10()
 }
 
-variant data-1-cons-1(_: tau) {
+data data-1-cons-1(_: tau) {
 - Foo11(int)
 - Bar11(bool)
 }
 
-variant simple(a: tau) {
+data simple(a: tau) {
 - New(a)
 }
 
-variant empty {
+data empty {
 - Empty()
 }
 
-variant config {
+data config {
 - Config(
     counter: int,
     path: &text,
@@ -61,7 +61,7 @@ variant config {
   )
 }
 
-variant top {
+data top {
 - Top(a: tau, x: a)
 }
 

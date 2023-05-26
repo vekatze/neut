@@ -1,9 +1,9 @@
-variant heap(a) {
+data heap(a) {
 - Leaf
 - Node(heap(a), a, heap(a))
 }
 
-variant order {
+data order {
 - LT
 - EQ
 - GT

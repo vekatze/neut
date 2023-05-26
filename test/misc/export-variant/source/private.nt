@@ -16,23 +16,23 @@ export {
 - some-private-function
 }
 
-variant sample-1 {
+data sample-1 {
 - Foo
 - Bar(int)
 }
 
-variant sample-2(a) {
+data sample-2(a) {
 - Foo2
 - Bar2(int, a)
 }
 
-variant sample-3() {
+data sample-3() {
 - Foo3
 - Bar3
 - Buz3
 }
 
-variant config {
+data config {
 - Config(
     value-1: tau,
     value-2: int,

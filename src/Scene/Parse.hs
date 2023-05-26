@@ -114,7 +114,7 @@ program currentSource = do
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
-    [ parseDefineVariant,
+    [ parseDefineData,
       return <$> parseAliasOpaque,
       return <$> parseAliasTransparent,
       return <$> parseDefineResource,
@@ -152,13 +152,13 @@ defineFunction ::
 defineFunction stmtKind m name impArgNum binder codType e = do
   return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
 
-parseDefineVariant :: P.Parser [RawStmt]
-parseDefineVariant = do
+parseDefineData :: P.Parser [RawStmt]
+parseDefineData = do
   m <- P.getCurrentHint
-  try $ P.keyword "variant"
+  try $ P.keyword "data"
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgsOrNone <- parseDataArgs
-  consInfoList <- P.betweenBrace $ P.manyList parseDefineVariantClause
+  consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
   lift $ defineData m a dataArgsOrNone consInfoList
 
 parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
@@ -183,7 +183,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
   let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
   let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
-  introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs consInfoList' D.zero
+  introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
 modifyConsInfo ::
@@ -204,14 +204,14 @@ modifyConstructorName (mb, consName, isConstLike, yts) = do
   consName' <- Locator.attachCurrentLocator consName
   return (mb, consName', isConstLike, yts)
 
-parseDefineVariantConstructor ::
+parseDefineDataConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
   [RawBinder RT.RawTerm] ->
   [(Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])] ->
   D.Discriminant ->
   App [RawStmt]
-parseDefineVariantConstructor dataType dataName dataArgs consInfoList discriminant = do
+parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
       return []
@@ -230,7 +230,7 @@ parseDefineVariantConstructor dataType dataName dataArgs consInfoList discrimina
               args
               dataType
               $ m :< RT.DataIntro dataName consName consNameList discriminant dataArgs' consArgs'
-      introRuleList <- parseDefineVariantConstructor dataType dataName dataArgs rest (D.increment discriminant)
+      introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 
 constructDataType ::
@@ -242,8 +242,8 @@ constructDataType ::
 constructDataType m dataName consNameList dataArgs = do
   m :< RT.Data dataName consNameList (map identPlusToVar dataArgs)
 
-parseDefineVariantClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])
-parseDefineVariantClause = do
+parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])
+parseDefineDataClause = do
   m <- P.getCurrentHint
   consName <- P.baseNameCapitalized
   consArgsOrNone <- parseConsArgs
@@ -254,12 +254,12 @@ parseDefineVariantClause = do
 parseConsArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseConsArgs = do
   choice
-    [ Just <$> P.argList parseDefineVariantClauseArg,
+    [ Just <$> P.argList parseDefineDataClauseArg,
       return Nothing
     ]
 
-parseDefineVariantClauseArg :: P.Parser (RawBinder RT.RawTerm)
-parseDefineVariantClauseArg = do
+parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm)
+parseDefineDataClauseArg = do
   choice
     [ try preAscription,
       typeWithoutIdent

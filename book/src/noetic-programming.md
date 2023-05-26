@@ -69,7 +69,7 @@ define length[a](xs: &list(a)): int {
 }
 ```
 
-The `case` is the noetic variant of `match`; It inspects a variant value without consuming it.
+Here, the `case` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of given value (`xs` in this case).
 
 The variables that are bound by a `case` are cast to be noetic. For example, the `y` in the example above is not of type `a`, but of type `&a`. The `ys` is not of type `list(a)`, but of type `&list(a)`. Since the type of `y` is noetic, `y` isn't discarded even though it isn't used.
 

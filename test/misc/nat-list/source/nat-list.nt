@@ -1,4 +1,4 @@
-variant nat {
+data nat {
 - Zero()
 - Succ(nat)
 }

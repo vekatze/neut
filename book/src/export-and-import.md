@@ -21,23 +21,23 @@ define some-private-func(): int {
 }
 ```
 
-Variant types and their constructors can be exported as follows:
+ADTs and their constructors can be exported as follows:
 
 ```neut
 export {
 - my-item {..} // `{..}` exports all its constructors
-- other-item { // export a variant type
+- other-item { // export an ADT
   - Buz        // ... and its constructors
   - Qux
   }
 }
 
-variant my-item(a) {
+data my-item(a) {
 - Foo
 - Bar(int, a)
 }
 
-variant other-item {
+data other-item {
 - Buz
 - Qux
 }
@@ -177,20 +177,20 @@ define main(): int {
 }
 ```
 
-By the way, when you define a variant type, I recommend you *not* to prefix constructors like the below:
+By the way, when you define an ADT, I recommend you *not* to prefix constructors like the below:
 
 ```neut
-variant term {
+data term {
 - TermVar(ident)
 - TermAbs(ident, term)
 - TermApp(term, term)
 }
 ```
 
-Rather, create a new file for the variant type (if necessary), then simply write:
+Rather, create a new file for the ADT (if necessary), then simply write:
 
 ```neut
-variant term {
+data term {
 - Var(ident)
 - Abs(ident, term)
 - App(term, term)

@@ -3,18 +3,18 @@ import {
 - core.text => T
 }
 
-variant order {
+data order {
 - LT
 - EQ
 - GT
 }
 
-variant set(a) {
+data set(a) {
 - Leaf
 - Node(set(a), a, set(a))
 }
 
-variant set-signature(a) {
+data set-signature(a) {
 - Set(
     empty: set(a),
     insert: (a, set(a)) -> set(a),

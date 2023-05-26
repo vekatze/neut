@@ -1,6 +1,6 @@
-variant empty {}
+data empty {}
 
-variant nat {
+data nat {
 - Z
 - S(nat)
 }
@@ -74,7 +74,7 @@ define relevant-either(): unit {
   Unit
 }
 
-variant term(a) {
+data term(a) {
 - Var(a)
 - Abs(a, term(a))
 - App(term(a), term(a))
@@ -100,7 +100,7 @@ define nested-match[a](t: term(a)): term(a) {
   }
 }
 
-variant my-enum {
+data my-enum {
 - Foo
 - Bar
 }
@@ -209,7 +209,7 @@ define unbalanced-freevars-in-branches[a](t: term(a)): term(a) {
   }
 }
 
-variant monoid(a) {
+data monoid(a) {
 - Monoid(
     m-empty: a,
     m-op: (a, a) -> a

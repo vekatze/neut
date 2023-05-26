@@ -1,6 +1,6 @@
-# Variants and Lambdas
+# ADTs and Lambdas
 
-In this section, we'll see how to use the key colors of Neut: variants and lambdas.
+In this section, we'll see how to use the key colors of Neut: algebraic data types and lambdas.
 
 Examples in this section can be downloaded as follows:
 
@@ -8,21 +8,21 @@ Examples in this section can be downloaded as follows:
 git clone <insert-link-here>
 ```
 
-## Variants
+## Algebraic Data Types
 
 ### Basics
 
-Let's see how to write actual code. Firstly, you can define a variant type like below:
+Let's see how to write actual code. Firstly, you can define an algebraic data type like below:
 
 ```neut
-// Defining a variant type (or an algebraic data type)
-variant my-list(a) {
+// Defining an algebraic data type
+data my-list(a) {
 - MyNil
 - MyCons(a, my-list(a))
 }
 
-// nullary variant types are also allowed
-variant test {
+// nullary data types are also allowed
+data test {
 - Foo
 - Bar
 }
@@ -78,7 +78,7 @@ When calling a constructor, memory for the constructor is allocated. The interna
 
 where the `discriminant` is an integer that is used to distinguish constructors; In this case, the actual value for `MyCons` will be 1. That of `MyNil` will be 0.
 
-When `match` is used against a value of variant type, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if the given value is `MyCons(1, Nil)`, the following will happen:
+When `match` is used against a value of an ADT, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if the given value is `MyCons(1, Nil)`, the following will happen:
 
 1. the `1` and `pointer-to-Nil` are extracted to be used later,
 2. the `pointer-to-a` is discarded along its type `tau`, and
@@ -86,10 +86,10 @@ When `match` is used against a value of variant type, the inner values of the gi
 
 ---
 
-Also, if the variant type and all its constructor don't need any arguments, the internal representation of the variant type is optimized into an enum. For example, consider the following code:
+Also, if an ADT and all its constructor don't need any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:
 
 ```neut
-variant color {
+data color {
 - Red
 - Blue
 - Green

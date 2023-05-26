@@ -1,4 +1,4 @@
-variant my-empty() {}
+data my-empty() {}
 
 define ex-falso(a: tau, e: my-empty()): a {
   match e {}

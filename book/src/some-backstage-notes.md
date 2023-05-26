@@ -2,11 +2,11 @@
 
 ## What are the Possible Drawbacks of Neut's Approach?
 
-The prominent one that comes to my mind is that, when you use a polymorphic variant type, its type arguments must be stored in its values. For example, consider something like below:
+The prominent one that comes to my mind is that, when you use a polymorphic ADT, its type arguments must be stored in its values. For example, consider something like below:
 
 ```neut
 // a syntax to define an ADT
-variant Foo(a) {
+data Foo(a) {
 - ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
 - ConsB(a)
 }
@@ -26,10 +26,10 @@ However, in Neut, the type information must also be stored:
 (0, TYPE, 3, True)
 ```
 
-This means that in Neut you must pay additional spaces to use parameterized variant types. So, it might be necessary to use non-parameterized variant types in performance-critical situations, like:
+This means that in Neut you must pay additional spaces to use parameterized ADTs. So, it might be necessary to use non-parameterized ADTs in performance-critical situations, like:
 
 ```neut
-variant FooText {
+data FooText {
 - ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
 - ConsB(text)
 }
