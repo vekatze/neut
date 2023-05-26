@@ -14,7 +14,7 @@ data order {
 - GT
 }
 
-define link[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
+define join[a](cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   match t1, t2 {
   - Node(r1, x1, children1), Node(r2, x2, children2) =>
     match cmp(x1, x2) {
@@ -43,8 +43,7 @@ define insert-tree[a](cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a) {
     if lt-int(r, r1) {
       t :: t1 :: rest
     } else {
-      // the link here corresponds to a carry in binary arithmetic
-      insert-tree(cmp, link(cmp, t, t1), rest)
+      insert-tree(cmp, join(cmp, t, t1), rest)
     }
   }
 }
@@ -67,7 +66,7 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
     } else-if gt-int(r1, r2) {
       t2 :: merge(cmp, t1 :: ts1, ts2)
     } else {
-      insert-tree(cmp, link(cmp, t1, t2), merge(cmp, ts1, ts2))
+      insert-tree(cmp, join(cmp, t1, t2), merge(cmp, ts1, ts2))
     }
   }
 }

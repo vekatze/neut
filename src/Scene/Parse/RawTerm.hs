@@ -54,7 +54,7 @@ rawExpr = do
   m <- getCurrentHint
   choice
     [ rawExprLet m,
-      rawExprBind m,
+      rawExprLink m,
       rawExprSeqOrTerm m
     ]
 
@@ -234,9 +234,9 @@ rawTermLetVarAscription' =
       return Nothing
     ]
 
-rawExprBind :: Hint -> Parser RT.RawTerm
-rawExprBind m = do
-  keyword "bind"
+rawExprLink :: Hint -> Parser RT.RawTerm
+rawExprLink m = do
+  keyword "link"
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx

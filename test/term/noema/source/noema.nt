@@ -146,7 +146,7 @@ data ctx {
 }
 
 define with-ctx(c: &ctx): unit {
-  bind Ctx(counter) = c
+  link Ctx(counter) = c
   let current-value = clone(counter)
   if eq-int(current-value, 0) {
     print("stop\n")

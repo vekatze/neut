@@ -56,7 +56,7 @@ define main(): unit {
     - None =>
       1
     - Some(pair) =>
-      bind Tuple(_, right) = pair
+      link Tuple(_, right) = pair
       {*right}()
     }
   }

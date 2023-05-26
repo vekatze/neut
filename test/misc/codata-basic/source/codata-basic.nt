@@ -52,8 +52,8 @@ define main(): unit {
     }
   // k = value-1 + value-1 + value-1 + value-3 = 3 + 3 + 3 + 10 = 19
   let k on config = {
-    bind Foo(..) = config
-    bind Bar(..) = value-3
+    link Foo(..) = config
+    link Bar(..) = value-3
     add-int(*value-1, add-int(*value-1, add-int(*value-1, *value)))
   }
   let _ = config

@@ -24,7 +24,7 @@ define size[a](t: &tree(a)): int {
   }
 }
 
-define link[a](t1: tree(a), t2: tree(a)): tree(a) {
+define join[a](t1: tree(a), t2: tree(a)): tree(a) {
   let s1 on t1 = size(t1)
   let s2 on t2 = size(t2)
   Node(add-int(s1, s2), t1, t2)
@@ -37,7 +37,7 @@ define cons-tree[a](t: tree(a), ts: R-list(a)): R-list(a) {
   - New(Zero :: rest) =>
     New(One(t) :: rest)
   - New(One(t0) :: rest) =>
-    let New(ts-new) = cons-tree(link(t, t0), New(rest))
+    let New(ts-new) = cons-tree(join(t, t0), New(rest))
     New(Zero :: ts-new)
   }
 }
@@ -105,7 +105,7 @@ define lookup-list[a](i: int, xs: &list(digit(a))): option(a) {
 }
 
 define lookup[a](i: int, xs: &R-list(a)): option(a) {
-  bind New(xs): &R-list(a) = xs
+  link New(xs) = xs
   lookup-list(i, xs)
 }
 

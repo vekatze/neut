@@ -71,7 +71,7 @@ define yo(x: top): unit {
 }
 
 define foo(c: &config): &text {
-  bind Config(..) = c
+  link Config(..) = c
   let _: int = *counter
   let _ = *counter
   let _ = {*func}(3)
