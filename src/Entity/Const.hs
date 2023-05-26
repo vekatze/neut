@@ -21,6 +21,10 @@ nsSep :: T.Text
 nsSep =
   T.singleton nsSepChar
 
+verSep :: T.Text
+verSep =
+  "-"
+
 envVarCacheDir :: String
 envVarCacheDir =
   "NEUT_CACHE_DIR"

@@ -9,6 +9,7 @@ where
 
 import Data.List
 import Data.Text qualified as T
+import Entity.Const
 import Text.Read
 
 type PackageVersion =
@@ -25,7 +26,7 @@ type MinorVersion =
 
 reflect :: T.Text -> Maybe PackageVersion
 reflect releaseName = do
-  let intTextList = T.splitOn "." releaseName
+  let intTextList = T.splitOn verSep releaseName
   intList <- mapM (readMaybe . T.unpack) intTextList
   let (zeroList, versionList) = span (== 0) intList
   (majorVersion, minorVersionList) <- uncons versionList
@@ -34,8 +35,9 @@ reflect releaseName = do
     else Nothing
 
 reify :: PackageVersion -> T.Text
-reify (alphaPrefix, (majorVersion, minorVersionList)) =
-  T.pack $ intercalate "." $ map show $ map (const 0) [1 .. alphaPrefix] ++ [majorVersion] ++ minorVersionList
+reify (alphaPrefix, (majorVersion, minorVersionList)) = do
+  let versionSeq = map (const 0) [1 .. alphaPrefix] ++ [majorVersion] ++ minorVersionList
+  T.pack $ intercalate (T.unpack verSep) $ map show versionSeq
 
 isValidNewVersion :: PackageVersion -> [PackageVersion] -> Bool
 isValidNewVersion (alphaPrefix, (majorVersion1, minorVersionList1)) vs = do
