@@ -376,7 +376,6 @@ parseDefInfoCod m =
       lift $ Gensym.newPreHole m
     ]
 
--- define name(x1: A1, ..., xn: An)[: A] as e end
 rawTermMu :: Parser RT.RawTerm
 rawTermMu = do
   m <- getCurrentHint
@@ -439,7 +438,6 @@ rawTermMagicGlobal m = do
     lt <- lowType
     return $ m :< RT.Magic (M.Global lt (EN.ExternalName globalVarName))
 
--- t ::= i{n} | f{n} | pointer t | array INT t | struct t ... t
 lowType :: Parser LT.LowType
 lowType = do
   choice

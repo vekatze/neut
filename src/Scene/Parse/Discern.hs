@@ -363,9 +363,9 @@ discernNameArrow clause = do
     NA.Function clauseInfo -> do
       nameArrow <- discernInnerNameArrow clauseInfo
       return [nameArrow]
-    NA.Variant arrow@(mOrig, _) -> do
+    NA.Variant arrow@(m, _) -> do
       (dataDD, dataGN) <- discernInnerNameArrow arrow
-      consNameArrowList <- getRuleListByGlobalName mOrig dataGN
+      consNameArrowList <- getRuleListByGlobalName m dataGN
       return $ (dataDD, dataGN) : consNameArrowList
 
 discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.NameArrow

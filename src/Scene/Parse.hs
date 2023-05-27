@@ -42,10 +42,6 @@ import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
---
--- core functions
---
-
 parse :: App (Either Cache.Cache ([WeakStmt], [NA.NameArrow]))
 parse = do
   source <- Env.getCurrentSource
@@ -120,11 +116,6 @@ parseStmt = do
       return <$> parseDefine O.Opaque
     ]
 
---
--- parser for statements
---
-
--- define name (x1 : A1) ... (xn : An) : A = e
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
   try $
