@@ -7,7 +7,7 @@ where
 import Context.App
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
-import Context.Locator qualified as Locator
+import Context.Locator (getCurrentGlobalLocator)
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
@@ -27,7 +27,6 @@ import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
-import Entity.LocalLocator qualified as LL
 import Entity.Name
 import Entity.NameArrow qualified as NA
 import Entity.NominalEnv
@@ -362,93 +361,25 @@ discernNameArrow :: NA.RawNameArrow -> App [NA.NameArrow]
 discernNameArrow clause = do
   case clause of
     NA.Function clauseInfo -> do
-      nameArrow@(_, (m, consGN)) <- discernInnerNameArrow clauseInfo
-      ensureNotRule m $ traceGlobalName consGN
+      nameArrow <- discernInnerNameArrow clauseInfo
       return [nameArrow]
-    NA.Variant (from, (mOrig, origSymbol)) ruleArrowListOrWildCard -> do
-      (dataDD, dataGN) <- resolveNameSuspended mOrig origSymbol
-      (aliasNameList, availableRuleList) <- unzip <$> getRuleListByGlobalName mOrig dataGN
-      case ruleArrowListOrWildCard of
-        NA.Explicit ruleArrowList -> do
-          ruleArrowList' <- mapM discernInnerNameArrow ruleArrowList
-          suppliedRuleList <- getSuppliedRuleList availableRuleList ruleArrowList'
-          return $ (from, (mOrig, GN.AliasData dataDD suppliedRuleList dataGN)) : ruleArrowList'
-        NA.Automatic m -> do
-          newRuleNameList <- mapM createNewPublicName aliasNameList
-          ruleArrowList <- zipWithM (createNewNameArrow m) newRuleNameList aliasNameList
-          let suppliedRuleList = zip newRuleNameList availableRuleList
-          return $ (from, (mOrig, GN.AliasData dataDD suppliedRuleList dataGN)) : ruleArrowList
-
-createNewPublicName :: GN.ResolvedConsName -> App GN.AliasConsName
-createNewPublicName origDD = do
-  let baseName = LL.baseName $ DD.localLocator origDD
-  Locator.attachPublicCurrentLocator baseName
-
-createNewNameArrow :: Hint -> GN.AliasConsName -> GN.ResolvedConsName -> App NA.NameArrow
-createNewNameArrow m ruleAliasDD origDD = do
-  gn <- interpretDefiniteDescription m origDD
-  return ((m, ruleAliasDD), (m, GN.Alias origDD gn))
-
-getSuppliedRuleList ::
-  [DD.DefiniteDescription] ->
-  [NA.NameArrow] ->
-  App [(GN.AliasConsName, GN.ResolvedConsName)]
-getSuppliedRuleList availableRuleList ruleArrowList = do
-  resolvedRuleInfoList <- mapM traceInnerNameArrow ruleArrowList
-  forM_ resolvedRuleInfoList $ \(mRule, _, consDD, consGN) ->
-    case (consDD `elem` availableRuleList, consGN) of
-      (False, _) ->
-        Throw.raiseError mRule "specified rule doesn't belong to the variant type"
-      (True, GN.DataIntro {}) ->
-        return ()
-      (True, _) ->
-        Throw.raiseError mRule "not a variant rule"
-  return $ map (\(_, aliasDD, ruleDD, _) -> (aliasDD, ruleDD)) resolvedRuleInfoList
-
-ensureNotRule :: Hint -> GN.GlobalName -> App ()
-ensureNotRule m gn =
-  case gn of
-    GN.Data {} ->
-      Throw.raiseError m "variant types can only be exported via `variant-type {...}`"
-    GN.DataIntro {} ->
-      Throw.raiseError m "constructors can only be exported via `variant-type {...}`"
-    _ ->
-      return ()
-
-traceGlobalName :: GN.GlobalName -> GN.GlobalName
-traceGlobalName gn =
-  case gn of
-    GN.Alias _ gn' ->
-      traceGlobalName gn'
-    GN.AliasData _ _ gn' ->
-      traceGlobalName gn'
-    _ ->
-      gn
-
-traceInnerNameArrow :: NA.NameArrow -> App (Hint, DD.DefiniteDescription, DD.DefiniteDescription, GN.GlobalName)
-traceInnerNameArrow arrow@((_, aliasDD), _) = do
-  (m, resolvedDD, resolvedGN) <- traceInnerNameArrow' arrow
-  return (m, aliasDD, resolvedDD, resolvedGN)
-
-traceInnerNameArrow' :: NA.NameArrow -> App (Hint, DD.DefiniteDescription, GN.GlobalName)
-traceInnerNameArrow' ((mAlias, aliasDD), (mOrig, origGN)) =
-  case origGN of
-    GN.Alias newDD gn' ->
-      traceInnerNameArrow' ((mAlias, newDD), (mOrig, gn'))
-    _ ->
-      return (mAlias, aliasDD, origGN)
+    NA.Variant arrow@(mOrig, _) -> do
+      (dataDD, dataGN) <- discernInnerNameArrow arrow
+      consNameArrowList <- getRuleListByGlobalName mOrig dataGN
+      return $ (dataDD, dataGN) : consNameArrowList
 
 discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.NameArrow
-discernInnerNameArrow (dom, (m, varOrLocator)) = do
-  (dd, gn) <- resolveName m varOrLocator
-  return (dom, (m, GN.Alias dd gn))
+discernInnerNameArrow (m, name) = do
+  (dd, gn) <- resolveName m name
+  cgl <- getCurrentGlobalLocator
+  if DD.globalLocator dd == cgl
+    then return (dd, gn)
+    else Throw.raiseError m $ "external definition: `" <> DD.reify dd <> "`"
 
-getRuleListByGlobalName :: Hint -> GN.GlobalName -> App [(DD.DefiniteDescription, DD.DefiniteDescription)]
+getRuleListByGlobalName :: Hint -> GN.GlobalName -> App [NA.NameArrow]
 getRuleListByGlobalName m gn =
   case gn of
     GN.Data _ ruleList _ ->
-      return $ zip ruleList ruleList
-    GN.AliasData _ ruleList _ ->
       return ruleList
     _ ->
       Throw.raiseError m "this isn't a variant type"

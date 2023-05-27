@@ -1,7 +1,0 @@
-export {
-- test
-}
-
-define test(): tau {
-  tau
-}

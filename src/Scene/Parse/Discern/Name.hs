@@ -1,7 +1,6 @@
 module Scene.Parse.Discern.Name
   ( resolveName,
     resolveNameOrError,
-    resolveNameSuspended,
     resolveConstructor,
     resolveConstructorMaybe,
     interpretDefiniteDescription,
@@ -46,24 +45,9 @@ resolveName m name = do
     Right pair ->
       return pair
 
-{-# INLINE resolveNameSuspended #-}
-resolveNameSuspended :: Hint -> Name -> App (DD.DefiniteDescription, GN.GlobalName)
-resolveNameSuspended m name = do
-  nameOrErr <- resolveNameOrErrorSuspended m name
-  case nameOrErr of
-    Left err ->
-      Throw.raiseError m err
-    Right pair ->
-      return pair
-
 {-# INLINE resolveNameOrError #-}
 resolveNameOrError :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
 resolveNameOrError m name =
-  fmap traceAliasChain <$> resolveNameOrErrorSuspended m name
-
-{-# INLINE resolveNameOrErrorSuspended #-}
-resolveNameOrErrorSuspended :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
-resolveNameOrErrorSuspended m name =
   case name of
     Var var -> do
       resolveVarOrErr m var
@@ -133,24 +117,11 @@ resolveConstructorMaybe ::
   GN.GlobalName ->
   App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
 resolveConstructorMaybe dd gn = do
-  let (dd', gn') = traceAliasChain (dd, gn)
-  case gn' of
+  case gn of
     GN.DataIntro dataArity consArity disc isConstLike ->
-      return $ Just (dd', dataArity, consArity, disc, isConstLike)
+      return $ Just (dd, dataArity, consArity, disc, isConstLike)
     _ ->
       return Nothing
-
-traceAliasChain ::
-  (DD.DefiniteDescription, GN.GlobalName) ->
-  (DD.DefiniteDescription, GN.GlobalName)
-traceAliasChain (dd, gn) =
-  case gn of
-    GN.Alias dd' gn' ->
-      traceAliasChain (dd', gn')
-    GN.AliasData dd' _ gn' ->
-      traceAliasChain (dd', gn')
-    _ ->
-      (dd, gn)
 
 interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName m dd gn = do
@@ -174,10 +145,6 @@ interpretGlobalName m dd gn = do
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
-    GN.Alias dd' gn' ->
-      interpretGlobalName m dd' gn'
-    GN.AliasData dd' _ gn' ->
-      interpretGlobalName m dd' gn'
 
 interpretTopLevelFunc ::
   Hint ->

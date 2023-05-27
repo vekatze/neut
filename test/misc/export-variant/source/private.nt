@@ -1,17 +1,9 @@
 import {}
 
 export {
-- sample-2 {
-  - Foo2
-  }
-- sample-1 => my-sample  {
-  - Foo => Foo-Alias
-  - Bar
-  }
-- sample-3 {
-  - Foo3
-  - Bar3 => Bar3-Alias
-  }
+- sample-2 {..}
+- sample-1 {..}
+- sample-3
 - config {..}
 - some-private-function
 }

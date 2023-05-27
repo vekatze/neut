@@ -1,9 +1,0 @@
-import {
-- this.file-4
-}
-
-define main(): unit {
-  let _ = test()
-  let _ = tau
-  Unit
-}

@@ -43,13 +43,10 @@ resolveAlias m gl = do
   case gl of
     GL.GlobalLocator moduleAlias sourceLocator -> do
       moduleID <- resolveModuleAlias m moduleAlias
-      cgl <- Locator.getCurrentGlobalLocator
-      let isPrivate = SGL.moduleID cgl == moduleID && SGL.sourceLocator cgl == sourceLocator
       return
         [ SGL.StrictGlobalLocator
             { SGL.moduleID = moduleID,
-              SGL.sourceLocator = sourceLocator,
-              SGL.isPublic = not isPrivate
+              SGL.sourceLocator = sourceLocator
             }
         ]
     GL.GlobalLocatorAlias alias -> do
@@ -71,8 +68,7 @@ resolveLocatorAlias m moduleAlias sourceLocator = do
   return $
     SGL.StrictGlobalLocator
       { SGL.moduleID = moduleID,
-        SGL.sourceLocator = sourceLocator,
-        SGL.isPublic = True
+        SGL.sourceLocator = sourceLocator
       }
 
 resolveModuleAlias :: Hint -> ModuleAlias -> App MID.ModuleID

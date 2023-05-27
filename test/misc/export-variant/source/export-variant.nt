@@ -1,37 +1,14 @@
 // export-variant.nt
 
-
 import {
 - this.api => L
 - this.private
 }
 
-export {
-- config {
-  - Config
-  }
-- sample-2 => my-sample-2 {
-  - Foo2
-  }
-}
-
-define do-something(): tau {
-  L.some-function(Foo-Alias)
-}
-
-define k(): L.my-sample-alias {
-  Bar(3)
-}
+export {}
 
 define do-next(): this.private.sample-2(tau) {
   Foo2
-}
-
-data main-config {
-- Main-Config(
-    sample: int,
-    test: L.my-sample-alias
-  )
 }
 
 data hogehoge {
@@ -40,11 +17,9 @@ data hogehoge {
 }
 
 define main(): unit {
-  let _ = L.sample-3
-  let _ = L.Foo3
-  let _ = L.Bar3-Alias
-  let _ = L.config
-  let _ = L.my-sample-alias
+  let _ = sample-3
+  // let _ = Foo3
+  let _ = L.my-function
   let _ = Bar
   Unit
 }

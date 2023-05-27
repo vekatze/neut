@@ -11,8 +11,7 @@ import Path
 
 data StrictGlobalLocator = StrictGlobalLocator
   { moduleID :: MID.ModuleID,
-    sourceLocator :: SL.SourceLocator,
-    isPublic :: Bool
+    sourceLocator :: SL.SourceLocator
   }
   deriving (Generic, Eq, Show)
 
@@ -24,24 +23,18 @@ reify :: StrictGlobalLocator -> T.Text
 reify gl =
   MID.reify (moduleID gl) <> nsSep <> SL.toText (sourceLocator gl)
 
-makePrivate :: StrictGlobalLocator -> StrictGlobalLocator
-makePrivate sgl =
-  sgl {isPublic = False}
-
 llvmGlobalLocator :: StrictGlobalLocator
 llvmGlobalLocator =
   StrictGlobalLocator
     { moduleID = MID.Base,
-      sourceLocator = SL.llvmLocator,
-      isPublic = True
+      sourceLocator = SL.llvmLocator
     }
 
 baseGlobalLocatorOf :: SL.SourceLocator -> StrictGlobalLocator
 baseGlobalLocatorOf sl =
   StrictGlobalLocator
     { moduleID = MID.Base,
-      sourceLocator = sl,
-      isPublic = True
+      sourceLocator = sl
     }
 
 getRelPathText :: StrictGlobalLocator -> T.Text

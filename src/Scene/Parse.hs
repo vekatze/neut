@@ -67,7 +67,6 @@ parseSource source = do
     Just cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      mapM_ Global.registerStmtExport $ Cache.nameArrowList cache
       Global.saveCurrentNameSet path $ Cache.nameArrowList cache
       return $ Left cache
     Nothing -> do
@@ -75,7 +74,6 @@ parseSource source = do
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       nameArrowList' <- concat <$> mapM Discern.discernNameArrow nameArrowList
-      mapM_ Global.registerStmtExport nameArrowList'
       Global.saveCurrentNameSet path nameArrowList'
       UnusedVariable.registerRemarks
       return $ Right (stmtList, nameArrowList')

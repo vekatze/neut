@@ -3,16 +3,7 @@ import {
 }
 
 export {
-- my-sample => my-sample-alias {
-  - Foo-Alias
-  }
-- sample-2 {
-  - Foo2 => FooFoo2
-  }
-- config {}
-- sample-3 {..}
 - my-function
-- some-private-function => some-function
 }
 
 define my-function(): tau {

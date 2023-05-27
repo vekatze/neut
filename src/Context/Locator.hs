@@ -50,7 +50,7 @@ attachCurrentLocator ::
   App DD.DefiniteDescription
 attachCurrentLocator name = do
   cgl <- getCurrentGlobalLocator
-  return $ DD.new (SGL.makePrivate cgl) $ LL.new name
+  return $ DD.new cgl $ LL.new name
 
 attachPublicCurrentLocator ::
   BN.BaseName ->
@@ -72,7 +72,7 @@ getPossibleReferents localLocator = do
   cgl <- getCurrentGlobalLocator
   agls <- readRef' activeGlobalLocatorList
   let dds = map (`DD.new` localLocator) agls
-  let dd = DD.new (SGL.makePrivate cgl) localLocator
+  let dd = DD.new cgl localLocator
   return $ ListUtils.nubOrd $ dd : dds
 
 constructGlobalLocator :: Module.Module -> Source.Source -> App SGL.StrictGlobalLocator
@@ -81,8 +81,7 @@ constructGlobalLocator mainModule source = do
   return $
     SGL.StrictGlobalLocator
       { SGL.moduleID = Module.getID mainModule $ Source.sourceModule source,
-        SGL.sourceLocator = sourceLocator,
-        SGL.isPublic = True
+        SGL.sourceLocator = sourceLocator
       }
 
 getSourceLocator :: Source.Source -> App SL.SourceLocator

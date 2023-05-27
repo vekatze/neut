@@ -84,8 +84,7 @@ interpretRelFilePath moduleID ens = do
       return
         SGL.StrictGlobalLocator
           { SGL.moduleID = moduleID,
-            SGL.sourceLocator = SL.SourceLocator relPath,
-            SGL.isPublic = True
+            SGL.sourceLocator = SL.SourceLocator relPath
           }
     Nothing ->
       raiseError m $ "invalid file path: " <> pathString

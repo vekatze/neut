@@ -1,7 +1,6 @@
 module Context.Global
   ( registerStmtDefine,
     registerStmtDefineResource,
-    registerStmtExport,
     lookup,
     lookupStrict,
     initialize,
@@ -98,28 +97,29 @@ registerData ::
 registerData isConstLike m dataName dataArgs consInfoList = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap dataName
-  let consList = map (\(consName, _, _, _) -> consName) consInfoList
   let dataArity = A.fromInt $ length dataArgs
+  let consNameArrowList = map (toConsNameArrow dataArity) consInfoList
   let dataArgNum = AN.fromInt (length dataArgs)
-  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consList isConstLike
-  forM_ consInfoList $ \(consName, isConstLikeCons, consArgs, discriminant) -> do
+  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consNameArrowList isConstLike
+  forM_ consNameArrowList $ \(consDD, consGN) -> do
     topNameMap' <- readRef' nameMap
-    ensureFreshness m topNameMap' consName
-    let consArity = A.fromInt $ length consArgs
-    modifyRef' nameMap $ Map.insert consName $ GN.DataIntro dataArity consArity discriminant isConstLikeCons
-    Implicit.insert consName dataArgNum
+    ensureFreshness m topNameMap' consDD
+    modifyRef' nameMap $ Map.insert consDD consGN
+    Implicit.insert consDD dataArgNum
+
+toConsNameArrow ::
+  A.Arity ->
+  (DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
+  (DD.DefiniteDescription, GN.GlobalName)
+toConsNameArrow dataArity (consDD, isConstLikeCons, consArgs, discriminant) = do
+  let consArity = A.fromInt $ length consArgs
+  (consDD, GN.DataIntro dataArity consArity discriminant isConstLikeCons)
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap resourceName
   modifyRef' nameMap $ Map.insert resourceName GN.Resource
-
-registerStmtExport :: NA.NameArrow -> App ()
-registerStmtExport ((m, alias), (_, origGN)) = do
-  topNameMap <- readRef' nameMap
-  ensureFreshness m topNameMap alias
-  modifyRef' nameMap $ Map.insert alias origGN
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
 lookup m name = do
@@ -155,7 +155,7 @@ ensureFreshness m topNameMap name = do
     Throw.raiseError m $
       "`" <> DD.reify name <> "` is already defined"
 
-insertToSourceNameMap :: Path Abs File -> [(DD.DefiniteDescription, GN.GlobalName)] -> App ()
+insertToSourceNameMap :: Path Abs File -> [NA.NameArrow] -> App ()
 insertToSourceNameMap sourcePath topLevelNameInfo = do
   modifyRef' sourceNameMap $ Map.insert sourcePath $ Map.fromList topLevelNameInfo
 
@@ -175,4 +175,4 @@ activateTopLevelNamesInSource m source = do
 
 saveCurrentNameSet :: Path Abs File -> [NA.NameArrow] -> App ()
 saveCurrentNameSet currentPath nameArrowList = do
-  insertToSourceNameMap currentPath $ map NA.reify nameArrowList
+  insertToSourceNameMap currentPath nameArrowList
