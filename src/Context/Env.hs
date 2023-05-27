@@ -14,6 +14,7 @@ import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DataSize qualified as DS
 import Entity.Hint
+import Entity.LocationTree qualified as LT
 import Entity.OS qualified as OS
 import Entity.Source qualified as Source
 import Entity.TargetPlatform
@@ -48,6 +49,10 @@ setCurrentSource =
 getCurrentSource :: App Source.Source
 getCurrentSource =
   readRef "currentSource" currentSource
+
+getTagMap :: App LT.LocationTree
+getTagMap =
+  readRef' tagMap
 
 type PathMap = Map.HashMap (Path Abs File) UTCTime
 

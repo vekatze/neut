@@ -3,7 +3,6 @@ module Scene.Parse.Discern.Name
     resolveNameOrError,
     resolveConstructor,
     resolveConstructorMaybe,
-    interpretDefiniteDescription,
     interpretGlobalName,
   )
 where
@@ -13,6 +12,7 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe qualified as Maybe
@@ -21,6 +21,7 @@ import Entity.Arity qualified as A
 import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
@@ -36,7 +37,7 @@ import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 
 {-# INLINE resolveName #-}
-resolveName :: Hint -> Name -> App (DD.DefiniteDescription, GN.GlobalName)
+resolveName :: Hint -> Name -> App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveName m name = do
   nameOrErr <- resolveNameOrError m name
   case nameOrErr of
@@ -46,18 +47,15 @@ resolveName m name = do
       return pair
 
 {-# INLINE resolveNameOrError #-}
-resolveNameOrError :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
+resolveNameOrError :: Hint -> Name -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveNameOrError m name =
   case name of
     Var var -> do
       resolveVarOrErr m var
     Locator l -> do
       Right <$> resolveLocator m l
-    DefiniteDescription dd -> do
-      gn <- interpretDefiniteDescription m dd
-      return $ Right (dd, gn)
 
-resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, GN.GlobalName))
+resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveVarOrErr m name = do
   localLocator <- Throw.liftEither $ LL.reflect m name
   candList <- Locator.getPossibleReferents localLocator
@@ -66,8 +64,9 @@ resolveVarOrErr m name = do
   case foundNameList of
     [] ->
       return $ Left $ "undefined variable: " <> name
-    [pair] ->
-      return $ Right pair
+    [globalVar@(_, (mDef, _))] -> do
+      Tag.insert m (T.length name) mDef
+      return $ Right globalVar
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       return $ Left $ "this `" <> name <> "` is ambiguous since it could refer to:" <> candInfo
@@ -75,7 +74,7 @@ resolveVarOrErr m name = do
 resolveLocator ::
   Hint ->
   L.Locator ->
-  App (DD.DefiniteDescription, GN.GlobalName)
+  App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveLocator m (gl, ll) = do
   sgls <- Alias.resolveAlias m gl
   let candList = map (`DD.new` ll) sgls
@@ -84,27 +83,21 @@ resolveLocator m (gl, ll) = do
   case foundNameList of
     [] ->
       Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
-    [pair] ->
-      return pair
+    [globalVar@(_, (mDef, _))] -> do
+      let glLen = T.length $ GL.reify gl
+      let llLen = T.length $ LL.reify ll
+      Tag.insert m (glLen + llLen) mDef
+      return globalVar
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
       Throw.raiseError m $ "this `" <> L.reify (gl, ll) <> "` is ambiguous since it could refer to:" <> candInfo
-
-interpretDefiniteDescription :: Hint -> DD.DefiniteDescription -> App GN.GlobalName
-interpretDefiniteDescription m dd = do
-  mgn <- Global.lookup m dd
-  case mgn of
-    Just gn ->
-      return gn
-    Nothing -> do
-      Throw.raiseError m $ "undefined constant: " <> DD.reify dd
 
 resolveConstructor ::
   Hint ->
   Name ->
   App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
 resolveConstructor m s = do
-  (dd, gn) <- resolveName m s
+  (dd, (_, gn)) <- resolveName m s
   mCons <- resolveConstructorMaybe dd gn
   case mCons of
     Just v ->
@@ -161,7 +154,8 @@ castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
   l <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
-  bool <- resolveLocator m l >>= uncurry (interpretGlobalName m)
+  (dd, (_, gn)) <- resolveLocator m l
+  bool <- interpretGlobalName m dd gn
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"
   x2 <- Gensym.newIdentFromText "arg"

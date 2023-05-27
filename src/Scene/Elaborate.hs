@@ -85,11 +85,13 @@ synthesizeDefList nameArrowList defList = do
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
+  tmap <- Env.getTagMap
   Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = defList',
         Cache.remarkList = remarkList,
-        Cache.nameArrowList = nameArrowList
+        Cache.nameArrowList = nameArrowList,
+        Cache.locationTree = tmap
       }
   Remark.printRemarkList remarkList
   return defList'
@@ -154,9 +156,9 @@ elaborateStmtKind stmtKind =
       return $ Normal opacity
     Data dataName dataArgs consInfoList -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs
-      let (consNameList, constLikeList, consArgsList, discriminantList) = unzip4 consInfoList
+      let (ms, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
       consArgsList' <- mapM (mapM elaborateWeakBinder) consArgsList
-      let consInfoList' = zip4 consNameList constLikeList consArgsList' discriminantList
+      let consInfoList' = zip5 ms consNameList constLikeList consArgsList' discriminantList
       return $ Data dataName dataArgs' consInfoList'
     DataIntro dataName dataArgs consArgs discriminant -> do
       dataArgs' <- mapM elaborateWeakBinder dataArgs

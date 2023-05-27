@@ -38,7 +38,7 @@ import Entity.StmtKind qualified as SK
 import Path
 import Prelude hiding (lookup)
 
-type NameMap = Map.HashMap DD.DefiniteDescription GN.GlobalName
+type NameMap = Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)
 
 registerStmtDefine ::
   IsConstLike ->
@@ -64,16 +64,16 @@ registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
   [a] ->
-  [(DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
+  [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerAsEnumIfNecessary dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
     Enum.insert dataName
-    mapM_ (Enum.insert . (\(consName, _, _, _) -> consName)) consInfoList
+    mapM_ (Enum.insert . (\(_, consName, _, _, _) -> consName)) consInfoList
 
-hasNoArgs :: [a] -> [(DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
+hasNoArgs :: [a] -> [(Hint, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
-  null dataArgs && null (concatMap (\(_, _, consArgs, _) -> consArgs) consInfoList)
+  null dataArgs && null (concatMap (\(_, _, _, consArgs, _) -> consArgs) consInfoList)
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
 registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
@@ -84,7 +84,7 @@ registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.Globa
 registerTopLevelFunc' m topLevelName impArgNum gn = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap topLevelName
-  modifyRef' nameMap $ Map.insert topLevelName gn
+  modifyRef' nameMap $ Map.insert topLevelName (m, gn)
   Implicit.insert topLevelName impArgNum
 
 registerData ::
@@ -92,7 +92,7 @@ registerData ::
   Hint ->
   DD.DefiniteDescription ->
   [a] ->
-  [(DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
+  [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerData isConstLike m dataName dataArgs consInfoList = do
   topNameMap <- readRef' nameMap
@@ -100,7 +100,7 @@ registerData isConstLike m dataName dataArgs consInfoList = do
   let dataArity = A.fromInt $ length dataArgs
   let consNameArrowList = map (toConsNameArrow dataArity) consInfoList
   let dataArgNum = AN.fromInt (length dataArgs)
-  modifyRef' nameMap $ Map.insert dataName $ GN.Data dataArity consNameArrowList isConstLike
+  modifyRef' nameMap $ Map.insert dataName (m, GN.Data dataArity consNameArrowList isConstLike)
   forM_ consNameArrowList $ \(consDD, consGN) -> do
     topNameMap' <- readRef' nameMap
     ensureFreshness m topNameMap' consDD
@@ -109,19 +109,19 @@ registerData isConstLike m dataName dataArgs consInfoList = do
 
 toConsNameArrow ::
   A.Arity ->
-  (DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
-  (DD.DefiniteDescription, GN.GlobalName)
-toConsNameArrow dataArity (consDD, isConstLikeCons, consArgs, discriminant) = do
+  (Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
+  (DD.DefiniteDescription, (Hint, GN.GlobalName))
+toConsNameArrow dataArity (m, consDD, isConstLikeCons, consArgs, discriminant) = do
   let consArity = A.fromInt $ length consArgs
-  (consDD, GN.DataIntro dataArity consArity discriminant isConstLikeCons)
+  (consDD, (m, GN.DataIntro dataArity consArity discriminant isConstLikeCons))
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do
   topNameMap <- readRef' nameMap
   ensureFreshness m topNameMap resourceName
-  modifyRef' nameMap $ Map.insert resourceName GN.Resource
+  modifyRef' nameMap $ Map.insert resourceName (m, GN.Resource)
 
-lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe GlobalName)
+lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do
   nameMap <- readRef' nameMap
   dataSize <- Env.getDataSize m
@@ -130,13 +130,13 @@ lookup m name = do
       return $ Just kind
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->
-          return $ Just $ GN.PrimType primType
+          return $ Just (m, GN.PrimType primType)
       | Just primOp <- PrimOp.fromDefiniteDescription dataSize name ->
-          return $ Just $ GN.PrimOp primOp
+          return $ Just (m, GN.PrimOp primOp)
       | otherwise -> do
           return Nothing
 
-lookupStrict :: Hint.Hint -> DD.DefiniteDescription -> App GlobalName
+lookupStrict :: Hint.Hint -> DD.DefiniteDescription -> App (Hint, GlobalName)
 lookupStrict m name = do
   mGlobalName <- lookup m name
   case mGlobalName of
@@ -159,7 +159,7 @@ insertToSourceNameMap :: Path Abs File -> [NA.NameArrow] -> App ()
 insertToSourceNameMap sourcePath topLevelNameInfo = do
   modifyRef' sourceNameMap $ Map.insert sourcePath $ Map.fromList topLevelNameInfo
 
-lookupSourceNameMap :: Hint.Hint -> Path Abs File -> App (Map.HashMap DD.DefiniteDescription GN.GlobalName)
+lookupSourceNameMap :: Hint.Hint -> Path Abs File -> App (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName))
 lookupSourceNameMap m sourcePath = do
   smap <- readRef' sourceNameMap
   case Map.lookup sourcePath smap of

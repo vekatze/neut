@@ -153,9 +153,9 @@ weakenStmtKind stmtKind =
       Normal opacity
     Data dataName dataArgs consInfoList -> do
       let dataArgs' = map weakenBinder dataArgs
-      let (consNameList, constLikeList, consArgsList, discriminantList) = unzip4 consInfoList
+      let (hintList, consNameList, constLikeList, consArgsList, discriminantList) = unzip5 consInfoList
       let consArgsList' = map (map weakenBinder) consArgsList
-      let consInfoList' = zip4 consNameList constLikeList consArgsList' discriminantList
+      let consInfoList' = zip5 hintList consNameList constLikeList consArgsList' discriminantList
       Data dataName dataArgs' consInfoList'
     DataIntro dataName dataArgs consArgs discriminant -> do
       let dataArgs' = map weakenBinder dataArgs

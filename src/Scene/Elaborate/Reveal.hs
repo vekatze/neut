@@ -48,9 +48,9 @@ revealStmtKind stmtKind =
       return stmtKind
     Data dataName dataArgs consInfoList -> do
       (dataArgs', varEnv) <- revealBinder'' [] dataArgs
-      consInfoList' <- forM consInfoList $ \(dd, constLike, consArgs, discriminant) -> do
+      consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
         (consArgs', _) <- revealBinder'' varEnv consArgs
-        return (dd, constLike, consArgs', discriminant)
+        return (m, dd, constLike, consArgs', discriminant)
       return $ Data dataName dataArgs' consInfoList'
     DataIntro consName dataArgs consArgs discriminant -> do
       (dataArgs', varEnv) <- revealBinder'' [] dataArgs

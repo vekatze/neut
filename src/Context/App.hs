@@ -34,16 +34,16 @@ writeRef accessor value = do
   ref <- asks accessor
   liftIO $ writeIORef ref (Just value)
 
-readRef' :: (Env -> FastRef a) -> App a
+readRef' :: (Env -> IORef a) -> App a
 readRef' accessor = do
   asks accessor >>= liftIO . readIORef
 
-writeRef' :: (Env -> FastRef a) -> a -> App ()
+writeRef' :: (Env -> IORef a) -> a -> App ()
 writeRef' accessor value = do
   ref <- asks accessor
   liftIO $ writeIORef ref value
 
-modifyRef' :: (Env -> FastRef a) -> (a -> a) -> App ()
+modifyRef' :: (Env -> IORef a) -> (a -> a) -> App ()
 modifyRef' accessor modifier = do
   ref <- asks accessor
   value <- liftIO $ readIORef ref

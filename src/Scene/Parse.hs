@@ -89,7 +89,7 @@ ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
   mMain <- Global.lookup m mainFunctionName
   case mMain of
-    Just (GN.TopLevelFunc _ _) ->
+    Just (_, GN.TopLevelFunc _ _) ->
       return ()
     _ ->
       Throw.raiseError m "`main` is missing"
@@ -168,7 +168,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = SK.Data dataName dataArgs consInfoList''
-  let consNameList = map (\(consName, _, _, _) -> consName) consInfoList''
+  let consNameList = map (\(_, consName, _, _, _) -> consName) consInfoList''
   let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
   let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
@@ -177,14 +177,14 @@ defineData m dataName dataArgsOrNone consInfoList = do
 
 modifyConsInfo ::
   D.Discriminant ->
-  [(a, DD.DefiniteDescription, b, [RawBinder RT.RawTerm])] ->
-  [(DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
+  [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm])] ->
+  [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
-    (_, consName, isConstLike, consArgs) : rest ->
-      (consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
+    (m, consName, isConstLike, consArgs) : rest ->
+      (m, consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
   (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm]) ->

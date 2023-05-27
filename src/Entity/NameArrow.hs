@@ -12,7 +12,7 @@ import Entity.Name
 import GHC.Generics
 
 type NameArrow =
-  (DD.DefiniteDescription, GN.GlobalName)
+  (DD.DefiniteDescription, (Hint, GN.GlobalName))
 
 data RawNameArrow
   = Function InnerRawNameArrow

@@ -8,6 +8,7 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
 import Context.Locator (getCurrentGlobalLocator)
+import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
@@ -71,11 +72,11 @@ discernStmtKind stmtKind =
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
-      let (consNameList, isConstLikeList, consArgsList, discriminantList) = unzip4 consInfoList
+      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
       (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
       forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
-      let consInfoList' = zip4 consNameList isConstLikeList consArgsList' discriminantList
+      let consInfoList' = zip5 locList consNameList isConstLikeList consArgsList' discriminantList
       return $ SK.Data dataName dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
       (dataArgs', nenv) <- discernBinder empty dataArgs
@@ -92,11 +93,12 @@ discern nenv term =
     m :< RT.Var name ->
       case name of
         Var s
-          | Just (_, name') <- lookup s nenv -> do
+          | Just (mDef, name') <- lookup s nenv -> do
               UnusedVariable.delete name'
+              Tag.insert m (T.length s) mDef
               return $ m :< WT.Var name'
         _ -> do
-          (dd, gn) <- resolveName m name
+          (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
@@ -313,7 +315,7 @@ discernPattern (m, pat) =
             Left _ -> do
               x' <- Gensym.newIdentFromText x
               return ((m, PAT.Var x'), [(x, (m, x'))])
-            Right (dd, gn) -> do
+            Right (dd, (_, gn)) -> do
               mCons <- resolveConstructorMaybe dd gn
               case mCons of
                 Nothing -> do
@@ -327,15 +329,7 @@ discernPattern (m, pat) =
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of
-            GN.DataIntro dataArity consArity disc _ ->
-              return ((m, PAT.Cons dd disc dataArity consArity []), [])
-            _ ->
-              Throw.raiseCritical m $
-                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
-        DefiniteDescription dd -> do
-          gn <- interpretDefiniteDescription m dd
-          case gn of
-            GN.DataIntro dataArity consArity disc _ ->
+            (_, GN.DataIntro dataArity consArity disc _) ->
               return ((m, PAT.Cons dd disc dataArity consArity []), [])
             _ ->
               Throw.raiseCritical m $
@@ -364,9 +358,9 @@ discernNameArrow clause = do
       nameArrow <- discernInnerNameArrow clauseInfo
       return [nameArrow]
     NA.Variant arrow@(m, _) -> do
-      (dataDD, dataGN) <- discernInnerNameArrow arrow
+      (dataDD, (mData, dataGN)) <- discernInnerNameArrow arrow
       consNameArrowList <- getRuleListByGlobalName m dataGN
-      return $ (dataDD, dataGN) : consNameArrowList
+      return $ (dataDD, (mData, dataGN)) : consNameArrowList
 
 discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.NameArrow
 discernInnerNameArrow (m, name) = do
