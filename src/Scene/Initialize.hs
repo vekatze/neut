@@ -1,6 +1,7 @@
 module Scene.Initialize
   ( initializeCompiler,
     initializeCompilerWithModule,
+    initializeLogger,
     initializeForTarget,
     initializeForSource,
   )
@@ -13,7 +14,6 @@ import Context.Global qualified as Global
 import Context.LLVM qualified as LLVM
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
-import Context.Path qualified as Path
 import Context.Remark qualified as Remark
 import Context.Tag qualified as Tag
 import Context.UnusedVariable qualified as UnusedVariable
@@ -24,18 +24,21 @@ import Entity.Source qualified as Source
 import Scene.Clarify qualified as Clarify
 import Scene.Module.Reflect qualified as Module
 
-initializeCompiler :: Remark.Config -> Maybe String -> App ()
-initializeCompiler cfg mClangOptString = do
-  mainModule <- Module.fromCurrentPath
-  initializeCompilerWithModule mainModule cfg mClangOptString
-
-initializeCompilerWithModule :: Module -> Remark.Config -> Maybe String -> App ()
-initializeCompilerWithModule newModule cfg mClangOptString = do
+initializeLogger :: Remark.Config -> App ()
+initializeLogger cfg = do
   Remark.setEndOfEntry $ Remark.endOfEntry cfg
   Remark.setShouldColorize $ Remark.shouldColorize cfg
+
+initializeCompiler :: Remark.Config -> Maybe String -> App ()
+initializeCompiler cfg mClangOptString = do
+  initializeLogger cfg
+  mainModule <- Module.fromCurrentPath
+  initializeCompilerWithModule mainModule mClangOptString
+
+initializeCompilerWithModule :: Module -> Maybe String -> App ()
+initializeCompilerWithModule newModule mClangOptString = do
   Env.setTargetPlatform
   LLVM.setClangOptString (fromMaybe "" mClangOptString)
-  Path.ensureNotInLibDir
   Module.setMainModule newModule
 
 initializeForTarget :: App ()

@@ -77,14 +77,17 @@ getID :: Module -> Module -> MID.ModuleID
 getID mainModule currentModule = do
   if moduleLocation mainModule == moduleLocation currentModule
     then MID.Main
-    else
-      MID.Library $
-        ModuleChecksum $
-          T.pack $
-            FP.dropTrailingPathSeparator $
-              toFilePath $
-                dirname $
-                  parent (moduleLocation currentModule)
+    else getChecksumFromModulePath (moduleLocation currentModule)
+
+getChecksumFromModulePath :: Path Abs File -> MID.ModuleID
+getChecksumFromModulePath moduleFilePath =
+  MID.Library $
+    ModuleChecksum $
+      T.pack $
+        FP.dropTrailingPathSeparator $
+          toFilePath $
+            dirname $
+              parent moduleFilePath
 
 getTargetList :: Module -> Maybe Target.Target -> [Target.Target]
 getTargetList someModule mTarget =

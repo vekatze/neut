@@ -5,6 +5,7 @@ module Context.Remark
     printString,
     printRemark,
     printRemarkList,
+    printErrorList,
     printNote,
     printNote',
     printWarning,
@@ -34,6 +35,7 @@ import Entity.FilePos qualified as FilePos
 import Entity.Hint
 import Entity.Remark qualified as R
 import System.Console.ANSI.Codes
+import System.IO
 
 initialize :: App ()
 initialize = do
@@ -50,6 +52,10 @@ printRemark =
 printRemarkList :: [R.Remark] -> App ()
 printRemarkList remarkList = do
   foldr ((>>) . printRemark) (return ()) remarkList
+
+printErrorList :: [R.Remark] -> App ()
+printErrorList remarkList = do
+  foldr ((>>) . printErrorIO) (return ()) remarkList
 
 printNote :: Hint -> T.Text -> App ()
 printNote =
@@ -114,6 +120,14 @@ printRemarkIO (mpos, shouldInsertPadding, l, t) = do
   remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- getFooter
   liftIO $ TIO.putStr $ locText <> levelText <> remarkText <> footerText
+
+printErrorIO :: R.Remark -> App ()
+printErrorIO (mpos, shouldInsertPadding, l, t) = do
+  locText <- getRemarkLocation mpos
+  levelText <- getRemarkLevel l
+  remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
+  footerText <- getFooter
+  liftIO $ TIO.hPutStr stderr $ locText <> levelText <> remarkText <> footerText
 
 getRemarkLocation :: Maybe FilePos -> App T.Text
 getRemarkLocation mpos = do

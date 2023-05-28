@@ -1,11 +1,13 @@
 module Context.App
   ( App,
     runApp,
+    runAppInEnv,
     readRef,
     writeRef,
     readRef',
     writeRef',
     modifyRef',
+    getEnv,
   )
 where
 
@@ -19,6 +21,10 @@ type App = ReaderT Env IO
 runApp :: App a -> IO a
 runApp app = do
   newEnv >>= runReaderT app
+
+runAppInEnv :: Env -> App a -> IO a
+runAppInEnv env app = do
+  runReaderT app env
 
 readRef :: T.Text -> (Env -> Ref a) -> App a
 readRef name accessor = do
@@ -48,3 +54,7 @@ modifyRef' accessor modifier = do
   ref <- asks accessor
   value <- liftIO $ readIORef ref
   liftIO $ writeIORef ref $ modifier value
+
+getEnv :: App Env
+getEnv =
+  ask

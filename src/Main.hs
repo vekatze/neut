@@ -5,6 +5,7 @@ import Act.Build qualified as Build
 import Act.Check qualified as Check
 import Act.Clean qualified as Clean
 import Act.Create qualified as Create
+import Act.LSP qualified as LSP
 import Act.Release qualified as Release
 import Act.Tidy qualified as Tidy
 import Act.Version qualified as Version
@@ -39,5 +40,7 @@ execute = do
           Add.add cfg
         C.Tidy cfg ->
           Tidy.tidy cfg
+        C.LSP cfg ->
+          LSP.lsp cfg
         C.ShowVersion cfg ->
           Version.showVersion cfg

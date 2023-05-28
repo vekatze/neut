@@ -31,6 +31,7 @@ dependencies:
   - free
   - half
   - hashable
+  - lsp
   - megaparsec
   - mtl
   - optparse-applicative

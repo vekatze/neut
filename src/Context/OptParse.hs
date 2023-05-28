@@ -10,6 +10,7 @@ import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
+import Entity.Config.LSP qualified as LSP
 import Entity.Config.Release qualified as Release
 import Entity.Config.Remark qualified as Remark
 import Entity.Config.Tidy qualified as Tidy
@@ -35,6 +36,7 @@ parseOpt = do
         cmd "create" parseCreateOpt "create a new module",
         cmd "add" parseGetOpt "add a dependency",
         cmd "tidy" parseTidyOpt "tidy the module dependency",
+        cmd "lsp" parseLSPOpt "start the LSP server",
         cmd "version" parseVersionOpt "show version info"
       ]
 
@@ -97,6 +99,13 @@ parseTidyOpt = do
       Tidy.Config
         { Tidy.remarkCfg = remarkCfg
         }
+
+parseLSPOpt :: Parser Command
+parseLSPOpt = do
+  remarkCfg <- remarkConfigOpt
+  pure $
+    LSP $
+      LSP.Config {LSP.remarkCfg = remarkCfg}
 
 parseCreateOpt :: Parser Command
 parseCreateOpt = do

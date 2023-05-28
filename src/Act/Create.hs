@@ -9,6 +9,7 @@ import Scene.New qualified as New
 create :: Config -> App ()
 create cfg = do
   newModule <- New.constructDefaultModule (moduleName cfg)
-  Initialize.initializeCompilerWithModule newModule (remarkCfg cfg) Nothing
+  Initialize.initializeLogger (remarkCfg cfg)
+  Initialize.initializeCompilerWithModule newModule Nothing
   New.createNewProject (moduleName cfg) newModule
   Fetch.insertCoreDependency

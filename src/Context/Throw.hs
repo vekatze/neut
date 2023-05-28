@@ -31,7 +31,7 @@ run c = do
   resultOrErr <- Safe.try $ wrappingExternalExceptions c
   case resultOrErr of
     Left (E.MakeError err) -> do
-      Remark.printRemarkList err
+      Remark.printErrorList err
       liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result

@@ -1,6 +1,7 @@
 module Scene.Unravel
   ( unravel,
     unravelFromSGL,
+    unravel',
   )
 where
 

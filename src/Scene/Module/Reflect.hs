@@ -2,6 +2,7 @@ module Scene.Module.Reflect
   ( getModule,
     fromFilePath,
     fromCurrentPath,
+    findModuleFile,
   )
 where
 
@@ -136,18 +137,19 @@ ensureExistence m moduleRootDir path existenceChecker kindText = do
     relPathFromModuleRoot <- Path.stripPrefix moduleRootDir path
     raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
 
-findModuleFile :: Path Abs Dir -> App (Path Abs File)
-findModuleFile moduleRootDirCandidate = do
+findModuleFile :: Path Abs Dir -> Path Abs Dir -> App (Path Abs File)
+findModuleFile baseDir moduleRootDirCandidate = do
   let moduleFileCandidate = moduleRootDirCandidate </> moduleFile
   moduleFileExists <- Path.doesFileExist moduleFileCandidate
   case (moduleFileExists, moduleRootDirCandidate /= parent moduleRootDirCandidate) of
     (True, _) ->
       return moduleFileCandidate
     (_, True) ->
-      findModuleFile $ parent moduleRootDirCandidate
+      findModuleFile baseDir $ parent moduleRootDirCandidate
     _ ->
-      raiseError' "couldn't find a module file."
+      raiseError' $ "couldn't find a module file (context: " <> T.pack (toFilePath baseDir) <> ")"
 
 getCurrentModuleFilePath :: App (Path Abs File)
-getCurrentModuleFilePath =
-  Path.getCurrentDir >>= findModuleFile
+getCurrentModuleFilePath = do
+  baseDir <- Path.getCurrentDir
+  findModuleFile baseDir baseDir
