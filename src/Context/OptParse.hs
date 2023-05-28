@@ -13,7 +13,6 @@ import Entity.Config.Create qualified as Create
 import Entity.Config.LSP qualified as LSP
 import Entity.Config.Release qualified as Release
 import Entity.Config.Remark qualified as Remark
-import Entity.Config.Tidy qualified as Tidy
 import Entity.Config.Version qualified as Version
 import Entity.ModuleURL
 import Entity.OutputKind qualified as OK
@@ -35,7 +34,6 @@ parseOpt = do
         cmd "release" parseReleaseOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
         cmd "add" parseGetOpt "add a dependency",
-        cmd "tidy" parseTidyOpt "tidy the module dependency",
         cmd "lsp" parseLSPOpt "start the LSP server",
         cmd "version" parseVersionOpt "show version info"
       ]
@@ -89,15 +87,6 @@ parseGetOpt = do
         { Add.moduleAliasText = T.pack moduleAlias,
           Add.moduleURL = ModuleURL $ T.pack moduleURL,
           Add.remarkCfg = remarkCfg
-        }
-
-parseTidyOpt :: Parser Command
-parseTidyOpt = do
-  remarkCfg <- remarkConfigOpt
-  pure $
-    Tidy $
-      Tidy.Config
-        { Tidy.remarkCfg = remarkCfg
         }
 
 parseLSPOpt :: Parser Command
