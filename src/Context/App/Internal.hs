@@ -52,7 +52,8 @@ data Env = Env
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     antecedentMap :: IORef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: IORef [C.Constraint],
-    remarkList :: IORef [Remark.Remark],
+    remarkList :: IORef [Remark.Remark], -- per file
+    globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
@@ -104,6 +105,7 @@ newEnv = do
   locatorAliasMap <- newIORef Map.empty
   sourceNameMap <- newIORef Map.empty
   remarkList <- newIORef []
+  globalRemarkList <- newIORef []
   tagMap <- newIORef LT.empty
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty

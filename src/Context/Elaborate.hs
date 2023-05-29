@@ -44,6 +44,7 @@ initialize :: App ()
 initialize = do
   initializeInferenceEnv
   writeRef' weakTypeEnv IntMap.empty
+  setConstraintQueue Q.empty
 
 initializeInferenceEnv :: App ()
 initializeInferenceEnv = do

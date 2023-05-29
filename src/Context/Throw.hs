@@ -2,6 +2,7 @@ module Context.Throw
   ( throw,
     run,
     run',
+    collectLogs,
     raiseError,
     raiseError',
     raiseCritical,
@@ -45,6 +46,16 @@ run' c = do
       foldr ((>>) . Remark.printRemark) (liftIO $ exitWith (ExitFailure 1)) err'
     Right result ->
       return result
+
+collectLogs :: App () -> App [R.Remark]
+collectLogs c = do
+  resultOrErr <- Safe.try $ wrappingExternalExceptions c
+  remarkList <- Remark.getGlobalRemarkList
+  case resultOrErr of
+    Left (E.MakeError logList) ->
+      return $ logList ++ remarkList
+    Right _ ->
+      return remarkList
 
 wrappingExternalExceptions :: App a -> App a
 wrappingExternalExceptions comp = do

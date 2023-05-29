@@ -54,7 +54,9 @@ elaborate cacheOrStmt = do
     Left cache -> do
       let stmtList = Cache.stmtList cache
       forM_ stmtList insertStmt
-      Remark.printRemarkList $ Cache.remarkList cache
+      let remarkList = Cache.remarkList cache
+      Remark.insertToGlobalRemarkList remarkList
+      Remark.printRemarkList remarkList
       return stmtList
     Right (defList, nameArrowList) -> do
       (analyzeDefList >=> synthesizeDefList nameArrowList) defList
@@ -94,6 +96,7 @@ synthesizeDefList nameArrowList defList = do
         Cache.locationTree = tmap
       }
   Remark.printRemarkList remarkList
+  Remark.insertToGlobalRemarkList remarkList
   return defList'
 
 elaborateStmt :: WeakStmt -> App Stmt

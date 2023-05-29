@@ -2,6 +2,10 @@ module Context.Remark
   ( initialize,
     insertRemark,
     getRemarkList,
+    setRemarkList,
+    insertToGlobalRemarkList,
+    setGlobalRemarkList,
+    getGlobalRemarkList,
     printString,
     printRemark,
     printRemarkList,
@@ -22,6 +26,7 @@ module Context.Remark
     getEndOfEntry,
     setShouldColorize,
     getShouldColorize,
+    printLog,
   )
 where
 
@@ -197,3 +202,23 @@ insertRemark r = do
 getRemarkList :: App [R.Remark]
 getRemarkList = do
   readRef' remarkList
+
+setRemarkList :: [R.Remark] -> App ()
+setRemarkList = do
+  writeRef' remarkList
+
+insertToGlobalRemarkList :: [R.Remark] -> App ()
+insertToGlobalRemarkList remarkList = do
+  modifyRef' globalRemarkList $ (++) remarkList
+
+setGlobalRemarkList :: [R.Remark] -> App ()
+setGlobalRemarkList = do
+  writeRef' globalRemarkList
+
+getGlobalRemarkList :: App [R.Remark]
+getGlobalRemarkList = do
+  readRef' globalRemarkList
+
+printLog :: T.Text -> App ()
+printLog text =
+  liftIO $ TIO.hPutStrLn stderr text

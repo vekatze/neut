@@ -15,7 +15,9 @@ import Context.LLVM qualified as LLVM
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Remark qualified as Remark
+import Context.Remark qualified as Rmeark
 import Context.Tag qualified as Tag
+import Context.Unravel qualified as Unravel
 import Context.UnusedVariable qualified as UnusedVariable
 import Data.Maybe
 import Entity.Config.Remark qualified as Remark
@@ -44,6 +46,8 @@ initializeCompilerWithModule newModule mClangOptString = do
 initializeForTarget :: App ()
 initializeForTarget = do
   Clarify.registerFoundationalTypes
+  Unravel.clearVisitEnv
+  Rmeark.setGlobalRemarkList []
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
@@ -54,3 +58,4 @@ initializeForSource source = do
   Alias.initializeAliasMap
   Locator.initialize
   Tag.initialize
+  Remark.setRemarkList []

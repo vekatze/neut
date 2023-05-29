@@ -1,5 +1,6 @@
 module Context.Unravel
   ( getVisitEnv,
+    clearVisitEnv,
     insertToVisitEnv,
     pushToTraceSourceList,
     popFromTraceSourceList,
@@ -19,6 +20,10 @@ import Path
 getVisitEnv :: App (Map.HashMap (Path Abs File) VisitInfo)
 getVisitEnv =
   readRef' visitEnv
+
+clearVisitEnv :: App ()
+clearVisitEnv =
+  writeRef' visitEnv Map.empty
 
 insertToVisitEnv :: Path Abs File -> VisitInfo -> App ()
 insertToVisitEnv k v =
