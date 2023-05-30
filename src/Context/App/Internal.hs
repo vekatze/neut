@@ -23,6 +23,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.HoleSubst qualified as HS
 import Entity.Ident
+import Entity.IsConstLike
 import Entity.Key
 import Entity.LocationTree qualified as LT
 import Entity.LowType qualified as LT
@@ -75,7 +76,7 @@ data Env = Env
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
-    keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (A.Arity, [Key])),
+    keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (A.Arity, [Key]))),
     enumSet :: IORef (S.Set DD.DefiniteDescription),
     impArgEnv :: IORef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),

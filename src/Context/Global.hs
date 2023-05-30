@@ -53,7 +53,7 @@ registerStmtDefine ::
 registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
   let allArgNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
   let arity = A.fromInt (AN.reify allArgNum)
-  KeyArg.insert name arity expArgNames
+  KeyArg.insert name isConstLike arity expArgNames
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum
