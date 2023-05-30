@@ -210,10 +210,10 @@ define unbalanced-freevars-in-branches[a](t: term(a)): term(a) {
 }
 
 data monoid(a) {
-- Monoid(
-    m-empty: a,
-    m-op: (a, a) -> a
-  )
+- Monoid of {
+  - m-empty: a
+  - m-op: (a, a) -> a
+  }
 }
 
 inline list-monoid[a](): monoid(list(a)) {

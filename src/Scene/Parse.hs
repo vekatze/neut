@@ -153,7 +153,7 @@ parseDefineData = do
 parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseDataArgs = do
   choice
-    [ Just <$> P.argList preBinder,
+    [ Just <$> try (P.argSeqOrList preBinder),
       return Nothing
     ]
 
@@ -243,7 +243,7 @@ parseDefineDataClause = do
 parseConsArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseConsArgs = do
   choice
-    [ Just <$> P.argList parseDefineDataClauseArg,
+    [ Just <$> try (P.argSeqOrList parseDefineDataClauseArg),
       return Nothing
     ]
 

@@ -331,7 +331,7 @@ parseTopDefInfo = do
   m <- getCurrentHint
   funcBaseName <- baseName
   impDomInfoList <- impArgList preBinder
-  domInfoList <- argList preBinder
+  domInfoList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) domInfoList
   additionalDomInfoList <- many $ argList preBinder
   codType <- parseDefInfoCod m

@@ -202,6 +202,13 @@ manyList :: Parser a -> Parser [a]
 manyList f =
   many $ delimiter "-" >> f
 
+argSeqOrList :: Parser a -> Parser [a]
+argSeqOrList p =
+  choice
+    [ argList p,
+      keyword "of" >> betweenBrace (manyList p)
+    ]
+
 var :: Parser (Hint, T.Text)
 var = do
   lexeme var'

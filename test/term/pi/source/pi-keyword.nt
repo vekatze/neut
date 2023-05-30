@@ -57,3 +57,11 @@ define test-syntax(): unit {
     }
   Unit
 }
+
+define def-func-using-of of {
+- arg-1: int
+- arg-2: tau
+}: tau {
+  let _ = arg-1
+  arg-2
+}
