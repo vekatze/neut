@@ -1,7 +1,6 @@
 module Scene.LSP (lsp) where
 
 import Context.App
-import Context.Remark (printLog)
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
