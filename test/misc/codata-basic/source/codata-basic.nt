@@ -18,7 +18,7 @@ data stream(a: tau) {
 }
 
 define int-stream(x: int): stream(int) {
-  Stream at {
+  Stream of {
   - head =>
     x
   - tail =>
@@ -45,7 +45,7 @@ define get-head[a](s: stream(a)): a {
 define main(): unit {
   let inner = Bar(10)
   let config =
-    Foo at {
+    Foo of {
     - value-1 => 3
     - value-3 => inner
     - value-2 => 8

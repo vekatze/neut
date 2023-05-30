@@ -23,7 +23,7 @@ data set-signature(a) {
 }
 
 define make-set-signature[a](compare: (a, a) -> order): set-signature(a) {
-  Set at {
+  Set of {
   - empty =>
     Leaf
   - insert =>

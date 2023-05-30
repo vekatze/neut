@@ -217,7 +217,7 @@ data monoid(a) {
 }
 
 inline list-monoid[a](): monoid(list(a)) {
-  Monoid at {
+  Monoid of {
   - m-op => core.list.append
   - m-empty => []
   }

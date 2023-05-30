@@ -163,7 +163,7 @@ rawTermPiOrConsOrAscOrBasic = do
         _ :< RT.Var name -> do
           choice
             [ do
-                keyword "at"
+                keyword "of"
                 rowList <- betweenBrace $ manyList rawTermKeyValuePair
                 return $ m :< RT.PiElimByKey name rowList,
               return basic

@@ -22,7 +22,7 @@ data finite-map-signature(a, b) {
 }
 
 define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, b) {
-  Finite-Map at {
+  Finite-Map of {
   - empty =>
     Leaf
   - insert =>

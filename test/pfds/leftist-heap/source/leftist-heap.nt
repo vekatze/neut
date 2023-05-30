@@ -62,7 +62,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
       }
     }
   }
-  Heap at {
+  Heap of {
   - empty =>
     Leaf
   - is-empty =>
