@@ -16,7 +16,7 @@ findDefinition fp (line, col) = do
     Nothing -> do
       return Nothing
     Just src -> do
-      Unravel.clearVisitEnv
+      Unravel.initialize
       _ <- unravel' src
       mCache <- Cache.loadCacheOptimistically src
       case mCache of

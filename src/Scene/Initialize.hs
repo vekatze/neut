@@ -46,7 +46,7 @@ initializeCompilerWithModule newModule mClangOptString = do
 initializeForTarget :: App ()
 initializeForTarget = do
   Clarify.registerFoundationalTypes
-  Unravel.clearVisitEnv
+  Unravel.initialize
   Rmeark.setGlobalRemarkList []
   Global.clearSourceNameMap
 
