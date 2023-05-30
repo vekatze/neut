@@ -41,7 +41,7 @@ complete pathString = do
                 return $ map (newCompletionItem $ Just locator) $ nameList ++ fullyQualifiedNameList
               Just rawAlias -> do
                 let aliasPrefixedNameList = map (\x -> rawAlias <> nsSep <> x) nameList
-                let allNameList = nameList ++ aliasPrefixedNameList ++ fullyQualifiedNameList
+                let allNameList = aliasPrefixedNameList ++ fullyQualifiedNameList
                 return $ map (newCompletionItem $ Just locator) allNameList
       case Map.lookup (sourceFilePath src) sourceNameMap of
         Nothing -> do
