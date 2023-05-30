@@ -8,6 +8,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
+import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.LocalLocator qualified as LL
 import Entity.Source
@@ -33,7 +34,8 @@ complete pathString = do
             let nameInfo' = Map.toList $ Map.filter (\(v, _) -> isPublic v) nameInfo
             let nameList = map (LL.reify . DD.localLocator . fst) nameInfo'
             locator <- NE.head <$> getHumanReadableLocator (sourceModule src) child
-            return $ map (newCompletionItem $ Just locator) nameList
+            let prefixedNameList = map (\x -> locator <> nsSep <> x) nameList
+            return $ map (newCompletionItem $ Just locator) $ nameList ++ prefixedNameList
       case Map.lookup (sourceFilePath src) sourceNameMap of
         Nothing -> do
           return childCompItemList
