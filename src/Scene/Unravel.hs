@@ -22,6 +22,7 @@ import Data.Sequence as Seq (Seq, empty, (><), (|>))
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time
+import Entity.AliasInfo
 import Entity.Artifact qualified as A
 import Entity.Hint
 import Entity.Module
@@ -241,19 +242,19 @@ getChildren currentSource = do
   sourceChildrenMap <- Unravel.getSourceChildrenMap
   let currentSourceFilePath = Source.sourceFilePath currentSource
   case Map.lookup currentSourceFilePath sourceChildrenMap of
-    Just sourceList ->
-      return sourceList
+    Just sourceAliasList ->
+      return $ map fst sourceAliasList
     Nothing -> do
-      sourceList <- parseSourceHeader currentSource
-      Unravel.insertToSourceChildrenMap currentSourceFilePath sourceList
-      return sourceList
+      sourceAliasList <- parseSourceHeader currentSource
+      Unravel.insertToSourceChildrenMap currentSourceFilePath sourceAliasList
+      return $ map fst sourceAliasList
 
-parseSourceHeader :: Source.Source -> App [Source.Source]
+parseSourceHeader :: Source.Source -> App [(Source.Source, AliasInfo)]
 parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
-  map fst <$> ParseCore.run (parseImportBlock currentSource <* parseExportBlock) path
+  ParseCore.run (parseImportBlock currentSource <* parseExportBlock) path
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =

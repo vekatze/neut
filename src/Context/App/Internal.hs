@@ -7,6 +7,7 @@ import Data.IntMap qualified as IntMap
 import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.AliasInfo
 import Entity.ArgNum qualified as AN
 import Entity.Arity qualified as A
 import Entity.Artifact qualified as AR
@@ -60,7 +61,7 @@ data Env = Env
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
     holeSubst :: IORef HS.HoleSubst,
-    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [Source.Source]),
+    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, AliasInfo)]),
     traceSourceList :: IORef [Source.Source],
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     preHoleEnv :: IORef (IntMap.IntMap WT.WeakTerm),

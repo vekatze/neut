@@ -8,6 +8,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (maybeToList)
 import Data.Text qualified as T
+import Entity.AliasInfo
 import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.LocalLocator qualified as LL
@@ -26,7 +27,7 @@ complete pathString = do
       childrenMap <- Unravel.getSourceChildrenMap
       sourceNameMap <- Global.getSourceNameMap
       let children = concat $ maybeToList $ Map.lookup (sourceFilePath src) childrenMap
-      childCompItemList <- fmap concat $ forM children $ \child -> do
+      childCompItemList <- fmap concat $ forM children $ \(child, aliasInfo) -> do
         case Map.lookup (sourceFilePath child) sourceNameMap of
           Nothing -> do
             return []
@@ -34,8 +35,14 @@ complete pathString = do
             let nameInfo' = Map.toList $ Map.filter (\(v, _) -> isPublic v) nameInfo
             let nameList = map (LL.reify . DD.localLocator . fst) nameInfo'
             locator <- NE.head <$> getHumanReadableLocator (sourceModule src) child
-            let prefixedNameList = map (\x -> locator <> nsSep <> x) nameList
-            return $ map (newCompletionItem $ Just locator) $ nameList ++ prefixedNameList
+            let fullyQualifiedNameList = map (\x -> locator <> nsSep <> x) nameList
+            case getRawAlias aliasInfo of
+              Nothing ->
+                return $ map (newCompletionItem $ Just locator) $ nameList ++ fullyQualifiedNameList
+              Just rawAlias -> do
+                let aliasPrefixedNameList = map (\x -> rawAlias <> nsSep <> x) nameList
+                let allNameList = nameList ++ aliasPrefixedNameList ++ fullyQualifiedNameList
+                return $ map (newCompletionItem $ Just locator) allNameList
       case Map.lookup (sourceFilePath src) sourceNameMap of
         Nothing -> do
           return childCompItemList

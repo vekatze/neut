@@ -13,6 +13,7 @@ where
 import Context.App
 import Context.App.Internal
 import Data.HashMap.Strict qualified as Map
+import Entity.AliasInfo
 import Entity.Source qualified as Source
 import Entity.VisitInfo
 import Path
@@ -41,10 +42,10 @@ getTraceSourceList :: App [Source.Source]
 getTraceSourceList =
   readRef' traceSourceList
 
-getSourceChildrenMap :: App (Map.HashMap (Path Abs File) [Source.Source])
+getSourceChildrenMap :: App (Map.HashMap (Path Abs File) [(Source.Source, AliasInfo)])
 getSourceChildrenMap =
   readRef' sourceChildrenMap
 
-insertToSourceChildrenMap :: Path Abs File -> [Source.Source] -> App ()
+insertToSourceChildrenMap :: Path Abs File -> [(Source.Source, AliasInfo)] -> App ()
 insertToSourceChildrenMap k v =
   modifyRef' sourceChildrenMap $ Map.insert k v
