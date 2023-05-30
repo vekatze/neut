@@ -35,6 +35,7 @@ import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.TargetPlatform qualified as TP
 import Entity.Term qualified as TM
+import Entity.TopNameMap
 import Entity.VisitInfo
 import Entity.WeakTerm qualified as WT
 import Path
@@ -48,8 +49,9 @@ data Env = Env
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MC.ModuleChecksum),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias [SGL.StrictGlobalLocator]),
-    sourceNameMap :: IORef (Map.HashMap (Path Abs File) (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName))),
+    sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
+    localNameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     antecedentMap :: IORef (Map.HashMap MC.ModuleChecksum M.Module),
     constraintEnv :: IORef [C.Constraint],
     remarkList :: IORef [Remark.Remark], -- per file
@@ -110,6 +112,7 @@ newEnv = do
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty
   nameMap <- newIORef Map.empty
+  localNameMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty
   constraintEnv <- newIORef []
   holeSubst <- newIORef HS.empty

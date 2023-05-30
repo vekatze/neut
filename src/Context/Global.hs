@@ -4,8 +4,9 @@ module Context.Global
     lookup,
     lookupStrict,
     initialize,
-    lookupSourceNameMap,
     activateTopLevelNamesInSource,
+    clearSourceNameMap,
+    getSourceNameMap,
     saveCurrentNameSet,
   )
 where
@@ -35,6 +36,7 @@ import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
+import Entity.TopNameMap
 import Path
 import Prelude hiding (lookup)
 
@@ -82,9 +84,8 @@ registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
 
 registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.GlobalName -> App ()
 registerTopLevelFunc' m topLevelName impArgNum gn = do
-  topNameMap <- readRef' nameMap
-  ensureFreshness m topNameMap topLevelName
-  modifyRef' nameMap $ Map.insert topLevelName (m, gn)
+  ensureFreshness m topLevelName
+  insertToNameMap topLevelName Private m gn
   Implicit.insert topLevelName impArgNum
 
 registerData ::
@@ -95,16 +96,14 @@ registerData ::
   [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerData isConstLike m dataName dataArgs consInfoList = do
-  topNameMap <- readRef' nameMap
-  ensureFreshness m topNameMap dataName
+  ensureFreshness m dataName
   let dataArity = A.fromInt $ length dataArgs
   let consNameArrowList = map (toConsNameArrow dataArity) consInfoList
   let dataArgNum = AN.fromInt (length dataArgs)
-  modifyRef' nameMap $ Map.insert dataName (m, GN.Data dataArity consNameArrowList isConstLike)
+  insertToNameMap dataName Private m $ GN.Data dataArity consNameArrowList isConstLike
   forM_ consNameArrowList $ \(consDD, consGN) -> do
-    topNameMap' <- readRef' nameMap
-    ensureFreshness m topNameMap' consDD
-    modifyRef' nameMap $ Map.insert consDD consGN
+    ensureFreshness m consDD
+    uncurry (insertToNameMap consDD Private) consGN
     Implicit.insert consDD dataArgNum
 
 toConsNameArrow ::
@@ -117,9 +116,8 @@ toConsNameArrow dataArity (m, consDD, isConstLikeCons, consArgs, discriminant) =
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do
-  topNameMap <- readRef' nameMap
-  ensureFreshness m topNameMap resourceName
-  modifyRef' nameMap $ Map.insert resourceName (m, GN.Resource)
+  ensureFreshness m resourceName
+  insertToNameMap resourceName Private m GN.Resource
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do
@@ -148,22 +146,42 @@ lookupStrict m name = do
 initialize :: App ()
 initialize = do
   writeRef' nameMap Map.empty
+  writeRef' localNameMap Map.empty
 
-ensureFreshness :: Hint.Hint -> NameMap -> DD.DefiniteDescription -> App ()
-ensureFreshness m topNameMap name = do
+ensureFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
+ensureFreshness m name = do
+  topNameMap <- getNameMap
   when (Map.member name topNameMap) $
     Throw.raiseError m $
       "`" <> DD.reify name <> "` is already defined"
 
-insertToSourceNameMap :: Path Abs File -> [NA.NameArrow] -> App ()
-insertToSourceNameMap sourcePath topLevelNameInfo = do
-  modifyRef' sourceNameMap $ Map.insert sourcePath $ Map.fromList topLevelNameInfo
+getNameMap :: App NameMap
+getNameMap =
+  readRef' nameMap
 
-lookupSourceNameMap :: Hint.Hint -> Path Abs File -> App (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName))
+getLocalNameMap :: App NameMap
+getLocalNameMap =
+  readRef' localNameMap
+
+insertToNameMap :: DD.DefiniteDescription -> Visibility -> Hint -> GN.GlobalName -> App ()
+insertToNameMap dd v m gn = do
+  when (v == Private) $ do
+    modifyRef' localNameMap $ Map.insert dd (m, gn)
+  modifyRef' nameMap $ Map.insert dd (m, gn)
+
+clearSourceNameMap :: App ()
+clearSourceNameMap =
+  writeRef' sourceNameMap Map.empty
+
+getSourceNameMap :: App (Map.HashMap (Path Abs File) TopNameMap)
+getSourceNameMap =
+  readRef' sourceNameMap
+
+lookupSourceNameMap :: Hint.Hint -> Path Abs File -> App TopNameMap
 lookupSourceNameMap m sourcePath = do
   smap <- readRef' sourceNameMap
   case Map.lookup sourcePath smap of
-    Just topLevelNameInfo ->
+    Just topLevelNameInfo -> do
       return topLevelNameInfo
     Nothing ->
       Throw.raiseCritical m $ "top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
@@ -171,8 +189,17 @@ lookupSourceNameMap m sourcePath = do
 activateTopLevelNamesInSource :: Hint.Hint -> Source.Source -> App ()
 activateTopLevelNamesInSource m source = do
   namesInSource <- lookupSourceNameMap m $ Source.sourceFilePath source
-  modifyRef' nameMap $ Map.union namesInSource
+  forM_ (Map.toList namesInSource) $ \(dd, (visibility, (mDef, gn))) ->
+    case visibility of
+      Public ->
+        insertToNameMap dd Public mDef gn
+      Private ->
+        return ()
 
 saveCurrentNameSet :: Path Abs File -> [NA.NameArrow] -> App ()
 saveCurrentNameSet currentPath nameArrowList = do
-  insertToSourceNameMap currentPath nameArrowList
+  nmap <- getLocalNameMap
+  let publicTopNameMap = Map.fromList $ map (\(dd, mgn) -> (dd, (Public, mgn))) nameArrowList
+  let privateTopNameMap = Map.map (Private,) nmap
+  let topNameMap = Map.union publicTopNameMap privateTopNameMap
+  modifyRef' sourceNameMap $ Map.insert currentPath topNameMap

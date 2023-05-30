@@ -48,6 +48,7 @@ initializeForTarget = do
   Clarify.registerFoundationalTypes
   Unravel.clearVisitEnv
   Rmeark.setGlobalRemarkList []
+  Global.clearSourceNameMap
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do

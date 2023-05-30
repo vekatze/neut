@@ -2,6 +2,7 @@ module Entity.Module where
 
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
+import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
@@ -43,6 +44,16 @@ getModuleRootDir baseModule =
 addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
 addDependency alias url checksum someModule =
   someModule {moduleDependency = Map.insert alias (url, checksum) (moduleDependency someModule)}
+
+getChecksumMap :: Module -> Map.HashMap ModuleChecksum (NE.NonEmpty ModuleAlias)
+getChecksumMap baseModule = do
+  let dep = moduleDependency baseModule
+  let foo = map (\(alias, (_, checksum)) -> (checksum, alias)) $ Map.toList dep
+  let groupedFoo = NE.groupBy (\(c1, _) (c2, _) -> c1 == c2) foo
+  Map.fromList $ flip map groupedFoo $ \item -> do
+    let representative = fst $ NE.head item
+    let elems = NE.map snd item
+    (representative, elems)
 
 ppModule :: Module -> T.Text
 ppModule someModule = do

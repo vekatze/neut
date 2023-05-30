@@ -1,6 +1,7 @@
 module Scene.LSP (lsp) where
 
 import Context.App
+import Context.Remark (printLog)
 import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
@@ -20,6 +21,7 @@ import Language.LSP.Types
 import Language.LSP.Types.Lens qualified as J
 import Path
 import Scene.Check qualified as Check
+import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.Parse.Core qualified as Parse
 
@@ -42,7 +44,7 @@ lsp = do
 handlers :: Handlers (AppLsp ())
 handlers =
   mconcat
-    [ notificationHandler SInitialized $ \_not ->
+    [ notificationHandler SInitialized $ \_not -> do
         return (),
       notificationHandler STextDocumentDidOpen $ \msg -> do
         checkDoc msg,
@@ -50,27 +52,36 @@ handlers =
         return (),
       notificationHandler STextDocumentDidSave $ \msg -> do
         checkDoc msg,
-      requestHandler
-        STextDocumentDefinition
-        $ \req responder -> do
-          let RequestMessage _ _ _ (DefinitionParams ident reqPos _ _) = req
-          let TextDocumentIdentifier uri = ident
-          case uriToFilePath uri of
-            Just path -> do
-              let reqLine = _line reqPos
-              let reqCol = _character reqPos
-              mLoc <- lift $ LSP.findDefinition path (fromEnum reqLine + 1, fromEnum reqCol + 1)
-              case mLoc of
-                Just (defFilePath, (defLine, defCol)) -> do
-                  let defFilePath' = filePathToUri defFilePath
-                  let pos = Position {_line = fromIntegral (defLine - 1), _character = fromIntegral (defCol - 1)}
-                  let range = Range {_start = pos, _end = pos}
-                  let loc = Location {_uri = defFilePath', _range = range}
-                  responder $ Right $ InL loc
-                Nothing -> do
-                  responder $ Right $ InR $ InL $ List []
-            Nothing -> do
-              responder $ Right $ InR $ InL $ List []
+      notificationHandler SCancelRequest $ \_ -> do
+        return (),
+      requestHandler STextDocumentCompletion $ \req responder -> do
+        let RequestMessage _ _ _ (CompletionParams doc _ _ _ _) = req
+        let TextDocumentIdentifier uri = doc
+        case uriToFilePath uri of
+          Nothing ->
+            return ()
+          Just path -> do
+            itemList <- lift $ LSP.complete path
+            responder $ Right $ InL $ List itemList,
+      requestHandler STextDocumentDefinition $ \req responder -> do
+        let RequestMessage _ _ _ (DefinitionParams ident reqPos _ _) = req
+        let TextDocumentIdentifier uri = ident
+        case uriToFilePath uri of
+          Just path -> do
+            let reqLine = _line reqPos
+            let reqCol = _character reqPos
+            mLoc <- lift $ LSP.findDefinition path (fromEnum reqLine + 1, fromEnum reqCol + 1)
+            case mLoc of
+              Just (defFilePath, (defLine, defCol)) -> do
+                let defFilePath' = filePathToUri defFilePath
+                let pos = Position {_line = fromIntegral (defLine - 1), _character = fromIntegral (defCol - 1)}
+                let range = Range {_start = pos, _end = pos}
+                let loc = Location {_uri = defFilePath', _range = range}
+                responder $ Right $ InL loc
+              Nothing -> do
+                responder $ Right $ InR $ InL $ List []
+          Nothing -> do
+            responder $ Right $ InR $ InL $ List []
     ]
 
 checkDoc ::
