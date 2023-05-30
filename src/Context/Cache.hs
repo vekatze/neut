@@ -1,6 +1,7 @@
 module Context.Cache
   ( saveCache,
     loadCache,
+    loadCacheOptimistically,
     whenCompilationNecessary,
   )
 where
@@ -25,16 +26,28 @@ saveCache source cache = do
 
 loadCache :: Source.Source -> App (Maybe Cache.Cache)
 loadCache source = do
+  loadCache' DoCheck source
+
+loadCacheOptimistically :: Source.Source -> App (Maybe Cache.Cache)
+loadCacheOptimistically source = do
+  loadCache' DoNotCheck source
+
+data ShouldCheckArtifactTime
+  = DoCheck
+  | DoNotCheck
+
+loadCache' :: ShouldCheckArtifactTime -> Source.Source -> App (Maybe Cache.Cache)
+loadCache' shouldCheckArtifactTime source = do
   cachePath <- Path.getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
     else do
       artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
-      case A.cacheTime artifactTime of
-        Nothing ->
+      case (shouldCheckArtifactTime, A.cacheTime artifactTime) of
+        (DoCheck, Nothing) ->
           return Nothing
-        Just _ -> do
+        _ -> do
           dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
           case dataOrErr of
             Left _ -> do
