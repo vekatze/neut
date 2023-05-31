@@ -35,7 +35,7 @@ findDefinition params = do
             Just cache -> do
               let locationTree = Cache.locationTree cache
               let line = fromEnum (params ^. J.position . J.line) + 1
-              let col = fromEnum (params ^. J.position . J.line) + 1
+              let col = fromEnum (params ^. J.position . J.character) + 1
               case LT.find line col locationTree of
                 Nothing -> do
                   return Nothing
