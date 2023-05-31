@@ -8,8 +8,8 @@ data tree(a) {
 - Node(color, tree(a), a, tree(a))
 }
 
-// Indata 1. No Red Node has a Red child.
-// Indata 2. Every path from the root to an empty Node contains the same number of Black Nodes.
+// Invariant 1. No Red Node has a Red child.
+// Invariant 2. Every path from the root to an empty Node contains the same number of Black Nodes.
 
 data order {
 - LT
