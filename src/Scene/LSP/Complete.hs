@@ -15,50 +15,67 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.IsConstLike (IsConstLike)
 import Entity.Key
 import Entity.LocalLocator qualified as LL
+import Entity.Module
 import Entity.Source
 import Entity.TopNameMap
 import Language.LSP.Types
+import Path
 import Scene.Source.Reflect qualified as Source
 
-complete :: FilePath -> App [CompletionItem]
-complete pathString = do
-  mSrc <- Source.reflect pathString
-  case mSrc of
+complete :: Uri -> App [CompletionItem]
+complete uri = do
+  case uriToFilePath uri of
+    Nothing ->
+      return []
+    Just pathString -> do
+      mSrc <- Source.reflect pathString
+      case mSrc of
+        Nothing -> do
+          return []
+        Just src -> do
+          childrenMap <- Unravel.getSourceChildrenMap
+          let children = concat $ maybeToList $ Map.lookup (sourceFilePath src) childrenMap
+          sourceNameMap <- Global.getSourceNameMap
+          childCompItemList <- fmap concat $ forM children $ \(child, aliasInfo) -> do
+            getChildCompItemList sourceNameMap (sourceModule src) child aliasInfo
+          case Map.lookup (sourceFilePath src) sourceNameMap of
+            Nothing -> do
+              return childCompItemList
+            Just nameInfo -> do
+              nameList <- getLocalNameList nameInfo
+              return $ map (newCompletionItem Nothing) nameList ++ childCompItemList
+
+getChildCompItemList ::
+  Map.HashMap (Path Abs File) TopNameMap ->
+  Module ->
+  Source ->
+  AliasInfo ->
+  App [CompletionItem]
+getChildCompItemList sourceNameMap sourceModule child aliasInfo = do
+  case Map.lookup (sourceFilePath child) sourceNameMap of
     Nothing -> do
       return []
-    Just src -> do
-      childrenMap <- Unravel.getSourceChildrenMap
-      sourceNameMap <- Global.getSourceNameMap
-      let children = concat $ maybeToList $ Map.lookup (sourceFilePath src) childrenMap
-      childCompItemList <- fmap concat $ forM children $ \(child, aliasInfo) -> do
-        case Map.lookup (sourceFilePath child) sourceNameMap of
-          Nothing -> do
-            return []
-          Just nameInfo -> do
-            let nameInfo' = Map.toList $ Map.filter (\(v, _) -> isPublic v) nameInfo
-            let ddList = map fst nameInfo'
-            mKeyArgList <- mapM KeyArg.lookupMaybe ddList
-            let nameList = zip mKeyArgList $ map (LL.reify . DD.localLocator) ddList
-            locator <- NE.head <$> getHumanReadableLocator (sourceModule src) child
-            let fullyQualifiedNameList = map (\(mk, x) -> (mk, locator <> nsSep <> x)) nameList
-            case getRawAlias aliasInfo of
-              Nothing -> do
-                let ns1 = map (newCompletionItem (Just locator)) nameList
-                let ns2 = map (newCompletionItem (Just locator)) fullyQualifiedNameList
-                return $ ns1 ++ ns2
-              Just rawAlias -> do
-                let aliasPrefixedNameList = map (\(mk, x) -> (mk, rawAlias <> nsSep <> x)) nameList
-                let allNameList = aliasPrefixedNameList ++ fullyQualifiedNameList
-                return $ map (newCompletionItem $ Just locator) allNameList
-      case Map.lookup (sourceFilePath src) sourceNameMap of
+    Just topNameMap -> do
+      nameList <- getLocalNameList topNameMap
+      locator <- NE.head <$> getHumanReadableLocator sourceModule child
+      let fullyQualifiedNameList = map (\(mk, x) -> (mk, locator <> nsSep <> x)) nameList
+      let newCompletionItem' = newCompletionItem (Just locator)
+      case getRawAlias aliasInfo of
         Nothing -> do
-          return childCompItemList
-        Just nameInfo -> do
-          let nameInfo' = Map.toList nameInfo
-          let ddList = map fst nameInfo'
-          mKeyArgList <- mapM KeyArg.lookupMaybe ddList
-          let nameList = zip mKeyArgList $ map (LL.reify . DD.localLocator) ddList
-          return $ map (newCompletionItem Nothing) nameList ++ childCompItemList
+          let ns1 = map newCompletionItem' nameList
+          let ns2 = map newCompletionItem' fullyQualifiedNameList
+          return $ ns1 ++ ns2
+        Just rawAlias -> do
+          let aliasPrefixedNameList = map (\(mk, x) -> (mk, rawAlias <> nsSep <> x)) nameList
+          let allNameList = aliasPrefixedNameList ++ fullyQualifiedNameList
+          return $ map newCompletionItem' allNameList
+
+getLocalNameList :: TopNameMap -> App [(Maybe (IsConstLike, [Key]), T.Text)]
+getLocalNameList nameInfo = do
+  let nameInfo' = Map.toList $ Map.filter (\(v, _) -> isPublic v) nameInfo
+  let ddList = map fst nameInfo'
+  mKeyArgList <- mapM KeyArg.lookupMaybe ddList
+  return $ zip mKeyArgList $ map (LL.reify . DD.localLocator) ddList
 
 newCompletionItem :: Maybe T.Text -> (Maybe (IsConstLike, [Key]), T.Text) -> CompletionItem
 newCompletionItem mLocator (mKeyArg, t) =
