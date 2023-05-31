@@ -178,6 +178,52 @@ free(cls) // free the outer tuple
 closed-function(a, b, c, free-variables)
 ```
 
+## Local Recursion
+
+### Basics
+
+As we've seen, a recursive function can be defined by using `define`. You can also use `mu` to define a "local" recursive function:
+
+```neut
+define foo(x: int): int {
+  let z = 1
+  let f =
+    // creating a local recursive function `my-rec-func`
+    mu my-rec-func(y: int): int {
+      if le-int(y, 0) {
+        z // free variables can be used normally in `mu`
+      } else {
+        print("hey\n")
+        my-rec-func(sub-int(y, 1)) // recursive call
+      }
+    }
+  f(x)
+}
+```
+
+### Behavior
+
+An anonymous recursive function is lifted to a top-level recursive function (i.e. ordinary lambda lifting). For example, the example above is translated into something like below:
+
+```neut
+define my-rec-func(y: int, z: int) {
+  if le-int(y, 0) {
+    z
+  } else {
+    print("hey\n")
+    my-rec-func(sub-int(y, 1), z)
+  }
+}
+
+define fact(x: int): int {
+  let z = 1
+  let f = (y: int) => { my-rec-func(y, z) }
+  f(x)
+}
+```
+
+In practice, you may think of `mu` as a nested `define`.
+
 ## Other Basic Types
 
 Basic types (integers, floats, bools, etc.) are also available in Neut, of course. This will be covered in [the last section of this chapter](./other-built-in-utilities.md).
