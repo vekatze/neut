@@ -57,16 +57,16 @@ If you release a version of your module that is compatible with existing modules
 For example, suppose you have `release/0.1.0.0.tar.zst`. If you run `neut release 0.1.1.0`, which is a minor update release, the module file in `release/0.1.1.0.tar.zst` should contain:
 
 ```text
-antecedents = [
+antecedent = [
   "-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g="
 ]
 ```
 
-where the `-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=` is the checksum of the existing tarball `0.1.0.0.tar.zst`. The value of `antecedents` stores all the checksums of the existing compatible releases. In this way, the module file stores compatibility information.
+where the `-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=` is the checksum of the existing tarball `0.1.0.0.tar.zst`. The value of `antecedent` stores all the checksums of the existing compatible releases. In this way, the module file stores compatibility information.
 
 This compatibility information is then used by the compiler. When building a module, the compiler constructs a graph of antecedents, and *always uses the latest compatible version of a module by tracing the graph* during compilation.
 
-In this sense, the field `antecedents` defines the identity of a library.
+In this sense, the field `antecedent` defines the identity of a library.
 
 ## Actual Versioning Scheme
 

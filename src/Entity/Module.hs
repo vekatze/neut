@@ -69,7 +69,7 @@ ppModule someModule = do
       [ ("dependency", () :< E.Dictionary (Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency)),
         ("target", () :< E.Dictionary (Map.mapKeys (\(Target.Target key) -> key) entryPoint)),
         ("extra-content", () :< E.List extraContents),
-        ("antecedents", () :< E.List antecedents)
+        ("antecedent", () :< E.List antecedents)
       ]
 
 ppAntecedent :: ModuleChecksum -> T.Text

@@ -58,7 +58,7 @@ fromFilePath moduleID moduleFilePath = do
   (_, entryPointEns) <- liftEither $ access "target" entity >>= toDictionary
   dependencyEns <- liftEither $ access "dependency" entity >>= toDictionary
   extraContentsEns <- liftEither $ access "extra-content" entity >>= toList
-  antecedentsEns <- liftEither $ access "antecedents" entity >>= toList
+  antecedentsEns <- liftEither $ access "antecedent" entity >>= toList
   target <- mapM (interpretRelFilePath moduleID) entryPointEns
   dependency <- interpretDependencyDict dependencyEns
   extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
