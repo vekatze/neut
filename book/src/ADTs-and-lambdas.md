@@ -124,7 +124,7 @@ define sample(): int {
 
 ### Keyword Arguments
 
-Neut has keyword arguments like below:
+Neut has keyword arguments like the below:
 
 ```neut
 define some-function(a: int, some-argument: tau, b: tau): int {
