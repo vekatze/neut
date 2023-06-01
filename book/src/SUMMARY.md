@@ -17,6 +17,9 @@
   - [Basics of Modules](./basics-of-modules.md)
   - [Export and Import](./export-and-import.md)
   - [Publishing Your Code](./publishing-your-code.md)
+- [Development Environment](./development-environment.md)
+  - [LSP Support](./lsp-support.md)
+  - [Editor Support](./editor-support.md)
 
 # Appendix
 
