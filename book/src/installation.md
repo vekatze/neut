@@ -4,25 +4,69 @@
 
 Neut depends on `curl`, `tar`, `zstd` and `clang (>= 14.0.0)`. Make sure all of them are installed.
 
+## Setting Up
+
+We need to register the URL and the checksum of the core module (standard library):
+
+```sh
+# add the below to your bashrc, zshrc, etc.
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
+```
+
 ## Using a Prebuilt Binary
 
-If you're using Linux and the architecture is amd64 or arm64, you can use one of the following prebuilt binaries:
+You can use a prebuilt binary of Neut as follows:
 
 ```sh
-# insert link here
+# macOS
+curl -o ~/.local/bin/neut https://raw.githubusercontent.com/vekatze/neut/main/bin/0.3.0.0/amd64-darwin/neut
+
+# Linux (amd64)
+curl -o ~/.local/bin/neut https://raw.githubusercontent.com/vekatze/neut/main/bin/0.3.0.0/amd64-linux/neut
+
+# Linux (arm64)
+curl -o ~/.local/bin/neut https://raw.githubusercontent.com/vekatze/neut/main/bin/0.3.0.0/arm64-linux/neut
 ```
 
-If you're using macOS and the architecture is amd64 or arm64, you can use one of the following prebuilt binaries:
+The path `~/.local/bin/` is just an example; You can change it to anywhere you like as long as the path is in your `$PATH`.
+
+Also, don't forget to make it executable:
 
 ```sh
-# insert link here
+# make it executable
+chmod +x ~/.local/bin/neut
 ```
 
-Put one of them into your PATH like `~/.local/bin/`.
+Now, let's create a sample project and build it to check if your installation is correct:
+
+```sh
+neut create sample
+cd sample
+cat source/sample.nt
+# => define main(): unit {
+#      print("Hello, world!\n")
+#    }
+
+# build & execute
+neut build --execute
+# => Hello, world!
+
+# build & copy the resulting binary to ./bin
+neut build --install ./bin
+./bin/sample
+# => Hello, world!
+```
+
+If no error is reported, you're ready. Let's go to the next section. If not, please follow your error message.
+
+## Uninstallation
+
+Just remove the binary and the directory `~/.cache/neut/`. Neut won't clutter your PC.
 
 ## Build by Yourself
 
-You can build Neut by yourself. You need to install [the Haskell Tool Stack](https://docs.haskellstack.org/en/stable/) to build the language. With stack installed, do the following:
+You can build the compiler by yourself. With [stack](https://docs.haskellstack.org/en/stable/) installed, do the following:
 
 ```sh
 git clone https://github.com/vekatze/neut
@@ -31,29 +75,3 @@ git checkout 0.3.0.0
 stack install # => the binary goes into ~/.local/bin/
 neut version # => 0.3.0.0
 ```
-
-## Setting Up
-
-You need to set the URL and the checksum of the core module:
-
-```sh
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
-export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
-```
-
-## Check If Installed Correctly
-
-Let's create a sample project and build it to check if your installation is correct. Do the following:
-
-```sh
-neut create test
-cd test
-cat source/test.nt
-# => define main(): int {
-#      0
-#    }
-neut build --execute
-# => The program simply returns 0; Thus nothing should happen
-```
-
-If no error is reported, you're ready. Go to the next section.
