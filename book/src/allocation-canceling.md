@@ -114,9 +114,9 @@ Then I compiled them into M1 native binaries and casually measured their executi
 
 ![bubble sort](./image/bench-bubble.png "bubble sort")
 
-As you can see from the two blue bars, allocation canceling can make the performance better more than twice, at least in this case. Also, seeing the chart above, I believe that I won't be heavily punished if I innocently say that the resulting performance of Neut is comparable to that of Haskell in this case.
+As you can see from the two blue bars, allocation canceling can make the performance better more than twice, at least in this case. Also, seeing the chart above, I believe that I won't be heavily punished if I innocently say that the resulting performance of Neut is comparable to that of Haskell, again at least in this case.
 
-(The point of referring to other languages here is to make a rough estimate of Neut's performance, and not to enthusiastically claim that Neut is faster than language XXX. It would be a weird joke if I say that the virtue of a programming language lies in executing this particular implementation of bubble sort as fast as possible...)
+(Now I'm hoping that Neut isn't a bubblesort-oriented joke language...)
 
 ### Appendix: Complete Codes
 

@@ -63,28 +63,35 @@ Your brain might be whispering now, *"So we need to, for example, copy the whole
 An example scenario:
 
 ```sh
-# installation (choose one)
-$ wget http://github.com/vekatze/.../neut-mac-x86_64 ~/.local/bin/
-$ wget http://github.com/vekatze/.../neut-linux-x86_64 ~/.local/bin/
+# setting up the core module (i.e. standard library)
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
 
+# obtaining the compiler (choose one)
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-darwin
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
 
-# create a project
-$ neut create hello && tree hello && cd hello
-# => hello/
-#    ├── source/
-#    │  └── hello.nt
-#    └── module.ens
+# ... and make it executable
+chmod +x ~/.local/bin/neut
 
-# the mandatory hello world
-$ tee source/hello.nt << END
-define main(): int {
-  print("Hello, world!\n")
-  0
-}
-END
+# let's create a sample project
+neut create sample
+cd sample
+cat source/sample.nt
+# => define main(): unit {
+#      print("Hello, world!\n")
+#    }
 
-# build the project and execute it
-$ neut build --execute
+# build & execute it
+neut build --execute
+# => Hello, world!
+
+# build it & copy the resulting binary to ./bin
+neut build --install ./bin
+
+# ... and execute it
+./bin/sample
 # => Hello, world!
 ```
 
@@ -103,12 +110,4 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tour)](
 
 You might also find the module system of Neut interesting. *It distinguishes modules using the checksums of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
-## ... But What After All is This Thing?
-
-I've always wanted something like this, but couldn't find one. As usual, by the noble law of our solar system, I had to make it exist by myself, spending quite a lot of time. Neut is the outcome of the process I had to go through.
-
-—Well, yes, the above is true, but I feel like it doesn't quite capture the whole story. Let me retry.
-
-To tell the truth, this language is actually a painting. A small painting, redrawn again and again, alone, for like 7 years or longer, seeking my own understanding of beauty™, that happened to take the form of a programming language. Of course, this isn't a heroic thing or whatever, but rather a symptom, if I name it. This painting is entirely dedicated to my conceited obsession. Still, I now believe that the resulting language has something sparkling in its concept, and also I don't have any reason to keep it secret in my atelier.
-
-I'd be happy if you were inspired by skimming this book over this weekend for example, or even happier if you chose to try it on your PC. Such a chain of reactions is a little lucky and lovely accident, which I believe is the fundamental element that colors our world.
+Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment) for more.

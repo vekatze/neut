@@ -16,17 +16,17 @@ export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
 
 ## Using a Prebuilt Binary
 
-You can use a prebuilt binary of Neut as follows:
+You can get a prebuilt binary of Neut as follows:
 
 ```sh
 # macOS
-curl -o ~/.local/bin/neut https://raw.githubusercontent.com/vekatze/neut/main/bin/0.3.0.0/amd64-darwin/neut
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-darwin
 
 # Linux (amd64)
-curl -o ~/.local/bin/neut https://raw.githubusercontent.com/vekatze/neut/main/bin/0.3.0.0/amd64-linux/neut
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
 
 # Linux (arm64)
-curl -o ~/.local/bin/neut https://raw.githubusercontent.com/vekatze/neut/main/bin/0.3.0.0/arm64-linux/neut
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
 ```
 
 The path `~/.local/bin/` is just an example; You can change it to anywhere you like as long as the path is in your `$PATH`.
@@ -69,7 +69,7 @@ Just remove the binary and the directory `~/.cache/neut/`. Neut won't clutter yo
 You can build the compiler by yourself. With [stack](https://docs.haskellstack.org/en/stable/) installed, do the following:
 
 ```sh
-git clone https://github.com/vekatze/neut
+git clone --depth 1 https://github.com/vekatze/neut
 cd neut
 git checkout 0.3.0.0
 stack install # => the binary goes into ~/.local/bin/

@@ -10,4 +10,4 @@ In this chapter, we'll see how Neut realizes static memory management.
 
 [Section 2.4 (Noetic Optimization)](./noetic-optimization.md) provides a loophole to achieve better performance. Using this loophole, we can avoid certain unsatisfactory runtime behaviors caused by the "fair" translation. This section is about the *"cheat"* part of Neut's approach.
 
-[Section 2.4 (Allocation Canceling)](./allocation-canceling.md) explains how Neut utilizes its static feature to optimize away certain memory allocations. This can result in pretty big performance improvements.
+[Section 2.5 (Allocation Canceling)](./allocation-canceling.md) explains how Neut utilizes its static feature to optimize away certain memory allocations. This can result in pretty big performance improvements.

@@ -54,3 +54,13 @@ On the other hand, the flip side of harmony, namely local completeness, is often
 Led by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, which is a fruit of local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
 
 A good lecture note on harmony can be found [here](https://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/03-harmony.pdf).
+
+## ... But What After All is This Thing?
+
+I've always wanted something like this, but couldn't find one. As usual, by the noble law of our solar system, I had to make it exist by myself, spending quite a lot of time. Neut is the outcome of the process I had to go through.
+
+—Well, yes, the above is true, but I feel like it doesn't quite capture the whole story. Let me retry.
+
+To tell the truth, this language is actually a painting. A small painting, redrawn again and again, alone, for like 7 years or longer, seeking my own understanding of beauty™, that happened to take the form of a programming language. Of course, this isn't a heroic thing or whatever, but rather a symptom, if I name it. This painting is entirely dedicated to my conceited obsession. Still, I now believe that the resulting language has something sparkling in its concept, and also I don't have any reason to keep it secret in my atelier.
+
+I'd be happy if you were inspired by skimming this book over this weekend for example, or even happier if you chose to try it on your PC. Such a chain of reactions is a little lucky and lovely accident, which I believe is the fundamental element that colors our world.
