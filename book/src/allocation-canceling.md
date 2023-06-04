@@ -137,7 +137,7 @@ define insert(v: int, xs: int-list): int-list {
   }
 }
 
-// replace "inline" to "define" for the slower alternative
+// replace "inline" with "define" for the slower alternative
 inline swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
   if cond {
     My-Cons(x, insert(v, xs))
