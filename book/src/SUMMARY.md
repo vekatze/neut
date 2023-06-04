@@ -6,6 +6,7 @@
   - [Executing Types](./executing-types.md)
   - [Exponentials in Action](./exponentials-in-action.md)
   - [Noetic Optimization](./noetic-optimization.md)
+  - [Allocation Canceling](./allocation-canceling.md)
 - [Language Tour](./language-tour.md)
   - [Installation](./installation.md)
   - [Preliminaries](./preliminaries.md)

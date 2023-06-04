@@ -51,7 +51,8 @@
 
 .hljs-title,
 .hljs-section {
-  color: #0030f2;
+  color: var(--light-magenta);
+  background-color: var(--dark-magenta);
 }
 
 .hljs-keyword,

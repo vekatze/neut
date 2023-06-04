@@ -9,3 +9,5 @@ In this chapter, we'll see how Neut realizes static memory management.
 [Section 2.3 (Exponentials in Action)](./exponentials-in-action.md) supplements the previous section, showing how concrete types in Neut are compiled into functions.
 
 [Section 2.4 (Noetic Optimization)](./noetic-optimization.md) provides a loophole to achieve better performance. Using this loophole, we can avoid certain unsatisfactory runtime behaviors caused by the "fair" translation. This section is about the *"cheat"* part of Neut's approach.
+
+[Section 2.4 (Allocation Canceling)](./allocation-canceling.md) explains how Neut utilizes its static feature to optimize away certain memory allocations. This can result in pretty big performance improvements.

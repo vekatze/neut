@@ -47,7 +47,7 @@ hljs.registerLanguage("neut", function (hljs) {
     },
     contains: [
       { className: "type",
-        begin: "tau|&|:<|flow|[A-Z][a-z0-9A-Z]*",
+        begin: "tau|&|:<|flow|[A-Z][a-z0-9A-Z-]*",
       },
       {
         className: "string",
