@@ -10,3 +10,4 @@ dist-newstyle/
 book/dist/
 test/sandbox/
 actual
+bin/
