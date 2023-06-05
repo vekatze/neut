@@ -75,3 +75,24 @@ git checkout 0.3.0.0
 stack install # => the binary goes into ~/.local/bin/
 neut version # => 0.3.0.0
 ```
+
+## Build by Yourself, Using Docker
+
+If you have [Docker](https://www.docker.com/) and [just](https://github.com/casey/just) installed, you can also take the following way:
+
+```sh
+# get the source
+git clone --depth 1 https://github.com/vekatze/neut
+cd neut
+git checkout 0.3.0.0
+
+# [for amd64 linux binary] (with docker desktop running)
+just build-image-amd64-linux
+just build-compiler-amd64-linux
+cp ./bin/neut-amd64-linux ~/.local/bin/neut
+
+# [for arm64 linux binary] (with docker desktop running)
+just build-image-arm64-linux
+just build-compiler-arm64-linux
+cp ./bin/neut-arm64-linux ~/.local/bin/neut
+```
