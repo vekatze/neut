@@ -21,13 +21,13 @@ build-compilers:
 
 build-compiler-amd64-linux:
     @just _run-amd64-linux stack install neut --allow-different-user --local-bin-path ./bin/tmp-amd64-linux
-    @mv ./bin/tmp-amd64-linux/neut ./bin/neut-amd64-linux
-    @rm -r ./bin/tmp-amd64-linux
+    @just _run-amd64-linux mv ./bin/tmp-amd64-linux/neut ./bin/neut-amd64-linux
+    @just _run-amd64-linux rm -r ./bin/tmp-amd64-linux
 
 build-compiler-arm64-linux:
     @just _run-arm64-linux stack install neut --allow-different-user --local-bin-path ./bin/tmp-arm64-linux
-    @mv ./bin/tmp-arm64-linux/neut ./bin/neut-arm64-linux
-    @rm -r ./bin/tmp-arm64-linux
+    @just _run-arm64-linux mv ./bin/tmp-arm64-linux/neut ./bin/neut-arm64-linux
+    @just _run-arm64-linux rm -r ./bin/tmp-arm64-linux
 
 build-compiler-amd64-darwin:
     @stack install neut --allow-different-user --local-bin-path ./bin/tmp-amd64-darwin
