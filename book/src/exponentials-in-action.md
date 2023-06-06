@@ -7,7 +7,7 @@ Immediates like integers or floats can be used multiple times safely since they 
 ```neut
 define exp-immediate(selector, v) {
   if selector == 0 {
-    0
+    0 // do nothing against `v` (no `free` is necessary)
   } else {
     v // just use the original one as a copy
   }
@@ -16,28 +16,26 @@ define exp-immediate(selector, v) {
 
 It might be worth noting that, since these fake exponentials are inlined at compile time, there's no runtime cost. Inlining is omitted here for explanatory purposes.
 
-## Exponential for Types
+## Exponential for The Type of Types
 
-Neut is a dependently-typed programming language. This means that types like `int: tau` can also be used as ordinary values:
+Neut is a dependently-typed programming language. This means that the type of type, `tau`, can also be used as an ordinary value:
 
 ```neut
-let t = int
+let t = tau
 let a = f(t)
 let b = g(t)
 ...
 ```
 
-where the `tau` is the type of the types.
-
-This means that we need to translate the `tau` into a function. It might sound difficult, but it's easy in reality. Since a type is translated into a closed function as we've seen, things like `int` or `text -> bool` are lowered to pointers to the function at runtime, which is nothing but an immediate. Types are therefore translated into the pointer to `exp-immediate` that we've just seen.
+This means that we need to translate this `tau` into a function, too. It might sound difficult, but it's actually easy. Since a type is translated into a closed function as we've seen, types like `int` or `int -> bool` are lowered to pointers to the function, which is nothing but an immediate. `tau` is therefore translated into the pointer to `exp-immediate` that we've just seen.
 
 ## Exponential for Closures
 
-A type-exponential can also be constructed for closures. Although this is one of the most interesting points of Neut, since it could be a bit complicated, I put it in the appendix. See [the Chapter in the Appendix](./executing-the-function-type.md) if you're interested in it.
+A resource exponential can also be constructed for closures. Although this is one of the most interesting points of Neut, since it is a bit complicated, I put it in the appendix. See [the Chapter in the Appendix](./executing-the-function-type.md) if you're interested in it.
 
 ## Exponential for ADTs
 
-ADTs like the below also have exponentials, of course:
+ADTs like the below also have resource exponentials, of course:
 
 ```neut
 data list(a) {
@@ -46,18 +44,18 @@ data list(a) {
 }
 ```
 
-There is one caveat here, however. Since an exponential is a closed function, the values of an ADT must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
+The first thing to note is that, since an exponential is a closed function, the values of an ADT must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
 
 That is, for example, the internal representation of `Nil` is something like below:
 
 ```neut
-(address-of-the-exponential-a, 0)
+(a, 0)
 ```
 
 where the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
 
 ```neut
-(address-of-the-exponential-a, 1, 10, xs)
+(a, 1, 10, xs)
 ```
 
 where the `1` is the discriminant for `Cons`.
@@ -127,7 +125,7 @@ What causes a problem is the fact that the `xs` is used non-linearly in the code
 ```neut
 let xs: list(int) = [1, 2, 3]
 let xs-copy = exp-list(1, xs) // copy the original list
-let len = length(xs-copy) // ... and use it to get its length
+let len = length(xs-copy)     // ... and use it to get its length
 if cond(len) {
   print("hey")
 } else {

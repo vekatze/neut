@@ -98,6 +98,8 @@ define exp-a(selector, v) {
 }
 ```
 
+We'll call such a function as the resource exponential of the type `a`.
+
 ### Example Behavior of Types
 
 This `exp-item` is called when a variable is used relevantly (= more than once) as follows:
