@@ -2,7 +2,7 @@
 
 ## Types as Exponential
 
-Here, we'll see how a type can be used to copy/discard the terms of the type. To see the basic idea, let's take a simple ADT for example:
+Here, we'll see how a type is translated into a function that copies/discards the terms of the type. To see the basic idea, let's take a simple ADT for example:
 
 ```neut
 data item {
@@ -10,11 +10,24 @@ data item {
 }
 ```
 
-Suppose that the internal representation of `New(10, 20)` is `(10, 20)`.
+Suppose that the internal representation of `New(10, 20)` is something like below:
+
+```neut
+New(10, 20)
+
+// ↓ (compile)
+
+let v = malloc({2-words})
+store(v[0], 10)
+store(v[1], 20)
+v
+```
+
+We'll see how the type `item` is translated.
 
 ### Copying/Discarding a Value
 
-In this case, a value `v` of type `item` can be discarded as follows:
+First of all, in this case, a value `v` of type `item` can be discarded as follows:
 
 ```neut
 free(v)
@@ -46,7 +59,7 @@ store(v-copy-y[1], v2)
 
 ### Combining Copying/Discarding functions
 
-The type `item` combines both of the two like below:
+Using the two procedures above, the type `item` is translated into a function like below:
 
 ```neut
 define exp-item(selector, v) {
@@ -71,12 +84,12 @@ define exp-item(selector, v) {
 
 `exp-item(selector, v)` discards `v` if `selector` is 0. Otherwise, `exp-item` consumes `v`, creates two new copies, and then returns them as a tuple.
 
-Also, `item` in source files are compiled into pointers to `exp-item`.
+Also, an `item` in source file is compiled into a pointer to `exp-item`.
 
-More generally, a type `A` is translated into something like below:
+More generally, a type `a` is translated into something like below:
 
 ```neut
-define exp-A(selector, v) {
+define exp-a(selector, v) {
   if selector == 0 {
     // a proceduce that discards v
   } else {
@@ -91,9 +104,9 @@ This `exp-item` is called when a variable is used relevantly (= more than once) 
 
 ```neut
 let x = New(10, 20)
-let a = foo(x)
-let b = bar(x)
-let c = buz(x)
+let a = foo(x) // first use of `x`
+let b = bar(x) // second use of `x`
+let c = buz(x) // third use of `x`
 cont(a, b, c)
 
 // ↓
@@ -111,7 +124,7 @@ cont(a, b, c)
 
 ```neut
 let x = New(10, 20)
-print("hello")
+print("hello") // `x` isn't used
 
 // ↓
 
@@ -120,7 +133,7 @@ let () = exp-item(0, x) // discard `x` by passing 0 as `selector`
 print("hello")
 ```
 
-Note that the variable `x` is used linearly after translation. Every variable in Neut is linearized in this way. Thus, we can now enjoy the power of linearity; *A value is simply consumed when it is used*.
+Note that the variable `x` is used linearly after translation. Every variable in Neut is linearized in this way so that we can now enjoy the power of linearity.
 
 This copying/discarding procedure happens *immediately after a variable is defined*. This is also a source of the memory predictability of Neut.
 
@@ -130,8 +143,8 @@ The behavior of an exponential is a bit different in the actual implementation. 
 
 ```neut
 let x = New(10, 20)
-let a = foo(x)
-let b = bar(x)
+let a = foo(x) // first use of `x`
+let b = bar(x) // second use of `x`
 cont(a, b)
 
 // ↓
