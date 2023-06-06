@@ -1,6 +1,6 @@
 # Neut Programming Language
 
-Neut is a *dependently-typed* programming language with *static memory management*.
+Neut is a dependently-typed programming language with *static memory management*.
 
 The key features include:
 
@@ -10,7 +10,7 @@ The key features include:
   <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
 </ul>
 
-I believe the last one is especially interesting, as it means Neut found memory predictability *inside* the usual λ-calculus. The predictability has been there from the beginning.
+I believe the last one is especially interesting, as it means Neut found memory predictability *inside* the usual λ-calculus.
 
 ## How Does it Basically Look Like?
 
@@ -39,24 +39,24 @@ define noisy-length[a](xs: my-list(a)): int {
 
 *Neut translates a type into a function* that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.
 
-For example, if a variable is used twice, a translation like below will happen:
+For example, if a variable is used twice, conceptually, a translation like below will happen:
 
 ```neut
 let xs: list(a) = [value-1, value-2]
-foo(xs, xs) // `xs` is used twice
+some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
 let xs: list(a) = [value-1, value-2]
-let xs-copy = copy-term-of-type-list-A(xs)
-foo(xs-copy, xs) // now `xs` is used once (ignoring the "copying" call)
+let (xs1, xs2) = copy-list-a(xs) // now `xs` is used exactly once
+some-func(xs1, xs2)
 ```
 
 If you need more, see [Chapter 2 (Main Ideas)](./main-ideas.md).
 
 ---
 
-Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&A`, the noema type of `A`, which is the same as `A` except that it isn't consumed even after used, and to utilize it like a reference in the great ST monad.
+Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&A`, the noema type of `A`, which is the same as `A` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
 
 ## Quickstart?
 
@@ -67,7 +67,7 @@ An example scenario:
 export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
 export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
 
-# obtaining the compiler (choose one)
+# get the compiler (choose one)
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-darwin
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
@@ -100,7 +100,7 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tour)](
 ## List of Other Basic Characteristics?
 
 - A compiled language
-- Call by Value
+- Call by value (i.e. non-lazy)
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
@@ -110,4 +110,4 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tour)](
 
 You might also find the module system of Neut interesting. *It distinguishes modules using the checksums of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
-Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment) for more.
+Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment) for more.
