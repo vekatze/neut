@@ -8,26 +8,27 @@ data int-list {
 - Cons(int, int-list)
 }
 
+// [1, 5, 9] => [2, 6, 10]
 define increment(xs: int-list): int-list {
   match xs {
   - Nil =>
     Nil
-  // ↓ we'll use this `Cons` clause for example
+  // ↓ the `Cons` clause
   - Cons(x, rest) =>
     Cons(add-int(x, 1), increment(rest))
   }
 }
 ```
 
-The naive behavior of the `Cons` clause above would be something like below:
+The expected behavior of the `Cons` clause above would be something like the below:
 
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
 3. calculate `add-int(x, 1)` and `increment(rest)`
 4. allocate memory region using `malloc` to return the result
-5. store the calculated values to the pointer
+5. store the calculated values to the pointer and return it
 
-However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` are known to be the same at compile-time, this pair of `free` and `malloc` can be optimized away, as follows:
+However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(rest))` are known to be the same at compile-time, the pair of `free` and `malloc` should be able to be optimized away, as follows:
 
 1. obtain `x` and `rest` from `xs`
 2. calculate `add-int(x, 1)` and `increment(rest)`
@@ -44,7 +45,7 @@ This optimization "penetrates" branching. For example, consider the below:
 define insert(v: int, xs: int-list): int-list {
   match xs {
   - Nil =>
-    Cons(v, Nil)
+    // ...
   - Cons(y, ys) =>           // (X)
     if gt-int(v, y) {
       Cons(y, insert(v, ys)) // (Y)
@@ -63,7 +64,7 @@ On the other hand, consider rewriting the code above into something like the bel
 define foo(v: int, xs: int-list): int-list {
   match xs {
   - Nil =>
-    Cons(v, Nil)
+    // ...
   - Cons(y, ys) =>         // (X')
     if gt-int(v, y) {
       Nil                  // (Y')
@@ -78,7 +79,7 @@ At this time, the `free` against `xs` at `(X')` can't be optimized away, since t
 
 ## How Effective Is This Optimization?
 
-The performance benefit obtained by this optimization seems to be pretty big, at least on my machine. It feels somewhat like tail call optimization. Let me share some numbers.
+The performance benefit obtained by this optimization seems to be pretty significant, at least on my machine. It feels somewhat like tail call optimization. Let me share some numbers.
 
 ### A Slower Implementation
 
@@ -88,7 +89,7 @@ Let's write a slower implementation for comparison. The allocation canceling can
 define insert(v: int, xs: int-list): int-list {
   match xs {
   - Nil =>
-    Cons(v, Nil)
+    // ...
   - Cons(y, ys) => // (X'')
     swap-gt(gt-int(v, y), v, y, ys)
   }
@@ -104,13 +105,13 @@ define swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
 }
 ```
 
-The code above doesn't perform allocation canceling since, in this case, the `free` at `(X'')` doesn't have its correspondent in its continuation.
+The code above doesn't perform allocation canceling at `(X'')` since, in this case, the `free` at `(X'')` doesn't have its correspondent in its continuation.
 
 ### Comparing Execution Times
 
-Using the slower and faster implementations of `insert`, I wrote a code that performs bubble sorting on a linked list of 30,000 random integers. I also wrote codes that do the same in Haskell and OCaml just for reference (the complete codes are at the end of this page).
+Using the slower and faster implementations of `insert`, I wrote codes that perform naive bubble sorting on linked lists of 30,000 random integers. I also wrote codes that do the same in Haskell and OCaml just for reference (the complete codes are at the end of this page).
 
-Then I compiled them into M1 native binaries and casually measured their execution time using the `time` command. I performed each measurement 5 times and calculated the average of them. The result is as follows (Tested on my 14-inch M1 Max MacBook Pro with 32 GB RAM):
+Then I compiled them into M1 native binaries and casually measured their execution time using the `time` command. I performed each measurement 5 times and calculated the average of them. The result is as follows (Tested on my 14-inch M1 Max MacBook Pro with 32 GB RAM; the chart is powered by Plotly Chart Studio):
 
 ![bubble sort](./image/bench-bubble.png "bubble sort")
 
@@ -263,3 +264,5 @@ let main () =
 
 main ()
 ```
+
+Please tell me (hopefully gently) if this comparison is unfair due to a reason that I overlooked.
