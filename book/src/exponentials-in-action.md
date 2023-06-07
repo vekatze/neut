@@ -120,7 +120,22 @@ if cond(len) {
 foo(xs)
 ```
 
-What causes a problem is the fact that the `xs` is used non-linearly in the code above. The first occurrence is at `length(xs)`, and the second one is at `foo(xs)`. This means the code above is translated into something like the below:
+where the `length` is defined as follows:
+
+```neut
+define length[a](xs: list(a)): int {
+  match xs {
+  - [] =>
+    0
+  - y :: ys =>
+    add-int(1, length(ys))
+  }
+}
+```
+
+Here, the `match` is for the usual pattern matching; It inspects its arguments (`xs`), and performs branching according to them. After branching, it extracts the content of a value (`y` and `ys` if the latter branch is chosen, for example), and then calls `free` against the outer tuple of `xs`. Then evaluates the body of the branch (`add-int(1, length(ys))` in this case).
+
+What causes a problem here is the fact that the `xs` is used non-linearly in the code above. The first occurrence is at `length(xs)`, and the second one is at `foo(xs)`. This means the code above is translated into something like the below:
 
 ```neut
 let xs: list(int) = [1, 2, 3]
