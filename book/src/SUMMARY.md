@@ -7,7 +7,7 @@
   - [Exponentials in Action](./exponentials-in-action.md)
   - [Noetic Optimization](./noetic-optimization.md)
   - [Allocation Canceling](./allocation-canceling.md)
-- [Language Tour](./language-tour.md)
+- [Language Tutorial](./language-tutorial.md)
   - [Installation](./installation.md)
   - [Preliminaries](./preliminaries.md)
   - [ADTs and Lambdas](./ADTs-and-lambdas.md)

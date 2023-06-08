@@ -95,7 +95,7 @@ neut build --install ./bin
 # => Hello, world!
 ```
 
-To learn more about how to use the language, follow [Chapter 3 (Language Tour)](./language-tour.md).
+To learn more about how to use the language, follow [Chapter 3 (Language Tutorial)](./language-tutorial.md).
 
 ## List of Other Basic Characteristics?
 
