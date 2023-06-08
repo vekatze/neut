@@ -2,17 +2,7 @@
 
 ## External Dependencies
 
-Neut depends on `curl`, `tar`, `zstd` and `clang (>= 14.0.0)`. Make sure all of them are installed.
-
-## Setting Up
-
-We need to register the URL and the checksum of the core module (standard library):
-
-```sh
-# add the below to your bashrc, zshrc, etc.
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
-export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
-```
+Neut depends on `curl`, `tar`, `zstd` and `clang (>= 14.0.0)`. Please make sure all of them are installed.
 
 ## Using a Prebuilt Binary
 
@@ -36,6 +26,14 @@ Also, don't forget to make it executable:
 ```sh
 # make it executable
 chmod +x ~/.local/bin/neut
+```
+
+We also need to register the URL and the checksum of the core module (standard library):
+
+```sh
+# add the below to your bashrc, zshrc, etc.
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
 ```
 
 Now, let's create a sample project and build it to check if your installation is correct:
@@ -66,25 +64,23 @@ Just remove the binary and the directory `~/.cache/neut/`. Neut won't clutter yo
 
 ## Build by Yourself
 
-You can build the compiler by yourself. With [stack](https://docs.haskellstack.org/en/stable/) installed, do the following:
+### Locally
+
+If you want, you can build the compiler by yourself. With [stack](https://docs.haskellstack.org/en/stable/) installed, do the following:
 
 ```sh
-git clone --depth 1 https://github.com/vekatze/neut
+git clone https://github.com/vekatze/neut
 cd neut
-git checkout 0.3.0.0
 stack install # => the binary goes into ~/.local/bin/
-neut version # => 0.3.0.0
 ```
 
-## Build by Yourself, Using Docker
+### Using Docker
 
 If you have [Docker](https://www.docker.com/) and [just](https://github.com/casey/just) installed, you can also take the following way:
 
 ```sh
-# get the source
-git clone --depth 1 https://github.com/vekatze/neut
+git clone https://github.com/vekatze/neut
 cd neut
-git checkout 0.3.0.0
 
 # [for amd64 linux binary] (with docker desktop running)
 just build-image-amd64-linux
