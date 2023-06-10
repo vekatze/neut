@@ -2,7 +2,7 @@
 
 Here, we'll see some magical stuff in Neut.
 
-[Section 4.1 (Introspection)](introspection.md) shows how to get some information from the compiler. Using this feature, you can write platform-dependent code.
+[Section 4.1 (Introspection)](introspection.md) shows how to get some information from the compiler. This is useful when writing platform-dependent code.
 
 [Section 4.2 (Magic)](magic.md) shows some black magic. Here, you'll see how to perform arbitrary casting, LLVM-level memory handling, etc.
 

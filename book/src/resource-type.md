@@ -5,12 +5,16 @@ You can define a type by specifying what should happen when copying/discarding a
 ```neut
 resource type-name {
 - (pointer: int) => {
-    // discard `pointer: type-name` here
+    // ...
+    // (discard `pointer: type-name` here)
+    // ...
     0 // return any int; this is just a placeholder, and has no significance
   }
 - (pointer: int) => {
-    // copy `pointer: type-name` here
-    copied-pointer // ... then return the address of newly-created value
+    // ...
+    // (copy `pointer: type-name` here)
+    // ...
+    copied-value // return the clone
   }
 }
 ```
@@ -19,7 +23,7 @@ When compiled, `type-name(0, v)` calls the former function against `v`. `type-na
 
 ## Example: Noisy Integers
 
-For example, the following is a definition of a "boxed" integer type, with some noisy messages;
+For example, the following is a definition of a "boxed" integer type, with some noisy messages:
 
 ```neut
 resource boxed-int {
