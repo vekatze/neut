@@ -6,7 +6,7 @@ The compiler also contains an experimental LSP server to provide a better develo
 2. linting on save, and
 3. function name completion.
 
-You can launch the LSP server by running `neut lsp`. Thus, for example, if you're using `eglot`, you can set up the lsp server as follows:
+You can launch the LSP server by running `neut lsp`. Thus, for example, if you're using `eglot`, you can set up the LSP server as follows:
 
 ```neut
 (add-to-list 'eglot-server-programs
