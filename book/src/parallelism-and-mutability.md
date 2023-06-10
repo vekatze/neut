@@ -1,10 +1,8 @@
 # Parallelism and Mutability
 
-Here, we'll see how parallelism in Neut works. Parallel control flows can communicate messages using channels. We'll also see how these channels can be used as mutable variables.
-
 ## Detaching/Attaching Control Flows
 
-Neut has a feature for parallelism. It is a thin layer over pthread, and works like async/await:
+Neut has built-in support for parallelism. It is a thin layer over pthread, and works like async/await:
 
 ```neut
 let f1: flow(int) =
@@ -22,17 +20,17 @@ let v2 = attach f2 // like await
 print("hey")
 ```
 
-When `detach { ... }` is executed, a new thread is created and the content of `detach` is executed in the thread; `detach` detaches the specified control flow from the current control flow.
+`detach` is like async in other languages. `detach` detaches the specified control flow from the current control flow. More specifically, when `detach { ... }` is executed, a new thread is created and the content of `detach` is executed in the thread.
 
-The type of `detach { e }` is `flow(a)` if the type of `e` is `a`. Other languages might call this type a promise or a future.
+The type of `detach { e }` is `flow(a)` if `e: a`. Other languages might call this type a promise or a future.
 
-`attach e` is like await. `attach` waits for the control flow `e` to complete, and get its resulting value. Thus, the type of `attach e` is `a` when `e: flow(a)`.
+`attach e` is like await. `attach` waits for the control flow `e` to complete, and gets its resulting value. The type of `attach e` is `a` if `e: flow(a)`.
 
 ## Communication Between Control Flows
 
-Flows can send/receive values using channels. The channels in Neut are similar to those of Go.
+Flows can send/receive values using channels. A channel in Neut is similar to that of Go.
 
-You can create a channel using `let-on`, and send/receive values using those channels.
+You can create a channel using `new-channel`, and send/receive values using those channels.
 
 ```neut
 let ch0 = new-channel(int)
@@ -41,18 +39,18 @@ let ch1 = new-channel(int)
 let result on ch0, ch1 = {
   let f =
     detach {
-      let message0 = receive(ch0)
-      send(ch1, add-int(message0, 1))
+      let message0 = receive(ch0) // receive value from ch0
+      send(ch1, add-int(message0, 1)) // send value to ch1
       message0
     }
   let g =
     detach {
-      let message1 = receive(ch1)
+      let message1 = receive(ch1) // receive value from ch1
       add-int(message1, 1)
     }
-  send(ch0, 0)
-  let v1 = attach f // v1 == 1
-  let v2 = attach g // v2 == 2
+  send(ch0, 0) // send value to ch0
+  let v1 = attach f
+  let v2 = attach g
   print("hey")
 }
 // ... cont ...
@@ -60,15 +58,13 @@ let result on ch0, ch1 = {
 
 The type of a channel is `channel(a)`, where the `a` is the type of values that are sent/received. You'll typically use the noema of a channel because both `send` and `receive` expect the noema of a channel.
 
-<!-- A channel isn't copied/discarded even if it is used non-linearly; A channel, including its content, is discarded after its `let-on`. -->
-
 You can send a value into a channel using `send`, and receive one using `receive`.
 
 A channel internally has a queue, and `send` stores a value to that queue.
 
 When you call `receive`, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, `receive` blocks until a value is sent to the queue.
 
-As mentioned above, the channels in Neut are similar to those of Go (and indeed inspired by Go to some extent), but actually, the main inspiration was from [Par Means Parallel: Multiplicative Linear Logic Proofs as Concurrent Functional Programs](https://dl.acm.org/doi/10.1145/3371086).
+Incidentally, as mentioned above, a channel in Neut is similar to that of Go (and indeed inspired by Go to some extent), but actually, the main inspiration was from [Par Means Parallel: Multiplicative Linear Logic Proofs as Concurrent Functional Programs](https://dl.acm.org/doi/10.1145/3371086).
 
 ## Mutable Variables
 
@@ -78,15 +74,15 @@ As mentioned above, the channels in Neut are similar to those of Go (and indeed 
 define sample(): int {
   let xs: list(int) = []
 
-  // create a new cell
+  // create a new cell using `new-cell`
   let xs-cell = new-cell(xs)
 
   // create a noema of a cell
   let result on xs-cell = {
-    // mutate the cell (add an element)
+    // mutate the cell using `mutate` (add an element)
     mutate(xs-cell, (xs) => { 1 :: xs })
 
-    // get the length of the list in the cell
+    // peek the content of a cell using `borrow`
     let len1 = borrow(xs-cell, (xs) => { length(xs) })
     // (len1 == 1)
 
