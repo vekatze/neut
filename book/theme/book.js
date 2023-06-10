@@ -38,6 +38,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "let?",
         "match",
         "mu",
+        "of",
         "on",
         "resource",
         "struct",

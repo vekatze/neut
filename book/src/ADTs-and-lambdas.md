@@ -1,18 +1,12 @@
 # ADTs and Lambdas
 
-In this section, we'll see how to use the key colors of Neut: algebraic data types and lambdas.
-
-Examples in this section can be downloaded as follows:
-
-```sh
-git clone <insert-link-here>
-```
+In this section, we'll see how to use basic values of Neut: algebraic data types (ADTs) and lambdas.
 
 ## Algebraic Data Types
 
 ### Basics
 
-Let's see how to write actual code. Firstly, you can define an algebraic data type like below:
+ADTs can be defined like below:
 
 ```neut
 // Defining an algebraic data type
@@ -25,13 +19,15 @@ data my-list(a) {
 data test {
 - Foo
 - Bar
+- Buz() // explicit nullary data types
 }
 ```
 
-and use it like the below:
+They can be used like the below:
 
 ```neut
 define create-my-list(): my-list(int) {
+  // using constructors
   MyCons(1, MyCons(2, MyNil))
 }
 
@@ -50,16 +46,16 @@ define get-length[a](xs: my-list(a)): int {
 
 The name of a constructor must start with an uppercase letter.
 
-Incidentally, the `[a]` at the definition of `get-length` specifies implicit arguments. Without that, `get-length` will become:
+Incidentally, the `[a]` at the definition of `get-length` is for implicit arguments; They are inferred by the type inference algorithm. You can define an explicit variant of `get-length` as follows:
 
 ```neut
 // `tau` is the type of types.
 define get-length(a: tau, xs: my-list(a)): int {
-  match xs { // pattern matching against a my-list
+  match xs {
   - MyNil =>
     1
   - MyCons(_, rest) =>
-    add-int(1, get-length(a, rest)) // recursion
+    add-int(1, get-length(a, rest)) // `a` is passed explicitly in this time
   }
 }
 ```
@@ -68,9 +64,11 @@ which might not be what you want, because you need to pass the type `a` every ti
 
 You can specify multiple implicit arguments by writing, for example, `[a, b, c, d]`.
 
+You can also specify the types of implicit arguments by writing, for example, `[a: tau]`.
+
 ### Memory Behavior
 
-When calling a constructor, memory for the constructor is allocated. The internal representation of things like `MyCons(1, Nil)` is:
+When a constructor is called, a memory region for the constructor is allocated. The internal representation of things like `MyCons(1, Nil)` is:
 
 ```neut
 (pointer-to-a, discriminant, 1, pointer-to-Nil) // 4-word tuple
@@ -78,15 +76,16 @@ When calling a constructor, memory for the constructor is allocated. The interna
 
 where the `discriminant` is an integer that is used to distinguish constructors; In this case, the actual value for `MyCons` will be 1. That of `MyNil` will be 0.
 
-When `match` is used against a value of an ADT, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if the given value is `MyCons(1, Nil)`, the following will happen:
+When `match` is used against a value of an ADT, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if `MyCons(1, Nil)` is supplied to a `match`, the following will happen:
 
-1. the `1` and `pointer-to-Nil` are extracted to be used later,
-2. the `pointer-to-a` is discarded along its type `tau`, and
-3. the outer 4-word tuple is freed.
+1. the `1` and `pointer-to-Nil` are bound to some variables,
+2. the `pointer-to-a` is discarded along its type `tau`,
+3. the outer 4-word tuple is freed, and
+4. the body of the clause is executed.
 
 ---
 
-Also, if an ADT and all its constructor don't need any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:
+If an ADT and all its constructor don't need any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:
 
 ```neut
 data color {
@@ -96,7 +95,7 @@ data color {
 }
 ```
 
-Then, the internal representation of `Red` is optimized into `0`. That of `Blue` is optimized into `1`, and so on.
+The internal representation of `Red` in this case is optimized into `0`. That of `Blue` is optimized into `1`, and so on.
 
 ## Lambdas
 
@@ -124,7 +123,7 @@ define sample(): int {
 
 ### Keyword Arguments
 
-Neut has keyword arguments like the below:
+The arguments of a function can be supplied using their names:
 
 ```neut
 define some-function(a: int, some-argument: tau, b: tau): int {
@@ -133,25 +132,42 @@ define some-function(a: int, some-argument: tau, b: tau): int {
 
 define caller(): int {
   let _ =
-    some-function {
-    - b = tau
-    - a = 20
-    - some-argument = tau
+    // calling a function using the name of arguments
+    some-function of {
+    - b => tau
+    - a => 20
+    - some-argument => tau
     }
   0
 }
 
 ```
 
-Keyword arguments can be used with a constructor:
+This `of`-notation can also be used with a constructor:
 
 ```neut
+data config {
+- Config(some-value: my-list(int), foo: int, bar: my-list(int))
+}
+
 define create-struct(): config(my-list(int)) {
   // create a struct using keyword arguments
-  Config {
-  - foo = 30
-  - bar = MyNil
-  - some-value = MyCons(3, MyNil)
+  Config of {
+  - foo => 30
+  - bar => MyNil
+  - some-value => MyCons(3, MyNil)
+  }
+}
+```
+
+or when defining an ADT:
+
+```neut
+data config {
+- Config of {
+  - some-value: my-list(int)
+  - foo: int
+  - bar: my-list
   }
 }
 ```
@@ -167,15 +183,14 @@ A `lambda` is compiled into a three-word tuple:
 When you call a lambda, things like below will happen:
 
 ```neut
-cls(a, b, c)
+func(a, b, c)
 
-// ↓
+// ↓ (source code to LLVM)
 
-// let type-of-free-variables = cls[0] (unused)
-let free-variables = cls[1]
-let closed-function = cls[2]
-free(cls) // free the outer tuple
-closed-function(a, b, c, free-variables)
+let free-variables = func[1]
+let closed-function = func[2]
+free(func) // free the outer tuple
+CALL closed-function(a, b, c, free-variables) // LLVM-level function call
 ```
 
 ## Local Recursion
@@ -186,24 +201,24 @@ As we've seen, a recursive function can be defined by using `define`. You can al
 
 ```neut
 define foo(x: int): int {
-  let z = 1
-  let f =
+  let some-variable = 1
+  let some-rec-func =
     // creating a local recursive function `my-rec-func`
     mu my-rec-func(y: int): int {
-      if le-int(y, 0) {
-        z // free variables can be used normally in `mu`
+      if eq-int(y, 0) {
+        some-variable // free variables can be used normally in `mu`
       } else {
         print("hey\n")
         my-rec-func(sub-int(y, 1)) // recursive call
       }
     }
-  f(x)
+  some-rec-func(x)
 }
 ```
 
 ### Behavior
 
-An anonymous recursive function is lifted to a top-level recursive function (i.e. ordinary lambda lifting). For example, the example above is translated into something like below:
+An anonymous recursive function is translated into a top-level recursive function (i.e. ordinary lambda lifting). For example, the example above is translated into something like below:
 
 ```neut
 define my-rec-func(y: int, z: int) {
@@ -216,13 +231,13 @@ define my-rec-func(y: int, z: int) {
 }
 
 define fact(x: int): int {
-  let z = 1
-  let f = (y: int) => { my-rec-func(y, z) }
-  f(x)
+  let some-variable = 1
+  let some-rec-func = (y: int) => { my-rec-func(y, some-variable) }
+  some-rec-func(x)
 }
 ```
 
-In practice, you may think of `mu` as a nested `define`.
+In practice, one may think of `mu` as a nested `define`.
 
 ## Other Basic Types
 
@@ -230,4 +245,4 @@ Basic types (integers, floats, bools, etc.) are also available in Neut, of cours
 
 ## How Can I Say Hello to The World?
 
-The above should cover the basics of Neut. Still, it won't suffice; We can't even do the beloved Hello World now. This is because the type of static text is a noetic type, which is covered in the next section. Let's go ahead.
+The above should cover the basics of Neut. It won't suffice, however; We can't even do the beloved Hello World now. This is because the type of static text is a noetic type, which is covered in the next section. Let's go ahead.
