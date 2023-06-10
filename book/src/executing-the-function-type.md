@@ -11,9 +11,9 @@ define foo(a: tau): int {
   let x: int = 10
   let y = tau
   let f =
-    (z: a) => { // lambda function
-      let foo = x
-      let bar = y
+    (z: a) => {   // lambda function
+      let foo = x // ← x is a free var of this lambda
+      let bar = y // ← y is also a free var of this lambda
       let buz = z
       bar
     }
@@ -25,25 +25,25 @@ Let's see how the `lambda` inside the function is compiled.
 
 ### Extracting a Closed Chain From a Lambda
 
-First of all, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in types. Thus, in this case, the compiler constructs a list like below:
+First of all, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:
 
 ```neut
 [a, x, y, z]
 ```
 
-Here, consider annotating all the variables in the list by their variables, like below:
+Note that this list is "closed". That is, consider annotating all the variables in the list by their variables, like below:
 
 ```neut
 [a: tau, x: int, y: tau, z: a]
 ```
 
-This list can be said as "closed" in that the term
+This list is closed in that the term
 
 ```neut
 (a: tau, x: int, y: tau, z: a) => { Unit }
 ```
 
-doesn't contain any free variables.
+doesn't contain any free variables. We'll call a list like this a closed chain.
 
 ### Closure Conversion
 
@@ -73,10 +73,13 @@ let label    = cls[2] // get the label to the function
 
 let env-clone = env-type(1, env) // copy the environment using the type of it
 
-let new-ptr = malloc(mul-int(3, word-size)) // allocate new memory region for our new closure
-store(new-ptr[0], env-type)
+// allocate new memory region for our new closure
+let new-ptr = malloc(mul-int(3, word-size))
+
+// store cloned values
+store(new-ptr[0], env-type)  // remember that a type is an immediate
 store(new-ptr[1], env-clone)
-store(new-ptr[2], label)
+store(new-ptr[2], label)     // note that a label is an immediate
 
 new-ptr // ... and return the new closure
 ```
