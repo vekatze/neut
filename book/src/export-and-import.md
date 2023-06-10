@@ -21,25 +21,16 @@ define some-private-func(): int {
 }
 ```
 
-ADTs and their constructors can be exported as follows:
+There is a shorthand to export an ADT and all its constructors:
 
 ```neut
 export {
-- my-item {..} // `{..}` exports all its constructors
-- other-item { // export an ADT
-  - Buz        // ... and its constructors
-  - Qux
-  }
+- my-item {..} // `type-name {..}` exports the type and all its constructors
 }
 
 data my-item(a) {
 - Foo
 - Bar(int, a)
-}
-
-data other-item {
-- Buz
-- Qux
 }
 ```
 
@@ -83,8 +74,8 @@ Suppose that you have added a library module to your module:
 ```text
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0.2.0.4.tar.zst"
-    checksum = "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
+    checksum = "4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
   }
 }
 ```
@@ -103,12 +94,12 @@ define sample() {
 }
 ```
 
-Here, the module alias is `core`, and the relative path is `text.io`. Internally, when compiling a library module, the compiler adds the following correspondence from the current module's `module.ens`:
+Here, the module alias of `core.text.io` is `core`, and the relative path is `text.io`. Internally, when compiling a library module, the compiler adds the following correspondence from the current module's `module.ens`:
 
 ```sh
 core => CHECKSUM_OF_THE_LIBRARY
 
-# core => jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=
+# core => 4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA=
 ```
 
 and do the following name resolution:
@@ -118,12 +109,12 @@ core.text.io.get-line
 
 ↓
 
-jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA=.text.io.get-line
 ```
 
 ### Behind The Scenes: Resolving `this`
 
-Remember that every module is whether main or library. The name of a global variable is resolved using this distinction.
+Remember that every module is whether the main or a library. The name of a global variable is resolved using this distinction.
 
 Firstly, `this` in the main module is kept intact. Thus, the resulting assembly file contains a symbol like `this.foo.yo.yo-func`.
 
@@ -198,40 +189,6 @@ data term {
 ```
 
 and use them via qualified import. The same goes for functions. Please [name your functions and types for qualified import](https://mail.haskell.org/pipermail/haskell-cafe/2008-June/043986.html).
-
-### Importing & Re-Exporting Names
-
-You can also re-export names from other files:
-
-```neut
-// source/exporter.nt
-
-import {
-- this.foo.item
-}
-
-export {
-- this.foo.item.item-func
-- this.foo.item.item-func => item-func-alias // re-exporting an alias
-}
-```
-
-Also, as done in the above, you can re-export an alias of a name.
-
-Re-exported names can be used as usual:
-
-```neut
-// source/user.nt
-
-import {
-- this.exporter
-}
-
-define foo(): int {
-  let _ = item-func() // using re-exported name
-  item-func-alias()   // using re-exported alias
-}
-```
 
 ## Other Notes on Namespaces and Modules
 
