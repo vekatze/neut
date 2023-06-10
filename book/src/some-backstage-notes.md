@@ -1,6 +1,6 @@
 # Some Backstage Notes
 
-## What are the Possible Drawbacks of Neut's Approach?
+## Are There Possible Drawbacks of Neut's Approach?
 
 The prominent one that comes to my mind is that, when you use a polymorphic ADT, its type arguments must be stored in its values. For example, consider something like below:
 
@@ -26,7 +26,7 @@ However, in Neut, the type information must also be stored:
 (0, TYPE, 3, True)
 ```
 
-This means that in Neut you must pay additional spaces to use parameterized ADTs. So, it might be necessary to use non-parameterized ADTs in performance-critical situations, like:
+This means that in Neut you must pay additional spaces to use parameterized ADTs. So, it might be necessary to use non-parameterized ADTs in performance-critical situations, like below:
 
 ```neut
 data FooText {
@@ -51,7 +51,7 @@ From the viewpoint of natural deduction, executing a program is reducing detours
 
 On the other hand, the flip side of harmony, namely local completeness, is often ignored when thinking about programs. At least, that was how it seemed to me N years ago. It made me wonder: Why does local completeness seem to play almost no role in a program when local soundness handles the time aspect of a program, which is of great importance?
 
-Led by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, which is a fruit of local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
+Led by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, or local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
 
 A good lecture note on harmony can be found [here](https://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/03-harmony.pdf).
 
@@ -63,4 +63,4 @@ I've always wanted something like this, but couldn't find one. As usual, by the 
 
 To tell the truth, this language is actually a painting. A small painting, redrawn again and again, alone, for like 7 years or longer, seeking my own understanding of beauty™, that happened to take the form of a programming language. Of course, this isn't a heroic thing or whatever, but rather a symptom, if I name it. This painting is entirely dedicated to my conceited obsession. Still, I now believe that the resulting language has something sparkling in its concept, and also I don't have any reason to keep it secret in my atelier.
 
-I'd be happy if someone were inspired by skimming this book over this weekend for example, or even happier if they chose to try it on their PC. Such a chain of reactions is a lucky and lovely accident, which I believe is the fundamental element that colors our world.
+I'd be happy if someone were inspired by skimming this book over this weekend for example, or even happier if they chose to try it on their PC. Such a chain of reactions is a lucky and lovely accident, which I believe is the fundamental kawaii element that colors our world.
