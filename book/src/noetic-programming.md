@@ -4,11 +4,11 @@ In this section, we'll see how to avoid undesirable copying/discarding. We'll do
 
 ## The Type of a Noema
 
-For any type `A` in Neut, you can construct a new type `&A`, the noema type of `A`. We'll call a value a noema if the type of the value is of the form `&A`.
+For any type `a` in Neut, you can construct a new type `&a`, the noema type of `a`. We'll call a value a noema if the type of the value is of the form `&a`.
 
-The internal representation of a noema of type `&A` is the same as a value with type `A`.
+The internal representation of a noema of type `&a` is the same as a value with type `a`.
 
-The point of a noema lies in the fact that *a noema isn't consumed even after it is used*. Let's see how it behaves.
+The point of a noema lies in the fact that *a noema isn't copied/discarded even when used non-linearly*. Let's see how it behaves.
 
 ## Creating a Noema
 
@@ -25,9 +25,23 @@ define sample(xs: list(a)): int {
 }
 ```
 
-In the `body` of `let result on x1, ..., xn = body`, the type of `xi` is cast into its noetic version. Using this, we can introduce a noema.
+In the `body` of `let result on x1, ..., xn = body`, the type of `xi` is cast into its noetic variant. Using this, we can create a noema.
 
-For memory safety, the `result` cannot contain any noetic value (this is statically checked by the compiler); You can therefore use the noetic version of `xi` only in the `body`. For example, the following code should result in an error:
+It might be illuminating to see that `let-on` is essentially the following syntax sugar:
+
+```neut
+let len on xs = e
+cont
+
+// ↓ desugar
+
+let xs = unsafe-cast(a, &a, xs) // cast: `a` ~> `&a`
+let len = e                     // (use `&a`)
+let xs = unsafe-cast(&a, a, xs) // uncast: `&a` ~> `a`
+cont
+```
+
+For memory safety, the `result` cannot contain any noema. For example, the following code results in an error:
 
 ```neut
   let result on xs = {
@@ -37,26 +51,28 @@ For memory safety, the `result` cannot contain any noetic value (this is statica
   ...
 ```
 
+Also note that, since a function can contain a noema, the type of `result` can't be like `a -> b`.
+
 ## Avoiding Unnecessary Copying
 
-A noema isn't consumed even after it is used. Let's take the following code for example:
+A noema isn't copied even when used multiple times. Let's take the following code for example:
 
 ```neut
   let result on xs = {
     let foo = xs // foo: &list(a)
-    let buz = xs // foo: &list(a)
+    let bar = xs // bar: &list(a)
     1
   }
   cont
 ```
 
-The code above clearly uses `xs` twice in the body of `let-on`. However, since the type of `xs` is noetic, the `xs` isn't copied. The same `xs` is used in both of the occurrences and then the `xs` is, for example, discarded in `cont`.
+The code above clearly uses `xs` twice in the body of `let-on`. However, since the type of `xs` is noetic, the `xs` isn't copied. The same `xs` is used in both of the occurrences.
 
 By using a noema, we can perform something like "borrowing" in other languages.
 
 ## Using a Noema: Viewing Its Contents
 
-The content of a noema can be viewed, using `case`:
+The content of a noema can be viewed using `case`:
 
 ```neut
 define length[a](xs: &list(a)): int {
@@ -69,7 +85,7 @@ define length[a](xs: &list(a)): int {
 }
 ```
 
-Here, the `case` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of given value (`xs` in this case).
+Here, the `case` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of the given value (`xs` in this case).
 
 The variables that are bound by a `case` are cast to be noetic. For example, the `y` in the example above is not of type `a`, but of type `&a`. The `ys` is not of type `list(a)`, but of type `&list(a)`. Since the type of `y` is noetic, `y` isn't discarded even though it isn't used.
 
@@ -88,22 +104,22 @@ define sum-of-list(xs: &list(int)): int {
 }
 ```
 
-`*e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `*y` is a `y`'s new copy of type `int`.
+`*e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `*y` is a `y`'s new copy of type `int` (which is the same as `y` in this case, since `y` is an immediate).
 
 ## The Type of a Static Text
 
-The fact that a noema isn't copied/discarded can be exploited to represent a static text. In Neut, the type of a static text is `&text`:
+The fact that a noema isn't copied/discarded can be exploited to represent a static text. In Neut, the type of static text is `&text`:
 
 ```neut
 "Hello world!\n": &text
 ```
 
-Some text operations are defined on this noetic type. For example, the core library defines `print: &text -> top`. Thus the following is a well-typed code:
+Some text operations are defined on this noetic type. For example, the core library defines `print: &text -> unit`. Thus the following is a well-typed code:
 
 ```neut
-define test(): top {
+define main(): unit {
   print("Hello world!\n")
 }
 ```
 
-Yes, hello world.
+Our kawaii hello world.
