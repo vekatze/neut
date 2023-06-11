@@ -3,6 +3,10 @@ name: Tests on Linux
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'bin/**'
+      - 'book/**'
   pull_request:
     branches: [main]
     paths-ignore:
