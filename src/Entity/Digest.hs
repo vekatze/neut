@@ -1,4 +1,4 @@
-module Entity.Checksum (hashAndEncode) where
+module Entity.Digest (hashAndEncode) where
 
 import Crypto.Hash.SHA256 as SHA256
 import Data.ByteString qualified as B

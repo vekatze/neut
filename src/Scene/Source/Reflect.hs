@@ -27,5 +27,5 @@ getModule srcPath = do
   if moduleLocation mainModule == moduleFilePath
     then return mainModule
     else do
-      let moduleID = getChecksumFromModulePath moduleFilePath
+      let moduleID = getDigestFromModulePath moduleFilePath
       Module.fromFilePath moduleID moduleFilePath

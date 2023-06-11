@@ -30,7 +30,7 @@ import Entity.LowType qualified as LT
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
-import Entity.ModuleChecksum qualified as MC
+import Entity.ModuleDigest qualified as MD
 import Entity.Opacity qualified as O
 import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
@@ -49,12 +49,12 @@ data Env = Env
     shouldColorize :: IORef Bool,
     buildMode :: IORef BM.BuildMode,
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
-    moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MC.ModuleChecksum),
+    moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias [SGL.StrictGlobalLocator]),
     sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     localNameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
-    antecedentMap :: IORef (Map.HashMap MC.ModuleChecksum M.Module),
+    antecedentMap :: IORef (Map.HashMap MD.ModuleDigest M.Module),
     constraintEnv :: IORef [C.Constraint],
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],

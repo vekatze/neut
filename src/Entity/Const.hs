@@ -41,9 +41,9 @@ envVarCoreModuleURL :: String
 envVarCoreModuleURL =
   "NEUT_CORE_MODULE_URL"
 
-envVarCoreModuleChecksum :: String
-envVarCoreModuleChecksum =
-  "NEUT_CORE_MODULE_CHECKSUM"
+envVarCoreModuleDigest :: String
+envVarCoreModuleDigest =
+  "NEUT_CORE_MODULE_DIGEST"
 
 envVarClang :: String
 envVarClang =

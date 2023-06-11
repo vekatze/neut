@@ -22,7 +22,7 @@ import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
 import Entity.Module
 import Entity.ModuleAlias
-import Entity.ModuleChecksum
+import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
@@ -75,8 +75,8 @@ resolveModuleAlias :: Hint -> ModuleAlias -> App MID.ModuleID
 resolveModuleAlias m moduleAlias = do
   aliasMap <- readRef' moduleAliasMap
   case Map.lookup moduleAlias aliasMap of
-    Just checksum ->
-      return $ MID.Library checksum
+    Just digest ->
+      return $ MID.Library digest
     Nothing
       | moduleAlias == defaultModuleAlias ->
           return MID.Main
@@ -88,21 +88,21 @@ resolveModuleAlias m moduleAlias = do
           Throw.raiseError m $
             "no such module alias is defined: " <> BN.reify (extract moduleAlias)
 
-getModuleChecksumAliasList :: Module -> App [(ModuleAlias, ModuleChecksum)]
-getModuleChecksumAliasList baseModule = do
+getModuleDigestAliasList :: Module -> App [(ModuleAlias, ModuleDigest)]
+getModuleDigestAliasList baseModule = do
   let dependencyList = Map.toList $ moduleDependency baseModule
-  forM dependencyList $ \(key, (_, checksum)) -> do
-    checksum' <- getLatestCompatibleChecksum checksum
-    return (key, checksum')
+  forM dependencyList $ \(key, (_, digest)) -> do
+    digest' <- getLatestCompatibleDigest digest
+    return (key, digest')
 
-getLatestCompatibleChecksum :: ModuleChecksum -> App ModuleChecksum
-getLatestCompatibleChecksum mc = do
+getLatestCompatibleDigest :: ModuleDigest -> App ModuleDigest
+getLatestCompatibleDigest mc = do
   mNewerModule <- Antecedent.lookup mc
   case mNewerModule of
     Just newerModule ->
       case moduleID newerModule of
-        MID.Library newerChecksum ->
-          getLatestCompatibleChecksum newerChecksum
+        MID.Library newerDigest ->
+          getLatestCompatibleDigest newerDigest
         _ ->
           return mc
     Nothing ->
@@ -120,17 +120,17 @@ initializeAliasMap :: App ()
 initializeAliasMap = do
   currentModule <- Source.sourceModule <$> readRef "currentSource" currentSource
   mainModule <- Module.getMainModule
-  let additionalChecksumAlias = getAlias mainModule currentModule
-  currentAliasList <- getModuleChecksumAliasList currentModule
-  let aliasMap = Map.fromList $ Maybe.catMaybes [additionalChecksumAlias] ++ currentAliasList
+  let additionalDigestAlias = getAlias mainModule currentModule
+  currentAliasList <- getModuleDigestAliasList currentModule
+  let aliasMap = Map.fromList $ Maybe.catMaybes [additionalDigestAlias] ++ currentAliasList
   writeRef' moduleAliasMap aliasMap
   writeRef' locatorAliasMap Map.empty
 
-getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleChecksum)
+getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleDigest)
 getAlias mainModule currentModule = do
   case getID mainModule currentModule of
-    MID.Library checksum ->
-      return (defaultModuleAlias, checksum)
+    MID.Library digest ->
+      return (defaultModuleAlias, digest)
     MID.Main ->
       Nothing
     MID.Base ->

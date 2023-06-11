@@ -17,9 +17,9 @@ shiftToLatest source = do
       return source
     MID.Base ->
       return source
-    MID.Library checksum -> do
-      mNewChecksum <- Antecedent.lookup checksum
-      case mNewChecksum of
+    MID.Library digest -> do
+      mNewDigest <- Antecedent.lookup digest
+      case mNewDigest of
         Nothing ->
           return source
         Just newModule -> do

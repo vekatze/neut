@@ -1,8 +1,8 @@
 module Entity.ModuleSignature where
 
 import Entity.ModuleAlias
-import Entity.ModuleChecksum
+import Entity.ModuleDigest
 
 data ModuleSignature
   = Alias ModuleAlias
-  | Checksum ModuleChecksum
+  | Digest ModuleDigest

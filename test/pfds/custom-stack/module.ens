@@ -2,7 +2,7 @@ antecedent = []
 dependency = {
   core = {
     URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
-    checksum = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
+    digest = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
   }
 }
 extra-content = []

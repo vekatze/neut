@@ -18,7 +18,7 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Module qualified as M
 import Entity.ModuleAlias
-import Entity.ModuleChecksum qualified as MC
+import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Path
@@ -28,8 +28,8 @@ import UnliftIO.Async
 fetch :: M.Module -> App ()
 fetch baseModule = do
   let dependency = Map.toList $ M.moduleDependency baseModule
-  forConcurrently_ dependency $ \(alias, (url, checksum)) ->
-    installIfNecessary alias url checksum
+  forConcurrently_ dependency $ \(alias, (url, digest)) ->
+    installIfNecessary alias url digest
 
 insertDependency :: T.Text -> ModuleURL -> App ()
 insertDependency aliasName url = do
@@ -38,72 +38,72 @@ insertDependency aliasName url = do
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias url
     archive <- getHandleContents tempFileHandle
-    let checksum = MC.fromByteString archive
-    extractToLibDir tempFilePath alias checksum
-    addDependencyToModuleFile mainModule alias url checksum
-    getLibraryModule alias checksum >>= fetch
+    let digest = MD.fromByteString archive
+    extractToLibDir tempFilePath alias digest
+    addDependencyToModuleFile mainModule alias url digest
+    getLibraryModule alias digest >>= fetch
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
-  checksum <- Module.getCoreModuleChecksum
+  digest <- Module.getCoreModuleDigest
   mainModule <- Module.getMainModule
-  addDependencyToModuleFile mainModule coreModuleAlias coreModuleURL checksum
-  installIfNecessary coreModuleAlias coreModuleURL checksum
+  addDependencyToModuleFile mainModule coreModuleAlias coreModuleURL digest
+  installIfNecessary coreModuleAlias coreModuleURL digest
 
-installIfNecessary :: ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
-installIfNecessary alias url checksum = do
-  isInstalled <- checkIfInstalled checksum
+installIfNecessary :: ModuleAlias -> ModuleURL -> MD.ModuleDigest -> App ()
+installIfNecessary alias url digest = do
+  isInstalled <- checkIfInstalled digest
   unless isInstalled $ do
-    Remark.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
+    Remark.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
     withTempFile $ \tempFilePath tempFileHandle -> do
       download tempFilePath alias url
       archive <- getHandleContents tempFileHandle
-      let archiveModuleChecksum = MC.fromByteString archive
-      when (checksum /= archiveModuleChecksum) $
+      let archiveModuleDigest = MD.fromByteString archive
+      when (digest /= archiveModuleDigest) $
         Throw.raiseError' $
-          "the checksum of the module `"
+          "the digest of the module `"
             <> BN.reify (extract alias)
             <> "` is different from the expected one:"
             <> "\n- "
-            <> MC.reify checksum
+            <> MD.reify digest
             <> " (expected)"
             <> "\n- "
-            <> MC.reify archiveModuleChecksum
+            <> MD.reify archiveModuleDigest
             <> " (actual)"
-      extractToLibDir tempFilePath alias checksum
-      getLibraryModule alias checksum >>= fetch
+      extractToLibDir tempFilePath alias digest
+      getLibraryModule alias digest >>= fetch
 
-checkIfInstalled :: MC.ModuleChecksum -> App Bool
-checkIfInstalled checksum = do
-  Module.getModuleFilePath Nothing (MID.Library checksum) >>= Path.doesFileExist
+checkIfInstalled :: MD.ModuleDigest -> App Bool
+checkIfInstalled digest = do
+  Module.getModuleFilePath Nothing (MID.Library digest) >>= Path.doesFileExist
 
-getLibraryModule :: ModuleAlias -> MC.ModuleChecksum -> App M.Module
-getLibraryModule alias checksum = do
-  moduleFilePath <- Module.getModuleFilePath Nothing (MID.Library checksum)
+getLibraryModule :: ModuleAlias -> MD.ModuleDigest -> App M.Module
+getLibraryModule alias digest = do
+  moduleFilePath <- Module.getModuleFilePath Nothing (MID.Library digest)
   moduleFileExists <- Path.doesFileExist moduleFilePath
   if moduleFileExists
-    then Module.fromFilePath (MID.Library checksum) moduleFilePath
+    then Module.fromFilePath (MID.Library digest) moduleFilePath
     else
       Throw.raiseError' $
         "could not find the module file for `"
           <> BN.reify (extract alias)
           <> "` ("
-          <> MC.reify checksum
+          <> MD.reify digest
           <> ")."
 
 download :: Path Abs File -> ModuleAlias -> ModuleURL -> App ()
 download tempFilePath _ (ModuleURL url) = do
   External.run "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
 
-extractToLibDir :: Path Abs File -> ModuleAlias -> MC.ModuleChecksum -> App ()
-extractToLibDir tempFilePath _ checksum = do
-  moduleDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library checksum)
+extractToLibDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
+extractToLibDir tempFilePath _ digest = do
+  moduleDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library digest)
   Path.ensureDir moduleDirPath
   External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath moduleDirPath, "--strip-components=1"]
 
-addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MC.ModuleChecksum -> App ()
-addDependencyToModuleFile targetModule alias url checksum = do
-  let targetModule' = M.addDependency alias url checksum targetModule
+addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MD.ModuleDigest -> App ()
+addDependencyToModuleFile targetModule alias url digest = do
+  let targetModule' = M.addDependency alias url digest targetModule
   Module.save targetModule'
-  Remark.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MC.reify checksum <> ")"
+  Remark.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"

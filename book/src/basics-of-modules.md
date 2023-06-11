@@ -34,15 +34,15 @@ ls ~/.cache/neut/library
 #    ...
 ```
 
-where the `KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=` is the checksum of the module. Also, the module information is added to the current module's `module.ens`:
+where the `KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
 
 ```text
 dependency = {
   core = {
     URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
-    checksum = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
+    digest = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
   }
 }
 ```
 
-It might be worth noting that an alias of a library is chosen *by a user of the library*. Indeed, in the example above, we (user) chosed the alias `core` for the downloaded library. The "true" name of the library is its checksum, and this is not something that can be chosen arbitrarily by the creator of the library.
+It might be worth noting that an alias of a library is chosen *by a user of the library*. Indeed, in the example above, we (user) chosed the alias `core` for the downloaded library. The "true" name of the library is its digest, and this is not something that can be chosen arbitrarily by the creator of the library.

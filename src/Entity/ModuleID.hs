@@ -7,12 +7,12 @@ where
 import Data.Binary
 import Data.Hashable
 import Data.Text qualified as T
-import Entity.ModuleChecksum qualified as MC
+import Entity.ModuleDigest qualified as MD
 import GHC.Generics
 
 data ModuleID
   = Main
-  | Library MC.ModuleChecksum
+  | Library MD.ModuleDigest
   | Base
   deriving (Generic, Eq, Ord, Show)
 
@@ -25,7 +25,7 @@ reify moduleID =
   case moduleID of
     Main ->
       "this"
-    Library checksum ->
-      MC.reify checksum
+    Library digest ->
+      MD.reify digest
     Base ->
       "base"

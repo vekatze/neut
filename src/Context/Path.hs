@@ -41,7 +41,7 @@ import Data.Text.IO qualified as TIO
 import Data.Time
 import Data.Version qualified as V
 import Entity.BuildMode qualified as BM
-import Entity.Checksum
+import Entity.Digest
 import Entity.Const
 import Entity.Module
 import Entity.OutputKind qualified as OK

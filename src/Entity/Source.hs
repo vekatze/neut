@@ -43,8 +43,8 @@ getHumanReadableLocator baseModule source = do
     MID.Base -> do
       return $ NE.singleton $ "base" <> nsSep <> baseReadableLocator
     MID.Library mc -> do
-      let checksumMap = getChecksumMap baseModule
-      case Map.lookup mc checksumMap of
+      let digestMap = getDigestMap baseModule
+      case Map.lookup mc digestMap of
         Nothing ->
           return $ NE.singleton $ "{unknown}" <> nsSep <> baseReadableLocator
         Just aliasList -> do

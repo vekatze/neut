@@ -20,7 +20,7 @@ import Entity.Ens
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleAlias
-import Entity.ModuleChecksum
+import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
@@ -92,7 +92,7 @@ interpretRelFilePath moduleID ens = do
 
 interpretDependencyDict ::
   (H.Hint, Map.HashMap T.Text Ens) ->
-  App (Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum))
+  App (Map.HashMap ModuleAlias (ModuleURL, ModuleDigest))
 interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
@@ -102,8 +102,8 @@ interpretDependencyDict (m, dep) = do
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
     (_, url) <- liftEither $ access "URL" ens >>= toString
-    (_, checksum) <- liftEither $ access "checksum" ens >>= toString
-    return (ModuleAlias k', (ModuleURL url, ModuleChecksum checksum))
+    (_, digest) <- liftEither $ access "digest" ens >>= toString
+    return (ModuleAlias k', (ModuleURL url, ModuleDigest digest))
   return $ Map.fromList items
 
 interpretExtraPath :: Path Abs Dir -> Ens -> App SomePath
@@ -119,10 +119,10 @@ interpretExtraPath moduleRootDir entity = do
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
 
-interpretAntecedent :: Ens -> App ModuleChecksum
+interpretAntecedent :: Ens -> App ModuleDigest
 interpretAntecedent ens = do
-  (_, checksumText) <- liftEither $ toString ens
-  return $ ModuleChecksum checksumText
+  (_, digestText) <- liftEither $ toString ens
+  return $ ModuleDigest digestText
 
 ensureExistence ::
   H.Hint ->

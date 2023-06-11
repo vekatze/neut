@@ -10,8 +10,8 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Text qualified as T
 import Entity.Const
 import Entity.Module
-import Entity.ModuleChecksum (ModuleChecksum)
-import Entity.ModuleChecksum qualified as MC
+import Entity.ModuleDigest (ModuleDigest)
+import Entity.ModuleDigest qualified as MD
 import Entity.PackageVersion qualified as PV
 import Path
 import Scene.Module.GetExistingVersions
@@ -22,7 +22,7 @@ updateAntecedents :: PV.PackageVersion -> Module -> App ()
 updateAntecedents newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
-  antecedentList <- ListUtils.nubOrd <$> mapM (getChecksum targetModule) antecedents
+  antecedentList <- ListUtils.nubOrd <$> mapM (getDigest targetModule) antecedents
   Module.save $ targetModule {moduleAntecedents = antecedentList}
 
 getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
@@ -31,9 +31,9 @@ getPackagePath targetModule ver = do
   let releaseName = PV.reify ver
   Path.resolveFile releaseDir $ T.unpack $ releaseName <> packageFileExtension
 
-getChecksum :: Module -> PV.PackageVersion -> App ModuleChecksum
-getChecksum targetModule ver = do
+getDigest :: Module -> PV.PackageVersion -> App ModuleDigest
+getDigest targetModule ver = do
   path <- getPackagePath targetModule ver
   handle <- liftIO $ openFile (toFilePath path) ReadMode
   package <- getHandleContents handle
-  return $ MC.fromByteString package
+  return $ MD.fromByteString package

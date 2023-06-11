@@ -8,7 +8,7 @@ import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Ens qualified as E
 import Entity.ModuleAlias
-import Entity.ModuleChecksum
+import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.StrictGlobalLocator qualified as SGL
@@ -22,9 +22,9 @@ type SomePath =
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
-    moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleChecksum),
+    moduleDependency :: Map.HashMap ModuleAlias (ModuleURL, ModuleDigest),
     moduleExtraContents :: [SomePath],
-    moduleAntecedents :: [ModuleChecksum],
+    moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File
   }
   deriving (Show)
@@ -41,14 +41,14 @@ getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
 
-addDependency :: ModuleAlias -> ModuleURL -> ModuleChecksum -> Module -> Module
-addDependency alias url checksum someModule =
-  someModule {moduleDependency = Map.insert alias (url, checksum) (moduleDependency someModule)}
+addDependency :: ModuleAlias -> ModuleURL -> ModuleDigest -> Module -> Module
+addDependency alias url digest someModule =
+  someModule {moduleDependency = Map.insert alias (url, digest) (moduleDependency someModule)}
 
-getChecksumMap :: Module -> Map.HashMap ModuleChecksum (NE.NonEmpty ModuleAlias)
-getChecksumMap baseModule = do
+getDigestMap :: Module -> Map.HashMap ModuleDigest (NE.NonEmpty ModuleAlias)
+getDigestMap baseModule = do
   let dep = moduleDependency baseModule
-  let foo = map (\(alias, (_, checksum)) -> (checksum, alias)) $ Map.toList dep
+  let foo = map (\(alias, (_, digest)) -> (digest, alias)) $ Map.toList dep
   let groupedFoo = NE.groupBy (\(c1, _) (c2, _) -> c1 == c2) foo
   Map.fromList $ flip map groupedFoo $ \item -> do
     let representative = fst $ NE.head item
@@ -58,10 +58,10 @@ getChecksumMap baseModule = do
 ppModule :: Module -> T.Text
 ppModule someModule = do
   let entryPoint = Map.map (\x -> () :< E.String (SGL.getRelPathText x)) $ moduleTarget someModule
-  let dependency = flip Map.map (moduleDependency someModule) $ \(ModuleURL url, ModuleChecksum checksum) -> do
+  let dependency = flip Map.map (moduleDependency someModule) $ \(ModuleURL url, ModuleDigest digest) -> do
         let urlEns = () :< E.String url
-        let checksumEns = () :< E.String checksum
-        () :< E.Dictionary (Map.fromList [("checksum", checksumEns), ("URL", urlEns)])
+        let digestEns = () :< E.String digest
+        () :< E.Dictionary (Map.fromList [("digest", digestEns), ("URL", urlEns)])
   let extraContents = map (\x -> () :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
   let antecedents = map (\x -> () :< E.String (ppAntecedent x)) $ moduleAntecedents someModule
   E.ppEnsTopLevel $
@@ -72,9 +72,9 @@ ppModule someModule = do
         ("antecedent", () :< E.List antecedents)
       ]
 
-ppAntecedent :: ModuleChecksum -> T.Text
-ppAntecedent (ModuleChecksum checksum) =
-  checksum
+ppAntecedent :: ModuleDigest -> T.Text
+ppAntecedent (ModuleDigest digest) =
+  digest
 
 ppExtraContent :: SomePath -> T.Text
 ppExtraContent somePath =
@@ -88,12 +88,12 @@ getID :: Module -> Module -> MID.ModuleID
 getID mainModule currentModule = do
   if moduleLocation mainModule == moduleLocation currentModule
     then MID.Main
-    else getChecksumFromModulePath (moduleLocation currentModule)
+    else getDigestFromModulePath (moduleLocation currentModule)
 
-getChecksumFromModulePath :: Path Abs File -> MID.ModuleID
-getChecksumFromModulePath moduleFilePath =
+getDigestFromModulePath :: Path Abs File -> MID.ModuleID
+getDigestFromModulePath moduleFilePath =
   MID.Library $
-    ModuleChecksum $
+    ModuleDigest $
       T.pack $
         FP.dropTrailingPathSeparator $
           toFilePath $

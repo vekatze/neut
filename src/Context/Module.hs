@@ -6,7 +6,7 @@ module Context.Module
     setMainModule,
     getModuleCacheMap,
     getCoreModuleURL,
-    getCoreModuleChecksum,
+    getCoreModuleDigest,
     insertToModuleCacheMap,
     save,
   )
@@ -22,8 +22,8 @@ import Data.Text qualified as T
 import Entity.Const
 import Entity.Hint qualified as H
 import Entity.Module
-import Entity.ModuleChecksum
-import Entity.ModuleChecksum qualified as MC
+import Entity.ModuleDigest
+import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
@@ -72,9 +72,9 @@ getModuleDirByID mHint moduleID = do
           Throw.raiseError' message
     MID.Main ->
       return $ getModuleRootDir mainModule
-    MID.Library (MC.ModuleChecksum checksum) -> do
+    MID.Library (MD.ModuleDigest digest) -> do
       libraryDir <- Path.getLibraryDirPath
-      resolveDir libraryDir $ T.unpack checksum
+      resolveDir libraryDir $ T.unpack digest
 
 save :: Module -> App ()
 save targetModule =
@@ -89,11 +89,11 @@ getCoreModuleURL = do
     Nothing ->
       Throw.raiseError' $ "the URL of the core module isn't specified; set it via " <> T.pack envVarCoreModuleURL
 
-getCoreModuleChecksum :: App ModuleChecksum
-getCoreModuleChecksum = do
-  mCoreModuleChecksum <- liftIO $ lookupEnv envVarCoreModuleChecksum
-  case mCoreModuleChecksum of
-    Just coreModuleChecksum ->
-      return $ ModuleChecksum $ T.pack coreModuleChecksum
+getCoreModuleDigest :: App ModuleDigest
+getCoreModuleDigest = do
+  mCoreModuleDigest <- liftIO $ lookupEnv envVarCoreModuleDigest
+  case mCoreModuleDigest of
+    Just coreModuleDigest ->
+      return $ ModuleDigest $ T.pack coreModuleDigest
     Nothing ->
-      Throw.raiseError' $ "the checksum of the core module isn't specified; set it via " <> T.pack envVarCoreModuleURL
+      Throw.raiseError' $ "the digest of the core module isn't specified; set it via " <> T.pack envVarCoreModuleDigest

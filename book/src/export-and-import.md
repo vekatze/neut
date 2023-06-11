@@ -75,7 +75,7 @@ Suppose that you have added a library module to your module:
 dependency = {
   core = {
     URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
-    checksum = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
+    digest = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
   }
 }
 ```
@@ -97,7 +97,7 @@ define sample() {
 Here, the module alias of `core.text.io` is `core`, and the relative path is `text.io`. Internally, when compiling a library module, the compiler adds the following correspondence from the current module's `module.ens`:
 
 ```sh
-core => CHECKSUM_OF_THE_LIBRARY
+core => DIGEST_OF_THE_LIBRARY
 
 # core => KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=
 ```
@@ -118,10 +118,10 @@ Remember that every module is whether the main or a library. The name of a globa
 
 Firstly, `this` in the main module is kept intact. Thus, the resulting assembly file contains a symbol like `this.foo.yo.yo-func`.
 
-On the other hand, `this` in a library module is resolved into its corresponding checksum. More specifically, when compiling a library module, the compiler adds the following correspondence to its internal state:
+On the other hand, `this` in a library module is resolved into its corresponding digest. More specifically, when compiling a library module, the compiler adds the following correspondence to its internal state:
 
 ```sh
-this => CHECKSUM_OF_THE_LIBRARY
+this => DIGEST_OF_THE_LIBRARY
 
 # e.g. this => jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=
 ```

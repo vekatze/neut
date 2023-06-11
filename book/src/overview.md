@@ -65,7 +65,7 @@ An example scenario:
 ```sh
 # setting up the core module (i.e. standard library)
 export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
-export NEUT_CORE_MODULE_CHECKSUM="KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
+export NEUT_CORE_MODULE_DIGEST="KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
 
 # get the compiler (choose one)
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-darwin
@@ -108,6 +108,6 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tutoria
 
 ## Anything Else?
 
-You might also find the module system of Neut interesting. *It distinguishes modules using the checksums of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
+You might also find the module system of Neut interesting. *It distinguishes modules using the digests (checksums) of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
 Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment) for more.
