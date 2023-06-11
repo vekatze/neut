@@ -2,15 +2,15 @@
 
 Neut is a dependently-typed programming language with *static memory management*.
 
-The key features include:
+Its key features include:
 
 <ul class="star-list">
-  <li>Full λ-calculus</li>
+  <li>Full λ-calculus support</li>
   <li>Static memory management</li>
   <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
 </ul>
 
-I believe the last one is especially interesting, as it means Neut found memory predictability *inside* the usual λ-calculus.
+I believe the last one is particularly interesting, as it means Neut found memory predictability *inside* the usual λ-calculus.
 
 ## How Does it Basically Look Like?
 
@@ -56,7 +56,7 @@ If you need more, see [Chapter 2 (Main Ideas)](./main-ideas.md).
 
 ---
 
-Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&A`, the noema type of `A`, which is the same as `A` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
+Your brain might be whispering now, *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
 
 ## Quickstart?
 
