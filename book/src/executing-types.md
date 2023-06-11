@@ -1,7 +1,5 @@
 # Executing Types
 
-## Types as Exponential
-
 Here, we'll see how a type is translated into a function that copies/discards the terms of the type. To see the basic idea, let's take a simple ADT for example:
 
 ```neut
