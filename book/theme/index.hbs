@@ -3,9 +3,6 @@
   <head>
     <meta charset="UTF-8" />
     <title>{{title}}</title>
-    {{#if base_url}}
-      <base href="{{base_url}}" />
-    {{/if}}
     <meta name="description" content="{{description}}" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <link rel="icon" href="{{path_to_root}}favicon.svg" />
@@ -46,7 +43,7 @@
             {{{content}}}
             <footer id="footer-paginator">
               {{#previous}}
-              <a rel="prev" href="{{ path_to_root }}{{link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+              <a rel="prev" href="{{path_to_root}}{{link}}" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                 ← Previous Page
               </a>
               {{/previous}}
@@ -54,7 +51,7 @@
               <div id="footer-spacer"></div>
 
               {{#next}}
-              <a rel="next" href="{{ path_to_root }}{{link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+              <a rel="next" href="{{path_to_root}}{{link}}" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                 Next Page →
               </a>
               {{/next}}
