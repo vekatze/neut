@@ -32,6 +32,7 @@ jobs:
             ~/Library/Caches/Homebrew
             ~/Library/Caches/Homebrew/downloads
           key: brew-${{ hashFiles('llvm.rb') }}
+      - run: brew unlink python
       - run: brew unlink python@3.10
       - run: brew upgrade python@3.11
       - uses: freckle/stack-action@v4
