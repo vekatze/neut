@@ -32,7 +32,7 @@ jobs:
             ~/Library/Caches/Homebrew
             ~/Library/Caches/Homebrew/downloads
           key: brew-${{ hashFiles('llvm.rb') }}
-      - run: brew install llvm@16
+      - run: brew install --force llvm@16
       - uses: freckle/stack-action@v4
         with:
           pedantic: false
