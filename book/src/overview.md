@@ -99,7 +99,6 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tutoria
 
 ## List of Other Basic Characteristics?
 
-- A compiled language
 - Call by value (i.e. non-lazy)
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
