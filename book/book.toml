@@ -4,7 +4,7 @@ language = "en"
 multilingual = false
 src = "src"
 title = "Neut Programming Language"
-description = "Neut is a dependently-typed programming language with static memory management."
+description = "A dependently-typed programming language with static memory management."
 
 [build]
 build-dir = "dist"
