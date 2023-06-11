@@ -24,16 +24,17 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: extractions/setup-just@v1
-      - run: brew update --preinstall
-      - run: cp "$(brew --repository)/Library/Taps/homebrew/homebrew-core/Formula/llvm.rb" llvm.rb
-      - uses: actions/cache@v3
+      - name: Cache LLVM and Clang
+        id: cache-llvm
+        uses: actions/cache@v3
         with:
-          path: |
-            ~/Library/Caches/Homebrew
-            ~/Library/Caches/Homebrew/downloads
-          key: brew-${{ hashFiles('llvm.rb') }}
-      - run: brew upgrade
-      - run: brew install llvm@16
+          path: ./llvm
+          key: llvm-16.0.4
+      - name: Install LLVM and Clang
+        uses: KyleMayes/install-llvm-action@v1
+        with:
+          version: "16.0.4"
+          cached: ${{ steps.cache-llvm.outputs.cache-hit }}
       - uses: freckle/stack-action@v4
         with:
           pedantic: false
