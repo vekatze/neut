@@ -84,8 +84,8 @@ define exp-list(selector, v) {
       // copy Nil
       let ptr = malloc({2-words})
       let a = v[0]
-      store(ptr[0], a)
-      store(ptr[1], d)
+      store(a, ptr[0])
+      store(d, ptr[1])
       ptr
     } else {
       // copy Cons
@@ -93,10 +93,10 @@ define exp-list(selector, v) {
       let a = v[0]
       let cons-head-copy = a(1, v[2]) // ← copy the head of cons using v[0]
       let cons-tail-copy = exp-list(1, v[3])
-      store(ptr[0], a)
-      store(ptr[1], d)
-      store(ptr[2], cons-head-copy)
-      store(ptr[3], cons-tail-copy)
+      store(a, ptr[0])
+      store(d, ptr[1])
+      store(cons-head-copy, ptr[2])
+      store(cons-tail-copy, ptr[3])
       ptr
     }
   }

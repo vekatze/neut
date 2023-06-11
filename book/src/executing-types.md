@@ -18,8 +18,8 @@ New(10, 20)
 // ↓ (compile)
 
 let v = malloc({2-words})
-store(v[0], 10)
-store(v[1], 20)
+store(10, v[0])
+store(20, v[1])
 v
 ```
 
@@ -48,10 +48,10 @@ let v-copy-x = malloc({2-words})
 let v-copy-y = malloc({2-words})
 
 // store values to the new pointers
-store(v-copy-x[0], v1)
-store(v-copy-y[0], v1)
-store(v-copy-x[1], v2)
-store(v-copy-y[1], v2)
+store(v1, v-copy-x[0])
+store(v1, v-copy-y[0])
+store(v2, v-copy-x[1])
+store(v2, v-copy-y[1])
 
 // ... and return
 (v-copy-x, v-copy-y)
@@ -73,10 +73,10 @@ define exp-item(selector, v) {
     free(v)
     let ptr-x = malloc({2-words})
     let ptr-y = malloc({2-words})
-    store(ptr-x[0], v1)
-    store(ptr-y[0], v1)
-    store(ptr-x[1], v2)
-    store(ptr-y[1], v2)
+    store(v1, ptr-x[0])
+    store(v1, ptr-y[0])
+    store(v2, ptr-x[1])
+    store(v2, ptr-y[1])
     (ptr-x, ptr-y)
   }
 }

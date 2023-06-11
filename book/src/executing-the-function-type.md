@@ -77,9 +77,9 @@ let env-clone = env-type(1, env) // copy the environment using the type of it
 let new-ptr = malloc(mul-int(3, word-size))
 
 // store cloned values
-store(new-ptr[0], env-type)  // remember that a type is an immediate
-store(new-ptr[1], env-clone)
-store(new-ptr[2], label)     // note that a label is an immediate
+store(env-type, new-ptr[0])  // remember that a type is an immediate
+store(env-clone, new-ptr[1])
+store(label, new-ptr[2])     // note that a label is an immediate
 
 new-ptr // ... and return the new closure
 ```
@@ -120,9 +120,9 @@ define exp-closure(action-selector, cls) {
 
     let new-ptr = malloc(mul-int(3, word-size))
     // copy the original values
-    store(new-ptr[0], env-type)
-    store(new-ptr[1], env-clone)
-    store(new-ptr[2], label)
+    store(env-type, new-ptr[0])
+    store(env-clone, new-ptr[1])
+    store(label, new-ptr[2])
 
     // ... and return the new closure
     new-ptr

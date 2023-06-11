@@ -412,9 +412,9 @@ rawTermMagicStore :: Hint -> Parser RT.RawTerm
 rawTermMagicStore m = do
   rawTermMagicBase "store" $ do
     lt <- lowType
-    pointer <- delimiter "," >> rawTerm
     value <- delimiter "," >> rawTerm
-    return $ m :< RT.Magic (M.Store lt pointer value)
+    pointer <- delimiter "," >> rawTerm
+    return $ m :< RT.Magic (M.Store lt value pointer)
 
 rawTermMagicLoad :: Hint -> Parser RT.RawTerm
 rawTermMagicLoad m = do

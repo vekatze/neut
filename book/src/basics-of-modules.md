@@ -22,7 +22,7 @@ When running compilation, every module is marked as "main" or "library". The mai
 A module can use other modules. Such module dependencies can be added using `neut add`:
 
 ```sh
-neut add core https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst
+neut add core https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst
 ```
 
 By running the code above, the specified tarball is downloaded into `~/.cache/neut/library`:
@@ -30,17 +30,17 @@ By running the code above, the specified tarball is downloaded into `~/.cache/ne
 ```sh
 ls ~/.cache/neut/library
 # => ...
-#    4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA=
+#    KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=
 #    ...
 ```
 
-where the `4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA=` is the checksum of the module. Also, the module information is added to the current module's `module.ens`:
+where the `KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=` is the checksum of the module. Also, the module information is added to the current module's `module.ens`:
 
 ```text
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
-    checksum = "4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
+    checksum = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
   }
 }
 ```

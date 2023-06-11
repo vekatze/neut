@@ -43,8 +43,8 @@ We also need to register the URL and the checksum of the core module (standard l
 
 ```sh
 # add the below to your bashrc, zshrc, etc.
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
-export NEUT_CORE_MODULE_CHECKSUM="4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
+export NEUT_CORE_MODULE_CHECKSUM="KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
 ```
 
 Now, let's create a sample project and build it to check if your installation is correct:

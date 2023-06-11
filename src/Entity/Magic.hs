@@ -21,8 +21,8 @@ instance Functor Magic where
     case der of
       Cast from to value ->
         Cast (f from) (f to) (f value)
-      Store lt pointer value ->
-        Store lt (f pointer) (f value)
+      Store lt value pointer ->
+        Store lt (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
       External extFunName args ->
@@ -35,8 +35,8 @@ instance Foldable Magic where
     case der of
       Cast from to value ->
         f from <> f to <> f value
-      Store _ pointer value ->
-        f pointer <> f value
+      Store _ value pointer ->
+        f value <> f pointer
       Load _ pointer ->
         f pointer
       External _ args ->
@@ -49,8 +49,8 @@ instance Traversable Magic where
     case der of
       Cast from to value ->
         Cast <$> f from <*> f to <*> f value
-      Store lt pointer value ->
-        Store lt <$> f pointer <*> f value
+      Store lt value pointer ->
+        Store lt <$> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
       External extFunName args ->

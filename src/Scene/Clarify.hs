@@ -342,12 +342,12 @@ clarifyMagic tenv der =
       return $
         bindLet [(fromVarName, from'), (toVarName, to'), (valueVarName, value')] $
           C.Primitive (C.Magic (M.Cast fromVar toVar valueVar))
-    M.Store lt pointer value -> do
-      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
+    M.Store lt value pointer -> do
       (valueVarName, value', valueVar) <- clarifyPlus tenv value
+      (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       return $
-        bindLet [(pointerVarName, pointer'), (valueVarName, value')] $
-          C.Primitive (C.Magic (M.Store lt pointerVar valueVar))
+        bindLet [(valueVarName, value'), (pointerVarName, pointer')] $
+          C.Primitive (C.Magic (M.Store lt valueVar pointerVar))
     M.Load lt pointer -> do
       (pointerVarName, pointer', pointerVar) <- clarifyPlus tenv pointer
       return $

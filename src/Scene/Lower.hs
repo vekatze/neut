@@ -185,9 +185,9 @@ lowerCompPrimitive codeOp =
       case der of
         M.Cast _ _ value -> do
           lowerValue value
-        M.Store valueLowType pointer value -> do
-          ptrVar <- lowerValueLetCast pointer LT.Pointer
+        M.Store valueLowType value pointer -> do
           valVar <- lowerValueLetCast value valueLowType
+          ptrVar <- lowerValueLetCast pointer LT.Pointer
           extend $ return . LC.Cont (LC.Store valueLowType valVar ptrVar)
           return LC.Null
         M.Load valueLowType pointer -> do

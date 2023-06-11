@@ -35,7 +35,7 @@ resource boxed-int {
 - (v: int) => {
     let orig-value = load-int(v)
     let new-ptr = malloc(1)
-    magic store(int, new-ptr, orig-value)
+    magic store(int, orig-value, new-ptr)
     new-ptr
   }
 }
@@ -43,7 +43,7 @@ resource boxed-int {
 // provide a way to introduce new boxed integer
 define create-new-boxed-int(x: int): boxed-int {
   let new-ptr = malloc(1)
-  store-int(new-ptr, x)
+  store-int(x, new-ptr)
   magic cast(int, boxed-int, new-ptr)
 }
 ```

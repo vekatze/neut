@@ -74,8 +74,8 @@ Suppose that you have added a library module to your module:
 ```text
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-25.tar.zst"
-    checksum = "4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-26.tar.zst"
+    checksum = "KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM="
   }
 }
 ```
@@ -99,7 +99,7 @@ Here, the module alias of `core.text.io` is `core`, and the relative path is `te
 ```sh
 core => CHECKSUM_OF_THE_LIBRARY
 
-# core => 4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA=
+# core => KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=
 ```
 
 and do the following name resolution:
@@ -109,7 +109,7 @@ core.text.io.get-line
 
 ↓
 
-4aCQo8gaERG62436UvRJRPuHx1sVW0TNOKK2Ltke0QA=.text.io.get-line
+KpSHUi0QDKq8U3gdvJKaojRvtd0B3vMxn5xzgfNNegM=.text.io.get-line
 ```
 
 ### Behind The Scenes: Resolving `this`

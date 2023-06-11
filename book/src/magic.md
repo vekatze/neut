@@ -10,7 +10,7 @@ let v-casted = magic cast(old-type, new-type, v)
 let ptr = magic external(malloc, 3) // allocate 3 bytes
 
 // store a value to memory (the `store` in LLVM)
-magic store(i64, ptr, 10)
+magic store(i64, 10, ptr)
 
 // load a value from memory (the `load` in LLVM)
 let v = magic load(i64, ptr)

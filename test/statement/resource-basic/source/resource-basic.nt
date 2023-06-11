@@ -13,7 +13,7 @@ resource noisy-boxed-int {
     print("copied.\n")
     let orig-value = load-int(v)
     let new-ptr = malloc(1)
-    magic store(int, new-ptr, orig-value)
+    magic store(int, orig-value, new-ptr)
     new-ptr
   }
 }
@@ -21,7 +21,7 @@ resource noisy-boxed-int {
 // provide a way to introduce new boxed integer
 define create-new-noisy-boxed-int(x: int): noisy-boxed-int {
   let new-ptr = malloc(1)
-  store-int(new-ptr, x)
+  store-int(x, new-ptr)
   magic cast(int, noisy-boxed-int, new-ptr)
 }
 
