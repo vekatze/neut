@@ -32,7 +32,17 @@ jobs:
             ~/Library/Caches/Homebrew
             ~/Library/Caches/Homebrew/downloads
           key: brew-${{ hashFiles('llvm.rb') }}
-      - run: rm '/usr/local/bin/2to3'
+      - run: |
+          rm /usr/local/bin/2to3
+          rm /usr/local/bin/2to3-3.11
+          rm /usr/local/bin/idle3
+          rm /usr/local/bin/idle3.11
+          rm /usr/local/bin/pydoc3
+          rm /usr/local/bin/pydoc3.11
+          rm /usr/local/bin/python3
+          rm /usr/local/bin/python3-config
+          rm /usr/local/bin/python3.11
+          rm /usr/local/bin/python3.11-config
       - run: brew install llvm@16
       - uses: freckle/stack-action@v4
         with:
