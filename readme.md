@@ -14,6 +14,8 @@ Its key features include:
 
 I believe the last one is particularly interesting, as it means Neut found memory predictability inside the usual λ-calculus.
 
+---
+
 Its basic characteristics include:
 
 - Call by value (i.e. non-lazy)
