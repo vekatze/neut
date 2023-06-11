@@ -14,4 +14,12 @@ Its key features include:
 
 I believe the last one is particularly interesting, as it means Neut found memory predictability inside the usual λ-calculus.
 
+Its basic characteristics include:
+
+- Call by value (i.e. non-lazy)
+- Impure
+- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
+- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
+  - That is, the usual one in functional programming, but a bit generalized
+
 For more, please see: https://vekatze.github.io/neut/
