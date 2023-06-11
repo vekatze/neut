@@ -21,6 +21,7 @@
 - [Development Environment](./development-environment.md)
   - [LSP Support](./lsp-support.md)
   - [Editor Support](./editor-support.md)
+- [Configuration](./configuration.md)
 
 # Appendix
 

@@ -4,6 +4,17 @@
 
 Neut depends on `curl`, `tar`, `zstd` and `clang (>= 14.0.0)`. Please make sure all of them are installed.
 
+### Notes on M1 mac
+
+If you are using M1 mac, you may want to install M1 native clang from Homebrew and add the following configuration:
+
+```sh
+export NEUT_TARGET_ARCH=arm64
+export NEUT_CLANG=/opt/homebrew/opt/llvm/bin/clang
+```
+
+This allows you to build M1 native (ARM64) binaries. Without this, you'll get AMD64 binaries.
+
 ## Using a Prebuilt Binary
 
 You can get a prebuilt binary of Neut as follows:
