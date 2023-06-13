@@ -20,8 +20,10 @@ import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ExternalName qualified as EN
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
@@ -66,7 +68,7 @@ parseSource source = do
       Global.saveCurrentNameSet path $ Cache.nameArrowList cache
       return $ Left cache
     Nothing -> do
-      (defList, nameArrowList) <- P.run (program source) $ Source.sourceFilePath source
+      (defList, nameArrowList, declList) <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       nameArrowList' <- concat <$> mapM Discern.discernNameArrow nameArrowList
@@ -94,16 +96,17 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [NA.RawNameArrow])
+program :: Source.Source -> P.Parser ([RawStmt], [NA.RawNameArrow], [DE.Decl])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
   nameArrowList <- Parse.parseExportBlock
+  declList <- parseDeclareList
   forM_ sourceInfoList $ \(source, aliasInfo) -> do
     lift $ Global.activateTopLevelNamesInSource m source
     lift $ Alias.activateAliasInfo aliasInfo
   defList <- concat <$> many parseStmt <* eof
-  return (defList, nameArrowList)
+  return (defList, nameArrowList, declList)
 
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
@@ -115,6 +118,22 @@ parseStmt = do
       return <$> parseDefine O.Transparent,
       return <$> parseDefine O.Opaque
     ]
+
+parseDeclareList :: P.Parser [DE.Decl]
+parseDeclareList = do
+  choice
+    [ do
+        P.keyword "declare"
+        P.betweenBrace (P.manyList parseDeclare),
+      return []
+    ]
+
+parseDeclare :: P.Parser DE.Decl
+parseDeclare = do
+  declName <- EN.ExternalName <$> P.symbol
+  lts <- P.betweenParen $ P.commaList lowType
+  cod <- P.delimiter ":" >> lowType
+  return $ DE.Decl declName lts cod
 
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do

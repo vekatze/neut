@@ -12,6 +12,7 @@ data LowType
   | Array Int LowType -- [n x LOWTYPE]
   | Struct [LowType]
   | Function [LowType] LowType
+  | Void
   deriving (Eq, Ord, G.Generic)
 
 instance Show LowType where

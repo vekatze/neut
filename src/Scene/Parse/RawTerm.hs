@@ -6,6 +6,7 @@ module Scene.Parse.RawTerm
     typeWithoutIdent,
     preVar,
     parseName,
+    lowType,
   )
 where
 
@@ -442,6 +443,7 @@ lowType :: Parser LT.LowType
 lowType = do
   choice
     [ lowTypePointer,
+      lowTypeVoid,
       lowTypeArray,
       lowTypeStruct,
       lowTypeNumber
@@ -450,6 +452,11 @@ lowType = do
 lowTypePointer :: Parser LT.LowType
 lowTypePointer = do
   keyword "pointer"
+  return LT.Pointer
+
+lowTypeVoid :: Parser LT.LowType
+lowTypeVoid = do
+  keyword "void"
   return LT.Pointer
 
 lowTypeArray :: Parser LT.LowType

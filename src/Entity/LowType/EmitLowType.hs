@@ -18,3 +18,5 @@ emitLowType lowType =
       "[" <> intDec i <> " x " <> emitLowType t <> "]"
     LT.Pointer ->
       "ptr"
+    LT.Void ->
+      "void"
