@@ -2,6 +2,8 @@ module Context.Lower
   ( initialize,
     getDeclEnv,
     insDeclEnv,
+    insDeclEnv',
+    lookupDeclEnv,
     getExtEnv,
     insExtEnv,
     getDefinedNameSet,
@@ -10,8 +12,10 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
@@ -35,6 +39,19 @@ getDeclEnv =
 insDeclEnv :: DN.DeclarationName -> A.Arity -> App ()
 insDeclEnv k arity =
   modifyRef' declEnv $ Map.insert k (LT.toVoidPtrSeq arity, LT.Pointer)
+
+insDeclEnv' :: DN.DeclarationName -> [LT.LowType] -> LT.LowType -> App ()
+insDeclEnv' k domList cod =
+  modifyRef' declEnv $ Map.insert k (domList, cod)
+
+lookupDeclEnv :: DN.DeclarationName -> App ([LT.LowType], LT.LowType)
+lookupDeclEnv name = do
+  denv <- readRef' declEnv
+  case Map.lookup name denv of
+    Just typeInfo ->
+      return typeInfo
+    Nothing -> do
+      Throw.raiseError' $ "lookupDeclEnv: " <> T.pack (show name)
 
 getExtEnv :: App (S.Set DD.DefiniteDescription)
 getExtEnv =

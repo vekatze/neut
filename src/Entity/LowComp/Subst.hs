@@ -15,10 +15,11 @@ type SubstLowComp =
 substOp :: SubstLowComp -> LC.Op -> LC.Op
 substOp sub llvmOp =
   case llvmOp of
-    LC.Call d ds -> do
+    LC.Call codType d tds -> do
       let d' = substLowValue sub d
+      let (ts, ds) = unzip tds
       let ds' = map (substLowValue sub) ds
-      LC.Call d' ds'
+      LC.Call codType d' (zip ts ds')
     LC.GetElementPtr (d, t) dts -> do
       let d' = substLowValue sub d
       let (ds, ts) = unzip dts

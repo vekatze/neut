@@ -1,6 +1,7 @@
 module Entity.Cache where
 
 import Data.Binary
+import Entity.Decl qualified as DE
 import Entity.LocationTree qualified as LT
 import Entity.NameArrow qualified as NA
 import Entity.Remark
@@ -11,7 +12,8 @@ data Cache = Cache
   { stmtList :: [Stmt],
     remarkList :: [Remark],
     nameArrowList :: [NA.NameArrow],
-    locationTree :: LT.LocationTree
+    locationTree :: LT.LocationTree,
+    declList :: [DE.Decl]
   }
   deriving (Generic)
 

@@ -13,8 +13,8 @@ import Entity.PrimType.EmitPrimType
 emitLowOp :: LC.Op -> Builder
 emitLowOp lowOp =
   case lowOp of
-    LC.Call d ds ->
-      unwordsL ["call fastcc ptr", emitValue d <> showArgs ds]
+    LC.Call codType d ds ->
+      unwordsL ["call fastcc", emitLowType codType, emitValue d <> showArgs ds]
     LC.GetElementPtr (basePtr, n) is ->
       unwordsL
         [ "getelementptr",

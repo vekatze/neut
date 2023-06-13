@@ -22,6 +22,7 @@ import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
 import Entity.DecisionTree qualified as DT
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.EnumCase qualified as EC
@@ -50,8 +51,8 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: [Stmt] -> App ([C.CompDef], Maybe DD.DefiniteDescription)
-clarify defList = do
+clarify :: ([Stmt], [DE.Decl]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl])
+clarify (defList, declList) = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
     Just mainName -> do
@@ -63,10 +64,10 @@ clarify defList = do
       baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
         return (x, (opacity, args, e'))
-      return (defList' ++ baseAuxEnv', Just mainName)
+      return (defList' ++ baseAuxEnv', Just mainName, declList)
     Nothing -> do
       defList' <- clarifyDefList defList
-      return (defList', Nothing)
+      return (defList', Nothing, declList)
 
 clarifyDefList :: [Stmt] -> App [C.CompDef]
 clarifyDefList stmtList = do

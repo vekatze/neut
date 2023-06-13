@@ -40,7 +40,7 @@ data Comp
   -- since LLVM doesn't allow us to write something like `%foo = store i32 3, i32* %ptr`.
   | Cont Op Comp
   | Switch (Value, LowType) Comp [(Integer, Comp)] (Ident, Comp)
-  | TailCall Value [Value] -- tail call
+  | TailCall LowType Value [(LowType, Value)] -- tail call
   | Unreachable -- for empty case analysis
   deriving (Show)
 
@@ -48,7 +48,7 @@ type AllocID =
   Int
 
 data Op
-  = Call Value [Value] -- non-tail call
+  = Call LowType Value [(LowType, Value)] -- non-tail call
   | GetElementPtr
       (Value, LowType) -- (base pointer, the type of base pointer)
       [(Value, LowType)] -- [(index, the-type-of-index)]

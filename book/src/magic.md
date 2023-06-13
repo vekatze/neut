@@ -18,6 +18,19 @@ let v = magic load(i64, ptr)
 
 `magic` can be exploited to realize, for example, platform-dependent behaviors.
 
+When you call an external function using `magic external`, you must declare its type beforehand:
+
+```neut
+import {...}
+
+export {...}
+
+declare {
+- arc4random_uniform(i32): i32
+- func-name(arg-type-1, ..., arg-type-n): result-type
+}
+```
+
 ## Notes on Types
 
 Except for `cast`, the resulting type of a `magic` is not specified. Thus, you often need to annotate types like the below:

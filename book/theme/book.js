@@ -23,6 +23,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "case",
         "data",
         "default",
+        "declare",
         "define",
         "detach",
         "else",

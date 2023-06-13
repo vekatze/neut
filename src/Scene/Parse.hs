@@ -44,7 +44,7 @@ import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
-parse :: App (Either Cache.Cache ([WeakStmt], [NA.NameArrow]))
+parse :: App (Either Cache.Cache ([WeakStmt], [NA.NameArrow], [DE.Decl]))
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -57,7 +57,7 @@ parse = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [NA.NameArrow]))
+parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [NA.NameArrow], [DE.Decl]))
 parseSource source = do
   mCache <- Cache.loadCache source
   let path = Source.sourceFilePath source
@@ -74,7 +74,7 @@ parseSource source = do
       nameArrowList' <- concat <$> mapM Discern.discernNameArrow nameArrowList
       Global.saveCurrentNameSet path nameArrowList'
       UnusedVariable.registerRemarks
-      return $ Right (stmtList, nameArrowList')
+      return $ Right (stmtList, nameArrowList', declList)
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do

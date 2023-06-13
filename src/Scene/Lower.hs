@@ -21,6 +21,7 @@ import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
 import Entity.Const
+import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase qualified as EC
@@ -64,10 +65,12 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([C.CompDef], Maybe DD.DefiniteDescription) ->
+  ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl]) ->
   App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
-lower (defList, mMainName) = do
+lower (defList, mMainName, declList) = do
   initialize $ map fst defList
+  forM_ declList $ \(DE.Decl name domList cod) -> do
+    insDeclEnv' (DN.Ext name) domList cod
   unless (isJust mMainName) $ do
     insDeclEnv (DN.In DD.imm) A.arityS4
     insDeclEnv (DN.In DD.cls) A.arityS4
@@ -88,7 +91,7 @@ constructMainTerm mainName = do
   let mainTerm =
         LC.Cont (LC.Store LT.Pointer (LC.VarLocal argc) argcGlobal) $
           LC.Cont (LC.Store LT.Pointer (LC.VarLocal argv) argvGlobal) $
-            LC.Cont (LC.Call (LC.VarGlobal mainName) []) $
+            LC.Cont (LC.Call LT.Pointer (LC.VarGlobal mainName) []) $
               LC.Return (LC.Int 0)
   return ([argc, argv], mainTerm)
 
@@ -102,7 +105,7 @@ lowerComp term =
         v' <- lowerValue v
         ds' <- mapM lowerValue ds
         v'' <- cast v' LT.Pointer
-        return $ LC.TailCall v'' ds'
+        return $ LC.TailCall LT.Pointer v'' (map (LT.Pointer,) ds')
     C.SigmaElim shouldDeallocate xs v e -> do
       let numOfElems = length xs
       let baseType = LT.Array numOfElems LT.Pointer
@@ -195,9 +198,13 @@ lowerCompPrimitive codeOp =
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
         M.External name args -> do
-          args' <- mapM lowerValue args
-          lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'
-          reflect $ LC.Call (LC.VarExternal name) args'
+          (domTypeList, codType) <- lift $ lookupDeclEnv (DN.Ext name)
+          castedArgs <- zipWithM lowerValueLetCast args domTypeList
+          -- args' <- mapM lowerValue args
+          -- lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'
+          -- reflect $ LC.Call (LC.VarExternal name) args'
+          result <- reflect $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
+          uncast result codType
         M.Global lt name -> do
           uncast (LC.VarExternal name) lt
 
@@ -392,7 +399,7 @@ commConv x lowComp cont2 =
     LC.Switch (d, t) defaultCase caseList (phiVar, cont) -> do
       let cont' = commConv x cont cont2
       LC.Switch (d, t) defaultCase caseList (phiVar, cont')
-    LC.TailCall d ds ->
-      LC.Let x (LC.Call d ds) cont2
+    LC.TailCall codType d ds ->
+      LC.Let x (LC.Call codType d ds) cont2
     LC.Unreachable ->
       LC.Unreachable

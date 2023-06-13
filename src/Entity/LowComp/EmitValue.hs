@@ -1,7 +1,7 @@
 module Entity.LowComp.EmitValue
   ( emitValue,
     showArgs,
-    showLocals,
+    showFuncArgs,
   )
 where
 
@@ -11,6 +11,8 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Ident
 import Entity.LowComp qualified as LC
+import Entity.LowType qualified as LT
+import Entity.LowType.EmitLowType (emitLowType)
 import Entity.PrimNumSize
 import Numeric.Half
 
@@ -37,14 +39,18 @@ emitValue lowValue =
     LC.Null ->
       "null"
 
-showArgs :: [LC.Value] -> Builder
-showArgs ds =
-  showLocals $ map emitValue ds
+showArgs :: [(LT.LowType, LC.Value)] -> Builder
+showArgs tds =
+  showLocals $ map showArg tds
 
-showLocal :: Builder -> Builder
-showLocal x =
-  "ptr " <> x
+showArg :: (LT.LowType, LC.Value) -> Builder
+showArg (t, d) =
+  emitLowType t <> " " <> emitValue d
 
 showLocals :: [Builder] -> Builder
 showLocals ds =
-  "(" <> unwordsC (map showLocal ds) <> ")"
+  "(" <> unwordsC ds <> ")"
+
+showFuncArgs :: [Builder] -> Builder
+showFuncArgs ds =
+  "(" <> unwordsC (map ("ptr " <>) ds) <> ")"

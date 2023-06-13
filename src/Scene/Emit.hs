@@ -121,7 +121,7 @@ emitDefinition retType name args asm = do
 
 sig :: Builder -> Builder -> [Builder] -> Builder
 sig retType name args =
-  "define fastcc " <> retType <> " @" <> name <> showLocals args
+  "define fastcc " <> retType <> " @" <> name <> showFuncArgs args
 
 type Label =
   Ident
@@ -155,11 +155,17 @@ emitLowComp ctx lowComp =
           let lowOp = emitLowOp (emitValue (LC.VarLocal phiSrcVar) <> " = ") $ LC.Bitcast d LT.Pointer LT.Pointer
           let brOp = emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal rendezvous)]
           return $ lowOp <> brOp
-    LC.TailCall f args -> do
+    LC.TailCall codType f args -> do
       tmp <- Gensym.newIdentFromText "tmp"
       let op =
             emitOp $
-              unwordsL [emitValue (LC.VarLocal tmp), "=", "tail call fastcc ptr", emitValue f <> showArgs args]
+              unwordsL
+                [ emitValue (LC.VarLocal tmp),
+                  "=",
+                  "tail call fastcc",
+                  emitLowType codType,
+                  emitValue f <> showArgs args
+                ]
       ret <- emitLowComp ctx $ LC.Return (LC.VarLocal tmp)
       return $ op <> ret
     LC.Switch (d, lowType) defaultBranch branchList (phiTgt, cont) -> do

@@ -83,7 +83,7 @@ analyze ctx lowComp = do
           defaultBranchMap <- analyze ctx defaultBranch
           branchMapList <- mapM (analyze ctx) es
           return $ Complex [] (defaultBranchMap : branchMapList) contAllocInfo
-    LC.TailCall _ _ ->
+    LC.TailCall {} ->
       return emptyInfo
     LC.Unreachable ->
       return emptyInfo

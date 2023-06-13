@@ -21,6 +21,7 @@ import Entity.Annotation qualified as AN
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID qualified as HID
@@ -47,7 +48,7 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [NA.NameArrow]) -> App [Stmt]
+elaborate :: Either Cache.Cache ([WeakStmt], [NA.NameArrow], [DE.Decl]) -> App ([Stmt], [DE.Decl])
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -57,9 +58,11 @@ elaborate cacheOrStmt = do
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
       Remark.printRemarkList remarkList
-      return stmtList
-    Right (defList, nameArrowList) -> do
-      (analyzeDefList >=> synthesizeDefList nameArrowList) defList
+      let declList = Cache.declList cache
+      return (stmtList, declList)
+    Right (defList, nameArrowList, declList) -> do
+      defList' <- (analyzeDefList >=> synthesizeDefList nameArrowList declList) defList
+      return (defList', declList)
 
 analyzeDefList :: [WeakStmt] -> App [WeakStmt]
 analyzeDefList defList = do
@@ -79,8 +82,8 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [NA.NameArrow] -> [WeakStmt] -> App [Stmt]
-synthesizeDefList nameArrowList defList = do
+synthesizeDefList :: [NA.NameArrow] -> [DE.Decl] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList nameArrowList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
@@ -93,7 +96,8 @@ synthesizeDefList nameArrowList defList = do
       { Cache.stmtList = defList',
         Cache.remarkList = remarkList,
         Cache.nameArrowList = nameArrowList,
-        Cache.locationTree = tmap
+        Cache.locationTree = tmap,
+        Cache.declList = declList
       }
   Remark.printRemarkList remarkList
   Remark.insertToGlobalRemarkList remarkList

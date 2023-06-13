@@ -40,9 +40,10 @@ reduce' sub lowComp = do
       let sub' = IntMap.insert (Ident.toInt phi) (LC.VarLocal phi') sub
       cont' <- reduce' sub' cont
       return $ LC.Switch (d', t) defaultBranch' (zip ls es') (phi', cont')
-    LC.TailCall d ds -> do
+    LC.TailCall codType d tds -> do
       let d' = substLowValue sub d
+      let (ts, ds) = unzip tds
       let ds' = map (substLowValue sub) ds
-      return $ LC.TailCall d' ds'
+      return $ LC.TailCall codType d' (zip ts ds')
     LC.Unreachable ->
       return LC.Unreachable
