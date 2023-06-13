@@ -47,7 +47,7 @@ The first arguments of `store` and `load` must be `low-type`, where:
 ```neut
 low-type ::= integer-type (= i1, i2, i3, ..., i64)
            | float-type (= f16, f32, f64)
-           | pointer // opaque pointer type in LLVM
+           | pointer // LLVM's opaque pointer type
 ```
 
-The actual behaviors of `store` and `load` are the same as that of [LLVM](https://llvm.org/docs/LangRef.html).
+You'll also use this `low-type` when you declare an external function.
