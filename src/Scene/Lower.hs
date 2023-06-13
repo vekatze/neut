@@ -1,7 +1,4 @@
-module Scene.Lower
-  ( lower,
-  )
-where
+module Scene.Lower (lower) where
 
 import Codec.Binary.UTF8.String
 import Context.App
@@ -200,9 +197,6 @@ lowerCompPrimitive codeOp =
         M.External name args -> do
           (domTypeList, codType) <- lift $ lookupDeclEnv (DN.Ext name)
           castedArgs <- zipWithM lowerValueLetCast args domTypeList
-          -- args' <- mapM lowerValue args
-          -- lift $ insDeclEnv (DN.Ext name) $ A.fromInt $ length args'
-          -- reflect $ LC.Call (LC.VarExternal name) args'
           result <- reflect $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
           uncast result codType
         M.Global lt name -> do
