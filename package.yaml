@@ -5,9 +5,6 @@ license-file: license.md
 author: "vekatze"
 maintainer: "vekatze@icloud.com"
 
-extra-source-files:
-  - readme.org
-
 language: GHC2021
 
 default-extensions:
