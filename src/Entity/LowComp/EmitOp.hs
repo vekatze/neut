@@ -1,4 +1,4 @@
-module Entity.LowComp.EmitOp (emitLowOp) where
+module Entity.LowComp.EmitOp (emitLowOp, Axis (..)) where
 
 import Data.ByteString.Builder
 import Data.Text.Encoding qualified as TE
@@ -10,8 +10,12 @@ import Entity.PrimOp
 import Entity.PrimType qualified as PT
 import Entity.PrimType.EmitPrimType
 
-emitLowOp :: LC.Op -> Builder
-emitLowOp lowOp =
+newtype Axis = Axis
+  { intType :: LT.LowType
+  }
+
+emitLowOp :: Axis -> LC.Op -> Builder
+emitLowOp ax lowOp =
   case lowOp of
     LC.Call codType d ds ->
       unwordsL ["call fastcc", emitLowType codType, emitValue d <> showArgs ds]
@@ -44,10 +48,10 @@ emitLowOp lowOp =
           emitLowType LT.Pointer,
           emitValue d2
         ]
-    LC.Alloc d _ _ ->
-      unwordsL ["call fastcc", "ptr", "@malloc(ptr " <> emitValue d <> ")"]
+    LC.Alloc d _ _ -> do
+      unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitValue d <> ")"]
     LC.Free d _ -> do
-      unwordsL ["call fastcc", "ptr", "@free(ptr " <> emitValue d <> ")"]
+      unwordsL ["call fastcc", "void", "@free(ptr " <> emitValue d <> ")"]
     LC.PrimOp op args -> do
       case op of
         PrimUnaryOp name dom _ -> do

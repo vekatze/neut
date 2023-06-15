@@ -3,6 +3,7 @@ module Scene.Elaborate (elaborate) where
 import Context.App
 import Context.Cache qualified as Cache
 import Context.DataDefinition qualified as DataDefinition
+import Context.Decl qualified as Decl
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
@@ -18,16 +19,19 @@ import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
+import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
+import Entity.Magic qualified as M
 import Entity.NameArrow qualified as NA
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
@@ -61,6 +65,8 @@ elaborate cacheOrStmt = do
       let declList = Cache.declList cache
       return (stmtList, declList)
     Right (defList, nameArrowList, declList) -> do
+      forM_ declList $ \(DE.Decl name domList _) -> do
+        Decl.insExtEnv name $ A.fromInt $ length domList
       defList' <- (analyzeDefList >=> synthesizeDefList nameArrowList declList) defList
       return (defList', declList)
 
@@ -263,8 +269,25 @@ elaborate' term =
     m :< WT.ResourceType name ->
       return $ m :< TM.ResourceType name
     m :< WT.Magic magic -> do
-      magic' <- mapM elaborate' magic
-      return $ m :< TM.Magic magic'
+      case magic of
+        M.External name args -> do
+          arity <- Decl.lookupExtEnv m name
+          let expected = fromInteger (A.reify arity)
+          let actual = length args
+          when (actual /= expected) $ do
+            Throw.raiseError m $
+              "the external function `"
+                <> EN.reify name
+                <> "` expects "
+                <> T.pack (show expected)
+                <> " arguments, but found "
+                <> T.pack (show actual)
+                <> "."
+          args' <- mapM elaborate' args
+          return $ m :< TM.Magic (M.External name args')
+        _ -> do
+          magic' <- mapM elaborate' magic
+          return $ m :< TM.Magic magic'
     m :< WT.Annotation remarkLevel annot e -> do
       e' <- elaborate' e
       case annot of

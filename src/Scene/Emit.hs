@@ -26,6 +26,8 @@ import Entity.LowComp.EmitOp qualified as EOP
 import Entity.LowComp.EmitValue
 import Entity.LowType qualified as LT
 import Entity.LowType.EmitLowType
+import Entity.PrimNumSize
+import Entity.PrimType qualified as PT
 import Scene.LowComp.Reduce qualified as LowComp
 
 emit :: (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo]) -> App L.ByteString
@@ -130,18 +132,22 @@ data EmitCtx = EmitCtx
   { phiInfo :: Maybe (Ident, Label),
     currentLabel :: Maybe Label,
     retType :: Builder,
-    labelMap :: IORef (IntMap.IntMap Ident)
+    labelMap :: IORef (IntMap.IntMap Ident),
+    axis :: EOP.Axis
   }
 
 newCtx :: Builder -> App EmitCtx
 newCtx retTypeBuilder = do
   emptyMapRef <- liftIO $ newIORef IntMap.empty
+  baseSize <- Env.getBaseSize'
+  let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
   return
     EmitCtx
       { phiInfo = Nothing,
         currentLabel = Nothing,
         retType = retTypeBuilder,
-        labelMap = emptyMapRef
+        labelMap = emptyMapRef,
+        axis = EOP.Axis {intType = lowInt}
       }
 
 emitLowComp :: EmitCtx -> LC.Comp -> App [Builder]
@@ -152,7 +158,7 @@ emitLowComp ctx lowComp =
         Nothing ->
           return $ emitOp $ unwordsL ["ret", retType ctx, emitValue d]
         Just (phiSrcVar, rendezvous) -> do
-          let lowOp = emitLowOp (emitValue (LC.VarLocal phiSrcVar) <> " = ") $ LC.Bitcast d LT.Pointer LT.Pointer
+          let lowOp = emitLowOp (axis ctx) (emitValue (LC.VarLocal phiSrcVar) <> " = ") $ LC.Bitcast d LT.Pointer LT.Pointer
           let brOp = emitOp $ unwordsL ["br", "label", emitValue (LC.VarLocal rendezvous)]
           return $ lowOp <> brOp
     LC.TailCall codType f args -> do
@@ -210,11 +216,11 @@ emitLowComp ctx lowComp =
         return $ emitLabel ("_" <> intDec (toInt confluenceLabel)) : phiOpStr <> a
       return $ switchOpStr <> concat blockAsmList <> rendezvousBlock
     LC.Cont op cont -> do
-      let lowOp = emitLowOp "" op
+      let lowOp = emitLowOp (axis ctx) "" op
       a <- emitLowComp ctx cont
       return $ lowOp <> a
     LC.Let x op cont -> do
-      let lowOp = emitLowOp (emitValue (LC.VarLocal x) <> " = ") op
+      let lowOp = emitLowOp (axis ctx) (emitValue (LC.VarLocal x) <> " = ") op
       a <- emitLowComp ctx cont
       return $ lowOp <> a
     LC.Unreachable -> do
@@ -232,9 +238,9 @@ resolveLabelList labelMap xs =
         Nothing ->
           x : resolveLabelList labelMap rest
 
-emitLowOp :: Builder -> LC.Op -> [Builder]
-emitLowOp prefix op = do
-  emitOp $ prefix <> EOP.emitLowOp op
+emitLowOp :: EOP.Axis -> Builder -> LC.Op -> [Builder]
+emitLowOp ax prefix op = do
+  emitOp $ prefix <> EOP.emitLowOp ax op
 
 emitPhiList :: [(Ident, Ident)] -> Builder
 emitPhiList identLabelList =

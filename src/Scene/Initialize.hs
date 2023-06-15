@@ -9,6 +9,7 @@ where
 
 import Context.Alias qualified as Alias
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.LLVM qualified as LLVM
@@ -60,3 +61,4 @@ initializeForSource source = do
   Locator.initialize
   Tag.initialize
   Remark.setRemarkList []
+  Decl.initialize

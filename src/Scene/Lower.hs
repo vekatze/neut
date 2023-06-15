@@ -2,6 +2,7 @@ module Scene.Lower (lower) where
 
 import Codec.Binary.UTF8.String
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
@@ -67,15 +68,15 @@ lower ::
 lower (defList, mMainName, declList) = do
   initialize $ map fst defList
   forM_ declList $ \(DE.Decl name domList cod) -> do
-    insDeclEnv' (DN.Ext name) domList cod
+    Decl.insDeclEnv' (DN.Ext name) domList cod
   unless (isJust mMainName) $ do
-    insDeclEnv (DN.In DD.imm) A.arityS4
-    insDeclEnv (DN.In DD.cls) A.arityS4
+    Decl.insDeclEnv (DN.In DD.imm) A.arityS4
+    Decl.insDeclEnv (DN.In DD.cls) A.arityS4
   defList' <- forM defList $ \(name, (_, args, e)) -> do
     e' <- lowerComp e >>= liftIO . cancel
     return (name, (args, e'))
   mMainDef <- mapM constructMainTerm mMainName
-  declEnv <- getDeclEnv
+  declEnv <- Decl.getDeclEnv
   staticTextList <- StaticText.getAll
   return (declEnv, defList', mMainDef, staticTextList)
 
@@ -195,10 +196,15 @@ lowerCompPrimitive codeOp =
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
         M.External name args -> do
-          (domTypeList, codType) <- lift $ lookupDeclEnv (DN.Ext name)
+          (domTypeList, codType) <- lift $ Decl.lookupDeclEnv (DN.Ext name)
           castedArgs <- zipWithM lowerValueLetCast args domTypeList
-          result <- reflect $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
-          uncast result codType
+          case codType of
+            LT.Void -> do
+              reflectCont $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
+              return LC.Null
+            _ -> do
+              result <- reflect $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
+              uncast result codType
         M.Global lt name -> do
           uncast (LC.VarExternal name) lt
 
@@ -266,7 +272,7 @@ lowerValue v =
     C.VarGlobal globalName arity -> do
       lowNameSet <- lift getDefinedNameSet
       unless (S.member globalName lowNameSet) $ do
-        lift $ insDeclEnv (DN.In globalName) arity
+        lift $ Decl.insDeclEnv (DN.In globalName) arity
       uncast (LC.VarGlobal globalName) LT.Pointer
     C.VarLocal y ->
       return $ LC.VarLocal y
@@ -355,7 +361,10 @@ allocateBasePointer aggType = do
       let (elemType, len) = getSizeInfoOf aggType
       sizePointer <- getElemPtr LC.Null elemType [toInteger len]
       allocID <- lift Gensym.newCount
-      reflect $ LC.Alloc sizePointer len allocID
+      baseSize <- lift Env.getBaseSize'
+      let lowInt = LT.PrimNum $ PT.Int $ IntSize baseSize
+      size <- cast sizePointer lowInt
+      reflect $ LC.Alloc size len allocID
 
 storeElements ::
   LC.Value -> -- base pointer

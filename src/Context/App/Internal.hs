@@ -18,6 +18,7 @@ import Entity.Constraint qualified as C
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ExternalName qualified as EN
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -80,7 +81,7 @@ data Env = Env
     enumSet :: IORef (S.Set DD.DefiniteDescription),
     impArgEnv :: IORef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
-    extEnv :: IORef (S.Set DD.DefiniteDescription),
+    extEnv :: IORef (Map.HashMap EN.ExternalName A.Arity),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
@@ -137,7 +138,7 @@ newEnv = do
   enumSet <- newIORef S.empty
   impArgEnv <- newIORef Map.empty
   declEnv <- newIORef Map.empty
-  extEnv <- newIORef S.empty
+  extEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
   typeEnv <- newIORef Map.empty
   activeGlobalLocatorList <- newIORef []
