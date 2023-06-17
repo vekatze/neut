@@ -29,26 +29,29 @@ import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 
 registerGlobalLocatorAlias ::
+  Hint ->
   GLA.GlobalLocatorAlias ->
   SGL.StrictGlobalLocator ->
   App ()
-registerGlobalLocatorAlias from to = do
-  modifyRef' locatorAliasMap $ Map.insertWith (++) from [to]
+registerGlobalLocatorAlias m from to = do
+  amap <- readRef' locatorAliasMap
+  if Map.member from amap
+    then Throw.raiseError m $ "the alias is already defined: " <> BN.reify (GLA.reify from)
+    else modifyRef' locatorAliasMap $ Map.insert from to
 
 resolveAlias ::
   Hint ->
   GL.GlobalLocator ->
-  App [SGL.StrictGlobalLocator]
+  App SGL.StrictGlobalLocator
 resolveAlias m gl = do
   case gl of
     GL.GlobalLocator moduleAlias sourceLocator -> do
       moduleID <- resolveModuleAlias m moduleAlias
       return
-        [ SGL.StrictGlobalLocator
-            { SGL.moduleID = moduleID,
-              SGL.sourceLocator = sourceLocator
-            }
-        ]
+        SGL.StrictGlobalLocator
+          { SGL.moduleID = moduleID,
+            SGL.sourceLocator = sourceLocator
+          }
     GL.GlobalLocatorAlias alias -> do
       aliasMap <- readRef' locatorAliasMap
       case Map.lookup alias aliasMap of
@@ -111,8 +114,8 @@ getLatestCompatibleDigest mc = do
 activateAliasInfo :: AliasInfo -> App ()
 activateAliasInfo aliasInfo =
   case aliasInfo of
-    Prefix from to ->
-      registerGlobalLocatorAlias from to
+    Prefix m from to ->
+      registerGlobalLocatorAlias m from to
     Use strictGlobalLocator ->
       Locator.activateGlobalLocator strictGlobalLocator
 

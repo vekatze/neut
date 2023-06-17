@@ -2,7 +2,6 @@ module Context.Global
   ( registerStmtDefine,
     registerStmtDefineResource,
     lookup,
-    lookupStrict,
     initialize,
     activateTopLevelNamesInSource,
     clearSourceNameMap,
@@ -133,15 +132,6 @@ lookup m name = do
           return $ Just (m, GN.PrimOp primOp)
       | otherwise -> do
           return Nothing
-
-lookupStrict :: Hint.Hint -> DD.DefiniteDescription -> App (Hint, GlobalName)
-lookupStrict m name = do
-  mGlobalName <- lookup m name
-  case mGlobalName of
-    Just globalName ->
-      return globalName
-    Nothing ->
-      Throw.raiseCritical m $ "the top-level " <> DD.reify name <> " doesn't have its global name"
 
 initialize :: App ()
 initialize = do

@@ -51,7 +51,7 @@ data Env = Env
     buildMode :: IORef BM.BuildMode,
     moduleCacheMap :: IORef (Map.HashMap (Path Abs File) M.Module),
     moduleAliasMap :: IORef (Map.HashMap MA.ModuleAlias MD.ModuleDigest),
-    locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias [SGL.StrictGlobalLocator]),
+    locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     localNameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),

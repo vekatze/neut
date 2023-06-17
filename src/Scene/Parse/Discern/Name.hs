@@ -76,21 +76,18 @@ resolveLocator ::
   L.Locator ->
   App (DD.DefiniteDescription, (Hint, GN.GlobalName))
 resolveLocator m (gl, ll) = do
-  sgls <- Alias.resolveAlias m gl
-  let candList = map (`DD.new` ll) sgls
-  candList' <- mapM (Global.lookup m) candList
-  let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
-  case foundNameList of
-    [] ->
+  sgl <- Alias.resolveAlias m gl
+  let cand = DD.new sgl ll
+  cand' <- Global.lookup m cand
+  let foundName = candFilter (cand, cand')
+  case foundName of
+    Nothing ->
       Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
-    [globalVar@(_, (mDef, _))] -> do
+    Just globalVar@(_, (mDef, _)) -> do
       let glLen = T.length $ GL.reify gl
       let llLen = T.length $ LL.reify ll
       Tag.insert m (glLen + llLen) mDef
       return globalVar
-    _ -> do
-      let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList
-      Throw.raiseError m $ "this `" <> L.reify (gl, ll) <> "` is ambiguous since it could refer to:" <> candInfo
 
 resolveConstructor ::
   Hint ->

@@ -43,12 +43,12 @@ parseImport =
 
 parseImportWithAlias :: P.Parser (LocatorText, (Source.Source, AI.AliasInfo))
 parseImportWithAlias = do
-  m <- P.getCurrentHint
   locatorText <- P.symbol
   P.delimiter "=>"
+  m <- P.getCurrentHint
   globalLocatorAlias <- GLA.GlobalLocatorAlias <$> P.baseName
   (source, strictGlobalLocator) <- parseLocatorText m locatorText
-  return (locatorText, (source, AI.Prefix globalLocatorAlias strictGlobalLocator))
+  return (locatorText, (source, AI.Prefix m globalLocatorAlias strictGlobalLocator))
 
 parseImportWithoutAlias :: P.Parser (LocatorText, (Source.Source, AI.AliasInfo))
 parseImportWithoutAlias = do
