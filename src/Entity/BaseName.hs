@@ -258,6 +258,7 @@ coreListNames = do
       "map",
       "for",
       "concat",
+      "reverse",
       "unzip",
       "uncons",
       "all",
