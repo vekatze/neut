@@ -72,8 +72,7 @@ getChildCompItemList sourceNameMap sourceModule child aliasInfo = do
 
 getLocalNameList :: TopNameMap -> App [(Maybe (IsConstLike, [Key]), T.Text)]
 getLocalNameList nameInfo = do
-  let nameInfo' = Map.toList $ Map.filter (\(v, _) -> isPublic v) nameInfo
-  let ddList = map fst nameInfo'
+  let ddList = map fst $ Map.toList nameInfo
   mKeyArgList <- mapM KeyArg.lookupMaybe ddList
   return $ zip mKeyArgList $ map (LL.reify . DD.localLocator) ddList
 

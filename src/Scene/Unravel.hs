@@ -33,7 +33,6 @@ import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
-import Scene.Parse.Export
 import Scene.Parse.Import
 import Scene.Source.ShiftToLatest qualified as Source
 
@@ -254,7 +253,7 @@ parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
-  ParseCore.run (parseImportBlock currentSource <* parseExportBlock) path
+  ParseCore.run (parseImportBlock currentSource) path
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =

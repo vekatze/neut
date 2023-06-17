@@ -15,6 +15,7 @@ import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
+import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
@@ -29,7 +30,6 @@ import Entity.Hint
 import Entity.Ident.Reify
 import Entity.IsConstLike
 import Entity.Name
-import Entity.NameArrow qualified as NA
 import Entity.Opacity qualified as O
 import Entity.RawBinder
 import Entity.RawTerm qualified as RT
@@ -39,12 +39,11 @@ import Entity.StmtKind qualified as SK
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
-import Scene.Parse.Export qualified as Parse
 import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
-parse :: App (Either Cache.Cache ([WeakStmt], [NA.NameArrow], [DE.Decl]))
+parse :: App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -57,7 +56,7 @@ parse = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [NA.NameArrow], [DE.Decl]))
+parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
 parseSource source = do
   mCache <- Cache.loadCache source
   let path = Source.sourceFilePath source
@@ -65,16 +64,21 @@ parseSource source = do
     Just cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      Global.saveCurrentNameSet path $ Cache.nameArrowList cache
+      saveTopLevelNames path $ map getStmtName stmtList
       return $ Left cache
     Nothing -> do
-      (defList, nameArrowList, declList) <- P.run (program source) $ Source.sourceFilePath source
+      (defList, declList) <- P.run (program source) $ Source.sourceFilePath source
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      nameArrowList' <- concat <$> mapM Discern.discernNameArrow nameArrowList
-      Global.saveCurrentNameSet path nameArrowList'
+      saveTopLevelNames path $ map getWeakStmtName stmtList
       UnusedVariable.registerRemarks
-      return $ Right (stmtList, nameArrowList', declList)
+      return $ Right (stmtList, declList)
+
+saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
+saveTopLevelNames path topNameList = do
+  globalNameList <- mapM (uncurry Global.lookup') topNameList
+  let nameMap = Map.fromList $ zip (map snd topNameList) globalNameList
+  Global.saveCurrentNameSet path nameMap
 
 parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
@@ -96,18 +100,17 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [NA.RawNameArrow], [DE.Decl])
+program :: Source.Source -> P.Parser ([RawStmt], [DE.Decl])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
-  nameArrowList <- Parse.parseExportBlock
   declList <- parseDeclareList
   forM_ sourceInfoList $ \(source, aliasInfo) -> do
     namesInSource <- lift $ Global.lookupSourceNameMap m $ Source.sourceFilePath source
     lift $ Global.activateTopLevelNames namesInSource
     lift $ Alias.activateAliasInfo namesInSource aliasInfo
   defList <- concat <$> many parseStmt <* eof
-  return (defList, nameArrowList, declList)
+  return (defList, declList)
 
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
@@ -321,3 +324,19 @@ registerTopLevelNames stmtList =
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
       registerTopLevelNames rest
+
+getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
+getWeakStmtName stmt =
+  case stmt of
+    WeakStmtDefine _ _ m name _ _ _ _ ->
+      (m, name)
+    WeakStmtDefineResource m name _ _ ->
+      (m, name)
+
+getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
+getStmtName stmt =
+  case stmt of
+    StmtDefine _ _ m name _ _ _ _ ->
+      (m, name)
+    StmtDefineResource m name _ _ ->
+      (m, name)

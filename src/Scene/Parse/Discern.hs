@@ -1,13 +1,8 @@
-module Scene.Parse.Discern
-  ( discernStmtList,
-    discernNameArrow,
-  )
-where
+module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
-import Context.Locator (getCurrentGlobalLocator)
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -29,7 +24,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Name
-import Entity.NameArrow qualified as NA
 import Entity.NominalEnv
 import Entity.Pattern qualified as PAT
 import Entity.RawBinder
@@ -350,30 +344,3 @@ discernPattern (m, pat) =
           forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
             UnusedVariable.delete newVar
           return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
-
-discernNameArrow :: NA.RawNameArrow -> App [NA.NameArrow]
-discernNameArrow clause = do
-  case clause of
-    NA.Function clauseInfo -> do
-      nameArrow <- discernInnerNameArrow clauseInfo
-      return [nameArrow]
-    NA.Variant arrow@(m, _) -> do
-      (dataDD, (mData, dataGN)) <- discernInnerNameArrow arrow
-      consNameArrowList <- getRuleListByGlobalName m dataGN
-      return $ (dataDD, (mData, dataGN)) : consNameArrowList
-
-discernInnerNameArrow :: NA.InnerRawNameArrow -> App NA.NameArrow
-discernInnerNameArrow (m, name) = do
-  (dd, gn) <- resolveName m name
-  cgl <- getCurrentGlobalLocator
-  if DD.globalLocator dd == cgl
-    then return (dd, gn)
-    else Throw.raiseError m $ "external definition: `" <> DD.reify dd <> "`"
-
-getRuleListByGlobalName :: Hint -> GN.GlobalName -> App [NA.NameArrow]
-getRuleListByGlobalName m gn =
-  case gn of
-    GN.Data _ ruleList _ ->
-      return ruleList
-    _ ->
-      Throw.raiseError m "this isn't a variant type"
