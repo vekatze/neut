@@ -169,25 +169,6 @@ coreThreadAttach :: T.Text
 coreThreadAttach =
   core <> nsSep <> "thread" <> nsSep <> "attach"
 
-defaultImports :: [T.Text]
-defaultImports =
-  [ "core.bool",
-    "core.both",
-    "core.cell",
-    "core.channel",
-    "core.either",
-    "core.file",
-    "core.file.descriptor",
-    "core.function",
-    "core.list",
-    "core.system",
-    "core.text",
-    "core.text.io",
-    "core.thread",
-    "core.unit",
-    "core.void"
-  ]
-
 holeVarPrefix :: T.Text
 holeVarPrefix =
   "{}"

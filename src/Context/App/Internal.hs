@@ -26,6 +26,7 @@ import Entity.HoleSubst qualified as HS
 import Entity.Ident
 import Entity.IsConstLike
 import Entity.Key
+import Entity.LocalLocator qualified as LL
 import Entity.LocationTree qualified as LT
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
@@ -86,6 +87,7 @@ data Env = Env
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     typeEnv :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     activeGlobalLocatorList :: IORef [SGL.StrictGlobalLocator],
+    activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
     mainModule :: Ref Module.Module,
@@ -142,6 +144,7 @@ newEnv = do
   compEnv <- newIORef Map.empty
   typeEnv <- newIORef Map.empty
   activeGlobalLocatorList <- newIORef []
+  activeDefiniteDescriptionList <- newIORef Map.empty
   currentGlobalLocator <- newRef
   currentSource <- newRef
   mainModule <- newRef

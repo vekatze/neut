@@ -3,10 +3,11 @@ module Context.Global
     registerStmtDefineResource,
     lookup,
     initialize,
-    activateTopLevelNamesInSource,
+    activateTopLevelNames,
     clearSourceNameMap,
     getSourceNameMap,
     saveCurrentNameSet,
+    lookupSourceNameMap,
   )
 where
 
@@ -33,7 +34,6 @@ import Entity.Key
 import Entity.NameArrow qualified as NA
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
-import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
 import Entity.TopNameMap
 import Path
@@ -176,9 +176,8 @@ lookupSourceNameMap m sourcePath = do
     Nothing ->
       Throw.raiseCritical m $ "top-level names for " <> T.pack (toFilePath sourcePath) <> " is not registered"
 
-activateTopLevelNamesInSource :: Hint.Hint -> Source.Source -> App ()
-activateTopLevelNamesInSource m source = do
-  namesInSource <- lookupSourceNameMap m $ Source.sourceFilePath source
+activateTopLevelNames :: TopNameMap -> App ()
+activateTopLevelNames namesInSource = do
   forM_ (Map.toList namesInSource) $ \(dd, (visibility, (mDef, gn))) ->
     case visibility of
       Public ->

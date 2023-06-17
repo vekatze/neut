@@ -103,8 +103,9 @@ program currentSource = do
   nameArrowList <- Parse.parseExportBlock
   declList <- parseDeclareList
   forM_ sourceInfoList $ \(source, aliasInfo) -> do
-    lift $ Global.activateTopLevelNamesInSource m source
-    lift $ Alias.activateAliasInfo aliasInfo
+    namesInSource <- lift $ Global.lookupSourceNameMap m $ Source.sourceFilePath source
+    lift $ Global.activateTopLevelNames namesInSource
+    lift $ Alias.activateAliasInfo namesInSource aliasInfo
   defList <- concat <$> many parseStmt <* eof
   return (defList, nameArrowList, declList)
 

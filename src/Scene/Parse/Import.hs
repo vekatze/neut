@@ -6,16 +6,19 @@ import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
+import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.GlobalLocator qualified as GL
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
+import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Scene.Module.Reflect qualified as Module
+import Scene.Parse.Core (commaList)
 import Scene.Parse.Core qualified as P
 import Scene.Source.ShiftToLatest
 import Text.Megaparsec
@@ -25,19 +28,21 @@ type LocatorText =
 
 parseImportBlock :: Source.Source -> P.Parser [(Source.Source, AI.AliasInfo)]
 parseImportBlock currentSource = do
+  m <- P.getCurrentHint
   locatorAndSourceInfo <-
     choice
       [ P.keyword "import" >> P.betweenBrace (P.manyList parseImport),
         return []
       ]
   let (foundLocators, sourceInfo) = unzip locatorAndSourceInfo
-  coreSourceInfo <- loadDefaultImports currentSource foundLocators
+  coreSourceInfo <- loadDefaultImports m currentSource foundLocators
   return $ sourceInfo ++ coreSourceInfo
 
 parseImport :: P.Parser (LocatorText, (Source.Source, AI.AliasInfo))
 parseImport =
   choice
     [ try parseImportWithAlias,
+      try parseImportWithNameList,
       parseImportWithoutAlias
     ]
 
@@ -55,7 +60,26 @@ parseImportWithoutAlias = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
   (source, strictGlobalLocator) <- parseLocatorText m locatorText
-  return (locatorText, (source, AI.Use strictGlobalLocator))
+  return (locatorText, (source, AI.Use strictGlobalLocator []))
+
+parseImportWithNameList :: P.Parser (LocatorText, (Source.Source, AI.AliasInfo))
+parseImportWithNameList = do
+  m <- P.getCurrentHint
+  locatorText <- P.symbol
+  (source, strictGlobalLocator) <- parseLocatorText m locatorText
+  P.delimiter "=>"
+  lls <-
+    choice
+      [ P.betweenBracket $ commaList parseLocalLocator,
+        P.betweenBrace $ P.manyList parseLocalLocator
+      ]
+  return (locatorText, (source, AI.Use strictGlobalLocator lls))
+
+parseLocalLocator :: P.Parser (Hint, LL.LocalLocator)
+parseLocalLocator = do
+  mLL <- P.getCurrentHint
+  ll <- P.baseName
+  return (mLL, LL.new ll)
 
 parseLocatorText :: Hint -> T.Text -> P.Parser (Source.Source, SGL.StrictGlobalLocator)
 parseLocatorText m locatorText = do
@@ -75,13 +99,17 @@ getSource m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-loadDefaultImports :: Source.Source -> [LocatorText] -> P.Parser [(Source.Source, AI.AliasInfo)]
-loadDefaultImports source foundLocators =
+loadDefaultImports :: Hint -> Source.Source -> [LocatorText] -> P.Parser [(Source.Source, AI.AliasInfo)]
+loadDefaultImports m source foundLocators =
   if not (Source.hasCore source)
     then return []
     else do
-      m <- P.getCurrentHint
       let locatorSet = S.fromList foundLocators
-      let defaultImports' = filter (`S.notMember` locatorSet) defaultImports
-      sourceInfoList <- mapM (parseLocatorText m) defaultImports'
-      return $ fmap (fmap AI.Use) sourceInfoList
+      let defaultImports' = filter (\(x, _) -> S.notMember x locatorSet) BN.defaultImports
+      mapM (uncurry $ interpretDefaultImport m) defaultImports'
+
+interpretDefaultImport :: Hint -> T.Text -> [BN.BaseName] -> P.Parser (Source.Source, AI.AliasInfo)
+interpretDefaultImport m globalLocatorText localLocatorBaseNameList = do
+  (source, sgl) <- parseLocatorText m globalLocatorText
+  let lls = map LL.new localLocatorBaseNameList
+  return (source, AI.Use sgl (map (m,) lls))

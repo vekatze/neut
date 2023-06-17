@@ -27,6 +27,7 @@ import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
+import Entity.TopNameMap
 
 registerGlobalLocatorAlias ::
   Hint ->
@@ -111,13 +112,13 @@ getLatestCompatibleDigest mc = do
     Nothing ->
       return mc
 
-activateAliasInfo :: AliasInfo -> App ()
-activateAliasInfo aliasInfo =
+activateAliasInfo :: TopNameMap -> AliasInfo -> App ()
+activateAliasInfo topNameMap aliasInfo =
   case aliasInfo of
     Prefix m from to ->
       registerGlobalLocatorAlias m from to
-    Use strictGlobalLocator ->
-      Locator.activateGlobalLocator strictGlobalLocator
+    Use strictGlobalLocator localLocatorList ->
+      Locator.activateSpecifiedNames topNameMap strictGlobalLocator localLocatorList
 
 initializeAliasMap :: App ()
 initializeAliasMap = do

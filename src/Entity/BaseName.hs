@@ -25,6 +25,7 @@ module Entity.BaseName
     free,
     reservedAlias,
     extend,
+    defaultImports,
   )
 where
 
@@ -167,3 +168,100 @@ reservedAlias =
 extend :: BaseName -> BaseName -> BaseName
 extend (MakeBaseName b1) (MakeBaseName b2) =
   MakeBaseName $ b1 <> "#" <> b2
+
+defaultImports :: [(T.Text, [BaseName])]
+defaultImports =
+  [ ("core.bool", coreBoolNames),
+    ("core.both", coreBothNames),
+    ("core.cell", coreCellNames),
+    ("core.channel", coreChannelNames),
+    ("core.either", coreEitherNames),
+    ("core.file", coreFileNames),
+    ("core.file.descriptor", coreFileDescriptorNames),
+    ("core.function", coreFunctionNames),
+    ("core.list", coreListNames),
+    ("core.system", coreSystemNames),
+    ("core.text", coreTextNames),
+    ("core.text.io", coreTextIONames),
+    ("core.thread", coreThreadNames),
+    ("core.unit", coreUnitNames),
+    ("core.void", coreVoidNames)
+  ]
+
+coreBoolNames :: [BaseName]
+coreBoolNames =
+  map MakeBaseName ["bool", "True", "False", "and", "or", "not"]
+
+coreBothNames :: [BaseName]
+coreBothNames =
+  map MakeBaseName ["both", "Both"]
+
+coreCellNames :: [BaseName]
+coreCellNames =
+  map MakeBaseName ["cell", "new-cell", "mutate", "borrow", "clone"]
+
+coreChannelNames :: [BaseName]
+coreChannelNames =
+  map MakeBaseName ["channel", "new-channel", "send", "receive"]
+
+coreEitherNames :: [BaseName]
+coreEitherNames =
+  map MakeBaseName ["either", "Left", "Right", "option", "none-internal", "some-internal"]
+
+coreFileNames :: [BaseName]
+coreFileNames =
+  map MakeBaseName ["open", "close"]
+
+coreFileDescriptorNames :: [BaseName]
+coreFileDescriptorNames =
+  map MakeBaseName ["descriptor", "stdin", "stdout", "stderr"]
+
+coreFunctionNames :: [BaseName]
+coreFunctionNames =
+  map MakeBaseName ["flip", "compose", "curry", "uncurry"]
+
+coreSystemNames :: [BaseName]
+coreSystemNames =
+  map MakeBaseName ["admit", "assert", "get-argc", "get-argv"]
+
+coreTextNames :: [BaseName]
+coreTextNames =
+  [MakeBaseName "text"]
+
+coreTextIONames :: [BaseName]
+coreTextIONames =
+  map MakeBaseName ["write", "read", "get-line", "print", "print-line", "print-character", "print-int"]
+
+coreThreadNames :: [BaseName]
+coreThreadNames =
+  map MakeBaseName ["flow-inner", "detach", "attach"]
+
+coreUnitNames :: [BaseName]
+coreUnitNames =
+  map MakeBaseName ["unit", "Unit"]
+
+coreVoidNames :: [BaseName]
+coreVoidNames =
+  [MakeBaseName "void"]
+
+coreListNames :: [BaseName]
+coreListNames = do
+  map
+    MakeBaseName
+    [ "list",
+      "Nil",
+      "Cons",
+      "length",
+      "append",
+      "fold-left",
+      "fold-right",
+      "map",
+      "for",
+      "concat",
+      "unzip",
+      "uncons",
+      "all",
+      "any",
+      "range",
+      "filter-some"
+    ]
