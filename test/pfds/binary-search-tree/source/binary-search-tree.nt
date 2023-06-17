@@ -1,5 +1,4 @@
 import {
-- core.bool
 - core.text => T
 }
 

@@ -1,7 +1,3 @@
-import {
-- core.bool
-}
-
 data nat {
 - Zero
 - Succ(nat)

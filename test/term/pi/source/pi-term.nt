@@ -1,8 +1,3 @@
-export {
-- test-syntax
-- test-resource
-}
-
 define test-syntax(): unit {
   // nullary
   let _ = () => { tau }

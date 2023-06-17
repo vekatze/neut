@@ -1,6 +1,6 @@
 import {
-- core.external
-- core.memory
+- core.external => [free, malloc]
+- core.memory => [load-int, store-int]
 }
 
 resource noisy-boxed-int {

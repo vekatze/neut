@@ -1,6 +1,7 @@
 import {
 - core.either => S
 - core.text => T
+- core.list => [list, reverse]
 }
 
 inline queue(a: tau): tau {
