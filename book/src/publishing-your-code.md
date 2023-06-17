@@ -71,11 +71,3 @@ In this sense, the field `antecedent` defines the identity of a library.
 ## Actual Versioning Scheme
 
 Versions like `1-0-0`, `10-2`, `0-1-3`, or `0-0-0-1-8-0` are supported. Each natural number between `-` is called a version segment. The string until the first non-zero version segment is the major version of the release. For example, the major version of `10-2-8` is `10`. That of `0-0-0-1-8-0` is `0-0-0-1`.
-
-## On What a Breaking Change Is
-
-A breaking change in Neut is basically the same as that of Semantic Versioning. However, please note that *adding a function to an existing file is also considered to be a breaking change*. This is because it could cause name conflict in a user's source files.
-
-If you want to add functions in non-major updates, create a new file and add them to the file.
-
-Specifying non-compatible releases as compatible is regarded as a bug of a release. It is expected to be fixed in a later release, just like other bugs.

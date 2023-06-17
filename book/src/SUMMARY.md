@@ -16,7 +16,7 @@
   - [Other Built-in Utilities](./other-built-in-utilities.md)
 - [Module System](./module-system.md)
   - [Basics of Modules](./basics-of-modules.md)
-  - [Export and Import](./export-and-import.md)
+  - [Importing Names](./importing-names.md)
   - [Publishing Your Code](./publishing-your-code.md)
 - [Development Environment](./development-environment.md)
   - [LSP Support](./lsp-support.md)

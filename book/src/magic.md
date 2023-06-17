@@ -23,8 +23,6 @@ When you call an external function using `magic external`, you must declare its 
 ```neut
 import {...}
 
-export {...}
-
 declare {
 - arc4random_uniform(i32): i32
 - func-name(arg-type-1, ..., arg-type-n): result-type

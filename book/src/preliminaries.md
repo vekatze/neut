@@ -65,11 +65,6 @@ import {
 - this.buz
 }
 
-// export names defined in this file
-export {
-- func
-}
-
 // define functions and types
 // (the order of functions and types doesn't matter in Neut)
 
