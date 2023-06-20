@@ -62,8 +62,8 @@ instance Show Comp where
       UpElim isReducible x c1 c2 -> do
         let modifier = if isReducible then "" else "*"
         "let" ++ modifier ++ " " ++ show x ++ " = " ++ show c1 ++ "\n" ++ show c2
-      EnumElim _ v c1 caseList -> do
-        "switch " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList)
+      EnumElim sub v c1 caseList -> do
+        "switch " ++ show sub ++ " " ++ show v ++ "\n<default>\n" ++ show c1 ++ unwords (map showEnumCase caseList)
       Primitive prim ->
         "(" ++ show prim ++ ")"
       Free x size cont ->
