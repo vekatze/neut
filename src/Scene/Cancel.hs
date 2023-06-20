@@ -1,31 +1,30 @@
 module Scene.Cancel (cancel) where
 
-import Data.IORef
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
 import Entity.Ident
-import Entity.Ident.Reify
 import Entity.LowComp qualified as LC
 import Entity.LowType qualified as LT
 
-newtype Ctx = Ctx
-  {constraints :: IORef [Constraint]}
-
 type FreeInfo =
-  (Int, Ident)
+  (Int, Ident, LC.FreeID)
 
-type AllocInfo = (Int, LC.AllocID)
-
-data AllocScenario
-  = Simple [AllocInfo]
-  | Complex [AllocInfo] [AllocScenario] AllocScenario
+data MemOp
+  = Alloc Int LC.AllocID
+  | Free Int Ident LC.FreeID
   deriving (Show)
 
-type Constraint =
-  (FreeInfo, AllocScenario)
+data Scenario
+  = Simple [MemOp]
+  | Complex [MemOp] [Scenario] Scenario
+  deriving (Show)
+
+emptyScenario :: Scenario
+emptyScenario =
+  Simple []
 
 type FreeCanceller =
-  S.Set Int
+  S.Set LC.FreeID
 
 type AllocCanceller =
   IntMap.IntMap Ident
@@ -33,139 +32,154 @@ type AllocCanceller =
 type Canceller =
   (FreeCanceller, AllocCanceller)
 
-data CancelCtx = CancelCtx
+emptyCanceller :: Canceller
+emptyCanceller =
+  (S.empty, IntMap.empty)
+
+data Axis = Axis
   { freeCanceller :: FreeCanceller,
     allocCanceller :: AllocCanceller
   }
 
-cancel :: LC.Comp -> IO LC.Comp
+cancel :: LC.Comp -> LC.Comp
 cancel lowComp = do
-  emptyConstraints <- newIORef []
-  let ctx = Ctx {constraints = emptyConstraints}
-  _ <- analyze ctx lowComp
-  cs <- readIORef (constraints ctx)
-  let (freeCanceller, allocCanceller) = synthesize cs
-  let cancelCtx =
-        CancelCtx
-          { freeCanceller = freeCanceller,
-            allocCanceller = allocCanceller
-          }
-  return $ cancel' cancelCtx lowComp
+  let scenario = analyze lowComp
+  let (freeCanceller, allocCanceller) = relate scenario
+  cancel' (Axis {freeCanceller = freeCanceller, allocCanceller = allocCanceller}) lowComp
 
-analyze :: Ctx -> LC.Comp -> IO AllocScenario
-analyze ctx lowComp = do
+analyze :: LC.Comp -> Scenario
+analyze lowComp = do
   case lowComp of
     LC.Return _ ->
-      return emptyInfo
+      emptyScenario
     LC.Let _ op cont -> do
-      info <- analyze ctx cont
+      let scenario = analyze cont
       case op of
         LC.Alloc _ size allocID -> do
-          return $ insert (size, allocID) info
+          insert (Alloc size allocID) scenario
         _ ->
-          return info
+          scenario
     LC.Cont op cont -> do
-      willAllocInfo <- analyze ctx cont
+      let scenario = analyze cont
       case op of
-        LC.Free (LC.VarLocal ptr) size -> do
-          modifyIORef' (constraints ctx) $ (:) ((size, ptr), willAllocInfo)
+        LC.Free (LC.VarLocal ptr) size freeID -> do
+          insert (Free size ptr freeID) scenario
         _ ->
-          return ()
-      return willAllocInfo
+          scenario
     LC.Switch _ defaultBranch les (_, cont) -> do
       let (_, es) = unzip les
-      contAllocInfo <- analyze ctx cont
+      let contAllocInfo = analyze cont
       case defaultBranch of
         LC.Unreachable -> do
-          branchMapList <- mapM (analyze ctx) es
-          return $ Complex [] branchMapList contAllocInfo
+          let branchMapList = map analyze es
+          Complex [] branchMapList contAllocInfo
         _ -> do
-          defaultBranchMap <- analyze ctx defaultBranch
-          branchMapList <- mapM (analyze ctx) es
-          return $ Complex [] (defaultBranchMap : branchMapList) contAllocInfo
+          let defaultBranchMap = analyze defaultBranch
+          let branchMapList = map analyze es
+          Complex [] (defaultBranchMap : branchMapList) contAllocInfo
     LC.TailCall {} ->
-      return emptyInfo
+      emptyScenario
     LC.Unreachable ->
-      return emptyInfo
+      emptyScenario
 
-insert :: AllocInfo -> AllocScenario -> AllocScenario
-insert varInfo allocInfo =
+insert :: MemOp -> Scenario -> Scenario
+insert memOp allocInfo =
   case allocInfo of
-    Simple varInfoList ->
-      Simple $ varInfo : varInfoList
-    Complex varInfoList foo bar ->
-      Complex (varInfo : varInfoList) foo bar
+    Simple memOpList ->
+      Simple $ memOp : memOpList
+    Complex memOpList scenarioList cont ->
+      Complex (memOp : memOpList) scenarioList cont
 
-emptyInfo :: AllocScenario
-emptyInfo =
-  Simple []
+relate :: Scenario -> Canceller
+relate scenario = do
+  case scenario of
+    Simple memOpList -> do
+      relateMemOpList memOpList
+    Complex memOpList scenarioList cont ->
+      case extractFirstFree memOpList of
+        Just ((size, ptr, freeID), suffix) -> do
+          let scenario' = Complex suffix scenarioList cont
+          case findAlloc size scenario' of
+            Just (allocList, scenario'') ->
+              newCanceller allocList (size, ptr, freeID) <> relate scenario''
+            Nothing ->
+              relate scenario'
+        Nothing -> do
+          mconcat $ map relate $ cont : scenarioList
 
-synthesize :: [Constraint] -> Canceller
-synthesize cs =
-  case cs of
+extractFirstFree :: [MemOp] -> Maybe (FreeInfo, [MemOp])
+extractFirstFree memOpList =
+  case memOpList of
     [] ->
-      (S.empty, IntMap.empty)
-    c : rest -> do
-      case resolve c of
-        Just (freeCanceller1, allocCanceller1) -> do
-          let allocIDList = IntMap.keys allocCanceller1
-          let rest' = map (eraseUsedAllocIDs allocIDList) rest
-          let (freeCanceller2, allocCanceller2) = synthesize rest'
-          (S.union freeCanceller1 freeCanceller2, IntMap.union allocCanceller1 allocCanceller2)
+      Nothing
+    Alloc {} : rest ->
+      extractFirstFree rest
+    Free size ptr freeID : rest ->
+      return ((size, ptr, freeID), rest)
+
+relateMemOpList :: [MemOp] -> Canceller
+relateMemOpList memOpList =
+  case extractFirstFree memOpList of
+    Just ((size, ptr, freeID), suffix) ->
+      case findAllocInMemOpList size suffix of
+        Just (allocID, suffix') -> do
+          newCanceller [allocID] (size, ptr, freeID) <> relateMemOpList suffix'
         Nothing ->
-          synthesize rest
+          relateMemOpList suffix
+    Nothing ->
+      emptyCanceller
 
-eraseUsedAllocIDs :: [LC.AllocID] -> Constraint -> Constraint
-eraseUsedAllocIDs idList (freeInfo, c) =
-  (freeInfo, eraseUsedAllocIDs' idList c)
+newCanceller :: [LC.AllocID] -> FreeInfo -> Canceller
+newCanceller allocList (_, ptr, freeID) = do
+  let freeCanceller = S.singleton freeID
+  let allocCanceller = IntMap.fromList $ map (,ptr) allocList
+  (freeCanceller, allocCanceller)
 
-eraseUsedAllocIDs' :: [LC.AllocID] -> AllocScenario -> AllocScenario
-eraseUsedAllocIDs' idList c =
-  case idList of
-    [] ->
-      c
-    i : rest ->
-      eraseUsedAllocIDs' rest $ eraseID i c
-
-eraseID :: LC.AllocID -> AllocScenario -> AllocScenario
-eraseID i c =
-  case c of
-    Simple xs ->
-      Simple $ filter (\(_, j) -> i /= j) xs
-    Complex pre mid post -> do
-      let pre' = filter (\(_, j) -> i /= j) pre
-      let mid' = map (eraseID i) mid
-      let post' = eraseID i post
-      Complex pre' mid' post'
-
-resolve :: Constraint -> Maybe Canceller
-resolve (freeInfo@(size, ptr), allocInfo) =
-  case allocInfo of
-    Simple sizeAllocList -> do
-      allocID <- lookup size sizeAllocList
-      return (S.singleton (toInt ptr), IntMap.singleton allocID ptr)
-    Complex varInfoList branchVarInfoList confluenceVarInfoList ->
-      case resolveAll freeInfo branchVarInfoList of
-        Just result ->
-          return result
-        Nothing ->
-          case resolve (freeInfo, Simple varInfoList) of
-            Just result ->
-              return result
+findAlloc :: Int -> Scenario -> Maybe ([LC.AllocID], Scenario)
+findAlloc size scenario =
+  case scenario of
+    Simple memOpList -> do
+      (allocID, memOpList') <- findAllocInMemOpList size memOpList
+      return ([allocID], Simple memOpList')
+    Complex memOpList scenarioList cont -> do
+      case distributeMaybe $ map (findAlloc size) scenarioList of
+        Just allocScenarioList -> do
+          let (allocListList, scenarioList') = unzip allocScenarioList
+          return (concat allocListList, Complex memOpList scenarioList' cont)
+        Nothing -> do
+          case findAlloc size cont of
+            Just (allocList, cont') ->
+              return (allocList, Complex memOpList scenarioList cont')
             Nothing -> do
-              resolve (freeInfo, confluenceVarInfoList)
+              (allocID, memOpList') <- findAllocInMemOpList size memOpList
+              return ([allocID], Complex memOpList' scenarioList cont)
 
-resolveAll :: FreeInfo -> [AllocScenario] -> Maybe Canceller
-resolveAll freeInfo cs =
-  case cs of
+distributeMaybe :: [Maybe a] -> Maybe [a]
+distributeMaybe xs =
+  case xs of
     [] ->
-      return (S.empty, IntMap.empty)
-    c : rest -> do
-      (freeCanceller1, allocCanceller1) <- resolve (freeInfo, c)
-      (freeCanceller2, allocCanceller2) <- resolveAll freeInfo rest
-      return (S.union freeCanceller1 freeCanceller2, IntMap.union allocCanceller1 allocCanceller2)
+      return []
+    my : rest -> do
+      y <- my
+      rest' <- distributeMaybe rest
+      return $ y : rest'
 
-cancel' :: CancelCtx -> LC.Comp -> LC.Comp
+findAllocInMemOpList :: Int -> [MemOp] -> Maybe (LC.AllocID, [MemOp])
+findAllocInMemOpList size =
+  findAllocInMemOpList' size []
+
+findAllocInMemOpList' :: Int -> [MemOp] -> [MemOp] -> Maybe (LC.AllocID, [MemOp])
+findAllocInMemOpList' size prefix memOpList =
+  case memOpList of
+    [] ->
+      Nothing
+    Alloc size' allocID : rest
+      | size == size' ->
+          Just (allocID, reverse prefix ++ rest)
+    memOp : rest ->
+      findAllocInMemOpList' size (memOp : prefix) rest
+
+cancel' :: Axis -> LC.Comp -> LC.Comp
 cancel' ctx lowComp =
   case lowComp of
     LC.Return {} ->
@@ -181,8 +195,8 @@ cancel' ctx lowComp =
     LC.Cont op cont -> do
       let cont' = cancel' ctx cont
       case op of
-        LC.Free (LC.VarLocal ptr) _
-          | S.member (toInt ptr) (freeCanceller ctx) -> do
+        LC.Free _ _ freeID
+          | S.member freeID (freeCanceller ctx) -> do
               cont'
         _ ->
           LC.Cont op cont'

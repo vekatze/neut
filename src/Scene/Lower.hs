@@ -73,7 +73,7 @@ lower (defList, mMainName, declList) = do
     Decl.insDeclEnv (DN.In DD.imm) A.arityS4
     Decl.insDeclEnv (DN.In DD.cls) A.arityS4
   defList' <- forM defList $ \(name, (_, args, e)) -> do
-    e' <- lowerComp e >>= liftIO . cancel
+    e' <- lowerComp e >>= liftIO . return . cancel
     return (name, (args, e'))
   mMainDef <- mapM constructMainTerm mMainName
   declEnv <- Decl.getDeclEnv
@@ -145,7 +145,8 @@ lowerComp term =
       cont' <- lowerComp cont
       runLowerComp $ do
         x' <- lowerValue x
-        return $ LC.Cont (LC.Free x' size) cont'
+        freeID <- lift Gensym.newCount
+        return $ LC.Cont (LC.Free x' size freeID) cont'
     C.Unreachable ->
       return LC.Unreachable
 
@@ -175,7 +176,8 @@ loadElements basePointer values =
 
 free :: LC.Value -> Int -> Lower ()
 free pointer len = do
-  reflectCont $ LC.Free pointer len
+  freeID <- lift Gensym.newCount
+  reflectCont $ LC.Free pointer len freeID
 
 lowerCompPrimitive :: C.Primitive -> Lower LC.Value
 lowerCompPrimitive codeOp =

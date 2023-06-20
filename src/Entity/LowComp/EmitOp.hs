@@ -50,7 +50,7 @@ emitLowOp ax lowOp =
         ]
     LC.Alloc d _ _ -> do
       unwordsL ["call fastcc", "ptr", "@malloc(" <> emitLowType (intType ax) <> " " <> emitValue d <> ")"]
-    LC.Free d _ -> do
+    LC.Free d _ _ -> do
       unwordsL ["call fastcc", "void", "@free(ptr " <> emitValue d <> ")"]
     LC.PrimOp op args -> do
       case op of

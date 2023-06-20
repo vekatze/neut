@@ -47,6 +47,9 @@ data Comp
 type AllocID =
   Int
 
+type FreeID =
+  Int
+
 data Op
   = Call LowType Value [(LowType, Value)] -- non-tail call
   | GetElementPtr
@@ -61,7 +64,7 @@ data Op
   | Load Value LowType
   | Store LowType Value Value
   | Alloc Value Int AllocID
-  | Free Value Int
+  | Free Value Int FreeID
   | PrimOp PrimOp [Value]
   deriving (Show)
 
