@@ -31,7 +31,7 @@ linearize binder e =
           discardUnusedVar <- toAffineApp x t
           return $ C.UpElim True hole discardUnusedVar e''
         [z] ->
-          return $ C.UpElim False z (C.UpIntro (C.VarLocal x)) e''
+          return $ C.UpElim True z (C.UpIntro (C.VarLocal x)) e''
         z : zs -> do
           localName <- newIdentFromText $ toText x <> "-local"
           e''' <- insertHeader localName z zs t e''
