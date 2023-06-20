@@ -13,6 +13,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
+import Entity.Opacity qualified as O
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
 import Entity.WeakPrim qualified as WP
@@ -35,9 +36,13 @@ toText term =
         LK.Fix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["fix", showVariable x, argStr, toText e]
-        _ -> do
+        LK.Normal opacity -> do
           let argStr = inParen $ showItems $ map showArg xts
-          showCons ["λ", argStr, toText e]
+          case opacity of
+            O.Transparent -> do
+              showCons ["λ", argStr, toText e]
+            O.Opaque -> do
+              showCons ["λ*", argStr, toText e]
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
     _ :< WT.Data name _ es -> do
@@ -52,8 +57,12 @@ toText term =
       showCons ["noema", toText t]
     _ :< WT.Embody _ e ->
       "*" <> toText e
-    _ :< WT.Let _ (_, x, t) e1 e2 -> do
-      showCons ["let", showVariable x, toText t, toText e1, toText e2]
+    _ :< WT.Let opacity (_, x, t) e1 e2 -> do
+      case opacity of
+        WT.Transparent ->
+          showCons ["let", showVariable x, toText t, toText e1, toText e2]
+        _ ->
+          showCons ["let*", showVariable x, toText t, toText e1, toText e2]
     _ :< WT.Prim prim ->
       showPrim prim
     _ :< WT.Hole i es ->
@@ -118,13 +127,13 @@ showPrim prim =
         WPV.Op op ->
           case op of
             PO.PrimUnaryOp name _ _ ->
-              name
+              showCons [name]
             PO.PrimBinaryOp name _ _ ->
-              name
+              showCons [name]
             PO.PrimCmpOp name _ _ ->
-              name
+              showCons [name]
             PO.PrimConvOp name _ _ ->
-              name
+              showCons [name]
         WPV.StaticText _ text ->
           T.pack $ show text
 
