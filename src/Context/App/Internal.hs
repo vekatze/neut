@@ -72,7 +72,7 @@ data Env = Env
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
-    defMap :: IORef (Map.HashMap DD.DefiniteDescription TM.Term),
+    defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     staticTextList :: IORef [(DD.DefiniteDescription, (T.Text, Int))],
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),

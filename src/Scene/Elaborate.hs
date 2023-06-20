@@ -129,9 +129,8 @@ elaborateStmt stmt = do
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
   case stmt of
-    StmtDefine _ stmtKind m f _ xts _ e -> do
-      let lamKind = LK.Normal $ toOpacity stmtKind
-      Definition.insert (toOpacity stmtKind) f (m :< TM.PiIntro lamKind xts e)
+    StmtDefine _ stmtKind _ f _ xts _ e -> do
+      Definition.insert (toOpacity stmtKind) f xts e
     StmtDefineResource {} ->
       return ()
   insertWeakStmt $ weakenStmt stmt

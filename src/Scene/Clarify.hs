@@ -49,6 +49,7 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
+import Scene.Term.Inline qualified as TM
 import Scene.Term.Subst qualified as TM
 
 clarify :: ([Stmt], [DE.Decl]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl])
@@ -143,7 +144,7 @@ clarifyStmtDefine ::
   App ([Ident], C.Comp)
 clarifyStmtDefine xts e = do
   xts' <- dropFst <$> clarifyBinder IntMap.empty xts
-  e' <- clarifyTerm (TM.insTypeEnv xts IntMap.empty) e
+  e' <- TM.inline e >>= clarifyTerm (TM.insTypeEnv xts IntMap.empty)
   e'' <- linearize xts' e' >>= Reduce.reduce
   return (map fst xts', e'')
 
