@@ -64,9 +64,9 @@ reduce term =
           t' <- reduce t
           e2' <- reduce e2
           return $ m :< TM.Let opacity (mx, x, t') e1' e2'
-    (m :< TM.Magic der) -> do
-      der' <- traverse reduce der
-      return (m :< TM.Magic der')
+    (m :< TM.Magic magic) -> do
+      magic' <- traverse reduce magic
+      return (m :< TM.Magic magic')
     _ ->
       return term
 
