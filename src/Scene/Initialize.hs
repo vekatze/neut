@@ -16,7 +16,6 @@ import Context.LLVM qualified as LLVM
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Remark qualified as Remark
-import Context.Remark qualified as Rmeark
 import Context.Tag qualified as Tag
 import Context.Unravel qualified as Unravel
 import Context.UnusedVariable qualified as UnusedVariable
@@ -48,7 +47,7 @@ initializeForTarget :: App ()
 initializeForTarget = do
   Clarify.registerFoundationalTypes
   Unravel.initialize
-  Rmeark.setGlobalRemarkList []
+  Remark.setGlobalRemarkList []
   Global.clearSourceNameMap
 
 initializeForSource :: Source.Source -> App ()
