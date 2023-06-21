@@ -36,7 +36,7 @@ data RawTermF a
   | PiElim a [a]
   | PiElimByKey Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
-  | DataIntro DD.DefiniteDescription DD.DefiniteDescription [DD.DefiniteDescription] D.Discriminant [a] [a]
+  | DataIntro DD.DefiniteDescription DD.DefiniteDescription [DD.DefiniteDescription] D.Discriminant [a] [(a, Maybe Name)]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Embody a

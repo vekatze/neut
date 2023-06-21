@@ -1,8 +1,10 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
+import Context.NameDependence qualified as NameDependence
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -11,6 +13,7 @@ import Control.Monad
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
+import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -32,6 +35,7 @@ import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
+import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.WeakTerm qualified as WT
@@ -123,7 +127,12 @@ discern nenv term =
       return $ m :< WT.Data name consNameList es'
     m :< RT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM (discern nenv) dataArgs
-      consArgs' <- mapM (discern nenv) consArgs
+      let (args, names) = unzip consArgs
+      consArgs' <- mapM (discern nenv) args
+      forM_ (catMaybes names) $ \name -> do
+        src <- Env.getCurrentSource
+        (nameDep, (mDep, gnDep)) <- resolveName m name
+        NameDependence.add (Source.sourceFilePath src) (Map.singleton nameDep (mDep, gnDep))
       return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences

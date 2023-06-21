@@ -10,6 +10,7 @@ import Context.Cache qualified as Cache
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.NameDependence qualified as NameDependence
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
@@ -65,6 +66,7 @@ parseSource source = do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       saveTopLevelNames path $ map getStmtName stmtList
+      NameDependence.add path $ Map.fromList $ Cache.nameDependence cache
       return $ Left cache
     Nothing -> do
       (defList, declList) <- P.run (program source) $ Source.sourceFilePath source
@@ -109,6 +111,7 @@ program currentSource = do
     namesInSource <- lift $ Global.lookupSourceNameMap m $ Source.sourceFilePath source
     lift $ Global.activateTopLevelNames namesInSource
     lift $ Alias.activateAliasInfo namesInSource aliasInfo
+    lift $ NameDependence.get (Source.sourceFilePath source) >>= Global.activateTopLevelNames
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList)
 
@@ -184,7 +187,7 @@ defineData ::
   Hint ->
   DD.DefiniteDescription ->
   Maybe [RawBinder RT.RawTerm] ->
-  [(Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])] ->
+  [(Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])] ->
   App [RawStmt]
 defineData m dataName dataArgsOrNone consInfoList = do
   let dataArgs = fromMaybe [] dataArgsOrNone
@@ -200,18 +203,18 @@ defineData m dataName dataArgsOrNone consInfoList = do
 
 modifyConsInfo ::
   D.Discriminant ->
-  [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm])] ->
+  [(Hint, DD.DefiniteDescription, b, [(RawBinder RT.RawTerm, Maybe Name)])] ->
   [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
     (m, consName, isConstLike, consArgs) : rest ->
-      (m, consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
+      (m, consName, isConstLike, map fst consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
-  (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm]) ->
-  App (Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])
+  (Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)]) ->
+  App (Hint, DD.DefiniteDescription, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])
 modifyConstructorName (mb, consName, isConstLike, yts) = do
   consName' <- Locator.attachCurrentLocator consName
   return (mb, consName', isConstLike, yts)
@@ -220,7 +223,7 @@ parseDefineDataConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
   [RawBinder RT.RawTerm] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])] ->
+  [(Hint, DD.DefiniteDescription, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])] ->
   D.Discriminant ->
   App [RawStmt]
 parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
@@ -229,13 +232,13 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       return []
     (m, consName, isConstLike, consArgs) : rest -> do
       let dataArgs' = map identPlusToVar dataArgs
-      let consArgs' = map identPlusToVar consArgs
+      let consArgs' = map adjustConsArg consArgs
       let consNameList = map (\(_, c, _, _) -> c) consInfoList
-      let args = dataArgs ++ consArgs
+      let args = dataArgs ++ map fst consArgs
       let introRule =
             RawStmtDefine
               isConstLike
-              (SK.DataIntro consName dataArgs consArgs discriminant)
+              (SK.DataIntro consName dataArgs (map fst consArgs) discriminant)
               m
               consName
               (AN.fromInt $ length dataArgs)
@@ -254,7 +257,7 @@ constructDataType ::
 constructDataType m dataName consNameList dataArgs = do
   m :< RT.Data dataName consNameList (map identPlusToVar dataArgs)
 
-parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])
+parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])
 parseDefineDataClause = do
   m <- P.getCurrentHint
   consName <- P.baseNameCapitalized
@@ -263,18 +266,26 @@ parseDefineDataClause = do
   let isConstLike = isNothing consArgsOrNone
   return (m, consName, isConstLike, consArgs)
 
-parseConsArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
+parseConsArgs :: P.Parser (Maybe [(RawBinder RT.RawTerm, Maybe Name)])
 parseConsArgs = do
   choice
     [ Just <$> try (P.argSeqOrList parseDefineDataClauseArg),
       return Nothing
     ]
 
-parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm)
+parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm, Maybe Name)
 parseDefineDataClauseArg = do
+  consArg <-
+    choice
+      [ try preAscription,
+        typeWithoutIdent
+      ]
   choice
-    [ try preAscription,
-      typeWithoutIdent
+    [ do
+        P.keyword "via"
+        (_, name) <- parseName
+        return (consArg, Just name),
+      return (consArg, Nothing)
     ]
 
 parseAliasTransparent :: P.Parser RawStmt
@@ -310,6 +321,10 @@ parseDefineResource = do
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
   m :< RT.Var (Var x)
+
+adjustConsArg :: (RawBinder RT.RawTerm, Maybe Name) -> (RT.RawTerm, Maybe Name)
+adjustConsArg ((m, x, _), mName) =
+  (m :< RT.Var (Var x), mName)
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =
