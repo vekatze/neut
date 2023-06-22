@@ -5,12 +5,14 @@ module Entity.Name
 where
 
 import Data.Text qualified as T
+import Entity.DefiniteDescription qualified as DD
 import Entity.Locator qualified as L
 import Entity.RawIdent
 
 data Name
   = Var RawIdent
   | Locator L.Locator
+  | DefiniteDescription DD.DefiniteDescription
   deriving (Show)
 
 showName :: Name -> T.Text
@@ -20,3 +22,5 @@ showName consName =
       value
     Locator l ->
       L.reify l
+    DefiniteDescription dd ->
+      DD.reify dd

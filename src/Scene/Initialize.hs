@@ -20,6 +20,7 @@ import Context.Remark qualified as Remark
 import Context.Tag qualified as Tag
 import Context.Unravel qualified as Unravel
 import Context.UnusedVariable qualified as UnusedVariable
+import Context.Via qualified as Via
 import Data.Maybe
 import Entity.Config.Remark qualified as Remark
 import Entity.Module
@@ -51,6 +52,7 @@ initializeForTarget = do
   Remark.setGlobalRemarkList []
   Global.clearSourceNameMap
   NameDependence.initialize
+  Via.initialize
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
@@ -63,3 +65,4 @@ initializeForSource source = do
   Tag.initialize
   Remark.setRemarkList []
   Decl.initialize
+  Via.initializeActiveViaMap

@@ -13,6 +13,7 @@ import Context.Locator qualified as Locator
 import Context.NameDependence qualified as NameDependence
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
+import Context.Via qualified as Via
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
@@ -33,10 +34,12 @@ import Entity.IsConstLike
 import Entity.Name
 import Entity.Opacity qualified as O
 import Entity.RawBinder
+import Entity.RawIdent
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
+import Entity.ViaMap qualified as VM
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
@@ -67,6 +70,7 @@ parseSource source = do
       parseCachedStmtList stmtList
       saveTopLevelNames path $ map getStmtName stmtList
       NameDependence.add path $ Map.fromList $ Cache.nameDependence cache
+      Via.union path $ VM.decode $ Cache.viaInfo cache
       return $ Left cache
     Nothing -> do
       (defList, declList) <- P.run (program source) $ Source.sourceFilePath source
@@ -108,10 +112,12 @@ program currentSource = do
   sourceInfoList <- Parse.parseImportBlock currentSource
   declList <- parseDeclareList
   forM_ sourceInfoList $ \(source, aliasInfo) -> do
-    namesInSource <- lift $ Global.lookupSourceNameMap m $ Source.sourceFilePath source
+    let path = Source.sourceFilePath source
+    namesInSource <- lift $ Global.lookupSourceNameMap m path
     lift $ Global.activateTopLevelNames namesInSource
     lift $ Alias.activateAliasInfo namesInSource aliasInfo
-    lift $ NameDependence.get (Source.sourceFilePath source) >>= Global.activateTopLevelNames
+    lift $ NameDependence.get path >>= Global.activateTopLevelNames
+    lift $ Via.get path >>= Via.addToActiveViaMap
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList)
 
@@ -322,9 +328,9 @@ identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
   m :< RT.Var (Var x)
 
-adjustConsArg :: (RawBinder RT.RawTerm, Maybe Name) -> (RT.RawTerm, Maybe Name)
+adjustConsArg :: (RawBinder RT.RawTerm, Maybe Name) -> (RT.RawTerm, (RawIdent, Maybe Name))
 adjustConsArg ((m, x, _), mName) =
-  (m :< RT.Var (Var x), mName)
+  (m :< RT.Var (Var x), (x, mName))
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

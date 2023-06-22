@@ -54,6 +54,13 @@ resolveNameOrError m name =
       resolveVarOrErr m var
     Locator l -> do
       Right <$> resolveLocator m l
+    DefiniteDescription dd -> do
+      mgnOrNone <- Global.lookup m dd
+      case mgnOrNone of
+        Just mgn ->
+          return $ Right (dd, mgn)
+        Nothing ->
+          return $ Left $ "undefined definite description: " <> DD.reify dd
 
 resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveVarOrErr m name = do

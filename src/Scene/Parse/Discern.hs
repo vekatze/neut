@@ -8,12 +8,12 @@ import Context.NameDependence qualified as NameDependence
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
+import Context.Via qualified as Via
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
-import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -127,12 +127,17 @@ discern nenv term =
       return $ m :< WT.Data name consNameList es'
     m :< RT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM (discern nenv) dataArgs
-      let (args, names) = unzip consArgs
-      consArgs' <- mapM (discern nenv) args
-      forM_ (catMaybes names) $ \name -> do
-        src <- Env.getCurrentSource
-        (nameDep, (mDep, gnDep)) <- resolveName m name
-        NameDependence.add (Source.sourceFilePath src) (Map.singleton nameDep (mDep, gnDep))
+      forM_ consArgs $ \(_, (consArgName, mViaName)) -> do
+        case mViaName of
+          Nothing ->
+            return ()
+          Just viaName -> do
+            (nameDep, (mDep, gnDep)) <- resolveName m viaName
+            src <- Env.getCurrentSource
+            let path = Source.sourceFilePath src
+            NameDependence.add path (Map.singleton nameDep (mDep, gnDep))
+            Via.union path $ Map.singleton consName (Map.singleton consArgName nameDep)
+      consArgs' <- mapM (discern nenv . fst) consArgs
       return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
@@ -337,6 +342,14 @@ discernPattern (m, pat) =
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
+        DefiniteDescription dd -> do
+          (_, gn) <- resolveName m $ DefiniteDescription dd
+          case gn of
+            (_, GN.DataIntro dataArity consArity disc _) ->
+              return ((m, PAT.Cons dd disc dataArity consArity []), [])
+            _ ->
+              Throw.raiseCritical m $
+                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
     RP.Cons cons mArgs -> do
       (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
       when isConstLike $
@@ -347,9 +360,18 @@ discernPattern (m, pat) =
           (args', nenvList) <- mapAndUnzipM discernPattern args
           return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
         Left mVar -> do
+          vmap <- Via.lookup consName
           (_, keyList) <- KeyArg.lookup m consName
-          let args = map (RP.Var . Var) keyList
-          (args', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) args
+          patList <- mapM (keyToPattern vmap m) keyList
+          (patList', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) patList
           forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
             UnusedVariable.delete newVar
-          return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+          return ((m, PAT.Cons consName disc dataArity consArity patList'), concat nenvList)
+
+keyToPattern :: Map.HashMap RawIdent DD.DefiniteDescription -> Hint -> RawIdent -> App RP.RawPattern
+keyToPattern vmap m key =
+  case Map.lookup key vmap of
+    Just consName -> do
+      return $ RP.Cons (DefiniteDescription consName) (Left m)
+    Nothing ->
+      return $ RP.Var $ Var key
