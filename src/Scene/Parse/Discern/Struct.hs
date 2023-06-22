@@ -49,7 +49,7 @@ reorderArgs m keyList kvs =
           return []
       | otherwise -> do
           let ks = map fst $ Map.toList kvs
-          Throw.raiseError m $ "the following fields are redundant: " <> showKeyList ks
+          Throw.raiseError m $ "the following fields are redundant:\n" <> showKeyList ks
     key : keyRest
       | Just v <- Map.lookup key kvs -> do
           vs <- reorderArgs m keyRest (Map.delete key kvs)
