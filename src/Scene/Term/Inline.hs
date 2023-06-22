@@ -79,10 +79,11 @@ inline term =
               case lookupSplit cursor oets' of
                 Just (e@(_ :< TM.DataIntro _ _ _ disc _ consArgs), oets'')
                   | TM.isValue e -> do
-                      let (subDom, cont) = findClause disc fallbackTree caseList
-                      let sub = IntMap.fromList $ zip (map Ident.toInt subDom) (map Right consArgs)
+                      let (newBaseCursorList, cont) = findClause disc fallbackTree caseList
+                      let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
+                      let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
                       cont' <- Subst.substDecisionTree sub cont
-                      inline $ m :< TM.DataElim isNoetic oets'' cont'
+                      inline $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont'
                 _ -> do
                   decisionTree' <- inlineDecisionTree decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -146,7 +147,7 @@ findClause ::
   Discriminant ->
   DT.DecisionTree TM.Term ->
   [DT.Case TM.Term] ->
-  ([Ident], DT.DecisionTree TM.Term)
+  ([(Ident, TM.Term)], DT.DecisionTree TM.Term)
 findClause consDisc fallbackTree clauseList =
   case clauseList of
     [] ->
@@ -158,10 +159,10 @@ findClause consDisc fallbackTree clauseList =
         Nothing ->
           findClause consDisc fallbackTree rest
 
-findCase :: Discriminant -> DT.Case TM.Term -> Maybe ([Ident], DT.DecisionTree TM.Term)
+findCase :: Discriminant -> DT.Case TM.Term -> Maybe ([(Ident, TM.Term)], DT.DecisionTree TM.Term)
 findCase consDisc (DT.Cons _ _ disc _ consArgs tree) =
   if consDisc == disc
-    then Just (map (\(_, x, _) -> x) consArgs, tree)
+    then Just (map (\(_, x, t) -> (x, t)) consArgs, tree)
     else Nothing
 
 lookupSplit :: Ident -> [(Ident, b, c)] -> Maybe (b, [(Ident, b, c)])

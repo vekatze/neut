@@ -1,19 +1,16 @@
-module Scene.Term.Subst (subst, substDecisionTree) where
+module Scene.Term.Subst (subst, subst'', substDecisionTree) where
 
 import Context.App
 import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
-import Data.Text qualified as T
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Term qualified as TM
-import Entity.Term.Weaken (weaken)
-import Entity.WeakTerm.ToText (toText)
 
 type SubstTerm =
   IntMap.IntMap (Either Ident TM.Term)
@@ -170,8 +167,8 @@ substLeafVar sub leafVar =
   case IntMap.lookup (Ident.toInt leafVar) sub of
     Just (Left leafVar') ->
       return leafVar'
-    Just (Right e) ->
-      error $ "substLeafVar: critical compiler bug (leaf variables shouldn't be substituted to actual terms)" <> T.unpack (toText (weaken e))
+    Just (Right _) ->
+      Nothing
     Nothing ->
       return leafVar
 

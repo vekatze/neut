@@ -189,7 +189,7 @@ substLeafVar sub leafVar =
     Just (Left leafVar') ->
       return leafVar'
     Just (Right _) ->
-      error "substLeafVar: critical compiler bug (leaf variables shouldn't be substituted to actual terms)"
+      Nothing
     Nothing ->
       return leafVar
 
