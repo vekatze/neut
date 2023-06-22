@@ -1,0 +1,14 @@
+import {
+- this.compare => [compare, Compare]
+}
+
+data arith(a) {
+- Arith of {
+  - neg: a -> a
+  - add: (a, a) -> a
+  - sub: (a, a) -> a
+  - mul: (a, a) -> a
+  - div: (a, a) -> a
+  - compare: compare(a) via Compare
+  }
+}

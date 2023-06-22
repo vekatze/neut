@@ -1,0 +1,55 @@
+import {
+- core.monoid => [monoid, Monoid]
+- this.arith => a
+- this.compare => c
+}
+
+alias double { f64 }
+
+inline add(x: double, y: double): double {
+  add-f64(x, y)
+}
+
+inline sub(x: double, y: double): double {
+  sub-f64(x, y)
+}
+
+inline mul(x: double, y: double): double {
+  mul-f64(x, y)
+}
+
+inline div(x: double, y: double): double {
+  div-f64(x, y)
+}
+
+inline from-int(x: int): double {
+  sitofp-int-f64(x)
+}
+
+inline as-additive-monoid(): monoid(double) {
+  Monoid of {
+  - unit => 0.0
+  - join => add
+  }
+}
+
+inline compare(): c.compare(double) {
+  c.Compare of {
+  - lt => lt-f64
+  - le => le-f64
+  - gt => gt-f64
+  - ge => ge-f64
+  - eq => eq-f64
+  }
+}
+
+inline arith(): a.arith(double) {
+  a.Arith of {
+  - neg => neg-f64
+  - add => add-f64
+  - sub => sub-f64
+  - mul => mul-f64
+  - div => div-f64
+  - compare => compare()
+  }
+}

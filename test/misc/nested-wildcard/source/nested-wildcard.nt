@@ -1,0 +1,21 @@
+import {
+- this.double => d
+- core.monoid => [Monoid]
+- this.arith => [Arith]
+}
+
+define foo(x: d.double): d.double {
+  let Arith(..) = d.arith()
+  let _ = lt
+  let _ = eq
+  if lt(-10.0, 3.0) {
+    neg(x)
+  } else {
+    add(x, 30.0)
+  }
+}
+
+define main(): unit {
+  print-int(fptosi-f64-int(foo(10.0)))
+  print("\n")
+}
