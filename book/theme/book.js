@@ -44,6 +44,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "resource",
         "struct",
         "switch",
+        "via",
         "with",
       ].join(" "),
     },

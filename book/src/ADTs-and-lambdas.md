@@ -121,57 +121,6 @@ define sample(): int {
 }
 ```
 
-### Keyword Arguments
-
-The arguments of a function can be supplied using their names:
-
-```neut
-define some-function(a: int, some-argument: tau, b: tau): int {
-  // ...
-}
-
-define caller(): int {
-  let _ =
-    // calling a function using the name of arguments
-    some-function of {
-    - b => tau
-    - a => 20
-    - some-argument => tau
-    }
-  0
-}
-
-```
-
-This `of`-notation can also be used with a constructor:
-
-```neut
-data config {
-- Config(some-value: my-list(int), foo: int, bar: my-list(int))
-}
-
-define create-struct(): config(my-list(int)) {
-  // create a struct using keyword arguments
-  Config of {
-  - foo => 30
-  - bar => MyNil
-  - some-value => MyCons(3, MyNil)
-  }
-}
-```
-
-or when defining an ADT:
-
-```neut
-data config {
-- Config of {
-  - some-value: my-list(int)
-  - foo: int
-  - bar: my-list
-  }
-}
-```
-
 ### Memory Behavior
 
 A `lambda` is compiled into a three-word tuple:
@@ -238,6 +187,167 @@ define fact(x: int): int {
 ```
 
 In practice, one may think of `mu` as a nested `define`.
+
+## Some Useful Notations
+
+### Keyword Arguments
+
+The arguments of a function can be supplied using their names:
+
+```neut
+define some-function(a: int, some-argument: tau, b: tau): int {
+  // ...
+}
+
+define caller(): int {
+  let _ =
+    // calling a function using the name of arguments
+    some-function of {
+    - b => tau
+    - a => 20
+    - some-argument => tau
+    }
+  0
+}
+
+```
+
+This `of`-notation can also be used with a constructor:
+
+```neut
+data config {
+- Config(some-value: my-list(int), foo: int, bar: my-list(int))
+}
+
+define create-struct(): config(my-list(int)) {
+  // create a struct using keyword arguments
+  Config of {
+  - foo => 30
+  - bar => MyNil
+  - some-value => MyCons(3, MyNil)
+  }
+}
+```
+
+or when defining an ADT:
+
+```neut
+data config {
+- Config of {
+  - some-value: my-list(int)
+  - foo: int
+  - bar: my-list
+  }
+}
+```
+
+### A Notation for Single-Branch Pattern Matching
+
+You can rewrite a single-branch `match` into `let` as follows:
+
+```neut
+// an example ADT
+data item {
+- Item of {
+  - foo: int
+  - bar: bool
+  }
+}
+
+// before
+define some-func(x: item): int {
+  match x {
+  - Item(foo, bar) =>
+    foo
+  }
+}
+
+// after
+define some-func(x: item): int {
+  let Item(foo, bar) = x
+  foo
+}
+```
+
+### Wildcard in Pattern Arguments
+
+You can use `..` to specify names automatically:
+
+```neut
+// an example ADT
+data item {
+- Item of {
+  - foo: int
+  - bar: bool
+  }
+}
+
+define some-func(x: item): int {
+  let Item(..) = x // ".." is expanded into "foo, bar"
+  foo
+}
+```
+
+### Nested Struct and Automatic Pattern Matching
+
+You may want to use `data` to structure your code as follows:
+
+```neut
+data semigroup(a) {
+- Semigroup of {
+  - append: (a, a) -> a
+  }
+}
+
+data monoid(a) {
+- Monoid of {
+  - empty: a
+  - as-semigroup: semigroup(a)
+  }
+}
+
+inline some-func[a](m: monoid(a)): a {
+  let Monoid(..) = m
+  let Semigroup(..) = as-semigroup
+  append(empty, empty)
+}
+```
+
+Note that the code above uses `inline` so that structs are reduced at compile-time.
+
+You may find it a bit tedious to write both of `Monoid(..)` and `Semigroup(..)`. This can be relieved by using following `via`-notation:
+
+```neut
+// the same
+data semigroup(a) {
+- Semigroup of {
+  - append: (a, a) -> a
+  }
+}
+
+// modified
+data monoid(a) {
+- Monoid of {
+  - empty: a
+  - as-semigroup: semigroup(a) via Semigroup // added "via Semigroup"
+  }
+}
+
+// modified
+inline some-func[a](m: monoid(a)): a {
+  let Monoid(..) = m
+  append(empty, empty)
+  // (`let Semigroup(..) = as-semigroup` is inserted automatically)
+}
+```
+
+More generally, if `via CONSTRUCTOR` is specified when defining a constructor, the corresponding
+
+```neut
+let CONSTRUCTOR(..) = constructor
+```
+
+is automatically inserted every time `..` is supplied to the parent constructor (here, the `Monoid`).
 
 ## Other Basic Types
 
