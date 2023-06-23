@@ -7,19 +7,19 @@
 Integers and floats are of course supported in Neut. For example, the factorial function will be written as follows:
 
 ```neut
-define fact(x: i64): i64 {
-  if eq-i64(x, 0) {
+define fact(x: int64): int64 {
+  if eq-int64(x, 0) {
     1
   } else {
-    mul-i64(x, fact(sub-i64(x, 1)))
+    mul-int64(x, fact(sub-int64(x, 1)))
   }
 }
 ```
 
-The above uses `i64` as an integer type. Other number types are also available:
+The above uses `int64` as an integer type. Other number types are also available:
 
-- integer types: `iN (= i1, i2, i3, ..., i64)`
-- float types: `fN (= f16, f32, f64)`
+- integer types: `intN (= int1, int2, int3, ..., int64)`
+- float types: `floatN (= float16, float32, float64)`
 
 These types have a lot of primitive operations. These inherit from LLVM IR:
 
@@ -28,21 +28,23 @@ These types have a lot of primitive operations. These inherit from LLVM IR:
 | arithmetics | add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr | neg, add, sub, mul, div, rem                                                      |
 | comparison  | eq, ne, gt, ge, lt, le, ueq, une, ugt, uge, ult, ule          | eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true |
 
-For example, all `add-i32`, `neg-f64`, `eq-i64`, and `gt-f32` are available.
+For example, all `add-int32`, `neg-float64`, `eq-int64`, and `gt-float32` are available.
 
 Neut transparently uses LLVM's integer types and float types for its primitive types. This means, in particular, that the primitive integer types in Neut are "signless". That is, signedness of an integer type in Neut resides in operators, not in values.
 
-For example, `div-i64` interprets its two arguments as signed integers, and returns its (signed) result. `udiv-i64` interprets its two arguments as unsigned integers, and returns its (unsigned) result. Integer operations prefixed with `u` are for unsigned operations.
+For example, `div-int64` interprets its two arguments as signed integers, and returns its (signed) result. `udiv-int64` interprets its two arguments as unsigned integers, and returns its (unsigned) result. Integer operations prefixed with `u` are for unsigned operations.
 
-The internal representation of the integer types in Neut is the same as that of LLVM. They are therefore based on the two's complement representation. That is why Neut doesn't have something like `uadd-i64`. The `u`-prefixed integer operations are there only when we need different behaviors for different signednesses.
+The internal representation of the integer types in Neut is the same as that of LLVM. They are therefore based on the two's complement representation. That is why Neut doesn't have something like `uadd-int64`. The `u`-prefixed integer operations are there only when we need different behaviors for different signednesses.
 
 For their detailed behaviors, please refer to [the language reference of LLVM](https://llvm.org/docs/LangRef.html). Also, as usual, please be careful when you compare floats. I can hear a faint voice from deep within my heart saying "I want to rename `eq`s for floats into something like `I-know-what-I-am-doing-and-still-want-to-check-if-two-floats-are-ordered-and-equal`".
 
-### Platform-Dependent Integer Type
+### Platform-Dependent Primitive Types
 
-There also exists a type `int`. This is a syntax sugar for target-dependent type. That is, for example, if the target architecture is 64 bit, the `int` is an alias of `i64`. If the target is 32 bit, `int` is an alias of `i32`, etc.
+You can also use `int`. This is a syntax sugar for target-dependent type. That is, for example, if the target architecture is 64 bit, the `int` is an alias of `int64`. If the target is 32 bit, `int` is an alias of `int32`, etc.
 
-Primitives operations for `int` are also available. For example, you can use `div-int`, `eq-int`. These are aliases of the corresponding primitive operations; If `int` is `i64`, the `div-int` is the same as `div-i64`.
+Primitives operations for `int` are also available. For example, you can use `div-int`, `eq-int`. These are aliases of the corresponding primitive operations; If `int` is `int64`, the `div-int` is the same as `div-int64`.
+
+The type `float` is also available. This is the floating point version of `int`, and thus resolved into `float64` if the target is 64 bit. You can of course use primitive operations like `add-float`, `gt-float`, etc.
 
 ### Memory Behavior
 
@@ -140,7 +142,7 @@ You can define a type alias as follows:
 
 ```neut
 alias my-int {
-  i64
+  int64
 }
 ```
 
@@ -148,7 +150,7 @@ The above is essentially the same as below:
 
 ```neut
 inline my-int(): tau {
-  i64
+  int64
 }
 ```
 

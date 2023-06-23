@@ -16,6 +16,6 @@ define foo(x: d.double): d.double {
 }
 
 define main(): unit {
-  print-int(fptosi-f64-int(foo(10.0)))
+  print-int(fptosi-float-int(foo(10.0)))
   print("\n")
 }

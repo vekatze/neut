@@ -27,35 +27,43 @@ fromText dataSize name
   | otherwise =
       Nothing
 
+intTypeName :: T.Text
+intTypeName = "int"
+
 asLowInt :: DS.DataSize -> T.Text -> Maybe IntSize
 asLowInt dataSize s =
-  if s == "int"
-    then Just $ IntSize $ DS.reify dataSize
+  if s == intTypeName
+    then Just $ dataSizeToIntSize dataSize
     else do
-      case T.uncons s of
-        Nothing ->
+      case T.splitAt 3 s of
+        ("", "") ->
           Nothing
-        Just (c, rest)
-          | c == 'i',
+        (c, rest)
+          | c == intTypeName,
             Just n <- readMaybe $ T.unpack rest,
             Just size <- asIntSize dataSize n ->
               Just size
-        _ ->
-          Nothing
+          | otherwise ->
+              Nothing
+
+floatTypeName :: T.Text
+floatTypeName = "float"
 
 asLowFloat :: DS.DataSize -> T.Text -> Maybe FloatSize
 asLowFloat dataSize s =
-  case T.uncons s of
-    Nothing ->
-      Nothing
-    Just (c, rest) ->
-      case c of
-        'f'
-          | Just n <- readMaybe $ T.unpack rest,
+  if s == floatTypeName
+    then Just $ dataSizeToFloatSize dataSize
+    else do
+      case T.splitAt 5 s of
+        ("", "") ->
+          Nothing
+        (c, rest)
+          | c == floatTypeName,
+            Just n <- readMaybe $ T.unpack rest,
             Just size <- asFloatSize dataSize n ->
               Just size
-        _ ->
-          Nothing
+          | otherwise ->
+              Nothing
 
 asIntSize :: DS.DataSize -> Int -> Maybe IntSize
 asIntSize dataSize size =
@@ -76,3 +84,13 @@ asFloatSize dataSize size =
         Just FloatSize64
       _ ->
         Nothing
+
+dataSizeToFloatSize :: DS.DataSize -> FloatSize
+dataSizeToFloatSize dataSize =
+  case dataSize of
+    DS.DataSize64 ->
+      FloatSize64
+
+dataSizeToIntSize :: DS.DataSize -> IntSize
+dataSizeToIntSize dataSize =
+  IntSize $ DS.reify dataSize

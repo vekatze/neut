@@ -1,19 +1,20 @@
 define test-syntax(): unit {
-  let _ = i1
-  let _ = i2
-  let _ = i4
-  let _ = i8
-  let _ = i16
-  let _ = i32
-  let _ = i64
+  let _ = int1
+  let _ = int2
+  let _ = int4
+  let _ = int8
+  let _ = int16
+  let _ = int32
+  let _ = int64
   let _ = int
 
-  let _ = f16
-  let _ = f32
-  let _ = f64
+  let _ = float16
+  let _ = float32
+  let _ = float64
+  let _ = float
 
   let _: int = 3
-  let _: f32 = 3.0
+  let _: float = 3.0
 
   Unit
 }
@@ -45,38 +46,38 @@ define test-op(): unit {
   let _ = ugt-int(50, 8)
   let _ = uge-int(50, 8)
 
-  let _ = neg-f64(1.3)
-  let _ = add-f64(1.3, 2.0)
-  let _ = sub-f64(1.3, 2.0)
-  let _ = mul-f64(1.3, 2.0)
-  let _ = div-f64(1.3, 2.0)
-  let _ = rem-f64(1.3, 2.0)
-  let _ = eq-f64(1.3, 2.0)
-  let _ = ne-f64(1.3, 2.0)
-  let _ = gt-f64(1.3, 2.0)
-  let _ = ge-f64(1.3, 2.0)
-  let _ = lt-f64(1.3, 2.0)
-  let _ = le-f64(1.3, 2.0)
-  let _ = ueq-f64(1.3, 2.0)
-  let _ = une-f64(1.3, 2.0)
-  let _ = ugt-f64(1.3, 2.0)
-  let _ = uge-f64(1.3, 2.0)
-  let _ = ult-f64(1.3, 2.0)
-  let _ = ule-f64(1.3, 2.0)
-  let _ = ord-f64(1.3, 2.0)
-  let _ = uno-f64(1.3, 2.0)
-  let _ = true-f64(1.3, 2.0)
-  let _ = false-f64(1.3, 2.0)
+  let _ = neg-float(1.3)
+  let _ = add-float(1.3, 2.0)
+  let _ = sub-float(1.3, 2.0)
+  let _ = mul-float(1.3, 2.0)
+  let _ = div-float(1.3, 2.0)
+  let _ = rem-float(1.3, 2.0)
+  let _ = eq-float(1.3, 2.0)
+  let _ = ne-float(1.3, 2.0)
+  let _ = gt-float(1.3, 2.0)
+  let _ = ge-float(1.3, 2.0)
+  let _ = lt-float(1.3, 2.0)
+  let _ = le-float(1.3, 2.0)
+  let _ = ueq-float(1.3, 2.0)
+  let _ = une-float(1.3, 2.0)
+  let _ = ugt-float(1.3, 2.0)
+  let _ = uge-float(1.3, 2.0)
+  let _ = ult-float(1.3, 2.0)
+  let _ = ule-float(1.3, 2.0)
+  let _ = ord-float(1.3, 2.0)
+  let _ = uno-float(1.3, 2.0)
+  let _ = true-float(1.3, 2.0)
+  let _ = false-float(1.3, 2.0)
 
-  let _ = trunc-i64-i32(1234)
-  let _ = zext-i32-i64(1234)
-  let _ = sext-i32-i64(1234)
-  let _ = fptrunc-f64-f32(1.4142)
-  let _ = fpext-f32-f64(1.4142)
-  let _ = fptoui-f64-int(3.8)
-  let _ = fptosi-f64-int(3.8)
-  let _ = uitofp-int-f64(1234)
-  let _ = sitofp-int-f64(1234)
+  let _ = trunc-int64-int32(1234)
+  let _ = zext-int32-int64(1234)
+  let _ = sext-int32-int64(1234)
+  let _ = fptrunc-float64-float32(1.4142)
+  let _ = fpext-float32-float64(1.4142)
+  let _ = fptoui-float-int(3.8)
+  let _ = fptosi-float-int(3.8)
+  let _ = uitofp-int-float(1234)
+  let _ = sitofp-int-float(1234)
 
   Unit
 }

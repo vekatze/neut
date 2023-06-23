@@ -4,26 +4,26 @@ import {
 - this.compare => c
 }
 
-alias double { f64 }
+alias double { float64 }
 
 inline add(x: double, y: double): double {
-  add-f64(x, y)
+  add-float64(x, y)
 }
 
 inline sub(x: double, y: double): double {
-  sub-f64(x, y)
+  sub-float64(x, y)
 }
 
 inline mul(x: double, y: double): double {
-  mul-f64(x, y)
+  mul-float64(x, y)
 }
 
 inline div(x: double, y: double): double {
-  div-f64(x, y)
+  div-float64(x, y)
 }
 
 inline from-int(x: int): double {
-  sitofp-int-f64(x)
+  sitofp-int-float64(x)
 }
 
 inline as-additive-monoid(): monoid(double) {
@@ -35,21 +35,21 @@ inline as-additive-monoid(): monoid(double) {
 
 inline compare(): c.compare(double) {
   c.Compare of {
-  - lt => lt-f64
-  - le => le-f64
-  - gt => gt-f64
-  - ge => ge-f64
-  - eq => eq-f64
+  - lt => lt-float64
+  - le => le-float64
+  - gt => gt-float64
+  - ge => ge-float64
+  - eq => eq-float64
   }
 }
 
 inline arith(): a.arith(double) {
   a.Arith of {
-  - neg => neg-f64
-  - add => add-f64
-  - sub => sub-f64
-  - mul => mul-f64
-  - div => div-f64
+  - neg => neg-float64
+  - add => add-float64
+  - sub => sub-float64
+  - mul => mul-float64
+  - div => div-float64
   - compare => compare()
   }
 }

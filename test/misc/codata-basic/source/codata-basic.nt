@@ -5,7 +5,7 @@ data bar(a: tau) {
 data foo() {
 - Foo(
     value-1: int,
-    value-2: i32,
+    value-2: int32,
     value-3: bar(int)
   )
 }
