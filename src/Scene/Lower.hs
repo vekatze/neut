@@ -1,3 +1,7 @@
+{-# OPTIONS_GHC -Wno-unrecognised-pragmas #-}
+
+{-# HLINT ignore "Use list comprehension" #-}
+
 module Scene.Lower (lower) where
 
 import Codec.Binary.UTF8.String
@@ -197,15 +201,19 @@ lowerCompPrimitive codeOp =
           castedPointer <- lowerValueLetCast pointer LT.Pointer
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
-        M.External name args -> do
+        M.External name args varArgs -> do
           (domTypeList, codType) <- lift $ Decl.lookupDeclEnv (DN.Ext name)
-          castedArgs <- zipWithM lowerValueLetCast args domTypeList
+          let argCaster = domTypeList ++ repeat LT.Pointer
+          castedArgs <- zipWithM lowerValueLetCast (args ++ varArgs) argCaster
+          let suffix = if null varArgs then [] else [LT.VarArgs]
+          let domTypeList' = domTypeList ++ suffix
+          let funcType = LT.Function domTypeList' codType
           case codType of
             LT.Void -> do
-              reflectCont $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
+              reflectCont $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
               return LC.Null
             _ -> do
-              result <- reflect $ LC.Call codType (LC.VarExternal name) $ zip domTypeList castedArgs
+              result <- reflect $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
               uncast result codType
         M.Global lt name -> do
           uncast (LC.VarExternal name) lt

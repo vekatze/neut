@@ -19,6 +19,8 @@ emitLowOp ax lowOp =
   case lowOp of
     LC.Call codType d ds ->
       unwordsL ["call fastcc", emitLowType codType, emitValue d <> showArgs ds]
+    LC.MagicCall funcType d ds ->
+      unwordsL ["call", emitLowType funcType, emitValue d <> showArgs ds]
     LC.GetElementPtr (basePtr, n) is ->
       unwordsL
         [ "getelementptr",

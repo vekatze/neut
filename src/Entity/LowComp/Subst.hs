@@ -20,6 +20,11 @@ substOp sub llvmOp =
       let (ts, ds) = unzip tds
       let ds' = map (substLowValue sub) ds
       LC.Call codType d' (zip ts ds')
+    LC.MagicCall funcType d tds -> do
+      let d' = substLowValue sub d
+      let (ts, ds) = unzip tds
+      let ds' = map (substLowValue sub) ds
+      LC.MagicCall funcType d' (zip ts ds')
     LC.GetElementPtr (d, t) dts -> do
       let d' = substLowValue sub d
       let (ds, ts) = unzip dts

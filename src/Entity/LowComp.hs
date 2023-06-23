@@ -52,6 +52,7 @@ type FreeID =
 
 data Op
   = Call LowType Value [(LowType, Value)] -- non-tail call
+  | MagicCall LowType Value [(LowType, Value)] -- non-tail call (external)
   | GetElementPtr
       (Value, LowType) -- (base pointer, the type of base pointer)
       [(Value, LowType)] -- [(index, the-type-of-index)]

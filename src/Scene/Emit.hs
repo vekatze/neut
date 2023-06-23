@@ -105,7 +105,7 @@ emitMain (args, body) = do
 declToBuilder :: (DN.DeclarationName, ([LT.LowType], LT.LowType)) -> Builder
 declToBuilder (name, (dom, cod)) = do
   let name' = DN.toBuilder name
-  "declare fastcc "
+  "declare "
     <> emitLowType cod
     <> " @"
     <> name'

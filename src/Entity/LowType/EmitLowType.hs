@@ -20,3 +20,5 @@ emitLowType lowType =
       "ptr"
     LT.Void ->
       "void"
+    LT.VarArgs ->
+      "..."

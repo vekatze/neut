@@ -13,6 +13,7 @@ data LowType
   | Struct [LowType]
   | Function [LowType] LowType
   | Void
+  | VarArgs
   deriving (Eq, Ord, G.Generic)
 
 instance Show LowType where

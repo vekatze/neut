@@ -355,11 +355,12 @@ clarifyMagic tenv der =
       return $
         bindLet [(pointerVarName, pointer')] $
           C.Primitive (C.Magic (M.Load lt pointerVar))
-    M.External extFunName args -> do
+    M.External extFunName args varArgs -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
+      (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus tenv) varArgs
       return $
-        bindLet (zip xs args') $
-          C.Primitive (C.Magic (M.External extFunName xsAsVars))
+        bindLet (zip xs args' ++ zip ys varArgs') $
+          C.Primitive (C.Magic (M.External extFunName xsAsVars ysAsVarArgs))
     M.Global lt name -> do
       return $ C.Primitive (C.Magic (M.Global lt name))
 

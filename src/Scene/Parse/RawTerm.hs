@@ -429,7 +429,15 @@ rawTermMagicExternal m = do
   rawTermMagicBase "external" $ do
     extFunName <- symbol
     es <- many (delimiter "," >> rawTerm)
-    return $ m :< RT.Magic (M.External (EN.ExternalName extFunName) es)
+    varArgs <-
+      choice
+        [ do
+            delimiter ";"
+            sepBy rawTerm (delimiter ","),
+          return
+            []
+        ]
+    return $ m :< RT.Magic (M.External (EN.ExternalName extFunName) es varArgs)
 
 rawTermMagicGlobal :: Hint -> Parser RT.RawTerm
 rawTermMagicGlobal m = do

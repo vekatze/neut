@@ -251,6 +251,8 @@ elaborate' term =
               case t' of
                 _ :< TM.Prim (P.Type (PT.Int size)) ->
                   return $ m :< TM.Prim (P.Value (PV.Int size x))
+                _ :< TM.Prim (P.Type (PT.Float size)) ->
+                  return $ m :< TM.Prim (P.Value (PV.Float size (fromInteger x)))
                 _ -> do
                   Throw.raiseError m $
                     "the term `"
@@ -277,7 +279,7 @@ elaborate' term =
       return $ m :< TM.ResourceType name
     m :< WT.Magic magic -> do
       case magic of
-        M.External name args -> do
+        M.External name args varArgs -> do
           arity <- Decl.lookupExtEnv m name
           let expected = fromInteger (A.reify arity)
           let actual = length args
@@ -291,7 +293,8 @@ elaborate' term =
                 <> T.pack (show actual)
                 <> "."
           args' <- mapM elaborate' args
-          return $ m :< TM.Magic (M.External name args')
+          varArgs' <- mapM elaborate' varArgs
+          return $ m :< TM.Magic (M.External name args' varArgs')
         _ -> do
           magic' <- mapM elaborate' magic
           return $ m :< TM.Magic magic'
