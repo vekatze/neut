@@ -457,7 +457,7 @@ lowTypePointer = do
 lowTypeVoid :: Parser LT.LowType
 lowTypeVoid = do
   keyword "void"
-  return LT.Pointer
+  return LT.Void
 
 lowTypeArray :: Parser LT.LowType
 lowTypeArray = do
