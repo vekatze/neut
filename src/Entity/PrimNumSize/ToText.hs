@@ -10,8 +10,8 @@ import Entity.PrimNumSize.ToInt
 
 intSizeToText :: IntSize -> T.Text
 intSizeToText size =
-  "i" <> T.pack (show $ intSizeToInt size)
+  "int" <> T.pack (show $ intSizeToInt size)
 
 floatSizeToText :: FloatSize -> T.Text
 floatSizeToText size =
-  "f" <> T.pack (show $ floatSizeToInt size)
+  "float" <> T.pack (show $ floatSizeToInt size)
