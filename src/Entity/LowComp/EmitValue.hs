@@ -29,13 +29,12 @@ emitValue lowValue =
       integerDec i
     LC.Float FloatSize16 x -> do
       let x' = realToFrac x :: Half
-      "0x" <> doubleHexFixed (realToFrac x')
+      doubleDec (realToFrac x')
     LC.Float FloatSize32 x -> do
       let x' = realToFrac x :: Float
-      "0x" <> doubleHexFixed (realToFrac x')
+      doubleDec (realToFrac x')
     LC.Float FloatSize64 x -> do
-      let x' = realToFrac x :: Double
-      "0x" <> doubleHexFixed (realToFrac x')
+      doubleDec x
     LC.Null ->
       "null"
 
