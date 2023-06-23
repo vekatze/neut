@@ -172,18 +172,17 @@ which relieves code cluttering.
 
 ### Tail Call Optimization
 
-Neut optimizes all the tail calls. Thus, calculating length can be done faster using the following way:
+Neut optimizes all the tail calls. Thus, for example, the following function is optimized into a loop:
 
 ```neut
 define length-of-my-list[a](xs: my-list(a)): int {
   let helper =
-    // (you can also define a recursive function in a function)
     mu get-length(ys: my-list(a), acc: int): int {
       match ys {
       - Nil =>
         acc
       - Cons(_, zs) =>
-        get-length(zs, add-int(1, acc)) // tail call of `get-length`
+        get-length(zs, add-int(1, acc)) // a tail call of `get-length`
       }
     }
   helper(xs, 0)
