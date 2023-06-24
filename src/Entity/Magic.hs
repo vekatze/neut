@@ -10,7 +10,7 @@ data Magic a
   = Cast a a a
   | Store LowType a a
   | Load LowType a
-  | External EN.ExternalName [a] [a]
+  | External [LowType] LowType EN.ExternalName [a] [a]
   | Global LowType EN.ExternalName
   deriving (Show, Eq, G.Generic)
 
@@ -25,8 +25,8 @@ instance Functor Magic where
         Store lt (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
-      External extFunName args varArgs ->
-        External extFunName (fmap f args) (fmap f varArgs)
+      External domList cod extFunName args varArgs ->
+        External domList cod extFunName (fmap f args) (fmap f varArgs)
       Global lt name ->
         Global lt name
 
@@ -39,7 +39,7 @@ instance Foldable Magic where
         f value <> f pointer
       Load _ pointer ->
         f pointer
-      External _ args varArgs ->
+      External _ _ _ args varArgs ->
         foldMap f (args ++ varArgs)
       Global {} ->
         mempty
@@ -53,8 +53,8 @@ instance Traversable Magic where
         Store lt <$> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
-      External extFunName args varArgs ->
-        External extFunName <$> traverse f args <*> traverse f varArgs
+      External domList cod extFunName args varArgs ->
+        External domList cod extFunName <$> traverse f args <*> traverse f varArgs
       Global lt name ->
         pure $ Global lt name
 

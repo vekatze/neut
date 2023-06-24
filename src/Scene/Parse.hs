@@ -7,6 +7,7 @@ where
 import Context.Alias qualified as Alias
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
@@ -24,6 +25,7 @@ import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
 import Entity.Decl qualified as DE
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.ExternalName qualified as EN
@@ -118,6 +120,8 @@ program currentSource = do
     lift $ Alias.activateAliasInfo namesInSource aliasInfo
     lift $ NameDependence.get path >>= Global.activateTopLevelNames
     lift $ Via.get path >>= Via.addToActiveViaMap
+  forM_ declList $ \(DE.Decl name domList cod) -> do
+    lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList)
 

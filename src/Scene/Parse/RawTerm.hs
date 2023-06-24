@@ -11,6 +11,7 @@ module Scene.Parse.RawTerm
 where
 
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
@@ -24,6 +25,7 @@ import Entity.Annotation qualified as AN
 import Entity.Arch qualified as Arch
 import Entity.BuildMode qualified as BM
 import Entity.Const
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
@@ -427,7 +429,7 @@ rawTermMagicLoad m = do
 rawTermMagicExternal :: Hint -> Parser RT.RawTerm
 rawTermMagicExternal m = do
   rawTermMagicBase "external" $ do
-    extFunName <- symbol
+    extFunName <- EN.ExternalName <$> symbol
     es <- many (delimiter "," >> rawTerm)
     varArgs <-
       choice
@@ -437,7 +439,8 @@ rawTermMagicExternal m = do
           return
             []
         ]
-    return $ m :< RT.Magic (M.External (EN.ExternalName extFunName) es varArgs)
+    (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName)
+    return $ m :< RT.Magic (M.External domList cod extFunName es varArgs)
 
 rawTermMagicGlobal :: Hint -> Parser RT.RawTerm
 rawTermMagicGlobal m = do

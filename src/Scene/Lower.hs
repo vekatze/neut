@@ -201,20 +201,22 @@ lowerCompPrimitive codeOp =
           castedPointer <- lowerValueLetCast pointer LT.Pointer
           result <- reflect $ LC.Load castedPointer valueLowType
           uncast result valueLowType
-        M.External name args varArgs -> do
-          (domTypeList, codType) <- lift $ Decl.lookupDeclEnv (DN.Ext name)
-          let argCaster = domTypeList ++ repeat LT.Pointer
+        M.External domList cod name args varArgs -> do
+          alreadyRegistered <- lift $ Decl.member (DN.Ext name)
+          unless alreadyRegistered $ do
+            lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
+          let argCaster = domList ++ repeat LT.Pointer
           castedArgs <- zipWithM lowerValueLetCast (args ++ varArgs) argCaster
           let suffix = if null varArgs then [] else [LT.VarArgs]
-          let domTypeList' = domTypeList ++ suffix
-          let funcType = LT.Function domTypeList' codType
-          case codType of
+          let domList' = domList ++ suffix
+          let funcType = LT.Function domList' cod
+          case cod of
             LT.Void -> do
               reflectCont $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
               return LC.Null
             _ -> do
               result <- reflect $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
-              uncast result codType
+              uncast result cod
         M.Global lt name -> do
           uncast (LC.VarExternal name) lt
 

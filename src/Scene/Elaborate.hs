@@ -3,7 +3,6 @@ module Scene.Elaborate (elaborate) where
 import Context.App
 import Context.Cache qualified as Cache
 import Context.DataDefinition qualified as DataDefinition
-import Context.Decl qualified as Decl
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
@@ -22,7 +21,6 @@ import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
-import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
@@ -69,8 +67,6 @@ elaborate cacheOrStmt = do
       let declList = Cache.declList cache
       return (stmtList, declList)
     Right (defList, declList) -> do
-      forM_ declList $ \(DE.Decl name domList _) -> do
-        Decl.insExtEnv name $ A.fromInt $ length domList
       defList' <- (analyzeDefList >=> synthesizeDefList declList) defList
       return (defList', declList)
 
@@ -279,11 +275,10 @@ elaborate' term =
       return $ m :< TM.ResourceType name
     m :< WT.Magic magic -> do
       case magic of
-        M.External name args varArgs -> do
-          arity <- Decl.lookupExtEnv m name
-          let expected = fromInteger (A.reify arity)
+        M.External domList cod name args varArgs -> do
+          let expected = length domList
           let actual = length args
-          when (actual /= expected) $ do
+          when (actual /= length domList) $ do
             Throw.raiseError m $
               "the external function `"
                 <> EN.reify name
@@ -294,7 +289,7 @@ elaborate' term =
                 <> "."
           args' <- mapM elaborate' args
           varArgs' <- mapM elaborate' varArgs
-          return $ m :< TM.Magic (M.External name args' varArgs')
+          return $ m :< TM.Magic (M.External domList cod name args' varArgs')
         _ -> do
           magic' <- mapM elaborate' magic
           return $ m :< TM.Magic magic'
