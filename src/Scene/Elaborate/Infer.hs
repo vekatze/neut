@@ -24,6 +24,7 @@ import Entity.Magic qualified as M
 import Entity.Name qualified as N
 import Entity.PrimOp
 import Entity.Stmt
+import Entity.StmtKind
 import Entity.Term qualified as TM
 import Entity.Term.FromPrimNum qualified as Term
 import Entity.Term.Weaken
@@ -40,6 +41,7 @@ inferStmt mMainDD stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
       Type.insert x $ m :< WT.Pi xts codType
+      stmtKind' <- inferStmtKind stmtKind
       (xts', varEnv) <- inferBinder' [] xts
       codType' <- inferType' varEnv codType
       (e', te) <- infer' varEnv e
@@ -47,7 +49,7 @@ inferStmt mMainDD stmt =
       when (mMainDD == Just x) $ do
         unitType <- getUnitType m
         insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
-      return $ WeakStmtDefine isConstLike stmtKind m x impArgNum xts' codType' e'
+      return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
     WeakStmtDefineResource m name discarder copier -> do
       Type.insert name $ m :< WT.Tau
       (discarder', td) <- infer' [] discarder
@@ -59,6 +61,22 @@ inferStmt mMainDD stmt =
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return $ WeakStmtDefineResource m name discarder' copier'
+
+inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
+inferStmtKind stmtKind =
+  case stmtKind of
+    Normal {} ->
+      return stmtKind
+    Data dataName dataArgs consInfoList -> do
+      (dataArgs', varEnv) <- inferBinder' [] dataArgs
+      consInfoList' <- forM consInfoList $ \(m, dd, constLike, consArgs, discriminant) -> do
+        (consArgs', _) <- inferBinder' varEnv consArgs
+        return (m, dd, constLike, consArgs', discriminant)
+      return $ Data dataName dataArgs' consInfoList'
+    DataIntro consName dataArgs consArgs discriminant -> do
+      (dataArgs', varEnv) <- inferBinder' [] dataArgs
+      (consArgs', _) <- inferBinder' varEnv consArgs
+      return $ DataIntro consName dataArgs' consArgs' discriminant
 
 getIntType :: Hint -> App WT.WeakTerm
 getIntType m = do
