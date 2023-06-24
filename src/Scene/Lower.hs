@@ -208,8 +208,7 @@ lowerCompPrimitive codeOp =
           let argCaster = domList ++ repeat LT.Pointer
           castedArgs <- zipWithM lowerValueLetCast (args ++ varArgs) argCaster
           let suffix = if null varArgs then [] else [LT.VarArgs]
-          let domList' = domList ++ suffix
-          let funcType = LT.Function domList' cod
+          let funcType = LT.Function (domList ++ suffix) cod
           case cod of
             LT.Void -> do
               reflectCont $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
