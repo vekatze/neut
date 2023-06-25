@@ -76,6 +76,7 @@ data Env = Env
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
+    lucentDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
     staticTextList :: IORef [(DD.DefiniteDescription, (T.Text, Int))],
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -135,6 +136,7 @@ newEnv = do
   definedNameSet <- newIORef S.empty
   visitEnv <- newIORef Map.empty
   weakDefMap <- newIORef Map.empty
+  lucentDefMap <- newIORef Map.empty
   defMap <- newIORef Map.empty
   staticTextList <- newIORef []
   compAuxEnv <- newIORef Map.empty

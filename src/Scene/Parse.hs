@@ -133,6 +133,7 @@ parseStmt = do
       return <$> parseAliasTransparent,
       return <$> parseDefineResource,
       return <$> parseDefine O.Transparent,
+      return <$> parseDefine O.Lucent,
       return <$> parseDefine O.Opaque
     ]
 
@@ -160,6 +161,8 @@ parseDefine opacity = do
         P.keyword "define"
       O.Transparent ->
         P.keyword "inline"
+      O.Lucent ->
+        P.keyword "lucent"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name

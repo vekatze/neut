@@ -43,6 +43,8 @@ toText term =
               showCons ["λ", argStr, toText e]
             O.Opaque -> do
               showCons ["λ*", argStr, toText e]
+            O.Lucent ->
+              showCons ["λ+", argStr, toText e]
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
     _ :< WT.Data name _ es -> do

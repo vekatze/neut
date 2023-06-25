@@ -1,12 +1,18 @@
 module Scene.WeakTerm.Reduce (reduce) where
 
 import Context.App
+import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Entity.DecisionTree qualified as DT
+import Entity.Discriminant
+import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Opacity qualified as O
+import Entity.WeakPrim qualified as WP
+import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.FreeVars
 import Scene.WeakTerm.Subst qualified as Subst
@@ -36,12 +42,17 @@ reduce term =
     m :< WT.PiElim e es -> do
       e' <- reduce e
       es' <- mapM reduce es
+      dmap <- WeakDefinition.readLucent
       case e' of
         (_ :< WT.PiIntro (LK.Normal O.Transparent) xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
               Subst.subst sub body >>= reduce
+        (_ :< WT.VarGlobal dd _)
+          | Just func <- Map.lookup dd dmap,
+            all WT.isValue es' -> do
+              reduce $ m :< WT.PiElim func es'
         _ ->
           return $ m :< WT.PiElim e' es'
     m :< WT.Data name consNameList es -> do

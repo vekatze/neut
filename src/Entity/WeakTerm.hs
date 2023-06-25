@@ -76,6 +76,8 @@ reflectOpacity opacity =
       Opaque
     O.Transparent ->
       Transparent
+    O.Lucent ->
+      Transparent
 
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =
@@ -96,3 +98,29 @@ asVar term =
       Just x
     _ ->
       Nothing
+
+isValue :: WeakTerm -> Bool
+isValue term =
+  case term of
+    _ :< Tau ->
+      True
+    _ :< VarGlobal {} ->
+      True
+    _ :< Pi {} ->
+      True
+    _ :< PiIntro {} ->
+      True
+    _ :< Data {} ->
+      True
+    _ :< DataIntro _ _ _ _ dataArgs consArgs ->
+      all isValue $ dataArgs ++ consArgs
+    _ :< Noema {} ->
+      True
+    _ :< Prim {} ->
+      True
+    _ :< ResourceType {} ->
+      True
+    _ :< Flow {} ->
+      True
+    _ ->
+      False
