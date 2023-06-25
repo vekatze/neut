@@ -39,6 +39,7 @@ data Stuck
   = StuckPiElimVarLocal Ident [(Hint, [WT.WeakTerm])]
   | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WT.WeakTerm])]
   | StuckPiElimHole HID.HoleID [WT.WeakTerm]
+  | StuckPiElimPrim (WP.WeakPrim WT.WeakTerm) [(Hint, [WT.WeakTerm])]
 
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
@@ -256,6 +257,10 @@ simplify constraintList =
                 (_, Just (StuckPiElimVarGlobal g2 mess2))
                   | Just lam <- Map.lookup g2 defMap ->
                       simplify $ (C.Eq e1 (toPiElim lam mess2), orig) : cs
+                (Just (StuckPiElimPrim (WP.Value (WPV.Op op1)) mess1), Just (StuckPiElimPrim (WP.Value (WPV.Op op2)) mess2))
+                  | op1 == op2,
+                    Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
+                      simplify $ map (,orig) pairList ++ cs
                 _ -> do
                   let uc = C.SuspendedConstraint (fmvs, C.Other, headConstraint)
                   insertConstraint uc
@@ -326,12 +331,16 @@ asStuckedTerm term =
       Just $ StuckPiElimVarGlobal g []
     (_ :< WT.Hole h es) ->
       Just $ StuckPiElimHole h es
+    (_ :< WT.Prim prim) ->
+      Just $ StuckPiElimPrim prim []
     (m :< WT.PiElim e es) ->
       case asStuckedTerm e of
         Just (StuckPiElimVarLocal x ess) ->
           Just $ StuckPiElimVarLocal x $ ess ++ [(m, es)]
         Just (StuckPiElimVarGlobal g ess) ->
           Just $ StuckPiElimVarGlobal g $ ess ++ [(m, es)]
+        Just (StuckPiElimPrim prim ess) ->
+          Just $ StuckPiElimPrim prim $ ess ++ [(m, es)]
         _ ->
           Nothing
     _ ->

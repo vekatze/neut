@@ -345,7 +345,7 @@ fillHole m h es = do
   holeSubst <- getHoleSubst
   case HS.lookup h holeSubst of
     Nothing ->
-      Throw.raiseError m "couldn't instantiate the hole here"
+      Throw.raiseError m $ "couldn't instantiate the hole here: " <> T.pack (show h)
     Just (xs, e)
       | length xs == length es -> do
           let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)

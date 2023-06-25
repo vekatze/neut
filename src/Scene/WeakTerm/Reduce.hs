@@ -53,6 +53,27 @@ reduce term =
           | Just func <- Map.lookup dd dmap,
             all WT.isValue es' -> do
               reduce $ m :< WT.PiElim func es'
+        (_ :< WT.Prim (WP.Value (WPV.Op op)))
+          | Just (op', cod) <- WPV.reflectFloatUnaryOp op,
+            [Just value] <- map asPrimFloatValue es' -> do
+              let floatType = m :< WT.Prim (WP.Type cod)
+              return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value)))
+          | Just (op', cod) <- WPV.reflectIntegerBinaryOp op,
+            [Just value1, Just value2] <- map asPrimIntegerValue es' -> do
+              let intType = m :< WT.Prim (WP.Type cod)
+              return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
+          | Just (op', cod) <- WPV.reflectFloatBinaryOp op,
+            [Just value1, Just value2] <- map asPrimFloatValue es' -> do
+              let floatType = m :< WT.Prim (WP.Type cod)
+              return $ m :< WT.Prim (WP.Value (WPV.Float floatType (op' value1 value2)))
+          | Just (op', cod) <- WPV.reflectIntegerCmpOp op,
+            [Just value1, Just value2] <- map asPrimIntegerValue es' -> do
+              let intType = m :< WT.Prim (WP.Type cod)
+              return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
+          | Just (op', cod) <- WPV.reflectFloatCmpOp op,
+            [Just value1, Just value2] <- map asPrimFloatValue es' -> do
+              let intType = m :< WT.Prim (WP.Type cod)
+              return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
         _ ->
           return $ m :< WT.PiElim e' es'
     m :< WT.Data name consNameList es -> do
@@ -66,8 +87,29 @@ reduce term =
       let (os, es, ts) = unzip3 oets
       es' <- mapM reduce es
       ts' <- mapM reduce ts
-      decisionTree' <- reduceDecisionTree decisionTree
-      return $ m :< WT.DataElim isNoetic (zip3 os es' ts') decisionTree'
+      let oets' = zip3 os es' ts'
+      if isNoetic
+        then do
+          decisionTree' <- reduceDecisionTree decisionTree
+          return $ m :< WT.DataElim isNoetic oets' decisionTree'
+        else do
+          case decisionTree of
+            DT.Leaf _ e -> do
+              let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
+              Subst.subst sub e >>= reduce
+            DT.Unreachable ->
+              return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
+            DT.Switch (cursor, _) (fallbackTree, caseList) -> do
+              case lookupSplit cursor oets' of
+                Just (e@(_ :< WT.DataIntro _ _ _ disc _ consArgs), oets'') -> do
+                  let (newBaseCursorList, cont) = findClause disc fallbackTree caseList
+                  let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
+                  let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
+                  cont' <- Subst.substDecisionTree sub cont
+                  reduce $ m :< WT.DataElim isNoetic (oets'' ++ newCursorList) cont'
+                _ -> do
+                  decisionTree' <- reduceDecisionTree decisionTree
+                  return $ m :< WT.DataElim isNoetic oets' decisionTree'
     m :< WT.Noema t -> do
       t' <- reduce t
       return $ m :< WT.Noema t'
@@ -78,12 +120,12 @@ reduce term =
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce e1
       case opacity of
-        WT.Opaque -> do
+        WT.Transparent -> do
+          let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
+          Subst.subst sub e2 >>= reduce
+        _ -> do
           e2' <- reduce e2
           return $ m :< WT.Let opacity mxt e1' e2'
-        _ -> do
-          let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
-          Subst.subst sub e2
     m :< WT.Magic der -> do
       der' <- mapM reduce der
       return $ m :< WT.Magic der'
@@ -98,6 +140,9 @@ reduce term =
       e' <- reduce e
       t' <- reduce t
       return $ m :< WT.FlowElim pVar var (e', t')
+    m :< WT.Prim prim -> do
+      prim' <- mapM reduce prim
+      return $ m :< WT.Prim prim'
     _ ->
       return term
 
@@ -135,3 +180,55 @@ reduceCase (DT.Cons mCons dd disc dataArgs consArgs tree) = do
   ts' <- mapM reduce ts
   tree' <- reduceDecisionTree tree
   return $ DT.Cons mCons dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
+
+findClause ::
+  Discriminant ->
+  DT.DecisionTree WT.WeakTerm ->
+  [DT.Case WT.WeakTerm] ->
+  ([(Ident, WT.WeakTerm)], DT.DecisionTree WT.WeakTerm)
+findClause consDisc fallbackTree clauseList =
+  case clauseList of
+    [] ->
+      ([], fallbackTree)
+    clause : rest ->
+      case findCase consDisc clause of
+        Just (consArgs, clauseTree) ->
+          (consArgs, clauseTree)
+        Nothing ->
+          findClause consDisc fallbackTree rest
+
+findCase :: Discriminant -> DT.Case WT.WeakTerm -> Maybe ([(Ident, WT.WeakTerm)], DT.DecisionTree WT.WeakTerm)
+findCase consDisc (DT.Cons _ _ disc _ consArgs tree) =
+  if consDisc == disc
+    then Just (map (\(_, x, t) -> (x, t)) consArgs, tree)
+    else Nothing
+
+lookupSplit :: Ident -> [(Ident, b, c)] -> Maybe (b, [(Ident, b, c)])
+lookupSplit cursor =
+  lookupSplit' cursor []
+
+lookupSplit' :: Ident -> [(Ident, b, c)] -> [(Ident, b, c)] -> Maybe (b, [(Ident, b, c)])
+lookupSplit' cursor acc oets =
+  case oets of
+    [] ->
+      Nothing
+    oet@(o, e, _) : rest ->
+      if o == cursor
+        then Just (e, reverse acc ++ rest)
+        else lookupSplit' cursor (oet : acc) rest
+
+asPrimIntegerValue :: WT.WeakTerm -> Maybe Integer
+asPrimIntegerValue term = do
+  case term of
+    _ :< WT.Prim (WP.Value (WPV.Int _ value)) ->
+      return value
+    _ ->
+      Nothing
+
+asPrimFloatValue :: WT.WeakTerm -> Maybe Double
+asPrimFloatValue term = do
+  case term of
+    _ :< WT.Prim (WP.Value (WPV.Float _ value)) ->
+      return value
+    _ ->
+      Nothing

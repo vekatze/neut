@@ -1,4 +1,4 @@
-module Scene.WeakTerm.Subst (subst) where
+module Scene.WeakTerm.Subst (subst, substDecisionTree) where
 
 import Context.App
 import Context.Gensym
