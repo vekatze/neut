@@ -127,13 +127,13 @@ showPrim prim =
         WPV.Op op ->
           case op of
             PO.PrimUnaryOp name _ _ ->
-              showCons [name]
+              showCons [T.pack (show name)]
             PO.PrimBinaryOp name _ _ ->
-              showCons [name]
+              showCons [T.pack (show name)]
             PO.PrimCmpOp name _ _ ->
-              showCons [name]
+              showCons [T.pack (show name)]
             PO.PrimConvOp name _ _ ->
-              showCons [name]
+              showCons [T.pack (show name)]
         WPV.StaticText _ text ->
           T.pack $ show text
 

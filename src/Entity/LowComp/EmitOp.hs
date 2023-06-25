@@ -1,6 +1,7 @@
 module Entity.LowComp.EmitOp (emitLowOp, Axis (..)) where
 
 import Data.ByteString.Builder
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.LowComp qualified as LC
 import Entity.LowComp.EmitValue
@@ -57,16 +58,16 @@ emitLowOp ax lowOp =
     LC.PrimOp op args -> do
       case op of
         PrimUnaryOp name dom _ -> do
-          let name' = TE.encodeUtf8Builder name
+          let name' = TE.encodeUtf8Builder (T.pack $ show name)
           emitUnaryOp dom name' (head args)
         PrimBinaryOp name dom _ -> do
-          let name' = TE.encodeUtf8Builder name
+          let name' = TE.encodeUtf8Builder (T.pack $ show name)
           emitBinaryOp dom name' (head args) (args !! 1)
         PrimCmpOp name dom _ -> do
-          let name' = TE.encodeUtf8Builder name
+          let name' = TE.encodeUtf8Builder (T.pack $ show name)
           emitBinaryOp dom name' (head args) (args !! 1)
         PrimConvOp name dom cod -> do
-          let name' = TE.encodeUtf8Builder name
+          let name' = TE.encodeUtf8Builder (T.pack $ show name)
           emitConvOp name' (head args) (LT.PrimNum dom) (LT.PrimNum cod)
 
 emitUnaryOp :: PT.PrimType -> Builder -> LC.Value -> Builder

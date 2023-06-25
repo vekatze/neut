@@ -1,16 +1,18 @@
 module Entity.PrimOp where
 
 import Data.Binary
-import Data.Text qualified as T
-import Entity.PrimNumSize
+import Entity.PrimOp.BinaryOp
+import Entity.PrimOp.CmpOp
+import Entity.PrimOp.ConvOp
+import Entity.PrimOp.UnaryOp
 import Entity.PrimType qualified as PT
 import GHC.Generics qualified as G
 
 data PrimOp
-  = PrimUnaryOp T.Text PT.PrimType PT.PrimType
-  | PrimBinaryOp T.Text PT.PrimType PT.PrimType
-  | PrimCmpOp T.Text PT.PrimType PT.PrimType
-  | PrimConvOp T.Text PT.PrimType PT.PrimType
+  = PrimUnaryOp UnaryOp PT.PrimType PT.PrimType
+  | PrimBinaryOp BinaryOp PT.PrimType PT.PrimType
+  | PrimCmpOp CmpOp PT.PrimType PT.PrimType
+  | PrimConvOp ConvOp PT.PrimType PT.PrimType
   deriving (Show, Eq, Ord, G.Generic)
 
 instance Binary PrimOp
@@ -26,19 +28,3 @@ getTypeInfo op =
       ([dom, dom], cod)
     PrimConvOp _ dom cod ->
       ([dom], cod)
-
-unaryOp :: T.Text -> PT.PrimType -> PrimOp
-unaryOp name primType =
-  PrimUnaryOp name primType primType
-
-binOp :: T.Text -> PT.PrimType -> PrimOp
-binOp name primType =
-  PrimBinaryOp name primType primType
-
-cmpOp :: T.Text -> PT.PrimType -> PrimOp
-cmpOp name primType =
-  case primType of
-    PT.Float {} ->
-      PrimCmpOp ("fcmp " <> name) primType (PT.Int $ IntSize 1)
-    _ ->
-      PrimCmpOp ("icmp " <> name) primType (PT.Int $ IntSize 1)
