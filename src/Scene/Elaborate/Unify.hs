@@ -24,6 +24,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Remark qualified as R
+import Entity.Stuck qualified as Stuck
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as Subst
@@ -34,12 +35,6 @@ import Entity.WeakTerm.ToText
 import Scene.WeakTerm.Fill
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst qualified as Subst
-
-data Stuck
-  = StuckPiElimVarLocal Ident [(Hint, [WT.WeakTerm])]
-  | StuckPiElimVarGlobal DD.DefiniteDescription [(Hint, [WT.WeakTerm])]
-  | StuckPiElimHole HID.HoleID [WT.WeakTerm]
-  | StuckPiElimPrim (WP.WeakPrim WT.WeakTerm) [(Hint, [WT.WeakTerm])]
 
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
@@ -213,53 +208,53 @@ simplify constraintList =
             (Nothing, Nothing) -> do
               defMap <- WeakDefinition.read
               let fmvs = S.union fmvs1 fmvs2
-              case (asStuckedTerm e1, asStuckedTerm e2) of
-                (Just (StuckPiElimHole h1 ies1), _)
+              case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
+                (Just (Stuck.Hole h1 ies1, _ :< Stuck.Base), _)
                   | Just xss1 <- mapM asIdent ies1,
                     Just argSet1 <- toLinearIdentSet xss1,
                     h1 `S.notMember` fmvs2,
                     fvs2 `S.isSubsetOf` argSet1 ->
                       resolveHole h1 xss1 e2 cs
-                (_, Just (StuckPiElimHole h2 ies2))
+                (_, Just (Stuck.Hole h2 ies2, _ :< Stuck.Base))
                   | Just xss2 <- mapM asIdent ies2,
                     Just argSet2 <- toLinearIdentSet xss2,
                     h2 `S.notMember` fmvs1,
                     fvs1 `S.isSubsetOf` argSet2 ->
                       resolveHole h2 xss2 e1 cs
-                (Just (StuckPiElimVarLocal x1 mess1), Just (StuckPiElimVarLocal x2 mess2))
+                (Just (Stuck.VarLocal x1, ctx1), Just (Stuck.VarLocal x2, ctx2))
                   | x1 == x2,
-                    Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
+                    Just pairList <- Stuck.asPairList ctx1 ctx2 ->
                       simplify $ map (,orig) pairList ++ cs
-                (Just (StuckPiElimVarGlobal g1 mess1), Just (StuckPiElimVarGlobal g2 mess2))
+                (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.VarGlobal g2, ctx2))
                   | g1 == g2,
                     Nothing <- Map.lookup g1 defMap,
-                    Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
+                    Just pairList <- Stuck.asPairList ctx1 ctx2 ->
                       simplify $ map (,orig) pairList ++ cs
                   | g1 == g2,
                     Just lam <- Map.lookup g1 defMap ->
-                      simplify $ (C.Eq (toPiElim lam mess1) (toPiElim lam mess2), orig) : cs
+                      simplify $ (C.Eq (Stuck.resume lam ctx1) (Stuck.resume lam ctx2), orig) : cs
                   | Just lam1 <- Map.lookup g1 defMap,
                     Just lam2 <- Map.lookup g2 defMap ->
-                      simplify $ (C.Eq (toPiElim lam1 mess1) (toPiElim lam2 mess2), orig) : cs
-                (Just (StuckPiElimVarGlobal g1 mess1), Just StuckPiElimHole {})
+                      simplify $ (C.Eq (Stuck.resume lam1 ctx1) (Stuck.resume lam2 ctx2), orig) : cs
+                (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.Hole {}, _))
                   | Just lam <- Map.lookup g1 defMap -> do
-                      let uc = C.SuspendedConstraint (fmvs, C.Delta (C.Eq (toPiElim lam mess1) e2), headConstraint)
+                      let uc = C.SuspendedConstraint (fmvs, C.Delta (C.Eq (Stuck.resume lam ctx1) e2), headConstraint)
                       insertConstraint uc
                       simplify cs
-                (Just StuckPiElimHole {}, Just (StuckPiElimVarGlobal g2 mess2))
+                (Just (Stuck.Hole {}, _), Just (Stuck.VarGlobal g2, ctx2))
                   | Just lam <- Map.lookup g2 defMap -> do
-                      let uc = C.SuspendedConstraint (fmvs, C.Delta (C.Eq e1 (toPiElim lam mess2)), headConstraint)
+                      let uc = C.SuspendedConstraint (fmvs, C.Delta (C.Eq e1 (Stuck.resume lam ctx2)), headConstraint)
                       insertConstraint uc
                       simplify cs
-                (Just (StuckPiElimVarGlobal g1 mess1), _)
+                (Just (Stuck.VarGlobal g1, ctx1), _)
                   | Just lam <- Map.lookup g1 defMap ->
-                      simplify $ (C.Eq (toPiElim lam mess1) e2, orig) : cs
-                (_, Just (StuckPiElimVarGlobal g2 mess2))
+                      simplify $ (C.Eq (Stuck.resume lam ctx1) e2, orig) : cs
+                (_, Just (Stuck.VarGlobal g2, ctx2))
                   | Just lam <- Map.lookup g2 defMap ->
-                      simplify $ (C.Eq e1 (toPiElim lam mess2), orig) : cs
-                (Just (StuckPiElimPrim (WP.Value (WPV.Op op1)) mess1), Just (StuckPiElimPrim (WP.Value (WPV.Op op2)) mess2))
+                      simplify $ (C.Eq e1 (Stuck.resume lam ctx2), orig) : cs
+                (Just (Stuck.Prim (WP.Value (WPV.Op op1)), ctx1), Just (Stuck.Prim (WP.Value (WPV.Op op2)), ctx2))
                   | op1 == op2,
-                    Just pairList <- asPairList (map snd mess1) (map snd mess2) ->
+                    Just pairList <- Stuck.asPairList ctx1 ctx2 ->
                       simplify $ map (,orig) pairList ++ cs
                 _ -> do
                   let uc = C.SuspendedConstraint (fmvs, C.Other, headConstraint)
@@ -304,55 +299,6 @@ asWeakBinder :: Hint -> WT.WeakTerm -> App (BinderF WT.WeakTerm)
 asWeakBinder m t = do
   h <- Gensym.newIdentFromText "hole"
   return (m, h, t)
-
-asPairList ::
-  [[WT.WeakTerm]] ->
-  [[WT.WeakTerm]] ->
-  Maybe [C.Constraint]
-asPairList list1 list2 =
-  case (list1, list2) of
-    ([], []) ->
-      Just []
-    (es1 : mess1, es2 : mess2)
-      | length es1 /= length es2 ->
-          Nothing
-      | otherwise -> do
-          pairList <- asPairList mess1 mess2
-          return $ zipWith C.Eq es1 es2 ++ pairList
-    _ ->
-      Nothing
-
-asStuckedTerm :: WT.WeakTerm -> Maybe Stuck
-asStuckedTerm term =
-  case term of
-    (_ :< WT.Var x) ->
-      Just $ StuckPiElimVarLocal x []
-    (_ :< WT.VarGlobal g _) ->
-      Just $ StuckPiElimVarGlobal g []
-    (_ :< WT.Hole h es) ->
-      Just $ StuckPiElimHole h es
-    (_ :< WT.Prim prim) ->
-      Just $ StuckPiElimPrim prim []
-    (m :< WT.PiElim e es) ->
-      case asStuckedTerm e of
-        Just (StuckPiElimVarLocal x ess) ->
-          Just $ StuckPiElimVarLocal x $ ess ++ [(m, es)]
-        Just (StuckPiElimVarGlobal g ess) ->
-          Just $ StuckPiElimVarGlobal g $ ess ++ [(m, es)]
-        Just (StuckPiElimPrim prim ess) ->
-          Just $ StuckPiElimPrim prim $ ess ++ [(m, es)]
-        _ ->
-          Nothing
-    _ ->
-      Nothing
-
-toPiElim :: WT.WeakTerm -> [(Hint, [WT.WeakTerm])] -> WT.WeakTerm
-toPiElim e args =
-  case args of
-    [] ->
-      e
-    (m, es) : ess ->
-      toPiElim (m :< WT.PiElim e es) ess
 
 asIdent :: WT.WeakTerm -> Maybe Ident
 asIdent e =
@@ -427,10 +373,10 @@ simplifyActual m dataNameSet t orig = do
           simplifyActual m dataNameSet t'' orig
         Nothing -> do
           defMap <- WeakDefinition.read
-          case asStuckedTerm t' of
-            Just (StuckPiElimVarGlobal dd args)
+          case Stuck.asStuckedTerm t' of
+            Just (Stuck.VarGlobal dd, ctx)
               | Just lam <- Map.lookup dd defMap -> do
-                  simplifyActual m dataNameSet (toPiElim lam args) orig
+                  simplifyActual m dataNameSet (Stuck.resume lam ctx) orig
               | otherwise ->
                   return ()
             _ -> do
