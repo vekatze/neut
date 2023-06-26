@@ -2,10 +2,12 @@ module Entity.Stuck where
 
 import Control.Comonad.Cofree
 import Entity.Constraint qualified as C
+import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.Ident
+import Entity.Noema qualified as N
 import Entity.WeakPrim qualified as WP
 import Entity.WeakTerm qualified as WT
 
@@ -20,26 +22,27 @@ type EvalCtx = Cofree EvalCtxF Hint
 data EvalCtxF a
   = Base
   | PiElim a [WT.WeakTerm]
+  | DataElim N.IsNoetic (Ident, a, WT.WeakTerm) (DT.DecisionTree WT.WeakTerm)
 
 type Stuck = (EvalBase, EvalCtx)
 
 asStuckedTerm :: WT.WeakTerm -> Maybe Stuck
 asStuckedTerm term =
   case term of
-    (m :< WT.Var x) ->
+    m :< WT.Var x ->
       Just (VarLocal x, m :< Base)
-    (m :< WT.VarGlobal g _) ->
+    m :< WT.VarGlobal g _ ->
       Just (VarGlobal g, m :< Base)
-    (m :< WT.Hole h es) ->
+    m :< WT.Hole h es ->
       Just (Hole h es, m :< Base)
-    (m :< WT.Prim prim) ->
+    m :< WT.Prim prim ->
       Just (Prim prim, m :< Base)
-    (m :< WT.PiElim e es) ->
-      case asStuckedTerm e of
-        Just (base, ctx) ->
-          Just (base, m :< PiElim ctx es)
-        _ ->
-          Nothing
+    m :< WT.PiElim e es -> do
+      (base, ctx) <- asStuckedTerm e
+      return (base, m :< PiElim ctx es)
+    m :< WT.DataElim isNoetic [(o, e, t)] decisionTree -> do
+      (base, ctx) <- asStuckedTerm e
+      return (base, m :< DataElim isNoetic (o, ctx, t) decisionTree)
     _ ->
       Nothing
 
@@ -50,6 +53,8 @@ resume e ctx =
       e
     m :< PiElim ctx' args ->
       m :< WT.PiElim (resume e ctx') args
+    m :< DataElim isNoetic (o, ctx', t) decisionTree ->
+      m :< WT.DataElim isNoetic [(o, resume e ctx', t)] decisionTree
 
 asPairList :: EvalCtx -> EvalCtx -> Maybe [C.Constraint]
 asPairList ctx1 ctx2 =
