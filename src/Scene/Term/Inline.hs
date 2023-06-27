@@ -134,14 +134,23 @@ inlineCaseList (fallbackTree, clauseList) = do
 inlineCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
-inlineCase (DT.Cons m dd disc dataArgs consArgs tree) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM inline dataTerms
-  dataTypes' <- mapM inline dataTypes
-  let (ms, xs, ts) = unzip3 consArgs
-  ts' <- mapM inline ts
-  tree' <- inlineDecisionTree tree
-  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
+inlineCase decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      tree' <- inlineDecisionTree tree
+      return $ DT.NatZero m tree'
+    DT.NatSucc m (mx, x, t) tree -> do
+      t' <- inline t
+      tree' <- inlineDecisionTree tree
+      return $ DT.NatSucc m (mx, x, t') tree'
+    DT.Cons m dd disc dataArgs consArgs tree -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM inline dataTerms
+      dataTypes' <- mapM inline dataTypes
+      let (ms, xs, ts) = unzip3 consArgs
+      ts' <- mapM inline ts
+      tree' <- inlineDecisionTree tree
+      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
 
 findClause ::
   Discriminant ->
@@ -160,10 +169,13 @@ findClause consDisc fallbackTree clauseList =
           findClause consDisc fallbackTree rest
 
 findCase :: Discriminant -> DT.Case TM.Term -> Maybe ([(Ident, TM.Term)], DT.DecisionTree TM.Term)
-findCase consDisc (DT.Cons _ _ disc _ consArgs tree) =
-  if consDisc == disc
-    then Just (map (\(_, x, t) -> (x, t)) consArgs, tree)
-    else Nothing
+findCase consDisc decisionCase =
+  case decisionCase of
+    DT.Cons _ _ disc _ consArgs tree
+      | consDisc == disc -> do
+          return (map (\(_, x, t) -> (x, t)) consArgs, tree)
+    _ ->
+      Nothing
 
 lookupSplit :: Ident -> [(Ident, b, c)] -> Maybe (b, [(Ident, b, c)])
 lookupSplit cursor =

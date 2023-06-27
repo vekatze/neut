@@ -97,6 +97,13 @@ subst sub term =
       e' <- subst sub e
       t' <- subst sub t
       return $ m :< WT.FlowElim pVar var (e', t')
+    m :< WT.Nat ->
+      return $ m :< WT.Nat
+    m :< WT.NatZero ->
+      return $ m :< WT.NatZero
+    m :< WT.NatSucc e -> do
+      e' <- subst sub e
+      return $ m :< WT.NatSucc e'
 
 substBinder ::
   WT.SubstWeakTerm ->
@@ -176,12 +183,20 @@ substCase ::
   WT.SubstWeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-substCase sub (DT.Cons m dd disc dataArgs consArgs tree) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM (subst sub) dataTerms
-  dataTypes' <- mapM (subst sub) dataTypes
-  (consArgs', tree') <- subst''' sub consArgs tree
-  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
+substCase sub decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      tree' <- substDecisionTree sub tree
+      return $ DT.NatZero m tree'
+    DT.NatSucc m arg tree -> do
+      ([arg'], tree') <- subst''' sub [arg] tree
+      return $ DT.NatSucc m arg' tree'
+    DT.Cons m dd disc dataArgs consArgs tree -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM (subst sub) dataTerms
+      dataTypes' <- mapM (subst sub) dataTypes
+      (consArgs', tree') <- subst''' sub consArgs tree
+      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
 
 substLeafVar :: WT.SubstWeakTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

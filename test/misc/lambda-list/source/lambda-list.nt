@@ -1,8 +1,3 @@
-data nat {
-- Zero
-- Succ(nat)
-}
-
 define interpret(n: nat): int {
   match n {
   - Zero =>

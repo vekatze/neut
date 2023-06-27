@@ -7,6 +7,9 @@ module Entity.DefiniteDescription
     imm,
     cls,
     array,
+    nat,
+    natZero,
+    natSucc,
     isBaseDefiniteDescription,
     toBuilder,
   )
@@ -84,6 +87,18 @@ imm =
 cls :: DefiniteDescription
 cls =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.cls
+
+nat :: DefiniteDescription
+nat =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.nat
+
+natZero :: DefiniteDescription
+natZero =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.natZero
+
+natSucc :: DefiniteDescription
+natSucc =
+  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.natSucc
 
 array :: PT.PrimType -> DefiniteDescription
 array elemType =

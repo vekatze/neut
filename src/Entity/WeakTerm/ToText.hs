@@ -82,6 +82,12 @@ toText term =
       showCons ["run", toText e]
     _ :< WT.FlowElim _ _ (e, _) -> do
       showCons ["wait", toText e]
+    _ :< WT.Nat ->
+      "nat"
+    _ :< WT.NatZero ->
+      "Zero"
+    _ :< WT.NatSucc a ->
+      showCons ["Succ", toText a]
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -166,11 +172,17 @@ showDecisionTree tree =
           : map showClauseList clauseList
 
 showClauseList :: DT.Case WT.WeakTerm -> T.Text
-showClauseList (DT.Cons _ consName d dataArgs consArgs cont) = do
-  showCons
-    [ showGlobalVariable consName,
-      T.pack (show (D.reify d)),
-      showCons $ map (\(e, t) -> showCons [toText e, toText t]) dataArgs,
-      inParen $ showTypeArgs consArgs,
-      showDecisionTree cont
-    ]
+showClauseList decisionCase = do
+  case decisionCase of
+    DT.NatZero _ tree -> do
+      showCons ["{nat}Zero", showDecisionTree tree]
+    DT.NatSucc _ arg tree -> do
+      showCons ["{nat}Succ", inParen (showTypeArgs [arg]), showDecisionTree tree]
+    DT.Cons _ consName d dataArgs consArgs cont -> do
+      showCons
+        [ showGlobalVariable consName,
+          T.pack (show (D.reify d)),
+          showCons $ map (\(e, t) -> showCons [toText e, toText t]) dataArgs,
+          inParen $ showTypeArgs consArgs,
+          showDecisionTree cont
+        ]

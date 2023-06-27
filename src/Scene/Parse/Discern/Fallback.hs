@@ -38,3 +38,7 @@ fallbackRow isNoetic cursor (patternVector, (freedVars, body@(mBody :< _))) =
       return $ Just (rest, (freedVars, body'))
     Just ((_, Cons {}), _) ->
       return Nothing
+    Just ((_, NatZero), _) ->
+      return Nothing
+    Just ((_, NatSucc _), _) ->
+      return Nothing

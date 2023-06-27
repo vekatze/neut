@@ -25,6 +25,8 @@ type CaseList a = (DecisionTree a, [Case a])
 
 data Case a
   = Cons Hint DD.DefiniteDescription D.Discriminant [(a, a)] [BinderF a] (DecisionTree a)
+  | NatZero Hint (DecisionTree a)
+  | NatSucc Hint (BinderF a) (DecisionTree a)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (DecisionTree a)
@@ -36,7 +38,14 @@ getConstructors clauseList = do
   map getConstructor clauseList
 
 getConstructor :: Case a -> DD.DefiniteDescription
-getConstructor (Cons _ name _ _ _ _) = name
+getConstructor decisionCase =
+  case decisionCase of
+    Cons _ name _ _ _ _ ->
+      name
+    NatZero {} ->
+      DD.natZero
+    NatSucc {} ->
+      DD.natSucc
 
 isUnreachable :: DecisionTree a -> Bool
 isUnreachable tree =

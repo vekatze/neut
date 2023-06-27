@@ -15,6 +15,8 @@ import Entity.Name
 data RawPattern
   = Var Name
   | Cons Name (Either Hint [(Hint, RawPattern)])
+  | NatZero
+  | NatSucc (Hint, RawPattern)
   deriving (Show)
 
 type RawPatternRow a =

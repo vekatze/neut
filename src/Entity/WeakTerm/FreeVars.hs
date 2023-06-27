@@ -69,6 +69,12 @@ freeVars term =
       let xs1 = freeVars e
       let xs2 = freeVars t
       S.unions [xs1, xs2]
+    _ :< WT.Nat ->
+      S.empty
+    _ :< WT.NatZero ->
+      S.empty
+    _ :< WT.NatSucc e ->
+      freeVars e
 
 freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =
@@ -97,6 +103,12 @@ freeVarsCaseList (fallbackClause, clauseList) = do
   S.union xs1 xs2
 
 freeVarsCase :: DT.Case WT.WeakTerm -> S.Set Ident
-freeVarsCase (DT.Cons _ _ _ dataArgs consArgs tree) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  S.unions $ freeVars' consArgs (freeVarsDecisionTree tree) : map freeVars dataTerms ++ map freeVars dataTypes
+freeVarsCase decisionCase = do
+  case decisionCase of
+    DT.NatZero _ tree ->
+      freeVarsDecisionTree tree
+    DT.NatSucc _ arg tree -> do
+      freeVars' [arg] (freeVarsDecisionTree tree)
+    DT.Cons _ _ _ dataArgs consArgs tree -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      S.unions $ freeVars' consArgs (freeVarsDecisionTree tree) : map freeVars dataTerms ++ map freeVars dataTypes

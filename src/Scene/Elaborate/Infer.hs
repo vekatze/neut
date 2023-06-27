@@ -213,6 +213,14 @@ infer' varEnv term =
       h <- newHole m varEnv
       insConstraintEnv (m :< WT.Flow pVar h) t
       return (m :< WT.FlowElim pVar var (e', t), h)
+    m :< WT.Nat ->
+      return (m :< WT.Nat, m :< WT.Tau)
+    m :< WT.NatZero ->
+      return (m :< WT.NatZero, m :< WT.Nat)
+    m :< WT.NatSucc e -> do
+      (e', t) <- infer' varEnv e
+      insConstraintEnv (m :< WT.Nat) t
+      return (m :< WT.NatSucc e', m :< WT.Nat)
 
 inferArgs ::
   WT.SubstWeakTerm ->
@@ -375,12 +383,23 @@ inferClause ::
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause varEnv cursorType (DT.Cons mCons consName disc dataArgs consArgs body) = do
-  let (dataTermList, _) = unzip dataArgs
-  typedDataArgs' <- mapM (infer' varEnv) dataTermList
-  (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
-  (body', tBody) <- inferDecisionTree mCons extendedVarEnv body
-  consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
-  (_, tPat) <- inferPiElim varEnv mCons consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
-  insConstraintEnv cursorType tPat
-  return (DT.Cons mCons consName disc typedDataArgs' consArgs' body', tBody)
+inferClause varEnv cursorType decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      (tree', tTree) <- inferDecisionTree m varEnv tree
+      return (DT.NatZero m tree', tTree)
+    DT.NatSucc m (mx, x, t) tree -> do
+      t' <- inferType' varEnv t
+      insConstraintEnv (m :< WT.Nat) t'
+      insWeakTypeEnv x t'
+      (tree', tTree) <- inferDecisionTree m varEnv tree
+      return (DT.NatSucc m (mx, x, t') tree', tTree)
+    DT.Cons mCons consName disc dataArgs consArgs body -> do
+      let (dataTermList, _) = unzip dataArgs
+      typedDataArgs' <- mapM (infer' varEnv) dataTermList
+      (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
+      (body', tBody) <- inferDecisionTree mCons extendedVarEnv body
+      consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
+      (_, tPat) <- inferPiElim varEnv mCons consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+      insConstraintEnv cursorType tPat
+      return (DT.Cons mCons consName disc typedDataArgs' consArgs' body', tBody)

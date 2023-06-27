@@ -1,11 +1,6 @@
-data nat {
-- Zero()
-- Succ(nat)
-}
-
 define nil-cons-cons(xs: nat): int {
   match xs {
-  - Zero() =>
+  - Zero =>
     1
   - Succ(Succ(_)) =>
     2
@@ -15,9 +10,9 @@ define nil-cons-cons(xs: nat): int {
 }
 
 define main(): unit {
-  let n0 = Zero()
+  let n0 = Zero
   let n1 = Succ(n0)
-  let n2 = Succ(Succ(Zero()))
+  let n2 = Succ(Succ(Zero))
   let z0 = nil-cons-cons(n0)
   let z1 = nil-cons-cons(n1)
   let z2 = nil-cons-cons(n2)

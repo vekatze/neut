@@ -1,10 +1,5 @@
 data empty {}
 
-data nat {
-- Z
-- S(nat)
-}
-
 define test-resource(): unit {
   affine-nat()
   relevant-nat()
@@ -15,16 +10,16 @@ define test-resource(): unit {
 }
 
 define affine-nat(): unit {
-  let _ = Z
-  let _ = S(Z)
-  let _ = S(S(Z))
+  let _ = Zero
+  let _ = Succ(Zero)
+  let _ = Succ(Succ(Zero))
   Unit
 }
 
 define relevant-nat(): unit {
-  let zero = Z
-  let one = S(Z)
-  let two = S(S(Z))
+  let zero = Zero
+  let one = Succ(Zero)
+  let two = Succ(Succ(Zero))
   let _ = zero
   let _ = zero
   let _ = one
@@ -36,15 +31,15 @@ define relevant-nat(): unit {
 
 define affine-list(): unit {
   let _: list(nat) = []
-  let _ = [Z]
-  let _ = [S(Z), Z]
+  let _ = [Zero]
+  let _ = [Succ(Zero), Zero]
   Unit
 }
 
 define relevant-list(): unit {
   let zero: list(nat) = []
-  let one = [Z]
-  let two = [S(Z), Z]
+  let one = [Zero]
+  let two = [Succ(Zero), Zero]
   let _ = zero
   let _ = zero
   let _ = one
@@ -56,15 +51,15 @@ define relevant-list(): unit {
 
 define affine-either(): unit {
   let _: either(bool, list(nat)) = Left(True)
-  let _: either(bool, list(nat)) = Right([Z])
-  let _: either(bool, list(nat)) = Right([S(Z), Z])
+  let _: either(bool, list(nat)) = Right([Zero])
+  let _: either(bool, list(nat)) = Right([Succ(Zero), Zero])
   Unit
 }
 
 define relevant-either(): unit {
   let foo: either(bool, list(nat)) = Left(True)
-  let bar: either(bool, list(nat)) = Right([Z])
-  let buz: either(bool, list(nat)) = Right([S(Z), Z])
+  let bar: either(bool, list(nat)) = Right([Zero])
+  let buz: either(bool, list(nat)) = Right([Succ(Zero), Zero])
   let _ = foo
   let _ = foo
   let _ = bar

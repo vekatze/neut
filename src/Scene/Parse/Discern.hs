@@ -329,7 +329,7 @@ discernPattern (m, pat) =
                 Nothing -> do
                   x' <- Gensym.newIdentFromText x
                   return ((m, PAT.Var x'), [(x, (m, x'))])
-                Just (consName, dataArity, consArity, disc, isConstLike) -> do
+                Just (consName, dataArity, consArity, disc, isConstLike, _) -> do
                   unless isConstLike $
                     Throw.raiseError m $
                       "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
@@ -337,6 +337,8 @@ discernPattern (m, pat) =
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of
+            (_, GN.NatZero) ->
+              return ((m, PAT.NatZero), [])
             (_, GN.DataIntro dataArity consArity disc _) ->
               return ((m, PAT.Cons dd disc dataArity consArity []), [])
             _ ->
@@ -345,20 +347,33 @@ discernPattern (m, pat) =
         DefiniteDescription dd -> do
           (_, gn) <- resolveName m $ DefiniteDescription dd
           case gn of
+            (_, GN.NatZero) ->
+              return ((m, PAT.NatZero), [])
             (_, GN.DataIntro dataArity consArity disc _) ->
               return ((m, PAT.Cons dd disc dataArity consArity []), [])
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
     RP.Cons cons mArgs -> do
-      (consName, dataArity, consArity, disc, isConstLike) <- resolveConstructor m cons
+      (consName, dataArity, consArity, disc, isConstLike, gn) <- resolveConstructor m cons
       when isConstLike $
         Throw.raiseError m $
           "the constructor `" <> showName cons <> "` can't have any arguments"
       case mArgs of
         Right args -> do
           (args', nenvList) <- mapAndUnzipM discernPattern args
-          return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+          case gn of
+            Just GN.NatZero -> do
+              return ((m, PAT.NatZero), [])
+            Just GN.NatSucc -> do
+              case args' of
+                [arg'] ->
+                  return ((m, PAT.NatSucc arg'), concat nenvList)
+                _ ->
+                  -- (raises an arity mismatch error at Scene.Elaborate)
+                  return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+            _ -> do
+              return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
         Left mVar -> do
           vmap <- Via.lookup consName
           (_, keyList) <- KeyArg.lookup m consName
@@ -367,6 +382,11 @@ discernPattern (m, pat) =
           forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
             UnusedVariable.delete newVar
           return ((m, PAT.Cons consName disc dataArity consArity patList'), concat nenvList)
+    RP.NatZero ->
+      return ((m, PAT.NatZero), [])
+    RP.NatSucc arg -> do
+      (arg', nenv) <- discernPattern arg
+      return ((m, PAT.NatSucc arg'), nenv)
 
 keyToPattern :: Map.HashMap RawIdent DD.DefiniteDescription -> Hint -> RawIdent -> App RP.RawPattern
 keyToPattern vmap m key =

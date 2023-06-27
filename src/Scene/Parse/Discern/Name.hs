@@ -25,10 +25,12 @@ import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
+import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
 import Entity.Locator qualified as L
 import Entity.Magic qualified as M
 import Entity.Name
+import Entity.Opacity qualified as O
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp qualified as PO
 import Entity.PrimType qualified as PT
@@ -99,7 +101,7 @@ resolveLocator m (gl, ll) = do
 resolveConstructor ::
   Hint ->
   Name ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike)
+  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
 resolveConstructor m s = do
   (dd, (_, gn)) <- resolveName m s
   mCons <- resolveConstructorMaybe dd gn
@@ -112,11 +114,15 @@ resolveConstructor m s = do
 resolveConstructorMaybe ::
   DD.DefiniteDescription ->
   GN.GlobalName ->
-  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike))
+  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike, Maybe GN.GlobalName))
 resolveConstructorMaybe dd gn = do
   case gn of
     GN.DataIntro dataArity consArity disc isConstLike ->
-      return $ Just (dd, dataArity, consArity, disc, isConstLike)
+      return $ Just (dd, dataArity, consArity, disc, isConstLike, Nothing)
+    GN.NatZero ->
+      return $ Just (dd, A.fromInt 0, A.fromInt 0, D.MakeDiscriminant 0, False, Just GN.NatZero)
+    GN.NatSucc ->
+      return $ Just (dd, A.fromInt 0, A.fromInt 1, D.MakeDiscriminant 1, False, Just GN.NatSucc)
     _ ->
       return Nothing
 
@@ -142,6 +148,14 @@ interpretGlobalName m dd gn = do
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
+    GN.Nat ->
+      return $ m :< WT.Nat
+    GN.NatZero ->
+      return $ m :< WT.NatZero
+    GN.NatSucc -> do
+      let opacity = LK.Normal O.Transparent
+      arg <- Gensym.newIdentFromText "succ-arg"
+      return $ m :< WT.PiIntro opacity [(m, arg, m :< WT.Nat)] (m :< WT.NatSucc (m :< WT.Var arg))
 
 interpretTopLevelFunc ::
   Hint ->

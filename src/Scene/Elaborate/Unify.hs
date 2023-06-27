@@ -184,6 +184,12 @@ simplify constraintList =
           simplify $ (C.Eq lam1 lam2, orig) : (C.Eq t1 t2, orig) : cs
         (_ :< WT.FlowElim _ _ (lam1, t1), _ :< WT.FlowElim _ _ (lam2, t2)) ->
           simplify $ (C.Eq lam1 lam2, orig) : (C.Eq t1 t2, orig) : cs
+        (_ :< WT.Nat, _ :< WT.Nat) ->
+          simplify cs
+        (_ :< WT.NatZero, _ :< WT.NatZero) ->
+          simplify cs
+        (_ :< WT.NatSucc e1, _ :< WT.NatSucc e2) ->
+          simplify $ (C.Eq e1 e2, orig) : cs
         (e1, e2) -> do
           sub <- getHoleSubst
           let fvs1 = freeVars e1

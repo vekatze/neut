@@ -17,6 +17,9 @@ data GlobalName
   | Data Arity [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro Arity Arity D.Discriminant IsConstLike
   | Resource
+  | Nat
+  | NatZero
+  | NatSucc
   deriving (Show, Generic)
 
 instance Binary GlobalName

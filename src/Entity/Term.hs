@@ -45,6 +45,9 @@ data TermF a
       DD.DefiniteDescription -- "core.thread.flow-inner"
       DD.DefiniteDescription -- "core.thread.wait"
       (a, a) -- (flow, flow-type)
+  | Nat
+  | NatZero
+  | NatSucc a
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

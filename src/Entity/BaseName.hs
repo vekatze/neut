@@ -23,6 +23,9 @@ module Entity.BaseName
     arrayType,
     malloc,
     free,
+    nat,
+    natZero,
+    natSucc,
     reservedAlias,
     extend,
     defaultImports,
@@ -137,6 +140,18 @@ malloc =
 free :: BaseName
 free =
   MakeBaseName "free"
+
+nat :: BaseName
+nat =
+  MakeBaseName "nat"
+
+natZero :: BaseName
+natZero =
+  MakeBaseName "Zero"
+
+natSucc :: BaseName
+natSucc =
+  MakeBaseName "Succ"
 
 arrayType :: PT.PrimType -> BaseName
 arrayType elemType =

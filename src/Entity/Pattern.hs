@@ -2,6 +2,7 @@ module Entity.Pattern
   ( Pattern (..),
     PatternRow,
     PatternMatrix,
+    ConsInfo,
     new,
     getHeadConstructors,
     swapColumn,
@@ -29,6 +30,8 @@ data Pattern
   = Var Ident
   | WildcardVar
   | Cons DD.DefiniteDescription D.Discriminant A.Arity A.Arity [(Hint, Pattern)]
+  | NatZero
+  | NatSucc (Hint, Pattern)
   deriving (Show)
 
 type PatternRow a =
@@ -59,6 +62,10 @@ patVars (m, pat) =
       []
     Cons _ _ _ _ patList ->
       concatMap patVars patList
+    NatZero ->
+      []
+    NatSucc pat' ->
+      patVars pat'
 
 consRow :: PatternRow a -> PatternMatrix a -> PatternMatrix a
 consRow row (MakePatternMatrix mat) =
@@ -75,7 +82,7 @@ new rows =
 
 getHeadConstructors ::
   PatternMatrix a ->
-  [(Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))]
+  [ConsInfo]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -87,19 +94,30 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-getColumnConstructors ::
-  PatternColumn ->
-  [(Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))]
+type ConsInfo =
+  (Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))
+
+consInfoToDD :: ConsInfo -> DD.DefiniteDescription
+consInfoToDD consInfo =
+  case consInfo of
+    (_, (dd, _, _, _, _)) ->
+      dd
+
+getColumnConstructors :: PatternColumn -> [ConsInfo]
 getColumnConstructors col =
-  ListUtils.nubOrdOn (\(_, (dd, _, _, _, _)) -> dd) $ mapMaybe getColumnConstructor col
+  ListUtils.nubOrdOn consInfoToDD $ mapMaybe getColumnConstructor col
 
 getColumnConstructor ::
   (Hint, Pattern) ->
-  Maybe (Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))
+  Maybe ConsInfo
 getColumnConstructor (mPat, pat) =
   case pat of
     Cons dd disc dataArity consArity args ->
       return (mPat, (dd, disc, dataArity, consArity, args))
+    NatZero ->
+      return (mPat, (DD.natZero, D.MakeDiscriminant 0, A.fromInt 0, A.fromInt 0, []))
+    NatSucc arg ->
+      return (mPat, (DD.natSucc, D.MakeDiscriminant 1, A.fromInt 0, A.fromInt 1, [arg]))
     _ ->
       Nothing
 

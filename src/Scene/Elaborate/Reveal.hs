@@ -172,6 +172,13 @@ reveal' varEnv term =
       e' <- reveal' varEnv e
       t' <- reveal' varEnv t
       return $ m :< WT.FlowElim pVar var (e', t')
+    m :< WT.Nat ->
+      return $ m :< WT.Nat
+    m :< WT.NatZero ->
+      return $ m :< WT.NatZero
+    m :< WT.NatSucc e -> do
+      e' <- reveal' varEnv e
+      return $ m :< WT.NatSucc e'
 
 revealPi ::
   BoundVarEnv ->
@@ -256,10 +263,19 @@ revealClause ::
   BoundVarEnv ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-revealClause varEnv (DT.Cons mCons consName disc dataArgs consArgs body) = do
-  let (dataTerms, dataTypeTerms) = unzip dataArgs
-  dataTerms' <- mapM (reveal' varEnv) dataTerms
-  dataTypeTerms' <- mapM (reveal' varEnv) dataTypeTerms
-  (consArgs', body') <- revealBinder' varEnv consArgs $ \extendedVarEnv ->
-    revealDecisionTree extendedVarEnv body
-  return (DT.Cons mCons consName disc (zip dataTerms' dataTypeTerms') consArgs' body')
+revealClause varEnv decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      tree' <- revealDecisionTree varEnv tree
+      return $ DT.NatZero m tree'
+    DT.NatSucc m arg tree -> do
+      ([arg'], tree') <- revealBinder' varEnv [arg] $ \extendedVarEnv ->
+        revealDecisionTree extendedVarEnv tree
+      return $ DT.NatSucc m arg' tree'
+    DT.Cons mCons consName disc dataArgs consArgs body -> do
+      let (dataTerms, dataTypeTerms) = unzip dataArgs
+      dataTerms' <- mapM (reveal' varEnv) dataTerms
+      dataTypeTerms' <- mapM (reveal' varEnv) dataTypeTerms
+      (consArgs', body') <- revealBinder' varEnv consArgs $ \extendedVarEnv ->
+        revealDecisionTree extendedVarEnv body
+      return (DT.Cons mCons consName disc (zip dataTerms' dataTypeTerms') consArgs' body')

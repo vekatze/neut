@@ -1,11 +1,6 @@
-data nat {
-- Zero()
-- Succ(nat)
-}
-
 define interpret(n: nat): int {
   match n {
-  - Zero() =>
+  - Zero =>
     0
   - Succ(m) =>
     add-int(1, interpret(m))
@@ -23,6 +18,6 @@ define nat-list-sum(xs: list(nat)): int {
 
 
 define main(): unit {
-  print-int(nat-list-sum(Cons(Succ(Zero()), Cons(Succ(Zero()), Nil))))
+  print-int(nat-list-sum(Cons(Succ(Zero), Cons(Succ(Zero), Nil))))
   print("\n")
 }

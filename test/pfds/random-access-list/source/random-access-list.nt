@@ -7,8 +7,8 @@ data tree(a) {
 }
 
 data digit(a) {
-- Zero
-- One(tree(a))
+- DigitZero
+- DigitOne(tree(a))
 }
 
 data R-list(a) {
@@ -33,12 +33,12 @@ define join[a](t1: tree(a), t2: tree(a)): tree(a) {
 define cons-tree[a](t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
   - New([]) =>
-    New([One(t)])
-  - New(Zero :: rest) =>
-    New(One(t) :: rest)
-  - New(One(t0) :: rest) =>
+    New([DigitOne(t)])
+  - New(DigitZero :: rest) =>
+    New(DigitOne(t) :: rest)
+  - New(DigitOne(t0) :: rest) =>
     let New(ts-new) = cons-tree(join(t, t0), New(rest))
-    New(Zero :: ts-new)
+    New(DigitZero :: ts-new)
   }
 }
 
@@ -51,11 +51,11 @@ define uncons-tree[a](ts: R-list(a)): option(tuple(tree(a), R-list(a))) {
   match xs {
   - [] =>
     None
-  - One(y) :: [] =>
+  - DigitOne(y) :: [] =>
     Some(Tuple(y, New([])))
-  - One(y) :: rest =>
-    Some(Tuple(y, New(Zero :: rest)))
-  - Zero :: rest =>
+  - DigitOne(y) :: rest =>
+    Some(Tuple(y, New(DigitZero :: rest)))
+  - DigitZero :: rest =>
     match uncons-tree(New(rest)) {
     - None =>
       None
@@ -64,7 +64,7 @@ define uncons-tree[a](ts: R-list(a)): option(tuple(tree(a), R-list(a))) {
       - Leaf(_) =>
         None
       - Node(_, t1, t2) =>
-        Some(Tuple(t1, New(One(t2) :: new-ts)))
+        Some(Tuple(t1, New(DigitOne(t2) :: new-ts)))
       }
     }
   }
@@ -92,9 +92,9 @@ define lookup-list[a](i: int, xs: &list(digit(a))): option(a) {
   case xs {
   - [] =>
     None
-  - Zero :: rest =>
+  - DigitZero :: rest =>
     lookup-list(i, rest)
-  - One(t) :: rest =>
+  - DigitOne(t) :: rest =>
     let s = size(t)
     if lt-int(i, s) {
       lookup-tree(i, t)
@@ -131,16 +131,16 @@ define update[a](i: int, x: a, xs: R-list(a)): R-list(a) {
   match xs {
   - New([]) =>
     New([])
-  - New(Zero :: ts) =>
+  - New(DigitZero :: ts) =>
     let New(new-xs) = update(i, x, New(ts))
-    New(Zero :: new-xs)
-  - New(One(t) :: ts) =>
+    New(DigitZero :: new-xs)
+  - New(DigitOne(t) :: ts) =>
     let s on t = size(t)
     if lt-int(i, s) {
-      New(One(update-tree(i, x, t)) :: ts)
+      New(DigitOne(update-tree(i, x, t)) :: ts)
     } else {
       let New(new-xs) = update(sub-int(i, s), x, New(ts))
-      New(One(t) :: new-xs)
+      New(DigitOne(t) :: new-xs)
     }
   }
 }

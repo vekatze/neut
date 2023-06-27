@@ -89,6 +89,13 @@ subst sub term =
       e' <- subst sub e
       t' <- subst sub t
       return $ m :< TM.FlowElim pVar var (e', t')
+    m :< TM.Nat ->
+      return $ m :< TM.Nat
+    m :< TM.NatZero ->
+      return $ m :< TM.NatZero
+    m :< TM.NatSucc e -> do
+      e' <- subst sub e
+      return $ m :< TM.NatSucc e'
 
 subst' ::
   SubstTerm ->
@@ -155,12 +162,20 @@ substCase ::
   SubstTerm ->
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
-substCase sub (DT.Cons m dd disc dataArgs consArgs tree) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM (subst sub) dataTerms
-  dataTypes' <- mapM (subst sub) dataTypes
-  (consArgs', tree') <- subst'' sub consArgs tree
-  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
+substCase sub decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      tree' <- substDecisionTree sub tree
+      return $ DT.NatZero m tree'
+    DT.NatSucc m arg tree -> do
+      ([arg'], tree') <- subst'' sub [arg] tree
+      return $ DT.NatSucc m arg' tree'
+    DT.Cons m dd disc dataArgs consArgs tree -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM (subst sub) dataTerms
+      dataTypes' <- mapM (subst sub) dataTypes
+      (consArgs', tree') <- subst'' sub consArgs tree
+      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
 
 substLeafVar :: SubstTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

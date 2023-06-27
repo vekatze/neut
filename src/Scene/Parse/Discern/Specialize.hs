@@ -51,3 +51,11 @@ specializeRow isNoetic cursor (dd, arity) (patternVector, (freedVars, body@(mBod
             then return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
             else return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
         else return Nothing
+    Just ((_, NatZero), rest) ->
+      if dd == DD.natZero
+        then return $ Just (rest, (freedVars, body))
+        else return Nothing
+    Just ((_, NatSucc arg), rest) ->
+      if dd == DD.natSucc
+        then return $ Just (V.singleton arg <> rest, (freedVars, body))
+        else return Nothing

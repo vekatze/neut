@@ -8,6 +8,7 @@ import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.NameDependence qualified as NameDependence
+import Context.Remark (printNote')
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
@@ -85,13 +86,12 @@ analyzeDefList defList = do
 -- viewStmt stmt = do
 --   case stmt of
 --     WeakStmtDefine _ _ m x _ xts codType e ->
---       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.Pi xts e)
+--       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro (LK.Normal O.Transparent) xts e)
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
 synthesizeDefList :: [DE.Decl] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
-  -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
@@ -321,6 +321,13 @@ elaborate' term =
       e' <- elaborate' e
       t' <- elaborate' t
       return $ m :< TM.FlowElim pVar var (e', t')
+    m :< WT.Nat ->
+      return $ m :< TM.Nat
+    m :< WT.NatZero ->
+      return $ m :< TM.NatZero
+    m :< WT.NatSucc e -> do
+      e' <- elaborate' e
+      return $ m :< TM.NatSucc e'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
@@ -380,13 +387,22 @@ elaborateDecisionTree m tree =
               return $ DT.Switch (cursor, cursorType') (fallbackClause', clauseList')
 
 elaborateClause :: DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
-elaborateClause (DT.Cons mCons consName disc dataArgs consArgs cont) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM elaborate' dataTerms
-  dataTypes' <- mapM elaborate' dataTypes
-  consArgs' <- mapM elaborateWeakBinder consArgs
-  cont' <- elaborateDecisionTree mCons cont
-  return $ DT.Cons mCons consName disc (zip dataTerms' dataTypes') consArgs' cont'
+elaborateClause decisionCase = do
+  case decisionCase of
+    DT.NatZero m cont -> do
+      cont' <- elaborateDecisionTree m cont
+      return $ DT.NatZero m cont'
+    DT.NatSucc m arg cont -> do
+      arg' <- elaborateWeakBinder arg
+      cont' <- elaborateDecisionTree m cont
+      return $ DT.NatSucc m arg' cont'
+    DT.Cons mCons consName disc dataArgs consArgs cont -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM elaborate' dataTerms
+      dataTypes' <- mapM elaborate' dataTypes
+      consArgs' <- mapM elaborateWeakBinder consArgs
+      cont' <- elaborateDecisionTree mCons cont
+      return $ DT.Cons mCons consName disc (zip dataTerms' dataTypes') consArgs' cont'
 
 raiseNonExhaustivePatternMatching :: Hint -> App a
 raiseNonExhaustivePatternMatching m =
@@ -417,5 +433,7 @@ extractConstructorList m cursorType = do
   case cursorType of
     _ :< TM.Data _ consNameList _ -> do
       return consNameList
+    _ :< TM.Nat ->
+      return [DD.natZero, DD.natSucc]
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)

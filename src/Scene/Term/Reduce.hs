@@ -96,11 +96,20 @@ reduceCaseList (fallbackTree, clauseList) = do
 reduceCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
-reduceCase (DT.Cons m dd disc dataArgs consArgs tree) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM reduce dataTerms
-  dataTypes' <- mapM reduce dataTypes
-  let (ms, xs, ts) = unzip3 consArgs
-  ts' <- mapM reduce ts
-  tree' <- reduceDecisionTree tree
-  return $ DT.Cons m dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
+reduceCase decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      tree' <- reduceDecisionTree tree
+      return $ DT.NatZero m tree'
+    DT.NatSucc m (mx, x, t) tree -> do
+      t' <- reduce t
+      tree' <- reduceDecisionTree tree
+      return $ DT.NatSucc m (mx, x, t') tree'
+    DT.Cons m dd disc dataArgs consArgs tree -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM reduce dataTerms
+      dataTypes' <- mapM reduce dataTypes
+      let (ms, xs, ts) = unzip3 consArgs
+      ts' <- mapM reduce ts
+      tree' <- reduceDecisionTree tree
+      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'

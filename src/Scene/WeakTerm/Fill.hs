@@ -104,6 +104,13 @@ fill sub term =
       e' <- fill sub e
       t' <- fill sub t
       return $ m :< WT.FlowElim pVar var (e', t')
+    m :< WT.Nat ->
+      return $ m :< WT.Nat
+    m :< WT.NatZero ->
+      return $ m :< WT.NatZero
+    m :< WT.NatSucc e -> do
+      e' <- fill sub e
+      return $ m :< WT.NatSucc e'
 
 fill' ::
   HoleSubst ->
@@ -175,9 +182,17 @@ fillCase ::
   HoleSubst ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
-fillCase sub (DT.Cons mCons dd disc dataArgs consArgs tree) = do
-  let (dataTerms, dataTypes) = unzip dataArgs
-  dataTerms' <- mapM (fill sub) dataTerms
-  dataTypes' <- mapM (fill sub) dataTypes
-  (consArgs', tree') <- fill''' sub consArgs tree
-  return $ DT.Cons mCons dd disc (zip dataTerms' dataTypes') consArgs' tree'
+fillCase sub decisionCase = do
+  case decisionCase of
+    DT.NatZero m tree -> do
+      tree' <- fillDecisionTree sub tree
+      return $ DT.NatZero m tree'
+    DT.NatSucc m arg tree -> do
+      ([arg'], tree') <- fill''' sub [arg] tree
+      return $ DT.NatSucc m arg' tree'
+    DT.Cons m dd disc dataArgs consArgs tree -> do
+      let (dataTerms, dataTypes) = unzip dataArgs
+      dataTerms' <- mapM (fill sub) dataTerms
+      dataTypes' <- mapM (fill sub) dataTypes
+      (consArgs', tree') <- fill''' sub consArgs tree
+      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'

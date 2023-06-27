@@ -11,12 +11,14 @@ import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.Arity qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -39,6 +41,9 @@ import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import Entity.PrimNumSize
 import Entity.PrimOp
+import Entity.PrimOp.BinaryOp
+import Entity.PrimOp.CmpOp
+import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
@@ -234,6 +239,30 @@ clarifyTerm tenv term =
     m :< TM.FlowElim _ var (e, t) -> do
       let arity = A.fromInt 2
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
+    _ :< TM.Nat ->
+      return returnImmediateS4
+    m :< TM.NatZero -> do
+      baseSize <- Env.getBaseSize m
+      return $ C.UpIntro $ C.Int (IntSize baseSize) 0
+    m :< TM.NatSucc e -> do
+      (valueVarName, value, valueVar) <- clarifyPlus tenv e
+      baseSize <- Env.getBaseSize m
+      return $ bindLet [(valueVarName, value)] $ increment baseSize valueVar
+
+increment :: Int -> C.Value -> C.Comp
+increment baseSize v = do
+  let intType = PT.Int (IntSize baseSize)
+  C.Primitive $ C.PrimOp (PrimBinaryOp Add intType intType) [v, C.Int (IntSize baseSize) 1]
+
+decrement :: Int -> C.Value -> C.Comp
+decrement baseSize v = do
+  let intType = PT.Int (IntSize baseSize)
+  C.Primitive $ C.PrimOp (PrimBinaryOp Sub intType intType) [v, C.Int (IntSize baseSize) 1]
+
+isZero :: Int -> C.Value -> C.Comp
+isZero baseSize v = do
+  let intType = PT.Int (IntSize baseSize)
+  C.Primitive $ C.PrimOp (PrimCmpOp Eq intType (PT.Int $ IntSize 1)) [v, C.Int (IntSize baseSize) 0]
 
 type Size =
   Int
@@ -264,24 +293,46 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       fallbackClause' <- clarifyDecisionTree tenv isNoetic dataArgsMap fallbackClause >>= aligner
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
-      b <- isEnumType t
-      let idents = map (\(_, x, _) -> x) chain
-      if b
-        then getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
-        else do
+      let idents = cursor : map (\(_, x, _) -> x) chain
+      ck <- getClauseKind t
+      case ck of
+        Enum ->
+          getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
+        Nat -> do
+          (flag, flagVar) <- Gensym.newValueVarLocalWith "flag"
+          enumElim <- getEnumElim idents flagVar fallbackClause' (zip enumCaseList clauseList'')
+          baseSize <- Env.getBaseSize m
+          return $ C.UpElim True flag (isZero baseSize (C.VarLocal cursor)) enumElim
+        Ordinary -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim
 
-isEnumType :: TM.Term -> App Bool
-isEnumType term =
+data ClauseKind
+  = Ordinary
+  | Enum
+  | Nat
+
+getClauseKind :: TM.Term -> App ClauseKind
+getClauseKind term =
   case term of
     _ :< TM.Data dataName _ _ -> do
-      Enum.isMember dataName
+      b <- Enum.isMember dataName
+      if b
+        then return Enum
+        else return Ordinary
     _ :< TM.PiElim (_ :< TM.Data dataName _ _) _ -> do
-      Enum.isMember dataName
+      b <- Enum.isMember dataName
+      if b
+        then return Enum
+        else return Ordinary
     _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
-      Enum.isMember dataName
+      b <- Enum.isMember dataName
+      if b
+        then return Enum
+        else return Ordinary
+    _ :< TM.Nat -> do
+      return Nat
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
 
@@ -308,26 +359,38 @@ clarifyCase ::
   Ident ->
   DT.Case TM.Term ->
   App (EC.EnumCase, C.Comp)
-clarifyCase tenv isNoetic dataArgsMap cursor (DT.Cons _ consName disc dataArgs consArgs cont) = do
-  let (_, dataTypes) = unzip dataArgs
-  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
-  let cursorSize = 1 + length dataArgVars + length consArgs
-  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
-  let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
-  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-  b <- Enum.isMember consName
-  if b
-    then return (EC.Int (D.reify disc), body')
-    else do
-      discriminantVar <- Gensym.newIdentFromText "discriminant"
+clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
+  case decisionCase of
+    DT.NatZero _ cont -> do
+      cont' <- clarifyDecisionTree tenv isNoetic dataArgsMap cont
+      return (EC.Int 1, cont') -- `1` is from `icmp eq cursor 0`
+    DT.NatSucc m mxt@(_, x, _) cont -> do
+      cont' <- clarifyDecisionTree (TM.insTypeEnv [mxt] tenv) isNoetic dataArgsMap cont
+      baseSize <- Env.getBaseSize m
       return
-        ( EC.Int (D.reify disc),
-          C.SigmaElim
-            False
-            (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
-            (C.VarLocal cursor)
-            body'
+        ( EC.Int 0, -- `0` is from `icmp eq cursor 0`
+          C.UpElim False x (decrement baseSize (C.VarLocal cursor)) cont'
         )
+    DT.Cons _ consName disc dataArgs consArgs cont -> do
+      let (_, dataTypes) = unzip dataArgs
+      dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
+      let cursorSize = 1 + length dataArgVars + length consArgs
+      let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
+      let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
+      body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
+      b <- Enum.isMember consName
+      if b
+        then return (EC.Int (D.reify disc), body')
+        else do
+          discriminantVar <- Gensym.newIdentFromText "discriminant"
+          return
+            ( EC.Int (D.reify disc),
+              C.SigmaElim
+                False
+                (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+                (C.VarLocal cursor)
+                body'
+            )
 
 alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable tenv fvs e = do
