@@ -6,11 +6,9 @@ module Entity.DefiniteDescription
     getFormDD,
     imm,
     cls,
-    array,
     nat,
     natZero,
     natSucc,
-    isBaseDefiniteDescription,
     toBuilder,
   )
 where
@@ -26,8 +24,6 @@ import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
-import Entity.ModuleID qualified as MID
-import Entity.PrimType qualified as PT
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics
@@ -99,14 +95,6 @@ natZero =
 natSucc :: DefiniteDescription
 natSucc =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.natSucc
-
-array :: PT.PrimType -> DefiniteDescription
-array elemType =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) $ BN.arrayType elemType
-
-isBaseDefiniteDescription :: DefiniteDescription -> Bool
-isBaseDefiniteDescription dd =
-  SGL.moduleID (globalLocator dd) == MID.Base
 
 toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =

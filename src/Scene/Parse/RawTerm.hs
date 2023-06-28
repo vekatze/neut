@@ -117,15 +117,15 @@ rawTermBasic = do
 rawTermSimple' :: Parser RT.RawTerm
 rawTermSimple' = do
   choice
-    [ rawTermBrace',
+    [ rawTermBrace,
       rawTermListIntro,
-      rawTermTextIntro',
-      rawTermTau',
-      rawTermAdmit',
-      rawTermHole',
-      rawTermInteger',
-      rawTermFloat',
-      rawTermSymbol'
+      rawTermTextIntro,
+      rawTermTau,
+      rawTermAdmit,
+      rawTermHole,
+      rawTermInteger,
+      rawTermFloat,
+      rawTermSymbol
     ]
 
 rawTermPiGeneral :: Parser RT.RawTerm
@@ -299,14 +299,14 @@ rawTermEmbody = do
   e <- rawTermBasic
   return $ m :< RT.Embody e
 
-rawTermTau' :: Parser RT.RawTerm
-rawTermTau' = do
+rawTermTau :: Parser RT.RawTerm
+rawTermTau = do
   m <- getCurrentHint
   keyword' "tau"
   return $ m :< RT.Tau
 
-rawTermHole' :: Parser RT.RawTerm
-rawTermHole' = do
+rawTermHole :: Parser RT.RawTerm
+rawTermHole = do
   m <- getCurrentHint
   keyword' "_"
   lift $ Gensym.newPreHole m
@@ -716,8 +716,8 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
               ]
           )
 
-rawTermBrace' :: Parser RT.RawTerm
-rawTermBrace' =
+rawTermBrace :: Parser RT.RawTerm
+rawTermBrace =
   betweenBrace' rawExpr
 
 rawTermTuple :: Parser RT.RawTerm
@@ -810,8 +810,8 @@ rawTermOptionSome = do
   someVar <- lift $ locatorToVarGlobal m coreEitherSomeInternal
   return $ m :< RT.PiElim someVar [e]
 
-rawTermAdmit' :: Parser RT.RawTerm
-rawTermAdmit' = do
+rawTermAdmit :: Parser RT.RawTerm
+rawTermAdmit = do
   m <- getCurrentHint
   keyword' "admit"
   admit <- lift $ locatorToVarGlobal m coreSystemAdmit
@@ -948,27 +948,27 @@ getIntrospectiveValue m key = do
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
 
-rawTermSymbol' :: Parser RT.RawTerm
-rawTermSymbol' = do
+rawTermSymbol :: Parser RT.RawTerm
+rawTermSymbol = do
   (m, varOrLocator) <- parseName'
   return $ m :< RT.Var varOrLocator
 
-rawTermTextIntro' :: Parser RT.RawTerm
-rawTermTextIntro' = do
+rawTermTextIntro :: Parser RT.RawTerm
+rawTermTextIntro = do
   m <- getCurrentHint
   s <- string'
   textType <- lift $ locatorToVarGlobal m coreText
   return $ m :< RT.Prim (WP.Value (WPV.StaticText textType s))
 
-rawTermInteger' :: Parser RT.RawTerm
-rawTermInteger' = do
+rawTermInteger :: Parser RT.RawTerm
+rawTermInteger = do
   m <- getCurrentHint
   intValue <- try integer'
   h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Int h intValue))
 
-rawTermFloat' :: Parser RT.RawTerm
-rawTermFloat' = do
+rawTermFloat :: Parser RT.RawTerm
+rawTermFloat = do
   m <- getCurrentHint
   floatValue <- try float'
   h <- lift $ Gensym.newPreHole m
