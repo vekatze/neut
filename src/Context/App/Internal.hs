@@ -1,5 +1,6 @@
 module Context.App.Internal where
 
+import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IORef.Unboxed
@@ -78,7 +79,7 @@ data Env = Env
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     lucentDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
     defMap :: IORef (Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term)),
-    staticTextList :: IORef [(DD.DefiniteDescription, (T.Text, Int))],
+    staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),

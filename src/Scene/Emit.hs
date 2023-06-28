@@ -82,7 +82,7 @@ emitStaticText baseSize (from, (text, len)) = do
     <> ", "
     <> emitLowType (LT.textTypeInner len)
     <> " c\""
-    <> TE.encodeUtf8Builder text
+    <> text
     <> "\""
     <> "}"
 

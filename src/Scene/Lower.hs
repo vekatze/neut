@@ -15,6 +15,7 @@ import Context.StaticText
 import Context.StaticText qualified as StaticText
 import Control.Monad
 import Control.Monad.Writer.Lazy
+import Data.ByteString.Builder
 import Data.IntMap qualified as IntMap
 import Data.Maybe (isJust)
 import Data.Set qualified as S
@@ -292,7 +293,8 @@ lowerValue v =
       let len = length i8s
       i <- lift Gensym.newCount
       name <- lift $ Locator.attachCurrentLocator $ BN.textName i
-      lift $ StaticText.insert name text len
+      let encodedText = foldMap (\w -> "\\" <> word8HexFixed w) i8s
+      lift $ StaticText.insert name encodedText len
       uncast (LC.VarGlobal name) LT.Pointer
     C.SigmaIntro ds -> do
       let arrayType = AggTypeArray (length ds) LT.Pointer
