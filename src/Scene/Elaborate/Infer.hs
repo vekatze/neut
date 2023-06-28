@@ -217,10 +217,10 @@ infer' varEnv term =
       return (m :< WT.Nat, m :< WT.Tau)
     m :< WT.NatZero ->
       return (m :< WT.NatZero, m :< WT.Nat)
-    m :< WT.NatSucc e -> do
+    m :< WT.NatSucc step e -> do
       (e', t) <- infer' varEnv e
       insConstraintEnv (m :< WT.Nat) t
-      return (m :< WT.NatSucc e', m :< WT.Nat)
+      return (m :< WT.NatSucc step e', m :< WT.Nat)
 
 inferArgs ::
   WT.SubstWeakTerm ->

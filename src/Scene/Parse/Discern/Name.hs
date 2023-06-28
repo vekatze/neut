@@ -155,7 +155,7 @@ interpretGlobalName m dd gn = do
     GN.NatSucc -> do
       let opacity = LK.Normal O.Transparent
       arg <- Gensym.newIdentFromText "succ-arg"
-      return $ m :< WT.PiIntro opacity [(m, arg, m :< WT.Nat)] (m :< WT.NatSucc (m :< WT.Var arg))
+      return $ m :< WT.PiIntro opacity [(m, arg, m :< WT.Nat)] (m :< WT.NatSucc 1 (m :< WT.Var arg))
 
 interpretTopLevelFunc ::
   Hint ->

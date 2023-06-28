@@ -39,7 +39,7 @@ import Entity.Noema qualified as N
 import Entity.Opacity (isOpaque)
 import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
-import Entity.PrimNumSize
+import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
 import Entity.PrimOp.BinaryOp
 import Entity.PrimOp.CmpOp
@@ -183,14 +183,14 @@ clarifyTerm tenv term =
       isEnum <- Enum.isMember consName
       baseSize <- Env.getBaseSize m
       if isEnum
-        then return $ C.UpIntro $ C.Int (IntSize baseSize) (D.reify disc)
+        then return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify disc)
         else do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
             bindLet (zip zs es) $
               C.UpIntro $
                 C.SigmaIntro $
-                  C.Int (IntSize baseSize) (D.reify disc) : xs
+                  C.Int (PNS.IntSize baseSize) (D.reify disc) : xs
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -205,7 +205,7 @@ clarifyTerm tenv term =
       baseSize <- Env.getBaseSize m
       return $
         bindLet [(typeExpVarName, typeExp), (valueVarName, value)] $
-          C.PiElimDownElim typeExpVar [C.Int (IntSize baseSize) 1, valueVar]
+          C.PiElimDownElim typeExpVar [C.Int (PNS.IntSize baseSize) 1, valueVar]
     _ :< TM.Let opacity mxt@(_, x, _) e1 e2 -> do
       e2' <- clarifyTerm (TM.insTypeEnv [mxt] tenv) e2
       mxts' <- dropFst <$> clarifyBinder tenv [mxt]
@@ -243,26 +243,26 @@ clarifyTerm tenv term =
       return returnImmediateS4
     m :< TM.NatZero -> do
       baseSize <- Env.getBaseSize m
-      return $ C.UpIntro $ C.Int (IntSize baseSize) 0
-    m :< TM.NatSucc e -> do
+      return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) 0
+    m :< TM.NatSucc step e -> do
       (valueVarName, value, valueVar) <- clarifyPlus tenv e
       baseSize <- Env.getBaseSize m
-      return $ bindLet [(valueVarName, value)] $ increment baseSize valueVar
+      return $ bindLet [(valueVarName, value)] $ increment baseSize valueVar step
 
-increment :: Int -> C.Value -> C.Comp
-increment baseSize v = do
-  let intType = PT.Int (IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimBinaryOp Add intType intType) [v, C.Int (IntSize baseSize) 1]
+increment :: Int -> C.Value -> Integer -> C.Comp
+increment baseSize v step = do
+  let intType = PT.Int (PNS.IntSize baseSize)
+  C.Primitive $ C.PrimOp (PrimBinaryOp Add intType intType) [v, C.Int (PNS.IntSize baseSize) step]
 
 decrement :: Int -> C.Value -> C.Comp
 decrement baseSize v = do
-  let intType = PT.Int (IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimBinaryOp Sub intType intType) [v, C.Int (IntSize baseSize) 1]
+  let intType = PT.Int (PNS.IntSize baseSize)
+  C.Primitive $ C.PrimOp (PrimBinaryOp Sub intType intType) [v, C.Int (PNS.IntSize baseSize) 1]
 
 isZero :: Int -> C.Value -> C.Comp
 isZero baseSize v = do
-  let intType = PT.Int (IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimCmpOp Eq intType (PT.Int $ IntSize 1)) [v, C.Int (IntSize baseSize) 0]
+  let intType = PT.Int (PNS.IntSize baseSize)
+  C.Primitive $ C.PrimOp (PrimCmpOp Eq intType (PT.Int $ PNS.IntSize 1)) [v, C.Int (PNS.IntSize baseSize) 0]
 
 type Size =
   Int

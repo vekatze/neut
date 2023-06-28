@@ -176,9 +176,9 @@ reveal' varEnv term =
       return $ m :< WT.Nat
     m :< WT.NatZero ->
       return $ m :< WT.NatZero
-    m :< WT.NatSucc e -> do
+    m :< WT.NatSucc step e -> do
       e' <- reveal' varEnv e
-      return $ m :< WT.NatSucc e'
+      return $ m :< WT.NatSucc step e'
 
 revealPi ::
   BoundVarEnv ->

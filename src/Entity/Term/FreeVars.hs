@@ -70,7 +70,7 @@ freeVars term =
       S.empty
     _ :< TM.NatZero ->
       S.empty
-    _ :< TM.NatSucc e ->
+    _ :< TM.NatSucc _ e ->
       freeVars e
 
 freeVars' :: [BinderF TM.Term] -> S.Set Ident -> S.Set Ident

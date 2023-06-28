@@ -47,7 +47,7 @@ data TermF a
       (a, a) -- (flow, flow-type)
   | Nat
   | NatZero
-  | NatSucc a
+  | NatSucc Integer a
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -88,5 +88,9 @@ isValue term =
       True
     _ :< Flow {} ->
       True
+    _ :< NatZero ->
+      True
+    _ :< NatSucc _ e ->
+      isValue e
     _ ->
       False

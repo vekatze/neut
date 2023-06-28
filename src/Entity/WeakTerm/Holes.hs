@@ -69,7 +69,7 @@ holes term =
       S.empty
     _ :< WT.NatZero ->
       S.empty
-    _ :< WT.NatSucc e ->
+    _ :< WT.NatSucc _ e ->
       holes e
 
 holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID

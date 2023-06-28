@@ -73,7 +73,7 @@ freeVars term =
       S.empty
     _ :< WT.NatZero ->
       S.empty
-    _ :< WT.NatSucc e ->
+    _ :< WT.NatSucc _ e ->
       freeVars e
 
 freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident

@@ -59,4 +59,4 @@ executables:
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
-      - -fmax-pmcheck-models=100
+      - -fmax-pmcheck-models=200

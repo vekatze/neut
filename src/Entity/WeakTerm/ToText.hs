@@ -86,8 +86,8 @@ toText term =
       "nat"
     _ :< WT.NatZero ->
       "Zero"
-    _ :< WT.NatSucc a ->
-      showCons ["Succ", toText a]
+    _ :< WT.NatSucc k a ->
+      showCons ["Succ{", T.pack (show k), "}", toText a]
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -128,8 +128,8 @@ showPrim prim =
       PT.toText t
     WP.Value primValue ->
       case primValue of
-        WPV.Int _ v ->
-          T.pack (show v)
+        WPV.Int t v ->
+          "{" <> toText t <> "}" <> T.pack (show v)
         WPV.Float _ v ->
           T.pack (show v)
         WPV.Op op ->

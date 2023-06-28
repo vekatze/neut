@@ -93,9 +93,9 @@ subst sub term =
       return $ m :< TM.Nat
     m :< TM.NatZero ->
       return $ m :< TM.NatZero
-    m :< TM.NatSucc e -> do
+    m :< TM.NatSucc step e -> do
       e' <- subst sub e
-      return $ m :< TM.NatSucc e'
+      return $ m :< TM.NatSucc step e'
 
 subst' ::
   SubstTerm ->

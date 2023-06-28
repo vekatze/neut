@@ -77,7 +77,7 @@ chainOf' tenv term =
       []
     _ :< TM.NatZero ->
       []
-    _ :< TM.NatSucc e ->
+    _ :< TM.NatSucc _ e ->
       chainOf' tenv e
 
 chainOfBinder :: TM.TypeEnv -> [BinderF TM.Term] -> [TM.Term] -> [BinderF TM.Term]

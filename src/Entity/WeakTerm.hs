@@ -51,7 +51,7 @@ data WeakTermF a
       (a, a) -- (flow, flow-type)
   | Nat
   | NatZero
-  | NatSucc a
+  | NatSucc Integer a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)
@@ -101,29 +101,3 @@ asVar term =
       Just x
     _ ->
       Nothing
-
-isValue :: WeakTerm -> Bool
-isValue term =
-  case term of
-    _ :< Tau ->
-      True
-    _ :< VarGlobal {} ->
-      True
-    _ :< Pi {} ->
-      True
-    _ :< PiIntro {} ->
-      True
-    _ :< Data {} ->
-      True
-    _ :< DataIntro _ _ _ _ dataArgs consArgs ->
-      all isValue $ dataArgs ++ consArgs
-    _ :< Noema {} ->
-      True
-    _ :< Prim {} ->
-      True
-    _ :< ResourceType {} ->
-      True
-    _ :< Flow {} ->
-      True
-    _ ->
-      False

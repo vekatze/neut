@@ -188,8 +188,23 @@ simplify constraintList =
           simplify cs
         (_ :< WT.NatZero, _ :< WT.NatZero) ->
           simplify cs
-        (_ :< WT.NatSucc e1, _ :< WT.NatSucc e2) ->
-          simplify $ (C.Eq e1 e2, orig) : cs
+        (m1 :< WT.NatSucc step1 e1, m2 :< WT.NatSucc step2 e2)
+          | step1 == step2 ->
+              simplify $ (C.Eq e1 e2, orig) : cs
+          | step1 > step2 ->
+              simplify $ (C.Eq (m1 :< WT.NatSucc (step1 - step2) e1) e2, orig) : cs
+          | step1 < step2 ->
+              simplify $ (C.Eq e1 (m2 :< WT.NatSucc (step2 - step1) e2), orig) : cs
+        (m :< WT.NatZero, _ :< WT.Prim (WP.Value (WPV.Int t2 0))) ->
+          simplify $ (C.Eq (m :< WT.Nat) t2, orig) : cs
+        (_ :< WT.Prim (WP.Value (WPV.Int t1 0)), m :< WT.NatZero) ->
+          simplify $ (C.Eq t1 (m :< WT.Nat), orig) : cs
+        (_ :< WT.NatSucc step1 e1, m2 :< WT.Prim (WP.Value (WPV.Int t2 l2)))
+          | l2 - step1 >= 0 ->
+              simplify $ (C.Eq e1 (m2 :< WT.Prim (WP.Value (WPV.Int t2 (l2 - step1)))), orig) : cs
+        (m1 :< WT.Prim (WP.Value (WPV.Int t1 l1)), _ :< WT.NatSucc step2 e2)
+          | l1 - step2 >= 0 ->
+              simplify $ (C.Eq (m1 :< WT.Prim (WP.Value (WPV.Int t1 (l1 - step2)))) e2, orig) : cs
         (e1, e2) -> do
           sub <- getHoleSubst
           let fvs1 = freeVars e1

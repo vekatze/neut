@@ -92,6 +92,7 @@ analyzeDefList defList = do
 
 synthesizeDefList :: [DE.Decl] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
+  -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
@@ -257,6 +258,10 @@ elaborate' term =
                   return $ m :< TM.Prim (P.Value (PV.Int size x))
                 _ :< TM.Prim (P.Type (PT.Float size)) ->
                   return $ m :< TM.Prim (P.Value (PV.Float size (fromInteger x)))
+                _ :< TM.Nat -> do
+                  if x >= 0
+                    then return $ m :< TM.NatSucc x (m :< TM.NatZero)
+                    else Throw.raiseError m "natural numbers can't be negative"
                 _ -> do
                   Throw.raiseError m $
                     "the term `"
@@ -325,9 +330,9 @@ elaborate' term =
       return $ m :< TM.Nat
     m :< WT.NatZero ->
       return $ m :< TM.NatZero
-    m :< WT.NatSucc e -> do
+    m :< WT.NatSucc step e -> do
       e' <- elaborate' e
-      return $ m :< TM.NatSucc e'
+      return $ m :< TM.NatSucc step e'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

@@ -94,8 +94,8 @@ weaken term =
       m :< WT.Nat
     m :< TM.NatZero ->
       m :< WT.NatZero
-    m :< TM.NatSucc e ->
-      m :< WT.NatSucc (weaken e)
+    m :< TM.NatSucc step e ->
+      m :< WT.NatSucc step (weaken e)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
