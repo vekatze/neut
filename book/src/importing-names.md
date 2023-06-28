@@ -75,8 +75,8 @@ Suppose that you have added a library module to your module:
 ```text
 dependency = {
   core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-30.tar.zst"
-    digest = "mo5KAip0qj7GAygt1ktqDF-AUp2wiOKfJpHAMNV6o4c="
+    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-0-31.tar.zst"
+    digest = "JQHjb0QI937b33Ucrv04IQOYhvTw_k8bt9zbQD0He9M="
   }
 }
 ```
@@ -100,7 +100,7 @@ Here, the module alias of `core.text.io` is `core`, and the relative path is `te
 ```sh
 core => DIGEST_OF_THE_LIBRARY
 
-# core => mo5KAip0qj7GAygt1ktqDF-AUp2wiOKfJpHAMNV6o4c=
+# core => JQHjb0QI937b33Ucrv04IQOYhvTw_k8bt9zbQD0He9M=
 ```
 
 and do the following name resolution:
@@ -110,7 +110,7 @@ core.text.io.get-line
 
 ↓
 
-mo5KAip0qj7GAygt1ktqDF-AUp2wiOKfJpHAMNV6o4c=.text.io.get-line
+JQHjb0QI937b33Ucrv04IQOYhvTw_k8bt9zbQD0He9M=.text.io.get-line
 ```
 
 ## Qualified Import

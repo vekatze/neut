@@ -245,7 +245,7 @@ coreTextNames =
 
 coreTextIONames :: [BaseName]
 coreTextIONames =
-  map MakeBaseName ["write", "read", "get-line", "print", "print-line", "print-character", "print-int"]
+  map MakeBaseName ["write", "read", "get-line", "print", "print-line", "print-int", "print-float"]
 
 coreThreadNames :: [BaseName]
 coreThreadNames =
