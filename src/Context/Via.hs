@@ -29,6 +29,7 @@ initializeActiveViaMap =
 union :: Path Abs File -> ViaMap -> App ()
 union path newViaInfo = do
   modifyRef' viaMap $ Map.insertWith Map.union path newViaInfo
+  modifyRef' activeViaMap $ Map.union newViaInfo
 
 lookup :: DD.DefiniteDescription -> App (Map.HashMap RawIdent DD.DefiniteDescription)
 lookup consName = do

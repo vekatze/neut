@@ -8,7 +8,6 @@ import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.NameDependence qualified as NameDependence
-import Context.Remark (printNote')
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type

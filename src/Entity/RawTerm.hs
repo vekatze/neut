@@ -42,7 +42,7 @@ data RawTermF a
       [DD.DefiniteDescription]
       D.Discriminant
       [a]
-      [(a, (RawIdent, Maybe Name))]
+      [a]
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Embody a

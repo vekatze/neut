@@ -47,6 +47,10 @@ import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList stmtList =
+  discernStmtList' $ sortBy compareRawStmt stmtList
+
+discernStmtList' :: [RawStmt] -> App [WeakStmt]
+discernStmtList' stmtList =
   case stmtList of
     [] ->
       return []
@@ -55,13 +59,37 @@ discernStmtList stmtList =
       codType' <- discern nenv codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
-      rest' <- discernStmtList rest
+      rest' <- discernStmtList' rest
       return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
-      rest' <- discernStmtList rest
+      rest' <- discernStmtList' rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
+    RawStmtVia m consName consArgs : rest -> do
+      forM_ consArgs $ \(consArgName, mViaName) -> do
+        case mViaName of
+          Nothing ->
+            return ()
+          Just viaName -> do
+            (nameDep, (mDep, gnDep)) <- resolveName m viaName
+            src <- Env.getCurrentSource
+            let path = Source.sourceFilePath src
+            NameDependence.add path (Map.singleton nameDep (mDep, gnDep))
+            Via.union path $ Map.singleton consName (Map.singleton consArgName nameDep)
+      discernStmtList' rest
+
+compareRawStmt :: RawStmt -> RawStmt -> Ordering
+compareRawStmt stmt1 stmt2 =
+  case (stmt1, stmt2) of
+    (RawStmtVia {}, RawStmtVia {}) ->
+      EQ
+    (RawStmtVia {}, _) ->
+      LT
+    (_, RawStmtVia {}) ->
+      GT
+    (_, _) ->
+      EQ
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -127,17 +155,7 @@ discern nenv term =
       return $ m :< WT.Data name consNameList es'
     m :< RT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
       dataArgs' <- mapM (discern nenv) dataArgs
-      forM_ consArgs $ \(_, (consArgName, mViaName)) -> do
-        case mViaName of
-          Nothing ->
-            return ()
-          Just viaName -> do
-            (nameDep, (mDep, gnDep)) <- resolveName m viaName
-            src <- Env.getCurrentSource
-            let path = Source.sourceFilePath src
-            NameDependence.add path (Map.singleton nameDep (mDep, gnDep))
-            Via.union path $ Map.singleton consName (Map.singleton consArgName nameDep)
-      consArgs' <- mapM (discern nenv . fst) consArgs
+      consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences

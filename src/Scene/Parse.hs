@@ -257,9 +257,10 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               (AN.fromInt $ length dataArgs)
               args
               dataType
-              $ m :< RT.DataIntro dataName consName consNameList discriminant dataArgs' consArgs'
+              $ m :< RT.DataIntro dataName consName consNameList discriminant dataArgs' (map fst consArgs')
+      let viaRule = RawStmtVia m consName (map snd consArgs')
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
-      return $ introRule : introRuleList
+      return $ introRule : viaRule : introRuleList
 
 constructDataType ::
   Hint ->
@@ -351,6 +352,8 @@ registerTopLevelNames stmtList =
       registerTopLevelNames rest
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
+      registerTopLevelNames rest
+    RawStmtVia {} : rest ->
       registerTopLevelNames rest
 
 getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
