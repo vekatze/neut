@@ -65,7 +65,7 @@ define is-odd(x: int): int {
   }
 }
 
-define multiple-argument-list(x: int)(y: int, z: bool)(w: int -> int): int {
+define multiple-argument-list(x: int)(y: int, z: bool, w: int -> int): int {
   if eq-int(x, y) {
     10
   } else-if z {
@@ -75,7 +75,7 @@ define multiple-argument-list(x: int)(y: int, z: bool)(w: int -> int): int {
   }
 }
 
-define imp-multiple[a](x: a)(y: int, z: bool)(w: a -> int): int {
+define imp-multiple[a](x: a)(y: int, z: bool, w: a -> int): int {
   if eq-int(1, y) {
     10
   } else-if z {
@@ -87,7 +87,7 @@ define imp-multiple[a](x: a)(y: int, z: bool)(w: a -> int): int {
 
 define main(): unit {
   let _ = is-even(12345)
-  let _ = multiple-argument-list(10)(20, True)((x) => { add-int(x, 1) })
-  let _ = imp-multiple(tau)(10, False)((_) => { 20 })
+  let _ = multiple-argument-list(10)(20, True, (x) => { add-int(x, 1) })
+  let _ = imp-multiple(tau)(10, False, (_) => { 20 })
   Unit
 }

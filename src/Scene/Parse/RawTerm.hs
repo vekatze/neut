@@ -23,6 +23,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.Arch qualified as Arch
+import Entity.BaseName qualified as BN
 import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DeclarationName qualified as DN
@@ -336,28 +337,16 @@ parseTopDefInfo = do
   impDomInfoList <- impArgList preBinder
   domInfoList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) domInfoList
-  additionalDomInfoList <- many $ argList preBinder
+  mAdditionalDomInfoList <- optional $ argList preBinder
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
-  let codType' = foldPi m additionalDomInfoList codType
-  let e' = foldLam m additionalDomInfoList e
-  return ((m, funcBaseName), impDomInfoList, domInfoList, codType', e')
-
-foldLam :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
-foldLam m domInfoList e =
-  case domInfoList of
-    [] ->
-      e
-    domInfo : rest ->
-      lam m domInfo $ foldLam m rest e
-
-foldPi :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
-foldPi m domInfoList e =
-  case domInfoList of
-    [] ->
-      e
-    domInfo : rest ->
-      m :< RT.Pi domInfo (foldPi m rest e)
+  case mAdditionalDomInfoList of
+    Nothing -> do
+      return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
+    Just additionalDomInfoList -> do
+      let muTerm = mu m (BN.reify funcBaseName) codType additionalDomInfoList e
+      let codType' = m :< RT.Pi additionalDomInfoList codType
+      return ((m, funcBaseName), impDomInfoList, domInfoList, codType', muTerm)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
@@ -977,6 +966,10 @@ rawTermFloat = do
 lam :: Hint -> [RawBinder RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
   m :< RT.PiIntro (LK.Normal O.Transparent) varList e
+
+mu :: Hint -> RawIdent -> RT.RawTerm -> [RawBinder RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
+mu m funcName codType varList e = do
+  m :< RT.PiIntro (LK.Fix (m, funcName, codType)) varList e
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =

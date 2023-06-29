@@ -12,7 +12,6 @@ import Entity.Opacity qualified as O
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.FreeVars
 import Scene.WeakTerm.Subst qualified as Subst
 
 reduce :: WT.WeakTerm -> App WT.WeakTerm
@@ -23,20 +22,16 @@ reduce term =
       ts' <- mapM reduce ts
       cod' <- reduce cod
       return $ m :< WT.Pi (zip3 ms xs ts') cod'
-    m :< WT.PiIntro kind xts e
-      | LK.Fix (_, x, _) <- kind,
-        x `notElem` freeVars e ->
-          reduce $ m :< WT.PiIntro (LK.Normal O.Transparent) xts e
-      | otherwise -> do
-          let (ms, xs, ts) = unzip3 xts
-          ts' <- mapM reduce ts
-          e' <- reduce e
-          case kind of
-            LK.Fix (mx, x, t) -> do
-              t' <- reduce t
-              return (m :< WT.PiIntro (LK.Fix (mx, x, t')) (zip3 ms xs ts') e')
-            _ ->
-              return (m :< WT.PiIntro kind (zip3 ms xs ts') e')
+    m :< WT.PiIntro kind xts e -> do
+      let (ms, xs, ts) = unzip3 xts
+      ts' <- mapM reduce ts
+      e' <- reduce e
+      case kind of
+        LK.Fix (mx, x, t) -> do
+          t' <- reduce t
+          return (m :< WT.PiIntro (LK.Fix (mx, x, t')) (zip3 ms xs ts') e')
+        _ ->
+          return (m :< WT.PiIntro kind (zip3 ms xs ts') e')
     m :< WT.PiElim e es -> do
       e' <- reduce e
       es' <- mapM reduce es
