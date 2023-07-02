@@ -1,4 +1,4 @@
-version := "0.3.0.1"
+version := "0.3.1"
 
 image-amd64 := "neut-haskell-amd64"
 
