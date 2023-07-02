@@ -334,7 +334,6 @@ parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
   m <- getCurrentHint
   funcBaseName <- baseName
-  impDomInfoList <- impArgList preBinder
   domInfoList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) domInfoList
   mAdditionalDomInfoList <- optional $ argList preBinder
@@ -342,11 +341,11 @@ parseTopDefInfo = do
   e <- betweenBrace rawExpr
   case mAdditionalDomInfoList of
     Nothing -> do
-      return ((m, funcBaseName), impDomInfoList, domInfoList, codType, e)
+      return ((m, funcBaseName), domInfoList, codType, e)
     Just additionalDomInfoList -> do
       let muTerm = mu m (BN.reify funcBaseName) codType additionalDomInfoList e
       let codType' = m :< RT.Pi additionalDomInfoList codType
-      return ((m, funcBaseName), impDomInfoList, domInfoList, codType', muTerm)
+      return ((m, funcBaseName), domInfoList, codType', muTerm)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
@@ -789,7 +788,8 @@ rawTermOptionNone = do
   m <- getCurrentHint
   keyword "None"
   noneVar <- lift $ locatorToVarGlobal m coreEitherNoneInternal
-  return $ m :< RT.PiElim noneVar []
+  t <- lift $ Gensym.newPreHole m
+  return $ m :< RT.PiElim noneVar [t]
 
 rawTermOptionSome :: Parser RT.RawTerm
 rawTermOptionSome = do
@@ -797,7 +797,8 @@ rawTermOptionSome = do
   keyword "Some"
   e <- betweenParen rawExpr
   someVar <- lift $ locatorToVarGlobal m coreEitherSomeInternal
-  return $ m :< RT.PiElim someVar [e]
+  t <- lift $ Gensym.newPreHole m
+  return $ m :< RT.PiElim someVar [t, e]
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do

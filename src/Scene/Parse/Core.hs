@@ -179,6 +179,10 @@ betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
+betweenBracket' :: Parser a -> Parser a
+betweenBracket' =
+  between (delimiter "[") (delimiter' "]")
+
 commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")
@@ -226,7 +230,7 @@ var' = do
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char
 nonSymbolCharSet =
-  S.fromList "=() \"\n\t:;,<>[]{}"
+  S.fromList "=() \"\n\t:;,<>[]{}/"
 
 {-# INLINE nonBaseNameCharSet #-}
 nonBaseNameCharSet :: S.Set Char
