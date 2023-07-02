@@ -72,11 +72,7 @@ lexeme =
 
 symbol :: Parser T.Text
 symbol = do
-  lexeme symbol'
-
-symbol' :: Parser T.Text
-symbol' = do
-  takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
 baseName :: Parser BN.BaseName
 baseName = do
@@ -93,11 +89,7 @@ baseNameCapitalized = do
 
 keyword :: T.Text -> Parser ()
 keyword expected = do
-  lexeme $ keyword' expected
-
-keyword' :: T.Text -> Parser ()
-keyword' expected = do
-  try $ do
+  lexeme $ try $ do
     _ <- chunk expected
     label (T.unpack expected) $ notFollowedBy symbol
 
@@ -106,29 +98,18 @@ nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
 
 delimiter :: T.Text -> Parser ()
-delimiter = do
-  lexeme . delimiter'
-
-delimiter' :: T.Text -> Parser ()
-delimiter' expected = do
-  void $ chunk expected
+delimiter expected = do
+  lexeme $ void $ chunk expected
 
 string :: Parser T.Text
 string =
-  lexeme string'
-
-string' :: Parser T.Text
-string' = do
-  _ <- char '\"'
-  T.pack <$> manyTill L.charLiteral (char '\"')
+  lexeme $ do
+    _ <- char '\"'
+    T.pack <$> manyTill L.charLiteral (char '\"')
 
 integer :: Parser Integer
-integer =
-  lexeme integer'
-
-integer' :: Parser Integer
-integer' = do
-  s <- symbol'
+integer = do
+  s <- symbol
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -136,12 +117,8 @@ integer' = do
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
 float :: Parser Double
-float =
-  lexeme float'
-
-float' :: Parser Double
-float' = do
-  s <- symbol'
+float = do
+  s <- symbol
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -161,39 +138,23 @@ bool = do
 
 betweenParen :: Parser a -> Parser a
 betweenParen =
-  lexeme . betweenParen'
-
-betweenParen' :: Parser a -> Parser a
-betweenParen' =
-  between (delimiter "(") (delimiter' ")")
+  between (delimiter "(") (delimiter ")")
 
 betweenBrace :: Parser a -> Parser a
 betweenBrace =
-  lexeme . betweenBrace'
-
-betweenBrace' :: Parser a -> Parser a
-betweenBrace' =
-  between (delimiter "{") (delimiter' "}")
+  between (delimiter "{") (delimiter "}")
 
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
-
-betweenBracket' :: Parser a -> Parser a
-betweenBracket' =
-  between (delimiter "[") (delimiter' "]")
 
 commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")
 
 argList :: Parser a -> Parser [a]
-argList = do
-  lexeme . argList'
-
-argList' :: Parser a -> Parser [a]
-argList' f = do
-  betweenParen' $ commaList f
+argList f = do
+  lexeme $ betweenParen $ commaList f
 
 impArgList :: Parser a -> Parser [a]
 impArgList f =
@@ -215,12 +176,8 @@ argSeqOrList p =
 
 var :: Parser (Hint, T.Text)
 var = do
-  lexeme var'
-
-var' :: Parser (Hint, T.Text)
-var' = do
   m <- getCurrentHint
-  x <- symbol'
+  x <- symbol
   if x /= "_"
     then return (m, x)
     else do
