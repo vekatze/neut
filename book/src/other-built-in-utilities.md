@@ -91,7 +91,7 @@ data either(a, b) {
 // (3) you can write `None` instead of `Left(Unit)`
 // (4) you can write `Some(e)` instead of `Right(e)
 
-data both(a ,b) {
+data both(a, b) {
 - Both(left: a, right: b)
 }
 ```
@@ -175,7 +175,7 @@ which relieves code cluttering.
 Neut optimizes all the tail calls. Thus, for example, the following function is optimized into a loop:
 
 ```neut
-define length-of-my-list[a](xs: my-list(a)): int {
+define length-of-my-list(a: tau, xs: my-list(a)): int {
   let helper =
     mu get-length(ys: my-list(a), acc: int): int {
       match ys {
@@ -185,6 +185,7 @@ define length-of-my-list[a](xs: my-list(a)): int {
         get-length(zs, add-int(1, acc)) // a tail call of `get-length`
       }
     }
+  in
   helper(xs, 0)
 }
 ```

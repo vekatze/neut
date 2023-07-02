@@ -17,20 +17,21 @@ I believe the last one is particularly interesting, as it means Neut found memor
 Like below:
 
 ```neut
-// algebraic data types
+// algebraic data types (tau = the type of types)
 data my-list(a: tau) {
 - Nil
 - Cons(a, my-list(a))
 }
 
 // a recursive function with pattern matching
-define noisy-length[a](xs: my-list(a)): int {
+define noisy-length(a: tau, xs: my-list(a)): int {
   match xs {
   - Nil =>
     0
   - Cons(_, ys) =>
-    print("hey\n")
-    add-int(1, noisy-length(ys))
+    let my-message = "hey\n" in
+    print(my-message);
+    add-int(1, noisy-length(a, ys))
   }
 }
 ```
@@ -42,13 +43,13 @@ define noisy-length[a](xs: my-list(a)): int {
 For example, if a variable is used twice, conceptually, a translation like below will happen:
 
 ```neut
-let xs: list(a) = [value-1, value-2]
+let xs: list(a) = [value-1, value-2] in
 some-func(xs, xs) // `xs` is used twice
 
 // ↓
 
-let xs: list(a) = [value-1, value-2]
-let (xs1, xs2) = copy-list-a(xs) // now `xs` is used exactly once
+let xs: list(a) = [value-1, value-2] in
+let (xs1, xs2) = copy-list-a(xs) in // now `xs` is used exactly once
 some-func(xs1, xs2)
 ```
 

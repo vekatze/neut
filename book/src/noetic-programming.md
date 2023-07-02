@@ -16,11 +16,11 @@ A noema can be created using `let-on`:
 
 ```neut
 define sample(xs: list(a)): int {
-  let result on xs = {
-    let foo = xs // foo: &list(a)
+  let result on xs =
+    let foo = xs in // foo: &list(a)
     1
-  }
-  let bar = xs // foo: list(a)
+  in
+  let bar = xs in // foo: list(a)
   2
 }
 ```
@@ -30,25 +30,25 @@ In the `body` of `let result on x1, ..., xn = body`, the type of `xi` is cast in
 It might be illuminating to see that `let-on` is essentially the following syntax sugar:
 
 ```neut
-let len on xs = e
+let len on xs = e in
 cont
 
 // ↓ desugar
 
-let xs = unsafe-cast(a, &a, xs) // cast: `a` ~> `&a`
-let len = e                     // (use `&a`)
-let xs = unsafe-cast(&a, a, xs) // uncast: `&a` ~> `a`
+let xs = unsafe-cast(a, &a, xs) in // cast: `a` ~> `&a`
+let len = e in                     // (use `&a`)
+let xs = unsafe-cast(&a, a, xs) in // uncast: `&a` ~> `a`
 cont
 ```
 
-For memory safety, the `result` cannot contain any noema. For example, the following code results in an error:
+For memory safety, the `result` cannot contain any noemata. For example, the following code results in an error:
 
 ```neut
-  let result on xs = {
-    let foo = xs // foo: &list(a)
-    foo // error: a term of the following type might be noetic: &list(a)
-  }
-  ...
+let result on xs =
+  let foo = xs in // foo: &list(a)
+  foo // error: a term of the following type might be noetic: &list(a)
+in
+...
 ```
 
 Also note that, since a function can contain a noema, the type of `result` can't be like `a -> b`.
@@ -58,11 +58,11 @@ Also note that, since a function can contain a noema, the type of `result` can't
 A noema isn't copied even when used multiple times. Let's take the following code for example:
 
 ```neut
-  let result on xs = {
-    let foo = xs // foo: &list(a)
-    let bar = xs // bar: &list(a)
+  let result on xs =
+    let foo = xs in // foo: &list(a)
+    let bar = xs in // bar: &list(a)
     1
-  }
+  in
   cont
 ```
 
@@ -75,12 +75,12 @@ By using a noema, we can perform something like "borrowing" in other languages.
 The content of a noema can be viewed using `case`:
 
 ```neut
-define length[a](xs: &list(a)): int {
+define length(a: tau, xs: &list(a)): int {
   case xs {
   - [] =>
     0
   - y :: ys =>
-    add-int(1, length(ys))
+    add-int(1, length(a, ys))
   }
 }
 ```

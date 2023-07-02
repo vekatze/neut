@@ -81,11 +81,11 @@ In Neut, a variable is copied/discarded when used non-linearly. Consider the fol
 
 ```neut
 define foo(): list(int) {
-  let xs = [1, 2]
+  let xs = [1, 2] in
   // (X)
-  let ys = xs
+  let ys = xs in
   // (Y)
-  let zs = xs
+  let zs = xs in
   // (Z)
   c
 }

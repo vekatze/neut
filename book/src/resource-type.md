@@ -28,22 +28,22 @@ For example, the following is a definition of a "boxed" integer type, with some 
 ```neut
 resource boxed-int {
 - (v: int) => {
-    print("discarded!\n") // print a message for a try
-    free(v)
+    print("discarded!\n"); // print a message for a try
+    free(v);
     0
   }
 - (v: int) => {
-    let orig-value = load-int(v)
-    let new-ptr = malloc(1)
-    magic store(int, orig-value, new-ptr)
+    let orig-value = load-int(v) in
+    let new-ptr = malloc(1) in
+    magic store(int, orig-value, new-ptr);
     new-ptr
   }
 }
 
 // provide a way to introduce new boxed integer
 define create-new-boxed-int(x: int): boxed-int {
-  let new-ptr = malloc(1)
-  store-int(x, new-ptr)
+  let new-ptr = malloc(1) in
+  store-int(x, new-ptr);
   magic cast(int, boxed-int, new-ptr)
 }
 ```

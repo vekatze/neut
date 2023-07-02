@@ -8,15 +8,16 @@ Suppose we have a function like the below:
 
 ```neut
 define foo(a: tau): int {
-  let x: int = 10
-  let y = tau
+  let x: int = 10 in
+  let y = tau in
   let f =
-    (z: a) => {   // lambda function
-      let foo = x // ← x is a free var of this lambda
-      let bar = y // ← y is also a free var of this lambda
-      let buz = z
+    (z: a) => {      // lambda function
+      let foo = x in // ← x is a free var of this lambda
+      let bar = y in // ← y is also a free var of this lambda
+      let buz = z in
       bar
     }
+  in
   0
 }
 ```
@@ -67,19 +68,19 @@ Using that type information, we can now copy/discard a closure. For example, to 
 ```neut
 // copy a closure `cls`
 
-let env-type = cls[0] // get the type of the environment
-let env      = cls[1] // get the pointer to the environment
-let label    = cls[2] // get the label to the function
+let env-type = cls[0] in // get the type of the environment
+let env      = cls[1] in // get the pointer to the environment
+let label    = cls[2] in // get the label to the function
 
-let env-clone = env-type(1, env) // copy the environment using the type of it
+let env-clone = env-type(1, env) in // copy the environment using the type of it
 
 // allocate new memory region for our new closure
-let new-ptr = malloc(mul-int(3, word-size))
+let new-ptr = malloc(mul-int(3, word-size)) in
 
 // store cloned values
-store(env-type, new-ptr[0])  // remember that a type is an immediate
-store(env-clone, new-ptr[1])
-store(label, new-ptr[2])     // note that a label is an immediate
+store(env-type, new-ptr[0]);  // remember that a type is an immediate
+store(env-clone, new-ptr[1]);
+store(label, new-ptr[2]);     // note that a label is an immediate
 
 new-ptr // ... and return the new closure
 ```
@@ -101,9 +102,9 @@ define exp-closure(action-selector, cls) {
     // discard
 
     // discard the environment using the type of it
-    let env-type = cls[0]
-    let env      = cls[1]
-    env-type(0, env)
+    let env-type = cls[0] in
+    let env      = cls[1] in
+    env-type(0, env);
 
     // discard the tuple of the closure
     free(cls)
@@ -111,18 +112,18 @@ define exp-closure(action-selector, cls) {
     // copy
 
     // get the original values
-    let env-type = cls[0]
-    let env      = cls[1]
-    let label    = cls[2]
+    let env-type = cls[0] in
+    let env      = cls[1] in
+    let label    = cls[2] in
 
     // copy the environment using the type of it
-    let env-clone = env-type(1, env)
+    let env-clone = env-type(1, env) in
 
-    let new-ptr = malloc(mul-int(3, word-size))
+    let new-ptr = malloc(mul-int(3, word-size)) in
     // copy the original values
-    store(env-type, new-ptr[0])
-    store(env-clone, new-ptr[1])
-    store(label, new-ptr[2])
+    store(env-type, new-ptr[0]);
+    store(env-clone, new-ptr[1]);
+    store(label, new-ptr[2]);
 
     // ... and return the new closure
     new-ptr

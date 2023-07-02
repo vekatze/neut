@@ -5,13 +5,14 @@
 Consider a toy language in which every variable is used exactly once. Something like this:
 
 ```neut
-let x = 1
-let y = x + 2
+let x = 1 in
+let y = x + 2 in
 let f =
   // lambda function
   (z) => {
     y + z // (A)
   }
+in
 f(4)
 ```
 
@@ -24,7 +25,7 @@ In such a language, we just have to allocate memory when a value is defined and 
 As you can easily tell, however, a naive linear language is fairly restrictive. You can't even, for example, apply the same lambda function twice:
 
 ```neut
-let increment = (x) => { x + 1 }
+let increment = (x) => { x + 1 } in
 increment(increment(3)) // error: `increment` is used twice
 ```
 

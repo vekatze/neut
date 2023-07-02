@@ -164,15 +164,15 @@ define rand-list(len: int, acc: int-list): int-list {
   if eq-int(len, 0) {
     acc
   } else {
-    let val = some-rand()
+    let val = some-rand() in
     rand-list(sub-int(len, 1), My-Cons(val, acc))
   }
 }
 
 define main(): unit {
-  let some-list = rand-list(30000, My-Nil)
-  let some-list = sort(some-list, My-Nil)
-  let _ = some-list
+  let some-list = rand-list(30000, My-Nil) in
+  let some-list = sort(some-list, My-Nil) in
+  let _ = some-list in
   Unit
 }
 ```

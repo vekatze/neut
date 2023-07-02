@@ -90,7 +90,7 @@ import {
 }
 
 define sample() {
-  let v = get-line()
+  let v = get-line() in
   ...
 }
 ```
@@ -166,7 +166,7 @@ import {
 }
 
 define buz() {
-  let k = term.Var("yo")
+  let k = term.Var("yo") in
   ...
 }
 ```

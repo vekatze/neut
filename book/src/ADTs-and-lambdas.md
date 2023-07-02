@@ -31,7 +31,7 @@ define create-my-list(): my-list(int) {
   MyCons(1, MyCons(2, MyNil))
 }
 
-define get-length[a](xs: my-list(a)): int {
+define get-length(a: tau, xs: my-list(a)): int {
   // pattern matching against a my-list
   match xs {
   - MyNil =>
@@ -39,32 +39,12 @@ define get-length[a](xs: my-list(a)): int {
   - MyCons(1, MyNil) => // nested pattern matching is available
     1
   - MyCons(_, rest) =>
-    add-int(1, get-length(rest))
+    add-int(1, get-length(a, rest))
   }
 }
 ```
 
 The name of a constructor must start with an uppercase letter.
-
-Incidentally, the `[a]` at the definition of `get-length` is for implicit arguments; They are inferred by the type inference algorithm. You can define an explicit variant of `get-length` as follows:
-
-```neut
-// `tau` is the type of types.
-define get-length(a: tau, xs: my-list(a)): int {
-  match xs {
-  - MyNil =>
-    1
-  - MyCons(_, rest) =>
-    add-int(1, get-length(a, rest)) // `a` is passed explicitly in this time
-  }
-}
-```
-
-which might not be what you want, because you need to pass the type `a` every time you call this function.
-
-You can specify multiple implicit arguments by writing, for example, `[a, b, c, d]`.
-
-You can also specify the types of implicit arguments by writing, for example, `[a: tau]`.
 
 ### Memory Behavior
 
@@ -105,7 +85,7 @@ You can create a lambda abstraction (anonymous function) and use it as an ordina
 
 ```neut
 define sample(): int {
-  let inc = (x) => { add-int(x) } // create a lambda function int -> int
+  let inc = (x) => { add-int(x) } in // create a lambda function int -> int
   inc(10) // and call it
 }
 ```
@@ -114,9 +94,9 @@ Also, the type of functions is written as follows in Neut:
 
 ```neut
 define sample(): int {
-  let type1 = int -> int         // receives int          / returns int
-  let type2 = (int, bool) -> int // receives int and bool / returns int
-  let type3 = () -> int          // receives nothing      / returns int
+  let type1 = int -> int in         // receives int          / returns int
+  let type2 = (int, bool) -> int in // receives int and bool / returns int
+  let type3 = () -> int in          // receives nothing      / returns int
   0
 }
 ```
@@ -136,9 +116,9 @@ func(a, b, c)
 
 // ↓ (source code to LLVM)
 
-let free-variables = func[1]
-let closed-function = func[2]
-free(func) // free the outer tuple
+let free-variables = func[1] in
+let closed-function = func[2] in
+free(func); // free the outer tuple
 CALL closed-function(a, b, c, free-variables) // LLVM-level function call
 ```
 
@@ -150,17 +130,18 @@ As we've seen, a recursive function can be defined by using `define`. You can al
 
 ```neut
 define foo(x: int): int {
-  let some-variable = 1
+  let some-variable = 1 in
   let some-rec-func =
     // creating a local recursive function `my-rec-func`
     mu my-rec-func(y: int): int {
       if eq-int(y, 0) {
         some-variable // free variables can be used normally in `mu`
       } else {
-        print("hey\n")
+        print("hey\n");
         my-rec-func(sub-int(y, 1)) // recursive call
       }
     }
+  in
   some-rec-func(x)
 }
 ```
@@ -174,14 +155,14 @@ define my-rec-func(y: int, z: int) {
   if le-int(y, 0) {
     z
   } else {
-    print("hey\n")
+    print("hey\n");
     my-rec-func(sub-int(y, 1), z)
   }
 }
 
 define fact(x: int): int {
-  let some-variable = 1
-  let some-rec-func = (y: int) => { my-rec-func(y, some-variable) }
+  let some-variable = 1 in
+  let some-rec-func = (y: int) => { my-rec-func(y, some-variable) } in
   some-rec-func(x)
 }
 ```
@@ -207,6 +188,7 @@ define caller(): int {
     - a => 20
     - some-argument => tau
     }
+  in
   0
 }
 
@@ -264,7 +246,7 @@ define some-func(x: item): int {
 
 // after
 define some-func(x: item): int {
-  let Item(foo, bar) = x
+  let Item(foo, bar) = x in
   foo
 }
 ```
@@ -283,7 +265,7 @@ data item {
 }
 
 define some-func(x: item): int {
-  let Item(..) = x // ".." is expanded into "foo, bar"
+  let Item(..) = x in // ".." is expanded into "foo, bar"
   foo
 }
 ```
@@ -307,8 +289,9 @@ data monoid(a) {
 }
 
 inline some-func[a](m: monoid(a)): a {
-  let Monoid(..) = m
-  let Semigroup(..) = as-semigroup
+  let Monoid(..) = m in
+  let Semigroup(..) = as-semigroup in
+  let _ = append in // from Semigroup
   append(empty, empty)
 }
 ```
@@ -335,7 +318,8 @@ data monoid(a) {
 
 // modified
 inline some-func[a](m: monoid(a)): a {
-  let Monoid(..) = m
+  let Monoid(..) = m in
+  let _ = append in // from Semigroup
   append(empty, empty)
   // (`let Semigroup(..) = as-semigroup` is inserted automatically)
 }
@@ -344,7 +328,7 @@ inline some-func[a](m: monoid(a)): a {
 More generally, if `via CONSTRUCTOR` is specified when defining a constructor, the corresponding
 
 ```neut
-let CONSTRUCTOR(..) = constructor
+let CONSTRUCTOR(..) = constructor in
 ```
 
 is automatically inserted every time `..` is supplied to the parent constructor (here, the `Monoid`).

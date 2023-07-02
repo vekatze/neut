@@ -25,27 +25,27 @@ We'll use noemata to deceive the type-oriented resource management system.
 Firstly, we need a way to create a noema. The syntax `let-on` is there for that purpose:
 
 ```neut
-let x: a = (...)       // x: a
-let result on x = {
-  let y: &a = x        // x: &a
-  100                  // x: &a
-}
+let x: a = (...) in      // x: a
+let result on x =
+  let y: &a = x in       // x: &a
+  100                    // x: &a
+in
 // outside
-let z: a = x           // x: a
-cont                   // x: a
+let z: a = x in          // x: a
+cont                     // x: a
 ```
 
 `let-on` locally casts a value to a noema, and then casts back the value to its original type. In other words, `let-on` is essentially just a syntax sugar like the below:
 
 ```neut
-let len on xs = e
+let len on xs = e in
 cont
 
 // ↓ desugar
 
-let xs = unsafe-cast(a, &a, xs) // cast: `a` ~> `&a`
-let len = e                     // (use `&a`)
-let xs = unsafe-cast(&a, a, xs) // uncast: `&a` ~> `a`
+let xs = unsafe-cast(a, &a, xs) in // cast: `a` ~> `&a`
+let len = e in                     // (use `&a`)
+let xs = unsafe-cast(&a, a, xs) in // uncast: `&a` ~> `a`
 cont
 ```
 
@@ -65,12 +65,12 @@ Now that we can create noemata, we want a way to use them.
 Using a noema, for example, the length of a list can be obtained as follows:
 
 ```neut
-define length-noetic[a](xs: &list(a)): int {
+define length-noetic(a: tau, xs: &list(a)): int {
   case xs {
   - [] =>
     0
   - y :: ys =>
-    add-int(1, length-noetic(ys))
+    add-int(1, length-noetic(a, ys))
   }
 }
 ```
@@ -108,8 +108,8 @@ Using `let-on` and `length-noetic`, we can obtain the length of a list as follow
 
 ```neut
 define test() {
-  let xs: list(int) = [1, 2, 3]
-  let len on xs = length-noetic(xs) // xs: &list(int)
+  let xs: list(int) = [1, 2, 3] in
+  let len on xs = length-noetic(xs) in // xs: &list(int)
   do-something(xs, len)
 }
 ```
@@ -121,11 +121,11 @@ Note that the list `xs` isn't copied anymore. It might be said that this is some
 A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
 
 ```neut
-let xs = [1, 2]
-let result on xs = xs  // **CAUTION** the result of let-on is a noema
-let _ = xs     // ← Since the variable `_` isn't used,
-               // the hyle of `result`, namely `xs: list(int)`, is discarded here
-match result { // ... and thus using `result` here is a use-after-free!
+let xs = [1, 2] in
+let result on xs = xs in // **CAUTION** the result of let-on is a noema
+let _ = xs in    // ← Since the variable `_` isn't used,
+                 // the hyle of `result`, namely `xs: list(int)`, is discarded here
+match result {   // ... and thus using `result` here is a use-after-free!
 - [] =>
   print("hey")
 - y :: ys =>
@@ -133,7 +133,7 @@ match result { // ... and thus using `result` here is a use-after-free!
 }
 ```
 
-Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(i64)`, `unit`, or `either(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
+Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `either(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
 
 More specifically, the type of `result` must satisfy all of the followings:
 
@@ -161,11 +161,11 @@ data joker-z {
 Indeed, if we were to allow returning these dubious ADTs, we can exploit them to hide a noema:
 
 ```neut
-let result on xs = HideX(xs) // the type of `result` is `jokerX` (dubious)
-let _ = xs                   // `xs` is discarded here
+let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
+let _ = xs in                   // `xs` is discarded here
 match result {
 - HideX(xs) =>
-  *xs                        // CRASH: use-after-free!
+  *xs                           // CRASH: use-after-free!
 }
 ```
 

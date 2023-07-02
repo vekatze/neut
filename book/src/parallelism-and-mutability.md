@@ -7,16 +7,18 @@ Neut has built-in support for parallelism. It is a thin layer over pthread, and 
 ```neut
 let f1: flow(int) =
   detach { // like async
-    print("fA")
+    print("fA");
     1
   }
+in
 let f2: flow(int) =
   detach { // like async
-    print("fb")
+    print("fb");
     2
   }
-let v1 = attach f1 // like await
-let v2 = attach f2 // like await
+in
+let v1 = attach f1 in // like await
+let v2 = attach f2 in // like await
 print("hey")
 ```
 
@@ -33,26 +35,28 @@ Flows can send/receive values using channels. A channel in Neut is similar to th
 You can create a channel using `new-channel`, and send/receive values using those channels.
 
 ```neut
-let ch0 = new-channel(int)
-let ch1 = new-channel(int)
+let ch0 = new-channel(int) in
+let ch1 = new-channel(int) in
 // channels as queues
-let result on ch0, ch1 = {
+let result on ch0, ch1 =
   let f =
     detach {
-      let message0 = receive(ch0) // receive value from ch0
-      send(ch1, add-int(message0, 1)) // send value to ch1
+      let message0 = receive(_, ch0) in // receive value from ch0
+      send(int, ch1, add-int(message0, 1)); // send value to ch1
       message0
     }
+  in
   let g =
     detach {
-      let message1 = receive(ch1) // receive value from ch1
+      let message1 = receive(_, ch1) in // receive value from ch1
       add-int(message1, 1)
     }
-  send(ch0, 0) // send value to ch0
-  let v1 = attach f
-  let v2 = attach g
+  in
+  send(int, ch0, 0); // send value to ch0
+  let v1 = attach f in
+  let v2 = attach g in
   print("hey")
-}
+in
 // ... cont ...
 ```
 
@@ -72,29 +76,29 @@ Incidentally, as mentioned above, a channel in Neut is similar to that of Go (an
 
 ```neut
 define sample(): int {
-  let xs: list(int) = []
+  let xs: list(int) = [] in
 
   // create a new cell using `new-cell`
-  let xs-cell = new-cell(xs)
+  let xs-cell = new-cell(list(int), xs) in
 
   // create a noema of a cell
-  let result on xs-cell = {
+  let result on xs-cell =
     // mutate the cell using `mutate` (add an element)
-    mutate(xs-cell, (xs) => { 1 :: xs })
+    mutate(_, xs-cell, (xs) => { 1 :: xs });
 
     // peek the content of a cell using `borrow`
-    let len1 = borrow(xs-cell, (xs) => { length(xs) })
+    let len1 = borrow(_, _, xs-cell, (xs) => { length(xs) }) in
     // (len1 == 1)
 
     // mutate again
-    mutate(xs-cell, (xs) => { 2 :: xs })
+    mutate(_, xs-cell, (xs) => { 2 :: xs });
 
     // get the length of the list in the cell, again
-    let len2 = borrow(xs-cell, (xs) => { length(xs) })
+    let len2 = borrow(_, _, xs-cell, (xs) => { length(xs) }) in
     // (len2 == 2)
 
     ...
-  }
+  in
   ...
 }
 ```
@@ -103,24 +107,24 @@ Here, the type of related wrapper functions are:
 
 ```neut
 // create a new channel
-new-cell[a](x: a): cell(a)
+new-cell(a: tau, x: a): cell(a)
 
 // mutate the content of a cell
-mutate[a](ch: &cell(a), f: a -> a): top
+mutate(a: tau, ch: &cell(a), f: a -> a): top
 
 // borrow the content of a cell and do something
-borrow[a, b](ch: &cell(a), f: &a -> b): b
+borrow(a: tau, b: tau, ch: &cell(a), f: &a -> b): b
 
 // clone the content of a cell
-clone[a](ch: &cell(a)): a
+clone(a: tau, ch: &cell(a)): a
 ```
 
 The definition of, for example, `mutate` is like the below:
 
 ```neut
-define mutate[a](ch: &cell(a), f: a -> a): top {
-  let ch = magic.cast(&cell(a), &channel(a), ch)
-  let v = receive(ch)
-  send(ch, f(v))
+define mutate(a: tau, ch: &cell(a), f: a -> a): top {
+  let ch = magic.cast(&cell(a), &channel(a), ch) in
+  let v = receive(a, ch) in
+  send(a, ch, f(v))
 }
 ```

@@ -21,9 +21,9 @@ It might be worth noting that, since these fake exponentials are inlined at comp
 Neut is a dependently-typed programming language. This means that the type of type, `tau`, can also be used as an ordinary value:
 
 ```neut
-let t = tau
-let a = f(t)
-let b = g(t)
+let t = tau in
+let a = f(t) in
+let b = g(t) in
 ...
 ```
 
@@ -65,38 +65,38 @@ With that in mind, the actual exponential for `list(a)` will be something like t
 ```neut
 define exp-list(selector, v) {
   if selector == 0 {
-    let d = get-discriminant(v)
+    let d = get-discriminant(v) in
     if d == 0 {
       // discard Nil
       free(v)
     } else {
       // discard Cons
-      let a = v[0]
-      let cons-head = v[1]
-      let cons-tail = v[2]
-      free(v)
-      let () = a(0, v[1]) // ← discard the head of cons using v[0]
+      let a = v[0] in
+      let cons-head = v[1] in
+      let cons-tail = v[2] in
+      free(v);
+      let () = a(0, v[1]) in // ← discard the head of cons using v[0]
       exp-list(0, v[2])
     }
   } else {
-    let d = get-discriminant(v)
+    let d = get-discriminant(v) in
     if d == 0 {
       // copy Nil
-      let ptr = malloc({2-words})
-      let a = v[0]
-      store(a, ptr[0])
-      store(d, ptr[1])
+      let ptr = malloc({2-words}) in
+      let a = v[0] in
+      store(a, ptr[0]);
+      store(d, ptr[1]);
       ptr
     } else {
       // copy Cons
-      let ptr = malloc({4-words})
-      let a = v[0]
-      let cons-head-copy = a(1, v[2]) // ← copy the head of cons using v[0]
-      let cons-tail-copy = exp-list(1, v[3])
-      store(a, ptr[0])
-      store(d, ptr[1])
-      store(cons-head-copy, ptr[2])
-      store(cons-tail-copy, ptr[3])
+      let ptr = malloc({4-words}) in
+      let a = v[0] in
+      let cons-head-copy = a(1, v[2]) in // ← copy the head of cons using v[0]
+      let cons-tail-copy = exp-list(1, v[3]) in
+      store(a, ptr[0]);
+      store(d, ptr[1]);
+      store(cons-head-copy, ptr[2]);
+      store(cons-tail-copy, ptr[3]);
       ptr
     }
   }
@@ -110,25 +110,25 @@ The point here is that *the type information in a value is loaded at runtime and
 ...So we have found a way to linearize the language. Does it finish the story? Unfortunately not, as in every storyline. Suppose we have a list `xs`, and want to choose what to do by its length:
 
 ```neut
-let xs: list(int) = [1, 2, 3]
-let len = length(xs)
+let xs: list(int) = [1, 2, 3] in
+let len = length(int, xs) in
 if cond(len) {
   print("hey")
 } else {
   print("yo")
-}
+};
 foo(xs)
 ```
 
 where the `length` is defined as follows:
 
 ```neut
-define length[a](xs: list(a)): int {
+define length(a: tau, xs: list(a)): int {
   match xs {
   - [] =>
     0
   - y :: ys =>
-    add-int(1, length(ys))
+    add-int(1, length(a, ys))
   }
 }
 ```
@@ -138,14 +138,14 @@ Here, the `match` is for the usual pattern matching; It inspects its arguments (
 What causes a problem here is the fact that the `xs` is used non-linearly in the code above. The first occurrence is at `length(xs)`, and the second one is at `foo(xs)`. This means the code above is translated into something like the below:
 
 ```neut
-let xs: list(int) = [1, 2, 3]
-let xs-copy = exp-list(1, xs) // copy the original list
-let len = length(xs-copy)     // ... and use it to get its length
+let xs: list(int) = [1, 2, 3] in
+let xs-copy = exp-list(1, xs) in   // copy the original list
+let len = length(int, xs-copy) in  // ... and use it to get its length
 if cond(len) {
   print("hey")
 } else {
   print("yo")
-}
+};
 foo(xs)
 ```
 
