@@ -13,18 +13,18 @@ inline stream(a: tau): tau {
   () -> stream-cell(a)
 }
 
-define append[a](xs: stream(a), ys: stream(a)): stream(a) {
+define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
   match xs() {
   - Nil =>
     ys
   - Cons(x1, rest) =>
     () => {
-      Cons(x1, append(rest, ys))
+      Cons(x1, append(a, rest, ys))
     }
   }
 }
 
-define take[a](n: int, xs: stream(a)): stream(a) {
+define take(a: tau, n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
     () => { Nil }
   } else {
@@ -33,7 +33,7 @@ define take[a](n: int, xs: stream(a)): stream(a) {
       () => { Nil }
     - Cons(x, rest) =>
       () => {
-        Cons(x, take(sub-int(n, 1), rest))
+        Cons(x, take(a, sub-int(n, 1), rest))
       }
     }
   }
@@ -42,6 +42,7 @@ define take[a](n: int, xs: stream(a)): stream(a) {
 define main(): unit {
   let my-stream: stream(int) =
     () => { Cons(1, () => { Nil }) }
-  let _ = my-stream
+  in
+  let _ = my-stream in
   Unit
 }

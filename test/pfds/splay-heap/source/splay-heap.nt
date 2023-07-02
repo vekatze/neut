@@ -9,12 +9,12 @@ data order {
 - GT
 }
 
-define insert[a](cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
-  let Tuple(smaller, bigger) = split(cmp, x, t)
+define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
+  let Tuple(smaller, bigger) = split(_, cmp, x, t) in
   Node(smaller, x, bigger)
 }
 
-define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
+define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
   match t {
   - Leaf =>
     Tuple(Leaf, Leaf)
@@ -29,11 +29,11 @@ define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap
         match cmp(w, pivot) {
         - LT =>
           // go right
-          let Tuple(right-right-small, right-right-big) = split(cmp, pivot, right-right)
+          let Tuple(right-right-small, right-right-big) = split(_, cmp, pivot, right-right) in
           Tuple(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
         - _ =>
           // go left
-          let Tuple(right-left-small, right-left-big) = split(cmp, pivot, right-left)
+          let Tuple(right-left-small, right-left-big) = split(_, cmp, pivot, right-left) in
           Tuple(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
@@ -46,11 +46,11 @@ define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap
         match cmp(w, pivot) {
         - LT =>
           // go right
-          let Tuple(left-right-small, left-right-big) = split(cmp, pivot, left-right)
+          let Tuple(left-right-small, left-right-big) = split(_, cmp, pivot, left-right) in
           Tuple(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
         - _ =>
           // go left
-          let Tuple(left-left-small, left-left-big) = split(cmp, pivot, left-left)
+          let Tuple(left-left-small, left-left-big) = split(_, cmp, pivot, left-left) in
           Tuple(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
         }
       }
@@ -58,18 +58,18 @@ define split[a](cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap
   }
 }
 
-define find-min[a](t: &heap(a)): ?a {
+define find-min(a: tau, t: &heap(a)): ?a {
   case t {
   - Leaf =>
     None
   - Node(Leaf, x, _) =>
     Some(*x)
   - Node(left, _, _) =>
-    find-min(left)
+    find-min(a, left)
   }
 }
 
-define delete-min[a](t: heap(a)): ?heap(a) {
+define delete-min(a: tau, t: heap(a)): ?heap(a) {
   match t {
   - Leaf =>
     None
@@ -78,16 +78,16 @@ define delete-min[a](t: heap(a)): ?heap(a) {
   - Node(Node(Leaf, _, t12), y, t2) =>
     Some(Node(t12, y, t2))
   - Node(Node(t11, x, t12), y, t2) =>
-    let? t11 = delete-min(t11)
+    let? t11 = delete-min(a, t11) in
     Some(Node(t11, x, Node(t12, y, t2)))
   }
 }
 
 define compare-int-list(xs: list(int), ys: list(int)): order {
-  let x on xs = sum(xs)
-  let y on ys = sum(ys)
-  let _ = xs
-  let _ = ys
+  let x on xs = sum(xs) in
+  let y on ys = sum(ys) in
+  let _ = xs in
+  let _ = ys in
   if lt-int(x, y) {
     LT
   } else-if gt-int(x, y) {
@@ -107,44 +107,45 @@ define sum(xs: &list(int)): int {
 }
 
 define main(): unit {
-  let h: heap(list(int)) = Leaf
-  let h = insert(compare-int-list, [1, 2], h)
-  let h = insert(compare-int-list, [10], h)
-  let h = insert(compare-int-list, [5], h)
+  let h: heap(list(int)) = Leaf in
+  let h = insert(_, compare-int-list, [1, 2], h) in
+  let h = insert(_, compare-int-list, [10], h) in
+  let h = insert(_, compare-int-list, [5], h) in
   // v1 = 3
-  let v1 on h = {
-    match find-min(h) {
+  let v1 on h =
+    match find-min(_, h) {
     - Some(xs) =>
-      let v on xs = sum(xs) // xs = [1, 2]
-      let _ = xs
+      let v on xs = sum(xs) in // xs = [1, 2]
+      let _ = xs in
       v // v = 3
     - None =>
       4
     }
-  }
-  let mh = delete-min(h)
+  in
+  let mh = delete-min(_, h) in
   let result =
     match mh {
     - None =>
       3
     - Some(h) =>
-      let h = insert(compare-int-list, [4, 8], h)
-      let h = insert(compare-int-list, [1, 1], h)
+      let h = insert(_, compare-int-list, [4, 8], h) in
+      let h = insert(_, compare-int-list, [1, 1], h) in
       // v2 = 2
       let v2 on h =
-        match find-min(h) {
+        match find-min(_, h) {
         - Some(xs) =>
-          let v on xs = sum(xs) // xs = [1, 1]
-          let _ = xs
+          let v on xs = sum(xs) in // xs = [1, 1]
+          let _ = xs in
           v // v = 2
         - None =>
           4
         }
-
-      let _ = h
+      in
+      let _ = h in
       // v1 + v2 = 3 + 2 = 5
       add-int(v1, v2)
     }
-  print-int(result)
+  in
+  print-int(result);
   print("\n")
 }

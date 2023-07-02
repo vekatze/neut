@@ -1,40 +1,40 @@
 import {
-- core.vector => [vector]
+- core.data.vector => [vector]
 }
 
 define test-syntax(): tau {
-  let _: tau = tau
-  let _: tau: tau = tau
-  let _: tau: tau: tau = tau
+  let _: tau = tau in
+  let _: tau: tau = tau in
+  let _: tau: tau: tau = tau in
   tau: tau: tau: tau: tau: tau: tau
 }
 
 define test-semantics(): tau {
-  let _ = affine-tau()
-  let _ = linear-tau()
-  let _ = relevant-tau()
-  let _ = tau-is-tau()
-  let _ = pi-is-tau()
-  let _ = data-is-tau()
-  let _ = noema-is-tau(tau)
-  let _ = flow-is-tau(tau)
-  let _ = resource-is-tau()
+  let _ = affine-tau() in
+  let _ = linear-tau() in
+  let _ = relevant-tau() in
+  let _ = tau-is-tau() in
+  let _ = pi-is-tau() in
+  let _ = data-is-tau() in
+  let _ = noema-is-tau(tau) in
+  let _ = flow-is-tau(tau) in
+  let _ = resource-is-tau() in
   tau
 }
 
 define affine-tau(): tau {
-  let _ = tau
+  let _ = tau in
   tau
 }
 
 define linear-tau(): tau {
-  let x = tau
+  let x = tau in
   x
 }
 
 define relevant-tau(): tau {
-  let x = tau
-  let _ = x
+  let x = tau in
+  let _ = x in
   x
 }
 
@@ -43,17 +43,17 @@ define tau-is-tau(): tau {
 }
 
 define pi-is-tau(): tau {
-  let _: tau = () -> tau
-  let _: tau = tau -> tau
-  let _: tau = (tau, tau, tau) -> tau
+  let _: tau = () -> tau in
+  let _: tau = tau -> tau in
+  let _: tau = (tau, tau, tau) -> tau in
   tau
 }
 
 define data-is-tau(): tau {
-  let _: tau = void
-  let _: tau = unit
-  let _: tau = bool
-  let _: tau = list(tau)
+  let _: tau = void in
+  let _: tau = unit in
+  let _: tau = bool in
+  let _: tau = list(tau) in
   tau
 }
 
@@ -66,13 +66,13 @@ define flow-is-tau(a: tau): tau {
 }
 
 define resource-is-tau(): tau {
-  let _: tau = text
-  let _: tau = vector(3, text)
+  let _: tau = text in
+  let _: tau = vector(3, text) in
   tau
 }
 
 define main(): unit {
-  let _ = test-syntax()
-  let _ = test-semantics()
+  let _ = test-syntax() in
+  let _ = test-semantics() in
   Unit
 }

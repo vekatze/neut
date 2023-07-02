@@ -18,6 +18,6 @@ define nat-list-sum(xs: list(nat)): int {
 
 
 define main(): unit {
-  print-int(nat-list-sum(Cons(Succ(Zero), Cons(Succ(Zero), Nil))))
+  print-int(nat-list-sum(Cons(Succ(Zero), Cons(Succ(Zero), Nil))));
   print("\n")
 }

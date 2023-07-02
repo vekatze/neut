@@ -1,6 +1,6 @@
 import {
 - core.list => L
-- core.vector => V
+- core.data.vector => V
 }
 
 data list(a: tau) {
@@ -18,30 +18,30 @@ define my-length(xs: &list(int)): int {
 }
 
 define bar(xs-cell: &cell(list(int))): unit {
-  borrow(xs-cell, (xs) => {
-    let len = my-length(xs)
-    print-int(len)
+  borrow(_, xs-cell, (xs) => {
+    let len = my-length(xs) in
+    print-int(len);
     print("\n")
   })
 }
 
 define main(): unit {
-  let xs: list(int) = Cons(1, Cons(2, Nil()))
-  let xs-cell = new-cell(xs)
-  let _ on xs-cell = {
-    let _ = bar(xs-cell)
-    mutate(xs-cell, (xs) => {
+  let xs: list(int) = Cons(1, Cons(2, Nil())) in
+  let xs-cell = new-cell(_, xs) in
+  let _ on xs-cell =
+    let _ = bar(xs-cell) in
+    mutate(_, xs-cell, (xs) => {
       Cons(4, xs)
-    })
-    let _ = bar(xs-cell)
-    mutate(xs-cell, (_) => {
+    });
+    let _ = bar(xs-cell) in
+    mutate(_, xs-cell, (_) => {
       Nil()
-    })
-    mutate(xs-cell, (xs) => {
+    });
+    mutate(_, xs-cell, (xs) => {
       Cons(4, xs)
-    })
+    });
     bar(xs-cell)
-  }
-  let _ = xs-cell
+  in
+  let _ = xs-cell in
   Unit
 }

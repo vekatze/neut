@@ -3,10 +3,11 @@ define make-adder(x: int): int -> int {
     (y) => {
       add-int(x, y)
     }
+  in
   adder
 }
 
 define main(): unit {
-  print-int(make-adder(3)(7))
+  print-int(make-adder(3)(7));
   print("\n")
 }

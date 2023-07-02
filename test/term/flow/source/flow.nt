@@ -3,37 +3,41 @@ import {
 }
 
 define test-syntax(): unit {
-  let _ = flow(tau)
-  let _ = flow(tau) -> tau
-  let _ = tau -> flow(tau)
-  let _ = (_: flow(tau), flow(tau)) -> flow(tau) -> flow(tau)
-  let _ = flow(flow(tau))
+  let _ = flow(tau) in
+  let _ = flow(tau) -> tau in
+  let _ = tau -> flow(tau) in
+  let _ = (_: flow(tau), flow(tau)) -> flow(tau) -> flow(tau) in
+  let _ = flow(flow(tau)) in
 
-  let _ = detach Unit
-  let _ = detach { Unit }
+  let _ = detach Unit in
+  let _ = detach { Unit } in
   let _ =
     detach {
-      let _ = Unit
-      let _ = Unit
+      let _ = Unit in
+      let _ = Unit in
       Unit
     }
+  in
   let _ =
     () => {
       let fl =
         detach {
-          let _ = Unit
+          let _ = Unit in
           Unit
         }
-      Unit
+      in
+      Unit;
       attach fl
     }
+  in
   let _ =
     (fl: flow(unit)) => {
       attach {
-        let _ = Unit
+        let _ = Unit in
         fl
       }
     }
+  in
   Unit
 }
 
@@ -41,14 +45,14 @@ define some-list(len: int, acc: list(int)): list(int) {
   if eq-int(len, 0) {
     acc
   } else {
-    let val = len
+    let val = len in
     some-list(sub-int(len, 1), Cons(val, acc))
   }
 }
 
 define detach-send(x: int, ch: &channel(int)): flow(unit) {
   detach {
-    send(ch, x)
+    send(int, ch, x)
   }
 }
 
@@ -57,7 +61,7 @@ define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(f
   - [] =>
     acc
   - y :: rest =>
-    let fl = detach-send(y, ch)
+    let fl = detach-send(y, ch) in
     send-all(rest, ch, fl :: acc)
   }
 }
@@ -67,8 +71,8 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   - [] =>
     Unit
   - fl :: rest =>
-    let _ = attach fl
-    let _ = receive(ch)
+    let _ = attach fl in
+    let _ = receive(int, ch) in
     receive-one-by-one(rest, ch)
   }
 }
@@ -80,77 +84,83 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
       - [] =>
         Unit
       - z :: zs =>
-        let _ = attach z
+        let _ = attach z in
         wait-all(zs)
       }
     }
-  let size on xs = length(xs)
-  wait-all(xs)
+  in
+  let size on xs = length(flow(unit), xs) in
+  wait-all(xs);
   let receive-all =
     mu receive-all(count: int) {
       if eq-int(count, 0) {
         Unit
       } else {
-        let _ = receive(ch)
+        let _ = receive(_, ch) in
         receive-all(sub-int(count, 1))
       }
     }
+  in
   receive-all(size)
 }
 
 define test-behavior(): unit {
-  let ch = new-channel(int)
-  let _ on ch = {
+  let ch = new-channel(int) in
+  let _ on ch =
     let fl1 =
       detach {
-        let xs = some-list(1000, [])
-        let fs = send-all(xs, ch, [])
-        receive-one-by-one(fs, ch)
+        let xs = some-list(1000, []) in
+        let fs = send-all(xs, ch, []) in
+        receive-one-by-one(fs, ch);
         Unit
       }
+    in
     let fl2 =
       detach {
-        let xs = some-list(1000, [])
-        let fs = send-all(xs, ch, [])
-        receive-all-at-once(fs, ch)
+        let xs = some-list(1000, []) in
+        let fs = send-all(xs, ch, []) in
+        receive-all-at-once(fs, ch);
         Unit
       }
-    attach fl1
+    in
+    attach fl1;
     attach fl2
-  }
-  let _ = ch
+  in
+  let _ = ch in
 
-  let ch = new-channel(() -> int)
-  let ch: channel(() -> int) = ch
-  let _ = ch
-  let _ on ch = send(ch, () => {1})
-  let ch = ch
-  let ch-clone = ch
-  let _ on ch-clone = send(ch-clone, () => {1})
-  let tmp on ch-clone = {
+  let ch = new-channel(() -> int) in
+  let ch: channel(() -> int) = ch in
+  let _ = ch in
+  let _ on ch = send(_, ch, () => {1}) in
+  let ch = ch in
+  let ch-clone = ch in
+  let _ on ch-clone = send(_, ch-clone, () => {1}) in
+  let tmp on ch-clone =
     let f =
       detach {
-        ext.sleep(1)
-        send(ch-clone, () => {3})
+        ext.sleep(1);
+        send(_, ch-clone, () => {3})
       }
+    in
     let g =
       detach {
-        ext.sleep(1)
-        send(ch-clone, () => {4})
+        ext.sleep(1);
+        send(() -> int, ch-clone, () => {4})
       }
-    let _ = receive(ch-clone)
-    let _ = receive(ch-clone)
-    let _ = receive(ch-clone)
-    attach f
+    in
+    let _ = receive(_, ch-clone) in
+    let _ = receive(_, ch-clone) in
+    let _ = receive(_, ch-clone) in
+    attach f;
     attach g
-  }
-  let _ = ch-clone
-  let _ = tmp
+  in
+  let _ = ch-clone in
+  let _ = tmp in
   Unit
 }
 
 define main(): unit {
-  test-syntax()
-  test-behavior()
+  test-syntax();
+  test-behavior();
   Unit
 }

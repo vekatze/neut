@@ -21,7 +21,7 @@ data finite-map-signature(a, b) {
   )
 }
 
-define make-finite-map[a, b](compare: (a, a) -> order): finite-map-signature(a, b) {
+define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-signature(a, b) {
   Finite-Map of {
   - empty =>
     Leaf
@@ -71,14 +71,14 @@ define compare-int(x: int, y: int): order {
 }
 
 define main(): unit {
-  let Finite-Map(..) = make-finite-map(compare-int)
-  let mymap = insert(1, [tau], empty)
-  let mymap = insert(2, [tau, tau], mymap)
-  let mymap = insert(2, [tau, tau], mymap)
-  let mymap = insert(2, [int], mymap)
-  let mymap = insert(3, [() -> int], mymap)
-  let _ = mymap
-  let _ = mymap
+  let Finite-Map(..) = make-finite-map(_, _, compare-int) in
+  let mymap = insert(1, [tau], empty) in
+  let mymap = insert(2, [tau, tau], mymap) in
+  let mymap = insert(2, [tau, tau], mymap) in
+  let mymap = insert(2, [int], mymap) in
+  let mymap = insert(3, [() -> int], mymap) in
+  let _ = mymap in
+  let _ = mymap in
   let result on mymap =
     match lookup(2, mymap) {
     - None =>
@@ -91,7 +91,8 @@ define main(): unit {
         20
       }
     }
-  let _ = mymap
-  print-int(result)
+  in
+  let _ = mymap in
+  print-int(result);
   print("\n")
 }

@@ -5,30 +5,30 @@ import {
 
 resource noisy-boxed-int {
 - (v: int) => {
-    print("discarded.\n")
-    free(v)
+    print("discarded.\n");
+    free(v);
     0
   }
 - (v: int) => {
-    print("copied.\n")
-    let orig-value = load-int(v)
-    let new-ptr = malloc(1)
-    magic store(int, orig-value, new-ptr)
+    print("copied.\n");
+    let orig-value = load-int(v) in
+    let new-ptr = malloc(1) in
+    magic store(int, orig-value, new-ptr);
     new-ptr
   }
 }
 
 // provide a way to introduce new boxed integer
 define create-new-noisy-boxed-int(x: int): noisy-boxed-int {
-  let new-ptr = malloc(1)
-  store-int(x, new-ptr)
+  let new-ptr = malloc(1) in
+  store-int(x, new-ptr);
   magic cast(int, noisy-boxed-int, new-ptr)
 }
 
 define main(): unit {
-  let i = create-new-noisy-boxed-int(10)
-  let _ = i
-  let _ = i
-  let _ = i
+  let i = create-new-noisy-boxed-int(10) in
+  let _ = i in
+  let _ = i in
+  let _ = i in
   Unit
 }

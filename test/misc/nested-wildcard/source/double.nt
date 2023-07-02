@@ -1,5 +1,6 @@
 import {
-- core.monoid => [monoid, Monoid]
+- core.data.semigroup => [semigroup, Semigroup]
+- core.data.monoid => [monoid, Monoid]
 - this.arith => a
 - this.compare => c
 }
@@ -26,10 +27,16 @@ inline from-int(x: int): double {
   sitofp-int-float64(x)
 }
 
+inline as-semigroup(): semigroup(double) {
+  Semigroup of {
+  - append => add
+  }
+}
+
 inline as-additive-monoid(): monoid(double) {
   Monoid of {
-  - unit => 0.0
-  - join => add
+  - as-semigroup => as-semigroup()
+  - empty => 0.0
   }
 }
 

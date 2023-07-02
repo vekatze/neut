@@ -7,7 +7,7 @@ define hole-in-ascription(): _ {
 }
 
 define complex-term-in-ascription(): {
-  let _: tau = tau
+  let _: tau = tau in
   unit
 } {
   Unit
@@ -17,23 +17,11 @@ inline some-inline-func(): tau {
   tau
 }
 
-define imp-0-exp-0[](): tau {
+define imp-0-exp-0(): tau {
   tau
 }
 
-define imp-1-exp-0[_: tau](): tau {
-  tau
-}
-
-define imp-0-exp-1[](_: tau): tau {
-  tau
-}
-
-define imp-1-exp-1[_: tau](_: tau): tau {
-  tau
-}
-
-define imp-2-exp-2[_: tau, _: tau](_: tau, _: tau): tau {
+define imp-0-exp-1(_: tau): tau {
   tau
 }
 
@@ -45,7 +33,7 @@ define but-what-after-all-is-one-night-A-short-space-especially-when-the-darknes
   tau
 }
 
-define ♥️a🌟あ🌕α$-$`~!?@#%^&*/+|\_(): tau {
+define ♥️a🌟あ🌕α$-$`~!?@#%^&*+|\_(): tau {
   tau
 }
 
@@ -75,7 +63,7 @@ define multiple-argument-list(x: int)(y: int, z: bool, w: int -> int): int {
   }
 }
 
-define imp-multiple[a](x: a)(y: int, z: bool, w: a -> int): int {
+define imp-multiple(a: tau, x: a)(y: int, z: bool, w: a -> int): int {
   if eq-int(1, y) {
     10
   } else-if z {
@@ -86,8 +74,8 @@ define imp-multiple[a](x: a)(y: int, z: bool, w: a -> int): int {
 }
 
 define main(): unit {
-  let _ = is-even(12345)
-  let _ = multiple-argument-list(10)(20, True, (x) => { add-int(x, 1) })
-  let _ = imp-multiple(tau)(10, False, (_) => { 20 })
+  let _ = is-even(12345) in
+  let _ = multiple-argument-list(10)(20, True, (x) => { add-int(x, 1) }) in
+  let _ = imp-multiple(tau, tau)(10, False, (_) => { 20 }) in
   Unit
 }

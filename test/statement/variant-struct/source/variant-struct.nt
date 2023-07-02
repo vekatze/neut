@@ -66,16 +66,16 @@ data top {
 }
 
 define yo(x: top): unit {
-  let Top(_, _) = x
+  let Top(_, _) = x in
   Unit
 }
 
 define foo(c: &config): &text {
-  link Config(..) = c
-  let _: int = *counter
-  let _ = *counter
-  let _ = {*func}(3)
-  let _ = *func
+  link Config(..) = c in
+  let _: int = *counter in
+  let _ = *counter in
+  let _ = {*func}(3) in
+  let _ = *func in
   *path
 }
 

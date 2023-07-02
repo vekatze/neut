@@ -34,12 +34,12 @@ define gen(n: nat): list(nat) {
   }
 }
 
-define fold-r[a, b](f: (b, a) -> a, acc: a, xs: list(b)): a {
+define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
   - Nil =>
     acc
   - Cons(y, ys) =>
-    f(y, fold-r(f, acc, ys))
+    f(y, fold-r(a, b, f, acc, ys))
   }
 }
 
@@ -62,27 +62,27 @@ define head(xs: list(nat)): nat {
 }
 
 define main(): unit {
-  let n = Succ(Succ(Succ(Zero)))
-  let _ = n
-  let _ = n
-  let _ = n
-  let m = mul-nat(n, mul-nat(n, n)) // 27
-  let _ = m
-  let _ = m
-  let xs = gen(m) // [27, 26, 25, ..., 1]
-  let yss = tails(_, xs) // [[26, ...], [25, ...], ..., [1, ...]]
-  let _ = yss
-  let _ = yss
-  let zs = map((l) => { head(l) }, yss) // [26, ..., 1]
-  let _ = zs
-  let _ = zs
-  let _ = zs
-  let _ = zs
-  let _ = zs
-  let result-nat = fold-r((a, b) => { add-nat(a, b) }, Zero, zs) // 26 + ... + 1 = 351
-  let _ = result-nat
-  let _ = result-nat
-  let result = interpret(result-nat)
-  print-int(result)
+  let n = Succ(Succ(Succ(Zero))) in
+  let _ = n in
+  let _ = n in
+  let _ = n in
+  let m = mul-nat(n, mul-nat(n, n)) in // 27
+  let _ = m in
+  let _ = m in
+  let xs = gen(m) in // [27, 26, 25, ..., 1]
+  let yss = tails(_, xs) in // [[26, ...], [25, ...], ..., [1, ...]]
+  let _ = yss in
+  let _ = yss in
+  let zs = map(_, _, (l) => { head(l) }, yss) in // [26, ..., 1]
+  let _ = zs in
+  let _ = zs in
+  let _ = zs in
+  let _ = zs in
+  let _ = zs in
+  let result-nat = fold-r(nat, nat, (a, b) => { add-nat(a, b) }, Zero, zs) in // 26 + ... + 1 = 351
+  let _ = result-nat in
+  let _ = result-nat in
+  let result = interpret(result-nat) in
+  print-int(result);
   print("\n")
 }

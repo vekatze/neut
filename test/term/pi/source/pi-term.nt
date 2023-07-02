@@ -1,22 +1,22 @@
 define test-syntax(): unit {
   // nullary
-  let _ = () => { tau }
+  let _ = () => { tau } in
   // unary
-  let _: tau -> tau = (x) => { x }
-  let _ = (x: tau) => { x }
+  let _: tau -> tau = (x) => { x } in
+  let _ = (x: tau) => { x } in
   // binary
-  let _: (tau, tau) -> tau = (x, _) => { x }
-  let _: (tau, tau) -> tau = (_, y) => { y }
-  let _: (tau, tau) -> tau = (x: tau, _) => { x }
-  let _: (tau, tau) -> tau = (_, y: tau) => { y }
-  let _: (tau, tau) -> tau = (x: tau, _) => { x }
-  let _ = (x: tau, y: tau) => { Both(x, y) }
-  let _ = { (x: tau) => { x } }(tau)
+  let _: (tau, tau) -> tau = (x, _) => { x } in
+  let _: (tau, tau) -> tau = (_, y) => { y } in
+  let _: (tau, tau) -> tau = (x: tau, _) => { x } in
+  let _: (tau, tau) -> tau = (_, y: tau) => { y } in
+  let _: (tau, tau) -> tau = (x: tau, _) => { x } in
+  let _ = (x: tau, y: tau) => { Both(x, y) } in
+  let _ = { (x: tau) => { x } }(tau) in
   // (unnecessarily) complex type
   let _ =
     (
       x: {
-        let _ = tau
+        let _ = tau in
         (tau, tau) -> tau
       },
       _: {
@@ -25,248 +25,274 @@ define test-syntax(): unit {
     ) => {
       x
     }
-  let f = (_: tau, _: tau, _: tau) => { tau }
+  in
+  let f = (_: tau, _: tau, _: tau) => { tau } in
   let _ =
     f(
-      let _ = tau
+      let _ = tau in
       tau,
       tau,
-      let _ = tau
+      let _ = tau in
       {() => { tau }}()
     )
+  in
   Unit
 }
 
 define test-resource(): unit {
-  affine-lam1()
-  relevant-lam1()
-  affine-lam2()
-  relevant-lam2()
-  affine-lam3()
-  relevant-lam3()
-  affine-lam4()
+  affine-lam1();
+  relevant-lam1();
+  affine-lam2();
+  relevant-lam2();
+  affine-lam3();
+  relevant-lam3();
+  affine-lam4();
   relevant-lam4()
 }
 
 define sample(): tau {
-  let _ = tau
-  Unit
+  let _ = tau in
+  Unit;
   (tau, tau) -> tau
 }
 
-define opaque[a](x: a) {
+define opaque(a: tau, x: a) {
   x
 }
 
 define affine-lam1(): unit {
-  let lam1 = opaque(() => { tau })
-  let _ = lam1
+  let lam1 = opaque(_, () => { tau }) in
+  let _ = lam1 in
   Unit
 }
 
 define relevant-lam1(): unit {
-  let lam1 = opaque(() => { tau })
-  let _ = lam1
-  let _ = lam1
+  let lam1 = opaque(_, () => { tau }) in
+  let _ = lam1 in
+  let _ = lam1 in
   Unit
 }
 
 
 define affine-lam2(): unit {
-  let lam1 = opaque(() => { tau })
+  let lam1 = opaque(_, () => { tau }) in
   let lam2 =
     opaque(
+      _,
       () => {
-        let v = lam1
+        let v = lam1 in
         v
       }
     )
-  let _ = lam2
+  in
+  let _ = lam2 in
   Unit
 }
 
 define relevant-lam2(): unit {
-  let lam1 = opaque(() => { tau })
+  let lam1 = opaque(_, () => { tau }) in
   let lam2 =
     opaque(
+      _,
       () => {
-        let v = lam1
+        let v = lam1 in
         v
       }
     )
-  let _ = lam2
-  let _ = lam2
+  in
+  let _ = lam2 in
+  let _ = lam2 in
   Unit
 }
 
 define affine-lam3(): unit {
-  let lam1 = opaque(() => { tau })
+  let lam1 = opaque(_, () => { tau }) in
   let lam2 =
     opaque(
+      _,
       () => {
-        let v = lam1
+        let v = lam1 in
         v
       }
     )
+  in
   let lam3 =
     opaque(
+      _,
       (_: tau -> tau) => {
-        let _ = lam1
-        let v2 = lam2
+        let _ = lam1 in
+        let v2 = lam2 in
         v2
       }
     )
-  let _ = lam3
+  in
+  let _ = lam3 in
   Unit
 }
 
 define relevant-lam3(): unit {
-  let lam1 = opaque(() => { tau })
+  let lam1 = opaque(_, () => { tau }) in
   let lam2 =
     opaque(
+      _,
       () => {
-        let v = lam1
+        let v = lam1 in
         v
       }
     )
+  in
   let lam3 =
     opaque(
+      _,
       (_: tau -> tau) => {
-        let _ = lam1
-        let v2 = lam2
+        let _ = lam1 in
+        let v2 = lam2 in
         v2
       }
     )
-  let _ = lam3
-  let _ = lam3
+  in
+  let _ = lam3 in
+  let _ = lam3 in
   Unit
 }
 
 define affine-lam4(): unit {
-  let lam1 = opaque(() => { tau })
+  let lam1 = opaque(_, () => { tau }) in
   let lam2 =
     opaque(
+      _,
       () => {
-        let v = lam1
+        let v = lam1 in
         v
       }
     )
+  in
   let lam3 =
     opaque(
+      _,
       (_: tau -> tau) => {
-        let _ = lam1
-        let v2 = lam2
+        let _ = lam1 in
+        let v2 = lam2 in
         v2
       }
     )
-  let _ = lam3
+  in
+  let _ = lam3 in
   let lam4 =
     opaque(
+      _,
       (_: tau -> tau) => {
-        let _ = lam1
-        let _ = lam2
-        let v3 = lam3
+        let _ = lam1 in
+        let _ = lam2 in
+        let v3 = lam3 in
         v3
       }
     )
-  let _ = lam4
+  in
+  let _ = lam4 in
   Unit
 }
 
 define relevant-lam4(): unit {
-  let lam1 = opaque(() => { tau })
+  let lam1 = opaque(_, () => { tau }) in
   let lam2 =
     opaque(
+      _,
       () => {
-        let v = lam1
+        let v = lam1 in
         v
       }
     )
+  in
   let lam3 =
     opaque(
+      _,
       (_: tau -> tau) => {
-        let _ = lam1
-        let v2 = lam2
+        let _ = lam1 in
+        let v2 = lam2 in
         v2
       }
     )
-  let _ = lam3
+  in
+  let _ = lam3 in
   let lam4 =
     opaque(
+      _,
       (_: tau -> tau) => {
-        let _ = lam1
-        let _ = lam2
-        let v3 = lam3
+        let _ = lam1 in
+        let _ = lam2 in
+        let v3 = lam3 in
         v3
       }
     )
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
-  let _ = lam4
+  in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
+  let _ = lam4 in
   Unit
 }
 
@@ -275,6 +301,6 @@ define test-reduction(): unit {
 }
 
 define main(): unit {
-  test-syntax()
+  test-syntax();
   test-resource()
 }

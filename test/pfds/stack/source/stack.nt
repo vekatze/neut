@@ -8,11 +8,11 @@ data stack(a) {
 - Cons(a, stack(a))
 }
 
-define empty[a](): stack(a) {
+define empty(a: tau): stack(a) {
   Nil
 }
 
-define is-empty[a](xs: &stack(a)): bool {
+define is-empty(a: tau, xs: &stack(a)): bool {
   case xs {
   - Nil =>
     True
@@ -21,7 +21,7 @@ define is-empty[a](xs: &stack(a)): bool {
   }
 }
 
-define head[a](xs: &stack(a)): option(&a) {
+define head(a: tau, xs: &stack(a)): option(&a) {
   case xs {
   - Nil =>
     None
@@ -30,7 +30,7 @@ define head[a](xs: &stack(a)): option(&a) {
   }
 }
 
-define tail[a](xs: &stack(a)): option(&stack(a)) {
+define tail(a: tau, xs: &stack(a)): option(&stack(a)) {
   case xs {
   - Nil =>
     None
@@ -39,7 +39,7 @@ define tail[a](xs: &stack(a)): option(&stack(a)) {
   }
 }
 
-define update[a](xs: stack(a), index: int, value: a): stack(a) {
+define update(a: tau, xs: stack(a), index: int, value: a): stack(a) {
   match xs {
   - Nil =>
     Nil
@@ -47,51 +47,51 @@ define update[a](xs: stack(a), index: int, value: a): stack(a) {
     if eq-int(index, 0) {
       Cons(value, ys)
     } else {
-      Cons(y, update(ys, sub-int(index, 1), value))
+      Cons(y, update(a, ys, sub-int(index, 1), value))
     }
   }
 }
 
-define suffixes[a](xs: stack(a)): stack(stack(a)) {
+define suffixes(a: tau, xs: stack(a)): stack(stack(a)) {
   match xs {
   - Nil =>
     Nil
   - Cons(_, ys) =>
-    Cons(xs, suffixes(ys))
+    Cons(xs, suffixes(a, ys))
   }
 }
 
-define suffixes-noetic[a](xs: &stack(a)): stack(&stack(a)) {
+define suffixes-noetic(a: tau, xs: &stack(a)): stack(&stack(a)) {
   case xs {
   - Nil =>
     Nil
   - Cons(_, ys) =>
-    Cons(xs, suffixes-noetic(ys))
+    Cons(xs, suffixes-noetic(a, ys))
   }
 }
 
 define main(): unit {
-  let xs = empty()
-  let ys = Cons(10: int, xs)
-  let zs = Cons(30, Cons(20, ys))
-  let zs = update(zs, 1, 20000)
-  let _ = suffixes(zs)
-  let calc on zs, xs = {
-    let b = is-empty(zs)
-    let _ = is-empty(xs)
-    let _ = head(zs)
-    let _ = suffixes-noetic(zs)
-    let _ = head(xs)
-    let _ = tail(zs)
-    let _ = tail(zs)
+  let xs = empty(_) in
+  let ys = Cons(10: int, xs) in
+  let zs = Cons(30, Cons(20, ys)) in
+  let zs = update(_, zs, 1, 20000) in
+  let _ = suffixes(_, zs) in
+  let calc on zs, xs =
+    let b = is-empty(_, zs) in
+    let _ = is-empty(_, xs) in
+    let _ = head(_, zs) in
+    let _ = suffixes-noetic(_, zs) in
+    let _ = head(_, xs) in
+    let _ = tail(_, zs) in
+    let _ = tail(_, zs) in
     if b {
       1
     } else {
       2
     }
-  }
-  let _ = zs
-  let _ = xs
-  print-int(calc)
+  in
+  let _ = zs in
+  let _ = xs in
+  print-int(calc);
   print("\n")
 }

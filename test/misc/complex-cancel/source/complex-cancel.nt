@@ -32,13 +32,13 @@ define test2(x: joker): int {
     - JLeft(v2) =>
       match v2 {
       - JLeft(v3) =>
-        let _ = JLeft(v3)
+        let _ = JLeft(v3) in
         1
       - JRight(_) =>
         1 // !
       }
     - JRight(_) =>
-      let _ = JRight(10)
+      let _ = JRight(10) in
       1
     }
   - JRight(_) =>
@@ -47,15 +47,15 @@ define test2(x: joker): int {
 }
 
 define main(): unit {
-  let _ = test(JLeft(JLeft(JLeft(JLeft(JRight(10))))))
-  let _ = test(JLeft(JLeft(JLeft(JRight(10)))))
-  let _ = test(JLeft(JLeft(JRight(10))))
-  let _ = test(JLeft(JRight(10)))
-  let _ = test(JRight(10))
-  let _ = test2(JLeft(JLeft(JLeft(JLeft(JRight(10))))))
-  let _ = test2(JLeft(JLeft(JLeft(JRight(10)))))
-  let _ = test2(JLeft(JLeft(JRight(10))))
-  let _ = test2(JLeft(JRight(10)))
-  let _ = test2(JRight(10))
+  let _ = test(JLeft(JLeft(JLeft(JLeft(JRight(10)))))) in
+  let _ = test(JLeft(JLeft(JLeft(JRight(10))))) in
+  let _ = test(JLeft(JLeft(JRight(10)))) in
+  let _ = test(JLeft(JRight(10))) in
+  let _ = test(JRight(10)) in
+  let _ = test2(JLeft(JLeft(JLeft(JLeft(JRight(10)))))) in
+  let _ = test2(JLeft(JLeft(JLeft(JRight(10))))) in
+  let _ = test2(JLeft(JLeft(JRight(10)))) in
+  let _ = test2(JLeft(JRight(10))) in
+  let _ = test2(JRight(10)) in
   Unit
 }

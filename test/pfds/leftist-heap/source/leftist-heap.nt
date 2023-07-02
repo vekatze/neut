@@ -15,18 +15,18 @@ data heap(a) {
 }
 
 data heap-signature(a) {
-- Heap(
-    empty: heap(a),
-    is-empty: &heap(a) -> bool,
-    insert: (a, heap(a)) -> heap(a),
-    merge: (heap(a), heap(a)) -> heap(a),
-    find-min: &heap(a) -> ?a,
-    delete-min: heap(a) -> ?heap(a)
-  )
+- Heap of {
+  - empty: heap(a)
+  - is-empty: &heap(a) -> bool
+  - insert: (a, heap(a)) -> heap(a)
+  - merge: (heap(a), heap(a)) -> heap(a)
+  - find-min: &heap(a) -> ?a
+  - delete-min: heap(a) -> ?heap(a)
+  }
 }
 
-define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
-  let merge = {
+define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) {
+  let merge =
     let rank =
       (h: &heap(a)) => {
         case h {
@@ -36,16 +36,18 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
           *r
         }
       }
+    in
     let make-Node =
       (x: a, l: heap(a), r: heap(a)) => {
-        let rank1 on l = rank(l)
-        let rank2 on r = rank(r)
+        let rank1 on l = rank(l) in
+        let rank2 on r = rank(r) in
         if ge-int(rank1, rank2) {
           Node(add-int(rank2, 1), x, l, r)
         } else {
           Node(add-int(rank1, 1), x, r, l)
         }
       }
+    in
     mu merge(h1: heap(a), h2: heap(a)): heap(a) {
       match h1, h2 {
       - h1, Leaf =>
@@ -61,7 +63,7 @@ define make-heap-signature[a](compare: (a, a) -> order): heap-signature(a) {
         }
       }
     }
-  }
+  in
   Heap of {
   - empty =>
     Leaf
@@ -112,21 +114,21 @@ define compare-int(x: int, y: int): order {
 }
 
 define main(): unit {
-  let int-heap-signature = make-heap-signature(compare-int)
-  let Heap(..) = int-heap-signature
-  let h = empty
-  let h = insert(10, h)
-  let h = insert(2, h)
-  let h = insert(5, h)
-  let h = insert(8, h)
-  let h = insert(1, h)
-  let h = insert(3, h)
-  let mh = delete-min(h)
+  let int-heap-signature = make-heap-signature(_, compare-int) in
+  let Heap(..) = int-heap-signature in
+  let h = empty in
+  let h = insert(10, h) in
+  let h = insert(2, h) in
+  let h = insert(5, h) in
+  let h = insert(8, h) in
+  let h = insert(1, h) in
+  let h = insert(3, h) in
+  let mh = delete-min(h) in
   match mh {
   - None =>
     print-int(100)
   - Some(h) =>
-    let h = insert(9, h)
+    let h = insert(9, h) in
     let min on h =
       match find-min(h) {
       - None =>
@@ -134,9 +136,10 @@ define main(): unit {
       - Some(value) =>
         print-int(value)
       }
-    let _ = h
-    let _ = min
+    in
+    let _ = h in
+    let _ = min in
     Unit
-  }
+  };
   print("\n")
 }

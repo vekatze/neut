@@ -1,7 +1,7 @@
 import {
 - core.bool
 - core.list => L
-- core.vector => V
+- core.data.vector => V
 }
 
 data list() {
@@ -19,7 +19,7 @@ define my-length(xs: list()): int {
 }
 
 define main(): unit {
-  let xs = Nil()
+  let xs = Nil() in
   let no-free-var =
     mu foo(c: int): int {
       if eq-int(c, 0) {
@@ -28,38 +28,41 @@ define main(): unit {
         foo(sub-int(c, 1))
       }
     }
-  let _ = no-free-var(3)
+  in
+  let _ = no-free-var(3) in
   let single-free-var =
     mu free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
-        let _ = xs
-        let _ = my-length(xs)
+        let _ = xs in
+        let _ = my-length(xs) in
         1
       } else {
         free-vars-in-recursion(sub-int(c, 1))
       }
     }
-  let _ = single-free-var(3)
-  let ys = xs
-  let zs = xs
-  let ws = Nil()
+  in
+  let _ = single-free-var(3) in
+  let ys = xs in
+  let zs = xs in
+  let ws = Nil() in
   let multiple-free-var =
     mu free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
-        let _ = xs
-        let _ = xs
-        let _ = ys
-        let _ = my-length(ys)
-        let _ = my-length(zs)
-        let _ = zs
+        let _ = xs in
+        let _ = xs in
+        let _ = ys in
+        let _ = my-length(ys) in
+        let _ = my-length(zs) in
+        let _ = zs in
         1
       } else {
-        let _ = xs
-        let _ = ys
-        let _ = ws
+        let _ = xs in
+        let _ = ys in
+        let _ = ws in
         free-vars-in-recursion(sub-int(c, 1))
       }
     }
-  print-int(multiple-free-var(3))
+  in
+  print-int(multiple-free-var(3));
   print("\n")
 }

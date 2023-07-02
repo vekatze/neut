@@ -4,8 +4,8 @@ import {
 }
 
 define main(): unit {
-  let file = open("./test", FF.for-rw(), FM.default-file-mode())
-  let _ = write("hey\n", file)
-  let _ = read(file)
+  let file = open("./test", FF.for-rw(), FM.default-file-mode()) in
+  let _ = write("hey\n", file) in
+  let _ = read(file) in
   close(file)
 }

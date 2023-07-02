@@ -8,11 +8,11 @@ inline queue(a: tau): tau {
   tuple(list(a), list(a))
 }
 
-define empty[a](): queue(a) {
+define empty(a: tau): queue(a) {
   Tuple([], [])
 }
 
-define head[a](q: &queue(a)): ?a {
+define head(a: tau, q: &queue(a)): ?a {
   case q {
   - Tuple(x :: _, _) =>
     Some(*x)
@@ -21,27 +21,27 @@ define head[a](q: &queue(a)): ?a {
   }
 }
 
-inline sanitize[a](q: queue(a)): queue(a) {
+inline sanitize(a: tau, q: queue(a)): queue(a) {
   match q {
   - Tuple([], ys) =>
-    Tuple(reverse(ys), [])
+    Tuple(reverse(_, ys), [])
   - q =>
     q
   }
 }
 
-define tail[a](q: queue(a)): ?queue(a) {
+define tail(a: tau, q: queue(a)): ?queue(a) {
   match q {
   - Tuple(_ :: rest, ys) =>
-    Some(sanitize(Tuple(rest, ys)))
+    Some(sanitize(_, Tuple(rest, ys)))
   - _ =>
     None
   }
 }
 
-define snoc[a](v: a, q: queue(a)): queue(a) {
-  let Tuple(xs, ys) = q
-  sanitize(Tuple(xs, v :: ys))
+define snoc(a: tau, v: a, q: queue(a)): queue(a) {
+  let Tuple(xs, ys) = q in
+  sanitize(_, Tuple(xs, v :: ys))
 }
 
 define sum(xs: &list(int)): int {
@@ -54,43 +54,45 @@ define sum(xs: &list(int)): int {
 }
 
 define main(): unit {
-  let q: queue(list(int)) = empty()
-  let q = snoc([2], q)
-  let q = snoc([5], q)
-  let q = snoc([1], q)
+  let q: queue(list(int)) = empty(_) in
+  let q = snoc(_, [2], q) in
+  let q = snoc(_, [5], q) in
+  let q = snoc(_, [1], q) in
   // v1 == 2
   let v1 on q =
-    match head(q) {
+    match head(_, q) {
     - Some(xs1) =>
-      let v1 on xs1 = sum(xs1)
-      let _ = xs1
+      let v1 on xs1 = sum(xs1) in
+      let _ = xs1 in
       v1
     - None =>
       4
     }
-
-  let mq = tail(q)
+  in
+  let mq = tail(_, q) in
   let result =
     match mq {
     - None =>
       1
     - Some(q) =>
-      let q = snoc([3], q)
-      let q = snoc([8], q)
+      let q = snoc(_, [3], q) in
+      let q = snoc(_, [8], q) in
       // v2 = 5
       let v2 on q =
-        match head(q) {
+        match head(_, q) {
         - Some(xs) =>
-          let v on xs = sum(xs)
-          let _ = xs
+          let v on xs = sum(xs) in
+          let _ = xs in
           v
         - None =>
           4
         }
-      let _ = q
+      in
+      let _ = q in
       // 2 + 5 = 7
       add-int(v1, v2)
     }
-  print-int(result)
+  in
+  print-int(result);
   print("\n")
 }

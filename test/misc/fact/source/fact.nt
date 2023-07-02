@@ -11,6 +11,6 @@ define fact(x: int): int {
 }
 
 define main(): unit {
-  print-int(fact(5))
+  print-int(fact(5));
   print("\n")
 }

@@ -1,13 +1,13 @@
 import {
 - this.double => d
-- core.monoid => [Monoid]
+- core.data.monoid => [Monoid]
 - this.arith => [Arith]
 }
 
 define foo(x: d.double): d.double {
-  let Arith(..) = d.arith()
-  let _ = lt
-  let _ = eq
+  let Arith(..) = d.arith() in
+  let _ = lt in
+  let _ = eq in
   if lt(-10.0, 3.0) {
     neg(x)
   } else {
@@ -16,6 +16,6 @@ define foo(x: d.double): d.double {
 }
 
 define main(): unit {
-  print-int(fptosi-float-int(foo(10.0)))
+  print-int(fptosi-float-int(foo(10.0)));
   print("\n")
 }

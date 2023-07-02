@@ -1,5 +1,5 @@
 import {
-- core.vector => v
+- core.data.vector => v
 }
 
 define identity(a: tau, x: a): a {
@@ -8,31 +8,31 @@ define identity(a: tau, x: a): a {
 
 define test(): tau {
   // ordinary variable
-  let x = tau
-  let _ = x
+  let x = tau in
+  let _ = x in
   // ordinary variable, capitalized
-  let FooBar = tau
-  let _ = FooBar
+  let FooBar = tau in
+  let _ = FooBar in
   // definite description in current module
-  let _ = this.var.test
-  let _ = core.vector.vector
-  let _ = v.vector
+  let _ = this.var.test in
+  let _ = core.data.vector.vector in
+  let _ = v.vector in
   // non-ascii long name
-  let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = tau
-  let _ = identity(tau, もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る)
+  let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = tau in
+  let _ = identity(tau, もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る) in
   // emoji name
-  let ♥️🌟 = tau
-  let _ = identity(tau, ♥️🌟)
+  let ♥️🌟 = tau in
+  let _ = identity(tau, ♥️🌟) in
   // very long name
-  let but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore = tau
-  let _ = but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore
+  let but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore = tau in
+  let _ = but-what-after-all-is-one-night-A-short-space-especially-when-the-darkness-dims-so-soon-and-so-soon-a-bird-sings-a-cock-crows-or-a-faint-green-quickens-like-a-turning-leaf-in-the-hollows-of-the-wave-Night-however-succeeds-to-night-The-winter-holds-a-pack-of-them-in-store-and-deals-them-equally-evenly-with-indefatigable-fingers-They-lengthen-they-darken-Some-of-them-hold-aloft-clear-planets-plates-of-brightness-The-autumn-trees-ravaged-as-they-are-take-on-the-flesh-of-tattered-flags-kindling-in-the-doom-of-cool-cathedral-caves-where-gold-letters-on-marble-pages-describe-death-in-battle-and-how-bones-bleach-and-burn-far-away-in-Indian-sands-The-autumn-trees-gleam-in-the-yellow-moonlight-in-the-light-of-harvest-moons-the-light-which-mellows-the-energy-of-labour-and-smooths-the-stubble-and-brings-the-wave-lapping-blue-to-the-shore in
   // complex name
-  let ♥️a🌟あ🌕α$-$`~!?@#%^&*/+|\_ = tau
-  let _ = ♥️a🌟あ🌕α$-$`~!?@#%^&*/+|\_
+  let ♥️a🌟あ🌕α$-$`~!?@#%^&*+|\_ = tau in
+  let _ = ♥️a🌟あ🌕α$-$`~!?@#%^&*+|\_ in
   x
 }
 
 define main(): unit {
-  let _ = test()
+  let _ = test() in
   Unit
 }

@@ -9,7 +9,7 @@ data order {
 - GT
 }
 
-define find-min[a](h: &heap(a)): ?a {
+define find-min(a: tau, h: &heap(a)): ?a {
   case h {
   - Leaf =>
     None: ?a
@@ -18,7 +18,7 @@ define find-min[a](h: &heap(a)): ?a {
   }
 }
 
-define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
+define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   - Leaf, h2 =>
     h2
@@ -34,27 +34,27 @@ define merge[a](cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   }
 }
 
-define insert[a](cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
-  merge(cmp, Node(x, []), h)
+define insert(a: tau, cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
+  merge(_, cmp, Node(x, []), h)
 }
 
-define merge-pairs[a](cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
+define merge-pairs(a: tau, cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
   match hs {
   - [] =>
     Leaf
   - [h] =>
     h
   - h1 :: h2 :: rest =>
-    merge(cmp, merge(cmp, h1, h2), merge-pairs(cmp, rest))
+    merge(_, cmp, merge(_, cmp, h1, h2), merge-pairs(_, cmp, rest))
   }
 }
 
-define delete-min[a](cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
+define delete-min(a: tau, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   match h {
   - Leaf =>
     None
   - Node(_, hs) =>
-    Some(merge-pairs(cmp, hs))
+    Some(merge-pairs(_, cmp, hs))
   }
 }
 
@@ -69,19 +69,20 @@ define compare-int(x: int, y: int): order {
 }
 
 define main(): unit {
-  let h: heap(int) = Leaf
-  let h = insert(compare-int, 10, h)
-  let h = insert(compare-int, 3, h)
-  let h = insert(compare-int, 8, h)
-  let h = insert(compare-int, 2, h)
+  let h: heap(int) = Leaf in
+  let h = insert(_, compare-int, 10, h) in
+  let h = insert(_, compare-int, 3, h) in
+  let h = insert(_, compare-int, 8, h) in
+  let h = insert(_, compare-int, 2, h) in
   let maybe-min on h =
-    match find-min(h) {
+    match find-min(_, h) {
     - None =>
       10
     - Some(min) =>
       min
     }
-  let _ = h
-  print-int(maybe-min)
+  in
+  let _ = h in
+  print-int(maybe-min);
   print("\n")
 }
