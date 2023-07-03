@@ -7,8 +7,7 @@ image-amd64 := "neut-haskell-amd64"
 image-arm64 := "neut-haskell-arm64"
 
 build-images:
-    @just build-image-amd64-linux
-    @just build-image-arm64-linux
+    @just _build-images-in-parallel amd64-linux arm64-linux
 
 build-image-amd64-linux:
     @docker build . --platform linux/amd64 -t {{image-amd64}}
@@ -17,10 +16,7 @@ build-image-arm64-linux:
     @docker build . --platform linux/arm64 -t {{image-arm64}}
 
 build-compilers:
-    @just build-compiler-amd64-linux
-    @just build-compiler-arm64-linux
-    @just build-compiler-amd64-darwin
-    @just build-compiler-arm64-darwin
+    @just _build-compilers-in-parallel amd64-linux arm64-linux amd64-darwin arm64-darwin
 
 build-compiler-amd64-linux:
     @just _run-amd64-linux stack install neut --allow-different-user --local-bin-path ./bin/tmp-amd64-linux
@@ -38,6 +34,9 @@ build-compiler-amd64-darwin:
 build-compiler-arm64-darwin:
     @just _build-compiler-darwin ${NEUT_STACK_ARM64_DARWIN} arm64
 
+test:
+    @just _test-in-parallel amd64-linux arm64-linux amd64-darwin arm64-darwin
+
 test-amd64-linux:
     @just _run-amd64-linux NEUT=/app/bin/neut-amd64-linux COMPILER_VERSION={{version}} TARGET_ARCH=amd64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc
 
@@ -49,6 +48,15 @@ test-amd64-darwin:
 
 test-arm64-darwin:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin COMPILER_VERSION={{version}} TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
+
+_build-images-in-parallel +args:
+    @printf "%s\n" {{args}} | xargs -P 0 -I {} just build-image-{}
+
+_build-compilers-in-parallel +args:
+    @printf "%s\n" {{args}} | xargs -P 0 -I {} just build-compiler-{}
+
+_test-in-parallel +args:
+    @printf "%s\n" {{args}} | xargs -P 0 -I {} just test-{}
 
 _build-compiler-darwin stack-path arch-name:
     @{{stack-path}} install neut --allow-different-user --local-bin-path ./bin/tmp-{{arch-name}}-darwin
