@@ -805,6 +805,7 @@ rawTermAdmit = do
   m <- getCurrentHint
   keyword "admit"
   admit <- lift $ locatorToVarGlobal m coreSystemAdmit
+  t <- lift $ Gensym.newPreHole m
   textType <- lift $ locatorToVarGlobal m coreText
   return $
     m
@@ -814,7 +815,7 @@ rawTermAdmit = do
         ( m
             :< RT.PiElim
               admit
-              [m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
+              [t, m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
         )
 
 rawTermAssert :: Parser RT.RawTerm
