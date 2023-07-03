@@ -1,11 +1,9 @@
 #!/bin/zsh
 
-TARGET_ARCH=amd64
-CLANG_PATH=/usr/local/opt/llvm@16/bin/clang
-
 base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+LSAN_FILE=$SCRIPT_DIR/lsan.supp
 clang_option="-fsanitize=address"
 digest=$(echo "develop $clang_option\c" | shasum -a 256 -b | xxd -r -p | base64 | tr '/+' '_-' )
 
@@ -26,7 +24,7 @@ for target_dir in "$@"; do
       NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT clean
       NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option
       # https://stackoverflow.com/questions/64126942
-      output=$(MallocNanoZone=0 ASAN_OPTIONS=detect_leaks=1 ./.build/$TARGET_ARCH-darwin/compiler-$COMPILER_VERSION/build-option-$digest/executable/$(basename $i) 2>&1 > actual)
+      output=$(MallocNanoZone=0 ASAN_OPTIONS=detect_leaks=1 LSAN_OPTIONS=suppressions=$LSAN_FILE ./.build/$TARGET_ARCH-darwin/compiler-$COMPILER_VERSION/build-option-$digest/executable/$(basename $i) 2>&1 > actual)
       last_exit_code=$?
       if [ $last_exit_code -ne 0 ]; then
         echo "\033[1;31merror:\033[0m a test failed: $(basename $i)\n$output"
