@@ -29,8 +29,6 @@ define platform-dependent-constant(): int {
     2
   - amd64-linux =>
     3
-  - amd64-darwin =>
-    4
   }
 }
 ```
