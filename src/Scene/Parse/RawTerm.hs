@@ -837,8 +837,19 @@ rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
+  mImpArgNum <- optional $ betweenBracket integer
   argListList <- many $ argList rawExpr
-  foldPiElim m e argListList
+  spaceConsumer
+  case mImpArgNum of
+    Just impArgNum -> do
+      holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. impArgNum]
+      case argListList of
+        [] ->
+          return $ m :< RT.PiElim e holes
+        headArgList : rest ->
+          foldPiElim m e $ (holes ++ headArgList) : rest
+    Nothing -> do
+      foldPiElim m e argListList
 
 foldPiElim :: Hint -> RT.RawTerm -> [[RT.RawTerm]] -> Parser RT.RawTerm
 foldPiElim m e argListList =
