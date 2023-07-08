@@ -9,6 +9,7 @@ where
 import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Remark (printNote')
 import Context.Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -16,7 +17,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const (moduleFile)
-import Entity.Ens
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleAlias
@@ -26,9 +26,10 @@ import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
+import Entity.Tree qualified as Tree
 import Path
 import Path.IO
-import Scene.Ens.Reflect qualified as Ens
+import Scene.Tree.Reflect qualified as Tree
 
 getModule ::
   H.Hint ->
@@ -54,15 +55,15 @@ getModule m moduleID locatorText = do
 
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
-  entity <- Ens.fromFilePath moduleFilePath
-  (_, entryPointEns) <- liftEither $ access "target" entity >>= toDictionary
-  dependencyEns <- liftEither $ access "dependency" entity >>= toDictionary
-  extraContentsEns <- liftEither $ access "extra-content" entity >>= toList
-  antecedentsEns <- liftEither $ access "antecedent" entity >>= toList
-  target <- mapM (interpretRelFilePath moduleID) entryPointEns
-  dependency <- interpretDependencyDict dependencyEns
-  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
-  antecedents <- mapM interpretAntecedent antecedentsEns
+  (m, treeList) <- Tree.reflect moduleFilePath
+  (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m "target" treeList >>= mapM Tree.toDictionary
+  dependencyTree <- liftEither $ Tree.accessOrEmpty m "dependency" treeList >>= mapM Tree.toDictionary
+  (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m "extra-content" treeList
+  (_, antecedentTree) <- liftEither $ Tree.accessOrEmpty m "antecedent" treeList
+  target <- mapM (interpretRelFilePath moduleID) entryPointTree
+  dependency <- interpretDependencyDict dependencyTree
+  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentTree
+  antecedents <- mapM interpretAntecedent antecedentTree
   return
     Module
       { moduleID = moduleID,
@@ -77,9 +78,9 @@ fromCurrentPath :: App Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
-interpretRelFilePath :: MID.ModuleID -> Ens -> App SGL.StrictGlobalLocator
-interpretRelFilePath moduleID ens = do
-  (m, pathString) <- liftEither $ toString ens
+interpretRelFilePath :: MID.ModuleID -> (H.Hint, [Tree.Tree]) -> App SGL.StrictGlobalLocator
+interpretRelFilePath moduleID pathInfo = do
+  (m, pathString) <- liftEither $ Tree.extract pathInfo >>= Tree.toString
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return
@@ -91,24 +92,25 @@ interpretRelFilePath moduleID ens = do
       raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  (H.Hint, Map.HashMap T.Text Ens) ->
-  App (Map.HashMap ModuleAlias (ModuleURL, ModuleDigest))
+  (H.Hint, Map.HashMap T.Text (H.Hint, [Tree.Tree])) ->
+  App (Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest))
 interpretDependencyDict (m, dep) = do
-  items <- forM (Map.toList dep) $ \(k, ens) -> do
+  items <- forM (Map.toList dep) $ \(k, (mDep, depTree)) -> do
     k' <- liftEither $ BN.reflect m k
     when (S.member k' BN.reservedAlias) $
       raiseError m $
         "the reserved name `"
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
-    (_, url) <- liftEither $ access "URL" ens >>= toString
-    (_, digest) <- liftEither $ access "digest" ens >>= toString
-    return (ModuleAlias k', (ModuleURL url, ModuleDigest digest))
+    (_, urlTreeList) <- liftEither $ Tree.access mDep "mirror" depTree
+    urlList <- liftEither $ mapM (Tree.toString >=> return . snd) urlTreeList
+    (_, digest) <- liftEither $ Tree.access mDep "digest" depTree >>= Tree.extract >>= Tree.toString
+    return (ModuleAlias k', (map ModuleURL urlList, ModuleDigest digest))
   return $ Map.fromList items
 
-interpretExtraPath :: Path Abs Dir -> Ens -> App SomePath
+interpretExtraPath :: Path Abs Dir -> Tree.Tree -> App SomePath
 interpretExtraPath moduleRootDir entity = do
-  (m, itemPathText) <- liftEither $ toString entity
+  (m, itemPathText) <- liftEither $ Tree.toString entity
   if T.last itemPathText == '/'
     then do
       dirPath <- Path.resolveDir moduleRootDir $ T.unpack itemPathText
@@ -119,9 +121,9 @@ interpretExtraPath moduleRootDir entity = do
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
 
-interpretAntecedent :: Ens -> App ModuleDigest
+interpretAntecedent :: Tree.Tree -> App ModuleDigest
 interpretAntecedent ens = do
-  (_, digestText) <- liftEither $ toString ens
+  (_, digestText) <- liftEither $ Tree.toString ens
   return $ ModuleDigest digestText
 
 ensureExistence ::

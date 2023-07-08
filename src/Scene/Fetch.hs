@@ -16,6 +16,7 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.Error (Error (MakeError))
 import Entity.Module qualified as M
 import Entity.ModuleAlias
 import Entity.ModuleDigest qualified as MD
@@ -28,19 +29,19 @@ import UnliftIO.Async
 fetch :: M.Module -> App ()
 fetch baseModule = do
   let dependency = Map.toList $ M.moduleDependency baseModule
-  forConcurrently_ dependency $ \(alias, (url, digest)) ->
-    installIfNecessary alias url digest
+  forConcurrently_ dependency $ \(alias, (mirrorList, digest)) ->
+    installIfNecessary alias mirrorList digest
 
 insertDependency :: T.Text -> ModuleURL -> App ()
 insertDependency aliasName url = do
   alias <- ModuleAlias <$> Throw.liftEither (BN.reflect' aliasName)
   mainModule <- Module.getMainModule
   withTempFile $ \tempFilePath tempFileHandle -> do
-    download tempFilePath alias url
+    download tempFilePath alias [url]
     archive <- getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
     extractToLibDir tempFilePath alias digest
-    addDependencyToModuleFile mainModule alias url digest
+    addDependencyToModuleFile mainModule alias [url] digest
     getLibraryModule alias digest >>= fetch
 
 insertCoreDependency :: App ()
@@ -48,16 +49,16 @@ insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
   digest <- Module.getCoreModuleDigest
   mainModule <- Module.getMainModule
-  addDependencyToModuleFile mainModule coreModuleAlias coreModuleURL digest
-  installIfNecessary coreModuleAlias coreModuleURL digest
+  addDependencyToModuleFile mainModule coreModuleAlias [coreModuleURL] digest
+  installIfNecessary coreModuleAlias [coreModuleURL] digest
 
-installIfNecessary :: ModuleAlias -> ModuleURL -> MD.ModuleDigest -> App ()
-installIfNecessary alias url digest = do
+installIfNecessary :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
+installIfNecessary alias mirrorList digest = do
   isInstalled <- checkIfInstalled digest
   unless isInstalled $ do
     Remark.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
     withTempFile $ \tempFilePath tempFileHandle -> do
-      download tempFilePath alias url
+      download tempFilePath alias mirrorList
       archive <- getHandleContents tempFileHandle
       let archiveModuleDigest = MD.fromByteString archive
       when (digest /= archiveModuleDigest) $
@@ -92,9 +93,20 @@ getLibraryModule alias digest = do
           <> MD.reify digest
           <> ")."
 
-download :: Path Abs File -> ModuleAlias -> ModuleURL -> App ()
-download tempFilePath _ (ModuleURL url) = do
-  External.run "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack url]
+download :: Path Abs File -> ModuleAlias -> [ModuleURL] -> App ()
+download tempFilePath ma@(ModuleAlias alias) mirrorList = do
+  case mirrorList of
+    [] ->
+      Throw.raiseError' $ "couldn't obtain the module `" <> BN.reify alias <> "`."
+    ModuleURL mirror : rest -> do
+      errOrUnit <- External.runOrFail "curl" ["-s", "-S", "-L", "-o", toFilePath tempFilePath, T.unpack mirror]
+      case errOrUnit of
+        Right () ->
+          return ()
+        Left (MakeError errorList) -> do
+          Remark.printWarning' $ "couldn't process the module at: " <> mirror
+          forM_ errorList Remark.printRemark
+          download tempFilePath ma rest
 
 extractToLibDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
 extractToLibDir tempFilePath _ digest = do
@@ -102,8 +114,8 @@ extractToLibDir tempFilePath _ digest = do
   Path.ensureDir moduleDirPath
   External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath moduleDirPath, "--strip-components=1"]
 
-addDependencyToModuleFile :: M.Module -> ModuleAlias -> ModuleURL -> MD.ModuleDigest -> App ()
-addDependencyToModuleFile targetModule alias url digest = do
-  let targetModule' = M.addDependency alias url digest targetModule
+addDependencyToModuleFile :: M.Module -> ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
+addDependencyToModuleFile targetModule alias mirrorList digest = do
+  let targetModule' = M.addDependency alias mirrorList digest targetModule
   Module.save targetModule'
   Remark.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"

@@ -4,4 +4,4 @@ import Data.Text qualified as T
 
 newtype ModuleURL
   = ModuleURL T.Text
-  deriving (Show)
+  deriving (Show, Ord, Eq)
