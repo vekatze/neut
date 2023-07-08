@@ -22,7 +22,7 @@ When running compilation, every module is marked as "main" or "library". The mai
 A module can use other modules. Such module dependencies can be added using `neut add`:
 
 ```sh
-neut add core https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst
+neut add core https://github.com/vekatze/neut-core/raw/main/release/0-2-2.tar.zst
 ```
 
 By running the code above, the specified tarball is downloaded into `~/.cache/neut/library`:
@@ -30,17 +30,17 @@ By running the code above, the specified tarball is downloaded into `~/.cache/ne
 ```sh
 ls ~/.cache/neut/library
 # => ...
-#    KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU=
+#    09bqZH_HiJ0bjiPfBefeDYsL5lO4R722wqIBNnQcUU8=
 #    ...
 ```
 
-where the `KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
+where the `09bqZH_HiJ0bjiPfBefeDYsL5lO4R722wqIBNnQcUU8=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
 
 ```ens
 (dependency
   (core
-    (digest "KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst")))
+    (digest "09bqZH_HiJ0bjiPfBefeDYsL5lO4R722wqIBNnQcUU8=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-2.tar.zst")))
 ```
 
 It might be worth noting that an alias of a library is chosen *by a user of the library*. Indeed, in the example above, we (user) chosed the alias `core` for the downloaded library. The "true" name of the library is its digest, and this is not something that can be chosen arbitrarily by the creator of the library.
