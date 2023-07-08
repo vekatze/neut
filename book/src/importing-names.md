@@ -72,13 +72,11 @@ import {
 
 Suppose that you have added a library module to your module:
 
-```text
-dependency = {
-  core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst"
-    digest = "KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU="
-  }
-}
+```ens
+(dependency
+  (core
+    (digest "KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst")))
 ```
 
 You can import a file from such a library module by specifying its module alias and the relative path to the file:

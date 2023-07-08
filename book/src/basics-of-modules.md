@@ -36,13 +36,11 @@ ls ~/.cache/neut/library
 
 where the `KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
 
-```text
-dependency = {
-  core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst"
-    digest = "KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU="
-  }
-}
+```ens
+(dependency
+  (core
+    (digest "KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst")))
 ```
 
 It might be worth noting that an alias of a library is chosen *by a user of the library*. Indeed, in the example above, we (user) chosed the alias `core` for the downloaded library. The "true" name of the library is its digest, and this is not something that can be chosen arbitrarily by the creator of the library.

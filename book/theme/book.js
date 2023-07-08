@@ -71,6 +71,39 @@ hljs.registerLanguage("neut", function (hljs) {
   };
 });
 
+hljs.registerLanguage("ens", function (hljs) {
+  return {
+    keywords: {
+      $pattern: /[\w-:=<>]+/,
+      keyword: [
+          "target",
+          "dependency",
+          "antecedent",
+      ].join(" "),
+    },
+    contains: [
+      { className: "type",
+        begin: "tau|&|:<|flow|[A-Z][a-z0-9A-Z-]*",
+      },
+      {
+        className: "string",
+        scope: "string",
+        begin: '"',
+        end: '"',
+        contains: [hljs.BACKSLASH_ESCAPE],
+      },
+      {
+        className: "builtin",
+        begin: "<=|->|=>|\\*|:|this|&|-(?=\\s)|tuple|magic",
+      },
+      hljs.COMMENT(
+        "//", // begin
+        "$" // end
+      ),
+    ],
+  };
+});
+
 (function codeSnippets() {
   // Syntax highlighting Configuration
   hljs.configure({

@@ -31,15 +31,11 @@ $ neut build --execute
 
 ### Building a Module
 
-At the root of your module, you should find `module.ens`. It should contain something like:
+At the root of your module, you should find `module.ens`. It should contain the following:
 
-```neut
-target = {
-  // TARGET = "entry-point.nt"
-  hello = "hello.nt"
-  foo = "bar.nt"
-  // ...
-}
+```ens
+(target
+  (hello "hello.nt"))
 ```
 
 This defines the entry point for a target named `hello`. Every file declared here must define a function `main`, which in turn is used by the command `neut build TARGET`; This command starts compilation assuming that a function `main` is in `hello.nt`.
