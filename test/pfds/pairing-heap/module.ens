@@ -1,11 +1,6 @@
-antecedent = []
-dependency = {
-  core = {
-    URL = "https://github.com/vekatze/neut-core/raw/main/release/0-2-1.tar.zst"
-    digest = "KdSwxXPhj0mNQ9yoWVJ7tRFrUSDlXAxWaSZJBngaRDU="
-  }
-}
-extra-content = []
-target = {
-  pairing-heap = "pairing-heap.nt"
-}
+(target
+  (pairing-heap "pairing-heap.nt"))
+(dependency
+  (core
+    (digest "09bqZH_HiJ0bjiPfBefeDYsL5lO4R722wqIBNnQcUU8=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-2.tar.zst")))
