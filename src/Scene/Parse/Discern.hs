@@ -11,6 +11,7 @@ import Context.UnusedVariable qualified as UnusedVariable
 import Context.Via qualified as Via
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
+import Data.Char (isUpper)
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
@@ -340,8 +341,13 @@ discernPattern (m, pat) =
           errOrLocator <- resolveNameOrError m $ Var x
           case errOrLocator of
             Left _ -> do
-              x' <- Gensym.newIdentFromText x
-              return ((m, PAT.Var x'), [(x, (m, x'))])
+              case T.uncons x of
+                Just (c, _)
+                  | isUpper c -> do
+                      Throw.raiseError m $ "no such constructor is defined: `" <> x <> "`"
+                _ -> do
+                  x' <- Gensym.newIdentFromText x
+                  return ((m, PAT.Var x'), [(x, (m, x'))])
             Right (dd, (_, gn)) -> do
               mCons <- resolveConstructorMaybe dd gn
               case mCons of
