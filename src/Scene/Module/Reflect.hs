@@ -9,7 +9,6 @@ where
 import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
-import Context.Remark (printNote')
 import Context.Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
