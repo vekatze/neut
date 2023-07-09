@@ -1,3 +1,4 @@
 leak:realizeClassWithoutSwift
 leak:_fetchInitializingClassList
 leak:cache_t::insert
+leak:__Balloc_D2A
