@@ -127,9 +127,10 @@ distinguishPrimitive z term =
         M.Load lt pointer -> do
           (vs, pointer') <- distinguishValue z pointer
           return (vs, C.Magic (M.Load lt pointer'))
-        M.External domList cod extFunName args varArgs -> do
+        M.External domList cod extFunName args varArgAndTypeList -> do
           (vss, args') <- mapAndUnzipM (distinguishValue z) args
+          let (varTypes, varArgs) = unzip varArgAndTypeList
           (vss2, varArgs') <- mapAndUnzipM (distinguishValue z) varArgs
-          return (concat vss ++ concat vss2, C.Magic (M.External domList cod extFunName args' varArgs'))
+          return (concat vss ++ concat vss2, C.Magic (M.External domList cod extFunName args' (zip varTypes varArgs')))
         M.Global lt name -> do
           return ([], C.Magic (M.Global lt name))

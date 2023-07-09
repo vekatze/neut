@@ -423,16 +423,22 @@ rawTermMagicExternal m = do
   rawTermMagicBase "external" $ do
     extFunName <- EN.ExternalName <$> symbol
     es <- many (delimiter "," >> rawTerm)
-    varArgs <-
+    varArgAndTypeList <-
       choice
         [ do
             delimiter ";"
-            sepBy rawTerm (delimiter ","),
+            sepBy rawTermAndLowType (delimiter ","),
           return
             []
         ]
     (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName)
-    return $ m :< RT.Magic (M.External domList cod extFunName es varArgs)
+    return $ m :< RT.Magic (M.External domList cod extFunName es varArgAndTypeList)
+
+rawTermAndLowType :: Parser (LT.LowType, RT.RawTerm)
+rawTermAndLowType = do
+  e <- rawTerm
+  t <- lowType
+  return (t, e)
 
 rawTermMagicGlobal :: Hint -> Parser RT.RawTerm
 rawTermMagicGlobal m = do

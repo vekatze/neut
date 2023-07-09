@@ -300,7 +300,7 @@ elaborate' term =
                 <> T.pack (show actual)
                 <> "."
           args' <- mapM elaborate' args
-          varArgs' <- mapM elaborate' varArgs
+          varArgs' <- mapM (mapM elaborate') varArgs
           return $ m :< TM.Magic (M.External domList cod name args' varArgs')
         _ -> do
           magic' <- mapM elaborate' magic
