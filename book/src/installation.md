@@ -32,8 +32,8 @@ We also need to register the URL and the digest of the core module (standard lib
 
 ```sh
 # add the below to your bashrc, zshrc, etc.
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-2.tar.zst"
-export NEUT_CORE_MODULE_DIGEST="09bqZH_HiJ0bjiPfBefeDYsL5lO4R722wqIBNnQcUU8="
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst"
+export NEUT_CORE_MODULE_DIGEST="YOU4msLm9tCdGZYaPhaFmVx5LIWJyS_0P2tq6sszgno="
 ```
 
 Now, let's create a sample project and build it to check if your installation is correct:
