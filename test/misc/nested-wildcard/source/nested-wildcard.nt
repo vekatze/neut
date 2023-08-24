@@ -1,7 +1,7 @@
 import {
 - this.double => d
-- core.data.monoid => [Monoid]
-- this.arith => [Arith]
+- core.data.monoid [Monoid]
+- this.arith [Arith]
 }
 
 define foo(x: d.double): d.double {

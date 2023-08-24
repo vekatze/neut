@@ -1,5 +1,5 @@
 import {
-- this.compare => [compare, Compare]
+- this.compare [compare, Compare]
 }
 
 data arith(a) {
