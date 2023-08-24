@@ -41,13 +41,13 @@ import Data.Text.IO qualified as TIO
 import Data.Time
 import Data.Version qualified as V
 import Entity.BuildMode qualified as BM
-import Entity.Digest
 import Entity.Const
+import Entity.Digest
 import Entity.Module
 import Entity.OutputKind qualified as OK
+import Entity.Platform as TP
 import Entity.Source qualified as Src
 import Entity.Target qualified as Target
-import Entity.TargetPlatform as TP
 import Path (Abs, Dir, File, Path, Rel, (</>))
 import Path qualified as P
 import Path.IO qualified as P
@@ -140,7 +140,7 @@ returnDirectory path =
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
-  tp <- readRef "targetPlatform" targetPlatform
+  tp <- readRef "platform" platform
   platformDir <- P.parseRelDir $ T.unpack $ TP.reify tp
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
   return $ platformDir </> versionDir

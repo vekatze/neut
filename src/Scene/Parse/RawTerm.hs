@@ -39,6 +39,7 @@ import Entity.Name
 import Entity.Noema qualified as N
 import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
+import Entity.Platform qualified as Platform
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
@@ -47,7 +48,6 @@ import Entity.RawLamKind qualified as LK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark
-import Entity.TargetPlatform qualified as TP
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
@@ -941,15 +941,15 @@ rawTermIntrospectiveClause = do
 
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
-  tp <- Env.getTargetPlatform
+  pl <- Env.getPlatform
   bm <- Env.getBuildMode
   case key of
     "target-platform" -> do
-      return $ TP.reify tp
+      return $ Platform.reify pl
     "target-arch" ->
-      return $ Arch.reify (TP.arch tp)
+      return $ Arch.reify (Platform.arch pl)
     "target-os" ->
-      return $ OS.reify (TP.os tp)
+      return $ OS.reify (Platform.os pl)
     "build-mode" ->
       return $ BM.reify bm
     _ ->

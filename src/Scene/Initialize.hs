@@ -41,7 +41,7 @@ initializeCompiler cfg mClangOptString = do
 
 initializeCompilerWithModule :: Module -> Maybe String -> App ()
 initializeCompilerWithModule newModule mClangOptString = do
-  Env.setTargetPlatform
+  Env.setPlatform
   LLVM.setClangOptString (fromMaybe "" mClangOptString)
   Module.setMainModule newModule
 

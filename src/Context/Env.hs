@@ -16,23 +16,23 @@ import Entity.DataSize qualified as DS
 import Entity.Hint
 import Entity.LocationTree qualified as LT
 import Entity.OS qualified as OS
+import Entity.Platform
 import Entity.Source qualified as Source
-import Entity.TargetPlatform
 import Path
 import System.Environment
 import System.Info qualified as SI
 
-getTargetPlatform :: App TargetPlatform
-getTargetPlatform =
-  readRef "targetPlatform" targetPlatform
+getPlatform :: App Platform
+getPlatform =
+  readRef "platform" platform
 
-setTargetPlatform :: App ()
-setTargetPlatform = do
-  mTargetArch <- liftIO $ lookupEnv envVarTargetArch
-  mTargetOS <- liftIO $ lookupEnv envVarTargetOS
-  let targetOS = T.pack $ fromMaybe SI.os mTargetOS
-  let targetArch = T.pack $ fromMaybe SI.arch mTargetArch
-  writeRef targetPlatform $ TargetPlatform {os = OS.reflect targetOS, arch = Arch.reflect targetArch}
+setPlatform :: App ()
+setPlatform = do
+  mHostArch <- liftIO $ lookupEnv envVarTargetArch
+  mHostOS <- liftIO $ lookupEnv envVarTargetOS
+  let hostOS = T.pack $ fromMaybe SI.os mHostOS
+  let hostArch = T.pack $ fromMaybe SI.arch mHostArch
+  writeRef platform $ Platform {os = OS.reflect hostOS, arch = Arch.reflect hostArch}
 
 setBuildMode :: BM.BuildMode -> App ()
 setBuildMode =
@@ -83,13 +83,13 @@ getDataSize' = do
 
 getDataSize'' :: Maybe Hint -> App DS.DataSize
 getDataSize'' mm = do
-  tp <- getTargetPlatform
-  let mDataSize = Arch.dataSizeOf (arch tp)
+  pl <- getPlatform
+  let mDataSize = Arch.dataSizeOf (arch pl)
   case mDataSize of
     Just dataSize ->
       return dataSize
     Nothing -> do
-      let message = "the data size of the target platform `" <> reify tp <> "` is unknown"
+      let message = "the data size of the platform `" <> reify pl <> "` is unknown"
       case mm of
         Just m ->
           Throw.raiseError m message
