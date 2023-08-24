@@ -69,10 +69,6 @@ core :: T.Text
 core =
   "core"
 
-corePreface :: T.Text
-corePreface =
-  "core" <> nsSep <> "preface"
-
 coreUnit :: T.Text
 coreUnit =
   core <> nsSep <> "unit" <> nsSep <> "unit"
