@@ -1,15 +1,15 @@
 #!/bin/zsh
 
-# e.g. ./update-core.sh ./pfds
+base_dir=$(pwd)
 
-NEW_VERSION=0-2-4
+for target_dir in "$@"; do
+  cd $base_dir
+  cd $target_dir
 
-TARGET_DIR=$(cd "$1"; pwd)
-cd $TARGET_DIR
-
-for i in $(find . -d 1 -type d | sort); do
-  cd $i
-  echo $(basename $i)
-  neut add core https://github.com/vekatze/neut-core/raw/main/release/${NEW_VERSION}.tar.zst
-  cd ..
+  for i in $(find . -d 1 -type d | sort); do
+    cd $i
+    echo $(basename $i)
+    neut add core https://github.com/vekatze/neut-core/raw/main/release/${NEW_VERSION}.tar.zst
+    cd ..
+  done
 done
