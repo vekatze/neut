@@ -1,0 +1,11 @@
+import {
+- this.foo [some-func]
+}
+
+define other-func-X(): unit {
+  some-func()
+}
+
+define other-func-Y(): unit {
+  some-func()
+}

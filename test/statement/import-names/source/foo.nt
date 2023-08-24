@@ -1,0 +1,3 @@
+define some-func(): unit {
+  Unit
+}
