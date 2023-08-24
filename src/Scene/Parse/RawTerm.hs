@@ -941,15 +941,14 @@ rawTermIntrospectiveClause = do
 
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
 getIntrospectiveValue m key = do
-  pl <- Env.getPlatform
   bm <- Env.getBuildMode
   case key of
-    "target-platform" -> do
-      return $ Platform.reify pl
-    "target-arch" ->
-      return $ Arch.reify (Platform.arch pl)
-    "target-os" ->
-      return $ OS.reify (Platform.os pl)
+    "platform" -> do
+      return $ Platform.reify Platform.platform
+    "arch" ->
+      return $ Arch.reify (Platform.arch Platform.platform)
+    "os" ->
+      return $ OS.reify (Platform.os Platform.platform)
     "build-mode" ->
       return $ BM.reify bm
     _ ->

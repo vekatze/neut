@@ -29,14 +29,6 @@ envVarCacheDir :: String
 envVarCacheDir =
   "NEUT_CACHE_DIR"
 
-envVarTargetOS :: String
-envVarTargetOS =
-  "NEUT_TARGET_OS"
-
-envVarTargetArch :: String
-envVarTargetArch =
-  "NEUT_TARGET_ARCH"
-
 envVarCoreModuleURL :: String
 envVarCoreModuleURL =
   "NEUT_CORE_MODULE_URL"

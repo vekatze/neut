@@ -140,8 +140,7 @@ returnDirectory path =
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
-  tp <- readRef "platform" platform
-  platformDir <- P.parseRelDir $ T.unpack $ TP.reify tp
+  platformDir <- P.parseRelDir $ T.unpack $ TP.reify platform
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
   return $ platformDir </> versionDir
 

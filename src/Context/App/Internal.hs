@@ -35,7 +35,6 @@ import Entity.ModuleAlias qualified as MA
 import Entity.ModuleDigest qualified as MD
 import Entity.NameDependenceMap
 import Entity.Opacity qualified as O
-import Entity.Platform
 import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
@@ -94,8 +93,7 @@ data Env = Env
     activeDefiniteDescriptionList :: IORef (Map.HashMap LL.LocalLocator DD.DefiniteDescription),
     currentGlobalLocator :: Ref SGL.StrictGlobalLocator,
     currentSource :: Ref Source.Source,
-    mainModule :: Ref Module.Module,
-    platform :: Ref Platform
+    mainModule :: Ref Module.Module
   }
 
 type Ref a = IORef (Maybe a)
@@ -154,5 +152,4 @@ newEnv = do
   currentGlobalLocator <- newRef
   currentSource <- newRef
   mainModule <- newRef
-  platform <- newRef
   return Env {..}
