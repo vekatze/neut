@@ -23,7 +23,7 @@ A file in the same module can be imported using `this`:
 
 import {
 // from `/source/foo/yo.nt`, the below imports `some-func` and `hey`
-- this.foo.yo => [some-func, hey]
+- this.foo.yo [some-func, hey]
 }
 
 define main(): int {
@@ -35,7 +35,7 @@ The list of imported names can also be written vertically:
 
 ```neut
 import {
-- this.foo.yo => {
+- this.foo.yo {
   - some-func
   - hey
   }
@@ -64,7 +64,7 @@ import {
 }
 
 import {
-- this.foo.yo => []
+- this.foo.yo []
 }
 ```
 
@@ -84,7 +84,7 @@ You can import a file from such a library module by specifying its module alias 
 ```neut
 import {
 // from core's `/source/text/io.nt`, the below imports `get-line`
-- core.text.io => [get-line]
+- core.text.io [get-line]
 }
 
 define sample() {
@@ -117,7 +117,8 @@ Names in other files can be qualified as follows:
 
 ```neut
 import {
-- this.foo.yo => i // create an alias: i ~> this.foo.yo
+- this.foo.yo => i // create an alias `i ~> this.foo.yo`
+- this.bar [f] => bar // import `f` from `this.bar` and create an alias `bar ~> this.bar`
 }
 
 define main(): int {
