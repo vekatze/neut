@@ -35,6 +35,7 @@ import Entity.ModuleAlias qualified as MA
 import Entity.ModuleDigest qualified as MD
 import Entity.NameDependenceMap
 import Entity.Opacity qualified as O
+import Entity.OptimizableData
 import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
@@ -83,7 +84,7 @@ data Env = Env
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
     codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (A.Arity, [Key]))),
-    enumSet :: IORef (S.Set DD.DefiniteDescription),
+    optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     impArgEnv :: IORef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
@@ -142,7 +143,7 @@ newEnv = do
   dataDefMap <- newIORef Map.empty
   codataDefMap <- newIORef Map.empty
   keyArgMap <- newIORef Map.empty
-  enumSet <- newIORef S.empty
+  optDataMap <- newIORef Map.empty
   impArgEnv <- newIORef Map.empty
   declEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty

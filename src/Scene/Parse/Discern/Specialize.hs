@@ -1,8 +1,8 @@
 module Scene.Parse.Discern.Specialize (specialize) where
 
 import Context.App
-import Context.Enum qualified as Enum
 import Context.Gensym qualified as Gensym
+import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.Vector qualified as V
@@ -10,6 +10,7 @@ import Entity.Arity qualified as A
 import Entity.DefiniteDescription qualified as DD
 import Entity.Ident
 import Entity.Noema qualified as N
+import Entity.OptimizableData qualified as OD
 import Entity.Pattern
 import Entity.WeakTerm qualified as WT
 import Scene.Parse.Discern.Noema
@@ -46,10 +47,12 @@ specializeRow isNoetic cursor (dd, arity) (patternVector, (freedVars, body@(mBod
     Just ((_, Cons dd' _ _ _ args), rest) ->
       if dd == dd'
         then do
-          b <- Enum.isMember dd'
-          if b
-            then return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
-            else return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
+          od <- OptimizableData.lookup dd'
+          case od of
+            Just OD.Enum ->
+              return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
+            _ ->
+              return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
         else return Nothing
     Just ((_, NatZero), rest) ->
       if dd == DD.natZero

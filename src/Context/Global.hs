@@ -14,10 +14,10 @@ where
 
 import Context.App
 import Context.App.Internal
-import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Implicit qualified as Implicit
 import Context.KeyArg qualified as KeyArg
+import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -32,6 +32,7 @@ import Entity.Hint
 import Entity.Hint qualified as Hint
 import Entity.IsConstLike
 import Entity.Key
+import Entity.OptimizableData qualified as OD
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
 import Entity.StmtKind qualified as SK
@@ -67,8 +68,8 @@ registerAsEnumIfNecessary ::
   App ()
 registerAsEnumIfNecessary dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
-    Enum.insert dataName
-    mapM_ (Enum.insert . (\(_, consName, _, _, _) -> consName)) consInfoList
+    OptimizableData.insert dataName OD.Enum
+    mapM_ (flip OptimizableData.insert OD.Enum . (\(_, consName, _, _, _) -> consName)) consInfoList
 
 hasNoArgs :: [a] -> [(Hint, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =

@@ -7,10 +7,10 @@ where
 import Context.App
 import Context.Clarify qualified as Clarify
 import Context.CompDefinition qualified as CompDefinition
-import Context.Enum qualified as Enum
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
+import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -36,6 +36,7 @@ import Entity.Magic qualified as M
 import Entity.Noema qualified as N
 import Entity.Opacity (isOpaque)
 import Entity.Opacity qualified as O
+import Entity.OptimizableData qualified as OD
 import Entity.Prim qualified as P
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
@@ -133,10 +134,11 @@ clarifyData ::
   [(Hint, DD.DefiniteDescription, IsConstLike, [BinderF TM.Term], D.Discriminant)] ->
   App C.Comp
 clarifyData name dataArgs consInfoList = do
-  isEnum <- Enum.isMember name
-  if isEnum
-    then returnEnumS4 name
-    else do
+  od <- OptimizableData.lookup name
+  case od of
+    Just OD.Enum ->
+      returnEnumS4 name
+    _ -> do
       let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
       dataInfo' <- mapM clarifyDataClause dataInfo
       returnSigmaDataS4 name dataInfo'
@@ -178,11 +180,12 @@ clarifyTerm tenv term =
       let name' = DD.getFormDD name
       return $ C.UpIntro $ C.VarGlobal name' A.arityS4
     m :< TM.DataIntro _ consName _ disc dataArgs consArgs -> do
-      isEnum <- Enum.isMember consName
+      od <- OptimizableData.lookup consName
       baseSize <- Env.getBaseSize m
-      if isEnum
-        then return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify disc)
-        else do
+      case od of
+        Just OD.Enum ->
+          return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify disc)
+        _ -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
             bindLet (zip zs es) $
@@ -292,45 +295,31 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
       let idents = cursor : map (\(_, x, _) -> x) chain
-      ck <- getClauseKind t
+      ck <- getClauseDataGroup t
       case ck of
-        Enum ->
+        Just OD.Enum ->
           getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
-        Nat -> do
+        Just OD.Nat -> do
           (flag, flagVar) <- Gensym.newValueVarLocalWith "flag"
           enumElim <- getEnumElim idents flagVar fallbackClause' (zip enumCaseList clauseList'')
           baseSize <- Env.getBaseSize m
           return $ C.UpElim True flag (isZero baseSize (C.VarLocal cursor)) enumElim
-        Ordinary -> do
+        Nothing -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim
 
-data ClauseKind
-  = Ordinary
-  | Enum
-  | Nat
-
-getClauseKind :: TM.Term -> App ClauseKind
-getClauseKind term =
+getClauseDataGroup :: TM.Term -> App (Maybe OD.OptimizableData)
+getClauseDataGroup term =
   case term of
     _ :< TM.Data dataName _ _ -> do
-      b <- Enum.isMember dataName
-      if b
-        then return Enum
-        else return Ordinary
+      OptimizableData.lookup dataName
     _ :< TM.PiElim (_ :< TM.Data dataName _ _) _ -> do
-      b <- Enum.isMember dataName
-      if b
-        then return Enum
-        else return Ordinary
+      OptimizableData.lookup dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
-      b <- Enum.isMember dataName
-      if b
-        then return Enum
-        else return Ordinary
+      OptimizableData.lookup dataName
     _ :< TM.Nat -> do
-      return Nat
+      return $ Just OD.Nat
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
 
@@ -376,10 +365,11 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
       let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
       let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
       body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-      b <- Enum.isMember consName
-      if b
-        then return (EC.Int (D.reify disc), body')
-        else do
+      od <- OptimizableData.lookup consName
+      case od of
+        Just OD.Enum -> do
+          return (EC.Int (D.reify disc), body')
+        _ -> do
           discriminantVar <- Gensym.newIdentFromText "discriminant"
           return
             ( EC.Int (D.reify disc),
