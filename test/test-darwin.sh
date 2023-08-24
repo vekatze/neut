@@ -2,6 +2,7 @@
 
 base_dir=$(pwd)
 
+COMPILER_VERSION=$($NEUT version)
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 LSAN_FILE=$SCRIPT_DIR/lsan.supp
 clang_option="-fsanitize=address"

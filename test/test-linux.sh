@@ -3,6 +3,7 @@
 base_dir=$(pwd)
 
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
+COMPILER_VERSION=$($NEUT version)
 clang_option="-fsanitize=address"
 digest=$(echo -n "develop $clang_option" | sha256sum -b | xxd -r -p | base64 | tr '/+' '_-' )
 

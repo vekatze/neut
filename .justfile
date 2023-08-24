@@ -1,7 +1,5 @@
 set dotenv-load
 
-version := "0.3.1"
-
 image-amd64 := "neut-haskell-amd64"
 
 image-arm64 := "neut-haskell-arm64"
@@ -35,13 +33,13 @@ test:
     @just _test-in-parallel amd64-linux arm64-linux arm64-darwin
 
 test-amd64-linux:
-    @just _run-amd64-linux NEUT=/app/bin/neut-amd64-linux COMPILER_VERSION={{version}} TARGET_ARCH=amd64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc
+    @just _run-amd64-linux NEUT=/app/bin/neut-amd64-linux TARGET_ARCH=amd64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc
 
 test-arm64-linux:
-    @just _run-arm64-linux NEUT=/app/bin/neut-arm64-linux COMPILER_VERSION={{version}} TARGET_ARCH=arm64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc
+    @just _run-arm64-linux NEUT=/app/bin/neut-arm64-linux TARGET_ARCH=arm64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc
 
 test-arm64-darwin:
-    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin COMPILER_VERSION={{version}} TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
+    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
 
 _build-images-in-parallel +args:
     @printf "%s\n" {{args}} | xargs -P 0 -I {} just build-image-{}
