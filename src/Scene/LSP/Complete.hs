@@ -7,7 +7,7 @@ import Context.Unravel qualified as Unravel
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.List.NonEmpty qualified as NE
-import Data.Maybe (maybeToList)
+import Data.Maybe (mapMaybe, maybeToList)
 import Data.Text qualified as T
 import Entity.AliasInfo
 import Entity.Const
@@ -36,8 +36,8 @@ complete uri = do
           childrenMap <- Unravel.getSourceChildrenMap
           let children = concat $ maybeToList $ Map.lookup (sourceFilePath src) childrenMap
           sourceNameMap <- Global.getSourceNameMap
-          childCompItemList <- fmap concat $ forM children $ \(child, aliasInfo) -> do
-            getChildCompItemList sourceNameMap (sourceModule src) child aliasInfo
+          childCompItemList <- fmap concat $ forM children $ \(child, aliasInfoList) -> do
+            getChildCompItemList sourceNameMap (sourceModule src) child aliasInfoList
           case Map.lookup (sourceFilePath src) sourceNameMap of
             Nothing -> do
               return childCompItemList
@@ -49,9 +49,9 @@ getChildCompItemList ::
   Map.HashMap (Path Abs File) TopNameMap ->
   Module ->
   Source ->
-  AliasInfo ->
+  [AliasInfo] ->
   App [CompletionItem]
-getChildCompItemList sourceNameMap sourceModule child aliasInfo = do
+getChildCompItemList sourceNameMap sourceModule child aliasInfoList = do
   case Map.lookup (sourceFilePath child) sourceNameMap of
     Nothing -> do
       return []
@@ -60,15 +60,19 @@ getChildCompItemList sourceNameMap sourceModule child aliasInfo = do
       locator <- NE.head <$> getHumanReadableLocator sourceModule child
       let fullyQualifiedNameList = map (\(mk, x) -> (mk, locator <> nsSep <> x)) nameList
       let newCompletionItem' = newCompletionItem (Just locator)
-      case getRawAlias aliasInfo of
-        Nothing -> do
+      let rawAliasList = mapMaybe getRawAlias aliasInfoList
+      if null rawAliasList
+        then do
           let ns1 = map newCompletionItem' nameList
           let ns2 = map newCompletionItem' fullyQualifiedNameList
           return $ ns1 ++ ns2
-        Just rawAlias -> do
-          let aliasPrefixedNameList = map (\(mk, x) -> (mk, rawAlias <> nsSep <> x)) nameList
-          let allNameList = aliasPrefixedNameList ++ fullyQualifiedNameList
-          return $ map newCompletionItem' allNameList
+        else do
+          let aliasPrefixedNameList = concatMap (\rawAlias -> map (attachPrefix rawAlias) nameList) rawAliasList
+          return $ map newCompletionItem' $ aliasPrefixedNameList ++ fullyQualifiedNameList
+
+attachPrefix :: T.Text -> (a, T.Text) -> (a, T.Text)
+attachPrefix rawAlias (mk, x) =
+  (mk, rawAlias <> nsSep <> x)
 
 getLocalNameList :: TopNameMap -> App [(Maybe (IsConstLike, [Key]), T.Text)]
 getLocalNameList nameInfo = do

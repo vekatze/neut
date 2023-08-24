@@ -248,7 +248,7 @@ getChildren currentSource = do
       Unravel.insertToSourceChildrenMap currentSourceFilePath sourceAliasList
       return $ map fst sourceAliasList
 
-parseSourceHeader :: Source.Source -> App [(Source.Source, AliasInfo)]
+parseSourceHeader :: Source.Source -> App [(Source.Source, [AliasInfo])]
 parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource

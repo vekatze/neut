@@ -113,11 +113,12 @@ program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
   declList <- parseDeclareList
-  forM_ sourceInfoList $ \(source, aliasInfo) -> do
+  forM_ sourceInfoList $ \(source, aliasInfoList) -> do
     let path = Source.sourceFilePath source
     namesInSource <- lift $ Global.lookupSourceNameMap m path
     lift $ Global.activateTopLevelNames namesInSource
-    lift $ Alias.activateAliasInfo namesInSource aliasInfo
+    forM_ aliasInfoList $ \aliasInfo ->
+      lift $ Alias.activateAliasInfo namesInSource aliasInfo
     lift $ NameDependence.get path >>= Global.activateTopLevelNames
     lift $ Via.get path >>= Via.addToActiveViaMap
   forM_ declList $ \(DE.Decl name domList cod) -> do

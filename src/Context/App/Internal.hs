@@ -68,7 +68,7 @@ data Env = Env
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
     holeSubst :: IORef HS.HoleSubst,
-    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, AliasInfo)]),
+    sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])]),
     traceSourceList :: IORef [Source.Source],
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     preHoleEnv :: IORef (IntMap.IntMap WT.WeakTerm),

@@ -43,10 +43,10 @@ getTraceSourceList :: App [Source.Source]
 getTraceSourceList =
   readRef' traceSourceList
 
-getSourceChildrenMap :: App (Map.HashMap (Path Abs File) [(Source.Source, AliasInfo)])
+getSourceChildrenMap :: App (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])])
 getSourceChildrenMap =
   readRef' sourceChildrenMap
 
-insertToSourceChildrenMap :: Path Abs File -> [(Source.Source, AliasInfo)] -> App ()
+insertToSourceChildrenMap :: Path Abs File -> [(Source.Source, [AliasInfo])] -> App ()
 insertToSourceChildrenMap k v =
   modifyRef' sourceChildrenMap $ Map.insert k v
