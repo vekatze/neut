@@ -10,8 +10,8 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
-import Entity.Annotation qualified as AN
-import Entity.Arity qualified as A
+import Entity.Annotation qualified as Annotation
+import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
@@ -87,7 +87,7 @@ getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- N.resolveName m (N.Locator locator)
-  return $ m :< WT.PiElim (m :< WT.VarGlobal unitDD (A.fromInt 0)) []
+  return $ m :< WT.PiElim (m :< WT.VarGlobal unitDD (AN.fromInt 0)) []
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
@@ -200,8 +200,8 @@ infer' varEnv term =
     m :< WT.Annotation logLevel annot e -> do
       (e', t) <- infer' varEnv e
       case annot of
-        AN.Type _ -> do
-          return (m :< WT.Annotation logLevel (AN.Type t) e', t)
+        Annotation.Type _ -> do
+          return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
     m :< WT.Flow var t -> do
       t' <- inferType' varEnv t
       return (m :< WT.Flow var t', m :< WT.Tau)
@@ -399,7 +399,7 @@ inferClause varEnv cursorType decisionCase = do
       typedDataArgs' <- mapM (infer' varEnv) dataTermList
       (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
       (body', tBody) <- inferDecisionTree mCons extendedVarEnv body
-      consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (A.fromInt $ length dataArgs + length consArgs)
+      consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (AN.fromInt $ length dataArgs + length consArgs)
       (_, tPat) <- inferPiElim varEnv mCons consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
       insConstraintEnv cursorType tPat
       return (DT.Cons mCons consName disc typedDataArgs' consArgs' body', tBody)

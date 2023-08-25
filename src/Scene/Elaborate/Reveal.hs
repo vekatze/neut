@@ -11,7 +11,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
-import Entity.Arity qualified as A
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleID qualified as HID
@@ -64,13 +63,13 @@ reveal' varEnv term =
       return term
     _ :< WT.Var {} ->
       return term
-    m :< WT.VarGlobal name arity -> do
+    m :< WT.VarGlobal name argNum -> do
       mImpArgNum <- Implicit.lookup name
       case mImpArgNum of
         Just impArgNum
           | AN.reify impArgNum > 0 -> do
               suppliedHoles <- mapM (const $ newHole m varEnv) [1 .. AN.reify impArgNum]
-              args <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. fromInteger (A.reify arity) - AN.reify impArgNum]
+              args <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. AN.reify argNum - AN.reify impArgNum]
               let enrichedArgs = map (,m) args
               binder <- newTypeHoleList varEnv enrichedArgs
               let app = m :< WT.PiElim term (suppliedHoles ++ map (\(x, mx) -> mx :< WT.Var x) enrichedArgs)

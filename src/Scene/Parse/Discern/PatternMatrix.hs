@@ -11,7 +11,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -55,14 +55,14 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(mPat, (cons, disc, dataArity, consArity, args)) -> do
-                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. A.reify dataArity]
-                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. A.reify dataArity]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. A.reify consArity]
+              clauseList <- forM headConstructors $ \(mPat, (cons, disc, dataArgNum, consArgNum, args)) -> do
+                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
+                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
+                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
                 let ms = map fst args
                 (consArgs', nenv') <- alignConsArgs nenv $ zip ms consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize isNoetic cursor (cons, consArity) mat
+                specialMatrix <- PATS.specialize isNoetic cursor (cons, consArgNum) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
                 case (cons == DD.natZero, cons == DD.natSucc) of
                   (True, _) ->
@@ -126,14 +126,14 @@ ensurePatternSanity (m, pat) =
       return ()
     PAT.WildcardVar {} ->
       return ()
-    PAT.Cons cons _ _ consArity args -> do
+    PAT.Cons cons _ _ consArgNum args -> do
       let argNum = length args
-      when (argNum /= fromInteger (A.reify consArity)) $
+      when (argNum /= AN.reify consArgNum) $
         Throw.raiseError m $
           "the constructor `"
             <> DD.reify cons
             <> "` expects "
-            <> T.pack (show (A.reify consArity))
+            <> T.pack (show (AN.reify consArgNum))
             <> " arguments, but found "
             <> T.pack (show argNum)
             <> "."

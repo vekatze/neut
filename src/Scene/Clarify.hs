@@ -17,7 +17,7 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
@@ -160,13 +160,13 @@ clarifyTerm tenv term =
       return returnImmediateS4
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
-    _ :< TM.VarGlobal x arity -> do
+    _ :< TM.VarGlobal x argNum -> do
       return $
         C.UpIntro $
           C.SigmaIntro
             [ immediateS4,
               C.SigmaIntro [],
-              C.VarGlobal x arity
+              C.VarGlobal x argNum
             ]
     _ :< TM.Pi {} ->
       return returnClosureS4
@@ -178,7 +178,7 @@ clarifyTerm tenv term =
       callClosure e' es'
     _ :< TM.Data name _ _ -> do
       let name' = DD.getFormDD name
-      return $ C.UpIntro $ C.VarGlobal name' A.arityS4
+      return $ C.UpIntro $ C.VarGlobal name' AN.argNumS4
     m :< TM.DataIntro _ consName _ disc dataArgs consArgs -> do
       od <- OptimizableData.lookup consName
       baseSize <- Env.getBaseSize m
@@ -228,18 +228,18 @@ clarifyTerm tenv term =
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
     _ :< TM.ResourceType name -> do
-      return $ C.UpIntro $ C.VarGlobal name A.arityS4
+      return $ C.UpIntro $ C.VarGlobal name AN.argNumS4
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
     m :< TM.Flow pVar _ -> do
       clarifyTerm tenv $ m :< TM.ResourceType pVar
     m :< TM.FlowIntro _ var (e, t) -> do
-      let arity = A.fromInt 2
+      let argNum = AN.fromInt 2
       let lam = m :< TM.PiIntro (LK.Normal O.Opaque) [] e
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, lam]
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, lam]
     m :< TM.FlowElim _ var (e, t) -> do
-      let arity = A.fromInt 2
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var arity) [t, e]
+      let argNum = AN.fromInt 2
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, e]
     _ :< TM.Nat ->
       return returnImmediateS4
     m :< TM.NatZero -> do
@@ -429,8 +429,8 @@ clarifyLambda tenv kind fvs mxts e@(m :< _) = do
       liftedName <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt recFuncName
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
-      let arity = A.fromInt $ length appArgs'
-      let lamApp = m :< TM.PiIntro (LK.Normal O.Transparent) mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName arity) appArgs')
+      let argNum = AN.fromInt $ length appArgs'
+      let lamApp = m :< TM.PiIntro (LK.Normal O.Transparent) mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName argNum) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
       (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
       Clarify.insertToAuxEnv liftedName (O.Opaque, liftedArgs, liftedBody')
@@ -483,11 +483,11 @@ returnClosure tenv opacity fvs xts e = do
   xts'' <- dropFst <$> clarifyBinder tenv xts
   fvEnvSigma <- closureEnvS4 $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
-  let arity = A.fromInt $ length xts'' + 1 -- arity == count(xts) + env
+  let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
   i <- Gensym.newCount
   name <- Locator.attachCurrentLocator $ BN.lambdaName i
   registerClosure name opacity xts'' fvs'' e
-  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name arity]
+  return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum]
 
 registerClosure ::
   DD.DefiniteDescription ->

@@ -10,7 +10,6 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.AliasInfo
 import Entity.ArgNum qualified as AN
-import Entity.Arity qualified as A
 import Entity.Artifact qualified as AR
 import Entity.Binder
 import Entity.BuildMode qualified as BM
@@ -82,8 +81,8 @@ data Env = Env
     staticTextList :: IORef [(DD.DefiniteDescription, (Builder, Int))],
     compAuxEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
     dataDefMap :: IORef (Map.HashMap DD.DefiniteDescription [(D.Discriminant, [BinderF TM.Term], [BinderF TM.Term])]),
-    codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, A.Arity, A.Arity), [DD.DefiniteDescription])),
-    keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (A.Arity, [Key]))),
+    codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, AN.ArgNum, AN.ArgNum), [DD.DefiniteDescription])),
+    keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
     impArgEnv :: IORef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),

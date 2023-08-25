@@ -46,8 +46,8 @@ weaken term =
       m :< WT.Tau
     m :< TM.Var x ->
       m :< WT.Var x
-    m :< TM.VarGlobal g arity ->
-      m :< WT.VarGlobal g arity
+    m :< TM.VarGlobal g argNum ->
+      m :< WT.VarGlobal g argNum
     m :< TM.Pi xts t ->
       m :< WT.Pi (map weakenBinder xts) (weaken t)
     m :< TM.PiIntro kind xts e -> do

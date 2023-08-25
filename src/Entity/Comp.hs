@@ -3,7 +3,7 @@ module Entity.Comp where
 import Data.IntMap qualified as IntMap
 import Data.List (intercalate)
 import Data.Text qualified as T
-import Entity.Arity
+import Entity.ArgNum
 import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase
 import Entity.Ident
@@ -15,7 +15,7 @@ import Entity.PrimOp
 
 data Value
   = VarLocal Ident
-  | VarGlobal DD.DefiniteDescription Arity
+  | VarGlobal DD.DefiniteDescription ArgNum
   | VarStaticText T.Text
   | SigmaIntro [Value]
   | Int IntSize Integer

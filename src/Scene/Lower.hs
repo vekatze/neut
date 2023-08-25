@@ -20,7 +20,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (isJust)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
 import Entity.Const
@@ -75,8 +75,8 @@ lower (defList, mMainName, declList) = do
   forM_ declList $ \(DE.Decl name domList cod) -> do
     Decl.insDeclEnv' (DN.Ext name) domList cod
   unless (isJust mMainName) $ do
-    Decl.insDeclEnv (DN.In DD.imm) A.arityS4
-    Decl.insDeclEnv (DN.In DD.cls) A.arityS4
+    Decl.insDeclEnv (DN.In DD.imm) AN.argNumS4
+    Decl.insDeclEnv (DN.In DD.cls) AN.argNumS4
   defList' <- forM defList $ \(name, (_, args, e)) -> do
     e' <- lowerComp e >>= liftIO . return . cancel
     return (name, (args, e'))
@@ -282,10 +282,10 @@ lowerValueLetCast v lowType = do
 lowerValue :: C.Value -> Lower LC.Value
 lowerValue v =
   case v of
-    C.VarGlobal globalName arity -> do
+    C.VarGlobal globalName argNum -> do
       lowNameSet <- lift getDefinedNameSet
       unless (S.member globalName lowNameSet) $ do
-        lift $ Decl.insDeclEnv (DN.In globalName) arity
+        lift $ Decl.insDeclEnv (DN.In globalName) argNum
       uncast (LC.VarGlobal globalName) LT.Pointer
     C.VarLocal y ->
       return $ LC.VarLocal y

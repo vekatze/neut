@@ -1,7 +1,7 @@
 module Entity.GlobalName (GlobalName (..)) where
 
 import Data.Binary
-import Entity.Arity
+import Entity.ArgNum
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
@@ -11,11 +11,11 @@ import Entity.PrimType qualified as PT
 import GHC.Generics (Generic)
 
 data GlobalName
-  = TopLevelFunc Arity IsConstLike
+  = TopLevelFunc ArgNum IsConstLike
   | PrimType PT.PrimType
   | PrimOp PrimOp
-  | Data Arity [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
-  | DataIntro Arity Arity D.Discriminant IsConstLike
+  | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
+  | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
   | Resource
   | Nat
   | NatZero

@@ -196,8 +196,8 @@ elaborate' term =
       return $ m :< TM.Tau
     m :< WT.Var x ->
       return $ m :< TM.Var x
-    m :< WT.VarGlobal name arity ->
-      return $ m :< TM.VarGlobal name arity
+    m :< WT.VarGlobal name argNum ->
+      return $ m :< TM.VarGlobal name argNum
     m :< WT.Pi xts t -> do
       xts' <- mapM elaborateWeakBinder xts
       t' <- elaborate' t

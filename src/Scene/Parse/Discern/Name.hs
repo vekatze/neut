@@ -17,7 +17,7 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -101,7 +101,7 @@ resolveLocator m (gl, ll) = do
 resolveConstructor ::
   Hint ->
   Name ->
-  App (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
+  App (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName)
 resolveConstructor m s = do
   (dd, (_, gn)) <- resolveName m s
   mCons <- resolveConstructorMaybe dd gn
@@ -114,27 +114,27 @@ resolveConstructor m s = do
 resolveConstructorMaybe ::
   DD.DefiniteDescription ->
   GN.GlobalName ->
-  App (Maybe (DD.DefiniteDescription, A.Arity, A.Arity, D.Discriminant, IsConstLike, Maybe GN.GlobalName))
+  App (Maybe (DD.DefiniteDescription, AN.ArgNum, AN.ArgNum, D.Discriminant, IsConstLike, Maybe GN.GlobalName))
 resolveConstructorMaybe dd gn = do
   case gn of
-    GN.DataIntro dataArity consArity disc isConstLike ->
-      return $ Just (dd, dataArity, consArity, disc, isConstLike, Nothing)
+    GN.DataIntro dataArgNum consArgNum disc isConstLike ->
+      return $ Just (dd, dataArgNum, consArgNum, disc, isConstLike, Nothing)
     GN.NatZero ->
-      return $ Just (dd, A.fromInt 0, A.fromInt 0, D.MakeDiscriminant 0, False, Just GN.NatZero)
+      return $ Just (dd, AN.fromInt 0, AN.fromInt 0, D.MakeDiscriminant 0, False, Just GN.NatZero)
     GN.NatSucc ->
-      return $ Just (dd, A.fromInt 0, A.fromInt 1, D.MakeDiscriminant 1, False, Just GN.NatSucc)
+      return $ Just (dd, AN.fromInt 0, AN.fromInt 1, D.MakeDiscriminant 1, False, Just GN.NatSucc)
     _ ->
       return Nothing
 
 interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
 interpretGlobalName m dd gn = do
   case gn of
-    GN.TopLevelFunc arity isConstLike ->
-      interpretTopLevelFunc m dd arity isConstLike
-    GN.Data arity _ isConstLike ->
-      interpretTopLevelFunc m dd arity isConstLike
-    GN.DataIntro dataArity consArity _ isConstLike -> do
-      let e = m :< WT.VarGlobal dd (A.fromInt $ fromInteger (A.reify dataArity + A.reify consArity))
+    GN.TopLevelFunc argNum isConstLike ->
+      interpretTopLevelFunc m dd argNum isConstLike
+    GN.Data argNum _ isConstLike ->
+      interpretTopLevelFunc m dd argNum isConstLike
+    GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
+      let e = m :< WT.VarGlobal dd (AN.add dataArgNum consArgNum)
       if isConstLike
         then return $ m :< WT.PiElim e []
         else return e
@@ -160,13 +160,13 @@ interpretGlobalName m dd gn = do
 interpretTopLevelFunc ::
   Hint ->
   DD.DefiniteDescription ->
-  A.Arity ->
+  AN.ArgNum ->
   Bool ->
   App WT.WeakTerm
-interpretTopLevelFunc m dd arity isConstLike = do
+interpretTopLevelFunc m dd argNum isConstLike = do
   if isConstLike
-    then return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) []
-    else return $ m :< WT.VarGlobal dd arity
+    then return $ m :< WT.PiElim (m :< WT.VarGlobal dd argNum) []
+    else return $ m :< WT.VarGlobal dd argNum
 
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do

@@ -14,7 +14,7 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Control.Monad
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
 import Entity.DefiniteDescription qualified as DD
@@ -47,11 +47,11 @@ returnImmediateS4 = do
 
 returnClosureS4 :: C.Comp
 returnClosureS4 = do
-  C.UpIntro $ C.VarGlobal DD.cls A.arityS4
+  C.UpIntro $ C.VarGlobal DD.cls AN.argNumS4
 
 immediateS4 :: C.Value
 immediateS4 = do
-  C.VarGlobal DD.imm A.arityS4
+  C.VarGlobal DD.imm AN.argNumS4
 
 registerSigmaS4 ::
   DD.DefiniteDescription ->
@@ -134,7 +134,7 @@ closureEnvS4 mxts =
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.sigmaName i
       registerSwitcher O.Transparent name (sigmaT mxts) (sigma4 mxts)
-      return $ C.VarGlobal name A.arityS4
+      return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
   DD.DefiniteDescription ->
@@ -145,7 +145,7 @@ returnSigmaDataS4 dataName dataInfo = do
   let rel = sigmaData4 dataInfo
   let dataName' = DD.getFormDD dataName
   registerSwitcher O.Opaque dataName' aff rel
-  return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
+  return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnEnumS4 ::
   DD.DefiniteDescription ->
@@ -155,7 +155,7 @@ returnEnumS4 dataName = do
   let rel arg = return $ C.UpIntro arg
   let dataName' = DD.getFormDD dataName
   registerSwitcher O.Transparent dataName' aff rel
-  return $ C.UpIntro $ C.VarGlobal dataName' A.arityS4
+  return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp
 sigmaData4 = do

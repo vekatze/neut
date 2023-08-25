@@ -15,7 +15,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
 import Entity.Hint
@@ -33,9 +33,9 @@ getDeclEnv :: App DN.DeclEnv
 getDeclEnv =
   readRef' declEnv
 
-insDeclEnv :: DN.DeclarationName -> A.Arity -> App ()
-insDeclEnv k arity =
-  modifyRef' declEnv $ Map.insert k (LT.toVoidPtrSeq arity, LT.Pointer)
+insDeclEnv :: DN.DeclarationName -> AN.ArgNum -> App ()
+insDeclEnv k argNum =
+  modifyRef' declEnv $ Map.insert k (LT.toVoidPtrSeq argNum, LT.Pointer)
 
 insDeclEnv' :: DN.DeclarationName -> [LT.LowType] -> LT.LowType -> App ()
 insDeclEnv' k domList cod =

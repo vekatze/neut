@@ -19,7 +19,7 @@ import Data.Containers.ListUtils qualified as ListUtils
 import Data.Maybe
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Arity qualified as A
+import Entity.ArgNum qualified as AN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Error
@@ -29,7 +29,7 @@ import Entity.Ident
 data Pattern
   = Var Ident
   | WildcardVar
-  | Cons DD.DefiniteDescription D.Discriminant A.Arity A.Arity [(Hint, Pattern)]
+  | Cons DD.DefiniteDescription D.Discriminant AN.ArgNum AN.ArgNum [(Hint, Pattern)]
   | NatZero
   | NatSucc (Hint, Pattern)
   deriving (Show)
@@ -95,7 +95,7 @@ getHeadConstructors' (rows, _) =
       Nothing
 
 type ConsInfo =
-  (Hint, (DD.DefiniteDescription, D.Discriminant, A.Arity, A.Arity, [(Hint, Pattern)]))
+  (Hint, (DD.DefiniteDescription, D.Discriminant, AN.ArgNum, AN.ArgNum, [(Hint, Pattern)]))
 
 consInfoToDD :: ConsInfo -> DD.DefiniteDescription
 consInfoToDD consInfo =
@@ -112,12 +112,12 @@ getColumnConstructor ::
   Maybe ConsInfo
 getColumnConstructor (mPat, pat) =
   case pat of
-    Cons dd disc dataArity consArity args ->
-      return (mPat, (dd, disc, dataArity, consArity, args))
+    Cons dd disc dataArgNum consArgNum args ->
+      return (mPat, (dd, disc, dataArgNum, consArgNum, args))
     NatZero ->
-      return (mPat, (DD.natZero, D.MakeDiscriminant 0, A.fromInt 0, A.fromInt 0, []))
+      return (mPat, (DD.natZero, D.MakeDiscriminant 0, AN.fromInt 0, AN.fromInt 0, []))
     NatSucc arg ->
-      return (mPat, (DD.natSucc, D.MakeDiscriminant 1, A.fromInt 0, A.fromInt 1, [arg]))
+      return (mPat, (DD.natSucc, D.MakeDiscriminant 1, AN.fromInt 0, AN.fromInt 1, [arg]))
     _ ->
       Nothing
 

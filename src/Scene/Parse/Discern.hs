@@ -147,10 +147,10 @@ discern nenv term =
       (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ensureFieldLinearity m ks S.empty S.empty
-      (arity, keyList) <- KeyArg.lookup m dd
+      (argNum, keyList) <- KeyArg.lookup m dd
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
-      return $ m :< WT.PiElim (m :< WT.VarGlobal dd arity) args
+      return $ m :< WT.PiElim (m :< WT.VarGlobal dd argNum) args
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
@@ -354,18 +354,18 @@ discernPattern (m, pat) =
                 Nothing -> do
                   x' <- Gensym.newIdentFromText x
                   return ((m, PAT.Var x'), [(x, (m, x'))])
-                Just (consName, dataArity, consArity, disc, isConstLike, _) -> do
+                Just (consName, dataArgNum, consArgNum, disc, isConstLike, _) -> do
                   unless isConstLike $
                     Throw.raiseError m $
                       "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
-                  return ((m, PAT.Cons consName disc dataArity consArity []), [])
+                  return ((m, PAT.Cons consName disc dataArgNum consArgNum []), [])
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of
             (_, GN.NatZero) ->
               return ((m, PAT.NatZero), [])
-            (_, GN.DataIntro dataArity consArity disc _) ->
-              return ((m, PAT.Cons dd disc dataArity consArity []), [])
+            (_, GN.DataIntro dataArgNum consArgNum disc _) ->
+              return ((m, PAT.Cons dd disc dataArgNum consArgNum []), [])
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
@@ -374,13 +374,13 @@ discernPattern (m, pat) =
           case gn of
             (_, GN.NatZero) ->
               return ((m, PAT.NatZero), [])
-            (_, GN.DataIntro dataArity consArity disc _) ->
-              return ((m, PAT.Cons dd disc dataArity consArity []), [])
+            (_, GN.DataIntro dataArgNum consArgNum disc _) ->
+              return ((m, PAT.Cons dd disc dataArgNum consArgNum []), [])
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
     RP.Cons cons mArgs -> do
-      (consName, dataArity, consArity, disc, isConstLike, gn) <- resolveConstructor m cons
+      (consName, dataArgNum, consArgNum, disc, isConstLike, gn) <- resolveConstructor m cons
       when isConstLike $
         Throw.raiseError m $
           "the constructor `" <> showName cons <> "` can't have any arguments"
@@ -396,9 +396,9 @@ discernPattern (m, pat) =
                   return ((m, PAT.NatSucc arg'), concat nenvList)
                 _ ->
                   -- (raises an arity mismatch error at Scene.Elaborate)
-                  return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+                  return ((m, PAT.Cons consName disc dataArgNum consArgNum args'), concat nenvList)
             _ -> do
-              return ((m, PAT.Cons consName disc dataArity consArity args'), concat nenvList)
+              return ((m, PAT.Cons consName disc dataArgNum consArgNum args'), concat nenvList)
         Left mVar -> do
           vmap <- Via.lookup consName
           (_, keyList) <- KeyArg.lookup m consName
@@ -406,7 +406,7 @@ discernPattern (m, pat) =
           (patList', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) patList
           forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
             UnusedVariable.delete newVar
-          return ((m, PAT.Cons consName disc dataArity consArity patList'), concat nenvList)
+          return ((m, PAT.Cons consName disc dataArgNum consArgNum patList'), concat nenvList)
     RP.NatZero ->
       return ((m, PAT.NatZero), [])
     RP.NatSucc arg -> do

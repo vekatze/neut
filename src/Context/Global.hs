@@ -23,7 +23,6 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
-import Entity.Arity qualified as A
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.GlobalName
@@ -50,8 +49,8 @@ registerStmtDefine ::
   App ()
 registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
   let allArgNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
-  let arity = A.fromInt (AN.reify allArgNum)
-  KeyArg.insert name isConstLike arity expArgNames
+  let argNum = AN.fromInt (AN.reify allArgNum)
+  KeyArg.insert name isConstLike argNum expArgNames
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum
@@ -77,8 +76,7 @@ hasNoArgs dataArgs consInfoList =
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
 registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
-  let arity = A.fromInt (AN.reify allArgNum)
-  registerTopLevelFunc' m topLevelName impArgNum $ GN.TopLevelFunc arity isConstLike
+  registerTopLevelFunc' m topLevelName impArgNum $ GN.TopLevelFunc allArgNum isConstLike
 
 registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.GlobalName -> App ()
 registerTopLevelFunc' m topLevelName impArgNum gn = do
@@ -95,22 +93,21 @@ registerData ::
   App ()
 registerData isConstLike m dataName dataArgs consInfoList = do
   ensureFreshness m dataName
-  let dataArity = A.fromInt $ length dataArgs
-  let consNameArrowList = map (toConsNameArrow dataArity) consInfoList
-  let dataArgNum = AN.fromInt (length dataArgs)
-  insertToNameMap dataName m $ GN.Data dataArity consNameArrowList isConstLike
+  let dataArgNum = AN.fromInt $ length dataArgs
+  let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
+  insertToNameMap dataName m $ GN.Data dataArgNum consNameArrowList isConstLike
   forM_ consNameArrowList $ \(consDD, consGN) -> do
     ensureFreshness m consDD
     uncurry (insertToNameMap consDD) consGN
     Implicit.insert consDD dataArgNum
 
 toConsNameArrow ::
-  A.Arity ->
+  AN.ArgNum ->
   (Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
   (DD.DefiniteDescription, (Hint, GN.GlobalName))
-toConsNameArrow dataArity (m, consDD, isConstLikeCons, consArgs, discriminant) = do
-  let consArity = A.fromInt $ length consArgs
-  (consDD, (m, GN.DataIntro dataArity consArity discriminant isConstLikeCons))
+toConsNameArrow dataArgNum (m, consDD, isConstLikeCons, consArgs, discriminant) = do
+  let consArgNum = AN.fromInt $ length consArgs
+  (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do

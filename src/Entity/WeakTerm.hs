@@ -3,7 +3,7 @@ module Entity.WeakTerm where
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.Annotation qualified as AN
-import Entity.Arity
+import Entity.ArgNum
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -25,7 +25,7 @@ type WeakTerm = Cofree WeakTermF Hint
 data WeakTermF a
   = Tau
   | Var Ident
-  | VarGlobal DD.DefiniteDescription Arity
+  | VarGlobal DD.DefiniteDescription ArgNum
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
