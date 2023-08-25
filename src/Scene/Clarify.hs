@@ -65,23 +65,23 @@ clarify (defList, declList) = do
         registerImmediateS4
         registerClosureS4
         Clarify.getAuxEnv
-      defList' <- clarifyDefList defList
+      defList' <- clarifyStmtList defList
       baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
         return (x, (opacity, args, e'))
       return (defList' ++ baseAuxEnv', Just mainName, declList)
     Nothing -> do
-      defList' <- clarifyDefList defList
+      defList' <- clarifyStmtList defList
       return (defList', Nothing, declList)
 
-clarifyDefList :: [Stmt] -> App [C.CompDef]
-clarifyDefList stmtList = do
+clarifyStmtList :: [Stmt] -> App [C.CompDef]
+clarifyStmtList stmtList = do
   baseAuxEnv <- withSpecializedCtx $ do
     registerImmediateS4
     registerClosureS4
     Map.toList <$> Clarify.getAuxEnv
   stmtList' <- withSpecializedCtx $ do
-    stmtList' <- mapM clarifyDef stmtList
+    stmtList' <- mapM clarifyStmt stmtList
     auxEnv <- Clarify.getAuxEnv
     return $ stmtList' ++ Map.toList auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \(x, (opacity, args, e)) -> do
@@ -107,8 +107,8 @@ withSpecializedCtx action = do
   Clarify.initialize
   action
 
-clarifyDef :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
-clarifyDef stmt =
+clarifyStmt :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
+clarifyStmt stmt =
   case stmt of
     StmtDefine _ stmtKind _ f _ xts _ e -> do
       case stmtKind of
