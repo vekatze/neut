@@ -67,7 +67,7 @@ define flow-is-tau(a: tau): tau {
 
 define resource-is-tau(): tau {
   let _: tau = text in
-  let _: tau = vector(3, text) in
+  let _: tau = vector(text) in
   tau
 }
 
