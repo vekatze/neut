@@ -11,4 +11,4 @@ book/dist/
 test/sandbox/
 actual
 bin/
-.env
+package.yaml
