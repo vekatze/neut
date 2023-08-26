@@ -227,9 +227,7 @@ simplify constraintList =
               e2' <- fill s2 e2
               simplify $ (C.Eq e1 e2', orig) : cs
             (Nothing, Nothing) -> do
-              baseDefMap <- WeakDefinition.read
-              lucentDefMap <- WeakDefinition.readLucent
-              let defMap = Map.union baseDefMap lucentDefMap
+              defMap <- WeakDefinition.read
               let fmvs = S.union fmvs1 fmvs2
               case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
                 (Just (Stuck.Hole h1 ies1, _ :< Stuck.Base), _)

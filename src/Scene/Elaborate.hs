@@ -33,7 +33,6 @@ import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
-import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -149,13 +148,6 @@ insertWeakStmt stmt = do
     WeakStmtDefine _ stmtKind m f _ xts codType e -> do
       Type.insert f $ m :< WT.Pi xts codType
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
-      case stmtKind of
-        Normal O.Lucent ->
-          WeakDefinition.insertLucent m f xts e
-        DataIntro {} ->
-          WeakDefinition.insertLucent m f xts e
-        _ ->
-          return ()
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
 

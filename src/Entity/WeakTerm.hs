@@ -79,8 +79,6 @@ reflectOpacity opacity =
       Opaque
     O.Transparent ->
       Transparent
-    O.Lucent ->
-      Transparent
 
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =

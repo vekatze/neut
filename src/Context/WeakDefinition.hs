@@ -2,8 +2,6 @@ module Context.WeakDefinition
   ( insert,
     read,
     lookup,
-    insertLucent,
-    readLucent,
   )
 where
 
@@ -38,12 +36,3 @@ lookup :: DD.DefiniteDescription -> App (Maybe WeakTerm)
 lookup name = do
   denv <- readRef' weakDefMap
   return $ Map.lookup name denv
-
-insertLucent :: Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> WeakTerm -> App ()
-insertLucent m name xts e =
-  modifyRef' lucentDefMap $
-    Map.insert name (m :< WT.PiIntro (LK.Normal O.Transparent) xts e)
-
-readLucent :: App DefMap
-readLucent = do
-  readRef' lucentDefMap
