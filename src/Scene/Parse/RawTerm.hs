@@ -843,7 +843,7 @@ rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
-  mImpArgNum <- optional $ betweenBracket integer
+  mImpArgNum <- optional $ delimiter "/" >> integer
   argListList <- many $ argList rawExpr
   spaceConsumer
   case mImpArgNum of
