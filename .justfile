@@ -45,6 +45,22 @@ update-core new-version:
     @cd ./test/meta && neut add core https://github.com/vekatze/neut-core/raw/main/release/{{new-version}}.tar.zst
     @NEW_VERSION={{new-version}} ./test/update-core.sh ./test/statement ./test/term ./test/misc ./test/pfds
 
+release:
+    @echo "creating a release: $VERSION"
+    @echo "press any key to proceed..."
+    @read -n 1 -s -r -p ""
+    @echo "building images..."
+    @just build-images
+    @echo "building compilers..."
+    @just build-compilers
+    @echo "testing..."
+    @just test
+    @echo "uploading..."
+    @git show-ref --tags $VERSION --quiet || git tag $VERSION
+    @git push origin main
+    @git push origin $VERSION
+    @gh release create $VERSION ./bin/neut-* --latest --generate-notes
+
 _build-images-in-parallel +args:
     @printf "%s\n" {{args}} | xargs -P 0 -I {} just build-image-{}
 
