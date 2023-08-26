@@ -8,7 +8,8 @@
 
 /* Comment */
 .hljs-comment,
-.hljs-quote {
+.hljs-quote,
+.hljs-hole-suffix {
   color: var(--nibi);
   background-color: var(--dark-blue);
   /* color: #575757; */

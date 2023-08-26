@@ -60,6 +60,10 @@ hljs.registerLanguage("neut", function (hljs) {
         contains: [hljs.BACKSLASH_ESCAPE],
       },
       {
+        className: "hole-suffix",
+        begin: /\/[0-9]+/,
+      },
+      {
         className: "builtin",
         begin: "<=|->|=>|\\*|:|this|&|-(?=\\s)|tuple|magic",
       },
