@@ -2,5 +2,5 @@
   (meta "meta.nt"))
 (dependency
   (core
-    (digest "VhteQ9Jrj--kYKIFRWZTEupc17d5U8sHhcdYE2vL7Ac=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-6.tar.zst")))
+    (digest "0oJIHp1vUIzB773qhc1Nec4spLG-p2IZdfGRL_Z8qkU=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-7.tar.zst")))
