@@ -1,0 +1,143 @@
+data item1 {
+- Item1(list(int))
+}
+
+data item2(a) {
+- Item2(a)
+}
+
+data item3(a, b) {
+- Item3(a -> b)
+}
+
+data item4(a, b) {
+- Item4(tuple(a, b))
+}
+
+define test-item1(): unit {
+  let value = Item1([1, 2, 3]) in
+  let _ = value in
+  let _ = value in
+  let _ = value in
+  let _ = use-item1(value) in
+  let _ on value =
+    let _ = use-item1-noetic(value) in
+    Unit
+  in
+  let _ = value in
+  Unit
+}
+
+define use-item1(x: item1): list(int) {
+  match x {
+  - Item1(value) =>
+    trace-list[1](value)
+  }
+}
+
+define use-item1-noetic(x: &item1): list(int) {
+  case x {
+  - Item1(value) =>
+    trace-list[1](*value)
+  }
+}
+
+define test-item2(): unit {
+  let value: item2(list(int)) = Item2([1, 2, 3]) in
+  let _ = value in
+  let _ = value in
+  let _ = value in
+  let _ = use-item2(list(int), value) in
+  let _ on value =
+    let _ = use-item2-noetic(list(int), value) in
+    Unit
+  in
+  let _ = value in
+  Unit
+}
+
+define use-item2(a: tau, x: item2(a)): a {
+  match x {
+  - Item2(value) =>
+    value
+  }
+}
+
+define use-item2-noetic(a: tau, x: &item2(a)): &a {
+  case x {
+  - Item2(value) =>
+    value
+  }
+}
+
+define test-item3(): unit {
+  let value: item3(int, list(int)) = Item3((x) => {[x, 2, 3]}) in
+  let _ = value in
+  let _ = value in
+  let _ = value in
+  let _ = use-item3(int, list(int), value, 1) in
+  let _ on value =
+    let _ = use-item3-noetic(int, list(int), value, 1) in
+    Unit
+  in
+  let _ = value in
+  Unit
+}
+
+define use-item3(a: tau, b: tau, f: item3(a, b), x: a): b {
+  match f {
+  - Item3(func) =>
+    func(x)
+  }
+}
+
+define use-item3-noetic(a: tau, b: tau, f: &item3(a, b), x: a): b {
+  case f {
+  - Item3(func) =>
+    {*func}(x)
+  }
+}
+
+define test-item4(): unit {
+  let value: item4(int, list(int)) = Item4(Tuple(3, [1, 2, 3])) in
+  let _ = value in
+  let _ = value in
+  let _ = value in
+  let _ = use-item4(value) in
+  let _ on value =
+    let _ = use-item4-noetic(value) in
+    Unit
+  in
+  let _ = value in
+  Unit
+}
+
+define use-item4(x: item4(int, list(int))): list(int) {
+  match x {
+  - Item4(Tuple(v, xs)) =>
+    trace-list[1](v :: xs)
+  }
+}
+
+define use-item4-noetic(x: &item4(int, list(int))): list(int) {
+  case x {
+  - Item4(Tuple(v, xs)) =>
+    trace-list[1](*v :: *xs)
+  }
+}
+
+define trace-list(a: tau, xs: list(a)): list(a) {
+  match xs {
+  - [] =>
+    []
+  - y :: ys =>
+    y :: trace-list(a, ys)
+  }
+}
+
+define main(): unit {
+  test-item1();
+  test-item2();
+  test-item3();
+  test-item4()
+}

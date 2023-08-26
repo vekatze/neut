@@ -1,0 +1,6 @@
+(target
+  (unitary "unitary.nt"))
+(dependency
+  (core
+    (digest "JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-5.tar.zst")))
