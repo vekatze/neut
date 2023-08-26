@@ -77,6 +77,18 @@ data color {
 
 The internal representation of `Red` in this case is optimized into `0`. That of `Blue` is optimized into `1`, and so on.
 
+---
+
+Also, if an ADT has only one constructor and the constructor has only one argument (i.e. the ADT is like a `newtype` in Haskell), its internal representation is automatically optimized into its content. For example, consider the following code:
+
+```neut
+data semigroup(a) {
+- Semigroup((a, a) -> a)
+}
+```
+
+Since the type `semigroup` has only one constructor (`Semigroup`) and the constructor has only one argument (`(a, a) -> a`), the internal representation of `Semigroup(e)` is optimized into that of `e`.
+
 ## Lambdas
 
 ### Basics
