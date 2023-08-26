@@ -11,12 +11,14 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.OptimizableData qualified as OptimizableData
+import Context.Remark (printLog, printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -29,7 +31,6 @@ import Entity.EnumCase qualified as EC
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
-import Entity.IsConstLike
 import Entity.LamKind qualified as LK
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
@@ -107,19 +108,33 @@ withSpecializedCtx action = do
   Clarify.initialize
   action
 
-clarifyStmt :: Stmt -> App (DD.DefiniteDescription, (O.Opacity, [Ident], C.Comp))
+clarifyStmt :: Stmt -> App C.CompDef
 clarifyStmt stmt =
   case stmt of
-    StmtDefine _ stmtKind _ f _ xts _ e -> do
+    StmtDefine _ stmtKind m f _ xts _ e -> do
+      xts' <- dropFst <$> clarifyBinder IntMap.empty xts
+      let tenv = TM.insTypeEnv xts IntMap.empty
       case stmtKind of
         Data name dataArgs consInfoList -> do
-          dataType <- clarifyData name dataArgs consInfoList
-          xts' <- dropFst <$> clarifyBinder IntMap.empty xts
-          dataType' <- linearize xts' dataType >>= Reduce.reduce
-          return (name, (O.Transparent, map fst xts', dataType'))
+          od <- OptimizableData.lookup name
+          case od of
+            Just OD.Enum -> do
+              returnEnumS4 name >>= clarifyStmtDefineBody' name xts'
+            Just OD.Unitary
+              | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
+                  (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
+                  return (f, (O.Transparent, map fst dataArgs', t'))
+              | otherwise ->
+                  Throw.raiseCritical m "found a broken unitary data"
+            Just OD.Nat ->
+              Throw.raiseCritical m "found a Nat in clarifyStmt"
+            Nothing -> do
+              let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
+              dataInfo' <- mapM clarifyDataClause dataInfo
+              returnSigmaDataS4 name dataInfo' >>= clarifyStmtDefineBody' name xts'
         _ -> do
-          (xts', e') <- clarifyStmtDefine xts e
-          return (f, (toLowOpacity stmtKind, xts', e'))
+          e' <- clarifyStmtDefineBody tenv xts' e
+          return (f, (toLowOpacity stmtKind, map fst xts', e'))
     StmtDefineResource m name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
@@ -128,30 +143,38 @@ clarifyStmt stmt =
       enumElim <- getEnumElim [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
       return (name, (O.Transparent, [switchValue, value], enumElim))
 
-clarifyData ::
-  DD.DefiniteDescription ->
-  [BinderF TM.Term] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [BinderF TM.Term], D.Discriminant)] ->
-  App C.Comp
-clarifyData name dataArgs consInfoList = do
-  od <- OptimizableData.lookup name
-  case od of
-    Just OD.Enum ->
-      returnEnumS4 name
-    _ -> do
-      let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
-      dataInfo' <- mapM clarifyDataClause dataInfo
-      returnSigmaDataS4 name dataInfo'
-
-clarifyStmtDefine ::
+clarifyBinderBody ::
+  TM.TypeEnv ->
   [BinderF TM.Term] ->
   TM.Term ->
-  App ([Ident], C.Comp)
-clarifyStmtDefine xts e = do
-  xts' <- dropFst <$> clarifyBinder IntMap.empty xts
-  e' <- TM.inline e >>= clarifyTerm (TM.insTypeEnv xts IntMap.empty)
-  e'' <- linearize xts' e' >>= Reduce.reduce
-  return (map fst xts', e'')
+  App ([(Ident, C.Comp)], C.Comp)
+clarifyBinderBody tenv xts e =
+  case xts of
+    [] -> do
+      e' <- clarifyTerm tenv e
+      return ([], e')
+    (m, x, t) : rest -> do
+      t' <- clarifyTerm tenv t
+      (binder, e') <- clarifyBinderBody (TM.insTypeEnv [(m, x, t)] tenv) rest e
+      return ((x, t') : binder, e')
+
+clarifyStmtDefineBody ::
+  TM.TypeEnv ->
+  [(Ident, C.Comp)] ->
+  TM.Term ->
+  App C.Comp
+clarifyStmtDefineBody tenv xts e = do
+  e' <- TM.inline e >>= clarifyTerm tenv
+  linearize xts e' >>= Reduce.reduce
+
+clarifyStmtDefineBody' ::
+  DD.DefiniteDescription ->
+  [(Ident, C.Comp)] ->
+  C.Comp ->
+  App C.CompDef
+clarifyStmtDefineBody' name xts' dataType = do
+  dataType' <- linearize xts' dataType >>= Reduce.reduce
+  return (name, (O.Transparent, map fst xts', dataType'))
 
 clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
 clarifyTerm tenv term =
@@ -176,16 +199,25 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    _ :< TM.Data name _ _ -> do
-      let name' = DD.getFormDD name
-      return $ C.UpIntro $ C.VarGlobal name' AN.argNumS4
+    _ :< TM.Data name _ dataArgs -> do
+      (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus tenv) dataArgs
+      return $
+        bindLet (zip zs dataArgs') $
+          C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
     m :< TM.DataIntro _ consName _ disc dataArgs consArgs -> do
       od <- OptimizableData.lookup consName
       baseSize <- Env.getBaseSize m
       case od of
         Just OD.Enum ->
           return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify disc)
-        _ -> do
+        Just OD.Unitary
+          | [e] <- consArgs ->
+              clarifyTerm tenv e
+          | otherwise ->
+              Throw.raiseCritical m "found a malformed unitary data in Scene.Clarify.clarifyTerm"
+        Just OD.Nat ->
+          Throw.raiseCritical m "DataIntro can't be a nat"
+        Nothing -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
             bindLet (zip zs es) $
@@ -299,6 +331,8 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       case ck of
         Just OD.Enum ->
           getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
+        Just OD.Unitary -> do
+          return $ getFirstClause fallbackClause' clauseList''
         Just OD.Nat -> do
           (flag, flagVar) <- Gensym.newValueVarLocalWith "flag"
           enumElim <- getEnumElim idents flagVar fallbackClause' (zip enumCaseList clauseList'')
@@ -308,6 +342,14 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim
+
+getFirstClause :: C.Comp -> [C.Comp] -> C.Comp
+getFirstClause fallbackClause clauseList =
+  case clauseList of
+    [] ->
+      fallbackClause
+    clause : _ ->
+      clause
 
 getClauseDataGroup :: TM.Term -> App (Maybe OD.OptimizableData)
 getClauseDataGroup term =
@@ -369,6 +411,14 @@ clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
       case od of
         Just OD.Enum -> do
           return (EC.Int (D.reify disc), body')
+        Just OD.Unitary
+          | [(_, consArg, _)] <- consArgs ->
+              return
+                ( EC.Int 0,
+                  C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body'
+                )
+          | otherwise ->
+              Throw.raiseCritical' "found a non-unitary consArgs for unitary ADT"
         _ -> do
           discriminantVar <- Gensym.newIdentFromText "discriminant"
           return
@@ -432,8 +482,9 @@ clarifyLambda tenv kind fvs mxts e@(m :< _) = do
       let argNum = AN.fromInt $ length appArgs'
       let lamApp = m :< TM.PiIntro (LK.Normal O.Transparent) mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName argNum) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
-      (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
-      Clarify.insertToAuxEnv liftedName (O.Opaque, liftedArgs, liftedBody')
+      -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
+      (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
+      Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
       clarifyTerm tenv lamApp
     LK.Normal opacity -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
