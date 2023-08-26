@@ -11,14 +11,12 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.OptimizableData qualified as OptimizableData
-import Context.Remark (printLog, printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
-import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Binder
