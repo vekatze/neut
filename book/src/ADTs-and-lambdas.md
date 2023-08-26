@@ -183,6 +183,63 @@ In practice, one may think of `mu` as a nested `define`.
 
 ## Some Useful Notations
 
+### Holes
+
+A hole in Neut is written as `_`. The content of a hole is inferred by the type system at compile time. This can be useful when we, for example, call a polymorphic function. Suppose we have the following `map` function:
+
+```neut
+// the usual one
+define map(a: tau, b: tau, f: a -> b, xs: list(a)): list(b) {
+  match xs {
+  - [] =>
+    []
+  - y :: ys =>
+    f(y) :: map(a, b, f, ys)
+  }
+}
+```
+
+If it were not for holes, we'd have to call this function as follows:
+
+```neut
+let bool-list = map(int, bool, int-to-bool, int-list) in
+cont
+```
+
+Using holes, the function can be called without specifying its type arguments explicitly:
+
+```neut
+let bool-list = map(_, _, int-to-bool-func, int-list) in
+cont
+```
+
+### Supplying Holes
+
+You can write `some-func/2(x, y)` instead of `some-func(_, _, x, y)`. The `i` in `some-func/i` specifies the number of supplied holes. Using this notation, the `map` above can now be called as follows:
+
+```neut
+let bool-list = map/2(int-to-bool-func, int-list) in
+cont
+```
+
+This can be useful when achieving better readability (YMMV):
+
+```neut
+// with the notation
+for-each/1(xss, (xs) => {
+  for-each/1(xs, (x) => {
+    some-func/1(x)
+  })
+})
+
+// without the notation
+for-each(list(list(int)), xss, (xs) => {
+  for-each(list(int), xs, (x) => {
+    do-something(int, x)
+  })
+})
+```
+
 ### Keyword Arguments
 
 The arguments of a function can be supplied using their names:
