@@ -65,7 +65,7 @@ When `match` is used against a value of an ADT, the inner values of the given va
 
 ---
 
-If an ADT and all its constructor don't need any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:
+If an ADT and all its constructor don't have any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:
 
 ```neut
 data color {
