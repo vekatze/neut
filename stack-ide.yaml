@@ -1,6 +1,0 @@
-resolver: lts-20.26
-
-packages:
-  - .
-
-work-dir: .stack-ide

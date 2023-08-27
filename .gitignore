@@ -1,5 +1,4 @@
 .stack-work/
-.stack-ide/
 neut.cabal
 .DS_Store
 test/res
