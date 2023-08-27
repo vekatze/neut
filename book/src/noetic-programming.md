@@ -72,11 +72,11 @@ By using a noema, we can perform something like "borrowing" in other languages.
 
 ## Using a Noema: Viewing Its Contents
 
-The content of a noema can be viewed using `case`:
+The content of a noema can be viewed using `match*`:
 
 ```neut
 define length(a: tau, xs: *list(a)): int {
-  case xs {
+  match* xs {
   - [] =>
     0
   - y :: ys =>
@@ -85,9 +85,9 @@ define length(a: tau, xs: *list(a)): int {
 }
 ```
 
-Here, the `case` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of the given value (`xs` in this case).
+Here, the `match*` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of the given value (`xs` in this match*).
 
-The variables that are bound by a `case` are cast to be noetic. For example, the `y` in the example above is not of type `a`, but of type `*a`. The `ys` is not of type `list(a)`, but of type `*list(a)`. Since the type of `y` is noetic, `y` isn't discarded even though it isn't used.
+The variables that are bound by a `match*` are cast to be noetic. For example, the `y` in the example above is not of type `a`, but of type `*a`. The `ys` is not of type `list(a)`, but of type `*list(a)`. Since the type of `y` is noetic, `y` isn't discarded even though it isn't used.
 
 ## Using a Noema: Incarnation
 
@@ -95,7 +95,7 @@ You can embody a noema using `!e`:
 
 ```neut
 define sum-of-list(xs: *list(int)): int {
-  case xs {
+  match* xs {
   - [] =>
     0
   - y :: ys =>

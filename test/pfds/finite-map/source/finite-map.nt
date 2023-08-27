@@ -43,7 +43,7 @@ define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-sig
     }
   - lookup =>
     mu lookup(key: a, haystack: *finite-map(a, b)): ?b {
-      case haystack {
+      match* haystack {
       - Leaf =>
         None
       - Node(left, k, v, right) =>

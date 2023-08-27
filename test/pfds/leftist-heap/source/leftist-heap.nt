@@ -29,7 +29,7 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
   let merge =
     let rank =
       (h: *heap(a)) => {
-        case h {
+        match* h {
         - Leaf =>
           0
         - Node(r, _, _, _) =>
@@ -69,7 +69,7 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     Leaf
   - is-empty =>
     (h: *heap(a)) => {
-      case h {
+      match* h {
       - Leaf =>
         True
       - Node(_, _, _, _) =>
@@ -84,7 +84,7 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     merge
   - find-min =>
     (h: *heap(a)) => {
-      case h {
+      match* h {
       - Leaf =>
         None
       - Node(_, value, _, _) =>

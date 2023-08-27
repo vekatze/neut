@@ -16,7 +16,7 @@ data R-list(a) {
 }
 
 define size(a: tau, t: *tree(a)): int {
-  case t {
+  match* t {
   - Leaf(_) =>
     1
   - Node(w, _, _) =>
@@ -71,7 +71,7 @@ define uncons-tree(a: tau, ts: R-list(a)): option(tuple(tree(a), R-list(a))) {
 }
 
 define lookup-tree(a: tau, i: int, t: *tree(a)): option(a) {
-  case t {
+  match* t {
   - Leaf(v) =>
     if eq-int(i, 0) {
       Some(!v)
@@ -89,7 +89,7 @@ define lookup-tree(a: tau, i: int, t: *tree(a)): option(a) {
 }
 
 define lookup-list(a: tau, i: int, xs: *list(digit(a))): option(a) {
-  case xs {
+  match* xs {
   - [] =>
     None
   - DigitZero :: rest =>
@@ -105,7 +105,7 @@ define lookup-list(a: tau, i: int, xs: *list(digit(a))): option(a) {
 }
 
 define lookup(a: tau, i: int, xs: *R-list(a)): option(a) {
-  tie New(xs) = xs in
+  let* New(xs) = xs in
   lookup-list(_, i, xs)
 }
 

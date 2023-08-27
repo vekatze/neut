@@ -59,7 +59,6 @@ rawExpr = do
   m <- getCurrentHint
   choice
     [ rawExprLet m,
-      rawExprTie m,
       rawExprSeqOrTerm m
     ]
 
@@ -97,7 +96,6 @@ rawTermBasic = do
     [ rawTermMu,
       rawTermIntrospect,
       rawTermMagic,
-      rawTermMatchNoetic,
       rawTermMatch,
       rawTermIf,
       rawTermWhen,
@@ -176,7 +174,7 @@ rawTermKeyValuePair = do
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
-  keyword "let"
+  isNoetic <- choice [try (keyword "let*") >> return True, keyword "let" >> return False]
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx
@@ -190,13 +188,13 @@ rawTermLetOrLetOn m = do
         e1 <- rawExpr
         delimiter "in"
         e2 <- rawExpr
-        return $ m :< RT.Let mxt noeticVarList e1 (modifier False e2),
+        return $ m :< RT.Let mxt noeticVarList e1 (modifier isNoetic e2),
       do
         delimiter "="
         e1 <- rawExpr
         delimiter "in"
         e2 <- rawExpr
-        return $ m :< RT.Let mxt [] e1 (modifier False e2)
+        return $ m :< RT.Let mxt [] e1 (modifier isNoetic e2)
     ]
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
@@ -230,18 +228,6 @@ rawTermLetVarAscription' =
         Just <$> rawTerm,
       return Nothing
     ]
-
-rawExprTie :: Hint -> Parser RT.RawTerm
-rawExprTie m = do
-  keyword "tie"
-  pat@(mx, _) <- rawTermPattern
-  (x, modifier) <- getContinuationModifier pat
-  t <- rawTermLetVarAscription mx
-  delimiter "="
-  e1 <- rawExpr
-  keyword "in"
-  e2 <- rawExpr
-  return $ m :< RT.Let (mx, x, t) [] e1 (modifier True e2)
 
 ensureIdentLinearity :: Hint -> S.Set RawIdent -> [RawIdent] -> App ()
 ensureIdentLinearity m foundVarSet vs =
@@ -490,18 +476,10 @@ primType = do
 rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
-  keyword "match"
-  es <- commaList rawTermPiOrConsOrAscOrBasic
-  patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
-  return $ m :< RT.DataElim False es (RP.new patternRowList)
-
-rawTermMatchNoetic :: Parser RT.RawTerm
-rawTermMatchNoetic = do
-  m <- getCurrentHint
-  keyword "case"
+  isNoetic <- choice [try (keyword "match*") >> return True, keyword "match" >> return False]
   es <- commaList rawTermBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
-  return $ m :< RT.DataElim True es (RP.new patternRowList)
+  return $ m :< RT.DataElim isNoetic es (RP.new patternRowList)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm)
 rawTermPatternRow patternSize = do

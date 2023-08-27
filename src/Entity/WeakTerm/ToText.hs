@@ -51,7 +51,7 @@ toText term =
       showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
-        then showCons ["match-noetic", showMatchArgs xets, showDecisionTree tree]
+        then showCons ["match*", showMatchArgs xets, showDecisionTree tree]
         else showCons ["match", showMatchArgs xets, showDecisionTree tree]
     _ :< WT.Noema t ->
       showCons ["noema", toText t]
@@ -62,7 +62,7 @@ toText term =
         WT.Transparent ->
           showCons ["let", showVariable x, toText t, toText e1, toText e2]
         _ ->
-          showCons ["let*", showVariable x, toText t, toText e1, toText e2]
+          showCons ["let-opaque", showVariable x, toText t, toText e1, toText e2]
     _ :< WT.Prim prim ->
       showPrim prim
     _ :< WT.Hole i es ->

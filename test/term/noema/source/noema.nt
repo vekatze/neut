@@ -17,7 +17,7 @@ define test-syntax(): unit {
     let _ = xs-copy in
     let _ = xs-copy in
     let _ = xs-copy in
-    case xs {
+    match* xs {
     - [] =>
       length(int, xs)
     - _ :: ys =>
@@ -52,7 +52,7 @@ data my-enum {
 
 define nested-enum-match(t: *term(my-enum)): term(my-enum) {
   let val =
-    case t {
+    match* t {
     - App(Abs(x, t'), Var(e)) =>
       let _ = Var(e) in
       let t' = !t' in
@@ -105,10 +105,10 @@ define unbalanced-freevars-in-branches(a: tau, t: *term(a)): term(a) {
   let f = () => { foo } in
   let g = () => { foo } in
   let h = () => { foo } in
-  case t {
+  match* t {
   - Var(x) =>
     let _ = f in
-    case t {
+    match* t {
     - Var(_) =>
       let _ = g in
       let _ = x in
@@ -124,7 +124,7 @@ define unbalanced-freevars-in-branches(a: tau, t: *term(a)): term(a) {
       !t
     }
   - Abs(_, t) =>
-    case t {
+    match* t {
     - App(_, e2) =>
       !e2
     - _ =>
@@ -147,7 +147,7 @@ data ctx {
 }
 
 define with-ctx(c: *ctx): unit {
-  tie Ctx(counter) = c in
+  let* Ctx(counter) = c in
   let current-value = clone(int, counter) in
   if eq-int(current-value, 0) {
     print("stop\n")
