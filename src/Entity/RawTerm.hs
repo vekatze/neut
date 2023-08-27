@@ -8,7 +8,7 @@ where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
-import Entity.Annotation qualified as AN
+import Entity.Annotation qualified as Annot
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -34,7 +34,7 @@ data RawTermF a
   | Pi [RawBinder a] a
   | PiIntro (RawLamKind a) [RawBinder a] a
   | PiElim a [a]
-  | PiElimByKey Name [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | PiElimByKey Name [a] [(Hint, Key, a)] -- auxiliary syntax for key-call
   | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
   | DataIntro
       DD.DefiniteDescription
@@ -50,7 +50,7 @@ data RawTermF a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
-  | Annotation RemarkLevel (AN.Annotation ()) a
+  | Annotation RemarkLevel (Annot.Annotation ()) a
   | Flow
       L.Locator -- "core.thread.flow-inner"
       a -- inner type

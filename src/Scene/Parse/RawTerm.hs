@@ -18,10 +18,11 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
+import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Annotation qualified as AN
+import Entity.Annotation qualified as Annot
 import Entity.Arch qualified as Arch
 import Entity.BaseName qualified as BN
 import Entity.BuildMode qualified as BM
@@ -163,17 +164,7 @@ rawTermPiOrConsOrAscOrBasic = do
         delimiter ":"
         t <- rawTerm
         ascribe m t basic,
-      case basic of
-        _ :< RT.Var name -> do
-          choice
-            [ do
-                keyword "of"
-                rowList <- betweenBrace $ manyList rawTermKeyValuePair
-                return $ m :< RT.PiElimByKey name rowList,
-              return basic
-            ]
-        _ ->
-          return basic
+      return basic
     ]
 
 rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
@@ -817,7 +808,7 @@ rawTermAdmit = do
     m
       :< RT.Annotation
         Warning
-        (AN.Type ())
+        (Annot.Type ())
         ( m
             :< RT.PiElim
               admit
@@ -844,8 +835,22 @@ rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
   mImpArgNum <- optional $ delimiter "/" >> integer
+  case e of
+    _ :< RT.Var name -> do
+      choice
+        [ do
+            holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. fromMaybe 0 mImpArgNum]
+            keyword "of"
+            rowList <- betweenBrace $ manyList rawTermKeyValuePair
+            return $ m :< RT.PiElimByKey name holes rowList,
+          rawTermPiElimCont m e mImpArgNum
+        ]
+    _ -> do
+      rawTermPiElimCont m e mImpArgNum
+
+rawTermPiElimCont :: Hint -> RT.RawTerm -> Maybe Integer -> Parser RT.RawTerm
+rawTermPiElimCont m e mImpArgNum = do
   argListList <- many $ argList rawExpr
-  spaceConsumer
   case mImpArgNum of
     Just impArgNum -> do
       holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. impArgNum]
@@ -854,7 +859,7 @@ rawTermPiElimOrSimple = do
           return $ m :< RT.PiElim e holes
         headArgList : rest ->
           foldPiElim m e $ (holes ++ headArgList) : rest
-    Nothing -> do
+    Nothing ->
       foldPiElim m e argListList
 
 foldPiElim :: Hint -> RT.RawTerm -> [[RT.RawTerm]] -> Parser RT.RawTerm

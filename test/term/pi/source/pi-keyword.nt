@@ -7,6 +7,11 @@ define foo(FOO: bool, a: tau, 🌟🌟🌟: tau, 竹の葉に霰ふるなりさ�
   }
 }
 
+define bar(a: tau, some-value: a): unit {
+  let _ = some-value in
+  Unit
+}
+
 define test-syntax(): unit {
   let _ =
     foo of {
@@ -52,6 +57,12 @@ define test-syntax(): unit {
         let y = 20 in
         add-int(x, y)
       }
+    }
+  in
+  let _ =
+    // hole-notation + keyword arguments
+    bar/1 of {
+    - some-value => tau
     }
   in
   Unit
