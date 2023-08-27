@@ -8,10 +8,10 @@ build-images:
     @just _build-images-in-parallel amd64-linux arm64-linux
 
 build-image-amd64-linux:
-    @docker build . --platform linux/amd64 -t {{image-amd64}}
+    @docker build . -f build/Dockerfile --platform linux/amd64 -t {{image-amd64}}
 
 build-image-arm64-linux:
-    @docker build . --platform linux/arm64 -t {{image-arm64}}
+    @docker build . -f build/Dockerfile --platform linux/arm64 -t {{image-arm64}}
 
 build-compilers:
     @just _build-compilers-in-parallel amd64-linux arm64-linux arm64-darwin
