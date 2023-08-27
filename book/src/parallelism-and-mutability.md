@@ -110,20 +110,20 @@ Here, the type of related wrapper functions are:
 new-cell(a: tau, x: a): cell(a)
 
 // mutate the content of a cell
-mutate(a: tau, ch: &cell(a), f: a -> a): top
+mutate(a: tau, ch: *cell(a), f: a -> a): top
 
 // borrow the content of a cell and do something
-borrow(a: tau, b: tau, ch: &cell(a), f: &a -> b): b
+borrow(a: tau, b: tau, ch: *cell(a), f: *a -> b): b
 
 // clone the content of a cell
-clone(a: tau, ch: &cell(a)): a
+clone(a: tau, ch: *cell(a)): a
 ```
 
 The definition of, for example, `mutate` is like the below:
 
 ```neut
-define mutate(a: tau, ch: &cell(a), f: a -> a): top {
-  let ch = magic.cast(&cell(a), &channel(a), ch) in
+define mutate(a: tau, ch: *cell(a), f: a -> a): top {
+  let ch = magic.cast(*cell(a), *channel(a), ch) in
   let v = receive(a, ch) in
   send(a, ch, f(v))
 }

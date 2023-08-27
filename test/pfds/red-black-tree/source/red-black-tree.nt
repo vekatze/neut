@@ -21,12 +21,12 @@ inline Cmp(a: tau): tau {
   (a, a) -> order
 }
 
-define member(a: tau, cmp: Cmp(a), x: a, t: &tree(a)): bool {
+define member(a: tau, cmp: Cmp(a), x: a, t: *tree(a)): bool {
   case t {
   - Leaf =>
     False
   - Node(_, t1, v, t2) =>
-    match cmp(x, *v) {
+    match cmp(x, !v) {
     - LT =>
       member(a, cmp, x, t1)
     - EQ =>

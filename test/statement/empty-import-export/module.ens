@@ -2,5 +2,5 @@
   (empty-import-export "empty-import-export.nt"))
 (dependency
   (core
-    (digest "0oJIHp1vUIzB773qhc1Nec4spLG-p2IZdfGRL_Z8qkU=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-7.tar.zst")))
+    (digest "TkfC8nCb3kHop0ZjR4apHbwxrs6yqySPfTUJ5sqtXJo=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-8.tar.zst")))

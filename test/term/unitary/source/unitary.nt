@@ -35,10 +35,10 @@ define use-item1(x: item1): list(int) {
   }
 }
 
-define use-item1-noetic(x: &item1): list(int) {
+define use-item1-noetic(x: *item1): list(int) {
   case x {
   - Item1(value) =>
-    trace-list/1(*value)
+    trace-list/1(!value)
   }
 }
 
@@ -63,7 +63,7 @@ define use-item2(a: tau, x: item2(a)): a {
   }
 }
 
-define use-item2-noetic(a: tau, x: &item2(a)): &a {
+define use-item2-noetic(a: tau, x: *item2(a)): *a {
   case x {
   - Item2(value) =>
     value
@@ -91,10 +91,10 @@ define use-item3(a: tau, b: tau, f: item3(a, b), x: a): b {
   }
 }
 
-define use-item3-noetic(a: tau, b: tau, f: &item3(a, b), x: a): b {
+define use-item3-noetic(a: tau, b: tau, f: *item3(a, b), x: a): b {
   case f {
   - Item3(func) =>
-    {*func}(x)
+    {!func}(x)
   }
 }
 
@@ -119,10 +119,10 @@ define use-item4(x: item4(int, list(int))): list(int) {
   }
 }
 
-define use-item4-noetic(x: &item4(int, list(int))): list(int) {
+define use-item4-noetic(x: *item4(int, list(int))): list(int) {
   case x {
   - Item4(Tuple(v, xs)) =>
-    trace-list/1(*v :: *xs)
+    trace-list/1(!v :: !xs)
   }
 }
 

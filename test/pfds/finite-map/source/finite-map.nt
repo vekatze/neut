@@ -17,7 +17,7 @@ data finite-map-signature(a, b) {
 - Finite-Map(
     empty: finite-map(a, b),
     insert: (a, b, finite-map(a, b)) -> finite-map(a, b),
-    lookup: (a, &finite-map(a, b)) -> ?b
+    lookup: (a, *finite-map(a, b)) -> ?b
   )
 }
 
@@ -42,16 +42,16 @@ define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-sig
       }
     }
   - lookup =>
-    mu lookup(key: a, haystack: &finite-map(a, b)): ?b {
+    mu lookup(key: a, haystack: *finite-map(a, b)): ?b {
       case haystack {
       - Leaf =>
         None
       - Node(left, k, v, right) =>
-        match compare(key, *k) {
+        match compare(key, !k) {
         - LT =>
           lookup(key, left)
         - EQ =>
-          Some(*v)
+          Some(!v)
         - GT =>
           lookup(key, right)
         }

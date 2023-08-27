@@ -9,12 +9,12 @@ data order {
 - GT
 }
 
-define find-min(a: tau, h: &heap(a)): ?a {
+define find-min(a: tau, h: *heap(a)): ?a {
   case h {
   - Leaf =>
     None: ?a
   - Node(v, _) =>
-    Some(*v)
+    Some(!v)
   }
 }
 

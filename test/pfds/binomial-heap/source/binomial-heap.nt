@@ -1,10 +1,10 @@
 data tree(a) {
-  // the list is in *decreasing* order of rank
+  // the list is in decreasing order of rank
 - Node(int, a, list(tree(a)))
 }
 
 inline heap(a: tau): tau {
-  // the list is in *increasing* order of rank
+  // the list is in increasing order of rank
   list(tree(a))
 }
 
@@ -26,10 +26,10 @@ define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   }
 }
 
-define rank(a: tau, t: &tree(a)): int {
+define rank(a: tau, t: *tree(a)): int {
   case t {
   - Node(r, _, _) =>
-    *r
+    !r
   }
 }
 
@@ -72,16 +72,16 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
 }
 
 
-define root(a: tau, t: &tree(a)): a {
+define root(a: tau, t: *tree(a)): a {
   case t {
   - Node(_, v, _) =>
-    *v
+    !v
   }
 }
 
-define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
+define find-min(a: tau, cmp: (a, a) -> order, h: *heap(a)): ?a {
   let helper =
-    mu self(cand: a, h: &heap(a)): a {
+    mu self(cand: a, h: *heap(a)): a {
       case h {
       - [] =>
         cand

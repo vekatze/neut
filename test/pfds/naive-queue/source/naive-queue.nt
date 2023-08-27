@@ -12,10 +12,10 @@ define empty(a: tau): queue(a) {
   Tuple([], [])
 }
 
-define head(a: tau, q: &queue(a)): ?a {
+define head(a: tau, q: *queue(a)): ?a {
   case q {
   - Tuple(x :: _, _) =>
-    Some(*x)
+    Some(!x)
   - _ =>
     None
   }
@@ -44,12 +44,12 @@ define snoc(a: tau, v: a, q: queue(a)): queue(a) {
   sanitize(_, Tuple(xs, v :: ys))
 }
 
-define sum(xs: &list(int)): int {
+define sum(xs: *list(int)): int {
   case xs {
   - [] =>
     0
   - v :: rest =>
-    add-int(*v, sum(rest))
+    add-int(!v, sum(rest))
   }
 }
 

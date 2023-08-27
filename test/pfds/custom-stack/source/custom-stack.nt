@@ -12,7 +12,7 @@ define empty(a: tau): custom-stack(a) {
   Nil
 }
 
-define is-empty(a: tau, xs: &custom-stack(a)): bool {
+define is-empty(a: tau, xs: *custom-stack(a)): bool {
   case xs {
   - Nil =>
     True
@@ -21,7 +21,7 @@ define is-empty(a: tau, xs: &custom-stack(a)): bool {
   }
 }
 
-define head(a: tau, xs: &custom-stack(a)): ?&tuple(a, a) {
+define head(a: tau, xs: *custom-stack(a)): ?*tuple(a, a) {
   case xs {
   - Nil =>
     None
@@ -30,7 +30,7 @@ define head(a: tau, xs: &custom-stack(a)): ?&tuple(a, a) {
   }
 }
 
-define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
+define tail(a: tau, xs: *custom-stack(a)): ?*custom-stack(a) {
   case xs {
   - Nil =>
     None
@@ -55,8 +55,8 @@ define main(): unit {
     - None =>
       1
     - Some(pair) =>
-      link Tuple(_, right) = pair in
-      {*right}()
+      tie Tuple(_, right) = pair in
+      {!right}()
     }
   in
   let _ = zs in

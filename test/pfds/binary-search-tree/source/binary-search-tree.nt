@@ -17,7 +17,7 @@ data set-signature(a) {
 - Set(
     empty: set(a),
     insert: (a, set(a)) -> set(a),
-    member: (a, &set(a)) -> bool
+    member: (a, *set(a)) -> bool
   )
 }
 
@@ -42,12 +42,12 @@ define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
       }
     }
   - member =>
-    mu member(needle: a, haystack: &set(a)) {
+    mu member(needle: a, haystack: *set(a)) {
       case haystack {
       - Leaf =>
         False
       - Node(left, x, right) =>
-        match compare(needle, *x) {
+        match compare(needle, !x) {
         - LT =>
           member(needle, left)
         - EQ =>

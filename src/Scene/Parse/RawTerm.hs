@@ -59,7 +59,7 @@ rawExpr = do
   m <- getCurrentHint
   choice
     [ rawExprLet m,
-      rawExprLink m,
+      rawExprTie m,
       rawExprSeqOrTerm m
     ]
 
@@ -231,9 +231,9 @@ rawTermLetVarAscription' =
       return Nothing
     ]
 
-rawExprLink :: Hint -> Parser RT.RawTerm
-rawExprLink m = do
-  keyword "link"
+rawExprTie :: Hint -> Parser RT.RawTerm
+rawExprTie m = do
+  keyword "tie"
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx
@@ -291,7 +291,7 @@ rawTermLetEither = do
 rawTermEmbody :: Parser RT.RawTerm
 rawTermEmbody = do
   m <- getCurrentHint
-  delimiter "*"
+  delimiter "!"
   e <- rawTermBasic
   return $ m :< RT.Embody e
 
@@ -742,7 +742,7 @@ bind mxt@(m, _, _) e cont =
 rawTermNoema :: Parser RT.RawTerm
 rawTermNoema = do
   m <- getCurrentHint
-  delimiter "&"
+  delimiter "*"
   t <- rawTermBasic
   return $ m :< RT.Noema t
 

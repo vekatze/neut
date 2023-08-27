@@ -15,12 +15,12 @@ data R-list(a) {
 - New(list(digit(a)))
 }
 
-define size(a: tau, t: &tree(a)): int {
+define size(a: tau, t: *tree(a)): int {
   case t {
   - Leaf(_) =>
     1
   - Node(w, _, _) =>
-    *w
+    !w
   }
 }
 
@@ -70,16 +70,16 @@ define uncons-tree(a: tau, ts: R-list(a)): option(tuple(tree(a), R-list(a))) {
   }
 }
 
-define lookup-tree(a: tau, i: int, t: &tree(a)): option(a) {
+define lookup-tree(a: tau, i: int, t: *tree(a)): option(a) {
   case t {
   - Leaf(v) =>
     if eq-int(i, 0) {
-      Some(*v)
+      Some(!v)
     } else {
       None
     }
   - Node(w, t1, t2) =>
-    let w-div-2 = div-int(*w, 2) in
+    let w-div-2 = div-int(!w, 2) in
     if lt-int(i, w-div-2) {
       lookup-tree(a, i, t1)
     } else {
@@ -88,7 +88,7 @@ define lookup-tree(a: tau, i: int, t: &tree(a)): option(a) {
   }
 }
 
-define lookup-list(a: tau, i: int, xs: &list(digit(a))): option(a) {
+define lookup-list(a: tau, i: int, xs: *list(digit(a))): option(a) {
   case xs {
   - [] =>
     None
@@ -104,8 +104,8 @@ define lookup-list(a: tau, i: int, xs: &list(digit(a))): option(a) {
   }
 }
 
-define lookup(a: tau, i: int, xs: &R-list(a)): option(a) {
-  link New(xs) = xs in
+define lookup(a: tau, i: int, xs: *R-list(a)): option(a) {
+  tie New(xs) = xs in
   lookup-list(_, i, xs)
 }
 
@@ -145,7 +145,7 @@ define update(a: tau, i: int, x: a, xs: R-list(a)): R-list(a) {
   }
 }
 
-define find-and-get(i: int, xs: &R-list(int)): int {
+define find-and-get(i: int, xs: *R-list(int)): int {
   match lookup(_, i, xs) {
   - None =>
     0
