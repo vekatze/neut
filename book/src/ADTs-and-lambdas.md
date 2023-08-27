@@ -215,7 +215,19 @@ cont
 
 ### Supplying Holes
 
-You can write `some-func/2(x, y)` instead of `some-func(_, _, x, y)`. The `i` in `some-func/i` specifies the number of supplied holes. Using this notation, the `map` above can now be called as follows:
+You can write:
+
+```neut
+some-func/2(x, y)
+```
+
+instead of:
+
+```neut
+some-func(_, _, x, y)
+```
+
+The `i` in `some-func/i` specifies the number of supplied holes. Using this notation, the `map` above can now be called as follows:
 
 ```neut
 let bool-list = map/2(int-to-bool-func, int-list) in
