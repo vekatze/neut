@@ -80,19 +80,19 @@ data option(a) {
 - Some(a)
 }
 
-data either(a, b) {
-- Left(a)
-- Right(b)
+data except(a, b) {
+- Fail(a)
+- Pass(b)
 }
 
-// Additional notes on `either`:
-// (1) you can write `option(a)` instead of `either(unit, a)`
+// Additional notes on `except`:
+// (1) you can write `option(a)` instead of `except(unit, a)`
 // (2) you can write `option(a)` as `?a`.
 // (3) you can write `None` instead of `Left(Unit)`
 // (4) you can write `Some(e)` instead of `Right(e)
 
-data both(a, b) {
-- Both(left: a, right: b)
+data pair(a, b) {
+- Pair(left: a, right: b)
 }
 ```
 

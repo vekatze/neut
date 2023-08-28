@@ -187,10 +187,10 @@ extend (MakeBaseName b1) (MakeBaseName b2) =
 defaultImports :: [(T.Text, [BaseName])]
 defaultImports =
   [ ("core.bool", coreBoolNames),
-    ("core.both", coreBothNames),
+    ("core.pair", corePairNames),
     ("core.cell", coreCellNames),
     ("core.channel", coreChannelNames),
-    ("core.either", coreEitherNames),
+    ("core.except", coreExceptNames),
     ("core.file", coreFileNames),
     ("core.file.descriptor", coreFileDescriptorNames),
     ("core.function", coreFunctionNames),
@@ -207,9 +207,9 @@ coreBoolNames :: [BaseName]
 coreBoolNames =
   map MakeBaseName ["bool", "True", "False", "and", "or", "not"]
 
-coreBothNames :: [BaseName]
-coreBothNames =
-  map MakeBaseName ["both", "Both"]
+corePairNames :: [BaseName]
+corePairNames =
+  map MakeBaseName ["pair", "Pair"]
 
 coreCellNames :: [BaseName]
 coreCellNames =
@@ -219,9 +219,9 @@ coreChannelNames :: [BaseName]
 coreChannelNames =
   map MakeBaseName ["channel", "new-channel", "send", "receive"]
 
-coreEitherNames :: [BaseName]
-coreEitherNames =
-  map MakeBaseName ["either", "Left", "Right", "option", "none-internal", "some-internal"]
+coreExceptNames :: [BaseName]
+coreExceptNames =
+  map MakeBaseName ["except", "Fail", "Pass", "option", "none-internal", "some-internal"]
 
 coreFileNames :: [BaseName]
 coreFileNames =

@@ -133,7 +133,7 @@ match result {   // ... and thus using `result` here is a use-after-free!
 }
 ```
 
-Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `either(list(int), text)` are allowed. types like `*text`, `list(a)`, `int -> bool` are disallowed.
+Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `*text`, `list(a)`, `int -> bool` are disallowed.
 
 More specifically, the type of `result` must satisfy all of the followings:
 

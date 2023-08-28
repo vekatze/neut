@@ -253,23 +253,25 @@ rawTermLetEither = do
   delimiter "="
   e1@(m1 :< _) <- rawExpr
   delimiter "in"
-  eitherTypeInner <- lift $ locatorToVarGlobal m1 coreEither
+  eitherTypeInner <- lift $ locatorToVarGlobal m1 coreExcept
   leftType <- lift $ Gensym.newPreHole m1
   let eitherType = m1 :< RT.PiElim eitherTypeInner [leftType, rightType]
   e1' <- ascribe m1 eitherType e1
   e2@(m2 :< _) <- rawExpr
   err <- lift Gensym.newText
-  left <- lift $ locatorToName m2 coreEitherLeft
-  right <- lift $ locatorToName m2 coreEitherRight
-  leftVar <- lift $ locatorToVarGlobal m2 coreEitherLeft
+  exceptFail <- lift $ locatorToName m2 coreExceptFail
+  exceptPass <- lift $ locatorToName m2 coreExceptPass
+  exceptFailVar <- lift $ locatorToVarGlobal m2 coreExceptFail
   return $
     m2
       :< RT.DataElim
         False
         [e1']
         ( RP.new
-            [ (V.fromList [(m2, RP.Cons left (Right [(m2, RP.Var (Var err))]))], m2 :< RT.PiElim leftVar [preVar m2 err]),
-              (V.fromList [(m2, RP.Cons right (Right [pat]))], e2)
+            [ ( V.fromList [(m2, RP.Cons exceptFail (Right [(m2, RP.Var (Var err))]))],
+                m2 :< RT.PiElim exceptFailVar [preVar m2 err]
+              ),
+              (V.fromList [(m2, RP.Cons exceptPass (Right [pat]))], e2)
             ]
         )
 
@@ -539,17 +541,17 @@ rawTermPatternOptionNone :: Parser (Hint, RP.RawPattern)
 rawTermPatternOptionNone = do
   m <- getCurrentHint
   keyword "None"
-  left <- lift $ locatorToName m coreEitherLeft
+  exceptFail <- lift $ locatorToName m coreExceptFail
   hole <- lift Gensym.newTextForHole
-  return (m, RP.Cons left (Right [(m, RP.Var (Var hole))]))
+  return (m, RP.Cons exceptFail (Right [(m, RP.Var (Var hole))]))
 
 rawTermPatternOptionSome :: Parser (Hint, RP.RawPattern)
 rawTermPatternOptionSome = do
   m <- getCurrentHint
   keyword "Some"
   pat <- betweenParen rawTermPattern
-  right <- lift $ locatorToName m coreEitherRight
-  return (m, RP.Cons right (Right [pat]))
+  exceptPass <- lift $ locatorToName m coreExceptPass
+  return (m, RP.Cons exceptPass (Right [pat]))
 
 rawTermPatternNatZero :: Parser (Hint, RP.RawPattern)
 rawTermPatternNatZero = do
@@ -592,19 +594,19 @@ rawTermPatternTupleIntro = do
   keyword "Tuple"
   patList <- betweenParen $ commaList rawTermPattern
   unitVar <- lift $ locatorToName m coreUnitUnit
-  bothVar <- lift $ locatorToName m coreBothBoth
-  return $ foldTuplePat m unitVar bothVar patList
+  pairVar <- lift $ locatorToName m corePairPair
+  return $ foldTuplePat m unitVar pairVar patList
 
 foldTuplePat :: Hint -> Name -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
-foldTuplePat m unitVar bothVar es =
+foldTuplePat m unitVar pairVar es =
   case es of
     [] ->
       (m, RP.Var unitVar)
     [e] ->
       e
     e : rest -> do
-      let rest' = foldTuplePat m unitVar bothVar rest
-      (m, RP.Cons bothVar (Right [e, rest']))
+      let rest' = foldTuplePat m unitVar pairVar rest
+      (m, RP.Cons pairVar (Right [e, rest']))
 
 parseName :: Parser (Hint, Name)
 parseName = do
@@ -700,14 +702,14 @@ rawTermTuple = do
   keyword "tuple"
   es <- betweenParen $ commaList rawExpr
   unitVar <- lift $ locatorToName m coreUnit
-  bothVar <- lift $ locatorToName m coreBoth
+  pairVar <- lift $ locatorToName m corePair
   case es of
     [] ->
       return $ m :< RT.Var unitVar
     [e] ->
       return e
     _ ->
-      return $ foldByOp m bothVar es
+      return $ foldByOp m pairVar es
 
 rawTermTupleIntro :: Parser RT.RawTerm
 rawTermTupleIntro = do
@@ -715,14 +717,14 @@ rawTermTupleIntro = do
   keyword "Tuple"
   es <- betweenParen $ commaList rawExpr
   unitVar <- lift $ locatorToName m coreUnitUnit
-  bothVar <- lift $ locatorToName m coreBothBoth
+  pairVar <- lift $ locatorToName m corePairPair
   case es of
     [] ->
       return $ m :< RT.Var unitVar
     [e] ->
       return e
     _ ->
-      return $ foldByOp m bothVar es
+      return $ foldByOp m pairVar es
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
@@ -766,14 +768,14 @@ rawTermOption = do
   m <- getCurrentHint
   delimiter "?"
   t <- rawTermBasic
-  optionVar <- lift $ locatorToVarGlobal m coreEitherOption
+  optionVar <- lift $ locatorToVarGlobal m coreExceptOption
   return $ m :< RT.PiElim optionVar [t]
 
 rawTermOptionNone :: Parser RT.RawTerm
 rawTermOptionNone = do
   m <- getCurrentHint
   keyword "None"
-  noneVar <- lift $ locatorToVarGlobal m coreEitherNoneInternal
+  noneVar <- lift $ locatorToVarGlobal m coreExceptNoneInternal
   t <- lift $ Gensym.newPreHole m
   return $ m :< RT.PiElim noneVar [t]
 
@@ -782,7 +784,7 @@ rawTermOptionSome = do
   m <- getCurrentHint
   keyword "Some"
   e <- betweenParen rawExpr
-  someVar <- lift $ locatorToVarGlobal m coreEitherSomeInternal
+  someVar <- lift $ locatorToVarGlobal m coreExceptSomeInternal
   t <- lift $ Gensym.newPreHole m
   return $ m :< RT.PiElim someVar [t, e]
 

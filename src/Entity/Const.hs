@@ -89,37 +89,37 @@ coreBoolFalse :: T.Text
 coreBoolFalse =
   core <> nsSep <> "bool" <> nsSep <> "False"
 
-coreEither :: T.Text
-coreEither =
-  core <> nsSep <> "either" <> nsSep <> "either"
+coreExcept :: T.Text
+coreExcept =
+  core <> nsSep <> "except" <> nsSep <> "except"
 
-coreEitherLeft :: T.Text
-coreEitherLeft =
-  core <> nsSep <> "either" <> nsSep <> "Left"
+coreExceptFail :: T.Text
+coreExceptFail =
+  core <> nsSep <> "except" <> nsSep <> "Fail"
 
-coreEitherRight :: T.Text
-coreEitherRight =
-  core <> nsSep <> "either" <> nsSep <> "Right"
+coreExceptPass :: T.Text
+coreExceptPass =
+  core <> nsSep <> "except" <> nsSep <> "Pass"
 
-coreEitherOption :: T.Text
-coreEitherOption =
-  core <> nsSep <> "either" <> nsSep <> "option"
+coreExceptOption :: T.Text
+coreExceptOption =
+  core <> nsSep <> "except" <> nsSep <> "option"
 
-coreEitherNoneInternal :: T.Text
-coreEitherNoneInternal =
-  core <> nsSep <> "either" <> nsSep <> "none-internal"
+coreExceptNoneInternal :: T.Text
+coreExceptNoneInternal =
+  core <> nsSep <> "except" <> nsSep <> "none-internal"
 
-coreEitherSomeInternal :: T.Text
-coreEitherSomeInternal =
-  core <> nsSep <> "either" <> nsSep <> "some-internal"
+coreExceptSomeInternal :: T.Text
+coreExceptSomeInternal =
+  core <> nsSep <> "except" <> nsSep <> "some-internal"
 
-coreBoth :: T.Text
-coreBoth =
-  core <> nsSep <> "both" <> nsSep <> "both"
+corePair :: T.Text
+corePair =
+  core <> nsSep <> "pair" <> nsSep <> "pair"
 
-coreBothBoth :: T.Text
-coreBothBoth =
-  core <> nsSep <> "both" <> nsSep <> "Both"
+corePairPair :: T.Text
+corePairPair =
+  core <> nsSep <> "pair" <> nsSep <> "Pair"
 
 coreList :: T.Text
 coreList =

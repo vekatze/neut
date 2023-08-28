@@ -10,7 +10,7 @@ define test-syntax(): unit {
   let _: (tau, tau) -> tau = (x: tau, _) => { x } in
   let _: (tau, tau) -> tau = (_, y: tau) => { y } in
   let _: (tau, tau) -> tau = (x: tau, _) => { x } in
-  let _ = (x: tau, y: tau) => { Both(x, y) } in
+  let _ = (x: tau, y: tau) => { Pair(x, y) } in
   let _ = { (x: tau) => { x } }(tau) in
   // (unnecessarily) complex type
   let _ =

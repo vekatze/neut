@@ -1,5 +1,5 @@
 import {
-- core.either => S
+- core.except => S
 - core.text => T
 - core.list [list, reverse]
 }

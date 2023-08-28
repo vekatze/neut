@@ -75,7 +75,7 @@ Suppose that you have added a library module to your module:
 ```ens
 (dependency
   (core
-    (digest "SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=")
+    (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
     (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst")))
 ```
 
@@ -98,7 +98,7 @@ Here, the module alias of `core.text.io` is `core`, and the relative path is `te
 ```sh
 core => DIGEST_OF_THE_LIBRARY
 
-# core => SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=
+# core => 1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=
 ```
 
 and do the following name resolution:
@@ -108,7 +108,7 @@ core.text.io.get-line
 
 ↓
 
-SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=.text.io.get-line
+1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=.text.io.get-line
 ```
 
 ## Qualified Import

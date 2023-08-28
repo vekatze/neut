@@ -30,16 +30,16 @@ By running the code above, the specified tarball is downloaded into `~/.cache/ne
 ```sh
 ls ~/.cache/neut/library
 # => ...
-#    SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=
+#    1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=
 #    ...
 ```
 
-where the `SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
+where the `1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
 
 ```ens
 (dependency
   (core
-    (digest "SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=")
+    (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
     (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst")))
 ```
 

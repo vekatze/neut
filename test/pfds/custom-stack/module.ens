@@ -2,5 +2,5 @@
   (custom-stack "custom-stack.nt"))
 (dependency
   (core
-    (digest "SKjIiYR7HrHAiBpQCHyXWdf7cZhGD7hoe2gqxTzw_gY=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-9.tar.zst")))
+    (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-10.tar.zst")))
