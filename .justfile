@@ -56,6 +56,7 @@ release:
     @echo "testing..."
     @just test
     @echo "uploading..."
+    @git checkout main
     @git show-ref --tags $VERSION --quiet || git tag $VERSION
     @git push origin main
     @git push origin $VERSION
