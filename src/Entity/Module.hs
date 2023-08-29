@@ -28,9 +28,30 @@ data Module = Module
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath],
     moduleAntecedents :: [ModuleDigest],
-    moduleLocation :: Path Abs File
+    moduleLocation :: Path Abs File,
+    moduleForeignDirList :: [Path Abs Dir]
   }
   deriving (Show)
+
+keyTarget :: T.Text
+keyTarget =
+  "target"
+
+keyDependency :: T.Text
+keyDependency =
+  "dependency"
+
+keyExtraContent :: T.Text
+keyExtraContent =
+  "extra-content"
+
+keyAntecedent :: T.Text
+keyAntecedent =
+  "antecedent"
+
+keyForeign :: T.Text
+keyForeign =
+  "foreign"
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =

@@ -22,6 +22,7 @@ module Context.Path
     getBuildDir,
     getInstallDir,
     getArtifactDir,
+    getPlatformPrefix,
     sourceToOutputPath,
     getSourceCachePath,
     attachOutputPath,
@@ -140,9 +141,7 @@ returnDirectory path =
 
 getPlatformPrefix :: App (Path Rel Dir)
 getPlatformPrefix = do
-  platformDir <- P.parseRelDir $ T.unpack $ TP.reify platform
-  versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
-  return $ platformDir </> versionDir
+  P.parseRelDir $ T.unpack $ TP.reify platform
 
 getExecutableOutputPath :: Target.Target -> Module -> App (Path Abs File)
 getExecutableOutputPath target mainModule = do
@@ -152,7 +151,8 @@ getExecutableOutputPath target mainModule = do
 getBaseBuildDir :: Module -> App (Path Abs Dir)
 getBaseBuildDir baseModule = do
   platformPrefix <- getPlatformPrefix
-  return $ getModuleRootDir baseModule </> buildRelDir </> platformPrefix
+  versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
+  return $ getModuleRootDir baseModule </> buildRelDir </> platformPrefix </> versionDir
 
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do

@@ -55,14 +55,17 @@ getModule m moduleID locatorText = do
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (m, treeList) <- Tree.reflect moduleFilePath
-  (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m "target" treeList >>= mapM Tree.toDictionary
-  dependencyTree <- liftEither $ Tree.accessOrEmpty m "dependency" treeList >>= mapM Tree.toDictionary
-  (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m "extra-content" treeList
-  (_, antecedentTree) <- liftEither $ Tree.accessOrEmpty m "antecedent" treeList
+  (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m keyTarget treeList >>= mapM Tree.toDictionary
+  dependencyTree <- liftEither $ Tree.accessOrEmpty m keyDependency treeList >>= mapM Tree.toDictionary
+  (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m keyExtraContent treeList
+  (_, antecedentTree) <- liftEither $ Tree.accessOrEmpty m keyAntecedent treeList
+  (_, foreignDirListTree) <- liftEither $ Tree.accessOrEmpty m keyForeign treeList
+  let moduleRootDir = parent moduleFilePath
   target <- mapM (interpretRelFilePath moduleID) entryPointTree
   dependency <- interpretDependencyDict dependencyTree
-  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentTree
+  extraContents <- mapM (interpretExtraPath moduleRootDir) extraContentTree
   antecedents <- mapM interpretAntecedent antecedentTree
+  foreignDirList <- mapM (interpretForeign moduleRootDir) foreignDirListTree
   return
     Module
       { moduleID = moduleID,
@@ -70,7 +73,8 @@ fromFilePath moduleID moduleFilePath = do
         moduleDependency = dependency,
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
-        moduleLocation = moduleFilePath
+        moduleLocation = moduleFilePath,
+        moduleForeignDirList = foreignDirList
       }
 
 fromCurrentPath :: App Module
@@ -124,6 +128,11 @@ interpretAntecedent :: Tree.Tree -> App ModuleDigest
 interpretAntecedent ens = do
   (_, digestText) <- liftEither $ Tree.toString ens
   return $ ModuleDigest digestText
+
+interpretForeign :: Path Abs Dir -> Tree.Tree -> App (Path Abs Dir)
+interpretForeign moduleRootDir ens = do
+  (_, pathText) <- liftEither $ Tree.toString ens
+  Path.resolveDir moduleRootDir $ T.unpack pathText
 
 ensureExistence ::
   H.Hint ->

@@ -51,7 +51,8 @@ constructDefaultModule name = do
         moduleDependency = Map.empty,
         moduleExtraContents = [],
         moduleAntecedents = [],
-        moduleLocation = moduleRootDir </> moduleFile
+        moduleLocation = moduleRootDir </> moduleFile,
+        moduleForeignDirList = []
       }
 
 createModuleFile :: App ()
