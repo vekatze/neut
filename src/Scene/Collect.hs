@@ -48,8 +48,13 @@ collectModuleFiles = do
   let tarRootDir = parent moduleRootDir
   relModuleSourceDir <- Path.stripPrefix tarRootDir $ getSourceDir mainModule
   relModuleFile <- Path.stripPrefix tarRootDir $ moduleLocation mainModule
+  foreignContents <- mapM (arrangeForeignContentPath tarRootDir) $ moduleForeignDirList mainModule
   extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
-  return $ toFilePath relModuleFile : toFilePath relModuleSourceDir : extraContents
+  return $ toFilePath relModuleFile : toFilePath relModuleSourceDir : foreignContents ++ extraContents
+
+arrangeForeignContentPath :: Path Abs Dir -> Path Abs Dir -> App FilePath
+arrangeForeignContentPath tarRootDir foreignDir =
+  toFilePath <$> Path.stripPrefix tarRootDir foreignDir
 
 arrangeExtraContentPath :: Path Abs Dir -> SomePath -> App FilePath
 arrangeExtraContentPath tarRootDir somePath =

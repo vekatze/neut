@@ -1,0 +1,8 @@
+declare {
+- add_const(int): int
+}
+
+define main(): unit {
+  print-int(magic external(add_const, 10: int));
+  print("\n")
+}

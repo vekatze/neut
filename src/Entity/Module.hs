@@ -28,9 +28,30 @@ data Module = Module
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath],
     moduleAntecedents :: [ModuleDigest],
-    moduleLocation :: Path Abs File
+    moduleLocation :: Path Abs File,
+    moduleForeignDirList :: [Path Abs Dir]
   }
   deriving (Show)
+
+keyTarget :: T.Text
+keyTarget =
+  "target"
+
+keyDependency :: T.Text
+keyDependency =
+  "dependency"
+
+keyExtraContent :: T.Text
+keyExtraContent =
+  "extra-content"
+
+keyAntecedent :: T.Text
+keyAntecedent =
+  "antecedent"
+
+keyForeign :: T.Text
+keyForeign =
+  "foreign"
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
@@ -68,16 +89,19 @@ ppModule someModule = do
     ( (),
       catMaybes
         [ nodeOrNone $
-            symbol "target"
+            symbol keyTarget
               : map ppEntryPoint (Map.toList (moduleTarget someModule)),
           nodeOrNone $
-            symbol "extra-content"
+            symbol keyExtraContent
               : map (string . ppExtraContent) (moduleExtraContents someModule),
           nodeOrNone $
-            symbol "antecedent"
+            symbol keyForeign
+              : map (string . ppForeignContent) (moduleForeignDirList someModule),
+          nodeOrNone $
+            symbol keyAntecedent
               : map (string . ppAntecedent) (moduleAntecedents someModule),
           nodeOrNone $
-            symbol "dependency"
+            symbol keyDependency
               : map ppDependency (Map.toList (moduleDependency someModule))
         ]
     )
@@ -125,6 +149,10 @@ ppExtraContent somePath =
       T.pack $ toFilePath dirPath
     Right filePath ->
       T.pack $ toFilePath filePath
+
+ppForeignContent :: Path Abs Dir -> T.Text
+ppForeignContent dirPath =
+  T.pack $ toFilePath dirPath
 
 getID :: Module -> Module -> MID.ModuleID
 getID mainModule currentModule = do
