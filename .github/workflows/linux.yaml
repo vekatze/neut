@@ -28,7 +28,7 @@ jobs:
         id: cache-docker-image
         with:
           path: ${{ env.NEUT_DOCKER_PATH }}
-          key: ${{ runner.os }}-${{ hashFiles('./Dockerfile') }}-${{ hashFiles('./package.yaml') }}-${{ hashFiles('./stack.yaml') }}
+          key: ${{ runner.os }}-${{ hashFiles('./build/Dockerfile') }}-${{ hashFiles('./build/package.template.yaml') }}-${{ hashFiles('./stack.yaml') }}
       - if: steps.cache-docker-image.outputs.cache-hit == 'true'
         run: docker load -i ${NEUT_DOCKER_PATH}
       - if: steps.cache-docker-image.outputs.cache-hit != 'true'
