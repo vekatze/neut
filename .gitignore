@@ -5,6 +5,7 @@ test/res
 *.prof
 target/
 .build/
+test/**/build/
 dist-newstyle/
 book/dist/
 test/sandbox/

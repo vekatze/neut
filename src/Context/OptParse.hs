@@ -6,12 +6,12 @@ import Data.Text qualified as T
 import Entity.BuildMode qualified as BM
 import Entity.Command
 import Entity.Config.Add qualified as Add
+import Entity.Config.Archive qualified as Archive
 import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
 import Entity.Config.LSP qualified as LSP
-import Entity.Config.Release qualified as Release
 import Entity.Config.Remark qualified as Remark
 import Entity.Config.Version qualified as Version
 import Entity.ModuleURL
@@ -31,7 +31,7 @@ parseOpt = do
       [ cmd "build" parseBuildOpt "build given target",
         cmd "clean" parseCleanOpt "remove the resulting files",
         cmd "check" parseCheckOpt "type-check specified file",
-        cmd "release" parseReleaseOpt "package a tarball",
+        cmd "archive" parseArchiveOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
         cmd "add" parseGetOpt "add a dependency",
         cmd "lsp" parseLSPOpt "start the LSP server",
@@ -126,15 +126,15 @@ parseCheckOpt = do
           Check.remarkCfg = remarkCfg
         }
 
-parseReleaseOpt :: Parser Command
-parseReleaseOpt = do
-  releaseName <- argument str (mconcat [metavar "NAME", help "The name of the release"])
+parseArchiveOpt :: Parser Command
+parseArchiveOpt = do
+  archiveName <- argument str (mconcat [metavar "NAME", help "The name of the archive"])
   remarkCfg <- remarkConfigOpt
   pure $
-    Release $
-      Release.Config
-        { Release.getReleaseName = releaseName,
-          Release.remarkCfg = remarkCfg
+    Archive $
+      Archive.Config
+        { Archive.getArchiveName = archiveName,
+          Archive.remarkCfg = remarkCfg
         }
 
 remarkConfigOpt :: Parser Remark.Config

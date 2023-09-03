@@ -10,11 +10,11 @@ import Path.IO
 
 getExistingVersions :: Module -> App [PV.PackageVersion]
 getExistingVersions targetModule = do
-  let releaseDir = getReleaseDir targetModule
-  b <- doesDirExist releaseDir
+  let archiveDir = getArchiveDir targetModule
+  b <- doesDirExist archiveDir
   if not b
     then return []
     else do
-      (_, releaseFiles) <- listDir releaseDir
-      basenameList <- mapM getBaseName releaseFiles
+      (_, archiveFiles) <- listDir archiveDir
+      basenameList <- mapM getBaseName archiveFiles
       return $ sort $ mapMaybe PV.reflect basenameList

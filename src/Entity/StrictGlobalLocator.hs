@@ -7,7 +7,6 @@ import Entity.Const
 import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
 import GHC.Generics
-import Path
 
 data StrictGlobalLocator = StrictGlobalLocator
   { moduleID :: MID.ModuleID,
@@ -43,7 +42,3 @@ baseGlobalLocatorOf sl =
     { moduleID = MID.Base,
       sourceLocator = sl
     }
-
-getRelPathText :: StrictGlobalLocator -> T.Text
-getRelPathText sgl =
-  T.pack $ toFilePath $ SL.reify $ sourceLocator sgl

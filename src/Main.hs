@@ -1,12 +1,12 @@
 module Main (main) where
 
 import Act.Add qualified as Add
+import Act.Archive qualified as Archive
 import Act.Build qualified as Build
 import Act.Check qualified as Check
 import Act.Clean qualified as Clean
 import Act.Create qualified as Create
 import Act.LSP qualified as LSP
-import Act.Release qualified as Release
 import Act.Version qualified as Version
 import Context.App
 import Context.External qualified as External
@@ -31,8 +31,8 @@ execute = do
           Check.check cfg
         C.Clean cfg ->
           Clean.clean cfg
-        C.Release cfg ->
-          Release.release cfg
+        C.Archive cfg ->
+          Archive.archive cfg
         C.Create cfg ->
           Create.create cfg
         C.Add cfg ->

@@ -75,8 +75,8 @@ Suppose that you have added a library module to your module:
 ```ens
 (dependency
   (core
-    (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst")))
+    (digest "IhcsnZ0Di0GLjZdhKYORuu7HruStyZA1u9xuq57Ugj4=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/archive/0-2-3.tar.zst")))
 ```
 
 You can import a file from such a library module by specifying its module alias and the relative path to the file:
@@ -98,7 +98,7 @@ Here, the module alias of `core.text.io` is `core`, and the relative path is `te
 ```sh
 core => DIGEST_OF_THE_LIBRARY
 
-# core => 1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=
+# core => IhcsnZ0Di0GLjZdhKYORuu7HruStyZA1u9xuq57Ugj4=
 ```
 
 and do the following name resolution:
@@ -108,7 +108,7 @@ core.text.io.get-line
 
 ↓
 
-1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=.text.io.get-line
+IhcsnZ0Di0GLjZdhKYORuu7HruStyZA1u9xuq57Ugj4=.text.io.get-line
 ```
 
 ## Qualified Import
@@ -199,4 +199,4 @@ jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
 ## Other Notes on Namespaces and Modules
 
 - A module named `core` is treated specially (the prelude library)
-- Compiled objects, caches, etc. are stored in `.build/` of the corresponding module
+- Compiled objects, caches, etc. are stored in `build/` of the corresponding module

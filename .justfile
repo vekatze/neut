@@ -42,7 +42,7 @@ test-arm64-darwin:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_DARWIN_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
 
 update-core new-version:
-    @cd ./test/meta && neut add core https://github.com/vekatze/neut-core/raw/main/release/{{new-version}}.tar.zst
+    @cd ./test/meta && neut add core https://github.com/vekatze/neut-core/raw/main/archive/{{new-version}}.tar.zst
     @NEW_VERSION={{new-version}} ./test/update-core.sh ./test/statement ./test/term ./test/misc ./test/pfds
 
 release:

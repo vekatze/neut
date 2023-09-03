@@ -45,6 +45,23 @@ accessOrEmpty m k treeList = do
         then return (mResult, cdr)
         else accessOrEmpty m k rest
 
+extractValueByKey :: Hint -> T.Text -> [Tree] -> Either Error Tree
+extractValueByKey m k treeList = do
+  case treeList of
+    [] ->
+      Left $ newError m $ "no such key found: " <> k
+    tree : rest -> do
+      (k', (mResult, cdr)) <- extractKeyValuePair tree
+      if k == k'
+        then case cdr of
+          [t] ->
+            return t
+          _ ->
+            Left $
+              newError mResult $
+                "the value for the key `" <> k <> "` must be atomic, but found:\n" <> ppTreeList (m, cdr)
+        else extractValueByKey m k rest
+
 extract :: TreeList -> Either Error Tree
 extract (m, ts) = do
   case ts of
@@ -137,5 +154,8 @@ ppTree n entity = do
 
 ppTreeList :: (a, [Cofree TreeF a]) -> T.Text
 ppTreeList (_, ts) = do
-  let ts' = map (showWithOffset 0 . showTree) ts
-  T.intercalate "\n" ts' <> "\n"
+  if null ts
+    then "(empty)"
+    else do
+      let ts' = map (showWithOffset 0 . showTree) ts
+      T.intercalate "\n" ts' <> "\n"

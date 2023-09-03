@@ -7,31 +7,44 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
-import Entity.Const
 import Entity.ModuleAlias
 import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
-import Entity.StrictGlobalLocator (StrictGlobalLocator)
-import Entity.StrictGlobalLocator qualified as SGL
+import Entity.SourceLocator qualified as SL
 import Entity.Target qualified as Target
 import Entity.Tree qualified as TR
 import Path
 import System.FilePath qualified as FP
 
-type SomePath =
-  Either (Path Abs Dir) (Path Abs File)
+type SomePath a =
+  Either (Path a Dir) (Path a File)
 
 data Module = Module
   { moduleID :: MID.ModuleID,
-    moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
+    moduleSourceDir :: Path Rel Dir,
+    moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
+    moduleArchiveDir :: Path Rel Dir,
+    moduleBuildDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
-    moduleExtraContents :: [SomePath],
+    moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
-    moduleForeignDirList :: [Path Abs Dir]
+    moduleForeignDirList :: [Path Rel Dir]
   }
   deriving (Show)
+
+keyArchive :: T.Text
+keyArchive =
+  "archive"
+
+keyBuild :: T.Text
+keyBuild =
+  "build"
+
+keySource :: T.Text
+keySource =
+  "source"
 
 keyTarget :: T.Text
 keyTarget =
@@ -55,11 +68,38 @@ keyForeign =
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
-  getModuleRootDir baseModule </> sourceRelDir
+  getModuleRootDir baseModule </> moduleSourceDir baseModule
 
-getReleaseDir :: Module -> Path Abs Dir
-getReleaseDir baseModule =
-  getModuleRootDir baseModule </> releaseRelDir
+getTargetPathList :: Module -> [Path Abs File]
+getTargetPathList baseModule = do
+  let moduleSourceDir = getSourceDir baseModule
+  let sourceLocatorList = Map.elems $ moduleTarget baseModule
+  map ((moduleSourceDir </>) . SL.reify) sourceLocatorList
+
+getTargetPath :: Module -> Target.Target -> Maybe (Path Abs File)
+getTargetPath baseModule target = do
+  let moduleSourceDir = getSourceDir baseModule
+  sourceLocator <- Map.lookup target (moduleTarget baseModule)
+  return $ moduleSourceDir </> SL.reify sourceLocator
+
+getArchiveDir :: Module -> Path Abs Dir
+getArchiveDir baseModule =
+  getModuleRootDir baseModule </> moduleArchiveDir baseModule
+
+getForeignContents :: Module -> [Path Abs Dir]
+getForeignContents baseModule = do
+  let moduleRootDir = getModuleRootDir baseModule
+  map (moduleRootDir </>) $ moduleForeignDirList baseModule
+
+getExtraContents :: Module -> [SomePath Abs]
+getExtraContents baseModule = do
+  let moduleRootDir = getModuleRootDir baseModule
+  flip map (moduleExtraContents baseModule) $ \somePath -> do
+    case somePath of
+      Left dirPath ->
+        Left $ moduleRootDir </> dirPath
+      Right filePath ->
+        Right $ moduleRootDir </> filePath
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
@@ -88,7 +128,13 @@ ppModule someModule = do
   TR.ppTreeList
     ( (),
       catMaybes
-        [ nodeOrNone $
+        [ nodeOrNone
+            [symbol keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
+          nodeOrNone
+            [symbol keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
+          nodeOrNone
+            [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
+          nodeOrNone $
             symbol keyTarget
               : map ppEntryPoint (Map.toList (moduleTarget someModule)),
           nodeOrNone $
@@ -96,7 +142,7 @@ ppModule someModule = do
               : map (string . ppExtraContent) (moduleExtraContents someModule),
           nodeOrNone $
             symbol keyForeign
-              : map (string . ppForeignContent) (moduleForeignDirList someModule),
+              : map (string . ppDirPath) (moduleForeignDirList someModule),
           nodeOrNone $
             symbol keyAntecedent
               : map (string . ppAntecedent) (moduleAntecedents someModule),
@@ -126,9 +172,9 @@ nodeOrNone ts =
     then Nothing
     else return $ () :< TR.Node ts
 
-ppEntryPoint :: (Target.Target, StrictGlobalLocator) -> Tree
-ppEntryPoint (Target.Target target, sgl) = do
-  node [symbol target, string (SGL.getRelPathText sgl)]
+ppEntryPoint :: (Target.Target, SL.SourceLocator) -> Tree
+ppEntryPoint (Target.Target target, sl) = do
+  node [symbol target, string (SL.getRelPathText sl)]
 
 ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> Tree
 ppDependency (ModuleAlias alias, (urlList, ModuleDigest digest)) = do
@@ -142,7 +188,7 @@ ppAntecedent :: ModuleDigest -> T.Text
 ppAntecedent (ModuleDigest digest) =
   digest
 
-ppExtraContent :: SomePath -> T.Text
+ppExtraContent :: SomePath a -> T.Text
 ppExtraContent somePath =
   case somePath of
     Left dirPath ->
@@ -150,8 +196,8 @@ ppExtraContent somePath =
     Right filePath ->
       T.pack $ toFilePath filePath
 
-ppForeignContent :: Path Abs Dir -> T.Text
-ppForeignContent dirPath =
+ppDirPath :: Path Rel Dir -> T.Text
+ppDirPath dirPath =
   T.pack $ toFilePath dirPath
 
 getID :: Module -> Module -> MID.ModuleID

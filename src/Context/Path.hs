@@ -152,7 +152,8 @@ getBaseBuildDir :: Module -> App (Path Abs Dir)
 getBaseBuildDir baseModule = do
   platformPrefix <- getPlatformPrefix
   versionDir <- P.parseRelDir $ "compiler-" ++ V.showVersion version
-  return $ getModuleRootDir baseModule </> buildRelDir </> platformPrefix </> versionDir
+  let moduleRootDir = getModuleRootDir baseModule
+  return $ moduleRootDir </> moduleBuildDir baseModule </> platformPrefix </> versionDir
 
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do

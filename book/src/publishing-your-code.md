@@ -2,22 +2,22 @@
 
 ## Creating an Archive for Your Module
 
-You can create a tarball for your module using `neut release VERSION`:
+You can create a tarball for your module using `neut archive VERSION`:
 
 ```sh
 # create a new release
-neut release 0-1-0-0
+neut archive 0-1-0-0
 
 tree .
 # => ./
-#    ├── release/
+#    ├── archive/
 #    │  └── 0-1-0-0.tar.zst ← NEW!
 #    ├── source/
 #    │  └── hey.nt
 #    └── module.ens
 ```
 
-The command `neut release` creates a tarball for the current module. The resulting tarball can be, for example, committed and pushed to your repository. Then, a user of your library can then add it to their module using `neut add ALIAS URL`.
+The command `neut archive` creates a tarball for the current module. The resulting tarball can be, for example, committed and pushed to your repository. Then, a user of your library can then add it to their module using `neut add ALIAS URL`.
 
 ## Identity of a Module
 
@@ -50,11 +50,11 @@ Neut resolves this problem via an approach based on Semantic Versioning, as desc
 
 ## Practical Significance of Semantic Versioning
 
-Firstly, the `VERSION` in `neut release VERSION` must follow a versioning scheme that is essentially the same as Semantic Versioning.
+Firstly, the `VERSION` in `neut archive VERSION` must follow a versioning scheme that is essentially the same as Semantic Versioning.
 
 If you release a version of your module that is compatible with existing modules, *the compatibility information is saved to the module file in the newly-created tarball*. The module file thus contains the list of digests of all the compatible but older alternatives.
 
-For example, suppose you have `release/0-1-0-0.tar.zst`. If you run `neut release 0-1-1-0`, which is a minor update release, the module file in `release/0-1-1-0.tar.zst` should contain:
+For example, suppose you have `archive/0-1-0-0.tar.zst`. If you run `neut archive 0-1-1-0`, which is a minor update release, the module file in `archive/0-1-1-0.tar.zst` should contain:
 
 ```ens
 (antecedent

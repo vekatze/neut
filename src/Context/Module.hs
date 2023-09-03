@@ -1,6 +1,5 @@
 module Context.Module
   ( getModuleFilePath,
-    getSourcePath,
     getModuleDirByID,
     getMainModule,
     setMainModule,
@@ -26,8 +25,6 @@ import Entity.ModuleDigest
 import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
-import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Path.IO
 import System.Environment
@@ -52,12 +49,6 @@ getModuleCacheMap =
 insertToModuleCacheMap :: Path Abs File -> Module -> App ()
 insertToModuleCacheMap k v =
   modifyRef' moduleCacheMap $ Map.insert k v
-
-getSourcePath :: SGL.StrictGlobalLocator -> App (Path Abs File)
-getSourcePath sgl = do
-  moduleDir <- getModuleDirByID Nothing $ SGL.moduleID sgl
-  let relPath = SL.reify $ SGL.sourceLocator sgl
-  return $ moduleDir </> sourceRelDir </> relPath
 
 getModuleDirByID :: Maybe H.Hint -> MID.ModuleID -> App (Path Abs Dir)
 getModuleDirByID mHint moduleID = do

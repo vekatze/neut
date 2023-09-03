@@ -34,7 +34,8 @@ link' target mainModule sourceList = do
 getForeignLibraries :: Module -> App [Path Abs File]
 getForeignLibraries targetModule = do
   let foreignDirList = moduleForeignDirList targetModule
-  concat <$> mapM getForeignLibraries' foreignDirList
+  let moduleRootDir = getModuleRootDir targetModule
+  concat <$> mapM (getForeignLibraries' . (moduleRootDir </>)) foreignDirList
 
 getForeignLibraries' :: Path Abs Dir -> App [Path Abs File]
 getForeignLibraries' foreignDir = do
