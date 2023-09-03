@@ -27,9 +27,9 @@ updateAntecedents newVersion targetModule = do
 
 getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
 getPackagePath targetModule ver = do
-  let releaseDir = getReleaseDir targetModule
-  let releaseName = PV.reify ver
-  Path.resolveFile releaseDir $ T.unpack $ releaseName <> packageFileExtension
+  let archiveDir = getArchiveDir targetModule
+  let archiveName = PV.reify ver
+  Path.resolveFile archiveDir $ T.unpack $ archiveName <> packageFileExtension
 
 getDigest :: Module -> PV.PackageVersion -> App ModuleDigest
 getDigest targetModule ver = do

@@ -22,7 +22,7 @@ When running compilation, every module is marked as "main" or "library". The mai
 A module can use other modules. Such module dependencies can be added using `neut add`:
 
 ```sh
-neut add core https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst
+neut add core https://github.com/vekatze/neut-core/raw/main/archive/0-2-10.tar.zst
 ```
 
 By running the code above, the specified tarball is downloaded into `~/.cache/neut/library`:
@@ -40,7 +40,7 @@ where the `1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=` is the digest of the mo
 (dependency
   (core
     (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst")))
+    (mirror "https://github.com/vekatze/neut-core/raw/main/archive/0-2-10.tar.zst")))
 ```
 
 It might be worth noting that an alias of a library is chosen *by a user of the library*. Indeed, in the example above, we (user) chosed the alias `core` for the downloaded library. The "true" name of the library is its digest, and this is not something that can be chosen arbitrarily by the creator of the library.

@@ -24,7 +24,7 @@ data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
-    moduleReleaseDir :: Path Rel Dir,
+    moduleArchiveDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
@@ -33,9 +33,9 @@ data Module = Module
   }
   deriving (Show)
 
-keyRelease :: T.Text
-keyRelease =
-  "release"
+keyArchive :: T.Text
+keyArchive =
+  "archive"
 
 keySource :: T.Text
 keySource =
@@ -77,11 +77,9 @@ getTargetPath baseModule target = do
   sourceLocator <- Map.lookup target (moduleTarget baseModule)
   return $ moduleSourceDir </> SL.reify sourceLocator
 
-getReleaseDir :: Module -> Path Abs Dir
-getReleaseDir baseModule =
-  getModuleRootDir baseModule </> moduleReleaseDir baseModule
-
--- getModuleRootDir baseModule </> releaseRelDir
+getArchiveDir :: Module -> Path Abs Dir
+getArchiveDir baseModule =
+  getModuleRootDir baseModule </> moduleArchiveDir baseModule
 
 getForeignContents :: Module -> [Path Abs Dir]
 getForeignContents baseModule = do
@@ -126,7 +124,7 @@ ppModule someModule = do
     ( (),
       catMaybes
         [ nodeOrNone
-            [symbol keyRelease, string $ ppDirPath $ moduleReleaseDir someModule],
+            [symbol keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
           nodeOrNone
             [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
           nodeOrNone $

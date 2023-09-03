@@ -38,7 +38,7 @@ constructDefaultModule name = do
   return $
     Module
       { moduleID = MID.Main,
-        moduleReleaseDir = releaseRelDir,
+        moduleArchiveDir = archiveRelDir,
         moduleSourceDir = sourceRelDir,
         moduleTarget =
           Map.fromList

@@ -65,7 +65,7 @@ An example scenario:
 
 ```sh
 # setting up the core module (i.e. standard library)
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/release/0-2-9.tar.zst"
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-2-10.tar.zst"
 export NEUT_CORE_MODULE_DIGEST="1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo="
 
 # get the compiler (choose one)

@@ -53,9 +53,9 @@ buildRelDir :: Path Rel Dir
 buildRelDir =
   $(mkRelDir ".build")
 
-releaseRelDir :: Path Rel Dir
-releaseRelDir =
-  $(mkRelDir "release")
+archiveRelDir :: Path Rel Dir
+archiveRelDir =
+  $(mkRelDir "archive")
 
 artifactRelDir :: Path Rel Dir
 artifactRelDir =

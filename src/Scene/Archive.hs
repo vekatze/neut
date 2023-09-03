@@ -18,17 +18,17 @@ import Prelude hiding (log)
 archive :: PV.PackageVersion -> [FilePath] -> App ()
 archive packageVersion contents = do
   mainModule <- Module.getMainModule
-  outputPath <- toFilePath <$> getReleaseFile mainModule (PV.reify packageVersion)
+  outputPath <- toFilePath <$> getArchiveFile mainModule (PV.reify packageVersion)
   let moduleRootDir = parent $ moduleLocation mainModule
   let tarRootDir = toFilePath $ parent moduleRootDir
   External.run "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", tarRootDir] ++ contents
 
-getReleaseFile :: Module -> T.Text -> App (Path Abs File)
-getReleaseFile targetModule versionText = do
-  let releaseDir = getReleaseDir targetModule
-  Path.ensureDir releaseDir
-  releaseFile <- Path.resolveFile releaseDir $ T.unpack $ versionText <> packageFileExtension
-  releaseExists <- Path.doesFileExist releaseFile
-  when releaseExists $ do
-    Throw.raiseError' $ "the release `" <> versionText <> "` already exists"
-  return releaseFile
+getArchiveFile :: Module -> T.Text -> App (Path Abs File)
+getArchiveFile targetModule versionText = do
+  let archiveDir = getArchiveDir targetModule
+  Path.ensureDir archiveDir
+  archiveFile <- Path.resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
+  archiveExists <- Path.doesFileExist archiveFile
+  when archiveExists $ do
+    Throw.raiseError' $ "the archive `" <> versionText <> "` already exists"
+  return archiveFile

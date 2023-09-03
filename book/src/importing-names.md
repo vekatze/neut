@@ -76,7 +76,7 @@ Suppose that you have added a library module to your module:
 (dependency
   (core
     (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-3.tar.zst")))
+    (mirror "https://github.com/vekatze/neut-core/raw/main/archive/0-2-3.tar.zst")))
 ```
 
 You can import a file from such a library module by specifying its module alias and the relative path to the file:
