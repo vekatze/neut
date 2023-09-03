@@ -16,7 +16,6 @@ import Entity.Const
 import Entity.Module
 import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Path (parent, (</>))
 
@@ -43,10 +42,7 @@ constructDefaultModule name = do
         moduleTarget =
           Map.fromList
             [ ( Target name,
-                SGL.StrictGlobalLocator
-                  { SGL.moduleID = MID.Main,
-                    SGL.sourceLocator = SL.SourceLocator mainFile
-                  }
+                SL.SourceLocator mainFile
               )
             ],
         moduleDependency = Map.empty,
@@ -68,6 +64,5 @@ createMainFile :: App ()
 createMainFile = do
   newModule <- Module.getMainModule
   Path.ensureDir $ getSourceDir newModule
-  forM_ (Map.elems $ moduleTarget newModule) $ \sgl -> do
-    mainFilePath <- Module.getSourcePath sgl
+  forM_ (getTargetPathList newModule) $ \mainFilePath -> do
     Path.writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"

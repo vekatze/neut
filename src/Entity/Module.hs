@@ -12,8 +12,7 @@ import Entity.ModuleAlias
 import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
-import Entity.StrictGlobalLocator (StrictGlobalLocator)
-import Entity.StrictGlobalLocator qualified as SGL
+import Entity.SourceLocator qualified as SL
 import Entity.Target qualified as Target
 import Entity.Tree qualified as TR
 import Path
@@ -25,7 +24,7 @@ type SomePath a =
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
-    moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
+    moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
@@ -60,7 +59,19 @@ keyForeign =
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
-  getModuleRootDir baseModule </> sourceRelDir
+  getModuleRootDir baseModule </> moduleSourceDir baseModule
+
+getTargetPathList :: Module -> [Path Abs File]
+getTargetPathList baseModule = do
+  let moduleSourceDir = getSourceDir baseModule
+  let sourceLocatorList = Map.elems $ moduleTarget baseModule
+  map ((moduleSourceDir </>) . SL.reify) sourceLocatorList
+
+getTargetPath :: Module -> Target.Target -> Maybe (Path Abs File)
+getTargetPath baseModule target = do
+  let moduleSourceDir = getSourceDir baseModule
+  sourceLocator <- Map.lookup target (moduleTarget baseModule)
+  return $ moduleSourceDir </> SL.reify sourceLocator
 
 getReleaseDir :: Module -> Path Abs Dir
 getReleaseDir baseModule =
@@ -148,9 +159,9 @@ nodeOrNone ts =
     then Nothing
     else return $ () :< TR.Node ts
 
-ppEntryPoint :: (Target.Target, StrictGlobalLocator) -> Tree
-ppEntryPoint (Target.Target target, sgl) = do
-  node [symbol target, string (SGL.getRelPathText sgl)]
+ppEntryPoint :: (Target.Target, SL.SourceLocator) -> Tree
+ppEntryPoint (Target.Target target, sl) = do
+  node [symbol target, string (SL.getRelPathText sl)]
 
 ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> Tree
 ppDependency (ModuleAlias alias, (urlList, ModuleDigest digest)) = do

@@ -118,5 +118,5 @@ getMainDefiniteDescription source = do
 
 isMainFile :: Source.Source -> App Bool
 isMainFile source = do
-  sourcePathList <- mapM Module.getSourcePath $ Map.elems $ Module.moduleTarget (Source.sourceModule source)
+  let sourcePathList = Module.getTargetPathList $ Source.sourceModule source
   return $ elem (Source.sourceFilePath source) sourcePathList

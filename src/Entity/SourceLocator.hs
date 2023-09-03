@@ -2,6 +2,7 @@
 
 module Entity.SourceLocator
   ( SourceLocator (..),
+    getRelPathText,
     toText,
     fromBaseNameList,
     llvmLocator,
@@ -54,3 +55,7 @@ internalLocator =
 natLocator :: SourceLocator
 natLocator =
   SourceLocator $(mkRelFile "nat")
+
+getRelPathText :: SourceLocator -> T.Text
+getRelPathText sl =
+  T.pack $ toFilePath $ reify sl

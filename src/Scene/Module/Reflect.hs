@@ -23,7 +23,6 @@ import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
-import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Entity.Tree qualified as Tree
 import Path
@@ -63,7 +62,7 @@ fromFilePath moduleID moduleFilePath = do
   (_, foreignDirListTree) <- liftEither $ Tree.accessOrEmpty m keyForeign treeList
   let moduleRootDir = parent moduleFilePath
   sourceDir <- interpretDirPath sourceDirTree
-  target <- mapM (interpretRelFilePath moduleID) entryPointTree
+  target <- mapM interpretRelFilePath entryPointTree
   dependency <- interpretDependencyDict dependencyTree
   extraContents <- mapM (interpretExtraPath moduleRootDir) extraContentTree
   antecedents <- mapM interpretAntecedent antecedentTree
@@ -84,16 +83,12 @@ fromCurrentPath :: App Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
-interpretRelFilePath :: MID.ModuleID -> (H.Hint, [Tree.Tree]) -> App SGL.StrictGlobalLocator
-interpretRelFilePath moduleID pathInfo = do
+interpretRelFilePath :: (H.Hint, [Tree.Tree]) -> App SL.SourceLocator
+interpretRelFilePath pathInfo = do
   (m, pathString) <- liftEither $ Tree.extract pathInfo >>= Tree.toString
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
-      return
-        SGL.StrictGlobalLocator
-          { SGL.moduleID = moduleID,
-            SGL.sourceLocator = SL.SourceLocator relPath
-          }
+      return $ SL.SourceLocator relPath
     Nothing ->
       raiseError m $ "invalid file path: " <> pathString
 

@@ -1,6 +1,6 @@
 module Scene.Unravel
   ( unravel,
-    unravelFromSGL,
+    unravelFromFile,
     unravel',
   )
 where
@@ -28,7 +28,6 @@ import Entity.Hint
 import Entity.Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
-import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
@@ -51,20 +50,22 @@ type ObjectTime =
 unravel :: Target -> App (A.ArtifactTime, [Source.Source])
 unravel target = do
   mainModule <- Module.getMainModule
-  mainFilePath <- resolveTarget mainModule target >>= Module.getSourcePath
-  unravel' >=> mapM adjustUnravelResult $
-    Source.Source
-      { Source.sourceModule = mainModule,
-        Source.sourceFilePath = mainFilePath,
-        Source.sourceHint = Nothing
-      }
+  case getTargetPath mainModule target of
+    Nothing ->
+      Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
+    Just mainFilePath -> do
+      unravel' >=> mapM adjustUnravelResult $
+        Source.Source
+          { Source.sourceModule = mainModule,
+            Source.sourceFilePath = mainFilePath,
+            Source.sourceHint = Nothing
+          }
 
-unravelFromSGL ::
-  SGL.StrictGlobalLocator ->
+unravelFromFile ::
+  Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
-unravelFromSGL sgl = do
+unravelFromFile path = do
   mainModule <- Module.getMainModule
-  path <- Module.getSourcePath sgl
   ensureFileModuleSanity path mainModule
   let initialSource =
         Source.Source
@@ -87,14 +88,6 @@ ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
     Throw.raiseError' "the specified file is not in the current module"
-
-resolveTarget :: Module -> Target -> App SGL.StrictGlobalLocator
-resolveTarget mainModule target = do
-  case Map.lookup target (moduleTarget mainModule) of
-    Just path ->
-      return path
-    Nothing ->
-      Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
 
 unravel' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel' source = do
