@@ -56,6 +56,7 @@ fromFilePath moduleID moduleFilePath = do
   (m, treeList) <- Tree.reflect moduleFilePath
   sourceDirTree <- liftEither $ Tree.extractValueByKey m keySource treeList
   archiveDirTree <- liftEither $ Tree.extractValueByKey m keyArchive treeList
+  buildDirTree <- liftEither $ Tree.extractValueByKey m keyBuild treeList
   (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m keyTarget treeList >>= mapM Tree.toDictionary
   dependencyTree <- liftEither $ Tree.accessOrEmpty m keyDependency treeList >>= mapM Tree.toDictionary
   (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m keyExtraContent treeList
@@ -63,6 +64,7 @@ fromFilePath moduleID moduleFilePath = do
   (_, foreignDirListTree) <- liftEither $ Tree.accessOrEmpty m keyForeign treeList
   let moduleRootDir = parent moduleFilePath
   archiveDir <- interpretDirPath archiveDirTree
+  buildDir <- interpretDirPath buildDirTree
   sourceDir <- interpretDirPath sourceDirTree
   target <- mapM interpretRelFilePath entryPointTree
   dependency <- interpretDependencyDict dependencyTree
@@ -73,6 +75,7 @@ fromFilePath moduleID moduleFilePath = do
     Module
       { moduleID = moduleID,
         moduleArchiveDir = archiveDir,
+        moduleBuildDir = buildDir,
         moduleSourceDir = sourceDir,
         moduleTarget = Map.mapKeys Target target,
         moduleDependency = dependency,

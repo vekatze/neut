@@ -25,6 +25,7 @@ data Module = Module
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
     moduleArchiveDir :: Path Rel Dir,
+    moduleBuildDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
@@ -36,6 +37,10 @@ data Module = Module
 keyArchive :: T.Text
 keyArchive =
   "archive"
+
+keyBuild :: T.Text
+keyBuild =
+  "build"
 
 keySource :: T.Text
 keySource =
@@ -125,6 +130,8 @@ ppModule someModule = do
       catMaybes
         [ nodeOrNone
             [symbol keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
+          nodeOrNone
+            [symbol keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
           nodeOrNone
             [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
           nodeOrNone $
