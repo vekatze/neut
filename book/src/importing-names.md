@@ -199,4 +199,4 @@ jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
 ## Other Notes on Namespaces and Modules
 
 - A module named `core` is treated specially (the prelude library)
-- Compiled objects, caches, etc. are stored in `.build/` of the corresponding module
+- Compiled objects, caches, etc. are stored in `build/` of the corresponding module
