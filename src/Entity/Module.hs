@@ -19,17 +19,17 @@ import Entity.Tree qualified as TR
 import Path
 import System.FilePath qualified as FP
 
-type SomePath =
-  Either (Path Abs Dir) (Path Abs File)
+type SomePath a =
+  Either (Path a Dir) (Path a File)
 
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
-    moduleExtraContents :: [SomePath],
+    moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
-    moduleForeignDirList :: [Path Abs Dir]
+    moduleForeignDirList :: [Path Rel Dir]
   }
   deriving (Show)
 
@@ -60,6 +60,21 @@ getSourceDir baseModule =
 getReleaseDir :: Module -> Path Abs Dir
 getReleaseDir baseModule =
   getModuleRootDir baseModule </> releaseRelDir
+
+getForeignContents :: Module -> [Path Abs Dir]
+getForeignContents baseModule = do
+  let moduleRootDir = getModuleRootDir baseModule
+  map (moduleRootDir </>) $ moduleForeignDirList baseModule
+
+getExtraContents :: Module -> [SomePath Abs]
+getExtraContents baseModule = do
+  let moduleRootDir = getModuleRootDir baseModule
+  flip map (moduleExtraContents baseModule) $ \somePath -> do
+    case somePath of
+      Left dirPath ->
+        Left $ moduleRootDir </> dirPath
+      Right filePath ->
+        Right $ moduleRootDir </> filePath
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
@@ -142,7 +157,7 @@ ppAntecedent :: ModuleDigest -> T.Text
 ppAntecedent (ModuleDigest digest) =
   digest
 
-ppExtraContent :: SomePath -> T.Text
+ppExtraContent :: SomePath a -> T.Text
 ppExtraContent somePath =
   case somePath of
     Left dirPath ->
@@ -150,7 +165,7 @@ ppExtraContent somePath =
     Right filePath ->
       T.pack $ toFilePath filePath
 
-ppDirPath :: Path Abs Dir -> T.Text
+ppDirPath :: Path Rel Dir -> T.Text
 ppDirPath dirPath =
   T.pack $ toFilePath dirPath
 

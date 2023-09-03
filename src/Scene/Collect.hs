@@ -46,23 +46,23 @@ collectModuleFiles = do
   mainModule <- Module.getMainModule
   let moduleRootDir = parent $ moduleLocation mainModule
   let tarRootDir = parent moduleRootDir
-  relModuleSourceDir <- Path.stripPrefix tarRootDir $ getSourceDir mainModule
-  relModuleFile <- Path.stripPrefix tarRootDir $ moduleLocation mainModule
-  foreignContents <- mapM (arrangeForeignContentPath tarRootDir) $ moduleForeignDirList mainModule
-  extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ moduleExtraContents mainModule
-  return $ toFilePath relModuleFile : toFilePath relModuleSourceDir : foreignContents ++ extraContents
+  relModuleSourceDir <- getRelFilePath tarRootDir $ getSourceDir mainModule
+  relModuleFile <- getRelFilePath tarRootDir $ moduleLocation mainModule
+  foreignContents <- mapM (getRelFilePath tarRootDir) $ getForeignContents mainModule
+  extraContents <- mapM (arrangeExtraContentPath tarRootDir) $ getExtraContents mainModule
+  return $ relModuleFile : relModuleSourceDir : foreignContents ++ extraContents
 
-arrangeForeignContentPath :: Path Abs Dir -> Path Abs Dir -> App FilePath
-arrangeForeignContentPath tarRootDir foreignDir =
-  toFilePath <$> Path.stripPrefix tarRootDir foreignDir
+getRelFilePath :: Path Abs Dir -> Path Abs a -> App FilePath
+getRelFilePath baseDir path =
+  toFilePath <$> Path.stripPrefix baseDir path
 
-arrangeExtraContentPath :: Path Abs Dir -> SomePath -> App FilePath
-arrangeExtraContentPath tarRootDir somePath =
+arrangeExtraContentPath :: Path Abs Dir -> SomePath Abs -> App FilePath
+arrangeExtraContentPath baseDir somePath =
   case somePath of
     Left dirPath ->
-      toFilePath <$> Path.stripPrefix tarRootDir dirPath
+      getRelFilePath baseDir dirPath
     Right filePath ->
-      toFilePath <$> Path.stripPrefix tarRootDir filePath
+      getRelFilePath baseDir filePath
 
 parseSourcePathRelativeToSourceDir :: FilePath -> App (Path Rel File)
 parseSourcePathRelativeToSourceDir filePathStr = do

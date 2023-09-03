@@ -65,7 +65,7 @@ fromFilePath moduleID moduleFilePath = do
   dependency <- interpretDependencyDict dependencyTree
   extraContents <- mapM (interpretExtraPath moduleRootDir) extraContentTree
   antecedents <- mapM interpretAntecedent antecedentTree
-  foreignDirList <- mapM (interpretDirPath moduleRootDir) foreignDirListTree
+  foreignDirList <- mapM interpretDirPath foreignDirListTree
   return
     Module
       { moduleID = moduleID,
@@ -111,16 +111,16 @@ interpretDependencyDict (m, dep) = do
     return (ModuleAlias k', (map ModuleURL urlList, ModuleDigest digest))
   return $ Map.fromList items
 
-interpretExtraPath :: Path Abs Dir -> Tree.Tree -> App SomePath
+interpretExtraPath :: Path Abs Dir -> Tree.Tree -> App (SomePath Rel)
 interpretExtraPath moduleRootDir entity = do
   (m, itemPathText) <- liftEither $ Tree.toString entity
   if T.last itemPathText == '/'
     then do
-      dirPath <- Path.resolveDir moduleRootDir $ T.unpack itemPathText
+      dirPath <- parseRelDir $ T.unpack itemPathText
       ensureExistence m moduleRootDir dirPath Path.doesDirExist "directory"
       return $ Left dirPath
     else do
-      filePath <- Path.resolveFile moduleRootDir $ T.unpack itemPathText
+      filePath <- parseRelFile $ T.unpack itemPathText
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
 
@@ -129,23 +129,22 @@ interpretAntecedent ens = do
   (_, digestText) <- liftEither $ Tree.toString ens
   return $ ModuleDigest digestText
 
-interpretDirPath :: Path Abs Dir -> Tree.Tree -> App (Path Abs Dir)
-interpretDirPath moduleRootDir ens = do
+interpretDirPath :: Tree.Tree -> App (Path Rel Dir)
+interpretDirPath ens = do
   (_, pathText) <- liftEither $ Tree.toString ens
-  Path.resolveDir moduleRootDir $ T.unpack pathText
+  parseRelDir $ T.unpack pathText
 
 ensureExistence ::
   H.Hint ->
   Path Abs Dir ->
-  Path Abs t ->
+  Path Rel t ->
   (Path Abs t -> App Bool) ->
   T.Text ->
   App ()
 ensureExistence m moduleRootDir path existenceChecker kindText = do
-  b <- existenceChecker path
+  b <- existenceChecker (moduleRootDir </> path)
   unless b $ do
-    relPathFromModuleRoot <- Path.stripPrefix moduleRootDir path
-    raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath relPathFromModuleRoot)
+    raiseError m $ "no such " <> kindText <> " exists: " <> T.pack (toFilePath path)
 
 findModuleFile :: Path Abs Dir -> Path Abs Dir -> App (Path Abs File)
 findModuleFile baseDir moduleRootDirCandidate = do
