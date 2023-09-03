@@ -7,7 +7,6 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
-import Entity.Const
 import Entity.ModuleAlias
 import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
@@ -25,6 +24,7 @@ data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
+    moduleReleaseDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
@@ -32,6 +32,10 @@ data Module = Module
     moduleForeignDirList :: [Path Rel Dir]
   }
   deriving (Show)
+
+keyRelease :: T.Text
+keyRelease =
+  "release"
 
 keySource :: T.Text
 keySource =
@@ -75,7 +79,9 @@ getTargetPath baseModule target = do
 
 getReleaseDir :: Module -> Path Abs Dir
 getReleaseDir baseModule =
-  getModuleRootDir baseModule </> releaseRelDir
+  getModuleRootDir baseModule </> moduleReleaseDir baseModule
+
+-- getModuleRootDir baseModule </> releaseRelDir
 
 getForeignContents :: Module -> [Path Abs Dir]
 getForeignContents baseModule = do
@@ -120,6 +126,8 @@ ppModule someModule = do
     ( (),
       catMaybes
         [ nodeOrNone
+            [symbol keyRelease, string $ ppDirPath $ moduleReleaseDir someModule],
+          nodeOrNone
             [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
           nodeOrNone $
             symbol keyTarget

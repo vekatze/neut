@@ -55,12 +55,14 @@ fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (m, treeList) <- Tree.reflect moduleFilePath
   sourceDirTree <- liftEither $ Tree.accessOrEmpty m keySource treeList >>= Tree.extract
+  releaseDirTree <- liftEither $ Tree.accessOrEmpty m keyRelease treeList >>= Tree.extract
   (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m keyTarget treeList >>= mapM Tree.toDictionary
   dependencyTree <- liftEither $ Tree.accessOrEmpty m keyDependency treeList >>= mapM Tree.toDictionary
   (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m keyExtraContent treeList
   (_, antecedentTree) <- liftEither $ Tree.accessOrEmpty m keyAntecedent treeList
   (_, foreignDirListTree) <- liftEither $ Tree.accessOrEmpty m keyForeign treeList
   let moduleRootDir = parent moduleFilePath
+  releaseDir <- interpretDirPath releaseDirTree
   sourceDir <- interpretDirPath sourceDirTree
   target <- mapM interpretRelFilePath entryPointTree
   dependency <- interpretDependencyDict dependencyTree
@@ -70,6 +72,7 @@ fromFilePath moduleID moduleFilePath = do
   return
     Module
       { moduleID = moduleID,
+        moduleReleaseDir = releaseDir,
         moduleSourceDir = sourceDir,
         moduleTarget = Map.mapKeys Target target,
         moduleDependency = dependency,
