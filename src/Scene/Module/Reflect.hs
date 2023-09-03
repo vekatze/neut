@@ -27,7 +27,7 @@ import Entity.Target
 import Entity.Tree qualified as Tree
 import Path
 import Path.IO
-import Scene.Tree.Reflect qualified as Tree
+import Scene.Parse.Tree qualified as Tree
 
 getModule ::
   H.Hint ->
@@ -53,7 +53,7 @@ getModule m moduleID locatorText = do
 
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
-  (m, treeList) <- Tree.reflect moduleFilePath
+  (m, treeList) <- Tree.parseFile moduleFilePath
   sourceDirTree <- liftEither $ Tree.extractValueByKey m keySource treeList
   archiveDirTree <- liftEither $ Tree.extractValueByKey m keyArchive treeList
   buildDirTree <- liftEither $ Tree.extractValueByKey m keyBuild treeList
