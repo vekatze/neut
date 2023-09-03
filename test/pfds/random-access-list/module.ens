@@ -1,6 +1,9 @@
+(archive "archive/")
+(build "build/")
+(source "source/")
 (target
   (random-access-list "random-access-list.nt"))
 (dependency
   (core
-    (digest "1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/release/0-2-10.tar.zst")))
+    (digest "IhcsnZ0Di0GLjZdhKYORuu7HruStyZA1u9xuq57Ugj4=")
+    (mirror "https://github.com/vekatze/neut-core/raw/main/archive/0-2-11.tar.zst")))
