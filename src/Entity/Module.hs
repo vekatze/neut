@@ -24,6 +24,7 @@ type SomePath a =
 
 data Module = Module
   { moduleID :: MID.ModuleID,
+    moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap Target.Target SGL.StrictGlobalLocator,
     moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
     moduleExtraContents :: [SomePath Rel],
@@ -32,6 +33,10 @@ data Module = Module
     moduleForeignDirList :: [Path Rel Dir]
   }
   deriving (Show)
+
+keySource :: T.Text
+keySource =
+  "source"
 
 keyTarget :: T.Text
 keyTarget =
@@ -103,7 +108,9 @@ ppModule someModule = do
   TR.ppTreeList
     ( (),
       catMaybes
-        [ nodeOrNone $
+        [ nodeOrNone
+            [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
+          nodeOrNone $
             symbol keyTarget
               : map ppEntryPoint (Map.toList (moduleTarget someModule)),
           nodeOrNone $
