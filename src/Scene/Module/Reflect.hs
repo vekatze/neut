@@ -65,7 +65,7 @@ fromFilePath moduleID moduleFilePath = do
   dependency <- interpretDependencyDict dependencyTree
   extraContents <- mapM (interpretExtraPath moduleRootDir) extraContentTree
   antecedents <- mapM interpretAntecedent antecedentTree
-  foreignDirList <- mapM (interpretForeign moduleRootDir) foreignDirListTree
+  foreignDirList <- mapM (interpretDirPath moduleRootDir) foreignDirListTree
   return
     Module
       { moduleID = moduleID,
@@ -129,8 +129,8 @@ interpretAntecedent ens = do
   (_, digestText) <- liftEither $ Tree.toString ens
   return $ ModuleDigest digestText
 
-interpretForeign :: Path Abs Dir -> Tree.Tree -> App (Path Abs Dir)
-interpretForeign moduleRootDir ens = do
+interpretDirPath :: Path Abs Dir -> Tree.Tree -> App (Path Abs Dir)
+interpretDirPath moduleRootDir ens = do
   (_, pathText) <- liftEither $ Tree.toString ens
   Path.resolveDir moduleRootDir $ T.unpack pathText
 
