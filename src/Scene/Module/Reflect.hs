@@ -54,8 +54,8 @@ getModule m moduleID locatorText = do
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   (m, treeList) <- Tree.reflect moduleFilePath
-  sourceDirTree <- liftEither $ Tree.accessOrEmpty m keySource treeList >>= Tree.extract
-  archiveDirTree <- liftEither $ Tree.accessOrEmpty m keyArchive treeList >>= Tree.extract
+  sourceDirTree <- liftEither $ Tree.extractValueByKey m keySource treeList
+  archiveDirTree <- liftEither $ Tree.extractValueByKey m keyArchive treeList
   (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m keyTarget treeList >>= mapM Tree.toDictionary
   dependencyTree <- liftEither $ Tree.accessOrEmpty m keyDependency treeList >>= mapM Tree.toDictionary
   (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m keyExtraContent treeList
@@ -108,7 +108,7 @@ interpretDependencyDict (m, dep) = do
           <> "` cannot be used as an alias of a module"
     (_, urlTreeList) <- liftEither $ Tree.access mDep "mirror" depTree
     urlList <- liftEither $ mapM (Tree.toString >=> return . snd) urlTreeList
-    (_, digest) <- liftEither $ Tree.access mDep "digest" depTree >>= Tree.extract >>= Tree.toString
+    (_, digest) <- liftEither $ Tree.extractValueByKey mDep "digest" depTree >>= Tree.toString
     return (ModuleAlias k', (map ModuleURL urlList, ModuleDigest digest))
   return $ Map.fromList items
 
