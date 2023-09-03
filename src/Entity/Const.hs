@@ -51,7 +51,7 @@ sourceRelDir =
 
 buildRelDir :: Path Rel Dir
 buildRelDir =
-  $(mkRelDir ".build")
+  $(mkRelDir "build")
 
 archiveRelDir :: Path Rel Dir
 archiveRelDir =
