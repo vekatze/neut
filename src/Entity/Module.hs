@@ -96,7 +96,7 @@ ppModule someModule = do
               : map (string . ppExtraContent) (moduleExtraContents someModule),
           nodeOrNone $
             symbol keyForeign
-              : map (string . ppForeignContent) (moduleForeignDirList someModule),
+              : map (string . ppDirPath) (moduleForeignDirList someModule),
           nodeOrNone $
             symbol keyAntecedent
               : map (string . ppAntecedent) (moduleAntecedents someModule),
@@ -150,8 +150,8 @@ ppExtraContent somePath =
     Right filePath ->
       T.pack $ toFilePath filePath
 
-ppForeignContent :: Path Abs Dir -> T.Text
-ppForeignContent dirPath =
+ppDirPath :: Path Abs Dir -> T.Text
+ppDirPath dirPath =
   T.pack $ toFilePath dirPath
 
 getID :: Module -> Module -> MID.ModuleID
