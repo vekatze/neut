@@ -65,8 +65,8 @@ An example scenario:
 
 ```sh
 # setting up the core module (i.e. standard library)
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-2-10.tar.zst"
-export NEUT_CORE_MODULE_DIGEST="1H8FxjtehDdL-ZWEypx1gU5Ocag5p-QU_I-Rkdo6ePo="
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-2-11.tar.zst"
+export NEUT_CORE_MODULE_DIGEST="IhcsnZ0Di0GLjZdhKYORuu7HruStyZA1u9xuq57Ugj4="
 
 # get the compiler (choose one)
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
