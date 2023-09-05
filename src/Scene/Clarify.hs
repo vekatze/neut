@@ -39,7 +39,6 @@ import Entity.OptimizableData qualified as OD
 import Entity.Prim qualified as P
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
-import Entity.PrimOp.BinaryOp
 import Entity.PrimOp.CmpOp
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -270,25 +269,6 @@ clarifyTerm tenv term =
     m :< TM.FlowElim _ var (e, t) -> do
       let argNum = AN.fromInt 2
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, e]
-    _ :< TM.Nat ->
-      return returnImmediateS4
-    m :< TM.NatZero -> do
-      baseSize <- Env.getBaseSize m
-      return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) 0
-    m :< TM.NatSucc step e -> do
-      (valueVarName, value, valueVar) <- clarifyPlus tenv e
-      baseSize <- Env.getBaseSize m
-      return $ bindLet [(valueVarName, value)] $ increment baseSize valueVar step
-
-increment :: Int -> C.Value -> Integer -> C.Comp
-increment baseSize v step = do
-  let intType = PT.Int (PNS.IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimBinaryOp Add intType intType) [v, C.Int (PNS.IntSize baseSize) step]
-
-decrement :: Int -> C.Value -> C.Comp
-decrement baseSize v = do
-  let intType = PT.Int (PNS.IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimBinaryOp Sub intType intType) [v, C.Int (PNS.IntSize baseSize) 1]
 
 isZero :: Int -> C.Value -> C.Comp
 isZero baseSize v = do
@@ -358,8 +338,6 @@ getClauseDataGroup term =
       OptimizableData.lookup dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
       OptimizableData.lookup dataName
-    _ :< TM.Nat -> do
-      return $ Just OD.Nat
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
 
@@ -388,16 +366,6 @@ clarifyCase ::
   App (EC.EnumCase, C.Comp)
 clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
   case decisionCase of
-    DT.NatZero _ cont -> do
-      cont' <- clarifyDecisionTree tenv isNoetic dataArgsMap cont
-      return (EC.Int 1, cont') -- `1` is from `icmp eq cursor 0`
-    DT.NatSucc m mxt@(_, x, _) cont -> do
-      cont' <- clarifyDecisionTree (TM.insTypeEnv [mxt] tenv) isNoetic dataArgsMap cont
-      baseSize <- Env.getBaseSize m
-      return
-        ( EC.Int 0, -- `0` is from `icmp eq cursor 0`
-          C.UpElim False x (decrement baseSize (C.VarLocal cursor)) cont'
-        )
     DT.Cons _ consName disc dataArgs consArgs cont -> do
       let (_, dataTypes) = unzip dataArgs
       dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes

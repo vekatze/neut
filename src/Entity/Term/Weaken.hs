@@ -90,12 +90,6 @@ weaken term =
       m :< WT.FlowIntro pVar var (weaken e, weaken t)
     m :< TM.FlowElim pVar var (e, t) ->
       m :< WT.FlowElim pVar var (weaken e, weaken t)
-    m :< TM.Nat ->
-      m :< WT.Nat
-    m :< TM.NatZero ->
-      m :< WT.NatZero
-    m :< TM.NatSucc step e ->
-      m :< WT.NatSucc step (weaken e)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
@@ -148,10 +142,6 @@ weakenCaseList (fallbackClause, clauseList) = do
 weakenCase :: DT.Case TM.Term -> DT.Case WT.WeakTerm
 weakenCase decisonCase = do
   case decisonCase of
-    DT.NatZero m tree ->
-      DT.NatZero m (weakenDecisionTree tree)
-    DT.NatSucc m arg tree -> do
-      DT.NatSucc m (weakenBinder arg) (weakenDecisionTree tree)
     DT.Cons m dd disc dataArgs consArgs tree -> do
       let dataArgs' = map (bimap weaken weaken) dataArgs
       let consArgs' = map weakenBinder consArgs

@@ -17,9 +17,6 @@ data GlobalName
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
   | Resource
-  | Nat
-  | NatZero
-  | NatSucc
   deriving (Show, Generic)
 
 instance Binary GlobalName

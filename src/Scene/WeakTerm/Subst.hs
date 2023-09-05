@@ -97,13 +97,6 @@ subst sub term =
       e' <- subst sub e
       t' <- subst sub t
       return $ m :< WT.FlowElim pVar var (e', t')
-    m :< WT.Nat ->
-      return $ m :< WT.Nat
-    m :< WT.NatZero ->
-      return $ m :< WT.NatZero
-    m :< WT.NatSucc step e -> do
-      e' <- subst sub e
-      return $ m :< WT.NatSucc step e'
 
 substBinder ::
   WT.SubstWeakTerm ->
@@ -185,12 +178,6 @@ substCase ::
   App (DT.Case WT.WeakTerm)
 substCase sub decisionCase = do
   case decisionCase of
-    DT.NatZero m tree -> do
-      tree' <- substDecisionTree sub tree
-      return $ DT.NatZero m tree'
-    DT.NatSucc m arg tree -> do
-      ([arg'], tree') <- subst''' sub [arg] tree
-      return $ DT.NatSucc m arg' tree'
     DT.Cons m dd disc dataArgs consArgs tree -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (subst sub) dataTerms

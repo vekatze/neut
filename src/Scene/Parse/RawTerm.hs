@@ -532,8 +532,6 @@ rawTermPatternBasic =
       try rawTermPatternTupleIntro,
       try rawTermPatternOptionSome,
       try rawTermPatternOptionNone,
-      try rawTermPatternNatZero,
-      try rawTermPatternNatSucc,
       rawTermPatternConsOrVar
     ]
 
@@ -552,19 +550,6 @@ rawTermPatternOptionSome = do
   pat <- betweenParen rawTermPattern
   exceptPass <- lift $ locatorToName m coreExceptPass
   return (m, RP.Cons exceptPass (Right [pat]))
-
-rawTermPatternNatZero :: Parser (Hint, RP.RawPattern)
-rawTermPatternNatZero = do
-  m <- getCurrentHint
-  keyword "Zero"
-  return (m, RP.NatZero)
-
-rawTermPatternNatSucc :: Parser (Hint, RP.RawPattern)
-rawTermPatternNatSucc = do
-  m <- getCurrentHint
-  keyword "Succ"
-  pat <- betweenParen rawTermPattern
-  return (m, RP.NatSucc pat)
 
 rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do

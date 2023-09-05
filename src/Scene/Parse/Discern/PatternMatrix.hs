@@ -64,14 +64,7 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
                 let occurrences' = V.fromList consVars <> V.tail occurrences
                 specialMatrix <- PATS.specialize isNoetic cursor (cons, consArgNum) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
-                case (cons == DD.natZero, cons == DD.natSucc) of
-                  (True, _) ->
-                    return (DT.NatZero mPat specialDecisionTree)
-                  (_, True)
-                    | [consArg] <- consArgs' ->
-                        return (DT.NatSucc mPat consArg specialDecisionTree)
-                  _ ->
-                    return (DT.Cons mPat cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
+                return (DT.Cons mPat cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
               fallbackClause <- compilePatternMatrix nenv isNoetic mCol (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCol []
@@ -138,7 +131,3 @@ ensurePatternSanity (m, pat) =
             <> T.pack (show argNum)
             <> "."
       mapM_ ensurePatternSanity args
-    PAT.NatZero ->
-      return ()
-    PAT.NatSucc arg ->
-      ensurePatternSanity arg

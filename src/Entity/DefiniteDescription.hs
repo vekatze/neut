@@ -6,9 +6,6 @@ module Entity.DefiniteDescription
     getFormDD,
     imm,
     cls,
-    nat,
-    natZero,
-    natSucc,
     toBuilder,
   )
 where
@@ -83,18 +80,6 @@ imm =
 cls :: DefiniteDescription
 cls =
   newByGlobalLocator (SGL.baseGlobalLocatorOf SL.internalLocator) BN.cls
-
-nat :: DefiniteDescription
-nat =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.nat
-
-natZero :: DefiniteDescription
-natZero =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.natZero
-
-natSucc :: DefiniteDescription
-natSucc =
-  newByGlobalLocator (SGL.baseGlobalLocatorOf SL.natLocator) BN.natSucc
 
 toBuilder :: DefiniteDescription -> Builder
 toBuilder dd =

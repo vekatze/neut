@@ -30,8 +30,6 @@ data Pattern
   = Var Ident
   | WildcardVar
   | Cons DD.DefiniteDescription D.Discriminant AN.ArgNum AN.ArgNum [(Hint, Pattern)]
-  | NatZero
-  | NatSucc (Hint, Pattern)
   deriving (Show)
 
 type PatternRow a =
@@ -62,10 +60,6 @@ patVars (m, pat) =
       []
     Cons _ _ _ _ patList ->
       concatMap patVars patList
-    NatZero ->
-      []
-    NatSucc pat' ->
-      patVars pat'
 
 consRow :: PatternRow a -> PatternMatrix a -> PatternMatrix a
 consRow row (MakePatternMatrix mat) =
@@ -114,10 +108,6 @@ getColumnConstructor (mPat, pat) =
   case pat of
     Cons dd disc dataArgNum consArgNum args ->
       return (mPat, (dd, disc, dataArgNum, consArgNum, args))
-    NatZero ->
-      return (mPat, (DD.natZero, D.MakeDiscriminant 0, AN.fromInt 0, AN.fromInt 0, []))
-    NatSucc arg ->
-      return (mPat, (DD.natSucc, D.MakeDiscriminant 1, AN.fromInt 0, AN.fromInt 1, [arg]))
     _ ->
       Nothing
 
