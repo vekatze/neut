@@ -65,12 +65,6 @@ holes term =
       let xs1 = holes e
       let xs2 = holes t
       S.unions [xs1, xs2]
-    _ :< WT.Nat ->
-      S.empty
-    _ :< WT.NatZero ->
-      S.empty
-    _ :< WT.NatSucc _ e ->
-      holes e
 
 holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID
 holes' binder zs =
@@ -104,7 +98,3 @@ holesCase decisionCase =
     DT.Cons _ _ _ dataArgs consArgs tree -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       S.unions $ holes' consArgs (holesDecisionTree tree) : map holes dataTerms ++ map holes dataTypes
-    DT.NatZero _ tree ->
-      holesDecisionTree tree
-    DT.NatSucc _ arg tree ->
-      holes' [arg] $ holesDecisionTree tree

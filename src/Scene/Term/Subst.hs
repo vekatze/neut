@@ -89,13 +89,6 @@ subst sub term =
       e' <- subst sub e
       t' <- subst sub t
       return $ m :< TM.FlowElim pVar var (e', t')
-    m :< TM.Nat ->
-      return $ m :< TM.Nat
-    m :< TM.NatZero ->
-      return $ m :< TM.NatZero
-    m :< TM.NatSucc step e -> do
-      e' <- subst sub e
-      return $ m :< TM.NatSucc step e'
 
 subst' ::
   SubstTerm ->
@@ -164,12 +157,6 @@ substCase ::
   App (DT.Case TM.Term)
 substCase sub decisionCase = do
   case decisionCase of
-    DT.NatZero m tree -> do
-      tree' <- substDecisionTree sub tree
-      return $ DT.NatZero m tree'
-    DT.NatSucc m arg tree -> do
-      ([arg'], tree') <- subst'' sub [arg] tree
-      return $ DT.NatSucc m arg' tree'
     DT.Cons m dd disc dataArgs consArgs tree -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (subst sub) dataTerms

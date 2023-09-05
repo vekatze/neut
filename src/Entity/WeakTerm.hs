@@ -49,9 +49,6 @@ data WeakTermF a
       DD.DefiniteDescription -- "core.thread.flow-inner"
       DD.DefiniteDescription -- "core.thread.attach"
       (a, a) -- (flow, flow-type)
-  | Nat
-  | NatZero
-  | NatSucc Integer a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

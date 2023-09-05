@@ -171,13 +171,6 @@ reveal' varEnv term =
       e' <- reveal' varEnv e
       t' <- reveal' varEnv t
       return $ m :< WT.FlowElim pVar var (e', t')
-    m :< WT.Nat ->
-      return $ m :< WT.Nat
-    m :< WT.NatZero ->
-      return $ m :< WT.NatZero
-    m :< WT.NatSucc step e -> do
-      e' <- reveal' varEnv e
-      return $ m :< WT.NatSucc step e'
 
 revealPi ::
   BoundVarEnv ->
@@ -264,13 +257,6 @@ revealClause ::
   App (DT.Case WT.WeakTerm)
 revealClause varEnv decisionCase = do
   case decisionCase of
-    DT.NatZero m tree -> do
-      tree' <- revealDecisionTree varEnv tree
-      return $ DT.NatZero m tree'
-    DT.NatSucc m arg tree -> do
-      ([arg'], tree') <- revealBinder' varEnv [arg] $ \extendedVarEnv ->
-        revealDecisionTree extendedVarEnv tree
-      return $ DT.NatSucc m arg' tree'
     DT.Cons mCons consName disc dataArgs consArgs body -> do
       let (dataTerms, dataTypeTerms) = unzip dataArgs
       dataTerms' <- mapM (reveal' varEnv) dataTerms

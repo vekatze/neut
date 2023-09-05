@@ -249,10 +249,6 @@ elaborate' term =
                   return $ m :< TM.Prim (P.Value (PV.Int size x))
                 _ :< TM.Prim (P.Type (PT.Float size)) ->
                   return $ m :< TM.Prim (P.Value (PV.Float size (fromInteger x)))
-                _ :< TM.Nat -> do
-                  if x >= 0
-                    then return $ m :< TM.NatSucc x (m :< TM.NatZero)
-                    else Throw.raiseError m "natural numbers can't be negative"
                 _ -> do
                   Throw.raiseError m $
                     "the term `"
@@ -317,13 +313,6 @@ elaborate' term =
       e' <- elaborate' e
       t' <- elaborate' t
       return $ m :< TM.FlowElim pVar var (e', t')
-    m :< WT.Nat ->
-      return $ m :< TM.Nat
-    m :< WT.NatZero ->
-      return $ m :< TM.NatZero
-    m :< WT.NatSucc step e -> do
-      e' <- elaborate' e
-      return $ m :< TM.NatSucc step e'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
@@ -385,13 +374,6 @@ elaborateDecisionTree m tree =
 elaborateClause :: DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause decisionCase = do
   case decisionCase of
-    DT.NatZero m cont -> do
-      cont' <- elaborateDecisionTree m cont
-      return $ DT.NatZero m cont'
-    DT.NatSucc m arg cont -> do
-      arg' <- elaborateWeakBinder arg
-      cont' <- elaborateDecisionTree m cont
-      return $ DT.NatSucc m arg' cont'
     DT.Cons mCons consName disc dataArgs consArgs cont -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM elaborate' dataTerms
@@ -429,7 +411,5 @@ extractConstructorList m cursorType = do
   case cursorType of
     _ :< TM.Data _ consNameList _ -> do
       return consNameList
-    _ :< TM.Nat ->
-      return [DD.natZero, DD.natSucc]
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)

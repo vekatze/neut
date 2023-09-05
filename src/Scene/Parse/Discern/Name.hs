@@ -25,12 +25,10 @@ import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
 import Entity.Locator qualified as L
 import Entity.Magic qualified as M
 import Entity.Name
-import Entity.Opacity qualified as O
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp qualified as PO
 import Entity.PrimType qualified as PT
@@ -119,10 +117,6 @@ resolveConstructorMaybe dd gn = do
   case gn of
     GN.DataIntro dataArgNum consArgNum disc isConstLike ->
       return $ Just (dd, dataArgNum, consArgNum, disc, isConstLike, Nothing)
-    GN.NatZero ->
-      return $ Just (dd, AN.fromInt 0, AN.fromInt 0, D.MakeDiscriminant 0, False, Just GN.NatZero)
-    GN.NatSucc ->
-      return $ Just (dd, AN.fromInt 0, AN.fromInt 1, D.MakeDiscriminant 1, False, Just GN.NatSucc)
     _ ->
       return Nothing
 
@@ -148,14 +142,6 @@ interpretGlobalName m dd gn = do
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
-    GN.Nat ->
-      return $ m :< WT.Nat
-    GN.NatZero ->
-      return $ m :< WT.NatZero
-    GN.NatSucc -> do
-      let opacity = LK.Normal O.Transparent
-      arg <- Gensym.newIdentFromText "succ-arg"
-      return $ m :< WT.PiIntro opacity [(m, arg, m :< WT.Nat)] (m :< WT.NatSucc 1 (m :< WT.Var arg))
 
 interpretTopLevelFunc ::
   Hint ->

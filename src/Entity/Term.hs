@@ -45,9 +45,6 @@ data TermF a
       DD.DefiniteDescription -- "core.thread.flow-inner"
       DD.DefiniteDescription -- "core.thread.wait"
       (a, a) -- (flow, flow-type)
-  | Nat
-  | NatZero
-  | NatSucc Integer a
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -88,9 +85,5 @@ isValue term =
       True
     _ :< Flow {} ->
       True
-    _ :< NatZero ->
-      True
-    _ :< NatSucc _ e ->
-      isValue e
     _ ->
       False

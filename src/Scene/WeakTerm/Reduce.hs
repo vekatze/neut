@@ -162,13 +162,6 @@ reduceCase ::
   App (DT.Case WT.WeakTerm)
 reduceCase decisionCase = do
   case decisionCase of
-    DT.NatZero m tree -> do
-      tree' <- reduceDecisionTree tree
-      return $ DT.NatZero m tree'
-    DT.NatSucc m (mx, x, t) tree -> do
-      t' <- reduce t
-      tree' <- reduceDecisionTree tree
-      return $ DT.NatSucc m (mx, x, t') tree'
     DT.Cons mCons dd disc dataArgs consArgs tree -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM reduce dataTerms

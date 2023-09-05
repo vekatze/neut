@@ -104,13 +104,6 @@ fill sub term =
       e' <- fill sub e
       t' <- fill sub t
       return $ m :< WT.FlowElim pVar var (e', t')
-    m :< WT.Nat ->
-      return $ m :< WT.Nat
-    m :< WT.NatZero ->
-      return $ m :< WT.NatZero
-    m :< WT.NatSucc step e -> do
-      e' <- fill sub e
-      return $ m :< WT.NatSucc step e'
 
 fill' ::
   HoleSubst ->
@@ -184,12 +177,6 @@ fillCase ::
   App (DT.Case WT.WeakTerm)
 fillCase sub decisionCase = do
   case decisionCase of
-    DT.NatZero m tree -> do
-      tree' <- fillDecisionTree sub tree
-      return $ DT.NatZero m tree'
-    DT.NatSucc m arg tree -> do
-      ([arg'], tree') <- fill''' sub [arg] tree
-      return $ DT.NatSucc m arg' tree'
     DT.Cons m dd disc dataArgs consArgs tree -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM (fill sub) dataTerms

@@ -1,3 +1,8 @@
+data nat {
+- Zero
+- Succ(nat)
+}
+
 define nil-cons-cons(xs: nat): int {
   match xs {
   - Zero =>

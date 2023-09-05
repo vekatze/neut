@@ -144,12 +144,6 @@ lookup m name = do
           return $ Just (m, GN.PrimType primType)
       | Just primOp <- PrimOp.fromDefiniteDescription dataSize name ->
           return $ Just (m, GN.PrimOp primOp)
-      | name == DD.nat ->
-          return $ Just (m, GN.Nat)
-      | name == DD.natZero ->
-          return $ Just (m, GN.NatZero)
-      | name == DD.natSucc ->
-          return $ Just (m, GN.NatSucc)
       | otherwise -> do
           return Nothing
 

@@ -136,13 +136,6 @@ inlineCase ::
   App (DT.Case TM.Term)
 inlineCase decisionCase = do
   case decisionCase of
-    DT.NatZero m tree -> do
-      tree' <- inlineDecisionTree tree
-      return $ DT.NatZero m tree'
-    DT.NatSucc m (mx, x, t) tree -> do
-      t' <- inline t
-      tree' <- inlineDecisionTree tree
-      return $ DT.NatSucc m (mx, x, t') tree'
     DT.Cons m dd disc dataArgs consArgs tree -> do
       let (dataTerms, dataTypes) = unzip dataArgs
       dataTerms' <- mapM inline dataTerms
