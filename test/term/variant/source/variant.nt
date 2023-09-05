@@ -1,3 +1,8 @@
+data nat {
+- Zero
+- Succ(nat)
+}
+
 data empty {}
 
 define test-resource(): unit {
