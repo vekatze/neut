@@ -8,7 +8,7 @@ import Entity.Hint
 import Entity.RawIdent qualified as RI
 
 data TreeF a
-  = Symbol RI.RawIdent
+  = Atom RI.RawIdent
   | Node [a]
   | String T.Text
   deriving (Show)
@@ -86,7 +86,7 @@ toDictionary ts = do
 extractKeyValuePair :: Tree -> Either Error (RI.RawIdent, TreeList)
 extractKeyValuePair t =
   case t of
-    _ :< Node ((m :< Symbol key) : cdr) ->
+    _ :< Node ((m :< Atom key) : cdr) ->
       return (key, (m, cdr))
     m :< _ ->
       Left $ newError m $ "a key-value pair must be of the form `(key value)`, but found:\n" <> showTree t
@@ -106,15 +106,15 @@ showWithOffset n text =
 isAtomic :: Cofree TreeF a -> Bool
 isAtomic t =
   case t of
-    _ :< Symbol _ ->
+    _ :< Atom _ ->
       True
     _ :< String _ ->
       True
     _ :< Node _ ->
       False
 
-ppSymbol :: RI.RawIdent -> T.Text
-ppSymbol x =
+ppAtom :: RI.RawIdent -> T.Text
+ppAtom x =
   x
 
 ppString :: T.Text -> T.Text
@@ -145,8 +145,8 @@ ppDictionaryEntry n key value = do
 ppTree :: Int -> Cofree TreeF a -> T.Text
 ppTree n entity = do
   case entity of
-    _ :< Symbol x ->
-      ppSymbol x
+    _ :< Atom x ->
+      ppAtom x
     _ :< Node ts ->
       ppNode n ts
     _ :< String s ->

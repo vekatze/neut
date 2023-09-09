@@ -129,34 +129,34 @@ ppModule someModule = do
     ( (),
       catMaybes
         [ nodeOrNone
-            [symbol keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
+            [atom keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
           nodeOrNone
-            [symbol keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
+            [atom keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
           nodeOrNone
-            [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
+            [atom keySource, string $ ppDirPath $ moduleSourceDir someModule],
           nodeOrNone $
-            symbol keyTarget
+            atom keyTarget
               : map ppEntryPoint (Map.toList (moduleTarget someModule)),
           nodeOrNone $
-            symbol keyExtraContent
+            atom keyExtraContent
               : map (string . ppExtraContent) (moduleExtraContents someModule),
           nodeOrNone $
-            symbol keyForeign
+            atom keyForeign
               : map (string . ppDirPath) (moduleForeignDirList someModule),
           nodeOrNone $
-            symbol keyAntecedent
+            atom keyAntecedent
               : map (string . ppAntecedent) (moduleAntecedents someModule),
           nodeOrNone $
-            symbol keyDependency
+            atom keyDependency
               : map ppDependency (Map.toList (moduleDependency someModule))
         ]
     )
 
 type Tree = Cofree TR.TreeF ()
 
-symbol :: T.Text -> Tree
-symbol a =
-  () :< TR.Symbol a
+atom :: T.Text -> Tree
+atom a =
+  () :< TR.Atom a
 
 string :: T.Text -> Tree
 string str =
@@ -174,14 +174,14 @@ nodeOrNone ts =
 
 ppEntryPoint :: (Target.Target, SL.SourceLocator) -> Tree
 ppEntryPoint (Target.Target target, sl) = do
-  node [symbol target, string (SL.getRelPathText sl)]
+  node [atom target, string (SL.getRelPathText sl)]
 
 ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> Tree
 ppDependency (ModuleAlias alias, (urlList, ModuleDigest digest)) = do
   node
-    [ symbol (BN.reify alias),
-      node [symbol "digest", string digest],
-      node (symbol "mirror" : map (\(ModuleURL urlText) -> string urlText) urlList)
+    [ atom (BN.reify alias),
+      node [atom "digest", string digest],
+      node (atom "mirror" : map (\(ModuleURL urlText) -> string urlText) urlList)
     ]
 
 ppAntecedent :: ModuleDigest -> T.Text

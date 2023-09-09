@@ -20,11 +20,11 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = ParsecT Void T.Text App
 
-parseSymbol :: Parser Tree
-parseSymbol = do
+parseAtom :: Parser Tree
+parseAtom = do
   m <- getCurrentHint
-  s <- symbol
-  return $ m :< Symbol s
+  s <- atom
+  return $ m :< Atom s
 
 parseString :: Parser Tree
 parseString = do
@@ -43,7 +43,7 @@ parseTree =
   choice
     [ parseNode,
       parseString,
-      parseSymbol
+      parseAtom
     ]
 
 parseTreeList :: Parser TreeList
@@ -74,9 +74,9 @@ createParseError errorBundle = do
   let message = T.pack $ concatMap (parseErrorTextPretty . fst) $ NE.toList foo
   E.newError hint message
 
-symbol :: Parser T.Text
-symbol = do
-  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+atom :: Parser T.Text
+atom = do
+  lexeme $ takeWhile1P Nothing (`S.notMember` nonAtomCharSet)
 
 betweenParen :: Parser a -> Parser a
 betweenParen =
@@ -116,7 +116,7 @@ lexeme :: Parser a -> Parser a
 lexeme =
   L.lexeme spaceConsumer
 
-{-# INLINE nonSymbolCharSet #-}
-nonSymbolCharSet :: S.Set Char
-nonSymbolCharSet =
+{-# INLINE nonAtomCharSet #-}
+nonAtomCharSet :: S.Set Char
+nonAtomCharSet =
   S.fromList "() \"\n\t"
