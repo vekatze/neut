@@ -9,6 +9,7 @@ import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
+import Entity.Atom qualified as AT
 import Entity.Error qualified as E
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
@@ -20,17 +21,17 @@ import Text.Megaparsec.Char.Lexer qualified as L
 
 type Parser = ParsecT Void T.Text App
 
-parseAtom :: Parser Tree
-parseAtom = do
+parseSymbol :: Parser Tree
+parseSymbol = do
   m <- getCurrentHint
   s <- atom
-  return $ m :< Atom s
+  return $ m :< Atom (AT.Symbol s)
 
 parseString :: Parser Tree
 parseString = do
   m <- getCurrentHint
   s <- string
-  return $ m :< String s
+  return $ m :< Atom (AT.String s)
 
 parseNode :: Parser Tree
 parseNode = do
@@ -43,7 +44,7 @@ parseTree =
   choice
     [ parseNode,
       parseString,
-      parseAtom
+      parseSymbol
     ]
 
 parseTreeList :: Parser TreeList

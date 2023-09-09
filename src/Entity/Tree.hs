@@ -3,14 +3,14 @@ module Entity.Tree where
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as M
 import Data.Text qualified as T
+import Entity.Atom qualified as AT
 import Entity.Error
 import Entity.Hint
 import Entity.RawIdent qualified as RI
 
 data TreeF a
-  = Atom RI.RawIdent
+  = Atom AT.Atom
   | Node [a]
-  | String T.Text
   deriving (Show)
 
 type Tree = Cofree TreeF Hint
@@ -73,7 +73,7 @@ extract (m, ts) = do
 toString :: Tree -> Either Error (Hint, T.Text)
 toString tree =
   case tree of
-    m :< String s ->
+    m :< Atom (AT.String s) ->
       return (m, s)
     m :< _ ->
       Left $ newError m $ "a string is expected, but found:\n" <> showTree tree
@@ -86,7 +86,7 @@ toDictionary ts = do
 extractKeyValuePair :: Tree -> Either Error (RI.RawIdent, TreeList)
 extractKeyValuePair t =
   case t of
-    _ :< Node ((m :< Atom key) : cdr) ->
+    _ :< Node ((m :< Atom (AT.Symbol key)) : cdr) ->
       return (key, (m, cdr))
     m :< _ ->
       Left $ newError m $ "a key-value pair must be of the form `(key value)`, but found:\n" <> showTree t
@@ -108,18 +108,16 @@ isAtomic t =
   case t of
     _ :< Atom _ ->
       True
-    _ :< String _ ->
-      True
     _ :< Node _ ->
       False
 
-ppAtom :: RI.RawIdent -> T.Text
-ppAtom x =
-  x
-
-ppString :: T.Text -> T.Text
-ppString x =
-  T.pack $ show x
+ppAtom :: AT.Atom -> T.Text
+ppAtom atom =
+  case atom of
+    AT.Symbol x ->
+      x
+    AT.String x ->
+      T.pack $ show x
 
 ppNode :: Int -> [Cofree TreeF a] -> T.Text
 ppNode n ts = do
@@ -149,8 +147,6 @@ ppTree n entity = do
       ppAtom x
     _ :< Node ts ->
       ppNode n ts
-    _ :< String s ->
-      ppString s
 
 ppTreeList :: (a, [Cofree TreeF a]) -> T.Text
 ppTreeList (_, ts) = do

@@ -6,6 +6,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
+import Entity.Atom qualified as AT
 import Entity.BaseName qualified as BN
 import Entity.ModuleAlias
 import Entity.ModuleDigest
@@ -129,38 +130,38 @@ ppModule someModule = do
     ( (),
       catMaybes
         [ nodeOrNone
-            [atom keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
+            [symbol keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
           nodeOrNone
-            [atom keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
+            [symbol keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
           nodeOrNone
-            [atom keySource, string $ ppDirPath $ moduleSourceDir someModule],
+            [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
           nodeOrNone $
-            atom keyTarget
+            symbol keyTarget
               : map ppEntryPoint (Map.toList (moduleTarget someModule)),
           nodeOrNone $
-            atom keyExtraContent
+            symbol keyExtraContent
               : map (string . ppExtraContent) (moduleExtraContents someModule),
           nodeOrNone $
-            atom keyForeign
+            symbol keyForeign
               : map (string . ppDirPath) (moduleForeignDirList someModule),
           nodeOrNone $
-            atom keyAntecedent
+            symbol keyAntecedent
               : map (string . ppAntecedent) (moduleAntecedents someModule),
           nodeOrNone $
-            atom keyDependency
+            symbol keyDependency
               : map ppDependency (Map.toList (moduleDependency someModule))
         ]
     )
 
 type Tree = Cofree TR.TreeF ()
 
-atom :: T.Text -> Tree
-atom a =
-  () :< TR.Atom a
+symbol :: T.Text -> Tree
+symbol a =
+  () :< TR.Atom (AT.Symbol a)
 
 string :: T.Text -> Tree
 string str =
-  () :< TR.String str
+  () :< TR.Atom (AT.String str)
 
 node :: [Tree] -> Tree
 node ts =
@@ -174,14 +175,14 @@ nodeOrNone ts =
 
 ppEntryPoint :: (Target.Target, SL.SourceLocator) -> Tree
 ppEntryPoint (Target.Target target, sl) = do
-  node [atom target, string (SL.getRelPathText sl)]
+  node [symbol target, string (SL.getRelPathText sl)]
 
 ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> Tree
 ppDependency (ModuleAlias alias, (urlList, ModuleDigest digest)) = do
   node
-    [ atom (BN.reify alias),
-      node [atom "digest", string digest],
-      node (atom "mirror" : map (\(ModuleURL urlText) -> string urlText) urlList)
+    [ symbol (BN.reify alias),
+      node [symbol "digest", string digest],
+      node (symbol "mirror" : map (\(ModuleURL urlText) -> string urlText) urlList)
     ]
 
 ppAntecedent :: ModuleDigest -> T.Text
