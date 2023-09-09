@@ -11,9 +11,12 @@ import Entity.RawIdent qualified as RI
 data TreeF a
   = Atom AT.Atom
   | Node [a]
+  | List [a]
   deriving (Show)
 
 type Tree = Cofree TreeF Hint
+
+type MiniTree = Cofree TreeF ()
 
 type TreeListF a = (a, [Tree])
 
@@ -101,7 +104,7 @@ raiseKeyNotFoundError m k =
 
 showWithOffset :: Int -> T.Text -> T.Text
 showWithOffset n text =
-  T.replicate n "  " <> text
+  T.replicate n " " <> text
 
 isAtomic :: Cofree TreeF a -> Bool
 isAtomic t =
@@ -109,6 +112,8 @@ isAtomic t =
     _ :< Atom _ ->
       True
     _ :< Node _ ->
+      False
+    _ :< List _ ->
       False
 
 ppAtom :: AT.Atom -> T.Text
@@ -132,9 +137,20 @@ ppNode n ts = do
           "(" <> ppTree n t1 <> " " <> ppTree n t2 <> ")"
     t : rest -> do
       let header = "("
-      let rest' = map (showWithOffset (n + 1) . ppTree (n + 1)) rest
+      let rest' = map (showWithOffset (n + 2) . ppTree (n + 2)) rest
       let footer = ")"
       header <> ppTree n t <> "\n" <> T.intercalate "\n" rest' <> footer
+
+ppList :: Int -> [Cofree TreeF a] -> T.Text
+ppList n ts = do
+  case ts of
+    [] ->
+      "[]"
+    h : rest -> do
+      let header = "["
+      let rest' = map (showWithOffset (n + 1) . ppTree (n + 1)) rest
+      let footer = "]"
+      header <> ppTree n h <> "\n" <> T.intercalate ",\n" rest' <> footer
 
 ppDictionaryEntry :: Int -> T.Text -> Cofree TreeF a -> T.Text
 ppDictionaryEntry n key value = do
@@ -147,6 +163,8 @@ ppTree n entity = do
       ppAtom x
     _ :< Node ts ->
       ppNode n ts
+    _ :< List ts ->
+      ppList n ts
 
 ppTreeList :: (a, [Cofree TreeF a]) -> T.Text
 ppTreeList (_, ts) = do

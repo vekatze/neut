@@ -153,31 +153,29 @@ ppModule someModule = do
         ]
     )
 
-type Tree = Cofree TR.TreeF ()
-
-symbol :: T.Text -> Tree
+symbol :: T.Text -> TR.MiniTree
 symbol a =
   () :< TR.Atom (AT.Symbol a)
 
-string :: T.Text -> Tree
+string :: T.Text -> TR.MiniTree
 string str =
   () :< TR.Atom (AT.String str)
 
-node :: [Tree] -> Tree
+node :: [TR.MiniTree] -> TR.MiniTree
 node ts =
   () :< TR.Node ts
 
-nodeOrNone :: [Tree] -> Maybe Tree
+nodeOrNone :: [TR.MiniTree] -> Maybe TR.MiniTree
 nodeOrNone ts =
   if length ts <= 1
     then Nothing
     else return $ () :< TR.Node ts
 
-ppEntryPoint :: (Target.Target, SL.SourceLocator) -> Tree
+ppEntryPoint :: (Target.Target, SL.SourceLocator) -> TR.MiniTree
 ppEntryPoint (Target.Target target, sl) = do
   node [symbol target, string (SL.getRelPathText sl)]
 
-ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> Tree
+ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> TR.MiniTree
 ppDependency (ModuleAlias alias, (urlList, ModuleDigest digest)) = do
   node
     [ symbol (BN.reify alias),

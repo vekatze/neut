@@ -1,4 +1,4 @@
-module Scene.Parse.Tree (parseFile) where
+module Scene.Parse.Tree (parseFile, parseTree) where
 
 import Context.App
 import Context.Parse
@@ -39,10 +39,17 @@ parseNode = do
   ts <- betweenParen $ many parseTree
   return $ m :< Node ts
 
+parseList :: Parser Tree
+parseList = do
+  m <- getCurrentHint
+  ts <- betweenBracket $ sepBy parseTree (delimiter ",")
+  return $ m :< List ts
+
 parseTree :: Parser Tree
 parseTree =
   choice
     [ parseNode,
+      parseList,
       parseString,
       parseSymbol
     ]
@@ -83,6 +90,10 @@ betweenParen :: Parser a -> Parser a
 betweenParen =
   between (delimiter "(") (delimiter ")")
 
+betweenBracket :: Parser a -> Parser a
+betweenBracket =
+  between (delimiter "[") (delimiter "]")
+
 getCurrentHint :: Parser Hint
 getCurrentHint =
   Hint.fromSourcePos <$> getSourcePos
@@ -120,4 +131,4 @@ lexeme =
 {-# INLINE nonAtomCharSet #-}
 nonAtomCharSet :: S.Set Char
 nonAtomCharSet =
-  S.fromList "() \"\n\t"
+  S.fromList "()[]{} \"\n\t,:"
