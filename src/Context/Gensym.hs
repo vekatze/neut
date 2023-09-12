@@ -7,7 +7,7 @@ module Context.Gensym
     newTextForHole,
     newIdentForHole,
     newHole,
-    newPreHole,
+    newHoleID,
     newIdentFromText,
     newIdentFromIdent,
     newValueVarLocalWith,
@@ -67,11 +67,10 @@ newIdentForHole = do
   i <- newCount
   return $ I (text, i)
 
-{-# INLINE newPreHole #-}
-newPreHole :: Hint -> App RT.RawTerm
-newPreHole m = do
-  i <- HoleID <$> newCount
-  return $ m :< RT.Hole i
+{-# INLINE newHoleID #-}
+newHoleID :: App HoleID
+newHoleID = do
+  HoleID <$> newCount
 
 {-# INLINE newHole #-}
 newHole :: Hint -> [WT.WeakTerm] -> App WT.WeakTerm

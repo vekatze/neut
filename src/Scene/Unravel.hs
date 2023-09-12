@@ -13,6 +13,7 @@ import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Parse qualified as Parse
 import Context.Path qualified as Path
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
 import Control.Monad
@@ -29,10 +30,11 @@ import Entity.Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
 import Entity.Target
+import Entity.Tree (headSymEq)
 import Entity.VisitInfo qualified as VI
 import Path
-import Scene.Parse.Core qualified as ParseCore
 import Scene.Parse.Import
+import Scene.Parse.Tree (parseFileHeadTree)
 import Scene.Source.ShiftToLatest qualified as Source
 
 type CacheTime =
@@ -246,7 +248,10 @@ parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
-  ParseCore.run (parseImportBlock currentSource) path
+  headTree <- parseFileHeadTree path
+  if headSymEq "import" headTree
+    then interpretImportTree currentSource headTree
+    else return []
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =

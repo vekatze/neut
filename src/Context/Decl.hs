@@ -3,6 +3,7 @@ module Context.Decl
     insDeclEnv,
     insDeclEnv',
     lookupDeclEnv,
+    lookupDeclEnv',
     getDeclEnv,
     member,
   )
@@ -18,6 +19,7 @@ import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
+import Entity.Error
 import Entity.Hint
 import Entity.LowType qualified as LT
 import Prelude hiding (lookup, read)
@@ -44,11 +46,15 @@ insDeclEnv' k domList cod =
 lookupDeclEnv :: Hint -> DN.DeclarationName -> App ([LT.LowType], LT.LowType)
 lookupDeclEnv m name = do
   denv <- readRef' declEnv
+  Throw.liftEither $ lookupDeclEnv' m name denv
+
+lookupDeclEnv' :: Hint -> DN.DeclarationName -> DN.DeclEnv -> EE ([LT.LowType], LT.LowType)
+lookupDeclEnv' m name denv = do
   case Map.lookup name denv of
     Just typeInfo ->
       return typeInfo
     Nothing -> do
-      Throw.raiseError m $ "undeclared function: " <> T.pack (show name)
+      Left $ newError m $ "undeclared function: " <> T.pack (show name)
 
 member :: DN.DeclarationName -> App Bool
 member name = do

@@ -1,10 +1,17 @@
-module Scene.Parse.Tree (parseFile, parseTree) where
+module Scene.Parse.Tree
+  ( parseFile,
+    parseFileHeadTree,
+    parseTree,
+  )
+where
 
 import Context.App
 import Context.Parse
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Trans
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -13,7 +20,7 @@ import Entity.Atom qualified as AT
 import Entity.Error qualified as E
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
-import Entity.Tree
+import Entity.Tree hiding (chunk)
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char (char)
@@ -42,7 +49,8 @@ parseNode = do
 parseList :: Parser Tree
 parseList = do
   m <- getCurrentHint
-  ts <- betweenBracket $ sepBy parseTree (delimiter ",")
+  ts <- betweenBracket $ sepBy (some parseTree) (delimiter ",")
+  lift $ printNote' $ T.pack $ show $ map (map showTree) ts
   return $ m :< List ts
 
 parseTree :: Parser Tree
@@ -63,6 +71,10 @@ parseTreeList = do
 parseFile :: Path Abs File -> App TreeList
 parseFile path = do
   run parseTreeList path
+
+parseFileHeadTree :: Path Abs File -> App Tree
+parseFileHeadTree path = do
+  run parseTree path
 
 run :: Parser a -> Path Abs File -> App a
 run parser path = do

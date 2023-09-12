@@ -12,8 +12,11 @@ import Entity.BuildMode qualified as BM
 import Entity.DataSize qualified as DS
 import Entity.Hint
 import Entity.LocationTree qualified as LT
+import Entity.Macro qualified as Macro
 import Entity.Platform
+import Entity.RawIdent (RawIdent)
 import Entity.Source qualified as Source
+import Entity.Tree
 import Path
 
 setBuildMode :: BM.BuildMode -> App ()
@@ -76,6 +79,14 @@ getDataSize'' mm = do
           Throw.raiseError m message
         Nothing ->
           Throw.raiseError' message
+
+getMacroEnv :: App Macro.Rules
+getMacroEnv =
+  readRef' macroRuleEnv
+
+insertToMacroEnv :: RawIdent -> [(Macro.Args, Tree)] -> App ()
+insertToMacroEnv key value =
+  modifyRef' macroRuleEnv $ Map.insert key value
 
 getMainType :: App T.Text
 getMainType = do

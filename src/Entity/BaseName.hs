@@ -11,6 +11,7 @@ module Entity.BaseName
     textName,
     main,
     fromText,
+    fromTextOptional,
     this,
     new,
     base,
@@ -157,6 +158,14 @@ fromText txt =
         "Entity.BaseName.fromText: given text `"
           <> T.unpack txt
           <> "` contains '.'"
+
+fromTextOptional :: (H.Hint, T.Text) -> Either Error (H.Hint, BaseName)
+fromTextOptional (m, txt) =
+  case T.find (nsSepChar ==) txt of
+    Nothing ->
+      return (m, MakeBaseName txt)
+    Just _ ->
+      Left $ newError m $ "this name cannot contain `" <> T.singleton nsSepChar <> "`"
 
 reservedAlias :: S.Set BaseName
 reservedAlias =

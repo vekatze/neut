@@ -13,7 +13,6 @@ import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
-import Entity.HoleID
 import Entity.Key
 import Entity.Locator as L
 import Entity.Magic
@@ -49,7 +48,7 @@ data RawTermF a
   | Let (RawBinder a) [(Hint, RawIdent)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
-  | Hole HoleID
+  | Hole
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Flow
       L.Locator -- "core.thread.flow-inner"

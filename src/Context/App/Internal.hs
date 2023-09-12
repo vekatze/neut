@@ -28,6 +28,7 @@ import Entity.Key
 import Entity.LocalLocator qualified as LL
 import Entity.LocationTree qualified as LT
 import Entity.LowType qualified as LT
+import Entity.Macro qualified as Macro
 import Entity.Module qualified as M
 import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
@@ -59,6 +60,7 @@ data Env = Env
     nameDependenceMap :: IORef NameDependenceMap,
     activeViaMap :: IORef ViaMap,
     viaMap :: IORef (Map.HashMap (Path Abs File) ViaMap),
+    macroRuleEnv :: IORef Macro.Rules,
     antecedentMap :: IORef (Map.HashMap MD.ModuleDigest M.Module),
     constraintEnv :: IORef [C.Constraint],
     remarkList :: IORef [Remark.Remark], -- per file
@@ -114,6 +116,7 @@ newEnv = do
   sourceNameMap <- newIORef Map.empty
   remarkList <- newIORef []
   globalRemarkList <- newIORef []
+  macroRuleEnv <- newIORef Map.empty
   tagMap <- newIORef LT.empty
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty

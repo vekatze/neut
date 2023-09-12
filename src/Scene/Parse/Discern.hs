@@ -179,7 +179,8 @@ discern nenv term =
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
-    m :< RT.Hole k ->
+    m :< RT.Hole -> do
+      k <- Gensym.newHoleID
       return $ m :< WT.Hole k []
     m :< RT.Magic der -> do
       der' <- traverse (discern nenv) der

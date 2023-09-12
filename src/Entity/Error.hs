@@ -11,6 +11,8 @@ newtype Error
 
 instance Exception Error
 
+type EE a = Either Error a
+
 newError :: Hint -> T.Text -> Error
 newError m text = do
   MakeError [newRemark m Error text]

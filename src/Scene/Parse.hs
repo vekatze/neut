@@ -4,50 +4,41 @@ module Scene.Parse
   )
 where
 
-import Context.Alias qualified as Alias
 import Context.App
 import Context.Cache qualified as Cache
-import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.NameDependence qualified as NameDependence
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Context.Via qualified as Via
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
-import Data.Maybe
-import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
-import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
 import Entity.Decl qualified as DE
-import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
-import Entity.ExternalName qualified as EN
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
-import Entity.IsConstLike
-import Entity.Name
-import Entity.Opacity qualified as O
-import Entity.RawBinder
-import Entity.RawIdent
-import Entity.RawTerm qualified as RT
+import Entity.Macro.Reduce qualified as Macro
 import Entity.Source qualified as Source
 import Entity.Stmt
-import Entity.StmtKind qualified as SK
+import Entity.Tree
 import Entity.ViaMap qualified as VM
 import Path
-import Scene.Parse.Core qualified as P
+import Scene.Parse.Alias
+import Scene.Parse.Data (interpretDataTree)
+import Scene.Parse.Declare
+import Scene.Parse.Define
 import Scene.Parse.Discern qualified as Discern
-import Scene.Parse.Import qualified as Parse
-import Scene.Parse.RawTerm
-import Text.Megaparsec hiding (parse)
+import Scene.Parse.Import
+import Scene.Parse.Macro (interpretDefineMacro)
+import Scene.Parse.Resource (interpretResourceTree)
+import Scene.Parse.Tree (parseFile)
 
 parse :: App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
 parse = do
@@ -75,7 +66,8 @@ parseSource source = do
       Via.union path $ VM.decode $ Cache.viaInfo cache
       return $ Left cache
     Nothing -> do
-      (defList, declList) <- P.run (program source) $ Source.sourceFilePath source
+      (_, treeList) <- parseFile $ Source.sourceFilePath source
+      (defList, declList) <- interp0 source treeList
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       saveTopLevelNames path $ map getWeakStmtName stmtList
@@ -108,235 +100,61 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [DE.Decl])
-program currentSource = do
-  m <- P.getCurrentHint
-  sourceInfoList <- Parse.parseImportBlock currentSource
-  declList <- parseDeclareList
-  forM_ sourceInfoList $ \(source, aliasInfoList) -> do
-    let path = Source.sourceFilePath source
-    namesInSource <- lift $ Global.lookupSourceNameMap m path
-    lift $ Global.activateTopLevelNames namesInSource
-    forM_ aliasInfoList $ \aliasInfo ->
-      lift $ Alias.activateAliasInfo namesInSource aliasInfo
-    lift $ NameDependence.get path >>= Global.activateTopLevelNames
-    lift $ Via.get path >>= Via.addToActiveViaMap
-  forM_ declList $ \(DE.Decl name domList cod) -> do
-    lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
-  defList <- concat <$> many parseStmt <* eof
-  return (defList, declList)
-
-parseStmt :: P.Parser [RawStmt]
-parseStmt = do
-  choice
-    [ parseDefineData,
-      return <$> parseAliasOpaque,
-      return <$> parseAliasTransparent,
-      return <$> parseDefineResource,
-      return <$> parseDefine O.Transparent,
-      return <$> parseDefine O.Opaque
-    ]
-
-parseDeclareList :: P.Parser [DE.Decl]
-parseDeclareList = do
-  choice
-    [ do
-        P.keyword "declare"
-        P.betweenBrace (P.manyList parseDeclare),
-      return []
-    ]
-
-parseDeclare :: P.Parser DE.Decl
-parseDeclare = do
-  declName <- EN.ExternalName <$> P.symbol
-  lts <- P.betweenParen $ P.commaList lowType
-  cod <- P.delimiter ":" >> lowType
-  return $ DE.Decl declName lts cod
-
-parseDefine :: O.Opacity -> P.Parser RawStmt
-parseDefine opacity = do
-  try $
-    case opacity of
-      O.Opaque ->
-        P.keyword "define"
-      O.Transparent ->
-        P.keyword "inline"
-  m <- P.getCurrentHint
-  ((_, name), expArgs, codType, e) <- parseTopDefInfo
-  name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction (SK.Normal opacity) m name' (AN.fromInt 0) expArgs codType e
-
-defineFunction ::
-  SK.RawStmtKind ->
-  Hint ->
-  DD.DefiniteDescription ->
-  AN.ArgNum ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm ->
-  RT.RawTerm ->
-  App RawStmt
-defineFunction stmtKind m name impArgNum binder codType e = do
-  return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
-
-parseDefineData :: P.Parser [RawStmt]
-parseDefineData = do
-  m <- P.getCurrentHint
-  try $ P.keyword "data"
-  a <- P.baseName >>= lift . Locator.attachCurrentLocator
-  dataArgsOrNone <- parseDataArgs
-  consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
-  lift $ defineData m a dataArgsOrNone consInfoList
-
-parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
-parseDataArgs = do
-  choice
-    [ Just <$> try (P.argSeqOrList preBinder),
-      return Nothing
-    ]
-
-defineData ::
-  Hint ->
-  DD.DefiniteDescription ->
-  Maybe [RawBinder RT.RawTerm] ->
-  [(Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])] ->
-  App [RawStmt]
-defineData m dataName dataArgsOrNone consInfoList = do
-  let dataArgs = fromMaybe [] dataArgsOrNone
-  consInfoList' <- mapM modifyConstructorName consInfoList
-  let consInfoList'' = modifyConsInfo D.zero consInfoList'
-  let stmtKind = SK.Data dataName dataArgs consInfoList''
-  let consNameList = map (\(_, consName, _, _, _) -> consName) consInfoList''
-  let dataType = constructDataType m dataName consNameList dataArgs
-  let isConstLike = isNothing dataArgsOrNone
-  let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
-  introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
-  return $ formRule : introRuleList
-
-modifyConsInfo ::
-  D.Discriminant ->
-  [(Hint, DD.DefiniteDescription, b, [(RawBinder RT.RawTerm, Maybe Name)])] ->
-  [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
-modifyConsInfo d consInfoList =
-  case consInfoList of
+interp0 :: Source.Source -> [Tree] -> App ([RawStmt], [DE.Decl])
+interp0 src treeList = do
+  case treeList of
     [] ->
-      []
-    (m, consName, isConstLike, consArgs) : rest ->
-      (m, consName, isConstLike, map fst consArgs, d) : modifyConsInfo (D.increment d) rest
+      return ([], [])
+    t : rest
+      | headSymEq "import" t -> do
+          procImportStmt src t
+          interp1 rest
+      | otherwise ->
+          interp1 treeList
 
-modifyConstructorName ::
-  (Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)]) ->
-  App (Hint, DD.DefiniteDescription, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])
-modifyConstructorName (mb, consName, isConstLike, yts) = do
-  consName' <- Locator.attachCurrentLocator consName
-  return (mb, consName', isConstLike, yts)
+interp1 :: [Tree] -> App ([RawStmt], [DE.Decl])
+interp1 treeList = do
+  case treeList of
+    [] ->
+      return ([], [])
+    t : rest
+      | headSymEq "declare" t -> do
+          declList <- interpretDeclareTree t
+          defList <- interp2 rest
+          return (defList, declList)
+      | otherwise -> do
+          defList <- interp2 treeList
+          return (defList, [])
 
-parseDefineDataConstructor ::
-  RT.RawTerm ->
-  DD.DefiniteDescription ->
-  [RawBinder RT.RawTerm] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])] ->
-  D.Discriminant ->
-  App [RawStmt]
-parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
-  case consInfoList of
+interp2 :: [Tree] -> App [RawStmt]
+interp2 treeList = do
+  case treeList of
     [] ->
       return []
-    (m, consName, isConstLike, consArgs) : rest -> do
-      let dataArgs' = map identPlusToVar dataArgs
-      let consArgs' = map adjustConsArg consArgs
-      let consNameList = map (\(_, c, _, _) -> c) consInfoList
-      let args = dataArgs ++ map fst consArgs
-      let introRule =
-            RawStmtDefine
-              isConstLike
-              (SK.DataIntro consName dataArgs (map fst consArgs) discriminant)
-              m
-              consName
-              (AN.fromInt $ length dataArgs)
-              args
-              dataType
-              $ m :< RT.DataIntro dataName consName consNameList discriminant dataArgs' (map fst consArgs')
-      let viaRule = RawStmtVia m consName (map snd consArgs')
-      introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
-      return $ introRule : viaRule : introRuleList
+    t : rest
+      | headSymEq "defmacro" t -> do
+          interpretDefineMacro t
+          interp2 rest
+      | otherwise -> do
+          concat <$> mapM interpTree treeList
 
-constructDataType ::
-  Hint ->
-  DD.DefiniteDescription ->
-  [DD.DefiniteDescription] ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm
-constructDataType m dataName consNameList dataArgs = do
-  m :< RT.Data dataName consNameList (map identPlusToVar dataArgs)
-
-parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])
-parseDefineDataClause = do
-  m <- P.getCurrentHint
-  consName <- P.baseNameCapitalized
-  consArgsOrNone <- parseConsArgs
-  let consArgs = fromMaybe [] consArgsOrNone
-  let isConstLike = isNothing consArgsOrNone
-  return (m, consName, isConstLike, consArgs)
-
-parseConsArgs :: P.Parser (Maybe [(RawBinder RT.RawTerm, Maybe Name)])
-parseConsArgs = do
-  choice
-    [ Just <$> try (P.argSeqOrList parseDefineDataClauseArg),
-      return Nothing
-    ]
-
-parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm, Maybe Name)
-parseDefineDataClauseArg = do
-  consArg <-
-    choice
-      [ try preAscription,
-        typeWithoutIdent
-      ]
-  choice
-    [ do
-        P.keyword "via"
-        (_, name) <- parseName
-        return (consArg, Just name),
-      return (consArg, Nothing)
-    ]
-
-parseAliasTransparent :: P.Parser RawStmt
-parseAliasTransparent = do
-  parseType "alias" O.Transparent
-
-parseAliasOpaque :: P.Parser RawStmt
-parseAliasOpaque = do
-  parseType "alias-opaque" O.Opaque
-
-parseType :: T.Text -> O.Opacity -> P.Parser RawStmt
-parseType keywordText opacity = do
-  m <- P.getCurrentHint
-  try $ P.keyword keywordText
-  aliasName <- P.baseName
-  aliasName' <- lift $ Locator.attachCurrentLocator aliasName
-  P.betweenBrace $ do
-    t <- rawExpr
-    let stmtKind = SK.Normal opacity
-    return $ RawStmtDefine True stmtKind m aliasName' AN.zero [] (m :< RT.Tau) t
-
-parseDefineResource :: P.Parser RawStmt
-parseDefineResource = do
-  try $ P.keyword "resource"
-  m <- P.getCurrentHint
-  name <- P.baseName
-  name' <- lift $ Locator.attachCurrentLocator name
-  P.betweenBrace $ do
-    discarder <- P.delimiter "-" >> rawExpr
-    copier <- P.delimiter "-" >> rawExpr
-    return $ RawStmtDefineResource m name' discarder copier
-
-identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
-identPlusToVar (m, x, _) =
-  m :< RT.Var (Var x)
-
-adjustConsArg :: (RawBinder RT.RawTerm, Maybe Name) -> (RT.RawTerm, (RawIdent, Maybe Name))
-adjustConsArg ((m, x, _), mName) =
-  (m :< RT.Var (Var x), (x, mName))
+interpTree :: Tree -> App [RawStmt]
+interpTree t@(m :< _) = do
+  rules <- Env.getMacroEnv
+  let t' = Macro.reduce rules t
+  printNote' $ showTree t'
+  case getHeadSym t' of
+    Just k
+      | k == "define" -> do
+          return <$> interpretDefineTree t'
+      | k == "data" -> do
+          interpretDataTree t'
+      | k == "resource" -> do
+          return <$> interpretResourceTree t'
+      | k == "alias" -> do
+          return <$> interpretAliasTree t'
+    _ ->
+      Throw.raiseError m "interptree"
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

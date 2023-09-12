@@ -65,6 +65,10 @@ executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
 
+attrPrefix :: T.Text
+attrPrefix =
+  ":"
+
 core :: T.Text
 core =
   "core"
