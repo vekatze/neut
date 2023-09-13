@@ -4,13 +4,17 @@ module Entity.Atom
   )
 where
 
+import Data.Binary
 import Data.Text qualified as T
 import Entity.Const (attrPrefix)
+import GHC.Generics (Generic)
 
 data Atom
   = Symbol T.Text
   | String T.Text
-  deriving (Show)
+  deriving (Show, Generic)
+
+instance Binary Atom
 
 asAttrKey :: Atom -> Maybe T.Text
 asAttrKey atom =

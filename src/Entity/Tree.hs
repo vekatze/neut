@@ -1,6 +1,7 @@
 module Entity.Tree where
 
 import Control.Comonad.Cofree
+import Data.Binary
 import Data.HashMap.Strict qualified as M
 import Data.Text qualified as T
 import Entity.Atom (asAttrKey)
@@ -8,13 +9,14 @@ import Entity.Atom qualified as AT
 import Entity.Error
 import Entity.Hint
 import Entity.RawIdent qualified as RI
+import GHC.Generics
 import Text.Read (readMaybe)
 
 data TreeF a
   = Atom AT.Atom
   | Node [a]
   | List [[a]]
-  deriving (Show)
+  deriving (Show, Generic)
 
 type Tree = Cofree TreeF Hint
 
@@ -23,6 +25,10 @@ type MiniTree = Cofree TreeF ()
 type TreeListF a = (a, [Tree])
 
 type TreeList = (Hint, [Tree])
+
+instance Binary a => Binary (TreeF a)
+
+instance Binary a => Binary (Cofree TreeF a)
 
 showTree :: Cofree TreeF a -> T.Text
 showTree =

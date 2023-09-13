@@ -1,7 +1,6 @@
 module Scene.Parse.Macro (interpretDefineMacro) where
 
 import Context.App
-import Context.Env (insertToMacroEnv)
 import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -13,7 +12,7 @@ import Entity.Macro
 import Entity.RawIdent (RawIdent)
 import Entity.Tree
 
-interpretDefineMacro :: Tree -> App ()
+interpretDefineMacro :: Tree -> App MacroInfo
 interpretDefineMacro t = do
   case t of
     m :< Node ts -> do
@@ -24,7 +23,7 @@ interpretDefineMacro t = do
           (_, name') <- Throw.liftEither $ getSymbol name
           clauses' <- Throw.liftEither $ mapM reflClause clauses
           printNote' $ "args: " <> T.pack (show (map fst clauses'))
-          insertToMacroEnv name' clauses'
+          return (name', clauses')
         _ ->
           Throw.raiseError m "defmacro"
     m :< _ ->

@@ -3,6 +3,7 @@ module Entity.Cache where
 import Data.Binary
 import Entity.Decl qualified as DE
 import Entity.LocationTree qualified as LT
+import Entity.Macro (MacroInfo)
 import Entity.Remark
 import Entity.Stmt
 import Entity.TopNameMap
@@ -14,6 +15,7 @@ data Cache = Cache
     remarkList :: [Remark],
     locationTree :: LT.LocationTree,
     declList :: [DE.Decl],
+    macroInfoList :: [MacroInfo],
     nameDependence :: PreTopNameMap,
     viaInfo :: PreViaMap
   }

@@ -32,6 +32,7 @@ import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
+import Entity.Macro (MacroInfo)
 import Entity.Magic qualified as M
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
@@ -54,7 +55,7 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [DE.Decl]) -> App ([Stmt], [DE.Decl])
+elaborate :: Either Cache.Cache ([WeakStmt], [MacroInfo], [DE.Decl]) -> App ([Stmt], [DE.Decl])
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -66,8 +67,8 @@ elaborate cacheOrStmt = do
       Remark.printRemarkList remarkList
       let declList = Cache.declList cache
       return (stmtList, declList)
-    Right (defList, declList) -> do
-      defList' <- (analyzeDefList >=> synthesizeDefList declList) defList
+    Right (defList, macroInfo, declList) -> do
+      defList' <- (analyzeDefList >=> synthesizeDefList macroInfo declList) defList
       return (defList', declList)
 
 analyzeDefList :: [WeakStmt] -> App [WeakStmt]
@@ -88,8 +89,8 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [DE.Decl] -> [WeakStmt] -> App [Stmt]
-synthesizeDefList declList defList = do
+synthesizeDefList :: [MacroInfo] -> [DE.Decl] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList macroInfoList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
@@ -106,6 +107,7 @@ synthesizeDefList declList defList = do
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
         Cache.declList = declList,
+        Cache.macroInfoList = macroInfoList,
         Cache.nameDependence = Map.toList nameDependence,
         Cache.viaInfo = VM.encode viaInfo
       }

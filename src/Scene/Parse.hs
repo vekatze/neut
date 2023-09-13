@@ -24,6 +24,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
+import Entity.Macro (MacroInfo)
 import Entity.Macro.Reduce qualified as Macro
 import Entity.Source qualified as Source
 import Entity.Stmt
@@ -40,7 +41,7 @@ import Scene.Parse.Macro (interpretDefineMacro)
 import Scene.Parse.Resource (interpretResourceTree)
 import Scene.Parse.Tree (parseFile)
 
-parse :: App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parse :: App (Either Cache.Cache ([WeakStmt], [MacroInfo], [DE.Decl]))
 parse = do
   source <- Env.getCurrentSource
   result <- parseSource source
@@ -53,7 +54,7 @@ parse = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [MacroInfo], [DE.Decl]))
 parseSource source = do
   mCache <- Cache.loadCache source
   let path = Source.sourceFilePath source
@@ -64,15 +65,16 @@ parseSource source = do
       saveTopLevelNames path $ map getStmtName stmtList
       NameDependence.add path $ Map.fromList $ Cache.nameDependence cache
       Via.union path $ VM.decode $ Cache.viaInfo cache
+      forM_ (Cache.macroInfoList cache) $ uncurry Env.insertToMacroEnv
       return $ Left cache
     Nothing -> do
       (_, treeList) <- parseFile $ Source.sourceFilePath source
-      (defList, declList) <- interp0 source treeList
+      (defList, macroInfoList, declList) <- interp0 source treeList
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       saveTopLevelNames path $ map getWeakStmtName stmtList
       UnusedVariable.registerRemarks
-      return $ Right (stmtList, declList)
+      return $ Right (stmtList, macroInfoList, declList)
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
 saveTopLevelNames path topNameList = do
@@ -100,11 +102,11 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-interp0 :: Source.Source -> [Tree] -> App ([RawStmt], [DE.Decl])
+interp0 :: Source.Source -> [Tree] -> App ([RawStmt], [MacroInfo], [DE.Decl])
 interp0 src treeList = do
   case treeList of
     [] ->
-      return ([], [])
+      return ([], [], [])
     t : rest
       | headSymEq "import" t -> do
           procImportStmt src t
@@ -112,31 +114,33 @@ interp0 src treeList = do
       | otherwise ->
           interp1 treeList
 
-interp1 :: [Tree] -> App ([RawStmt], [DE.Decl])
+interp1 :: [Tree] -> App ([RawStmt], [MacroInfo], [DE.Decl])
 interp1 treeList = do
+  case treeList of
+    [] ->
+      return ([], [], [])
+    t : rest
+      | headSymEq "declare" t -> do
+          declList <- interpretDeclareTree t
+          (defList, macroInfoList) <- interp2 [] rest
+          return (defList, macroInfoList, declList)
+      | otherwise -> do
+          (defList, macroInfoList) <- interp2 [] treeList
+          return (defList, macroInfoList, [])
+
+interp2 :: [MacroInfo] -> [Tree] -> App ([RawStmt], [MacroInfo])
+interp2 macroInfoList treeList = do
   case treeList of
     [] ->
       return ([], [])
     t : rest
-      | headSymEq "declare" t -> do
-          declList <- interpretDeclareTree t
-          defList <- interp2 rest
-          return (defList, declList)
-      | otherwise -> do
-          defList <- interp2 treeList
-          return (defList, [])
-
-interp2 :: [Tree] -> App [RawStmt]
-interp2 treeList = do
-  case treeList of
-    [] ->
-      return []
-    t : rest
       | headSymEq "defmacro" t -> do
-          interpretDefineMacro t
-          interp2 rest
+          macroInfo <- interpretDefineMacro t
+          interp2 (macroInfo : macroInfoList) rest
       | otherwise -> do
-          concat <$> mapM interpTree treeList
+          forM_ macroInfoList $ uncurry Env.insertToMacroEnv
+          stmtList <- concat <$> mapM interpTree treeList
+          return (stmtList, macroInfoList)
 
 interpTree :: Tree -> App [RawStmt]
 interpTree t@(m :< _) = do
