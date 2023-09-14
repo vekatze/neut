@@ -282,6 +282,14 @@ ppNode n ts = do
       let footer = ")"
       header <> ppTree n t <> "\n" <> T.intercalate "\n" rest' <> footer
 
+treeUncons :: Hint -> [Tree] -> EE (Tree, [Tree])
+treeUncons m ts =
+  case ts of
+    [] ->
+      Left $ newError m "expected an non-empty list, but found an empty list"
+    h : rest ->
+      return (h, rest)
+
 ppList :: Int -> [[Cofree TreeF a]] -> T.Text
 ppList n tss = do
   case tss of
@@ -320,3 +328,66 @@ ppTreeList (_, ts) = do
     else do
       let ts' = map (showWithOffset 0 . showTree) ts
       T.intercalate "\n" ts' <> "\n"
+
+isArrow :: Tree -> Bool
+isArrow =
+  isSym "->"
+
+isSym :: T.Text -> Tree -> Bool
+isSym sym t =
+  case t of
+    (_ :< Atom (AT.Symbol sym'))
+      | sym == sym' ->
+          True
+    _ ->
+      False
+
+breakAtSym :: T.Text -> [Tree] -> ([Tree], [Tree])
+breakAtSym sym =
+  break (isSym sym)
+
+reflSepArgs :: Hint -> T.Text -> [Tree] -> EE ([Tree], Tree, Tree)
+reflSepArgs m sym ts = do
+  let (argList, arrowThenCodThenBody) = breakAtSym sym ts
+  case arrowThenCodThenBody of
+    [arrow, cod, body] -> do
+      chunk sym arrow
+      return (argList, cod, body)
+    _ ->
+      Left $ newError m "reflSepArgs"
+
+reflSepArgs' :: Hint -> T.Text -> [Tree] -> EE ([Tree], Tree)
+reflSepArgs' m sym ts = do
+  let (argList, arrowThenCodThenBody) = breakAtSym sym ts
+  case arrowThenCodThenBody of
+    [arrow, body] -> do
+      chunk sym arrow
+      return (argList, body)
+    _ ->
+      Left $ newError m "reflSepArgs'"
+
+reflSepArgs'' :: Hint -> T.Text -> [Tree] -> EE ([Tree], [Tree])
+reflSepArgs'' m sym ts = do
+  let (argList, arrowThenCodThenBody) = breakAtSym sym ts
+  case arrowThenCodThenBody of
+    arrow : rest -> do
+      chunk sym arrow
+      return (argList, rest)
+    _ ->
+      Left $ newError m "reflSepArgs''"
+
+reflArrowArgs :: Hint -> [Tree] -> EE ([Tree], Tree, Tree)
+reflArrowArgs m ts = do
+  reflSepArgs m "->" ts
+
+reflArrowArgs' :: Hint -> [Tree] -> EE ([Tree], Tree)
+reflArrowArgs' m ts = do
+  reflSepArgs' m "->" ts
+
+reflArrowArgs'' :: Hint -> [Tree] -> EE ([Tree], [Tree])
+reflArrowArgs'' m ts = do
+  reflSepArgs'' m "->" ts
+
+reflBNFArgs :: Hint -> [Tree] -> EE ([Tree], [Tree])
+reflBNFArgs m ts = do
+  reflSepArgs'' m "::=" ts

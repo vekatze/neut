@@ -50,7 +50,6 @@ parseList :: Parser Tree
 parseList = do
   m <- getCurrentHint
   ts <- betweenBracket $ sepBy (some parseTree) (delimiter ",")
-  lift $ printNote' $ T.pack $ show $ map (map showTree) ts
   return $ m :< List ts
 
 parseTree :: Parser Tree
@@ -143,4 +142,4 @@ lexeme =
 {-# INLINE nonAtomCharSet #-}
 nonAtomCharSet :: S.Set Char
 nonAtomCharSet =
-  S.fromList "()[]{} \"\n\t,:"
+  S.fromList "()[]{} \"\n\t,"

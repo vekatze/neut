@@ -26,16 +26,15 @@ interpretDefineTree t = do
     m :< Node ts -> do
       let (ts', attrs) = splitAttrs ts
       case ts' of
-        (def : name : argList : arrow : cod : body) -> do
+        -- (def : name : argList : arrow : cod : body) -> do
+        (def : name : rest) -> do
           ax <- newAxis
-          Throw.liftEither $ chunk "define" def
+          Throw.liftEither $ chunk "#define" def
           (_, name') <- Throw.liftEither $ getSymbol name >>= fromTextOptional
+          (argList, cod, body) <- Throw.liftEither $ reflArrowArgs m rest
           argList' <- Throw.liftEither $ reflArgList ax argList
-          Throw.liftEither $ chunk "->" arrow
           cod' <- Throw.liftEither $ reflRawTerm ax cod
-          -- printNote' "body (before)"
-          -- printNote' $ showTree $ wrap m "do" body
-          expandedBody <- Throw.liftEither $ Macro.reduce macroMaxStep rules $ wrap m "do" body
+          expandedBody <- Throw.liftEither $ Macro.reduce macroMaxStep rules body
           printNote' "body (after)"
           printNote' $ showTree expandedBody
           body' <- Throw.liftEither $ reflRawTerm ax expandedBody

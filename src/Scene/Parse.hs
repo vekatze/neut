@@ -152,9 +152,9 @@ interpTree t@(m :< _) = do
   printNote' $ showTree t'
   case getHeadSym t' of
     Just k
-      | k == "define" -> do
+      | k == "#define" -> do
           return <$> interpretDefineTree t'
-      | k == "data" -> do
+      | k == "data" || k == "enum" -> do
           interpretDataTree t'
       | k == "resource" -> do
           return <$> interpretResourceTree t'

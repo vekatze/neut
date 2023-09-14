@@ -2,7 +2,6 @@ module Scene.Parse.Data (interpretDataTree) where
 
 import Context.App
 import Context.Locator qualified as Locator
-import Context.Remark (printNote')
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -13,6 +12,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Atom qualified as AT
 import Entity.BaseName (fromTextOptional)
 import Entity.BaseName qualified as BN
+import Entity.Const (holeVarPrefix)
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Error
@@ -33,51 +33,47 @@ type ClauseInfo =
 
 interpretDataTree :: Tree -> App [RawStmt]
 interpretDataTree t = do
-  printNote' "interpretDataTree"
   ax <- newAxis
   case t of
-    m :< Node (stmtName : name : argList : clauseList)
-      | isList argList -> do
-          printNote' "branch"
-          liftEither $ chunk "data" stmtName
-          (_, name') <- liftEither $ getSymbol name >>= fromTextOptional
-          argList' <- liftEither $ reflArgList ax argList
-          clauseInfoList <- liftEither $ mapM (interpretClause ax) clauseList
-          nameLL <- Locator.attachCurrentLocator name'
-          defineData m nameLL (Just argList') clauseInfoList
-    m :< Node (stmtName : name : clauseList) -> do
-      printNote' "non-list"
-      liftEither $ chunk "data" stmtName
+    m :< Node ((_ :< Atom (AT.Symbol "enum")) : name : clauseList) -> do
       (_, name') <- liftEither $ getSymbol name >>= fromTextOptional
       clauseInfoList <- liftEither $ mapM (interpretClause ax) clauseList
       nameLL <- Locator.attachCurrentLocator name'
       defineData m nameLL Nothing clauseInfoList
+    m :< Node (stmtName : name : rest) -> do
+      liftEither $ chunk "data" stmtName
+      (_, name') <- liftEither $ getSymbol name >>= fromTextOptional
+      (argList, clauseList) <- liftEither $ reflArrowArgs'' m rest
+      argList' <- liftEither $ reflArgList ax argList
+      clauseInfoList <- liftEither $ mapM (interpretClause ax) clauseList
+      nameLL <- Locator.attachCurrentLocator name'
+      defineData m nameLL (Just argList') clauseInfoList
     m :< _ ->
       Throw.raiseError m "data-interp"
 
-interpretClause :: Axis -> Tree -> Either Error ClauseInfo
+interpretClause :: Axis -> Tree -> EE ClauseInfo
 interpretClause ax t =
   case t of
-    m :< Node [consName, consArgs] -> do
+    m :< Atom {} -> do
+      (_, consName') <- getSymbol t >>= fromTextOptional
+      return (m, consName', True, [])
+    m :< Node ts -> do
+      (consName, consArgs) <- treeUncons m ts
       (_, consName') <- getSymbol consName >>= fromTextOptional
-      consArgs' <- interpretDataClauseArgList ax consArgs
-      return (m, consName', False, consArgs')
-    m :< Node [consName] -> do
-      (_, consName', _, consArgs) <- interpretClause ax $ m :< Node [consName, m :< List []]
-      return (m, consName', True, consArgs)
-    m :< Node (consName : consArgs) -> do
-      let consArgs' = map (\arg -> [m :< Atom (AT.Symbol "_"), arg]) consArgs
-      interpretClause ax $ m :< Node [consName, m :< List consArgs']
+      clauses <- getClauseList m consArgs
+      consArgs'' <- mapM (interpretDataClauseArg ax m) clauses
+      return (m, consName', False, consArgs'')
     m :< _ ->
       Left $ newError m "interpretClause"
 
-interpretDataClauseArgList :: Axis -> Tree -> Either Error [(RawBinder RT.RawTerm, Maybe Name)]
-interpretDataClauseArgList ax argInfo = do
-  case argInfo of
-    m :< List argInfo' -> do
-      mapM (interpretDataClauseArg ax m) argInfo'
-    m :< _ ->
-      Left $ newError m "interpretDataClauseArgList (list)"
+getClauseList :: Hint -> [Tree] -> EE [[Tree]]
+getClauseList m ts =
+  case ts of
+    (_ :< Atom (AT.Symbol "of")) : rest -> do
+      clauses <- mapM toNode rest
+      return $ map snd clauses
+    _ ->
+      return $ map (\arg -> [m :< Atom (AT.Symbol holeVarPrefix), arg]) ts
 
 interpretDataClauseArg :: Axis -> Hint -> [Tree] -> Either Error (RawBinder RT.RawTerm, Maybe Name)
 interpretDataClauseArg ax m argInfo = do

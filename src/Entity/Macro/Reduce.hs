@@ -3,7 +3,6 @@ module Entity.Macro.Reduce (reduce) where
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
-import Debug.Trace (trace)
 import Entity.Atom qualified as AT
 import Entity.Error
 import Entity.Hint
@@ -49,7 +48,7 @@ reduce' axis tree@(m :< _) =
               | _ :< Atom (AT.Symbol sym) <- t,
                 Just cands <- Map.lookup sym (rules axis),
                 Just (sub, body) <- findRule m cands rest -> do
-                  reduce' (inc axis) $ trace ("sub: " <> show (map showTree (Map.elems sub))) $ subst m sub body
+                  reduce' (inc axis) $ subst m sub body
             _ ->
               return $ m :< Node ts'
         _ :< List tss -> do

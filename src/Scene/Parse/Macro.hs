@@ -1,7 +1,6 @@
 module Scene.Parse.Macro (interpretDefineMacro) where
 
 import Context.App
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.Text qualified as T
