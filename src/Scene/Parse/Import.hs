@@ -19,6 +19,7 @@ import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
 import Entity.BaseName qualified as BN
 import Entity.Const
+import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
@@ -44,7 +45,7 @@ procImportStmt currentSource importTree@(m :< _) = do
 interpretImportTree :: Source.Source -> Tree -> App [(Source.Source, [AI.AliasInfo])]
 interpretImportTree currentSource importTree = do
   (m, locatorTrees) <- liftEither $ access' "import" importTree
-  locInfoList <- mapM getLocatorTexts locatorTrees
+  locInfoList <- liftEither $ mapM getLocatorTexts locatorTrees
   locatorAndSourceInfo <- mapM interpretImport locInfoList
   let (foundLocators, sourceInfo) = unzip locatorAndSourceInfo
   coreSourceInfo <- loadDefaultImports m currentSource foundLocators
@@ -61,16 +62,20 @@ activateNameInfo m sourceInfoList = do
     NameDependence.get path >>= Global.activateTopLevelNames
     Via.get path >>= Via.addToActiveViaMap
 
-getLocatorTexts :: Tree -> App (PosText, [PosText])
-getLocatorTexts t =
-  case t of
-    _ :< Node [atom, xs] -> do
-      atom' <- liftEither $ getSymbol atom
-      (_, xs') <- liftEither $ toList1 xs
-      xs'' <- mapM (liftEither . getSymbol) xs'
-      return (atom', xs'')
-    m :< _ ->
-      Throw.raiseError m "getLocatorTexts"
+getLocatorTexts :: Tree -> EE (PosText, [PosText])
+getLocatorTexts t@(m :< _) = do
+  (beforeArrow, afterArrow) <- toNode t >>= uncurry reflArrowArgs''
+  locatorText <- reflLocatorText m beforeArrow
+  importedNames <- mapM getSymbol afterArrow
+  return (locatorText, importedNames)
+
+reflLocatorText :: Hint -> [Tree] -> EE PosText
+reflLocatorText m ts =
+  case ts of
+    [t] ->
+      getSymbol t
+    _ ->
+      Left $ newError m "reflLocatorText"
 
 interpretImport ::
   (PosText, [PosText]) ->
