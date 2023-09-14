@@ -11,6 +11,7 @@ import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Atom qualified as AT
 import Entity.BaseName (fromTextOptional)
+import Entity.Const (macroMaxStep)
 import Entity.Macro.Reduce qualified as Macro
 import Entity.Opacity qualified as O
 import Entity.Stmt
@@ -34,7 +35,7 @@ interpretDefineTree t = do
           cod' <- Throw.liftEither $ reflRawTerm ax cod
           -- printNote' "body (before)"
           -- printNote' $ showTree $ wrap m "do" body
-          expandedBody <- Throw.liftEither $ Macro.reduce rules $ wrap m "do" body
+          expandedBody <- Throw.liftEither $ Macro.reduce macroMaxStep rules $ wrap m "do" body
           printNote' "body (after)"
           printNote' $ showTree expandedBody
           body' <- Throw.liftEither $ reflRawTerm ax expandedBody

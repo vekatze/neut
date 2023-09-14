@@ -41,6 +41,10 @@ envVarClang :: String
 envVarClang =
   "NEUT_CLANG"
 
+macroMaxStep :: Int
+macroMaxStep =
+  2000
+
 moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")

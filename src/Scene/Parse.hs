@@ -20,6 +20,7 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Entity.ArgNum qualified as AN
 import Entity.Cache qualified as Cache
+import Entity.Const (macroMaxStep)
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
@@ -146,7 +147,7 @@ interp2 macroInfoList treeList = do
 interpTree :: Tree -> App [RawStmt]
 interpTree t@(m :< _) = do
   rules <- Env.getMacroEnv
-  t' <- liftEither $ Macro.reduce rules t
+  t' <- liftEither $ Macro.reduce macroMaxStep rules t
   printNote' "expanded stmt:"
   printNote' $ showTree t'
   case getHeadSym t' of
