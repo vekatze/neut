@@ -126,6 +126,8 @@ reflNode ax m ts =
               return $ m :< RT.PiIntro (LK.Fix (mSelf, self', cod')) dom' body'
           | sym == "#match" ->
               reflMatch ax m ts
+          | sym == "#match&" ->
+              reflMatch ax m ts
           | sym == "noema",
             [arg] <- rest -> do
               arg' <- reflRawTerm ax arg
@@ -134,7 +136,7 @@ reflNode ax m ts =
             [arg] <- rest -> do
               arg' <- reflRawTerm ax arg
               return $ m :< RT.Embody arg'
-          | sym == "let#" -> do
+          | sym == "#let" -> do
               let (rest', attrs) = splitAttrs rest
               case rest' of
                 [arg, body, cont] -> do
@@ -145,7 +147,7 @@ reflNode ax m ts =
                   nxs <- getNoeticArgs attrs
                   return $ m :< RT.Let (mArg, arg', t) nxs body' cont'
                 _ ->
-                  Left $ newError m "let#"
+                  Left $ newError m "#let"
           | sym == "magic",
             (headSym : args) <- rest ->
               reflMagic ax m headSym args
@@ -262,9 +264,9 @@ reflMatchHead :: Tree -> EE Bool
 reflMatchHead t@(m :< _) =
   case t of
     _ :< Atom (AT.Symbol sym)
-      | sym == "match" ->
+      | sym == "#match" ->
           return False
-      | sym == "match&" ->
+      | sym == "#match&" ->
           return True
     _ ->
       Left $ newError m "reflMatchHead"
