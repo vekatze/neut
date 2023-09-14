@@ -22,7 +22,6 @@ interpretDefineMacro t = do
           Throw.liftEither $ chunk "defmacro" def
           (_, name') <- Throw.liftEither $ getSymbol name
           clauses' <- Throw.liftEither $ mapM reflClause clauses
-          printNote' $ "args: " <> T.pack (show (map fst clauses'))
           return (name', clauses')
         _ ->
           Throw.raiseError m "defmacro"

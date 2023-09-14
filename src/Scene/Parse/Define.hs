@@ -34,9 +34,10 @@ interpretDefineTree t = do
           cod' <- Throw.liftEither $ reflRawTerm ax cod
           -- printNote' "body (before)"
           -- printNote' $ showTree $ wrap m "do" body
+          expandedBody <- Throw.liftEither $ Macro.reduce rules $ wrap m "do" body
           printNote' "body (after)"
-          printNote' $ showTree $ Macro.reduce rules $ wrap m "do" body
-          body' <- Throw.liftEither $ reflRawTerm ax $ Macro.reduce rules $ wrap m "do" body
+          printNote' $ showTree expandedBody
+          body' <- Throw.liftEither $ reflRawTerm ax expandedBody
           let clarity = getClarity attrs
           let stmtKind = SK.Normal clarity
           nameLL <- Locator.attachCurrentLocator name'

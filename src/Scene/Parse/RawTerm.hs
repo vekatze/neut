@@ -111,20 +111,20 @@ reflNode ax m ts =
               dom' <- reflArgList ax dom
               cod' <- reflRawTerm ax cod
               return $ m :< RT.Pi dom' cod'
-          | sym == "fn",
-            (dom : body) <- rest -> do
+          | sym == "#fn",
+            [dom, body] <- rest -> do
               dom' <- reflArgList ax dom
-              body' <- reflRawTerm ax (wrap m "do" body)
+              body' <- reflRawTerm ax body
               return $ lam m dom' body'
-          | sym == "mu",
-            (self : dom : arrow : cod : body) <- rest -> do
+          | sym == "#mu",
+            [self, dom, arrow, cod, body] <- rest -> do
               (mSelf, self') <- getSymbol self
               dom' <- reflArgList ax dom
               chunk "->" arrow
               cod' <- reflRawTerm ax cod
-              body' <- reflRawTerm ax (wrap m "do" body)
+              body' <- reflRawTerm ax body
               return $ m :< RT.PiIntro (LK.Fix (mSelf, self', cod')) dom' body'
-          | sym == "match" ->
+          | sym == "#match" ->
               reflMatch ax m ts
           | sym == "noema",
             [arg] <- rest -> do
@@ -149,7 +149,7 @@ reflNode ax m ts =
           | sym == "magic",
             (headSym : args) <- rest ->
               reflMagic ax m headSym args
-          | sym == "introspect",
+          | sym == "#introspect",
             key : clauses <- rest ->
               reflIntrospect ax m key clauses
         _ -> do
@@ -264,7 +264,7 @@ reflMatchHead t@(m :< _) =
     _ :< Atom (AT.Symbol sym)
       | sym == "match" ->
           return False
-      | sym == "match*" ->
+      | sym == "match&" ->
           return True
     _ ->
       Left $ newError m "reflMatchHead"
@@ -280,7 +280,7 @@ isClause t =
 isArrow :: Tree -> Bool
 isArrow t =
   case t of
-    (_ :< Atom (AT.Symbol "=>")) ->
+    (_ :< Atom (AT.Symbol "->")) ->
       True
     _ ->
       False
@@ -305,10 +305,12 @@ reflPatternRow ax patternSize t = do
           Left $ newError m "empty clause"
         [_] ->
           Left $ newError m "the body is missing"
-        arrow : body -> do
+        [arrow, body] -> do
           chunk "->" arrow
-          body' <- reflRawTerm ax (wrap m "do" body)
+          body' <- reflRawTerm ax body
           return (V.fromList patternList, body')
+        _ ->
+          Left $ newError m "reflPatternRow"
 
 reflPattern :: Tree -> EE (Hint, RP.RawPattern)
 reflPattern t = do
@@ -420,10 +422,10 @@ lookupIntrospectiveClause m value clauseList =
 reflIntrospectiveClause :: Axis -> Tree -> EE (Maybe T.Text, RT.RawTerm)
 reflIntrospectiveClause ax t = do
   case t of
-    m :< Node (sym : arrow : body) -> do
+    _ :< Node [sym, arrow, body] -> do
       (_, c) <- getSymbol sym
       chunk "->" arrow
-      body' <- reflRawTerm ax (wrap m "do" body)
+      body' <- reflRawTerm ax body
       if c /= "default"
         then return (Just c, body')
         else return (Nothing, body')

@@ -11,6 +11,7 @@ import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.NameDependence qualified as NameDependence
 import Context.Remark (printNote')
+import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Context.Via qualified as Via
@@ -132,7 +133,7 @@ interp2 :: [MacroInfo] -> [Tree] -> App ([RawStmt], [MacroInfo])
 interp2 macroInfoList treeList = do
   case treeList of
     [] ->
-      return ([], [])
+      return ([], macroInfoList)
     t : rest
       | headSymEq "defmacro" t -> do
           macroInfo <- interpretDefineMacro t
@@ -145,7 +146,8 @@ interp2 macroInfoList treeList = do
 interpTree :: Tree -> App [RawStmt]
 interpTree t@(m :< _) = do
   rules <- Env.getMacroEnv
-  let t' = Macro.reduce rules t
+  t' <- liftEither $ Macro.reduce rules t
+  printNote' "expanded stmt:"
   printNote' $ showTree t'
   case getHeadSym t' of
     Just k

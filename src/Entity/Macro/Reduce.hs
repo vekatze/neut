@@ -2,30 +2,36 @@ module Entity.Macro.Reduce (reduce) where
 
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
-import Debug.Trace
+import Debug.Trace (trace)
 import Entity.Atom qualified as AT
+import Entity.Error
 import Entity.Hint
 import Entity.Macro
 import Entity.Tree
 
-reduce :: Rules -> Tree -> Tree
+reduce :: Rules -> Tree -> EE Tree
 reduce rules tree =
   case tree of
     _ :< Atom _ ->
-      tree
+      return tree
+    m :< Node [_ :< Atom (AT.Symbol "cons!"), car, cdr] -> do
+      car' <- reduce rules car
+      cdr' <- reduce rules cdr
+      (_, ts) <- toNode cdr'
+      return $ m :< Node (car' : ts)
     m :< Node ts -> do
-      let ts' = map (reduce rules) $ resolveSplice ts
+      ts' <- mapM (reduce rules) ts
       case ts' of
         t : rest
           | _ :< Atom (AT.Symbol sym) <- t,
             Just cands <- Map.lookup sym rules,
             Just (sub, body) <- findRule m cands rest -> do
-              reduce rules $ trace ("body-after: " <> T.unpack (showTree body)) $ subst m sub body
+              reduce rules $ trace ("sub: " <> show (map showTree (Map.elems sub))) $ subst m sub body
         _ ->
-          m :< Node ts'
-    m :< List tss ->
-      m :< List (map (map (reduce rules) . resolveSplice) tss)
+          return $ m :< Node ts'
+    m :< List tss -> do
+      tss' <- mapM (mapM (reduce rules)) tss
+      return $ m :< List tss'
 
 findRule :: Hint -> [(Args, Tree)] -> [Tree] -> Maybe (Sub, Tree)
 findRule m cands args =
@@ -35,28 +41,25 @@ findRule m cands args =
     (macroArgs, macroBody) : rest -> do
       case macroMatch m macroArgs args of
         Just sub -> do
-          _ <- trace ("found subs for: " <> show (Map.keys sub)) $ return ()
           return (sub, macroBody)
         Nothing ->
           findRule m rest args
 
 macroMatch :: Hint -> Args -> [Tree] -> Maybe Sub
 macroMatch m macroArgs args = do
-  _ <- trace ("macroArgs: " <> show macroArgs) $ return ()
-  _ <- trace ("args: " <> show (map showTree args)) $ return ()
   case (macroArgs, args) of
     (([], mVariadic), []) ->
       case mVariadic of
         Nothing ->
           return Map.empty
         Just variadic ->
-          return $ Map.singleton variadic (toSpliceTree m args)
+          return $ Map.singleton variadic (m :< Node args)
     (([], mVariadic), _) ->
       case mVariadic of
         Nothing ->
           Nothing
         Just variadic ->
-          return $ Map.singleton variadic (toSpliceTree m args)
+          return $ Map.singleton variadic (m :< Node args)
     ((_ : _, _), []) ->
       Nothing
     ((macroArg : macroRemArgs, mVariadic), arg : remArgs) -> do
@@ -98,29 +101,3 @@ subst m sub tree =
     _ :< List tss -> do
       let tss' = map (map (subst m sub)) tss
       m :< List tss'
-
-toSpliceTree :: Hint -> [Tree] -> Tree
-toSpliceTree m ts =
-  m :< Node [m :< Atom (AT.Symbol "splice"), m :< Node ts]
-
-resolveSplice :: [Tree] -> [Tree]
-resolveSplice =
-  expandSplice . map findSplice
-
-findSplice :: Tree -> Either Tree [Tree]
-findSplice t =
-  case t of
-    _ :< Node [_ :< Atom (AT.Symbol "splice"), _ :< Node ts] ->
-      Right ts
-    _ ->
-      Left t
-
-expandSplice :: [Either Tree [Tree]] -> [Tree]
-expandSplice treeSeq =
-  case treeSeq of
-    [] ->
-      []
-    Left t : rest ->
-      t : expandSplice rest
-    Right ts : rest ->
-      ts ++ expandSplice rest
