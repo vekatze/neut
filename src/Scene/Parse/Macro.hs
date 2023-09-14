@@ -93,7 +93,7 @@ getRestArg :: Tree -> Maybe RawIdent
 getRestArg t =
   case t of
     _ :< Atom (AT.Symbol sym)
-      | T.isPrefixOf "+" sym ->
+      | T.isPrefixOf "*" sym ->
           return sym
     _ ->
       Nothing
