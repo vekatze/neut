@@ -17,6 +17,7 @@ data Arg
   = Literal RawIdent
   | Var RawIdent
   | ArgNode Args
+  | ArgList Args
   deriving (Show, Generic)
 
 instance Binary Arg

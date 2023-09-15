@@ -27,7 +27,6 @@ import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
-import Entity.RawTerm qualified as RT
 import Entity.WeakTerm qualified as WT
 
 newCount :: App Int

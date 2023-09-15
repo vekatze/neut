@@ -90,19 +90,21 @@ macroMatch m macroArgs args = do
           | _ :< Atom (AT.Symbol sym) <- arg,
             lit == sym ->
               macroMatch m (macroRemArgs, mVariadic) remArgs
-          | otherwise ->
-              Nothing
         Var macroVar -> do
           sub <- macroMatch m (macroRemArgs, mVariadic) remArgs
           return $ Map.insert macroVar arg sub
-        ArgNode macroTrees ->
-          case arg of
-            _ :< Node trees -> do
+        ArgNode macroTrees
+          | _ :< Node trees <- arg -> do
               sub1 <- macroMatch m macroTrees trees
               sub2 <- macroMatch m (macroRemArgs, mVariadic) remArgs
               return $ Map.union sub1 sub2
-            _ ->
-              Nothing
+        ArgList macroTrees
+          | _ :< List trees <- arg -> do
+              sub1 <- macroMatch m macroTrees trees
+              sub2 <- macroMatch m (macroRemArgs, mVariadic) remArgs
+              return $ Map.union sub1 sub2
+        _ ->
+          Nothing
 
 subst :: Hint -> Sub -> Tree -> Tree
 subst m sub tree =

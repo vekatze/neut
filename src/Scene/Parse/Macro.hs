@@ -6,7 +6,6 @@ import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Entity.Atom qualified as AT
 import Entity.Error
-import Entity.Hint
 import Entity.Macro
 import Entity.RawIdent (RawIdent)
 import Entity.Tree
@@ -71,8 +70,9 @@ reflArg t =
     _ :< Node ts -> do
       ts' <- reflArgs ts
       return $ ArgNode ts'
-    m :< List _ ->
-      Left $ newError m "reflArg against a list"
+    _ :< List ts -> do
+      ts' <- reflArgs ts
+      return $ ArgList ts'
 
 getRestArg :: Tree -> Maybe RawIdent
 getRestArg t =
