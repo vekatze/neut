@@ -49,7 +49,7 @@ parseNode = do
 parseList :: Parser Tree
 parseList = do
   m <- getCurrentHint
-  ts <- betweenBracket $ sepBy (some parseTree) (delimiter ",")
+  ts <- betweenBracket $ many parseTree
   return $ m :< List ts
 
 parseTree :: Parser Tree

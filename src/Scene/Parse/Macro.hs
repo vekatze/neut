@@ -36,21 +36,7 @@ reflClause t = do
 splitClause :: Tree -> EE ([Tree], Tree)
 splitClause t = do
   (m, ts) <- toNode t
-  splitClause' m ts
-
-splitClause' :: Hint -> [Tree] -> EE ([Tree], Tree)
-splitClause' m trees =
-  case trees of
-    [] ->
-      Left $ newError m "couldn't find `->`"
-    t : ts ->
-      case t of
-        _ :< Atom (AT.Symbol "->") -> do
-          body <- getSingleListElem' m ts
-          return ([], body)
-        _ -> do
-          (args, body) <- splitClause' m ts
-          return (t : args, body)
+  reflArrowArgs' m ts
 
 reflArgs :: [Tree] -> EE Args
 reflArgs argTrees =

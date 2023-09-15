@@ -22,7 +22,7 @@ interp size t =
   case t of
     _ :< Node [extName, extDom, extCod] -> do
       (_, atom') <- getSymbol extName
-      (_, extDom') <- toList1 extDom
+      (_, extDom') <- toList extDom
       extDom'' <- mapM (interpretLowType size) extDom'
       extCod' <- interpretLowType size extCod
       return $ DE.Decl (EN.ExternalName atom') extDom'' extCod'

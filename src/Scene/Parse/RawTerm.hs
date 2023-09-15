@@ -75,7 +75,7 @@ reflRawTerm ax t =
     m :< Node ts ->
       reflNode ax m ts
     _ :< List _ -> do
-      (m, es) <- toList1 t
+      (m, es) <- toList t
       reflListIntro ax m es
 
 reflAtom :: Hint -> AT.Atom -> EE RT.RawTerm
@@ -168,7 +168,7 @@ getNoeticArgs attrs =
     Nothing ->
       return []
     Just noeticArgs -> do
-      (m, noeticArgs') <- toList1 noeticArgs
+      (m, noeticArgs') <- toList noeticArgs
       noeticArgs'' <- mapM getSymbol noeticArgs'
       ensureIdentLinearity m S.empty (map snd noeticArgs'')
       return noeticArgs''
@@ -332,7 +332,7 @@ reflPattern t = do
               args' <- mapM reflPattern args
               return (m, RP.Cons headName (Right args'))
     _ :< List _ -> do
-      (m, ts) <- toList1 t
+      (m, ts) <- toList t
       reflPatternListIntro m ts
 
 reflPatternListIntro :: Hint -> [Tree] -> EE (Hint, RP.RawPattern)

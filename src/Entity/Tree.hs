@@ -15,7 +15,7 @@ import Text.Read (readMaybe)
 data TreeF a
   = Atom AT.Atom
   | Node [a]
-  | List [[a]]
+  | List [a]
   deriving (Show, Generic)
 
 type Tree = Cofree TreeF Hint
@@ -197,30 +197,13 @@ toNode tree =
     m :< _ ->
       Left $ newError m $ "a node is expected, but found:\n" <> showTree tree
 
-toList :: Tree -> Either Error (Hint, [[Tree]])
+toList :: Tree -> Either Error (Hint, [Tree])
 toList tree =
   case tree of
     m :< List ts ->
       return (m, ts)
     m :< _ ->
       Left $ newError m $ "a list is expected, but found:\n" <> showTree tree
-
-toList1 :: Tree -> Either Error (Hint, [Tree])
-toList1 tree =
-  case tree of
-    m :< List tss -> do
-      tss' <- mapM (getSingleListElem' m) tss
-      return (m, tss')
-    m :< _ ->
-      Left $ newError m $ "a symbol is expected, but found:\n" <> showTree tree
-
-getSingleListElem' :: Hint -> [Tree] -> Either Error Tree
-getSingleListElem' m ts =
-  case ts of
-    [t] ->
-      return t
-    _ ->
-      Left $ newError m $ "a list of size 1 is expected, but found a list of size " <> T.pack (show (length ts))
 
 toDictionary :: [Tree] -> Either Error (M.HashMap T.Text TreeList)
 toDictionary ts = do
@@ -290,18 +273,12 @@ treeUncons m ts =
     h : rest ->
       return (h, rest)
 
-ppList :: Int -> [[Cofree TreeF a]] -> T.Text
-ppList n tss = do
-  case tss of
-    [] ->
-      "[]"
-    [] : rest ->
-      ppList n rest
-    hs : rest -> do
-      let header = "["
-      let rest' = map (showWithOffset (n + 1) . ppList' (n + 1)) rest
-      let footer = "]"
-      header <> ppList' n hs <> ",\n" <> T.intercalate ",\n" rest' <> footer
+ppList :: Int -> [Cofree TreeF a] -> T.Text
+ppList n ts = do
+  let header = "["
+  let rest' = map (showWithOffset (n + 1) . ppTree (n + 1)) ts
+  let footer = "]"
+  header <> T.intercalate ",\n" rest' <> footer
 
 ppList' :: Int -> [Cofree TreeF a] -> T.Text
 ppList' n ts =

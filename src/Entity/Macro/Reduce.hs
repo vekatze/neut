@@ -51,9 +51,9 @@ reduce' axis tree@(m :< _) =
                   reduce' (inc axis) $ subst m sub body
             _ ->
               return $ m :< Node ts'
-        _ :< List tss -> do
-          tss' <- mapM (mapM (reduce' axis)) tss
-          return $ m :< List tss'
+        _ :< List ts -> do
+          ts' <- mapM (reduce' axis) ts
+          return $ m :< List ts'
 
 findRule :: Hint -> [(Args, Tree)] -> [Tree] -> Maybe (Sub, Tree)
 findRule m cands args =
@@ -120,6 +120,6 @@ subst m sub tree =
     _ :< Node ts -> do
       let ts' = map (subst m sub) ts
       m :< Node ts'
-    _ :< List tss -> do
-      let tss' = map (map (subst m sub)) tss
-      m :< List tss'
+    _ :< List ts -> do
+      let ts' = map (subst m sub) ts
+      m :< List ts'
