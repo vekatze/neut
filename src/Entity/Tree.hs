@@ -273,16 +273,36 @@ treeUncons m ts =
     h : rest ->
       return (h, rest)
 
+getTreeListOfSize1 :: TreeList -> EE Tree
+getTreeListOfSize1 (m, ts) =
+  case ts of
+    [t] ->
+      return t
+    _ ->
+      Left $ newError m $ "expected 1 tree, but found " <> T.pack (show (length ts)) <> "."
+
+getTreeListOfSize2 :: TreeList -> EE (Tree, Tree)
+getTreeListOfSize2 (m, ts) =
+  case ts of
+    [t1, t2] ->
+      return (t1, t2)
+    _ ->
+      Left $ newError m $ "expected 2 trees, but found " <> T.pack (show (length ts)) <> "."
+
+getTreeListOfSize3 :: TreeList -> EE (Tree, Tree, Tree)
+getTreeListOfSize3 (m, ts) =
+  case ts of
+    [t1, t2, t3] ->
+      return (t1, t2, t3)
+    _ ->
+      Left $ newError m $ "expected 3 trees, but found " <> T.pack (show (length ts)) <> "."
+
 ppList :: Int -> [Cofree TreeF a] -> T.Text
 ppList n ts = do
   let header = "["
   let rest' = map (showWithOffset (n + 1) . ppTree (n + 1)) ts
   let footer = "]"
   header <> T.intercalate ",\n" rest' <> footer
-
-ppList' :: Int -> [Cofree TreeF a] -> T.Text
-ppList' n ts =
-  T.intercalate " " (map (ppTree n) ts)
 
 ppDictionaryEntry :: Int -> T.Text -> Cofree TreeF a -> T.Text
 ppDictionaryEntry n key value = do
@@ -319,39 +339,39 @@ isSym sym t =
     _ ->
       False
 
-breakAtSym :: T.Text -> [Tree] -> ([Tree], [Tree])
-breakAtSym sym =
-  break (isSym sym)
+breakAtSym :: Hint -> T.Text -> [Tree] -> EE ([Tree], TreeList)
+breakAtSym m sym ts =
+  case ts of
+    [] ->
+      Left $ newError m $ "couldn't find `" <> sym <> "`"
+    t : rest -> do
+      if isSym sym t
+        then do
+          case rest of
+            [] ->
+              Left $ newError m $ "unexpected end of input after `" <> sym <> "`"
+            (mHead :< _) : _ -> do
+              return ([], (mHead, rest))
+        else do
+          (before, after) <- breakAtSym m sym rest
+          return (t : before, after)
 
 reflSepArgs :: Hint -> T.Text -> [Tree] -> EE ([Tree], Tree, Tree)
 reflSepArgs m sym ts = do
-  let (argList, arrowThenCodThenBody) = breakAtSym sym ts
-  case arrowThenCodThenBody of
-    [arrow, cod, body] -> do
-      chunk sym arrow
-      return (argList, cod, body)
-    _ ->
-      Left $ newError m "reflSepArgs"
+  (beforeSym, afterSym) <- breakAtSym m sym ts
+  (t1, t2) <- getTreeListOfSize2 afterSym
+  return (beforeSym, t1, t2)
 
 reflSepArgs' :: Hint -> T.Text -> [Tree] -> EE ([Tree], Tree)
 reflSepArgs' m sym ts = do
-  let (argList, arrowThenCodThenBody) = breakAtSym sym ts
-  case arrowThenCodThenBody of
-    [arrow, body] -> do
-      chunk sym arrow
-      return (argList, body)
-    _ ->
-      Left $ newError m "reflSepArgs'"
+  (beforeSym, afterSym) <- breakAtSym m sym ts
+  t <- getTreeListOfSize1 afterSym
+  return (beforeSym, t)
 
 reflSepArgs'' :: Hint -> T.Text -> [Tree] -> EE ([Tree], [Tree])
 reflSepArgs'' m sym ts = do
-  let (argList, arrowThenCodThenBody) = breakAtSym sym ts
-  case arrowThenCodThenBody of
-    arrow : rest -> do
-      chunk sym arrow
-      return (argList, rest)
-    _ ->
-      Left $ newError m "reflSepArgs''"
+  (beforeSym, afterSym) <- breakAtSym m sym ts
+  return (beforeSym, snd afterSym)
 
 reflArrowArgs :: Hint -> [Tree] -> EE ([Tree], Tree, Tree)
 reflArrowArgs m ts = do
@@ -364,7 +384,3 @@ reflArrowArgs' m ts = do
 reflArrowArgs'' :: Hint -> [Tree] -> EE ([Tree], [Tree])
 reflArrowArgs'' m ts = do
   reflSepArgs'' m "->" ts
-
-reflBNFArgs :: Hint -> [Tree] -> EE ([Tree], [Tree])
-reflBNFArgs m ts = do
-  reflSepArgs'' m "::=" ts

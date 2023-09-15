@@ -12,6 +12,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Atom qualified as AT
 import Entity.BaseName (fromTextOptional)
 import Entity.Const (macroMaxStep)
+import Entity.Hint
 import Entity.Macro.Reduce qualified as Macro
 import Entity.Opacity qualified as O
 import Entity.Stmt
@@ -19,34 +20,28 @@ import Entity.StmtKind qualified as SK
 import Entity.Tree
 import Scene.Parse.RawTerm (newAxis, reflArgList, reflRawTerm)
 
-interpretDefineTree :: Tree -> App RawStmt
-interpretDefineTree t = do
+interpretDefineTree :: Hint -> [Tree] -> App RawStmt
+interpretDefineTree m ts = do
+  let (ts', attrs) = splitAttrs ts
   rules <- Env.getMacroEnv
-  case t of
-    m :< Node ts -> do
-      let (ts', attrs) = splitAttrs ts
-      case ts' of
-        -- (def : name : argList : arrow : cod : body) -> do
-        (def : name : rest) -> do
-          ax <- newAxis
-          Throw.liftEither $ chunk "#define" def
-          (_, name') <- Throw.liftEither $ getSymbol name >>= fromTextOptional
-          (argList, cod, body) <- Throw.liftEither $ reflArrowArgs m rest
-          argList' <- Throw.liftEither $ reflArgList ax argList
-          cod' <- Throw.liftEither $ reflRawTerm ax cod
-          expandedBody <- Throw.liftEither $ Macro.reduce macroMaxStep rules body
-          printNote' "body (after)"
-          printNote' $ showTree expandedBody
-          body' <- Throw.liftEither $ reflRawTerm ax expandedBody
-          let clarity = getClarity attrs
-          let stmtKind = SK.Normal clarity
-          nameLL <- Locator.attachCurrentLocator name'
-          let impArgNum = AN.fromInt 0
-          return $ RawStmtDefine False stmtKind m nameLL impArgNum argList' cod' body'
-        _ ->
-          Throw.raiseError m "define"
-    m :< _ ->
-      Throw.raiseError m "define"
+  case ts' of
+    [] ->
+      Throw.raiseError m "unexpected end of form"
+    (name : rest) -> do
+      ax <- newAxis
+      (_, name') <- Throw.liftEither $ getSymbol name >>= fromTextOptional
+      (argList, cod, body) <- Throw.liftEither $ reflArrowArgs m rest
+      argList' <- Throw.liftEither $ reflArgList ax argList
+      cod' <- Throw.liftEither $ reflRawTerm ax cod
+      expandedBody <- Throw.liftEither $ Macro.reduce macroMaxStep rules body
+      printNote' "body (after)"
+      printNote' $ showTree expandedBody
+      body' <- Throw.liftEither $ reflRawTerm ax expandedBody
+      let clarity = getClarity attrs
+      let stmtKind = SK.Normal clarity
+      nameLL <- Locator.attachCurrentLocator name'
+      let impArgNum = AN.fromInt 0
+      return $ RawStmtDefine False stmtKind m nameLL impArgNum argList' cod' body'
 
 getClarity :: Map.HashMap T.Text Tree -> O.Opacity
 getClarity attrs = do

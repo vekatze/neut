@@ -286,7 +286,7 @@ isClause t =
 reflPatternRow :: Axis -> Int -> Tree -> EE (RP.RawPatternRow RT.RawTerm)
 reflPatternRow ax patternSize t = do
   (m, ts) <- toNode t
-  let (pats, arrowThenBody) = breakAtSym "->" ts
+  (pats, body) <- reflArrowArgs' m ts
   if length pats /= patternSize
     then
       Left $
@@ -298,42 +298,27 @@ reflPatternRow ax patternSize t = do
             <> "`"
     else do
       patternList <- mapM reflPattern pats
-      case arrowThenBody of
-        [] ->
-          Left $ newError m "empty clause"
-        [_] ->
-          Left $ newError m "the body is missing"
-        [arrow, body] -> do
-          chunk "->" arrow
-          body' <- reflRawTerm ax body
-          return (V.fromList patternList, body')
-        _ ->
-          Left $ newError m "reflPatternRow"
+      body' <- reflRawTerm ax body
+      return (V.fromList patternList, body')
 
 reflPattern :: Tree -> EE (Hint, RP.RawPattern)
 reflPattern t = do
   case t of
-    m :< Atom atom -> do
-      case atom of
-        AT.Symbol sym ->
-          return (m, RP.Var $ Name.fromText m sym)
-        AT.String _ ->
-          Left $ newError m "string in match"
-    m :< Node ts ->
-      case ts of
-        [] ->
-          Left $ newError m "empty pattern"
-        cons : args -> do
-          (mHead, headName) <- reflName cons
-          case args of
-            [_ :< Atom (AT.Symbol "..")] ->
-              return (m, RP.Cons headName (Left mHead))
-            _ -> do
-              args' <- mapM reflPattern args
-              return (m, RP.Cons headName (Right args'))
+    m :< Atom (AT.Symbol sym) -> do
+      return (m, RP.Var $ Name.fromText m sym)
+    m :< Node (cons : args) -> do
+      (mHead, headName) <- reflName cons
+      case args of
+        [_ :< Atom (AT.Symbol "..")] ->
+          return (m, RP.Cons headName (Left mHead))
+        _ -> do
+          args' <- mapM reflPattern args
+          return (m, RP.Cons headName (Right args'))
     _ :< List _ -> do
       (m, ts) <- toList t
       reflPatternListIntro m ts
+    m :< _ ->
+      Left $ newError m $ "expected a pattern, but found:\n" <> showTree t
 
 reflPatternListIntro :: Hint -> [Tree] -> EE (Hint, RP.RawPattern)
 reflPatternListIntro m es = do

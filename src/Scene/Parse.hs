@@ -1,8 +1,4 @@
-module Scene.Parse
-  ( parse,
-    parseCachedStmtList,
-  )
-where
+module Scene.Parse (parse) where
 
 import Context.App
 import Context.Cache qualified as Cache
@@ -10,7 +6,7 @@ import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.NameDependence qualified as NameDependence
-import Context.Remark (printNote')
+import Context.Remark qualified as Remark
 import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -19,6 +15,7 @@ import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Entity.ArgNum qualified as AN
+import Entity.Atom qualified as AT
 import Entity.Cache qualified as Cache
 import Entity.Const (macroMaxStep)
 import Entity.Decl qualified as DE
@@ -28,6 +25,7 @@ import Entity.Hint
 import Entity.Ident.Reify
 import Entity.Macro (MacroInfo)
 import Entity.Macro.Reduce qualified as Macro
+import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.Tree
@@ -145,23 +143,35 @@ interp2 macroInfoList treeList = do
           return (stmtList, macroInfoList)
 
 interpTree :: Tree -> App [RawStmt]
-interpTree t@(m :< _) = do
+interpTree t = do
   rules <- Env.getMacroEnv
   t' <- liftEither $ Macro.reduce macroMaxStep rules t
-  printNote' "expanded stmt:"
-  printNote' $ showTree t'
-  case getHeadSym t' of
-    Just k
-      | k == "#define" -> do
-          return <$> interpretDefineTree t'
-      | k == "data" || k == "enum" -> do
-          interpretDataTree t'
-      | k == "resource" -> do
-          return <$> interpretResourceTree t'
-      | k == "alias" -> do
-          return <$> interpretAliasTree t'
-    _ ->
-      Throw.raiseError m "interptree"
+  Remark.printNote' "expanded stmt:"
+  Remark.printNote' $ showTree t'
+  (m, ts) <- liftEither $ toNode t'
+  case ts of
+    [] ->
+      return []
+    hd : rest ->
+      case hd of
+        _ :< Atom (AT.Symbol sym)
+          | sym == "#define" -> do
+              return <$> interpretDefineTree m rest
+          | sym == "data" || sym == "enum" -> do
+              interpretDataTree t'
+          | sym == "resource" -> do
+              return <$> interpretResourceTree m rest
+          | sym == "alias" -> do
+              return <$> interpretAliasTree m rest
+          | sym == "expand" -> do
+              forM_ rest $ \tree -> do
+                let reduceRemark =
+                      Remark.newRemarkWithoutPadding m Remark.Note $
+                        "expanded tree:\n" <> showTree tree
+                Remark.insertRemark reduceRemark
+              return []
+        _ ->
+          Throw.raiseError m $ "no such statement is defined: " <> showTree hd
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

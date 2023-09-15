@@ -31,6 +31,10 @@ newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
 newRemark m level text = do
   (Just (FP.fromHint m), True, level, text)
 
+newRemarkWithoutPadding :: Hint -> RemarkLevel -> T.Text -> Remark
+newRemarkWithoutPadding m level text = do
+  (Just (FP.fromHint m), False, level, text)
+
 newRemark' :: RemarkLevel -> T.Text -> Remark
 newRemark' level text = do
   (Nothing, True, level, text)
