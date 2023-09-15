@@ -18,14 +18,14 @@ interpretDefineMacro t = do
       let (ts', _) = splitAttrs ts
       case ts' of
         (def : name : clauses) -> do
-          Throw.liftEither $ chunk "defmacro" def
+          Throw.liftEither $ chunk "rule" def
           (_, name') <- Throw.liftEither $ getSymbol name
           clauses' <- Throw.liftEither $ mapM reflClause clauses
           return (name', clauses')
         _ ->
-          Throw.raiseError m "defmacro"
+          Throw.raiseError m "rule"
     m :< _ ->
-      Throw.raiseError m "defmacro"
+      Throw.raiseError m "rule"
 
 reflClause :: Tree -> EE (Args, Tree)
 reflClause t = do

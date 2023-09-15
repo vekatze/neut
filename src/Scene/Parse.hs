@@ -136,7 +136,7 @@ interp2 macroInfoList treeList = do
     [] ->
       return ([], macroInfoList)
     t : rest
-      | headSymEq "defmacro" t -> do
+      | headSymEq "rule" t -> do
           macroInfo <- interpretDefineMacro t
           interp2 (macroInfo : macroInfoList) rest
       | otherwise -> do
