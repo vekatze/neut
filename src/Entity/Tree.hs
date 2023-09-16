@@ -384,3 +384,13 @@ reflArrowArgs' m ts = do
 reflArrowArgs'' :: Hint -> [Tree] -> EE ([Tree], [Tree])
 reflArrowArgs'' m ts = do
   reflSepArgs'' m "->" ts
+
+miniShow :: Tree -> T.Text
+miniShow t =
+  case t of
+    _ :< Atom atom ->
+      ppAtom atom
+    _ :< Node ts ->
+      "(" <> T.intercalate " " (map miniShow ts) <> ")"
+    _ :< List ts ->
+      "[" <> T.intercalate " " (map miniShow ts) <> "]"

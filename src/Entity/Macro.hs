@@ -4,6 +4,8 @@ module Entity.Macro
     Rules,
     Sub,
     MacroInfo,
+    showArg,
+    showArgs,
   )
 where
 
@@ -35,3 +37,25 @@ type Sub =
 
 type MacroInfo =
   (RawIdent, [(Args, Tree)])
+
+showArg :: Arg -> T.Text
+showArg arg =
+  case arg of
+    Literal sym ->
+      "'" <> sym
+    Var var ->
+      var
+    Str str ->
+      "\"" <> str <> "\""
+    ArgNode args ->
+      "(" <> showArgs args <> ")"
+    ArgList args ->
+      "[" <> showArgs args <> "]"
+
+showArgs :: Args -> T.Text
+showArgs (argList, mRest) =
+  case mRest of
+    Nothing ->
+      T.intercalate " " (map showArg argList)
+    Just rest ->
+      T.intercalate " " (map showArg argList) <> " " <> rest

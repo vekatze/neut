@@ -46,8 +46,8 @@ reduce' axis tree@(m :< _) =
           case ts' of
             t : rest
               | _ :< Atom (AT.Symbol sym) <- t,
-                Just cands <- Map.lookup sym (rules axis),
-                Just (sub, body) <- findRule m cands rest -> do
+                Just cands <- Map.lookup sym (rules axis) -> do
+                  (sub, body) <- getRule m sym cands rest
                   reduce' (inc axis) $ subst m sub body
             _ ->
               return $ m :< Node ts'
@@ -55,17 +55,42 @@ reduce' axis tree@(m :< _) =
           ts' <- mapM (reduce' axis) ts
           return $ m :< List ts'
 
-findRule :: Hint -> [(Args, Tree)] -> [Tree] -> Maybe (Sub, Tree)
-findRule m cands args =
+getRule :: Hint -> T.Text -> [(Args, Tree)] -> [Tree] -> EE (Sub, Tree)
+getRule m ruleName cands args = do
+  getRule' m ruleName cands cands args
+
+getRule' :: Hint -> T.Text -> [(Args, Tree)] -> [(Args, Tree)] -> [Tree] -> EE (Sub, Tree)
+getRule' m ruleName origRuleList cands args =
   case cands of
     [] ->
-      Nothing
+      Left $
+        newError m $
+          "the following call of `"
+            <> ruleName
+            <> "` doesn't match any registered rules:\n  "
+            <> miniShow (m :< Node ((m :< Atom (AT.Symbol ruleName)) : args))
+            <> "\nacceptable forms:\n"
+            <> showRuleArgs ruleName origRuleList
     (macroArgs, macroBody) : rest -> do
       case macroMatch m macroArgs args of
         Just sub -> do
           return (sub, macroBody)
         Nothing ->
-          findRule m rest args
+          getRule' m ruleName origRuleList rest args
+
+showRuleArgs :: T.Text -> [(Args, Tree)] -> T.Text
+showRuleArgs ruleName ruleArgs =
+  case ruleArgs of
+    [] ->
+      ""
+    [(ruleArg, body)] ->
+      "- " <> showRuleArg ruleName (ruleArg, body)
+    (ruleArg, body) : rest ->
+      "- " <> showRuleArg ruleName (ruleArg, body) <> "\n" <> showRuleArgs ruleName rest
+
+showRuleArg :: T.Text -> (Args, Tree) -> T.Text
+showRuleArg ruleName ((argList, rest), _) =
+  "(" <> showArgs (Var ruleName : argList, rest) <> ")"
 
 macroMatch :: Hint -> Args -> [Tree] -> Maybe Sub
 macroMatch m macroArgs args = do
