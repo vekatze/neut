@@ -1,7 +1,6 @@
 module Context.Throw
   ( throw,
     run,
-    run',
     collectLogs,
     raiseError,
     raiseError',
@@ -34,16 +33,6 @@ run c = do
     Left (E.MakeError err) -> do
       Remark.printErrorList err
       liftIO $ exitWith (ExitFailure 1)
-    Right result ->
-      return result
-
-run' :: App a -> App a
-run' c = do
-  resultOrErr <- Safe.try $ wrappingExternalExceptions c
-  case resultOrErr of
-    Left (E.MakeError err) -> do
-      let err' = map R.deactivatePadding err
-      foldr ((>>) . Remark.printRemark) (liftIO $ exitWith (ExitFailure 1)) err'
     Right result ->
       return result
 
