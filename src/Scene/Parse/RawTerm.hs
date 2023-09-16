@@ -32,6 +32,7 @@ import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Name
 import Entity.Name qualified as Name
+import Entity.Noema (IsNoetic)
 import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
 import Entity.Platform qualified as Platform
@@ -99,68 +100,59 @@ reflAtom m at =
           return $ m :< RT.Var (Name.fromText m sym)
 
 reflNode :: Axis -> Hint -> [Tree] -> EE RT.RawTerm
-reflNode ax m ts =
-  case ts of
-    [] ->
-      Left $ newError m "empty node"
-    headTree : rest -> do
-      case headTree of
-        _ :< Atom (AT.Symbol sym)
-          | sym == "Fn" -> do
-              (dom, cod) <- reflArrowArgs' m rest
-              dom' <- reflArgList ax dom
-              cod' <- reflRawTerm ax cod
-              return $ m :< RT.Pi dom' cod'
-          | sym == "#fn" -> do
-              (dom, body) <- reflArrowArgs' m rest
-              dom' <- reflArgList ax dom
-              body' <- reflRawTerm ax body
-              return $ lam m dom' body'
-          | sym == "#mu" -> do
-              case rest of
-                [] ->
-                  Left $ newError m "empty arguments"
-                funcName : rest' -> do
-                  (mSelf, self') <- getSymbol funcName
-                  (dom, body) <- reflArrowArgs' m rest'
-                  dom' <- reflArgList ax dom
-                  let cod = m :< RT.Hole
-                  body' <- reflRawTerm ax body
-                  return $ m :< RT.PiIntro (LK.Fix (mSelf, self', cod)) dom' body'
-          | sym == "#match" ->
-              reflMatch ax m ts
-          | sym == "#match&" ->
-              reflMatch ax m ts
-          | sym == "noema",
-            [arg] <- rest -> do
-              arg' <- reflRawTerm ax arg
-              return $ m :< RT.Noema arg'
-          | sym == "embody",
-            [arg] <- rest -> do
-              arg' <- reflRawTerm ax arg
-              return $ m :< RT.Embody arg'
-          | sym == "#let" -> do
-              let (rest', attrs) = splitAttrs rest
-              case rest' of
-                [arg, body, cont] -> do
-                  (mArg, arg') <- getSymbol arg
-                  body' <- reflRawTerm ax body
-                  cont' <- reflRawTerm ax cont
-                  let t = mArg :< RT.Hole
-                  nxs <- getNoeticArgs attrs
-                  return $ m :< RT.Let (mArg, arg', t) nxs body' cont'
-                _ ->
-                  Left $ newError m "#let"
-          | sym == "magic",
-            (headSym : args) <- rest ->
-              reflMagic ax m headSym args
-          | sym == "#introspect",
-            key : clauses <- rest ->
-              reflIntrospect ax m key clauses
-        _ -> do
-          func <- reflRawTerm ax headTree
-          args <- mapM (reflRawTerm ax) rest
-          return $ m :< RT.PiElim func args
+reflNode ax m ts = do
+  (headTree, rest) <- treeUncons m ts
+  case headTree of
+    _ :< Atom (AT.Symbol sym)
+      | sym == "Fn" -> do
+          (dom, cod) <- reflArrowArgs' m rest
+          dom' <- reflArgList ax dom
+          cod' <- reflRawTerm ax cod
+          return $ m :< RT.Pi dom' cod'
+      | sym == "#fn" -> do
+          (dom, body) <- reflArrowArgs' m rest
+          dom' <- reflArgList ax dom
+          body' <- reflRawTerm ax body
+          return $ lam m dom' body'
+      | sym == "#mu" -> do
+          (funcName, rest') <- treeUncons m rest
+          (mSelf, self') <- getSymbol funcName
+          (dom, body) <- reflArrowArgs' m rest'
+          dom' <- reflArgList ax dom
+          let cod = m :< RT.Hole
+          body' <- reflRawTerm ax body
+          return $ m :< RT.PiIntro (LK.Fix (mSelf, self', cod)) dom' body'
+      | sym == "#match" ->
+          reflMatch ax m False rest
+      | sym == "#match&" ->
+          reflMatch ax m True rest
+      | sym == "noema" -> do
+          arg <- getTreeListOfSize1 (m, rest)
+          arg' <- reflRawTerm ax arg
+          return $ m :< RT.Noema arg'
+      | sym == "embody" -> do
+          arg <- getTreeListOfSize1 (m, rest)
+          arg' <- reflRawTerm ax arg
+          return $ m :< RT.Embody arg'
+      | sym == "#let" -> do
+          let (rest', attrs) = splitAttrs rest
+          (arg, body, cont) <- getTreeListOfSize3 (m, rest')
+          (mArg, arg') <- getSymbol arg
+          body' <- reflRawTerm ax body
+          cont' <- reflRawTerm ax cont
+          let t = mArg :< RT.Hole
+          nxs <- getNoeticArgs attrs
+          return $ m :< RT.Let (mArg, arg', t) nxs body' cont'
+      | sym == "magic" -> do
+          (headSym, args) <- treeUncons m rest
+          reflMagic ax m headSym args
+      | sym == "#introspect" -> do
+          (key, clauses) <- treeUncons m rest
+          reflIntrospect ax m key clauses
+    _ -> do
+      func <- reflRawTerm ax headTree
+      args <- mapM (reflRawTerm ax) rest
+      return $ m :< RT.PiElim func args
 
 getNoeticArgs :: Map.HashMap T.Text Tree -> EE [(Hint, T.Text)]
 getNoeticArgs attrs =
@@ -188,63 +180,39 @@ reflMagic :: Axis -> Hint -> Tree -> [Tree] -> EE RT.RawTerm
 reflMagic ax m t rest = do
   (_, sym) <- getSymbol t
   case sym of
-    "cast" ->
-      case rest of
-        [from, to, term] -> do
-          from' <- reflRawTerm ax from
-          to' <- reflRawTerm ax to
-          term' <- reflRawTerm ax term
-          return $ m :< RT.Magic (M.Cast from' to' term')
-        _ ->
-          Left $ newError m "arity mismatch"
-    "store" ->
-      case rest of
-        [lt, value, ptr] -> do
-          lt' <- interpretLowType (dataSize ax) lt
-          value' <- reflRawTerm ax value
-          ptr' <- reflRawTerm ax ptr
-          return $ m :< RT.Magic (M.Store lt' value' ptr')
-        _ ->
-          Left $ newError m "arity mismatch"
-    "load" ->
-      case rest of
-        [lt, ptr] -> do
-          lt' <- interpretLowType (dataSize ax) lt
-          ptr' <- reflRawTerm ax ptr
-          return $ m :< RT.Magic (M.Load lt' ptr')
-        _ ->
-          Left $ newError m "arity mismatch"
+    "cast" -> do
+      (from, to, term) <- getTreeListOfSize3 (m, rest)
+      from' <- reflRawTerm ax from
+      to' <- reflRawTerm ax to
+      term' <- reflRawTerm ax term
+      return $ m :< RT.Magic (M.Cast from' to' term')
+    "store" -> do
+      (lt, value, ptr) <- getTreeListOfSize3 (m, rest)
+      lt' <- interpretLowType (dataSize ax) lt
+      value' <- reflRawTerm ax value
+      ptr' <- reflRawTerm ax ptr
+      return $ m :< RT.Magic (M.Store lt' value' ptr')
+    "load" -> do
+      (lt, ptr) <- getTreeListOfSize2 (m, rest)
+      lt' <- interpretLowType (dataSize ax) lt
+      ptr' <- reflRawTerm ax ptr
+      return $ m :< RT.Magic (M.Load lt' ptr')
     "global" -> do
-      case rest of
-        [varName, lt] -> do
-          (_, varName') <- getSymbol varName
-          lt' <- interpretLowType (dataSize ax) lt
-          return $ m :< RT.Magic (M.Global lt' (EN.ExternalName varName'))
-        _ ->
-          Left $ newError m "arity mismatch"
+      (varName, lt) <- getTreeListOfSize2 (m, rest)
+      (_, varName') <- getSymbol varName
+      lt' <- interpretLowType (dataSize ax) lt
+      return $ m :< RT.Magic (M.Global lt' (EN.ExternalName varName'))
     "external" -> do
       let (rest', attrs) = splitAttrs rest
-      case rest' of
-        [] ->
-          Left $ newError m "unexpected end of node, expecting: external function name"
-        (extFunName : args) -> do
-          (_, extFunName') <- getSymbol extFunName
-          let extFunName'' = EN.ExternalName extFunName'
-          args' <- mapM (reflRawTerm ax) args
-          -- variadicArgs <- getRest attrs >>= mapM (reflRawTermAndLowType ax)
-          variadicArgs <- undefined attrs >>= mapM (reflRawTermAndLowType ax)
-          (domList, cod) <- lookupDeclEnv' m (DN.Ext extFunName'') (declEnv ax)
-          return $ m :< RT.Magic (M.External domList cod extFunName'' args' variadicArgs)
+      (extFunName, args) <- treeUncons m rest'
+      (_, extFunName') <- getSymbol extFunName
+      let extFunName'' = EN.ExternalName extFunName'
+      args' <- mapM (reflRawTerm ax) args
+      variadicArgs <- undefined attrs >>= mapM (reflRawTermAndLowType ax)
+      (domList, cod) <- lookupDeclEnv' m (DN.Ext extFunName'') (declEnv ax)
+      return $ m :< RT.Magic (M.External domList cod extFunName'' args' variadicArgs)
     _ ->
       Left $ newError m $ "no such magic is available: " <> sym
-
--- getRest :: Map.HashMap T.Text Tree -> EE [(Tree, Tree)]
--- getRest attrs = do
---   case Map.lookup "rest" attrs of
---     Just t ->
---       snd <$> getArgList t
---     _ ->
---       return []
 
 reflRawTermAndLowType :: Axis -> (Tree, Tree) -> EE (LT.LowType, RT.RawTerm)
 reflRawTermAndLowType ax (e, t) = do
@@ -252,28 +220,12 @@ reflRawTermAndLowType ax (e, t) = do
   t' <- interpretLowType (dataSize ax) t
   return (t', e')
 
-reflMatch :: Axis -> Hint -> [Tree] -> EE RT.RawTerm
-reflMatch ax m ts =
-  case ts of
-    matchHead : rest -> do
-      isNoetic <- reflMatchHead matchHead
-      let (args, clauses) = break isClause rest
-      args' <- mapM (reflRawTerm ax) args
-      clauses' <- mapM (reflPatternRow ax (length args)) clauses
-      return $ m :< RT.DataElim isNoetic args' (RP.new clauses')
-    [] ->
-      Left $ newError m "reflMatch"
-
-reflMatchHead :: Tree -> EE Bool
-reflMatchHead t@(m :< _) =
-  case t of
-    _ :< Atom (AT.Symbol sym)
-      | sym == "#match" ->
-          return False
-      | sym == "#match&" ->
-          return True
-    _ ->
-      Left $ newError m "reflMatchHead"
+reflMatch :: Axis -> Hint -> IsNoetic -> [Tree] -> EE RT.RawTerm
+reflMatch ax m isNoetic ts = do
+  let (args, clauses) = break isClause ts
+  args' <- mapM (reflRawTerm ax) args
+  clauses' <- mapM (reflPatternRow ax (length args)) clauses
+  return $ m :< RT.DataElim isNoetic args' (RP.new clauses')
 
 isClause :: Tree -> Bool
 isClause t =
@@ -404,16 +356,13 @@ lookupIntrospectiveClause m value clauseList =
 
 reflIntrospectiveClause :: Axis -> Tree -> EE (Maybe T.Text, RT.RawTerm)
 reflIntrospectiveClause ax t = do
-  case t of
-    _ :< Node [sym, arrow, body] -> do
-      (_, c) <- getSymbol sym
-      chunk "->" arrow
-      body' <- reflRawTerm ax body
-      if c /= "default"
-        then return (Just c, body')
-        else return (Nothing, body')
-    m :< _ ->
-      Left $ newError m "introspective clause"
+  (sym, arrow, body) <- toNode t >>= getTreeListOfSize3
+  (_, c) <- getSymbol sym
+  chunk "->" arrow
+  body' <- reflRawTerm ax body
+  if c /= "default"
+    then return (Just c, body')
+    else return (Nothing, body')
 
 getIntrospectiveValue :: Axis -> Hint -> T.Text -> EE T.Text
 getIntrospectiveValue ax m key = do
@@ -438,41 +387,6 @@ locatorToVarGlobal' m text = do
   (gl, ll) <- DD.getLocatorPair m text
   return $ m :< RT.Var (Locator (gl, ll))
 
--- reflArgList :: Axis -> Tree -> Either Error [RawBinder RT.RawTerm]
--- reflArgList ax t = do
---   (_, ts) <- getArgList t
---   reflArgList' ax ts
-
--- reflArgList' :: Axis -> [(Tree, Tree)] -> Either Error [RawBinder RT.RawTerm]
--- reflArgList' ax ts = do
---   case ts of
---     [] ->
---       return []
---     (x, t) : rest -> do
---       (m, x') <- getSymbol x
---       t' <- reflRawTerm ax t
---       rest' <- reflArgList' ax rest
---       return $ (m, x', t') : rest'
-
--- getArgList :: Tree -> Either Error (Hint, [(Tree, Tree)])
--- getArgList tree =
---   case tree of
---     m :< List tss -> do
---       tss' <- mapM (getPairListElem m) tss
---       return (m, tss')
---     m :< _ ->
---       Left $ newError m $ "a symbol is expected, but found:\n" <> showTree tree
-
--- getPairListElem :: Hint -> [Tree] -> Either Error (Tree, Tree)
--- getPairListElem m ts =
---   case ts of
---     [t] ->
---       return (t, m :< Atom (AT.Symbol "_"))
---     [t1, t2] ->
---       return (t1, t2)
---     _ ->
---       Left $ newError m $ "a list of size 1 is expected, but found a list of size " <> T.pack (show (length ts))
-
 reflArgList :: Axis -> [Tree] -> Either Error [RawBinder RT.RawTerm]
 reflArgList ax ts = do
   pairs <- mapM getPairListElem ts
@@ -489,25 +403,6 @@ reflArgList' ax ts = do
       rest' <- reflArgList' ax rest
       return $ (m, x', t') : rest'
 
--- getArgList :: Tree -> Either Error (Hint, [(Tree, Tree)])
--- getArgList tree =
---   case tree of
---     m :< List tss -> do
---       tss' <- mapM (getPairListElem m) tss
---       return (m, tss')
---     m :< _ ->
---       Left $ newError m $ "a symbol is expected, but found:\n" <> showTree tree
-
--- getPairListElem :: Hint -> [Tree] -> Either Error (Tree, Tree)
--- getPairListElem m ts =
---   case ts of
---     [t] ->
---       return (t, m :< Atom (AT.Symbol "_"))
---     [t1, t2] ->
---       return (t1, t2)
---     _ ->
---       Left $ newError m $ "a list of size 1 is expected, but found a list of size " <> T.pack (show (length ts))
-
 getPairListElem :: Tree -> Either Error (Tree, Tree)
 getPairListElem t =
   case t of
@@ -517,11 +412,3 @@ getPairListElem t =
       return (t1, t2)
     m :< _ ->
       Left $ newError m $ "expected a pair, found: " <> showTree t
-
--- case ts of
---   [t] ->
---     return (t, m :< Atom (AT.Symbol "_"))
---   [t1, t2] ->
---     return (t1, t2)
---   _ ->
---     Left $ newError m $ "a list of size 1 is expected, but found a list of size " <> T.pack (show (length ts))

@@ -29,50 +29,45 @@ interpretDefineMacro t = do
 reflClause :: Tree -> EE (Args, Tree)
 reflClause t = do
   (argTrees, body) <- splitClause t
-  args <- reflArgs argTrees
-  return (args, body)
+  return (reflArgs argTrees, body)
 
 splitClause :: Tree -> EE ([Tree], Tree)
 splitClause t = do
   (m, ts) <- toNode t
   reflArrowArgs' m ts
 
-reflArgs :: [Tree] -> EE Args
+reflArgs :: [Tree] -> Args
 reflArgs argTrees =
   case argTrees of
     [] ->
-      return ([], Nothing)
+      ([], Nothing)
     [t] ->
       case getRestArg t of
         Just sym ->
-          return ([], Just sym)
+          ([], Just sym)
         Nothing -> do
-          t' <- reflArg t
-          return ([t'], Nothing)
+          ([reflArg t], Nothing)
     t : ts -> do
-      (args, restArg) <- reflArgs ts
-      t' <- reflArg t
-      return (t' : args, restArg)
+      let (args, restArg) = reflArgs ts
+      (reflArg t : args, restArg)
 
-reflArg :: Tree -> EE Arg
+reflArg :: Tree -> Arg
 reflArg t =
   case t of
-    m :< Atom at ->
+    _ :< Atom at ->
       case at of
         AT.Symbol s ->
           case getLiteralSymbol s of
             Just literalSymbol ->
-              return $ Literal literalSymbol
+              Literal literalSymbol
             Nothing ->
-              return $ Var s
-        AT.String _ ->
-          Left $ newError m "reflArg against a string"
+              Var s
+        AT.String str ->
+          Str str
     _ :< Node ts -> do
-      ts' <- reflArgs ts
-      return $ ArgNode ts'
+      ArgNode (reflArgs ts)
     _ :< List ts -> do
-      ts' <- reflArgs ts
-      return $ ArgList ts'
+      ArgList (reflArgs ts)
 
 getRestArg :: Tree -> Maybe RawIdent
 getRestArg t =

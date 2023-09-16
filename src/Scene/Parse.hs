@@ -157,8 +157,10 @@ interpTree t = do
         _ :< Atom (AT.Symbol sym)
           | sym == "#define" -> do
               return <$> interpretDefineTree m rest
-          | sym == "data" || sym == "enum" -> do
-              interpretDataTree t'
+          | sym == "enum" -> do
+              interpretDataTree True m rest
+          | sym == "data" -> do
+              interpretDataTree False m rest
           | sym == "resource" -> do
               return <$> interpretResourceTree m rest
           | sym == "alias" -> do

@@ -90,6 +90,10 @@ macroMatch m macroArgs args = do
           | _ :< Atom (AT.Symbol sym) <- arg,
             lit == sym ->
               macroMatch m (macroRemArgs, mVariadic) remArgs
+        Str str
+          | _ :< Atom (AT.String str') <- arg,
+            str == str' ->
+              macroMatch m (macroRemArgs, mVariadic) remArgs
         Var macroVar -> do
           sub <- macroMatch m (macroRemArgs, mVariadic) remArgs
           return $ Map.insert macroVar arg sub

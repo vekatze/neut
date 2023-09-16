@@ -31,25 +31,27 @@ import Scene.Parse.RawTerm
 type ClauseInfo =
   (Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])
 
-interpretDataTree :: Tree -> App [RawStmt]
-interpretDataTree t = do
+type IsEnum =
+  Bool
+
+interpretDataTree :: IsEnum -> Hint -> [Tree] -> App [RawStmt]
+interpretDataTree isEnum m ts = do
   ax <- newAxis
-  case t of
-    m :< Node ((_ :< Atom (AT.Symbol "enum")) : name : clauseList) -> do
+  if isEnum
+    then do
+      (name, clauseList) <- liftEither $ treeUncons m ts
       (_, name') <- liftEither $ getSymbol name >>= fromTextOptional
       clauseInfoList <- liftEither $ mapM (interpretClause ax) clauseList
       nameLL <- Locator.attachCurrentLocator name'
       defineData m nameLL Nothing clauseInfoList
-    m :< Node (stmtName : name : rest) -> do
-      liftEither $ chunk "data" stmtName
+    else do
+      (name, rest) <- liftEither $ treeUncons m ts
       (_, name') <- liftEither $ getSymbol name >>= fromTextOptional
       (argList, clauseList) <- liftEither $ reflArrowArgs'' m rest
       argList' <- liftEither $ reflArgList ax argList
       clauseInfoList <- liftEither $ mapM (interpretClause ax) clauseList
       nameLL <- Locator.attachCurrentLocator name'
       defineData m nameLL (Just argList') clauseInfoList
-    m :< _ ->
-      Throw.raiseError m "data-interp"
 
 interpretClause :: Axis -> Tree -> EE ClauseInfo
 interpretClause ax t =
@@ -60,32 +62,28 @@ interpretClause ax t =
     m :< Node ts -> do
       (consName, consArgs) <- treeUncons m ts
       (_, consName') <- getSymbol consName >>= fromTextOptional
-      clauses <- getClauseList m consArgs
-      consArgs'' <- mapM (interpretDataClauseArg ax m) clauses
+      clauses <- getClauseList consArgs
+      consArgs'' <- mapM (interpretDataClauseArg ax) clauses
       return (m, consName', False, consArgs'')
     m :< _ ->
       Left $ newError m "interpretClause"
 
-getClauseList :: Hint -> [Tree] -> EE [[Tree]]
-getClauseList m ts =
+getClauseList :: [Tree] -> EE [TreeList]
+getClauseList ts =
   case ts of
     (_ :< Atom (AT.Symbol "of")) : rest -> do
-      clauses <- mapM toNode rest
-      return $ map snd clauses
+      mapM toNode rest
     _ ->
-      return $ map (\arg -> [m :< Atom (AT.Symbol holeVarPrefix), arg]) ts
+      return $ map (\arg@(m :< _) -> (m, [m :< Atom (AT.Symbol holeVarPrefix), arg])) ts
 
-interpretDataClauseArg :: Axis -> Hint -> [Tree] -> Either Error (RawBinder RT.RawTerm, Maybe Name)
-interpretDataClauseArg ax m argInfo = do
+interpretDataClauseArg :: Axis -> TreeList -> Either Error (RawBinder RT.RawTerm, Maybe Name)
+interpretDataClauseArg ax (m, argInfo) = do
   let (argInfo', attrs) = splitAttrs argInfo
-  case argInfo' of
-    [argName, argType] -> do
-      (mArg, argName') <- getSymbol argName
-      argType' <- reflRawTerm ax argType
-      let viaInfo = getViaInfo attrs
-      return ((mArg, argName', argType'), viaInfo)
-    _ ->
-      Left $ newError m "interpretDataClauseArgList"
+  (argName, argType) <- getTreeListOfSize2 (m, argInfo')
+  (mArg, argName') <- getSymbol argName
+  argType' <- reflRawTerm ax argType
+  let viaInfo = getViaInfo attrs
+  return ((mArg, argName', argType'), viaInfo)
 
 getViaInfo :: Map.HashMap T.Text Tree -> Maybe Name
 getViaInfo attrs = do

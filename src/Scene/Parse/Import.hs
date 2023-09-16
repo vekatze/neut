@@ -70,12 +70,8 @@ getLocatorTexts t@(m :< _) = do
   return (locatorText, importedNames)
 
 reflLocatorText :: Hint -> [Tree] -> EE PosText
-reflLocatorText m ts =
-  case ts of
-    [t] ->
-      getSymbol t
-    _ ->
-      Left $ newError m "reflLocatorText"
+reflLocatorText m ts = do
+  getTreeListOfSize1 (m, ts) >>= getSymbol
 
 interpretImport ::
   (PosText, [PosText]) ->
