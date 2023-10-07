@@ -27,7 +27,7 @@ data ArgF a
   | DefiniteDescription DD.DefiniteDescription
   | ArgNode ([a], Maybe RawIdent)
   | ArgList ([a], Maybe RawIdent)
-  deriving (Show, Generic)
+  deriving (Generic)
 
 type Arg = Cofree ArgF Hint
 
@@ -39,7 +39,7 @@ type Args =
   ([Arg], Maybe RawIdent)
 
 type Rules =
-  Map.HashMap DD.DefiniteDescription [(Args, Tree)]
+  Map.HashMap RawIdent (Hint, [(Args, Tree)])
 
 type Sub =
   Map.HashMap RawIdent Tree

@@ -67,8 +67,8 @@ discernStmtList' stmtList =
       copier' <- discern empty copier
       rest' <- discernStmtList' rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
-    RawStmtVia m consName consArgs : rest -> do
-      forM_ consArgs $ \(consArgName, mViaName) -> do
+    RawStmtVia m parent children : rest -> do
+      forM_ children $ \(child, mViaName) -> do
         case mViaName of
           Nothing ->
             return ()
@@ -77,7 +77,7 @@ discernStmtList' stmtList =
             src <- Env.getCurrentSource
             let path = Source.sourceFilePath src
             NameDependence.add path (Map.singleton nameDep (mDep, gnDep))
-            Via.union path $ Map.singleton consName (Map.singleton consArgName nameDep)
+            Via.union path $ Map.singleton parent (Map.singleton child nameDep)
       discernStmtList' rest
 
 compareRawStmt :: RawStmt -> RawStmt -> Ordering
@@ -367,17 +367,17 @@ discernPattern (m, pat) =
           case gn of
             (_, GN.DataIntro dataArgNum consArgNum disc _) ->
               return ((m, PAT.Cons dd disc dataArgNum consArgNum []), [])
-            _ ->
+            (_, gn') ->
               Throw.raiseCritical m $
-                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
+                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor, but: " <> GN.showKind gn'
         DefiniteDescription dd -> do
           (_, gn) <- resolveName m $ DefiniteDescription dd
           case gn of
             (_, GN.DataIntro dataArgNum consArgNum disc _) ->
               return ((m, PAT.Cons dd disc dataArgNum consArgNum []), [])
-            _ ->
+            (_, gn') ->
               Throw.raiseCritical m $
-                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
+                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor, but: " <> GN.showKind gn'
     RP.Cons cons mArgs -> do
       (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m cons
       when isConstLike $

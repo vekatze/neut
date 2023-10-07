@@ -4,7 +4,6 @@ import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Atom qualified as AT
-import Entity.DefiniteDescription qualified as DD
 import Entity.Error
 import Entity.Hint
 import Entity.Macro
@@ -46,9 +45,9 @@ reduce' axis tree@(m :< _) =
           ts' <- mapM (reduce' (inc axis)) ts
           case ts' of
             t : rest
-              | _ :< Atom (AT.DefiniteDescription macro) <- t,
-                Just cands <- Map.lookup macro (rules axis) -> do
-                  (sub, body) <- getRule m (DD.reify macro) cands rest
+              | _ :< Atom (AT.Symbol macro) <- t,
+                Just (_, cands) <- Map.lookup macro (rules axis) -> do
+                  (sub, body) <- getRule m macro cands rest
                   reduce' (inc axis) $ subst m sub body
             _ ->
               return $ m :< Node ts'
@@ -148,8 +147,6 @@ subst m sub tree =
             Nothing ->
               m :< Atom at
         AT.String {} ->
-          m :< Atom at
-        AT.DefiniteDescription {} ->
           m :< Atom at
     _ :< Node ts -> do
       let ts' = map (subst m sub) ts

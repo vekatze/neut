@@ -32,6 +32,7 @@ import Entity.Hint
 import Entity.Hint qualified as Hint
 import Entity.IsConstLike
 import Entity.Key
+import Entity.Macro (MacroInfo)
 import Entity.OptimizableData qualified as OD
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
@@ -133,10 +134,10 @@ registerStmtDefineResource m resourceName = do
   ensureFreshness m resourceName
   insertToNameMap resourceName m GN.Resource
 
-registerMacro :: Hint -> DD.DefiniteDescription -> App ()
-registerMacro m resourceName = do
-  ensureFreshness m resourceName
-  insertToNameMap resourceName m GN.Macro
+registerMacro :: MacroInfo -> App ()
+registerMacro (m, name, clauses) = do
+  ensureFreshness m name
+  insertToNameMap name m $ GN.Macro clauses
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do

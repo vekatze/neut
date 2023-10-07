@@ -61,18 +61,20 @@ parseSource source = do
   case mCache of
     Just cache -> do
       let stmtList = Cache.stmtList cache
+      let macroList = Cache.macroInfoList cache
+      -- forM_ (Cache.macroInfoList cache) $ \(m, dd, rule) -> Env.insertToMacroEnv m dd rule
       parseCachedStmtList stmtList
-      saveTopLevelNames path $ map getStmtName stmtList
+      mapM_ parseCachedMacroInfo macroList
+      saveTopLevelNames path $ map getStmtName stmtList ++ map getMacroName macroList
       NameDependence.add path $ Map.fromList $ Cache.nameDependence cache
       Via.union path $ VM.decode $ Cache.viaInfo cache
-      forM_ (Cache.macroInfoList cache) $ \(_, dd, rule) -> Env.insertToMacroEnv dd rule
       return $ Left cache
     Nothing -> do
       (_, treeList) <- parseFile $ Source.sourceFilePath source
       (defList, macroInfoList, declList) <- interp0 source treeList
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      saveTopLevelNames path $ map getWeakStmtName stmtList
+      saveTopLevelNames path $ map getWeakStmtName stmtList ++ map getMacroName macroInfoList
       UnusedVariable.registerRemarks
       return $ Right (stmtList, macroInfoList, declList)
 
@@ -92,6 +94,12 @@ parseCachedStmtList stmtList = do
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
+
+parseCachedMacroInfo :: MacroInfo -> App ()
+parseCachedMacroInfo (m, dd, rule) = do
+  Env.insertToMacroEnv m dd rule
+
+-- Global.registerMacro m dd
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -132,15 +140,15 @@ interp2 :: [MacroInfo] -> [Tree] -> App ([RawStmt], [MacroInfo])
 interp2 macroInfoList treeList = do
   case treeList of
     [] -> do
-      mapM_ registerMacro macroInfoList
+      mapM_ Global.registerMacro macroInfoList
       return ([], macroInfoList)
     t : rest
       | headSymEq "rule" t -> do
           macroInfo <- interpretDefineMacro t
           interp2 (macroInfo : macroInfoList) rest
       | otherwise -> do
-          mapM_ registerMacro macroInfoList
-          forM_ macroInfoList $ \(_, dd, rule) -> Env.insertToMacroEnv dd rule
+          mapM_ Global.registerMacro macroInfoList
+          forM_ macroInfoList $ \(m, dd, rule) -> Env.insertToMacroEnv m dd rule
           stmtList <- concat <$> mapM interpTree treeList
           return (stmtList, macroInfoList)
 
@@ -193,10 +201,6 @@ registerTopLevelNames stmtList =
     RawStmtVia {} : rest ->
       registerTopLevelNames rest
 
-registerMacro :: MacroInfo -> App ()
-registerMacro (m, macroName, _) =
-  Global.registerMacro m macroName
-
 getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
 getWeakStmtName stmt =
   case stmt of
@@ -212,3 +216,7 @@ getStmtName stmt =
       (m, name)
     StmtDefineResource m name _ _ ->
       (m, name)
+
+getMacroName :: MacroInfo -> (Hint, DD.DefiniteDescription)
+getMacroName (m, dd, _) =
+  (m, dd)

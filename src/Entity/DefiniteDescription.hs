@@ -3,6 +3,7 @@ module Entity.DefiniteDescription
     new,
     getLocatorPair,
     newByGlobalLocator,
+    getLocalName,
     getFormDD,
     imm,
     cls,
@@ -64,6 +65,10 @@ toLowName dd =
 wrapWithQuote :: T.Text -> T.Text
 wrapWithQuote x =
   "\"" <> x <> "\""
+
+getLocalName :: DefiniteDescription -> T.Text
+getLocalName dd =
+  LL.reify $ localLocator dd
 
 -- this.core::nat.succ
 -- ~> this.core::nat.succ.#.cons

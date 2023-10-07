@@ -85,8 +85,6 @@ reflAtom m at =
     AT.String str -> do
       textType <- locatorToVarGlobal' m coreText
       return $ m :< RT.Prim (WP.Value (WPV.StaticText textType str))
-    AT.DefiniteDescription dd -> do
-      return $ m :< RT.Var (Name.DefiniteDescription dd)
     AT.Symbol sym
       | sym == "tau" ->
           return $ m :< RT.Tau
