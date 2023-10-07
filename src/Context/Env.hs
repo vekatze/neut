@@ -10,6 +10,7 @@ import Entity.Arch qualified as Arch
 import Entity.Artifact qualified as A
 import Entity.BuildMode qualified as BM
 import Entity.DataSize qualified as DS
+import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.LocationTree qualified as LT
 import Entity.Macro qualified as Macro
@@ -84,7 +85,7 @@ getMacroEnv :: App Macro.Rules
 getMacroEnv =
   readRef' macroRuleEnv
 
-insertToMacroEnv :: RawIdent -> [(Macro.Args, Tree)] -> App ()
+insertToMacroEnv :: DD.DefiniteDescription -> [(Macro.Args, Tree)] -> App ()
 insertToMacroEnv key value =
   modifyRef' macroRuleEnv $ Map.insert key value
 

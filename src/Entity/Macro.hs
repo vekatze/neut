@@ -32,13 +32,13 @@ type Args =
   ([Arg], Maybe RawIdent)
 
 type Rules =
-  Map.HashMap RawIdent [(Args, Tree)]
+  Map.HashMap DD.DefiniteDescription [(Args, Tree)]
 
 type Sub =
   Map.HashMap RawIdent Tree
 
 type MacroInfo =
-  (RawIdent, [(Args, Tree)])
+  (DD.DefiniteDescription, [(Args, Tree)])
 
 showArg :: Arg -> T.Text
 showArg arg =

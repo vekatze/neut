@@ -1,10 +1,12 @@
 module Scene.Parse.Macro (interpretDefineMacro) where
 
 import Context.App
+import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Entity.Atom qualified as AT
+import Entity.BaseName (fromTextOptional)
 import Entity.Error
 import Entity.Macro
 import Entity.RawIdent (RawIdent)
@@ -18,9 +20,10 @@ interpretDefineMacro t = do
       case ts' of
         (def : name : clauses) -> do
           Throw.liftEither $ chunk "rule" def
-          (_, name') <- Throw.liftEither $ getSymbol name
+          (_, name') <- Throw.liftEither $ getSymbol name >>= fromTextOptional
           clauses' <- Throw.liftEither $ mapM reflClause clauses
-          return (name', clauses')
+          name'' <- Locator.attachCurrentLocator name'
+          return (name'', clauses')
         _ ->
           Throw.raiseError m "rule"
     m :< _ ->
