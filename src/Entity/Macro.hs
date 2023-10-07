@@ -12,6 +12,7 @@ where
 import Data.Binary
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Entity.DefiniteDescription qualified as DD
 import Entity.RawIdent
 import Entity.Tree
 import GHC.Generics (Generic)
@@ -20,6 +21,7 @@ data Arg
   = Literal RawIdent
   | Var RawIdent
   | Str T.Text
+  | DefiniteDescription DD.DefiniteDescription
   | ArgNode Args
   | ArgList Args
   deriving (Show, Generic)
@@ -45,6 +47,8 @@ showArg arg =
       "'" <> sym
     Var var ->
       var
+    DefiniteDescription dd ->
+      DD.reify dd
     Str str ->
       "\"" <> str <> "\""
     ArgNode args ->

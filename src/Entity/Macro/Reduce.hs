@@ -148,6 +148,8 @@ subst m sub tree =
               m :< Atom at
         AT.String {} ->
           m :< Atom at
+        AT.DefiniteDescription {} ->
+          m :< Atom at
     _ :< Node ts -> do
       let ts' = map (subst m sub) ts
       m :< Node ts'

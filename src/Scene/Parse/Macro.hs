@@ -64,6 +64,8 @@ reflArg t =
               Var s
         AT.String str ->
           Str str
+        AT.DefiniteDescription dd ->
+          DefiniteDescription dd
     _ :< Node ts -> do
       ArgNode (reflArgs ts)
     _ :< List ts -> do
