@@ -3,7 +3,6 @@ module Scene.Parse.Data (interpretDataTree) where
 import Context.App
 import Context.Locator qualified as Locator
 import Context.Throw (liftEither)
-import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe

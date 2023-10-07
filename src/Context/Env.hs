@@ -15,7 +15,6 @@ import Entity.Hint
 import Entity.LocationTree qualified as LT
 import Entity.Macro qualified as Macro
 import Entity.Platform
-import Entity.RawIdent (RawIdent)
 import Entity.Source qualified as Source
 import Entity.Tree
 import Path

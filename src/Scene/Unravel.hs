@@ -13,7 +13,6 @@ import Context.Locator qualified as Locator
 import Context.Module qualified as Module
 import Context.Parse qualified as Parse
 import Context.Path qualified as Path
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
 import Control.Monad
