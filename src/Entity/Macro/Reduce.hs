@@ -71,7 +71,7 @@ getRule' m ruleName origRuleList cands args =
             <> "` doesn't match any registered rules:\n  "
             <> miniShow (m :< Node ((m :< Atom (AT.Symbol ruleName)) : args))
             <> "\nacceptable forms:\n"
-            <> showRuleArgs ruleName origRuleList
+            <> showRuleArgs m ruleName origRuleList
     (macroArgs, macroBody) : rest -> do
       case macroMatch m macroArgs args of
         Just sub -> do
@@ -79,19 +79,19 @@ getRule' m ruleName origRuleList cands args =
         Nothing ->
           getRule' m ruleName origRuleList rest args
 
-showRuleArgs :: T.Text -> [(Args, Tree)] -> T.Text
-showRuleArgs ruleName ruleArgs =
+showRuleArgs :: Hint -> T.Text -> [(Args, Tree)] -> T.Text
+showRuleArgs m ruleName ruleArgs =
   case ruleArgs of
     [] ->
       ""
     [(ruleArg, body)] ->
-      "- " <> showRuleArg ruleName (ruleArg, body)
+      "- " <> showRuleArg m ruleName (ruleArg, body)
     (ruleArg, body) : rest ->
-      "- " <> showRuleArg ruleName (ruleArg, body) <> "\n" <> showRuleArgs ruleName rest
+      "- " <> showRuleArg m ruleName (ruleArg, body) <> "\n" <> showRuleArgs m ruleName rest
 
-showRuleArg :: T.Text -> (Args, Tree) -> T.Text
-showRuleArg ruleName ((argList, rest), _) =
-  "(" <> showArgs (Var ruleName : argList, rest) <> ")"
+showRuleArg :: Hint -> T.Text -> (Args, Tree) -> T.Text
+showRuleArg m ruleName ((argList, rest), _) =
+  "(" <> showArgs ((m :< Var ruleName) : argList, rest) <> ")"
 
 macroMatch :: Hint -> Args -> [Tree] -> Maybe Sub
 macroMatch m macroArgs args = do
@@ -112,23 +112,23 @@ macroMatch m macroArgs args = do
       Nothing
     ((macroArg : macroRemArgs, mVariadic), arg : remArgs) -> do
       case macroArg of
-        Literal lit
+        _ :< Literal lit
           | _ :< Atom (AT.Symbol sym) <- arg,
             lit == sym ->
               macroMatch m (macroRemArgs, mVariadic) remArgs
-        Str str
+        _ :< Str str
           | _ :< Atom (AT.String str') <- arg,
             str == str' ->
               macroMatch m (macroRemArgs, mVariadic) remArgs
-        Var macroVar -> do
+        _ :< Var macroVar -> do
           sub <- macroMatch m (macroRemArgs, mVariadic) remArgs
           return $ Map.insert macroVar arg sub
-        ArgNode macroTrees
+        _ :< ArgNode macroTrees
           | _ :< Node trees <- arg -> do
               sub1 <- macroMatch m macroTrees trees
               sub2 <- macroMatch m (macroRemArgs, mVariadic) remArgs
               return $ Map.union sub1 sub2
-        ArgList macroTrees
+        _ :< ArgList macroTrees
           | _ :< List trees <- arg -> do
               sub1 <- macroMatch m macroTrees trees
               sub2 <- macroMatch m (macroRemArgs, mVariadic) remArgs

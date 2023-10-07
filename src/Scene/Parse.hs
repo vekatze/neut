@@ -65,7 +65,7 @@ parseSource source = do
       saveTopLevelNames path $ map getStmtName stmtList
       NameDependence.add path $ Map.fromList $ Cache.nameDependence cache
       Via.union path $ VM.decode $ Cache.viaInfo cache
-      forM_ (Cache.macroInfoList cache) $ uncurry Env.insertToMacroEnv
+      forM_ (Cache.macroInfoList cache) $ \(_, dd, rule) -> Env.insertToMacroEnv dd rule
       return $ Left cache
     Nothing -> do
       (_, treeList) <- parseFile $ Source.sourceFilePath source
@@ -131,14 +131,16 @@ interp1 treeList = do
 interp2 :: [MacroInfo] -> [Tree] -> App ([RawStmt], [MacroInfo])
 interp2 macroInfoList treeList = do
   case treeList of
-    [] ->
+    [] -> do
+      mapM_ registerMacro macroInfoList
       return ([], macroInfoList)
     t : rest
       | headSymEq "rule" t -> do
           macroInfo <- interpretDefineMacro t
           interp2 (macroInfo : macroInfoList) rest
       | otherwise -> do
-          forM_ macroInfoList $ uncurry Env.insertToMacroEnv
+          mapM_ registerMacro macroInfoList
+          forM_ macroInfoList $ \(_, dd, rule) -> Env.insertToMacroEnv dd rule
           stmtList <- concat <$> mapM interpTree treeList
           return (stmtList, macroInfoList)
 
@@ -190,6 +192,10 @@ registerTopLevelNames stmtList =
       registerTopLevelNames rest
     RawStmtVia {} : rest ->
       registerTopLevelNames rest
+
+registerMacro :: MacroInfo -> App ()
+registerMacro (m, macroName, _) =
+  Global.registerMacro m macroName
 
 getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
 getWeakStmtName stmt =

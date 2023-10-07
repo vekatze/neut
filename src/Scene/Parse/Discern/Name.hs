@@ -142,6 +142,8 @@ interpretGlobalName m dd gn = do
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
+    GN.Macro ->
+      Throw.raiseError m $ "found an unresolved macro: " <> DD.reify dd
 
 interpretTopLevelFunc ::
   Hint ->

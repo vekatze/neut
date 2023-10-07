@@ -1,5 +1,6 @@
 module Entity.Macro
-  ( Arg (..),
+  ( Arg,
+    ArgF (..),
     Args,
     Rules,
     Sub,
@@ -9,24 +10,30 @@ module Entity.Macro
   )
 where
 
+import Control.Comonad.Cofree
 import Data.Binary
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.DefiniteDescription qualified as DD
+import Entity.Hint (Hint)
 import Entity.RawIdent
 import Entity.Tree
 import GHC.Generics (Generic)
 
-data Arg
+data ArgF a
   = Literal RawIdent
   | Var RawIdent
   | Str T.Text
   | DefiniteDescription DD.DefiniteDescription
-  | ArgNode Args
-  | ArgList Args
+  | ArgNode ([a], Maybe RawIdent)
+  | ArgList ([a], Maybe RawIdent)
   deriving (Show, Generic)
 
-instance Binary Arg
+type Arg = Cofree ArgF Hint
+
+instance Binary a => Binary (ArgF a)
+
+instance Binary a => Binary (Cofree ArgF a)
 
 type Args =
   ([Arg], Maybe RawIdent)
@@ -38,22 +45,22 @@ type Sub =
   Map.HashMap RawIdent Tree
 
 type MacroInfo =
-  (DD.DefiniteDescription, [(Args, Tree)])
+  (Hint, DD.DefiniteDescription, [(Args, Tree)])
 
 showArg :: Arg -> T.Text
 showArg arg =
   case arg of
-    Literal sym ->
+    _ :< Literal sym ->
       "'" <> sym
-    Var var ->
+    _ :< Var var ->
       var
-    DefiniteDescription dd ->
+    _ :< DefiniteDescription dd ->
       DD.reify dd
-    Str str ->
+    _ :< Str str ->
       "\"" <> str <> "\""
-    ArgNode args ->
+    _ :< ArgNode args ->
       "(" <> showArgs args <> ")"
-    ArgList args ->
+    _ :< ArgList args ->
       "[" <> showArgs args <> "]"
 
 showArgs :: Args -> T.Text

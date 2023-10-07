@@ -1,6 +1,7 @@
 module Context.Global
   ( registerStmtDefine,
     registerStmtDefineResource,
+    registerMacro,
     lookup,
     initialize,
     activateTopLevelNames,
@@ -131,6 +132,11 @@ registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do
   ensureFreshness m resourceName
   insertToNameMap resourceName m GN.Resource
+
+registerMacro :: Hint -> DD.DefiniteDescription -> App ()
+registerMacro m resourceName = do
+  ensureFreshness m resourceName
+  insertToNameMap resourceName m GN.Macro
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do
