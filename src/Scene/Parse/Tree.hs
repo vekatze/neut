@@ -7,11 +7,9 @@ where
 
 import Context.App
 import Context.Parse
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
-import Control.Monad.Trans
 import Data.List.NonEmpty qualified as NE
 import Data.Set qualified as S
 import Data.Text qualified as T
