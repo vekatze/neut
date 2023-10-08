@@ -22,7 +22,7 @@ import Language.LSP.Types
 import Language.LSP.Types.Lens qualified as J
 import Path
 import Scene.Check qualified as Check
-import Scene.Parse.Core qualified as Parse
+import Scene.Parse.Tree qualified as Parse
 
 lint ::
   (J.HasParams p a1, J.HasTextDocument a1 a2, J.HasUri a2 Uri) =>
@@ -91,7 +91,7 @@ updateCol' sourceLines diags =
         then updateCol' sourceLines' diags
         else do
           let foo = T.drop (fromEnum c) currentLine
-          let offset = T.length $ T.takeWhile (`S.notMember` Parse.nonSymbolCharSet) foo
+          let offset = T.length $ T.takeWhile (`S.notMember` Parse.nonAtomCharSet) foo
           let endPos = Position l (fromIntegral $ fromEnum c + offset)
           let diag' = set J.range (Range startPos endPos) diag
           diag' : updateCol' sourceLines' rest

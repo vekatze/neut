@@ -2,6 +2,7 @@ module Scene.Parse.Tree
   ( parseFile,
     parseFileHeadTree,
     parseTree,
+    nonAtomCharSet,
   )
 where
 
