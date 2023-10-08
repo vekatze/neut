@@ -69,9 +69,9 @@ parseFile :: Path Abs File -> App TreeList
 parseFile path = do
   run parseTreeList path
 
-parseFileHeadTree :: Path Abs File -> App Tree
+parseFileHeadTree :: Path Abs File -> App (Maybe Tree)
 parseFileHeadTree path = do
-  run parseTree path
+  run (optional parseTree) path
 
 run :: Parser a -> Path Abs File -> App a
 run parser path = do

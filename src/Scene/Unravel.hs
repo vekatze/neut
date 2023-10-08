@@ -247,10 +247,13 @@ parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
-  headTree <- parseFileHeadTree path
-  if headSymEq "import" headTree
-    then interpretImportTree currentSource headTree
-    else return []
+  mHeadTree <- parseFileHeadTree path
+  case mHeadTree of
+    Just headTree
+      | headSymEq "import" headTree -> do
+          interpretImportTree currentSource headTree
+    _ ->
+      return []
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =
