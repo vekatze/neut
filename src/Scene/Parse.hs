@@ -161,11 +161,7 @@ interpTree :: Tree -> App [RawStmt]
 interpTree t = do
   rules <- Env.getMacroEnv
   t' <- articulate t
-  -- Remark.printNote' "articulated stmt:"
-  -- Remark.printNote' $ showTree t'
   t'' <- liftEither $ Macro.reduce macroMaxStep rules t'
-  -- Remark.printNote' "expanded stmt:"
-  -- Remark.printNote' $ showTree t''
   (m, ts) <- liftEither $ toNode t''
   case ts of
     [] ->
