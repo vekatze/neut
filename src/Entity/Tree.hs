@@ -6,6 +6,7 @@ import Data.HashMap.Strict qualified as M
 import Data.Text qualified as T
 import Entity.Atom (asAttrKey)
 import Entity.Atom qualified as AT
+import Entity.DefiniteDescription qualified as DD
 import Entity.Error
 import Entity.Hint
 import Entity.RawIdent qualified as RI
@@ -247,6 +248,8 @@ ppAtom atom =
       x
     AT.String x ->
       T.pack $ show x
+    AT.DefiniteDescription dd ->
+      DD.reify dd
 
 ppNode :: Int -> [Cofree TreeF a] -> T.Text
 ppNode n ts = do

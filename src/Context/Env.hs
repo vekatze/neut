@@ -10,10 +10,8 @@ import Entity.Arch qualified as Arch
 import Entity.Artifact qualified as A
 import Entity.BuildMode qualified as BM
 import Entity.DataSize qualified as DS
-import Entity.DefiniteDescription (getLocalName)
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
-import Entity.Hint.Reify qualified as H
 import Entity.LocationTree qualified as LT
 import Entity.Macro qualified as Macro
 import Entity.Platform
@@ -92,13 +90,7 @@ getMacroEnv =
 
 insertToMacroEnv :: Hint -> DD.DefiniteDescription -> [(Macro.Args, Tree)] -> App ()
 insertToMacroEnv m key value = do
-  menv <- readRef' macroRuleEnv
-  let localName = getLocalName key
-  case Map.lookup localName menv of
-    Just (mExisting, _) -> do
-      Throw.raiseError m $ "The macro " <> localName <> "is already defined at:\n" <> T.pack (H.toString mExisting)
-    Nothing -> do
-      modifyRef' macroRuleEnv $ Map.insert localName (m, value)
+  modifyRef' macroRuleEnv $ Map.insert key (m, value)
 
 getMainType :: App T.Text
 getMainType = do

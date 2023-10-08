@@ -23,7 +23,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
-import Entity.Macro (MacroInfo)
+import Entity.Macro (MacroInfo, PreMacroInfo)
 import Entity.Macro.Reduce qualified as Macro
 import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
@@ -32,12 +32,13 @@ import Entity.Tree
 import Entity.ViaMap qualified as VM
 import Path
 import Scene.Parse.Alias
+import Scene.Parse.Articulate (articulate)
 import Scene.Parse.Data (interpretDataTree)
 import Scene.Parse.Declare
 import Scene.Parse.Define
 import Scene.Parse.Discern qualified as Discern
 import Scene.Parse.Import
-import Scene.Parse.Macro (interpretDefineMacro)
+import Scene.Parse.Macro (interpretDefineMacro, reflMacro)
 import Scene.Parse.Resource (interpretResourceTree)
 import Scene.Parse.Tree (parseFile)
 
@@ -62,7 +63,6 @@ parseSource source = do
     Just cache -> do
       let stmtList = Cache.stmtList cache
       let macroList = Cache.macroInfoList cache
-      -- forM_ (Cache.macroInfoList cache) $ \(m, dd, rule) -> Env.insertToMacroEnv m dd rule
       parseCachedStmtList stmtList
       mapM_ parseCachedMacroInfo macroList
       saveTopLevelNames path $ map getStmtName stmtList ++ map getMacroName macroList
@@ -98,8 +98,7 @@ parseCachedStmtList stmtList = do
 parseCachedMacroInfo :: MacroInfo -> App ()
 parseCachedMacroInfo (m, dd, rule) = do
   Env.insertToMacroEnv m dd rule
-
--- Global.registerMacro m dd
+  Global.registerMacro m dd
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -136,29 +135,38 @@ interp1 treeList = do
           (defList, macroInfoList) <- interp2 [] treeList
           return (defList, macroInfoList, [])
 
-interp2 :: [MacroInfo] -> [Tree] -> App ([RawStmt], [MacroInfo])
+interp2 :: [PreMacroInfo] -> [Tree] -> App ([RawStmt], [MacroInfo])
 interp2 macroInfoList treeList = do
   case treeList of
     [] -> do
-      mapM_ Global.registerMacro macroInfoList
-      return ([], macroInfoList)
+      mapM_ registerMacro macroInfoList
+      macroInfoList' <- mapM reflMacro macroInfoList
+      return ([], macroInfoList')
     t : rest
       | headSymEq "rule" t -> do
           macroInfo <- interpretDefineMacro t
           interp2 (macroInfo : macroInfoList) rest
       | otherwise -> do
-          mapM_ Global.registerMacro macroInfoList
-          forM_ macroInfoList $ \(m, dd, rule) -> Env.insertToMacroEnv m dd rule
+          mapM_ registerMacro macroInfoList
+          macroInfoList' <- mapM reflMacro macroInfoList
+          forM_ macroInfoList' $ \(m, dd, rule) -> Env.insertToMacroEnv m dd rule
           stmtList <- concat <$> mapM interpTree treeList
-          return (stmtList, macroInfoList)
+          return (stmtList, macroInfoList')
+
+registerMacro :: PreMacroInfo -> App ()
+registerMacro (m, dd, _) =
+  Global.registerMacro m dd
 
 interpTree :: Tree -> App [RawStmt]
 interpTree t = do
   rules <- Env.getMacroEnv
-  t' <- liftEither $ Macro.reduce macroMaxStep rules t
-  Remark.printNote' "expanded stmt:"
-  Remark.printNote' $ showTree t'
-  (m, ts) <- liftEither $ toNode t'
+  t' <- articulate t
+  -- Remark.printNote' "articulated stmt:"
+  -- Remark.printNote' $ showTree t'
+  t'' <- liftEither $ Macro.reduce macroMaxStep rules t'
+  -- Remark.printNote' "expanded stmt:"
+  -- Remark.printNote' $ showTree t''
+  (m, ts) <- liftEither $ toNode t''
   case ts of
     [] ->
       return []

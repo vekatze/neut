@@ -1,6 +1,7 @@
 module Scene.Parse.Discern.Name
   ( resolveName,
     resolveNameOrError,
+    resolveLocatorOrError,
     resolveConstructor,
     resolveConstructorMaybe,
     interpretGlobalName,
@@ -53,7 +54,7 @@ resolveNameOrError m name =
     Var var -> do
       resolveVarOrErr m var
     Locator l -> do
-      Right <$> resolveLocator m l
+      resolveLocatorOrError m l
     DefiniteDescription dd -> do
       mgnOrNone <- Global.lookup m dd
       case mgnOrNone of
@@ -95,6 +96,24 @@ resolveLocator m (gl, ll) = do
       let llLen = T.length $ LL.reify ll
       Tag.insert m (glLen + llLen) mDef
       return globalVar
+
+resolveLocatorOrError ::
+  Hint ->
+  L.Locator ->
+  App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
+resolveLocatorOrError m (gl, ll) = do
+  sgl <- Alias.resolveAlias m gl
+  let cand = DD.new sgl ll
+  cand' <- Global.lookup m cand
+  let foundName = candFilter (cand, cand')
+  case foundName of
+    Nothing ->
+      return $ Left $ "undefined constant: " <> L.reify (gl, ll)
+    Just globalVar@(_, (mDef, _)) -> do
+      let glLen = T.length $ GL.reify gl
+      let llLen = T.length $ LL.reify ll
+      Tag.insert m (glLen + llLen) mDef
+      return $ Right globalVar
 
 resolveConstructor ::
   Hint ->
@@ -142,7 +161,7 @@ interpretGlobalName m dd gn = do
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
     GN.Resource ->
       return $ m :< WT.ResourceType dd
-    GN.Macro _ ->
+    GN.Macro ->
       Throw.raiseError m $ "found an unresolved macro: " <> DD.reify dd
 
 interpretTopLevelFunc ::

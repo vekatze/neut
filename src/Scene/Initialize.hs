@@ -58,7 +58,6 @@ initializeForSource source = do
   UnusedVariable.initialize
   Remark.initialize
   Global.initialize
-  Env.clearMacroEnv
   Env.setCurrentSource source
   Alias.initializeAliasMap
   Locator.initialize

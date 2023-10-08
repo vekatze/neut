@@ -1,4 +1,8 @@
-module Scene.Parse.Macro (interpretDefineMacro) where
+module Scene.Parse.Macro
+  ( interpretDefineMacro,
+    reflMacro,
+  )
+where
 
 import Context.App
 import Context.Locator qualified as Locator
@@ -11,8 +15,9 @@ import Entity.Error
 import Entity.Macro
 import Entity.RawIdent (RawIdent)
 import Entity.Tree
+import Scene.Parse.Articulate (articulate)
 
-interpretDefineMacro :: Tree -> App MacroInfo
+interpretDefineMacro :: Tree -> App PreMacroInfo
 interpretDefineMacro t = do
   (m, ts) <- Throw.liftEither $ toNode t
   let (ts', _) = splitAttrs ts
@@ -20,16 +25,24 @@ interpretDefineMacro t = do
     (def : name : clauses) -> do
       Throw.liftEither $ chunk "rule" def
       (mMacro, name') <- Throw.liftEither $ getSymbol name >>= fromTextOptional
-      clauses' <- Throw.liftEither $ mapM reflClause clauses
       name'' <- Locator.attachCurrentLocator name'
+      clauses' <- Throw.liftEither $ mapM reflClause clauses
       return (mMacro, name'', clauses')
     _ ->
       Throw.raiseError m "rule"
 
-reflClause :: Tree -> EE (Args, Tree)
+reflMacro :: PreMacroInfo -> App MacroInfo
+reflMacro (m, dd, rules) = do
+  let (args, clauses) = unzip rules
+  args' <- mapM (mapM articulate) args
+  let args'' = map reflArgs args'
+  clauses' <- mapM articulate clauses
+  return (m, dd, zip args'' clauses')
+
+reflClause :: Tree -> EE ([Tree], Tree)
 reflClause t = do
   (argTrees, body) <- splitClause t
-  return (reflArgs argTrees, body)
+  return (argTrees, body)
 
 splitClause :: Tree -> EE ([Tree], Tree)
 splitClause t = do
@@ -64,6 +77,8 @@ reflArg t =
               m :< Var s
         AT.String str ->
           m :< Str str
+        AT.DefiniteDescription dd ->
+          m :< DefiniteDescription dd
     m :< Node ts -> do
       m :< ArgNode (reflArgs ts)
     m :< List ts -> do

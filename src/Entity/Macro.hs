@@ -5,6 +5,7 @@ module Entity.Macro
     Rules,
     Sub,
     MacroInfo,
+    PreMacroInfo,
     showArg,
     showArgs,
   )
@@ -39,13 +40,16 @@ type Args =
   ([Arg], Maybe RawIdent)
 
 type Rules =
-  Map.HashMap RawIdent (Hint, [(Args, Tree)])
+  Map.HashMap DD.DefiniteDescription (Hint, [(Args, Tree)])
 
 type Sub =
   Map.HashMap RawIdent Tree
 
 type MacroInfo =
   (Hint, DD.DefiniteDescription, [(Args, Tree)])
+
+type PreMacroInfo =
+  (Hint, DD.DefiniteDescription, [([Tree], Tree)])
 
 showArg :: Arg -> T.Text
 showArg arg =

@@ -25,12 +25,10 @@ import Entity.LocalLocator qualified as LL
 import Entity.Module qualified as Module
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
-import Entity.GlobalName qualified as GN
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.TopNameMap (TopNameMap)
 import Path
-import Context.Remark (printNote')
-import qualified Context.Env as Env
+
 
 -- the structure of a name of a global variable:
 --
@@ -56,9 +54,6 @@ activateSpecifiedNames topNameMap sgl lls = do
     case Map.lookup dd topNameMap of
       Nothing ->
         Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
-      Just (_, GN.Macro clauses) -> do
-        printNote' $ "this macro must be activated: " <> DD.reify dd
-        Env.insertToMacroEnv m dd clauses
       Just _ -> do
        aenv <- readRef' activeDefiniteDescriptionList
        when (Map.member ll aenv) $ do

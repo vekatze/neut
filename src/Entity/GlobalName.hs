@@ -24,7 +24,7 @@ data GlobalName
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
   | Resource
-  | Macro [(Args, Tree)]
+  | Macro
   deriving (Generic)
 
 instance Binary GlobalName
