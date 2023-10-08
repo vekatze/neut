@@ -5,12 +5,13 @@ import Control.Lens hiding (Iso, List)
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans
+import Data.ByteString qualified as B
 import Data.List (sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding
 import Debug.Trace (trace)
 import Entity.AppLsp
 import Entity.FilePos qualified as FP
@@ -74,7 +75,7 @@ updateCol uri diags = do
       return []
     Just path -> do
       let diags' = sortOn (\diag -> diag ^. J.range . J.start) diags
-      content <- liftIO $ TIO.readFile $ toFilePath path
+      content <- liftIO $ fmap decodeUtf8 $ B.readFile $ toFilePath path
       return $ updateCol' (zip [0 ..] $ T.lines content) diags'
 
 updateCol' :: [(Int, T.Text)] -> [Diagnostic] -> [Diagnostic]
