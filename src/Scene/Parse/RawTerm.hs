@@ -173,7 +173,7 @@ rawTermKeyValuePair = do
 
 rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
 rawTermLetOrLetOn m = do
-  isNoetic <- choice [try (keyword "let*") >> return True, keyword "let" >> return False]
+  isNoetic <- choice [try (keyword "&let") >> return True, keyword "let" >> return False]
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx
@@ -489,7 +489,7 @@ primType = do
 rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
-  isNoetic <- choice [try (keyword "match*") >> return True, keyword "match" >> return False]
+  isNoetic <- choice [try (keyword "&match") >> return True, keyword "match" >> return False]
   es <- commaList rawTermBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim isNoetic es (RP.new patternRowList)
@@ -718,7 +718,7 @@ bind mxt@(m, _, _) e cont =
 rawTermNoema :: Parser RT.RawTerm
 rawTermNoema = do
   m <- getCurrentHint
-  delimiter "*"
+  delimiter "&"
   t <- rawTermBasic
   return $ m :< RT.Noema t
 
