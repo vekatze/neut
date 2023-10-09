@@ -17,9 +17,9 @@ import Entity.AppLsp
 import Entity.FilePos qualified as FP
 import Entity.Remark
 import Language.LSP.Diagnostics (partitionBySource)
+import Language.LSP.Protocol.Lens qualified as J
+import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Language.LSP.Types
-import Language.LSP.Types.Lens qualified as J
 import Path
 import Scene.Check qualified as Check
 import Scene.Parse.Core qualified as Parse
@@ -64,7 +64,9 @@ remarkToDignostic (mLoc, _, level, msg) = do
           _source = Just "neut",
           _message = msg,
           _tags = Nothing,
-          _relatedInformation = Nothing
+          _relatedInformation = Nothing,
+          _codeDescription = Nothing,
+          _data_ = Nothing
         }
     )
 
@@ -104,14 +106,14 @@ levelToSeverity :: RemarkLevel -> DiagnosticSeverity
 levelToSeverity level =
   case level of
     Note ->
-      DsInfo
+      DiagnosticSeverity_Information
     Warning ->
-      DsWarning
+      DiagnosticSeverity_Warning
     Error ->
-      DsError
+      DiagnosticSeverity_Error
     Critical ->
-      DsError
+      DiagnosticSeverity_Error
     Pass ->
-      DsInfo
+      DiagnosticSeverity_Information
     Fail ->
-      DsError
+      DiagnosticSeverity_Error

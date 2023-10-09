@@ -7,15 +7,15 @@ import Control.Lens hiding (Iso, List)
 import Entity.Cache qualified as Cache
 import Entity.Hint qualified as H
 import Entity.LocationTree qualified as LT
-import Language.LSP.Types
-import Language.LSP.Types.Lens qualified as J
+import Language.LSP.Protocol.Lens qualified as J
+import Language.LSP.Protocol.Types
 import Scene.Source.Reflect qualified as Source
 import Scene.Unravel
 
 findDefinition ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
   p ->
-  App (Maybe Location)
+  App (Maybe DefinitionLink)
 findDefinition params = do
   case uriToFilePath $ params ^. J.textDocument . J.uri of
     Nothing ->
@@ -45,5 +45,12 @@ findDefinition params = do
                   let defFilePath' = filePathToUri defPath
                   let pos = Position {_line = fromIntegral (defLine - 1), _character = fromIntegral (defCol - 1)}
                   let range = Range {_start = pos, _end = pos}
-                  let loc = Location {_uri = defFilePath', _range = range}
-                  return $ Just loc
+                  return $
+                    Just $
+                      DefinitionLink $
+                        LocationLink
+                          { _originSelectionRange = Nothing,
+                            _targetUri = defFilePath',
+                            _targetRange = range,
+                            _targetSelectionRange = range
+                          }

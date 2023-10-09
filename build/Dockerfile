@@ -8,6 +8,7 @@ ENV LC_ALL C.utf8
 RUN apt-get update && \
   apt-get install --no-install-recommends -y \
   curl \
+  g++ \
   gcc \
   git \
   gnupg \

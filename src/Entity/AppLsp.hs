@@ -1,8 +1,8 @@
 module Entity.AppLsp (AppLsp, lspOptions) where
 
 import Context.App
+import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Language.LSP.Types
 
 type AppLsp config =
   LspT config App
@@ -10,11 +10,11 @@ type AppLsp config =
 lspOptions :: Options
 lspOptions =
   defaultOptions
-    { textDocumentSync =
+    { optTextDocumentSync =
         Just
           TextDocumentSyncOptions
             { _openClose = Just True,
-              _change = Just TdSyncNone,
+              _change = Just TextDocumentSyncKind_None,
               _willSave = Just False,
               _willSaveWaitUntil = Just False,
               _save = Just $ InR $ SaveOptions $ Just False

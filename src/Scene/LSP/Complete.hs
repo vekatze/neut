@@ -18,7 +18,7 @@ import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.Source
 import Entity.TopNameMap
-import Language.LSP.Types
+import Language.LSP.Protocol.Types
 import Path
 import Scene.Source.Reflect qualified as Source
 
@@ -83,23 +83,26 @@ getLocalNameList nameInfo = do
 newCompletionItem :: Maybe T.Text -> (Maybe (IsConstLike, [Key]), T.Text) -> CompletionItem
 newCompletionItem mLocator (mKeyArg, t) =
   CompletionItem
-    t
-    (Just CiFunction)
-    (Just (List []))
-    (mLocator >>= \locator -> Just ("in " <> locator))
-    Nothing
-    Nothing
-    Nothing
-    Nothing
-    Nothing
-    (stylizeKeyArgList t mKeyArg)
-    (Just Snippet)
-    Nothing
-    Nothing
-    Nothing
-    Nothing
-    Nothing
-    Nothing
+    { _label = t,
+      _labelDetails = Nothing,
+      _kind = Just CompletionItemKind_Function,
+      _tags = Nothing,
+      _detail = mLocator >>= \locator -> Just ("in " <> locator),
+      _documentation = Nothing,
+      _deprecated = Nothing,
+      _preselect = Nothing,
+      _sortText = Nothing,
+      _filterText = Nothing,
+      _insertText = stylizeKeyArgList t mKeyArg,
+      _insertTextFormat = Just InsertTextFormat_Snippet,
+      _insertTextMode = Nothing,
+      _textEdit = Nothing,
+      _textEditText = Nothing,
+      _additionalTextEdits = Nothing,
+      _commitCharacters = Nothing,
+      _command = Nothing,
+      _data_ = Nothing
+    }
 
 stylizeKeyArgList :: T.Text -> Maybe (IsConstLike, [Key]) -> Maybe T.Text
 stylizeKeyArgList t mKeyArgList = do

@@ -1,14 +1,15 @@
 module Scene.LSP (lsp) where
 
 import Context.App
-import Control.Lens hiding (Iso, List)
+import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Control.Monad.Trans
 import Data.Maybe
 import Entity.AppLsp
+import Language.LSP.Protocol.Lens qualified as J
+import Language.LSP.Protocol.Message
+import Language.LSP.Protocol.Types
 import Language.LSP.Server
-import Language.LSP.Types
-import Language.LSP.Types.Lens qualified as J
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.Lint qualified as LSP
@@ -30,20 +31,20 @@ lsp = do
 handlers :: Handlers (AppLsp ())
 handlers =
   mconcat
-    [ notificationHandler SInitialized $ \_not -> do
+    [ notificationHandler SMethod_Initialized $ \_not -> do
         return (),
-      notificationHandler STextDocumentDidOpen $ \msg -> do
+      notificationHandler SMethod_TextDocumentDidOpen $ \msg -> do
         LSP.lint msg,
-      notificationHandler STextDocumentDidChange $ \_ -> do
+      notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
-      notificationHandler STextDocumentDidSave $ \msg -> do
+      notificationHandler SMethod_TextDocumentDidSave $ \msg -> do
         LSP.lint msg,
-      notificationHandler SCancelRequest $ \_ -> do
+      notificationHandler SMethod_CancelRequest $ \_ -> do
         return (),
-      requestHandler STextDocumentCompletion $ \req responder -> do
+      requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         itemList <- lift $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
         responder $ Right $ InL $ List itemList,
-      requestHandler STextDocumentDefinition $ \req responder -> do
+      requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
         mLoc <- lift $ LSP.findDefinition $ req ^. J.params
         responder $ Right $ InR $ InL $ List $ maybeToList mLoc
     ]
