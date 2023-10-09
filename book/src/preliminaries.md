@@ -34,8 +34,13 @@ $ neut build --execute
 At the root of your module, you should find `module.ens`. It should contain the following:
 
 ```ens
-(target
-  (hello "hello.nt"))
+{
+  // ...
+  target {
+    hello "hello.nt"
+  }
+  // ...
+}
 ```
 
 This defines the entry point for a target named `hello`. Every file declared here must define a function `main`, which in turn is used by the command `neut build TARGET`; This command starts compilation assuming that a function `main` is in `hello.nt`.

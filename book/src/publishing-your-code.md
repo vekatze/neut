@@ -57,8 +57,13 @@ If you release a version of your module that is compatible with existing modules
 For example, suppose you have `archive/0-1-0-0.tar.zst`. If you run `neut archive 0-1-1-0`, which is a minor update release, the module file in `archive/0-1-1-0.tar.zst` should contain:
 
 ```ens
-(antecedent
-  "-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=")
+{
+  // ...
+  antecedent [
+    "-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g="
+  ]
+  // ...
+}
 ```
 
 where the `-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=` is the digest of the existing tarball `0-1-0-0.tar.zst`. The value of `antecedent` stores all the digests of the existing compatible releases. In this way, the module file stores compatibility information.
