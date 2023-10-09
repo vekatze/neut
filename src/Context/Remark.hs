@@ -33,8 +33,9 @@ where
 import Context.App
 import Context.App.Internal
 import Control.Monad.IO.Class
+import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding
 import Entity.FilePos
 import Entity.FilePos qualified as FilePos
 import Entity.Hint
@@ -124,7 +125,7 @@ printRemarkIO (mpos, shouldInsertPadding, l, t) = do
   levelText <- getRemarkLevel l
   remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- getFooter
-  liftIO $ TIO.putStr $ locText <> levelText <> remarkText <> footerText
+  liftIO $ B.putStr $ encodeUtf8 $ locText <> levelText <> remarkText <> footerText
 
 printErrorIO :: R.Remark -> App ()
 printErrorIO (mpos, shouldInsertPadding, l, t) = do
@@ -132,7 +133,7 @@ printErrorIO (mpos, shouldInsertPadding, l, t) = do
   levelText <- getRemarkLevel l
   remarkText <- getRemarkText t (remarkLevelToPad shouldInsertPadding l)
   footerText <- getFooter
-  liftIO $ TIO.hPutStr stderr $ locText <> levelText <> remarkText <> footerText
+  liftIO $ B.hPutStr stderr $ encodeUtf8 $ locText <> levelText <> remarkText <> footerText
 
 getRemarkLocation :: Maybe FilePos -> App T.Text
 getRemarkLocation mpos = do
@@ -221,4 +222,4 @@ getGlobalRemarkList = do
 
 printLog :: T.Text -> App ()
 printLog text =
-  liftIO $ TIO.hPutStrLn stderr text
+  liftIO $ B.hPutStr stderr $ encodeUtf8 $ text <> "\n"

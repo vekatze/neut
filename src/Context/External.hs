@@ -10,8 +10,9 @@ import Context.Throw (liftEither)
 import Context.Throw qualified as Throw
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Data.ByteString qualified as B
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding
 import Entity.Error
 import System.Directory
 import System.Exit
@@ -35,7 +36,7 @@ runOrFail procName optionList = do
             ExitSuccess ->
               return $ Right ()
             ExitFailure i -> do
-              errStr <- liftIO $ TIO.hGetContents errorHandler
+              errStr <- liftIO $ decodeUtf8 <$> B.hGetContents errorHandler
               return $
                 Left $
                   newError' $
