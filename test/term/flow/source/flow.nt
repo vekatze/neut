@@ -50,13 +50,13 @@ define some-list(len: int, acc: list(int)): list(int) {
   }
 }
 
-define detach-send(x: int, ch: *channel(int)): flow(unit) {
+define detach-send(x: int, ch: &channel(int)): flow(unit) {
   detach {
     send(int, ch, x)
   }
 }
 
-define send-all(xs: list(int), ch: *channel(int), acc: list(flow(unit))): list(flow(unit)) {
+define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(flow(unit)) {
   match xs {
   - [] =>
     acc
@@ -66,7 +66,7 @@ define send-all(xs: list(int), ch: *channel(int), acc: list(flow(unit))): list(f
   }
 }
 
-define receive-one-by-one(xs: list(flow(unit)), ch: *channel(int)): unit {
+define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   match xs {
   - [] =>
     Unit
@@ -77,7 +77,7 @@ define receive-one-by-one(xs: list(flow(unit)), ch: *channel(int)): unit {
   }
 }
 
-define receive-all-at-once(xs: list(flow(unit)), ch: *channel(int)): unit {
+define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let wait-all =
     mu wait-all(ys: list(flow(unit))) {
       match ys {

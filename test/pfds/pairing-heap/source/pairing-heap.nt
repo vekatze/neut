@@ -9,8 +9,8 @@ data order {
 - GT
 }
 
-define find-min(a: tau, h: *heap(a)): ?a {
-  match* h {
+define find-min(a: tau, h: &heap(a)): ?a {
+  &match h {
   - Leaf =>
     None: ?a
   - Node(v, _) =>

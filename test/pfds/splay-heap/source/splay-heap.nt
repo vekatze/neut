@@ -58,8 +58,8 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a),
   }
 }
 
-define find-min(a: tau, t: *heap(a)): ?a {
-  match* t {
+define find-min(a: tau, t: &heap(a)): ?a {
+  &match t {
   - Leaf =>
     None
   - Node(Leaf, x, _) =>
@@ -97,8 +97,8 @@ define compare-int-list(xs: list(int), ys: list(int)): order {
   }
 }
 
-define sum(xs: *list(int)): int {
-  match* xs {
+define sum(xs: &list(int)): int {
+  &match xs {
   - [] =>
     0
   - y :: ys =>

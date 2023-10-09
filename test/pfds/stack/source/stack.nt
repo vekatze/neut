@@ -12,8 +12,8 @@ define empty(a: tau): stack(a) {
   Nil
 }
 
-define is-empty(a: tau, xs: *stack(a)): bool {
-  match* xs {
+define is-empty(a: tau, xs: &stack(a)): bool {
+  &match xs {
   - Nil =>
     True
   - Cons(_, _) =>
@@ -21,8 +21,8 @@ define is-empty(a: tau, xs: *stack(a)): bool {
   }
 }
 
-define head(a: tau, xs: *stack(a)): option(*a) {
-  match* xs {
+define head(a: tau, xs: &stack(a)): option(&a) {
+  &match xs {
   - Nil =>
     None
   - Cons(a, _) =>
@@ -30,8 +30,8 @@ define head(a: tau, xs: *stack(a)): option(*a) {
   }
 }
 
-define tail(a: tau, xs: *stack(a)): option(*stack(a)) {
-  match* xs {
+define tail(a: tau, xs: &stack(a)): option(&stack(a)) {
+  &match xs {
   - Nil =>
     None
   - Cons(_, rest) =>
@@ -61,8 +61,8 @@ define suffixes(a: tau, xs: stack(a)): stack(stack(a)) {
   }
 }
 
-define suffixes-noetic(a: tau, xs: *stack(a)): stack(*stack(a)) {
-  match* xs {
+define suffixes-noetic(a: tau, xs: &stack(a)): stack(&stack(a)) {
+  &match xs {
   - Nil =>
     Nil
   - Cons(_, ys) =>

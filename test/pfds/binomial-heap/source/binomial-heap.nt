@@ -26,8 +26,8 @@ define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
   }
 }
 
-define rank(a: tau, t: *tree(a)): int {
-  match* t {
+define rank(a: tau, t: &tree(a)): int {
+  &match t {
   - Node(r, _, _) =>
     !r
   }
@@ -72,17 +72,17 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
 }
 
 
-define root(a: tau, t: *tree(a)): a {
-  match* t {
+define root(a: tau, t: &tree(a)): a {
+  &match t {
   - Node(_, v, _) =>
     !v
   }
 }
 
-define find-min(a: tau, cmp: (a, a) -> order, h: *heap(a)): ?a {
+define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
   let helper =
-    mu self(cand: a, h: *heap(a)): a {
-      match* h {
+    mu self(cand: a, h: &heap(a)): a {
+      &match h {
       - [] =>
         cand
       - t :: ts =>
@@ -96,7 +96,7 @@ define find-min(a: tau, cmp: (a, a) -> order, h: *heap(a)): ?a {
       }
     }
   in
-  match* h {
+  &match h {
   - [] =>
     None
   - t :: ts =>

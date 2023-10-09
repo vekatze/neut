@@ -58,7 +58,7 @@ define data-is-tau(): tau {
 }
 
 define noema-is-tau(a: tau): tau {
-  *a
+  &a
 }
 
 define flow-is-tau(a: tau): tau {

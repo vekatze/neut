@@ -56,7 +56,7 @@ data empty {
 data config {
 - Config(
     counter: int,
-    path: *text,
+    path: &text,
     func: int -> int
   )
 }
@@ -70,8 +70,8 @@ define yo(x: top): unit {
   Unit
 }
 
-define foo(c: *config): *text {
-  let* Config(..) = c in
+define foo(c: &config): &text {
+  &let Config(..) = c in
   let _: int = !counter in
   let _ = !counter in
   let _ = {!func}(3) in

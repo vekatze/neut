@@ -17,10 +17,10 @@ data heap(a) {
 data heap-signature(a) {
 - Heap of {
   - empty: heap(a)
-  - is-empty: *heap(a) -> bool
+  - is-empty: &heap(a) -> bool
   - insert: (a, heap(a)) -> heap(a)
   - merge: (heap(a), heap(a)) -> heap(a)
-  - find-min: *heap(a) -> ?a
+  - find-min: &heap(a) -> ?a
   - delete-min: heap(a) -> ?heap(a)
   }
 }
@@ -28,8 +28,8 @@ data heap-signature(a) {
 define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) {
   let merge =
     let rank =
-      (h: *heap(a)) => {
-        match* h {
+      (h: &heap(a)) => {
+        &match h {
         - Leaf =>
           0
         - Node(r, _, _, _) =>
@@ -68,8 +68,8 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
   - empty =>
     Leaf
   - is-empty =>
-    (h: *heap(a)) => {
-      match* h {
+    (h: &heap(a)) => {
+      &match h {
       - Leaf =>
         True
       - Node(_, _, _, _) =>
@@ -83,8 +83,8 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
   - merge =>
     merge
   - find-min =>
-    (h: *heap(a)) => {
-      match* h {
+    (h: &heap(a)) => {
+      &match h {
       - Leaf =>
         None
       - Node(_, value, _, _) =>

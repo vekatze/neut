@@ -8,8 +8,8 @@ data list(a: tau) {
 - Cons(a, list(a))
 }
 
-define my-length(xs: *list(int)): int {
-  match* xs {
+define my-length(xs: &list(int)): int {
+  &match xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
@@ -17,7 +17,7 @@ define my-length(xs: *list(int)): int {
   }
 }
 
-define bar(xs-cell: *cell(list(int))): unit {
+define bar(xs-cell: &cell(list(int))): unit {
   borrow(_, xs-cell, (xs) => {
     let len = my-length(xs) in
     print-int(len);
