@@ -1,10 +1,16 @@
-(archive "archive/")
-(build "build/")
-(source "source/")
-(target
-  (foreign "foreign.nt"))
-(foreign "foreign/")
-(dependency
-  (core
-    (digest "IhcsnZ0Di0GLjZdhKYORuu7HruStyZA1u9xuq57Ugj4=")
-    (mirror "https://github.com/vekatze/neut-core/raw/main/archive/0-2-11.tar.zst")))
+{
+  dependency {
+    core {
+      digest "DNqh8NLdXliNwdwqRiWBh5T3rkt6tkw3o39c8olclPo="
+      mirror [
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-3-0.tar.zst"
+      ]
+    }
+  }
+  foreign [
+    "foreign/"
+  ]
+  target {
+    foreign "foreign.nt"
+  }
+}
