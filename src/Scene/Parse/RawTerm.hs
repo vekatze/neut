@@ -108,7 +108,7 @@ reflNode ax m ts = do
     _ :< Atom (AT.Symbol sym)
       | sym == "Fn" -> do
           (dom, cod) <- reflArrowArgs' m rest
-          dom' <- reflArgList ax dom
+          dom' <- reflTypeArgList ax dom
           cod' <- reflRawTerm ax cod
           return $ m :< RT.Pi dom' cod'
       | sym == "#fn" -> do
@@ -413,4 +413,30 @@ getPairListElem t =
     _ :< Node [t1, t2] ->
       return (t1, t2)
     m :< _ ->
-      Left $ newError m $ "expected a pair, found: " <> showTree t
+      Left $ newError m $ "expected an atom or a pair, but found: " <> showTree t
+
+reflTypeArgList :: Axis -> [Tree] -> Either Error [RawBinder RT.RawTerm]
+reflTypeArgList ax ts = do
+  pairs <- mapM getTypePairListElem ts
+  reflTypeArgList' ax pairs
+
+reflTypeArgList' :: Axis -> [(Tree, Tree)] -> Either Error [RawBinder RT.RawTerm]
+reflTypeArgList' ax ts = do
+  case ts of
+    [] ->
+      return []
+    (x, t) : rest -> do
+      (m, x') <- getSymbol x
+      t' <- reflRawTerm ax t
+      rest' <- reflTypeArgList' ax rest
+      return $ (m, x', t') : rest'
+
+getTypePairListElem :: Tree -> Either Error (Tree, Tree)
+getTypePairListElem t =
+  case t of
+    m :< Atom {} ->
+      return (m :< Atom (AT.Symbol "_"), t)
+    _ :< Node [t1, t2] ->
+      return (t1, t2)
+    m :< _ ->
+      Left $ newError m $ "expected an atom or a pair, but found: " <> showTree t
