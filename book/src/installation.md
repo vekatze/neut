@@ -2,7 +2,7 @@
 
 ## External Dependencies
 
-Neut depends on `curl`, `tar`, `zstd` and `clang (>= 14.0.0)`. Please make sure all of them are installed.
+Neut depends on `curl`, `tar`, `zstd` and `clang (>= 15.0.0)`. Please make sure all of them are installed.
 
 ## Using a Prebuilt Binary
 
