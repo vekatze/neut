@@ -106,9 +106,14 @@ reflNode ax m ts = do
   (headTree, rest) <- treeUncons m ts
   case headTree of
     _ :< Atom (AT.Symbol sym)
-      | sym == "Fn" -> do
+      | sym == "Arrow" -> do
           (dom, cod) <- reflArrowArgs' m rest
           dom' <- reflTypeArgList ax dom
+          cod' <- reflRawTerm ax cod
+          return $ m :< RT.Pi dom' cod'
+      | sym == "Fn" -> do
+          (dom, cod) <- reflArrowArgs' m rest
+          dom' <- reflSimpleTypeArgList ax dom
           cod' <- reflRawTerm ax cod
           return $ m :< RT.Pi dom' cod'
       | sym == "#fn" -> do
@@ -418,25 +423,21 @@ getPairListElem t =
 reflTypeArgList :: Axis -> [Tree] -> Either Error [RawBinder RT.RawTerm]
 reflTypeArgList ax ts = do
   pairs <- mapM getTypePairListElem ts
-  reflTypeArgList' ax pairs
-
-reflTypeArgList' :: Axis -> [(Tree, Tree)] -> Either Error [RawBinder RT.RawTerm]
-reflTypeArgList' ax ts = do
-  case ts of
-    [] ->
-      return []
-    (x, t) : rest -> do
-      (m, x') <- getSymbol x
-      t' <- reflRawTerm ax t
-      rest' <- reflTypeArgList' ax rest
-      return $ (m, x', t') : rest'
+  reflArgList' ax pairs
 
 getTypePairListElem :: Tree -> Either Error (Tree, Tree)
 getTypePairListElem t =
   case t of
-    m :< Atom {} ->
-      return (m :< Atom (AT.Symbol "_"), t)
     _ :< Node [t1, t2] ->
       return (t1, t2)
     m :< _ ->
       Left $ newError m $ "expected an atom or a pair, but found: " <> showTree t
+
+reflSimpleTypeArgList :: Axis -> [Tree] -> Either Error [RawBinder RT.RawTerm]
+reflSimpleTypeArgList ax ts = do
+  pairs <- mapM getSimpleTypePairListElem ts
+  reflArgList' ax pairs
+
+getSimpleTypePairListElem :: Tree -> Either Error (Tree, Tree)
+getSimpleTypePairListElem t@(m :< _) =
+  return (m :< Atom (AT.Symbol "_"), t)
