@@ -15,9 +15,10 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.IO.Unlift
+import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding
 import Data.Time.Clock
 import Entity.Config.Build
 import Entity.Const
@@ -125,7 +126,7 @@ raiseIfProcessFailed procName exitCode h =
     ExitSuccess ->
       return ()
     ExitFailure i -> do
-      errStr <- liftIO $ TIO.hGetContents h
+      errStr <- liftIO $ decodeUtf8 <$> B.hGetContents h
       Throw.raiseError' $
         "the child process `"
           <> procName

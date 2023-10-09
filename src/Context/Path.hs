@@ -35,10 +35,11 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
 import Data.Text qualified as T
-import Data.Text.IO qualified as TIO
+import Data.Text.Encoding
 import Data.Time
 import Data.Version qualified as V
 import Entity.BuildMode qualified as BM
@@ -116,7 +117,7 @@ writeByteString path content =
 
 writeText :: Path Abs File -> T.Text -> App ()
 writeText path text =
-  liftIO $ TIO.writeFile (P.toFilePath path) text
+  liftIO $ B.writeFile (P.toFilePath path) $ encodeUtf8 text
 
 parseRelFile :: FilePath -> App (Path Rel File)
 parseRelFile =
