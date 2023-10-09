@@ -1,0 +1,6 @@
+resolver: lts-21.7
+
+packages:
+  - .
+
+work-dir: .stack-ide
