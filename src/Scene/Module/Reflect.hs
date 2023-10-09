@@ -15,7 +15,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
-import Entity.Const (moduleFile)
+import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
+import Entity.Ens qualified as E
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleAlias
@@ -24,10 +25,9 @@ import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.Target
-import Entity.Tree qualified as Tree
 import Path
 import Path.IO
-import Scene.Parse.Tree qualified as Tree
+import Scene.Ens.Reflect qualified as Ens
 
 getModule ::
   H.Hint ->
@@ -53,24 +53,23 @@ getModule m moduleID locatorText = do
 
 fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
-  (m, treeList) <- Tree.parseFile moduleFilePath
-  sourceDirTree <- liftEither $ Tree.extractValueByKey m keySource treeList
-  archiveDirTree <- liftEither $ Tree.extractValueByKey m keyArchive treeList
-  buildDirTree <- liftEither $ Tree.extractValueByKey m keyBuild treeList
-  (_, entryPointTree) <- liftEither $ Tree.accessOrEmpty m keyTarget treeList >>= mapM Tree.toDictionary
-  dependencyTree <- liftEither $ Tree.accessOrEmpty m keyDependency treeList >>= mapM Tree.toDictionary
-  (_, extraContentTree) <- liftEither $ Tree.accessOrEmpty m keyExtraContent treeList
-  (_, antecedentTree) <- liftEither $ Tree.accessOrEmpty m keyAntecedent treeList
-  (_, foreignDirListTree) <- liftEither $ Tree.accessOrEmpty m keyForeign treeList
-  let moduleRootDir = parent moduleFilePath
-  archiveDir <- interpretDirPath archiveDirTree
-  buildDir <- interpretDirPath buildDirTree
-  sourceDir <- interpretDirPath sourceDirTree
-  target <- mapM interpretRelFilePath entryPointTree
-  dependency <- interpretDependencyDict dependencyTree
-  extraContents <- mapM (interpretExtraPath moduleRootDir) extraContentTree
-  antecedents <- mapM interpretAntecedent antecedentTree
-  foreignDirList <- mapM interpretDirPath foreignDirListTree
+  ens <- Ens.fromFilePath moduleFilePath
+  (_, targetEns) <- liftEither $ E.access keyTarget ens >>= E.toDictionary
+  target <- mapM interpretRelFilePath targetEns
+  dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
+  dependency <- interpretDependencyDict dependencyEns
+  extraContentsEns <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
+  extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
+  antecedentsEns <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList
+  antecedents <- mapM interpretAntecedent antecedentsEns
+  archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
+  archiveDir <- interpretDirPath archiveDirEns
+  buildDirEns <- liftEither $ E.access' keyBuild (E.ensPath buildRelDir) ens
+  buildDir <- interpretDirPath buildDirEns
+  sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
+  sourceDir <- interpretDirPath sourceDirEns
+  foreignDirListEns <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
+  foreignDirList <- mapM interpretDirPath foreignDirListEns
   return
     Module
       { moduleID = moduleID,
@@ -89,9 +88,9 @@ fromCurrentPath :: App Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
 
-interpretRelFilePath :: (H.Hint, [Tree.Tree]) -> App SL.SourceLocator
-interpretRelFilePath pathInfo = do
-  (m, pathString) <- liftEither $ Tree.extract pathInfo >>= Tree.toString
+interpretRelFilePath :: E.Ens -> App SL.SourceLocator
+interpretRelFilePath ens = do
+  (m, pathString) <- liftEither $ E.toString ens
   case parseRelFile $ T.unpack pathString of
     Just relPath ->
       return $ SL.SourceLocator relPath
@@ -99,25 +98,25 @@ interpretRelFilePath pathInfo = do
       raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  (H.Hint, Map.HashMap T.Text (H.Hint, [Tree.Tree])) ->
+  (H.Hint, Map.HashMap T.Text E.Ens) ->
   App (Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest))
 interpretDependencyDict (m, dep) = do
-  items <- forM (Map.toList dep) $ \(k, (mDep, depTree)) -> do
+  items <- forM (Map.toList dep) $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
     when (S.member k' BN.reservedAlias) $
       raiseError m $
         "the reserved name `"
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
-    (_, urlTreeList) <- liftEither $ Tree.access mDep "mirror" depTree
-    urlList <- liftEither $ mapM (Tree.toString >=> return . snd) urlTreeList
-    (_, digest) <- liftEither $ Tree.extractValueByKey mDep "digest" depTree >>= Tree.toString
+    urlEnsList <- liftEither $ E.access "mirror" ens >>= E.toList
+    urlList <- liftEither $ mapM (E.toString >=> return . snd) urlEnsList
+    (_, digest) <- liftEither $ E.access "digest" ens >>= E.toString
     return (ModuleAlias k', (map ModuleURL urlList, ModuleDigest digest))
   return $ Map.fromList items
 
-interpretExtraPath :: Path Abs Dir -> Tree.Tree -> App (SomePath Rel)
+interpretExtraPath :: Path Abs Dir -> E.Ens -> App (SomePath Rel)
 interpretExtraPath moduleRootDir entity = do
-  (m, itemPathText) <- liftEither $ Tree.toString entity
+  (m, itemPathText) <- liftEither $ E.toString entity
   if T.last itemPathText == '/'
     then do
       dirPath <- parseRelDir $ T.unpack itemPathText
@@ -128,14 +127,14 @@ interpretExtraPath moduleRootDir entity = do
       ensureExistence m moduleRootDir filePath Path.doesFileExist "file"
       return $ Right filePath
 
-interpretAntecedent :: Tree.Tree -> App ModuleDigest
+interpretAntecedent :: E.Ens -> App ModuleDigest
 interpretAntecedent ens = do
-  (_, digestText) <- liftEither $ Tree.toString ens
+  (_, digestText) <- liftEither $ E.toString ens
   return $ ModuleDigest digestText
 
-interpretDirPath :: Tree.Tree -> App (Path Rel Dir)
+interpretDirPath :: E.Ens -> App (Path Rel Dir)
 interpretDirPath ens = do
-  (_, pathText) <- liftEither $ Tree.toString ens
+  (_, pathText) <- liftEither $ E.toString ens
   parseRelDir $ T.unpack pathText
 
 ensureExistence ::

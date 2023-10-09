@@ -7,13 +7,14 @@ import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
+import Entity.Const
+import Entity.Ens qualified as E
 import Entity.ModuleAlias
 import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
 import Entity.Target qualified as Target
-import Entity.Tree qualified as TR
 import Path
 import System.FilePath qualified as FP
 
@@ -125,64 +126,80 @@ getDigestMap baseModule = do
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
-  TR.ppTreeList
-    ( (),
-      catMaybes
-        [ nodeOrNone
-            [symbol keyArchive, string $ ppDirPath $ moduleArchiveDir someModule],
-          nodeOrNone
-            [symbol keyBuild, string $ ppDirPath $ moduleBuildDir someModule],
-          nodeOrNone
-            [symbol keySource, string $ ppDirPath $ moduleSourceDir someModule],
-          nodeOrNone $
-            symbol keyTarget
-              : map ppEntryPoint (Map.toList (moduleTarget someModule)),
-          nodeOrNone $
-            symbol keyExtraContent
-              : map (string . ppExtraContent) (moduleExtraContents someModule),
-          nodeOrNone $
-            symbol keyForeign
-              : map (string . ppDirPath) (moduleForeignDirList someModule),
-          nodeOrNone $
-            symbol keyAntecedent
-              : map (string . ppAntecedent) (moduleAntecedents someModule),
-          nodeOrNone $
-            symbol keyDependency
-              : map ppDependency (Map.toList (moduleDependency someModule))
-        ]
-    )
+  E.ppEnsTopLevel $
+    ()
+      :< E.Dictionary
+        ( Map.fromList $
+            catMaybes
+              [ getSourceDirInfo someModule,
+                getBuildDirInfo someModule,
+                getArchiveDirInfo someModule,
+                return $ getTargetInfo someModule,
+                getExtraContentInfo someModule,
+                getForeignInfo someModule,
+                getAntecedentInfo someModule,
+                getDependencyInfo someModule
+              ]
+        )
 
-type Tree = Cofree TR.TreeF ()
-
-symbol :: T.Text -> Tree
-symbol a =
-  () :< TR.Symbol a
-
-string :: T.Text -> Tree
-string str =
-  () :< TR.String str
-
-node :: [Tree] -> Tree
-node ts =
-  () :< TR.Node ts
-
-nodeOrNone :: [Tree] -> Maybe Tree
-nodeOrNone ts =
-  if length ts <= 1
+getArchiveDirInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getArchiveDirInfo someModule = do
+  let dir = moduleArchiveDir someModule
+  if dir == archiveRelDir
     then Nothing
-    else return $ () :< TR.Node ts
+    else return (keyArchive, () :< E.ensPath dir)
 
-ppEntryPoint :: (Target.Target, SL.SourceLocator) -> Tree
-ppEntryPoint (Target.Target target, sl) = do
-  node [symbol target, string (SL.getRelPathText sl)]
+getSourceDirInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getSourceDirInfo someModule = do
+  let dir = moduleSourceDir someModule
+  if dir == sourceRelDir
+    then Nothing
+    else return (keySource, () :< E.ensPath dir)
 
-ppDependency :: (ModuleAlias, ([ModuleURL], ModuleDigest)) -> Tree
-ppDependency (ModuleAlias alias, (urlList, ModuleDigest digest)) = do
-  node
-    [ symbol (BN.reify alias),
-      node [symbol "digest", string digest],
-      node (symbol "mirror" : map (\(ModuleURL urlText) -> string urlText) urlList)
-    ]
+getBuildDirInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getBuildDirInfo someModule = do
+  let dir = moduleBuildDir someModule
+  if dir == buildRelDir
+    then Nothing
+    else return (keyBuild, () :< E.ensPath dir)
+
+getTargetInfo :: Module -> (T.Text, E.MiniEns)
+getTargetInfo someModule = do
+  let targetDict = Map.map (\x -> () :< E.String (SL.getRelPathText x)) $ moduleTarget someModule
+  let targetDict' = Map.mapKeys (\(Target.Target key) -> key) targetDict
+  (keyTarget, () :< E.Dictionary targetDict')
+
+getDependencyInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getDependencyInfo someModule = do
+  let dependency = flip Map.map (moduleDependency someModule) $ \(urlList, ModuleDigest digest) -> do
+        let urlEnsList = map (\(ModuleURL url) -> () :< E.String url) urlList
+        let digestEns = () :< E.String digest
+        () :< E.Dictionary (Map.fromList [("digest", digestEns), ("mirror", () :< E.List urlEnsList)])
+  let dependency' = Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency
+  if Map.null dependency'
+    then Nothing
+    else return (keyDependency, () :< E.Dictionary dependency')
+
+getExtraContentInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getExtraContentInfo someModule = do
+  let extraContentList = map (\x -> () :< E.String (ppExtraContent x)) $ moduleExtraContents someModule
+  if null extraContentList
+    then Nothing
+    else return (keyExtraContent, () :< E.List extraContentList)
+
+getAntecedentInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getAntecedentInfo someModule = do
+  let antecedentList = map (\x -> () :< E.String (ppAntecedent x)) $ moduleAntecedents someModule
+  if null antecedentList
+    then Nothing
+    else return (keyAntecedent, () :< E.List antecedentList)
+
+getForeignInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getForeignInfo someModule = do
+  let foreignList = map (\x -> () :< E.String (ppDirPath x)) $ moduleForeignDirList someModule
+  if null foreignList
+    then Nothing
+    else return (keyForeign, () :< E.List foreignList)
 
 ppAntecedent :: ModuleDigest -> T.Text
 ppAntecedent (ModuleDigest digest) =
