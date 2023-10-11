@@ -55,7 +55,6 @@ executables:
     source-dirs: src
     ghc-options:
       - -Wall
-      - -j
       - -rtsopts
       - -threaded
       - -with-rtsopts=-N
