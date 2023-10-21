@@ -9,6 +9,7 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Ens qualified as E
+import Entity.GlobalLocator qualified as GL
 import Entity.ModuleAlias
 import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
@@ -31,7 +32,8 @@ data Module = Module
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
-    moduleForeignDirList :: [Path Rel Dir]
+    moduleForeignDirList :: [Path Rel Dir],
+    modulePrefixMap :: Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator)
   }
   deriving (Show)
 
@@ -66,6 +68,10 @@ keyAntecedent =
 keyForeign :: T.Text
 keyForeign =
   "foreign"
+
+keyPrefix :: T.Text
+keyPrefix =
+  "prefix"
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
@@ -138,7 +144,8 @@ ppModule someModule = do
                 getExtraContentInfo someModule,
                 getForeignInfo someModule,
                 getAntecedentInfo someModule,
-                getDependencyInfo someModule
+                getDependencyInfo someModule,
+                getPrefixMapInfo someModule
               ]
         )
 
@@ -200,6 +207,16 @@ getForeignInfo someModule = do
   if null foreignList
     then Nothing
     else return (keyForeign, () :< E.List foreignList)
+
+getPrefixMapInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getPrefixMapInfo someModule = do
+  if Map.null (modulePrefixMap someModule)
+    then Nothing
+    else do
+      let prefixMapDict = flip Map.map (modulePrefixMap someModule) $ \(alias, locator) ->
+            () :< E.String (GL.reify (GL.GlobalLocator alias locator))
+      let prefixMapDict' = Map.mapKeys BN.reify prefixMapDict
+      return (keyPrefix, () :< E.Dictionary prefixMapDict')
 
 ppAntecedent :: ModuleDigest -> T.Text
 ppAntecedent (ModuleDigest digest) =
