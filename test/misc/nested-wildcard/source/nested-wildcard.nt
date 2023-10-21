@@ -1,5 +1,5 @@
 import {
-- this.double => d
+- d
 - core.data.monoid [Monoid]
 - this.arith [Arith]
 }

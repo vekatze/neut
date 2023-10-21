@@ -1,6 +1,6 @@
 import {
-- this.pi-term => term
-- this.pi-keyword => keyword
+- keyword
+- term
 }
 
 define test-syntax(): unit {

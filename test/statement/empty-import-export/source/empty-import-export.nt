@@ -1,6 +1,6 @@
 import {
 - this.foo
-- this.bar => B
+- B
 }
 
 define main(): unit {

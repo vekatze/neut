@@ -1,8 +1,8 @@
 import {
 - core.data.semigroup [semigroup, Semigroup]
 - core.data.monoid [monoid, Monoid]
-- this.arith => a
-- this.compare => c
+- a
+- c
 }
 
 alias double { float64 }

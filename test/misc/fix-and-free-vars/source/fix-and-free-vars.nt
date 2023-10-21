@@ -1,7 +1,7 @@
 import {
 - core.bool
-- core.list => L
-- core.data.vector => V
+- L
+- V
 }
 
 data list() {

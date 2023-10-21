@@ -1,5 +1,5 @@
 import {
-- core.external => ext
+- ext
 }
 
 define test-syntax(): unit {

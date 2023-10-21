@@ -1,5 +1,5 @@
 import {
-- core.data.vector => v
+- v
 }
 
 define identity(a: tau, x: a): a {

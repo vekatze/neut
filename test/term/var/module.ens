@@ -1,11 +1,14 @@
 {
   dependency {
     core {
-      digest "DNqh8NLdXliNwdwqRiWBh5T3rkt6tkw3o39c8olclPo="
+      digest "fYFSK71KIBclMuPuvJ2X4zTUNRQm5bR28oYafGP149g="
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-3-0.tar.zst"
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-4-0.tar.zst"
       ]
     }
+  }
+  prefix {
+    v "core.data.vector"
   }
   target {
     var "var.nt"
