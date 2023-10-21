@@ -39,8 +39,6 @@ import Entity.OptimizableData qualified as OD
 import Entity.Prim qualified as P
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
-import Entity.PrimOp.CmpOp
-import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
@@ -123,8 +121,6 @@ clarifyStmt stmt =
                   return (f, (O.Transparent, map fst dataArgs', t'))
               | otherwise ->
                   Throw.raiseCritical m "found a broken unitary data"
-            Just OD.Nat ->
-              Throw.raiseCritical m "found a Nat in clarifyStmt"
             Nothing -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
@@ -212,8 +208,6 @@ clarifyTerm tenv term =
               clarifyTerm tenv e
           | otherwise ->
               Throw.raiseCritical m "found a malformed unitary data in Scene.Clarify.clarifyTerm"
-        Just OD.Nat ->
-          Throw.raiseCritical m "DataIntro can't be a nat"
         Nothing -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
@@ -270,11 +264,6 @@ clarifyTerm tenv term =
       let argNum = AN.fromInt 2
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, e]
 
-isZero :: Int -> C.Value -> C.Comp
-isZero baseSize v = do
-  let intType = PT.Int (PNS.IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimCmpOp Eq intType (PT.Int $ PNS.IntSize 1)) [v, C.Int (PNS.IntSize baseSize) 0]
-
 type Size =
   Int
 
@@ -311,11 +300,6 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
         Just OD.Unitary -> do
           return $ getFirstClause fallbackClause' clauseList''
-        Just OD.Nat -> do
-          (flag, flagVar) <- Gensym.newValueVarLocalWith "flag"
-          enumElim <- getEnumElim idents flagVar fallbackClause' (zip enumCaseList clauseList'')
-          baseSize <- Env.getBaseSize m
-          return $ C.UpElim True flag (isZero baseSize (C.VarLocal cursor)) enumElim
         Nothing -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
