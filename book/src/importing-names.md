@@ -119,31 +119,38 @@ core.text.io.get-line
 DNqh8NLdXliNwdwqRiWBh5T3rkt6tkw3o39c8olclPo=.text.io.get-line
 ```
 
-## Qualified Import
+## Module-Based Qualified Import
 
-Names in other files can be qualified as follows:
+Names can also be imported via "prefixes". You can define prefixes in your `module.ens`:
+
+```ens
+{
+  // ...
+  prefix {
+    hey "this.foo.yo" // `hey` is a prefix of `this.foo.yo`
+    hoo "this.bar"    // `hoo` is a prefix of `this.bar`
+  }
+}
+```
+
+These prefixes can then be used in source files of your module:
 
 ```neut
 import {
-- this.foo.yo => i // create an alias `i ~> this.foo.yo`
-- this.bar [f] => bar // import `f` from `this.bar` and create an alias `bar ~> this.bar`
+- hey // "hey.*" ~> "this.foo.yo.*"
+- hoo // "hoo.*" ~> "this.bar.*"
 }
 
 define main(): int {
-  i.some-func() // resolve: `i.some-func()` ~> `this.foo.yo.some-func()`
+  let _ = hey.func1() in  // `hey.func1()` ~> `this.foo.yo.func1()`
+  let _ = hoo.func2() in  // `hoo.func2()` ~> `this.bar.func2()`
+  ..
 }
 ```
 
-Overlapping aliases are prohibited:
+This module-based approach forces us to use prefixes in a consistent manner within a module.
 
-```neut
-import {
-- this.foo.item => abc
-// the below results in an error since the alias `abc` is already defined
-- this.bar.buz => abc
-}
-
-```
+---
 
 By the way, when you define an ADT, I recommend you *not* to prefix constructors like the below:
 
@@ -167,9 +174,18 @@ data term {
 
 and use them via qualified import:
 
+```ens
+{
+  // ...
+  prefix {
+    term "this.foo.bar.term"
+  }
+}
+```
+
 ```neut
 import {
-- this.foo.bar.term => term
+- term
 }
 
 define buz() {
