@@ -17,6 +17,8 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
 import Entity.Ens qualified as E
+import Entity.Error
+import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleAlias
@@ -70,6 +72,7 @@ fromFilePath moduleID moduleFilePath = do
   sourceDir <- interpretDirPath sourceDirEns
   foreignDirListEns <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
   foreignDirList <- mapM interpretDirPath foreignDirListEns
+  prefixMap <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPrefixMap
   return
     Module
       { moduleID = moduleID,
@@ -81,12 +84,23 @@ fromFilePath moduleID moduleFilePath = do
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
-        moduleForeignDirList = foreignDirList
+        moduleForeignDirList = foreignDirList,
+        modulePrefixMap = prefixMap
       }
 
 fromCurrentPath :: App Module
 fromCurrentPath =
   getCurrentModuleFilePath >>= fromFilePath MID.Main
+
+interpretPrefixMap ::
+  H.Hint ->
+  Map.HashMap T.Text E.Ens ->
+  Either Error (Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator))
+interpretPrefixMap m ens = do
+  let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
+  ks' <- mapM (BN.reflect m) ks
+  vs' <- mapM (E.toString >=> uncurry GL.reflectLocator) vs
+  return $ Map.fromList $ zip ks' vs'
 
 interpretRelFilePath :: E.Ens -> App SL.SourceLocator
 interpretRelFilePath ens = do

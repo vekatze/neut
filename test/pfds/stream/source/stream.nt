@@ -1,7 +1,7 @@
 import {
 - core.bool
-- core.list => L
-- core.text => T
+- core.list
+- core.text
 }
 
 data stream-cell(a) {

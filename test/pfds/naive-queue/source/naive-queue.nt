@@ -1,6 +1,6 @@
 import {
-- core.except => S
-- core.text => T
+- core.except
+- core.text
 - core.list [list, reverse]
 }
 

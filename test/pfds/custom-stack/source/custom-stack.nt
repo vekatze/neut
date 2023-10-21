@@ -1,6 +1,6 @@
 import {
-- core.list => L
-- core.text => T
+- core.list
+- core.text
 }
 
 data custom-stack(a) {

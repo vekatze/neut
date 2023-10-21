@@ -1,6 +1,6 @@
 import {
-- core.file.flag => FF
-- core.file.mode => FM
+- FF
+- FM
 }
 
 define main(): unit {
