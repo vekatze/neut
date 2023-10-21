@@ -16,7 +16,6 @@ import Entity.DecisionTree qualified as DT
 import Entity.HoleID qualified as HID
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
-import Entity.Opacity qualified as O
 import Entity.Stmt
 import Entity.StmtKind
 import Entity.WeakPrim qualified as WP
@@ -73,7 +72,7 @@ reveal' varEnv term =
               let enrichedArgs = map (,m) args
               binder <- newTypeHoleList varEnv enrichedArgs
               let app = m :< WT.PiElim term (suppliedHoles ++ map (\(x, mx) -> mx :< WT.Var x) enrichedArgs)
-              return $ m :< WT.PiIntro (LK.Normal O.Transparent) binder app
+              return $ m :< WT.PiIntro LK.Normal binder app
         _ ->
           return term
     m :< WT.Pi xts t -> do

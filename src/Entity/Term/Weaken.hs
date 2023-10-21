@@ -98,8 +98,8 @@ weakenBinder (m, x, t) =
 weakenKind :: LK.LamKindF TM.Term -> LK.LamKindF WT.WeakTerm
 weakenKind kind =
   case kind of
-    LK.Normal opacity ->
-      LK.Normal opacity
+    LK.Normal ->
+      LK.Normal
     LK.Fix xt ->
       LK.Fix (weakenBinder xt)
 

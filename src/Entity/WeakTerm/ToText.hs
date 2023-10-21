@@ -13,7 +13,6 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.LocalLocator qualified as LL
-import Entity.Opacity qualified as O
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
 import Entity.WeakPrim qualified as WP
@@ -36,13 +35,9 @@ toText term =
         LK.Fix (_, x, _) -> do
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["fix", showVariable x, argStr, toText e]
-        LK.Normal opacity -> do
+        LK.Normal -> do
           let argStr = inParen $ showItems $ map showArg xts
-          case opacity of
-            O.Transparent -> do
-              showCons ["λ", argStr, toText e]
-            O.Opaque -> do
-              showCons ["λ*", argStr, toText e]
+          showCons ["λ", argStr, toText e]
     _ :< WT.PiElim e es ->
       showCons $ map toText $ e : es
     _ :< WT.Data name _ es -> do

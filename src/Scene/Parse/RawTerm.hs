@@ -38,7 +38,6 @@ import Entity.Magic qualified as M
 import Entity.Name
 import Entity.Noema qualified as N
 import Entity.OS qualified as OS
-import Entity.Opacity qualified as O
 import Entity.Platform qualified as Platform
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
@@ -963,7 +962,7 @@ rawTermFloat = do
 
 lam :: Hint -> [RawBinder RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
-  m :< RT.PiIntro (LK.Normal O.Transparent) varList e
+  m :< RT.PiIntro LK.Normal varList e
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =

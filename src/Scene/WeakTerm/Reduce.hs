@@ -8,7 +8,6 @@ import Entity.Discriminant
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
-import Entity.Opacity qualified as O
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -36,7 +35,7 @@ reduce term =
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< WT.PiIntro (LK.Normal O.Transparent) xts body)
+        (_ :< WT.PiIntro LK.Normal xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')

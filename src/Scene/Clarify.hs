@@ -264,7 +264,7 @@ clarifyTerm tenv term =
       clarifyTerm tenv $ m :< TM.ResourceType pVar
     m :< TM.FlowIntro _ var (e, t) -> do
       let argNum = AN.fromInt 2
-      let lam = m :< TM.PiIntro (LK.Normal O.Opaque) [] e
+      let lam = m :< TM.PiIntro LK.Normal [] e
       clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, lam]
     m :< TM.FlowElim _ var (e, t) -> do
       let argNum = AN.fromInt 2
@@ -446,15 +446,15 @@ clarifyLambda tenv kind fvs mxts e@(m :< _) = do
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
-      let lamApp = m :< TM.PiIntro (LK.Normal O.Transparent) mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName argNum) appArgs')
+      let lamApp = m :< TM.PiIntro LK.Normal mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName argNum) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
       -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
       (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
       Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
       clarifyTerm tenv lamApp
-    LK.Normal opacity -> do
+    LK.Normal -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
-      returnClosure tenv opacity fvs mxts e'
+      returnClosure tenv O.Transparent fvs mxts e'
 
 newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do

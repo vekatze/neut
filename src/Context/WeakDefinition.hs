@@ -26,7 +26,7 @@ insert :: O.Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> W
 insert opacity m name xts e =
   when (opacity == O.Transparent) $
     modifyRef' weakDefMap $
-      Map.insert name (m :< WT.PiIntro (LK.Normal opacity) xts e)
+      Map.insert name (m :< WT.PiIntro LK.Normal xts e)
 
 read :: App DefMap
 read =
