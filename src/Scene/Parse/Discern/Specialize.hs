@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Scene.Parse.Discern.Specialize (specialize) where
 
 import Context.App
@@ -44,15 +46,15 @@ specializeRow isNoetic cursor (dd, argNum) (patternVector, (freedVars, body@(mBo
       adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
       let body' = mBody :< WT.Let WT.Transparent (mBody, x, h) adjustedCursor body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
-    Just ((_, Cons dd' _ _ _ args), rest) ->
-      if dd == dd'
+    Just ((_, Cons consInfo), rest) ->
+      if dd == consDD consInfo
         then do
-          od <- OptimizableData.lookup dd'
+          od <- OptimizableData.lookup consInfo.consDD
           case od of
             Just OD.Enum ->
-              return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
+              return $ Just (V.concat [V.fromList consInfo.args, rest], (freedVars, body))
             Just OD.Unitary ->
-              return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
+              return $ Just (V.concat [V.fromList consInfo.args, rest], (freedVars, body))
             _ ->
-              return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))
+              return $ Just (V.concat [V.fromList consInfo.args, rest], (cursor : freedVars, body))
         else return Nothing

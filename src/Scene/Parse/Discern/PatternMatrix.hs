@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedRecordDot #-}
+
 module Scene.Parse.Discern.PatternMatrix
   ( compilePatternMatrix,
     ensurePatternMatrixSanity,
@@ -55,16 +57,17 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(mPat, (cons, disc, dataArgNum, consArgNum, args)) -> do
-                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
-                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
-                let ms = map fst args
+              clauseList <- forM headConstructors $ \(mPat, consInfo) -> do
+                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify consInfo.dataArgNum]
+                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify consInfo.dataArgNum]
+                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consInfo.consArgNum]
+                let ms = map fst consInfo.args
                 (consArgs', nenv') <- alignConsArgs nenv $ zip ms consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize isNoetic cursor (cons, consArgNum) mat
+                specialMatrix <- PATS.specialize isNoetic cursor (consInfo.consDD, consInfo.consArgNum) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
-                return (DT.Cons mPat cons disc (zip dataHoles dataTypeHoles) consArgs' specialDecisionTree)
+                let dataArgs' = zip dataHoles dataTypeHoles
+                return (DT.Cons mPat consInfo.consDD consInfo.disc dataArgs' consArgs' specialDecisionTree)
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
               fallbackClause <- compilePatternMatrix nenv isNoetic mCol (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCol []
@@ -119,15 +122,15 @@ ensurePatternSanity (m, pat) =
       return ()
     PAT.WildcardVar {} ->
       return ()
-    PAT.Cons cons _ _ consArgNum args -> do
-      let argNum = length args
-      when (argNum /= AN.reify consArgNum) $
+    PAT.Cons consInfo -> do
+      let argNum = length (PAT.args consInfo)
+      when (argNum /= AN.reify (PAT.consArgNum consInfo)) $
         Throw.raiseError m $
           "the constructor `"
-            <> DD.reify cons
+            <> DD.reify (PAT.consDD consInfo)
             <> "` expects "
-            <> T.pack (show (AN.reify consArgNum))
+            <> T.pack (show (AN.reify (PAT.consArgNum consInfo)))
             <> " arguments, but found "
             <> T.pack (show argNum)
             <> "."
-      mapM_ ensurePatternSanity args
+      mapM_ ensurePatternSanity (PAT.args consInfo)
