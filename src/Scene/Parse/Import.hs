@@ -3,6 +3,7 @@ module Scene.Parse.Import (parseImportBlock) where
 import Context.Alias qualified as Alias
 import Context.Throw qualified as Throw
 import Control.Monad.Trans
+import Data.HashMap.Strict qualified as Map
 import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -14,6 +15,7 @@ import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module
+import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
@@ -32,21 +34,20 @@ parseImportBlock currentSource = do
   m <- P.getCurrentHint
   locatorAndSourceInfo <-
     choice
-      [ P.keyword "import" >> P.betweenBrace (P.manyList parseImport),
+      [ P.keyword "import" >> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource))),
         return []
       ]
   let (foundLocators, sourceInfo) = unzip locatorAndSourceInfo
   coreSourceInfo <- loadDefaultImports m currentSource foundLocators
   return $ sourceInfo ++ coreSourceInfo
 
-parseImport :: P.Parser (LocatorText, (Source.Source, [AI.AliasInfo]))
-parseImport = do
+parseImport :: Module -> P.Parser (LocatorText, (Source.Source, [AI.AliasInfo]))
+parseImport currentModule = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
-  (source, strictGlobalLocator) <- parseLocatorText m locatorText
+  (locatorText', mPrefixInfo, source, strictGlobalLocator) <- parseLocatorText currentModule m locatorText
   mUseInfo <- optional $ parseLocalLocatorList strictGlobalLocator
-  mPrefixInfo <- optional $ parseAlias strictGlobalLocator
-  return (locatorText, (source, catMaybes [mUseInfo, mPrefixInfo]))
+  return (locatorText', (source, catMaybes [mUseInfo, mPrefixInfo]))
 
 parseLocalLocatorList :: SGL.StrictGlobalLocator -> P.Parser AI.AliasInfo
 parseLocalLocatorList sgl = do
@@ -57,25 +58,48 @@ parseLocalLocatorList sgl = do
       ]
   return $ AI.Use sgl lls
 
-parseAlias :: SGL.StrictGlobalLocator -> P.Parser AI.AliasInfo
-parseAlias sgl = do
-  P.delimiter "=>"
-  m <- P.getCurrentHint
-  alias <- GLA.GlobalLocatorAlias <$> P.baseName
-  return $ AI.Prefix m alias sgl
-
 parseLocalLocator :: P.Parser (Hint, LL.LocalLocator)
 parseLocalLocator = do
   mLL <- P.getCurrentHint
   ll <- P.baseName
   return (mLL, LL.new ll)
 
-parseLocatorText :: Hint -> T.Text -> P.Parser (Source.Source, SGL.StrictGlobalLocator)
-parseLocatorText m locatorText = do
-  (moduleAlias, sourceLocator) <- lift $ Throw.liftEither $ GL.reflectLocator m locatorText
-  strictGlobalLocator <- lift $ Alias.resolveLocatorAlias m moduleAlias sourceLocator
-  source <- getSource m strictGlobalLocator locatorText >>= lift . shiftToLatest
-  return (source, strictGlobalLocator)
+parseLocatorText ::
+  Module ->
+  Hint ->
+  T.Text ->
+  P.Parser (T.Text, Maybe AI.AliasInfo, Source.Source, SGL.StrictGlobalLocator)
+parseLocatorText currentModule m locatorText = do
+  (locatorText', mPrefix, moduleAlias, sourceLocator) <- parseLocatorText' currentModule m locatorText
+  sgl <- lift $ Alias.resolveLocatorAlias m moduleAlias sourceLocator
+  source <- getSource m sgl locatorText >>= lift . shiftToLatest
+  let mAliasInfo = mPrefix >>= \prefix -> return $ AI.Prefix m (GLA.GlobalLocatorAlias prefix) sgl
+  return (locatorText', mAliasInfo, source, sgl)
+
+parseLocatorText' ::
+  Module ->
+  Hint ->
+  T.Text ->
+  P.Parser (T.Text, Maybe BN.BaseName, ModuleAlias, SL.SourceLocator)
+parseLocatorText' currentModule m locatorText = do
+  baseNameList <- lift $ Throw.liftEither $ BN.bySplit m locatorText
+  case baseNameList of
+    [] ->
+      lift $ Throw.raiseCritical m "Scene.Parse.Import: empty parse locator"
+    [prefix] -> do
+      case Map.lookup prefix (modulePrefixMap currentModule) of
+        Nothing ->
+          lift $ Throw.raiseError m $ "no such prefix is defined: " <> BN.reify prefix
+        Just (moduleAlias, sourceLocator) -> do
+          let locatorText' = GL.reify $ GL.GlobalLocator moduleAlias sourceLocator
+          return (locatorText', Just prefix, moduleAlias, sourceLocator)
+    aliasText : locator ->
+      case SL.fromBaseNameList locator of
+        Nothing ->
+          lift $ Throw.raiseError m $ "couldn't parse the locator: " <> locatorText
+        Just sourceLocator -> do
+          let moduleAlias = ModuleAlias aliasText
+          return (locatorText, Nothing, moduleAlias, sourceLocator)
 
 getSource :: Hint -> SGL.StrictGlobalLocator -> LocatorText -> P.Parser Source.Source
 getSource m sgl locatorText = do
@@ -95,10 +119,10 @@ loadDefaultImports m source foundLocators =
     else do
       let locatorSet = S.fromList foundLocators
       let defaultImports' = filter (\(x, _) -> S.notMember x locatorSet) BN.defaultImports
-      mapM (uncurry $ interpretDefaultImport m) defaultImports'
+      mapM (uncurry $ interpretDefaultImport (Source.sourceModule source) m) defaultImports'
 
-interpretDefaultImport :: Hint -> T.Text -> [BN.BaseName] -> P.Parser (Source.Source, [AI.AliasInfo])
-interpretDefaultImport m globalLocatorText localLocatorBaseNameList = do
-  (source, sgl) <- parseLocatorText m globalLocatorText
+interpretDefaultImport :: Module -> Hint -> T.Text -> [BN.BaseName] -> P.Parser (Source.Source, [AI.AliasInfo])
+interpretDefaultImport currentModule m globalLocatorText localLocatorBaseNameList = do
+  (_, mPrefixInfo, source, sgl) <- parseLocatorText currentModule m globalLocatorText
   let lls = map LL.new localLocatorBaseNameList
-  return (source, [AI.Use sgl (map (m,) lls)])
+  return (source, catMaybes [Just (AI.Use sgl (map (m,) lls)), mPrefixInfo])
