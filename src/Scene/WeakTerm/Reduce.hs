@@ -160,15 +160,18 @@ reduceCase ::
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
 reduceCase decisionCase = do
-  case decisionCase of
-    DT.Cons mCons dd disc dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM reduce dataTerms
-      dataTypes' <- mapM reduce dataTypes
-      let (ms, xs, ts) = unzip3 consArgs
-      ts' <- mapM reduce ts
-      tree' <- reduceDecisionTree tree
-      return $ DT.Cons mCons dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM reduce dataTerms
+  dataTypes' <- mapM reduce dataTypes
+  let (ms, xs, ts) = unzip3 $ DT.consArgs decisionCase
+  ts' <- mapM reduce ts
+  cont' <- reduceDecisionTree $ DT.cont decisionCase
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = zip3 ms xs ts',
+        DT.cont = cont'
+      }
 
 findClause ::
   Discriminant ->
@@ -180,7 +183,7 @@ findClause consDisc fallbackTree clauseList =
     [] ->
       ([], fallbackTree)
     clause : rest ->
-      case findCase consDisc clause of
+      case DT.findCase consDisc clause of
         Just (consArgs, clauseTree) ->
           (consArgs, clauseTree)
         Nothing ->
@@ -188,15 +191,6 @@ findClause consDisc fallbackTree clauseList =
 
 type CaseInfo =
   [(Ident, WT.WeakTerm)]
-
-findCase :: Discriminant -> DT.Case WT.WeakTerm -> Maybe (CaseInfo, DT.DecisionTree WT.WeakTerm)
-findCase consDisc decisionCase =
-  case decisionCase of
-    DT.Cons _ _ disc _ consArgs tree
-      | consDisc == disc ->
-          return (map (\(_, x, t) -> (x, t)) consArgs, tree)
-    _ ->
-      Nothing
 
 lookupSplit :: Ident -> [(Ident, b, c)] -> Maybe (b, [(Ident, b, c)])
 lookupSplit cursor =

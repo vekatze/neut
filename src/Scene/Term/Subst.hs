@@ -156,13 +156,16 @@ substCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
 substCase sub decisionCase = do
-  case decisionCase of
-    DT.Cons m dd disc dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (subst sub) dataTerms
-      dataTypes' <- mapM (subst sub) dataTypes
-      (consArgs', tree') <- subst'' sub consArgs tree
-      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM (subst sub) dataTerms
+  dataTypes' <- mapM (subst sub) dataTypes
+  (consArgs', cont') <- subst'' sub (DT.consArgs decisionCase) (DT.cont decisionCase)
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = consArgs',
+        DT.cont = cont'
+      }
 
 substLeafVar :: SubstTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =

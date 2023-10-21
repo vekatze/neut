@@ -160,12 +160,10 @@ showDecisionTree tree =
 
 showClauseList :: DT.Case WT.WeakTerm -> T.Text
 showClauseList decisionCase = do
-  case decisionCase of
-    DT.Cons _ consName d dataArgs consArgs cont -> do
-      showCons
-        [ showGlobalVariable consName,
-          T.pack (show (D.reify d)),
-          showCons $ map (\(e, t) -> showCons [toText e, toText t]) dataArgs,
-          inParen $ showTypeArgs consArgs,
-          showDecisionTree cont
-        ]
+  showCons
+    [ showGlobalVariable (DT.consDD decisionCase),
+      T.pack (show (D.reify (DT.disc decisionCase))),
+      showCons $ map (\(e, t) -> showCons [toText e, toText t]) (DT.dataArgs decisionCase),
+      inParen $ showTypeArgs (DT.consArgs decisionCase),
+      showDecisionTree (DT.cont decisionCase)
+    ]

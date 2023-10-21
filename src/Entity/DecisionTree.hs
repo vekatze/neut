@@ -4,6 +4,7 @@ module Entity.DecisionTree
     Case (..),
     getConstructors,
     isUnreachable,
+    findCase,
   )
 where
 
@@ -23,8 +24,14 @@ data DecisionTree a
 
 type CaseList a = (DecisionTree a, [Case a])
 
-data Case a
-  = Cons Hint DD.DefiniteDescription D.Discriminant [(a, a)] [BinderF a] (DecisionTree a)
+data Case a = Case
+  { mCons :: Hint,
+    consDD :: DD.DefiniteDescription,
+    disc :: D.Discriminant,
+    dataArgs :: [(a, a)],
+    consArgs :: [BinderF a],
+    cont :: DecisionTree a
+  }
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (DecisionTree a)
@@ -33,13 +40,7 @@ instance (Binary a) => Binary (Case a)
 
 getConstructors :: [Case a] -> [DD.DefiniteDescription]
 getConstructors clauseList = do
-  map getConstructor clauseList
-
-getConstructor :: Case a -> DD.DefiniteDescription
-getConstructor decisionCase =
-  case decisionCase of
-    Cons _ name _ _ _ _ ->
-      name
+  map consDD clauseList
 
 isUnreachable :: DecisionTree a -> Bool
 isUnreachable tree =
@@ -48,3 +49,9 @@ isUnreachable tree =
       True
     _ ->
       False
+
+findCase :: D.Discriminant -> Case a -> Maybe ([(Ident, a)], DecisionTree a)
+findCase consDisc decisionCase =
+  if consDisc == disc decisionCase
+    then return (map (\(_, x, t) -> (x, t)) (consArgs decisionCase), cont decisionCase)
+    else Nothing

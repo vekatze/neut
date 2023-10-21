@@ -373,14 +373,17 @@ elaborateDecisionTree m tree =
 
 elaborateClause :: DT.Case WT.WeakTerm -> App (DT.Case TM.Term)
 elaborateClause decisionCase = do
-  case decisionCase of
-    DT.Cons mCons consName disc dataArgs consArgs cont -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM elaborate' dataTerms
-      dataTypes' <- mapM elaborate' dataTypes
-      consArgs' <- mapM elaborateWeakBinder consArgs
-      cont' <- elaborateDecisionTree mCons cont
-      return $ DT.Cons mCons consName disc (zip dataTerms' dataTypes') consArgs' cont'
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM elaborate' dataTerms
+  dataTypes' <- mapM elaborate' dataTypes
+  consArgs' <- mapM elaborateWeakBinder $ DT.consArgs decisionCase
+  cont' <- elaborateDecisionTree (DT.mCons decisionCase) (DT.cont decisionCase)
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = consArgs',
+        DT.cont = cont'
+      }
 
 raiseNonExhaustivePatternMatching :: Hint -> App a
 raiseNonExhaustivePatternMatching m =

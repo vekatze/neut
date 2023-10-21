@@ -67,7 +67,15 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
                 specialMatrix <- PATS.specialize isNoetic cursor (consInfo.consDD, consInfo.consArgNum) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
                 let dataArgs' = zip dataHoles dataTypeHoles
-                return (DT.Cons mPat consInfo.consDD consInfo.disc dataArgs' consArgs' specialDecisionTree)
+                return $
+                  DT.Case
+                    { mCons = mPat,
+                      consDD = consInfo.consDD,
+                      disc = consInfo.disc,
+                      dataArgs = dataArgs',
+                      consArgs = consArgs',
+                      cont = specialDecisionTree
+                    }
               fallbackMatrix <- PATF.getFallbackMatrix isNoetic cursor mat
               fallbackClause <- compilePatternMatrix nenv isNoetic mCol (V.tail occurrences) fallbackMatrix
               t <- Gensym.newHole mCol []

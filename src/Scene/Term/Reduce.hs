@@ -97,12 +97,15 @@ reduceCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
 reduceCase decisionCase = do
-  case decisionCase of
-    DT.Cons m dd disc dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM reduce dataTerms
-      dataTypes' <- mapM reduce dataTypes
-      let (ms, xs, ts) = unzip3 consArgs
-      ts' <- mapM reduce ts
-      tree' <- reduceDecisionTree tree
-      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') (zip3 ms xs ts') tree'
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM reduce dataTerms
+  dataTypes' <- mapM reduce dataTypes
+  let (ms, xs, ts) = unzip3 $ DT.consArgs decisionCase
+  ts' <- mapM reduce ts
+  cont' <- reduceDecisionTree $ DT.cont decisionCase
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = zip3 ms xs ts',
+        DT.cont = cont'
+      }

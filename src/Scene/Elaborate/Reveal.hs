@@ -255,11 +255,14 @@ revealClause ::
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
 revealClause varEnv decisionCase = do
-  case decisionCase of
-    DT.Cons mCons consName disc dataArgs consArgs body -> do
-      let (dataTerms, dataTypeTerms) = unzip dataArgs
-      dataTerms' <- mapM (reveal' varEnv) dataTerms
-      dataTypeTerms' <- mapM (reveal' varEnv) dataTypeTerms
-      (consArgs', body') <- revealBinder' varEnv consArgs $ \extendedVarEnv ->
-        revealDecisionTree extendedVarEnv body
-      return (DT.Cons mCons consName disc (zip dataTerms' dataTypeTerms') consArgs' body')
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM (reveal' varEnv) dataTerms
+  dataTypes' <- mapM (reveal' varEnv) dataTypes
+  (consArgs', cont') <- revealBinder' varEnv (DT.consArgs decisionCase) $ \extendedVarEnv ->
+    revealDecisionTree extendedVarEnv (DT.cont decisionCase)
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = consArgs',
+        DT.cont = cont'
+      }

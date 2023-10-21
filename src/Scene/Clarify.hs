@@ -364,37 +364,35 @@ clarifyCase ::
   Ident ->
   DT.Case TM.Term ->
   App (EC.EnumCase, C.Comp)
-clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
-  case decisionCase of
-    DT.Cons _ consName disc dataArgs consArgs cont -> do
-      let (_, dataTypes) = unzip dataArgs
-      dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
-      let cursorSize = 1 + length dataArgVars + length consArgs
-      let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
-      let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
-      body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-      od <- OptimizableData.lookup consName
-      case od of
-        Just OD.Enum -> do
-          return (EC.Int (D.reify disc), body')
-        Just OD.Unitary
-          | [(_, consArg, _)] <- consArgs ->
-              return
-                ( EC.Int 0,
-                  C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body'
-                )
-          | otherwise ->
-              Throw.raiseCritical' "found a non-unitary consArgs for unitary ADT"
-        _ -> do
-          discriminantVar <- Gensym.newIdentFromText "discriminant"
+clarifyCase tenv isNoetic dataArgsMap cursor (DT.Case {..}) = do
+  let (_, dataTypes) = unzip dataArgs
+  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
+  let cursorSize = 1 + length dataArgVars + length consArgs
+  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
+  let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
+  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
+  od <- OptimizableData.lookup consDD
+  case od of
+    Just OD.Enum -> do
+      return (EC.Int (D.reify disc), body')
+    Just OD.Unitary
+      | [(_, consArg, _)] <- consArgs ->
           return
-            ( EC.Int (D.reify disc),
-              C.SigmaElim
-                False
-                (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
-                (C.VarLocal cursor)
-                body'
+            ( EC.Int 0,
+              C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body'
             )
+      | otherwise ->
+          Throw.raiseCritical' "found a non-unitary consArgs for unitary ADT"
+    _ -> do
+      discriminantVar <- Gensym.newIdentFromText "discriminant"
+      return
+        ( EC.Int (D.reify disc),
+          C.SigmaElim
+            False
+            (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+            (C.VarLocal cursor)
+            body'
+        )
 
 alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable tenv fvs e = do
