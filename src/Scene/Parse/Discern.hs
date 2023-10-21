@@ -363,6 +363,7 @@ discernPattern (m, pat) =
                   let consInfo =
                         PAT.ConsInfo
                           { consDD = consName,
+                            isConstLike = isConstLike,
                             disc = disc,
                             dataArgNum = dataArgNum,
                             consArgNum = consArgNum,
@@ -372,10 +373,11 @@ discernPattern (m, pat) =
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc _) -> do
+            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
               let consInfo =
                     PAT.ConsInfo
                       { consDD = dd,
+                        isConstLike = isConstLike,
                         disc = disc,
                         dataArgNum = dataArgNum,
                         consArgNum = consArgNum,
@@ -388,10 +390,11 @@ discernPattern (m, pat) =
         DefiniteDescription dd -> do
           (_, gn) <- resolveName m $ DefiniteDescription dd
           case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc _) -> do
+            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
               let consInfo =
                     PAT.ConsInfo
                       { consDD = dd,
+                        isConstLike = isConstLike,
                         disc = disc,
                         dataArgNum = dataArgNum,
                         consArgNum = consArgNum,
@@ -412,6 +415,7 @@ discernPattern (m, pat) =
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
+                    isConstLike = isConstLike,
                     disc = disc,
                     dataArgNum = dataArgNum,
                     consArgNum = consArgNum,
@@ -428,6 +432,7 @@ discernPattern (m, pat) =
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
+                    isConstLike = isConstLike,
                     disc = disc,
                     dataArgNum = dataArgNum,
                     consArgNum = consArgNum,

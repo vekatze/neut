@@ -25,6 +25,7 @@ import Entity.Discriminant qualified as D
 import Entity.Error
 import Entity.Hint hiding (new)
 import Entity.Ident
+import Entity.IsConstLike
 
 data Pattern
   = Var Ident
@@ -34,6 +35,7 @@ data Pattern
 
 data ConsInfo = ConsInfo
   { consDD :: DD.DefiniteDescription,
+    isConstLike :: IsConstLike,
     disc :: D.Discriminant,
     dataArgNum :: AN.ArgNum,
     consArgNum :: AN.ArgNum,

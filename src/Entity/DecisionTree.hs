@@ -14,6 +14,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.Ident
+import Entity.IsConstLike
 import GHC.Generics (Generic)
 
 data DecisionTree a
@@ -27,6 +28,7 @@ type CaseList a = (DecisionTree a, [Case a])
 data Case a = Case
   { mCons :: Hint,
     consDD :: DD.DefiniteDescription,
+    isConstLike :: IsConstLike,
     disc :: D.Discriminant,
     dataArgs :: [(a, a)],
     consArgs :: [BinderF a],

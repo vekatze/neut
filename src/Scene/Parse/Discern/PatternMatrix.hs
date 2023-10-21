@@ -71,6 +71,7 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
                   DT.Case
                     { mCons = mPat,
                       consDD = consInfo.consDD,
+                      isConstLike = consInfo.isConstLike,
                       disc = consInfo.disc,
                       dataArgs = dataArgs',
                       consArgs = consArgs',
