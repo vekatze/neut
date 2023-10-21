@@ -2,11 +2,10 @@ module Entity.LamKind where
 
 import Data.Binary
 import Entity.Binder
-import Entity.Opacity qualified as O
 import GHC.Generics
 
 data LamKindF a
-  = Normal O.Opacity
+  = Normal
   | Fix (BinderF a)
   deriving (Show, Generic)
 

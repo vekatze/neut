@@ -136,9 +136,9 @@ discern nenv term =
         RLK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
-        RLK.Normal opacity -> do
+        RLK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro (LK.Normal opacity) xts' e'
+          return $ m :< WT.PiIntro LK.Normal xts' e'
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e

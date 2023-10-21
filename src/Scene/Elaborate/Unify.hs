@@ -128,9 +128,8 @@ simplify constraintList =
               yt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
               simplify $ cs' ++ cs
-          | LK.Normal opacity1 <- kind1,
-            LK.Normal opacity2 <- kind2,
-            opacity1 == opacity2,
+          | LK.Normal <- kind1,
+            LK.Normal <- kind2,
             length xts1 == length xts2 -> do
               xt1 <- asWeakBinder m1 e1
               xt2 <- asWeakBinder m2 e2

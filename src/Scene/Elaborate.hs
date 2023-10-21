@@ -322,8 +322,8 @@ elaborateWeakBinder (m, x, t) = do
 elaborateKind :: LK.LamKindF WT.WeakTerm -> App (LK.LamKindF TM.Term)
 elaborateKind kind =
   case kind of
-    LK.Normal opacity ->
-      return $ LK.Normal opacity
+    LK.Normal ->
+      return LK.Normal
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
       return $ LK.Fix xt'

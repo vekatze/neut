@@ -21,3 +21,7 @@ instance Binary Ident
 attachHolePrefix :: Ident -> Ident
 attachHolePrefix (I (varName, i)) =
   I (holeVarPrefix <> varName, i)
+
+isHole :: Ident -> Bool
+isHole (I (varName, _)) =
+  holeVarPrefix `T.isPrefixOf` varName

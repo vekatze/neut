@@ -38,7 +38,7 @@ inline term =
       es' <- mapM inline es
       dmap <- Definition.get
       case e' of
-        (_ :< TM.PiIntro (LK.Normal O.Transparent) xts (_ :< body))
+        (_ :< TM.PiIntro LK.Normal xts (_ :< body))
           | length xts == length es',
             all TM.isValue es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts

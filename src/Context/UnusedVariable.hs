@@ -12,8 +12,6 @@ import Context.Remark qualified as Remark
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Set qualified as S
-import Data.Text qualified as T
-import Entity.Const
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify
@@ -36,11 +34,7 @@ get :: App [(Hint, Ident)]
 get = do
   uenv <- readRef' unusedVariableMap
   set <- readRef' usedVariableSet
-  return $ filter (\(_, var) -> not (isHoleVar var) && S.notMember (toInt var) set) $ IntMap.elems uenv
-
-isHoleVar :: Ident -> Bool
-isHoleVar (I (varName, _)) =
-  holeVarPrefix `T.isPrefixOf` varName
+  return $ filter (\(_, var) -> not (isHole var) && S.notMember (toInt var) set) $ IntMap.elems uenv
 
 registerRemarks :: App ()
 registerRemarks = do

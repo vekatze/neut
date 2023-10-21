@@ -1,12 +1,11 @@
 module Entity.RawLamKind where
 
 import Data.Binary
-import Entity.Opacity qualified as O
 import Entity.RawBinder
 import GHC.Generics
 
 data RawLamKind a
-  = Normal O.Opacity
+  = Normal
   | Fix (RawBinder a)
   deriving (Show, Generic)
 
