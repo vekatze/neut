@@ -18,7 +18,7 @@ define my-length(xs: &list(int)): int {
 }
 
 define bar(xs-cell: &cell(list(int))): unit {
-  borrow(_, xs-cell, (xs) => {
+  borrow(xs-cell, (xs) => {
     let len = my-length(xs) in
     print-int(len);
     print("\n")
@@ -27,17 +27,17 @@ define bar(xs-cell: &cell(list(int))): unit {
 
 define main(): unit {
   let xs: list(int) = Cons(1, Cons(2, Nil())) in
-  let xs-cell = new-cell(_, xs) in
+  let xs-cell = new-cell(xs) in
   let _ on xs-cell =
     let _ = bar(xs-cell) in
-    mutate(_, xs-cell, (xs) => {
+    mutate(xs-cell, (xs) => {
       Cons(4, xs)
     });
     let _ = bar(xs-cell) in
-    mutate(_, xs-cell, (_) => {
+    mutate(xs-cell, (_) => {
       Nil()
     });
-    mutate(_, xs-cell, (xs) => {
+    mutate(xs-cell, (xs) => {
       Cons(4, xs)
     });
     bar(xs-cell)

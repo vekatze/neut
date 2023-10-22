@@ -78,7 +78,7 @@ define main(): unit {
   let yss = tails(_, xs) in // [[26, ...], [25, ...], ..., [1, ...]]
   let _ = yss in
   let _ = yss in
-  let zs = map(_, _, (l) => { head(l) }, yss) in // [26, ..., 1]
+  let zs = map((l) => { head(l) }, yss) in // [26, ..., 1]
   let _ = zs in
   let _ = zs in
   let _ = zs in

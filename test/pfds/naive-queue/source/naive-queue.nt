@@ -24,7 +24,7 @@ define head(a: tau, q: &queue(a)): ?a {
 inline sanitize(a: tau, q: queue(a)): queue(a) {
   match q {
   - Tuple([], ys) =>
-    Tuple(reverse(_, ys), [])
+    Tuple(reverse(ys), [])
   - q =>
     q
   }
