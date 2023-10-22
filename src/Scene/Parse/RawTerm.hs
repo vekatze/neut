@@ -315,14 +315,23 @@ parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
   m <- getCurrentHint
   funcBaseName <- baseName
-  domInfoList <- argSeqOrList preBinder
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) domInfoList
+  impDomArgList <- parseImplicitArgs
+  expDomArgList <- argSeqOrList preBinder
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) expDomArgList
   argListList <- many $ argList preBinder
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
   let e' = foldPiIntro m argListList e
   let codType' = foldPi m argListList codType
-  return ((m, funcBaseName), domInfoList, codType', e')
+  return ((m, funcBaseName), impDomArgList, expDomArgList, codType', e')
+
+parseImplicitArgs :: Parser [RawBinder RT.RawTerm]
+parseImplicitArgs =
+  choice
+    [ do
+        betweenBracket (commaList preBinder),
+      return []
+    ]
 
 foldPi :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
 foldPi m args t =

@@ -164,9 +164,10 @@ parseDefine opacity = do
       O.Transparent ->
         P.keyword "inline"
   m <- P.getCurrentHint
-  ((_, name), expArgs, codType, e) <- parseTopDefInfo
+  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction (SK.Normal opacity) m name' (AN.fromInt 0) expArgs codType e
+  let impArgNum = AN.fromInt $ length impArgs
+  lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
 
 defineFunction ::
   SK.RawStmtKind ->

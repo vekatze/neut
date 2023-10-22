@@ -62,4 +62,4 @@ type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)
 
 type TopDefInfo =
-  ((Hint, BN.BaseName), [RawBinder RawTerm], RawTerm, RawTerm)
+  ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
