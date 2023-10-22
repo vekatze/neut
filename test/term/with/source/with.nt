@@ -1,0 +1,35 @@
+define nop(): unit {
+  Unit
+}
+
+define except-bind[e, a, b](x: except(e, a), k: a -> except(e, b)): except(e, b) {
+  match x {
+  - Fail(err) => Fail(err)
+  - Pass(value) => k(value)
+  }
+}
+
+define test(): except(&text, int) {
+  with except-bind {
+    bind _: bool = Fail("hello") in
+    let _ = tau in
+    bind _: bool = Fail("hello") in
+    let _ = tau in
+    bind _: bool = Pass(True) in
+    nop();
+    bind _: bool =
+      bind _: bool = Pass(True) in
+      nop();
+      let _ = tau in
+      Fail("hello") in
+    bind _: bool = Fail("hello") in
+    bind _: bool = Fail("hello") in
+    nop();
+    bind _: tau = Pass(int) in
+    Pass(10)
+  }
+}
+
+define main(): unit {
+  print("Hello, world!\n")
+}

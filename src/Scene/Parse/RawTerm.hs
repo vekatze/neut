@@ -14,6 +14,7 @@ import Context.App
 import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -59,28 +60,35 @@ rawExpr :: Parser RT.RawTerm
 rawExpr = do
   m <- getCurrentHint
   choice
-    [ rawExprLet m,
-      rawExprSeqOrTerm m
+    [ do
+        thunk <- rawExprLet m
+        thunk <$> rawExpr,
+      do
+        termOrSeq <- rawExprSeqOrTerm m
+        case termOrSeq of
+          Left term ->
+            return term
+          Right k ->
+            k <$> rawExpr
     ]
 
-rawExprLet :: Hint -> Parser RT.RawTerm
+rawExprLet :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawExprLet m = do
   choice
-    [ try rawTermLetEither,
+    [ try rawTermLetExcept,
       rawTermLetOrLetOn m
     ]
 
-rawExprSeqOrTerm :: Hint -> Parser RT.RawTerm
+rawExprSeqOrTerm :: Hint -> Parser (Either RT.RawTerm (RT.RawTerm -> RT.RawTerm))
 rawExprSeqOrTerm m = do
   e1 <- rawTerm
   choice
     [ do
         delimiter ";"
-        e2 <- rawExpr
         f <- lift Gensym.newTextForHole
         unit <- lift $ locatorToVarGlobal m coreUnit
-        return $ bind (m, f, unit) e1 e2,
-      return e1
+        return $ Right $ \e2 -> bind (m, f, unit) e1 e2,
+      return $ Left e1
     ]
 
 rawTerm :: Parser RT.RawTerm
@@ -110,6 +118,7 @@ rawTermBasic = do
       rawTermEmbody,
       rawTermTuple,
       rawTermTupleIntro,
+      rawTermWith,
       rawTermPiElimOrSimple
     ]
 
@@ -172,7 +181,7 @@ rawTermKeyValuePair = do
   value <- rawExpr
   return (m, key, value)
 
-rawTermLetOrLetOn :: Hint -> Parser RT.RawTerm
+rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetOrLetOn m = do
   isNoetic <- choice [try (keyword "&let") >> return True, keyword "let" >> return False]
   pat@(mx, _) <- rawTermPattern
@@ -187,14 +196,12 @@ rawTermLetOrLetOn m = do
         delimiter "="
         e1 <- rawExpr
         delimiter "in"
-        e2 <- rawExpr
-        return $ m :< RT.Let mxt noeticVarList e1 (modifier isNoetic e2),
+        return $ \e2 -> m :< RT.Let mxt noeticVarList e1 (modifier isNoetic e2),
       do
         delimiter "="
         e1 <- rawExpr
         delimiter "in"
-        e2 <- rawExpr
-        return $ m :< RT.Let mxt [] e1 (modifier isNoetic e2)
+        return $ \e2 -> m :< RT.Let mxt [] e1 (modifier isNoetic e2)
     ]
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
@@ -245,9 +252,8 @@ rawTermNoeticVar = do
   (m, x) <- var
   return (m, x)
 
--- let? x = e1 e2
-rawTermLetEither :: Parser RT.RawTerm
-rawTermLetEither = do
+rawTermLetExcept :: Parser (RT.RawTerm -> RT.RawTerm)
+rawTermLetExcept = do
   keyword "let?"
   pat@(mx, _) <- rawTermPattern
   rightType <- rawTermLetVarAscription mx
@@ -258,12 +264,12 @@ rawTermLetEither = do
   leftType <- lift $ Gensym.newPreHole m1
   let eitherType = m1 :< RT.PiElim eitherTypeInner [leftType, rightType]
   e1' <- ascribe m1 eitherType e1
-  e2@(m2 :< _) <- rawExpr
+  m2 <- getCurrentHint
   err <- lift Gensym.newText
   exceptFail <- lift $ locatorToName m2 coreExceptFail
   exceptPass <- lift $ locatorToName m2 coreExceptPass
   exceptFailVar <- lift $ locatorToVarGlobal m2 coreExceptFail
-  return $
+  return $ \e2 ->
     m2
       :< RT.DataElim
         False
@@ -716,6 +722,49 @@ rawTermTupleIntro = do
       return e
     _ ->
       return $ foldByOp m pairVar es
+
+rawTermWith :: Parser RT.RawTerm
+rawTermWith = do
+  m <- getCurrentHint
+  keyword "with"
+  binder <- rawTerm
+  betweenBrace $ rawTermWith' m binder
+
+rawTermWith' :: Hint -> RT.RawTerm -> Parser RT.RawTerm
+rawTermWith' m binder = do
+  choice
+    [ do
+        thunk <- rawExprLet m
+        thunk <$> rawTermWith' m binder,
+      do
+        thunk <- rawExprBind binder
+        thunk <$> rawTermWith' m binder,
+      do
+        termOrThunk <- rawExprSeqOrTerm m
+        case termOrThunk of
+          Left term ->
+            return term
+          Right thunk -> do
+            thunk <$> rawTermWith' m binder
+    ]
+
+rawExprBind :: RT.RawTerm -> Parser (RT.RawTerm -> RT.RawTerm)
+rawExprBind binder = do
+  lift $ printNote' "bind"
+  m <- getCurrentHint
+  keyword "bind"
+  lift $ printNote' "before pattern"
+  pat@(mx, _) <- rawTermPattern
+  lift $ printNote' "after pattern"
+  (x, modifier) <- getContinuationModifier pat
+  t <- rawTermLetVarAscription mx
+  let mxt = (mx, x, t)
+  lift $ printNote' "parsing equal"
+  delimiter "="
+  -- e1 <- rawExpr
+  e1 <- rawTermWith' m binder
+  delimiter "in"
+  return $ \e2 -> m :< RT.PiElim binder [e1, lam m [mxt] (modifier False e2)]
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
