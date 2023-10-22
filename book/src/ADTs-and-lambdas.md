@@ -261,6 +261,13 @@ for-each(list(int), list(bool), xss, (xs) => {
 })
 ```
 
+You can also write `@foo` to pass implicit arguments explicitly (as in Coq and Lean):
+
+```neut
+let bool-list = @for-each(int, bool, int-list, int-to-bool-func) in
+cont
+```
+
 ### Keyword Arguments
 
 The arguments of a function can be supplied using their names:
