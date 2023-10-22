@@ -18,6 +18,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.ArgNum qualified as AN
+import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
@@ -39,8 +41,6 @@ import Entity.OptimizableData qualified as OD
 import Entity.Prim qualified as P
 import Entity.PrimNumSize qualified as PNS
 import Entity.PrimOp
-import Entity.PrimOp.CmpOp
-import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
@@ -123,8 +123,6 @@ clarifyStmt stmt =
                   return (f, (O.Transparent, map fst dataArgs', t'))
               | otherwise ->
                   Throw.raiseCritical m "found a broken unitary data"
-            Just OD.Nat ->
-              Throw.raiseCritical m "found a Nat in clarifyStmt"
             Nothing -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
@@ -180,7 +178,7 @@ clarifyTerm tenv term =
       return returnImmediateS4
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
-    _ :< TM.VarGlobal x argNum -> do
+    _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do
       return $
         C.UpIntro $
           C.SigmaIntro
@@ -196,31 +194,29 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    _ :< TM.Data name _ dataArgs -> do
+    _ :< TM.Data _ name dataArgs -> do
       (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus tenv) dataArgs
       return $
         bindLet (zip zs dataArgs') $
           C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
-    m :< TM.DataIntro _ consName _ disc dataArgs consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- OptimizableData.lookup consName
       baseSize <- Env.getBaseSize m
       case od of
         Just OD.Enum ->
-          return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify disc)
+          return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify discriminant)
         Just OD.Unitary
           | [e] <- consArgs ->
               clarifyTerm tenv e
           | otherwise ->
               Throw.raiseCritical m "found a malformed unitary data in Scene.Clarify.clarifyTerm"
-        Just OD.Nat ->
-          Throw.raiseCritical m "DataIntro can't be a nat"
         Nothing -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
             bindLet (zip zs es) $
               C.UpIntro $
                 C.SigmaIntro $
-                  C.Int (PNS.IntSize baseSize) (D.reify disc) : xs
+                  C.Int (PNS.IntSize baseSize) (D.reify discriminant) : xs
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -265,15 +261,12 @@ clarifyTerm tenv term =
     m :< TM.FlowIntro _ var (e, t) -> do
       let argNum = AN.fromInt 2
       let lam = m :< TM.PiIntro LK.Normal [] e
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, lam]
+      let attr = AttrVG.new argNum
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal attr var) [t, lam]
     m :< TM.FlowElim _ var (e, t) -> do
       let argNum = AN.fromInt 2
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, e]
-
-isZero :: Int -> C.Value -> C.Comp
-isZero baseSize v = do
-  let intType = PT.Int (PNS.IntSize baseSize)
-  C.Primitive $ C.PrimOp (PrimCmpOp Eq intType (PT.Int $ PNS.IntSize 1)) [v, C.Int (PNS.IntSize baseSize) 0]
+      let attr = AttrVG.new argNum
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal attr var) [t, e]
 
 type Size =
   Int
@@ -311,11 +304,6 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
         Just OD.Unitary -> do
           return $ getFirstClause fallbackClause' clauseList''
-        Just OD.Nat -> do
-          (flag, flagVar) <- Gensym.newValueVarLocalWith "flag"
-          enumElim <- getEnumElim idents flagVar fallbackClause' (zip enumCaseList clauseList'')
-          baseSize <- Env.getBaseSize m
-          return $ C.UpElim True flag (isZero baseSize (C.VarLocal cursor)) enumElim
         Nothing -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
@@ -332,11 +320,11 @@ getFirstClause fallbackClause clauseList =
 getClauseDataGroup :: TM.Term -> App (Maybe OD.OptimizableData)
 getClauseDataGroup term =
   case term of
-    _ :< TM.Data dataName _ _ -> do
+    _ :< TM.Data _ dataName _ -> do
       OptimizableData.lookup dataName
-    _ :< TM.PiElim (_ :< TM.Data dataName _ _) _ -> do
+    _ :< TM.PiElim (_ :< TM.Data _ dataName _) _ -> do
       OptimizableData.lookup dataName
-    _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
+    _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
       OptimizableData.lookup dataName
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
@@ -364,37 +352,35 @@ clarifyCase ::
   Ident ->
   DT.Case TM.Term ->
   App (EC.EnumCase, C.Comp)
-clarifyCase tenv isNoetic dataArgsMap cursor decisionCase = do
-  case decisionCase of
-    DT.Cons _ consName disc dataArgs consArgs cont -> do
-      let (_, dataTypes) = unzip dataArgs
-      dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
-      let cursorSize = 1 + length dataArgVars + length consArgs
-      let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
-      let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
-      body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
-      od <- OptimizableData.lookup consName
-      case od of
-        Just OD.Enum -> do
-          return (EC.Int (D.reify disc), body')
-        Just OD.Unitary
-          | [(_, consArg, _)] <- consArgs ->
-              return
-                ( EC.Int 0,
-                  C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body'
-                )
-          | otherwise ->
-              Throw.raiseCritical' "found a non-unitary consArgs for unitary ADT"
-        _ -> do
-          discriminantVar <- Gensym.newIdentFromText "discriminant"
+clarifyCase tenv isNoetic dataArgsMap cursor (DT.Case {..}) = do
+  let (_, dataTypes) = unzip dataArgs
+  dataArgVars <- mapM (const $ Gensym.newIdentFromText "dataArg") dataTypes
+  let cursorSize = 1 + length dataArgVars + length consArgs
+  let dataArgsMap' = IntMap.insert (Ident.toInt cursor) (zip dataArgVars dataTypes, cursorSize) dataArgsMap
+  let consArgs' = map (\(m, x, _) -> (m, x, m :< TM.Tau)) consArgs
+  body' <- clarifyDecisionTree (TM.insTypeEnv consArgs' tenv) isNoetic dataArgsMap' cont
+  od <- OptimizableData.lookup consDD
+  case od of
+    Just OD.Enum -> do
+      return (EC.Int (D.reify disc), body')
+    Just OD.Unitary
+      | [(_, consArg, _)] <- consArgs ->
           return
-            ( EC.Int (D.reify disc),
-              C.SigmaElim
-                False
-                (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
-                (C.VarLocal cursor)
-                body'
+            ( EC.Int 0,
+              C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body'
             )
+      | otherwise ->
+          Throw.raiseCritical' "found a non-unitary consArgs for unitary ADT"
+    _ -> do
+      discriminantVar <- Gensym.newIdentFromText "discriminant"
+      return
+        ( EC.Int (D.reify disc),
+          C.SigmaElim
+            False
+            (discriminantVar : dataArgVars ++ map (\(_, x, _) -> x) consArgs)
+            (C.VarLocal cursor)
+            body'
+        )
 
 alignFreeVariable :: TM.TypeEnv -> [BinderF TM.Term] -> C.Comp -> App C.Comp
 alignFreeVariable tenv fvs e = do
@@ -446,7 +432,8 @@ clarifyLambda tenv kind fvs mxts e@(m :< _) = do
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
-      let lamApp = m :< TM.PiIntro LK.Normal mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName argNum) appArgs')
+      let attr = AttrVG.new argNum
+      let lamApp = m :< TM.PiIntro LK.Normal mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
       -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
       (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody

@@ -46,10 +46,10 @@ fill sub term =
     m :< WT.Data name consNameList es -> do
       es' <- mapM (fill sub) es
       return $ m :< WT.Data name consNameList es'
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (fill sub) dataArgs
       consArgs' <- mapM (fill sub) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (fill sub) es
@@ -176,10 +176,13 @@ fillCase ::
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
 fillCase sub decisionCase = do
-  case decisionCase of
-    DT.Cons m dd disc dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (fill sub) dataTerms
-      dataTypes' <- mapM (fill sub) dataTypes
-      (consArgs', tree') <- fill''' sub consArgs tree
-      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM (fill sub) dataTerms
+  dataTypes' <- mapM (fill sub) dataTypes
+  (consArgs', cont') <- fill''' sub (DT.consArgs decisionCase) (DT.cont decisionCase)
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = consArgs',
+        DT.cont = cont'
+      }

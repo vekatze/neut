@@ -18,6 +18,7 @@ import Control.Comonad.Cofree hiding (section)
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Const qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
@@ -128,7 +129,7 @@ interpretGlobalName m dd gn = do
     GN.Data argNum _ isConstLike ->
       interpretTopLevelFunc m dd argNum isConstLike
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
-      let e = m :< WT.VarGlobal dd (AN.add dataArgNum consArgNum)
+      let e = m :< WT.VarGlobal (AttrVG.new (AN.add dataArgNum consArgNum)) dd
       if isConstLike
         then return $ m :< WT.PiElim e []
         else return e
@@ -150,9 +151,10 @@ interpretTopLevelFunc ::
   Bool ->
   App WT.WeakTerm
 interpretTopLevelFunc m dd argNum isConstLike = do
+  let attr = AttrVG.Attr {argNum = argNum, isConstLike = isConstLike}
   if isConstLike
-    then return $ m :< WT.PiElim (m :< WT.VarGlobal dd argNum) []
-    else return $ m :< WT.VarGlobal dd argNum
+    then return $ m :< WT.PiElim (m :< WT.VarGlobal attr dd) []
+    else return $ m :< WT.VarGlobal attr dd
 
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do

@@ -19,6 +19,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
@@ -152,14 +153,14 @@ discern nenv term =
       let keyList' = drop (length impArgs) keyList
       expArgs <- reorderArgs m keyList' $ Map.fromList $ zip ks vs'
       impArgs' <- mapM (discern nenv) impArgs
-      return $ m :< WT.PiElim (m :< WT.VarGlobal dd argNum) (impArgs' ++ expArgs)
+      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.new argNum) dd) (impArgs' ++ expArgs)
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
-    m :< RT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+    m :< RT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv >=> castFromNoemaIfNecessary isNoetic) es
@@ -360,20 +361,47 @@ discernPattern (m, pat) =
                   unless isConstLike $
                     Throw.raiseError m $
                       "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
-                  return ((m, PAT.Cons consName disc dataArgNum consArgNum []), [])
+                  let consInfo =
+                        PAT.ConsInfo
+                          { consDD = consName,
+                            isConstLike = isConstLike,
+                            disc = disc,
+                            dataArgNum = dataArgNum,
+                            consArgNum = consArgNum,
+                            args = []
+                          }
+                  return ((m, PAT.Cons consInfo), [])
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc _) ->
-              return ((m, PAT.Cons dd disc dataArgNum consArgNum []), [])
+            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
+              let consInfo =
+                    PAT.ConsInfo
+                      { consDD = dd,
+                        isConstLike = isConstLike,
+                        disc = disc,
+                        dataArgNum = dataArgNum,
+                        consArgNum = consArgNum,
+                        args = []
+                      }
+              return ((m, PAT.Cons consInfo), [])
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
         DefiniteDescription dd -> do
           (_, gn) <- resolveName m $ DefiniteDescription dd
           case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc _) ->
-              return ((m, PAT.Cons dd disc dataArgNum consArgNum []), [])
+            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
+              let consInfo =
+                    PAT.ConsInfo
+                      { consDD = dd,
+                        isConstLike = isConstLike,
+                        disc = disc,
+                        dataArgNum = dataArgNum,
+                        consArgNum = consArgNum,
+                        args = []
+                      }
+              return ((m, PAT.Cons consInfo), [])
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
@@ -385,7 +413,16 @@ discernPattern (m, pat) =
       case mArgs of
         Right args -> do
           (args', nenvList) <- mapAndUnzipM discernPattern args
-          return ((m, PAT.Cons consName disc dataArgNum consArgNum args'), concat nenvList)
+          let consInfo =
+                PAT.ConsInfo
+                  { consDD = consName,
+                    isConstLike = isConstLike,
+                    disc = disc,
+                    dataArgNum = dataArgNum,
+                    consArgNum = consArgNum,
+                    args = args'
+                  }
+          return ((m, PAT.Cons consInfo), concat nenvList)
         Left mVar -> do
           vmap <- Via.lookup consName
           (_, keyList) <- KeyArg.lookup m consName
@@ -393,7 +430,16 @@ discernPattern (m, pat) =
           (patList', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) patList
           forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
             UnusedVariable.delete newVar
-          return ((m, PAT.Cons consName disc dataArgNum consArgNum patList'), concat nenvList)
+          let consInfo =
+                PAT.ConsInfo
+                  { consDD = consName,
+                    isConstLike = isConstLike,
+                    disc = disc,
+                    dataArgNum = dataArgNum,
+                    consArgNum = consArgNum,
+                    args = patList'
+                  }
+          return ((m, PAT.Cons consInfo), concat nenvList)
 
 keyToPattern :: Map.HashMap RawIdent DD.DefiniteDescription -> Hint -> RawIdent -> App RP.RawPattern
 keyToPattern vmap m key =

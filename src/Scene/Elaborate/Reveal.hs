@@ -11,6 +11,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleID qualified as HID
@@ -62,7 +63,7 @@ reveal' varEnv term =
       return term
     _ :< WT.Var {} ->
       return term
-    m :< WT.VarGlobal name argNum -> do
+    m :< WT.VarGlobal (AttrVG.Attr {..}) name -> do
       mImpArgNum <- Implicit.lookup name
       case mImpArgNum of
         Just impArgNum
@@ -91,13 +92,13 @@ reveal' varEnv term =
       es' <- mapM (reveal' varEnv) es
       e' <- reveal' varEnv e
       return $ m :< WT.PiElim e' es'
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       es' <- mapM (reveal' varEnv) es
-      return $ m :< WT.Data name consNameList es'
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return $ m :< WT.Data attr name es'
+    m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (reveal' varEnv) dataArgs
       consArgs' <- mapM (reveal' varEnv) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (reveal' varEnv) es
@@ -255,11 +256,14 @@ revealClause ::
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm)
 revealClause varEnv decisionCase = do
-  case decisionCase of
-    DT.Cons mCons consName disc dataArgs consArgs body -> do
-      let (dataTerms, dataTypeTerms) = unzip dataArgs
-      dataTerms' <- mapM (reveal' varEnv) dataTerms
-      dataTypeTerms' <- mapM (reveal' varEnv) dataTypeTerms
-      (consArgs', body') <- revealBinder' varEnv consArgs $ \extendedVarEnv ->
-        revealDecisionTree extendedVarEnv body
-      return (DT.Cons mCons consName disc (zip dataTerms' dataTypeTerms') consArgs' body')
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM (reveal' varEnv) dataTerms
+  dataTypes' <- mapM (reveal' varEnv) dataTypes
+  (consArgs', cont') <- revealBinder' varEnv (DT.consArgs decisionCase) $ \extendedVarEnv ->
+    revealDecisionTree extendedVarEnv (DT.cont decisionCase)
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = consArgs',
+        DT.cont = cont'
+      }

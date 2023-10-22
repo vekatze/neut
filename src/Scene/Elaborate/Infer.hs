@@ -12,6 +12,9 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
 import Entity.ArgNum qualified as AN
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
@@ -87,7 +90,8 @@ getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- N.resolveName m (N.Locator locator)
-  return $ m :< WT.PiElim (m :< WT.VarGlobal unitDD (AN.fromInt 0)) []
+  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
+  return $ m :< WT.PiElim (m :< WT.VarGlobal attr unitDD) []
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
@@ -97,7 +101,7 @@ infer' varEnv term =
     m :< WT.Var x -> do
       _ :< t <- lookupWeakTypeEnv m x
       return (term, m :< t)
-    m :< WT.VarGlobal name _ -> do
+    m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup m name
       return (term, m :< t)
     m :< WT.Pi xts t -> do
@@ -122,14 +126,14 @@ infer' varEnv term =
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
       inferPiElim varEnv m etl etls
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer' varEnv) es
-      return (m :< WT.Data name consNameList es', m :< WT.Tau)
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return (m :< WT.Data attr name es', m :< WT.Tau)
+    m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
       (dataArgs', _) <- mapAndUnzipM (infer' varEnv) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer' varEnv) consArgs
-      let dataType = m :< WT.Data dataName consNameList dataArgs'
-      return (m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs', dataType)
+      let dataType = m :< WT.Data (AttrD.Attr {..}) dataName dataArgs'
+      return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer' varEnv) es
@@ -313,7 +317,7 @@ getPiType varEnv m (e, t) numOfArgs =
 raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
 raiseArityMismatchError function expected actual = do
   case function of
-    m :< WT.VarGlobal name _ -> do
+    m :< WT.VarGlobal _ name -> do
       Throw.raiseError m $
         "the function `"
           <> DD.reify name
@@ -375,14 +379,22 @@ inferClause ::
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause varEnv cursorType decisionCase = do
-  case decisionCase of
-    DT.Cons mCons consName disc dataArgs consArgs body -> do
-      let (dataTermList, _) = unzip dataArgs
-      typedDataArgs' <- mapM (infer' varEnv) dataTermList
-      (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
-      (body', tBody) <- inferDecisionTree mCons extendedVarEnv body
-      consTerm <- infer' varEnv $ mCons :< WT.VarGlobal consName (AN.fromInt $ length dataArgs + length consArgs)
-      (_, tPat) <- inferPiElim varEnv mCons consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
-      insConstraintEnv cursorType tPat
-      return (DT.Cons mCons consName disc typedDataArgs' consArgs' body', tBody)
+inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
+  let m = DT.mCons decisionCase
+  let (dataTermList, _) = unzip dataArgs
+  typedDataArgs' <- mapM (infer' varEnv) dataTermList
+  (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
+  (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
+  let argNum = AN.fromInt $ length dataArgs + length consArgs
+  let attr = AttrVG.Attr {argNum = argNum, isConstLike = isConstLike}
+  consTerm <- infer' varEnv $ m :< WT.VarGlobal attr consDD
+  (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  insConstraintEnv cursorType tPat
+  return
+    ( decisionCase
+        { DT.dataArgs = typedDataArgs',
+          DT.consArgs = consArgs',
+          DT.cont = cont'
+        },
+      tCont
+    )

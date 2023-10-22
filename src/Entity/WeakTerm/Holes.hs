@@ -25,7 +25,7 @@ holes term =
       S.unions $ map holes $ e : es
     _ :< WT.Data _ _ es ->
       S.unions $ map holes es
-    _ :< WT.DataIntro _ _ _ _ dataArgs consArgs -> do
+    _ :< WT.DataIntro _ _ dataArgs consArgs -> do
       S.unions $ map holes $ dataArgs ++ consArgs
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
@@ -93,8 +93,6 @@ holesCaseList (fallbackClause, clauseList) = do
   S.union xs1 xs2
 
 holesCase :: DT.Case WT.WeakTerm -> S.Set HoleID
-holesCase decisionCase =
-  case decisionCase of
-    DT.Cons _ _ _ dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      S.unions $ holes' consArgs (holesDecisionTree tree) : map holes dataTerms ++ map holes dataTypes
+holesCase decisionCase = do
+  let (dataTerms, dataTypes) = unzip (DT.dataArgs decisionCase)
+  S.unions $ holes' (DT.consArgs decisionCase) (holesDecisionTree (DT.cont decisionCase)) : map holes dataTerms ++ map holes dataTypes

@@ -2,6 +2,9 @@ module Entity.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable) whe
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -26,7 +29,7 @@ toText term =
       "tau"
     _ :< WT.Var x ->
       showVariable x
-    _ :< WT.VarGlobal x _ ->
+    _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
     _ :< WT.Pi xts cod ->
       showCons ["Π", inParen $ showTypeArgs xts, toText cod]
@@ -39,11 +42,20 @@ toText term =
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["λ", argStr, toText e]
     _ :< WT.PiElim e es ->
-      showCons $ map toText $ e : es
-    _ :< WT.Data name _ es -> do
-      showCons $ "{data}" <> showGlobalVariable name : map toText es
-    _ :< WT.DataIntro _ consName _ _ _ consArgs -> do
-      showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
+      case e of
+        _ :< WT.VarGlobal attr _
+          | AttrVG.isConstLike attr ->
+              toText e
+        _ ->
+          showCons $ map toText $ e : es
+    _ :< WT.Data (AttrD.Attr {..}) name es -> do
+      if isConstLike
+        then "{data}" <> showGlobalVariable name
+        else showCons $ "{data}" <> showGlobalVariable name : map toText es
+    _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs -> do
+      if isConstLike
+        then "{data}" <> showGlobalVariable consName
+        else showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
         then showCons ["match*", showMatchArgs xets, showDecisionTree tree]
@@ -160,12 +172,10 @@ showDecisionTree tree =
 
 showClauseList :: DT.Case WT.WeakTerm -> T.Text
 showClauseList decisionCase = do
-  case decisionCase of
-    DT.Cons _ consName d dataArgs consArgs cont -> do
-      showCons
-        [ showGlobalVariable consName,
-          T.pack (show (D.reify d)),
-          showCons $ map (\(e, t) -> showCons [toText e, toText t]) dataArgs,
-          inParen $ showTypeArgs consArgs,
-          showDecisionTree cont
-        ]
+  showCons
+    [ showGlobalVariable (DT.consDD decisionCase),
+      T.pack (show (D.reify (DT.disc decisionCase))),
+      showCons $ map (\(e, t) -> showCons [toText e, toText t]) (DT.dataArgs decisionCase),
+      inParen $ showTypeArgs (DT.consArgs decisionCase),
+      showDecisionTree (DT.cont decisionCase)
+    ]

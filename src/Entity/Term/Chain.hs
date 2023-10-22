@@ -43,7 +43,7 @@ chainOf' tenv term =
       xs1 ++ xs2
     _ :< TM.Data _ _ es ->
       concatMap (chainOf' tenv) es
-    _ :< TM.DataIntro _ _ _ _ dataArgs consArgs ->
+    _ :< TM.DataIntro _ _ dataArgs consArgs ->
       concatMap (chainOf' tenv) $ dataArgs ++ consArgs
     m :< TM.DataElim _ xets tree -> do
       let (xs, es, ts) = unzip3 xets
@@ -111,13 +111,11 @@ chainOfCaseList tenv m (fallbackClause, clauseList) = do
 
 chainOfCase :: TM.TypeEnv -> Hint -> DT.Case TM.Term -> [BinderF TM.Term]
 chainOfCase tenv m decisionCase = do
-  case decisionCase of
-    DT.Cons _ _ _ dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      let xs1 = concatMap (chainOf' tenv) dataTerms
-      let xs2 = concatMap (chainOf' tenv) dataTypes
-      let xs3 = chainOfDecisionTree' tenv m consArgs tree
-      xs1 ++ xs2 ++ xs3
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  let xs1 = concatMap (chainOf' tenv) dataTerms
+  let xs2 = concatMap (chainOf' tenv) dataTypes
+  let xs3 = chainOfDecisionTree' tenv m (DT.consArgs decisionCase) (DT.cont decisionCase)
+  xs1 ++ xs2 ++ xs3
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =

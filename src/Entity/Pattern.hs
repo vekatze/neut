@@ -2,7 +2,7 @@ module Entity.Pattern
   ( Pattern (..),
     PatternRow,
     PatternMatrix,
-    ConsInfo,
+    ConsInfo (..),
     new,
     getHeadConstructors,
     swapColumn,
@@ -25,11 +25,22 @@ import Entity.Discriminant qualified as D
 import Entity.Error
 import Entity.Hint hiding (new)
 import Entity.Ident
+import Entity.IsConstLike
 
 data Pattern
   = Var Ident
   | WildcardVar
-  | Cons DD.DefiniteDescription D.Discriminant AN.ArgNum AN.ArgNum [(Hint, Pattern)]
+  | Cons ConsInfo
+  deriving (Show)
+
+data ConsInfo = ConsInfo
+  { consDD :: DD.DefiniteDescription,
+    isConstLike :: IsConstLike,
+    disc :: D.Discriminant,
+    dataArgNum :: AN.ArgNum,
+    consArgNum :: AN.ArgNum,
+    args :: [(Hint, Pattern)]
+  }
   deriving (Show)
 
 type PatternRow a =
@@ -42,7 +53,7 @@ newtype PatternMatrix a
   = MakePatternMatrix (V.Vector (PatternRow a))
   deriving (Show)
 
-mapMaybeRowM :: Monad m => (PatternRow a -> m (Maybe (PatternRow b))) -> PatternMatrix a -> m (PatternMatrix b)
+mapMaybeRowM :: (Monad m) => (PatternRow a -> m (Maybe (PatternRow b))) -> PatternMatrix a -> m (PatternMatrix b)
 mapMaybeRowM f (MakePatternMatrix mat) = do
   mat' <- mapM f mat
   return $ MakePatternMatrix $ V.catMaybes mat'
@@ -58,8 +69,8 @@ patVars (m, pat) =
       [(m, x)]
     WildcardVar ->
       []
-    Cons _ _ _ _ patList ->
-      concatMap patVars patList
+    Cons consInfo ->
+      concatMap patVars (args consInfo)
 
 consRow :: PatternRow a -> PatternMatrix a -> PatternMatrix a
 consRow row (MakePatternMatrix mat) =
@@ -76,7 +87,7 @@ new rows =
 
 getHeadConstructors ::
   PatternMatrix a ->
-  [ConsInfo]
+  [(Hint, ConsInfo)]
 getHeadConstructors (MakePatternMatrix rows) = do
   getColumnConstructors $ mapMaybe getHeadConstructors' $ V.toList rows
 
@@ -88,26 +99,21 @@ getHeadConstructors' (rows, _) =
     Nothing ->
       Nothing
 
-type ConsInfo =
-  (Hint, (DD.DefiniteDescription, D.Discriminant, AN.ArgNum, AN.ArgNum, [(Hint, Pattern)]))
+consInfoToDD :: (Hint, ConsInfo) -> DD.DefiniteDescription
+consInfoToDD (_, consInfo) =
+  consDD consInfo
 
-consInfoToDD :: ConsInfo -> DD.DefiniteDescription
-consInfoToDD consInfo =
-  case consInfo of
-    (_, (dd, _, _, _, _)) ->
-      dd
-
-getColumnConstructors :: PatternColumn -> [ConsInfo]
+getColumnConstructors :: PatternColumn -> [(Hint, ConsInfo)]
 getColumnConstructors col =
   ListUtils.nubOrdOn consInfoToDD $ mapMaybe getColumnConstructor col
 
 getColumnConstructor ::
   (Hint, Pattern) ->
-  Maybe ConsInfo
+  Maybe (Hint, ConsInfo)
 getColumnConstructor (mPat, pat) =
   case pat of
-    Cons dd disc dataArgNum consArgNum args ->
-      return (mPat, (dd, disc, dataArgNum, consArgNum, args))
+    Cons consInfo ->
+      return (mPat, consInfo)
     _ ->
       Nothing
 
@@ -148,7 +154,7 @@ getClauseBody' index varList patList e =
     Just ((m, _), _) ->
       Left (m, index)
 
-findRowM :: Monad m => (PatternRow a -> m (Maybe b)) -> PatternMatrix a -> m (Maybe b)
+findRowM :: (Monad m) => (PatternRow a -> m (Maybe b)) -> PatternMatrix a -> m (Maybe b)
 findRowM f (MakePatternMatrix rows) =
   case V.uncons rows of
     Just (row, rest) -> do

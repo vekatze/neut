@@ -44,10 +44,10 @@ specializeRow isNoetic cursor (dd, argNum) (patternVector, (freedVars, body@(mBo
       adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
       let body' = mBody :< WT.Let WT.Transparent (mBody, x, h) adjustedCursor body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
-    Just ((_, Cons dd' _ _ _ args), rest) ->
-      if dd == dd'
+    Just ((_, Cons (ConsInfo {..})), rest) ->
+      if dd == consDD
         then do
-          od <- OptimizableData.lookup dd'
+          od <- OptimizableData.lookup consDD
           case od of
             Just OD.Enum ->
               return $ Just (V.concat [V.fromList args, rest], (freedVars, body))

@@ -59,13 +59,13 @@ weaken term =
       let e' = weaken e
       let es' = map weaken es
       m :< WT.PiElim e' es'
-    m :< TM.Data name consNameList es -> do
+    m :< TM.Data attr name es -> do
       let es' = map weaken es
-      m :< WT.Data name consNameList es'
-    m :< TM.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      m :< WT.Data attr name es'
+    m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weaken dataArgs
       let consArgs' = map weaken consArgs
-      m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es
@@ -140,13 +140,15 @@ weakenCaseList (fallbackClause, clauseList) = do
   (fallbackClause', clauseList')
 
 weakenCase :: DT.Case TM.Term -> DT.Case WT.WeakTerm
-weakenCase decisonCase = do
-  case decisonCase of
-    DT.Cons m dd disc dataArgs consArgs tree -> do
-      let dataArgs' = map (bimap weaken weaken) dataArgs
-      let consArgs' = map weakenBinder consArgs
-      let tree' = weakenDecisionTree tree
-      DT.Cons m dd disc dataArgs' consArgs' tree'
+weakenCase decisionCase = do
+  let dataArgs' = map (bimap weaken weaken) $ DT.dataArgs decisionCase
+  let consArgs' = map weakenBinder $ DT.consArgs decisionCase
+  let cont' = weakenDecisionTree $ DT.cont decisionCase
+  decisionCase
+    { DT.dataArgs = dataArgs',
+      DT.consArgs = consArgs',
+      DT.cont = cont'
+    }
 
 weakenStmtKind :: StmtKind TM.Term -> StmtKind WT.WeakTerm
 weakenStmtKind stmtKind =

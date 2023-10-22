@@ -29,7 +29,7 @@ freeVars term =
       S.union xs ys
     _ :< WT.Data _ _ es ->
       S.unions $ map freeVars es
-    _ :< WT.DataIntro _ _ _ _ dataArgs consArgs -> do
+    _ :< WT.DataIntro _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
@@ -98,7 +98,5 @@ freeVarsCaseList (fallbackClause, clauseList) = do
 
 freeVarsCase :: DT.Case WT.WeakTerm -> S.Set Ident
 freeVarsCase decisionCase = do
-  case decisionCase of
-    DT.Cons _ _ _ dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      S.unions $ freeVars' consArgs (freeVarsDecisionTree tree) : map freeVars dataTerms ++ map freeVars dataTypes
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  S.unions $ freeVars' (DT.consArgs decisionCase) (freeVarsDecisionTree (DT.cont decisionCase)) : map freeVars dataTerms ++ map freeVars dataTypes

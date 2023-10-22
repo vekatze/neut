@@ -31,7 +31,7 @@ asStuckedTerm term =
   case term of
     m :< WT.Var x ->
       Just (VarLocal x, m :< Base)
-    m :< WT.VarGlobal g _ ->
+    m :< WT.VarGlobal _ g ->
       Just (VarGlobal g, m :< Base)
     m :< WT.Hole h es ->
       Just (Hole h es, m :< Base)

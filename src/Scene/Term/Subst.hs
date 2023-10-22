@@ -46,13 +46,13 @@ subst sub term =
       e' <- subst sub e
       es' <- mapM (subst sub) es
       return (m :< TM.PiElim e' es')
-    m :< TM.Data name consNameList es -> do
+    m :< TM.Data attr name es -> do
       es' <- mapM (subst sub) es
-      return $ m :< TM.Data name consNameList es'
-    m :< TM.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return $ m :< TM.Data attr name es'
+    m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (subst sub) dataArgs
       consArgs' <- mapM (subst sub) consArgs
-      return $ m :< TM.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst sub) es
@@ -156,13 +156,16 @@ substCase ::
   DT.Case TM.Term ->
   App (DT.Case TM.Term)
 substCase sub decisionCase = do
-  case decisionCase of
-    DT.Cons m dd disc dataArgs consArgs tree -> do
-      let (dataTerms, dataTypes) = unzip dataArgs
-      dataTerms' <- mapM (subst sub) dataTerms
-      dataTypes' <- mapM (subst sub) dataTypes
-      (consArgs', tree') <- subst'' sub consArgs tree
-      return $ DT.Cons m dd disc (zip dataTerms' dataTypes') consArgs' tree'
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  dataTerms' <- mapM (subst sub) dataTerms
+  dataTypes' <- mapM (subst sub) dataTypes
+  (consArgs', cont') <- subst'' sub (DT.consArgs decisionCase) (DT.cont decisionCase)
+  return $
+    decisionCase
+      { DT.dataArgs = zip dataTerms' dataTypes',
+        DT.consArgs = consArgs',
+        DT.cont = cont'
+      }
 
 substLeafVar :: SubstTerm -> Ident -> Maybe Ident
 substLeafVar sub leafVar =
