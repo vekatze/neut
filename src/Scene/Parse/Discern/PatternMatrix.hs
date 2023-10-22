@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedRecordDot #-}
-
 module Scene.Parse.Discern.PatternMatrix
   ( compilePatternMatrix,
     ensurePatternMatrixSanity,
@@ -57,22 +55,22 @@ compilePatternMatrix nenv isNoetic m occurrences mat =
             else do
               let headConstructors = PAT.getHeadConstructors mat
               let cursor = V.head occurrences
-              clauseList <- forM headConstructors $ \(mPat, consInfo) -> do
-                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify consInfo.dataArgNum]
-                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify consInfo.dataArgNum]
-                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consInfo.consArgNum]
-                let ms = map fst consInfo.args
+              clauseList <- forM headConstructors $ \(mPat, PAT.ConsInfo {..}) -> do
+                dataHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
+                dataTypeHoles <- mapM (const $ Gensym.newHole mPat []) [1 .. AN.reify dataArgNum]
+                consVars <- mapM (const $ Gensym.newIdentFromText "cvar") [1 .. AN.reify consArgNum]
+                let ms = map fst args
                 (consArgs', nenv') <- alignConsArgs nenv $ zip ms consVars
                 let occurrences' = V.fromList consVars <> V.tail occurrences
-                specialMatrix <- PATS.specialize isNoetic cursor (consInfo.consDD, consInfo.consArgNum) mat
+                specialMatrix <- PATS.specialize isNoetic cursor (consDD, consArgNum) mat
                 specialDecisionTree <- compilePatternMatrix nenv' isNoetic mPat occurrences' specialMatrix
                 let dataArgs' = zip dataHoles dataTypeHoles
                 return $
                   DT.Case
                     { mCons = mPat,
-                      consDD = consInfo.consDD,
-                      isConstLike = consInfo.isConstLike,
-                      disc = consInfo.disc,
+                      consDD = consDD,
+                      isConstLike = isConstLike,
+                      disc = disc,
                       dataArgs = dataArgs',
                       consArgs = consArgs',
                       cont = specialDecisionTree
