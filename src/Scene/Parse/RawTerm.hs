@@ -24,6 +24,8 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as Annot
 import Entity.Arch qualified as Arch
+import Entity.Attr.Var (Attr (isExplicit))
+import Entity.Attr.Var qualified as AttrV
 import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DeclarationName qualified as DN
@@ -31,6 +33,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Hint.Reify
+import Entity.IsExplicit
 import Entity.Key
 import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
@@ -202,7 +205,7 @@ getContinuationModifier pat =
       return (x, \_ e -> e)
     _ -> do
       tmp <- lift $ Gensym.newTextFromText "tmp"
-      return (tmp, \isNoetic e@(m :< _) -> m :< RT.DataElim isNoetic [m :< RT.Var (Var tmp)] (RP.new [(V.fromList [pat], e)]))
+      return (tmp, \isNoetic e@(m :< _) -> m :< RT.DataElim isNoetic [rawVar m (Var tmp)] (RP.new [(V.fromList [pat], e)]))
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
@@ -216,7 +219,7 @@ rawTermLetVarAscription m = do
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> Parser RT.RawTerm
 ascribe m t e = do
   tmp <- lift $ Gensym.newTextFromText "tmp"
-  return $ bind (m, tmp, t) e (m :< RT.Var (Var tmp))
+  return $ bind (m, tmp, t) e (rawVar m (Var tmp))
 
 rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm)
 rawTermLetVarAscription' =
@@ -301,7 +304,7 @@ foldByOp m op es =
     [e] ->
       e
     e : rest ->
-      m :< RT.PiElim (m :< RT.Var op) [e, foldByOp m op rest]
+      m :< RT.PiElim (rawVar m op) [e, foldByOp m op rest]
 
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do
@@ -604,11 +607,7 @@ foldTuplePat m unitVar pairVar es =
 parseName :: Parser (Hint, Name)
 parseName = do
   (m, varText) <- var
-  case DD.getLocatorPair m varText of
-    Left _ ->
-      return (m, Var varText)
-    Right (gl, ll) ->
-      return (m, Locator (gl, ll))
+  interpretVarName m varText
 
 rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
@@ -698,7 +697,7 @@ rawTermTuple = do
   pairVar <- lift $ locatorToName m corePair
   case es of
     [] ->
-      return $ m :< RT.Var unitVar
+      return $ rawVar m unitVar
     [e] ->
       return e
     _ ->
@@ -713,7 +712,7 @@ rawTermTupleIntro = do
   pairVar <- lift $ locatorToName m corePairPair
   case es of
     [] ->
-      return $ m :< RT.Var unitVar
+      return $ rawVar m unitVar
     [e] ->
       return e
     _ ->
@@ -820,13 +819,13 @@ rawTermPiElimOrSimple = do
   e <- rawTermSimple
   mImpArgNum <- optional $ delimiter "/" >> integer
   case e of
-    _ :< RT.Var name -> do
+    _ :< RT.Var attr name -> do
       choice
         [ do
             holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. fromMaybe 0 mImpArgNum]
             keyword "of"
             rowList <- betweenBrace $ manyList rawTermKeyValuePair
-            return $ m :< RT.PiElimByKey name holes rowList,
+            return $ m :< RT.PiElimByKey attr name holes rowList,
           rawTermPiElimCont m e mImpArgNum
         ]
     _ -> do
@@ -945,8 +944,25 @@ getIntrospectiveValue m key = do
 
 rawTermSymbol :: Parser RT.RawTerm
 rawTermSymbol = do
-  (m, varOrLocator) <- parseName
-  return $ m :< RT.Var varOrLocator
+  (isExplicit, (m, varOrLocator)) <- parseVarName
+  return $ m :< RT.Var (AttrV.Attr {..}) varOrLocator
+
+parseVarName :: Parser (IsExplicit, (Hint, Name))
+parseVarName = do
+  (m, varText) <- var
+  case T.uncons varText of
+    Just ('@', varText') ->
+      interpretVarName m varText' >>= \value -> return (True, value)
+    _ ->
+      interpretVarName m varText >>= \value -> return (False, value)
+
+interpretVarName :: Hint -> T.Text -> Parser (Hint, Name)
+interpretVarName m varText = do
+  case DD.getLocatorPair m varText of
+    Left _ ->
+      return (m, Var varText)
+    Right (gl, ll) ->
+      return (m, Locator (gl, ll))
 
 rawTermTextIntro :: Parser RT.RawTerm
 rawTermTextIntro = do
@@ -975,7 +991,7 @@ lam m varList e =
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
-  m :< RT.Var (Var str)
+  rawVar m (Var str)
 
 locatorToName :: Hint -> T.Text -> App Name
 locatorToName m text = do
@@ -985,4 +1001,8 @@ locatorToName m text = do
 locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
-  return $ m :< RT.Var (Locator (gl, ll))
+  return $ rawVar m (Locator (gl, ll))
+
+rawVar :: Hint -> Name -> RT.RawTerm
+rawVar m name =
+  m :< RT.Var (AttrV.Attr {isExplicit = False}) name

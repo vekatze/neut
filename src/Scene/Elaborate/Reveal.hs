@@ -67,7 +67,8 @@ reveal' varEnv term =
       mImpArgNum <- Implicit.lookup name
       case mImpArgNum of
         Just impArgNum
-          | AN.reify impArgNum > 0 -> do
+          | AN.reify impArgNum > 0,
+            not isExplicit -> do
               suppliedHoles <- mapM (const $ newHole m varEnv) [1 .. AN.reify impArgNum]
               args <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. AN.reify argNum - AN.reify impArgNum]
               let enrichedArgs = map (,m) args

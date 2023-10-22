@@ -24,6 +24,7 @@ import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Var qualified as AttrV
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
 import Entity.Decl qualified as DE
@@ -336,11 +337,11 @@ parseDefineResource = do
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
-  m :< RT.Var (Var x)
+  m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x)
 
 adjustConsArg :: (RawBinder RT.RawTerm, Maybe Name) -> (RT.RawTerm, (RawIdent, Maybe Name))
 adjustConsArg ((m, x, _), mName) =
-  (m :< RT.Var (Var x), (x, mName))
+  (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), (x, mName))
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

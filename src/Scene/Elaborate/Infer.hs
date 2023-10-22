@@ -90,7 +90,7 @@ getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- N.resolveName m (N.Locator locator)
-  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
+  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True, isExplicit = False}
   return $ m :< WT.PiElim (m :< WT.VarGlobal attr unitDD) []
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
@@ -386,7 +386,7 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
   (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   let argNum = AN.fromInt $ length dataArgs + length consArgs
-  let attr = AttrVG.Attr {argNum = argNum, isConstLike = isConstLike}
+  let attr = AttrVG.Attr {isExplicit = False, ..}
   consTerm <- infer' varEnv $ m :< WT.VarGlobal attr consDD
   (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
