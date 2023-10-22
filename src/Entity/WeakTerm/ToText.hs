@@ -77,12 +77,6 @@ toText term =
       "<magic>"
     _ :< WT.Annotation _ _ e ->
       toText e
-    _ :< WT.Flow _ t -> do
-      showApp "flow" [toText t]
-    _ :< WT.FlowIntro _ _ (e, _) -> do
-      showApp "detach" [toText e]
-    _ :< WT.FlowElim _ _ (e, _) -> do
-      showApp "attach" [toText e]
 
 inParen :: T.Text -> T.Text
 inParen s =

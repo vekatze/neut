@@ -256,17 +256,6 @@ clarifyTerm tenv term =
       return $ C.UpIntro $ C.VarGlobal name AN.argNumS4
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
-    m :< TM.Flow pVar _ -> do
-      clarifyTerm tenv $ m :< TM.ResourceType pVar
-    m :< TM.FlowIntro _ var (e, t) -> do
-      let argNum = AN.fromInt 2
-      let lam = m :< TM.PiIntro LK.Normal [] e
-      let attr = AttrVG.new argNum
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal attr var) [t, lam]
-    m :< TM.FlowElim _ var (e, t) -> do
-      let argNum = AN.fromInt 2
-      let attr = AttrVG.new argNum
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal attr var) [t, e]
 
 type Size =
   Int

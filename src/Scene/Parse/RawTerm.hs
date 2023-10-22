@@ -102,7 +102,6 @@ rawTermBasic = do
       rawTermWhen,
       rawTermAssert,
       rawTermNoema,
-      rawTermFlow,
       rawTermFlowIntro,
       rawTermFlowElim,
       rawTermOption,
@@ -729,31 +728,23 @@ rawTermNoema = do
   t <- rawTermBasic
   return $ m :< RT.Noema t
 
-rawTermFlow :: Parser RT.RawTerm
-rawTermFlow = do
-  m <- getCurrentHint
-  keyword "flow"
-  flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
-  t <- betweenParen rawTerm
-  return $ m :< RT.Flow flowVar t
-
 rawTermFlowIntro :: Parser RT.RawTerm
 rawTermFlowIntro = do
   m <- getCurrentHint
   keyword "detach"
-  flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
-  detachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadDetach
+  t <- lift $ Gensym.newPreHole m
+  detachVar <- lift $ locatorToVarGlobal m coreThreadDetach
   e <- rawTermSimple
-  return $ m :< RT.FlowIntro flowVar detachVar e
+  return $ m :< RT.PiElim detachVar [t, lam m [] e]
 
 rawTermFlowElim :: Parser RT.RawTerm
 rawTermFlowElim = do
   m <- getCurrentHint
   keyword "attach"
-  flowVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadFlowInner
-  attachVar <- lift $ Throw.liftEither $ DD.getLocatorPair m coreThreadAttach
+  t <- lift $ Gensym.newPreHole m
+  attachVar <- lift $ locatorToVarGlobal m coreThreadAttach
   e <- rawTermSimple
-  return $ m :< RT.FlowElim flowVar attachVar e
+  return $ m :< RT.PiElim attachVar [t, e]
 
 rawTermOption :: Parser RT.RawTerm
 rawTermOption = do

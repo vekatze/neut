@@ -161,17 +161,6 @@ reveal' varEnv term =
         AN.Type t -> do
           t' <- reveal' varEnv t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    m :< WT.Flow pVar t -> do
-      t' <- reveal' varEnv t
-      return $ m :< WT.Flow pVar t'
-    m :< WT.FlowIntro pVar var (e, t) -> do
-      e' <- reveal' varEnv e
-      t' <- reveal' varEnv t
-      return $ m :< WT.FlowIntro pVar var (e', t')
-    m :< WT.FlowElim pVar var (e, t) -> do
-      e' <- reveal' varEnv e
-      t' <- reveal' varEnv t
-      return $ m :< WT.FlowElim pVar var (e', t')
 
 revealPi ::
   BoundVarEnv ->

@@ -192,20 +192,6 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Flow l t -> do
-      flowDD <- fst <$> resolveName m (Locator l)
-      t' <- discern nenv t
-      return $ m :< WT.Flow flowDD t'
-    m :< RT.FlowIntro flowL detachL e -> do
-      flowDD <- fst <$> resolveName m (Locator flowL)
-      detachDD <- fst <$> resolveName m (Locator detachL)
-      e' <- discern nenv e
-      return $ m :< WT.FlowIntro flowDD detachDD (e', doNotCare m)
-    m :< RT.FlowElim flowL attachL e -> do
-      flowDD <- fst <$> resolveName m (Locator flowL)
-      attachDD <- fst <$> resolveName m (Locator attachL)
-      e' <- discern nenv e
-      return $ m :< WT.FlowElim flowDD attachDD (e', doNotCare m)
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =

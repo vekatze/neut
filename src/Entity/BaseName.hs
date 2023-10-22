@@ -234,7 +234,7 @@ coreTextIONames =
 
 coreThreadNames :: [BaseName]
 coreThreadNames =
-  map MakeBaseName ["flow-inner", "detach", "attach"]
+  map MakeBaseName ["flow", "detach", "attach"]
 
 coreUnitNames :: [BaseName]
 coreUnitNames =

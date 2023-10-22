@@ -17,7 +17,6 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
 import Entity.Key
-import Entity.Locator as L
 import Entity.Magic
 import Entity.Name
 import Entity.Noema qualified as N
@@ -47,17 +46,6 @@ data RawTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
-  | Flow
-      L.Locator -- "core.thread.flow-inner"
-      a -- inner type
-  | FlowIntro
-      L.Locator -- "core.thread.flow-inner"
-      L.Locator -- "core.thread.detach"
-      a -- lambda
-  | FlowElim
-      L.Locator -- "core.thread.flow-inner"
-      L.Locator -- "core.thread.attach"
-      a -- flow
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)

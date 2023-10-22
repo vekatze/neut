@@ -37,15 +37,6 @@ data TermF a
   | Prim (P.Prim a)
   | ResourceType DD.DefiniteDescription
   | Magic (Magic a)
-  | Flow DD.DefiniteDescription a -- ("core.thread.flow-inner", (actual-argument, arg-type))
-  | FlowIntro
-      DD.DefiniteDescription -- "core.thread.flow-inner"
-      DD.DefiniteDescription -- "core.thread.run"
-      (a, a) -- (lambda, lam-type)
-  | FlowElim
-      DD.DefiniteDescription -- "core.thread.flow-inner"
-      DD.DefiniteDescription -- "core.thread.wait"
-      (a, a) -- (flow, flow-type)
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)
@@ -83,8 +74,6 @@ isValue term =
     _ :< Prim {} ->
       True
     _ :< ResourceType {} ->
-      True
-    _ :< Flow {} ->
       True
     _ ->
       False

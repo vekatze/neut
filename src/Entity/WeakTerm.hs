@@ -41,15 +41,6 @@ data WeakTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
-  | Flow DD.DefiniteDescription a -- ("core.thread.flow-inner", (actual-argument, arg-type))
-  | FlowIntro
-      DD.DefiniteDescription -- "core.thread.flow-inner"
-      DD.DefiniteDescription -- "core.thread.detach"
-      (a, a) -- (flow-inner, inner-type)
-  | FlowElim
-      DD.DefiniteDescription -- "core.thread.flow-inner"
-      DD.DefiniteDescription -- "core.thread.attach"
-      (a, a) -- (flow, flow-type)
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)
