@@ -21,6 +21,7 @@ import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
+import Entity.Attr.Data qualified as AttrD
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
@@ -203,13 +204,13 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       es' <- mapM elaborate' es
-      return $ m :< TM.Data name consNameList es'
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return $ m :< TM.Data attr name es'
+    m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM elaborate' dataArgs
       consArgs' <- mapM elaborate' consArgs
-      return $ m :< TM.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM elaborate' es
@@ -412,7 +413,7 @@ reduceWeakType e = do
 extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
-    _ :< TM.Data _ consNameList _ -> do
+    _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
       return consNameList
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)

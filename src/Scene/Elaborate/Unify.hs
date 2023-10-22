@@ -13,6 +13,7 @@ import Data.IntMap qualified as IntMap
 import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.Attr.Data qualified as AttrD
 import Entity.Binder
 import Entity.Constraint qualified as C
 import Entity.DefiniteDescription qualified as DD
@@ -135,14 +136,13 @@ simplify constraintList =
               xt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
-        (_ :< WT.Data name1 _ es1, _ :< WT.Data name2 _ es2)
+        (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
           | name1 == name2,
             length es1 == length es2 -> do
               let cs' = map (,orig) (zipWith C.Eq es1 es2)
               simplify $ cs' ++ cs
-        (_ :< WT.DataIntro dataName1 consName1 _ _ dataArgs1 consArgs1, _ :< WT.DataIntro dataName2 consName2 _ _ dataArgs2 consArgs2)
-          | dataName1 == dataName2,
-            consName1 == consName2,
+        (_ :< WT.DataIntro _ consName1 dataArgs1 consArgs1, _ :< WT.DataIntro _ consName2 dataArgs2 consArgs2)
+          | consName1 == consName2,
             length dataArgs1 == length dataArgs2,
             length consArgs1 == length consArgs2 -> do
               let es1 = dataArgs1 ++ consArgs1
@@ -346,7 +346,7 @@ simplifyActual m dataNameSet t orig = do
   case t' of
     _ :< WT.Tau ->
       return ()
-    _ :< WT.Data dataName consNameList dataArgs -> do
+    _ :< WT.Data (AttrD.Attr {..}) dataName dataArgs -> do
       let dataNameSet' = S.insert dataName dataNameSet
       forM_ dataArgs $ \dataArg ->
         simplifyActual m dataNameSet' dataArg orig

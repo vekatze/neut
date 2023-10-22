@@ -22,6 +22,8 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
 import Entity.Decl qualified as DE
@@ -206,8 +208,8 @@ defineData m dataName dataArgsOrNone consInfoList = do
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = SK.Data dataName dataArgs consInfoList''
   let consNameList = map (\(_, consName, _, _, _) -> consName) consInfoList''
-  let dataType = constructDataType m dataName consNameList dataArgs
   let isConstLike = isNothing dataArgsOrNone
+  let dataType = constructDataType m dataName isConstLike consNameList dataArgs
   let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
@@ -255,7 +257,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               (AN.fromInt $ length dataArgs)
               args
               dataType
-              $ m :< RT.DataIntro dataName consName consNameList discriminant dataArgs' (map fst consArgs')
+              $ m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs' (map fst consArgs')
       let viaRule = RawStmtVia m consName (map snd consArgs')
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : viaRule : introRuleList
@@ -263,11 +265,12 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
 constructDataType ::
   Hint ->
   DD.DefiniteDescription ->
+  IsConstLike ->
   [DD.DefiniteDescription] ->
   [RawBinder RT.RawTerm] ->
   RT.RawTerm
-constructDataType m dataName consNameList dataArgs = do
-  m :< RT.Data dataName consNameList (map identPlusToVar dataArgs)
+constructDataType m dataName isConstLike consNameList dataArgs = do
+  m :< RT.Data (AttrD.Attr {..}) dataName (map identPlusToVar dataArgs)
 
 parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [(RawBinder RT.RawTerm, Maybe Name)])
 parseDefineDataClause = do

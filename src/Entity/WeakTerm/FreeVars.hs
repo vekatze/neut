@@ -29,7 +29,7 @@ freeVars term =
       S.union xs ys
     _ :< WT.Data _ _ es ->
       S.unions $ map freeVars es
-    _ :< WT.DataIntro _ _ _ _ dataArgs consArgs -> do
+    _ :< WT.DataIntro _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
     m :< WT.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets

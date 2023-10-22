@@ -157,10 +157,10 @@ discern nenv term =
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
-    m :< RT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+    m :< RT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv >=> castFromNoemaIfNecessary isNoetic) es

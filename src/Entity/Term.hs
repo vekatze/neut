@@ -3,11 +3,12 @@ module Entity.Term where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.IntMap qualified as IntMap
-import Entity.Attr.VarGlobal qualified as VG
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify
@@ -23,12 +24,12 @@ type Term = Cofree TermF Hint
 data TermF a
   = Tau
   | Var Ident
-  | VarGlobal VG.Attr DD.DefiniteDescription
+  | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
-  | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
-  | DataIntro DD.DefiniteDescription DD.DefiniteDescription [DD.DefiniteDescription] D.Discriminant [a] [a]
+  | Data AttrD.Attr DD.DefiniteDescription [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
@@ -75,7 +76,7 @@ isValue term =
       True
     _ :< Data {} ->
       True
-    _ :< DataIntro _ _ _ _ dataArgs consArgs ->
+    _ :< DataIntro _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
     _ :< Noema {} ->
       True

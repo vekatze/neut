@@ -2,6 +2,8 @@ module Entity.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable) whe
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -46,10 +48,14 @@ toText term =
               toText e
         _ ->
           showCons $ map toText $ e : es
-    _ :< WT.Data name _ es -> do
-      showCons $ "{data}" <> showGlobalVariable name : map toText es
-    _ :< WT.DataIntro _ consName _ _ _ consArgs -> do
-      showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
+    _ :< WT.Data (AttrD.Attr {..}) name es -> do
+      if isConstLike
+        then "{data}" <> showGlobalVariable name
+        else showCons $ "{data}" <> showGlobalVariable name : map toText es
+    _ :< WT.DataIntro (AttrDI.Attr {..}) consName _ consArgs -> do
+      if isConstLike
+        then "{data}" <> showGlobalVariable consName
+        else showCons ("{data-intro}" <> showGlobalVariable consName : map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
         then showCons ["match*", showMatchArgs xets, showDecisionTree tree]

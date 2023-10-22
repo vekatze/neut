@@ -59,13 +59,13 @@ weaken term =
       let e' = weaken e
       let es' = map weaken es
       m :< WT.PiElim e' es'
-    m :< TM.Data name consNameList es -> do
+    m :< TM.Data attr name es -> do
       let es' = map weaken es
-      m :< WT.Data name consNameList es'
-    m :< TM.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      m :< WT.Data attr name es'
+    m :< TM.DataIntro attr consName dataArgs consArgs -> do
       let dataArgs' = map weaken dataArgs
       let consArgs' = map weaken consArgs
-      m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       let es' = map weaken es

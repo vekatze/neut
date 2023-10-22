@@ -9,9 +9,10 @@ where
 import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.HoleID
 import Entity.Key
@@ -35,14 +36,8 @@ data RawTermF a
   | PiIntro (RawLamKind a) [RawBinder a] a
   | PiElim a [a]
   | PiElimByKey Name [a] [(Hint, Key, a)] -- auxiliary syntax for key-call
-  | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
-  | DataIntro
-      DD.DefiniteDescription
-      DD.DefiniteDescription
-      [DD.DefiniteDescription]
-      D.Discriminant
-      [a]
-      [a]
+  | Data AttrD.Attr DD.DefiniteDescription [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Embody a

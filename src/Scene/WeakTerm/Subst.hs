@@ -47,10 +47,10 @@ subst sub term =
     m :< WT.Data name consNameList es -> do
       es' <- mapM (subst sub) es
       return $ m :< WT.Data name consNameList es'
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (subst sub) dataArgs
       consArgs' <- mapM (subst sub) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (subst sub) es

@@ -12,6 +12,8 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
 import Entity.ArgNum qualified as AN
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
@@ -124,14 +126,14 @@ infer' varEnv term =
       etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
       inferPiElim varEnv m etl etls
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer' varEnv) es
-      return (m :< WT.Data name consNameList es', m :< WT.Tau)
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return (m :< WT.Data attr name es', m :< WT.Tau)
+    m :< WT.DataIntro attr@(AttrDI.Attr {..}) consName dataArgs consArgs -> do
       (dataArgs', _) <- mapAndUnzipM (infer' varEnv) dataArgs
       (consArgs', _) <- mapAndUnzipM (infer' varEnv) consArgs
-      let dataType = m :< WT.Data dataName consNameList dataArgs'
-      return (m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs', dataType)
+      let dataType = m :< WT.Data (AttrD.Attr {..}) dataName dataArgs'
+      return (m :< WT.DataIntro attr consName dataArgs' consArgs', dataType)
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, _) = unzip3 oets
       (es', ts') <- mapAndUnzipM (infer' varEnv) es

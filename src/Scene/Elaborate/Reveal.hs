@@ -92,13 +92,13 @@ reveal' varEnv term =
       es' <- mapM (reveal' varEnv) es
       e' <- reveal' varEnv e
       return $ m :< WT.PiElim e' es'
-    m :< WT.Data name consNameList es -> do
+    m :< WT.Data attr name es -> do
       es' <- mapM (reveal' varEnv) es
-      return $ m :< WT.Data name consNameList es'
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return $ m :< WT.Data attr name es'
+    m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (reveal' varEnv) dataArgs
       consArgs' <- mapM (reveal' varEnv) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets tree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (reveal' varEnv) es

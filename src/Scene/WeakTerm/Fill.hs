@@ -46,10 +46,10 @@ fill sub term =
     m :< WT.Data name consNameList es -> do
       es' <- mapM (fill sub) es
       return $ m :< WT.Data name consNameList es'
-    m :< WT.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+    m :< WT.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM (fill sub) dataArgs
       consArgs' <- mapM (fill sub) consArgs
-      return $ m :< WT.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< WT.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM (fill sub) es

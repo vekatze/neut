@@ -3,11 +3,12 @@ module Entity.WeakTerm where
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.Annotation qualified as AN
+import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
@@ -29,8 +30,8 @@ data WeakTermF a
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]
-  | Data DD.DefiniteDescription [DD.DefiniteDescription] [a]
-  | DataIntro DD.DefiniteDescription DD.DefiniteDescription [DD.DefiniteDescription] D.Discriminant [a] [a]
+  | Data AttrD.Attr DD.DefiniteDescription [a]
+  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a

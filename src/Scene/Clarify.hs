@@ -18,6 +18,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.ArgNum qualified as AN
+import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -193,17 +194,17 @@ clarifyTerm tenv term =
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
       callClosure e' es'
-    _ :< TM.Data name _ dataArgs -> do
+    _ :< TM.Data _ name dataArgs -> do
       (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus tenv) dataArgs
       return $
         bindLet (zip zs dataArgs') $
           C.PiElimDownElim (C.VarGlobal name (AN.fromInt (length dataArgs))) xs
-    m :< TM.DataIntro _ consName _ disc dataArgs consArgs -> do
+    m :< TM.DataIntro (AttrDI.Attr {..}) consName dataArgs consArgs -> do
       od <- OptimizableData.lookup consName
       baseSize <- Env.getBaseSize m
       case od of
         Just OD.Enum ->
-          return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify disc)
+          return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify discriminant)
         Just OD.Unitary
           | [e] <- consArgs ->
               clarifyTerm tenv e
@@ -215,7 +216,7 @@ clarifyTerm tenv term =
             bindLet (zip zs es) $
               C.UpIntro $
                 C.SigmaIntro $
-                  C.Int (PNS.IntSize baseSize) (D.reify disc) : xs
+                  C.Int (PNS.IntSize baseSize) (D.reify discriminant) : xs
     m :< TM.DataElim isNoetic xets tree -> do
       let (xs, es, _) = unzip3 xets
       let mxts = map (m,,m :< TM.Tau) xs
@@ -319,9 +320,9 @@ getFirstClause fallbackClause clauseList =
 getClauseDataGroup :: TM.Term -> App (Maybe OD.OptimizableData)
 getClauseDataGroup term =
   case term of
-    _ :< TM.Data dataName _ _ -> do
+    _ :< TM.Data _ dataName _ -> do
       OptimizableData.lookup dataName
-    _ :< TM.PiElim (_ :< TM.Data dataName _ _) _ -> do
+    _ :< TM.PiElim (_ :< TM.Data _ dataName _) _ -> do
       OptimizableData.lookup dataName
     _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
       OptimizableData.lookup dataName

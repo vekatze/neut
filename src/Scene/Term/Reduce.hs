@@ -40,13 +40,13 @@ reduce term =
               Subst.subst sub (m :< body) >>= reduce
         _ ->
           return (m :< TM.PiElim e' es')
-    m :< TM.Data name consNameList es -> do
+    m :< TM.Data attr name es -> do
       es' <- mapM reduce es
-      return $ m :< TM.Data name consNameList es'
-    m :< TM.DataIntro dataName consName consNameList disc dataArgs consArgs -> do
+      return $ m :< TM.Data attr name es'
+    m :< TM.DataIntro attr consName dataArgs consArgs -> do
       dataArgs' <- mapM reduce dataArgs
       consArgs' <- mapM reduce consArgs
-      return $ m :< TM.DataIntro dataName consName consNameList disc dataArgs' consArgs'
+      return $ m :< TM.DataIntro attr consName dataArgs' consArgs'
     m :< TM.DataElim isNoetic oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       es' <- mapM reduce es
