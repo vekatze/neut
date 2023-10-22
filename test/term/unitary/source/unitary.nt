@@ -31,14 +31,14 @@ define test-item1(): unit {
 define use-item1(x: item1): list(int) {
   match x {
   - Item1(value) =>
-    trace-list/1(value)
+    trace-list(value)
   }
 }
 
 define use-item1-noetic(x: &item1): list(int) {
   &match x {
   - Item1(value) =>
-    trace-list/1(!value)
+    trace-list(!value)
   }
 }
 
@@ -115,23 +115,23 @@ define test-item4(): unit {
 define use-item4(x: item4(int, list(int))): list(int) {
   match x {
   - Item4(Tuple(v, xs)) =>
-    trace-list/1(v :: xs)
+    trace-list(v :: xs)
   }
 }
 
 define use-item4-noetic(x: &item4(int, list(int))): list(int) {
   &match x {
   - Item4(Tuple(v, xs)) =>
-    trace-list/1(!v :: !xs)
+    trace-list(!v :: !xs)
   }
 }
 
-define trace-list(a: tau, xs: list(a)): list(a) {
+define trace-list[a](xs: list(a)): list(a) {
   match xs {
   - [] =>
     []
   - y :: ys =>
-    y :: trace-list(a, ys)
+    y :: trace-list(ys)
   }
 }
 

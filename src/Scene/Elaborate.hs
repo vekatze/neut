@@ -85,7 +85,7 @@ analyzeDefList defList = do
 -- viewStmt stmt = do
 --   case stmt of
 --     WeakStmtDefine _ _ m x _ xts codType e ->
---       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro (LK.Normal O.Transparent) xts e)
+--       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro LK.Normal xts e)
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 

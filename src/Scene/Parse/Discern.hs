@@ -19,6 +19,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
@@ -118,7 +119,7 @@ discern nenv term =
   case term of
     m :< RT.Tau ->
       return $ m :< WT.Tau
-    m :< RT.Var name ->
+    m :< RT.Var (AttrV.Attr {..}) name ->
       case name of
         Var s
           | Just (mDef, name') <- lookup s nenv -> do
@@ -127,7 +128,7 @@ discern nenv term =
               return $ m :< WT.Var name'
         _ -> do
           (dd, (_, gn)) <- resolveName m name
-          interpretGlobalName m dd gn
+          interpretGlobalName m dd gn isExplicit
     m :< RT.Pi xts t -> do
       (xts', t') <- discernBinderWithBody nenv xts t
       forM_ xts' $ \(_, x, _) -> UnusedVariable.delete x
@@ -144,7 +145,7 @@ discern nenv term =
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
       return $ m :< WT.PiElim e' es'
-    m :< RT.PiElimByKey name impArgs kvs -> do
+    m :< RT.PiElimByKey (AttrV.Attr {..}) name impArgs kvs -> do
       (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ensureFieldLinearity m ks S.empty S.empty
@@ -153,7 +154,8 @@ discern nenv term =
       let keyList' = drop (length impArgs) keyList
       expArgs <- reorderArgs m keyList' $ Map.fromList $ zip ks vs'
       impArgs' <- mapM (discern nenv) impArgs
-      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.new argNum) dd) (impArgs' ++ expArgs)
+      let isConstLike = False
+      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (impArgs' ++ expArgs)
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
@@ -219,7 +221,8 @@ discernLet ::
   App WT.WeakTerm
 discernLet nenv m mxt mys e1 e2 = do
   let (ms, ys) = unzip mys
-  ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var (Var y))) ms ys
+  let attr = AttrV.Attr {isExplicit = False}
+  ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var attr (Var y))) ms ys
   ysLocal <- mapM Gensym.newIdentFromText ys
   ysCont <- mapM Gensym.newIdentFromText ys
   let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms ysLocal

@@ -52,7 +52,7 @@ define some-list(len: int, acc: list(int)): list(int) {
 
 define detach-send(x: int, ch: &channel(int)): flow(unit) {
   detach {
-    send(int, ch, x)
+    send(ch, x)
   }
 }
 
@@ -72,7 +72,7 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
     Unit
   - fl :: rest =>
     let _ = attach fl in
-    let _ = receive(int, ch) in
+    let _ = receive(ch) in
     receive-one-by-one(rest, ch)
   }
 }
@@ -89,14 +89,14 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
       }
     }
   in
-  let size on xs = length(flow(unit), xs) in
+  let size on xs = length(xs) in
   wait-all(xs);
   let receive-all =
     mu receive-all(count: int) {
       if eq-int(count, 0) {
         Unit
       } else {
-        let _ = receive(_, ch) in
+        let _ = receive(ch) in
         receive-all(sub-int(count, 1))
       }
     }
@@ -105,7 +105,7 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
 }
 
 define test-behavior(): unit {
-  let ch = new-channel(int) in
+  let ch = new-channel() in
   let _ on ch =
     let fl1 =
       detach {
@@ -128,29 +128,29 @@ define test-behavior(): unit {
   in
   let _ = ch in
 
-  let ch = new-channel(() -> int) in
+  let ch = new-channel() in
   let ch: channel(() -> int) = ch in
   let _ = ch in
-  let _ on ch = send(_, ch, () => {1}) in
+  let _ on ch = send(ch, () => {1}) in
   let ch = ch in
   let ch-clone = ch in
-  let _ on ch-clone = send(_, ch-clone, () => {1}) in
+  let _ on ch-clone = send(ch-clone, () => {1}) in
   let tmp on ch-clone =
     let f =
       detach {
         ext.sleep(1);
-        send(_, ch-clone, () => {3})
+        send(ch-clone, () => {3})
       }
     in
     let g =
       detach {
         ext.sleep(1);
-        send(() -> int, ch-clone, () => {4})
+        send(ch-clone, () => {4})
       }
     in
-    let _ = receive(_, ch-clone) in
-    let _ = receive(_, ch-clone) in
-    let _ = receive(_, ch-clone) in
+    let _ = receive(ch-clone) in
+    let _ = receive(ch-clone) in
+    let _ = receive(ch-clone) in
     attach f;
     attach g
   in

@@ -183,18 +183,17 @@ In practice, one may think of `mu` as a nested `define`.
 
 ## Some Useful Notations
 
-### Holes
+### Holes and Implicit Arguments
 
-A hole in Neut is written as `_`. The content of a hole is inferred by the type system at compile time. This can be useful when we, for example, call a polymorphic function. Suppose we have the following `map` function:
+A hole in Neut is written as `_`. The content of a hole is inferred by the type system at compile time. This can be useful when we, for example, call a polymorphic function. Suppose we have the following `for-each` function:
 
 ```neut
-// the usual one
-define map(a: tau, b: tau, f: a -> b, xs: list(a)): list(b) {
+define for-each(a: tau, b: tau, xs: list(a), f: a -> b): list(b) {
   match xs {
   - [] =>
     []
   - y :: ys =>
-    f(y) :: map(a, b, f, ys)
+    f(y) :: for-each(a, b, ys, f)
   }
 }
 ```
@@ -202,54 +201,71 @@ define map(a: tau, b: tau, f: a -> b, xs: list(a)): list(b) {
 If it were not for holes, we'd have to call this function as follows:
 
 ```neut
-let bool-list = map(int, bool, int-to-bool, int-list) in
+let bool-list = for-each(int, bool, int-list, int-to-bool-func) in
 cont
 ```
 
 Using holes, the function can be called without specifying its type arguments explicitly:
 
 ```neut
-let bool-list = map(_, _, int-to-bool-func, int-list) in
+let bool-list = for-each(_, _, int-list, int-to-bool-func) in
 cont
 ```
 
 ### Supplying Holes
 
-You can write:
+When defining a function, you can specify some of its arguments to be implicit:
 
 ```neut
-some-func/2(x, y)
+// `a: tau` and `b: tau` are implicit
+define for-each[a: tau, b: tau](xs: list(a), f: a -> b): list(b) {
+  ..
+}
 ```
 
-instead of:
+Or even shorter:
 
 ```neut
-some-func(_, _, x, y)
+define for-each[a, b](xs: list(a), f: a -> b): list(b) {
+  ..
+}
 ```
 
-The `i` in `some-func/i` specifies the number of supplied holes. Using this notation, the `map` above can now be called as follows:
+You can call this `for-each` as if it were a binary function:
 
 ```neut
-let bool-list = map/2(int-to-bool-func, int-list) in
+let bool-list = for-each(int-list, int-to-bool-func) in
+cont
+
+// ↓ (automatically translated to)
+
+let bool-list = for-each(_, _, int-list, int-to-bool-func) in
 cont
 ```
 
 This can be useful when achieving better readability (YMMV):
 
 ```neut
-// with the notation
-for-each/1(xss, (xs) => {
-  for-each/1(xs, (x) => {
-    some-func/1(x)
+// with implicit arguments
+for-each(xss, (xs) => {
+  for-each(xs, (x) => {
+    int-to-bool(x)
   })
 })
 
-// without the notation
-for-each(list(list(int)), xss, (xs) => {
-  for-each(list(int), xs, (x) => {
-    do-something(int, x)
+// without implicit arguments
+for-each(list(int), list(bool), xss, (xs) => {
+  for-each(int, bool, xs, (x) => {
+    int-to-bool(x)
   })
 })
+```
+
+You can also write `@foo` to pass implicit arguments explicitly (as in Coq and Lean):
+
+```neut
+let bool-list = @for-each(int, bool, int-list, int-to-bool-func) in
+cont
 ```
 
 ### Keyword Arguments

@@ -26,6 +26,7 @@ import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
+import Entity.IsExplicit
 import Entity.LocalLocator qualified as LL
 import Entity.Locator qualified as L
 import Entity.Magic qualified as M
@@ -121,15 +122,17 @@ resolveConstructorMaybe dd gn = do
     _ ->
       return Nothing
 
-interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
-interpretGlobalName m dd gn = do
+interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> IsExplicit -> App WT.WeakTerm
+interpretGlobalName m dd gn isExplicit = do
   case gn of
     GN.TopLevelFunc argNum isConstLike ->
-      interpretTopLevelFunc m dd argNum isConstLike
+      interpretTopLevelFunc m dd argNum isConstLike isExplicit
     GN.Data argNum _ isConstLike ->
-      interpretTopLevelFunc m dd argNum isConstLike
+      interpretTopLevelFunc m dd argNum isConstLike isExplicit
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
-      let e = m :< WT.VarGlobal (AttrVG.new (AN.add dataArgNum consArgNum)) dd
+      let argNum = AN.add dataArgNum consArgNum
+      let attr = AttrVG.Attr {..}
+      let e = m :< WT.VarGlobal attr dd
       if isConstLike
         then return $ m :< WT.PiElim e []
         else return e
@@ -148,10 +151,11 @@ interpretTopLevelFunc ::
   Hint ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
-  Bool ->
+  IsConstLike ->
+  IsExplicit ->
   App WT.WeakTerm
-interpretTopLevelFunc m dd argNum isConstLike = do
-  let attr = AttrVG.Attr {argNum = argNum, isConstLike = isConstLike}
+interpretTopLevelFunc m dd argNum isConstLike isExplicit = do
+  let attr = AttrVG.Attr {..}
   if isConstLike
     then return $ m :< WT.PiElim (m :< WT.VarGlobal attr dd) []
     else return $ m :< WT.VarGlobal attr dd
@@ -161,7 +165,7 @@ castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
   l <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator m l
-  bool <- interpretGlobalName m dd gn
+  bool <- interpretGlobalName m dd gn False
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"
   x2 <- Gensym.newIdentFromText "arg"

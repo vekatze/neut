@@ -24,6 +24,7 @@ import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Var qualified as AttrV
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
 import Entity.Decl qualified as DE
@@ -164,9 +165,10 @@ parseDefine opacity = do
       O.Transparent ->
         P.keyword "inline"
   m <- P.getCurrentHint
-  ((_, name), expArgs, codType, e) <- parseTopDefInfo
+  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction (SK.Normal opacity) m name' (AN.fromInt 0) expArgs codType e
+  let impArgNum = AN.fromInt $ length impArgs
+  lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
 
 defineFunction ::
   SK.RawStmtKind ->
@@ -335,11 +337,11 @@ parseDefineResource = do
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
-  m :< RT.Var (Var x)
+  m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x)
 
 adjustConsArg :: (RawBinder RT.RawTerm, Maybe Name) -> (RT.RawTerm, (RawIdent, Maybe Name))
 adjustConsArg ((m, x, _), mName) =
-  (m :< RT.Var (Var x), (x, mName))
+  (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), (x, mName))
 
 registerTopLevelNames :: [RawStmt] -> App ()
 registerTopLevelNames stmtList =

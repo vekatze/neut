@@ -5,11 +5,11 @@ define test-syntax(): unit {
   let xs: list(int) = [1, 2, 3] in
   let _ on xs =
     let _ on xs =
-      let l1 = length(int, !xs) in
-      let l2 = length(int, !xs) in
+      let l1 = length(!xs) in
+      let l2 = length(!xs) in
       add-int(l1, l2)
     in
-    let _ = length(int, xs) in
+    let _ = length(xs) in
     let xs-copy = !xs in
     let _ = xs in
     let _ = xs in
@@ -19,18 +19,18 @@ define test-syntax(): unit {
     let _ = xs-copy in
     &match xs {
     - [] =>
-      length(int, xs)
+      length(xs)
     - _ :: ys =>
-      length(int, ys)
+      length(ys)
     }
   in
   let _ = xs in
   let ys = xs in
   let zs = xs in
   let _ on xs, ys, zs =
-    let v1 = length(int, xs) in
-    let v2 = length(int, ys) in
-    let v3 = length(int, zs) in
+    let v1 = length(xs) in
+    let v2 = length(ys) in
+    let v3 = length(zs) in
     add-int(v1, add-int(v2, v3))
   in
   let _ = xs in
@@ -148,12 +148,12 @@ data ctx {
 
 define with-ctx(c: &ctx): unit {
   &let Ctx(counter) = c in
-  let current-value = clone(int, counter) in
+  let current-value = clone(counter) in
   if eq-int(current-value, 0) {
     print("stop\n")
   } else {
     print("loop\n");
-    mutate(int, counter, (x) => { sub-int(x, 1) });
+    mutate(counter, (x) => { sub-int(x, 1) });
     with-ctx(c)
   }
 }
@@ -175,7 +175,7 @@ define test-resource(): unit {
   let _ = t2 in
   let _ = t3 in
   let _ = t4 in
-  let c = Ctx(new-cell(_, 5)) in
+  let c = Ctx(new-cell(5)) in
   let _ on c = with-ctx(c) in
   let _ = c in
   Unit

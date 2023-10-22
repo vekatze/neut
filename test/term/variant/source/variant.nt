@@ -220,7 +220,7 @@ data monoid(a) {
 inline list-monoid(a: tau): monoid(list(a)) {
   Monoid of {
   - m-op =>
-    (xs, ys) => { core.list.append(a, xs, ys) }
+    (xs, ys) => { core.list.append(xs, ys) }
   - m-empty =>
     []
   }
