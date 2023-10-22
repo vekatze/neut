@@ -117,17 +117,6 @@ reduce term =
     m :< WT.Magic der -> do
       der' <- mapM reduce der
       return $ m :< WT.Magic der'
-    m :< WT.Flow var t -> do
-      t' <- reduce t
-      return $ m :< WT.Flow var t'
-    m :< WT.FlowIntro pVar var (e, t) -> do
-      e' <- reduce e
-      t' <- reduce t
-      return $ m :< WT.FlowIntro pVar var (e', t')
-    m :< WT.FlowElim pVar var (e, t) -> do
-      e' <- reduce e
-      t' <- reduce t
-      return $ m :< WT.FlowElim pVar var (e', t')
     m :< WT.Prim prim -> do
       prim' <- mapM reduce prim
       return $ m :< WT.Prim prim'

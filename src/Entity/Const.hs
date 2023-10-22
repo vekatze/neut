@@ -145,10 +145,6 @@ coreSystemAssert :: T.Text
 coreSystemAssert =
   core <> nsSep <> "system" <> nsSep <> "assert"
 
-coreThreadFlowInner :: T.Text
-coreThreadFlowInner =
-  core <> nsSep <> "thread" <> nsSep <> "flow-inner"
-
 coreThreadDetach :: T.Text
 coreThreadDetach =
   core <> nsSep <> "thread" <> nsSep <> "detach"

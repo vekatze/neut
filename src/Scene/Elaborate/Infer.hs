@@ -206,17 +206,6 @@ infer' varEnv term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
-    m :< WT.Flow var t -> do
-      t' <- inferType' varEnv t
-      return (m :< WT.Flow var t', m :< WT.Tau)
-    m :< WT.FlowIntro pVar var (e, _) -> do
-      (e', t) <- infer' varEnv e
-      return (m :< WT.FlowIntro pVar var (e', t), m :< WT.Flow pVar t)
-    m :< WT.FlowElim pVar var (e, _) -> do
-      (e', t) <- infer' varEnv e
-      h <- newHole m varEnv
-      insConstraintEnv (m :< WT.Flow pVar h) t
-      return (m :< WT.FlowElim pVar var (e', t), h)
 
 inferArgs ::
   WT.SubstWeakTerm ->

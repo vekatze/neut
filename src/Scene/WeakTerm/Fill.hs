@@ -93,17 +93,6 @@ fill sub term =
         AN.Type t -> do
           t' <- fill sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    m :< WT.Flow var t -> do
-      t' <- fill sub t
-      return $ m :< WT.Flow var t'
-    m :< WT.FlowIntro pVar var (e, t) -> do
-      e' <- fill sub e
-      t' <- fill sub t
-      return $ m :< WT.FlowIntro pVar var (e', t')
-    m :< WT.FlowElim pVar var (e, t) -> do
-      e' <- fill sub e
-      t' <- fill sub t
-      return $ m :< WT.FlowElim pVar var (e', t')
 
 fill' ::
   HoleSubst ->
