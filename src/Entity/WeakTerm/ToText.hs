@@ -10,7 +10,6 @@ import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
@@ -70,8 +69,8 @@ toText term =
       "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
     _ :< WT.Prim prim ->
       showPrim prim
-    _ :< WT.Hole i es ->
-      showApp ("?M" <> T.pack (show (HID.reify i))) (map toText es)
+    _ :< WT.Hole {} ->
+      "_"
     _ :< WT.ResourceType name ->
       showGlobalVariable name
     _ :< WT.Magic _ -> do
@@ -125,7 +124,7 @@ showVariable :: Ident -> T.Text
 showVariable x =
   if isHole x
     then "_"
-    else Ident.toText' x
+    else Ident.toText x
 
 showGlobalVariable :: DD.DefiniteDescription -> T.Text
 showGlobalVariable dd =
