@@ -110,7 +110,7 @@ simplify constraintList =
         (_ :< WT.Var x1, _ :< WT.Var x2)
           | x1 == x2 ->
               simplify cs
-        (_ :< WT.VarGlobal g1 _, _ :< WT.VarGlobal g2 _)
+        (_ :< WT.VarGlobal _ g1, _ :< WT.VarGlobal _ g2)
           | g1 == g2 ->
               simplify cs
         (m1 :< WT.Pi xts1 cod1, m2 :< WT.Pi xts2 cod2)

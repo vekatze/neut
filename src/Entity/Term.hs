@@ -3,7 +3,7 @@ module Entity.Term where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.IntMap qualified as IntMap
-import Entity.ArgNum
+import Entity.Attr.VarGlobal qualified as VG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -23,7 +23,7 @@ type Term = Cofree TermF Hint
 data TermF a
   = Tau
   | Var Ident
-  | VarGlobal DD.DefiniteDescription ArgNum
+  | VarGlobal VG.Attr DD.DefiniteDescription
   | Pi [BinderF a] a
   | PiIntro (LamKindF a) [BinderF a] a
   | PiElim a [a]

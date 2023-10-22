@@ -12,6 +12,7 @@ import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
 import Entity.ArgNum qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
@@ -87,7 +88,8 @@ getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- N.resolveName m (N.Locator locator)
-  return $ m :< WT.PiElim (m :< WT.VarGlobal unitDD (AN.fromInt 0)) []
+  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
+  return $ m :< WT.PiElim (m :< WT.VarGlobal attr unitDD) []
 
 infer' :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer' varEnv term =
@@ -97,7 +99,7 @@ infer' varEnv term =
     m :< WT.Var x -> do
       _ :< t <- lookupWeakTypeEnv m x
       return (term, m :< t)
-    m :< WT.VarGlobal name _ -> do
+    m :< WT.VarGlobal _ name -> do
       _ :< t <- Type.lookup m name
       return (term, m :< t)
     m :< WT.Pi xts t -> do
@@ -313,7 +315,7 @@ getPiType varEnv m (e, t) numOfArgs =
 raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
 raiseArityMismatchError function expected actual = do
   case function of
-    m :< WT.VarGlobal name _ -> do
+    m :< WT.VarGlobal _ name -> do
       Throw.raiseError m $
         "the function `"
           <> DD.reify name
@@ -375,14 +377,15 @@ inferClause ::
   WT.WeakTerm ->
   DT.Case WT.WeakTerm ->
   App (DT.Case WT.WeakTerm, WT.WeakTerm)
-inferClause varEnv cursorType decisionCase = do
+inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let m = DT.mCons decisionCase
-  let (dataTermList, _) = unzip $ DT.dataArgs decisionCase
+  let (dataTermList, _) = unzip dataArgs
   typedDataArgs' <- mapM (infer' varEnv) dataTermList
-  (consArgs', extendedVarEnv) <- inferBinder' varEnv $ DT.consArgs decisionCase
-  (cont', tCont) <- inferDecisionTree m extendedVarEnv $ DT.cont decisionCase
-  let argNum = AN.fromInt $ length (DT.dataArgs decisionCase) + length (DT.consArgs decisionCase)
-  consTerm <- infer' varEnv $ m :< WT.VarGlobal (DT.consDD decisionCase) argNum
+  (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
+  (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
+  let argNum = AN.fromInt $ length dataArgs + length consArgs
+  let attr = AttrVG.Attr {argNum = argNum, isConstLike = isConstLike}
+  consTerm <- infer' varEnv $ m :< WT.VarGlobal attr consDD
   (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
   return

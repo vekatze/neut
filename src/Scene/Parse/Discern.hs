@@ -19,6 +19,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
@@ -152,7 +153,7 @@ discern nenv term =
       let keyList' = drop (length impArgs) keyList
       expArgs <- reorderArgs m keyList' $ Map.fromList $ zip ks vs'
       impArgs' <- mapM (discern nenv) impArgs
-      return $ m :< WT.PiElim (m :< WT.VarGlobal dd argNum) (impArgs' ++ expArgs)
+      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.new argNum) dd) (impArgs' ++ expArgs)
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'

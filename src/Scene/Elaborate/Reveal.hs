@@ -11,6 +11,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleID qualified as HID
@@ -62,7 +63,7 @@ reveal' varEnv term =
       return term
     _ :< WT.Var {} ->
       return term
-    m :< WT.VarGlobal name argNum -> do
+    m :< WT.VarGlobal (AttrVG.Attr {..}) name -> do
       mImpArgNum <- Implicit.lookup name
       case mImpArgNum of
         Just impArgNum

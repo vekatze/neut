@@ -18,6 +18,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.ArgNum qualified as AN
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
@@ -176,7 +177,7 @@ clarifyTerm tenv term =
       return returnImmediateS4
     _ :< TM.Var x -> do
       return $ C.UpIntro $ C.VarLocal x
-    _ :< TM.VarGlobal x argNum -> do
+    _ :< TM.VarGlobal (AttrVG.Attr {..}) x -> do
       return $
         C.UpIntro $
           C.SigmaIntro
@@ -259,10 +260,12 @@ clarifyTerm tenv term =
     m :< TM.FlowIntro _ var (e, t) -> do
       let argNum = AN.fromInt 2
       let lam = m :< TM.PiIntro LK.Normal [] e
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, lam]
+      let attr = AttrVG.new argNum
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal attr var) [t, lam]
     m :< TM.FlowElim _ var (e, t) -> do
       let argNum = AN.fromInt 2
-      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal var argNum) [t, e]
+      let attr = AttrVG.new argNum
+      clarifyTerm tenv $ m :< TM.PiElim (m :< TM.VarGlobal attr var) [t, e]
 
 type Size =
   Int
@@ -320,7 +323,7 @@ getClauseDataGroup term =
       OptimizableData.lookup dataName
     _ :< TM.PiElim (_ :< TM.Data dataName _ _) _ -> do
       OptimizableData.lookup dataName
-    _ :< TM.PiElim (_ :< TM.VarGlobal dataName _) _ -> do
+    _ :< TM.PiElim (_ :< TM.VarGlobal _ dataName) _ -> do
       OptimizableData.lookup dataName
     _ ->
       Throw.raiseCritical' "Clarify.isEnumType"
@@ -428,7 +431,8 @@ clarifyLambda tenv kind fvs mxts e@(m :< _) = do
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
-      let lamApp = m :< TM.PiIntro LK.Normal mxts (m :< TM.PiElim (m :< TM.VarGlobal liftedName argNum) appArgs')
+      let attr = AttrVG.new argNum
+      let lamApp = m :< TM.PiIntro LK.Normal mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
       -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
       (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody

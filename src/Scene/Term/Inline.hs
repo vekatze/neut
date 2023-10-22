@@ -44,7 +44,7 @@ inline term =
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
               Subst.subst sub (m :< body) >>= inline
-        (_ :< TM.VarGlobal dd _)
+        (_ :< TM.VarGlobal _ dd)
           | Just (xts, _ :< body) <- Map.lookup dd dmap,
             all TM.isValue es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts

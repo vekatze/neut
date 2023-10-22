@@ -2,6 +2,7 @@ module Entity.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable) whe
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
+import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -26,7 +27,7 @@ toText term =
       "tau"
     _ :< WT.Var x ->
       showVariable x
-    _ :< WT.VarGlobal x _ ->
+    _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
     _ :< WT.Pi xts cod ->
       showCons ["Π", inParen $ showTypeArgs xts, toText cod]
@@ -39,7 +40,12 @@ toText term =
           let argStr = inParen $ showItems $ map showArg xts
           showCons ["λ", argStr, toText e]
     _ :< WT.PiElim e es ->
-      showCons $ map toText $ e : es
+      case e of
+        _ :< WT.VarGlobal attr _
+          | AttrVG.isConstLike attr ->
+              toText e
+        _ ->
+          showCons $ map toText $ e : es
     _ :< WT.Data name _ es -> do
       showCons $ "{data}" <> showGlobalVariable name : map toText es
     _ :< WT.DataIntro _ consName _ _ _ consArgs -> do

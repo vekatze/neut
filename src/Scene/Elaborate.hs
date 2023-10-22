@@ -399,7 +399,7 @@ reduceWeakType e = do
   case e' of
     m :< WT.Hole h es ->
       fillHole m h es >>= reduceWeakType
-    m :< WT.PiElim (_ :< WT.VarGlobal name _) args -> do
+    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of
         Just lam ->
