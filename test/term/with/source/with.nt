@@ -21,7 +21,8 @@ define test(): except(&text, int) {
       bind _: bool = Pass(True) in
       nop();
       let _ = tau in
-      Fail("hello") in
+      Fail("hello")
+    in
     bind _: bool = Fail("hello") in
     bind _: bool = Fail("hello") in
     nop();
