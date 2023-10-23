@@ -14,7 +14,6 @@ import Context.App
 import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -750,16 +749,12 @@ rawTermWith' m binder = do
 
 rawExprBind :: RT.RawTerm -> Parser (RT.RawTerm -> RT.RawTerm)
 rawExprBind binder = do
-  lift $ printNote' "bind"
   m <- getCurrentHint
   keyword "bind"
-  lift $ printNote' "before pattern"
   pat@(mx, _) <- rawTermPattern
-  lift $ printNote' "after pattern"
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx
   let mxt = (mx, x, t)
-  lift $ printNote' "parsing equal"
   delimiter "="
   -- e1 <- rawExpr
   e1 <- rawTermWith' m binder
