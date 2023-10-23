@@ -19,11 +19,12 @@ hljs.registerLanguage("neut", function (hljs) {
       keyword: [
         "alias",
         "attach",
+        "bind",
         "by",
         "case",
         "data",
-        "default",
         "declare",
+        "default",
         "define",
         "detach",
         "else",

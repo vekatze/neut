@@ -170,6 +170,51 @@ define use-my-int(x: my-int()) {
 
 which relieves code cluttering.
 
+### A Notation for (Not Necessarily) Monadic Binds
+
+You can use Neut's `with` notation as something like the `do` notation in other languages:
+
+```neut
+// play with the `with` notation
+define test(): except(&text, int) {
+  with except-bind {
+    bind x: bool = Pass(True) in   // x == True
+    bind y: tau = Fail("error") in // returns `Fail("error"): except(&text, int)`
+    Pass(10) // not executed
+  }
+}
+```
+
+where the `except-bind` is the bind operator of the except monad:
+
+```neut
+// monadic bind
+define except-bind[e, a, b](x: except(e, a), k: a -> except(e, b)): except(e, b) {
+  match x {
+  - Fail(err) => Fail(err)
+  - Pass(value) => k(value)
+  }
+}
+```
+
+Although the `binder` in `with binder { .. }` is a monadic bind in the case above, it can be any term as long as it typechecks.
+
+Let's take a look at a slightly more complex example:
+
+```neut
+define test(): except(&text, int) {
+  with except-bind {
+    let _ = tau in   // `let` can be used in `with` as usual
+    print("hey");    // `e1; e2` can also be used in `with` as usual
+    bind _: bool =
+      bind _: bool = Pass(True) in // `bind` is nestable
+      Fail("hello")
+    in
+    Pass(10)
+  }
+}
+```
+
 ### Tail Call Optimization
 
 Neut optimizes all the tail calls. Thus, for example, the following function is optimized into a loop:
