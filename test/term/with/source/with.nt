@@ -32,5 +32,6 @@ define test(): except(&text, int) {
 }
 
 define main(): unit {
-  print("Hello, world!\n")
+  let _ = test() in
+  Unit
 }
