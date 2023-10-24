@@ -7,15 +7,12 @@ import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
-import Context.NameDependence qualified as NameDependence
 import Context.Remark qualified as Remark
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
-import Context.Via qualified as Via
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List
 import Data.Set qualified as S
@@ -38,12 +35,10 @@ import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
 import Entity.Remark qualified as Remark
-import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.StmtKind
 import Entity.Term qualified as TM
 import Entity.Term.Weaken
-import Entity.ViaMap qualified as VM
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -98,17 +93,12 @@ synthesizeDefList declList defList = do
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
-  let path = Source.sourceFilePath source
-  nameDependence <- NameDependence.get path
-  viaInfo <- Via.get path
   Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = defList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
-        Cache.declList = declList,
-        Cache.nameDependence = Map.toList nameDependence,
-        Cache.viaInfo = VM.encode viaInfo
+        Cache.declList = declList
       }
   Remark.printRemarkList remarkList
   Remark.insertToGlobalRemarkList remarkList

@@ -1,14 +1,11 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
-import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.KeyArg qualified as KeyArg
-import Context.NameDependence qualified as NameDependence
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
-import Context.Via qualified as Via
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Char (isUpper)
@@ -38,7 +35,6 @@ import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
-import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.WeakTerm qualified as WT
@@ -50,10 +46,6 @@ import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList stmtList =
-  discernStmtList' $ sortBy compareRawStmt stmtList
-
-discernStmtList' :: [RawStmt] -> App [WeakStmt]
-discernStmtList' stmtList =
   case stmtList of
     [] ->
       return []
@@ -62,37 +54,13 @@ discernStmtList' stmtList =
       codType' <- discern nenv codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
-      rest' <- discernStmtList' rest
+      rest' <- discernStmtList rest
       return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
-      rest' <- discernStmtList' rest
+      rest' <- discernStmtList rest
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
-    RawStmtVia m consName consArgs : rest -> do
-      forM_ consArgs $ \(consArgName, mViaName) -> do
-        case mViaName of
-          Nothing ->
-            return ()
-          Just viaName -> do
-            (nameDep, (mDep, gnDep)) <- resolveName m viaName
-            src <- Env.getCurrentSource
-            let path = Source.sourceFilePath src
-            NameDependence.add path (Map.singleton nameDep (mDep, gnDep))
-            Via.union path $ Map.singleton consName (Map.singleton consArgName nameDep)
-      discernStmtList' rest
-
-compareRawStmt :: RawStmt -> RawStmt -> Ordering
-compareRawStmt stmt1 stmt2 =
-  case (stmt1, stmt2) of
-    (RawStmtVia {}, RawStmtVia {}) ->
-      EQ
-    (RawStmtVia {}, _) ->
-      LT
-    (_, RawStmtVia {}) ->
-      GT
-    (_, _) ->
-      EQ
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -412,28 +380,30 @@ discernPattern (m, pat) =
                     args = args'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-        Left mVar -> do
-          vmap <- Via.lookup consName
-          (_, keyList) <- KeyArg.lookup m consName
-          patList <- mapM (keyToPattern vmap m) keyList
-          (patList', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) patList
-          forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
-            UnusedVariable.delete newVar
-          let consInfo =
-                PAT.ConsInfo
-                  { consDD = consName,
-                    isConstLike = isConstLike,
-                    disc = disc,
-                    dataArgNum = dataArgNum,
-                    consArgNum = consArgNum,
-                    args = patList'
-                  }
-          return ((m, PAT.Cons consInfo), concat nenvList)
+        Left _ -> do
+          undefined
 
-keyToPattern :: Map.HashMap RawIdent DD.DefiniteDescription -> Hint -> RawIdent -> App RP.RawPattern
-keyToPattern vmap m key =
-  case Map.lookup key vmap of
-    Just consName -> do
-      return $ RP.Cons (DefiniteDescription consName) (Left m)
-    Nothing ->
-      return $ RP.Var $ Var key
+-- vmap <- Via.lookup consName
+-- (_, keyList) <- KeyArg.lookup m consName
+-- patList <- mapM (keyToPattern vmap m) keyList
+-- (patList', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) patList
+-- forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
+--   UnusedVariable.delete newVar
+-- let consInfo =
+--       PAT.ConsInfo
+--         { consDD = consName,
+--           isConstLike = isConstLike,
+--           disc = disc,
+--           dataArgNum = dataArgNum,
+--           consArgNum = consArgNum,
+--           args = patList'
+--         }
+-- return ((m, PAT.Cons consInfo), concat nenvList)
+
+-- keyToPattern :: Map.HashMap RawIdent DD.DefiniteDescription -> Hint -> RawIdent -> App RP.RawPattern
+-- keyToPattern vmap m key =
+--   case Map.lookup key vmap of
+--     Just consName -> do
+--       return $ RP.Cons (DefiniteDescription consName) (Left m)
+--     Nothing ->
+--       return $ RP.Var $ Var key
