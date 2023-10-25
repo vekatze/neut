@@ -368,7 +368,7 @@ discernPattern (m, pat) =
         Throw.raiseError m $
           "the constructor `" <> showName cons <> "` can't have any arguments"
       case mArgs of
-        Right args -> do
+        RP.Paren args -> do
           (args', nenvList) <- mapAndUnzipM discernPattern args
           let consInfo =
                 PAT.ConsInfo
@@ -380,8 +380,9 @@ discernPattern (m, pat) =
                     args = args'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-        Left _ -> do
-          undefined
+
+-- Left _ -> do
+--   undefined
 
 -- vmap <- Via.lookup consName
 -- (_, keyList) <- KeyArg.lookup m consName
