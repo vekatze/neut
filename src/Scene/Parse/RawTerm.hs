@@ -257,7 +257,7 @@ rawTermNoeticVar = do
 
 rawTermLetExcept :: Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetExcept = do
-  keyword "let?"
+  keyword "try"
   pat@(mx, _) <- rawTermPattern
   rightType <- rawTermLetVarAscription mx
   delimiter "="
