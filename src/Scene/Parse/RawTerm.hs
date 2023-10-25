@@ -622,7 +622,7 @@ rawTermPatternConsOrVar = do
         return (m, RP.Cons varOrLocator (RP.Paren patArgs)),
       do
         keyword "of"
-        kvs <- betweenBrace $ manyList rawTermPatternKeyValuePair
+        kvs <- betweenBrace $ bulletListOrCommaSeq rawTermPatternKeyValuePair
         return (m, RP.Cons varOrLocator (RP.Of kvs)),
       do
         return (m, RP.Var varOrLocator)
@@ -873,7 +873,7 @@ rawTermPiElimOrSimple = do
         [ do
             holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. fromMaybe 0 mImpArgNum]
             keyword "of"
-            rowList <- betweenBrace $ manyList rawTermKeyValuePair
+            rowList <- betweenBrace $ bulletListOrCommaSeq rawTermKeyValuePair
             return $ m :< RT.PiElimByKey attr name holes rowList,
           rawTermPiElimCont m e mImpArgNum
         ]

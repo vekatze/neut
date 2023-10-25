@@ -167,6 +167,13 @@ manyList :: Parser a -> Parser [a]
 manyList f =
   many $ delimiter "-" >> f
 
+bulletListOrCommaSeq :: Parser a -> Parser [a]
+bulletListOrCommaSeq f =
+  choice
+    [ some $ delimiter "-" >> f,
+      commaList f
+    ]
+
 argSeqOrList :: Parser a -> Parser [a]
 argSeqOrList p =
   choice
