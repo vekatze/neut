@@ -29,7 +29,7 @@ define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
 define rank(a: tau, t: &tree(a)): int {
   &match t {
   - Node(r, _, _) =>
-    !r
+    *r
   }
 }
 
@@ -75,7 +75,7 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
 define root(a: tau, t: &tree(a)): a {
   &match t {
   - Node(_, v, _) =>
-    !v
+    *v
   }
 }
 

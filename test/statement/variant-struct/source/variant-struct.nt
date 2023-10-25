@@ -72,11 +72,11 @@ define yo(x: top): unit {
 
 define foo(c: &config): &text {
   &let Config of { counter, func, path } = c in
-  let _: int = !counter in
-  let _ = !counter in
-  let _ = {!func}(3) in
-  let _ = !func in
-  !path
+  let _: int = *counter in
+  let _ = *counter in
+  let _ = {*func}(3) in
+  let _ = *func in
+  *path
 }
 
 define main(): unit {

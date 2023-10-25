@@ -63,7 +63,7 @@ define find-min(a: tau, t: &heap(a)): ?a {
   - Leaf =>
     None
   - Node(Leaf, x, _) =>
-    Some(!x)
+    Some(*x)
   - Node(left, _, _) =>
     find-min(a, left)
   }
@@ -102,7 +102,7 @@ define sum(xs: &list(int)): int {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum(ys))
+    add-int(*y, sum(ys))
   }
 }
 

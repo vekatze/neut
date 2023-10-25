@@ -56,7 +56,7 @@ define main(): unit {
       1
     - Some(pair) =>
       &let Tuple(_, right) = pair in
-      {!right}()
+      {*right}()
     }
   in
   let _ = zs in

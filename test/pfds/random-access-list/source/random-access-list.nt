@@ -20,7 +20,7 @@ define size(a: tau, t: &tree(a)): int {
   - Leaf(_) =>
     1
   - Node(w, _, _) =>
-    !w
+    *w
   }
 }
 
@@ -74,12 +74,12 @@ define lookup-tree(a: tau, i: int, t: &tree(a)): option(a) {
   &match t {
   - Leaf(v) =>
     if eq-int(i, 0) {
-      Some(!v)
+      Some(*v)
     } else {
       None
     }
   - Node(w, t1, t2) =>
-    let w-div-2 = div-int(!w, 2) in
+    let w-div-2 = div-int(*w, 2) in
     if lt-int(i, w-div-2) {
       lookup-tree(a, i, t1)
     } else {

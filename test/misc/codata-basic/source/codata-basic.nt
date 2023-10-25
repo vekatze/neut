@@ -55,7 +55,7 @@ define main(): unit {
   let k on config =
     &let Foo of { value-1, value-3 } = config in
     &let Bar of { value } = value-3 in
-    add-int(!value-1, add-int(!value-1, add-int(!value-1, !value)))
+    add-int(*value-1, add-int(*value-1, add-int(*value-1, *value)))
   in
   let _ = config in
   let some-stream = int-stream(3) in

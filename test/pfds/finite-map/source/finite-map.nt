@@ -47,11 +47,11 @@ define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-sig
       - Leaf =>
         None
       - Node(left, k, v, right) =>
-        match compare(key, !k) {
+        match compare(key, *k) {
         - LT =>
           lookup(key, left)
         - EQ =>
-          Some(!v)
+          Some(*v)
         - GT =>
           lookup(key, right)
         }
