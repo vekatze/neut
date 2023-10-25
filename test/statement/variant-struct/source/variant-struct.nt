@@ -71,7 +71,7 @@ define yo(x: top): unit {
 }
 
 define foo(c: &config): &text {
-  &let Config(..) = c in
+  &let Config of { counter, func, path } = c in
   let _: int = !counter in
   let _ = !counter in
   let _ = {!func}(3) in

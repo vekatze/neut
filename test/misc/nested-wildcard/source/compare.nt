@@ -1,9 +1,0 @@
-data compare(a) {
-- Compare of {
-  - lt: (a, a) -> bool
-  - le: (a, a) -> bool
-  - gt: (a, a) -> bool
-  - ge: (a, a) -> bool
-  - eq: (a, a) -> bool
-  }
-}
