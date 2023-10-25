@@ -150,52 +150,6 @@ define main(): int {
 
 This module-based approach forces us to use prefixes in a consistent manner within a module.
 
----
-
-By the way, when you define an ADT, I recommend you *not* to prefix constructors like the below:
-
-```neut
-data term {
-- TermVar(ident)
-- TermAbs(ident, term)
-- TermApp(term, term)
-}
-```
-
-Rather, create a new file for the ADT (if necessary), then simply write:
-
-```neut
-data term {
-- Var(ident)
-- Abs(ident, term)
-- App(term, term)
-}
-```
-
-and use them via qualified import:
-
-```ens
-{
-  // ...
-  prefix {
-    term "this.foo.bar.term"
-  }
-}
-```
-
-```neut
-import {
-- term
-}
-
-define buz() {
-  let k = term.Var("yo") in
-  ...
-}
-```
-
-The same goes for functions. Please consider [naming your functions and types for qualified import](https://mail.haskell.org/pipermail/haskell-cafe/2008-June/043986.html).
-
 ## Behind The Scenes: Resolving `this`
 
 Remember that every module is whether the main or a library. The name of a global variable is resolved using this distinction.
