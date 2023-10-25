@@ -288,7 +288,7 @@ rawTermLetExcept = do
 rawTermEmbody :: Parser RT.RawTerm
 rawTermEmbody = do
   m <- getCurrentHint
-  delimiter "!"
+  delimiter "*"
   e <- rawTermBasic
   return $ m :< RT.Embody e
 
