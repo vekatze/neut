@@ -621,7 +621,24 @@ rawTermPatternConsOrVar = do
         patArgs <- argList rawTermPattern
         return (m, RP.Cons varOrLocator (RP.Paren patArgs)),
       do
+        keyword "of"
+        kvs <- betweenBrace $ manyList rawTermPatternKeyValuePair
+        return (m, RP.Cons varOrLocator (RP.Of kvs)),
+      do
         return (m, RP.Var varOrLocator)
+    ]
+
+rawTermPatternKeyValuePair :: Parser (Key, (Hint, RP.RawPattern))
+rawTermPatternKeyValuePair = do
+  mFrom <- getCurrentHint
+  from <- symbol
+  choice
+    [ do
+        delimiter "=>"
+        to <- rawTermPattern
+        return (from, to),
+      do
+        return (from, (mFrom, RP.Var (Var from))) -- record rhyming
     ]
 
 rawTermIf :: Parser RT.RawTerm

@@ -380,31 +380,19 @@ discernPattern (m, pat) =
                     args = args'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-
--- Left _ -> do
---   undefined
-
--- vmap <- Via.lookup consName
--- (_, keyList) <- KeyArg.lookup m consName
--- patList <- mapM (keyToPattern vmap m) keyList
--- (patList', nenvList) <- mapAndUnzipM discernPattern $ map (mVar,) patList
--- forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
---   UnusedVariable.delete newVar
--- let consInfo =
---       PAT.ConsInfo
---         { consDD = consName,
---           isConstLike = isConstLike,
---           disc = disc,
---           dataArgNum = dataArgNum,
---           consArgNum = consArgNum,
---           args = patList'
---         }
--- return ((m, PAT.Cons consInfo), concat nenvList)
-
--- keyToPattern :: Map.HashMap RawIdent DD.DefiniteDescription -> Hint -> RawIdent -> App RP.RawPattern
--- keyToPattern vmap m key =
---   case Map.lookup key vmap of
---     Just consName -> do
---       return $ RP.Cons (DefiniteDescription consName) (Left m)
---     Nothing ->
---       return $ RP.Var $ Var key
+        RP.Of mkvs -> do
+          let (ks, mvs) = unzip mkvs
+          ensureFieldLinearity m ks S.empty S.empty
+          (_, keyList) <- KeyArg.lookup m consName
+          reorderedArgs <- reorderArgs m keyList $ Map.fromList $ zip ks mvs
+          (patList', nenvList) <- mapAndUnzipM discernPattern reorderedArgs
+          let consInfo =
+                PAT.ConsInfo
+                  { consDD = consName,
+                    isConstLike = isConstLike,
+                    disc = disc,
+                    dataArgNum = dataArgNum,
+                    consArgNum = consArgNum,
+                    args = patList'
+                  }
+          return ((m, PAT.Cons consInfo), concat nenvList)
