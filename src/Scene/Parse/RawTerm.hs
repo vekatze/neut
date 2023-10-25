@@ -18,7 +18,6 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -871,33 +870,22 @@ rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
-  mImpArgNum <- optional $ delimiter "/" >> integer
   case e of
     _ :< RT.Var attr name -> do
       choice
         [ do
-            holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. fromMaybe 0 mImpArgNum]
             keyword "of"
             rowList <- betweenBrace $ bulletListOrCommaSeq rawTermKeyValuePair
-            return $ m :< RT.PiElimByKey attr name holes rowList,
-          rawTermPiElimCont m e mImpArgNum
+            return $ m :< RT.PiElimByKey attr name rowList,
+          rawTermPiElimCont m e
         ]
     _ -> do
-      rawTermPiElimCont m e mImpArgNum
+      rawTermPiElimCont m e
 
-rawTermPiElimCont :: Hint -> RT.RawTerm -> Maybe Integer -> Parser RT.RawTerm
-rawTermPiElimCont m e mImpArgNum = do
+rawTermPiElimCont :: Hint -> RT.RawTerm -> Parser RT.RawTerm
+rawTermPiElimCont m e = do
   argListList <- many $ argList rawExpr
-  case mImpArgNum of
-    Just impArgNum -> do
-      holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. impArgNum]
-      case argListList of
-        [] ->
-          return $ m :< RT.PiElim e holes
-        headArgList : rest ->
-          foldPiElim m e $ (holes ++ headArgList) : rest
-    Nothing ->
-      foldPiElim m e argListList
+  foldPiElim m e argListList
 
 foldPiElim :: Hint -> RT.RawTerm -> [[RT.RawTerm]] -> Parser RT.RawTerm
 foldPiElim m e argListList =

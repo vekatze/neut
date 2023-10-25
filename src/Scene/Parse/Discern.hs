@@ -114,17 +114,15 @@ discern nenv term =
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
       return $ m :< WT.PiElim e' es'
-    m :< RT.PiElimByKey (AttrV.Attr {..}) name impArgs kvs -> do
+    m :< RT.PiElimByKey (AttrV.Attr {..}) name kvs -> do
       (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ensureFieldLinearity m ks S.empty S.empty
       (argNum, keyList) <- KeyArg.lookup m dd
       vs' <- mapM (discern nenv) vs
-      let keyList' = drop (length impArgs) keyList
-      expArgs <- reorderArgs m keyList' $ Map.fromList $ zip ks vs'
-      impArgs' <- mapM (discern nenv) impArgs
+      args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
-      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) (impArgs' ++ expArgs)
+      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
