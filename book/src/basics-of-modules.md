@@ -22,7 +22,7 @@ When running compilation, every module is marked as "main" or "library". The mai
 A module can use other modules. Such module dependencies can be added using `neut add`:
 
 ```sh
-neut add core https://github.com/vekatze/neut-core/raw/main/archive/0-7.tar.zst
+neut add core https://github.com/vekatze/neut-core/raw/main/archive/0-8.tar.zst
 ```
 
 By running the code above, the specified tarball is downloaded into `~/.cache/neut/library`:
@@ -30,20 +30,20 @@ By running the code above, the specified tarball is downloaded into `~/.cache/ne
 ```sh
 ls ~/.cache/neut/library
 # => ...
-#    wCcmGSKo6JFVJh7ZNg3SOskZjRttwzpP_96_HC4DGYs=
+#    LWjYIMfT75wCtu4l-zmABZ21RsyEBzek8iofQpBCJNs=
 #    ...
 ```
 
-where the `wCcmGSKo6JFVJh7ZNg3SOskZjRttwzpP_96_HC4DGYs=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
+where the `LWjYIMfT75wCtu4l-zmABZ21RsyEBzek8iofQpBCJNs=` is the digest of the module. Also, the module information is added to the current module's `module.ens`:
 
 ```ens
 {
   // ...
   dependency {
     core {
-      digest "wCcmGSKo6JFVJh7ZNg3SOskZjRttwzpP_96_HC4DGYs="
+      digest "LWjYIMfT75wCtu4l-zmABZ21RsyEBzek8iofQpBCJNs="
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-7.tar.zst"
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-8.tar.zst"
       ]
     }
   }
