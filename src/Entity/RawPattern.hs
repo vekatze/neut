@@ -2,6 +2,7 @@ module Entity.RawPattern
   ( RawPattern (..),
     RawPatternRow,
     RawPatternMatrix,
+    ConsArgs (..),
     new,
     consRow,
     unconsRow,
@@ -10,11 +11,17 @@ where
 
 import Data.Vector qualified as V
 import Entity.Hint hiding (new)
+import Entity.Key
 import Entity.Name
 
 data RawPattern
   = Var Name
-  | Cons Name (Either Hint [(Hint, RawPattern)])
+  | Cons Name ConsArgs
+  deriving (Show)
+
+data ConsArgs
+  = Paren [(Hint, RawPattern)]
+  | Of [(Key, (Hint, RawPattern))]
   deriving (Show)
 
 type RawPatternRow a =

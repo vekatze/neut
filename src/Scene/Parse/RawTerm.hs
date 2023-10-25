@@ -176,9 +176,14 @@ rawTermPiOrConsOrAscOrBasic = do
 rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
 rawTermKeyValuePair = do
   (m, key) <- var
-  delimiter "=>"
-  value <- rawExpr
-  return (m, key, value)
+  choice
+    [ do
+        delimiter "=>"
+        value <- rawExpr
+        return (m, key, value),
+      do
+        return (m, key, m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var key))
+    ]
 
 rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetOrLetOn m = do
@@ -274,10 +279,10 @@ rawTermLetExcept = do
         False
         [e1']
         ( RP.new
-            [ ( V.fromList [(m2, RP.Cons exceptFail (Right [(m2, RP.Var (Var err))]))],
+            [ ( V.fromList [(m2, RP.Cons exceptFail (RP.Paren [(m2, RP.Var (Var err))]))],
                 m2 :< RT.PiElim exceptFailVar [preVar m2 err]
               ),
-              (V.fromList [(m2, RP.Cons exceptPass (Right [pat]))], e2)
+              (V.fromList [(m2, RP.Cons exceptPass (RP.Paren [pat]))], e2)
             ]
         )
 
@@ -536,7 +541,7 @@ rawTermPattern = do
         delimiter "::"
         pat <- rawTermPattern
         listCons <- lift $ locatorToName m coreListCons
-        return (m, RP.Cons listCons (Right [headPat, pat])),
+        return (m, RP.Cons listCons (RP.Paren [headPat, pat])),
       return headPat
     ]
 
@@ -556,7 +561,7 @@ rawTermPatternOptionNone = do
   keyword "None"
   exceptFail <- lift $ locatorToName m coreExceptFail
   hole <- lift Gensym.newTextForHole
-  return (m, RP.Cons exceptFail (Right [(m, RP.Var (Var hole))]))
+  return (m, RP.Cons exceptFail (RP.Paren [(m, RP.Var (Var hole))]))
 
 rawTermPatternOptionSome :: Parser (Hint, RP.RawPattern)
 rawTermPatternOptionSome = do
@@ -564,7 +569,7 @@ rawTermPatternOptionSome = do
   keyword "Some"
   pat <- betweenParen rawTermPattern
   exceptPass <- lift $ locatorToName m coreExceptPass
-  return (m, RP.Cons exceptPass (Right [pat]))
+  return (m, RP.Cons exceptPass (RP.Paren [pat]))
 
 rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do
@@ -586,7 +591,7 @@ foldListAppPat m listNil listCons es =
       (m, RP.Var $ Locator listNil)
     e : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons (Right [e, rest']))
+      (m, RP.Cons listCons (RP.Paren [e, rest']))
 
 rawTermPatternTupleIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternTupleIntro = do
@@ -606,7 +611,7 @@ foldTuplePat m unitVar pairVar es =
       e
     e : rest -> do
       let rest' = foldTuplePat m unitVar pairVar rest
-      (m, RP.Cons pairVar (Right [e, rest']))
+      (m, RP.Cons pairVar (RP.Paren [e, rest']))
 
 parseName :: Parser (Hint, Name)
 parseName = do
@@ -617,14 +622,28 @@ rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
 rawTermPatternConsOrVar = do
   (m, varOrLocator) <- parseName
   choice
-    [ try $ do
-        mVar <- betweenParen $ getCurrentHint <* delimiter ".."
-        return (m, RP.Cons varOrLocator (Left mVar)),
-      do
+    [ do
         patArgs <- argList rawTermPattern
-        return (m, RP.Cons varOrLocator (Right patArgs)),
+        return (m, RP.Cons varOrLocator (RP.Paren patArgs)),
+      do
+        keyword "of"
+        kvs <- betweenBrace $ bulletListOrCommaSeq rawTermPatternKeyValuePair
+        return (m, RP.Cons varOrLocator (RP.Of kvs)),
       do
         return (m, RP.Var varOrLocator)
+    ]
+
+rawTermPatternKeyValuePair :: Parser (Key, (Hint, RP.RawPattern))
+rawTermPatternKeyValuePair = do
+  mFrom <- getCurrentHint
+  from <- symbol
+  choice
+    [ do
+        delimiter "=>"
+        to <- rawTermPattern
+        return (from, to),
+      do
+        return (from, (mFrom, RP.Var (Var from))) -- record rhyming
     ]
 
 rawTermIf :: Parser RT.RawTerm
@@ -859,7 +878,7 @@ rawTermPiElimOrSimple = do
         [ do
             holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. fromMaybe 0 mImpArgNum]
             keyword "of"
-            rowList <- betweenBrace $ manyList rawTermKeyValuePair
+            rowList <- betweenBrace $ bulletListOrCommaSeq rawTermKeyValuePair
             return $ m :< RT.PiElimByKey attr name holes rowList,
           rawTermPiElimCont m e mImpArgNum
         ]

@@ -115,7 +115,7 @@ define compare-int(x: int, y: int): order {
 
 define main(): unit {
   let int-heap-signature = make-heap-signature(_, compare-int) in
-  let Heap(..) = int-heap-signature in
+  let Heap of { empty, insert, delete-min, find-min } = int-heap-signature in
   let h = empty in
   let h = insert(10, h) in
   let h = insert(2, h) in

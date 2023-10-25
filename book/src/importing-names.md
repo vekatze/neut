@@ -77,9 +77,9 @@ Suppose that you have added a library module to your module:
   // ...
   dependency {
     core {
-      digest "wCcmGSKo6JFVJh7ZNg3SOskZjRttwzpP_96_HC4DGYs="
+      digest "LWjYIMfT75wCtu4l-zmABZ21RsyEBzek8iofQpBCJNs="
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-7.tar.zst"
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-8.tar.zst"
       ]
     }
   }
@@ -106,7 +106,7 @@ Here, the module alias of `core.text.io` is `core`, and the relative path is `te
 ```sh
 core => DIGEST_OF_THE_LIBRARY
 
-# core => wCcmGSKo6JFVJh7ZNg3SOskZjRttwzpP_96_HC4DGYs=
+# core => LWjYIMfT75wCtu4l-zmABZ21RsyEBzek8iofQpBCJNs=
 ```
 
 and do the following name resolution:
@@ -116,7 +116,7 @@ core.text.io.get-line
 
 ↓
 
-wCcmGSKo6JFVJh7ZNg3SOskZjRttwzpP_96_HC4DGYs=.text.io.get-line
+LWjYIMfT75wCtu4l-zmABZ21RsyEBzek8iofQpBCJNs=.text.io.get-line
 ```
 
 ## Module-Based Qualified Import
@@ -149,52 +149,6 @@ define main(): int {
 ```
 
 This module-based approach forces us to use prefixes in a consistent manner within a module.
-
----
-
-By the way, when you define an ADT, I recommend you *not* to prefix constructors like the below:
-
-```neut
-data term {
-- TermVar(ident)
-- TermAbs(ident, term)
-- TermApp(term, term)
-}
-```
-
-Rather, create a new file for the ADT (if necessary), then simply write:
-
-```neut
-data term {
-- Var(ident)
-- Abs(ident, term)
-- App(term, term)
-}
-```
-
-and use them via qualified import:
-
-```ens
-{
-  // ...
-  prefix {
-    term "this.foo.bar.term"
-  }
-}
-```
-
-```neut
-import {
-- term
-}
-
-define buz() {
-  let k = term.Var("yo") in
-  ...
-}
-```
-
-The same goes for functions. Please consider [naming your functions and types for qualified import](https://mail.haskell.org/pipermail/haskell-cafe/2008-June/043986.html).
 
 ## Behind The Scenes: Resolving `this`
 

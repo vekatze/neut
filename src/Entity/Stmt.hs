@@ -10,10 +10,8 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.Name
 import Entity.Opacity qualified as O
 import Entity.RawBinder
-import Entity.RawIdent (RawIdent)
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
@@ -36,7 +34,6 @@ data RawStmt
       RT.RawTerm
       RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtVia Hint DD.DefiniteDescription [(RawIdent, Maybe Name)]
 
 data WeakStmt
   = WeakStmtDefine
