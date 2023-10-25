@@ -25,6 +25,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
+import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Name
 import Entity.NominalEnv
@@ -384,7 +385,10 @@ discernPattern (m, pat) =
           let (ks, mvs) = unzip mkvs
           ensureFieldLinearity m ks S.empty S.empty
           (_, keyList) <- KeyArg.lookup m consName
-          reorderedArgs <- reorderArgs m keyList $ Map.fromList $ zip ks mvs
+          defaultKeyMap <- constructDefaultKeyMap m keyList
+          let specifiedKeyMap = Map.fromList $ zip ks mvs
+          let keyMap = Map.union specifiedKeyMap defaultKeyMap
+          reorderedArgs <- reorderArgs m keyList keyMap
           (patList', nenvList) <- mapAndUnzipM discernPattern reorderedArgs
           let consInfo =
                 PAT.ConsInfo
@@ -396,3 +400,8 @@ discernPattern (m, pat) =
                     args = patList'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
+
+constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
+constructDefaultKeyMap m keyList = do
+  names <- mapM (const Gensym.newTextForHole) keyList
+  return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var (Var v)))) keyList names
