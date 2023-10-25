@@ -489,7 +489,7 @@ primType = do
 rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
-  isNoetic <- choice [try (keyword "&match") >> return True, keyword "match" >> return False]
+  isNoetic <- choice [try (keyword "case") >> return True, keyword "match" >> return False]
   es <- commaList rawTermBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim isNoetic es (RP.new patternRowList)

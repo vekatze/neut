@@ -59,7 +59,7 @@ toText term =
         else showApp (showGlobalVariable consName) (map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
-        then "&match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
+        then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.Noema t ->
       "&" <> toText t
