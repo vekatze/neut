@@ -186,7 +186,7 @@ rawTermKeyValuePair = do
 
 rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetOrLetOn m = do
-  isNoetic <- choice [try (keyword "&let") >> return True, keyword "let" >> return False]
+  isNoetic <- choice [try (keyword "tie") >> return True, keyword "let" >> return False]
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx
