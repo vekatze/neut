@@ -91,7 +91,7 @@ The variables that are bound by a `&match` are cast to be noetic. For example, t
 
 ## Using a Noema: Incarnation
 
-You can embody a noema using `!e`:
+You can embody a noema using `*e`:
 
 ```neut
 define sum-of-list(xs: &list(int)): int {
@@ -99,12 +99,12 @@ define sum-of-list(xs: &list(int)): int {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum-of-list(ys)) // ← a use of `!e`
+    add-int(*y, sum-of-list(ys)) // ← a use of `*e`
   }
 }
 ```
 
-`!e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `!y: int` is a `y`'s new copy of type `int` (which is the same as `y` in this case, since `y` is an immediate).
+`*e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `*y: int` is a `y`'s new copy of type `int` (which is the same as `y` in this case, since `y` is an immediate).
 
 ## The Type of a Static Text
 

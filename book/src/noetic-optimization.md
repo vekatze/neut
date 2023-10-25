@@ -95,12 +95,12 @@ define sum-of-list(xs: &list(int)): int {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum-of-list(ys))
+    add-int(*y, sum-of-list(ys))
   }
 }
 ```
 
-`!e` copies the argument along its type, keeping the original noema intact. In the example above, a term of type `int` is obtained from a term `y: &int`, by writing `!y`.
+`*e` copies the argument along its type, keeping the original noema intact. In the example above, a term of type `int` is obtained from a term `y: &int`, by writing `*y`.
 
 ## Example: Get the Length of a List
 
@@ -165,7 +165,7 @@ let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
 let _ = xs in                   // `xs` is discarded here
 match result {
 - HideX(xs) =>
-  !xs                           // CRASH: use-after-free!
+  *xs                           // CRASH: use-after-free!
 }
 ```
 
