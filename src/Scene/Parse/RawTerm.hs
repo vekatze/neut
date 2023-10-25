@@ -176,9 +176,14 @@ rawTermPiOrConsOrAscOrBasic = do
 rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
 rawTermKeyValuePair = do
   (m, key) <- var
-  delimiter "=>"
-  value <- rawExpr
-  return (m, key, value)
+  choice
+    [ do
+        delimiter "=>"
+        value <- rawExpr
+        return (m, key, value),
+      do
+        return (m, key, m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var key))
+    ]
 
 rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetOrLetOn m = do
