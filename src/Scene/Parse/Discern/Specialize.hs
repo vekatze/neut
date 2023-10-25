@@ -42,7 +42,7 @@ specializeRow isNoetic cursor (dd, argNum) (patternVector, (freedVars, body@(mBo
       let wildcards = V.fromList $ replicate (AN.reify argNum) (mBody, WildcardVar)
       h <- Gensym.newHole mBody []
       adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
-      let body' = mBody :< WT.Let WT.Transparent (mBody, x, h) adjustedCursor body
+      let body' = mBody :< WT.Let WT.Clear (mBody, x, h) adjustedCursor body
       return $ Just (V.concat [wildcards, rest], (freedVars, body'))
     Just ((_, Cons (ConsInfo {..})), rest) ->
       if dd == consDD

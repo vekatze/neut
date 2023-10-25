@@ -28,7 +28,7 @@ reduce term =
         C.VarGlobal x _ -> do
           mDefValue <- CompDefinition.lookup x
           case mDefValue of
-            Just (O.Transparent, xs, body) -> do
+            Just (O.Clear, xs, body) -> do
               let sub = IntMap.fromList (zip (map Ident.toInt xs) ds)
               subst sub body >>= reduce
             _ ->

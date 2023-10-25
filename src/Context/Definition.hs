@@ -16,7 +16,7 @@ import Prelude hiding (lookup, read)
 
 insert :: O.Opacity -> DD.DefiniteDescription -> [BinderF TM.Term] -> TM.Term -> App ()
 insert opacity name xts e =
-  when (opacity == O.Transparent) $
+  when (opacity == O.Clear) $
     modifyRef' defMap $
       Map.insert name (xts, e)
 

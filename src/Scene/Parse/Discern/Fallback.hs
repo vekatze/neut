@@ -34,7 +34,7 @@ fallbackRow isNoetic cursor (patternVector, (freedVars, body@(mBody :< _))) =
     Just ((_, Var x), rest) -> do
       h <- Gensym.newHole mBody []
       adjustedCursor <- castToNoemaIfNecessary isNoetic (mBody :< WT.Var cursor)
-      let body' = mBody :< WT.Let WT.Transparent (mBody, x, h) adjustedCursor body
+      let body' = mBody :< WT.Let WT.Clear (mBody, x, h) adjustedCursor body
       return $ Just (rest, (freedVars, body'))
     Just ((_, Cons {}), _) ->
       return Nothing

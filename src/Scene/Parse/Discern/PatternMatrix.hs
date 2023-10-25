@@ -107,7 +107,7 @@ bindLet binder cont =
     (Just (m, from), to) : xes -> do
       h <- Gensym.newHole m []
       cont' <- bindLet xes cont
-      return $ m :< WT.Let WT.Transparent (m, from, h) to cont'
+      return $ m :< WT.Let WT.Clear (m, from, h) to cont'
 
 ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity mat =

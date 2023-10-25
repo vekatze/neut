@@ -185,7 +185,7 @@ discernLet nenv m mxt mys e1 e2 = do
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
   e2'' <- attachSuffix (zip ysCont ysLocal) e2'
-  let opacity = if null mys then WT.Transparent else WT.Noetic
+  let opacity = if null mys then WT.Clear else WT.Noetic
   attachPrefix (zip ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
 
 discernBinder ::

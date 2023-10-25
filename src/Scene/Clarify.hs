@@ -120,7 +120,7 @@ clarifyStmt stmt =
             Just OD.Unitary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
-                  return (f, (O.Transparent, map fst dataArgs', t'))
+                  return (f, (O.Clear, map fst dataArgs', t'))
               | otherwise ->
                   Throw.raiseCritical m "found a broken unitary data"
             Nothing -> do
@@ -136,7 +136,7 @@ clarifyStmt stmt =
       discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
       copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce
       enumElim <- getEnumElim [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
-      return (name, (O.Transparent, [switchValue, value], enumElim))
+      return (name, (O.Clear, [switchValue, value], enumElim))
 
 clarifyBinderBody ::
   TM.TypeEnv ->
@@ -169,7 +169,7 @@ clarifyStmtDefineBody' ::
   App C.CompDef
 clarifyStmtDefineBody' name xts' dataType = do
   dataType' <- linearize xts' dataType >>= Reduce.reduce
-  return (name, (O.Transparent, map fst xts', dataType'))
+  return (name, (O.Clear, map fst xts', dataType'))
 
 clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
 clarifyTerm tenv term =
@@ -430,7 +430,7 @@ clarifyLambda tenv kind fvs mxts e@(m :< _) = do
       clarifyTerm tenv lamApp
     LK.Normal -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
-      returnClosure tenv O.Transparent fvs mxts e'
+      returnClosure tenv O.Clear fvs mxts e'
 
 newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do
@@ -462,7 +462,7 @@ clarifyPrimOp tenv op m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv O.Transparent [] mxts $ C.Primitive (C.PrimOp op varList)
+  returnClosure tenv O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   TM.TypeEnv ->

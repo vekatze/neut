@@ -91,7 +91,7 @@ inline term =
     m :< TM.Let opacity (mx, x, t) e1 e2 -> do
       e1' <- inline e1
       case opacity of
-        O.Transparent
+        O.Clear
           | TM.isValue e1' -> do
               let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
               Subst.subst sub e2 >>= inline

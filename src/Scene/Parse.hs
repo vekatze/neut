@@ -127,9 +127,9 @@ parseStmt = do
   choice
     [ parseDefineData,
       return <$> parseAliasOpaque,
-      return <$> parseAliasTransparent,
+      return <$> parseAliasClear,
       return <$> parseDefineResource,
-      return <$> parseDefine O.Transparent,
+      return <$> parseDefine O.Clear,
       return <$> parseDefine O.Opaque
     ]
 
@@ -155,7 +155,7 @@ parseDefine opacity = do
     case opacity of
       O.Opaque ->
         P.keyword "define"
-      O.Transparent ->
+      O.Clear ->
         P.keyword "inline"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
@@ -289,9 +289,9 @@ parseDefineDataClauseArg = do
       typeWithoutIdent
     ]
 
-parseAliasTransparent :: P.Parser RawStmt
-parseAliasTransparent = do
-  parseType "alias" O.Transparent
+parseAliasClear :: P.Parser RawStmt
+parseAliasClear = do
+  parseType "alias" O.Clear
 
 parseAliasOpaque :: P.Parser RawStmt
 parseAliasOpaque = do

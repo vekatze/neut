@@ -5,7 +5,7 @@ import GHC.Generics
 
 data Opacity
   = Opaque
-  | Transparent
+  | Clear
   deriving (Show, Eq, Generic)
 
 instance Binary Opacity
