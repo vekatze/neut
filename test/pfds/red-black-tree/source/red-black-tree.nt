@@ -17,11 +17,7 @@ data order {
 - GT
 }
 
-inline Cmp(a: tau): tau {
-  (a, a) -> order
-}
-
-define member(a: tau, cmp: Cmp(a), x: a, t: &tree(a)): bool {
+define member(a: tau, cmp: (a, a) -> order, x: a, t: &tree(a)): bool {
   case t {
   - Leaf =>
     False
@@ -53,7 +49,7 @@ define balance(a: tau, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert(a: tau, cmp: Cmp(a), x: a, t: tree(a)): tree(a) {
+define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   let helper =
     mu self(t: tree(a)): tree(a) {
       match t {

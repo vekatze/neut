@@ -3,9 +3,8 @@ data tree(a) {
 - Node(int, a, list(tree(a)))
 }
 
-inline heap(a: tau): tau {
-  // the list is in increasing order of rank
-  list(tree(a))
+data heap(a: tau) {
+- Heap(list(tree(a)))
 }
 
 data order {
@@ -33,7 +32,7 @@ define rank(a: tau, t: &tree(a)): int {
   }
 }
 
-define insert-tree(a: tau, cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a) {
+define _insert-tree(a: tau, cmp: (a, a) -> order, t: tree(a), h: list(tree(a))): list(tree(a)) {
   match h {
   - [] =>
     [t]
@@ -43,16 +42,23 @@ define insert-tree(a: tau, cmp: (a, a) -> order, t: tree(a), h: heap(a)): heap(a
     if lt-int(r, r1) {
       t :: t1 :: rest
     } else {
-      insert-tree(a, cmp, join(a, cmp, t, t1), rest)
+      _insert-tree(a, cmp, join(a, cmp, t, t1), rest)
     }
   }
 }
 
 define insert(a: tau, cmp: (a, a) -> order, value: a, h: heap(a)): heap(a) {
-  insert-tree(a, cmp, Node(0, value, []), h)
+  let Heap(ts) = h in
+  Heap(_insert-tree(a, cmp, Node(0, value, []), ts))
 }
 
 define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
+  let Heap(ts1) = h1 in
+  let Heap(ts2) = h2 in
+  Heap(_merge(a, cmp, ts1, ts2))
+}
+
+define _merge(a: tau, cmp: (a, a) -> order, h1: list(tree(a)), h2: list(tree(a))): list(tree(a)) {
   match h1, h2 {
   - [], h2 =>
     h2
@@ -62,11 +68,11 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
     let r1 on t1 = rank(a, t1) in
     let r2 on t2 = rank(a, t2) in
     if lt-int(r1, r2) {
-      t1 :: merge(a, cmp, ts1, t2 :: ts2)
+      t1 :: _merge(a, cmp, ts1, t2 :: ts2)
     } else-if gt-int(r1, r2) {
-      t2 :: merge(a, cmp, t1 :: ts1, ts2)
+      t2 :: _merge(a, cmp, t1 :: ts1, ts2)
     } else {
-      insert-tree(a, cmp, join(a, cmp, t1, t2), merge(a, cmp, ts1, ts2))
+      _insert-tree(a, cmp, join(a, cmp, t1, t2), _merge(a, cmp, ts1, ts2))
     }
   }
 }
@@ -81,7 +87,7 @@ define root(a: tau, t: &tree(a)): a {
 
 define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
   let helper =
-    mu self(cand: a, h: &heap(a)): a {
+    mu self(cand: a, h: &list(tree(a))): a {
       case h {
       - [] =>
         cand
@@ -97,22 +103,22 @@ define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
     }
   in
   case h {
-  - [] =>
-    None
-  - t :: ts =>
+  - Heap([]) =>
+    none()
+  - Heap(t :: ts) =>
     let r = root(a, t) in
-    Some(helper(r, ts))
+    Pass(helper(r, ts))
   }
 }
 
 define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a), heap(a)) {
   match h {
-  - [] =>
-    None
-  - [t] =>
-    Some(Tuple(t, []))
-  - t :: ts =>
-    try Tuple(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
+  - Heap([]) =>
+    none()
+  - Heap([t]) =>
+    Pass(Tuple(t, Heap([])))
+  - Heap(t :: ts) =>
+    try Tuple(cand, Heap(ts-adjusted)) = remove-min-tree(a, cmp, Heap(ts)) in
     let c on t, cand =
       let root-head = root(a, t) in
       let root-cand = root(a, cand) in
@@ -120,16 +126,16 @@ define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a)
     in
     match c {
     - LT =>
-      Some(Tuple(t, cand :: ts-adjusted))
+      Pass(Tuple(t, Heap(cand :: ts-adjusted)))
     - _ =>
-      Some(Tuple(cand, t :: ts-adjusted))
+      Pass(Tuple(cand, Heap(t :: ts-adjusted)))
     }
   }
 }
 
 define delete-min(a: tau, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   try Tuple(Node(_, _, ts1), ts2): tuple(tree(a), heap(a)) = remove-min-tree(a, cmp, h) in
-  Some(merge(a, cmp, reverse(ts1), ts2))
+  Pass(merge(a, cmp, Heap(reverse(ts1)), ts2))
 }
 
 define compare-int(x: int, y: int): order {
@@ -143,7 +149,7 @@ define compare-int(x: int, y: int): order {
 }
 
 define main(): unit {
-  let h: heap(int) = [] in
+  let h: heap(int) = Heap([]) in
   let h = insert(int, compare-int, 3, h) in
   let h = insert(int, compare-int, 4, h) in
   let h = insert(int, compare-int, 2, h) in
@@ -154,9 +160,9 @@ define main(): unit {
   let h = merge(int, compare-int, h, h) in
   let maybe-min on h =
     match find-min(int, compare-int, h) {
-    - None =>
+    - Fail(_) =>
       10
-    - Some(min) =>
+    - Pass(min) =>
       min
     }
   in

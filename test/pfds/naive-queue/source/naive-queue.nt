@@ -1,30 +1,29 @@
 import {
-- core.except
 - core.text
 - core.list [list, reverse]
 }
 
-inline queue(a: tau): tau {
-  tuple(list(a), list(a))
+data queue(a) {
+- Queue(list(a), list(a))
 }
 
 define empty(a: tau): queue(a) {
-  Tuple([], [])
+  Queue([], [])
 }
 
 define head(a: tau, q: &queue(a)): ?a {
   case q {
-  - Tuple(x :: _, _) =>
-    Some(*x)
+  - Queue(x :: _, _) =>
+    Pass(*x)
   - _ =>
-    None
+    none()
   }
 }
 
-inline sanitize(a: tau, q: queue(a)): queue(a) {
+define sanitize(a: tau, q: queue(a)): queue(a) {
   match q {
-  - Tuple([], ys) =>
-    Tuple(reverse(ys), [])
+  - Queue([], ys) =>
+    Queue(reverse(ys), [])
   - q =>
     q
   }
@@ -32,16 +31,16 @@ inline sanitize(a: tau, q: queue(a)): queue(a) {
 
 define tail(a: tau, q: queue(a)): ?queue(a) {
   match q {
-  - Tuple(_ :: rest, ys) =>
-    Some(sanitize(_, Tuple(rest, ys)))
+  - Queue(_ :: rest, ys) =>
+    Pass(sanitize(_, Queue(rest, ys)))
   - _ =>
-    None
+    none()
   }
 }
 
 define snoc(a: tau, v: a, q: queue(a)): queue(a) {
-  let Tuple(xs, ys) = q in
-  sanitize(_, Tuple(xs, v :: ys))
+  let Queue(xs, ys) = q in
+  sanitize(_, Queue(xs, v :: ys))
 }
 
 define sum(xs: &list(int)): int {
@@ -61,30 +60,30 @@ define main(): unit {
   // v1 == 2
   let v1 on q =
     match head(_, q) {
-    - Some(xs1) =>
+    - Pass(xs1) =>
       let v1 on xs1 = sum(xs1) in
       let _ = xs1 in
       v1
-    - None =>
+    - Fail(_) =>
       4
     }
   in
   let mq = tail(_, q) in
   let result =
     match mq {
-    - None =>
+    - Fail(_) =>
       1
-    - Some(q) =>
+    - Pass(q) =>
       let q = snoc(_, [3], q) in
       let q = snoc(_, [8], q) in
       // v2 = 5
       let v2 on q =
         match head(_, q) {
-        - Some(xs) =>
+        - Pass(xs) =>
           let v on xs = sum(xs) in
           let _ = xs in
           v
-        - None =>
+        - Fail(_) =>
           4
         }
       in

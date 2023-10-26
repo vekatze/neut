@@ -45,13 +45,13 @@ define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-sig
     mu lookup(key: a, haystack: &finite-map(a, b)): ?b {
       case haystack {
       - Leaf =>
-        None
+        none()
       - Node(left, k, v, right) =>
         match compare(key, *k) {
         - LT =>
           lookup(key, left)
         - EQ =>
-          Some(*v)
+          Pass(*v)
         - GT =>
           lookup(key, right)
         }
@@ -81,9 +81,9 @@ define main(): unit {
   let _ = mymap in
   let result on mymap =
     match lookup(2, mymap) {
-    - None =>
+    - Fail(_) =>
       1
-    - Some(xs) =>
+    - Pass(xs) =>
       match xs {
       - [] =>
         10

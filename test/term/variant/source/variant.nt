@@ -217,7 +217,7 @@ data monoid(a) {
   }
 }
 
-inline list-monoid(a: tau): monoid(list(a)) {
+define list-monoid(a: tau): monoid(list(a)) {
   Monoid of {
   - m-op =>
     (xs, ys) => { core.list.append(xs, ys) }
@@ -226,7 +226,7 @@ inline list-monoid(a: tau): monoid(list(a)) {
   }
 }
 
-inline use-struct(a: tau, m: monoid(a)): a {
+define use-struct(a: tau, m: monoid(a)): a {
   let Monoid of { m-empty, m-op } = m in
   m-op(m-empty, m-empty)
 }

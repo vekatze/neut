@@ -3,11 +3,7 @@ data nat {
 - Succ(nat)
 }
 
-alias my-number {
-  nat
-}
-
-define add-nat(x: nat, y: nat): my-number {
+define add-nat(x: nat, y: nat): nat {
   match x {
   - Zero =>
     y

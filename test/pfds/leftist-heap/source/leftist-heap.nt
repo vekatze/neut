@@ -86,18 +86,18 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     (h: &heap(a)) => {
       case h {
       - Leaf =>
-        None
+        none()
       - Node(_, value, _, _) =>
-        Some(*value)
+        Pass(*value)
       }
     }
   - delete-min =>
     (h: heap(a)) => {
       match h {
       - Leaf =>
-        None
+        none()
       - Node(_, _, left, right) =>
-        Some(merge(left, right))
+        Pass(merge(left, right))
       }
     }
   }
@@ -125,15 +125,15 @@ define main(): unit {
   let h = insert(3, h) in
   let mh = delete-min(h) in
   match mh {
-  - None =>
+  - Fail(_) =>
     print-int(100)
-  - Some(h) =>
+  - Pass(h) =>
     let h = insert(9, h) in
     let min on h =
       match find-min(h) {
-      - None =>
+      - Fail(_) =>
         print-int(100)
-      - Some(value) =>
+      - Pass(value) =>
         print-int(value)
       }
     in

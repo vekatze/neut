@@ -24,18 +24,18 @@ define is-empty(a: tau, xs: &custom-stack(a)): bool {
 define head(a: tau, xs: &custom-stack(a)): ?&tuple(a, a) {
   case xs {
   - Nil =>
-    None
+    none()
   - Cons(a, _) =>
-    Some(a)
+    Pass(a)
   }
 }
 
 define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
   case xs {
   - Nil =>
-    None
+    none()
   - Cons(_, rest) =>
-    Some(rest)
+    Pass(rest)
   }
 }
 
@@ -52,9 +52,9 @@ define main(): unit {
     let _ = tail(_, zs) in
     let _ = tail(_, zs) in
     match h {
-    - None =>
+    - Fail(_) =>
       1
-    - Some(pair) =>
+    - Pass(pair) =>
       tie Tuple(_, right) = pair in
       {*right}()
     }
