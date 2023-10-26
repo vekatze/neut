@@ -124,9 +124,10 @@ program currentSource = do
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
-    [ parseDefineData,
-      return <$> parseDefineResource,
-      return <$> parseDefine
+    [ return <$> parseDefine,
+      parseDefineData,
+      return <$> parseType,
+      return <$> parseDefineResource
     ]
 
 parseDeclareList :: P.Parser [DE.Decl]
@@ -165,6 +166,16 @@ defineFunction ::
   App RawStmt
 defineFunction stmtKind m name impArgNum binder codType e = do
   return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
+
+parseType :: P.Parser RawStmt
+parseType = do
+  m <- P.getCurrentHint
+  try $ P.keyword "type"
+  aliasName <- P.baseName >>= lift . Locator.attachCurrentLocator
+  (argList, isConstLike) <- choice [(,False) <$> P.argSeqOrList preBinder, return ([], True)]
+  t <- P.betweenBrace rawExpr
+  let stmtKind = SK.Normal O.Clear
+  return $ RawStmtDefine isConstLike stmtKind m aliasName AN.zero argList (m :< RT.Tau) t
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
