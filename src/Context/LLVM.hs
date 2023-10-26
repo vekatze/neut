@@ -88,17 +88,17 @@ emitInner additionalClangOptions llvm outputPath = do
           (_, Nothing) ->
             runInIO $ Throw.raiseError' "couldn't obtain stderr"
 
-clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
-clangLinkOpt objectPathList outputPath additionalOptionStr = do
-  let pathList = map toFilePath objectPathList
-  [ "-Wno-override-module",
+clangBaseOpt :: Path Abs File -> [String]
+clangBaseOpt outputPath =
+  [ "-xir",
+    "-Wno-override-module",
     "-O2",
-    "-pthread",
+    "-flto=thin",
+    "-c",
+    "-",
     "-o",
     toFilePath outputPath
-    ]
-    ++ pathList
-    ++ words additionalOptionStr
+  ]
 
 link :: [Path Abs File] -> Path Abs File -> App ()
 link objectPathList outputPath = do
@@ -107,16 +107,18 @@ link objectPathList outputPath = do
   ensureDir $ parent outputPath
   External.run clang $ clangLinkOpt objectPathList outputPath clangOptString
 
-clangBaseOpt :: Path Abs File -> [String]
-clangBaseOpt outputPath =
-  [ "-xir",
-    "-Wno-override-module",
+clangLinkOpt :: [Path Abs File] -> Path Abs File -> String -> [String]
+clangLinkOpt objectPathList outputPath additionalOptionStr = do
+  let pathList = map toFilePath objectPathList
+  [ "-Wno-override-module",
     "-O2",
-    "-c",
-    "-",
+    "-flto=thin",
+    "-pthread",
     "-o",
     toFilePath outputPath
-  ]
+    ]
+    ++ pathList
+    ++ words additionalOptionStr
 
 raiseIfProcessFailed :: T.Text -> ExitCode -> Handle -> App ()
 raiseIfProcessFailed procName exitCode h =
