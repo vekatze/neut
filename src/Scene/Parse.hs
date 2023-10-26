@@ -18,7 +18,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
-import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
@@ -127,8 +126,7 @@ parseStmt = do
   choice
     [ parseDefineData,
       return <$> parseDefineResource,
-      return <$> parseDefine O.Clear,
-      return <$> parseDefine O.Opaque
+      return <$> parseDefine
     ]
 
 parseDeclareList :: P.Parser [DE.Decl]
@@ -147,19 +145,14 @@ parseDeclare = do
   cod <- P.delimiter ":" >> lowType
   return $ DE.Decl declName lts cod
 
-parseDefine :: O.Opacity -> P.Parser RawStmt
-parseDefine opacity = do
-  try $
-    case opacity of
-      O.Opaque ->
-        P.keyword "define"
-      O.Clear ->
-        P.keyword "inline"
+parseDefine :: P.Parser RawStmt
+parseDefine = do
+  P.keyword "define"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
   let impArgNum = AN.fromInt $ length impArgs
-  lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
+  lift $ defineFunction (SK.Normal O.Opaque) m name' impArgNum (impArgs ++ expArgs) codType e
 
 defineFunction ::
   SK.RawStmtKind ->
