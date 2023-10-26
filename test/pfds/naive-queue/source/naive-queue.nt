@@ -13,9 +13,9 @@ define empty(a: tau): queue(a) {
 }
 
 define head(a: tau, q: &queue(a)): ?a {
-  &match q {
+  case q {
   - Tuple(x :: _, _) =>
-    Some(!x)
+    Some(*x)
   - _ =>
     None
   }
@@ -45,11 +45,11 @@ define snoc(a: tau, v: a, q: queue(a)): queue(a) {
 }
 
 define sum(xs: &list(int)): int {
-  &match xs {
+  case xs {
   - [] =>
     0
   - v :: rest =>
-    add-int(!v, sum(rest))
+    add-int(*v, sum(rest))
   }
 }
 

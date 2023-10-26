@@ -41,7 +41,7 @@ toOpacity stmtKind =
     Normal opacity ->
       opacity
     _ ->
-      O.Transparent
+      O.Clear
 
 toLowOpacity :: BaseStmtKind x t -> O.Opacity
 toLowOpacity stmtKind =
@@ -51,4 +51,4 @@ toLowOpacity stmtKind =
     Data {} ->
       O.Opaque -- so as not to reduce recursive terms
     DataIntro {} ->
-      O.Transparent
+      O.Clear

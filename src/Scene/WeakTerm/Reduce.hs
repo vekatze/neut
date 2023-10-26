@@ -108,7 +108,7 @@ reduce term =
     m :< WT.Let opacity mxt@(_, x, _) e1 e2 -> do
       e1' <- reduce e1
       case opacity of
-        WT.Transparent -> do
+        WT.Clear -> do
           let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
           Subst.subst sub e2 >>= reduce
         _ -> do

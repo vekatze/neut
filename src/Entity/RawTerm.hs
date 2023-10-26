@@ -35,7 +35,7 @@ data RawTermF a
   | Pi [RawBinder a] a
   | PiIntro (RawLamKind a) [RawBinder a] a
   | PiElim a [a]
-  | PiElimByKey AttrV.Attr Name [a] [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | PiElimByKey AttrV.Attr Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)

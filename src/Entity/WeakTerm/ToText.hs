@@ -59,14 +59,18 @@ toText term =
         else showApp (showGlobalVariable consName) (map toText consArgs)
     _ :< WT.DataElim isNoetic xets tree -> do
       if isNoetic
-        then "&match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
+        then "case " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
         else "match " <> showMatchArgs xets <> " " <> inBrace (showDecisionTree tree)
     _ :< WT.Noema t ->
       "&" <> toText t
     _ :< WT.Embody _ e ->
       "*" <> toText e
-    _ :< WT.Let _ (_, x, t) e1 e2 -> do
-      "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
+    _ :< WT.Let opacity (_, x, t) e1 e2 -> do
+      case opacity of
+        WT.Noetic ->
+          "tie " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
+        _ ->
+          "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
     _ :< WT.Prim prim ->
       showPrim prim
     _ :< WT.Hole {} ->

@@ -59,11 +59,11 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a),
 }
 
 define find-min(a: tau, t: &heap(a)): ?a {
-  &match t {
+  case t {
   - Leaf =>
     None
   - Node(Leaf, x, _) =>
-    Some(!x)
+    Some(*x)
   - Node(left, _, _) =>
     find-min(a, left)
   }
@@ -78,7 +78,7 @@ define delete-min(a: tau, t: heap(a)): ?heap(a) {
   - Node(Node(Leaf, _, t12), y, t2) =>
     Some(Node(t12, y, t2))
   - Node(Node(t11, x, t12), y, t2) =>
-    let? t11 = delete-min(a, t11) in
+    try t11 = delete-min(a, t11) in
     Some(Node(t11, x, Node(t12, y, t2)))
   }
 }
@@ -98,11 +98,11 @@ define compare-int-list(xs: list(int), ys: list(int)): order {
 }
 
 define sum(xs: &list(int)): int {
-  &match xs {
+  case xs {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum(ys))
+    add-int(*y, sum(ys))
   }
 }
 

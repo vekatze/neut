@@ -31,14 +31,14 @@ registerImmediateS4 :: App ()
 registerImmediateS4 = do
   let immediateT _ = return $ C.UpIntro $ C.SigmaIntro []
   let immediate4 arg = return $ C.UpIntro arg
-  registerSwitcher O.Transparent DD.imm immediateT immediate4
+  registerSwitcher O.Clear DD.imm immediateT immediate4
 
 registerClosureS4 :: App ()
 registerClosureS4 = do
   (env, envVar) <- Gensym.newValueVarLocalWith "env"
   registerSigmaS4
     DD.cls
-    O.Transparent
+    O.Clear
     [Right (env, returnImmediateS4), Left (C.UpIntro envVar), Left returnImmediateS4]
 
 returnImmediateS4 :: C.Comp
@@ -133,7 +133,7 @@ closureEnvS4 mxts =
     _ -> do
       i <- Gensym.newCount
       name <- Locator.attachCurrentLocator $ BN.sigmaName i
-      registerSwitcher O.Transparent name (sigmaT mxts) (sigma4 mxts)
+      registerSwitcher O.Clear name (sigmaT mxts) (sigma4 mxts)
       return $ C.VarGlobal name AN.argNumS4
 
 returnSigmaDataS4 ::
@@ -154,7 +154,7 @@ returnEnumS4 dataName = do
   let aff _ = return $ C.UpIntro $ C.SigmaIntro []
   let rel arg = return $ C.UpIntro arg
   let dataName' = DD.getFormDD dataName
-  registerSwitcher O.Transparent dataName' aff rel
+  registerSwitcher O.Clear dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 sigmaData4 :: [(D.Discriminant, [(Ident, C.Comp)])] -> C.Value -> App C.Comp

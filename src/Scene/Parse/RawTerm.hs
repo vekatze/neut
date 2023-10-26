@@ -18,7 +18,6 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
-import Data.Maybe (fromMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -187,7 +186,7 @@ rawTermKeyValuePair = do
 
 rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetOrLetOn m = do
-  isNoetic <- choice [try (keyword "&let") >> return True, keyword "let" >> return False]
+  isNoetic <- choice [try (keyword "tie") >> return True, keyword "let" >> return False]
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
   t <- rawTermLetVarAscription mx
@@ -258,7 +257,7 @@ rawTermNoeticVar = do
 
 rawTermLetExcept :: Parser (RT.RawTerm -> RT.RawTerm)
 rawTermLetExcept = do
-  keyword "let?"
+  keyword "try"
   pat@(mx, _) <- rawTermPattern
   rightType <- rawTermLetVarAscription mx
   delimiter "="
@@ -289,7 +288,7 @@ rawTermLetExcept = do
 rawTermEmbody :: Parser RT.RawTerm
 rawTermEmbody = do
   m <- getCurrentHint
-  delimiter "!"
+  delimiter "*"
   e <- rawTermBasic
   return $ m :< RT.Embody e
 
@@ -330,12 +329,9 @@ parseTopDefInfo = do
   impDomArgList <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) expDomArgList
-  argListList <- many $ argList preBinder
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
-  let e' = foldPiIntro m argListList e
-  let codType' = foldPi m argListList codType
-  return ((m, funcBaseName), impDomArgList, expDomArgList, codType', e')
+  return ((m, funcBaseName), impDomArgList, expDomArgList, codType, e)
 
 parseImplicitArgs :: Parser [RawBinder RT.RawTerm]
 parseImplicitArgs =
@@ -344,22 +340,6 @@ parseImplicitArgs =
         betweenBracket (commaList preBinder),
       return []
     ]
-
-foldPi :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
-foldPi m args t =
-  case args of
-    [] ->
-      t
-    binder : rest ->
-      m :< RT.Pi binder (foldPi m rest t)
-
-foldPiIntro :: Hint -> [[RawBinder RT.RawTerm]] -> RT.RawTerm -> RT.RawTerm
-foldPiIntro m args e =
-  case args of
-    [] ->
-      e
-    binder : rest ->
-      lam m binder (foldPiIntro m rest e)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
@@ -509,7 +489,7 @@ primType = do
 rawTermMatch :: Parser RT.RawTerm
 rawTermMatch = do
   m <- getCurrentHint
-  isNoetic <- choice [try (keyword "&match") >> return True, keyword "match" >> return False]
+  isNoetic <- choice [try (keyword "case") >> return True, keyword "match" >> return False]
   es <- commaList rawTermBasic
   patternRowList <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return $ m :< RT.DataElim isNoetic es (RP.new patternRowList)
@@ -871,33 +851,22 @@ rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
   e <- rawTermSimple
-  mImpArgNum <- optional $ delimiter "/" >> integer
   case e of
     _ :< RT.Var attr name -> do
       choice
         [ do
-            holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. fromMaybe 0 mImpArgNum]
             keyword "of"
             rowList <- betweenBrace $ bulletListOrCommaSeq rawTermKeyValuePair
-            return $ m :< RT.PiElimByKey attr name holes rowList,
-          rawTermPiElimCont m e mImpArgNum
+            return $ m :< RT.PiElimByKey attr name rowList,
+          rawTermPiElimCont m e
         ]
     _ -> do
-      rawTermPiElimCont m e mImpArgNum
+      rawTermPiElimCont m e
 
-rawTermPiElimCont :: Hint -> RT.RawTerm -> Maybe Integer -> Parser RT.RawTerm
-rawTermPiElimCont m e mImpArgNum = do
+rawTermPiElimCont :: Hint -> RT.RawTerm -> Parser RT.RawTerm
+rawTermPiElimCont m e = do
   argListList <- many $ argList rawExpr
-  case mImpArgNum of
-    Just impArgNum -> do
-      holes <- lift $ mapM (const $ Gensym.newPreHole m) [1 .. impArgNum]
-      case argListList of
-        [] ->
-          return $ m :< RT.PiElim e holes
-        headArgList : rest ->
-          foldPiElim m e $ (holes ++ headArgList) : rest
-    Nothing ->
-      foldPiElim m e argListList
+  foldPiElim m e argListList
 
 foldPiElim :: Hint -> RT.RawTerm -> [[RT.RawTerm]] -> Parser RT.RawTerm
 foldPiElim m e argListList =

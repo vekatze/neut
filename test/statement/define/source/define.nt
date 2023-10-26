@@ -53,26 +53,6 @@ define is-odd(x: int): int {
   }
 }
 
-define multiple-argument-list(x: int)(y: int, z: bool, w: int -> int): int {
-  if eq-int(x, y) {
-    10
-  } else-if z {
-    w(x)
-  } else {
-    3
-  }
-}
-
-define dependent-multiple(a: tau, x: a)(y: int, z: bool, w: a -> int): int {
-  if eq-int(1, y) {
-    10
-  } else-if z {
-    w(x)
-  } else {
-    3
-  }
-}
-
 define implicit-0[](a : tau, x: a): a {
   x
 }
@@ -85,20 +65,8 @@ define implicit-2[a, b](x: a, y: b): tuple(a, b) {
   Tuple(x, y)
 }
 
-define multi(a: tau, x: a)(y: int)(z: bool)(w: a -> int): int {
-  if eq-int(1, y) {
-    10
-  } else-if z {
-    w(x)
-  } else {
-    multi(a, x)(y)(z)(w)
-  }
-}
-
 define main(): unit {
   let _ = is-even(12345) in
-  let _ = multiple-argument-list(10)(20, True, (x) => { add-int(x, 1) }) in
-  let _ = dependent-multiple(tau, tau)(10, False, (_) => { 20 }) in
   let _ = implicit-0(&text, "hello") in
   let _ = implicit-1("hello") in
   let _ = implicit-2("hello", tau) in

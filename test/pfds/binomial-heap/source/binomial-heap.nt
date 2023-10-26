@@ -27,9 +27,9 @@ define join(a: tau, cmp: (a, a) -> order, t1: tree(a), t2: tree(a)): tree(a) {
 }
 
 define rank(a: tau, t: &tree(a)): int {
-  &match t {
+  case t {
   - Node(r, _, _) =>
-    !r
+    *r
   }
 }
 
@@ -73,16 +73,16 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
 
 
 define root(a: tau, t: &tree(a)): a {
-  &match t {
+  case t {
   - Node(_, v, _) =>
-    !v
+    *v
   }
 }
 
 define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
   let helper =
     mu self(cand: a, h: &heap(a)): a {
-      &match h {
+      case h {
       - [] =>
         cand
       - t :: ts =>
@@ -96,7 +96,7 @@ define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
       }
     }
   in
-  &match h {
+  case h {
   - [] =>
     None
   - t :: ts =>
@@ -112,7 +112,7 @@ define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a)
   - [t] =>
     Some(Tuple(t, []))
   - t :: ts =>
-    let? Tuple(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
+    try Tuple(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
     let c on t, cand =
       let root-head = root(a, t) in
       let root-cand = root(a, cand) in
@@ -128,7 +128,7 @@ define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a)
 }
 
 define delete-min(a: tau, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
-  let? Tuple(Node(_, _, ts1), ts2): tuple(tree(a), heap(a)) = remove-min-tree(a, cmp, h) in
+  try Tuple(Node(_, _, ts1), ts2): tuple(tree(a), heap(a)) = remove-min-tree(a, cmp, h) in
   Some(merge(a, cmp, reverse(ts1), ts2))
 }
 

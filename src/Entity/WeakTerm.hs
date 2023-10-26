@@ -47,7 +47,7 @@ type SubstWeakTerm =
 
 data LetOpacity
   = Opaque
-  | Transparent
+  | Clear
   | Noetic
   deriving (Show, Eq)
 
@@ -56,18 +56,18 @@ reifyOpacity letOpacity =
   case letOpacity of
     Opaque ->
       O.Opaque
-    Transparent ->
-      O.Transparent
+    Clear ->
+      O.Clear
     Noetic ->
-      O.Transparent
+      O.Clear
 
 reflectOpacity :: O.Opacity -> LetOpacity
 reflectOpacity opacity =
   case opacity of
     O.Opaque ->
       Opaque
-    O.Transparent ->
-      Transparent
+    O.Clear ->
+      Clear
 
 toVar :: Hint -> Ident -> WeakTerm
 toVar m x =

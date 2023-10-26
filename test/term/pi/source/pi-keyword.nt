@@ -61,7 +61,8 @@ define test-syntax(): unit {
   in
   let _ =
     // hole-notation + keyword arguments
-    bar/1 of {
+    bar of {
+    - a => _
     - some-value => tau
     }
   in

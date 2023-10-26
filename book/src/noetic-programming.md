@@ -72,11 +72,11 @@ By using a noema, we can perform something like "borrowing" in other languages.
 
 ## Using a Noema: Viewing Its Contents
 
-The content of a noema can be viewed using `&match`:
+The content of a noema can be viewed using `case`:
 
 ```neut
 define length(a: tau, xs: &list(a)): int {
-  &match xs {
+  case xs {
   - [] =>
     0
   - y :: ys =>
@@ -85,26 +85,26 @@ define length(a: tau, xs: &list(a)): int {
 }
 ```
 
-Here, the `&match` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of the given value (`xs` in this &match).
+Here, the `case` is the noetic variant of `match`; It does the same as `match` except that it doesn't free the outer tuple of the given value (`xs` in this case).
 
-The variables that are bound by a `&match` are cast to be noetic. For example, the `y` in the example above is not of type `a`, but of type `&a`. The `ys` is not of type `list(a)`, but of type `&list(a)`. Since the type of `y` is noetic, `y` isn't discarded even though it isn't used.
+The variables that are bound by a `case` are cast to be noetic. For example, the `y` in the example above is not of type `a`, but of type `&a`. The `ys` is not of type `list(a)`, but of type `&list(a)`. Since the type of `y` is noetic, `y` isn't discarded even though it isn't used.
 
 ## Using a Noema: Incarnation
 
-You can embody a noema using `!e`:
+You can embody a noema using `*e`:
 
 ```neut
 define sum-of-list(xs: &list(int)): int {
-  &match xs {
+  case xs {
   - [] =>
     0
   - y :: ys =>
-    add-int(!y, sum-of-list(ys)) // ← a use of `!e`
+    add-int(*y, sum-of-list(ys)) // ← a use of `*e`
   }
 }
 ```
 
-`!e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `!y: int` is a `y`'s new copy of type `int` (which is the same as `y` in this case, since `y` is an immediate).
+`*e` copies a noema along its inner type. For example, since the `y` above is of type `&int`, `*y: int` is a `y`'s new copy of type `int` (which is the same as `y` in this case, since `y` is an immediate).
 
 ## The Type of a Static Text
 
