@@ -126,8 +126,6 @@ parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
     [ parseDefineData,
-      return <$> parseAliasOpaque,
-      return <$> parseAliasClear,
       return <$> parseDefineResource,
       return <$> parseDefine O.Clear,
       return <$> parseDefine O.Opaque
@@ -288,25 +286,6 @@ parseDefineDataClauseArg = do
     [ try preAscription,
       typeWithoutIdent
     ]
-
-parseAliasClear :: P.Parser RawStmt
-parseAliasClear = do
-  parseType "alias" O.Clear
-
-parseAliasOpaque :: P.Parser RawStmt
-parseAliasOpaque = do
-  parseType "alias-opaque" O.Opaque
-
-parseType :: T.Text -> O.Opacity -> P.Parser RawStmt
-parseType keywordText opacity = do
-  m <- P.getCurrentHint
-  try $ P.keyword keywordText
-  aliasName <- P.baseName
-  aliasName' <- lift $ Locator.attachCurrentLocator aliasName
-  P.betweenBrace $ do
-    t <- rawExpr
-    let stmtKind = SK.Normal opacity
-    return $ RawStmtDefine True stmtKind m aliasName' AN.zero [] (m :< RT.Tau) t
 
 parseDefineResource :: P.Parser RawStmt
 parseDefineResource = do
