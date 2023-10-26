@@ -22,7 +22,7 @@ inline Cmp(a: tau): tau {
 }
 
 define member(a: tau, cmp: Cmp(a), x: a, t: &tree(a)): bool {
-  &match t {
+  case t {
   - Leaf =>
     False
   - Node(_, t1, v, t2) =>

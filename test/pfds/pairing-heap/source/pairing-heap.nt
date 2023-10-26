@@ -10,7 +10,7 @@ data order {
 }
 
 define find-min(a: tau, h: &heap(a)): ?a {
-  &match h {
+  case h {
   - Leaf =>
     None: ?a
   - Node(v, _) =>

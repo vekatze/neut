@@ -9,7 +9,7 @@ data list(a: tau) {
 }
 
 define my-length(xs: &list(int)): int {
-  &match xs {
+  case xs {
   - Nil() =>
     0
   - Cons(_, ys) =>
