@@ -124,9 +124,10 @@ program currentSource = do
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
-    [ return <$> parseDefine,
+    [ return <$> parseDefine O.Opaque,
       parseDefineData,
       return <$> parseType,
+      return <$> parseDefine O.Clear,
       return <$> parseDefineResource
     ]
 
@@ -146,14 +147,18 @@ parseDeclare = do
   cod <- P.delimiter ":" >> lowType
   return $ DE.Decl declName lts cod
 
-parseDefine :: P.Parser RawStmt
-parseDefine = do
-  P.keyword "define"
+parseDefine :: O.Opacity -> P.Parser RawStmt
+parseDefine opacity = do
+  case opacity of
+    O.Opaque ->
+      P.keyword "define"
+    O.Clear ->
+      P.keyword "inline"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
   let impArgNum = AN.fromInt $ length impArgs
-  lift $ defineFunction (SK.Normal O.Opaque) m name' impArgNum (impArgs ++ expArgs) codType e
+  lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
 
 defineFunction ::
   SK.RawStmtKind ->
