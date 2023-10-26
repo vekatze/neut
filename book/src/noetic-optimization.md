@@ -66,7 +66,7 @@ Using a noema, for example, the length of a list can be obtained as follows:
 
 ```neut
 define length-noetic(a: tau, xs: &list(a)): int {
-  &match xs {
+  case xs {
   - [] =>
     0
   - y :: ys =>
@@ -75,13 +75,13 @@ define length-noetic(a: tau, xs: &list(a)): int {
 }
 ```
 
-Here, `&match` does the same as `match` except that:
+Here, `case` does the same as `match` except that:
 
 - it expects noetic ADTs like `&list(a)`, not ordinary ADTs like `list(a)`,
 - it doesn't call `free` against its arguments (the `xs` here), and that
 - the types of the constructor arguments are casted to be noetic.
 
-The last one means, for example, the type of `y` in the example above is not `a` but `&a`. Similarly, The type of `ys` is not `list(a)`, but `&list(a)`. This ensures that the internal content of `xs` is kept intact. In this sense, you can think of `&match` as a read-only variant of `match`.
+The last one means, for example, the type of `y` in the example above is not `a` but `&a`. Similarly, The type of `ys` is not `list(a)`, but `&list(a)`. This ensures that the internal content of `xs` is kept intact. In this sense, you can think of `case` as a read-only variant of `match`.
 
 Note that, although the `y: &a` is unused in the code above, since `&a` is a noetic type, this `y` isn't discarded, which is what we wanted.
 
@@ -91,7 +91,7 @@ Also, you can create a value of type `A` from a noema of type `&A`:
 
 ```neut
 define sum-of-list(xs: &list(int)): int {
-  &match xs {
+  case xs {
   - [] =>
     0
   - y :: ys =>
@@ -175,7 +175,7 @@ This restriction is checked at compile time by the type system of Neut.
 
 Some (including me) might find the above restriction rather ad-hoc. Indeed, there exists an alternative, more seemingly principled approach. The approach essentially uses [the ST monad](https://hackage.haskell.org/package/base-4.18.0.0/docs/Control-Monad-ST.html); Every noetic type is now of the form `noema(s, A)`, where the `s` corresponds to the `s` in `STRef s a`.
 
-In this approach, `let-on` would internally use `runST: (forall s. ST s a) -> a` to ensure that the result doesn't depend on noetic values. Also, in this approach, the whole language will be made pure so that we can track every use of `&e` and `&match`. This approach will be a variation of [Monadic State: Axiomatization and Type Safety](https://dl.acm.org/doi/abs/10.1145/258949.258970), or [Monadic Regions](https://dl.acm.org/doi/abs/10.1145/1016848.1016867).
+In this approach, `let-on` would internally use `runST: (forall s. ST s a) -> a` to ensure that the result doesn't depend on noetic values. Also, in this approach, the whole language will be made pure so that we can track every use of `&e` and `case`. This approach will be a variation of [Monadic State: Axiomatization and Type Safety](https://dl.acm.org/doi/abs/10.1145/258949.258970), or [Monadic Regions](https://dl.acm.org/doi/abs/10.1145/1016848.1016867).
 
 Then, why Neut didn't take this more "principled" approach? This is because the virtue of noetic types lies in making our experience with certain fragments of the language better. Indeed, we can already do the same thing without noetic stuff by using unsafe casts appropriately. Although we can make the language pure and change the formulation of noemata into `noema(s, A)`, pursuing local generality here by modifying the whole language will go against the purpose of noetic types; They are there to provide certain safe patterns of uses of unsafe casts.
 
