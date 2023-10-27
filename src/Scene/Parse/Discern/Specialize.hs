@@ -51,7 +51,7 @@ specializeRow isNoetic cursor (dd, argNum) (patternVector, (freedVars, body@(mBo
           case od of
             Just OD.Enum ->
               return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
-            Just OD.Unitary ->
+            Just OD.Unary ->
               return $ Just (V.concat [V.fromList args, rest], (freedVars, body))
             _ ->
               return $ Just (V.concat [V.fromList args, rest], (cursor : freedVars, body))

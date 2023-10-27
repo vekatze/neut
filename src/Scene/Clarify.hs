@@ -117,16 +117,17 @@ clarifyStmt stmt =
           case od of
             Just OD.Enum -> do
               returnEnumS4 name >>= clarifyStmtDefineBody' name xts'
-            Just OD.Unitary
+            Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
                   return (f, (O.Clear, map fst dataArgs', t'))
               | otherwise ->
-                  Throw.raiseCritical m "found a broken unitary data"
+                  Throw.raiseCritical m "found a broken unary data"
             Nothing -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
-              returnSigmaDataS4 name dataInfo' >>= clarifyStmtDefineBody' name xts'
+              let opacity = if length consInfoList <= 1 then O.Clear else O.Opaque
+              returnSigmaDataS4 name opacity dataInfo' >>= clarifyStmtDefineBody' name xts'
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
@@ -205,11 +206,11 @@ clarifyTerm tenv term =
       case od of
         Just OD.Enum ->
           return $ C.UpIntro $ C.Int (PNS.IntSize baseSize) (D.reify discriminant)
-        Just OD.Unitary
+        Just OD.Unary
           | [e] <- consArgs ->
               clarifyTerm tenv e
           | otherwise ->
-              Throw.raiseCritical m "found a malformed unitary data in Scene.Clarify.clarifyTerm"
+              Throw.raiseCritical m "found a malformed unary data in Scene.Clarify.clarifyTerm"
         Nothing -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
@@ -291,7 +292,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       case ck of
         Just OD.Enum ->
           getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
-        Just OD.Unitary -> do
+        Just OD.Unary -> do
           return $ getFirstClause fallbackClause' clauseList''
         Nothing -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
@@ -352,14 +353,14 @@ clarifyCase tenv isNoetic dataArgsMap cursor (DT.Case {..}) = do
   case od of
     Just OD.Enum -> do
       return (EC.Int (D.reify disc), body')
-    Just OD.Unitary
+    Just OD.Unary
       | [(_, consArg, _)] <- consArgs ->
           return
             ( EC.Int 0,
               C.UpElim True consArg (C.UpIntro (C.VarLocal cursor)) body'
             )
       | otherwise ->
-          Throw.raiseCritical' "found a non-unitary consArgs for unitary ADT"
+          Throw.raiseCritical' "found a non-unary consArgs for unary ADT"
     _ -> do
       discriminantVar <- Gensym.newIdentFromText "discriminant"
       return
