@@ -57,7 +57,7 @@ registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
     SK.Data dataName dataArgs consInfoList -> do
       registerData isConstLike m dataName dataArgs consInfoList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
-      registerAsUnitaryIfNecessary dataName consInfoList
+      registerAsUnaryIfNecessary dataName consInfoList
     SK.DataIntro {} ->
       return ()
 
@@ -75,17 +75,17 @@ hasNoArgs :: [a] -> [(Hint, DD.DefiniteDescription, b, [a], D.Discriminant)] -> 
 hasNoArgs dataArgs consInfoList =
   null dataArgs && null (concatMap (\(_, _, _, consArgs, _) -> consArgs) consInfoList)
 
-registerAsUnitaryIfNecessary ::
+registerAsUnaryIfNecessary ::
   DD.DefiniteDescription ->
   [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
-registerAsUnitaryIfNecessary dataName consInfoList =
-  when (isUnitary consInfoList) $ do
-    OptimizableData.insert dataName OD.Unitary
-    mapM_ (flip OptimizableData.insert OD.Unitary . (\(_, consName, _, _, _) -> consName)) consInfoList
+registerAsUnaryIfNecessary dataName consInfoList =
+  when (isUnary consInfoList) $ do
+    OptimizableData.insert dataName OD.Unary
+    mapM_ (flip OptimizableData.insert OD.Unary . (\(_, consName, _, _, _) -> consName)) consInfoList
 
-isUnitary :: [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] -> Bool
-isUnitary consInfoList =
+isUnary :: [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] -> Bool
+isUnary consInfoList =
   case consInfoList of
     [(_, _, _, [_], _)] ->
       True

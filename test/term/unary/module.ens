@@ -8,6 +8,6 @@
     }
   }
   target {
-    unitary "unitary.nt"
+    unary "unary.nt"
   }
 }
