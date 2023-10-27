@@ -138,13 +138,14 @@ closureEnvS4 mxts =
 
 returnSigmaDataS4 ::
   DD.DefiniteDescription ->
+  O.Opacity ->
   [(D.Discriminant, [(Ident, C.Comp)])] ->
   App C.Comp
-returnSigmaDataS4 dataName dataInfo = do
+returnSigmaDataS4 dataName opacity dataInfo = do
   let aff = sigmaDataT dataInfo
   let rel = sigmaData4 dataInfo
   let dataName' = DD.getFormDD dataName
-  registerSwitcher O.Opaque dataName' aff rel
+  registerSwitcher opacity dataName' aff rel
   return $ C.UpIntro $ C.VarGlobal dataName' AN.argNumS4
 
 returnEnumS4 ::

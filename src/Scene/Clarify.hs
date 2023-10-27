@@ -126,7 +126,8 @@ clarifyStmt stmt =
             Nothing -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
-              returnSigmaDataS4 name dataInfo' >>= clarifyStmtDefineBody' name xts'
+              let opacity = if length consInfoList <= 1 then O.Clear else O.Opaque
+              returnSigmaDataS4 name opacity dataInfo' >>= clarifyStmtDefineBody' name xts'
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
