@@ -75,21 +75,11 @@ data list(a) {
 // (1) you can write `x :: xs` instead of `Cons(x, xs)`
 // (2) you can write `[x, y]` instead of `Cons(x, Cons(y, Nil))`
 
-data option(a) {
-- None
-- Some(a)
-}
-
+// you can also write `?a` instead of `except(unit, a)`
 data except(a, b) {
 - Fail(a)
 - Pass(b)
 }
-
-// Additional notes on `except`:
-// (1) you can write `option(a)` instead of `except(unit, a)`
-// (2) you can write `option(a)` as `?a`.
-// (3) you can write `None` instead of `Left(Unit)`
-// (4) you can write `Some(e)` instead of `Right(e)
 
 data pair(a, b) {
 - Pair(left: a, right: b)
@@ -110,65 +100,22 @@ inline increment(x: int): int {
 }
 ```
 
-Inline functions are reduced at compile time.
+Inline functions can be reduced at compile time.
 
-You'll have to use `inline` when you want to define an alias of a type. Consider the following two definitions of `my-list`:
+### Type Synonyms
 
-```neut
-// (A)
-inline my-list(a: tau): tau {
-  list(a)
-}
-
-// (B)
-define my-list(a: tau): tau {
-  list(a)
-}
-```
-
-If you write a definition like `(B)`, `my-list` is defined to be opaque. That is, the type inference algorithm won't know that `my-list(a)` is the same as `list(a)`. Therefore, for example, the following code won't pass type checking:
+You can define type synonyms as follows:
 
 ```neut
-define foo(x: list(int)): my-list(int) {
-  x
-}
-```
-
-To tell this equivalence, you'll have to use `inline` instead.
-
-### Type Alias
-
-You can define a type alias as follows:
-
-```neut
-alias my-int {
+type my-int {
   int64
 }
-```
 
-The above is essentially the same as below:
-
-```neut
-inline my-int(): tau {
-  int64
+// a type synonym with an argument
+type naive-queue(a) {
+  tuple(list(a), list(a))
 }
 ```
-
-The difference lies in the fact that you don't have to "call" the type if you use `alias`:
-
-```neut
-// when you use `alias`
-define use-my-int(x: my-int) {
-  ...
-}
-
-// when you use `inline`
-define use-my-int(x: my-int()) {
-  ...
-}
-```
-
-which relieves code cluttering.
 
 ### A Notation for (Not Necessarily) Monadic Binds
 

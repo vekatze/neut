@@ -18,7 +18,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
-import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
@@ -125,12 +124,11 @@ program currentSource = do
 parseStmt :: P.Parser [RawStmt]
 parseStmt = do
   choice
-    [ parseDefineData,
-      return <$> parseAliasOpaque,
-      return <$> parseAliasClear,
-      return <$> parseDefineResource,
+    [ return <$> parseDefine O.Opaque,
+      parseDefineData,
+      return <$> parseType,
       return <$> parseDefine O.Clear,
-      return <$> parseDefine O.Opaque
+      return <$> parseDefineResource
     ]
 
 parseDeclareList :: P.Parser [DE.Decl]
@@ -151,12 +149,11 @@ parseDeclare = do
 
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
-  try $
-    case opacity of
-      O.Opaque ->
-        P.keyword "define"
-      O.Clear ->
-        P.keyword "inline"
+  case opacity of
+    O.Opaque ->
+      P.keyword "define"
+    O.Clear ->
+      P.keyword "inline"
   m <- P.getCurrentHint
   ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
@@ -174,6 +171,16 @@ defineFunction ::
   App RawStmt
 defineFunction stmtKind m name impArgNum binder codType e = do
   return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
+
+parseType :: P.Parser RawStmt
+parseType = do
+  m <- P.getCurrentHint
+  try $ P.keyword "type"
+  aliasName <- P.baseName >>= lift . Locator.attachCurrentLocator
+  (argList, isConstLike) <- choice [(,False) <$> P.argSeqOrList preBinder, return ([], True)]
+  t <- P.betweenBrace rawExpr
+  let stmtKind = SK.Normal O.Clear
+  return $ RawStmtDefine isConstLike stmtKind m aliasName AN.zero argList (m :< RT.Tau) t
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -288,25 +295,6 @@ parseDefineDataClauseArg = do
     [ try preAscription,
       typeWithoutIdent
     ]
-
-parseAliasClear :: P.Parser RawStmt
-parseAliasClear = do
-  parseType "alias" O.Clear
-
-parseAliasOpaque :: P.Parser RawStmt
-parseAliasOpaque = do
-  parseType "alias-opaque" O.Opaque
-
-parseType :: T.Text -> O.Opacity -> P.Parser RawStmt
-parseType keywordText opacity = do
-  m <- P.getCurrentHint
-  try $ P.keyword keywordText
-  aliasName <- P.baseName
-  aliasName' <- lift $ Locator.attachCurrentLocator aliasName
-  P.betweenBrace $ do
-    t <- rawExpr
-    let stmtKind = SK.Normal opacity
-    return $ RawStmtDefine True stmtKind m aliasName' AN.zero [] (m :< RT.Tau) t
 
 parseDefineResource :: P.Parser RawStmt
 parseDefineResource = do

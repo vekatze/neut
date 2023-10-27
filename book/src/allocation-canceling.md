@@ -124,6 +124,10 @@ As you can see from the two blue bars, allocation canceling can make the perform
 The Neut code used in the test above is as follows:
 
 ```neut
+declare {
+- arc4random_uniform(int): int
+}
+
 data int-list {
 - My-Nil
 - My-Cons(int, int-list)

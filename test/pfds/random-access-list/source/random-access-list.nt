@@ -46,37 +46,37 @@ define cons(a: tau, x: a, ts: R-list(a)): R-list(a) {
   cons-tree(a, Leaf(x), ts)
 }
 
-define uncons-tree(a: tau, ts: R-list(a)): option(tuple(tree(a), R-list(a))) {
+define uncons-tree(a: tau, ts: R-list(a)): ?tuple(tree(a), R-list(a)) {
   let New(xs) = ts in
   match xs {
   - [] =>
-    None
+    none()
   - DigitOne(y) :: [] =>
-    Some(Tuple(y, New([])))
+    Pass(Tuple(y, New([])))
   - DigitOne(y) :: rest =>
-    Some(Tuple(y, New(DigitZero :: rest)))
+    Pass(Tuple(y, New(DigitZero :: rest)))
   - DigitZero :: rest =>
     match uncons-tree(_, New(rest)) {
-    - None =>
-      None
-    - Some(Tuple(new-tree, New(new-ts))) =>
+    - Fail(_) =>
+      none()
+    - Pass(Tuple(new-tree, New(new-ts))) =>
       match new-tree {
       - Leaf(_) =>
-        None
+        none()
       - Node(_, t1, t2) =>
-        Some(Tuple(t1, New(DigitOne(t2) :: new-ts)))
+        Pass(Tuple(t1, New(DigitOne(t2) :: new-ts)))
       }
     }
   }
 }
 
-define lookup-tree(a: tau, i: int, t: &tree(a)): option(a) {
+define lookup-tree(a: tau, i: int, t: &tree(a)): ?a {
   case t {
   - Leaf(v) =>
     if eq-int(i, 0) {
-      Some(*v)
+      Pass(*v)
     } else {
-      None
+      none()
     }
   - Node(w, t1, t2) =>
     let w-div-2 = div-int(*w, 2) in
@@ -88,10 +88,10 @@ define lookup-tree(a: tau, i: int, t: &tree(a)): option(a) {
   }
 }
 
-define lookup-list(a: tau, i: int, xs: &list(digit(a))): option(a) {
+define lookup-list(a: tau, i: int, xs: &list(digit(a))): ?a {
   case xs {
   - [] =>
-    None
+    none()
   - DigitZero :: rest =>
     lookup-list(_, i, rest)
   - DigitOne(t) :: rest =>
@@ -104,7 +104,7 @@ define lookup-list(a: tau, i: int, xs: &list(digit(a))): option(a) {
   }
 }
 
-define lookup(a: tau, i: int, xs: &R-list(a)): option(a) {
+define lookup(a: tau, i: int, xs: &R-list(a)): ?a {
   tie New(xs) = xs in
   lookup-list(_, i, xs)
 }
@@ -147,9 +147,9 @@ define update(a: tau, i: int, x: a, xs: R-list(a)): R-list(a) {
 
 define find-and-get(i: int, xs: &R-list(int)): int {
   match lookup(_, i, xs) {
-  - None =>
+  - Fail(_) =>
     0
-  - Some(v) =>
+  - Pass(v) =>
     v
   }
 }

@@ -206,7 +206,7 @@ coreChannelNames =
 
 coreExceptNames :: [BaseName]
 coreExceptNames =
-  map MakeBaseName ["except", "Fail", "Pass", "option", "none-internal", "some-internal"]
+  map MakeBaseName ["except", "Fail", "Pass", "none"]
 
 coreFileNames :: [BaseName]
 coreFileNames =

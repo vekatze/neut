@@ -21,21 +21,21 @@ define is-empty(a: tau, xs: &stack(a)): bool {
   }
 }
 
-define head(a: tau, xs: &stack(a)): option(&a) {
+define head(a: tau, xs: &stack(a)): ?&a {
   case xs {
   - Nil =>
-    None
+    none()
   - Cons(a, _) =>
-    Some(a)
+    Pass(a)
   }
 }
 
-define tail(a: tau, xs: &stack(a)): option(&stack(a)) {
+define tail(a: tau, xs: &stack(a)): ?&stack(a) {
   case xs {
   - Nil =>
-    None
+    none()
   - Cons(_, rest) =>
-    Some(rest)
+    Pass(rest)
   }
 }
 

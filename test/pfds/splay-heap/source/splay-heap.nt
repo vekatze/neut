@@ -61,9 +61,9 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a),
 define find-min(a: tau, t: &heap(a)): ?a {
   case t {
   - Leaf =>
-    None
+    none()
   - Node(Leaf, x, _) =>
-    Some(*x)
+    Pass(*x)
   - Node(left, _, _) =>
     find-min(a, left)
   }
@@ -72,14 +72,14 @@ define find-min(a: tau, t: &heap(a)): ?a {
 define delete-min(a: tau, t: heap(a)): ?heap(a) {
   match t {
   - Leaf =>
-    None
+    none()
   - Node(Leaf, _, right) =>
-    Some(right)
+    Pass(right)
   - Node(Node(Leaf, _, t12), y, t2) =>
-    Some(Node(t12, y, t2))
+    Pass(Node(t12, y, t2))
   - Node(Node(t11, x, t12), y, t2) =>
     try t11 = delete-min(a, t11) in
-    Some(Node(t11, x, Node(t12, y, t2)))
+    Pass(Node(t11, x, Node(t12, y, t2)))
   }
 }
 
@@ -114,30 +114,30 @@ define main(): unit {
   // v1 = 3
   let v1 on h =
     match find-min(_, h) {
-    - Some(xs) =>
+    - Pass(xs) =>
       let v on xs = sum(xs) in // xs = [1, 2]
       let _ = xs in
       v // v = 3
-    - None =>
+    - Fail(_) =>
       4
     }
   in
   let mh = delete-min(_, h) in
   let result =
     match mh {
-    - None =>
+    - Fail(_) =>
       3
-    - Some(h) =>
+    - Pass(h) =>
       let h = insert(_, compare-int-list, [4, 8], h) in
       let h = insert(_, compare-int-list, [1, 1], h) in
       // v2 = 2
       let v2 on h =
         match find-min(_, h) {
-        - Some(xs) =>
+        - Pass(xs) =>
           let v on xs = sum(xs) in // xs = [1, 1]
           let _ = xs in
           v // v = 2
-        - None =>
+        - Fail(_) =>
           4
         }
       in

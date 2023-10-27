@@ -3,7 +3,7 @@ data tree(a) {
 - Node(int, a, list(tree(a)))
 }
 
-inline heap(a: tau): tau {
+type heap(a: tau) {
   // the list is in increasing order of rank
   list(tree(a))
 }
@@ -71,7 +71,6 @@ define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   }
 }
 
-
 define root(a: tau, t: &tree(a)): a {
   case t {
   - Node(_, v, _) =>
@@ -98,19 +97,19 @@ define find-min(a: tau, cmp: (a, a) -> order, h: &heap(a)): ?a {
   in
   case h {
   - [] =>
-    None
+    none()
   - t :: ts =>
     let r = root(a, t) in
-    Some(helper(r, ts))
+    Pass(helper(r, ts))
   }
 }
 
 define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a), heap(a)) {
   match h {
   - [] =>
-    None
+    none()
   - [t] =>
-    Some(Tuple(t, []))
+    Pass(Tuple(t, []))
   - t :: ts =>
     try Tuple(cand, ts-adjusted) = remove-min-tree(a, cmp, ts) in
     let c on t, cand =
@@ -120,16 +119,16 @@ define remove-min-tree(a: tau, cmp: (a, a) -> order, h: heap(a)): ?tuple(tree(a)
     in
     match c {
     - LT =>
-      Some(Tuple(t, cand :: ts-adjusted))
+      Pass(Tuple(t, cand :: ts-adjusted))
     - _ =>
-      Some(Tuple(cand, t :: ts-adjusted))
+      Pass(Tuple(cand, t :: ts-adjusted))
     }
   }
 }
 
 define delete-min(a: tau, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   try Tuple(Node(_, _, ts1), ts2): tuple(tree(a), heap(a)) = remove-min-tree(a, cmp, h) in
-  Some(merge(a, cmp, reverse(ts1), ts2))
+  Pass(merge(a, cmp, reverse(ts1), ts2))
 }
 
 define compare-int(x: int, y: int): order {
@@ -154,9 +153,9 @@ define main(): unit {
   let h = merge(int, compare-int, h, h) in
   let maybe-min on h =
     match find-min(int, compare-int, h) {
-    - None =>
+    - Fail(_) =>
       10
-    - Some(min) =>
+    - Pass(min) =>
       min
     }
   in

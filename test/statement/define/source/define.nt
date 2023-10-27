@@ -13,10 +13,6 @@ define complex-term-in-ascription(): {
   Unit
 }
 
-inline some-inline-func(): tau {
-  tau
-}
-
 define imp-0-exp-0(): tau {
   tau
 }

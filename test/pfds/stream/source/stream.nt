@@ -9,39 +9,43 @@ data stream-cell(a) {
 - Cons(a, stream(a))
 }
 
-inline stream(a: tau): tau {
-  () -> stream-cell(a)
+data stream(a) {
+- Stream(() -> stream-cell(a))
 }
 
 define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
-  match xs() {
+  let Stream(k) = xs in
+  match k() {
   - Nil =>
     ys
   - Cons(x1, rest) =>
-    () => {
-      Cons(x1, append(a, rest, ys))
-    }
+    Stream(
+      () => {
+        Cons(x1, append(a, rest, ys))
+      }
+   )
   }
 }
 
 define take(a: tau, n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
-    () => { Nil }
+    Stream(() => { Nil })
   } else {
-    match xs() {
+    let Stream(k) = xs in
+    match k() {
     - Nil =>
-      () => { Nil }
+      Stream(() => { Nil })
     - Cons(x, rest) =>
-      () => {
+      Stream(() => {
         Cons(x, take(a, sub-int(n, 1), rest))
-      }
+      })
     }
   }
 }
 
 define main(): unit {
   let my-stream: stream(int) =
-    () => { Cons(1, () => { Nil }) }
+    Stream(() => { Cons(1, Stream(() => { Nil })) })
   in
   let _ = my-stream in
   Unit

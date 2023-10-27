@@ -111,8 +111,6 @@ rawTermBasic = do
       rawTermFlowIntro,
       rawTermFlowElim,
       rawTermOption,
-      rawTermOptionNone,
-      rawTermOptionSome,
       rawTermEmbody,
       rawTermTuple,
       rawTermTupleIntro,
@@ -530,26 +528,8 @@ rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
       try rawTermPatternTupleIntro,
-      try rawTermPatternOptionSome,
-      try rawTermPatternOptionNone,
       rawTermPatternConsOrVar
     ]
-
-rawTermPatternOptionNone :: Parser (Hint, RP.RawPattern)
-rawTermPatternOptionNone = do
-  m <- getCurrentHint
-  keyword "None"
-  exceptFail <- lift $ locatorToName m coreExceptFail
-  hole <- lift Gensym.newTextForHole
-  return (m, RP.Cons exceptFail (RP.Paren [(m, RP.Var (Var hole))]))
-
-rawTermPatternOptionSome :: Parser (Hint, RP.RawPattern)
-rawTermPatternOptionSome = do
-  m <- getCurrentHint
-  keyword "Some"
-  pat <- betweenParen rawTermPattern
-  exceptPass <- lift $ locatorToName m coreExceptPass
-  return (m, RP.Cons exceptPass (RP.Paren [pat]))
 
 rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do
@@ -794,25 +774,9 @@ rawTermOption = do
   m <- getCurrentHint
   delimiter "?"
   t <- rawTermBasic
-  optionVar <- lift $ locatorToVarGlobal m coreExceptOption
-  return $ m :< RT.PiElim optionVar [t]
-
-rawTermOptionNone :: Parser RT.RawTerm
-rawTermOptionNone = do
-  m <- getCurrentHint
-  keyword "None"
-  noneVar <- lift $ locatorToVarGlobal m coreExceptNoneInternal
-  t <- lift $ Gensym.newPreHole m
-  return $ m :< RT.PiElim noneVar [t]
-
-rawTermOptionSome :: Parser RT.RawTerm
-rawTermOptionSome = do
-  m <- getCurrentHint
-  keyword "Some"
-  e <- betweenParen rawExpr
-  someVar <- lift $ locatorToVarGlobal m coreExceptSomeInternal
-  t <- lift $ Gensym.newPreHole m
-  return $ m :< RT.PiElim someVar [t, e]
+  exceptVar <- lift $ locatorToVarGlobal m coreExcept
+  unit <- lift $ locatorToVarGlobal m coreUnit
+  return $ m :< RT.PiElim exceptVar [unit, t]
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
