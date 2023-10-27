@@ -73,7 +73,7 @@ registerAsEnumIfNecessary dataName dataArgs consInfoList =
 
 hasNoArgs :: [a] -> [(Hint, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
-  null dataArgs && null (concatMap (\(_, _, _, consArgs, _) -> consArgs) consInfoList)
+  null dataArgs && all (null . (\(_, _, _, consArgs, _) -> consArgs)) consInfoList
 
 registerAsUnaryIfNecessary ::
   DD.DefiniteDescription ->
