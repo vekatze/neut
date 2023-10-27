@@ -223,7 +223,6 @@ discernBinderWithBody' nenv (mx, x, codType) binder e = do
   (binder'', nenv') <- discernBinder nenv binder
   codType' <- discern nenv' codType
   x' <- Gensym.newIdentFromText x
-  UnusedVariable.delete x'
   nenv'' <- extendNominalEnv mx x' nenv'
   e' <- discern nenv'' e
   return ((mx, x', codType'), binder'', e')
