@@ -292,41 +292,22 @@ getNonLinearOccurrences vars found nonLinear =
 discernPattern ::
   (Hint, RP.RawPattern) ->
   App ((Hint, PAT.Pattern), NominalEnv)
-discernPattern (m, pat) =
+discernPattern (m, pat) = do
   case pat of
     RP.Var name -> do
       case name of
         Var x -> do
-          errOrLocator <- resolveNameOrError m $ Var x
-          case errOrLocator of
-            Left _ -> do
-              case T.uncons x of
-                Just (c, _)
-                  | isUpper c -> do
-                      Throw.raiseError m $ "no such constructor is defined: `" <> x <> "`"
-                _ -> do
-                  x' <- Gensym.newIdentFromText x
-                  return ((m, PAT.Var x'), [(x, (m, x'))])
-            Right (dd, (_, gn)) -> do
-              mCons <- resolveConstructorMaybe dd gn
-              case mCons of
-                Nothing -> do
-                  x' <- Gensym.newIdentFromText x
-                  return ((m, PAT.Var x'), [(x, (m, x'))])
-                Just (consName, dataArgNum, consArgNum, disc, isConstLike, _) -> do
+          case T.uncons x of
+            Just (c, _)
+              | isUpper c -> do
+                  (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
                   unless isConstLike $
                     Throw.raiseError m $
-                      "the constructor `" <> DD.reify consName <> "` can't be used as a constant"
-                  let consInfo =
-                        PAT.ConsInfo
-                          { consDD = consName,
-                            isConstLike = isConstLike,
-                            disc = disc,
-                            dataArgNum = dataArgNum,
-                            consArgNum = consArgNum,
-                            args = []
-                          }
-                  return ((m, PAT.Cons consInfo), [])
+                      "the constructor `" <> DD.reify consDD <> "` can't be used as a constant"
+                  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
+            _ -> do
+              x' <- Gensym.newIdentFromText x
+              return ((m, PAT.Var x'), [(x, (m, x'))])
         Locator l -> do
           (dd, gn) <- resolveName m $ Locator l
           case gn of

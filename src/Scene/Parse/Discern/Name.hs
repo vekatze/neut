@@ -72,7 +72,7 @@ resolveVarOrErr m name = do
   let foundNameList = Maybe.mapMaybe candFilter $ zip candList candList'
   case foundNameList of
     [] ->
-      return $ Left $ "undefined variable: " <> name
+      return $ Left $ "undefined symbol: " <> name
     [globalVar@(_, (mDef, _))] -> do
       Tag.insert m (T.length name) mDef
       return $ Right globalVar

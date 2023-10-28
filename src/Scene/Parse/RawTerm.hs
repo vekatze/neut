@@ -18,6 +18,7 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
+import Data.Char (isUpper)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -208,8 +209,10 @@ rawTermLetOrLetOn mLet = do
 getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =
   case pat of
-    (_, RP.Var (Var x)) ->
-      return (x, \_ cont -> cont)
+    (_, RP.Var (Var x))
+      | Just (c, _) <- T.uncons x,
+        not (isUpper c) ->
+          return (x, \_ cont -> cont)
     _ -> do
       tmp <- lift Gensym.newTextForHole
       return

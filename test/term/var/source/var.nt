@@ -10,9 +10,6 @@ define test(): tau {
   // ordinary variable
   let x = tau in
   let _ = x in
-  // ordinary variable, capitalized
-  let FooBar = tau in
-  let _ = FooBar in
   // definite description in current module
   let _ = this.var.test in
   let _ = core.data.vector.vector in
