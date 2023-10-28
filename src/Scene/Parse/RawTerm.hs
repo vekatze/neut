@@ -183,7 +183,7 @@ rawTermKeyValuePair = do
     ]
 
 rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
-rawTermLetOrLetOn m = do
+rawTermLetOrLetOn mLet = do
   isNoetic <- choice [try (keyword "tie") >> return True, keyword "let" >> return False]
   pat@(mx, _) <- rawTermPattern
   (x, modifier) <- getContinuationModifier pat
@@ -193,26 +193,30 @@ rawTermLetOrLetOn m = do
     [ do
         keyword "on"
         noeticVarList <- commaList rawTermNoeticVar
-        lift $ ensureIdentLinearity m S.empty $ map snd noeticVarList
+        lift $ ensureIdentLinearity mLet S.empty $ map snd noeticVarList
         delimiter "="
         e1 <- rawExpr
         delimiter "in"
-        return $ \e2 -> m :< RT.Let mxt noeticVarList e1 (modifier isNoetic e2),
+        return $ \e2 -> mLet :< RT.Let mxt noeticVarList e1 (modifier isNoetic e2),
       do
         delimiter "="
         e1 <- rawExpr
         delimiter "in"
-        return $ \e2 -> m :< RT.Let mxt [] e1 (modifier isNoetic e2)
+        return $ \e2 -> mLet :< RT.Let mxt [] e1 (modifier isNoetic e2)
     ]
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =
   case pat of
     (_, RP.Var (Var x)) ->
-      return (x, \_ e -> e)
+      return (x, \_ cont -> cont)
     _ -> do
-      tmp <- lift $ Gensym.newTextFromText "tmp"
-      return (tmp, \isNoetic e@(m :< _) -> m :< RT.DataElim isNoetic [rawVar m (Var tmp)] (RP.new [(V.fromList [pat], e)]))
+      tmp <- lift Gensym.newTextForHole
+      return
+        ( tmp,
+          \isNoetic cont@(mCont :< _) ->
+            mCont :< RT.DataElim isNoetic [rawVar mCont (Var tmp)] (RP.new [(V.fromList [pat], cont)])
+        )
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
@@ -225,7 +229,7 @@ rawTermLetVarAscription m = do
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> Parser RT.RawTerm
 ascribe m t e = do
-  tmp <- lift $ Gensym.newTextFromText "tmp"
+  tmp <- lift Gensym.newTextForHole
   return $ bind (m, tmp, t) e (rawVar m (Var tmp))
 
 rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm)
