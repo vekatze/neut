@@ -13,9 +13,11 @@ import Context.External qualified as External
 import Context.OptParse qualified as OptParse
 import Context.Throw qualified as Throw
 import Entity.Command qualified as C
+import System.IO
 
 main :: IO ()
-main =
+main = do
+  mapM_ (`hSetEncoding` utf8) [stdin, stdout, stderr]
   Main.execute
 
 execute :: IO ()
