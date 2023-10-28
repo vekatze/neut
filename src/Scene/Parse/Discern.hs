@@ -93,7 +93,8 @@ discern nenv term =
         Var s
           | Just (mDef, name') <- lookup s nenv -> do
               UnusedVariable.delete name'
-              Tag.insert m (T.length s) mDef
+              unless (isHole name') $ do
+                Tag.insert m (T.length s) mDef
               return $ m :< WT.Var name'
         _ -> do
           (dd, (_, gn)) <- resolveName m name
