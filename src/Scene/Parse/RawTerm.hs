@@ -807,16 +807,17 @@ rawTermAssert :: Parser RT.RawTerm
 rawTermAssert = do
   m <- getCurrentHint
   keyword "assert"
+  mText <- getCurrentHint
   message <- string
   e@(mCond :< _) <- betweenBrace rawExpr
   assert <- lift $ locatorToVarGlobal m coreSystemAssert
-  textType <- lift $ locatorToVarGlobal m coreText
+  textType <- lift $ locatorToVarGlobal mText coreText
   let fullMessage = T.pack (toString m) <> "\nassertion failure: " <> message <> "\n"
   return $
     m
       :< RT.PiElim
         assert
-        [m :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), lam mCond [] e]
+        [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), lam mCond [] e]
 
 rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
