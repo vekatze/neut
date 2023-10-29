@@ -1,9 +1,11 @@
 module Entity.Name
   ( Name (..),
     showName,
+    isConsName,
   )
 where
 
+import Data.Char
 import Data.Text qualified as T
 import Entity.DefiniteDescription qualified as DD
 import Entity.Locator qualified as L
@@ -24,3 +26,12 @@ showName consName =
       L.reify l
     DefiniteDescription dd ->
       DD.reify dd
+
+isConsName :: T.Text -> Bool
+isConsName name = do
+  case T.uncons (T.dropWhile (== '_') name) of
+    Just (c, _)
+      | isUpper c ->
+          True
+    _ ->
+      False

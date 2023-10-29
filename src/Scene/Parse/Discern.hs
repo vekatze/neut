@@ -8,7 +8,6 @@ import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
-import Data.Char (isUpper)
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.List
@@ -296,16 +295,14 @@ discernPattern (m, pat) = do
   case pat of
     RP.Var name -> do
       case name of
-        Var x -> do
-          case T.uncons x of
-            Just (c, _)
-              | isUpper c -> do
-                  (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
-                  unless isConstLike $
-                    Throw.raiseError m $
-                      "the constructor `" <> DD.reify consDD <> "` can't be used as a constant"
-                  return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
-            _ -> do
+        Var x
+          | isConsName x -> do
+              (consDD, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m $ Var x
+              unless isConstLike $
+                Throw.raiseError m $
+                  "the constructor `" <> DD.reify consDD <> "` can't be used as a constant"
+              return ((m, PAT.Cons (PAT.ConsInfo {args = [], ..})), [])
+          | otherwise -> do
               x' <- Gensym.newIdentFromText x
               return ((m, PAT.Var x'), [(x, (m, x'))])
         Locator l -> do
