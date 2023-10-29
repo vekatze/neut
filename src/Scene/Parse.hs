@@ -276,7 +276,9 @@ constructDataType m dataName isConstLike consNameList dataArgs = do
 parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])
 parseDefineDataClause = do
   m <- P.getCurrentHint
-  consName <- P.baseNameCapitalized
+  consName <- P.baseName
+  unless (isConsName (BN.reify consName)) $ do
+    lift $ Throw.raiseError m "the name of a constructor must be capitalized"
   consArgsOrNone <- parseConsArgs
   let consArgs = fromMaybe [] consArgsOrNone
   let isConstLike = isNothing consArgsOrNone

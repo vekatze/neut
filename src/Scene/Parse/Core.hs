@@ -80,13 +80,6 @@ baseName = do
     bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
     return $ BN.fromText bn
 
-baseNameCapitalized :: Parser BN.BaseName
-baseNameCapitalized = do
-  lexeme $ do
-    c <- upperChar
-    bn <- takeWhileP Nothing (`S.notMember` nonBaseNameCharSet)
-    return $ BN.fromText $ T.singleton c <> bn
-
 keyword :: T.Text -> Parser ()
 keyword expected = do
   lexeme $ try $ do
