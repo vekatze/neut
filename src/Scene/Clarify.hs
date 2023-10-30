@@ -116,7 +116,7 @@ clarifyStmt stmt =
           od <- OptimizableData.lookup name
           case od of
             Just OD.Enum -> do
-              returnEnumS4 name >>= clarifyStmtDefineBody' name xts'
+              clarifyStmtDefineBody' name xts' returnImmediateS4
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
