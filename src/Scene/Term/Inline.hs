@@ -6,6 +6,7 @@ import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Discriminant
 import Entity.Ident
@@ -40,17 +41,11 @@ inline term =
       dmap <- Definition.get
       case e' of
         (_ :< TM.PiIntro LK.Normal xts (_ :< body))
-          | length xts == length es',
-            all TM.isValue es' -> do
-              let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst sub (m :< body) >>= inline
+          | length xts == length es' -> do
+              inline $ bind (zip xts es') (m :< body)
         (_ :< TM.VarGlobal _ dd)
-          | Just (xts, _ :< body) <- Map.lookup dd dmap,
-            all TM.isValue es' -> do
-              let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst sub (m :< body) >>= inline
+          | Just (xts, _ :< body) <- Map.lookup dd dmap -> do
+              inline $ bind (zip xts es') (m :< body)
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do
@@ -76,15 +71,14 @@ inline term =
               Subst.subst sub e >>= inline
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
-            DT.Switch (cursor, _) (fallbackTree, caseList) -> do
+            DT.Switch (cursor, cursorType) (fallbackTree, caseList) -> do
               case lookupSplit cursor oets' of
-                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'')
-                  | TM.isValue e -> do
-                      let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
-                      let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                      let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
-                      cont' <- Subst.substDecisionTree sub cont
-                      inline $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont'
+                Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
+                  let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
+                  let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
+                  inline $
+                    bind [((m, cursor, cursorType), e)] $
+                      m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
                 _ -> do
                   decisionTree' <- inlineDecisionTree decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -178,3 +172,11 @@ lookupSplit' cursor acc oets =
       if o == cursor
         then Just (e, reverse acc ++ rest)
         else lookupSplit' cursor (oet : acc) rest
+
+bind :: [(BinderF TM.Term, TM.Term)] -> TM.Term -> TM.Term
+bind binder cont =
+  case binder of
+    [] ->
+      cont
+    ((m, x, t), e1) : rest -> do
+      m :< TM.Let O.Clear (m, x, t) e1 (bind rest cont)

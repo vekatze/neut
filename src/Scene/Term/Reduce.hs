@@ -3,6 +3,7 @@ module Scene.Term.Reduce (reduce) where
 import Context.App
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
+import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
@@ -33,11 +34,8 @@ reduce term =
       es' <- mapM reduce es
       case e' of
         (_ :< TM.PiIntro LK.Normal xts (_ :< body))
-          | length xts == length es',
-            all TM.isValue es' -> do
-              let xs = map (\(_, x, _) -> Ident.toInt x) xts
-              let sub = IntMap.fromList $ zip xs (map Right es')
-              Subst.subst sub (m :< body) >>= reduce
+          | length xts == length es' -> do
+              reduce $ bind (zip xts es') (m :< body)
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do
@@ -109,3 +107,11 @@ reduceCase decisionCase = do
         DT.consArgs = zip3 ms xs ts',
         DT.cont = cont'
       }
+
+bind :: [(BinderF TM.Term, TM.Term)] -> TM.Term -> TM.Term
+bind binder cont =
+  case binder of
+    [] ->
+      cont
+    ((m, x, t), e1) : rest -> do
+      m :< TM.Let O.Clear (m, x, t) e1 (bind rest cont)
