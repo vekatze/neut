@@ -70,7 +70,15 @@ define yo(x: top): unit {
   Unit
 }
 
-define foo(c: &config): &text {
+data foo {
+- Foo(bar)
+}
+
+data bar {
+- Bar(foo)
+}
+
+define buz(c: &config): &text {
   tie Config of { counter, func, path } = c in
   let _: int = *counter in
   let _ = *counter in
