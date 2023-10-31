@@ -176,8 +176,8 @@ defineFunction stmtKind m name impArgNum binder codType e = do
 
 parseConstant :: P.Parser RawStmt
 parseConstant = do
-  m <- P.getCurrentHint
   try $ P.keyword "constant"
+  m <- P.getCurrentHint
   constName <- P.baseName >>= lift . Locator.attachCurrentLocator
   t <- parseDefInfoCod m
   v <- P.betweenBrace rawExpr

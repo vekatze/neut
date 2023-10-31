@@ -52,7 +52,6 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
-import Scene.Term.Inline qualified as TM
 import Scene.Term.Subst qualified as TM
 
 clarify :: ([Stmt], [DE.Decl]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl])
@@ -163,8 +162,7 @@ clarifyStmtDefineBody ::
   TM.Term ->
   App C.Comp
 clarifyStmtDefineBody tenv xts e = do
-  e' <- TM.inline e >>= clarifyTerm tenv
-  linearize xts e' >>= Reduce.reduce
+  clarifyTerm tenv e >>= linearize xts >>= Reduce.reduce
 
 clarifyStmtDefineBody' ::
   DD.DefiniteDescription ->

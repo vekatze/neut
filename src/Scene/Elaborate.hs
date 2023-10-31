@@ -133,21 +133,21 @@ elaborateStmt stmt = do
       return result
 
 inlineStmt :: Stmt -> App Stmt
-inlineStmt stmt =
+inlineStmt stmt = do
   case stmt of
     StmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
-      e' <- TM.inline e
+      e' <- TM.inline m e
       return $ StmtDefine isConstLike stmtKind m x impArgNum xts codType e'
     StmtDefineConst m dd t v -> do
-      t' <- TM.inline t
-      v' <- TM.inline v
+      t' <- TM.inline m t
+      v' <- TM.inline m v
       unless (TM.isValue v') $ do
         Throw.raiseError m $
           "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
       return $ StmtDefineConst m dd t' v'
     StmtDefineResource m name discarder copier -> do
-      discarder' <- TM.inline discarder
-      copier' <- TM.inline copier
+      discarder' <- TM.inline m discarder
+      copier' <- TM.inline m copier
       return $ StmtDefineResource m name discarder' copier'
 
 insertStmt :: Stmt -> App ()
