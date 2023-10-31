@@ -81,7 +81,7 @@ getLocalNameList nameInfo = do
   return $ zip mKeyArgList $ map (LL.reify . DD.localLocator) ddList
 
 newCompletionItem :: Maybe T.Text -> (Maybe (IsConstLike, [Key]), T.Text) -> CompletionItem
-newCompletionItem mLocator (mKeyArg, t) =
+newCompletionItem mLocator (_, t) =
   CompletionItem
     { _label = t,
       _labelDetails = Nothing,
@@ -93,8 +93,8 @@ newCompletionItem mLocator (mKeyArg, t) =
       _preselect = Nothing,
       _sortText = Nothing,
       _filterText = Nothing,
-      _insertText = stylizeKeyArgList t mKeyArg,
-      _insertTextFormat = Just InsertTextFormat_Snippet,
+      _insertText = Nothing,
+      _insertTextFormat = Nothing,
       _insertTextMode = Nothing,
       _textEdit = Nothing,
       _textEditText = Nothing,
@@ -103,30 +103,3 @@ newCompletionItem mLocator (mKeyArg, t) =
       _command = Nothing,
       _data_ = Nothing
     }
-
-stylizeKeyArgList :: T.Text -> Maybe (IsConstLike, [Key]) -> Maybe T.Text
-stylizeKeyArgList t mKeyArgList = do
-  (isConstLike, keyArgList) <- mKeyArgList
-  if isConstLike
-    then Nothing
-    else return $ t <> "(" <> stylizeKeyArgList' 1 keyArgList <> ")"
-
-stylizeKeyArgList' :: Int -> [Key] -> T.Text
-stylizeKeyArgList' count keyArgList = do
-  case keyArgList of
-    [] ->
-      ""
-    [keyArg] ->
-      stylizeKeyArg count keyArg
-    keyArg : rest ->
-      stylizeKeyArg count keyArg <> ", " <> stylizeKeyArgList' (count + 1) rest
-
-stylizeKeyArg :: Int -> Key -> T.Text
-stylizeKeyArg count keyArg =
-  "${" <> T.pack (show count) <> ":" <> stylizeHoleKey keyArg <> "}"
-
-stylizeHoleKey :: Key -> Key
-stylizeHoleKey k =
-  if T.elem '{' k -- hole
-    then "_"
-    else k
