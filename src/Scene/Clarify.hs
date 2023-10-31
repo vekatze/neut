@@ -120,14 +120,13 @@ clarifyStmt stmt =
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
-                  return (f, (O.Clear, map fst dataArgs', t'))
+                  return (f, (O.Opaque, map fst dataArgs', t'))
               | otherwise ->
                   Throw.raiseCritical m "found a broken unary data"
             Nothing -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
-              let opacity = if length consInfoList <= 1 then O.Clear else O.Opaque
-              returnSigmaDataS4 name opacity dataInfo' >>= clarifyStmtDefineBody' name xts'
+              returnSigmaDataS4 name O.Opaque dataInfo' >>= clarifyStmtDefineBody' name xts'
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
