@@ -44,6 +44,7 @@ import Entity.PrimOp
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
+import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
 import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum
@@ -131,6 +132,8 @@ clarifyStmt stmt =
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
+    StmtDefineConst m dd t' v' ->
+      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd AN.zero [] t' v'
     StmtDefineResource m name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"

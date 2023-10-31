@@ -31,6 +31,7 @@ import Entity.HoleSubst qualified as HS
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
+import Entity.Opacity qualified as O
 import Entity.Prim qualified as P
 import Entity.PrimType qualified as PT
 import Entity.PrimValue qualified as PV
@@ -46,6 +47,7 @@ import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Reveal qualified as Reveal
 import Scene.Elaborate.Unify qualified as Unify
+import Scene.Term.Inline qualified as TM
 import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
@@ -89,20 +91,21 @@ synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
+  defList'' <- mapM inlineStmt defList'
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
   Cache.saveCache source $
     Cache.Cache
-      { Cache.stmtList = defList',
+      { Cache.stmtList = defList'',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
         Cache.declList = declList
       }
   Remark.printRemarkList remarkList
   Remark.insertToGlobalRemarkList remarkList
-  return defList'
+  return defList''
 
 elaborateStmt :: WeakStmt -> App Stmt
 elaborateStmt stmt = do
@@ -116,6 +119,12 @@ elaborateStmt stmt = do
       let result = StmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
       insertStmt result
       return result
+    WeakStmtDefineConst m dd t v -> do
+      t' <- elaborate' t
+      v' <- elaborate' v
+      let result = StmtDefineConst m dd t' v'
+      insertStmt result
+      return result
     WeakStmtDefineResource m name discarder copier -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
@@ -123,11 +132,31 @@ elaborateStmt stmt = do
       insertStmt result
       return result
 
+inlineStmt :: Stmt -> App Stmt
+inlineStmt stmt =
+  case stmt of
+    StmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
+      e' <- TM.inline e
+      return $ StmtDefine isConstLike stmtKind m x impArgNum xts codType e'
+    StmtDefineConst m dd t v -> do
+      t' <- TM.inline t
+      v' <- TM.inline v
+      unless (TM.isValue v') $ do
+        Throw.raiseError m $
+          "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
+      return $ StmtDefineConst m dd t' v'
+    StmtDefineResource m name discarder copier -> do
+      discarder' <- TM.inline discarder
+      copier' <- TM.inline copier
+      return $ StmtDefineResource m name discarder' copier'
+
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
   case stmt of
     StmtDefine _ stmtKind _ f _ xts _ e -> do
       Definition.insert (toOpacity stmtKind) f xts e
+    StmtDefineConst _ dd _ v ->
+      Definition.insert O.Clear dd [] v
     StmtDefineResource {} ->
       return ()
   insertWeakStmt $ weakenStmt stmt
@@ -139,6 +168,9 @@ insertWeakStmt stmt = do
     WeakStmtDefine _ stmtKind m f _ xts codType e -> do
       Type.insert f $ m :< WT.Pi xts codType
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
+    WeakStmtDefineConst m dd t v -> do
+      Type.insert dd $ m :< WT.Pi [] t
+      WeakDefinition.insert O.Clear m dd [] v
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
 
@@ -153,6 +185,8 @@ insertStmtKindInfo stmt = do
           DataDefinition.insert dataName dataArgs consInfoList
         DataIntro {} ->
           return ()
+    StmtDefineConst {} ->
+      return ()
     StmtDefineResource {} ->
       return ()
 

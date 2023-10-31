@@ -3,6 +3,7 @@ module Scene.Parse.RawTerm
     preAscription,
     preBinder,
     parseTopDefInfo,
+    parseDefInfoCod,
     typeWithoutIdent,
     preVar,
     parseName,

@@ -65,8 +65,8 @@ isValue term =
       True
     _ :< PiIntro {} ->
       True
-    _ :< Data {} ->
-      True
+    _ :< Data _ _ args ->
+      all isValue args
     _ :< DataIntro _ _ dataArgs consArgs ->
       all isValue $ dataArgs ++ consArgs
     _ :< Noema {} ->

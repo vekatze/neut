@@ -33,6 +33,7 @@ data RawStmt
       [RawBinder RT.RawTerm]
       RT.RawTerm
       RT.RawTerm
+  | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
 
 data WeakStmt
@@ -45,6 +46,7 @@ data WeakStmt
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
+  | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
 
 type Program =
@@ -60,6 +62,7 @@ data Stmt
       [BinderF TM.Term]
       TM.Term
       TM.Term
+  | StmtDefineConst Hint DD.DefiniteDescription TM.Term TM.Term
   | StmtDefineResource Hint DD.DefiniteDescription TM.Term TM.Term
   deriving (Generic)
 
@@ -76,6 +79,8 @@ compress stmt =
           StmtDefine isConstLike stmtKind m functionName impArgNum args codType (m :< TM.Tau)
         _ ->
           stmt
+    StmtDefineConst {} ->
+      stmt
     StmtDefineResource {} ->
       stmt
 
@@ -84,6 +89,8 @@ getNameFromWeakStmt stmt =
   case stmt of
     WeakStmtDefine _ _ _ functionName _ _ _ _ ->
       functionName
+    WeakStmtDefineConst _ constName _ _ ->
+      constName
     WeakStmtDefineResource _ resourceName _ _ ->
       resourceName
 

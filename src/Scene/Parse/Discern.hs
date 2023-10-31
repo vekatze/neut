@@ -56,6 +56,11 @@ discernStmtList stmtList =
       e' <- discern nenv e
       rest' <- discernStmtList rest
       return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
+    RawStmtDefineConst m dd t v : rest -> do
+      t' <- discern empty t
+      v' <- discern empty v
+      rest' <- discernStmtList rest
+      return $ WeakStmtDefineConst m dd t' v' : rest'
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier

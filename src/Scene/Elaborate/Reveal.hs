@@ -35,6 +35,10 @@ revealStmt stmt =
         e' <- reveal' varEnv e
         return (codType', e')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
+    WeakStmtDefineConst m dd t v -> do
+      t' <- reveal' [] t
+      v' <- reveal' [] v
+      return $ WeakStmtDefineConst m dd t' v'
     WeakStmtDefineResource m name discarder copier -> do
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier

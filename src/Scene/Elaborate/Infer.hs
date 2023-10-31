@@ -53,6 +53,11 @@ inferStmt mMainDD stmt =
         unitType <- getUnitType m
         insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
+    WeakStmtDefineConst m dd t v -> do
+      t' <- inferType' [] t
+      (v', tv) <- infer' [] v
+      insConstraintEnv t' tv
+      return $ WeakStmtDefineConst m dd t' v'
     WeakStmtDefineResource m name discarder copier -> do
       Type.insert name $ m :< WT.Tau
       (discarder', td) <- infer' [] discarder
