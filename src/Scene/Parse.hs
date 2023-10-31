@@ -93,6 +93,8 @@ parseCachedStmtList stmtList = do
         let explicitArgs = drop (AN.reify impArgNum) args
         let argNames = map (\(_, x, _) -> toText x) explicitArgs
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
+      StmtDefineConst m dd _ _ ->
+        Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
       StmtDefineResource m name _ _ ->
         Global.registerStmtDefineResource m name
 
@@ -126,8 +128,8 @@ parseStmt = do
   choice
     [ return <$> parseDefine O.Opaque,
       parseDefineData,
-      return <$> parseType,
       return <$> parseDefine O.Clear,
+      return <$> parseConstant,
       return <$> parseDefineResource
     ]
 
@@ -172,15 +174,14 @@ defineFunction ::
 defineFunction stmtKind m name impArgNum binder codType e = do
   return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
 
-parseType :: P.Parser RawStmt
-parseType = do
+parseConstant :: P.Parser RawStmt
+parseConstant = do
+  try $ P.keyword "constant"
   m <- P.getCurrentHint
-  try $ P.keyword "type"
-  aliasName <- P.baseName >>= lift . Locator.attachCurrentLocator
-  (argList, isConstLike) <- choice [(,False) <$> P.argSeqOrList preBinder, return ([], True)]
-  t <- P.betweenBrace rawExpr
-  let stmtKind = SK.Normal O.Clear
-  return $ RawStmtDefine isConstLike stmtKind m aliasName AN.zero argList (m :< RT.Tau) t
+  constName <- P.baseName >>= lift . Locator.attachCurrentLocator
+  t <- parseDefInfoCod m
+  v <- P.betweenBrace rawExpr
+  return $ RawStmtDefineConst m constName t v
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -327,6 +328,9 @@ registerTopLevelNames stmtList =
       let argNames = map (\(_, x, _) -> x) explicitArgs
       Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
       registerTopLevelNames rest
+    RawStmtDefineConst m dd _ _ : rest -> do
+      Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
+      registerTopLevelNames rest
     RawStmtDefineResource m name _ _ : rest -> do
       Global.registerStmtDefineResource m name
       registerTopLevelNames rest
@@ -336,6 +340,8 @@ getWeakStmtName stmt =
   case stmt of
     WeakStmtDefine _ _ m name _ _ _ _ ->
       (m, name)
+    WeakStmtDefineConst m name _ _ ->
+      (m, name)
     WeakStmtDefineResource m name _ _ ->
       (m, name)
 
@@ -343,6 +349,8 @@ getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
 getStmtName stmt =
   case stmt of
     StmtDefine _ _ m name _ _ _ _ ->
+      (m, name)
+    StmtDefineConst m name _ _ ->
       (m, name)
     StmtDefineResource m name _ _ ->
       (m, name)

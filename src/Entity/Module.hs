@@ -33,7 +33,8 @@ data Module = Module
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
     moduleForeignDirList :: [Path Rel Dir],
-    modulePrefixMap :: Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator)
+    modulePrefixMap :: Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator),
+    moduleInlineLimit :: Maybe Int
   }
   deriving (Show)
 
@@ -72,6 +73,10 @@ keyForeign =
 keyPrefix :: T.Text
 keyPrefix =
   "prefix"
+
+keyInlineLimit :: T.Text
+keyInlineLimit =
+  "inline-limit"
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
@@ -145,7 +150,8 @@ ppModule someModule = do
                 getForeignInfo someModule,
                 getAntecedentInfo someModule,
                 getDependencyInfo someModule,
-                getPrefixMapInfo someModule
+                getPrefixMapInfo someModule,
+                getInlineLimitInfo someModule
               ]
         )
 
@@ -217,6 +223,11 @@ getPrefixMapInfo someModule = do
             () :< E.String (GL.reify (GL.GlobalLocator alias locator))
       let prefixMapDict' = Map.mapKeys BN.reify prefixMapDict
       return (keyPrefix, () :< E.Dictionary prefixMapDict')
+
+getInlineLimitInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getInlineLimitInfo someModule = do
+  limit <- moduleInlineLimit someModule
+  return (keyInlineLimit, () :< E.Int limit)
 
 ppAntecedent :: ModuleDigest -> T.Text
 ppAntecedent (ModuleDigest digest) =

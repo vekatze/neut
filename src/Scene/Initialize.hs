@@ -10,6 +10,7 @@ where
 import Context.Alias qualified as Alias
 import Context.App
 import Context.Decl qualified as Decl
+import Context.Definition qualified as Definition
 import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.LLVM qualified as LLVM
@@ -19,6 +20,7 @@ import Context.Remark qualified as Remark
 import Context.Tag qualified as Tag
 import Context.Unravel qualified as Unravel
 import Context.UnusedVariable qualified as UnusedVariable
+import Context.WeakDefinition qualified as WeakDefinition
 import Data.Maybe
 import Entity.Config.Remark qualified as Remark
 import Entity.Module
@@ -48,6 +50,8 @@ initializeForTarget = do
   Unravel.initialize
   Remark.setGlobalRemarkList []
   Global.clearSourceNameMap
+  WeakDefinition.initialize
+  Definition.initialize
 
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do

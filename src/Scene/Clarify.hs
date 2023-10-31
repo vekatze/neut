@@ -44,6 +44,7 @@ import Entity.PrimOp
 import Entity.PrimValue qualified as PV
 import Entity.Stmt
 import Entity.StmtKind
+import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
 import Entity.Term.Chain qualified as TM
 import Entity.Term.FromPrimNum
@@ -51,7 +52,6 @@ import Scene.Clarify.Linearize
 import Scene.Clarify.Sigma
 import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
-import Scene.Term.Inline qualified as TM
 import Scene.Term.Subst qualified as TM
 
 clarify :: ([Stmt], [DE.Decl]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl])
@@ -120,17 +120,18 @@ clarifyStmt stmt =
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
-                  return (f, (O.Clear, map fst dataArgs', t'))
+                  return (f, (O.Opaque, map fst dataArgs', t'))
               | otherwise ->
                   Throw.raiseCritical m "found a broken unary data"
             Nothing -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
-              let opacity = if length consInfoList <= 1 then O.Clear else O.Opaque
-              returnSigmaDataS4 name opacity dataInfo' >>= clarifyStmtDefineBody' name xts'
+              returnSigmaDataS4 name O.Opaque dataInfo' >>= clarifyStmtDefineBody' name xts'
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
+    StmtDefineConst m dd t' v' ->
+      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd AN.zero [] t' v'
     StmtDefineResource m name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
@@ -160,8 +161,7 @@ clarifyStmtDefineBody ::
   TM.Term ->
   App C.Comp
 clarifyStmtDefineBody tenv xts e = do
-  e' <- TM.inline e >>= clarifyTerm tenv
-  linearize xts e' >>= Reduce.reduce
+  clarifyTerm tenv e >>= linearize xts >>= Reduce.reduce
 
 clarifyStmtDefineBody' ::
   DD.DefiniteDescription ->
