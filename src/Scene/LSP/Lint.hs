@@ -32,21 +32,21 @@ lint msg = do
   let doc = msg ^. J.params . J.textDocument . J.uri
   case uriToFilePath doc of
     Just path -> do
-      flushDiagnosticsBySource 100 (Just "neut")
+      flushDiagnosticsBySource maxDiagNum (Just "neut")
       logList <- lift $ Check.check (Just path)
-      let diagList = mapMaybe remarkToDignostic logList
-      let diagList' = NE.groupBy (\(u1, _) (u2, _) -> u1 == u2) diagList
-      if null diagList'
-        then return ()
-        else do
-          forM_ diagList' $ \foo -> do
-            let (uri, _) = NE.head foo
-            let diags = map snd $ NE.toList foo
-            diags' <- lift $ updateCol uri diags
-            flushDiagnosticsBySource 100 Nothing
-            publishDiagnostics 100 uri Nothing (partitionBySource diags')
+      let diagGroupList = mapMaybe remarkToDignostic logList
+      let diagGroupList' = NE.groupBy (\(u1, _) (u2, _) -> u1 == u2) diagGroupList
+      forM_ diagGroupList' $ \diagGroup -> do
+        let (uri, _) = NE.head diagGroup
+        let diags = map snd $ NE.toList diagGroup
+        diags' <- lift $ updateCol uri diags
+        publishDiagnostics maxDiagNum uri Nothing (partitionBySource diags')
     Nothing -> do
       return ()
+
+maxDiagNum :: Int
+maxDiagNum =
+  100
 
 remarkToDignostic :: Remark -> Maybe (NormalizedUri, Diagnostic)
 remarkToDignostic (mLoc, _, level, msg) = do
