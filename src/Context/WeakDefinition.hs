@@ -1,5 +1,6 @@
 module Context.WeakDefinition
-  ( insert,
+  ( initialize,
+    insert,
     read,
     lookup,
   )
@@ -21,6 +22,10 @@ import Prelude hiding (lookup, read)
 
 type DefMap =
   Map.HashMap DD.DefiniteDescription WeakTerm
+
+initialize :: App ()
+initialize = do
+  writeRef' weakDefMap Map.empty
 
 insert :: O.Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> WeakTerm -> App ()
 insert opacity m name xts e =
