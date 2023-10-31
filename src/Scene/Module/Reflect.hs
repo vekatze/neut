@@ -73,6 +73,7 @@ fromFilePath moduleID moduleFilePath = do
   foreignDirListEns <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
   foreignDirList <- mapM interpretDirPath foreignDirListEns
   prefixMap <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPrefixMap
+  let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
   return
     Module
       { moduleID = moduleID,
@@ -85,7 +86,8 @@ fromFilePath moduleID moduleFilePath = do
         moduleAntecedents = antecedents,
         moduleLocation = moduleFilePath,
         moduleForeignDirList = foreignDirList,
-        modulePrefixMap = prefixMap
+        modulePrefixMap = prefixMap,
+        moduleInlineLimit = mInlineLimit
       }
 
 fromCurrentPath :: App Module
@@ -151,6 +153,11 @@ interpretDirPath ens = do
   (_, pathText) <- liftEither $ E.toString ens
   parseRelDir $ T.unpack pathText
 
+interpretInlineLimit :: Either Error E.Ens -> Maybe Int
+interpretInlineLimit errOrEns = do
+  ens <- rightToMaybe errOrEns
+  rightToMaybe $ E.toInt ens
+
 ensureExistence ::
   H.Hint ->
   Path Abs Dir ->
@@ -179,3 +186,11 @@ getCurrentModuleFilePath :: App (Path Abs File)
 getCurrentModuleFilePath = do
   baseDir <- Path.getCurrentDir
   findModuleFile baseDir baseDir
+
+rightToMaybe :: Either a b -> Maybe b
+rightToMaybe errOrVal =
+  case errOrVal of
+    Left _ ->
+      Nothing
+    Right val ->
+      Just val

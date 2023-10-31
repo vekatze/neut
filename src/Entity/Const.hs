@@ -65,6 +65,10 @@ executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
 
+defaultInlineLimit :: Int
+defaultInlineLimit =
+  100000
+
 core :: T.Text
 core =
   "core"
