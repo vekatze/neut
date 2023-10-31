@@ -3,7 +3,7 @@ data tree(a) {
 - Node(int, a, list(tree(a)))
 }
 
-type heap(a: tau) {
+inline heap(a: tau) {
   // the list is in increasing order of rank
   list(tree(a))
 }
