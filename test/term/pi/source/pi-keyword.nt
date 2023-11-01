@@ -15,10 +15,10 @@ define bar(a: tau, some-value: a): unit {
 define test-syntax(): unit {
   let _ =
     foo of {
-    - a => int
-    - FOO => True
-    - 🌟🌟🌟 => list(void)
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね => {
+    - a = int
+    - FOO = True
+    - 🌟🌟🌟 = list(void)
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
@@ -27,10 +27,10 @@ define test-syntax(): unit {
   in
   let _ =
     foo of {
-    - a => int
-    - 🌟🌟🌟 => list(void)
-    - FOO => False
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね => {
+    - a = int
+    - 🌟🌟🌟 = list(void)
+    - FOO = False
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
@@ -39,20 +39,20 @@ define test-syntax(): unit {
   in
   let _ =
     foo of {
-    - 🌟🌟🌟 => list(void)
-    - a =>
+    - 🌟🌟🌟 = list(void)
+    - a =
       foo of {
-      - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね => {
+      - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
           let x = 10 in
           let y = 20 in
           add-int(x, y)
         }
-      - a => int
-      - 🌟🌟🌟 => list(void)
-      - FOO => True
+      - a = int
+      - 🌟🌟🌟 = list(void)
+      - FOO = True
       }
-    - FOO => False
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね => {
+    - FOO = False
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
@@ -62,8 +62,8 @@ define test-syntax(): unit {
   let _ =
     // hole-notation + keyword arguments
     bar of {
-    - a => _
-    - some-value => tau
+    - a = _
+    - some-value = tau
     }
   in
   Unit

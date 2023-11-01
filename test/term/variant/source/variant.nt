@@ -219,9 +219,9 @@ data monoid(a) {
 
 define list-monoid(a: tau): monoid(list(a)) {
   Monoid of {
-  - m-op =>
+  - m-op =
     (xs, ys) => { core.list.append(xs, ys) }
-  - m-empty =>
+  - m-empty =
     []
   }
 }
