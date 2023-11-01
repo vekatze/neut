@@ -176,7 +176,7 @@ rawTermKeyValuePair = do
   (m, key) <- var
   choice
     [ do
-        delimiter "=>"
+        delimiter "="
         value <- rawExpr
         return (m, key, value),
       do
@@ -605,7 +605,7 @@ rawTermPatternKeyValuePair = do
   from <- symbol
   choice
     [ do
-        delimiter "=>"
+        delimiter "="
         to <- rawTermPattern
         return (from, to),
       do
