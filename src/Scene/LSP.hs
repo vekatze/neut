@@ -6,17 +6,18 @@ import Control.Monad.IO.Class
 import Control.Monad.Trans
 import Data.Maybe
 import Entity.AppLsp
+import Entity.Config.Remark qualified as Remark
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Scene.Initialize qualified as Initialize
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 
-lsp :: App Int
-lsp = do
-  appEnv <- getEnv
+lsp :: Remark.Config -> App Int
+lsp cfg = do
   liftIO $
     runServer $
       ServerDefinition
@@ -24,7 +25,7 @@ lsp = do
           onConfigurationChange = const $ pure $ Right (),
           doInitialize = \env _req -> pure $ Right env,
           staticHandlers = handlers,
-          interpretHandler = \env -> Iso (runAppInEnv appEnv . runLspT env) liftIO,
+          interpretHandler = \env -> Iso (runLSPApp cfg . runLspT env) liftIO,
           options = lspOptions
         }
 
@@ -48,3 +49,9 @@ handlers =
         mLoc <- lift $ LSP.findDefinition $ req ^. J.params
         responder $ Right $ InR $ InL $ List $ maybeToList mLoc
     ]
+
+runLSPApp :: Remark.Config -> App a -> IO a
+runLSPApp cfg app = do
+  runApp $ do
+    Initialize.initializeCompiler cfg Nothing
+    app
