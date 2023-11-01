@@ -1,6 +1,6 @@
 import {
 - core.list
-- core.data.vector
+- core.vector
 }
 
 data list(a: tau) {

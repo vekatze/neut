@@ -23,9 +23,9 @@ data finite-map-signature(a, b) {
 
 define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-signature(a, b) {
   Finite-Map of {
-  - empty =>
+  - empty =
     Leaf
-  - insert =>
+  - insert =
     mu insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
       match haystack {
       - Leaf =>
@@ -41,7 +41,7 @@ define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-sig
         }
       }
     }
-  - lookup =>
+  - lookup =
     mu lookup(key: a, haystack: &finite-map(a, b)): ?b {
       case haystack {
       - Leaf =>
