@@ -40,9 +40,9 @@ build cfg = do
     (artifactTime, dependenceSeq) <- Unravel.unravel target
     llvmList <- forM dependenceSeq $ \source -> do
       Initialize.initializeForSource source
-      virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
+      virtualCode <- Parse.parse >>= Elaborate.elaborate
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
-        llvm <- Lower.lower virtualCode >>= Emit.emit
+        llvm <- Clarify.clarify virtualCode >>= Lower.lower >>= Emit.emit
         return (llvm, source)
     currentTime <- liftIO getCurrentTime
     forConcurrently_ (catMaybes llvmList) $ \(llvm, source) -> do
