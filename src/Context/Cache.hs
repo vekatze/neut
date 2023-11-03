@@ -54,7 +54,7 @@ loadCache' shouldCheckArtifactTime source = do
               removeFile cachePath
               return Nothing
             Right content ->
-              return $ Just content
+              return $ Just $ Cache.extend content
 
 whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
 whenCompilationNecessary outputKindList source comp = do

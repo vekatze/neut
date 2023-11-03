@@ -15,8 +15,30 @@ data Cache = Cache
   }
   deriving (Generic)
 
-instance Binary Cache
+data LowCache = LowCache
+  { stmtList' :: [Stmt.StrippedStmt],
+    remarkList' :: [Remark],
+    locationTree' :: LT.LocationTree,
+    declList' :: [DE.Decl]
+  }
+  deriving (Generic)
 
-compress :: Cache -> Cache
+instance Binary LowCache
+
+compress :: Cache -> LowCache
 compress cache =
-  cache {stmtList = map Stmt.compress (stmtList cache)}
+  LowCache
+    { stmtList' = map Stmt.compress (stmtList cache),
+      remarkList' = remarkList cache,
+      locationTree' = locationTree cache,
+      declList' = declList cache
+    }
+
+extend :: LowCache -> Cache
+extend cache =
+  Cache
+    { stmtList = map Stmt.extend (stmtList' cache),
+      remarkList = remarkList' cache,
+      locationTree = locationTree' cache,
+      declList = declList' cache
+    }
