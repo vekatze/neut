@@ -62,8 +62,8 @@ wrapWithQuote :: T.Text -> T.Text
 wrapWithQuote x =
   "\"" <> x <> "\""
 
--- this.core::nat.succ
--- ~> this.core::nat.succ#form
+-- this.foo.bar
+-- ~> this.foo.bar#form
 getFormDD :: DefiniteDescription -> DefiniteDescription
 getFormDD dd = do
   MakeDefiniteDescription
