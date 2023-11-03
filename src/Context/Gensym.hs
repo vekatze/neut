@@ -1,7 +1,5 @@
 module Context.Gensym
   ( newCount,
-    readCount,
-    writeCount,
     newText,
     newTextFromText,
     newTextForHole,
@@ -33,14 +31,6 @@ import Entity.WeakTerm qualified as WT
 newCount :: App Int
 newCount =
   asks counter >>= \ref -> liftIO $ atomicAddCounter ref 1
-
-readCount :: App Int
-readCount =
-  asks counter >>= liftIO . readIORefU
-
-writeCount :: Int -> App ()
-writeCount v =
-  asks counter >>= \ref -> liftIO $ writeIORefU ref v
 
 {-# INLINE newText #-}
 newText :: App T.Text

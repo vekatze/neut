@@ -6,9 +6,7 @@ where
 
 import Context.Alias qualified as Alias
 import Context.App
-import Context.Cache qualified as Cache
 import Context.Decl qualified as Decl
-import Context.Env qualified as Env
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
