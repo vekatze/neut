@@ -42,15 +42,16 @@ build cfg = do
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
       cacheOrContent <- Load.load source
       return (source, cacheOrContent)
-    llvmList <- forM contentSeq $ \(source, cacheOrContent) -> do
+    virtualCodeList <- forM contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      virtualCode <- Parse.parse source cacheOrContent >>= Elaborate.elaborate
+      stmtList <- Parse.parse source cacheOrContent >>= Elaborate.elaborate
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
-        llvm <- Clarify.clarify virtualCode >>= Lower.lower >>= Emit.emit
-        return (llvm, source)
+        virtualCode <- Clarify.clarify stmtList >>= Lower.lower
+        return (source, virtualCode)
     currentTime <- liftIO getCurrentTime
-    forConcurrently_ (catMaybes llvmList) $ \(llvm, source) -> do
-      LLVM.emit currentTime source (outputKindList cfg) llvm
+    forConcurrently_ (catMaybes virtualCodeList) $ \(source, llvmIR) -> do
+      llvmIR' <- Emit.emit llvmIR
+      LLVM.emit currentTime source (outputKindList cfg) llvmIR'
     Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target (args cfg)
