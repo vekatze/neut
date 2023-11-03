@@ -10,7 +10,6 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.Opacity qualified as O
 import Entity.RawBinder
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
@@ -77,11 +76,7 @@ compress stmt =
     StmtDefine isConstLike stmtKind m functionName impArgNum args codType e -> do
       let codType' = TM.compress codType
       let e' = TM.compress e
-      case stmtKind of
-        SK.Normal O.Opaque ->
-          StmtDefine isConstLike stmtKind m functionName impArgNum args codType' (m :< TM.Tau)
-        _ ->
-          StmtDefine isConstLike stmtKind m functionName impArgNum args codType' e'
+      StmtDefine isConstLike stmtKind m functionName impArgNum args codType' e'
     StmtDefineConst {} ->
       stmt
     StmtDefineResource {} ->
