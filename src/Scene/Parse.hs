@@ -18,6 +18,7 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
@@ -48,10 +49,9 @@ import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
-parse :: App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
-parse = do
-  source <- Env.getCurrentSource
-  result <- parseSource source
+parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parse source cacheOrContent = do
+  result <- parseSource source cacheOrContent
   mMainDD <- Locator.getMainDefiniteDescription source
   case mMainDD of
     Just mainDD -> do
@@ -61,18 +61,17 @@ parse = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
-parseSource source = do
-  mCache <- Cache.loadCache source
+parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parseSource source cacheOrContent = do
   let path = Source.sourceFilePath source
-  case mCache of
-    Just cache -> do
+  case cacheOrContent of
+    Left cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       saveTopLevelNames path $ map getStmtName stmtList
       return $ Left cache
-    Nothing -> do
-      (defList, declList) <- P.run (program source) $ Source.sourceFilePath source
+    Right content -> do
+      (defList, declList) <- P.run (program source) path content
       registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       saveTopLevelNames path $ map getWeakStmtName stmtList

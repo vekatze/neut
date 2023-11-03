@@ -1,6 +1,7 @@
 module Scene.Ens.Reflect (fromFilePath) where
 
 import Context.App
+import Context.Parse
 import Control.Comonad.Cofree
 import Data.HashMap.Strict qualified as M
 import Data.Text qualified as T
@@ -10,8 +11,9 @@ import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
 
 fromFilePath :: Path Abs File -> App E.Ens
-fromFilePath =
-  run parseEns
+fromFilePath path = do
+  fileContent <- readSourceFile path
+  run parseEns path fileContent
 
 parseKeyValuePair :: Parser (T.Text, E.Ens)
 parseKeyValuePair = do

@@ -21,6 +21,7 @@ import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize
 import Scene.Install qualified as Install
 import Scene.Link qualified as Link
+import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
@@ -38,9 +39,12 @@ build cfg = do
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
     (artifactTime, dependenceSeq) <- Unravel.unravel target
-    llvmList <- forM dependenceSeq $ \source -> do
+    contentSeq <- forConcurrently dependenceSeq $ \source -> do
+      cacheOrContent <- Load.load source
+      return (source, cacheOrContent)
+    llvmList <- forM contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      virtualCode <- Parse.parse >>= Elaborate.elaborate
+      virtualCode <- Parse.parse source cacheOrContent >>= Elaborate.elaborate
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
         llvm <- Clarify.clarify virtualCode >>= Lower.lower >>= Emit.emit
         return (llvm, source)
