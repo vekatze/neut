@@ -16,6 +16,7 @@ import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
+import Entity.Term.Compress qualified as TM
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText qualified as WT
 import GHC.Generics
@@ -73,12 +74,14 @@ type PathSet = S.Set (Path Abs File)
 compress :: Stmt -> Stmt
 compress stmt =
   case stmt of
-    StmtDefine isConstLike stmtKind m functionName impArgNum args codType _ ->
+    StmtDefine isConstLike stmtKind m functionName impArgNum args codType e -> do
+      let codType' = TM.compress codType
+      let e' = TM.compress e
       case stmtKind of
         SK.Normal O.Opaque ->
-          StmtDefine isConstLike stmtKind m functionName impArgNum args codType (m :< TM.Tau)
+          StmtDefine isConstLike stmtKind m functionName impArgNum args codType' (m :< TM.Tau)
         _ ->
-          stmt
+          StmtDefine isConstLike stmtKind m functionName impArgNum args codType' e'
     StmtDefineConst {} ->
       stmt
     StmtDefineResource {} ->

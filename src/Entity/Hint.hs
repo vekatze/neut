@@ -40,6 +40,6 @@ new l c path =
 internalHint :: Hint
 internalHint =
   Hint
-    { metaFileName = "<internal>",
+    { metaFileName = "",
       metaLocation = (0, 0)
     }

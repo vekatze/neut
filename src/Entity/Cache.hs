@@ -4,11 +4,11 @@ import Data.Binary
 import Entity.Decl qualified as DE
 import Entity.LocationTree qualified as LT
 import Entity.Remark
-import Entity.Stmt
+import Entity.Stmt qualified as Stmt
 import GHC.Generics
 
 data Cache = Cache
-  { stmtList :: [Stmt],
+  { stmtList :: [Stmt.Stmt],
     remarkList :: [Remark],
     locationTree :: LT.LocationTree,
     declList :: [DE.Decl]
@@ -16,3 +16,7 @@ data Cache = Cache
   deriving (Generic)
 
 instance Binary Cache
+
+compress :: Cache -> Cache
+compress cache =
+  cache {stmtList = map Stmt.compress (stmtList cache)}
