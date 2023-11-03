@@ -5,7 +5,6 @@ import Data.Text qualified as T
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.VarGlobal qualified as AttrVG
-import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
@@ -13,7 +12,6 @@ import Entity.Discriminant qualified as D
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
-import Entity.LocalLocator qualified as LL
 import Entity.PrimOp qualified as PO
 import Entity.PrimType.ToText qualified as PT
 import Entity.WeakPrim qualified as WP
@@ -125,8 +123,8 @@ showVariable x =
     else Ident.toText x
 
 showGlobalVariable :: DD.DefiniteDescription -> T.Text
-showGlobalVariable dd =
-  BN.reify $ LL.baseName $ DD.localLocator dd
+showGlobalVariable =
+  DD.localLocator
 
 showPrim :: WP.WeakPrim WT.WeakTerm -> T.Text
 showPrim prim =

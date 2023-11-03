@@ -1,22 +1,19 @@
 module Entity.PrimType.FromText (fromDefiniteDescription, fromText) where
 
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
 import Entity.DataSize qualified as DS
 import Entity.DefiniteDescription qualified as DD
-import Entity.LocalLocator qualified as LL
 import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
-import Entity.StrictGlobalLocator qualified as SGL
 import Text.Read
 
 fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PT.PrimType
 fromDefiniteDescription dataSize dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
-  if SGL.llvmGlobalLocator /= sgl
+  if DD.llvmGlobalLocator /= sgl
     then Nothing
-    else fromText dataSize $ BN.reify $ LL.baseName ll
+    else fromText dataSize ll
 
 fromText :: DS.DataSize -> T.Text -> Maybe PT.PrimType
 fromText dataSize name

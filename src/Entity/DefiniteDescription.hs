@@ -1,12 +1,15 @@
 module Entity.DefiniteDescription
   ( DefiniteDescription (..),
     new,
+    localLocator,
+    globalLocator,
     getLocatorPair,
     newByGlobalLocator,
     getFormDD,
     imm,
     cls,
     toBuilder,
+    llvmGlobalLocator,
   )
 where
 
@@ -25,11 +28,7 @@ import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics
 
-data DefiniteDescription = MakeDefiniteDescription
-  { globalLocator :: SGL.StrictGlobalLocator,
-    localLocator :: LL.LocalLocator,
-    reify :: T.Text -- cache
-  }
+newtype DefiniteDescription = MakeDefiniteDescription {reify :: T.Text}
   deriving (Generic, Show)
 
 instance Eq DefiniteDescription where
@@ -46,9 +45,7 @@ instance Hashable DefiniteDescription
 new :: SGL.StrictGlobalLocator -> LL.LocalLocator -> DefiniteDescription
 new gl ll =
   MakeDefiniteDescription
-    { globalLocator = gl,
-      localLocator = ll,
-      reify = SGL.reify gl <> nsSep <> LL.reify ll
+    { reify = SGL.reify gl <> nsSep <> LL.reify ll
     }
 
 newByGlobalLocator :: SGL.StrictGlobalLocator -> BN.BaseName -> DefiniteDescription
@@ -66,12 +63,30 @@ wrapWithQuote x =
   "\"" <> x <> "\""
 
 -- this.core::nat.succ
--- ~> this.core::nat.succ.#.cons
+-- ~> this.core::nat.succ#form
 getFormDD :: DefiniteDescription -> DefiniteDescription
 getFormDD dd = do
-  let gl = globalLocator dd
-  let ll = LL.extend (localLocator dd) BN.form
-  new gl ll
+  MakeDefiniteDescription
+    { reify = reify dd <> "#" <> BN.reify BN.form
+    }
+
+globalLocator :: DefiniteDescription -> T.Text
+globalLocator dd = do
+  let nameList = T.splitOn nsSep (reify dd)
+  case initLast nameList of
+    Just (xs, _) ->
+      T.intercalate nsSep xs
+    _ ->
+      error "Entity.DefiniteDescription.globalLocator"
+
+localLocator :: DefiniteDescription -> T.Text
+localLocator dd = do
+  let nameList = T.splitOn "." (reify dd)
+  case initLast nameList of
+    Just (_, result) ->
+      result
+    _ ->
+      error "Entity.DefiniteDescription.localLocator"
 
 imm :: DefiniteDescription
 imm =
@@ -94,9 +109,9 @@ getLocatorPair m varText = do
     Just ([], _) ->
       Left $ newError m $ "the symbol `" <> varText <> "` doesn't contain a global locator"
     Just (initElems, lastElem) -> do
-      globalLocator <- GL.reflect m $ T.intercalate "." initElems
-      localLocator <- LL.reflect m lastElem
-      return (globalLocator, localLocator)
+      gl <- GL.reflect m $ T.intercalate "." initElems
+      ll <- LL.reflect m lastElem
+      return (gl, ll)
 
 initLast :: [a] -> Maybe ([a], a)
 initLast xs =
@@ -108,3 +123,7 @@ initLast xs =
     x : rest -> do
       (initElems, lastElem) <- initLast rest
       return (x : initElems, lastElem)
+
+llvmGlobalLocator :: T.Text
+llvmGlobalLocator =
+  "base.llvm"
