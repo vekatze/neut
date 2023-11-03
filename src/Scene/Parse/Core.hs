@@ -2,7 +2,6 @@ module Scene.Parse.Core where
 
 import Context.App
 import Context.Gensym qualified as Gensym
-import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
@@ -23,10 +22,9 @@ import Text.Read qualified as R
 
 type Parser = ParsecT Void T.Text App
 
-run :: Parser a -> Path Abs File -> App a
-run parser path = do
+run :: Parser a -> Path Abs File -> T.Text -> App a
+run parser path fileContent = do
   let filePath = toFilePath path
-  fileContent <- readSourceFile path
   result <- runParserT (spaceConsumer >> parser) filePath fileContent
   case result of
     Right v ->

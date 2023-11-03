@@ -7,8 +7,10 @@ import Entity.Remark
 import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
 import Scene.Initialize qualified as Initialize
+import Scene.Load qualified as Load
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
+import UnliftIO.Async
 
 check :: Maybe FilePath -> App [Remark]
 check mPath = do
@@ -17,6 +19,9 @@ check mPath = do
     paths <- Collect.collectSourceList mPath
     forM_ paths $ \path -> do
       (_, dependenceSeq) <- Unravel.unravelFromFile path
-      forM_ dependenceSeq $ \source -> do
+      contentSeq <- forConcurrently dependenceSeq $ \source -> do
+        cacheOrContent <- Load.load source
+        return (source, cacheOrContent)
+      forM_ contentSeq $ \(source, cacheOrContent) -> do
         Initialize.initializeForSource source
-        void $ Parse.parse >>= Elaborate.elaborate
+        void $ Parse.parse source cacheOrContent >>= Elaborate.elaborate

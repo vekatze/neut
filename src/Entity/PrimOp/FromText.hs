@@ -1,10 +1,8 @@
 module Entity.PrimOp.FromText (fromDefiniteDescription) where
 
 import Data.Text qualified as T
-import Entity.BaseName qualified as BN
 import Entity.DataSize qualified as DS
 import Entity.DefiniteDescription qualified as DD
-import Entity.LocalLocator qualified as LL
 import Entity.PrimNumSize
 import Entity.PrimOp
 import Entity.PrimOp.BinaryOp
@@ -13,15 +11,14 @@ import Entity.PrimOp.ConvOp qualified as Conv
 import Entity.PrimOp.UnaryOp
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
-import Entity.StrictGlobalLocator qualified as SGL
 
 fromDefiniteDescription :: DS.DataSize -> DD.DefiniteDescription -> Maybe PrimOp
 fromDefiniteDescription dataSize dd = do
   let sgl = DD.globalLocator dd
   let ll = DD.localLocator dd
-  if SGL.llvmGlobalLocator /= sgl
+  if DD.llvmGlobalLocator /= sgl
     then Nothing
-    else fromText dataSize $ BN.reify $ LL.baseName ll
+    else fromText dataSize ll
 
 fromText :: DS.DataSize -> T.Text -> Maybe PrimOp
 fromText dataSize name

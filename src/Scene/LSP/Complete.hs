@@ -14,7 +14,6 @@ import Entity.Const
 import Entity.DefiniteDescription qualified as DD
 import Entity.IsConstLike (IsConstLike)
 import Entity.Key
-import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.Source
 import Entity.TopNameMap
@@ -78,7 +77,7 @@ getLocalNameList :: TopNameMap -> App [(Maybe (IsConstLike, [Key]), T.Text)]
 getLocalNameList nameInfo = do
   let ddList = map fst $ Map.toList nameInfo
   mKeyArgList <- mapM KeyArg.lookupMaybe ddList
-  return $ zip mKeyArgList $ map (LL.reify . DD.localLocator) ddList
+  return $ zip mKeyArgList $ map DD.localLocator ddList
 
 newCompletionItem :: Maybe T.Text -> (Maybe (IsConstLike, [Key]), T.Text) -> CompletionItem
 newCompletionItem mLocator (_, t) =

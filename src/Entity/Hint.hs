@@ -18,7 +18,9 @@ type Column =
 type Loc =
   (Line, Column)
 
-instance Binary Hint
+instance Binary Hint where
+  put _ = put ()
+  get = return internalHint
 
 instance Show Hint where
   show _ =
@@ -40,6 +42,6 @@ new l c path =
 internalHint :: Hint
 internalHint =
   Hint
-    { metaFileName = "<internal>",
+    { metaFileName = "",
       metaLocation = (0, 0)
     }

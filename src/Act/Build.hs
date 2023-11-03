@@ -21,6 +21,7 @@ import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize
 import Scene.Install qualified as Install
 import Scene.Link qualified as Link
+import Scene.Load qualified as Load
 import Scene.Lower qualified as Lower
 import Scene.Parse qualified as Parse
 import Scene.Unravel qualified as Unravel
@@ -38,15 +39,19 @@ build cfg = do
   forM_ targetList $ \target -> do
     Initialize.initializeForTarget
     (artifactTime, dependenceSeq) <- Unravel.unravel target
-    llvmList <- forM dependenceSeq $ \source -> do
+    contentSeq <- forConcurrently dependenceSeq $ \source -> do
+      cacheOrContent <- Load.load source
+      return (source, cacheOrContent)
+    virtualCodeList <- forM contentSeq $ \(source, cacheOrContent) -> do
       Initialize.initializeForSource source
-      virtualCode <- Parse.parse >>= Elaborate.elaborate >>= Clarify.clarify
+      stmtList <- Parse.parse source cacheOrContent >>= Elaborate.elaborate
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
-        llvm <- Lower.lower virtualCode >>= Emit.emit
-        return (llvm, source)
+        virtualCode <- Clarify.clarify stmtList >>= Lower.lower
+        return (source, virtualCode)
     currentTime <- liftIO getCurrentTime
-    forConcurrently_ (catMaybes llvmList) $ \(llvm, source) -> do
-      LLVM.emit currentTime source (outputKindList cfg) llvm
+    forConcurrently_ (catMaybes virtualCodeList) $ \(source, llvmIR) -> do
+      llvmIR' <- Emit.emit llvmIR
+      LLVM.emit currentTime source (outputKindList cfg) llvmIR'
     Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
     when (shouldExecute cfg) $
       Execute.execute target (args cfg)

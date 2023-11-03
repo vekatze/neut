@@ -43,6 +43,8 @@ instance (Binary a) => Binary (TermF a)
 
 instance Binary Term
 
+instance Binary (Cofree TermF ())
+
 type TypeEnv =
   IntMap.IntMap Term
 

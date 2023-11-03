@@ -10,12 +10,13 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.Opacity qualified as O
 import Entity.RawBinder
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
+import Entity.Term.Compress qualified as TM
+import Entity.Term.Extend qualified as TM
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText qualified as WT
 import GHC.Generics
@@ -52,37 +53,65 @@ data WeakStmt
 type Program =
   (Source.Source, [Stmt])
 
-data Stmt
+data StmtF a
   = StmtDefine
       IsConstLike
-      (SK.StmtKind TM.Term)
+      (SK.StmtKind a)
       Hint
       DD.DefiniteDescription
       AN.ArgNum
-      [BinderF TM.Term]
-      TM.Term
-      TM.Term
-  | StmtDefineConst Hint DD.DefiniteDescription TM.Term TM.Term
-  | StmtDefineResource Hint DD.DefiniteDescription TM.Term TM.Term
+      [BinderF a]
+      a
+      a
+  | StmtDefineConst Hint DD.DefiniteDescription a a
+  | StmtDefineResource Hint DD.DefiniteDescription a a
   deriving (Generic)
+
+type Stmt = StmtF TM.Term
+
+type StrippedStmt = StmtF (Cofree TM.TermF ())
 
 instance Binary Stmt
 
+instance Binary StrippedStmt
+
 type PathSet = S.Set (Path Abs File)
 
-compress :: Stmt -> Stmt
+compress :: Stmt -> StrippedStmt
 compress stmt =
   case stmt of
-    StmtDefine isConstLike stmtKind m functionName impArgNum args codType _ ->
-      case stmtKind of
-        SK.Normal O.Opaque ->
-          StmtDefine isConstLike stmtKind m functionName impArgNum args codType (m :< TM.Tau)
-        _ ->
-          stmt
-    StmtDefineConst {} ->
-      stmt
-    StmtDefineResource {} ->
-      stmt
+    StmtDefine isConstLike stmtKind m functionName impArgNum args codType e -> do
+      let stmtKind' = TM.compressStmtKind stmtKind
+      let args' = map TM.compressBinder args
+      let codType' = TM.compress codType
+      let e' = TM.compress e
+      StmtDefine isConstLike stmtKind' m functionName impArgNum args' codType' e'
+    StmtDefineConst m dd t e -> do
+      let t' = TM.compress t
+      let e' = TM.compress e
+      StmtDefineConst m dd t' e'
+    StmtDefineResource m dd discarder copier -> do
+      let discarder' = TM.compress discarder
+      let copier' = TM.compress copier
+      StmtDefineResource m dd discarder' copier'
+
+extend :: StrippedStmt -> Stmt
+extend stmt =
+  case stmt of
+    StmtDefine isConstLike stmtKind m functionName impArgNum args codType e -> do
+      let stmtKind' = TM.extendStmtKind stmtKind
+      let args' = map TM.extendBinder args
+      let codType' = TM.extend codType
+      let e' = TM.extend e
+      StmtDefine isConstLike stmtKind' m functionName impArgNum args' codType' e'
+    StmtDefineConst m dd t e -> do
+      let t' = TM.extend t
+      let e' = TM.extend e
+      StmtDefineConst m dd t' e'
+    StmtDefineResource m dd discarder copier -> do
+      let discarder' = TM.extend discarder
+      let copier' = TM.extend copier
+      StmtDefineResource m dd discarder' copier'
 
 getNameFromWeakStmt :: WeakStmt -> DD.DefiniteDescription
 getNameFromWeakStmt stmt =
