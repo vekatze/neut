@@ -6,6 +6,7 @@ where
 
 import Context.App
 import Context.Gensym qualified as Gensym
+import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -125,8 +126,8 @@ ensurePatternRowSanity (patternVector, _) = do
 ensurePatternSanity :: (Hint, PAT.Pattern) -> App ()
 ensurePatternSanity (m, pat) =
   case pat of
-    PAT.Var {} ->
-      return ()
+    PAT.Var v -> do
+      Tag.insertBinder (m, v, ())
     PAT.WildcardVar {} ->
       return ()
     PAT.Cons consInfo -> do

@@ -1,6 +1,7 @@
 module Scene.Parse.Import (parseImportBlock) where
 
 import Context.Alias qualified as Alias
+import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
@@ -105,10 +106,12 @@ getSource :: Hint -> SGL.StrictGlobalLocator -> LocatorText -> P.Parser Source.S
 getSource m sgl locatorText = do
   nextModule <- lift $ Module.getModule m (SGL.moduleID sgl) locatorText
   relPath <- lift $ addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
+  let nextPath = getSourceDir nextModule </> relPath
+  lift $ Tag.insert m (T.length locatorText) (newSourceHint nextPath)
   return $
     Source.Source
       { Source.sourceModule = nextModule,
-        Source.sourceFilePath = getSourceDir nextModule </> relPath,
+        Source.sourceFilePath = nextPath,
         Source.sourceHint = Just m
       }
 

@@ -18,7 +18,7 @@ import Prelude hiding (lookup, read)
 insert ::
   DD.DefiniteDescription ->
   [BinderF Term] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [BinderF Term], D.Discriminant)] ->
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [BinderF Term], D.Discriminant)] ->
   App ()
 insert dataName dataArgs consInfoList = do
   let value = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList

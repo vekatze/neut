@@ -61,7 +61,6 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      Remark.printRemarkList remarkList
       let declList = Cache.declList cache
       return (stmtList, declList)
     Right (defList, declList) -> do
@@ -103,7 +102,6 @@ synthesizeDefList declList defList = do
         Cache.locationTree = tmap,
         Cache.declList = declList
       }
-  Remark.printRemarkList remarkList
   Remark.insertToGlobalRemarkList remarkList
   return defList''
 
@@ -116,38 +114,38 @@ elaborateStmt stmt = do
       xts' <- mapM elaborateWeakBinder xts
       codType' <- elaborate' codType >>= Term.reduce
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
-      let result = StmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
+      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgNum xts' codType' e'
       insertStmt result
       return result
     WeakStmtDefineConst m dd t v -> do
       t' <- elaborate' t
       v' <- elaborate' v
-      let result = StmtDefineConst m dd t' v'
+      let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return result
     WeakStmtDefineResource m name discarder copier -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
-      let result = StmtDefineResource m name discarder' copier'
+      let result = StmtDefineResource (SavedHint m) name discarder' copier'
       insertStmt result
       return result
 
 inlineStmt :: Stmt -> App Stmt
 inlineStmt stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
-      e' <- TM.inline m e
+    StmtDefine isConstLike stmtKind m@(SavedHint m') x impArgNum xts codType e -> do
+      e' <- TM.inline m' e
       return $ StmtDefine isConstLike stmtKind m x impArgNum xts codType e'
-    StmtDefineConst m dd t v -> do
-      t' <- TM.inline m t
-      v' <- TM.inline m v
+    StmtDefineConst m@(SavedHint m') dd t v -> do
+      t' <- TM.inline m' t
+      v' <- TM.inline m' v
       unless (TM.isValue v') $ do
-        Throw.raiseError m $
+        Throw.raiseError m' $
           "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
       return $ StmtDefineConst m dd t' v'
-    StmtDefineResource m name discarder copier -> do
-      discarder' <- TM.inline m discarder
-      copier' <- TM.inline m copier
+    StmtDefineResource m@(SavedHint m') name discarder copier -> do
+      discarder' <- TM.inline m' discarder
+      copier' <- TM.inline m' copier
       return $ StmtDefineResource m name discarder' copier'
 
 insertStmt :: Stmt -> App ()

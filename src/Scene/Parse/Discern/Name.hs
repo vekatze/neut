@@ -95,7 +95,8 @@ resolveLocator m (gl, ll) = do
     Just globalVar@(_, (mDef, _)) -> do
       let glLen = T.length $ GL.reify gl
       let llLen = T.length $ LL.reify ll
-      Tag.insert m (glLen + llLen) mDef
+      let sepLen = T.length C.nsSep
+      Tag.insert m (glLen + sepLen + llLen) mDef
       return globalVar
 
 resolveConstructor ::

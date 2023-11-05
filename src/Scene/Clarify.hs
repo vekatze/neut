@@ -108,7 +108,7 @@ withSpecializedCtx action = do
 clarifyStmt :: Stmt -> App C.CompDef
 clarifyStmt stmt =
   case stmt of
-    StmtDefine _ stmtKind m f _ xts _ e -> do
+    StmtDefine _ stmtKind (SavedHint m) f _ xts _ e -> do
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       let tenv = TM.insTypeEnv xts IntMap.empty
       case stmtKind of
@@ -132,7 +132,7 @@ clarifyStmt stmt =
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
     StmtDefineConst m dd t' v' ->
       clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd AN.zero [] t' v'
-    StmtDefineResource m name discarder copier -> do
+    StmtDefineResource (SavedHint m) name discarder copier -> do
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"
       discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce

@@ -2,6 +2,7 @@ module Entity.Hint where
 
 import Data.Binary
 import GHC.Generics
+import Path
 
 data Hint = Hint
   { metaFileName :: FilePath,
@@ -32,6 +33,18 @@ instance Ord Hint where
 instance Eq Hint where
   _ == _ = True
 
+newtype SavedHint = SavedHint Hint deriving (Generic)
+
+instance Show SavedHint where
+  show (SavedHint m) = show m
+
+instance Binary SavedHint where
+  put (SavedHint val) = do
+    put $ metaFileName val
+    put $ metaLocation val
+  get = do
+    SavedHint <$> (Hint <$> get <*> get)
+
 new :: Int -> Int -> FilePath -> Hint
 new l c path =
   Hint
@@ -45,3 +58,7 @@ internalHint =
     { metaFileName = "",
       metaLocation = (0, 0)
     }
+
+newSourceHint :: Path Abs File -> Hint
+newSourceHint path =
+  new 1 1 $ toFilePath path

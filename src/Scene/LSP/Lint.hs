@@ -6,7 +6,8 @@ import Control.Monad
 import Control.Monad.IO.Class
 import Control.Monad.Trans
 import Data.ByteString qualified as B
-import Data.List (sortOn)
+import Data.Function (on)
+import Data.List (sortBy, sortOn)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
@@ -34,12 +35,11 @@ lint msg = do
     Just path -> do
       flushDiagnosticsBySource maxDiagNum (Just "neut")
       logList <- lift $ Check.check (Just path)
-      let diagGroupList = mapMaybe remarkToDignostic logList
-      let diagGroupList' = NE.groupBy (\(u1, _) (u2, _) -> u1 == u2) diagGroupList
-      forM_ diagGroupList' $ \diagGroup -> do
-        let (uri, _) = NE.head diagGroup
-        let diags = map snd $ NE.toList diagGroup
-        diags' <- lift $ updateCol uri diags
+      let uriDiagList = mapMaybe remarkToDignostic logList
+      let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
+      let diagGroups = map (\g -> (fst $ NE.head g, NE.map snd g)) diagGroupList'
+      forM_ diagGroups $ \(uri, diags) -> do
+        diags' <- lift $ updateCol uri $ NE.toList diags
         publishDiagnostics maxDiagNum uri Nothing (partitionBySource diags')
     Nothing -> do
       return ()
@@ -92,11 +92,11 @@ updateCol' sourceLines diags =
       if fromEnum l /= currentLineNumber
         then updateCol' sourceLines' diags
         else do
-          let foo = T.drop (fromEnum c) currentLine
-          let offset = T.length $ T.takeWhile (`S.notMember` Parse.nonSymbolCharSet) foo
+          let currentLine' = T.drop (fromEnum c) currentLine
+          let offset = T.length $ T.takeWhile (`S.notMember` Parse.nonSymbolCharSet) currentLine'
           let endPos = Position l (fromIntegral $ fromEnum c + offset)
           let diag' = set J.range (Range startPos endPos) diag
-          diag' : updateCol' sourceLines' rest
+          diag' : updateCol' ((currentLineNumber, currentLine) : sourceLines') rest
 
 uriToPath :: NormalizedUri -> Maybe (Path Abs File)
 uriToPath (NormalizedUri _ pathText) = do

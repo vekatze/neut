@@ -28,17 +28,17 @@ import Entity.WeakTerm qualified as WT
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind m name impArgNum xts codType e -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgNum xts codType e -> do
       let stmtKind' = weakenStmtKind stmtKind
       let xts' = map weakenBinder xts
       let codType' = weaken codType
       let e' = weaken e
       WeakStmtDefine isConstLike stmtKind' m name impArgNum xts' codType' e'
-    StmtDefineConst m dd t v -> do
+    StmtDefineConst (SavedHint m) dd t v -> do
       let t' = weaken t
       let v' = weaken v
       WeakStmtDefineConst m dd t' v'
-    StmtDefineResource m name discarder copier -> do
+    StmtDefineResource (SavedHint m) name discarder copier -> do
       let discarder' = weaken discarder
       let copier' = weaken copier
       WeakStmtDefineResource m name discarder' copier'

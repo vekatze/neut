@@ -64,27 +64,27 @@ registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
   [a] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerAsEnumIfNecessary dataName dataArgs consInfoList =
   when (hasNoArgs dataArgs consInfoList) $ do
     OptimizableData.insert dataName OD.Enum
     mapM_ (flip OptimizableData.insert OD.Enum . (\(_, consName, _, _, _) -> consName)) consInfoList
 
-hasNoArgs :: [a] -> [(Hint, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
+hasNoArgs :: [a] -> [(c, DD.DefiniteDescription, b, [a], D.Discriminant)] -> Bool
 hasNoArgs dataArgs consInfoList =
   null dataArgs && all (null . (\(_, _, _, consArgs, _) -> consArgs)) consInfoList
 
 registerAsUnaryIfNecessary ::
   DD.DefiniteDescription ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
+  [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerAsUnaryIfNecessary dataName consInfoList =
   when (isUnary consInfoList) $ do
     OptimizableData.insert dataName OD.Unary
     mapM_ (flip OptimizableData.insert OD.Unary . (\(_, consName, _, _, _) -> consName)) consInfoList
 
-isUnary :: [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] -> Bool
+isUnary :: [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] -> Bool
 isUnary consInfoList =
   case consInfoList of
     [(_, _, _, [_], _)] ->
@@ -107,7 +107,7 @@ registerData ::
   Hint ->
   DD.DefiniteDescription ->
   [a] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerData isConstLike m dataName dataArgs consInfoList = do
   ensureFreshness m dataName
@@ -121,9 +121,9 @@ registerData isConstLike m dataName dataArgs consInfoList = do
 
 toConsNameArrow ::
   AN.ArgNum ->
-  (Hint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
+  (SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant) ->
   (DD.DefiniteDescription, (Hint, GN.GlobalName))
-toConsNameArrow dataArgNum (m, consDD, isConstLikeCons, consArgs, discriminant) = do
+toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, discriminant) = do
   let consArgNum = AN.fromInt $ length consArgs
   (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
 
