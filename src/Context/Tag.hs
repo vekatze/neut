@@ -1,6 +1,7 @@
 module Context.Tag
   ( initialize,
     insert,
+    insertFileLoc,
     insertBinder,
     insertDD,
     get,
@@ -24,7 +25,12 @@ initialize =
 insert :: Hint -> Int -> Hint -> App ()
 insert mUse nameLength mDef = do
   let (l, c) = metaLocation mUse
-  modifyRef' tagMap $ LT.insert (l, (c, c + nameLength)) mDef
+  modifyRef' tagMap $ LT.insert LT.SymbolLoc (l, (c, c + nameLength)) mDef
+
+insertFileLoc :: Hint -> Int -> Hint -> App ()
+insertFileLoc mUse nameLength mDef = do
+  let (l, c) = metaLocation mUse
+  modifyRef' tagMap $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
 
 get :: App LT.LocationTree
 get = do

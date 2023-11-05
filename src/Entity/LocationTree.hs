@@ -1,44 +1,50 @@
 module Entity.LocationTree
   ( LocationTree,
+    LocType (..),
     empty,
     insert,
     find,
     findRef,
-    toList,
   )
 where
 
 import Data.Binary
 import Entity.Hint
-import Entity.Hint.Reify
 import GHC.Generics (Generic)
 
 type ColInterval =
   (Int, Int)
 
+data LocType
+  = FileLoc
+  | SymbolLoc
+  deriving (Show, Generic)
+
 -- I'll do balancing stuff later
 data LocationTree
   = Leaf
-  | Node (Line, ColInterval) SavedHint LocationTree LocationTree
+  | Node LocType (Line, ColInterval) SavedHint LocationTree LocationTree
   deriving (Show, Generic)
 
 instance Binary LocationTree
+
+instance Binary LocType
 
 empty :: LocationTree
 empty =
   Leaf
 
-insert :: (Int, (Int, Int)) -> Hint -> LocationTree -> LocationTree
-insert loc value t =
+insert :: LocType -> (Int, (Int, Int)) -> Hint -> LocationTree -> LocationTree
+insert lt loc value t =
   case t of
     Leaf ->
-      Node loc (SavedHint value) Leaf Leaf
-    Node loc' value' t1 t2 -> do
+      Node lt loc (SavedHint value) Leaf Leaf
+    Node lt' loc' value' t1 t2 -> do
       case cmp loc loc' of
         LT ->
-          Node loc' value' (insert loc value t1) t2
+          Node lt' loc' value' (insert lt loc value t1) t2
         GT ->
-          Node loc' value' t1 (insert loc value t2)
+          Node lt' loc' value' t1 (insert lt loc value t2)
         EQ ->
           t
 
@@ -47,7 +53,7 @@ find line col t =
   case t of
     Leaf ->
       Nothing
-    Node (line', (colFrom, colTo)) (SavedHint value) t1 t2 ->
+    Node _ (line', (colFrom, colTo)) (SavedHint value) t1 t2 ->
       case compare line line' of
         LT ->
           find line col t1
@@ -67,8 +73,9 @@ findRef loc t =
   case t of
     Leaf ->
       []
-    Node locRange (SavedHint m') left right
-      | loc == metaLocation m' ->
+    Node lt locRange (SavedHint m') left right
+      | loc == metaLocation m',
+        SymbolLoc <- lt ->
           (metaFileName m', locRange) : findRef loc left ++ findRef loc right
       | otherwise ->
           findRef loc left ++ findRef loc right
@@ -82,11 +89,3 @@ cmp (line, (colFrom, _)) (line', (colFrom', _)) =
       GT
     EQ ->
       compare colFrom colFrom'
-
-toList :: LocationTree -> [((Line, ColInterval), String)]
-toList t =
-  case t of
-    Leaf ->
-      []
-    Node loc (SavedHint m) t1 t2 ->
-      (loc, toString m) : toList t1 ++ toList t2
