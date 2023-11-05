@@ -6,6 +6,7 @@ import Context.Env qualified as Env
 import Context.LLVM qualified as LLVM
 import Context.Module qualified as Module
 import Context.Path qualified as Path
+import Context.Remark qualified as Remark
 import Control.Monad
 import Control.Monad.IO.Class
 import Data.Foldable
@@ -48,6 +49,7 @@ build cfg = do
       Cache.whenCompilationNecessary (outputKindList cfg) source $ do
         virtualCode <- Clarify.clarify stmtList >>= Lower.lower
         return (source, virtualCode)
+    Remark.getGlobalRemarkList >>= Remark.printRemarkList
     currentTime <- liftIO getCurrentTime
     forConcurrently_ (catMaybes virtualCodeList) $ \(source, llvmIR) -> do
       llvmIR' <- Emit.emit llvmIR

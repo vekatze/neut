@@ -61,7 +61,6 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      Remark.printRemarkList remarkList
       let declList = Cache.declList cache
       return (stmtList, declList)
     Right (defList, declList) -> do
@@ -103,7 +102,6 @@ synthesizeDefList declList defList = do
         Cache.locationTree = tmap,
         Cache.declList = declList
       }
-  Remark.printRemarkList remarkList
   Remark.insertToGlobalRemarkList remarkList
   return defList''
 
