@@ -181,8 +181,8 @@ parseConstant = do
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
-  m <- P.getCurrentHint
   try $ P.keyword "data"
+  m <- P.getCurrentHint
   a <- P.baseName >>= lift . Locator.attachCurrentLocator
   dataArgsOrNone <- parseDataArgs
   consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
