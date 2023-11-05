@@ -1,6 +1,5 @@
 module Scene.Parse.Discern.Struct
   ( ensureFieldLinearity,
-    resolveField,
     reorderArgs,
   )
 where
@@ -10,11 +9,8 @@ import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Key
-import Entity.Name
-import Scene.Parse.Discern.Name (resolveName)
 
 ensureFieldLinearity ::
   Hint ->
@@ -35,11 +31,6 @@ ensureFieldLinearity m ks found nonLinear =
       if S.member k found
         then ensureFieldLinearity m rest found (S.insert k nonLinear)
         else ensureFieldLinearity m rest (S.insert k found) nonLinear
-
-resolveField :: Hint -> Name -> App DD.DefiniteDescription
-resolveField m varOrLocator = do
-  (dd, _) <- resolveName m varOrLocator
-  return dd
 
 reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> App [a]
 reorderArgs m keyList kvs =

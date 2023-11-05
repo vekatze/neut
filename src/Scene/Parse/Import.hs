@@ -107,7 +107,7 @@ getSource m sgl locatorText = do
   nextModule <- lift $ Module.getModule m (SGL.moduleID sgl) locatorText
   relPath <- lift $ addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
-  lift $ Tag.insert m (T.length locatorText) (newSourceHint nextPath)
+  lift $ Tag.insertFileLoc m (T.length locatorText) (newSourceHint nextPath)
   return $
     Source.Source
       { Source.sourceModule = nextModule,
