@@ -44,7 +44,7 @@ initialize = do
   currentSource <- readRef "currentSource" currentSource
   cgl <- constructGlobalLocator mainModule currentSource
   writeRef currentGlobalLocator cgl
-  writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator, SGL.natGlobalLocator]
+  writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
   writeRef' activeDefiniteDescriptionList Map.empty
 
 activateSpecifiedNames :: TopNameMap -> SGL.StrictGlobalLocator -> [(Hint, LL.LocalLocator)] -> App ()

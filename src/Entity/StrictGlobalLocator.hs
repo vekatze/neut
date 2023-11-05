@@ -29,13 +29,6 @@ llvmGlobalLocator =
       sourceLocator = SL.llvmLocator
     }
 
-natGlobalLocator :: StrictGlobalLocator
-natGlobalLocator =
-  StrictGlobalLocator
-    { moduleID = MID.Base,
-      sourceLocator = SL.natLocator
-    }
-
 baseGlobalLocatorOf :: SL.SourceLocator -> StrictGlobalLocator
 baseGlobalLocatorOf sl =
   StrictGlobalLocator
