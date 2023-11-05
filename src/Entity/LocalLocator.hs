@@ -4,6 +4,7 @@ module Entity.LocalLocator
     reify,
     reflect,
     extend,
+    length,
   )
 where
 
@@ -14,6 +15,7 @@ import Entity.BaseName qualified as BN
 import Entity.Error
 import Entity.Hint qualified as H
 import GHC.Generics
+import Prelude hiding (length)
 
 newtype LocalLocator = MakeLocalLocator
   { baseName :: BN.BaseName
@@ -42,3 +44,7 @@ extend base ext =
   MakeLocalLocator
     { baseName = BN.extend (baseName base) ext
     }
+
+length :: LocalLocator -> Int
+length MakeLocalLocator {baseName} =
+  BN.length baseName

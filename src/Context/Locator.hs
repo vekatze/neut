@@ -13,6 +13,7 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Module qualified as Module
+import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Containers.ListUtils qualified as ListUtils
@@ -50,12 +51,15 @@ activateSpecifiedNames :: TopNameMap -> SGL.StrictGlobalLocator -> [(Hint, LL.Lo
 activateSpecifiedNames topNameMap sgl lls = do
   forM_ lls $ \(m, ll) -> do
     let dd = DD.new sgl ll
-    unless (Map.member dd topNameMap) $ do
-      Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
-    aenv <- readRef' activeDefiniteDescriptionList
-    when (Map.member ll aenv) $ do
-      Throw.raiseError m $ "the top-level name `" <> LL.reify ll <> "` is already imported"
-    modifyRef' activeDefiniteDescriptionList $ Map.insert ll dd
+    case Map.lookup dd topNameMap of
+      Nothing ->
+        Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
+      Just (mDef, _) -> do
+        Tag.insert m (LL.length ll) mDef
+        aenv <- readRef' activeDefiniteDescriptionList
+        when (Map.member ll aenv) $ do
+          Throw.raiseError m $ "the top-level name `" <> LL.reify ll <> "` is already imported"
+        modifyRef' activeDefiniteDescriptionList $ Map.insert ll dd
 
 attachCurrentLocator ::
   BN.BaseName ->

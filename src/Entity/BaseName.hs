@@ -4,6 +4,7 @@ module Entity.BaseName
     reify,
     reflect,
     reflect',
+    length,
     hole,
     form,
     sigmaName,
@@ -39,6 +40,7 @@ import Entity.Hint qualified as H
 import Entity.PrimType qualified as PT
 import Entity.PrimType.ToText qualified as PT
 import GHC.Generics
+import Prelude hiding (length)
 
 newtype BaseName = MakeBaseName {reify :: T.Text}
   deriving (Generic, Show, Eq, Ord)
@@ -69,6 +71,10 @@ reflect' rawTxt = do
       return baseName
     _ ->
       Left $ newError' $ "invalid signature: " <> rawTxt
+
+length :: BaseName -> Int
+length MakeBaseName {reify} =
+  T.length reify
 
 empty :: BaseName
 empty =
