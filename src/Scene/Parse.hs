@@ -86,13 +86,13 @@ parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
-      StmtDefine isConstLike stmtKind m name impArgNum args _ _ -> do
+      StmtDefine isConstLike stmtKind (SavedHint m) name impArgNum args _ _ -> do
         let explicitArgs = drop (AN.reify impArgNum) args
         let argNames = map (\(_, x, _) -> toText x) explicitArgs
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
-      StmtDefineConst m dd _ _ ->
+      StmtDefineConst (SavedHint m) dd _ _ ->
         Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-      StmtDefineResource m name _ _ ->
+      StmtDefineResource (SavedHint m) name _ _ ->
         Global.registerStmtDefineResource m name
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
@@ -217,13 +217,13 @@ defineData m dataName dataArgsOrNone consInfoList = do
 modifyConsInfo ::
   D.Discriminant ->
   [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm])] ->
-  [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
+  [(SavedHint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
     (m, consName, isConstLike, consArgs) : rest ->
-      (m, consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
+      (SavedHint m, consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
   (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm]) ->
@@ -345,9 +345,9 @@ getWeakStmtName stmt =
 getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
 getStmtName stmt =
   case stmt of
-    StmtDefine _ _ m name _ _ _ _ ->
+    StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
       (m, name)
-    StmtDefineConst m name _ _ ->
+    StmtDefineConst (SavedHint m) name _ _ ->
       (m, name)
-    StmtDefineResource m name _ _ ->
+    StmtDefineResource (SavedHint m) name _ _ ->
       (m, name)

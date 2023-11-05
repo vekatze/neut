@@ -23,7 +23,7 @@ data BaseStmtKind x t
   | Data
       DD.DefiniteDescription -- the name of the variant type
       [(Hint, x, t)] -- variant args
-      [(Hint, DD.DefiniteDescription, IsConstLike, [(Hint, x, t)], D.Discriminant)] -- constructors
+      [(SavedHint, DD.DefiniteDescription, IsConstLike, [(Hint, x, t)], D.Discriminant)] -- constructors
   | DataIntro DD.DefiniteDescription [(Hint, x, t)] [(Hint, x, t)] D.Discriminant
   deriving (Generic)
 

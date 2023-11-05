@@ -57,14 +57,14 @@ data StmtF a
   = StmtDefine
       IsConstLike
       (SK.StmtKind a)
-      Hint
+      SavedHint
       DD.DefiniteDescription
       AN.ArgNum
       [BinderF a]
       a
       a
-  | StmtDefineConst Hint DD.DefiniteDescription a a
-  | StmtDefineResource Hint DD.DefiniteDescription a a
+  | StmtDefineConst SavedHint DD.DefiniteDescription a a
+  | StmtDefineResource SavedHint DD.DefiniteDescription a a
   deriving (Generic)
 
 type Stmt = StmtF TM.Term
