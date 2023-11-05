@@ -2,6 +2,7 @@ module Entity.Hint where
 
 import Data.Binary
 import GHC.Generics
+import Path
 
 data Hint = Hint
   { metaFileName :: FilePath,
@@ -57,3 +58,7 @@ internalHint =
     { metaFileName = "",
       metaLocation = (0, 0)
     }
+
+newSourceHint :: Path Abs File -> Hint
+newSourceHint path =
+  new 1 1 $ toFilePath path

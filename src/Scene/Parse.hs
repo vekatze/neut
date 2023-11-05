@@ -53,8 +53,7 @@ parse source cacheOrContent = do
   mMainDD <- Locator.getMainDefiniteDescription source
   case mMainDD of
     Just mainDD -> do
-      let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
-      ensureMain m mainDD
+      ensureMain (newSourceHint $ Source.sourceFilePath source) mainDD
       return result
     Nothing ->
       return result
