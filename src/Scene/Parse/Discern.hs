@@ -55,16 +55,20 @@ discernStmtList stmtList =
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
       rest' <- discernStmtList rest
+      Tag.insertDD m functionName
+      forM_ xts' Tag.insertBinder
       return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
     RawStmtDefineConst m dd t v : rest -> do
       t' <- discern empty t
       v' <- discern empty v
       rest' <- discernStmtList rest
+      Tag.insertDD m dd
       return $ WeakStmtDefineConst m dd t' v' : rest'
     RawStmtDefineResource m name discarder copier : rest -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
       rest' <- discernStmtList rest
+      Tag.insertDD m name
       return $ WeakStmtDefineResource m name discarder' copier' : rest'
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
@@ -111,6 +115,7 @@ discern nenv term =
       case kind of
         RLK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
+          Tag.insertBinder xt'
           return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
         RLK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
@@ -179,19 +184,30 @@ discernLet ::
   App WT.WeakTerm
 discernLet nenv m mxt mys e1 e2 = do
   let (ms, ys) = unzip mys
-  let attr = AttrV.Attr {isExplicit = False}
-  ysActual <- zipWithM (\my y -> discern nenv (my :< RT.Var attr (Var y))) ms ys
+  mys' <- mapM (discernIdent m nenv) ys
+  let (ms', ys') = unzip mys'
+  let ysActual = zipWith (\my y -> my :< WT.Var y) ms ys'
   ysLocal <- mapM Gensym.newIdentFromText ys
   ysCont <- mapM Gensym.newIdentFromText ys
-  let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms ysLocal
+  let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms' ysLocal
   nenvLocal <- joinNominalEnv localAddition nenv
-  let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms ysCont
+  let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont
   nenvCont <- joinNominalEnv contAddition nenv
   e1' <- discern nenvLocal e1
   (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
+  Tag.insertBinder mxt'
   e2'' <- attachSuffix (zip ysCont ysLocal) e2'
   let opacity = if null mys then WT.Clear else WT.Noetic
-  attachPrefix (zip ysLocal ysActual) (m :< WT.Let opacity mxt' e1' e2'')
+  attachPrefix (zip ysLocal (zip ms' ysActual)) (m :< WT.Let opacity mxt' e1' e2'')
+
+discernIdent :: Hint -> NominalEnv -> RawIdent -> App (Hint, Ident)
+discernIdent m nenv x =
+  case lookup x nenv of
+    Nothing ->
+      Throw.raiseError m $ "undefined variable: " <> x
+    Just ident@(_, x') -> do
+      UnusedVariable.delete x'
+      return ident
 
 discernBinder ::
   NominalEnv ->
@@ -206,6 +222,7 @@ discernBinder nenv binder =
       x' <- Gensym.newIdentFromText x
       nenv' <- extendNominalEnv mx x' nenv
       (xts', nenv'') <- discernBinder nenv' xts
+      Tag.insertBinder (mx, x', t')
       return ((mx, x', t') : xts', nenv'')
 
 discernBinderWithBody ::

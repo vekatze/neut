@@ -3,6 +3,7 @@ module Entity.LocationTree
     empty,
     insert,
     find,
+    findRef,
     toList,
   )
 where
@@ -41,7 +42,7 @@ insert loc value t =
         EQ ->
           t
 
-find :: Int -> Int -> LocationTree -> Maybe Hint
+find :: Int -> Int -> LocationTree -> Maybe (Hint, ColInterval)
 find line col t =
   case t of
     Leaf ->
@@ -59,7 +60,18 @@ find line col t =
             (_, True) ->
               find line col t2
             _ ->
-              Just value
+              Just (value, (colFrom, colTo))
+
+findRef :: Loc -> LocationTree -> [(Line, ColInterval)]
+findRef loc t =
+  case t of
+    Leaf ->
+      []
+    Node locRange (SavedHint m') left right
+      | loc == metaLocation m' ->
+          locRange : findRef loc left ++ findRef loc right
+      | otherwise ->
+          findRef loc left ++ findRef loc right
 
 cmp :: (Int, (Int, Int)) -> (Int, (Int, Int)) -> Ordering
 cmp (line, (colFrom, _)) (line', (colFrom', _)) =

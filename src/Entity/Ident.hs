@@ -25,3 +25,7 @@ attachHolePrefix (I (varName, i)) =
 isHole :: Ident -> Bool
 isHole (I (varName, _)) =
   holeVarPrefix `T.isPrefixOf` varName
+
+innerLength :: Ident -> Int
+innerLength (I (varName, _)) =
+  T.length varName
