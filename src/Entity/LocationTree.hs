@@ -62,14 +62,14 @@ find line col t =
             _ ->
               Just (value, (colFrom, colTo))
 
-findRef :: Loc -> LocationTree -> [(Line, ColInterval)]
+findRef :: Loc -> LocationTree -> [(FilePath, (Line, ColInterval))]
 findRef loc t =
   case t of
     Leaf ->
       []
     Node locRange (SavedHint m') left right
       | loc == metaLocation m' ->
-          locRange : findRef loc left ++ findRef loc right
+          (metaFileName m', locRange) : findRef loc left ++ findRef loc right
       | otherwise ->
           findRef loc left ++ findRef loc right
 
