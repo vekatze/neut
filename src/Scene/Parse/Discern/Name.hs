@@ -1,8 +1,6 @@
 module Scene.Parse.Discern.Name
   ( resolveName,
-    resolveNameOrError,
     resolveConstructor,
-    resolveConstructorMaybe,
     interpretGlobalName,
   )
 where

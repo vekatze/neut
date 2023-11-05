@@ -46,7 +46,7 @@ insert lt loc value t =
         GT ->
           Node lt' loc' value' t1 (insert lt loc value t2)
         EQ ->
-          t
+          Node lt' loc' (SavedHint value) t1 t2
 
 find :: Int -> Int -> LocationTree -> Maybe (Hint, ColInterval)
 find line col t =

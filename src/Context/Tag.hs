@@ -10,6 +10,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Control.Monad (unless)
 import Data.Text qualified as T
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
@@ -37,8 +38,8 @@ get = do
   readRef' tagMap
 
 insertBinder :: BinderF a -> App ()
-insertBinder (m, I (x, _), _) =
-  insert m (T.length x) m
+insertBinder (m, ident@(I (x, _)), _) =
+  unless (isHole ident) $ insert m (T.length x) m
 
 insertDD :: Hint -> DD.DefiniteDescription -> App ()
 insertDD m dd =
