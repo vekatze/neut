@@ -42,6 +42,8 @@ handlers =
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \msg -> do
         LSP.lint msg,
+      notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
+        return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
         return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
