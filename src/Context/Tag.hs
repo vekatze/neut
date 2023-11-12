@@ -41,6 +41,6 @@ insertBinder :: BinderF a -> App ()
 insertBinder (m, ident@(I (x, _)), _) =
   unless (isHole ident) $ insert m (T.length x) m
 
-insertDD :: Hint -> DD.DefiniteDescription -> App ()
-insertDD m dd =
-  insert m (T.length (DD.localLocator dd)) m
+insertDD :: Hint -> DD.DefiniteDescription -> Hint -> App ()
+insertDD mUse dd =
+  insert mUse (T.length (DD.localLocator dd))

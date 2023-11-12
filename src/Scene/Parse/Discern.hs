@@ -60,19 +60,22 @@ discernStmt stmt = do
       codType' <- discern nenv codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
-      Tag.insertDD m functionName
+      Tag.insertDD m functionName m
       forM_ xts' Tag.insertBinder
       return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e'
     RawStmtDefineConst m dd t v -> do
       t' <- discern empty t
       v' <- discern empty v
-      Tag.insertDD m dd
+      Tag.insertDD m dd m
       return $ WeakStmtDefineConst m dd t' v'
     RawStmtDefineResource m name discarder copier -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
-      Tag.insertDD m name
+      Tag.insertDD m name m
       return $ WeakStmtDefineResource m name discarder' copier'
+    RawStmtDeclare m name t -> do
+      t' <- discern empty t
+      return $ WeakStmtDeclare m name t'
 
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
@@ -85,6 +88,8 @@ registerTopLevelName stmt =
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
     RawStmtDefineResource m name _ _ -> do
       Global.registerStmtDefineResource m name
+    RawStmtDeclare m name _ -> do
+      Global.registerStmtDecl m name
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =

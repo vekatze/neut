@@ -43,6 +43,9 @@ revealStmt stmt =
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier
       return $ WeakStmtDefineResource m name discarder' copier'
+    WeakStmtDeclare m name t -> do
+      t' <- reveal' [] t
+      return $ WeakStmtDeclare m name t'
 
 revealStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 revealStmtKind stmtKind =

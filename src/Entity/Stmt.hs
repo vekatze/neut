@@ -36,6 +36,7 @@ data RawStmt
       RT.RawTerm
   | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
+  | RawStmtDeclare Hint DD.DefiniteDescription RT.RawTerm
 
 data WeakStmt
   = WeakStmtDefine
@@ -49,6 +50,7 @@ data WeakStmt
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
+  | WeakStmtDeclare Hint DD.DefiniteDescription WT.WeakTerm
 
 type Program =
   (Source.Source, [Stmt])
@@ -122,6 +124,8 @@ getNameFromWeakStmt stmt =
       constName
     WeakStmtDefineResource _ resourceName _ _ ->
       resourceName
+    WeakStmtDeclare _ name _ ->
+      name
 
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =

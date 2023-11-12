@@ -69,6 +69,9 @@ inferStmt mMainDD stmt =
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return $ WeakStmtDefineResource m name discarder' copier'
+    WeakStmtDeclare m name t -> do
+      t' <- inferType' [] t
+      return $ WeakStmtDeclare m name t'
 
 inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind stmtKind =
