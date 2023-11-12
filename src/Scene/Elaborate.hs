@@ -23,9 +23,9 @@ import Entity.Attr.Data qualified as AttrD
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
+import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -53,7 +53,7 @@ import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [DE.Decl]) -> App ([Stmt], [DE.Decl])
+elaborate :: Either Cache.Cache ([WeakStmt], [F.Foreign]) -> App ([Stmt], [F.Foreign])
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -86,7 +86,7 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [DE.Decl] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst

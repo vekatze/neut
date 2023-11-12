@@ -24,11 +24,11 @@ import Entity.ArgNum qualified as AN
 import Entity.BaseName qualified as BN
 import Entity.Comp qualified as C
 import Entity.Const
-import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase qualified as EC
 import Entity.ExternalName qualified as EN
+import Entity.Foreign qualified as F
 import Entity.Ident
 import Entity.LowComp qualified as LC
 import Entity.LowType qualified as LT
@@ -68,11 +68,11 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl]) ->
+  ([C.CompDef], Maybe DD.DefiniteDescription, [F.Foreign]) ->
   App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
 lower (defList, mMainName, declList) = do
   initialize $ map fst defList
-  forM_ declList $ \(DE.Decl name domList cod) -> do
+  forM_ declList $ \(F.Foreign name domList cod) -> do
     Decl.insDeclEnv' (DN.Ext name) domList cod
   unless (isJust mMainName) $ do
     Decl.insDeclEnv (DN.In DD.imm) AN.argNumS4

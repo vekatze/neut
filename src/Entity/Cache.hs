@@ -1,7 +1,7 @@
 module Entity.Cache where
 
 import Data.Binary
-import Entity.Decl qualified as DE
+import Entity.Foreign qualified as F
 import Entity.LocationTree qualified as LT
 import Entity.Remark
 import Entity.Stmt qualified as Stmt
@@ -11,7 +11,7 @@ data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     remarkList :: [Remark],
     locationTree :: LT.LocationTree,
-    declList :: [DE.Decl]
+    declList :: [F.Foreign]
   }
   deriving (Generic)
 
@@ -19,7 +19,7 @@ data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Remark],
     locationTree' :: LT.LocationTree,
-    declList' :: [DE.Decl]
+    declList' :: [F.Foreign]
   }
   deriving (Generic)
 

@@ -24,10 +24,10 @@ import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.Comp qualified as C
 import Entity.DecisionTree qualified as DT
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.EnumCase qualified as EC
+import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
@@ -54,7 +54,7 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: ([Stmt], [DE.Decl]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [DE.Decl])
+clarify :: ([Stmt], [F.Foreign]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [F.Foreign])
 clarify (defList, declList) = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of

@@ -23,11 +23,11 @@ import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Var qualified as AttrV
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
-import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.Foreign qualified as F
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
@@ -47,7 +47,7 @@ import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
-parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [F.Foreign]))
 parse source cacheOrContent = do
   result <- parseSource source cacheOrContent
   mMainDD <- Locator.getMainDefiniteDescription source
@@ -58,7 +58,7 @@ parse source cacheOrContent = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [F.Foreign]))
 parseSource source cacheOrContent = do
   let path = Source.sourceFilePath source
   case cacheOrContent of
@@ -103,18 +103,18 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [DE.Decl])
+program :: Source.Source -> P.Parser ([RawStmt], [F.Foreign])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
-  declList <- parseDeclareList
+  declList <- parseForeignList
   forM_ sourceInfoList $ \(source, aliasInfoList) -> do
     let path = Source.sourceFilePath source
     namesInSource <- lift $ Global.lookupSourceNameMap m path
     lift $ Global.activateTopLevelNames namesInSource
     forM_ aliasInfoList $ \aliasInfo ->
       lift $ Alias.activateAliasInfo namesInSource aliasInfo
-  forM_ declList $ \(DE.Decl name domList cod) -> do
+  forM_ declList $ \(F.Foreign name domList cod) -> do
     lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList)
@@ -130,21 +130,21 @@ parseStmt = do
       return <$> parseDefineResource
     ]
 
-parseDeclareList :: P.Parser [DE.Decl]
-parseDeclareList = do
+parseForeignList :: P.Parser [F.Foreign]
+parseForeignList = do
   choice
     [ do
-        P.keyword "declare"
-        P.betweenBrace (P.manyList parseDeclare),
+        P.keyword "foreign"
+        P.betweenBrace (P.manyList parseForeign),
       return []
     ]
 
-parseDeclare :: P.Parser DE.Decl
-parseDeclare = do
+parseForeign :: P.Parser F.Foreign
+parseForeign = do
   declName <- EN.ExternalName <$> P.symbol
   lts <- P.betweenParen $ P.commaList lowType
   cod <- P.delimiter ":" >> lowType
-  return $ DE.Decl declName lts cod
+  return $ F.Foreign declName lts cod
 
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
