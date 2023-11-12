@@ -2,6 +2,7 @@ module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
 import Context.Gensym qualified as Gensym
+import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
@@ -15,6 +16,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.ArgNum qualified as AN
 import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
@@ -28,6 +30,7 @@ import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Name
 import Entity.NominalEnv
+import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.RawBinder
 import Entity.RawIdent
@@ -45,31 +48,43 @@ import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
-discernStmtList stmtList =
-  case stmtList of
-    [] ->
-      return []
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e : rest -> do
+discernStmtList =
+  mapM discernStmt
+
+discernStmt :: RawStmt -> App WeakStmt
+discernStmt stmt = do
+  registerTopLevelName stmt
+  case stmt of
+    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
-      rest' <- discernStmtList rest
       Tag.insertDD m functionName
       forM_ xts' Tag.insertBinder
-      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
-    RawStmtDefineConst m dd t v : rest -> do
+      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e'
+    RawStmtDefineConst m dd t v -> do
       t' <- discern empty t
       v' <- discern empty v
-      rest' <- discernStmtList rest
       Tag.insertDD m dd
-      return $ WeakStmtDefineConst m dd t' v' : rest'
-    RawStmtDefineResource m name discarder copier : rest -> do
+      return $ WeakStmtDefineConst m dd t' v'
+    RawStmtDefineResource m name discarder copier -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
-      rest' <- discernStmtList rest
       Tag.insertDD m name
-      return $ WeakStmtDefineResource m name discarder' copier' : rest'
+      return $ WeakStmtDefineResource m name discarder' copier'
+
+registerTopLevelName :: RawStmt -> App ()
+registerTopLevelName stmt =
+  case stmt of
+    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ -> do
+      let explicitArgs = drop (AN.reify impArgNum) xts
+      let argNames = map (\(_, x, _) -> x) explicitArgs
+      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
+    RawStmtDefineConst m dd _ _ -> do
+      Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
+    RawStmtDefineResource m name _ _ -> do
+      Global.registerStmtDefineResource m name
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =

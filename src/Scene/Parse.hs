@@ -69,7 +69,6 @@ parseSource source cacheOrContent = do
       return $ Left cache
     Right content -> do
       (defList, declList) <- P.run (program source) path content
-      registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
       saveTopLevelNames path $ map getWeakStmtName stmtList
       UnusedVariable.registerRemarks
@@ -313,23 +312,6 @@ identPlusToVar (m, x, _) =
 adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
 adjustConsArg (m, x, _) =
   (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), x)
-
-registerTopLevelNames :: [RawStmt] -> App ()
-registerTopLevelNames stmtList =
-  case stmtList of
-    [] ->
-      return ()
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ : rest -> do
-      let explicitArgs = drop (AN.reify impArgNum) xts
-      let argNames = map (\(_, x, _) -> x) explicitArgs
-      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
-      registerTopLevelNames rest
-    RawStmtDefineConst m dd _ _ : rest -> do
-      Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-      registerTopLevelNames rest
-    RawStmtDefineResource m name _ _ : rest -> do
-      Global.registerStmtDefineResource m name
-      registerTopLevelNames rest
 
 getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
 getWeakStmtName stmt =
