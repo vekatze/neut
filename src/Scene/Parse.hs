@@ -126,7 +126,7 @@ parseStmt = do
       parseDefineData,
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
-      return <$> parseNominal,
+      return <$> parseDeclare,
       return <$> parseDefineResource
     ]
 
@@ -180,13 +180,13 @@ parseConstant = do
   v <- P.betweenBrace rawExpr
   return $ RawStmtDefineConst m constName t v
 
-parseNominal :: P.Parser RawStmt
-parseNominal = do
-  try $ P.keyword "nominal"
+parseDeclare :: P.Parser RawStmt
+parseDeclare = do
+  try $ P.keyword "declare"
   m <- P.getCurrentHint
-  nominalName <- P.baseName >>= lift . Locator.attachCurrentLocator
+  dd <- P.baseName >>= lift . Locator.attachCurrentLocator
   t <- P.betweenBrace rawExpr
-  return $ RawStmtDeclare m nominalName t
+  return $ RawStmtDeclare m dd t
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
