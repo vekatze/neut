@@ -11,10 +11,10 @@ import Context.App.Internal
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
-import Entity.LamKind qualified as LK
 import Entity.Opacity qualified as O
 import Entity.WeakTerm
 import Entity.WeakTerm qualified as WT
@@ -31,7 +31,7 @@ insert :: O.Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> W
 insert opacity m name xts e =
   when (opacity == O.Clear) $
     modifyRef' weakDefMap $
-      Map.insert name (m :< WT.PiIntro LK.Normal xts e)
+      Map.insert name (m :< WT.PiIntro AttrL.normal xts e)
 
 read :: App DefMap
 read =

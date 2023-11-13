@@ -4,10 +4,10 @@ import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
 import Entity.Annotation qualified as AN
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
-import Entity.LamKind
 import Entity.WeakTerm qualified as WT
 
 freeVars :: WT.WeakTerm -> S.Set Ident
@@ -22,7 +22,7 @@ freeVars term =
     _ :< WT.Pi xts t ->
       freeVars' xts (freeVars t)
     _ :< WT.PiIntro k xts e ->
-      freeVars' (catMaybes [fromLamKind k] ++ xts) (freeVars e)
+      freeVars' (catMaybes [AttrL.fromAttr k] ++ xts) (freeVars e)
     _ :< WT.PiElim e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es

@@ -11,6 +11,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Const (defaultInlineLimit)
 import Entity.DecisionTree qualified as DT
@@ -71,22 +72,22 @@ inline' axis term =
       ts' <- mapM (inline' axis) ts
       cod' <- inline' axis cod
       return (m :< TM.Pi (zip3 ms xs ts') cod')
-    m :< TM.PiIntro kind xts e -> do
+    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM (inline' axis) ts
       e' <- inline' axis e
-      case kind of
+      case lamKind of
         LK.Fix (mx, x, t) -> do
           t' <- inline' axis t
-          return (m :< TM.PiIntro (LK.Fix (mx, x, t')) (zip3 ms xs ts') e')
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) (zip3 ms xs ts') e')
         _ ->
-          return (m :< TM.PiIntro kind (zip3 ms xs ts') e')
+          return (m :< TM.PiIntro attr (zip3 ms xs ts') e')
     m :< TM.PiElim e es -> do
       e' <- inline' axis e
       es' <- mapM (inline' axis) es
       let Axis {dmap} = axis
       case e' of
-        (_ :< TM.PiIntro LK.Normal xts (_ :< body))
+        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) xts (_ :< body))
           | length xts == length es' -> do
               inline' axis $ bind (zip xts es') (m :< body)
         (_ :< TM.VarGlobal _ dd)

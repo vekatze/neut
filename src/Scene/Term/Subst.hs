@@ -5,6 +5,7 @@ import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
@@ -34,14 +35,14 @@ subst sub term =
     (m :< TM.Pi xts t) -> do
       (xts', t') <- subst' sub xts t
       return (m :< TM.Pi xts' t')
-    (m :< TM.PiIntro kind xts e) -> do
-      case kind of
+    (m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) xts e) -> do
+      case lamKind of
         LK.Fix xt -> do
           (xt' : xts', e') <- subst' sub (xt : xts) e
-          return (m :< TM.PiIntro (LK.Fix xt') xts' e')
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) xts' e')
         _ -> do
           (xts', e') <- subst' sub xts e
-          return (m :< TM.PiIntro kind xts' e')
+          return (m :< TM.PiIntro attr xts' e')
     (m :< TM.PiElim e es) -> do
       e' <- subst sub e
       es' <- mapM (subst sub) es

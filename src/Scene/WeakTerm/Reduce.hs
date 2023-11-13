@@ -4,6 +4,7 @@ import Context.App
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Lam qualified as AttrL
 import Entity.DecisionTree qualified as DT
 import Entity.Discriminant
 import Entity.Ident
@@ -22,21 +23,21 @@ reduce term =
       ts' <- mapM reduce ts
       cod' <- reduce cod
       return $ m :< WT.Pi (zip3 ms xs ts') cod'
-    m :< WT.PiIntro kind xts e -> do
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
       e' <- reduce e
-      case kind of
+      case lamKind of
         LK.Fix (mx, x, t) -> do
           t' <- reduce t
-          return (m :< WT.PiIntro (LK.Fix (mx, x, t')) (zip3 ms xs ts') e')
+          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) (zip3 ms xs ts') e')
         _ ->
-          return (m :< WT.PiIntro kind (zip3 ms xs ts') e')
+          return (m :< WT.PiIntro attr (zip3 ms xs ts') e')
     m :< WT.PiElim e es -> do
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< WT.PiIntro LK.Normal xts body)
+        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal} xts body)
           | length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')

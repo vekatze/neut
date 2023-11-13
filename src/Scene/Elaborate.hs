@@ -13,13 +13,13 @@ import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
-import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
@@ -49,7 +49,6 @@ import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Reveal qualified as Reveal
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
-import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
@@ -193,11 +192,6 @@ elaborateStmtKind stmtKind =
       consArgs' <- mapM elaborateWeakBinder consArgs
       return $ DataIntro dataName dataArgs' consArgs' discriminant
 
-data Axis = Axis
-  { recMap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
-    tenv :: TM.TypeEnv
-  }
-
 elaborate' :: WT.WeakTerm -> App TM.Term
 elaborate' term =
   case term of
@@ -212,7 +206,7 @@ elaborate' term =
       t' <- elaborate' t
       return $ m :< TM.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
-      kind' <- elaborateKind kind
+      kind' <- elaborateLamAttr kind
       xts' <- mapM elaborateWeakBinder xts
       e' <- elaborate' e
       return $ m :< TM.PiIntro kind' xts' e'
@@ -325,14 +319,14 @@ elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: LK.LamKindF WT.WeakTerm -> App (LK.LamKindF TM.Term)
-elaborateKind kind =
-  case kind of
+elaborateLamAttr :: AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
+elaborateLamAttr (AttrL.Attr {lamKind}) =
+  case lamKind of
     LK.Normal ->
-      return LK.Normal
+      return $ AttrL.Attr {lamKind = LK.Normal}
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
-      return $ LK.Fix xt'
+      return $ AttrL.Attr {lamKind = LK.Fix xt'}
 
 fillHole ::
   Hint ->

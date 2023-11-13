@@ -17,6 +17,7 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
@@ -151,10 +152,10 @@ discern nenv term =
         RLK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           Tag.insertBinder xt'
-          return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
+          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt'}) xts' e'
         RLK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro LK.Normal xts' e'
+          return $ m :< WT.PiIntro AttrL.normal xts' e'
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e

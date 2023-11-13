@@ -19,6 +19,7 @@ import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.ArgNum qualified as AN
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.BaseName qualified as BN
 import Entity.Binder
@@ -189,8 +190,8 @@ clarifyTerm tenv term =
             ]
     _ :< TM.Pi {} ->
       return returnClosureS4
-    _ :< TM.PiIntro kind mxts e -> do
-      clarifyLambda tenv kind (TM.chainOf tenv [term]) mxts e
+    _ :< TM.PiIntro attr mxts e -> do
+      clarifyLambda tenv attr (TM.chainOf tenv [term]) mxts e
     _ :< TM.PiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -410,27 +411,27 @@ clarifyMagic tenv der =
 
 clarifyLambda ::
   TM.TypeEnv ->
-  LK.LamKindF TM.Term ->
+  AttrL.Attr TM.Term ->
   [BinderF TM.Term] ->
   [BinderF TM.Term] ->
   TM.Term ->
   App C.Comp
-clarifyLambda tenv kind fvs mxts e@(m :< _) = do
-  case kind of
+clarifyLambda tenv attrL@(AttrL.Attr {lamKind}) fvs mxts e@(m :< _) = do
+  case lamKind of
     LK.Fix (_, recFuncName, _) -> do
       liftedName <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt recFuncName
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
-      let lamApp = m :< TM.PiIntro LK.Normal mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
+      let lamApp = m :< TM.PiIntro AttrL.normal mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
       -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
       (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
       Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
       clarifyTerm tenv lamApp
     LK.Normal -> do
-      e' <- clarifyTerm (TM.insTypeEnv (catMaybes [LK.fromLamKind kind] ++ mxts) tenv) e
+      e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
       returnClosure tenv O.Clear fvs mxts e'
 
 newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))

@@ -14,6 +14,7 @@ import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Constraint qualified as C
 import Entity.DefiniteDescription qualified as DD
@@ -121,16 +122,16 @@ simplify constraintList =
               cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
               simplify $ cs' ++ cs
         (m1 :< WT.PiIntro kind1 xts1 e1, m2 :< WT.PiIntro kind2 xts2 e2)
-          | LK.Fix xt1@(_, x1, _) <- kind1,
-            LK.Fix xt2@(_, x2, _) <- kind2,
+          | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
+            AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
             x1 == x2,
             length xts1 == length xts2 -> do
               yt1 <- asWeakBinder m1 e1
               yt2 <- asWeakBinder m2 e2
               cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
               simplify $ cs' ++ cs
-          | LK.Normal <- kind1,
-            LK.Normal <- kind2,
+          | AttrL.Attr {lamKind = LK.Normal} <- kind1,
+            AttrL.Attr {lamKind = LK.Normal} <- kind2,
             length xts1 == length xts2 -> do
               xt1 <- asWeakBinder m1 e1
               xt2 <- asWeakBinder m2 e2

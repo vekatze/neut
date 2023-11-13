@@ -3,6 +3,7 @@ module Entity.Term.Compress (compress, compressStmtKind, compressBinder) where
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
+import Entity.Attr.Lam qualified as AttrL
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -23,11 +24,11 @@ compress term =
       () :< TM.VarGlobal g argNum
     _ :< TM.Pi xts t ->
       () :< TM.Pi (map compressBinder xts) (compress t)
-    _ :< TM.PiIntro kind xts e -> do
-      let kind' = compressKind kind
+    _ :< TM.PiIntro attr xts e -> do
+      let attr' = compressAttr attr
       let xts' = map compressBinder xts
       let e' = compress e
-      () :< TM.PiIntro kind' xts' e'
+      () :< TM.PiIntro attr' xts' e'
     _ :< TM.PiElim e es -> do
       let e' = compress e
       let es' = map compress es
@@ -62,13 +63,13 @@ compressBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, Cofree TM.TermF ())
 compressBinder (m, x, t) =
   (m, x, compress t)
 
-compressKind :: LK.LamKindF TM.Term -> LK.LamKindF (Cofree TM.TermF ())
-compressKind kind =
-  case kind of
+compressAttr :: AttrL.Attr TM.Term -> AttrL.Attr (Cofree TM.TermF ())
+compressAttr (AttrL.Attr {lamKind}) =
+  case lamKind of
     LK.Normal ->
-      LK.Normal
+      AttrL.normal
     LK.Fix xt ->
-      LK.Fix (compressBinder xt)
+      AttrL.Attr {lamKind = LK.Fix (compressBinder xt)}
 
 compressPrim :: P.Prim TM.Term -> P.Prim (Cofree TM.TermF ())
 compressPrim prim =

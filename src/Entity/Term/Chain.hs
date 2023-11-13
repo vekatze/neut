@@ -8,12 +8,12 @@ import Control.Comonad.Cofree
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
-import Entity.LamKind qualified as LK
 import Entity.Term qualified as TM
 
 chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
@@ -35,8 +35,8 @@ chainOf' tenv term =
       []
     _ :< TM.Pi {} ->
       []
-    _ :< TM.PiIntro kind xts e ->
-      chainOfBinder tenv (catMaybes [LK.fromLamKind kind] ++ xts) [e]
+    _ :< TM.PiIntro attr xts e ->
+      chainOfBinder tenv (catMaybes [AttrL.fromAttr attr] ++ xts) [e]
     _ :< TM.PiElim e es -> do
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOf' tenv) es
