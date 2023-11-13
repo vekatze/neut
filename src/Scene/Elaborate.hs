@@ -15,7 +15,6 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.List
-import Data.Maybe (catMaybes)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
@@ -91,7 +90,7 @@ synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- mapM elaborateStmt defList
-  defList'' <- mapM inlineStmt (catMaybes defList')
+  defList'' <- mapM inlineStmt (concat defList')
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
@@ -106,7 +105,7 @@ synthesizeDefList declList defList = do
   Remark.insertToGlobalRemarkList remarkList
   return defList''
 
-elaborateStmt :: WeakStmt -> App (Maybe Stmt)
+elaborateStmt :: WeakStmt -> App [Stmt]
 elaborateStmt stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
@@ -117,22 +116,24 @@ elaborateStmt stmt = do
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgNum xts' codType' e'
       insertStmt result
-      return $ Just result
+      return [result]
     WeakStmtDefineConst m dd t v -> do
       t' <- elaborate' t
       v' <- elaborate' v
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
-      return $ Just result
+      return [result]
     WeakStmtDefineResource m name discarder copier -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
       let result = StmtDefineResource (SavedHint m) name discarder' copier'
       insertStmt result
-      return $ Just result
+      return [result]
     WeakStmtDeclare _ _ t -> do
       _ <- elaborate' t
-      return Nothing
+      return []
+    WeakStmtMutual _ stmtList -> do
+      concat <$> mapM elaborateStmt stmtList
 
 inlineStmt :: Stmt -> App Stmt
 inlineStmt stmt = do
@@ -177,6 +178,8 @@ insertWeakStmt stmt = do
       Type.insert name $ m :< WT.Tau
     WeakStmtDeclare _ name t ->
       Type.insert name t
+    WeakStmtMutual _ stmtList ->
+      mapM_ insertWeakStmt stmtList
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do

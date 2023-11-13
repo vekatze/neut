@@ -72,6 +72,9 @@ inferStmt mMainDD stmt =
     WeakStmtDeclare m name t -> do
       t' <- inferType' [] t
       return $ WeakStmtDeclare m name t'
+    WeakStmtMutual m stmtList -> do
+      stmtList' <- mapM (inferStmt mMainDD) stmtList
+      return $ WeakStmtMutual m stmtList'
 
 inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind stmtKind =

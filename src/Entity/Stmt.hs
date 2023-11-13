@@ -37,6 +37,7 @@ data RawStmt
   | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
   | RawStmtDeclare Hint DD.DefiniteDescription RT.RawTerm
+  | RawStmtMutual Hint [RawStmt]
 
 data WeakStmt
   = WeakStmtDefine
@@ -51,6 +52,7 @@ data WeakStmt
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtDeclare Hint DD.DefiniteDescription WT.WeakTerm
+  | WeakStmtMutual Hint [WeakStmt]
 
 type Program =
   (Source.Source, [Stmt])
@@ -114,18 +116,6 @@ extend stmt =
       let discarder' = TM.extend discarder
       let copier' = TM.extend copier
       StmtDefineResource m dd discarder' copier'
-
-getNameFromWeakStmt :: WeakStmt -> DD.DefiniteDescription
-getNameFromWeakStmt stmt =
-  case stmt of
-    WeakStmtDefine _ _ _ functionName _ _ _ _ ->
-      functionName
-    WeakStmtDefineConst _ constName _ _ ->
-      constName
-    WeakStmtDefineResource _ resourceName _ _ ->
-      resourceName
-    WeakStmtDeclare _ name _ ->
-      name
 
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =

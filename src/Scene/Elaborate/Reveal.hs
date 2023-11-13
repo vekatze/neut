@@ -46,6 +46,9 @@ revealStmt stmt =
     WeakStmtDeclare m name t -> do
       t' <- reveal' [] t
       return $ WeakStmtDeclare m name t'
+    WeakStmtMutual m stmtList -> do
+      stmtList' <- mapM revealStmt stmtList
+      return $ WeakStmtMutual m stmtList'
 
 revealStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 revealStmtKind stmtKind =

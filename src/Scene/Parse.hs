@@ -70,7 +70,7 @@ parseSource source cacheOrContent = do
     Right content -> do
       (defList, declList) <- P.run (program source) path content
       stmtList <- Discern.discernStmtList defList
-      saveTopLevelNames path $ map getWeakStmtName stmtList
+      saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
       Global.ensureDeclSanity
       return $ Right (stmtList, declList)
@@ -127,6 +127,7 @@ parseStmt = do
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
       return <$> parseDeclare,
+      return <$> parseMutual,
       return <$> parseDefineResource
     ]
 
@@ -173,7 +174,7 @@ defineFunction stmtKind m name impArgNum binder codType e = do
 
 parseConstant :: P.Parser RawStmt
 parseConstant = do
-  try $ P.keyword "constant"
+  P.keyword "constant"
   m <- P.getCurrentHint
   constName <- P.baseName >>= lift . Locator.attachCurrentLocator
   t <- parseDefInfoCod m
@@ -182,11 +183,36 @@ parseConstant = do
 
 parseDeclare :: P.Parser RawStmt
 parseDeclare = do
-  try $ P.keyword "declare"
+  P.keyword "declare"
   m <- P.getCurrentHint
   dd <- P.baseName >>= lift . Locator.attachCurrentLocator
   t <- P.betweenBrace rawExpr
   return $ RawStmtDeclare m dd t
+
+parseMutual :: P.Parser RawStmt
+parseMutual = do
+  m <- P.getCurrentHint
+  P.keyword "mutual"
+  stmtList <- concat <$> P.betweenBrace (many parseStmt)
+  lift $ ensureMutualSoundness stmtList
+  return $ RawStmtMutual m stmtList
+
+ensureMutualSoundness :: [RawStmt] -> App ()
+ensureMutualSoundness stmtList =
+  forM_ stmtList $ \stmt -> do
+    when (isPossiblyMutualInlineDef stmt) $
+      Throw.raiseError (getHint stmt) "inline definitions can't be used in `mutual`"
+
+isPossiblyMutualInlineDef :: RawStmt -> Bool
+isPossiblyMutualInlineDef stmt =
+  case stmt of
+    RawStmtDefine _ stmtKind _ _ _ _ _ _
+      | SK.Normal O.Clear <- stmtKind ->
+          True
+    RawStmtDefineConst {} ->
+      True
+    _ ->
+      False
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -323,17 +349,37 @@ adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
 adjustConsArg (m, x, _) =
   (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), x)
 
-getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
-getWeakStmtName stmt =
+getHint :: RawStmt -> Hint
+getHint stmt =
+  case stmt of
+    RawStmtDefine _ _ m _ _ _ _ _ ->
+      m
+    RawStmtDefineConst m _ _ _ ->
+      m
+    RawStmtDefineResource m _ _ _ ->
+      m
+    RawStmtDeclare m _ _ ->
+      m
+    RawStmtMutual m _ ->
+      m
+
+getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
+getWeakStmtName =
+  concatMap getWeakStmtName'
+
+getWeakStmtName' :: WeakStmt -> [(Hint, DD.DefiniteDescription)]
+getWeakStmtName' stmt =
   case stmt of
     WeakStmtDefine _ _ m name _ _ _ _ ->
-      (m, name)
+      [(m, name)]
     WeakStmtDefineConst m name _ _ ->
-      (m, name)
+      [(m, name)]
     WeakStmtDefineResource m name _ _ ->
-      (m, name)
+      [(m, name)]
     WeakStmtDeclare m name _ ->
-      (m, name)
+      [(m, name)]
+    WeakStmtMutual _ stmtList ->
+      concatMap getWeakStmtName' stmtList
 
 getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
 getStmtName stmt =

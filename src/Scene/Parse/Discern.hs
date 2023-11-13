@@ -49,11 +49,11 @@ import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList =
-  mapM discernStmt
+  mapM (discernStmt False)
 
-discernStmt :: RawStmt -> App WeakStmt
-discernStmt stmt = do
-  registerTopLevelName stmt
+discernStmt :: Bool -> RawStmt -> App WeakStmt
+discernStmt isMutual stmt = do
+  unless isMutual $ registerTopLevelName stmt
   case stmt of
     RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
       (xts', nenv) <- discernBinder empty xts
@@ -76,6 +76,24 @@ discernStmt stmt = do
     RawStmtDeclare m name t -> do
       t' <- discern empty t
       return $ WeakStmtDeclare m name t'
+    RawStmtMutual m stmtList -> do
+      stmtList' <- mapM (discernStmt True) $ reorderStmtList stmtList
+      return $ WeakStmtMutual m stmtList'
+
+reorderStmtList :: [RawStmt] -> [RawStmt]
+reorderStmtList =
+  sortBy (\s1 s2 -> compare (getSortOrder s1) (getSortOrder s2))
+
+getSortOrder :: RawStmt -> Int
+getSortOrder stmt =
+  case stmt of
+    RawStmtDefine _ stmtKind _ _ _ _ _ _
+      | SK.Data {} <- stmtKind ->
+          0
+      | SK.DataIntro {} <- stmtKind ->
+          1
+    _ ->
+      2
 
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
@@ -90,6 +108,8 @@ registerTopLevelName stmt =
       Global.registerStmtDefineResource m name
     RawStmtDeclare m name _ -> do
       Global.registerStmtDecl m name
+    RawStmtMutual _ stmtList -> do
+      mapM_ registerTopLevelName stmtList
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
