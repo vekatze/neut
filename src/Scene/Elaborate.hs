@@ -13,6 +13,7 @@ import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.List
 import Data.Set qualified as S
@@ -89,66 +90,50 @@ synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
-  defList' <- mapM elaborateStmt defList
-  defList'' <- mapM inlineStmt (concat defList')
+  defList' <- concat <$> mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
   Cache.saveCache source $
     Cache.Cache
-      { Cache.stmtList = defList'',
+      { Cache.stmtList = defList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
         Cache.declList = declList
       }
   Remark.insertToGlobalRemarkList remarkList
-  return defList''
+  return defList'
 
 elaborateStmt :: WeakStmt -> App [Stmt]
 elaborateStmt stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
       stmtKind' <- elaborateStmtKind stmtKind
-      e' <- elaborate' e >>= Term.reduce
+      e' <- elaborate' e >>= TM.inline m
       xts' <- mapM elaborateWeakBinder xts
-      codType' <- elaborate' codType >>= Term.reduce
+      codType' <- elaborate' codType >>= TM.inline m
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgNum xts' codType' e'
       insertStmt result
       return [result]
     WeakStmtDefineConst m dd t v -> do
-      t' <- elaborate' t
-      v' <- elaborate' v
+      t' <- elaborate' t >>= TM.inline m
+      v' <- elaborate' v >>= TM.inline m
+      unless (TM.isValue v') $ do
+        Throw.raiseError m $
+          "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return [result]
     WeakStmtDefineResource m name discarder copier -> do
-      discarder' <- elaborate' discarder
-      copier' <- elaborate' copier
+      discarder' <- elaborate' discarder >>= TM.inline m
+      copier' <- elaborate' copier >>= TM.inline m
       let result = StmtDefineResource (SavedHint m) name discarder' copier'
       insertStmt result
       return [result]
     WeakStmtMutual _ stmtList -> do
       concat <$> mapM elaborateStmt stmtList
-
-inlineStmt :: Stmt -> App Stmt
-inlineStmt stmt = do
-  case stmt of
-    StmtDefine isConstLike stmtKind m@(SavedHint m') x impArgNum xts codType e -> do
-      e' <- TM.inline m' e
-      return $ StmtDefine isConstLike stmtKind m x impArgNum xts codType e'
-    StmtDefineConst m@(SavedHint m') dd t v -> do
-      t' <- TM.inline m' t
-      v' <- TM.inline m' v
-      unless (TM.isValue v') $ do
-        Throw.raiseError m' $
-          "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
-      return $ StmtDefineConst m dd t' v'
-    StmtDefineResource m@(SavedHint m') name discarder copier -> do
-      discarder' <- TM.inline m' discarder
-      copier' <- TM.inline m' copier
-      return $ StmtDefineResource m name discarder' copier'
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
@@ -207,6 +192,11 @@ elaborateStmtKind stmtKind =
       dataArgs' <- mapM elaborateWeakBinder dataArgs
       consArgs' <- mapM elaborateWeakBinder consArgs
       return $ DataIntro dataName dataArgs' consArgs' discriminant
+
+data Axis = Axis
+  { recMap :: Map.HashMap DD.DefiniteDescription ([BinderF TM.Term], TM.Term),
+    tenv :: TM.TypeEnv
+  }
 
 elaborate' :: WT.WeakTerm -> App TM.Term
 elaborate' term =
