@@ -36,7 +36,6 @@ data RawStmt
       RT.RawTerm
   | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
   | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtDeclare Hint DD.DefiniteDescription RT.RawTerm
   | RawStmtMutual Hint [RawStmt]
 
 data WeakStmt
@@ -51,7 +50,6 @@ data WeakStmt
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtDeclare Hint DD.DefiniteDescription WT.WeakTerm
   | WeakStmtMutual Hint [WeakStmt]
 
 type Program =

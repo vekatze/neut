@@ -73,9 +73,6 @@ discernStmt isMutual stmt = do
       copier' <- discern empty copier
       Tag.insertDD m name m
       return $ WeakStmtDefineResource m name discarder' copier'
-    RawStmtDeclare m name t -> do
-      t' <- discern empty t
-      return $ WeakStmtDeclare m name t'
     RawStmtMutual m stmtList -> do
       stmtList' <- mapM (discernStmt True) $ reorderStmtList stmtList
       return $ WeakStmtMutual m stmtList'
@@ -106,8 +103,6 @@ registerTopLevelName stmt =
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
     RawStmtDefineResource m name _ _ -> do
       Global.registerStmtDefineResource m name
-    RawStmtDeclare m name _ -> do
-      Global.registerStmtDecl m name
     RawStmtMutual _ stmtList -> do
       mapM_ registerTopLevelName stmtList
 

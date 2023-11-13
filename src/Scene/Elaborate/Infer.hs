@@ -69,9 +69,6 @@ inferStmt mMainDD stmt =
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return $ WeakStmtDefineResource m name discarder' copier'
-    WeakStmtDeclare m name t -> do
-      t' <- inferType' [] t
-      return $ WeakStmtDeclare m name t'
     WeakStmtMutual m stmtList -> do
       stmtList' <- mapM (inferStmt mMainDD) stmtList
       return $ WeakStmtMutual m stmtList'

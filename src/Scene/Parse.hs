@@ -72,7 +72,6 @@ parseSource source cacheOrContent = do
       stmtList <- Discern.discernStmtList defList
       saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
-      Global.ensureDeclSanity
       return $ Right (stmtList, declList)
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
@@ -126,7 +125,6 @@ parseStmt = do
       parseDefineData,
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
-      return <$> parseDeclare,
       return <$> parseMutual,
       return <$> parseDefineResource
     ]
@@ -180,14 +178,6 @@ parseConstant = do
   t <- parseDefInfoCod m
   v <- P.betweenBrace rawExpr
   return $ RawStmtDefineConst m constName t v
-
-parseDeclare :: P.Parser RawStmt
-parseDeclare = do
-  P.keyword "declare"
-  m <- P.getCurrentHint
-  dd <- P.baseName >>= lift . Locator.attachCurrentLocator
-  t <- P.betweenBrace rawExpr
-  return $ RawStmtDeclare m dd t
 
 parseMutual :: P.Parser RawStmt
 parseMutual = do
@@ -358,8 +348,6 @@ getHint stmt =
       m
     RawStmtDefineResource m _ _ _ ->
       m
-    RawStmtDeclare m _ _ ->
-      m
     RawStmtMutual m _ ->
       m
 
@@ -375,8 +363,6 @@ getWeakStmtName' stmt =
     WeakStmtDefineConst m name _ _ ->
       [(m, name)]
     WeakStmtDefineResource m name _ _ ->
-      [(m, name)]
-    WeakStmtDeclare m name _ ->
       [(m, name)]
     WeakStmtMutual _ stmtList ->
       concatMap getWeakStmtName' stmtList

@@ -1,8 +1,6 @@
 module Context.Global
   ( registerStmtDefine,
     registerStmtDefineResource,
-    registerStmtDecl,
-    ensureDeclSanity,
     lookup,
     initialize,
     activateTopLevelNames,
@@ -63,14 +61,6 @@ registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
       registerAsUnaryIfNecessary dataName consInfoList
     SK.DataIntro {} ->
       return ()
-
-registerStmtDecl ::
-  Hint ->
-  DD.DefiniteDescription ->
-  App ()
-registerStmtDecl m name = do
-  ensureDeclFreshness m name
-  insertToDeclNameMap name m $ GN.TopLevelFunc AN.zero False
 
 registerAsEnumIfNecessary ::
   DD.DefiniteDescription ->
@@ -189,34 +179,9 @@ ensureDefFreshness m name = do
     (Nothing, False) ->
       return ()
 
-ensureDeclFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
-ensureDeclFreshness m name = do
-  dnmap <- readRef' declNameMap
-  topNameMap <- readRef' nameMap
-  case (Map.member name dnmap, Map.member name topNameMap) of
-    (True, _) ->
-      Throw.raiseError m $
-        "`" <> DD.reify name <> "` is already declared"
-    (_, True) ->
-      Throw.raiseError m $
-        "`" <> DD.reify name <> "` is already defined"
-    _ ->
-      return ()
-
-ensureDeclSanity :: App ()
-ensureDeclSanity = do
-  dnmap <- readRef' declNameMap
-  forM_ (Map.toList dnmap) $ \(dd, m) -> do
-    Throw.raiseError m $ "`" <> DD.reify dd <> "` is declared but not defined"
-
 insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
 insertToNameMap dd m gn = do
   modifyRef' nameMap $ Map.insert dd (m, gn)
-
-insertToDeclNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
-insertToDeclNameMap dd m gn = do
-  modifyRef' nameMap $ Map.insert dd (m, gn)
-  modifyRef' declNameMap $ Map.insert dd m
 
 removeFromDeclNameMap :: DD.DefiniteDescription -> App ()
 removeFromDeclNameMap dd = do

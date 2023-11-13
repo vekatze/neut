@@ -129,9 +129,6 @@ elaborateStmt stmt = do
       let result = StmtDefineResource (SavedHint m) name discarder' copier'
       insertStmt result
       return [result]
-    WeakStmtDeclare _ _ t -> do
-      _ <- elaborate' t
-      return []
     WeakStmtMutual _ stmtList -> do
       concat <$> mapM elaborateStmt stmtList
 
@@ -176,8 +173,6 @@ insertWeakStmt stmt = do
       WeakDefinition.insert O.Clear m dd [] v
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
-    WeakStmtDeclare _ name t ->
-      Type.insert name t
     WeakStmtMutual _ stmtList ->
       mapM_ insertWeakStmt stmtList
 
