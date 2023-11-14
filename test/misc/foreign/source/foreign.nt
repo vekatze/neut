@@ -1,4 +1,4 @@
-declare {
+foreign {
 - add_const(int): int
 }
 

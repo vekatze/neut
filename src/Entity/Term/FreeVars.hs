@@ -1,66 +1,63 @@
-module Entity.WeakTerm.FreeVars (freeVars) where
+module Entity.Term.FreeVars (freeVars) where
 
 import Control.Comonad.Cofree
 import Data.Maybe
 import Data.Set qualified as S
-import Entity.Annotation qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Ident
-import Entity.WeakTerm qualified as WT
+import Entity.Prim qualified as P
+import Entity.PrimValue qualified as PV
+import Entity.Term qualified as TM
 
-freeVars :: WT.WeakTerm -> S.Set Ident
+freeVars :: TM.Term -> S.Set Ident
 freeVars term =
   case term of
-    _ :< WT.Tau ->
+    _ :< TM.Tau ->
       S.empty
-    _ :< WT.Var x ->
+    _ :< TM.Var x ->
       S.singleton x
-    _ :< WT.VarGlobal {} ->
+    _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi xts t ->
+    _ :< TM.Pi xts t ->
       freeVars' xts (freeVars t)
-    _ :< WT.PiIntro k xts e ->
+    _ :< TM.PiIntro k xts e ->
       freeVars' (catMaybes [AttrL.fromAttr k] ++ xts) (freeVars e)
-    _ :< WT.PiElim e es -> do
+    _ :< TM.PiElim e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es
       S.union xs ys
-    _ :< WT.Data _ _ es ->
+    _ :< TM.Data _ _ es ->
       S.unions $ map freeVars es
-    _ :< WT.DataIntro _ _ dataArgs consArgs -> do
+    _ :< TM.DataIntro _ _ dataArgs consArgs -> do
       S.unions $ map freeVars $ dataArgs ++ consArgs
-    m :< WT.DataElim _ oets decisionTree -> do
+    m :< TM.DataElim _ oets decisionTree -> do
       let (os, es, ts) = unzip3 oets
       let xs1 = S.unions $ map freeVars es
       let binder = zipWith (\o t -> (m, o, t)) os ts
       let xs2 = freeVars' binder (freeVarsDecisionTree decisionTree)
       S.union xs1 xs2
-    _ :< WT.Noema t ->
+    _ :< TM.Noema t ->
       freeVars t
-    _ :< WT.Embody t e ->
+    _ :< TM.Embody t e ->
       S.union (freeVars t) (freeVars e)
-    _ :< WT.Let _ mxt e1 e2 -> do
+    _ :< TM.Let _ mxt e1 e2 -> do
       let set1 = freeVars e1
       let set2 = freeVars' [mxt] (freeVars e2)
       S.union set1 set2
-    _ :< WT.Prim prim ->
-      foldMap freeVars prim
-    _ :< WT.Hole _ es ->
-      S.unions $ map freeVars es
-    _ :< WT.ResourceType {} ->
+    _ :< TM.Prim prim ->
+      case prim of
+        P.Value (PV.StaticText t _) ->
+          freeVars t
+        _ ->
+          S.empty
+    _ :< TM.ResourceType {} ->
       S.empty
-    _ :< WT.Magic der ->
+    _ :< TM.Magic der ->
       foldMap freeVars der
-    _ :< WT.Annotation _ annot e -> do
-      let xs1 = freeVars e
-      case annot of
-        AN.Type t -> do
-          let xs2 = freeVars t
-          S.union xs1 xs2
 
-freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident
+freeVars' :: [BinderF TM.Term] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =
   case binder of
     [] ->
@@ -70,7 +67,7 @@ freeVars' binder zs =
       let hs2 = freeVars' xts zs
       S.union hs1 $ S.filter (/= x) hs2
 
-freeVarsDecisionTree :: DT.DecisionTree WT.WeakTerm -> S.Set Ident
+freeVarsDecisionTree :: DT.DecisionTree TM.Term -> S.Set Ident
 freeVarsDecisionTree tree =
   case tree of
     DT.Leaf _ e ->
@@ -80,13 +77,13 @@ freeVarsDecisionTree tree =
     DT.Switch (_, cursor) caseList ->
       S.union (freeVars cursor) (freeVarsCaseList caseList)
 
-freeVarsCaseList :: DT.CaseList WT.WeakTerm -> S.Set Ident
+freeVarsCaseList :: DT.CaseList TM.Term -> S.Set Ident
 freeVarsCaseList (fallbackClause, clauseList) = do
   let xs1 = freeVarsDecisionTree fallbackClause
   let xs2 = S.unions $ map freeVarsCase clauseList
   S.union xs1 xs2
 
-freeVarsCase :: DT.Case WT.WeakTerm -> S.Set Ident
+freeVarsCase :: DT.Case TM.Term -> S.Set Ident
 freeVarsCase decisionCase = do
   let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
   S.unions $ freeVars' (DT.consArgs decisionCase) (freeVarsDecisionTree (DT.cont decisionCase)) : map freeVars dataTerms ++ map freeVars dataTypes

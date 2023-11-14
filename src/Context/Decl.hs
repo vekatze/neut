@@ -16,8 +16,8 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
-import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
+import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.LowType qualified as LT
 import Prelude hiding (lookup, read)
@@ -26,7 +26,7 @@ initialize :: App ()
 initialize = do
   writeRef' declEnv Map.empty
   intBaseSize <- Env.getBaseSize'
-  forM_ (DE.defaultDeclList intBaseSize) $ \(DE.Decl name domList cod) -> do
+  forM_ (F.defaultForeignList intBaseSize) $ \(F.Foreign name domList cod) -> do
     insDeclEnv' (DN.Ext name) domList cod
 
 getDeclEnv :: App DN.DeclEnv

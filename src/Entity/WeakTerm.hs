@@ -5,6 +5,7 @@ import Data.IntMap qualified as IntMap
 import Entity.Annotation qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -12,7 +13,6 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
-import Entity.LamKind
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
@@ -28,7 +28,7 @@ data WeakTermF a
   | Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi [BinderF a] a
-  | PiIntro (LamKindF a) [BinderF a] a
+  | PiIntro (AttrL.Attr a) [BinderF a] a
   | PiElim a [a]
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

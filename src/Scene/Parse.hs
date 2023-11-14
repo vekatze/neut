@@ -23,11 +23,11 @@ import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Var qualified as AttrV
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
-import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.Foreign qualified as F
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
@@ -47,7 +47,7 @@ import Scene.Parse.Import qualified as Parse
 import Scene.Parse.RawTerm
 import Text.Megaparsec hiding (parse)
 
-parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [F.Foreign]))
 parse source cacheOrContent = do
   result <- parseSource source cacheOrContent
   mMainDD <- Locator.getMainDefiniteDescription source
@@ -58,7 +58,7 @@ parse source cacheOrContent = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [DE.Decl]))
+parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [F.Foreign]))
 parseSource source cacheOrContent = do
   let path = Source.sourceFilePath source
   case cacheOrContent of
@@ -69,9 +69,8 @@ parseSource source cacheOrContent = do
       return $ Left cache
     Right content -> do
       (defList, declList) <- P.run (program source) path content
-      registerTopLevelNames defList
       stmtList <- Discern.discernStmtList defList
-      saveTopLevelNames path $ map getWeakStmtName stmtList
+      saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
       return $ Right (stmtList, declList)
 
@@ -103,18 +102,18 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [DE.Decl])
+program :: Source.Source -> P.Parser ([RawStmt], [F.Foreign])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
-  declList <- parseDeclareList
+  declList <- parseForeignList
   forM_ sourceInfoList $ \(source, aliasInfoList) -> do
     let path = Source.sourceFilePath source
     namesInSource <- lift $ Global.lookupSourceNameMap m path
     lift $ Global.activateTopLevelNames namesInSource
     forM_ aliasInfoList $ \aliasInfo ->
       lift $ Alias.activateAliasInfo namesInSource aliasInfo
-  forM_ declList $ \(DE.Decl name domList cod) -> do
+  forM_ declList $ \(F.Foreign name domList cod) -> do
     lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList)
@@ -126,24 +125,25 @@ parseStmt = do
       parseDefineData,
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
+      return <$> parseMutual,
       return <$> parseDefineResource
     ]
 
-parseDeclareList :: P.Parser [DE.Decl]
-parseDeclareList = do
+parseForeignList :: P.Parser [F.Foreign]
+parseForeignList = do
   choice
     [ do
-        P.keyword "declare"
-        P.betweenBrace (P.manyList parseDeclare),
+        P.keyword "foreign"
+        P.betweenBrace (P.manyList parseForeign),
       return []
     ]
 
-parseDeclare :: P.Parser DE.Decl
-parseDeclare = do
+parseForeign :: P.Parser F.Foreign
+parseForeign = do
   declName <- EN.ExternalName <$> P.symbol
   lts <- P.betweenParen $ P.commaList lowType
   cod <- P.delimiter ":" >> lowType
-  return $ DE.Decl declName lts cod
+  return $ F.Foreign declName lts cod
 
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
@@ -172,12 +172,37 @@ defineFunction stmtKind m name impArgNum binder codType e = do
 
 parseConstant :: P.Parser RawStmt
 parseConstant = do
-  try $ P.keyword "constant"
+  P.keyword "constant"
   m <- P.getCurrentHint
   constName <- P.baseName >>= lift . Locator.attachCurrentLocator
   t <- parseDefInfoCod m
   v <- P.betweenBrace rawExpr
   return $ RawStmtDefineConst m constName t v
+
+parseMutual :: P.Parser RawStmt
+parseMutual = do
+  m <- P.getCurrentHint
+  P.keyword "mutual"
+  stmtList <- concat <$> P.betweenBrace (many parseStmt)
+  lift $ ensureMutualSoundness stmtList
+  return $ RawStmtMutual m stmtList
+
+ensureMutualSoundness :: [RawStmt] -> App ()
+ensureMutualSoundness stmtList =
+  forM_ stmtList $ \stmt -> do
+    when (isPossiblyMutualInlineDef stmt) $
+      Throw.raiseError (getHint stmt) "inline definitions can't be used in `mutual`"
+
+isPossiblyMutualInlineDef :: RawStmt -> Bool
+isPossiblyMutualInlineDef stmt =
+  case stmt of
+    RawStmtDefine _ stmtKind _ _ _ _ _ _
+      | SK.Normal O.Clear <- stmtKind ->
+          True
+    RawStmtDefineConst {} ->
+      True
+    _ ->
+      False
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -314,32 +339,33 @@ adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
 adjustConsArg (m, x, _) =
   (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), x)
 
-registerTopLevelNames :: [RawStmt] -> App ()
-registerTopLevelNames stmtList =
-  case stmtList of
-    [] ->
-      return ()
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ : rest -> do
-      let explicitArgs = drop (AN.reify impArgNum) xts
-      let argNames = map (\(_, x, _) -> x) explicitArgs
-      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
-      registerTopLevelNames rest
-    RawStmtDefineConst m dd _ _ : rest -> do
-      Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-      registerTopLevelNames rest
-    RawStmtDefineResource m name _ _ : rest -> do
-      Global.registerStmtDefineResource m name
-      registerTopLevelNames rest
+getHint :: RawStmt -> Hint
+getHint stmt =
+  case stmt of
+    RawStmtDefine _ _ m _ _ _ _ _ ->
+      m
+    RawStmtDefineConst m _ _ _ ->
+      m
+    RawStmtDefineResource m _ _ _ ->
+      m
+    RawStmtMutual m _ ->
+      m
 
-getWeakStmtName :: WeakStmt -> (Hint, DD.DefiniteDescription)
-getWeakStmtName stmt =
+getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
+getWeakStmtName =
+  concatMap getWeakStmtName'
+
+getWeakStmtName' :: WeakStmt -> [(Hint, DD.DefiniteDescription)]
+getWeakStmtName' stmt =
   case stmt of
     WeakStmtDefine _ _ m name _ _ _ _ ->
-      (m, name)
+      [(m, name)]
     WeakStmtDefineConst m name _ _ ->
-      (m, name)
+      [(m, name)]
     WeakStmtDefineResource m name _ _ ->
-      (m, name)
+      [(m, name)]
+    WeakStmtMutual _ stmtList ->
+      concatMap getWeakStmtName' stmtList
 
 getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
 getStmtName stmt =

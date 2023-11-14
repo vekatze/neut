@@ -9,19 +9,6 @@ define test-syntax(): tau {
   tau: tau: tau: tau: tau: tau: tau
 }
 
-define test-semantics(): tau {
-  let _ = affine-tau() in
-  let _ = linear-tau() in
-  let _ = relevant-tau() in
-  let _ = tau-is-tau() in
-  let _ = pi-is-tau() in
-  let _ = data-is-tau() in
-  let _ = noema-is-tau(tau) in
-  let _ = flow-is-tau(tau) in
-  let _ = resource-is-tau() in
-  tau
-}
-
 define affine-tau(): tau {
   let _ = tau in
   tau
@@ -68,6 +55,19 @@ define flow-is-tau(a: tau): tau {
 define resource-is-tau(): tau {
   let _: tau = text in
   let _: tau = vector(text) in
+  tau
+}
+
+define test-semantics(): tau {
+  let _ = affine-tau() in
+  let _ = linear-tau() in
+  let _ = relevant-tau() in
+  let _ = tau-is-tau() in
+  let _ = pi-is-tau() in
+  let _ = data-is-tau() in
+  let _ = noema-is-tau(tau) in
+  let _ = flow-is-tau(tau) in
+  let _ = resource-is-tau() in
   tau
 }
 

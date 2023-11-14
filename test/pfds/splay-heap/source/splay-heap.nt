@@ -9,11 +9,6 @@ data order {
 - GT
 }
 
-define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
-  let Tuple(smaller, bigger) = split(_, cmp, x, t) in
-  Node(smaller, x, bigger)
-}
-
 define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
   match t {
   - Leaf =>
@@ -58,6 +53,11 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a),
   }
 }
 
+define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
+  let Tuple(smaller, bigger) = split(_, cmp, x, t) in
+  Node(smaller, x, bigger)
+}
+
 define find-min(a: tau, t: &heap(a)): ?a {
   case t {
   - Leaf =>
@@ -83,6 +83,15 @@ define delete-min(a: tau, t: heap(a)): ?heap(a) {
   }
 }
 
+define sum(xs: &list(int)): int {
+  case xs {
+  - [] =>
+    0
+  - y :: ys =>
+    add-int(*y, sum(ys))
+  }
+}
+
 define compare-int-list(xs: list(int), ys: list(int)): order {
   let x on xs = sum(xs) in
   let y on ys = sum(ys) in
@@ -94,15 +103,6 @@ define compare-int-list(xs: list(int), ys: list(int)): order {
     GT
   } else {
     EQ
-  }
-}
-
-define sum(xs: &list(int)): int {
-  case xs {
-  - [] =>
-    0
-  - y :: ys =>
-    add-int(*y, sum(ys))
   }
 }
 

@@ -11,6 +11,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -43,6 +44,9 @@ revealStmt stmt =
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier
       return $ WeakStmtDefineResource m name discarder' copier'
+    WeakStmtMutual m stmtList -> do
+      stmtList' <- mapM revealStmt stmtList
+      return $ WeakStmtMutual m stmtList'
 
 revealStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 revealStmtKind stmtKind =
@@ -78,21 +82,22 @@ reveal' varEnv term =
               let enrichedArgs = map (,m) args
               binder <- newTypeHoleList varEnv enrichedArgs
               let app = m :< WT.PiElim term (suppliedHoles ++ map (\(x, mx) -> mx :< WT.Var x) enrichedArgs)
-              return $ m :< WT.PiIntro LK.Normal binder app
+              lamID <- Gensym.newCount
+              return $ m :< WT.PiIntro (AttrL.normal lamID) binder app
         _ ->
           return term
     m :< WT.Pi xts t -> do
       (xts', t') <- revealPi varEnv xts t
       return $ m :< WT.Pi xts' t'
-    m :< WT.PiIntro kind xts e -> do
-      case kind of
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
+      case lamKind of
         LK.Fix (mx, x, t) -> do
           t' <- reveal' varEnv t
           (xts', e') <- revealBinder varEnv xts e
-          return $ m :< WT.PiIntro (LK.Fix (mx, x, t')) xts' e'
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) xts' e'
         _ -> do
           (xts', e') <- revealBinder varEnv xts e
-          return $ m :< WT.PiIntro kind xts' e'
+          return $ m :< WT.PiIntro attr xts' e'
     m :< WT.PiElim e es -> do
       es' <- mapM (reveal' varEnv) es
       e' <- reveal' varEnv e

@@ -2,6 +2,7 @@ module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
 import Context.Gensym qualified as Gensym
+import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
@@ -15,6 +16,8 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.ArgNum qualified as AN
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
@@ -28,6 +31,7 @@ import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Name
 import Entity.NominalEnv
+import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.RawBinder
 import Entity.RawIdent
@@ -45,31 +49,63 @@ import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
-discernStmtList stmtList =
-  case stmtList of
-    [] ->
-      return []
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e : rest -> do
+discernStmtList =
+  mapM (discernStmt False)
+
+discernStmt :: Bool -> RawStmt -> App WeakStmt
+discernStmt isMutual stmt = do
+  unless isMutual $ registerTopLevelName stmt
+  case stmt of
+    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
       (xts', nenv) <- discernBinder empty xts
       codType' <- discern nenv codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv e
-      rest' <- discernStmtList rest
-      Tag.insertDD m functionName
+      Tag.insertDD m functionName m
       forM_ xts' Tag.insertBinder
-      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e' : rest'
-    RawStmtDefineConst m dd t v : rest -> do
+      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e'
+    RawStmtDefineConst m dd t v -> do
       t' <- discern empty t
       v' <- discern empty v
-      rest' <- discernStmtList rest
-      Tag.insertDD m dd
-      return $ WeakStmtDefineConst m dd t' v' : rest'
-    RawStmtDefineResource m name discarder copier : rest -> do
+      Tag.insertDD m dd m
+      return $ WeakStmtDefineConst m dd t' v'
+    RawStmtDefineResource m name discarder copier -> do
       discarder' <- discern empty discarder
       copier' <- discern empty copier
-      rest' <- discernStmtList rest
-      Tag.insertDD m name
-      return $ WeakStmtDefineResource m name discarder' copier' : rest'
+      Tag.insertDD m name m
+      return $ WeakStmtDefineResource m name discarder' copier'
+    RawStmtMutual m stmtList -> do
+      stmtList' <- mapM (discernStmt True) $ reorderStmtList stmtList
+      return $ WeakStmtMutual m stmtList'
+
+reorderStmtList :: [RawStmt] -> [RawStmt]
+reorderStmtList =
+  sortBy (\s1 s2 -> compare (getSortOrder s1) (getSortOrder s2))
+
+getSortOrder :: RawStmt -> Int
+getSortOrder stmt =
+  case stmt of
+    RawStmtDefine _ stmtKind _ _ _ _ _ _
+      | SK.Data {} <- stmtKind ->
+          0
+      | SK.DataIntro {} <- stmtKind ->
+          1
+    _ ->
+      2
+
+registerTopLevelName :: RawStmt -> App ()
+registerTopLevelName stmt =
+  case stmt of
+    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ -> do
+      let explicitArgs = drop (AN.reify impArgNum) xts
+      let argNames = map (\(_, x, _) -> x) explicitArgs
+      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
+    RawStmtDefineConst m dd _ _ -> do
+      Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
+    RawStmtDefineResource m name _ _ -> do
+      Global.registerStmtDefineResource m name
+    RawStmtMutual _ stmtList -> do
+      mapM_ registerTopLevelName stmtList
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -112,14 +148,15 @@ discern nenv term =
       forM_ xts' $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi xts' t'
     m :< RT.PiIntro kind xts e -> do
+      lamID <- Gensym.newCount
       case kind of
         RLK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           Tag.insertBinder xt'
-          return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
+          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) xts' e'
         RLK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro LK.Normal xts' e'
+          return $ m :< WT.PiIntro (AttrL.normal lamID) xts' e'
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e

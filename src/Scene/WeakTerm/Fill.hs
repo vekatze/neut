@@ -9,6 +9,7 @@ import Control.Monad
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.Annotation qualified as AN
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleSubst
@@ -31,14 +32,14 @@ fill sub term =
     m :< WT.Pi xts t -> do
       (xts', t') <- fill' sub xts t
       return $ m :< WT.Pi xts' t'
-    m :< WT.PiIntro kind xts e -> do
-      case kind of
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
+      case lamKind of
         LK.Fix xt -> do
           (xt', xts', e') <- fill'' sub xt xts e
-          return $ m :< WT.PiIntro (LK.Fix xt') xts' e'
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) xts' e'
         _ -> do
           (xts', e') <- fill' sub xts e
-          return $ m :< WT.PiIntro kind xts' e'
+          return $ m :< WT.PiIntro attr xts' e'
     m :< WT.PiElim e es -> do
       e' <- fill sub e
       es' <- mapM (fill sub) es

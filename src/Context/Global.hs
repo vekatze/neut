@@ -18,6 +18,7 @@ import Context.Env qualified as Env
 import Context.Implicit qualified as Implicit
 import Context.KeyArg qualified as KeyArg
 import Context.OptimizableData qualified as OptimizableData
+import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -98,7 +99,7 @@ registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
 
 registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.GlobalName -> App ()
 registerTopLevelFunc' m topLevelName impArgNum gn = do
-  ensureFreshness m topLevelName
+  ensureDefFreshness m topLevelName
   insertToNameMap topLevelName m gn
   Implicit.insert topLevelName impArgNum
 
@@ -110,12 +111,12 @@ registerData ::
   [(SavedHint, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
 registerData isConstLike m dataName dataArgs consInfoList = do
-  ensureFreshness m dataName
+  ensureDefFreshness m dataName
   let dataArgNum = AN.fromInt $ length dataArgs
   let consNameArrowList = map (toConsNameArrow dataArgNum) consInfoList
   insertToNameMap dataName m $ GN.Data dataArgNum consNameArrowList isConstLike
   forM_ consNameArrowList $ \(consDD, consGN) -> do
-    ensureFreshness m consDD
+    ensureDefFreshness m consDD
     uncurry (insertToNameMap consDD) consGN
     Implicit.insert consDD dataArgNum
 
@@ -129,7 +130,7 @@ toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, disc
 
 registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
 registerStmtDefineResource m resourceName = do
-  ensureFreshness m resourceName
+  ensureDefFreshness m resourceName
   insertToNameMap resourceName m GN.Resource
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
@@ -159,17 +160,36 @@ lookup' m name = do
 initialize :: App ()
 initialize = do
   writeRef' nameMap Map.empty
+  writeRef' declNameMap Map.empty
 
-ensureFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
-ensureFreshness m name = do
+ensureDefFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
+ensureDefFreshness m name = do
+  dnmap <- readRef' declNameMap
   topNameMap <- readRef' nameMap
-  when (Map.member name topNameMap) $
-    Throw.raiseError m $
-      "`" <> DD.reify name <> "` is already defined"
+  case (Map.lookup name dnmap, Map.member name topNameMap) of
+    (Just _, False) ->
+      Throw.raiseCritical m $
+        "`" <> DD.reify name <> "` is declared but not register in the top name map"
+    (Just mDecl, True) -> do
+      removeFromDeclNameMap name
+      removeFromDefNameMap name
+      Tag.insertDD mDecl name m
+    (Nothing, True) ->
+      Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
+    (Nothing, False) ->
+      return ()
 
 insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
 insertToNameMap dd m gn = do
   modifyRef' nameMap $ Map.insert dd (m, gn)
+
+removeFromDeclNameMap :: DD.DefiniteDescription -> App ()
+removeFromDeclNameMap dd = do
+  modifyRef' declNameMap $ Map.delete dd
+
+removeFromDefNameMap :: DD.DefiniteDescription -> App ()
+removeFromDefNameMap dd = do
+  modifyRef' nameMap $ Map.delete dd
 
 clearSourceNameMap :: App ()
 clearSourceNameMap =

@@ -19,12 +19,13 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Annotation qualified as AN
 import Entity.Attr.Data qualified as AttrD
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
+import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -48,11 +49,10 @@ import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Reveal qualified as Reveal
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
-import Scene.Term.Reduce qualified as Term
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [DE.Decl]) -> App ([Stmt], [DE.Decl])
+elaborate :: Either Cache.Cache ([WeakStmt], [F.Foreign]) -> App ([Stmt], [F.Foreign])
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -85,68 +85,54 @@ analyzeDefList defList = do
 --     WeakStmtDefineResource m name discarder copier ->
 --       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
-synthesizeDefList :: [DE.Decl] -> [WeakStmt] -> App [Stmt]
+synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
-  defList' <- mapM elaborateStmt defList
-  defList'' <- mapM inlineStmt defList'
+  defList' <- concat <$> mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
   Cache.saveCache source $
     Cache.Cache
-      { Cache.stmtList = defList'',
+      { Cache.stmtList = defList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
         Cache.declList = declList
       }
   Remark.insertToGlobalRemarkList remarkList
-  return defList''
+  return defList'
 
-elaborateStmt :: WeakStmt -> App Stmt
+elaborateStmt :: WeakStmt -> App [Stmt]
 elaborateStmt stmt = do
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
       stmtKind' <- elaborateStmtKind stmtKind
-      e' <- elaborate' e >>= Term.reduce
+      e' <- elaborate' e >>= TM.inline m
       xts' <- mapM elaborateWeakBinder xts
-      codType' <- elaborate' codType >>= Term.reduce
+      codType' <- elaborate' codType >>= TM.inline m
       Type.insert x $ weaken $ m :< TM.Pi xts' codType'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgNum xts' codType' e'
       insertStmt result
-      return result
+      return [result]
     WeakStmtDefineConst m dd t v -> do
-      t' <- elaborate' t
-      v' <- elaborate' v
+      t' <- elaborate' t >>= TM.inline m
+      v' <- elaborate' v >>= TM.inline m
+      unless (TM.isValue v') $ do
+        Throw.raiseError m $
+          "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
-      return result
+      return [result]
     WeakStmtDefineResource m name discarder copier -> do
-      discarder' <- elaborate' discarder
-      copier' <- elaborate' copier
+      discarder' <- elaborate' discarder >>= TM.inline m
+      copier' <- elaborate' copier >>= TM.inline m
       let result = StmtDefineResource (SavedHint m) name discarder' copier'
       insertStmt result
-      return result
-
-inlineStmt :: Stmt -> App Stmt
-inlineStmt stmt = do
-  case stmt of
-    StmtDefine isConstLike stmtKind m@(SavedHint m') x impArgNum xts codType e -> do
-      e' <- TM.inline m' e
-      return $ StmtDefine isConstLike stmtKind m x impArgNum xts codType e'
-    StmtDefineConst m@(SavedHint m') dd t v -> do
-      t' <- TM.inline m' t
-      v' <- TM.inline m' v
-      unless (TM.isValue v') $ do
-        Throw.raiseError m' $
-          "couldn't reduce this term into a constant, but got:\n" <> toText (weaken v')
-      return $ StmtDefineConst m dd t' v'
-    StmtDefineResource m@(SavedHint m') name discarder copier -> do
-      discarder' <- TM.inline m' discarder
-      copier' <- TM.inline m' copier
-      return $ StmtDefineResource m name discarder' copier'
+      return [result]
+    WeakStmtMutual _ stmtList -> do
+      concat <$> mapM elaborateStmt stmtList
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
@@ -171,6 +157,8 @@ insertWeakStmt stmt = do
       WeakDefinition.insert O.Clear m dd [] v
     WeakStmtDefineResource m name _ _ ->
       Type.insert name $ m :< WT.Tau
+    WeakStmtMutual _ stmtList ->
+      mapM_ insertWeakStmt stmtList
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -218,7 +206,7 @@ elaborate' term =
       t' <- elaborate' t
       return $ m :< TM.Pi xts' t'
     m :< WT.PiIntro kind xts e -> do
-      kind' <- elaborateKind kind
+      kind' <- elaborateLamAttr kind
       xts' <- mapM elaborateWeakBinder xts
       e' <- elaborate' e
       return $ m :< TM.PiIntro kind' xts' e'
@@ -331,14 +319,14 @@ elaborateWeakBinder (m, x, t) = do
   t' <- elaborate' t
   return (m, x, t')
 
-elaborateKind :: LK.LamKindF WT.WeakTerm -> App (LK.LamKindF TM.Term)
-elaborateKind kind =
-  case kind of
+elaborateLamAttr :: AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
+elaborateLamAttr (AttrL.Attr {lamKind, identity}) =
+  case lamKind of
     LK.Normal ->
-      return LK.Normal
+      return $ AttrL.Attr {lamKind = LK.Normal, identity}
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
-      return $ LK.Fix xt'
+      return $ AttrL.Attr {lamKind = LK.Fix xt', identity}
 
 fillHole ::
   Hint ->

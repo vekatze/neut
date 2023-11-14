@@ -9,6 +9,7 @@ where
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List
+import Entity.Attr.Lam qualified as AttrL
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -54,11 +55,11 @@ weaken term =
       m :< WT.VarGlobal g argNum
     m :< TM.Pi xts t ->
       m :< WT.Pi (map weakenBinder xts) (weaken t)
-    m :< TM.PiIntro kind xts e -> do
-      let kind' = weakenKind kind
+    m :< TM.PiIntro attr xts e -> do
+      let attr' = weakenAttr attr
       let xts' = map weakenBinder xts
       let e' = weaken e
-      m :< WT.PiIntro kind' xts' e'
+      m :< WT.PiIntro attr' xts' e'
     m :< TM.PiElim e es -> do
       let e' = weaken e
       let es' = map weaken es
@@ -93,13 +94,13 @@ weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =
   (m, x, weaken t)
 
-weakenKind :: LK.LamKindF TM.Term -> LK.LamKindF WT.WeakTerm
-weakenKind kind =
-  case kind of
+weakenAttr :: AttrL.Attr TM.Term -> AttrL.Attr WT.WeakTerm
+weakenAttr AttrL.Attr {lamKind, identity} =
+  case lamKind of
     LK.Normal ->
-      LK.Normal
+      AttrL.normal identity
     LK.Fix xt ->
-      LK.Fix (weakenBinder xt)
+      AttrL.Attr {lamKind = LK.Fix (weakenBinder xt), identity}
 
 weakenPrim :: Hint -> P.Prim TM.Term -> WP.WeakPrim WT.WeakTerm
 weakenPrim m prim =

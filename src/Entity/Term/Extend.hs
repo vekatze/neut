@@ -3,6 +3,7 @@ module Entity.Term.Extend (extend, extendStmtKind, extendBinder) where
 import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.List (unzip5, zip5)
+import Entity.Attr.Lam qualified as AttrL
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
 import Entity.Ident
@@ -28,11 +29,11 @@ extend term =
       _m :< TM.VarGlobal g argNum
     _ :< TM.Pi xts t ->
       _m :< TM.Pi (map extendBinder xts) (extend t)
-    _ :< TM.PiIntro kind xts e -> do
-      let kind' = extendKind kind
+    _ :< TM.PiIntro attr xts e -> do
+      let attr' = extendAttr attr
       let xts' = map extendBinder xts
       let e' = extend e
-      _m :< TM.PiIntro kind' xts' e'
+      _m :< TM.PiIntro attr' xts' e'
     _ :< TM.PiElim e es -> do
       let e' = extend e
       let es' = map extend es
@@ -67,13 +68,13 @@ extendBinder :: (Hint, Ident, Cofree TM.TermF ()) -> (Hint, Ident, TM.Term)
 extendBinder (m, x, t) =
   (m, x, extend t)
 
-extendKind :: LK.LamKindF (Cofree TM.TermF ()) -> LK.LamKindF TM.Term
-extendKind kind =
-  case kind of
+extendAttr :: AttrL.Attr (Cofree TM.TermF ()) -> AttrL.Attr TM.Term
+extendAttr AttrL.Attr {lamKind, identity} =
+  case lamKind of
     LK.Normal ->
-      LK.Normal
+      AttrL.normal identity
     LK.Fix xt ->
-      LK.Fix (extendBinder xt)
+      AttrL.Attr {lamKind = LK.Fix (extendBinder xt), identity}
 
 extendPrim :: P.Prim (Cofree TM.TermF ()) -> P.Prim TM.Term
 extendPrim prim =

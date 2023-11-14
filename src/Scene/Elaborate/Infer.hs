@@ -14,6 +14,7 @@ import Entity.Annotation qualified as Annotation
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
@@ -69,6 +70,9 @@ inferStmt mMainDD stmt =
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return $ WeakStmtDefineResource m name discarder' copier'
+    WeakStmtMutual m stmtList -> do
+      stmtList' <- mapM (inferStmt mMainDD) stmtList
+      return $ WeakStmtMutual m stmtList'
 
 inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind stmtKind =
@@ -112,8 +116,8 @@ infer' varEnv term =
     m :< WT.Pi xts t -> do
       (xts', t') <- inferPi varEnv xts t
       return (m :< WT.Pi xts' t', m :< WT.Tau)
-    m :< WT.PiIntro kind xts e -> do
-      case kind of
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
+      case lamKind of
         LK.Fix (mx, x, codType) -> do
           (xts', extendedVarEnv) <- inferBinder' varEnv xts
           codType' <- inferType' extendedVarEnv codType
@@ -121,11 +125,11 @@ infer' varEnv term =
           insWeakTypeEnv x piType
           (e', tBody) <- infer' extendedVarEnv e
           insConstraintEnv codType' tBody
-          let term' = m :< WT.PiIntro (LK.Fix (mx, x, codType')) xts' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) xts' e'
           return (term', piType)
         _ -> do
           (xts', (e', t')) <- inferBinder varEnv xts e
-          let term' = m :< WT.PiIntro kind xts' e'
+          let term' = m :< WT.PiIntro attr xts' e'
           return (term', m :< WT.Pi xts' t')
     m :< WT.PiElim e es -> do
       etls <- mapM (infer' varEnv) es

@@ -4,13 +4,15 @@ import {
 - core.text
 }
 
-data stream-cell(a) {
-- Nil
-- Cons(a, stream(a))
-}
+mutual {
+  data stream-cell(a) {
+  - Nil
+  - Cons(a, stream(a))
+  }
 
-data stream(a) {
-- Stream(() -> stream-cell(a))
+  data stream(a) {
+  - Stream(() -> stream-cell(a))
+  }
 }
 
 define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {

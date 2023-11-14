@@ -4,6 +4,7 @@ import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -34,11 +35,11 @@ toText term =
               toText dom <> " -> " <> toText cod
         _ ->
           inParen (showDomArgList xts) <> " -> " <> toText cod
-    _ :< WT.PiIntro kind xts e -> do
-      case kind of
-        LK.Fix (_, x, _) -> do
+    _ :< WT.PiIntro attr xts e -> do
+      case attr of
+        AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do
           "mu " <> showVariable x <> inParen (showDomArgList xts) <> " " <> inBrace (toText e)
-        LK.Normal -> do
+        AttrL.Attr {lamKind = LK.Normal} -> do
           inParen (showDomArgList xts) <> " => " <> inBrace (toText e)
     _ :< WT.PiElim e es -> do
       case e of
