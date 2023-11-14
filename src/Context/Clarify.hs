@@ -2,6 +2,7 @@ module Context.Clarify
   ( initialize,
     getAuxEnv,
     insertToAuxEnv,
+    checkIfAlreadyRegistered,
   )
 where
 
@@ -22,3 +23,7 @@ getAuxEnv =
 insertToAuxEnv :: CompDefinition.DefKey -> CompDefinition.DefValue -> App ()
 insertToAuxEnv k v =
   modifyRef' compAuxEnv $ Map.insert k v
+
+checkIfAlreadyRegistered :: CompDefinition.DefKey -> App Bool
+checkIfAlreadyRegistered k = do
+  Map.member k <$> getAuxEnv

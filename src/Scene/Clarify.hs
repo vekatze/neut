@@ -11,6 +11,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.OptimizableData qualified as OptimizableData
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -416,24 +417,25 @@ clarifyLambda ::
   [BinderF TM.Term] ->
   TM.Term ->
   App C.Comp
-clarifyLambda tenv attrL@(AttrL.Attr {lamKind}) fvs mxts e@(m :< _) = do
+clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = do
   case lamKind of
     LK.Fix (_, recFuncName, _) -> do
-      liftedName <- Locator.attachCurrentLocator $ BN.lambdaName $ Ident.toInt recFuncName
+      liftedName <- Locator.attachCurrentLocator $ BN.muName identity
       let appArgs = fvs ++ mxts
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
       lamAttr <- AttrL.normal <$> Gensym.newCount
       let lamApp = m :< TM.PiIntro lamAttr mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
-      liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
-      -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
-      (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
-      Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
+      isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
+      unless isAlreadyRegistered $ do
+        liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
+        (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
+        Clarify.insertToAuxEnv liftedName (O.Opaque, map fst liftedArgs, liftedBody')
       clarifyTerm tenv lamApp
     LK.Normal -> do
       e' <- clarifyTerm (TM.insTypeEnv (catMaybes [AttrL.fromAttr attrL] ++ mxts) tenv) e
-      returnClosure tenv O.Clear fvs mxts e'
+      returnClosure tenv identity O.Clear fvs mxts e'
 
 newClosureNames :: App ((Ident, C.Value), Ident, (Ident, C.Value), (Ident, C.Value))
 newClosureNames = do
@@ -465,24 +467,27 @@ clarifyPrimOp tenv op m = do
   let argTypeList = map (fromPrimNum m) domList
   (xs, varList) <- mapAndUnzipM (const (Gensym.newValueVarLocalWith "prim")) domList
   let mxts = zipWith (\x t -> (m, x, t)) xs argTypeList
-  returnClosure tenv O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
+  lamID <- Gensym.newCount
+  returnClosure tenv lamID O.Clear [] mxts $ C.Primitive (C.PrimOp op varList)
 
 returnClosure ::
   TM.TypeEnv ->
+  Int ->
   O.Opacity ->
   [BinderF TM.Term] -> -- list of free variables in `lam (x1, ..., xn). e` (this must be a closed chain)
   [BinderF TM.Term] -> -- the `(x1 : A1, ..., xn : An)` in `lam (x1 : A1, ..., xn : An). e`
   C.Comp -> -- the `e` in `lam (x1, ..., xn). e`
   App C.Comp
-returnClosure tenv opacity fvs xts e = do
+returnClosure tenv lamID opacity fvs xts e = do
   fvs'' <- dropFst <$> clarifyBinder tenv fvs
   xts'' <- dropFst <$> clarifyBinder tenv xts
   fvEnvSigma <- closureEnvS4 $ map Right fvs''
   let fvEnv = C.SigmaIntro (map (\(x, _) -> C.VarLocal x) fvs'')
   let argNum = AN.fromInt $ length xts'' + 1 -- argNum == count(xts) + env
-  i <- Gensym.newCount
-  name <- Locator.attachCurrentLocator $ BN.lambdaName i
-  registerClosure name opacity xts'' fvs'' e
+  name <- Locator.attachCurrentLocator $ BN.lambdaName lamID
+  isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered name
+  unless isAlreadyRegistered $ do
+    registerClosure name opacity xts'' fvs'' e
   return $ C.UpIntro $ C.SigmaIntro [fvEnvSigma, fvEnv, C.VarGlobal name argNum]
 
 registerClosure ::
