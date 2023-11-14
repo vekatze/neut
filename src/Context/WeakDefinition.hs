@@ -8,6 +8,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -29,9 +30,10 @@ initialize = do
 
 insert :: O.Opacity -> Hint -> DD.DefiniteDescription -> [BinderF WeakTerm] -> WeakTerm -> App ()
 insert opacity m name xts e =
-  when (opacity == O.Clear) $
+  when (opacity == O.Clear) $ do
+    i <- Gensym.newCount
     modifyRef' weakDefMap $
-      Map.insert name (m :< WT.PiIntro AttrL.normal xts e)
+      Map.insert name (m :< WT.PiIntro (AttrL.normal i) xts e)
 
 read :: App DefMap
 read =

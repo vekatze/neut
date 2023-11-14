@@ -95,12 +95,12 @@ weakenBinder (m, x, t) =
   (m, x, weaken t)
 
 weakenAttr :: AttrL.Attr TM.Term -> AttrL.Attr WT.WeakTerm
-weakenAttr AttrL.Attr {lamKind} =
+weakenAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
     LK.Normal ->
-      AttrL.normal
+      AttrL.normal identity
     LK.Fix xt ->
-      AttrL.Attr {lamKind = LK.Fix (weakenBinder xt)}
+      AttrL.Attr {lamKind = LK.Fix (weakenBinder xt), identity}
 
 weakenPrim :: Hint -> P.Prim TM.Term -> WP.WeakPrim WT.WeakTerm
 weakenPrim m prim =

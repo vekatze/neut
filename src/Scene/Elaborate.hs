@@ -320,13 +320,13 @@ elaborateWeakBinder (m, x, t) = do
   return (m, x, t')
 
 elaborateLamAttr :: AttrL.Attr WT.WeakTerm -> App (AttrL.Attr TM.Term)
-elaborateLamAttr (AttrL.Attr {lamKind}) =
+elaborateLamAttr (AttrL.Attr {lamKind, identity}) =
   case lamKind of
     LK.Normal ->
-      return $ AttrL.Attr {lamKind = LK.Normal}
+      return $ AttrL.Attr {lamKind = LK.Normal, identity}
     LK.Fix xt -> do
       xt' <- elaborateWeakBinder xt
-      return $ AttrL.Attr {lamKind = LK.Fix xt'}
+      return $ AttrL.Attr {lamKind = LK.Fix xt', identity}
 
 fillHole ::
   Hint ->

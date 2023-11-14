@@ -82,7 +82,8 @@ reveal' varEnv term =
               let enrichedArgs = map (,m) args
               binder <- newTypeHoleList varEnv enrichedArgs
               let app = m :< WT.PiElim term (suppliedHoles ++ map (\(x, mx) -> mx :< WT.Var x) enrichedArgs)
-              return $ m :< WT.PiIntro AttrL.normal binder app
+              lamID <- Gensym.newCount
+              return $ m :< WT.PiIntro (AttrL.normal lamID) binder app
         _ ->
           return term
     m :< WT.Pi xts t -> do

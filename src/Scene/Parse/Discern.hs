@@ -148,14 +148,15 @@ discern nenv term =
       forM_ xts' $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi xts' t'
     m :< RT.PiIntro kind xts e -> do
+      lamID <- Gensym.newCount
       case kind of
         RLK.Fix xt -> do
           (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
           Tag.insertBinder xt'
-          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt'}) xts' e'
+          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) xts' e'
         RLK.Normal -> do
           (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro AttrL.normal xts' e'
+          return $ m :< WT.PiIntro (AttrL.normal lamID) xts' e'
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e

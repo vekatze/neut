@@ -10,16 +10,19 @@ import Entity.Binder
 import Entity.LamKind
 import GHC.Generics (Generic)
 
-newtype Attr a = Attr
-  { lamKind :: LamKindF a
+type ID = Int
+
+data Attr a = Attr
+  { lamKind :: LamKindF a,
+    identity :: ID
   }
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (Attr a)
 
-normal :: Attr a
-normal =
-  Attr {lamKind = Normal}
+normal :: ID -> Attr a
+normal i =
+  Attr {lamKind = Normal, identity = i}
 
 fromAttr :: Attr a -> Maybe (BinderF a)
 fromAttr (Attr {lamKind}) =

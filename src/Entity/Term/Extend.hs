@@ -69,12 +69,12 @@ extendBinder (m, x, t) =
   (m, x, extend t)
 
 extendAttr :: AttrL.Attr (Cofree TM.TermF ()) -> AttrL.Attr TM.Term
-extendAttr AttrL.Attr {lamKind} =
+extendAttr AttrL.Attr {lamKind, identity} =
   case lamKind of
     LK.Normal ->
-      AttrL.normal
+      AttrL.normal identity
     LK.Fix xt ->
-      AttrL.Attr {lamKind = LK.Fix (extendBinder xt)}
+      AttrL.Attr {lamKind = LK.Fix (extendBinder xt), identity}
 
 extendPrim :: P.Prim (Cofree TM.TermF ()) -> P.Prim TM.Term
 extendPrim prim =

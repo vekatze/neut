@@ -64,12 +64,12 @@ compressBinder (m, x, t) =
   (m, x, compress t)
 
 compressAttr :: AttrL.Attr TM.Term -> AttrL.Attr (Cofree TM.TermF ())
-compressAttr (AttrL.Attr {lamKind}) =
+compressAttr (AttrL.Attr {lamKind, identity}) =
   case lamKind of
     LK.Normal ->
-      AttrL.normal
+      AttrL.normal identity
     LK.Fix xt ->
-      AttrL.Attr {lamKind = LK.Fix (compressBinder xt)}
+      AttrL.Attr {lamKind = LK.Fix (compressBinder xt), identity}
 
 compressPrim :: P.Prim TM.Term -> P.Prim (Cofree TM.TermF ())
 compressPrim prim =

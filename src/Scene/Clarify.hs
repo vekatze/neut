@@ -424,7 +424,8 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind}) fvs mxts e@(m :< _) = do
       let appArgs' = map (\(mx, x, _) -> mx :< TM.Var x) appArgs
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
-      let lamApp = m :< TM.PiIntro AttrL.normal mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
+      lamAttr <- AttrL.normal <$> Gensym.newCount
+      let lamApp = m :< TM.PiIntro lamAttr mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e
       -- (liftedArgs, liftedBody') <- clarifyStmtDefine appArgs liftedBody
       (liftedArgs, liftedBody') <- clarifyBinderBody IntMap.empty appArgs liftedBody
