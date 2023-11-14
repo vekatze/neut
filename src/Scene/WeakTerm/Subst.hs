@@ -1,10 +1,11 @@
 module Scene.WeakTerm.Subst (subst, substDecisionTree) where
 
 import Context.App
-import Context.Gensym
+import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as S
 import Entity.Annotation qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
@@ -13,6 +14,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.FreeVars qualified as WT
 
 subst :: WT.SubstWeakTerm -> WT.WeakTerm -> App WT.WeakTerm
 subst sub term =
@@ -33,14 +35,22 @@ subst sub term =
     m :< WT.Pi xts t -> do
       (xts', t') <- substBinder sub xts t
       return $ m :< WT.Pi xts' t'
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
-      case lamKind of
-        LK.Fix xt -> do
-          (xt', xts', e') <- subst'' sub xt xts e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) xts' e'
-        _ -> do
-          (xts', e') <- substBinder sub xts e
-          return $ m :< WT.PiIntro attr xts' e'
+    m :< WT.PiIntro (AttrL.Attr {lamKind}) xts e -> do
+      let fvs = S.map Ident.toInt $ WT.freeVars term
+      let subDomSet = S.fromList $ IntMap.keys sub
+      if S.intersection fvs subDomSet == S.empty
+        then return term
+        else do
+          newLamID <- Gensym.newCount
+          case lamKind of
+            LK.Fix xt -> do
+              (xt' : xts', e') <- substBinder sub (xt : xts) e
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
+              return (m :< WT.PiIntro fixAttr xts' e')
+            LK.Normal -> do
+              (xts', e') <- substBinder sub xts e
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal, identity = newLamID}
+              return (m :< WT.PiIntro lamAttr xts' e')
     m :< WT.PiElim e es -> do
       e' <- subst sub e
       es' <- mapM (subst sub) es
@@ -100,7 +110,7 @@ substBinder sub binder e =
       return ([], e')
     ((m, x, t) : xts) -> do
       t' <- subst sub t
-      x' <- newIdentFromIdent x
+      x' <- Gensym.newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', e') <- substBinder sub' xts e
       return ((m, x', t') : xts', e')
@@ -113,7 +123,7 @@ subst'' ::
   App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
 subst'' sub (m, x, t) binder e = do
   t' <- subst sub t
-  x' <- newIdentFromIdent x
+  x' <- Gensym.newIdentFromIdent x
   let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
   (xts', e') <- substBinder sub' binder e
   return ((m, x', t'), xts', e')
@@ -130,7 +140,7 @@ subst''' sub binder decisionTree =
       return ([], decisionTree')
     ((m, x, t) : xts) -> do
       t' <- subst sub t
-      x' <- newIdentFromIdent x
+      x' <- Gensym.newIdentFromIdent x
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', e') <- subst''' sub' xts decisionTree
       return ((m, x', t') : xts', e')

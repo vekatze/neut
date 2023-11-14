@@ -5,6 +5,7 @@ import Context.Gensym qualified as Gensym
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
 import Data.Maybe (mapMaybe)
+import Data.Set qualified as S
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
@@ -12,6 +13,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Term qualified as TM
+import Entity.Term.FreeVars qualified as TM
 
 type SubstTerm =
   IntMap.IntMap (Either Ident TM.Term)
@@ -19,9 +21,9 @@ type SubstTerm =
 subst :: SubstTerm -> TM.Term -> App TM.Term
 subst sub term =
   case term of
-    (_ :< TM.Tau) ->
+    _ :< TM.Tau ->
       return term
-    (m :< TM.Var x)
+    m :< TM.Var x
       | Just varOrTerm <- IntMap.lookup (Ident.toInt x) sub ->
           case varOrTerm of
             Left x' ->
@@ -30,20 +32,28 @@ subst sub term =
               return e
       | otherwise ->
           return term
-    (_ :< TM.VarGlobal {}) ->
+    _ :< TM.VarGlobal {} ->
       return term
-    (m :< TM.Pi xts t) -> do
+    m :< TM.Pi xts t -> do
       (xts', t') <- subst' sub xts t
       return (m :< TM.Pi xts' t')
-    (m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) xts e) -> do
-      case lamKind of
-        LK.Fix xt -> do
-          (xt' : xts', e') <- subst' sub (xt : xts) e
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) xts' e')
-        _ -> do
-          (xts', e') <- subst' sub xts e
-          return (m :< TM.PiIntro attr xts' e')
-    (m :< TM.PiElim e es) -> do
+    m :< TM.PiIntro (AttrL.Attr {lamKind}) xts e -> do
+      let fvs = S.map Ident.toInt $ TM.freeVars term
+      let subDomSet = S.fromList $ IntMap.keys sub
+      if S.intersection fvs subDomSet == S.empty
+        then return term
+        else do
+          newLamID <- Gensym.newCount
+          case lamKind of
+            LK.Fix xt -> do
+              (xt' : xts', e') <- subst' sub (xt : xts) e
+              let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
+              return (m :< TM.PiIntro fixAttr xts' e')
+            LK.Normal -> do
+              (xts', e') <- subst' sub xts e
+              let lamAttr = AttrL.Attr {lamKind = LK.Normal, identity = newLamID}
+              return (m :< TM.PiIntro lamAttr xts' e')
+    m :< TM.PiElim e es -> do
       e' <- subst sub e
       es' <- mapM (subst sub) es
       return (m :< TM.PiElim e' es')
