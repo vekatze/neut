@@ -14,18 +14,13 @@ data item4(a, b) {
 - Item4(tuple(a, b))
 }
 
-define test-item1(): unit {
-  let value = Item1([1, 2, 3]) in
-  let _ = value in
-  let _ = value in
-  let _ = value in
-  let _ = use-item1(value) in
-  let _ on value =
-    let _ = use-item1-noetic(value) in
-    Unit
-  in
-  let _ = value in
-  Unit
+define trace-list[a](xs: list(a)): list(a) {
+  match xs {
+  - [] =>
+    []
+  - y :: ys =>
+    y :: trace-list(ys)
+  }
 }
 
 define use-item1(x: item1): list(int) {
@@ -42,14 +37,14 @@ define use-item1-noetic(x: &item1): list(int) {
   }
 }
 
-define test-item2(): unit {
-  let value: item2(list(int)) = Item2([1, 2, 3]) in
+define test-item1(): unit {
+  let value = Item1([1, 2, 3]) in
   let _ = value in
   let _ = value in
   let _ = value in
-  let _ = use-item2(list(int), value) in
+  let _ = use-item1(value) in
   let _ on value =
-    let _ = use-item2-noetic(list(int), value) in
+    let _ = use-item1-noetic(value) in
     Unit
   in
   let _ = value in
@@ -70,14 +65,14 @@ define use-item2-noetic(a: tau, x: &item2(a)): &a {
   }
 }
 
-define test-item3(): unit {
-  let value: item3(int, list(int)) = Item3((x) => {[x, 2, 3]}) in
+define test-item2(): unit {
+  let value: item2(list(int)) = Item2([1, 2, 3]) in
   let _ = value in
   let _ = value in
   let _ = value in
-  let _ = use-item3(int, list(int), value, 1) in
+  let _ = use-item2(list(int), value) in
   let _ on value =
-    let _ = use-item3-noetic(int, list(int), value, 1) in
+    let _ = use-item2-noetic(list(int), value) in
     Unit
   in
   let _ = value in
@@ -98,14 +93,14 @@ define use-item3-noetic(a: tau, b: tau, f: &item3(a, b), x: a): b {
   }
 }
 
-define test-item4(): unit {
-  let value: item4(int, list(int)) = Item4(Tuple(3, [1, 2, 3])) in
+define test-item3(): unit {
+  let value: item3(int, list(int)) = Item3((x) => {[x, 2, 3]}) in
   let _ = value in
   let _ = value in
   let _ = value in
-  let _ = use-item4(value) in
+  let _ = use-item3(int, list(int), value, 1) in
   let _ on value =
-    let _ = use-item4-noetic(value) in
+    let _ = use-item3-noetic(int, list(int), value, 1) in
     Unit
   in
   let _ = value in
@@ -126,13 +121,18 @@ define use-item4-noetic(x: &item4(int, list(int))): list(int) {
   }
 }
 
-define trace-list[a](xs: list(a)): list(a) {
-  match xs {
-  - [] =>
-    []
-  - y :: ys =>
-    y :: trace-list(ys)
-  }
+define test-item4(): unit {
+  let value: item4(int, list(int)) = Item4(Tuple(3, [1, 2, 3])) in
+  let _ = value in
+  let _ = value in
+  let _ = value in
+  let _ = use-item4(value) in
+  let _ on value =
+    let _ = use-item4-noetic(value) in
+    Unit
+  in
+  let _ = value in
+  Unit
 }
 
 define main(): unit {

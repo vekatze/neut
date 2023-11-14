@@ -70,12 +70,14 @@ define yo(x: top): unit {
   Unit
 }
 
-data foo {
-- Foo(bar)
-}
+mutual {
+  data foo {
+  - Foo(bar)
+  }
 
-data bar {
-- Bar(foo)
+  data bar {
+  - Bar(foo)
+  }
 }
 
 define buz(c: &config): &text {

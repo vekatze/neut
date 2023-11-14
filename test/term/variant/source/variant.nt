@@ -5,15 +5,6 @@ data nat {
 
 data empty {}
 
-define test-resource(): unit {
-  affine-nat();
-  relevant-nat();
-  affine-list();
-  relevant-list();
-  affine-except();
-  relevant-except()
-}
-
 define affine-nat(): unit {
   let _ = Zero in
   let _ = Succ(Zero) in
@@ -229,6 +220,15 @@ define list-monoid(a: tau): monoid(list(a)) {
 define use-struct(a: tau, m: monoid(a)): a {
   let Monoid of { m-empty, m-op } = m in
   m-op(m-empty, m-empty)
+}
+
+define test-resource(): unit {
+  affine-nat();
+  relevant-nat();
+  affine-list();
+  relevant-list();
+  affine-except();
+  relevant-except()
 }
 
 define test-match(): unit {

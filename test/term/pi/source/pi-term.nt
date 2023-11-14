@@ -39,17 +39,6 @@ define test-syntax(): unit {
   Unit
 }
 
-define test-resource(): unit {
-  affine-lam1();
-  relevant-lam1();
-  affine-lam2();
-  relevant-lam2();
-  affine-lam3();
-  relevant-lam3();
-  affine-lam4();
-  relevant-lam4()
-}
-
 define sample(): tau {
   let _ = tau in
   Unit;
@@ -298,6 +287,17 @@ define relevant-lam4(): unit {
 
 define test-reduction(): unit {
   Unit
+}
+
+define test-resource(): unit {
+  affine-lam1();
+  relevant-lam1();
+  affine-lam2();
+  relevant-lam2();
+  affine-lam3();
+  relevant-lam3();
+  affine-lam4();
+  relevant-lam4()
 }
 
 define main(): unit {

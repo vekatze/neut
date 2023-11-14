@@ -44,13 +44,6 @@ define test-syntax(): unit {
   Unit
 }
 
-define test-resource(): unit {
-  let _ = affine-pi() in
-  let _ = linear-pi() in
-  let _ = relevant-pi() in
-  Unit
-}
-
 define affine-pi(): tau {
   let _ = tau -> tau in
   tau
@@ -65,6 +58,13 @@ define relevant-pi(): tau {
   let x = tau -> tau in
   let _ = x in
   x
+}
+
+define test-resource(): unit {
+  let _ = affine-pi() in
+  let _ = linear-pi() in
+  let _ = relevant-pi() in
+  Unit
 }
 
 define main(): unit {
