@@ -1,6 +1,7 @@
 module Scene.Parse.Discern.Name
   ( resolveName,
     resolveConstructor,
+    resolveLocator,
     interpretGlobalName,
   )
 where
@@ -13,6 +14,7 @@ import Context.Locator qualified as Locator
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree hiding (section)
+import Control.Monad
 import Data.Maybe qualified as Maybe
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
@@ -53,7 +55,7 @@ resolveNameOrError m name =
     Var var -> do
       resolveVarOrErr m var
     Locator l -> do
-      Right <$> resolveLocator m l
+      Right <$> resolveLocator m l True
     DefiniteDescription dd -> do
       mgnOrNone <- Global.lookup m dd
       case mgnOrNone of
@@ -81,8 +83,9 @@ resolveVarOrErr m name = do
 resolveLocator ::
   Hint ->
   L.Locator ->
+  Bool ->
   App (DD.DefiniteDescription, (Hint, GN.GlobalName))
-resolveLocator m (gl, ll) = do
+resolveLocator m (gl, ll) shouldInsertTag = do
   sgl <- Alias.resolveAlias m gl
   let cand = DD.new sgl ll
   cand' <- Global.lookup m cand
@@ -91,10 +94,11 @@ resolveLocator m (gl, ll) = do
     Nothing ->
       Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
     Just globalVar@(_, (mDef, _)) -> do
-      let glLen = T.length $ GL.reify gl
-      let llLen = T.length $ LL.reify ll
-      let sepLen = T.length C.nsSep
-      Tag.insert m (glLen + sepLen + llLen) mDef
+      when shouldInsertTag $ do
+        let glLen = T.length $ GL.reify gl
+        let llLen = T.length $ LL.reify ll
+        let sepLen = T.length C.nsSep
+        Tag.insert m (glLen + sepLen + llLen) mDef
       return globalVar
 
 resolveConstructor ::
@@ -163,7 +167,7 @@ castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
 castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
   l <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
-  (dd, (_, gn)) <- resolveLocator m l
+  (dd, (_, gn)) <- resolveLocator m l False
   bool <- interpretGlobalName m dd gn False
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"

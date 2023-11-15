@@ -17,6 +17,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
 import Entity.Key
+import Entity.Locator qualified as L
 import Entity.Magic
 import Entity.Name
 import Entity.Noema qualified as N
@@ -42,6 +43,7 @@ data RawTermF a
   | Noema a
   | Embody a
   | Let (RawBinder a) [(Hint, RawIdent)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
+  | Seq L.Locator a a -- Seq unit e1 e2 (equivalent to `let _: unit = e1 in e2`; necessary for better location information)
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID

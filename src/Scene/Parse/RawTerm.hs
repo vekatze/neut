@@ -84,9 +84,8 @@ rawExprSeqOrTerm m = do
   choice
     [ do
         delimiter ";"
-        f <- lift Gensym.newTextForHole
-        unit <- lift $ locatorToVarGlobal m coreUnit
-        return $ Right $ \e2 -> bind (m, f, unit) e1 e2,
+        unit <- lift $ rawLocatorToLocator m coreUnit
+        return $ Right $ \e2 -> m :< RT.Seq unit e1 e2,
       return $ Left e1
     ]
 
@@ -1003,6 +1002,10 @@ lam m varList e =
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
   rawVar m (Var str)
+
+rawLocatorToLocator :: Hint -> T.Text -> App L.Locator
+rawLocatorToLocator m text = do
+  Throw.liftEither $ DD.getLocatorPair m text
 
 locatorToName :: Hint -> T.Text -> App Name
 locatorToName m text = do

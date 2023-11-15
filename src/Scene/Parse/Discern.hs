@@ -193,6 +193,13 @@ discern nenv term =
       return $ m :< WT.Embody (doNotCare m) e'
     m :< RT.Let mxt mys e1 e2 -> do
       discernLet nenv m mxt mys e1 e2
+    m :< RT.Seq unit e1 e2 -> do
+      (dd, (_, gn)) <- resolveLocator m unit False
+      unit' <- interpretGlobalName m dd gn False
+      x <- Gensym.newIdentFromText "_"
+      e1' <- discern nenv e1
+      e2' <- discern nenv e2
+      return $ m :< WT.Let WT.Clear (m, x, unit') e1' e2'
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
