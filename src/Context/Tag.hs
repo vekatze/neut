@@ -25,13 +25,15 @@ initialize =
 
 insert :: Hint -> Int -> Hint -> App ()
 insert mUse nameLength mDef = do
-  let (l, c) = metaLocation mUse
-  modifyRef' tagMap $ LT.insert LT.SymbolLoc (l, (c, c + nameLength)) mDef
+  unless (isInternalHint mUse) $ do
+    let (l, c) = metaLocation mUse
+    modifyRef' tagMap $ LT.insert LT.SymbolLoc (l, (c, c + nameLength)) mDef
 
 insertFileLoc :: Hint -> Int -> Hint -> App ()
 insertFileLoc mUse nameLength mDef = do
-  let (l, c) = metaLocation mUse
-  modifyRef' tagMap $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
+  unless (isInternalHint mUse) $ do
+    let (l, c) = metaLocation mUse
+    modifyRef' tagMap $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
 
 get :: App LT.LocationTree
 get = do

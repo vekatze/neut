@@ -641,8 +641,8 @@ rawTermIf = do
     return (elseIfCond, elseIfBody)
   keyword "else"
   elseBody <- betweenBrace rawExpr
-  boolTrue <- lift $ locatorToName m coreBoolTrue
-  boolFalse <- lift $ locatorToName m coreBoolFalse
+  boolTrue <- lift $ locatorToName internalHint coreBoolTrue
+  boolFalse <- lift $ locatorToName internalHint coreBoolFalse
   return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
 
 rawTermWhen :: Parser RT.RawTerm
@@ -651,9 +651,9 @@ rawTermWhen = do
   keyword "when"
   whenCond <- rawTerm
   whenBody <- betweenBrace rawExpr
-  boolTrue <- lift $ locatorToName m coreBoolTrue
-  boolFalse <- lift $ locatorToName m coreBoolFalse
-  unitUnit <- lift $ locatorToVarGlobal m coreUnitUnit
+  boolTrue <- lift $ locatorToName internalHint coreBoolTrue
+  boolFalse <- lift $ locatorToName internalHint coreBoolFalse
+  unitUnit <- lift $ locatorToVarGlobal internalHint coreUnitUnit
   return $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
 
 foldIf ::
@@ -665,7 +665,7 @@ foldIf ::
   [(RT.RawTerm, RT.RawTerm)] ->
   RT.RawTerm ->
   RT.RawTerm
-foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
+foldIf m true false ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       m
@@ -673,8 +673,8 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(mIf, RP.Var true)], ifBody),
-                (V.fromList [(mIf, RP.Var false)], elseBody)
+              [ (V.fromList [(internalHint, RP.Var true)], ifBody),
+                (V.fromList [(internalHint, RP.Var false)], elseBody)
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
@@ -684,8 +684,8 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(mIf, RP.Var true)], ifBody),
-                (V.fromList [(mIf, RP.Var false)], cont)
+              [ (V.fromList [(internalHint, RP.Var true)], ifBody),
+                (V.fromList [(internalHint, RP.Var false)], cont)
               ]
           )
 
