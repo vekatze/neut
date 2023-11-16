@@ -826,8 +826,8 @@ rawTermAssert = do
   mText <- getCurrentHint
   message <- string
   e@(mCond :< _) <- betweenBrace rawExpr
-  assert <- lift $ locatorToVarGlobal m coreSystemAssert
-  textType <- lift $ locatorToVarGlobal mText coreText
+  assert <- lift $ locatorToVarGlobal internalHint coreSystemAssert
+  textType <- lift $ locatorToVarGlobal internalHint coreText
   let fullMessage = T.pack (toString m) <> "\nassertion failure: " <> message <> "\n"
   return $
     m
