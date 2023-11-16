@@ -64,7 +64,6 @@ handlers =
             return ()
           Just locTree -> do
             mLoc <- lift $ LSP.findDefinition (req ^. J.params) locTree
-            let reqUri = req ^. J.params . J.textDocument . J.uri
             case mLoc of
               Nothing ->
                 return ()
@@ -72,7 +71,8 @@ handlers =
                 let Range {_start = Position {_line, _character}} = _targetRange
                 let line = fromIntegral $ _line + 1
                 let col = fromIntegral $ _character + 1
-                refs <- lift $ LSP.findReferences (line, col) locTree
+                let reqUri = req ^. J.params . J.textDocument . J.uri
+                refs <- lift $ LSP.findReferences (line, col) _targetUri locTree
                 if reqUri /= _targetUri
                   then responder $ Right $ InL $ List refs
                   else do

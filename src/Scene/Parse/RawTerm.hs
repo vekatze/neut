@@ -85,7 +85,7 @@ rawExprSeqOrTerm m = do
     [ do
         delimiter ";"
         f <- lift Gensym.newTextForHole
-        unit <- lift $ locatorToVarGlobal m coreUnit
+        unit <- lift $ locatorToVarGlobal coreUnit
         return $ Right $ \e2 -> bind (m, f, unit) e1 e2,
       return $ Left e1
     ]
@@ -163,7 +163,7 @@ rawTermPiOrConsOrAscOrBasic = do
       do
         delimiter "::"
         rest <- rawTerm
-        listCons <- lift $ locatorToVarGlobal m coreListCons
+        listCons <- lift $ locatorToVarGlobal coreListCons
         return $ m :< RT.PiElim listCons [basic, rest],
       do
         delimiter ":"
@@ -268,7 +268,7 @@ rawTermLetExcept = do
   delimiter "="
   e1@(m1 :< _) <- rawExpr
   delimiter "in"
-  eitherTypeInner <- lift $ locatorToVarGlobal m1 coreExcept
+  eitherTypeInner <- lift $ locatorToVarGlobal coreExcept
   leftType <- lift $ Gensym.newPreHole m1
   let eitherType = m1 :< RT.PiElim eitherTypeInner [leftType, rightType]
   e1' <- ascribe m1 eitherType e1
@@ -276,17 +276,18 @@ rawTermLetExcept = do
   err <- lift Gensym.newText
   exceptFail <- lift $ locatorToName m2 coreExceptFail
   exceptPass <- lift $ locatorToName m2 coreExceptPass
-  exceptFailVar <- lift $ locatorToVarGlobal m2 coreExceptFail
+  exceptFailVar <- lift $ locatorToVarGlobal coreExceptFail
+  let _m = internalHint
   return $ \e2 ->
     m2
       :< RT.DataElim
         False
         [e1']
         ( RP.new
-            [ ( V.fromList [(m2, RP.Cons exceptFail (RP.Paren [(m2, RP.Var (Var err))]))],
+            [ ( V.fromList [(_m, RP.Cons exceptFail (RP.Paren [(_m, RP.Var (Var err))]))],
                 m2 :< RT.PiElim exceptFailVar [preVar m2 err]
               ),
-              (V.fromList [(m2, RP.Cons exceptPass (RP.Paren [pat]))], e2)
+              (V.fromList [(_m, RP.Cons exceptPass (RP.Paren [pat]))], e2)
             ]
         )
 
@@ -333,7 +334,7 @@ foldByOp m op es =
     [e] ->
       e
     e : rest ->
-      m :< RT.PiElim (rawVar m op) [e, foldByOp m op rest]
+      m :< RT.PiElim (rawVar internalHint op) [e, foldByOp m op rest]
 
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do
@@ -589,12 +590,12 @@ foldTuplePat :: Hint -> Name -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.Raw
 foldTuplePat m unitVar pairVar es =
   case es of
     [] ->
-      (m, RP.Var unitVar)
+      (internalHint, RP.Var unitVar)
     [e] ->
       e
     e : rest -> do
       let rest' = foldTuplePat m unitVar pairVar rest
-      (m, RP.Cons pairVar (RP.Paren [e, rest']))
+      (internalHint, RP.Cons pairVar (RP.Paren [e, rest']))
 
 parseName :: Parser (Hint, Name)
 parseName = do
@@ -642,8 +643,8 @@ rawTermIf = do
     return (elseIfCond, elseIfBody)
   keyword "else"
   elseBody <- betweenBrace rawExpr
-  boolTrue <- lift $ locatorToName m coreBoolTrue
-  boolFalse <- lift $ locatorToName m coreBoolFalse
+  boolTrue <- lift $ locatorToName internalHint coreBoolTrue
+  boolFalse <- lift $ locatorToName internalHint coreBoolFalse
   return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
 
 rawTermWhen :: Parser RT.RawTerm
@@ -652,9 +653,9 @@ rawTermWhen = do
   keyword "when"
   whenCond <- rawTerm
   whenBody <- betweenBrace rawExpr
-  boolTrue <- lift $ locatorToName m coreBoolTrue
-  boolFalse <- lift $ locatorToName m coreBoolFalse
-  unitUnit <- lift $ locatorToVarGlobal m coreUnitUnit
+  boolTrue <- lift $ locatorToName internalHint coreBoolTrue
+  boolFalse <- lift $ locatorToName internalHint coreBoolFalse
+  unitUnit <- lift $ locatorToVarGlobal coreUnitUnit
   return $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
 
 foldIf ::
@@ -666,7 +667,7 @@ foldIf ::
   [(RT.RawTerm, RT.RawTerm)] ->
   RT.RawTerm ->
   RT.RawTerm
-foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
+foldIf m true false ifCond ifBody elseIfList elseBody =
   case elseIfList of
     [] -> do
       m
@@ -674,8 +675,8 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(mIf, RP.Var true)], ifBody),
-                (V.fromList [(mIf, RP.Var false)], elseBody)
+              [ (V.fromList [(internalHint, RP.Var true)], ifBody),
+                (V.fromList [(internalHint, RP.Var false)], elseBody)
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
@@ -685,8 +686,8 @@ foldIf m true false ifCond@(mIf :< _) ifBody elseIfList elseBody =
           False
           [ifCond]
           ( RP.new
-              [ (V.fromList [(mIf, RP.Var true)], ifBody),
-                (V.fromList [(mIf, RP.Var false)], cont)
+              [ (V.fromList [(internalHint, RP.Var true)], ifBody),
+                (V.fromList [(internalHint, RP.Var false)], cont)
               ]
           )
 
@@ -703,7 +704,7 @@ rawTermTuple = do
   pairVar <- lift $ locatorToName m corePair
   case es of
     [] ->
-      return $ rawVar m unitVar
+      return $ rawVar internalHint unitVar
     [e] ->
       return e
     _ ->
@@ -778,8 +779,8 @@ rawTermFlowIntro :: Parser RT.RawTerm
 rawTermFlowIntro = do
   m <- getCurrentHint
   keyword "detach"
-  t <- lift $ Gensym.newPreHole m
-  detachVar <- lift $ locatorToVarGlobal m coreThreadDetach
+  t <- lift $ Gensym.newPreHole internalHint
+  detachVar <- lift $ locatorToVarGlobal coreThreadDetach
   e <- rawTermSimple
   return $ m :< RT.PiElim detachVar [t, lam m [] e]
 
@@ -787,8 +788,8 @@ rawTermFlowElim :: Parser RT.RawTerm
 rawTermFlowElim = do
   m <- getCurrentHint
   keyword "attach"
-  t <- lift $ Gensym.newPreHole m
-  attachVar <- lift $ locatorToVarGlobal m coreThreadAttach
+  t <- lift $ Gensym.newPreHole internalHint
+  attachVar <- lift $ locatorToVarGlobal coreThreadAttach
   e <- rawTermSimple
   return $ m :< RT.PiElim attachVar [t, e]
 
@@ -797,17 +798,17 @@ rawTermOption = do
   m <- getCurrentHint
   delimiter "?"
   t <- rawTermBasic
-  exceptVar <- lift $ locatorToVarGlobal m coreExcept
-  unit <- lift $ locatorToVarGlobal m coreUnit
+  exceptVar <- lift $ locatorToVarGlobal coreExcept
+  unit <- lift $ locatorToVarGlobal coreUnit
   return $ m :< RT.PiElim exceptVar [unit, t]
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
   m <- getCurrentHint
   keyword "admit"
-  admit <- lift $ locatorToVarGlobal m coreSystemAdmit
-  t <- lift $ Gensym.newPreHole m
-  textType <- lift $ locatorToVarGlobal m coreText
+  admit <- lift $ locatorToVarGlobal coreSystemAdmit
+  t <- lift $ Gensym.newPreHole internalHint
+  textType <- lift $ locatorToVarGlobal coreText
   return $
     m
       :< RT.Annotation
@@ -826,8 +827,8 @@ rawTermAssert = do
   mText <- getCurrentHint
   message <- string
   e@(mCond :< _) <- betweenBrace rawExpr
-  assert <- lift $ locatorToVarGlobal m coreSystemAssert
-  textType <- lift $ locatorToVarGlobal mText coreText
+  assert <- lift $ locatorToVarGlobal coreSystemAssert
+  textType <- lift $ locatorToVarGlobal coreText
   let fullMessage = T.pack (toString m) <> "\nassertion failure: " <> message <> "\n"
   return $
     m
@@ -895,8 +896,8 @@ rawTermListIntro :: Parser RT.RawTerm
 rawTermListIntro = do
   m <- getCurrentHint
   es <- betweenBracket $ commaList rawTerm
-  listNil <- lift $ locatorToVarGlobal m coreListNil
-  listCons <- lift $ locatorToVarGlobal m coreListCons
+  listNil <- lift $ locatorToVarGlobal coreListNil
+  listCons <- lift $ locatorToVarGlobal coreListCons
   return $ foldListApp m listNil listCons es
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
@@ -979,7 +980,7 @@ rawTermTextIntro :: Parser RT.RawTerm
 rawTermTextIntro = do
   m <- getCurrentHint
   s <- string
-  textType <- lift $ locatorToVarGlobal m coreText
+  textType <- lift $ locatorToVarGlobal coreText
   return $ m :< RT.Prim (WP.Value (WPV.StaticText textType s))
 
 rawTermInteger :: Parser RT.RawTerm
@@ -1009,10 +1010,10 @@ locatorToName m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ Locator (gl, ll)
 
-locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
-locatorToVarGlobal m text = do
-  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
-  return $ rawVar m (Locator (gl, ll))
+locatorToVarGlobal :: T.Text -> App RT.RawTerm
+locatorToVarGlobal text = do
+  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair internalHint text
+  return $ rawVar internalHint (Locator (gl, ll))
 
 rawVar :: Hint -> Name -> RT.RawTerm
 rawVar m name =

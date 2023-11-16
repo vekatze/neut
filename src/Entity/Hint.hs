@@ -59,6 +59,10 @@ internalHint =
       metaLocation = (0, 0)
     }
 
+isInternalHint :: Hint -> Bool
+isInternalHint m =
+  metaFileName m == ""
+
 newSourceHint :: Path Abs File -> Hint
 newSourceHint path =
   new 1 1 $ toFilePath path
