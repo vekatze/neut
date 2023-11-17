@@ -248,7 +248,7 @@ ppDirPath dirPath =
 getID :: Module -> Module -> MID.ModuleID
 getID mainModule currentModule = do
   if moduleLocation mainModule == moduleLocation currentModule
-    then MID.Main
+    then moduleID mainModule
     else getDigestFromModulePath (moduleLocation currentModule)
 
 getDigestFromModulePath :: Path Abs File -> MID.ModuleID
