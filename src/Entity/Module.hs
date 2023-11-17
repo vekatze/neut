@@ -245,12 +245,6 @@ ppDirPath :: Path Rel Dir -> T.Text
 ppDirPath dirPath =
   T.pack $ toFilePath dirPath
 
-getID :: Module -> Module -> MID.ModuleID
-getID mainModule currentModule = do
-  if moduleLocation mainModule == moduleLocation currentModule
-    then MID.Main
-    else getDigestFromModulePath (moduleLocation currentModule)
-
 getDigestFromModulePath :: Path Abs File -> MID.ModuleID
 getDigestFromModulePath moduleFilePath =
   MID.Library $

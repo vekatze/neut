@@ -10,7 +10,6 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Context.Locator qualified as Locator
-import Context.Module qualified as Module
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -123,16 +122,15 @@ activateAliasInfo topNameMap aliasInfo =
 initializeAliasMap :: App ()
 initializeAliasMap = do
   currentModule <- Source.sourceModule <$> readRef "currentSource" currentSource
-  mainModule <- Module.getMainModule
-  let additionalDigestAlias = getAlias mainModule currentModule
+  let additionalDigestAlias = getAlias currentModule
   currentAliasList <- getModuleDigestAliasList currentModule
   let aliasMap = Map.fromList $ Maybe.catMaybes [additionalDigestAlias] ++ currentAliasList
   writeRef' moduleAliasMap aliasMap
   writeRef' locatorAliasMap Map.empty
 
-getAlias :: Module -> Module -> Maybe (ModuleAlias, ModuleDigest)
-getAlias mainModule currentModule = do
-  case getID mainModule currentModule of
+getAlias :: Module -> Maybe (ModuleAlias, ModuleDigest)
+getAlias currentModule = do
+  case moduleID currentModule of
     MID.Library digest ->
       return (defaultModuleAlias, digest)
     MID.Main ->

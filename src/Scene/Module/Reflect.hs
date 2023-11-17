@@ -91,8 +91,14 @@ fromFilePath moduleID moduleFilePath = do
       }
 
 fromCurrentPath :: App Module
-fromCurrentPath =
-  getCurrentModuleFilePath >>= fromFilePath MID.Main
+fromCurrentPath = do
+  libraryDir <- Path.getLibraryDirPath
+  moduleFilePath <- getCurrentModuleFilePath
+  if isProperPrefixOf libraryDir moduleFilePath
+    then do
+      let moduleID = getDigestFromModulePath moduleFilePath
+      getCurrentModuleFilePath >>= fromFilePath moduleID
+    else getCurrentModuleFilePath >>= fromFilePath MID.Main
 
 interpretPrefixMap ::
   H.Hint ->
