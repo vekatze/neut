@@ -12,7 +12,6 @@ where
 
 import Context.App
 import Context.App.Internal
-import Context.Module qualified as Module
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad
@@ -40,9 +39,8 @@ import Path
 
 initialize :: App ()
 initialize = do
-  mainModule <- Module.getMainModule
   currentSource <- readRef "currentSource" currentSource
-  cgl <- constructGlobalLocator mainModule currentSource
+  cgl <- constructGlobalLocator currentSource
   writeRef currentGlobalLocator cgl
   writeRef' activeGlobalLocatorList [cgl, SGL.llvmGlobalLocator]
   writeRef' activeDefiniteDescriptionList Map.empty
@@ -96,12 +94,12 @@ getImportedReferents :: LL.LocalLocator -> App [DD.DefiniteDescription]
 getImportedReferents ll = do
   maybeToList . Map.lookup ll <$> readRef' activeDefiniteDescriptionList
 
-constructGlobalLocator :: Module.Module -> Source.Source -> App SGL.StrictGlobalLocator
-constructGlobalLocator mainModule source = do
+constructGlobalLocator :: Source.Source -> App SGL.StrictGlobalLocator
+constructGlobalLocator source = do
   sourceLocator <- getSourceLocator source
   return $
     SGL.StrictGlobalLocator
-      { SGL.moduleID = Module.getID mainModule $ Source.sourceModule source,
+      { SGL.moduleID = Module.moduleID $ Source.sourceModule source,
         SGL.sourceLocator = sourceLocator
       }
 
