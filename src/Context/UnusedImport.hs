@@ -22,7 +22,7 @@ initialize =
 
 insert :: T.Text -> Hint -> T.Text -> App ()
 insert sglText m locatorText =
-  modifyRef' unusedImportMap $ Map.insert sglText (m, locatorText)
+  modifyRef' unusedImportMap $ Map.insertWith (++) sglText [(m, locatorText)]
 
 delete :: T.Text -> App ()
 delete sglText =
@@ -31,7 +31,7 @@ delete sglText =
 get :: App [(Hint, T.Text)]
 get = do
   uenv <- readRef' unusedImportMap
-  return $ Map.elems uenv
+  return $ concat $ Map.elems uenv
 
 registerRemarks :: App ()
 registerRemarks = do
