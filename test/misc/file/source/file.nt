@@ -1,17 +1,19 @@
 import {
-- core.errno [errno]
+- core.errno [system]
 - FF
 - FM
 }
 
-define use-file(): except(errno, unit) {
+define use-file(): system(unit) {
   try file = open("./test", FF.for-rw, FM.default-file-mode) in
-  let _ = write("hey\n", file) in
-  let _ = read(file) in
+  try _ = write("hey\n", file) in
+  try _ = read(file) in
   close(file)
 }
 
 define main(): unit {
-  let _ = use-file() in
-  Unit
+  match use-file() {
+  - Pass(_) => Unit
+  - Fail(_) => Unit
+  }
 }
