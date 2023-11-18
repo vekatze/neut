@@ -3,6 +3,7 @@ module Scene.Parse.Import (parseImportBlock) where
 import Context.Alias qualified as Alias
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
+import Context.UnusedImport qualified as UnusedImport
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (catMaybes)
@@ -48,6 +49,7 @@ parseImport currentModule = do
   locatorText <- P.symbol
   (locatorText', mPrefixInfo, source, strictGlobalLocator) <- parseLocatorText currentModule m locatorText
   mUseInfo <- optional $ parseLocalLocatorList strictGlobalLocator
+  lift $ UnusedImport.insert strictGlobalLocator m locatorText
   return (locatorText', (source, catMaybes [mUseInfo, mPrefixInfo]))
 
 parseLocalLocatorList :: SGL.StrictGlobalLocator -> P.Parser AI.AliasInfo

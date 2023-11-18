@@ -62,6 +62,7 @@ data Env = Env
     tagMap :: IORef LT.LocationTree,
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
+    unusedImportMap :: IORef (Map.HashMap SGL.StrictGlobalLocator (Hint, T.Text)),
     holeSubst :: IORef HS.HoleSubst,
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])]),
     traceSourceList :: IORef [Source.Source],
@@ -113,6 +114,7 @@ newEnv = do
   tagMap <- newIORef LT.empty
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty
+  unusedImportMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
   declNameMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty

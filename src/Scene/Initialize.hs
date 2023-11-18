@@ -19,6 +19,7 @@ import Context.Module qualified as Module
 import Context.Remark qualified as Remark
 import Context.Tag qualified as Tag
 import Context.Unravel qualified as Unravel
+import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedVariable qualified as UnusedVariable
 import Context.WeakDefinition qualified as WeakDefinition
 import Data.Maybe
@@ -56,6 +57,7 @@ initializeForTarget = do
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
   UnusedVariable.initialize
+  UnusedImport.initialize
   Remark.initialize
   Global.initialize
   Env.setCurrentSource source
