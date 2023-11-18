@@ -13,7 +13,6 @@ import Data.Maybe (mapMaybe)
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Text.Encoding
-import Debug.Trace (trace)
 import Entity.AppLsp
 import Entity.FilePos qualified as FP
 import Entity.Remark
@@ -52,8 +51,7 @@ remarkToDignostic :: Remark -> Maybe (NormalizedUri, Diagnostic)
 remarkToDignostic (mLoc, _, level, msg) = do
   FP.FilePos path (line, col) <- mLoc
   let pos = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col - 1}
-  let pos2 = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col + 2}
-  let range = Range {_start = pos, _end = pos2}
+  let range = Range {_start = pos, _end = pos}
   let uri = toNormalizedUri $ Uri $ T.pack $ toFilePath path
   return
     ( uri,
@@ -86,7 +84,7 @@ updateCol' sourceLines diags =
     ([], _) ->
       []
     (_, []) -> do
-      trace "shouldn't occur\n" []
+      diags
     (diag : rest, (currentLineNumber, currentLine) : sourceLines') -> do
       let startPos@(Position l c) = diag ^. J.range . J.start
       if fromEnum l /= currentLineNumber
