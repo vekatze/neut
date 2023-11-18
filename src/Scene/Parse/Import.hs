@@ -49,7 +49,7 @@ parseImport currentModule = do
   locatorText <- P.symbol
   (locatorText', mPrefixInfo, source, strictGlobalLocator) <- parseLocatorText currentModule m locatorText
   mUseInfo <- optional $ parseLocalLocatorList strictGlobalLocator
-  lift $ UnusedImport.insert strictGlobalLocator m locatorText
+  lift $ UnusedImport.insert (SGL.reify strictGlobalLocator) m locatorText
   return (locatorText', (source, catMaybes [mUseInfo, mPrefixInfo]))
 
 parseLocalLocatorList :: SGL.StrictGlobalLocator -> P.Parser AI.AliasInfo

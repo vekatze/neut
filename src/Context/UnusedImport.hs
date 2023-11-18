@@ -14,20 +14,19 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Hint
 import Entity.Remark
-import Entity.StrictGlobalLocator qualified as SGL
 import Prelude hiding (lookup, read)
 
 initialize :: App ()
 initialize =
   writeRef' unusedImportMap Map.empty
 
-insert :: SGL.StrictGlobalLocator -> Hint -> T.Text -> App ()
-insert sgl m locatorText =
-  modifyRef' unusedImportMap $ Map.insert sgl (m, locatorText)
+insert :: T.Text -> Hint -> T.Text -> App ()
+insert sglText m locatorText =
+  modifyRef' unusedImportMap $ Map.insert sglText (m, locatorText)
 
-delete :: SGL.StrictGlobalLocator -> App ()
-delete sgl =
-  modifyRef' unusedImportMap $ Map.delete sgl
+delete :: T.Text -> App ()
+delete sglText =
+  modifyRef' unusedImportMap $ Map.delete sglText
 
 get :: App [(Hint, T.Text)]
 get = do
