@@ -1,3 +1,5 @@
+import {}
+
 data joker {
 - JLeft(joker)
 - JRight(int)

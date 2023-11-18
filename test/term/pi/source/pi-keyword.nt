@@ -1,3 +1,5 @@
+import {}
+
 define foo(FOO: bool, a: tau, 🌟🌟🌟: tau, 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int): tau {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね in
   if FOO {

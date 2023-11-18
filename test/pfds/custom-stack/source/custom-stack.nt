@@ -1,6 +1,10 @@
-import {
-- core.list
+include {
+- core.bool [bool, True, False]
+- core.except [none, Pass, Fail]
+- core.pair
 - core.text
+- core.text.io [print, print-int]
+- core.unit [unit]
 }
 
 data custom-stack(a) {
