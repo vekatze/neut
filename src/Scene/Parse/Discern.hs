@@ -381,23 +381,6 @@ discernPattern (m, pat) = do
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
-        DefiniteDescription dd -> do
-          (_, gn) <- resolveName m $ DefiniteDescription dd
-          case gn of
-            (_, GN.DataIntro dataArgNum consArgNum disc isConstLike) -> do
-              let consInfo =
-                    PAT.ConsInfo
-                      { consDD = dd,
-                        isConstLike = isConstLike,
-                        disc = disc,
-                        dataArgNum = dataArgNum,
-                        consArgNum = consArgNum,
-                        args = []
-                      }
-              return ((m, PAT.Cons consInfo), [])
-            _ ->
-              Throw.raiseCritical m $
-                "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
     RP.Cons cons mArgs -> do
       (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m cons
       when isConstLike $
