@@ -35,7 +35,7 @@ lint msg = do
     Just path -> do
       flushDiagnosticsBySource maxDiagNum (Just "neut")
       logList <- lift $ Check.check (Just path)
-      let uriDiagList = mapMaybe remarkToDignostic logList
+      let uriDiagList = mapMaybe (remarkToDignostic path) logList
       let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
       let diagGroups = map (\g -> (fst $ NE.head g, NE.map snd g)) diagGroupList'
       forM_ diagGroups $ \(uri, diags) -> do
@@ -48,27 +48,39 @@ maxDiagNum :: Int
 maxDiagNum =
   100
 
-remarkToDignostic :: Remark -> Maybe (NormalizedUri, Diagnostic)
-remarkToDignostic (mLoc, _, level, msg) = do
+remarkToDignostic :: FilePath -> Remark -> Maybe (NormalizedUri, Diagnostic)
+remarkToDignostic fallbackPath (mLoc, _, level, msg) = do
   FP.FilePos fp (line, col) <- mLoc
   let pos = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col - 1}
   let pos2 = Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ col + 2}
   let range = Range {_start = pos, _end = pos2}
-  let uri = Uri (T.pack fp)
+  let uri = uriFromFilePath fallbackPath fp
+  let prefix = getMessagePrefix fp
   return
-    ( toNormalizedUri uri,
+    ( uri,
       Diagnostic
         { _range = range,
           _severity = Just (levelToSeverity level),
           _code = Nothing,
           _source = Just "neut",
-          _message = msg,
+          _message = prefix <> msg,
           _tags = Nothing,
           _relatedInformation = Nothing,
           _codeDescription = Nothing,
           _data_ = Nothing
         }
     )
+
+getMessagePrefix :: FilePath -> T.Text
+getMessagePrefix filePath =
+  if filePath == ""
+    then "[internal error]\n"
+    else ""
+
+uriFromFilePath :: FilePath -> FilePath -> NormalizedUri
+uriFromFilePath fallbackPath filePath = do
+  let path = if filePath == "" then fallbackPath else filePath
+  toNormalizedUri $ Uri (T.pack path)
 
 updateCol :: NormalizedUri -> [Diagnostic] -> App [Diagnostic]
 updateCol uri diags = do
