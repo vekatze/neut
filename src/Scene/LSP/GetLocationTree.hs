@@ -2,6 +2,7 @@ module Scene.LSP.GetLocationTree (getLocationTree) where
 
 import Context.App
 import Context.Cache qualified as Cache
+import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
 import Control.Lens hiding (Iso, List)
 import Entity.Cache qualified as Cache
@@ -26,10 +27,14 @@ getLocationTree params = do
           return Nothing
         Just src -> do
           Unravel.initialize
-          _ <- unravel' src
-          mCache <- Cache.loadCacheOptimistically src
-          case mCache of
-            Nothing -> do
+          resultOrError <- Throw.execute $ unravel' src
+          case resultOrError of
+            Left _ ->
               return Nothing
-            Just cache -> do
-              return $ Just $ Cache.locationTree cache
+            Right _ -> do
+              mCache <- Cache.loadCacheOptimistically src
+              case mCache of
+                Nothing -> do
+                  return Nothing
+                Just cache -> do
+                  return $ Just $ Cache.locationTree cache

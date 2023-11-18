@@ -1,5 +1,6 @@
 module Context.Throw
   ( throw,
+    execute,
     run,
     collectLogs,
     raiseError,
@@ -26,9 +27,13 @@ throw :: forall a. E.Error -> App a
 throw =
   Safe.throw
 
+execute :: App a -> App (Either E.Error a)
+execute c = do
+  Safe.try $ wrappingExternalExceptions c
+
 run :: App a -> App a
 run c = do
-  resultOrErr <- Safe.try $ wrappingExternalExceptions c
+  resultOrErr <- execute c
   case resultOrErr of
     Left (E.MakeError err) -> do
       Remark.printErrorList err
@@ -38,7 +43,7 @@ run c = do
 
 collectLogs :: App () -> App [R.Remark]
 collectLogs c = do
-  resultOrErr <- Safe.try $ wrappingExternalExceptions c
+  resultOrErr <- execute c
   remarkList <- Remark.getGlobalRemarkList
   case resultOrErr of
     Left (E.MakeError logList) ->
