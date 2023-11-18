@@ -29,7 +29,7 @@ type ColorFlag =
 
 newRemark :: Hint -> RemarkLevel -> T.Text -> Remark
 newRemark m level text = do
-  (Just (FP.fromHint m), True, level, text)
+  (FP.fromHint m, True, level, text)
 
 newRemark' :: RemarkLevel -> T.Text -> Remark
 newRemark' level text = do
