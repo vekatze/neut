@@ -36,13 +36,14 @@ type LocatorText =
 parseImportBlock :: Source.Source -> P.Parser [(Source.Source, [AI.AliasInfo])]
 parseImportBlock currentSource = do
   m <- P.getCurrentHint
-  locatorAndSourceInfo <-
+  shouldEnableImplicitImport <-
     choice
-      [ P.keyword "import" >> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource))),
-        return []
+      [ P.keyword "import" >> return True,
+        P.keyword "include" >> return False
       ]
+  locatorAndSourceInfo <- P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource)))
   let (foundLocators, sourceInfo) = unzip locatorAndSourceInfo
-  coreSourceInfo <- loadDefaultImports m currentSource foundLocators
+  coreSourceInfo <- loadDefaultImports m shouldEnableImplicitImport currentSource foundLocators
   return $ sourceInfo ++ coreSourceInfo
 
 parseImport :: Module -> P.Parser (LocatorText, (Source.Source, [AI.AliasInfo]))
@@ -120,9 +121,14 @@ getSource m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-loadDefaultImports :: Hint -> Source.Source -> [LocatorText] -> P.Parser [(Source.Source, [AI.AliasInfo])]
-loadDefaultImports m source foundLocators =
-  if not (Source.hasCore source)
+loadDefaultImports ::
+  Hint ->
+  Bool ->
+  Source.Source ->
+  [LocatorText] ->
+  P.Parser [(Source.Source, [AI.AliasInfo])]
+loadDefaultImports m shouldEnableImplicitImport source foundLocators =
+  if not shouldEnableImplicitImport
     then return []
     else do
       let locatorSet = S.fromList foundLocators
