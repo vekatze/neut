@@ -43,6 +43,7 @@ instance Binary SavedHint where
   put (SavedHint val) = do
     put $ metaFileName val
     put $ metaLocation val
+    put $ metaShouldSaveLocation val
   get = do
     SavedHint <$> (Hint <$> get <*> get <*> get)
 
