@@ -6,7 +6,8 @@ import Path
 
 data Hint = Hint
   { metaFileName :: FilePath,
-    metaLocation :: Loc
+    metaLocation :: Loc,
+    metaShouldSaveLocation :: Bool
   }
   deriving (Generic)
 
@@ -42,26 +43,29 @@ instance Binary SavedHint where
   put (SavedHint val) = do
     put $ metaFileName val
     put $ metaLocation val
+    put $ metaShouldSaveLocation val
   get = do
-    SavedHint <$> (Hint <$> get <*> get)
+    SavedHint <$> (Hint <$> get <*> get <*> get)
 
 new :: Int -> Int -> FilePath -> Hint
 new l c path =
   Hint
     { metaFileName = path,
-      metaLocation = (l, c)
+      metaLocation = (l, c),
+      metaShouldSaveLocation = True
     }
+
+blur :: Hint -> Hint
+blur m =
+  m {metaShouldSaveLocation = False}
 
 internalHint :: Hint
 internalHint =
   Hint
     { metaFileName = "",
-      metaLocation = (0, 0)
+      metaLocation = (1, 1),
+      metaShouldSaveLocation = False
     }
-
-isInternalHint :: Hint -> Bool
-isInternalHint m =
-  metaFileName m == ""
 
 newSourceHint :: Path Abs File -> Hint
 newSourceHint path =

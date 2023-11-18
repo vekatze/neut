@@ -3,6 +3,9 @@ module Scene.Parse.Import (parseImportBlock) where
 import Context.Alias qualified as Alias
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
+import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (catMaybes)
@@ -33,13 +36,14 @@ type LocatorText =
 parseImportBlock :: Source.Source -> P.Parser [(Source.Source, [AI.AliasInfo])]
 parseImportBlock currentSource = do
   m <- P.getCurrentHint
-  locatorAndSourceInfo <-
+  shouldEnableImplicitImport <-
     choice
-      [ P.keyword "import" >> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource))),
-        return []
+      [ P.keyword "import" >> return True,
+        P.keyword "include" >> return False
       ]
+  locatorAndSourceInfo <- P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource)))
   let (foundLocators, sourceInfo) = unzip locatorAndSourceInfo
-  coreSourceInfo <- loadDefaultImports m currentSource foundLocators
+  coreSourceInfo <- loadDefaultImports m shouldEnableImplicitImport currentSource foundLocators
   return $ sourceInfo ++ coreSourceInfo
 
 parseImport :: Module -> P.Parser (LocatorText, (Source.Source, [AI.AliasInfo]))
@@ -48,6 +52,7 @@ parseImport currentModule = do
   locatorText <- P.symbol
   (locatorText', mPrefixInfo, source, strictGlobalLocator) <- parseLocatorText currentModule m locatorText
   mUseInfo <- optional $ parseLocalLocatorList strictGlobalLocator
+  lift $ UnusedImport.insert (SGL.reify strictGlobalLocator) m locatorText
   return (locatorText', (source, catMaybes [mUseInfo, mPrefixInfo]))
 
 parseLocalLocatorList :: SGL.StrictGlobalLocator -> P.Parser AI.AliasInfo
@@ -57,6 +62,7 @@ parseLocalLocatorList sgl = do
       [ P.betweenBracket $ commaList parseLocalLocator,
         P.betweenBrace $ P.manyList parseLocalLocator
       ]
+  lift $ forM_ lls $ \(m, ll) -> UnusedLocalLocator.insert ll m
   return $ AI.Use sgl lls
 
 parseLocalLocator :: P.Parser (Hint, LL.LocalLocator)
@@ -115,9 +121,14 @@ getSource m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-loadDefaultImports :: Hint -> Source.Source -> [LocatorText] -> P.Parser [(Source.Source, [AI.AliasInfo])]
-loadDefaultImports m source foundLocators =
-  if not (Source.hasCore source)
+loadDefaultImports ::
+  Hint ->
+  Bool ->
+  Source.Source ->
+  [LocatorText] ->
+  P.Parser [(Source.Source, [AI.AliasInfo])]
+loadDefaultImports m shouldEnableImplicitImport source foundLocators =
+  if not shouldEnableImplicitImport
     then return []
     else do
       let locatorSet = S.fromList foundLocators

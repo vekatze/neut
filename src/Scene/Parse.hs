@@ -10,6 +10,8 @@ import Context.Decl qualified as Decl
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
+import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -72,6 +74,8 @@ parseSource source cacheOrContent = do
       stmtList <- Discern.discernStmtList defList
       saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
+      UnusedImport.registerRemarks
+      UnusedLocalLocator.registerRemarks
       return $ Right (stmtList, declList)
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
@@ -175,9 +179,16 @@ parseConstant = do
   P.keyword "constant"
   m <- P.getCurrentHint
   constName <- P.baseName >>= lift . Locator.attachCurrentLocator
+  mImpArgs <- optional $ P.betweenBracket (P.commaList preBinder)
   t <- parseDefInfoCod m
   v <- P.betweenBrace rawExpr
-  return $ RawStmtDefineConst m constName t v
+  case mImpArgs of
+    Nothing ->
+      return $ RawStmtDefineConst m constName t v
+    Just impArgs -> do
+      let stmtKind = SK.Normal O.Clear
+      let impArgNum = AN.fromInt $ length impArgs
+      return $ RawStmtDefine True stmtKind m constName impArgNum impArgs t v
 
 parseMutual :: P.Parser RawStmt
 parseMutual = do

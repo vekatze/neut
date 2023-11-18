@@ -6,7 +6,8 @@ import {
   }
 }
 
-
 define main(): unit {
+  let _ = some-func in
+  let _ = other-func-X in
   other-func-Y()
 }

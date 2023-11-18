@@ -1,3 +1,5 @@
+import {}
+
 define main(): unit {
   let _ = get-argv() in
   let argc = get-argc() in

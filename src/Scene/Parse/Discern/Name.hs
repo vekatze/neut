@@ -13,6 +13,7 @@ import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
+import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Data.Maybe qualified as Maybe
@@ -56,13 +57,6 @@ resolveNameOrError m name =
       resolveVarOrErr m var
     Locator l -> do
       Right <$> resolveLocator m l True
-    DefiniteDescription dd -> do
-      mgnOrNone <- Global.lookup m dd
-      case mgnOrNone of
-        Just mgn ->
-          return $ Right (dd, mgn)
-        Nothing ->
-          return $ Left $ "undefined definite description: " <> DD.reify dd
 
 resolveVarOrErr :: Hint -> T.Text -> App (Either T.Text (DD.DefiniteDescription, (Hint, GN.GlobalName)))
 resolveVarOrErr m name = do
@@ -75,6 +69,7 @@ resolveVarOrErr m name = do
       return $ Left $ "undefined symbol: " <> name
     [globalVar@(_, (mDef, _))] -> do
       Tag.insert m (T.length name) mDef
+      UnusedLocalLocator.delete localLocator
       return $ Right globalVar
     _ -> do
       let candInfo = T.concat $ map (("\n- " <>) . DD.reify . fst) foundNameList

@@ -1,7 +1,6 @@
-import {
+include {
 - core.bool
-- core.list
-- core.text
+- core.unit [unit, Unit]
 }
 
 mutual {

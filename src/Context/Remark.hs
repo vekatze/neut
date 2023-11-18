@@ -113,7 +113,7 @@ printFail' =
 
 printRemarkWithFilePos :: R.RemarkLevel -> Hint -> T.Text -> App ()
 printRemarkWithFilePos level m txt = do
-  printRemark (Just (FilePos.fromHint m), True, level, txt)
+  printRemark (FilePos.fromHint m, True, level, txt)
 
 printRemarkWithoutFilePos :: R.RemarkLevel -> T.Text -> App ()
 printRemarkWithoutFilePos level txt =

@@ -1,32 +1,15 @@
-import {
-- core.list
-- core.vector
-}
-
-data list(a: tau) {
-- Nil()
-- Cons(a, list(a))
-}
-
-define my-length(xs: &list(int)): int {
-  case xs {
-  - Nil() =>
-    0
-  - Cons(_, ys) =>
-    add-int(1, my-length(ys))
-  }
-}
+import {}
 
 define bar(xs-cell: &cell(list(int))): unit {
   borrow(xs-cell, (xs) => {
-    let len = my-length(xs) in
+    let len = length(xs) in
     print-int(len);
     print("\n")
   })
 }
 
 define main(): unit {
-  let xs: list(int) = Cons(1, Cons(2, Nil())) in
+  let xs: list(int) = Cons(1, Cons(2, Nil)) in
   let xs-cell = new-cell(xs) in
   let _ on xs-cell =
     let _ = bar(xs-cell) in
@@ -35,7 +18,7 @@ define main(): unit {
     });
     let _ = bar(xs-cell) in
     mutate(xs-cell, (_) => {
-      Nil()
+      Nil
     });
     mutate(xs-cell, (xs) => {
       Cons(4, xs)

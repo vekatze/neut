@@ -1,3 +1,5 @@
+import {}
+
 data tree(a) {
   // the list is in decreasing order of rank
 - Node(int, a, list(tree(a)))
