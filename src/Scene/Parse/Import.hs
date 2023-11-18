@@ -4,6 +4,8 @@ import Context.Alias qualified as Alias
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (catMaybes)
@@ -59,6 +61,7 @@ parseLocalLocatorList sgl = do
       [ P.betweenBracket $ commaList parseLocalLocator,
         P.betweenBrace $ P.manyList parseLocalLocator
       ]
+  lift $ forM_ lls $ \(m, ll) -> UnusedLocalLocator.insert ll m
   return $ AI.Use sgl lls
 
 parseLocalLocator :: P.Parser (Hint, LL.LocalLocator)
