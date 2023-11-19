@@ -1,4 +1,4 @@
-include {
+import {
 - core.bool
 - core.unit [unit, Unit]
 }

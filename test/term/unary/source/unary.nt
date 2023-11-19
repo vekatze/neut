@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 data item1 {
 - Item1(list(int))

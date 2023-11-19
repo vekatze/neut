@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 foreign {
 - add_const(int): int

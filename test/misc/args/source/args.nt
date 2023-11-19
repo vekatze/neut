@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 define main(): unit {
   let _ = get-argv() in
