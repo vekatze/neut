@@ -3,6 +3,7 @@ module Entity.Module where
 import Control.Comonad.Cofree
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
+import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
@@ -238,7 +239,7 @@ getPresetMapInfo someModule = do
   if Map.null (modulePresetMap someModule)
     then Nothing
     else do
-      let f bns = () :< E.List (map (\bn -> () :< E.String (BN.reify bn)) bns)
+      let f bns = () :< E.List (map (\bn -> () :< E.String (BN.reify bn)) $ sort bns)
       return (keyPreset, () :< E.Dictionary (Map.map f (modulePresetMap someModule)))
 
 getInlineLimitInfo :: Module -> Maybe (T.Text, E.MiniEns)
