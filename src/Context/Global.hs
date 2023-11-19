@@ -21,6 +21,7 @@ import Context.OptimizableData qualified as OptimizableData
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedPreset qualified as UnusedPreset
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -141,6 +142,7 @@ lookup m name = do
   case Map.lookup name nameMap of
     Just kind -> do
       UnusedImport.delete $ DD.globalLocator name
+      UnusedPreset.delete $ DD.moduleID name
       return $ Just kind
     Nothing
       | Just primType <- PT.fromDefiniteDescription dataSize name ->

@@ -6,6 +6,7 @@ import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Context.UnusedPreset qualified as UnusedPreset
 import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
@@ -18,7 +19,7 @@ import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
-import Entity.ModuleID (ModuleID (Library))
+import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
@@ -83,8 +84,9 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
       | Just (_, digest) <- Map.lookup (ModuleAlias prefix) (moduleDependency currentModule) -> do
           unless (null localLocatorList) $ do
             Throw.raiseError m "found a non-empty locator list when using alias import"
-          nextModule <- Module.getModule m (Library digest) locatorText
+          nextModule <- Module.getModule m (MID.Library digest) locatorText
           let presetInfo = Map.toList $ modulePresetMap nextModule
+          UnusedPreset.insert (MID.reify $ moduleID nextModule) m
           fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
             let newLocatorText = BN.reify prefix <> nsSep <> presetSourceLocator
             let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
