@@ -75,24 +75,24 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
   case baseNameList of
     [] ->
       Throw.raiseCritical m "Scene.Parse.Import: empty parse locator"
-    [prefix]
-      | Just (moduleAlias, sourceLocator) <- Map.lookup prefix (modulePrefixMap currentModule) -> do
+    [baseName]
+      | Just (moduleAlias, sourceLocator) <- Map.lookup baseName (modulePrefixMap currentModule) -> do
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
           source <- getSource m sgl locatorText
-          let gla = GLA.GlobalLocatorAlias prefix
+          let gla = GLA.GlobalLocatorAlias baseName
           return [(source, [AI.Use sgl localLocatorList, AI.Prefix m gla sgl])]
-      | Just (_, digest) <- Map.lookup (ModuleAlias prefix) (moduleDependency currentModule) -> do
+      | Just (_, digest) <- Map.lookup (ModuleAlias baseName) (moduleDependency currentModule) -> do
           unless (null localLocatorList) $ do
             Throw.raiseError m "found a non-empty locator list when using alias import"
           nextModule <- Module.getModule m (MID.Library digest) locatorText
           let presetInfo = Map.toList $ modulePresetMap nextModule
           UnusedPreset.insert (MID.reify $ moduleID nextModule) m
           fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
-            let newLocatorText = BN.reify prefix <> nsSep <> presetSourceLocator
+            let newLocatorText = BN.reify baseName <> nsSep <> presetSourceLocator
             let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
             interpretImportItem False nextModule m newLocatorText presetLocalLocatorList'
       | otherwise ->
-          Throw.raiseError m $ "no such prefix or alias is defined: " <> BN.reify prefix
+          Throw.raiseError m $ "no such prefix or alias is defined: " <> BN.reify baseName
     aliasText : locator ->
       case SL.fromBaseNameList locator of
         Nothing ->
