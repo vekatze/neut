@@ -115,18 +115,9 @@ interpretPrefixMap m ens = do
 interpretPresetMap ::
   H.Hint ->
   Map.HashMap T.Text E.Ens ->
-  Either Error (Map.HashMap PresetName (Map.HashMap LocatorName [BN.BaseName]))
-interpretPresetMap _ ens = do
-  let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
-  vs' <- mapM (E.toDictionary >=> uncurry interpretInternalPresetMap) vs
-  return $ Map.fromList $ zip ks vs'
-
-interpretInternalPresetMap ::
-  H.Hint ->
-  Map.HashMap T.Text E.Ens ->
   Either Error (Map.HashMap LocatorName [BN.BaseName])
-interpretInternalPresetMap _ ens = do
-  let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
+interpretPresetMap _ ens = do
+  let (ks, vs) = unzip $ Map.toList ens
   vs' <- mapM (E.toList >=> mapM (E.toString >=> uncurry BN.reflect)) vs
   return $ Map.fromList $ zip ks vs'
 

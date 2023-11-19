@@ -22,9 +22,6 @@ import System.FilePath qualified as FP
 type SomePath a =
   Either (Path a Dir) (Path a File)
 
-type PresetName =
-  T.Text
-
 type LocatorName =
   T.Text
 
@@ -41,7 +38,7 @@ data Module = Module
     moduleForeignDirList :: [Path Rel Dir],
     modulePrefixMap :: Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
-    modulePresetMap :: Map.HashMap PresetName (Map.HashMap LocatorName [BN.BaseName])
+    modulePresetMap :: Map.HashMap LocatorName [BN.BaseName]
   }
   deriving (Show)
 
@@ -241,10 +238,8 @@ getPresetMapInfo someModule = do
   if Map.null (modulePresetMap someModule)
     then Nothing
     else do
-      let presetMapDict = flip Map.map (modulePresetMap someModule) $ \miniPresetMap -> do
-            let f bns = () :< E.List (map (\bn -> () :< E.String (BN.reify bn)) bns)
-            () :< E.Dictionary (Map.map f miniPresetMap)
-      return (keyPreset, () :< E.Dictionary presetMapDict)
+      let f bns = () :< E.List (map (\bn -> () :< E.String (BN.reify bn)) bns)
+      return (keyPreset, () :< E.Dictionary (Map.map f (modulePresetMap someModule)))
 
 getInlineLimitInfo :: Module -> Maybe (T.Text, E.MiniEns)
 getInlineLimitInfo someModule = do
