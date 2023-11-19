@@ -53,7 +53,8 @@ constructDefaultModule name = do
         moduleLocation = moduleRootDir </> moduleFile,
         moduleForeignDirList = [],
         modulePrefixMap = Map.empty,
-        moduleInlineLimit = Nothing
+        moduleInlineLimit = Nothing,
+        modulePresetMap = Map.empty
       }
 
 createModuleFile :: App ()

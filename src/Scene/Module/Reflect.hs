@@ -74,6 +74,7 @@ fromFilePath moduleID moduleFilePath = do
   foreignDirList <- mapM interpretDirPath foreignDirListEns
   prefixMap <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPrefixMap
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
+  presetMap <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPresetMap
   return
     Module
       { moduleID = moduleID,
@@ -87,7 +88,8 @@ fromFilePath moduleID moduleFilePath = do
         moduleLocation = moduleFilePath,
         moduleForeignDirList = foreignDirList,
         modulePrefixMap = prefixMap,
-        moduleInlineLimit = mInlineLimit
+        moduleInlineLimit = mInlineLimit,
+        modulePresetMap = presetMap
       }
 
 fromCurrentPath :: App Module
@@ -109,6 +111,24 @@ interpretPrefixMap m ens = do
   ks' <- mapM (BN.reflect m) ks
   vs' <- mapM (E.toString >=> uncurry GL.reflectLocator) vs
   return $ Map.fromList $ zip ks' vs'
+
+interpretPresetMap ::
+  H.Hint ->
+  Map.HashMap T.Text E.Ens ->
+  Either Error (Map.HashMap PresetName (Map.HashMap LocatorName [BN.BaseName]))
+interpretPresetMap _ ens = do
+  let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
+  vs' <- mapM (E.toDictionary >=> uncurry interpretInternalPresetMap) vs
+  return $ Map.fromList $ zip ks vs'
+
+interpretInternalPresetMap ::
+  H.Hint ->
+  Map.HashMap T.Text E.Ens ->
+  Either Error (Map.HashMap LocatorName [BN.BaseName])
+interpretInternalPresetMap _ ens = do
+  let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
+  vs' <- mapM (E.toList >=> mapM (E.toString >=> uncurry BN.reflect)) vs
+  return $ Map.fromList $ zip ks vs'
 
 interpretRelFilePath :: E.Ens -> App SL.SourceLocator
 interpretRelFilePath ens = do

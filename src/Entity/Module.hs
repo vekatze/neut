@@ -22,6 +22,12 @@ import System.FilePath qualified as FP
 type SomePath a =
   Either (Path a Dir) (Path a File)
 
+type PresetName =
+  T.Text
+
+type LocatorName =
+  T.Text
+
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
@@ -34,7 +40,8 @@ data Module = Module
     moduleLocation :: Path Abs File,
     moduleForeignDirList :: [Path Rel Dir],
     modulePrefixMap :: Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator),
-    moduleInlineLimit :: Maybe Int
+    moduleInlineLimit :: Maybe Int,
+    modulePresetMap :: Map.HashMap PresetName (Map.HashMap LocatorName [BN.BaseName])
   }
   deriving (Show)
 
@@ -77,6 +84,10 @@ keyPrefix =
 keyInlineLimit :: T.Text
 keyInlineLimit =
   "inline-limit"
+
+keyPreset :: T.Text
+keyPreset =
+  "preset"
 
 getSourceDir :: Module -> Path Abs Dir
 getSourceDir baseModule =
@@ -151,7 +162,8 @@ ppModule someModule = do
                 getAntecedentInfo someModule,
                 getDependencyInfo someModule,
                 getPrefixMapInfo someModule,
-                getInlineLimitInfo someModule
+                getInlineLimitInfo someModule,
+                getPresetMapInfo someModule
               ]
         )
 
@@ -223,6 +235,16 @@ getPrefixMapInfo someModule = do
             () :< E.String (GL.reify (GL.GlobalLocator alias locator))
       let prefixMapDict' = Map.mapKeys BN.reify prefixMapDict
       return (keyPrefix, () :< E.Dictionary prefixMapDict')
+
+getPresetMapInfo :: Module -> Maybe (T.Text, E.MiniEns)
+getPresetMapInfo someModule = do
+  if Map.null (modulePresetMap someModule)
+    then Nothing
+    else do
+      let presetMapDict = flip Map.map (modulePresetMap someModule) $ \miniPresetMap -> do
+            let f bns = () :< E.List (map (\bn -> () :< E.String (BN.reify bn)) bns)
+            () :< E.Dictionary (Map.map f miniPresetMap)
+      return (keyPreset, () :< E.Dictionary presetMapDict)
 
 getInlineLimitInfo :: Module -> Maybe (T.Text, E.MiniEns)
 getInlineLimitInfo someModule = do
