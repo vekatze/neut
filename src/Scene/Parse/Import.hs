@@ -46,7 +46,7 @@ parseImport currentModule = do
   m <- P.getCurrentHint
   locatorText <- P.symbol
   localLocatorList <- parseLocalLocatorList'
-  lift $ interpretImportItem currentModule m locatorText localLocatorList
+  lift $ interpretImportItem True currentModule m locatorText localLocatorList
 
 parseLocalLocatorList' :: P.Parser [(Hint, LL.LocalLocator)]
 parseLocalLocatorList' = do
@@ -63,12 +63,13 @@ parseLocalLocator = do
   return (m, LL.new ll)
 
 interpretImportItem ::
+  Bool ->
   Module ->
   Hint ->
   LocatorText ->
   [(Hint, LL.LocalLocator)] ->
   App [(Source.Source, [AI.AliasInfo])]
-interpretImportItem currentModule m locatorText localLocatorList = do
+interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList = do
   baseNameList <- Throw.liftEither $ BN.bySplit m locatorText
   case baseNameList of
     [] ->
@@ -87,7 +88,7 @@ interpretImportItem currentModule m locatorText localLocatorList = do
           fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
             let newLocatorText = BN.reify prefix <> nsSep <> presetSourceLocator
             let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
-            interpretImportItem nextModule m newLocatorText presetLocalLocatorList'
+            interpretImportItem False nextModule m newLocatorText presetLocalLocatorList'
       | otherwise ->
           Throw.raiseError m $ "no such prefix or alias is defined: " <> BN.reify prefix
     aliasText : locator ->
@@ -97,8 +98,9 @@ interpretImportItem currentModule m locatorText localLocatorList = do
         Just sourceLocator -> do
           let moduleAlias = ModuleAlias aliasText
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
-          UnusedImport.insert (SGL.reify sgl) m locatorText
-          forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
+          when shouldUpdateTag $ do
+            UnusedImport.insert (SGL.reify sgl) m locatorText
+            forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
           source <- getSource m sgl locatorText
           return [(source, [AI.Use sgl localLocatorList])]
 
