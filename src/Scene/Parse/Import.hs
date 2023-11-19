@@ -5,6 +5,7 @@ import Context.App
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
@@ -97,6 +98,7 @@ interpretImportItem currentModule m locatorText localLocatorList = do
           let moduleAlias = ModuleAlias aliasText
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
           UnusedImport.insert (SGL.reify sgl) m locatorText
+          forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
           source <- getSource m sgl locatorText
           return [(source, [AI.Use sgl localLocatorList])]
 
