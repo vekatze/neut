@@ -31,8 +31,12 @@ type LocatorText =
 
 parseImportBlock :: Source.Source -> P.Parser [(Source.Source, [AI.AliasInfo])]
 parseImportBlock currentSource = do
-  P.keyword "import"
-  concat <$> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource)))
+  choice
+    [ do
+        P.keyword "import"
+        concat <$> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource))),
+      return []
+    ]
 
 parseImport :: Module -> P.Parser [(Source.Source, [AI.AliasInfo])]
 parseImport currentModule = do
