@@ -7,7 +7,6 @@ module Entity.SourceLocator
     fromBaseNameList,
     llvmLocator,
     internalLocator,
-    natLocator,
   )
 where
 
@@ -51,10 +50,6 @@ llvmLocator =
 internalLocator :: SourceLocator
 internalLocator =
   SourceLocator $(mkRelFile "#")
-
-natLocator :: SourceLocator
-natLocator =
-  SourceLocator $(mkRelFile "nat")
 
 getRelPathText :: SourceLocator -> T.Text
 getRelPathText sl =
