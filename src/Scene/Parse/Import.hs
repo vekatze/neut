@@ -81,8 +81,8 @@ interpretImportItem currentModule m locatorText localLocatorList = do
           unless (null localLocatorList) $ do
             Throw.raiseError m "found a non-empty locator list when using alias import"
           nextModule <- Module.getModule m (Library digest) locatorText
-          let items = Map.toList $ modulePresetMap nextModule
-          fmap concat $ forM items $ \(presetSourceLocator, presetLocalLocatorList) -> do
+          let presetInfo = Map.toList $ modulePresetMap nextModule
+          fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
             let newLocatorText = BN.reify prefix <> nsSep <> presetSourceLocator
             let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
             interpretImportItem nextModule m newLocatorText presetLocalLocatorList'
