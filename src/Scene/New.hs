@@ -70,4 +70,4 @@ createMainFile = do
   newModule <- Module.getMainModule
   Path.ensureDir $ getSourceDir newModule
   forM_ (getTargetPathList newModule) $ \mainFilePath -> do
-    Path.writeText mainFilePath "define main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"
+    Path.writeText mainFilePath "import {\n- core\n}\n\ndefine main(): unit {\n  print(\"Hello, world!\\n\")\n}\n"
