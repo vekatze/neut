@@ -11,6 +11,7 @@ import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
 import Entity.BaseName qualified as BN
 import Entity.Const
+import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module
@@ -74,7 +75,8 @@ interpretImportItem currentModule m locatorText localLocatorList = do
       | Just (moduleAlias, sourceLocator) <- Map.lookup prefix (modulePrefixMap currentModule) -> do
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
           source <- getSource m sgl locatorText
-          return [(source, [AI.Use sgl localLocatorList])]
+          let gla = GLA.GlobalLocatorAlias prefix
+          return [(source, [AI.Use sgl localLocatorList, AI.Prefix m gla sgl])]
       | Just (_, digest) <- Map.lookup (ModuleAlias prefix) (moduleDependency currentModule) -> do
           unless (null localLocatorList) $ do
             Throw.raiseError m "found a non-empty locator list when using alias import"
