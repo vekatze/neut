@@ -87,10 +87,11 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
           nextModule <- Module.getModule m (MID.Library digest) locatorText
           let presetInfo = Map.toList $ modulePresetMap nextModule
           UnusedPreset.insert (MID.reify $ moduleID nextModule) m
+          let m' = m {metaShouldSaveLocation = False}
           fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
             let newLocatorText = BN.reify baseName <> nsSep <> presetSourceLocator
-            let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
-            interpretImportItem False nextModule m newLocatorText presetLocalLocatorList'
+            let presetLocalLocatorList' = map ((m',) . LL.new) presetLocalLocatorList
+            interpretImportItem False nextModule m' newLocatorText presetLocalLocatorList'
       | otherwise ->
           Throw.raiseError m $ "no such prefix or alias is defined: " <> BN.reify baseName
     aliasText : locator ->
