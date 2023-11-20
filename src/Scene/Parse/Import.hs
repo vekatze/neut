@@ -2,6 +2,7 @@ module Scene.Parse.Import (parseImportBlock) where
 
 import Context.Alias qualified as Alias
 import Context.App
+import Context.Module qualified as Module
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
@@ -87,6 +88,8 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
           nextModule <- Module.getModule m (MID.Library digest) locatorText
           let presetInfo = Map.toList $ modulePresetMap nextModule
           UnusedPreset.insert (MID.reify $ moduleID nextModule) m
+          ensFileHint <- getEnsFileHint m nextModule
+          Tag.insertFileLoc m (T.length locatorText) ensFileHint
           let m' = m {metaShouldSaveLocation = False}
           fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
             let newLocatorText = BN.reify baseName <> nsSep <> presetSourceLocator
@@ -119,3 +122,8 @@ getSource m sgl locatorText = do
         Source.sourceFilePath = nextPath,
         Source.sourceHint = Just m
       }
+
+getEnsFileHint :: Hint -> Module -> App Hint
+getEnsFileHint m baseModule = do
+  moduleFilePath <- Module.getModuleFilePath (Just m) (moduleID baseModule)
+  return $ newSourceHint moduleFilePath
