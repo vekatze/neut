@@ -1,7 +1,7 @@
 import {
 - core
-- keyword
-- term
+- Keyword
+- Term
 }
 
 define test-syntax(): unit {
@@ -71,7 +71,7 @@ define test-resource(): unit {
 define main(): unit {
   test-syntax();
   test-resource();
-  term.test-syntax();
-  term.test-resource();
-  keyword.test-syntax()
+  Term.test-syntax();
+  Term.test-resource();
+  Keyword.test-syntax()
 }
