@@ -4,6 +4,7 @@ module Entity.BaseName
     reify,
     reflect,
     reflect',
+    isCapitalized,
     length,
     hole,
     form,
@@ -31,6 +32,7 @@ module Entity.BaseName
 where
 
 import Data.Binary
+import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -71,6 +73,14 @@ reflect' rawTxt = do
       return baseName
     _ ->
       Left $ newError' $ "no dots are allowed here: " <> rawTxt
+
+isCapitalized :: BaseName -> Bool
+isCapitalized (MakeBaseName bn) =
+  case T.uncons bn of
+    Nothing ->
+      False
+    Just (c, _) ->
+      isUpper c
 
 length :: BaseName -> Int
 length MakeBaseName {reify} =

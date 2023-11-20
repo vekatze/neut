@@ -15,6 +15,7 @@ import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
+import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.Error (Error (MakeError))
 import Entity.Module qualified as M
@@ -34,7 +35,10 @@ fetch baseModule = do
 
 insertDependency :: T.Text -> ModuleURL -> App ()
 insertDependency aliasName url = do
-  alias <- ModuleAlias <$> Throw.liftEither (BN.reflect' aliasName)
+  aliasName' <- Throw.liftEither (BN.reflect' aliasName)
+  when (isCapitalized aliasName') $ do
+    Throw.raiseError' $ "module aliases must not be capitalized, but found: " <> BN.reify aliasName'
+  let alias = ModuleAlias aliasName'
   mainModule <- Module.getMainModule
   withTempFile $ \tempFilePath tempFileHandle -> do
     download tempFilePath alias [url]

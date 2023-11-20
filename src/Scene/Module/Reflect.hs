@@ -14,6 +14,7 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
 import Entity.Ens qualified as E
@@ -109,6 +110,8 @@ interpretPrefixMap ::
 interpretPrefixMap m ens = do
   let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
   ks' <- mapM (BN.reflect m) ks
+  forM_ ks' $ \k ->
+    unless (isCapitalized k) $ Left $ newError m $ "prefixes must be capitalized, but found: " <> BN.reify k
   vs' <- mapM (E.toString >=> uncurry GL.reflectLocator) vs
   return $ Map.fromList $ zip ks' vs'
 
@@ -136,6 +139,8 @@ interpretDependencyDict ::
 interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
+    when (BN.isCapitalized k') $ do
+      raiseError m $ "module aliases can't be capitalized, but found: " <> BN.reify k'
     when (S.member k' BN.reservedAlias) $
       raiseError m $
         "the reserved name `"
