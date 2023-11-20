@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 define test-syntax(): unit {
   // nullary

@@ -1,5 +1,6 @@
 import {
-- ext
+- core
+- Ext
 }
 
 define test-syntax(): unit {
@@ -138,13 +139,13 @@ define test-behavior(): unit {
   let tmp on ch-clone =
     let f =
       detach {
-        ext.sleep(1);
+        Ext.sleep(1);
         send(ch-clone, () => {3})
       }
     in
     let g =
       detach {
-        ext.sleep(1);
+        Ext.sleep(1);
         send(ch-clone, () => {4})
       }
     in

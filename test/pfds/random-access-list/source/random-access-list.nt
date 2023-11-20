@@ -1,7 +1,9 @@
 // random access list via numerical representation
 // (complete binary tree + dense representation)
 
-import {}
+import {
+- core
+}
 
 data tree(a) {
 - Leaf(a)

@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 data tree(a) {
   // the list is in decreasing order of rank

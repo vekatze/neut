@@ -1,5 +1,6 @@
 import {
-- v
+- core
+- V
 }
 
 define identity(a: tau, x: a): a {
@@ -13,7 +14,7 @@ define test(): tau {
   // definite description in current module
   let _ = this.var.test in
   let _ = core.vector.vector in
-  let _ = v.vector in
+  let _ = V.vector in
   // non-ascii long name
   let もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る = tau in
   let _ = identity(tau, もの思へば沢の蛍も我が身よりあくがれ出づる魂かとぞ見る) in

@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 data bar(a: tau) {
 - Bar(value: a)

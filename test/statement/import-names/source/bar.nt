@@ -1,4 +1,5 @@
 import {
+- core
 - this.foo [some-func]
 }
 

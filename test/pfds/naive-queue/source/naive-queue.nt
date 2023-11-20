@@ -1,6 +1,6 @@
 import {
+- core
 - core.text
-- core.list [list, reverse]
 }
 
 data queue(a) {

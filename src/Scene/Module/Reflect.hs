@@ -14,6 +14,7 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.BaseName (isCapitalized)
 import Entity.BaseName qualified as BN
 import Entity.Const (archiveRelDir, buildRelDir, moduleFile, sourceRelDir)
 import Entity.Ens qualified as E
@@ -74,6 +75,7 @@ fromFilePath moduleID moduleFilePath = do
   foreignDirList <- mapM interpretDirPath foreignDirListEns
   prefixMap <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPrefixMap
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
+  presetMap <- liftEither $ E.access' keyPreset E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPresetMap
   return
     Module
       { moduleID = moduleID,
@@ -87,7 +89,8 @@ fromFilePath moduleID moduleFilePath = do
         moduleLocation = moduleFilePath,
         moduleForeignDirList = foreignDirList,
         modulePrefixMap = prefixMap,
-        moduleInlineLimit = mInlineLimit
+        moduleInlineLimit = mInlineLimit,
+        modulePresetMap = presetMap
       }
 
 fromCurrentPath :: App Module
@@ -107,8 +110,19 @@ interpretPrefixMap ::
 interpretPrefixMap m ens = do
   let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
   ks' <- mapM (BN.reflect m) ks
+  forM_ ks' $ \k ->
+    unless (isCapitalized k) $ Left $ newError m $ "prefixes must be capitalized, but found: " <> BN.reify k
   vs' <- mapM (E.toString >=> uncurry GL.reflectLocator) vs
   return $ Map.fromList $ zip ks' vs'
+
+interpretPresetMap ::
+  H.Hint ->
+  Map.HashMap T.Text E.Ens ->
+  Either Error (Map.HashMap LocatorName [BN.BaseName])
+interpretPresetMap _ ens = do
+  let (ks, vs) = unzip $ Map.toList ens
+  vs' <- mapM (E.toList >=> mapM (E.toString >=> uncurry BN.reflect)) vs
+  return $ Map.fromList $ zip ks vs'
 
 interpretRelFilePath :: E.Ens -> App SL.SourceLocator
 interpretRelFilePath ens = do
@@ -125,6 +139,8 @@ interpretDependencyDict ::
 interpretDependencyDict (m, dep) = do
   items <- forM (Map.toList dep) $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
+    when (BN.isCapitalized k') $ do
+      raiseError m $ "module aliases can't be capitalized, but found: " <> BN.reify k'
     when (S.member k' BN.reservedAlias) $
       raiseError m $
         "the reserved name `"

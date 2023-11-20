@@ -1,4 +1,4 @@
-include {
+import {
 - core.bool [bool, True, False]
 - core.except [none, Pass, Fail]
 - core.pair

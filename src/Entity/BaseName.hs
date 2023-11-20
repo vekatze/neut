@@ -4,6 +4,7 @@ module Entity.BaseName
     reify,
     reflect,
     reflect',
+    isCapitalized,
     length,
     hole,
     form,
@@ -27,11 +28,11 @@ module Entity.BaseName
     free,
     reservedAlias,
     extend,
-    defaultImports,
   )
 where
 
 import Data.Binary
+import Data.Char (isUpper)
 import Data.Hashable
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -55,7 +56,7 @@ bySplit m name = do
   let cand = map MakeBaseName $ T.split (nsSepChar ==) name
   if empty `notElem` cand
     then return $ map MakeBaseName $ T.split (nsSepChar ==) name
-    else Left (newError m $ "invalid signature: " <> name)
+    else Left (newError m $ "no succeeding dots are allowed here: " <> name)
 
 reflect :: H.Hint -> T.Text -> Either Error BaseName
 reflect m rawTxt = do
@@ -63,7 +64,7 @@ reflect m rawTxt = do
     [baseName] ->
       return baseName
     _ ->
-      Left $ newError m $ "invalid signature: " <> rawTxt
+      Left $ newError m $ "no dots are allowed here: " <> rawTxt
 
 reflect' :: T.Text -> Either Error BaseName
 reflect' rawTxt = do
@@ -71,7 +72,15 @@ reflect' rawTxt = do
     [baseName] ->
       return baseName
     _ ->
-      Left $ newError' $ "invalid signature: " <> rawTxt
+      Left $ newError' $ "no dots are allowed here: " <> rawTxt
+
+isCapitalized :: BaseName -> Bool
+isCapitalized (MakeBaseName bn) =
+  case T.uncons bn of
+    Nothing ->
+      False
+    Just (c, _) ->
+      isUpper c
 
 length :: BaseName -> Int
 length MakeBaseName {reify} =
@@ -179,101 +188,3 @@ reservedAlias =
 extend :: BaseName -> BaseName -> BaseName
 extend (MakeBaseName b1) (MakeBaseName b2) =
   MakeBaseName $ b1 <> "#" <> b2
-
-defaultImports :: [(T.Text, [BaseName])]
-defaultImports =
-  [ ("core.bool", coreBoolNames),
-    ("core.pair", corePairNames),
-    ("core.cell", coreCellNames),
-    ("core.channel", coreChannelNames),
-    ("core.except", coreExceptNames),
-    ("core.file", coreFileNames),
-    ("core.file.descriptor", coreFileDescriptorNames),
-    ("core.function", coreFunctionNames),
-    ("core.list", coreListNames),
-    ("core.system", coreSystemNames),
-    ("core.text", coreTextNames),
-    ("core.text.io", coreTextIONames),
-    ("core.thread", coreThreadNames),
-    ("core.unit", coreUnitNames),
-    ("core.void", coreVoidNames)
-  ]
-
-coreBoolNames :: [BaseName]
-coreBoolNames =
-  map MakeBaseName ["bool", "True", "False", "and", "or", "not"]
-
-corePairNames :: [BaseName]
-corePairNames =
-  map MakeBaseName ["pair", "Pair"]
-
-coreCellNames :: [BaseName]
-coreCellNames =
-  map MakeBaseName ["cell", "new-cell", "mutate", "borrow", "clone"]
-
-coreChannelNames :: [BaseName]
-coreChannelNames =
-  map MakeBaseName ["channel", "new-channel", "send", "receive"]
-
-coreExceptNames :: [BaseName]
-coreExceptNames =
-  map MakeBaseName ["except", "Fail", "Pass", "none"]
-
-coreFileNames :: [BaseName]
-coreFileNames =
-  map MakeBaseName ["open", "close"]
-
-coreFileDescriptorNames :: [BaseName]
-coreFileDescriptorNames =
-  map MakeBaseName ["descriptor", "stdin", "stdout", "stderr"]
-
-coreFunctionNames :: [BaseName]
-coreFunctionNames =
-  map MakeBaseName ["flip", "compose", "curry", "uncurry"]
-
-coreSystemNames :: [BaseName]
-coreSystemNames =
-  map MakeBaseName ["admit", "assert", "get-argc", "get-argv"]
-
-coreTextNames :: [BaseName]
-coreTextNames =
-  [MakeBaseName "text"]
-
-coreTextIONames :: [BaseName]
-coreTextIONames =
-  map MakeBaseName ["write", "read", "get-line", "print", "print-line", "print-int", "print-float"]
-
-coreThreadNames :: [BaseName]
-coreThreadNames =
-  map MakeBaseName ["flow", "detach", "attach"]
-
-coreUnitNames :: [BaseName]
-coreUnitNames =
-  map MakeBaseName ["unit", "Unit"]
-
-coreVoidNames :: [BaseName]
-coreVoidNames =
-  [MakeBaseName "void"]
-
-coreListNames :: [BaseName]
-coreListNames = do
-  map
-    MakeBaseName
-    [ "list",
-      "Nil",
-      "Cons",
-      "length",
-      "append",
-      "fold-left",
-      "fold-right",
-      "map",
-      "for",
-      "concat",
-      "reverse",
-      "unzip",
-      "uncons",
-      "all",
-      "any",
-      "range",
-      "filter-some"
-    ]

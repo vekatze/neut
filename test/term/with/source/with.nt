@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 define nop(): unit {
   Unit

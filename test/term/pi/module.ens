@@ -1,15 +1,15 @@
 {
   dependency {
     core {
-      digest "SaAKgwuCHWNMYXIrdqcBrqvCgSaDpXEOmfZ7lQ5-mAA="
+      digest "B7NFq4XVvmGpqNqrEHvnn0KRVmFrWcsi_YUPh_VLdfM="
       mirror [
-        "https://github.com/vekatze/neut-core/raw/main/archive/0-21.tar.zst"
+        "https://github.com/vekatze/neut-core/raw/main/archive/0-24.tar.zst"
       ]
     }
   }
   prefix {
-    keyword "this.pi-keyword"
-    term "this.pi-term"
+    Keyword "this.pi-keyword"
+    Term "this.pi-term"
   }
   target {
     pi "pi.nt"

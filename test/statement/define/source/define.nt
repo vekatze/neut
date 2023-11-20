@@ -1,4 +1,6 @@
-import {}
+import {
+- core
+}
 
 define no-type-ascription() {
   Unit

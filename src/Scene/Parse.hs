@@ -12,6 +12,7 @@ import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
+import Context.UnusedPreset qualified as UnusedPreset
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -76,6 +77,7 @@ parseSource source cacheOrContent = do
       UnusedVariable.registerRemarks
       UnusedImport.registerRemarks
       UnusedLocalLocator.registerRemarks
+      UnusedPreset.registerRemarks
       return $ Right (stmtList, declList)
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
