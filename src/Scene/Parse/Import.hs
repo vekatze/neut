@@ -53,8 +53,7 @@ parseImport currentModule = do
 parseLocalLocatorList' :: P.Parser [(Hint, LL.LocalLocator)]
 parseLocalLocatorList' = do
   choice
-    [ P.betweenBracket $ commaList parseLocalLocator,
-      P.betweenBrace $ P.manyList parseLocalLocator,
+    [ P.betweenBrace $ commaList parseLocalLocator,
       return []
     ]
 
