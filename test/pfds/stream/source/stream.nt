@@ -1,6 +1,6 @@
 import {
 - core.bool
-- core.unit [unit, Unit]
+- core.unit {unit, Unit}
 }
 
 mutual {

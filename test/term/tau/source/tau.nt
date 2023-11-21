@@ -1,6 +1,6 @@
 import {
 - core
-- core.vector [vector]
+- core.vector {vector}
 }
 
 define test-syntax(): tau {
