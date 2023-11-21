@@ -1,6 +1,6 @@
 import {
 - core
-- core.errno [system]
+- core.errno {system}
 - FF
 - FM
 }

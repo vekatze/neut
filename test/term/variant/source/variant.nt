@@ -170,9 +170,9 @@ define nested-enum-match(t: term(my-enum)): my-enum {
 
 define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
   let foo = Var("test") in
-  let f = () => { foo } in
-  let g = () => { foo } in
-  let h = () => { foo } in
+  let f = () => {foo} in
+  let g = () => {foo} in
+  let h = () => {foo} in
   match t {
   - Var(x) =>
     let _ = f in
@@ -197,7 +197,7 @@ define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
     }
   - App(t1, _) =>
     let _ = g in
-    let k = if False { h } else { () => { Var("pohe") } } in
+    let k = if False {h} else {() => {Var("pohe")}} in
     let _ = k in
     let _ = k in
     let _ = k in
@@ -215,14 +215,14 @@ data monoid(a) {
 define list-monoid(a: tau): monoid(list(a)) {
   Monoid of {
   - m-op =
-    (xs, ys) => { core.list.append(xs, ys) }
+    (xs, ys) => {core.list.append(xs, ys)}
   - m-empty =
     []
   }
 }
 
 define use-struct(a: tau, m: monoid(a)): a {
-  let Monoid of { m-empty, m-op } = m in
+  let Monoid of {m-empty, m-op} = m in
   m-op(m-empty, m-empty)
 }
 

@@ -1,6 +1,6 @@
 import {
 - core
-- this.foo [some-func]
+- this.foo {some-func}
 }
 
 define other-func-X(): unit {

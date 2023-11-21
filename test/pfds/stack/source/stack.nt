@@ -1,8 +1,8 @@
 import {
-- core.bool [bool, True, False]
-- core.unit [unit]
-- core.except [none, Pass]
-- core.text.io [print-int, print]
+- core.bool {bool, True, False}
+- core.unit {unit}
+- core.except {none, Pass}
+- core.text.io {print-int, print}
 - core.text
 }
 
