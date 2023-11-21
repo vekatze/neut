@@ -57,8 +57,8 @@ define main(): unit {
   in
   // k = value-1 + value-1 + value-1 + value-3 = 3 + 3 + 3 + 10 = 19
   let k on config =
-    tie Foo of { value-1, value-3 } = config in
-    tie Bar of { value } = value-3 in
+    tie Foo of {value-1, value-3} = config in
+    tie Bar of {value} = value-3 in
     add-int(*value-1, add-int(*value-1, add-int(*value-1, *value)))
   in
   let _ = config in

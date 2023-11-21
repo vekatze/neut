@@ -45,7 +45,7 @@ define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
 
 define main(): unit {
   let xs = empty(_) in
-  let v = Tuple(() => { 1 }, () => { 2: int }) in
+  let v = Tuple(() => {1}, () => {2: int}) in
   let ys = Cons(v, xs) in
   let zs = Cons(v, Cons(v, ys)) in
   let calc on zs, xs =

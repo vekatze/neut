@@ -82,13 +82,13 @@ define main(): unit {
   let yss = tails(_, xs) in // [[26, ...], [25, ...], ..., [1, ...]]
   let _ = yss in
   let _ = yss in
-  let zs = map((l) => { head(l) }, yss) in // [26, ..., 1]
+  let zs = map((l) => {head(l)}, yss) in // [26, ..., 1]
   let _ = zs in
   let _ = zs in
   let _ = zs in
   let _ = zs in
   let _ = zs in
-  let result-nat = fold-r(nat, nat, (a, b) => { add-nat(a, b) }, Zero, zs) in // 26 + ... + 1 = 351
+  let result-nat = fold-r(nat, nat, (a, b) => {add-nat(a, b)}, Zero, zs) in // 26 + ... + 1 = 351
   let _ = result-nat in
   let _ = result-nat in
   let result = interpret(result-nat) in

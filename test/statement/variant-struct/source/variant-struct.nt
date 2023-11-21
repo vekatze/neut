@@ -85,7 +85,7 @@ mutual {
 }
 
 define buz(c: &config): &text {
-  tie Config of { counter, func, path } = c in
+  tie Config of {counter, func, path} = c in
   let _: int = *counter in
   let _ = *counter in
   let _ = {*func}(3) in

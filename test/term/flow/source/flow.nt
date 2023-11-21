@@ -11,7 +11,7 @@ define test-syntax(): unit {
   let _ = flow(flow(tau)) in
 
   let _ = detach Unit in
-  let _ = detach { Unit } in
+  let _ = detach {Unit} in
   let _ =
     detach {
       let _ = Unit in

@@ -30,12 +30,12 @@ define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
 
 define take(a: tau, n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
-    Stream(() => { Nil })
+    Stream(() => {Nil})
   } else {
     let Stream(k) = xs in
     match k() {
     - Nil =>
-      Stream(() => { Nil })
+      Stream(() => {Nil})
     - Cons(x, rest) =>
       Stream(() => {
         Cons(x, take(a, sub-int(n, 1), rest))
@@ -46,7 +46,7 @@ define take(a: tau, n: int, xs: stream(a)): stream(a) {
 
 define main(): unit {
   let my-stream: stream(int) =
-    Stream(() => { Cons(1, Stream(() => { Nil })) })
+    Stream(() => {Cons(1, Stream(() => {Nil}))})
   in
   let _ = my-stream in
   Unit

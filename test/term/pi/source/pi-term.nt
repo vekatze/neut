@@ -4,18 +4,18 @@ import {
 
 define test-syntax(): unit {
   // nullary
-  let _ = () => { tau } in
+  let _ = () => {tau} in
   // unary
-  let _: tau -> tau = (x) => { x } in
-  let _ = (x: tau) => { x } in
+  let _: tau -> tau = (x) => {x} in
+  let _ = (x: tau) => {x} in
   // binary
-  let _: (tau, tau) -> tau = (x, _) => { x } in
-  let _: (tau, tau) -> tau = (_, y) => { y } in
-  let _: (tau, tau) -> tau = (x: tau, _) => { x } in
-  let _: (tau, tau) -> tau = (_, y: tau) => { y } in
-  let _: (tau, tau) -> tau = (x: tau, _) => { x } in
-  let _ = (x: tau, y: tau) => { Pair(x, y) } in
-  let _ = { (x: tau) => { x } }(tau) in
+  let _: (tau, tau) -> tau = (x, _) => {x} in
+  let _: (tau, tau) -> tau = (_, y) => {y} in
+  let _: (tau, tau) -> tau = (x: tau, _) => {x} in
+  let _: (tau, tau) -> tau = (_, y: tau) => {y} in
+  let _: (tau, tau) -> tau = (x: tau, _) => {x} in
+  let _ = (x: tau, y: tau) => {Pair(x, y)} in
+  let _ = {(x: tau) => {x}}(tau) in
   // (unnecessarily) complex type
   let _ =
     (
@@ -30,14 +30,14 @@ define test-syntax(): unit {
       x
     }
   in
-  let f = (_: tau, _: tau, _: tau) => { tau } in
+  let f = (_: tau, _: tau, _: tau) => {tau} in
   let _ =
     f(
       let _ = tau in
       tau,
       tau,
       let _ = tau in
-      {() => { tau }}()
+      {() => {tau}}()
     )
   in
   Unit
@@ -54,13 +54,13 @@ define opaque(a: tau, x: a) {
 }
 
 define affine-lam1(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let _ = lam1 in
   Unit
 }
 
 define relevant-lam1(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let _ = lam1 in
   let _ = lam1 in
   Unit
@@ -68,7 +68,7 @@ define relevant-lam1(): unit {
 
 
 define affine-lam2(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let lam2 =
     opaque(
       _,
@@ -83,7 +83,7 @@ define affine-lam2(): unit {
 }
 
 define relevant-lam2(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let lam2 =
     opaque(
       _,
@@ -99,7 +99,7 @@ define relevant-lam2(): unit {
 }
 
 define affine-lam3(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let lam2 =
     opaque(
       _,
@@ -124,7 +124,7 @@ define affine-lam3(): unit {
 }
 
 define relevant-lam3(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let lam2 =
     opaque(
       _,
@@ -150,7 +150,7 @@ define relevant-lam3(): unit {
 }
 
 define affine-lam4(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let lam2 =
     opaque(
       _,
@@ -187,7 +187,7 @@ define affine-lam4(): unit {
 }
 
 define relevant-lam4(): unit {
-  let lam1 = opaque(_, () => { tau }) in
+  let lam1 = opaque(_, () => {tau}) in
   let lam2 =
     opaque(
       _,
