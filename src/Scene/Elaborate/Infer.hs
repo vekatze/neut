@@ -44,7 +44,6 @@ inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
-      Type.insert x $ m :< WT.Pi xts codType
       stmtKind' <- inferStmtKind stmtKind
       (xts', varEnv) <- inferBinder' [] xts
       codType' <- inferType' varEnv codType
@@ -60,7 +59,6 @@ inferStmt mMainDD stmt =
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
     WeakStmtDefineResource m name discarder copier -> do
-      Type.insert name $ m :< WT.Tau
       (discarder', td) <- infer' [] discarder
       (copier', tc) <- infer' [] copier
       x <- Gensym.newIdentFromText "_"
