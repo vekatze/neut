@@ -148,7 +148,7 @@ rawTermPiIntro = do
   m <- getCurrentHint
   varList <- argList preBinder
   delimiter "=>"
-  lam m varList <$> betweenBrace rawExpr
+  lam m varList <$> rawExpr
 
 rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
 rawTermPiOrConsOrAscOrBasic = do
