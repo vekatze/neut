@@ -41,10 +41,6 @@ revealStmt stmt =
       t' <- reveal' [] t
       v' <- reveal' [] v
       return $ WeakStmtDefineConst m dd t' v'
-    WeakStmtDefineResource m name discarder copier -> do
-      discarder' <- reveal' [] discarder
-      copier' <- reveal' [] copier
-      return $ WeakStmtDefineResource m name discarder' copier'
     WeakStmtDeclare m declList -> do
       declList' <- mapM revealDecl declList
       return $ WeakStmtDeclare m declList'
@@ -176,6 +172,10 @@ reveal' varEnv term =
         AN.Type t -> do
           t' <- reveal' varEnv t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
+    m :< WT.Resource resourceID discarder copier -> do
+      discarder' <- reveal' [] discarder
+      copier' <- reveal' [] copier
+      return $ m :< WT.Resource resourceID discarder' copier'
 
 revealPi ::
   BoundVarEnv ->

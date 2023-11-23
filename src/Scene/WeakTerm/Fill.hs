@@ -94,6 +94,9 @@ fill sub term =
         AN.Type t -> do
           t' <- fill sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
+    _ :< WT.Resource {} ->
+      -- `resource` is closed by construction
+      return term
 
 fill' ::
   HoleSubst ->

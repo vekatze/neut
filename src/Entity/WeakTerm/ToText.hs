@@ -80,6 +80,8 @@ toText term =
       "<magic>"
     _ :< WT.Annotation _ _ e ->
       toText e
+    _ :< WT.Resource {} -> do
+      "<resource>"
 
 inParen :: T.Text -> T.Text
 inParen s =

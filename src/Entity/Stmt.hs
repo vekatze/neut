@@ -37,7 +37,6 @@ data RawStmt
       RT.RawTerm
       RT.RawTerm
   | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
   | RawStmtDeclare Hint [RDE.RawDecl]
 
 data WeakStmt
@@ -51,7 +50,6 @@ data WeakStmt
       WT.WeakTerm
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtDeclare Hint [DE.Decl WT.WeakTerm]
 
 type Program =
@@ -68,7 +66,6 @@ data StmtF a
       a
       a
   | StmtDefineConst SavedHint DD.DefiniteDescription a a
-  | StmtDefineResource SavedHint DD.DefiniteDescription a a
   deriving (Generic)
 
 type Stmt = StmtF TM.Term
@@ -94,10 +91,6 @@ compress stmt =
       let t' = TM.compress t
       let e' = TM.compress e
       StmtDefineConst m dd t' e'
-    StmtDefineResource m dd discarder copier -> do
-      let discarder' = TM.compress discarder
-      let copier' = TM.compress copier
-      StmtDefineResource m dd discarder' copier'
 
 extend :: StrippedStmt -> Stmt
 extend stmt =
@@ -112,10 +105,6 @@ extend stmt =
       let t' = TM.extend t
       let e' = TM.extend e
       StmtDefineConst m dd t' e'
-    StmtDefineResource m dd discarder copier -> do
-      let discarder' = TM.extend discarder
-      let copier' = TM.extend copier
-      StmtDefineResource m dd discarder' copier'
 
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =

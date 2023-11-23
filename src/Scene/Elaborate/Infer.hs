@@ -61,17 +61,6 @@ inferStmt mMainDD stmt =
       (v', tv) <- infer' [] v
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
-    WeakStmtDefineResource m name discarder copier -> do
-      insertType name $ m :< WT.Tau
-      (discarder', td) <- infer' [] discarder
-      (copier', tc) <- infer' [] copier
-      x <- Gensym.newIdentFromText "_"
-      intType <- getIntType m
-      let tDiscard = m :< WT.Pi [(m, x, intType)] intType
-      let tCopy = m :< WT.Pi [(m, x, intType)] intType
-      insConstraintEnv tDiscard td
-      insConstraintEnv tCopy tc
-      return $ WeakStmtDefineResource m name discarder' copier'
     WeakStmtDeclare m declList -> do
       declList' <- mapM inferDecl declList
       return $ WeakStmtDeclare m declList'
@@ -234,6 +223,16 @@ infer' varEnv term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
+    m :< WT.Resource resourceID discarder copier -> do
+      (discarder', td) <- infer' [] discarder
+      (copier', tc) <- infer' [] copier
+      x <- Gensym.newIdentFromText "_"
+      intType <- getIntType m
+      let tDiscard = m :< WT.Pi [(m, x, intType)] intType
+      let tCopy = m :< WT.Pi [(m, x, intType)] intType
+      insConstraintEnv tDiscard td
+      insConstraintEnv tCopy tc
+      return (m :< WT.Resource resourceID discarder' copier', m :< WT.Tau)
 
 inferArgs ::
   WT.SubstWeakTerm ->

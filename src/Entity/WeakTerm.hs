@@ -23,6 +23,8 @@ import Entity.WeakPrim qualified as WP
 
 type WeakTerm = Cofree WeakTermF Hint
 
+type ID = Int
+
 data WeakTermF a
   = Tau
   | Var Ident
@@ -41,6 +43,7 @@ data WeakTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
+  | Resource Int a a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

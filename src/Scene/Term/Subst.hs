@@ -89,6 +89,9 @@ subst sub term =
     m :< TM.Magic der -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')
+    _ :< TM.Resource {} -> do
+      -- `resource` is closed by construction
+      return term
 
 subst' ::
   SubstTerm ->

@@ -71,11 +71,6 @@ discernStmt stmt = do
       v' <- discern empty v
       Tag.insertDD m dd m
       return $ WeakStmtDefineConst m dd t' v'
-    RawStmtDefineResource m name discarder copier -> do
-      discarder' <- discern empty discarder
-      copier' <- discern empty copier
-      Tag.insertDD m name m
-      return $ WeakStmtDefineResource m name discarder' copier'
     RawStmtDeclare m declList -> do
       declList' <- mapM discernDecl declList
       return $ WeakStmtDeclare m declList'
@@ -104,8 +99,6 @@ registerTopLevelName stmt =
       Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
     RawStmtDefineConst m dd _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-    RawStmtDefineResource m name _ _ -> do
-      Global.registerStmtDefineResource m name
     RawStmtDeclare _ declList -> do
       mapM_ Global.registerDecl declList
 
@@ -208,6 +201,11 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
+    m :< RT.Resource discarder copier -> do
+      resourceID <- Gensym.newCount
+      discarder' <- discern nenv discarder
+      copier' <- discern nenv copier
+      return $ m :< WT.Resource resourceID discarder' copier'
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =

@@ -1,6 +1,5 @@
 module Context.Global
   ( registerStmtDefine,
-    registerStmtDefineResource,
     registerDecl,
     reportMissingDefinitions,
     lookup,
@@ -145,11 +144,6 @@ toConsNameArrow ::
 toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, discriminant) = do
   let consArgNum = AN.fromInt $ length consArgs
   (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
-
-registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
-registerStmtDefineResource m resourceName = do
-  ensureDefFreshness m resourceName
-  insertToNameMap resourceName m GN.Resource
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do

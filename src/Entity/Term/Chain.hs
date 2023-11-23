@@ -67,6 +67,10 @@ chainOf' tenv term =
       []
     _ :< TM.Magic der ->
       foldMap (chainOf' tenv) der
+    _ :< TM.Resource _ discarder copier -> do
+      let xs1 = chainOf' tenv discarder
+      let xs2 = chainOf' tenv copier
+      xs1 ++ xs2
 
 chainOfBinder :: TM.TypeEnv -> [BinderF TM.Term] -> [TM.Term] -> [BinderF TM.Term]
 chainOfBinder tenv binder es =

@@ -123,12 +123,6 @@ elaborateStmt stmt = do
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return [result]
-    WeakStmtDefineResource m name discarder copier -> do
-      discarder' <- elaborate' discarder >>= TM.inline m
-      copier' <- elaborate' copier >>= TM.inline m
-      let result = StmtDefineResource (SavedHint m) name discarder' copier'
-      insertStmt result
-      return [result]
     WeakStmtDeclare _ declList -> do
       mapM_ elaborateDecl declList
       return []
@@ -148,8 +142,6 @@ insertStmt stmt = do
     StmtDefineConst (SavedHint m) dd t v -> do
       Type.insert dd $ weaken $ m :< TM.Pi [] t
       Definition.insert O.Clear dd [] v
-    StmtDefineResource (SavedHint m) name _ _ -> do
-      Type.insert name $ m :< WT.Tau
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
@@ -160,8 +152,6 @@ insertWeakStmt stmt = do
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
     WeakStmtDefineConst m dd _ v -> do
       WeakDefinition.insert O.Clear m dd [] v
-    WeakStmtDefineResource {} ->
-      return ()
     WeakStmtDeclare {} -> do
       return ()
 
@@ -177,8 +167,6 @@ insertStmtKindInfo stmt = do
         DataIntro {} ->
           return ()
     StmtDefineConst {} ->
-      return ()
-    StmtDefineResource {} ->
       return ()
 
 elaborateStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind TM.Term)
@@ -318,6 +306,10 @@ elaborate' term =
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
+    m :< WT.Resource resourceID discarder copier -> do
+      discarder' <- elaborate' discarder
+      copier' <- elaborate' copier
+      return $ m :< TM.Resource resourceID discarder' copier'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

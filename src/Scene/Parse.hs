@@ -97,8 +97,6 @@ parseCachedStmtList stmtList = do
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
       StmtDefineConst (SavedHint m) dd _ _ ->
         Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-      StmtDefineResource (SavedHint m) name _ _ ->
-        Global.registerStmtDefineResource m name
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -325,7 +323,9 @@ parseDefineResource = do
   P.betweenBrace $ do
     discarder <- P.delimiter "-" >> rawExpr
     copier <- P.delimiter "-" >> rawExpr
-    return $ RawStmtDefineResource m name' discarder copier
+    return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource discarder copier)
+
+-- return $ RawStmtDefineResource m name' discarder copier
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
@@ -346,8 +346,6 @@ getWeakStmtName' stmt =
       [(m, name)]
     WeakStmtDefineConst m name _ _ ->
       [(m, name)]
-    WeakStmtDefineResource m name _ _ ->
-      [(m, name)]
     WeakStmtDeclare {} ->
       []
 
@@ -357,6 +355,4 @@ getStmtName stmt =
     StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
       (m, name)
     StmtDefineConst (SavedHint m) name _ _ ->
-      (m, name)
-    StmtDefineResource (SavedHint m) name _ _ ->
       (m, name)

@@ -21,6 +21,8 @@ import GHC.Generics (Generic)
 
 type Term = Cofree TermF Hint
 
+type ID = Int
+
 data TermF a
   = Tau
   | Var Ident
@@ -36,6 +38,7 @@ data TermF a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | ResourceType DD.DefiniteDescription
+  | Resource ID a a
   | Magic (Magic a)
   deriving (Show, Generic)
 

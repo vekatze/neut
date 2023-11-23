@@ -47,6 +47,7 @@ data RawTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
+  | Resource a a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)

@@ -58,6 +58,8 @@ compress term =
       () :< TM.ResourceType name
     _ :< TM.Magic der -> do
       () :< TM.Magic (fmap compress der)
+    _ :< TM.Resource resourceID discarder copier -> do
+      () :< TM.Resource resourceID (compress discarder) (compress copier)
 
 compressBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, Cofree TM.TermF ())
 compressBinder (m, x, t) =
