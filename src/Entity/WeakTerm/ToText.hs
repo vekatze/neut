@@ -74,14 +74,12 @@ toText term =
       showPrim prim
     _ :< WT.Hole {} ->
       "_"
-    _ :< WT.ResourceType name ->
-      showGlobalVariable name
     _ :< WT.Magic _ -> do
       "<magic>"
     _ :< WT.Annotation _ _ e ->
       toText e
-    _ :< WT.Resource {} -> do
-      "<resource>"
+    _ :< WT.Resource dd _ _ _ -> do
+      showGlobalVariable dd
 
 inParen :: T.Text -> T.Text
 inParen s =

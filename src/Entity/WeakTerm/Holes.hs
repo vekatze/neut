@@ -43,8 +43,6 @@ holes term =
       S.union set1 set2
     _ :< WT.Hole h es ->
       S.insert h $ S.unions $ map holes es
-    _ :< WT.ResourceType {} ->
-      S.empty
     _ :< WT.Prim prim ->
       foldMap holes prim
     _ :< WT.Magic der ->
@@ -55,7 +53,7 @@ holes term =
         AN.Type t -> do
           let xs2 = holes t
           S.union xs1 xs2
-    _ :< WT.Resource _ discarder copier -> do
+    _ :< WT.Resource _ _ discarder copier -> do
       S.unions $ map holes [discarder, copier]
 
 holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID

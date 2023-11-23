@@ -201,11 +201,11 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Resource discarder copier -> do
+    m :< RT.Resource dd discarder copier -> do
       resourceID <- Gensym.newCount
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
-      return $ m :< WT.Resource resourceID discarder' copier'
+      return $ m :< WT.Resource dd resourceID discarder' copier'
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =

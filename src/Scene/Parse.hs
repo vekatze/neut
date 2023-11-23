@@ -323,9 +323,7 @@ parseDefineResource = do
   P.betweenBrace $ do
     discarder <- P.delimiter "-" >> rawExpr
     copier <- P.delimiter "-" >> rawExpr
-    return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource discarder copier)
-
--- return $ RawStmtDefineResource m name' discarder copier
+    return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource name' discarder copier)
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =

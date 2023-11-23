@@ -83,8 +83,6 @@ fill sub term =
               error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
         Nothing ->
           return $ m :< WT.Hole i es'
-    _ :< WT.ResourceType {} ->
-      return term
     m :< WT.Magic der -> do
       der' <- mapM (fill sub) der
       return $ m :< WT.Magic der'
@@ -94,9 +92,10 @@ fill sub term =
         AN.Type t -> do
           t' <- fill sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    _ :< WT.Resource {} ->
-      -- `resource` is closed by construction
-      return term
+    m :< WT.Resource dd resourceID discarder copier -> do
+      discarder' <- fill sub discarder
+      copier' <- fill sub copier
+      return $ m :< WT.Resource dd resourceID discarder' copier'
 
 fill' ::
   HoleSubst ->

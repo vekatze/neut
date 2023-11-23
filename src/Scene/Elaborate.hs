@@ -79,8 +79,6 @@ analyzeDefList defList = do
 --   case stmt of
 --     WeakStmtDefine _ _ m x _ xts codType e ->
 --       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro LK.Normal xts e)
---     WeakStmtDefineResource m name discarder copier ->
---       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
 synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
@@ -275,8 +273,6 @@ elaborate' term =
             WPV.StaticText t text -> do
               t' <- elaborate' t
               return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
-    m :< WT.ResourceType name ->
-      return $ m :< TM.ResourceType name
     m :< WT.Magic magic -> do
       case magic of
         M.External domList cod name args varArgs -> do
@@ -306,10 +302,10 @@ elaborate' term =
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
-    m :< WT.Resource resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID discarder copier -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
-      return $ m :< TM.Resource resourceID discarder' copier'
+      return $ m :< TM.Resource dd resourceID discarder' copier'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

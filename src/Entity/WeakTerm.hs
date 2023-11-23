@@ -39,11 +39,10 @@ data WeakTermF a
   | Embody a a
   | Let LetOpacity (BinderF a) a a
   | Prim (WP.WeakPrim a)
-  | ResourceType DD.DefiniteDescription
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
-  | Resource Int a a
+  | Resource DD.DefiniteDescription Int a a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

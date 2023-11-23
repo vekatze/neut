@@ -154,8 +154,6 @@ reveal' varEnv term =
               return term
             WPV.StaticText {} ->
               return term
-    _ :< WT.ResourceType {} ->
-      return term
     m :< WT.Magic der -> do
       case der of
         M.Cast from to value -> do
@@ -172,10 +170,10 @@ reveal' varEnv term =
         AN.Type t -> do
           t' <- reveal' varEnv t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
-    m :< WT.Resource resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID discarder copier -> do
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier
-      return $ m :< WT.Resource resourceID discarder' copier'
+      return $ m :< WT.Resource dd resourceID discarder' copier'
 
 revealPi ::
   BoundVarEnv ->

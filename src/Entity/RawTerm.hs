@@ -47,7 +47,7 @@ data RawTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
-  | Resource a a
+  | Resource DD.DefiniteDescription a a -- DD is only for printing
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)

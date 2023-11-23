@@ -204,8 +204,6 @@ infer' varEnv term =
             WPV.StaticText t text -> do
               t' <- inferType' [] t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
-    m :< WT.ResourceType {} ->
-      return (term, m :< WT.Tau)
     m :< WT.Magic der -> do
       case der of
         M.Cast from to value -> do
@@ -223,7 +221,7 @@ infer' varEnv term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
-    m :< WT.Resource resourceID discarder copier -> do
+    m :< WT.Resource dd resourceID discarder copier -> do
       (discarder', td) <- infer' [] discarder
       (copier', tc) <- infer' [] copier
       x <- Gensym.newIdentFromText "_"
@@ -232,7 +230,7 @@ infer' varEnv term =
       let tCopy = m :< WT.Pi [(m, x, intType)] intType
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
-      return (m :< WT.Resource resourceID discarder' copier', m :< WT.Tau)
+      return (m :< WT.Resource dd resourceID discarder' copier', m :< WT.Tau)
 
 inferArgs ::
   WT.SubstWeakTerm ->

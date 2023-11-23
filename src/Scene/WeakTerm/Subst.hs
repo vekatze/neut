@@ -86,8 +86,6 @@ subst sub term =
     m :< WT.Hole holeID args -> do
       args' <- mapM (subst sub) args
       return $ m :< WT.Hole holeID args'
-    _ :< WT.ResourceType {} ->
-      return term
     m :< WT.Magic der -> do
       der' <- mapM (subst sub) der
       return $ m :< WT.Magic der'
@@ -97,6 +95,10 @@ subst sub term =
         AN.Type t -> do
           t' <- subst sub t
           return $ m :< WT.Annotation logLevel (AN.Type t') e'
+    m :< WT.Resource dd resourceID discarder copier -> do
+      discarder' <- subst sub discarder
+      copier' <- subst sub copier
+      return $ m :< WT.Resource dd resourceID discarder' copier'
 
 substBinder ::
   WT.SubstWeakTerm ->
