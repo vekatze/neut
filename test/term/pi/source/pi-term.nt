@@ -16,6 +16,14 @@ define test-syntax(): unit {
   let _: (tau, tau) -> tau = (x: tau, _) => {x} in
   let _ = (x: tau, y: tau) => {Pair(x, y)} in
   let _ = {(x: tau) => {x}}(tau) in
+  // exprs in bodies
+  let _ = (f: tau -> tau) => f(tau) in
+  let _ =
+    (f: tau -> tau) =>
+    let _ = f(tau) in
+    tau
+  in
+  let _ = (_: tau -> tau) => Unit; Unit in
   // (unnecessarily) complex type
   let _ =
     (
@@ -26,9 +34,8 @@ define test-syntax(): unit {
       _: {
         tau -> tau
       }
-    ) => {
-      x
-    }
+    ) =>
+    x
   in
   let f = (_: tau, _: tau, _: tau) => {tau} in
   let _ =
