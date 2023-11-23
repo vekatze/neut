@@ -132,7 +132,6 @@ parseStmt = do
       parseDefineData,
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
-      return <$> parseMutual,
       return <$> parseDeclare,
       return <$> parseDefineResource
     ]
@@ -200,31 +199,6 @@ parseConstant = do
       let stmtKind = SK.Normal O.Clear
       let impArgNum = AN.fromInt $ length impArgs
       return $ RawStmtDefine True stmtKind m constName impArgNum impArgs t v
-
-parseMutual :: P.Parser RawStmt
-parseMutual = do
-  m <- P.getCurrentHint
-  P.keyword "mutual"
-  stmtList <- concat <$> P.betweenBrace (many parseStmt)
-  lift $ ensureMutualSoundness stmtList
-  return $ RawStmtMutual m stmtList
-
-ensureMutualSoundness :: [RawStmt] -> App ()
-ensureMutualSoundness stmtList =
-  forM_ stmtList $ \stmt -> do
-    when (isPossiblyMutualInlineDef stmt) $
-      Throw.raiseError (getHint stmt) "inline definitions can't be used in `mutual`"
-
-isPossiblyMutualInlineDef :: RawStmt -> Bool
-isPossiblyMutualInlineDef stmt =
-  case stmt of
-    RawStmtDefine _ stmtKind _ _ _ _ _ _
-      | SK.Normal O.Clear <- stmtKind ->
-          True
-    RawStmtDefineConst {} ->
-      True
-    _ ->
-      False
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -361,20 +335,6 @@ adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
 adjustConsArg (m, x, _) =
   (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), x)
 
-getHint :: RawStmt -> Hint
-getHint stmt =
-  case stmt of
-    RawStmtDefine _ _ m _ _ _ _ _ ->
-      m
-    RawStmtDefineConst m _ _ _ ->
-      m
-    RawStmtDefineResource m _ _ _ ->
-      m
-    RawStmtMutual m _ ->
-      m
-    RawStmtDeclare m _ ->
-      m
-
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =
   concatMap getWeakStmtName'
@@ -388,8 +348,6 @@ getWeakStmtName' stmt =
       [(m, name)]
     WeakStmtDefineResource m name _ _ ->
       [(m, name)]
-    WeakStmtMutual _ stmtList ->
-      concatMap getWeakStmtName' stmtList
     WeakStmtDeclare {} ->
       []
 

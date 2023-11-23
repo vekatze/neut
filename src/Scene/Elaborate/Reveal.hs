@@ -45,9 +45,6 @@ revealStmt stmt =
       discarder' <- reveal' [] discarder
       copier' <- reveal' [] copier
       return $ WeakStmtDefineResource m name discarder' copier'
-    WeakStmtMutual m stmtList -> do
-      stmtList' <- mapM revealStmt stmtList
-      return $ WeakStmtMutual m stmtList'
     WeakStmtDeclare m declList -> do
       declList' <- mapM revealDecl declList
       return $ WeakStmtDeclare m declList'

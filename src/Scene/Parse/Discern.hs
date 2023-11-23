@@ -52,11 +52,11 @@ import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList =
-  mapM (discernStmt False)
+  mapM discernStmt
 
-discernStmt :: Bool -> RawStmt -> App WeakStmt
-discernStmt isMutual stmt = do
-  unless isMutual $ registerTopLevelName stmt
+discernStmt :: RawStmt -> App WeakStmt
+discernStmt stmt = do
+  registerTopLevelName stmt
   case stmt of
     RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
       (xts', nenv) <- discernBinder empty xts
@@ -76,9 +76,6 @@ discernStmt isMutual stmt = do
       copier' <- discern empty copier
       Tag.insertDD m name m
       return $ WeakStmtDefineResource m name discarder' copier'
-    RawStmtMutual m stmtList -> do
-      stmtList' <- mapM (discernStmt True) $ reorderStmtList stmtList
-      return $ WeakStmtMutual m stmtList'
     RawStmtDeclare m declList -> do
       declList' <- mapM discernDecl declList
       return $ WeakStmtDeclare m declList'
@@ -98,21 +95,6 @@ discernDecl decl = do
         cod = cod'
       }
 
-reorderStmtList :: [RawStmt] -> [RawStmt]
-reorderStmtList =
-  sortBy (\s1 s2 -> compare (getSortOrder s1) (getSortOrder s2))
-
-getSortOrder :: RawStmt -> Int
-getSortOrder stmt =
-  case stmt of
-    RawStmtDefine _ stmtKind _ _ _ _ _ _
-      | SK.Data {} <- stmtKind ->
-          0
-      | SK.DataIntro {} <- stmtKind ->
-          1
-    _ ->
-      2
-
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
@@ -124,8 +106,6 @@ registerTopLevelName stmt =
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
     RawStmtDefineResource m name _ _ -> do
       Global.registerStmtDefineResource m name
-    RawStmtMutual _ stmtList -> do
-      mapM_ registerTopLevelName stmtList
     RawStmtDeclare _ declList -> do
       mapM_ Global.registerDecl declList
 
