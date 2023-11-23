@@ -12,7 +12,7 @@ module Entity.BaseName
     lambdaName,
     muName,
     textName,
-    main,
+    mainName,
     fromText,
     this,
     new,
@@ -106,8 +106,8 @@ core :: BaseName
 core =
   MakeBaseName "core"
 
-main :: BaseName
-main =
+mainName :: BaseName
+mainName =
   MakeBaseName "main"
 
 new :: BaseName
