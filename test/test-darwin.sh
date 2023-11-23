@@ -6,7 +6,7 @@ COMPILER_VERSION=$($NEUT version)
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 LSAN_FILE=$SCRIPT_DIR/lsan.supp
 clang_option="-fsanitize=address"
-digest=$(echo "develop $clang_option\c" | shasum -a 256 -b | xxd -r -p | base64 | tr '/+' '_-' )
+digest=$(echo "develop $clang_option\c" | shasum -a 256 -b | xxd -r -p | base64 | tr '/+' '_-' | tr -d '=')
 
 cd $SCRIPT_DIR/meta
 NEUT_TARGET_ARCH=$TARGET_ARCH NEUT_CLANG=$CLANG_PATH $NEUT build --clang-option $clang_option
