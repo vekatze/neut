@@ -115,7 +115,7 @@ getMainDefiniteDescription ::
 getMainDefiniteDescription source = do
   b <- isMainFile source
   if b
-    then Just <$> attachCurrentLocator BN.main
+    then Just <$> attachCurrentLocator BN.mainName
     else return Nothing
 
 isMainFile :: Source.Source -> App Bool

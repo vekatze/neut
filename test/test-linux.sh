@@ -5,7 +5,7 @@ base_dir=$(pwd)
 SCRIPT_DIR=$(cd "$(dirname "$0")"; pwd)
 COMPILER_VERSION=$($NEUT version)
 clang_option="-fsanitize=address"
-digest=$(echo -n "develop $clang_option" | sha256sum -b | xxd -r -p | base64 | tr '/+' '_-' )
+digest=$(echo -n "develop $clang_option" | sha256sum -b | xxd -r -p | base64 | tr '/+' '_-' | tr -d '=' )
 
 cd $SCRIPT_DIR/meta
 NEUT_TARGET_ARCH=$TARGET_ARCH $NEUT build --clang-option $clang_option
