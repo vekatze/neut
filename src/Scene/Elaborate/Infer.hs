@@ -19,6 +19,7 @@ import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID qualified as HID
@@ -44,6 +45,7 @@ inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
+      insertType x $ m :< WT.Pi xts codType
       stmtKind' <- inferStmtKind stmtKind
       (xts', varEnv) <- inferBinder' [] xts
       codType' <- inferType' varEnv codType
@@ -54,11 +56,13 @@ inferStmt mMainDD stmt =
         insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
     WeakStmtDefineConst m dd t v -> do
+      insertType dd $ m :< WT.Pi [] t
       t' <- inferType' [] t
       (v', tv) <- infer' [] v
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
     WeakStmtDefineResource m name discarder copier -> do
+      insertType name $ m :< WT.Tau
       (discarder', td) <- infer' [] discarder
       (copier', tc) <- infer' [] copier
       x <- Gensym.newIdentFromText "_"
@@ -71,6 +75,26 @@ inferStmt mMainDD stmt =
     WeakStmtMutual m stmtList -> do
       stmtList' <- mapM (inferStmt mMainDD) stmtList
       return $ WeakStmtMutual m stmtList'
+    WeakStmtDeclare m declList -> do
+      declList' <- mapM inferDecl declList
+      return $ WeakStmtDeclare m declList'
+
+inferDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl WT.WeakTerm)
+inferDecl DE.Decl {..} = do
+  (dom', varEnv) <- inferBinder' [] dom
+  cod' <- inferType' varEnv cod
+  insertType name $ loc :< WT.Pi dom' cod'
+  return $ DE.Decl {dom = dom', cod = cod', ..}
+
+insertType :: DD.DefiniteDescription -> WT.WeakTerm -> App ()
+insertType dd t = do
+  typeOrNone <- Type.lookupMaybe dd
+  case typeOrNone of
+    Nothing ->
+      return ()
+    Just declaredType ->
+      insConstraintEnv declaredType t
+  Type.insert dd t
 
 inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind stmtKind =

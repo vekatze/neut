@@ -15,6 +15,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
+import Entity.Decl qualified as DE
 import Entity.HoleID qualified as HID
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
@@ -47,6 +48,14 @@ revealStmt stmt =
     WeakStmtMutual m stmtList -> do
       stmtList' <- mapM revealStmt stmtList
       return $ WeakStmtMutual m stmtList'
+    WeakStmtDeclare m declList -> do
+      declList' <- mapM revealDecl declList
+      return $ WeakStmtDeclare m declList'
+
+revealDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl WT.WeakTerm)
+revealDecl DE.Decl {..} = do
+  (dom', cod') <- revealBinder' [] dom $ \varEnv -> reveal' varEnv cod
+  return $ DE.Decl {dom = dom', cod = cod', ..}
 
 revealStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 revealStmtKind stmtKind =

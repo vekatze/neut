@@ -3,6 +3,7 @@ module Entity.RawTerm
     RawTermF (..),
     DefInfo,
     TopDefInfo,
+    TopDefHeader,
   )
 where
 
@@ -50,5 +51,8 @@ data RawTermF a
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)
 
+type TopDefHeader =
+  ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
+
 type TopDefInfo =
-  ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
+  (TopDefHeader, RawTerm)

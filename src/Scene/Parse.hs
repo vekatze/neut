@@ -73,6 +73,7 @@ parseSource source cacheOrContent = do
     Right content -> do
       (defList, declList) <- P.run (program source) path content
       stmtList <- Discern.discernStmtList defList
+      Global.reportMissingDefinitions
       saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
       UnusedImport.registerRemarks
@@ -132,6 +133,7 @@ parseStmt = do
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
       return <$> parseMutual,
+      return <$> parseDeclare,
       return <$> parseDefineResource
     ]
 
@@ -151,6 +153,13 @@ parseForeign = do
   cod <- P.delimiter ":" >> lowType
   return $ F.Foreign declName lts cod
 
+parseDeclare :: P.Parser RawStmt
+parseDeclare = do
+  P.keyword "declare"
+  m <- P.getCurrentHint
+  decls <- P.betweenBrace $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
+  return $ RawStmtDeclare m decls
+
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
   case opacity of
@@ -159,7 +168,7 @@ parseDefine opacity = do
     O.Clear ->
       P.keyword "inline"
   m <- P.getCurrentHint
-  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
+  (((_, name), impArgs, expArgs, codType), e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
   let impArgNum = AN.fromInt $ length impArgs
   lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
@@ -363,6 +372,8 @@ getHint stmt =
       m
     RawStmtMutual m _ ->
       m
+    RawStmtDeclare m _ ->
+      m
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =
@@ -379,6 +390,8 @@ getWeakStmtName' stmt =
       [(m, name)]
     WeakStmtMutual _ stmtList ->
       concatMap getWeakStmtName' stmtList
+    WeakStmtDeclare {} ->
+      []
 
 getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
 getStmtName stmt =

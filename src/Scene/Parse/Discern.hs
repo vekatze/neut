@@ -21,6 +21,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
 import Entity.GlobalName qualified as GN
@@ -34,6 +35,7 @@ import Entity.NominalEnv
 import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.RawBinder
+import Entity.RawDecl qualified as RDE
 import Entity.RawIdent
 import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
@@ -77,6 +79,24 @@ discernStmt isMutual stmt = do
     RawStmtMutual m stmtList -> do
       stmtList' <- mapM (discernStmt True) $ reorderStmtList stmtList
       return $ WeakStmtMutual m stmtList'
+    RawStmtDeclare m declList -> do
+      declList' <- mapM discernDecl declList
+      return $ WeakStmtDeclare m declList'
+
+discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
+discernDecl decl = do
+  (dom', nenv) <- discernBinder empty (RDE.dom decl)
+  forM_ dom' $ \(_, x, _) -> UnusedVariable.delete x
+  cod' <- discern nenv (RDE.cod decl)
+  return $
+    DE.Decl
+      { loc = RDE.loc decl,
+        name = RDE.name decl,
+        isConstLike = RDE.isConstLike decl,
+        impArgNum = RDE.impArgNum decl,
+        dom = dom',
+        cod = cod'
+      }
 
 reorderStmtList :: [RawStmt] -> [RawStmt]
 reorderStmtList =
@@ -106,6 +126,8 @@ registerTopLevelName stmt =
       Global.registerStmtDefineResource m name
     RawStmtMutual _ stmtList -> do
       mapM_ registerTopLevelName stmtList
+    RawStmtDeclare _ declList -> do
+      mapM_ Global.registerDecl declList
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
