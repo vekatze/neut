@@ -16,6 +16,7 @@ import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
+import Scene.LSP.References qualified as LSP
 
 lsp :: Remark.Config -> App Int
 lsp cfg = do
@@ -52,16 +53,23 @@ handlers =
         mLoc <- lift $ runAppM $ LSP.findDefinition (req ^. J.params)
         case mLoc of
           Nothing ->
-            return ()
+            responder $ Right $ InR $ InR Null
           Just (loc, _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
         highlightsOrNone <- lift $ runAppM $ LSP.highlight $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
-            return ()
+            responder $ Right $ InR Null
           Just highlights ->
-            responder $ Right $ InL $ List highlights
+            responder $ Right $ InL $ List highlights,
+      requestHandler SMethod_TextDocumentReferences $ \req responder -> do
+        refsOrNone <- lift $ runAppM $ LSP.references $ req ^. J.params
+        case refsOrNone of
+          Nothing -> do
+            responder $ Right $ InR Null
+          Just refs -> do
+            responder $ Right $ InL refs
     ]
 
 runLSPApp :: Remark.Config -> App a -> IO a

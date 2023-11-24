@@ -2,6 +2,7 @@ module Scene.LSP.GetLocationTree (getLocationTree) where
 
 import Context.AppM
 import Context.Cache qualified as Cache
+import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
 import Control.Monad.Trans
@@ -20,5 +21,6 @@ getLocationTree src = do
     Left _ ->
       liftMaybe Nothing
     Right _ -> do
-      cache <- lift (Cache.loadCacheOptimistically src) >>= liftMaybe
+      cachePath <- lift $ Path.getSourceCachePath src
+      cache <- lift (Cache.loadCacheOptimistically cachePath) >>= liftMaybe
       return $ Cache.locationTree cache

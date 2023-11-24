@@ -26,26 +26,14 @@ saveCache source cache = do
 
 loadCache :: Source.Source -> App (Maybe Cache.Cache)
 loadCache source = do
-  loadCache' DoCheck source
-
-loadCacheOptimistically :: Source.Source -> App (Maybe Cache.Cache)
-loadCacheOptimistically source = do
-  loadCache' DoNotCheck source
-
-data ShouldCheckArtifactTime
-  = DoCheck
-  | DoNotCheck
-
-loadCache' :: ShouldCheckArtifactTime -> Source.Source -> App (Maybe Cache.Cache)
-loadCache' shouldCheckArtifactTime source = do
   cachePath <- Path.getSourceCachePath source
   hasCache <- doesFileExist cachePath
   if not hasCache
     then return Nothing
     else do
       artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
-      case (shouldCheckArtifactTime, A.cacheTime artifactTime) of
-        (DoCheck, Nothing) ->
+      case A.cacheTime artifactTime of
+        Nothing ->
           return Nothing
         _ -> do
           dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
@@ -55,6 +43,20 @@ loadCache' shouldCheckArtifactTime source = do
               return Nothing
             Right content ->
               return $ Just $ Cache.extend content
+
+loadCacheOptimistically :: Path Abs File -> App (Maybe Cache.Cache)
+loadCacheOptimistically cachePath = do
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return Nothing
+    else do
+      dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
+      case dataOrErr of
+        Left _ -> do
+          removeFile cachePath
+          return Nothing
+        Right content ->
+          return $ Just $ Cache.extend content
 
 whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
 whenCompilationNecessary outputKindList source comp = do
