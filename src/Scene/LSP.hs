@@ -16,6 +16,8 @@ import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.FindReferences qualified as LSP
 import Scene.LSP.GetLocationTree qualified as LSP
+import Scene.LSP.GetSource qualified as LSP
+import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 
 lsp :: Remark.Config -> App Int
@@ -50,34 +52,19 @@ handlers =
         itemList <- lift $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLocTree <- lift $ LSP.getLocationTree $ req ^. J.params
-        case mLocTree of
+        mLoc <- lift $ LSP.findDefinition (req ^. J.params)
+        case mLoc of
           Nothing ->
             return ()
-          Just locTree -> do
-            mLoc <- lift $ LSP.findDefinition (req ^. J.params) locTree
-            responder $ Right $ InR $ InL $ List $ maybeToList mLoc,
+          Just (loc, _) -> do
+            responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        mLocTree <- lift $ LSP.getLocationTree $ req ^. J.params
-        case mLocTree of
+        highlightsOrNone <- lift $ LSP.highlight $ req ^. J.params
+        case highlightsOrNone of
           Nothing ->
             return ()
-          Just locTree -> do
-            mLoc <- lift $ LSP.findDefinition (req ^. J.params) locTree
-            case mLoc of
-              Nothing ->
-                return ()
-              Just (DefinitionLink (LocationLink {_targetRange, _targetUri})) -> do
-                let Range {_start = Position {_line, _character}} = _targetRange
-                let line = fromIntegral $ _line + 1
-                let col = fromIntegral $ _character + 1
-                let reqUri = req ^. J.params . J.textDocument . J.uri
-                refs <- lift $ LSP.findReferences (line, col) _targetUri locTree
-                if reqUri /= _targetUri
-                  then responder $ Right $ InL $ List refs
-                  else do
-                    let _kind = Just DocumentHighlightKind_Write
-                    responder $ Right $ InL $ List $ DocumentHighlight {_range = _targetRange, _kind} : refs
+          Just highlights ->
+            responder $ Right $ InL $ List highlights
     ]
 
 runLSPApp :: Remark.Config -> App a -> IO a
