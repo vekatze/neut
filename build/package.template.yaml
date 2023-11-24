@@ -42,6 +42,7 @@ dependencies:
   - template-haskell
   - text
   - time
+  - transformers
   - unboxed-ref
   - unliftio
   - unliftio-core

@@ -22,18 +22,18 @@ data Source = Source
   }
   deriving (Show)
 
-getRelPathFromSourceDir :: MonadThrow m => Source -> m (Path Rel File)
+getRelPathFromSourceDir :: (MonadThrow m) => Source -> m (Path Rel File)
 getRelPathFromSourceDir source = do
   let sourceDir = getSourceDir $ sourceModule source
   stripProperPrefix sourceDir (sourceFilePath source)
 
-getBaseReadableLocator :: MonadThrow m => Source -> m T.Text
+getBaseReadableLocator :: (MonadThrow m) => Source -> m T.Text
 getBaseReadableLocator source = do
   relPath <- getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- splitExtension relPath
   return $ T.replace "/" nsSep $ T.pack $ toFilePath relPathWithoutExtension
 
-getHumanReadableLocator :: MonadThrow m => Module -> Source -> m (NE.NonEmpty T.Text)
+getHumanReadableLocator :: (MonadThrow m) => Module -> Source -> m (NE.NonEmpty T.Text)
 getHumanReadableLocator baseModule source = do
   let sourceModuleID = moduleID $ sourceModule source
   baseReadableLocator <- getBaseReadableLocator source
@@ -51,7 +51,7 @@ getHumanReadableLocator baseModule source = do
           let aliasList' = NE.map (BN.reify . extract) aliasList
           return $ NE.map (\x -> x <> nsSep <> baseReadableLocator) aliasList'
 
-attachExtension :: MonadThrow m => Path Abs File -> OK.OutputKind -> m (Path Abs File)
+attachExtension :: (MonadThrow m) => Path Abs File -> OK.OutputKind -> m (Path Abs File)
 attachExtension file kind =
   case kind of
     OK.LLVM -> do

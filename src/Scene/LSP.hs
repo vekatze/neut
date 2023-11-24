@@ -1,10 +1,10 @@
 module Scene.LSP (lsp) where
 
 import Context.App
+import Context.AppM
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Control.Monad.Trans
-import Data.Maybe
 import Entity.AppLsp
 import Entity.Config.Remark qualified as Remark
 import Language.LSP.Protocol.Lens qualified as J
@@ -14,9 +14,9 @@ import Language.LSP.Server
 import Scene.Initialize qualified as Initialize
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
-import Scene.LSP.FindReferences qualified as LSP
-import Scene.LSP.GetLocationTree qualified as LSP
+import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
+import Scene.LSP.References qualified as LSP
 
 lsp :: Remark.Config -> App Int
 lsp cfg = do
@@ -50,34 +50,26 @@ handlers =
         itemList <- lift $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLocTree <- lift $ LSP.getLocationTree $ req ^. J.params
-        case mLocTree of
+        mLoc <- lift $ runAppM $ LSP.findDefinition (req ^. J.params)
+        case mLoc of
           Nothing ->
-            return ()
-          Just locTree -> do
-            mLoc <- lift $ LSP.findDefinition (req ^. J.params) locTree
-            responder $ Right $ InR $ InL $ List $ maybeToList mLoc,
+            responder $ Right $ InR $ InR Null
+          Just (loc, _) -> do
+            responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        mLocTree <- lift $ LSP.getLocationTree $ req ^. J.params
-        case mLocTree of
+        highlightsOrNone <- lift $ runAppM $ LSP.highlight $ req ^. J.params
+        case highlightsOrNone of
           Nothing ->
-            return ()
-          Just locTree -> do
-            mLoc <- lift $ LSP.findDefinition (req ^. J.params) locTree
-            case mLoc of
-              Nothing ->
-                return ()
-              Just (DefinitionLink (LocationLink {_targetRange, _targetUri})) -> do
-                let Range {_start = Position {_line, _character}} = _targetRange
-                let line = fromIntegral $ _line + 1
-                let col = fromIntegral $ _character + 1
-                let reqUri = req ^. J.params . J.textDocument . J.uri
-                refs <- lift $ LSP.findReferences (line, col) _targetUri locTree
-                if reqUri /= _targetUri
-                  then responder $ Right $ InL $ List refs
-                  else do
-                    let _kind = Just DocumentHighlightKind_Write
-                    responder $ Right $ InL $ List $ DocumentHighlight {_range = _targetRange, _kind} : refs
+            responder $ Right $ InR Null
+          Just highlights ->
+            responder $ Right $ InL $ List highlights,
+      requestHandler SMethod_TextDocumentReferences $ \req responder -> do
+        refsOrNone <- lift $ runAppM $ LSP.references $ req ^. J.params
+        case refsOrNone of
+          Nothing -> do
+            responder $ Right $ InR Null
+          Just refs -> do
+            responder $ Right $ InL refs
     ]
 
 runLSPApp :: Remark.Config -> App a -> IO a
