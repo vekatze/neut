@@ -74,14 +74,16 @@ define yo(x: top): unit {
   Unit
 }
 
-mutual {
-  data foo {
-  - Foo(bar)
-  }
+declare {
+- bar: tau
+}
 
-  data bar {
-  - Bar(foo)
-  }
+data foo {
+- Foo(bar)
+}
+
+data bar {
+- Bar(foo)
 }
 
 define buz(c: &config): &text {

@@ -1,6 +1,7 @@
 module Context.Global
   ( registerStmtDefine,
-    registerStmtDefineResource,
+    registerDecl,
+    reportMissingDefinitions,
     lookup,
     initialize,
     activateTopLevelNames,
@@ -28,6 +29,7 @@ import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Error (Error (MakeError))
 import Entity.GlobalName
 import Entity.GlobalName qualified as GN
 import Entity.Hint
@@ -37,6 +39,8 @@ import Entity.Key
 import Entity.OptimizableData qualified as OD
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
+import Entity.RawDecl qualified as RDE
+import Entity.Remark (Remark, RemarkLevel (Error), newRemark)
 import Entity.StmtKind qualified as SK
 import Entity.TopNameMap
 import Path
@@ -52,8 +56,8 @@ registerStmtDefine ::
   App ()
 registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
   let allArgNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
-  let argNum = AN.fromInt (AN.reify allArgNum)
-  KeyArg.insert name isConstLike argNum expArgNames
+  let argNum = AN.fromInt (AN.reify allArgNum) -- fixme: argNum is unnecessary
+  KeyArg.insert m name isConstLike argNum expArgNames
   case stmtKind of
     SK.Normal _ ->
       registerTopLevelFunc isConstLike m name impArgNum allArgNum
@@ -95,6 +99,17 @@ isUnary consInfoList =
     _ ->
       False
 
+registerDecl :: RDE.RawDecl -> App ()
+registerDecl RDE.RawDecl {..} = do
+  let expArgNames = map (\(_, x, _) -> x) $ drop (AN.reify impArgNum) dom
+  let argNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
+  ensureDeclFreshness loc name
+  ensureDefFreshness loc name
+  KeyArg.insert loc name isConstLike argNum expArgNames
+  insertToDeclNameMap name loc
+  insertToNameMap name loc $ GN.TopLevelFunc argNum isConstLike
+  Implicit.insert name impArgNum
+
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
 registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
   registerTopLevelFunc' m topLevelName impArgNum $ GN.TopLevelFunc allArgNum isConstLike
@@ -129,11 +144,6 @@ toConsNameArrow ::
 toConsNameArrow dataArgNum (SavedHint m, consDD, isConstLikeCons, consArgs, discriminant) = do
   let consArgNum = AN.fromInt $ length consArgs
   (consDD, (m, GN.DataIntro dataArgNum consArgNum discriminant isConstLikeCons))
-
-registerStmtDefineResource :: Hint -> DD.DefiniteDescription -> App ()
-registerStmtDefineResource m resourceName = do
-  ensureDefFreshness m resourceName
-  insertToNameMap resourceName m GN.Resource
 
 lookup :: Hint.Hint -> DD.DefiniteDescription -> App (Maybe (Hint, GlobalName))
 lookup m name = do
@@ -172,8 +182,7 @@ ensureDefFreshness m name = do
   topNameMap <- readRef' nameMap
   case (Map.lookup name dnmap, Map.member name topNameMap) of
     (Just _, False) ->
-      Throw.raiseCritical m $
-        "`" <> DD.reify name <> "` is declared but not register in the top name map"
+      Throw.raiseCritical m $ "`" <> DD.reify name <> "` is declared but not registered in the top name map"
     (Just mDecl, True) -> do
       removeFromDeclNameMap name
       removeFromDefNameMap name
@@ -183,9 +192,31 @@ ensureDefFreshness m name = do
     (Nothing, False) ->
       return ()
 
+ensureDeclFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
+ensureDeclFreshness m name = do
+  dnmap <- readRef' declNameMap
+  when (Map.member name dnmap) $ do
+    Throw.raiseError m $ "`" <> DD.reify name <> "` is already declared"
+
+reportMissingDefinitions :: App ()
+reportMissingDefinitions = do
+  declNameToHint <- Map.toList <$> readRef' declNameMap
+  let errorList = map (uncurry declToRemark) declNameToHint
+  if null errorList
+    then return ()
+    else Throw.throw $ MakeError errorList
+
+declToRemark :: DD.DefiniteDescription -> Hint -> Remark
+declToRemark dd m =
+  newRemark m Error $ "declared but not defined: `" <> DD.reify dd <> "`"
+
 insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
 insertToNameMap dd m gn = do
   modifyRef' nameMap $ Map.insert dd (m, gn)
+
+insertToDeclNameMap :: DD.DefiniteDescription -> Hint -> App ()
+insertToDeclNameMap dd m = do
+  modifyRef' declNameMap $ Map.insert dd m
 
 removeFromDeclNameMap :: DD.DefiniteDescription -> App ()
 removeFromDeclNameMap dd = do

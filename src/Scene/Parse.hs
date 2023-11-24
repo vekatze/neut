@@ -73,6 +73,7 @@ parseSource source cacheOrContent = do
     Right content -> do
       (defList, declList) <- P.run (program source) path content
       stmtList <- Discern.discernStmtList defList
+      Global.reportMissingDefinitions
       saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
       UnusedImport.registerRemarks
@@ -96,8 +97,6 @@ parseCachedStmtList stmtList = do
         Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
       StmtDefineConst (SavedHint m) dd _ _ ->
         Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-      StmtDefineResource (SavedHint m) name _ _ ->
-        Global.registerStmtDefineResource m name
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -131,7 +130,7 @@ parseStmt = do
       parseDefineData,
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
-      return <$> parseMutual,
+      return <$> parseDeclare,
       return <$> parseDefineResource
     ]
 
@@ -151,6 +150,13 @@ parseForeign = do
   cod <- P.delimiter ":" >> lowType
   return $ F.Foreign declName lts cod
 
+parseDeclare :: P.Parser RawStmt
+parseDeclare = do
+  P.keyword "declare"
+  m <- P.getCurrentHint
+  decls <- P.betweenBrace $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
+  return $ RawStmtDeclare m decls
+
 parseDefine :: O.Opacity -> P.Parser RawStmt
 parseDefine opacity = do
   case opacity of
@@ -159,7 +165,7 @@ parseDefine opacity = do
     O.Clear ->
       P.keyword "inline"
   m <- P.getCurrentHint
-  ((_, name), impArgs, expArgs, codType, e) <- parseTopDefInfo
+  (((_, name), impArgs, expArgs, codType), e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
   let impArgNum = AN.fromInt $ length impArgs
   lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
@@ -191,31 +197,6 @@ parseConstant = do
       let stmtKind = SK.Normal O.Clear
       let impArgNum = AN.fromInt $ length impArgs
       return $ RawStmtDefine True stmtKind m constName impArgNum impArgs t v
-
-parseMutual :: P.Parser RawStmt
-parseMutual = do
-  m <- P.getCurrentHint
-  P.keyword "mutual"
-  stmtList <- concat <$> P.betweenBrace (many parseStmt)
-  lift $ ensureMutualSoundness stmtList
-  return $ RawStmtMutual m stmtList
-
-ensureMutualSoundness :: [RawStmt] -> App ()
-ensureMutualSoundness stmtList =
-  forM_ stmtList $ \stmt -> do
-    when (isPossiblyMutualInlineDef stmt) $
-      Throw.raiseError (getHint stmt) "inline definitions can't be used in `mutual`"
-
-isPossiblyMutualInlineDef :: RawStmt -> Bool
-isPossiblyMutualInlineDef stmt =
-  case stmt of
-    RawStmtDefine _ stmtKind _ _ _ _ _ _
-      | SK.Normal O.Clear <- stmtKind ->
-          True
-    RawStmtDefineConst {} ->
-      True
-    _ ->
-      False
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -342,7 +323,7 @@ parseDefineResource = do
   P.betweenBrace $ do
     discarder <- P.delimiter "-" >> rawExpr
     copier <- P.delimiter "-" >> rawExpr
-    return $ RawStmtDefineResource m name' discarder copier
+    return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource name' discarder copier)
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
 identPlusToVar (m, x, _) =
@@ -351,18 +332,6 @@ identPlusToVar (m, x, _) =
 adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
 adjustConsArg (m, x, _) =
   (m :< RT.Var (AttrV.Attr {isExplicit = False}) (Var x), x)
-
-getHint :: RawStmt -> Hint
-getHint stmt =
-  case stmt of
-    RawStmtDefine _ _ m _ _ _ _ _ ->
-      m
-    RawStmtDefineConst m _ _ _ ->
-      m
-    RawStmtDefineResource m _ _ _ ->
-      m
-    RawStmtMutual m _ ->
-      m
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =
@@ -375,10 +344,8 @@ getWeakStmtName' stmt =
       [(m, name)]
     WeakStmtDefineConst m name _ _ ->
       [(m, name)]
-    WeakStmtDefineResource m name _ _ ->
-      [(m, name)]
-    WeakStmtMutual _ stmtList ->
-      concatMap getWeakStmtName' stmtList
+    WeakStmtDeclare {} ->
+      []
 
 getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
 getStmtName stmt =
@@ -386,6 +353,4 @@ getStmtName stmt =
     StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
       (m, name)
     StmtDefineConst (SavedHint m) name _ _ ->
-      (m, name)
-    StmtDefineResource (SavedHint m) name _ _ ->
       (m, name)

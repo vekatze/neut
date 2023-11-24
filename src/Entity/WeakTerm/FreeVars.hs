@@ -49,8 +49,6 @@ freeVars term =
       foldMap freeVars prim
     _ :< WT.Hole _ es ->
       S.unions $ map freeVars es
-    _ :< WT.ResourceType {} ->
-      S.empty
     _ :< WT.Magic der ->
       foldMap freeVars der
     _ :< WT.Annotation _ annot e -> do
@@ -59,6 +57,10 @@ freeVars term =
         AN.Type t -> do
           let xs2 = freeVars t
           S.union xs1 xs2
+    _ :< WT.Resource _ _ discarder copier -> do
+      let xs1 = freeVars discarder
+      let xs2 = freeVars copier
+      S.union xs1 xs2
 
 freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

@@ -19,6 +19,7 @@ import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID qualified as HID
@@ -44,6 +45,7 @@ inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
+      insertType x $ m :< WT.Pi xts codType
       stmtKind' <- inferStmtKind stmtKind
       (xts', varEnv) <- inferBinder' [] xts
       codType' <- inferType' varEnv codType
@@ -54,23 +56,31 @@ inferStmt mMainDD stmt =
         insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
     WeakStmtDefineConst m dd t v -> do
+      insertType dd $ m :< WT.Pi [] t
       t' <- inferType' [] t
       (v', tv) <- infer' [] v
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
-    WeakStmtDefineResource m name discarder copier -> do
-      (discarder', td) <- infer' [] discarder
-      (copier', tc) <- infer' [] copier
-      x <- Gensym.newIdentFromText "_"
-      intType <- getIntType m
-      let tDiscard = m :< WT.Pi [(m, x, intType)] intType
-      let tCopy = m :< WT.Pi [(m, x, intType)] intType
-      insConstraintEnv tDiscard td
-      insConstraintEnv tCopy tc
-      return $ WeakStmtDefineResource m name discarder' copier'
-    WeakStmtMutual m stmtList -> do
-      stmtList' <- mapM (inferStmt mMainDD) stmtList
-      return $ WeakStmtMutual m stmtList'
+    WeakStmtDeclare m declList -> do
+      declList' <- mapM inferDecl declList
+      return $ WeakStmtDeclare m declList'
+
+inferDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl WT.WeakTerm)
+inferDecl DE.Decl {..} = do
+  (dom', varEnv) <- inferBinder' [] dom
+  cod' <- inferType' varEnv cod
+  insertType name $ loc :< WT.Pi dom' cod'
+  return $ DE.Decl {dom = dom', cod = cod', ..}
+
+insertType :: DD.DefiniteDescription -> WT.WeakTerm -> App ()
+insertType dd t = do
+  typeOrNone <- Type.lookupMaybe dd
+  case typeOrNone of
+    Nothing ->
+      return ()
+    Just declaredType ->
+      insConstraintEnv declaredType t
+  Type.insert dd t
 
 inferStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind WT.WeakTerm)
 inferStmtKind stmtKind =
@@ -194,8 +204,6 @@ infer' varEnv term =
             WPV.StaticText t text -> do
               t' <- inferType' [] t
               return (m :< WT.Prim (WP.Value (WPV.StaticText t' text)), m :< WT.Noema t')
-    m :< WT.ResourceType {} ->
-      return (term, m :< WT.Tau)
     m :< WT.Magic der -> do
       case der of
         M.Cast from to value -> do
@@ -213,6 +221,16 @@ infer' varEnv term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
+    m :< WT.Resource dd resourceID discarder copier -> do
+      (discarder', td) <- infer' [] discarder
+      (copier', tc) <- infer' [] copier
+      x <- Gensym.newIdentFromText "_"
+      intType <- getIntType m
+      let tDiscard = m :< WT.Pi [(m, x, intType)] intType
+      let tCopy = m :< WT.Pi [(m, x, intType)] intType
+      insConstraintEnv tDiscard td
+      insConstraintEnv tCopy tc
+      return (m :< WT.Resource dd resourceID discarder' copier', m :< WT.Tau)
 
 inferArgs ::
   WT.SubstWeakTerm ->

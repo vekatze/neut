@@ -39,10 +39,6 @@ weakenStmt stmt = do
       let t' = weaken t
       let v' = weaken v
       WeakStmtDefineConst m dd t' v'
-    StmtDefineResource (SavedHint m) name discarder copier -> do
-      let discarder' = weaken discarder
-      let copier' = weaken copier
-      WeakStmtDefineResource m name discarder' copier'
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =
@@ -85,10 +81,10 @@ weaken term =
       m :< WT.Let (reflectOpacity opacity) (weakenBinder mxt) (weaken e1) (weaken e2)
     m :< TM.Prim prim ->
       m :< WT.Prim (weakenPrim m prim)
-    m :< TM.ResourceType name ->
-      m :< WT.ResourceType name
     m :< TM.Magic der -> do
       m :< WT.Magic (fmap weaken der)
+    m :< TM.Resource dd resourceID discarder copier -> do
+      m :< WT.Resource dd resourceID (weaken discarder) (weaken copier)
 
 weakenBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, WT.WeakTerm)
 weakenBinder (m, x, t) =

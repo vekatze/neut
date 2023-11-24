@@ -171,13 +171,13 @@ simplify constraintList =
             WP.Value (WPV.Op op2) <- a2,
             op1 == op2 ->
               simplify cs
-        (_ :< WT.ResourceType name1, _ :< WT.ResourceType name2)
-          | name1 == name2 ->
-              simplify cs
         (_ :< WT.Annotation _ _ e1, e2) ->
           simplify $ (C.Eq e1 e2, orig) : cs
         (e1, _ :< WT.Annotation _ _ e2) ->
           simplify $ (C.Eq e1 e2, orig) : cs
+        (_ :< WT.Resource _ id1 _ _, _ :< WT.Resource _ id2 _ _)
+          | id1 == id2 ->
+              simplify cs
         (e1, e2) -> do
           sub <- getHoleSubst
           let fvs1 = freeVars e1
@@ -354,8 +354,6 @@ simplifyActual m dataNameSet t orig = do
         forM_ dataConsArgs' $ \(_, _, consArg) -> do
           simplifyActual m dataNameSet' consArg orig
     _ :< WT.Prim {} ->
-      return ()
-    _ :< WT.ResourceType _ ->
       return ()
     _ -> do
       sub <- getHoleSubst

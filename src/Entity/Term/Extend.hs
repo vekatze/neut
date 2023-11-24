@@ -59,10 +59,10 @@ extend term =
       _m :< TM.Let opacity (extendBinder mxt) (extend e1) (extend e2)
     _ :< TM.Prim prim ->
       _m :< TM.Prim (extendPrim prim)
-    _ :< TM.ResourceType name ->
-      _m :< TM.ResourceType name
     _ :< TM.Magic der -> do
       _m :< TM.Magic (fmap extend der)
+    _ :< TM.Resource dd resourceID discarder copier -> do
+      _m :< TM.Resource dd resourceID (extend discarder) (extend copier)
 
 extendBinder :: (Hint, Ident, Cofree TM.TermF ()) -> (Hint, Ident, TM.Term)
 extendBinder (m, x, t) =

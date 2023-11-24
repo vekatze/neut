@@ -21,6 +21,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
 import Entity.GlobalName qualified as GN
@@ -34,6 +35,7 @@ import Entity.NominalEnv
 import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.RawBinder
+import Entity.RawDecl qualified as RDE
 import Entity.RawIdent
 import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
@@ -50,11 +52,11 @@ import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList =
-  mapM (discernStmt False)
+  mapM discernStmt
 
-discernStmt :: Bool -> RawStmt -> App WeakStmt
-discernStmt isMutual stmt = do
-  unless isMutual $ registerTopLevelName stmt
+discernStmt :: RawStmt -> App WeakStmt
+discernStmt stmt = do
+  registerTopLevelName stmt
   case stmt of
     RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
       (xts', nenv) <- discernBinder empty xts
@@ -69,29 +71,24 @@ discernStmt isMutual stmt = do
       v' <- discern empty v
       Tag.insertDD m dd m
       return $ WeakStmtDefineConst m dd t' v'
-    RawStmtDefineResource m name discarder copier -> do
-      discarder' <- discern empty discarder
-      copier' <- discern empty copier
-      Tag.insertDD m name m
-      return $ WeakStmtDefineResource m name discarder' copier'
-    RawStmtMutual m stmtList -> do
-      stmtList' <- mapM (discernStmt True) $ reorderStmtList stmtList
-      return $ WeakStmtMutual m stmtList'
+    RawStmtDeclare m declList -> do
+      declList' <- mapM discernDecl declList
+      return $ WeakStmtDeclare m declList'
 
-reorderStmtList :: [RawStmt] -> [RawStmt]
-reorderStmtList =
-  sortBy (\s1 s2 -> compare (getSortOrder s1) (getSortOrder s2))
-
-getSortOrder :: RawStmt -> Int
-getSortOrder stmt =
-  case stmt of
-    RawStmtDefine _ stmtKind _ _ _ _ _ _
-      | SK.Data {} <- stmtKind ->
-          0
-      | SK.DataIntro {} <- stmtKind ->
-          1
-    _ ->
-      2
+discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
+discernDecl decl = do
+  (dom', nenv) <- discernBinder empty (RDE.dom decl)
+  forM_ dom' $ \(_, x, _) -> UnusedVariable.delete x
+  cod' <- discern nenv (RDE.cod decl)
+  return $
+    DE.Decl
+      { loc = RDE.loc decl,
+        name = RDE.name decl,
+        isConstLike = RDE.isConstLike decl,
+        impArgNum = RDE.impArgNum decl,
+        dom = dom',
+        cod = cod'
+      }
 
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
@@ -102,10 +99,8 @@ registerTopLevelName stmt =
       Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
     RawStmtDefineConst m dd _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-    RawStmtDefineResource m name _ _ -> do
-      Global.registerStmtDefineResource m name
-    RawStmtMutual _ stmtList -> do
-      mapM_ registerTopLevelName stmtList
+    RawStmtDeclare _ declList -> do
+      mapM_ Global.registerDecl declList
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -206,6 +201,11 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
+    m :< RT.Resource dd discarder copier -> do
+      resourceID <- Gensym.newCount
+      discarder' <- discern nenv discarder
+      copier' <- discern nenv copier
+      return $ m :< WT.Resource dd resourceID discarder' copier'
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =

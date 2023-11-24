@@ -1,5 +1,6 @@
 module Context.Type
   ( lookup,
+    lookupMaybe,
     insert,
   )
 where
@@ -15,12 +16,17 @@ import Prelude hiding (lookup)
 
 lookup :: Hint -> DD.DefiniteDescription -> App WeakTerm
 lookup m k = do
-  tenv <- readRef' typeEnv
-  case Map.lookup k tenv of
+  valueOrNone <- lookupMaybe k
+  case valueOrNone of
     Just value ->
       return value
     Nothing ->
       Throw.raiseCritical m $ "`" <> DD.reify k <> "` is not found in the term type environment."
+
+lookupMaybe :: DD.DefiniteDescription -> App (Maybe WeakTerm)
+lookupMaybe k = do
+  tenv <- readRef' typeEnv
+  return $ Map.lookup k tenv
 
 insert :: DD.DefiniteDescription -> WeakTerm -> App ()
 insert k v =

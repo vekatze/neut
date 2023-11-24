@@ -11,6 +11,7 @@ module Entity.BaseName
     sigmaName,
     lambdaName,
     muName,
+    resourceName,
     textName,
     mainName,
     fromText,
@@ -137,6 +138,10 @@ lambdaName i =
 muName :: Int -> BaseName
 muName i =
   MakeBaseName $ "mu;" <> T.pack (show i)
+
+resourceName :: Int -> BaseName
+resourceName i =
+  MakeBaseName $ "resource;" <> T.pack (show i)
 
 textName :: Int -> BaseName
 textName i =

@@ -82,13 +82,15 @@ subst sub term =
       e1' <- subst sub e1
       ([mxt'], e2') <- subst' sub [mxt] e2
       return $ m :< TM.Let opacity mxt' e1' e2'
-    _ :< TM.ResourceType {} ->
-      return term
     _ :< TM.Prim _ ->
       return term
     m :< TM.Magic der -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')
+    m :< TM.Resource dd resourceID discarder copier -> do
+      discarder' <- subst sub discarder
+      copier' <- subst sub copier
+      return $ m :< TM.Resource dd resourceID discarder' copier'
 
 subst' ::
   SubstTerm ->

@@ -6,11 +6,13 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Binder
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.RawBinder
+import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
@@ -35,8 +37,7 @@ data RawStmt
       RT.RawTerm
       RT.RawTerm
   | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtDefineResource Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtMutual Hint [RawStmt]
+  | RawStmtDeclare Hint [RDE.RawDecl]
 
 data WeakStmt
   = WeakStmtDefine
@@ -49,8 +50,7 @@ data WeakStmt
       WT.WeakTerm
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtDefineResource Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtMutual Hint [WeakStmt]
+  | WeakStmtDeclare Hint [DE.Decl WT.WeakTerm]
 
 type Program =
   (Source.Source, [Stmt])
@@ -66,7 +66,6 @@ data StmtF a
       a
       a
   | StmtDefineConst SavedHint DD.DefiniteDescription a a
-  | StmtDefineResource SavedHint DD.DefiniteDescription a a
   deriving (Generic)
 
 type Stmt = StmtF TM.Term
@@ -92,10 +91,6 @@ compress stmt =
       let t' = TM.compress t
       let e' = TM.compress e
       StmtDefineConst m dd t' e'
-    StmtDefineResource m dd discarder copier -> do
-      let discarder' = TM.compress discarder
-      let copier' = TM.compress copier
-      StmtDefineResource m dd discarder' copier'
 
 extend :: StrippedStmt -> Stmt
 extend stmt =
@@ -110,10 +105,6 @@ extend stmt =
       let t' = TM.extend t
       let e' = TM.extend e
       StmtDefineConst m dd t' e'
-    StmtDefineResource m dd discarder copier -> do
-      let discarder' = TM.extend discarder
-      let copier' = TM.extend copier
-      StmtDefineResource m dd discarder' copier'
 
 showStmt :: WeakStmt -> T.Text
 showStmt stmt =

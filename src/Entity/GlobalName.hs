@@ -16,7 +16,6 @@ data GlobalName
   | PrimOp PrimOp
   | Data ArgNum [(DD.DefiniteDescription, (Hint, GlobalName))] IsConstLike
   | DataIntro ArgNum ArgNum D.Discriminant IsConstLike
-  | Resource
   deriving (Show, Generic)
 
 instance Binary GlobalName

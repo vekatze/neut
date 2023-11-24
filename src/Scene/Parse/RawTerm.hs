@@ -3,6 +3,7 @@ module Scene.Parse.RawTerm
     preAscription,
     preBinder,
     parseTopDefInfo,
+    parseDeclareItem,
     parseDefInfoCod,
     typeWithoutIdent,
     preVar,
@@ -24,8 +25,10 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as Annot
 import Entity.Arch qualified as Arch
+import Entity.ArgNum qualified as AN
 import Entity.Attr.Var (Attr (isExplicit))
 import Entity.Attr.Var qualified as AttrV
+import Entity.BaseName qualified as BN
 import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DeclarationName qualified as DN
@@ -45,6 +48,7 @@ import Entity.Platform qualified as Platform
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
+import Entity.RawDecl qualified as RDE
 import Entity.RawIdent
 import Entity.RawLamKind qualified as LK
 import Entity.RawPattern qualified as RP
@@ -346,14 +350,43 @@ parseDefInfo m = do
 
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
+  topDefHeader <- parseTopDefHeader
+  e <- betweenBrace rawExpr
+  return (topDefHeader, e)
+
+parseTopDefHeader :: Parser RT.TopDefHeader
+parseTopDefHeader = do
   m <- getCurrentHint
   funcBaseName <- baseName
   impDomArgList <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) expDomArgList
   codType <- parseDefInfoCod m
-  e <- betweenBrace rawExpr
-  return ((m, funcBaseName), impDomArgList, expDomArgList, codType, e)
+  return ((m, funcBaseName), impDomArgList, expDomArgList, codType)
+
+parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.RawDecl
+parseDeclareItem nameLifter = do
+  loc <- getCurrentHint
+  name <- baseName >>= lift . nameLifter
+  (isConstLike, impArgNum, dom) <-
+    choice
+      [ do
+          impDomArgList <- parseImplicitArgs
+          choice
+            [ do
+                expDomArgList <- argSeqOrList preBinder
+                let impArgNum = AN.fromInt $ length impDomArgList
+                return (False, impArgNum, impDomArgList ++ expDomArgList),
+              do
+                let impArgNum = AN.fromInt $ length impDomArgList
+                return (True, impArgNum, impDomArgList)
+            ],
+        do
+          return (True, AN.zero, [])
+      ]
+  delimiter ":"
+  cod <- rawTerm
+  return RDE.RawDecl {loc, name, isConstLike, impArgNum, dom, cod}
 
 parseImplicitArgs :: Parser [RawBinder RT.RawTerm]
 parseImplicitArgs =

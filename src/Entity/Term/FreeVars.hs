@@ -52,10 +52,12 @@ freeVars term =
           freeVars t
         _ ->
           S.empty
-    _ :< TM.ResourceType {} ->
-      S.empty
     _ :< TM.Magic der ->
       foldMap freeVars der
+    _ :< TM.Resource _ _ discarder copier -> do
+      let xs1 = freeVars discarder
+      let xs2 = freeVars copier
+      S.union xs1 xs2
 
 freeVars' :: [BinderF TM.Term] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

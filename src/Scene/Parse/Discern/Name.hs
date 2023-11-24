@@ -142,8 +142,6 @@ interpretGlobalName m dd gn isExplicit = do
           castFromIntToBool $ m :< WT.Prim (WP.Value (WPV.Op primOp)) -- i1 to bool
         _ ->
           return $ m :< WT.Prim (WP.Value (WPV.Op primOp))
-    GN.Resource ->
-      return $ m :< WT.ResourceType dd
 
 interpretTopLevelFunc ::
   Hint ->

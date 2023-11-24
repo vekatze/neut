@@ -133,13 +133,6 @@ clarifyStmt stmt =
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
     StmtDefineConst m dd t' v' ->
       clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd AN.zero [] t' v'
-    StmtDefineResource (SavedHint m) name discarder copier -> do
-      switchValue <- Gensym.newIdentFromText "switchValue"
-      value <- Gensym.newIdentFromText "value"
-      discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
-      copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce
-      enumElim <- getEnumElim [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
-      return (name, (O.Clear, [switchValue, value], enumElim))
 
 clarifyBinderBody ::
   TM.TypeEnv ->
@@ -254,10 +247,19 @@ clarifyTerm tenv term =
               clarifyPrimOp tenv op m
             PV.StaticText _ text ->
               return $ C.UpIntro $ C.VarStaticText text
-    _ :< TM.ResourceType name -> do
-      return $ C.UpIntro $ C.VarGlobal name AN.argNumS4
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
+    m :< TM.Resource _ resourceID discarder copier -> do
+      liftedName <- Locator.attachCurrentLocator $ BN.resourceName resourceID
+      switchValue <- Gensym.newIdentFromText "switchValue"
+      value <- Gensym.newIdentFromText "value"
+      discarder' <- clarifyTerm IntMap.empty (m :< TM.PiElim discarder [m :< TM.Var value]) >>= Reduce.reduce
+      copier' <- clarifyTerm IntMap.empty (m :< TM.PiElim copier [m :< TM.Var value]) >>= Reduce.reduce
+      enumElim <- getEnumElim [value] (C.VarLocal switchValue) copier' [(EC.Int 0, discarder')]
+      isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
+      unless isAlreadyRegistered $ do
+        Clarify.insertToAuxEnv liftedName (O.Clear, [switchValue, value], enumElim)
+      return $ C.UpIntro $ C.VarGlobal liftedName AN.argNumS4
 
 type Size =
   Int

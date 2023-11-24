@@ -23,6 +23,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
+import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
@@ -69,25 +70,20 @@ elaborate cacheOrStmt = do
 
 analyzeDefList :: [WeakStmt] -> App [WeakStmt]
 analyzeDefList defList = do
-  defList' <- forM defList $ \stmt -> do
-    stmt' <- Reveal.revealStmt stmt
-    insertWeakStmt stmt'
-    return stmt'
   source <- Env.getCurrentSource
   mMainDD <- Locator.getMainDefiniteDescription source
-  mapM (Infer.inferStmt mMainDD) defList'
+  forM defList $ Reveal.revealStmt >=> Infer.inferStmt mMainDD
 
 -- viewStmt :: WeakStmt -> App ()
 -- viewStmt stmt = do
 --   case stmt of
 --     WeakStmtDefine _ _ m x _ xts codType e ->
 --       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro LK.Normal xts e)
---     WeakStmtDefineResource m name discarder copier ->
---       Remark.printNote m $ "define-resource" <> DD.reify name <> "\n" <> toText discarder <> toText copier
 
 synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
+  forM_ defList insertWeakStmt
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- concat <$> mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
@@ -125,40 +121,37 @@ elaborateStmt stmt = do
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return [result]
-    WeakStmtDefineResource m name discarder copier -> do
-      discarder' <- elaborate' discarder >>= TM.inline m
-      copier' <- elaborate' copier >>= TM.inline m
-      let result = StmtDefineResource (SavedHint m) name discarder' copier'
-      insertStmt result
-      return [result]
-    WeakStmtMutual _ stmtList -> do
-      concat <$> mapM elaborateStmt stmtList
+    WeakStmtDeclare _ declList -> do
+      mapM_ elaborateDecl declList
+      return []
+
+elaborateDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl TM.Term)
+elaborateDecl DE.Decl {..} = do
+  dom' <- mapM elaborateWeakBinder dom
+  cod' <- elaborate' cod
+  return $ DE.Decl {dom = dom', cod = cod', ..}
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
   case stmt of
-    StmtDefine _ stmtKind _ f _ xts _ e -> do
+    StmtDefine _ stmtKind (SavedHint m) f _ xts t e -> do
+      Type.insert f $ weaken $ m :< TM.Pi xts t
       Definition.insert (toOpacity stmtKind) f xts e
-    StmtDefineConst _ dd _ v ->
+    StmtDefineConst (SavedHint m) dd t v -> do
+      Type.insert dd $ weaken $ m :< TM.Pi [] t
       Definition.insert O.Clear dd [] v
-    StmtDefineResource {} ->
-      return ()
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
 insertWeakStmt :: WeakStmt -> App ()
 insertWeakStmt stmt = do
   case stmt of
-    WeakStmtDefine _ stmtKind m f _ xts codType e -> do
-      Type.insert f $ m :< WT.Pi xts codType
+    WeakStmtDefine _ stmtKind m f _ xts _ e -> do
       WeakDefinition.insert (toOpacity stmtKind) m f xts e
-    WeakStmtDefineConst m dd t v -> do
-      Type.insert dd $ m :< WT.Pi [] t
+    WeakStmtDefineConst m dd _ v -> do
       WeakDefinition.insert O.Clear m dd [] v
-    WeakStmtDefineResource m name _ _ ->
-      Type.insert name $ m :< WT.Tau
-    WeakStmtMutual _ stmtList ->
-      mapM_ insertWeakStmt stmtList
+    WeakStmtDeclare {} -> do
+      return ()
 
 insertStmtKindInfo :: Stmt -> App ()
 insertStmtKindInfo stmt = do
@@ -172,8 +165,6 @@ insertStmtKindInfo stmt = do
         DataIntro {} ->
           return ()
     StmtDefineConst {} ->
-      return ()
-    StmtDefineResource {} ->
       return ()
 
 elaborateStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind TM.Term)
@@ -282,8 +273,6 @@ elaborate' term =
             WPV.StaticText t text -> do
               t' <- elaborate' t
               return $ m :< TM.Prim (P.Value (PV.StaticText t' text))
-    m :< WT.ResourceType name ->
-      return $ m :< TM.ResourceType name
     m :< WT.Magic magic -> do
       case magic of
         M.External domList cod name args varArgs -> do
@@ -313,6 +302,10 @@ elaborate' term =
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
+    m :< WT.Resource dd resourceID discarder copier -> do
+      discarder' <- elaborate' discarder
+      copier' <- elaborate' copier
+      return $ m :< TM.Resource dd resourceID discarder' copier'
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do

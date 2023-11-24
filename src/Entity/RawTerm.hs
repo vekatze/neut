@@ -3,6 +3,7 @@ module Entity.RawTerm
     RawTermF (..),
     DefInfo,
     TopDefInfo,
+    TopDefHeader,
   )
 where
 
@@ -46,9 +47,13 @@ data RawTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
+  | Resource DD.DefiniteDescription a a -- DD is only for printing
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)
 
+type TopDefHeader =
+  ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
+
 type TopDefInfo =
-  ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
+  (TopDefHeader, RawTerm)

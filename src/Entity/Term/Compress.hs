@@ -54,10 +54,10 @@ compress term =
       () :< TM.Let opacity (compressBinder mxt) (compress e1) (compress e2)
     _ :< TM.Prim prim ->
       () :< TM.Prim (compressPrim prim)
-    _ :< TM.ResourceType name ->
-      () :< TM.ResourceType name
     _ :< TM.Magic der -> do
       () :< TM.Magic (fmap compress der)
+    _ :< TM.Resource dd resourceID discarder copier -> do
+      () :< TM.Resource dd resourceID (compress discarder) (compress copier)
 
 compressBinder :: (Hint, Ident, TM.Term) -> (Hint, Ident, Cofree TM.TermF ())
 compressBinder (m, x, t) =
