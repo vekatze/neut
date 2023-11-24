@@ -3,15 +3,17 @@ import {
 - core.unit {unit, Unit}
 }
 
-mutual {
-  data stream-cell(a) {
-  - Nil
-  - Cons(a, stream(a))
-  }
+declare {
+- stream(a: tau): tau
+}
 
-  data stream(a) {
-  - Stream(() -> stream-cell(a))
-  }
+data stream-cell(a) {
+- Nil
+- Cons(a, stream(a))
+}
+
+data stream(a) {
+- Stream(() -> stream-cell(a))
 }
 
 define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
