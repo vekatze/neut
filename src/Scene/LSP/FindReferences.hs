@@ -1,6 +1,6 @@
 module Scene.LSP.FindReferences (findReferences) where
 
-import Context.App
+import Context.AppM
 import Control.Monad
 import Data.Maybe (fromMaybe)
 import Entity.Hint qualified as H
@@ -12,21 +12,18 @@ findReferences ::
   H.Loc ->
   Uri ->
   LT.LocationTree ->
-  App [DocumentHighlight]
+  AppM [DocumentHighlight]
 findReferences loc defUri locationTree = do
-  case uriToFilePath defUri of
-    Nothing ->
-      return []
-    Just defPath -> do
-      let locs = LT.findRef loc locationTree
-      let locs' = filter (\(path, _) -> pathEq defPath path) locs
-      forM locs' $ \(_, (line, (colFrom, colTo))) -> do
-        let symbolLen = fromIntegral $ colTo - colFrom
-        let _start = Position {_line = fromIntegral (line - 1), _character = fromIntegral (colFrom - 1)}
-        let _end = _start {_character = _character _start + symbolLen}
-        let _range = Range {_start, _end}
-        let _kind = Just DocumentHighlightKind_Read
-        return $ DocumentHighlight {_range, _kind}
+  defPath <- liftMaybe $ uriToFilePath defUri
+  let locs = LT.findRef loc locationTree
+  let locs' = filter (\(path, _) -> pathEq defPath path) locs
+  forM locs' $ \(_, (line, (colFrom, colTo))) -> do
+    let symbolLen = fromIntegral $ colTo - colFrom
+    let _start = Position {_line = fromIntegral (line - 1), _character = fromIntegral (colFrom - 1)}
+    let _end = _start {_character = _character _start + symbolLen}
+    let _range = Range {_start, _end}
+    let _kind = Just DocumentHighlightKind_Read
+    return $ DocumentHighlight {_range, _kind}
 
 pathEq :: FilePath -> FilePath -> Bool
 pathEq path1 path2 = do

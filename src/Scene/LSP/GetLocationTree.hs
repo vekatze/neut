@@ -1,9 +1,10 @@
 module Scene.LSP.GetLocationTree (getLocationTree) where
 
-import Context.App
+import Context.AppM
 import Context.Cache qualified as Cache
 import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
+import Control.Monad.Trans
 import Entity.Cache qualified as Cache
 import Entity.LocationTree qualified as LT
 import Entity.Source
@@ -11,17 +12,13 @@ import Scene.Unravel
 
 getLocationTree ::
   Source ->
-  App (Maybe LT.LocationTree)
+  AppM LT.LocationTree
 getLocationTree src = do
-  Unravel.initialize
-  resultOrError <- Throw.execute $ unravel' src
+  lift Unravel.initialize
+  resultOrError <- lift $ Throw.execute $ unravel' src
   case resultOrError of
     Left _ ->
-      return Nothing
+      liftMaybe Nothing
     Right _ -> do
-      mCache <- Cache.loadCacheOptimistically src
-      case mCache of
-        Nothing -> do
-          return Nothing
-        Just cache -> do
-          return $ Just $ Cache.locationTree cache
+      cache <- lift (Cache.loadCacheOptimistically src) >>= liftMaybe
+      return $ Cache.locationTree cache

@@ -1,10 +1,10 @@
 module Scene.LSP (lsp) where
 
 import Context.App
+import Context.AppM
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Control.Monad.Trans
-import Data.Maybe
 import Entity.AppLsp
 import Entity.Config.Remark qualified as Remark
 import Language.LSP.Protocol.Lens qualified as J
@@ -14,9 +14,6 @@ import Language.LSP.Server
 import Scene.Initialize qualified as Initialize
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
-import Scene.LSP.FindReferences qualified as LSP
-import Scene.LSP.GetLocationTree qualified as LSP
-import Scene.LSP.GetSource qualified as LSP
 import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 
@@ -52,14 +49,14 @@ handlers =
         itemList <- lift $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
-        mLoc <- lift $ LSP.findDefinition (req ^. J.params)
+        mLoc <- lift $ runAppM $ LSP.findDefinition (req ^. J.params)
         case mLoc of
           Nothing ->
             return ()
           Just (loc, _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
-        highlightsOrNone <- lift $ LSP.highlight $ req ^. J.params
+        highlightsOrNone <- lift $ runAppM $ LSP.highlight $ req ^. J.params
         case highlightsOrNone of
           Nothing ->
             return ()
