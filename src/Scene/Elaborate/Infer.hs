@@ -52,7 +52,8 @@ inferStmt mMainDD stmt =
       (e', te) <- infer' varEnv e
       insConstraintEnv codType' te
       when (mMainDD == Just x) $ do
-        unitType <- getUnitType m
+        let _m = m {metaShouldSaveLocation = False}
+        unitType <- getUnitType _m
         insConstraintEnv (m :< WT.Pi [] unitType) (m :< WT.Pi xts' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgNum xts' codType' e'
     WeakStmtDefineConst m dd t v -> do
