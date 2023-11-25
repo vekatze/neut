@@ -11,9 +11,6 @@ module Context.Elaborate
     insPreHoleEnv,
     insHoleEnv,
     insertSubst,
-    setConstraintQueue,
-    insertConstraint,
-    getConstraintQueue,
     newHole,
     newTypeHoleList,
     getHoleSubst,
@@ -27,7 +24,6 @@ import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
-import Data.PQueue.Min qualified as Q
 import Entity.Binder
 import Entity.Constraint qualified as C
 import Entity.Hint
@@ -44,7 +40,6 @@ initialize :: App ()
 initialize = do
   initializeInferenceEnv
   writeRef' weakTypeEnv IntMap.empty
-  setConstraintQueue Q.empty
 
 initializeInferenceEnv :: App ()
 initializeInferenceEnv = do
@@ -96,18 +91,6 @@ insPreHoleEnv i e =
 insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> App ()
 insertSubst holeID xs e =
   modifyRef' holeSubst $ HS.insert holeID xs e
-
-setConstraintQueue :: Q.MinQueue C.SuspendedConstraint -> App ()
-setConstraintQueue =
-  writeRef' constraintQueue
-
-insertConstraint :: C.SuspendedConstraint -> App ()
-insertConstraint sc =
-  modifyRef' constraintQueue $ Q.insert sc
-
-getConstraintQueue :: App C.SuspendedConstraintQueue
-getConstraintQueue =
-  readRef' constraintQueue
 
 getHoleSubst :: App HS.HoleSubst
 getHoleSubst =
