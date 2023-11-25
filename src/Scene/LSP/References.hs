@@ -1,7 +1,7 @@
 module Scene.LSP.References (references) where
 
 import Context.AppM
-import Control.Monad
+import Control.Monad.Trans
 import Entity.Source (Source (sourceModule))
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -10,6 +10,7 @@ import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.FindReferences qualified as LSP
 import Scene.LSP.GetAllCachesInModule qualified as LSP
 import Scene.LSP.GetSource qualified as LSP
+import UnliftIO.Async (forConcurrently)
 
 references ::
   (J.HasTextDocument p a1, J.HasUri a1 Uri, J.HasPosition p Position) =>
@@ -19,7 +20,7 @@ references params = do
   currentSource <- LSP.getSource params
   (defLink, _) <- LSP.findDefinition params
   locTreeSeq <- LSP.getAllCachesInModule $ sourceModule currentSource
-  fmap concat $ forM locTreeSeq $ \(path, locTree) -> do
+  fmap concat $ lift $ forConcurrently locTreeSeq $ \(path, locTree) -> do
     refList <- LSP.findReferences defLink locTree
     return $ map (toLocation path) refList
 
