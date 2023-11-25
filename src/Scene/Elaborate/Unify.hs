@@ -250,7 +250,7 @@ resolveHole susList h1 xs e2' cs = do
   insertSubst h1 xs e2'
   let (susList1, susList2) = partition (\(C.SuspendedConstraint (hs, _)) -> S.member h1 hs) susList
   let susList1' = map (\(C.SuspendedConstraint (_, c)) -> c) susList1
-  simplify susList2 $ susList1' ++ cs
+  simplify susList2 $ reverse susList1' ++ cs
 
 simplifyBinder ::
   C.Constraint ->
