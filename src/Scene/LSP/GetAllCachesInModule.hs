@@ -4,7 +4,6 @@ import Context.App
 import Context.AppM
 import Context.Cache qualified as Cache
 import Context.Path (getSourceCachePath)
-import Control.Monad
 import Control.Monad.Trans
 import Data.Maybe (catMaybes)
 import Entity.Cache qualified as Cache
@@ -13,11 +12,12 @@ import Entity.Module
 import Entity.Source
 import Path
 import Path.IO
+import UnliftIO.Async
 
 getAllCachesInModule :: Module -> AppM [(Path Abs File, LocationTree)]
 getAllCachesInModule baseModule = do
   (_, filePathList) <- listDirRecur $ getSourceDir baseModule
-  fmap catMaybes $ forM filePathList $ \path -> lift (getLocationTree baseModule path)
+  fmap catMaybes $ lift $ forConcurrently filePathList $ \path -> getLocationTree baseModule path
 
 getLocationTree :: Module -> Path Abs File -> App (Maybe (Path Abs File, LocationTree))
 getLocationTree baseModule filePath = do
