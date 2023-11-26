@@ -5,7 +5,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.IORef
 import Data.IORef.Unboxed
 import Data.IntMap qualified as IntMap
-import Data.PQueue.Min qualified as Q
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.AliasInfo
@@ -71,7 +70,6 @@ data Env = Env
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     preHoleEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: IORef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
-    constraintQueue :: IORef (Q.MinQueue C.SuspendedConstraint),
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
     weakDefMap :: IORef (Map.HashMap DD.DefiniteDescription WT.WeakTerm),
@@ -128,7 +126,6 @@ newEnv = do
   weakTypeEnv <- newIORef IntMap.empty
   preHoleEnv <- newIORef IntMap.empty
   holeEnv <- newIORef IntMap.empty
-  constraintQueue <- newIORef Q.empty
   traceSourceList <- newIORef []
   artifactMap <- newIORef Map.empty
   definedNameSet <- newIORef S.empty

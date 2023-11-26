@@ -72,13 +72,17 @@ analyzeDefList :: [WeakStmt] -> App [WeakStmt]
 analyzeDefList defList = do
   source <- Env.getCurrentSource
   mMainDD <- Locator.getMainDefiniteDescription source
+  -- mapM_ viewStmt defList
   forM defList $ Reveal.revealStmt >=> Infer.inferStmt mMainDD
 
 -- viewStmt :: WeakStmt -> App ()
 -- viewStmt stmt = do
 --   case stmt of
---     WeakStmtDefine _ _ m x _ xts codType e ->
---       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro LK.Normal xts e)
+--     WeakStmtDefine _ _ m x _ xts codType e -> do
+--       let attr = AttrL.Attr {lamKind = LK.Normal, identity = 0}
+--       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi xts codType) <> "\n" <> toText (m :< WT.PiIntro attr xts e)
+--     _ ->
+--       return ()
 
 synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do

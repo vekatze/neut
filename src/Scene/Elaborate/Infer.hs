@@ -371,10 +371,11 @@ inferDecisionTree m varEnv tree =
     DT.Unreachable -> do
       h <- newHole m varEnv
       return (DT.Unreachable, h)
-    DT.Switch (cursor, _) clauseList -> do
-      cursorType <- lookupWeakTypeEnv m cursor
-      (clauseList', answerType) <- inferClauseList m varEnv cursorType clauseList
-      return (DT.Switch (cursor, cursorType) clauseList', answerType)
+    DT.Switch (cursor, mCursor :< _) clauseList -> do
+      _ :< cursorType <- lookupWeakTypeEnv m cursor
+      let cursorType' = mCursor :< cursorType
+      (clauseList', answerType) <- inferClauseList m varEnv cursorType' clauseList
+      return (DT.Switch (cursor, cursorType') clauseList', answerType)
 
 inferClauseList ::
   Hint ->

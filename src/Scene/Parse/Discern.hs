@@ -173,12 +173,14 @@ discern nenv term =
       consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< RT.DataElim isNoetic es patternMatrix -> do
+      let ms = map (\(me :< _) -> me) es
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv >=> castFromNoemaIfNecessary isNoetic) es
       ts <- mapM (const $ Gensym.newHole m []) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
-      decisionTree <- compilePatternMatrix nenv isNoetic m (V.fromList os) patternMatrix'
+      let os' = zip ms os
+      decisionTree <- compilePatternMatrix nenv isNoetic (V.fromList os') patternMatrix'
       return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
     m :< RT.Noema t -> do
       t' <- discern nenv t

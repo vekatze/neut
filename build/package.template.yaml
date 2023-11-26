@@ -36,7 +36,6 @@ dependencies:
   - parser-combinators
   - path
   - path-io
-  - pqueue
   - process
   - safe-exceptions
   - template-haskell
