@@ -41,20 +41,16 @@ import Scene.WeakTerm.Subst qualified as Subst
 
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
-  analyze (reverse constraintList) >>= synthesize
-  getHoleSubst
-
-analyze :: [C.Constraint] -> App [SuspendedConstraint]
-analyze constraintList =
-  simplify [] $ zip constraintList constraintList
-
-synthesize :: [SuspendedConstraint] -> App ()
-synthesize susList = do
+  susList <- unify' (reverse constraintList)
   case susList of
     [] ->
-      return ()
+      getHoleSubst
     _ ->
       throwTypeErrors susList
+
+unify' :: [C.Constraint] -> App [SuspendedConstraint]
+unify' constraintList =
+  simplify [] $ zip constraintList constraintList
 
 throwTypeErrors :: [SuspendedConstraint] -> App a
 throwTypeErrors susList = do
