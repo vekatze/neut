@@ -1,4 +1,8 @@
-module Scene.Elaborate.Unify (unify) where
+module Scene.Elaborate.Unify
+  ( unify,
+    unifyCurrentConstraints,
+  )
+where
 
 import Context.App
 import Context.Elaborate
@@ -41,20 +45,24 @@ import Scene.WeakTerm.Subst qualified as Subst
 
 unify :: [C.Constraint] -> App HS.HoleSubst
 unify constraintList = do
-  analyze (reverse constraintList) >>= synthesize
-  getHoleSubst
-
-analyze :: [C.Constraint] -> App [SuspendedConstraint]
-analyze constraintList =
-  simplify [] $ zip constraintList constraintList
-
-synthesize :: [SuspendedConstraint] -> App ()
-synthesize susList = do
+  susList <- unify' (reverse constraintList)
   case susList of
     [] ->
-      return ()
+      getHoleSubst
     _ ->
       throwTypeErrors susList
+
+unifyCurrentConstraints :: App HS.HoleSubst
+unifyCurrentConstraints = do
+  cs <- getConstraintEnv
+  sus <- simplify [] $ zip cs cs
+  let sus' = map (\(C.SuspendedConstraint (_, (_, c))) -> c) sus
+  setConstraintEnv sus'
+  getHoleSubst
+
+unify' :: [C.Constraint] -> App [SuspendedConstraint]
+unify' constraintList =
+  simplify [] $ zip constraintList constraintList
 
 throwTypeErrors :: [SuspendedConstraint] -> App a
 throwTypeErrors susList = do
@@ -78,10 +86,11 @@ fillAsMuchAsPossible sub e = do
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
-constructErrorMessageEq actual expected =
-  "type mismatch:\n- "
-    <> toText actual
-    <> "\n- "
+constructErrorMessageEq found expected =
+  "found:\n  "
+    <> toText found
+    <> "\n"
+    <> "expected:\n  "
     <> toText expected
 
 constructErrorMessageActual :: WT.WeakTerm -> T.Text

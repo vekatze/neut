@@ -17,6 +17,7 @@ import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Decl qualified as DE
 import Entity.HoleID qualified as HID
+import Entity.Ident (isHole)
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Stmt
@@ -188,7 +189,8 @@ revealPi varEnv binder cod =
     ((mx, x, t) : xts) -> do
       t' <- reveal' varEnv t
       insWeakTypeEnv x t'
-      (xtls', tlCod) <- revealPi ((mx, x, t') : varEnv) xts cod
+      let varEnv' = if isHole x then varEnv else (mx, x, t') : varEnv
+      (xtls', tlCod) <- revealPi varEnv' xts cod
       return ((mx, x, t') : xtls', tlCod)
 
 revealBinder ::
