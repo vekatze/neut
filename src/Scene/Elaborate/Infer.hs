@@ -39,6 +39,7 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.ToText (toText)
 import Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Scene.Parse.Discern.Name qualified as N
 import Scene.WeakTerm.Reduce qualified as WT
@@ -149,7 +150,7 @@ infer' varEnv term =
     m :< WT.PiElim e es -> do
       etl <- infer' varEnv e
       etls <- mapM (infer' varEnv) es
-      inferPiElim varEnv m etl etls
+      inferPiElim m etl etls
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer' varEnv) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
@@ -305,25 +306,23 @@ inferBinder' varEnv binder =
       return ((mx, x, t') : xts', newVarEnv)
 
 inferPiElim ::
-  BoundVarEnv ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
-inferPiElim varEnv m (e, t) ets = do
+inferPiElim m (e, t) ets = do
   let es = map fst ets
   t' <- resolveType t
-  (xts, cod) <- getPiType varEnv m (e, t') $ length ets
+  (xts, cod) <- getPiType m (e, t') $ length ets
   _ :< cod' <- inferArgs IntMap.empty m ets xts cod
   return (m :< WT.PiElim e es, m :< cod')
 
 getPiType ::
-  BoundVarEnv ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
   Int ->
   App ([BinderF WT.WeakTerm], WT.WeakTerm)
-getPiType varEnv m (e, t) numOfArgs =
+getPiType m (e, t) numOfArgs =
   case t of
     _ :< WT.Pi xts cod
       | length xts == numOfArgs ->
@@ -331,11 +330,7 @@ getPiType varEnv m (e, t) numOfArgs =
       | otherwise ->
           raiseArityMismatchError e (length xts) numOfArgs
     _ -> do
-      ys <- mapM (const $ Gensym.newIdentFromText "arg") [1 .. numOfArgs]
-      yts <- newTypeHoleList varEnv $ zip ys (replicate numOfArgs m)
-      cod <- newHole m (yts ++ varEnv)
-      insConstraintEnv (WT.metaOf e :< WT.Pi yts cod) t
-      return (yts, cod)
+      Throw.raiseError m $ "expected a function type, but got: " <> toText t
 
 raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
 raiseArityMismatchError function expected actual = do
@@ -411,7 +406,7 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let argNum = AN.fromInt $ length dataArgs + length consArgs
   let attr = AttrVG.Attr {isExplicit = False, ..}
   consTerm <- infer' varEnv $ m :< WT.VarGlobal attr consDD
-  (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  (_, tPat) <- inferPiElim m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
   (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   return
