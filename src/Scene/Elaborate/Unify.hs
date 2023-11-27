@@ -1,4 +1,8 @@
-module Scene.Elaborate.Unify (unify) where
+module Scene.Elaborate.Unify
+  ( unify,
+    unifyCurrentConstraints,
+  )
+where
 
 import Context.App
 import Context.Elaborate
@@ -47,6 +51,14 @@ unify constraintList = do
       getHoleSubst
     _ ->
       throwTypeErrors susList
+
+unifyCurrentConstraints :: App HS.HoleSubst
+unifyCurrentConstraints = do
+  cs <- getConstraintEnv
+  sus <- simplify [] $ zip cs cs
+  let sus' = map (\(C.SuspendedConstraint (_, (_, c))) -> c) sus
+  setConstraintEnv sus'
+  getHoleSubst
 
 unify' :: [C.Constraint] -> App [SuspendedConstraint]
 unify' constraintList =

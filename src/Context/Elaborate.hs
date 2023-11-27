@@ -3,6 +3,7 @@ module Context.Elaborate
     initializeInferenceEnv,
     insConstraintEnv,
     insertActualityConstraint,
+    setConstraintEnv,
     getConstraintEnv,
     insWeakTypeEnv,
     lookupWeakTypeEnv,
@@ -57,6 +58,10 @@ insertActualityConstraint t = do
 getConstraintEnv :: App [C.Constraint]
 getConstraintEnv =
   readRef' constraintEnv
+
+setConstraintEnv :: [C.Constraint] -> App ()
+setConstraintEnv =
+  writeRef' constraintEnv
 
 insWeakTypeEnv :: Ident -> WeakTerm -> App ()
 insWeakTypeEnv k v =

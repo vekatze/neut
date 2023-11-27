@@ -6,6 +6,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
+import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
@@ -23,6 +24,8 @@ import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID qualified as HID
+import Entity.HoleSubst qualified as HS
+import Entity.Ident (isHole)
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
@@ -36,8 +39,11 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Scene.Parse.Discern.Name qualified as N
+import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as Subst
+import Scene.WeakTerm.Subst qualified as WT
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -141,8 +147,8 @@ infer' varEnv term =
           let term' = m :< WT.PiIntro attr xts' e'
           return (term', m :< WT.Pi xts' t')
     m :< WT.PiElim e es -> do
-      etls <- mapM (infer' varEnv) es
       etl <- infer' varEnv e
+      etls <- mapM (infer' varEnv) es
       inferPiElim varEnv m etl etls
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer' varEnv) es
@@ -270,7 +276,8 @@ inferPi varEnv binder cod =
     ((mx, x, t) : xts) -> do
       t' <- inferType' varEnv t
       insWeakTypeEnv x t'
-      (xtls', tlCod) <- inferPi ((mx, x, t') : varEnv) xts cod
+      let varEnv' = if isHole x then varEnv else (mx, x, t') : varEnv
+      (xtls', tlCod) <- inferPi varEnv' xts cod
       return ((mx, x, t') : xtls', tlCod)
 
 inferBinder ::
@@ -294,7 +301,8 @@ inferBinder' varEnv binder =
     ((mx, x, t) : xts) -> do
       t' <- inferType' varEnv t
       insWeakTypeEnv x t'
-      (xts', newVarEnv) <- inferBinder' ((mx, x, t') : varEnv) xts
+      let varEnv' = if isHole x then varEnv else (mx, x, t') : varEnv
+      (xts', newVarEnv) <- inferBinder' varEnv' xts
       return ((mx, x, t') : xts', newVarEnv)
 
 inferPiElim ::
@@ -305,7 +313,8 @@ inferPiElim ::
   App (WT.WeakTerm, WT.WeakTerm)
 inferPiElim varEnv m (e, t) ets = do
   let es = map fst ets
-  (xts, cod) <- getPiType varEnv m (e, t) $ length ets
+  t' <- resolveType t
+  (xts, cod) <- getPiType varEnv m (e, t') $ length ets
   _ :< cod' <- inferArgs IntMap.empty m ets xts cod
   return (m :< WT.PiElim e es, m :< cod')
 
@@ -400,12 +409,12 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let (dataTermList, _) = unzip dataArgs
   typedDataArgs' <- mapM (infer' varEnv) dataTermList
   (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
-  (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   let argNum = AN.fromInt $ length dataArgs + length consArgs
   let attr = AttrVG.Attr {isExplicit = False, ..}
   consTerm <- infer' varEnv $ m :< WT.VarGlobal attr consDD
   (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
+  (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   return
     ( decisionCase
         { DT.dataArgs = typedDataArgs',
@@ -414,3 +423,32 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
         },
       tCont
     )
+
+resolveType :: WT.WeakTerm -> App WT.WeakTerm
+resolveType t = do
+  sub <- unifyCurrentConstraints
+  reduceWeakType sub t
+
+reduceWeakType :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType sub e = do
+  e' <- WT.reduce e
+  case e' of
+    m :< WT.Hole h es ->
+      case HS.lookup h sub of
+        Nothing ->
+          return e'
+        Just (xs, body)
+          | length xs == length es -> do
+              let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
+              WT.subst s body >>= reduceWeakType sub
+          | otherwise ->
+              Throw.raiseError m "arity mismatch"
+    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
+      mLam <- WeakDefinition.lookup name
+      case mLam of
+        Just lam ->
+          reduceWeakType sub $ m :< WT.PiElim lam args
+        Nothing -> do
+          return e'
+    _ ->
+      return e'

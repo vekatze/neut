@@ -73,7 +73,10 @@ analyzeDefList defList = do
   source <- Env.getCurrentSource
   mMainDD <- Locator.getMainDefiniteDescription source
   -- mapM_ viewStmt defList
-  forM defList $ Reveal.revealStmt >=> Infer.inferStmt mMainDD
+  forM defList $ \def -> do
+    def' <- Reveal.revealStmt def
+    insertWeakStmt def'
+    Infer.inferStmt mMainDD def'
 
 -- viewStmt :: WeakStmt -> App ()
 -- viewStmt stmt = do
@@ -87,7 +90,6 @@ analyzeDefList defList = do
 synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList
-  forM_ defList insertWeakStmt
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   defList' <- concat <$> mapM elaborateStmt defList
   -- mapM_ (viewStmt . weakenStmt) defList'
