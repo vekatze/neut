@@ -301,8 +301,7 @@ inferBinder' varEnv binder =
     ((mx, x, t) : xts) -> do
       t' <- inferType' varEnv t
       insWeakTypeEnv x t'
-      let varEnv' = if isHole x then varEnv else (mx, x, t') : varEnv
-      (xts', newVarEnv) <- inferBinder' varEnv' xts
+      (xts', newVarEnv) <- inferBinder' ((mx, x, t') : varEnv) xts
       return ((mx, x, t') : xts', newVarEnv)
 
 inferPiElim ::
