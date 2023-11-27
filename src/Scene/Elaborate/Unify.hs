@@ -86,10 +86,11 @@ fillAsMuchAsPossible sub e = do
     else return e'
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
-constructErrorMessageEq actual expected =
-  "type mismatch:\n- "
-    <> toText actual
-    <> "\n- "
+constructErrorMessageEq found expected =
+  "found:\n  "
+    <> toText found
+    <> "\n"
+    <> "expected:\n  "
     <> toText expected
 
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
