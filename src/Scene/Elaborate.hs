@@ -47,7 +47,6 @@ import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
-import Scene.Elaborate.Reveal qualified as Reveal
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
 import Scene.WeakTerm.Reduce qualified as WT
@@ -74,9 +73,8 @@ analyzeDefList defList = do
   mMainDD <- Locator.getMainDefiniteDescription source
   -- mapM_ viewStmt defList
   forM defList $ \def -> do
-    def' <- Reveal.revealStmt def
-    insertWeakStmt def'
-    Infer.inferStmt mMainDD def'
+    insertWeakStmt def
+    Infer.inferStmt mMainDD def
 
 -- viewStmt :: WeakStmt -> App ()
 -- viewStmt stmt = do

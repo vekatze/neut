@@ -7,9 +7,7 @@ module Context.Elaborate
     getConstraintEnv,
     insWeakTypeEnv,
     lookupWeakTypeEnv,
-    lookupPreHoleEnv,
     lookupHoleEnv,
-    insPreHoleEnv,
     insHoleEnv,
     insertSubst,
     newHole,
@@ -81,17 +79,9 @@ lookupHoleEnv :: Int -> App (Maybe (WeakTerm, WeakTerm))
 lookupHoleEnv i =
   IntMap.lookup i <$> readRef' holeEnv
 
-lookupPreHoleEnv :: Int -> App (Maybe WeakTerm)
-lookupPreHoleEnv i =
-  IntMap.lookup i <$> readRef' preHoleEnv
-
 insHoleEnv :: Int -> WeakTerm -> WeakTerm -> App ()
 insHoleEnv i e1 e2 =
   modifyRef' holeEnv $ IntMap.insert i (e1, e2)
-
-insPreHoleEnv :: Int -> WeakTerm -> App ()
-insPreHoleEnv i e =
-  modifyRef' preHoleEnv $ IntMap.insert i e
 
 insertSubst :: HID.HoleID -> [Ident] -> WT.WeakTerm -> App ()
 insertSubst holeID xs e =

@@ -16,7 +16,6 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
-import Context.Implicit qualified as Implicit
 import Context.KeyArg qualified as KeyArg
 import Context.OptimizableData qualified as OptimizableData
 import Context.Tag qualified as Tag
@@ -131,7 +130,6 @@ registerData isConstLike m dataName dataArgs consInfoList = do
   forM_ consNameArrowList $ \(consDD, consGN) -> do
     ensureDefFreshness m consDD
     uncurry (insertToNameMap consDD) consGN
-    Implicit.insert consDD dataArgNum
 
 toConsNameArrow ::
   AN.ArgNum ->
