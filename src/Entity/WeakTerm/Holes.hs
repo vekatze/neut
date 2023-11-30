@@ -17,12 +17,14 @@ holes term =
       S.empty
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi xts t ->
-      holes' xts (holes t)
+    _ :< WT.Pi impArgs expArgs t ->
+      holes' (impArgs ++ expArgs) (holes t)
     _ :< WT.PiIntro _ xts e ->
       holes' xts (holes e)
     _ :< WT.PiElim e es ->
       S.unions $ map holes $ e : es
+    _ :< WT.PiElimExact e ->
+      holes e
     _ :< WT.Data _ _ es ->
       S.unions $ map holes es
     _ :< WT.DataIntro _ _ dataArgs consArgs -> do

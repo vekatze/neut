@@ -22,8 +22,8 @@ compress term =
       () :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       () :< TM.VarGlobal g argNum
-    _ :< TM.Pi xts t ->
-      () :< TM.Pi (map compressBinder xts) (compress t)
+    _ :< TM.Pi impArgs expArgs t ->
+      () :< TM.Pi (map compressBinder impArgs) (map compressBinder expArgs) (compress t)
     _ :< TM.PiIntro attr xts e -> do
       let attr' = compressAttr attr
       let xts' = map compressBinder xts

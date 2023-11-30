@@ -67,11 +67,17 @@ inline m e = do
 inline' :: Axis -> TM.Term -> App TM.Term
 inline' axis term =
   case term of
-    m :< TM.Pi xts cod -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (inline' axis) ts
+    m :< TM.Pi impArgs expArgs cod -> do
+      impArgs' <- do
+        let (ms, xs, ts) = unzip3 impArgs
+        ts' <- mapM (inline' axis) ts
+        return $ zip3 ms xs ts'
+      expArgs' <- do
+        let (ms, xs, ts) = unzip3 expArgs
+        ts' <- mapM (inline' axis) ts
+        return $ zip3 ms xs ts'
       cod' <- inline' axis cod
-      return (m :< TM.Pi (zip3 ms xs ts') cod')
+      return (m :< TM.Pi impArgs' expArgs' cod')
     m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM (inline' axis) ts

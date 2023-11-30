@@ -29,12 +29,13 @@ import Entity.WeakTerm qualified as WT
 weakenStmt :: Stmt -> WeakStmt
 weakenStmt stmt = do
   case stmt of
-    StmtDefine isConstLike stmtKind (SavedHint m) name impArgNum xts codType e -> do
+    StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs codType e -> do
       let stmtKind' = weakenStmtKind stmtKind
-      let xts' = map weakenBinder xts
+      let impArgs' = map weakenBinder impArgs
+      let expArgs' = map weakenBinder expArgs
       let codType' = weaken codType
       let e' = weaken e
-      WeakStmtDefine isConstLike stmtKind' m name impArgNum xts' codType' e'
+      WeakStmtDefine isConstLike stmtKind' m name impArgs' expArgs' codType' e'
     StmtDefineConst (SavedHint m) dd t v -> do
       let t' = weaken t
       let v' = weaken v
@@ -49,8 +50,8 @@ weaken term =
       m :< WT.Var x
     m :< TM.VarGlobal g argNum ->
       m :< WT.VarGlobal g argNum
-    m :< TM.Pi xts t ->
-      m :< WT.Pi (map weakenBinder xts) (weaken t)
+    m :< TM.Pi impArgs expArgs t ->
+      m :< WT.Pi (map weakenBinder impArgs) (map weakenBinder expArgs) (weaken t)
     m :< TM.PiIntro attr xts e -> do
       let attr' = weakenAttr attr
       let xts' = map weakenBinder xts

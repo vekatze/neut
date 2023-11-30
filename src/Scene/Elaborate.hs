@@ -109,13 +109,14 @@ synthesizeDefList declList defList = do
 elaborateStmt :: WeakStmt -> App [Stmt]
 elaborateStmt stmt = do
   case stmt of
-    WeakStmtDefine isConstLike stmtKind m x impArgNum xts codType e -> do
+    WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
       stmtKind' <- elaborateStmtKind stmtKind
       e' <- elaborate' e >>= TM.inline m
-      xts' <- mapM elaborateWeakBinder xts
+      impArgs' <- mapM elaborateWeakBinder impArgs
+      expArgs' <- mapM elaborateWeakBinder expArgs
       codType' <- elaborate' codType >>= TM.inline m
-      Type.insert x $ weaken $ m :< TM.Pi xts' codType'
-      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgNum xts' codType' e'
+      Type.insert x $ weaken $ m :< TM.Pi impArgs' expArgs' codType'
+      let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType' e'
       insertStmt result
       return [result]
     WeakStmtDefineConst m dd t v -> do
@@ -133,18 +134,20 @@ elaborateStmt stmt = do
 
 elaborateDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl TM.Term)
 elaborateDecl DE.Decl {..} = do
-  dom' <- mapM elaborateWeakBinder dom
+  impArgs' <- mapM elaborateWeakBinder impArgs
+  expArgs' <- mapM elaborateWeakBinder expArgs
   cod' <- elaborate' cod
-  return $ DE.Decl {dom = dom', cod = cod', ..}
+  return $ DE.Decl {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
   case stmt of
-    StmtDefine _ stmtKind (SavedHint m) f _ xts t e -> do
-      Type.insert f $ weaken $ m :< TM.Pi xts t
-      Definition.insert (toOpacity stmtKind) f xts e
+    StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs t e -> do
+      Type.insert f $ weaken $ m :< TM.Pi impArgs expArgs t
+      -- Definition.insert (toOpacity stmtKind) f xts e
+      Definition.insert (toOpacity stmtKind) f (impArgs ++ expArgs) e
     StmtDefineConst (SavedHint m) dd t v -> do
-      Type.insert dd $ weaken $ m :< TM.Pi [] t
+      Type.insert dd $ weaken $ m :< TM.Pi [] [] t
       Definition.insert O.Clear dd [] v
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
@@ -198,10 +201,11 @@ elaborate' term =
       return $ m :< TM.Var x
     m :< WT.VarGlobal name argNum ->
       return $ m :< TM.VarGlobal name argNum
-    m :< WT.Pi xts t -> do
-      xts' <- mapM elaborateWeakBinder xts
+    m :< WT.Pi impArgs expArgs t -> do
+      impArgs' <- mapM elaborateWeakBinder impArgs
+      expArgs' <- mapM elaborateWeakBinder expArgs
       t' <- elaborate' t
-      return $ m :< TM.Pi xts' t'
+      return $ m :< TM.Pi impArgs' expArgs' t'
     m :< WT.PiIntro kind xts e -> do
       kind' <- elaborateLamAttr kind
       xts' <- mapM elaborateWeakBinder xts
@@ -211,6 +215,8 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
+    _ :< WT.PiElimExact _ -> do
+      undefined
     m :< WT.Data attr name es -> do
       es' <- mapM elaborate' es
       return $ m :< TM.Data attr name es'

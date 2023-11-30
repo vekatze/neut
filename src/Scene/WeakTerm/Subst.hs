@@ -32,9 +32,11 @@ subst sub term =
           return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi xts t -> do
-      (xts', t') <- substBinder sub xts t
-      return $ m :< WT.Pi xts' t'
+    m :< WT.Pi impArgs expArgs t -> do
+      (impArgs', sub') <- subst' sub impArgs
+      (expArgs', sub'') <- subst' sub' expArgs
+      t' <- subst sub'' t
+      return $ m :< WT.Pi impArgs' expArgs' t'
     m :< WT.PiIntro (AttrL.Attr {lamKind}) xts e -> do
       let fvs = S.map Ident.toInt $ WT.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
@@ -55,6 +57,9 @@ subst sub term =
       e' <- subst sub e
       es' <- mapM (subst sub) es
       return $ m :< WT.PiElim e' es'
+    m :< WT.PiElimExact e -> do
+      e' <- subst sub e
+      return $ m :< WT.PiElimExact e'
     m :< WT.Data name consNameList es -> do
       es' <- mapM (subst sub) es
       return $ m :< WT.Data name consNameList es'
@@ -116,6 +121,21 @@ substBinder sub binder e =
       let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
       (xts', e') <- substBinder sub' xts e
       return ((m, x', t') : xts', e')
+
+subst' ::
+  WT.SubstWeakTerm ->
+  [BinderF WT.WeakTerm] ->
+  App ([BinderF WT.WeakTerm], WT.SubstWeakTerm)
+subst' sub binder =
+  case binder of
+    [] -> do
+      return ([], sub)
+    ((m, x, t) : xts) -> do
+      t' <- subst sub t
+      x' <- Gensym.newIdentFromIdent x
+      let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+      (xts', sub'') <- subst' sub' xts
+      return ((m, x', t') : xts', sub'')
 
 subst'' ::
   WT.SubstWeakTerm ->

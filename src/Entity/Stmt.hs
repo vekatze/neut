@@ -3,8 +3,6 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
-import Data.Text qualified as T
-import Entity.ArgNum qualified as AN
 import Entity.Binder
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
@@ -20,7 +18,6 @@ import Entity.Term qualified as TM
 import Entity.Term.Compress qualified as TM
 import Entity.Term.Extend qualified as TM
 import Entity.WeakTerm qualified as WT
-import Entity.WeakTerm.ToText qualified as WT
 import GHC.Generics
 import Path
 
@@ -32,7 +29,7 @@ data RawStmt
       SK.RawStmtKind
       Hint
       DD.DefiniteDescription
-      AN.ArgNum
+      [RawBinder RT.RawTerm]
       [RawBinder RT.RawTerm]
       RT.RawTerm
       RT.RawTerm
@@ -45,7 +42,7 @@ data WeakStmt
       (SK.StmtKind WT.WeakTerm)
       Hint
       DD.DefiniteDescription
-      AN.ArgNum
+      [BinderF WT.WeakTerm]
       [BinderF WT.WeakTerm]
       WT.WeakTerm
       WT.WeakTerm
@@ -61,7 +58,7 @@ data StmtF a
       (SK.StmtKind a)
       SavedHint
       DD.DefiniteDescription
-      AN.ArgNum
+      [BinderF a]
       [BinderF a]
       a
       a
@@ -81,12 +78,13 @@ type PathSet = S.Set (Path Abs File)
 compress :: Stmt -> StrippedStmt
 compress stmt =
   case stmt of
-    StmtDefine isConstLike stmtKind m functionName impArgNum args codType e -> do
+    StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
       let stmtKind' = TM.compressStmtKind stmtKind
-      let args' = map TM.compressBinder args
+      let impArgs' = map TM.compressBinder impArgs
+      let expArgs' = map TM.compressBinder expArgs
       let codType' = TM.compress codType
       let e' = TM.compress e
-      StmtDefine isConstLike stmtKind' m functionName impArgNum args' codType' e'
+      StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
     StmtDefineConst m dd t e -> do
       let t' = TM.compress t
       let e' = TM.compress e
@@ -95,24 +93,17 @@ compress stmt =
 extend :: StrippedStmt -> Stmt
 extend stmt =
   case stmt of
-    StmtDefine isConstLike stmtKind m functionName impArgNum args codType e -> do
+    StmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
       let stmtKind' = TM.extendStmtKind stmtKind
-      let args' = map TM.extendBinder args
+      let impArgs' = map TM.extendBinder impArgs
+      let expArgs' = map TM.extendBinder expArgs
       let codType' = TM.extend codType
       let e' = TM.extend e
-      StmtDefine isConstLike stmtKind' m functionName impArgNum args' codType' e'
+      StmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
     StmtDefineConst m dd t e -> do
       let t' = TM.extend t
       let e' = TM.extend e
       StmtDefineConst m dd t' e'
-
-showStmt :: WeakStmt -> T.Text
-showStmt stmt =
-  case stmt of
-    WeakStmtDefine _ _ m x _ xts codType e ->
-      DD.reify x <> "\n" <> WT.toText (m :< WT.Pi xts codType) <> "\n" <> WT.toText (m :< WT.Pi xts e)
-    _ ->
-      "<define-resource>"
 
 argToTerm :: BinderF TM.Term -> TM.Term
 argToTerm (m, x, _) =

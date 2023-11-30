@@ -29,9 +29,11 @@ fill sub term =
       return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi xts t -> do
-      (xts', t') <- fill' sub xts t
-      return $ m :< WT.Pi xts' t'
+    m :< WT.Pi impArgs expArgs t -> do
+      impArgs' <- fillBinder sub impArgs
+      expArgs' <- fillBinder sub expArgs
+      t' <- fill sub t
+      return $ m :< WT.Pi impArgs' expArgs' t'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
       case lamKind of
         LK.Fix xt -> do
@@ -44,6 +46,9 @@ fill sub term =
       e' <- fill sub e
       es' <- mapM (fill sub) es
       return $ m :< WT.PiElim e' es'
+    m :< WT.PiElimExact e -> do
+      e' <- fill sub e
+      return $ m :< WT.PiElimExact e'
     m :< WT.Data name consNameList es -> do
       es' <- mapM (fill sub) es
       return $ m :< WT.Data name consNameList es'
@@ -97,6 +102,19 @@ fill sub term =
       copier' <- fill sub copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
 
+fillBinder ::
+  HoleSubst ->
+  [BinderF WT.WeakTerm] ->
+  App [BinderF WT.WeakTerm]
+fillBinder sub binder =
+  case binder of
+    [] -> do
+      return []
+    (m, x, t) : xts -> do
+      t' <- fill sub t
+      xts' <- fillBinder sub xts
+      return $ (m, x, t') : xts'
+
 fill' ::
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
@@ -107,7 +125,7 @@ fill' sub binder e =
     [] -> do
       e' <- fill sub e
       return ([], e')
-    ((m, x, t) : xts) -> do
+    (m, x, t) : xts -> do
       (xts', e') <- fill' sub xts e
       t' <- fill sub t
       return ((m, x, t') : xts', e')

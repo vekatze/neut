@@ -58,14 +58,15 @@ discernStmt :: RawStmt -> App WeakStmt
 discernStmt stmt = do
   registerTopLevelName stmt
   case stmt of
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
-      (xts', nenv) <- discernBinder empty xts
-      codType' <- discern nenv codType
+    RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+      (impArgs', nenv) <- discernBinder empty impArgs
+      (expArgs', nenv') <- discernBinder nenv expArgs
+      codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind stmtKind
-      e' <- discern nenv e
+      e' <- discern nenv' e
       Tag.insertDD m functionName m
-      forM_ xts' Tag.insertBinder
-      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e'
+      forM_ expArgs' Tag.insertBinder
+      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
     RawStmtDefineConst m dd t v -> do
       t' <- discern empty t
       v' <- discern empty v
@@ -77,26 +78,27 @@ discernStmt stmt = do
 
 discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
-  (dom', nenv) <- discernBinder empty (RDE.dom decl)
-  forM_ dom' $ \(_, x, _) -> UnusedVariable.delete x
-  cod' <- discern nenv (RDE.cod decl)
+  (impArgs', nenv) <- discernBinder empty (RDE.impArgs decl)
+  (expArgs', nenv') <- discernBinder nenv (RDE.expArgs decl)
+  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
+  cod' <- discern nenv' (RDE.cod decl)
   return $
     DE.Decl
       { loc = RDE.loc decl,
         name = RDE.name decl,
         isConstLike = RDE.isConstLike decl,
-        impArgNum = RDE.impArgNum decl,
-        dom = dom',
+        impArgs = impArgs',
+        expArgs = expArgs',
         cod = cod'
       }
 
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ -> do
-      let explicitArgs = drop (AN.reify impArgNum) xts
-      let argNames = map (\(_, x, _) -> x) explicitArgs
-      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
+    RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs _ _ -> do
+      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      let expArgNames = map (\(_, x, _) -> x) expArgs
+      Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames
     RawStmtDefineConst m dd _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
     RawStmtDeclare _ declList -> do
@@ -138,10 +140,12 @@ discern nenv term =
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn isExplicit
-    m :< RT.Pi xts t -> do
-      (xts', t') <- discernBinderWithBody nenv xts t
-      forM_ xts' $ \(_, x, _) -> UnusedVariable.delete x
-      return $ m :< WT.Pi xts' t'
+    m :< RT.Pi impArgs expArgs t -> do
+      (impArgs', nenv') <- discernBinder nenv impArgs
+      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      t' <- discern nenv'' t
+      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
+      return $ m :< WT.Pi impArgs' expArgs' t'
     m :< RT.PiIntro kind xts e -> do
       lamID <- Gensym.newCount
       case kind of
@@ -165,6 +169,9 @@ discern nenv term =
       args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
       return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+    m :< RT.PiElimExact e -> do
+      e' <- discern nenv e
+      return $ m :< WT.PiElimExact e'
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'

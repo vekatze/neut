@@ -91,10 +91,10 @@ parseCachedStmtList :: [Stmt] -> App ()
 parseCachedStmtList stmtList = do
   forM_ stmtList $ \stmt -> do
     case stmt of
-      StmtDefine isConstLike stmtKind (SavedHint m) name impArgNum args _ _ -> do
-        let explicitArgs = drop (AN.reify impArgNum) args
-        let argNames = map (\(_, x, _) -> toText x) explicitArgs
-        Global.registerStmtDefine isConstLike m stmtKind name impArgNum argNames
+      StmtDefine isConstLike stmtKind (SavedHint m) name impArgs expArgs _ _ -> do
+        let expArgNames = map (\(_, x, _) -> toText x) expArgs
+        let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+        Global.registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames
       StmtDefineConst (SavedHint m) dd _ _ ->
         Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
 
@@ -167,20 +167,19 @@ parseDefine opacity = do
   m <- P.getCurrentHint
   (((_, name), impArgs, expArgs, codType), e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  let impArgNum = AN.fromInt $ length impArgs
-  lift $ defineFunction (SK.Normal opacity) m name' impArgNum (impArgs ++ expArgs) codType e
+  lift $ defineFunction (SK.Normal opacity) m name' impArgs expArgs codType e
 
 defineFunction ::
   SK.RawStmtKind ->
   Hint ->
   DD.DefiniteDescription ->
-  AN.ArgNum ->
+  [RawBinder RT.RawTerm] ->
   [RawBinder RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm ->
   App RawStmt
-defineFunction stmtKind m name impArgNum binder codType e = do
-  return $ RawStmtDefine False stmtKind m name impArgNum binder codType e
+defineFunction stmtKind m name impArgs expArgs codType e = do
+  return $ RawStmtDefine False stmtKind m name impArgs expArgs codType e
 
 parseConstant :: P.Parser RawStmt
 parseConstant = do
@@ -195,8 +194,7 @@ parseConstant = do
       return $ RawStmtDefineConst m constName t v
     Just impArgs -> do
       let stmtKind = SK.Normal O.Clear
-      let impArgNum = AN.fromInt $ length impArgs
-      return $ RawStmtDefine True stmtKind m constName impArgNum impArgs t v
+      return $ RawStmtDefine True stmtKind m constName impArgs [] t v
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -228,7 +226,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
   let consNameList = map (\(_, consName, _, _, _) -> consName) consInfoList''
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike consNameList dataArgs
-  let formRule = RawStmtDefine isConstLike stmtKind m dataName (AN.fromInt 0) dataArgs (m :< RT.Tau) dataType
+  let formRule = RawStmtDefine isConstLike stmtKind m dataName [] dataArgs (m :< RT.Tau) dataType
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -265,15 +263,14 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let dataArgs' = map identPlusToVar dataArgs
       let consArgs' = map adjustConsArg consArgs
       let consNameList = map (\(_, c, _, _) -> c) consInfoList
-      let args = dataArgs ++ consArgs
       let introRule =
             RawStmtDefine
               isConstLike
               (SK.DataIntro consName dataArgs consArgs discriminant)
               m
               consName
-              (AN.fromInt $ length dataArgs)
-              args
+              dataArgs
+              consArgs
               dataType
               $ m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs' (map fst consArgs')
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)

@@ -25,7 +25,6 @@ import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as Annot
 import Entity.Arch qualified as Arch
-import Entity.ArgNum qualified as AN
 import Entity.Attr.Var (Attr (isExplicit))
 import Entity.Attr.Var qualified as AttrV
 import Entity.BaseName qualified as BN
@@ -145,7 +144,7 @@ rawTermPiGeneral = do
   domList <- argList $ choice [try preAscription, typeWithoutIdent]
   delimiter "->"
   cod <- rawTerm
-  return $ m :< RT.Pi domList cod
+  return $ m :< RT.Pi [] domList cod
 
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
@@ -163,7 +162,7 @@ rawTermPiOrConsOrAscOrBasic = do
         delimiter "->"
         x <- lift Gensym.newTextForHole
         cod <- rawTerm
-        return $ m :< RT.Pi [(m, x, basic)] cod,
+        return $ m :< RT.Pi [] [(m, x, basic)] cod,
       do
         delimiter "::"
         rest <- rawTerm
@@ -368,25 +367,22 @@ parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.Ra
 parseDeclareItem nameLifter = do
   loc <- getCurrentHint
   name <- baseName >>= lift . nameLifter
-  (isConstLike, impArgNum, dom) <-
+  (isConstLike, impArgs, expArgs) <-
     choice
       [ do
-          impDomArgList <- parseImplicitArgs
+          impArgs <- parseImplicitArgs
           choice
             [ do
                 expDomArgList <- argSeqOrList preBinder
-                let impArgNum = AN.fromInt $ length impDomArgList
-                return (False, impArgNum, impDomArgList ++ expDomArgList),
-              do
-                let impArgNum = AN.fromInt $ length impDomArgList
-                return (True, impArgNum, impDomArgList)
+                return (False, impArgs, expDomArgList),
+              return (True, impArgs, [])
             ],
         do
-          return (True, AN.zero, [])
+          return (True, [], [])
       ]
   delimiter ":"
   cod <- rawTerm
-  return RDE.RawDecl {loc, name, isConstLike, impArgNum, dom, cod}
+  return RDE.RawDecl {loc, name, isConstLike, impArgs, expArgs, cod}
 
 parseImplicitArgs :: Parser [RawBinder RT.RawTerm]
 parseImplicitArgs =

@@ -18,11 +18,17 @@ import Scene.WeakTerm.Subst qualified as Subst
 reduce :: WT.WeakTerm -> App WT.WeakTerm
 reduce term =
   case term of
-    m :< WT.Pi xts cod -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduce ts
+    m :< WT.Pi impArgs expArgs cod -> do
+      impArgs' <- do
+        let (ms, xs, ts) = unzip3 impArgs
+        ts' <- mapM reduce ts
+        return $ zip3 ms xs ts'
+      expArgs' <- do
+        let (ms, xs, ts) = unzip3 expArgs
+        ts' <- mapM reduce ts
+        return $ zip3 ms xs ts'
       cod' <- reduce cod
-      return $ m :< WT.Pi (zip3 ms xs ts') cod'
+      return $ m :< WT.Pi impArgs' expArgs' cod'
     m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
       let (ms, xs, ts) = unzip3 xts
       ts' <- mapM reduce ts
@@ -65,6 +71,9 @@ reduce term =
               return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
         _ ->
           return $ m :< WT.PiElim e' es'
+    m :< WT.PiElimExact e -> do
+      e' <- reduce e
+      return $ m :< WT.PiElimExact e'
     m :< WT.Data attr name es -> do
       es' <- mapM reduce es
       return $ m :< WT.Data attr name es'

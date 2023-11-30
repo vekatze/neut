@@ -27,8 +27,8 @@ extend term =
       _m :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       _m :< TM.VarGlobal g argNum
-    _ :< TM.Pi xts t ->
-      _m :< TM.Pi (map extendBinder xts) (extend t)
+    _ :< TM.Pi impArgs expArgs t ->
+      _m :< TM.Pi (map extendBinder impArgs) (map extendBinder expArgs) (extend t)
     _ :< TM.PiIntro attr xts e -> do
       let attr' = extendAttr attr
       let xts' = map extendBinder xts

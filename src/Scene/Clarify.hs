@@ -132,7 +132,7 @@ clarifyStmt stmt =
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
     StmtDefineConst m dd t' v' ->
-      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd AN.zero [] t' v'
+      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd [] [] t' v'
 
 clarifyBinderBody ::
   TM.TypeEnv ->

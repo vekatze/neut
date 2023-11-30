@@ -33,10 +33,11 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var AttrV.Attr Name
-  | Pi [RawBinder a] a
+  | Pi [RawBinder a] [RawBinder a] a
   | PiIntro (RawLamKind a) [RawBinder a] a
   | PiElim a [a]
   | PiElimByKey AttrV.Attr Name [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | PiElimExact a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
