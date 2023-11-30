@@ -160,7 +160,24 @@ infer varEnv term =
       inferPiElim varEnv m etl etls
     m :< WT.PiElimExact e -> do
       (e', t) <- infer varEnv e
-      specialize varEnv m e' t
+      t' <- resolveType t
+      case t of
+        _ :< WT.Pi impArgs expArgs _ -> do
+          if null impArgs
+            then return (e', t')
+            else do
+              let expArgs' = map (\(mx, x, _) -> mx :< WT.Var x) expArgs
+              lamID <- Gensym.newCount
+              exactVar <- Gensym.newIdentFromText "exact"
+              infer varEnv $
+                m
+                  :< WT.Let
+                    WT.Clear
+                    (m, exactVar, t')
+                    e'
+                    (m :< WT.PiIntro (AttrL.normal lamID) [] expArgs (m :< WT.PiElim (m :< WT.Var exactVar) expArgs'))
+        _ ->
+          Throw.raiseError m $ "expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer varEnv) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
@@ -196,6 +213,7 @@ infer varEnv term =
       (e2', t2') <- infer varEnv e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole holeID es -> do
+      -- fixme: es is empty (because reveal is removed)
       let rawHoleID = HID.reify holeID
       mHoleInfo <- lookupHoleEnv rawHoleID
       case mHoleInfo of
@@ -309,49 +327,21 @@ inferPiElim ::
   (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
-inferPiElim varEnv m (e, t) ets = do
-  let es = map fst ets
-  (e', t') <- specialize varEnv m e t
-  t'' <- resolveType t'
-  (xts, cod) <- getPiType m (e, t'') $ length ets
-  _ :< cod' <- inferArgs IntMap.empty m ets xts cod
-  return (m :< WT.PiElim e' es, m :< cod')
-
-specialize :: BoundVarEnv -> Hint -> WT.WeakTerm -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
-specialize varEnv m e t = do
+inferPiElim varEnv m (e, t) expArgs = do
   t' <- resolveType t
   case t of
-    _ :< WT.Pi impPiArgs expPiArgs _ -> do
-      if null impPiArgs
-        then return (e, t')
-        else do
-          let impArgNum = AN.fromInt $ length impPiArgs
-          impArgs <- mapM (const $ newHole m varEnv) [1 .. AN.reify impArgNum]
-          let allArgs = impArgs ++ map (\(mx, x, _) -> mx :< WT.Var x) expPiArgs
-          lamID <- Gensym.newCount
-          infer varEnv $ m :< WT.PiIntro (AttrL.normal lamID) [] expPiArgs (m :< WT.PiElim e allArgs)
+    _ :< WT.Pi impPiArgs expPiArgs cod -> do
+      ensureArityCorrectness e (length expPiArgs) (length expArgs)
+      impArgs <- mapM (const $ newHole m varEnv >>= infer varEnv) [1 .. length impPiArgs]
+      let args = impArgs ++ expArgs
+      let piArgs = impPiArgs ++ expPiArgs
+      _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
+      return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
-getPiType ::
-  Hint ->
-  (WT.WeakTerm, WT.WeakTerm) ->
-  Int ->
-  App ([BinderF WT.WeakTerm], WT.WeakTerm)
-getPiType m (e, t) numOfArgs =
-  case t of
-    _ :< WT.Pi impArgs expArgs cod
-      | length expArgs == numOfArgs ->
-          if null impArgs
-            then return (expArgs, cod)
-            else Throw.raiseCritical m $ "got an implicit function after specialization: " <> toText t
-      | otherwise ->
-          raiseArityMismatchError e (length expArgs) numOfArgs
-    _ -> do
-      Throw.raiseError m $ "expected a function type, but got: " <> toText t
-
-raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
-raiseArityMismatchError function expected actual = do
+ensureArityCorrectness :: WT.WeakTerm -> Int -> Int -> App a
+ensureArityCorrectness function expected found = do
   case function of
     m :< WT.VarGlobal _ name -> do
       Throw.raiseError m $
@@ -360,14 +350,14 @@ raiseArityMismatchError function expected actual = do
           <> "` expects "
           <> T.pack (show expected)
           <> " arguments, but found "
-          <> T.pack (show actual)
+          <> T.pack (show found)
           <> "."
     m :< _ ->
       Throw.raiseError m $
         "this function expects "
           <> T.pack (show expected)
           <> " arguments, but found "
-          <> T.pack (show actual)
+          <> T.pack (show found)
           <> "."
 
 primOpToType :: Hint -> PrimOp -> App TM.Term
