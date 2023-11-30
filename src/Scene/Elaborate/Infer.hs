@@ -212,16 +212,17 @@ infer varEnv term =
       insConstraintEnv t' t1' -- run this before `infer varEnv e2`
       (e2', t2') <- infer varEnv e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
-    m :< WT.Hole holeID es -> do
-      -- fixme: es is empty (because reveal is removed)
+    m :< WT.Hole holeID _ -> do
       let rawHoleID = HID.reify holeID
       mHoleInfo <- lookupHoleEnv rawHoleID
       case mHoleInfo of
         Just (_ :< holeTerm, _ :< holeType) -> do
           return (m :< holeTerm, m :< holeType)
         Nothing -> do
-          holeType <- Gensym.newHole m es
-          insHoleEnv rawHoleID term holeType
+          let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+          let holeTerm = m :< WT.Hole holeID holeArgs
+          holeType <- Gensym.newHole m holeArgs
+          insHoleEnv rawHoleID holeTerm holeType
           return (term, holeType)
     m :< WT.Prim prim
       | WP.Type _ <- prim ->
@@ -336,7 +337,7 @@ inferPiElim varEnv m (e, t) expArgs = do
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod')
+      return (m :< WT.PiElim e (map fst args), m :< cod') -- fixme: add `explicit` flag to `PiElim`?
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
