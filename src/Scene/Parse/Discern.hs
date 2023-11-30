@@ -146,16 +146,21 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro kind xts e -> do
+    m :< RT.PiIntro kind impArgs expArgs e -> do
       lamID <- Gensym.newCount
       case kind of
         RLK.Fix xt -> do
-          (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
+          ([xt'], nenv') <- discernBinder nenv [xt]
+          (impArgs', nenv'') <- discernBinder nenv' impArgs
+          (expArgs', nenv''') <- discernBinder nenv'' expArgs
+          e' <- discern nenv''' e
           Tag.insertBinder xt'
-          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) xts' e'
+          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) impArgs' expArgs' e'
         RLK.Normal -> do
-          (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro (AttrL.normal lamID) xts' e'
+          (impArgs', nenv') <- discernBinder nenv impArgs
+          (expArgs', nenv'') <- discernBinder nenv' expArgs
+          e' <- discern nenv'' e
+          return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
     m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
@@ -270,16 +275,6 @@ discernBinder nenv binder =
       (xts', nenv'') <- discernBinder nenv' xts
       Tag.insertBinder (mx, x', t')
       return ((mx, x', t') : xts', nenv'')
-
-discernBinderWithBody ::
-  NominalEnv ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm ->
-  App ([BinderF WT.WeakTerm], WT.WeakTerm)
-discernBinderWithBody nenv binder e = do
-  (binder', nenv') <- discernBinder nenv binder
-  e' <- discern nenv' e
-  return (binder', e')
 
 discernBinderWithBody' ::
   NominalEnv ->

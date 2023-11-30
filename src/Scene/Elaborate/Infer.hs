@@ -134,21 +134,24 @@ infer' varEnv term =
       (expArgs', varEnv'') <- inferPiBinder varEnv' expArgs
       t' <- inferType varEnv'' t
       return (m :< WT.Pi impArgs' expArgs' t', m :< WT.Tau)
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
       case lamKind of
         LK.Fix (mx, x, codType) -> do
-          (xts', extendedVarEnv) <- inferBinder' varEnv xts
-          codType' <- inferType extendedVarEnv codType
-          let piType = m :< WT.Pi [] xts' codType'
+          (impArgs', varEnv') <- inferBinder' varEnv impArgs
+          (expArgs', varEnv'') <- inferBinder' varEnv' expArgs
+          codType' <- inferType varEnv'' codType
+          let piType = m :< WT.Pi impArgs' expArgs' codType'
           insWeakTypeEnv x piType
-          (e', tBody) <- infer' extendedVarEnv e
+          (e', tBody) <- infer' varEnv'' e
           insConstraintEnv codType' tBody
-          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) xts' e'
+          let term' = m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, codType')}) impArgs' expArgs' e'
           return (term', piType)
         _ -> do
-          (xts', (e', t')) <- inferBinder varEnv xts e
-          let term' = m :< WT.PiIntro attr xts' e'
-          return (term', m :< WT.Pi [] xts' t')
+          (impArgs', varEnv') <- inferBinder' varEnv impArgs
+          (expArgs', varEnv'') <- inferBinder' varEnv' expArgs
+          (e', t') <- infer' varEnv'' e
+          let term' = m :< WT.PiIntro attr impArgs' expArgs' e'
+          return (term', m :< WT.Pi impArgs' expArgs' t')
     m :< WT.PiElim e es -> do
       etl <- infer' varEnv e
       etls <- mapM (infer' varEnv) es
@@ -282,16 +285,6 @@ inferPiBinder varEnv binder =
       let varEnv' = if isHole x then varEnv else (mx, x, t') : varEnv
       (xtls', varEnv'') <- inferPiBinder varEnv' xts
       return ((mx, x, t') : xtls', varEnv'')
-
-inferBinder ::
-  BoundVarEnv ->
-  [BinderF WT.WeakTerm] ->
-  WT.WeakTerm ->
-  App ([BinderF WT.WeakTerm], (WT.WeakTerm, WT.WeakTerm))
-inferBinder varEnv binder e = do
-  (binder', extendedVarEnv) <- inferBinder' varEnv binder
-  et <- infer' extendedVarEnv e
-  return (binder', et)
 
 inferBinder' ::
   BoundVarEnv ->

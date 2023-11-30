@@ -19,8 +19,8 @@ holes term =
       S.empty
     _ :< WT.Pi impArgs expArgs t ->
       holes' (impArgs ++ expArgs) (holes t)
-    _ :< WT.PiIntro _ xts e ->
-      holes' xts (holes e)
+    _ :< WT.PiIntro _ impArgs expArgs e ->
+      holes' (impArgs ++ expArgs) (holes e)
     _ :< WT.PiElim e es ->
       S.unions $ map holes $ e : es
     _ :< WT.PiElimExact e ->

@@ -183,8 +183,8 @@ clarifyTerm tenv term =
             ]
     _ :< TM.Pi {} ->
       return returnClosureS4
-    _ :< TM.PiIntro attr mxts e -> do
-      clarifyLambda tenv attr (TM.chainOf tenv [term]) mxts e
+    _ :< TM.PiIntro attr impArgs expArgs e -> do
+      clarifyLambda tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
     _ :< TM.PiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -427,7 +427,7 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
       lamAttr <- AttrL.normal <$> Gensym.newCount
-      let lamApp = m :< TM.PiIntro lamAttr mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e

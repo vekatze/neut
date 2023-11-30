@@ -34,14 +34,17 @@ fill sub term =
       expArgs' <- fillBinder sub expArgs
       t' <- fill sub t
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
+      impArgs' <- fillBinder sub impArgs
+      expArgs' <- fillBinder sub expArgs
       case lamKind of
         LK.Fix xt -> do
-          (xt', xts', e') <- fill'' sub xt xts e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) xts' e'
+          [xt'] <- fillBinder sub [xt]
+          e' <- fill sub e
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) impArgs' expArgs' e'
         _ -> do
-          (xts', e') <- fill' sub xts e
-          return $ m :< WT.PiIntro attr xts' e'
+          e' <- fill sub e
+          return $ m :< WT.PiIntro attr impArgs' expArgs' e'
     m :< WT.PiElim e es -> do
       e' <- fill sub e
       es' <- mapM (fill sub) es

@@ -34,7 +34,7 @@ data RawTermF a
   = Tau
   | Var AttrV.Attr Name
   | Pi [RawBinder a] [RawBinder a] a
-  | PiIntro (RawLamKind a) [RawBinder a] a
+  | PiIntro (RawLamKind a) [RawBinder a] [RawBinder a] a
   | PiElim a [a]
   | PiElimByKey AttrV.Attr Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | PiElimExact a

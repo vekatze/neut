@@ -37,7 +37,7 @@ subst sub term =
       (expArgs', sub'') <- subst' sub' expArgs
       t' <- subst sub'' t
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< WT.PiIntro (AttrL.Attr {lamKind}) xts e -> do
+    m :< WT.PiIntro (AttrL.Attr {lamKind}) impArgs expArgs e -> do
       let fvs = S.map Ident.toInt $ WT.freeVars term
       let subDomSet = S.fromList $ IntMap.keys sub
       if S.intersection fvs subDomSet == S.empty
@@ -46,13 +46,18 @@ subst sub term =
           newLamID <- Gensym.newCount
           case lamKind of
             LK.Fix xt -> do
-              (xt' : xts', e') <- substBinder sub (xt : xts) e
+              ([xt'], sub') <- subst' sub [xt]
+              (impArgs', sub'') <- subst' sub' impArgs
+              (expArgs', sub''') <- subst' sub'' expArgs
+              e' <- subst sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
-              return (m :< WT.PiIntro fixAttr xts' e')
+              return (m :< WT.PiIntro fixAttr impArgs' expArgs' e')
             LK.Normal -> do
-              (xts', e') <- substBinder sub xts e
+              (impArgs', sub') <- subst' sub impArgs
+              (expArgs', sub'') <- subst' sub' expArgs
+              e' <- subst sub'' e
               let lamAttr = AttrL.Attr {lamKind = LK.Normal, identity = newLamID}
-              return (m :< WT.PiIntro lamAttr xts' e')
+              return (m :< WT.PiIntro lamAttr impArgs' expArgs' e')
     m :< WT.PiElim e es -> do
       e' <- subst sub e
       es' <- mapM (subst sub) es

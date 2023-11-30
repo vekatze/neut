@@ -38,12 +38,20 @@ toText term =
             inParen (showDomArgList expArgs) <> " -> " <> toText cod
         else do
           showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
-    _ :< WT.PiIntro attr xts e -> do
+    _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do
-          "mu " <> showVariable x <> inParen (showDomArgList xts) <> " " <> inBrace (toText e)
+          showImpArgs impArgs
+            <> "mu "
+            <> showVariable x
+            <> inParen (showDomArgList expArgs)
+            <> " "
+            <> inBrace (toText e)
         AttrL.Attr {lamKind = LK.Normal} -> do
-          inParen (showDomArgList xts) <> " => " <> inBrace (toText e)
+          showImpArgs impArgs
+            <> inParen (showDomArgList expArgs)
+            <> " => "
+            <> inBrace (toText e)
     _ :< WT.PiElim e es -> do
       case e of
         _ :< WT.VarGlobal attr _

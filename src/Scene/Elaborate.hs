@@ -155,10 +155,10 @@ insertStmt stmt = do
 insertWeakStmt :: WeakStmt -> App ()
 insertWeakStmt stmt = do
   case stmt of
-    WeakStmtDefine _ stmtKind m f _ xts _ e -> do
-      WeakDefinition.insert (toOpacity stmtKind) m f xts e
+    WeakStmtDefine _ stmtKind m f impArgs expArgs _ e -> do
+      WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs e
     WeakStmtDefineConst m dd _ v -> do
-      WeakDefinition.insert O.Clear m dd [] v
+      WeakDefinition.insert O.Clear m dd [] [] v
     WeakStmtDeclare {} -> do
       return ()
 
@@ -206,11 +206,12 @@ elaborate' term =
       expArgs' <- mapM elaborateWeakBinder expArgs
       t' <- elaborate' t
       return $ m :< TM.Pi impArgs' expArgs' t'
-    m :< WT.PiIntro kind xts e -> do
+    m :< WT.PiIntro kind impArgs expArgs e -> do
       kind' <- elaborateLamAttr kind
-      xts' <- mapM elaborateWeakBinder xts
+      impArgs' <- mapM elaborateWeakBinder impArgs
+      expArgs' <- mapM elaborateWeakBinder expArgs
       e' <- elaborate' e
-      return $ m :< TM.PiIntro kind' xts' e'
+      return $ m :< TM.PiIntro kind' impArgs' expArgs' e'
     m :< WT.PiElim e es -> do
       e' <- elaborate' e
       es' <- mapM elaborate' es

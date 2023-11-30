@@ -417,7 +417,7 @@ rawTermMu = do
   m <- getCurrentHint
   keyword "mu"
   ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
-  return $ m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) domBinderList e
+  return $ m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) [] domBinderList e
 
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
@@ -1028,7 +1028,7 @@ rawTermFloat = do
 
 lam :: Hint -> [RawBinder RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
 lam m varList e =
-  m :< RT.PiIntro LK.Normal varList e
+  m :< RT.PiIntro LK.Normal [] varList e
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
