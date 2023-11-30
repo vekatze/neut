@@ -52,11 +52,11 @@ inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
 inferStmt mMainDD stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
-      insertType x $ m :< WT.Pi impArgs expArgs codType
-      stmtKind' <- inferStmtKind stmtKind
       (impArgs', varEnv) <- inferBinder' [] impArgs
       (expArgs', varEnv') <- inferBinder' varEnv expArgs
       codType' <- inferType varEnv' codType
+      insertType x $ m :< WT.Pi impArgs' expArgs' codType'
+      stmtKind' <- inferStmtKind stmtKind
       (e', te) <- infer varEnv' e
       insConstraintEnv codType' te
       when (mMainDD == Just x) $ do
@@ -65,8 +65,8 @@ inferStmt mMainDD stmt =
         insConstraintEnv (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')
       return $ WeakStmtDefine isConstLike stmtKind' m x impArgs' expArgs' codType' e'
     WeakStmtDefineConst m dd t v -> do
-      insertType dd $ m :< WT.Pi [] [] t
       t' <- inferType [] t
+      insertType dd $ m :< WT.Pi [] [] t'
       (v', tv) <- infer [] v
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
@@ -166,7 +166,10 @@ infer varEnv term =
           if null impArgs
             then return (e', t')
             else do
-              let expArgs' = map (\(mx, x, _) -> mx :< WT.Var x) expArgs
+              expArgs' <- forM expArgs $ \(_, x, _) -> do
+                tx <- newHole m varEnv
+                return (m, x, tx)
+              let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
               lamID <- Gensym.newCount
               exactVar <- Gensym.newIdentFromText "exact"
               infer varEnv $
@@ -175,7 +178,7 @@ infer varEnv term =
                     WT.Clear
                     (m, exactVar, t')
                     e'
-                    (m :< WT.PiIntro (AttrL.normal lamID) [] expArgs (m :< WT.PiElim (m :< WT.Var exactVar) expArgs'))
+                    (m :< WT.PiIntro (AttrL.normal lamID) [] expArgs' (m :< WT.PiElim (m :< WT.Var exactVar) expArgs''))
         _ ->
           Throw.raiseError m $ "expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -223,7 +226,7 @@ infer varEnv term =
           let holeTerm = m :< WT.Hole holeID holeArgs
           holeType <- Gensym.newHole m holeArgs
           insHoleEnv rawHoleID holeTerm holeType
-          return (term, holeType)
+          return (holeTerm, holeType)
     m :< WT.Prim prim
       | WP.Type _ <- prim ->
           return (term, m :< WT.Tau)
@@ -330,10 +333,10 @@ inferPiElim ::
   App (WT.WeakTerm, WT.WeakTerm)
 inferPiElim varEnv m (e, t) expArgs = do
   t' <- resolveType t
-  case t of
+  case t' of
     _ :< WT.Pi impPiArgs expPiArgs cod -> do
       ensureArityCorrectness e (length expPiArgs) (length expArgs)
-      impArgs <- mapM (const $ newHole m varEnv >>= infer varEnv) [1 .. length impPiArgs]
+      impArgs <- mapM (const $ newTypedHole m varEnv) [1 .. length impPiArgs]
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
@@ -341,25 +344,52 @@ inferPiElim varEnv m (e, t) expArgs = do
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
-ensureArityCorrectness :: WT.WeakTerm -> Int -> Int -> App a
+inferPiElimExplicit ::
+  Hint ->
+  (WT.WeakTerm, WT.WeakTerm) ->
+  [(WT.WeakTerm, WT.WeakTerm)] ->
+  App (WT.WeakTerm, WT.WeakTerm)
+inferPiElimExplicit m (e, t) args = do
+  t' <- resolveType t
+  case t' of
+    _ :< WT.Pi impPiArgs expPiArgs cod -> do
+      let piArgs = impPiArgs ++ expPiArgs
+      ensureArityCorrectness e (length piArgs) (length args)
+      _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
+      return (m :< WT.PiElim e (map fst args), m :< cod') -- fixme: add `explicit` flag to `PiElim`?
+    _ ->
+      Throw.raiseError m $ "expected a function type, but got: " <> toText t'
+
+newTypedHole :: Hint -> BoundVarEnv -> App (WT.WeakTerm, WT.WeakTerm)
+newTypedHole m varEnv = do
+  i <- HID.HoleID <$> Gensym.newCount
+  j <- HID.HoleID <$> Gensym.newCount
+  let holeArgs = map (\(mx, x, _) -> mx :< WT.Var x) varEnv
+  let holeTerm = m :< WT.Hole i holeArgs
+  let holeType = m :< WT.Hole j holeArgs
+  insHoleEnv (HID.reify i) holeTerm holeType
+  return (holeTerm, holeType)
+
+ensureArityCorrectness :: WT.WeakTerm -> Int -> Int -> App ()
 ensureArityCorrectness function expected found = do
-  case function of
-    m :< WT.VarGlobal _ name -> do
-      Throw.raiseError m $
-        "the function `"
-          <> DD.reify name
-          <> "` expects "
-          <> T.pack (show expected)
-          <> " arguments, but found "
-          <> T.pack (show found)
-          <> "."
-    m :< _ ->
-      Throw.raiseError m $
-        "this function expects "
-          <> T.pack (show expected)
-          <> " arguments, but found "
-          <> T.pack (show found)
-          <> "."
+  when (expected /= found) $ do
+    case function of
+      m :< WT.VarGlobal _ name -> do
+        Throw.raiseError m $
+          "the function `"
+            <> DD.reify name
+            <> "` expects "
+            <> T.pack (show expected)
+            <> " arguments, but found "
+            <> T.pack (show found)
+            <> "."
+      m :< _ ->
+        Throw.raiseError m $
+          "this function expects "
+            <> T.pack (show expected)
+            <> " arguments, but found "
+            <> T.pack (show found)
+            <> "."
 
 primOpToType :: Hint -> PrimOp -> App TM.Term
 primOpToType m op = do
@@ -415,7 +445,8 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let argNum = AN.fromInt $ length dataArgs + length consArgs
   let attr = AttrVG.Attr {isExplicit = False, ..}
   consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
-  (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  -- (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
   (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   return

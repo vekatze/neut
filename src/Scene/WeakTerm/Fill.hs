@@ -16,6 +16,7 @@ import Entity.HoleSubst
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.ToText (toText)
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst
 import Prelude hiding (lookup)
@@ -87,8 +88,8 @@ fill sub term =
           | length xs == length es -> do
               let varList = map Ident.toInt xs
               subst (IntMap.fromList $ zip varList (map Right es')) body >>= reduce
-          | otherwise ->
-              error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
+          | otherwise -> do
+              error $ "Entity.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
         Nothing ->
           return $ m :< WT.Hole i es'
     m :< WT.Magic der -> do

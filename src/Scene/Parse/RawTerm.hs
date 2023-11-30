@@ -105,6 +105,7 @@ rawTermBasic :: Parser RT.RawTerm
 rawTermBasic = do
   choice
     [ rawTermMu,
+      rawTermPiElimExact,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatch,
@@ -936,6 +937,13 @@ foldListApp m listNil listCons es =
       listNil
     e : rest ->
       m :< RT.PiElim listCons [e, foldListApp m listNil listCons rest]
+
+rawTermPiElimExact :: Parser RT.RawTerm
+rawTermPiElimExact = do
+  m <- getCurrentHint
+  keyword "exact"
+  e <- rawTerm
+  return $ m :< RT.PiElimExact e
 
 rawTermIntrospect :: Parser RT.RawTerm
 rawTermIntrospect = do

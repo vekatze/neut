@@ -109,7 +109,8 @@ withSpecializedCtx action = do
 clarifyStmt :: Stmt -> App C.CompDef
 clarifyStmt stmt =
   case stmt of
-    StmtDefine _ stmtKind (SavedHint m) f _ xts _ e -> do
+    StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
+      let xts = impArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       let tenv = TM.insTypeEnv xts IntMap.empty
       case stmtKind of

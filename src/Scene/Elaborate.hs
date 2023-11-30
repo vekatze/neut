@@ -65,7 +65,35 @@ elaborate cacheOrStmt = do
       return (stmtList, declList)
     Right (defList, declList) -> do
       defList' <- (analyzeDefList >=> synthesizeDefList declList) defList
+      -- defList' <- resolveDefList defList
+      -- registerDefList declList defList'
       return (defList', declList)
+
+-- resolveDefList :: [WeakStmt] -> App [Stmt]
+-- resolveDefList defList = do
+--   source <- Env.getCurrentSource
+--   mMainDD <- Locator.getMainDefiniteDescription source
+--   -- mapM_ viewStmt defList
+--   fmap concat $ forM defList $ \def -> do
+--     def' <- Infer.inferStmt mMainDD def
+--     getConstraintEnv >>= Unify.unify >>= setHoleSubst
+--     defList' <- elaborateStmt def'
+--     mapM_ insertStmt defList'
+--     return defList'
+
+-- registerDefList :: [F.Foreign] -> [Stmt] -> App ()
+-- registerDefList declList defList = do
+--   source <- Env.getCurrentSource
+--   remarkList <- Remark.getRemarkList
+--   tmap <- Env.getTagMap
+--   Cache.saveCache source $
+--     Cache.Cache
+--       { Cache.stmtList = defList,
+--         Cache.remarkList = remarkList,
+--         Cache.locationTree = tmap,
+--         Cache.declList = declList
+--       }
+--   Remark.insertToGlobalRemarkList remarkList
 
 analyzeDefList :: [WeakStmt] -> App [WeakStmt]
 analyzeDefList defList = do
@@ -73,8 +101,9 @@ analyzeDefList defList = do
   mMainDD <- Locator.getMainDefiniteDescription source
   -- mapM_ viewStmt defList
   forM defList $ \def -> do
-    insertWeakStmt def
-    Infer.inferStmt mMainDD def
+    def' <- Infer.inferStmt mMainDD def
+    insertWeakStmt def'
+    return def'
 
 -- viewStmt :: WeakStmt -> App ()
 -- viewStmt stmt = do
@@ -113,7 +142,6 @@ elaborateStmt stmt = do
       impArgs' <- mapM elaborateWeakBinder impArgs
       expArgs' <- mapM elaborateWeakBinder expArgs
       codType' <- elaborate' codType >>= TM.inline m
-      Type.insert x $ weaken $ m :< TM.Pi impArgs' expArgs' codType'
       let result = StmtDefine isConstLike stmtKind' (SavedHint m) x impArgs' expArgs' codType' e'
       insertStmt result
       return [result]
