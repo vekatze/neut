@@ -10,6 +10,7 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.IntMap qualified as IntMap
+import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
@@ -38,6 +39,7 @@ import Entity.Term.Weaken
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.ToText (toText)
 import Scene.Elaborate.Unify (unifyCurrentConstraints)
 import Scene.Parse.Discern.Name qualified as N
 import Scene.WeakTerm.Reduce qualified as WT
@@ -155,9 +157,10 @@ infer' varEnv term =
     m :< WT.PiElim e es -> do
       etl <- infer' varEnv e
       etls <- mapM (infer' varEnv) es
-      inferPiElim m etl etls
-    _ :< WT.PiElimExact {} ->
-      undefined
+      inferPiElim varEnv m etl etls
+    m :< WT.PiElimExact e -> do
+      (e', t) <- infer' varEnv e
+      specialize varEnv m e' t
     m :< WT.Data attr name es -> do
       (es', _) <- mapAndUnzipM (infer' varEnv) es
       return (m :< WT.Data attr name es', m :< WT.Tau)
@@ -301,54 +304,71 @@ inferBinder' varEnv binder =
       return ((mx, x, t') : xts', newVarEnv)
 
 inferPiElim ::
+  BoundVarEnv ->
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
   [(WT.WeakTerm, WT.WeakTerm)] ->
   App (WT.WeakTerm, WT.WeakTerm)
-inferPiElim m (e, t) ets = do
+inferPiElim varEnv m (e, t) ets = do
   let es = map fst ets
-  t' <- resolveType t
-  (xts, cod) <- getPiType m (e, t') $ length ets
+  (e', t') <- specialize varEnv m e t
+  t'' <- resolveType t'
+  (xts, cod) <- getPiType m (e, t'') $ length ets
   _ :< cod' <- inferArgs IntMap.empty m ets xts cod
-  return (m :< WT.PiElim e es, m :< cod')
+  return (m :< WT.PiElim e' es, m :< cod')
+
+specialize :: BoundVarEnv -> Hint -> WT.WeakTerm -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
+specialize varEnv m e t = do
+  t' <- resolveType t
+  case t of
+    _ :< WT.Pi impPiArgs expPiArgs _ -> do
+      if null impPiArgs
+        then return (e, t')
+        else do
+          let impArgNum = AN.fromInt $ length impPiArgs
+          impArgs <- mapM (const $ newHole m varEnv) [1 .. AN.reify impArgNum]
+          let allArgs = impArgs ++ map (\(mx, x, _) -> mx :< WT.Var x) expPiArgs
+          lamID <- Gensym.newCount
+          infer' varEnv $ m :< WT.PiIntro (AttrL.normal lamID) [] expPiArgs (m :< WT.PiElim e allArgs)
+    _ ->
+      Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
 getPiType ::
   Hint ->
   (WT.WeakTerm, WT.WeakTerm) ->
   Int ->
   App ([BinderF WT.WeakTerm], WT.WeakTerm)
--- getPiType m (e, t) numOfArgs =
-getPiType =
-  undefined
+getPiType m (e, t) numOfArgs =
+  case t of
+    _ :< WT.Pi impArgs expArgs cod
+      | length expArgs == numOfArgs ->
+          if null impArgs
+            then return (expArgs, cod)
+            else Throw.raiseCritical m $ "got an implicit function after specialization: " <> toText t
+      | otherwise ->
+          raiseArityMismatchError e (length expArgs) numOfArgs
+    _ -> do
+      Throw.raiseError m $ "expected a function type, but got: " <> toText t
 
--- case t of
---   _ :< WT.Pi impArgs expArgs cod
---     | length xts == numOfArgs ->
---         return (xts, cod)
---     | otherwise ->
---         raiseArityMismatchError e (length xts) numOfArgs
---   _ -> do
---     Throw.raiseError m $ "expected a function type, but got: " <> toText t
-
--- raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
--- raiseArityMismatchError function expected actual = do
---   case function of
---     m :< WT.VarGlobal _ name -> do
---       Throw.raiseError m $
---         "the function `"
---           <> DD.reify name
---           <> "` expects "
---           <> T.pack (show expected)
---           <> " arguments, but found "
---           <> T.pack (show actual)
---           <> "."
---     m :< _ ->
---       Throw.raiseError m $
---         "this function expects "
---           <> T.pack (show expected)
---           <> " arguments, but found "
---           <> T.pack (show actual)
---           <> "."
+raiseArityMismatchError :: WT.WeakTerm -> Int -> Int -> App a
+raiseArityMismatchError function expected actual = do
+  case function of
+    m :< WT.VarGlobal _ name -> do
+      Throw.raiseError m $
+        "the function `"
+          <> DD.reify name
+          <> "` expects "
+          <> T.pack (show expected)
+          <> " arguments, but found "
+          <> T.pack (show actual)
+          <> "."
+    m :< _ ->
+      Throw.raiseError m $
+        "this function expects "
+          <> T.pack (show expected)
+          <> " arguments, but found "
+          <> T.pack (show actual)
+          <> "."
 
 primOpToType :: Hint -> PrimOp -> App TM.Term
 primOpToType m op = do
@@ -404,7 +424,7 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let argNum = AN.fromInt $ length dataArgs + length consArgs
   let attr = AttrVG.Attr {isExplicit = False, ..}
   consTerm <- infer' varEnv $ m :< WT.VarGlobal attr consDD
-  (_, tPat) <- inferPiElim m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
   (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   return
