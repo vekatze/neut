@@ -37,7 +37,7 @@ toText term =
           _ ->
             inParen (showDomArgList expArgs) <> " -> " <> toText cod
         else do
-          showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+          "arrow " <> showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do

@@ -104,7 +104,8 @@ rawTerm = do
 rawTermBasic :: Parser RT.RawTerm
 rawTermBasic = do
   choice
-    [ rawTermMu,
+    [ rawTermDefine,
+      rawTermArrow,
       rawTermPiElimExact,
       rawTermIntrospect,
       rawTermMagic,
@@ -343,10 +344,11 @@ foldByOp m op es =
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do
   functionVar <- var
-  domInfoList <- argList preBinder
+  impArgs <- parseImplicitArgs
+  expArgs <- argList preBinder
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
-  return (functionVar, domInfoList, codType, e)
+  return (functionVar, impArgs, expArgs, codType, e)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
@@ -413,12 +415,12 @@ parseDefInfoCod m =
       lift $ Gensym.newPreHole m
     ]
 
-rawTermMu :: Parser RT.RawTerm
-rawTermMu = do
+rawTermDefine :: Parser RT.RawTerm
+rawTermDefine = do
   m <- getCurrentHint
-  keyword "mu"
-  ((mFun, functionName), domBinderList, codType, e) <- parseDefInfo m
-  return $ m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) [] domBinderList e
+  keyword "define"
+  ((mFun, functionName), impArgs, expArgs, codType, e) <- parseDefInfo m
+  return $ m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) impArgs expArgs e
 
 rawTermMagic :: Parser RT.RawTerm
 rawTermMagic = do
@@ -937,6 +939,16 @@ foldListApp m listNil listCons es =
       listNil
     e : rest ->
       m :< RT.PiElim listCons [e, foldListApp m listNil listCons rest]
+
+rawTermArrow :: Parser RT.RawTerm
+rawTermArrow = do
+  m <- getCurrentHint
+  keyword "arrow"
+  impArgs <- parseImplicitArgs
+  expArgs <- argList preBinder
+  delimiter "->"
+  cod <- rawTerm
+  return $ m :< RT.Pi impArgs expArgs cod
 
 rawTermPiElimExact :: Parser RT.RawTerm
 rawTermPiElimExact = do

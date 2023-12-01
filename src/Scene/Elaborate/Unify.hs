@@ -87,11 +87,10 @@ fillAsMuchAsPossible sub e = do
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
 constructErrorMessageEq found expected =
-  "found:\n  "
-    <> toText found
-    <> "\n"
-    <> "expected:\n  "
+  "expected:\n  "
     <> toText expected
+    <> "\nfound:\n  "
+    <> toText found
 
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =

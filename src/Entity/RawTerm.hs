@@ -51,7 +51,7 @@ data RawTermF a
   | Resource DD.DefiniteDescription a a -- DD is only for printing
 
 type DefInfo =
-  ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)
+  ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
 
 type TopDefHeader =
   ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)

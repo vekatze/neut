@@ -161,7 +161,7 @@ infer varEnv term =
     m :< WT.PiElimExact e -> do
       (e', t) <- infer varEnv e
       t' <- resolveType t
-      case t of
+      case t' of
         _ :< WT.Pi impArgs expArgs _ -> do
           if null impArgs
             then return (e', t')
@@ -213,8 +213,10 @@ infer varEnv term =
         _ ->
           return ()
       insConstraintEnv t' t1' -- run this before `infer varEnv e2`
+      t'' <- resolveType t'
       (e2', t2') <- infer varEnv e2 -- no context extension
-      return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
+      return (m :< WT.Let opacity (mx, x, t'') e1' e2', t2')
+    -- return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole holeID _ -> do
       let rawHoleID = HID.reify holeID
       mHoleInfo <- lookupHoleEnv rawHoleID
