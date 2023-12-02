@@ -224,7 +224,6 @@ infer varEnv term =
       t'' <- resolveType t'
       (e2', t2') <- infer varEnv e2 -- no context extension
       return (m :< WT.Let opacity (mx, x, t'') e1' e2', t2')
-    -- return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole holeID _ -> do
       let rawHoleID = HID.reify holeID
       mHoleInfo <- lookupHoleEnv rawHoleID
@@ -455,7 +454,6 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let argNum = AN.fromInt $ length dataArgs + length consArgs
   let attr = AttrVG.Attr {..}
   consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
-  -- (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   insConstraintEnv cursorType tPat
   (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
