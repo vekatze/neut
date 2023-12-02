@@ -5,6 +5,7 @@ where
 
 import Context.App
 import Context.CompDefinition qualified as CompDefinition
+import Context.Gensym qualified as Gensym
 import Data.IntMap qualified as IntMap
 import Entity.Comp qualified as C
 import Entity.EnumCase qualified as EC
@@ -70,10 +71,17 @@ reduce term =
           | isReducible -> do
               let sub = IntMap.fromList [(Ident.toInt x, v)]
               subst sub e2 >>= reduce
-        C.UpElim isReducible' y ey1 ey2 ->
-          reduce $ C.UpElim isReducible' y ey1 $ C.UpElim isReducible x ey2 e2 -- commutative conversion
-        C.SigmaElim b yts vy ey ->
-          reduce $ C.SigmaElim b yts vy $ C.UpElim isReducible x ey e2 -- commutative conversion
+        C.UpElim isReducible' y ey1 ey2 -> do
+          y' <- Gensym.newIdentFromIdent y
+          let sub = IntMap.fromList [(Ident.toInt y, C.VarLocal y')]
+          ey2' <- subst sub ey2
+          reduce $ C.UpElim isReducible' y' ey1 $ C.UpElim isReducible x ey2' e2 -- commutative conversion
+        C.SigmaElim b ys vy ey -> do
+          ys' <- mapM Gensym.newIdentFromIdent ys
+          let intList = map Ident.toInt ys
+          let sub = IntMap.fromList $ zip intList (map C.VarLocal ys')
+          ey' <- subst sub ey
+          reduce $ C.SigmaElim b ys' vy $ C.UpElim isReducible x ey' e2 -- commutative conversion
         _ -> do
           e2' <- reduce e2
           case e2' of
