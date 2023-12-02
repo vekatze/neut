@@ -77,7 +77,7 @@ inferStmt mMainDD stmt =
 inferDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl WT.WeakTerm)
 inferDecl DE.Decl {..} = do
   (impArgs', varEnv) <- inferBinder' [] impArgs
-  (expArgs', varEnv') <- inferBinder' varEnv impArgs
+  (expArgs', varEnv') <- inferBinder' varEnv expArgs
   cod' <- inferType varEnv' cod
   insertType name $ loc :< WT.Pi impArgs' expArgs' cod'
   return $ DE.Decl {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
