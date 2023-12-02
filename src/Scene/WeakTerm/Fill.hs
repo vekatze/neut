@@ -16,6 +16,7 @@ import Entity.HoleSubst
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.ToText (toText)
 import Scene.WeakTerm.Reduce
 import Scene.WeakTerm.Subst
 import Prelude hiding (lookup)
@@ -29,21 +30,29 @@ fill sub term =
       return term
     _ :< WT.VarGlobal {} ->
       return term
-    m :< WT.Pi xts t -> do
-      (xts', t') <- fill' sub xts t
-      return $ m :< WT.Pi xts' t'
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
+    m :< WT.Pi impArgs expArgs t -> do
+      impArgs' <- fillBinder sub impArgs
+      expArgs' <- fillBinder sub expArgs
+      t' <- fill sub t
+      return $ m :< WT.Pi impArgs' expArgs' t'
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
+      impArgs' <- fillBinder sub impArgs
+      expArgs' <- fillBinder sub expArgs
       case lamKind of
         LK.Fix xt -> do
-          (xt', xts', e') <- fill'' sub xt xts e
-          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) xts' e'
+          [xt'] <- fillBinder sub [xt]
+          e' <- fill sub e
+          return $ m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix xt'}) impArgs' expArgs' e'
         _ -> do
-          (xts', e') <- fill' sub xts e
-          return $ m :< WT.PiIntro attr xts' e'
-    m :< WT.PiElim e es -> do
+          e' <- fill sub e
+          return $ m :< WT.PiIntro attr impArgs' expArgs' e'
+    m :< WT.PiElim isExplicit e es -> do
       e' <- fill sub e
       es' <- mapM (fill sub) es
-      return $ m :< WT.PiElim e' es'
+      return $ m :< WT.PiElim isExplicit e' es'
+    m :< WT.PiElimExact e -> do
+      e' <- fill sub e
+      return $ m :< WT.PiElimExact e'
     m :< WT.Data name consNameList es -> do
       es' <- mapM (fill sub) es
       return $ m :< WT.Data name consNameList es'
@@ -79,8 +88,8 @@ fill sub term =
           | length xs == length es -> do
               let varList = map Ident.toInt xs
               subst (IntMap.fromList $ zip varList (map Right es')) body >>= reduce
-          | otherwise ->
-              error "Entity.WeakTerm.Fill (assertion failure; arity mismatch)"
+          | otherwise -> do
+              error $ "Entity.WeakTerm.Fill (assertion failure; arity mismatch)\n" ++ show xs ++ "\n" ++ show (map toText es') ++ "\nhole id = " ++ show i
         Nothing ->
           return $ m :< WT.Hole i es'
     m :< WT.Magic der -> do
@@ -97,6 +106,19 @@ fill sub term =
       copier' <- fill sub copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
 
+fillBinder ::
+  HoleSubst ->
+  [BinderF WT.WeakTerm] ->
+  App [BinderF WT.WeakTerm]
+fillBinder sub binder =
+  case binder of
+    [] -> do
+      return []
+    (m, x, t) : xts -> do
+      t' <- fill sub t
+      xts' <- fillBinder sub xts
+      return $ (m, x, t') : xts'
+
 fill' ::
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
@@ -107,7 +129,7 @@ fill' sub binder e =
     [] -> do
       e' <- fill sub e
       return ([], e')
-    ((m, x, t) : xts) -> do
+    (m, x, t) : xts -> do
       (xts', e') <- fill' sub xts e
       t' <- fill sub t
       return ((m, x, t') : xts', e')

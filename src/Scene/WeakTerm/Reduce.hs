@@ -18,27 +18,40 @@ import Scene.WeakTerm.Subst qualified as Subst
 reduce :: WT.WeakTerm -> App WT.WeakTerm
 reduce term =
   case term of
-    m :< WT.Pi xts cod -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduce ts
+    m :< WT.Pi impArgs expArgs cod -> do
+      impArgs' <- do
+        let (ms, xs, ts) = unzip3 impArgs
+        ts' <- mapM reduce ts
+        return $ zip3 ms xs ts'
+      expArgs' <- do
+        let (ms, xs, ts) = unzip3 expArgs
+        ts' <- mapM reduce ts
+        return $ zip3 ms xs ts'
       cod' <- reduce cod
-      return $ m :< WT.Pi (zip3 ms xs ts') cod'
-    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM reduce ts
+      return $ m :< WT.Pi impArgs' expArgs' cod'
+    m :< WT.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
+      impArgs' <- do
+        let (ms, xs, ts) = unzip3 impArgs
+        ts' <- mapM reduce ts
+        return $ zip3 ms xs ts'
+      expArgs' <- do
+        let (ms, xs, ts) = unzip3 expArgs
+        ts' <- mapM reduce ts
+        return $ zip3 ms xs ts'
       e' <- reduce e
       case lamKind of
         LK.Fix (mx, x, t) -> do
           t' <- reduce t
-          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) (zip3 ms xs ts') e')
+          return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
         _ ->
-          return (m :< WT.PiIntro attr (zip3 ms xs ts') e')
-    m :< WT.PiElim e es -> do
+          return (m :< WT.PiIntro attr impArgs' expArgs' e')
+    m :< WT.PiElim isExplicit e es -> do
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
-        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal} xts body)
-          | length xts == length es' -> do
+        (_ :< WT.PiIntro AttrL.Attr {lamKind = LK.Normal} impArgs expArgs body)
+          | xts <- impArgs ++ expArgs,
+            length xts == length es' -> do
               let xs = map (\(_, x, _) -> Ident.toInt x) xts
               let sub = IntMap.fromList $ zip xs (map Right es')
               Subst.subst sub body >>= reduce
@@ -64,7 +77,10 @@ reduce term =
               let intType = m :< WT.Prim (WP.Type cod)
               return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
         _ ->
-          return $ m :< WT.PiElim e' es'
+          return $ m :< WT.PiElim isExplicit e' es'
+    m :< WT.PiElimExact e -> do
+      e' <- reduce e
+      return $ m :< WT.PiElimExact e'
     m :< WT.Data attr name es -> do
       es' <- mapM reduce es
       return $ m :< WT.Data attr name es'

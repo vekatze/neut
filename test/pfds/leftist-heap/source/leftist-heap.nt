@@ -49,7 +49,7 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
         }
       }
     in
-    mu merge(h1: heap(a), h2: heap(a)): heap(a) {
+    define merge(h1: heap(a), h2: heap(a)): heap(a) {
       match h1, h2 {
       - h1, Leaf =>
         h1

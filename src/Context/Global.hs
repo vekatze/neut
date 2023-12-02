@@ -16,7 +16,6 @@ where
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
-import Context.Implicit qualified as Implicit
 import Context.KeyArg qualified as KeyArg
 import Context.OptimizableData qualified as OptimizableData
 import Context.Tag qualified as Tag
@@ -54,13 +53,11 @@ registerStmtDefine ::
   AN.ArgNum ->
   [Key] ->
   App ()
-registerStmtDefine isConstLike m stmtKind name impArgNum expArgNames = do
-  let allArgNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
-  let argNum = AN.fromInt (AN.reify allArgNum) -- fixme: argNum is unnecessary
-  KeyArg.insert m name isConstLike argNum expArgNames
+registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames = do
+  KeyArg.insert m name isConstLike allArgNum expArgNames
   case stmtKind of
     SK.Normal _ ->
-      registerTopLevelFunc isConstLike m name impArgNum allArgNum
+      registerTopLevelFunc isConstLike m name allArgNum
     SK.Data dataName dataArgs consInfoList -> do
       registerData isConstLike m dataName dataArgs consInfoList
       registerAsEnumIfNecessary dataName dataArgs consInfoList
@@ -101,24 +98,22 @@ isUnary consInfoList =
 
 registerDecl :: RDE.RawDecl -> App ()
 registerDecl RDE.RawDecl {..} = do
-  let expArgNames = map (\(_, x, _) -> x) $ drop (AN.reify impArgNum) dom
-  let argNum = AN.fromInt (AN.reify impArgNum + length expArgNames)
+  let expArgNames = map (\(_, x, _) -> x) expArgs
+  let argNum = AN.fromInt $ length $ impArgs ++ expArgs
   ensureDeclFreshness loc name
   ensureDefFreshness loc name
   KeyArg.insert loc name isConstLike argNum expArgNames
   insertToDeclNameMap name loc
   insertToNameMap name loc $ GN.TopLevelFunc argNum isConstLike
-  Implicit.insert name impArgNum
 
-registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> AN.ArgNum -> App ()
-registerTopLevelFunc isConstLike m topLevelName impArgNum allArgNum = do
-  registerTopLevelFunc' m topLevelName impArgNum $ GN.TopLevelFunc allArgNum isConstLike
+registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> App ()
+registerTopLevelFunc isConstLike m topLevelName allArgNum = do
+  registerTopLevelFunc' m topLevelName $ GN.TopLevelFunc allArgNum isConstLike
 
-registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> AN.ArgNum -> GN.GlobalName -> App ()
-registerTopLevelFunc' m topLevelName impArgNum gn = do
+registerTopLevelFunc' :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App ()
+registerTopLevelFunc' m topLevelName gn = do
   ensureDefFreshness m topLevelName
   insertToNameMap topLevelName m gn
-  Implicit.insert topLevelName impArgNum
 
 registerData ::
   IsConstLike ->
@@ -135,7 +130,6 @@ registerData isConstLike m dataName dataArgs consInfoList = do
   forM_ consNameArrowList $ \(consDD, consGN) -> do
     ensureDefFreshness m consDD
     uncurry (insertToNameMap consDD) consGN
-    Implicit.insert consDD dataArgNum
 
 toConsNameArrow ::
   AN.ArgNum ->

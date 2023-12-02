@@ -68,7 +68,6 @@ data Env = Env
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])]),
     traceSourceList :: IORef [Source.Source],
     weakTypeEnv :: IORef (IntMap.IntMap WT.WeakTerm),
-    preHoleEnv :: IORef (IntMap.IntMap WT.WeakTerm),
     holeEnv :: IORef (IntMap.IntMap (WT.WeakTerm, WT.WeakTerm)),
     artifactMap :: IORef (Map.HashMap (Path Abs File) AR.ArtifactTime),
     visitEnv :: IORef (Map.HashMap (Path Abs File) VisitInfo),
@@ -80,7 +79,6 @@ data Env = Env
     codataDefMap :: IORef (Map.HashMap DD.DefiniteDescription ((DD.DefiniteDescription, AN.ArgNum, AN.ArgNum), [DD.DefiniteDescription])),
     keyArgMap :: IORef (Map.HashMap DD.DefiniteDescription (IsConstLike, (AN.ArgNum, [Key]))),
     optDataMap :: IORef (Map.HashMap DD.DefiniteDescription OptimizableData),
-    impArgEnv :: IORef (Map.HashMap DD.DefiniteDescription AN.ArgNum),
     declEnv :: IORef (Map.HashMap DN.DeclarationName ([LT.LowType], LT.LowType)),
     definedNameSet :: IORef (S.Set DD.DefiniteDescription),
     compEnv :: IORef (Map.HashMap DD.DefiniteDescription (O.Opacity, [Ident], Comp)),
@@ -124,7 +122,6 @@ newEnv = do
   holeSubst <- newIORef HS.empty
   sourceChildrenMap <- newIORef Map.empty
   weakTypeEnv <- newIORef IntMap.empty
-  preHoleEnv <- newIORef IntMap.empty
   holeEnv <- newIORef IntMap.empty
   traceSourceList <- newIORef []
   artifactMap <- newIORef Map.empty
@@ -138,7 +135,6 @@ newEnv = do
   codataDefMap <- newIORef Map.empty
   keyArgMap <- newIORef Map.empty
   optDataMap <- newIORef Map.empty
-  impArgEnv <- newIORef Map.empty
   declEnv <- newIORef Map.empty
   compEnv <- newIORef Map.empty
   typeEnv <- newIORef Map.empty

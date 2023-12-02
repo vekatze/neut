@@ -37,7 +37,7 @@ asStuckedTerm term =
       Just (Hole h es, m :< Base)
     m :< WT.Prim prim ->
       Just (Prim prim, m :< Base)
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim _ e es -> do
       (base, ctx) <- asStuckedTerm e
       return (base, m :< PiElim ctx es)
     m :< WT.DataElim isNoetic [(o, e, t)] decisionTree -> do
@@ -52,7 +52,7 @@ resume e ctx =
     _ :< Base ->
       e
     m :< PiElim ctx' args ->
-      m :< WT.PiElim (resume e ctx') args
+      m :< WT.PiElim True (resume e ctx') args -- inferred pi-elims are explicit
     m :< DataElim isNoetic (o, ctx', t) decisionTree ->
       m :< WT.DataElim isNoetic [(o, resume e ctx', t)] decisionTree
 

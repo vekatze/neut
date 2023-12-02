@@ -27,7 +27,7 @@ define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
   - empty =
     Leaf
   - insert =
-    mu insert(new-value: a, haystack: set(a)): set(a) {
+    define insert(new-value: a, haystack: set(a)): set(a) {
       match haystack {
       - Leaf =>
         Node(Leaf, new-value, Leaf)
@@ -43,7 +43,7 @@ define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
       }
     }
   - member =
-    mu member(needle: a, haystack: &set(a)) {
+    define member(needle: a, haystack: &set(a)) {
       case haystack {
       - Leaf =>
         False

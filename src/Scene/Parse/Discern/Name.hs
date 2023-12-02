@@ -27,7 +27,6 @@ import Entity.GlobalLocator qualified as GL
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.IsExplicit
 import Entity.LocalLocator qualified as LL
 import Entity.Locator qualified as L
 import Entity.Magic qualified as M
@@ -120,19 +119,19 @@ resolveConstructorMaybe dd gn = do
     _ ->
       return Nothing
 
-interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> IsExplicit -> App WT.WeakTerm
-interpretGlobalName m dd gn isExplicit = do
+interpretGlobalName :: Hint -> DD.DefiniteDescription -> GN.GlobalName -> App WT.WeakTerm
+interpretGlobalName m dd gn = do
   case gn of
     GN.TopLevelFunc argNum isConstLike ->
-      interpretTopLevelFunc m dd argNum isConstLike isExplicit
+      interpretTopLevelFunc m dd argNum isConstLike
     GN.Data argNum _ isConstLike ->
-      interpretTopLevelFunc m dd argNum isConstLike isExplicit
+      interpretTopLevelFunc m dd argNum isConstLike
     GN.DataIntro dataArgNum consArgNum _ isConstLike -> do
       let argNum = AN.add dataArgNum consArgNum
       let attr = AttrVG.Attr {..}
       let e = m :< WT.VarGlobal attr dd
       if isConstLike
-        then return $ m :< WT.PiElim e []
+        then return $ m :< WT.piElim e []
         else return e
     GN.PrimType primNum ->
       return $ m :< WT.Prim (WP.Type primNum)
@@ -148,12 +147,11 @@ interpretTopLevelFunc ::
   DD.DefiniteDescription ->
   AN.ArgNum ->
   IsConstLike ->
-  IsExplicit ->
   App WT.WeakTerm
-interpretTopLevelFunc m dd argNum isConstLike isExplicit = do
+interpretTopLevelFunc m dd argNum isConstLike = do
   let attr = AttrVG.Attr {..}
   if isConstLike
-    then return $ m :< WT.PiElim (m :< WT.VarGlobal attr dd) []
+    then return $ m :< WT.piElim (m :< WT.VarGlobal attr dd) []
     else return $ m :< WT.VarGlobal attr dd
 
 castFromIntToBool :: WT.WeakTerm -> App WT.WeakTerm
@@ -161,11 +159,11 @@ castFromIntToBool e@(m :< _) = do
   let i1 = m :< WT.Prim (WP.Type (PT.Int (PNS.IntSize 1)))
   l <- Throw.liftEither $ DD.getLocatorPair m C.coreBool
   (dd, (_, gn)) <- resolveLocator m l False
-  bool <- interpretGlobalName m dd gn False
+  bool <- interpretGlobalName m dd gn
   t <- Gensym.newHole m []
   x1 <- Gensym.newIdentFromText "arg"
   x2 <- Gensym.newIdentFromText "arg"
-  let cmpOpType cod = m :< WT.Pi [(m, x1, t), (m, x2, t)] cod
+  let cmpOpType cod = m :< WT.Pi [] [(m, x1, t), (m, x2, t)] cod
   return $ m :< WT.Magic (M.Cast (cmpOpType i1) (cmpOpType bool) e)
 
 candFilter :: (a, Maybe b) -> Maybe (a, b)

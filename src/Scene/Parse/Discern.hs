@@ -18,7 +18,6 @@ import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
-import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Decl qualified as DE
@@ -58,14 +57,15 @@ discernStmt :: RawStmt -> App WeakStmt
 discernStmt stmt = do
   registerTopLevelName stmt
   case stmt of
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts codType e -> do
-      (xts', nenv) <- discernBinder empty xts
-      codType' <- discern nenv codType
+    RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+      (impArgs', nenv) <- discernBinder empty impArgs
+      (expArgs', nenv') <- discernBinder nenv expArgs
+      codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind stmtKind
-      e' <- discern nenv e
+      e' <- discern nenv' e
       Tag.insertDD m functionName m
-      forM_ xts' Tag.insertBinder
-      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgNum xts' codType' e'
+      forM_ expArgs' Tag.insertBinder
+      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
     RawStmtDefineConst m dd t v -> do
       t' <- discern empty t
       v' <- discern empty v
@@ -77,26 +77,27 @@ discernStmt stmt = do
 
 discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
-  (dom', nenv) <- discernBinder empty (RDE.dom decl)
-  forM_ dom' $ \(_, x, _) -> UnusedVariable.delete x
-  cod' <- discern nenv (RDE.cod decl)
+  (impArgs', nenv) <- discernBinder empty (RDE.impArgs decl)
+  (expArgs', nenv') <- discernBinder nenv (RDE.expArgs decl)
+  forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
+  cod' <- discern nenv' (RDE.cod decl)
   return $
     DE.Decl
       { loc = RDE.loc decl,
         name = RDE.name decl,
         isConstLike = RDE.isConstLike decl,
-        impArgNum = RDE.impArgNum decl,
-        dom = dom',
+        impArgs = impArgs',
+        expArgs = expArgs',
         cod = cod'
       }
 
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
-    RawStmtDefine isConstLike stmtKind m functionName impArgNum xts _ _ -> do
-      let explicitArgs = drop (AN.reify impArgNum) xts
-      let argNames = map (\(_, x, _) -> x) explicitArgs
-      Global.registerStmtDefine isConstLike m stmtKind functionName impArgNum argNames
+    RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs _ _ -> do
+      let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
+      let expArgNames = map (\(_, x, _) -> x) expArgs
+      Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames
     RawStmtDefineConst m dd _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
     RawStmtDeclare _ declList -> do
@@ -127,7 +128,7 @@ discern nenv term =
   case term of
     m :< RT.Tau ->
       return $ m :< WT.Tau
-    m :< RT.Var (AttrV.Attr {..}) name ->
+    m :< RT.Var name ->
       case name of
         Var s
           | Just (mDef, name') <- lookup s nenv -> do
@@ -137,26 +138,33 @@ discern nenv term =
               return $ m :< WT.Var name'
         _ -> do
           (dd, (_, gn)) <- resolveName m name
-          interpretGlobalName m dd gn isExplicit
-    m :< RT.Pi xts t -> do
-      (xts', t') <- discernBinderWithBody nenv xts t
-      forM_ xts' $ \(_, x, _) -> UnusedVariable.delete x
-      return $ m :< WT.Pi xts' t'
-    m :< RT.PiIntro kind xts e -> do
+          interpretGlobalName m dd gn
+    m :< RT.Pi impArgs expArgs t -> do
+      (impArgs', nenv') <- discernBinder nenv impArgs
+      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      t' <- discern nenv'' t
+      forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
+      return $ m :< WT.Pi impArgs' expArgs' t'
+    m :< RT.PiIntro kind impArgs expArgs e -> do
       lamID <- Gensym.newCount
       case kind of
         RLK.Fix xt -> do
-          (xt', xts', e') <- discernBinderWithBody' nenv xt xts e
+          ([xt'], nenv') <- discernBinder nenv [xt]
+          (impArgs', nenv'') <- discernBinder nenv' impArgs
+          (expArgs', nenv''') <- discernBinder nenv'' expArgs
+          e' <- discern nenv''' e
           Tag.insertBinder xt'
-          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) xts' e'
+          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) impArgs' expArgs' e'
         RLK.Normal -> do
-          (xts', e') <- discernBinderWithBody nenv xts e
-          return $ m :< WT.PiIntro (AttrL.normal lamID) xts' e'
-    m :< RT.PiElim e es -> do
+          (impArgs', nenv') <- discernBinder nenv impArgs
+          (expArgs', nenv'') <- discernBinder nenv' expArgs
+          e' <- discern nenv'' e
+          return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
+    m :< RT.PiElim isExplicit e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
-      return $ m :< WT.PiElim e' es'
-    m :< RT.PiElimByKey (AttrV.Attr {..}) name kvs -> do
+      return $ m :< WT.PiElim isExplicit e' es'
+    m :< RT.PiElimByKey isExplicit name kvs -> do
       (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ensureFieldLinearity m ks S.empty S.empty
@@ -164,7 +172,10 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
-      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+      return $ m :< WT.PiElim isExplicit (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+    m :< RT.PiElimExact e -> do
+      e' <- discern nenv e
+      return $ m :< WT.PiElimExact e'
     m :< RT.Data name consNameList es -> do
       es' <- mapM (discern nenv) es
       return $ m :< WT.Data name consNameList es'
@@ -263,16 +274,6 @@ discernBinder nenv binder =
       (xts', nenv'') <- discernBinder nenv' xts
       Tag.insertBinder (mx, x', t')
       return ((mx, x', t') : xts', nenv'')
-
-discernBinderWithBody ::
-  NominalEnv ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm ->
-  App ([BinderF WT.WeakTerm], WT.WeakTerm)
-discernBinderWithBody nenv binder e = do
-  (binder', nenv') <- discernBinder nenv binder
-  e' <- discern nenv' e
-  return (binder', e')
 
 discernBinderWithBody' ::
   NominalEnv ->

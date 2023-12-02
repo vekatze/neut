@@ -22,13 +22,14 @@ compress term =
       () :< TM.Var x
     _ :< TM.VarGlobal g argNum ->
       () :< TM.VarGlobal g argNum
-    _ :< TM.Pi xts t ->
-      () :< TM.Pi (map compressBinder xts) (compress t)
-    _ :< TM.PiIntro attr xts e -> do
+    _ :< TM.Pi impArgs expArgs t ->
+      () :< TM.Pi (map compressBinder impArgs) (map compressBinder expArgs) (compress t)
+    _ :< TM.PiIntro attr impArgs expArgs e -> do
       let attr' = compressAttr attr
-      let xts' = map compressBinder xts
+      let impArgs' = map compressBinder impArgs
+      let expArgs' = map compressBinder expArgs
       let e' = compress e
-      () :< TM.PiIntro attr' xts' e'
+      () :< TM.PiIntro attr' impArgs' expArgs' e'
     _ :< TM.PiElim e es -> do
       let e' = compress e
       let es' = map compress es

@@ -14,6 +14,7 @@ import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
@@ -109,7 +110,8 @@ withSpecializedCtx action = do
 clarifyStmt :: Stmt -> App C.CompDef
 clarifyStmt stmt =
   case stmt of
-    StmtDefine _ stmtKind (SavedHint m) f _ xts _ e -> do
+    StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
+      let xts = impArgs ++ expArgs
       xts' <- dropFst <$> clarifyBinder IntMap.empty xts
       let tenv = TM.insTypeEnv xts IntMap.empty
       case stmtKind of
@@ -132,7 +134,7 @@ clarifyStmt stmt =
           e' <- clarifyStmtDefineBody tenv xts' e
           return (f, (toLowOpacity stmtKind, map fst xts', e'))
     StmtDefineConst m dd t' v' ->
-      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd AN.zero [] t' v'
+      clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd [] [] t' v'
 
 clarifyBinderBody ::
   TM.TypeEnv ->
@@ -183,8 +185,8 @@ clarifyTerm tenv term =
             ]
     _ :< TM.Pi {} ->
       return returnClosureS4
-    _ :< TM.PiIntro attr mxts e -> do
-      clarifyLambda tenv attr (TM.chainOf tenv [term]) mxts e
+    _ :< TM.PiIntro attr impArgs expArgs e -> do
+      clarifyLambda tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
     _ :< TM.PiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
       e' <- clarifyTerm tenv e
@@ -290,7 +292,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       fallbackClause' <- clarifyDecisionTree tenv isNoetic dataArgsMap fallbackClause >>= aligner
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
-      let idents = cursor : map (\(_, x, _) -> x) chain
+      let idents = nubOrd $ cursor : map (\(_, x, _) -> x) chain
       ck <- getClauseDataGroup t
       case ck of
         Just OD.Enum ->
@@ -427,7 +429,7 @@ clarifyLambda tenv attrL@(AttrL.Attr {lamKind, identity}) fvs mxts e@(m :< _) = 
       let argNum = AN.fromInt $ length appArgs'
       let attr = AttrVG.new argNum
       lamAttr <- AttrL.normal <$> Gensym.newCount
-      let lamApp = m :< TM.PiIntro lamAttr mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
+      let lamApp = m :< TM.PiIntro lamAttr [] mxts (m :< TM.PiElim (m :< TM.VarGlobal attr liftedName) appArgs')
       isAlreadyRegistered <- Clarify.checkIfAlreadyRegistered liftedName
       unless isAlreadyRegistered $ do
         liftedBody <- TM.subst (IntMap.fromList [(Ident.toInt recFuncName, Right lamApp)]) e

@@ -87,11 +87,10 @@ fillAsMuchAsPossible sub e = do
 
 constructErrorMessageEq :: WT.WeakTerm -> WT.WeakTerm -> T.Text
 constructErrorMessageEq found expected =
-  "found:\n  "
-    <> toText found
-    <> "\n"
-    <> "expected:\n  "
+  "expected:\n  "
     <> toText expected
+    <> "\nfound:\n  "
+    <> toText found
 
 constructErrorMessageActual :: WT.WeakTerm -> T.Text
 constructErrorMessageActual t =
@@ -118,27 +117,30 @@ simplify susList constraintList =
         (_ :< WT.VarGlobal _ g1, _ :< WT.VarGlobal _ g2)
           | g1 == g2 ->
               simplify susList cs
-        (m1 :< WT.Pi xts1 cod1, m2 :< WT.Pi xts2 cod2)
-          | length xts1 == length xts2 -> do
+        (m1 :< WT.Pi impArgs1 expArgs1 cod1, m2 :< WT.Pi impArgs2 expArgs2 cod2)
+          | length impArgs1 == length impArgs2,
+            length expArgs1 == length expArgs2 -> do
               xt1 <- asWeakBinder m1 cod1
               xt2 <- asWeakBinder m2 cod2
-              cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+              cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
               simplify susList $ cs' ++ cs
-        (m1 :< WT.PiIntro kind1 xts1 e1, m2 :< WT.PiIntro kind2 xts2 e2)
+        (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
           | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
             AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
             x1 == x2,
-            length xts1 == length xts2 -> do
+            length impArgs1 == length impArgs2,
+            length expArgs1 == length expArgs2 -> do
               yt1 <- asWeakBinder m1 e1
               yt2 <- asWeakBinder m2 e2
-              cs' <- simplifyBinder orig (xt1 : xts1 ++ [yt1]) (xt2 : xts2 ++ [yt2])
+              cs' <- simplifyBinder orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
               simplify susList $ cs' ++ cs
           | AttrL.Attr {lamKind = LK.Normal} <- kind1,
             AttrL.Attr {lamKind = LK.Normal} <- kind2,
-            length xts1 == length xts2 -> do
+            length impArgs1 == length impArgs2,
+            length expArgs1 == length expArgs2 -> do
               xt1 <- asWeakBinder m1 e1
               xt2 <- asWeakBinder m2 e2
-              cs' <- simplifyBinder orig (xts1 ++ [xt1]) (xts2 ++ [xt2])
+              cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
               simplify susList $ cs' ++ cs
         (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
           | name1 == name2,
@@ -389,7 +391,7 @@ getConsArgTypes ::
 getConsArgTypes m consName = do
   t <- Type.lookup m consName
   case t of
-    _ :< WT.Pi xts _ -> do
-      return xts
+    _ :< WT.Pi impArgs expArgs _ -> do
+      return $ impArgs ++ expArgs
     _ ->
       Throw.raiseCritical m $ "the type of a constructor must be a Π-type, but it's not:\n" <> toText t

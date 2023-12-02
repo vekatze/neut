@@ -55,7 +55,7 @@ define balance(a: tau, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
 
 define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   let helper =
-    mu self(t: tree(a)): tree(a) {
+    define self(t: tree(a)): tree(a) {
       match t {
       - Leaf =>
         Node(Red, Leaf, x, Leaf)

@@ -67,28 +67,41 @@ inline m e = do
 inline' :: Axis -> TM.Term -> App TM.Term
 inline' axis term =
   case term of
-    m :< TM.Pi xts cod -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (inline' axis) ts
+    m :< TM.Pi impArgs expArgs cod -> do
+      impArgs' <- do
+        let (ms, xs, ts) = unzip3 impArgs
+        ts' <- mapM (inline' axis) ts
+        return $ zip3 ms xs ts'
+      expArgs' <- do
+        let (ms, xs, ts) = unzip3 expArgs
+        ts' <- mapM (inline' axis) ts
+        return $ zip3 ms xs ts'
       cod' <- inline' axis cod
-      return (m :< TM.Pi (zip3 ms xs ts') cod')
-    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) xts e -> do
-      let (ms, xs, ts) = unzip3 xts
-      ts' <- mapM (inline' axis) ts
+      return (m :< TM.Pi impArgs' expArgs' cod')
+    m :< TM.PiIntro attr@(AttrL.Attr {lamKind}) impArgs expArgs e -> do
+      impArgs' <- do
+        let (ms, xs, ts) = unzip3 impArgs
+        ts' <- mapM (inline' axis) ts
+        return $ zip3 ms xs ts'
+      expArgs' <- do
+        let (ms, xs, ts) = unzip3 expArgs
+        ts' <- mapM (inline' axis) ts
+        return $ zip3 ms xs ts'
       e' <- inline' axis e
       case lamKind of
         LK.Fix (mx, x, t) -> do
           t' <- inline' axis t
-          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) (zip3 ms xs ts') e')
+          return (m :< TM.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
         _ ->
-          return (m :< TM.PiIntro attr (zip3 ms xs ts') e')
+          return (m :< TM.PiIntro attr impArgs' expArgs' e')
     m :< TM.PiElim e es -> do
       e' <- inline' axis e
       es' <- mapM (inline' axis) es
       let Axis {dmap} = axis
       case e' of
-        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) xts (_ :< body))
-          | length xts == length es' -> do
+        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) impArgs expArgs (_ :< body))
+          | xts <- impArgs ++ expArgs,
+            length xts == length es' -> do
               inline' axis $ bind (zip xts es') (m :< body)
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, _ :< body) <- Map.lookup dd dmap -> do

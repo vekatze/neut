@@ -85,15 +85,21 @@ distinguishComp z term =
       return (concat $ vs : vss, C.PiElimDownElim d' ds')
     C.SigmaElim shouldDeallocate xs d e -> do
       (vs1, d') <- distinguishValue z d
-      (vs2, e') <- distinguishComp z e
-      return (vs1 ++ vs2, C.SigmaElim shouldDeallocate xs d' e')
+      if z `elem` xs
+        then return (vs1, C.SigmaElim shouldDeallocate xs d' e)
+        else do
+          (vs2, e') <- distinguishComp z e
+          return (vs1 ++ vs2, C.SigmaElim shouldDeallocate xs d' e')
     C.UpIntro d -> do
       (vs, d') <- distinguishValue z d
       return (vs, C.UpIntro d')
     C.UpElim isReducible x e1 e2 -> do
       (vs1, e1') <- distinguishComp z e1
-      (vs2, e2') <- distinguishComp z e2
-      return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
+      if z == x
+        then return (vs1, C.UpElim isReducible x e1' e2)
+        else do
+          (vs2, e2') <- distinguishComp z e2
+          return (vs1 ++ vs2, C.UpElim isReducible x e1' e2')
     C.EnumElim fvInfo d defaultBranch branchList -> do
       let (vs, ds) = unzip fvInfo
       (vss, ds') <- mapAndUnzipM (distinguishValue z) ds

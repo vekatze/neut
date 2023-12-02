@@ -28,26 +28,39 @@ toText term =
       showVariable x
     _ :< WT.VarGlobal _ x ->
       showGlobalVariable x
-    _ :< WT.Pi xts cod -> do
-      case xts of
-        [(_, x, dom)]
-          | isHole x ->
-              toText dom <> " -> " <> toText cod
-        _ ->
-          inParen (showDomArgList xts) <> " -> " <> toText cod
-    _ :< WT.PiIntro attr xts e -> do
+    _ :< WT.Pi impArgs expArgs cod -> do
+      if null impArgs
+        then case expArgs of
+          [(_, x, dom)]
+            | isHole x ->
+                toText dom <> " -> " <> toText cod
+          _ ->
+            inParen (showDomArgList expArgs) <> " -> " <> toText cod
+        else do
+          showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+    _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do
-          "mu " <> showVariable x <> inParen (showDomArgList xts) <> " " <> inBrace (toText e)
+          showImpArgs impArgs
+            <> "mu "
+            <> showVariable x
+            <> inParen (showDomArgList expArgs)
+            <> " "
+            <> inBrace (toText e)
         AttrL.Attr {lamKind = LK.Normal} -> do
-          inParen (showDomArgList xts) <> " => " <> inBrace (toText e)
-    _ :< WT.PiElim e es -> do
+          showImpArgs impArgs
+            <> inParen (showDomArgList expArgs)
+            <> " => "
+            <> inBrace (toText e)
+    _ :< WT.PiElim _ e es -> do
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
               toText e
         _ -> do
           showApp (toText e) (map toText es)
+    _ :< WT.PiElimExact e -> do
+      "exact " <> toText e
     _ :< WT.Data (AttrD.Attr {..}) name es -> do
       if isConstLike
         then showGlobalVariable name
@@ -72,14 +85,33 @@ toText term =
           "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
     _ :< WT.Prim prim ->
       showPrim prim
-    _ :< WT.Hole {} ->
-      "_"
+    _ :< WT.Hole _ es ->
+      "_" <> "(" <> T.intercalate "," (map toText es) <> ")"
     _ :< WT.Magic _ -> do
       "<magic>"
     _ :< WT.Annotation _ _ e ->
       toText e
     _ :< WT.Resource dd _ _ _ -> do
       showGlobalVariable dd
+
+showImpArgs :: [BinderF WT.WeakTerm] -> T.Text
+showImpArgs impArgs =
+  if null impArgs
+    then ""
+    else do
+      inAngleBracket $ showImpDomArgList impArgs
+
+showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
+showImpDomArgList mxts =
+  T.intercalate ", " $ map showImpDomArg mxts
+
+showImpDomArg :: BinderF WT.WeakTerm -> T.Text
+showImpDomArg (_, x, t) =
+  case t of
+    _ :< WT.Tau ->
+      showVariable x
+    _ ->
+      showVariable x <> ": " <> toText t
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -92,6 +124,10 @@ inBrace s =
 inBracket :: T.Text -> T.Text
 inBracket s =
   "[" <> s <> "]"
+
+inAngleBracket :: T.Text -> T.Text
+inAngleBracket s =
+  "<" <> s <> ">"
 
 showTypeArgs :: [BinderF WT.WeakTerm] -> T.Text
 showTypeArgs args =

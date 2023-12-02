@@ -27,8 +27,8 @@ data TermF a
   = Tau
   | Var Ident
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
-  | Pi [BinderF a] a
-  | PiIntro (AttrL.Attr a) [BinderF a] a
+  | Pi [BinderF a] [BinderF a] a
+  | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
   | PiElim a [a]
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)

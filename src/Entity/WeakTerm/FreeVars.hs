@@ -19,14 +19,16 @@ freeVars term =
       S.singleton x
     _ :< WT.VarGlobal {} ->
       S.empty
-    _ :< WT.Pi xts t ->
-      freeVars' xts (freeVars t)
-    _ :< WT.PiIntro k xts e ->
-      freeVars' (catMaybes [AttrL.fromAttr k] ++ xts) (freeVars e)
-    _ :< WT.PiElim e es -> do
+    _ :< WT.Pi impArgs expArgs t ->
+      freeVars' (impArgs ++ expArgs) (freeVars t)
+    _ :< WT.PiIntro k impArgs expArgs e ->
+      freeVars' (catMaybes [AttrL.fromAttr k] ++ impArgs ++ expArgs) (freeVars e)
+    _ :< WT.PiElim _ e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es
       S.union xs ys
+    _ :< WT.PiElimExact e -> do
+      freeVars e
     _ :< WT.Data _ _ es ->
       S.unions $ map freeVars es
     _ :< WT.DataIntro _ _ dataArgs consArgs -> do

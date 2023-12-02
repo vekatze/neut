@@ -4,6 +4,7 @@ module Entity.RawTerm
     DefInfo,
     TopDefInfo,
     TopDefHeader,
+    piElim,
   )
 where
 
@@ -12,11 +13,11 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.Attr.Var qualified as AttrV
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
+import Entity.IsExplicit (IsExplicit)
 import Entity.Key
 import Entity.Magic
 import Entity.Name
@@ -32,11 +33,12 @@ type RawTerm = Cofree RawTermF Hint
 
 data RawTermF a
   = Tau
-  | Var AttrV.Attr Name
-  | Pi [RawBinder a] a
-  | PiIntro (RawLamKind a) [RawBinder a] a
-  | PiElim a [a]
-  | PiElimByKey AttrV.Attr Name [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | Var Name
+  | Pi [RawBinder a] [RawBinder a] a
+  | PiIntro (RawLamKind a) [RawBinder a] [RawBinder a] a
+  | PiElim IsExplicit a [a]
+  | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | PiElimExact a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
@@ -50,10 +52,14 @@ data RawTermF a
   | Resource DD.DefiniteDescription a a -- DD is only for printing
 
 type DefInfo =
-  ((Hint, T.Text), [RawBinder RawTerm], RawTerm, RawTerm)
+  ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
 
 type TopDefHeader =
   ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
 
 type TopDefInfo =
   (TopDefHeader, RawTerm)
+
+piElim :: a -> [a] -> RawTermF a
+piElim =
+  PiElim False

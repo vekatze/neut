@@ -20,10 +20,10 @@ freeVars term =
       S.singleton x
     _ :< TM.VarGlobal {} ->
       S.empty
-    _ :< TM.Pi xts t ->
-      freeVars' xts (freeVars t)
-    _ :< TM.PiIntro k xts e ->
-      freeVars' (catMaybes [AttrL.fromAttr k] ++ xts) (freeVars e)
+    _ :< TM.Pi impArgs expArgs t ->
+      freeVars' (impArgs ++ expArgs) (freeVars t)
+    _ :< TM.PiIntro k impArgs expArgs e ->
+      freeVars' (catMaybes [AttrL.fromAttr k] ++ impArgs ++ expArgs) (freeVars e)
     _ :< TM.PiElim e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es

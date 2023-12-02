@@ -7,8 +7,7 @@ import GHC.Generics (Generic)
 
 data Attr = Attr
   { argNum :: ArgNum,
-    isConstLike :: IsConstLike,
-    isExplicit :: Bool
+    isConstLike :: IsConstLike
   }
   deriving (Show, Generic)
 
@@ -16,4 +15,4 @@ instance Binary Attr
 
 new :: ArgNum -> Attr
 new argNum =
-  Attr {argNum = argNum, isConstLike = False, isExplicit = False}
+  Attr {argNum = argNum, isConstLike = False}
