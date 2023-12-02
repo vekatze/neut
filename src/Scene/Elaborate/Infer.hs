@@ -342,7 +342,7 @@ inferPiElim varEnv m (e, t) expArgs = do
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod') -- fixme: add `explicit` flag to `PiElim`?
+      return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
@@ -358,7 +358,7 @@ inferPiElimExplicit m (e, t) args = do
       let piArgs = impPiArgs ++ expPiArgs
       ensureArityCorrectness e (length piArgs) (length args)
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod') -- fixme: add `explicit` flag to `PiElim`?
+      return (m :< WT.PiElim e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
