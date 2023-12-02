@@ -74,5 +74,8 @@ define main(): unit {
   let _ = implicit-0(&text, "hello") in
   let _ = implicit-1("hello") in
   let _ = implicit-2("hello", tau) in
+  let _ = call implicit-0(&text, "hello") in
+  let _ = call implicit-1(&text, "hello") in
+  let _ = call implicit-2(&text, tau, "hello", tau) in
   Unit
 }
