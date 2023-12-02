@@ -18,7 +18,7 @@ data item4(a, b) {
 - Item4(tuple(a, b))
 }
 
-define trace-list[a](xs: list(a)): list(a) {
+define trace-list<a>(xs: list(a)): list(a) {
   match xs {
   - [] =>
     []

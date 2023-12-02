@@ -6,7 +6,7 @@ import {
 define main(): unit {
   let xs: list(int) = [] in
   let no-free-var =
-    mu foo(c: int): int {
+    define foo(c: int): int {
       if eq-int(c, 0) {
         1
       } else {
@@ -16,7 +16,7 @@ define main(): unit {
   in
   let _ = no-free-var(3) in
   let single-free-var =
-    mu free-vars-in-recursion(c: int): int {
+    define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
         let _ = xs in
         let _ on xs = length(xs) in
@@ -32,7 +32,7 @@ define main(): unit {
   let zs = xs in
   let ws: list(int) = [] in
   let multiple-free-var =
-    mu free-vars-in-recursion(c: int): int {
+    define free-vars-in-recursion(c: int): int {
       if eq-int(c, 0) {
         let _ = xs in
         let _ = xs in

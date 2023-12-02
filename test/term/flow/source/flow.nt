@@ -80,7 +80,7 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
 
 define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let wait-all =
-    mu wait-all(ys: list(flow(unit))) {
+    define wait-all(ys: list(flow(unit))) {
       match ys {
       - [] =>
         Unit
@@ -93,7 +93,7 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let size on xs = length(xs) in
   wait-all(xs);
   let receive-all =
-    mu receive-all(count: int) {
+    define receive-all(count: int) {
       if eq-int(count, 0) {
         Unit
       } else {
