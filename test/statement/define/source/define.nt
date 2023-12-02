@@ -77,5 +77,6 @@ define main(): unit {
   let _ = call implicit-0(&text, "hello") in
   let _ = call implicit-1(&text, "hello") in
   let _ = call implicit-2(&text, tau, "hello", tau) in
-  Unit
+  let local-func-with-imp-args = <a>(x: a) => x in
+  local-func-with-imp-args(Unit)
 }
