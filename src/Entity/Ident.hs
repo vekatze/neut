@@ -7,10 +7,13 @@ import GHC.Generics
 
 newtype Ident
   = I (T.Text, Int)
-  deriving (Ord, Generic)
+  deriving (Generic)
 
 instance Eq Ident where
   I (_, i1) == I (_, i2) = i1 == i2
+
+instance Ord Ident where
+  I (_, i1) `compare` I (_, i2) = i1 `compare` i2
 
 instance Show Ident where
   show (I (s, i)) =

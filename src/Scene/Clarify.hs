@@ -14,6 +14,7 @@ import Context.OptimizableData qualified as OptimizableData
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe
@@ -291,7 +292,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
       fallbackClause' <- clarifyDecisionTree tenv isNoetic dataArgsMap fallbackClause >>= aligner
       (enumCaseList, clauseList') <- mapAndUnzipM (clarifyCase tenv isNoetic dataArgsMap cursor) clauseList
       clauseList'' <- mapM aligner clauseList'
-      let idents = cursor : map (\(_, x, _) -> x) chain
+      let idents = nubOrd $ cursor : map (\(_, x, _) -> x) chain
       ck <- getClauseDataGroup t
       case ck of
         Just OD.Enum ->
