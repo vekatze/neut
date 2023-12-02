@@ -139,6 +139,10 @@ betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
+betweenAngle :: Parser a -> Parser a
+betweenAngle =
+  between (delimiter "<") (delimiter ">")
+
 commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")

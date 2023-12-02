@@ -97,7 +97,7 @@ rawTerm :: Parser RT.RawTerm
 rawTerm = do
   choice
     [ try rawTermPiGeneral,
-      rawTermPiIntro,
+      try rawTermPiIntro,
       rawTermPiOrConsOrAscOrBasic
     ]
 
@@ -105,7 +105,6 @@ rawTermBasic :: Parser RT.RawTerm
 rawTermBasic = do
   choice
     [ rawTermDefine,
-      rawTermArrow,
       rawTermPiElimExact,
       rawTermIntrospect,
       rawTermMagic,
@@ -143,17 +142,20 @@ rawTermSimple = do
 rawTermPiGeneral :: Parser RT.RawTerm
 rawTermPiGeneral = do
   m <- getCurrentHint
-  domList <- argList $ choice [try preAscription, typeWithoutIdent]
+  impArgs <- parseImplicitArgs
+  expArgs <- argList $ choice [try preAscription, typeWithoutIdent]
   delimiter "->"
   cod <- rawTerm
-  return $ m :< RT.Pi [] domList cod
+  return $ m :< RT.Pi impArgs expArgs cod
 
 rawTermPiIntro :: Parser RT.RawTerm
 rawTermPiIntro = do
   m <- getCurrentHint
-  varList <- argList preBinder
+  impArgs <- parseImplicitArgs
+  expArgs <- argList preBinder
   delimiter "=>"
-  lam m varList <$> rawExpr
+  e <- rawExpr
+  return $ m :< RT.PiIntro LK.Normal impArgs expArgs e
 
 rawTermPiOrConsOrAscOrBasic :: Parser RT.RawTerm
 rawTermPiOrConsOrAscOrBasic = do
@@ -390,10 +392,13 @@ parseDeclareItem nameLifter = do
 parseImplicitArgs :: Parser [RawBinder RT.RawTerm]
 parseImplicitArgs =
   choice
-    [ do
-        betweenBracket (commaList preBinder),
+    [ parseImplicitArgs',
       return []
     ]
+
+parseImplicitArgs' :: Parser [RawBinder RT.RawTerm]
+parseImplicitArgs' =
+  betweenAngle (commaList preBinder)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
@@ -939,16 +944,6 @@ foldListApp m listNil listCons es =
       listNil
     e : rest ->
       m :< RT.PiElim listCons [e, foldListApp m listNil listCons rest]
-
-rawTermArrow :: Parser RT.RawTerm
-rawTermArrow = do
-  m <- getCurrentHint
-  keyword "arrow"
-  impArgs <- parseImplicitArgs
-  expArgs <- argList preBinder
-  delimiter "->"
-  cod <- rawTerm
-  return $ m :< RT.Pi impArgs expArgs cod
 
 rawTermPiElimExact :: Parser RT.RawTerm
 rawTermPiElimExact = do

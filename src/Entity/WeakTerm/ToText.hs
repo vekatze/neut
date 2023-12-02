@@ -37,7 +37,7 @@ toText term =
           _ ->
             inParen (showDomArgList expArgs) <> " -> " <> toText cod
         else do
-          "arrow " <> showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+          showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do
@@ -99,7 +99,19 @@ showImpArgs impArgs =
   if null impArgs
     then ""
     else do
-      inBracket $ showDomArgList impArgs
+      inAngleBracket $ showImpDomArgList impArgs
+
+showImpDomArgList :: [BinderF WT.WeakTerm] -> T.Text
+showImpDomArgList mxts =
+  T.intercalate ", " $ map showImpDomArg mxts
+
+showImpDomArg :: BinderF WT.WeakTerm -> T.Text
+showImpDomArg (_, x, t) =
+  case t of
+    _ :< WT.Tau ->
+      showVariable x
+    _ ->
+      showVariable x <> ": " <> toText t
 
 inParen :: T.Text -> T.Text
 inParen s =
@@ -112,6 +124,10 @@ inBrace s =
 inBracket :: T.Text -> T.Text
 inBracket s =
   "[" <> s <> "]"
+
+inAngleBracket :: T.Text -> T.Text
+inAngleBracket s =
+  "<" <> s <> ">"
 
 showTypeArgs :: [BinderF WT.WeakTerm] -> T.Text
 showTypeArgs args =
