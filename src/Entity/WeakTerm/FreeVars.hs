@@ -23,7 +23,7 @@ freeVars term =
       freeVars' (impArgs ++ expArgs) (freeVars t)
     _ :< WT.PiIntro k impArgs expArgs e ->
       freeVars' (catMaybes [AttrL.fromAttr k] ++ impArgs ++ expArgs) (freeVars e)
-    _ :< WT.PiElim e es -> do
+    _ :< WT.PiElim _ e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es
       S.union xs ys

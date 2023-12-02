@@ -18,7 +18,6 @@ import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
-import Entity.Attr.Var qualified as AttrV
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Decl qualified as DE
@@ -129,7 +128,7 @@ discern nenv term =
   case term of
     m :< RT.Tau ->
       return $ m :< WT.Tau
-    m :< RT.Var (AttrV.Attr {..}) name ->
+    m :< RT.Var name ->
       case name of
         Var s
           | Just (mDef, name') <- lookup s nenv -> do
@@ -139,7 +138,7 @@ discern nenv term =
               return $ m :< WT.Var name'
         _ -> do
           (dd, (_, gn)) <- resolveName m name
-          interpretGlobalName m dd gn isExplicit
+          interpretGlobalName m dd gn
     m :< RT.Pi impArgs expArgs t -> do
       (impArgs', nenv') <- discernBinder nenv impArgs
       (expArgs', nenv'') <- discernBinder nenv' expArgs
@@ -161,11 +160,11 @@ discern nenv term =
           (expArgs', nenv'') <- discernBinder nenv' expArgs
           e' <- discern nenv'' e
           return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiElim e es -> do
+    m :< RT.PiElim isExplicit e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
-      return $ m :< WT.PiElim e' es'
-    m :< RT.PiElimByKey (AttrV.Attr {..}) name kvs -> do
+      return $ m :< WT.PiElim isExplicit e' es'
+    m :< RT.PiElimByKey isExplicit name kvs -> do
       (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ensureFieldLinearity m ks S.empty S.empty
@@ -173,7 +172,7 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
-      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+      return $ m :< WT.PiElim isExplicit (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact e -> do
       e' <- discern nenv e
       return $ m :< WT.PiElimExact e'

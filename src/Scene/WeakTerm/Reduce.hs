@@ -45,7 +45,7 @@ reduce term =
           return (m :< WT.PiIntro (attr {AttrL.lamKind = LK.Fix (mx, x, t')}) impArgs' expArgs' e')
         _ ->
           return (m :< WT.PiIntro attr impArgs' expArgs' e')
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim isExplicit e es -> do
       e' <- reduce e
       es' <- mapM reduce es
       case e' of
@@ -77,7 +77,7 @@ reduce term =
               let intType = m :< WT.Prim (WP.Type cod)
               return $ m :< WT.Prim (WP.Value (WPV.Int intType (op' value1 value2)))
         _ ->
-          return $ m :< WT.PiElim e' es'
+          return $ m :< WT.PiElim isExplicit e' es'
     m :< WT.PiElimExact e -> do
       e' <- reduce e
       return $ m :< WT.PiElimExact e'

@@ -46,10 +46,10 @@ fill sub term =
         _ -> do
           e' <- fill sub e
           return $ m :< WT.PiIntro attr impArgs' expArgs' e'
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim isExplicit e es -> do
       e' <- fill sub e
       es' <- mapM (fill sub) es
-      return $ m :< WT.PiElim e' es'
+      return $ m :< WT.PiElim isExplicit e' es'
     m :< WT.PiElimExact e -> do
       e' <- fill sub e
       return $ m :< WT.PiElimExact e'

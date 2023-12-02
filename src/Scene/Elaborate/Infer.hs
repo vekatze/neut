@@ -117,8 +117,8 @@ getUnitType :: Hint -> App WT.WeakTerm
 getUnitType m = do
   locator <- Throw.liftEither $ DD.getLocatorPair m coreUnit
   (unitDD, _) <- N.resolveName m (N.Locator locator)
-  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True, isExplicit = False}
-  return $ m :< WT.PiElim (m :< WT.VarGlobal attr unitDD) []
+  let attr = AttrVG.Attr {argNum = AN.fromInt 0, isConstLike = True}
+  return $ m :< WT.piElim (m :< WT.VarGlobal attr unitDD) []
 
 infer :: BoundVarEnv -> WT.WeakTerm -> App (WT.WeakTerm, WT.WeakTerm)
 infer varEnv term =
@@ -154,10 +154,12 @@ infer varEnv term =
           (e', t') <- infer varEnv'' e
           let term' = m :< WT.PiIntro attr impArgs' expArgs' e'
           return (term', m :< WT.Pi impArgs' expArgs' t')
-    m :< WT.PiElim e es -> do
+    m :< WT.PiElim isExplicit e es -> do
       etl <- infer varEnv e
       etls <- mapM (infer varEnv) es
-      inferPiElim varEnv m etl etls
+      if isExplicit
+        then inferPiElimExplicit m etl etls
+        else inferPiElim varEnv m etl etls
     m :< WT.PiElimExact e -> do
       (e', t) <- infer varEnv e
       t' <- resolveType t
@@ -178,7 +180,13 @@ infer varEnv term =
                     WT.Clear
                     (m, exactVar, t')
                     e'
-                    (m :< WT.PiIntro (AttrL.normal lamID) [] expArgs' (m :< WT.PiElim (m :< WT.Var exactVar) expArgs''))
+                    ( m
+                        :< WT.PiIntro
+                          (AttrL.normal lamID)
+                          []
+                          expArgs'
+                          (m :< WT.PiElim False (m :< WT.Var exactVar) expArgs'')
+                    )
         _ ->
           Throw.raiseError m $ "expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -342,7 +350,7 @@ inferPiElim varEnv m (e, t) expArgs = do
       let args = impArgs ++ expArgs
       let piArgs = impPiArgs ++ expPiArgs
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod')
+      return (m :< WT.PiElim True e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
@@ -358,7 +366,7 @@ inferPiElimExplicit m (e, t) args = do
       let piArgs = impPiArgs ++ expPiArgs
       ensureArityCorrectness e (length piArgs) (length args)
       _ :< cod' <- inferArgs IntMap.empty m args piArgs cod
-      return (m :< WT.PiElim e (map fst args), m :< cod')
+      return (m :< WT.PiElim True e (map fst args), m :< cod')
     _ ->
       Throw.raiseError m $ "expected a function type, but got: " <> toText t'
 
@@ -445,7 +453,7 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   typedDataArgs' <- mapM (infer varEnv) dataTermList
   (consArgs', extendedVarEnv) <- inferBinder' varEnv consArgs
   let argNum = AN.fromInt $ length dataArgs + length consArgs
-  let attr = AttrVG.Attr {isExplicit = False, ..}
+  let attr = AttrVG.Attr {..}
   consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
   -- (_, tPat) <- inferPiElim varEnv m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
   (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
@@ -479,11 +487,11 @@ reduceWeakType sub e = do
               WT.subst s body >>= reduceWeakType sub
           | otherwise ->
               Throw.raiseError m "arity mismatch"
-    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
+    m :< WT.PiElim isExplicit (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of
         Just lam ->
-          reduceWeakType sub $ m :< WT.PiElim lam args
+          reduceWeakType sub $ m :< WT.PiElim isExplicit lam args
         Nothing -> do
           return e'
     _ ->
