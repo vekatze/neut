@@ -83,10 +83,16 @@ registerAsUnaryIfNecessary ::
   DD.DefiniteDescription ->
   [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] ->
   App ()
-registerAsUnaryIfNecessary dataName consInfoList =
-  when (isUnary consInfoList) $ do
-    OptimizableData.insert dataName OD.Unary
-    mapM_ (flip OptimizableData.insert OD.Unary . (\(_, consName, _, _, _) -> consName)) consInfoList
+registerAsUnaryIfNecessary dataName consInfoList = do
+  case (isUnary consInfoList, length consInfoList == 1) of
+    (True, _) -> do
+      OptimizableData.insert dataName OD.Unary
+      mapM_ (flip OptimizableData.insert OD.Unary . (\(_, consName, _, _, _) -> consName)) consInfoList
+    (_, True) -> do
+      OptimizableData.insert dataName OD.Single
+      mapM_ (flip OptimizableData.insert OD.Single . (\(_, consName, _, _, _) -> consName)) consInfoList
+    _ ->
+      return ()
 
 isUnary :: [(b, DD.DefiniteDescription, IsConstLike, [a], D.Discriminant)] -> Bool
 isUnary consInfoList =

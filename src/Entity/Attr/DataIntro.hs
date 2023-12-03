@@ -8,7 +8,7 @@ import GHC.Generics (Generic)
 
 data Attr = Attr
   { dataName :: DD.DefiniteDescription,
-    consNameList :: [DD.DefiniteDescription],
+    consNameList :: [(DD.DefiniteDescription, IsConstLike)],
     discriminant :: D.Discriminant,
     isConstLike :: IsConstLike
   }

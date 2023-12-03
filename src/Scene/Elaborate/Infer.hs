@@ -4,11 +4,13 @@ import Context.App
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
+import Context.KeyArg qualified as KeyArg
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annotation
@@ -22,11 +24,13 @@ import Entity.Const
 import Entity.DecisionTree qualified as DT
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
+import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
 import Entity.Ident (isHole)
 import Entity.Ident.Reify qualified as Ident
+import Entity.Key (Key)
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Name qualified as N
@@ -280,6 +284,58 @@ infer varEnv term =
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
       return (m :< WT.Resource dd resourceID discarder' copier', m :< WT.Tau)
+    m :< WT.Use e@(mt :< _) xts cont -> do
+      (e', t') <- infer varEnv e
+      t'' <- resolveType t'
+      case t'' of
+        _ :< WT.Data attr _ dataArgs
+          | AttrD.Attr {..} <- attr,
+            [(consDD, isConstLike')] <- consNameList -> do
+              (_, keyList) <- KeyArg.lookup m consDD
+              defaultKeyMap <- constructDefaultKeyMap varEnv m keyList
+              let specifiedKeyMap = Map.fromList $ flip map xts $ \(mx, x, t) -> (Ident.toText x, (mx, x, t))
+              let keyMap = Map.union specifiedKeyMap defaultKeyMap
+              reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
+              dataArgs' <- mapM (const $ newTypedHole m varEnv) [1 .. length dataArgs]
+              cursor <- Gensym.newIdentFromText "cursor"
+              infer varEnv $
+                m
+                  :< WT.DataElim
+                    False
+                    [(cursor, e', t'')]
+                    ( DT.Switch
+                        (cursor, t'')
+                        ( DT.Unreachable,
+                          [ DT.Case
+                              { mCons = m,
+                                consDD = consDD,
+                                isConstLike = isConstLike',
+                                disc = D.zero,
+                                dataArgs = dataArgs',
+                                consArgs = reorderedArgs,
+                                cont = DT.Leaf [cursor] (adjustCont m reorderedArgs cont)
+                              }
+                          ]
+                        )
+                    )
+          | otherwise -> do
+              Throw.raiseError mt $ "expected a single-constructor ADT, but found: " <> toText t''
+        _ :< _ -> do
+          Throw.raiseError mt $ "expected an ADT, but found: " <> toText t''
+
+adjustCont :: Hint -> [BinderF WT.WeakTerm] -> WT.WeakTerm -> WT.WeakTerm
+adjustCont m xts cont =
+  case xts of
+    [] ->
+      cont
+    (mx, x, t) : rest ->
+      m :< WT.Let WT.Clear (mx, x, t) (mx :< WT.Var x) (adjustCont m rest cont)
+
+constructDefaultKeyMap :: BoundVarEnv -> Hint -> [Key] -> App (Map.HashMap Key (BinderF WT.WeakTerm))
+constructDefaultKeyMap varEnv m keyList = do
+  names <- mapM (const Gensym.newIdentForHole) keyList
+  ts <- mapM (const $ newHole m varEnv) names
+  return $ Map.fromList $ zipWith (\k (v, t) -> (k, (m, v, t))) keyList $ zip names ts
 
 inferArgs ::
   WT.SubstWeakTerm ->
@@ -455,6 +511,7 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
   let attr = AttrVG.Attr {..}
   consTerm <- infer varEnv $ m :< WT.VarGlobal attr consDD
   (_, tPat) <- inferPiElimExplicit m consTerm $ typedDataArgs' ++ map (\(mx, x, t) -> (mx :< WT.Var x, t)) consArgs'
+  -- tPat' <- resolveType tPat
   insConstraintEnv cursorType tPat
   (cont', tCont) <- inferDecisionTree m extendedVarEnv cont
   return

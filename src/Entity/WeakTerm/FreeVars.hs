@@ -63,6 +63,10 @@ freeVars term =
       let xs1 = freeVars discarder
       let xs2 = freeVars copier
       S.union xs1 xs2
+    _ :< WT.Use e xts cont -> do
+      let fvs1 = freeVars e
+      let fvs2 = freeVars' xts (freeVars cont)
+      S.union fvs1 fvs2
 
 freeVars' :: [BinderF WT.WeakTerm] -> S.Set Ident -> S.Set Ident
 freeVars' binder zs =

@@ -346,7 +346,7 @@ simplifyActual m dataNameSet t orig = do
       dataConsArgsList <-
         if S.member dataName dataNameSet
           then return []
-          else mapM (getConsArgTypes m) consNameList
+          else mapM (getConsArgTypes m . fst) consNameList
       fmap concat $ forM dataConsArgsList $ \dataConsArgs -> do
         dataConsArgs' <- substConsArgs IntMap.empty dataConsArgs
         fmap concat $ forM dataConsArgs' $ \(_, _, consArg) -> do

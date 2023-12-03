@@ -50,6 +50,7 @@ data RawTermF a
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription a a -- DD is only for printing
+  | Use a [RawBinder a] a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)

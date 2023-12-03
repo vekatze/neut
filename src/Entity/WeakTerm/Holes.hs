@@ -57,6 +57,8 @@ holes term =
           S.union xs1 xs2
     _ :< WT.Resource _ _ discarder copier -> do
       S.unions $ map holes [discarder, copier]
+    _ :< WT.Use e _ cont ->
+      S.unions $ map holes [e, cont]
 
 holes' :: [BinderF WT.WeakTerm] -> S.Set HoleID -> S.Set HoleID
 holes' binder zs =

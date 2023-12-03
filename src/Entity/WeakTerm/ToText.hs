@@ -1,4 +1,4 @@
-module Entity.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable) where
+module Entity.WeakTerm.ToText (toText, showDecisionTree, showGlobalVariable, showDomArgList) where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
@@ -93,6 +93,10 @@ toText term =
       toText e
     _ :< WT.Resource dd _ _ _ -> do
       showGlobalVariable dd
+    _ :< WT.Use e xts cont -> do
+      let xs = map (\(_, x, _) -> x) xts
+      let varSeq = inBrace $ T.intercalate "," $ map showVariable xs
+      "use " <> toText e <> " " <> varSeq <> " in " <> toText cont
 
 showImpArgs :: [BinderF WT.WeakTerm] -> T.Text
 showImpArgs impArgs =

@@ -76,7 +76,8 @@ rawExprLet :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawExprLet m = do
   choice
     [ try rawTermLetExcept,
-      rawTermLetOrLetOn m
+      rawTermLetOrLetOn m,
+      rawTermUse m
     ]
 
 rawExprSeqOrTerm :: Hint -> Parser (Either RT.RawTerm (RT.RawTerm -> RT.RawTerm))
@@ -201,7 +202,7 @@ rawTermLetOrLetOn mLet = do
     [ do
         keyword "on"
         noeticVarList <- commaList rawTermNoeticVar
-        lift $ ensureIdentLinearity mLet S.empty $ map snd noeticVarList
+        lift $ ensureIdentLinearity S.empty noeticVarList
         delimiter "="
         e1 <- rawExpr
         delimiter "in"
@@ -212,6 +213,15 @@ rawTermLetOrLetOn mLet = do
         delimiter "in"
         return $ \e2 -> mLet :< RT.Let mxt [] e1 (modifier isNoetic e2)
     ]
+
+rawTermUse :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
+rawTermUse m = do
+  keyword "use"
+  e <- rawTerm
+  xs <- betweenBrace $ commaList preBinder
+  delimiter "in"
+  lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) xs
+  return $ \cont -> m :< RT.Use e xs cont
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =
@@ -250,16 +260,16 @@ rawTermLetVarAscription' =
       return Nothing
     ]
 
-ensureIdentLinearity :: Hint -> S.Set RawIdent -> [RawIdent] -> App ()
-ensureIdentLinearity m foundVarSet vs =
+ensureIdentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
+ensureIdentLinearity foundVarSet vs =
   case vs of
     [] ->
       return ()
-    name : rest
+    (m, name) : rest
       | S.member name foundVarSet ->
           Throw.raiseError m $ "found a non-linear occurrence of `" <> name <> "`."
       | otherwise ->
-          ensureIdentLinearity m (S.insert name foundVarSet) rest
+          ensureIdentLinearity (S.insert name foundVarSet) rest
 
 rawTermNoeticVar :: Parser (Hint, T.Text)
 rawTermNoeticVar = do
