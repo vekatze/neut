@@ -126,7 +126,7 @@ clarifyStmt stmt =
                   return (f, (O.Opaque, map fst dataArgs', t'))
               | otherwise ->
                   Throw.raiseCritical m "found a broken unary data"
-            Nothing -> do
+            _ -> do
               let dataInfo = map (\(_, _, _, consArgs, discriminant) -> (discriminant, dataArgs, consArgs)) consInfoList
               dataInfo' <- mapM clarifyDataClause dataInfo
               returnSigmaDataS4 name O.Opaque dataInfo' >>= clarifyStmtDefineBody' name xts'
@@ -207,7 +207,7 @@ clarifyTerm tenv term =
               clarifyTerm tenv e
           | otherwise ->
               Throw.raiseCritical m "found a malformed unary data in Scene.Clarify.clarifyTerm"
-        Nothing -> do
+        _ -> do
           (zs, es, xs) <- fmap unzip3 $ mapM (clarifyPlus tenv) $ dataArgs ++ consArgs
           return $
             bindLet (zip zs es) $
@@ -299,7 +299,7 @@ clarifyDecisionTree tenv isNoetic dataArgsMap tree =
           getEnumElim idents (C.VarLocal cursor) fallbackClause' (zip enumCaseList clauseList'')
         Just OD.Unary -> do
           return $ getFirstClause fallbackClause' clauseList''
-        Nothing -> do
+        _ -> do
           (disc, discVar) <- Gensym.newValueVarLocalWith "disc"
           enumElim <- getEnumElim idents discVar fallbackClause' (zip enumCaseList clauseList'')
           return $ C.UpElim True disc (C.Primitive (C.Magic (M.Load LT.Pointer (C.VarLocal cursor)))) enumElim

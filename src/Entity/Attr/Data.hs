@@ -6,7 +6,7 @@ import Entity.IsConstLike
 import GHC.Generics (Generic)
 
 data Attr = Attr
-  { consNameList :: [DD.DefiniteDescription],
+  { consNameList :: [(DD.DefiniteDescription, IsConstLike)],
     isConstLike :: IsConstLike
   }
   deriving (Show, Generic)

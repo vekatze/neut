@@ -105,6 +105,11 @@ fill sub term =
       discarder' <- fill sub discarder
       copier' <- fill sub copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
+    m :< WT.Use e xts cont -> do
+      e' <- fill sub e
+      xts' <- fillBinder sub xts
+      cont' <- fill sub cont
+      return $ m :< WT.Use e' xts' cont'
 
 fillBinder ::
   HoleSubst ->

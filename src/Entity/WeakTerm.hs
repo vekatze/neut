@@ -45,6 +45,7 @@ data WeakTermF a
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
   | Resource DD.DefiniteDescription Int a a
+  | Use a [BinderF a] a
 
 type SubstWeakTerm =
   IntMap.IntMap (Either Ident WeakTerm)

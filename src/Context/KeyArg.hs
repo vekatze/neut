@@ -2,12 +2,12 @@ module Context.KeyArg
   ( insert,
     lookup,
     lookupMaybe,
+    reorderArgs,
   )
 where
 
 import Context.App
 import Context.App.Internal
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -110,7 +110,6 @@ lookup m dataName = do
     Just (_, value) ->
       return value
     Nothing -> do
-      printNote' $ T.pack (show dataName)
       Throw.raiseError m $ "no such function is defined: " <> DD.reify dataName
 
 lookupMaybe :: DD.DefiniteDescription -> App (Maybe (IsConstLike, [Key]))
@@ -121,3 +120,23 @@ lookupMaybe dataName = do
       return $ Just (isConstLike, keyList)
     _ ->
       return Nothing
+
+reorderArgs :: Hint -> [Key] -> Map.HashMap Key a -> App [a]
+reorderArgs m keyList kvs =
+  case keyList of
+    []
+      | Map.null kvs ->
+          return []
+      | otherwise -> do
+          let ks = map fst $ Map.toList kvs
+          Throw.raiseError m $ "the following fields are redundant:\n" <> showKeyList ks
+    key : keyRest
+      | Just v <- Map.lookup key kvs -> do
+          vs <- reorderArgs m keyRest (Map.delete key kvs)
+          return $ v : vs
+      | otherwise ->
+          Throw.raiseError m $ "the field `" <> key <> "` is missing"
+
+showKeyList :: [Key] -> T.Text
+showKeyList ks =
+  T.intercalate "\n" $ map ("- " <>) ks

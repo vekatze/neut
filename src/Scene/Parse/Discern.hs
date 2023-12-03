@@ -170,7 +170,7 @@ discern nenv term =
       ensureFieldLinearity m ks S.empty S.empty
       (argNum, keyList) <- KeyArg.lookup m dd
       vs' <- mapM (discern nenv) vs
-      args <- reorderArgs m keyList $ Map.fromList $ zip ks vs'
+      args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
       return $ m :< WT.PiElim isExplicit (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact e -> do
@@ -219,6 +219,11 @@ discern nenv term =
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
+    m :< RT.Use e xs cont -> do
+      e' <- discern nenv e
+      (xs', nenv') <- discernBinder nenv xs
+      cont' <- discern nenv' cont
+      return $ m :< WT.Use e' xs' cont'
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =
@@ -409,7 +414,7 @@ discernPattern (m, pat) = do
           defaultKeyMap <- constructDefaultKeyMap m keyList
           let specifiedKeyMap = Map.fromList $ zip ks mvs
           let keyMap = Map.union specifiedKeyMap defaultKeyMap
-          reorderedArgs <- reorderArgs m keyList keyMap
+          reorderedArgs <- KeyArg.reorderArgs m keyList keyMap
           (patList', nenvList) <- mapAndUnzipM discernPattern reorderedArgs
           let consInfo =
                 PAT.ConsInfo

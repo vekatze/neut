@@ -109,6 +109,11 @@ subst sub term =
       discarder' <- subst sub discarder
       copier' <- subst sub copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
+    m :< WT.Use e xts cont -> do
+      e' <- subst sub e
+      (xts', sub') <- subst' sub xts
+      cont' <- subst sub' cont
+      return $ m :< WT.Use e' xts' cont'
 
 substBinder ::
   WT.SubstWeakTerm ->

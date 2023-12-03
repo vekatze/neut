@@ -316,6 +316,8 @@ elaborate' term =
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
       return $ m :< TM.Resource dd resourceID discarder' copier'
+    m :< WT.Use {} -> do
+      Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
 
 elaborateWeakBinder :: BinderF WT.WeakTerm -> App (BinderF TM.Term)
 elaborateWeakBinder (m, x, t) = do
@@ -416,6 +418,6 @@ extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do
   case cursorType of
     _ :< TM.Data (AttrD.Attr {..}) _ _ -> do
-      return consNameList
+      return $ map fst consNameList
     _ ->
       Throw.raiseError m $ "the type of this term is expected to be an ADT, but it's not:\n" <> toText (weaken cursorType)

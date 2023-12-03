@@ -222,7 +222,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = SK.Data dataName dataArgs consInfoList''
-  let consNameList = map (\(_, consName, _, _, _) -> consName) consInfoList''
+  let consNameList = map (\(_, consName, isConstLike, _, _) -> (consName, isConstLike)) consInfoList''
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike consNameList dataArgs
   let formRule = RawStmtDefine isConstLike stmtKind m dataName [] dataArgs (m :< RT.Tau) dataType
@@ -261,7 +261,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
     (m, consName, isConstLike, consArgs) : rest -> do
       let dataArgs' = map identPlusToVar dataArgs
       let consArgs' = map adjustConsArg consArgs
-      let consNameList = map (\(_, c, _, _) -> c) consInfoList
+      let consNameList = map (\(_, c, isConstLike', _) -> (c, isConstLike')) consInfoList
       let introRule =
             RawStmtDefine
               isConstLike
@@ -279,7 +279,7 @@ constructDataType ::
   Hint ->
   DD.DefiniteDescription ->
   IsConstLike ->
-  [DD.DefiniteDescription] ->
+  [(DD.DefiniteDescription, IsConstLike)] ->
   [RawBinder RT.RawTerm] ->
   RT.RawTerm
 constructDataType m dataName isConstLike consNameList dataArgs = do
