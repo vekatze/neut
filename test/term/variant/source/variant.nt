@@ -221,8 +221,13 @@ define list-monoid(a: tau): monoid(list(a)) {
   }
 }
 
-define use-struct(a: tau, m: monoid(a)): a {
+define use-struct<a>(m: monoid(a)): a {
   let Monoid of {m-empty, m-op} = m in
+  m-op(m-empty, m-empty)
+}
+
+define use-struct-2<a>(m: monoid(a)): a {
+  use m {m-empty, m-op} in
   m-op(m-empty, m-empty)
 }
 
@@ -257,9 +262,12 @@ define test-match(): unit {
   let _ = unbalanced-freevars-in-branches(_, t2) in
   let _ = unbalanced-freevars-in-branches(_, t3) in
   let _ = unbalanced-freevars-in-branches(_, t4) in
-  let _: list(int) = use-struct(_, list-monoid(_)) in
-  let _: list(bool) = use-struct(_, list-monoid(_)) in
-  let _: list(() -> int) = use-struct(_, list-monoid(_)) in
+  let _: list(int) = use-struct(list-monoid(_)) in
+  let _: list(bool) = use-struct(list-monoid(_)) in
+  let _: list(() -> int) = use-struct(list-monoid(_)) in
+  let _: list(int) = use-struct-2(list-monoid(_)) in
+  let _: list(bool) = use-struct-2(list-monoid(_)) in
+  let _: list(() -> int) = use-struct-2(list-monoid(_)) in
   Unit
 }
 
