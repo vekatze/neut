@@ -5,7 +5,6 @@ import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad.Trans
-import Data.HashMap.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.Ens qualified as E
@@ -22,37 +21,87 @@ fromFilePath path = do
 parseKeyValuePair :: Parser ((Hint, T.Text), E.Ens)
 parseKeyValuePair = do
   m <- getCurrentHint
-  k <- symbol
+  commentList <- parseCommentList
+  k <- symbol'
   v <- parseEns
-  return ((m, k), v)
+  return ((m, k), foldCommentList m v commentList)
+
+foldCommentList :: Hint -> E.Ens -> [T.Text] -> E.Ens
+foldCommentList m =
+  foldr (\comment acc -> m :< E.Comment comment acc)
 
 parseEns :: Parser E.Ens
 parseEns = do
-  m <- getCurrentHint
-  v <- do
+  parseOptionalComment $ do
     choice
-      [ E.Dictionary <$> parseDictionary,
-        E.List <$> parseList,
-        E.String <$> string,
-        E.Int <$> try (fromInteger <$> integer),
-        E.Float <$> try float,
-        E.Bool <$> bool
+      [ parseDictionary,
+        parseList,
+        parseString,
+        try parseInt,
+        parseFloat,
+        parseBool
       ]
-  return $ m :< v
 
-parseDictionary :: Parser (M.HashMap T.Text E.Ens)
+parseInt :: Parser E.Ens
+parseInt = do
+  m <- getCurrentHint
+  s <- fromInteger <$> integer'
+  return $ m :< E.Int s
+
+parseFloat :: Parser E.Ens
+parseFloat = do
+  m <- getCurrentHint
+  s <- float'
+  return $ m :< E.Float s
+
+parseBool :: Parser E.Ens
+parseBool = do
+  m <- getCurrentHint
+  s <- bool'
+  return $ m :< E.Bool s
+
+parseString :: Parser E.Ens
+parseString = do
+  m <- getCurrentHint
+  s <- string'
+  return $ m :< E.String s
+
+parseDictionary :: Parser E.Ens
 parseDictionary = do
-  delimiter "{"
-  (mks, vs) <- unzip <$> manyTill parseKeyValuePair (delimiter "}")
+  m <- getCurrentHint
+  delimiter' "{"
+  (mks, vs) <- unzip <$> manyTill parseKeyValuePair (delimiter' "}")
   lift $ ensureKeyLinearity mks S.empty
-  return $ M.fromList $ zip (map snd mks) vs
+  return $ m :< E.Dictionary (zip (map snd mks) vs)
 
-parseList :: Parser [E.Ens]
+parseList :: Parser E.Ens
 parseList = do
-  delimiter "["
+  m <- getCurrentHint
+  delimiter' "["
   vs <- many parseEns
-  delimiter "]"
-  return vs
+  delimiter' "]"
+  return $ m :< E.List vs
+
+parseCommentList :: Parser [T.Text]
+parseCommentList =
+  many $ do
+    chunk "//"
+    comment <- takeWhileP (Just "character") (/= '\n')
+    spaceConsumer'
+    return comment
+
+parseOptionalComment :: Parser E.Ens -> Parser E.Ens
+parseOptionalComment p = do
+  m <- getCurrentHint
+  choice
+    [ do
+        chunk "//"
+        comment <- takeWhileP (Just "character") (/= '\n')
+        spaceConsumer'
+        content <- p
+        return $ m :< E.Comment comment content,
+      p
+    ]
 
 ensureKeyLinearity :: [(Hint, T.Text)] -> S.Set T.Text -> App ()
 ensureKeyLinearity mks foundKeySet =

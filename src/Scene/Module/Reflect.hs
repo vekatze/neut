@@ -58,7 +58,7 @@ fromFilePath :: MID.ModuleID -> Path Abs File -> App Module
 fromFilePath moduleID moduleFilePath = do
   ens <- Ens.fromFilePath moduleFilePath
   (_, targetEns) <- liftEither $ E.access keyTarget ens >>= E.toDictionary
-  target <- mapM interpretRelFilePath targetEns
+  target <- mapM interpretRelFilePath $ Map.fromList targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
   extraContentsEns <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
@@ -105,10 +105,10 @@ fromCurrentPath = do
 
 interpretPrefixMap ::
   H.Hint ->
-  Map.HashMap T.Text E.Ens ->
+  [(T.Text, E.Ens)] ->
   Either Error (Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator))
 interpretPrefixMap m ens = do
-  let (ks, vs) = unzip $ Map.toList ens -- to encode keys into basenames
+  let (ks, vs) = unzip ens -- to encode keys into basenames
   ks' <- mapM (BN.reflect m) ks
   forM_ ks' $ \k ->
     unless (isCapitalized k) $ Left $ newError m $ "prefixes must be capitalized, but found: " <> BN.reify k
@@ -117,10 +117,10 @@ interpretPrefixMap m ens = do
 
 interpretPresetMap ::
   H.Hint ->
-  Map.HashMap T.Text E.Ens ->
+  [(T.Text, E.Ens)] ->
   Either Error (Map.HashMap LocatorName [BN.BaseName])
 interpretPresetMap _ ens = do
-  let (ks, vs) = unzip $ Map.toList ens
+  let (ks, vs) = unzip ens
   vs' <- mapM (E.toList >=> mapM (E.toString >=> uncurry BN.reflect)) vs
   return $ Map.fromList $ zip ks vs'
 
@@ -134,10 +134,10 @@ interpretRelFilePath ens = do
       raiseError m $ "invalid file path: " <> pathString
 
 interpretDependencyDict ::
-  (H.Hint, Map.HashMap T.Text E.Ens) ->
+  (H.Hint, [(T.Text, E.Ens)]) ->
   App (Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest))
 interpretDependencyDict (m, dep) = do
-  items <- forM (Map.toList dep) $ \(k, ens) -> do
+  items <- forM dep $ \(k, ens) -> do
     k' <- liftEither $ BN.reflect m k
     when (BN.isCapitalized k') $ do
       raiseError m $ "module aliases can't be capitalized, but found: " <> BN.reify k'

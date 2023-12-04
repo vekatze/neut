@@ -48,6 +48,11 @@ spaceConsumer :: Parser ()
 spaceConsumer =
   L.space asciiSpaceOrNewLine1 (L.skipLineComment "//") empty
 
+{-# INLINE spaceConsumer' #-}
+spaceConsumer' :: Parser ()
+spaceConsumer' =
+  L.space asciiSpaceOrNewLine1 empty empty
+
 {-# INLINE isAsciiSpace #-}
 isAsciiSpace :: Char -> Bool
 isAsciiSpace c =
@@ -57,6 +62,11 @@ isAsciiSpace c =
 asciiSpaceOrNewLine1 :: Parser ()
 asciiSpaceOrNewLine1 =
   void $ takeWhile1P (Just "space or newline") isAsciiSpaceOrNewLine
+
+{-# INLINE asciiSpace1 #-}
+asciiSpace1 :: Parser ()
+asciiSpace1 =
+  void $ takeWhile1P (Just "space") isAsciiSpaceOrNewLine
 
 {-# INLINE isAsciiSpaceOrNewLine #-}
 isAsciiSpaceOrNewLine :: Char -> Bool
@@ -68,8 +78,17 @@ lexeme :: Parser a -> Parser a
 lexeme =
   L.lexeme spaceConsumer
 
+{-# INLINE lexeme' #-}
+lexeme' :: Parser a -> Parser a
+lexeme' =
+  L.lexeme spaceConsumer'
+
 symbol :: Parser T.Text
 symbol = do
+  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+
+symbol' :: Parser T.Text
+symbol' = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
 baseName :: Parser BN.BaseName
@@ -92,9 +111,19 @@ delimiter :: T.Text -> Parser ()
 delimiter expected = do
   lexeme $ void $ chunk expected
 
+delimiter' :: T.Text -> Parser ()
+delimiter' expected = do
+  lexeme' $ void $ chunk expected
+
 string :: Parser T.Text
 string =
   lexeme $ do
+    _ <- char '\"'
+    T.pack <$> manyTill L.charLiteral (char '\"')
+
+string' :: Parser T.Text
+string' =
+  lexeme' $ do
     _ <- char '\"'
     T.pack <$> manyTill L.charLiteral (char '\"')
 
@@ -107,9 +136,27 @@ integer = do
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
+integer' :: Parser Integer
+integer' = do
+  s <- symbol'
+  case R.readMaybe (T.unpack s) of
+    Just value ->
+      return value
+    Nothing ->
+      failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
+
 float :: Parser Double
 float = do
   s <- symbol
+  case R.readMaybe (T.unpack s) of
+    Just value ->
+      return value
+    Nothing -> do
+      failure (Just (asTokens s)) (S.fromList [asLabel "float"])
+
+float' :: Parser Double
+float' = do
+  s <- symbol'
   case R.readMaybe (T.unpack s) of
     Just value ->
       return value
@@ -127,6 +174,17 @@ bool = do
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
+bool' :: Parser Bool
+bool' = do
+  s <- symbol'
+  case s of
+    "true" ->
+      return True
+    "false" ->
+      return False
+    _ -> do
+      failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
+
 betweenParen :: Parser a -> Parser a
 betweenParen =
   between (delimiter "(") (delimiter ")")
@@ -135,9 +193,17 @@ betweenBrace :: Parser a -> Parser a
 betweenBrace =
   between (delimiter "{") (delimiter "}")
 
+betweenBrace' :: Parser a -> Parser a
+betweenBrace' =
+  between (delimiter' "{") (delimiter' "}")
+
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
+
+betweenBracket' :: Parser a -> Parser a
+betweenBracket' =
+  between (delimiter' "[") (delimiter' "]")
 
 betweenAngle :: Parser a -> Parser a
 betweenAngle =
