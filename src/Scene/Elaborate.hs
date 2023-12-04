@@ -213,8 +213,8 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
-    _ :< WT.PiElimExact _ -> do
-      undefined
+    m :< WT.PiElimExact {} -> do
+      Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.Data attr name es -> do
       es' <- mapM elaborate' es
       return $ m :< TM.Data attr name es'

@@ -92,16 +92,10 @@ parseCommentList =
 
 parseOptionalComment :: Parser E.Ens -> Parser E.Ens
 parseOptionalComment p = do
+  commentList <- parseCommentList
   m <- getCurrentHint
-  choice
-    [ do
-        chunk "//"
-        comment <- takeWhileP (Just "character") (/= '\n')
-        spaceConsumer'
-        content <- p
-        return $ m :< E.Comment comment content,
-      p
-    ]
+  value <- p
+  return $ foldCommentList m value commentList
 
 ensureKeyLinearity :: [(Hint, T.Text)] -> S.Set T.Text -> App ()
 ensureKeyLinearity mks foundKeySet =

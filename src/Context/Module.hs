@@ -7,7 +7,8 @@ module Context.Module
     getCoreModuleURL,
     getCoreModuleDigest,
     insertToModuleCacheMap,
-    save,
+    saveEns,
+    saveMiniEns,
   )
 where
 
@@ -19,6 +20,8 @@ import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Const
+import Entity.Ens
+import Entity.Ens.Reify qualified as Ens
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleDigest
@@ -67,9 +70,14 @@ getModuleDirByID mHint moduleID = do
       libraryDir <- Path.getLibraryDirPath
       resolveDir libraryDir $ T.unpack digest
 
-save :: Module -> App ()
-save targetModule =
-  Path.writeText (moduleLocation targetModule) $ ppModule targetModule
+saveEns :: Path Abs File -> Ens -> App ()
+saveEns path ens = do
+  ens' <- Throw.liftEither $ stylize ens
+  Path.writeText path $ Ens.pp ens'
+
+saveMiniEns :: Path Abs File -> MiniEns -> App ()
+saveMiniEns path ens = do
+  Path.writeText path $ Ens.pp ens
 
 getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do

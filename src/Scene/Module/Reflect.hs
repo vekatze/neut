@@ -61,9 +61,9 @@ fromFilePath moduleID moduleFilePath = do
   target <- mapM interpretRelFilePath $ Map.fromList targetEns
   dependencyEns <- liftEither $ E.access' keyDependency E.emptyDict ens >>= E.toDictionary
   dependency <- interpretDependencyDict dependencyEns
-  extraContentsEns <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
+  (_, extraContentsEns) <- liftEither $ E.access' keyExtraContent E.emptyList ens >>= E.toList
   extraContents <- mapM (interpretExtraPath $ parent moduleFilePath) extraContentsEns
-  antecedentsEns <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList
+  (_, antecedentsEns) <- liftEither $ E.access' keyAntecedent E.emptyList ens >>= E.toList
   antecedents <- mapM interpretAntecedent antecedentsEns
   archiveDirEns <- liftEither $ E.access' keyArchive (E.ensPath archiveRelDir) ens
   archiveDir <- interpretDirPath archiveDirEns
@@ -71,7 +71,7 @@ fromFilePath moduleID moduleFilePath = do
   buildDir <- interpretDirPath buildDirEns
   sourceDirEns <- liftEither $ E.access' keySource (E.ensPath sourceRelDir) ens
   sourceDir <- interpretDirPath sourceDirEns
-  foreignDirListEns <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
+  (_, foreignDirListEns) <- liftEither $ E.access' keyForeign E.emptyList ens >>= E.toList
   foreignDirList <- mapM interpretDirPath foreignDirListEns
   prefixMap <- liftEither $ E.access' keyPrefix E.emptyDict ens >>= E.toDictionary >>= uncurry interpretPrefixMap
   let mInlineLimit = interpretInlineLimit $ E.access keyInlineLimit ens
@@ -121,7 +121,7 @@ interpretPresetMap ::
   Either Error (Map.HashMap LocatorName [BN.BaseName])
 interpretPresetMap _ ens = do
   let (ks, vs) = unzip ens
-  vs' <- mapM (E.toList >=> mapM (E.toString >=> uncurry BN.reflect)) vs
+  vs' <- mapM (fmap snd . E.toList >=> mapM (E.toString >=> uncurry BN.reflect)) vs
   return $ Map.fromList $ zip ks vs'
 
 interpretRelFilePath :: E.Ens -> App SL.SourceLocator
@@ -146,9 +146,9 @@ interpretDependencyDict (m, dep) = do
         "the reserved name `"
           <> BN.reify k'
           <> "` cannot be used as an alias of a module"
-    urlEnsList <- liftEither $ E.access "mirror" ens >>= E.toList
+    (_, urlEnsList) <- liftEither $ E.access keyMirror ens >>= E.toList
     urlList <- liftEither $ mapM (E.toString >=> return . snd) urlEnsList
-    (_, digest) <- liftEither $ E.access "digest" ens >>= E.toString
+    (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString
     return (ModuleAlias k', (map ModuleURL urlList, ModuleDigest digest))
   return $ Map.fromList items
 

@@ -1,6 +1,7 @@
 module Entity.Module where
 
 import Control.Comonad.Cofree
+import Control.Monad
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
@@ -11,6 +12,7 @@ import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Ens qualified as E
 import Entity.Ens.Reify qualified as Ens
+import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.ModuleAlias
 import Entity.ModuleDigest
@@ -63,6 +65,14 @@ keyTarget =
 keyDependency :: T.Text
 keyDependency =
   "dependency"
+
+keyDigest :: T.Text
+keyDigest =
+  "digest"
+
+keyMirror :: T.Text
+keyMirror =
+  "mirror"
 
 keyExtraContent :: T.Text
 keyExtraContent =
@@ -147,23 +157,26 @@ getDigestMap baseModule = do
 
 ppModule :: Module -> T.Text
 ppModule someModule = do
-  Ens.pp $
-    ()
-      :< E.Dictionary
-        ( catMaybes
-            [ getSourceDirInfo someModule,
-              getBuildDirInfo someModule,
-              getArchiveDirInfo someModule,
-              return $ getTargetInfo someModule,
-              getExtraContentInfo someModule,
-              getForeignInfo someModule,
-              getAntecedentInfo someModule,
-              getDependencyInfo someModule,
-              getPrefixMapInfo someModule,
-              getInlineLimitInfo someModule,
-              getPresetMapInfo someModule
-            ]
-        )
+  Ens.pp $ toDefaultEns someModule
+
+toDefaultEns :: Module -> E.MiniEns
+toDefaultEns someModule =
+  ()
+    :< E.Dictionary
+      ( catMaybes
+          [ getSourceDirInfo someModule,
+            getBuildDirInfo someModule,
+            getArchiveDirInfo someModule,
+            return $ getTargetInfo someModule,
+            getExtraContentInfo someModule,
+            getForeignInfo someModule,
+            getAntecedentInfo someModule,
+            getDependencyInfo someModule,
+            getPrefixMapInfo someModule,
+            getInlineLimitInfo someModule,
+            getPresetMapInfo someModule
+          ]
+      )
 
 getArchiveDirInfo :: Module -> Maybe (T.Text, E.MiniEns)
 getArchiveDirInfo someModule = do
@@ -197,7 +210,7 @@ getDependencyInfo someModule = do
   let dependency = flip Map.map (moduleDependency someModule) $ \(urlList, ModuleDigest digest) -> do
         let urlEnsList = map (\(ModuleURL url) -> () :< E.String url) urlList
         let digestEns = () :< E.String digest
-        () :< E.Dictionary [("digest", digestEns), ("mirror", () :< E.List urlEnsList)]
+        () :< E.Dictionary [(keyDigest, digestEns), (keyMirror, () :< E.List urlEnsList)]
   let dependency' = Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency
   if Map.null dependency'
     then Nothing
@@ -280,3 +293,12 @@ getTargetList someModule mTarget =
       [target]
     Nothing -> do
       Map.keys $ moduleTarget someModule
+
+stylize :: E.Ens -> Either Error E.Ens
+stylize ens = do
+  (m, depDict) <- E.access keyDependency ens >>= E.toDictionary
+  depDict' <- forM depDict $ \(k, dep) -> do
+    (mDep, mirrorList) <- E.access keyMirror dep >>= E.toList
+    dep' <- E.put keyMirror (mDep :< E.List (E.nubEnsList mirrorList)) dep
+    return (k, dep')
+  E.put keyDependency (m :< E.Dictionary depDict') ens

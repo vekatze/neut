@@ -6,8 +6,8 @@ import Entity.Doc qualified as D
 import Entity.Ens
 
 pp :: Cofree EnsF a -> T.Text
-pp =
-  D.layout . toDoc
+pp ens =
+  D.layout $ D.join [toDoc ens, D.line]
 
 toDoc :: Cofree EnsF a -> D.Doc
 toDoc ens =
