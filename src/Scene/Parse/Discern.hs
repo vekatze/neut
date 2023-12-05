@@ -148,13 +148,16 @@ discern nenv term =
     m :< RT.PiIntro kind impArgs expArgs e -> do
       lamID <- Gensym.newCount
       case kind of
-        RLK.Fix xt -> do
-          ([xt'], nenv') <- discernBinder nenv [xt]
-          (impArgs', nenv'') <- discernBinder nenv' impArgs
-          (expArgs', nenv''') <- discernBinder nenv'' expArgs
+        RLK.Fix (mx, x, codType) -> do
+          (impArgs', nenv') <- discernBinder nenv impArgs
+          (expArgs', nenv'') <- discernBinder nenv' expArgs
+          codType' <- discern nenv'' codType
+          x' <- Gensym.newIdentFromText x
+          nenv''' <- extendNominalEnv mx x' nenv''
           e' <- discern nenv''' e
-          Tag.insertBinder xt'
-          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix xt', identity = lamID}) impArgs' expArgs' e'
+          let mxt' = (mx, x', codType')
+          Tag.insertBinder mxt'
+          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
         RLK.Normal -> do
           (impArgs', nenv') <- discernBinder nenv impArgs
           (expArgs', nenv'') <- discernBinder nenv' expArgs

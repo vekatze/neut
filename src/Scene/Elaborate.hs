@@ -77,15 +77,6 @@ analyzeDefList defList = do
     insertWeakStmt def'
     return def'
 
--- viewStmt :: WeakStmt -> App ()
--- viewStmt stmt = do
---   case stmt of
---     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
---       let attr = AttrL.Attr {lamKind = LK.Normal, identity = 0}
---       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
---     _ ->
---       return ()
-
 synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
 synthesizeDefList declList defList = do
   -- mapM_ viewStmt defList

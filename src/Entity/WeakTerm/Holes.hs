@@ -1,8 +1,10 @@
 module Entity.WeakTerm.Holes (holes) where
 
 import Control.Comonad.Cofree
+import Data.Maybe
 import Data.Set qualified as S
 import Entity.Annotation qualified as AN
+import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.HoleID
@@ -19,8 +21,8 @@ holes term =
       S.empty
     _ :< WT.Pi impArgs expArgs t ->
       holes' (impArgs ++ expArgs) (holes t)
-    _ :< WT.PiIntro _ impArgs expArgs e ->
-      holes' (impArgs ++ expArgs) (holes e)
+    _ :< WT.PiIntro k impArgs expArgs e ->
+      holes' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (holes e)
     _ :< WT.PiElim _ e es ->
       S.unions $ map holes $ e : es
     _ :< WT.PiElimExact e ->

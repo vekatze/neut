@@ -40,11 +40,13 @@ toText term =
           showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do
-          showImpArgs impArgs
-            <> "mu "
+        AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
+          "define "
             <> showVariable x
+            <> showImpArgs impArgs
             <> inParen (showDomArgList expArgs)
+            <> ": "
+            <> toText codType
             <> " "
             <> inBrace (toText e)
         AttrL.Attr {lamKind = LK.Normal} -> do

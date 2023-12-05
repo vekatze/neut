@@ -46,9 +46,9 @@ subst sub term =
           newLamID <- Gensym.newCount
           case lamKind of
             LK.Fix xt -> do
-              ([xt'], sub') <- subst' sub [xt]
-              (impArgs', sub'') <- subst' sub' impArgs
-              (expArgs', sub''') <- subst' sub'' expArgs
+              (impArgs', sub') <- subst' sub impArgs
+              (expArgs', sub'') <- subst' sub' expArgs
+              ([xt'], sub''') <- subst' sub'' [xt]
               e' <- subst sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< WT.PiIntro fixAttr impArgs' expArgs' e')
