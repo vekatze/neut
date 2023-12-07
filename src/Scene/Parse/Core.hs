@@ -10,6 +10,7 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Void
 import Entity.BaseName qualified as BN
+import Entity.C
 import Entity.Const
 import Entity.Error qualified as E
 import Entity.Hint
@@ -32,6 +33,16 @@ run parser path fileContent = do
     Left errorBundle ->
       Throw.throw $ createParseError errorBundle
 
+run' :: Parser a -> Path Abs File -> T.Text -> App a
+run' parser path fileContent = do
+  let filePath = toFilePath path
+  result <- runParserT parser filePath fileContent
+  case result of
+    Right v ->
+      return v
+    Left errorBundle ->
+      Throw.throw $ createParseError errorBundle
+
 createParseError :: ParseErrorBundle T.Text Void -> E.Error
 createParseError errorBundle = do
   let (foo, posState) = attachSourcePos errorOffset (bundleErrors errorBundle) (bundlePosState errorBundle)
@@ -43,15 +54,27 @@ getCurrentHint :: Parser Hint
 getCurrentHint =
   Hint.fromSourcePos <$> getSourcePos
 
+skipSpace :: Parser ()
+skipSpace =
+  L.space asciiSpaceOrNewLine1 empty empty
+
+comment :: Parser T.Text
+comment = do
+  skipSpace
+  chunk "//"
+  takeWhileP (Just "character") (/= '\n')
+
 {-# INLINE spaceConsumer #-}
 spaceConsumer :: Parser ()
 spaceConsumer =
   L.space asciiSpaceOrNewLine1 (L.skipLineComment "//") empty
 
 {-# INLINE spaceConsumer' #-}
-spaceConsumer' :: Parser ()
+spaceConsumer' :: Parser C
 spaceConsumer' =
-  L.space asciiSpaceOrNewLine1 empty empty
+  hidden $ do
+    skipSpace
+    many (comment <* skipSpace)
 
 {-# INLINE isAsciiSpace #-}
 isAsciiSpace :: Char -> Bool
@@ -79,17 +102,19 @@ lexeme =
   L.lexeme spaceConsumer
 
 {-# INLINE lexeme' #-}
-lexeme' :: Parser a -> Parser a
-lexeme' =
-  L.lexeme spaceConsumer'
+lexeme' :: Parser a -> Parser (a, C)
+lexeme' p = do
+  v <- p
+  c <- spaceConsumer' -- read spaces *before* p
+  return (v, c)
 
 symbol :: Parser T.Text
 symbol = do
   lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
-symbol' :: Parser T.Text
+symbol' :: Parser (T.Text, C)
 symbol' = do
-  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+  lexeme' $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
 baseName :: Parser BN.BaseName
 baseName = do
@@ -111,9 +136,9 @@ delimiter :: T.Text -> Parser ()
 delimiter expected = do
   lexeme $ void $ chunk expected
 
-delimiter' :: T.Text -> Parser ()
+delimiter' :: T.Text -> Parser C
 delimiter' expected = do
-  lexeme' $ void $ chunk expected
+  fmap snd $ lexeme' $ void $ chunk expected
 
 string :: Parser T.Text
 string =
@@ -121,7 +146,7 @@ string =
     _ <- char '\"'
     T.pack <$> manyTill L.charLiteral (char '\"')
 
-string' :: Parser T.Text
+string' :: Parser (T.Text, C)
 string' =
   lexeme' $ do
     _ <- char '\"'
@@ -136,12 +161,12 @@ integer = do
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
-integer' :: Parser Integer
+integer' :: Parser (Integer, C)
 integer' = do
-  s <- symbol'
+  (s, c) <- symbol'
   case R.readMaybe (T.unpack s) of
     Just value ->
-      return value
+      return (value, c)
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
@@ -154,12 +179,12 @@ float = do
     Nothing -> do
       failure (Just (asTokens s)) (S.fromList [asLabel "float"])
 
-float' :: Parser Double
+float' :: Parser (Double, C)
 float' = do
-  s <- symbol'
+  (s, c) <- symbol'
   case R.readMaybe (T.unpack s) of
     Just value ->
-      return value
+      return (value, c)
     Nothing -> do
       failure (Just (asTokens s)) (S.fromList [asLabel "float"])
 
@@ -174,14 +199,14 @@ bool = do
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
-bool' :: Parser Bool
+bool' :: Parser (Bool, C)
 bool' = do
-  s <- symbol'
+  (s, c) <- symbol'
   case s of
     "true" ->
-      return True
+      return (True, c)
     "false" ->
-      return False
+      return (False, c)
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 

@@ -1,6 +1,6 @@
 module Entity.Doc
   ( Doc (..),
-    baseOffset,
+    indent,
     line,
     text,
     join,
@@ -17,8 +17,8 @@ data Doc
   | Line Int Doc
   deriving (Show)
 
-baseOffset :: Int
-baseOffset =
+indent :: Int
+indent =
   2
 
 line :: Doc

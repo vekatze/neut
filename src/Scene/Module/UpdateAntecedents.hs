@@ -28,10 +28,10 @@ updateAntecedents newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
   antecedentList <- ListUtils.nubOrd <$> mapM (getDigest targetModule) antecedents
-  baseEns@(m :< _) <- Ens.fromFilePath (moduleLocation targetModule)
+  (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath (moduleLocation targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns
-  Module.saveEns (moduleLocation targetModule) mergedEns
+  Module.saveEns (moduleLocation targetModule) (c1, (mergedEns, c2))
 
 getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
 getPackagePath targetModule ver = do
@@ -50,8 +50,10 @@ makeAntecedentEns :: Hint -> [ModuleDigest] -> E.Ens
 makeAntecedentEns m antecedentList = do
   m
     :< E.Dictionary
+      []
       [ ( keyAntecedent,
-          m
-            :< E.List (map (\(ModuleDigest digest) -> m :< E.String digest) antecedentList)
+          E.inject $
+            m
+              :< E.List [] (map (\(ModuleDigest digest) -> (m :< E.String digest, [])) antecedentList)
         )
       ]

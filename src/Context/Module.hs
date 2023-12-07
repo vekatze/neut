@@ -8,7 +8,6 @@ module Context.Module
     getCoreModuleDigest,
     insertToModuleCacheMap,
     saveEns,
-    saveMiniEns,
   )
 where
 
@@ -70,14 +69,10 @@ getModuleDirByID mHint moduleID = do
       libraryDir <- Path.getLibraryDirPath
       resolveDir libraryDir $ T.unpack digest
 
-saveEns :: Path Abs File -> Ens -> App ()
-saveEns path ens = do
+saveEns :: Path Abs File -> FullEns -> App ()
+saveEns path (c1, (ens, c2)) = do
   ens' <- Throw.liftEither $ stylize ens
-  Path.writeText path $ Ens.pp ens'
-
-saveMiniEns :: Path Abs File -> MiniEns -> App ()
-saveMiniEns path ens = do
-  Path.writeText path $ Ens.pp ens
+  Path.writeText path $ Ens.pp (c1, (ens', c2))
 
 getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do

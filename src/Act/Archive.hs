@@ -18,7 +18,7 @@ archive cfg = do
   Path.ensureNotInLibDir
   packageVersion <- PV.reflect (getArchiveName cfg)
   currentModule <- Module.getMainModule
-  baseEns <- Ens.fromFilePath (moduleLocation currentModule)
+  ens <- Ens.fromFilePath (moduleLocation currentModule)
   Module.getMainModule >>= updateAntecedents packageVersion
   Collect.collectModuleFiles >>= Archive.archive packageVersion
-  Module.saveEns (moduleLocation currentModule) baseEns
+  Module.saveEns (moduleLocation currentModule) ens

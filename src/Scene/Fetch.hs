@@ -125,26 +125,34 @@ extractToLibDir tempFilePath _ digest = do
 addDependencyToModuleFile :: ModuleAlias -> [ModuleURL] -> MD.ModuleDigest -> App ()
 addDependencyToModuleFile alias mirrorList digest = do
   mainModule <- getMainModule
-  baseEns@(m :< _) <- Ens.fromFilePath (moduleLocation mainModule)
+  (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath (moduleLocation mainModule)
   let depEns = makeDependencyEns m alias digest mirrorList
   mergedEns <- Throw.liftEither $ E.merge baseEns depEns
-  Module.saveEns (M.moduleLocation mainModule) mergedEns
+  Module.saveEns (M.moduleLocation mainModule) (c1, (mergedEns, c2))
   Remark.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
 
 makeDependencyEns :: Hint -> ModuleAlias -> MD.ModuleDigest -> [ModuleURL] -> E.Ens
 makeDependencyEns m alias digest mirrorList = do
   m
     :< E.Dictionary
+      []
       [ ( keyDependency,
-          m
-            :< E.Dictionary
-              [ ( BN.reify $ extract alias,
-                  m
-                    :< E.Dictionary
-                      [ (keyDigest, m :< E.String (MD.reify digest)),
-                        (keyMirror, m :< E.List (map (\(ModuleURL mirror) -> m :< E.String mirror) mirrorList))
-                      ]
-                )
-              ]
+          E.inject $
+            m
+              :< E.Dictionary
+                []
+                [ ( BN.reify $ extract alias,
+                    E.inject $
+                      m
+                        :< E.Dictionary
+                          []
+                          [ (keyDigest, E.inject $ m :< E.String (MD.reify digest)),
+                            ( keyMirror,
+                              E.inject $
+                                m :< E.List [] (map (\(ModuleURL mirror) -> (m :< E.String mirror, [])) mirrorList)
+                            )
+                          ]
+                  )
+                ]
         )
       ]

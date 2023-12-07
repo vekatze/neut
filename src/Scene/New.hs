@@ -61,7 +61,7 @@ createModuleFile :: App ()
 createModuleFile = do
   newModule <- Module.getMainModule
   Path.ensureDir $ parent $ moduleLocation newModule
-  Module.saveMiniEns (moduleLocation newModule) $ toDefaultEns newModule
+  Module.saveEns (moduleLocation newModule) ([], (toDefaultEns newModule, []))
   buildDir <- Path.getBaseBuildDir newModule
   Path.ensureDir buildDir
 
