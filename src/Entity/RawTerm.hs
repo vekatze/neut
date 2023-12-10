@@ -4,6 +4,7 @@ module Entity.RawTerm
     DefInfo,
     TopDefInfo,
     TopDefHeader,
+    LetKind (..),
     lam,
     piElim,
   )
@@ -45,7 +46,7 @@ data RawTermF a
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Embody a
-  | Let (RawBinder a) [(Hint, RawIdent)] a a -- let x on x1, ..., xn = e1 in e2 (with no context extension)
+  | Let LetKind (Hint, RP.RawPattern, a) [(Hint, RawIdent)] a a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
@@ -82,3 +83,8 @@ piElim =
 lam :: Hint -> [RawBinder RawTerm] -> RawTerm -> RawTerm
 lam m varList e =
   m :< PiIntro Normal [] varList e
+
+data LetKind
+  = Plain
+  | Noetic
+  | Try

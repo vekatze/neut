@@ -84,8 +84,13 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let mxt noeticVarList e cont -> do
-      let mxt' = piIntroArgToDoc mxt
+    _ :< Let letKind mxt noeticVarList e cont -> do
+      let keyword =
+            case letKind of
+              Plain -> "let"
+              Noetic -> "tie"
+              Try -> "try"
+      let mxt' = letArgToDoc mxt
       let noeticVarList' = decodeNoeticVarList noeticVarList
       let e' = toDoc e
       let cont' = toDoc cont
@@ -93,13 +98,35 @@ toDoc term =
         then do
           let mxt'' = D.nest D.indent (D.join [D.line, mxt'])
           let e'' = D.nest D.indent e'
-          D.join [D.text "let", mxt'', noeticVarList', D.text " = ", e'', D.line, D.text "in", D.line, cont']
+          D.join [D.text keyword, mxt'', noeticVarList', D.text " = ", e'', D.line, D.text "in", D.line, cont']
         else do
           if isMultiLine [e']
             then do
               let e'' = D.nest D.indent (D.join [D.line, e'])
-              D.join [D.text "let ", mxt', noeticVarList', D.text " =", e'', D.line, D.text "in", D.line, cont']
-            else D.join [D.text "let ", mxt', noeticVarList', D.text " = ", e', D.text " in", D.line, cont']
+              D.join
+                [ D.text keyword,
+                  D.text " ",
+                  mxt',
+                  noeticVarList',
+                  D.text " =",
+                  e'',
+                  D.line,
+                  D.text "in",
+                  D.line,
+                  cont'
+                ]
+            else
+              D.join
+                [ D.text keyword,
+                  D.text " ",
+                  mxt',
+                  noeticVarList',
+                  D.text " = ",
+                  e',
+                  D.text " in",
+                  D.line,
+                  cont'
+                ]
     _ :< Prim prim ->
       case prim of
         WP.Type t ->
@@ -280,6 +307,15 @@ piArgToDoc (_, x, t) = do
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
 piIntroArgToDoc (_, x, t) = do
   let x' = D.text x
+  case t of
+    _ :< Hole {} ->
+      x'
+    _ -> do
+      D.join [x', typeAnnot t]
+
+letArgToDoc :: (a, RP.RawPattern, RawTerm) -> D.Doc
+letArgToDoc (_, x, t) = do
+  let x' = decodePattern x
   case t of
     _ :< Hole {} ->
       x'

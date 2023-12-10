@@ -37,6 +37,7 @@ import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Locator qualified as L
 import Entity.Name
+import Entity.Noema qualified as N
 import Entity.NominalEnv
 import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
@@ -215,8 +216,38 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let mxt mys e1 e2 -> do
-      discernLet nenv m mxt mys e1 e2
+    m :< RT.Let letKind (mx, pat, t) mys e1@(m1 :< _) e2@(m2 :< _) -> do
+      case letKind of
+        RT.Try -> do
+          eitherTypeInner <- locatorToVarGlobal mx coreExcept
+          leftType <- Gensym.newPreHole m1
+          let eitherType = m1 :< RT.piElim eitherTypeInner [leftType, t]
+          e1' <- ascribe m1 eitherType e1
+          err <- Gensym.newText
+          exceptFail <- locatorToName m2 coreExceptFail
+          exceptPass <- locatorToName m2 coreExceptPass
+          exceptFailVar <- locatorToVarGlobal mx coreExceptFail
+          let _m = blur m2
+          discern nenv $
+            m2
+              :< RT.DataElim
+                False
+                [e1']
+                ( RP.new
+                    [ ( V.fromList [(_m, RP.Cons exceptFail (RP.Paren [(_m, RP.Var (Var err))]))],
+                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)]
+                      ),
+                      ( V.fromList [(_m, RP.Cons exceptPass (RP.Paren [(mx, pat)]))],
+                        e2
+                      )
+                    ]
+                )
+        RT.Plain -> do
+          (x, modifier) <- getContinuationModifier (mx, pat)
+          discernLet nenv m (mx, x, t) mys e1 (modifier False e2)
+        RT.Noetic -> do
+          (x, modifier) <- getContinuationModifier (mx, pat)
+          discernLet nenv m (mx, x, t) mys e1 (modifier True e2)
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -247,7 +278,7 @@ discern nenv term =
     m :< RT.Seq e1 e2 -> do
       f <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
-      discern nenv $ m :< RT.Let (m, f, unit) [] e1 e2
+      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var f), unit) [] e1 e2
     m :< RT.When whenCond whenBody -> do
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
@@ -325,11 +356,30 @@ discern nenv term =
         return (mx, hole, tHole)
       let resultVar = m :< RT.Var (Var result)
       let retResult = foldr (\(binder, (mx, x)) acc -> bind binder (mx :< RT.Var (Var x)) acc) resultVar (zip holes mxs)
-      discern nenv $ m :< RT.Let (m, result, t) mxs body retResult
+      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var result), t) mxs body retResult
+
+getContinuationModifier :: (Hint, RP.RawPattern) -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
+getContinuationModifier pat =
+  case pat of
+    (_, RP.Var (Var x))
+      | not (isConsName x) ->
+          return (x, \_ cont -> cont)
+    _ -> do
+      tmp <- Gensym.newTextForHole
+      return
+        ( tmp,
+          \isNoetic cont@(mCont :< _) ->
+            mCont :< RT.DataElim isNoetic [mCont :< RT.Var (Var tmp)] (RP.new [(V.fromList [pat], cont)])
+        )
+
+ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
+ascribe m t e = do
+  tmp <- Gensym.newTextForHole
+  return $ bind (m, tmp, t) e (m :< RT.Var (Var tmp))
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind mxt@(m, _, _) e cont =
-  m :< RT.Let mxt [] e cont
+bind (m, x, t) e cont =
+  m :< RT.Let RT.Plain (m, RP.Var (Var x), t) [] e cont
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =
@@ -423,12 +473,11 @@ discernLet ::
   RT.RawTerm ->
   App WT.WeakTerm
 discernLet nenv m mxt mys e1 e2 = do
-  let (ms, ys) = unzip mys
-  mys' <- mapM (discernIdent m nenv) ys
+  mys' <- mapM (\(my, y) -> discernIdent my nenv y) mys
   let (ms', ys') = unzip mys'
-  let ysActual = zipWith (\my y -> my :< WT.Var y) ms ys'
-  ysLocal <- mapM Gensym.newIdentFromText ys
-  ysCont <- mapM Gensym.newIdentFromText ys
+  let ysActual = zipWith (\my y -> my :< WT.Var y) ms' ys'
+  ysLocal <- mapM Gensym.newIdentFromIdent ys'
+  ysCont <- mapM Gensym.newIdentFromIdent ys'
   let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms' ysLocal
   nenvLocal <- joinNominalEnv localAddition nenv
   let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont

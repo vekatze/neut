@@ -67,8 +67,7 @@ rawExpr = do
 rawExprLet :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawExprLet m = do
   choice
-    [ try rawTermLetExcept,
-      rawTermLetOrLetOn m,
+    [ rawTermLet m,
       rawTermUse m
     ]
 
@@ -181,28 +180,27 @@ rawTermKeyValuePair = do
         return (m, key, m :< RT.Var (Var key))
     ]
 
-rawTermLetOrLetOn :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
-rawTermLetOrLetOn mLet = do
-  isNoetic <- choice [try (keyword "tie") >> return True, keyword "let" >> return False]
-  pat@(mx, _) <- rawTermPattern
-  (x, modifier) <- getContinuationModifier pat
+rawTermLet :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
+rawTermLet mLet = do
+  letKind <-
+    choice
+      [ keyword "let" >> return RT.Plain,
+        keyword "try" >> return RT.Try,
+        keyword "tie" >> return RT.Noetic
+      ]
+  (mx, patInner) <- rawTermPattern
   t <- rawTermLetVarAscription mx
-  let mxt = (mx, x, t)
-  choice
-    [ do
-        keyword "on"
-        noeticVarList <- commaList rawTermNoeticVar
-        lift $ ensureIdentLinearity S.empty noeticVarList
-        delimiter "="
-        e1 <- rawExpr
-        delimiter "in"
-        return $ \e2 -> mLet :< RT.Let mxt noeticVarList e1 (modifier isNoetic e2),
-      do
-        delimiter "="
-        e1 <- rawExpr
-        delimiter "in"
-        return $ \e2 -> mLet :< RT.Let mxt [] e1 (modifier isNoetic e2)
-    ]
+  noeticVarList <-
+    choice
+      [ keyword "on" >> commaList rawTermNoeticVar,
+        return []
+      ]
+  lift $ ensureIdentLinearity S.empty noeticVarList
+  let mxt = (mx, patInner, t)
+  delimiter "="
+  e1 <- rawExpr
+  delimiter "in"
+  return $ \e2 -> mLet :< RT.Let letKind mxt noeticVarList e1 e2
 
 rawTermUse :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
 rawTermUse m = do
@@ -265,37 +263,6 @@ rawTermNoeticVar :: Parser (Hint, T.Text)
 rawTermNoeticVar = do
   (m, x) <- var
   return (m, x)
-
-rawTermLetExcept :: Parser (RT.RawTerm -> RT.RawTerm)
-rawTermLetExcept = do
-  keyword "try"
-  pat@(mx, _) <- rawTermPattern
-  rightType <- rawTermLetVarAscription mx
-  delimiter "="
-  e1@(m1 :< _) <- rawExpr
-  delimiter "in"
-  eitherTypeInner <- lift $ locatorToVarGlobal mx coreExcept
-  leftType <- lift $ Gensym.newPreHole m1
-  let eitherType = m1 :< RT.piElim eitherTypeInner [leftType, rightType]
-  e1' <- ascribe m1 eitherType e1
-  m2 <- getCurrentHint
-  err <- lift Gensym.newText
-  exceptFail <- lift $ locatorToName m2 coreExceptFail
-  exceptPass <- lift $ locatorToName m2 coreExceptPass
-  exceptFailVar <- lift $ locatorToVarGlobal mx coreExceptFail
-  let _m = blur m2
-  return $ \e2 ->
-    m2
-      :< RT.DataElim
-        False
-        [e1']
-        ( RP.new
-            [ ( V.fromList [(_m, RP.Cons exceptFail (RP.Paren [(_m, RP.Var (Var err))]))],
-                m2 :< RT.piElim exceptFailVar [preVar m2 err]
-              ),
-              (V.fromList [(_m, RP.Cons exceptPass (RP.Paren [pat]))], e2)
-            ]
-        )
 
 rawTermIdealize :: Parser RT.RawTerm
 rawTermIdealize = do
@@ -712,8 +679,8 @@ rawExprBind binder = do
   return $ \e2 -> m :< RT.piElim binder [e1, RT.lam m [mxt] (modifier False e2)]
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind mxt@(m, _, _) e cont =
-  m :< RT.Let mxt [] e cont
+bind (m, x, t) e cont =
+  m :< RT.Let RT.Plain (m, RP.Var (Var x), t) [] e cont
 
 rawTermNoema :: Parser RT.RawTerm
 rawTermNoema = do
