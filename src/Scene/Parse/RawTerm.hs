@@ -303,15 +303,7 @@ rawTermIdealize = do
   keyword "idealize"
   xs <- commaList var
   cont <- betweenBrace rawExpr
-  result <- lift Gensym.newTextForHole
-  t <- lift $ Gensym.newPreHole m
-  holes <- forM xs $ \(mx, _) -> lift $ do
-    hole <- Gensym.newTextForHole
-    tHole <- Gensym.newPreHole mx
-    return (mx, hole, tHole)
-  let resultVar = rawVar m (Var result)
-  let retResult = foldr (\(binder, (mx, x)) acc -> bind binder (rawVar mx (Var x)) acc) resultVar (zip holes xs)
-  return $ m :< RT.Let (m, result, t) xs cont retResult
+  return $ m :< RT.Idealize xs cont
 
 rawTermEmbody :: Parser RT.RawTerm
 rawTermEmbody = do

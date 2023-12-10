@@ -64,6 +64,7 @@ data RawTermF a
   | Option a
   | Assert (Hint, T.Text) a
   | Introspect T.Text [(Maybe T.Text, a)]
+  | Idealize [(Hint, T.Text)] a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)

@@ -316,6 +316,20 @@ discern nenv term =
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value clauseList
       discern nenv clause
+    m :< RT.Idealize mxs body -> do
+      result <- Gensym.newTextForHole
+      t <- Gensym.newPreHole m
+      holes <- forM mxs $ \(mx, _) -> do
+        hole <- Gensym.newTextForHole
+        tHole <- Gensym.newPreHole mx
+        return (mx, hole, tHole)
+      let resultVar = m :< RT.Var (Var result)
+      let retResult = foldr (\(binder, (mx, x)) acc -> bind binder (mx :< RT.Var (Var x)) acc) resultVar (zip holes mxs)
+      discern nenv $ m :< RT.Let (m, result, t) mxs body retResult
+
+bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind mxt@(m, _, _) e cont =
+  m :< RT.Let mxt [] e cont
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =
