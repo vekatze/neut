@@ -184,6 +184,15 @@ toDoc term =
           D.line,
           D.text "}"
         ]
+    _ :< When cond body -> do
+      D.join
+        [ D.text "when ",
+          toDoc cond,
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, toDoc body],
+          D.line,
+          D.text "}"
+        ]
     _ :< Seq e1 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, toDoc e2]
 

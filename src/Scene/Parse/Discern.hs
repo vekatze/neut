@@ -239,6 +239,11 @@ discern nenv term =
       f <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ m :< RT.Let (m, f, unit) [] e1 e2
+    m :< RT.When whenCond whenBody -> do
+      boolTrue <- locatorToName (blur m) coreBoolTrue
+      boolFalse <- locatorToName (blur m) coreBoolFalse
+      unitUnit <- locatorToVarGlobal m coreUnitUnit
+      discern nenv $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
 
 foldIf ::
   Hint ->

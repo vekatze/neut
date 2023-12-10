@@ -695,43 +695,7 @@ rawTermWhen = do
   keyword "when"
   whenCond <- rawTerm
   whenBody <- betweenBrace rawExpr
-  boolTrue <- lift $ locatorToName (blur m) coreBoolTrue
-  boolFalse <- lift $ locatorToName (blur m) coreBoolFalse
-  unitUnit <- lift $ locatorToVarGlobal m coreUnitUnit
-  return $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
-
-foldIf ::
-  Hint ->
-  Name ->
-  Name ->
-  RT.RawTerm ->
-  RT.RawTerm ->
-  [(RT.RawTerm, RT.RawTerm)] ->
-  RT.RawTerm ->
-  RT.RawTerm
-foldIf m true false ifCond ifBody elseIfList elseBody =
-  case elseIfList of
-    [] -> do
-      m
-        :< RT.DataElim
-          False
-          [ifCond]
-          ( RP.new
-              [ (V.fromList [(blur m, RP.Var true)], ifBody),
-                (V.fromList [(blur m, RP.Var false)], elseBody)
-              ]
-          )
-    ((elseIfCond, elseIfBody) : rest) -> do
-      let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
-      m
-        :< RT.DataElim
-          False
-          [ifCond]
-          ( RP.new
-              [ (V.fromList [(blur m, RP.Var true)], ifBody),
-                (V.fromList [(blur m, RP.Var false)], cont)
-              ]
-          )
+  return $ m :< RT.When whenCond whenBody
 
 rawTermBrace :: Parser RT.RawTerm
 rawTermBrace =
