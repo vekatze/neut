@@ -6,6 +6,7 @@ import Data.Vector qualified as V
 import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.Hint
 import Entity.Locator qualified as Locator
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
@@ -85,20 +86,20 @@ toDoc term =
       D.join [D.text "*", toDoc e]
     _ :< Let mxt noeticVarList e cont -> do
       let mxt' = piIntroArgToDoc mxt
-      let noeticVarList' = map (\(_, var) -> D.text var) noeticVarList
+      let noeticVarList' = decodeNoeticVarList noeticVarList
       let e' = toDoc e
       let cont' = toDoc cont
-      if isMultiLine (mxt' : noeticVarList')
+      if isMultiLine [mxt']
         then do
           let mxt'' = D.nest D.indent (D.join [D.line, mxt'])
           let e'' = D.nest D.indent e'
-          D.join [D.text "let", mxt'', D.text " = ", e'', D.line, D.text "in", D.line, cont']
+          D.join [D.text "let", mxt'', noeticVarList', D.text " = ", e'', D.line, D.text "in", D.line, cont']
         else do
           if isMultiLine [e']
             then do
               let e'' = D.nest D.indent (D.join [D.line, e'])
-              D.join [D.text "let ", mxt', D.text " =", e'', D.line, D.text "in", D.line, cont']
-            else D.join [D.text "let ", mxt', D.text " = ", e', D.text " in", D.line, cont']
+              D.join [D.text "let ", mxt', noeticVarList', D.text " =", e'', D.line, D.text "in", D.line, cont']
+            else D.join [D.text "let ", mxt', noeticVarList', D.text " = ", e', D.text " in", D.line, cont']
     _ :< Prim prim ->
       case prim of
         WP.Type t ->
@@ -234,6 +235,12 @@ toDoc term =
           D.line,
           D.text "}"
         ]
+
+decodeNoeticVarList :: [(Hint, RawIdent)] -> D.Doc
+decodeNoeticVarList vs =
+  if null vs
+    then D.Nil
+    else D.join [D.text " on ", commaSeqH (map (D.text . snd) vs)]
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =
