@@ -349,7 +349,7 @@ impArgsToDoc impArgs = do
   if null impArgs
     then D.Nil
     else do
-      let impArgs' = piArgsToDoc impArgs
+      let impArgs' = piIntroArgsToDoc impArgs
       if isMultiLine [impArgs']
         then do
           D.join [D.text "<", D.line, D.nest D.indent impArgs', D.line, D.text ">"]
