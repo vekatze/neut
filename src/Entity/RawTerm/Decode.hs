@@ -170,6 +170,36 @@ toDoc term =
               cont'
             ]
         else D.join [D.text "use ", trope', D.text " {", commaSeqH args', D.text "} in", D.line, cont']
+    _ :< If ifCond ifBody elseIfList elseBody -> do
+      D.join
+        [ D.text "if ",
+          toDoc ifCond,
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, toDoc ifBody],
+          D.line,
+          D.text "}",
+          decodeElseIfList elseIfList,
+          D.text " else {",
+          D.nest D.indent $ D.join [D.line, toDoc elseBody],
+          D.line,
+          D.text "}"
+        ]
+
+decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
+decodeElseIfList elseIfList =
+  case elseIfList of
+    [] ->
+      D.text ""
+    (elseIfCond, elseIfBody) : rest ->
+      D.join
+        [ D.text " else-if ",
+          toDoc elseIfCond,
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, toDoc elseIfBody],
+          D.line,
+          D.text "}",
+          decodeElseIfList rest
+        ]
 
 piArgToDoc :: RawBinder RawTerm -> D.Doc
 piArgToDoc (_, x, t) = do

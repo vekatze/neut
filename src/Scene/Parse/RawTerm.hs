@@ -689,9 +689,7 @@ rawTermIf = do
     return (elseIfCond, elseIfBody)
   keyword "else"
   elseBody <- betweenBrace rawExpr
-  boolTrue <- lift $ locatorToName (blur m) coreBoolTrue
-  boolFalse <- lift $ locatorToName (blur m) coreBoolFalse
-  return $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
+  return $ m :< RT.If ifCond ifBody elseIfList elseBody
 
 rawTermWhen :: Parser RT.RawTerm
 rawTermWhen = do

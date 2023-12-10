@@ -4,6 +4,7 @@ import Context.App
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
+import Context.Remark (printNote')
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -20,6 +21,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
+import Entity.Const
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
@@ -35,10 +37,11 @@ import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
-import Entity.RawIdent
+import Entity.RawIdent hiding (isHole)
 import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
+import Entity.RawTerm.Decode qualified as RT
 import Entity.Remark qualified as R
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
@@ -58,6 +61,7 @@ discernStmt stmt = do
   registerTopLevelName stmt
   case stmt of
     RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+      printNote' $ RT.pp e
       (impArgs', nenv) <- discernBinder empty impArgs
       (expArgs', nenv') <- discernBinder nenv expArgs
       codType' <- discern nenv' codType
@@ -227,6 +231,43 @@ discern nenv term =
       (xs', nenv') <- discernBinder nenv xs
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
+    m :< RT.If ifCond ifBody elseIfList elseBody -> do
+      boolTrue <- locatorToName (blur m) coreBoolTrue
+      boolFalse <- locatorToName (blur m) coreBoolFalse
+      discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
+
+foldIf ::
+  Hint ->
+  Name ->
+  Name ->
+  RT.RawTerm ->
+  RT.RawTerm ->
+  [(RT.RawTerm, RT.RawTerm)] ->
+  RT.RawTerm ->
+  RT.RawTerm
+foldIf m true false ifCond ifBody elseIfList elseBody =
+  case elseIfList of
+    [] -> do
+      m
+        :< RT.DataElim
+          False
+          [ifCond]
+          ( RP.new
+              [ (V.fromList [(blur m, RP.Var true)], ifBody),
+                (V.fromList [(blur m, RP.Var false)], elseBody)
+              ]
+          )
+    ((elseIfCond, elseIfBody) : rest) -> do
+      let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
+      m
+        :< RT.DataElim
+          False
+          [ifCond]
+          ( RP.new
+              [ (V.fromList [(blur m, RP.Var true)], ifBody),
+                (V.fromList [(blur m, RP.Var false)], cont)
+              ]
+          )
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =
@@ -434,3 +475,8 @@ constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPat
 constructDefaultKeyMap m keyList = do
   names <- mapM (const Gensym.newTextForHole) keyList
   return $ Map.fromList $ zipWith (\k v -> (k, (m, RP.Var (Var v)))) keyList names
+
+locatorToName :: Hint -> T.Text -> App Name
+locatorToName m text = do
+  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
+  return $ Locator (gl, ll)
