@@ -211,6 +211,15 @@ toDoc term =
       D.join [D.text "attach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
     _ :< Option t -> do
       D.join [D.text "?", toDoc t]
+    _ :< Assert (_, message) e -> do
+      D.join
+        [ D.text "assert ",
+          D.text (T.pack (show message)),
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, toDoc e],
+          D.line,
+          D.text "}"
+        ]
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =

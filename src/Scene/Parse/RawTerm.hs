@@ -31,7 +31,6 @@ import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
-import Entity.Hint.Reify
 import Entity.IsExplicit
 import Entity.Key
 import Entity.Locator qualified as L
@@ -786,15 +785,8 @@ rawTermAssert = do
   keyword "assert"
   mText <- getCurrentHint
   message <- string
-  e@(mCond :< _) <- betweenBrace rawExpr
-  assert <- lift $ locatorToVarGlobal m coreSystemAssert
-  textType <- lift $ locatorToVarGlobal m coreText
-  let fullMessage = T.pack (toString m) <> "\nassertion failure: " <> message <> "\n"
-  return $
-    m
-      :< RT.piElim
-        assert
-        [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), RT.lam mCond [] e]
+  e <- betweenBrace rawExpr
+  return $ m :< RT.Assert (mText, message) e
 
 rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do

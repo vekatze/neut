@@ -293,6 +293,15 @@ discern nenv term =
       exceptVar <- locatorToVarGlobal m coreExcept
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ m :< RT.piElim exceptVar [unit, t]
+    m :< RT.Assert (mText, message) e@(mCond :< _) -> do
+      assert <- locatorToVarGlobal m coreSystemAssert
+      textType <- locatorToVarGlobal m coreText
+      let fullMessage = T.pack (Hint.toString m) <> "\nassertion failure: " <> message <> "\n"
+      discern nenv $
+        m
+          :< RT.piElim
+            assert
+            [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), RT.lam mCond [] e]
 
 foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
 foldByOp m op es =
