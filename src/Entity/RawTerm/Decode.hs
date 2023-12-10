@@ -399,7 +399,9 @@ nameToDoc :: N.Name -> D.Doc
 nameToDoc varOrLocator =
   case varOrLocator of
     N.Var var ->
-      D.text var
+      if isHole var
+        then D.text "_"
+        else D.text var
     N.Locator locator ->
       D.text $ Locator.reify locator
 
