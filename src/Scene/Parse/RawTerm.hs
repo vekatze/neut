@@ -740,7 +740,7 @@ rawExprBind binder = do
   -- e1 <- rawExpr
   e1 <- rawTermWith' m binder
   delimiter "in"
-  return $ \e2 -> m :< RT.piElim binder [e1, lam m [mxt] (modifier False e2)]
+  return $ \e2 -> m :< RT.piElim binder [e1, RT.lam m [mxt] (modifier False e2)]
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind mxt@(m, _, _) e cont =
@@ -757,19 +757,15 @@ rawTermFlowIntro :: Parser RT.RawTerm
 rawTermFlowIntro = do
   m <- getCurrentHint
   keyword "detach"
-  t <- lift $ Gensym.newPreHole (blur m)
-  detachVar <- lift $ locatorToVarGlobal m coreThreadDetach
-  e <- rawTermSimple
-  return $ m :< RT.piElim detachVar [t, lam m [] e]
+  e <- betweenBrace rawExpr
+  return $ m :< RT.Detach e
 
 rawTermFlowElim :: Parser RT.RawTerm
 rawTermFlowElim = do
   m <- getCurrentHint
   keyword "attach"
-  t <- lift $ Gensym.newPreHole (blur m)
-  attachVar <- lift $ locatorToVarGlobal m coreThreadAttach
-  e <- rawTermSimple
-  return $ m :< RT.piElim attachVar [t, e]
+  e <- betweenBrace rawExpr
+  return $ m :< RT.Attach e
 
 rawTermOption :: Parser RT.RawTerm
 rawTermOption = do
@@ -800,7 +796,7 @@ rawTermAssert = do
     m
       :< RT.piElim
         assert
-        [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), lam mCond [] e]
+        [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), RT.lam mCond [] e]
 
 rawTermPiElimOrSimple :: Parser RT.RawTerm
 rawTermPiElimOrSimple = do
@@ -982,10 +978,6 @@ rawTermFloat = do
   floatValue <- try float
   h <- lift $ Gensym.newPreHole m
   return $ m :< RT.Prim (WP.Value (WPV.Float h floatValue))
-
-lam :: Hint -> [RawBinder RT.RawTerm] -> RT.RawTerm -> RT.RawTerm
-lam m varList e =
-  m :< RT.PiIntro LK.Normal [] varList e
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =

@@ -4,6 +4,7 @@ module Entity.RawTerm
     DefInfo,
     TopDefInfo,
     TopDefHeader,
+    lam,
     piElim,
   )
 where
@@ -57,6 +58,8 @@ data RawTermF a
   | Tuple [a]
   | TupleIntro [a]
   | Admit
+  | Detach a
+  | Attach a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
@@ -70,3 +73,7 @@ type TopDefInfo =
 piElim :: a -> [a] -> RawTermF a
 piElim =
   PiElim False
+
+lam :: Hint -> [RawBinder RawTerm] -> RawTerm -> RawTerm
+lam m varList e =
+  m :< PiIntro Normal [] varList e

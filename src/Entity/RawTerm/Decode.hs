@@ -203,6 +203,12 @@ toDoc term =
       piElimToDoc (D.text "Tuple") es'
     _ :< Admit ->
       D.text "admit"
+    _ :< Detach e -> do
+      let e' = toDoc e
+      D.join [D.text "detach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
+    _ :< Attach e -> do
+      let e' = toDoc e
+      D.join [D.text "attach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =
