@@ -86,9 +86,7 @@ rawExprSeqOrTerm m = do
   choice
     [ do
         delimiter ";"
-        f <- lift Gensym.newTextForHole
-        unit <- lift $ locatorToVarGlobal m coreUnit
-        return $ Right $ \e2 -> bind (m, f, unit) e1 e2,
+        return $ Right $ \e2 -> m :< RT.Seq e1 e2,
       return $ Left e1
     ]
 

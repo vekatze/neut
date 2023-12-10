@@ -52,6 +52,7 @@ data RawTermF a
   | Resource DD.DefiniteDescription a a -- DD is only for printing
   | Use a [RawBinder a] a
   | If a a [(a, a)] a
+  | Seq a a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)

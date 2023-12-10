@@ -235,6 +235,10 @@ discern nenv term =
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
       discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
+    m :< RT.Seq e1 e2 -> do
+      f <- Gensym.newTextForHole
+      unit <- locatorToVarGlobal m coreUnit
+      discern nenv $ m :< RT.Let (m, f, unit) [] e1 e2
 
 foldIf ::
   Hint ->
@@ -480,3 +484,8 @@ locatorToName :: Hint -> T.Text -> App Name
 locatorToName m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
   return $ Locator (gl, ll)
+
+locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
+locatorToVarGlobal m text = do
+  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
+  return $ blur m :< RT.Var (Locator (gl, ll))

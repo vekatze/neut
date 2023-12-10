@@ -184,6 +184,8 @@ toDoc term =
           D.line,
           D.text "}"
         ]
+    _ :< Seq e1 e2 -> do
+      D.join [toDoc e1, D.text ";", D.line, toDoc e2]
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =
