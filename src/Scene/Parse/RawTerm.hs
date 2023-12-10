@@ -31,7 +31,6 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsExplicit
 import Entity.Key
-import Entity.Locator qualified as L
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Name
@@ -586,23 +585,7 @@ rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternListIntro = do
   m <- getCurrentHint
   patList <- betweenBracket $ commaList rawTermPattern
-  listNil <- lift $ Throw.liftEither $ DD.getLocatorPair m coreListNil
-  listCons <- lift $ locatorToName m coreListCons
-  return $ foldListAppPat m listNil listCons patList
-
-foldListAppPat ::
-  Hint ->
-  L.Locator ->
-  Name ->
-  [(Hint, RP.RawPattern)] ->
-  (Hint, RP.RawPattern)
-foldListAppPat m listNil listCons es =
-  case es of
-    [] ->
-      (m, RP.Var $ Locator listNil)
-    e : rest -> do
-      let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons (RP.Paren [e, rest']))
+  return (m, RP.ListIntro patList)
 
 rawTermPatternTupleIntro :: Parser (Hint, RP.RawPattern)
 rawTermPatternTupleIntro = do

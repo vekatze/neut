@@ -35,6 +35,7 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key
 import Entity.LamKind qualified as LK
+import Entity.Locator qualified as L
 import Entity.Name
 import Entity.NominalEnv
 import Entity.OS qualified as OS
@@ -596,6 +597,24 @@ discernPattern (m, pat) = do
                     args = patList'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
+    RP.ListIntro patList -> do
+      listNil <- Throw.liftEither $ DD.getLocatorPair m coreListNil
+      listCons <- locatorToName m coreListCons
+      discernPattern $ foldListAppPat m listNil listCons patList
+
+foldListAppPat ::
+  Hint ->
+  L.Locator ->
+  Name ->
+  [(Hint, RP.RawPattern)] ->
+  (Hint, RP.RawPattern)
+foldListAppPat m listNil listCons es =
+  case es of
+    [] ->
+      (m, RP.Var $ Locator listNil)
+    e : rest -> do
+      let rest' = foldListAppPat m listNil listCons rest
+      (m, RP.Cons listCons (RP.Paren [e, rest']))
 
 constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap m keyList = do

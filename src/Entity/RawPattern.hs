@@ -18,6 +18,7 @@ import Entity.Name
 data RawPattern
   = Var Name
   | Cons Name ConsArgs
+  | ListIntro [(Hint, RawPattern)]
   deriving (Show)
 
 data ConsArgs
