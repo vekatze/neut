@@ -209,6 +209,8 @@ toDoc term =
     _ :< Attach e -> do
       let e' = toDoc e
       D.join [D.text "attach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
+    _ :< Option t -> do
+      D.join [D.text "?", toDoc t]
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =

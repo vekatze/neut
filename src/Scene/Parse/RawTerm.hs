@@ -772,9 +772,7 @@ rawTermOption = do
   m <- getCurrentHint
   delimiter "?"
   t <- rawTermBasic
-  exceptVar <- lift $ locatorToVarGlobal m coreExcept
-  unit <- lift $ locatorToVarGlobal m coreUnit
-  return $ m :< RT.piElim exceptVar [unit, t]
+  return $ m :< RT.Option t
 
 rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do

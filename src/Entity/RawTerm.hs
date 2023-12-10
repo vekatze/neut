@@ -60,6 +60,7 @@ data RawTermF a
   | Admit
   | Detach a
   | Attach a
+  | Option a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)

@@ -289,6 +289,10 @@ discern nenv term =
       t <- Gensym.newPreHole (blur m)
       attachVar <- locatorToVarGlobal m coreThreadAttach
       discern nenv $ m :< RT.piElim attachVar [t, RT.lam m [] e]
+    m :< RT.Option t -> do
+      exceptVar <- locatorToVarGlobal m coreExcept
+      unit <- locatorToVarGlobal m coreUnit
+      discern nenv $ m :< RT.piElim exceptVar [unit, t]
 
 foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
 foldByOp m op es =
