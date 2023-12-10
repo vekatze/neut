@@ -62,6 +62,7 @@ data RawTermF a
   | Attach a
   | Option a
   | Assert (Hint, T.Text) a
+  | Introspect T.Text [(Maybe T.Text, a)]
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)

@@ -220,6 +220,15 @@ toDoc term =
           D.line,
           D.text "}"
         ]
+    _ :< Introspect key clauseList -> do
+      D.join
+        [ D.text "introspect ",
+          D.text key,
+          D.text " {",
+          D.join [D.line, listSeq $ map decodeIntrospectClause clauseList],
+          D.line,
+          D.text "}"
+        ]
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =
@@ -442,6 +451,14 @@ decodePrimOp op =
     P.PrimConvOp op' dom cod -> do
       D.join [D.text $ T.pack (show op') <> "-", primTypeToDoc dom, D.text "-", primTypeToDoc cod]
 
+decodeIntrospectClause :: (Maybe T.Text, RawTerm) -> D.Doc
+decodeIntrospectClause (mKey, body) = do
+  case mKey of
+    Just key -> do
+      D.join [D.text key, D.text " => ", D.line, toDoc body]
+    Nothing ->
+      D.join [D.text "default => ", D.line, toDoc body]
+
 decodePatternRowList :: [RP.RawPatternRow RawTerm] -> [D.Doc]
 decodePatternRowList =
   map decodePatternRow
@@ -451,10 +468,6 @@ decodePatternRow (patArgs, body) = do
   let patArgs' = map (decodePattern . snd) $ V.toList patArgs
   let body' = toDoc body
   D.join [commaSeqH patArgs', D.text " =>", D.line, body']
-
--- if isMultiLine [body']
---   then D.join [commaSeqH patArgs', D.text " =>", D.line, body']
---   else D.join [commaSeqH patArgs', D.text " => ", body']
 
 decodePattern :: RP.RawPattern -> D.Doc
 decodePattern pat = do

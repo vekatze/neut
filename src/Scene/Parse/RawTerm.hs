@@ -23,9 +23,7 @@ import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Arch qualified as Arch
 import Entity.BaseName qualified as BN
-import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
@@ -38,8 +36,6 @@ import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Name
 import Entity.Noema qualified as N
-import Entity.OS qualified as OS
-import Entity.Platform qualified as Platform
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
@@ -889,22 +885,8 @@ rawTermIntrospect = do
   m <- getCurrentHint
   keyword "introspect"
   key <- symbol
-  value <- lift $ getIntrospectiveValue m key
   clauseList <- betweenBrace $ manyList rawTermIntrospectiveClause
-  lift $ lookupIntrospectiveClause m value clauseList
-
-lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, RT.RawTerm)] -> App RT.RawTerm
-lookupIntrospectiveClause m value clauseList =
-  case clauseList of
-    [] ->
-      Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
-    (Just key, clause) : rest
-      | key == value ->
-          return clause
-      | otherwise ->
-          lookupIntrospectiveClause m value rest
-    (Nothing, clause) : _ ->
-      return clause
+  return $ m :< RT.Introspect key clauseList
 
 rawTermIntrospectiveClause :: Parser (Maybe T.Text, RT.RawTerm)
 rawTermIntrospectiveClause = do
@@ -914,21 +896,6 @@ rawTermIntrospectiveClause = do
   if c /= "default"
     then return (Just c, body)
     else return (Nothing, body)
-
-getIntrospectiveValue :: Hint -> T.Text -> App T.Text
-getIntrospectiveValue m key = do
-  bm <- Env.getBuildMode
-  case key of
-    "platform" -> do
-      return $ Platform.reify Platform.platform
-    "arch" ->
-      return $ Arch.reify (Platform.arch Platform.platform)
-    "os" ->
-      return $ OS.reify (Platform.os Platform.platform)
-    "build-mode" ->
-      return $ BM.reify bm
-    _ ->
-      Throw.raiseError m $ "no such introspective value is defined: " <> key
 
 rawTermSymbol :: Parser RT.RawTerm
 rawTermSymbol = do

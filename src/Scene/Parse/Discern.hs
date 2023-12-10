@@ -1,6 +1,7 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
+import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
@@ -17,10 +18,12 @@ import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.Annotation qualified as AN
+import Entity.Arch qualified as Arch
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
+import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
@@ -34,8 +37,10 @@ import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Name
 import Entity.NominalEnv
+import Entity.OS qualified as OS
 import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
+import Entity.Platform qualified as Platform
 import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
 import Entity.RawIdent hiding (isHole)
@@ -302,6 +307,38 @@ discern nenv term =
           :< RT.piElim
             assert
             [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), RT.lam mCond [] e]
+    m :< RT.Introspect key clauseList -> do
+      value <- getIntrospectiveValue m key
+      clause <- lookupIntrospectiveClause m value clauseList
+      discern nenv clause
+
+lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, RT.RawTerm)] -> App RT.RawTerm
+lookupIntrospectiveClause m value clauseList =
+  case clauseList of
+    [] ->
+      Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
+    (Just key, clause) : rest
+      | key == value ->
+          return clause
+      | otherwise ->
+          lookupIntrospectiveClause m value rest
+    (Nothing, clause) : _ ->
+      return clause
+
+getIntrospectiveValue :: Hint -> T.Text -> App T.Text
+getIntrospectiveValue m key = do
+  bm <- Env.getBuildMode
+  case key of
+    "platform" -> do
+      return $ Platform.reify Platform.platform
+    "arch" ->
+      return $ Arch.reify (Platform.arch Platform.platform)
+    "os" ->
+      return $ OS.reify (Platform.os Platform.platform)
+    "build-mode" ->
+      return $ BM.reify bm
+    _ ->
+      Throw.raiseError m $ "no such introspective value is defined: " <> key
 
 foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
 foldByOp m op es =
