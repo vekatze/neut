@@ -99,6 +99,62 @@ instance Show CmpOp where
       FFalse ->
         fcmp "false"
 
+getRep :: CmpOp -> T.Text
+getRep op =
+  case op of
+    Eq ->
+      "eq"
+    Ne ->
+      "ne"
+    SGt ->
+      "sgt"
+    SGe ->
+      "sge"
+    SLt ->
+      "slt"
+    SLe ->
+      "sle"
+    UGt ->
+      "ugt"
+    UGe ->
+      "uge"
+    ULt ->
+      "ult"
+    ULe ->
+      "ule"
+    FOEq ->
+      "oeq"
+    FONe ->
+      "one"
+    FOGt ->
+      "ogt"
+    FOGe ->
+      "oge"
+    FOLt ->
+      "olt"
+    FOLe ->
+      "ole"
+    FUEq ->
+      "ueq"
+    FUNe ->
+      "une"
+    FUGt ->
+      "ugt"
+    FUGe ->
+      "uge"
+    FULt ->
+      "ult"
+    FULe ->
+      "ule"
+    FOrd ->
+      "ord"
+    FUno ->
+      "uno"
+    FTrue ->
+      "true"
+    FFalse ->
+      "false"
+
 asIntCmpOp :: T.Text -> Maybe CmpOp
 asIntCmpOp name =
   case name of

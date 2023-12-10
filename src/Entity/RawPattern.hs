@@ -6,6 +6,7 @@ module Entity.RawPattern
     new,
     consRow,
     unconsRow,
+    toList,
   )
 where
 
@@ -42,3 +43,7 @@ unconsRow :: RawPatternMatrix a -> Maybe (RawPatternRow a, RawPatternMatrix a)
 unconsRow (MakeRawPatternMatrix mat) = do
   (headRow, rest) <- V.uncons mat
   return (headRow, MakeRawPatternMatrix rest)
+
+toList :: RawPatternMatrix a -> [RawPatternRow a]
+toList (MakeRawPatternMatrix mat) =
+  V.toList mat
