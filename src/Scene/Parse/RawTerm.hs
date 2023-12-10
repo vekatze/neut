@@ -51,33 +51,26 @@ rawExpr :: Parser RT.RawTerm
 rawExpr = do
   m <- getCurrentHint
   choice
-    [ do
-        thunk <- rawExprLet m
-        thunk <$> rawExpr,
-      do
-        termOrSeq <- rawExprSeqOrTerm m
-        case termOrSeq of
-          Left term ->
-            return term
-          Right k ->
-            k <$> rawExpr
+    [ rawExprLet m,
+      rawExprSeqOrTerm m
     ]
 
-rawExprLet :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
+rawExprLet :: Hint -> Parser RT.RawTerm
 rawExprLet m = do
   choice
     [ rawTermLet m,
       rawTermUse m
     ]
 
-rawExprSeqOrTerm :: Hint -> Parser (Either RT.RawTerm (RT.RawTerm -> RT.RawTerm))
+rawExprSeqOrTerm :: Hint -> Parser RT.RawTerm
 rawExprSeqOrTerm m = do
   e1 <- rawTerm
   choice
     [ do
         delimiter ";"
-        return $ Right $ \e2 -> m :< RT.Seq e1 e2,
-      return $ Left e1
+        e2 <- rawExpr
+        return $ m :< RT.Seq e1 e2,
+      return e1
     ]
 
 rawTerm :: Parser RT.RawTerm
@@ -179,7 +172,7 @@ rawTermKeyValuePair = do
         return (m, key, m :< RT.Var (Var key))
     ]
 
-rawTermLet :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
+rawTermLet :: Hint -> Parser RT.RawTerm
 rawTermLet mLet = do
   letKind <-
     choice
@@ -200,16 +193,18 @@ rawTermLet mLet = do
   delimiter "="
   e1 <- rawExpr
   delimiter "in"
-  return $ \e2 -> mLet :< RT.Let letKind mxt noeticVarList e1 e2
+  e2 <- rawExpr
+  return $ mLet :< RT.Let letKind mxt noeticVarList e1 e2
 
-rawTermUse :: Hint -> Parser (RT.RawTerm -> RT.RawTerm)
+rawTermUse :: Hint -> Parser RT.RawTerm
 rawTermUse m = do
   keyword "use"
   e <- rawTerm
   xs <- betweenBrace $ commaList preBinder
   delimiter "in"
   lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) xs
-  return $ \cont -> m :< RT.Use e xs cont
+  cont <- rawExpr
+  return $ m :< RT.Use e xs cont
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
