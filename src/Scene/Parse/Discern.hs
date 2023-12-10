@@ -27,6 +27,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
 import Entity.GlobalName qualified as GN
 import Entity.Hint
+import Entity.Hint.Reify qualified as Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Key
@@ -45,6 +46,8 @@ import Entity.RawTerm.Decode qualified as RT
 import Entity.Remark qualified as R
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
+import Entity.WeakPrim qualified as WP
+import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
 import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema
@@ -264,6 +267,20 @@ discern nenv term =
           discern nenv e
         _ ->
           discern nenv $ foldByOp m pairVar es
+    m :< RT.Admit -> do
+      admit <- locatorToVarGlobal m coreSystemAdmit
+      t <- Gensym.newPreHole (blur m)
+      textType <- locatorToVarGlobal m coreText
+      discern nenv $
+        m
+          :< RT.Annotation
+            R.Warning
+            (AN.Type ())
+            ( m
+                :< RT.piElim
+                  admit
+                  [t, m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (Hint.toString m) <> "\n")))]
+            )
 
 foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
 foldByOp m op es =

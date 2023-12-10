@@ -23,7 +23,6 @@ import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
-import Entity.Annotation qualified as Annot
 import Entity.Arch qualified as Arch
 import Entity.BaseName qualified as BN
 import Entity.BuildMode qualified as BM
@@ -50,7 +49,6 @@ import Entity.RawIdent
 import Entity.RawLamKind qualified as LK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
-import Entity.Remark
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Scene.Parse.Core
@@ -786,19 +784,7 @@ rawTermAdmit :: Parser RT.RawTerm
 rawTermAdmit = do
   m <- getCurrentHint
   keyword "admit"
-  admit <- lift $ locatorToVarGlobal m coreSystemAdmit
-  t <- lift $ Gensym.newPreHole (blur m)
-  textType <- lift $ locatorToVarGlobal m coreText
-  return $
-    m
-      :< RT.Annotation
-        Warning
-        (Annot.Type ())
-        ( m
-            :< RT.piElim
-              admit
-              [t, m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (toString m) <> "\n")))]
-        )
+  return $ m :< RT.Admit
 
 rawTermAssert :: Parser RT.RawTerm
 rawTermAssert = do

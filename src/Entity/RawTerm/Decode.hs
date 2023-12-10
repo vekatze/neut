@@ -201,6 +201,8 @@ toDoc term =
     _ :< TupleIntro es -> do
       let es' = map toDoc es
       piElimToDoc (D.text "Tuple") es'
+    _ :< Admit ->
+      D.text "admit"
 
 decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
 decodeElseIfList elseIfList =

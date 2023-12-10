@@ -56,6 +56,7 @@ data RawTermF a
   | Seq a a
   | Tuple [a]
   | TupleIntro [a]
+  | Admit
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
