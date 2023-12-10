@@ -90,6 +90,7 @@ toDoc term =
               Plain -> "let"
               Noetic -> "tie"
               Try -> "try"
+              Bind -> "bind"
       let mxt' = letArgToDoc mxt
       let noeticVarList' = decodeNoeticVarList noeticVarList
       let e' = toDoc e
@@ -269,6 +270,17 @@ toDoc term =
           mxs',
           D.text "{",
           D.nest D.indent $ D.join [D.line, toDoc body],
+          D.line,
+          D.text "}"
+        ]
+    _ :< With binder body -> do
+      let binder' = toDoc binder
+      let body' = toDoc body
+      D.join
+        [ D.text "with ",
+          binder',
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, body'],
           D.line,
           D.text "}"
         ]

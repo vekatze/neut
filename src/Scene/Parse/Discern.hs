@@ -242,6 +242,8 @@ discern nenv term =
                       )
                     ]
                 )
+        RT.Bind -> do
+          Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
           discernLet nenv m (mx, x, t) mys e1 (modifier False e2)
@@ -357,6 +359,26 @@ discern nenv term =
       let resultVar = m :< RT.Var (Var result)
       let retResult = foldr (\(binder, (mx, x)) acc -> bind binder (mx :< RT.Var (Var x)) acc) resultVar (zip holes mxs)
       discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var result), t) mxs body retResult
+    m :< RT.With binder body -> do
+      case body of
+        mLet :< RT.Let letKind mxt@(mPat, pat, t) mys e1 e2 -> do
+          let e1' = m :< RT.With binder e1
+          let e2' = m :< RT.With binder e2
+          case letKind of
+            RT.Bind -> do
+              (x, modifier) <- getContinuationModifier (mPat, pat)
+              discern nenv $ m :< RT.piElim binder [e1', RT.lam m [(mPat, x, t)] (modifier False e2')]
+            _ -> do
+              discern nenv $ mLet :< RT.Let letKind mxt mys e1' e2'
+        mSeq :< RT.Seq e1 e2 -> do
+          let e1' = m :< RT.With binder e1
+          let e2' = m :< RT.With binder e2
+          discern nenv $ mSeq :< RT.Seq e1' e2'
+        mUse :< RT.Use item vars cont -> do
+          let cont' = m :< RT.With binder cont
+          discern nenv $ mUse :< RT.Use item vars cont'
+        _ ->
+          discern nenv body
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =

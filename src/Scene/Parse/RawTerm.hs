@@ -34,7 +34,6 @@ import Entity.Key
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Name
-import Entity.Noema qualified as N
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
@@ -186,6 +185,7 @@ rawTermLet mLet = do
     choice
       [ keyword "let" >> return RT.Plain,
         keyword "try" >> return RT.Try,
+        keyword "bind" >> return RT.Bind,
         keyword "tie" >> return RT.Noetic
       ]
   (mx, patInner) <- rawTermPattern
@@ -210,20 +210,6 @@ rawTermUse m = do
   delimiter "in"
   lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) xs
   return $ \cont -> m :< RT.Use e xs cont
-
-getContinuationModifier :: (Hint, RP.RawPattern) -> Parser (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
-getContinuationModifier pat =
-  case pat of
-    (_, RP.Var (Var x))
-      | not (isConsName x) ->
-          return (x, \_ cont -> cont)
-    _ -> do
-      tmp <- lift Gensym.newTextForHole
-      return
-        ( tmp,
-          \isNoetic cont@(mCont :< _) ->
-            mCont :< RT.DataElim isNoetic [rawVar mCont (Var tmp)] (RP.new [(V.fromList [pat], cont)])
-        )
 
 rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
 rawTermLetVarAscription m = do
@@ -645,38 +631,8 @@ rawTermWith = do
   m <- getCurrentHint
   keyword "with"
   binder <- rawTerm
-  betweenBrace $ rawTermWith' m binder
-
-rawTermWith' :: Hint -> RT.RawTerm -> Parser RT.RawTerm
-rawTermWith' m binder = do
-  choice
-    [ do
-        thunk <- rawExprLet m
-        thunk <$> rawTermWith' m binder,
-      do
-        thunk <- rawExprBind binder
-        thunk <$> rawTermWith' m binder,
-      do
-        termOrThunk <- rawExprSeqOrTerm m
-        case termOrThunk of
-          Left term ->
-            return term
-          Right thunk -> do
-            thunk <$> rawTermWith' m binder
-    ]
-
-rawExprBind :: RT.RawTerm -> Parser (RT.RawTerm -> RT.RawTerm)
-rawExprBind binder = do
-  m <- getCurrentHint
-  keyword "bind"
-  pat@(mx, _) <- rawTermPattern
-  (x, modifier) <- getContinuationModifier pat
-  t <- rawTermLetVarAscription mx
-  let mxt = (mx, x, t)
-  delimiter "="
-  e1 <- rawTermWith' m binder
-  delimiter "in"
-  return $ \e2 -> m :< RT.piElim binder [e1, RT.lam m [mxt] (modifier False e2)]
+  body <- betweenBrace rawExpr
+  return $ m :< RT.With binder body
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, t) e cont =

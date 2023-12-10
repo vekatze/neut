@@ -66,6 +66,7 @@ data RawTermF a
   | Assert (Hint, T.Text) a
   | Introspect T.Text [(Maybe T.Text, a)]
   | Idealize [(Hint, T.Text)] a
+  | With a a
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
@@ -88,3 +89,4 @@ data LetKind
   = Plain
   | Noetic
   | Try
+  | Bind
