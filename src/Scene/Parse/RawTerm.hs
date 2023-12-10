@@ -732,7 +732,6 @@ rawExprBind binder = do
   t <- rawTermLetVarAscription mx
   let mxt = (mx, x, t)
   delimiter "="
-  -- e1 <- rawExpr
   e1 <- rawTermWith' m binder
   delimiter "in"
   return $ \e2 -> m :< RT.piElim binder [e1, RT.lam m [mxt] (modifier False e2)]
