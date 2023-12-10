@@ -244,6 +244,36 @@ discern nenv term =
       boolFalse <- locatorToName (blur m) coreBoolFalse
       unitUnit <- locatorToVarGlobal m coreUnitUnit
       discern nenv $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
+    m :< RT.Tuple ts -> do
+      unitVar <- locatorToName m coreUnit
+      pairVar <- locatorToName m corePair
+      case ts of
+        [] ->
+          discern nenv $ blur m :< RT.Var unitVar
+        [e] ->
+          discern nenv e
+        _ ->
+          discern nenv $ foldByOp m pairVar ts
+    m :< RT.TupleIntro es -> do
+      unitVar <- locatorToName m coreUnitUnit
+      pairVar <- locatorToName m corePairPair
+      case es of
+        [] ->
+          discern nenv $ blur m :< RT.Var unitVar
+        [e] ->
+          discern nenv e
+        _ ->
+          discern nenv $ foldByOp m pairVar es
+
+foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
+foldByOp m op es =
+  case es of
+    [] ->
+      error "RawTerm.foldByOp: invalid argument"
+    [e] ->
+      e
+    e : rest ->
+      m :< RT.piElim (blur m :< RT.Var op) [e, foldByOp m op rest]
 
 foldIf ::
   Hint ->

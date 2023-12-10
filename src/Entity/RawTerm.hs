@@ -54,6 +54,8 @@ data RawTermF a
   | If a a [(a, a)] a
   | When a a
   | Seq a a
+  | Tuple [a]
+  | TupleIntro [a]
 
 type DefInfo =
   ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)

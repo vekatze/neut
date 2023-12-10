@@ -340,16 +340,6 @@ rawTermHole = do
   keyword "_"
   lift $ Gensym.newPreHole m
 
-foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
-foldByOp m op es =
-  case es of
-    [] ->
-      error "RawTerm.foldByOp: invalid argument"
-    [e] ->
-      e
-    e : rest ->
-      m :< RT.piElim (rawVar (blur m) op) [e, foldByOp m op rest]
-
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do
   functionVar <- var
@@ -705,31 +695,15 @@ rawTermTuple :: Parser RT.RawTerm
 rawTermTuple = do
   m <- getCurrentHint
   keyword "tuple"
-  es <- betweenParen $ commaList rawExpr
-  unitVar <- lift $ locatorToName m coreUnit
-  pairVar <- lift $ locatorToName m corePair
-  case es of
-    [] ->
-      return $ rawVar (blur m) unitVar
-    [e] ->
-      return e
-    _ ->
-      return $ foldByOp m pairVar es
+  ts <- betweenParen $ commaList rawExpr
+  return $ m :< RT.Tuple ts
 
 rawTermTupleIntro :: Parser RT.RawTerm
 rawTermTupleIntro = do
   m <- getCurrentHint
   keyword "Tuple"
   es <- betweenParen $ commaList rawExpr
-  unitVar <- lift $ locatorToName m coreUnitUnit
-  pairVar <- lift $ locatorToName m corePairPair
-  case es of
-    [] ->
-      return $ rawVar m unitVar
-    [e] ->
-      return e
-    _ ->
-      return $ foldByOp m pairVar es
+  return $ m :< RT.TupleIntro es
 
 rawTermWith :: Parser RT.RawTerm
 rawTermWith = do
