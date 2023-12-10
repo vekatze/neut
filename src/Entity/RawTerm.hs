@@ -57,6 +57,7 @@ data RawTermF a
   | Seq a a
   | Tuple [a]
   | TupleIntro [a]
+  | ListIntro [a]
   | Admit
   | Detach a
   | Attach a

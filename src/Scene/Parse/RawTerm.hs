@@ -843,18 +843,8 @@ preAscription' = do
 rawTermListIntro :: Parser RT.RawTerm
 rawTermListIntro = do
   m <- getCurrentHint
-  es <- betweenBracket $ commaList rawTerm
-  listNil <- lift $ locatorToVarGlobal m coreListNil
-  listCons <- lift $ locatorToVarGlobal m coreListCons
-  return $ foldListApp m listNil listCons es
-
-foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
-foldListApp m listNil listCons es =
-  case es of
-    [] ->
-      listNil
-    e : rest ->
-      m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
+  es <- betweenBracket $ commaList rawExpr
+  return $ m :< RT.ListIntro es
 
 rawTermPiElimExact :: Parser RT.RawTerm
 rawTermPiElimExact = do

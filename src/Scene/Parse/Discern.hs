@@ -272,6 +272,10 @@ discern nenv term =
           discern nenv e
         _ ->
           discern nenv $ foldByOp m pairVar es
+    m :< RT.ListIntro es -> do
+      listNil <- locatorToVarGlobal m coreListNil
+      listCons <- locatorToVarGlobal m coreListCons
+      discern nenv $ foldListApp m listNil listCons es
     m :< RT.Admit -> do
       admit <- locatorToVarGlobal m coreSystemAdmit
       t <- Gensym.newPreHole (blur m)
@@ -311,6 +315,14 @@ discern nenv term =
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value clauseList
       discern nenv clause
+
+foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
+foldListApp m listNil listCons es =
+  case es of
+    [] ->
+      listNil
+    e : rest ->
+      m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
 
 lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe T.Text, RT.RawTerm)] -> App RT.RawTerm
 lookupIntrospectiveClause m value clauseList =

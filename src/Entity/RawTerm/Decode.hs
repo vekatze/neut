@@ -201,6 +201,11 @@ toDoc term =
     _ :< TupleIntro es -> do
       let es' = map toDoc es
       piElimToDoc (D.text "Tuple") es'
+    _ :< ListIntro es -> do
+      let es' = map toDoc es
+      if isMultiLine es'
+        then D.join [D.text "[", D.nest D.indent $ D.join [D.line, commaSeqV es'], D.line, D.text "]"]
+        else D.join [D.text "[", commaSeqH es', D.text "]"]
     _ :< Admit ->
       D.text "admit"
     _ :< Detach e -> do
