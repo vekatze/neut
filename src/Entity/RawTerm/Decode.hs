@@ -44,9 +44,9 @@ toDoc term =
       if isMultiLine [cod']
         then D.join [impArgs', expArgs', arrow, D.line, cod']
         else D.join [impArgs', expArgs', arrow, cod']
-    _ :< PiIntro impArgs expArgs body -> do
-      let impArgs' = impArgsToDoc impArgs
-      let expArgs' = expPiIntroArgsToDoc expArgs
+    _ :< PiIntro _ impArgs _ _ expArgs _ _ body -> do
+      let impArgs' = impArgsToDoc $ map f impArgs
+      let expArgs' = expPiIntroArgsToDoc $ map f expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
     _ :< PiIntroFix (_, k) impArgs expArgs cod body -> do
       let impArgs' = impArgsToDoc impArgs
@@ -309,8 +309,8 @@ piIntroArgToDoc (_, x, _, _, t) = do
     _ -> do
       D.join [x', typeAnnot t]
 
-letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
-letArgToDoc (_, x, _, _, t) = do
+letArgToDoc :: (a, RP.RawPattern, C, C, (RawTerm, C)) -> D.Doc
+letArgToDoc (_, x, _, _, (t, _)) = do
   let x' = decodePattern x
   case t of
     _ :< Hole {} ->

@@ -37,7 +37,7 @@ data RawTermF a
   = Tau
   | Var Name
   | Pi C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
-  | PiIntro [RawBinder a] [RawBinder a] a
+  | PiIntro C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
   | PiIntroFix (Hint, RawIdent) [RawBinder a] [RawBinder a] a a
   | PiElim IsExplicit a [a]
   | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
@@ -47,7 +47,7 @@ data RawTermF a
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Embody a
-  | Let LetKind (Hint, RP.RawPattern, C, C, a) [(Hint, RawIdent)] a a
+  | Let LetKind (Hint, RP.RawPattern, C, C, (a, C)) [(Hint, RawIdent)] a a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
@@ -79,9 +79,9 @@ piElim :: a -> [a] -> RawTermF a
 piElim =
   PiElim False
 
-lam :: Hint -> [RawBinder RawTerm] -> RawTerm -> RawTerm
+lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =
-  m :< PiIntro [] varList e
+  m :< PiIntro [] [] [] [] varList [] [] e
 
 data LetKind
   = Plain

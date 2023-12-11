@@ -157,10 +157,10 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro impArgs expArgs e -> do
+    m :< RT.PiIntro _ impArgs _ _ expArgs _ _ e -> do
       lamID <- Gensym.newCount
-      (impArgs', nenv') <- discernBinder nenv impArgs
-      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      (impArgs', nenv') <- discernBinder nenv $ map f impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
     m :< RT.PiIntroFix (mx, x) impArgs expArgs codType e -> do
@@ -213,7 +213,7 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind (mx, pat, c1, c2, t) mys e1@(m1 :< _) e2@(m2 :< _) -> do
+    m :< RT.Let letKind (mx, pat, c1, c2, (t, _)) mys e1@(m1 :< _) e2@(m2 :< _) -> do
       case letKind of
         RT.Try -> do
           eitherTypeInner <- locatorToVarGlobal mx coreExcept
@@ -277,7 +277,7 @@ discern nenv term =
     m :< RT.Seq e1 e2 -> do
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
-      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var h), [], [], unit) [] e1 e2
+      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var h), [], [], (unit, [])) [] e1 e2
     m :< RT.When whenCond whenBody -> do
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
@@ -368,7 +368,7 @@ ascribe m t e = do
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, c1, c2, t) e cont =
-  m :< RT.Let RT.Plain (m, RP.Var (Var x), c1, c2, t) [] e cont
+  m :< RT.Let RT.Plain (m, RP.Var (Var x), c1, c2, (t, [])) [] e cont
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =

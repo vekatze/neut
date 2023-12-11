@@ -132,10 +132,10 @@ rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
   m <- getCurrentHint
   (c1, (impArgs, c2)) <- parseImplicitArgs
-  expArgs <- map f <$> argList preBinder
-  delimiter "=>"
+  (c3, (expArgs, c4)) <- argList' preBinder
+  c5 <- delimiter' "=>"
   (e, c) <- rawExpr
-  return (m :< RT.PiIntro (map f impArgs) expArgs e, c)
+  return (m :< RT.PiIntro c1 impArgs c2 c3 expArgs c4 c5 e, c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
@@ -149,8 +149,8 @@ rawTermPiOrConsOrAscOrBasic = do
         return (m :< RT.Pi [] [] [] [] [(m, x, [], [], basic)] [] cArrow cod, c),
       do
         delimiter ":"
-        (t, _) <- rawTerm
-        ascribe m t basic,
+        tc <- rawTerm
+        ascribe m tc basic,
       return basic
     ]
 
@@ -200,28 +200,28 @@ rawTermUse m = do
   (cont, _) <- rawExpr
   return (m :< RT.Use e (map f xs) cont, [])
 
-rawTermLetVarAscription :: Hint -> Parser (RT.RawTerm, C)
+rawTermLetVarAscription :: Hint -> Parser ((RT.RawTerm, C), C)
 rawTermLetVarAscription m = do
-  (mt, c) <- rawTermLetVarAscription'
-  case mt of
-    Just t ->
-      return (t, c)
+  (mtc, c) <- rawTermLetVarAscription'
+  case mtc of
+    Just tc ->
+      return (tc, c)
     Nothing -> do
       t <- lift $ Gensym.newPreHole m
-      return (t, c)
+      return ((t, []), c)
 
-ascribe :: Hint -> RT.RawTerm -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
+ascribe :: Hint -> (RT.RawTerm, C) -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 ascribe m t (e, c) = do
   tmp <- lift Gensym.newTextForHole
   return (bind (m, tmp, [], [], t) e (rawVar m (Var tmp)), c)
 
-rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm, C)
+rawTermLetVarAscription' :: Parser (Maybe (RT.RawTerm, C), C)
 rawTermLetVarAscription' =
   choice
     [ try $ do
         c <- delimiter' ":"
-        (t, _) <- rawTerm
-        return (Just t, c),
+        tc <- rawTerm
+        return (Just tc, c),
       return (Nothing, [])
     ]
 
@@ -280,7 +280,7 @@ parseTopDefHeader :: Parser RT.TopDefHeader
 parseTopDefHeader = do
   m <- getCurrentHint
   funcBaseName <- baseName
-  (c1, (impDomArgList, c2)) <- parseImplicitArgs
+  (_, (impDomArgList, _)) <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) expDomArgList
   codType <- parseDefInfoCod m
@@ -293,7 +293,7 @@ parseDeclareItem nameLifter = do
   (isConstLike, impArgs, expArgs) <-
     choice
       [ do
-          (c1, (impArgs, c2)) <- parseImplicitArgs
+          (_, (impArgs, _)) <- parseImplicitArgs
           choice
             [ do
                 expDomArgList <- argSeqOrList preBinder
@@ -565,7 +565,7 @@ rawTermWith = do
   (_, ((body, _), c2)) <- betweenBrace' rawExpr
   return (m :< RT.With binder body, c2)
 
-bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind :: RawBinder (RT.RawTerm, C) -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, c1, c2, t) e cont =
   m :< RT.Let RT.Plain (m, RP.Var (Var x), c1, c2, t) [] e cont
 
