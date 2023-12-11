@@ -257,6 +257,13 @@ betweenAngle :: Parser a -> Parser a
 betweenAngle =
   between (delimiter "<") (delimiter ">")
 
+betweenAngle' :: Parser a -> Parser (C, (a, C))
+betweenAngle' p = do
+  c1 <- delimiter' "<"
+  v <- p
+  c2 <- delimiter' ">"
+  return (c1, (v, c2))
+
 commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")

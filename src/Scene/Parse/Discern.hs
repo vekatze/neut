@@ -23,6 +23,7 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.BuildMode qualified as BM
+import Entity.C
 import Entity.Const
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
@@ -89,8 +90,8 @@ discernStmt stmt = do
 
 discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
-  (impArgs', nenv) <- discernBinder empty (RDE.impArgs decl)
-  (expArgs', nenv') <- discernBinder nenv (RDE.expArgs decl)
+  (impArgs', nenv) <- discernBinder empty (map f $ RDE.impArgs decl)
+  (expArgs', nenv') <- discernBinder nenv (map f $ RDE.expArgs decl)
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
   cod' <- discern nenv' (RDE.cod decl)
   return $
@@ -151,9 +152,9 @@ discern nenv term =
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
-    m :< RT.Pi impArgs expArgs t -> do
-      (impArgs', nenv') <- discernBinder nenv impArgs
-      (expArgs', nenv'') <- discernBinder nenv' expArgs
+    m :< RT.Pi _ impArgs _ _ expArgs _ _ t -> do
+      (impArgs', nenv') <- discernBinder nenv $ map f impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
@@ -276,9 +277,9 @@ discern nenv term =
       boolFalse <- locatorToName (blur m) coreBoolFalse
       discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
     m :< RT.Seq e1 e2 -> do
-      f <- Gensym.newTextForHole
+      h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
-      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var f), [], [], unit) [] e1 e2
+      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var h), [], [], unit) [] e1 e2
     m :< RT.When whenCond whenBody -> do
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
@@ -673,3 +674,7 @@ locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
+
+f :: RawBinder (a, C) -> RawBinder a
+f (m, x, c1, c2, (t, _)) =
+  (m, x, c1, c2, t)

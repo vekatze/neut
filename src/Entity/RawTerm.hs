@@ -37,7 +37,7 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var Name
-  | Pi [RawBinder a] [RawBinder a] a
+  | Pi C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
   | PiIntro (RawLamKind a) [RawBinder a] [RawBinder a] a
   | PiElim IsExplicit a [a]
   | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
@@ -67,7 +67,7 @@ data RawTermF a
   | With a a
 
 type DefInfo =
-  ((Hint, T.Text), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm, RawTerm)
+  ((Hint, T.Text), [RawBinder (RawTerm, C)], [RawBinder (RawTerm, C)], RawTerm, RawTerm)
 
 type TopDefHeader =
   ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)

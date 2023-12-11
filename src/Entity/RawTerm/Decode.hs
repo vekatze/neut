@@ -37,9 +37,9 @@ toDoc term =
       D.text "tau"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
-    _ :< Pi impArgs expArgs cod -> do
-      let impArgs' = impArgsToDoc impArgs
-      let expArgs' = expPiArgsToDoc expArgs
+    _ :< Pi _ impArgs _ _ expArgs _ _ cod -> do
+      let impArgs' = impArgsToDoc $ map f impArgs
+      let expArgs' = expPiArgsToDoc $ map f expArgs
       let cod' = toDoc cod
       let arrow = if isMultiLine [impArgs', expArgs'] then D.join [D.line, D.text "->"] else D.text " -> "
       if isMultiLine [cod']
@@ -51,8 +51,8 @@ toDoc term =
       case lamKind of
         Normal ->
           D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-        Fix (_, f, _, _, cod) -> do
-          D.join [D.text "define ", D.text f, impArgs', expArgs', typeAnnot cod, D.text " ", recBody body]
+        Fix (_, k, _, _, cod) -> do
+          D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot cod, D.text " ", recBody body]
     _ :< PiElim isExplicit e args -> do
       let prefix = if isExplicit then D.text "call " else D.Nil
       let e' = toDoc e
@@ -569,3 +569,7 @@ kvToDoc' (name, v) = do
   if isMultiLine [v']
     then D.join [D.text name, D.text " =", D.nest D.indent $ D.join [D.line, v']]
     else D.join [D.text name, D.text " = ", v']
+
+f :: RawBinder (a, C) -> RawBinder a
+f (m, x, c1, c2, (t, _)) =
+  (m, x, c1, c2, t)

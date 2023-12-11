@@ -123,36 +123,36 @@ rawTermSimple = do
 rawTermPiGeneral :: Parser (RT.RawTerm, C)
 rawTermPiGeneral = do
   m <- getCurrentHint
-  impArgs <- map f <$> parseImplicitArgs
-  expArgs <- map f <$> argList (choice [try preAscription, typeWithoutIdent])
-  delimiter "->"
+  (c1, (impArgs, c2)) <- parseImplicitArgs
+  expArgs <- argList (choice [try preAscription, typeWithoutIdent])
+  cArrow <- delimiter' "->"
   (cod, c) <- rawTerm
-  return (m :< RT.Pi impArgs expArgs cod, c)
+  return (m :< RT.Pi c1 impArgs c2 [] expArgs [] cArrow cod, c)
 
 rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
   m <- getCurrentHint
-  impArgs <- map f <$> parseImplicitArgs
+  (c1, (impArgs, c2)) <- parseImplicitArgs
   expArgs <- map f <$> argList preBinder
   delimiter "=>"
   (e, c) <- rawExpr
-  return (m :< RT.PiIntro LK.Normal impArgs expArgs e, c)
+  return (m :< RT.PiIntro LK.Normal (map f impArgs) expArgs e, c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
   m <- getCurrentHint
-  (basic, _) <- rawTermBasic
+  basic <- rawTermBasic
   choice
     [ do
-        delimiter "->"
+        cArrow <- delimiter' "->"
         x <- lift Gensym.newTextForHole
         (cod, c) <- rawTerm
-        return (m :< RT.Pi [] [(m, x, [], [], basic)] cod, c),
+        return (m :< RT.Pi [] [] [] [] [(m, x, [], [], basic)] [] cArrow cod, c),
       do
         delimiter ":"
         (t, _) <- rawTerm
-        ascribe m t (basic, []),
-      return (basic, [])
+        ascribe m t basic,
+      return basic
     ]
 
 rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
@@ -265,11 +265,11 @@ rawTermHole = do
 parseDefInfo :: Hint -> Parser RT.DefInfo
 parseDefInfo m = do
   functionVar <- var
-  impArgs <- parseImplicitArgs
+  (_, (impArgs, _)) <- parseImplicitArgs
   expArgs <- argList preBinder
   codType <- parseDefInfoCod m
   e <- betweenBrace rawExpr
-  return (fst functionVar, map f impArgs, map f expArgs, fst codType, fst e)
+  return (fst functionVar, impArgs, expArgs, fst codType, fst e)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
@@ -281,7 +281,7 @@ parseTopDefHeader :: Parser RT.TopDefHeader
 parseTopDefHeader = do
   m <- getCurrentHint
   funcBaseName <- baseName
-  impDomArgList <- parseImplicitArgs
+  (c1, (impDomArgList, c2)) <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) expDomArgList
   codType <- parseDefInfoCod m
@@ -294,11 +294,11 @@ parseDeclareItem nameLifter = do
   (isConstLike, impArgs, expArgs) <-
     choice
       [ do
-          impArgs <- map f <$> parseImplicitArgs
+          (c1, (impArgs, c2)) <- parseImplicitArgs
           choice
             [ do
                 expDomArgList <- argSeqOrList preBinder
-                return (False, impArgs, map f expDomArgList),
+                return (False, impArgs, expDomArgList),
               return (True, impArgs, [])
             ],
         do
@@ -308,16 +308,16 @@ parseDeclareItem nameLifter = do
   cod <- fst <$> rawTerm
   return RDE.RawDecl {loc, name, isConstLike, impArgs, expArgs, cod}
 
-parseImplicitArgs :: Parser [RawBinder (RT.RawTerm, C)]
+parseImplicitArgs :: Parser (C, ([RawBinder (RT.RawTerm, C)], C))
 parseImplicitArgs =
   choice
     [ parseImplicitArgs',
-      return []
+      return ([], ([], []))
     ]
 
-parseImplicitArgs' :: Parser [RawBinder (RT.RawTerm, C)]
+parseImplicitArgs' :: Parser (C, ([RawBinder (RT.RawTerm, C)], C))
 parseImplicitArgs' =
-  betweenAngle (commaList preBinder)
+  betweenAngle' (commaList preBinder)
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =
@@ -346,7 +346,7 @@ rawTermDefine = do
   m <- getCurrentHint
   keyword "define"
   ((mFun, functionName), impArgs, expArgs, codType, e) <- parseDefInfo m
-  return (m :< RT.PiIntro (LK.Fix (mFun, functionName, [], [], codType)) impArgs expArgs e, [])
+  return (m :< RT.PiIntro (LK.Fix (mFun, functionName, [], [], codType)) (map f impArgs) (map f expArgs) e, [])
 
 rawTermMagic :: Parser (RT.RawTerm, C)
 rawTermMagic = do
