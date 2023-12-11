@@ -151,19 +151,19 @@ discern nenv term =
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
-    m :< RT.Pi _ impArgs _ _ expArgs _ _ t -> do
+    m :< RT.Pi (_, (impArgs, _)) (_, (expArgs, _)) _ t -> do
       (impArgs', nenv') <- discernBinder nenv $ map f impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro _ impArgs _ _ expArgs _ _ e -> do
+    m :< RT.PiIntro (_, (impArgs, _)) (_, (expArgs, _)) _ e -> do
       lamID <- Gensym.newCount
       (impArgs', nenv') <- discernBinder nenv $ map f impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ (mx, x) _ _ impArgs _ _ expArgs _ _ codType e -> do
+    m :< RT.PiIntroFix _ ((mx, x), _, (_, (impArgs, _)), (_, (expArgs, _)), _, codType, e) -> do
       (impArgs', nenv') <- discernBinder nenv $ map f impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       codType' <- discern nenv'' $ fst codType

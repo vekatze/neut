@@ -36,9 +36,9 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var Name
-  | Pi C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
-  | PiIntro C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
-  | PiIntroFix C (Hint, RawIdent) C C [RawBinder (a, C)] C C [RawBinder (a, C)] C C (a, C) a
+  | Pi (Args a) (Args a) C a
+  | PiIntro (Args a) (Args a) C a
+  | PiIntroFix C (DefInfo a)
   | PiElim IsExplicit a [a]
   | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | PiElimExact a
@@ -66,8 +66,8 @@ data RawTermF a
   | Introspect T.Text [(Maybe T.Text, a)]
   | With a a
 
-type DefInfo =
-  ((Hint, RawIdent), C, C, [RawBinder (RawTerm, C)], C, C, [RawBinder (RawTerm, C)], C, C, (RawTerm, C), RawTerm)
+type DefInfo a =
+  ((Hint, RawIdent), C, Args a, Args a, C, (a, C), a)
 
 type TopDefHeader =
   ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
@@ -81,7 +81,10 @@ piElim =
 
 lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =
-  m :< PiIntro [] [] [] [] varList [] [] e
+  m :< PiIntro ([], ([], [])) ([], (varList, [])) [] e
+
+type Args a =
+  (C, ([RawBinder (a, C)], C))
 
 data LetKind
   = Plain

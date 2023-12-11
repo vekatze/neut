@@ -36,7 +36,7 @@ toDoc term =
       D.text "tau"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
-    _ :< Pi _ impArgs _ _ expArgs _ _ cod -> do
+    _ :< Pi (_, (impArgs, _)) (_, (expArgs, _)) _ cod -> do
       let impArgs' = impArgsToDoc $ map f impArgs
       let expArgs' = expPiArgsToDoc $ map f expArgs
       let cod' = toDoc cod
@@ -44,11 +44,11 @@ toDoc term =
       if isMultiLine [cod']
         then D.join [impArgs', expArgs', arrow, D.line, cod']
         else D.join [impArgs', expArgs', arrow, cod']
-    _ :< PiIntro _ impArgs _ _ expArgs _ _ body -> do
+    _ :< PiIntro (_, (impArgs, _)) (_, (expArgs, _)) _ body -> do
       let impArgs' = impArgsToDoc $ map f impArgs
       let expArgs' = expPiIntroArgsToDoc $ map f expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-    _ :< PiIntroFix _ (_, k) _ _ impArgs _ _ expArgs _ _ cod body -> do
+    _ :< PiIntroFix _ ((_, k), _, (_, (impArgs, _)), (_, (expArgs, _)), _, cod, body) -> do
       let impArgs' = impArgsToDoc $ map f impArgs
       let expArgs' = expPiIntroArgsToDoc $ map f expArgs
       D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
