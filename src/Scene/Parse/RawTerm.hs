@@ -492,16 +492,7 @@ rawTermPatternRow patternSize = do
 
 rawTermPattern :: Parser (Hint, RP.RawPattern)
 rawTermPattern = do
-  m <- getCurrentHint
-  headPat <- rawTermPatternBasic
-  choice
-    [ try $ do
-        delimiter "::"
-        pat <- rawTermPattern
-        listCons <- lift $ locatorToName m coreListCons
-        return (m, RP.Cons listCons (RP.Paren [headPat, pat])),
-      return headPat
-    ]
+  rawTermPatternBasic
 
 rawTermPatternBasic :: Parser (Hint, RP.RawPattern)
 rawTermPatternBasic =
