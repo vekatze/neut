@@ -32,7 +32,6 @@ import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
-import Entity.IsExplicit
 import Entity.Key
 import Entity.LowType qualified as LT
 import Entity.Magic qualified as M
@@ -623,29 +622,28 @@ rawTermPiElimOrSimple = do
         [ do
             keyword "of"
             (_, (rowList, c2)) <- betweenBrace' $ bulletListOrCommaSeq rawTermKeyValuePair
-            return (m :< RT.PiElimByKey False name rowList, c2),
-          rawTermPiElimCont False m ec
+            return (m :< RT.PiElimByKey name rowList, c2),
+          rawTermPiElimCont m ec
         ]
     _ -> do
-      rawTermPiElimCont False m ec
+      rawTermPiElimCont m ec
 
-rawTermPiElimCont :: IsExplicit -> Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-rawTermPiElimCont isExplicit m ec = do
+rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
+rawTermPiElimCont m ec = do
   argListList <- many $ argList' rawExpr
-  foldPiElim isExplicit m ec argListList
+  foldPiElim m ec argListList
 
 foldPiElim ::
-  IsExplicit ->
   Hint ->
   (RT.RawTerm, C) ->
   [(C, ([(RT.RawTerm, C)], C))] ->
   Parser (RT.RawTerm, C)
-foldPiElim isExplicit m (e, _) argListList =
+foldPiElim m (e, _) argListList =
   case argListList of
     [] ->
       return (e, [])
     (_, (args, c2)) : rest ->
-      foldPiElim isExplicit m (m :< RT.PiElim isExplicit e (map fst args), c2) rest
+      foldPiElim m (m :< RT.PiElim e (map fst args), c2) rest
 
 preBinder :: Parser (RawBinder (RT.RawTerm, C))
 preBinder =
@@ -698,11 +696,11 @@ rawTermPiElimExplicit = do
         [ do
             keyword "of"
             rowList <- betweenBrace $ bulletListOrCommaSeq rawTermKeyValuePair
-            return (m :< RT.PiElimByKey True name rowList, []),
-          rawTermPiElimCont True m ec
+            return (m :< RT.PiElimByKey name rowList, []),
+          rawTermPiElimCont m ec
         ]
     _ -> do
-      rawTermPiElimCont True m ec
+      rawTermPiElimCont m ec
 
 rawTermIntrospect :: Parser (RT.RawTerm, C)
 rawTermIntrospect = do

@@ -20,7 +20,6 @@ import Entity.C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
-import Entity.IsExplicit (IsExplicit)
 import Entity.Key
 import Entity.Magic
 import Entity.Name
@@ -39,8 +38,8 @@ data RawTermF a
   | Pi (Args a) (Args a) C a
   | PiIntro (Args a) (Args a) C a
   | PiIntroFix C (DefInfo a)
-  | PiElim IsExplicit a [a]
-  | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | PiElim a [a]
+  | PiElimByKey Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | PiElimExact a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
@@ -77,7 +76,7 @@ type TopDefInfo =
 
 piElim :: a -> [a] -> RawTermF a
 piElim =
-  PiElim False
+  PiElim
 
 lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =

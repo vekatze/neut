@@ -174,11 +174,11 @@ discern nenv term =
       Tag.insertBinder mxt'
       lamID <- Gensym.newCount
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
-    m :< RT.PiElim isExplicit e es -> do
+    m :< RT.PiElim e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e
-      return $ m :< WT.PiElim isExplicit e' es'
-    m :< RT.PiElimByKey isExplicit name kvs -> do
+      return $ m :< WT.PiElim False e' es'
+    m :< RT.PiElimByKey name kvs -> do
       (dd, _) <- resolveName m name
       let (_, ks, vs) = unzip3 kvs
       ensureFieldLinearity m ks S.empty S.empty
@@ -186,7 +186,7 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
-      return $ m :< WT.PiElim isExplicit (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+      return $ m :< WT.PiElim False (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact e -> do
       e' <- discern nenv e
       return $ m :< WT.PiElimExact e'
