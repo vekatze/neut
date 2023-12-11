@@ -261,14 +261,14 @@ rawTermHole = do
   h <- lift $ Gensym.newPreHole m
   return (h, c)
 
-parseDefInfo :: Hint -> Parser RT.DefInfo
+parseDefInfo :: Hint -> Parser (RT.DefInfo, C)
 parseDefInfo m = do
-  functionVar <- var
-  (_, (impArgs, _)) <- parseImplicitArgs
-  expArgs <- argList preBinder
-  codType <- parseDefInfoCod m
-  e <- betweenBrace rawExpr
-  return (fst functionVar, impArgs, expArgs, fst codType, fst e)
+  (functionVar, c1) <- var
+  (c2, (impArgs, c3)) <- parseImplicitArgs
+  (c4, (expArgs, c5)) <- argList' preBinder
+  (c6, codType) <- parseDefInfoCod m
+  (e, c) <- betweenBrace rawExpr
+  return ((functionVar, c1, c2, impArgs, c3, c4, expArgs, c5, c6, codType, e), c)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
@@ -283,7 +283,7 @@ parseTopDefHeader = do
   (_, (impDomArgList, _)) <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) expDomArgList
-  codType <- parseDefInfoCod m
+  (_, codType) <- parseDefInfoCod m
   return ((m, funcBaseName), map f impDomArgList, map f expDomArgList, fst codType)
 
 parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.RawDecl
@@ -329,23 +329,24 @@ ensureArgumentLinearity foundVarSet vs =
       | otherwise ->
           ensureArgumentLinearity (S.insert name foundVarSet) rest
 
-parseDefInfoCod :: Hint -> Parser (RT.RawTerm, C)
+parseDefInfoCod :: Hint -> Parser (C, (RT.RawTerm, C))
 parseDefInfoCod m =
   choice
     [ do
-        delimiter ":"
-        rawTerm,
+        c <- delimiter' ":"
+        t <- rawTerm
+        return (c, t),
       do
         h <- lift $ Gensym.newPreHole m
-        return (h, [])
+        return ([], (h, []))
     ]
 
 rawTermDefine :: Parser (RT.RawTerm, C)
 rawTermDefine = do
   m <- getCurrentHint
-  keyword "define"
-  ((mFun, functionName), impArgs, expArgs, codType, e) <- parseDefInfo m
-  return (m :< RT.PiIntroFix (mFun, functionName) (map f impArgs) (map f expArgs) codType e, [])
+  c0 <- keyword' "define"
+  (((mFun, functionName), c1, c2, impArgs, c3, c4, expArgs, c5, c6, codType, e), c) <- parseDefInfo m
+  return (m :< RT.PiIntroFix c0 (mFun, functionName) c1 c2 impArgs c3 c4 expArgs c5 c6 codType e, c)
 
 rawTermMagic :: Parser (RT.RawTerm, C)
 rawTermMagic = do

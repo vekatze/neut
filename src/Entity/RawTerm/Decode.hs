@@ -48,10 +48,10 @@ toDoc term =
       let impArgs' = impArgsToDoc $ map f impArgs
       let expArgs' = expPiIntroArgsToDoc $ map f expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-    _ :< PiIntroFix (_, k) impArgs expArgs cod body -> do
-      let impArgs' = impArgsToDoc impArgs
-      let expArgs' = expPiIntroArgsToDoc expArgs
-      D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot cod, D.text " ", recBody body]
+    _ :< PiIntroFix _ (_, k) _ _ impArgs _ _ expArgs _ _ cod body -> do
+      let impArgs' = impArgsToDoc $ map f impArgs
+      let expArgs' = expPiIntroArgsToDoc $ map f expArgs
+      D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
     _ :< PiElim isExplicit e args -> do
       let prefix = if isExplicit then D.text "call " else D.Nil
       let e' = toDoc e

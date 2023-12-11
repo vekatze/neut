@@ -187,14 +187,14 @@ parseConstant = do
   m <- P.getCurrentHint
   constName <- P.baseName >>= lift . Locator.attachCurrentLocator
   mImpArgs <- optional $ P.betweenBracket (P.commaList preBinder)
-  (t, _) <- parseDefInfoCod m
+  (_, t) <- parseDefInfoCod m
   (v, _) <- P.betweenBrace rawExpr
   case mImpArgs of
     Nothing ->
-      return $ RawStmtDefineConst m constName t v
+      return $ RawStmtDefineConst m constName (fst t) v
     Just impArgs -> do
       let stmtKind = SK.Normal O.Clear
-      return $ RawStmtDefine True stmtKind m constName (map f impArgs) [] t v
+      return $ RawStmtDefine True stmtKind m constName (map f impArgs) [] (fst t) v
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do

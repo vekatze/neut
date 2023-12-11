@@ -38,7 +38,7 @@ data RawTermF a
   | Var Name
   | Pi C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
   | PiIntro C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
-  | PiIntroFix (Hint, RawIdent) [RawBinder a] [RawBinder a] a a
+  | PiIntroFix C (Hint, RawIdent) C C [RawBinder (a, C)] C C [RawBinder (a, C)] C C (a, C) a
   | PiElim IsExplicit a [a]
   | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | PiElimExact a
@@ -67,7 +67,7 @@ data RawTermF a
   | With a a
 
 type DefInfo =
-  ((Hint, T.Text), [RawBinder (RawTerm, C)], [RawBinder (RawTerm, C)], RawTerm, RawTerm)
+  ((Hint, RawIdent), C, C, [RawBinder (RawTerm, C)], C, C, [RawBinder (RawTerm, C)], C, C, (RawTerm, C), RawTerm)
 
 type TopDefHeader =
   ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
