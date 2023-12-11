@@ -27,7 +27,6 @@ import Entity.Name
 import Entity.Noema qualified as N
 import Entity.RawBinder
 import Entity.RawIdent
-import Entity.RawLamKind
 import Entity.RawPattern qualified as RP
 import Entity.Remark
 import Entity.WeakPrim qualified as WP
@@ -38,7 +37,8 @@ data RawTermF a
   = Tau
   | Var Name
   | Pi C [RawBinder (a, C)] C C [RawBinder (a, C)] C C a
-  | PiIntro (RawLamKind a) [RawBinder a] [RawBinder a] a
+  | PiIntro [RawBinder a] [RawBinder a] a
+  | PiIntroFix (Hint, RawIdent) [RawBinder a] [RawBinder a] a a
   | PiElim IsExplicit a [a]
   | PiElimByKey IsExplicit Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | PiElimExact a
@@ -81,7 +81,7 @@ piElim =
 
 lam :: Hint -> [RawBinder RawTerm] -> RawTerm -> RawTerm
 lam m varList e =
-  m :< PiIntro Normal [] varList e
+  m :< PiIntro [] varList e
 
 data LetKind
   = Plain

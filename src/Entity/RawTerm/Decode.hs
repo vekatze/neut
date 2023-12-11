@@ -20,7 +20,6 @@ import Entity.PrimOp.UnaryOp qualified as UnaryOp
 import Entity.PrimType qualified as PT
 import Entity.RawBinder
 import Entity.RawIdent
-import Entity.RawLamKind
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm
 import Entity.WeakPrim qualified as WP
@@ -45,14 +44,14 @@ toDoc term =
       if isMultiLine [cod']
         then D.join [impArgs', expArgs', arrow, D.line, cod']
         else D.join [impArgs', expArgs', arrow, cod']
-    _ :< PiIntro lamKind impArgs expArgs body -> do
+    _ :< PiIntro impArgs expArgs body -> do
       let impArgs' = impArgsToDoc impArgs
       let expArgs' = expPiIntroArgsToDoc expArgs
-      case lamKind of
-        Normal ->
-          D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-        Fix (_, k, _, _, cod) -> do
-          D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot cod, D.text " ", recBody body]
+      D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
+    _ :< PiIntroFix (_, k) impArgs expArgs cod body -> do
+      let impArgs' = impArgsToDoc impArgs
+      let expArgs' = expPiIntroArgsToDoc expArgs
+      D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot cod, D.text " ", recBody body]
     _ :< PiElim isExplicit e args -> do
       let prefix = if isExplicit then D.text "call " else D.Nil
       let e' = toDoc e

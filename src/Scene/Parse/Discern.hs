@@ -46,7 +46,6 @@ import Entity.Platform qualified as Platform
 import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
 import Entity.RawIdent hiding (isHole)
-import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
@@ -158,24 +157,23 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro kind impArgs expArgs e -> do
+    m :< RT.PiIntro impArgs expArgs e -> do
       lamID <- Gensym.newCount
-      case kind of
-        RLK.Fix (mx, x, _, _, codType) -> do
-          (impArgs', nenv') <- discernBinder nenv impArgs
-          (expArgs', nenv'') <- discernBinder nenv' expArgs
-          codType' <- discern nenv'' codType
-          x' <- Gensym.newIdentFromText x
-          nenv''' <- extendNominalEnv mx x' nenv''
-          e' <- discern nenv''' e
-          let mxt' = (mx, x', codType')
-          Tag.insertBinder mxt'
-          return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
-        RLK.Normal -> do
-          (impArgs', nenv') <- discernBinder nenv impArgs
-          (expArgs', nenv'') <- discernBinder nenv' expArgs
-          e' <- discern nenv'' e
-          return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
+      (impArgs', nenv') <- discernBinder nenv impArgs
+      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      e' <- discern nenv'' e
+      return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
+    m :< RT.PiIntroFix (mx, x) impArgs expArgs codType e -> do
+      (impArgs', nenv') <- discernBinder nenv impArgs
+      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      codType' <- discern nenv'' codType
+      x' <- Gensym.newIdentFromText x
+      nenv''' <- extendNominalEnv mx x' nenv''
+      e' <- discern nenv''' e
+      let mxt' = (mx, x', codType')
+      Tag.insertBinder mxt'
+      lamID <- Gensym.newCount
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
     m :< RT.PiElim isExplicit e es -> do
       es' <- mapM (discern nenv) es
       e' <- discern nenv e

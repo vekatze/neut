@@ -42,7 +42,6 @@ import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
 import Entity.RawIdent
-import Entity.RawLamKind qualified as LK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
 import Entity.WeakPrim qualified as WP
@@ -136,7 +135,7 @@ rawTermPiIntro = do
   expArgs <- map f <$> argList preBinder
   delimiter "=>"
   (e, c) <- rawExpr
-  return (m :< RT.PiIntro LK.Normal (map f impArgs) expArgs e, c)
+  return (m :< RT.PiIntro (map f impArgs) expArgs e, c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
@@ -346,7 +345,7 @@ rawTermDefine = do
   m <- getCurrentHint
   keyword "define"
   ((mFun, functionName), impArgs, expArgs, codType, e) <- parseDefInfo m
-  return (m :< RT.PiIntro (LK.Fix (mFun, functionName, [], [], codType)) (map f impArgs) (map f expArgs) e, [])
+  return (m :< RT.PiIntroFix (mFun, functionName) (map f impArgs) (map f expArgs) codType e, [])
 
 rawTermMagic :: Parser (RT.RawTerm, C)
 rawTermMagic = do
