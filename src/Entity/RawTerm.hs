@@ -38,7 +38,7 @@ data RawTermF a
   | Pi (Args a) (Args a) C a
   | PiIntro (Args a) (Args a) C a
   | PiIntroFix C (DefInfo a)
-  | PiElim a [a]
+  | PiElim a C [(a, C)]
   | PiElimByKey Name [(Hint, Key, a)] -- auxiliary syntax for key-call
   | PiElimExact a
   | Data AttrD.Attr DD.DefiniteDescription [a]
@@ -75,8 +75,8 @@ type TopDefInfo =
   (TopDefHeader, RawTerm)
 
 piElim :: a -> [a] -> RawTermF a
-piElim =
-  PiElim
+piElim e es =
+  PiElim e [] (map (,[]) es)
 
 lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =

@@ -52,9 +52,9 @@ toDoc term =
       let impArgs' = impArgsToDoc $ map f impArgs
       let expArgs' = expPiIntroArgsToDoc $ map f expArgs
       D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
-    _ :< PiElim e args -> do
+    _ :< PiElim e _ args -> do
       let e' = toDoc e
-      let args' = map toDoc args
+      let args' = map (toDoc . fst) args
       D.join [piElimToDoc e' args']
     _ :< PiElimByKey name kvs -> do
       let kvs' = map (\(_, k, v) -> (k, v)) kvs

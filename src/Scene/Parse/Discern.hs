@@ -174,8 +174,8 @@ discern nenv term =
       Tag.insertBinder mxt'
       lamID <- Gensym.newCount
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
-    m :< RT.PiElim e es -> do
-      es' <- mapM (discern nenv) es
+    m :< RT.PiElim e _ es -> do
+      es' <- mapM (discern nenv . fst) es
       e' <- discern nenv e
       return $ m :< WT.PiElim False e' es'
     m :< RT.PiElimByKey name kvs -> do
