@@ -10,7 +10,6 @@ define test-syntax(): unit {
   let _ = (_: flow(tau), flow(tau)) -> flow(tau) -> flow(tau) in
   let _ = flow(flow(tau)) in
 
-  let _ = detach Unit in
   let _ = detach {Unit} in
   let _ =
     detach {
@@ -28,7 +27,7 @@ define test-syntax(): unit {
         }
       in
       Unit;
-      attach fl
+      attach {fl}
     }
   in
   let _ =
@@ -72,7 +71,7 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   - [] =>
     Unit
   - fl :: rest =>
-    let _ = attach fl in
+    let _ = attach {fl} in
     let _ = receive(ch) in
     receive-one-by-one(rest, ch)
   }
@@ -85,7 +84,7 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
       - [] =>
         Unit
       - z :: zs =>
-        let _ = attach z in
+        let _ = attach {z} in
         wait-all(zs)
       }
     }
@@ -124,8 +123,8 @@ define test-behavior(): unit {
         Unit
       }
     in
-    attach fl1;
-    attach fl2
+    attach {fl1};
+    attach {fl2}
   in
   let _ = ch in
 
@@ -152,8 +151,8 @@ define test-behavior(): unit {
     let _ = receive(ch-clone) in
     let _ = receive(ch-clone) in
     let _ = receive(ch-clone) in
-    attach f;
-    attach g
+    attach {f};
+    attach {g}
   in
   let _ = ch-clone in
   let _ = tmp in

@@ -128,6 +128,12 @@ keyword expected = do
     _ <- chunk expected
     label (T.unpack expected) $ notFollowedBy symbol
 
+keyword' :: T.Text -> Parser C
+keyword' expected = do
+  fmap snd $ lexeme' $ try $ do
+    _ <- chunk expected
+    label (T.unpack expected) $ notFollowedBy symbol
+
 nonSymbolChar :: Parser Char
 nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
@@ -214,21 +220,38 @@ betweenParen :: Parser a -> Parser a
 betweenParen =
   between (delimiter "(") (delimiter ")")
 
+betweenParen' :: Parser a -> Parser (C, (a, C))
+betweenParen' p = do
+  c1 <- delimiter' "("
+  v <- p
+  c2 <- delimiter' ")"
+  return (c1, (v, c2))
+
 betweenBrace :: Parser a -> Parser a
 betweenBrace =
   between (delimiter "{") (delimiter "}")
 
-betweenBrace' :: Parser a -> Parser a
-betweenBrace' =
-  between (delimiter' "{") (delimiter' "}")
+betweenBrace' :: Parser a -> Parser (C, (a, C))
+betweenBrace' p = do
+  c1 <- delimiter' "{"
+  v <- p
+  c2 <- delimiter' "}"
+  return (c1, (v, c2))
 
 betweenBracket :: Parser a -> Parser a
 betweenBracket =
   between (delimiter "[") (delimiter "]")
 
-betweenBracket' :: Parser a -> Parser a
-betweenBracket' =
-  between (delimiter' "[") (delimiter' "]")
+betweenBracket' :: Parser a -> Parser (C, (a, C))
+betweenBracket' p = do
+  c1 <- delimiter' "["
+  v <- p
+  c2 <- delimiter' "]"
+  return (c1, (v, c2))
+
+-- betweenBracket' :: Parser a -> Parser a
+-- betweenBracket' =
+--   between (delimiter' "[") (delimiter' "]")
 
 betweenAngle :: Parser a -> Parser a
 betweenAngle =
@@ -241,6 +264,15 @@ commaList f = do
 argList :: Parser a -> Parser [a]
 argList f = do
   lexeme $ betweenParen $ commaList f
+
+argList' :: Parser a -> Parser (C, ([a], C))
+argList' f = do
+  c1 <- delimiter' "("
+  vs <- commaList f
+  c2 <- delimiter' ")"
+  return (c1, (vs, c2))
+
+-- lexeme $ betweenParen $ commaList f
 
 impArgList :: Parser a -> Parser [a]
 impArgList f =
@@ -267,15 +299,15 @@ argSeqOrList p =
       keyword "of" >> betweenBrace (manyList p)
     ]
 
-var :: Parser (Hint, T.Text)
+var :: Parser ((Hint, T.Text), C)
 var = do
   m <- getCurrentHint
-  x <- symbol
+  (x, c) <- symbol'
   if x /= "_"
-    then return (m, x)
+    then return ((m, x), c)
     else do
       unusedVar <- lift Gensym.newTextForHole
-      return (m, unusedVar)
+      return ((m, unusedVar), c)
 
 {-# INLINE nonSymbolCharSet #-}
 nonSymbolCharSet :: S.Set Char

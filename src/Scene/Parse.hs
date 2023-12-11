@@ -24,6 +24,7 @@ import Entity.ArgNum qualified as AN
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
+import Entity.C
 import Entity.Cache qualified as Cache
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
@@ -146,8 +147,8 @@ parseForeign :: P.Parser F.Foreign
 parseForeign = do
   declName <- EN.ExternalName <$> P.symbol
   lts <- P.betweenParen $ P.commaList lowType
-  cod <- P.delimiter ":" >> lowType
-  return $ F.Foreign declName lts cod
+  (cod, _) <- P.delimiter ":" >> lowType
+  return $ F.Foreign declName (map fst lts) cod
 
 parseDeclare :: P.Parser RawStmt
 parseDeclare = do
@@ -186,14 +187,14 @@ parseConstant = do
   m <- P.getCurrentHint
   constName <- P.baseName >>= lift . Locator.attachCurrentLocator
   mImpArgs <- optional $ P.betweenBracket (P.commaList preBinder)
-  t <- parseDefInfoCod m
-  v <- P.betweenBrace rawExpr
+  (t, _) <- parseDefInfoCod m
+  (v, _) <- P.betweenBrace rawExpr
   case mImpArgs of
     Nothing ->
       return $ RawStmtDefineConst m constName t v
     Just impArgs -> do
       let stmtKind = SK.Normal O.Clear
-      return $ RawStmtDefine True stmtKind m constName impArgs [] t v
+      return $ RawStmtDefine True stmtKind m constName (map f impArgs) [] t v
 
 parseDefineData :: P.Parser [RawStmt]
 parseDefineData = do
@@ -207,7 +208,9 @@ parseDefineData = do
 parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseDataArgs = do
   choice
-    [ Just <$> try (P.argSeqOrList preBinder),
+    [ do
+        args <- try (P.argSeqOrList preBinder)
+        return $ Just (map f args),
       return Nothing
     ]
 
@@ -299,11 +302,13 @@ parseDefineDataClause = do
 parseConsArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
 parseConsArgs = do
   choice
-    [ Just <$> P.argSeqOrList parseDefineDataClauseArg,
+    [ do
+        args <- P.argSeqOrList parseDefineDataClauseArg
+        return $ Just (map f args),
       return Nothing
     ]
 
-parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm)
+parseDefineDataClauseArg :: P.Parser (RawBinder (RT.RawTerm, C))
 parseDefineDataClauseArg = do
   choice
     [ try preAscription,
@@ -317,8 +322,8 @@ parseDefineResource = do
   name <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
   P.betweenBrace $ do
-    discarder <- P.delimiter "-" >> rawExpr
-    copier <- P.delimiter "-" >> rawExpr
+    (discarder, _) <- P.delimiter "-" >> rawExpr
+    (copier, _) <- P.delimiter "-" >> rawExpr
     return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource name' discarder copier)
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
