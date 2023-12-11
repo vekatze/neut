@@ -49,7 +49,6 @@ import Entity.RawIdent hiding (isHole)
 import Entity.RawLamKind qualified as RLK
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
-import Entity.RawTerm.Decode qualified as RT
 import Entity.Remark qualified as R
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
@@ -329,16 +328,6 @@ discern nenv term =
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value clauseList
       discern nenv clause
-    m :< RT.Idealize mxs body -> do
-      result <- Gensym.newTextForHole
-      t <- Gensym.newPreHole m
-      holes <- forM mxs $ \(mx, _) -> do
-        hole <- Gensym.newTextForHole
-        tHole <- Gensym.newPreHole mx
-        return (mx, hole, tHole)
-      let resultVar = m :< RT.Var (Var result)
-      let retResult = foldr (\(binder, (mx, x)) acc -> bind binder (mx :< RT.Var (Var x)) acc) resultVar (zip holes mxs)
-      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var result), t) mxs body retResult
     m :< RT.With binder body -> do
       case body of
         mLet :< RT.Let letKind mxt@(mPat, pat, t) mys e1 e2 -> do
@@ -418,16 +407,6 @@ getIntrospectiveValue m key = do
       return $ BM.reify bm
     _ ->
       Throw.raiseError m $ "no such introspective value is defined: " <> key
-
-foldByOp :: Hint -> Name -> [RT.RawTerm] -> RT.RawTerm
-foldByOp m op es =
-  case es of
-    [] ->
-      error "RawTerm.foldByOp: invalid argument"
-    [e] ->
-      e
-    e : rest ->
-      m :< RT.piElim (blur m :< RT.Var op) [e, foldByOp m op rest]
 
 foldIf ::
   Hint ->

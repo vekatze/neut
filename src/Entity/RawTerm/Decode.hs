@@ -257,16 +257,6 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< Idealize mxs body -> do
-      let mxs' = if null mxs then D.Nil else D.join [commaSeqH (map (D.text . snd) mxs), D.text " "]
-      D.join
-        [ D.text "idealize ",
-          mxs',
-          D.text "{",
-          D.nest D.indent $ D.join [D.line, toDoc body],
-          D.line,
-          D.text "}"
-        ]
     _ :< With binder body -> do
       let binder' = toDoc binder
       let body' = toDoc body

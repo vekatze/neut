@@ -102,7 +102,6 @@ rawTermBasic = do
       rawTermOption,
       rawTermEmbody,
       rawTermWith,
-      rawTermIdealize,
       rawTermPiElimOrSimple
     ]
 
@@ -241,14 +240,6 @@ rawTermNoeticVar :: Parser ((Hint, T.Text), C)
 rawTermNoeticVar = do
   ((m, x), c) <- var
   return ((m, x), c)
-
-rawTermIdealize :: Parser (RT.RawTerm, C)
-rawTermIdealize = do
-  m <- getCurrentHint
-  keyword "idealize"
-  xs <- commaList var
-  (cont, c) <- betweenBrace rawExpr
-  return (m :< RT.Idealize (map fst xs) cont, c)
 
 rawTermEmbody :: Parser (RT.RawTerm, C)
 rawTermEmbody = do
