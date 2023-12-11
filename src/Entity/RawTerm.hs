@@ -16,6 +16,7 @@ import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
+import Entity.C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
@@ -46,7 +47,7 @@ data RawTermF a
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)
   | Noema a
   | Embody a
-  | Let LetKind (Hint, RP.RawPattern, a) [(Hint, RawIdent)] a a
+  | Let LetKind (Hint, RP.RawPattern, C, C, a) [(Hint, RawIdent)] a a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID

@@ -5,7 +5,6 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
-import Context.Remark (printNote')
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -70,7 +69,7 @@ discernStmt stmt = do
   registerTopLevelName stmt
   case stmt of
     RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
-      printNote' $ RT.pp e
+      -- printNote' $ RT.pp e
       (impArgs', nenv) <- discernBinder empty impArgs
       (expArgs', nenv') <- discernBinder nenv expArgs
       codType' <- discern nenv' codType
@@ -109,7 +108,7 @@ registerTopLevelName stmt =
   case stmt of
     RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs _ _ -> do
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-      let expArgNames = map (\(_, x, _) -> x) expArgs
+      let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames
     RawStmtDefineConst m dd _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
@@ -161,7 +160,7 @@ discern nenv term =
     m :< RT.PiIntro kind impArgs expArgs e -> do
       lamID <- Gensym.newCount
       case kind of
-        RLK.Fix (mx, x, codType) -> do
+        RLK.Fix (mx, x, _, _, codType) -> do
           (impArgs', nenv') <- discernBinder nenv impArgs
           (expArgs', nenv'') <- discernBinder nenv' expArgs
           codType' <- discern nenv'' codType
@@ -215,7 +214,7 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind (mx, pat, t) mys e1@(m1 :< _) e2@(m2 :< _) -> do
+    m :< RT.Let letKind (mx, pat, c1, c2, t) mys e1@(m1 :< _) e2@(m2 :< _) -> do
       case letKind of
         RT.Try -> do
           eitherTypeInner <- locatorToVarGlobal mx coreExcept
@@ -245,10 +244,10 @@ discern nenv term =
           Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
-          discernLet nenv m (mx, x, t) mys e1 (modifier False e2)
+          discernLet nenv m (mx, x, c1, c2, t) mys e1 (modifier False e2)
         RT.Noetic -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
-          discernLet nenv m (mx, x, t) mys e1 (modifier True e2)
+          discernLet nenv m (mx, x, c1, c2, t) mys e1 (modifier True e2)
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -279,7 +278,7 @@ discern nenv term =
     m :< RT.Seq e1 e2 -> do
       f <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
-      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var f), unit) [] e1 e2
+      discern nenv $ m :< RT.Let RT.Plain (m, RP.Var (Var f), [], [], unit) [] e1 e2
     m :< RT.When whenCond whenBody -> do
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
@@ -330,13 +329,13 @@ discern nenv term =
       discern nenv clause
     m :< RT.With binder body -> do
       case body of
-        mLet :< RT.Let letKind mxt@(mPat, pat, t) mys e1 e2 -> do
+        mLet :< RT.Let letKind mxt@(mPat, pat, c1, c2, t) mys e1 e2 -> do
           let e1' = m :< RT.With binder e1
           let e2' = m :< RT.With binder e2
           case letKind of
             RT.Bind -> do
               (x, modifier) <- getContinuationModifier (mPat, pat)
-              discern nenv $ m :< RT.piElim binder [e1', RT.lam m [(mPat, x, t)] (modifier False e2')]
+              discern nenv $ m :< RT.piElim binder [e1', RT.lam m [(mPat, x, c1, c2, t)] (modifier False e2')]
             _ -> do
               discern nenv $ mLet :< RT.Let letKind mxt mys e1' e2'
         mSeq :< RT.Seq e1 e2 -> do
@@ -366,11 +365,11 @@ getContinuationModifier pat =
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
 ascribe m t e = do
   tmp <- Gensym.newTextForHole
-  return $ bind (m, tmp, t) e (m :< RT.Var (Var tmp))
+  return $ bind (m, tmp, [], [], t) e (m :< RT.Var (Var tmp))
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind (m, x, t) e cont =
-  m :< RT.Let RT.Plain (m, RP.Var (Var x), t) [] e cont
+bind (m, x, c1, c2, t) e cont =
+  m :< RT.Let RT.Plain (m, RP.Var (Var x), c1, c2, t) [] e cont
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =
@@ -487,7 +486,7 @@ discernBinder nenv binder =
   case binder of
     [] -> do
       return ([], nenv)
-    (mx, x, t) : xts -> do
+    (mx, x, _, _, t) : xts -> do
       t' <- discern nenv t
       x' <- Gensym.newIdentFromText x
       nenv' <- extendNominalEnv mx x' nenv
@@ -501,7 +500,7 @@ discernBinderWithBody' ::
   [RawBinder RT.RawTerm] ->
   RT.RawTerm ->
   App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
-discernBinderWithBody' nenv (mx, x, codType) binder e = do
+discernBinderWithBody' nenv (mx, x, _, _, codType) binder e = do
   (binder'', nenv') <- discernBinder nenv binder
   codType' <- discern nenv' codType
   x' <- Gensym.newIdentFromText x

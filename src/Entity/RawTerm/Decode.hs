@@ -3,6 +3,7 @@ module Entity.RawTerm.Decode (pp) where
 import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Data.Vector qualified as V
+import Entity.C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
@@ -50,7 +51,7 @@ toDoc term =
       case lamKind of
         Normal ->
           D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-        Fix (_, f, cod) -> do
+        Fix (_, f, _, _, cod) -> do
           D.join [D.text "define ", D.text f, impArgs', expArgs', typeAnnot cod, D.text " ", recBody body]
     _ :< PiElim isExplicit e args -> do
       let prefix = if isExplicit then D.text "call " else D.Nil
@@ -178,7 +179,7 @@ toDoc term =
       D.join [D.text "resource", D.text (DD.reify name), D.text "{", D.line, resourcePair, D.line, D.text "}"]
     _ :< Use trope args cont -> do
       let trope' = toDoc trope
-      let args' = map (\(_, x, _) -> D.text x) args
+      let args' = map (\(_, x, _, _, _) -> D.text x) args
       let cont' = toDoc cont
       if isMultiLine [trope']
         then
@@ -292,7 +293,7 @@ decodeElseIfList elseIfList =
         ]
 
 piArgToDoc :: RawBinder RawTerm -> D.Doc
-piArgToDoc (_, x, t) = do
+piArgToDoc (_, x, _, _, t) = do
   let t' = toDoc t
   if isHole x
     then t'
@@ -301,7 +302,7 @@ piArgToDoc (_, x, t) = do
       D.join [x', typeAnnot t]
 
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
-piIntroArgToDoc (_, x, t) = do
+piIntroArgToDoc (_, x, _, _, t) = do
   let x' = D.text x
   case t of
     _ :< Hole {} ->
@@ -309,8 +310,8 @@ piIntroArgToDoc (_, x, t) = do
     _ -> do
       D.join [x', typeAnnot t]
 
-letArgToDoc :: (a, RP.RawPattern, RawTerm) -> D.Doc
-letArgToDoc (_, x, t) = do
+letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
+letArgToDoc (_, x, _, _, t) = do
   let x' = decodePattern x
   case t of
     _ :< Hole {} ->

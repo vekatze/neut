@@ -327,11 +327,11 @@ parseDefineResource = do
     return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource name' discarder copier)
 
 identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
-identPlusToVar (m, x, _) =
+identPlusToVar (m, x, _, _, _) =
   m :< RT.Var (Var x)
 
 adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
-adjustConsArg (m, x, _) =
+adjustConsArg (m, x, _, _, _) =
   (m :< RT.Var (Var x), x)
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]

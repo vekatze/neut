@@ -147,7 +147,7 @@ rawTermPiOrConsOrAscOrBasic = do
         delimiter "->"
         x <- lift Gensym.newTextForHole
         (cod, c) <- rawTerm
-        return (m :< RT.Pi [] [(m, x, basic)] cod, c),
+        return (m :< RT.Pi [] [(m, x, [], [], basic)] cod, c),
       do
         delimiter ":"
         (t, _) <- rawTerm
@@ -176,15 +176,15 @@ rawTermLet mLet = do
         keyword "bind" >> return RT.Bind,
         keyword "tie" >> return RT.Noetic
       ]
-  (mx, patInner) <- rawTermPattern
-  t <- rawTermLetVarAscription mx
+  ((mx, patInner), c1) <- rawTermPattern
+  (t, c2) <- rawTermLetVarAscription mx
   noeticVarList <-
     choice
       [ keyword "on" >> commaList rawTermNoeticVar,
         return []
       ]
   lift $ ensureIdentLinearity S.empty $ map fst noeticVarList
-  let mxt = (mx, patInner, t)
+  let mxt = (mx, patInner, c1, c2, t)
   delimiter "="
   (e1, _) <- rawExpr
   delimiter "in"
@@ -197,32 +197,33 @@ rawTermUse m = do
   (e, _) <- rawTerm
   xs <- betweenBrace $ commaList preBinder
   delimiter "in"
-  lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) xs
+  lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) xs
   (cont, _) <- rawExpr
   return (m :< RT.Use e (map f xs) cont, [])
 
-rawTermLetVarAscription :: Hint -> Parser RT.RawTerm
+rawTermLetVarAscription :: Hint -> Parser (RT.RawTerm, C)
 rawTermLetVarAscription m = do
-  mt <- rawTermLetVarAscription'
+  (mt, c) <- rawTermLetVarAscription'
   case mt of
     Just t ->
-      return t
-    Nothing ->
-      lift $ Gensym.newPreHole m
+      return (t, c)
+    Nothing -> do
+      t <- lift $ Gensym.newPreHole m
+      return (t, c)
 
 ascribe :: Hint -> RT.RawTerm -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 ascribe m t (e, c) = do
   tmp <- lift Gensym.newTextForHole
-  return (bind (m, tmp, t) e (rawVar m (Var tmp)), c)
+  return (bind (m, tmp, [], [], t) e (rawVar m (Var tmp)), c)
 
-rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm)
+rawTermLetVarAscription' :: Parser (Maybe RT.RawTerm, C)
 rawTermLetVarAscription' =
   choice
     [ try $ do
-        delimiter ":"
+        c <- delimiter' ":"
         (t, _) <- rawTerm
-        return $ Just t,
-      return Nothing
+        return (Just t, c),
+      return (Nothing, [])
     ]
 
 ensureIdentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
@@ -282,7 +283,7 @@ parseTopDefHeader = do
   funcBaseName <- baseName
   impDomArgList <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _) -> (mx, x)) expDomArgList
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) expDomArgList
   codType <- parseDefInfoCod m
   return ((m, funcBaseName), map f impDomArgList, map f expDomArgList, fst codType)
 
@@ -345,7 +346,7 @@ rawTermDefine = do
   m <- getCurrentHint
   keyword "define"
   ((mFun, functionName), impArgs, expArgs, codType, e) <- parseDefInfo m
-  return (m :< RT.PiIntro (LK.Fix (mFun, functionName, codType)) impArgs expArgs e, [])
+  return (m :< RT.PiIntro (LK.Fix (mFun, functionName, [], [], codType)) impArgs expArgs e, [])
 
 rawTermMagic :: Parser (RT.RawTerm, C)
 rawTermMagic = do
@@ -477,24 +478,24 @@ rawTermPatternRow patternSize = do
           <> T.pack (show patternList)
   delimiter "=>"
   body <- rawExpr
-  return (V.fromList patternList, body)
+  return (V.fromList $ map fst patternList, body)
 
-rawTermPattern :: Parser (Hint, RP.RawPattern)
+rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do
   rawTermPatternBasic
 
-rawTermPatternBasic :: Parser (Hint, RP.RawPattern)
+rawTermPatternBasic :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
       rawTermPatternConsOrVar
     ]
 
-rawTermPatternListIntro :: Parser (Hint, RP.RawPattern)
+rawTermPatternListIntro :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternListIntro = do
   m <- getCurrentHint
   patList <- betweenBracket $ commaList rawTermPattern
-  return (m, RP.ListIntro patList)
+  return ((m, RP.ListIntro $ map fst patList), [])
 
 parseName :: Parser ((Hint, Name), C)
 parseName = do
@@ -502,19 +503,19 @@ parseName = do
   v <- interpretVarName m varText
   return (v, c)
 
-rawTermPatternConsOrVar :: Parser (Hint, RP.RawPattern)
+rawTermPatternConsOrVar :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternConsOrVar = do
   ((m, varOrLocator), _) <- parseName
   choice
     [ do
         patArgs <- argList rawTermPattern
-        return (m, RP.Cons varOrLocator (RP.Paren patArgs)),
+        return ((m, RP.Cons varOrLocator (RP.Paren $ map fst patArgs)), []),
       do
         keyword "of"
         kvs <- betweenBrace $ bulletListOrCommaSeq rawTermPatternKeyValuePair
-        return (m, RP.Cons varOrLocator (RP.Of kvs)),
+        return ((m, RP.Cons varOrLocator (RP.Of kvs)), []),
       do
-        return (m, RP.Var varOrLocator)
+        return ((m, RP.Var varOrLocator), [])
     ]
 
 rawTermPatternKeyValuePair :: Parser (Key, (Hint, RP.RawPattern))
@@ -525,7 +526,7 @@ rawTermPatternKeyValuePair = do
     [ do
         delimiter "="
         to <- rawTermPattern
-        return (from, to),
+        return (from, fst to),
       do
         return (from, (mFrom, RP.Var (Var from))) -- record rhyming
     ]
@@ -566,8 +567,8 @@ rawTermWith = do
   return (m :< RT.With binder body, c2)
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind (m, x, t) e cont =
-  m :< RT.Let RT.Plain (m, RP.Var (Var x), t) [] e cont
+bind (m, x, c1, c2, t) e cont =
+  m :< RT.Let RT.Plain (m, RP.Var (Var x), c1, c2, t) [] e cont
 
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do
@@ -655,23 +656,23 @@ preBinder =
 
 preAscription :: Parser (RawBinder (RT.RawTerm, C))
 preAscription = do
-  ((m, x), _) <- var
-  delimiter ":"
+  ((m, x), c1) <- var
+  c2 <- delimiter' ":"
   (a, c) <- rawTerm
-  return (m, x, (a, c))
+  return (m, x, c1, c2, (a, c))
 
 typeWithoutIdent :: Parser (RawBinder (RT.RawTerm, C))
 typeWithoutIdent = do
   m <- getCurrentHint
   x <- lift Gensym.newTextForHole
   (t, c) <- rawTerm
-  return (m, x, (t, c))
+  return (m, x, [], [], (t, c))
 
 preAscription' :: Parser (RawBinder (RT.RawTerm, C))
 preAscription' = do
   ((m, x), c) <- var
   h <- lift $ Gensym.newPreHole m
-  return (m, x, (h, c))
+  return (m, x, c, [], (h, []))
 
 rawTermListIntro :: Parser (RT.RawTerm, C)
 rawTermListIntro = do
@@ -774,5 +775,5 @@ rawVar m name =
   m :< RT.Var name
 
 f :: RawBinder (a, C) -> RawBinder a
-f (m, x, (t, _)) =
-  (m, x, t)
+f (m, x, c1, c2, (t, _)) =
+  (m, x, c1, c2, t)

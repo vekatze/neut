@@ -104,7 +104,7 @@ isUnary consInfoList =
 
 registerDecl :: RDE.RawDecl -> App ()
 registerDecl RDE.RawDecl {..} = do
-  let expArgNames = map (\(_, x, _) -> x) expArgs
+  let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
   let argNum = AN.fromInt $ length $ impArgs ++ expArgs
   ensureDeclFreshness loc name
   ensureDefFreshness loc name
