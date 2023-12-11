@@ -286,26 +286,6 @@ discern nenv term =
       boolFalse <- locatorToName (blur m) coreBoolFalse
       unitUnit <- locatorToVarGlobal m coreUnitUnit
       discern nenv $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
-    m :< RT.Tuple ts -> do
-      unitVar <- locatorToName m coreUnit
-      pairVar <- locatorToName m corePair
-      case ts of
-        [] ->
-          discern nenv $ blur m :< RT.Var unitVar
-        [e] ->
-          discern nenv e
-        _ ->
-          discern nenv $ foldByOp m pairVar ts
-    m :< RT.TupleIntro es -> do
-      unitVar <- locatorToName m coreUnitUnit
-      pairVar <- locatorToName m corePairPair
-      case es of
-        [] ->
-          discern nenv $ blur m :< RT.Var unitVar
-        [e] ->
-          discern nenv e
-        _ ->
-          discern nenv $ foldByOp m pairVar es
     m :< RT.ListIntro es -> do
       listNil <- locatorToVarGlobal m coreListNil
       listCons <- locatorToVarGlobal m coreListCons

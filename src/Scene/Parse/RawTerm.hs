@@ -101,8 +101,6 @@ rawTermBasic = do
       rawTermFlowElim,
       rawTermOption,
       rawTermEmbody,
-      rawTermTuple,
-      rawTermTupleIntro,
       rawTermWith,
       rawTermIdealize,
       rawTermPiElimOrSimple
@@ -498,7 +496,6 @@ rawTermPatternBasic :: Parser (Hint, RP.RawPattern)
 rawTermPatternBasic =
   choice
     [ rawTermPatternListIntro,
-      try rawTermPatternTupleIntro,
       rawTermPatternConsOrVar
     ]
 
@@ -507,26 +504,6 @@ rawTermPatternListIntro = do
   m <- getCurrentHint
   patList <- betweenBracket $ commaList rawTermPattern
   return (m, RP.ListIntro patList)
-
-rawTermPatternTupleIntro :: Parser (Hint, RP.RawPattern)
-rawTermPatternTupleIntro = do
-  m <- getCurrentHint
-  keyword "Tuple"
-  patList <- betweenParen $ commaList rawTermPattern
-  unitVar <- lift $ locatorToName m coreUnitUnit
-  pairVar <- lift $ locatorToName m corePairPair
-  return $ foldTuplePat m unitVar pairVar patList
-
-foldTuplePat :: Hint -> Name -> Name -> [(Hint, RP.RawPattern)] -> (Hint, RP.RawPattern)
-foldTuplePat m unitVar pairVar es =
-  case es of
-    [] ->
-      (blur m, RP.Var unitVar)
-    [e] ->
-      e
-    e : rest -> do
-      let rest' = foldTuplePat m unitVar pairVar rest
-      (blur m, RP.Cons pairVar (RP.Paren [e, rest']))
 
 parseName :: Parser ((Hint, Name), C)
 parseName = do
@@ -588,20 +565,6 @@ rawTermWhen = do
 rawTermBrace :: Parser (RT.RawTerm, C)
 rawTermBrace =
   betweenBrace rawExpr
-
-rawTermTuple :: Parser (RT.RawTerm, C)
-rawTermTuple = do
-  m <- getCurrentHint
-  keyword "tuple"
-  (_, (ts, c)) <- betweenParen' $ commaList rawExpr
-  return (m :< RT.Tuple (map fst ts), c)
-
-rawTermTupleIntro :: Parser (RT.RawTerm, C)
-rawTermTupleIntro = do
-  m <- getCurrentHint
-  keyword "Tuple"
-  (_, (es, c2)) <- betweenParen' $ commaList rawExpr
-  return (m :< RT.TupleIntro (map fst es), c2)
 
 rawTermWith :: Parser (RT.RawTerm, C)
 rawTermWith = do
@@ -809,11 +772,6 @@ rawTermFloat = do
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =
   rawVar m (Var str)
-
-locatorToName :: Hint -> T.Text -> App Name
-locatorToName m text = do
-  (gl, ll) <- Throw.liftEither $ DD.getLocatorPair m text
-  return $ Locator (gl, ll)
 
 locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do

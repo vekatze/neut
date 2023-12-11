@@ -56,8 +56,6 @@ data RawTermF a
   | If a a [(a, a)] a
   | When a a
   | Seq a a
-  | Tuple [a]
-  | TupleIntro [a]
   | ListIntro [a]
   | Admit
   | Detach a

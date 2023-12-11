@@ -224,12 +224,6 @@ toDoc term =
         ]
     _ :< Seq e1 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, toDoc e2]
-    _ :< Tuple ts -> do
-      let ts' = map toDoc ts
-      piElimToDoc (D.text "tuple") ts'
-    _ :< TupleIntro es -> do
-      let es' = map toDoc es
-      piElimToDoc (D.text "Tuple") es'
     _ :< ListIntro es -> do
       let es' = map toDoc es
       if isMultiLine es'
