@@ -178,9 +178,9 @@ discern nenv term =
       es' <- mapM (discern nenv . fst) es
       e' <- discern nenv e
       return $ m :< WT.PiElim False e' es'
-    m :< RT.PiElimByKey name kvs -> do
+    m :< RT.PiElimByKey name _ _ _ kvs -> do
       (dd, _) <- resolveName m name
-      let (_, ks, vs) = unzip3 kvs
+      let (ks, vs) = unzip $ map (\(_, k, _, _, (v, _)) -> (k, v)) kvs
       ensureFieldLinearity m ks S.empty S.empty
       (argNum, keyList) <- KeyArg.lookup m dd
       vs' <- mapM (discern nenv) vs

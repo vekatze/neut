@@ -56,8 +56,8 @@ toDoc term =
       let e' = toDoc e
       let args' = map (toDoc . fst) args
       D.join [piElimToDoc e' args']
-    _ :< PiElimByKey name kvs -> do
-      let kvs' = map (\(_, k, v) -> (k, v)) kvs
+    _ :< PiElimByKey name _ _ _ kvs -> do
+      let kvs' = map (\(_, k, _, _, (v, _)) -> (k, v)) kvs
       D.join [piElimKeyToDoc name kvs']
     _ :< PiElimExact e ->
       D.join [D.text "exact ", toDoc e]

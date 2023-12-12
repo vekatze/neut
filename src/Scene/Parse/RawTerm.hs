@@ -87,7 +87,6 @@ rawTermBasic = do
   choice
     [ rawTermDefine,
       rawTermPiElimExact,
-      rawTermPiElimExplicit,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatch,
@@ -153,16 +152,16 @@ rawTermPiOrConsOrAscOrBasic = do
       return basic
     ]
 
-rawTermKeyValuePair :: Parser (Hint, Key, RT.RawTerm)
+rawTermKeyValuePair :: Parser (Hint, Key, C, C, (RT.RawTerm, C))
 rawTermKeyValuePair = do
-  ((m, key), _) <- var
+  ((m, key), c1) <- var
   choice
     [ do
-        delimiter "="
-        (value, _) <- rawExpr
-        return (m, key, value),
+        c2 <- delimiter' "="
+        value <- rawExpr
+        return (m, key, c1, c2, value),
       do
-        return (m, key, m :< RT.Var (Var key))
+        return (m, key, c1, [], (m :< RT.Var (Var key), []))
     ]
 
 rawTermLet :: Hint -> Parser (RT.RawTerm, C)
@@ -615,14 +614,14 @@ rawTermAssert = do
 rawTermPiElimOrSimple :: Parser (RT.RawTerm, C)
 rawTermPiElimOrSimple = do
   m <- getCurrentHint
-  ec@(e, _) <- rawTermSimple
+  ec@(e, c1) <- rawTermSimple
   case e of
     _ :< RT.Var name -> do
       choice
         [ do
-            keyword "of"
-            (_, (rowList, c2)) <- betweenBrace' $ bulletListOrCommaSeq rawTermKeyValuePair
-            return (m :< RT.PiElimByKey name rowList, c2),
+            c2 <- keyword' "of"
+            (c3, (rowList, c4)) <- betweenBrace' $ bulletListOrCommaSeq rawTermKeyValuePair
+            return (m :< RT.PiElimByKey name c1 c2 c3 rowList, c4),
           rawTermPiElimCont m ec
         ]
     _ -> do
@@ -684,23 +683,6 @@ rawTermPiElimExact = do
   keyword "exact"
   (e, c) <- rawTerm
   return (m :< RT.PiElimExact e, c)
-
-rawTermPiElimExplicit :: Parser (RT.RawTerm, C)
-rawTermPiElimExplicit = do
-  m <- getCurrentHint
-  keyword "call"
-  ec@(e, _) <- rawTermSimple
-  case e of
-    _ :< RT.Var name -> do
-      choice
-        [ do
-            keyword "of"
-            rowList <- betweenBrace $ bulletListOrCommaSeq rawTermKeyValuePair
-            return (m :< RT.PiElimByKey name rowList, []),
-          rawTermPiElimCont m ec
-        ]
-    _ -> do
-      rawTermPiElimCont m ec
 
 rawTermIntrospect :: Parser (RT.RawTerm, C)
 rawTermIntrospect = do

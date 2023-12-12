@@ -39,7 +39,7 @@ data RawTermF a
   | PiIntro (Args a) (Args a) C a
   | PiIntroFix C (DefInfo a)
   | PiElim a C [(a, C)]
-  | PiElimByKey Name [(Hint, Key, a)] -- auxiliary syntax for key-call
+  | PiElimByKey Name C C C [(Hint, Key, C, C, (a, C))] -- auxiliary syntax for key-call
   | PiElimExact a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
@@ -83,7 +83,10 @@ lam m varList e =
   m :< PiIntro ([], ([], [])) ([], (varList, [])) [] e
 
 type Args a =
-  (C, ([RawBinder (a, C)], C))
+  CSeq (RawBinder (a, C))
+
+type CSeq a =
+  (C, ([a], C))
 
 data LetKind
   = Plain
