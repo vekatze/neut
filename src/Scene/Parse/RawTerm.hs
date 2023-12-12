@@ -680,9 +680,9 @@ rawTermListIntro = do
 rawTermPiElimExact :: Parser (RT.RawTerm, C)
 rawTermPiElimExact = do
   m <- getCurrentHint
-  keyword "exact"
+  c1 <- keyword' "exact"
   (e, c) <- rawTerm
-  return (m :< RT.PiElimExact e, c)
+  return (m :< RT.PiElimExact c1 e, c)
 
 rawTermIntrospect :: Parser (RT.RawTerm, C)
 rawTermIntrospect = do

@@ -40,7 +40,7 @@ data RawTermF a
   | PiIntroFix C (DefInfo a)
   | PiElim a C [(a, C)]
   | PiElimByKey Name C C C [(Hint, Key, C, C, (a, C))] -- auxiliary syntax for key-call
-  | PiElimExact a
+  | PiElimExact C a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [a] (RP.RawPatternMatrix a)

@@ -59,7 +59,7 @@ toDoc term =
     _ :< PiElimByKey name _ _ _ kvs -> do
       let kvs' = map (\(_, k, _, _, (v, _)) -> (k, v)) kvs
       D.join [piElimKeyToDoc name kvs']
-    _ :< PiElimExact e ->
+    _ :< PiElimExact _ e ->
       D.join [D.text "exact ", toDoc e]
     _ :< Data _ dd _ ->
       D.text $ DD.reify dd

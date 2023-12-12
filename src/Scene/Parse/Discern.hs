@@ -187,7 +187,7 @@ discern nenv term =
       args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
       return $ m :< WT.PiElim False (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
-    m :< RT.PiElimExact e -> do
+    m :< RT.PiElimExact _ e -> do
       e' <- discern nenv e
       return $ m :< WT.PiElimExact e'
     m :< RT.Data name consNameList es -> do
