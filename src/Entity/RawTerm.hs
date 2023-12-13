@@ -59,7 +59,7 @@ data RawTermF a
   | If (IfClause a) [IfClause a] C C (a, C)
   | When C (a, C) C (a, C)
   | Seq (a, C) C a
-  | ListIntro [a]
+  | ListIntro C [(a, C)]
   | Admit
   | Detach a
   | Attach a

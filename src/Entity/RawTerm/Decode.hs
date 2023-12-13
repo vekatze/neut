@@ -221,8 +221,8 @@ toDoc term =
         ]
     _ :< Seq (e1, _) _ e2 -> do
       D.join [toDoc e1, D.text ";", D.line, toDoc e2]
-    _ :< ListIntro es -> do
-      let es' = map toDoc es
+    _ :< ListIntro _ es -> do
+      let es' = map (toDoc . fst) es
       if isMultiLine es'
         then D.join [D.text "[", D.nest D.indent $ D.join [D.line, commaSeqV es'], D.line, D.text "]"]
         else D.join [D.text "[", commaSeqH es', D.text "]"]

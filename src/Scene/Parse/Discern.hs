@@ -292,10 +292,10 @@ discern nenv term =
       boolFalse <- locatorToName (blur m) coreBoolFalse
       unitUnit <- locatorToVarGlobal m coreUnitUnit
       discern nenv $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
-    m :< RT.ListIntro es -> do
+    m :< RT.ListIntro _ es -> do
       listNil <- locatorToVarGlobal m coreListNil
       listCons <- locatorToVarGlobal m coreListCons
-      discern nenv $ foldListApp m listNil listCons es
+      discern nenv $ foldListApp m listNil listCons $ map fst es
     m :< RT.Admit -> do
       admit <- locatorToVarGlobal m coreSystemAdmit
       t <- Gensym.newPreHole (blur m)

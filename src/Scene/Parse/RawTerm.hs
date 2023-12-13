@@ -684,8 +684,8 @@ preAscription' = do
 rawTermListIntro :: Parser (RT.RawTerm, C)
 rawTermListIntro = do
   m <- getCurrentHint
-  (_, (es, c2)) <- betweenBracket' $ commaList rawExpr
-  return (m :< RT.ListIntro (map fst es), c2)
+  (c1, (es, c2)) <- betweenBracket' $ commaList rawExpr
+  return (m :< RT.ListIntro c1 es, c2)
 
 rawTermPiElimExact :: Parser (RT.RawTerm, C)
 rawTermPiElimExact = do
