@@ -552,8 +552,8 @@ decodePattern pat = do
               let kvs' = map (\(k, (_, v)) -> (k, v)) kvs
               let kvs'' = map kvToDoc' kvs'
               D.join [name', D.text " of {", D.line, listSeq kvs'', D.line, D.text "}"]
-    RP.ListIntro patList -> do
-      let patList' = map (decodePattern . snd) patList
+    RP.ListIntro _ patList -> do
+      let patList' = map (decodePattern . snd . fst) patList
       D.join [D.text "[", commaSeqH patList', D.text "]"]
 
 getHorizontalDocList' :: [(T.Text, RP.RawPattern)] -> Maybe [D.Doc]

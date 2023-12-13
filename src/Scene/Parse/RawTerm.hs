@@ -501,8 +501,8 @@ rawTermPatternBasic =
 rawTermPatternListIntro :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternListIntro = do
   m <- getCurrentHint
-  patList <- betweenBracket $ commaList rawTermPattern
-  return ((m, RP.ListIntro $ map fst patList), [])
+  (c1, (patList, c2)) <- betweenBracket' $ commaList rawTermPattern
+  return ((m, RP.ListIntro c1 patList), c2)
 
 parseName :: Parser ((Hint, Name), C)
 parseName = do

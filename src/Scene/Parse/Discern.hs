@@ -684,7 +684,7 @@ discernPattern (m, pat) = do
                     args = patList'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-    RP.ListIntro patList -> do
+    RP.ListIntro _ patList -> do
       listNil <- Throw.liftEither $ DD.getLocatorPair m coreListNil
       listCons <- locatorToName m coreListCons
       discernPattern $ foldListAppPat m listNil listCons patList
@@ -693,15 +693,15 @@ foldListAppPat ::
   Hint ->
   L.Locator ->
   Name ->
-  [(Hint, RP.RawPattern)] ->
+  [((Hint, RP.RawPattern), C)] ->
   (Hint, RP.RawPattern)
 foldListAppPat m listNil listCons es =
   case es of
     [] ->
       (m, RP.Var $ Locator listNil)
-    e : rest -> do
+    ((mPat, pat), _) : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons (RP.Paren [e, rest']))
+      (m, RP.Cons listCons (RP.Paren [(mPat, pat), rest']))
 
 constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap m keyList = do
