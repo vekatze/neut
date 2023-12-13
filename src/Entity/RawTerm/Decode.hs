@@ -515,8 +515,8 @@ decodePrimOp op =
     P.PrimConvOp op' dom cod -> do
       D.join [D.text $ T.pack (show op') <> "-", primTypeToDoc dom, D.text "-", primTypeToDoc cod]
 
-decodeIntrospectClause :: (C, (Maybe T.Text, (RawTerm, C))) -> D.Doc
-decodeIntrospectClause (_, (mKey, (body, _))) = do
+decodeIntrospectClause :: (C, (Maybe T.Text, C, (RawTerm, C))) -> D.Doc
+decodeIntrospectClause (_, (mKey, _, (body, _))) = do
   case mKey of
     Just key -> do
       D.join [D.text key, D.text " => ", D.line, toDoc body]

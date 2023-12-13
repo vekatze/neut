@@ -419,17 +419,17 @@ foldListApp m listNil listCons es =
     e : rest ->
       m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
 
-lookupIntrospectiveClause :: Hint -> T.Text -> [(C, (Maybe T.Text, (RT.RawTerm, C)))] -> App RT.RawTerm
+lookupIntrospectiveClause :: Hint -> T.Text -> [(C, (Maybe T.Text, C, (RT.RawTerm, C)))] -> App RT.RawTerm
 lookupIntrospectiveClause m value clauseList =
   case clauseList of
     [] ->
       Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
-    (_, (Just key, (clause, _))) : rest
+    (_, (Just key, _, (clause, _))) : rest
       | key == value ->
           return clause
       | otherwise ->
           lookupIntrospectiveClause m value rest
-    (_, (Nothing, (clause, _))) : _ ->
+    (_, (Nothing, _, (clause, _))) : _ ->
       return clause
 
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text
