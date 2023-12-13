@@ -6,6 +6,7 @@ module Entity.RawTerm
     TopDefHeader,
     LetKind (..),
     RawMagic (..),
+    IfClause,
     lam,
     piElim,
   )
@@ -55,7 +56,7 @@ data RawTermF a
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a
-  | If a a [(a, a)] a
+  | If (IfClause a) [IfClause a] C C (a, C)
   | When a a
   | Seq a a
   | ListIntro [a]
@@ -66,6 +67,9 @@ data RawTermF a
   | Assert (Hint, T.Text) a
   | Introspect T.Text [(Maybe T.Text, a)]
   | With a a
+
+type IfClause a =
+  (C, (a, C), C, (a, C), C)
 
 type DefInfo a =
   ((Hint, RawIdent), C, Args a, Args a, C, (a, C), a)

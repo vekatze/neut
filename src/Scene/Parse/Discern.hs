@@ -279,7 +279,7 @@ discern nenv term =
       (xs', nenv') <- discernBinder nenv $ map f xs
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
-    m :< RT.If ifCond ifBody elseIfList elseBody -> do
+    m :< RT.If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
       discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
@@ -451,7 +451,7 @@ foldIf ::
   Name ->
   RT.RawTerm ->
   RT.RawTerm ->
-  [(RT.RawTerm, RT.RawTerm)] ->
+  [RT.IfClause RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm
 foldIf m true false ifCond ifBody elseIfList elseBody =
@@ -468,7 +468,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
                 ([], (V.fromList [((blur m, RP.Var false), [])], [], (elseBody, [])))
               ]
           )
-    ((elseIfCond, elseIfBody) : rest) -> do
+    ((_, (elseIfCond, _), _, (elseIfBody, _), _) : rest) -> do
       let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
       m
         :< RT.DataElim

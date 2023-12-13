@@ -196,7 +196,7 @@ toDoc term =
               cont'
             ]
         else D.join [D.text "use ", trope', D.text " {", commaSeqH args', D.text "} in", D.line, cont']
-    _ :< If ifCond ifBody elseIfList elseBody -> do
+    _ :< If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
       D.join
         [ D.text "if ",
           toDoc ifCond,
@@ -272,12 +272,12 @@ decodeNoeticVarList vs =
     then D.Nil
     else D.join [D.text " on ", commaSeqH (map (D.text . snd) vs)]
 
-decodeElseIfList :: [(RawTerm, RawTerm)] -> D.Doc
+decodeElseIfList :: [IfClause RawTerm] -> D.Doc
 decodeElseIfList elseIfList =
   case elseIfList of
     [] ->
       D.text ""
-    (elseIfCond, elseIfBody) : rest ->
+    (_, (elseIfCond, _), _, (elseIfBody, _), _) : rest ->
       D.join
         [ D.text " else-if ",
           toDoc elseIfCond,

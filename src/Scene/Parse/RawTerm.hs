@@ -542,17 +542,17 @@ rawTermPatternKeyValuePair = do
 rawTermIf :: Parser (RT.RawTerm, C)
 rawTermIf = do
   m <- getCurrentHint
-  keyword "if"
-  (ifCond, _) <- rawTerm
-  (ifBody, _) <- betweenBrace rawExpr
+  c1 <- keyword' "if"
+  ifCond <- rawTerm
+  (c2, (ifBody, c3)) <- betweenBrace' rawExpr
   elseIfList <- many $ do
-    keyword "else-if"
-    (elseIfCond, _) <- rawTerm
-    (elseIfBody, _) <- betweenBrace rawExpr
-    return (elseIfCond, elseIfBody)
-  keyword "else"
-  (_, ((elseBody, _), c2)) <- betweenBrace' rawExpr
-  return (m :< RT.If ifCond ifBody elseIfList elseBody, c2)
+    cElif1 <- keyword' "else-if"
+    elseIfCond <- rawTerm
+    (cElif2, (elseIfBody, cElif3)) <- betweenBrace' rawExpr
+    return (cElif1, elseIfCond, cElif2, elseIfBody, cElif3)
+  c4 <- keyword' "else"
+  (c5, (elseBody, c)) <- betweenBrace' rawExpr
+  return (m :< RT.If (c1, ifCond, c2, ifBody, c3) elseIfList c4 c5 elseBody, c)
 
 rawTermWhen :: Parser (RT.RawTerm, C)
 rawTermWhen = do
