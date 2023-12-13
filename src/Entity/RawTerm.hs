@@ -54,7 +54,7 @@ data RawTermF a
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
-  | Use a [RawBinder a] a
+  | Use C a C (Args a) C a
   | If a a [(a, a)] a
   | When a a
   | Seq a a

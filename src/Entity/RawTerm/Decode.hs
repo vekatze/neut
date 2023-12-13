@@ -173,7 +173,7 @@ toDoc term =
     _ :< Resource name _ (discarder, _) (copier, _) -> do
       let resourcePair = listSeq [toDoc discarder, toDoc copier]
       D.join [D.text "resource", D.text (DD.reify name), D.text "{", D.line, resourcePair, D.line, D.text "}"]
-    _ :< Use trope args cont -> do
+    _ :< Use _ trope _ (_, (args, _)) _ cont -> do
       let trope' = toDoc trope
       let args' = map (\(_, x, _, _, _) -> D.text x) args
       let cont' = toDoc cont

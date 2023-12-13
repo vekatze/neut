@@ -274,9 +274,9 @@ discern nenv term =
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
-    m :< RT.Use e xs cont -> do
+    m :< RT.Use _ e _ (_, (xs, _)) _ cont -> do
       e' <- discern nenv e
-      (xs', nenv') <- discernBinder nenv xs
+      (xs', nenv') <- discernBinder nenv $ map f xs
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If ifCond ifBody elseIfList elseBody -> do
@@ -350,9 +350,9 @@ discern nenv term =
           let e1' = m :< RT.With binder e1
           let e2' = m :< RT.With binder e2
           discern nenv $ mSeq :< RT.Seq e1' e2'
-        mUse :< RT.Use item vars cont -> do
+        mUse :< RT.Use c1 item c2 vars c3 cont -> do
           let cont' = m :< RT.With binder cont
-          discern nenv $ mUse :< RT.Use item vars cont'
+          discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont'
         _ ->
           discern nenv body
 

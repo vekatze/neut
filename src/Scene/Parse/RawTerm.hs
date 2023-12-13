@@ -191,13 +191,13 @@ rawTermLet mLet = do
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
-  keyword "use"
-  (e, _) <- rawTerm
-  xs <- betweenBrace $ commaList preBinder
-  delimiter "in"
-  lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) xs
-  (cont, _) <- rawExpr
-  return (m :< RT.Use e (map f xs) cont, [])
+  c1 <- keyword' "use"
+  (e, c2) <- rawTerm
+  xs@(_, (ys, _)) <- betweenBrace' $ commaList preBinder
+  c3 <- delimiter' "in"
+  lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) ys
+  (cont, c) <- rawExpr
+  return (m :< RT.Use c1 e c2 xs c3 cont, c)
 
 rawTermLetVarAscription :: Hint -> Parser (C, (RT.RawTerm, C))
 rawTermLetVarAscription m = do
