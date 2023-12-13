@@ -23,7 +23,7 @@ data RawPattern
 
 data ConsArgs
   = Paren C [((Hint, RawPattern), C)]
-  | Of [(Key, (Hint, RawPattern))]
+  | Of C C [(Key, ((Hint, RawPattern), C))]
   deriving (Show)
 
 type RawPatternRow a =

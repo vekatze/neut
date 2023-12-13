@@ -544,12 +544,12 @@ decodePattern pat = do
         RP.Paren _ patList -> do
           let patList' = map (decodePattern . snd . fst) patList
           D.join [name', D.text "(", commaSeqH patList', D.text ")"]
-        RP.Of kvs -> do
-          case getHorizontalDocList' (map (\(k, (_, v)) -> (k, v)) kvs) of
+        RP.Of _ _ kvs -> do
+          let kvs' = map (\(k, ((_, v), _)) -> (k, v)) kvs
+          case getHorizontalDocList' kvs' of
             Just vs' ->
               D.join [name', D.text " of {", commaSeqH vs', D.text "}"]
             Nothing -> do
-              let kvs' = map (\(k, (_, v)) -> (k, v)) kvs
               let kvs'' = map kvToDoc' kvs'
               D.join [name', D.text " of {", D.line, listSeq kvs'', D.line, D.text "}"]
     RP.ListIntro _ patList -> do

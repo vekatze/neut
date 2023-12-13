@@ -518,24 +518,24 @@ rawTermPatternConsOrVar = do
         (c2, (patArgs, c)) <- argList' rawTermPattern
         return ((m, RP.Cons varOrLocator c1 (RP.Paren c2 patArgs)), c),
       do
-        keyword "of"
-        kvs <- betweenBrace $ bulletListOrCommaSeq rawTermPatternKeyValuePair
-        return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), []),
+        c2 <- keyword' "of"
+        (c3, (kvs, c)) <- betweenBrace' $ bulletListOrCommaSeq rawTermPatternKeyValuePair
+        return ((m, RP.Cons varOrLocator c1 (RP.Of c2 c3 kvs)), c),
       do
         return ((m, RP.Var varOrLocator), [])
     ]
 
-rawTermPatternKeyValuePair :: Parser (Key, (Hint, RP.RawPattern))
+rawTermPatternKeyValuePair :: Parser (Key, ((Hint, RP.RawPattern), C))
 rawTermPatternKeyValuePair = do
   mFrom <- getCurrentHint
-  from <- symbol
+  (from, c1) <- symbol'
   choice
     [ do
-        delimiter "="
-        to <- rawTermPattern
-        return (from, fst to),
+        c2 <- delimiter' "="
+        (to, c) <- rawTermPattern
+        return (from, (to, c1 ++ c2 ++ c)),
       do
-        return (from, (mFrom, RP.Var (Var from))) -- record rhyming
+        return (from, ((mFrom, RP.Var (Var from)), [])) -- record rhyming
     ]
 
 rawTermIf :: Parser (RT.RawTerm, C)

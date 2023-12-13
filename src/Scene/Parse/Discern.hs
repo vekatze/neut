@@ -665,8 +665,9 @@ discernPattern (m, pat) = do
                     args = args'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-        RP.Of mkvs -> do
-          let (ks, mvs) = unzip mkvs
+        RP.Of _ _ mkvs -> do
+          let (ks, mvcs) = unzip mkvs
+          let mvs = map fst mvcs
           ensureFieldLinearity m ks S.empty S.empty
           (_, keyList) <- KeyArg.lookup m consName
           defaultKeyMap <- constructDefaultKeyMap m keyList
