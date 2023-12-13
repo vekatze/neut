@@ -557,10 +557,10 @@ rawTermIf = do
 rawTermWhen :: Parser (RT.RawTerm, C)
 rawTermWhen = do
   m <- getCurrentHint
-  _ <- keyword' "when"
-  (whenCond, _) <- rawTerm
-  (_, ((whenBody, _), c2)) <- betweenBrace' rawExpr
-  return (m :< RT.When whenCond whenBody, c2)
+  c1 <- keyword' "when"
+  whenCond <- rawTerm
+  (c2, (whenBody, c)) <- betweenBrace' rawExpr
+  return (m :< RT.When c1 whenCond c2 whenBody, c)
 
 rawTermBrace :: Parser (RT.RawTerm, C)
 rawTermBrace =

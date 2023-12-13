@@ -287,7 +287,7 @@ discern nenv term =
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ bind (m, h, [], [], unit) e1 e2
-    m :< RT.When whenCond whenBody -> do
+    m :< RT.When _ (whenCond, _) _ (whenBody, _) -> do
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
       unitUnit <- locatorToVarGlobal m coreUnitUnit

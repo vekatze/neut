@@ -210,7 +210,7 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< When cond body -> do
+    _ :< When _ (cond, _) _ (body, _) -> do
       D.join
         [ D.text "when ",
           toDoc cond,
