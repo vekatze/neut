@@ -234,7 +234,7 @@ toDoc term =
     _ :< Attach _ _ (e, _) -> do
       let e' = toDoc e
       D.join [D.text "attach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
-    _ :< Option t -> do
+    _ :< Option _ t -> do
       D.join [D.text "?", toDoc t]
     _ :< Assert (_, message) e -> do
       D.join

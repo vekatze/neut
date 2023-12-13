@@ -604,7 +604,7 @@ rawTermOption = do
   m <- getCurrentHint
   c1 <- delimiter' "?"
   (t, c) <- rawTermBasic
-  return (m :< RT.Option t, c1 ++ c)
+  return (m :< RT.Option c1 t, c)
 
 rawTermAdmit :: Parser (RT.RawTerm, C)
 rawTermAdmit = do

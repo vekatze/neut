@@ -318,7 +318,7 @@ discern nenv term =
       t <- Gensym.newPreHole (blur m)
       attachVar <- locatorToVarGlobal m coreThreadAttach
       discern nenv $ m :< RT.piElim attachVar [t, e]
-    m :< RT.Option t -> do
+    m :< RT.Option _ t -> do
       exceptVar <- locatorToVarGlobal m coreExcept
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ m :< RT.piElim exceptVar [unit, t]
