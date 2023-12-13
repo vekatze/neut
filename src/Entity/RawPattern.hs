@@ -22,12 +22,12 @@ data RawPattern
   deriving (Show)
 
 data ConsArgs
-  = Paren C [((Hint, RawPattern), C)]
+  = Paren [(C, ((Hint, RawPattern), C))]
   | Of C C [(Key, ((Hint, RawPattern), C))]
   deriving (Show)
 
 type RawPatternRow a =
-  (V.Vector ((Hint, RawPattern), C), C, a)
+  (V.Vector (C, ((Hint, RawPattern), C)), C, a)
 
 newtype RawPatternMatrix a
   = MakeRawPatternMatrix (V.Vector (C, RawPatternRow a))

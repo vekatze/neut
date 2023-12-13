@@ -465,7 +465,7 @@ rawTermMatch = do
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow (RT.RawTerm, C))
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
-  patternList <- commaList rawTermPattern
+  patternList <- commaList' spaceConsumer' rawTermPattern
   unless (length patternList == patternSize) $ do
     lift $
       Throw.raiseError m $
@@ -508,8 +508,8 @@ rawTermPatternConsOrVar = do
   ((m, varOrLocator), c1) <- parseName
   choice
     [ do
-        (c2, (patArgs, c)) <- argList' rawTermPattern
-        return ((m, RP.Cons varOrLocator c1 (RP.Paren c2 patArgs)), c),
+        (patArgs, c) <- argList'' rawTermPattern
+        return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
       do
         c2 <- keyword' "of"
         (c3, (kvs, c)) <- betweenBrace' $ bulletListOrCommaSeq rawTermPatternKeyValuePair

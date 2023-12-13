@@ -235,13 +235,21 @@ discern nenv term =
                 []
                 ( RP.new
                     [ ( [],
-                        ( V.fromList [((_m, RP.Cons exceptFail [] (RP.Paren [] [((_m, RP.Var (Var err)), [])])), [])],
+                        ( V.fromList
+                            [ ( [],
+                                ((_m, RP.Cons exceptFail [] (RP.Paren [([], ((_m, RP.Var (Var err)), []))])), [])
+                              )
+                            ],
                           [],
                           (m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)], [])
                         )
                       ),
                       ( [],
-                        ( V.fromList [((_m, RP.Cons exceptPass [] (RP.Paren [] [((mx, pat), [])])), [])],
+                        ( V.fromList
+                            [ ( [],
+                                ((_m, RP.Cons exceptPass [] (RP.Paren [([], ((mx, pat), []))])), [])
+                              )
+                            ],
                           [],
                           (e2, [])
                         )
@@ -399,7 +407,7 @@ getContinuationModifier pat =
                 isNoetic
                 [([], (mCont :< RT.Var (Var tmp), []))]
                 []
-                (RP.new [([], (V.fromList [(pat, [])], [], (cont, [])))])
+                (RP.new [([], (V.fromList [([], (pat, []))], [], (cont, [])))])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
@@ -466,8 +474,26 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           [([], (ifCond, []))]
           []
           ( RP.new
-              [ ([], (V.fromList [((blur m, RP.Var true), [])], [], (ifBody, []))),
-                ([], (V.fromList [((blur m, RP.Var false), [])], [], (elseBody, [])))
+              [ ( [],
+                  ( V.fromList
+                      [ ( [],
+                          ((blur m, RP.Var true), [])
+                        )
+                      ],
+                    [],
+                    (ifBody, [])
+                  )
+                ),
+                ( [],
+                  ( V.fromList
+                      [ ( [],
+                          ((blur m, RP.Var false), [])
+                        )
+                      ],
+                    [],
+                    (elseBody, [])
+                  )
+                )
               ]
           )
     ((_, (elseIfCond, _), _, (elseIfBody, _), _) : rest) -> do
@@ -479,8 +505,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           [([], (ifCond, []))]
           []
           ( RP.new
-              [ ([], (V.fromList [((blur m, RP.Var true), [])], [], (ifBody, []))),
-                ([], (V.fromList [((blur m, RP.Var false), [])], [], (cont, [])))
+              [ ([], (V.fromList [([], ((blur m, RP.Var true), []))], [], (ifBody, []))),
+                ([], (V.fromList [([], ((blur m, RP.Var false), []))], [], (cont, [])))
               ]
           )
 
@@ -576,7 +602,7 @@ discernPatternRow nenv (patVec, _, (body, _)) = do
 
 discernPatternRow' ::
   NominalEnv ->
-  [((Hint, RP.RawPattern), C)] ->
+  [(C, ((Hint, RP.RawPattern), C))] ->
   NominalEnv ->
   RT.RawTerm ->
   App ([(Hint, PAT.Pattern)], ([Ident], WT.WeakTerm))
@@ -587,7 +613,7 @@ discernPatternRow' nenv patList newVarList body = do
       nenv' <- joinNominalEnv newVarList nenv
       body' <- discern nenv' body
       return ([], ([], body'))
-    (pat, _) : rest -> do
+    (_, (pat, _)) : rest -> do
       (pat', varsInPat) <- discernPattern pat
       (rest', body') <- discernPatternRow' nenv rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
@@ -653,8 +679,8 @@ discernPattern (m, pat) = do
         Throw.raiseError m $
           "the constructor `" <> showName cons <> "` can't have any arguments"
       case mArgs of
-        RP.Paren _ args -> do
-          (args', nenvList) <- mapAndUnzipM (discernPattern . fst) args
+        RP.Paren args -> do
+          (args', nenvList) <- mapAndUnzipM (discernPattern . fst . snd) args
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -702,7 +728,7 @@ foldListAppPat m listNil listCons es =
       (m, RP.Var $ Locator listNil)
     pat : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons [] (RP.Paren [] [pat, (rest', [])]))
+      (m, RP.Cons listCons [] (RP.Paren [([], pat), ([], (rest', []))]))
 
 constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap m keyList = do

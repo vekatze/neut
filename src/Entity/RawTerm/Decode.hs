@@ -529,7 +529,7 @@ decodePatternRowList =
 
 decodePatternRow :: (C, RP.RawPatternRow (RawTerm, C)) -> D.Doc
 decodePatternRow (_, (patArgs, _, body)) = do
-  let patArgs' = map (decodePattern . snd . fst) $ V.toList patArgs
+  let patArgs' = map (decodePattern . snd . fst . snd) $ V.toList patArgs
   let body' = toDoc $ fst body
   D.join [commaSeqH patArgs', D.text " =>", D.line, body']
 
@@ -541,8 +541,8 @@ decodePattern pat = do
     RP.Cons name _ args -> do
       let name' = nameToDoc name
       case args of
-        RP.Paren _ patList -> do
-          let patList' = map (decodePattern . snd . fst) patList
+        RP.Paren patList -> do
+          let patList' = map (decodePattern . snd . fst . snd) patList
           D.join [name', D.text "(", commaSeqH patList', D.text ")"]
         RP.Of _ _ kvs -> do
           let kvs' = map (\(k, ((_, v), _)) -> (k, v)) kvs
