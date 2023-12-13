@@ -219,7 +219,7 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< Seq e1 e2 -> do
+    _ :< Seq (e1, _) _ e2 -> do
       D.join [toDoc e1, D.text ";", D.line, toDoc e2]
     _ :< ListIntro es -> do
       let es' = map toDoc es

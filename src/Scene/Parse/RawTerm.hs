@@ -64,13 +64,13 @@ rawExprLet m = do
 
 rawExprSeqOrTerm :: Hint -> Parser (RT.RawTerm, C)
 rawExprSeqOrTerm m = do
-  (e1, _) <- rawTerm
+  e1 <- rawTerm
   choice
     [ do
-        _ <- delimiter' ";"
+        c1 <- delimiter' ";"
         (e2, c2) <- rawExpr
-        return (m :< RT.Seq e1 e2, c2),
-      return (e1, [])
+        return (m :< RT.Seq e1 c1 e2, c2),
+      return e1
     ]
 
 rawTerm :: Parser (RT.RawTerm, C)

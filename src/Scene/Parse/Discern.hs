@@ -283,7 +283,7 @@ discern nenv term =
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
       discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
-    m :< RT.Seq e1 e2 -> do
+    m :< RT.Seq (e1, _) _ e2 -> do
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ bind (m, h, [], [], unit) e1 e2
@@ -346,10 +346,10 @@ discern nenv term =
               discern nenv $ m :< RT.piElim binder [e1', RT.lam m [(mPat, x, c2, c3, t)] (modifier False e2')]
             _ -> do
               discern nenv $ mLet :< RT.Let letKind c1 mxt c4 mys c5 e1' c6 e2'
-        mSeq :< RT.Seq e1 e2 -> do
+        mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With binder e1
           let e2' = m :< RT.With binder e2
-          discern nenv $ mSeq :< RT.Seq e1' e2'
+          discern nenv $ mSeq :< RT.Seq (e1', c1) c2 e2'
         mUse :< RT.Use c1 item c2 vars c3 cont -> do
           let cont' = m :< RT.With binder cont
           discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont'
