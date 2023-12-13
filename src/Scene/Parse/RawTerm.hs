@@ -696,13 +696,13 @@ rawTermIntrospect = do
   (c3, (clauseList, c)) <- betweenBrace' $ manyList' rawTermIntrospectiveClause
   return (m :< RT.Introspect c1 key c2 c3 clauseList, c)
 
-rawTermIntrospectiveClause :: Parser (Maybe T.Text, C, (RT.RawTerm, C))
+rawTermIntrospectiveClause :: Parser (Maybe (T.Text, C), C, (RT.RawTerm, C))
 rawTermIntrospectiveClause = do
-  s <- symbol
+  sc@(s, _) <- symbol'
   c <- delimiter' "=>"
   body <- rawExpr
   if s /= "default"
-    then return (Just s, c, body)
+    then return (Just sc, c, body)
     else return (Nothing, c, body)
 
 rawTermSymbol :: Parser (RT.RawTerm, C)
