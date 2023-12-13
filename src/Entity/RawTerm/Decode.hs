@@ -158,11 +158,11 @@ toDoc term =
         External _ _ _ _ (funcName, _) args _ varArgs -> do
           let funcName' = D.text $ T.pack (show $ EN.reify funcName)
           let args' = map (toDoc . fst) args
-          let varArgs' = map (\((lt, _), (e, _)) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
+          let varArgs' = map (\((e, _), (lt, _)) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
           if null varArgs'
             then D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args')]
             else D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args' ++ D.text "; " : varArgs')]
-        Global _ _ (lt, _) _ (name, _) -> do
+        Global _ _ (name, _) _ (lt, _) -> do
           let lt' = lowTypeToDoc lt
           let name' = D.text $ T.pack (show $ EN.reify name)
           D.join [D.text "magic ", piElimToDoc (D.text "global") [name', lt']]

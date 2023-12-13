@@ -100,5 +100,5 @@ data RawMagic
   = Cast C C (RawTerm, C) (RawTerm, C) (RawTerm, C)
   | Store C C (LowType, C) (RawTerm, C) (RawTerm, C)
   | Load C C (LowType, C) (RawTerm, C)
-  | External C C [LowType] LowType (EN.ExternalName, C) [(RawTerm, C)] C [((LowType, C), (RawTerm, C))]
-  | Global C C (LowType, C) C (EN.ExternalName, C)
+  | External C C [LowType] LowType (EN.ExternalName, C) [(RawTerm, C)] C [((RawTerm, C), (LowType, C))]
+  | Global C C (EN.ExternalName, C) C (LowType, C)

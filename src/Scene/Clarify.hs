@@ -405,13 +405,13 @@ clarifyMagic tenv der =
           C.Primitive (C.Magic (M.Load lt pointerVar))
     M.External domList cod extFunName args varArgAndTypeList -> do
       (xs, args', xsAsVars) <- unzip3 <$> mapM (clarifyPlus tenv) args
-      let (varTypes, varArgs) = unzip varArgAndTypeList
+      let (varArgs, varTypes) = unzip varArgAndTypeList
       (ys, varArgs', ysAsVarArgs) <- unzip3 <$> mapM (clarifyPlus tenv) varArgs
       return $
         bindLet (zip xs args' ++ zip ys varArgs') $
-          C.Primitive (C.Magic (M.External domList cod extFunName xsAsVars (zip varTypes ysAsVarArgs)))
-    M.Global lt name -> do
-      return $ C.Primitive (C.Magic (M.Global lt name))
+          C.Primitive (C.Magic (M.External domList cod extFunName xsAsVars (zip ysAsVarArgs varTypes)))
+    M.Global name lt -> do
+      return $ C.Primitive (C.Magic (M.Global name lt))
 
 clarifyLambda ::
   TM.TypeEnv ->

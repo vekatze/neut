@@ -373,12 +373,12 @@ discernMagic nenv magic =
       return $ M.Load lt pointer'
     RT.External _ _ domList cod (funcName, _) args _ varArgs -> do
       args' <- mapM (discern nenv . fst) args
-      varArgs' <- forM varArgs $ \((lt, _), (arg, _)) -> do
+      varArgs' <- forM varArgs $ \((arg, _), (lt, _)) -> do
         arg' <- discern nenv arg
-        return (lt, arg')
+        return (arg', lt)
       return $ M.External domList cod funcName args' varArgs'
-    RT.Global _ _ (lt, _) _ (name, _) -> do
-      return $ M.Global lt name
+    RT.Global _ _ (name, _) _ (lt, _) -> do
+      return $ M.Global name lt
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =

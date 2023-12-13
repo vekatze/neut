@@ -1,5 +1,6 @@
 module Entity.Magic where
 
+import Data.Bifunctor
 import Data.Binary
 import Data.Text qualified as T
 import Entity.ExternalName qualified as EN
@@ -10,8 +11,8 @@ data Magic a
   = Cast a a a
   | Store LowType a a
   | Load LowType a
-  | External [LowType] LowType EN.ExternalName [a] [(LowType, a)]
-  | Global LowType EN.ExternalName
+  | External [LowType] LowType EN.ExternalName [a] [(a, LowType)]
+  | Global EN.ExternalName LowType
   deriving (Show, Eq, G.Generic)
 
 instance (Binary a) => Binary (Magic a)
@@ -25,10 +26,11 @@ instance Functor Magic where
         Store lt (f value) (f pointer)
       Load lt pointer ->
         Load lt (f pointer)
-      External domList cod extFunName args varArgs ->
-        External domList cod extFunName (fmap f args) (fmap (fmap f) varArgs)
-      Global lt name ->
-        Global lt name
+      External domList cod extFunName args varArgs -> do
+        let varArgs' = map (first f) varArgs
+        External domList cod extFunName (fmap f args) varArgs'
+      Global name lt ->
+        Global name lt
 
 instance Foldable Magic where
   foldMap f der =
@@ -40,7 +42,7 @@ instance Foldable Magic where
       Load _ pointer ->
         f pointer
       External _ _ _ args varArgs ->
-        foldMap f (args ++ map snd varArgs)
+        foldMap f (args ++ map fst varArgs)
       Global {} ->
         mempty
 
@@ -53,10 +55,12 @@ instance Traversable Magic where
         Store lt <$> f value <*> f pointer
       Load lt pointer ->
         Load lt <$> f pointer
-      External domList cod extFunName args varArgs ->
-        External domList cod extFunName <$> traverse f args <*> traverse (traverse f) varArgs
-      Global lt name ->
-        pure $ Global lt name
+      External domList cod extFunName args varArgs -> do
+        let swap (x, y) = (y, x)
+        let varArgs' = traverse (fmap swap . traverse f . swap) varArgs
+        External domList cod extFunName <$> traverse f args <*> varArgs'
+      Global name lt ->
+        pure $ Global name lt
 
 getMagicName :: Magic a -> T.Text
 getMagicName d =

@@ -289,8 +289,9 @@ elaborate' term =
                 <> T.pack (show actual)
                 <> "."
           args' <- mapM elaborate' args
-          varArgs' <- mapM (mapM elaborate') varArgs
-          return $ m :< TM.Magic (M.External domList cod name args' varArgs')
+          let (vArgs, vTypes) = unzip varArgs
+          vArgs' <- mapM elaborate' vArgs
+          return $ m :< TM.Magic (M.External domList cod name args' (zip vArgs' vTypes))
         _ -> do
           magic' <- mapM elaborate' magic
           return $ m :< TM.Magic magic'

@@ -206,7 +206,7 @@ lowerCompPrimitive codeOp =
           alreadyRegistered <- lift $ Decl.member (DN.Ext name)
           unless alreadyRegistered $ do
             lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
-          let (varTypes, varArgs) = unzip varArgAndTypeList
+          let (varArgs, varTypes) = unzip varArgAndTypeList
           let argCaster = domList ++ varTypes
           castedArgs <- zipWithM lowerValueLetCast (args ++ varArgs) argCaster
           let suffix = if null varArgs then [] else [LT.VarArgs]
@@ -218,7 +218,7 @@ lowerCompPrimitive codeOp =
             _ -> do
               result <- reflect $ LC.MagicCall funcType (LC.VarExternal name) $ zip argCaster castedArgs
               uncast result cod
-        M.Global lt name -> do
+        M.Global name lt -> do
           uncast (LC.VarExternal name) lt
 
 lowerCompPrimOp :: PrimOp -> [C.Value] -> Lower LC.Value

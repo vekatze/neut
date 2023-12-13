@@ -406,11 +406,11 @@ rawTermMagicExternal m c = do
     (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName')
     return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 c2 domList cod (extFunName', cExt) es cVar varArgAndTypeList)
 
-rawTermAndLowType :: Parser ((LT.LowType, C), (RT.RawTerm, C))
+rawTermAndLowType :: Parser ((RT.RawTerm, C), (LT.LowType, C))
 rawTermAndLowType = do
   e <- rawTerm
   t <- lowType
-  return (t, e)
+  return (e, t)
 
 rawTermMagicGlobal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicGlobal m c = do
@@ -418,7 +418,7 @@ rawTermMagicGlobal m c = do
     (globalVarName, c3) <- string'
     c4 <- delimiter' ","
     lt <- lowType
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 c2 lt c4 (EN.ExternalName globalVarName, c3))
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 c2 (EN.ExternalName globalVarName, c3) c4 lt)
 
 lowType :: Parser (LT.LowType, C)
 lowType = do
