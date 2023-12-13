@@ -242,9 +242,9 @@ rawTermNoeticVar = do
 rawTermEmbody :: Parser (RT.RawTerm, C)
 rawTermEmbody = do
   m <- getCurrentHint
-  delimiter "*"
+  c1 <- delimiter' "*"
   (e, c) <- rawTermBasic
-  return (m :< RT.Embody e, c)
+  return (m :< RT.Embody e, c1 ++ c)
 
 rawTermTau :: Parser (RT.RawTerm, C)
 rawTermTau = do
@@ -579,9 +579,9 @@ bind (m, x, c1, c2, t) e cont =
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do
   m <- getCurrentHint
-  delimiter "&"
+  c1 <- delimiter' "&"
   (t, c) <- rawTermBasic
-  return (m :< RT.Noema t, c)
+  return (m :< RT.Noema t, c1 ++ c)
 
 rawTermFlowIntro :: Parser (RT.RawTerm, C)
 rawTermFlowIntro = do
