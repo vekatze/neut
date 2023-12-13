@@ -458,7 +458,7 @@ rawTermMatch = do
           c1 <- keyword' "match"
           return (c1, False)
       ]
-  es <- commaList rawTermBasic
+  es <- sepList spaceConsumer' (delimiter' ",") rawTermBasic
   (c2, (patternRowList, c3)) <- betweenBrace' $ manyList' $ rawTermPatternRow (length es)
   return (m :< RT.DataElim c1 isNoetic es c2 (RP.new patternRowList), c3)
 

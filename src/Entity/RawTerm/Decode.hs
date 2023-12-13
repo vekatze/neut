@@ -66,7 +66,7 @@ toDoc term =
       D.text $ DD.reify dd
     _ :< DataElim _ isNoetic es _ patternRowList -> do
       let keyword = if isNoetic then D.text "case" else D.text "match"
-      let es' = map (toDoc . fst) es
+      let es' = map (toDoc . fst . snd) es
       let patternRowList' = decodePatternRowList $ RP.toList patternRowList
       D.join
         [ keyword,

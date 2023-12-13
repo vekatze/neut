@@ -268,8 +268,8 @@ commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")
 
-commaList' :: Parser C -> Parser a -> Parser [(C, a)]
-commaList' first f = do
+sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
+sepList first sep f = do
   c <- first
   mv <- optional f
   case mv of
@@ -277,10 +277,14 @@ commaList' first f = do
       return []
     Just v -> do
       rest <- many $ do
-        c' <- delimiter' ","
+        c' <- sep
         v' <- f
         return (c', v')
       return $ (c, v) : rest
+
+commaList' :: Parser C -> Parser a -> Parser [(C, a)]
+commaList' first f = do
+  sepList first (delimiter' ",") f
 
 argList :: Parser a -> Parser [a]
 argList f = do

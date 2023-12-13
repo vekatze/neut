@@ -199,9 +199,9 @@ discern nenv term =
       consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< RT.DataElim _ isNoetic es _ patternMatrix -> do
-      let ms = map (\(me :< _, _) -> me) es
+      let ms = map (\(_, (me :< _, _)) -> me) es
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv . fst >=> castFromNoemaIfNecessary isNoetic) es
+      es' <- mapM (discern nenv . fst . snd >=> castFromNoemaIfNecessary isNoetic) es
       ts <- mapM (const $ Gensym.newHole m []) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
@@ -231,7 +231,7 @@ discern nenv term =
               :< RT.DataElim
                 []
                 False
-                [(e1', [])]
+                [([], (e1', []))]
                 []
                 ( RP.new
                     [ ( [],
@@ -397,7 +397,7 @@ getContinuationModifier pat =
               :< RT.DataElim
                 []
                 isNoetic
-                [(mCont :< RT.Var (Var tmp), [])]
+                [([], (mCont :< RT.Var (Var tmp), []))]
                 []
                 (RP.new [([], (V.fromList [(pat, [])], [], (cont, [])))])
         )
@@ -463,7 +463,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
         :< RT.DataElim
           []
           False
-          [(ifCond, [])]
+          [([], (ifCond, []))]
           []
           ( RP.new
               [ ([], (V.fromList [((blur m, RP.Var true), [])], [], (ifBody, []))),
@@ -476,7 +476,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
         :< RT.DataElim
           []
           False
-          [(ifCond, [])]
+          [([], (ifCond, []))]
           []
           ( RP.new
               [ ([], (V.fromList [((blur m, RP.Var true), [])], [], (ifBody, []))),
