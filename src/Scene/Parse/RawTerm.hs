@@ -629,20 +629,20 @@ rawTermPiElimOrSimple = do
 
 rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont m ec = do
-  argListList <- many $ argList' rawExpr
+  argListList <- many $ argList'' rawExpr
   return $ foldPiElim m ec argListList
 
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
-  [(C, ([(RT.RawTerm, C)], C))] ->
+  [([RT.EL RT.RawTerm], C)] ->
   (RT.RawTerm, C)
 foldPiElim m (e, c) argListList =
   case argListList of
     [] ->
       (e, c)
-    (c1, (args, c2)) : rest ->
-      foldPiElim m (m :< RT.PiElim e (c ++ c1) args, c2) rest
+    (args, c1) : rest ->
+      foldPiElim m (m :< RT.PiElim e c args, c1) rest
 
 preBinder :: Parser (RawBinder (RT.RawTerm, C))
 preBinder =

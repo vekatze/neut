@@ -7,6 +7,7 @@ module Entity.RawTerm
     LetKind (..),
     RawMagic (..),
     IfClause,
+    EL,
     lam,
     piElim,
   )
@@ -41,7 +42,7 @@ data RawTermF a
   | Pi (Args a) (Args a) C a
   | PiIntro (Args a) (Args a) C a
   | PiIntroFix C (DefInfo a)
-  | PiElim a C [(a, C)]
+  | PiElim a C [EL a]
   | PiElimByKey Name C C C [(Hint, Key, C, C, (a, C))] -- auxiliary syntax for key-call
   | PiElimExact C a
   | Data AttrD.Attr DD.DefiniteDescription [a]
@@ -83,7 +84,7 @@ type TopDefInfo =
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =
-  PiElim e [] (map (,[]) es)
+  PiElim e [] (map (\arg -> ([], (arg, []))) es)
 
 lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =
