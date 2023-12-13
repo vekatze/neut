@@ -62,7 +62,7 @@ data RawTermF a
   | ListIntro C [(a, C)]
   | Admit
   | Detach C C (a, C)
-  | Attach a
+  | Attach C C (a, C)
   | Option a
   | Assert (Hint, T.Text) a
   | Introspect T.Text [(Maybe T.Text, a)]

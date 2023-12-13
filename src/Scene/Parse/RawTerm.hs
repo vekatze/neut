@@ -595,9 +595,9 @@ rawTermFlowIntro = do
 rawTermFlowElim :: Parser (RT.RawTerm, C)
 rawTermFlowElim = do
   m <- getCurrentHint
-  keyword "attach"
-  (_, ((e, _), c2)) <- betweenBrace' rawExpr
-  return (m :< RT.Attach e, c2)
+  c1 <- keyword' "attach"
+  (c2, (e, c)) <- betweenBrace' rawExpr
+  return (m :< RT.Attach c1 c2 e, c)
 
 rawTermOption :: Parser (RT.RawTerm, C)
 rawTermOption = do
