@@ -65,9 +65,9 @@ toDoc term =
       D.text $ DD.reify dd
     _ :< DataIntro _ dd _ _ ->
       D.text $ DD.reify dd
-    _ :< DataElim isNoetic es patternRowList -> do
+    _ :< DataElim _ isNoetic es _ patternRowList -> do
       let keyword = if isNoetic then D.text "case" else D.text "match"
-      let es' = map toDoc es
+      let es' = map (toDoc . fst) es
       let patternRowList' = decodePatternRowList $ RP.toList patternRowList
       D.join
         [ keyword,
@@ -513,14 +513,14 @@ decodeIntrospectClause (mKey, body) = do
     Nothing ->
       D.join [D.text "default => ", D.line, toDoc body]
 
-decodePatternRowList :: [RP.RawPatternRow RawTerm] -> [D.Doc]
+decodePatternRowList :: [(C, RP.RawPatternRow (RawTerm, C))] -> [D.Doc]
 decodePatternRowList =
   map decodePatternRow
 
-decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
-decodePatternRow (patArgs, body) = do
-  let patArgs' = map (decodePattern . snd) $ V.toList patArgs
-  let body' = toDoc body
+decodePatternRow :: (C, RP.RawPatternRow (RawTerm, C)) -> D.Doc
+decodePatternRow (_, (patArgs, _, body)) = do
+  let patArgs' = map (decodePattern . snd . fst) $ V.toList patArgs
+  let body' = toDoc $ fst body
   D.join [commaSeqH patArgs', D.text " =>", D.line, body']
 
 decodePattern :: RP.RawPattern -> D.Doc

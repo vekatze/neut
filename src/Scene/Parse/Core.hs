@@ -292,6 +292,13 @@ manyList :: Parser a -> Parser [a]
 manyList f =
   many $ delimiter "-" >> f
 
+manyList' :: Parser a -> Parser [(C, a)]
+manyList' f =
+  many $ do
+    c <- delimiter' "-"
+    v <- f
+    return (c, v)
+
 bulletListOrCommaSeq :: Parser a -> Parser [a]
 bulletListOrCommaSeq f =
   choice

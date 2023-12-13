@@ -4,13 +4,13 @@ module Entity.RawPattern
     RawPatternMatrix,
     ConsArgs (..),
     new,
-    consRow,
     unconsRow,
     toList,
   )
 where
 
 import Data.Vector qualified as V
+import Entity.C
 import Entity.Hint hiding (new)
 import Entity.Key
 import Entity.Name
@@ -27,24 +27,20 @@ data ConsArgs
   deriving (Show)
 
 type RawPatternRow a =
-  (V.Vector (Hint, RawPattern), a)
+  (V.Vector ((Hint, RawPattern), C), C, a)
 
 newtype RawPatternMatrix a
-  = MakeRawPatternMatrix (V.Vector (RawPatternRow a))
+  = MakeRawPatternMatrix (V.Vector (C, RawPatternRow a))
 
-new :: [RawPatternRow a] -> RawPatternMatrix a
+new :: [(C, RawPatternRow a)] -> RawPatternMatrix a
 new rows =
   MakeRawPatternMatrix $ V.fromList rows
 
-consRow :: RawPatternRow a -> RawPatternMatrix a -> RawPatternMatrix a
-consRow row (MakeRawPatternMatrix mat) =
-  MakeRawPatternMatrix $ V.cons row mat
-
 unconsRow :: RawPatternMatrix a -> Maybe (RawPatternRow a, RawPatternMatrix a)
 unconsRow (MakeRawPatternMatrix mat) = do
-  (headRow, rest) <- V.uncons mat
+  ((_, headRow), rest) <- V.uncons mat
   return (headRow, MakeRawPatternMatrix rest)
 
-toList :: RawPatternMatrix a -> [RawPatternRow a]
+toList :: RawPatternMatrix a -> [(C, RawPatternRow a)]
 toList (MakeRawPatternMatrix mat) =
   V.toList mat

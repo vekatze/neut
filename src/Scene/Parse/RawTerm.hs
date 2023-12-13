@@ -455,10 +455,18 @@ primType = do
 rawTermMatch :: Parser (RT.RawTerm, C)
 rawTermMatch = do
   m <- getCurrentHint
-  isNoetic <- choice [try (keyword "case") >> return True, keyword "match" >> return False]
+  (c1, isNoetic) <-
+    choice
+      [ do
+          c1 <- try (keyword' "case")
+          return (c1, True),
+        do
+          c1 <- keyword' "match"
+          return (c1, False)
+      ]
   es <- commaList rawTermBasic
-  (_, (patternRowList, c2)) <- betweenBrace' $ manyList $ rawTermPatternRow (length es)
-  return (m :< RT.DataElim isNoetic (map fst es) (RP.new (map (second fst) patternRowList)), c2)
+  (c2, (patternRowList, c3)) <- betweenBrace' $ manyList' $ rawTermPatternRow (length es)
+  return (m :< RT.DataElim c1 isNoetic es c2 (RP.new patternRowList), c3)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow (RT.RawTerm, C))
 rawTermPatternRow patternSize = do
@@ -474,9 +482,9 @@ rawTermPatternRow patternSize = do
           <> "`"
           <> "\n"
           <> T.pack (show patternList)
-  delimiter "=>"
+  c <- delimiter' "=>"
   body <- rawExpr
-  return (V.fromList $ map fst patternList, body)
+  return (V.fromList patternList, c, body)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do

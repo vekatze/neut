@@ -197,10 +197,10 @@ discern nenv term =
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
-    m :< RT.DataElim isNoetic es patternMatrix -> do
-      let ms = map (\(me :< _) -> me) es
+    m :< RT.DataElim _ isNoetic es _ patternMatrix -> do
+      let ms = map (\(me :< _, _) -> me) es
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv >=> castFromNoemaIfNecessary isNoetic) es
+      es' <- mapM (discern nenv . fst >=> castFromNoemaIfNecessary isNoetic) es
       ts <- mapM (const $ Gensym.newHole m []) es'
       patternMatrix' <- discernPatternMatrix nenv patternMatrix
       ensurePatternMatrixSanity patternMatrix'
@@ -228,14 +228,22 @@ discern nenv term =
           discern nenv $
             m2
               :< RT.DataElim
+                []
                 False
-                [e1']
+                [(e1', [])]
+                []
                 ( RP.new
-                    [ ( V.fromList [(_m, RP.Cons exceptFail (RP.Paren [(_m, RP.Var (Var err))]))],
-                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)]
+                    [ ( [],
+                        ( V.fromList [((_m, RP.Cons exceptFail (RP.Paren [(_m, RP.Var (Var err))])), [])],
+                          [],
+                          (m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)], [])
+                        )
                       ),
-                      ( V.fromList [(_m, RP.Cons exceptPass (RP.Paren [(mx, pat)]))],
-                        e2
+                      ( [],
+                        ( V.fromList [((_m, RP.Cons exceptPass (RP.Paren [(mx, pat)])), [])],
+                          [],
+                          (e2, [])
+                        )
                       )
                     ]
                 )
@@ -358,7 +366,13 @@ getContinuationModifier pat =
       return
         ( tmp,
           \isNoetic cont@(mCont :< _) ->
-            mCont :< RT.DataElim isNoetic [mCont :< RT.Var (Var tmp)] (RP.new [(V.fromList [pat], cont)])
+            mCont
+              :< RT.DataElim
+                []
+                isNoetic
+                [(mCont :< RT.Var (Var tmp), [])]
+                []
+                (RP.new [([], (V.fromList [(pat, [])], [], (cont, [])))])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
@@ -420,22 +434,26 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
     [] -> do
       m
         :< RT.DataElim
+          []
           False
-          [ifCond]
+          [(ifCond, [])]
+          []
           ( RP.new
-              [ (V.fromList [(blur m, RP.Var true)], ifBody),
-                (V.fromList [(blur m, RP.Var false)], elseBody)
+              [ ([], (V.fromList [((blur m, RP.Var true), [])], [], (ifBody, []))),
+                ([], (V.fromList [((blur m, RP.Var false), [])], [], (elseBody, [])))
               ]
           )
     ((elseIfCond, elseIfBody) : rest) -> do
       let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
       m
         :< RT.DataElim
+          []
           False
-          [ifCond]
+          [(ifCond, [])]
+          []
           ( RP.new
-              [ (V.fromList [(blur m, RP.Var true)], ifBody),
-                (V.fromList [(blur m, RP.Var false)], cont)
+              [ ([], (V.fromList [((blur m, RP.Var true), [])], [], (ifBody, []))),
+                ([], (V.fromList [((blur m, RP.Var false), [])], [], (cont, [])))
               ]
           )
 
@@ -509,7 +527,7 @@ discernBinderWithBody' nenv (mx, x, _, _, codType) binder e = do
 
 discernPatternMatrix ::
   NominalEnv ->
-  RP.RawPatternMatrix RT.RawTerm ->
+  RP.RawPatternMatrix (RT.RawTerm, C) ->
   App (PAT.PatternMatrix ([Ident], WT.WeakTerm))
 discernPatternMatrix nenv patternMatrix =
   case RP.unconsRow patternMatrix of
@@ -522,16 +540,16 @@ discernPatternMatrix nenv patternMatrix =
 
 discernPatternRow ::
   NominalEnv ->
-  RP.RawPatternRow RT.RawTerm ->
+  RP.RawPatternRow (RT.RawTerm, C) ->
   App (PAT.PatternRow ([Ident], WT.WeakTerm))
-discernPatternRow nenv (patVec, body) = do
+discernPatternRow nenv (patVec, _, (body, _)) = do
   let patList = V.toList patVec
   (patList', body') <- discernPatternRow' nenv patList [] body
   return (V.fromList patList', body')
 
 discernPatternRow' ::
   NominalEnv ->
-  [(Hint, RP.RawPattern)] ->
+  [((Hint, RP.RawPattern), C)] ->
   NominalEnv ->
   RT.RawTerm ->
   App ([(Hint, PAT.Pattern)], ([Ident], WT.WeakTerm))
@@ -542,7 +560,7 @@ discernPatternRow' nenv patList newVarList body = do
       nenv' <- joinNominalEnv newVarList nenv
       body' <- discern nenv' body
       return ([], ([], body'))
-    pat : rest -> do
+    (pat, _) : rest -> do
       (pat', varsInPat) <- discernPattern pat
       (rest', body') <- discernPatternRow' nenv rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')
