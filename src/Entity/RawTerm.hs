@@ -65,7 +65,7 @@ data RawTermF a
   | Attach C C (a, C)
   | Option C a
   | Assert C (Hint, T.Text) C C (a, C)
-  | Introspect T.Text [(Maybe T.Text, a)]
+  | Introspect C T.Text C C [(C, (Maybe T.Text, (a, C)))]
   | With a a
 
 type IfClause a =

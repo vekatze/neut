@@ -245,7 +245,7 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< Introspect key clauseList -> do
+    _ :< Introspect _ key _ _ clauseList -> do
       D.join
         [ D.text "introspect ",
           D.text key,
@@ -504,8 +504,8 @@ decodePrimOp op =
     P.PrimConvOp op' dom cod -> do
       D.join [D.text $ T.pack (show op') <> "-", primTypeToDoc dom, D.text "-", primTypeToDoc cod]
 
-decodeIntrospectClause :: (Maybe T.Text, RawTerm) -> D.Doc
-decodeIntrospectClause (mKey, body) = do
+decodeIntrospectClause :: (C, (Maybe T.Text, (RawTerm, C))) -> D.Doc
+decodeIntrospectClause (_, (mKey, (body, _))) = do
   case mKey of
     Just key -> do
       D.join [D.text key, D.text " => ", D.line, toDoc body]

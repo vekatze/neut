@@ -21,7 +21,6 @@ import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.Trans
-import Data.Bifunctor
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Vector qualified as V
@@ -697,10 +696,10 @@ rawTermPiElimExact = do
 rawTermIntrospect :: Parser (RT.RawTerm, C)
 rawTermIntrospect = do
   m <- getCurrentHint
-  keyword "introspect"
-  key <- symbol
-  clauseList <- betweenBrace $ manyList rawTermIntrospectiveClause
-  return (m :< RT.Introspect key (map (second fst) clauseList), [])
+  c1 <- keyword' "introspect"
+  (key, c2) <- symbol'
+  (c3, (clauseList, c)) <- betweenBrace' $ manyList' rawTermIntrospectiveClause
+  return (m :< RT.Introspect c1 key c2 c3 clauseList, c)
 
 rawTermIntrospectiveClause :: Parser (Maybe T.Text, (RT.RawTerm, C))
 rawTermIntrospectiveClause = do
