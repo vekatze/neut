@@ -46,7 +46,7 @@ data RawTermF a
   | DataElim C N.IsNoetic [(a, C)] C (RP.RawPatternMatrix (a, C))
   | Noema a
   | Embody a
-  | Let LetKind (Hint, RP.RawPattern, C, C, (a, C)) [(Hint, RawIdent)] a a
+  | Let LetKind C (Hint, RP.RawPattern, C, C, (a, C)) C [((Hint, RawIdent), C)] C a C a
   | Prim (WP.WeakPrim a)
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID

@@ -82,7 +82,7 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind mxt noeticVarList e cont -> do
+    _ :< Let letKind _ mxt _ noeticVarList _ e _ cont -> do
       let keyword =
             case letKind of
               Plain -> "let"
@@ -90,7 +90,7 @@ toDoc term =
               Try -> "try"
               Bind -> "bind"
       let mxt' = letArgToDoc mxt
-      let noeticVarList' = decodeNoeticVarList noeticVarList
+      let noeticVarList' = decodeNoeticVarList $ map fst noeticVarList
       let e' = toDoc e
       let cont' = toDoc cont
       if isMultiLine [mxt']

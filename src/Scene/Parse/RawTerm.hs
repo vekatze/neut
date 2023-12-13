@@ -166,27 +166,29 @@ rawTermKeyValuePair = do
 
 rawTermLet :: Hint -> Parser (RT.RawTerm, C)
 rawTermLet mLet = do
-  letKind <-
+  (letKind, c1) <-
     choice
-      [ keyword "let" >> return RT.Plain,
-        keyword "try" >> return RT.Try,
-        keyword "bind" >> return RT.Bind,
-        keyword "tie" >> return RT.Noetic
+      [ keyword' "let" >>= \c1 -> return (RT.Plain, c1),
+        keyword' "try" >>= \c1 -> return (RT.Try, c1),
+        keyword' "bind" >>= \c1 -> return (RT.Bind, c1),
+        keyword' "tie" >>= \c1 -> return (RT.Noetic, c1)
       ]
-  ((mx, patInner), c1) <- rawTermPattern
-  (t, c2) <- rawTermLetVarAscription mx
-  noeticVarList <-
+  ((mx, patInner), c2) <- rawTermPattern
+  (c3, t) <- rawTermLetVarAscription mx
+  (c4, noeticVarList) <-
     choice
-      [ keyword "on" >> commaList rawTermNoeticVar,
-        return []
+      [ do
+          c4 <- keyword' "on"
+          noeticVarList <- commaList rawTermNoeticVar
+          return (c4, noeticVarList),
+        return ([], [])
       ]
   lift $ ensureIdentLinearity S.empty $ map fst noeticVarList
-  let mxt = (mx, patInner, c1, c2, t)
-  delimiter "="
+  c5 <- delimiter' "="
   (e1, _) <- rawExpr
-  delimiter "in"
+  c6 <- delimiter' "in"
   (e2, _) <- rawExpr
-  return (mLet :< RT.Let letKind mxt (map fst noeticVarList) e1 e2, [])
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 e2, [])
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
@@ -198,29 +200,29 @@ rawTermUse m = do
   (cont, _) <- rawExpr
   return (m :< RT.Use e (map f xs) cont, [])
 
-rawTermLetVarAscription :: Hint -> Parser ((RT.RawTerm, C), C)
+rawTermLetVarAscription :: Hint -> Parser (C, (RT.RawTerm, C))
 rawTermLetVarAscription m = do
-  (mtc, c) <- rawTermLetVarAscription'
+  (c, mtc) <- rawTermLetVarAscription'
   case mtc of
     Just tc ->
-      return (tc, c)
+      return (c, tc)
     Nothing -> do
       t <- lift $ Gensym.newPreHole m
-      return ((t, []), c)
+      return (c, (t, []))
 
 ascribe :: Hint -> (RT.RawTerm, C) -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 ascribe m t (e, c) = do
   tmp <- lift Gensym.newTextForHole
   return (bind (m, tmp, [], [], t) e (rawVar m (Var tmp)), c)
 
-rawTermLetVarAscription' :: Parser (Maybe (RT.RawTerm, C), C)
+rawTermLetVarAscription' :: Parser (C, Maybe (RT.RawTerm, C))
 rawTermLetVarAscription' =
   choice
     [ try $ do
         c <- delimiter' ":"
         tc <- rawTerm
-        return (Just tc, c),
-      return (Nothing, [])
+        return (c, Just tc),
+      return ([], Nothing)
     ]
 
 ensureIdentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
@@ -574,7 +576,7 @@ rawTermWith = do
 
 bind :: RawBinder (RT.RawTerm, C) -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, c1, c2, t) e cont =
-  m :< RT.Let RT.Plain (m, RP.Var (Var x), c1, c2, t) [] e cont
+  m :< RT.Let RT.Plain [] (m, RP.Var (Var x), c1, c2, t) [] [] [] e [] cont
 
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do
