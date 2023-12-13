@@ -361,21 +361,21 @@ discern nenv term =
 discernMagic :: NominalEnv -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
 discernMagic nenv magic =
   case magic of
-    RT.Cast _ _ (from, _) (to, _) (e, _) -> do
+    RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) -> do
       from' <- discern nenv from
       to' <- discern nenv to
       e' <- discern nenv e
       return $ M.Cast from' to' e'
-    RT.Store _ _ (lt, _) (value, _) (pointer, _) -> do
+    RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) -> do
       value' <- discern nenv value
       pointer' <- discern nenv pointer
       return $ M.Store lt value' pointer'
-    RT.Load _ _ (lt, _) (pointer, _) -> do
+    RT.Load _ (_, (lt, _)) (_, (pointer, _)) -> do
       pointer' <- discern nenv pointer
       return $ M.Load lt pointer'
-    RT.External _ _ domList cod (funcName, _) args _ varArgs -> do
-      args' <- mapM (discern nenv . fst) args
-      varArgs' <- forM varArgs $ \((arg, _), (lt, _)) -> do
+    RT.External _ domList cod (_, (funcName, _)) args varArgs -> do
+      args' <- mapM (discern nenv . fst . snd) args
+      varArgs' <- forM varArgs $ \(_, ((arg, _), (lt, _))) -> do
         arg' <- discern nenv arg
         return (arg', lt)
       return $ M.External domList cod funcName args' varArgs'

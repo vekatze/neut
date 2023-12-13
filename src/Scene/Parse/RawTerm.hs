@@ -359,42 +359,46 @@ rawTermMagicCast :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCast m c = do
   rawTermMagicBase "cast" $ do
     castFrom <- rawTerm
-    castTo <- delimiter "," >> rawTerm
-    value <- delimiter "," >> rawTerm
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 c2 castFrom castTo value)
+    c3 <- delimiter' ","
+    castTo <- rawTerm
+    c4 <- delimiter' ","
+    value <- rawTerm
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 (c2, castFrom) (c3, castTo) (c4, value))
 
 rawTermMagicStore :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicStore m c = do
   rawTermMagicBase "store" $ do
     lt <- lowType
-    value <- delimiter "," >> rawTerm
-    pointer <- delimiter "," >> rawTerm
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 c2 lt value pointer)
+    c3 <- delimiter' ","
+    value <- rawTerm
+    c4 <- delimiter' ","
+    pointer <- rawTerm
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, lt) (c3, value) (c4, pointer))
 
 rawTermMagicLoad :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicLoad m c = do
   rawTermMagicBase "load" $ do
     lt <- lowType
-    pointer <- delimiter "," >> rawTerm
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 c2 lt pointer)
+    c3 <- delimiter' ","
+    pointer <- rawTerm
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer))
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicExternal m c = do
   rawTermMagicBase "external" $ do
     (extFunName, cExt) <- symbol'
     let extFunName' = EN.ExternalName extFunName
-    es <- many (delimiter "," >> rawTerm)
-    (cVar, varArgAndTypeList) <-
+    es <- many $ do
+      c3 <- delimiter' ","
+      e <- rawTerm
+      return (c3, e)
+    varArgAndTypeList <-
       choice
-        [ do
-            cSemi <- delimiter' ";"
-            vs <- sepBy rawTermAndLowType (delimiter ",")
-            return (cSemi, vs),
-          return
-            ([], [])
+        [ commaList' (delimiter' ";") rawTermAndLowType,
+          return []
         ]
     (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName')
-    return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 c2 domList cod (extFunName', cExt) es cVar varArgAndTypeList)
+    return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 domList cod (c2, (extFunName', cExt)) es varArgAndTypeList)
 
 rawTermAndLowType :: Parser ((RT.RawTerm, C), (LT.LowType, C))
 rawTermAndLowType = do

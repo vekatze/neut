@@ -268,6 +268,16 @@ commaList :: Parser a -> Parser [a]
 commaList f = do
   sepBy f (delimiter ",")
 
+commaList' :: Parser C -> Parser a -> Parser [(C, a)]
+commaList' first f = do
+  c <- first
+  v <- f
+  rest <- many $ do
+    c' <- delimiter' ","
+    v' <- f
+    return (c', v')
+  return $ (c, v) : rest
+
 argList :: Parser a -> Parser [a]
 argList f = do
   lexeme $ betweenParen $ commaList f
@@ -278,6 +288,12 @@ argList' f = do
   vs <- commaList f
   c2 <- delimiter' ")"
   return (c1, (vs, c2))
+
+argList'' :: Parser a -> Parser ([(C, a)], C)
+argList'' f = do
+  vs <- commaList' (delimiter' "(") f
+  c <- delimiter' ")"
+  return (vs, c)
 
 -- lexeme $ betweenParen $ commaList f
 

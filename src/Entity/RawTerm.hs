@@ -102,8 +102,12 @@ data LetKind
   | Bind
 
 data RawMagic
-  = Cast C C (RawTerm, C) (RawTerm, C) (RawTerm, C)
-  | Store C C (LowType, C) (RawTerm, C) (RawTerm, C)
-  | Load C C (LowType, C) (RawTerm, C)
-  | External C C [LowType] LowType (EN.ExternalName, C) [(RawTerm, C)] C [((RawTerm, C), (LowType, C))]
+  = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm)
+  | Store C (EL LowType) (EL RawTerm) (EL RawTerm)
+  | Load C (EL LowType) (EL RawTerm)
+  | External C [LowType] LowType (EL EN.ExternalName) [EL RawTerm] [(C, ((RawTerm, C), (LowType, C)))]
   | Global C C (EN.ExternalName, C) C (LowType, C)
+
+-- elem
+type EL a =
+  (C, (a, C))

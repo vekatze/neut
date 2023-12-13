@@ -141,24 +141,24 @@ toDoc term =
               D.text (T.pack (show txt))
     _ :< Magic _ magic ->
       case magic of
-        Cast _ _ (from, _) (to, _) (e, _) -> do
+        Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) -> do
           let from' = toDoc from
           let to' = toDoc to
           let e' = toDoc e
           D.join [D.text "magic ", piElimToDoc (D.text "cast") [from', to', e']]
-        Store _ _ (lt, _) (value, _) (pointer, _) -> do
+        Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) -> do
           let lt' = lowTypeToDoc lt
           let value' = toDoc value
           let pointer' = toDoc pointer
           D.join [D.text "magic ", piElimToDoc (D.text "store") [lt', value', pointer']]
-        Load _ _ (lt, _) (pointer, _) -> do
+        Load _ (_, (lt, _)) (_, (pointer, _)) -> do
           let lt' = lowTypeToDoc lt
           let pointer' = toDoc pointer
           D.join [D.text "magic ", piElimToDoc (D.text "load") [lt', pointer']]
-        External _ _ _ _ (funcName, _) args _ varArgs -> do
+        External _ _ _ (_, (funcName, _)) args varArgs -> do
           let funcName' = D.text $ T.pack (show $ EN.reify funcName)
-          let args' = map (toDoc . fst) args
-          let varArgs' = map (\((e, _), (lt, _)) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
+          let args' = map (toDoc . fst . snd) args
+          let varArgs' = map (\(_, ((e, _), (lt, _))) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
           if null varArgs'
             then D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args')]
             else D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args' ++ D.text "; " : varArgs')]
