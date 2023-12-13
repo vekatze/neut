@@ -164,7 +164,7 @@ discern nenv term =
       (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ ((mx, x), _, (_, (impArgs, _)), (_, (expArgs, _)), _, codType, e) -> do
+    m :< RT.PiIntroFix _ ((mx, x), _, (_, (impArgs, _)), (_, (expArgs, _)), _, codType, _, (e, _)) -> do
       (impArgs', nenv') <- discernBinder nenv $ map f impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
       codType' <- discern nenv'' $ fst codType

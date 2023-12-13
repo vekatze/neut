@@ -265,8 +265,8 @@ parseDefInfo m = do
   (c2, (impArgs, c3)) <- parseImplicitArgs
   (c4, (expArgs, c5)) <- argList' preBinder
   (c6, codType) <- parseDefInfoCod m
-  (e, c) <- betweenBrace rawExpr
-  return ((functionVar, c1, (c2, (impArgs, c3)), (c4, (expArgs, c5)), c6, codType, e), c)
+  (c7, (e, c)) <- betweenBrace' rawExpr
+  return ((functionVar, c1, (c2, (impArgs, c3)), (c4, (expArgs, c5)), c6, codType, c7, e), c)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do

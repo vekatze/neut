@@ -72,7 +72,7 @@ type IfClause a =
   (C, (a, C), C, (a, C), C)
 
 type DefInfo a =
-  ((Hint, RawIdent), C, Args a, Args a, C, (a, C), a)
+  ((Hint, RawIdent), C, Args a, Args a, C, (a, C), C, (a, C))
 
 type TopDefHeader =
   ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
