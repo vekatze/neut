@@ -61,7 +61,7 @@ data RawTermF a
   | Seq (a, C) C a
   | ListIntro C [(a, C)]
   | Admit
-  | Detach a
+  | Detach C C (a, C)
   | Attach a
   | Option a
   | Assert (Hint, T.Text) a

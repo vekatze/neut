@@ -228,7 +228,7 @@ toDoc term =
         else D.join [D.text "[", commaSeqH es', D.text "]"]
     _ :< Admit ->
       D.text "admit"
-    _ :< Detach e -> do
+    _ :< Detach _ _ (e, _) -> do
       let e' = toDoc e
       D.join [D.text "detach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
     _ :< Attach e -> do

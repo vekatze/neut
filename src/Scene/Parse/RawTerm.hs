@@ -588,9 +588,9 @@ rawTermNoema = do
 rawTermFlowIntro :: Parser (RT.RawTerm, C)
 rawTermFlowIntro = do
   m <- getCurrentHint
-  keyword "detach"
-  (_, ((e, _), c2)) <- betweenBrace' rawExpr
-  return (m :< RT.Detach e, c2)
+  c1 <- keyword' "detach"
+  (c2, (e, c)) <- betweenBrace' rawExpr
+  return (m :< RT.Detach c1 c2 e, c)
 
 rawTermFlowElim :: Parser (RT.RawTerm, C)
 rawTermFlowElim = do
