@@ -214,7 +214,7 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, (t, _)) _ mys _ e1@(m1 :< _) _ e2@(m2 :< _) -> do
+    m :< RT.Let letKind _ (mx, pat, c1, c2, (t, _)) mys _ e1@(m1 :< _) _ e2@(m2 :< _) -> do
       case letKind of
         RT.Try -> do
           eitherTypeInner <- locatorToVarGlobal mx coreExcept
@@ -252,10 +252,10 @@ discern nenv term =
           Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
-          discernLet nenv m (mx, x, c1, c2, t) (map fst mys) e1 (modifier False e2)
+          discernLet nenv m (mx, x, c1, c2, t) (map (fst . snd) mys) e1 (modifier False e2)
         RT.Noetic -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
-          discernLet nenv m (mx, x, c1, c2, t) (map fst mys) e1 (modifier True e2)
+          discernLet nenv m (mx, x, c1, c2, t) (map (fst . snd) mys) e1 (modifier True e2)
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -337,7 +337,7 @@ discern nenv term =
       discern nenv clause
     m :< RT.With _ binder _ _ (body, _) -> do
       case body of
-        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c4 mys c5 e1 c6 e2 -> do
+        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) mys c4 e1 c5 e2 -> do
           let e1' = m :< RT.With [] binder [] [] (e1, [])
           let e2' = m :< RT.With [] binder [] [] (e2, [])
           case letKind of
@@ -345,7 +345,7 @@ discern nenv term =
               (x, modifier) <- getContinuationModifier (mPat, pat)
               discern nenv $ m :< RT.piElim binder [e1', RT.lam m [(mPat, x, c2, c3, t)] (modifier False e2')]
             _ -> do
-              discern nenv $ mLet :< RT.Let letKind c1 mxt c4 mys c5 e1' c6 e2'
+              discern nenv $ mLet :< RT.Let letKind c1 mxt mys c4 e1' c5 e2'
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With [] binder [] [] (e1, [])
           let e2' = m :< RT.With [] binder [] [] (e2, [])
@@ -409,7 +409,7 @@ ascribe m t e = do
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, c1, c2, t) e cont =
-  m :< RT.Let RT.Plain [] (m, RP.Var (Var x), c1, c2, (t, [])) [] [] [] e [] cont
+  m :< RT.Let RT.Plain [] (m, RP.Var (Var x), c1, c2, (t, [])) [] [] e [] cont
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =
