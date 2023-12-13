@@ -568,10 +568,10 @@ rawTermBrace =
 rawTermWith :: Parser (RT.RawTerm, C)
 rawTermWith = do
   m <- getCurrentHint
-  keyword "with"
-  (binder, _) <- rawTerm
-  (_, ((body, _), c2)) <- betweenBrace' rawExpr
-  return (m :< RT.With binder body, c2)
+  c1 <- keyword' "with"
+  (binder, c2) <- rawTerm
+  (c3, (body, c)) <- betweenBrace' rawExpr
+  return (m :< RT.With c1 binder c2 c3 body, c)
 
 bind :: RawBinder (RT.RawTerm, C) -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, c1, c2, t) e cont =

@@ -254,7 +254,7 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< With binder body -> do
+    _ :< With _ binder _ _ (body, _) -> do
       let binder' = toDoc binder
       let body' = toDoc body
       D.join

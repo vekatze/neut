@@ -335,11 +335,11 @@ discern nenv term =
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value clauseList
       discern nenv clause
-    m :< RT.With binder body -> do
+    m :< RT.With _ binder _ _ (body, _) -> do
       case body of
         mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c4 mys c5 e1 c6 e2 -> do
-          let e1' = m :< RT.With binder e1
-          let e2' = m :< RT.With binder e2
+          let e1' = m :< RT.With [] binder [] [] (e1, [])
+          let e2' = m :< RT.With [] binder [] [] (e2, [])
           case letKind of
             RT.Bind -> do
               (x, modifier) <- getContinuationModifier (mPat, pat)
@@ -347,11 +347,11 @@ discern nenv term =
             _ -> do
               discern nenv $ mLet :< RT.Let letKind c1 mxt c4 mys c5 e1' c6 e2'
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
-          let e1' = m :< RT.With binder e1
-          let e2' = m :< RT.With binder e2
+          let e1' = m :< RT.With [] binder [] [] (e1, [])
+          let e2' = m :< RT.With [] binder [] [] (e2, [])
           discern nenv $ mSeq :< RT.Seq (e1', c1) c2 e2'
         mUse :< RT.Use c1 item c2 vars c3 cont -> do
-          let cont' = m :< RT.With binder cont
+          let cont' = m :< RT.With [] binder [] [] (cont, [])
           discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont'
         _ ->
           discern nenv body
