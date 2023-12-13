@@ -265,6 +265,17 @@ toDoc term =
           D.line,
           D.text "}"
         ]
+    _ :< Brace _ (e, _) -> do
+      let e' = toDoc e
+      if isMultiLine [e']
+        then
+          D.join
+            [ D.text " {",
+              D.nest D.indent $ D.join [D.line, e'],
+              D.line,
+              D.text "}"
+            ]
+        else D.join [D.text " {", e', D.text "}"]
 
 decodeNoeticVarList :: [(Hint, RawIdent)] -> D.Doc
 decodeNoeticVarList vs =

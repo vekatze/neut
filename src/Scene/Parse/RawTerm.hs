@@ -562,8 +562,11 @@ rawTermWhen = do
   return (m :< RT.When c1 whenCond c2 whenBody, c)
 
 rawTermBrace :: Parser (RT.RawTerm, C)
-rawTermBrace =
-  betweenBrace rawExpr
+rawTermBrace = do
+  -- betweenBrace rawExpr
+  m <- getCurrentHint
+  (c1, (e, c)) <- betweenBrace' rawExpr
+  return (m :< RT.Brace c1 e, c)
 
 rawTermWith :: Parser (RT.RawTerm, C)
 rawTermWith = do

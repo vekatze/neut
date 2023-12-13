@@ -355,6 +355,8 @@ discern nenv term =
           discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont'
         _ ->
           discern nenv body
+    _ :< RT.Brace _ (e, _) ->
+      discern nenv e
 
 discernMagic :: NominalEnv -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
 discernMagic nenv magic =
