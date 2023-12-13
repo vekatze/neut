@@ -118,20 +118,20 @@ rawTermSimple = do
 rawTermPiGeneral :: Parser (RT.RawTerm, C)
 rawTermPiGeneral = do
   m <- getCurrentHint
-  (c1, (impArgs, c2)) <- parseImplicitArgs
-  expArgs <- argList (choice [try preAscription, typeWithoutIdent])
+  impArgs <- parseImplicitArgs
+  expArgs <- argList'' (choice [try preAscription, typeWithoutIdent])
   cArrow <- delimiter' "->"
   (cod, c) <- rawTerm
-  return (m :< RT.Pi (c1, (impArgs, c2)) ([], (expArgs, [])) cArrow cod, c)
+  return (m :< RT.Pi impArgs expArgs cArrow cod, c)
 
 rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
   m <- getCurrentHint
-  (c1, (impArgs, c2)) <- parseImplicitArgs
-  (c3, (expArgs, c4)) <- argList' preBinder
-  c5 <- delimiter' "=>"
+  impArgs <- parseImplicitArgs
+  expArgs <- argList'' preBinder
+  c1 <- delimiter' "=>"
   (e, c) <- rawExpr
-  return (m :< RT.PiIntro (c1, (impArgs, c2)) (c3, (expArgs, c4)) c5 e, c)
+  return (m :< RT.PiIntro impArgs expArgs c1 e, c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
@@ -142,7 +142,7 @@ rawTermPiOrConsOrAscOrBasic = do
         cArrow <- delimiter' "->"
         x <- lift Gensym.newTextForHole
         (cod, c) <- rawTerm
-        return (m :< RT.Pi ([], ([], [])) ([], ([(m, x, [], [], basic)], [])) cArrow cod, c),
+        return (m :< RT.Pi ([], []) ([([], (m, x, [], [], basic))], []) cArrow cod, c),
       return basic
     ]
 
@@ -188,9 +188,9 @@ rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
   c1 <- keyword' "use"
   (e, c2) <- rawTerm
-  xs@(_, (ys, _)) <- betweenBrace' $ commaList preBinder
+  xs@(ys, _) <- argListBrace preBinder
   c3 <- delimiter' "in"
-  lift $ ensureIdentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) ys
+  lift $ ensureIdentLinearity S.empty $ map (\(_, (mx, x, _, _, _)) -> (mx, x)) ys
   (cont, c) <- rawExpr
   return (m :< RT.Use c1 e c2 xs c3 cont, c)
 
@@ -253,11 +253,11 @@ rawTermHole = do
 parseDefInfo :: Hint -> Parser (RT.DefInfo RT.RawTerm, C)
 parseDefInfo m = do
   (functionVar, c1) <- var
-  (c2, (impArgs, c3)) <- parseImplicitArgs
-  (c4, (expArgs, c5)) <- argList' preBinder
+  impArgs <- parseImplicitArgs
+  expArgs <- argList'' preBinder
   (c6, codType) <- parseDefInfoCod m
   (c7, (e, c)) <- betweenBrace' rawExpr
-  return ((functionVar, c1, (c2, (impArgs, c3)), (c4, (expArgs, c5)), c6, codType, c7, e), c)
+  return ((functionVar, c1, impArgs, expArgs, c6, codType, c7, e), c)
 
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
@@ -269,11 +269,11 @@ parseTopDefHeader :: Parser RT.TopDefHeader
 parseTopDefHeader = do
   m <- getCurrentHint
   funcBaseName <- baseName
-  (_, (impDomArgList, _)) <- parseImplicitArgs
+  impArgs <- parseImplicitArgs
   expDomArgList <- argSeqOrList preBinder
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) expDomArgList
   (_, codType) <- parseDefInfoCod m
-  return ((m, funcBaseName), map f impDomArgList, map f expDomArgList, fst codType)
+  return ((m, funcBaseName), map (f . snd) $ fst impArgs, map f expDomArgList, fst codType)
 
 parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.RawDecl
 parseDeclareItem nameLifter = do
@@ -282,7 +282,7 @@ parseDeclareItem nameLifter = do
   (isConstLike, impArgs, expArgs) <-
     choice
       [ do
-          (_, (impArgs, _)) <- parseImplicitArgs
+          impArgs <- parseImplicitArgs
           choice
             [ do
                 expDomArgList <- argSeqOrList preBinder
@@ -290,22 +290,23 @@ parseDeclareItem nameLifter = do
               return (True, impArgs, [])
             ],
         do
-          return (True, [], [])
+          return (True, ([], []), [])
       ]
   delimiter ":"
   cod <- fst <$> rawTerm
-  return RDE.RawDecl {loc, name, isConstLike, impArgs, expArgs, cod}
+  let impArgs' = map snd $ fst impArgs
+  return RDE.RawDecl {loc, name, isConstLike, impArgs = impArgs', expArgs, cod}
 
-parseImplicitArgs :: Parser (C, ([RawBinder (RT.RawTerm, C)], C))
+parseImplicitArgs :: Parser ([(C, RawBinder (RT.RawTerm, C))], C)
 parseImplicitArgs =
   choice
     [ parseImplicitArgs',
-      return ([], ([], []))
+      return ([], [])
     ]
 
-parseImplicitArgs' :: Parser (C, ([RawBinder (RT.RawTerm, C)], C))
+parseImplicitArgs' :: Parser ([(C, RawBinder (RT.RawTerm, C))], C)
 parseImplicitArgs' =
-  betweenAngle' (commaList preBinder)
+  argListAngle preBinder
 
 ensureArgumentLinearity :: S.Set RawIdent -> [(Hint, RawIdent)] -> App ()
 ensureArgumentLinearity foundVarSet vs =

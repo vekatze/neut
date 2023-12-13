@@ -271,12 +271,16 @@ commaList f = do
 commaList' :: Parser C -> Parser a -> Parser [(C, a)]
 commaList' first f = do
   c <- first
-  v <- f
-  rest <- many $ do
-    c' <- delimiter' ","
-    v' <- f
-    return (c', v')
-  return $ (c, v) : rest
+  mv <- optional f
+  case mv of
+    Nothing ->
+      return []
+    Just v -> do
+      rest <- many $ do
+        c' <- delimiter' ","
+        v' <- f
+        return (c', v')
+      return $ (c, v) : rest
 
 argList :: Parser a -> Parser [a]
 argList f = do
@@ -293,6 +297,24 @@ argList'' :: Parser a -> Parser ([(C, a)], C)
 argList'' f = do
   vs <- commaList' (delimiter' "(") f
   c <- delimiter' ")"
+  return (vs, c)
+
+argListAngle :: Parser a -> Parser ([(C, a)], C)
+argListAngle f = do
+  vs <- commaList' (delimiter' "<") f
+  c <- delimiter' ">"
+  return (vs, c)
+
+argListBracket :: Parser a -> Parser ([(C, a)], C)
+argListBracket f = do
+  vs <- commaList' (delimiter' "[") f
+  c <- delimiter' "]"
+  return (vs, c)
+
+argListBrace :: Parser a -> Parser ([(C, a)], C)
+argListBrace f = do
+  vs <- commaList' (delimiter' "{") f
+  c <- delimiter' "}"
   return (vs, c)
 
 -- lexeme $ betweenParen $ commaList f

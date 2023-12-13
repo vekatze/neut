@@ -87,13 +87,10 @@ piElim e es =
 
 lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =
-  m :< PiIntro ([], ([], [])) ([], (varList, [])) [] e
+  m :< PiIntro ([], []) (map ([],) varList, []) [] e
 
 type Args a =
-  CSeq (RawBinder (a, C))
-
-type CSeq a =
-  (C, ([a], C))
+  ([(C, RawBinder (a, C))], C)
 
 data LetKind
   = Plain

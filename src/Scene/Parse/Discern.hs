@@ -152,21 +152,21 @@ discern nenv term =
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
-    m :< RT.Pi (_, (impArgs, _)) (_, (expArgs, _)) _ t -> do
-      (impArgs', nenv') <- discernBinder nenv $ map f impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
+    m :< RT.Pi (impArgs, _) (expArgs, _) _ t -> do
+      (impArgs', nenv') <- discernBinder nenv $ map (f . snd) impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map (f . snd) expArgs
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro (_, (impArgs, _)) (_, (expArgs, _)) _ e -> do
+    m :< RT.PiIntro (impArgs, _) (expArgs, _) _ e -> do
       lamID <- Gensym.newCount
-      (impArgs', nenv') <- discernBinder nenv $ map f impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
+      (impArgs', nenv') <- discernBinder nenv $ map (f . snd) impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map (f . snd) expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ ((mx, x), _, (_, (impArgs, _)), (_, (expArgs, _)), _, codType, _, (e, _)) -> do
-      (impArgs', nenv') <- discernBinder nenv $ map f impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ map f expArgs
+    m :< RT.PiIntroFix _ ((mx, x), _, (impArgs, _), (expArgs, _), _, codType, _, (e, _)) -> do
+      (impArgs', nenv') <- discernBinder nenv $ map (f . snd) impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map (f . snd) expArgs
       codType' <- discern nenv'' $ fst codType
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
@@ -274,9 +274,9 @@ discern nenv term =
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
       return $ m :< WT.Resource dd resourceID discarder' copier'
-    m :< RT.Use _ e _ (_, (xs, _)) _ cont -> do
+    m :< RT.Use _ e _ (xs, _) _ cont -> do
       e' <- discern nenv e
-      (xs', nenv') <- discernBinder nenv $ map f xs
+      (xs', nenv') <- discernBinder nenv $ map (f . snd) xs
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do

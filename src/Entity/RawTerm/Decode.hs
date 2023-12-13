@@ -35,21 +35,21 @@ toDoc term =
       D.text "tau"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
-    _ :< Pi (_, (impArgs, _)) (_, (expArgs, _)) _ cod -> do
-      let impArgs' = impArgsToDoc $ map f impArgs
-      let expArgs' = expPiArgsToDoc $ map f expArgs
+    _ :< Pi (impArgs, _) (expArgs, _) _ cod -> do
+      let impArgs' = impArgsToDoc $ map (f . snd) impArgs
+      let expArgs' = expPiArgsToDoc $ map (f . snd) expArgs
       let cod' = toDoc cod
       let arrow = if isMultiLine [impArgs', expArgs'] then D.join [D.line, D.text "->"] else D.text " -> "
       if isMultiLine [cod']
         then D.join [impArgs', expArgs', arrow, D.line, cod']
         else D.join [impArgs', expArgs', arrow, cod']
-    _ :< PiIntro (_, (impArgs, _)) (_, (expArgs, _)) _ body -> do
-      let impArgs' = impArgsToDoc $ map f impArgs
-      let expArgs' = expPiIntroArgsToDoc $ map f expArgs
+    _ :< PiIntro (impArgs, _) (expArgs, _) _ body -> do
+      let impArgs' = impArgsToDoc $ map (f . snd) impArgs
+      let expArgs' = expPiIntroArgsToDoc $ map (f . snd) expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-    _ :< PiIntroFix _ ((_, k), _, (_, (impArgs, _)), (_, (expArgs, _)), _, cod, _, (body, _)) -> do
-      let impArgs' = impArgsToDoc $ map f impArgs
-      let expArgs' = expPiIntroArgsToDoc $ map f expArgs
+    _ :< PiIntroFix _ ((_, k), _, (impArgs, _), (expArgs, _), _, cod, _, (body, _)) -> do
+      let impArgs' = impArgsToDoc $ map (f . snd) impArgs
+      let expArgs' = expPiIntroArgsToDoc $ map (f . snd) expArgs
       D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
     _ :< PiElim e _ args -> do
       let e' = toDoc e
@@ -173,9 +173,9 @@ toDoc term =
     _ :< Resource name _ (discarder, _) (copier, _) -> do
       let resourcePair = listSeq [toDoc discarder, toDoc copier]
       D.join [D.text "resource", D.text (DD.reify name), D.text "{", D.line, resourcePair, D.line, D.text "}"]
-    _ :< Use _ trope _ (_, (args, _)) _ cont -> do
+    _ :< Use _ trope _ (args, _) _ cont -> do
       let trope' = toDoc trope
-      let args' = map (\(_, x, _, _, _) -> D.text x) args
+      let args' = map (\(_, (_, x, _, _, _)) -> D.text x) args
       let cont' = toDoc cont
       if isMultiLine [trope']
         then
