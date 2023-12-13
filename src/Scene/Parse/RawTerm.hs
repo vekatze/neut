@@ -554,7 +554,6 @@ rawTermWhen = do
 
 rawTermBrace :: Parser (RT.RawTerm, C)
 rawTermBrace = do
-  -- betweenBrace rawExpr
   m <- getCurrentHint
   (c1, (e, c)) <- betweenBrace' rawExpr
   return (m :< RT.Brace c1 e, c)
