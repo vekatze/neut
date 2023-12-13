@@ -17,12 +17,12 @@ import Entity.Name
 
 data RawPattern
   = Var Name
-  | Cons Name ConsArgs
+  | Cons Name C ConsArgs
   | ListIntro C [((Hint, RawPattern), C)]
   deriving (Show)
 
 data ConsArgs
-  = Paren [(Hint, RawPattern)]
+  = Paren C [((Hint, RawPattern), C)]
   | Of [(Key, (Hint, RawPattern))]
   deriving (Show)
 

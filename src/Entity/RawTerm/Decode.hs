@@ -538,11 +538,11 @@ decodePattern pat = do
   case pat of
     RP.Var name ->
       nameToDoc name
-    RP.Cons name args -> do
+    RP.Cons name _ args -> do
       let name' = nameToDoc name
       case args of
-        RP.Paren patList -> do
-          let patList' = map (decodePattern . snd) patList
+        RP.Paren _ patList -> do
+          let patList' = map (decodePattern . snd . fst) patList
           D.join [name', D.text "(", commaSeqH patList', D.text ")"]
         RP.Of kvs -> do
           case getHorizontalDocList' (map (\(k, (_, v)) -> (k, v)) kvs) of

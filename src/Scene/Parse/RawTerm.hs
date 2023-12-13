@@ -512,15 +512,15 @@ parseName = do
 
 rawTermPatternConsOrVar :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternConsOrVar = do
-  ((m, varOrLocator), _) <- parseName
+  ((m, varOrLocator), c1) <- parseName
   choice
     [ do
-        patArgs <- argList rawTermPattern
-        return ((m, RP.Cons varOrLocator (RP.Paren $ map fst patArgs)), []),
+        (c2, (patArgs, c)) <- argList' rawTermPattern
+        return ((m, RP.Cons varOrLocator c1 (RP.Paren c2 patArgs)), c),
       do
         keyword "of"
         kvs <- betweenBrace $ bulletListOrCommaSeq rawTermPatternKeyValuePair
-        return ((m, RP.Cons varOrLocator (RP.Of kvs)), []),
+        return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), []),
       do
         return ((m, RP.Var varOrLocator), [])
     ]

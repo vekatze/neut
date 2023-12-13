@@ -235,13 +235,13 @@ discern nenv term =
                 []
                 ( RP.new
                     [ ( [],
-                        ( V.fromList [((_m, RP.Cons exceptFail (RP.Paren [(_m, RP.Var (Var err))])), [])],
+                        ( V.fromList [((_m, RP.Cons exceptFail [] (RP.Paren [] [((_m, RP.Var (Var err)), [])])), [])],
                           [],
                           (m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)], [])
                         )
                       ),
                       ( [],
-                        ( V.fromList [((_m, RP.Cons exceptPass (RP.Paren [(mx, pat)])), [])],
+                        ( V.fromList [((_m, RP.Cons exceptPass [] (RP.Paren [] [((mx, pat), [])])), [])],
                           [],
                           (e2, [])
                         )
@@ -647,14 +647,14 @@ discernPattern (m, pat) = do
             _ ->
               Throw.raiseCritical m $
                 "the symbol `" <> DD.reify dd <> "` isn't defined as a constuctor\n" <> T.pack (show gn)
-    RP.Cons cons mArgs -> do
+    RP.Cons cons _ mArgs -> do
       (consName, dataArgNum, consArgNum, disc, isConstLike, _) <- resolveConstructor m cons
       when isConstLike $
         Throw.raiseError m $
           "the constructor `" <> showName cons <> "` can't have any arguments"
       case mArgs of
-        RP.Paren args -> do
-          (args', nenvList) <- mapAndUnzipM discernPattern args
+        RP.Paren _ args -> do
+          (args', nenvList) <- mapAndUnzipM (discernPattern . fst) args
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -699,9 +699,9 @@ foldListAppPat m listNil listCons es =
   case es of
     [] ->
       (m, RP.Var $ Locator listNil)
-    ((mPat, pat), _) : rest -> do
+    pat : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons (RP.Paren [(mPat, pat), rest']))
+      (m, RP.Cons listCons [] (RP.Paren [] [pat, (rest', [])]))
 
 constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap m keyList = do
