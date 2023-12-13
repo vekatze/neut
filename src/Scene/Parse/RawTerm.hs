@@ -143,10 +143,6 @@ rawTermPiOrConsOrAscOrBasic = do
         x <- lift Gensym.newTextForHole
         (cod, c) <- rawTerm
         return (m :< RT.Pi ([], ([], [])) ([], ([(m, x, [], [], basic)], [])) cArrow cod, c),
-      do
-        delimiter ":"
-        tc <- rawTerm
-        ascribe m tc basic,
       return basic
     ]
 
@@ -207,11 +203,6 @@ rawTermLetVarAscription m = do
     Nothing -> do
       t <- lift $ Gensym.newPreHole m
       return (c, (t, []))
-
-ascribe :: Hint -> (RT.RawTerm, C) -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-ascribe m t (e, c) = do
-  tmp <- lift Gensym.newTextForHole
-  return (bind (m, tmp, [], [], t) e (rawVar m (Var tmp)), c)
 
 rawTermLetVarAscription' :: Parser (C, Maybe (RT.RawTerm, C))
 rawTermLetVarAscription' =
@@ -575,10 +566,6 @@ rawTermWith = do
   (binder, c2) <- rawTerm
   (c3, (body, c)) <- betweenBrace' rawExpr
   return (m :< RT.With c1 binder c2 c3 body, c)
-
-bind :: RawBinder (RT.RawTerm, C) -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind (m, x, c1, c2, t) e cont =
-  m :< RT.Let RT.Plain [] (m, RP.Var (Var x), c1, c2, t) [] [] [] e [] cont
 
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do
