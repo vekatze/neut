@@ -300,10 +300,10 @@ discern nenv term =
       boolFalse <- locatorToName (blur m) coreBoolFalse
       unitUnit <- locatorToVarGlobal m coreUnitUnit
       discern nenv $ foldIf m boolTrue boolFalse whenCond whenBody [] unitUnit
-    m :< RT.ListIntro _ es -> do
+    m :< RT.ListIntro es -> do
       listNil <- locatorToVarGlobal m coreListNil
       listCons <- locatorToVarGlobal m coreListCons
-      discern nenv $ foldListApp m listNil listCons $ map fst es
+      discern nenv $ foldListApp m listNil listCons $ map (fst . snd) es
     m :< RT.Admit -> do
       admit <- locatorToVarGlobal m coreSystemAdmit
       t <- Gensym.newPreHole (blur m)
@@ -711,7 +711,7 @@ discernPattern (m, pat) = do
                     args = patList'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-    RP.ListIntro _ patList -> do
+    RP.ListIntro patList -> do
       listNil <- Throw.liftEither $ DD.getLocatorPair m coreListNil
       listCons <- locatorToName m coreListCons
       discernPattern $ foldListAppPat m listNil listCons patList
@@ -720,7 +720,7 @@ foldListAppPat ::
   Hint ->
   L.Locator ->
   Name ->
-  [((Hint, RP.RawPattern), C)] ->
+  [(C, ((Hint, RP.RawPattern), C))] ->
   (Hint, RP.RawPattern)
 foldListAppPat m listNil listCons es =
   case es of
@@ -728,7 +728,7 @@ foldListAppPat m listNil listCons es =
       (m, RP.Var $ Locator listNil)
     pat : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons [] (RP.Paren [([], pat), ([], (rest', []))]))
+      (m, RP.Cons listCons [] (RP.Paren [pat, ([], (rest', []))]))
 
 constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap m keyList = do

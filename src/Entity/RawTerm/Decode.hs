@@ -221,8 +221,8 @@ toDoc term =
         ]
     _ :< Seq (e1, _) _ e2 -> do
       D.join [toDoc e1, D.text ";", D.line, toDoc e2]
-    _ :< ListIntro _ es -> do
-      let es' = map (toDoc . fst) es
+    _ :< ListIntro es -> do
+      let es' = map (toDoc . fst . snd) es
       if isMultiLine es'
         then D.join [D.text "[", D.nest D.indent $ D.join [D.line, commaSeqV es'], D.line, D.text "]"]
         else D.join [D.text "[", commaSeqH es', D.text "]"]
@@ -552,8 +552,8 @@ decodePattern pat = do
             Nothing -> do
               let kvs'' = map kvToDoc' kvs'
               D.join [name', D.text " of {", D.line, listSeq kvs'', D.line, D.text "}"]
-    RP.ListIntro _ patList -> do
-      let patList' = map (decodePattern . snd . fst) patList
+    RP.ListIntro patList -> do
+      let patList' = map (decodePattern . snd . fst . snd) patList
       D.join [D.text "[", commaSeqH patList', D.text "]"]
 
 getHorizontalDocList' :: [(T.Text, RP.RawPattern)] -> Maybe [D.Doc]
