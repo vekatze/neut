@@ -170,7 +170,7 @@ toDoc term =
       D.text "_"
     _ :< Annotation {} -> do
       D.text "<annot>"
-    _ :< Resource name discarder copier -> do
+    _ :< Resource name _ (discarder, _) (copier, _) -> do
       let resourcePair = listSeq [toDoc discarder, toDoc copier]
       D.join [D.text "resource", D.text (DD.reify name), D.text "{", D.line, resourcePair, D.line, D.text "}"]
     _ :< Use trope args cont -> do

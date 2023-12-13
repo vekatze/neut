@@ -269,7 +269,7 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Resource dd discarder copier -> do
+    m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
       resourceID <- Gensym.newCount
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
