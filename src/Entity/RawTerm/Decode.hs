@@ -10,7 +10,6 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Locator qualified as Locator
 import Entity.LowType qualified as LT
-import Entity.Magic qualified as M
 import Entity.Name qualified as N
 import Entity.PrimNumSize.ToInt qualified as PNS
 import Entity.PrimOp qualified as P
@@ -140,30 +139,30 @@ toDoc term =
               decodePrimOp op
             WPV.StaticText _ txt ->
               D.text (T.pack (show txt))
-    _ :< Magic magic ->
+    _ :< Magic _ magic ->
       case magic of
-        M.Cast from to e -> do
+        Cast _ _ (from, _) (to, _) (e, _) -> do
           let from' = toDoc from
           let to' = toDoc to
           let e' = toDoc e
           D.join [D.text "magic ", piElimToDoc (D.text "cast") [from', to', e']]
-        M.Store lt value pointer -> do
+        Store _ _ (lt, _) (value, _) (pointer, _) -> do
           let lt' = lowTypeToDoc lt
           let value' = toDoc value
           let pointer' = toDoc pointer
           D.join [D.text "magic ", piElimToDoc (D.text "store") [lt', value', pointer']]
-        M.Load lt pointer -> do
+        Load _ _ (lt, _) (pointer, _) -> do
           let lt' = lowTypeToDoc lt
           let pointer' = toDoc pointer
           D.join [D.text "magic ", piElimToDoc (D.text "load") [lt', pointer']]
-        M.External _ _ funcName args varArgs -> do
+        External _ _ _ _ (funcName, _) args _ varArgs -> do
           let funcName' = D.text $ T.pack (show $ EN.reify funcName)
-          let args' = map toDoc args
-          let varArgs' = map (\(lt, e) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
+          let args' = map (toDoc . fst) args
+          let varArgs' = map (\((lt, _), (e, _)) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
           if null varArgs'
             then D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args')]
             else D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args' ++ D.text "; " : varArgs')]
-        M.Global lt name -> do
+        Global _ _ (lt, _) _ (name, _) -> do
           let lt' = lowTypeToDoc lt
           let name' = D.text $ T.pack (show $ EN.reify name)
           D.join [D.text "magic ", piElimToDoc (D.text "global") [name', lt']]

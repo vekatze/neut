@@ -34,7 +34,6 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Key
 import Entity.LowType qualified as LT
-import Entity.Magic qualified as M
 import Entity.Name
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
@@ -351,13 +350,13 @@ rawTermDefine = do
 rawTermMagic :: Parser (RT.RawTerm, C)
 rawTermMagic = do
   m <- getCurrentHint
-  keyword "magic"
+  c <- keyword' "magic"
   choice
-    [ rawTermMagicCast m,
-      rawTermMagicStore m,
-      rawTermMagicLoad m,
-      rawTermMagicExternal m,
-      rawTermMagicGlobal m
+    [ rawTermMagicCast m c,
+      rawTermMagicStore m c,
+      rawTermMagicLoad m c,
+      rawTermMagicExternal m c,
+      rawTermMagicGlobal m c
     ]
 
 rawTermMagicBase :: T.Text -> Parser (C -> C -> a) -> Parser (a, C)
@@ -366,59 +365,60 @@ rawTermMagicBase k parser = do
   (c2, (magicF, c3)) <- betweenParen' parser
   return (magicF c1 c2, c3)
 
-rawTermMagicCast :: Hint -> Parser (RT.RawTerm, C)
-rawTermMagicCast m = do
+rawTermMagicCast :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicCast m c = do
   rawTermMagicBase "cast" $ do
-    (castFrom, _) <- rawTerm
-    (castTo, _) <- delimiter "," >> rawTerm
-    (value, _) <- delimiter "," >> rawTerm
-    return $ \_ _ -> m :< RT.Magic (M.Cast castFrom castTo value)
+    castFrom <- rawTerm
+    castTo <- delimiter "," >> rawTerm
+    value <- delimiter "," >> rawTerm
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 c2 castFrom castTo value)
 
-rawTermMagicStore :: Hint -> Parser (RT.RawTerm, C)
-rawTermMagicStore m = do
+rawTermMagicStore :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicStore m c = do
   rawTermMagicBase "store" $ do
-    (lt, _) <- lowType
-    (value, _) <- delimiter "," >> rawTerm
-    (pointer, _) <- delimiter "," >> rawTerm
-    return $ \_ _ -> m :< RT.Magic (M.Store lt value pointer)
+    lt <- lowType
+    value <- delimiter "," >> rawTerm
+    pointer <- delimiter "," >> rawTerm
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 c2 lt value pointer)
 
-rawTermMagicLoad :: Hint -> Parser (RT.RawTerm, C)
-rawTermMagicLoad m = do
+rawTermMagicLoad :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicLoad m c = do
   rawTermMagicBase "load" $ do
-    (lt, _) <- lowType
-    (pointer, _) <- delimiter "," >> rawTerm
-    return $ \_ _ -> m :< RT.Magic (M.Load lt pointer)
+    lt <- lowType
+    pointer <- delimiter "," >> rawTerm
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 c2 lt pointer)
 
-rawTermMagicExternal :: Hint -> Parser (RT.RawTerm, C)
-rawTermMagicExternal m = do
+rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicExternal m c = do
   rawTermMagicBase "external" $ do
-    extFunName <- EN.ExternalName <$> symbol
+    (extFunName, cExt) <- symbol'
+    let extFunName' = EN.ExternalName extFunName
     es <- many (delimiter "," >> rawTerm)
-    varArgAndTypeList <-
+    (cVar, varArgAndTypeList) <-
       choice
         [ do
-            delimiter ";"
-            sepBy rawTermAndLowType (delimiter ","),
+            cSemi <- delimiter' ";"
+            vs <- sepBy rawTermAndLowType (delimiter ",")
+            return (cSemi, vs),
           return
-            []
+            ([], [])
         ]
-    (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName)
-    let varArgAndTypeList' = map (second fst) varArgAndTypeList
-    return $ \_ _ -> m :< RT.Magic (M.External domList cod extFunName (map fst es) varArgAndTypeList')
+    (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName')
+    return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 c2 domList cod (extFunName', cExt) es cVar varArgAndTypeList)
 
-rawTermAndLowType :: Parser (LT.LowType, (RT.RawTerm, C))
+rawTermAndLowType :: Parser ((LT.LowType, C), (RT.RawTerm, C))
 rawTermAndLowType = do
-  (e, c1) <- rawTerm
-  (t, c2) <- lowType
-  return (t, (e, c1 ++ c2))
+  e <- rawTerm
+  t <- lowType
+  return (t, e)
 
-rawTermMagicGlobal :: Hint -> Parser (RT.RawTerm, C)
-rawTermMagicGlobal m = do
+rawTermMagicGlobal :: Hint -> C -> Parser (RT.RawTerm, C)
+rawTermMagicGlobal m c = do
   rawTermMagicBase "global" $ do
-    globalVarName <- string
-    delimiter ","
-    (lt, _) <- lowType
-    return $ \_ _ -> m :< RT.Magic (M.Global lt (EN.ExternalName globalVarName))
+    (globalVarName, c3) <- string'
+    c4 <- delimiter' ","
+    lt <- lowType
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 c2 lt c4 (EN.ExternalName globalVarName, c3))
 
 lowType :: Parser (LT.LowType, C)
 lowType = do

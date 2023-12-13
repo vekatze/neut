@@ -36,6 +36,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Locator qualified as L
+import Entity.Magic qualified as M
 import Entity.Name
 import Entity.Noema qualified as N
 import Entity.NominalEnv
@@ -260,9 +261,9 @@ discern nenv term =
       return $ m :< WT.Prim prim'
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
-    m :< RT.Magic der -> do
-      der' <- traverse (discern nenv) der
-      return $ m :< WT.Magic der'
+    m :< RT.Magic _ magic -> do
+      magic' <- discernMagic nenv magic
+      return $ m :< WT.Magic magic'
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern nenv e
       case annot of
@@ -354,6 +355,30 @@ discern nenv term =
           discern nenv $ mUse :< RT.Use item vars cont'
         _ ->
           discern nenv body
+
+discernMagic :: NominalEnv -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
+discernMagic nenv magic =
+  case magic of
+    RT.Cast _ _ (from, _) (to, _) (e, _) -> do
+      from' <- discern nenv from
+      to' <- discern nenv to
+      e' <- discern nenv e
+      return $ M.Cast from' to' e'
+    RT.Store _ _ (lt, _) (value, _) (pointer, _) -> do
+      value' <- discern nenv value
+      pointer' <- discern nenv pointer
+      return $ M.Store lt value' pointer'
+    RT.Load _ _ (lt, _) (pointer, _) -> do
+      pointer' <- discern nenv pointer
+      return $ M.Load lt pointer'
+    RT.External _ _ domList cod (funcName, _) args _ varArgs -> do
+      args' <- mapM (discern nenv . fst) args
+      varArgs' <- forM varArgs $ \((lt, _), (arg, _)) -> do
+        arg' <- discern nenv arg
+        return (lt, arg')
+      return $ M.External domList cod funcName args' varArgs'
+    RT.Global _ _ (lt, _) _ (name, _) -> do
+      return $ M.Global lt name
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =

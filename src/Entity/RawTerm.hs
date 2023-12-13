@@ -5,6 +5,7 @@ module Entity.RawTerm
     TopDefInfo,
     TopDefHeader,
     LetKind (..),
+    RawMagic (..),
     lam,
     piElim,
   )
@@ -18,10 +19,11 @@ import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.DefiniteDescription qualified as DD
+import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.HoleID
 import Entity.Key
-import Entity.Magic
+import Entity.LowType
 import Entity.Name
 import Entity.Noema qualified as N
 import Entity.RawBinder
@@ -48,7 +50,7 @@ data RawTermF a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, (a, C)) C [((Hint, RawIdent), C)] C a C a
   | Prim (WP.WeakPrim a)
-  | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
+  | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription a a -- DD is only for printing
@@ -93,3 +95,10 @@ data LetKind
   | Noetic
   | Try
   | Bind
+
+data RawMagic
+  = Cast C C (RawTerm, C) (RawTerm, C) (RawTerm, C)
+  | Store C C (LowType, C) (RawTerm, C) (RawTerm, C)
+  | Load C C (LowType, C) (RawTerm, C)
+  | External C C [LowType] LowType (EN.ExternalName, C) [(RawTerm, C)] C [((LowType, C), (RawTerm, C))]
+  | Global C C (LowType, C) C (EN.ExternalName, C)
