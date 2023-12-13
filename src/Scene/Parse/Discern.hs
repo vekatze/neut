@@ -322,7 +322,7 @@ discern nenv term =
       exceptVar <- locatorToVarGlobal m coreExcept
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ m :< RT.piElim exceptVar [unit, t]
-    m :< RT.Assert (mText, message) e@(mCond :< _) -> do
+    m :< RT.Assert _ (mText, message) _ _ (e@(mCond :< _), _) -> do
       assert <- locatorToVarGlobal m coreSystemAssert
       textType <- locatorToVarGlobal m coreText
       let fullMessage = T.pack (Hint.toString m) <> "\nassertion failure: " <> message <> "\n"

@@ -615,11 +615,11 @@ rawTermAdmit = do
 rawTermAssert :: Parser (RT.RawTerm, C)
 rawTermAssert = do
   m <- getCurrentHint
-  keyword "assert"
+  c1 <- keyword' "assert"
   mText <- getCurrentHint
-  message <- string
-  (_, ((e, _), c2)) <- betweenBrace' rawExpr
-  return (m :< RT.Assert (mText, message) e, c2)
+  (message, c2) <- string'
+  (c3, (e, c)) <- betweenBrace' rawExpr
+  return (m :< RT.Assert c1 (mText, message) c2 c3 e, c)
 
 rawTermPiElimOrSimple :: Parser (RT.RawTerm, C)
 rawTermPiElimOrSimple = do
