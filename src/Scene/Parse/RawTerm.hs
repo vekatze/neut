@@ -620,8 +620,12 @@ rawTermPiElimOrSimple = do
       choice
         [ do
             c2 <- keyword' "of"
-            (c3, (rowList, c4)) <- betweenBrace' $ bulletListOrCommaSeq rawTermKeyValuePair
-            return (m :< RT.PiElimByKey name c1 c2 c3 rowList, c4),
+            (c3, (kvs, c4)) <- betweenBrace' $ do
+              choice
+                [ someList' rawTermKeyValuePair,
+                  commaList' spaceConsumer' rawTermKeyValuePair
+                ]
+            return (m :< RT.PiElimByKey name c1 c2 c3 kvs, c4),
           rawTermPiElimCont m ec
         ]
     _ -> do

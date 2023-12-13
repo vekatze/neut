@@ -341,11 +341,28 @@ manyList' f =
     v <- f
     return (c, v)
 
+someList' :: Parser a -> Parser [(C, a)]
+someList' f =
+  some $ do
+    c <- delimiter' "-"
+    v <- f
+    return (c, v)
+
 bulletListOrCommaSeq :: Parser a -> Parser [a]
 bulletListOrCommaSeq f =
   choice
     [ some $ delimiter "-" >> f,
       commaList f
+    ]
+
+bulletListOrCommaSeq' :: Parser a -> Parser [(C, a)]
+bulletListOrCommaSeq' f =
+  choice
+    [ some $ do
+        c <- delimiter' "-"
+        v <- f
+        return (c, v),
+      commaList' spaceConsumer' f
     ]
 
 argSeqOrList :: Parser a -> Parser [a]
