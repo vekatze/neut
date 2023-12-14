@@ -122,6 +122,12 @@ baseName = do
     bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
     return $ BN.fromText bn
 
+baseName' :: Parser (BN.BaseName, C)
+baseName' = do
+  lexeme' $ do
+    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
+    return $ BN.fromText bn
+
 keyword :: T.Text -> Parser ()
 keyword expected = do
   lexeme $ try $ do
@@ -365,11 +371,16 @@ bulletListOrCommaSeq' f =
       commaList' spaceConsumer' f
     ]
 
-argSeqOrList :: Parser a -> Parser [a]
+argSeqOrList :: Parser a -> Parser (Maybe (C, C), ([(C, a)], C))
 argSeqOrList p =
   choice
-    [ argList p,
-      keyword "of" >> betweenBrace (manyList p)
+    [ do
+        args <- argList'' p
+        return (Nothing, args),
+      do
+        c1 <- keyword' "of"
+        (c2, args) <- betweenBrace' (manyList' p)
+        return (Just (c1, c2), args)
     ]
 
 var :: Parser ((Hint, T.Text), C)

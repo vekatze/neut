@@ -3,13 +3,14 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
+import Entity.BaseName qualified as BN
 import Entity.Binder
+import Entity.C
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
@@ -18,23 +19,46 @@ import Entity.Term qualified as TM
 import Entity.Term.Compress qualified as TM
 import Entity.Term.Extend qualified as TM
 import Entity.WeakTerm qualified as WT
-import GHC.Generics
+import GHC.Generics hiding (C)
 import Path
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
 
 data RawStmt
   = RawStmtDefine
+      C
       IsConstLike
       SK.RawStmtKind
       Hint
-      DD.DefiniteDescription
-      [RawBinder RT.RawTerm]
-      [RawBinder RT.RawTerm]
-      RT.RawTerm
-      RT.RawTerm
-  | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtDeclare Hint [RDE.RawDecl]
+      (DD.DefiniteDescription, C)
+      RDE.ImpArgs
+      RDE.ExpArgs
+      (C, (RT.RawTerm, C))
+      (C, (RT.RawTerm, C))
+  | RawStmtDefineConst
+      C
+      Hint
+      (DD.DefiniteDescription, C)
+      (C, (RT.RawTerm, C))
+      (C, (RT.RawTerm, C))
+  | RawStmtDefineData
+      C
+      Hint
+      (DD.DefiniteDescription, C)
+      (Maybe RDE.ExpArgs)
+      C
+      [RawConsInfo]
+  | RawStmtDefineResource
+      C
+      Hint
+      (DD.DefiniteDescription, C)
+      C
+      (C, (RT.RawTerm, C))
+      (C, (RT.RawTerm, C))
+  | RawStmtDeclare C Hint C [RDE.RawDecl]
+
+type RawConsInfo =
+  (Hint, BN.BaseName, IsConstLike, RDE.ExpArgs)
 
 data WeakStmt
   = WeakStmtDefine

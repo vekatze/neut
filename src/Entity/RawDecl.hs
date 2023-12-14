@@ -7,11 +7,20 @@ import Entity.IsConstLike
 import Entity.RawBinder
 import Entity.RawTerm qualified as RT
 
+type RawArgs =
+  ([(C, RawBinder (RT.RawTerm, C))], C)
+
+type ImpArgs =
+  RawArgs
+
+type ExpArgs =
+  (Maybe (C, C), RawArgs)
+
 data RawDecl = RawDecl
   { loc :: Hint,
     name :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,
-    impArgs :: [RawBinder (RT.RawTerm, C)],
-    expArgs :: [RawBinder (RT.RawTerm, C)],
-    cod :: RT.RawTerm
+    impArgs :: ImpArgs,
+    expArgs :: ExpArgs,
+    cod :: (C, (RT.RawTerm, C))
   }

@@ -14,21 +14,17 @@ import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
 import Context.UnusedVariable qualified as UnusedVariable
-import Control.Comonad.Cofree hiding (section)
 import Control.Monad
 import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
-import Entity.Attr.Data qualified as AttrD
-import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.Cache qualified as Cache
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
-import Entity.Discriminant qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
 import Entity.GlobalName qualified as GN
@@ -38,7 +34,7 @@ import Entity.IsConstLike
 import Entity.Name
 import Entity.Opacity qualified as O
 import Entity.RawBinder
-import Entity.RawIdent
+import Entity.RawDecl qualified as RD
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.Stmt
@@ -72,7 +68,7 @@ parseSource source cacheOrContent = do
       return $ Left cache
     Right content -> do
       (defList, declList) <- P.run (program source) path content
-      stmtList <- Discern.discernStmtList defList
+      stmtList <- Discern.discernStmtList $ map fst defList
       Global.reportMissingDefinitions
       saveTopLevelNames path $ getWeakStmtName stmtList
       UnusedVariable.registerRemarks
@@ -107,7 +103,7 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([RawStmt], [F.Foreign])
+program :: Source.Source -> P.Parser ([(RawStmt, C)], [F.Foreign])
 program currentSource = do
   m <- P.getCurrentHint
   sourceInfoList <- Parse.parseImportBlock currentSource
@@ -123,11 +119,11 @@ program currentSource = do
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList)
 
-parseStmt :: P.Parser [RawStmt]
+parseStmt :: P.Parser [(RawStmt, C)]
 parseStmt = do
   choice
     [ return <$> parseDefine O.Opaque,
-      parseDefineData,
+      return <$> parseDefineData,
       return <$> parseDefine O.Clear,
       return <$> parseConstant,
       return <$> parseDeclare,
@@ -150,161 +146,85 @@ parseForeign = do
   (cod, _) <- P.delimiter ":" >> lowType
   return $ F.Foreign declName (map fst lts) cod
 
-parseDeclare :: P.Parser RawStmt
+parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
-  P.keyword "declare"
+  c1 <- P.keyword' "declare"
   m <- P.getCurrentHint
-  decls <- P.betweenBrace $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
-  return $ RawStmtDeclare m decls
+  (c2, (decls, c3)) <- P.betweenBrace' $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
+  return (RawStmtDeclare c1 m c2 decls, c3)
 
-parseDefine :: O.Opacity -> P.Parser RawStmt
+parseDefine :: O.Opacity -> P.Parser (RawStmt, C)
 parseDefine opacity = do
-  case opacity of
-    O.Opaque ->
-      P.keyword "define"
-    O.Clear ->
-      P.keyword "inline"
+  c1 <-
+    case opacity of
+      O.Opaque ->
+        P.keyword' "define"
+      O.Clear ->
+        P.keyword' "inline"
   m <- P.getCurrentHint
-  (((_, name), impArgs, expArgs, codType), e) <- parseTopDefInfo
+  (((_, (name, c)), impArgs, expArgs, codType), e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
-  lift $ defineFunction (SK.Normal opacity) m name' impArgs expArgs codType e
+  lift $ defineFunction c1 (SK.Normal opacity) m (name', c) impArgs expArgs codType e
 
 defineFunction ::
+  C ->
   SK.RawStmtKind ->
   Hint ->
-  DD.DefiniteDescription ->
-  [RawBinder RT.RawTerm] ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm ->
-  RT.RawTerm ->
-  App RawStmt
-defineFunction stmtKind m name impArgs expArgs codType e = do
-  return $ RawStmtDefine False stmtKind m name impArgs expArgs codType e
+  (DD.DefiniteDescription, C) ->
+  RD.ImpArgs ->
+  RD.ExpArgs ->
+  (C, (RT.RawTerm, C)) ->
+  (C, ((RT.RawTerm, C), C)) ->
+  App (RawStmt, C)
+defineFunction c1 stmtKind m name impArgs expArgs codType (c2, (e, c)) = do
+  return (RawStmtDefine c1 False stmtKind m name impArgs expArgs codType (c2, e), c)
 
-parseConstant :: P.Parser RawStmt
+parseConstant :: P.Parser (RawStmt, C)
 parseConstant = do
-  P.keyword "constant"
+  c1 <- P.keyword' "constant"
   m <- P.getCurrentHint
-  constName <- P.baseName >>= lift . Locator.attachCurrentLocator
-  mImpArgs <- optional $ P.betweenBracket (P.commaList preBinder)
-  (_, t) <- parseDefInfoCod m
-  (v, _) <- P.betweenBrace rawExpr
-  case mImpArgs of
-    Nothing ->
-      return $ RawStmtDefineConst m constName (fst t) v
-    Just impArgs -> do
-      let stmtKind = SK.Normal O.Clear
-      return $ RawStmtDefine True stmtKind m constName (map f impArgs) [] (fst t) v
+  (constName, c2) <- P.baseName'
+  constName' <- lift $ Locator.attachCurrentLocator constName
+  t <- parseDefInfoCod m
+  (c3, (v, c4)) <- P.betweenBrace' rawExpr
+  return (RawStmtDefineConst c1 m (constName', c2) t (c3, v), c4)
 
-parseDefineData :: P.Parser [RawStmt]
+parseDefineData :: P.Parser (RawStmt, C)
 parseDefineData = do
-  try $ P.keyword "data"
+  c1 <- P.keyword' "data"
   m <- P.getCurrentHint
-  a <- P.baseName >>= lift . Locator.attachCurrentLocator
+  (dataName, c2) <- P.baseName'
+  dataName' <- lift $ Locator.attachCurrentLocator dataName
   dataArgsOrNone <- parseDataArgs
-  consInfoList <- P.betweenBrace $ P.manyList parseDefineDataClause
-  lift $ defineData m a dataArgsOrNone consInfoList
+  (c3, (consInfoList, c)) <- P.betweenBrace' $ P.manyList parseDefineDataClause
+  return (RawStmtDefineData c1 m (dataName', c2) dataArgsOrNone c3 consInfoList, c)
 
-parseDataArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
+parseDataArgs :: P.Parser (Maybe RD.ExpArgs)
 parseDataArgs = do
   choice
     [ do
         args <- try (P.argSeqOrList preBinder)
-        return $ Just (map f args),
+        return $ Just args,
       return Nothing
     ]
 
-defineData ::
-  Hint ->
-  DD.DefiniteDescription ->
-  Maybe [RawBinder RT.RawTerm] ->
-  [(Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])] ->
-  App [RawStmt]
-defineData m dataName dataArgsOrNone consInfoList = do
-  let dataArgs = fromMaybe [] dataArgsOrNone
-  consInfoList' <- mapM modifyConstructorName consInfoList
-  let consInfoList'' = modifyConsInfo D.zero consInfoList'
-  let stmtKind = SK.Data dataName dataArgs consInfoList''
-  let consNameList = map (\(_, consName, isConstLike, _, _) -> (consName, isConstLike)) consInfoList''
-  let isConstLike = isNothing dataArgsOrNone
-  let dataType = constructDataType m dataName isConstLike consNameList dataArgs
-  let formRule = RawStmtDefine isConstLike stmtKind m dataName [] dataArgs (m :< RT.Tau) dataType
-  introRuleList <- parseDefineDataConstructor dataType dataName dataArgs consInfoList' D.zero
-  return $ formRule : introRuleList
-
-modifyConsInfo ::
-  D.Discriminant ->
-  [(Hint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm])] ->
-  [(SavedHint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
-modifyConsInfo d consInfoList =
-  case consInfoList of
-    [] ->
-      []
-    (m, consName, isConstLike, consArgs) : rest ->
-      (SavedHint m, consName, isConstLike, consArgs, d) : modifyConsInfo (D.increment d) rest
-
-modifyConstructorName ::
-  (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm]) ->
-  App (Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])
-modifyConstructorName (mb, consName, isConstLike, yts) = do
-  consName' <- Locator.attachCurrentLocator consName
-  return (mb, consName', isConstLike, yts)
-
-parseDefineDataConstructor ::
-  RT.RawTerm ->
-  DD.DefiniteDescription ->
-  [RawBinder RT.RawTerm] ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm])] ->
-  D.Discriminant ->
-  App [RawStmt]
-parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
-  case consInfoList of
-    [] ->
-      return []
-    (m, consName, isConstLike, consArgs) : rest -> do
-      let dataArgs' = map identPlusToVar dataArgs
-      let consArgs' = map adjustConsArg consArgs
-      let consNameList = map (\(_, c, isConstLike', _) -> (c, isConstLike')) consInfoList
-      let introRule =
-            RawStmtDefine
-              isConstLike
-              (SK.DataIntro consName dataArgs consArgs discriminant)
-              m
-              consName
-              dataArgs
-              consArgs
-              dataType
-              $ m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs' (map fst consArgs')
-      introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
-      return $ introRule : introRuleList
-
-constructDataType ::
-  Hint ->
-  DD.DefiniteDescription ->
-  IsConstLike ->
-  [(DD.DefiniteDescription, IsConstLike)] ->
-  [RawBinder RT.RawTerm] ->
-  RT.RawTerm
-constructDataType m dataName isConstLike consNameList dataArgs = do
-  m :< RT.Data (AttrD.Attr {..}) dataName (map identPlusToVar dataArgs)
-
-parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, [RawBinder RT.RawTerm])
+parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, RD.ExpArgs)
 parseDefineDataClause = do
   m <- P.getCurrentHint
   consName <- P.baseName
   unless (isConsName (BN.reify consName)) $ do
     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
   consArgsOrNone <- parseConsArgs
-  let consArgs = fromMaybe [] consArgsOrNone
+  let consArgs = fromMaybe (Nothing, ([], [])) consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
   return (m, consName, isConstLike, consArgs)
 
-parseConsArgs :: P.Parser (Maybe [RawBinder RT.RawTerm])
+parseConsArgs :: P.Parser (Maybe RD.ExpArgs)
 parseConsArgs = do
   choice
     [ do
         args <- P.argSeqOrList parseDefineDataClauseArg
-        return $ Just (map f args),
+        return $ Just args,
       return Nothing
     ]
 
@@ -315,24 +235,19 @@ parseDefineDataClauseArg = do
       typeWithoutIdent
     ]
 
-parseDefineResource :: P.Parser RawStmt
+parseDefineResource :: P.Parser (RawStmt, C)
 parseDefineResource = do
-  try $ P.keyword "resource"
+  c1 <- P.keyword' "resource"
   m <- P.getCurrentHint
-  name <- P.baseName
+  (name, c2) <- P.baseName'
   name' <- lift $ Locator.attachCurrentLocator name
-  P.betweenBrace $ do
-    discarder <- P.delimiter "-" >> rawExpr
-    copier <- P.delimiter "-" >> rawExpr
-    return $ RawStmtDefineConst m name' (m :< RT.Tau) (m :< RT.Resource name' [] discarder copier)
-
-identPlusToVar :: RawBinder RT.RawTerm -> RT.RawTerm
-identPlusToVar (m, x, _, _, _) =
-  m :< RT.Var (Var x)
-
-adjustConsArg :: RawBinder RT.RawTerm -> (RT.RawTerm, RawIdent)
-adjustConsArg (m, x, _, _, _) =
-  (m :< RT.Var (Var x), x)
+  (c3, ((discarder, copier), c4)) <- P.betweenBrace' $ do
+    cDiscarder <- P.delimiter' "-"
+    discarder <- rawExpr
+    cCopier <- P.delimiter' "-"
+    copier <- rawExpr
+    return ((cDiscarder, discarder), (cCopier, copier))
+  return (RawStmtDefineResource c1 m (name', c2) c3 discarder copier, c4)
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =

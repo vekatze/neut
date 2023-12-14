@@ -55,6 +55,7 @@ import Entity.StmtKind qualified as SK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
+import Scene.Parse.Discern.Data
 import Scene.Parse.Discern.Name
 import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv
@@ -63,37 +64,48 @@ import Scene.Parse.Discern.Struct
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList =
-  mapM discernStmt
+  fmap concat . mapM discernStmt
 
-discernStmt :: RawStmt -> App WeakStmt
+discernStmt :: RawStmt -> App [WeakStmt]
 discernStmt stmt = do
-  registerTopLevelName stmt
   case stmt of
-    RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs codType e -> do
+    RawStmtDefine _ isConstLike stmtKind m (functionName, _) (impArgs, _) (_, (expArgs, _)) (_, (codType, _)) (_, (e, _)) -> do
       -- printNote' $ RT.pp e
-      (impArgs', nenv) <- discernBinder empty impArgs
-      (expArgs', nenv') <- discernBinder nenv expArgs
+      registerTopLevelName stmt
+      (impArgs', nenv) <- discernBinder empty $ map (eraseComment . snd) impArgs
+      (expArgs', nenv') <- discernBinder nenv $ map (eraseComment . snd) expArgs
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind stmtKind
       e' <- discern nenv' e
       Tag.insertDD m functionName m
       forM_ expArgs' Tag.insertBinder
-      return $ WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e'
-    RawStmtDefineConst m dd t v -> do
+      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e']
+    RawStmtDefineConst _ m (dd, _) (_, (t, _)) (_, (v, _)) -> do
+      registerTopLevelName stmt
       t' <- discern empty t
       v' <- discern empty v
       Tag.insertDD m dd m
-      return $ WeakStmtDefineConst m dd t' v'
-    RawStmtDeclare m declList -> do
+      return [WeakStmtDefineConst m dd t' v']
+    RawStmtDefineData _ m (dd, _) args _ consInfo -> do
+      stmtList <- defineData m dd args consInfo
+      discernStmtList stmtList
+    RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
+      registerTopLevelName stmt
+      t' <- discern empty $ m :< RT.Tau
+      e' <- discern empty $ m :< RT.Resource name [] discarder copier
+      Tag.insertDD m name m
+      return [WeakStmtDefineConst m name t' e']
+    RawStmtDeclare _ m _ declList -> do
+      registerTopLevelName stmt
       declList' <- mapM discernDecl declList
-      return $ WeakStmtDeclare m declList'
+      return [WeakStmtDeclare m declList']
 
 discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
-  (impArgs', nenv) <- discernBinder empty (map f $ RDE.impArgs decl)
-  (expArgs', nenv') <- discernBinder nenv (map f $ RDE.expArgs decl)
+  (impArgs', nenv) <- discernBinder empty (map (eraseComment . snd) $ fst $ RDE.impArgs decl)
+  (expArgs', nenv') <- discernBinder nenv (map (eraseComment . snd) $ fst $ snd $ RDE.expArgs decl)
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
-  cod' <- discern nenv' (RDE.cod decl)
+  cod' <- discern nenv' $ fst $ snd $ RDE.cod decl
   return $
     DE.Decl
       { loc = RDE.loc decl,
@@ -107,14 +119,19 @@ discernDecl decl = do
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
-    RawStmtDefine isConstLike stmtKind m functionName impArgs expArgs _ _ -> do
+    RawStmtDefine _ isConstLike stmtKind m (functionName, _) (impArgs, _) (_, (expArgs, _)) _ _ -> do
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
-      let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
+      let expArgNames = map (\(_, (_, x, _, _, _)) -> x) expArgs
       Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames
-    RawStmtDefineConst m dd _ _ -> do
+    RawStmtDefineConst _ m (dd, _) _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-    RawStmtDeclare _ declList -> do
+    RawStmtDeclare _ _ _ declList -> do
       mapM_ Global.registerDecl declList
+    RawStmtDefineData _ m (dd, _) args _ consInfo -> do
+      stmtList <- defineData m dd args consInfo
+      mapM_ registerTopLevelName stmtList
+    RawStmtDefineResource _ m (name, _) _ _ _ -> do
+      Global.registerStmtDefine True m (SK.Normal O.Clear) name AN.zero []
 
 discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
@@ -153,20 +170,20 @@ discern nenv term =
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
     m :< RT.Pi (impArgs, _) (expArgs, _) _ t -> do
-      (impArgs', nenv') <- discernBinder nenv $ map (f . snd) impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ map (f . snd) expArgs
+      (impArgs', nenv') <- discernBinder nenv $ map (eraseComment . snd) impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map (eraseComment . snd) expArgs
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
     m :< RT.PiIntro (impArgs, _) (expArgs, _) _ e -> do
       lamID <- Gensym.newCount
-      (impArgs', nenv') <- discernBinder nenv $ map (f . snd) impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ map (f . snd) expArgs
+      (impArgs', nenv') <- discernBinder nenv $ map (eraseComment . snd) impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map (eraseComment . snd) expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
     m :< RT.PiIntroFix _ ((mx, x), _, (impArgs, _), (expArgs, _), _, codType, _, (e, _)) -> do
-      (impArgs', nenv') <- discernBinder nenv $ map (f . snd) impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ map (f . snd) expArgs
+      (impArgs', nenv') <- discernBinder nenv $ map (eraseComment . snd) impArgs
+      (expArgs', nenv'') <- discernBinder nenv' $ map (eraseComment . snd) expArgs
       codType' <- discern nenv'' $ fst codType
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
@@ -284,7 +301,7 @@ discern nenv term =
       return $ m :< WT.Resource dd resourceID discarder' copier'
     m :< RT.Use _ e _ (xs, _) _ cont -> do
       e' <- discern nenv e
-      (xs', nenv') <- discernBinder nenv $ map (f . snd) xs
+      (xs', nenv') <- discernBinder nenv $ map (eraseComment . snd) xs
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
@@ -745,6 +762,6 @@ locatorToVarGlobal m text = do
   (gl, ll) <- Throw.liftEither $ DD.getLocatorPair (blur m) text
   return $ blur m :< RT.Var (Locator (gl, ll))
 
-f :: RawBinder (a, C) -> RawBinder a
-f (m, x, c1, c2, (t, _)) =
+eraseComment :: RawBinder (a, C) -> RawBinder a
+eraseComment (m, x, c1, c2, (t, _)) =
   (m, x, c1, c2, t)

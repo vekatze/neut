@@ -77,10 +77,14 @@ type DefInfo a =
   ((Hint, RawIdent), C, Args a, Args a, C, (a, C), C, (a, C))
 
 type TopDefHeader =
-  ((Hint, BN.BaseName), [RawBinder RawTerm], [RawBinder RawTerm], RawTerm)
+  ( (Hint, (BN.BaseName, C)),
+    ([(C, RawBinder (RawTerm, C))], C),
+    (Maybe (C, C), ([(C, RawBinder (RawTerm, C))], C)),
+    (C, (RawTerm, C))
+  )
 
 type TopDefInfo =
-  (TopDefHeader, RawTerm)
+  (TopDefHeader, (C, ((RawTerm, C), C)))
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =

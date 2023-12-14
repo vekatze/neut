@@ -259,40 +259,34 @@ parseDefInfo m = do
 parseTopDefInfo :: Parser RT.TopDefInfo
 parseTopDefInfo = do
   topDefHeader <- parseTopDefHeader
-  (e, _) <- betweenBrace rawExpr
+  e <- betweenBrace' rawExpr
   return (topDefHeader, e)
 
 parseTopDefHeader :: Parser RT.TopDefHeader
 parseTopDefHeader = do
   m <- getCurrentHint
-  funcBaseName <- baseName
+  funcBaseName <- baseName'
   impArgs <- parseImplicitArgs
-  expDomArgList <- argSeqOrList preBinder
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) expDomArgList
-  (_, codType) <- parseDefInfoCod m
-  return ((m, funcBaseName), map (f . snd) $ fst impArgs, map f expDomArgList, fst codType)
+  expArgs@(_, (expArgs', _)) <- argSeqOrList preBinder
+  lift $ ensureArgumentLinearity S.empty $ map (\(_, (mx, x, _, _, _)) -> (mx, x)) expArgs'
+  cod <- parseDefInfoCod m
+  return ((m, funcBaseName), impArgs, expArgs, cod)
 
 parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.RawDecl
 parseDeclareItem nameLifter = do
   loc <- getCurrentHint
   name <- baseName >>= lift . nameLifter
-  (isConstLike, impArgs, expArgs) <-
+  impArgs <- parseImplicitArgs
+  (isConstLike, expArgs) <- do
     choice
       [ do
-          impArgs <- parseImplicitArgs
-          choice
-            [ do
-                expDomArgList <- argSeqOrList preBinder
-                return (False, impArgs, expDomArgList),
-              return (True, impArgs, [])
-            ],
-        do
-          return (True, ([], []), [])
+          expDomArgList <- argSeqOrList preBinder
+          return (False, expDomArgList),
+        return (True, (Nothing, ([], [])))
       ]
-  delimiter ":"
-  cod <- fst <$> rawTerm
-  let impArgs' = map snd $ fst impArgs
-  return RDE.RawDecl {loc, name, isConstLike, impArgs = impArgs', expArgs, cod}
+  m <- getCurrentHint
+  cod <- parseDefInfoCod m
+  return RDE.RawDecl {loc, name, isConstLike, impArgs, expArgs, cod}
 
 parseImplicitArgs :: Parser ([(C, RawBinder (RT.RawTerm, C))], C)
 parseImplicitArgs =
