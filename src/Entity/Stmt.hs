@@ -9,8 +9,10 @@ import Entity.C
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsConstLike
+import Entity.LowType qualified as LT
 import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
@@ -59,6 +61,12 @@ data RawStmt
 
 type RawConsInfo =
   (Hint, BN.BaseName, IsConstLike, RDE.ExpArgs)
+
+data RawForeign
+  = RawForeign C (C, ([(C, RawForeignItem)], C))
+
+data RawForeignItem
+  = RawForeignItem EN.ExternalName C (C, ([(LT.LowType, C)], C)) C (LT.LowType, C)
 
 data WeakStmt
   = WeakStmtDefine

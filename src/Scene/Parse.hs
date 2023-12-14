@@ -114,10 +114,11 @@ program currentSource = do
     lift $ Global.activateTopLevelNames namesInSource
     forM_ aliasInfoList $ \aliasInfo ->
       lift $ Alias.activateAliasInfo namesInSource aliasInfo
-  forM_ declList $ \(F.Foreign name domList cod) -> do
+  let declList' = concatMap interpretForeign $ maybeToList declList
+  forM_ declList' $ \(F.Foreign name domList cod) -> do
     lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
   defList <- concat <$> many parseStmt <* eof
-  return (defList, declList)
+  return (defList, declList')
 
 parseStmt :: P.Parser [(RawStmt, C)]
 parseStmt = do
@@ -130,21 +131,30 @@ parseStmt = do
       return <$> parseDefineResource
     ]
 
-parseForeignList :: P.Parser [F.Foreign]
-parseForeignList = do
-  choice
-    [ do
-        P.keyword "foreign"
-        P.betweenBrace (P.manyList parseForeign),
-      return []
-    ]
+interpretForeign :: RawForeign -> [F.Foreign]
+interpretForeign rf =
+  case rf of
+    RawForeign _ (_, (xs, _)) ->
+      map (interpretForeignItem . snd) xs
 
-parseForeign :: P.Parser F.Foreign
+interpretForeignItem :: RawForeignItem -> F.Foreign
+interpretForeignItem (RawForeignItem name _ (_, (lts, _)) _ (cod, _)) =
+  F.Foreign name (map fst lts) cod
+
+parseForeignList :: P.Parser (Maybe RawForeign)
+parseForeignList = do
+  optional $ do
+    c1 <- P.keyword' "foreign"
+    val <- P.betweenBrace' (P.manyList' parseForeign)
+    return $ RawForeign c1 val
+
+parseForeign :: P.Parser RawForeignItem
 parseForeign = do
-  declName <- EN.ExternalName <$> P.symbol
-  lts <- P.betweenParen $ P.commaList lowType
-  (cod, _) <- P.delimiter ":" >> lowType
-  return $ F.Foreign declName (map fst lts) cod
+  (declName, c1) <- P.symbol'
+  (c2, (lts, c3)) <- P.argList' lowType
+  c4 <- P.delimiter' ":"
+  (cod, c) <- lowType
+  return $ RawForeignItem (EN.ExternalName declName) c1 (c2, (lts, c3)) c4 (cod, c)
 
 parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
