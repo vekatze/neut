@@ -128,12 +128,6 @@ baseName' = do
     bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
     return $ BN.fromText bn
 
-keyword :: T.Text -> Parser ()
-keyword expected = do
-  lexeme $ try $ do
-    _ <- chunk expected
-    label (T.unpack expected) $ notFollowedBy symbol
-
 keyword' :: T.Text -> Parser C
 keyword' expected = do
   fmap snd $ lexeme' $ try $ do
@@ -152,26 +146,11 @@ delimiter' :: T.Text -> Parser C
 delimiter' expected = do
   fmap snd $ lexeme' $ void $ chunk expected
 
-string :: Parser T.Text
-string =
-  lexeme $ do
-    _ <- char '\"'
-    T.pack <$> manyTill L.charLiteral (char '\"')
-
 string' :: Parser (T.Text, C)
 string' =
   lexeme' $ do
     _ <- char '\"'
     T.pack <$> manyTill L.charLiteral (char '\"')
-
-integer :: Parser Integer
-integer = do
-  s <- symbol
-  case R.readMaybe (T.unpack s) of
-    Just value ->
-      return value
-    Nothing ->
-      failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
 integer' :: Parser (Integer, C)
 integer' = do
@@ -181,15 +160,6 @@ integer' = do
       return (value, c)
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
-
-float :: Parser Double
-float = do
-  s <- symbol
-  case R.readMaybe (T.unpack s) of
-    Just value ->
-      return value
-    Nothing -> do
-      failure (Just (asTokens s)) (S.fromList [asLabel "float"])
 
 float' :: Parser (Double, C)
 float' = do
@@ -222,20 +192,12 @@ bool' = do
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
-betweenParen :: Parser a -> Parser a
-betweenParen =
-  between (delimiter "(") (delimiter ")")
-
 betweenParen' :: Parser a -> Parser (C, (a, C))
 betweenParen' p = do
   c1 <- delimiter' "("
   v <- p
   c2 <- delimiter' ")"
   return (c1, (v, c2))
-
-betweenBrace :: Parser a -> Parser a
-betweenBrace =
-  between (delimiter "{") (delimiter "}")
 
 betweenBrace' :: Parser a -> Parser (C, (a, C))
 betweenBrace' p = do
@@ -244,24 +206,12 @@ betweenBrace' p = do
   c2 <- delimiter' "}"
   return (c1, (v, c2))
 
-betweenBracket :: Parser a -> Parser a
-betweenBracket =
-  between (delimiter "[") (delimiter "]")
-
 betweenBracket' :: Parser a -> Parser (C, (a, C))
 betweenBracket' p = do
   c1 <- delimiter' "["
   v <- p
   c2 <- delimiter' "]"
   return (c1, (v, c2))
-
--- betweenBracket' :: Parser a -> Parser a
--- betweenBracket' =
---   between (delimiter' "[") (delimiter' "]")
-
-betweenAngle :: Parser a -> Parser a
-betweenAngle =
-  between (delimiter "<") (delimiter ">")
 
 betweenAngle' :: Parser a -> Parser (C, (a, C))
 betweenAngle' p = do
@@ -292,10 +242,6 @@ commaList' :: Parser C -> Parser a -> Parser [(C, a)]
 commaList' first f = do
   sepList first (delimiter' ",") f
 
-argList :: Parser a -> Parser [a]
-argList f = do
-  lexeme $ betweenParen $ commaList f
-
 argList' :: Parser a -> Parser (C, ([a], C))
 argList' f = do
   c1 <- delimiter' "("
@@ -303,7 +249,7 @@ argList' f = do
   c2 <- delimiter' ")"
   return (c1, (vs, c2))
 
-argList'' :: Parser a -> Parser ([(C, a)], C)
+argList'' :: Parser a -> Parser (ArgList a)
 argList'' f = do
   vs <- commaList' (delimiter' "(") f
   c <- delimiter' ")"
@@ -328,13 +274,6 @@ argListBrace f = do
   return (vs, c)
 
 -- lexeme $ betweenParen $ commaList f
-
-impArgList :: Parser a -> Parser [a]
-impArgList f =
-  choice
-    [ betweenBracket $ commaList f,
-      return []
-    ]
 
 manyList :: Parser a -> Parser [a]
 manyList f =

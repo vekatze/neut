@@ -74,7 +74,7 @@ data RawForeign
   = RawForeign C (C, ([(C, RawForeignItem)], C))
 
 data RawForeignItem
-  = RawForeignItem EN.ExternalName C (C, ([(LT.LowType, C)], C)) C (LT.LowType, C)
+  = RawForeignItem EN.ExternalName C (ArgList (LT.LowType, C)) C (LT.LowType, C)
 
 data WeakStmt
   = WeakStmtDefine

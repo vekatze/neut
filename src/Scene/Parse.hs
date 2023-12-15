@@ -143,8 +143,8 @@ interpretForeign rf =
       map (interpretForeignItem . snd) xs
 
 interpretForeignItem :: RawForeignItem -> F.Foreign
-interpretForeignItem (RawForeignItem name _ (_, (lts, _)) _ (cod, _)) =
-  F.Foreign name (map fst lts) cod
+interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
+  F.Foreign name (map fst $ distillArgList lts) cod
 
 parseForeignList :: P.Parser (Maybe RawForeign)
 parseForeignList = do
@@ -156,10 +156,10 @@ parseForeignList = do
 parseForeign :: P.Parser RawForeignItem
 parseForeign = do
   (declName, c1) <- P.symbol'
-  (c2, (lts, c3)) <- P.argList' lowType
-  c4 <- P.delimiter' ":"
+  lts <- P.argList'' lowType
+  c2 <- P.delimiter' ":"
   (cod, c) <- lowType
-  return $ RawForeignItem (EN.ExternalName declName) c1 (c2, (lts, c3)) c4 (cod, c)
+  return $ RawForeignItem (EN.ExternalName declName) c1 lts c2 (cod, c)
 
 parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do

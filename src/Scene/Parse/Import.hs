@@ -55,7 +55,7 @@ interpretImportBlock :: Source.Source -> RawImport -> App [(Source.Source, [AI.A
 interpretImportBlock currentSource (RawImport _ _ (_, (importItemList, _))) = do
   fmap concat $ forM importItemList $ \(_, rawImport) -> do
     let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
-    let localLocatorList' = map fst $ stripArgList localLocatorList
+    let localLocatorList' = map fst $ distillArgList localLocatorList
     interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
 
 parseLocalLocatorList' :: P.Parser ([(C, ((Hint, LL.LocalLocator), C))], C)

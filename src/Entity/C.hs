@@ -8,6 +8,6 @@ type C = [T.Text]
 type ArgList a =
   ([(C, a)], C)
 
-stripArgList :: ArgList a -> [a]
-stripArgList (args, _) =
+distillArgList :: ArgList a -> [a]
+distillArgList (args, _) =
   map snd args
