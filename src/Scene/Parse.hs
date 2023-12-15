@@ -106,14 +106,19 @@ ensureMain m mainFunctionName = do
 program :: Source.Source -> P.Parser ([(RawStmt, C)], [F.Foreign])
 program currentSource = do
   m <- P.getCurrentHint
-  sourceInfoList <- Parse.parseImportBlock currentSource
+  importBlockOrNone <- Parse.parseImportBlock
   declList <- parseForeignList
-  forM_ sourceInfoList $ \(source, aliasInfoList) -> do
-    let path = Source.sourceFilePath source
-    namesInSource <- lift $ Global.lookupSourceNameMap m path
-    lift $ Global.activateTopLevelNames namesInSource
-    forM_ aliasInfoList $ \aliasInfo ->
-      lift $ Alias.activateAliasInfo namesInSource aliasInfo
+  case importBlockOrNone of
+    Nothing ->
+      return ()
+    Just importBlock -> do
+      sourceInfoList <- lift $ Parse.interpretImportBlock currentSource importBlock
+      forM_ sourceInfoList $ \(source, aliasInfoList) -> do
+        let path = Source.sourceFilePath source
+        namesInSource <- lift $ Global.lookupSourceNameMap m path
+        lift $ Global.activateTopLevelNames namesInSource
+        forM_ aliasInfoList $ \aliasInfo ->
+          lift $ Alias.activateAliasInfo namesInSource aliasInfo
   let declList' = concatMap interpretForeign $ maybeToList declList
   forM_ declList' $ \(F.Foreign name domList cod) -> do
     lift $ Decl.insDeclEnv' (DN.Ext name) domList cod

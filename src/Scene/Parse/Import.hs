@@ -1,4 +1,8 @@
-module Scene.Parse.Import (parseImportBlock) where
+module Scene.Parse.Import
+  ( parseImportBlock,
+    interpretImportBlock,
+  )
+where
 
 import Context.Alias qualified as Alias
 import Context.App
@@ -9,11 +13,11 @@ import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
 import Control.Monad
-import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
 import Entity.BaseName qualified as BN
+import Entity.C
 import Entity.Const
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
@@ -23,10 +27,10 @@ import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
 import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
+import Entity.Stmt
 import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Scene.Module.Reflect qualified as Module
-import Scene.Parse.Core (commaList)
 import Scene.Parse.Core qualified as P
 import Scene.Source.ShiftToLatest
 import Text.Megaparsec
@@ -34,34 +38,38 @@ import Text.Megaparsec
 type LocatorText =
   T.Text
 
-parseImportBlock :: Source.Source -> P.Parser [(Source.Source, [AI.AliasInfo])]
-parseImportBlock currentSource = do
+parseImportBlock :: P.Parser (Maybe RawImport)
+parseImportBlock = do
   choice
     [ do
-        P.keyword "import"
-        concat <$> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource))),
-      return []
+        c1 <- P.keyword' "import"
+        m <- P.getCurrentHint
+        items <- P.betweenBrace' $ P.manyList' $ do
+          locator <- P.symbol'
+          RawImportItem c1 m locator <$> parseLocalLocatorList'
+        return $ Just $ RawImport c1 m items,
+      return Nothing
     ]
 
-parseImport :: Module -> P.Parser [(Source.Source, [AI.AliasInfo])]
-parseImport currentModule = do
-  m <- P.getCurrentHint
-  locatorText <- P.symbol
-  localLocatorList <- parseLocalLocatorList'
-  lift $ interpretImportItem True currentModule m locatorText localLocatorList
+interpretImportBlock :: Source.Source -> RawImport -> App [(Source.Source, [AI.AliasInfo])]
+interpretImportBlock currentSource (RawImport _ _ (_, (importItemList, _))) = do
+  fmap concat $ forM importItemList $ \(_, rawImport) -> do
+    let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
+    let localLocatorList' = map fst $ stripArgList localLocatorList
+    interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
 
-parseLocalLocatorList' :: P.Parser [(Hint, LL.LocalLocator)]
+parseLocalLocatorList' :: P.Parser ([(C, ((Hint, LL.LocalLocator), C))], C)
 parseLocalLocatorList' = do
   choice
-    [ P.betweenBrace $ commaList parseLocalLocator,
-      return []
+    [ P.argListBrace parseLocalLocator,
+      return ([], [])
     ]
 
-parseLocalLocator :: P.Parser (Hint, LL.LocalLocator)
+parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
 parseLocalLocator = do
   m <- P.getCurrentHint
-  ll <- P.baseName
-  return (m, LL.new ll)
+  (ll, c) <- P.baseName'
+  return ((m, LL.new ll), c)
 
 interpretImportItem ::
   Bool ->

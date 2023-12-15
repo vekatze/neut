@@ -3,6 +3,7 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
+import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.C
@@ -12,6 +13,7 @@ import Entity.Discriminant qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsConstLike
+import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
@@ -61,6 +63,12 @@ data RawStmt
 
 type RawConsInfo =
   (Hint, BN.BaseName, IsConstLike, RDE.ExpArgs)
+
+data RawImport
+  = RawImport C Hint (C, ArgList RawImportItem)
+
+data RawImportItem
+  = RawImportItem C Hint (T.Text, C) (ArgList ((Hint, LL.LocalLocator), C))
 
 data RawForeign
   = RawForeign C (C, ([(C, RawForeignItem)], C))
