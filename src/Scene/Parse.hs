@@ -67,7 +67,7 @@ parseSource source cacheOrContent = do
       saveTopLevelNames path $ map getStmtName stmtList
       return $ Left cache
     Right content -> do
-      (defList, declList) <- P.run (program source) path content
+      (_, (defList, declList)) <- P.parseFile True (program source) path content
       stmtList <- Discern.discernStmtList $ map fst defList
       Global.reportMissingDefinitions
       saveTopLevelNames path $ getWeakStmtName stmtList

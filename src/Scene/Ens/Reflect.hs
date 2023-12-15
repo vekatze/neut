@@ -17,14 +17,7 @@ import Text.Megaparsec hiding (parse)
 fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
 fromFilePath path = do
   fileContent <- readSourceFile path
-  run' parseTopEns path fileContent
-
-parseTopEns :: Parser (C, (E.Ens, C))
-parseTopEns = do
-  leadingComments <- spaceConsumer'
-  (ens, trailingComments) <- parseEns
-  eof
-  return (leadingComments, (ens, trailingComments))
+  parseFile True parseEns path fileContent
 
 parseEns :: Parser (E.Ens, C)
 parseEns = do

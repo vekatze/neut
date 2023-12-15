@@ -248,7 +248,7 @@ parseSourceHeader currentSource = do
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- readSourceFile path
-  importBlockOrNone <- ParseCore.run parseImportBlock path fileContent
+  (_, importBlockOrNone) <- ParseCore.parseFile False parseImportBlock path fileContent
   case importBlockOrNone of
     Nothing ->
       return []

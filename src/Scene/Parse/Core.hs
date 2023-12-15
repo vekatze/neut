@@ -23,20 +23,18 @@ import Text.Read qualified as R
 
 type Parser = ParsecT Void T.Text App
 
-run :: Parser a -> Path Abs File -> T.Text -> App a
-run parser path fileContent = do
-  let filePath = toFilePath path
-  result <- runParserT (spaceConsumer >> parser) filePath fileContent
-  case result of
-    Right v ->
-      return v
-    Left errorBundle ->
-      Throw.throw $ createParseError errorBundle
+type MustParseWholeFile =
+  Bool
 
-run' :: Parser a -> Path Abs File -> T.Text -> App a
-run' parser path fileContent = do
+parseFile :: MustParseWholeFile -> Parser a -> Path Abs File -> T.Text -> App (C, a)
+parseFile mustParseWholeFile parser path fileContent = do
+  let fileParser = do
+        leadingComments <- spaceConsumer'
+        value <- parser
+        when mustParseWholeFile eof
+        return (leadingComments, value)
   let filePath = toFilePath path
-  result <- runParserT parser filePath fileContent
+  result <- runParserT fileParser filePath fileContent
   case result of
     Right v ->
       return v
@@ -63,11 +61,6 @@ comment = do
   skipSpace
   chunk "//"
   takeWhileP (Just "character") (/= '\n')
-
-{-# INLINE spaceConsumer #-}
-spaceConsumer :: Parser ()
-spaceConsumer =
-  L.space asciiSpaceOrNewLine1 (L.skipLineComment "//") empty
 
 {-# INLINE spaceConsumer' #-}
 spaceConsumer' :: Parser C
@@ -96,21 +89,12 @@ isAsciiSpaceOrNewLine :: Char -> Bool
 isAsciiSpaceOrNewLine c =
   c == ' ' || c == '\n'
 
-{-# INLINE lexeme #-}
-lexeme :: Parser a -> Parser a
-lexeme =
-  L.lexeme spaceConsumer
-
 {-# INLINE lexeme' #-}
 lexeme' :: Parser a -> Parser (a, C)
 lexeme' p = do
   v <- p
   c <- spaceConsumer' -- read spaces *before* p
   return (v, c)
-
-symbol :: Parser T.Text
-symbol = do
-  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
 symbol' :: Parser (T.Text, C)
 symbol' = do
@@ -126,15 +110,11 @@ keyword' :: T.Text -> Parser C
 keyword' expected = do
   fmap snd $ lexeme' $ try $ do
     _ <- chunk expected
-    label (T.unpack expected) $ notFollowedBy symbol
+    label (T.unpack expected) $ notFollowedBy symbol'
 
 nonSymbolChar :: Parser Char
 nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
-
-delimiter :: T.Text -> Parser ()
-delimiter expected = do
-  lexeme $ void $ chunk expected
 
 delimiter' :: T.Text -> Parser C
 delimiter' expected = do
@@ -163,17 +143,6 @@ float' = do
       return (value, c)
     Nothing -> do
       failure (Just (asTokens s)) (S.fromList [asLabel "float"])
-
-bool :: Parser Bool
-bool = do
-  s <- symbol
-  case s of
-    "true" ->
-      return True
-    "false" ->
-      return False
-    _ -> do
-      failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
 bool' :: Parser (Bool, C)
 bool' = do
