@@ -33,43 +33,43 @@ parseEns = do
 
 parseInt :: Hint -> Parser (E.Ens, C)
 parseInt m = do
-  (x, c) <- integer'
+  (x, c) <- integer
   return (m :< E.Int (fromInteger x), c)
 
 parseFloat :: Hint -> Parser (E.Ens, C)
 parseFloat m = do
-  (x, c) <- float'
+  (x, c) <- float
   return (m :< E.Float x, c)
 
 parseBool :: Hint -> Parser (E.Ens, C)
 parseBool m = do
-  (x, c) <- bool'
+  (x, c) <- bool
   return (m :< E.Bool x, c)
 
 parseString :: Hint -> Parser (E.Ens, C)
 parseString m = do
-  (x, c) <- string'
+  (x, c) <- string
   return (m :< E.String x, c)
 
 parseList :: Hint -> Parser (E.Ens, C)
 parseList m = do
-  c1 <- delimiter' "["
+  c1 <- delimiter "["
   vs <- many parseEns
-  c2 <- delimiter' "]"
+  c2 <- delimiter "]"
   return (m :< E.List c1 vs, c2)
 
 parseDictionary :: Hint -> Parser (E.Ens, C)
 parseDictionary m = do
-  c1 <- delimiter' "{"
+  c1 <- delimiter "{"
   (ms, kvs) <- unzip <$> many parseKeyValuePair
-  c2 <- delimiter' "}"
+  c2 <- delimiter "}"
   lift $ ensureKeyLinearity (zip ms (map fst kvs)) S.empty
   return (m :< E.Dictionary c1 kvs, c2)
 
 parseKeyValuePair :: Parser (Hint, (T.Text, (C, (E.Ens, C))))
 parseKeyValuePair = do
   m <- getCurrentHint
-  (k, cLead) <- symbol'
+  (k, cLead) <- symbol
   (v, cTrail) <- parseEns
   return (m, (k, (cLead, (v, cTrail))))
 

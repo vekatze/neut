@@ -149,23 +149,23 @@ interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
 parseForeignList :: P.Parser (Maybe RawForeign)
 parseForeignList = do
   optional $ do
-    c1 <- P.keyword' "foreign"
-    val <- P.betweenBrace' (P.manyList' parseForeign)
+    c1 <- P.keyword "foreign"
+    val <- P.betweenBrace (P.manyList parseForeign)
     return $ RawForeign c1 val
 
 parseForeign :: P.Parser RawForeignItem
 parseForeign = do
-  (declName, c1) <- P.symbol'
+  (declName, c1) <- P.symbol
   lts <- P.argList'' lowType
-  c2 <- P.delimiter' ":"
+  c2 <- P.delimiter ":"
   (cod, c) <- lowType
   return $ RawForeignItem (EN.ExternalName declName) c1 lts c2 (cod, c)
 
 parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
-  c1 <- P.keyword' "declare"
+  c1 <- P.keyword "declare"
   m <- P.getCurrentHint
-  (c2, (decls, c3)) <- P.betweenBrace' $ P.manyList' $ parseDeclareItem Locator.attachCurrentLocator
+  (c2, (decls, c3)) <- P.betweenBrace $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
   return (RawStmtDeclare c1 m c2 decls, c3)
 
 parseDefine :: O.Opacity -> P.Parser (RawStmt, C)
@@ -173,9 +173,9 @@ parseDefine opacity = do
   c1 <-
     case opacity of
       O.Opaque ->
-        P.keyword' "define"
+        P.keyword "define"
       O.Clear ->
-        P.keyword' "inline"
+        P.keyword "inline"
   m <- P.getCurrentHint
   (((_, (name, c)), impArgs, expArgs, codType), e) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
@@ -196,22 +196,22 @@ defineFunction c1 stmtKind m name impArgs expArgs codType (c2, (e, c)) = do
 
 parseConstant :: P.Parser (RawStmt, C)
 parseConstant = do
-  c1 <- P.keyword' "constant"
+  c1 <- P.keyword "constant"
   m <- P.getCurrentHint
-  (constName, c2) <- P.baseName'
+  (constName, c2) <- P.baseName
   constName' <- lift $ Locator.attachCurrentLocator constName
   t <- parseDefInfoCod m
-  (c3, (v, c4)) <- P.betweenBrace' rawExpr
+  (c3, (v, c4)) <- P.betweenBrace rawExpr
   return (RawStmtDefineConst c1 m (constName', c2) t (c3, v), c4)
 
 parseDefineData :: P.Parser (RawStmt, C)
 parseDefineData = do
-  c1 <- P.keyword' "data"
+  c1 <- P.keyword "data"
   m <- P.getCurrentHint
-  (dataName, c2) <- P.baseName'
+  (dataName, c2) <- P.baseName
   dataName' <- lift $ Locator.attachCurrentLocator dataName
   dataArgsOrNone <- parseDataArgs
-  (c3, (consInfoList, c)) <- P.betweenBrace' $ P.manyList' parseDefineDataClause
+  (c3, (consInfoList, c)) <- P.betweenBrace $ P.manyList parseDefineDataClause
   return (RawStmtDefineData c1 m (dataName', c2) dataArgsOrNone c3 consInfoList, c)
 
 parseDataArgs :: P.Parser (Maybe RD.ExpArgs)
@@ -226,7 +226,7 @@ parseDataArgs = do
 parseDefineDataClause :: P.Parser (Hint, (BN.BaseName, C), IsConstLike, RD.ExpArgs)
 parseDefineDataClause = do
   m <- P.getCurrentHint
-  consName@(consName', _) <- P.baseName'
+  consName@(consName', _) <- P.baseName
   unless (isConsName (BN.reify consName')) $ do
     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
   consArgsOrNone <- parseConsArgs
@@ -252,14 +252,14 @@ parseDefineDataClauseArg = do
 
 parseDefineResource :: P.Parser (RawStmt, C)
 parseDefineResource = do
-  c1 <- P.keyword' "resource"
+  c1 <- P.keyword "resource"
   m <- P.getCurrentHint
-  (name, c2) <- P.baseName'
+  (name, c2) <- P.baseName
   name' <- lift $ Locator.attachCurrentLocator name
-  (c3, ((discarder, copier), c4)) <- P.betweenBrace' $ do
-    cDiscarder <- P.delimiter' "-"
+  (c3, ((discarder, copier), c4)) <- P.betweenBrace $ do
+    cDiscarder <- P.delimiter "-"
     discarder <- rawExpr
-    cCopier <- P.delimiter' "-"
+    cCopier <- P.delimiter "-"
     copier <- rawExpr
     return ((cDiscarder, discarder), (cCopier, copier))
   return (RawStmtDefineResource c1 m (name', c2) c3 discarder copier, c4)

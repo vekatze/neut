@@ -17,7 +17,7 @@ import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
 import Path
 import Text.Megaparsec
-import Text.Megaparsec.Char hiding (string')
+import Text.Megaparsec.Char hiding (string)
 import Text.Megaparsec.Char.Lexer qualified as L
 import Text.Read qualified as R
 
@@ -29,7 +29,7 @@ type MustParseWholeFile =
 parseFile :: MustParseWholeFile -> Parser a -> Path Abs File -> T.Text -> App (C, a)
 parseFile mustParseWholeFile parser path fileContent = do
   let fileParser = do
-        leadingComments <- spaceConsumer'
+        leadingComments <- spaceConsumer
         value <- parser
         when mustParseWholeFile eof
         return (leadingComments, value)
@@ -62,9 +62,9 @@ comment = do
   chunk "//"
   takeWhileP (Just "character") (/= '\n')
 
-{-# INLINE spaceConsumer' #-}
-spaceConsumer' :: Parser C
-spaceConsumer' =
+{-# INLINE spaceConsumer #-}
+spaceConsumer :: Parser C
+spaceConsumer =
   hidden $ do
     skipSpace
     many (comment <* skipSpace)
@@ -89,64 +89,64 @@ isAsciiSpaceOrNewLine :: Char -> Bool
 isAsciiSpaceOrNewLine c =
   c == ' ' || c == '\n'
 
-{-# INLINE lexeme' #-}
-lexeme' :: Parser a -> Parser (a, C)
-lexeme' p = do
+{-# INLINE lexeme #-}
+lexeme :: Parser a -> Parser (a, C)
+lexeme p = do
   v <- p
-  c <- spaceConsumer' -- read spaces *before* p
+  c <- spaceConsumer -- read spaces *before* p
   return (v, c)
 
-symbol' :: Parser (T.Text, C)
-symbol' = do
-  lexeme' $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
+symbol :: Parser (T.Text, C)
+symbol = do
+  lexeme $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
-baseName' :: Parser (BN.BaseName, C)
-baseName' = do
-  lexeme' $ do
+baseName :: Parser (BN.BaseName, C)
+baseName = do
+  lexeme $ do
     bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
     return $ BN.fromText bn
 
-keyword' :: T.Text -> Parser C
-keyword' expected = do
-  fmap snd $ lexeme' $ try $ do
+keyword :: T.Text -> Parser C
+keyword expected = do
+  fmap snd $ lexeme $ try $ do
     _ <- chunk expected
-    label (T.unpack expected) $ notFollowedBy symbol'
+    label (T.unpack expected) $ notFollowedBy symbol
 
 nonSymbolChar :: Parser Char
 nonSymbolChar =
   satisfy (`S.notMember` nonSymbolCharSet) <?> "non-symbol character"
 
-delimiter' :: T.Text -> Parser C
-delimiter' expected = do
-  fmap snd $ lexeme' $ void $ chunk expected
+delimiter :: T.Text -> Parser C
+delimiter expected = do
+  fmap snd $ lexeme $ void $ chunk expected
 
-string' :: Parser (T.Text, C)
-string' =
-  lexeme' $ do
+string :: Parser (T.Text, C)
+string =
+  lexeme $ do
     _ <- char '\"'
     T.pack <$> manyTill L.charLiteral (char '\"')
 
-integer' :: Parser (Integer, C)
-integer' = do
-  (s, c) <- symbol'
+integer :: Parser (Integer, C)
+integer = do
+  (s, c) <- symbol
   case R.readMaybe (T.unpack s) of
     Just value ->
       return (value, c)
     Nothing ->
       failure (Just (asTokens s)) (S.fromList [asLabel "integer"])
 
-float' :: Parser (Double, C)
-float' = do
-  (s, c) <- symbol'
+float :: Parser (Double, C)
+float = do
+  (s, c) <- symbol
   case R.readMaybe (T.unpack s) of
     Just value ->
       return (value, c)
     Nothing -> do
       failure (Just (asTokens s)) (S.fromList [asLabel "float"])
 
-bool' :: Parser (Bool, C)
-bool' = do
-  (s, c) <- symbol'
+bool :: Parser (Bool, C)
+bool = do
+  (s, c) <- symbol
   case s of
     "true" ->
       return (True, c)
@@ -155,32 +155,18 @@ bool' = do
     _ -> do
       failure (Just (asTokens s)) (S.fromList [asTokens "true", asTokens "false"])
 
-betweenParen' :: Parser a -> Parser (C, (a, C))
-betweenParen' p = do
-  c1 <- delimiter' "("
+betweenParen :: Parser a -> Parser (C, (a, C))
+betweenParen p = do
+  c1 <- delimiter "("
   v <- p
-  c2 <- delimiter' ")"
+  c2 <- delimiter ")"
   return (c1, (v, c2))
 
-betweenBrace' :: Parser a -> Parser (C, (a, C))
-betweenBrace' p = do
-  c1 <- delimiter' "{"
+betweenBrace :: Parser a -> Parser (C, (a, C))
+betweenBrace p = do
+  c1 <- delimiter "{"
   v <- p
-  c2 <- delimiter' "}"
-  return (c1, (v, c2))
-
-betweenBracket' :: Parser a -> Parser (C, (a, C))
-betweenBracket' p = do
-  c1 <- delimiter' "["
-  v <- p
-  c2 <- delimiter' "]"
-  return (c1, (v, c2))
-
-betweenAngle' :: Parser a -> Parser (C, (a, C))
-betweenAngle' p = do
-  c1 <- delimiter' "<"
-  v <- p
-  c2 <- delimiter' ">"
+  c2 <- delimiter "}"
   return (c1, (v, c2))
 
 sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
@@ -197,56 +183,56 @@ sepList first sep f = do
         return (c', v')
       return $ (c, v) : rest
 
-commaList' :: Parser C -> Parser a -> Parser [(C, a)]
-commaList' first f = do
-  sepList first (delimiter' ",") f
+commaList :: Parser C -> Parser a -> Parser [(C, a)]
+commaList first f = do
+  sepList first (delimiter ",") f
 
 argList'' :: Parser a -> Parser (ArgList a)
 argList'' f = do
-  vs <- commaList' (delimiter' "(") f
-  c <- delimiter' ")"
+  vs <- commaList (delimiter "(") f
+  c <- delimiter ")"
   return (vs, c)
 
 argListAngle :: Parser a -> Parser (ArgList a)
 argListAngle f = do
-  vs <- commaList' (delimiter' "<") f
-  c <- delimiter' ">"
+  vs <- commaList (delimiter "<") f
+  c <- delimiter ">"
   return (vs, c)
 
 argListBracket :: Parser a -> Parser (ArgList a)
 argListBracket f = do
-  vs <- commaList' (delimiter' "[") f
-  c <- delimiter' "]"
+  vs <- commaList (delimiter "[") f
+  c <- delimiter "]"
   return (vs, c)
 
 argListBrace :: Parser a -> Parser (ArgList a)
 argListBrace f = do
-  vs <- commaList' (delimiter' "{") f
-  c <- delimiter' "}"
+  vs <- commaList (delimiter "{") f
+  c <- delimiter "}"
   return (vs, c)
 
-manyList' :: Parser a -> Parser [(C, a)]
-manyList' f =
+manyList :: Parser a -> Parser [(C, a)]
+manyList f =
   many $ do
-    c <- delimiter' "-"
+    c <- delimiter "-"
     v <- f
     return (c, v)
 
-someList' :: Parser a -> Parser [(C, a)]
-someList' f =
+someList :: Parser a -> Parser [(C, a)]
+someList f =
   some $ do
-    c <- delimiter' "-"
+    c <- delimiter "-"
     v <- f
     return (c, v)
 
-bulletListOrCommaSeq' :: Parser a -> Parser [(C, a)]
-bulletListOrCommaSeq' f =
+bulletListOrCommaSeq :: Parser a -> Parser [(C, a)]
+bulletListOrCommaSeq f =
   choice
     [ some $ do
-        c <- delimiter' "-"
+        c <- delimiter "-"
         v <- f
         return (c, v),
-      commaList' spaceConsumer' f
+      commaList spaceConsumer f
     ]
 
 argSeqOrList :: Parser a -> Parser (Maybe (C, C), ArgList a)
@@ -256,15 +242,15 @@ argSeqOrList p =
         args <- argList'' p
         return (Nothing, args),
       do
-        c1 <- keyword' "of"
-        (c2, args) <- betweenBrace' (manyList' p)
+        c1 <- keyword "of"
+        (c2, args) <- betweenBrace (manyList p)
         return (Just (c1, c2), args)
     ]
 
 var :: Parser ((Hint, T.Text), C)
 var = do
   m <- getCurrentHint
-  (x, c) <- symbol'
+  (x, c) <- symbol
   if x /= "_"
     then return ((m, x), c)
     else do

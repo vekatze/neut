@@ -42,10 +42,10 @@ parseImportBlock :: P.Parser (Maybe RawImport)
 parseImportBlock = do
   choice
     [ do
-        c1 <- P.keyword' "import"
+        c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        items <- P.betweenBrace' $ P.manyList' $ do
-          locator <- P.symbol'
+        items <- P.betweenBrace $ P.manyList $ do
+          locator <- P.symbol
           RawImportItem c1 m locator <$> parseLocalLocatorList'
         return $ Just $ RawImport c1 m items,
       return Nothing
@@ -68,7 +68,7 @@ parseLocalLocatorList' = do
 parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
 parseLocalLocator = do
   m <- P.getCurrentHint
-  (ll, c) <- P.baseName'
+  (ll, c) <- P.baseName
   return ((m, LL.new ll), c)
 
 interpretImportItem ::
