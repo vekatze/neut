@@ -220,10 +220,6 @@ betweenAngle' p = do
   c2 <- delimiter' ">"
   return (c1, (v, c2))
 
-commaList :: Parser a -> Parser [a]
-commaList f = do
-  sepBy f (delimiter ",")
-
 sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
 sepList first sep f = do
   c <- first
@@ -242,38 +238,29 @@ commaList' :: Parser C -> Parser a -> Parser [(C, a)]
 commaList' first f = do
   sepList first (delimiter' ",") f
 
-argList' :: Parser a -> Parser (C, ([a], C))
-argList' f = do
-  c1 <- delimiter' "("
-  vs <- commaList f
-  c2 <- delimiter' ")"
-  return (c1, (vs, c2))
-
 argList'' :: Parser a -> Parser (ArgList a)
 argList'' f = do
   vs <- commaList' (delimiter' "(") f
   c <- delimiter' ")"
   return (vs, c)
 
-argListAngle :: Parser a -> Parser ([(C, a)], C)
+argListAngle :: Parser a -> Parser (ArgList a)
 argListAngle f = do
   vs <- commaList' (delimiter' "<") f
   c <- delimiter' ">"
   return (vs, c)
 
-argListBracket :: Parser a -> Parser ([(C, a)], C)
+argListBracket :: Parser a -> Parser (ArgList a)
 argListBracket f = do
   vs <- commaList' (delimiter' "[") f
   c <- delimiter' "]"
   return (vs, c)
 
-argListBrace :: Parser a -> Parser ([(C, a)], C)
+argListBrace :: Parser a -> Parser (ArgList a)
 argListBrace f = do
   vs <- commaList' (delimiter' "{") f
   c <- delimiter' "}"
   return (vs, c)
-
--- lexeme $ betweenParen $ commaList f
 
 manyList :: Parser a -> Parser [a]
 manyList f =
@@ -293,13 +280,6 @@ someList' f =
     v <- f
     return (c, v)
 
-bulletListOrCommaSeq :: Parser a -> Parser [a]
-bulletListOrCommaSeq f =
-  choice
-    [ some $ delimiter "-" >> f,
-      commaList f
-    ]
-
 bulletListOrCommaSeq' :: Parser a -> Parser [(C, a)]
 bulletListOrCommaSeq' f =
   choice
@@ -310,7 +290,7 @@ bulletListOrCommaSeq' f =
       commaList' spaceConsumer' f
     ]
 
-argSeqOrList :: Parser a -> Parser (Maybe (C, C), ([(C, a)], C))
+argSeqOrList :: Parser a -> Parser (Maybe (C, C), ArgList a)
 argSeqOrList p =
   choice
     [ do

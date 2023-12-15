@@ -506,7 +506,7 @@ rawTermPatternConsOrVar = do
         return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
       do
         c2 <- keyword' "of"
-        (c3, (kvs, c)) <- betweenBrace' $ bulletListOrCommaSeq rawTermPatternKeyValuePair
+        (c3, (kvs, c)) <- betweenBrace' $ bulletListOrCommaSeq' rawTermPatternKeyValuePair
         return ((m, RP.Cons varOrLocator c1 (RP.Of c2 c3 kvs)), c),
       do
         return ((m, RP.Var varOrLocator), [])

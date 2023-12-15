@@ -709,7 +709,7 @@ discernPattern (m, pat) = do
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
         RP.Of _ _ mkvs -> do
-          let (ks, mvcs) = unzip mkvs
+          let (ks, mvcs) = unzip $ map snd mkvs
           let mvs = map fst mvcs
           ensureFieldLinearity m ks S.empty S.empty
           (_, keyList) <- KeyArg.lookup m consName
