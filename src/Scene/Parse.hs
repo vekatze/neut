@@ -165,7 +165,7 @@ parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
   c1 <- P.keyword' "declare"
   m <- P.getCurrentHint
-  (c2, (decls, c3)) <- P.betweenBrace' $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
+  (c2, (decls, c3)) <- P.betweenBrace' $ P.manyList' $ parseDeclareItem Locator.attachCurrentLocator
   return (RawStmtDeclare c1 m c2 decls, c3)
 
 parseDefine :: O.Opacity -> P.Parser (RawStmt, C)
@@ -211,7 +211,7 @@ parseDefineData = do
   (dataName, c2) <- P.baseName'
   dataName' <- lift $ Locator.attachCurrentLocator dataName
   dataArgsOrNone <- parseDataArgs
-  (c3, (consInfoList, c)) <- P.betweenBrace' $ P.manyList parseDefineDataClause
+  (c3, (consInfoList, c)) <- P.betweenBrace' $ P.manyList' parseDefineDataClause
   return (RawStmtDefineData c1 m (dataName', c2) dataArgsOrNone c3 consInfoList, c)
 
 parseDataArgs :: P.Parser (Maybe RD.ExpArgs)
@@ -223,11 +223,11 @@ parseDataArgs = do
       return Nothing
     ]
 
-parseDefineDataClause :: P.Parser (Hint, BN.BaseName, IsConstLike, RD.ExpArgs)
+parseDefineDataClause :: P.Parser (Hint, (BN.BaseName, C), IsConstLike, RD.ExpArgs)
 parseDefineDataClause = do
   m <- P.getCurrentHint
-  consName <- P.baseName
-  unless (isConsName (BN.reify consName)) $ do
+  consName@(consName', _) <- P.baseName'
+  unless (isConsName (BN.reify consName')) $ do
     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
   consArgsOrNone <- parseConsArgs
   let consArgs = fromMaybe (Nothing, ([], [])) consArgsOrNone

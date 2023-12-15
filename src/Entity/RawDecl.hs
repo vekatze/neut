@@ -18,7 +18,7 @@ type ExpArgs =
 
 data RawDecl = RawDecl
   { loc :: Hint,
-    name :: DD.DefiniteDescription,
+    name :: (DD.DefiniteDescription, C),
     isConstLike :: IsConstLike,
     impArgs :: ImpArgs,
     expArgs :: ExpArgs,

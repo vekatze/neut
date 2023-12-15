@@ -65,7 +65,7 @@ modifyConsInfo d consInfoList =
 modifyConstructorName ::
   RawConsInfo ->
   App (Hint, DD.DefiniteDescription, IsConstLike, RD.ExpArgs)
-modifyConstructorName (mb, consName, isConstLike, yts) = do
+modifyConstructorName (mb, (consName, _), isConstLike, yts) = do
   consName' <- Locator.attachCurrentLocator consName
   return (mb, consName', isConstLike, yts)
 

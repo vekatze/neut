@@ -275,7 +275,8 @@ parseTopDefHeader = do
 parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.RawDecl
 parseDeclareItem nameLifter = do
   loc <- getCurrentHint
-  name <- baseName >>= lift . nameLifter
+  (name, c1) <- baseName'
+  name' <- lift $ nameLifter name
   impArgs <- parseImplicitArgs
   (isConstLike, expArgs) <- do
     choice
@@ -286,7 +287,7 @@ parseDeclareItem nameLifter = do
       ]
   m <- getCurrentHint
   cod <- parseDefInfoCod m
-  return RDE.RawDecl {loc, name, isConstLike, impArgs, expArgs, cod}
+  return RDE.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod}
 
 parseImplicitArgs :: Parser ([(C, RawBinder (RT.RawTerm, C))], C)
 parseImplicitArgs =

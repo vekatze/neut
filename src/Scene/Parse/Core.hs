@@ -116,12 +116,6 @@ symbol' :: Parser (T.Text, C)
 symbol' = do
   lexeme' $ takeWhile1P Nothing (`S.notMember` nonSymbolCharSet)
 
-baseName :: Parser BN.BaseName
-baseName = do
-  lexeme $ do
-    bn <- takeWhile1P Nothing (`S.notMember` nonBaseNameCharSet)
-    return $ BN.fromText bn
-
 baseName' :: Parser (BN.BaseName, C)
 baseName' = do
   lexeme' $ do
@@ -261,10 +255,6 @@ argListBrace f = do
   vs <- commaList' (delimiter' "{") f
   c <- delimiter' "}"
   return (vs, c)
-
-manyList :: Parser a -> Parser [a]
-manyList f =
-  many $ delimiter "-" >> f
 
 manyList' :: Parser a -> Parser [(C, a)]
 manyList' f =

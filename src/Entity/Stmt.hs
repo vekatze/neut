@@ -51,7 +51,7 @@ data RawStmt
       (DD.DefiniteDescription, C)
       (Maybe RDE.ExpArgs)
       C
-      [RawConsInfo]
+      [(C, RawConsInfo)]
   | RawStmtDefineResource
       C
       Hint
@@ -59,10 +59,10 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtDeclare C Hint C [RDE.RawDecl]
+  | RawStmtDeclare C Hint C [(C, RDE.RawDecl)]
 
 type RawConsInfo =
-  (Hint, BN.BaseName, IsConstLike, RDE.ExpArgs)
+  (Hint, (BN.BaseName, C), IsConstLike, RDE.ExpArgs)
 
 data RawImport
   = RawImport C Hint (C, ArgList RawImportItem)

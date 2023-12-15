@@ -87,7 +87,7 @@ discernStmt stmt = do
       Tag.insertDD m dd m
       return [WeakStmtDefineConst m dd t' v']
     RawStmtDefineData _ m (dd, _) args _ consInfo -> do
-      stmtList <- defineData m dd args consInfo
+      stmtList <- defineData m dd args $ map snd consInfo
       discernStmtList stmtList
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
       registerTopLevelName stmt
@@ -97,7 +97,7 @@ discernStmt stmt = do
       return [WeakStmtDefineConst m name t' e']
     RawStmtDeclare _ m _ declList -> do
       registerTopLevelName stmt
-      declList' <- mapM discernDecl declList
+      declList' <- mapM (discernDecl . snd) declList
       return [WeakStmtDeclare m declList']
 
 discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
@@ -109,7 +109,7 @@ discernDecl decl = do
   return $
     DE.Decl
       { loc = RDE.loc decl,
-        name = RDE.name decl,
+        name = fst $ RDE.name decl,
         isConstLike = RDE.isConstLike decl,
         impArgs = impArgs',
         expArgs = expArgs',
@@ -126,9 +126,9 @@ registerTopLevelName stmt =
     RawStmtDefineConst _ m (dd, _) _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
     RawStmtDeclare _ _ _ declList -> do
-      mapM_ Global.registerDecl declList
+      mapM_ (Global.registerDecl . snd) declList
     RawStmtDefineData _ m (dd, _) args _ consInfo -> do
-      stmtList <- defineData m dd args consInfo
+      stmtList <- defineData m dd args $ map snd consInfo
       mapM_ registerTopLevelName stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) name AN.zero []

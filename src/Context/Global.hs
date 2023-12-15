@@ -107,11 +107,12 @@ registerDecl RDE.RawDecl {..} = do
   let expArgs' = fst $ snd expArgs
   let expArgNames = map (\(_, (_, x, _, _, _)) -> x) expArgs'
   let argNum = AN.fromInt $ length $ fst impArgs ++ expArgs'
-  ensureDeclFreshness loc name
-  ensureDefFreshness loc name
-  KeyArg.insert loc name isConstLike argNum expArgNames
-  insertToDeclNameMap name loc
-  insertToNameMap name loc $ GN.TopLevelFunc argNum isConstLike
+  let name' = fst name
+  ensureDeclFreshness loc name'
+  ensureDefFreshness loc name'
+  KeyArg.insert loc name' isConstLike argNum expArgNames
+  insertToDeclNameMap name' loc
+  insertToNameMap name' loc $ GN.TopLevelFunc argNum isConstLike
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> App ()
 registerTopLevelFunc isConstLike m topLevelName allArgNum = do
