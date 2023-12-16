@@ -1,7 +1,12 @@
-module Scene.Parse.Import (interpretImportBlock) where
+module Scene.Parse.Import
+  ( activateImport,
+    interpretImport,
+  )
+where
 
 import Context.Alias qualified as Alias
 import Context.App
+import Context.Global qualified as Global
 import Context.Module qualified as Module
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
@@ -32,12 +37,25 @@ import Scene.Source.ShiftToLatest
 type LocatorText =
   T.Text
 
-interpretImportBlock :: Source.Source -> RawImport -> App [(Source.Source, [AI.AliasInfo])]
-interpretImportBlock currentSource (RawImport _ _ (_, importItemList)) = do
-  fmap concat $ forM importItemList $ \(_, rawImport) -> do
-    let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
-    let localLocatorList' = map fst $ distillArgList localLocatorList
-    interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
+activateImport :: Hint -> [(Source.Source, [AI.AliasInfo])] -> App ()
+activateImport m sourceInfoList = do
+  forM_ sourceInfoList $ \(source, aliasInfoList) -> do
+    let path = Source.sourceFilePath source
+    namesInSource <- Global.lookupSourceNameMap m path
+    Global.activateTopLevelNames namesInSource
+    forM_ aliasInfoList $ \aliasInfo ->
+      Alias.activateAliasInfo namesInSource aliasInfo
+
+interpretImport :: Source.Source -> Maybe (RawImport, C) -> App [(Source.Source, [AI.AliasInfo])]
+interpretImport currentSource importOrNone = do
+  case importOrNone of
+    Nothing ->
+      return []
+    Just (RawImport _ _ (_, importItemList), _) -> do
+      fmap concat $ forM importItemList $ \(_, rawImport) -> do
+        let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
+        let localLocatorList' = map fst $ distillArgList localLocatorList
+        interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
 
 interpretImportItem ::
   Bool ->

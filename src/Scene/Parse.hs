@@ -4,9 +4,7 @@ module Scene.Parse
   )
 where
 
-import Context.Alias qualified as Alias
 import Context.App
-import Context.Decl qualified as Decl
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
@@ -18,9 +16,7 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
-import Entity.C
 import Entity.Cache qualified as Cache
-import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Foreign qualified as F
 import Entity.GlobalName qualified as GN
@@ -34,6 +30,7 @@ import Entity.StmtKind qualified as SK
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
+import Scene.Parse.Foreign
 import Scene.Parse.Import
 import Scene.Parse.Program qualified as Parse
 
@@ -89,8 +86,9 @@ ensureMain m mainFunctionName = do
 
 interpret :: Source.Source -> RawProgram -> App ([F.Foreign], [WeakStmt])
 interpret currentSource (RawProgram m importOrNone foreignOrNone stmtList) = do
-  interpretImport currentSource m importOrNone
+  interpretImport currentSource importOrNone >>= activateImport m
   foreign' <- interpretForeign foreignOrNone
+  activateForeign foreign'
   stmtList' <- Discern.discernStmtList $ map fst stmtList
   Global.reportMissingDefinitions
   saveTopLevelNames (Source.sourceFilePath currentSource) $ getWeakStmtName stmtList'
@@ -99,35 +97,6 @@ interpret currentSource (RawProgram m importOrNone foreignOrNone stmtList) = do
   UnusedLocalLocator.registerRemarks
   UnusedPreset.registerRemarks
   return (foreign', stmtList')
-
-interpretImport :: Source.Source -> Hint -> Maybe (RawImport, C) -> App ()
-interpretImport currentSource m importOrNone = do
-  case importOrNone of
-    Nothing ->
-      return ()
-    Just (importBlock, _) -> do
-      sourceInfoList <- interpretImportBlock currentSource importBlock
-      forM_ sourceInfoList $ \(source, aliasInfoList) -> do
-        let path = Source.sourceFilePath source
-        namesInSource <- Global.lookupSourceNameMap m path
-        Global.activateTopLevelNames namesInSource
-        forM_ aliasInfoList $ \aliasInfo ->
-          Alias.activateAliasInfo namesInSource aliasInfo
-
-interpretForeign :: Maybe (RawForeign, C) -> App [F.Foreign]
-interpretForeign foreignOrNone = do
-  case foreignOrNone of
-    Nothing ->
-      return []
-    Just (RawForeign _ (_, foreignItemList), _) -> do
-      let foreignItemList' = map (interpretForeignItem . snd) foreignItemList
-      forM_ foreignItemList' $ \(F.Foreign name domList cod) -> do
-        Decl.insDeclEnv' (DN.Ext name) domList cod
-      return foreignItemList'
-
-interpretForeignItem :: RawForeignItem -> F.Foreign
-interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
-  F.Foreign name (map fst $ distillArgList lts) cod
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =

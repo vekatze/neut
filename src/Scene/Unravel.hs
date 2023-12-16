@@ -33,7 +33,7 @@ import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
-import Scene.Parse.Import (interpretImportBlock)
+import Scene.Parse.Import (interpretImport)
 import Scene.Parse.Program (parseImport)
 import Scene.Source.ShiftToLatest qualified as Source
 
@@ -249,12 +249,8 @@ parseSourceHeader currentSource = do
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- readSourceFile path
-  (_, importBlockOrNone) <- ParseCore.parseFile False parseImport path fileContent
-  case importBlockOrNone of
-    Nothing ->
-      return []
-    Just (importBlock, _) ->
-      interpretImportBlock currentSource importBlock
+  (_, importOrNone) <- ParseCore.parseFile False parseImport path fileContent
+  interpretImport currentSource importOrNone
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =
