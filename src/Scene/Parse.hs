@@ -107,11 +107,11 @@ program :: Source.Source -> P.Parser ([(RawStmt, C)], [F.Foreign])
 program currentSource = do
   m <- P.getCurrentHint
   importBlockOrNone <- Parse.parseImportBlock
-  declList <- parseForeignList
+  declListOrNone <- parseForeignList
   case importBlockOrNone of
     Nothing ->
       return ()
-    Just importBlock -> do
+    Just (importBlock, _) -> do
       sourceInfoList <- lift $ Parse.interpretImportBlock currentSource importBlock
       forM_ sourceInfoList $ \(source, aliasInfoList) -> do
         let path = Source.sourceFilePath source
@@ -119,11 +119,24 @@ program currentSource = do
         lift $ Global.activateTopLevelNames namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
           lift $ Alias.activateAliasInfo namesInSource aliasInfo
-  let declList' = concatMap interpretForeign $ maybeToList declList
-  forM_ declList' $ \(F.Foreign name domList cod) -> do
-    lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
+  declList' <-
+    case declListOrNone of
+      Nothing ->
+        return []
+      Just (declList, _) -> do
+        let declList' = interpretForeign declList
+        forM_ declList' $ \(F.Foreign name domList cod) -> do
+          lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
+        return declList'
   defList <- concat <$> many parseStmt <* eof
   return (defList, declList')
+
+parseRawProgram :: P.Parser RawProgram
+parseRawProgram = do
+  importBlockOrNone <- Parse.parseImportBlock
+  foreignOrNone <- parseForeignList
+  defList <- concat <$> many parseStmt
+  return $ RawProgram importBlockOrNone foreignOrNone defList
 
 parseStmt :: P.Parser [(RawStmt, C)]
 parseStmt = do
@@ -139,19 +152,19 @@ parseStmt = do
 interpretForeign :: RawForeign -> [F.Foreign]
 interpretForeign rf =
   case rf of
-    RawForeign _ (_, (xs, _)) ->
+    RawForeign _ (_, xs) ->
       map (interpretForeignItem . snd) xs
 
 interpretForeignItem :: RawForeignItem -> F.Foreign
 interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
   F.Foreign name (map fst $ distillArgList lts) cod
 
-parseForeignList :: P.Parser (Maybe RawForeign)
+parseForeignList :: P.Parser (Maybe (RawForeign, C))
 parseForeignList = do
   optional $ do
     c1 <- P.keyword "foreign"
-    val <- P.betweenBrace (P.manyList parseForeign)
-    return $ RawForeign c1 val
+    (c2, (val, c)) <- P.betweenBrace (P.manyList parseForeign)
+    return (RawForeign c1 (c2, val), c)
 
 parseForeign :: P.Parser RawForeignItem
 parseForeign = do

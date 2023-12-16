@@ -252,7 +252,7 @@ parseSourceHeader currentSource = do
   case importBlockOrNone of
     Nothing ->
       return []
-    Just importBlock ->
+    Just (importBlock, _) ->
       interpretImportBlock currentSource importBlock
 
 registerAntecedentInfo :: [Source.Source] -> App ()

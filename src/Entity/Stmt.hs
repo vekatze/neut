@@ -65,16 +65,19 @@ type RawConsInfo =
   (Hint, (BN.BaseName, C), IsConstLike, RDE.ExpArgs)
 
 data RawImport
-  = RawImport C Hint (C, ArgList RawImportItem)
+  = RawImport C Hint (C, [(C, RawImportItem)])
 
 data RawImportItem
   = RawImportItem C Hint (T.Text, C) (ArgList ((Hint, LL.LocalLocator), C))
 
 data RawForeign
-  = RawForeign C (C, ([(C, RawForeignItem)], C))
+  = RawForeign C (C, [(C, RawForeignItem)])
 
 data RawForeignItem
   = RawForeignItem EN.ExternalName C (ArgList (LT.LowType, C)) C (LT.LowType, C)
+
+data RawProgram
+  = RawProgram (Maybe (RawImport, C)) (Maybe (RawForeign, C)) [(RawStmt, C)]
 
 data WeakStmt
   = WeakStmtDefine

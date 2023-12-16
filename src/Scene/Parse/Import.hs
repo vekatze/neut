@@ -38,21 +38,21 @@ import Text.Megaparsec
 type LocatorText =
   T.Text
 
-parseImportBlock :: P.Parser (Maybe RawImport)
+parseImportBlock :: P.Parser (Maybe (RawImport, C))
 parseImportBlock = do
   choice
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        items <- P.betweenBrace $ P.manyList $ do
+        (c2, (items, c)) <- P.betweenBrace $ P.manyList $ do
           locator <- P.symbol
           RawImportItem c1 m locator <$> parseLocalLocatorList'
-        return $ Just $ RawImport c1 m items,
+        return $ Just (RawImport c1 m (c2, items), c),
       return Nothing
     ]
 
 interpretImportBlock :: Source.Source -> RawImport -> App [(Source.Source, [AI.AliasInfo])]
-interpretImportBlock currentSource (RawImport _ _ (_, (importItemList, _))) = do
+interpretImportBlock currentSource (RawImport _ _ (_, importItemList)) = do
   fmap concat $ forM importItemList $ \(_, rawImport) -> do
     let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
     let localLocatorList' = map fst $ distillArgList localLocatorList
