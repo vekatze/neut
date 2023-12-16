@@ -52,7 +52,7 @@ import Scene.Term.Inline qualified as TM
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [F.Foreign]) -> App ([Stmt], [F.Foreign])
+elaborate :: Either Cache.Cache ([F.Foreign], [WeakStmt]) -> App ([F.Foreign], [Stmt])
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -61,40 +61,40 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      let declList = Cache.declList cache
-      return (stmtList, declList)
-    Right (defList, declList) -> do
-      defList' <- (analyzeDefList >=> synthesizeDefList declList) defList
-      return (defList', declList)
+      let foreignList = Cache.foreignList cache
+      return (foreignList, stmtList)
+    Right (foreignList, stmtList) -> do
+      stmtList' <- (analyzeStmtList >=> synthesizeStmtList foreignList) stmtList
+      return (foreignList, stmtList')
 
-analyzeDefList :: [WeakStmt] -> App [WeakStmt]
-analyzeDefList defList = do
+analyzeStmtList :: [WeakStmt] -> App [WeakStmt]
+analyzeStmtList stmtList = do
   source <- Env.getCurrentSource
   mMainDD <- Locator.getMainDefiniteDescription source
-  -- mapM_ viewStmt defList
-  forM defList $ \def -> do
-    def' <- Infer.inferStmt mMainDD def
-    insertWeakStmt def'
-    return def'
+  -- mapM_ viewStmt stmtList
+  forM stmtList $ \stmt -> do
+    stmt' <- Infer.inferStmt mMainDD stmt
+    insertWeakStmt stmt'
+    return stmt'
 
-synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
-synthesizeDefList declList defList = do
-  -- mapM_ viewStmt defList
+synthesizeStmtList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
+synthesizeStmtList foreignList stmtList = do
+  -- mapM_ viewStmt stmtList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
-  defList' <- concat <$> mapM elaborateStmt defList
-  -- mapM_ (viewStmt . weakenStmt) defList'
+  stmtList' <- concat <$> mapM elaborateStmt stmtList
+  -- mapM_ (viewStmt . weakenStmt) stmtList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
   Cache.saveCache source $
     Cache.Cache
-      { Cache.stmtList = defList',
+      { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
-        Cache.declList = declList
+        Cache.foreignList = foreignList
       }
   Remark.insertToGlobalRemarkList remarkList
-  return defList'
+  return stmtList'
 
 elaborateStmt :: WeakStmt -> App [Stmt]
 elaborateStmt stmt = do

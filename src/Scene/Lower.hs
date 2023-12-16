@@ -68,11 +68,11 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([C.CompDef], Maybe DD.DefiniteDescription, [F.Foreign]) ->
+  ([F.Foreign], [C.CompDef], Maybe DD.DefiniteDescription) ->
   App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
-lower (defList, mMainName, declList) = do
+lower (foreignList, defList, mMainName) = do
   initialize $ map fst defList
-  forM_ declList $ \(F.Foreign name domList cod) -> do
+  forM_ foreignList $ \(F.Foreign name domList cod) -> do
     Decl.insDeclEnv' (DN.Ext name) domList cod
   unless (isJust mMainName) $ do
     Decl.insDeclEnv (DN.In DD.imm) AN.argNumS4

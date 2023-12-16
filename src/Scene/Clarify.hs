@@ -56,8 +56,8 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: ([Stmt], [F.Foreign]) -> App ([C.CompDef], Maybe DD.DefiniteDescription, [F.Foreign])
-clarify (defList, declList) = do
+clarify :: ([F.Foreign], [Stmt]) -> App ([F.Foreign], [C.CompDef], Maybe DD.DefiniteDescription)
+clarify (foreignList, stmtList) = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
     Just mainName -> do
@@ -65,14 +65,14 @@ clarify (defList, declList) = do
         registerImmediateS4
         registerClosureS4
         Clarify.getAuxEnv
-      defList' <- clarifyStmtList defList
+      defList' <- clarifyStmtList stmtList
       baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
         return (x, (opacity, args, e'))
-      return (defList' ++ baseAuxEnv', Just mainName, declList)
+      return (foreignList, defList' ++ baseAuxEnv', Just mainName)
     Nothing -> do
-      defList' <- clarifyStmtList defList
-      return (defList', Nothing, declList)
+      defList' <- clarifyStmtList stmtList
+      return (foreignList, defList', Nothing)
 
 clarifyStmtList :: [Stmt] -> App [C.CompDef]
 clarifyStmtList stmtList = do

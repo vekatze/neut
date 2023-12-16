@@ -37,7 +37,7 @@ import Scene.Parse.Import
 import Scene.Parse.Stmt qualified as Parse
 import Text.Megaparsec hiding (parse)
 
-parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [F.Foreign]))
+parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([F.Foreign], [WeakStmt]))
 parse source cacheOrContent = do
   result <- parseSource source cacheOrContent
   mMainDD <- Locator.getMainDefiniteDescription source
@@ -48,7 +48,7 @@ parse source cacheOrContent = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([WeakStmt], [F.Foreign]))
+parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([F.Foreign], [WeakStmt]))
 parseSource source cacheOrContent = do
   let path = Source.sourceFilePath source
   case cacheOrContent of
@@ -87,18 +87,18 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-interpret :: Source.Source -> RawProgram -> App ([WeakStmt], [F.Foreign])
-interpret currentSource (RawProgram m importOrNone foreignOrNone defList) = do
+interpret :: Source.Source -> RawProgram -> App ([F.Foreign], [WeakStmt])
+interpret currentSource (RawProgram m importOrNone foreignOrNone stmtList) = do
   interpretImport currentSource m importOrNone
   foreign' <- interpretForeign foreignOrNone
-  stmtList <- Discern.discernStmtList $ map fst defList
+  stmtList' <- Discern.discernStmtList $ map fst stmtList
   Global.reportMissingDefinitions
-  saveTopLevelNames (Source.sourceFilePath currentSource) $ getWeakStmtName stmtList
+  saveTopLevelNames (Source.sourceFilePath currentSource) $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks
   UnusedImport.registerRemarks
   UnusedLocalLocator.registerRemarks
   UnusedPreset.registerRemarks
-  return (stmtList, foreign')
+  return (foreign', stmtList')
 
 interpretImport :: Source.Source -> Hint -> Maybe (RawImport, C) -> App ()
 interpretImport currentSource m importOrNone = do
@@ -134,8 +134,8 @@ parseRawProgram = do
   m <- P.getCurrentHint
   importBlockOrNone <- Parse.parseImport
   foreignOrNone <- Parse.parseForeign
-  defList <- many parseStmt
-  return $ RawProgram m importBlockOrNone foreignOrNone defList
+  stmtList <- many parseStmt
+  return $ RawProgram m importBlockOrNone foreignOrNone stmtList
 
 parseStmt :: P.Parser (RawStmt, C)
 parseStmt = do
