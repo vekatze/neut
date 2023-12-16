@@ -33,7 +33,8 @@ import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
-import Scene.Parse.Import
+import Scene.Parse.Import (interpretImportBlock)
+import Scene.Parse.Stmt (parseImport)
 import Scene.Source.ShiftToLatest qualified as Source
 
 type CacheTime =
@@ -248,7 +249,7 @@ parseSourceHeader currentSource = do
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- readSourceFile path
-  (_, importBlockOrNone) <- ParseCore.parseFile False parseImportBlock path fileContent
+  (_, importBlockOrNone) <- ParseCore.parseFile False parseImport path fileContent
   case importBlockOrNone of
     Nothing ->
       return []

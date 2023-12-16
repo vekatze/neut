@@ -1,8 +1,4 @@
-module Scene.Parse.Import
-  ( parseImportBlock,
-    interpretImportBlock,
-  )
-where
+module Scene.Parse.Import (interpretImportBlock) where
 
 import Context.Alias qualified as Alias
 import Context.App
@@ -31,25 +27,10 @@ import Entity.Stmt
 import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Scene.Module.Reflect qualified as Module
-import Scene.Parse.Core qualified as P
 import Scene.Source.ShiftToLatest
-import Text.Megaparsec
 
 type LocatorText =
   T.Text
-
-parseImportBlock :: P.Parser (Maybe (RawImport, C))
-parseImportBlock = do
-  choice
-    [ do
-        c1 <- P.keyword "import"
-        m <- P.getCurrentHint
-        (c2, (items, c)) <- P.betweenBrace $ P.manyList $ do
-          locator <- P.symbol
-          RawImportItem c1 m locator <$> parseLocalLocatorList'
-        return $ Just (RawImport c1 m (c2, items), c),
-      return Nothing
-    ]
 
 interpretImportBlock :: Source.Source -> RawImport -> App [(Source.Source, [AI.AliasInfo])]
 interpretImportBlock currentSource (RawImport _ _ (_, importItemList)) = do
@@ -57,19 +38,6 @@ interpretImportBlock currentSource (RawImport _ _ (_, importItemList)) = do
     let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
     let localLocatorList' = map fst $ distillArgList localLocatorList
     interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
-
-parseLocalLocatorList' :: P.Parser ([(C, ((Hint, LL.LocalLocator), C))], C)
-parseLocalLocatorList' = do
-  choice
-    [ P.argListBrace parseLocalLocator,
-      return ([], [])
-    ]
-
-parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)
-parseLocalLocator = do
-  m <- P.getCurrentHint
-  (ll, c) <- P.baseName
-  return ((m, LL.new ll), c)
 
 interpretImportItem ::
   Bool ->
