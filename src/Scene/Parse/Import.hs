@@ -46,12 +46,12 @@ activateImport m sourceInfoList = do
     forM_ aliasInfoList $ \aliasInfo ->
       Alias.activateAliasInfo namesInSource aliasInfo
 
-interpretImport :: Source.Source -> Maybe (RawImport, C) -> App [(Source.Source, [AI.AliasInfo])]
+interpretImport :: Source.Source -> Maybe RawImport -> App [(Source.Source, [AI.AliasInfo])]
 interpretImport currentSource importOrNone = do
   case importOrNone of
     Nothing ->
       return []
-    Just (RawImport _ _ (_, importItemList), _) -> do
+    Just (RawImport _ _ (_, importItemList)) -> do
       fmap concat $ forM importItemList $ \(_, rawImport) -> do
         let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
         let localLocatorList' = map fst $ distillArgList localLocatorList

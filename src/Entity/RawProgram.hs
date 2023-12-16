@@ -23,7 +23,7 @@ import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
 
 data RawProgram
-  = RawProgram Hint (Maybe (RawImport, C)) (Maybe (RawForeign, C)) [(RawStmt, C)]
+  = RawProgram Hint (Maybe RawImport) C (Maybe RawForeign) C [(RawStmt, C)]
 
 data RawStmt
   = RawStmtDefine

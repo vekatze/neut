@@ -6,6 +6,11 @@ module Entity.Doc
     join,
     nest,
     layout,
+    isSingle,
+    isMulti,
+    commaSeqH,
+    commaSeqV,
+    listSeq,
   )
 where
 
@@ -60,3 +65,51 @@ layout doc =
       t <> layout x
     Line i x ->
       "\n" <> T.replicate i " " <> layout x
+
+isSingle :: [Doc] -> Bool
+isSingle =
+  not . isMulti
+
+isMulti :: [Doc] -> Bool
+isMulti docList =
+  case docList of
+    [] ->
+      False
+    doc : rest ->
+      case doc of
+        Nil ->
+          isMulti rest
+        Text _ next ->
+          isMulti $ next : rest
+        Line {} ->
+          True
+
+commaSeqH :: [Doc] -> Doc
+commaSeqH docList =
+  case docList of
+    [] ->
+      Nil
+    [doc] ->
+      doc
+    doc : rest ->
+      join [doc, text ", ", commaSeqH rest]
+
+commaSeqV :: [Doc] -> Doc
+commaSeqV docList =
+  case docList of
+    [] ->
+      Nil
+    [doc] ->
+      doc
+    doc : rest ->
+      join [doc, text ",", line, commaSeqV rest]
+
+listSeq :: [Doc] -> Doc
+listSeq docList =
+  case docList of
+    [] ->
+      Nil
+    [doc] ->
+      join [text "- ", nest indent doc]
+    doc : rest ->
+      join [text "- ", nest indent doc, line, listSeq rest]

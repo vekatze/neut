@@ -29,10 +29,10 @@ import Text.Megaparsec
 parseProgram :: P.Parser RawProgram
 parseProgram = do
   m <- P.getCurrentHint
-  importBlockOrNone <- parseImport
-  foreignOrNone <- parseForeign
+  (importBlockOrNone, c1) <- parseImport
+  (foreignOrNone, c2) <- parseForeign
   stmtList <- many parseStmt
-  return $ RawProgram m importBlockOrNone foreignOrNone stmtList
+  return $ RawProgram m importBlockOrNone c1 foreignOrNone c2 stmtList
 
 parseStmt :: P.Parser (RawStmt, C)
 parseStmt = do
@@ -45,7 +45,7 @@ parseStmt = do
       parseResource
     ]
 
-parseImport :: P.Parser (Maybe (RawImport, C))
+parseImport :: P.Parser (Maybe RawImport, C)
 parseImport = do
   choice
     [ do
@@ -54,8 +54,8 @@ parseImport = do
         (c2, (items, c)) <- P.betweenBrace $ P.manyList $ do
           locator <- P.symbol
           RawImportItem c1 m locator <$> parseLocalLocatorList'
-        return $ Just (RawImport c1 m (c2, items), c),
-      return Nothing
+        return (Just $ RawImport c1 m (c2, items), c),
+      return (Nothing, [])
     ]
 
 parseLocalLocatorList' :: P.Parser ([(C, ((Hint, LL.LocalLocator), C))], C)
@@ -71,12 +71,15 @@ parseLocalLocator = do
   (ll, c) <- P.baseName
   return ((m, LL.new ll), c)
 
-parseForeign :: P.Parser (Maybe (RawForeign, C))
+parseForeign :: P.Parser (Maybe RawForeign, C)
 parseForeign = do
-  optional $ do
-    c1 <- P.keyword "foreign"
-    (c2, (val, c)) <- P.betweenBrace (P.manyList parseForeignItem)
-    return (RawForeign c1 (c2, val), c)
+  choice
+    [ do
+        c1 <- P.keyword "foreign"
+        (c2, (val, c)) <- P.betweenBrace (P.manyList parseForeignItem)
+        return (Just $ RawForeign c1 (c2, val), c),
+      return (Nothing, [])
+    ]
 
 parseForeignItem :: P.Parser RawForeignItem
 parseForeignItem = do

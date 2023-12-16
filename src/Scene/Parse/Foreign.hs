@@ -17,12 +17,12 @@ activateForeign foreignItemList = do
   forM_ foreignItemList $ \(F.Foreign name domList cod) -> do
     Decl.insDeclEnv' (DN.Ext name) domList cod
 
-interpretForeign :: Maybe (RawForeign, C) -> App [F.Foreign]
+interpretForeign :: Maybe RawForeign -> App [F.Foreign]
 interpretForeign foreignOrNone = do
   case foreignOrNone of
     Nothing ->
       return []
-    Just (RawForeign _ (_, foreignItemList), _) -> do
+    Just (RawForeign _ (_, foreignItemList)) -> do
       return $ map (interpretForeignItem . snd) foreignItemList
 
 interpretForeignItem :: RawForeignItem -> F.Foreign

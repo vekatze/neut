@@ -1,4 +1,9 @@
-module Entity.RawTerm.Decode (pp) where
+module Entity.RawTerm.Decode
+  ( pp,
+    toDoc,
+    typeAnnot,
+  )
+where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
@@ -71,9 +76,9 @@ toDoc term =
       D.join
         [ keyword,
           D.text " ",
-          commaSeqH es',
+          D.commaSeqH es',
           D.text " {",
-          D.join [D.line, listSeq patternRowList'],
+          D.join [D.line, D.listSeq patternRowList'],
           D.line,
           D.text "}"
         ]
@@ -171,7 +176,7 @@ toDoc term =
     _ :< Annotation {} -> do
       D.text "<annot>"
     _ :< Resource name _ (discarder, _) (copier, _) -> do
-      let resourcePair = listSeq [toDoc discarder, toDoc copier]
+      let resourcePair = D.listSeq [toDoc discarder, toDoc copier]
       D.join [D.text "resource", D.text (DD.reify name), D.text "{", D.line, resourcePair, D.line, D.text "}"]
     _ :< Use _ trope _ (args, _) _ cont -> do
       let trope' = toDoc trope
@@ -187,7 +192,7 @@ toDoc term =
                     trope',
                     D.line,
                     D.text "{",
-                    commaSeqH args',
+                    D.commaSeqH args',
                     D.text "}"
                   ],
               D.line,
@@ -195,7 +200,7 @@ toDoc term =
               D.line,
               cont'
             ]
-        else D.join [D.text "use ", trope', D.text " {", commaSeqH args', D.text "} in", D.line, cont']
+        else D.join [D.text "use ", trope', D.text " {", D.commaSeqH args', D.text "} in", D.line, cont']
     _ :< If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
       D.join
         [ D.text "if ",
@@ -224,8 +229,8 @@ toDoc term =
     _ :< ListIntro es -> do
       let es' = map (toDoc . fst . snd) es
       if isMultiLine es'
-        then D.join [D.text "[", D.nest D.indent $ D.join [D.line, commaSeqV es'], D.line, D.text "]"]
-        else D.join [D.text "[", commaSeqH es', D.text "]"]
+        then D.join [D.text "[", D.nest D.indent $ D.join [D.line, D.commaSeqV es'], D.line, D.text "]"]
+        else D.join [D.text "[", D.commaSeqH es', D.text "]"]
     _ :< Admit ->
       D.text "admit"
     _ :< Detach _ _ (e, _) -> do
@@ -250,7 +255,7 @@ toDoc term =
         [ D.text "introspect ",
           D.text key,
           D.text " {",
-          D.join [D.line, listSeq $ map decodeIntrospectClause clauseList],
+          D.join [D.line, D.listSeq $ map decodeIntrospectClause clauseList],
           D.line,
           D.text "}"
         ]
@@ -281,7 +286,7 @@ decodeNoeticVarList :: [(Hint, RawIdent)] -> D.Doc
 decodeNoeticVarList vs =
   if null vs
     then D.Nil
-    else D.join [D.text " on ", commaSeqH (map (D.text . snd) vs)]
+    else D.join [D.text " on ", D.commaSeqH (map (D.text . snd) vs)]
 
 decodeElseIfList :: [IfClause RawTerm] -> D.Doc
 decodeElseIfList elseIfList =
@@ -337,8 +342,8 @@ argsToDoc :: (RawBinder RawTerm -> D.Doc) -> [RawBinder RawTerm] -> D.Doc
 argsToDoc argToDoc args = do
   let args' = map argToDoc args
   if isMultiLine args'
-    then commaSeqV args'
-    else commaSeqH args'
+    then D.commaSeqV args'
+    else D.commaSeqH args'
 
 piArgsToDoc :: [RawBinder RawTerm] -> D.Doc
 piArgsToDoc expArgs = do
@@ -397,36 +402,6 @@ nameToDoc varOrLocator =
     N.Locator locator ->
       D.text $ Locator.reify locator
 
-commaSeqH :: [D.Doc] -> D.Doc
-commaSeqH docList =
-  case docList of
-    [] ->
-      D.Nil
-    [doc] ->
-      doc
-    doc : rest ->
-      D.join [doc, D.text ", ", commaSeqH rest]
-
-commaSeqV :: [D.Doc] -> D.Doc
-commaSeqV docList =
-  case docList of
-    [] ->
-      D.Nil
-    [doc] ->
-      doc
-    doc : rest ->
-      D.join [doc, D.text ",", D.line, commaSeqV rest]
-
-listSeq :: [D.Doc] -> D.Doc
-listSeq docList =
-  case docList of
-    [] ->
-      D.Nil
-    [doc] ->
-      D.join [D.text "- ", D.nest D.indent doc]
-    doc : rest ->
-      D.join [D.text "- ", D.nest D.indent doc, D.line, listSeq rest]
-
 isMultiLine :: [D.Doc] -> Bool
 isMultiLine docList =
   case docList of
@@ -444,17 +419,17 @@ isMultiLine docList =
 piElimToDoc :: D.Doc -> [D.Doc] -> D.Doc
 piElimToDoc e args = do
   if isMultiLine $ e : args
-    then D.join [e, D.text "(", D.nest D.indent $ D.join [D.line, commaSeqV args], D.line, D.text ")"]
-    else D.join [e, D.text "(", commaSeqH args, D.text ")"]
+    then D.join [e, D.text "(", D.nest D.indent $ D.join [D.line, D.commaSeqV args], D.line, D.text ")"]
+    else D.join [e, D.text "(", D.commaSeqH args, D.text ")"]
 
 piElimKeyToDoc :: N.Name -> [(T.Text, RawTerm)] -> D.Doc
 piElimKeyToDoc name kvs = do
   case getHorizontalDocList kvs of
     Just vs' ->
-      D.join [nameToDoc name, D.text " of {", commaSeqH vs', D.text "}"]
+      D.join [nameToDoc name, D.text " of {", D.commaSeqH vs', D.text "}"]
     Nothing -> do
       let kvs' = map kvToDoc kvs
-      D.join [nameToDoc name, D.text " of {", D.line, listSeq kvs', D.line, D.text "}"]
+      D.join [nameToDoc name, D.text " of {", D.line, D.listSeq kvs', D.line, D.text "}"]
 
 getHorizontalDocList :: [(T.Text, RawTerm)] -> Maybe [D.Doc]
 getHorizontalDocList kvs =
@@ -531,7 +506,7 @@ decodePatternRow :: (C, RP.RawPatternRow (RawTerm, C)) -> D.Doc
 decodePatternRow (_, (patArgs, _, body)) = do
   let patArgs' = map (decodePattern . snd . fst . snd) $ V.toList patArgs
   let body' = toDoc $ fst body
-  D.join [commaSeqH patArgs', D.text " =>", D.line, body']
+  D.join [D.commaSeqH patArgs', D.text " =>", D.line, body']
 
 decodePattern :: RP.RawPattern -> D.Doc
 decodePattern pat = do
@@ -543,18 +518,18 @@ decodePattern pat = do
       case args of
         RP.Paren patList -> do
           let patList' = map (decodePattern . snd . fst . snd) patList
-          D.join [name', D.text "(", commaSeqH patList', D.text ")"]
+          D.join [name', D.text "(", D.commaSeqH patList', D.text ")"]
         RP.Of _ _ kvs -> do
           let kvs' = map (\(_, (k, ((_, v), _))) -> (k, v)) kvs
           case getHorizontalDocList' kvs' of
             Just vs' ->
-              D.join [name', D.text " of {", commaSeqH vs', D.text "}"]
+              D.join [name', D.text " of {", D.commaSeqH vs', D.text "}"]
             Nothing -> do
               let kvs'' = map kvToDoc' kvs'
-              D.join [name', D.text " of {", D.line, listSeq kvs'', D.line, D.text "}"]
+              D.join [name', D.text " of {", D.line, D.listSeq kvs'', D.line, D.text "}"]
     RP.ListIntro patList -> do
       let patList' = map (decodePattern . snd . fst . snd) patList
-      D.join [D.text "[", commaSeqH patList', D.text "]"]
+      D.join [D.text "[", D.commaSeqH patList', D.text "]"]
 
 getHorizontalDocList' :: [(T.Text, RP.RawPattern)] -> Maybe [D.Doc]
 getHorizontalDocList' kvs =

@@ -7,6 +7,7 @@ where
 import Context.App
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
+import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -24,6 +25,7 @@ import Entity.Hint
 import Entity.Ident.Reify
 import Entity.Opacity qualified as O
 import Entity.RawProgram
+import Entity.RawProgram.Decode qualified as RawProgram
 import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
@@ -55,8 +57,9 @@ parseSource source cacheOrContent = do
       saveTopLevelNames path $ map getStmtName stmtList
       return $ Left cache
     Right content -> do
-      prog <- snd <$> P.parseFile True Parse.parseProgram path content
-      Right <$> interpret source prog
+      prog <- P.parseFile True Parse.parseProgram path content
+      printNote' $ RawProgram.pp prog
+      Right <$> interpret source (snd prog)
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
 saveTopLevelNames path topNameList = do
@@ -85,7 +88,7 @@ ensureMain m mainFunctionName = do
       Throw.raiseError m "`main` is missing"
 
 interpret :: Source.Source -> RawProgram -> App ([F.Foreign], [WeakStmt])
-interpret currentSource (RawProgram m importOrNone foreignOrNone stmtList) = do
+interpret currentSource (RawProgram m importOrNone _ foreignOrNone _ stmtList) = do
   interpretImport currentSource importOrNone >>= activateImport m
   foreign' <- interpretForeign foreignOrNone
   activateForeign foreign'

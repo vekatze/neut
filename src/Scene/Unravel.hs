@@ -249,7 +249,7 @@ parseSourceHeader currentSource = do
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- readSourceFile path
-  (_, importOrNone) <- ParseCore.parseFile False parseImport path fileContent
+  (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
   interpretImport currentSource importOrNone
 
 registerAntecedentInfo :: [Source.Source] -> App ()
