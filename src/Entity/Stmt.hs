@@ -77,7 +77,7 @@ data RawForeignItem
   = RawForeignItem EN.ExternalName C (ArgList (LT.LowType, C)) C (LT.LowType, C)
 
 data RawProgram
-  = RawProgram (Maybe (RawImport, C)) (Maybe (RawForeign, C)) [(RawStmt, C)]
+  = RawProgram Hint (Maybe (RawImport, C)) (Maybe (RawForeign, C)) [(RawStmt, C)]
 
 data WeakStmt
   = WeakStmtDefine

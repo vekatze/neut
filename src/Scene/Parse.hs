@@ -15,7 +15,6 @@ import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Monad
-import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
@@ -59,15 +58,8 @@ parseSource source cacheOrContent = do
       saveTopLevelNames path $ map getStmtName stmtList
       return $ Left cache
     Right content -> do
-      (_, (defList, declList)) <- P.parseFile True (program source) path content
-      stmtList <- Discern.discernStmtList $ map fst defList
-      Global.reportMissingDefinitions
-      saveTopLevelNames path $ getWeakStmtName stmtList
-      UnusedVariable.registerRemarks
-      UnusedImport.registerRemarks
-      UnusedLocalLocator.registerRemarks
-      UnusedPreset.registerRemarks
-      return $ Right (stmtList, declList)
+      prog <- snd <$> P.parseFile True parseRawProgram path content
+      Right <$> interpret source prog
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
 saveTopLevelNames path topNameList = do
@@ -95,61 +87,66 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-program :: Source.Source -> P.Parser ([(RawStmt, C)], [F.Foreign])
-program currentSource = do
-  m <- P.getCurrentHint
-  importBlockOrNone <- Parse.parseImport
-  declListOrNone <- Parse.parseForeign
-  case importBlockOrNone of
+interpret :: Source.Source -> RawProgram -> App ([WeakStmt], [F.Foreign])
+interpret currentSource (RawProgram m importOrNone foreignOrNone defList) = do
+  interpretImport currentSource m importOrNone
+  foreign' <- interpretForeign foreignOrNone
+  stmtList <- Discern.discernStmtList $ map fst defList
+  Global.reportMissingDefinitions
+  saveTopLevelNames (Source.sourceFilePath currentSource) $ getWeakStmtName stmtList
+  UnusedVariable.registerRemarks
+  UnusedImport.registerRemarks
+  UnusedLocalLocator.registerRemarks
+  UnusedPreset.registerRemarks
+  return (stmtList, foreign')
+
+interpretImport :: Source.Source -> Hint -> Maybe (RawImport, C) -> App ()
+interpretImport currentSource m importOrNone = do
+  case importOrNone of
     Nothing ->
       return ()
     Just (importBlock, _) -> do
-      sourceInfoList <- lift $ interpretImportBlock currentSource importBlock
+      sourceInfoList <- interpretImportBlock currentSource importBlock
       forM_ sourceInfoList $ \(source, aliasInfoList) -> do
         let path = Source.sourceFilePath source
-        namesInSource <- lift $ Global.lookupSourceNameMap m path
-        lift $ Global.activateTopLevelNames namesInSource
+        namesInSource <- Global.lookupSourceNameMap m path
+        Global.activateTopLevelNames namesInSource
         forM_ aliasInfoList $ \aliasInfo ->
-          lift $ Alias.activateAliasInfo namesInSource aliasInfo
-  declList' <-
-    case declListOrNone of
-      Nothing ->
-        return []
-      Just (declList, _) -> do
-        let declList' = interpretForeign declList
-        forM_ declList' $ \(F.Foreign name domList cod) -> do
-          lift $ Decl.insDeclEnv' (DN.Ext name) domList cod
-        return declList'
-  defList <- concat <$> many parseStmt <* eof
-  return (defList, declList')
+          Alias.activateAliasInfo namesInSource aliasInfo
 
-parseRawProgram :: P.Parser RawProgram
-parseRawProgram = do
-  importBlockOrNone <- Parse.parseImport
-  foreignOrNone <- Parse.parseForeign
-  defList <- concat <$> many parseStmt
-  return $ RawProgram importBlockOrNone foreignOrNone defList
-
-parseStmt :: P.Parser [(RawStmt, C)]
-parseStmt = do
-  choice
-    [ return <$> Parse.parseDefine,
-      return <$> Parse.parseData,
-      return <$> Parse.parseInline,
-      return <$> Parse.parseConstant,
-      return <$> Parse.parseDeclare,
-      return <$> Parse.parseResource
-    ]
-
-interpretForeign :: RawForeign -> [F.Foreign]
-interpretForeign rf =
-  case rf of
-    RawForeign _ (_, xs) ->
-      map (interpretForeignItem . snd) xs
+interpretForeign :: Maybe (RawForeign, C) -> App [F.Foreign]
+interpretForeign foreignOrNone = do
+  case foreignOrNone of
+    Nothing ->
+      return []
+    Just (RawForeign _ (_, foreignItemList), _) -> do
+      let foreignItemList' = map (interpretForeignItem . snd) foreignItemList
+      forM_ foreignItemList' $ \(F.Foreign name domList cod) -> do
+        Decl.insDeclEnv' (DN.Ext name) domList cod
+      return foreignItemList'
 
 interpretForeignItem :: RawForeignItem -> F.Foreign
 interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
   F.Foreign name (map fst $ distillArgList lts) cod
+
+parseRawProgram :: P.Parser RawProgram
+parseRawProgram = do
+  m <- P.getCurrentHint
+  importBlockOrNone <- Parse.parseImport
+  foreignOrNone <- Parse.parseForeign
+  defList <- many parseStmt
+  return $ RawProgram m importBlockOrNone foreignOrNone defList
+
+parseStmt :: P.Parser (RawStmt, C)
+parseStmt = do
+  choice
+    [ Parse.parseDefine,
+      Parse.parseData,
+      Parse.parseInline,
+      Parse.parseConstant,
+      Parse.parseDeclare,
+      Parse.parseResource
+    ]
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =

@@ -14,7 +14,6 @@ module Scene.Parse.RawTerm
 where
 
 import Context.App
-import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
@@ -27,7 +26,6 @@ import Data.Vector qualified as V
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.Const
-import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
@@ -390,8 +388,7 @@ rawTermMagicExternal m c = do
         [ commaList (delimiter ";") rawTermAndLowType,
           return []
         ]
-    (domList, cod) <- lift $ Decl.lookupDeclEnv m (DN.Ext extFunName')
-    return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 domList cod (c2, (extFunName', cExt)) es varArgAndTypeList)
+    return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 (c2, (extFunName', cExt)) es varArgAndTypeList)
 
 rawTermAndLowType :: Parser ((RT.RawTerm, C), (LT.LowType, C))
 rawTermAndLowType = do

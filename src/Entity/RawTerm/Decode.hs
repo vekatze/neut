@@ -155,7 +155,7 @@ toDoc term =
           let lt' = lowTypeToDoc lt
           let pointer' = toDoc pointer
           D.join [D.text "magic ", piElimToDoc (D.text "load") [lt', pointer']]
-        External _ _ _ (_, (funcName, _)) args varArgs -> do
+        External _ (_, (funcName, _)) args varArgs -> do
           let funcName' = D.text $ T.pack (show $ EN.reify funcName)
           let args' = map (toDoc . fst . snd) args
           let varArgs' = map (\(_, ((e, _), (lt, _))) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs

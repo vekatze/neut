@@ -1,6 +1,7 @@
 module Scene.Parse.Discern (discernStmtList) where
 
 import Context.App
+import Context.Decl qualified as Decl
 import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
@@ -26,6 +27,7 @@ import Entity.BuildMode qualified as BM
 import Entity.C
 import Entity.Const
 import Entity.Decl qualified as DE
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
 import Entity.GlobalName qualified as GN
@@ -287,7 +289,7 @@ discern nenv term =
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
-      magic' <- discernMagic nenv magic
+      magic' <- discernMagic nenv m magic
       return $ m :< WT.Magic magic'
     m :< RT.Annotation remarkLevel annot e -> do
       e' <- discern nenv e
@@ -383,8 +385,8 @@ discern nenv term =
     _ :< RT.Brace _ (e, _) ->
       discern nenv e
 
-discernMagic :: NominalEnv -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
-discernMagic nenv magic =
+discernMagic :: NominalEnv -> Hint -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
+discernMagic nenv m magic =
   case magic of
     RT.Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) -> do
       from' <- discern nenv from
@@ -398,7 +400,8 @@ discernMagic nenv magic =
     RT.Load _ (_, (lt, _)) (_, (pointer, _)) -> do
       pointer' <- discern nenv pointer
       return $ M.Load lt pointer'
-    RT.External _ domList cod (_, (funcName, _)) args varArgs -> do
+    RT.External _ (_, (funcName, _)) args varArgs -> do
+      (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
       args' <- mapM (discern nenv . fst . snd) args
       varArgs' <- forM varArgs $ \(_, ((arg, _), (lt, _))) -> do
         arg' <- discern nenv arg
