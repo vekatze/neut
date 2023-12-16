@@ -50,6 +50,7 @@ import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
 import Entity.RawIdent hiding (isHole)
 import Entity.RawPattern qualified as RP
+import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
 import Entity.Stmt

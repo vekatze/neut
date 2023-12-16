@@ -14,8 +14,8 @@ import Entity.Name
 import Entity.RawBinder
 import Entity.RawDecl qualified as RD
 import Entity.RawIdent
+import Entity.RawProgram
 import Entity.RawTerm qualified as RT
-import Entity.Stmt
 import Entity.StmtKind qualified as SK
 
 defineData ::

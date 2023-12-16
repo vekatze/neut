@@ -21,9 +21,9 @@ import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
 import Entity.ModuleID qualified as MID
+import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
-import Entity.Stmt
 import Entity.StrictGlobalLocator qualified as SGL
 import Path
 import Scene.Module.Reflect qualified as Module

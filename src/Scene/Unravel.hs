@@ -34,7 +34,7 @@ import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
 import Scene.Parse.Import (interpretImportBlock)
-import Scene.Parse.Stmt (parseImport)
+import Scene.Parse.Program (parseImport)
 import Scene.Source.ShiftToLatest qualified as Source
 
 type CacheTime =

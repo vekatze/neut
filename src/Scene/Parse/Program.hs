@@ -1,12 +1,6 @@
-module Scene.Parse.Stmt
-  ( parseImport,
-    parseForeign,
-    parseDefine,
-    parseInline,
-    parseData,
-    parseResource,
-    parseDeclare,
-    parseConstant,
+module Scene.Parse.Program
+  ( parseProgram,
+    parseImport,
   )
 where
 
@@ -25,12 +19,31 @@ import Entity.Name
 import Entity.Opacity qualified as O
 import Entity.RawBinder
 import Entity.RawDecl qualified as RD
+import Entity.RawProgram
 import Entity.RawTerm qualified as RT
-import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm
 import Text.Megaparsec
+
+parseProgram :: P.Parser RawProgram
+parseProgram = do
+  m <- P.getCurrentHint
+  importBlockOrNone <- parseImport
+  foreignOrNone <- parseForeign
+  stmtList <- many parseStmt
+  return $ RawProgram m importBlockOrNone foreignOrNone stmtList
+
+parseStmt :: P.Parser (RawStmt, C)
+parseStmt = do
+  choice
+    [ parseDefine,
+      parseData,
+      parseInline,
+      parseConstant,
+      parseDeclare,
+      parseResource
+    ]
 
 parseImport :: P.Parser (Maybe (RawImport, C))
 parseImport = do

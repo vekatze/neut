@@ -3,20 +3,12 @@ module Entity.Stmt where
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
-import Data.Text qualified as T
-import Entity.BaseName qualified as BN
 import Entity.Binder
-import Entity.C
 import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
-import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.LocalLocator qualified as LL
-import Entity.LowType qualified as LT
-import Entity.RawDecl qualified as RDE
-import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
@@ -27,57 +19,6 @@ import GHC.Generics hiding (C)
 import Path
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
-
-data RawStmt
-  = RawStmtDefine
-      C
-      IsConstLike
-      SK.RawStmtKind
-      Hint
-      (DD.DefiniteDescription, C)
-      RDE.ImpArgs
-      RDE.ExpArgs
-      (C, (RT.RawTerm, C))
-      (C, (RT.RawTerm, C))
-  | RawStmtDefineConst
-      C
-      Hint
-      (DD.DefiniteDescription, C)
-      (C, (RT.RawTerm, C))
-      (C, (RT.RawTerm, C))
-  | RawStmtDefineData
-      C
-      Hint
-      (DD.DefiniteDescription, C)
-      (Maybe RDE.ExpArgs)
-      C
-      [(C, RawConsInfo)]
-  | RawStmtDefineResource
-      C
-      Hint
-      (DD.DefiniteDescription, C)
-      C
-      (C, (RT.RawTerm, C))
-      (C, (RT.RawTerm, C))
-  | RawStmtDeclare C Hint C [(C, RDE.RawDecl)]
-
-type RawConsInfo =
-  (Hint, (BN.BaseName, C), IsConstLike, RDE.ExpArgs)
-
-data RawImport
-  = RawImport C Hint (C, [(C, RawImportItem)])
-
-data RawImportItem
-  = RawImportItem C Hint (T.Text, C) (ArgList ((Hint, LL.LocalLocator), C))
-
-data RawForeign
-  = RawForeign C (C, [(C, RawForeignItem)])
-
-data RawForeignItem
-  = RawForeignItem EN.ExternalName C (ArgList (LT.LowType, C)) C (LT.LowType, C)
-
-data RawProgram
-  = RawProgram Hint (Maybe (RawImport, C)) (Maybe (RawForeign, C)) [(RawStmt, C)]
 
 data WeakStmt
   = WeakStmtDefine

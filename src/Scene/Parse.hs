@@ -27,6 +27,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
 import Entity.Opacity qualified as O
+import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
@@ -34,8 +35,7 @@ import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
 import Scene.Parse.Import
-import Scene.Parse.Stmt qualified as Parse
-import Text.Megaparsec hiding (parse)
+import Scene.Parse.Program qualified as Parse
 
 parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([F.Foreign], [WeakStmt]))
 parse source cacheOrContent = do
@@ -58,7 +58,7 @@ parseSource source cacheOrContent = do
       saveTopLevelNames path $ map getStmtName stmtList
       return $ Left cache
     Right content -> do
-      prog <- snd <$> P.parseFile True parseRawProgram path content
+      prog <- snd <$> P.parseFile True Parse.parseProgram path content
       Right <$> interpret source prog
 
 saveTopLevelNames :: Path Abs File -> [(Hint, DD.DefiniteDescription)] -> App ()
@@ -128,25 +128,6 @@ interpretForeign foreignOrNone = do
 interpretForeignItem :: RawForeignItem -> F.Foreign
 interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
   F.Foreign name (map fst $ distillArgList lts) cod
-
-parseRawProgram :: P.Parser RawProgram
-parseRawProgram = do
-  m <- P.getCurrentHint
-  importBlockOrNone <- Parse.parseImport
-  foreignOrNone <- Parse.parseForeign
-  stmtList <- many parseStmt
-  return $ RawProgram m importBlockOrNone foreignOrNone stmtList
-
-parseStmt :: P.Parser (RawStmt, C)
-parseStmt = do
-  choice
-    [ Parse.parseDefine,
-      Parse.parseData,
-      Parse.parseInline,
-      Parse.parseConstant,
-      Parse.parseDeclare,
-      Parse.parseResource
-    ]
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =
