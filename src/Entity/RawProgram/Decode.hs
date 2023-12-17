@@ -10,8 +10,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
-import Entity.LowType qualified as LT
-import Entity.PrimType qualified as PT
+import Entity.LowType.Decode qualified as LowType
 import Entity.RawBinder
 import Entity.RawDecl (ExpArgs)
 import Entity.RawIdent
@@ -85,8 +84,8 @@ decForeign foreignOrNone =
 
 decForeignItem :: (C, RawForeignItem) -> D.Doc
 decForeignItem (_, RawForeignItem funcName _ args _ (cod, _)) = do
-  let args' = decArgList (decLowType . fst) args
-  let cod' = decLowType cod
+  let args' = decArgList (LowType.decode . fst) args
+  let cod' = LowType.decode cod
   D.join [D.text (EN.reify funcName), D.text "(", args', D.text "): ", cod']
 
 decStmt :: RawStmt -> D.Doc
@@ -176,19 +175,3 @@ decArgList' f args =
       []
     (_, a) : rest -> do
       f a : decArgList' f rest
-
-decLowType :: LT.LowType -> D.Doc
-decLowType lt =
-  case lt of
-    LT.PrimNum primType ->
-      case primType of
-        PT.Int _ ->
-          D.text "int"
-        PT.Float _ ->
-          D.text "float"
-    LT.Pointer ->
-      D.text "pointer"
-    LT.Void ->
-      D.text "void"
-    _ ->
-      D.text "<other>"
