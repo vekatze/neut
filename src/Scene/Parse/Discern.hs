@@ -72,9 +72,16 @@ discernStmtList =
 discernStmt :: RawStmt -> App [WeakStmt]
 discernStmt stmt = do
   case stmt of
-    RawStmtDefine _ isConstLike stmtKind m (functionName, _) (impArgs, _) (_, (expArgs, _)) (_, (codType, _)) (_, (e, _)) -> do
+    -- RawStmtDefine _ isConstLike stmtKind m (functionName, _) (impArgs, _) (_, (expArgs, _)) (_, (codType, _)) (_, (e, _)) -> do
+    RawStmtDefine _ stmtKind decl (_, (e, _)) -> do
       -- printNote' $ RT.pp e
       registerTopLevelName stmt
+      let (impArgs, _) = RDE.impArgs decl
+      let (_, (expArgs, _)) = RDE.expArgs decl
+      let (_, (codType, _)) = RDE.cod decl
+      let m = RDE.loc decl
+      let (functionName, _) = RDE.name decl
+      let isConstLike = RDE.isConstLike decl
       (impArgs', nenv) <- discernBinder empty $ map (eraseComment . snd) impArgs
       (expArgs', nenv') <- discernBinder nenv $ map (eraseComment . snd) expArgs
       codType' <- discern nenv' codType
@@ -122,7 +129,13 @@ discernDecl decl = do
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
-    RawStmtDefine _ isConstLike stmtKind m (functionName, _) (impArgs, _) (_, (expArgs, _)) _ _ -> do
+    -- RawStmtDefine _ isConstLike stmtKind m (functionName, _) (impArgs, _) (_, (expArgs, _)) _ _ -> do
+    RawStmtDefine _ stmtKind decl _ -> do
+      let (impArgs, _) = RDE.impArgs decl
+      let (_, (expArgs, _)) = RDE.expArgs decl
+      let m = RDE.loc decl
+      let (functionName, _) = RDE.name decl
+      let isConstLike = RDE.isConstLike decl
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, (_, x, _, _, _)) -> x) expArgs
       Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames

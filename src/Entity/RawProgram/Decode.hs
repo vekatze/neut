@@ -92,7 +92,7 @@ decForeignItem (_, RawForeignItem funcName _ args _ (cod, _)) = do
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine {} ->
+    RawStmtDefine {} -> do
       D.text "define"
     RawStmtDefineConst {} ->
       D.text "constant"
@@ -192,6 +192,3 @@ decLowType lt =
       D.text "void"
     _ ->
       D.text "<other>"
-
-test_pp :: Int
-test_pp = undefined

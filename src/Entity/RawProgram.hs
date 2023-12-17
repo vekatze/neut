@@ -28,13 +28,8 @@ data RawProgram
 data RawStmt
   = RawStmtDefine
       C
-      IsConstLike
       SK.RawStmtKind
-      Hint
-      (DD.DefiniteDescription, C)
-      RDE.ImpArgs
-      RDE.ExpArgs
-      (C, (RT.RawTerm, C))
+      RDE.RawDecl
       (C, (RT.RawTerm, C))
   | RawStmtDefineConst
       C

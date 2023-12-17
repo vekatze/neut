@@ -109,7 +109,16 @@ parseDefine' opacity = do
   (((_, (name, c)), impArgs, expArgs, codType), (c2, (e, cCont))) <- parseTopDefInfo
   name' <- lift $ Locator.attachCurrentLocator name
   let stmtKind = SK.Normal opacity
-  return (RawStmtDefine c1 False stmtKind m (name', c) impArgs expArgs codType (c2, e), cCont)
+  let decl =
+        RD.RawDecl
+          { loc = m,
+            name = (name', c),
+            isConstLike = False,
+            impArgs = impArgs,
+            expArgs = expArgs,
+            cod = codType
+          }
+  return (RawStmtDefine c1 stmtKind decl (c2, e), cCont)
 
 parseData :: P.Parser (RawStmt, C)
 parseData = do

@@ -2,6 +2,9 @@ module Entity.RawTerm.Decode
   ( pp,
     toDoc,
     typeAnnot,
+    impArgsToDoc,
+    expPiArgsToDoc,
+    expPiIntroArgsToDoc,
   )
 where
 

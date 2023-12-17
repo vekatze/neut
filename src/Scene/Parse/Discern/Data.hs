@@ -33,17 +33,16 @@ defineData m dataName dataArgsOrNone consInfoList = do
   let consNameList = map (\(_, consName, isConstLike, _, _) -> (consName, isConstLike)) consInfoList''
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike consNameList dataArgs
-  let formRule =
-        RawStmtDefine
-          []
-          isConstLike
-          stmtKind
-          m
-          (dataName, [])
-          ([], [])
-          dataArgs'
-          ([], (m :< RT.Tau, []))
-          ([], (dataType, []))
+  let decl =
+        RD.RawDecl
+          { loc = m,
+            name = (dataName, []),
+            isConstLike = isConstLike,
+            impArgs = ([], []),
+            expArgs = dataArgs',
+            cod = ([], (m :< RT.Tau, []))
+          }
+  let formRule = RawStmtDefine [] stmtKind decl ([], (dataType, []))
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs' consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -86,16 +85,20 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let dataArgs'' = map identPlusToVar dataArgs'
       let consArgs'' = map adjustConsArg consArgs'
       let consNameList = map (\(_, c, isConstLike', _) -> (c, isConstLike')) consInfoList
+      let decl =
+            RD.RawDecl
+              { loc = m,
+                name = (consName, []),
+                isConstLike = isConstLike,
+                impArgs = snd dataArgs,
+                expArgs = consArgs,
+                cod = ([], (dataType, []))
+              }
       let introRule =
             RawStmtDefine
               []
-              isConstLike
               (SK.DataIntro consName dataArgs' consArgs' discriminant)
-              m
-              (consName, [])
-              (snd dataArgs)
-              consArgs
-              ([], (dataType, []))
+              decl
               ([], (m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs'' (map fst consArgs''), []))
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
