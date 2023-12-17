@@ -180,7 +180,15 @@ toDoc term =
       D.text "<annot>"
     _ :< Resource name _ (discarder, _) (copier, _) -> do
       let resourcePair = D.listSeq [toDoc discarder, toDoc copier]
-      D.join [D.text "resource", D.text (DD.reify name), D.text "{", D.line, resourcePair, D.line, D.text "}"]
+      D.join
+        [ D.text "resource ",
+          D.text (DD.localLocator name),
+          D.text " {",
+          D.line,
+          resourcePair,
+          D.line,
+          D.text "}"
+        ]
     _ :< Use _ trope _ (args, _) _ cont -> do
       let trope' = toDoc trope
       let args' = map (\(_, (_, x, _, _, _)) -> D.text x) args
@@ -383,10 +391,7 @@ expPiIntroArgsToDoc expArgs = do
 
 clauseBodyToDoc :: RawTerm -> D.Doc
 clauseBodyToDoc body = do
-  let body' = toDoc body
-  if isMultiLine [body']
-    then D.join [D.text "{", D.nest D.indent $ D.join [D.line, body'], D.line, D.text "}"]
-    else body'
+  toDoc body
 
 recBody :: RawTerm -> D.Doc
 recBody body = do

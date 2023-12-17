@@ -135,8 +135,8 @@ decStmt stmt =
           D.line,
           D.text "}"
         ]
-    RawStmtDefineResource {} ->
-      D.text "resource"
+    RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) ->
+      RT.toDoc $ m :< RT.Resource name [] discarder copier
     RawStmtDeclare _ _ _ declList -> do
       let declList' = decDeclList declList
       D.join
