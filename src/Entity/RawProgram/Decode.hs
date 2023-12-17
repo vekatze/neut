@@ -13,6 +13,7 @@ import Entity.LocalLocator qualified as LL
 import Entity.LowType.Decode qualified as LowType
 import Entity.RawBinder
 import Entity.RawDecl (ExpArgs)
+import Entity.RawDecl qualified as RDE
 import Entity.RawIdent
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
@@ -91,10 +92,38 @@ decForeignItem (_, RawForeignItem funcName _ args _ (cod, _)) = do
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine {} -> do
-      D.text "define"
-    RawStmtDefineConst {} ->
-      D.text "constant"
+    RawStmtDefine _ _ decl (_, (body, _)) -> do
+      let (functionName, _) = RDE.name decl
+      let (impArgs, _) = RDE.impArgs decl
+      let impArgs' = decImpArgs impArgs
+      let (c3, (expArgs, _)) = RDE.expArgs decl
+      let expArgs' = decExpArgs (c3, expArgs)
+      let (_, (cod, _)) = RDE.cod decl
+      let cod' = RT.toDoc cod
+      let body' = RT.toDoc body
+      D.join
+        [ D.text "define ",
+          D.text (DD.localLocator functionName),
+          impArgs',
+          expArgs',
+          D.text ": ",
+          cod',
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, body'],
+          D.line,
+          D.text "}"
+        ]
+    RawStmtDefineConst _ _ (name, _) (_, (cod, _)) (_, (body, _)) ->
+      D.join
+        [ D.text "constant ",
+          D.text (DD.localLocator name),
+          D.text ": ",
+          RT.toDoc cod,
+          D.text " {",
+          D.nest D.indent $ D.join [D.line, RT.toDoc body],
+          D.line,
+          D.text "}"
+        ]
     RawStmtDefineData _ _ (dataName, _) argsOrNone _ consInfo -> do
       let consInfo' = map decConsInfo consInfo
       D.join
@@ -110,6 +139,69 @@ decStmt stmt =
       D.text "resource"
     RawStmtDeclare {} ->
       D.text "declare"
+
+decImpArgs :: [(C, RawBinder (RT.RawTerm, C))] -> D.Doc
+decImpArgs impArgs =
+  if null impArgs
+    then D.Nil
+    else do
+      let impArgs' = decImpArgSeq impArgs
+      if D.isSingle impArgs'
+        then D.join [D.text "<", D.commaSeqH impArgs', D.text ">"]
+        else
+          D.join
+            [ D.text "<",
+              D.nest D.indent $ D.join [D.line, D.commaSeqV impArgs'],
+              D.line,
+              D.text ">"
+            ]
+
+decImpArgSeq :: [(C, RawBinder (RT.RawTerm, C))] -> [D.Doc]
+decImpArgSeq impArgs =
+  case impArgs of
+    [] ->
+      []
+    (_, (_, x, _, _, (t, _))) : rest -> do
+      case t of
+        _ :< RT.Hole {} ->
+          D.text x : decImpArgSeq rest
+        _ -> do
+          let t' = RT.toDoc t
+          if D.isSingle [t']
+            then D.join [D.text x, D.text ": ", t'] : decImpArgSeq rest
+            else D.join [D.text x, D.text ": ", D.line, t'] : decImpArgSeq rest
+
+decExpArgs :: (Maybe (C, C), [(C, RawBinder (RT.RawTerm, C))]) -> D.Doc
+decExpArgs (ofOrNone, expArgs) = do
+  let expArgs' = decExpArgSeq expArgs
+  case ofOrNone of
+    Nothing -> do
+      if D.isSingle expArgs'
+        then D.join [D.text "(", D.commaSeqH expArgs', D.text ")"]
+        else decExpArgs (Just ([], []), expArgs)
+    Just _ ->
+      D.join
+        [ D.text " of ",
+          D.text "{",
+          D.line,
+          D.listSeq expArgs',
+          D.line,
+          D.text "}"
+        ]
+
+decExpArgSeq :: [(C, RawBinder (RT.RawTerm, C))] -> [D.Doc]
+decExpArgSeq expArgs =
+  case expArgs of
+    [] ->
+      []
+    (_, (_, x, _, _, (t, _))) : rest -> do
+      let t' = RT.toDoc t
+      if isHole x
+        then t' : decExpArgSeq rest
+        else do
+          if D.isSingle [t']
+            then D.join [D.text x, D.text ": ", t'] : decExpArgSeq rest
+            else D.join [D.text x, D.text ": ", D.line, t'] : decExpArgSeq rest
 
 decDataArgs :: Maybe ExpArgs -> D.Doc
 decDataArgs argsOrNone =

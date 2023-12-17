@@ -278,7 +278,7 @@ toDoc term =
       if isMultiLine [e']
         then
           D.join
-            [ D.text " {",
+            [ D.text "{",
               D.nest D.indent $ D.join [D.line, e'],
               D.line,
               D.text "}"
