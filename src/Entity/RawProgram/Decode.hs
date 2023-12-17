@@ -137,8 +137,16 @@ decStmt stmt =
         ]
     RawStmtDefineResource {} ->
       D.text "resource"
-    RawStmtDeclare {} ->
-      D.text "declare"
+    RawStmtDeclare _ _ _ declList -> do
+      let declList' = decDeclList declList
+      D.join
+        [ D.text "declare ",
+          D.text " {",
+          D.line,
+          D.listSeq declList',
+          D.line,
+          D.text "}"
+        ]
 
 decImpArgs :: [(C, RawBinder (RT.RawTerm, C))] -> D.Doc
 decImpArgs impArgs =
@@ -252,6 +260,29 @@ decRawArg (_, (_, x, _, _, (t, _))) = do
 commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
   foldr (\com acc -> [D.text "//", D.text com, D.line] ++ acc) [] c
+
+decDeclList :: [(C, RDE.RawDecl)] -> [D.Doc]
+decDeclList declList =
+  case declList of
+    [] ->
+      []
+    (_, decl) : rest -> do
+      let (functionName, _) = RDE.name decl
+      let (impArgs, _) = RDE.impArgs decl
+      let impArgs' = decImpArgs impArgs
+      let (c3, (expArgs, _)) = RDE.expArgs decl
+      let expArgs' = decExpArgs (c3, expArgs)
+      let (_, (cod, _)) = RDE.cod decl
+      let cod' = RT.toDoc cod
+      let decl' =
+            D.join
+              [ D.text (DD.localLocator functionName),
+                impArgs',
+                expArgs',
+                D.text ": ",
+                cod'
+              ]
+      decl' : decDeclList rest
 
 decArgList :: (a -> D.Doc) -> ArgList a -> D.Doc
 decArgList f (args, _) = do
