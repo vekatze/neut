@@ -187,8 +187,8 @@ commaList :: Parser C -> Parser a -> Parser [(C, a)]
 commaList first f = do
   sepList first (delimiter ",") f
 
-argList'' :: Parser a -> Parser (ArgList a)
-argList'' f = do
+argListParen :: Parser a -> Parser (ArgList a)
+argListParen f = do
   vs <- commaList (delimiter "(") f
   c <- delimiter ")"
   return (vs, c)
@@ -239,7 +239,7 @@ argSeqOrList :: Parser a -> Parser (Maybe (C, C), ArgList a)
 argSeqOrList p =
   choice
     [ do
-        args <- argList'' p
+        args <- argListParen p
         return (Nothing, args),
       do
         c1 <- keyword "of"

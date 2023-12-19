@@ -117,7 +117,7 @@ rawTermPiGeneral :: Parser (RT.RawTerm, C)
 rawTermPiGeneral = do
   m <- getCurrentHint
   impArgs <- parseImplicitArgs
-  expArgs <- argList'' (choice [try preAscription, typeWithoutIdent])
+  expArgs <- argListParen (choice [try preAscription, typeWithoutIdent])
   cArrow <- delimiter "->"
   (cod, c) <- rawTerm
   return (m :< RT.Pi impArgs expArgs cArrow cod, c)
@@ -126,7 +126,7 @@ rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
   m <- getCurrentHint
   impArgs <- parseImplicitArgs
-  expArgs <- argList'' preBinder
+  expArgs <- argListParen preBinder
   c1 <- delimiter "=>"
   (e, c) <- rawExpr
   return (m :< RT.PiIntro impArgs expArgs c1 e, c)
@@ -249,7 +249,7 @@ parseDefInfo :: Hint -> Parser (RT.DefInfo RT.RawTerm, C)
 parseDefInfo m = do
   (functionVar, c1) <- var
   impArgs <- parseImplicitArgs
-  expArgs <- argList'' preBinder
+  expArgs <- argListParen preBinder
   (c6, codType) <- parseDefInfoCod m
   (c7, (e, c)) <- betweenBrace rawExpr
   return ((functionVar, c1, impArgs, expArgs, c6, codType, c7, e), c)
@@ -500,7 +500,7 @@ rawTermPatternConsOrVar = do
   ((m, varOrLocator), c1) <- parseName
   choice
     [ do
-        (patArgs, c) <- argList'' rawTermPattern
+        (patArgs, c) <- argListParen rawTermPattern
         return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
       do
         c2 <- keyword "of"
@@ -625,7 +625,7 @@ rawTermPiElimOrSimple = do
 
 rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont m ec = do
-  argListList <- many $ argList'' rawExpr
+  argListList <- many $ argListParen rawExpr
   return $ foldPiElim m ec argListList
 
 foldPiElim ::

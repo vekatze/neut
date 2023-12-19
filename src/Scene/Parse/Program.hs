@@ -84,7 +84,7 @@ parseForeign = do
 parseForeignItem :: P.Parser RawForeignItem
 parseForeignItem = do
   (declName, c1) <- P.symbol
-  lts <- P.argList'' lowType
+  lts <- P.argListParen lowType
   c2 <- P.delimiter ":"
   (cod, c) <- lowType
   return $ RawForeignItem (EN.ExternalName declName) c1 lts c2 (cod, c)
