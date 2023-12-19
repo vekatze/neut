@@ -15,6 +15,7 @@ import Entity.Const
 import Entity.Error qualified as E
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
+import Entity.Syntax.Series qualified as SE
 import Path
 import Text.Megaparsec
 import Text.Megaparsec.Char hiding (string)
@@ -186,6 +187,50 @@ sepList first sep f = do
 commaList :: Parser C -> Parser a -> Parser [(C, a)]
 commaList first f = do
   sepList first (delimiter ",") f
+
+_series :: C -> SE.Separator -> Parser (a, C) -> Parser ([(C, a)], C)
+_series leadingComment sep p = do
+  case sep of
+    SE.Comma -> do
+      mv <- optional p
+      case mv of
+        Nothing ->
+          return ([], leadingComment)
+        Just (v, c) -> do
+          choice
+            [ do
+                cComma <- delimiter $ SE.getSeparator sep
+                (vs, trailingComment') <- _series c sep p
+                return ((leadingComment ++ cComma, v) : vs, trailingComment'),
+              do
+                return ([(leadingComment, v)], c)
+            ]
+    SE.Hyphen -> do
+      choice
+        [ do
+            cHyphen <- delimiter $ SE.getSeparator sep
+            (v, c) <- p
+            (vs, trailingComment) <- _series c sep p
+            return ((leadingComment ++ cHyphen, v) : vs, trailingComment),
+          do
+            return ([], leadingComment)
+        ]
+
+series :: SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
+series container sep p = do
+  let (open, close) = SE.getContainerPair container
+  c1 <- delimiter open
+  (vs, trail) <- _series c1 sep p
+  c2 <- delimiter close
+  return
+    ( SE.Series
+        { elems = vs,
+          trailingComment = trail,
+          separator = sep,
+          container = container
+        },
+      c2
+    )
 
 argListParen :: Parser a -> Parser (ArgList a)
 argListParen f = do
