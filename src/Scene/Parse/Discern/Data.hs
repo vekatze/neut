@@ -6,6 +6,7 @@ import Control.Comonad.Cofree hiding (section)
 import Data.Maybe
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.Hint
@@ -17,16 +18,17 @@ import Entity.RawIdent
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
+import Entity.Syntax.Series qualified as SE
 
 defineData ::
   Hint ->
   DD.DefiniteDescription ->
-  Maybe RD.ExpArgs ->
-  [RawConsInfo] ->
+  Maybe (RT.Args RT.RawTerm) ->
+  [RawConsInfo BN.BaseName] ->
   App [RawStmt]
 defineData m dataName dataArgsOrNone consInfoList = do
   let dataArgs = modifyDataArgs dataArgsOrNone
-  let dataArgs' = fromMaybe (Nothing, ([], [])) dataArgsOrNone
+  let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
   consInfoList' <- mapM modifyConstructorName consInfoList
   let consInfoList'' = modifyConsInfo D.zero consInfoList'
   let stmtKind = SK.Data dataName dataArgs consInfoList''
@@ -38,7 +40,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
           { loc = m,
             name = (dataName, []),
             isConstLike = isConstLike,
-            impArgs = ([], []),
+            impArgs = RT.emptyArgs,
             expArgs = dataArgs',
             cod = ([], (m :< RT.Tau, []))
           }
@@ -46,52 +48,52 @@ defineData m dataName dataArgsOrNone consInfoList = do
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs' consInfoList' D.zero
   return $ formRule : introRuleList
 
-modifyDataArgs :: Maybe RD.ExpArgs -> [RawBinder RT.RawTerm]
+modifyDataArgs :: Maybe (RT.Args RT.RawTerm) -> [RawBinder RT.RawTerm]
 modifyDataArgs =
-  maybe [] stripComments
+  maybe [] RT.extractArgs
 
 modifyConsInfo ::
   D.Discriminant ->
-  [(Hint, DD.DefiniteDescription, b, RD.ExpArgs)] ->
-  [(SavedHint, DD.DefiniteDescription, b, [RawBinder RT.RawTerm], D.Discriminant)]
+  [RawConsInfo DD.DefiniteDescription] ->
+  [(SavedHint, DD.DefiniteDescription, IsConstLike, [RawBinder RT.RawTerm], D.Discriminant)]
 modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
-    (m, consName, isConstLike, consArgs) : rest ->
-      (SavedHint m, consName, isConstLike, stripComments consArgs, d) : modifyConsInfo (D.increment d) rest
+    (m, (consName, _), isConstLike, consArgs) : rest ->
+      (SavedHint m, consName, isConstLike, SE.extract consArgs, d) : modifyConsInfo (D.increment d) rest
 
 modifyConstructorName ::
-  RawConsInfo ->
-  App (Hint, DD.DefiniteDescription, IsConstLike, RD.ExpArgs)
-modifyConstructorName (mb, (consName, _), isConstLike, yts) = do
+  RawConsInfo BN.BaseName ->
+  App (RawConsInfo DD.DefiniteDescription)
+modifyConstructorName (mb, (consName, c), isConstLike, yts) = do
   consName' <- Locator.attachCurrentLocator consName
-  return (mb, consName', isConstLike, yts)
+  return (mb, (consName', c), isConstLike, yts)
 
 parseDefineDataConstructor ::
   RT.RawTerm ->
   DD.DefiniteDescription ->
-  RD.ExpArgs ->
-  [(Hint, DD.DefiniteDescription, IsConstLike, RD.ExpArgs)] ->
+  RT.Args RT.RawTerm ->
+  [RawConsInfo DD.DefiniteDescription] ->
   D.Discriminant ->
   App [RawStmt]
 parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant = do
   case consInfoList of
     [] ->
       return []
-    (m, consName, isConstLike, consArgs) : rest -> do
-      let dataArgs' = stripComments dataArgs
-      let consArgs' = stripComments consArgs
+    (m, (consName, cCons), isConstLike, consArgs) : rest -> do
+      let dataArgs' = RT.extractArgs dataArgs
+      let consArgs' = SE.extract consArgs
       let dataArgs'' = map identPlusToVar dataArgs'
       let consArgs'' = map adjustConsArg consArgs'
-      let consNameList = map (\(_, c, isConstLike', _) -> (c, isConstLike')) consInfoList
+      let consNameList = map (\(_, (dd, _), isConstLike', _) -> (dd, isConstLike')) consInfoList
       let decl =
             RD.RawDecl
               { loc = m,
-                name = (consName, []),
+                name = (consName, cCons),
                 isConstLike = isConstLike,
-                impArgs = snd dataArgs,
-                expArgs = consArgs,
+                impArgs = dataArgs,
+                expArgs = (consArgs, []),
                 cod = ([], (dataType, []))
               }
       let introRule =
@@ -120,7 +122,3 @@ identPlusToVar (m, x, _, _, _) =
 adjustConsArg :: RawBinder a -> (RT.RawTerm, RawIdent)
 adjustConsArg (m, x, _, _, _) =
   (m :< RT.Var (Var x), x)
-
-stripComments :: RD.ExpArgs -> [RawBinder RT.RawTerm]
-stripComments (_, (args, _)) =
-  map ((\(m, x, c1, c2, (t, _)) -> (m, x, c1, c2, t)) . snd) args

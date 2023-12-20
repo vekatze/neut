@@ -20,7 +20,7 @@ data RawDecl = RawDecl
   { loc :: Hint,
     name :: (DD.DefiniteDescription, C),
     isConstLike :: IsConstLike,
-    impArgs :: ImpArgs,
-    expArgs :: ExpArgs,
+    impArgs :: RT.Args RT.RawTerm,
+    expArgs :: RT.Args RT.RawTerm,
     cod :: (C, (RT.RawTerm, C))
   }

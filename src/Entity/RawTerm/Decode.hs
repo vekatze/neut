@@ -2,6 +2,8 @@ module Entity.RawTerm.Decode
   ( pp,
     toDoc,
     typeAnnot,
+    decodeArgs,
+    decodeArgs',
   )
 where
 
@@ -9,6 +11,7 @@ import Control.Comonad.Cofree
 import Data.Text qualified as T
 import Data.Vector qualified as V
 import Entity.C
+import Entity.C.Decode qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
@@ -26,6 +29,8 @@ import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm
+import Entity.Syntax.Series qualified as SE
+import Entity.Syntax.Series.Decode qualified as SE
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 
@@ -40,21 +45,21 @@ toDoc term =
       D.text "tau"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
-    _ :< Pi (impArgs, _) (expArgs, _) _ cod -> do
-      let impArgs' = impArgsToDoc $ map (f . snd) impArgs
-      let expArgs' = expPiArgsToDoc $ map (f . snd) expArgs
+    _ :< Pi impArgs expArgs _ cod -> do
+      let impArgs' = impArgsToDoc $ extractArgs impArgs
+      let expArgs' = expPiArgsToDoc $ extractArgs expArgs
       let cod' = toDoc cod
       let arrow = if isMultiLine [impArgs', expArgs'] then D.join [D.line, D.text "->"] else D.text " -> "
       if isMultiLine [cod']
         then D.join [impArgs', expArgs', arrow, D.line, cod']
         else D.join [impArgs', expArgs', arrow, cod']
-    _ :< PiIntro (impArgs, _) (expArgs, _) _ body -> do
-      let impArgs' = impArgsToDoc $ map (f . snd) impArgs
-      let expArgs' = expPiIntroArgsToDoc $ map (f . snd) expArgs
+    _ :< PiIntro impArgs expArgs _ body -> do
+      let impArgs' = impArgsToDoc $ extractArgs impArgs
+      let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-    _ :< PiIntroFix _ ((_, k), _, (impArgs, _), (expArgs, _), _, cod, _, (body, _)) -> do
-      let impArgs' = impArgsToDoc $ map (f . snd) impArgs
-      let expArgs' = expPiIntroArgsToDoc $ map (f . snd) expArgs
+    _ :< PiIntroFix _ ((_, k), _, impArgs, expArgs, _, cod, _, (body, _)) -> do
+      let impArgs' = impArgsToDoc $ extractArgs impArgs
+      let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
       D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
     _ :< PiElim e _ args -> do
       let e' = toDoc e
@@ -186,9 +191,9 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< Use _ trope _ (args, _) _ cont -> do
+    _ :< Use _ trope _ args _ cont -> do
       let trope' = toDoc trope
-      let args' = map (\(_, (_, x, _, _, _)) -> D.text x) args
+      let args' = map (\(_, x, _, _, _) -> D.text x) $ extractArgs args
       let cont' = toDoc cont
       if isMultiLine [trope']
         then
@@ -289,6 +294,31 @@ toDoc term =
               D.text "}"
             ]
         else D.join [D.text " {", e', D.text "}"]
+
+decodeArgs :: Args RawTerm -> D.Doc
+decodeArgs (series, c) = do
+  D.join
+    [ decodeBinder series,
+      C.decode c
+    ]
+
+decodeArgs' :: Args RawTerm -> D.Doc
+decodeArgs' (series, c) = do
+  if null c
+    then decodeBinder' series
+    else
+      D.join
+        [ C.decode c,
+          decodeBinder' series
+        ]
+
+decodeBinder :: SE.Series (RawBinder RawTerm) -> D.Doc
+decodeBinder series =
+  SE.decode $ fmap piArgToDoc series
+
+decodeBinder' :: SE.Series (RawBinder RawTerm) -> D.Doc
+decodeBinder' series =
+  SE.decode $ fmap piIntroArgToDoc series
 
 decodeNoeticVarList :: [(Hint, RawIdent)] -> D.Doc
 decodeNoeticVarList vs =
@@ -556,7 +586,3 @@ kvToDoc' (name, v) = do
   if isMultiLine [v']
     then D.join [D.text name, D.text " =", D.nest D.indent $ D.join [D.line, v']]
     else D.join [D.text name, D.text " = ", v']
-
-f :: RawBinder (a, C) -> RawBinder a
-f (m, x, c1, c2, (t, _)) =
-  (m, x, c1, c2, t)

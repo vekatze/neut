@@ -11,13 +11,11 @@ import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
 import Entity.LowType.Decode qualified as LowType
-import Entity.RawBinder
-import Entity.RawDecl (ExpArgs)
 import Entity.RawDecl qualified as RDE
-import Entity.RawIdent
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
+import Entity.Syntax.Series.Decode qualified as SE
 
 pp :: (C, RawProgram) -> T.Text
 pp (c1, RawProgram _ importOrNone c2 foreignOrNone c3 stmtList) = do
@@ -94,10 +92,8 @@ decStmt stmt =
   case stmt of
     RawStmtDefine _ _ decl (_, (body, _)) -> do
       let (functionName, _) = RDE.name decl
-      let (impArgs, _) = RDE.impArgs decl
-      let impArgs' = decImpArgs impArgs
-      let (c3, (expArgs, _)) = RDE.expArgs decl
-      let expArgs' = decExpArgs (c3, expArgs)
+      let impArgs' = RT.decodeArgs' $ RDE.impArgs decl
+      let expArgs' = RT.decodeArgs $ RDE.expArgs decl
       let (_, (cod, _)) = RDE.cod decl
       let cod' = RT.toDoc cod
       let body' = RT.toDoc body
@@ -124,16 +120,13 @@ decStmt stmt =
           D.line,
           D.text "}"
         ]
-    RawStmtDefineData _ _ (dataName, _) argsOrNone _ consInfo -> do
-      let consInfo' = map decConsInfo consInfo
+    RawStmtDefineData _ _ (dataName, _) argsOrNone consInfo -> do
+      let consInfo' = SE.decode $ fmap decConsInfo consInfo
       D.join
         [ D.text "data ",
           D.text (DD.localLocator dataName),
           decDataArgs argsOrNone,
-          D.text " {",
-          D.join [D.line, D.listSeq consInfo'],
-          D.line,
-          D.text "}"
+          consInfo'
         ]
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) ->
       RT.toDoc $ m :< RT.Resource name [] discarder copier
@@ -148,114 +141,20 @@ decStmt stmt =
           D.text "}"
         ]
 
-decImpArgs :: [(C, RawBinder (RT.RawTerm, C))] -> D.Doc
-decImpArgs impArgs =
-  if null impArgs
-    then D.Nil
-    else do
-      let impArgs' = decImpArgSeq impArgs
-      if D.isSingle impArgs'
-        then D.join [D.text "<", D.commaSeqH impArgs', D.text ">"]
-        else
-          D.join
-            [ D.text "<",
-              D.nest D.indent $ D.join [D.line, D.commaSeqV impArgs'],
-              D.line,
-              D.text ">"
-            ]
-
-decImpArgSeq :: [(C, RawBinder (RT.RawTerm, C))] -> [D.Doc]
-decImpArgSeq impArgs =
-  case impArgs of
-    [] ->
-      []
-    (_, (_, x, _, _, (t, _))) : rest -> do
-      case t of
-        _ :< RT.Hole {} ->
-          D.text x : decImpArgSeq rest
-        _ -> do
-          let t' = RT.toDoc t
-          if D.isSingle [t']
-            then D.join [D.text x, D.text ": ", t'] : decImpArgSeq rest
-            else D.join [D.text x, D.text ": ", D.line, t'] : decImpArgSeq rest
-
-decExpArgs :: (Maybe (C, C), [(C, RawBinder (RT.RawTerm, C))]) -> D.Doc
-decExpArgs (ofOrNone, expArgs) = do
-  let expArgs' = decExpArgSeq expArgs
-  case ofOrNone of
-    Nothing -> do
-      if D.isSingle expArgs'
-        then D.join [D.text "(", D.commaSeqH expArgs', D.text ")"]
-        else decExpArgs (Just ([], []), expArgs)
-    Just _ ->
-      D.join
-        [ D.text " of ",
-          D.text "{",
-          D.line,
-          D.listSeq expArgs',
-          D.line,
-          D.text "}"
-        ]
-
-decExpArgSeq :: [(C, RawBinder (RT.RawTerm, C))] -> [D.Doc]
-decExpArgSeq expArgs =
-  case expArgs of
-    [] ->
-      []
-    (_, (_, x, _, _, (t, _))) : rest -> do
-      let t' = RT.toDoc t
-      if isHole x
-        then t' : decExpArgSeq rest
-        else do
-          if D.isSingle [t']
-            then D.join [D.text x, D.text ": ", t'] : decExpArgSeq rest
-            else D.join [D.text x, D.text ": ", D.line, t'] : decExpArgSeq rest
-
-decDataArgs :: Maybe ExpArgs -> D.Doc
+decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
 decDataArgs argsOrNone =
   case argsOrNone of
     Nothing ->
       D.Nil
-    Just (_, (args, _)) -> do
-      D.join [D.text "(", D.commaSeqH $ map decDataArg args, D.text ")"]
+    Just args -> do
+      RT.decodeArgs args
 
-decDataArg :: (C, RawBinder (RT.RawTerm, C)) -> D.Doc
-decDataArg (_, (_, x, _, _, (t, _))) = do
-  let x' = D.text x
-  case t of
-    _ :< RT.Hole {} ->
-      x'
-    _ -> do
-      D.join [x', RT.typeAnnot t]
-
-decConsInfo :: (C, RawConsInfo) -> D.Doc
-decConsInfo (_, (_, (consName, _), isConstLike, args)) = do
+decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
+decConsInfo (_, (consName, _), isConstLike, args) = do
   let consName' = D.text (BN.reify consName)
   if isConstLike
     then consName'
-    else do
-      case args of
-        (Just (_, _), (args', _)) ->
-          D.join
-            [ consName',
-              D.text " of ",
-              D.text "{",
-              D.line,
-              D.listSeq $ map decRawArg args',
-              D.line,
-              D.text "}"
-            ]
-        (Nothing, (args', _)) ->
-          D.join [consName', D.text "(", D.commaSeqH $ map decRawArg args', D.text ")"]
-
-decRawArg :: (C, RawBinder (RT.RawTerm, C)) -> D.Doc
-decRawArg (_, (_, x, _, _, (t, _))) = do
-  let t' = RT.toDoc t
-  if isHole x
-    then t'
-    else do
-      let x' = D.text x
-      D.join [x', RT.typeAnnot t]
+    else D.join [consName', RT.decodeArgs (args, [])]
 
 commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
@@ -268,10 +167,8 @@ decDeclList declList =
       []
     (_, decl) : rest -> do
       let (functionName, _) = RDE.name decl
-      let (impArgs, _) = RDE.impArgs decl
-      let impArgs' = decImpArgs impArgs
-      let (c3, (expArgs, _)) = RDE.expArgs decl
-      let expArgs' = decExpArgs (c3, expArgs)
+      let impArgs' = RT.decodeArgs $ RDE.impArgs decl
+      let expArgs' = RT.decodeArgs $ RDE.expArgs decl
       let (_, (cod, _)) = RDE.cod decl
       let cod' = RT.toDoc cod
       let decl' =

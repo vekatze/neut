@@ -18,9 +18,11 @@ import Entity.Hint
 import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
+import Entity.RawBinder
 import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
+import Entity.Syntax.Series qualified as SE
 
 data RawProgram
   = RawProgram Hint (Maybe RawImport) C (Maybe RawForeign) C [(RawStmt, C)]
@@ -41,9 +43,8 @@ data RawStmt
       C
       Hint
       (DD.DefiniteDescription, C)
-      (Maybe RDE.ExpArgs)
-      C
-      [(C, RawConsInfo)]
+      (Maybe (RT.Args RT.RawTerm))
+      (SE.Series (RawConsInfo BN.BaseName))
   | RawStmtDefineResource
       C
       Hint
@@ -53,8 +54,8 @@ data RawStmt
       (C, (RT.RawTerm, C))
   | RawStmtDeclare C Hint C [(C, RDE.RawDecl)]
 
-type RawConsInfo =
-  (Hint, (BN.BaseName, C), IsConstLike, RDE.ExpArgs)
+type RawConsInfo a =
+  (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))
 
 data RawImport
   = RawImport C Hint (C, [(C, RawImportItem)])

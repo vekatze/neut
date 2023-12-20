@@ -8,6 +8,9 @@ module Entity.RawTerm
     RawMagic (..),
     IfClause,
     EL,
+    Args,
+    emptyArgs,
+    extractArgs,
     lam,
     piElim,
   )
@@ -32,6 +35,7 @@ import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawPattern qualified as RP
 import Entity.Remark
+import Entity.Syntax.Series qualified as SE
 import Entity.WeakPrim qualified as WP
 
 type RawTerm = Cofree RawTermF Hint
@@ -70,6 +74,17 @@ data RawTermF a
   | With C a C C (a, C)
   | Brace C (a, C)
 
+type Args a =
+  (SE.Series (RawBinder a), C)
+
+emptyArgs :: Args a
+emptyArgs =
+  (SE.emptySeriesPC, [])
+
+extractArgs :: Args a -> [RawBinder a]
+extractArgs (series, _) =
+  SE.extract series
+
 type IfClause a =
   (C, (a, C), C, (a, C), C)
 
@@ -78,8 +93,8 @@ type DefInfo a =
 
 type TopDefHeader =
   ( (Hint, (BN.BaseName, C)),
-    ([(C, RawBinder (RawTerm, C))], C),
-    (Maybe (C, C), ([(C, RawBinder (RawTerm, C))], C)),
+    Args RawTerm,
+    Args RawTerm,
     (C, (RawTerm, C))
   )
 
@@ -90,12 +105,14 @@ piElim :: a -> [a] -> RawTermF a
 piElim e es =
   PiElim e [] (map (\arg -> ([], (arg, []))) es)
 
-lam :: Hint -> [RawBinder (RawTerm, C)] -> RawTerm -> RawTerm
+lam :: Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm
 lam m varList e =
-  m :< PiIntro ([], []) (map ([],) varList, []) [] e
-
-type Args a =
-  ([(C, RawBinder (a, C))], C)
+  m
+    :< PiIntro
+      (SE.emptySeries SE.Angle SE.Comma, [])
+      (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, [])
+      []
+      e
 
 data LetKind
   = Plain

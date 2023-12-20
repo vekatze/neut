@@ -13,7 +13,6 @@ import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.ExternalName qualified as EN
 import Entity.Hint
-import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
 import Entity.Name
 import Entity.Opacity qualified as O
@@ -22,6 +21,7 @@ import Entity.RawDecl qualified as RD
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
+import Entity.Syntax.Series qualified as SE
 import Scene.Parse.Core qualified as P
 import Scene.Parse.RawTerm
 import Text.Megaparsec
@@ -127,8 +127,8 @@ parseData = do
   (dataName, c2) <- P.baseName
   dataName' <- lift $ Locator.attachCurrentLocator dataName
   dataArgsOrNone <- parseDataArgs
-  (c3, (consInfoList, c)) <- P.betweenBrace $ P.manyList parseDefineDataClause
-  return (RawStmtDefineData c1 m (dataName', c2) dataArgsOrNone c3 consInfoList, c)
+  (consSeries, c) <- P.seriesBraceList parseDefineDataClause
+  return (RawStmtDefineData c1 m (dataName', c2) dataArgsOrNone consSeries, c)
 
 parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
@@ -137,36 +137,45 @@ parseDeclare = do
   (c2, (decls, c3)) <- P.betweenBrace $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
   return (RawStmtDeclare c1 m c2 decls, c3)
 
-parseDataArgs :: P.Parser (Maybe RD.ExpArgs)
+parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs = do
   choice
-    [ do
-        args <- try (P.argSeqOrList preBinder)
-        return $ Just args,
+    [ Just <$> try (P.seqOrList preBinder),
       return Nothing
     ]
 
-parseDefineDataClause :: P.Parser (Hint, (BN.BaseName, C), IsConstLike, RD.ExpArgs)
+parseDefineDataClause :: P.Parser (RawConsInfo BN.BaseName, C)
 parseDefineDataClause = do
   m <- P.getCurrentHint
   consName@(consName', _) <- P.baseName
   unless (isConsName (BN.reify consName')) $ do
     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
-  consArgsOrNone <- parseConsArgs
-  let consArgs = fromMaybe (Nothing, ([], [])) consArgsOrNone
+  (consArgsOrNone, c) <- parseConsArgs
+  let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
-  return (m, consName, isConstLike, consArgs)
+  return ((m, consName, isConstLike, consArgs), c)
 
-parseConsArgs :: P.Parser (Maybe RD.ExpArgs)
+-- parseDefineDataClause :: P.Parser (Hint, (BN.BaseName, C), IsConstLike, RD.ExpArgs)
+-- parseDefineDataClause = do
+--   m <- P.getCurrentHint
+--   consName@(consName', _) <- P.baseName
+--   unless (isConsName (BN.reify consName')) $ do
+--     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
+--   consArgsOrNone <- parseConsArgs
+--   let consArgs = fromMaybe (Nothing, ([], [])) consArgsOrNone
+--   let isConstLike = isNothing consArgsOrNone
+--   return (m, consName, isConstLike, consArgs)
+
+parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), C)
 parseConsArgs = do
   choice
     [ do
-        args <- P.argSeqOrList parseDefineDataClauseArg
-        return $ Just args,
-      return Nothing
+        (series, c) <- P.seqOrList parseDefineDataClauseArg
+        return (Just series, c),
+      return (Nothing, [])
     ]
 
-parseDefineDataClauseArg :: P.Parser (RawBinder (RT.RawTerm, C))
+parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm, C)
 parseDefineDataClauseArg = do
   choice
     [ try preAscription,

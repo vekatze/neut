@@ -216,8 +216,8 @@ _series leadingComment sep p = do
             return ([], leadingComment)
         ]
 
-series :: SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
-series container sep p = do
+series :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
+series prefix container sep p = do
   let (open, close) = SE.getContainerPair container
   c1 <- delimiter open
   (vs, trail) <- _series c1 sep p
@@ -226,22 +226,37 @@ series container sep p = do
     ( SE.Series
         { elems = vs,
           trailingComment = trail,
+          prefix = prefix,
           separator = sep,
           container = container
         },
       c2
     )
 
+seriesParen :: Parser (a, C) -> Parser (SE.Series a, C)
+seriesParen =
+  series Nothing SE.Paren SE.Comma
+
+seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
+seriesBrace =
+  series Nothing SE.Brace SE.Comma
+
+seriesBracket :: Parser (a, C) -> Parser (SE.Series a, C)
+seriesBracket =
+  series Nothing SE.Bracket SE.Comma
+
+seriesAngle :: Parser (a, C) -> Parser (SE.Series a, C)
+seriesAngle =
+  series Nothing SE.Angle SE.Comma
+
+seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
+seriesBraceList =
+  series Nothing SE.Brace SE.Hyphen
+
 argListParen :: Parser a -> Parser (ArgList a)
 argListParen f = do
   vs <- commaList (delimiter "(") f
   c <- delimiter ")"
-  return (vs, c)
-
-argListAngle :: Parser a -> Parser (ArgList a)
-argListAngle f = do
-  vs <- commaList (delimiter "<") f
-  c <- delimiter ">"
   return (vs, c)
 
 argListBracket :: Parser a -> Parser (ArgList a)
@@ -280,16 +295,14 @@ bulletListOrCommaSeq f =
       commaList spaceConsumer f
     ]
 
-argSeqOrList :: Parser a -> Parser (Maybe (C, C), ArgList a)
-argSeqOrList p =
+seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
+seqOrList p =
   choice
     [ do
-        args <- argListParen p
-        return (Nothing, args),
+        seriesParen p,
       do
         c1 <- keyword "of"
-        (c2, args) <- betweenBrace (manyList p)
-        return (Just (c1, c2), args)
+        series (Just ("of", c1)) SE.Brace SE.Hyphen p
     ]
 
 var :: Parser ((Hint, T.Text), C)
