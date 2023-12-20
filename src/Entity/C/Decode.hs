@@ -1,12 +1,25 @@
-module Entity.C.Decode (decode) where
+module Entity.C.Decode
+  ( decode,
+    asPrefix,
+    asSuffix,
+  )
+where
 
 import Entity.C
 import Entity.Doc qualified as D
 
 decode :: C -> D.Doc
-decode c =
-  D.join $ foldr (\com acc -> [D.text "//", D.text com, D.line] ++ acc) [] c
+decode =
+  D.intercalate D.line . map (\com -> D.join [D.text "//", D.text com])
 
--- decAfterDelim :: (a -> D.Doc) -> T.Text -> (C, (a, C)) -> D.Doc
--- decAfterDelim k delim (_, (a, _)) =
---   D.join [D.text delim, k a]
+asPrefix :: C -> D.Doc
+asPrefix c =
+  if null c
+    then D.Nil
+    else D.join [decode c, D.line]
+
+asSuffix :: C -> D.Doc
+asSuffix c =
+  if null c
+    then D.Nil
+    else D.join [D.line, decode c]

@@ -297,10 +297,14 @@ toDoc term =
 
 decodeArgs :: Args RawTerm -> D.Doc
 decodeArgs (series, c) = do
-  D.join
-    [ decodeBinder series,
-      C.decode c
-    ]
+  if null c
+    then decodeBinder series
+    else
+      D.join
+        [ decodeBinder series,
+          C.decode c,
+          D.line
+        ]
 
 decodeArgs' :: Args RawTerm -> D.Doc
 decodeArgs' (series, c) = do

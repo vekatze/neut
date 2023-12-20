@@ -11,6 +11,7 @@ module Entity.Doc
     commaSeqH,
     commaSeqV,
     listSeq,
+    intercalate,
   )
 where
 
@@ -113,3 +114,13 @@ listSeq docList =
       join [text "- ", nest indent doc]
     doc : rest ->
       join [text "- ", nest indent doc, line, listSeq rest]
+
+intercalate :: Doc -> [Doc] -> Doc
+intercalate sep docList =
+  case docList of
+    [] ->
+      Nil
+    [doc] ->
+      doc
+    doc : rest ->
+      join [doc, sep, intercalate sep rest]

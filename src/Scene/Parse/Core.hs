@@ -200,8 +200,8 @@ _series leadingComment sep p = do
           choice
             [ do
                 cComma <- delimiter $ SE.getSeparator sep
-                (vs, trailingComment') <- _series c sep p
-                return ((leadingComment ++ cComma, v) : vs, trailingComment'),
+                (vs, trailingComment') <- _series (c ++ cComma) sep p
+                return ((leadingComment, v) : vs, trailingComment'),
               do
                 return ([(leadingComment, v)], c)
             ]

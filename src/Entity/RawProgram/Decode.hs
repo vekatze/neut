@@ -6,6 +6,7 @@ import Data.Char
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
+import Entity.C.Decode qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
@@ -19,11 +20,18 @@ import Entity.Syntax.Series.Decode qualified as SE
 
 pp :: (C, RawProgram) -> T.Text
 pp (c1, RawProgram _ importOrNone c2 foreignOrNone c3 stmtList) = do
+  let c1' = decHeadComment c1
   let importOrNone' = decImport importOrNone
   let foreignOrNone' = decForeign foreignOrNone
   let stmtList' = map (first decStmt) stmtList
   let program' = [(importOrNone', c2), (foreignOrNone', c3)] ++ stmtList'
-  T.dropWhile isSpace $ D.layout $ D.join $ decTopDocList c1 program'
+  T.dropWhile isSpace $ D.layout $ D.join $ c1' : decTopDocList [] program'
+
+decHeadComment :: C -> D.Doc
+decHeadComment c =
+  if null c
+    then D.Nil
+    else D.join $ commentToDoc c ++ [D.line]
 
 attachComment :: C -> [D.Doc] -> [D.Doc]
 attachComment c docList =
@@ -126,6 +134,7 @@ decStmt stmt =
         [ D.text "data ",
           D.text (DD.localLocator dataName),
           decDataArgs argsOrNone,
+          D.text " ",
           consInfo'
         ]
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) ->
@@ -134,7 +143,7 @@ decStmt stmt =
       let declList' = decDeclList declList
       D.join
         [ D.text "declare ",
-          D.text " {",
+          D.text "{",
           D.line,
           D.listSeq declList',
           D.line,
@@ -147,14 +156,14 @@ decDataArgs argsOrNone =
     Nothing ->
       D.Nil
     Just args -> do
-      RT.decodeArgs args
+      RT.decodeArgs' args
 
 decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
-decConsInfo (_, (consName, _), isConstLike, args) = do
+decConsInfo (_, (consName, cCons), isConstLike, args) = do
   let consName' = D.text (BN.reify consName)
   if isConstLike
-    then consName'
-    else D.join [consName', RT.decodeArgs (args, [])]
+    then D.join [consName', C.asSuffix cCons]
+    else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
 
 commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
