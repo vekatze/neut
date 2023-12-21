@@ -92,7 +92,7 @@ data RawDecl a = RawDecl
     isConstLike :: IsConstLike,
     impArgs :: Args RawTerm,
     expArgs :: Args RawTerm,
-    cod :: (C, (RawTerm, C))
+    cod :: (C, RawTerm)
   }
 
 type IfClause a =

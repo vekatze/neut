@@ -122,8 +122,8 @@ parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
   c1 <- P.keyword "declare"
   m <- P.getCurrentHint
-  (c2, (decls, c3)) <- P.betweenBrace $ P.manyList $ parseDeclareItem Locator.attachCurrentLocator
-  return (RawStmtDeclare c1 m c2 decls, c3)
+  (decls, c) <- P.seriesBraceList $ parseDeclareItem Locator.attachCurrentLocator
+  return (RawStmtDeclare c1 m decls, c)
 
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs = do

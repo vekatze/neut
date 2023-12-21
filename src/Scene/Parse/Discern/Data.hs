@@ -41,7 +41,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
             isConstLike = isConstLike,
             impArgs = RT.emptyArgs,
             expArgs = dataArgs',
-            cod = ([], (m :< RT.Tau, []))
+            cod = ([], m :< RT.Tau)
           }
   let formRule = RawStmtDefine [] stmtKind decl ([], (dataType, []))
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs' consInfoList' D.zero
@@ -93,7 +93,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                 isConstLike = isConstLike,
                 impArgs = dataArgs,
                 expArgs = (consArgs, []),
-                cod = ([], (dataType, []))
+                cod = ([], dataType)
               }
       let introRule =
             RawStmtDefine

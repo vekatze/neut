@@ -254,17 +254,17 @@ rawTermHole = do
 
 parseDefInfo :: Parser (RT.DefInfo, C)
 parseDefInfo = do
-  decl <- parseDeclareItem (return . BN.reify)
+  (decl, c) <- parseDeclareItem (return . BN.reify)
   (c7, (e, c)) <- betweenBrace rawExpr
   return ((decl, e), c)
 
 parseTopDefInfo :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RT.TopDefInfo
 parseTopDefInfo nameLifter = do
-  topDefHeader <- parseDeclareItem nameLifter
+  (topDefHeader, c) <- parseDeclareItem nameLifter
   e <- betweenBrace rawExpr
   return (topDefHeader, e)
 
-parseDeclareItem :: (BN.BaseName -> App a) -> Parser (RT.RawDecl a)
+parseDeclareItem :: (BN.BaseName -> App a) -> Parser (RT.RawDecl a, C)
 parseDeclareItem nameLifter = do
   loc <- getCurrentHint
   (name, c1) <- baseName
@@ -279,8 +279,8 @@ parseDeclareItem nameLifter = do
       ]
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
-  cod <- parseDefInfoCod m
-  return RT.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod}
+  (c2, (cod, c)) <- parseDefInfoCod m
+  return (RT.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitArgs :: Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitArgs =

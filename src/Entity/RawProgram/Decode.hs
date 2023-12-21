@@ -96,7 +96,7 @@ decStmt stmt =
       let (functionName, _) = RT.name decl
       let impArgs' = RT.decodeArgs' $ RT.impArgs decl
       let expArgs' = RT.decodeArgs $ RT.expArgs decl
-      let (_, (cod, _)) = RT.cod decl
+      let (_, cod) = RT.cod decl
       let cod' = RT.toDoc cod
       let body' = RT.toDoc body
       D.join
@@ -133,15 +133,11 @@ decStmt stmt =
         ]
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) ->
       RT.toDoc $ m :< RT.Resource name [] discarder copier
-    RawStmtDeclare _ _ _ declList -> do
-      let declList' = decDeclList declList
+    RawStmtDeclare _ _ declList -> do
+      let declList' = SE.decode $ fmap decDeclList declList
       D.join
         [ D.text "declare ",
-          D.text "{",
-          D.line,
-          D.listSeq declList',
-          D.line,
-          D.text "}"
+          declList'
         ]
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
@@ -163,23 +159,17 @@ commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
   foldr (\com acc -> [D.text "//", D.text com, D.line] ++ acc) [] c
 
-decDeclList :: [(C, RT.TopDefHeader)] -> [D.Doc]
-decDeclList declList =
-  case declList of
-    [] ->
-      []
-    (_, decl) : rest -> do
-      let (functionName, _) = RT.name decl
-      let impArgs' = RT.decodeArgs $ RT.impArgs decl
-      let expArgs' = RT.decodeArgs $ RT.expArgs decl
-      let (_, (cod, _)) = RT.cod decl
-      let cod' = RT.toDoc cod
-      let decl' =
-            D.join
-              [ D.text (DD.localLocator functionName),
-                impArgs',
-                expArgs',
-                D.text ": ",
-                cod'
-              ]
-      decl' : decDeclList rest
+decDeclList :: RT.TopDefHeader -> D.Doc
+decDeclList decl = do
+  let (functionName, _) = RT.name decl
+  let impArgs' = RT.decodeArgs $ RT.impArgs decl
+  let expArgs' = RT.decodeArgs $ RT.expArgs decl
+  let (_, cod) = RT.cod decl
+  let cod' = RT.toDoc cod
+  D.join
+    [ D.text (DD.localLocator functionName),
+      impArgs',
+      expArgs',
+      D.text ": ",
+      cod'
+    ]

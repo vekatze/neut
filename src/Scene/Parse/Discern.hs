@@ -76,7 +76,7 @@ discernStmt stmt = do
       registerTopLevelName stmt
       let impArgs = RT.extractArgs $ RT.impArgs decl
       let expArgs = RT.extractArgs $ RT.expArgs decl
-      let (_, (codType, _)) = RT.cod decl
+      let (_, codType) = RT.cod decl
       let m = RT.loc decl
       let (functionName, _) = RT.name decl
       let isConstLike = RT.isConstLike decl
@@ -103,9 +103,9 @@ discernStmt stmt = do
       e' <- discern empty $ m :< RT.Resource name [] discarder copier
       Tag.insertDD m name m
       return [WeakStmtDefineConst m name t' e']
-    RawStmtDeclare _ m _ declList -> do
+    RawStmtDeclare _ m declList -> do
       registerTopLevelName stmt
-      declList' <- mapM (discernDecl . snd) declList
+      declList' <- mapM discernDecl $ SE.extract declList
       return [WeakStmtDeclare m declList']
 
 discernDecl :: RT.TopDefHeader -> App (DE.Decl WT.WeakTerm)
@@ -115,7 +115,7 @@ discernDecl decl = do
   (impArgs', nenv) <- discernBinder empty impArgs
   (expArgs', nenv') <- discernBinder nenv expArgs
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
-  cod' <- discern nenv' $ fst $ snd $ RT.cod decl
+  cod' <- discern nenv' $ snd $ RT.cod decl
   return $
     DE.Decl
       { loc = RT.loc decl,
@@ -140,8 +140,8 @@ registerTopLevelName stmt =
       Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames
     RawStmtDefineConst _ m (dd, _) _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
-    RawStmtDeclare _ _ _ declList -> do
-      mapM_ (Global.registerDecl . snd) declList
+    RawStmtDeclare _ _ declList -> do
+      mapM_ Global.registerDecl $ SE.extract declList
     RawStmtDefineData _ m (dd, _) args consInfo -> do
       stmtList <- defineData m dd args $ SE.extract consInfo
       mapM_ registerTopLevelName stmtList
@@ -203,7 +203,7 @@ discern nenv term =
       let (x, _) = RT.name decl
       (impArgs', nenv') <- discernBinder nenv impArgs
       (expArgs', nenv'') <- discernBinder nenv' expArgs
-      codType' <- discern nenv'' $ fst $ snd $ RT.cod decl
+      codType' <- discern nenv'' $ snd $ RT.cod decl
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
       e' <- discern nenv''' e

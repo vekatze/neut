@@ -51,7 +51,7 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtDeclare C Hint C [(C, RT.TopDefHeader)]
+  | RawStmtDeclare C Hint (SE.Series RT.TopDefHeader)
 
 type RawConsInfo a =
   (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))

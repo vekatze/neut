@@ -64,7 +64,7 @@ toDoc term =
           D.text (fst $ name decl),
           impArgs',
           expArgs',
-          typeAnnot (fst $ snd $ cod decl),
+          typeAnnot (snd $ cod decl),
           D.text " ",
           recBody body
         ]
