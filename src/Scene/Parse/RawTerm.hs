@@ -683,7 +683,7 @@ preAscription' = do
 rawTermListIntro :: Parser (RT.RawTerm, C)
 rawTermListIntro = do
   m <- getCurrentHint
-  (es, c) <- argListBracket rawExpr
+  (es, c) <- seriesBracket rawExpr
   return (m :< RT.ListIntro es, c)
 
 rawTermPiElimExact :: Parser (RT.RawTerm, C)

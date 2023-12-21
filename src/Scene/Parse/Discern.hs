@@ -331,7 +331,7 @@ discern nenv term =
     m :< RT.ListIntro es -> do
       listNil <- locatorToVarGlobal m coreListNil
       listCons <- locatorToVarGlobal m coreListCons
-      discern nenv $ foldListApp m listNil listCons $ map (fst . snd) es
+      discern nenv $ foldListApp m listNil listCons $ SE.extract es
     m :< RT.Admit -> do
       admit <- locatorToVarGlobal m coreSystemAdmit
       t <- Gensym.newPreHole (blur m)

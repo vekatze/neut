@@ -259,12 +259,6 @@ argListParen f = do
   c <- delimiter ")"
   return (vs, c)
 
-argListBracket :: Parser a -> Parser (ArgList a)
-argListBracket f = do
-  vs <- commaList (delimiter "[") f
-  c <- delimiter "]"
-  return (vs, c)
-
 argListBrace :: Parser a -> Parser (ArgList a)
 argListBrace f = do
   vs <- commaList (delimiter "{") f
