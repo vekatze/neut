@@ -12,7 +12,6 @@ import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
 import Entity.LowType.Decode qualified as LowType
-import Entity.RawDecl qualified as RDE
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
@@ -94,10 +93,10 @@ decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
     RawStmtDefine _ _ decl (_, (body, _)) -> do
-      let (functionName, _) = RDE.name decl
-      let impArgs' = RT.decodeArgs' $ RDE.impArgs decl
-      let expArgs' = RT.decodeArgs $ RDE.expArgs decl
-      let (_, (cod, _)) = RDE.cod decl
+      let (functionName, _) = RT.name decl
+      let impArgs' = RT.decodeArgs' $ RT.impArgs decl
+      let expArgs' = RT.decodeArgs $ RT.expArgs decl
+      let (_, (cod, _)) = RT.cod decl
       let cod' = RT.toDoc cod
       let body' = RT.toDoc body
       D.join
@@ -164,16 +163,16 @@ commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
   foldr (\com acc -> [D.text "//", D.text com, D.line] ++ acc) [] c
 
-decDeclList :: [(C, RDE.RawDecl)] -> [D.Doc]
+decDeclList :: [(C, RT.RawDecl)] -> [D.Doc]
 decDeclList declList =
   case declList of
     [] ->
       []
     (_, decl) : rest -> do
-      let (functionName, _) = RDE.name decl
-      let impArgs' = RT.decodeArgs $ RDE.impArgs decl
-      let expArgs' = RT.decodeArgs $ RDE.expArgs decl
-      let (_, (cod, _)) = RDE.cod decl
+      let (functionName, _) = RT.name decl
+      let impArgs' = RT.decodeArgs $ RT.impArgs decl
+      let expArgs' = RT.decodeArgs $ RT.expArgs decl
+      let (_, (cod, _)) = RT.cod decl
       let cod' = RT.toDoc cod
       let decl' =
             D.join

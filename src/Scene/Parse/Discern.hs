@@ -47,7 +47,6 @@ import Entity.Opacity qualified as O
 import Entity.Pattern qualified as PAT
 import Entity.Platform qualified as Platform
 import Entity.RawBinder
-import Entity.RawDecl qualified as RDE
 import Entity.RawIdent hiding (isHole)
 import Entity.RawPattern qualified as RP
 import Entity.RawProgram
@@ -75,12 +74,12 @@ discernStmt stmt = do
   case stmt of
     RawStmtDefine _ stmtKind decl (_, (e, _)) -> do
       registerTopLevelName stmt
-      let impArgs = RT.extractArgs $ RDE.impArgs decl
-      let expArgs = RT.extractArgs $ RDE.expArgs decl
-      let (_, (codType, _)) = RDE.cod decl
-      let m = RDE.loc decl
-      let (functionName, _) = RDE.name decl
-      let isConstLike = RDE.isConstLike decl
+      let impArgs = RT.extractArgs $ RT.impArgs decl
+      let expArgs = RT.extractArgs $ RT.expArgs decl
+      let (_, (codType, _)) = RT.cod decl
+      let m = RT.loc decl
+      let (functionName, _) = RT.name decl
+      let isConstLike = RT.isConstLike decl
       (impArgs', nenv) <- discernBinder empty impArgs
       (expArgs', nenv') <- discernBinder nenv expArgs
       codType' <- discern nenv' codType
@@ -109,19 +108,19 @@ discernStmt stmt = do
       declList' <- mapM (discernDecl . snd) declList
       return [WeakStmtDeclare m declList']
 
-discernDecl :: RDE.RawDecl -> App (DE.Decl WT.WeakTerm)
+discernDecl :: RT.RawDecl -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
-  let impArgs = RT.extractArgs $ RDE.impArgs decl
-  let expArgs = RT.extractArgs $ RDE.expArgs decl
+  let impArgs = RT.extractArgs $ RT.impArgs decl
+  let expArgs = RT.extractArgs $ RT.expArgs decl
   (impArgs', nenv) <- discernBinder empty impArgs
   (expArgs', nenv') <- discernBinder nenv expArgs
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
-  cod' <- discern nenv' $ fst $ snd $ RDE.cod decl
+  cod' <- discern nenv' $ fst $ snd $ RT.cod decl
   return $
     DE.Decl
-      { loc = RDE.loc decl,
-        name = fst $ RDE.name decl,
-        isConstLike = RDE.isConstLike decl,
+      { loc = RT.loc decl,
+        name = fst $ RT.name decl,
+        isConstLike = RT.isConstLike decl,
         impArgs = impArgs',
         expArgs = expArgs',
         cod = cod'
@@ -131,11 +130,11 @@ registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
     RawStmtDefine _ stmtKind decl _ -> do
-      let impArgs = RT.extractArgs $ RDE.impArgs decl
-      let expArgs = RT.extractArgs $ RDE.expArgs decl
-      let m = RDE.loc decl
-      let (functionName, _) = RDE.name decl
-      let isConstLike = RDE.isConstLike decl
+      let impArgs = RT.extractArgs $ RT.impArgs decl
+      let expArgs = RT.extractArgs $ RT.expArgs decl
+      let m = RT.loc decl
+      let (functionName, _) = RT.name decl
+      let isConstLike = RT.isConstLike decl
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames

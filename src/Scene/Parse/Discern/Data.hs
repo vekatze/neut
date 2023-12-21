@@ -13,7 +13,6 @@ import Entity.Hint
 import Entity.IsConstLike
 import Entity.Name
 import Entity.RawBinder
-import Entity.RawDecl qualified as RD
 import Entity.RawIdent
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
@@ -36,7 +35,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike consNameList dataArgs
   let decl =
-        RD.RawDecl
+        RT.RawDecl
           { loc = m,
             name = (dataName, []),
             isConstLike = isConstLike,
@@ -88,7 +87,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let consArgs'' = map adjustConsArg consArgs'
       let consNameList = map (\(_, (dd, _), isConstLike', _) -> (dd, isConstLike')) consInfoList
       let decl =
-            RD.RawDecl
+            RT.RawDecl
               { loc = m,
                 name = (consName, cCons),
                 isConstLike = isConstLike,

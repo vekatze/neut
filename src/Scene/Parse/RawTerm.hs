@@ -34,7 +34,6 @@ import Entity.Name
 import Entity.PrimType qualified as PT
 import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
-import Entity.RawDecl qualified as RDE
 import Entity.RawIdent
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm qualified as RT
@@ -278,7 +277,7 @@ parseTopDefHeader = do
   cod <- parseDefInfoCod m
   return ((m, funcBaseName), impArgs, expArgs, cod)
 
-parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RDE.RawDecl
+parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RT.RawDecl
 parseDeclareItem nameLifter = do
   loc <- getCurrentHint
   (name, c1) <- baseName
@@ -293,7 +292,7 @@ parseDeclareItem nameLifter = do
       ]
   m <- getCurrentHint
   cod <- parseDefInfoCod m
-  return RDE.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod}
+  return RT.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod}
 
 parseImplicitArgs :: Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitArgs =

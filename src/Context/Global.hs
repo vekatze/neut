@@ -38,7 +38,6 @@ import Entity.Key
 import Entity.OptimizableData qualified as OD
 import Entity.PrimOp.FromText qualified as PrimOp
 import Entity.PrimType.FromText qualified as PT
-import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
 import Entity.Remark (Remark, RemarkLevel (Error), newRemark)
 import Entity.StmtKind qualified as SK
@@ -103,8 +102,8 @@ isUnary consInfoList =
     _ ->
       False
 
-registerDecl :: RDE.RawDecl -> App ()
-registerDecl RDE.RawDecl {..} = do
+registerDecl :: RT.RawDecl -> App ()
+registerDecl RT.RawDecl {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractArgs impArgs
   let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'

@@ -19,7 +19,6 @@ import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
 import Entity.LowType qualified as LT
 import Entity.RawBinder
-import Entity.RawDecl qualified as RDE
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
@@ -31,7 +30,7 @@ data RawStmt
   = RawStmtDefine
       C
       SK.RawStmtKind
-      RDE.RawDecl
+      RT.RawDecl
       (C, (RT.RawTerm, C))
   | RawStmtDefineConst
       C
@@ -52,7 +51,7 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtDeclare C Hint C [(C, RDE.RawDecl)]
+  | RawStmtDeclare C Hint C [(C, RT.RawDecl)]
 
 type RawConsInfo a =
   (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))

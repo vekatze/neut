@@ -17,7 +17,6 @@ import Entity.LocalLocator qualified as LL
 import Entity.Name
 import Entity.Opacity qualified as O
 import Entity.RawBinder
-import Entity.RawDecl qualified as RD
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
@@ -111,7 +110,7 @@ parseDefine' opacity = do
   name' <- lift $ Locator.attachCurrentLocator name
   let stmtKind = SK.Normal opacity
   let decl =
-        RD.RawDecl
+        RT.RawDecl
           { loc = m,
             name = (name', c),
             isConstLike = False,

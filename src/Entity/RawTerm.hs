@@ -9,6 +9,7 @@ module Entity.RawTerm
     IfClause,
     EL,
     Args,
+    RawDecl (..),
     emptyArgs,
     extractArgs,
     lam,
@@ -27,6 +28,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.HoleID
+import Entity.IsConstLike
 import Entity.Key
 import Entity.LowType
 import Entity.Name
@@ -84,6 +86,15 @@ emptyArgs =
 extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
+
+data RawDecl = RawDecl
+  { loc :: Hint,
+    name :: (DD.DefiniteDescription, C),
+    isConstLike :: IsConstLike,
+    impArgs :: Args RawTerm,
+    expArgs :: Args RawTerm,
+    cod :: (C, (RawTerm, C))
+  }
 
 type IfClause a =
   (C, (a, C), C, (a, C), C)
