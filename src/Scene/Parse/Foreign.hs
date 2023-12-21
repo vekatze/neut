@@ -7,10 +7,10 @@ where
 import Context.App
 import Context.Decl qualified as Decl
 import Control.Monad
-import Entity.C
 import Entity.DeclarationName qualified as DN
 import Entity.Foreign qualified as F
 import Entity.RawProgram
+import Entity.Syntax.Series qualified as SE
 
 activateForeign :: [F.Foreign] -> App ()
 activateForeign foreignItemList = do
@@ -22,9 +22,9 @@ interpretForeign foreignOrNone = do
   case foreignOrNone of
     Nothing ->
       return []
-    Just (RawForeign _ (_, foreignItemList)) -> do
-      return $ map (interpretForeignItem . snd) foreignItemList
+    Just (RawForeign _ foreignItemList) -> do
+      return $ map interpretForeignItem $ SE.extract foreignItemList
 
 interpretForeignItem :: RawForeignItem -> F.Foreign
-interpretForeignItem (RawForeignItem name _ lts _ (cod, _)) =
-  F.Foreign name (map fst $ distillArgList lts) cod
+interpretForeignItem (RawForeignItem name _ lts _ _ cod) =
+  F.Foreign name (SE.extract lts) cod

@@ -77,21 +77,18 @@ decForeign foreignOrNone =
   case foreignOrNone of
     Nothing ->
       D.Nil
-    Just (RawForeign _ (_, foreignList)) -> do
-      let foreignList' = map decForeignItem foreignList
+    Just (RawForeign _ foreignList) -> do
+      let foreignList' = SE.decode $ fmap decForeignItem foreignList
       D.join
-        [ D.text "foreign",
-          D.text " {",
-          D.join [D.line, D.listSeq foreignList'],
-          D.line,
-          D.text "}"
+        [ D.text "foreign ",
+          foreignList'
         ]
 
-decForeignItem :: (C, RawForeignItem) -> D.Doc
-decForeignItem (_, RawForeignItem funcName _ args _ (cod, _)) = do
-  let args' = decArgList (LowType.decode . fst) args
+decForeignItem :: RawForeignItem -> D.Doc
+decForeignItem (RawForeignItem funcName _ args _ _ cod) = do
+  let args' = SE.decode $ fmap LowType.decode args
   let cod' = LowType.decode cod
-  D.join [D.text (EN.reify funcName), D.text "(", args', D.text "): ", cod']
+  D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
@@ -187,18 +184,3 @@ decDeclList declList =
                 cod'
               ]
       decl' : decDeclList rest
-
-decArgList :: (a -> D.Doc) -> ArgList a -> D.Doc
-decArgList f (args, _) = do
-  let args' = decArgList' f args
-  if D.isSingle args'
-    then D.commaSeqH args'
-    else D.commaSeqV args'
-
-decArgList' :: (a -> D.Doc) -> [(C, a)] -> [D.Doc]
-decArgList' f args =
-  case args of
-    [] ->
-      []
-    (_, a) : rest -> do
-      f a : decArgList' f rest

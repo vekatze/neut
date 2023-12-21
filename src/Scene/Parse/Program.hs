@@ -77,18 +77,18 @@ parseForeign = do
   choice
     [ do
         c1 <- P.keyword "foreign"
-        (c2, (val, c)) <- P.betweenBrace (P.manyList parseForeignItem)
-        return (Just $ RawForeign c1 (c2, val), c),
+        (val, c) <- P.seriesBraceList parseForeignItem
+        return (Just $ RawForeign c1 val, c),
       return (Nothing, [])
     ]
 
-parseForeignItem :: P.Parser RawForeignItem
+parseForeignItem :: P.Parser (RawForeignItem, C)
 parseForeignItem = do
   (declName, c1) <- P.symbol
-  lts <- P.argListParen lowType
-  c2 <- P.delimiter ":"
+  (lts, c2) <- P.seriesParen lowType
+  c3 <- P.delimiter ":"
   (cod, c) <- lowType
-  return $ RawForeignItem (EN.ExternalName declName) c1 lts c2 (cod, c)
+  return (RawForeignItem (EN.ExternalName declName) c1 lts c2 c3 cod, c)
 
 parseDefine :: P.Parser (RawStmt, C)
 parseDefine =

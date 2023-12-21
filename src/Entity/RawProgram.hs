@@ -64,7 +64,7 @@ data RawImportItem
   = RawImportItem C Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
 
 data RawForeign
-  = RawForeign C (C, [(C, RawForeignItem)])
+  = RawForeign C (SE.Series RawForeignItem)
 
 data RawForeignItem
-  = RawForeignItem EN.ExternalName C (ArgList (LT.LowType, C)) C (LT.LowType, C)
+  = RawForeignItem EN.ExternalName C (SE.Series LT.LowType) C C LT.LowType
