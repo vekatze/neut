@@ -231,12 +231,12 @@ discern nenv term =
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
-    m :< RT.DataElim _ isNoetic es _ patternMatrix -> do
+    m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let ms = map (\(_, (me :< _, _)) -> me) es
       os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
       es' <- mapM (discern nenv . fst . snd >=> castFromNoemaIfNecessary isNoetic) es
       ts <- mapM (const $ Gensym.newHole m []) es'
-      patternMatrix' <- discernPatternMatrix nenv patternMatrix
+      patternMatrix' <- discernPatternMatrix nenv $ SE.extract patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       let os' = zip ms os
       decisionTree <- compilePatternMatrix nenv isNoetic (V.fromList os') patternMatrix'
@@ -265,26 +265,25 @@ discern nenv term =
                 []
                 False
                 [([], (e1', []))]
-                []
-                [ ( [],
-                    ( [ ( [],
-                          ((_m, RP.Cons exceptFail [] (RP.Paren [([], ((_m, RP.Var (Var err)), []))])), [])
-                        )
-                      ],
-                      [],
-                      (m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)], [])
-                    )
-                  ),
-                  ( [],
-                    ( [ ( [],
-                          ((_m, RP.Cons exceptPass [] (RP.Paren [([], ((mx, pat), []))])), [])
-                        )
-                      ],
-                      [],
-                      (e2, [])
-                    )
-                  )
-                ]
+                ( SE.fromList
+                    SE.Brace
+                    SE.Hyphen
+                    [ ( [ ( [],
+                            ((_m, RP.Cons exceptFail [] (RP.Paren [([], ((_m, RP.Var (Var err)), []))])), [])
+                          )
+                        ],
+                        [],
+                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)]
+                      ),
+                      ( [ ( [],
+                            ((_m, RP.Cons exceptPass [] (RP.Paren [([], ((mx, pat), []))])), [])
+                          )
+                        ],
+                        [],
+                        e2
+                      )
+                    ]
+                )
         RT.Bind -> do
           Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
@@ -436,8 +435,7 @@ getContinuationModifier pat =
                 []
                 isNoetic
                 [([], (mCont :< RT.Var (Var tmp), []))]
-                []
-                [([], ([([], (pat, []))], [], (cont, [])))]
+                (SE.fromList SE.Brace SE.Hyphen [([([], (pat, []))], [], cont)])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
@@ -502,26 +500,25 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           []
           False
           [([], (ifCond, []))]
-          []
-          [ ( [],
-              ( [ ( [],
-                    ((blur m, RP.Var true), [])
-                  )
-                ],
-                [],
-                (ifBody, [])
-              )
-            ),
-            ( [],
-              ( [ ( [],
-                    ((blur m, RP.Var false), [])
-                  )
-                ],
-                [],
-                (elseBody, [])
-              )
-            )
-          ]
+          ( SE.fromList
+              SE.Brace
+              SE.Hyphen
+              [ ( [ ( [],
+                      ((blur m, RP.Var true), [])
+                    )
+                  ],
+                  [],
+                  ifBody
+                ),
+                ( [ ( [],
+                      ((blur m, RP.Var false), [])
+                    )
+                  ],
+                  [],
+                  elseBody
+                )
+              ]
+          )
     ((_, (elseIfCond, _), _, (elseIfBody, _), _) : rest) -> do
       let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
       m
@@ -529,10 +526,13 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           []
           False
           [([], (ifCond, []))]
-          []
-          [ ([], ([([], ((blur m, RP.Var true), []))], [], (ifBody, []))),
-            ([], ([([], ((blur m, RP.Var false), []))], [], (cont, [])))
-          ]
+          ( SE.fromList
+              SE.Brace
+              SE.Hyphen
+              [ ([([], ((blur m, RP.Var true), []))], [], ifBody),
+                ([([], ((blur m, RP.Var false), []))], [], cont)
+              ]
+          )
 
 doNotCare :: Hint -> WT.WeakTerm
 doNotCare m =
@@ -604,7 +604,7 @@ discernBinderWithBody' nenv (mx, x, _, _, codType) binder e = do
 
 discernPatternMatrix ::
   NominalEnv ->
-  RP.RawPatternMatrix (RT.RawTerm, C) ->
+  [RP.RawPatternRow RT.RawTerm] ->
   App (PAT.PatternMatrix ([Ident], WT.WeakTerm))
 discernPatternMatrix nenv patternMatrix =
   case uncons patternMatrix of
@@ -617,9 +617,9 @@ discernPatternMatrix nenv patternMatrix =
 
 discernPatternRow ::
   NominalEnv ->
-  (C, RP.RawPatternRow (RT.RawTerm, C)) ->
+  RP.RawPatternRow RT.RawTerm ->
   App (PAT.PatternRow ([Ident], WT.WeakTerm))
-discernPatternRow nenv (_, (patVec, _, (body, _))) = do
+discernPatternRow nenv (patVec, _, body) = do
   let patList = patVec
   (patList', body') <- discernPatternRow' nenv patList [] body
   return (V.fromList patList', body')

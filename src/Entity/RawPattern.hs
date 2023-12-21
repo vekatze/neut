@@ -1,7 +1,6 @@
 module Entity.RawPattern
   ( RawPattern (..),
     RawPatternRow,
-    RawPatternMatrix,
     ConsArgs (..),
   )
 where
@@ -24,6 +23,3 @@ data ConsArgs
 
 type RawPatternRow a =
   ([(C, ((Hint, RawPattern), C))], C, a)
-
-type RawPatternMatrix a =
-  [(C, RawPatternRow a)]

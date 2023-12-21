@@ -51,7 +51,7 @@ data RawTermF a
   | PiElimExact C a
   | Data AttrD.Attr DD.DefiniteDescription [a]
   | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
-  | DataElim C N.IsNoetic [EL a] C (RP.RawPatternMatrix (a, C))
+  | DataElim C N.IsNoetic [EL a] (SE.Series (RP.RawPatternRow a))
   | Noema a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, (a, C)) [(C, ((Hint, RawIdent), C))] C a C a

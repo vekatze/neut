@@ -459,10 +459,11 @@ rawTermMatch = do
           return (c1, False)
       ]
   es <- sepList spaceConsumer (delimiter ",") rawTermBasic
-  (c2, (patternRowList, c3)) <- betweenBrace $ manyList $ rawTermPatternRow (length es)
-  return (m :< RT.DataElim c1 isNoetic es c2 patternRowList, c3)
+  (patternRowList, c) <- series Nothing SE.Brace SE.Hyphen $ rawTermPatternRow (length es)
+  -- (c2, (patternRowList, c3)) <- betweenBrace $ manyList $ rawTermPatternRow (length es)
+  return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
-rawTermPatternRow :: Int -> Parser (RP.RawPatternRow (RT.RawTerm, C))
+rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
   patternList <- commaList spaceConsumer rawTermPattern
@@ -476,9 +477,9 @@ rawTermPatternRow patternSize = do
           <> "`"
           <> "\n"
           <> T.pack (show patternList)
-  c <- delimiter "=>"
-  body <- rawExpr
-  return (patternList, c, body)
+  cArrow <- delimiter "=>"
+  (body, c) <- rawExpr
+  return ((patternList, cArrow, body), c)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do
