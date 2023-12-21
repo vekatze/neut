@@ -9,7 +9,6 @@ where
 
 import Control.Comonad.Cofree
 import Data.Text qualified as T
-import Data.Vector qualified as V
 import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.DefiniteDescription qualified as DD
@@ -77,7 +76,7 @@ toDoc term =
     _ :< DataElim _ isNoetic es _ patternRowList -> do
       let keyword = if isNoetic then D.text "case" else D.text "match"
       let es' = map (toDoc . fst . snd) es
-      let patternRowList' = decodePatternRowList $ RP.toList patternRowList
+      let patternRowList' = decodePatternRowList patternRowList
       D.join
         [ keyword,
           D.text " ",
@@ -543,7 +542,7 @@ decodePatternRowList =
 
 decodePatternRow :: (C, RP.RawPatternRow (RawTerm, C)) -> D.Doc
 decodePatternRow (_, (patArgs, _, body)) = do
-  let patArgs' = map (decodePattern . snd . fst . snd) $ V.toList patArgs
+  let patArgs' = map (decodePattern . snd . fst . snd) patArgs
   let body' = toDoc $ fst body
   D.join [D.commaSeqH patArgs', D.text " =>", D.line, body']
 

@@ -22,7 +22,6 @@ import Control.Monad
 import Control.Monad.Trans
 import Data.Set qualified as S
 import Data.Text qualified as T
-import Data.Vector qualified as V
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.Const
@@ -461,7 +460,7 @@ rawTermMatch = do
       ]
   es <- sepList spaceConsumer (delimiter ",") rawTermBasic
   (c2, (patternRowList, c3)) <- betweenBrace $ manyList $ rawTermPatternRow (length es)
-  return (m :< RT.DataElim c1 isNoetic es c2 (RP.new patternRowList), c3)
+  return (m :< RT.DataElim c1 isNoetic es c2 patternRowList, c3)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow (RT.RawTerm, C))
 rawTermPatternRow patternSize = do
@@ -479,7 +478,7 @@ rawTermPatternRow patternSize = do
           <> T.pack (show patternList)
   c <- delimiter "=>"
   body <- rawExpr
-  return (V.fromList patternList, c, body)
+  return (patternList, c, body)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do
