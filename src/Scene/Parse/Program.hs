@@ -51,18 +51,19 @@ parseImport = do
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        (c2, (items, c)) <- P.betweenBrace $ P.manyList $ do
+        (importItems, c) <- P.seriesBraceList $ do
           locator <- P.symbol
-          RawImportItem c1 m locator <$> parseLocalLocatorList'
-        return (Just $ RawImport c1 m (c2, items), c),
+          (lls, c) <- parseLocalLocatorList'
+          return (RawImportItem c1 m locator lls, c)
+        return (Just $ RawImport c1 m importItems, c),
       return (Nothing, [])
     ]
 
-parseLocalLocatorList' :: P.Parser ([(C, ((Hint, LL.LocalLocator), C))], C)
+parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
-    [ P.argListBrace parseLocalLocator,
-      return ([], [])
+    [ P.seriesBrace parseLocalLocator,
+      return (SE.emptySeries SE.Brace SE.Comma, [])
     ]
 
 parseLocalLocator :: P.Parser ((Hint, LL.LocalLocator), C)

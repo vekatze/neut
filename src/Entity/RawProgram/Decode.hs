@@ -16,6 +16,7 @@ import Entity.RawDecl qualified as RDE
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
+import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
 pp :: (C, RawProgram) -> T.Text
@@ -52,26 +53,23 @@ decImport importOrNone =
   case importOrNone of
     Nothing ->
       D.Nil
-    Just (RawImport _ _ (_, importItemList)) -> do
-      let importItemList' = map decImportItem importItemList
+    Just (RawImport _ _ importItemList) -> do
+      let importItemList' = SE.decode $ fmap decImportItem importItemList
       D.join
-        [ D.text "import",
-          D.text " {",
-          D.join [D.line, D.listSeq importItemList'],
-          D.line,
-          D.text "}"
+        [ D.text "import ",
+          importItemList'
         ]
 
-decImportItem :: (C, RawImportItem) -> D.Doc
-decImportItem (_, RawImportItem _ _ (item, _) (args, _)) = do
-  if null args
+decImportItem :: RawImportItem -> D.Doc
+decImportItem (RawImportItem _ _ (item, _) args) = do
+  if SE.isEmpty args
     then D.join [D.text item]
     else do
-      let args' = map decImportItemLocator args
-      D.join [D.text item, D.text " {", D.commaSeqH args', D.text "}"]
+      let args' = SE.decode $ fmap decImportItemLocator args
+      D.join [D.text item, D.text " ", args']
 
-decImportItemLocator :: (C, ((a, LL.LocalLocator), C)) -> D.Doc
-decImportItemLocator (_, ((_, l), _)) =
+decImportItemLocator :: (a, LL.LocalLocator) -> D.Doc
+decImportItemLocator (_, l) =
   D.text (LL.reify l)
 
 decForeign :: Maybe RawForeign -> D.Doc

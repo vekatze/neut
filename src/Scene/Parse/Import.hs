@@ -18,7 +18,6 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
 import Entity.BaseName qualified as BN
-import Entity.C
 import Entity.Const
 import Entity.GlobalLocatorAlias qualified as GLA
 import Entity.Hint
@@ -30,6 +29,7 @@ import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
+import Entity.Syntax.Series qualified as SE
 import Path
 import Scene.Module.Reflect qualified as Module
 import Scene.Source.ShiftToLatest
@@ -51,10 +51,10 @@ interpretImport currentSource importOrNone = do
   case importOrNone of
     Nothing ->
       return []
-    Just (RawImport _ _ (_, importItemList)) -> do
-      fmap concat $ forM importItemList $ \(_, rawImport) -> do
+    Just (RawImport _ _ importItemList) -> do
+      fmap concat $ forM (SE.extract importItemList) $ \rawImport -> do
         let RawImportItem _ m (locatorText, _) localLocatorList = rawImport
-        let localLocatorList' = map fst $ distillArgList localLocatorList
+        let localLocatorList' = SE.extract localLocatorList
         interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
 
 interpretImportItem ::
