@@ -367,9 +367,9 @@ discern nenv term =
           :< RT.piElim
             assert
             [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), RT.lam mCond [] e]
-    m :< RT.Introspect _ key _ _ clauseList -> do
+    m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue m key
-      clause <- lookupIntrospectiveClause m value clauseList
+      clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern nenv clause
     m :< RT.With _ binder _ _ (body, _) -> do
       case body of
@@ -455,17 +455,17 @@ foldListApp m listNil listCons es =
     e : rest ->
       m :< RT.piElim listCons [e, foldListApp m listNil listCons rest]
 
-lookupIntrospectiveClause :: Hint -> T.Text -> [(C, (Maybe (T.Text, C), C, (RT.RawTerm, C)))] -> App RT.RawTerm
+lookupIntrospectiveClause :: Hint -> T.Text -> [(Maybe (T.Text, C), C, RT.RawTerm)] -> App RT.RawTerm
 lookupIntrospectiveClause m value clauseList =
   case clauseList of
     [] ->
       Throw.raiseError m $ "this term doesn't support `" <> value <> "`."
-    (_, (Just (key, _), _, (clause, _))) : rest
+    (Just (key, _), _, clause) : rest
       | key == value ->
           return clause
       | otherwise ->
           lookupIntrospectiveClause m value rest
-    (_, (Nothing, _, (clause, _))) : _ ->
+    (Nothing, _, clause) : _ ->
       return clause
 
 getIntrospectiveValue :: Hint -> T.Text -> App T.Text

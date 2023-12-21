@@ -459,7 +459,7 @@ rawTermMatch = do
           return (c1, False)
       ]
   es <- sepList spaceConsumer (delimiter ",") rawTermBasic
-  (patternRowList, c) <- series Nothing SE.Brace SE.Hyphen $ rawTermPatternRow (length es)
+  (patternRowList, c) <- seriesBraceList $ rawTermPatternRow (length es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
@@ -698,17 +698,17 @@ rawTermIntrospect = do
   m <- getCurrentHint
   c1 <- keyword "introspect"
   (key, c2) <- symbol
-  (c3, (clauseList, c)) <- betweenBrace $ manyList rawTermIntrospectiveClause
-  return (m :< RT.Introspect c1 key c2 c3 clauseList, c)
+  (clauseList, c) <- seriesBraceList rawTermIntrospectiveClause
+  return (m :< RT.Introspect c1 key c2 clauseList, c)
 
-rawTermIntrospectiveClause :: Parser (Maybe (T.Text, C), C, (RT.RawTerm, C))
+rawTermIntrospectiveClause :: Parser ((Maybe (T.Text, C), C, RT.RawTerm), C)
 rawTermIntrospectiveClause = do
   sc@(s, _) <- symbol
-  c <- delimiter "=>"
-  body <- rawExpr
+  cArrow <- delimiter "=>"
+  (body, c) <- rawExpr
   if s /= "default"
-    then return (Just sc, c, body)
-    else return (Nothing, c, body)
+    then return ((Just sc, cArrow, body), c)
+    else return ((Nothing, cArrow, body), c)
 
 rawTermSymbol :: Parser (RT.RawTerm, C)
 rawTermSymbol = do
