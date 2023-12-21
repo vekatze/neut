@@ -30,8 +30,7 @@ data RawStmt
   = RawStmtDefine
       C
       SK.RawStmtKind
-      RT.TopDefHeader
-      (C, (RT.RawTerm, C))
+      RT.TopDef
   | RawStmtDefineConst
       C
       Hint

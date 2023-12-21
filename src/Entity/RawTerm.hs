@@ -2,7 +2,7 @@ module Entity.RawTerm
   ( RawTerm,
     RawTermF (..),
     DefInfo,
-    TopDefInfo,
+    TopDef,
     TopDefHeader,
     LetKind (..),
     RawMagic (..),
@@ -10,6 +10,7 @@ module Entity.RawTerm
     EL,
     Args,
     RawDecl (..),
+    RawDef (..),
     emptyArgs,
     extractArgs,
     lam,
@@ -86,6 +87,9 @@ extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
 
+type IfClause a =
+  (C, (a, C), C, (a, C), C)
+
 data RawDecl a = RawDecl
   { loc :: Hint,
     name :: (a, C),
@@ -95,17 +99,21 @@ data RawDecl a = RawDecl
     cod :: (C, RawTerm)
   }
 
-type IfClause a =
-  (C, (a, C), C, (a, C), C)
+data RawDef a = RawDef
+  { decl :: RawDecl a,
+    leadingComment :: C,
+    body :: RawTerm,
+    trailingComment :: C
+  }
 
 type DefInfo =
-  (RawDecl RawIdent, (RawTerm, C))
+  RawDef RawIdent
 
 type TopDefHeader =
   RawDecl DD.DefiniteDescription
 
-type TopDefInfo =
-  (TopDefHeader, (C, ((RawTerm, C), C)))
+type TopDef =
+  RawDef DD.DefiniteDescription
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =

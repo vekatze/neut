@@ -2,7 +2,7 @@ module Scene.Parse.RawTerm
   ( rawExpr,
     preAscription,
     preBinder,
-    parseTopDefInfo,
+    parseDef,
     parseDeclareItem,
     parseDefInfoCod,
     typeWithoutIdent,
@@ -252,17 +252,19 @@ rawTermHole = do
   h <- lift $ Gensym.newPreHole m
   return (h, c)
 
-parseDefInfo :: Parser (RT.DefInfo, C)
-parseDefInfo = do
-  (decl, c) <- parseDeclareItem (return . BN.reify)
-  (c7, (e, c)) <- betweenBrace rawExpr
-  return ((decl, e), c)
-
-parseTopDefInfo :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RT.TopDefInfo
-parseTopDefInfo nameLifter = do
-  (topDefHeader, c) <- parseDeclareItem nameLifter
-  e <- betweenBrace rawExpr
-  return (topDefHeader, e)
+parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
+parseDef nameLifter = do
+  (topDefHeader, c1) <- parseDeclareItem nameLifter
+  (c2, ((e, c3), c)) <- betweenBrace rawExpr
+  return
+    ( RT.RawDef
+        { decl = topDefHeader,
+          leadingComment = c1 ++ c2,
+          body = e,
+          trailingComment = c3
+        },
+      c
+    )
 
 parseDeclareItem :: (BN.BaseName -> App a) -> Parser (RT.RawDecl a, C)
 parseDeclareItem nameLifter = do
@@ -320,7 +322,7 @@ rawTermDefine :: Parser (RT.RawTerm, C)
 rawTermDefine = do
   m <- getCurrentHint
   c0 <- keyword "define"
-  (defInfo, c) <- parseDefInfo
+  (defInfo, c) <- parseDef (return . BN.reify)
   return (m :< RT.PiIntroFix c0 defInfo, c)
 
 rawTermMagic :: Parser (RT.RawTerm, C)

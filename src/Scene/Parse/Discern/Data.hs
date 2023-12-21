@@ -43,7 +43,17 @@ defineData m dataName dataArgsOrNone consInfoList = do
             expArgs = dataArgs',
             cod = ([], m :< RT.Tau)
           }
-  let formRule = RawStmtDefine [] stmtKind decl ([], (dataType, []))
+  let formRule =
+        RawStmtDefine
+          []
+          stmtKind
+          ( RT.RawDef
+              { decl,
+                leadingComment = [],
+                body = dataType,
+                trailingComment = []
+              }
+          )
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs' consInfoList' D.zero
   return $ formRule : introRuleList
 
@@ -99,8 +109,13 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
             RawStmtDefine
               []
               (SK.DataIntro consName dataArgs' consArgs' discriminant)
-              decl
-              ([], (m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs'' (map fst consArgs''), []))
+              ( RT.RawDef
+                  { decl,
+                    leadingComment = [],
+                    body = m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs'' (map fst consArgs''),
+                    trailingComment = []
+                  }
+              )
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)
       return $ introRule : introRuleList
 

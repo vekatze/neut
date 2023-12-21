@@ -28,6 +28,7 @@ import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawPattern qualified as RP
 import Entity.RawTerm
+import Entity.RawTerm qualified as RT
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 import Entity.WeakPrim qualified as WP
@@ -56,7 +57,9 @@ toDoc term =
       let impArgs' = impArgsToDoc $ extractArgs impArgs
       let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-    _ :< PiIntroFix _ (decl, (body, _)) -> do
+    _ :< PiIntroFix _ def -> do
+      let decl = RT.decl def
+      let body = RT.body def
       let impArgs' = impArgsToDoc $ extractArgs $ impArgs decl
       let expArgs' = expPiIntroArgsToDoc $ extractArgs $ expArgs decl
       D.join

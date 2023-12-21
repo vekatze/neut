@@ -72,7 +72,7 @@ discernStmtList =
 discernStmt :: RawStmt -> App [WeakStmt]
 discernStmt stmt = do
   case stmt of
-    RawStmtDefine _ stmtKind decl (_, (e, _)) -> do
+    RawStmtDefine _ stmtKind (RT.RawDef {decl, body}) -> do
       registerTopLevelName stmt
       let impArgs = RT.extractArgs $ RT.impArgs decl
       let expArgs = RT.extractArgs $ RT.expArgs decl
@@ -84,10 +84,10 @@ discernStmt stmt = do
       (expArgs', nenv') <- discernBinder nenv expArgs
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind stmtKind
-      e' <- discern nenv' e
+      body' <- discern nenv' body
       Tag.insertDD m functionName m
       forM_ expArgs' Tag.insertBinder
-      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' e']
+      return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     RawStmtDefineConst _ m (dd, _) (_, (t, _)) (_, (v, _)) -> do
       registerTopLevelName stmt
       t' <- discern empty t
@@ -129,7 +129,7 @@ discernDecl decl = do
 registerTopLevelName :: RawStmt -> App ()
 registerTopLevelName stmt =
   case stmt of
-    RawStmtDefine _ stmtKind decl _ -> do
+    RawStmtDefine _ stmtKind (RT.RawDef {decl}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs decl
       let expArgs = RT.extractArgs $ RT.expArgs decl
       let m = RT.loc decl
@@ -196,7 +196,7 @@ discern nenv term =
       (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ (decl, (e, _)) -> do
+    m :< RT.PiIntroFix _ (RT.RawDef {decl, body}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs decl
       let expArgs = RT.extractArgs $ RT.expArgs decl
       let mx = RT.loc decl
@@ -206,11 +206,11 @@ discern nenv term =
       codType' <- discern nenv'' $ snd $ RT.cod decl
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
-      e' <- discern nenv''' e
+      body' <- discern nenv''' body
       let mxt' = (mx, x', codType')
       Tag.insertBinder mxt'
       lamID <- Gensym.newCount
-      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
+      return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' body'
     m :< RT.PiElim e _ es -> do
       es' <- mapM (discern nenv) $ SE.extract es
       e' <- discern nenv e

@@ -105,8 +105,8 @@ parseDefine' opacity = do
         P.keyword "define"
       O.Clear ->
         P.keyword "inline"
-  (decl, (c2, (e, cCont))) <- parseTopDefInfo Locator.attachCurrentLocator
-  return (RawStmtDefine c1 (SK.Normal opacity) decl (c2, e), cCont)
+  (def, c) <- parseDef Locator.attachCurrentLocator
+  return (RawStmtDefine c1 (SK.Normal opacity) def, c)
 
 parseData :: P.Parser (RawStmt, C)
 parseData = do

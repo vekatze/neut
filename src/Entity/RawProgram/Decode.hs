@@ -92,7 +92,7 @@ decForeignItem (RawForeignItem funcName _ args _ _ cod) = do
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine _ _ decl (_, (body, _)) -> do
+    RawStmtDefine _ _ (RT.RawDef {decl, body}) -> do
       let (functionName, _) = RT.name decl
       let impArgs' = RT.decodeArgs' $ RT.impArgs decl
       let expArgs' = RT.decodeArgs $ RT.expArgs decl
