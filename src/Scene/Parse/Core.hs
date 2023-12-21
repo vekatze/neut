@@ -253,25 +253,6 @@ seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBraceList =
   series Nothing SE.Brace SE.Hyphen
 
-argListParen :: Parser a -> Parser (ArgList a)
-argListParen f = do
-  vs <- commaList (delimiter "(") f
-  c <- delimiter ")"
-  return (vs, c)
-
-argListBrace :: Parser a -> Parser (ArgList a)
-argListBrace f = do
-  vs <- commaList (delimiter "{") f
-  c <- delimiter "}"
-  return (vs, c)
-
-manyList :: Parser a -> Parser [(C, a)]
-manyList f =
-  many $ do
-    c <- delimiter "-"
-    v <- f
-    return (c, v)
-
 seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
 seqOrList p =
   choice
