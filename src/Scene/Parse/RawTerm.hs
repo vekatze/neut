@@ -638,13 +638,13 @@ keyValueArgs p = do
 
 rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont m ec = do
-  argListList <- many $ argListParen rawExpr
+  argListList <- many $ seriesParen rawExpr
   return $ foldPiElim m ec argListList
 
 foldPiElim ::
   Hint ->
   (RT.RawTerm, C) ->
-  [([RT.EL RT.RawTerm], C)] ->
+  [(SE.Series RT.RawTerm, C)] ->
   (RT.RawTerm, C)
 foldPiElim m (e, c) argListList =
   case argListList of

@@ -62,7 +62,7 @@ toDoc term =
       D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
     _ :< PiElim e _ args -> do
       let e' = toDoc e
-      let args' = map (toDoc . fst . snd) args
+      let args' = map toDoc $ SE.extract args
       D.join [piElimToDoc e' args']
     _ :< PiElimByKey name _ kvs -> do
       let kvs' = map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs

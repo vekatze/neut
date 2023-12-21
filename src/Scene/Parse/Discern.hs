@@ -209,7 +209,7 @@ discern nenv term =
       lamID <- Gensym.newCount
       return $ m :< WT.PiIntro (AttrL.Attr {lamKind = LK.Fix mxt', identity = lamID}) impArgs' expArgs' e'
     m :< RT.PiElim e _ es -> do
-      es' <- mapM (discern nenv . fst . snd) es
+      es' <- mapM (discern nenv) $ SE.extract es
       e' <- discern nenv e
       return $ m :< WT.PiElim False e' es'
     m :< RT.PiElimByKey name _ kvs -> do
