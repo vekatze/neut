@@ -102,7 +102,7 @@ isUnary consInfoList =
     _ ->
       False
 
-registerDecl :: RT.RawDecl -> App ()
+registerDecl :: RT.TopDefHeader -> App ()
 registerDecl RT.RawDecl {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractArgs impArgs

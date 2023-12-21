@@ -252,44 +252,32 @@ rawTermHole = do
   h <- lift $ Gensym.newPreHole m
   return (h, c)
 
-parseDefInfo :: Hint -> Parser (RT.DefInfo RT.RawTerm, C)
-parseDefInfo m = do
-  (functionVar, c1) <- var
-  impArgs <- parseImplicitArgs
-  expArgs <- seriesParen preBinder
-  (c6, codType) <- parseDefInfoCod m
+parseDefInfo :: Parser (RT.DefInfo, C)
+parseDefInfo = do
+  decl <- parseDeclareItem (return . BN.reify)
   (c7, (e, c)) <- betweenBrace rawExpr
-  return ((functionVar, c1, impArgs, expArgs, c6, codType, c7, e), c)
+  return ((decl, e), c)
 
-parseTopDefInfo :: Parser RT.TopDefInfo
-parseTopDefInfo = do
-  topDefHeader <- parseTopDefHeader
+parseTopDefInfo :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RT.TopDefInfo
+parseTopDefInfo nameLifter = do
+  topDefHeader <- parseDeclareItem nameLifter
   e <- betweenBrace rawExpr
   return (topDefHeader, e)
 
-parseTopDefHeader :: Parser RT.TopDefHeader
-parseTopDefHeader = do
-  m <- getCurrentHint
-  funcBaseName <- baseName
-  impArgs <- parseImplicitArgs
-  expArgs@(expSeries, _) <- seqOrList preBinder
-  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
-  cod <- parseDefInfoCod m
-  return ((m, funcBaseName), impArgs, expArgs, cod)
-
-parseDeclareItem :: (BN.BaseName -> App DD.DefiniteDescription) -> Parser RT.RawDecl
+parseDeclareItem :: (BN.BaseName -> App a) -> Parser (RT.RawDecl a)
 parseDeclareItem nameLifter = do
   loc <- getCurrentHint
   (name, c1) <- baseName
   name' <- lift $ nameLifter name
   impArgs <- parseImplicitArgs
-  (isConstLike, expArgs) <- do
+  (isConstLike, expArgs@(expSeries, _)) <- do
     choice
       [ do
           expDomArgList <- seqOrList preBinder
           return (False, expDomArgList),
         return (True, (SE.emptySeries SE.Paren SE.Comma, []))
       ]
+  lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   cod <- parseDefInfoCod m
   return RT.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod}
@@ -332,7 +320,7 @@ rawTermDefine :: Parser (RT.RawTerm, C)
 rawTermDefine = do
   m <- getCurrentHint
   c0 <- keyword "define"
-  (defInfo, c) <- parseDefInfo m
+  (defInfo, c) <- parseDefInfo
   return (m :< RT.PiIntroFix c0 defInfo, c)
 
 rawTermMagic :: Parser (RT.RawTerm, C)

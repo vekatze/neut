@@ -163,7 +163,7 @@ commentToDoc :: C -> [D.Doc]
 commentToDoc c = do
   foldr (\com acc -> [D.text "//", D.text com, D.line] ++ acc) [] c
 
-decDeclList :: [(C, RT.RawDecl)] -> [D.Doc]
+decDeclList :: [(C, RT.TopDefHeader)] -> [D.Doc]
 decDeclList declList =
   case declList of
     [] ->

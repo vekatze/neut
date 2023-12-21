@@ -30,7 +30,7 @@ data RawStmt
   = RawStmtDefine
       C
       SK.RawStmtKind
-      RT.RawDecl
+      RT.TopDefHeader
       (C, (RT.RawTerm, C))
   | RawStmtDefineConst
       C
@@ -51,7 +51,7 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtDeclare C Hint C [(C, RT.RawDecl)]
+  | RawStmtDeclare C Hint C [(C, RT.TopDefHeader)]
 
 type RawConsInfo a =
   (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))

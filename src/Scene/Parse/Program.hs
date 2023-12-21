@@ -105,20 +105,8 @@ parseDefine' opacity = do
         P.keyword "define"
       O.Clear ->
         P.keyword "inline"
-  m <- P.getCurrentHint
-  (((_, (name, c)), impArgs, expArgs, codType), (c2, (e, cCont))) <- parseTopDefInfo
-  name' <- lift $ Locator.attachCurrentLocator name
-  let stmtKind = SK.Normal opacity
-  let decl =
-        RT.RawDecl
-          { loc = m,
-            name = (name', c),
-            isConstLike = False,
-            impArgs = impArgs,
-            expArgs = expArgs,
-            cod = codType
-          }
-  return (RawStmtDefine c1 stmtKind decl (c2, e), cCont)
+  (decl, (c2, (e, cCont))) <- parseTopDefInfo Locator.attachCurrentLocator
+  return (RawStmtDefine c1 (SK.Normal opacity) decl (c2, e), cCont)
 
 parseData :: P.Parser (RawStmt, C)
 parseData = do
@@ -154,17 +142,6 @@ parseDefineDataClause = do
   let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
   return ((m, consName, isConstLike, consArgs), c)
-
--- parseDefineDataClause :: P.Parser (Hint, (BN.BaseName, C), IsConstLike, RD.ExpArgs)
--- parseDefineDataClause = do
---   m <- P.getCurrentHint
---   consName@(consName', _) <- P.baseName
---   unless (isConsName (BN.reify consName')) $ do
---     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
---   consArgsOrNone <- parseConsArgs
---   let consArgs = fromMaybe (Nothing, ([], [])) consArgsOrNone
---   let isConstLike = isNothing consArgsOrNone
---   return (m, consName, isConstLike, consArgs)
 
 parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), C)
 parseConsArgs = do

@@ -22,7 +22,6 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
-import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
@@ -47,7 +46,7 @@ data RawTermF a
   | Var Name
   | Pi (Args a) (Args a) C a
   | PiIntro (Args a) (Args a) C a
-  | PiIntroFix C (DefInfo a)
+  | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimExact C a
@@ -87,9 +86,9 @@ extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
 
-data RawDecl = RawDecl
+data RawDecl a = RawDecl
   { loc :: Hint,
-    name :: (DD.DefiniteDescription, C),
+    name :: (a, C),
     isConstLike :: IsConstLike,
     impArgs :: Args RawTerm,
     expArgs :: Args RawTerm,
@@ -99,15 +98,11 @@ data RawDecl = RawDecl
 type IfClause a =
   (C, (a, C), C, (a, C), C)
 
-type DefInfo a =
-  ((Hint, RawIdent), C, Args a, Args a, C, (a, C), C, (a, C))
+type DefInfo =
+  (RawDecl RawIdent, (RawTerm, C))
 
 type TopDefHeader =
-  ( (Hint, (BN.BaseName, C)),
-    Args RawTerm,
-    Args RawTerm,
-    (C, (RawTerm, C))
-  )
+  RawDecl DD.DefiniteDescription
 
 type TopDefInfo =
   (TopDefHeader, (C, ((RawTerm, C), C)))

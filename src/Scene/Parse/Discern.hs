@@ -108,7 +108,7 @@ discernStmt stmt = do
       declList' <- mapM (discernDecl . snd) declList
       return [WeakStmtDeclare m declList']
 
-discernDecl :: RT.RawDecl -> App (DE.Decl WT.WeakTerm)
+discernDecl :: RT.TopDefHeader -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
   let impArgs = RT.extractArgs $ RT.impArgs decl
   let expArgs = RT.extractArgs $ RT.expArgs decl
@@ -196,10 +196,14 @@ discern nenv term =
       (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ ((mx, x), _, impArgs, expArgs, _, codType, _, (e, _)) -> do
-      (impArgs', nenv') <- discernBinder nenv $ RT.extractArgs impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
-      codType' <- discern nenv'' $ fst codType
+    m :< RT.PiIntroFix _ (decl, (e, _)) -> do
+      let impArgs = RT.extractArgs $ RT.impArgs decl
+      let expArgs = RT.extractArgs $ RT.expArgs decl
+      let mx = RT.loc decl
+      let (x, _) = RT.name decl
+      (impArgs', nenv') <- discernBinder nenv impArgs
+      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      codType' <- discern nenv'' $ fst $ snd $ RT.cod decl
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
       e' <- discern nenv''' e

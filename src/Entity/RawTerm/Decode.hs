@@ -56,10 +56,18 @@ toDoc term =
       let impArgs' = impArgsToDoc $ extractArgs impArgs
       let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
       D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
-    _ :< PiIntroFix _ ((_, k), _, impArgs, expArgs, _, cod, _, (body, _)) -> do
-      let impArgs' = impArgsToDoc $ extractArgs impArgs
-      let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
-      D.join [D.text "define ", D.text k, impArgs', expArgs', typeAnnot (fst cod), D.text " ", recBody body]
+    _ :< PiIntroFix _ (decl, (body, _)) -> do
+      let impArgs' = impArgsToDoc $ extractArgs $ impArgs decl
+      let expArgs' = expPiIntroArgsToDoc $ extractArgs $ expArgs decl
+      D.join
+        [ D.text "define ",
+          D.text (fst $ name decl),
+          impArgs',
+          expArgs',
+          typeAnnot (fst $ snd $ cod decl),
+          D.text " ",
+          recBody body
+        ]
     _ :< PiElim e _ args -> do
       let e' = toDoc e
       let args' = map toDoc $ SE.extract args
