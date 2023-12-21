@@ -555,10 +555,10 @@ decodePattern pat = do
       let name' = nameToDoc name
       case args of
         RP.Paren patList -> do
-          let patList' = map (decodePattern . snd . fst . snd) patList
+          let patList' = map (decodePattern . snd) $ SE.extract patList
           D.join [name', D.text "(", D.commaSeqH patList', D.text ")"]
-        RP.Of _ _ kvs -> do
-          let kvs' = map (\(_, (k, ((_, v), _))) -> (k, v)) kvs
+        RP.Of kvs -> do
+          let kvs' = map (\(k, (_, _, v)) -> (k, v)) $ SE.extract kvs
           case getHorizontalDocList' kvs' of
             Just vs' ->
               D.join [name', D.text " of {", D.commaSeqH vs', D.text "}"]
@@ -566,7 +566,7 @@ decodePattern pat = do
               let kvs'' = map kvToDoc' kvs'
               D.join [name', D.text " of {", D.line, D.listSeq kvs'', D.line, D.text "}"]
     RP.ListIntro patList -> do
-      let patList' = map (decodePattern . snd . fst . snd) patList
+      let patList' = map (decodePattern . snd) $ SE.extract patList
       D.join [D.text "[", D.commaSeqH patList', D.text "]"]
 
 getHorizontalDocList' :: [(T.Text, RP.RawPattern)] -> Maybe [D.Doc]

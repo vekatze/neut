@@ -460,7 +460,6 @@ rawTermMatch = do
       ]
   es <- sepList spaceConsumer (delimiter ",") rawTermBasic
   (patternRowList, c) <- series Nothing SE.Brace SE.Hyphen $ rawTermPatternRow (length es)
-  -- (c2, (patternRowList, c3)) <- betweenBrace $ manyList $ rawTermPatternRow (length es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
@@ -475,8 +474,6 @@ rawTermPatternRow patternSize = do
           <> "` doesn't match with its input size `"
           <> T.pack (show patternSize)
           <> "`"
-          <> "\n"
-          <> T.pack (show patternList)
   cArrow <- delimiter "=>"
   (body, c) <- rawExpr
   return ((patternList, cArrow, body), c)
@@ -495,7 +492,7 @@ rawTermPatternBasic =
 rawTermPatternListIntro :: Parser ((Hint, RP.RawPattern), C)
 rawTermPatternListIntro = do
   m <- getCurrentHint
-  (patList, c) <- argListBracket rawTermPattern
+  (patList, c) <- seriesBracket rawTermPattern
   return ((m, RP.ListIntro patList), c)
 
 parseName :: Parser ((Hint, Name), C)
@@ -509,27 +506,26 @@ rawTermPatternConsOrVar = do
   ((m, varOrLocator), c1) <- parseName
   choice
     [ do
-        (patArgs, c) <- argListParen rawTermPattern
+        (patArgs, c) <- seriesParen rawTermPattern
         return ((m, RP.Cons varOrLocator c1 (RP.Paren patArgs)), c),
       do
-        c2 <- keyword "of"
-        (c3, (kvs, c)) <- betweenBrace $ bulletListOrCommaSeq rawTermPatternKeyValuePair
-        return ((m, RP.Cons varOrLocator c1 (RP.Of c2 c3 kvs)), c),
+        (kvs, c) <- keyValueArgs rawTermPatternKeyValuePair
+        return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), c),
       do
         return ((m, RP.Var varOrLocator), [])
     ]
 
-rawTermPatternKeyValuePair :: Parser (Key, ((Hint, RP.RawPattern), C))
+rawTermPatternKeyValuePair :: Parser ((Key, (Hint, C, RP.RawPattern)), C)
 rawTermPatternKeyValuePair = do
   mFrom <- getCurrentHint
   (from, c1) <- symbol
   choice
     [ do
         c2 <- delimiter "="
-        (to, c) <- rawTermPattern
-        return (from, (to, c1 ++ c2 ++ c)),
+        ((mTo, to), c) <- rawTermPattern
+        return ((from, (mTo, c1 ++ c2, to)), c),
       do
-        return (from, ((mFrom, RP.Var (Var from)), [])) -- record rhyming
+        return ((from, (mFrom, [], RP.Var (Var from))), []) -- record rhyming
     ]
 
 rawTermIf :: Parser (RT.RawTerm, C)

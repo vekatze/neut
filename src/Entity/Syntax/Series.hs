@@ -6,6 +6,7 @@ module Entity.Syntax.Series
     emptySeries,
     emptySeriesPC,
     fromList,
+    fromList',
     assoc,
     getContainerPair,
     getSeparator,
@@ -55,6 +56,10 @@ emptySeriesPC =
 fromList :: Container -> Separator -> [a] -> Series a
 fromList container separator xs =
   Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator, container}
+
+fromList' :: [a] -> Series a
+fromList' =
+  fromList Paren Comma
 
 assoc :: Series (a, C) -> Series a
 assoc series = do

@@ -269,14 +269,14 @@ discern nenv term =
                     SE.Brace
                     SE.Hyphen
                     [ ( [ ( [],
-                            ((_m, RP.Cons exceptFail [] (RP.Paren [([], ((_m, RP.Var (Var err)), []))])), [])
+                            ((_m, RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(_m, RP.Var (Var err))]))), [])
                           )
                         ],
                         [],
                         m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)]
                       ),
                       ( [ ( [],
-                            ((_m, RP.Cons exceptPass [] (RP.Paren [([], ((mx, pat), []))])), [])
+                            ((_m, RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)]))), [])
                           )
                         ],
                         [],
@@ -704,7 +704,7 @@ discernPattern (m, pat) = do
           "the constructor `" <> showName cons <> "` can't have any arguments"
       case mArgs of
         RP.Paren args -> do
-          (args', nenvList) <- mapAndUnzipM (discernPattern . fst . snd) args
+          (args', nenvList) <- mapAndUnzipM discernPattern $ SE.extract args
           let consInfo =
                 PAT.ConsInfo
                   { consDD = consName,
@@ -715,9 +715,9 @@ discernPattern (m, pat) = do
                     args = args'
                   }
           return ((m, PAT.Cons consInfo), concat nenvList)
-        RP.Of _ _ mkvs -> do
-          let (ks, mvcs) = unzip $ map snd mkvs
-          let mvs = map fst mvcs
+        RP.Of mkvs -> do
+          let (ks, mvcs) = unzip $ SE.extract mkvs
+          let mvs = map (\(mv, _, v) -> (mv, v)) mvcs
           ensureFieldLinearity m ks S.empty S.empty
           (_, keyList) <- KeyArg.lookup m consName
           defaultKeyMap <- constructDefaultKeyMap m keyList
@@ -738,13 +738,13 @@ discernPattern (m, pat) = do
     RP.ListIntro patList -> do
       listNil <- Throw.liftEither $ DD.getLocatorPair m coreListNil
       listCons <- locatorToName m coreListCons
-      discernPattern $ foldListAppPat m listNil listCons patList
+      discernPattern $ foldListAppPat m listNil listCons $ SE.extract patList
 
 foldListAppPat ::
   Hint ->
   L.Locator ->
   Name ->
-  [(C, ((Hint, RP.RawPattern), C))] ->
+  [(Hint, RP.RawPattern)] ->
   (Hint, RP.RawPattern)
 foldListAppPat m listNil listCons es =
   case es of
@@ -752,7 +752,7 @@ foldListAppPat m listNil listCons es =
       (m, RP.Var $ Locator listNil)
     pat : rest -> do
       let rest' = foldListAppPat m listNil listCons rest
-      (m, RP.Cons listCons [] (RP.Paren [pat, ([], (rest', []))]))
+      (m, RP.Cons listCons [] (RP.Paren (SE.fromList' [pat, rest'])))
 
 constructDefaultKeyMap :: Hint -> [Key] -> App (Map.HashMap Key (Hint, RP.RawPattern))
 constructDefaultKeyMap m keyList = do

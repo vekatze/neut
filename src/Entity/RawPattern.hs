@@ -9,17 +9,16 @@ import Entity.C
 import Entity.Hint hiding (new)
 import Entity.Key
 import Entity.Name
+import Entity.Syntax.Series qualified as SE
 
 data RawPattern
   = Var Name
   | Cons Name C ConsArgs
-  | ListIntro [(C, ((Hint, RawPattern), C))]
-  deriving (Show)
+  | ListIntro (SE.Series (Hint, RawPattern))
 
 data ConsArgs
-  = Paren [(C, ((Hint, RawPattern), C))]
-  | Of C C [(C, (Key, ((Hint, RawPattern), C)))]
-  deriving (Show)
+  = Paren (SE.Series (Hint, RawPattern))
+  | Of (SE.Series (Key, (Hint, C, RawPattern)))
 
 type RawPatternRow a =
   ([(C, ((Hint, RawPattern), C))], C, a)
