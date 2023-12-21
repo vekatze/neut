@@ -153,16 +153,16 @@ rawTermPiOrConsOrAscOrBasic = do
       return (basic, cBasic)
     ]
 
-rawTermKeyValuePair :: Parser (Hint, Key, C, C, (RT.RawTerm, C))
+rawTermKeyValuePair :: Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair = do
   ((m, key), c1) <- var
   choice
     [ do
         c2 <- delimiter "="
-        value <- rawExpr
-        return (m, key, c1, c2, value),
+        (value, c) <- rawExpr
+        return ((m, key, c1, c2, value), c),
       do
-        return (m, key, c1, [], (m :< RT.Var (Var key), []))
+        return ((m, key, c1, [], m :< RT.Var (Var key)), [])
     ]
 
 rawTermLet :: Hint -> Parser (RT.RawTerm, C)
@@ -192,7 +192,6 @@ rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
   c1 <- keyword "use"
   (e, c2) <- rawTerm
-  -- xs@(ys, _) <- argListBrace preBinder
   xs@(ys, _) <- seriesBrace preBinder
   c3 <- delimiter "in"
   lift $ ensureIdentLinearity S.empty $ map (\(_, (mx, x, _, _, _)) -> (mx, x)) $ SE.elems ys
@@ -621,17 +620,25 @@ rawTermPiElimOrSimple = do
     _ :< RT.Var name -> do
       choice
         [ do
-            c2 <- keyword "of"
-            (c3, (kvs, c4)) <- betweenBrace $ do
-              choice
-                [ someList rawTermKeyValuePair,
-                  commaList spaceConsumer rawTermKeyValuePair
-                ]
-            return (m :< RT.PiElimByKey name c1 c2 c3 kvs, c4),
+            (kvs, c) <- keyValueArgs rawTermKeyValuePair
+            return (m :< RT.PiElimByKey name c1 kvs, c),
           rawTermPiElimCont m ec
         ]
     _ -> do
       rawTermPiElimCont m ec
+
+keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
+keyValueArgs p = do
+  c1 <- keyword "of"
+  choice
+    [ try $ do
+        (kvs, c) <- series (Just ("of", c1)) SE.Brace SE.Hyphen p
+        if SE.isEmpty kvs
+          then failure Nothing (S.fromList [asLabel "bullet list"])
+          else return (kvs, c),
+      do
+        series (Just ("of", c1)) SE.Brace SE.Comma p
+    ]
 
 rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
 rawTermPiElimCont m ec = do

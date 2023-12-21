@@ -10,6 +10,7 @@ module Entity.Syntax.Series
     getContainerPair,
     getSeparator,
     extract,
+    isEmpty,
   )
 where
 
@@ -95,3 +96,7 @@ getSeparator sep =
 extract :: Series a -> [a]
 extract series =
   map snd $ elems series
+
+isEmpty :: Series a -> Bool
+isEmpty series =
+  null $ elems series
