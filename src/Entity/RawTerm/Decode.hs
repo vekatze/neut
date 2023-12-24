@@ -109,7 +109,7 @@ toDoc term =
               Try -> "try"
               Bind -> "bind"
       let mxt' = letArgToDoc mxt
-      let noeticVarList' = decodeNoeticVarList $ map (fst . snd) noeticVarList
+      let noeticVarList' = decodeNoeticVarList $ SE.extract noeticVarList
       let e' = toDoc e
       let cont' = toDoc cont
       if isMultiLine [mxt']

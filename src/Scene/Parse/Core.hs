@@ -228,10 +228,51 @@ series prefix container sep p = do
           trailingComment = trail,
           prefix = prefix,
           separator = sep,
-          container = container
+          container = Just container
         },
       c2
     )
+
+series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
+series' prefix container sep p = do
+  let (opener, closer) = getParserPair container
+  c1 <- opener
+  (vs, trail) <- _series c1 sep p
+  c2 <- closer
+  return
+    ( SE.Series
+        { elems = vs,
+          trailingComment = trail,
+          prefix = prefix,
+          separator = sep,
+          container = Just container
+        },
+      c2
+    )
+
+bareSeries :: SE.Prefix -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a)
+bareSeries prefix sep p = do
+  (vs, trail) <- _series [] sep p
+  return $
+    SE.Series
+      { elems = vs,
+        trailingComment = trail,
+        prefix = prefix,
+        separator = sep,
+        container = Nothing
+      }
+
+getParserPair :: SE.Container -> (Parser C, Parser C)
+getParserPair container =
+  case container of
+    SE.Paren ->
+      (delimiter "(", delimiter ")")
+    SE.Brace ->
+      (delimiter "{", delimiter "}")
+    SE.Bracket ->
+      (delimiter "[", delimiter "]")
+    SE.Angle ->
+      (delimiter "<", delimiter ">")
 
 seriesParen :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesParen =

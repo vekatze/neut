@@ -9,11 +9,18 @@ import Entity.Syntax.Series
 decode :: Series D.Doc -> D.Doc
 decode series = do
   let prefix' = decodePrefix series
-  let (open, close) = getContainerPair $ container series
   case (container series, null (elems series)) of
-    (Angle, True) ->
+    (Just Angle, True) ->
       D.Nil
-    _ ->
+    (Nothing, True) ->
+      D.Nil
+    (Nothing, _) ->
+      D.join
+        [ prefix',
+          intercalate (separator series) (elems series) (trailingComment series)
+        ]
+    (Just k, _) -> do
+      let (open, close) = getContainerPair k
       D.join
         [ prefix',
           D.text open,

@@ -176,15 +176,18 @@ rawTermLet mLet = do
   (c3, t) <- rawTermLetVarAscription mx
   noeticVarList <-
     choice
-      [ commaList (keyword "on") rawTermNoeticVar,
-        return []
+      [ do
+          c <- keyword "on"
+          vs <- bareSeries Nothing SE.Comma rawTermNoeticVar
+          return $ SE.pushComment c vs,
+        return $ SE.emptySeries' Nothing SE.Comma
       ]
-  lift $ ensureIdentLinearity S.empty $ map (fst . snd) noeticVarList
-  c5 <- delimiter "="
-  (e1, _) <- rawExpr
+  c4 <- delimiter "="
+  lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
+  (e1, _) <- rawExpr -- fixme: don't discard comments
   c6 <- delimiter "in"
   (e2, _) <- rawExpr
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) noeticVarList c5 e1 c6 e2, [])
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) noeticVarList c4 e1 c6 e2, [])
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
@@ -346,11 +349,11 @@ rawTermMagicBase k parser = do
 rawTermMagicCast :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicCast m c = do
   rawTermMagicBase "cast" $ do
-    castFrom <- rawTerm
+    castFrom <- rawExpr
     c3 <- delimiter ","
-    castTo <- rawTerm
+    castTo <- rawExpr
     c4 <- delimiter ","
-    value <- rawTerm
+    value <- rawExpr
     return $ \c1 c2 -> m :< RT.Magic c (RT.Cast c1 (c2, castFrom) (c3, castTo) (c4, value))
 
 rawTermMagicStore :: Hint -> C -> Parser (RT.RawTerm, C)
@@ -358,9 +361,9 @@ rawTermMagicStore m c = do
   rawTermMagicBase "store" $ do
     lt <- lowType
     c3 <- delimiter ","
-    value <- rawTerm
+    value <- rawExpr
     c4 <- delimiter ","
-    pointer <- rawTerm
+    pointer <- rawExpr
     return $ \c1 c2 -> m :< RT.Magic c (RT.Store c1 (c2, lt) (c3, value) (c4, pointer))
 
 rawTermMagicLoad :: Hint -> C -> Parser (RT.RawTerm, C)
@@ -368,7 +371,7 @@ rawTermMagicLoad m c = do
   rawTermMagicBase "load" $ do
     lt <- lowType
     c3 <- delimiter ","
-    pointer <- rawTerm
+    pointer <- rawExpr
     return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer))
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
@@ -378,7 +381,7 @@ rawTermMagicExternal m c = do
     let extFunName' = EN.ExternalName extFunName
     es <- many $ do
       c3 <- delimiter ","
-      e <- rawTerm
+      e <- rawExpr
       return (c3, e)
     varArgAndTypeList <-
       choice

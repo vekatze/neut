@@ -291,10 +291,10 @@ discern nenv term =
           Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
-          discernLet nenv m (mx, x, c1, c2, t) (map (fst . snd) mys) e1 (modifier False e2)
+          discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier False e2)
         RT.Noetic -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
-          discernLet nenv m (mx, x, c1, c2, t) (map (fst . snd) mys) e1 (modifier True e2)
+          discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2)
     m :< RT.Prim prim -> do
       prim' <- mapM (discern nenv) prim
       return $ m :< WT.Prim prim'
@@ -448,7 +448,16 @@ ascribe m t e = do
 
 bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
 bind (m, x, c1, c2, t) e cont =
-  m :< RT.Let RT.Plain [] (m, RP.Var (Var x), c1, c2, (t, [])) [] [] e [] cont
+  m
+    :< RT.Let
+      RT.Plain
+      []
+      (m, RP.Var (Var x), c1, c2, (t, []))
+      (SE.emptySeries' Nothing SE.Comma)
+      []
+      e
+      []
+      cont
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =

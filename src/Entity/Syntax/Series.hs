@@ -4,9 +4,11 @@ module Entity.Syntax.Series
     Container (..),
     Prefix,
     emptySeries,
+    emptySeries',
     emptySeriesPC,
     fromList,
     fromList',
+    pushComment,
     assoc,
     getContainerPair,
     getSeparator,
@@ -36,7 +38,7 @@ data Series a = Series
   { elems :: [(C, a)],
     trailingComment :: C,
     prefix :: Prefix,
-    container :: Container,
+    container :: Maybe Container,
     separator :: Separator
   }
 
@@ -46,6 +48,10 @@ instance Functor Series where
 
 emptySeries :: Container -> Separator -> Series a
 emptySeries container separator =
+  Series {elems = [], trailingComment = [], prefix = Nothing, separator, container = Just container}
+
+emptySeries' :: Maybe Container -> Separator -> Series a
+emptySeries' container separator =
   Series {elems = [], trailingComment = [], prefix = Nothing, separator, container}
 
 -- pc: paren comma
@@ -55,11 +61,19 @@ emptySeriesPC =
 
 fromList :: Container -> Separator -> [a] -> Series a
 fromList container separator xs =
-  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator, container}
+  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator, container = Just container}
 
 fromList' :: [a] -> Series a
 fromList' =
   fromList Paren Comma
+
+pushComment :: C -> Series a -> Series a
+pushComment c series =
+  case elems series of
+    [] ->
+      series {trailingComment = c ++ trailingComment series}
+    (c1, x1) : rest ->
+      series {elems = (c ++ c1, x1) : rest}
 
 assoc :: Series (a, C) -> Series a
 assoc series = do
