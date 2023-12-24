@@ -173,7 +173,7 @@ rawTermLet mLet = do
         keyword "tie" >>= \c1 -> return (RT.Noetic, c1)
       ]
   ((mx, patInner), c2) <- rawTermPattern
-  (c3, t) <- rawTermLetVarAscription mx
+  (c3, (t, c4)) <- rawTermLetVarAscription mx
   noeticVarList <-
     choice
       [ do
@@ -182,12 +182,12 @@ rawTermLet mLet = do
           return $ SE.pushComment c vs,
         return $ SE.emptySeries' Nothing SE.Comma
       ]
-  c4 <- delimiter "="
+  c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
   (e1, _) <- rawExpr -- fixme: don't discard comments
   c6 <- delimiter "in"
   (e2, _) <- rawExpr
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) noeticVarList c4 e1 c6 e2, [])
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 e2, [])
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do

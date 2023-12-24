@@ -101,7 +101,7 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind _ mxt noeticVarList _ e _ cont -> do
+    _ :< Let letKind _ mxt _ noeticVarList _ e _ cont -> do
       let keyword =
             case letKind of
               Plain -> "let"
@@ -374,8 +374,8 @@ piIntroArgToDoc (_, x, _, _, t) = do
     _ -> do
       D.join [x', typeAnnot t]
 
-letArgToDoc :: (a, RP.RawPattern, C, C, (RawTerm, C)) -> D.Doc
-letArgToDoc (_, x, _, _, (t, _)) = do
+letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
+letArgToDoc (_, x, _, _, t) = do
   let x' = decodePattern x
   case t of
     _ :< Hole {} ->
