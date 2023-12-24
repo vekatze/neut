@@ -1,6 +1,5 @@
 module Entity.Syntax.Series.Decode (decode) where
 
-import Data.Bifunctor
 import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
@@ -10,8 +9,6 @@ decode :: Series D.Doc -> D.Doc
 decode series = do
   let prefix' = decodePrefix series
   case (container series, null (elems series)) of
-    (Just Angle, True) ->
-      D.Nil
     (Nothing, True) ->
       D.Nil
     (Nothing, _) ->
@@ -19,6 +16,8 @@ decode series = do
         [ prefix',
           intercalate (separator series) (elems series) (trailingComment series)
         ]
+    (Just Angle, True) ->
+      D.Nil
     (Just k, _) -> do
       let (open, close) = getContainerPair k
       D.join
@@ -31,25 +30,24 @@ decode series = do
 intercalate :: Separator -> [(C, D.Doc)] -> C -> D.Doc
 intercalate sep elems trailingComment = do
   let trailingComment' = C.decode trailingComment
-  let elems' = map (first C.decode) elems
+  let elems' = map (uncurry attachComment) elems
   case sep of
     Comma -> do
-      let (cs, ds) = unzip elems'
-      if D.isMulti (cs ++ ds ++ [trailingComment'])
-        then D.join [D.nest D.indent $ D.join [D.line, commaSeqV elems trailingComment], D.line]
-        else D.commaSeqH ds
+      if D.isMulti (elems' ++ [trailingComment'])
+        then D.join [D.nest D.indent $ D.join [D.line, commaSeqV elems' trailingComment], D.line]
+        else D.commaSeqH $ map snd elems
     Hyphen ->
       D.join [listSeq elems trailingComment, D.line]
 
-commaSeqV :: [(C, D.Doc)] -> C -> D.Doc
+commaSeqV :: [D.Doc] -> C -> D.Doc
 commaSeqV elems trail =
   case elems of
     [] ->
       C.decode trail
-    [(c, d)] -> do
-      D.join [C.asPrefix c, d, C.asSuffix trail]
-    (c, d) : rest -> do
-      D.join [C.asPrefix c, d, D.text ",", D.line, commaSeqV rest trail]
+    [d] -> do
+      D.join [d, C.asSuffix trail]
+    d : rest -> do
+      D.join [d, D.text ",", D.line, commaSeqV rest trail]
 
 listSeq :: [(C, D.Doc)] -> C -> D.Doc
 listSeq elems trail =
@@ -90,3 +88,7 @@ decodeListItem (c, d) = do
           D.line,
           D.join [D.text "- ", D.nest D.indent d]
         ]
+
+attachComment :: C -> D.Doc -> D.Doc
+attachComment c doc =
+  D.join [C.asPrefix c, doc]

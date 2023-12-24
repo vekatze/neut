@@ -18,6 +18,7 @@ import Entity.Hint
 import Entity.Locator qualified as Locator
 import Entity.LowType qualified as LT
 import Entity.Name qualified as N
+import Entity.Piece qualified as PI
 import Entity.PrimNumSize.ToInt qualified as PNS
 import Entity.PrimOp qualified as P
 import Entity.PrimOp.BinaryOp qualified as BinaryOp
@@ -45,14 +46,13 @@ toDoc term =
       D.text "tau"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
-    _ :< Pi impArgs expArgs _ cod -> do
-      let impArgs' = impArgsToDoc $ extractArgs impArgs
-      let expArgs' = expPiArgsToDoc $ extractArgs expArgs
-      let cod' = toDoc cod
-      let arrow = if isMultiLine [impArgs', expArgs'] then D.join [D.line, D.text "->"] else D.text " -> "
-      if isMultiLine [cod']
-        then D.join [impArgs', expArgs', arrow, D.line, cod']
-        else D.join [impArgs', expArgs', arrow, cod']
+    _ :< Pi (impArgs, c1) (expArgs, c2) c cod -> do
+      PI.arrange
+        [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+          PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
+          PI.delimiter $ attachComment c2 $ D.text "->",
+          PI.inject $ attachComment c $ toDoc cod
+        ]
     _ :< PiIntro impArgs expArgs _ body -> do
       let impArgs' = impArgsToDoc $ extractArgs impArgs
       let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
@@ -397,10 +397,6 @@ argsToDoc argToDoc args = do
     then D.commaSeqV args'
     else D.commaSeqH args'
 
-piArgsToDoc :: [RawBinder RawTerm] -> D.Doc
-piArgsToDoc expArgs = do
-  argsToDoc piArgToDoc expArgs
-
 piIntroArgsToDoc :: [RawBinder RawTerm] -> D.Doc
 piIntroArgsToDoc = do
   argsToDoc piIntroArgToDoc
@@ -415,13 +411,6 @@ impArgsToDoc impArgs = do
         then do
           D.join [D.text "<", D.line, D.nest D.indent impArgs', D.line, D.text ">"]
         else D.join [D.text "<", impArgs', D.text ">"]
-
-expPiArgsToDoc :: [RawBinder RawTerm] -> D.Doc
-expPiArgsToDoc expArgs = do
-  let expArgs' = piArgsToDoc expArgs
-  if isMultiLine [expArgs']
-    then D.join [D.text "(", D.line, D.nest D.indent expArgs', D.line, D.text ")"]
-    else D.join [D.text "(", expArgs', D.text ")"]
 
 expPiIntroArgsToDoc :: [RawBinder RawTerm] -> D.Doc
 expPiIntroArgsToDoc expArgs = do
@@ -600,3 +589,7 @@ kvToDoc' (name, v) = do
   if isMultiLine [v']
     then D.join [D.text name, D.text " =", D.nest D.indent $ D.join [D.line, v']]
     else D.join [D.text name, D.text " = ", v']
+
+attachComment :: C -> D.Doc -> D.Doc
+attachComment c doc =
+  D.join [C.asPrefix c, doc]
