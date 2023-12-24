@@ -235,15 +235,16 @@ discern nenv term =
       consArgs' <- mapM (discern nenv) consArgs
       return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
-      let ms = map (\(_, (me :< _, _)) -> me) es
-      os <- mapM (const $ Gensym.newIdentFromText "match") es -- os: occurrences
-      es' <- mapM (discern nenv . fst . snd >=> castFromNoemaIfNecessary isNoetic) es
-      ts <- mapM (const $ Gensym.newHole m []) es'
+      let es' = SE.extract es
+      let ms = map (\(me :< _) -> me) es'
+      os <- mapM (const $ Gensym.newIdentFromText "match") es' -- os: occurrences
+      es'' <- mapM (discern nenv >=> castFromNoemaIfNecessary isNoetic) es'
+      ts <- mapM (const $ Gensym.newHole m []) es''
       patternMatrix' <- discernPatternMatrix nenv $ SE.extract patternMatrix
       ensurePatternMatrixSanity patternMatrix'
       let os' = zip ms os
       decisionTree <- compilePatternMatrix nenv isNoetic (V.fromList os') patternMatrix'
-      return $ m :< WT.DataElim isNoetic (zip3 os es' ts) decisionTree
+      return $ m :< WT.DataElim isNoetic (zip3 os es'' ts) decisionTree
     m :< RT.Noema t -> do
       t' <- discern nenv t
       return $ m :< WT.Noema t'
@@ -267,7 +268,7 @@ discern nenv term =
               :< RT.DataElim
                 []
                 False
-                [([], (e1', []))]
+                (SE.fromList'' Nothing SE.Comma [e1'])
                 ( SE.fromList
                     SE.Brace
                     SE.Hyphen
@@ -437,7 +438,7 @@ getContinuationModifier pat =
               :< RT.DataElim
                 []
                 isNoetic
-                [([], (mCont :< RT.Var (Var tmp), []))]
+                (SE.fromList'' Nothing SE.Comma [mCont :< RT.Var (Var tmp)])
                 (SE.fromList SE.Brace SE.Hyphen [([([], (pat, []))], [], cont)])
         )
 
@@ -511,7 +512,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
         :< RT.DataElim
           []
           False
-          [([], (ifCond, []))]
+          (SE.fromList'' Nothing SE.Comma [ifCond])
           ( SE.fromList
               SE.Brace
               SE.Hyphen
@@ -537,7 +538,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
         :< RT.DataElim
           []
           False
-          [([], (ifCond, []))]
+          (SE.fromList'' Nothing SE.Comma [ifCond])
           ( SE.fromList
               SE.Brace
               SE.Hyphen

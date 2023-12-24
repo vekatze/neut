@@ -450,8 +450,8 @@ rawTermMatch = do
           c1 <- keyword "match"
           return (c1, False)
       ]
-  es <- sepList spaceConsumer (delimiter ",") rawTermBasic
-  (patternRowList, c) <- seriesBraceList $ rawTermPatternRow (length es)
+  es <- bareSeries Nothing SE.Comma rawTermBasic
+  (patternRowList, c) <- seriesBraceList $ rawTermPatternRow (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
