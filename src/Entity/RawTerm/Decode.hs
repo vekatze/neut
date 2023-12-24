@@ -553,7 +553,7 @@ decodePatternRowList =
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
 decodePatternRow (patArgs, _, body) = do
-  let patArgs' = map (decodePattern . snd . fst . snd) patArgs
+  let patArgs' = map (decodePattern . snd) $ SE.extract patArgs
   let body' = toDoc body
   D.join [D.commaSeqH patArgs', D.text " =>", D.line, body']
 

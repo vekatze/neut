@@ -457,12 +457,13 @@ rawTermMatch = do
 rawTermPatternRow :: Int -> Parser (RP.RawPatternRow RT.RawTerm, C)
 rawTermPatternRow patternSize = do
   m <- getCurrentHint
-  patternList <- commaList spaceConsumer rawTermPattern
-  unless (length patternList == patternSize) $ do
+  patternList <- bareSeries Nothing SE.Comma rawTermPattern
+  let len = length $ SE.extract patternList
+  unless (len == patternSize) $ do
     lift $
       Throw.raiseError m $
         "the size of the pattern row `"
-          <> T.pack (show (length patternList))
+          <> T.pack (show len)
           <> "` doesn't match with its input size `"
           <> T.pack (show patternSize)
           <> "`"

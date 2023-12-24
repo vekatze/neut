@@ -268,21 +268,15 @@ discern nenv term =
               :< RT.DataElim
                 []
                 False
-                (SE.fromList'' Nothing SE.Comma [e1'])
+                (SE.fromList'' [e1'])
                 ( SE.fromList
                     SE.Brace
                     SE.Hyphen
-                    [ ( [ ( [],
-                            ((_m, RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(_m, RP.Var (Var err))]))), [])
-                          )
-                        ],
+                    [ ( SE.fromList'' [(_m, RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(_m, RP.Var (Var err))])))],
                         [],
                         m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)]
                       ),
-                      ( [ ( [],
-                            ((_m, RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)]))), [])
-                          )
-                        ],
+                      ( SE.fromList'' [(_m, RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
                         [],
                         e2
                       )
@@ -438,8 +432,8 @@ getContinuationModifier pat =
               :< RT.DataElim
                 []
                 isNoetic
-                (SE.fromList'' Nothing SE.Comma [mCont :< RT.Var (Var tmp)])
-                (SE.fromList SE.Brace SE.Hyphen [([([], (pat, []))], [], cont)])
+                (SE.fromList'' [mCont :< RT.Var (Var tmp)])
+                (SE.fromList SE.Brace SE.Hyphen [(SE.fromList'' [pat], [], cont)])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
@@ -512,21 +506,15 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
         :< RT.DataElim
           []
           False
-          (SE.fromList'' Nothing SE.Comma [ifCond])
+          (SE.fromList'' [ifCond])
           ( SE.fromList
               SE.Brace
               SE.Hyphen
-              [ ( [ ( [],
-                      ((blur m, RP.Var true), [])
-                    )
-                  ],
+              [ ( SE.fromList'' [(blur m, RP.Var true)],
                   [],
                   ifBody
                 ),
-                ( [ ( [],
-                      ((blur m, RP.Var false), [])
-                    )
-                  ],
+                ( SE.fromList'' [(blur m, RP.Var false)],
                   [],
                   elseBody
                 )
@@ -538,12 +526,12 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
         :< RT.DataElim
           []
           False
-          (SE.fromList'' Nothing SE.Comma [ifCond])
+          (SE.fromList'' [ifCond])
           ( SE.fromList
               SE.Brace
               SE.Hyphen
-              [ ([([], ((blur m, RP.Var true), []))], [], ifBody),
-                ([([], ((blur m, RP.Var false), []))], [], cont)
+              [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody),
+                (SE.fromList'' [(blur m, RP.Var false)], [], cont)
               ]
           )
 
@@ -632,14 +620,13 @@ discernPatternRow ::
   NominalEnv ->
   RP.RawPatternRow RT.RawTerm ->
   App (PAT.PatternRow ([Ident], WT.WeakTerm))
-discernPatternRow nenv (patVec, _, body) = do
-  let patList = patVec
-  (patList', body') <- discernPatternRow' nenv patList [] body
+discernPatternRow nenv (patList, _, body) = do
+  (patList', body') <- discernPatternRow' nenv (SE.extract patList) [] body
   return (V.fromList patList', body')
 
 discernPatternRow' ::
   NominalEnv ->
-  [(C, ((Hint, RP.RawPattern), C))] ->
+  [(Hint, RP.RawPattern)] ->
   NominalEnv ->
   RT.RawTerm ->
   App ([(Hint, PAT.Pattern)], ([Ident], WT.WeakTerm))
@@ -650,7 +637,7 @@ discernPatternRow' nenv patList newVarList body = do
       nenv' <- joinNominalEnv newVarList nenv
       body' <- discern nenv' body
       return ([], ([], body'))
-    (_, (pat, _)) : rest -> do
+    pat : rest -> do
       (pat', varsInPat) <- discernPattern pat
       (rest', body') <- discernPatternRow' nenv rest (varsInPat ++ newVarList) body
       return (pat' : rest', body')

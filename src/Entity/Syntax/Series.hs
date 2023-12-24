@@ -68,9 +68,9 @@ fromList' :: [a] -> Series a
 fromList' =
   fromList Paren Comma
 
-fromList'' :: Maybe Container -> Separator -> [a] -> Series a
-fromList'' container separator xs =
-  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator, container}
+fromList'' :: [a] -> Series a
+fromList'' xs =
+  Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator = Comma, container = Nothing}
 
 pushComment :: C -> Series a -> Series a
 pushComment c series =
