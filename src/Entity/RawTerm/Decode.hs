@@ -361,7 +361,10 @@ piArgToDoc (_, x, c1, c2, t) = do
     then attachComment (c1 ++ c2) t'
     else do
       let x' = D.text x
-      D.join [x', attachComment (c1 ++ c2) $ typeAnnot t]
+      PI.arrange
+        [ PI.symbol x',
+          PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
+        ]
 
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
 piIntroArgToDoc (_, x, c1, c2, t) = do
@@ -370,7 +373,10 @@ piIntroArgToDoc (_, x, c1, c2, t) = do
     _ :< Hole {} ->
       attachComment (c1 ++ c2) x'
     _ -> do
-      D.join [x', attachComment (c1 ++ c2) $ typeAnnot t]
+      PI.arrange
+        [ PI.symbol x',
+          PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
+        ]
 
 decDecl :: RT.RawDecl RawIdent -> D.Doc
 decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =

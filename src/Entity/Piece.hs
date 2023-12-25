@@ -2,6 +2,7 @@ module Entity.Piece
   ( Piece (..),
     arrange,
     container,
+    symbol,
     delimiter,
     delimiterLeftAligned,
     inject,
@@ -45,6 +46,14 @@ delimiter doc =
   Piece
     { content = doc,
       singleModifier = _wrapBySpace,
+      multiModifier = _appendNewLine
+    }
+
+symbol :: D.Doc -> Piece
+symbol doc =
+  Piece
+    { content = doc,
+      singleModifier = id,
       multiModifier = _appendNewLine
     }
 
