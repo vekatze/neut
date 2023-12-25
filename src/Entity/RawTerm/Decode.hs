@@ -62,20 +62,13 @@ toDoc term =
             ],
           PI.arrange [PI.inject $ attachComment c $ toDoc body]
         ]
-    _ :< PiIntroFix _ def -> do
-      let decl = RT.decl def
-      let body = RT.body def
-      let impArgs' = impArgsToDoc $ extractArgs $ impArgs decl
-      let expArgs' = expPiIntroArgsToDoc $ extractArgs $ expArgs decl
-      D.join
-        [ D.text "define ",
-          D.text (fst $ name decl),
-          impArgs',
-          expArgs',
-          typeAnnot (snd $ cod decl),
-          D.text " ",
-          recBody body
-        ]
+    m :< PiIntroFix c def -> do
+      attachComment c $
+        D.join
+          [ D.text "define ",
+            decDecl $ RT.decl def,
+            toDoc $ m :< Brace (RT.leadingComment def) (RT.body def, RT.trailingComment def)
+          ]
     _ :< PiElim e _ args -> do
       let e' = toDoc e
       let args' = map toDoc $ SE.extract args
@@ -379,6 +372,16 @@ piIntroArgToDoc (_, x, c1, c2, t) = do
     _ -> do
       D.join [x', attachComment (c1 ++ c2) $ typeAnnot t]
 
+decDecl :: RT.RawDecl RawIdent -> D.Doc
+decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
+  PI.arrange
+    [ PI.inject $ attachComment c0 $ D.text name,
+      PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+      PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
+      PI.delimiterLeftAligned $ attachComment c2 $ D.text ":",
+      PI.inject $ attachComment c3 $ toDoc cod
+    ]
+
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (_, x, _, _, t) = do
   let x' = decodePattern x
@@ -394,42 +397,6 @@ typeAnnot t = do
   if isMultiLine [t']
     then D.join [D.text ":", D.line, t']
     else D.join [D.text ": ", t']
-
-argsToDoc :: (RawBinder RawTerm -> D.Doc) -> [RawBinder RawTerm] -> D.Doc
-argsToDoc argToDoc args = do
-  let args' = map argToDoc args
-  if isMultiLine args'
-    then D.commaSeqV args'
-    else D.commaSeqH args'
-
-piIntroArgsToDoc :: [RawBinder RawTerm] -> D.Doc
-piIntroArgsToDoc = do
-  argsToDoc piIntroArgToDoc
-
-impArgsToDoc :: [RawBinder RawTerm] -> D.Doc
-impArgsToDoc impArgs = do
-  if null impArgs
-    then D.Nil
-    else do
-      let impArgs' = piIntroArgsToDoc impArgs
-      if isMultiLine [impArgs']
-        then do
-          D.join [D.text "<", D.line, D.nest D.indent impArgs', D.line, D.text ">"]
-        else D.join [D.text "<", impArgs', D.text ">"]
-
-expPiIntroArgsToDoc :: [RawBinder RawTerm] -> D.Doc
-expPiIntroArgsToDoc expArgs = do
-  let expArgs' = piIntroArgsToDoc expArgs
-  if isMultiLine [expArgs']
-    then D.join [D.text "(", D.line, D.nest D.indent expArgs', D.line, D.text ")"]
-    else D.join [D.text "(", expArgs', D.text ")"]
-
-recBody :: RawTerm -> D.Doc
-recBody body = do
-  let body' = toDoc body
-  if isMultiLine [body']
-    then D.join [D.text "{", D.nest D.indent $ D.join [D.line, body'], D.line, D.text "}"]
-    else D.join [D.text "{", body', D.text "}"]
 
 nameToDoc :: N.Name -> D.Doc
 nameToDoc varOrLocator =

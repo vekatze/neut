@@ -3,6 +3,7 @@ module Entity.Piece
     arrange,
     container,
     delimiter,
+    delimiterLeftAligned,
     inject,
   )
 where
@@ -44,6 +45,14 @@ delimiter doc =
   Piece
     { content = doc,
       singleModifier = _wrapBySpace,
+      multiModifier = _appendNewLine
+    }
+
+delimiterLeftAligned :: D.Doc -> Piece
+delimiterLeftAligned doc =
+  Piece
+    { content = doc,
+      singleModifier = _appendSpace,
       multiModifier = _appendNewLine
     }
 
