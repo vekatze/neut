@@ -80,8 +80,11 @@ toDoc term =
         [ PI.inject $ nameToDoc name,
           PI.inject $ attachComment c $ SE.decode $ fmap decPiElimKey kvs
         ]
-    _ :< PiElimExact _ e ->
-      D.join [D.text "exact ", toDoc e]
+    _ :< PiElimExact c e ->
+      PI.arrange
+        [ PI.delimiterLeftAligned $ D.text "exact",
+          PI.inject $ attachComment c $ toDoc e
+        ]
     _ :< Data _ dd _ ->
       D.text $ DD.reify dd
     _ :< DataIntro _ dd _ _ ->
