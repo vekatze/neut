@@ -5,6 +5,7 @@ module Entity.Piece
     symbol,
     delimiter,
     delimiterLeftAligned,
+    clauseDelimiter,
     inject,
   )
 where
@@ -49,6 +50,14 @@ delimiter doc =
       multiModifier = _appendNewLine
     }
 
+clauseDelimiter :: D.Doc -> Piece
+clauseDelimiter doc =
+  Piece
+    { content = doc,
+      singleModifier = _wrapBySpace,
+      multiModifier = _appendNewLine'
+    }
+
 symbol :: D.Doc -> Piece
 symbol doc =
   Piece
@@ -76,6 +85,10 @@ inject doc =
 _appendNewLine :: D.Doc -> D.Doc
 _appendNewLine doc =
   D.join [doc, D.line]
+
+_appendNewLine' :: D.Doc -> D.Doc
+_appendNewLine' doc =
+  D.join [D.text " ", doc, D.line]
 
 _appendSpace :: D.Doc -> D.Doc
 _appendSpace doc =

@@ -15,6 +15,7 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Hint
+import Entity.Key
 import Entity.Locator qualified as Locator
 import Entity.LowType qualified as LT
 import Entity.Name qualified as N
@@ -69,13 +70,16 @@ toDoc term =
             decDecl $ RT.decl def,
             toDoc $ m :< Brace (RT.leadingComment def) (RT.body def, RT.trailingComment def)
           ]
-    _ :< PiElim e _ args -> do
-      let e' = toDoc e
-      let args' = map toDoc $ SE.extract args
-      D.join [piElimToDoc e' args']
-    _ :< PiElimByKey name _ kvs -> do
-      let kvs' = map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
-      D.join [piElimKeyToDoc name kvs']
+    _ :< PiElim e c args -> do
+      PI.arrange
+        [ PI.inject $ toDoc e,
+          PI.container $ attachComment c $ SE.decode $ fmap toDoc args
+        ]
+    _ :< PiElimByKey name c kvs -> do
+      PI.arrange
+        [ PI.inject $ nameToDoc name,
+          PI.inject $ attachComment c $ SE.decode $ fmap decPiElimKey kvs
+        ]
     _ :< PiElimExact _ e ->
       D.join [D.text "exact ", toDoc e]
     _ :< Data _ dd _ ->
@@ -301,7 +305,7 @@ toDoc term =
               D.line,
               D.text "}"
             ]
-        else D.join [D.text " {", e', D.text "}"]
+        else D.join [D.text "{", e', D.text "}"]
 
 decodeArgs :: Args RawTerm -> D.Doc
 decodeArgs (series, c) = do
@@ -434,35 +438,48 @@ piElimToDoc e args = do
     then D.join [e, D.text "(", D.nest D.indent $ D.join [D.line, D.commaSeqV args], D.line, D.text ")"]
     else D.join [e, D.text "(", D.commaSeqH args, D.text ")"]
 
-piElimKeyToDoc :: N.Name -> [(T.Text, RawTerm)] -> D.Doc
-piElimKeyToDoc name kvs = do
-  case getHorizontalDocList kvs of
-    Just vs' ->
-      D.join [nameToDoc name, D.text " of {", D.commaSeqH vs', D.text "}"]
-    Nothing -> do
-      let kvs' = map kvToDoc kvs
-      D.join [nameToDoc name, D.text " of {", D.line, D.listSeq kvs', D.line, D.text "}"]
+decPiElimKey :: (Hint, Key, C, C, RawTerm) -> D.Doc
+decPiElimKey (_, k, c1, c2, e) = do
+  case e of
+    _ :< Var (N.Var k')
+      | k == k' ->
+          D.text k
+    _ ->
+      PI.arrange
+        [ PI.inject $ D.text k,
+          PI.clauseDelimiter $ attachComment c1 $ D.text "=",
+          PI.inject $ attachComment c2 $ toDoc e
+        ]
 
-getHorizontalDocList :: [(T.Text, RawTerm)] -> Maybe [D.Doc]
-getHorizontalDocList kvs =
-  case kvs of
-    [] ->
-      Just []
-    (k, v) : rest ->
-      case v of
-        _ :< Var (N.Var name)
-          | k == name -> do
-              rest' <- getHorizontalDocList rest
-              return $ D.text name : rest'
-        _ ->
-          Nothing
+-- piElimKeyToDoc :: N.Name -> [(T.Text, RawTerm)] -> D.Doc
+-- piElimKeyToDoc name kvs = do
+--   case getHorizontalDocList kvs of
+--     Just vs' ->
+--       D.join [nameToDoc name, D.text " of {", D.commaSeqH vs', D.text "}"]
+--     Nothing -> do
+--       let kvs' = map kvToDoc kvs
+--       D.join [nameToDoc name, D.text " of {", D.line, D.listSeq kvs', D.line, D.text "}"]
 
-kvToDoc :: (T.Text, RawTerm) -> D.Doc
-kvToDoc (name, t) = do
-  let t' = toDoc t
-  if isMultiLine [t']
-    then D.join [D.text name, D.text " = ", D.line, t']
-    else D.join [D.text name, D.text " = ", t']
+-- getHorizontalDocList :: [(T.Text, RawTerm)] -> Maybe [D.Doc]
+-- getHorizontalDocList kvs =
+--   case kvs of
+--     [] ->
+--       Just []
+--     (k, v) : rest ->
+--       case v of
+--         _ :< Var (N.Var name)
+--           | k == name -> do
+--               rest' <- getHorizontalDocList rest
+--               return $ D.text name : rest'
+--         _ ->
+--           Nothing
+
+-- kvToDoc :: (T.Text, RawTerm) -> D.Doc
+-- kvToDoc (name, t) = do
+--   let t' = toDoc t
+--   if isMultiLine [t']
+--     then D.join [D.text name, D.text " = ", D.line, t']
+--     else D.join [D.text name, D.text " = ", t']
 
 lowTypeToDoc :: LT.LowType -> D.Doc
 lowTypeToDoc lt =
