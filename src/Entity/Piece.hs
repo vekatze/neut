@@ -2,7 +2,10 @@ module Entity.Piece
   ( Piece (..),
     arrange,
     container,
-    symbol,
+    parameter,
+    beforeBareSeries,
+    paren,
+    bareSeries,
     delimiter,
     delimiterLeftAligned,
     clauseDelimiter,
@@ -10,6 +13,7 @@ module Entity.Piece
   )
 where
 
+import Data.Text qualified as T
 import Entity.Doc qualified as D
 
 data Piece = Piece
@@ -58,12 +62,36 @@ clauseDelimiter doc =
       multiModifier = _appendNewLine'
     }
 
-symbol :: D.Doc -> Piece
-symbol doc =
+parameter :: D.Doc -> Piece
+parameter doc =
   Piece
     { content = doc,
       singleModifier = id,
-      multiModifier = _appendNewLine
+      multiModifier = id
+    }
+
+paren :: T.Text -> T.Text -> D.Doc -> Piece
+paren open close doc =
+  Piece
+    { content = doc,
+      singleModifier = \d -> D.join [D.text open, d, D.text close],
+      multiModifier = \d -> D.join [D.text open, D.nest D.indent $ D.join [D.line, d], D.line, D.text close]
+    }
+
+bareSeries :: D.Doc -> Piece
+bareSeries doc =
+  Piece
+    { content = doc,
+      singleModifier = _appendSpace,
+      multiModifier = \d -> D.join [D.nest D.indent $ D.join [D.line, d], D.line]
+    }
+
+beforeBareSeries :: D.Doc -> Piece
+beforeBareSeries doc =
+  Piece
+    { content = doc,
+      singleModifier = _appendSpace,
+      multiModifier = id
     }
 
 delimiterLeftAligned :: D.Doc -> Piece

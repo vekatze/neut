@@ -73,7 +73,7 @@ toDoc term =
     _ :< PiElim e c args -> do
       PI.arrange
         [ PI.inject $ toDoc e,
-          PI.container $ attachComment c $ SE.decode $ fmap toDoc args
+          PI.inject $ attachComment c $ SE.decode $ fmap toDoc args
         ]
     _ :< PiElimByKey name c kvs -> do
       PI.arrange
@@ -89,18 +89,13 @@ toDoc term =
       D.text $ DD.reify dd
     _ :< DataIntro _ dd _ _ ->
       D.text $ DD.reify dd
-    _ :< DataElim _ isNoetic es patternRowList -> do
-      let keyword = if isNoetic then D.text "case" else D.text "match"
-      let es' = map toDoc $ SE.extract es
-      let patternRowList' = decodePatternRowList $ SE.extract patternRowList
+    _ :< DataElim c isNoetic es patternRowList -> do
       D.join
-        [ keyword,
-          D.text " ",
-          D.commaSeqH es',
-          D.text " {",
-          D.join [D.line, D.listSeq patternRowList'],
-          D.line,
-          D.text "}"
+        [ PI.arrange
+            [ PI.beforeBareSeries $ if isNoetic then D.text "case" else D.text "match",
+              PI.bareSeries $ attachComment c $ SE.decode $ fmap toDoc es
+            ],
+          SE.decode $ fmap decodePatternRow patternRowList
         ]
     _ :< Noema t ->
       D.join [D.text "&", toDoc t]
@@ -369,7 +364,7 @@ piArgToDoc (_, x, c1, c2, t) = do
     else do
       let x' = D.text x
       PI.arrange
-        [ PI.symbol x',
+        [ PI.parameter x',
           PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
         ]
 
@@ -381,7 +376,7 @@ piIntroArgToDoc (_, x, c1, c2, t) = do
       attachComment (c1 ++ c2) x'
     _ -> do
       PI.arrange
-        [ PI.symbol x',
+        [ PI.parameter x',
           PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
         ]
 
@@ -392,7 +387,7 @@ decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expA
       PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
       PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
       PI.delimiterLeftAligned $ attachComment c2 $ D.text ":",
-      PI.inject $ attachComment c3 $ toDoc cod
+      PI.delimiterLeftAligned $ attachComment c3 $ toDoc cod
     ]
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
@@ -454,36 +449,6 @@ decPiElimKey (_, k, c1, c2, e) = do
           PI.inject $ attachComment c2 $ toDoc e
         ]
 
--- piElimKeyToDoc :: N.Name -> [(T.Text, RawTerm)] -> D.Doc
--- piElimKeyToDoc name kvs = do
---   case getHorizontalDocList kvs of
---     Just vs' ->
---       D.join [nameToDoc name, D.text " of {", D.commaSeqH vs', D.text "}"]
---     Nothing -> do
---       let kvs' = map kvToDoc kvs
---       D.join [nameToDoc name, D.text " of {", D.line, D.listSeq kvs', D.line, D.text "}"]
-
--- getHorizontalDocList :: [(T.Text, RawTerm)] -> Maybe [D.Doc]
--- getHorizontalDocList kvs =
---   case kvs of
---     [] ->
---       Just []
---     (k, v) : rest ->
---       case v of
---         _ :< Var (N.Var name)
---           | k == name -> do
---               rest' <- getHorizontalDocList rest
---               return $ D.text name : rest'
---         _ ->
---           Nothing
-
--- kvToDoc :: (T.Text, RawTerm) -> D.Doc
--- kvToDoc (name, t) = do
---   let t' = toDoc t
---   if isMultiLine [t']
---     then D.join [D.text name, D.text " = ", D.line, t']
---     else D.join [D.text name, D.text " = ", t']
-
 lowTypeToDoc :: LT.LowType -> D.Doc
 lowTypeToDoc lt =
   case lt of
@@ -530,59 +495,44 @@ decodeIntrospectClause (mKey, _, body) = do
     Nothing ->
       D.join [D.text "default => ", D.line, toDoc body]
 
-decodePatternRowList :: [RP.RawPatternRow RawTerm] -> [D.Doc]
-decodePatternRowList =
-  map decodePatternRow
-
 decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
-decodePatternRow (patArgs, _, body) = do
-  let patArgs' = map (decodePattern . snd) $ SE.extract patArgs
-  let body' = toDoc body
-  D.join [D.commaSeqH patArgs', D.text " =>", D.line, body']
+decodePatternRow (patArgs, c, body) = do
+  PI.arrange
+    [ PI.inject $ SE.decode $ fmap (decodePattern . snd) patArgs,
+      PI.inject $ D.text " =>",
+      PI.inject D.line,
+      PI.inject $ attachComment c $ toDoc body
+    ]
 
 decodePattern :: RP.RawPattern -> D.Doc
 decodePattern pat = do
   case pat of
     RP.Var name ->
       nameToDoc name
-    RP.Cons name _ args -> do
+    RP.Cons name c args -> do
       let name' = nameToDoc name
       case args of
         RP.Paren patList -> do
-          let patList' = map (decodePattern . snd) $ SE.extract patList
-          D.join [name', D.text "(", D.commaSeqH patList', D.text ")"]
+          let patList' = SE.decode $ fmap (decodePattern . snd) patList
+          D.join [name', attachComment c patList']
         RP.Of kvs -> do
-          let kvs' = map (\(k, (_, _, v)) -> (k, v)) $ SE.extract kvs
-          case getHorizontalDocList' kvs' of
-            Just vs' ->
-              D.join [name', D.text " of {", D.commaSeqH vs', D.text "}"]
-            Nothing -> do
-              let kvs'' = map kvToDoc' kvs'
-              D.join [name', D.text " of {", D.line, D.listSeq kvs'', D.line, D.text "}"]
+          let kvs' = SE.decode $ fmap decodePatternKeyValue kvs
+          D.join [name', attachComment c kvs']
     RP.ListIntro patList -> do
-      let patList' = map (decodePattern . snd) $ SE.extract patList
-      D.join [D.text "[", D.commaSeqH patList', D.text "]"]
+      SE.decode $ fmap (decodePattern . snd) patList
 
-getHorizontalDocList' :: [(T.Text, RP.RawPattern)] -> Maybe [D.Doc]
-getHorizontalDocList' kvs =
-  case kvs of
-    [] ->
-      Just []
-    (k, v) : rest ->
-      case v of
-        RP.Var (N.Var name)
-          | k == name -> do
-              rest' <- getHorizontalDocList' rest
-              return $ D.text name : rest'
-        _ ->
-          Nothing
-
-kvToDoc' :: (T.Text, RP.RawPattern) -> D.Doc
-kvToDoc' (name, v) = do
-  let v' = decodePattern v
-  if isMultiLine [v']
-    then D.join [D.text name, D.text " =", D.nest D.indent $ D.join [D.line, v']]
-    else D.join [D.text name, D.text " = ", v']
+decodePatternKeyValue :: (Key, (Hint, C, RP.RawPattern)) -> D.Doc
+decodePatternKeyValue (k, (_, c, v)) = do
+  case v of
+    RP.Var (N.Var k')
+      | k == k' ->
+          D.text k
+    _ ->
+      PI.arrange
+        [ PI.inject $ D.text k,
+          PI.clauseDelimiter $ D.text "=",
+          PI.inject $ attachComment c $ decodePattern v
+        ]
 
 attachComment :: C -> D.Doc -> D.Doc
 attachComment c doc =

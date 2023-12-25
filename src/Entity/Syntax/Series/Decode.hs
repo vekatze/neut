@@ -3,51 +3,57 @@ module Entity.Syntax.Series.Decode (decode) where
 import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
+import Entity.Piece qualified as PI
 import Entity.Syntax.Series
 
 decode :: Series D.Doc -> D.Doc
 decode series = do
   let prefix' = decodePrefix series
+  let sep = separator series
   case (container series, null (elems series)) of
     (Nothing, True) ->
       D.Nil
     (Nothing, _) ->
-      D.join
-        [ prefix',
-          intercalate (separator series) (elems series) (trailingComment series)
+      PI.arrange
+        [ PI.inject prefix',
+          PI.inject $ PI.arrange $ intercalate sep (elems series) (trailingComment series)
         ]
     (Just Angle, True) ->
       D.Nil
     (Just k, _) -> do
       let (open, close) = getContainerPair k
-      D.join
-        [ prefix',
-          D.text open,
-          intercalate (separator series) (elems series) (trailingComment series),
-          D.text close
-        ]
+      case sep of
+        Hyphen ->
+          PI.arrange
+            [ PI.inject prefix',
+              PI.inject $ D.text open,
+              PI.inject $ PI.arrange $ intercalate sep (elems series) (trailingComment series),
+              PI.inject $ D.text close
+            ]
+        _ -> do
+          PI.arrange
+            [ PI.inject prefix',
+              PI.paren open close $ PI.arrange $ intercalate sep (elems series) (trailingComment series)
+            ]
 
-intercalate :: Separator -> [(C, D.Doc)] -> C -> D.Doc
+intercalate :: Separator -> [(C, D.Doc)] -> C -> [PI.Piece]
 intercalate sep elems trailingComment = do
-  let trailingComment' = C.decode trailingComment
-  let elems' = map (uncurry attachComment) elems
   case sep of
     Comma -> do
-      if D.isMulti (elems' ++ [trailingComment'])
-        then D.join [D.nest D.indent $ D.join [D.line, commaSeqV elems' trailingComment], D.line]
-        else D.commaSeqH $ map snd elems
+      let elems' = map (uncurry attachComment) elems
+      commaSeq elems' trailingComment
     Hyphen ->
-      D.join [listSeq elems trailingComment, D.line]
+      [PI.inject $ D.join [listSeq elems trailingComment, D.line]]
 
-commaSeqV :: [D.Doc] -> C -> D.Doc
-commaSeqV elems trail =
+commaSeq :: [D.Doc] -> C -> [PI.Piece]
+commaSeq elems trail =
   case elems of
     [] ->
-      C.decode trail
+      [PI.inject $ C.decode trail]
     [d] -> do
-      D.join [d, C.asSuffix trail]
+      [PI.inject d, PI.inject $ C.asSuffix trail]
     d : rest -> do
-      D.join [d, D.text ",", D.line, commaSeqV rest trail]
+      [PI.inject d, PI.delimiterLeftAligned $ D.text ","] ++ commaSeq rest trail
 
 listSeq :: [(C, D.Doc)] -> C -> D.Doc
 listSeq elems trail =
