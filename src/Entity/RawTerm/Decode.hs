@@ -53,10 +53,15 @@ toDoc term =
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
         ]
-    _ :< PiIntro impArgs expArgs _ body -> do
-      let impArgs' = impArgsToDoc $ extractArgs impArgs
-      let expArgs' = expPiIntroArgsToDoc $ extractArgs expArgs
-      D.join [impArgs', expArgs', D.text " => ", clauseBodyToDoc body]
+    _ :< PiIntro (impArgs, c1) (expArgs, c2) c body -> do
+      D.join
+        [ PI.arrange
+            [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+              PI.container $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
+              PI.delimiter $ attachComment c2 $ D.text "=>"
+            ],
+          PI.arrange [PI.inject $ attachComment c $ toDoc body]
+        ]
     _ :< PiIntroFix _ def -> do
       let decl = RT.decl def
       let body = RT.body def
@@ -357,22 +362,22 @@ decodeElseIfList elseIfList =
         ]
 
 piArgToDoc :: RawBinder RawTerm -> D.Doc
-piArgToDoc (_, x, _, _, t) = do
+piArgToDoc (_, x, c1, c2, t) = do
   let t' = toDoc t
   if isHole x
-    then t'
+    then attachComment (c1 ++ c2) t'
     else do
       let x' = D.text x
-      D.join [x', typeAnnot t]
+      D.join [x', attachComment (c1 ++ c2) $ typeAnnot t]
 
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
-piIntroArgToDoc (_, x, _, _, t) = do
+piIntroArgToDoc (_, x, c1, c2, t) = do
   let x' = D.text x
   case t of
     _ :< Hole {} ->
-      x'
+      attachComment (c1 ++ c2) x'
     _ -> do
-      D.join [x', typeAnnot t]
+      D.join [x', attachComment (c1 ++ c2) $ typeAnnot t]
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
 letArgToDoc (_, x, _, _, t) = do
@@ -418,10 +423,6 @@ expPiIntroArgsToDoc expArgs = do
   if isMultiLine [expArgs']
     then D.join [D.text "(", D.line, D.nest D.indent expArgs', D.line, D.text ")"]
     else D.join [D.text "(", expArgs', D.text ")"]
-
-clauseBodyToDoc :: RawTerm -> D.Doc
-clauseBodyToDoc body = do
-  toDoc body
 
 recBody :: RawTerm -> D.Doc
 recBody body = do
