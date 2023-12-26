@@ -184,10 +184,10 @@ rawTermLet mLet = do
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
-  (e1, _) <- rawExpr -- fixme: don't discard comments
-  c6 <- delimiter "in"
-  (e2, _) <- rawExpr
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 e2, [])
+  (e1, c6) <- rawExpr -- fixme: don't discard comments
+  c7 <- delimiter "in"
+  (e2, c) <- rawExpr
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 c7 e2, c)
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
@@ -505,7 +505,7 @@ rawTermPatternConsOrVar = do
         (kvs, c) <- keyValueArgs rawTermPatternKeyValuePair
         return ((m, RP.Cons varOrLocator c1 (RP.Of kvs)), c),
       do
-        return ((m, RP.Var varOrLocator), [])
+        return ((m, RP.Var varOrLocator), c1)
     ]
 
 rawTermPatternKeyValuePair :: Parser ((Key, (Hint, C, RP.RawPattern)), C)

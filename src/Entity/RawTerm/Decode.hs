@@ -101,50 +101,21 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind _ mxt _ noeticVarList _ e _ cont -> do
-      let keyword =
-            case letKind of
-              Plain -> "let"
-              Noetic -> "tie"
-              Try -> "try"
-              Bind -> "bind"
-      let mxt' = letArgToDoc mxt
-      let noeticVarList' = decodeNoeticVarList $ SE.extract noeticVarList
-      let e' = toDoc e
-      let cont' = toDoc cont
-      if isMultiLine [mxt']
-        then do
-          let mxt'' = D.nest D.indent (D.join [D.line, mxt'])
-          let e'' = D.nest D.indent e'
-          D.join [D.text keyword, mxt'', noeticVarList', D.text " = ", e'', D.line, D.text "in", D.line, cont']
-        else do
-          if isMultiLine [e']
-            then do
-              let e'' = D.nest D.indent (D.join [D.line, e'])
-              D.join
-                [ D.text keyword,
-                  D.text " ",
-                  mxt',
-                  noeticVarList',
-                  D.text " =",
-                  e'',
-                  D.line,
-                  D.text "in",
-                  D.line,
-                  cont'
-                ]
-            else
-              D.join
-                [ D.text keyword,
-                  D.text " ",
-                  mxt',
-                  noeticVarList',
-                  D.text " = ",
-                  e',
-                  D.text " in",
-                  D.line,
-                  cont'
-                ]
+    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 c5 cont -> do
+      D.join
+        [ PI.arrange $
+            [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
+              PI.bareSeries $ D.join [attachComment c1 $ letArgToDoc mxt, C.asSuffix c2]
+            ]
+              ++ decodeNoeticVarList noeticVarList,
+          PI.arrange
+            [ PI.beforeBareSeries $ D.text "=",
+              PI.bareSeries $ D.join [attachComment c3 $ toDoc e, C.asSuffix c4]
+            ],
+          D.text "in",
+          D.line,
+          attachComment c5 $ toDoc cont
+        ]
     _ :< Prim prim ->
       case prim of
         WP.Type t ->
@@ -334,11 +305,18 @@ decodeBinder' :: SE.Series (RawBinder RawTerm) -> D.Doc
 decodeBinder' series =
   SE.decode $ fmap piIntroArgToDoc series
 
-decodeNoeticVarList :: [(Hint, RawIdent)] -> D.Doc
+decodeNoeticVar :: (Hint, RawIdent) -> D.Doc
+decodeNoeticVar (_, v) =
+  D.text v
+
+decodeNoeticVarList :: SE.Series (Hint, RawIdent) -> [PI.Piece]
 decodeNoeticVarList vs =
-  if null vs
-    then D.Nil
-    else D.join [D.text " on ", D.commaSeqH (map (D.text . snd) vs)]
+  if SE.isEmpty vs
+    then []
+    else
+      [ PI.beforeBareSeries $ D.text "on",
+        PI.bareSeries $ SE.decode $ fmap decodeNoeticVar vs
+      ]
 
 decodeElseIfList :: [IfClause RawTerm] -> D.Doc
 decodeElseIfList elseIfList =
@@ -369,14 +347,18 @@ piArgToDoc (_, x, c1, c2, t) = do
         ]
 
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
-piIntroArgToDoc (_, x, c1, c2, t) = do
+piIntroArgToDoc (m, x, c1, c2, t) = do
   let x' = D.text x
+  paramToDoc (m, x', c1, c2, t)
+
+paramToDoc :: (a, D.Doc, C, C, RawTerm) -> D.Doc
+paramToDoc (_, x, c1, c2, t) = do
   case t of
     _ :< Hole {} ->
-      attachComment (c1 ++ c2) x'
+      attachComment (c1 ++ c2) x
     _ -> do
       PI.arrange
-        [ PI.parameter x',
+        [ PI.parameter x,
           PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
         ]
 
@@ -391,13 +373,9 @@ decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expA
     ]
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
-letArgToDoc (_, x, _, _, t) = do
+letArgToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
-  case t of
-    _ :< Hole {} ->
-      x'
-    _ -> do
-      D.join [x', typeAnnot t]
+  paramToDoc (m, x', c1, c2, t)
 
 typeAnnot :: RawTerm -> D.Doc
 typeAnnot t = do
