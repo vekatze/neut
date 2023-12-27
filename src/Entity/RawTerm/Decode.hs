@@ -219,8 +219,8 @@ toDoc term =
         ]
     _ :< When whenClause -> do
       decodeIfClause "when" whenClause
-    _ :< Seq (e1, _) _ e2 -> do
-      D.join [toDoc e1, D.text ";", D.line, toDoc e2]
+    _ :< Seq (e1, c1) c2 e2 -> do
+      D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
     _ :< ListIntro es -> do
       let es' = map toDoc $ SE.extract es
       if isMultiLine es'
