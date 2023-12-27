@@ -184,7 +184,7 @@ rawTermLet mLet = do
       ]
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
-  (e1, c6) <- rawExpr -- fixme: don't discard comments
+  (e1, c6) <- rawExpr
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
   return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 c7 e2, c)

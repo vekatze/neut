@@ -30,10 +30,12 @@ decode series = do
               PI.inject $ PI.arrange $ intercalate sep (elems series) (trailingComment series),
               PI.inject $ D.text close
             ]
-        _ -> do
+        Comma -> do
           PI.arrange
             [ PI.inject prefix',
-              PI.paren open close $ PI.arrange $ intercalate sep (elems series) (trailingComment series)
+              PI.inject $ D.text open,
+              PI.idOrNest $ PI.arrange $ intercalate sep (elems series) (trailingComment series),
+              PI.inject $ D.text close
             ]
 
 intercalate :: Separator -> [(C, D.Doc)] -> C -> [PI.Piece]
