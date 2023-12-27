@@ -222,10 +222,7 @@ toDoc term =
     _ :< Seq (e1, c1) c2 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
     _ :< ListIntro es -> do
-      let es' = map toDoc $ SE.extract es
-      if isMultiLine es'
-        then D.join [D.text "[", D.nest D.indent $ D.join [D.line, D.commaSeqV es'], D.line, D.text "]"]
-        else D.join [D.text "[", D.commaSeqH es', D.text "]"]
+      SE.decode $ fmap toDoc es
     _ :< Admit ->
       D.text "admit"
     _ :< Detach _ _ (e, _) -> do
