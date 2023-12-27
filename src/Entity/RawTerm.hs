@@ -75,7 +75,7 @@ data RawTermF a
   | Admit
   | Detach C C (a, C)
   | Attach C C (a, C)
-  | Option C a
+  | Option a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe (T.Text, C), C, a))
   | With C a C C (a, C)

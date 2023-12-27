@@ -235,7 +235,7 @@ toDoc term =
         [ PI.horizontal $ attachComment c1 $ D.text "attach",
           PI.inject $ toDoc $ m :< Brace c2 (e, c3)
         ]
-    _ :< Option _ t -> do
+    _ :< Option t -> do
       D.join [D.text "?", toDoc t]
     _ :< Assert _ (_, message) _ _ (e, _) -> do
       D.join
