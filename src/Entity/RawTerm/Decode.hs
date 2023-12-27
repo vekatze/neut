@@ -204,9 +204,9 @@ toDoc term =
           attachComment (c3 ++ c4) $ toDoc cont
         ]
     _ :< If ifClause elseIfClauseList elseBody -> do
-      let ifClause' = decodeIfClause "if" ifClause
-      let elseIfClauseList' = map (decodeIfClause "else-if") elseIfClauseList
-      let elseBody' = decodeBlock elseBody
+      let ifClause' = decodeIfClause "if" $ mapIfClause toDoc ifClause
+      let elseIfClauseList' = map (decodeIfClause "else-if" . mapIfClause toDoc) elseIfClauseList
+      let elseBody' = decodeBlock $ RT.mapEL toDoc elseBody
       D.join
         [ PI.arrange
             [ PI.horizontal ifClause',
@@ -218,7 +218,7 @@ toDoc term =
             ]
         ]
     _ :< When whenClause -> do
-      decodeIfClause "when" whenClause
+      decodeIfClause "when" $ mapIfClause toDoc whenClause
     _ :< Seq (e1, c1) c2 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
     _ :< ListIntro es -> do
@@ -237,15 +237,9 @@ toDoc term =
         ]
     _ :< Option t -> do
       D.join [D.text "?", toDoc t]
-    _ :< Assert _ (_, message) _ _ (e, _) -> do
-      D.join
-        [ D.text "assert ",
-          D.text (T.pack (show message)),
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, toDoc e],
-          D.line,
-          D.text "}"
-        ]
+    _ :< Assert c1 (_, message) c2 c3 (e, c4) -> do
+      let message' = D.text (T.pack (show message))
+      decodeIfClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
     _ :< Introspect _ key _ clauseList -> do
       D.join
         [ D.text "introspect ",
@@ -269,22 +263,22 @@ toDoc term =
     _ :< Brace c1 (e, c2) -> do
       SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
 
-decodeIfClause :: T.Text -> IfClause RawTerm -> D.Doc
+decodeIfClause :: T.Text -> IfClause D.Doc -> D.Doc
 decodeIfClause k ((c1, (cond, c2)), body) = do
   attachComment (c1 ++ c2) $
     D.join
       [ PI.arrange
           [ PI.beforeBareSeries $ D.text k,
-            PI.bareSeries $ toDoc cond
+            PI.bareSeries cond
           ],
         decodeBlock body
       ]
 
-decodeBlock :: EL RawTerm -> D.Doc
+decodeBlock :: EL D.Doc -> D.Doc
 decodeBlock (c1, (body, c2)) = do
   D.join
     [ D.text "{",
-      D.nest D.indent $ D.join [D.line, attachComment c1 $ toDoc body, C.asSuffix c2],
+      D.nest D.indent $ D.join [D.line, attachComment c1 body, C.asSuffix c2],
       D.line,
       D.text "}"
     ]

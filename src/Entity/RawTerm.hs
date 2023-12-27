@@ -20,6 +20,7 @@ module Entity.RawTerm
     extractFromIfClause,
     decodeLetKind,
     mapEL,
+    mapIfClause,
   )
 where
 
@@ -94,6 +95,10 @@ extractArgs (series, _) =
 
 type IfClause a =
   (EL a, EL a)
+
+mapIfClause :: (a -> b) -> IfClause a -> IfClause b
+mapIfClause f (el1, el2) =
+  (mapEL f el1, mapEL f el2)
 
 pushCommentToIfClause :: C -> IfClause a -> IfClause a
 pushCommentToIfClause c ((c1, cond), (c2, body)) =
