@@ -375,26 +375,25 @@ rawTermMagicLoad m c = do
     return $ \c1 c2 -> m :< RT.Magic c (RT.Load c1 (c2, lt) (c3, pointer))
 
 rawTermMagicExternal :: Hint -> C -> Parser (RT.RawTerm, C)
-rawTermMagicExternal m c = do
-  rawTermMagicBase "external" $ do
-    (extFunName, cExt) <- symbol
-    let extFunName' = EN.ExternalName extFunName
-    es <- many $ do
-      c3 <- delimiter ","
-      e <- rawExpr
-      return (c3, e)
-    varArgAndTypeList <-
-      choice
-        [ commaList (delimiter ";") rawTermAndLowType,
-          return []
-        ]
-    return $ \c1 c2 -> m :< RT.Magic c (RT.External c1 (c2, (extFunName', cExt)) es varArgAndTypeList)
+rawTermMagicExternal m c0 = do
+  c1 <- keyword "external"
+  (extFunName, cExt) <- symbol
+  let extFunName' = EN.ExternalName extFunName
+  (es, c2) <- seriesParen rawExpr
+  choice
+    [ do
+        (s, c) <- seriesParen rawExprAndLowType
+        return (m :< RT.Magic c0 (RT.External c1 extFunName' cExt es (Just (c2, s))), c),
+      return (m :< RT.Magic c0 (RT.External c1 extFunName' cExt es Nothing), c2)
+    ]
 
-rawTermAndLowType :: Parser ((RT.RawTerm, C), (LT.LowType, C))
-rawTermAndLowType = do
-  e <- rawTerm
-  t <- lowType
-  return (e, t)
+rawExprAndLowType :: Parser (RT.VarArg, C)
+rawExprAndLowType = do
+  m <- getCurrentHint
+  (e, c1) <- rawExpr
+  c2 <- delimiter ":"
+  (t, c) <- lowType
+  return ((m, e, c1, c2, t), c)
 
 rawTermMagicGlobal :: Hint -> C -> Parser (RT.RawTerm, C)
 rawTermMagicGlobal m c = do
@@ -402,7 +401,7 @@ rawTermMagicGlobal m c = do
     (globalVarName, c3) <- string
     c4 <- delimiter ","
     lt <- lowType
-    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 c2 (EN.ExternalName globalVarName, c3) c4 lt)
+    return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt))
 
 lowType :: Parser (LT.LowType, C)
 lowType = do

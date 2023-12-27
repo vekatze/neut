@@ -11,11 +11,13 @@ module Entity.RawTerm
     Args,
     RawDecl (..),
     RawDef (..),
+    VarArg,
     emptyArgs,
     extractArgs,
     lam,
     piElim,
     decodeLetKind,
+    mapEL,
   )
 where
 
@@ -143,13 +145,20 @@ decodeLetKind letKind =
     Try -> "try"
     Bind -> "bind"
 
+type VarArg =
+  (Hint, RawTerm, C, C, LowType)
+
 data RawMagic
   = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm)
   | Store C (EL LowType) (EL RawTerm) (EL RawTerm)
   | Load C (EL LowType) (EL RawTerm)
-  | External C (EL EN.ExternalName) [EL RawTerm] [(C, ((RawTerm, C), (LowType, C)))]
-  | Global C C (EN.ExternalName, C) C (LowType, C)
+  | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
+  | Global C (EL EN.ExternalName) (EL LowType)
 
 -- elem
 type EL a =
   (C, (a, C))
+
+mapEL :: (a -> b) -> EL a -> EL b
+mapEL f (c1, (x, c2)) =
+  (c1, (f x, c2))

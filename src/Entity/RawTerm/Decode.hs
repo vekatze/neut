@@ -130,33 +130,62 @@ toDoc term =
               decodePrimOp op
             WPV.StaticText _ txt ->
               D.text (T.pack (show txt))
-    _ :< Magic _ magic ->
+    _ :< Magic c magic ->
       case magic of
-        Cast _ (_, (from, _)) (_, (to, _)) (_, (e, _)) -> do
-          let from' = toDoc from
-          let to' = toDoc to
-          let e' = toDoc e
-          D.join [D.text "magic ", piElimToDoc (D.text "cast") [from', to', e']]
-        Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) -> do
-          let lt' = lowTypeToDoc lt
-          let value' = toDoc value
-          let pointer' = toDoc pointer
-          D.join [D.text "magic ", piElimToDoc (D.text "store") [lt', value', pointer']]
-        Load _ (_, (lt, _)) (_, (pointer, _)) -> do
-          let lt' = lowTypeToDoc lt
-          let pointer' = toDoc pointer
-          D.join [D.text "magic ", piElimToDoc (D.text "load") [lt', pointer']]
-        External _ (_, (funcName, _)) args varArgs -> do
-          let funcName' = D.text $ T.pack (show $ EN.reify funcName)
-          let args' = map (toDoc . fst . snd) args
-          let varArgs' = map (\(_, ((e, _), (lt, _))) -> D.join [toDoc e, D.text " ", lowTypeToDoc lt]) varArgs
-          if null varArgs'
-            then D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args')]
-            else D.join [D.text "magic ", piElimToDoc (D.text "external") (funcName' : args' ++ D.text "; " : varArgs')]
-        Global _ _ (name, _) _ (lt, _) -> do
-          let lt' = lowTypeToDoc lt
-          let name' = D.text $ T.pack (show $ EN.reify name)
-          D.join [D.text "magic ", piElimToDoc (D.text "global") [name', lt']]
+        Cast c1 from to e -> do
+          let args = SE.fromListWithComment SE.Paren SE.Comma [from, to, e]
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic cast",
+              SE.decode $ toDoc <$> args
+            ]
+        Store c1 lt value pointer -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic store",
+              SE.decode $
+                SE.fromListWithComment
+                  SE.Paren
+                  SE.Comma
+                  [ RT.mapEL lowTypeToDoc lt,
+                    RT.mapEL toDoc value,
+                    RT.mapEL toDoc pointer
+                  ]
+            ]
+        Load c1 lt pointer -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic load",
+              SE.decode $
+                SE.fromListWithComment
+                  SE.Paren
+                  SE.Comma
+                  [ RT.mapEL lowTypeToDoc lt,
+                    RT.mapEL toDoc pointer
+                  ]
+            ]
+        External c1 funcName c2 args varArgsOrNone -> do
+          let args' = SE.decode $ fmap toDoc args
+          case varArgsOrNone of
+            Nothing ->
+              D.join
+                [ attachComment (c ++ c1) $ D.text $ "magic external " <> EN.reify funcName,
+                  attachComment c2 args'
+                ]
+            Just (c3, varArgs) -> do
+              PI.arrange
+                [ PI.inject $ attachComment (c ++ c1) $ D.text $ "magic external " <> EN.reify funcName,
+                  PI.inject $ attachComment c2 args',
+                  PI.inject $ attachComment c3 $ SE.decode $ fmap varArgToDoc varArgs
+                ]
+        Global c1 name lt -> do
+          D.join
+            [ attachComment (c ++ c1) $ D.text "magic global",
+              SE.decode $
+                SE.fromListWithComment
+                  SE.Paren
+                  SE.Comma
+                  [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
+                    RT.mapEL lowTypeToDoc lt
+                  ]
+            ]
     _ :< Hole {} ->
       D.text "_"
     _ :< Annotation {} -> do
@@ -335,32 +364,38 @@ decodeElseIfList elseIfList =
         ]
 
 piArgToDoc :: RawBinder RawTerm -> D.Doc
-piArgToDoc (_, x, c1, c2, t) = do
+piArgToDoc (m, x, c1, c2, t) = do
   let t' = toDoc t
   if isHole x
     then attachComment (c1 ++ c2) t'
     else do
       let x' = D.text x
-      PI.arrange
-        [ PI.parameter x',
-          PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
-        ]
+      paramToDoc' (m, x', c1, c2, t')
 
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
 piIntroArgToDoc (m, x, c1, c2, t) = do
   let x' = D.text x
   paramToDoc (m, x', c1, c2, t)
 
+varArgToDoc :: VarArg -> D.Doc
+varArgToDoc (m, e, c1, c2, t) = do
+  let e' = toDoc e
+  paramToDoc' (m, e', c1, c2, lowTypeToDoc t)
+
 paramToDoc :: (a, D.Doc, C, C, RawTerm) -> D.Doc
-paramToDoc (_, x, c1, c2, t) = do
+paramToDoc (m, x, c1, c2, t) = do
   case t of
     _ :< Hole {} ->
       attachComment (c1 ++ c2) x
     _ -> do
-      PI.arrange
-        [ PI.parameter x,
-          PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
-        ]
+      paramToDoc' (m, x, c1, c2, toDoc t)
+
+paramToDoc' :: (a, D.Doc, C, C, D.Doc) -> D.Doc
+paramToDoc' (_, x, c1, c2, t) = do
+  PI.arrange
+    [ PI.parameter x,
+      PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
+    ]
 
 decDecl :: RT.RawDecl RawIdent -> D.Doc
 decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
@@ -377,12 +412,11 @@ letArgToDoc (m, x, c1, c2, t) = do
   let x' = decodePattern x
   paramToDoc (m, x', c1, c2, t)
 
-typeAnnot :: RawTerm -> D.Doc
+typeAnnot :: D.Doc -> D.Doc
 typeAnnot t = do
-  let t' = toDoc t
-  if isMultiLine [t']
-    then D.join [D.text ":", D.line, t']
-    else D.join [D.text ": ", t']
+  if isMultiLine [t]
+    then D.join [D.text ":", D.line, t]
+    else D.join [D.text ": ", t]
 
 nameToDoc :: N.Name -> D.Doc
 nameToDoc varOrLocator =
@@ -407,12 +441,6 @@ isMultiLine docList =
           isMultiLine $ next : rest
         D.Line {} ->
           True
-
-piElimToDoc :: D.Doc -> [D.Doc] -> D.Doc
-piElimToDoc e args = do
-  if isMultiLine $ e : args
-    then D.join [e, D.text "(", D.nest D.indent $ D.join [D.line, D.commaSeqV args], D.line, D.text ")"]
-    else D.join [e, D.text "(", D.commaSeqH args, D.text ")"]
 
 decPiElimKey :: (Hint, Key, C, C, RawTerm) -> D.Doc
 decPiElimKey (_, k, c1, c2, e) = do
@@ -451,7 +479,7 @@ primTypeToDoc primType =
     PT.Int intSize ->
       D.join [D.text "int", D.text (T.pack (show (PNS.intSizeToInt intSize)))]
     PT.Float floatSize ->
-      D.join [D.text "int", D.text (T.pack (show (PNS.floatSizeToInt floatSize)))]
+      D.join [D.text "float", D.text (T.pack (show (PNS.floatSizeToInt floatSize)))]
 
 decodePrimOp :: P.PrimOp -> D.Doc
 decodePrimOp op =

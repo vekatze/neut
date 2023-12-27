@@ -1,6 +1,7 @@
 module Entity.C.Decode
   ( decode,
     asPrefix,
+    asPrefix',
     asSuffix,
   )
 where
@@ -17,6 +18,12 @@ asPrefix c =
   if null c
     then D.Nil
     else D.join [decode c, D.line]
+
+asPrefix' :: C -> D.Doc
+asPrefix' c =
+  if null c
+    then D.Nil
+    else D.join [D.text " ", decode c, D.line]
 
 asSuffix :: C -> D.Doc
 asSuffix c =

@@ -9,6 +9,7 @@ module Entity.Syntax.Series
     fromList,
     fromList',
     fromList'',
+    fromListWithComment,
     pushComment,
     assoc,
     getContainerPair,
@@ -71,6 +72,11 @@ fromList' =
 fromList'' :: [a] -> Series a
 fromList'' xs =
   Series {elems = map ([],) xs, trailingComment = [], prefix = Nothing, separator = Comma, container = Nothing}
+
+fromListWithComment :: Container -> Separator -> [(C, (a, C))] -> Series a
+fromListWithComment container separator xs = do
+  let (xs', trailingComment) = _assoc xs []
+  Series {elems = xs', trailingComment, prefix = Nothing, separator, container = Just container}
 
 pushComment :: C -> Series a -> Series a
 pushComment c series =

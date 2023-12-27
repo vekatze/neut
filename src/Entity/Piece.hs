@@ -9,6 +9,7 @@ module Entity.Piece
     delimiter,
     delimiterLeftAligned,
     clauseDelimiter,
+    horizontal,
     inject,
   )
 where
@@ -100,6 +101,14 @@ delimiterLeftAligned doc =
     { content = doc,
       singleModifier = _appendSpace,
       multiModifier = _appendNewLine
+    }
+
+horizontal :: D.Doc -> Piece
+horizontal doc =
+  Piece
+    { content = doc,
+      singleModifier = _appendSpace,
+      multiModifier = _appendSpace
     }
 
 inject :: D.Doc -> Piece
