@@ -225,12 +225,16 @@ toDoc term =
       SE.decode $ fmap toDoc es
     _ :< Admit ->
       D.text "admit"
-    _ :< Detach _ _ (e, _) -> do
-      let e' = toDoc e
-      D.join [D.text "detach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
-    _ :< Attach _ _ (e, _) -> do
-      let e' = toDoc e
-      D.join [D.text "attach {", D.nest D.indent $ D.join [D.line, e'], D.line, D.text "}"]
+    m :< Detach c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "detach",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
+    m :< Attach c1 c2 (e, c3) -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment c1 $ D.text "attach",
+          PI.inject $ toDoc $ m :< Brace c2 (e, c3)
+        ]
     _ :< Option _ t -> do
       D.join [D.text "?", toDoc t]
     _ :< Assert _ (_, message) _ _ (e, _) -> do
@@ -262,17 +266,8 @@ toDoc term =
           D.line,
           D.text "}"
         ]
-    _ :< Brace _ (e, _) -> do
-      let e' = toDoc e
-      if isMultiLine [e']
-        then
-          D.join
-            [ D.text "{",
-              D.nest D.indent $ D.join [D.line, e'],
-              D.line,
-              D.text "}"
-            ]
-        else D.join [D.text "{", e', D.text "}"]
+    _ :< Brace c1 (e, c2) -> do
+      SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
 
 decodeIfClause :: T.Text -> IfClause RawTerm -> D.Doc
 decodeIfClause k ((c1, (cond, c2)), body) = do
