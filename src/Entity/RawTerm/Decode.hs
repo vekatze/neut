@@ -217,15 +217,8 @@ toDoc term =
               PI.inject elseBody'
             ]
         ]
-    _ :< When _ (cond, _) _ (body, _) -> do
-      D.join
-        [ D.text "when ",
-          toDoc cond,
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, toDoc body],
-          D.line,
-          D.text "}"
-        ]
+    _ :< When whenClause -> do
+      decodeIfClause "when" whenClause
     _ :< Seq (e1, _) _ e2 -> do
       D.join [toDoc e1, D.text ";", D.line, toDoc e2]
     _ :< ListIntro es -> do

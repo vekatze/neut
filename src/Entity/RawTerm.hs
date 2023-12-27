@@ -69,7 +69,7 @@ data RawTermF a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a
   | If (IfClause a) [IfClause a] (EL a)
-  | When C (a, C) C (a, C)
+  | When (IfClause a)
   | Seq (a, C) C a
   | ListIntro (SE.Series a)
   | Admit
