@@ -313,10 +313,11 @@ discern nenv term =
       (xs', nenv') <- discernBinder nenv $ RT.extractArgs xs
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
-    m :< RT.If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
+    m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
+      let (ifCond, ifBody) = RT.extractFromIfClause ifClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
-      discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfList elseBody
+      discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfClauseList elseBody
     m :< RT.Seq (e1, _) _ e2 -> do
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
@@ -526,7 +527,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
                 )
               ]
           )
-    ((_, (elseIfCond, _), _, (elseIfBody, _), _) : rest) -> do
+    elseIfClause : rest -> do
+      let (elseIfCond, elseIfBody) = RT.extractFromIfClause elseIfClause
       let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
       m
         :< RT.DataElim

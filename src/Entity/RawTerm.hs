@@ -16,6 +16,8 @@ module Entity.RawTerm
     extractArgs,
     lam,
     piElim,
+    pushCommentToIfClause,
+    extractFromIfClause,
     decodeLetKind,
     mapEL,
   )
@@ -66,7 +68,7 @@ data RawTermF a
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a
-  | If (IfClause a) [IfClause a] C C (a, C)
+  | If (IfClause a) [IfClause a] (EL a)
   | When C (a, C) C (a, C)
   | Seq (a, C) C a
   | ListIntro (SE.Series a)
@@ -91,7 +93,15 @@ extractArgs (series, _) =
   SE.extract series
 
 type IfClause a =
-  (C, (a, C), C, (a, C), C)
+  (EL a, EL a)
+
+pushCommentToIfClause :: C -> IfClause a -> IfClause a
+pushCommentToIfClause c ((c1, cond), (c2, body)) =
+  ((c ++ c1, cond), (c2, body))
+
+extractFromIfClause :: IfClause a -> (a, a)
+extractFromIfClause ((_, (cond, _)), (_, (body, _))) =
+  (cond, body)
 
 data RawDecl a = RawDecl
   { loc :: Hint,

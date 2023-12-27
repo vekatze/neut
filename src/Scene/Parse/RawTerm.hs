@@ -523,17 +523,40 @@ rawTermPatternKeyValuePair = do
 rawTermIf :: Parser (RT.RawTerm, C)
 rawTermIf = do
   m <- getCurrentHint
-  c1 <- keyword "if"
-  ifCond <- rawTerm
-  (c2, (ifBody, c3)) <- betweenBrace rawExpr
-  elseIfList <- many $ do
-    cElif1 <- keyword "else-if"
-    elseIfCond <- rawTerm
-    (cElif2, (elseIfBody, cElif3)) <- betweenBrace rawExpr
-    return (cElif1, elseIfCond, cElif2, elseIfBody, cElif3)
-  c4 <- keyword "else"
-  (c5, (elseBody, c)) <- betweenBrace rawExpr
-  return (m :< RT.If (c1, ifCond, c2, ifBody, c3) elseIfList c4 c5 elseBody, c)
+  (ifClause, c1) <- rawTermIfClause "if"
+  (elseIfClauseList, c2) <- fmap joinComment $ many $ rawTermIfClause "else-if"
+  c3 <- keyword "else"
+  (c4, (elseBody, c)) <- betweenBrace rawExpr
+  let (elseIfClauseList', elseBody') = adjustComment c1 elseIfClauseList (c2 ++ c3 ++ c4, elseBody)
+  return (m :< RT.If ifClause elseIfClauseList' elseBody', c)
+
+adjustComment :: C -> [RT.IfClause a] -> RT.EL a -> ([RT.IfClause a], RT.EL a)
+adjustComment c elseIfClauseList (c', x) = do
+  case elseIfClauseList of
+    [] ->
+      ([], (c ++ c', x))
+    clause : rest -> do
+      (RT.pushCommentToIfClause c clause : rest, (c', x))
+
+joinComment :: [(RT.IfClause a, C)] -> ([RT.IfClause a], C)
+joinComment xs =
+  case xs of
+    [] ->
+      ([], [])
+    (clause, c) : rest -> do
+      let (y, trail) = joinComment rest
+      case y of
+        [] ->
+          ([clause], c ++ trail)
+        clause' : clauseList ->
+          (clause : RT.pushCommentToIfClause c clause' : clauseList, trail)
+
+rawTermIfClause :: T.Text -> Parser (RT.IfClause RT.RawTerm, C)
+rawTermIfClause k = do
+  c1 <- keyword k
+  cond <- rawTerm
+  (c2, (body, c3)) <- betweenBrace rawExpr
+  return (((c1, cond), (c2, body)), c3)
 
 rawTermWhen :: Parser (RT.RawTerm, C)
 rawTermWhen = do

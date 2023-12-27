@@ -203,19 +203,19 @@ toDoc term =
           D.line,
           attachComment (c3 ++ c4) $ toDoc cont
         ]
-    _ :< If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
+    _ :< If ifClause elseIfClauseList elseBody -> do
+      let ifClause' = decodeIfClause "if" ifClause
+      let elseIfClauseList' = map (decodeIfClause "else-if") elseIfClauseList
+      let elseBody' = decodeBlock elseBody
       D.join
-        [ D.text "if ",
-          toDoc ifCond,
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, toDoc ifBody],
-          D.line,
-          D.text "}",
-          decodeElseIfList elseIfList,
-          D.text " else {",
-          D.nest D.indent $ D.join [D.line, toDoc elseBody],
-          D.line,
-          D.text "}"
+        [ PI.arrange
+            [ PI.horizontal ifClause',
+              PI.horizontal $ D.join elseIfClauseList'
+            ],
+          PI.arrange
+            [ PI.horizontal $ D.text "else",
+              PI.inject elseBody'
+            ]
         ]
     _ :< When _ (cond, _) _ (body, _) -> do
       D.join
@@ -284,6 +284,26 @@ toDoc term =
             ]
         else D.join [D.text "{", e', D.text "}"]
 
+decodeIfClause :: T.Text -> IfClause RawTerm -> D.Doc
+decodeIfClause k ((c1, (cond, c2)), body) = do
+  attachComment (c1 ++ c2) $
+    D.join
+      [ PI.arrange
+          [ PI.beforeBareSeries $ D.text k,
+            PI.bareSeries $ toDoc cond
+          ],
+        decodeBlock body
+      ]
+
+decodeBlock :: EL RawTerm -> D.Doc
+decodeBlock (c1, (body, c2)) = do
+  D.join
+    [ D.text "{",
+      D.nest D.indent $ D.join [D.line, attachComment c1 $ toDoc body, C.asSuffix c2],
+      D.line,
+      D.text "}"
+    ]
+
 decodeArgs :: Args RawTerm -> D.Doc
 decodeArgs (series, c) = do
   if null c
@@ -325,22 +345,6 @@ decodeNoeticVarList vs =
       [ PI.beforeBareSeries $ D.text "on",
         PI.bareSeries $ SE.decode $ fmap decodeNoeticVar vs
       ]
-
-decodeElseIfList :: [IfClause RawTerm] -> D.Doc
-decodeElseIfList elseIfList =
-  case elseIfList of
-    [] ->
-      D.text ""
-    (_, (elseIfCond, _), _, (elseIfBody, _), _) : rest ->
-      D.join
-        [ D.text " else-if ",
-          toDoc elseIfCond,
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, toDoc elseIfBody],
-          D.line,
-          D.text "}",
-          decodeElseIfList rest
-        ]
 
 piArgToDoc :: RawBinder RawTerm -> D.Doc
 piArgToDoc (m, x, c1, c2, t) = do
