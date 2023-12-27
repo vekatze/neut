@@ -190,40 +190,19 @@ toDoc term =
       D.text "_"
     _ :< Annotation {} -> do
       D.text "<annot>"
-    _ :< Resource name _ (discarder, _) (copier, _) -> do
-      let resourcePair = D.listSeq [toDoc discarder, toDoc copier]
+    _ :< Resource {} -> do
+      D.text "<resource>"
+    _ :< Use c1 trope c2 (args, c3) c4 cont -> do
       D.join
-        [ D.text "resource ",
-          D.text (DD.localLocator name),
-          D.text " {",
+        [ PI.arrange
+            [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "use",
+              PI.horizontal $ toDoc trope,
+              PI.delimiterLeftAligned $ SE.decode $ fmap piIntroArgToDoc args
+            ],
+          D.text "in",
           D.line,
-          resourcePair,
-          D.line,
-          D.text "}"
+          attachComment (c3 ++ c4) $ toDoc cont
         ]
-    _ :< Use _ trope _ args _ cont -> do
-      let trope' = toDoc trope
-      let args' = map (\(_, x, _, _, _) -> D.text x) $ extractArgs args
-      let cont' = toDoc cont
-      if isMultiLine [trope']
-        then
-          D.join
-            [ D.text "use",
-              D.nest D.indent $
-                D.join
-                  [ D.line,
-                    trope',
-                    D.line,
-                    D.text "{",
-                    D.commaSeqH args',
-                    D.text "}"
-                  ],
-              D.line,
-              D.text "in",
-              D.line,
-              cont'
-            ]
-        else D.join [D.text "use ", trope', D.text " {", D.commaSeqH args', D.text "} in", D.line, cont']
     _ :< If (_, (ifCond, _), _, (ifBody, _), _) elseIfList _ _ (elseBody, _) -> do
       D.join
         [ D.text "if ",
