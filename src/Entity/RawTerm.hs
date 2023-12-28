@@ -78,7 +78,7 @@ data RawTermF a
   | Attach C C (a, C)
   | Option a
   | Assert C (Hint, T.Text) C C (a, C)
-  | Introspect C T.Text C (SE.Series (Maybe (T.Text, C), C, a))
+  | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | With C a C C (a, C)
   | Brace C (a, C)
 

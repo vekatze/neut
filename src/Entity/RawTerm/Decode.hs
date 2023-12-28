@@ -8,6 +8,7 @@ module Entity.RawTerm.Decode
 where
 
 import Control.Comonad.Cofree
+import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
 import Entity.C
 import Entity.C.Decode qualified as C
@@ -240,14 +241,11 @@ toDoc term =
     _ :< Assert c1 (_, message) c2 c3 (e, c4) -> do
       let message' = D.text (T.pack (show message))
       decodeIfClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
-    _ :< Introspect _ key _ clauseList -> do
-      D.join
-        [ D.text "introspect ",
-          D.text key,
-          D.text " {",
-          D.join [D.line, D.listSeq $ map decodeIntrospectClause $ SE.extract clauseList],
-          D.line,
-          D.text "}"
+    _ :< Introspect c1 key c2 clauseList -> do
+      PI.arrange
+        [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "introspect",
+          PI.horizontal $ D.text key,
+          PI.inject $ SE.decode $ fmap decodeIntrospectClause clauseList
         ]
     _ :< With _ binder _ _ (body, _) -> do
       let binder' = toDoc binder
@@ -455,21 +453,23 @@ decodePrimOp op =
     P.PrimConvOp op' dom cod -> do
       D.join [D.text $ T.pack (show op') <> "-", primTypeToDoc dom, D.text "-", primTypeToDoc cod]
 
-decodeIntrospectClause :: (Maybe (T.Text, C), C, RawTerm) -> D.Doc
-decodeIntrospectClause (mKey, _, body) = do
-  case mKey of
-    Just (key, _) -> do
-      D.join [D.text key, D.text " => ", D.line, toDoc body]
-    Nothing ->
-      D.join [D.text "default => ", D.line, toDoc body]
+decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> D.Doc
+decodeIntrospectClause (mKey, c, body) = do
+  let key = D.text $ fromMaybe "default" mKey
+  decodeDoubleArrowClause (key, c, body)
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
 decodePatternRow (patArgs, c, body) = do
+  let patArgs' = SE.decode $ fmap (decodePattern . snd) patArgs
+  decodeDoubleArrowClause (patArgs', c, body)
+
+decodeDoubleArrowClause :: (D.Doc, C, RawTerm) -> D.Doc
+decodeDoubleArrowClause (dom, c, cod) = do
   PI.arrange
-    [ PI.inject $ SE.decode $ fmap (decodePattern . snd) patArgs,
+    [ PI.inject dom,
       PI.inject $ D.text " =>",
       PI.inject D.line,
-      PI.inject $ attachComment c $ toDoc body
+      PI.inject $ attachComment c $ toDoc cod
     ]
 
 decodePattern :: RP.RawPattern -> D.Doc
