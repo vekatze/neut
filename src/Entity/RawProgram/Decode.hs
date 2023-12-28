@@ -120,12 +120,12 @@ decStmt stmt =
             PI.horizontal $ D.text (DD.localLocator name),
             PI.inject $ SE.decode $ fmap RT.toDoc resourcePair
           ]
-    RawStmtDeclare _ _ declList -> do
-      let declList' = SE.decode $ fmap decDeclList declList
-      D.join
-        [ D.text "declare ",
-          declList'
-        ]
+    RawStmtDeclare c _ declList -> do
+      RT.attachComment c $
+        D.join
+          [ D.text "declare ",
+            SE.decode $ fmap decDeclList declList
+          ]
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
 decDataArgs argsOrNone =
