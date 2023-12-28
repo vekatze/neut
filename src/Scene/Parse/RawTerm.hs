@@ -573,10 +573,8 @@ rawTermBrace = do
 rawTermWith :: Parser (RT.RawTerm, C)
 rawTermWith = do
   m <- getCurrentHint
-  c1 <- keyword "with"
-  (binder, c2) <- rawTerm
-  (c3, (body, c)) <- betweenBrace rawExpr
-  return (m :< RT.With c1 binder c2 c3 body, c)
+  (withClause, c) <- rawTermIfClause "with"
+  return (m :< RT.With withClause, c)
 
 rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do

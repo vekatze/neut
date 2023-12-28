@@ -247,17 +247,8 @@ toDoc term =
           PI.horizontal $ D.text key,
           PI.inject $ SE.decode $ fmap decodeIntrospectClause clauseList
         ]
-    _ :< With _ binder _ _ (body, _) -> do
-      let binder' = toDoc binder
-      let body' = toDoc body
-      D.join
-        [ D.text "with ",
-          binder',
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, body'],
-          D.line,
-          D.text "}"
-        ]
+    _ :< With withClause -> do
+      decodeIfClause "with" $ mapIfClause toDoc withClause
     _ :< Brace c1 (e, c2) -> do
       SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
 

@@ -79,7 +79,7 @@ data RawTermF a
   | Option a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
-  | With C a C C (a, C)
+  | With (IfClause a)
   | Brace C (a, C)
 
 type Args a =
