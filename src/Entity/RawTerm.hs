@@ -6,7 +6,7 @@ module Entity.RawTerm
     TopDefHeader,
     LetKind (..),
     RawMagic (..),
-    IfClause,
+    KeywordClause,
     EL,
     Args,
     RawDecl (..),
@@ -16,11 +16,11 @@ module Entity.RawTerm
     extractArgs,
     lam,
     piElim,
-    pushCommentToIfClause,
-    extractFromIfClause,
+    pushCommentToKeywordClause,
+    extractFromKeywordClause,
     decodeLetKind,
     mapEL,
-    mapIfClause,
+    mapKeywordClause,
   )
 where
 
@@ -69,8 +69,8 @@ data RawTermF a
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a
-  | If (IfClause a) [IfClause a] (EL a)
-  | When (IfClause a)
+  | If (KeywordClause a) [KeywordClause a] (EL a)
+  | When (KeywordClause a)
   | Seq (a, C) C a
   | ListIntro (SE.Series a)
   | Admit
@@ -79,7 +79,7 @@ data RawTermF a
   | Option a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
-  | With (IfClause a)
+  | With (KeywordClause a)
   | Brace C (a, C)
 
 type Args a =
@@ -93,19 +93,19 @@ extractArgs :: Args a -> [RawBinder a]
 extractArgs (series, _) =
   SE.extract series
 
-type IfClause a =
+type KeywordClause a =
   (EL a, EL a)
 
-mapIfClause :: (a -> b) -> IfClause a -> IfClause b
-mapIfClause f (el1, el2) =
+mapKeywordClause :: (a -> b) -> KeywordClause a -> KeywordClause b
+mapKeywordClause f (el1, el2) =
   (mapEL f el1, mapEL f el2)
 
-pushCommentToIfClause :: C -> IfClause a -> IfClause a
-pushCommentToIfClause c ((c1, cond), (c2, body)) =
+pushCommentToKeywordClause :: C -> KeywordClause a -> KeywordClause a
+pushCommentToKeywordClause c ((c1, cond), (c2, body)) =
   ((c ++ c1, cond), (c2, body))
 
-extractFromIfClause :: IfClause a -> (a, a)
-extractFromIfClause ((_, (cond, _)), (_, (body, _))) =
+extractFromKeywordClause :: KeywordClause a -> (a, a)
+extractFromKeywordClause ((_, (cond, _)), (_, (body, _))) =
   (cond, body)
 
 data RawDecl a = RawDecl

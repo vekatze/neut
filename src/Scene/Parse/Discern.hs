@@ -314,7 +314,7 @@ discern nenv term =
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
-      let (ifCond, ifBody) = RT.extractFromIfClause ifClause
+      let (ifCond, ifBody) = RT.extractFromKeywordClause ifClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
       discern nenv $ foldIf m boolTrue boolFalse ifCond ifBody elseIfClauseList elseBody
@@ -323,7 +323,7 @@ discern nenv term =
       unit <- locatorToVarGlobal m coreUnit
       discern nenv $ bind (m, h, [], [], unit) e1 e2
     m :< RT.When whenClause -> do
-      let (whenCond, whenBody) = RT.extractFromIfClause whenClause
+      let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
       boolFalse <- locatorToName (blur m) coreBoolFalse
       unitUnit <- locatorToVarGlobal m coreUnitUnit
@@ -372,7 +372,7 @@ discern nenv term =
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
       discern nenv clause
     m :< RT.With withClause -> do
-      let (binder, body) = RT.extractFromIfClause withClause
+      let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
         mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 c6 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
@@ -505,7 +505,7 @@ foldIf ::
   Name ->
   RT.RawTerm ->
   RT.RawTerm ->
-  [RT.IfClause RT.RawTerm] ->
+  [RT.KeywordClause RT.RawTerm] ->
   RT.RawTerm ->
   RT.RawTerm
 foldIf m true false ifCond ifBody elseIfList elseBody =
@@ -530,7 +530,7 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
               ]
           )
     elseIfClause : rest -> do
-      let (elseIfCond, elseIfBody) = RT.extractFromIfClause elseIfClause
+      let (elseIfCond, elseIfBody) = RT.extractFromKeywordClause elseIfClause
       let cont = foldIf m true false elseIfCond elseIfBody rest elseBody
       m
         :< RT.DataElim

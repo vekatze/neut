@@ -205,8 +205,8 @@ toDoc term =
           attachComment (c3 ++ c4) $ toDoc cont
         ]
     _ :< If ifClause elseIfClauseList elseBody -> do
-      let ifClause' = decodeIfClause "if" $ mapIfClause toDoc ifClause
-      let elseIfClauseList' = map (decodeIfClause "else-if" . mapIfClause toDoc) elseIfClauseList
+      let ifClause' = decodeKeywordClause "if" $ mapKeywordClause toDoc ifClause
+      let elseIfClauseList' = map (decodeKeywordClause "else-if" . mapKeywordClause toDoc) elseIfClauseList
       let elseBody' = decodeBlock $ RT.mapEL toDoc elseBody
       D.join
         [ PI.arrange
@@ -219,7 +219,7 @@ toDoc term =
             ]
         ]
     _ :< When whenClause -> do
-      decodeIfClause "when" $ mapIfClause toDoc whenClause
+      decodeKeywordClause "when" $ mapKeywordClause toDoc whenClause
     _ :< Seq (e1, c1) c2 e2 -> do
       D.join [toDoc e1, D.text ";", D.line, attachComment (c1 ++ c2) $ toDoc e2]
     _ :< ListIntro es -> do
@@ -240,7 +240,7 @@ toDoc term =
       D.join [D.text "?", toDoc t]
     _ :< Assert c1 (_, message) c2 c3 (e, c4) -> do
       let message' = D.text (T.pack (show message))
-      decodeIfClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
+      decodeKeywordClause "assert" ((c1, (message', c2)), (c3, (toDoc e, c4)))
     _ :< Introspect c1 key c2 clauseList -> do
       PI.arrange
         [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "introspect",
@@ -248,12 +248,12 @@ toDoc term =
           PI.inject $ SE.decode $ fmap decodeIntrospectClause clauseList
         ]
     _ :< With withClause -> do
-      decodeIfClause "with" $ mapIfClause toDoc withClause
+      decodeKeywordClause "with" $ mapKeywordClause toDoc withClause
     _ :< Brace c1 (e, c2) -> do
       SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
 
-decodeIfClause :: T.Text -> IfClause D.Doc -> D.Doc
-decodeIfClause k ((c1, (cond, c2)), body) = do
+decodeKeywordClause :: T.Text -> KeywordClause D.Doc -> D.Doc
+decodeKeywordClause k ((c1, (cond, c2)), body) = do
   attachComment (c1 ++ c2) $
     D.join
       [ PI.arrange

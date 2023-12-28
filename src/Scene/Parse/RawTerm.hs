@@ -523,22 +523,22 @@ rawTermPatternKeyValuePair = do
 rawTermIf :: Parser (RT.RawTerm, C)
 rawTermIf = do
   m <- getCurrentHint
-  (ifClause, c1) <- rawTermIfClause "if"
-  (elseIfClauseList, c2) <- fmap joinComment $ many $ rawTermIfClause "else-if"
+  (ifClause, c1) <- rawTermKeywordClause "if"
+  (elseIfClauseList, c2) <- fmap joinComment $ many $ rawTermKeywordClause "else-if"
   c3 <- keyword "else"
   (c4, (elseBody, c)) <- betweenBrace rawExpr
   let (elseIfClauseList', elseBody') = adjustComment c1 elseIfClauseList (c2 ++ c3 ++ c4, elseBody)
   return (m :< RT.If ifClause elseIfClauseList' elseBody', c)
 
-adjustComment :: C -> [RT.IfClause a] -> RT.EL a -> ([RT.IfClause a], RT.EL a)
+adjustComment :: C -> [RT.KeywordClause a] -> RT.EL a -> ([RT.KeywordClause a], RT.EL a)
 adjustComment c elseIfClauseList (c', x) = do
   case elseIfClauseList of
     [] ->
       ([], (c ++ c', x))
     clause : rest -> do
-      (RT.pushCommentToIfClause c clause : rest, (c', x))
+      (RT.pushCommentToKeywordClause c clause : rest, (c', x))
 
-joinComment :: [(RT.IfClause a, C)] -> ([RT.IfClause a], C)
+joinComment :: [(RT.KeywordClause a, C)] -> ([RT.KeywordClause a], C)
 joinComment xs =
   case xs of
     [] ->
@@ -549,10 +549,10 @@ joinComment xs =
         [] ->
           ([clause], c ++ trail)
         clause' : clauseList ->
-          (clause : RT.pushCommentToIfClause c clause' : clauseList, trail)
+          (clause : RT.pushCommentToKeywordClause c clause' : clauseList, trail)
 
-rawTermIfClause :: T.Text -> Parser (RT.IfClause RT.RawTerm, C)
-rawTermIfClause k = do
+rawTermKeywordClause :: T.Text -> Parser (RT.KeywordClause RT.RawTerm, C)
+rawTermKeywordClause k = do
   c1 <- keyword k
   cond <- rawTerm
   (c2, (body, c3)) <- betweenBrace rawExpr
@@ -561,7 +561,7 @@ rawTermIfClause k = do
 rawTermWhen :: Parser (RT.RawTerm, C)
 rawTermWhen = do
   m <- getCurrentHint
-  (whenClause, c) <- rawTermIfClause "when"
+  (whenClause, c) <- rawTermKeywordClause "when"
   return (m :< RT.When whenClause, c)
 
 rawTermBrace :: Parser (RT.RawTerm, C)
@@ -573,7 +573,7 @@ rawTermBrace = do
 rawTermWith :: Parser (RT.RawTerm, C)
 rawTermWith = do
   m <- getCurrentHint
-  (withClause, c) <- rawTermIfClause "with"
+  (withClause, c) <- rawTermKeywordClause "with"
   return (m :< RT.With withClause, c)
 
 rawTermNoema :: Parser (RT.RawTerm, C)
