@@ -12,6 +12,7 @@ import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
 import Entity.LowType.Decode qualified as LowType
+import Entity.Piece qualified as PI
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
@@ -111,8 +112,14 @@ decStmt stmt =
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
           ]
-    RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) ->
-      RT.toDoc $ m :< RT.Resource name [] discarder copier
+    RawStmtDefineResource c1 _ (name, c2) c3 discarder copier -> do
+      let resourcePair = SE.pushComment c3 $ SE.fromListWithComment SE.Brace SE.Hyphen [discarder, copier]
+      RT.attachComment (c1 ++ c2) $
+        PI.arrange
+          [ PI.horizontal $ D.text "resource",
+            PI.horizontal $ D.text (DD.localLocator name),
+            PI.inject $ SE.decode $ fmap RT.toDoc resourcePair
+          ]
     RawStmtDeclare _ _ declList -> do
       let declList' = SE.decode $ fmap decDeclList declList
       D.join
