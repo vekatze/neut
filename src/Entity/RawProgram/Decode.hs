@@ -53,20 +53,21 @@ decImport importOrNone =
   case importOrNone of
     Nothing ->
       D.Nil
-    Just (RawImport _ _ importItemList) -> do
-      let importItemList' = SE.decode $ fmap decImportItem importItemList
-      D.join
-        [ D.text "import ",
-          importItemList'
-        ]
+    Just (RawImport c _ importItemList) -> do
+      RT.attachComment c $
+        D.join
+          [ D.text "import ",
+            SE.decode $ SE.assoc $ fmap decImportItem importItemList
+          ]
 
-decImportItem :: RawImportItem -> D.Doc
-decImportItem (RawImportItem _ _ (item, _) args) = do
+decImportItem :: RawImportItem -> (D.Doc, C)
+decImportItem (RawImportItem _ _ (item, c) args) = do
   if SE.isEmpty args
-    then D.join [D.text item]
+    then (D.join [D.text item], c)
     else do
-      let args' = SE.decode $ fmap decImportItemLocator args
-      D.join [D.text item, D.text " ", args']
+      let args' = SE.pushComment c args
+      let args'' = SE.decode $ fmap decImportItemLocator args'
+      (D.join [D.text item, D.text " ", args''], [])
 
 decImportItemLocator :: (a, LL.LocalLocator) -> D.Doc
 decImportItemLocator (_, l) =
@@ -77,12 +78,13 @@ decForeign foreignOrNone =
   case foreignOrNone of
     Nothing ->
       D.Nil
-    Just (RawForeign _ foreignList) -> do
+    Just (RawForeign c foreignList) -> do
       let foreignList' = SE.decode $ fmap decForeignItem foreignList
-      D.join
-        [ D.text "foreign ",
-          foreignList'
-        ]
+      RT.attachComment c $
+        D.join
+          [ D.text "foreign ",
+            foreignList'
+          ]
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItem funcName _ args _ _ cod) = do

@@ -129,4 +129,4 @@ extract series =
 
 isEmpty :: Series a -> Bool
 isEmpty series =
-  null $ elems series
+  null (elems series) && null (trailingComment series)
