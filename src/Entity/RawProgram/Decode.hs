@@ -102,15 +102,15 @@ decStmt stmt =
             D.text (DD.localLocator name),
             RT.decodeKeywordClause ":" constClause
           ]
-    RawStmtDefineData _ _ (dataName, _) argsOrNone consInfo -> do
-      let consInfo' = SE.decode $ fmap decConsInfo consInfo
-      D.join
-        [ D.text "data ",
-          D.text (DD.localLocator dataName),
-          decDataArgs argsOrNone,
-          D.text " ",
-          consInfo'
-        ]
+    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo -> do
+      RT.attachComment (c1 ++ c2) $
+        D.join
+          [ D.text "data ",
+            D.text (DD.localLocator dataName),
+            decDataArgs argsOrNone,
+            D.text " ",
+            SE.decode $ fmap decConsInfo consInfo
+          ]
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) ->
       RT.toDoc $ m :< RT.Resource name [] discarder copier
     RawStmtDeclare _ _ declList -> do
