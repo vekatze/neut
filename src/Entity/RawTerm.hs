@@ -25,6 +25,7 @@ module Entity.RawTerm
 where
 
 import Control.Comonad.Cofree
+import Data.Bifunctor
 import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
@@ -117,12 +118,20 @@ data RawDecl a = RawDecl
     cod :: (C, RawTerm)
   }
 
+instance Functor RawDecl where
+  fmap f decl =
+    decl {name = first f (name decl)}
+
 data RawDef a = RawDef
   { decl :: RawDecl a,
     leadingComment :: C,
     body :: RawTerm,
     trailingComment :: C
   }
+
+instance Functor RawDef where
+  fmap f def =
+    def {decl = fmap f (decl def)}
 
 type DefInfo =
   RawDef RawIdent

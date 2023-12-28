@@ -4,6 +4,9 @@ module Entity.RawTerm.Decode
     typeAnnot,
     decodeArgs,
     decodeArgs',
+    attachComment,
+    decodeBlock,
+    decodeKeywordClause,
   )
 where
 
@@ -64,12 +67,12 @@ toDoc term =
             ],
           PI.arrange [PI.inject $ attachComment c $ toDoc body]
         ]
-    m :< PiIntroFix c def -> do
+    _ :< PiIntroFix c def -> do
       attachComment c $
         D.join
           [ D.text "define ",
             decDecl $ RT.decl def,
-            toDoc $ m :< Brace (RT.leadingComment def) (RT.body def, RT.trailingComment def)
+            decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
           ]
     _ :< PiElim e c args -> do
       PI.arrange

@@ -92,36 +92,16 @@ decForeignItem (RawForeignItem funcName _ args _ _ cod) = do
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine _ _ (RT.RawDef {decl, body}) -> do
-      let (functionName, _) = RT.name decl
-      let impArgs' = RT.decodeArgs' $ RT.impArgs decl
-      let expArgs' = RT.decodeArgs $ RT.expArgs decl
-      let (_, cod) = RT.cod decl
-      let cod' = RT.toDoc cod
-      let body' = RT.toDoc body
-      D.join
-        [ D.text "define ",
-          D.text (DD.localLocator functionName),
-          impArgs',
-          expArgs',
-          D.text ": ",
-          cod',
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, body'],
-          D.line,
-          D.text "}"
-        ]
-    RawStmtDefineConst _ _ (name, _) (_, (cod, _)) (_, (body, _)) ->
-      D.join
-        [ D.text "constant ",
-          D.text (DD.localLocator name),
-          D.text ": ",
-          RT.toDoc cod,
-          D.text " {",
-          D.nest D.indent $ D.join [D.line, RT.toDoc body],
-          D.line,
-          D.text "}"
-        ]
+    RawStmtDefine c _ def -> do
+      RT.toDoc $ undefined :< RT.PiIntroFix c (fmap DD.localLocator def)
+    RawStmtDefineConst c1 _ (name, c2) cod body -> do
+      let constClause = RT.mapKeywordClause RT.toDoc (cod, body)
+      RT.attachComment (c1 ++ c2) $
+        D.join
+          [ D.text "constant ",
+            D.text (DD.localLocator name),
+            RT.decodeKeywordClause ":" constClause
+          ]
     RawStmtDefineData _ _ (dataName, _) argsOrNone consInfo -> do
       let consInfo' = SE.decode $ fmap decConsInfo consInfo
       D.join
