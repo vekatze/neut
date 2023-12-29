@@ -3,10 +3,9 @@ module Scene.Write (write) where
 import Context.App
 import Context.Parse
 import Data.Text qualified as T
-import Path.IO
+import Path
 import Prelude hiding (log)
 
-write :: FilePath -> T.Text -> App ()
+write :: Path Abs File -> T.Text -> App ()
 write path content = do
-  path' <- resolveFile' path
-  writeSourceFile path' content
+  writeSourceFile path content

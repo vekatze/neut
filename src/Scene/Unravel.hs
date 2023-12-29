@@ -67,14 +67,7 @@ unravelFromFile ::
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
 unravelFromFile path = do
-  mainModule <- Module.getMainModule
-  ensureFileModuleSanity path mainModule
-  let initialSource =
-        Source.Source
-          { Source.sourceModule = mainModule,
-            Source.sourceFilePath = path,
-            Source.sourceHint = Nothing
-          }
+  initialSource <- Module.sourceFromPath path
   unravel' >=> mapM adjustUnravelResult $ initialSource
 
 adjustUnravelResult ::
@@ -85,11 +78,6 @@ adjustUnravelResult sourceSeq = do
   registerAntecedentInfo sourceList
   sourceList' <- mapM Source.shiftToLatest sourceList
   return $ sanitizeSourceList sourceList'
-
-ensureFileModuleSanity :: Path Abs File -> Module -> App ()
-ensureFileModuleSanity filePath mainModule = do
-  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    Throw.raiseError' "the specified file is not in the current module"
 
 unravel' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel' source = do

@@ -142,7 +142,7 @@ parseArchiveOpt = do
 parseFormatOpt :: Parser Command
 parseFormatOpt = do
   inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
-  inPlaceOpt <- flag True False (mconcat [long "in-place", help "Set this to perform in-place update"])
+  inPlaceOpt <- flag False True (mconcat [long "in-place", help "Set this to perform in-place update"])
   remarkCfg <- remarkConfigOpt
   pure $
     Format $
