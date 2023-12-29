@@ -30,8 +30,8 @@ import Data.Text qualified as T
 import Entity.Annotation qualified as Annot
 import Entity.Attr.Data qualified as AttrD
 import Entity.Attr.DataIntro qualified as AttrDI
+import Entity.BaseName qualified as BN
 import Entity.C
-import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.HoleID
@@ -58,8 +58,8 @@ data RawTermF a
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
   | PiElimExact C a
-  | Data AttrD.Attr DD.DefiniteDescription [a]
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (attr, consName, dataArgs, consArgs)
+  | Data (AttrD.Attr BN.BaseName) BN.BaseName [a]
+  | DataIntro (AttrDI.Attr BN.BaseName) BN.BaseName [a] [a] -- (attr, consName, dataArgs, consArgs)
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Noema a
   | Embody a
@@ -137,10 +137,10 @@ type DefInfo =
   RawDef RawIdent
 
 type TopDefHeader =
-  RawDecl DD.DefiniteDescription
+  RawDecl BN.BaseName
 
 type TopDef =
-  RawDef DD.DefiniteDescription
+  RawDef BN.BaseName
 
 piElim :: a -> [a] -> RawTermF a
 piElim e es =

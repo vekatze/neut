@@ -18,24 +18,24 @@ import Entity.RawBinder (RawBinder)
 import Entity.RawTerm qualified as RT
 import GHC.Generics
 
-data BaseStmtKind b t
+data BaseStmtKind name b t
   = Normal O.Opacity
   | Data
-      DD.DefiniteDescription -- the name of the variant type
+      name -- the name of the variant type
       [b] -- variant args
-      [(SavedHint, DD.DefiniteDescription, IsConstLike, [b], D.Discriminant)] -- constructors
-  | DataIntro DD.DefiniteDescription [b] [b] D.Discriminant
+      [(SavedHint, name, IsConstLike, [b], D.Discriminant)] -- constructors
+  | DataIntro name [b] [b] D.Discriminant
   deriving (Generic)
 
-instance (Binary x, Binary t) => Binary (BaseStmtKind x t)
+instance (Binary name, Binary x, Binary t) => Binary (BaseStmtKind name x t)
 
 type StmtKind a =
-  BaseStmtKind (BinderF a) a
+  BaseStmtKind DD.DefiniteDescription (BinderF a) a
 
-type RawStmtKind =
-  BaseStmtKind (RawBinder RT.RawTerm) RT.RawTerm
+type RawStmtKind a =
+  BaseStmtKind a (RawBinder RT.RawTerm) RT.RawTerm
 
-toOpacity :: BaseStmtKind x t -> O.Opacity
+toOpacity :: BaseStmtKind name x t -> O.Opacity
 toOpacity stmtKind =
   case stmtKind of
     Normal opacity ->
@@ -43,7 +43,7 @@ toOpacity stmtKind =
     _ ->
       O.Clear
 
-toLowOpacity :: BaseStmtKind x t -> O.Opacity
+toLowOpacity :: BaseStmtKind name x t -> O.Opacity
 toLowOpacity stmtKind =
   case stmtKind of
     Normal opacity ->

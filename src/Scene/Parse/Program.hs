@@ -4,7 +4,6 @@ module Scene.Parse.Program
   )
 where
 
-import Context.Locator qualified as Locator
 import Context.Throw qualified as Throw
 import Control.Monad
 import Control.Monad.Trans
@@ -105,7 +104,7 @@ parseDefine' opacity = do
         P.keyword "define"
       O.Clear ->
         P.keyword "inline"
-  (def, c) <- parseDef Locator.attachCurrentLocator
+  (def, c) <- parseDef return
   return (RawStmtDefine c1 (SK.Normal opacity) def, c)
 
 parseData :: P.Parser (RawStmt, C)
@@ -113,16 +112,15 @@ parseData = do
   c1 <- P.keyword "data"
   m <- P.getCurrentHint
   (dataName, c2) <- P.baseName
-  dataName' <- lift $ Locator.attachCurrentLocator dataName
   dataArgsOrNone <- parseDataArgs
   (consSeries, c) <- P.seriesBraceList parseDefineDataClause
-  return (RawStmtDefineData c1 m (dataName', c2) dataArgsOrNone consSeries, c)
+  return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries, c)
 
 parseDeclare :: P.Parser (RawStmt, C)
 parseDeclare = do
   c1 <- P.keyword "declare"
   m <- P.getCurrentHint
-  (decls, c) <- P.seriesBraceList $ parseDeclareItem Locator.attachCurrentLocator
+  (decls, c) <- P.seriesBraceList $ parseDeclareItem return
   return (RawStmtDeclare c1 m decls, c)
 
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
@@ -164,21 +162,19 @@ parseResource = do
   c1 <- P.keyword "resource"
   m <- P.getCurrentHint
   (name, c2) <- P.baseName
-  name' <- lift $ Locator.attachCurrentLocator name
   (c3, ((discarder, copier), c4)) <- P.betweenBrace $ do
     cDiscarder <- P.delimiter "-"
     discarder <- rawExpr
     cCopier <- P.delimiter "-"
     copier <- rawExpr
     return ((cDiscarder, discarder), (cCopier, copier))
-  return (RawStmtDefineResource c1 m (name', c2) c3 discarder copier, c4)
+  return (RawStmtDefineResource c1 m (name, c2) c3 discarder copier, c4)
 
 parseConstant :: P.Parser (RawStmt, C)
 parseConstant = do
   c1 <- P.keyword "constant"
   m <- P.getCurrentHint
   (constName, c2) <- P.baseName
-  constName' <- lift $ Locator.attachCurrentLocator constName
   t <- parseDefInfoCod m
   (c3, (v, c4)) <- P.betweenBrace rawExpr
-  return (RawStmtDefineConst c1 m (constName', c2) t (c3, v), c4)
+  return (RawStmtDefineConst c1 m (constName, c2) t (c3, v), c4)

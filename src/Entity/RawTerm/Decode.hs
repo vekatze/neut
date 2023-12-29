@@ -13,9 +13,9 @@ where
 import Control.Comonad.Cofree
 import Data.Maybe (fromMaybe)
 import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
-import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Hint
@@ -89,10 +89,10 @@ toDoc term =
         [ PI.delimiterLeftAligned $ D.text "exact",
           PI.inject $ attachComment c $ toDoc e
         ]
-    _ :< Data _ dd _ ->
-      D.text $ DD.reify dd
-    _ :< DataIntro _ dd _ _ ->
-      D.text $ DD.reify dd
+    _ :< Data _ dataName _ ->
+      D.text $ BN.reify dataName
+    _ :< DataIntro _ dataIntroName _ _ ->
+      D.text $ BN.reify dataIntroName
     _ :< DataElim c isNoetic es patternRowList -> do
       D.join
         [ PI.arrange

@@ -6,6 +6,7 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
+import Context.Locator qualified as Locator
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -22,6 +23,7 @@ import Entity.Arch qualified as Arch
 import Entity.ArgNum qualified as AN
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Attr.VarGlobal qualified as AttrVG
+import Entity.BaseName qualified as BN
 import Entity.Binder
 import Entity.BuildMode qualified as BM
 import Entity.C
@@ -71,14 +73,15 @@ discernStmtList =
 
 discernStmt :: RawStmt -> App [WeakStmt]
 discernStmt stmt = do
+  nameLifter <- Locator.getNameLifter
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {decl, body}) -> do
-      registerTopLevelName stmt
+      registerTopLevelName nameLifter stmt
       let impArgs = RT.extractArgs $ RT.impArgs decl
       let expArgs = RT.extractArgs $ RT.expArgs decl
       let (_, codType) = RT.cod decl
       let m = RT.loc decl
-      let (functionName, _) = RT.name decl
+      let functionName = nameLifter $ fst $ RT.name decl
       let isConstLike = RT.isConstLike decl
       (impArgs', nenv) <- discernBinder empty impArgs
       (expArgs', nenv') <- discernBinder nenv expArgs
@@ -88,8 +91,9 @@ discernStmt stmt = do
       Tag.insertDD m functionName m
       forM_ expArgs' Tag.insertBinder
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
-    RawStmtDefineConst _ m (dd, _) (_, (t, _)) (_, (v, _)) -> do
-      registerTopLevelName stmt
+    RawStmtDefineConst _ m (name, _) (_, (t, _)) (_, (v, _)) -> do
+      let dd = nameLifter name
+      registerTopLevelName nameLifter stmt
       t' <- discern empty t
       v' <- discern empty v
       Tag.insertDD m dd m
@@ -98,18 +102,20 @@ discernStmt stmt = do
       stmtList <- defineData m dd args $ SE.extract consInfo
       discernStmtList stmtList
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
-      registerTopLevelName stmt
+      let dd = nameLifter name
+      registerTopLevelName nameLifter stmt
       t' <- discern empty $ m :< RT.Tau
       e' <- discern empty $ m :< RT.Resource [] discarder copier
-      Tag.insertDD m name m
-      return [WeakStmtDefineConst m name t' e']
+      Tag.insertDD m dd m
+      return [WeakStmtDefineConst m dd t' e']
     RawStmtDeclare _ m declList -> do
-      registerTopLevelName stmt
+      registerTopLevelName nameLifter stmt
       declList' <- mapM discernDecl $ SE.extract declList
       return [WeakStmtDeclare m declList']
 
 discernDecl :: RT.TopDefHeader -> App (DE.Decl WT.WeakTerm)
 discernDecl decl = do
+  nameLifter <- Locator.getNameLifter
   let impArgs = RT.extractArgs $ RT.impArgs decl
   let expArgs = RT.extractArgs $ RT.expArgs decl
   (impArgs', nenv) <- discernBinder empty impArgs
@@ -119,54 +125,73 @@ discernDecl decl = do
   return $
     DE.Decl
       { loc = RT.loc decl,
-        name = fst $ RT.name decl,
+        name = nameLifter $ fst $ RT.name decl,
         isConstLike = RT.isConstLike decl,
         impArgs = impArgs',
         expArgs = expArgs',
         cod = cod'
       }
 
-registerTopLevelName :: RawStmt -> App ()
-registerTopLevelName stmt =
+registerTopLevelName :: (BN.BaseName -> DD.DefiniteDescription) -> RawStmt -> App ()
+registerTopLevelName nameLifter stmt =
   case stmt of
     RawStmtDefine _ stmtKind (RT.RawDef {decl}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs decl
       let expArgs = RT.extractArgs $ RT.expArgs decl
       let m = RT.loc decl
-      let (functionName, _) = RT.name decl
+      let functionName = nameLifter $ fst $ RT.name decl
       let isConstLike = RT.isConstLike decl
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
-      Global.registerStmtDefine isConstLike m stmtKind functionName allArgNum expArgNames
-    RawStmtDefineConst _ m (dd, _) _ _ -> do
-      Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
+      stmtKind' <- liftStmtKind stmtKind
+      Global.registerStmtDefine isConstLike m stmtKind' functionName allArgNum expArgNames
+    RawStmtDefineConst _ m (name, _) _ _ -> do
+      Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
     RawStmtDeclare _ _ declList -> do
       mapM_ Global.registerDecl $ SE.extract declList
     RawStmtDefineData _ m (dd, _) args consInfo -> do
       stmtList <- defineData m dd args $ SE.extract consInfo
-      mapM_ registerTopLevelName stmtList
+      mapM_ (registerTopLevelName nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
-      Global.registerStmtDefine True m (SK.Normal O.Clear) name AN.zero []
+      Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
 
-discernStmtKind :: SK.RawStmtKind -> App (SK.StmtKind WT.WeakTerm)
+liftStmtKind :: SK.RawStmtKind BN.BaseName -> App (SK.RawStmtKind DD.DefiniteDescription)
+liftStmtKind stmtKind = do
+  case stmtKind of
+    SK.Normal opacity ->
+      return $ SK.Normal opacity
+    SK.Data dataName dataArgs consInfoList -> do
+      nameLifter <- Locator.getNameLifter
+      let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
+      let consNameList' = map nameLifter consNameList
+      let consInfoList' = zip5 locList consNameList' isConstLikeList consArgsList discriminantList
+      return $ SK.Data (nameLifter dataName) dataArgs consInfoList'
+    SK.DataIntro dataName dataArgs consArgs discriminant -> do
+      nameLifter <- Locator.getNameLifter
+      return $ SK.DataIntro (nameLifter dataName) dataArgs consArgs discriminant
+
+discernStmtKind :: SK.RawStmtKind BN.BaseName -> App (SK.StmtKind WT.WeakTerm)
 discernStmtKind stmtKind =
   case stmtKind of
     SK.Normal opacity ->
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
+      nameLifter <- Locator.getNameLifter
       (dataArgs', nenv) <- discernBinder empty dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
       (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
       forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
-      let consInfoList' = zip5 locList consNameList isConstLikeList consArgsList' discriminantList
-      return $ SK.Data dataName dataArgs' consInfoList'
+      let consNameList' = map nameLifter consNameList
+      let consInfoList' = zip5 locList consNameList' isConstLikeList consArgsList' discriminantList
+      return $ SK.Data (nameLifter dataName) dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
+      nameLifter <- Locator.getNameLifter
       (dataArgs', nenv) <- discernBinder empty dataArgs
       (consArgs', nenv') <- discernBinder nenv consArgs
       forM_ nenv' $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
-      return $ SK.DataIntro dataName dataArgs' consArgs' discriminant
+      return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
 
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =
@@ -227,13 +252,16 @@ discern nenv term =
     m :< RT.PiElimExact _ e -> do
       e' <- discern nenv e
       return $ m :< WT.PiElimExact e'
-    m :< RT.Data name consNameList es -> do
+    m :< RT.Data attr dataName es -> do
+      nameLifter <- Locator.getNameLifter
+      dataName' <- Locator.attachCurrentLocator dataName
       es' <- mapM (discern nenv) es
-      return $ m :< WT.Data name consNameList es'
+      return $ m :< WT.Data (fmap nameLifter attr) dataName' es'
     m :< RT.DataIntro attr consName dataArgs consArgs -> do
+      nameLifter <- Locator.getNameLifter
       dataArgs' <- mapM (discern nenv) dataArgs
       consArgs' <- mapM (discern nenv) consArgs
-      return $ m :< WT.DataIntro attr consName dataArgs' consArgs'
+      return $ m :< WT.DataIntro (fmap nameLifter attr) (nameLifter consName) dataArgs' consArgs'
     m :< RT.DataElim _ isNoetic es patternMatrix -> do
       let es' = SE.extract es
       let ms = map (\(me :< _) -> me) es'

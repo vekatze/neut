@@ -12,7 +12,6 @@ where
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
-import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsConstLike
@@ -29,24 +28,24 @@ data RawProgram
 data RawStmt
   = RawStmtDefine
       C
-      SK.RawStmtKind
+      (SK.RawStmtKind BN.BaseName)
       RT.TopDef
   | RawStmtDefineConst
       C
       Hint
-      (DD.DefiniteDescription, C)
+      (BN.BaseName, C)
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
   | RawStmtDefineData
       C
       Hint
-      (DD.DefiniteDescription, C)
+      (BN.BaseName, C)
       (Maybe (RT.Args RT.RawTerm))
       (SE.Series (RawConsInfo BN.BaseName))
   | RawStmtDefineResource
       C
       Hint
-      (DD.DefiniteDescription, C)
+      (BN.BaseName, C)
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))

@@ -6,7 +6,6 @@ import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
 import Entity.C.Decode qualified as C
-import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.Hint (internalHint)
@@ -77,20 +76,20 @@ decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
     RawStmtDefine c _ def -> do
-      RT.toDoc $ internalHint :< RT.PiIntroFix c (fmap DD.localLocator def)
+      RT.toDoc $ internalHint :< RT.PiIntroFix c (fmap BN.reify def)
     RawStmtDefineConst c1 _ (name, c2) cod body -> do
       let constClause = RT.mapKeywordClause RT.toDoc (cod, body)
       RT.attachComment (c1 ++ c2) $
         D.join
           [ D.text "constant ",
-            D.text (DD.localLocator name),
+            D.text (BN.reify name),
             RT.decodeKeywordClause ":" constClause
           ]
     RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo -> do
       RT.attachComment (c1 ++ c2) $
         D.join
           [ D.text "data ",
-            D.text (DD.localLocator dataName),
+            D.text (BN.reify dataName),
             decDataArgs argsOrNone,
             D.text " ",
             SE.decode $ fmap decConsInfo consInfo
@@ -100,7 +99,7 @@ decStmt stmt =
       RT.attachComment (c1 ++ c2) $
         PI.arrange
           [ PI.horizontal $ D.text "resource",
-            PI.horizontal $ D.text (DD.localLocator name),
+            PI.horizontal $ D.text (BN.reify name),
             PI.inject $ SE.decode $ fmap RT.toDoc resourcePair
           ]
     RawStmtDeclare c _ declList -> do
@@ -133,7 +132,7 @@ decDeclList decl = do
   let (_, cod) = RT.cod decl
   let cod' = RT.toDoc cod
   D.join
-    [ D.text (DD.localLocator functionName),
+    [ D.text (BN.reify functionName),
       impArgs',
       expArgs',
       D.text ": ",

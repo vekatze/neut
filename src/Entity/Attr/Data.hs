@@ -1,14 +1,18 @@
 module Entity.Attr.Data where
 
+import Data.Bifunctor
 import Data.Binary
-import Entity.DefiniteDescription qualified as DD
 import Entity.IsConstLike
 import GHC.Generics (Generic)
 
-data Attr = Attr
-  { consNameList :: [(DD.DefiniteDescription, IsConstLike)],
+data Attr name = Attr
+  { consNameList :: [(name, IsConstLike)],
     isConstLike :: IsConstLike
   }
   deriving (Show, Generic)
 
-instance Binary Attr
+instance (Binary name) => Binary (Attr name)
+
+instance Functor Attr where
+  fmap f attr =
+    attr {consNameList = map (first f) (consNameList attr)}

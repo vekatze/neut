@@ -34,8 +34,8 @@ data WeakTermF a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
   | PiElim IsExplicit a [a]
   | PiElimExact a
-  | Data AttrD.Attr DD.DefiniteDescription [a]
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
+  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a

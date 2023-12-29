@@ -17,6 +17,7 @@ import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
 import Context.KeyArg qualified as KeyArg
+import Context.Locator qualified as Locator
 import Context.OptimizableData qualified as OptimizableData
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
@@ -48,7 +49,7 @@ import Prelude hiding (lookup)
 registerStmtDefine ::
   IsConstLike ->
   Hint ->
-  SK.BaseStmtKind x t ->
+  SK.BaseStmtKind DD.DefiniteDescription x t ->
   DD.DefiniteDescription ->
   AN.ArgNum ->
   [Key] ->
@@ -108,7 +109,8 @@ registerDecl RT.RawDecl {..} = do
   let impArgs' = RT.extractArgs impArgs
   let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
-  let name' = fst name
+  nameLifter <- Locator.getNameLifter
+  let name' = nameLifter $ fst name
   ensureDeclFreshness loc name'
   ensureDefFreshness loc name'
   KeyArg.insert loc name' isConstLike argNum expArgNames
