@@ -4,6 +4,7 @@ module Entity.RawTerm.Decode
     typeAnnot,
     decodeArgs,
     decodeArgs',
+    decodeDef,
     attachComment,
     decodeBlock,
     decodeKeywordClause,
@@ -68,12 +69,7 @@ toDoc term =
           PI.arrange [PI.inject $ attachComment c $ toDoc body]
         ]
     _ :< PiIntroFix c def -> do
-      attachComment c $
-        D.join
-          [ D.text "define ",
-            decDecl $ RT.decl def,
-            decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
-          ]
+      decodeDef "define" c def
     _ :< PiElim e c args -> do
       PI.arrange
         [ PI.inject $ toDoc e,
@@ -254,6 +250,16 @@ toDoc term =
       decodeKeywordClause "with" $ mapKeywordClause toDoc withClause
     _ :< Brace c1 (e, c2) -> do
       SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
+
+decodeDef :: T.Text -> C -> RawDef RawIdent -> D.Doc
+decodeDef keyword c def = do
+  attachComment c $
+    D.join
+      [ D.text keyword,
+        D.text " ",
+        decDecl $ RT.decl def,
+        decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
+      ]
 
 decodeKeywordClause :: T.Text -> KeywordClause D.Doc -> D.Doc
 decodeKeywordClause k ((c1, (cond, c2)), body) = do

@@ -1,6 +1,5 @@
 module Entity.RawProgram.Decode (pp) where
 
-import Control.Comonad.Cofree
 import Data.Bifunctor
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
@@ -8,13 +7,14 @@ import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
-import Entity.Hint (internalHint)
 import Entity.LocalLocator qualified as LL
 import Entity.LowType.Decode qualified as LowType
+import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
+import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
@@ -81,8 +81,12 @@ decForeignItem (RawForeignItem funcName _ args _ _ cod) = do
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
-    RawStmtDefine c _ def -> do
-      RT.toDoc $ internalHint :< RT.PiIntroFix c (fmap BN.reify def)
+    RawStmtDefine c stmtKind def -> do
+      case stmtKind of
+        SK.Normal O.Clear ->
+          RT.decodeDef "inline" c (fmap BN.reify def)
+        _ ->
+          RT.decodeDef "define" c (fmap BN.reify def)
     RawStmtDefineConst c1 _ (name, c2) cod body -> do
       let constClause = RT.mapKeywordClause RT.toDoc (cod, body)
       RT.attachComment (c1 ++ c2) $
