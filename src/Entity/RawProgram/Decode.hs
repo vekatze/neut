@@ -31,6 +31,12 @@ decTopDocList c docList =
   case docList of
     [] ->
       RT.attachComment c D.Nil
+    [(Nothing, c')] ->
+      RT.attachComment (c ++ c') D.Nil
+    [(Just doc, c')] ->
+      if null c'
+        then RT.attachComment c $ D.join [doc, D.line]
+        else RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' []]
     (Nothing, c') : rest ->
       decTopDocList (c ++ c') rest
     (Just doc, c') : rest -> do
