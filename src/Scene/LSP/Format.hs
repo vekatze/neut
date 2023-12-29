@@ -3,6 +3,7 @@ module Scene.LSP.Format (format) where
 import Context.App
 import Context.AppM
 import Context.Parse qualified as Parse
+import Context.Throw qualified as Throw
 import Control.Lens hiding (Iso, List)
 import Control.Monad.Trans
 import Data.Text qualified as T
@@ -26,7 +27,7 @@ format params = do
     Nothing ->
       return []
     Just newText -> do
-      oldText <- lift $ Parse.readSourceFile path
+      oldText <- lift (Throw.runMaybe $ Parse.readSourceFile path) >>= liftMaybe
       let lineCount = fromIntegral $ length $ T.lines oldText
       return
         [ TextEdit
@@ -44,8 +45,8 @@ getFormattedContent path = do
   case splitExtension path of
     Just (_, ext)
       | ext == sourceFileExtension -> do
-          Just <$> Format.format FT.Source path
+          Throw.runMaybe $ Format.format FT.Source path
       | ext == ensFileExtension ->
-          Just <$> Format.format FT.Ens path
+          Throw.runMaybe $ Format.format FT.Ens path
     _ ->
       return Nothing
