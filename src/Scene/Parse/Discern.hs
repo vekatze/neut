@@ -100,7 +100,7 @@ discernStmt stmt = do
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
       registerTopLevelName stmt
       t' <- discern empty $ m :< RT.Tau
-      e' <- discern empty $ m :< RT.Resource name [] discarder copier
+      e' <- discern empty $ m :< RT.Resource [] discarder copier
       Tag.insertDD m name m
       return [WeakStmtDefineConst m name t' e']
     RawStmtDeclare _ m declList -> do
@@ -303,11 +303,11 @@ discern nenv term =
       case annot of
         AN.Type _ ->
           return $ m :< WT.Annotation remarkLevel (AN.Type (doNotCare m)) e'
-    m :< RT.Resource dd _ (discarder, _) (copier, _) -> do
+    m :< RT.Resource _ (discarder, _) (copier, _) -> do
       resourceID <- Gensym.newCount
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
-      return $ m :< WT.Resource dd resourceID discarder' copier'
+      return $ m :< WT.Resource resourceID discarder' copier'
     m :< RT.Use _ e _ xs _ cont -> do
       e' <- discern nenv e
       (xs', nenv') <- discernBinder nenv $ RT.extractArgs xs

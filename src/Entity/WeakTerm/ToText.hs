@@ -93,8 +93,8 @@ toText term =
       "<magic>"
     _ :< WT.Annotation _ _ e ->
       toText e
-    _ :< WT.Resource dd _ _ _ -> do
-      showGlobalVariable dd
+    _ :< WT.Resource {} -> do
+      "<resource>"
     _ :< WT.Use e xts cont -> do
       let xs = map (\(_, x, _) -> x) xts
       let varSeq = inBrace $ T.intercalate "," $ map showVariable xs

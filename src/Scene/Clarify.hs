@@ -251,7 +251,7 @@ clarifyTerm tenv term =
               return $ C.UpIntro $ C.VarStaticText text
     _ :< TM.Magic der -> do
       clarifyMagic tenv der
-    m :< TM.Resource _ resourceID discarder copier -> do
+    m :< TM.Resource resourceID discarder copier -> do
       liftedName <- Locator.attachCurrentLocator $ BN.resourceName resourceID
       switchValue <- Gensym.newIdentFromText "switchValue"
       value <- Gensym.newIdentFromText "value"

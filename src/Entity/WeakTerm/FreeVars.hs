@@ -59,7 +59,7 @@ freeVars term =
         AN.Type t -> do
           let xs2 = freeVars t
           S.union xs1 xs2
-    _ :< WT.Resource _ _ discarder copier -> do
+    _ :< WT.Resource _ discarder copier -> do
       let xs1 = freeVars discarder
       let xs2 = freeVars copier
       S.union xs1 xs2

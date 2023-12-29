@@ -38,7 +38,7 @@ data TermF a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | Magic (Magic a)
-  | Resource DD.DefiniteDescription ID a a
+  | Resource ID a a
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

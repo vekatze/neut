@@ -68,7 +68,7 @@ data RawTermF a
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
-  | Resource DD.DefiniteDescription C (a, C) (a, C) -- DD is only for printing
+  | Resource C (a, C) (a, C) -- DD is only for printing
   | Use C a C (Args a) C a
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)

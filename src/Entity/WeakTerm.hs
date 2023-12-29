@@ -44,7 +44,7 @@ data WeakTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
-  | Resource DD.DefiniteDescription Int a a
+  | Resource Int a a
   | Use a [BinderF a] a
 
 type SubstWeakTerm =

@@ -274,7 +274,7 @@ infer varEnv term =
       case annot of
         Annotation.Type _ -> do
           return (m :< WT.Annotation logLevel (Annotation.Type t) e', t)
-    m :< WT.Resource dd resourceID discarder copier -> do
+    m :< WT.Resource resourceID discarder copier -> do
       (discarder', td) <- infer [] discarder
       (copier', tc) <- infer [] copier
       x <- Gensym.newIdentFromText "_"
@@ -283,7 +283,7 @@ infer varEnv term =
       let tCopy = m :< WT.Pi [] [(m, x, intType)] intType
       insConstraintEnv tDiscard td
       insConstraintEnv tCopy tc
-      return (m :< WT.Resource dd resourceID discarder' copier', m :< WT.Tau)
+      return (m :< WT.Resource resourceID discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
       (e', t') <- infer varEnv e
       t'' <- resolveType t'
