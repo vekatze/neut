@@ -1,7 +1,6 @@
 module Act.Format (format) where
 
 import Context.App
-import Context.Module qualified as Module
 import Context.Parse qualified as Parse
 import Entity.Config.Format
 import Path.IO
@@ -14,8 +13,6 @@ format cfg = do
   Initialize.initializeCompiler (remarkCfg cfg) Nothing
   Initialize.initializeForTarget
   path <- resolveFile' $ filePathString cfg
-  source <- Module.sourceFromPath path
-  Initialize.initializeForSource source
   content <- Format.format path
   if mustUpdateInPlace cfg
     then Write.write path content

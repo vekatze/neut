@@ -13,6 +13,10 @@ packageFileExtension :: T.Text
 packageFileExtension =
   ".tar.zst"
 
+moduleFileExtension :: String
+moduleFileExtension =
+  ".ens"
+
 nsSepChar :: Char
 nsSepChar =
   '.'
