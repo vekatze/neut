@@ -11,6 +11,7 @@ import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
+import Entity.Config.Format qualified as Format
 import Entity.Config.LSP qualified as LSP
 import Entity.Config.Remark qualified as Remark
 import Entity.Config.Version qualified as Version
@@ -34,6 +35,7 @@ parseOpt = do
         cmd "archive" parseArchiveOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
         cmd "add" parseGetOpt "add a dependency",
+        cmd "format" parseFormatOpt "format given file",
         cmd "lsp" parseLSPOpt "start the LSP server",
         cmd "version" parseVersionOpt "show version info"
       ]
@@ -135,6 +137,19 @@ parseArchiveOpt = do
       Archive.Config
         { Archive.getArchiveName = archiveName,
           Archive.remarkCfg = remarkCfg
+        }
+
+parseFormatOpt :: Parser Command
+parseFormatOpt = do
+  inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
+  inPlaceOpt <- flag True False (mconcat [long "in-place", help "Set this to perform in-place update"])
+  remarkCfg <- remarkConfigOpt
+  pure $
+    Format $
+      Format.Config
+        { Format.remarkCfg = remarkCfg,
+          Format.filePathString = inputFilePath,
+          Format.mustUpdateInPlace = inPlaceOpt
         }
 
 remarkConfigOpt :: Parser Remark.Config

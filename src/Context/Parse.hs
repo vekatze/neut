@@ -1,5 +1,6 @@
 module Context.Parse
   ( readSourceFile,
+    writeSourceFile,
     ensureExistence,
   )
 where
@@ -20,6 +21,10 @@ readSourceFile path = do
   liftIO $ do
     content <- B.readFile $ toFilePath path
     return $ decodeUtf8 content
+
+writeSourceFile :: Path Abs File -> T.Text -> App ()
+writeSourceFile path content = do
+  liftIO $ B.writeFile (toFilePath path) $ encodeUtf8 content
 
 ensureExistence :: Source -> App ()
 ensureExistence source = do
