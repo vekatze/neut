@@ -138,13 +138,21 @@ decDeclList :: RT.TopDefHeader -> D.Doc
 decDeclList decl = do
   let (functionName, _) = RT.name decl
   let impArgs' = RT.decodeArgs $ RT.impArgs decl
-  let expArgs' = RT.decodeArgs $ RT.expArgs decl
-  let (_, cod) = RT.cod decl
-  let cod' = RT.toDoc cod
-  D.join
-    [ D.text (BN.reify functionName),
-      impArgs',
-      expArgs',
-      D.text ": ",
-      cod'
-    ]
+  let cod = RT.toDoc $ snd $ RT.cod decl
+  if RT.isConstLike decl
+    then do
+      D.join
+        [ D.text (BN.reify functionName),
+          impArgs',
+          D.text ": ",
+          cod
+        ]
+    else do
+      let expArgs' = RT.decodeArgs $ RT.expArgs decl
+      D.join
+        [ D.text (BN.reify functionName),
+          impArgs',
+          expArgs',
+          D.text ": ",
+          cod
+        ]
