@@ -2,7 +2,6 @@ module Entity.RawProgram.Decode (pp) where
 
 import Control.Comonad.Cofree
 import Data.Bifunctor
-import Data.Char
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.C
@@ -26,7 +25,7 @@ pp (c1, RawProgram _ importOrNone c2 foreignOrNone c3 stmtList) = do
   let foreignOrNone' = fmap decForeign foreignOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = [(importOrNone', c2), (foreignOrNone', c3)] ++ stmtList'
-  T.dropWhile isSpace $ D.layout $ decTopDocList c1 program'
+  D.layout $ decTopDocList c1 program'
 
 decTopDocList :: C -> [(Maybe D.Doc, C)] -> D.Doc
 decTopDocList c docList =

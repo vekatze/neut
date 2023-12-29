@@ -13,7 +13,7 @@ format cfg = do
   Initialize.initializeCompiler (remarkCfg cfg) Nothing
   Initialize.initializeForTarget
   path <- resolveFile' $ filePathString cfg
-  content <- Format.format path
+  content <- Format.format (inputFileType cfg) path
   if mustUpdateInPlace cfg
     then Write.write path content
     else Parse.printSourceFile content

@@ -109,4 +109,7 @@ sourceFromPath path = do
 ensureFileModuleSanity :: Path Abs File -> Module -> App ()
 ensureFileModuleSanity filePath mainModule = do
   unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    Throw.raiseError' "the specified file is not in the current module"
+    Throw.raiseError' $
+      "the file `"
+        <> T.pack (toFilePath filePath)
+        <> "` is not in the source directory of current module"
