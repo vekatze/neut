@@ -10,6 +10,7 @@ import Entity.C.Decode qualified as C
 import Entity.DefiniteDescription qualified as DD
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.Hint (internalHint)
 import Entity.LocalLocator qualified as LL
 import Entity.LowType.Decode qualified as LowType
 import Entity.Piece qualified as PI
@@ -21,47 +22,32 @@ import Entity.Syntax.Series.Decode qualified as SE
 
 pp :: (C, RawProgram) -> T.Text
 pp (c1, RawProgram _ importOrNone c2 foreignOrNone c3 stmtList) = do
-  let c1' = decHeadComment c1
-  let importOrNone' = decImport importOrNone
-  let foreignOrNone' = decForeign foreignOrNone
-  let stmtList' = map (first decStmt) stmtList
+  let importOrNone' = fmap decImport importOrNone
+  let foreignOrNone' = fmap decForeign foreignOrNone
+  let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = [(importOrNone', c2), (foreignOrNone', c3)] ++ stmtList'
-  T.dropWhile isSpace $ D.layout $ D.join $ c1' : decTopDocList [] program'
+  T.dropWhile isSpace $ D.layout $ decTopDocList c1 program'
 
-decHeadComment :: C -> D.Doc
-decHeadComment c =
-  if null c
-    then D.Nil
-    else D.join $ commentToDoc c ++ [D.line]
-
-attachComment :: C -> [D.Doc] -> [D.Doc]
-attachComment c docList =
-  if null c
-    then docList
-    else commentToDoc c ++ docList
-
-decTopDocList :: C -> [(D.Doc, C)] -> [D.Doc]
+decTopDocList :: C -> [(Maybe D.Doc, C)] -> D.Doc
 decTopDocList c docList =
   case docList of
     [] ->
-      attachComment c []
-    (doc, c') : rest -> do
-      attachComment c $ [doc, D.line, D.line] ++ decTopDocList c' rest
+      RT.attachComment c D.Nil
+    (Nothing, c') : rest ->
+      decTopDocList (c ++ c') rest
+    (Just doc, c') : rest -> do
+      RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: Maybe RawImport -> D.Doc
-decImport importOrNone =
-  case importOrNone of
-    Nothing ->
-      D.Nil
-    Just (RawImport c _ importItemList) -> do
-      RT.attachComment c $
-        D.join
-          [ D.text "import ",
-            SE.decode $ SE.assoc $ fmap decImportItem importItemList
-          ]
+decImport :: RawImport -> D.Doc
+decImport (RawImport c _ importItemList) = do
+  RT.attachComment c $
+    D.join
+      [ D.text "import ",
+        SE.decode $ SE.assoc $ fmap decImportItem importItemList
+      ]
 
 decImportItem :: RawImportItem -> (D.Doc, C)
-decImportItem (RawImportItem _ _ (item, c) args) = do
+decImportItem (RawImportItem _ (item, c) args) = do
   if SE.isEmpty args
     then (D.join [D.text item], c)
     else do
@@ -73,18 +59,14 @@ decImportItemLocator :: (a, LL.LocalLocator) -> D.Doc
 decImportItemLocator (_, l) =
   D.text (LL.reify l)
 
-decForeign :: Maybe RawForeign -> D.Doc
-decForeign foreignOrNone =
-  case foreignOrNone of
-    Nothing ->
-      D.Nil
-    Just (RawForeign c foreignList) -> do
-      let foreignList' = SE.decode $ fmap decForeignItem foreignList
-      RT.attachComment c $
-        D.join
-          [ D.text "foreign ",
-            foreignList'
-          ]
+decForeign :: RawForeign -> D.Doc
+decForeign (RawForeign c foreignList) = do
+  let foreignList' = SE.decode $ fmap decForeignItem foreignList
+  RT.attachComment c $
+    D.join
+      [ D.text "foreign ",
+        foreignList'
+      ]
 
 decForeignItem :: RawForeignItem -> D.Doc
 decForeignItem (RawForeignItem funcName _ args _ _ cod) = do
@@ -96,7 +78,7 @@ decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
     RawStmtDefine c _ def -> do
-      RT.toDoc $ undefined :< RT.PiIntroFix c (fmap DD.localLocator def)
+      RT.toDoc $ internalHint :< RT.PiIntroFix c (fmap DD.localLocator def)
     RawStmtDefineConst c1 _ (name, c2) cod body -> do
       let constClause = RT.mapKeywordClause RT.toDoc (cod, body)
       RT.attachComment (c1 ++ c2) $
@@ -143,10 +125,6 @@ decConsInfo (_, (consName, cCons), isConstLike, args) = do
   if isConstLike
     then D.join [consName', C.asSuffix cCons]
     else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
-
-commentToDoc :: C -> [D.Doc]
-commentToDoc c = do
-  foldr (\com acc -> [D.text "//", D.text com, D.line] ++ acc) [] c
 
 decDeclList :: RT.TopDefHeader -> D.Doc
 decDeclList decl = do

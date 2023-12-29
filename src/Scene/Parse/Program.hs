@@ -53,7 +53,7 @@ parseImport = do
         (importItems, c) <- P.seriesBraceList $ do
           locator <- P.symbol
           (lls, c) <- parseLocalLocatorList'
-          return (RawImportItem c1 m locator lls, c)
+          return (RawImportItem m locator lls, c)
         return (Just $ RawImport c1 m importItems, c),
       return (Nothing, [])
     ]

@@ -59,7 +59,7 @@ data RawImport
   = RawImport C Hint (SE.Series RawImportItem)
 
 data RawImportItem
-  = RawImportItem C Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
+  = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
 
 data RawForeign
   = RawForeign C (SE.Series RawForeignItem)
