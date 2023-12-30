@@ -54,7 +54,6 @@ import Entity.RawBinder
 import Entity.RawIdent hiding (isHole)
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
-import Entity.RawPrimValue qualified as RPV
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
@@ -70,6 +69,7 @@ import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv
 import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
+import Text.Read qualified as R
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
 discernStmtList =
@@ -205,6 +205,12 @@ discern nenv term =
     m :< RT.Var name ->
       case name of
         Var s
+          | Just x <- R.readMaybe (T.unpack s) -> do
+              h <- Gensym.newHole m []
+              return $ m :< WT.Prim (WP.Value $ WPV.Int h x)
+          | Just x <- R.readMaybe (T.unpack s) -> do
+              h <- Gensym.newHole m []
+              return $ m :< WT.Prim (WP.Value $ WPV.Float h x)
           | Just (mDef, name') <- lookup s nenv -> do
               UnusedVariable.delete name'
               unless (isHole name') $ do
@@ -322,9 +328,9 @@ discern nenv term =
         RT.Noetic -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
           discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2)
-    m :< RT.Prim prim -> do
-      prim' <- discernRawPrimValue nenv m prim
-      return $ m :< WT.Prim prim'
+    m :< RT.StaticText s x -> do
+      s' <- discern nenv s
+      return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' x)
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do
@@ -376,7 +382,7 @@ discern nenv term =
             ( m
                 :< RT.piElim
                   admit
-                  [t, m :< RT.Prim (RPV.StaticText textType ("admit: " <> T.pack (Hint.toString m) <> "\n"))]
+                  [t, m :< RT.StaticText textType ("admit: " <> T.pack (Hint.toString m) <> "\n")]
             )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
@@ -398,7 +404,7 @@ discern nenv term =
         m
           :< RT.piElim
             assert
-            [mText :< RT.Prim (RPV.StaticText textType fullMessage), RT.lam mCond [] e]
+            [mText :< RT.StaticText textType fullMessage, RT.lam mCond [] e]
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -426,19 +432,6 @@ discern nenv term =
           discern nenv body
     _ :< RT.Brace _ (e, _) ->
       discern nenv e
-
-discernRawPrimValue :: NominalEnv -> Hint -> RPV.RawPrimValue RT.RawTerm -> App (WP.WeakPrim WT.WeakTerm)
-discernRawPrimValue nenv m rpv = do
-  case rpv of
-    RPV.Int x -> do
-      h <- Gensym.newHole m []
-      return $ WP.Value $ WPV.Int h x
-    RPV.Float x -> do
-      h <- Gensym.newHole m []
-      return $ WP.Value $ WPV.Float h x
-    RPV.StaticText s x -> do
-      s' <- discern nenv s
-      return $ WP.Value $ WPV.StaticText s' x
 
 discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
 discernRawLowType m rlt = do

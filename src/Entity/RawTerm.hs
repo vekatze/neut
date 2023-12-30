@@ -43,7 +43,6 @@ import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
-import Entity.RawPrimValue
 import Entity.Remark
 import Entity.Syntax.Series qualified as SE
 
@@ -64,7 +63,7 @@ data RawTermF a
   | Noema a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C C a
-  | Prim (RawPrimValue a)
+  | StaticText a T.Text
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a

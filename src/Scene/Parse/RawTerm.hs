@@ -33,7 +33,6 @@ import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
-import Entity.RawPrimValue qualified as RPV
 import Entity.RawTerm qualified as RT
 import Entity.Syntax.Series qualified as SE
 import Entity.WeakPrimType qualified as WPT
@@ -105,8 +104,6 @@ rawTermSimple = do
       rawTermTau,
       rawTermAdmit,
       rawTermHole,
-      rawTermInteger,
-      rawTermFloat,
       rawTermSymbol
     ]
 
@@ -748,19 +745,7 @@ rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
   textType <- lift $ locatorToVarGlobal m coreText
-  return (m :< RT.Prim (RPV.StaticText textType s), c)
-
-rawTermInteger :: Parser (RT.RawTerm, C)
-rawTermInteger = do
-  m <- getCurrentHint
-  (intValue, c) <- try integer
-  return (m :< RT.Prim (RPV.Int intValue), c)
-
-rawTermFloat :: Parser (RT.RawTerm, C)
-rawTermFloat = do
-  m <- getCurrentHint
-  (floatValue, c) <- try float
-  return (m :< RT.Prim (RPV.Float floatValue), c)
+  return (m :< RT.StaticText textType s, c)
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =

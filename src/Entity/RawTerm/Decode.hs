@@ -28,7 +28,6 @@ import Entity.RawBinder
 import Entity.RawIdent
 import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawPattern qualified as RP
-import Entity.RawPrimValue qualified as RPV
 import Entity.RawTerm
 import Entity.RawTerm qualified as RT
 import Entity.Syntax.Series qualified as SE
@@ -110,14 +109,8 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
-    _ :< Prim prim ->
-      case prim of
-        RPV.Int x ->
-          D.text (T.pack (show x))
-        RPV.Float x ->
-          D.text (T.pack (show x))
-        RPV.StaticText _ txt ->
-          D.text (T.pack (show txt))
+    _ :< StaticText _ txt ->
+      D.text (T.pack (show txt))
     _ :< Magic c magic ->
       case magic of
         Cast c1 from to e -> do
