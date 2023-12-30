@@ -360,7 +360,7 @@ paramToDoc' (_, x, c1, c2, t) = do
 decDecl :: RT.RawDecl RawIdent -> D.Doc
 decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
   PI.arrange
-    [ PI.inject $ attachComment c0 $ D.text name,
+    [ PI.inject $ attachComment c0 $ nameToDoc (N.Var name),
       PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
       PI.inject $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
       PI.horizontal $ attachComment c2 $ D.text ":",

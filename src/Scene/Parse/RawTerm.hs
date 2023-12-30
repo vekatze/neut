@@ -325,8 +325,15 @@ rawTermDefine :: Parser (RT.RawTerm, C)
 rawTermDefine = do
   m <- getCurrentHint
   c0 <- keyword "define"
-  (defInfo, c) <- parseDef (return . BN.reify)
+  (defInfo, c) <- parseDef adjustHoleVar
   return (m :< RT.PiIntroFix c0 defInfo, c)
+
+adjustHoleVar :: BN.BaseName -> App T.Text
+adjustHoleVar bn = do
+  let bn' = BN.reify bn
+  if bn' /= "_"
+    then return bn'
+    else Gensym.newTextForHole
 
 rawTermMagic :: Parser (RT.RawTerm, C)
 rawTermMagic = do
