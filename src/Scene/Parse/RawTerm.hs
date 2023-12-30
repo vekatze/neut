@@ -14,7 +14,6 @@ module Scene.Parse.RawTerm
 where
 
 import Context.App
-import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -29,17 +28,16 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Key
-import Entity.LowType qualified as LT
 import Entity.Name
-import Entity.PrimType qualified as PT
-import Entity.PrimType.FromText qualified as PT
 import Entity.RawBinder
 import Entity.RawIdent
+import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
+import Entity.RawPrimValue qualified as RPV
 import Entity.RawTerm qualified as RT
 import Entity.Syntax.Series qualified as SE
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
+import Entity.WeakPrimType qualified as WPT
+import Entity.WeakPrimType.FromText qualified as WPT
 import Scene.Parse.Core
 import Text.Megaparsec
 
@@ -410,7 +408,7 @@ rawTermMagicGlobal m c = do
     lt <- lowType
     return $ \c1 c2 -> m :< RT.Magic c (RT.Global c1 (c2, (EN.ExternalName globalVarName, c3)) (c4, lt))
 
-lowType :: Parser (LT.LowType, C)
+lowType :: Parser (RLT.RawLowType, C)
 lowType = do
   choice
     [ lowTypePointer,
@@ -418,27 +416,25 @@ lowType = do
       lowTypeNumber
     ]
 
-lowTypePointer :: Parser (LT.LowType, C)
+lowTypePointer :: Parser (RLT.RawLowType, C)
 lowTypePointer = do
   c <- keyword "pointer"
-  return (LT.Pointer, c)
+  return (RLT.Pointer, c)
 
-lowTypeVoid :: Parser (LT.LowType, C)
+lowTypeVoid :: Parser (RLT.RawLowType, C)
 lowTypeVoid = do
   c <- keyword "void"
-  return (LT.Void, c)
+  return (RLT.Void, c)
 
-lowTypeNumber :: Parser (LT.LowType, C)
+lowTypeNumber :: Parser (RLT.RawLowType, C)
 lowTypeNumber = do
   (pt, c) <- primType
-  return (LT.PrimNum pt, c)
+  return (RLT.PrimNum pt, c)
 
-primType :: Parser (PT.PrimType, C)
+primType :: Parser (WPT.WeakPrimType, C)
 primType = do
-  m <- getCurrentHint
   (sizeString, c) <- symbol
-  dataSize <- lift $ Env.getDataSize m
-  case PT.fromText dataSize sizeString of
+  case WPT.fromText sizeString of
     Just primNum ->
       return (primNum, c)
     _ -> do
@@ -752,21 +748,19 @@ rawTermTextIntro = do
   m <- getCurrentHint
   (s, c) <- string
   textType <- lift $ locatorToVarGlobal m coreText
-  return (m :< RT.Prim (WP.Value (WPV.StaticText textType s)), c)
+  return (m :< RT.Prim (RPV.StaticText textType s), c)
 
 rawTermInteger :: Parser (RT.RawTerm, C)
 rawTermInteger = do
   m <- getCurrentHint
   (intValue, c) <- try integer
-  h <- lift $ Gensym.newPreHole m
-  return (m :< RT.Prim (WP.Value (WPV.Int h intValue)), c)
+  return (m :< RT.Prim (RPV.Int intValue), c)
 
 rawTermFloat :: Parser (RT.RawTerm, C)
 rawTermFloat = do
   m <- getCurrentHint
   (floatValue, c) <- try float
-  h <- lift $ Gensym.newPreHole m
-  return (m :< RT.Prim (WP.Value (WPV.Float h floatValue)), c)
+  return (m :< RT.Prim (RPV.Float floatValue), c)
 
 preVar :: Hint -> T.Text -> RT.RawTerm
 preVar m str =

@@ -8,9 +8,9 @@ import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
-import Entity.LowType.Decode qualified as LowType
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
+import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.RawTerm.Decode qualified as RT
@@ -73,9 +73,9 @@ decForeign (RawForeign c foreignList) = do
       ]
 
 decForeignItem :: RawForeignItem -> D.Doc
-decForeignItem (RawForeignItem funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap LowType.decode args
-  let cod' = LowType.decode cod
+decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
+  let args' = SE.decode $ fmap RLT.decode args
+  let cod' = RLT.decode cod
   D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
 decStmt :: RawStmt -> D.Doc

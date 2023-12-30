@@ -83,10 +83,11 @@ parseForeign = do
 parseForeignItem :: P.Parser (RawForeignItem, C)
 parseForeignItem = do
   (declName, c1) <- P.symbol
+  m <- P.getCurrentHint
   (lts, c2) <- P.seriesParen lowType
   c3 <- P.delimiter ":"
   (cod, c) <- lowType
-  return (RawForeignItem (EN.ExternalName declName) c1 lts c2 c3 cod, c)
+  return (RawForeignItem m (EN.ExternalName declName) c1 lts c2 c3 cod, c)
 
 parseDefine :: P.Parser (RawStmt, C)
 parseDefine =

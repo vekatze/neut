@@ -40,6 +40,8 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.Key
 import Entity.LamKind qualified as LK
 import Entity.Locator qualified as L
+import Entity.LowType qualified as LT
+import Entity.LowType.FromRawLowType qualified as LT
 import Entity.Magic qualified as M
 import Entity.Name
 import Entity.Noema qualified as N
@@ -50,7 +52,9 @@ import Entity.Pattern qualified as PAT
 import Entity.Platform qualified as Platform
 import Entity.RawBinder
 import Entity.RawIdent hiding (isHole)
+import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
+import Entity.RawPrimValue qualified as RPV
 import Entity.RawProgram
 import Entity.RawTerm qualified as RT
 import Entity.Remark qualified as R
@@ -319,7 +323,7 @@ discern nenv term =
           (x, modifier) <- getContinuationModifier (mx, pat)
           discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2)
     m :< RT.Prim prim -> do
-      prim' <- mapM (discern nenv) prim
+      prim' <- discernRawPrimValue nenv m prim
       return $ m :< WT.Prim prim'
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
@@ -372,7 +376,7 @@ discern nenv term =
             ( m
                 :< RT.piElim
                   admit
-                  [t, m :< RT.Prim (WP.Value (WPV.StaticText textType ("admit: " <> T.pack (Hint.toString m) <> "\n")))]
+                  [t, m :< RT.Prim (RPV.StaticText textType ("admit: " <> T.pack (Hint.toString m) <> "\n"))]
             )
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
@@ -394,7 +398,7 @@ discern nenv term =
         m
           :< RT.piElim
             assert
-            [mText :< RT.Prim (WP.Value (WPV.StaticText textType fullMessage)), RT.lam mCond [] e]
+            [mText :< RT.Prim (RPV.StaticText textType fullMessage), RT.lam mCond [] e]
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -423,6 +427,28 @@ discern nenv term =
     _ :< RT.Brace _ (e, _) ->
       discern nenv e
 
+discernRawPrimValue :: NominalEnv -> Hint -> RPV.RawPrimValue RT.RawTerm -> App (WP.WeakPrim WT.WeakTerm)
+discernRawPrimValue nenv m rpv = do
+  case rpv of
+    RPV.Int x -> do
+      h <- Gensym.newHole m []
+      return $ WP.Value $ WPV.Int h x
+    RPV.Float x -> do
+      h <- Gensym.newHole m []
+      return $ WP.Value $ WPV.Float h x
+    RPV.StaticText s x -> do
+      s' <- discern nenv s
+      return $ WP.Value $ WPV.StaticText s' x
+
+discernRawLowType :: Hint -> RLT.RawLowType -> App LT.LowType
+discernRawLowType m rlt = do
+  dataSize <- Env.getDataSize m
+  case LT.fromRawLowType dataSize rlt of
+    Left err ->
+      Throw.raiseError m err
+    Right lt ->
+      return lt
+
 discernMagic :: NominalEnv -> Hint -> RT.RawMagic -> App (M.Magic WT.WeakTerm)
 discernMagic nenv m magic =
   case magic of
@@ -432,12 +458,14 @@ discernMagic nenv m magic =
       e' <- discern nenv e
       return $ M.Cast from' to' e'
     RT.Store _ (_, (lt, _)) (_, (value, _)) (_, (pointer, _)) -> do
+      lt' <- discernRawLowType m lt
       value' <- discern nenv value
       pointer' <- discern nenv pointer
-      return $ M.Store lt value' pointer'
+      return $ M.Store lt' value' pointer'
     RT.Load _ (_, (lt, _)) (_, (pointer, _)) -> do
+      lt' <- discernRawLowType m lt
       pointer' <- discern nenv pointer
-      return $ M.Load lt pointer'
+      return $ M.Load lt' pointer'
     RT.External _ funcName _ args varArgsOrNone -> do
       (domList, cod) <- Decl.lookupDeclEnv m (DN.Ext funcName)
       args' <- mapM (discern nenv) $ SE.extract args
@@ -447,10 +475,12 @@ discernMagic nenv m magic =
         Just (_, varArgs) ->
           forM (SE.extract varArgs) $ \(_, arg, _, _, lt) -> do
             arg' <- discern nenv arg
-            return (arg', lt)
+            lt' <- discernRawLowType m lt
+            return (arg', lt')
       return $ M.External domList cod funcName args' varArgs'
     RT.Global _ (_, (name, _)) (_, (lt, _)) -> do
-      return $ M.Global name lt
+      lt' <- discernRawLowType m lt
+      return $ M.Global name lt'
 
 getContinuationModifier :: (Hint, RP.RawPattern) -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
 getContinuationModifier pat =

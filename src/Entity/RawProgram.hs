@@ -16,8 +16,8 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
-import Entity.LowType qualified as LT
 import Entity.RawBinder
+import Entity.RawLowType qualified as RLT
 import Entity.RawTerm qualified as RT
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
@@ -64,4 +64,4 @@ data RawForeign
   = RawForeign C (SE.Series RawForeignItem)
 
 data RawForeignItem
-  = RawForeignItem EN.ExternalName C (SE.Series LT.LowType) C C LT.LowType
+  = RawForeignItem Hint EN.ExternalName C (SE.Series RLT.RawLowType) C C RLT.RawLowType

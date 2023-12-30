@@ -37,15 +37,15 @@ import Entity.Hint
 import Entity.HoleID
 import Entity.IsConstLike
 import Entity.Key
-import Entity.LowType
 import Entity.Name
 import Entity.Noema qualified as N
 import Entity.RawBinder
 import Entity.RawIdent
+import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
+import Entity.RawPrimValue
 import Entity.Remark
 import Entity.Syntax.Series qualified as SE
-import Entity.WeakPrim qualified as WP
 
 type RawTerm = Cofree RawTermF Hint
 
@@ -64,7 +64,7 @@ data RawTermF a
   | Noema a
   | Embody a
   | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C C a
-  | Prim (WP.WeakPrim a)
+  | Prim (RawPrimValue a)
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
@@ -170,14 +170,14 @@ decodeLetKind letKind =
     Bind -> "bind"
 
 type VarArg =
-  (Hint, RawTerm, C, C, LowType)
+  (Hint, RawTerm, C, C, RLT.RawLowType)
 
 data RawMagic
   = Cast C (EL RawTerm) (EL RawTerm) (EL RawTerm)
-  | Store C (EL LowType) (EL RawTerm) (EL RawTerm)
-  | Load C (EL LowType) (EL RawTerm)
+  | Store C (EL RLT.RawLowType) (EL RawTerm) (EL RawTerm)
+  | Load C (EL RLT.RawLowType) (EL RawTerm)
   | External C EN.ExternalName C (SE.Series RawTerm) (Maybe (C, SE.Series VarArg))
-  | Global C (EL EN.ExternalName) (EL LowType)
+  | Global C (EL EN.ExternalName) (EL RLT.RawLowType)
 
 -- elem
 type EL a =

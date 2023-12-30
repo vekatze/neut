@@ -22,24 +22,17 @@ import Entity.ExternalName qualified as EN
 import Entity.Hint
 import Entity.Key
 import Entity.Locator qualified as Locator
-import Entity.LowType qualified as LT
 import Entity.Name qualified as N
 import Entity.Piece qualified as PI
-import Entity.PrimNumSize.ToInt qualified as PNS
-import Entity.PrimOp qualified as P
-import Entity.PrimOp.BinaryOp qualified as BinaryOp
-import Entity.PrimOp.CmpOp qualified as CmpOp
-import Entity.PrimOp.UnaryOp qualified as UnaryOp
-import Entity.PrimType qualified as PT
 import Entity.RawBinder
 import Entity.RawIdent
+import Entity.RawLowType.Decode qualified as RLT
 import Entity.RawPattern qualified as RP
+import Entity.RawPrimValue qualified as RPV
 import Entity.RawTerm
 import Entity.RawTerm qualified as RT
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
-import Entity.WeakPrim qualified as WP
-import Entity.WeakPrimValue qualified as WPV
 
 pp :: RawTerm -> T.Text
 pp e = do
@@ -119,18 +112,12 @@ toDoc term =
         ]
     _ :< Prim prim ->
       case prim of
-        WP.Type t ->
-          primTypeToDoc t
-        WP.Value v ->
-          case v of
-            WPV.Int _ x ->
-              D.text (T.pack (show x))
-            WPV.Float _ x ->
-              D.text (T.pack (show x))
-            WPV.Op op -> do
-              decodePrimOp op
-            WPV.StaticText _ txt ->
-              D.text (T.pack (show txt))
+        RPV.Int x ->
+          D.text (T.pack (show x))
+        RPV.Float x ->
+          D.text (T.pack (show x))
+        RPV.StaticText _ txt ->
+          D.text (T.pack (show txt))
     _ :< Magic c magic ->
       case magic of
         Cast c1 from to e -> do
@@ -146,7 +133,7 @@ toDoc term =
                 SE.fromListWithComment
                   SE.Paren
                   SE.Comma
-                  [ RT.mapEL lowTypeToDoc lt,
+                  [ RT.mapEL RLT.decode lt,
                     RT.mapEL toDoc value,
                     RT.mapEL toDoc pointer
                   ]
@@ -158,7 +145,7 @@ toDoc term =
                 SE.fromListWithComment
                   SE.Paren
                   SE.Comma
-                  [ RT.mapEL lowTypeToDoc lt,
+                  [ RT.mapEL RLT.decode lt,
                     RT.mapEL toDoc pointer
                   ]
             ]
@@ -184,7 +171,7 @@ toDoc term =
                   SE.Paren
                   SE.Comma
                   [ RT.mapEL (D.text . T.pack . show . EN.reify) name,
-                    RT.mapEL lowTypeToDoc lt
+                    RT.mapEL RLT.decode lt
                   ]
             ]
     _ :< Hole {} ->
@@ -341,7 +328,7 @@ piIntroArgToDoc (m, x, c1, c2, t) = do
 varArgToDoc :: VarArg -> D.Doc
 varArgToDoc (m, e, c1, c2, t) = do
   let e' = toDoc e
-  paramToDoc' (m, e', c1, c2, lowTypeToDoc t)
+  paramToDoc' (m, e', c1, c2, RLT.decode t)
 
 paramToDoc :: (a, D.Doc, C, C, RawTerm) -> D.Doc
 paramToDoc (m, x, c1, c2, t) = do
@@ -416,43 +403,31 @@ decPiElimKey (_, k, c1, c2, e) = do
           PI.inject $ attachComment c2 $ toDoc e
         ]
 
-lowTypeToDoc :: LT.LowType -> D.Doc
-lowTypeToDoc lt =
-  case lt of
-    LT.PrimNum primType ->
-      primTypeToDoc primType
-    LT.Pointer ->
-      D.text "pointer"
-    LT.Array {} -> do
-      D.text "<array>"
-    LT.Struct {} ->
-      D.text "<struct>"
-    LT.Function {} ->
-      D.text "<function>"
-    LT.Void ->
-      D.text "void"
-    LT.VarArgs ->
-      D.text ".." -- unreachable
+-- lowTypeToDoc :: RLT.RawLowType -> D.Doc
+-- lowTypeToDoc lt =
+--   case lt of
+--     RLT.PrimNum primType ->
+--       primTypeToDoc primType
+--     RLT.Pointer ->
+--       D.text "pointer"
+--     RLT.Void ->
+--       D.text "void"
 
-primTypeToDoc :: PT.PrimType -> D.Doc
-primTypeToDoc primType =
-  case primType of
-    PT.Int intSize ->
-      D.join [D.text "int", D.text (T.pack (show (PNS.intSizeToInt intSize)))]
-    PT.Float floatSize ->
-      D.join [D.text "float", D.text (T.pack (show (PNS.floatSizeToInt floatSize)))]
+-- primTypeToDoc :: WPT.WeakPrimType -> D.Doc
+-- primTypeToDoc primType =
+--   case primType of
+--     WPT.Int intSize ->
+--       D.join [D.text "int", D.text $ decodeSize intSize]
+--     WPT.Float floatSize ->
+--       D.join [D.text "float", D.text $ decodeSize floatSize]
 
-decodePrimOp :: P.PrimOp -> D.Doc
-decodePrimOp op =
-  case op of
-    P.PrimUnaryOp op' dom _ ->
-      D.join [D.text $ UnaryOp.getRep op' <> "-", primTypeToDoc dom]
-    P.PrimBinaryOp op' dom _ ->
-      D.join [D.text $ BinaryOp.getRep op' <> "-", primTypeToDoc dom]
-    P.PrimCmpOp op' dom _ ->
-      D.join [D.text $ CmpOp.getRep op' <> "-", primTypeToDoc dom]
-    P.PrimConvOp op' dom cod -> do
-      D.join [D.text $ T.pack (show op') <> "-", primTypeToDoc dom, D.text "-", primTypeToDoc cod]
+-- decodeSize :: Maybe Int -> T.Text
+-- decodeSize sizeOrNone =
+--   case sizeOrNone of
+--     Just size ->
+--       T.pack (show size)
+--     Nothing ->
+--       ""
 
 decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> D.Doc
 decodeIntrospectClause (mKey, c, body) = do
