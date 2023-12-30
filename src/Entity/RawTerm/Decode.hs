@@ -361,10 +361,10 @@ decDecl :: RT.RawDecl RawIdent -> D.Doc
 decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
   PI.arrange
     [ PI.inject $ attachComment c0 $ D.text name,
-      PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
-      PI.container $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
-      PI.delimiterLeftAligned $ attachComment c2 $ D.text ":",
-      PI.delimiterLeftAligned $ attachComment c3 $ toDoc cod
+      PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
+      PI.inject $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
+      PI.horizontal $ attachComment c2 $ D.text ":",
+      PI.horizontal $ attachComment c3 $ toDoc cod
     ]
 
 letArgToDoc :: (a, RP.RawPattern, C, C, RawTerm) -> D.Doc
