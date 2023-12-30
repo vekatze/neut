@@ -1,4 +1,15 @@
-module Entity.Stmt where
+module Entity.Stmt
+  ( WeakStmt (..),
+    ConsInfo,
+    Program,
+    StmtF (..),
+    Stmt,
+    StrippedStmt,
+    PathSet,
+    compress,
+    extend,
+  )
+where
 
 import Control.Comonad.Cofree
 import Data.Binary
@@ -88,20 +99,3 @@ extend stmt =
       let t' = TM.extend t
       let e' = TM.extend e
       StmtDefineConst m dd t' e'
-
-argToTerm :: BinderF TM.Term -> TM.Term
-argToTerm (m, x, _) =
-  m :< TM.Var x
-
-addDiscriminants :: [(a, [(b, c)])] -> [(a, [(b, c, D.Discriminant)])]
-addDiscriminants info = do
-  let (formInfo, introInfo) = unzip info
-  zip formInfo $ map (addDiscriminants' D.zero) introInfo
-
-addDiscriminants' :: D.Discriminant -> [(b, c)] -> [(b, c, D.Discriminant)]
-addDiscriminants' d xs =
-  case xs of
-    [] ->
-      []
-    (x, y) : rest ->
-      (x, y, d) : addDiscriminants' (D.increment d) rest
