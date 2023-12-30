@@ -59,14 +59,15 @@ toDoc term =
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
         ]
-    _ :< PiIntro (impArgs, c1) (expArgs, c2) c body -> do
+    _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body -> do
+      let body' = decodeBlock $ RT.mapEL toDoc body
       D.join
         [ PI.arrange
             [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
               PI.container $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
               PI.delimiter $ attachComment c2 $ D.text "=>"
             ],
-          PI.arrange [PI.inject $ attachComment c $ toDoc body]
+          PI.arrange [PI.inject $ attachComment c3 body']
         ]
     _ :< PiIntroFix c def -> do
       decodeDef "define" c def

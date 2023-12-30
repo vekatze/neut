@@ -53,7 +53,7 @@ data RawTermF a
   = Tau
   | Var Name
   | Pi (Args a) (Args a) C a
-  | PiIntro (Args a) (Args a) C a
+  | PiIntro (Args a) (Args a) C (EL a)
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
@@ -153,7 +153,7 @@ lam m varList e =
       (SE.emptySeries SE.Angle SE.Comma, [])
       (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, [])
       []
-      e
+      ([], (e, []))
 
 data LetKind
   = Plain

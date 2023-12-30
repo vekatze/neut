@@ -215,7 +215,7 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro impArgs expArgs _ e -> do
+    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) -> do
       lamID <- Gensym.newCount
       (impArgs', nenv') <- discernBinder nenv $ RT.extractArgs impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs

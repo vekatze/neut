@@ -127,8 +127,8 @@ rawTermPiIntro = do
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen preBinder
   cArrow <- delimiter "=>"
-  (e, c) <- rawExpr
-  return (m :< RT.PiIntro impArgs expArgs cArrow e, c)
+  (c1, ((e, c2), c)) <- betweenBrace rawExpr
+  return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)), c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
