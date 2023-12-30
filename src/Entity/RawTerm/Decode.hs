@@ -109,8 +109,8 @@ toDoc term =
           D.line,
           attachComment c5 $ toDoc cont
         ]
-    _ :< StaticText _ txt ->
-      D.text (T.pack (show txt))
+    _ :< StaticText _ txt -> do
+      D.text $ "\"" <> txt <> "\""
     _ :< Magic c magic ->
       case magic of
         Cast c1 from to e -> do

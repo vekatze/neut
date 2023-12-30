@@ -328,9 +328,14 @@ discern nenv term =
         RT.Noetic -> do
           (x, modifier) <- getContinuationModifier (mx, pat)
           discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2)
-    m :< RT.StaticText s x -> do
+    m :< RT.StaticText s str -> do
+      let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       s' <- discern nenv s
-      return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' x)
+      case strOrNone of
+        Nothing ->
+          Throw.raiseError m $ "couldn't interpret the following as a string: " <> str
+        Just str' -> do
+          return $ m :< WT.Prim (WP.Value $ WPV.StaticText s' str')
     m :< RT.Hole k ->
       return $ m :< WT.Hole k []
     m :< RT.Magic _ magic -> do

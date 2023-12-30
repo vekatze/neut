@@ -125,7 +125,19 @@ string :: Parser (T.Text, C)
 string =
   lexeme $ do
     _ <- char '\"'
-    T.pack <$> manyTill L.charLiteral (char '\"')
+    stringInner []
+
+stringInner :: [Char] -> Parser T.Text
+stringInner acc = do
+  c <- anySingle
+  case c of
+    '\\' -> do
+      c' <- anySingle
+      stringInner (c' : '\\' : acc)
+    '"' ->
+      return $ T.pack $ Prelude.reverse acc
+    _ ->
+      stringInner (c : acc)
 
 integer :: Parser (Integer, C)
 integer = do
