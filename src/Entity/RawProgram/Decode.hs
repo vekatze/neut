@@ -137,7 +137,7 @@ decConsInfo (_, (consName, cCons), isConstLike, args) = do
 decDeclList :: RT.TopDefHeader -> D.Doc
 decDeclList decl = do
   let (functionName, _) = RT.name decl
-  let impArgs' = RT.decodeArgs $ RT.impArgs decl
+  let impArgs' = RT.decodeArgs' $ RT.impArgs decl
   let cod = RT.toDoc $ snd $ RT.cod decl
   if RT.isConstLike decl
     then do
@@ -148,7 +148,7 @@ decDeclList decl = do
           cod
         ]
     else do
-      let expArgs' = RT.decodeArgs $ RT.expArgs decl
+      let expArgs' = RT.decodeArgs' $ RT.expArgs decl
       D.join
         [ D.text (BN.reify functionName),
           impArgs',
