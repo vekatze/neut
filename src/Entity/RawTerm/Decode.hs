@@ -334,7 +334,7 @@ piArgToDoc (m, x, c1, c2, t) = do
 
 piIntroArgToDoc :: RawBinder RawTerm -> D.Doc
 piIntroArgToDoc (m, x, c1, c2, t) = do
-  let x' = D.text x
+  let x' = nameToDoc $ N.Var x
   paramToDoc (m, x', c1, c2, t)
 
 varArgToDoc :: VarArg -> D.Doc
@@ -362,7 +362,7 @@ decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expA
   PI.arrange
     [ PI.inject $ attachComment c0 $ D.text name,
       PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
-      PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
+      PI.container $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
       PI.delimiterLeftAligned $ attachComment c2 $ D.text ":",
       PI.delimiterLeftAligned $ attachComment c3 $ toDoc cod
     ]
