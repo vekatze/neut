@@ -1,4 +1,8 @@
-module Entity.Syntax.Series.Decode (decode) where
+module Entity.Syntax.Series.Decode
+  ( decode,
+    decodeHorizontallyIfPossible,
+  )
+where
 
 import Entity.C
 import Entity.C.Decode qualified as C
@@ -96,6 +100,34 @@ decodeListItem (c, d) = do
           D.line,
           D.join [D.text "- ", D.nest D.indent d]
         ]
+
+decodeHorizontallyIfPossible :: Series D.Doc -> D.Doc
+decodeHorizontallyIfPossible series = do
+  case separator series of
+    Comma
+      | Just k <- container series,
+        containsNoComment series -> do
+          let prefix' = decodePrefix series
+          let (open, close) = getContainerPair k
+          let elems' = map snd $ elems series
+          PI.arrange
+            [ PI.inject prefix',
+              PI.inject $ D.text open,
+              PI.inject $ PI.arrange $ commaSeqHorizontal elems',
+              PI.inject $ D.text close
+            ]
+    _ ->
+      decode series
+
+commaSeqHorizontal :: [D.Doc] -> [PI.Piece]
+commaSeqHorizontal elems =
+  case elems of
+    [] ->
+      []
+    [d] -> do
+      [PI.inject d]
+    d : rest -> do
+      [PI.inject d, PI.horizontal $ D.text ","] ++ commaSeqHorizontal rest
 
 attachComment :: C -> D.Doc -> D.Doc
 attachComment c doc =

@@ -73,7 +73,7 @@ toDoc term =
     _ :< PiElim e c args -> do
       PI.arrange
         [ PI.inject $ toDoc e,
-          PI.inject $ attachComment c $ SE.decode $ fmap toDoc args
+          PI.inject $ attachComment c $ SE.decodeHorizontallyIfPossible $ fmap toDoc args
         ]
     _ :< PiElimByKey name c kvs -> do
       PI.arrange

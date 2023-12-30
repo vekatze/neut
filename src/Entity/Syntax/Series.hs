@@ -16,6 +16,7 @@ module Entity.Syntax.Series
     getSeparator,
     extract,
     isEmpty,
+    containsNoComment,
   )
 where
 
@@ -130,3 +131,9 @@ extract series =
 isEmpty :: Series a -> Bool
 isEmpty series =
   null (elems series) && null (trailingComment series)
+
+containsNoComment :: Series a -> Bool
+containsNoComment series = do
+  let cs = map fst $ elems series
+  let c = trailingComment series
+  all null (c : cs)
