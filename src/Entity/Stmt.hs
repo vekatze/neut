@@ -15,9 +15,9 @@ import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
 import Entity.Binder
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.Source qualified as Source
@@ -42,7 +42,7 @@ data WeakStmt
       WT.WeakTerm
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtDeclare Hint [DE.Decl WT.WeakTerm]
+  | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
 
 type Program =
   (Source.Source, [Stmt])

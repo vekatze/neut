@@ -22,9 +22,9 @@ import Entity.Attr.VarGlobal qualified as AttrVG
 import Entity.Binder
 import Entity.Const
 import Entity.DecisionTree qualified as DT
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -74,17 +74,17 @@ inferStmt mMainDD stmt =
       (v', tv) <- infer [] v
       insConstraintEnv t' tv
       return $ WeakStmtDefineConst m dd t' v'
-    WeakStmtDeclare m declList -> do
-      declList' <- mapM inferDecl declList
-      return $ WeakStmtDeclare m declList'
+    WeakStmtNominal m geistList -> do
+      geistList' <- mapM inferGeist geistList
+      return $ WeakStmtNominal m geistList'
 
-inferDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl WT.WeakTerm)
-inferDecl DE.Decl {..} = do
+inferGeist :: G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
+inferGeist G.Geist {..} = do
   (impArgs', varEnv) <- inferBinder' [] impArgs
   (expArgs', varEnv') <- inferBinder' varEnv expArgs
   cod' <- inferType varEnv' cod
   insertType name $ loc :< WT.Pi impArgs' expArgs' cod'
-  return $ DE.Decl {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
+  return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
 insertType :: DD.DefiniteDescription -> WT.WeakTerm -> App ()
 insertType dd t = do

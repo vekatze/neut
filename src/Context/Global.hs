@@ -1,6 +1,6 @@
 module Context.Global
   ( registerStmtDefine,
-    registerDecl,
+    regeisterGeist,
     reportMissingDefinitions,
     lookup,
     initialize,
@@ -103,18 +103,18 @@ isUnary consInfoList =
     _ ->
       False
 
-registerDecl :: RT.TopDefHeader -> App ()
-registerDecl RT.RawDecl {..} = do
+regeisterGeist :: RT.TopGeist -> App ()
+regeisterGeist RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractArgs impArgs
   let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'
   let argNum = AN.fromInt $ length $ impArgs' ++ expArgs'
   nameLifter <- Locator.getNameLifter
   let name' = nameLifter $ fst name
-  ensureDeclFreshness loc name'
+  ensureGeistFreshness loc name'
   ensureDefFreshness loc name'
   KeyArg.insert loc name' isConstLike argNum expArgNames
-  insertToDeclNameMap name' loc
+  insertToGeistMap name' loc
   insertToNameMap name' loc $ GN.TopLevelFunc argNum isConstLike
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> App ()
@@ -179,53 +179,53 @@ lookup' m name = do
 initialize :: App ()
 initialize = do
   writeRef' nameMap Map.empty
-  writeRef' declNameMap Map.empty
+  writeRef' geistMap Map.empty
 
 ensureDefFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
 ensureDefFreshness m name = do
-  dnmap <- readRef' declNameMap
+  gmap <- readRef' geistMap
   topNameMap <- readRef' nameMap
-  case (Map.lookup name dnmap, Map.member name topNameMap) of
+  case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) ->
-      Throw.raiseCritical m $ "`" <> DD.reify name <> "` is declared but not registered in the top name map"
-    (Just mDecl, True) -> do
-      removeFromDeclNameMap name
+      Throw.raiseCritical m $ "`" <> DD.reify name <> "` is defined nominally but not registered in the top name map"
+    (Just mGeist, True) -> do
+      removeFromGeistMap name
       removeFromDefNameMap name
-      Tag.insertDD mDecl name m
+      Tag.insertDD mGeist name m
     (Nothing, True) ->
       Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
     (Nothing, False) ->
       return ()
 
-ensureDeclFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
-ensureDeclFreshness m name = do
-  dnmap <- readRef' declNameMap
-  when (Map.member name dnmap) $ do
-    Throw.raiseError m $ "`" <> DD.reify name <> "` is already declared"
+ensureGeistFreshness :: Hint.Hint -> DD.DefiniteDescription -> App ()
+ensureGeistFreshness m name = do
+  gmap <- readRef' geistMap
+  when (Map.member name gmap) $ do
+    Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
 
 reportMissingDefinitions :: App ()
 reportMissingDefinitions = do
-  declNameToHint <- Map.toList <$> readRef' declNameMap
-  let errorList = map (uncurry declToRemark) declNameToHint
+  geistNameToHint <- Map.toList <$> readRef' geistMap
+  let errorList = map (uncurry geistToRemark) geistNameToHint
   if null errorList
     then return ()
     else Throw.throw $ MakeError errorList
 
-declToRemark :: DD.DefiniteDescription -> Hint -> Remark
-declToRemark dd m =
-  newRemark m Error $ "declared but not defined: `" <> DD.reify dd <> "`"
+geistToRemark :: DD.DefiniteDescription -> Hint -> Remark
+geistToRemark dd m =
+  newRemark m Error $ "this nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
 
 insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
 insertToNameMap dd m gn = do
   modifyRef' nameMap $ Map.insert dd (m, gn)
 
-insertToDeclNameMap :: DD.DefiniteDescription -> Hint -> App ()
-insertToDeclNameMap dd m = do
-  modifyRef' declNameMap $ Map.insert dd m
+insertToGeistMap :: DD.DefiniteDescription -> Hint -> App ()
+insertToGeistMap dd m = do
+  modifyRef' geistMap $ Map.insert dd m
 
-removeFromDeclNameMap :: DD.DefiniteDescription -> App ()
-removeFromDeclNameMap dd = do
-  modifyRef' declNameMap $ Map.delete dd
+removeFromGeistMap :: DD.DefiniteDescription -> App ()
+removeFromGeistMap dd = do
+  modifyRef' geistMap $ Map.delete dd
 
 removeFromDefNameMap :: DD.DefiniteDescription -> App ()
 removeFromDefNameMap dd = do

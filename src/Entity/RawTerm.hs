@@ -3,13 +3,13 @@ module Entity.RawTerm
     RawTermF (..),
     DefInfo,
     TopDef,
-    TopDefHeader,
+    TopGeist,
     LetKind (..),
     RawMagic (..),
     KeywordClause,
     EL,
     Args,
-    RawDecl (..),
+    RawGeist (..),
     RawDef (..),
     VarArg,
     emptyArgs,
@@ -108,7 +108,7 @@ extractFromKeywordClause :: KeywordClause a -> (a, a)
 extractFromKeywordClause ((_, (cond, _)), (_, (body, _))) =
   (cond, body)
 
-data RawDecl a = RawDecl
+data RawGeist a = RawGeist
   { loc :: Hint,
     name :: (a, C),
     isConstLike :: IsConstLike,
@@ -117,12 +117,12 @@ data RawDecl a = RawDecl
     cod :: (C, RawTerm)
   }
 
-instance Functor RawDecl where
-  fmap f decl =
-    decl {name = first f (name decl)}
+instance Functor RawGeist where
+  fmap f geist =
+    geist {name = first f (name geist)}
 
 data RawDef a = RawDef
-  { decl :: RawDecl a,
+  { geist :: RawGeist a,
     leadingComment :: C,
     body :: RawTerm,
     trailingComment :: C
@@ -130,13 +130,13 @@ data RawDef a = RawDef
 
 instance Functor RawDef where
   fmap f def =
-    def {decl = fmap f (decl def)}
+    def {geist = fmap f (geist def)}
 
 type DefInfo =
   RawDef RawIdent
 
-type TopDefHeader =
-  RawDecl BN.BaseName
+type TopGeist =
+  RawGeist BN.BaseName
 
 type TopDef =
   RawDef BN.BaseName

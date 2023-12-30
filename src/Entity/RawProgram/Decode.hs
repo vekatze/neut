@@ -112,11 +112,11 @@ decStmt stmt =
             PI.horizontal $ D.text (BN.reify name),
             PI.inject $ SE.decode $ fmap RT.toDoc resourcePair
           ]
-    RawStmtDeclare c _ declList -> do
+    RawStmtNominal c _ geistList -> do
       RT.attachComment c $
         D.join
-          [ D.text "declare ",
-            SE.decode $ fmap decDeclList declList
+          [ D.text "nominal ",
+            SE.decode $ fmap decGeistList geistList
           ]
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
@@ -134,8 +134,8 @@ decConsInfo (_, (consName, cCons), isConstLike, args) = do
     then D.join [consName', C.asSuffix cCons]
     else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
 
-decDeclList :: RT.TopDefHeader -> D.Doc
-decDeclList decl = do
+decGeistList :: RT.TopGeist -> D.Doc
+decGeistList decl = do
   let (functionName, _) = RT.name decl
   let impArgs' = RT.decodeArgs' $ RT.impArgs decl
   let cod = RT.toDoc $ snd $ RT.cod decl

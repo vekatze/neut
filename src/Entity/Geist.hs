@@ -1,11 +1,11 @@
-module Entity.Decl where
+module Entity.Geist (Geist (..)) where
 
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
 import Entity.IsConstLike
 
-data Decl a = Decl
+data Geist a = Geist
   { loc :: Hint,
     name :: DD.DefiniteDescription,
     isConstLike :: IsConstLike,

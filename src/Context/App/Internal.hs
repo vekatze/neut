@@ -53,7 +53,7 @@ data Env = Env
     locatorAliasMap :: IORef (Map.HashMap GLA.GlobalLocatorAlias SGL.StrictGlobalLocator),
     sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
-    declNameMap :: IORef (Map.HashMap DD.DefiniteDescription Hint),
+    geistMap :: IORef (Map.HashMap DD.DefiniteDescription Hint),
     antecedentMap :: IORef (Map.HashMap MD.ModuleDigest M.Module),
     constraintEnv :: IORef [C.Constraint],
     remarkList :: IORef [Remark.Remark], -- per file
@@ -116,7 +116,7 @@ newEnv = do
   unusedPresetMap <- newIORef Map.empty
   unusedLocalLocatorMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
-  declNameMap <- newIORef Map.empty
+  geistMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty
   constraintEnv <- newIORef []
   holeSubst <- newIORef HS.empty

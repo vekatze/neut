@@ -23,10 +23,10 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
+import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -117,16 +117,16 @@ elaborateStmt stmt = do
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return [result]
-    WeakStmtDeclare _ declList -> do
-      mapM_ elaborateDecl declList
+    WeakStmtNominal _ geistList -> do
+      mapM_ elaborateGeist geistList
       return []
 
-elaborateDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl TM.Term)
-elaborateDecl DE.Decl {..} = do
+elaborateGeist :: G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
+elaborateGeist G.Geist {..} = do
   impArgs' <- mapM elaborateWeakBinder impArgs
   expArgs' <- mapM elaborateWeakBinder expArgs
   cod' <- elaborate' cod
-  return $ DE.Decl {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
+  return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
@@ -147,7 +147,7 @@ insertWeakStmt stmt = do
       WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs e
     WeakStmtDefineConst m dd _ v -> do
       WeakDefinition.insert O.Clear m dd [] [] v
-    WeakStmtDeclare {} -> do
+    WeakStmtNominal {} -> do
       return ()
 
 insertStmtKindInfo :: Stmt -> App ()

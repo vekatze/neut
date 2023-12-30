@@ -3,7 +3,7 @@ module Scene.Parse.RawTerm
     preAscription,
     preBinder,
     parseDef,
-    parseDeclareItem,
+    parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
     preVar,
@@ -252,11 +252,11 @@ rawTermHole = do
 
 parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
 parseDef nameLifter = do
-  (topDefHeader, c1) <- parseDeclareItem nameLifter
+  (topGeist, c1) <- parseGeist nameLifter
   (c2, ((e, c3), c)) <- betweenBrace rawExpr
   return
     ( RT.RawDef
-        { decl = topDefHeader,
+        { geist = topGeist,
           leadingComment = c1 ++ c2,
           body = e,
           trailingComment = c3
@@ -264,8 +264,8 @@ parseDef nameLifter = do
       c
     )
 
-parseDeclareItem :: (BN.BaseName -> App a) -> Parser (RT.RawDecl a, C)
-parseDeclareItem nameLifter = do
+parseGeist :: (BN.BaseName -> App a) -> Parser (RT.RawGeist a, C)
+parseGeist nameLifter = do
   loc <- getCurrentHint
   (name, c1) <- baseName
   name' <- lift $ nameLifter name
@@ -280,7 +280,7 @@ parseDeclareItem nameLifter = do
   lift $ ensureArgumentLinearity S.empty $ map (\(mx, x, _, _, _) -> (mx, x)) $ SE.extract expSeries
   m <- getCurrentHint
   (c2, (cod, c)) <- parseDefInfoCod m
-  return (RT.RawDecl {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
+  return (RT.RawGeist {loc, name = (name', c1), isConstLike, impArgs, expArgs, cod = (c2, cod)}, c)
 
 parseImplicitArgs :: Parser (SE.Series (RawBinder RT.RawTerm), C)
 parseImplicitArgs =

@@ -238,7 +238,7 @@ decodeDef keyword c def = do
     D.join
       [ D.text keyword,
         D.text " ",
-        decDecl $ RT.decl def,
+        decGeist $ RT.geist def,
         decodeBlock (RT.leadingComment def, (toDoc $ RT.body def, RT.trailingComment def))
       ]
 
@@ -338,8 +338,8 @@ paramToDoc' (_, x, c1, c2, t) = do
       PI.inject $ attachComment (c1 ++ c2) $ typeAnnot t
     ]
 
-decDecl :: RT.RawDecl RawIdent -> D.Doc
-decDecl (RT.RawDecl {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
+decGeist :: RT.RawGeist RawIdent -> D.Doc
+decGeist (RT.RawGeist {name = (name, c0), impArgs = (impArgs, c1), expArgs = (expArgs, c2), cod = (c3, cod)}) =
   PI.arrange
     [ PI.inject $ attachComment c0 $ nameToDoc (N.Var name),
       PI.inject $ SE.decode $ fmap piIntroArgToDoc impArgs,
@@ -395,32 +395,6 @@ decPiElimKey (_, k, c1, c2, e) = do
           PI.clauseDelimiter $ attachComment c1 $ D.text "=",
           PI.inject $ attachComment c2 $ toDoc e
         ]
-
--- lowTypeToDoc :: RLT.RawLowType -> D.Doc
--- lowTypeToDoc lt =
---   case lt of
---     RLT.PrimNum primType ->
---       primTypeToDoc primType
---     RLT.Pointer ->
---       D.text "pointer"
---     RLT.Void ->
---       D.text "void"
-
--- primTypeToDoc :: WPT.WeakPrimType -> D.Doc
--- primTypeToDoc primType =
---   case primType of
---     WPT.Int intSize ->
---       D.join [D.text "int", D.text $ decodeSize intSize]
---     WPT.Float floatSize ->
---       D.join [D.text "float", D.text $ decodeSize floatSize]
-
--- decodeSize :: Maybe Int -> T.Text
--- decodeSize sizeOrNone =
---   case sizeOrNone of
---     Just size ->
---       T.pack (show size)
---     Nothing ->
---       ""
 
 decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> D.Doc
 decodeIntrospectClause (mKey, c, body) = do

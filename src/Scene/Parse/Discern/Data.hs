@@ -31,8 +31,8 @@ defineData m dataName dataArgsOrNone consInfoList = do
   let consNameList = map (\(_, consName, isConstLike, _, _) -> (consName, isConstLike)) consInfoList''
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike consNameList dataArgs
-  let decl =
-        RT.RawDecl
+  let geist =
+        RT.RawGeist
           { loc = m,
             name = (dataName, []),
             isConstLike = isConstLike,
@@ -45,7 +45,7 @@ defineData m dataName dataArgsOrNone consInfoList = do
           []
           stmtKind
           ( RT.RawDef
-              { decl,
+              { geist,
                 leadingComment = [],
                 body = dataType,
                 trailingComment = []
@@ -86,8 +86,8 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
       let dataArgs'' = map identPlusToVar dataArgs'
       let consArgs'' = map adjustConsArg consArgs'
       let consNameList = map (\(_, (dd, _), isConstLike', _) -> (dd, isConstLike')) consInfoList
-      let decl =
-            RT.RawDecl
+      let geist =
+            RT.RawGeist
               { loc = m,
                 name = (consName, cCons),
                 isConstLike = isConstLike,
@@ -100,7 +100,7 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
               []
               (SK.DataIntro consName dataArgs' consArgs' discriminant)
               ( RT.RawDef
-                  { decl,
+                  { geist,
                     leadingComment = [],
                     body = m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs'' (map fst consArgs''),
                     trailingComment = []

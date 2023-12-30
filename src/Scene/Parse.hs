@@ -109,7 +109,7 @@ getWeakStmtName' stmt =
       [(m, name)]
     WeakStmtDefineConst m name _ _ ->
       [(m, name)]
-    WeakStmtDeclare {} ->
+    WeakStmtNominal {} ->
       []
 
 getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)

@@ -28,10 +28,10 @@ import Entity.Binder
 import Entity.BuildMode qualified as BM
 import Entity.C
 import Entity.Const
-import Entity.Decl qualified as DE
 import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.Error qualified as E
+import Entity.Geist qualified as G
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Hint.Reify qualified as Hint
@@ -79,14 +79,14 @@ discernStmt :: RawStmt -> App [WeakStmt]
 discernStmt stmt = do
   nameLifter <- Locator.getNameLifter
   case stmt of
-    RawStmtDefine _ stmtKind (RT.RawDef {decl, body}) -> do
+    RawStmtDefine _ stmtKind (RT.RawDef {geist, body}) -> do
       registerTopLevelName nameLifter stmt
-      let impArgs = RT.extractArgs $ RT.impArgs decl
-      let expArgs = RT.extractArgs $ RT.expArgs decl
-      let (_, codType) = RT.cod decl
-      let m = RT.loc decl
-      let functionName = nameLifter $ fst $ RT.name decl
-      let isConstLike = RT.isConstLike decl
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      let (_, codType) = RT.cod geist
+      let m = RT.loc geist
+      let functionName = nameLifter $ fst $ RT.name geist
+      let isConstLike = RT.isConstLike geist
       (impArgs', nenv) <- discernBinder empty impArgs
       (expArgs', nenv') <- discernBinder nenv expArgs
       codType' <- discern nenv' codType
@@ -112,25 +112,25 @@ discernStmt stmt = do
       e' <- discern empty $ m :< RT.Resource [] discarder copier
       Tag.insertDD m dd m
       return [WeakStmtDefineConst m dd t' e']
-    RawStmtDeclare _ m declList -> do
+    RawStmtNominal _ m gistList -> do
       registerTopLevelName nameLifter stmt
-      declList' <- mapM discernDecl $ SE.extract declList
-      return [WeakStmtDeclare m declList']
+      gistList' <- mapM discernGeist $ SE.extract gistList
+      return [WeakStmtNominal m gistList']
 
-discernDecl :: RT.TopDefHeader -> App (DE.Decl WT.WeakTerm)
-discernDecl decl = do
+discernGeist :: RT.TopGeist -> App (G.Geist WT.WeakTerm)
+discernGeist geist = do
   nameLifter <- Locator.getNameLifter
-  let impArgs = RT.extractArgs $ RT.impArgs decl
-  let expArgs = RT.extractArgs $ RT.expArgs decl
+  let impArgs = RT.extractArgs $ RT.impArgs geist
+  let expArgs = RT.extractArgs $ RT.expArgs geist
   (impArgs', nenv) <- discernBinder empty impArgs
   (expArgs', nenv') <- discernBinder nenv expArgs
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
-  cod' <- discern nenv' $ snd $ RT.cod decl
+  cod' <- discern nenv' $ snd $ RT.cod geist
   return $
-    DE.Decl
-      { loc = RT.loc decl,
-        name = nameLifter $ fst $ RT.name decl,
-        isConstLike = RT.isConstLike decl,
+    G.Geist
+      { loc = RT.loc geist,
+        name = nameLifter $ fst $ RT.name geist,
+        isConstLike = RT.isConstLike geist,
         impArgs = impArgs',
         expArgs = expArgs',
         cod = cod'
@@ -139,20 +139,20 @@ discernDecl decl = do
 registerTopLevelName :: (BN.BaseName -> DD.DefiniteDescription) -> RawStmt -> App ()
 registerTopLevelName nameLifter stmt =
   case stmt of
-    RawStmtDefine _ stmtKind (RT.RawDef {decl}) -> do
-      let impArgs = RT.extractArgs $ RT.impArgs decl
-      let expArgs = RT.extractArgs $ RT.expArgs decl
-      let m = RT.loc decl
-      let functionName = nameLifter $ fst $ RT.name decl
-      let isConstLike = RT.isConstLike decl
+    RawStmtDefine _ stmtKind (RT.RawDef {geist}) -> do
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      let m = RT.loc geist
+      let functionName = nameLifter $ fst $ RT.name geist
+      let isConstLike = RT.isConstLike geist
       let allArgNum = AN.fromInt $ length $ impArgs ++ expArgs
       let expArgNames = map (\(_, x, _, _, _) -> x) expArgs
       stmtKind' <- liftStmtKind stmtKind
       Global.registerStmtDefine isConstLike m stmtKind' functionName allArgNum expArgNames
     RawStmtDefineConst _ m (name, _) _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
-    RawStmtDeclare _ _ declList -> do
-      mapM_ Global.registerDecl $ SE.extract declList
+    RawStmtNominal _ _ geistList -> do
+      mapM_ Global.regeisterGeist $ SE.extract geistList
     RawStmtDefineData _ m (dd, _) args consInfo -> do
       stmtList <- defineData m dd args $ SE.extract consInfo
       mapM_ (registerTopLevelName nameLifter) stmtList
@@ -231,14 +231,14 @@ discern nenv term =
       (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ (RT.RawDef {decl, body}) -> do
-      let impArgs = RT.extractArgs $ RT.impArgs decl
-      let expArgs = RT.extractArgs $ RT.expArgs decl
-      let mx = RT.loc decl
-      let (x, _) = RT.name decl
+    m :< RT.PiIntroFix _ (RT.RawDef {geist, body}) -> do
+      let impArgs = RT.extractArgs $ RT.impArgs geist
+      let expArgs = RT.extractArgs $ RT.expArgs geist
+      let mx = RT.loc geist
+      let (x, _) = RT.name geist
       (impArgs', nenv') <- discernBinder nenv impArgs
       (expArgs', nenv'') <- discernBinder nenv' expArgs
-      codType' <- discern nenv'' $ snd $ RT.cod decl
+      codType' <- discern nenv'' $ snd $ RT.cod geist
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
       body' <- discern nenv''' body

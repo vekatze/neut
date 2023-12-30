@@ -49,7 +49,7 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtDeclare C Hint (SE.Series RT.TopDefHeader)
+  | RawStmtNominal C Hint (SE.Series RT.TopGeist)
 
 type RawConsInfo a =
   (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))

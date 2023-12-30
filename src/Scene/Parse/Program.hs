@@ -39,7 +39,7 @@ parseStmt = do
       parseData,
       parseInline,
       parseConstant,
-      parseDeclare,
+      parseNominal,
       parseResource
     ]
 
@@ -82,12 +82,12 @@ parseForeign = do
 
 parseForeignItem :: P.Parser (RawForeignItem, C)
 parseForeignItem = do
-  (declName, c1) <- P.symbol
+  (funcName, c1) <- P.symbol
   m <- P.getCurrentHint
   (lts, c2) <- P.seriesParen lowType
   c3 <- P.delimiter ":"
   (cod, c) <- lowType
-  return (RawForeignItem m (EN.ExternalName declName) c1 lts c2 c3 cod, c)
+  return (RawForeignItem m (EN.ExternalName funcName) c1 lts c2 c3 cod, c)
 
 parseDefine :: P.Parser (RawStmt, C)
 parseDefine =
@@ -117,12 +117,12 @@ parseData = do
   (consSeries, c) <- P.seriesBraceList parseDefineDataClause
   return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries, c)
 
-parseDeclare :: P.Parser (RawStmt, C)
-parseDeclare = do
-  c1 <- P.keyword "declare"
+parseNominal :: P.Parser (RawStmt, C)
+parseNominal = do
+  c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
-  (decls, c) <- P.seriesBraceList $ parseDeclareItem return
-  return (RawStmtDeclare c1 m decls, c)
+  (geists, c) <- P.seriesBraceList $ parseGeist return
+  return (RawStmtNominal c1 m geists, c)
 
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
 parseDataArgs = do
