@@ -6,6 +6,7 @@ module Entity.Ens
     FullEns,
     put,
     strip,
+    hasKey,
     toInt,
     toFloat,
     toBool,
@@ -69,6 +70,15 @@ instance Eq (EqEns Hint) where
         ks1 == ks2 && map (second $ first EqEns) vs1 == map (second $ first EqEns) vs2 && c1 == c2
       _ ->
         False
+
+hasKey :: T.Text -> Ens -> Bool
+hasKey k ens =
+  case ens of
+    _ :< Dictionary _ kvs
+      | Just _ <- lookup k kvs ->
+          True
+    _ ->
+      False
 
 access :: T.Text -> Ens -> Either Error (C, (Ens, C))
 access k ens@(m :< _) = do

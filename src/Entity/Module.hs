@@ -303,9 +303,12 @@ getTargetList someModule mTarget =
 
 stylize :: E.Ens -> Either Error E.Ens
 stylize ens = do
-  (m, c, depDict) <- E.access keyDependency ens >>= E.toDictionary . E.strip
-  depDict' <- forM depDict $ \(k, (c1, (dep, c2))) -> do
-    (mDep, cList, mirrorList) <- E.access keyMirror dep >>= E.toList . E.strip
-    dep' <- E.put keyMirror (mDep :< E.List cList (E.nubEnsList mirrorList)) dep
-    return (k, (c1, (dep', c2)))
-  E.put keyDependency (m :< E.Dictionary c depDict') ens
+  if not $ E.hasKey keyDependency ens
+    then return ens
+    else do
+      (m, c, depDict) <- E.access keyDependency ens >>= E.toDictionary . E.strip
+      depDict' <- forM depDict $ \(k, (c1, (dep, c2))) -> do
+        (mDep, cList, mirrorList) <- E.access keyMirror dep >>= E.toList . E.strip
+        dep' <- E.put keyMirror (mDep :< E.List cList (E.nubEnsList mirrorList)) dep
+        return (k, (c1, (dep', c2)))
+      E.put keyDependency (m :< E.Dictionary c depDict') ens
