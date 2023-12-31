@@ -38,11 +38,11 @@ define cons-tree(a: tau, t: tree(a), ts: R-list(a)): R-list(a) {
   match ts {
   - New([]) =>
     New([DigitOne(t)])
-  - New(DigitZero :: rest) =>
-    New(DigitOne(t) :: rest)
-  - New(DigitOne(t0) :: rest) =>
+  - New(Cons(DigitZero, rest)) =>
+    New(Cons(DigitOne(t), rest))
+  - New(Cons(DigitOne(t0), rest)) =>
     let New(ts-new) = cons-tree(a, join(_, t, t0), New(rest)) in
-    New(DigitZero :: ts-new)
+    New(Cons(DigitZero, ts-new))
   }
 }
 
@@ -50,25 +50,25 @@ define cons(a: tau, x: a, ts: R-list(a)): R-list(a) {
   cons-tree(a, Leaf(x), ts)
 }
 
-define uncons-tree(a: tau, ts: R-list(a)): ?tuple(tree(a), R-list(a)) {
+define uncons-tree(a: tau, ts: R-list(a)): ?pair(tree(a), R-list(a)) {
   let New(xs) = ts in
   match xs {
-  - [] =>
+  - Nil =>
     none()
-  - DigitOne(y) :: [] =>
-    Pass(Tuple(y, New([])))
-  - DigitOne(y) :: rest =>
-    Pass(Tuple(y, New(DigitZero :: rest)))
-  - DigitZero :: rest =>
+  - Cons(DigitOne(y), Nil) =>
+    Pass(Pair(y, New([])))
+  - Cons(DigitOne(y), rest) =>
+    Pass(Pair(y, New(Cons(DigitZero, rest))))
+  - Cons(DigitZero, rest) =>
     match uncons-tree(_, New(rest)) {
     - Fail(_) =>
       none()
-    - Pass(Tuple(new-tree, New(new-ts))) =>
+    - Pass(Pair(new-tree, New(new-ts))) =>
       match new-tree {
       - Leaf(_) =>
         none()
       - Node(_, t1, t2) =>
-        Pass(Tuple(t1, New(DigitOne(t2) :: new-ts)))
+        Pass(Pair(t1, New(Cons(DigitOne(t2), new-ts))))
       }
     }
   }
@@ -96,9 +96,9 @@ define lookup-list(a: tau, i: int, xs: &list(digit(a))): ?a {
   case xs {
   - [] =>
     none()
-  - DigitZero :: rest =>
+  - Cons(DigitZero, rest) =>
     lookup-list(_, i, rest)
-  - DigitOne(t) :: rest =>
+  - Cons(DigitOne(t), rest) =>
     let s = size(_, t) in
     if lt-int(i, s) {
       lookup-tree(_, i, t)
@@ -135,16 +135,16 @@ define update(a: tau, i: int, x: a, xs: R-list(a)): R-list(a) {
   match xs {
   - New([]) =>
     New([])
-  - New(DigitZero :: ts) =>
+  - New(Cons(DigitZero, ts)) =>
     let New(new-xs) = update(_, i, x, New(ts)) in
-    New(DigitZero :: new-xs)
-  - New(DigitOne(t) :: ts) =>
+    New(Cons(DigitZero, new-xs))
+  - New(Cons(DigitOne(t), ts)) =>
     let s on t = size(_, t) in
     if lt-int(i, s) {
-      New(DigitOne(update-tree(_, i, x, t)) :: ts)
+      New(Cons(DigitOne(update-tree(_, i, x, t)), ts))
     } else {
       let New(new-xs) = update(_, sub-int(i, s), x, New(ts)) in
-      New(DigitOne(t) :: new-xs)
+      New(Cons(DigitOne(t), new-xs))
     }
   }
 }
@@ -159,7 +159,7 @@ define find-and-get(i: int, xs: &R-list(int)): int {
 }
 
 define main(): unit {
-  let xs = New([]): R-list(int) in
+  let xs: R-list(int) = New([]) in
   let xs = cons(_, 3, xs) in
   let xs = cons(_, 2, xs) in
   let xs = cons(_, 4, xs) in

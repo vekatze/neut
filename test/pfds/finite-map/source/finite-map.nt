@@ -15,17 +15,16 @@ data finite-map(a, b) {
 }
 
 data finite-map-signature(a, b) {
-- Finite-Map(
-    empty: finite-map(a, b),
-    insert: (a, b, finite-map(a, b)) -> finite-map(a, b),
-    lookup: (a, &finite-map(a, b)) -> ?b
-  )
+- Finite-Map of {
+  - empty: finite-map(a, b)
+  - insert: (a, b, finite-map(a, b)) -> finite-map(a, b)
+  - lookup: (a, &finite-map(a, b)) -> ?b
+  }
 }
 
 define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-signature(a, b) {
   Finite-Map of {
-  - empty =
-    Leaf
+  - empty = Leaf
   - insert =
     define insert(key: a, value: b, haystack: finite-map(a, b)): finite-map(a, b) {
       match haystack {
@@ -86,9 +85,9 @@ define main(): unit {
       1
     - Pass(xs) =>
       match xs {
-      - [] =>
+      - Nil =>
         10
-      - _ :: _ =>
+      - Cons(_, _) =>
         20
       }
     }

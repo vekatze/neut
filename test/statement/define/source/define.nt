@@ -2,7 +2,7 @@ import {
 - core
 }
 
-define no-type-ascription() {
+define no-type-ascription(): _ {
   Unit
 }
 
@@ -37,7 +37,7 @@ define ♥️a🌟あ🌕α$-$`~!?@#%^&+|\_(): tau {
   tau
 }
 
-declare {
+nominal {
 - is-odd(x: int): int
 }
 
@@ -57,7 +57,7 @@ define is-odd(x: int): int {
   }
 }
 
-define implicit-0<>(a : tau, x: a): a {
+define implicit-0(a: tau, x: a): a {
   x
 }
 
@@ -65,8 +65,8 @@ define implicit-1<a>(x: a): a {
   x
 }
 
-define implicit-2<a, b>(x: a, y: b): tuple(a, b) {
-  Tuple(x, y)
+define implicit-2<a, b>(x: a, y: b): pair(a, b) {
+  Pair(x, y)
 }
 
 define main(): unit {
@@ -74,9 +74,10 @@ define main(): unit {
   let _ = implicit-0(&text, "hello") in
   let _ = implicit-1("hello") in
   let _ = implicit-2("hello", tau) in
-  let _ = call implicit-0(&text, "hello") in
-  let _ = call implicit-1(&text, "hello") in
-  let _ = call implicit-2(&text, tau, "hello", tau) in
-  let local-func-with-imp-args = <a>(x: a) => x in
+  let local-func-with-imp-args =
+    <a>(x: a) => {
+      x
+    }
+  in
   local-func-with-imp-args(Unit)
 }

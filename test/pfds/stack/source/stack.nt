@@ -74,8 +74,8 @@ define suffixes-noetic(a: tau, xs: &stack(a)): stack(&stack(a)) {
 }
 
 define main(): unit {
-  let xs = empty(_) in
-  let ys = Cons(10: int, xs) in
+  let xs = empty(int) in
+  let ys = Cons(10, xs) in
   let zs = Cons(30, Cons(20, ys)) in
   let zs = update(_, zs, 1, 20000) in
   let _ = suffixes(_, zs) in

@@ -15,15 +15,15 @@ data item3(a, b) {
 }
 
 data item4(a, b) {
-- Item4(tuple(a, b))
+- Item4(pair(a, b))
 }
 
 define trace-list<a>(xs: list(a)): list(a) {
   match xs {
-  - [] =>
-    []
-  - y :: ys =>
-    y :: trace-list(ys)
+  - Nil =>
+    Nil
+  - Cons(y, ys) =>
+    Cons(y, trace-list(ys))
   }
 }
 
@@ -113,20 +113,20 @@ define test-item3(): unit {
 
 define use-item4(x: item4(int, list(int))): list(int) {
   match x {
-  - Item4(Tuple(v, xs)) =>
-    trace-list(v :: xs)
+  - Item4(Pair(v, xs)) =>
+    trace-list(Cons(v, xs))
   }
 }
 
 define use-item4-noetic(x: &item4(int, list(int))): list(int) {
   case x {
-  - Item4(Tuple(v, xs)) =>
-    trace-list(*v :: *xs)
+  - Item4(Pair(v, xs)) =>
+    trace-list(Cons(*v, *xs))
   }
 }
 
 define test-item4(): unit {
-  let value: item4(int, list(int)) = Item4(Tuple(3, [1, 2, 3])) in
+  let value: item4(int, list(int)) = Item4(Pair(3, [1, 2, 3])) in
   let _ = value in
   let _ = value in
   let _ = value in

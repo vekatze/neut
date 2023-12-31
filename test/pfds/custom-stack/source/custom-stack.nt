@@ -1,7 +1,7 @@
 import {
 - core.bool {bool, True, False}
 - core.except {none, Pass, Fail}
-- core.pair
+- core.pair {pair, Pair}
 - core.text
 - core.text.io {print, print-int}
 - core.unit {unit}
@@ -9,7 +9,7 @@ import {
 
 data custom-stack(a) {
 - Nil
-- Cons(tuple(a, a), custom-stack(a))
+- Cons(pair(a, a), custom-stack(a))
 }
 
 define empty(a: tau): custom-stack(a) {
@@ -25,7 +25,7 @@ define is-empty(a: tau, xs: &custom-stack(a)): bool {
   }
 }
 
-define head(a: tau, xs: &custom-stack(a)): ?&tuple(a, a) {
+define head(a: tau, xs: &custom-stack(a)): ?&pair(a, a) {
   case xs {
   - Nil =>
     none()
@@ -44,8 +44,9 @@ define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
 }
 
 define main(): unit {
-  let xs = empty(_) in
-  let v = Tuple(() => {1}, () => {2: int}) in
+  let xs = empty(() -> int) in
+  // let v = Pair(() => {1}, () => {2}) in
+  let v = Pair(() => {1}, () => {2}) in
   let ys = Cons(v, xs) in
   let zs = Cons(v, Cons(v, ys)) in
   let calc on zs, xs =
@@ -59,7 +60,7 @@ define main(): unit {
     - Fail(_) =>
       1
     - Pass(pair) =>
-      tie Tuple(_, right) = pair in
+      tie Pair(_, right) = pair in
       {*right}()
     }
   in

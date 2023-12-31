@@ -5,11 +5,10 @@ import {
 
 define test-syntax(): unit {
   let _ = flow(tau) in
-  let _ = flow(tau) -> tau in
-  let _ = tau -> flow(tau) in
-  let _ = (_: flow(tau), flow(tau)) -> flow(tau) -> flow(tau) in
+  let _ = (flow(tau)) -> tau in
+  let _ = (tau) -> flow(tau) in
+  let _ = (flow(tau), flow(tau)) -> (flow(tau)) -> flow(tau) in
   let _ = flow(flow(tau)) in
-
   let _ = detach {Unit} in
   let _ =
     detach {
@@ -51,26 +50,24 @@ define some-list(len: int, acc: list(int)): list(int) {
 }
 
 define detach-send(x: int, ch: &channel(int)): flow(unit) {
-  detach {
-    send(ch, x)
-  }
+  detach {send(ch, x)}
 }
 
 define send-all(xs: list(int), ch: &channel(int), acc: list(flow(unit))): list(flow(unit)) {
   match xs {
-  - [] =>
+  - Nil =>
     acc
-  - y :: rest =>
+  - Cons(y, rest) =>
     let fl = detach-send(y, ch) in
-    send-all(rest, ch, fl :: acc)
+    send-all(rest, ch, Cons(fl, acc))
   }
 }
 
 define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
   match xs {
-  - [] =>
+  - Nil =>
     Unit
-  - fl :: rest =>
+  - Cons(fl, rest) =>
     let _ = attach {fl} in
     let _ = receive(ch) in
     receive-one-by-one(rest, ch)
@@ -79,11 +76,11 @@ define receive-one-by-one(xs: list(flow(unit)), ch: &channel(int)): unit {
 
 define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let wait-all =
-    define wait-all(ys: list(flow(unit))) {
+    define wait-all(ys: list(flow(unit))): _ {
       match ys {
-      - [] =>
+      - Nil =>
         Unit
-      - z :: zs =>
+      - Cons(z, zs) =>
         let _ = attach {z} in
         wait-all(zs)
       }
@@ -92,7 +89,7 @@ define receive-all-at-once(xs: list(flow(unit)), ch: &channel(int)): unit {
   let size on xs = length(xs) in
   wait-all(xs);
   let receive-all =
-    define receive-all(count: int) {
+    define receive-all(count: int): _ {
       if eq-int(count, 0) {
         Unit
       } else {
@@ -127,25 +124,36 @@ define test-behavior(): unit {
     attach {fl2}
   in
   let _ = ch in
-
   let ch = new-channel() in
   let ch: channel(() -> int) = ch in
   let _ = ch in
-  let _ on ch = send(ch, () => {1}) in
+  let _ on ch =
+    send(ch, () => {
+      1
+    })
+  in
   let ch = ch in
   let ch-clone = ch in
-  let _ on ch-clone = send(ch-clone, () => {1}) in
+  let _ on ch-clone =
+    send(ch-clone, () => {
+      1
+    })
+  in
   let tmp on ch-clone =
     let f =
       detach {
         Ext.sleep(1);
-        send(ch-clone, () => {3})
+        send(ch-clone, () => {
+          3
+        })
       }
     in
     let g =
       detach {
         Ext.sleep(1);
-        send(ch-clone, () => {4})
+        send(ch-clone, () => {
+          4
+        })
       }
     in
     let _ = receive(ch-clone) in

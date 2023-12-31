@@ -13,44 +13,44 @@ data order {
 - GT
 }
 
-define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a), heap(a)) {
+define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
   - Leaf =>
-    Tuple(Leaf, Leaf)
+    Pair(Leaf, Leaf)
   - Node(left, v, right) =>
     match cmp(v, pivot) {
     - LT =>
       // go right
       match right {
       - Leaf =>
-        Tuple(Node(left, v, Leaf), Leaf)
+        Pair(Node(left, v, Leaf), Leaf)
       - Node(right-left, w, right-right) =>
         match cmp(w, pivot) {
         - LT =>
           // go right
-          let Tuple(right-right-small, right-right-big) = split(_, cmp, pivot, right-right) in
-          Tuple(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
+          let Pair(right-right-small, right-right-big) = split(_, cmp, pivot, right-right) in
+          Pair(Node(Node(left, v, right-right-small), w, right-right-small), right-right-big)
         - _ =>
           // go left
-          let Tuple(right-left-small, right-left-big) = split(_, cmp, pivot, right-left) in
-          Tuple(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
+          let Pair(right-left-small, right-left-big) = split(_, cmp, pivot, right-left) in
+          Pair(Node(left, v, right-left-small), Node(right-left-big, w, right-right))
         }
       }
     - _ =>
       // go left
       match left {
       - Leaf =>
-        Tuple(Leaf, Node(Leaf, v, right))
+        Pair(Leaf, Node(Leaf, v, right))
       - Node(left-left, w, left-right) =>
         match cmp(w, pivot) {
         - LT =>
           // go right
-          let Tuple(left-right-small, left-right-big) = split(_, cmp, pivot, left-right) in
-          Tuple(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
+          let Pair(left-right-small, left-right-big) = split(_, cmp, pivot, left-right) in
+          Pair(Node(left-left, w, left-right-small), Node(left-right-big, v, right))
         - _ =>
           // go left
-          let Tuple(left-left-small, left-left-big) = split(_, cmp, pivot, left-left) in
-          Tuple(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
+          let Pair(left-left-small, left-left-big) = split(_, cmp, pivot, left-left) in
+          Pair(left-left-small, Node(left-left-big, w, Node(left-right, v, right)))
         }
       }
     }
@@ -58,7 +58,7 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): tuple(heap(a),
 }
 
 define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
-  let Tuple(smaller, bigger) = split(_, cmp, x, t) in
+  let Pair(smaller, bigger) = split(_, cmp, x, t) in
   Node(smaller, x, bigger)
 }
 
@@ -91,7 +91,7 @@ define sum(xs: &list(int)): int {
   case xs {
   - [] =>
     0
-  - y :: ys =>
+  - Cons(y, ys) =>
     add-int(*y, sum(ys))
   }
 }
