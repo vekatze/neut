@@ -13,7 +13,7 @@ define test-syntax(): unit {
   let _ = (() -> (tau) -> tau) -> tau in
   let _ = (((tau) -> tau) -> tau) -> tau in
   // general, dependent
-  let _ = (a: tau, _: a) -> a in
+  let _ = (a: tau, a) -> a in
   let _ = (a: tau, a) -> a in
   let _ = (a: tau, a) -> list(tau) in
   let _ = (a: tau, list(tau)) -> a in
@@ -22,41 +22,41 @@ define test-syntax(): unit {
   let _ = (a: tau, a) -> flow(list(tau)) in
   let _ = (a: tau, flow(list(tau))) -> a in
   let _ = (a: tau, a) -> tau in
-  let _ = (a: tau, a -> a) -> tau in
-  let _ = (a: tau, (a -> a) -> a) -> tau in
+  let _ = (a: tau, (a) -> a) -> tau in
+  let _ = (a: tau, ((a) -> a) -> a) -> tau in
   // simplified
-  let _ = tau -> tau in
-  let _ = {tau -> tau} -> tau in
-  let _ = tau -> tau -> list(tau) in
-  let _ = tau -> {tau -> tau} in
-  let _ = tau -> {tau -> list(tau)} in
-  let _ = tau -> {list(tau) -> tau} in
-  let _ = tau -> {tau -> &list(tau)} in
-  let _ = tau -> {&list(tau) -> tau} in
-  let _ = tau -> {tau -> flow(list(tau))} in
-  let _ = tau -> {flow(list(tau)) -> tau} in
-  let _ = tau -> {{tau -> tau} -> tau} in
-  let _ = tau -> {tau -> {tau -> tau}} in
-  let _ = tau -> {{tau -> tau} -> {tau -> tau}} in
-  let _ = {tau -> tau} -> {{tau -> tau} -> {tau -> tau}} in
-  let _ = {{tau -> tau} -> {tau -> tau}} -> {{tau -> tau} -> {tau -> tau}} in
+  let _ = (tau) -> tau in
+  let _ = ({(tau) -> tau}) -> tau in
+  let _ = (tau) -> (tau) -> list(tau) in
+  let _ = (tau) -> {(tau) -> tau} in
+  let _ = (tau) -> {(tau) -> list(tau)} in
+  let _ = (tau) -> {(list(tau)) -> tau} in
+  let _ = (tau) -> {(tau) -> &list(tau)} in
+  let _ = (tau) -> {(&list(tau)) -> tau} in
+  let _ = (tau) -> {(tau) -> flow(list(tau))} in
+  let _ = (tau) -> {(flow(list(tau))) -> tau} in
+  let _ = (tau) -> {({(tau) -> tau}) -> tau} in
+  let _ = (tau) -> {(tau) -> {(tau) -> tau}} in
+  let _ = (tau) -> {({(tau) -> tau}) -> {(tau) -> tau}} in
+  let _ = ({(tau) -> tau}) -> {({(tau) -> tau}) -> {(tau) -> tau}} in
+  let _ = ({({(tau) -> tau}) -> {(tau) -> tau}}) -> {({(tau) -> tau}) -> {(tau) -> tau}} in
   // complex
-  let _ = (a: tau, m: (tau, tau) -> tau) -> {(s: tau) -> a -> m(s, a)} -> a in
+  let _ = (a: tau, m: (tau, tau) -> tau) -> ({(s: tau) -> (a) -> m(s, a)}) -> a in
   Unit
 }
 
 define affine-pi(): tau {
-  let _ = tau -> tau in
+  let _ = (tau) -> tau in
   tau
 }
 
 define linear-pi(): tau {
-  let x = tau -> tau in
+  let x = (tau) -> tau in
   x
 }
 
 define relevant-pi(): tau {
-  let x = tau -> tau in
+  let x = (tau) -> tau in
   let _ = x in
   x
 }

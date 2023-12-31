@@ -2,6 +2,7 @@ module Context.Throw
   ( throw,
     execute,
     run,
+    runMaybe,
     collectLogs,
     raiseError,
     raiseError',
@@ -40,6 +41,15 @@ run c = do
       liftIO $ exitWith (ExitFailure 1)
     Right result ->
       return result
+
+runMaybe :: App a -> App (Maybe a)
+runMaybe c = do
+  resultOrErr <- execute c
+  case resultOrErr of
+    Left _ -> do
+      return Nothing
+    Right result ->
+      return $ Just result
 
 collectLogs :: App () -> App [R.Remark]
 collectLogs c = do

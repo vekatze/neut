@@ -5,54 +5,73 @@ import Context.Parse
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad.Trans
-import Data.HashMap.Strict qualified as M
 import Data.Set qualified as S
 import Data.Text qualified as T
+import Entity.C
 import Entity.Ens qualified as E
 import Entity.Hint
 import Path
 import Scene.Parse.Core
 import Text.Megaparsec hiding (parse)
 
-fromFilePath :: Path Abs File -> App E.Ens
+fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
 fromFilePath path = do
   fileContent <- readSourceFile path
-  run parseEns path fileContent
+  parseFile True parseEns path fileContent
 
-parseKeyValuePair :: Parser ((Hint, T.Text), E.Ens)
-parseKeyValuePair = do
-  m <- getCurrentHint
-  k <- symbol
-  v <- parseEns
-  return ((m, k), v)
-
-parseEns :: Parser E.Ens
+parseEns :: Parser (E.Ens, C)
 parseEns = do
   m <- getCurrentHint
-  v <- do
-    choice
-      [ E.Dictionary <$> parseDictionary,
-        E.List <$> parseList,
-        E.String <$> string,
-        E.Int <$> try (fromInteger <$> integer),
-        E.Float <$> try float,
-        E.Bool <$> bool
-      ]
-  return $ m :< v
+  choice
+    [ parseDictionary m,
+      parseList m,
+      parseString m,
+      try $ parseInt m,
+      parseFloat m,
+      parseBool m
+    ]
 
-parseDictionary :: Parser (M.HashMap T.Text E.Ens)
-parseDictionary = do
-  delimiter "{"
-  (mks, vs) <- unzip <$> manyTill parseKeyValuePair (delimiter "}")
-  lift $ ensureKeyLinearity mks S.empty
-  return $ M.fromList $ zip (map snd mks) vs
+parseInt :: Hint -> Parser (E.Ens, C)
+parseInt m = do
+  (x, c) <- integer
+  return (m :< E.Int (fromInteger x), c)
 
-parseList :: Parser [E.Ens]
-parseList = do
-  delimiter "["
+parseFloat :: Hint -> Parser (E.Ens, C)
+parseFloat m = do
+  (x, c) <- float
+  return (m :< E.Float x, c)
+
+parseBool :: Hint -> Parser (E.Ens, C)
+parseBool m = do
+  (x, c) <- bool
+  return (m :< E.Bool x, c)
+
+parseString :: Hint -> Parser (E.Ens, C)
+parseString m = do
+  (x, c) <- string
+  return (m :< E.String x, c)
+
+parseList :: Hint -> Parser (E.Ens, C)
+parseList m = do
+  c1 <- delimiter "["
   vs <- many parseEns
-  delimiter "]"
-  return vs
+  c2 <- delimiter "]"
+  return (m :< E.List c1 vs, c2)
+
+parseDictionary :: Hint -> Parser (E.Ens, C)
+parseDictionary m = do
+  c1 <- delimiter "{"
+  (ms, kvs) <- unzip <$> many parseKeyValuePair
+  c2 <- delimiter "}"
+  lift $ ensureKeyLinearity (zip ms (map fst kvs)) S.empty
+  return (m :< E.Dictionary c1 kvs, c2)
+
+parseKeyValuePair :: Parser (Hint, (T.Text, (C, (E.Ens, C))))
+parseKeyValuePair = do
+  m <- getCurrentHint
+  (k, cLead) <- symbol
+  (v, cTrail) <- parseEns
+  return (m, (k, (cLead, (v, cTrail))))
 
 ensureKeyLinearity :: [(Hint, T.Text)] -> S.Set T.Text -> App ()
 ensureKeyLinearity mks foundKeySet =

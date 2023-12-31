@@ -99,14 +99,16 @@ inline' axis term =
       es' <- mapM (inline' axis) es
       let Axis {dmap} = axis
       case e' of
-        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) impArgs expArgs (_ :< body))
+        (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
-              inline' axis $ bind (zip xts es') (m :< body)
+              (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+              inline' axis $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
-          | Just (xts, _ :< body) <- Map.lookup dd dmap -> do
+          | Just (xts, body) <- Map.lookup dd dmap -> do
               detectPossibleInfiniteLoop axis
-              inline' (incrementStep axis) $ bind (zip xts es') (m :< body)
+              (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+              inline' (incrementStep axis) $ bind (zip xts' es') (m :< body')
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do

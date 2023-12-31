@@ -6,6 +6,7 @@ import Act.Build qualified as Build
 import Act.Check qualified as Check
 import Act.Clean qualified as Clean
 import Act.Create qualified as Create
+import Act.Format qualified as Format
 import Act.LSP qualified as LSP
 import Act.Version qualified as Version
 import Context.App
@@ -39,6 +40,8 @@ execute = do
           Create.create cfg
         C.Add cfg ->
           Add.add cfg
+        C.Format cfg ->
+          Format.format cfg
         C.LSP cfg ->
           LSP.lsp cfg
         C.ShowVersion cfg ->

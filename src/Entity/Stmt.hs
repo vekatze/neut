@@ -1,40 +1,35 @@
-module Entity.Stmt where
+module Entity.Stmt
+  ( WeakStmt (..),
+    ConsInfo,
+    Program,
+    StmtF (..),
+    Stmt,
+    StrippedStmt,
+    PathSet,
+    compress,
+    extend,
+  )
+where
 
 import Control.Comonad.Cofree
 import Data.Binary
 import Data.Set qualified as S
 import Entity.Binder
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.IsConstLike
-import Entity.RawBinder
-import Entity.RawDecl qualified as RDE
-import Entity.RawTerm qualified as RT
 import Entity.Source qualified as Source
 import Entity.StmtKind qualified as SK
 import Entity.Term qualified as TM
 import Entity.Term.Compress qualified as TM
 import Entity.Term.Extend qualified as TM
 import Entity.WeakTerm qualified as WT
-import GHC.Generics
+import GHC.Generics hiding (C)
 import Path
 
 type ConsInfo = (DD.DefiniteDescription, [BinderF TM.Term], D.Discriminant)
-
-data RawStmt
-  = RawStmtDefine
-      IsConstLike
-      SK.RawStmtKind
-      Hint
-      DD.DefiniteDescription
-      [RawBinder RT.RawTerm]
-      [RawBinder RT.RawTerm]
-      RT.RawTerm
-      RT.RawTerm
-  | RawStmtDefineConst Hint DD.DefiniteDescription RT.RawTerm RT.RawTerm
-  | RawStmtDeclare Hint [RDE.RawDecl]
 
 data WeakStmt
   = WeakStmtDefine
@@ -47,7 +42,7 @@ data WeakStmt
       WT.WeakTerm
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
-  | WeakStmtDeclare Hint [DE.Decl WT.WeakTerm]
+  | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
 
 type Program =
   (Source.Source, [Stmt])
@@ -104,20 +99,3 @@ extend stmt =
       let t' = TM.extend t
       let e' = TM.extend e
       StmtDefineConst m dd t' e'
-
-argToTerm :: BinderF TM.Term -> TM.Term
-argToTerm (m, x, _) =
-  m :< TM.Var x
-
-addDiscriminants :: [(a, [(b, c)])] -> [(a, [(b, c, D.Discriminant)])]
-addDiscriminants info = do
-  let (formInfo, introInfo) = unzip info
-  zip formInfo $ map (addDiscriminants' D.zero) introInfo
-
-addDiscriminants' :: D.Discriminant -> [(b, c)] -> [(b, c, D.Discriminant)]
-addDiscriminants' d xs =
-  case xs of
-    [] ->
-      []
-    (x, y) : rest ->
-      (x, y, d) : addDiscriminants' (D.increment d) rest

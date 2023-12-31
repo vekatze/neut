@@ -1,44 +1,24 @@
 module Entity.RawPattern
   ( RawPattern (..),
     RawPatternRow,
-    RawPatternMatrix,
     ConsArgs (..),
-    new,
-    consRow,
-    unconsRow,
   )
 where
 
-import Data.Vector qualified as V
+import Entity.C
 import Entity.Hint hiding (new)
 import Entity.Key
 import Entity.Name
+import Entity.Syntax.Series qualified as SE
 
 data RawPattern
   = Var Name
-  | Cons Name ConsArgs
-  deriving (Show)
+  | Cons Name C ConsArgs
+  | ListIntro (SE.Series (Hint, RawPattern))
 
 data ConsArgs
-  = Paren [(Hint, RawPattern)]
-  | Of [(Key, (Hint, RawPattern))]
-  deriving (Show)
+  = Paren (SE.Series (Hint, RawPattern))
+  | Of (SE.Series (Key, (Hint, C, RawPattern)))
 
 type RawPatternRow a =
-  (V.Vector (Hint, RawPattern), a)
-
-newtype RawPatternMatrix a
-  = MakeRawPatternMatrix (V.Vector (RawPatternRow a))
-
-new :: [RawPatternRow a] -> RawPatternMatrix a
-new rows =
-  MakeRawPatternMatrix $ V.fromList rows
-
-consRow :: RawPatternRow a -> RawPatternMatrix a -> RawPatternMatrix a
-consRow row (MakeRawPatternMatrix mat) =
-  MakeRawPatternMatrix $ V.cons row mat
-
-unconsRow :: RawPatternMatrix a -> Maybe (RawPatternRow a, RawPatternMatrix a)
-unconsRow (MakeRawPatternMatrix mat) = do
-  (headRow, rest) <- V.uncons mat
-  return (headRow, MakeRawPatternMatrix rest)
+  (SE.Series (Hint, RawPattern), C, a)

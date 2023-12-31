@@ -7,6 +7,7 @@ module Context.Locator
     clearActiveLocators,
     getPossibleReferents,
     getMainDefiniteDescription,
+    getNameLifter,
   )
 where
 
@@ -65,6 +66,12 @@ attachCurrentLocator ::
 attachCurrentLocator name = do
   cgl <- getCurrentGlobalLocator
   return $ DD.new cgl $ LL.new name
+
+getNameLifter ::
+  App (BN.BaseName -> DD.DefiniteDescription)
+getNameLifter = do
+  cgl <- getCurrentGlobalLocator
+  return $ \name -> DD.new cgl $ LL.new name
 
 attachPublicCurrentLocator ::
   BN.BaseName ->

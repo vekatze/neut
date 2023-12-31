@@ -13,7 +13,7 @@ define empty(a: tau): queue(a) {
 
 define head(a: tau, q: &queue(a)): ?a {
   case q {
-  - Queue(x :: _, _) =>
+  - Queue(Cons(x, _), _) =>
     Pass(*x)
   - _ =>
     none()
@@ -31,7 +31,7 @@ define sanitize(a: tau, q: queue(a)): queue(a) {
 
 define tail(a: tau, q: queue(a)): ?queue(a) {
   match q {
-  - Queue(_ :: rest, ys) =>
+  - Queue(Cons(_, rest), ys) =>
     Pass(sanitize(_, Queue(rest, ys)))
   - _ =>
     none()
@@ -40,14 +40,14 @@ define tail(a: tau, q: queue(a)): ?queue(a) {
 
 define snoc(a: tau, v: a, q: queue(a)): queue(a) {
   let Queue(xs, ys) = q in
-  sanitize(_, Queue(xs, v :: ys))
+  sanitize(_, Queue(xs, Cons(v, ys)))
 }
 
 define sum(xs: &list(int)): int {
   case xs {
-  - [] =>
+  - Nil =>
     0
-  - v :: rest =>
+  - Cons(v, rest) =>
     add-int(*v, sum(rest))
   }
 }

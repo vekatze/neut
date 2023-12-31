@@ -14,6 +14,7 @@ import Language.LSP.Server
 import Scene.Initialize qualified as Initialize
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
+import Scene.LSP.Format qualified as LSP
 import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 import Scene.LSP.References qualified as LSP
@@ -69,7 +70,14 @@ handlers =
           Nothing -> do
             responder $ Right $ InR Null
           Just refs -> do
-            responder $ Right $ InL refs
+            responder $ Right $ InL refs,
+      requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
+        textEditOrNone <- lift $ runAppM $ LSP.format $ req ^. J.params
+        case textEditOrNone of
+          Nothing ->
+            responder $ Right $ InR Null
+          Just textEdit -> do
+            responder $ Right $ InL textEdit
     ]
 
 runLSPApp :: Remark.Config -> App a -> IO a

@@ -22,7 +22,7 @@ freeVars term =
     _ :< WT.Pi impArgs expArgs t ->
       freeVars' (impArgs ++ expArgs) (freeVars t)
     _ :< WT.PiIntro k impArgs expArgs e ->
-      freeVars' (catMaybes [AttrL.fromAttr k] ++ impArgs ++ expArgs) (freeVars e)
+      freeVars' (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr k]) (freeVars e)
     _ :< WT.PiElim _ e es -> do
       let xs = freeVars e
       let ys = S.unions $ map freeVars es
@@ -59,7 +59,7 @@ freeVars term =
         AN.Type t -> do
           let xs2 = freeVars t
           S.union xs1 xs2
-    _ :< WT.Resource _ _ discarder copier -> do
+    _ :< WT.Resource _ discarder copier -> do
       let xs1 = freeVars discarder
       let xs2 = freeVars copier
       S.union xs1 xs2

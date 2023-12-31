@@ -180,7 +180,7 @@ simplify susList constraintList =
           simplify susList $ (C.Eq e1 e2, orig) : cs
         (e1, _ :< WT.Annotation _ _ e2) ->
           simplify susList $ (C.Eq e1 e2, orig) : cs
-        (_ :< WT.Resource _ id1 _ _, _ :< WT.Resource _ id2 _ _)
+        (_ :< WT.Resource id1 _ _, _ :< WT.Resource id2 _ _)
           | id1 == id2 ->
               simplify susList cs
         (e1, e2) -> do

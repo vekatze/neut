@@ -1,7 +1,12 @@
-module Scene.Parse.Import (parseImportBlock) where
+module Scene.Parse.Import
+  ( activateImport,
+    interpretImport,
+  )
+where
 
 import Context.Alias qualified as Alias
 import Context.App
+import Context.Global qualified as Global
 import Context.Module qualified as Module
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
@@ -9,7 +14,6 @@ import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
 import Control.Monad
-import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.AliasInfo qualified as AI
@@ -21,47 +25,37 @@ import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
 import Entity.ModuleID qualified as MID
+import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
+import Entity.Syntax.Series qualified as SE
 import Path
 import Scene.Module.Reflect qualified as Module
-import Scene.Parse.Core (commaList)
-import Scene.Parse.Core qualified as P
 import Scene.Source.ShiftToLatest
-import Text.Megaparsec
 
 type LocatorText =
   T.Text
 
-parseImportBlock :: Source.Source -> P.Parser [(Source.Source, [AI.AliasInfo])]
-parseImportBlock currentSource = do
-  choice
-    [ do
-        P.keyword "import"
-        concat <$> P.betweenBrace (P.manyList (parseImport (Source.sourceModule currentSource))),
+activateImport :: Hint -> [(Source.Source, [AI.AliasInfo])] -> App ()
+activateImport m sourceInfoList = do
+  forM_ sourceInfoList $ \(source, aliasInfoList) -> do
+    let path = Source.sourceFilePath source
+    namesInSource <- Global.lookupSourceNameMap m path
+    Global.activateTopLevelNames namesInSource
+    forM_ aliasInfoList $ \aliasInfo ->
+      Alias.activateAliasInfo namesInSource aliasInfo
+
+interpretImport :: Source.Source -> Maybe RawImport -> App [(Source.Source, [AI.AliasInfo])]
+interpretImport currentSource importOrNone = do
+  case importOrNone of
+    Nothing ->
       return []
-    ]
-
-parseImport :: Module -> P.Parser [(Source.Source, [AI.AliasInfo])]
-parseImport currentModule = do
-  m <- P.getCurrentHint
-  locatorText <- P.symbol
-  localLocatorList <- parseLocalLocatorList'
-  lift $ interpretImportItem True currentModule m locatorText localLocatorList
-
-parseLocalLocatorList' :: P.Parser [(Hint, LL.LocalLocator)]
-parseLocalLocatorList' = do
-  choice
-    [ P.betweenBrace $ commaList parseLocalLocator,
-      return []
-    ]
-
-parseLocalLocator :: P.Parser (Hint, LL.LocalLocator)
-parseLocalLocator = do
-  m <- P.getCurrentHint
-  ll <- P.baseName
-  return (m, LL.new ll)
+    Just (RawImport _ _ importItemList) -> do
+      fmap concat $ forM (SE.extract importItemList) $ \rawImport -> do
+        let RawImportItem m (locatorText, _) localLocatorList = rawImport
+        let localLocatorList' = SE.extract localLocatorList
+        interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
 
 interpretImportItem ::
   Bool ->

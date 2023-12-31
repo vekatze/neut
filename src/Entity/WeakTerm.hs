@@ -34,8 +34,8 @@ data WeakTermF a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
   | PiElim IsExplicit a [a]
   | PiElimExact a
-  | Data AttrD.Attr DD.DefiniteDescription [a]
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
+  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
@@ -44,7 +44,7 @@ data WeakTermF a
   | Magic (Magic a) -- (magic kind arg-1 ... arg-n)
   | Hole HoleID [WeakTerm] -- ?M @ (e1, ..., en)
   | Annotation RemarkLevel (AN.Annotation a) a
-  | Resource DD.DefiniteDescription Int a a
+  | Resource Int a a
   | Use a [BinderF a] a
 
 type SubstWeakTerm =

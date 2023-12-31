@@ -8,10 +8,12 @@ import Control.Comonad.Cofree
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.IntMap qualified as IntMap
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Hint
+import Entity.Hint.Reify (toString)
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.Term qualified as TM
@@ -36,7 +38,7 @@ chainOf' tenv term =
     _ :< TM.Pi {} ->
       []
     _ :< TM.PiIntro attr impArgs expArgs e ->
-      chainOfBinder tenv (catMaybes [AttrL.fromAttr attr] ++ impArgs ++ expArgs) [e]
+      chainOfBinder tenv (impArgs ++ expArgs ++ catMaybes [AttrL.fromAttr attr]) [e]
     _ :< TM.PiElim e es -> do
       let xs1 = chainOf' tenv e
       let xs2 = concatMap (chainOf' tenv) es
@@ -65,7 +67,7 @@ chainOf' tenv term =
       []
     _ :< TM.Magic der ->
       foldMap (chainOf' tenv) der
-    _ :< TM.Resource _ _ discarder copier -> do
+    _ :< TM.Resource _ discarder copier -> do
       let xs1 = chainOf' tenv discarder
       let xs2 = chainOf' tenv copier
       xs1 ++ xs2
@@ -119,6 +121,9 @@ nubFreeVariables =
 
 chainOfVar :: TM.TypeEnv -> Hint -> Ident -> [BinderF TM.Term]
 chainOfVar tenv m x = do
-  let t = (IntMap.!) tenv (Ident.toInt x)
-  let xts = chainOf' tenv t
-  xts ++ [(m, x, t)]
+  case IntMap.lookup (Ident.toInt x) tenv of
+    Just t -> do
+      let xts = chainOf' tenv t
+      xts ++ [(m, x, t)]
+    _ ->
+      error $ T.unpack $ "[critical] chainOfVar: " <> Ident.toText' x <> "\n" <> T.pack (toString m)

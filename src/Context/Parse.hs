@@ -1,5 +1,7 @@
 module Context.Parse
   ( readSourceFile,
+    writeSourceFile,
+    printSourceFile,
     ensureExistence,
   )
 where
@@ -18,8 +20,21 @@ import Path.IO
 readSourceFile :: Path Abs File -> App T.Text
 readSourceFile path = do
   liftIO $ do
-    content <- B.readFile $ toFilePath path
-    return $ decodeUtf8 content
+    if isStdin path
+      then decodeUtf8 <$> B.getContents
+      else fmap decodeUtf8 $ B.readFile $ toFilePath path
+
+isStdin :: Path Abs File -> Bool
+isStdin path =
+  toFilePath (filename path) == "-"
+
+writeSourceFile :: Path Abs File -> T.Text -> App ()
+writeSourceFile path content = do
+  liftIO $ B.writeFile (toFilePath path) $ encodeUtf8 content
+
+printSourceFile :: T.Text -> App ()
+printSourceFile content = do
+  liftIO $ B.putStr $ encodeUtf8 content
 
 ensureExistence :: Source -> App ()
 ensureExistence source = do

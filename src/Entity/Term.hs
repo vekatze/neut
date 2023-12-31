@@ -30,15 +30,15 @@ data TermF a
   | Pi [BinderF a] [BinderF a] a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
   | PiElim a [a]
-  | Data AttrD.Attr DD.DefiniteDescription [a]
-  | DataIntro AttrDI.Attr DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
+  | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
+  | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
   | DataElim N.IsNoetic [(Ident, a, a)] (DT.DecisionTree a)
   | Noema a
   | Embody a a
   | Let O.Opacity (BinderF a) a a
   | Prim (P.Prim a)
   | Magic (Magic a)
-  | Resource DD.DefiniteDescription ID a a
+  | Resource ID a a
   deriving (Show, Generic)
 
 instance (Binary a) => Binary (TermF a)

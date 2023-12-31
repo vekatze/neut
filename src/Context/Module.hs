@@ -7,7 +7,8 @@ module Context.Module
     getCoreModuleURL,
     getCoreModuleDigest,
     insertToModuleCacheMap,
-    save,
+    saveEns,
+    sourceFromPath,
   )
 where
 
@@ -15,16 +16,20 @@ import Context.App
 import Context.App.Internal
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Control.Monad
 import Control.Monad.IO.Class
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Const
+import Entity.Ens
+import Entity.Ens.Reify qualified as Ens
 import Entity.Hint qualified as H
 import Entity.Module
 import Entity.ModuleDigest
 import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
+import Entity.Source qualified as Source
 import Path
 import Path.IO
 import System.Environment
@@ -67,9 +72,10 @@ getModuleDirByID mHint moduleID = do
       libraryDir <- Path.getLibraryDirPath
       resolveDir libraryDir $ T.unpack digest
 
-save :: Module -> App ()
-save targetModule =
-  Path.writeText (moduleLocation targetModule) $ ppModule targetModule
+saveEns :: Path Abs File -> FullEns -> App ()
+saveEns path (c1, (ens, c2)) = do
+  ens' <- Throw.liftEither $ stylize ens
+  Path.writeText path $ Ens.pp (c1, (ens', c2))
 
 getCoreModuleURL :: App ModuleURL
 getCoreModuleURL = do
@@ -88,3 +94,22 @@ getCoreModuleDigest = do
       return $ ModuleDigest $ T.pack coreModuleDigest
     Nothing ->
       Throw.raiseError' $ "the digest of the core module isn't specified; set it via " <> T.pack envVarCoreModuleDigest
+
+sourceFromPath :: Path Abs File -> App Source.Source
+sourceFromPath path = do
+  mainModule <- getMainModule
+  ensureFileModuleSanity path mainModule
+  return $
+    Source.Source
+      { Source.sourceModule = mainModule,
+        Source.sourceFilePath = path,
+        Source.sourceHint = Nothing
+      }
+
+ensureFileModuleSanity :: Path Abs File -> Module -> App ()
+ensureFileModuleSanity filePath mainModule = do
+  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
+    Throw.raiseError' $
+      "the file `"
+        <> T.pack (toFilePath filePath)
+        <> "` is not in the source directory of current module"

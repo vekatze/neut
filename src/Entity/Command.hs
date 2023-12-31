@@ -6,6 +6,7 @@ import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
+import Entity.Config.Format qualified as Format
 import Entity.Config.LSP qualified as LSP
 import Entity.Config.Version qualified as Version
 
@@ -16,5 +17,6 @@ data Command
   | Archive Archive.Config
   | Add Add.Config
   | Create Create.Config
+  | Format Format.Config
   | LSP LSP.Config
   | ShowVersion Version.Config

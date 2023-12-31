@@ -74,7 +74,7 @@ define yo(x: top): unit {
   Unit
 }
 
-declare {
+nominal {
 - bar: tau
 }
 

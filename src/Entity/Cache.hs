@@ -11,7 +11,7 @@ data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     remarkList :: [Remark],
     locationTree :: LT.LocationTree,
-    declList :: [F.Foreign]
+    foreignList :: [F.Foreign]
   }
   deriving (Generic)
 
@@ -19,7 +19,7 @@ data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Remark],
     locationTree' :: LT.LocationTree,
-    declList' :: [F.Foreign]
+    foreignList' :: [F.Foreign]
   }
   deriving (Generic)
 
@@ -31,7 +31,7 @@ compress cache =
     { stmtList' = map Stmt.compress (stmtList cache),
       remarkList' = remarkList cache,
       locationTree' = locationTree cache,
-      declList' = declList cache
+      foreignList' = foreignList cache
     }
 
 extend :: LowCache -> Cache
@@ -40,5 +40,5 @@ extend cache =
     { stmtList = map Stmt.extend (stmtList' cache),
       remarkList = remarkList' cache,
       locationTree = locationTree' cache,
-      declList = declList' cache
+      foreignList = foreignList' cache
     }

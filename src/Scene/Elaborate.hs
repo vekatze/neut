@@ -23,10 +23,10 @@ import Entity.Attr.Lam qualified as AttrL
 import Entity.Binder
 import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
-import Entity.Decl qualified as DE
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
+import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.HoleID qualified as HID
 import Entity.HoleSubst qualified as HS
@@ -52,7 +52,7 @@ import Scene.Term.Inline qualified as TM
 import Scene.WeakTerm.Reduce qualified as WT
 import Scene.WeakTerm.Subst qualified as WT
 
-elaborate :: Either Cache.Cache ([WeakStmt], [F.Foreign]) -> App ([Stmt], [F.Foreign])
+elaborate :: Either Cache.Cache ([F.Foreign], [WeakStmt]) -> App ([F.Foreign], [Stmt])
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -61,49 +61,40 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      let declList = Cache.declList cache
-      return (stmtList, declList)
-    Right (defList, declList) -> do
-      defList' <- (analyzeDefList >=> synthesizeDefList declList) defList
-      return (defList', declList)
+      let foreignList = Cache.foreignList cache
+      return (foreignList, stmtList)
+    Right (foreignList, stmtList) -> do
+      stmtList' <- (analyzeStmtList >=> synthesizeStmtList foreignList) stmtList
+      return (foreignList, stmtList')
 
-analyzeDefList :: [WeakStmt] -> App [WeakStmt]
-analyzeDefList defList = do
+analyzeStmtList :: [WeakStmt] -> App [WeakStmt]
+analyzeStmtList stmtList = do
   source <- Env.getCurrentSource
   mMainDD <- Locator.getMainDefiniteDescription source
-  -- mapM_ viewStmt defList
-  forM defList $ \def -> do
-    def' <- Infer.inferStmt mMainDD def
-    insertWeakStmt def'
-    return def'
+  -- mapM_ viewStmt stmtList
+  forM stmtList $ \stmt -> do
+    stmt' <- Infer.inferStmt mMainDD stmt
+    insertWeakStmt stmt'
+    return stmt'
 
--- viewStmt :: WeakStmt -> App ()
--- viewStmt stmt = do
---   case stmt of
---     WeakStmtDefine _ _ m x impArgs expArgs codType e -> do
---       let attr = AttrL.Attr {lamKind = LK.Normal, identity = 0}
---       Remark.printNote m $ DD.reify x <> "\n" <> toText (m :< WT.Pi impArgs expArgs codType) <> "\n" <> toText (m :< WT.PiIntro attr impArgs expArgs e)
---     _ ->
---       return ()
-
-synthesizeDefList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
-synthesizeDefList declList defList = do
-  -- mapM_ viewStmt defList
+synthesizeStmtList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
+synthesizeStmtList foreignList stmtList = do
+  -- mapM_ viewStmt stmtList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
-  defList' <- concat <$> mapM elaborateStmt defList
-  -- mapM_ (viewStmt . weakenStmt) defList'
+  stmtList' <- concat <$> mapM elaborateStmt stmtList
+  -- mapM_ (viewStmt . weakenStmt) stmtList'
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
   Cache.saveCache source $
     Cache.Cache
-      { Cache.stmtList = defList',
+      { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
-        Cache.declList = declList
+        Cache.foreignList = foreignList
       }
   Remark.insertToGlobalRemarkList remarkList
-  return defList'
+  return stmtList'
 
 elaborateStmt :: WeakStmt -> App [Stmt]
 elaborateStmt stmt = do
@@ -126,16 +117,16 @@ elaborateStmt stmt = do
       let result = StmtDefineConst (SavedHint m) dd t' v'
       insertStmt result
       return [result]
-    WeakStmtDeclare _ declList -> do
-      mapM_ elaborateDecl declList
+    WeakStmtNominal _ geistList -> do
+      mapM_ elaborateGeist geistList
       return []
 
-elaborateDecl :: DE.Decl WT.WeakTerm -> App (DE.Decl TM.Term)
-elaborateDecl DE.Decl {..} = do
+elaborateGeist :: G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
+elaborateGeist G.Geist {..} = do
   impArgs' <- mapM elaborateWeakBinder impArgs
   expArgs' <- mapM elaborateWeakBinder expArgs
   cod' <- elaborate' cod
-  return $ DE.Decl {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
+  return $ G.Geist {impArgs = impArgs', expArgs = expArgs', cod = cod', ..}
 
 insertStmt :: Stmt -> App ()
 insertStmt stmt = do
@@ -156,7 +147,7 @@ insertWeakStmt stmt = do
       WeakDefinition.insert (toOpacity stmtKind) m f impArgs expArgs e
     WeakStmtDefineConst m dd _ v -> do
       WeakDefinition.insert O.Clear m dd [] [] v
-    WeakStmtDeclare {} -> do
+    WeakStmtNominal {} -> do
       return ()
 
 insertStmtKindInfo :: Stmt -> App ()
@@ -213,8 +204,8 @@ elaborate' term =
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
-    _ :< WT.PiElimExact _ -> do
-      undefined
+    m :< WT.PiElimExact {} -> do
+      Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `exact`"
     m :< WT.Data attr name es -> do
       es' <- mapM elaborate' es
       return $ m :< TM.Data attr name es'
@@ -298,8 +289,9 @@ elaborate' term =
                 <> T.pack (show actual)
                 <> "."
           args' <- mapM elaborate' args
-          varArgs' <- mapM (mapM elaborate') varArgs
-          return $ m :< TM.Magic (M.External domList cod name args' varArgs')
+          let (vArgs, vTypes) = unzip varArgs
+          vArgs' <- mapM elaborate' vArgs
+          return $ m :< TM.Magic (M.External domList cod name args' (zip vArgs' vTypes))
         _ -> do
           magic' <- mapM elaborate' magic
           return $ m :< TM.Magic magic'
@@ -312,10 +304,10 @@ elaborate' term =
           let typeRemark = Remark.newRemark m remarkLevel message
           Remark.insertRemark typeRemark
           return e'
-    m :< WT.Resource dd resourceID discarder copier -> do
+    m :< WT.Resource resourceID discarder copier -> do
       discarder' <- elaborate' discarder
       copier' <- elaborate' copier
-      return $ m :< TM.Resource dd resourceID discarder' copier'
+      return $ m :< TM.Resource resourceID discarder' copier'
     m :< WT.Use {} -> do
       Throw.raiseCritical m "Scene.Elaborate.elaborate': found a remaining `use`"
 

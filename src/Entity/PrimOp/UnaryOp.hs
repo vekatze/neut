@@ -16,6 +16,12 @@ instance Show UnaryOp where
       FNeg ->
         "fneg"
 
+getRep :: UnaryOp -> T.Text
+getRep op =
+  case op of
+    FNeg ->
+      "neg"
+
 asFloatUnaryOp :: T.Text -> Maybe UnaryOp
 asFloatUnaryOp name =
   case name of

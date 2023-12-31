@@ -1,4 +1,4 @@
-module Scene.Term.Subst (subst, subst'', substDecisionTree) where
+module Scene.Term.Subst (subst, subst', subst'', substDecisionTree) where
 
 import Context.App
 import Context.Gensym qualified as Gensym
@@ -48,9 +48,9 @@ subst sub term =
           newLamID <- Gensym.newCount
           case lamKind of
             LK.Fix xt -> do
-              ([xt'], sub') <- substBinder sub [xt]
-              (impArgs', sub'') <- substBinder sub' impArgs
-              (expArgs', sub''') <- substBinder sub'' expArgs
+              (impArgs', sub') <- substBinder sub impArgs
+              (expArgs', sub'') <- substBinder sub' expArgs
+              ([xt'], sub''') <- substBinder sub'' [xt]
               e' <- subst sub''' e
               let fixAttr = AttrL.Attr {lamKind = LK.Fix xt', identity = newLamID}
               return (m :< TM.PiIntro fixAttr impArgs' expArgs' e')
@@ -94,10 +94,10 @@ subst sub term =
     m :< TM.Magic der -> do
       der' <- traverse (subst sub) der
       return (m :< TM.Magic der')
-    m :< TM.Resource dd resourceID discarder copier -> do
+    m :< TM.Resource resourceID discarder copier -> do
       discarder' <- subst sub discarder
       copier' <- subst sub copier
-      return $ m :< TM.Resource dd resourceID discarder' copier'
+      return $ m :< TM.Resource resourceID discarder' copier'
 
 substBinder ::
   SubstTerm ->

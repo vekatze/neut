@@ -33,7 +33,8 @@ import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
 import Scene.Parse.Core qualified as ParseCore
-import Scene.Parse.Import
+import Scene.Parse.Import (interpretImport)
+import Scene.Parse.Program (parseImport)
 import Scene.Source.ShiftToLatest qualified as Source
 
 type CacheTime =
@@ -66,14 +67,7 @@ unravelFromFile ::
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
 unravelFromFile path = do
-  mainModule <- Module.getMainModule
-  ensureFileModuleSanity path mainModule
-  let initialSource =
-        Source.Source
-          { Source.sourceModule = mainModule,
-            Source.sourceFilePath = path,
-            Source.sourceHint = Nothing
-          }
+  initialSource <- Module.sourceFromPath path
   unravel' >=> mapM adjustUnravelResult $ initialSource
 
 adjustUnravelResult ::
@@ -84,11 +78,6 @@ adjustUnravelResult sourceSeq = do
   registerAntecedentInfo sourceList
   sourceList' <- mapM Source.shiftToLatest sourceList
   return $ sanitizeSourceList sourceList'
-
-ensureFileModuleSanity :: Path Abs File -> Module -> App ()
-ensureFileModuleSanity filePath mainModule = do
-  unless (isProperPrefixOf (getSourceDir mainModule) filePath) $ do
-    Throw.raiseError' "the specified file is not in the current module"
 
 unravel' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel' source = do
@@ -248,7 +237,8 @@ parseSourceHeader currentSource = do
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
   fileContent <- readSourceFile path
-  ParseCore.run (parseImportBlock currentSource) path fileContent
+  (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
+  interpretImport currentSource importOrNone
 
 registerAntecedentInfo :: [Source.Source] -> App ()
 registerAntecedentInfo sourceList =

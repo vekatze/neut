@@ -135,8 +135,8 @@ distinguishPrimitive z term =
           return (vs, C.Magic (M.Load lt pointer'))
         M.External domList cod extFunName args varArgAndTypeList -> do
           (vss, args') <- mapAndUnzipM (distinguishValue z) args
-          let (varTypes, varArgs) = unzip varArgAndTypeList
+          let (varArgs, varTypes) = unzip varArgAndTypeList
           (vss2, varArgs') <- mapAndUnzipM (distinguishValue z) varArgs
-          return (concat vss ++ concat vss2, C.Magic (M.External domList cod extFunName args' (zip varTypes varArgs')))
-        M.Global lt name -> do
-          return ([], C.Magic (M.Global lt name))
+          return (concat vss ++ concat vss2, C.Magic (M.External domList cod extFunName args' (zip varArgs' varTypes)))
+        M.Global name lt -> do
+          return ([], C.Magic (M.Global name lt))

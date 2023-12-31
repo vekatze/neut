@@ -40,11 +40,13 @@ toText term =
           showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
-        AttrL.Attr {lamKind = LK.Fix (_, x, _)} -> do
-          showImpArgs impArgs
-            <> "mu "
+        AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
+          "define "
             <> showVariable x
+            <> showImpArgs impArgs
             <> inParen (showDomArgList expArgs)
+            <> ": "
+            <> toText codType
             <> " "
             <> inBrace (toText e)
         AttrL.Attr {lamKind = LK.Normal} -> do
@@ -91,8 +93,8 @@ toText term =
       "<magic>"
     _ :< WT.Annotation _ _ e ->
       toText e
-    _ :< WT.Resource dd _ _ _ -> do
-      showGlobalVariable dd
+    _ :< WT.Resource {} -> do
+      "<resource>"
     _ :< WT.Use e xts cont -> do
       let xs = map (\(_, x, _) -> x) xts
       let varSeq = inBrace $ T.intercalate "," $ map showVariable xs
