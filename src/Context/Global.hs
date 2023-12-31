@@ -1,6 +1,6 @@
 module Context.Global
   ( registerStmtDefine,
-    regeisterGeist,
+    registerGeist,
     reportMissingDefinitions,
     lookup,
     initialize,
@@ -103,8 +103,8 @@ isUnary consInfoList =
     _ ->
       False
 
-regeisterGeist :: RT.TopGeist -> App ()
-regeisterGeist RT.RawGeist {..} = do
+registerGeist :: RT.TopGeist -> App ()
+registerGeist RT.RawGeist {..} = do
   let expArgs' = RT.extractArgs expArgs
   let impArgs' = RT.extractArgs impArgs
   let expArgNames = map (\(_, x, _, _, _) -> x) expArgs'
