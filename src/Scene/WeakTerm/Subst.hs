@@ -1,4 +1,4 @@
-module Scene.WeakTerm.Subst (subst, substDecisionTree) where
+module Scene.WeakTerm.Subst (subst, subst', substDecisionTree) where
 
 import Context.App
 import Context.Gensym qualified as Gensym

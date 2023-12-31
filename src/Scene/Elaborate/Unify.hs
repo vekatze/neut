@@ -55,15 +55,17 @@ unify constraintList = do
 
 unifyCurrentConstraints :: App HS.HoleSubst
 unifyCurrentConstraints = do
+  susList <- getSuspendedEnv
   cs <- getConstraintEnv
-  sus <- simplify [] $ zip cs cs
-  let sus' = map (\(C.SuspendedConstraint (_, (_, c))) -> c) sus
-  setConstraintEnv sus'
+  susList' <- simplify susList $ zip cs cs
+  setConstraintEnv []
+  setSuspendedEnv susList'
   getHoleSubst
 
 unify' :: [C.Constraint] -> App [SuspendedConstraint]
-unify' constraintList =
-  simplify [] $ zip constraintList constraintList
+unify' constraintList = do
+  susList <- getSuspendedEnv
+  simplify susList $ zip constraintList constraintList
 
 throwTypeErrors :: [SuspendedConstraint] -> App a
 throwTypeErrors susList = do
