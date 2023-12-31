@@ -200,7 +200,7 @@ elaborate' term =
       expArgs' <- mapM elaborateWeakBinder expArgs
       e' <- elaborate' e
       return $ m :< TM.PiIntro kind' impArgs' expArgs' e'
-    m :< WT.PiElim _ e es -> do
+    m :< WT.PiElim e es -> do
       e' <- elaborate' e
       es' <- mapM elaborate' es
       return $ m :< TM.PiElim e' es'
@@ -396,11 +396,11 @@ reduceWeakType e = do
   case e' of
     m :< WT.Hole h es ->
       fillHole m h es >>= reduceWeakType
-    m :< WT.PiElim isExplicit (_ :< WT.VarGlobal _ name) args -> do
+    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of
         Just lam ->
-          reduceWeakType $ m :< WT.PiElim isExplicit lam args
+          reduceWeakType $ m :< WT.PiElim lam args
         Nothing -> do
           return e'
     _ ->

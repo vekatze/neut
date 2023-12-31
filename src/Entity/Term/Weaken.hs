@@ -61,7 +61,7 @@ weaken term =
     m :< TM.PiElim e es -> do
       let e' = weaken e
       let es' = map weaken es
-      m :< WT.PiElim True e' es'
+      m :< WT.PiElim e' es'
     m :< TM.Data attr name es -> do
       let es' = map weaken es
       m :< WT.Data attr name es'
