@@ -5,6 +5,8 @@ module Context.Elaborate
     insertActualityConstraint,
     setConstraintEnv,
     getConstraintEnv,
+    setSuspendedEnv,
+    getSuspendedEnv,
     insWeakTypeEnv,
     lookupWeakTypeEnv,
     lookupHoleEnv,
@@ -43,6 +45,7 @@ initialize = do
 initializeInferenceEnv :: App ()
 initializeInferenceEnv = do
   writeRef' constraintEnv []
+  writeRef' suspendedEnv []
   writeRef' holeEnv IntMap.empty
 
 insConstraintEnv :: WeakTerm -> WeakTerm -> App ()
@@ -60,6 +63,14 @@ getConstraintEnv =
 setConstraintEnv :: [C.Constraint] -> App ()
 setConstraintEnv =
   writeRef' constraintEnv
+
+getSuspendedEnv :: App [C.SuspendedConstraint]
+getSuspendedEnv =
+  readRef' suspendedEnv
+
+setSuspendedEnv :: [C.SuspendedConstraint] -> App ()
+setSuspendedEnv =
+  writeRef' suspendedEnv
 
 insWeakTypeEnv :: Ident -> WeakTerm -> App ()
 insWeakTypeEnv k v =

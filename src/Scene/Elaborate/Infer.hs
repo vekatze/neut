@@ -167,28 +167,12 @@ infer varEnv term =
       t' <- resolveType t
       case t' of
         _ :< WT.Pi impArgs expArgs _ -> do
-          if null impArgs
-            then return (e', t')
-            else do
-              expArgs' <- forM expArgs $ \(_, x, _) -> do
-                tx <- newHole m varEnv
-                return (m, x, tx)
-              let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
-              lamID <- Gensym.newCount
-              exactVar <- Gensym.newIdentFromText "exact"
-              infer varEnv $
-                m
-                  :< WT.Let
-                    WT.Clear
-                    (m, exactVar, t')
-                    e'
-                    ( m
-                        :< WT.PiIntro
-                          (AttrL.normal lamID)
-                          []
-                          expArgs'
-                          (m :< WT.PiElim (m :< WT.Var exactVar) expArgs'')
-                    )
+          holes <- mapM (const $ newHole m varEnv) impArgs
+          let sub = IntMap.fromList $ zip (map (\(_, x, _) -> Ident.toInt x) impArgs) (map Right holes)
+          (expArgs', _) <- Subst.subst' sub expArgs
+          let expArgs'' = map (\(_, x, _) -> m :< WT.Var x) expArgs'
+          lamID <- Gensym.newCount
+          infer varEnv $ m :< WT.PiIntro (AttrL.normal lamID) [] expArgs' (m :< WT.PiElim e' expArgs'')
         _ ->
           Throw.raiseError m $ "expected a function type, but got: " <> toText t'
     m :< WT.Data attr name es -> do
@@ -215,7 +199,7 @@ infer varEnv term =
       return (m :< WT.Embody resultType e', resultType)
     m :< WT.Let opacity (mx, x, t) e1 e2 -> do
       (e1', t1') <- infer varEnv e1
-      t' <- inferType varEnv t
+      t' <- inferType varEnv t >>= resolveType
       insWeakTypeEnv x t'
       case opacity of
         WT.Noetic ->
@@ -223,9 +207,8 @@ infer varEnv term =
         _ ->
           return ()
       insConstraintEnv t' t1' -- run this before `infer varEnv e2`
-      t'' <- resolveType t'
       (e2', t2') <- infer varEnv e2 -- no context extension
-      return (m :< WT.Let opacity (mx, x, t'') e1' e2', t2')
+      return (m :< WT.Let opacity (mx, x, t') e1' e2', t2')
     m :< WT.Hole holeID _ -> do
       let rawHoleID = HID.reify holeID
       mHoleInfo <- lookupHoleEnv rawHoleID

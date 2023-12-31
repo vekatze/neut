@@ -56,6 +56,7 @@ data Env = Env
     geistMap :: IORef (Map.HashMap DD.DefiniteDescription Hint),
     antecedentMap :: IORef (Map.HashMap MD.ModuleDigest M.Module),
     constraintEnv :: IORef [C.Constraint],
+    suspendedEnv :: IORef [C.SuspendedConstraint],
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
@@ -119,6 +120,7 @@ newEnv = do
   geistMap <- newIORef Map.empty
   antecedentMap <- newIORef Map.empty
   constraintEnv <- newIORef []
+  suspendedEnv <- newIORef []
   holeSubst <- newIORef HS.empty
   sourceChildrenMap <- newIORef Map.empty
   weakTypeEnv <- newIORef IntMap.empty
