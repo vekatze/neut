@@ -249,7 +249,7 @@ discern nenv term =
     m :< RT.PiElim e _ es -> do
       es' <- mapM (discern nenv) $ SE.extract es
       e' <- discern nenv e
-      return $ m :< WT.PiElim False e' es'
+      return $ m :< WT.PiElim e' es'
     m :< RT.PiElimByKey name _ kvs -> do
       (dd, _) <- resolveName m name
       let (ks, vs) = unzip $ map (\(_, k, _, _, v) -> (k, v)) $ SE.extract kvs
@@ -258,7 +258,7 @@ discern nenv term =
       vs' <- mapM (discern nenv) vs
       args <- KeyArg.reorderArgs m keyList $ Map.fromList $ zip ks vs'
       let isConstLike = False
-      return $ m :< WT.PiElim False (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
+      return $ m :< WT.PiElim (m :< WT.VarGlobal (AttrVG.Attr {..}) dd) args
     m :< RT.PiElimExact _ e -> do
       e' <- discern nenv e
       return $ m :< WT.PiElimExact e'

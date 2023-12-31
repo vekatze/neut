@@ -10,6 +10,7 @@ import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.HoleID qualified as HID
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
@@ -54,7 +55,7 @@ toText term =
             <> inParen (showDomArgList expArgs)
             <> " => "
             <> inBrace (toText e)
-    _ :< WT.PiElim _ e es -> do
+    _ :< WT.PiElim e es -> do
       case e of
         _ :< WT.VarGlobal attr _
           | AttrVG.isConstLike attr ->
@@ -87,8 +88,8 @@ toText term =
           "let " <> showVariable x <> ": " <> toText t <> " = " <> toText e1 <> " in " <> toText e2
     _ :< WT.Prim prim ->
       showPrim prim
-    _ :< WT.Hole _ es ->
-      "_" <> "(" <> T.intercalate "," (map toText es) <> ")"
+    _ :< WT.Hole i es ->
+      "?" <> T.pack (show (HID.reify i)) <> "(" <> T.intercalate "," (map toText es) <> ")"
     _ :< WT.Magic _ -> do
       "<magic>"
     _ :< WT.Annotation _ _ e ->
@@ -163,7 +164,7 @@ showVariable :: Ident -> T.Text
 showVariable x =
   if isHole x
     then "_"
-    else Ident.toText x
+    else Ident.toText' x
 
 showGlobalVariable :: DD.DefiniteDescription -> T.Text
 showGlobalVariable =

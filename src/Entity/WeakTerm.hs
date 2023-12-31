@@ -13,7 +13,6 @@ import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.HoleID
 import Entity.Ident
-import Entity.IsExplicit (IsExplicit)
 import Entity.Magic
 import Entity.Noema qualified as N
 import Entity.Opacity qualified as O
@@ -32,7 +31,7 @@ data WeakTermF a
   | VarGlobal AttrVG.Attr DD.DefiniteDescription
   | Pi [BinderF a] [BinderF a] a
   | PiIntro (AttrL.Attr a) [BinderF a] [BinderF a] a
-  | PiElim IsExplicit a [a]
+  | PiElim a [a]
   | PiElimExact a
   | Data (AttrD.Attr DD.DefiniteDescription) DD.DefiniteDescription [a]
   | DataIntro (AttrDI.Attr DD.DefiniteDescription) DD.DefiniteDescription [a] [a] -- (consName, dataArgs, consArgs)
@@ -96,4 +95,4 @@ asVar term =
 
 piElim :: a -> [a] -> WeakTermF a
 piElim =
-  PiElim False
+  PiElim
