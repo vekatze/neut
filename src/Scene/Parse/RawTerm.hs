@@ -39,6 +39,7 @@ import Entity.WeakPrimType qualified as WPT
 import Entity.WeakPrimType.FromText qualified as WPT
 import Scene.Parse.Core
 import Text.Megaparsec
+import Text.Read qualified as R
 
 rawExpr :: Parser (RT.RawTerm, C)
 rawExpr = do
@@ -737,8 +738,11 @@ interpretVarName m varText = do
   case DD.getLocatorPair m varText of
     Left _ ->
       return (m, Var varText)
-    Right (gl, ll) ->
-      return (m, Locator (gl, ll))
+    Right (gl, ll)
+      | Just _ :: Maybe Double <- R.readMaybe (T.unpack varText) ->
+          return (m, Var varText)
+      | otherwise ->
+          return (m, Locator (gl, ll))
 
 rawTermTextIntro :: Parser (RT.RawTerm, C)
 rawTermTextIntro = do
