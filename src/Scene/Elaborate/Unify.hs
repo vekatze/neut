@@ -36,6 +36,7 @@ import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as Subst
 import Entity.WeakTerm qualified as WT
+import Entity.WeakTerm.Eq qualified as WT
 import Entity.WeakTerm.FreeVars
 import Entity.WeakTerm.Holes
 import Entity.WeakTerm.ToText
@@ -108,146 +109,121 @@ simplify susList constraintList =
     headConstraint@(C.Eq expected actual, orig) : cs -> do
       expected' <- reduce expected
       actual' <- reduce actual
-      case (expected', actual') of
-        (_ :< WT.Tau, _ :< WT.Tau) ->
-          simplify susList cs
-        (_ :< WT.Var x1, _ :< WT.Var x2)
-          | x1 == x2 ->
-              simplify susList cs
-        (_ :< WT.VarGlobal _ g1, _ :< WT.VarGlobal _ g2)
-          | g1 == g2 ->
-              simplify susList cs
-        (m1 :< WT.Pi impArgs1 expArgs1 cod1, m2 :< WT.Pi impArgs2 expArgs2 cod2)
-          | length impArgs1 == length impArgs2,
-            length expArgs1 == length expArgs2 -> do
-              xt1 <- asWeakBinder m1 cod1
-              xt2 <- asWeakBinder m2 cod2
-              cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
-              simplify susList $ cs' ++ cs
-        (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
-          | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
-            AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
-            x1 == x2,
-            length impArgs1 == length impArgs2,
-            length expArgs1 == length expArgs2 -> do
-              yt1 <- asWeakBinder m1 e1
-              yt2 <- asWeakBinder m2 e2
-              cs' <- simplifyBinder orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
-              simplify susList $ cs' ++ cs
-          | AttrL.Attr {lamKind = LK.Normal} <- kind1,
-            AttrL.Attr {lamKind = LK.Normal} <- kind2,
-            length impArgs1 == length impArgs2,
-            length expArgs1 == length expArgs2 -> do
-              xt1 <- asWeakBinder m1 e1
-              xt2 <- asWeakBinder m2 e2
-              cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
-              simplify susList $ cs' ++ cs
-        (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
-          | name1 == name2,
-            length es1 == length es2 -> do
-              let cs' = map (,orig) (zipWith C.Eq es1 es2)
-              simplify susList $ cs' ++ cs
-        (_ :< WT.DataIntro _ consName1 dataArgs1 consArgs1, _ :< WT.DataIntro _ consName2 dataArgs2 consArgs2)
-          | consName1 == consName2,
-            length dataArgs1 == length dataArgs2,
-            length consArgs1 == length consArgs2 -> do
-              let es1 = dataArgs1 ++ consArgs1
-              let es2 = dataArgs2 ++ consArgs2
-              let cs' = map (,orig) (zipWith C.Eq es1 es2)
-              simplify susList $ cs' ++ cs
-        (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
-          simplify susList $ (C.Eq t1 t2, orig) : cs
-        (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
-          simplify susList $ (C.Eq t1 t2, orig) : (C.Eq e1 e2, orig) : cs
-        (_ :< WT.Prim a1, _ :< WT.Prim a2)
-          | WP.Type t1 <- a1,
-            WP.Type t2 <- a2,
-            t1 == t2 ->
-              simplify susList cs
-          | WP.Value (WPV.Int t1 l1) <- a1,
-            WP.Value (WPV.Int t2 l2) <- a2,
-            l1 == l2 ->
+      if WT.eq expected' actual'
+        then simplify susList cs
+        else do
+          case (expected', actual') of
+            (m1 :< WT.Pi impArgs1 expArgs1 cod1, m2 :< WT.Pi impArgs2 expArgs2 cod2)
+              | length impArgs1 == length impArgs2,
+                length expArgs1 == length expArgs2 -> do
+                  xt1 <- asWeakBinder m1 cod1
+                  xt2 <- asWeakBinder m2 cod2
+                  cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  simplify susList $ cs' ++ cs
+            (m1 :< WT.PiIntro kind1 impArgs1 expArgs1 e1, m2 :< WT.PiIntro kind2 impArgs2 expArgs2 e2)
+              | AttrL.Attr {lamKind = LK.Fix xt1@(_, x1, _)} <- kind1,
+                AttrL.Attr {lamKind = LK.Fix xt2@(_, x2, _)} <- kind2,
+                x1 == x2,
+                length impArgs1 == length impArgs2,
+                length expArgs1 == length expArgs2 -> do
+                  yt1 <- asWeakBinder m1 e1
+                  yt2 <- asWeakBinder m2 e2
+                  cs' <- simplifyBinder orig (xt1 : impArgs1 ++ expArgs1 ++ [yt1]) (xt2 : impArgs2 ++ expArgs2 ++ [yt2])
+                  simplify susList $ cs' ++ cs
+              | AttrL.Attr {lamKind = LK.Normal} <- kind1,
+                AttrL.Attr {lamKind = LK.Normal} <- kind2,
+                length impArgs1 == length impArgs2,
+                length expArgs1 == length expArgs2 -> do
+                  xt1 <- asWeakBinder m1 e1
+                  xt2 <- asWeakBinder m2 e2
+                  cs' <- simplifyBinder orig (impArgs1 ++ expArgs1 ++ [xt1]) (impArgs2 ++ expArgs2 ++ [xt2])
+                  simplify susList $ cs' ++ cs
+            (_ :< WT.Data _ name1 es1, _ :< WT.Data _ name2 es2)
+              | name1 == name2,
+                length es1 == length es2 -> do
+                  let cs' = map (,orig) (zipWith C.Eq es1 es2)
+                  simplify susList $ cs' ++ cs
+            (_ :< WT.DataIntro _ consName1 dataArgs1 consArgs1, _ :< WT.DataIntro _ consName2 dataArgs2 consArgs2)
+              | consName1 == consName2,
+                length dataArgs1 == length dataArgs2,
+                length consArgs1 == length consArgs2 -> do
+                  let es1 = dataArgs1 ++ consArgs1
+                  let es2 = dataArgs2 ++ consArgs2
+                  let cs' = map (,orig) (zipWith C.Eq es1 es2)
+                  simplify susList $ cs' ++ cs
+            (_ :< WT.Noema t1, _ :< WT.Noema t2) ->
               simplify susList $ (C.Eq t1 t2, orig) : cs
-          | WP.Value (WPV.Float t1 l1) <- a1,
-            WP.Value (WPV.Float t2 l2) <- a2,
-            l1 == l2 ->
-              simplify susList $ (C.Eq t1 t2, orig) : cs
-          | WP.Value (WPV.Op op1) <- a1,
-            WP.Value (WPV.Op op2) <- a2,
-            op1 == op2 ->
-              simplify susList cs
-        (_ :< WT.Annotation _ _ e1, e2) ->
-          simplify susList $ (C.Eq e1 e2, orig) : cs
-        (e1, _ :< WT.Annotation _ _ e2) ->
-          simplify susList $ (C.Eq e1 e2, orig) : cs
-        (_ :< WT.Resource id1 _ _, _ :< WT.Resource id2 _ _)
-          | id1 == id2 ->
-              simplify susList cs
-        (e1, e2) -> do
-          sub <- getHoleSubst
-          let fvs1 = freeVars e1
-          let fvs2 = freeVars e2
-          let fmvs1 = holes e1 -- fmvs: free meta-variables
-          let fmvs2 = holes e2
-          case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
-            (Just (h1, (xs1, body1)), Just (h2, (xs2, body2))) -> do
-              let s1 = HS.singleton h1 xs1 body1
-              let s2 = HS.singleton h2 xs2 body2
-              e1' <- fill s1 e1
-              e2' <- fill s2 e2
-              simplify susList $ (C.Eq e1' e2', orig) : cs
-            (Just (h1, (xs1, body1)), Nothing) -> do
-              let s1 = HS.singleton h1 xs1 body1
-              e1' <- fill s1 e1
-              simplify susList $ (C.Eq e1' e2, orig) : cs
-            (Nothing, Just (h2, (xs2, body2))) -> do
-              let s2 = HS.singleton h2 xs2 body2
-              e2' <- fill s2 e2
-              simplify susList $ (C.Eq e1 e2', orig) : cs
-            (Nothing, Nothing) -> do
-              defMap <- WeakDefinition.read
-              let fmvs = S.union fmvs1 fmvs2
-              case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
-                (Just (Stuck.Hole h1 ies1, _ :< Stuck.Base), _)
-                  | Just xss1 <- mapM asIdent ies1,
-                    Just argSet1 <- toLinearIdentSet xss1,
-                    h1 `S.notMember` fmvs2,
-                    fvs2 `S.isSubsetOf` argSet1 ->
-                      resolveHole susList h1 xss1 e2 cs
-                (_, Just (Stuck.Hole h2 ies2, _ :< Stuck.Base))
-                  | Just xss2 <- mapM asIdent ies2,
-                    Just argSet2 <- toLinearIdentSet xss2,
-                    h2 `S.notMember` fmvs1,
-                    fvs1 `S.isSubsetOf` argSet2 ->
-                      resolveHole susList h2 xss2 e1 cs
-                (Just (Stuck.VarLocal x1, ctx1), Just (Stuck.VarLocal x2, ctx2))
-                  | x1 == x2,
-                    Just pairList <- Stuck.asPairList ctx1 ctx2 ->
-                      simplify susList $ map (,orig) pairList ++ cs
-                (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.VarGlobal g2, ctx2))
-                  | g1 == g2,
-                    Nothing <- Map.lookup g1 defMap,
-                    Just pairList <- Stuck.asPairList ctx1 ctx2 ->
-                      simplify susList $ map (,orig) pairList ++ cs
-                  | g1 == g2,
-                    Just lam <- Map.lookup g1 defMap ->
-                      simplify susList $ (C.Eq (Stuck.resume lam ctx1) (Stuck.resume lam ctx2), orig) : cs
-                  | Just lam1 <- Map.lookup g1 defMap,
-                    Just lam2 <- Map.lookup g2 defMap ->
-                      simplify susList $ (C.Eq (Stuck.resume lam1 ctx1) (Stuck.resume lam2 ctx2), orig) : cs
-                (Just (Stuck.VarGlobal g1, ctx1), _)
-                  | Just lam <- Map.lookup g1 defMap ->
-                      simplify susList $ (C.Eq (Stuck.resume lam ctx1) e2, orig) : cs
-                (_, Just (Stuck.VarGlobal g2, ctx2))
-                  | Just lam <- Map.lookup g2 defMap ->
-                      simplify susList $ (C.Eq e1 (Stuck.resume lam ctx2), orig) : cs
-                (Just (Stuck.Prim (WP.Value (WPV.Op op1)), ctx1), Just (Stuck.Prim (WP.Value (WPV.Op op2)), ctx2))
-                  | op1 == op2,
-                    Just pairList <- Stuck.asPairList ctx1 ctx2 ->
-                      simplify susList $ map (,orig) pairList ++ cs
-                _ -> do
-                  let uc = C.SuspendedConstraint (fmvs, headConstraint)
-                  simplify (uc : susList) cs
+            (_ :< WT.Embody t1 e1, _ :< WT.Embody t2 e2) ->
+              simplify susList $ (C.Eq t1 t2, orig) : (C.Eq e1 e2, orig) : cs
+            (_ :< WT.Annotation _ _ e1, e2) ->
+              simplify susList $ (C.Eq e1 e2, orig) : cs
+            (e1, _ :< WT.Annotation _ _ e2) ->
+              simplify susList $ (C.Eq e1 e2, orig) : cs
+            (e1, e2) -> do
+              sub <- getHoleSubst
+              let fvs1 = freeVars e1
+              let fvs2 = freeVars e2
+              let fmvs1 = holes e1 -- fmvs: free meta-variables
+              let fmvs2 = holes e2
+              case (lookupAny (S.toList fmvs1) sub, lookupAny (S.toList fmvs2) sub) of
+                (Just (h1, (xs1, body1)), Just (h2, (xs2, body2))) -> do
+                  let s1 = HS.singleton h1 xs1 body1
+                  let s2 = HS.singleton h2 xs2 body2
+                  e1' <- fill s1 e1
+                  e2' <- fill s2 e2
+                  simplify susList $ (C.Eq e1' e2', orig) : cs
+                (Just (h1, (xs1, body1)), Nothing) -> do
+                  let s1 = HS.singleton h1 xs1 body1
+                  e1' <- fill s1 e1
+                  simplify susList $ (C.Eq e1' e2, orig) : cs
+                (Nothing, Just (h2, (xs2, body2))) -> do
+                  let s2 = HS.singleton h2 xs2 body2
+                  e2' <- fill s2 e2
+                  simplify susList $ (C.Eq e1 e2', orig) : cs
+                (Nothing, Nothing) -> do
+                  defMap <- WeakDefinition.read
+                  let fmvs = S.union fmvs1 fmvs2
+                  case (Stuck.asStuckedTerm e1, Stuck.asStuckedTerm e2) of
+                    (Just (Stuck.Hole h1 ies1, _ :< Stuck.Base), _)
+                      | Just xss1 <- mapM asIdent ies1,
+                        Just argSet1 <- toLinearIdentSet xss1,
+                        h1 `S.notMember` fmvs2,
+                        fvs2 `S.isSubsetOf` argSet1 ->
+                          resolveHole susList h1 xss1 e2 cs
+                    (_, Just (Stuck.Hole h2 ies2, _ :< Stuck.Base))
+                      | Just xss2 <- mapM asIdent ies2,
+                        Just argSet2 <- toLinearIdentSet xss2,
+                        h2 `S.notMember` fmvs1,
+                        fvs1 `S.isSubsetOf` argSet2 ->
+                          resolveHole susList h2 xss2 e1 cs
+                    (Just (Stuck.VarLocal x1, ctx1), Just (Stuck.VarLocal x2, ctx2))
+                      | x1 == x2,
+                        Just pairList <- Stuck.asPairList ctx1 ctx2 ->
+                          simplify susList $ map (,orig) pairList ++ cs
+                    (Just (Stuck.VarGlobal g1, ctx1), Just (Stuck.VarGlobal g2, ctx2))
+                      | g1 == g2,
+                        Nothing <- Map.lookup g1 defMap,
+                        Just pairList <- Stuck.asPairList ctx1 ctx2 ->
+                          simplify susList $ map (,orig) pairList ++ cs
+                      | g1 == g2,
+                        Just lam <- Map.lookup g1 defMap ->
+                          simplify susList $ (C.Eq (Stuck.resume lam ctx1) (Stuck.resume lam ctx2), orig) : cs
+                      | Just lam1 <- Map.lookup g1 defMap,
+                        Just lam2 <- Map.lookup g2 defMap ->
+                          simplify susList $ (C.Eq (Stuck.resume lam1 ctx1) (Stuck.resume lam2 ctx2), orig) : cs
+                    (Just (Stuck.VarGlobal g1, ctx1), _)
+                      | Just lam <- Map.lookup g1 defMap ->
+                          simplify susList $ (C.Eq (Stuck.resume lam ctx1) e2, orig) : cs
+                    (_, Just (Stuck.VarGlobal g2, ctx2))
+                      | Just lam <- Map.lookup g2 defMap ->
+                          simplify susList $ (C.Eq e1 (Stuck.resume lam ctx2), orig) : cs
+                    (Just (Stuck.Prim (WP.Value (WPV.Op op1)), ctx1), Just (Stuck.Prim (WP.Value (WPV.Op op2)), ctx2))
+                      | op1 == op2,
+                        Just pairList <- Stuck.asPairList ctx1 ctx2 ->
+                          simplify susList $ map (,orig) pairList ++ cs
+                    _ -> do
+                      let uc = C.SuspendedConstraint (fmvs, headConstraint)
+                      simplify (uc : susList) cs
 
 {-# INLINE resolveHole #-}
 resolveHole ::
