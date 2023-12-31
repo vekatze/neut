@@ -16,35 +16,23 @@ fromText name
 intTypeName :: T.Text
 intTypeName = "int"
 
-asLowInt :: T.Text -> Maybe (Maybe Int)
-asLowInt s =
-  if s == intTypeName
-    then Just Nothing
-    else do
-      case T.splitAt 3 s of
-        ("", "") ->
-          Nothing
-        (c, rest)
-          | c == intTypeName,
-            Just n <- readMaybe $ T.unpack rest ->
-              return $ Just n
-          | otherwise ->
-              Nothing
-
 floatTypeName :: T.Text
 floatTypeName = "float"
 
-asLowFloat :: T.Text -> Maybe (Maybe Int)
-asLowFloat s =
-  if s == floatTypeName
-    then Just Nothing
+asLowInt :: T.Text -> Maybe (Maybe Int)
+asLowInt s = do
+  rest <- T.stripPrefix intTypeName s
+  if T.null rest
+    then return Nothing
     else do
-      case T.splitAt 5 s of
-        ("", "") ->
-          Nothing
-        (c, rest)
-          | c == floatTypeName,
-            Just n <- readMaybe $ T.unpack rest ->
-              Just $ Just n
-          | otherwise ->
-              Nothing
+      n <- readMaybe $ T.unpack rest
+      return $ Just n
+
+asLowFloat :: T.Text -> Maybe (Maybe Int)
+asLowFloat s = do
+  rest <- T.stripPrefix floatTypeName s
+  if T.null rest
+    then return Nothing
+    else do
+      n <- readMaybe $ T.unpack rest
+      return $ Just n

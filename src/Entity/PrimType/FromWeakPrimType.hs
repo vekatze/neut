@@ -38,7 +38,12 @@ asIntSize dataSize size =
 asFloatSize :: DS.DataSize -> Int -> Either T.Text FloatSize
 asFloatSize dataSize size =
   if size > DS.reify dataSize
-    then Left ""
+    then
+      Left $
+        "the size of a float type must satisfy `1 <= SIZE <= "
+          <> T.pack (show (DS.reify dataSize))
+          <> "`, but found: "
+          <> T.pack (show size)
     else case size of
       16 ->
         return FloatSize16
