@@ -6,6 +6,7 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Bitraversable (bimapM)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
@@ -129,9 +130,9 @@ inline' axis term =
           return $ m :< TM.DataElim isNoetic oets' decisionTree'
         else do
           case decisionTree of
-            DT.Leaf _ e -> do
+            DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst sub e >>= inline' axis
+              Subst.subst sub (TM.fromLetSeq letSeq e) >>= inline' axis
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, cursorType) (fallbackTree, caseList) -> do
@@ -166,15 +167,21 @@ inline' axis term =
     _ ->
       return term
 
+inlineBinder :: Axis -> BinderF TM.Term -> App (BinderF TM.Term)
+inlineBinder axis (m, x, t) = do
+  t' <- inline' axis t
+  return (m, x, t')
+
 inlineDecisionTree ::
   Axis ->
   DT.DecisionTree TM.Term ->
   App (DT.DecisionTree TM.Term)
 inlineDecisionTree axis tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      letSeq' <- mapM (bimapM (inlineBinder axis) (inline' axis)) letSeq
       e' <- inline' axis e
-      return $ DT.Leaf xs e'
+      return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do

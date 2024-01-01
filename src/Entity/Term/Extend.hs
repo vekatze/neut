@@ -97,9 +97,11 @@ extendPrim prim =
 extendDecisionTree :: DT.DecisionTree (Cofree TM.TermF ()) -> DT.DecisionTree TM.Term
 extendDecisionTree tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      let (binderSeq, varSeq) = unzip letSeq
+      let letSeq' = zip (map extendBinder binderSeq) (map extend varSeq)
       let e' = extend e
-      DT.Leaf xs e'
+      DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       DT.Unreachable
     DT.Switch (cursorVar, cursor) caseList -> do

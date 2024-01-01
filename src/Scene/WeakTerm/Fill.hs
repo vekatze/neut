@@ -6,6 +6,7 @@ where
 import Context.App
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.Maybe
 import Entity.Annotation qualified as AN
@@ -124,6 +125,14 @@ fillBinder sub binder =
       xts' <- fillBinder sub xts
       return $ (m, x, t') : xts'
 
+fillSingleBinder ::
+  HoleSubst ->
+  BinderF WT.WeakTerm ->
+  App (BinderF WT.WeakTerm)
+fillSingleBinder sub (m, x, t) = do
+  t' <- fill sub t
+  return (m, x, t')
+
 fill' ::
   HoleSubst ->
   [BinderF WT.WeakTerm] ->
@@ -171,9 +180,10 @@ fillDecisionTree ::
   App (DT.DecisionTree WT.WeakTerm)
 fillDecisionTree sub tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      letSeq' <- mapM (bimapM (fillSingleBinder sub) (fill sub)) letSeq
       e' <- fill sub e
-      return $ DT.Leaf xs e'
+      return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return tree
     DT.Switch (cursorVar, cursor) caseList -> do

@@ -96,3 +96,11 @@ asVar term =
 piElim :: a -> [a] -> WeakTermF a
 piElim =
   PiElim
+
+fromLetSeq :: [(BinderF WeakTerm, WeakTerm)] -> WeakTerm -> WeakTerm
+fromLetSeq xts cont =
+  case xts of
+    [] ->
+      cont
+    (mxt@(m, _, _), e) : rest ->
+      m :< Let Clear mxt e (fromLetSeq rest cont)

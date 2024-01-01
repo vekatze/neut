@@ -18,7 +18,7 @@ import Entity.IsConstLike
 import GHC.Generics (Generic)
 
 data DecisionTree a
-  = Leaf [Ident] a
+  = Leaf [Ident] [(BinderF a, a)] a
   | Unreachable
   | Switch (Ident, a) (CaseList a)
   deriving (Show, Generic)

@@ -34,7 +34,7 @@ compilePatternMatrix ::
   NominalEnv ->
   N.IsNoetic ->
   V.Vector (Hint, Ident) ->
-  PAT.PatternMatrix ([Ident], WT.WeakTerm) ->
+  PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm) ->
   App (DT.DecisionTree WT.WeakTerm)
 compilePatternMatrix nenv isNoetic occurrences mat =
   case PAT.unconsRow mat of
@@ -42,10 +42,11 @@ compilePatternMatrix nenv isNoetic occurrences mat =
       return DT.Unreachable
     Just (row, _) ->
       case PAT.getClauseBody row of
-        Right (usedVars, (freedVars, body)) -> do
+        Right (usedVars, (freedVars, innerLetSeq, body)) -> do
           let occurrences' = map (\(mo, o) -> mo :< WT.Var o) $ V.toList occurrences
           cursorVars <- mapM (castToNoemaIfNecessary isNoetic) occurrences'
-          DT.Leaf freedVars <$> bindLet (zip usedVars cursorVars) body
+          letSeq <- asLetSeq $ zip usedVars cursorVars
+          return $ DT.Leaf freedVars (letSeq ++ innerLetSeq) body
         Left (mCol, i) -> do
           if i > 0
             then do
@@ -95,20 +96,19 @@ alignConsArgs nenv binder =
       (xts', nenv'') <- alignConsArgs nenv' xts
       return ((mx, x, t) : xts', nenv'')
 
-bindLet ::
+asLetSeq ::
   [(Maybe (Hint, Ident), WT.WeakTerm)] ->
-  WT.WeakTerm ->
-  App WT.WeakTerm
-bindLet binder cont =
+  App [(BinderF WT.WeakTerm, WT.WeakTerm)]
+asLetSeq binder =
   case binder of
     [] ->
-      return cont
+      return []
     (Nothing, _) : xes -> do
-      bindLet xes cont
+      asLetSeq xes
     (Just (m, from), to) : xes -> do
       h <- Gensym.newHole m []
-      cont' <- bindLet xes cont
-      return $ m :< WT.Let WT.Clear (m, from, h) to cont'
+      cont' <- asLetSeq xes
+      return $ ((m, from, h), to) : cont'
 
 ensurePatternMatrixSanity :: PAT.PatternMatrix a -> App ()
 ensurePatternMatrixSanity mat =

@@ -63,6 +63,8 @@ isValue term =
   case term of
     _ :< Tau ->
       True
+    _ :< Var {} ->
+      True -- CBV
     _ :< VarGlobal {} ->
       True
     _ :< Pi {} ->
@@ -81,3 +83,11 @@ isValue term =
       True
     _ ->
       False
+
+fromLetSeq :: [(BinderF Term, Term)] -> Term -> Term
+fromLetSeq xts cont =
+  case xts of
+    [] ->
+      cont
+    (mxt@(m, _, _), e) : rest ->
+      m :< Let O.Clear mxt e (fromLetSeq rest cont)

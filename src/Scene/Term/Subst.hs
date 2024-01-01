@@ -148,16 +148,41 @@ subst'' sub binder decisionTree =
       (xts', e') <- subst'' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
+substBinder1 ::
+  SubstTerm ->
+  (BinderF TM.Term, TM.Term) ->
+  App ((BinderF TM.Term, TM.Term), SubstTerm)
+substBinder1 sub ((m, x, t), e) = do
+  e' <- subst sub e
+  t' <- subst sub t
+  x' <- Gensym.newIdentFromIdent x
+  let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+  return (((m, x', t'), e'), sub')
+
+substLetSeq ::
+  SubstTerm ->
+  [(BinderF TM.Term, TM.Term)] ->
+  App ([(BinderF TM.Term, TM.Term)], SubstTerm)
+substLetSeq sub letSeq = do
+  case letSeq of
+    [] ->
+      return ([], sub)
+    letPair : rest -> do
+      (letPair', sub') <- substBinder1 sub letPair
+      (rest', sub'') <- substLetSeq sub' rest
+      return (letPair' : rest', sub'')
+
 substDecisionTree ::
   SubstTerm ->
   DT.DecisionTree TM.Term ->
   App (DT.DecisionTree TM.Term)
 substDecisionTree sub tree =
   case tree of
-    DT.Leaf xs e -> do
-      e' <- subst sub e
+    DT.Leaf xs letSeq e -> do
       let xs' = mapMaybe (substLeafVar sub) xs
-      return $ DT.Leaf xs' e'
+      (letSeq', sub') <- substLetSeq sub letSeq
+      e' <- subst sub' e
+      return $ DT.Leaf xs' letSeq' e'
     DT.Unreachable ->
       return tree
     DT.Switch (cursorVar, cursor) caseList -> do

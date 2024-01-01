@@ -279,8 +279,8 @@ clarifyDataClause (discriminant, dataArgs, consArgs) = do
 clarifyDecisionTree :: TM.TypeEnv -> N.IsNoetic -> DataArgsMap -> DT.DecisionTree TM.Term -> App C.Comp
 clarifyDecisionTree tenv isNoetic dataArgsMap tree =
   case tree of
-    DT.Leaf consumedCursorList cont -> do
-      cont' <- clarifyTerm tenv cont
+    DT.Leaf consumedCursorList letSeq cont -> do
+      cont' <- clarifyTerm tenv $ TM.fromLetSeq letSeq cont
       if isNoetic
         then return cont'
         else tidyCursorList tenv dataArgsMap consumedCursorList cont'

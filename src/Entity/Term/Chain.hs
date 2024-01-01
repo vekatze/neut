@@ -89,8 +89,8 @@ chainOfBinder' tenv mxts f =
 chainOfDecisionTree :: TM.TypeEnv -> Hint -> DT.DecisionTree TM.Term -> [BinderF TM.Term]
 chainOfDecisionTree tenv m tree =
   case tree of
-    DT.Leaf xs e -> do
-      concatMap (chainOfVar tenv m) xs ++ chainOf' tenv e
+    DT.Leaf xs letSeq e -> do
+      concatMap (chainOfVar tenv m) xs ++ chainOf' tenv (TM.fromLetSeq letSeq e)
     DT.Unreachable ->
       []
     DT.Switch (cursor, _) caseList ->

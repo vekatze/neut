@@ -81,8 +81,8 @@ freeVars' binder zs =
 freeVarsDecisionTree :: DT.DecisionTree WT.WeakTerm -> S.Set Ident
 freeVarsDecisionTree tree =
   case tree of
-    DT.Leaf _ e ->
-      freeVars e
+    DT.Leaf _ letSeq e ->
+      freeVars (WT.fromLetSeq letSeq e)
     DT.Unreachable ->
       S.empty
     DT.Switch (_, cursor) caseList ->
