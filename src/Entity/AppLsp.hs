@@ -14,9 +14,9 @@ lspOptions =
         Just
           TextDocumentSyncOptions
             { _openClose = Just True,
-              _change = Just TextDocumentSyncKind_None,
-              _willSave = Just False,
-              _willSaveWaitUntil = Just False,
-              _save = Just $ InR $ SaveOptions $ Just False
+              _change = Just TextDocumentSyncKind_Incremental,
+              _willSave = Just True,
+              _willSaveWaitUntil = Just True,
+              _save = Just $ InR $ SaveOptions {_includeText = Just False}
             }
     }

@@ -1,7 +1,6 @@
 module Scene.Format (format) where
 
 import Context.App
-import Context.Parse (readSourceFile)
 import Control.Monad
 import Data.Text qualified as T
 import Entity.Ens.Reify qualified as Ens
@@ -13,12 +12,11 @@ import Scene.Parse.Core qualified as P
 import Scene.Parse.Program qualified as Parse
 import Prelude hiding (log)
 
-format :: FT.FileType -> Path Abs File -> App T.Text
-format fileType path = do
+format :: FT.FileType -> Path Abs File -> T.Text -> App T.Text
+format fileType path content = do
   case fileType of
     FT.Ens -> do
-      Ens.pp <$> Ens.fromFilePath path
+      Ens.pp <$> Ens.fromFilePath' path content
     FT.Source -> do
-      content <- readSourceFile path
       program <- P.parseFile True Parse.parseProgram path content
       return $ RawProgram.pp program
