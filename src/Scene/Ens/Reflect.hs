@@ -1,4 +1,8 @@
-module Scene.Ens.Reflect (fromFilePath) where
+module Scene.Ens.Reflect
+  ( fromFilePath,
+    fromFilePath',
+  )
+where
 
 import Context.App
 import Context.Parse
@@ -17,7 +21,11 @@ import Text.Megaparsec hiding (parse)
 fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
 fromFilePath path = do
   fileContent <- readSourceFile path
-  parseFile True parseEns path fileContent
+  fromFilePath' path fileContent
+
+fromFilePath' :: Path Abs File -> T.Text -> App (C, (E.Ens, C))
+fromFilePath' path content = do
+  parseFile True parseEns path content
 
 parseEns :: Parser (E.Ens, C)
 parseEns = do

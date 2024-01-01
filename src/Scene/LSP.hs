@@ -47,6 +47,8 @@ handlers =
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
         return (),
+      notificationHandler SMethod_TextDocumentWillSave $ \_ -> do
+        return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
         itemList <- lift $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
         responder $ Right $ InL $ List itemList,
@@ -72,12 +74,13 @@ handlers =
           Just refs -> do
             responder $ Right $ InL refs,
       requestHandler SMethod_TextDocumentFormatting $ \req responder -> do
-        textEditOrNone <- lift $ runAppM $ LSP.format $ req ^. J.params
-        case textEditOrNone of
-          Nothing ->
-            responder $ Right $ InR Null
-          Just textEdit -> do
-            responder $ Right $ InL textEdit
+        let uri = req ^. (J.params . J.textDocument . J.uri)
+        textEditList <- LSP.format uri
+        responder $ Right $ InL textEditList,
+      requestHandler SMethod_TextDocumentWillSaveWaitUntil $ \req responder -> do
+        let uri = req ^. (J.params . J.textDocument . J.uri)
+        textEditList <- LSP.format uri
+        responder $ Right $ InL textEditList
     ]
 
 runLSPApp :: Remark.Config -> App a -> IO a
