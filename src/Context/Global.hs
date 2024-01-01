@@ -61,8 +61,8 @@ registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames = do
       registerTopLevelFunc isConstLike m name allArgNum
     SK.Data dataName dataArgs consInfoList -> do
       registerData isConstLike m dataName dataArgs consInfoList
-      registerAsEnumIfNecessary dataName dataArgs consInfoList
       registerAsUnaryIfNecessary dataName consInfoList
+      registerAsEnumIfNecessary dataName dataArgs consInfoList
     SK.DataIntro {} ->
       return ()
 
@@ -89,9 +89,6 @@ registerAsUnaryIfNecessary dataName consInfoList = do
     (True, _) -> do
       OptimizableData.insert dataName OD.Unary
       mapM_ (flip OptimizableData.insert OD.Unary . (\(_, consName, _, _, _) -> consName)) consInfoList
-    (_, True) -> do
-      OptimizableData.insert dataName OD.Single
-      mapM_ (flip OptimizableData.insert OD.Single . (\(_, consName, _, _, _) -> consName)) consInfoList
     _ ->
       return ()
 
