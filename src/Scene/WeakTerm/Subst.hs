@@ -177,16 +177,41 @@ subst''' sub binder decisionTree =
       (xts', e') <- subst''' sub' xts decisionTree
       return ((m, x', t') : xts', e')
 
+substBinder1 ::
+  WT.SubstWeakTerm ->
+  (BinderF WT.WeakTerm, WT.WeakTerm) ->
+  App ((BinderF WT.WeakTerm, WT.WeakTerm), WT.SubstWeakTerm)
+substBinder1 sub ((m, x, t), e) = do
+  e' <- subst sub e
+  t' <- subst sub t
+  x' <- Gensym.newIdentFromIdent x
+  let sub' = IntMap.insert (Ident.toInt x) (Left x') sub
+  return (((m, x', t'), e'), sub')
+
+substLetSeq ::
+  WT.SubstWeakTerm ->
+  [(BinderF WT.WeakTerm, WT.WeakTerm)] ->
+  App ([(BinderF WT.WeakTerm, WT.WeakTerm)], WT.SubstWeakTerm)
+substLetSeq sub letSeq = do
+  case letSeq of
+    [] ->
+      return ([], sub)
+    letPair : rest -> do
+      (letPair', sub') <- substBinder1 sub letPair
+      (rest', sub'') <- substLetSeq sub' rest
+      return (letPair' : rest', sub'')
+
 substDecisionTree ::
   WT.SubstWeakTerm ->
   DT.DecisionTree WT.WeakTerm ->
   App (DT.DecisionTree WT.WeakTerm)
 substDecisionTree sub tree =
   case tree of
-    DT.Leaf xs e -> do
-      e' <- subst sub e
+    DT.Leaf xs letSeq e -> do
       let xs' = mapMaybe (substLeafVar sub) xs
-      return $ DT.Leaf xs' e'
+      (letSeq', sub') <- substLetSeq sub letSeq
+      e' <- subst sub' e
+      return $ DT.Leaf xs' letSeq' e'
     DT.Unreachable ->
       return tree
     DT.Switch (cursorVar, cursor) caseList -> do

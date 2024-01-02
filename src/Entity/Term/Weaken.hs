@@ -120,9 +120,10 @@ weakenPrim m prim =
 weakenDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree WT.WeakTerm
 weakenDecisionTree tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      let letSeq' = map (bimap weakenBinder weaken) letSeq
       let e' = weaken e
-      DT.Leaf xs e'
+      DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       DT.Unreachable
     DT.Switch (cursorVar, cursor) caseList -> do

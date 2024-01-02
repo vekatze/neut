@@ -6,6 +6,7 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Bitraversable (bimapM)
 import Data.HashMap.Strict qualified as Map
 import Data.IntMap qualified as IntMap
 import Data.Maybe (fromMaybe)
@@ -102,13 +103,27 @@ inline' axis term =
         (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
-              (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
-              inline' axis $ bind (zip xts' es') (m :< body')
+              if all TM.isValue es'
+                then do
+                  let (_, xs, _) = unzip3 xts
+                  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                  _ :< body' <- Subst.subst sub body
+                  inline' (incrementStep axis) $ m :< body'
+                else do
+                  (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+                  inline' axis $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, body) <- Map.lookup dd dmap -> do
               detectPossibleInfiniteLoop axis
-              (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
-              inline' (incrementStep axis) $ bind (zip xts' es') (m :< body')
+              if all TM.isValue es'
+                then do
+                  let (_, xs, _) = unzip3 xts
+                  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                  _ :< body' <- Subst.subst sub body
+                  inline' (incrementStep axis) $ m :< body'
+                else do
+                  (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+                  inline' (incrementStep axis) $ bind (zip xts' es') (m :< body')
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do
@@ -129,19 +144,19 @@ inline' axis term =
           return $ m :< TM.DataElim isNoetic oets' decisionTree'
         else do
           case decisionTree of
-            DT.Leaf _ e -> do
+            DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst sub e >>= inline' axis
+              Subst.subst sub (TM.fromLetSeq letSeq e) >>= inline' axis
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
-            DT.Switch (cursor, cursorType) (fallbackTree, caseList) -> do
+            DT.Switch (cursor, _) (fallbackTree, caseList) -> do
               case lookupSplit cursor oets' of
                 Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                  inline' axis $
-                    bind [((m, cursor, cursorType), e)] $
-                      m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
+                  dataElim' <- Subst.subst sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  inline' axis dataElim'
                 _ -> do
                   decisionTree' <- inlineDecisionTree axis decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -150,7 +165,7 @@ inline' axis term =
       case opacity of
         O.Clear
           | TM.isValue e1' -> do
-              let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
+              let sub = IntMap.singleton (Ident.toInt x) (Right e1')
               Subst.subst sub e2 >>= inline' axis
         _ -> do
           t' <- inline' axis t
@@ -166,15 +181,21 @@ inline' axis term =
     _ ->
       return term
 
+inlineBinder :: Axis -> BinderF TM.Term -> App (BinderF TM.Term)
+inlineBinder axis (m, x, t) = do
+  t' <- inline' axis t
+  return (m, x, t')
+
 inlineDecisionTree ::
   Axis ->
   DT.DecisionTree TM.Term ->
   App (DT.DecisionTree TM.Term)
 inlineDecisionTree axis tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      letSeq' <- mapM (bimapM (inlineBinder axis) (inline' axis)) letSeq
       e' <- inline' axis e
-      return $ DT.Leaf xs e'
+      return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do

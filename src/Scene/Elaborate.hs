@@ -13,6 +13,7 @@ import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
+import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Data.List
 import Data.Set qualified as S
@@ -345,9 +346,10 @@ fillHole m h es = do
 elaborateDecisionTree :: Hint -> DT.DecisionTree WT.WeakTerm -> App (DT.DecisionTree TM.Term)
 elaborateDecisionTree m tree =
   case tree of
-    DT.Leaf xs body -> do
+    DT.Leaf xs letSeq body -> do
+      letSeq' <- mapM (bimapM elaborateWeakBinder elaborate') letSeq
       body' <- elaborate' body
-      return $ DT.Leaf xs body'
+      return $ DT.Leaf xs letSeq' body'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do

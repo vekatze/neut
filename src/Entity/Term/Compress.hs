@@ -92,9 +92,11 @@ compressPrim prim =
 compressDecisionTree :: DT.DecisionTree TM.Term -> DT.DecisionTree (Cofree TM.TermF ())
 compressDecisionTree tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      let (binderSeq, varSeq) = unzip letSeq
+      let letSeq' = zip (map compressBinder binderSeq) (map compress varSeq)
       let e' = compress e
-      DT.Leaf xs e'
+      DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       DT.Unreachable
     DT.Switch (cursorVar, cursor) caseList -> do

@@ -2,9 +2,11 @@ module Scene.WeakTerm.Reduce (reduce) where
 
 import Context.App
 import Control.Comonad.Cofree
+import Data.Bitraversable (bimapM)
 import Data.IntMap qualified as IntMap
 import Entity.Attr.DataIntro qualified as AttrDI
 import Entity.Attr.Lam qualified as AttrL
+import Entity.Binder
 import Entity.DecisionTree qualified as DT
 import Entity.Discriminant
 import Entity.Ident
@@ -99,9 +101,9 @@ reduce term =
           return $ m :< WT.DataElim isNoetic oets' decisionTree'
         else do
           case decisionTree of
-            DT.Leaf _ e -> do
+            DT.Leaf _ letSeq e -> do
               let sub = IntMap.fromList $ zip (map Ident.toInt os) (map Right es')
-              Subst.subst sub e >>= reduce
+              Subst.subst sub (WT.fromLetSeq letSeq e) >>= reduce
             DT.Unreachable ->
               return $ m :< WT.DataElim isNoetic oets' DT.Unreachable
             DT.Switch (cursor, _) (fallbackTree, caseList) -> do
@@ -140,14 +142,20 @@ reduce term =
     _ ->
       return term
 
+reduceBinder :: BinderF WT.WeakTerm -> App (BinderF WT.WeakTerm)
+reduceBinder (m, x, t) = do
+  t' <- reduce t
+  return (m, x, t')
+
 reduceDecisionTree ::
   DT.DecisionTree WT.WeakTerm ->
   App (DT.DecisionTree WT.WeakTerm)
 reduceDecisionTree tree =
   case tree of
-    DT.Leaf xs e -> do
+    DT.Leaf xs letSeq e -> do
+      letSeq' <- mapM (bimapM reduceBinder reduce) letSeq
       e' <- reduce e
-      return $ DT.Leaf xs e'
+      return $ DT.Leaf xs letSeq' e'
     DT.Unreachable ->
       return DT.Unreachable
     DT.Switch (cursorVar, cursor) clauseList -> do

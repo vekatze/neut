@@ -294,7 +294,7 @@ infer varEnv term =
                                 disc = D.zero,
                                 dataArgs = dataArgs',
                                 consArgs = reorderedArgs,
-                                cont = DT.Leaf [cursor] (adjustCont m reorderedArgs cont)
+                                cont = DT.Leaf [cursor] (adjustCont m reorderedArgs) cont
                               }
                           ]
                         )
@@ -304,13 +304,13 @@ infer varEnv term =
         _ :< _ -> do
           Throw.raiseError mt $ "expected an ADT, but found: " <> toText t''
 
-adjustCont :: Hint -> [BinderF WT.WeakTerm] -> WT.WeakTerm -> WT.WeakTerm
-adjustCont m xts cont =
+adjustCont :: Hint -> [BinderF WT.WeakTerm] -> [(BinderF WT.WeakTerm, WT.WeakTerm)]
+adjustCont m xts =
   case xts of
     [] ->
-      cont
+      []
     (mx, x, t) : rest ->
-      m :< WT.Let WT.Clear (mx, x, t) (mx :< WT.Var x) (adjustCont m rest cont)
+      ((mx, x, t), mx :< WT.Var x) : adjustCont m rest
 
 constructDefaultKeyMap :: BoundVarEnv -> Hint -> [Key] -> App (Map.HashMap Key (BinderF WT.WeakTerm))
 constructDefaultKeyMap varEnv m keyList = do
@@ -446,6 +446,17 @@ primOpToType m op = do
   let cod' = Term.fromPrimNum m cod
   return $ m :< TM.Pi [] xts cod'
 
+inferLet ::
+  BoundVarEnv ->
+  (BinderF WT.WeakTerm, WT.WeakTerm) ->
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
+inferLet varEnv ((mx, x, t), e1) = do
+  (e1', t1') <- infer varEnv e1
+  t' <- inferType varEnv t >>= resolveType
+  insWeakTypeEnv x t'
+  insConstraintEnv t' t1'
+  return ((mx, x, t'), e1')
+
 inferDecisionTree ::
   Hint ->
   BoundVarEnv ->
@@ -453,9 +464,10 @@ inferDecisionTree ::
   App (DT.DecisionTree WT.WeakTerm, WT.WeakTerm)
 inferDecisionTree m varEnv tree =
   case tree of
-    DT.Leaf ys body -> do
+    DT.Leaf ys letSeq body -> do
+      letSeq' <- mapM (inferLet varEnv) letSeq
       (body', answerType) <- infer varEnv body
-      return (DT.Leaf ys body', answerType)
+      return (DT.Leaf ys letSeq' body', answerType)
     DT.Unreachable -> do
       h <- newHole m varEnv
       return (DT.Unreachable, h)

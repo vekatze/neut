@@ -130,10 +130,16 @@ eqBinder xts1 xts2
 
 eqDT :: DT.DecisionTree WT.WeakTerm -> DT.DecisionTree WT.WeakTerm -> Bool
 eqDT tree1 tree2
-  | DT.Leaf xs1 e1 <- tree1,
-    DT.Leaf xs2 e2 <- tree2,
-    xs1 == xs2 =
-      eq e1 e2
+  | DT.Leaf xs1 letSeq1 cont1 <- tree1,
+    DT.Leaf xs2 letSeq2 cont2 <- tree2,
+    xs1 == xs2,
+    length letSeq1 == length letSeq2 = do
+      let (binder1, body1) = unzip letSeq1
+      let (binder2, body2) = unzip letSeq2
+      let b1 = eqBinder binder1 binder2
+      let b2 = all (uncurry eq) $ zip body1 body2
+      let b3 = eq cont1 cont2
+      b1 && b2 && b3
   | DT.Unreachable <- tree1,
     DT.Unreachable <- tree2 =
       True

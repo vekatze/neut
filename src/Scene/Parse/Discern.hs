@@ -672,7 +672,7 @@ discernBinderWithBody' nenv (mx, x, _, _, codType) binder e = do
 discernPatternMatrix ::
   NominalEnv ->
   [RP.RawPatternRow RT.RawTerm] ->
-  App (PAT.PatternMatrix ([Ident], WT.WeakTerm))
+  App (PAT.PatternMatrix ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternMatrix nenv patternMatrix =
   case uncons patternMatrix of
     Nothing ->
@@ -685,7 +685,7 @@ discernPatternMatrix nenv patternMatrix =
 discernPatternRow ::
   NominalEnv ->
   RP.RawPatternRow RT.RawTerm ->
-  App (PAT.PatternRow ([Ident], WT.WeakTerm))
+  App (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow nenv (patList, _, body) = do
   (patList', body') <- discernPatternRow' nenv (SE.extract patList) [] body
   return (V.fromList patList', body')
@@ -695,14 +695,14 @@ discernPatternRow' ::
   [(Hint, RP.RawPattern)] ->
   NominalEnv ->
   RT.RawTerm ->
-  App ([(Hint, PAT.Pattern)], ([Ident], WT.WeakTerm))
+  App ([(Hint, PAT.Pattern)], ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
 discernPatternRow' nenv patList newVarList body = do
   case patList of
     [] -> do
       ensureVariableLinearity newVarList
       nenv' <- joinNominalEnv newVarList nenv
       body' <- discern nenv' body
-      return ([], ([], body'))
+      return ([], ([], [], body'))
     pat : rest -> do
       (pat', varsInPat) <- discernPattern pat
       (rest', body') <- discernPatternRow' nenv rest (varsInPat ++ newVarList) body

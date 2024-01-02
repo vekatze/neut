@@ -202,11 +202,20 @@ showMatchArg :: (Ident, WT.WeakTerm, WT.WeakTerm) -> T.Text
 showMatchArg (x, e, t) = do
   showVariable x <> ": " <> toText t <> " = " <> toText e
 
+showLeafLetItem :: (BinderF WT.WeakTerm, WT.WeakTerm) -> T.Text
+showLeafLetItem ((_, x, t), e) =
+  showVariable x <> ": " <> toText t <> " = " <> toText e
+
 showDecisionTree :: DT.DecisionTree WT.WeakTerm -> T.Text
 showDecisionTree tree =
   case tree of
-    DT.Leaf xs cont -> do
-      showApp "leaf" [inBracket (T.intercalate ", " (map showVariable xs)), toText cont]
+    DT.Leaf xs letSeq cont -> do
+      showApp
+        "leaf"
+        [ inBracket (T.intercalate ", " (map showVariable xs)),
+          inParen $ T.intercalate ", " (map showLeafLetItem letSeq),
+          toText cont
+        ]
     DT.Unreachable ->
       "UNREACHABLE"
     DT.Switch (cursor, cursorType) (fallbackClause, clauseList) -> do

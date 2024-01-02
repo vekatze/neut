@@ -75,8 +75,8 @@ holes' binder zs =
 holesDecisionTree :: DT.DecisionTree WT.WeakTerm -> S.Set HoleID
 holesDecisionTree tree =
   case tree of
-    DT.Leaf _ e ->
-      holes e
+    DT.Leaf _ letSeq e -> do
+      holes $ WT.fromLetSeq letSeq e
     DT.Unreachable ->
       S.empty
     DT.Switch (_, cursor) caseList ->
