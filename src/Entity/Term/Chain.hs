@@ -24,10 +24,6 @@ chainOf :: TM.TypeEnv -> [TM.Term] -> [BinderF TM.Term]
 chainOf tenv term =
   nubFreeVariables $ concatMap (chainOf' tenv) term
 
-chainOfClauseList :: TM.TypeEnv -> Hint -> DT.CaseList TM.Term -> [BinderF TM.Term]
-chainOfClauseList tenv m clauseList =
-  nubFreeVariables $ chainOfCaseList tenv m clauseList
-
 chainOf' :: TM.TypeEnv -> TM.Term -> [BinderF TM.Term]
 chainOf' tenv term =
   case term of

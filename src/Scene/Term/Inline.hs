@@ -103,13 +103,27 @@ inline' axis term =
         (_ :< TM.PiIntro (AttrL.Attr {lamKind = LK.Normal}) impArgs expArgs body)
           | xts <- impArgs ++ expArgs,
             length xts == length es' -> do
-              (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
-              inline' axis $ bind (zip xts' es') (m :< body')
+              if all TM.isValue es'
+                then do
+                  let (_, xs, _) = unzip3 xts
+                  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                  _ :< body' <- Subst.subst sub body
+                  inline' (incrementStep axis) $ m :< body'
+                else do
+                  (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+                  inline' axis $ bind (zip xts' es') (m :< body')
         (_ :< TM.VarGlobal _ dd)
           | Just (xts, body) <- Map.lookup dd dmap -> do
               detectPossibleInfiniteLoop axis
-              (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
-              inline' (incrementStep axis) $ bind (zip xts' es') (m :< body')
+              if all TM.isValue es'
+                then do
+                  let (_, xs, _) = unzip3 xts
+                  let sub = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es')
+                  _ :< body' <- Subst.subst sub body
+                  inline' (incrementStep axis) $ m :< body'
+                else do
+                  (xts', _ :< body') <- Subst.subst' IntMap.empty xts body
+                  inline' (incrementStep axis) $ bind (zip xts' es') (m :< body')
         _ ->
           return (m :< TM.PiElim e' es')
     m :< TM.Data attr name es -> do
@@ -135,14 +149,14 @@ inline' axis term =
               Subst.subst sub (TM.fromLetSeq letSeq e) >>= inline' axis
             DT.Unreachable ->
               return $ m :< TM.DataElim isNoetic oets' DT.Unreachable
-            DT.Switch (cursor, cursorType) (fallbackTree, caseList) -> do
+            DT.Switch (cursor, _) (fallbackTree, caseList) -> do
               case lookupSplit cursor oets' of
                 Just (e@(_ :< TM.DataIntro (AttrDI.Attr {..}) _ _ consArgs), oets'') -> do
                   let (newBaseCursorList, cont) = findClause discriminant fallbackTree caseList
                   let newCursorList = zipWith (\(o, t) arg -> (o, arg, t)) newBaseCursorList consArgs
-                  inline' axis $
-                    bind [((m, cursor, cursorType), e)] $
-                      m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  let sub = IntMap.singleton (Ident.toInt cursor) (Right e)
+                  dataElim' <- Subst.subst sub $ m :< TM.DataElim isNoetic (oets'' ++ newCursorList) cont
+                  inline' axis dataElim'
                 _ -> do
                   decisionTree' <- inlineDecisionTree axis decisionTree
                   return $ m :< TM.DataElim isNoetic oets' decisionTree'
@@ -151,7 +165,7 @@ inline' axis term =
       case opacity of
         O.Clear
           | TM.isValue e1' -> do
-              let sub = IntMap.fromList [(Ident.toInt x, Right e1')]
+              let sub = IntMap.singleton (Ident.toInt x) (Right e1')
               Subst.subst sub e2 >>= inline' axis
         _ -> do
           t' <- inline' axis t
