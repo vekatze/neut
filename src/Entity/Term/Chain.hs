@@ -1,6 +1,8 @@
 module Entity.Term.Chain
   ( chainOf,
-    chainOfClauseList,
+    chainOfDecisionTree,
+    chainOfCaseWithoutCont,
+    nubFreeVariables,
   )
 where
 
@@ -114,6 +116,13 @@ chainOfCase tenv m decisionCase = do
   let xs2 = concatMap (chainOf' tenv) dataTypes
   let xs3 = chainOfDecisionTree' tenv m (DT.consArgs decisionCase) (DT.cont decisionCase)
   xs1 ++ xs2 ++ xs3
+
+chainOfCaseWithoutCont :: TM.TypeEnv -> DT.Case TM.Term -> [BinderF TM.Term]
+chainOfCaseWithoutCont tenv decisionCase = do
+  let (dataTerms, dataTypes) = unzip $ DT.dataArgs decisionCase
+  let xs1 = concatMap (chainOf' tenv) dataTerms
+  let xs2 = concatMap (chainOf' tenv) dataTypes
+  xs1 ++ xs2
 
 nubFreeVariables :: [BinderF TM.Term] -> [BinderF TM.Term]
 nubFreeVariables =
