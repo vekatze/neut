@@ -47,8 +47,18 @@ decImport (RawImport c _ importItemList) = do
   RT.attachComment c $
     D.join
       [ D.text "import ",
-        SE.decode $ SE.assoc $ fmap decImportItem importItemList
+        SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList
       ]
+
+sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
+sortImport series = do
+  let series' = fmap sortLocalLocators series
+  SE.sortSeriesBy compareImportItem series'
+
+sortLocalLocators :: RawImportItem -> RawImportItem
+sortLocalLocators (RawImportItem m locator localLocators) = do
+  let cmp (_, x) (_, y) = compare x y
+  RawImportItem m locator $ SE.sortSeriesBy cmp localLocators
 
 decImportItem :: RawImportItem -> (D.Doc, C)
 decImportItem (RawImportItem _ (item, c) args) = do

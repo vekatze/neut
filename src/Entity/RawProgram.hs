@@ -4,6 +4,7 @@ module Entity.RawProgram
     RawConsInfo,
     RawImport (..),
     RawImportItem (..),
+    compareImportItem,
     RawForeign (..),
     RawForeignItem (..),
   )
@@ -59,6 +60,12 @@ data RawImport
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))
+
+compareImportItem :: RawImportItem -> RawImportItem -> Ordering
+compareImportItem item1 item2 = do
+  let RawImportItem _ locator1 _ = item1
+  let RawImportItem _ locator2 _ = item2
+  compare locator1 locator2
 
 data RawForeign
   = RawForeign C (SE.Series RawForeignItem)
