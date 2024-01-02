@@ -113,8 +113,9 @@ discernStmt stmt = do
       Tag.insertDD m dd m
       return [WeakStmtDefineConst m dd t' e']
     RawStmtNominal _ m geistList -> do
-      registerTopLevelName nameLifter stmt
-      geistList' <- mapM discernGeist $ SE.extract geistList
+      geistList' <- forM (SE.extract geistList) $ \geist -> do
+        Global.registerGeist geist
+        discernGeist geist
       return [WeakStmtNominal m geistList']
 
 discernGeist :: RT.TopGeist -> App (G.Geist WT.WeakTerm)
@@ -151,8 +152,8 @@ registerTopLevelName nameLifter stmt =
       Global.registerStmtDefine isConstLike m stmtKind' functionName allArgNum expArgNames
     RawStmtDefineConst _ m (name, _) _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
-    RawStmtNominal _ _ geistList -> do
-      mapM_ Global.registerGeist $ SE.extract geistList
+    RawStmtNominal {} -> do
+      return ()
     RawStmtDefineData _ m (dd, _) args consInfo -> do
       stmtList <- defineData m dd args $ SE.extract consInfo
       mapM_ (registerTopLevelName nameLifter) stmtList
