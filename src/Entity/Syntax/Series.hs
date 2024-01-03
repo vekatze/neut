@@ -18,6 +18,7 @@ module Entity.Syntax.Series
     isEmpty,
     containsNoComment,
     sortSeriesBy,
+    appendLeftBiased,
   )
 where
 
@@ -144,3 +145,13 @@ sortSeriesBy :: (a -> a -> Ordering) -> Series a -> Series a
 sortSeriesBy cmp series = do
   let cmp' (_, x) (_, y) = cmp x y
   series {elems = sortBy cmp' $ elems series}
+
+appendLeftBiased :: Series a -> Series a -> Series a
+appendLeftBiased series1 series2 = do
+  Series
+    { elems = elems series1 ++ elems series2,
+      trailingComment = trailingComment series1 ++ trailingComment series2,
+      prefix = prefix series1,
+      container = container series1,
+      separator = separator series1
+    }

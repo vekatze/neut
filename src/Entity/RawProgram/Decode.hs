@@ -52,8 +52,24 @@ decImport (RawImport c _ importItemList) = do
 
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do
-  let series' = fmap sortLocalLocators series
-  SE.sortSeriesBy compareImportItem series'
+  let series' = SE.sortSeriesBy compareImportItem series
+  sortLocalLocators <$> series' {SE.elems = mergeAdjacentImport (SE.elems series')}
+
+mergeAdjacentImport :: [(C, RawImportItem)] -> [(C, RawImportItem)]
+mergeAdjacentImport importList = do
+  case importList of
+    [] ->
+      []
+    [item] ->
+      [item]
+    (c1, item1) : (c2, item2) : rest -> do
+      let RawImportItem m1 (locator1, c1') localLocatorList1 = item1
+      let RawImportItem _ (locator2, c2') localLocatorList2 = item2
+      if locator1 /= locator2
+        then (c1, item1) : mergeAdjacentImport ((c2, item2) : rest)
+        else do
+          let item = RawImportItem m1 (locator1, c1' ++ c2') (SE.appendLeftBiased localLocatorList1 localLocatorList2)
+          mergeAdjacentImport $ (c1 ++ c2, item) : rest
 
 sortLocalLocators :: RawImportItem -> RawImportItem
 sortLocalLocators (RawImportItem m locator localLocators) = do
