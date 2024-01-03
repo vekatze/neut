@@ -20,7 +20,7 @@ import Prelude hiding (length)
 newtype LocalLocator = MakeLocalLocator
   { baseName :: BN.BaseName
   }
-  deriving (Generic, Show, Eq)
+  deriving (Generic, Show, Eq, Ord)
 
 instance Binary LocalLocator
 

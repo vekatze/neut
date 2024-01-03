@@ -17,10 +17,13 @@ module Entity.Syntax.Series
     extract,
     isEmpty,
     containsNoComment,
+    sortSeriesBy,
+    appendLeftBiased,
   )
 where
 
 import Data.Bifunctor
+import Data.List (sortBy)
 import Data.Text qualified as T
 import Entity.C (C)
 
@@ -137,3 +140,18 @@ containsNoComment series = do
   let cs = map fst $ elems series
   let c = trailingComment series
   all null (c : cs)
+
+sortSeriesBy :: (a -> a -> Ordering) -> Series a -> Series a
+sortSeriesBy cmp series = do
+  let cmp' (_, x) (_, y) = cmp x y
+  series {elems = sortBy cmp' $ elems series}
+
+appendLeftBiased :: Series a -> Series a -> Series a
+appendLeftBiased series1 series2 = do
+  Series
+    { elems = elems series1 ++ elems series2,
+      trailingComment = trailingComment series1 ++ trailingComment series2,
+      prefix = prefix series1,
+      container = container series1,
+      separator = separator series1
+    }
