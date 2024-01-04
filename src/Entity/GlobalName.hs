@@ -1,4 +1,8 @@
-module Entity.GlobalName (GlobalName (..)) where
+module Entity.GlobalName
+  ( GlobalName (..),
+    getIsConstLike,
+  )
+where
 
 import Data.Binary
 import Entity.ArgNum
@@ -19,3 +23,15 @@ data GlobalName
   deriving (Show, Generic)
 
 instance Binary GlobalName
+
+getIsConstLike :: GlobalName -> IsConstLike
+getIsConstLike gn =
+  case gn of
+    TopLevelFunc _ isConstLike ->
+      isConstLike
+    Data _ _ isConstLike ->
+      isConstLike
+    DataIntro _ _ _ isConstLike ->
+      isConstLike
+    _ ->
+      False

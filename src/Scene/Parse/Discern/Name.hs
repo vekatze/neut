@@ -28,6 +28,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.IsConstLike
 import Entity.LocalLocator qualified as LL
+import Entity.LocationTree qualified as LT
 import Entity.Locator qualified as L
 import Entity.Magic qualified as M
 import Entity.Name
@@ -66,8 +67,8 @@ resolveVarOrErr m name = do
   case foundNameList of
     [] ->
       return $ Left $ "undefined symbol: " <> name
-    [globalVar@(_, (mDef, _))] -> do
-      Tag.insert m (T.length name) mDef
+    [globalVar@(dd, (mDef, gn))] -> do
+      Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
       UnusedLocalLocator.delete localLocator
       return $ Right globalVar
     _ -> do
@@ -87,12 +88,13 @@ resolveLocator m (gl, ll) shouldInsertTag = do
   case foundName of
     Nothing ->
       Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
-    Just globalVar@(_, (mDef, _)) -> do
+    Just globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
         let glLen = T.length $ GL.reify gl
         let llLen = T.length $ LL.reify ll
         let sepLen = T.length C.nsSep
-        Tag.insert m (glLen + sepLen + llLen) mDef
+        let isConstLike = GN.getIsConstLike gn
+        Tag.insert m (LT.SymbolLoc (LT.Global dd isConstLike)) (glLen + sepLen + llLen) mDef
       return globalVar
 
 resolveConstructor ::

@@ -1,9 +1,10 @@
 module Context.Tag
   ( initialize,
     insert,
+    insertLocalVar,
+    insertGlobalVar,
     insertFileLoc,
     insertBinder,
-    insertDD,
     get,
   )
 where
@@ -16,6 +17,7 @@ import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
+import Entity.IsConstLike
 import Entity.LocationTree qualified as LT
 import Prelude hiding (lookup, read)
 
@@ -23,11 +25,28 @@ initialize :: App ()
 initialize =
   writeRef' tagMap LT.empty
 
-insert :: Hint -> Int -> Hint -> App ()
-insert mUse nameLength mDef = do
+get :: App LT.LocationTree
+get = do
+  readRef' tagMap
+
+insertLocalVar :: Hint -> Ident -> Hint -> App ()
+insertLocalVar mUse ident@(I (var, varID)) mDef = do
+  unless (isHole ident) $ do
+    let nameLength = T.length var
+    let symbolLoc = LT.SymbolLoc (LT.Local varID)
+    insert mUse symbolLoc nameLength mDef
+
+insertGlobalVar :: Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> App ()
+insertGlobalVar mUse dd isConstLike mDef = do
+  let nameLength = T.length (DD.localLocator dd)
+  let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
+  insert mUse symbolLoc nameLength mDef
+
+insert :: Hint -> LT.LocType -> Int -> Hint -> App ()
+insert mUse locType nameLength mDef = do
   when (metaShouldSaveLocation mUse) $ do
     let (l, c) = metaLocation mUse
-    modifyRef' tagMap $ LT.insert LT.SymbolLoc (l, (c, c + nameLength)) mDef
+    modifyRef' tagMap $ LT.insert locType (l, (c, c + nameLength)) mDef
 
 insertFileLoc :: Hint -> Int -> Hint -> App ()
 insertFileLoc mUse nameLength mDef = do
@@ -35,14 +54,6 @@ insertFileLoc mUse nameLength mDef = do
     let (l, c) = metaLocation mUse
     modifyRef' tagMap $ LT.insert LT.FileLoc (l, (c, c + nameLength)) mDef
 
-get :: App LT.LocationTree
-get = do
-  readRef' tagMap
-
 insertBinder :: BinderF a -> App ()
-insertBinder (m, ident@(I (x, _)), _) =
-  unless (isHole ident) $ insert m (T.length x) m
-
-insertDD :: Hint -> DD.DefiniteDescription -> Hint -> App ()
-insertDD mUse dd =
-  insert mUse (T.length (DD.localLocator dd))
+insertBinder (m, ident, _) =
+  insertLocalVar m ident m

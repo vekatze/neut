@@ -15,6 +15,7 @@ import Scene.Initialize qualified as Initialize
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
 import Scene.LSP.Format qualified as LSP
+import Scene.LSP.GetSymbolInfo qualified as LSP
 import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 import Scene.LSP.References qualified as LSP
@@ -38,11 +39,13 @@ handlers =
     [ notificationHandler SMethod_Initialized $ \_not -> do
         return (),
       notificationHandler SMethod_TextDocumentDidOpen $ \msg -> do
-        LSP.lint msg,
+        let uri = msg ^. (J.params . J.textDocument . J.uri)
+        LSP.lint uri,
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
       notificationHandler SMethod_TextDocumentDidSave $ \msg -> do
-        LSP.lint msg,
+        let uri = msg ^. (J.params . J.textDocument . J.uri)
+        LSP.lint uri,
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do
@@ -57,7 +60,7 @@ handlers =
         case mLoc of
           Nothing ->
             responder $ Right $ InR $ InR Null
-          Just (loc, _) -> do
+          Just ((_, loc), _) -> do
             responder $ Right $ InR $ InL $ List [loc],
       requestHandler SMethod_TextDocumentDocumentHighlight $ \req responder -> do
         highlightsOrNone <- lift $ runAppM $ LSP.highlight $ req ^. J.params
@@ -80,7 +83,20 @@ handlers =
       requestHandler SMethod_TextDocumentWillSaveWaitUntil $ \req responder -> do
         let uri = req ^. (J.params . J.textDocument . J.uri)
         textEditList <- LSP.format uri
-        responder $ Right $ InL textEditList
+        responder $ Right $ InL textEditList,
+      requestHandler SMethod_TextDocumentHover $ \req responder -> do
+        textOrNone <- lift $ runAppM $ LSP.getSymbolInfo (req ^. J.params)
+        case textOrNone of
+          Nothing ->
+            responder $ Right $ InR Null
+          Just text ->
+            responder $
+              Right $
+                InL
+                  Hover
+                    { _contents = InL $ MarkupContent {_kind = MarkupKind_PlainText, _value = text},
+                      _range = Nothing
+                    }
     ]
 
 runLSPApp :: Remark.Config -> App a -> IO a

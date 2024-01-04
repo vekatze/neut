@@ -1,6 +1,7 @@
 module Entity.LocationTree
   ( LocationTree,
     LocType (..),
+    SymbolName (..),
     empty,
     insert,
     find,
@@ -9,15 +10,22 @@ module Entity.LocationTree
 where
 
 import Data.Binary
+import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
+import Entity.IsConstLike
 import GHC.Generics (Generic)
 
 type ColInterval =
   (Int, Int)
 
+data SymbolName
+  = Local Int
+  | Global DD.DefiniteDescription IsConstLike
+  deriving (Show, Generic)
+
 data LocType
   = FileLoc
-  | SymbolLoc
+  | SymbolLoc SymbolName
   deriving (Show, Generic)
 
 -- I'll do balancing stuff later
@@ -27,6 +35,8 @@ data LocationTree
   deriving (Show, Generic)
 
 instance Binary LocationTree
+
+instance Binary SymbolName
 
 instance Binary LocType
 
@@ -48,12 +58,12 @@ insert lt loc value t =
         EQ ->
           Node lt' loc' (SavedHint value) t1 t2
 
-find :: Int -> Int -> LocationTree -> Maybe (Hint, ColInterval)
+find :: Int -> Int -> LocationTree -> Maybe (LocType, Hint, ColInterval)
 find line col t =
   case t of
     Leaf ->
       Nothing
-    Node _ (line', (colFrom, colTo)) (SavedHint value) t1 t2 ->
+    Node lt (line', (colFrom, colTo)) (SavedHint value) t1 t2 ->
       case compare line line' of
         LT ->
           find line col t1
@@ -66,7 +76,7 @@ find line col t =
             (_, True) ->
               find line col t2
             _ ->
-              Just (value, (colFrom, colTo))
+              Just (lt, value, (colFrom, colTo))
 
 findRef :: Loc -> LocationTree -> [(FilePath, (Line, ColInterval))]
 findRef loc t =
@@ -75,7 +85,7 @@ findRef loc t =
       []
     Node lt locRange (SavedHint m') left right
       | loc == metaLocation m',
-        SymbolLoc <- lt ->
+        SymbolLoc _ <- lt ->
           (metaFileName m', locRange) : findRef loc left ++ findRef loc right
       | otherwise ->
           findRef loc left ++ findRef loc right

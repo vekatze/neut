@@ -9,6 +9,7 @@ module Context.Elaborate
     getSuspendedEnv,
     insWeakTypeEnv,
     lookupWeakTypeEnv,
+    lookupWeakTypeEnvMaybe,
     lookupHoleEnv,
     insHoleEnv,
     insertSubst,
@@ -16,6 +17,8 @@ module Context.Elaborate
     newTypeHoleList,
     getHoleSubst,
     setHoleSubst,
+    fillHole,
+    reduceWeakType,
   )
 where
 
@@ -23,8 +26,10 @@ import Context.App
 import Context.App.Internal
 import Context.Gensym qualified as Gensym
 import Context.Throw qualified as Throw
+import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Data.IntMap qualified as IntMap
+import Data.Text qualified as T
 import Entity.Binder
 import Entity.Constraint qualified as C
 import Entity.Hint
@@ -34,6 +39,8 @@ import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
 import Entity.WeakTerm
 import Entity.WeakTerm qualified as WT
+import Scene.WeakTerm.Reduce qualified as WT
+import Scene.WeakTerm.Subst qualified as WT
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
@@ -86,6 +93,11 @@ lookupWeakTypeEnv m k = do
       Throw.raiseCritical m $
         Ident.toText' k <> " is not found in the weak type environment."
 
+lookupWeakTypeEnvMaybe :: Int -> App (Maybe WeakTerm)
+lookupWeakTypeEnvMaybe k = do
+  wtenv <- readRef' weakTypeEnv
+  return $ IntMap.lookup k wtenv
+
 lookupHoleEnv :: Int -> App (Maybe (WeakTerm, WeakTerm))
 lookupHoleEnv i =
   IntMap.lookup i <$> readRef' holeEnv
@@ -129,3 +141,36 @@ newTypeHoleList varEnv ids =
       insWeakTypeEnv x t
       ts <- newTypeHoleList ((m, x, t) : varEnv) rest
       return $ (m, x, t) : ts
+
+reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType e = do
+  e' <- WT.reduce e
+  case e' of
+    m :< WT.Hole h es ->
+      fillHole m h es >>= reduceWeakType
+    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
+      mLam <- WeakDefinition.lookup name
+      case mLam of
+        Just lam ->
+          reduceWeakType $ m :< WT.PiElim lam args
+        Nothing -> do
+          return e'
+    _ ->
+      return e'
+
+fillHole ::
+  Hint ->
+  HID.HoleID ->
+  [WT.WeakTerm] ->
+  App WT.WeakTerm
+fillHole m h es = do
+  holeSubst <- getHoleSubst
+  case HS.lookup h holeSubst of
+    Nothing ->
+      Throw.raiseError m $ "couldn't instantiate the hole here: " <> T.pack (show h)
+    Just (xs, e)
+      | length xs == length es -> do
+          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
+          WT.subst s e
+      | otherwise ->
+          Throw.raiseError m "arity mismatch"

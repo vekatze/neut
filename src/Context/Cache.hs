@@ -3,6 +3,7 @@ module Context.Cache
     loadCache,
     loadCacheOptimistically,
     whenCompilationNecessary,
+    invalidate,
   )
 where
 
@@ -64,3 +65,11 @@ whenCompilationNecessary outputKindList source comp = do
   if Source.isCompilationSkippable artifactTime outputKindList source
     then return Nothing
     else Just <$> comp
+
+invalidate :: Source.Source -> App ()
+invalidate source = do
+  cachePath <- Path.getSourceCachePath source
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return ()
+    else removeFile cachePath

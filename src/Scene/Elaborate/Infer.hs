@@ -518,10 +518,10 @@ inferClause varEnv cursorType decisionCase@(DT.Case {..}) = do
 resolveType :: WT.WeakTerm -> App WT.WeakTerm
 resolveType t = do
   sub <- unifyCurrentConstraints
-  reduceWeakType sub t
+  reduceWeakType' sub t
 
-reduceWeakType :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
-reduceWeakType sub e = do
+reduceWeakType' :: HS.HoleSubst -> WT.WeakTerm -> App WT.WeakTerm
+reduceWeakType' sub e = do
   e' <- WT.reduce e
   case e' of
     m :< WT.Hole h es ->
@@ -531,14 +531,14 @@ reduceWeakType sub e = do
         Just (xs, body)
           | length xs == length es -> do
               let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-              WT.subst s body >>= reduceWeakType sub
+              WT.subst s body >>= reduceWeakType' sub
           | otherwise ->
               Throw.raiseError m "arity mismatch"
     m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
       mLam <- WeakDefinition.lookup name
       case mLam of
         Just lam ->
-          reduceWeakType sub $ m :< WT.PiElim lam args
+          reduceWeakType' sub $ m :< WT.PiElim lam args
         Nothing -> do
           return e'
     _ ->

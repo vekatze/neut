@@ -25,11 +25,9 @@ import Scene.Check qualified as Check
 import Scene.Parse.Core qualified as Parse
 
 lint ::
-  (J.HasParams p a1, J.HasTextDocument a1 a2, J.HasUri a2 Uri) =>
-  p ->
+  Uri ->
   AppLsp () ()
-lint msg = do
-  let doc = msg ^. J.params . J.textDocument . J.uri
+lint doc = do
   case uriToFilePath doc of
     Just path -> do
       flushDiagnosticsBySource maxDiagNum (Just "neut")

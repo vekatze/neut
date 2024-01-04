@@ -18,7 +18,7 @@ references ::
   AppM [Location]
 references params = do
   currentSource <- LSP.getSource params
-  (defLink, _) <- LSP.findDefinition params
+  ((_, defLink), _) <- LSP.findDefinition params
   locTreeSeq <- LSP.getAllCachesInModule $ sourceModule currentSource
   fmap concat $ lift $ forConcurrently locTreeSeq $ \(path, locTree) -> do
     refList <- LSP.findReferences defLink locTree
