@@ -40,6 +40,8 @@ weakenStmt stmt = do
       let t' = weaken t
       let v' = weaken v
       WeakStmtDefineConst m dd t' v'
+    StmtForeign foreignList ->
+      WeakStmtForeign foreignList
 
 weaken :: TM.Term -> WT.WeakTerm
 weaken term =

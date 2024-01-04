@@ -69,6 +69,7 @@ import Scene.Parse.Discern.Noema
 import Scene.Parse.Discern.NominalEnv
 import Scene.Parse.Discern.PatternMatrix
 import Scene.Parse.Discern.Struct
+import Scene.Parse.Foreign
 import Text.Read qualified as R
 
 discernStmtList :: [RawStmt] -> App [WeakStmt]
@@ -117,6 +118,10 @@ discernStmt stmt = do
         Global.registerGeist geist
         discernGeist geist
       return [WeakStmtNominal m geistList']
+    RawStmtForeign _ foreignList -> do
+      foreign' <- interpretForeign foreignList
+      activateForeign foreign'
+      return [WeakStmtForeign foreign']
 
 discernGeist :: RT.TopGeist -> App (G.Geist WT.WeakTerm)
 discernGeist geist = do
@@ -159,6 +164,8 @@ registerTopLevelName nameLifter stmt =
       mapM_ (registerTopLevelName nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
+    RawStmtForeign {} ->
+      return ()
 
 liftStmtKind :: SK.RawStmtKind BN.BaseName -> App (SK.RawStmtKind DD.DefiniteDescription)
 liftStmtKind stmtKind = do

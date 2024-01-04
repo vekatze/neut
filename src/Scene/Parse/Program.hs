@@ -28,20 +28,8 @@ parseProgram :: P.Parser RawProgram
 parseProgram = do
   m <- P.getCurrentHint
   (importBlockOrNone, c1) <- parseImport
-  (foreignOrNone, c2) <- parseForeign
   stmtList <- many parseStmt
-  return $ RawProgram m importBlockOrNone c1 foreignOrNone c2 stmtList
-
-parseStmt :: P.Parser (RawStmt, C)
-parseStmt = do
-  choice
-    [ parseDefine,
-      parseData,
-      parseInline,
-      parseConstant,
-      parseNominal,
-      parseResource
-    ]
+  return $ RawProgram m importBlockOrNone c1 stmtList
 
 parseImport :: P.Parser (Maybe RawImport, C)
 parseImport = do
@@ -57,6 +45,18 @@ parseImport = do
       return (Nothing, [])
     ]
 
+parseStmt :: P.Parser (RawStmt, C)
+parseStmt = do
+  choice
+    [ parseDefine,
+      parseData,
+      parseInline,
+      parseConstant,
+      parseNominal,
+      parseResource,
+      parseForeign
+    ]
+
 parseLocalLocatorList' :: P.Parser (SE.Series (Hint, LL.LocalLocator), C)
 parseLocalLocatorList' = do
   choice
@@ -70,15 +70,11 @@ parseLocalLocator = do
   (ll, c) <- P.baseName
   return ((m, LL.new ll), c)
 
-parseForeign :: P.Parser (Maybe RawForeign, C)
+parseForeign :: P.Parser (RawStmt, C)
 parseForeign = do
-  choice
-    [ do
-        c1 <- P.keyword "foreign"
-        (val, c) <- P.seriesBraceList parseForeignItem
-        return (Just $ RawForeign c1 val, c),
-      return (Nothing, [])
-    ]
+  c1 <- P.keyword "foreign"
+  (val, c) <- P.seriesBraceList parseForeignItem
+  return (RawStmtForeign c1 val, c)
 
 parseForeignItem :: P.Parser (RawForeignItem, C)
 parseForeignItem = do

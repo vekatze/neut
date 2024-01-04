@@ -24,14 +24,10 @@ activateForeign foreignItemList = do
   forM_ foreignItemList $ \(F.Foreign name domList cod) -> do
     Decl.insDeclEnv' (DN.Ext name) domList cod
 
-interpretForeign :: Maybe RawForeign -> App [F.Foreign]
-interpretForeign foreignOrNone = do
+interpretForeign :: SE.Series RawForeignItem -> App [F.Foreign]
+interpretForeign foreignItemList = do
   dataSize <- Env.getDataSize'
-  case foreignOrNone of
-    Nothing ->
-      return []
-    Just (RawForeign _ foreignItemList) -> do
-      mapM (interpretForeignItem dataSize) $ SE.extract foreignItemList
+  mapM (interpretForeignItem dataSize) $ SE.extract foreignItemList
 
 interpretForeignItem :: DS.DataSize -> RawForeignItem -> App F.Foreign
 interpretForeignItem dataSize (RawForeignItem m name _ lts _ _ cod) = do

@@ -77,6 +77,8 @@ inferStmt mMainDD stmt =
     WeakStmtNominal m geistList -> do
       geistList' <- mapM inferGeist geistList
       return $ WeakStmtNominal m geistList'
+    WeakStmtForeign foreignList ->
+      return $ WeakStmtForeign foreignList
 
 inferGeist :: G.Geist WT.WeakTerm -> App (G.Geist WT.WeakTerm)
 inferGeist G.Geist {..} = do

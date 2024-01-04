@@ -29,7 +29,6 @@ import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
 import Entity.EnumCase qualified as EC
-import Entity.Foreign qualified as F
 import Entity.Hint
 import Entity.Ident
 import Entity.Ident.Reify qualified as Ident
@@ -57,8 +56,8 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: ([F.Foreign], [Stmt]) -> App ([F.Foreign], [C.CompDef], Maybe DD.DefiniteDescription)
-clarify (foreignList, stmtList) = do
+clarify :: [Stmt] -> App ([C.CompStmt], Maybe DD.DefiniteDescription)
+clarify stmtList = do
   mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
   case mMainDefiniteDescription of
     Just mainName -> do
@@ -69,31 +68,39 @@ clarify (foreignList, stmtList) = do
       defList' <- clarifyStmtList stmtList
       baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
         e' <- Reduce.reduce e
-        return (x, (opacity, args, e'))
-      return (foreignList, defList' ++ baseAuxEnv', Just mainName)
+        return $ C.Def x opacity args e'
+      return (defList' ++ baseAuxEnv', Just mainName)
     Nothing -> do
       defList' <- clarifyStmtList stmtList
-      return (foreignList, defList', Nothing)
+      return (defList', Nothing)
 
-clarifyStmtList :: [Stmt] -> App [C.CompDef]
+clarifyStmtList :: [Stmt] -> App [C.CompStmt]
 clarifyStmtList stmtList = do
   baseAuxEnv <- withSpecializedCtx $ do
     registerImmediateS4
     registerClosureS4
-    Map.toList <$> Clarify.getAuxEnv
+    Clarify.toCompStmtList <$> Clarify.getAuxEnv
   stmtList' <- withSpecializedCtx $ do
     stmtList' <- mapM clarifyStmt stmtList
     auxEnv <- Clarify.getAuxEnv
-    return $ stmtList' ++ Map.toList auxEnv
-  forM_ (stmtList' ++ baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-    CompDefinition.insert x (opacity, args, e)
-  forM stmtList' $ \(x, (opacity, args, e)) -> do
-    e' <- Reduce.reduce e
-    -- printNote' "==================="
-    -- printNote' $ DD.reify x
-    -- printNote' $ T.pack $ show args
-    -- printNote' $ T.pack $ show e'
-    return (x, (opacity, args, e'))
+    return $ stmtList' ++ Clarify.toCompStmtList auxEnv
+  forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
+    case stmt of
+      C.Def x opacity args e -> do
+        CompDefinition.insert x (opacity, args, e)
+      C.Foreign {} ->
+        return ()
+  forM stmtList' $ \stmt -> do
+    case stmt of
+      C.Def x opacity args e -> do
+        e' <- Reduce.reduce e
+        -- printNote' "==================="
+        -- printNote' $ DD.reify x
+        -- printNote' $ T.pack $ show args
+        -- printNote' $ T.pack $ show e'
+        return $ C.Def x opacity args e'
+      C.Foreign {} ->
+        return stmt
 
 registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
@@ -108,7 +115,7 @@ withSpecializedCtx action = do
   Clarify.initialize
   action
 
-clarifyStmt :: Stmt -> App C.CompDef
+clarifyStmt :: Stmt -> App C.CompStmt
 clarifyStmt stmt =
   case stmt of
     StmtDefine _ stmtKind (SavedHint m) f impArgs expArgs _ e -> do
@@ -124,7 +131,7 @@ clarifyStmt stmt =
             Just OD.Unary
               | [(_, _, _, [(_, _, t)], _)] <- consInfoList -> do
                   (dataArgs', t') <- clarifyBinderBody IntMap.empty dataArgs t
-                  return (f, (O.Opaque, map fst dataArgs', t'))
+                  return $ C.Def f O.Opaque (map fst dataArgs') t'
               | otherwise ->
                   Throw.raiseCritical m "found a broken unary data"
             _ -> do
@@ -133,9 +140,11 @@ clarifyStmt stmt =
               returnSigmaDataS4 name O.Opaque dataInfo' >>= clarifyStmtDefineBody' name xts'
         _ -> do
           e' <- clarifyStmtDefineBody tenv xts' e
-          return (f, (toLowOpacity stmtKind, map fst xts', e'))
+          return $ C.Def f (toLowOpacity stmtKind) (map fst xts') e'
     StmtDefineConst m dd t' v' ->
       clarifyStmt $ StmtDefine True (SK.Normal O.Clear) m dd [] [] t' v'
+    StmtForeign foreignList ->
+      return $ C.Foreign foreignList
 
 clarifyBinderBody ::
   TM.TypeEnv ->
@@ -164,10 +173,10 @@ clarifyStmtDefineBody' ::
   DD.DefiniteDescription ->
   [(Ident, C.Comp)] ->
   C.Comp ->
-  App C.CompDef
+  App C.CompStmt
 clarifyStmtDefineBody' name xts' dataType = do
   dataType' <- linearize xts' dataType >>= Reduce.reduce
-  return (name, (O.Clear, map fst xts', dataType'))
+  return $ C.Def name O.Clear (map fst xts') dataType'
 
 clarifyTerm :: TM.TypeEnv -> TM.Term -> App C.Comp
 clarifyTerm tenv term =

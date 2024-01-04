@@ -6,6 +6,7 @@ import Data.Text qualified as T
 import Entity.ArgNum
 import Entity.DefiniteDescription qualified as DD
 import Entity.EnumCase
+import Entity.Foreign qualified as F
 import Entity.Ident
 import Entity.Ident.Reify
 import Entity.Magic
@@ -85,5 +86,10 @@ data Primitive
 type SubstValue =
   IntMap.IntMap Value
 
-type CompDef =
-  (DD.DefiniteDescription, (Opacity, [Ident], Comp))
+data CompStmt
+  = Def DD.DefiniteDescription Opacity [Ident] Comp
+  | Foreign [F.Foreign]
+
+fromDefTuple :: (DD.DefiniteDescription, (Opacity, [Ident], Comp)) -> CompStmt
+fromDefTuple (dd, (opacity, args, body)) =
+  Def dd opacity args body
