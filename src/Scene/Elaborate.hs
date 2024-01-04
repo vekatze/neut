@@ -25,7 +25,6 @@ import Entity.Cache qualified as Cache
 import Entity.DecisionTree qualified as DT
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
-import Entity.Foreign qualified as F
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.LamKind qualified as LK
@@ -47,7 +46,7 @@ import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
 
-elaborate :: Either Cache.Cache ([F.Foreign], [WeakStmt]) -> App ([F.Foreign], [Stmt])
+elaborate :: Either Cache.Cache [WeakStmt] -> App [Stmt]
 elaborate cacheOrStmt = do
   initialize
   case cacheOrStmt of
@@ -56,11 +55,9 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
-      let foreignList = Cache.foreignList cache
-      return (foreignList, stmtList)
-    Right (foreignList, stmtList) -> do
-      stmtList' <- (analyzeStmtList >=> synthesizeStmtList foreignList) stmtList
-      return (foreignList, stmtList')
+      return stmtList
+    Right stmtList -> do
+      analyzeStmtList stmtList >>= synthesizeStmtList
 
 analyzeStmtList :: [WeakStmt] -> App [WeakStmt]
 analyzeStmtList stmtList = do
@@ -72,8 +69,8 @@ analyzeStmtList stmtList = do
     insertWeakStmt stmt'
     return stmt'
 
-synthesizeStmtList :: [F.Foreign] -> [WeakStmt] -> App [Stmt]
-synthesizeStmtList foreignList stmtList = do
+synthesizeStmtList :: [WeakStmt] -> App [Stmt]
+synthesizeStmtList stmtList = do
   -- mapM_ viewStmt stmtList
   getConstraintEnv >>= Unify.unify >>= setHoleSubst
   stmtList' <- concat <$> mapM elaborateStmt stmtList
@@ -85,8 +82,7 @@ synthesizeStmtList foreignList stmtList = do
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
-        Cache.locationTree = tmap,
-        Cache.foreignList = foreignList
+        Cache.locationTree = tmap
       }
   Remark.insertToGlobalRemarkList remarkList
   return stmtList'
@@ -115,6 +111,8 @@ elaborateStmt stmt = do
     WeakStmtNominal _ geistList -> do
       mapM_ elaborateGeist geistList
       return []
+    WeakStmtForeign foreignList -> do
+      return [StmtForeign foreignList]
 
 elaborateGeist :: G.Geist WT.WeakTerm -> App (G.Geist TM.Term)
 elaborateGeist G.Geist {..} = do
@@ -132,6 +130,8 @@ insertStmt stmt = do
     StmtDefineConst (SavedHint m) dd t v -> do
       Type.insert dd $ weaken $ m :< TM.Pi [] [] t
       Definition.insert O.Clear dd [] v
+    StmtForeign _ -> do
+      return ()
   insertWeakStmt $ weakenStmt stmt
   insertStmtKindInfo stmt
 
@@ -143,6 +143,8 @@ insertWeakStmt stmt = do
     WeakStmtDefineConst m dd _ v -> do
       WeakDefinition.insert O.Clear m dd [] [] v
     WeakStmtNominal {} -> do
+      return ()
+    WeakStmtForeign {} ->
       return ()
 
 insertStmtKindInfo :: Stmt -> App ()
@@ -157,6 +159,8 @@ insertStmtKindInfo stmt = do
         DataIntro {} ->
           return ()
     StmtDefineConst {} ->
+      return ()
+    StmtForeign {} ->
       return ()
 
 elaborateStmtKind :: StmtKind WT.WeakTerm -> App (StmtKind TM.Term)

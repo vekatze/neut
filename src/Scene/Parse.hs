@@ -14,11 +14,11 @@ import Context.UnusedPreset qualified as UnusedPreset
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
+import Data.Maybe
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.Cache qualified as Cache
 import Entity.DefiniteDescription qualified as DD
-import Entity.Foreign qualified as F
 import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.Ident.Reify
@@ -30,11 +30,10 @@ import Entity.StmtKind qualified as SK
 import Path
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Discern qualified as Discern
-import Scene.Parse.Foreign
 import Scene.Parse.Import
 import Scene.Parse.Program qualified as Parse
 
-parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([F.Foreign], [WeakStmt]))
+parse :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
 parse source cacheOrContent = do
   result <- parseSource source cacheOrContent
   mMainDD <- Locator.getMainDefiniteDescription source
@@ -45,14 +44,14 @@ parse source cacheOrContent = do
     Nothing ->
       return result
 
-parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache ([F.Foreign], [WeakStmt]))
+parseSource :: Source.Source -> Either Cache.Cache T.Text -> App (Either Cache.Cache [WeakStmt])
 parseSource source cacheOrContent = do
   let path = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
-      saveTopLevelNames path $ map getStmtName stmtList
+      saveTopLevelNames path $ mapMaybe getStmtName stmtList
       return $ Left cache
     Right content -> do
       prog <- P.parseFile True Parse.parseProgram path content
@@ -74,6 +73,8 @@ parseCachedStmtList stmtList = do
         Global.registerStmtDefine isConstLike m stmtKind name allArgNum expArgNames
       StmtDefineConst (SavedHint m) dd _ _ ->
         Global.registerStmtDefine True m (SK.Normal O.Clear) dd AN.zero []
+      StmtForeign {} ->
+        return ()
 
 ensureMain :: Hint -> DD.DefiniteDescription -> App ()
 ensureMain m mainFunctionName = do
@@ -84,11 +85,9 @@ ensureMain m mainFunctionName = do
     _ ->
       Throw.raiseError m "`main` is missing"
 
-interpret :: Source.Source -> RawProgram -> App ([F.Foreign], [WeakStmt])
-interpret currentSource (RawProgram m importOrNone _ foreignOrNone _ stmtList) = do
+interpret :: Source.Source -> RawProgram -> App [WeakStmt]
+interpret currentSource (RawProgram m importOrNone _ stmtList) = do
   interpretImport currentSource importOrNone >>= activateImport m
-  foreign' <- interpretForeign foreignOrNone
-  activateForeign foreign'
   stmtList' <- Discern.discernStmtList $ map fst stmtList
   Global.reportMissingDefinitions
   saveTopLevelNames (Source.sourceFilePath currentSource) $ getWeakStmtName stmtList'
@@ -96,7 +95,7 @@ interpret currentSource (RawProgram m importOrNone _ foreignOrNone _ stmtList) =
   UnusedImport.registerRemarks
   UnusedLocalLocator.registerRemarks
   UnusedPreset.registerRemarks
-  return (foreign', stmtList')
+  return stmtList'
 
 getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
 getWeakStmtName =
@@ -111,11 +110,15 @@ getWeakStmtName' stmt =
       [(m, name)]
     WeakStmtNominal {} ->
       []
+    WeakStmtForeign {} ->
+      []
 
-getStmtName :: Stmt -> (Hint, DD.DefiniteDescription)
+getStmtName :: Stmt -> Maybe (Hint, DD.DefiniteDescription)
 getStmtName stmt =
   case stmt of
     StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
-      (m, name)
+      return (m, name)
     StmtDefineConst (SavedHint m) name _ _ ->
-      (m, name)
+      return (m, name)
+    StmtForeign _ ->
+      Nothing

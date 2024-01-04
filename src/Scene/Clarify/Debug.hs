@@ -6,9 +6,13 @@ import Data.Text qualified as T
 import Entity.Comp qualified as C
 import Entity.DefiniteDescription qualified as DD
 
-printCompDef :: C.CompDef -> App ()
-printCompDef (x, (_, args, e)) = do
-  printNote' "==================="
-  printNote' $ DD.reify x
-  printNote' $ T.pack $ show args
-  printNote' $ T.pack $ show e
+printCompDef :: C.CompStmt -> App ()
+printCompDef stmt = do
+  case stmt of
+    C.Def x _ args e -> do
+      printNote' "==================="
+      printNote' $ DD.reify x
+      printNote' $ T.pack $ show args
+      printNote' $ T.pack $ show e
+    C.Foreign {} -> do
+      printNote' "<foreign>"

@@ -5,7 +5,6 @@ module Entity.RawProgram
     RawImport (..),
     RawImportItem (..),
     compareImportItem,
-    RawForeign (..),
     RawForeignItem (..),
   )
 where
@@ -24,7 +23,7 @@ import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 
 data RawProgram
-  = RawProgram Hint (Maybe RawImport) C (Maybe RawForeign) C [(RawStmt, C)]
+  = RawProgram Hint (Maybe RawImport) C [(RawStmt, C)]
 
 data RawStmt
   = RawStmtDefine
@@ -51,6 +50,7 @@ data RawStmt
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
   | RawStmtNominal C Hint (SE.Series RT.TopGeist)
+  | RawStmtForeign C (SE.Series RawForeignItem)
 
 type RawConsInfo a =
   (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))
@@ -66,9 +66,6 @@ compareImportItem item1 item2 = do
   let RawImportItem _ locator1 _ = item1
   let RawImportItem _ locator2 _ = item2
   compare locator1 locator2
-
-data RawForeign
-  = RawForeign C (SE.Series RawForeignItem)
 
 data RawForeignItem
   = RawForeignItem Hint EN.ExternalName C (SE.Series RLT.RawLowType) C C RLT.RawLowType

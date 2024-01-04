@@ -19,11 +19,10 @@ import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
 pp :: (C, RawProgram) -> T.Text
-pp (c1, RawProgram _ importOrNone c2 foreignOrNone c3 stmtList) = do
+pp (c1, RawProgram _ importOrNone c2 stmtList) = do
   let importOrNone' = fmap decImport importOrNone
-  let foreignOrNone' = fmap decForeign foreignOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
-  let program' = [(importOrNone', c2), (foreignOrNone', c3)] ++ stmtList'
+  let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
 
 decTopDocList :: C -> [(Maybe D.Doc, C)] -> D.Doc
@@ -89,21 +88,6 @@ decImportItemLocator :: (a, LL.LocalLocator) -> D.Doc
 decImportItemLocator (_, l) =
   D.text (LL.reify l)
 
-decForeign :: RawForeign -> D.Doc
-decForeign (RawForeign c foreignList) = do
-  let foreignList' = SE.decode $ fmap decForeignItem foreignList
-  RT.attachComment c $
-    D.join
-      [ D.text "foreign ",
-        foreignList'
-      ]
-
-decForeignItem :: RawForeignItem -> D.Doc
-decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
-  let args' = SE.decode $ fmap RLT.decode args
-  let cod' = RLT.decode cod
-  D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
-
 decStmt :: RawStmt -> D.Doc
 decStmt stmt =
   case stmt of
@@ -144,6 +128,19 @@ decStmt stmt =
           [ D.text "nominal ",
             SE.decode $ fmap decGeistList geistList
           ]
+    RawStmtForeign c foreignList -> do
+      let foreignList' = SE.decode $ fmap decForeignItem foreignList
+      RT.attachComment c $
+        D.join
+          [ D.text "foreign ",
+            foreignList'
+          ]
+
+decForeignItem :: RawForeignItem -> D.Doc
+decForeignItem (RawForeignItem _ funcName _ args _ _ cod) = do
+  let args' = SE.decode $ fmap RLT.decode args
+  let cod' = RLT.decode cod
+  D.join [D.text (EN.reify funcName), args', D.text ": ", cod']
 
 decDataArgs :: Maybe (RT.Args RT.RawTerm) -> D.Doc
 decDataArgs argsOrNone =

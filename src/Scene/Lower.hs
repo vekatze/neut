@@ -17,7 +17,7 @@ import Control.Monad
 import Control.Monad.Writer.Lazy
 import Data.ByteString.Builder
 import Data.IntMap qualified as IntMap
-import Data.Maybe (isJust)
+import Data.Maybe
 import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
@@ -68,22 +68,35 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([F.Foreign], [C.CompDef], Maybe DD.DefiniteDescription) ->
+  ([C.CompStmt], Maybe DD.DefiniteDescription) ->
   App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
-lower (foreignList, defList, mMainName) = do
-  initialize $ map fst defList
-  forM_ foreignList $ \(F.Foreign name domList cod) -> do
-    Decl.insDeclEnv' (DN.Ext name) domList cod
+lower (stmtList, mMainName) = do
+  initialize
+  registerInternalNames stmtList
   unless (isJust mMainName) $ do
     Decl.insDeclEnv (DN.In DD.imm) AN.argNumS4
     Decl.insDeclEnv (DN.In DD.cls) AN.argNumS4
-  defList' <- forM defList $ \(name, (_, args, e)) -> do
-    e' <- lowerComp e >>= liftIO . return . cancel
-    return (name, (args, e'))
+  stmtList' <- fmap catMaybes <$> forM stmtList $ \stmt -> do
+    case stmt of
+      C.Def name _ args e -> do
+        e' <- lowerComp e >>= liftIO . return . cancel
+        return $ Just (name, (args, e'))
+      C.Foreign {} -> do
+        return Nothing
   mMainDef <- mapM constructMainTerm mMainName
   declEnv <- Decl.getDeclEnv
   staticTextList <- StaticText.getAll
-  return (declEnv, defList', mMainDef, staticTextList)
+  return (declEnv, stmtList', mMainDef, staticTextList)
+
+registerInternalNames :: [C.CompStmt] -> App ()
+registerInternalNames stmtList =
+  forM_ stmtList $ \stmt -> do
+    case stmt of
+      C.Def name _ _ _ ->
+        insDefinedName name
+      C.Foreign foreignList ->
+        forM_ foreignList $ \(F.Foreign name domList cod) -> do
+          Decl.insDeclEnv' (DN.Ext name) domList cod
 
 constructMainTerm :: DD.DefiniteDescription -> App LC.DefContent
 constructMainTerm mainName = do

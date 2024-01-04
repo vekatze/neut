@@ -17,6 +17,7 @@ import Data.Set qualified as S
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Discriminant qualified as D
+import Entity.Foreign qualified as F
 import Entity.Geist qualified as G
 import Entity.Hint
 import Entity.IsConstLike
@@ -43,6 +44,7 @@ data WeakStmt
       WT.WeakTerm
   | WeakStmtDefineConst Hint DD.DefiniteDescription WT.WeakTerm WT.WeakTerm
   | WeakStmtNominal Hint [G.Geist WT.WeakTerm]
+  | WeakStmtForeign [F.Foreign]
 
 type Program =
   (Source.Source, [Stmt])
@@ -58,6 +60,7 @@ data StmtF a
       a
       a
   | StmtDefineConst SavedHint DD.DefiniteDescription a a
+  | StmtForeign [F.Foreign]
   deriving (Generic)
 
 type Stmt = StmtF TM.Term
@@ -84,6 +87,8 @@ compress stmt =
       let t' = TM.compress t
       let e' = TM.compress e
       StmtDefineConst m dd t' e'
+    StmtForeign foreignList ->
+      StmtForeign foreignList
 
 extend :: StrippedStmt -> Stmt
 extend stmt =
@@ -99,3 +104,5 @@ extend stmt =
       let t' = TM.extend t
       let e' = TM.extend e
       StmtDefineConst m dd t' e'
+    StmtForeign foreignList ->
+      StmtForeign foreignList
