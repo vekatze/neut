@@ -1,4 +1,4 @@
-module Scene.Elaborate (elaborate) where
+module Scene.Elaborate (elaborate, elaborate') where
 
 import Context.App
 import Context.Cache qualified as Cache
@@ -14,7 +14,6 @@ import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
 import Data.Bitraversable (bimapM)
-import Data.IntMap qualified as IntMap
 import Data.List
 import Data.Set qualified as S
 import Data.Text qualified as T
@@ -29,9 +28,6 @@ import Entity.ExternalName qualified as EN
 import Entity.Foreign qualified as F
 import Entity.Geist qualified as G
 import Entity.Hint
-import Entity.HoleID qualified as HID
-import Entity.HoleSubst qualified as HS
-import Entity.Ident.Reify qualified as Ident
 import Entity.LamKind qualified as LK
 import Entity.Magic qualified as M
 import Entity.Opacity qualified as O
@@ -50,8 +46,6 @@ import Entity.WeakTerm.ToText
 import Scene.Elaborate.Infer qualified as Infer
 import Scene.Elaborate.Unify qualified as Unify
 import Scene.Term.Inline qualified as TM
-import Scene.WeakTerm.Reduce qualified as WT
-import Scene.WeakTerm.Subst qualified as WT
 
 elaborate :: Either Cache.Cache ([F.Foreign], [WeakStmt]) -> App ([F.Foreign], [Stmt])
 elaborate cacheOrStmt = do
@@ -326,23 +320,6 @@ elaborateLamAttr (AttrL.Attr {lamKind, identity}) =
       xt' <- elaborateWeakBinder xt
       return $ AttrL.Attr {lamKind = LK.Fix xt', identity}
 
-fillHole ::
-  Hint ->
-  HID.HoleID ->
-  [WT.WeakTerm] ->
-  App WT.WeakTerm
-fillHole m h es = do
-  holeSubst <- getHoleSubst
-  case HS.lookup h holeSubst of
-    Nothing ->
-      Throw.raiseError m $ "couldn't instantiate the hole here: " <> T.pack (show h)
-    Just (xs, e)
-      | length xs == length es -> do
-          let s = IntMap.fromList $ zip (map Ident.toInt xs) (map Right es)
-          WT.subst s e
-      | otherwise ->
-          Throw.raiseError m "arity mismatch"
-
 elaborateDecisionTree :: Hint -> DT.DecisionTree WT.WeakTerm -> App (DT.DecisionTree TM.Term)
 elaborateDecisionTree m tree =
   case tree of
@@ -391,22 +368,6 @@ raiseNonExhaustivePatternMatching m =
 reduceType :: WT.WeakTerm -> App TM.Term
 reduceType e = do
   reduceWeakType e >>= elaborate'
-
-reduceWeakType :: WT.WeakTerm -> App WT.WeakTerm
-reduceWeakType e = do
-  e' <- WT.reduce e
-  case e' of
-    m :< WT.Hole h es ->
-      fillHole m h es >>= reduceWeakType
-    m :< WT.PiElim (_ :< WT.VarGlobal _ name) args -> do
-      mLam <- WeakDefinition.lookup name
-      case mLam of
-        Just lam ->
-          reduceWeakType $ m :< WT.PiElim lam args
-        Nothing -> do
-          return e'
-    _ ->
-      return e'
 
 extractConstructorList :: Hint -> TM.Term -> App [DD.DefiniteDescription]
 extractConstructorList m cursorType = do

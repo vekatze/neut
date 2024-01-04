@@ -13,7 +13,7 @@ highlight ::
   p ->
   AppM [DocumentHighlight]
 highlight params = do
-  (defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri})), locTree) <- LSP.findDefinition params
+  ((_, defLink@(DefinitionLink (LocationLink {_targetRange, _targetUri}))), locTree) <- LSP.findDefinition params
   let reqUri = params ^. J.textDocument . J.uri
   refs <- lift $ LSP.findReferences defLink locTree
   if reqUri /= _targetUri

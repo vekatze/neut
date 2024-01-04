@@ -164,7 +164,7 @@ showVariable :: Ident -> T.Text
 showVariable x =
   if isHole x
     then "_"
-    else Ident.toText' x
+    else Ident.toText x
 
 showGlobalVariable :: DD.DefiniteDescription -> T.Text
 showGlobalVariable =
