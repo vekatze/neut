@@ -5,6 +5,7 @@ import Context.AppM
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Control.Monad.Trans
+import Data.Maybe
 import Entity.AppLsp
 import Entity.Config.Remark qualified as Remark
 import Language.LSP.Protocol.Lens qualified as J
@@ -53,7 +54,8 @@ handlers =
       notificationHandler SMethod_TextDocumentWillSave $ \_ -> do
         return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
-        itemList <- lift $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
+        itemListOrNone <- lift $ runAppM $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
+        let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
         mLoc <- lift $ runAppM $ LSP.findDefinition (req ^. J.params)

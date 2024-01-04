@@ -1,10 +1,13 @@
 module Scene.LSP.Complete (complete) where
 
 import Context.App
+import Context.AppM
 import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
+import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
 import Control.Monad
+import Control.Monad.Trans
 import Data.HashMap.Strict qualified as Map
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (mapMaybe, maybeToList)
@@ -19,37 +22,51 @@ import Entity.Source
 import Entity.TopNameMap
 import Language.LSP.Protocol.Types
 import Path
+import Scene.Collect qualified as Collect
+import Scene.Initialize qualified as Initialize
+import Scene.Load qualified as Load
+import Scene.Parse qualified as Parse
 import Scene.Source.Reflect qualified as Source
+import Scene.Unravel qualified as Unravel
+import UnliftIO.Async
 
-complete :: Uri -> App [CompletionItem]
+complete :: Uri -> AppM [CompletionItem]
 complete uri = do
-  case uriToFilePath uri of
-    Nothing ->
-      return []
-    Just pathString -> do
-      mSrc <- Source.reflect pathString
-      case mSrc of
-        Nothing -> do
-          return []
-        Just src -> do
-          childrenMap <- Unravel.getSourceChildrenMap
-          let children = concat $ maybeToList $ Map.lookup (sourceFilePath src) childrenMap
-          sourceNameMap <- Global.getSourceNameMap
-          childCompItemList <- fmap concat $ forM children $ \(child, aliasInfoList) -> do
-            getChildCompItemList sourceNameMap (sourceModule src) child aliasInfoList
-          case Map.lookup (sourceFilePath src) sourceNameMap of
-            Nothing -> do
-              return childCompItemList
-            Just nameInfo -> do
-              nameList <- getLocalNameList nameInfo
-              return $ map (newCompletionItem Nothing) nameList ++ childCompItemList
+  pathString <- liftMaybe $ uriToFilePath uri
+  src <- lift (Source.reflect pathString) >>= liftMaybe
+  lift (collectNames pathString) >>= liftMaybe
+  childrenMap <- lift Unravel.getSourceChildrenMap
+  let children = concat $ maybeToList $ Map.lookup (sourceFilePath src) childrenMap
+  sourceNameMap <- lift Global.getSourceNameMap
+  childCompItemList <- fmap concat $ forM children $ \(child, aliasInfoList) -> do
+    getChildCompItemList sourceNameMap (sourceModule src) child aliasInfoList
+  case Map.lookup (sourceFilePath src) sourceNameMap of
+    Nothing -> do
+      return childCompItemList
+    Just nameInfo -> do
+      nameList <- getLocalNameList nameInfo
+      return $ map (newCompletionItem Nothing) nameList ++ childCompItemList
+
+collectNames :: FilePath -> App (Maybe ())
+collectNames filePath = do
+  Throw.runMaybe $ do
+    Initialize.initializeForTarget
+    paths <- Collect.collectSourceList (Just filePath)
+    forM_ paths $ \path -> do
+      (_, dependenceSeq) <- Unravel.unravelFromFile path
+      contentSeq <- forConcurrently dependenceSeq $ \source -> do
+        cacheOrContent <- Load.load source
+        return (source, cacheOrContent)
+      forM_ contentSeq $ \(source, cacheOrContent) -> do
+        Initialize.initializeForSource source
+        void $ Parse.parse source cacheOrContent
 
 getChildCompItemList ::
   Map.HashMap (Path Abs File) TopNameMap ->
   Module ->
   Source ->
   [AliasInfo] ->
-  App [CompletionItem]
+  AppM [CompletionItem]
 getChildCompItemList sourceNameMap sourceModule child aliasInfoList = do
   case Map.lookup (sourceFilePath child) sourceNameMap of
     Nothing -> do
@@ -73,10 +90,10 @@ attachPrefix :: T.Text -> (a, T.Text) -> (a, T.Text)
 attachPrefix rawAlias (mk, x) =
   (mk, rawAlias <> nsSep <> x)
 
-getLocalNameList :: TopNameMap -> App [(Maybe (IsConstLike, [Key]), T.Text)]
+getLocalNameList :: TopNameMap -> AppM [(Maybe (IsConstLike, [Key]), T.Text)]
 getLocalNameList nameInfo = do
   let ddList = map fst $ Map.toList nameInfo
-  mKeyArgList <- mapM KeyArg.lookupMaybe ddList
+  mKeyArgList <- lift $ mapM KeyArg.lookupMaybe ddList
   return $ zip mKeyArgList $ map DD.localLocator ddList
 
 newCompletionItem :: Maybe T.Text -> (Maybe (IsConstLike, [Key]), T.Text) -> CompletionItem
