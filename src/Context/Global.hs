@@ -188,7 +188,7 @@ ensureDefFreshness m name = do
     (Just mGeist, True) -> do
       removeFromGeistMap name
       removeFromDefNameMap name
-      Tag.insertDD mGeist name m
+      Tag.insertGlobalVar mGeist name m
     (Nothing, True) ->
       Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
     (Nothing, False) ->

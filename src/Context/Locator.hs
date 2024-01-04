@@ -54,7 +54,7 @@ activateSpecifiedNames topNameMap sgl lls = do
       Nothing ->
         Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
       Just (mDef, _) -> do
-        Tag.insert m (LL.length ll) mDef
+        Tag.insertGlobalVar m dd mDef
         aenv <- readRef' activeDefiniteDescriptionList
         when (Map.member ll aenv) $ do
           Throw.raiseError m $ "the top-level name `" <> LL.reify ll <> "` is already imported"

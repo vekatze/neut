@@ -92,7 +92,7 @@ discernStmt stmt = do
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind stmtKind
       body' <- discern nenv' body
-      Tag.insertDD m functionName m
+      Tag.insertGlobalVar m functionName m
       forM_ expArgs' Tag.insertBinder
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     RawStmtDefineConst _ m (name, _) (_, (t, _)) (_, (v, _)) -> do
@@ -100,7 +100,7 @@ discernStmt stmt = do
       registerTopLevelName nameLifter stmt
       t' <- discern empty t
       v' <- discern empty v
-      Tag.insertDD m dd m
+      Tag.insertGlobalVar m dd m
       return [WeakStmtDefineConst m dd t' v']
     RawStmtDefineData _ m (dd, _) args consInfo -> do
       stmtList <- defineData m dd args $ SE.extract consInfo
@@ -110,7 +110,7 @@ discernStmt stmt = do
       registerTopLevelName nameLifter stmt
       t' <- discern empty $ m :< RT.Tau
       e' <- discern empty $ m :< RT.Resource [] discarder copier
-      Tag.insertDD m dd m
+      Tag.insertGlobalVar m dd m
       return [WeakStmtDefineConst m dd t' e']
     RawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \geist -> do
@@ -214,8 +214,7 @@ discern nenv term =
               return $ m :< WT.Prim (WP.Value $ WPV.Float h x)
           | Just (mDef, name') <- lookup s nenv -> do
               UnusedVariable.delete name'
-              unless (isHole name') $ do
-                Tag.insert m (T.length s) mDef
+              Tag.insertLocalVar m name' mDef
               return $ m :< WT.Var name'
         _ -> do
           (dd, (_, gn)) <- resolveName m name

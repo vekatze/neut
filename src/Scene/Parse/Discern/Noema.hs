@@ -49,7 +49,7 @@ attachPrefix binder cont@(m :< _) =
       e' <- castToNoema e
       cont' <- attachPrefix rest cont
       h <- Gensym.newHole m []
-      Tag.insert mDef (innerLength y) mOrig
+      Tag.insertLocalVar mDef y mOrig
       return $ m :< WT.Let WT.Opaque (m, y, h) e' cont'
 
 attachSuffix :: [(Ident, Ident)] -> WT.WeakTerm -> App WT.WeakTerm

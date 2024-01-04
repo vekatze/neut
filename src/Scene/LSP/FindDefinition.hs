@@ -28,7 +28,7 @@ _findDefinition ::
 _findDefinition params locationTree = do
   let line = fromEnum (params ^. J.position . J.line) + 1
   let col = fromEnum (params ^. J.position . J.character) + 1
-  (m, (colFrom, colTo)) <- liftMaybe $ LT.find line col locationTree
+  (_, m, (colFrom, colTo)) <- liftMaybe $ LT.find line col locationTree
   let defPath = H.metaFileName m
   let (defLine, defCol) = H.metaLocation m
   let defFilePath' = filePathToUri defPath
