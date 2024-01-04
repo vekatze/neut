@@ -111,7 +111,7 @@ registerGeist RT.RawGeist {..} = do
   ensureGeistFreshness loc name'
   ensureDefFreshness loc name'
   KeyArg.insert loc name' isConstLike argNum expArgNames
-  insertToGeistMap name' loc
+  insertToGeistMap name' loc isConstLike
   insertToNameMap name' loc $ GN.TopLevelFunc argNum isConstLike
 
 registerTopLevelFunc :: IsConstLike -> Hint -> DD.DefiniteDescription -> AN.ArgNum -> App ()
@@ -185,10 +185,10 @@ ensureDefFreshness m name = do
   case (Map.lookup name gmap, Map.member name topNameMap) of
     (Just _, False) ->
       Throw.raiseCritical m $ "`" <> DD.reify name <> "` is defined nominally but not registered in the top name map"
-    (Just mGeist, True) -> do
+    (Just (mGeist, isConstLike), True) -> do
       removeFromGeistMap name
       removeFromDefNameMap name
-      Tag.insertGlobalVar mGeist name m
+      Tag.insertGlobalVar mGeist name isConstLike m
     (Nothing, True) ->
       Throw.raiseError m $ "`" <> DD.reify name <> "` is already defined"
     (Nothing, False) ->
@@ -208,17 +208,17 @@ reportMissingDefinitions = do
     then return ()
     else Throw.throw $ MakeError errorList
 
-geistToRemark :: DD.DefiniteDescription -> Hint -> Remark
-geistToRemark dd m =
+geistToRemark :: DD.DefiniteDescription -> (Hint, a) -> Remark
+geistToRemark dd (m, _) =
   newRemark m Error $ "this nominal definition of `" <> DD.localLocator dd <> "` lacks a real definition"
 
 insertToNameMap :: DD.DefiniteDescription -> Hint -> GN.GlobalName -> App ()
 insertToNameMap dd m gn = do
   modifyRef' nameMap $ Map.insert dd (m, gn)
 
-insertToGeistMap :: DD.DefiniteDescription -> Hint -> App ()
-insertToGeistMap dd m = do
-  modifyRef' geistMap $ Map.insert dd m
+insertToGeistMap :: DD.DefiniteDescription -> Hint -> IsConstLike -> App ()
+insertToGeistMap dd m isConstLike = do
+  modifyRef' geistMap $ Map.insert dd (m, isConstLike)
 
 removeFromGeistMap :: DD.DefiniteDescription -> App ()
 removeFromGeistMap dd = do

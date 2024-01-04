@@ -4,11 +4,13 @@ import Context.AppM
 import Context.Cache (invalidate)
 import Context.Elaborate
 import Context.Type
-import Control.Lens
+import Control.Comonad.Cofree
+import Control.Lens hiding ((:<))
 import Control.Monad.Trans
 import Data.Text qualified as T
 import Entity.LocationTree qualified as LT
 import Entity.Term.Weaken (weaken)
+import Entity.WeakTerm qualified as WT
 import Entity.WeakTerm.ToText
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
@@ -38,9 +40,13 @@ _getSymbolInfo locType = do
       t <- lift (lookupWeakTypeEnvMaybe varID) >>= liftMaybe
       t' <- lift $ elaborate' t
       return $ toText $ weaken t'
-    LT.Global dd -> do
+    LT.Global dd isConstLike -> do
       t <- lift (lookupMaybe dd) >>= liftMaybe
-      return $ toText t
+      case (t, isConstLike) of
+        (_ :< WT.Pi _ _ cod, True) ->
+          return $ toText cod
+        _ ->
+          return $ toText t
 
 getSymbolLoc :: LT.LocType -> Maybe LT.SymbolName
 getSymbolLoc locType =

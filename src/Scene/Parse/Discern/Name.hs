@@ -67,8 +67,8 @@ resolveVarOrErr m name = do
   case foundNameList of
     [] ->
       return $ Left $ "undefined symbol: " <> name
-    [globalVar@(dd, (mDef, _))] -> do
-      Tag.insertGlobalVar m dd mDef
+    [globalVar@(dd, (mDef, gn))] -> do
+      Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
       UnusedLocalLocator.delete localLocator
       return $ Right globalVar
     _ -> do
@@ -88,12 +88,13 @@ resolveLocator m (gl, ll) shouldInsertTag = do
   case foundName of
     Nothing ->
       Throw.raiseError m $ "undefined constant: " <> L.reify (gl, ll)
-    Just globalVar@(dd, (mDef, _)) -> do
+    Just globalVar@(dd, (mDef, gn)) -> do
       when shouldInsertTag $ do
         let glLen = T.length $ GL.reify gl
         let llLen = T.length $ LL.reify ll
         let sepLen = T.length C.nsSep
-        Tag.insert m (LT.SymbolLoc (LT.Global dd)) (glLen + sepLen + llLen) mDef
+        let isConstLike = GN.getIsConstLike gn
+        Tag.insert m (LT.SymbolLoc (LT.Global dd isConstLike)) (glLen + sepLen + llLen) mDef
       return globalVar
 
 resolveConstructor ::

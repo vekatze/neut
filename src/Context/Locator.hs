@@ -21,6 +21,7 @@ import Data.HashMap.Strict qualified as Map
 import Data.Maybe (maybeToList)
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
+import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module qualified as Module
@@ -53,8 +54,8 @@ activateSpecifiedNames topNameMap sgl lls = do
     case Map.lookup dd topNameMap of
       Nothing ->
         Throw.raiseError m $ "the name `" <> LL.reify ll <> "` isn't defined in the module"
-      Just (mDef, _) -> do
-        Tag.insertGlobalVar m dd mDef
+      Just (mDef, gn) -> do
+        Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
         aenv <- readRef' activeDefiniteDescriptionList
         when (Map.member ll aenv) $ do
           Throw.raiseError m $ "the top-level name `" <> LL.reify ll <> "` is already imported"

@@ -17,6 +17,7 @@ import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident
+import Entity.IsConstLike
 import Entity.LocationTree qualified as LT
 import Prelude hiding (lookup, read)
 
@@ -35,10 +36,10 @@ insertLocalVar mUse ident@(I (var, varID)) mDef = do
     let symbolLoc = LT.SymbolLoc (LT.Local varID)
     insert mUse symbolLoc nameLength mDef
 
-insertGlobalVar :: Hint -> DD.DefiniteDescription -> Hint -> App ()
-insertGlobalVar mUse dd mDef = do
+insertGlobalVar :: Hint -> DD.DefiniteDescription -> IsConstLike -> Hint -> App ()
+insertGlobalVar mUse dd isConstLike mDef = do
   let nameLength = T.length (DD.localLocator dd)
-  let symbolLoc = LT.SymbolLoc (LT.Global dd)
+  let symbolLoc = LT.SymbolLoc (LT.Global dd isConstLike)
   insert mUse symbolLoc nameLength mDef
 
 insert :: Hint -> LT.LocType -> Int -> Hint -> App ()

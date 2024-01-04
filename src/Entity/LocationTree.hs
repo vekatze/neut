@@ -12,6 +12,7 @@ where
 import Data.Binary
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
+import Entity.IsConstLike
 import GHC.Generics (Generic)
 
 type ColInterval =
@@ -19,7 +20,7 @@ type ColInterval =
 
 data SymbolName
   = Local Int
-  | Global DD.DefiniteDescription
+  | Global DD.DefiniteDescription IsConstLike
   deriving (Show, Generic)
 
 data LocType
