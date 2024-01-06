@@ -29,15 +29,20 @@ module Context.Path
   )
 where
 
+import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
 import Context.Throw qualified as Throw
+import Control.Comonad.Cofree
 import Control.Monad
 import Control.Monad.IO.Class
+import Data.Bifunctor
 import Data.ByteString qualified as B
 import Data.ByteString.Lazy qualified as L
 import Data.ByteString.UTF8 qualified as B
+import Data.HashMap.Strict qualified as Map
+import Data.Maybe (catMaybes)
 import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time
@@ -45,7 +50,11 @@ import Data.Version qualified as V
 import Entity.BuildMode qualified as BM
 import Entity.Const
 import Entity.Digest
+import Entity.Ens qualified as E
+import Entity.Ens.Reify qualified as E
 import Entity.Module
+import Entity.ModuleAlias qualified as MA
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Platform as TP
 import Entity.Source qualified as Src
@@ -159,11 +168,31 @@ getBaseBuildDir baseModule = do
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do
   baseBuildDir <- getBaseBuildDir baseModule
-  optString <- readRef' clangOptString
-  buildMode <- Env.getBuildMode
-  let configString = B.fromString $ T.unpack (BM.reify buildMode) ++ " " ++ optString
-  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode configString)
+  buildSignature <- B.fromString . T.unpack <$> getBuildSignature baseModule
+  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode buildSignature)
   return $ baseBuildDir </> buildOptionPrefix
+
+getBuildSignature :: Module -> App T.Text
+getBuildSignature baseModule = do
+  buildMode <- Env.getBuildMode
+  optString <- readRef' clangOptString
+  let depList = map (second snd) $ Map.toList $ moduleDependency baseModule
+  depList' <- fmap catMaybes $ forM depList $ \(alias, digest) -> do
+    shiftedDigestOrNone <- Antecedent.lookup digest
+    case shiftedDigestOrNone of
+      Nothing ->
+        return Nothing
+      Just shiftedModule ->
+        return $ Just (MA.reify alias, E.inject $ _m :< E.String (MID.reify $ moduleID shiftedModule))
+  let ens =
+        _m
+          :< E.Dictionary
+            []
+            [ ("build-mode", E.inject $ _m :< E.String (BM.reify buildMode)),
+              ("clang-option", E.inject $ _m :< E.String (T.pack optString)),
+              ("compatible-shift", E.inject $ _m :< E.Dictionary [] depList')
+            ]
+  return $ E.pp $ E.inject ens
 
 getArtifactDir :: Module -> App (Path Abs Dir)
 getArtifactDir baseModule = do

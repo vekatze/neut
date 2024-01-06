@@ -2,6 +2,7 @@ module Entity.ModuleAlias where
 
 import Data.Binary
 import Data.Hashable
+import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import GHC.Generics (Generic)
 
@@ -23,3 +24,7 @@ coreModuleAlias =
 baseModuleAlias :: ModuleAlias
 baseModuleAlias =
   ModuleAlias BN.base
+
+reify :: ModuleAlias -> T.Text
+reify alias =
+  BN.reify (extract alias)

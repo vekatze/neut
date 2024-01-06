@@ -77,6 +77,7 @@ adjustUnravelResult sourceSeq = do
   let sourceList = toList sourceSeq
   registerAntecedentInfo sourceList
   sourceList' <- mapM Source.shiftToLatest sourceList
+  forM_ sourceList' Parse.ensureExistence
   return $ sanitizeSourceList sourceList'
 
 unravel' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
