@@ -112,7 +112,7 @@ unravelModule axis currentModule = do
         Module.fromFilePath moduleID path' >>= unravelModule axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
-      registerAntecedentInfo' currentModule
+      registerAntecedentInfo currentModule
 
 unravel'' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
 unravel'' source = do
@@ -229,8 +229,6 @@ getFreshTime source itemPath = do
 
 raiseCyclicPath :: Path Abs File -> [Path Abs File] -> App a
 raiseCyclicPath path pathList = do
-  -- traceSourceList <- Unravel.getTraceSourceList
-  -- let m = newSourceHint $ Source.sourceFilePath source
   let m = newSourceHint path
   let cyclicPathList = reverse $ path : pathList
   Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
@@ -278,31 +276,8 @@ parseSourceHeader currentSource = do
   (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
   interpretImport currentSource importOrNone
 
--- registerAntecedentInfo :: [Source.Source] -> App ()
--- registerAntecedentInfo sourceList =
---   forM_ sourceList $ \source -> do
---     let newModule = Source.sourceModule source
---     let antecedents = moduleAntecedents newModule
---     forM_ antecedents $ \antecedent ->
---       Antecedent.insert antecedent newModule
-
-registerAntecedentInfo' :: Module -> App ()
-registerAntecedentInfo' baseModule = do
+registerAntecedentInfo :: Module -> App ()
+registerAntecedentInfo baseModule = do
   let antecedents = moduleAntecedents baseModule
   forM_ antecedents $ \antecedent ->
     Antecedent.insert antecedent baseModule
-
--- linearizeSourceList :: [Source.Source] -> [Source.Source]
--- linearizeSourceList =
---   linearizeSourceList' S.empty
-
--- linearizeSourceList' :: S.Set (Path Abs File) -> [Source.Source] -> [Source.Source]
--- linearizeSourceList' pathSet sourceList =
---   case sourceList of
---     [] ->
---       []
---     source : rest -> do
---       let path = Source.sourceFilePath source
---       if S.member path pathSet
---         then linearizeSourceList' pathSet rest
---         else source : linearizeSourceList' (S.insert path pathSet) rest

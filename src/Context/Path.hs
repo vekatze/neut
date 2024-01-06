@@ -173,8 +173,8 @@ getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do
   baseBuildDir <- getBaseBuildDir baseModule
   buildSignature <- getBuildSignature baseModule
-  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ buildSignature
-  return $ baseBuildDir </> buildOptionPrefix
+  buildPrefix <- P.parseRelDir $ "build-" ++ buildSignature
+  return $ baseBuildDir </> buildPrefix
 
 getBuildSignature :: Module -> App String
 getBuildSignature baseModule = do
