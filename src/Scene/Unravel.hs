@@ -37,7 +37,7 @@ import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as ParseCore
 import Scene.Parse.Import (interpretImport)
 import Scene.Parse.Program (parseImport)
-import Scene.Source.ShiftToLatest qualified as Source
+import Scene.Source.ShiftToLatest
 
 type CacheTime =
   Maybe UTCTime
@@ -74,8 +74,11 @@ unravelFromFile path = do
 unravel' :: Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' source = do
   axis <- newAxis
-  unravelModule axis (Source.sourceModule source)
-  (artifactTime, sourceSeq) <- unravel'' source
+  arrowList <- unravelModule axis (Source.sourceModule source)
+  cAxis <- newCAxis
+  shiftMap <- compressMap cAxis (Map.fromList arrowList) arrowList
+  (artifactTime, sourceSeq) <- unravel'' (UAxis {shiftMap}) source
+  Antecedent.setMap shiftMap
   forM_ sourceSeq Parse.ensureExistence
   return (artifactTime, toList sourceSeq)
 
@@ -93,7 +96,7 @@ data Axis = Axis
     traceListRef :: IORef [Path Abs File]
   }
 
-unravelModule :: Axis -> Module -> App ()
+unravelModule :: Axis -> Module -> App [(MID.ModuleID, Module)]
 unravelModule axis currentModule = do
   visitMap <- liftIO $ readIORef $ visitMapRef axis
   path <- Module.getModuleFilePath Nothing (moduleID currentModule)
@@ -102,21 +105,25 @@ unravelModule axis currentModule = do
       pathList <- liftIO $ readIORef $ traceListRef axis
       raiseCyclicPath path pathList
     Just VI.Finish ->
-      return ()
+      return []
     Nothing -> do
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Active
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
       let children = map (MID.Library . snd . snd) $ Map.toList $ moduleDependency currentModule
-      forM_ children $ \moduleID -> do
+      arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath Nothing moduleID
         Module.fromFilePath moduleID path' >>= unravelModule axis
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
       liftIO $ modifyIORef' (traceListRef axis) tail
-      registerAntecedentInfo currentModule
+      return $ getAntecedentArrow currentModule ++ arrows
 
-unravel'' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
-unravel'' source = do
-  source' <- Source.shiftToLatest source
+newtype UAxis = UAxis
+  { shiftMap :: ShiftMap
+  }
+
+unravel'' :: UAxis -> Source.Source -> App (A.ArtifactTime, Seq Source.Source)
+unravel'' axis source = do
+  source' <- shiftToLatest (shiftMap axis) source
   visitEnv <- Unravel.getVisitEnv
   let path = Source.sourceFilePath source'
   case Map.lookup path visitEnv of
@@ -130,7 +137,7 @@ unravel'' source = do
       Unravel.insertToVisitEnv path VI.Active
       Unravel.pushToTraceSourceList source'
       children <- getChildren source'
-      (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children
+      (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' axis) children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
       artifactTime <- getArtifactTime artifactTimeList source'
@@ -231,27 +238,27 @@ raiseCyclicPath :: Path Abs File -> [Path Abs File] -> App a
 raiseCyclicPath path pathList = do
   let m = newSourceHint path
   let cyclicPathList = reverse $ path : pathList
-  Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
+  Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
 
-showCyclicPath :: [Path Abs File] -> T.Text
-showCyclicPath pathList =
-  case pathList of
+showCycle :: [T.Text] -> T.Text
+showCycle textList =
+  case textList of
     [] ->
       ""
-    [path] ->
-      T.pack (toFilePath path)
-    path : ps ->
-      "     " <> T.pack (toFilePath path) <> showCyclicPath' ps
+    [text] ->
+      text
+    text : ps ->
+      "     " <> text <> showCycle' ps
 
-showCyclicPath' :: [Path Abs File] -> T.Text
-showCyclicPath' pathList =
-  case pathList of
+showCycle' :: [T.Text] -> T.Text
+showCycle' textList =
+  case textList of
     [] ->
       ""
-    [path] ->
-      "\n  ~> " <> T.pack (toFilePath path)
-    path : ps ->
-      "\n  ~> " <> T.pack (toFilePath path) <> showCyclicPath' ps
+    [text] ->
+      "\n  ~> " <> text
+    text : ps ->
+      "\n  ~> " <> text <> showCycle' ps
 
 getChildren :: Source.Source -> App [Source.Source]
 getChildren currentSource = do
@@ -276,8 +283,61 @@ parseSourceHeader currentSource = do
   (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
   interpretImport currentSource importOrNone
 
-registerAntecedentInfo :: Module -> App ()
-registerAntecedentInfo baseModule = do
+getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]
+getAntecedentArrow baseModule = do
   let antecedents = moduleAntecedents baseModule
-  forM_ antecedents $ \antecedent ->
-    Antecedent.insert antecedent baseModule
+  map (\antecedent -> (MID.Library antecedent, baseModule)) antecedents
+
+newtype CAxis = CAxis
+  { cacheMapRef :: IORef ShiftMap
+  }
+
+newCAxis :: App CAxis
+newCAxis = do
+  cacheMapRef <- liftIO $ newIORef Map.empty
+  return $ CAxis {..}
+
+compressMap :: CAxis -> ShiftMap -> [(MID.ModuleID, Module)] -> App ShiftMap
+compressMap axis baseMap arrowList =
+  case arrowList of
+    [] ->
+      return Map.empty
+    (from, to) : rest -> do
+      restMap <- compressMap axis baseMap rest
+      to' <- chase axis baseMap [] (moduleID to) to
+      case Map.lookup from restMap of
+        Just to''
+          | moduleID to' /= moduleID to'' -> do
+              Throw.raiseError' $
+                "found a non-confluent antecedent graph:\n"
+                  <> MID.reify from
+                  <> " ~> {"
+                  <> MID.reify (moduleID to')
+                  <> ", "
+                  <> MID.reify (moduleID to'')
+                  <> "}"
+        _ ->
+          return $ Map.insert from to' restMap
+
+chase :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> App Module
+chase axis baseMap found k i = do
+  cacheMap <- liftIO $ readIORef $ cacheMapRef axis
+  case Map.lookup (moduleID i) cacheMap of
+    Just j ->
+      return j
+    Nothing -> do
+      chase' axis baseMap found k i
+
+chase' :: CAxis -> ShiftMap -> [MID.ModuleID] -> MID.ModuleID -> Module -> App Module
+chase' axis baseMap found k i = do
+  case Map.lookup (moduleID i) baseMap of
+    Nothing -> do
+      liftIO $ modifyIORef' (cacheMapRef axis) $ Map.insert k i
+      return i
+    Just j -> do
+      let j' = moduleID j
+      if j' `elem` found
+        then
+          Throw.raiseError' $
+            "found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
+        else chase axis baseMap (j' : found) k j
