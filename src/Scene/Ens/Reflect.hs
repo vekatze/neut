@@ -20,7 +20,7 @@ import Text.Megaparsec hiding (parse)
 
 fromFilePath :: Path Abs File -> App (C, (E.Ens, C))
 fromFilePath path = do
-  fileContent <- readSourceFile path
+  fileContent <- readTextFile path
   fromFilePath' path fileContent
 
 fromFilePath' :: Path Abs File -> T.Text -> App (C, (E.Ens, C))

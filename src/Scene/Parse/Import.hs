@@ -32,7 +32,6 @@ import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Syntax.Series qualified as SE
 import Path
 import Scene.Module.Reflect qualified as Module
-import Scene.Source.ShiftToLatest
 
 type LocatorText =
   T.Text
@@ -109,7 +108,7 @@ getSource m sgl locatorText = do
   relPath <- addExtension sourceFileExtension $ SL.reify $ SGL.sourceLocator sgl
   let nextPath = getSourceDir nextModule </> relPath
   Tag.insertFileLoc m (T.length locatorText) (newSourceHint nextPath)
-  shiftToLatest $
+  return $
     Source.Source
       { Source.sourceModule = nextModule,
         Source.sourceFilePath = nextPath,

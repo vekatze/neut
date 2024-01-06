@@ -4,6 +4,7 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Data.Text qualified as T
 import Entity.Module
 import Entity.ModuleID qualified as MID
 import Entity.Source (Source (sourceModule))
@@ -38,4 +39,20 @@ getNewerSource source newModule = do
   b <- Path.doesFileExist newSourceFilePath
   if b
     then return newSource
-    else Throw.raiseError' "the module foo declares incompatible versions to be compatible"
+    else do
+      relPath <- Source.getRelPathFromSourceDir source
+      case Source.sourceHint source of
+        Nothing -> do
+          Throw.raiseError' $
+            "the file `"
+              <> T.pack (toFilePath relPath)
+              <> "` is missing in the module `"
+              <> MID.reify (moduleID newModule)
+              <> "`"
+        Just m -> do
+          Throw.raiseError m $
+            "the file `"
+              <> T.pack (toFilePath relPath)
+              <> "` is missing in the module `"
+              <> MID.reify (moduleID newModule)
+              <> "`"

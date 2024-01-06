@@ -25,6 +25,7 @@ import Entity.GlobalName qualified as GN
 import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module qualified as Module
+import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
@@ -128,5 +129,9 @@ getMainDefiniteDescription source = do
 
 isMainFile :: Source.Source -> App Bool
 isMainFile source = do
-  let sourcePathList = Module.getTargetPathList $ Source.sourceModule source
-  return $ elem (Source.sourceFilePath source) sourcePathList
+  case Module.moduleID $ Source.sourceModule source of
+    MID.Main -> do
+      let sourcePathList = Module.getTargetPathList $ Source.sourceModule source
+      return $ elem (Source.sourceFilePath source) sourcePathList
+    _ ->
+      return False

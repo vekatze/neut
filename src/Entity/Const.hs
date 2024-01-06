@@ -49,6 +49,10 @@ moduleFile :: Path Rel File
 moduleFile =
   $(mkRelFile "module.ens")
 
+signatureFile :: Path Rel File
+signatureFile =
+  $(mkRelFile "signature.ens")
+
 sourceRelDir :: Path Rel Dir
 sourceRelDir =
   $(mkRelDir "source")

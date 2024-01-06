@@ -1,7 +1,7 @@
 module Context.Parse
-  ( readSourceFile,
-    writeSourceFile,
-    printSourceFile,
+  ( readTextFile,
+    writeTextFile,
+    printTextFile,
     ensureExistence,
   )
 where
@@ -17,8 +17,8 @@ import Entity.Source
 import Path
 import Path.IO
 
-readSourceFile :: Path Abs File -> App T.Text
-readSourceFile path = do
+readTextFile :: Path Abs File -> App T.Text
+readTextFile path = do
   liftIO $ do
     if isStdin path
       then decodeUtf8 <$> B.getContents
@@ -28,12 +28,12 @@ isStdin :: Path Abs File -> Bool
 isStdin path =
   toFilePath (filename path) == "-"
 
-writeSourceFile :: Path Abs File -> T.Text -> App ()
-writeSourceFile path content = do
+writeTextFile :: Path Abs File -> T.Text -> App ()
+writeTextFile path content = do
   liftIO $ B.writeFile (toFilePath path) $ encodeUtf8 content
 
-printSourceFile :: T.Text -> App ()
-printSourceFile content = do
+printTextFile :: T.Text -> App ()
+printTextFile content = do
   liftIO $ B.putStr $ encodeUtf8 content
 
 ensureExistence :: Source -> App ()
