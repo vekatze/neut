@@ -32,6 +32,7 @@ import Prelude hiding (log)
 build :: Config -> App ()
 build cfg = do
   LLVM.ensureSetupSanity cfg
+  Path.ensureNotInLibDir
   Initialize.initializeCompiler (remarkCfg cfg) (mClangOptString cfg)
   Env.setBuildMode $ buildMode cfg
   Module.getMainModule >>= Fetch.fetch

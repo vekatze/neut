@@ -4,6 +4,7 @@ module Context.Path
   ( getLibraryDirPath,
     getCurrentDir,
     ensureNotInLibDir,
+    inLibDir,
     resolveDir,
     resolveFile,
     doesDirExist,
@@ -76,11 +77,16 @@ getCurrentDir =
 
 ensureNotInLibDir :: App ()
 ensureNotInLibDir = do
-  currentDir <- getCurrentDir
-  libDir <- getLibraryDirPath
-  when (P.isProperPrefixOf libDir currentDir) $
+  b <- inLibDir
+  when b $
     Throw.raiseError'
       "this command cannot be used under the library directory"
+
+inLibDir :: App Bool
+inLibDir = do
+  currentDir <- getCurrentDir
+  libDir <- getLibraryDirPath
+  return $ P.isProperPrefixOf libDir currentDir
 
 resolveDir :: Path Abs Dir -> FilePath -> App (Path Abs Dir)
 resolveDir =
