@@ -16,21 +16,24 @@ import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Context.Unravel qualified as Unravel
 import Control.Monad
+import Control.Monad.IO.Class (MonadIO (liftIO))
 import Data.Foldable
 import Data.HashMap.Strict qualified as Map
+import Data.IORef (IORef, modifyIORef', newIORef, readIORef)
 import Data.Sequence as Seq (Seq, empty, (><), (|>))
-import Data.Set qualified as S
 import Data.Text qualified as T
 import Data.Time
 import Entity.AliasInfo
 import Entity.Artifact qualified as A
 import Entity.Hint
 import Entity.Module
+import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
 import Entity.Target
 import Entity.VisitInfo qualified as VI
 import Path
+import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as ParseCore
 import Scene.Parse.Import (interpretImport)
 import Scene.Parse.Program (parseImport)
@@ -55,7 +58,7 @@ unravel target = do
     Nothing ->
       Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
     Just mainFilePath -> do
-      unravel' >=> mapM adjustUnravelResult $
+      unravel' $
         Source.Source
           { Source.sourceModule = mainModule,
             Source.sourceFilePath = mainFilePath,
@@ -66,38 +69,72 @@ unravelFromFile ::
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
 unravelFromFile path = do
-  initialSource <- Module.sourceFromPath path
-  unravel' >=> mapM adjustUnravelResult $ initialSource
+  Module.sourceFromPath path >>= unravel'
 
-adjustUnravelResult ::
-  Seq Source.Source ->
-  App [Source.Source]
-adjustUnravelResult sourceSeq = do
-  let sourceList = toList sourceSeq
-  registerAntecedentInfo sourceList
-  sourceList' <- mapM Source.shiftToLatest sourceList
-  forM_ sourceList' Parse.ensureExistence
-  return $ sanitizeSourceList sourceList'
-
-unravel' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
+unravel' :: Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' source = do
+  axis <- newAxis
+  unravelModule axis (Source.sourceModule source)
+  (artifactTime, sourceSeq) <- unravel'' source
+  forM_ sourceSeq Parse.ensureExistence
+  return (artifactTime, toList sourceSeq)
+
+type VisitMap =
+  Map.HashMap (Path Abs File) VI.VisitInfo
+
+newAxis :: App Axis
+newAxis = do
+  visitMapRef <- liftIO $ newIORef Map.empty
+  traceListRef <- liftIO $ newIORef []
+  return Axis {..}
+
+data Axis = Axis
+  { visitMapRef :: IORef VisitMap,
+    traceListRef :: IORef [Path Abs File]
+  }
+
+unravelModule :: Axis -> Module -> App ()
+unravelModule axis currentModule = do
+  visitMap <- liftIO $ readIORef $ visitMapRef axis
+  path <- Module.getModuleFilePath Nothing (moduleID currentModule)
+  case Map.lookup path visitMap of
+    Just VI.Active -> do
+      pathList <- liftIO $ readIORef $ traceListRef axis
+      raiseCyclicPath path pathList
+    Just VI.Finish ->
+      return ()
+    Nothing -> do
+      liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Active
+      liftIO $ modifyIORef' (traceListRef axis) $ (:) path
+      let children = map (MID.Library . snd . snd) $ Map.toList $ moduleDependency currentModule
+      forM_ children $ \moduleID -> do
+        path' <- Module.getModuleFilePath Nothing moduleID
+        Module.fromFilePath moduleID path' >>= unravelModule axis
+      liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Finish
+      liftIO $ modifyIORef' (traceListRef axis) tail
+      registerAntecedentInfo' currentModule
+
+unravel'' :: Source.Source -> App (A.ArtifactTime, Seq Source.Source)
+unravel'' source = do
+  source' <- Source.shiftToLatest source
   visitEnv <- Unravel.getVisitEnv
-  let path = Source.sourceFilePath source
+  let path = Source.sourceFilePath source'
   case Map.lookup path visitEnv of
-    Just VI.Active ->
-      raiseCyclicPath source
+    Just VI.Active -> do
+      traceSourceList <- Unravel.getTraceSourceList
+      raiseCyclicPath path (map Source.sourceFilePath traceSourceList)
     Just VI.Finish -> do
       artifactTime <- Env.lookupArtifactTime path
       return (artifactTime, Seq.empty)
     Nothing -> do
       Unravel.insertToVisitEnv path VI.Active
-      Unravel.pushToTraceSourceList source
-      children <- getChildren source
-      (artifactTimeList, seqList) <- mapAndUnzipM unravel' children
+      Unravel.pushToTraceSourceList source'
+      children <- getChildren source'
+      (artifactTimeList, seqList) <- mapAndUnzipM unravel'' children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
-      artifactTime <- getArtifactTime artifactTimeList source
-      return (artifactTime, foldl' (><) Seq.empty seqList |> source)
+      artifactTime <- getArtifactTime artifactTimeList source'
+      return (artifactTime, foldl' (><) Seq.empty seqList |> source')
 
 getArtifactTime :: [A.ArtifactTime] -> Source.Source -> App A.ArtifactTime
 getArtifactTime artifactTimeList source = do
@@ -190,11 +227,12 @@ getFreshTime source itemPath = do
         then return $ Just itemModTime
         else return Nothing
 
-raiseCyclicPath :: Source.Source -> App a
-raiseCyclicPath source = do
-  traceSourceList <- Unravel.getTraceSourceList
-  let m = Entity.Hint.new 1 1 $ toFilePath $ Source.sourceFilePath source
-  let cyclicPathList = map Source.sourceFilePath $ reverse $ source : traceSourceList
+raiseCyclicPath :: Path Abs File -> [Path Abs File] -> App a
+raiseCyclicPath path pathList = do
+  -- traceSourceList <- Unravel.getTraceSourceList
+  -- let m = newSourceHint $ Source.sourceFilePath source
+  let m = newSourceHint path
+  let cyclicPathList = reverse $ path : pathList
   Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCyclicPath cyclicPathList
 
 showCyclicPath :: [Path Abs File] -> T.Text
@@ -240,25 +278,31 @@ parseSourceHeader currentSource = do
   (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
   interpretImport currentSource importOrNone
 
-registerAntecedentInfo :: [Source.Source] -> App ()
-registerAntecedentInfo sourceList =
-  forM_ sourceList $ \source -> do
-    let newModule = Source.sourceModule source
-    let antecedents = moduleAntecedents newModule
-    forM_ antecedents $ \antecedent ->
-      Antecedent.insert antecedent newModule
+-- registerAntecedentInfo :: [Source.Source] -> App ()
+-- registerAntecedentInfo sourceList =
+--   forM_ sourceList $ \source -> do
+--     let newModule = Source.sourceModule source
+--     let antecedents = moduleAntecedents newModule
+--     forM_ antecedents $ \antecedent ->
+--       Antecedent.insert antecedent newModule
 
-sanitizeSourceList :: [Source.Source] -> [Source.Source]
-sanitizeSourceList =
-  sanitizeSourceList' S.empty
+registerAntecedentInfo' :: Module -> App ()
+registerAntecedentInfo' baseModule = do
+  let antecedents = moduleAntecedents baseModule
+  forM_ antecedents $ \antecedent ->
+    Antecedent.insert antecedent baseModule
 
-sanitizeSourceList' :: S.Set (Path Abs File) -> [Source.Source] -> [Source.Source]
-sanitizeSourceList' pathSet sourceList =
-  case sourceList of
-    [] ->
-      []
-    source : rest -> do
-      let path = Source.sourceFilePath source
-      if S.member path pathSet
-        then sanitizeSourceList' pathSet rest
-        else source : sanitizeSourceList' (S.insert path pathSet) rest
+-- linearizeSourceList :: [Source.Source] -> [Source.Source]
+-- linearizeSourceList =
+--   linearizeSourceList' S.empty
+
+-- linearizeSourceList' :: S.Set (Path Abs File) -> [Source.Source] -> [Source.Source]
+-- linearizeSourceList' pathSet sourceList =
+--   case sourceList of
+--     [] ->
+--       []
+--     source : rest -> do
+--       let path = Source.sourceFilePath source
+--       if S.member path pathSet
+--         then linearizeSourceList' pathSet rest
+--         else source : linearizeSourceList' (S.insert path pathSet) rest
