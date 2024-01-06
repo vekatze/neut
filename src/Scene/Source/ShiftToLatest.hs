@@ -1,9 +1,13 @@
-module Scene.Source.ShiftToLatest (shiftToLatest) where
+module Scene.Source.ShiftToLatest
+  ( shiftToLatest,
+    ShiftMap,
+  )
+where
 
-import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
+import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Module
 import Entity.ModuleID qualified as MID
@@ -11,20 +15,15 @@ import Entity.Source (Source (sourceModule))
 import Entity.Source qualified as Source
 import Path
 
-shiftToLatest :: Source.Source -> App Source.Source
-shiftToLatest source = do
-  case moduleID $ sourceModule source of
-    MID.Main ->
+type ShiftMap = Map.HashMap MID.ModuleID Module
+
+shiftToLatest :: ShiftMap -> Source.Source -> App Source.Source
+shiftToLatest shiftMap source = do
+  case Map.lookup (moduleID $ sourceModule source) shiftMap of
+    Nothing ->
       return source
-    MID.Base ->
-      return source
-    MID.Library digest -> do
-      mNewDigest <- Antecedent.lookup digest
-      case mNewDigest of
-        Nothing ->
-          return source
-        Just newModule -> do
-          getNewerSource source newModule >>= shiftToLatest
+    Just newModule -> do
+      getNewerSource source newModule
 
 getNewerSource :: Source.Source -> Module -> App Source.Source
 getNewerSource source newModule = do

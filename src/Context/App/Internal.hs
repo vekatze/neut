@@ -55,7 +55,7 @@ data Env = Env
     sourceNameMap :: IORef (Map.HashMap (Path Abs File) TopNameMap),
     nameMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, GN.GlobalName)),
     geistMap :: IORef (Map.HashMap DD.DefiniteDescription (Hint, IsConstLike)),
-    antecedentMap :: IORef (Map.HashMap MD.ModuleDigest M.Module),
+    antecedentMap :: IORef (Map.HashMap MID.ModuleID M.Module),
     constraintEnv :: IORef [C.Constraint],
     suspendedEnv :: IORef [C.SuspendedConstraint],
     remarkList :: IORef [Remark.Remark], -- per file

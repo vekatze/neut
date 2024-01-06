@@ -6,13 +6,14 @@ import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Entity.Module qualified as M
 import Entity.ModuleDigest qualified as MD
+import Entity.ModuleID qualified as MID
 import Prelude hiding (lookup, read)
 
-insert :: MD.ModuleDigest -> M.Module -> App ()
-insert old new =
-  modifyRef' antecedentMap $ Map.insert old new
+setMap :: Map.HashMap MID.ModuleID M.Module -> App ()
+setMap =
+  writeRef' antecedentMap
 
 lookup :: MD.ModuleDigest -> App (Maybe M.Module)
 lookup mc = do
   aenv <- readRef' antecedentMap
-  return $ Map.lookup mc aenv
+  return $ Map.lookup (MID.Library mc) aenv
