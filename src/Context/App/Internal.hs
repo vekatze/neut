@@ -31,6 +31,7 @@ import Entity.Module qualified as M
 import Entity.Module qualified as Module
 import Entity.ModuleAlias qualified as MA
 import Entity.ModuleDigest qualified as MD
+import Entity.ModuleID qualified as MID
 import Entity.Opacity qualified as O
 import Entity.OptimizableData
 import Entity.Remark qualified as Remark
@@ -65,6 +66,7 @@ data Env = Env
     unusedImportMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
+    buildSignatureMap :: IORef (Map.HashMap MID.ModuleID String), -- only for memoization
     holeSubst :: IORef HS.HoleSubst,
     sourceChildrenMap :: IORef (Map.HashMap (Path Abs File) [(Source.Source, [AliasInfo])]),
     traceSourceList :: IORef [Source.Source],
@@ -121,6 +123,7 @@ newEnv = do
   antecedentMap <- newIORef Map.empty
   constraintEnv <- newIORef []
   suspendedEnv <- newIORef []
+  buildSignatureMap <- newIORef Map.empty
   holeSubst <- newIORef HS.empty
   sourceChildrenMap <- newIORef Map.empty
   weakTypeEnv <- newIORef IntMap.empty

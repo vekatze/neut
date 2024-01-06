@@ -172,31 +172,38 @@ getBaseBuildDir baseModule = do
 getBuildDir :: Module -> App (Path Abs Dir)
 getBuildDir baseModule = do
   baseBuildDir <- getBaseBuildDir baseModule
-  buildSignature <- B.fromString . T.unpack <$> getBuildSignature baseModule
-  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode buildSignature)
+  buildSignature <- getBuildSignature baseModule
+  buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ buildSignature
   return $ baseBuildDir </> buildOptionPrefix
 
-getBuildSignature :: Module -> App T.Text
+getBuildSignature :: Module -> App String
 getBuildSignature baseModule = do
-  buildMode <- Env.getBuildMode
-  optString <- readRef' clangOptString
-  let depList = map (second snd) $ Map.toList $ moduleDependency baseModule
-  depList' <- fmap catMaybes $ forM depList $ \(alias, digest) -> do
-    shiftedDigestOrNone <- Antecedent.lookup digest
-    case shiftedDigestOrNone of
-      Nothing ->
-        return Nothing
-      Just shiftedModule ->
-        return $ Just (MA.reify alias, E.inject $ _m :< E.String (MID.reify $ moduleID shiftedModule))
-  let ens =
-        _m
-          :< E.Dictionary
-            []
-            [ ("build-mode", E.inject $ _m :< E.String (BM.reify buildMode)),
-              ("extra-clang-option", E.inject $ _m :< E.String (T.pack optString)),
-              ("compatible-shift", E.inject $ _m :< E.Dictionary [] depList')
-            ]
-  return $ E.pp $ E.inject ens
+  sigMap <- readRef' buildSignatureMap
+  case Map.lookup (moduleID baseModule) sigMap of
+    Just sig -> do
+      return sig
+    Nothing -> do
+      buildMode <- Env.getBuildMode
+      optString <- readRef' clangOptString
+      let depList = map (second snd) $ Map.toList $ moduleDependency baseModule
+      depList' <- fmap catMaybes $ forM depList $ \(alias, digest) -> do
+        shiftedDigestOrNone <- Antecedent.lookup digest
+        case shiftedDigestOrNone of
+          Nothing ->
+            return Nothing
+          Just shiftedModule ->
+            return $ Just (MA.reify alias, E.inject $ _m :< E.String (MID.reify $ moduleID shiftedModule))
+      let ens =
+            _m
+              :< E.Dictionary
+                []
+                [ ("build-mode", E.inject $ _m :< E.String (BM.reify buildMode)),
+                  ("extra-clang-option", E.inject $ _m :< E.String (T.pack optString)),
+                  ("compatible-shift", E.inject $ _m :< E.Dictionary [] depList')
+                ]
+      let sig = B.toString $ hashAndEncode $ B.fromString $ T.unpack $ E.pp $ E.inject ens
+      modifyRef' buildSignatureMap $ Map.insert (moduleID baseModule) sig
+      return sig
 
 getArtifactDir :: Module -> App (Path Abs Dir)
 getArtifactDir baseModule = do
