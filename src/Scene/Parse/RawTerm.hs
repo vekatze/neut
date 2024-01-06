@@ -9,7 +9,6 @@ module Scene.Parse.RawTerm
     preVar,
     parseName,
     lowType,
-    f,
   )
 where
 
@@ -763,7 +762,3 @@ locatorToVarGlobal m text = do
 rawVar :: Hint -> Name -> RT.RawTerm
 rawVar m name =
   m :< RT.Var name
-
-f :: RawBinder (a, C) -> RawBinder a
-f (m, x, c1, c2, (t, _)) =
-  (m, x, c1, c2, t)
