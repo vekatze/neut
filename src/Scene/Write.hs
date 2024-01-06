@@ -8,4 +8,4 @@ import Prelude hiding (log)
 
 write :: Path Abs File -> T.Text -> App ()
 write path content = do
-  writeSourceFile path content
+  writeTextFile path content

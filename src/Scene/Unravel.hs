@@ -11,7 +11,6 @@ import Context.App
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
-import Context.Parse (readSourceFile)
 import Context.Parse qualified as Parse
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
@@ -237,7 +236,7 @@ parseSourceHeader currentSource = do
   Locator.initialize
   Parse.ensureExistence currentSource
   let path = Source.sourceFilePath currentSource
-  fileContent <- readSourceFile path
+  fileContent <- Parse.readTextFile path
   (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
   interpretImport currentSource importOrNone
 
