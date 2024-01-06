@@ -19,9 +19,8 @@ module Context.Path
     removeDirRecur,
     getExecutableOutputPath,
     getBaseBuildDir,
-    getBuildDir,
     getInstallDir,
-    getArtifactDir,
+    writeBuildSignature,
     getPlatformPrefix,
     sourceToOutputPath,
     getSourceCachePath,
@@ -33,6 +32,7 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
+import Context.Parse (writeTextFile)
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -172,6 +172,16 @@ getBuildDir baseModule = do
   buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode buildSignature)
   return $ baseBuildDir </> buildOptionPrefix
 
+writeBuildSignature :: Module -> App ()
+writeBuildSignature baseModule = do
+  buildDir <- getBuildDir baseModule
+  ensureDir buildDir
+  let signatureFilePath = buildDir </> signatureFile
+  b <- doesFileExist signatureFilePath
+  unless b $ do
+    buildSignature <- getBuildSignature baseModule
+    writeTextFile signatureFilePath buildSignature
+
 getBuildSignature :: Module -> App T.Text
 getBuildSignature baseModule = do
   buildMode <- Env.getBuildMode
@@ -189,7 +199,7 @@ getBuildSignature baseModule = do
           :< E.Dictionary
             []
             [ ("build-mode", E.inject $ _m :< E.String (BM.reify buildMode)),
-              ("clang-option", E.inject $ _m :< E.String (T.pack optString)),
+              ("extra-clang-option", E.inject $ _m :< E.String (T.pack optString)),
               ("compatible-shift", E.inject $ _m :< E.Dictionary [] depList')
             ]
   return $ E.pp $ E.inject ens
