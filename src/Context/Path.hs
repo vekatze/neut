@@ -21,7 +21,6 @@ module Context.Path
     getExecutableOutputPath,
     getBaseBuildDir,
     getInstallDir,
-    writeBuildSignature,
     getPlatformPrefix,
     sourceToOutputPath,
     getSourceCachePath,
@@ -33,7 +32,6 @@ import Context.Antecedent qualified as Antecedent
 import Context.App
 import Context.App.Internal
 import Context.Env qualified as Env
-import Context.Parse (writeTextFile)
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
 import Control.Monad
@@ -177,16 +175,6 @@ getBuildDir baseModule = do
   buildSignature <- B.fromString . T.unpack <$> getBuildSignature baseModule
   buildOptionPrefix <- P.parseRelDir $ "build-option-" ++ B.toString (hashAndEncode buildSignature)
   return $ baseBuildDir </> buildOptionPrefix
-
-writeBuildSignature :: Module -> App ()
-writeBuildSignature baseModule = do
-  buildDir <- getBuildDir baseModule
-  ensureDir buildDir
-  let signatureFilePath = buildDir </> signatureFile
-  b <- doesFileExist signatureFilePath
-  unless b $ do
-    buildSignature <- getBuildSignature baseModule
-    writeTextFile signatureFilePath buildSignature
 
 getBuildSignature :: Module -> App T.Text
 getBuildSignature baseModule = do
