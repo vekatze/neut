@@ -34,11 +34,7 @@ complete uri pos = do
   pathString <- liftMaybe $ uriToFilePath uri
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   let loc = positionToLoc pos
-  localVarList <- getLocalCompletionItems currentSource loc
-  let baseModule = sourceModule currentSource
-  globalVarList <- lift $ getAllTopCandidate baseModule
-  globalVarList' <- lift $ concat <$> mapM (uncurry (adjustTopCandidate currentSource loc)) globalVarList
-  return $ localVarList ++ globalVarList'
+  lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
 
 adjustTopCandidate :: Source -> Loc -> Source -> [TopCandidate] -> App [CompletionItem]
 adjustTopCandidate currentSource loc candSource candList = do
@@ -47,13 +43,27 @@ adjustTopCandidate currentSource loc candSource candList = do
   let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
   return $ concatMap (topCandidateToCompletionItem candIsInCurrentSource locator loc prefixList) candList
 
-getLocalCompletionItems :: Source -> Loc -> AppM [CompletionItem]
+itemGetterList :: [Source -> Loc -> App [CompletionItem]]
+itemGetterList =
+  [getLocalCompletionItems, getGlobalCompletionItems]
+
+getLocalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems source loc = do
-  cachePath <- lift $ Path.getSourceCachePath source
-  cache <- lift (Cache.loadCacheOptimistically cachePath) >>= liftMaybe
-  let localVarList = LVT.collect loc (Cache.localVarTree cache)
-  let localVarList' = nubOrd $ sort $ map Ident.toText localVarList
-  return $ map identToCompletionItem localVarList'
+  cachePath <- Path.getSourceCachePath source
+  cacheOrNone <- Cache.loadCacheOptimistically cachePath
+  case cacheOrNone of
+    Nothing ->
+      return []
+    Just cache -> do
+      let localVarList = LVT.collect loc (Cache.localVarTree cache)
+      let localVarList' = nubOrd $ sort $ map Ident.toText localVarList
+      return $ map identToCompletionItem localVarList'
+
+getGlobalCompletionItems :: Source -> Loc -> App [CompletionItem]
+getGlobalCompletionItems currentSource loc = do
+  let baseModule = sourceModule currentSource
+  globalVarList <- getAllTopCandidate baseModule
+  concat <$> mapM (uncurry (adjustTopCandidate currentSource loc)) globalVarList
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
