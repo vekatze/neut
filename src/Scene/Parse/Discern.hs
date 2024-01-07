@@ -138,10 +138,14 @@ discernGeist endLoc geist = do
   (expArgs', nenv') <- discernBinder nenv expArgs endLoc
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
   cod' <- discern nenv' $ snd $ RT.cod geist
+  let m = RT.loc geist
+  let dd = nameLifter $ fst $ RT.name geist
+  let kind = if RT.isConstLike geist then Constant else Function
+  TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = kind}
   return $
     G.Geist
-      { loc = RT.loc geist,
-        name = nameLifter $ fst $ RT.name geist,
+      { loc = m,
+        name = dd,
         isConstLike = RT.isConstLike geist,
         impArgs = impArgs',
         expArgs = expArgs',
