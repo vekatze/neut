@@ -25,6 +25,7 @@ import Entity.Ident
 import Entity.IsConstLike
 import Entity.Key
 import Entity.LocalLocator qualified as LL
+import Entity.LocalVarTree qualified as LVT
 import Entity.LocationTree qualified as LT
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
@@ -61,6 +62,7 @@ data Env = Env
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
+    localVarMap :: IORef LVT.LocalVarTree,
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
     unusedImportMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
@@ -113,6 +115,7 @@ newEnv = do
   remarkList <- newIORef []
   globalRemarkList <- newIORef []
   tagMap <- newIORef LT.empty
+  localVarMap <- newIORef LVT.empty
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty
   unusedImportMap <- newIORef Map.empty

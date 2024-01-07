@@ -8,6 +8,7 @@ import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
 import Context.Remark qualified as Remark
+import Context.SymLoc qualified as SymLoc
 import Context.Throw qualified as Throw
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
@@ -78,11 +79,13 @@ synthesizeStmtList stmtList = do
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
+  localVarTree <- SymLoc.get
   Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
-        Cache.locationTree = tmap
+        Cache.locationTree = tmap,
+        Cache.localVarTree = localVarTree
       }
   Remark.insertToGlobalRemarkList remarkList
   return stmtList'

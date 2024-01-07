@@ -7,7 +7,6 @@ where
 import Context.App
 import Context.Global qualified as Global
 import Context.Locator qualified as Locator
-import Context.Remark (printNote')
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -50,13 +49,11 @@ parseSource source cacheOrContent = do
   let path = Source.sourceFilePath source
   case cacheOrContent of
     Left cache -> do
-      printNote' $ "using cache: " <> T.pack (toFilePath path)
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       saveTopLevelNames path $ mapMaybe getStmtName stmtList
       return $ Left cache
     Right content -> do
-      printNote' $ "NOT using cache: " <> T.pack (toFilePath path)
       prog <- P.parseFile True Parse.parseProgram path content
       Right <$> interpret source (snd prog)
 

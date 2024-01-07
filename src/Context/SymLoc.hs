@@ -1,14 +1,31 @@
-module Context.SymLoc (insert) where
+module Context.SymLoc
+  ( initialize,
+    insert,
+    get,
+    collect,
+  )
+where
 
 import Context.App
-import Context.Remark (printNote')
+import Context.App.Internal
 import Control.Monad (unless)
-import Data.Text qualified as T
 import Entity.Hint
 import Entity.Ident
-import Entity.Ident.Reify
+import Entity.LocalVarTree qualified as LVT
+
+initialize :: App ()
+initialize =
+  writeRef' localVarMap LVT.empty
 
 insert :: Ident -> Loc -> Loc -> App ()
 insert x startLoc endLoc = do
   unless (isHole x) $ do
-    printNote' $ toText' x <> ": " <> T.pack (show startLoc) <> " .. " <> T.pack (show endLoc)
+    modifyRef' localVarMap $ LVT.insert startLoc endLoc x
+
+get :: App LVT.LocalVarTree
+get =
+  readRef' localVarMap
+
+collect :: Loc -> App [Ident]
+collect loc =
+  LVT.collect loc <$> get
