@@ -186,7 +186,8 @@ rawTermLet mLet = do
   loc <- getCurrentLoc
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2, c)
+  endLoc <- getCurrentLoc
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
@@ -473,7 +474,8 @@ rawTermPatternRow patternSize = do
           <> "`"
   cArrow <- delimiter "=>"
   (body, c) <- rawExpr
-  return ((patternList, cArrow, body), c)
+  loc <- getCurrentLoc
+  return ((patternList, cArrow, body, loc), c)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do

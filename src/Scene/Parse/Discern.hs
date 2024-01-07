@@ -296,7 +296,7 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ _ _ e2@(m2 :< _) -> do
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ _ _ e2@(m2 :< _) endLoc -> do
       case letKind of
         RT.Try -> do
           eitherTypeInner <- locatorToVarGlobal mx coreExcept
@@ -319,21 +319,23 @@ discern nenv term =
                     SE.Hyphen
                     [ ( SE.fromList'' [(_m, RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(_m, RP.Var (Var err))])))],
                         [],
-                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)]
+                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)],
+                        fakeLoc
                       ),
                       ( SE.fromList'' [(_m, RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
                         [],
-                        e2
+                        e2,
+                        endLoc
                       )
                     ]
                 )
         RT.Bind -> do
           Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
-          (x, modifier) <- getContinuationModifier (mx, pat)
+          (x, modifier) <- getContinuationModifier (mx, pat) endLoc
           discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier False e2)
         RT.Noetic -> do
-          (x, modifier) <- getContinuationModifier (mx, pat)
+          (x, modifier) <- getContinuationModifier (mx, pat) endLoc
           discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2)
     m :< RT.StaticText s str -> do
       let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
@@ -371,7 +373,7 @@ discern nenv term =
     m :< RT.Seq (e1, _) _ e2 -> do
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
-      discern nenv $ bind fakeLoc (m, h, [], [], unit) e1 e2
+      discern nenv $ bind fakeLoc fakeLoc (m, h, [], [], unit) e1 e2
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
@@ -424,15 +426,15 @@ discern nenv term =
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
-        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 loc c6 e2 -> do
+        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 loc c6 e2 endLoc -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           case letKind of
             RT.Bind -> do
-              (x, modifier) <- getContinuationModifier (mPat, pat)
+              (x, modifier) <- getContinuationModifier (mPat, pat) endLoc
               discern nenv $ m :< RT.piElim binder [e1', RT.lam loc m [((mPat, x, c2, c3, t), c)] (modifier False e2')]
             _ -> do
-              discern nenv $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 loc c6 e2'
+              discern nenv $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 loc c6 e2' endLoc
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
@@ -487,8 +489,8 @@ discernMagic nenv m magic =
       lt' <- discernRawLowType m lt
       return $ M.Global name lt'
 
-getContinuationModifier :: (Hint, RP.RawPattern) -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
-getContinuationModifier pat =
+getContinuationModifier :: (Hint, RP.RawPattern) -> Loc -> App (RawIdent, N.IsNoetic -> RT.RawTerm -> RT.RawTerm)
+getContinuationModifier pat endLoc =
   case pat of
     (_, RP.Var (Var x))
       | not (isConsName x) ->
@@ -503,16 +505,16 @@ getContinuationModifier pat =
                 []
                 isNoetic
                 (SE.fromList'' [mCont :< RT.Var (Var tmp)])
-                (SE.fromList SE.Brace SE.Hyphen [(SE.fromList'' [pat], [], cont)])
+                (SE.fromList SE.Brace SE.Hyphen [(SE.fromList'' [pat], [], cont, endLoc)])
         )
 
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
 ascribe m t e = do
   tmp <- Gensym.newTextForHole
-  return $ bind fakeLoc (m, tmp, [], [], t) e (m :< RT.Var (Var tmp))
+  return $ bind fakeLoc fakeLoc (m, tmp, [], [], t) e (m :< RT.Var (Var tmp))
 
-bind :: Loc -> RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind loc (m, x, c1, c2, t) e cont =
+bind :: Loc -> Loc -> RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind loc endLoc (m, x, c1, c2, t) e cont =
   m
     :< RT.Let
       RT.Plain
@@ -526,6 +528,7 @@ bind loc (m, x, c1, c2, t) e cont =
       loc
       []
       cont
+      endLoc
 
 foldListApp :: Hint -> RT.RawTerm -> RT.RawTerm -> [RT.RawTerm] -> RT.RawTerm
 foldListApp m listNil listCons es =
@@ -585,11 +588,13 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
               SE.Hyphen
               [ ( SE.fromList'' [(blur m, RP.Var true)],
                   [],
-                  ifBody
+                  ifBody,
+                  fakeLoc
                 ),
                 ( SE.fromList'' [(blur m, RP.Var false)],
                   [],
-                  elseBody
+                  elseBody,
+                  fakeLoc
                 )
               ]
           )
@@ -604,8 +609,8 @@ foldIf m true false ifCond ifBody elseIfList elseBody =
           ( SE.fromList
               SE.Brace
               SE.Hyphen
-              [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody),
-                (SE.fromList'' [(blur m, RP.Var false)], [], cont)
+              [ (SE.fromList'' [(blur m, RP.Var true)], [], ifBody, fakeLoc),
+                (SE.fromList'' [(blur m, RP.Var false)], [], cont, fakeLoc)
               ]
           )
 
@@ -694,7 +699,7 @@ discernPatternRow ::
   NominalEnv ->
   RP.RawPatternRow RT.RawTerm ->
   App (PAT.PatternRow ([Ident], [(BinderF WT.WeakTerm, WT.WeakTerm)], WT.WeakTerm))
-discernPatternRow nenv (patList, _, body) = do
+discernPatternRow nenv (patList, _, body, _) = do
   (patList', body') <- discernPatternRow' nenv (SE.extract patList) [] body
   return (V.fromList patList', body')
 

@@ -21,4 +21,4 @@ data ConsArgs
   | Of (SE.Series (Key, (Hint, C, RawPattern)))
 
 type RawPatternRow a =
-  (SE.Series (Hint, RawPattern), C, a)
+  (SE.Series (Hint, RawPattern), C, a, Loc)

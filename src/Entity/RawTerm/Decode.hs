@@ -94,7 +94,7 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont -> do
+    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
@@ -402,7 +402,7 @@ decodeIntrospectClause (mKey, c, body) = do
   decodeDoubleArrowClause (key, c, body)
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
-decodePatternRow (patArgs, c, body) = do
+decodePatternRow (patArgs, c, body, _) = do
   let patArgs' = SE.decode $ fmap (decodePattern . snd) patArgs
   decodeDoubleArrowClause (patArgs', c, body)
 

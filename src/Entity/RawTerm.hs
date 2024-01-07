@@ -63,7 +63,7 @@ data RawTermF a
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Noema a
   | Embody a
-  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a
+  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | StaticText a T.Text
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
