@@ -53,6 +53,13 @@ getCurrentHint :: Parser Hint
 getCurrentHint =
   Hint.fromSourcePos <$> getSourcePos
 
+getCurrentLoc :: Parser Loc
+getCurrentLoc = do
+  pos <- getSourcePos
+  let line = unPos $ sourceLine pos
+  let column = unPos $ sourceColumn pos
+  return (line, column)
+
 skipSpace :: Parser ()
 skipSpace =
   L.space asciiSpaceOrNewLine1 empty empty
