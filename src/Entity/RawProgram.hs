@@ -57,7 +57,7 @@ type RawConsInfo a =
   (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
 
 data RawImport
-  = RawImport C Hint (SE.Series RawImportItem)
+  = RawImport C Hint (SE.Series RawImportItem) Loc
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))

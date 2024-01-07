@@ -37,12 +37,12 @@ parseImport = do
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        (importItems, c) <- P.seriesBraceList $ do
+        (importItems, loc, c) <- P.seriesBraceList' $ do
           mImportItem <- P.getCurrentHint
           locator <- P.symbol
           (lls, c) <- parseLocalLocatorList'
           return (RawImportItem mImportItem locator lls, c)
-        return (Just $ RawImport c1 m importItems, c),
+        return (Just $ RawImport c1 m importItems loc, c),
       return (Nothing, [])
     ]
 

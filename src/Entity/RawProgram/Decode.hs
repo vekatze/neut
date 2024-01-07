@@ -42,7 +42,7 @@ decTopDocList c docList =
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
 decImport :: RawImport -> D.Doc
-decImport (RawImport c _ importItemList) = do
+decImport (RawImport c _ importItemList _) = do
   RT.attachComment c $
     D.join
       [ D.text "import ",

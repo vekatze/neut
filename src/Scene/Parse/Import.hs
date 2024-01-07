@@ -50,7 +50,7 @@ interpretImport currentSource importOrNone = do
   case importOrNone of
     Nothing ->
       return []
-    Just (RawImport _ _ importItemList) -> do
+    Just (RawImport _ _ importItemList _) -> do
       fmap concat $ forM (SE.extract importItemList) $ \rawImport -> do
         let RawImportItem m (locatorText, _) localLocatorList = rawImport
         let localLocatorList' = SE.extract localLocatorList
