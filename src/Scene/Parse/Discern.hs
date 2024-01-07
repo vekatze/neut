@@ -117,6 +117,7 @@ discernStmt stmt = do
       t' <- discern empty $ m :< RT.Tau
       e' <- discern empty $ m :< RT.Resource [] discarder copier
       Tag.insertGlobalVar m dd True m
+      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' e']
     RawStmtNominal _ m geistList -> do
       geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
