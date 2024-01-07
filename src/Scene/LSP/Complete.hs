@@ -7,16 +7,21 @@ import Context.Path qualified as Path
 import Control.Monad.Trans
 import Data.Bifunctor (second)
 import Data.Containers.ListUtils (nubOrd)
+import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Text qualified as T
+import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
+import Entity.Const (nsSep)
 import Entity.DefiniteDescription qualified as DD
 import Entity.Hint
 import Entity.Ident.Reify qualified as Ident
 import Entity.LocalVarTree qualified as LVT
 import Entity.Module
+import Entity.ModuleAlias qualified as MA
 import Entity.Source
+import Entity.SourceLocator qualified as SL
 import Entity.TopCandidate
 import Language.LSP.Protocol.Types
 import Scene.LSP.GetAllCachesInModule (getAllCachesInModule)
@@ -27,19 +32,20 @@ import UnliftIO.Async
 complete :: Uri -> Position -> AppM [CompletionItem]
 complete uri pos = do
   pathString <- liftMaybe $ uriToFilePath uri
-  src <- lift (Source.reflect pathString) >>= liftMaybe
+  currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   let loc = positionToLoc pos
-  localVarList <- getLocalCompletionItems src loc
-  let baseModule = sourceModule src
+  localVarList <- getLocalCompletionItems currentSource loc
+  let baseModule = sourceModule currentSource
   globalVarList <- lift $ getAllTopCandidate baseModule
-  globalVarList' <- lift $ concat <$> mapM (uncurry (adjustTopCandidate baseModule loc)) globalVarList
+  globalVarList' <- lift $ concat <$> mapM (uncurry (adjustTopCandidate currentSource loc)) globalVarList
   return $ localVarList ++ globalVarList'
 
-adjustTopCandidate :: Module -> Loc -> Source -> [TopCandidate] -> App [CompletionItem]
-adjustTopCandidate baseModule loc src candList = do
-  locator <- NE.head <$> getHumanReadableLocator baseModule src
-  let candIsInMainModule = moduleID baseModule == moduleID (sourceModule src)
-  return $ concatMap (topCandidateToCompletionItem candIsInMainModule locator loc) candList
+adjustTopCandidate :: Source -> Loc -> Source -> [TopCandidate] -> App [CompletionItem]
+adjustTopCandidate currentSource loc candSource candList = do
+  locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
+  prefixList <- getPrefixList (sourceModule currentSource) candSource
+  let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+  return $ concatMap (topCandidateToCompletionItem candIsInCurrentSource locator loc prefixList) candList
 
 getLocalCompletionItems :: Source -> Loc -> AppM [CompletionItem]
 getLocalCompletionItems source loc = do
@@ -54,12 +60,14 @@ identToCompletionItem x = do
   let CompletionItem {..} = toCompletionItem x
   CompletionItem {_kind = Just CompletionItemKind_Variable, ..}
 
-topCandidateToCompletionItem :: Bool -> T.Text -> Loc -> TopCandidate -> [CompletionItem]
-topCandidateToCompletionItem candIsInMainModule locator cursorLoc topCandidate = do
-  if candIsInMainModule && cursorLoc < loc topCandidate
+topCandidateToCompletionItem :: Bool -> T.Text -> Loc -> [T.Text] -> TopCandidate -> [CompletionItem]
+topCandidateToCompletionItem candIsInCurrentSource locator cursorLoc prefixList topCandidate = do
+  if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
-      let labels = [DD.reify (dd topCandidate), DD.localLocator (dd topCandidate)]
+      let dd' = DD.reify (dd topCandidate)
+      let ll = DD.localLocator (dd topCandidate)
+      let labels = dd' : ll : map (\prefix -> prefix <> nsSep <> ll) prefixList
       flip map labels $ \label -> do
         let CompletionItem {..} = toCompletionItem label
         let _kind = Just $ fromCandidateKind $ kind topCandidate
@@ -113,3 +121,16 @@ fromCandidateKind candidateKind =
       CompletionItemKind_Constructor
     Function ->
       CompletionItemKind_Function
+
+getPrefixList :: Module -> Source -> App [T.Text]
+getPrefixList baseModule source = do
+  if moduleID baseModule /= moduleID (sourceModule source)
+    then return []
+    else do
+      locatorList <- NE.toList <$> getHumanReadableLocator baseModule source
+      let prefixInfo = Map.toList $ modulePrefixMap baseModule
+      return $ map (BN.reify . fst) $ filter (\(_, cod) -> uncurry reifyPrefixCod cod `elem` locatorList) prefixInfo
+
+reifyPrefixCod :: MA.ModuleAlias -> SL.SourceLocator -> T.Text
+reifyPrefixCod alias sl =
+  MA.reify alias <> "." <> SL.toText sl
