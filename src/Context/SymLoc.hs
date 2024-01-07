@@ -2,7 +2,6 @@ module Context.SymLoc
   ( initialize,
     insert,
     get,
-    collect,
   )
 where
 
@@ -25,7 +24,3 @@ insert x startLoc endLoc = do
 get :: App LVT.LocalVarTree
 get =
   readRef' localVarMap
-
-collect :: Loc -> App [Ident]
-collect loc =
-  LVT.collect loc <$> get

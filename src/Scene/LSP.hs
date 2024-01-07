@@ -54,7 +54,9 @@ handlers =
       notificationHandler SMethod_TextDocumentWillSave $ \_ -> do
         return (),
       requestHandler SMethod_TextDocumentCompletion $ \req responder -> do
-        itemListOrNone <- lift $ runAppM $ LSP.complete $ req ^. J.params . J.textDocument . J.uri
+        let uri = req ^. (J.params . J.textDocument . J.uri)
+        let pos = req ^. (J.params . J.position)
+        itemListOrNone <- lift $ runAppM $ LSP.complete uri pos
         let itemList = fromMaybe [] itemListOrNone
         responder $ Right $ InL $ List itemList,
       requestHandler SMethod_TextDocumentDefinition $ \req responder -> do
