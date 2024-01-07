@@ -51,7 +51,7 @@ toDoc term =
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
         ]
-    _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body -> do
+    _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body _ -> do
       let body' = decodeBlock $ RT.mapEL toDoc body
       D.join
         [ PI.arrange
@@ -94,7 +94,7 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 c5 cont -> do
+    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont -> do
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,

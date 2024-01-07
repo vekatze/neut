@@ -70,3 +70,7 @@ internalHint =
 newSourceHint :: Path Abs File -> Hint
 newSourceHint path =
   new 1 1 $ toFilePath path
+
+fakeLoc :: Loc
+fakeLoc =
+  (1, 1)

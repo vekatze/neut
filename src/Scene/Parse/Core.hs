@@ -15,6 +15,7 @@ import Entity.Const
 import Entity.Error qualified as E
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
+import Entity.Syntax.Block
 import Entity.Syntax.Series qualified as SE
 import Path
 import Text.Megaparsec
@@ -188,6 +189,14 @@ betweenBrace p = do
   v <- p
   c2 <- delimiter "}"
   return (c1, (v, c2))
+
+betweenBrace' :: Parser a -> Parser (Block' a)
+betweenBrace' p = do
+  c1 <- delimiter "{"
+  v <- p
+  c2 <- delimiter "}"
+  loc <- getCurrentLoc
+  return (c1, (v, loc, c2))
 
 sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
 sepList first sep f = do

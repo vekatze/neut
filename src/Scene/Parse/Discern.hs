@@ -232,7 +232,7 @@ discern nenv term =
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) -> do
+    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) _ -> do
       lamID <- Gensym.newCount
       (impArgs', nenv') <- discernBinder nenv $ RT.extractArgs impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
@@ -296,7 +296,7 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ _ e2@(m2 :< _) -> do
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ _ _ e2@(m2 :< _) -> do
       case letKind of
         RT.Try -> do
           eitherTypeInner <- locatorToVarGlobal mx coreExcept
@@ -371,7 +371,7 @@ discern nenv term =
     m :< RT.Seq (e1, _) _ e2 -> do
       h <- Gensym.newTextForHole
       unit <- locatorToVarGlobal m coreUnit
-      discern nenv $ bind (m, h, [], [], unit) e1 e2
+      discern nenv $ bind fakeLoc (m, h, [], [], unit) e1 e2
     m :< RT.When whenClause -> do
       let (whenCond, whenBody) = RT.extractFromKeywordClause whenClause
       boolTrue <- locatorToName (blur m) coreBoolTrue
@@ -399,7 +399,7 @@ discern nenv term =
     m :< RT.Detach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
       detachVar <- locatorToVarGlobal m coreThreadDetach
-      discern nenv $ m :< RT.piElim detachVar [t, RT.lam m [] e]
+      discern nenv $ m :< RT.piElim detachVar [t, RT.lam fakeLoc m [] e]
     m :< RT.Attach _ _ (e, _) -> do
       t <- Gensym.newPreHole (blur m)
       attachVar <- locatorToVarGlobal m coreThreadAttach
@@ -416,7 +416,7 @@ discern nenv term =
         m
           :< RT.piElim
             assert
-            [mText :< RT.StaticText textType fullMessage, RT.lam mCond [] e]
+            [mText :< RT.StaticText textType fullMessage, RT.lam fakeLoc mCond [] e]
     m :< RT.Introspect _ key _ clauseList -> do
       value <- getIntrospectiveValue m key
       clause <- lookupIntrospectiveClause m value $ SE.extract clauseList
@@ -424,15 +424,15 @@ discern nenv term =
     m :< RT.With withClause -> do
       let (binder, body) = RT.extractFromKeywordClause withClause
       case body of
-        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 c6 e2 -> do
+        mLet :< RT.Let letKind c1 mxt@(mPat, pat, c2, c3, t) c mys c4 e1 c5 loc c6 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           case letKind of
             RT.Bind -> do
               (x, modifier) <- getContinuationModifier (mPat, pat)
-              discern nenv $ m :< RT.piElim binder [e1', RT.lam m [((mPat, x, c2, c3, t), c)] (modifier False e2')]
+              discern nenv $ m :< RT.piElim binder [e1', RT.lam loc m [((mPat, x, c2, c3, t), c)] (modifier False e2')]
             _ -> do
-              discern nenv $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 c6 e2'
+              discern nenv $ mLet :< RT.Let letKind c1 mxt c mys c4 e1' c5 loc c6 e2'
         mSeq :< RT.Seq (e1, c1) c2 e2 -> do
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
@@ -509,10 +509,10 @@ getContinuationModifier pat =
 ascribe :: Hint -> RT.RawTerm -> RT.RawTerm -> App RT.RawTerm
 ascribe m t e = do
   tmp <- Gensym.newTextForHole
-  return $ bind (m, tmp, [], [], t) e (m :< RT.Var (Var tmp))
+  return $ bind fakeLoc (m, tmp, [], [], t) e (m :< RT.Var (Var tmp))
 
-bind :: RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
-bind (m, x, c1, c2, t) e cont =
+bind :: Loc -> RawBinder RT.RawTerm -> RT.RawTerm -> RT.RawTerm -> RT.RawTerm
+bind loc (m, x, c1, c2, t) e cont =
   m
     :< RT.Let
       RT.Plain
@@ -523,6 +523,7 @@ bind (m, x, c1, c2, t) e cont =
       []
       e
       []
+      loc
       []
       cont
 

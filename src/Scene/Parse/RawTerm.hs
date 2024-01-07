@@ -123,8 +123,8 @@ rawTermPiIntro = do
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen preBinder
   cArrow <- delimiter "=>"
-  (c1, ((e, c2), c)) <- betweenBrace rawExpr
-  return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)), c)
+  (c1, ((e, c2), loc, c)) <- betweenBrace' rawExpr
+  return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)) loc, c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
@@ -183,9 +183,10 @@ rawTermLet mLet = do
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
   (e1, c6) <- rawExpr
+  loc <- getCurrentLoc
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 c7 e2, c)
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2, c)
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
