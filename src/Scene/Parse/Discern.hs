@@ -226,7 +226,7 @@ discern nenv term =
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
-    m :< RT.Pi impArgs expArgs _ t -> do
+    m :< RT.Pi impArgs expArgs _ t _ -> do
       (impArgs', nenv') <- discernBinder nenv $ RT.extractArgs impArgs
       (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
       t' <- discern nenv'' t

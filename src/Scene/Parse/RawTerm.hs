@@ -114,7 +114,8 @@ rawTermPiGeneral = do
   expArgs <- seriesParen (choice [try preAscription, typeWithoutIdent])
   cArrow <- delimiter "->"
   (cod, c) <- rawTerm
-  return (m :< RT.Pi impArgs expArgs cArrow cod, c)
+  loc <- getCurrentLoc
+  return (m :< RT.Pi impArgs expArgs cArrow cod loc, c)
 
 rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
@@ -134,13 +135,15 @@ rawTermPiOrConsOrAscOrBasic = do
         cArrow <- delimiter "->"
         x <- lift Gensym.newTextForHole
         (cod, c) <- rawTerm
+        loc <- getCurrentLoc
         return
           ( m
               :< RT.Pi
                 (SE.emptySeries SE.Angle SE.Comma, [])
                 (SE.fromList SE.Paren SE.Comma [(m, x, [], [], basic)], cBasic)
                 cArrow
-                cod,
+                cod
+                loc,
             c
           ),
       return (basic, cBasic)

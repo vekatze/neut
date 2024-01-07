@@ -51,7 +51,7 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var Name
-  | Pi (Args a) (Args a) C a
+  | Pi (Args a) (Args a) C a Loc
   | PiIntro (Args a) (Args a) C (EL a)
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
