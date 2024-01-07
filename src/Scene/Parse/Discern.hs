@@ -7,6 +7,7 @@ import Context.Gensym qualified as Gensym
 import Context.Global qualified as Global
 import Context.KeyArg qualified as KeyArg
 import Context.Locator qualified as Locator
+import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedVariable qualified as UnusedVariable
@@ -80,7 +81,7 @@ discernStmt :: RawStmt -> App [WeakStmt]
 discernStmt stmt = do
   nameLifter <- Locator.getNameLifter
   case stmt of
-    RawStmtDefine _ stmtKind (RT.RawDef {geist, body}) -> do
+    RawStmtDefine _ stmtKind (RT.RawDef {geist, body, endLoc}) -> do
       registerTopLevelName nameLifter stmt
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
@@ -88,8 +89,8 @@ discernStmt stmt = do
       let m = RT.loc geist
       let functionName = nameLifter $ fst $ RT.name geist
       let isConstLike = RT.isConstLike geist
-      (impArgs', nenv) <- discernBinder empty impArgs
-      (expArgs', nenv') <- discernBinder nenv expArgs
+      (impArgs', nenv) <- discernBinder empty impArgs endLoc
+      (expArgs', nenv') <- discernBinder nenv expArgs endLoc
       codType' <- discern nenv' codType
       stmtKind' <- discernStmtKind stmtKind
       body' <- discern nenv' body
@@ -114,22 +115,22 @@ discernStmt stmt = do
       Tag.insertGlobalVar m dd True m
       return [WeakStmtDefineConst m dd t' e']
     RawStmtNominal _ m geistList -> do
-      geistList' <- forM (SE.extract geistList) $ \geist -> do
+      geistList' <- forM (SE.extract geistList) $ \(geist, endLoc) -> do
         Global.registerGeist geist
-        discernGeist geist
+        discernGeist endLoc geist
       return [WeakStmtNominal m geistList']
     RawStmtForeign _ foreignList -> do
       foreign' <- interpretForeign foreignList
       activateForeign foreign'
       return [WeakStmtForeign foreign']
 
-discernGeist :: RT.TopGeist -> App (G.Geist WT.WeakTerm)
-discernGeist geist = do
+discernGeist :: Loc -> RT.TopGeist -> App (G.Geist WT.WeakTerm)
+discernGeist endLoc geist = do
   nameLifter <- Locator.getNameLifter
   let impArgs = RT.extractArgs $ RT.impArgs geist
   let expArgs = RT.extractArgs $ RT.expArgs geist
-  (impArgs', nenv) <- discernBinder empty impArgs
-  (expArgs', nenv') <- discernBinder nenv expArgs
+  (impArgs', nenv) <- discernBinder empty impArgs endLoc
+  (expArgs', nenv') <- discernBinder nenv expArgs endLoc
   forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
   cod' <- discern nenv' $ snd $ RT.cod geist
   return $
@@ -189,9 +190,9 @@ discernStmtKind stmtKind =
       return $ SK.Normal opacity
     SK.Data dataName dataArgs consInfoList -> do
       nameLifter <- Locator.getNameLifter
-      (dataArgs', nenv) <- discernBinder empty dataArgs
+      (dataArgs', nenv) <- discernBinder' empty dataArgs
       let (locList, consNameList, isConstLikeList, consArgsList, discriminantList) = unzip5 consInfoList
-      (consArgsList', nenvList) <- mapAndUnzipM (discernBinder nenv) consArgsList
+      (consArgsList', nenvList) <- mapAndUnzipM (discernBinder' nenv) consArgsList
       forM_ (concat nenvList) $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       let consNameList' = map nameLifter consNameList
@@ -199,8 +200,8 @@ discernStmtKind stmtKind =
       return $ SK.Data (nameLifter dataName) dataArgs' consInfoList'
     SK.DataIntro dataName dataArgs consArgs discriminant -> do
       nameLifter <- Locator.getNameLifter
-      (dataArgs', nenv) <- discernBinder empty dataArgs
-      (consArgs', nenv') <- discernBinder nenv consArgs
+      (dataArgs', nenv) <- discernBinder' empty dataArgs
+      (consArgs', nenv') <- discernBinder' nenv consArgs
       forM_ nenv' $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
@@ -226,25 +227,25 @@ discern nenv term =
         _ -> do
           (dd, (_, gn)) <- resolveName m name
           interpretGlobalName m dd gn
-    m :< RT.Pi impArgs expArgs _ t _ -> do
-      (impArgs', nenv') <- discernBinder nenv $ RT.extractArgs impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
+    m :< RT.Pi impArgs expArgs _ t endLoc -> do
+      (impArgs', nenv') <- discernBinder nenv (RT.extractArgs impArgs) endLoc
+      (expArgs', nenv'') <- discernBinder nenv' (RT.extractArgs expArgs) endLoc
       t' <- discern nenv'' t
       forM_ (impArgs' ++ expArgs') $ \(_, x, _) -> UnusedVariable.delete x
       return $ m :< WT.Pi impArgs' expArgs' t'
-    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) _ -> do
+    m :< RT.PiIntro impArgs expArgs _ (_, (e, _)) endLoc -> do
       lamID <- Gensym.newCount
-      (impArgs', nenv') <- discernBinder nenv $ RT.extractArgs impArgs
-      (expArgs', nenv'') <- discernBinder nenv' $ RT.extractArgs expArgs
+      (impArgs', nenv') <- discernBinder nenv (RT.extractArgs impArgs) endLoc
+      (expArgs', nenv'') <- discernBinder nenv' (RT.extractArgs expArgs) endLoc
       e' <- discern nenv'' e
       return $ m :< WT.PiIntro (AttrL.normal lamID) impArgs' expArgs' e'
-    m :< RT.PiIntroFix _ (RT.RawDef {geist, body}) -> do
+    m :< RT.PiIntroFix _ (RT.RawDef {geist, body, endLoc}) -> do
       let impArgs = RT.extractArgs $ RT.impArgs geist
       let expArgs = RT.extractArgs $ RT.expArgs geist
       let mx = RT.loc geist
       let (x, _) = RT.name geist
-      (impArgs', nenv') <- discernBinder nenv impArgs
-      (expArgs', nenv'') <- discernBinder nenv' expArgs
+      (impArgs', nenv') <- discernBinder nenv impArgs endLoc
+      (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discern nenv'' $ snd $ RT.cod geist
       x' <- Gensym.newIdentFromText x
       nenv''' <- extendNominalEnv mx x' nenv''
@@ -296,7 +297,7 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ _ _ e2@(m2 :< _) endLoc -> do
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ startLoc _ e2@(m2 :< _) endLoc -> do
       case letKind of
         RT.Try -> do
           eitherTypeInner <- locatorToVarGlobal mx coreExcept
@@ -333,10 +334,10 @@ discern nenv term =
           Throw.raiseError m "`bind` can only be used inside `with`"
         RT.Plain -> do
           (x, modifier) <- getContinuationModifier (mx, pat) endLoc
-          discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier False e2)
+          discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier False e2) startLoc endLoc
         RT.Noetic -> do
           (x, modifier) <- getContinuationModifier (mx, pat) endLoc
-          discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2)
+          discernLet nenv m (mx, x, c1, c2, t) (SE.extract mys) e1 (modifier True e2) startLoc endLoc
     m :< RT.StaticText s str -> do
       let strOrNone = R.readMaybe (T.unpack $ "\"" <> str <> "\"")
       s' <- discern nenv s
@@ -360,9 +361,9 @@ discern nenv term =
       discarder' <- discern nenv discarder
       copier' <- discern nenv copier
       return $ m :< WT.Resource resourceID discarder' copier'
-    m :< RT.Use _ e _ xs _ cont -> do
+    m :< RT.Use _ e _ xs _ cont endLoc -> do
       e' <- discern nenv e
-      (xs', nenv') <- discernBinder nenv $ RT.extractArgs xs
+      (xs', nenv') <- discernBinder nenv (RT.extractArgs xs) endLoc
       cont' <- discern nenv' cont
       return $ m :< WT.Use e' xs' cont'
     m :< RT.If ifClause elseIfClauseList (_, (elseBody, _)) -> do
@@ -439,9 +440,9 @@ discern nenv term =
           let e1' = m :< RT.With (([], (binder, [])), ([], (e1, [])))
           let e2' = m :< RT.With (([], (binder, [])), ([], (e2, [])))
           discern nenv $ mSeq :< RT.Seq (e1', c1) c2 e2'
-        mUse :< RT.Use c1 item c2 vars c3 cont -> do
+        mUse :< RT.Use c1 item c2 vars c3 cont endLoc -> do
           let cont' = m :< RT.With (([], (binder, [])), ([], (cont, [])))
-          discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont'
+          discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont' endLoc
         _ ->
           discern nenv body
     _ :< RT.Brace _ (e, _) ->
@@ -625,8 +626,10 @@ discernLet ::
   [(Hint, RawIdent)] ->
   RT.RawTerm ->
   RT.RawTerm ->
+  Loc ->
+  Loc ->
   App WT.WeakTerm
-discernLet nenv m mxt mys e1 e2 = do
+discernLet nenv m mxt mys e1 e2 startLoc endLoc = do
   mys' <- mapM (\(my, y) -> discernIdent my nenv y) mys
   let (ms', ys') = unzip mys'
   let ysActual = zipWith (\my y -> my :< WT.Var y) ms' ys'
@@ -637,7 +640,7 @@ discernLet nenv m mxt mys e1 e2 = do
   let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont
   nenvCont <- joinNominalEnv contAddition nenv
   e1' <- discern nenvLocal e1
-  (mxt', _, e2') <- discernBinderWithBody' nenvCont mxt [] e2
+  (mxt', e2') <- discernBinderWithBody' nenvCont mxt e2 startLoc endLoc
   Tag.insertBinder mxt'
   e2'' <- attachSuffix (zip ysCont ysLocal) e2'
   let opacity = if null mys then WT.Clear else WT.Noetic
@@ -655,8 +658,9 @@ discernIdent m nenv x =
 discernBinder ::
   NominalEnv ->
   [RawBinder RT.RawTerm] ->
+  Loc ->
   App ([BinderF WT.WeakTerm], NominalEnv)
-discernBinder nenv binder =
+discernBinder nenv binder endLoc =
   case binder of
     [] -> do
       return ([], nenv)
@@ -664,23 +668,41 @@ discernBinder nenv binder =
       t' <- discern nenv t
       x' <- Gensym.newIdentFromText x
       nenv' <- extendNominalEnv mx x' nenv
-      (xts', nenv'') <- discernBinder nenv' xts
+      (xts', nenv'') <- discernBinder nenv' xts endLoc
+      Tag.insertBinder (mx, x', t')
+      SymLoc.insert x' (metaLocation mx) endLoc
+      return ((mx, x', t') : xts', nenv'')
+
+discernBinder' ::
+  NominalEnv ->
+  [RawBinder RT.RawTerm] ->
+  App ([BinderF WT.WeakTerm], NominalEnv)
+discernBinder' nenv binder =
+  case binder of
+    [] -> do
+      return ([], nenv)
+    (mx, x, _, _, t) : xts -> do
+      t' <- discern nenv t
+      x' <- Gensym.newIdentFromText x
+      nenv' <- extendNominalEnv mx x' nenv
+      (xts', nenv'') <- discernBinder' nenv' xts
       Tag.insertBinder (mx, x', t')
       return ((mx, x', t') : xts', nenv'')
 
 discernBinderWithBody' ::
   NominalEnv ->
   RawBinder RT.RawTerm ->
-  [RawBinder RT.RawTerm] ->
   RT.RawTerm ->
-  App (BinderF WT.WeakTerm, [BinderF WT.WeakTerm], WT.WeakTerm)
-discernBinderWithBody' nenv (mx, x, _, _, codType) binder e = do
-  (binder'', nenv') <- discernBinder nenv binder
-  codType' <- discern nenv' codType
+  Loc ->
+  Loc ->
+  App (BinderF WT.WeakTerm, WT.WeakTerm)
+discernBinderWithBody' nenv (mx, x, _, _, codType) e startLoc endLoc = do
+  codType' <- discern nenv codType
   x' <- Gensym.newIdentFromText x
-  nenv'' <- extendNominalEnv mx x' nenv'
+  nenv'' <- extendNominalEnv mx x' nenv
   e' <- discern nenv'' e
-  return ((mx, x', codType'), binder'', e')
+  SymLoc.insert x' startLoc endLoc
+  return ((mx, x', codType'), e')
 
 discernPatternMatrix ::
   NominalEnv ->

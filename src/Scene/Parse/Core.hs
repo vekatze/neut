@@ -194,8 +194,8 @@ betweenBrace' :: Parser a -> Parser (Block' a)
 betweenBrace' p = do
   c1 <- delimiter "{"
   v <- p
-  c2 <- delimiter "}"
   loc <- getCurrentLoc
+  c2 <- delimiter "}"
   return (c1, (v, loc, c2))
 
 sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]

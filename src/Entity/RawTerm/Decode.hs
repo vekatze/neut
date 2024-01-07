@@ -173,7 +173,7 @@ toDoc term =
       D.text "<annot>"
     _ :< Resource {} -> do
       D.text "<resource>"
-    _ :< Use c1 trope c2 (args, c3) c4 cont -> do
+    _ :< Use c1 trope c2 (args, c3) c4 cont _ -> do
       D.join
         [ PI.arrange
             [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "use",

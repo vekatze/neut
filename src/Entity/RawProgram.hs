@@ -50,7 +50,7 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtNominal C Hint (SE.Series RT.TopGeist)
+  | RawStmtNominal C Hint (SE.Series (RT.TopGeist, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 
 type RawConsInfo a =

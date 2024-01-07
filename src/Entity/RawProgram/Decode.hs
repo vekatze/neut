@@ -157,8 +157,8 @@ decConsInfo (_, (consName, cCons), isConstLike, args, _) = do
     then D.join [consName', C.asSuffix cCons]
     else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
 
-decGeistList :: RT.TopGeist -> D.Doc
-decGeistList decl = do
+decGeistList :: (RT.TopGeist, a) -> D.Doc
+decGeistList (decl, _) = do
   let (functionName, _) = RT.name decl
   let impArgs' = RT.decodeArgs' $ RT.impArgs decl
   let cod = RT.toDoc $ snd $ RT.cod decl

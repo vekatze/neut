@@ -118,7 +118,10 @@ parseNominal :: P.Parser (RawStmt, C)
 parseNominal = do
   c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
-  (geists, c) <- P.seriesBraceList $ parseGeist return
+  (geists, c) <- P.seriesBraceList $ do
+    (geist, c) <- parseGeist return
+    loc <- P.getCurrentLoc
+    return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)
 
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))

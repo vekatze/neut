@@ -197,7 +197,8 @@ rawTermUse m = do
   c3 <- delimiter "in"
   lift $ ensureIdentLinearity S.empty $ map (\(_, (mx, x, _, _, _)) -> (mx, x)) $ SE.elems ys
   (cont, c) <- rawExpr
-  return (m :< RT.Use c1 e c2 xs c3 cont, c)
+  loc <- getCurrentLoc
+  return (m :< RT.Use c1 e c2 xs c3 cont loc, c)
 
 rawTermLetVarAscription :: Hint -> Parser (C, (RT.RawTerm, C))
 rawTermLetVarAscription m = do

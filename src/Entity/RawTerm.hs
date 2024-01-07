@@ -69,7 +69,7 @@ data RawTermF a
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource C (a, C) (a, C) -- DD is only for printing
-  | Use C a C (Args a) C a
+  | Use C a C (Args a) C a Loc
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
