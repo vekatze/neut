@@ -3,6 +3,7 @@ module Scene.Module.Reflect
     fromFilePath,
     fromCurrentPath,
     findModuleFile,
+    getAllDependencies,
   )
 where
 
@@ -95,6 +96,14 @@ fromFilePath moduleID moduleFilePath = do
         moduleInlineLimit = mInlineLimit,
         modulePresetMap = presetMap
       }
+
+getAllDependencies :: Module -> App [Module]
+getAllDependencies baseModule =
+  forM (Map.toList $ moduleDependency baseModule) $ \(_, (_, digest)) -> do
+    let moduleID = MID.Library digest
+    moduleFilePath <- Module.getModuleFilePath Nothing moduleID
+    let m = H.newSourceHint moduleFilePath
+    getModule m moduleID (MID.reify moduleID)
 
 fromCurrentPath :: App Module
 fromCurrentPath = do

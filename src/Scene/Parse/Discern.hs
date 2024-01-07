@@ -10,6 +10,7 @@ import Context.Locator qualified as Locator
 import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
+import Context.TopCandidate qualified as TopCandidate
 import Context.UnusedVariable qualified as UnusedVariable
 import Control.Comonad.Cofree hiding (section)
 import Control.Monad
@@ -61,6 +62,7 @@ import Entity.Remark qualified as R
 import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
+import Entity.TopCandidate
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -95,6 +97,7 @@ discernStmt stmt = do
       stmtKind' <- discernStmtKind stmtKind
       body' <- discern nenv' body
       Tag.insertGlobalVar m functionName isConstLike m
+      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = functionName, kind = toCandidateKind stmtKind'}
       forM_ expArgs' Tag.insertBinder
       return [WeakStmtDefine isConstLike stmtKind' m functionName impArgs' expArgs' codType' body']
     RawStmtDefineConst _ m (name, _) (_, (t, _)) (_, (v, _)) -> do
@@ -103,6 +106,7 @@ discernStmt stmt = do
       t' <- discern empty t
       v' <- discern empty v
       Tag.insertGlobalVar m dd True m
+      TopCandidate.insert $ TopCandidate {loc = metaLocation m, dd = dd, kind = Constant}
       return [WeakStmtDefineConst m dd t' v']
     RawStmtDefineData _ m (dd, _) args consInfo loc -> do
       stmtList <- defineData m dd args (SE.extract consInfo) loc
@@ -205,6 +209,16 @@ discernStmtKind stmtKind =
       forM_ nenv' $ \(_, (_, newVar)) -> do
         UnusedVariable.delete newVar
       return $ SK.DataIntro (nameLifter dataName) dataArgs' consArgs' discriminant
+
+toCandidateKind :: SK.StmtKind a -> CandidateKind
+toCandidateKind stmtKind =
+  case stmtKind of
+    SK.Normal {} ->
+      Function
+    SK.Data {} ->
+      Function
+    SK.DataIntro {} ->
+      Constructor
 
 discern :: NominalEnv -> RT.RawTerm -> App WT.WeakTerm
 discern nenv term =

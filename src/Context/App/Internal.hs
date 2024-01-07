@@ -39,6 +39,7 @@ import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Term qualified as TM
+import Entity.TopCandidate
 import Entity.TopNameMap
 import Entity.VisitInfo
 import Entity.WeakTerm qualified as WT
@@ -63,6 +64,7 @@ data Env = Env
     globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
     localVarMap :: IORef LVT.LocalVarTree,
+    topCandidateEnv :: IORef [TopCandidate],
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
     unusedImportMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
@@ -116,6 +118,7 @@ newEnv = do
   globalRemarkList <- newIORef []
   tagMap <- newIORef LT.empty
   localVarMap <- newIORef LVT.empty
+  topCandidateEnv <- newIORef []
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty
   unusedImportMap <- newIORef Map.empty

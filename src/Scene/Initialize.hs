@@ -19,6 +19,7 @@ import Context.Module qualified as Module
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
+import Context.TopCandidate qualified as TopCandidate
 import Context.Unravel qualified as Unravel
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -68,5 +69,6 @@ initializeForSource source = do
   Locator.initialize
   Tag.initialize
   SymLoc.initialize
+  TopCandidate.initialize
   Remark.setRemarkList []
   Decl.initialize
