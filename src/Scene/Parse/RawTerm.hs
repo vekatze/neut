@@ -257,13 +257,14 @@ rawTermHole = do
 parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
 parseDef nameLifter = do
   (topGeist, c1) <- parseGeist nameLifter
-  (c2, ((e, c3), c)) <- betweenBrace rawExpr
+  (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
   return
     ( RT.RawDef
         { geist = topGeist,
           leadingComment = c1 ++ c2,
           body = e,
-          trailingComment = c3
+          trailingComment = c3,
+          endLoc = loc
         },
       c
     )

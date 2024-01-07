@@ -22,13 +22,14 @@ defineData ::
   BN.BaseName ->
   Maybe (RT.Args RT.RawTerm) ->
   [RawConsInfo BN.BaseName] ->
+  Loc ->
   App [RawStmt]
-defineData m dataName dataArgsOrNone consInfoList = do
+defineData m dataName dataArgsOrNone consInfoList loc = do
   let dataArgs = modifyDataArgs dataArgsOrNone
   let dataArgs' = fromMaybe RT.emptyArgs dataArgsOrNone
-  let consInfoList'' = modifyConsInfo D.zero consInfoList
-  let stmtKind = SK.Data dataName dataArgs consInfoList''
-  let consNameList = map (\(_, consName, isConstLike, _, _) -> (consName, isConstLike)) consInfoList''
+  let consInfoList' = modifyConsInfo D.zero consInfoList
+  let stmtKind = SK.Data dataName dataArgs consInfoList'
+  let consNameList = map (\(_, consName, isConstLike, _, _) -> (consName, isConstLike)) consInfoList'
   let isConstLike = isNothing dataArgsOrNone
   let dataType = constructDataType m dataName isConstLike consNameList dataArgs
   let geist =
@@ -48,7 +49,8 @@ defineData m dataName dataArgsOrNone consInfoList = do
               { geist,
                 leadingComment = [],
                 body = dataType,
-                trailingComment = []
+                trailingComment = [],
+                endLoc = loc
               }
           )
   introRuleList <- parseDefineDataConstructor dataType dataName dataArgs' consInfoList D.zero
@@ -66,7 +68,7 @@ modifyConsInfo d consInfoList =
   case consInfoList of
     [] ->
       []
-    (m, (consName, _), isConstLike, consArgs) : rest ->
+    (m, (consName, _), isConstLike, consArgs, _) : rest ->
       (SavedHint m, consName, isConstLike, SE.extract consArgs, d) : modifyConsInfo (D.increment d) rest
 
 parseDefineDataConstructor ::
@@ -80,12 +82,12 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
   case consInfoList of
     [] ->
       return []
-    (m, (consName, cCons), isConstLike, consArgs) : rest -> do
+    (m, (consName, cCons), isConstLike, consArgs, loc) : rest -> do
       let dataArgs' = RT.extractArgs dataArgs
       let consArgs' = SE.extract consArgs
       let dataArgs'' = map identPlusToVar dataArgs'
       let consArgs'' = map adjustConsArg consArgs'
-      let consNameList = map (\(_, (dd, _), isConstLike', _) -> (dd, isConstLike')) consInfoList
+      let consNameList = map (\(_, (dd, _), isConstLike', _, _) -> (dd, isConstLike')) consInfoList
       let geist =
             RT.RawGeist
               { loc = m,
@@ -103,7 +105,8 @@ parseDefineDataConstructor dataType dataName dataArgs consInfoList discriminant 
                   { geist,
                     leadingComment = [],
                     body = m :< RT.DataIntro (AttrDI.Attr {..}) consName dataArgs'' (map fst consArgs''),
-                    trailingComment = []
+                    trailingComment = [],
+                    endLoc = loc
                   }
               )
       introRuleList <- parseDefineDataConstructor dataType dataName dataArgs rest (D.increment discriminant)

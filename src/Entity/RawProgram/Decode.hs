@@ -105,7 +105,7 @@ decStmt stmt =
             D.text (BN.reify name),
             RT.decodeKeywordClause ":" constClause
           ]
-    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo -> do
+    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       RT.attachComment (c1 ++ c2) $
         D.join
           [ D.text "data ",
@@ -151,7 +151,7 @@ decDataArgs argsOrNone =
       RT.decodeArgs' args
 
 decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
-decConsInfo (_, (consName, cCons), isConstLike, args) = do
+decConsInfo (_, (consName, cCons), isConstLike, args, _) = do
   let consName' = D.text (BN.reify consName)
   if isConstLike
     then D.join [consName', C.asSuffix cCons]

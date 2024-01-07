@@ -103,8 +103,8 @@ discernStmt stmt = do
       v' <- discern empty v
       Tag.insertGlobalVar m dd True m
       return [WeakStmtDefineConst m dd t' v']
-    RawStmtDefineData _ m (dd, _) args consInfo -> do
-      stmtList <- defineData m dd args $ SE.extract consInfo
+    RawStmtDefineData _ m (dd, _) args consInfo loc -> do
+      stmtList <- defineData m dd args (SE.extract consInfo) loc
       discernStmtList stmtList
     RawStmtDefineResource _ m (name, _) _ (_, discarder) (_, copier) -> do
       let dd = nameLifter name
@@ -159,8 +159,8 @@ registerTopLevelName nameLifter stmt =
       Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []
     RawStmtNominal {} -> do
       return ()
-    RawStmtDefineData _ m (dd, _) args consInfo -> do
-      stmtList <- defineData m dd args $ SE.extract consInfo
+    RawStmtDefineData _ m (dd, _) args consInfo loc -> do
+      stmtList <- defineData m dd args (SE.extract consInfo) loc
       mapM_ (registerTopLevelName nameLifter) stmtList
     RawStmtDefineResource _ m (name, _) _ _ _ -> do
       Global.registerStmtDefine True m (SK.Normal O.Clear) (nameLifter name) AN.zero []

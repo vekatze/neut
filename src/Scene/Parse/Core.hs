@@ -261,11 +261,12 @@ series prefix container sep p = do
       c2
     )
 
-series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
+series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
 series' prefix container sep p = do
   let (opener, closer) = getParserPair container
   c1 <- opener
   (vs, trail) <- _series c1 sep p
+  loc <- getCurrentLoc
   c2 <- closer
   return
     ( SE.Series
@@ -275,6 +276,7 @@ series' prefix container sep p = do
           separator = sep,
           container = Just container
         },
+      loc,
       c2
     )
 
@@ -306,6 +308,10 @@ seriesParen :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesParen =
   series Nothing SE.Paren SE.Comma
 
+seriesParen' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesParen' =
+  series' Nothing SE.Paren SE.Comma
+
 seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBrace =
   series Nothing SE.Brace SE.Comma
@@ -322,6 +328,10 @@ seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBraceList =
   series Nothing SE.Brace SE.Hyphen
 
+seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesBraceList' =
+  series' Nothing SE.Brace SE.Hyphen
+
 seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
 seqOrList p =
   choice
@@ -330,6 +340,16 @@ seqOrList p =
       do
         c1 <- keyword "of"
         series (Just ("of", c1)) SE.Brace SE.Hyphen p
+    ]
+
+seqOrList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seqOrList' p =
+  choice
+    [ do
+        seriesParen' p,
+      do
+        c1 <- keyword "of"
+        series' (Just ("of", c1)) SE.Brace SE.Hyphen p
     ]
 
 var :: Parser ((Hint, T.Text), C)

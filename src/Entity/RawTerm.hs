@@ -126,7 +126,8 @@ data RawDef a = RawDef
   { geist :: RawGeist a,
     leadingComment :: C,
     body :: RawTerm,
-    trailingComment :: C
+    trailingComment :: C,
+    endLoc :: Loc
   }
 
 instance Functor RawDef where
