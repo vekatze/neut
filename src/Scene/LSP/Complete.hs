@@ -4,6 +4,7 @@ import Context.App
 import Context.AppM
 import Context.Cache qualified as Cache
 import Context.Path qualified as Path
+import Control.Monad
 import Control.Monad.Trans
 import Data.Bifunctor (second)
 import Data.Containers.ListUtils (nubOrd)
@@ -19,6 +20,7 @@ import Entity.Hint
 import Entity.Ident.Reify qualified as Ident
 import Entity.LocalVarTree qualified as LVT
 import Entity.Module
+import Entity.ModuleAlias (defaultModuleAlias)
 import Entity.ModuleAlias qualified as MA
 import Entity.RawImportSummary
 import Entity.Source
@@ -56,13 +58,14 @@ getLocalCompletionItems source loc = do
 getGlobalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getGlobalCompletionItems currentSource loc = do
   let baseModule = sourceModule currentSource
-  globalVarList <- getAllTopCandidate baseModule
+  (globalVarList, aliasPresetMap) <- getAllTopCandidate baseModule
   baseCacheOrNone <- Path.getSourceCachePath currentSource >>= Cache.loadCacheOptimistically
   let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
   let impLoc = getImportLoc importSummaryOrNone
   if loc < impLoc
     then return []
-    else concat <$> mapConcurrently (uncurry (adjustTopCandidate importSummaryOrNone currentSource loc)) globalVarList
+    else do
+      adjustTopCandidate importSummaryOrNone currentSource loc aliasPresetMap globalVarList
 
 getImportLoc :: Maybe RawImportSummary -> Loc
 getImportLoc importOrNone =
@@ -76,40 +79,60 @@ adjustTopCandidate ::
   Maybe RawImportSummary ->
   Source ->
   Loc ->
-  Source ->
-  [TopCandidate] ->
+  AliasPresetMap ->
+  [(Source, [TopCandidate])] ->
   App [CompletionItem]
-adjustTopCandidate importOrNone currentSource loc candSource candList = do
-  locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
-  prefixList <- getPrefixList (sourceModule currentSource) candSource
-  let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
-  return $ concatMap (topCandidateToCompletionItem importOrNone candIsInCurrentSource locator loc prefixList) candList
+adjustTopCandidate summaryOrNone currentSource loc aliasPresetMap candInfo = do
+  let importedNameList = getImportedNameList summaryOrNone aliasPresetMap
+  fmap concat $ forM candInfo $ \(candSource, candList) -> do
+    locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
+    prefixList <- getPrefixList (sourceModule currentSource) candSource
+    let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+    return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource importedNameList locator loc prefixList) candList
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
   let CompletionItem {..} = toCompletionItem x
   CompletionItem {_kind = Just CompletionItemKind_Variable, ..}
 
+-- fixme: handle automatic preset imports
+getImportedNameList :: Maybe RawImportSummary -> AliasPresetMap -> [T.Text]
+getImportedNameList summaryOrNone aliasPresetMap =
+  case summaryOrNone of
+    Nothing ->
+      []
+    Just (summary, _) -> do
+      concat $ flip map summary $ \(prefixOrGlobalLocator, specifiedLLs) -> do
+        case Map.lookup prefixOrGlobalLocator aliasPresetMap of
+          Nothing ->
+            map (\ll -> prefixOrGlobalLocator <> nsSep <> ll) specifiedLLs
+          Just defaultNameList -> do
+            concat $ flip map (Map.toList defaultNameList) $ \(locator, lls) -> do
+              map (\ll -> prefixOrGlobalLocator <> nsSep <> locator <> nsSep <> BN.reify ll) lls
+
 topCandidateToCompletionItem ::
   Maybe RawImportSummary ->
   Bool ->
+  [T.Text] ->
   T.Text ->
   Loc ->
   [T.Text] ->
   TopCandidate ->
   [CompletionItem]
-topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource locator cursorLoc prefixList topCandidate = do
+topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource importedNameList locator cursorLoc prefixList topCandidate = do
   if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
       let baseDD = dd topCandidate
       let ll = DD.localLocator baseDD
       let fullyQualified = FullyQualified locator ll
+      let isInPresetImport = reifyCand fullyQualified `elem` importedNameList
+      let needsTextEdit = not candIsInCurrentSource && not isInPresetImport
       let bare = Bare locator ll
       let prefixed = map (`Prefixed` ll) prefixList
       let cands = fullyQualified : bare : prefixed
       flip map cands $ \cand -> do
-        let textEditOrNone = if candIsInCurrentSource then Nothing else interpretCand importSummaryOrNone cand
+        let textEditOrNone = if needsTextEdit then interpretCand importSummaryOrNone cand else Nothing
         let CompletionItem {..} = toCompletionItem $ reifyCand cand
         let _kind = Just $ fromCandidateKind $ kind topCandidate
         let _detail = Just ("in " <> locator)
@@ -201,15 +224,24 @@ locToPosition :: Loc -> Position
 locToPosition (line, character) =
   Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ character - 1}
 
-getAllTopCandidate :: Module -> App [(Source, [TopCandidate])]
+getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], AliasPresetMap)
 getAllTopCandidate baseModule = do
   dependencies <- getAllDependencies baseModule
-  concat <$> mapConcurrently getAllTopCandidate' (baseModule : dependencies)
+  let visibleModuleList = (defaultModuleAlias, baseModule) : dependencies
+  (candListList, aliasPresetInfo) <- unzip <$> mapConcurrently getAllTopCandidate' visibleModuleList
+  return (concat candListList, constructAliasPresetMap aliasPresetInfo)
 
-getAllTopCandidate' :: Module -> App [(Source, [TopCandidate])]
-getAllTopCandidate' baseModule = do
-  cacheSeq <- getAllCachesInModule baseModule
-  return $ map (second Cache.topCandidate) cacheSeq
+type AliasPresetMap =
+  Map.HashMap T.Text PresetMap
+
+constructAliasPresetMap :: [(T.Text, Module)] -> AliasPresetMap
+constructAliasPresetMap =
+  Map.fromList . map (second modulePresetMap)
+
+getAllTopCandidate' :: (MA.ModuleAlias, Module) -> App ([(Source, [TopCandidate])], (T.Text, Module))
+getAllTopCandidate' (alias, candModule) = do
+  cacheSeq <- getAllCachesInModule candModule
+  return (map (second Cache.topCandidate) cacheSeq, (MA.reify alias, candModule))
 
 fromCandidateKind :: CandidateKind -> CompletionItemKind
 fromCandidateKind candidateKind =

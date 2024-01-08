@@ -97,13 +97,14 @@ fromFilePath moduleID moduleFilePath = do
         modulePresetMap = presetMap
       }
 
-getAllDependencies :: Module -> App [Module]
+getAllDependencies :: Module -> App [(ModuleAlias, Module)]
 getAllDependencies baseModule =
-  forM (Map.toList $ moduleDependency baseModule) $ \(_, (_, digest)) -> do
+  forM (Map.toList $ moduleDependency baseModule) $ \(alias, (_, digest)) -> do
     let moduleID = MID.Library digest
     moduleFilePath <- Module.getModuleFilePath Nothing moduleID
     let m = H.newSourceHint moduleFilePath
-    getModule m moduleID (MID.reify moduleID)
+    dep <- getModule m moduleID (MID.reify moduleID)
+    return (alias, dep)
 
 fromCurrentPath :: App Module
 fromCurrentPath = do
