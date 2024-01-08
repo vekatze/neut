@@ -20,6 +20,7 @@ import Entity.Ident.Reify qualified as Ident
 import Entity.LocalVarTree qualified as LVT
 import Entity.Module
 import Entity.ModuleAlias qualified as MA
+import Entity.RawImportSummary
 import Entity.Source
 import Entity.SourceLocator qualified as SL
 import Entity.TopCandidate
@@ -35,13 +36,6 @@ complete uri pos = do
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   let loc = positionToLoc pos
   lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
-
-adjustTopCandidate :: Source -> Loc -> Source -> [TopCandidate] -> App [CompletionItem]
-adjustTopCandidate currentSource loc candSource candList = do
-  locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
-  prefixList <- getPrefixList (sourceModule currentSource) candSource
-  let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
-  return $ concatMap (topCandidateToCompletionItem candIsInCurrentSource locator loc prefixList) candList
 
 itemGetterList :: [Source -> Loc -> App [CompletionItem]]
 itemGetterList =
@@ -63,26 +57,117 @@ getGlobalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getGlobalCompletionItems currentSource loc = do
   let baseModule = sourceModule currentSource
   globalVarList <- getAllTopCandidate baseModule
-  concat <$> mapM (uncurry (adjustTopCandidate currentSource loc)) globalVarList
+  baseCacheOrNone <- Path.getSourceCachePath currentSource >>= Cache.loadCacheOptimistically
+  let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
+  let impLoc = getImportLoc importSummaryOrNone
+  if loc < impLoc
+    then return []
+    else concat <$> mapConcurrently (uncurry (adjustTopCandidate importSummaryOrNone currentSource loc)) globalVarList
+
+getImportLoc :: Maybe RawImportSummary -> Loc
+getImportLoc importOrNone =
+  case importOrNone of
+    Nothing ->
+      (1, 1)
+    Just (_, loc) ->
+      loc
+
+adjustTopCandidate ::
+  Maybe RawImportSummary ->
+  Source ->
+  Loc ->
+  Source ->
+  [TopCandidate] ->
+  App [CompletionItem]
+adjustTopCandidate importOrNone currentSource loc candSource candList = do
+  locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
+  prefixList <- getPrefixList (sourceModule currentSource) candSource
+  let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
+  return $ concatMap (topCandidateToCompletionItem importOrNone candIsInCurrentSource locator loc prefixList) candList
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
   let CompletionItem {..} = toCompletionItem x
   CompletionItem {_kind = Just CompletionItemKind_Variable, ..}
 
-topCandidateToCompletionItem :: Bool -> T.Text -> Loc -> [T.Text] -> TopCandidate -> [CompletionItem]
-topCandidateToCompletionItem candIsInCurrentSource locator cursorLoc prefixList topCandidate = do
+topCandidateToCompletionItem ::
+  Maybe RawImportSummary ->
+  Bool ->
+  T.Text ->
+  Loc ->
+  [T.Text] ->
+  TopCandidate ->
+  [CompletionItem]
+topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource locator cursorLoc prefixList topCandidate = do
   if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
-      let dd' = DD.reify (dd topCandidate)
-      let ll = DD.localLocator (dd topCandidate)
-      let labels = dd' : ll : map (\prefix -> prefix <> nsSep <> ll) prefixList
-      flip map labels $ \label -> do
-        let CompletionItem {..} = toCompletionItem label
+      let baseDD = dd topCandidate
+      let ll = DD.localLocator baseDD
+      let fullyQualified = FullyQualified locator ll
+      let bare = Bare locator ll
+      let prefixed = map (`Prefixed` ll) prefixList
+      let cands = fullyQualified : bare : prefixed
+      flip map cands $ \cand -> do
+        let textEditOrNone = if candIsInCurrentSource then Nothing else interpretCand importSummaryOrNone cand
+        let CompletionItem {..} = toCompletionItem $ reifyCand cand
         let _kind = Just $ fromCandidateKind $ kind topCandidate
         let _detail = Just ("in " <> locator)
-        CompletionItem {_kind, _detail, ..}
+        CompletionItem {_kind, _detail, _additionalTextEdits = textEditOrNone, ..}
+
+data Cand
+  = FullyQualified T.Text T.Text
+  | Prefixed T.Text T.Text
+  | Bare T.Text T.Text
+
+interpretCand :: Maybe RawImportSummary -> Cand -> Maybe [TextEdit]
+interpretCand importSummaryOrNone cand =
+  case importSummaryOrNone of
+    Nothing -> do
+      let edit = inImportBlock $ constructEditText cand <> "\n"
+      let pos = Position {_line = 0, _character = 0}
+      Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
+    Just (summary, loc) -> do
+      if isAlreadyImported summary cand
+        then Nothing
+        else do
+          let edit = constructEditText cand <> "\n"
+          let pos = locToPosition loc
+          Just [TextEdit {_range = Range {_start = pos, _end = pos}, _newText = edit}]
+
+reifyCand :: Cand -> T.Text
+reifyCand cand =
+  case cand of
+    FullyQualified gl ll ->
+      gl <> nsSep <> ll
+    Prefixed prefix ll ->
+      prefix <> nsSep <> ll
+    Bare _ ll ->
+      ll
+
+isAlreadyImported :: [(T.Text, [T.Text])] -> Cand -> Bool
+isAlreadyImported summary cand =
+  case cand of
+    FullyQualified gl _ ->
+      gl `elem` map fst summary
+    Prefixed prefix _ ->
+      prefix `elem` map fst summary
+    Bare _ ll ->
+      ll `elem` concatMap snd summary
+
+constructEditText :: Cand -> T.Text
+constructEditText cand =
+  case cand of
+    FullyQualified gl _ ->
+      "- " <> gl
+    Prefixed prefix _ ->
+      "- " <> prefix
+    Bare gl ll -> do
+      "- " <> gl <> " {" <> ll <> "}"
+
+inImportBlock :: T.Text -> T.Text
+inImportBlock text =
+  "import {\n" <> text <> "\n}"
 
 toCompletionItem :: T.Text -> CompletionItem
 toCompletionItem x =
@@ -111,6 +196,10 @@ toCompletionItem x =
 positionToLoc :: Position -> Loc
 positionToLoc Position {_line, _character} =
   (fromIntegral $ _line + 1, fromIntegral $ _character + 1)
+
+locToPosition :: Loc -> Position
+locToPosition (line, character) =
+  Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ character - 1}
 
 getAllTopCandidate :: Module -> App [(Source, [TopCandidate])]
 getAllTopCandidate baseModule = do

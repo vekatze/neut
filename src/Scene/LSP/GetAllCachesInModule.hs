@@ -1,4 +1,4 @@
-module Scene.LSP.GetAllCachesInModule (getAllCachesInModule) where
+module Scene.LSP.GetAllCachesInModule (getAllCachesInModule, getCache) where
 
 import Context.App
 import Context.Cache qualified as Cache
@@ -14,13 +14,12 @@ import UnliftIO.Async
 getAllCachesInModule :: Module -> App [(Source, Cache)]
 getAllCachesInModule baseModule = do
   (_, filePathList) <- listDirRecur $ getSourceDir baseModule
-  fmap catMaybes $ forConcurrently filePathList $ \path -> getLocationTree baseModule path
+  fmap catMaybes $ forConcurrently filePathList $ \path -> getCache baseModule path
 
-getLocationTree :: Module -> Path Abs File -> App (Maybe (Source, Cache))
-getLocationTree baseModule filePath = do
+getCache :: Module -> Path Abs File -> App (Maybe (Source, Cache))
+getCache baseModule filePath = do
   let source = Source {sourceFilePath = filePath, sourceModule = baseModule, sourceHint = Nothing}
-  cachePath <- getSourceCachePath source
-  cacheOrNone <- Cache.loadCacheOptimistically cachePath
+  cacheOrNone <- getSourceCachePath source >>= Cache.loadCacheOptimistically
   case cacheOrNone of
     Nothing ->
       return Nothing
