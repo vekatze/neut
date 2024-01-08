@@ -3,6 +3,7 @@ module Entity.Cache where
 import Data.Binary
 import Entity.LocalVarTree qualified as LVT
 import Entity.LocationTree qualified as LT
+import Entity.RawImportSummary
 import Entity.Remark
 import Entity.Stmt qualified as Stmt
 import Entity.TopCandidate (TopCandidate)
@@ -13,7 +14,8 @@ data Cache = Cache
     remarkList :: [Remark],
     locationTree :: LT.LocationTree,
     localVarTree :: LVT.LocalVarTree,
-    topCandidate :: [TopCandidate]
+    topCandidate :: [TopCandidate],
+    rawImportSummary :: Maybe RawImportSummary
   }
   deriving (Generic)
 
@@ -22,7 +24,8 @@ data LowCache = LowCache
     remarkList' :: [Remark],
     locationTree' :: LT.LocationTree,
     localVarTree' :: LVT.LocalVarTree,
-    topCandidate' :: [TopCandidate]
+    topCandidate' :: [TopCandidate],
+    rawImportSummary' :: Maybe RawImportSummary
   }
   deriving (Generic)
 
@@ -35,7 +38,8 @@ compress cache =
       remarkList' = remarkList cache,
       locationTree' = locationTree cache,
       localVarTree' = localVarTree cache,
-      topCandidate' = topCandidate cache
+      topCandidate' = topCandidate cache,
+      rawImportSummary' = rawImportSummary cache
     }
 
 extend :: LowCache -> Cache
@@ -45,5 +49,6 @@ extend cache =
       remarkList = remarkList' cache,
       locationTree = locationTree' cache,
       localVarTree = localVarTree' cache,
-      topCandidate = topCandidate' cache
+      topCandidate = topCandidate' cache,
+      rawImportSummary = rawImportSummary' cache
     }

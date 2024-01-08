@@ -8,6 +8,7 @@ import Context.Alias qualified as Alias
 import Context.App
 import Context.Global qualified as Global
 import Context.Module qualified as Module
+import Context.RawImportSummary qualified as RawImportSummary
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
@@ -50,9 +51,10 @@ interpretImport currentSource importOrNone = do
   case importOrNone of
     Nothing ->
       return []
-    Just (RawImport _ _ importItemList _) -> do
-      fmap concat $ forM (SE.extract importItemList) $ \rawImport -> do
-        let RawImportItem m (locatorText, _) localLocatorList = rawImport
+    Just rawImport@(RawImport _ _ importItemList _) -> do
+      RawImportSummary.set rawImport
+      fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
+        let RawImportItem m (locatorText, _) localLocatorList = rawImportItem
         let localLocatorList' = SE.extract localLocatorList
         interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
 

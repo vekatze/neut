@@ -35,6 +35,7 @@ import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.Opacity qualified as O
 import Entity.OptimizableData
+import Entity.RawImportSummary (RawImportSummary)
 import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
@@ -63,6 +64,7 @@ data Env = Env
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
+    importEnv :: IORef (Maybe RawImportSummary),
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
@@ -115,6 +117,7 @@ newEnv = do
   locatorAliasMap <- newIORef Map.empty
   sourceNameMap <- newIORef Map.empty
   remarkList <- newIORef []
+  importEnv <- newIORef Nothing
   globalRemarkList <- newIORef []
   tagMap <- newIORef LT.empty
   localVarMap <- newIORef LVT.empty
