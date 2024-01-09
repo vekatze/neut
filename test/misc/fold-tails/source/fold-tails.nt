@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 data nat {
 - Zero
 - Succ(nat)
@@ -75,20 +71,33 @@ define main(): unit {
   let _ = n in
   let _ = n in
   let _ = n in
-  let m = mul-nat(n, mul-nat(n, n)) in // 27
+  let m = mul-nat(n, mul-nat(n, n)) in
+  // 27
   let _ = m in
   let _ = m in
-  let xs = gen(m) in // [27, 26, 25, ..., 1]
-  let yss = tails(_, xs) in // [[26, ...], [25, ...], ..., [1, ...]]
+  // [27, 26, 25, ..., 1]
+  let xs = gen(m) in
+  // [[26, ...], [25, ...], ..., [1, ...]]
+  let yss = tails(_, xs) in
   let _ = yss in
   let _ = yss in
-  let zs = map((l) => {head(l)}, yss) in // [26, ..., 1]
+  let zs =
+    // [26, ..., 1]
+    map((l) => {
+      head(l)
+    }, yss)
+  in
   let _ = zs in
   let _ = zs in
   let _ = zs in
   let _ = zs in
   let _ = zs in
-  let result-nat = fold-r(nat, nat, (a, b) => {add-nat(a, b)}, Zero, zs) in // 26 + ... + 1 = 351
+  let result-nat =
+    // 26 + ... + 1 = 351
+    fold-r(nat, nat, (a, b) => {
+      add-nat(a, b)
+    }, Zero, zs)
+  in
   let _ = result-nat in
   let _ = result-nat in
   let result = interpret(result-nat) in

@@ -1,9 +1,9 @@
 import {
-- core.bool {bool, True, False}
-- core.unit {unit}
-- core.except {none, Pass}
-- core.text.io {print-int, print}
+- core.bool {False, True, bool}
+- core.except {Pass, none}
 - core.text
+- core.text.io {print, print-int}
+- core.unit {unit}
 }
 
 data stack(a) {

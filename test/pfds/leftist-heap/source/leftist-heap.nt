@@ -1,8 +1,3 @@
-import {
-- core
-- core.text
-}
-
 data order {
 - LT
 - EQ
@@ -12,17 +7,18 @@ data order {
 // leftist heap
 data heap(a) {
 - Leaf
-- Node(int, a, heap(a), heap(a)) // int stands for the rank of the Node
+  // int stands for the rank of the Node
+- Node(int, a, heap(a), heap(a))
 }
 
 data heap-signature(a) {
 - Heap of {
   - empty: heap(a)
-  - is-empty: &heap(a) -> bool
+  - is-empty: (&heap(a)) -> bool
   - insert: (a, heap(a)) -> heap(a)
   - merge: (heap(a), heap(a)) -> heap(a)
-  - find-min: &heap(a) -> ?a
-  - delete-min: heap(a) -> ?heap(a)
+  - find-min: (&heap(a)) -> ?a
+  - delete-min: (heap(a)) -> ?heap(a)
   }
 }
 
@@ -66,8 +62,7 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     }
   in
   Heap of {
-  - empty =
-    Leaf
+  - empty = Leaf
   - is-empty =
     (h: &heap(a)) => {
       case h {
@@ -81,8 +76,7 @@ define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) 
     (x: a, h: heap(a)) => {
       merge(Node(1, x, Leaf, Leaf), h)
     }
-  - merge =
-    merge
+  - merge
   - find-min =
     (h: &heap(a)) => {
       case h {

@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define main(): unit {
   print-float(4.2);
   print("\n")

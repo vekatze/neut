@@ -1,5 +1,4 @@
 import {
-- core
 - core.external {free, malloc}
 - core.memory {load-int, store-int}
 }

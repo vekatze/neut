@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define no-type-ascription(): _ {
   Unit
 }

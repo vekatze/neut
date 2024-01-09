@@ -1,8 +1,7 @@
 import {
-- core
-- core.errno {system}
 - FF
 - FM
+- core.errno {system}
 }
 
 define use-file(): system(unit) {

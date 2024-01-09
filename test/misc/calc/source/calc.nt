@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 data expr() {
 - Num(int)
 - Add(expr(), expr())
@@ -23,7 +19,7 @@ define interpret(e: expr()): int {
 }
 
 define main(): unit {
-  let e1 = Add(Num(1), Num(2)) in // 3
+  let e1 = Add(Num(1), Num(2)) in
   let e2 = Mul(Num(3), Num(1023)) in
   let e3 = Sub(e2, e1) in
   print-int(interpret(e3));

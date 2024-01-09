@@ -1,10 +1,5 @@
 // random access list via numerical representation
 // (complete binary tree + dense representation)
-
-import {
-- core
-}
-
 data tree(a) {
 - Leaf(a)
 - Node(int, tree(a), tree(a))
@@ -164,13 +159,19 @@ define main(): unit {
   let xs = cons(_, 2, xs) in
   let xs = cons(_, 4, xs) in
   let xs = cons(_, 1, xs) in
-  let v1 on xs = find-and-get(0, xs) in // 1
-  let v2 on xs = find-and-get(1, xs) in // 4
-  let _ on xs = find-and-get(2, xs) in // 2
-  let v4 on xs = find-and-get(3, xs) in // 3
+  let v1 on xs = find-and-get(0, xs) in
+  // 1
+  let v2 on xs = find-and-get(1, xs) in
+  // 4
+  let _ on xs = find-and-get(2, xs) in
+  // 2
+  let v4 on xs = find-and-get(3, xs) in
+  // 3
   let xs = update(_, 2, 10, xs) in
-  let v3-modified on xs = find-and-get(2, xs) in // 10
+  let v3-modified on xs = find-and-get(2, xs) in
+  // 10
   let _ = xs in
-  print-int(add-int(v1, add-int(v2, add-int(v3-modified, v4)))); // 1 + 4 + 10 + 3 = 18
+  print-int(add-int(v1, add-int(v2, add-int(v3-modified, v4))));
+  // 1 + 4 + 10 + 3 = 18
   print("\n")
 }

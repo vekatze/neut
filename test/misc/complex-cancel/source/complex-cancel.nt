@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 data joker {
 - JLeft(joker)
 - JRight(int)
@@ -16,12 +12,15 @@ define test(x: joker): joker {
     - JLeft(v2) =>
       match v2 {
       - JLeft(v3) =>
-        JLeft(v3) // (A)
+        // (A)
+        JLeft(v3)
       - JRight(_) =>
-        JRight(10) // (B)
+        // (B)
+        JRight(10)
       }
     - JRight(_) =>
-      JRight(10) // (C)
+      // (C)
+      JRight(10)
     }
   - JRight(_) =>
     JRight(3)
@@ -39,7 +38,8 @@ define test2(x: joker): int {
         let _ = JLeft(v3) in
         1
       - JRight(_) =>
-        1 // !
+        1
+        // !
       }
     - JRight(_) =>
       let _ = JRight(10) in

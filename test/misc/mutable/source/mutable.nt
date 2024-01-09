@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define bar(xs-cell: &cell(list(int))): unit {
   borrow(xs-cell, (xs) => {
     let len = length(xs) in

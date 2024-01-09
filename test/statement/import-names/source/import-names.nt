@@ -1,7 +1,6 @@
 import {
-- core
-- this.foo {some-func}
 - this.bar {other-func-X, other-func-Y}
+- this.foo {some-func}
 }
 
 define main(): unit {
