@@ -11,7 +11,6 @@ import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw
-import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S

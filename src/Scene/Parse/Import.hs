@@ -7,13 +7,11 @@ where
 import Context.Alias qualified as Alias
 import Context.App
 import Context.Global qualified as Global
-import Context.Module qualified as Module
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
-import Context.UnusedPreset qualified as UnusedPreset
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
@@ -25,13 +23,13 @@ import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Module
 import Entity.ModuleAlias (ModuleAlias (ModuleAlias))
-import Entity.ModuleID qualified as MID
 import Entity.RawProgram
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Syntax.Series qualified as SE
 import Path
+import Scene.Module.GetEnabledPreset
 import Scene.Module.Reflect qualified as Module
 
 type LocatorText =
@@ -46,17 +44,19 @@ activateImport m sourceInfoList = do
     forM_ aliasInfoList $ \aliasInfo ->
       Alias.activateAliasInfo namesInSource aliasInfo
 
-interpretImport :: Source.Source -> Maybe RawImport -> App [(Source.Source, [AI.AliasInfo])]
-interpretImport currentSource importOrNone = do
+interpretImport :: Hint -> Source.Source -> Maybe RawImport -> App [(Source.Source, [AI.AliasInfo])]
+interpretImport m currentSource importOrNone = do
+  presetImportList <- interpretPreset m (Source.sourceModule currentSource)
   case importOrNone of
     Nothing ->
-      return []
+      return presetImportList
     Just rawImport@(RawImport _ _ importItemList _) -> do
       RawImportSummary.set rawImport
-      fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
-        let RawImportItem m (locatorText, _) localLocatorList = rawImportItem
+      importList <- fmap concat $ forM (SE.extract importItemList) $ \rawImportItem -> do
+        let RawImportItem mItem (locatorText, _) localLocatorList = rawImportItem
         let localLocatorList' = SE.extract localLocatorList
-        interpretImportItem True (Source.sourceModule currentSource) m locatorText localLocatorList'
+        interpretImportItem True (Source.sourceModule currentSource) mItem locatorText localLocatorList'
+      return $ presetImportList ++ importList
 
 interpretImportItem ::
   Bool ->
@@ -76,22 +76,8 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
           source <- getSource m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
           return [(source, [AI.Use sgl localLocatorList, AI.Prefix m gla sgl])]
-      | Just dep <- Map.lookup (ModuleAlias baseName) (moduleDependency currentModule) -> do
-          unless (null localLocatorList) $ do
-            Throw.raiseError m "found a non-empty locator list when using alias import"
-          let digest = dependencyDigest dep
-          nextModule <- Module.getModule m (MID.Library digest) locatorText
-          let presetInfo = Map.toList $ modulePresetMap nextModule
-          UnusedPreset.insert (MID.reify $ moduleID nextModule) m
-          ensFileHint <- getEnsFileHint m nextModule
-          Tag.insertFileLoc m (T.length locatorText) ensFileHint
-          let m' = m {metaShouldSaveLocation = False}
-          fmap concat $ forM presetInfo $ \(presetSourceLocator, presetLocalLocatorList) -> do
-            let newLocatorText = BN.reify baseName <> nsSep <> presetSourceLocator
-            let presetLocalLocatorList' = map ((m',) . LL.new) presetLocalLocatorList
-            interpretImportItem False nextModule m' newLocatorText presetLocalLocatorList'
       | otherwise ->
-          Throw.raiseError m $ "no such prefix or alias is defined: " <> BN.reify baseName
+          Throw.raiseError m $ "no such prefix is defined: " <> BN.reify baseName
     aliasText : locator ->
       case SL.fromBaseNameList locator of
         Nothing ->
@@ -118,7 +104,9 @@ getSource m sgl locatorText = do
         Source.sourceHint = Just m
       }
 
-getEnsFileHint :: Hint -> Module -> App Hint
-getEnsFileHint m baseModule = do
-  moduleFilePath <- Module.getModuleFilePath (Just m) (moduleID baseModule)
-  return $ newSourceHint moduleFilePath
+interpretPreset :: Hint -> Module -> App [(Source.Source, [AI.AliasInfo])]
+interpretPreset m currentModule = do
+  presetInfo <- getEnabledPreset currentModule
+  fmap concat $ forM presetInfo $ \(locatorText, presetLocalLocatorList) -> do
+    let presetLocalLocatorList' = map ((m,) . LL.new) presetLocalLocatorList
+    interpretImportItem False currentModule m locatorText presetLocalLocatorList'

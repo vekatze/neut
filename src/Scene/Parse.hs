@@ -87,7 +87,7 @@ ensureMain m mainFunctionName = do
 
 interpret :: Source.Source -> RawProgram -> App [WeakStmt]
 interpret currentSource (RawProgram m importOrNone _ stmtList) = do
-  interpretImport currentSource importOrNone >>= activateImport m
+  interpretImport m currentSource importOrNone >>= activateImport m
   stmtList' <- Discern.discernStmtList $ map fst stmtList
   Global.reportMissingDefinitions
   saveTopLevelNames (Source.sourceFilePath currentSource) $ getWeakStmtName stmtList'
