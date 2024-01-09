@@ -150,11 +150,6 @@ getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
 
-addDependency :: MA.ModuleAlias -> [ModuleURL] -> ModuleDigest -> Module -> Module
-addDependency alias mirrorList digest someModule = do
-  let dependency = Dependency {dependencyMirrorList = mirrorList, dependencyDigest = digest}
-  someModule {moduleDependency = Map.insert alias dependency (moduleDependency someModule)}
-
 insertDependency :: ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest])
 insertDependency (mirrorList1, digest1) (mirrorList2, _) = do
   (nubOrd $ mirrorList1 ++ mirrorList2, digest1)
