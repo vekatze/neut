@@ -53,16 +53,13 @@ decImport presetNames (RawImport c _ importItemList _) = do
 
 filterImportItem :: [(T.Text, [BN.BaseName])] -> RawImportItem -> Maybe RawImportItem
 filterImportItem presetNames item@(RawImportItem m (loc, c) lls) = do
-  if SE.isEmpty lls
-    then do
-      if loc `elem` map fst presetNames
+  case lookup loc presetNames of
+    Nothing ->
+      return item
+    Just names -> do
+      if SE.isEmpty lls
         then Nothing
-        else return item
-    else do
-      case lookup loc presetNames of
-        Nothing ->
-          Nothing
-        Just names -> do
+        else do
           let lls' = SE.catMaybes $ fmap (filterLocalLocator names) lls
           if SE.isEmpty lls'
             then Nothing
