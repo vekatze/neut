@@ -7,6 +7,7 @@ import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
@@ -18,9 +19,9 @@ import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
-pp :: [T.Text] -> (C, RawProgram) -> T.Text
-pp activePresetNames (c1, RawProgram _ importOrNone c2 stmtList) = do
-  let importOrNone' = fmap (decImport activePresetNames) importOrNone
+pp :: [(T.Text, [BN.BaseName])] -> (C, RawProgram) -> T.Text
+pp presetNames (c1, RawProgram _ importOrNone c2 stmtList) = do
+  let importOrNone' = fmap (decImport presetNames) importOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
@@ -41,13 +42,37 @@ decTopDocList c docList =
     (Just doc, c') : rest -> do
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: [T.Text] -> RawImport -> D.Doc
-decImport activePresetNames (RawImport c _ importItemList _) = do
+decImport :: [(T.Text, [BN.BaseName])] -> RawImport -> D.Doc
+decImport presetNames (RawImport c _ importItemList _) = do
+  let importItemList' = SE.catMaybes $ fmap (filterImportItem presetNames) importItemList
   RT.attachComment c $
     D.join
       [ D.text "import ",
-        SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList
+        SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
       ]
+
+filterImportItem :: [(T.Text, [BN.BaseName])] -> RawImportItem -> Maybe RawImportItem
+filterImportItem presetNames item@(RawImportItem m (loc, c) lls) = do
+  if SE.isEmpty lls
+    then do
+      if loc `elem` map fst presetNames
+        then Nothing
+        else return item
+    else do
+      case lookup loc presetNames of
+        Nothing ->
+          Nothing
+        Just names -> do
+          let lls' = SE.catMaybes $ fmap (filterLocalLocator names) lls
+          if SE.isEmpty lls'
+            then Nothing
+            else return $ RawImportItem m (loc, c) lls'
+
+filterLocalLocator :: [BN.BaseName] -> (Hint, LL.LocalLocator) -> Maybe (Hint, LL.LocalLocator)
+filterLocalLocator names (m, ll) =
+  if LL.baseName ll `elem` names
+    then Nothing
+    else return (m, ll)
 
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do

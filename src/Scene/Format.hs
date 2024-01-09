@@ -21,6 +21,6 @@ format fileType path content = do
       Ens.pp <$> Ens.fromFilePath' path content
     FT.Source -> do
       baseModule <- Module.fromCurrentPath
-      activePresetNames <- getEnabledPreset baseModule
+      enabledPreset <- getEnabledPreset baseModule
       program <- P.parseFile True Parse.parseProgram path content
-      return $ RawProgram.pp undefined program
+      return $ RawProgram.pp enabledPreset program

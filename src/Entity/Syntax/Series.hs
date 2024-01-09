@@ -19,11 +19,13 @@ module Entity.Syntax.Series
     containsNoComment,
     sortSeriesBy,
     appendLeftBiased,
+    catMaybes,
   )
 where
 
 import Data.Bifunctor
 import Data.List (sortBy)
+import Data.Maybe (mapMaybe)
 import Data.Text qualified as T
 import Entity.C (C)
 
@@ -155,3 +157,15 @@ appendLeftBiased series1 series2 = do
       container = container series1,
       separator = separator series1
     }
+
+catMaybes :: Series (Maybe a) -> Series a
+catMaybes series = do
+  series {elems = mapMaybe distributeMaybe $ elems series}
+
+distributeMaybe :: (a, Maybe b) -> Maybe (a, b)
+distributeMaybe (a, mb) =
+  case mb of
+    Just b ->
+      Just (a, b)
+    Nothing ->
+      Nothing
