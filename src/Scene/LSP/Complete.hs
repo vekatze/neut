@@ -11,6 +11,7 @@ import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (sort)
 import Data.List.NonEmpty qualified as NE
+import Data.Set qualified as S
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.Cache qualified as Cache
@@ -78,59 +79,43 @@ adjustTopCandidate ::
   Maybe RawImportSummary ->
   Source ->
   Loc ->
-  AliasPresetMap ->
+  FastPresetSummary ->
   [(Source, [TopCandidate])] ->
   App [CompletionItem]
-adjustTopCandidate summaryOrNone currentSource loc aliasPresetMap candInfo = do
-  let importedNameList = getImportedNameList summaryOrNone aliasPresetMap
+adjustTopCandidate summaryOrNone currentSource loc prefixSummary candInfo = do
   fmap concat $ forM candInfo $ \(candSource, candList) -> do
     locator <- NE.head <$> getHumanReadableLocator (sourceModule currentSource) candSource
     prefixList <- getPrefixList (sourceModule currentSource) candSource
     let candIsInCurrentSource = sourceFilePath currentSource == sourceFilePath candSource
-    return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource importedNameList locator loc prefixList) candList
+    return $ concatMap (topCandidateToCompletionItem summaryOrNone candIsInCurrentSource prefixSummary locator loc prefixList) candList
 
 identToCompletionItem :: T.Text -> CompletionItem
 identToCompletionItem x = do
   let CompletionItem {..} = toCompletionItem x
   CompletionItem {_kind = Just CompletionItemKind_Variable, ..}
 
--- fixme: handle automatic preset imports
-getImportedNameList :: Maybe RawImportSummary -> AliasPresetMap -> [T.Text]
-getImportedNameList summaryOrNone aliasPresetMap =
-  case summaryOrNone of
-    Nothing ->
-      []
-    Just (summary, _) -> do
-      concat $ flip map summary $ \(prefixOrGlobalLocator, specifiedLLs) -> do
-        case Map.lookup prefixOrGlobalLocator aliasPresetMap of
-          Nothing ->
-            map (\ll -> prefixOrGlobalLocator <> nsSep <> ll) specifiedLLs
-          Just defaultNameList -> do
-            concat $ flip map (Map.toList defaultNameList) $ \(locator, lls) -> do
-              map (\ll -> prefixOrGlobalLocator <> nsSep <> locator <> nsSep <> BN.reify ll) lls
-
 topCandidateToCompletionItem ::
   Maybe RawImportSummary ->
   Bool ->
-  [T.Text] ->
+  FastPresetSummary ->
   T.Text ->
   Loc ->
   [T.Text] ->
   TopCandidate ->
   [CompletionItem]
-topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource importedNameList locator cursorLoc prefixList topCandidate = do
+topCandidateToCompletionItem importSummaryOrNone candIsInCurrentSource presetSummary locator cursorLoc prefixList topCandidate = do
   if candIsInCurrentSource && cursorLoc < loc topCandidate
     then []
     else do
       let baseDD = dd topCandidate
       let ll = DD.localLocator baseDD
       let fullyQualified = FullyQualified locator ll
-      let isInPresetImport = reifyCand fullyQualified `elem` importedNameList
-      let needsTextEdit = not candIsInCurrentSource && not isInPresetImport
       let bare = Bare locator ll
       let prefixed = map (`Prefixed` ll) prefixList
       let cands = fullyQualified : bare : prefixed
       flip map cands $ \cand -> do
+        let inPresetImport = isInPresetImport presetSummary cand
+        let needsTextEdit = not candIsInCurrentSource && not inPresetImport
         let textEditOrNone = if needsTextEdit then interpretCand importSummaryOrNone cand else Nothing
         let CompletionItem {..} = toCompletionItem $ reifyCand cand
         let _kind = Just $ fromCandidateKind $ kind topCandidate
@@ -141,6 +126,20 @@ data Cand
   = FullyQualified T.Text T.Text
   | Prefixed T.Text T.Text
   | Bare T.Text T.Text
+
+isInPresetImport :: FastPresetSummary -> Cand -> Bool
+isInPresetImport presetSummary cand =
+  case cand of
+    FullyQualified locator _ ->
+      S.member locator (aliasSet presetSummary)
+    Prefixed {} ->
+      False
+    Bare locator ll ->
+      case Map.lookup locator (presetMap presetSummary) of
+        Nothing ->
+          False
+        Just lls ->
+          ll `elem` lls
 
 interpretCand :: Maybe RawImportSummary -> Cand -> Maybe [TextEdit]
 interpretCand importSummaryOrNone cand =
@@ -223,12 +222,34 @@ locToPosition :: Loc -> Position
 locToPosition (line, character) =
   Position {_line = fromIntegral $ line - 1, _character = fromIntegral $ character - 1}
 
-getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], AliasPresetMap)
+getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], FastPresetSummary)
 getAllTopCandidate baseModule = do
   dependencies <- getAllDependencies baseModule
   let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   (candListList, aliasPresetInfo) <- unzip <$> mapConcurrently getAllTopCandidate' visibleModuleList
-  return (concat candListList, constructAliasPresetMap aliasPresetInfo)
+  let aliasList = getAliasListWithEnabledPresets baseModule
+  let aliasPresetMap = constructAliasPresetMap aliasPresetInfo
+  let presetSummary =
+        concat $ flip map aliasList $ \alias -> do
+          let alias' = MA.reify alias
+          case Map.lookup alias' aliasPresetMap of
+            Nothing ->
+              []
+            Just presetMap ->
+              reifyPresetMap (MA.reify alias) presetMap
+  return (concat candListList, fromPresetSummary presetSummary)
+
+data FastPresetSummary = FastPresetSummary
+  { presetMap :: Map.HashMap T.Text (S.Set T.Text),
+    aliasSet :: S.Set T.Text
+  }
+
+fromPresetSummary :: PresetSummary -> FastPresetSummary
+fromPresetSummary summary =
+  FastPresetSummary
+    { presetMap = Map.fromList $ map (second $ S.fromList . map BN.reify) summary,
+      aliasSet = S.fromList $ map fst summary
+    }
 
 constructAliasPresetMap :: [(T.Text, Module)] -> AliasPresetMap
 constructAliasPresetMap =

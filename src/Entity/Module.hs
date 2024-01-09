@@ -344,7 +344,10 @@ getAliasListWithEnabledPresets baseModule = do
   let depList = Map.toList $ moduleDependency baseModule
   map fst $ filter (\(_, dep) -> dependencyPresetEnabled dep) depList
 
-reifyPresetMap :: T.Text -> PresetMap -> [(T.Text, [BN.BaseName])]
+type PresetSummary =
+  [(T.Text, [BN.BaseName])]
+
+reifyPresetMap :: T.Text -> PresetMap -> PresetSummary
 reifyPresetMap moduleName presetMap = do
   let presetList = Map.toList presetMap
   flip map presetList $ \(loc, lls) -> do
