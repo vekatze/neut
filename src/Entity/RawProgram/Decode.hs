@@ -8,7 +8,6 @@ import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
-import Entity.Module qualified as M
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
 import Entity.RawLowType.Decode qualified as RLT

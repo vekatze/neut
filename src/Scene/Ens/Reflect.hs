@@ -34,9 +34,9 @@ parseEns = do
     [ parseDictionary m,
       parseList m,
       parseString m,
+      try $ parseBool m,
       try $ parseInt m,
-      parseFloat m,
-      parseBool m
+      parseFloat m
     ]
 
 parseInt :: Hint -> Parser (E.Ens, C)

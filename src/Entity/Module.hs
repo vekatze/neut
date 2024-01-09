@@ -38,7 +38,8 @@ type AliasPresetMap =
 
 data Dependency = Dependency
   { dependencyMirrorList :: [ModuleURL],
-    dependencyDigest :: ModuleDigest
+    dependencyDigest :: ModuleDigest,
+    dependencyPresetEnabled :: Bool
   }
   deriving (Show)
 
@@ -86,6 +87,10 @@ keyDigest =
 keyMirror :: T.Text
 keyMirror =
   "mirror"
+
+keyEnablePreset :: T.Text
+keyEnablePreset =
+  "enable-preset"
 
 keyExtraContent :: T.Text
 keyExtraContent =
@@ -333,3 +338,15 @@ getReadableModuleID baseModule mid =
     MID.Library digest -> do
       let depMap = Map.toList $ moduleDependency baseModule
       fmap (MA.reify . fst) $ flip find depMap $ \(_, dep) -> digest == dependencyDigest dep
+
+getAliasListWithEnabledPresets :: Module -> [MA.ModuleAlias]
+getAliasListWithEnabledPresets baseModule = do
+  let depList = Map.toList $ moduleDependency baseModule
+  map fst $ filter (\(_, dep) -> dependencyPresetEnabled dep) depList
+
+reifyPresetMap :: T.Text -> PresetMap -> [T.Text]
+reifyPresetMap moduleName presetMap = do
+  let presetList = Map.toList presetMap
+  concat $ flip map presetList $ \(loc, lls) -> do
+    flip map lls $ \ll -> do
+      moduleName <> nsSep <> loc <> nsSep <> BN.reify ll

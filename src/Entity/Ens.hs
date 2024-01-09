@@ -150,11 +150,11 @@ toFloat ens@(m :< _) =
     _ ->
       raiseTypeError m ET.Float (typeOf ens)
 
-toBool :: Ens -> Either Error Bool
+toBool :: Ens -> Either Error (Hint, Bool)
 toBool ens@(m :< _) =
   case ens of
     _ :< Bool x ->
-      return x
+      return (m, x)
     _ ->
       raiseTypeError m ET.Bool (typeOf ens)
 

@@ -11,6 +11,7 @@ import Context.App
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw
+import Control.Comonad.Cofree
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
 import Data.Set qualified as S
@@ -165,9 +166,17 @@ interpretDependencyDict (m, _, dep) = do
     (_, _, urlEnsList) <- liftEither $ E.access keyMirror ens >>= E.toList . E.strip
     urlList <- liftEither $ mapM (E.toString . fst >=> return . snd) urlEnsList
     (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString . E.strip
+    (_, enablePreset) <- liftEither $ E.access' keyEnablePreset (E.Bool False) ens >>= E.toBool . E.strip
     let mirrorList = map ModuleURL urlList
     let digest' = ModuleDigest digest
-    return (ModuleAlias k', Dependency {dependencyMirrorList = mirrorList, dependencyDigest = digest'})
+    return
+      ( ModuleAlias k',
+        Dependency
+          { dependencyMirrorList = mirrorList,
+            dependencyDigest = digest',
+            dependencyPresetEnabled = enablePreset
+          }
+      )
   return $ Map.fromList items
 
 interpretExtraPath :: Path Abs Dir -> (E.Ens, a) -> App (SomePath Rel)
