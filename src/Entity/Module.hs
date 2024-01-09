@@ -4,7 +4,7 @@ import Control.Comonad.Cofree
 import Control.Monad
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
-import Data.List (sort)
+import Data.List (find, sort)
 import Data.List.NonEmpty qualified as NE
 import Data.Maybe (catMaybes)
 import Data.Text qualified as T
@@ -15,7 +15,7 @@ import Entity.Ens.Reify qualified as Ens
 import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint (Hint, internalHint)
-import Entity.ModuleAlias
+import Entity.ModuleAlias qualified as MA
 import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
@@ -30,20 +30,33 @@ type SomePath a =
 type LocatorName =
   T.Text
 
+type PresetMap =
+  Map.HashMap LocatorName [BN.BaseName]
+
+type AliasPresetMap =
+  Map.HashMap T.Text PresetMap
+
+data Dependency = Dependency
+  { dependencyMirrorList :: [ModuleURL],
+    dependencyDigest :: ModuleDigest,
+    dependencyPresetEnabled :: Bool
+  }
+  deriving (Show)
+
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
     moduleArchiveDir :: Path Rel Dir,
     moduleBuildDir :: Path Rel Dir,
-    moduleDependency :: Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest),
+    moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
     moduleForeignDirList :: [Path Rel Dir],
-    modulePrefixMap :: Map.HashMap BN.BaseName (ModuleAlias, SL.SourceLocator),
+    modulePrefixMap :: Map.HashMap BN.BaseName (MA.ModuleAlias, SL.SourceLocator),
     moduleInlineLimit :: Maybe Int,
-    modulePresetMap :: Map.HashMap LocatorName [BN.BaseName]
+    modulePresetMap :: PresetMap
   }
   deriving (Show)
 
@@ -74,6 +87,10 @@ keyDigest =
 keyMirror :: T.Text
 keyMirror =
   "mirror"
+
+keyEnablePreset :: T.Text
+keyEnablePreset =
+  "enable-preset"
 
 keyExtraContent :: T.Text
 keyExtraContent =
@@ -138,22 +155,18 @@ getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
   parent $ moduleLocation baseModule
 
-addDependency :: ModuleAlias -> [ModuleURL] -> ModuleDigest -> Module -> Module
-addDependency alias mirrorList digest someModule = do
-  someModule {moduleDependency = Map.insert alias (mirrorList, digest) (moduleDependency someModule)}
-
 insertDependency :: ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest])
 insertDependency (mirrorList1, digest1) (mirrorList2, _) = do
   (nubOrd $ mirrorList1 ++ mirrorList2, digest1)
 
-getDigestMap :: Module -> Map.HashMap ModuleDigest (NE.NonEmpty ModuleAlias)
+getDigestMap :: Module -> Map.HashMap ModuleDigest (NE.NonEmpty MA.ModuleAlias)
 getDigestMap baseModule = do
-  let dep = moduleDependency baseModule
-  let foo = map (\(alias, (_, digest)) -> (digest, alias)) $ Map.toList dep
-  let groupedFoo = NE.groupBy (\(c1, _) (c2, _) -> c1 == c2) foo
-  Map.fromList $ flip map groupedFoo $ \item -> do
-    let representative = fst $ NE.head item
-    let elems = NE.map snd item
+  let depMap = moduleDependency baseModule
+  let depList = map (\(alias, dep) -> (dependencyDigest dep, alias)) $ Map.toList depMap
+  let groupedDepList = NE.groupBy (\(c1, _) (c2, _) -> c1 == c2) depList
+  Map.fromList $ flip map groupedDepList $ \depSummary -> do
+    let representative = fst $ NE.head depSummary
+    let elems = NE.map snd depSummary
     (representative, elems)
 
 _m :: Hint
@@ -213,12 +226,14 @@ getTargetInfo someModule = do
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.FullEns)
 getDependencyInfo someModule = do
-  let dependency = flip Map.map (moduleDependency someModule) $ \(urlList, ModuleDigest digest) -> do
+  let dependency = flip Map.map (moduleDependency someModule) $ \dep -> do
+        let urlList = dependencyMirrorList dep
+        let ModuleDigest digest = dependencyDigest dep
         let urlEnsList = map (\(ModuleURL url) -> (_m :< E.String url, [])) urlList
         let digestEns = E.inject $ _m :< E.String digest
         let mirrorEns = E.inject $ _m :< E.List [] urlEnsList
         E.inject $ _m :< E.Dictionary [] [(keyDigest, digestEns), (keyMirror, mirrorEns)]
-  let dependency' = Map.mapKeys (\(ModuleAlias key) -> BN.reify key) dependency
+  let dependency' = Map.mapKeys (\(MA.ModuleAlias key) -> BN.reify key) dependency
   if Map.null dependency'
     then Nothing
     else return (keyDependency, E.inject $ _m :< E.Dictionary [] (Map.toList dependency'))
@@ -312,3 +327,28 @@ stylize ens = do
         dep' <- E.put keyMirror (mDep :< E.List cList (E.nubEnsList mirrorList)) dep
         return (k, (c1, (dep', c2)))
       E.put keyDependency (m :< E.Dictionary c depDict') ens
+
+getReadableModuleID :: Module -> MID.ModuleID -> Maybe T.Text
+getReadableModuleID baseModule mid =
+  case mid of
+    MID.Main ->
+      Just "this"
+    MID.Base ->
+      Just "base"
+    MID.Library digest -> do
+      let depMap = Map.toList $ moduleDependency baseModule
+      fmap (MA.reify . fst) $ flip find depMap $ \(_, dep) -> digest == dependencyDigest dep
+
+getAliasListWithEnabledPresets :: Module -> [MA.ModuleAlias]
+getAliasListWithEnabledPresets baseModule = do
+  let depList = Map.toList $ moduleDependency baseModule
+  map fst $ filter (\(_, dep) -> dependencyPresetEnabled dep) depList
+
+type PresetSummary =
+  [(T.Text, [BN.BaseName])]
+
+reifyPresetMap :: T.Text -> PresetMap -> PresetSummary
+reifyPresetMap moduleName presetMap = do
+  let presetList = Map.toList presetMap
+  flip map presetList $ \(loc, lls) -> do
+    (moduleName <> nsSep <> loc, lls)

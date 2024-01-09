@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 data heap(a) {
 - Leaf
 - Node(heap(a), a, heap(a))
@@ -119,9 +115,11 @@ define main(): unit {
   let v1 on h =
     match find-min(_, h) {
     - Pass(xs) =>
-      let v on xs = sum(xs) in // xs = [1, 2]
+      let v on xs = sum(xs) in
+      // xs = [1, 2]
       let _ = xs in
-      v // v = 3
+      v
+      // v = 3
     - Fail(_) =>
       4
     }
@@ -138,9 +136,11 @@ define main(): unit {
       let v2 on h =
         match find-min(_, h) {
         - Pass(xs) =>
-          let v on xs = sum(xs) in // xs = [1, 1]
+          let v on xs = sum(xs) in
+          // xs = [1, 1]
           let _ = xs in
-          v // v = 2
+          v
+          // v = 2
         - Fail(_) =>
           4
         }

@@ -42,9 +42,9 @@ getHumanReadableLocator baseModule source = do
       return $ NE.singleton $ "this" <> nsSep <> baseReadableLocator
     MID.Base -> do
       return $ NE.singleton $ "base" <> nsSep <> baseReadableLocator
-    MID.Library mc -> do
+    MID.Library digest -> do
       let digestMap = getDigestMap baseModule
-      case Map.lookup mc digestMap of
+      case Map.lookup digest digestMap of
         Nothing ->
           return $ NE.singleton $ "{unknown}" <> nsSep <> baseReadableLocator
         Just aliasList -> do

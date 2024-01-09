@@ -109,7 +109,7 @@ unravelModule axis currentModule = do
     Nothing -> do
       liftIO $ modifyIORef' (visitMapRef axis) $ Map.insert path VI.Active
       liftIO $ modifyIORef' (traceListRef axis) $ (:) path
-      let children = map (MID.Library . snd . snd) $ Map.toList $ moduleDependency currentModule
+      let children = map (MID.Library . dependencyDigest . snd) $ Map.toList $ moduleDependency currentModule
       arrows <- fmap concat $ forM children $ \moduleID -> do
         path' <- Module.getModuleFilePath Nothing moduleID
         Module.fromFilePath moduleID path' >>= unravelModule axis
@@ -281,7 +281,8 @@ parseSourceHeader currentSource = do
   let path = Source.sourceFilePath currentSource
   fileContent <- Parse.readTextFile path
   (_, (importOrNone, _)) <- ParseCore.parseFile False parseImport path fileContent
-  interpretImport currentSource importOrNone
+  let m = newSourceHint path
+  interpretImport m currentSource importOrNone
 
 getAntecedentArrow :: Module -> [(MID.ModuleID, Module)]
 getAntecedentArrow baseModule = do

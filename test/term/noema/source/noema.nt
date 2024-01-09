@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define test-syntax(): unit {
   let _ = &list(tau) in
   let _ = &list(&list(tau)) in

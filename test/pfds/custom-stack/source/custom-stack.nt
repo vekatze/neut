@@ -1,7 +1,7 @@
 import {
-- core.bool {bool, True, False}
-- core.except {none, Pass, Fail}
-- core.pair {pair, Pair}
+- core.bool {False, True, bool}
+- core.except {Fail, Pass, none}
+- core.pair {Pair, pair}
 - core.text
 - core.text.io {print, print-int}
 - core.unit {unit}
@@ -46,7 +46,13 @@ define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
 define main(): unit {
   let xs = empty(() -> int) in
   // let v = Pair(() => {1}, () => {2}) in
-  let v = Pair(() => {1}, () => {2}) in
+  let v =
+    Pair(() => {
+      1
+    }, () => {
+      2
+    })
+  in
   let ys = Cons(v, xs) in
   let zs = Cons(v, Cons(v, ys)) in
   let calc on zs, xs =

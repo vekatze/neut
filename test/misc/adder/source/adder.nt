@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define make-adder(x: int): (int) -> int {
   let adder =
     (y) => {

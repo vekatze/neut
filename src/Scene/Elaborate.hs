@@ -7,8 +7,11 @@ import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
 import Context.Locator qualified as Locator
+import Context.RawImportSummary qualified as RawImportSummary
 import Context.Remark qualified as Remark
+import Context.SymLoc qualified as SymLoc
 import Context.Throw qualified as Throw
+import Context.TopCandidate qualified as TopCandidate
 import Context.Type qualified as Type
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
@@ -78,11 +81,17 @@ synthesizeStmtList stmtList = do
   source <- Env.getCurrentSource
   remarkList <- Remark.getRemarkList
   tmap <- Env.getTagMap
+  localVarTree <- SymLoc.get
+  topCandidate <- TopCandidate.get
+  rawImportSummary <- RawImportSummary.get
   Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
-        Cache.locationTree = tmap
+        Cache.locationTree = tmap,
+        Cache.localVarTree = localVarTree,
+        Cache.topCandidate = topCandidate,
+        Cache.rawImportSummary = rawImportSummary
       }
   Remark.insertToGlobalRemarkList remarkList
   return stmtList'

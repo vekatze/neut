@@ -15,6 +15,7 @@ import Entity.Const
 import Entity.Error qualified as E
 import Entity.Hint
 import Entity.Hint.Reflect qualified as Hint
+import Entity.Syntax.Block
 import Entity.Syntax.Series qualified as SE
 import Path
 import Text.Megaparsec
@@ -52,6 +53,13 @@ createParseError errorBundle = do
 getCurrentHint :: Parser Hint
 getCurrentHint =
   Hint.fromSourcePos <$> getSourcePos
+
+getCurrentLoc :: Parser Loc
+getCurrentLoc = do
+  pos <- getSourcePos
+  let line = unPos $ sourceLine pos
+  let column = unPos $ sourceColumn pos
+  return (line, column)
 
 skipSpace :: Parser ()
 skipSpace =
@@ -182,6 +190,14 @@ betweenBrace p = do
   c2 <- delimiter "}"
   return (c1, (v, c2))
 
+betweenBrace' :: Parser a -> Parser (Block' a)
+betweenBrace' p = do
+  c1 <- delimiter "{"
+  v <- p
+  loc <- getCurrentLoc
+  c2 <- delimiter "}"
+  return (c1, (v, loc, c2))
+
 sepList :: Parser c -> Parser c -> Parser a -> Parser [(c, a)]
 sepList first sep f = do
   c <- first
@@ -245,11 +261,12 @@ series prefix container sep p = do
       c2
     )
 
-series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, C)
+series' :: SE.Prefix -> SE.Container -> SE.Separator -> Parser (a, C) -> Parser (SE.Series a, Loc, C)
 series' prefix container sep p = do
   let (opener, closer) = getParserPair container
   c1 <- opener
   (vs, trail) <- _series c1 sep p
+  loc <- getCurrentLoc
   c2 <- closer
   return
     ( SE.Series
@@ -259,6 +276,7 @@ series' prefix container sep p = do
           separator = sep,
           container = Just container
         },
+      loc,
       c2
     )
 
@@ -290,6 +308,10 @@ seriesParen :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesParen =
   series Nothing SE.Paren SE.Comma
 
+seriesParen' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesParen' =
+  series' Nothing SE.Paren SE.Comma
+
 seriesBrace :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBrace =
   series Nothing SE.Brace SE.Comma
@@ -306,6 +328,10 @@ seriesBraceList :: Parser (a, C) -> Parser (SE.Series a, C)
 seriesBraceList =
   series Nothing SE.Brace SE.Hyphen
 
+seriesBraceList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seriesBraceList' =
+  series' Nothing SE.Brace SE.Hyphen
+
 seqOrList :: Parser (a, C) -> Parser (SE.Series a, C)
 seqOrList p =
   choice
@@ -314,6 +340,16 @@ seqOrList p =
       do
         c1 <- keyword "of"
         series (Just ("of", c1)) SE.Brace SE.Hyphen p
+    ]
+
+seqOrList' :: Parser (a, C) -> Parser (SE.Series a, Loc, C)
+seqOrList' p =
+  choice
+    [ do
+        seriesParen' p,
+      do
+        c1 <- keyword "of"
+        series' (Just ("of", c1)) SE.Brace SE.Hyphen p
     ]
 
 var :: Parser ((Hint, T.Text), C)

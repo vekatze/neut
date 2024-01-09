@@ -1,13 +1,9 @@
-import {
-- core
-}
-
 define foo(FOO: bool, a: tau, 🌟🌟🌟: tau, 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int): tau {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね in
   if FOO {
-    a -> 🌟🌟🌟
+    (a) -> 🌟🌟🌟
   } else {
-    🌟🌟🌟 -> tau
+    (🌟🌟🌟) -> tau
   }
 }
 
@@ -22,7 +18,8 @@ define test-syntax(): unit {
     - a = int
     - FOO = True
     - 🌟🌟🌟 = list(void)
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
+      {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
@@ -34,7 +31,8 @@ define test-syntax(): unit {
     - a = int
     - 🌟🌟🌟 = list(void)
     - FOO = False
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
+      {
         let x = 10 in
         let y = 20 in
         add-int(x, y)
@@ -46,7 +44,8 @@ define test-syntax(): unit {
     - 🌟🌟🌟 = list(void)
     - a =
       foo of {
-      - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
+      - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
+        {
           let x = 10 in
           let y = 20 in
           add-int(x, y)
@@ -56,7 +55,8 @@ define test-syntax(): unit {
       - FOO = True
       }
     - FOO = False
-    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね = {
+    - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
+      {
         let x = 10 in
         let y = 20 in
         add-int(x, y)

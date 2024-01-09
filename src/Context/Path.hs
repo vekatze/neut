@@ -185,7 +185,7 @@ getBuildSignature baseModule = do
     Nothing -> do
       buildMode <- Env.getBuildMode
       optString <- readRef' clangOptString
-      let depList = map (second snd) $ Map.toList $ moduleDependency baseModule
+      let depList = map (second dependencyDigest) $ Map.toList $ moduleDependency baseModule
       depList' <- fmap catMaybes $ forM depList $ \(alias, digest) -> do
         shiftedDigestOrNone <- Antecedent.lookup digest
         case shiftedDigestOrNone of

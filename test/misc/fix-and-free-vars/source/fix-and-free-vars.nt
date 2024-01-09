@@ -1,8 +1,3 @@
-import {
-- core
-- core.bool
-}
-
 define main(): unit {
   let xs: list(int) = [] in
   let no-free-var =

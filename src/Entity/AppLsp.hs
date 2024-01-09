@@ -18,5 +18,6 @@ lspOptions =
               _willSave = Just True,
               _willSaveWaitUntil = Just True,
               _save = Just $ InR $ SaveOptions {_includeText = Just False}
-            }
+            },
+      optCompletionTriggerCharacters = Just ['.']
     }

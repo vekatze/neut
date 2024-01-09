@@ -42,6 +42,7 @@ data RawStmt
       (BN.BaseName, C)
       (Maybe (RT.Args RT.RawTerm))
       (SE.Series (RawConsInfo BN.BaseName))
+      Loc
   | RawStmtDefineResource
       C
       Hint
@@ -49,14 +50,14 @@ data RawStmt
       C
       (C, (RT.RawTerm, C))
       (C, (RT.RawTerm, C))
-  | RawStmtNominal C Hint (SE.Series RT.TopGeist)
+  | RawStmtNominal C Hint (SE.Series (RT.TopGeist, Loc))
   | RawStmtForeign C (SE.Series RawForeignItem)
 
 type RawConsInfo a =
-  (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm))
+  (Hint, (a, C), IsConstLike, SE.Series (RawBinder RT.RawTerm), Loc)
 
 data RawImport
-  = RawImport C Hint (SE.Series RawImportItem)
+  = RawImport C Hint (SE.Series RawImportItem) Loc
 
 data RawImportItem
   = RawImportItem Hint (T.Text, C) (SE.Series (Hint, LL.LocalLocator))

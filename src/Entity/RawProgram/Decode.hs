@@ -7,6 +7,7 @@ import Entity.C
 import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
+import Entity.Hint
 import Entity.LocalLocator qualified as LL
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
@@ -18,9 +19,9 @@ import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
-pp :: (C, RawProgram) -> T.Text
-pp (c1, RawProgram _ importOrNone c2 stmtList) = do
-  let importOrNone' = fmap decImport importOrNone
+pp :: [(T.Text, [BN.BaseName])] -> (C, RawProgram) -> T.Text
+pp presetNames (c1, RawProgram _ importOrNone c2 stmtList) = do
+  let importOrNone' = fmap (decImport presetNames) importOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
@@ -41,13 +42,34 @@ decTopDocList c docList =
     (Just doc, c') : rest -> do
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: RawImport -> D.Doc
-decImport (RawImport c _ importItemList) = do
+decImport :: [(T.Text, [BN.BaseName])] -> RawImport -> D.Doc
+decImport presetNames (RawImport c _ importItemList _) = do
+  let importItemList' = SE.catMaybes $ fmap (filterImportItem presetNames) importItemList
   RT.attachComment c $
     D.join
       [ D.text "import ",
-        SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList
+        SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
       ]
+
+filterImportItem :: [(T.Text, [BN.BaseName])] -> RawImportItem -> Maybe RawImportItem
+filterImportItem presetNames item@(RawImportItem m (loc, c) lls) = do
+  case lookup loc presetNames of
+    Nothing ->
+      return item
+    Just names -> do
+      if SE.isEmpty lls
+        then Nothing
+        else do
+          let lls' = SE.catMaybes $ fmap (filterLocalLocator names) lls
+          if SE.isEmpty lls'
+            then Nothing
+            else return $ RawImportItem m (loc, c) lls'
+
+filterLocalLocator :: [BN.BaseName] -> (Hint, LL.LocalLocator) -> Maybe (Hint, LL.LocalLocator)
+filterLocalLocator names (m, ll) =
+  if LL.baseName ll `elem` names
+    then Nothing
+    else return (m, ll)
 
 sortImport :: SE.Series RawImportItem -> SE.Series RawImportItem
 sortImport series = do
@@ -105,7 +127,7 @@ decStmt stmt =
             D.text (BN.reify name),
             RT.decodeKeywordClause ":" constClause
           ]
-    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo -> do
+    RawStmtDefineData c1 _ (dataName, c2) argsOrNone consInfo _ -> do
       RT.attachComment (c1 ++ c2) $
         D.join
           [ D.text "data ",
@@ -151,14 +173,14 @@ decDataArgs argsOrNone =
       RT.decodeArgs' args
 
 decConsInfo :: RawConsInfo BN.BaseName -> D.Doc
-decConsInfo (_, (consName, cCons), isConstLike, args) = do
+decConsInfo (_, (consName, cCons), isConstLike, args, _) = do
   let consName' = D.text (BN.reify consName)
   if isConstLike
     then D.join [consName', C.asSuffix cCons]
     else D.join [consName', C.asSuffix cCons, RT.decodeArgs (args, [])]
 
-decGeistList :: RT.TopGeist -> D.Doc
-decGeistList decl = do
+decGeistList :: (RT.TopGeist, a) -> D.Doc
+decGeistList (decl, _) = do
   let (functionName, _) = RT.name decl
   let impArgs' = RT.decodeArgs' $ RT.impArgs decl
   let cod = RT.toDoc $ snd $ RT.cod decl

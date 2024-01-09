@@ -1,20 +1,16 @@
-import {
-- core
-}
-
 data color {
 - Red
 - Black
 }
 
 data tree(a) {
-- Leaf // Black
+- Leaf
+  // Black
 - Node(color, tree(a), a, tree(a))
 }
 
 // Invariant 1. No Red Node has a Red child.
 // Invariant 2. Every path from the root to an empty Node contains the same number of Black Nodes.
-
 data order {
 - LT
 - EQ
@@ -73,7 +69,8 @@ define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   in
   match helper(t) {
   - Leaf =>
-    Leaf // shouldn't occur
+    Leaf
+    // shouldn't occur
   - Node(_, left, v, right) =>
     Node(Black, left, v, right)
   }
@@ -91,14 +88,46 @@ define compare-int(x: () -> int, y: () -> int): order {
 
 define main(): unit {
   let t: tree(() -> int) = Leaf in
-  let t = insert(_, compare-int, () => {3}, t) in
-  let t = insert(_, compare-int, () => {4}, t) in
-  let t = insert(_, compare-int, () => {2}, t) in
-  let t = insert(_, compare-int, () => {9}, t) in
-  let t = insert(_, compare-int, () => {100}, t) in
-  let t = insert(_, compare-int, () => {8}, t) in
-  let t = insert(_, compare-int, () => {1}, t) in
-  let b on t = member(_, compare-int, () => {5}, t) in
+  let t =
+    insert(_, compare-int, () => {
+      3
+    }, t)
+  in
+  let t =
+    insert(_, compare-int, () => {
+      4
+    }, t)
+  in
+  let t =
+    insert(_, compare-int, () => {
+      2
+    }, t)
+  in
+  let t =
+    insert(_, compare-int, () => {
+      9
+    }, t)
+  in
+  let t =
+    insert(_, compare-int, () => {
+      100
+    }, t)
+  in
+  let t =
+    insert(_, compare-int, () => {
+      8
+    }, t)
+  in
+  let t =
+    insert(_, compare-int, () => {
+      1
+    }, t)
+  in
+  let b on t =
+    member(_, compare-int, () => {
+      5
+    }, t)
+  in
   let _ = t in
   let result: int =
     if b {

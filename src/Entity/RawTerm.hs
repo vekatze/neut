@@ -44,6 +44,7 @@ import Entity.RawIdent
 import Entity.RawLowType qualified as RLT
 import Entity.RawPattern qualified as RP
 import Entity.Remark
+import Entity.Syntax.Block
 import Entity.Syntax.Series qualified as SE
 
 type RawTerm = Cofree RawTermF Hint
@@ -51,8 +52,8 @@ type RawTerm = Cofree RawTermF Hint
 data RawTermF a
   = Tau
   | Var Name
-  | Pi (Args a) (Args a) C a
-  | PiIntro (Args a) (Args a) C (EL a)
+  | Pi (Args a) (Args a) C a Loc
+  | PiIntro (Args a) (Args a) C (Block a) Loc
   | PiIntroFix C DefInfo
   | PiElim a C (SE.Series a)
   | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call
@@ -62,13 +63,13 @@ data RawTermF a
   | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a))
   | Noema a
   | Embody a
-  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C C a
+  | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc
   | StaticText a T.Text
   | Magic C RawMagic -- (magic kind arg-1 ... arg-n)
   | Hole HoleID
   | Annotation RemarkLevel (Annot.Annotation ()) a
   | Resource C (a, C) (a, C) -- DD is only for printing
-  | Use C a C (Args a) C a
+  | Use C a C (Args a) C a Loc
   | If (KeywordClause a) [KeywordClause a] (EL a)
   | When (KeywordClause a)
   | Seq (a, C) C a
@@ -125,7 +126,8 @@ data RawDef a = RawDef
   { geist :: RawGeist a,
     leadingComment :: C,
     body :: RawTerm,
-    trailingComment :: C
+    trailingComment :: C,
+    endLoc :: Loc
   }
 
 instance Functor RawDef where
@@ -145,14 +147,15 @@ piElim :: a -> [a] -> RawTermF a
 piElim e es =
   PiElim e [] (SE.fromList' es)
 
-lam :: Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm
-lam m varList e =
+lam :: Loc -> Hint -> [(RawBinder RawTerm, C)] -> RawTerm -> RawTerm
+lam loc m varList e =
   m
     :< PiIntro
       (SE.emptySeries SE.Angle SE.Comma, [])
       (SE.assoc $ SE.fromList SE.Paren SE.Comma varList, [])
       []
       ([], (e, []))
+      loc
 
 data LetKind
   = Plain

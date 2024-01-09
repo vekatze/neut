@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define fact(x: int): int {
   if eq-int(x, 0) {
     1

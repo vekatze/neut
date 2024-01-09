@@ -114,7 +114,8 @@ rawTermPiGeneral = do
   expArgs <- seriesParen (choice [try preAscription, typeWithoutIdent])
   cArrow <- delimiter "->"
   (cod, c) <- rawTerm
-  return (m :< RT.Pi impArgs expArgs cArrow cod, c)
+  loc <- getCurrentLoc
+  return (m :< RT.Pi impArgs expArgs cArrow cod loc, c)
 
 rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
@@ -122,8 +123,8 @@ rawTermPiIntro = do
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen preBinder
   cArrow <- delimiter "=>"
-  (c1, ((e, c2), c)) <- betweenBrace rawExpr
-  return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)), c)
+  (c1, ((e, c2), loc, c)) <- betweenBrace' rawExpr
+  return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)) loc, c)
 
 rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
 rawTermPiOrConsOrAscOrBasic = do
@@ -134,13 +135,15 @@ rawTermPiOrConsOrAscOrBasic = do
         cArrow <- delimiter "->"
         x <- lift Gensym.newTextForHole
         (cod, c) <- rawTerm
+        loc <- getCurrentLoc
         return
           ( m
               :< RT.Pi
                 (SE.emptySeries SE.Angle SE.Comma, [])
                 (SE.fromList SE.Paren SE.Comma [(m, x, [], [], basic)], cBasic)
                 cArrow
-                cod,
+                cod
+                loc,
             c
           ),
       return (basic, cBasic)
@@ -180,9 +183,11 @@ rawTermLet mLet = do
   c5 <- delimiter "="
   lift $ ensureIdentLinearity S.empty $ SE.extract noeticVarList
   (e1, c6) <- rawExpr
+  loc <- getCurrentLoc
   c7 <- delimiter "in"
   (e2, c) <- rawExpr
-  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 c7 e2, c)
+  endLoc <- getCurrentLoc
+  return (mLet :< RT.Let letKind c1 (mx, patInner, c2, c3, t) c4 noeticVarList c5 e1 c6 loc c7 e2 endLoc, c)
 
 rawTermUse :: Hint -> Parser (RT.RawTerm, C)
 rawTermUse m = do
@@ -192,7 +197,8 @@ rawTermUse m = do
   c3 <- delimiter "in"
   lift $ ensureIdentLinearity S.empty $ map (\(_, (mx, x, _, _, _)) -> (mx, x)) $ SE.elems ys
   (cont, c) <- rawExpr
-  return (m :< RT.Use c1 e c2 xs c3 cont, c)
+  loc <- getCurrentLoc
+  return (m :< RT.Use c1 e c2 xs c3 cont loc, c)
 
 rawTermLetVarAscription :: Hint -> Parser (C, (RT.RawTerm, C))
 rawTermLetVarAscription m = do
@@ -253,13 +259,14 @@ rawTermHole = do
 parseDef :: (BN.BaseName -> App a) -> Parser (RT.RawDef a, C)
 parseDef nameLifter = do
   (topGeist, c1) <- parseGeist nameLifter
-  (c2, ((e, c3), c)) <- betweenBrace rawExpr
+  (c2, ((e, c3), loc, c)) <- betweenBrace' rawExpr
   return
     ( RT.RawDef
         { geist = topGeist,
           leadingComment = c1 ++ c2,
           body = e,
-          trailingComment = c3
+          trailingComment = c3,
+          endLoc = loc
         },
       c
     )
@@ -468,7 +475,8 @@ rawTermPatternRow patternSize = do
           <> "`"
   cArrow <- delimiter "=>"
   (body, c) <- rawExpr
-  return ((patternList, cArrow, body), c)
+  loc <- getCurrentLoc
+  return ((patternList, cArrow, body, loc), c)
 
 rawTermPattern :: Parser ((Hint, RP.RawPattern), C)
 rawTermPattern = do

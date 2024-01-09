@@ -13,6 +13,7 @@ where
 
 import Context.App
 import Context.App.Internal
+import Context.Env (getCurrentSource)
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad
@@ -58,9 +59,21 @@ activateSpecifiedNames topNameMap sgl lls = do
       Just (mDef, gn) -> do
         Tag.insertGlobalVar m dd (GN.getIsConstLike gn) mDef
         aenv <- readRef' activeDefiniteDescriptionList
-        when (Map.member ll aenv) $ do
-          Throw.raiseError m $ "the top-level name `" <> LL.reify ll <> "` is already imported"
-        modifyRef' activeDefiniteDescriptionList $ Map.insert ll dd
+        case Map.lookup ll aenv of
+          Just existingDD
+            | dd /= existingDD -> do
+                current <- getCurrentSource
+                let dd' = DD.getReadableDD (Source.sourceModule current) dd
+                let existingDD' = DD.getReadableDD (Source.sourceModule current) existingDD
+                Throw.raiseError m $
+                  "this `"
+                    <> LL.reify ll
+                    <> "` is ambiguous since it could refer to:\n- "
+                    <> dd'
+                    <> "\n- "
+                    <> existingDD'
+          _ ->
+            modifyRef' activeDefiniteDescriptionList $ Map.insert ll dd
 
 attachCurrentLocator ::
   BN.BaseName ->

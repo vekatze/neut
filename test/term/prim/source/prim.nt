@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define test-syntax(): unit {
   let _ = int1 in
   let _ = int2 in
@@ -11,15 +7,12 @@ define test-syntax(): unit {
   let _ = int32 in
   let _ = int64 in
   let _ = int in
-
   let _ = float16 in
   let _ = float32 in
   let _ = float64 in
   let _ = float in
-
   let _: int = 3 in
   let _: float = 3.0 in
-
   Unit
 }
 
@@ -31,14 +24,12 @@ define test-op(): unit {
   let _ = rem-int(50, 24) in
   let _ = udiv-int(50, 8) in
   let _ = urem-int(50, 8) in
-
   let _ = and-int(50, 24) in
   let _ = or-int(50, 24) in
   let _ = xor-int(50, 24) in
   let _ = shl-int(50, 1) in
   let _ = lshr-int(50, 1) in
   let _ = ashr-int(50, 1) in
-
   let _ = eq-int(50, 8) in
   let _ = ne-int(50, 8) in
   let _ = lt-int(50, 8) in
@@ -49,7 +40,6 @@ define test-op(): unit {
   let _ = ule-int(50, 8) in
   let _ = ugt-int(50, 8) in
   let _ = uge-int(50, 8) in
-
   let _ = neg-float(1.3) in
   let _ = add-float(1.3, 2.0) in
   let _ = sub-float(1.3, 2.0) in
@@ -72,7 +62,6 @@ define test-op(): unit {
   let _ = uno-float(1.3, 2.0) in
   let _ = true-float(1.3, 2.0) in
   let _ = false-float(1.3, 2.0) in
-
   let _ = trunc-int64-int32(1234) in
   let _ = zext-int32-int64(1234) in
   let _ = sext-int32-int64(1234) in
@@ -82,7 +71,6 @@ define test-op(): unit {
   let _ = fptosi-float-int(3.8) in
   let _ = uitofp-int-float(1234) in
   let _ = sitofp-int-float(1234) in
-
   Unit
 }
 

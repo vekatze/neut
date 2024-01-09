@@ -25,6 +25,7 @@ import Entity.Ident
 import Entity.IsConstLike
 import Entity.Key
 import Entity.LocalLocator qualified as LL
+import Entity.LocalVarTree qualified as LVT
 import Entity.LocationTree qualified as LT
 import Entity.LowType qualified as LT
 import Entity.Module qualified as M
@@ -34,10 +35,12 @@ import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.Opacity qualified as O
 import Entity.OptimizableData
+import Entity.RawImportSummary (RawImportSummary)
 import Entity.Remark qualified as Remark
 import Entity.Source qualified as Source
 import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Term qualified as TM
+import Entity.TopCandidate
 import Entity.TopNameMap
 import Entity.VisitInfo
 import Entity.WeakTerm qualified as WT
@@ -61,6 +64,9 @@ data Env = Env
     remarkList :: IORef [Remark.Remark], -- per file
     globalRemarkList :: IORef [Remark.Remark],
     tagMap :: IORef LT.LocationTree,
+    importEnv :: IORef (Maybe RawImportSummary),
+    localVarMap :: IORef LVT.LocalVarTree,
+    topCandidateEnv :: IORef [TopCandidate],
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
     usedVariableSet :: IORef (S.Set Int),
     unusedImportMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
@@ -111,8 +117,11 @@ newEnv = do
   locatorAliasMap <- newIORef Map.empty
   sourceNameMap <- newIORef Map.empty
   remarkList <- newIORef []
+  importEnv <- newIORef Nothing
   globalRemarkList <- newIORef []
   tagMap <- newIORef LT.empty
+  localVarMap <- newIORef LVT.empty
+  topCandidateEnv <- newIORef []
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty
   unusedImportMap <- newIORef Map.empty

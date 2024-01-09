@@ -16,8 +16,11 @@ import Context.Global qualified as Global
 import Context.LLVM qualified as LLVM
 import Context.Locator qualified as Locator
 import Context.Module qualified as Module
+import Context.RawImportSummary qualified as RawImportSummary
 import Context.Remark qualified as Remark
+import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
+import Context.TopCandidate qualified as TopCandidate
 import Context.Unravel qualified as Unravel
 import Context.UnusedImport qualified as UnusedImport
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
@@ -66,5 +69,8 @@ initializeForSource source = do
   Alias.initializeAliasMap
   Locator.initialize
   Tag.initialize
+  RawImportSummary.initialize
+  SymLoc.initialize
+  TopCandidate.initialize
   Remark.setRemarkList []
   Decl.initialize

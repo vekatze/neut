@@ -1,8 +1,3 @@
-import {
-- core
-- core.text
-}
-
 data order {
 - LT
 - EQ
@@ -15,17 +10,12 @@ data set(a) {
 }
 
 data set-signature(a) {
-- Set(
-    empty: set(a),
-    insert: (a, set(a)) -> set(a),
-    member: (a, &set(a)) -> bool
-  )
+- Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
 }
 
 define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
   Set of {
-  - empty =
-    Leaf
+  - empty = Leaf
   - insert =
     define insert(new-value: a, haystack: set(a)): set(a) {
       match haystack {
@@ -43,7 +33,7 @@ define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
       }
     }
   - member =
-    define member(needle: a, haystack: &set(a)) {
+    define member(needle: a, haystack: &set(a)): _ {
       case haystack {
       - Leaf =>
         False

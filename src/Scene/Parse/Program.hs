@@ -37,12 +37,12 @@ parseImport = do
     [ do
         c1 <- P.keyword "import"
         m <- P.getCurrentHint
-        (importItems, c) <- P.seriesBraceList $ do
+        (importItems, loc, c) <- P.seriesBraceList' $ do
           mImportItem <- P.getCurrentHint
           locator <- P.symbol
           (lls, c) <- parseLocalLocatorList'
           return (RawImportItem mImportItem locator lls, c)
-        return (Just $ RawImport c1 m importItems, c),
+        return (Just $ RawImport c1 m importItems loc, c),
       return (Nothing, [])
     ]
 
@@ -111,14 +111,17 @@ parseData = do
   m <- P.getCurrentHint
   (dataName, c2) <- P.baseName
   dataArgsOrNone <- parseDataArgs
-  (consSeries, c) <- P.seriesBraceList parseDefineDataClause
-  return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries, c)
+  (consSeries, loc, c) <- P.seriesBraceList' parseDefineDataClause
+  return (RawStmtDefineData c1 m (dataName, c2) dataArgsOrNone consSeries loc, c)
 
 parseNominal :: P.Parser (RawStmt, C)
 parseNominal = do
   c1 <- P.keyword "nominal"
   m <- P.getCurrentHint
-  (geists, c) <- P.seriesBraceList $ parseGeist return
+  (geists, c) <- P.seriesBraceList $ do
+    (geist, c) <- parseGeist return
+    loc <- P.getCurrentLoc
+    return ((geist, loc), c)
   return (RawStmtNominal c1 m geists, c)
 
 parseDataArgs :: P.Parser (Maybe (RT.Args RT.RawTerm))
@@ -134,18 +137,20 @@ parseDefineDataClause = do
   consName@(consName', _) <- P.baseName
   unless (isConsName (BN.reify consName')) $ do
     lift $ Throw.raiseError m "the name of a constructor must be capitalized"
-  (consArgsOrNone, c) <- parseConsArgs
+  (consArgsOrNone, loc, c) <- parseConsArgs
   let consArgs = fromMaybe SE.emptySeriesPC consArgsOrNone
   let isConstLike = isNothing consArgsOrNone
-  return ((m, consName, isConstLike, consArgs), c)
+  return ((m, consName, isConstLike, consArgs, loc), c)
 
-parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), C)
+parseConsArgs :: P.Parser (Maybe (SE.Series (RawBinder RT.RawTerm)), Loc, C)
 parseConsArgs = do
   choice
     [ do
-        (series, c) <- P.seqOrList parseDefineDataClauseArg
-        return (Just series, c),
-      return (Nothing, [])
+        (series, loc, c) <- P.seqOrList' parseDefineDataClauseArg
+        return (Just series, loc, c),
+      do
+        loc <- P.getCurrentLoc
+        return (Nothing, loc, [])
     ]
 
 parseDefineDataClauseArg :: P.Parser (RawBinder RT.RawTerm, C)

@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 data item1 {
 - Item1(list(int))
 }
@@ -11,7 +7,7 @@ data item2(a) {
 }
 
 data item3(a, b) {
-- Item3(a -> b)
+- Item3((a) -> b)
 }
 
 data item4(a, b) {
@@ -98,7 +94,11 @@ define use-item3-noetic(a: tau, b: tau, f: &item3(a, b), x: a): b {
 }
 
 define test-item3(): unit {
-  let value: item3(int, list(int)) = Item3((x) => {[x, 2, 3]}) in
+  let value: item3(int, list(int)) =
+    Item3((x) => {
+      [x, 2, 3]
+    })
+  in
   let _ = value in
   let _ = value in
   let _ = value in

@@ -4,6 +4,7 @@ module Entity.DefiniteDescription
     moduleID,
     localLocator,
     globalLocator,
+    getReadableDD,
     getLocatorPair,
     newByGlobalLocator,
     getFormDD,
@@ -16,7 +17,9 @@ where
 
 import Data.Binary
 import Data.ByteString.Builder
+import Data.HashMap.Strict qualified as Map
 import Data.Hashable
+import Data.List (find)
 import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.BaseName qualified as BN
@@ -25,6 +28,10 @@ import Entity.Error
 import Entity.GlobalLocator qualified as GL
 import Entity.Hint qualified as H
 import Entity.LocalLocator qualified as LL
+import Entity.Module qualified as M
+import Entity.ModuleAlias qualified as MA
+import Entity.ModuleDigest qualified as MD
+import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
 import GHC.Generics
@@ -79,6 +86,38 @@ moduleID dd = do
       headElem
     _ ->
       error "Entity.DefiniteDescription.moduleID"
+
+unconsDD :: DefiniteDescription -> (MID.ModuleID, T.Text)
+unconsDD dd = do
+  let nameList = T.splitOn nsSep (reify dd)
+  case nameList of
+    headElem : rest ->
+      case headElem of
+        "this" ->
+          (MID.Main, T.intercalate nsSep rest)
+        "base" ->
+          (MID.Base, T.intercalate nsSep rest)
+        _ ->
+          (MID.Library (MD.ModuleDigest headElem), T.intercalate nsSep rest)
+    _ ->
+      error "Entity.DefiniteDescription.moduleID"
+
+getReadableDD :: M.Module -> DefiniteDescription -> T.Text
+getReadableDD baseModule dd =
+  case unconsDD dd of
+    (MID.Main, rest) ->
+      "this" <> nsSep <> rest
+    (MID.Base, rest) ->
+      "base" <> nsSep <> rest
+    (MID.Library digest, rest) -> do
+      let depMap = Map.toList $ M.moduleDependency baseModule
+      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, dependency) -> do
+            digest == M.dependencyDigest dependency
+      case aliasOrNone of
+        Nothing ->
+          reify dd
+        Just alias ->
+          alias <> nsSep <> rest
 
 globalLocator :: DefiniteDescription -> T.Text
 globalLocator dd = do

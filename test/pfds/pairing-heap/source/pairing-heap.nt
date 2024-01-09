@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 data heap(a) {
 - Leaf
 - Node(a, list(heap(a)))

@@ -1,8 +1,5 @@
-import {
-- core
+data my-void {
 }
-
-data my-void {}
 
 data data-Z-cons-Z {
 - FooZZ
@@ -58,11 +55,7 @@ data empty {
 }
 
 data config {
-- Config(
-    counter: int,
-    path: &text,
-    func: int -> int
-  )
+- Config(counter: int, path: &text, func: (int) -> int)
 }
 
 data top {

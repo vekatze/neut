@@ -1,8 +1,3 @@
-import {
-- core
-- core.text
-}
-
 data queue(a) {
 - Queue(list(a), list(a))
 }

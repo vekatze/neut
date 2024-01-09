@@ -2,7 +2,8 @@ module Scene.LSP.References (references) where
 
 import Context.AppM
 import Control.Monad.Trans
-import Entity.Source (Source (sourceModule))
+import Entity.Cache qualified as Cache
+import Entity.Source (Source (sourceFilePath, sourceModule))
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Types
 import Path
@@ -19,10 +20,10 @@ references ::
 references params = do
   currentSource <- LSP.getSource params
   ((_, defLink), _) <- LSP.findDefinition params
-  locTreeSeq <- LSP.getAllCachesInModule $ sourceModule currentSource
-  fmap concat $ lift $ forConcurrently locTreeSeq $ \(path, locTree) -> do
-    refList <- LSP.findReferences defLink locTree
-    return $ map (toLocation path) refList
+  cacheSeq <- lift $ LSP.getAllCachesInModule $ sourceModule currentSource
+  fmap concat $ lift $ forConcurrently cacheSeq $ \(path, cache) -> do
+    refList <- LSP.findReferences defLink (Cache.locationTree cache)
+    return $ map (toLocation $ sourceFilePath path) refList
 
 toLocation :: Path Abs File -> DocumentHighlight -> Location
 toLocation path (DocumentHighlight {_range}) = do

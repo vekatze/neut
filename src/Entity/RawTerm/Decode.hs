@@ -44,14 +44,14 @@ toDoc term =
       D.text "tau"
     _ :< Var varOrLocator ->
       nameToDoc varOrLocator
-    _ :< Pi (impArgs, c1) (expArgs, c2) c cod -> do
+    _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
         [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
         ]
-    _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body -> do
+    _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body _ -> do
       let body' = decodeBlock $ RT.mapEL toDoc body
       D.join
         [ PI.arrange
@@ -94,7 +94,7 @@ toDoc term =
       D.join [D.text "&", toDoc t]
     _ :< Embody e ->
       D.join [D.text "*", toDoc e]
-    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 c5 cont -> do
+    _ :< Let letKind c1 mxt c2 noeticVarList c3 e c4 _ c5 cont _ -> do
       D.join
         [ PI.arrange $
             [ PI.beforeBareSeries $ D.text $ RT.decodeLetKind letKind,
@@ -173,7 +173,7 @@ toDoc term =
       D.text "<annot>"
     _ :< Resource {} -> do
       D.text "<resource>"
-    _ :< Use c1 trope c2 (args, c3) c4 cont -> do
+    _ :< Use c1 trope c2 (args, c3) c4 cont _ -> do
       D.join
         [ PI.arrange
             [ PI.horizontal $ attachComment (c1 ++ c2) $ D.text "use",
@@ -402,7 +402,7 @@ decodeIntrospectClause (mKey, c, body) = do
   decodeDoubleArrowClause (key, c, body)
 
 decodePatternRow :: RP.RawPatternRow RawTerm -> D.Doc
-decodePatternRow (patArgs, c, body) = do
+decodePatternRow (patArgs, c, body, _) = do
   let patArgs' = SE.decode $ fmap (decodePattern . snd) patArgs
   decodeDoubleArrowClause (patArgs', c, body)
 

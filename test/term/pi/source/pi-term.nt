@@ -1,7 +1,3 @@
-import {
-- core
-}
-
 define test-syntax(): unit {
   // nullary
   let _ =
