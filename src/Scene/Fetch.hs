@@ -36,8 +36,8 @@ import UnliftIO.Async
 fetch :: M.Module -> App ()
 fetch baseModule = do
   let dependency = Map.toList $ M.moduleDependency baseModule
-  forConcurrently_ dependency $ \(alias, (mirrorList, digest)) ->
-    installIfNecessary alias mirrorList digest
+  forConcurrently_ dependency $ \(alias, dep) ->
+    installIfNecessary alias (M.dependencyMirrorList dep) (M.dependencyDigest dep)
 
 insertDependency :: T.Text -> ModuleURL -> App ()
 insertDependency aliasName url = do

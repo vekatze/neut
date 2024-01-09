@@ -20,7 +20,6 @@ import Entity.Hint
 import Entity.Ident.Reify qualified as Ident
 import Entity.LocalVarTree qualified as LVT
 import Entity.Module
-import Entity.ModuleAlias (defaultModuleAlias)
 import Entity.ModuleAlias qualified as MA
 import Entity.RawImportSummary
 import Entity.Source
@@ -227,12 +226,9 @@ locToPosition (line, character) =
 getAllTopCandidate :: Module -> App ([(Source, [TopCandidate])], AliasPresetMap)
 getAllTopCandidate baseModule = do
   dependencies <- getAllDependencies baseModule
-  let visibleModuleList = (defaultModuleAlias, baseModule) : dependencies
+  let visibleModuleList = (MA.defaultModuleAlias, baseModule) : dependencies
   (candListList, aliasPresetInfo) <- unzip <$> mapConcurrently getAllTopCandidate' visibleModuleList
   return (concat candListList, constructAliasPresetMap aliasPresetInfo)
-
-type AliasPresetMap =
-  Map.HashMap T.Text PresetMap
 
 constructAliasPresetMap :: [(T.Text, Module)] -> AliasPresetMap
 constructAliasPresetMap =

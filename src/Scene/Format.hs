@@ -8,6 +8,8 @@ import Entity.FileType qualified as FT
 import Entity.RawProgram.Decode qualified as RawProgram
 import Path
 import Scene.Ens.Reflect qualified as Ens
+import Scene.Module.GetActivePresetNames
+import Scene.Module.Reflect qualified as Module
 import Scene.Parse.Core qualified as P
 import Scene.Parse.Program qualified as Parse
 import Prelude hiding (log)
@@ -18,5 +20,7 @@ format fileType path content = do
     FT.Ens -> do
       Ens.pp <$> Ens.fromFilePath' path content
     FT.Source -> do
+      baseModule <- Module.fromCurrentPath
+      activePresetNames <- getActivePresetNames baseModule
       program <- P.parseFile True Parse.parseProgram path content
-      return $ RawProgram.pp program
+      return $ RawProgram.pp activePresetNames program

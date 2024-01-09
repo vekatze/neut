@@ -76,9 +76,10 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
           source <- getSource m sgl locatorText
           let gla = GLA.GlobalLocatorAlias baseName
           return [(source, [AI.Use sgl localLocatorList, AI.Prefix m gla sgl])]
-      | Just (_, digest) <- Map.lookup (ModuleAlias baseName) (moduleDependency currentModule) -> do
+      | Just dep <- Map.lookup (ModuleAlias baseName) (moduleDependency currentModule) -> do
           unless (null localLocatorList) $ do
             Throw.raiseError m "found a non-empty locator list when using alias import"
+          let digest = dependencyDigest dep
           nextModule <- Module.getModule m (MID.Library digest) locatorText
           let presetInfo = Map.toList $ modulePresetMap nextModule
           UnusedPreset.insert (MID.reify $ moduleID nextModule) m

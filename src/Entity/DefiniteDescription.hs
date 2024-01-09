@@ -111,7 +111,8 @@ getReadableDD baseModule dd =
       "base" <> nsSep <> rest
     (MID.Library digest, rest) -> do
       let depMap = Map.toList $ M.moduleDependency baseModule
-      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, (_, digest')) -> digest == digest'
+      let aliasOrNone = fmap (MA.reify . fst) $ flip find depMap $ \(_, dependency) -> do
+            digest == M.dependencyDigest dependency
       case aliasOrNone of
         Nothing ->
           reify dd

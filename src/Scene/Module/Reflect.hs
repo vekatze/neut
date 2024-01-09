@@ -99,8 +99,8 @@ fromFilePath moduleID moduleFilePath = do
 
 getAllDependencies :: Module -> App [(ModuleAlias, Module)]
 getAllDependencies baseModule =
-  forM (Map.toList $ moduleDependency baseModule) $ \(alias, (_, digest)) -> do
-    let moduleID = MID.Library digest
+  forM (Map.toList $ moduleDependency baseModule) $ \(alias, dependency) -> do
+    let moduleID = MID.Library $ dependencyDigest dependency
     moduleFilePath <- Module.getModuleFilePath Nothing moduleID
     let m = H.newSourceHint moduleFilePath
     dep <- getModule m moduleID (MID.reify moduleID)
@@ -151,7 +151,7 @@ interpretRelFilePath ens = do
 
 interpretDependencyDict ::
   (H.Hint, C, [(T.Text, (C, (E.Ens, C)))]) ->
-  App (Map.HashMap ModuleAlias ([ModuleURL], ModuleDigest))
+  App (Map.HashMap ModuleAlias Dependency)
 interpretDependencyDict (m, _, dep) = do
   items <- forM dep $ \(k, (_, (ens, _))) -> do
     k' <- liftEither $ BN.reflect m k
@@ -165,7 +165,9 @@ interpretDependencyDict (m, _, dep) = do
     (_, _, urlEnsList) <- liftEither $ E.access keyMirror ens >>= E.toList . E.strip
     urlList <- liftEither $ mapM (E.toString . fst >=> return . snd) urlEnsList
     (_, digest) <- liftEither $ E.access keyDigest ens >>= E.toString . E.strip
-    return (ModuleAlias k', (map ModuleURL urlList, ModuleDigest digest))
+    let mirrorList = map ModuleURL urlList
+    let digest' = ModuleDigest digest
+    return (ModuleAlias k', Dependency {dependencyMirrorList = mirrorList, dependencyDigest = digest'})
   return $ Map.fromList items
 
 interpretExtraPath :: Path Abs Dir -> (E.Ens, a) -> App (SomePath Rel)

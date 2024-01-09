@@ -94,8 +94,8 @@ resolveModuleAlias m moduleAlias = do
 getModuleDigestAliasList :: Module -> App [(ModuleAlias, ModuleDigest)]
 getModuleDigestAliasList baseModule = do
   let dependencyList = Map.toList $ moduleDependency baseModule
-  forM dependencyList $ \(key, (_, digest)) -> do
-    digest' <- getLatestCompatibleDigest digest
+  forM dependencyList $ \(key, dep) -> do
+    digest' <- getLatestCompatibleDigest $ dependencyDigest dep
     return (key, digest')
 
 getLatestCompatibleDigest :: ModuleDigest -> App ModuleDigest

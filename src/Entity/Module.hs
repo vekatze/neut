@@ -33,13 +33,22 @@ type LocatorName =
 type PresetMap =
   Map.HashMap LocatorName [BN.BaseName]
 
+type AliasPresetMap =
+  Map.HashMap T.Text PresetMap
+
+data Dependency = Dependency
+  { dependencyMirrorList :: [ModuleURL],
+    dependencyDigest :: ModuleDigest
+  }
+  deriving (Show)
+
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
     moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
     moduleArchiveDir :: Path Rel Dir,
     moduleBuildDir :: Path Rel Dir,
-    moduleDependency :: Map.HashMap MA.ModuleAlias ([ModuleURL], ModuleDigest),
+    moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
     moduleExtraContents :: [SomePath Rel],
     moduleAntecedents :: [ModuleDigest],
     moduleLocation :: Path Abs File,
@@ -143,7 +152,8 @@ getModuleRootDir baseModule =
 
 addDependency :: MA.ModuleAlias -> [ModuleURL] -> ModuleDigest -> Module -> Module
 addDependency alias mirrorList digest someModule = do
-  someModule {moduleDependency = Map.insert alias (mirrorList, digest) (moduleDependency someModule)}
+  let dependency = Dependency {dependencyMirrorList = mirrorList, dependencyDigest = digest}
+  someModule {moduleDependency = Map.insert alias dependency (moduleDependency someModule)}
 
 insertDependency :: ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest]) -> ([ModuleURL], [ModuleDigest])
 insertDependency (mirrorList1, digest1) (mirrorList2, _) = do
@@ -151,12 +161,12 @@ insertDependency (mirrorList1, digest1) (mirrorList2, _) = do
 
 getDigestMap :: Module -> Map.HashMap ModuleDigest (NE.NonEmpty MA.ModuleAlias)
 getDigestMap baseModule = do
-  let dep = moduleDependency baseModule
-  let foo = map (\(alias, (_, digest)) -> (digest, alias)) $ Map.toList dep
-  let groupedFoo = NE.groupBy (\(c1, _) (c2, _) -> c1 == c2) foo
-  Map.fromList $ flip map groupedFoo $ \item -> do
-    let representative = fst $ NE.head item
-    let elems = NE.map snd item
+  let depMap = moduleDependency baseModule
+  let depList = map (\(alias, dep) -> (dependencyDigest dep, alias)) $ Map.toList depMap
+  let groupedDepList = NE.groupBy (\(c1, _) (c2, _) -> c1 == c2) depList
+  Map.fromList $ flip map groupedDepList $ \depSummary -> do
+    let representative = fst $ NE.head depSummary
+    let elems = NE.map snd depSummary
     (representative, elems)
 
 _m :: Hint
@@ -216,7 +226,9 @@ getTargetInfo someModule = do
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.FullEns)
 getDependencyInfo someModule = do
-  let dependency = flip Map.map (moduleDependency someModule) $ \(urlList, ModuleDigest digest) -> do
+  let dependency = flip Map.map (moduleDependency someModule) $ \dep -> do
+        let urlList = dependencyMirrorList dep
+        let ModuleDigest digest = dependencyDigest dep
         let urlEnsList = map (\(ModuleURL url) -> (_m :< E.String url, [])) urlList
         let digestEns = E.inject $ _m :< E.String digest
         let mirrorEns = E.inject $ _m :< E.List [] urlEnsList
@@ -325,4 +337,4 @@ getReadableModuleID baseModule mid =
       Just "base"
     MID.Library digest -> do
       let depMap = Map.toList $ moduleDependency baseModule
-      fmap (MA.reify . fst) $ flip find depMap $ \(_, (_, digest')) -> digest == digest'
+      fmap (MA.reify . fst) $ flip find depMap $ \(_, dep) -> digest == dependencyDigest dep

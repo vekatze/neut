@@ -8,6 +8,7 @@ import Entity.C.Decode qualified as C
 import Entity.Doc qualified as D
 import Entity.ExternalName qualified as EN
 import Entity.LocalLocator qualified as LL
+import Entity.Module qualified as M
 import Entity.Opacity qualified as O
 import Entity.Piece qualified as PI
 import Entity.RawLowType.Decode qualified as RLT
@@ -18,9 +19,9 @@ import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
 
-pp :: (C, RawProgram) -> T.Text
-pp (c1, RawProgram _ importOrNone c2 stmtList) = do
-  let importOrNone' = fmap decImport importOrNone
+pp :: [T.Text] -> (C, RawProgram) -> T.Text
+pp activePresetNames (c1, RawProgram _ importOrNone c2 stmtList) = do
+  let importOrNone' = fmap (decImport activePresetNames) importOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
@@ -41,8 +42,8 @@ decTopDocList c docList =
     (Just doc, c') : rest -> do
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: RawImport -> D.Doc
-decImport (RawImport c _ importItemList _) = do
+decImport :: [T.Text] -> RawImport -> D.Doc
+decImport activePresetNames (RawImport c _ importItemList _) = do
   RT.attachComment c $
     D.join
       [ D.text "import ",
