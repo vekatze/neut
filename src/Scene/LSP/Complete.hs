@@ -188,7 +188,7 @@ constructEditText cand =
 
 inImportBlock :: T.Text -> T.Text
 inImportBlock text =
-  "import {\n" <> text <> "\n}"
+  "import {\n" <> text <> "}\n\n"
 
 toCompletionItem :: T.Text -> CompletionItem
 toCompletionItem x =
