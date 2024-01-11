@@ -38,6 +38,9 @@ test-amd64-linux:
 test-arm64-linux:
     @just _run-arm64-linux "NEUT=/app/bin/neut-arm64-linux TARGET_ARCH=arm64 /app/test/test-linux.sh /app/test/term /app/test/statement /app/test/pfds /app/test/misc"
 
+test-arm64-linux-single target:
+    @just _run-arm64-linux "NEUT=/app/bin/neut-arm64-linux TARGET_ARCH=arm64 /app/test/test-linux-single.sh /app/test/{{target}}"
+
 test-arm64-darwin:
     @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin TARGET_ARCH=arm64 CLANG_PATH=${NEUT_ARM64_DARWIN_CLANG_PATH} ./test/test-darwin.sh ./test/term ./test/statement ./test/pfds ./test/misc
 
