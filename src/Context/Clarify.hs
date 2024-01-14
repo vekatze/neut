@@ -1,5 +1,5 @@
 module Context.Clarify
-  ( initialize,
+  ( clearAuxEnv,
     getAuxEnv,
     insertToAuxEnv,
     checkIfAlreadyRegistered,
@@ -14,8 +14,8 @@ import Data.HashMap.Strict qualified as Map
 import Entity.Comp (CompStmt, fromDefTuple)
 import Prelude hiding (lookup)
 
-initialize :: App ()
-initialize = do
+clearAuxEnv :: App ()
+clearAuxEnv = do
   writeRef' compAuxEnv mempty
 
 getAuxEnv :: App CompDefinition.DefMap

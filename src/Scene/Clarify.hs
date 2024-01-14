@@ -59,14 +59,13 @@ import Scene.Term.Subst qualified as TM
 
 clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
-  baseAuxEnv <- withSpecializedCtx $ do
-    registerImmediateS4
-    registerClosureS4
-    Clarify.toCompStmtList <$> Clarify.getAuxEnv
-  stmtList' <- withSpecializedCtx $ do
+  Clarify.clearAuxEnv
+  baseAuxEnv <- Clarify.toCompStmtList <$> getBaseAuxEnv
+  Clarify.clearAuxEnv
+  stmtList' <- do
     stmtList' <- mapM clarifyStmt stmtList
-    auxEnv <- Clarify.getAuxEnv
-    return $ stmtList' ++ Clarify.toCompStmtList auxEnv
+    auxEnv <- Clarify.toCompStmtList <$> Clarify.getAuxEnv
+    return $ stmtList' ++ auxEnv
   forM_ (stmtList' ++ baseAuxEnv) $ \stmt -> do
     case stmt of
       C.Def x opacity args e -> do
@@ -87,26 +86,23 @@ clarify stmtList = do
 
 clarifyEntryPoint :: App [C.CompStmt]
 clarifyEntryPoint = do
-  baseAuxEnv <- withSpecializedCtx $ do
-    registerImmediateS4
-    registerClosureS4
-    Clarify.getAuxEnv
+  Clarify.clearAuxEnv
+  baseAuxEnv <- getBaseAuxEnv
   forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
     e' <- Reduce.reduce e
     return $ C.Def x opacity args e'
 
 registerFoundationalTypes :: App ()
 registerFoundationalTypes = do
-  auxEnv <- withSpecializedCtx $ do
-    registerImmediateS4
-    registerClosureS4
-    Clarify.getAuxEnv
+  Clarify.clearAuxEnv
+  auxEnv <- getBaseAuxEnv
   forM_ (Map.toList auxEnv) $ uncurry CompDefinition.insert
 
-withSpecializedCtx :: App a -> App a
-withSpecializedCtx action = do
-  Clarify.initialize
-  action
+getBaseAuxEnv :: App CompDefinition.DefMap
+getBaseAuxEnv = do
+  registerImmediateS4
+  registerClosureS4
+  Clarify.getAuxEnv
 
 clarifyStmt :: Stmt -> App C.CompStmt
 clarifyStmt stmt =
