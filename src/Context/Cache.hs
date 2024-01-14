@@ -62,7 +62,7 @@ loadCacheOptimistically cachePath = do
 whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
 whenCompilationNecessary outputKindList source comp = do
   artifactTime <- Env.lookupArtifactTime (Source.sourceFilePath source)
-  if Source.isCompilationSkippable artifactTime outputKindList source
+  if Source.isCompilationSkippable artifactTime outputKindList
     then return Nothing
     else Just <$> comp
 

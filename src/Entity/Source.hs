@@ -68,9 +68,8 @@ hasCore source =
 isCompilationSkippable ::
   A.ArtifactTime ->
   [OK.OutputKind] ->
-  Source ->
   Bool
-isCompilationSkippable artifactTime outputKindList source =
+isCompilationSkippable artifactTime outputKindList =
   case outputKindList of
     [] ->
       True
@@ -78,13 +77,13 @@ isCompilationSkippable artifactTime outputKindList source =
       case kind of
         OK.LLVM -> do
           let b1 = isJust $ A.llvmTime artifactTime
-          let b2 = isCompilationSkippable artifactTime rest source
+          let b2 = isCompilationSkippable artifactTime rest
           b1 && b2
         OK.Asm -> do
           let b1 = isJust $ A.asmTime artifactTime
-          let b2 = isCompilationSkippable artifactTime rest source
+          let b2 = isCompilationSkippable artifactTime rest
           b1 && b2
         OK.Object -> do
           let b1 = isJust $ A.objectTime artifactTime
-          let b2 = isCompilationSkippable artifactTime rest source
+          let b2 = isCompilationSkippable artifactTime rest
           b1 && b2
