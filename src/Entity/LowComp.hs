@@ -1,6 +1,8 @@
 module Entity.LowComp where
 
+import Data.ByteString.Builder
 import Data.Text qualified as T
+import Entity.DeclarationName qualified as DN
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
 import Entity.Ident
@@ -77,3 +79,12 @@ type Def =
 
 type DefContent =
   ([Ident], Comp)
+
+type LowCodeInfo =
+  (DN.DeclEnv, [Def], [StaticTextInfo])
+
+data LowCode
+  = LowCodeMain DefContent LowCodeInfo
+  | LowCodeNormal LowCodeInfo
+
+type StaticTextInfo = (DD.DefiniteDescription, (Builder, Int))

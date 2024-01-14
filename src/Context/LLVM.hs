@@ -10,6 +10,7 @@ where
 import Context.App
 import Context.App.Internal
 import Context.External qualified as External
+import Context.Module (getMainModule)
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Monad
@@ -24,6 +25,7 @@ import Entity.Config.Build
 import Entity.Const
 import Entity.OutputKind qualified as OK
 import Entity.Source
+import Entity.Target
 import GHC.IO.Handle
 import Path
 import Path.IO
@@ -42,13 +44,22 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: UTCTime -> Source -> [OK.OutputKind] -> L.ByteString -> App ()
-emit timeStamp source outputKindList llvmCode = do
-  kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
-  forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
-  emitAll llvmCode kindPathList
-  forM_ (map snd kindPathList) $ \path -> do
-    Path.setModificationTime path timeStamp
+emit :: Target -> UTCTime -> Maybe Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit target timeStamp sourceOrNone outputKindList llvmCode = do
+  case sourceOrNone of
+    Just source -> do
+      kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
+      forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
+      emitAll llvmCode kindPathList
+      forM_ (map snd kindPathList) $ \path -> do
+        Path.setModificationTime path timeStamp
+    Nothing -> do
+      mainModule <- getMainModule
+      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint mainModule) outputKindList (repeat target)
+      forM_ kindPathList $ \(_, path) -> Path.ensureDir $ parent path
+      emitAll llvmCode kindPathList
+      forM_ (map snd kindPathList) $ \path -> do
+        Path.setModificationTime path timeStamp
 
 emitAll :: LLVMCode -> [(OK.OutputKind, Path Abs File)] -> App ()
 emitAll llvmCode kindPathList = do

@@ -8,18 +8,21 @@ module Context.Locator
     getPossibleReferents,
     getMainDefiniteDescription,
     getNameLifter,
+    getMainDefiniteDescriptionByTarget,
   )
 where
 
 import Context.App
 import Context.App.Internal
 import Context.Env (getCurrentSource)
+import Context.Module (getMainModule)
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.Containers.ListUtils qualified as ListUtils
 import Data.HashMap.Strict qualified as Map
 import Data.Maybe (maybeToList)
+import Data.Text qualified as T
 import Entity.BaseName qualified as BN
 import Entity.DefiniteDescription qualified as DD
 import Entity.GlobalName qualified as GN
@@ -30,6 +33,7 @@ import Entity.ModuleID qualified as MID
 import Entity.Source qualified as Source
 import Entity.SourceLocator qualified as SL
 import Entity.StrictGlobalLocator qualified as SGL
+import Entity.Target qualified as Target
 import Entity.TopNameMap (TopNameMap)
 import Path
 
@@ -128,8 +132,16 @@ constructGlobalLocator source = do
 getSourceLocator :: Source.Source -> App SL.SourceLocator
 getSourceLocator source = do
   relFilePath <- stripProperPrefix (Module.getSourceDir $ Source.sourceModule source) $ Source.sourceFilePath source
-  (relFilePath', _) <- splitExtension relFilePath
+  relFilePath' <- removeExtension relFilePath
   return $ SL.SourceLocator relFilePath'
+
+removeExtension :: Path a File -> App (Path a File)
+removeExtension path =
+  case splitExtension path of
+    Just (path', _) ->
+      return path'
+    Nothing ->
+      Throw.raiseError' $ "file extension is missing in `" <> T.pack (toFilePath path) <> "`"
 
 getMainDefiniteDescription ::
   Source.Source ->
@@ -148,3 +160,15 @@ isMainFile source = do
       return $ elem (Source.sourceFilePath source) sourcePathList
     _ ->
       return False
+
+getMainDefiniteDescriptionByTarget :: Target.Target -> App DD.DefiniteDescription
+getMainDefiniteDescriptionByTarget target = do
+  mainModule <- getMainModule
+  case Map.lookup target (Module.moduleTarget mainModule) of
+    Nothing ->
+      Throw.raiseError' $ "no such target is defined: " <> Target.extract target
+    Just sourceLocator -> do
+      sourceLocator' <- SL.SourceLocator <$> removeExtension (SL.reify sourceLocator)
+      let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator'}
+      let ll = LL.new BN.mainName
+      return $ DD.new sgl ll

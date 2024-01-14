@@ -2,7 +2,11 @@
 
 {-# HLINT ignore "Use list comprehension" #-}
 
-module Scene.Lower (lower) where
+module Scene.Lower
+  ( lower,
+    lowerEntryPoint,
+  )
+where
 
 import Codec.Binary.UTF8.String
 import Context.App
@@ -11,7 +15,6 @@ import Context.Env qualified as Env
 import Context.Gensym qualified as Gensym
 import Context.Locator qualified as Locator
 import Context.Lower
-import Context.StaticText
 import Context.StaticText qualified as StaticText
 import Control.Monad
 import Control.Monad.Writer.Lazy
@@ -37,6 +40,7 @@ import Entity.PrimNumSize
 import Entity.PrimNumSize.ToInt
 import Entity.PrimOp
 import Entity.PrimType qualified as PT
+import Entity.Target
 import Scene.Cancel
 import Scene.Comp.Reduce qualified as C
 import Scene.Comp.Subst qualified as C
@@ -68,25 +72,44 @@ runLowerComp m = do
   b a
 
 lower ::
-  ([C.CompStmt], Maybe DD.DefiniteDescription) ->
-  App (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo])
-lower (stmtList, mMainName) = do
-  initialize
-  registerInternalNames stmtList
-  unless (isJust mMainName) $ do
-    Decl.insDeclEnv (DN.In DD.imm) AN.argNumS4
-    Decl.insDeclEnv (DN.In DD.cls) AN.argNumS4
-  stmtList' <- fmap catMaybes <$> forM stmtList $ \stmt -> do
-    case stmt of
-      C.Def name _ args e -> do
-        e' <- lowerComp e >>= liftIO . return . cancel
-        return $ Just (name, (args, e'))
-      C.Foreign {} -> do
-        return Nothing
-  mMainDef <- mapM constructMainTerm mMainName
+  [C.CompStmt] ->
+  App LC.LowCode
+lower stmtList = do
+  setup stmtList
+  Decl.insDeclEnv (DN.In DD.imm) AN.argNumS4
+  Decl.insDeclEnv (DN.In DD.cls) AN.argNumS4
+  stmtList' <- catMaybes <$> mapM lowerStmt stmtList
+  LC.LowCodeNormal <$> summarize stmtList'
+
+lowerEntryPoint :: Target -> [C.CompStmt] -> App LC.LowCode
+lowerEntryPoint target stmtList = do
+  setup stmtList
+  mainDD <- Locator.getMainDefiniteDescriptionByTarget target
+  Decl.insDeclEnv (DN.In mainDD) AN.zero
+  mainDef <- constructMainTerm mainDD
+  stmtList' <- catMaybes <$> mapM lowerStmt stmtList
+  LC.LowCodeMain mainDef <$> summarize stmtList'
+
+summarize :: [LC.Def] -> App LC.LowCodeInfo
+summarize stmtList = do
   declEnv <- Decl.getDeclEnv
   staticTextList <- StaticText.getAll
-  return (declEnv, stmtList', mMainDef, staticTextList)
+  return (declEnv, stmtList, staticTextList)
+
+setup :: [C.CompStmt] -> App ()
+setup stmtList = do
+  initialize
+  Decl.initialize
+  registerInternalNames stmtList
+
+lowerStmt :: C.CompStmt -> App (Maybe (DD.DefiniteDescription, ([Ident], LC.Comp)))
+lowerStmt stmt = do
+  case stmt of
+    C.Def name _ args e -> do
+      e' <- lowerComp e >>= liftIO . return . cancel
+      return $ Just (name, (args, e'))
+    C.Foreign {} -> do
+      return Nothing
 
 registerInternalNames :: [C.CompStmt] -> App ()
 registerInternalNames stmtList =

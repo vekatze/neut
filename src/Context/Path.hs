@@ -25,6 +25,7 @@ module Context.Path
     sourceToOutputPath,
     getSourceCachePath,
     attachOutputPath,
+    getOutputPathForEntryPoint,
   )
 where
 
@@ -210,6 +211,11 @@ getArtifactDir baseModule = do
   buildDir <- getBuildDir baseModule
   return $ buildDir </> artifactRelDir
 
+getEntryDir :: Module -> App (Path Abs Dir)
+getEntryDir baseModule = do
+  buildDir <- getBuildDir baseModule
+  return $ buildDir </> entryRelDir
+
 getExecutableDir :: Module -> App (Path Abs Dir)
 getExecutableDir baseModule = do
   buildDir <- getBuildDir baseModule
@@ -233,6 +239,13 @@ attachOutputPath :: OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs 
 attachOutputPath outputKind source = do
   outputPath <- sourceToOutputPath outputKind source
   return (outputKind, outputPath)
+
+getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.Target -> App (OK.OutputKind, Path Abs File)
+getOutputPathForEntryPoint baseModule kind target = do
+  entryDir <- getEntryDir baseModule
+  relPath <- parseRelFile $ T.unpack $ Target.extract target
+  outputPath <- Src.attachExtension (entryDir </> relPath) kind
+  return (kind, outputPath)
 
 getInstallDir :: FilePath -> App (Path Abs Dir)
 getInstallDir filePath = do

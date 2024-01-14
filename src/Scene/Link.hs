@@ -26,10 +26,11 @@ link target shouldSkipLink artifactTime sourceList = do
 
 link' :: Target -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
+  mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   foreignLibraries <- getForeignLibraries mainModule
   outputPath <- Path.getExecutableOutputPath target mainModule
   objectPathList <- mapM (Path.sourceToOutputPath OK.Object) sourceList
-  LLVM.link (objectPathList ++ foreignLibraries) outputPath
+  LLVM.link (mainObject : objectPathList ++ foreignLibraries) outputPath
 
 getForeignLibraries :: Module -> App [Path Abs File]
 getForeignLibraries targetModule = do
