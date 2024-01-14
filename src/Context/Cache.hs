@@ -3,6 +3,7 @@ module Context.Cache
     loadCache,
     loadCacheOptimistically,
     whenCompilationNecessary,
+    isEntryPointCompilationSkippable,
     invalidate,
   )
 where
@@ -14,8 +15,10 @@ import Control.Monad.IO.Class
 import Data.Binary
 import Entity.Artifact qualified as A
 import Entity.Cache qualified as Cache
+import Entity.Module
 import Entity.OutputKind qualified as OK
 import Entity.Source qualified as Source
+import Entity.Target
 import Path
 import Path.IO
 
@@ -65,6 +68,18 @@ whenCompilationNecessary outputKindList source comp = do
   if Source.isCompilationSkippable artifactTime outputKindList
     then return Nothing
     else Just <$> comp
+
+isEntryPointCompilationSkippable :: Module -> Target -> [OK.OutputKind] -> App Bool
+isEntryPointCompilationSkippable baseModule target outputKindList = do
+  case outputKindList of
+    [] ->
+      return True
+    kind : rest -> do
+      (_, outputPath) <- Path.getOutputPathForEntryPoint baseModule kind target
+      b <- Path.doesFileExist outputPath
+      if b
+        then isEntryPointCompilationSkippable baseModule target rest
+        else return False
 
 invalidate :: Source.Source -> App ()
 invalidate source = do

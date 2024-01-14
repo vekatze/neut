@@ -72,8 +72,13 @@ compile target outputKindList contentSeq = do
     Cache.whenCompilationNecessary outputKindList source $ do
       virtualCode <- Clarify.clarify stmtList >>= Lower.lower
       return (Just source, virtualCode)
-  mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint target
-  return $ (Nothing, mainVirtualCode) : virtualCodeList
+  mainModule <- Module.getMainModule
+  b <- Cache.isEntryPointCompilationSkippable mainModule target outputKindList
+  if b
+    then return virtualCodeList
+    else do
+      mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint target
+      return $ (Nothing, mainVirtualCode) : virtualCodeList
 
 emitAndWrite :: Target -> [OutputKind] -> [(Maybe Source, LC.LowCode)] -> App ()
 emitAndWrite target outputKindList virtualCodeList = do
