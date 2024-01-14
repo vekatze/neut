@@ -1,5 +1,6 @@
 module Scene.Clarify
   ( clarify,
+    clarifyEntryPoint,
     registerFoundationalTypes,
   )
 where
@@ -56,26 +57,8 @@ import Scene.Clarify.Utility
 import Scene.Comp.Reduce qualified as Reduce
 import Scene.Term.Subst qualified as TM
 
-clarify :: [Stmt] -> App ([C.CompStmt], Maybe DD.DefiniteDescription)
+clarify :: [Stmt] -> App [C.CompStmt]
 clarify stmtList = do
-  mMainDefiniteDescription <- Env.getCurrentSource >>= Locator.getMainDefiniteDescription
-  case mMainDefiniteDescription of
-    Just mainName -> do
-      baseAuxEnv <- withSpecializedCtx $ do
-        registerImmediateS4
-        registerClosureS4
-        Clarify.getAuxEnv
-      defList' <- clarifyStmtList stmtList
-      baseAuxEnv' <- forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
-        e' <- Reduce.reduce e
-        return $ C.Def x opacity args e'
-      return (defList' ++ baseAuxEnv', Just mainName)
-    Nothing -> do
-      defList' <- clarifyStmtList stmtList
-      return (defList', Nothing)
-
-clarifyStmtList :: [Stmt] -> App [C.CompStmt]
-clarifyStmtList stmtList = do
   baseAuxEnv <- withSpecializedCtx $ do
     registerImmediateS4
     registerClosureS4
@@ -101,6 +84,16 @@ clarifyStmtList stmtList = do
         return $ C.Def x opacity args e'
       C.Foreign {} ->
         return stmt
+
+clarifyEntryPoint :: App [C.CompStmt]
+clarifyEntryPoint = do
+  baseAuxEnv <- withSpecializedCtx $ do
+    registerImmediateS4
+    registerClosureS4
+    Clarify.getAuxEnv
+  forM (Map.toList baseAuxEnv) $ \(x, (opacity, args, e)) -> do
+    e' <- Reduce.reduce e
+    return $ C.Def x opacity args e'
 
 registerFoundationalTypes :: App ()
 registerFoundationalTypes = do

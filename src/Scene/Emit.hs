@@ -30,24 +30,42 @@ import Entity.PrimNumSize
 import Entity.PrimType qualified as PT
 import Scene.LowComp.Reduce qualified as LowComp
 
-emit :: (DN.DeclEnv, [LC.Def], Maybe LC.DefContent, [StaticTextInfo]) -> App L.ByteString
-emit (declEnv, defList, mMainTerm, staticTextList) = do
+emit :: LC.LowCode -> App L.ByteString
+emit lowCode = do
+  case lowCode of
+    LC.LowCodeMain mainDef lowCodeInfo -> do
+      main <- emitMain mainDef
+      let argDef = emitArgDef
+      (header, body) <- emitLowCodeInfo lowCodeInfo
+      return $ buildByteString $ header ++ argDef ++ main ++ body
+    LC.LowCodeNormal lowCodeInfo -> do
+      let argDecl = emitArgDecl
+      (header, body) <- emitLowCodeInfo lowCodeInfo
+      return $ buildByteString $ header ++ argDecl ++ body
+
+emitLowCodeInfo :: LC.LowCodeInfo -> App ([Builder], [Builder])
+emitLowCodeInfo (declEnv, defList, staticTextList) = do
   baseSize <- Env.getBaseSize'
+  let declStrList = emitDeclarations declEnv
   let staticTextList' = map (emitStaticText baseSize) staticTextList
-  case mMainTerm of
-    Just mainDef -> do
-      let argc = emitGlobal unsafeArgcName LT.Pointer LC.Null
-      let argv = emitGlobal unsafeArgvName LT.Pointer LC.Null
-      let declStrList = emitDeclarations declEnv
-      mainStrList <- emitMain mainDef
-      defStrList <- concat <$> mapM emitDefinitions defList
-      return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> [argc, argv] <> mainStrList <> defStrList
-    Nothing -> do
-      let argc = emitGlobalExt unsafeArgcName LT.Pointer
-      let argv = emitGlobalExt unsafeArgvName LT.Pointer
-      let declStrList = emitDeclarations declEnv
-      defStrList <- concat <$> mapM emitDefinitions defList
-      return $ L.toLazyByteString $ unlinesL $ declStrList <> staticTextList' <> [argc, argv] <> defStrList
+  defStrList <- concat <$> mapM emitDefinitions defList
+  return (declStrList <> staticTextList', defStrList)
+
+emitArgDecl :: [Builder]
+emitArgDecl = do
+  let argc = emitGlobalExt unsafeArgcName LT.Pointer
+  let argv = emitGlobalExt unsafeArgvName LT.Pointer
+  [argc, argv]
+
+emitArgDef :: [Builder]
+emitArgDef = do
+  let argc = emitGlobal unsafeArgcName LT.Pointer LC.Null
+  let argv = emitGlobal unsafeArgvName LT.Pointer LC.Null
+  [argc, argv]
+
+buildByteString :: [Builder] -> L.ByteString
+buildByteString =
+  L.toLazyByteString . unlinesL
 
 emitGlobal :: T.Text -> LT.LowType -> LC.Value -> Builder
 emitGlobal name lt v =

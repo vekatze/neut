@@ -69,6 +69,10 @@ artifactRelDir :: Path Rel Dir
 artifactRelDir =
   $(mkRelDir "artifact")
 
+entryRelDir :: Path Rel Dir
+entryRelDir =
+  $(mkRelDir "entry")
+
 executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
