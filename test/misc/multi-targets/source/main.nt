@@ -1,7 +1,3 @@
-import {
-- this.multi-targets
-}
-
 define main(): unit {
   Unit
 }

@@ -9,7 +9,7 @@ import Entity.Artifact qualified as A
 import Entity.BaseName qualified as BN
 import Entity.Const
 import Entity.Hint
-import Entity.Module
+import Entity.Module qualified as M
 import Entity.ModuleAlias
 import Entity.ModuleID qualified as MID
 import Entity.OutputKind qualified as OK
@@ -17,15 +17,14 @@ import Path
 
 data Source = Source
   { sourceFilePath :: Path Abs File,
-    sourceModule :: Module,
+    sourceModule :: M.Module,
     sourceHint :: Maybe Hint
   }
   deriving (Show)
 
 getRelPathFromSourceDir :: (MonadThrow m) => Source -> m (Path Rel File)
 getRelPathFromSourceDir source = do
-  let sourceDir = getSourceDir $ sourceModule source
-  stripProperPrefix sourceDir (sourceFilePath source)
+  M.getRelPathFromSourceDir (sourceModule source) (sourceFilePath source)
 
 getBaseReadableLocator :: (MonadThrow m) => Source -> m T.Text
 getBaseReadableLocator source = do
@@ -33,9 +32,9 @@ getBaseReadableLocator source = do
   (relPathWithoutExtension, _) <- splitExtension relPath
   return $ T.replace "/" nsSep $ T.pack $ toFilePath relPathWithoutExtension
 
-getHumanReadableLocator :: (MonadThrow m) => Module -> Source -> m (NE.NonEmpty T.Text)
+getHumanReadableLocator :: (MonadThrow m) => M.Module -> Source -> m (NE.NonEmpty T.Text)
 getHumanReadableLocator baseModule source = do
-  let sourceModuleID = moduleID $ sourceModule source
+  let sourceModuleID = M.moduleID $ sourceModule source
   baseReadableLocator <- getBaseReadableLocator source
   case sourceModuleID of
     MID.Main -> do
@@ -43,7 +42,7 @@ getHumanReadableLocator baseModule source = do
     MID.Base -> do
       return $ NE.singleton $ "base" <> nsSep <> baseReadableLocator
     MID.Library digest -> do
-      let digestMap = getDigestMap baseModule
+      let digestMap = M.getDigestMap baseModule
       case Map.lookup digest digestMap of
         Nothing ->
           return $ NE.singleton $ "{unknown}" <> nsSep <> baseReadableLocator
@@ -63,7 +62,7 @@ attachExtension file kind =
 
 hasCore :: Source -> Bool
 hasCore source =
-  Map.member coreModuleAlias $ moduleDependency $ sourceModule source
+  Map.member coreModuleAlias $ M.moduleDependency $ sourceModule source
 
 isCompilationSkippable ::
   A.ArtifactTime ->

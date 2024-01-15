@@ -77,6 +77,10 @@ executableRelDir :: Path Rel Dir
 executableRelDir =
   $(mkRelDir "executable")
 
+zenRelDir :: Path Rel Dir
+zenRelDir =
+  $(mkRelDir "zen")
+
 defaultInlineLimit :: Int
 defaultInlineLimit =
   100000

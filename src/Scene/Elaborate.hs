@@ -6,7 +6,6 @@ import Context.DataDefinition qualified as DataDefinition
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
-import Context.Locator qualified as Locator
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
@@ -64,11 +63,9 @@ elaborate cacheOrStmt = do
 
 analyzeStmtList :: [WeakStmt] -> App [WeakStmt]
 analyzeStmtList stmtList = do
-  source <- Env.getCurrentSource
-  mMainDD <- Locator.getMainDefiniteDescription source
   -- mapM_ viewStmt stmtList
   forM stmtList $ \stmt -> do
-    stmt' <- Infer.inferStmt mMainDD stmt
+    stmt' <- Infer.inferStmt stmt
     insertWeakStmt stmt'
     return stmt'
 

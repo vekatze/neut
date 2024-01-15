@@ -29,7 +29,6 @@ import Entity.ModuleDigest
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
 import Entity.SourceLocator qualified as SL
-import Entity.Target
 import Path
 import Path.IO
 import Scene.Ens.Reflect qualified as Ens
@@ -86,7 +85,7 @@ fromFilePath moduleID moduleFilePath = do
         moduleArchiveDir = archiveDir,
         moduleBuildDir = buildDir,
         moduleSourceDir = sourceDir,
-        moduleTarget = Map.mapKeys Target target,
+        moduleTarget = target,
         moduleDependency = dependency,
         moduleExtraContents = extraContents,
         moduleAntecedents = antecedents,

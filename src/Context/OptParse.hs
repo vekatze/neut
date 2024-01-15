@@ -15,6 +15,7 @@ import Entity.Config.Format qualified as Format
 import Entity.Config.LSP qualified as LSP
 import Entity.Config.Remark qualified as Remark
 import Entity.Config.Version qualified as Version
+import Entity.Config.Zen qualified as Zen
 import Entity.FileType qualified as FT
 import Entity.ModuleURL
 import Entity.OutputKind qualified as OK
@@ -38,6 +39,7 @@ parseOpt = do
         cmd "add" parseGetOpt "add a dependency",
         cmd "format-source" (parseFormatOpt FT.Source) "format a source file",
         cmd "format-ens" (parseFormatOpt FT.Ens) "format an ens file",
+        cmd "zen" parseZenOpt "execute `zen` of given file",
         cmd "lsp" parseLSPOpt "start the LSP server",
         cmd "version" parseVersionOpt "show version info"
       ]
@@ -91,6 +93,23 @@ parseGetOpt = do
         { Add.moduleAliasText = T.pack moduleAlias,
           Add.moduleURL = ModuleURL $ T.pack moduleURL,
           Add.remarkCfg = remarkCfg
+        }
+
+parseZenOpt :: Parser Command
+parseZenOpt = do
+  inputFilePath <- argument str (mconcat [metavar "INPUT", help "The path of input file"])
+  mClangOptString <- optional $ strOption $ mconcat [long "clang-option", metavar "OPT", help "Options for clang"]
+  remarkCfg <- remarkConfigOpt
+  buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
+  rest <- (many . strArgument) (metavar "args")
+  pure $
+    Zen $
+      Zen.Config
+        { Zen.filePathString = inputFilePath,
+          Zen.mClangOptString = mClangOptString,
+          Zen.remarkCfg = remarkCfg,
+          Zen.buildMode = buildMode,
+          Zen.args = rest
         }
 
 parseLSPOpt :: Parser Command

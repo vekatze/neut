@@ -1,4 +1,9 @@
-module Act.Build (build) where
+module Act.Build
+  ( build,
+    buildTarget,
+    Axis (..),
+  )
+where
 
 import Context.App
 import Context.Cache qualified as Cache
@@ -39,16 +44,37 @@ build :: Config -> App ()
 build cfg = do
   setup cfg
   targetList <- Collect.collectTargetList $ mTarget cfg
-  forM_ targetList $ \target -> do
-    Initialize.initializeForTarget
-    (artifactTime, dependenceSeq) <- Unravel.unravel target
-    contentSeq <- load dependenceSeq
-    virtualCodeList <- compile target (outputKindList cfg) contentSeq
-    Remark.getGlobalRemarkList >>= Remark.printRemarkList
-    emitAndWrite target (outputKindList cfg) virtualCodeList
-    Link.link target (shouldSkipLink cfg) artifactTime (toList dependenceSeq)
-    execute cfg target
-    install cfg target
+  forM_ targetList $ buildTarget (fromConfig cfg)
+
+data Axis = Axis
+  { _outputKindList :: [OutputKind],
+    _shouldSkipLink :: Bool,
+    _shouldExecute :: Bool,
+    _installDir :: Maybe FilePath,
+    _executeArgs :: [String]
+  }
+
+fromConfig :: Config -> Axis
+fromConfig cfg =
+  Axis
+    { _outputKindList = outputKindList cfg,
+      _shouldSkipLink = shouldSkipLink cfg,
+      _shouldExecute = shouldExecute cfg,
+      _installDir = installDir cfg,
+      _executeArgs = args cfg
+    }
+
+buildTarget :: Axis -> Target -> App ()
+buildTarget axis target = do
+  Initialize.initializeForTarget
+  (artifactTime, dependenceSeq) <- Unravel.unravel target
+  contentSeq <- load dependenceSeq
+  virtualCodeList <- compile target (_outputKindList axis) contentSeq
+  Remark.getGlobalRemarkList >>= Remark.printRemarkList
+  emitAndWrite target (_outputKindList axis) virtualCodeList
+  Link.link target (_shouldSkipLink axis) artifactTime (toList dependenceSeq)
+  execute (_shouldExecute axis) target (_executeArgs axis)
+  install (_installDir axis) target
 
 setup :: Config -> App ()
 setup cfg = do
@@ -87,11 +113,11 @@ emitAndWrite target outputKindList virtualCodeList = do
     llvmIR' <- Emit.emit llvmIR
     LLVM.emit target currentTime sourceOrNone outputKindList llvmIR'
 
-execute :: Config -> Target -> App ()
-execute cfg target = do
-  when (shouldExecute cfg) $ Execute.execute target (args cfg)
+execute :: Bool -> Target -> [String] -> App ()
+execute shouldExecute target args = do
+  when shouldExecute $ Execute.execute target args
 
-install :: Config -> Target -> App ()
-install cfg target = do
-  mDir <- mapM Path.getInstallDir (installDir cfg)
+install :: Maybe FilePath -> Target -> App ()
+install filePathOrNone target = do
+  mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir

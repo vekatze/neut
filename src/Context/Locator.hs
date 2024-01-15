@@ -162,13 +162,22 @@ isMainFile source = do
       return False
 
 getMainDefiniteDescriptionByTarget :: Target.Target -> App DD.DefiniteDescription
-getMainDefiniteDescriptionByTarget target = do
+getMainDefiniteDescriptionByTarget targetOrZen = do
   mainModule <- getMainModule
-  case Map.lookup target (Module.moduleTarget mainModule) of
-    Nothing ->
-      Throw.raiseError' $ "no such target is defined: " <> Target.extract target
-    Just sourceLocator -> do
-      sourceLocator' <- SL.SourceLocator <$> removeExtension (SL.reify sourceLocator)
-      let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator'}
-      let ll = LL.new BN.mainName
-      return $ DD.new sgl ll
+  case targetOrZen of
+    Target.Target target -> do
+      case Map.lookup target (Module.moduleTarget mainModule) of
+        Nothing ->
+          Throw.raiseError' $ "no such target is defined: " <> target
+        Just sourceLocator -> do
+          relPathToDD (SL.reify sourceLocator) BN.mainName
+    Target.ZenTarget path -> do
+      relPath <- Module.getRelPathFromSourceDir mainModule path
+      relPathToDD relPath BN.zenName
+
+relPathToDD :: Path Rel File -> BN.BaseName -> App DD.DefiniteDescription
+relPathToDD relPath baseName = do
+  sourceLocator <- SL.SourceLocator <$> removeExtension relPath
+  let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
+  let ll = LL.new baseName
+  return $ DD.new sgl ll
