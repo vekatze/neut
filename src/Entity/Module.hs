@@ -2,6 +2,7 @@ module Entity.Module where
 
 import Control.Comonad.Cofree
 import Control.Monad
+import Control.Monad.Catch
 import Data.Containers.ListUtils (nubOrd)
 import Data.HashMap.Strict qualified as Map
 import Data.List (find, sort)
@@ -43,10 +44,13 @@ data Dependency = Dependency
   }
   deriving (Show)
 
+type TargetName =
+  T.Text
+
 data Module = Module
   { moduleID :: MID.ModuleID,
     moduleSourceDir :: Path Rel Dir,
-    moduleTarget :: Map.HashMap Target.Target SL.SourceLocator,
+    moduleTarget :: Map.HashMap TargetName SL.SourceLocator,
     moduleArchiveDir :: Path Rel Dir,
     moduleBuildDir :: Path Rel Dir,
     moduleDependency :: Map.HashMap MA.ModuleAlias Dependency,
@@ -126,7 +130,7 @@ getTargetPathList baseModule = do
   let sourceLocatorList = Map.elems $ moduleTarget baseModule
   map ((moduleSourceDir </>) . SL.reify) sourceLocatorList
 
-getTargetPath :: Module -> Target.Target -> Maybe (Path Abs File)
+getTargetPath :: Module -> T.Text -> Maybe (Path Abs File)
 getTargetPath baseModule target = do
   let moduleSourceDir = getSourceDir baseModule
   sourceLocator <- Map.lookup target (moduleTarget baseModule)
@@ -221,8 +225,7 @@ getBuildDirInfo someModule = do
 getTargetInfo :: Module -> (T.Text, E.FullEns)
 getTargetInfo someModule = do
   let targetDict = Map.map (\x -> E.inject $ _m :< E.String (SL.getRelPathText x)) $ moduleTarget someModule
-  let targetDict' = Map.mapKeys (\(Target.Target key) -> key) targetDict
-  (keyTarget, E.inject $ _m :< E.Dictionary [] (Map.toList targetDict'))
+  (keyTarget, E.inject $ _m :< E.Dictionary [] (Map.toList targetDict))
 
 getDependencyInfo :: Module -> Maybe (T.Text, E.FullEns)
 getDependencyInfo someModule = do
@@ -314,7 +317,7 @@ getTargetList someModule mTarget =
     Just target ->
       [target]
     Nothing -> do
-      Map.keys $ moduleTarget someModule
+      map Target.Target $ Map.keys $ moduleTarget someModule
 
 stylize :: E.Ens -> Either Error E.Ens
 stylize ens = do
@@ -352,3 +355,8 @@ reifyPresetMap moduleName presetMap = do
   let presetList = Map.toList presetMap
   flip map presetList $ \(loc, lls) -> do
     (moduleName <> nsSep <> loc, lls)
+
+getRelPathFromSourceDir :: (MonadThrow m) => Module -> Path Abs File -> m (Path Rel File)
+getRelPathFromSourceDir baseModule path = do
+  let sourceDir = getSourceDir baseModule
+  stripProperPrefix sourceDir path

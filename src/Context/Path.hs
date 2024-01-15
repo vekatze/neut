@@ -23,6 +23,7 @@ module Context.Path
     getInstallDir,
     getPlatformPrefix,
     sourceToOutputPath,
+    getZenExecutableDir,
     getSourceCachePath,
     attachOutputPath,
     getOutputPathForEntryPoint,
@@ -159,9 +160,16 @@ getPlatformPrefix = do
   P.parseRelDir $ T.unpack $ TP.reify platform
 
 getExecutableOutputPath :: Target.Target -> Module -> App (Path Abs File)
-getExecutableOutputPath target mainModule = do
-  executableDir <- getExecutableDir mainModule
-  resolveFile executableDir $ T.unpack $ Target.extract target
+getExecutableOutputPath targetOrZen mainModule = do
+  case targetOrZen of
+    Target.Target target -> do
+      executableDir <- getExecutableDir mainModule
+      resolveFile executableDir $ T.unpack target
+    Target.ZenTarget path -> do
+      zenExecutableDir <- getZenExecutableDir mainModule
+      relPath <- getRelPathFromSourceDir mainModule path
+      (relPathWithoutExtension, _) <- P.splitExtension relPath
+      return $ zenExecutableDir </> relPathWithoutExtension
 
 getBaseBuildDir :: Module -> App (Path Abs Dir)
 getBaseBuildDir baseModule = do
@@ -221,6 +229,16 @@ getExecutableDir baseModule = do
   buildDir <- getBuildDir baseModule
   return $ buildDir </> executableRelDir
 
+getZenExecutableDir :: Module -> App (Path Abs Dir)
+getZenExecutableDir baseModule = do
+  buildDir <- getBuildDir baseModule
+  return $ buildDir </> zenRelDir </> executableRelDir
+
+getZenEntryDir :: Module -> App (Path Abs Dir)
+getZenEntryDir baseModule = do
+  buildDir <- getBuildDir baseModule
+  return $ buildDir </> zenRelDir </> entryRelDir
+
 sourceToOutputPath :: OK.OutputKind -> Src.Source -> App (Path Abs File)
 sourceToOutputPath kind source = do
   artifactDir <- getArtifactDir $ Src.sourceModule source
@@ -241,11 +259,19 @@ attachOutputPath outputKind source = do
   return (outputKind, outputPath)
 
 getOutputPathForEntryPoint :: Module -> OK.OutputKind -> Target.Target -> App (OK.OutputKind, Path Abs File)
-getOutputPathForEntryPoint baseModule kind target = do
-  entryDir <- getEntryDir baseModule
-  relPath <- parseRelFile $ T.unpack $ Target.extract target
-  outputPath <- Src.attachExtension (entryDir </> relPath) kind
-  return (kind, outputPath)
+getOutputPathForEntryPoint baseModule kind targetOrZen = do
+  case targetOrZen of
+    Target.Target target -> do
+      entryDir <- getEntryDir baseModule
+      relPath <- parseRelFile $ T.unpack target
+      outputPath <- Src.attachExtension (entryDir </> relPath) kind
+      return (kind, outputPath)
+    Target.ZenTarget path -> do
+      zenEntryDir <- getZenEntryDir baseModule
+      relPath <- getRelPathFromSourceDir baseModule path
+      (relPathWithoutExtension, _) <- P.splitExtension relPath
+      outputPath <- Src.attachExtension (zenEntryDir </> relPathWithoutExtension) kind
+      return (kind, outputPath)
 
 getInstallDir :: FilePath -> App (Path Abs Dir)
 getInstallDir filePath = do

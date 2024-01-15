@@ -52,8 +52,8 @@ import Scene.WeakTerm.Subst qualified as WT
 
 type BoundVarEnv = [BinderF WT.WeakTerm]
 
-inferStmt :: Maybe DD.DefiniteDescription -> WeakStmt -> App WeakStmt
-inferStmt mMainDD stmt =
+inferStmt :: WeakStmt -> App WeakStmt
+inferStmt stmt =
   case stmt of
     WeakStmtDefine isConstLike stmtKind m x impArgs expArgs codType e -> do
       (impArgs', varEnv) <- inferBinder' [] impArgs
@@ -63,7 +63,7 @@ inferStmt mMainDD stmt =
       stmtKind' <- inferStmtKind stmtKind
       (e', te) <- infer varEnv' e
       insConstraintEnv codType' te
-      when (mMainDD == Just x) $ do
+      when (DD.isEntryPoint x) $ do
         let _m = m {metaShouldSaveLocation = False}
         unitType <- getUnitType _m
         insConstraintEnv (m :< WT.Pi [] [] unitType) (m :< WT.Pi impArgs' expArgs' codType')

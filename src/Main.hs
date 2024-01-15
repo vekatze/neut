@@ -9,6 +9,7 @@ import Act.Create qualified as Create
 import Act.Format qualified as Format
 import Act.LSP qualified as LSP
 import Act.Version qualified as Version
+import Act.Zen qualified as Zen
 import Context.App
 import Context.External qualified as External
 import Context.OptParse qualified as OptParse
@@ -46,3 +47,5 @@ execute = do
           LSP.lsp cfg
         C.ShowVersion cfg ->
           Version.showVersion cfg
+        C.Zen cfg ->
+          Zen.zen cfg

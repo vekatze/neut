@@ -52,18 +52,17 @@ type ObjectTime =
   Maybe UTCTime
 
 unravel :: Target -> App (A.ArtifactTime, [Source.Source])
-unravel target = do
+unravel targetOrZen = do
   mainModule <- Module.getMainModule
-  case getTargetPath mainModule target of
-    Nothing ->
-      Throw.raiseError' $ "no such target is defined: `" <> extract target <> "`"
-    Just mainFilePath -> do
-      unravel' $
-        Source.Source
-          { Source.sourceModule = mainModule,
-            Source.sourceFilePath = mainFilePath,
-            Source.sourceHint = Nothing
-          }
+  case targetOrZen of
+    ZenTarget path ->
+      unravelFromFile path
+    Target target -> do
+      case getTargetPath mainModule target of
+        Nothing ->
+          Throw.raiseError' $ "no such target is defined: `" <> target <> "`"
+        Just path -> do
+          unravelFromFile path
 
 unravelFromFile ::
   Path Abs File ->

@@ -14,6 +14,7 @@ module Entity.BaseName
     resourceName,
     textName,
     mainName,
+    zenName,
     fromText,
     this,
     new,
@@ -110,6 +111,10 @@ core =
 mainName :: BaseName
 mainName =
   MakeBaseName "main"
+
+zenName :: BaseName
+zenName =
+  MakeBaseName "zen"
 
 new :: BaseName
 new =

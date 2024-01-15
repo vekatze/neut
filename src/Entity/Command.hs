@@ -9,6 +9,7 @@ import Entity.Config.Create qualified as Create
 import Entity.Config.Format qualified as Format
 import Entity.Config.LSP qualified as LSP
 import Entity.Config.Version qualified as Version
+import Entity.Config.Zen qualified as Zen
 
 data Command
   = Build Build.Config
@@ -20,3 +21,4 @@ data Command
   | Format Format.Config
   | LSP LSP.Config
   | ShowVersion Version.Config
+  | Zen Zen.Config

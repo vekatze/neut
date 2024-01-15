@@ -16,7 +16,6 @@ import Entity.Const
 import Entity.Module
 import Entity.ModuleID qualified as MID
 import Entity.SourceLocator qualified as SL
-import Entity.Target
 import Path (parent, (</>))
 
 createNewProject :: T.Text -> Module -> App ()
@@ -43,7 +42,7 @@ constructDefaultModule name = do
         moduleSourceDir = sourceRelDir,
         moduleTarget =
           Map.fromList
-            [ ( Target name,
+            [ ( name,
                 SL.SourceLocator mainFile
               )
             ],

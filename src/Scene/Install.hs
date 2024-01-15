@@ -11,8 +11,12 @@ import Path.IO
 import Prelude hiding (log)
 
 install :: Target.Target -> Path Abs Dir -> App ()
-install target dir = do
-  execPath <- Module.getMainModule >>= Path.getExecutableOutputPath target
-  execName <- parseRelFile $ T.unpack $ Target.extract target
-  let destPath = dir </> execName
-  copyFile execPath destPath
+install targetOrZen dir = do
+  execPath <- Module.getMainModule >>= Path.getExecutableOutputPath targetOrZen
+  case targetOrZen of
+    Target.Target target -> do
+      execName <- parseRelFile $ T.unpack target
+      let destPath = dir </> execName
+      copyFile execPath destPath
+    Target.ZenTarget {} ->
+      return ()

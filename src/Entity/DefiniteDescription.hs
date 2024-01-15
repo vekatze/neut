@@ -12,6 +12,7 @@ module Entity.DefiniteDescription
     cls,
     toBuilder,
     llvmGlobalLocator,
+    isEntryPoint,
   )
 where
 
@@ -176,3 +177,7 @@ initLast xs =
 llvmGlobalLocator :: T.Text
 llvmGlobalLocator =
   "base.llvm"
+
+isEntryPoint :: DefiniteDescription -> Bool
+isEntryPoint dd =
+  localLocator dd `elem` ["main", "zen"]
