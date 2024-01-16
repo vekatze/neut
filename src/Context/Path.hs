@@ -25,6 +25,7 @@ module Context.Path
     sourceToOutputPath,
     getZenExecutableDir,
     getSourceCachePath,
+    getSourceCompletionCachePath,
     attachOutputPath,
     getOutputPathForEntryPoint,
   )
@@ -252,6 +253,13 @@ getSourceCachePath source = do
   relPath <- Src.getRelPathFromSourceDir source
   (relPathWithoutExtension, _) <- P.splitExtension relPath
   P.addExtension ".i" (artifactDir </> relPathWithoutExtension)
+
+getSourceCompletionCachePath :: Src.Source -> App (Path Abs File)
+getSourceCompletionCachePath source = do
+  artifactDir <- getArtifactDir $ Src.sourceModule source
+  relPath <- Src.getRelPathFromSourceDir source
+  (relPathWithoutExtension, _) <- P.splitExtension relPath
+  P.addExtension ".ic" (artifactDir </> relPathWithoutExtension)
 
 attachOutputPath :: OK.OutputKind -> Src.Source -> App (OK.OutputKind, Path Abs File)
 attachOutputPath outputKind source = do
