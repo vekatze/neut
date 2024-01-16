@@ -1,7 +1,9 @@
 module Context.Cache
   ( saveCache,
+    saveCompletionCache,
     loadCache,
     loadCacheOptimistically,
+    loadCompletionCacheOptimistically,
     whenCompilationNecessary,
     isEntryPointCompilationSkippable,
     invalidate,
@@ -27,6 +29,12 @@ saveCache source cache = do
   cachePath <- Path.getSourceCachePath source
   ensureDir $ parent cachePath
   liftIO $ encodeFile (toFilePath cachePath) $ Cache.compress cache
+
+saveCompletionCache :: Source.Source -> Cache.CompletionCache -> App ()
+saveCompletionCache source cache = do
+  cachePath <- Path.getSourceCompletionCachePath source
+  ensureDir $ parent cachePath
+  liftIO $ encodeFile (toFilePath cachePath) cache
 
 loadCache :: Source.Source -> App (Maybe Cache.Cache)
 loadCache source = do
@@ -61,6 +69,20 @@ loadCacheOptimistically cachePath = do
           return Nothing
         Right content ->
           return $ Just $ Cache.extend content
+
+loadCompletionCacheOptimistically :: Path Abs File -> App (Maybe Cache.CompletionCache)
+loadCompletionCacheOptimistically cachePath = do
+  hasCache <- doesFileExist cachePath
+  if not hasCache
+    then return Nothing
+    else do
+      dataOrErr <- liftIO $ decodeFileOrFail (toFilePath cachePath)
+      case dataOrErr of
+        Left _ -> do
+          removeFile cachePath
+          return Nothing
+        Right content ->
+          return $ Just content
 
 whenCompilationNecessary :: [OK.OutputKind] -> Source.Source -> App a -> App (Maybe a)
 whenCompilationNecessary outputKindList source comp = do

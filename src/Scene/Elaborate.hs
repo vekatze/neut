@@ -85,8 +85,11 @@ synthesizeStmtList stmtList = do
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
-        Cache.locationTree = tmap,
-        Cache.localVarTree = localVarTree,
+        Cache.locationTree = tmap
+      }
+  Cache.saveCompletionCache source $
+    Cache.CompletionCache
+      { Cache.localVarTree = localVarTree,
         Cache.topCandidate = topCandidate,
         Cache.rawImportSummary = rawImportSummary
       }

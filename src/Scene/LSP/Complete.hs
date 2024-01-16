@@ -1,4 +1,8 @@
-module Scene.LSP.Complete (complete) where
+module Scene.LSP.Complete
+  ( complete,
+    benchComplete,
+  )
+where
 
 import Context.App
 import Context.AppM
@@ -27,7 +31,7 @@ import Entity.Source
 import Entity.SourceLocator qualified as SL
 import Entity.TopCandidate
 import Language.LSP.Protocol.Types
-import Scene.LSP.GetAllCachesInModule (getAllCachesInModule)
+import Scene.LSP.GetAllCachesInModule (getAllCompletionCachesInModule)
 import Scene.Module.Reflect (getAllDependencies)
 import Scene.Source.Reflect qualified as Source
 import UnliftIO.Async
@@ -39,14 +43,22 @@ complete uri pos = do
   let loc = positionToLoc pos
   lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
 
+benchComplete :: App ()
+benchComplete = do
+  void $ runAppM $ do
+    let pathString = "/Users/vekatze/Code/neut/test/misc/adder/source/adder.nt"
+    currentSource <- lift (Source.reflect pathString) >>= liftMaybe
+    let loc = (10, 10)
+    lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
+
 itemGetterList :: [Source -> Loc -> App [CompletionItem]]
 itemGetterList =
   [getLocalCompletionItems, getGlobalCompletionItems]
 
 getLocalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getLocalCompletionItems source loc = do
-  cachePath <- Path.getSourceCachePath source
-  cacheOrNone <- Cache.loadCacheOptimistically cachePath
+  cachePath <- Path.getSourceCompletionCachePath source
+  cacheOrNone <- Cache.loadCompletionCacheOptimistically cachePath
   case cacheOrNone of
     Nothing ->
       return []
@@ -59,7 +71,7 @@ getGlobalCompletionItems :: Source -> Loc -> App [CompletionItem]
 getGlobalCompletionItems currentSource loc = do
   let baseModule = sourceModule currentSource
   (globalVarList, aliasPresetMap) <- getAllTopCandidate baseModule
-  baseCacheOrNone <- Path.getSourceCachePath currentSource >>= Cache.loadCacheOptimistically
+  baseCacheOrNone <- Path.getSourceCompletionCachePath currentSource >>= Cache.loadCompletionCacheOptimistically
   let importSummaryOrNone = baseCacheOrNone >>= Cache.rawImportSummary
   let impLoc = getImportLoc importSummaryOrNone
   if loc < impLoc
@@ -257,7 +269,7 @@ constructAliasPresetMap =
 
 getAllTopCandidate' :: (MA.ModuleAlias, Module) -> App ([(Source, [TopCandidate])], (T.Text, Module))
 getAllTopCandidate' (alias, candModule) = do
-  cacheSeq <- getAllCachesInModule candModule
+  cacheSeq <- getAllCompletionCachesInModule candModule
   return (map (second Cache.topCandidate) cacheSeq, (MA.reify alias, candModule))
 
 fromCandidateKind :: CandidateKind -> CompletionItemKind
