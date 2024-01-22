@@ -4,11 +4,13 @@ module Context.Locator
     attachPublicCurrentLocator,
     getCurrentGlobalLocator,
     activateSpecifiedNames,
+    isMainFile,
     clearActiveLocators,
     getPossibleReferents,
     getMainDefiniteDescription,
     getNameLifter,
     getMainDefiniteDescriptionByTarget,
+    checkIfEntryPointIsNecessary,
   )
 where
 
@@ -181,3 +183,11 @@ relPathToDD relPath baseName = do
   let sgl = SGL.StrictGlobalLocator {moduleID = MID.Main, sourceLocator = sourceLocator}
   let ll = LL.new baseName
   return $ DD.new sgl ll
+
+checkIfEntryPointIsNecessary :: Target.Target -> Source.Source -> App Bool
+checkIfEntryPointIsNecessary target source = do
+  case target of
+    Target.ZenTarget path -> do
+      return $ Source.sourceFilePath source == path
+    Target.Target {} -> do
+      isMainFile source

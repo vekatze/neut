@@ -8,11 +8,14 @@ module Entity.Stmt
     PathSet,
     compress,
     extend,
+    getStmtName,
+    getWeakStmtName,
   )
 where
 
 import Control.Comonad.Cofree
 import Data.Binary
+import Data.Maybe
 import Data.Set qualified as S
 import Entity.Binder
 import Entity.DefiniteDescription qualified as DD
@@ -106,3 +109,33 @@ extend stmt =
       StmtDefineConst m dd t' e'
     StmtForeign foreignList ->
       StmtForeign foreignList
+
+getStmtName :: [Stmt] -> [(Hint, DD.DefiniteDescription)]
+getStmtName =
+  mapMaybe getStmtName'
+
+getStmtName' :: Stmt -> Maybe (Hint, DD.DefiniteDescription)
+getStmtName' stmt =
+  case stmt of
+    StmtDefine _ _ (SavedHint m) name _ _ _ _ ->
+      return (m, name)
+    StmtDefineConst (SavedHint m) name _ _ ->
+      return (m, name)
+    StmtForeign _ ->
+      Nothing
+
+getWeakStmtName :: [WeakStmt] -> [(Hint, DD.DefiniteDescription)]
+getWeakStmtName =
+  concatMap getWeakStmtName'
+
+getWeakStmtName' :: WeakStmt -> [(Hint, DD.DefiniteDescription)]
+getWeakStmtName' stmt =
+  case stmt of
+    WeakStmtDefine _ _ m name _ _ _ _ ->
+      [(m, name)]
+    WeakStmtDefineConst m name _ _ ->
+      [(m, name)]
+    WeakStmtNominal {} ->
+      []
+    WeakStmtForeign {} ->
+      []

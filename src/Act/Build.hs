@@ -23,11 +23,13 @@ import Entity.Config.Build
 import Entity.LowComp qualified as LC
 import Entity.OutputKind
 import Entity.Source
+import Entity.Stmt (getStmtName)
 import Entity.Target (Target)
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
 import Scene.Emit qualified as Emit
+import Scene.EnsureMain qualified as EnsureMain
 import Scene.Execute qualified as Execute
 import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize
@@ -95,6 +97,7 @@ compile target outputKindList contentSeq = do
   virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
     stmtList <- Parse.parse source cacheOrContent >>= Elaborate.elaborate
+    EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary outputKindList source $ do
       virtualCode <- Clarify.clarify stmtList >>= Lower.lower
       return (Just source, virtualCode)
