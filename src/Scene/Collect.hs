@@ -26,7 +26,7 @@ collectSourceList mFilePathStr = do
     Nothing -> do
       return $ getTargetPathList mainModule
 
-collectTargetList :: Maybe Target -> App [Target]
+collectTargetList :: Maybe ConcreteTarget -> App [ConcreteTarget]
 collectTargetList mTarget = do
   flip getTargetList mTarget <$> Module.getMainModule
 

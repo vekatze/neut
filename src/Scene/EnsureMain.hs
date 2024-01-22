@@ -11,7 +11,7 @@ import Entity.Hint
 import Entity.Source
 import Entity.Target
 
-ensureMain :: Target -> Source -> [DD.DefiniteDescription] -> App ()
+ensureMain :: ConcreteTarget -> Source -> [DD.DefiniteDescription] -> App ()
 ensureMain target source topLevelNameList = do
   mainDD <- Locator.getMainDefiniteDescriptionByTarget target
   let hasEntryPoint = mainDD `elem` topLevelNameList

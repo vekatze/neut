@@ -16,7 +16,7 @@ import Entity.Target
 import Path
 import Path.IO
 
-link :: Target -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
+link :: ConcreteTarget -> Bool -> A.ArtifactTime -> [Source.Source] -> App ()
 link target shouldSkipLink artifactTime sourceList = do
   mainModule <- Module.getMainModule
   isExecutableAvailable <- Path.getExecutableOutputPath target mainModule >>= Path.doesFileExist
@@ -24,7 +24,7 @@ link target shouldSkipLink artifactTime sourceList = do
     then return ()
     else link' target mainModule sourceList
 
-link' :: Target -> Module -> [Source.Source] -> App ()
+link' :: ConcreteTarget -> Module -> [Source.Source] -> App ()
 link' target mainModule sourceList = do
   mainObject <- snd <$> Path.getOutputPathForEntryPoint mainModule OK.Object target
   foreignLibraries <- getForeignLibraries mainModule

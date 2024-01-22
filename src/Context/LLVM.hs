@@ -44,7 +44,7 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: Target -> UTCTime -> Maybe Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit :: ConcreteTarget -> UTCTime -> Maybe Source -> [OK.OutputKind] -> L.ByteString -> App ()
 emit target timeStamp sourceOrNone outputKindList llvmCode = do
   case sourceOrNone of
     Just source -> do

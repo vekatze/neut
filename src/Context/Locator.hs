@@ -163,17 +163,17 @@ isMainFile source = do
     _ ->
       return False
 
-getMainDefiniteDescriptionByTarget :: Target.Target -> App DD.DefiniteDescription
+getMainDefiniteDescriptionByTarget :: Target.ConcreteTarget -> App DD.DefiniteDescription
 getMainDefiniteDescriptionByTarget targetOrZen = do
   mainModule <- getMainModule
   case targetOrZen of
-    Target.Target target -> do
+    Target.Named target -> do
       case Map.lookup target (Module.moduleTarget mainModule) of
         Nothing ->
           Throw.raiseError' $ "no such target is defined: " <> target
         Just sourceLocator -> do
           relPathToDD (SL.reify sourceLocator) BN.mainName
-    Target.ZenTarget path -> do
+    Target.Zen path -> do
       relPath <- Module.getRelPathFromSourceDir mainModule path
       relPathToDD relPath BN.zenName
 
@@ -184,10 +184,10 @@ relPathToDD relPath baseName = do
   let ll = LL.new baseName
   return $ DD.new sgl ll
 
-checkIfEntryPointIsNecessary :: Target.Target -> Source.Source -> App Bool
+checkIfEntryPointIsNecessary :: Target.ConcreteTarget -> Source.Source -> App Bool
 checkIfEntryPointIsNecessary target source = do
   case target of
-    Target.ZenTarget path -> do
-      return $ Source.sourceFilePath source == path
-    Target.Target {} -> do
+    Target.Named {} -> do
       isMainFile source
+    Target.Zen path -> do
+      return $ Source.sourceFilePath source == path

@@ -24,7 +24,7 @@ import Entity.LowComp qualified as LC
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt (getStmtName)
-import Entity.Target (Target)
+import Entity.Target (ConcreteTarget)
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
@@ -66,7 +66,7 @@ fromConfig cfg =
       _executeArgs = args cfg
     }
 
-buildTarget :: Axis -> Target -> App ()
+buildTarget :: Axis -> ConcreteTarget -> App ()
 buildTarget axis target = do
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel target
@@ -92,7 +92,7 @@ load dependenceSeq =
     cacheOrContent <- Load.load source
     return (source, cacheOrContent)
 
-compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Maybe Source, LC.LowCode)]
+compile :: ConcreteTarget -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Maybe Source, LC.LowCode)]
 compile target outputKindList contentSeq = do
   virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
@@ -109,18 +109,18 @@ compile target outputKindList contentSeq = do
       mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint target
       return $ (Nothing, mainVirtualCode) : virtualCodeList
 
-emitAndWrite :: Target -> [OutputKind] -> [(Maybe Source, LC.LowCode)] -> App ()
+emitAndWrite :: ConcreteTarget -> [OutputKind] -> [(Maybe Source, LC.LowCode)] -> App ()
 emitAndWrite target outputKindList virtualCodeList = do
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
     LLVM.emit target currentTime sourceOrNone outputKindList llvmIR'
 
-execute :: Bool -> Target -> [String] -> App ()
+execute :: Bool -> ConcreteTarget -> [String] -> App ()
 execute shouldExecute target args = do
   when shouldExecute $ Execute.execute target args
 
-install :: Maybe FilePath -> Target -> App ()
+install :: Maybe FilePath -> ConcreteTarget -> App ()
 install filePathOrNone target = do
   mDir <- mapM Path.getInstallDir filePathOrNone
   mapM_ (Install.install target) mDir

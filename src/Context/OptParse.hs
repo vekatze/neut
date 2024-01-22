@@ -62,7 +62,7 @@ parseBuildOpt = do
   pure $
     Build $
       Build.Config
-        { Build.mTarget = Target <$> mTarget,
+        { Build.mTarget = Named <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,
@@ -103,7 +103,7 @@ parseZenOpt = do
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Zen $
+    Entity.Command.Zen $
       Zen.Config
         { Zen.filePathString = inputFilePath,
           Zen.mClangOptString = mClangOptString,
