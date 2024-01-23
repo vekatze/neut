@@ -21,10 +21,11 @@ import Data.Time
 import Entity.Cache
 import Entity.Config.Build
 import Entity.LowComp qualified as LC
+import Entity.Module qualified as M
 import Entity.OutputKind
 import Entity.Source
 import Entity.Stmt (getStmtName)
-import Entity.Target (ConcreteTarget)
+import Entity.Target
 import Scene.Clarify qualified as Clarify
 import Scene.Collect qualified as Collect
 import Scene.Elaborate qualified as Elaborate
@@ -46,7 +47,7 @@ build :: Config -> App ()
 build cfg = do
   setup cfg
   targetList <- Collect.collectTargetList $ mTarget cfg
-  forM_ targetList $ buildTarget (fromConfig cfg)
+  forM_ (map Concrete targetList) $ buildTarget (fromConfig cfg)
 
 data Axis = Axis
   { _outputKindList :: [OutputKind],
@@ -66,17 +67,21 @@ fromConfig cfg =
       _executeArgs = args cfg
     }
 
-buildTarget :: Axis -> ConcreteTarget -> App ()
+buildTarget :: Axis -> Target -> App ()
 buildTarget axis target = do
   Initialize.initializeForTarget
   (artifactTime, dependenceSeq) <- Unravel.unravel target
   contentSeq <- load dependenceSeq
   virtualCodeList <- compile target (_outputKindList axis) contentSeq
   Remark.getGlobalRemarkList >>= Remark.printRemarkList
-  emitAndWrite target (_outputKindList axis) virtualCodeList
-  Link.link target (_shouldSkipLink axis) artifactTime (toList dependenceSeq)
-  execute (_shouldExecute axis) target (_executeArgs axis)
-  install (_installDir axis) target
+  emitAndWrite (_outputKindList axis) virtualCodeList
+  case target of
+    Abstract {} ->
+      return ()
+    Concrete ct -> do
+      Link.link ct (_shouldSkipLink axis) artifactTime (toList dependenceSeq)
+      execute (_shouldExecute axis) ct (_executeArgs axis)
+      install (_installDir axis) ct
 
 setup :: Config -> App ()
 setup cfg = do
@@ -92,7 +97,7 @@ load dependenceSeq =
     cacheOrContent <- Load.load source
     return (source, cacheOrContent)
 
-compile :: ConcreteTarget -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Maybe Source, LC.LowCode)]
+compile :: Target -> [OutputKind] -> [(Source, Either Cache T.Text)] -> App [(Either ConcreteTarget Source, LC.LowCode)]
 compile target outputKindList contentSeq = do
   virtualCodeList <- fmap catMaybes $ forM contentSeq $ \(source, cacheOrContent) -> do
     Initialize.initializeForSource source
@@ -100,21 +105,30 @@ compile target outputKindList contentSeq = do
     EnsureMain.ensureMain target source (map snd $ getStmtName stmtList)
     Cache.whenCompilationNecessary outputKindList source $ do
       virtualCode <- Clarify.clarify stmtList >>= Lower.lower
-      return (Just source, virtualCode)
+      return (Right source, virtualCode)
   mainModule <- Module.getMainModule
-  b <- Cache.isEntryPointCompilationSkippable mainModule target outputKindList
-  if b
-    then return virtualCodeList
-    else do
-      mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint target
-      return $ (Nothing, mainVirtualCode) : virtualCodeList
+  entryPointVirtualCode <- compileEntryPoint mainModule target outputKindList
+  return $ entryPointVirtualCode ++ virtualCodeList
 
-emitAndWrite :: ConcreteTarget -> [OutputKind] -> [(Maybe Source, LC.LowCode)] -> App ()
-emitAndWrite target outputKindList virtualCodeList = do
+compileEntryPoint :: M.Module -> Target -> [OutputKind] -> App [(Either ConcreteTarget Source, LC.LowCode)]
+compileEntryPoint mainModule target outputKindList = do
+  case target of
+    Abstract {} ->
+      return []
+    Concrete t -> do
+      b <- Cache.isEntryPointCompilationSkippable mainModule t outputKindList
+      if b
+        then return []
+        else do
+          mainVirtualCode <- Clarify.clarifyEntryPoint >>= Lower.lowerEntryPoint t
+          return [(Left t, mainVirtualCode)]
+
+emitAndWrite :: [OutputKind] -> [(Either ConcreteTarget Source, LC.LowCode)] -> App ()
+emitAndWrite outputKindList virtualCodeList = do
   currentTime <- liftIO getCurrentTime
   forConcurrently_ virtualCodeList $ \(sourceOrNone, llvmIR) -> do
     llvmIR' <- Emit.emit llvmIR
-    LLVM.emit target currentTime sourceOrNone outputKindList llvmIR'
+    LLVM.emit currentTime sourceOrNone outputKindList llvmIR'
 
 execute :: Bool -> ConcreteTarget -> [String] -> App ()
 execute shouldExecute target args = do

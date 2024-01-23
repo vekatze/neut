@@ -51,18 +51,24 @@ type AsmTime =
 type ObjectTime =
   Maybe UTCTime
 
-unravel :: ConcreteTarget -> App (A.ArtifactTime, [Source.Source])
-unravel targetOrZen = do
+unravel :: Target -> App (A.ArtifactTime, [Source.Source])
+unravel t = do
   mainModule <- Module.getMainModule
-  case targetOrZen of
-    Zen path ->
-      unravelFromFile path
-    Named target -> do
-      case getTargetPath mainModule target of
-        Nothing ->
-          Throw.raiseError' $ "no such target is defined: `" <> target <> "`"
-        Just path -> do
+  case t of
+    Abstract a ->
+      case a of
+        Foundation -> do
+          undefined
+    Concrete t' -> do
+      case t' of
+        Zen path ->
           unravelFromFile path
+        Named target -> do
+          case getTargetPath mainModule target of
+            Nothing ->
+              Throw.raiseError' $ "no such target is defined: `" <> target <> "`"
+            Just path -> do
+              unravelFromFile path
 
 unravelFromFile ::
   Path Abs File ->

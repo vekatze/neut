@@ -11,15 +11,19 @@ import Entity.Hint
 import Entity.Source
 import Entity.Target
 
-ensureMain :: ConcreteTarget -> Source -> [DD.DefiniteDescription] -> App ()
-ensureMain target source topLevelNameList = do
-  mainDD <- Locator.getMainDefiniteDescriptionByTarget target
-  let hasEntryPoint = mainDD `elem` topLevelNameList
-  entryPointIsNecessary <- Locator.checkIfEntryPointIsNecessary target source
-  when (entryPointIsNecessary && not hasEntryPoint) $ do
-    let entryPointName = getEntryPointName target
-    let m = newSourceHint $ sourceFilePath source
-    raiseMissingEntryPoint m (BN.reify entryPointName)
+ensureMain :: Target -> Source -> [DD.DefiniteDescription] -> App ()
+ensureMain t source topLevelNameList = do
+  case t of
+    Abstract {} ->
+      return ()
+    Concrete target -> do
+      mainDD <- Locator.getMainDefiniteDescriptionByTarget target
+      let hasEntryPoint = mainDD `elem` topLevelNameList
+      entryPointIsNecessary <- Locator.checkIfEntryPointIsNecessary target source
+      when (entryPointIsNecessary && not hasEntryPoint) $ do
+        let entryPointName = getEntryPointName target
+        let m = newSourceHint $ sourceFilePath source
+        raiseMissingEntryPoint m (BN.reify entryPointName)
 
 type EntryPointName =
   T.Text

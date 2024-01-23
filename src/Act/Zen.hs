@@ -19,7 +19,7 @@ zen :: Config -> App ()
 zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
-  buildTarget (fromConfig cfg) $ Zen path
+  buildTarget (fromConfig cfg) $ Concrete $ Zen path
 
 fromConfig :: Config -> Axis
 fromConfig cfg =
