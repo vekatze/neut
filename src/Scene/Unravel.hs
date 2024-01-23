@@ -243,7 +243,7 @@ raiseCyclicPath :: Path Abs File -> [Path Abs File] -> App a
 raiseCyclicPath path pathList = do
   let m = newSourceHint path
   let cyclicPathList = reverse $ path : pathList
-  Throw.raiseError m $ "found a cyclic inclusion:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
+  Throw.raiseError m $ "found a cyclic import:\n" <> showCycle (map (T.pack . toFilePath) cyclicPathList)
 
 showCycle :: [T.Text] -> T.Text
 showCycle textList =
