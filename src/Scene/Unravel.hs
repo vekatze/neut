@@ -51,31 +51,31 @@ type AsmTime =
 type ObjectTime =
   Maybe UTCTime
 
-unravel :: Target -> App (A.ArtifactTime, [Source.Source])
-unravel t = do
-  mainModule <- Module.getMainModule
+unravel :: Module -> Target -> App (A.ArtifactTime, [Source.Source])
+unravel baseModule t = do
   case t of
     Abstract a ->
       case a of
         Foundation -> do
-          shiftMap <- constructShiftMap mainModule
-          unravelFoundational $ UAxis {shiftMap}
+          shiftMap <- constructShiftMap baseModule
+          unravelFoundational (UAxis {shiftMap}) baseModule
     Concrete t' -> do
       case t' of
         Zen path ->
-          unravelFromFile path
+          unravelFromFile baseModule path
         Named target -> do
-          case getTargetPath mainModule target of
+          case getTargetPath baseModule target of
             Nothing ->
               Throw.raiseError' $ "no such target is defined: `" <> target <> "`"
             Just path -> do
-              unravelFromFile path
+              unravelFromFile baseModule path
 
 unravelFromFile ::
+  Module ->
   Path Abs File ->
   App (A.ArtifactTime, [Source.Source])
-unravelFromFile path = do
-  Module.sourceFromPath path >>= unravel'
+unravelFromFile baseModule path = do
+  Module.sourceFromPath baseModule path >>= unravel'
 
 unravel' :: Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' source = do
@@ -155,9 +155,9 @@ unravel'' axis source = do
       Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source')
 
-unravelFoundational :: UAxis -> App (A.ArtifactTime, [Source.Source])
-unravelFoundational axis = do
-  children <- Module.getAllSourceInCurrentModule
+unravelFoundational :: UAxis -> Module -> App (A.ArtifactTime, [Source.Source])
+unravelFoundational axis baseModule = do
+  children <- Module.getAllSourceInModule baseModule
   (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' axis) children
   baseArtifactTime <- artifactTimeFromCurrentTime
   artifactTime <- getArtifactTime artifactTimeList baseArtifactTime

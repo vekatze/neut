@@ -1,6 +1,7 @@
 module Scene.Check (check) where
 
 import Context.App
+import Context.Module (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Entity.Remark
@@ -16,7 +17,8 @@ check :: App [Remark]
 check = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
-    (_, dependenceSeq) <- Unravel.unravel $ Abstract Foundation
+    mainModule <- getMainModule
+    (_, dependenceSeq) <- Unravel.unravel mainModule (Abstract Foundation)
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
       cacheOrContent <- Load.load source
       return (source, cacheOrContent)
