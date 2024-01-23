@@ -10,7 +10,7 @@ import Scene.Initialize qualified as Initialize
 check :: Config -> App ()
 check cfg = do
   Initialize.initializeCompiler (remarkCfg cfg) Nothing
-  logs <- Check.check (mFilePathString cfg)
+  logs <- Check.check
   if shouldInsertPadding cfg
     then Remark.printErrorList logs
     else Remark.printErrorList $ map Remark.deactivatePadding logs

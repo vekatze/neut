@@ -311,13 +311,13 @@ getDigestFromModulePath moduleFilePath =
             dirname $
               parent moduleFilePath
 
-getTargetList :: Module -> Maybe Target.Target -> [Target.Target]
+getTargetList :: Module -> Maybe Target.ConcreteTarget -> [Target.ConcreteTarget]
 getTargetList someModule mTarget =
   case mTarget of
     Just target ->
       [target]
     Nothing -> do
-      map Target.Target $ Map.keys $ moduleTarget someModule
+      map Target.Named $ Map.keys $ moduleTarget someModule
 
 stylize :: E.Ens -> Either Error E.Ens
 stylize ens = do

@@ -1,6 +1,5 @@
 module Scene.Collect
   ( collectTargetList,
-    collectSourceList,
     collectModuleFiles,
   )
 where
@@ -13,20 +12,9 @@ import Data.Maybe
 import Entity.Module
 import Entity.Target
 import Path
-import Path.IO
 import Prelude hiding (log)
 
-collectSourceList :: Maybe FilePath -> App [Path Abs File]
-collectSourceList mFilePathStr = do
-  mainModule <- Module.getMainModule
-  case mFilePathStr of
-    Just filePathStr -> do
-      path <- resolveFile' filePathStr
-      return [path]
-    Nothing -> do
-      return $ getTargetPathList mainModule
-
-collectTargetList :: Maybe Target -> App [Target]
+collectTargetList :: Maybe ConcreteTarget -> App [ConcreteTarget]
 collectTargetList mTarget = do
   flip getTargetList mTarget <$> Module.getMainModule
 

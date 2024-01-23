@@ -91,7 +91,7 @@ whenCompilationNecessary outputKindList source comp = do
     then return Nothing
     else Just <$> comp
 
-isEntryPointCompilationSkippable :: Module -> Target -> [OK.OutputKind] -> App Bool
+isEntryPointCompilationSkippable :: Module -> ConcreteTarget -> [OK.OutputKind] -> App Bool
 isEntryPointCompilationSkippable baseModule target outputKindList = do
   case outputKindList of
     [] ->

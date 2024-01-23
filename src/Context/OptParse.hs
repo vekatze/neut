@@ -62,7 +62,7 @@ parseBuildOpt = do
   pure $
     Build $
       Build.Config
-        { Build.mTarget = Target <$> mTarget,
+        { Build.mTarget = Named <$> mTarget,
           Build.mClangOptString = mClangOpt,
           Build.remarkCfg = remarkCfg,
           Build.outputKindList = outputKindList,
@@ -103,7 +103,7 @@ parseZenOpt = do
   buildMode <- option buildModeReader $ mconcat [long "mode", metavar "MODE", help "develop, release", value BM.Develop]
   rest <- (many . strArgument) (metavar "args")
   pure $
-    Zen $
+    Entity.Command.Zen $
       Zen.Config
         { Zen.filePathString = inputFilePath,
           Zen.mClangOptString = mClangOptString,
@@ -138,14 +138,12 @@ parseVersionOpt =
 
 parseCheckOpt :: Parser Command
 parseCheckOpt = do
-  inputFilePath <- optional $ argument str (mconcat [metavar "INPUT", help "The path of input file"])
   padOpt <- flag True False (mconcat [long "no-padding", help "Set this to disable padding of the output"])
   remarkCfg <- remarkConfigOpt
   pure $
     Check $
       Check.Config
-        { Check.mFilePathString = inputFilePath,
-          Check.shouldInsertPadding = padOpt,
+        { Check.shouldInsertPadding = padOpt,
           Check.remarkCfg = remarkCfg
         }
 

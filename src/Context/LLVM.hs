@@ -44,18 +44,18 @@ ensureSetupSanity cfg = do
   when (not willBuildObjects && willLink) $
     Throw.raiseError' "`--skip-link` must be set explicitly when `--emit` doesn't contain `object`"
 
-emit :: Target -> UTCTime -> Maybe Source -> [OK.OutputKind] -> L.ByteString -> App ()
-emit target timeStamp sourceOrNone outputKindList llvmCode = do
+emit :: UTCTime -> Either ConcreteTarget Source -> [OK.OutputKind] -> L.ByteString -> App ()
+emit timeStamp sourceOrNone outputKindList llvmCode = do
   case sourceOrNone of
-    Just source -> do
+    Right source -> do
       kindPathList <- zipWithM Path.attachOutputPath outputKindList (repeat source)
       forM_ kindPathList $ \(_, outputPath) -> Path.ensureDir $ parent outputPath
       emitAll llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do
         Path.setModificationTime path timeStamp
-    Nothing -> do
+    Left t -> do
       mainModule <- getMainModule
-      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint mainModule) outputKindList (repeat target)
+      kindPathList <- zipWithM (Path.getOutputPathForEntryPoint mainModule) outputKindList (repeat t)
       forM_ kindPathList $ \(_, path) -> Path.ensureDir $ parent path
       emitAll llvmCode kindPathList
       forM_ (map snd kindPathList) $ \path -> do

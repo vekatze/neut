@@ -1,8 +1,8 @@
 module Act.Zen (zen) where
 
-import Act.Build (Axis (..), buildTarget)
 import Context.App
 import Context.Env qualified as Env
+import Context.Module (getMainModule)
 import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Control.Monad
@@ -11,6 +11,7 @@ import Entity.Config.Zen
 import Entity.OutputKind
 import Entity.Target
 import Path.IO (resolveFile')
+import Scene.Build (Axis (..), buildTarget)
 import Scene.Fetch qualified as Fetch
 import Scene.Initialize qualified as Initialize
 import Prelude hiding (log)
@@ -19,7 +20,8 @@ zen :: Config -> App ()
 zen cfg = do
   setup cfg
   path <- resolveFile' (filePathString cfg)
-  buildTarget (fromConfig cfg) $ ZenTarget path
+  mainModule <- getMainModule
+  buildTarget (fromConfig cfg) mainModule $ Concrete (Zen path)
 
 fromConfig :: Config -> Axis
 fromConfig cfg =

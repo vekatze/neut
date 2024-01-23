@@ -9,6 +9,7 @@ module Context.Module
     insertToModuleCacheMap,
     saveEns,
     sourceFromPath,
+    getAllSourceInModule,
   )
 where
 
@@ -95,13 +96,12 @@ getCoreModuleDigest = do
     Nothing ->
       Throw.raiseError' $ "the digest of the core module isn't specified; set it via " <> T.pack envVarCoreModuleDigest
 
-sourceFromPath :: Path Abs File -> App Source.Source
-sourceFromPath path = do
-  mainModule <- getMainModule
-  ensureFileModuleSanity path mainModule
+sourceFromPath :: Module -> Path Abs File -> App Source.Source
+sourceFromPath baseModule path = do
+  ensureFileModuleSanity path baseModule
   return $
     Source.Source
-      { Source.sourceModule = mainModule,
+      { Source.sourceModule = baseModule,
         Source.sourceFilePath = path,
         Source.sourceHint = Nothing
       }
@@ -113,3 +113,17 @@ ensureFileModuleSanity filePath mainModule = do
       "the file `"
         <> T.pack (toFilePath filePath)
         <> "` is not in the source directory of current module"
+
+getAllSourceInModule :: Module -> App [Source.Source]
+getAllSourceInModule baseModule = do
+  (_, filePathList) <- listDirRecur (getSourceDir baseModule)
+  mapM (sourceFromPath baseModule) $ filter hasSourceExtension filePathList
+
+hasSourceExtension :: Path Abs File -> Bool
+hasSourceExtension path =
+  case splitExtension path of
+    Just (_, ext)
+      | ext == sourceFileExtension ->
+          True
+    _ ->
+      False

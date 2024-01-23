@@ -28,7 +28,9 @@ import Entity.ModuleAlias
 import Entity.ModuleDigest qualified as MD
 import Entity.ModuleID qualified as MID
 import Entity.ModuleURL
+import Entity.Target
 import Path
+import Scene.Build qualified as Build
 import Scene.Ens.Reflect qualified as Ens
 import Scene.Module.Reflect qualified as Module
 import UnliftIO.Async
@@ -49,9 +51,12 @@ insertDependency aliasName url = do
     download tempFilePath alias [url]
     archive <- getHandleContents tempFileHandle
     let digest = MD.fromByteString archive
+    Remark.printNote' $ "installing a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
     extractToLibDir tempFilePath alias digest
     addDependencyToModuleFile alias [url] digest False
-    getLibraryModule alias digest >>= fetch
+    libModule <- getLibraryModule alias digest
+    fetch libModule
+    Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
@@ -81,7 +86,9 @@ installIfNecessary alias mirrorList digest = do
             <> MD.reify archiveModuleDigest
             <> " (actual)"
       extractToLibDir tempFilePath alias digest
-      getLibraryModule alias digest >>= fetch
+      libModule <- getLibraryModule alias digest
+      fetch libModule
+      Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
 
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do
@@ -129,7 +136,6 @@ addDependencyToModuleFile alias mirrorList digest enablePreset = do
   let depEns = makeDependencyEns m alias digest mirrorList enablePreset
   mergedEns <- Throw.liftEither $ E.merge baseEns depEns
   Module.saveEns (M.moduleLocation mainModule) (c1, (mergedEns, c2))
-  Remark.printNote' $ "added a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
 
 makeDependencyEns :: Hint -> ModuleAlias -> MD.ModuleDigest -> [ModuleURL] -> Bool -> E.Ens
 makeDependencyEns m alias digest mirrorList enablePreset = do

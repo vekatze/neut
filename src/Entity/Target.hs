@@ -7,16 +7,29 @@ import GHC.Generics (Generic)
 import Path
 
 data Target
-  = Target T.Text
-  | ZenTarget (Path Abs File)
+  = Abstract AbstractTarget
+  | Concrete ConcreteTarget
+  deriving (Show, Eq, Generic)
+
+data AbstractTarget
+  = Foundation
+  deriving (Show, Eq, Generic)
+
+data ConcreteTarget
+  = Named T.Text
+  | Zen (Path Abs File)
   deriving (Show, Eq, Generic)
 
 instance Hashable Target
 
-getEntryPointName :: Target -> BN.BaseName
+instance Hashable AbstractTarget
+
+instance Hashable ConcreteTarget
+
+getEntryPointName :: ConcreteTarget -> BN.BaseName
 getEntryPointName target =
   case target of
-    ZenTarget {} ->
-      BN.zenName
-    Target {} ->
+    Named {} ->
       BN.mainName
+    Zen {} ->
+      BN.zenName

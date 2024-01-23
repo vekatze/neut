@@ -39,14 +39,12 @@ handlers =
   mconcat
     [ notificationHandler SMethod_Initialized $ \_not -> do
         return (),
-      notificationHandler SMethod_TextDocumentDidOpen $ \msg -> do
-        let uri = msg ^. (J.params . J.textDocument . J.uri)
-        LSP.lint uri,
+      notificationHandler SMethod_TextDocumentDidOpen $ \_ -> do
+        LSP.lint,
       notificationHandler SMethod_TextDocumentDidChange $ \_ -> do
         return (),
-      notificationHandler SMethod_TextDocumentDidSave $ \msg -> do
-        let uri = msg ^. (J.params . J.textDocument . J.uri)
-        LSP.lint uri,
+      notificationHandler SMethod_TextDocumentDidSave $ \_ -> do
+        LSP.lint,
       notificationHandler SMethod_TextDocumentDidClose $ \_ -> do
         return (),
       notificationHandler SMethod_CancelRequest $ \_ -> do

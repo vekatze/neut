@@ -6,7 +6,7 @@ import Entity.OutputKind qualified as OK
 import Entity.Target
 
 data Config = Config
-  { mTarget :: Maybe Target,
+  { mTarget :: Maybe ConcreteTarget,
     mClangOptString :: Maybe String,
     remarkCfg :: Remark.Config,
     outputKindList :: [OK.OutputKind],
