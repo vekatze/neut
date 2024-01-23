@@ -9,6 +9,7 @@ module Context.Module
     insertToModuleCacheMap,
     saveEns,
     sourceFromPath,
+    getAllSourceInCurrentModule,
   )
 where
 
@@ -113,3 +114,18 @@ ensureFileModuleSanity filePath mainModule = do
       "the file `"
         <> T.pack (toFilePath filePath)
         <> "` is not in the source directory of current module"
+
+getAllSourceInCurrentModule :: App [Source.Source]
+getAllSourceInCurrentModule = do
+  mainModule <- getMainModule
+  (_, filePathList) <- listDirRecur (getSourceDir mainModule)
+  mapM sourceFromPath $ filter hasSourceExtension filePathList
+
+hasSourceExtension :: Path Abs File -> Bool
+hasSourceExtension path =
+  case splitExtension path of
+    Just (_, ext)
+      | ext == sourceFileExtension ->
+          True
+    _ ->
+      False

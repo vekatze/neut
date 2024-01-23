@@ -58,7 +58,8 @@ unravel t = do
     Abstract a ->
       case a of
         Foundation -> do
-          undefined
+          shiftMap <- constructShiftMap mainModule
+          unravelFoundational $ UAxis {shiftMap}
     Concrete t' -> do
       case t' of
         Zen path ->
@@ -78,14 +79,18 @@ unravelFromFile path = do
 
 unravel' :: Source.Source -> App (A.ArtifactTime, [Source.Source])
 unravel' source = do
-  axis <- newAxis
-  arrowList <- unravelModule axis (Source.sourceModule source)
-  cAxis <- newCAxis
-  shiftMap <- compressMap cAxis (Map.fromList arrowList) arrowList
+  shiftMap <- constructShiftMap (Source.sourceModule source)
   (artifactTime, sourceSeq) <- unravel'' (UAxis {shiftMap}) source
   Antecedent.setMap shiftMap
   forM_ sourceSeq Parse.ensureExistence
   return (artifactTime, toList sourceSeq)
+
+constructShiftMap :: Module -> App ShiftMap
+constructShiftMap baseModule = do
+  axis <- newAxis
+  arrowList <- unravelModule axis baseModule
+  cAxis <- newCAxis
+  compressMap cAxis (Map.fromList arrowList) arrowList
 
 type VisitMap =
   Map.HashMap (Path Abs File) VI.VisitInfo
@@ -145,48 +150,40 @@ unravel'' axis source = do
       (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' axis) children
       _ <- Unravel.popFromTraceSourceList
       Unravel.insertToVisitEnv path VI.Finish
-      artifactTime <- getArtifactTime artifactTimeList source'
+      baseArtifactTime <- getBaseArtifactTime source'
+      artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
+      Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
       return (artifactTime, foldl' (><) Seq.empty seqList |> source')
 
-getArtifactTime :: [A.ArtifactTime] -> Source.Source -> App A.ArtifactTime
-getArtifactTime artifactTimeList source = do
-  cacheTime <- getCacheTime (map A.cacheTime artifactTimeList) source
-  llvmTime <- getLLVMTime (map A.llvmTime artifactTimeList) source
-  asmTime <- getAsmTime (map A.asmTime artifactTimeList) source
-  objectTime <- getObjectTime (map A.objectTime artifactTimeList) source
-  let artifactTime =
-        A.ArtifactTime
-          { cacheTime = cacheTime,
-            llvmTime = llvmTime,
-            asmTime = asmTime,
-            objectTime = objectTime
-          }
-  Env.insertToArtifactMap (Source.sourceFilePath source) artifactTime
-  return artifactTime
+unravelFoundational :: UAxis -> App (A.ArtifactTime, [Source.Source])
+unravelFoundational axis = do
+  children <- Module.getAllSourceInCurrentModule
+  (artifactTimeList, seqList) <- mapAndUnzipM (unravel'' axis) children
+  baseArtifactTime <- artifactTimeFromCurrentTime
+  artifactTime <- getArtifactTime artifactTimeList baseArtifactTime
+  return (artifactTime, toList $ foldl' (><) Seq.empty seqList)
 
-getCacheTime :: [CacheTime] -> Source.Source -> App CacheTime
-getCacheTime = do
-  getItemTime getFreshCacheTime
+getArtifactTime :: [A.ArtifactTime] -> A.ArtifactTime -> App A.ArtifactTime
+getArtifactTime artifactTimeList artifactTime = do
+  cacheTime <- getItemTime' (map A.cacheTime artifactTimeList) $ A.cacheTime artifactTime
+  llvmTime <- getItemTime' (map A.llvmTime artifactTimeList) $ A.llvmTime artifactTime
+  asmTime <- getItemTime' (map A.asmTime artifactTimeList) $ A.asmTime artifactTime
+  objectTime <- getItemTime' (map A.objectTime artifactTimeList) $ A.objectTime artifactTime
+  return A.ArtifactTime {cacheTime, llvmTime, asmTime, objectTime}
 
-getLLVMTime :: [LLVMTime] -> Source.Source -> App LLVMTime
-getLLVMTime = do
-  getItemTime getFreshLLVMTime
+getBaseArtifactTime :: Source.Source -> App A.ArtifactTime
+getBaseArtifactTime source = do
+  cacheTime <- getFreshCacheTime source
+  llvmTime <- getFreshLLVMTime source
+  asmTime <- getFreshAsmTime source
+  objectTime <- getFreshObjectTime source
+  return A.ArtifactTime {cacheTime, llvmTime, asmTime, objectTime}
 
-getAsmTime :: [AsmTime] -> Source.Source -> App AsmTime
-getAsmTime = do
-  getItemTime getFreshAsmTime
-
-getObjectTime :: [ObjectTime] -> Source.Source -> App ObjectTime
-getObjectTime = do
-  getItemTime getFreshObjectTime
-
-getItemTime ::
-  (Source.Source -> App (Maybe UTCTime)) ->
+getItemTime' ::
   [Maybe UTCTime] ->
-  Source.Source ->
+  Maybe UTCTime ->
   App (Maybe UTCTime)
-getItemTime relatedTimeGetter mTimeList source = do
-  mTime <- relatedTimeGetter source
+getItemTime' mTimeList mTime = do
   case (mTime, distributeMaybe mTimeList) of
     (Nothing, _) ->
       return Nothing
@@ -347,3 +344,14 @@ chase' axis baseMap found k i = do
           Throw.raiseError' $
             "found a cycle in given antecedent graph:\n" <> showCycle (map MID.reify $ j' : found)
         else chase axis baseMap (j' : found) k j
+
+artifactTimeFromCurrentTime :: App A.ArtifactTime
+artifactTimeFromCurrentTime = do
+  now <- liftIO getCurrentTime
+  return
+    A.ArtifactTime
+      { cacheTime = Just now,
+        llvmTime = Just now,
+        asmTime = Just now,
+        objectTime = Just now
+      }
