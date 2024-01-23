@@ -24,22 +24,16 @@ import Path
 import Scene.Check qualified as Check
 import Scene.Parse.Core qualified as Parse
 
-lint ::
-  Uri ->
-  AppLsp () ()
-lint doc = do
-  case uriToFilePath doc of
-    Just path -> do
-      flushDiagnosticsBySource maxDiagNum (Just "neut")
-      logList <- lift $ Check.check (Just path)
-      let uriDiagList = mapMaybe remarkToDignostic logList
-      let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
-      let diagGroups = map (\g -> (fst $ NE.head g, NE.map snd g)) diagGroupList'
-      forM_ diagGroups $ \(uri, diags) -> do
-        diags' <- lift $ updateCol uri $ NE.toList diags
-        publishDiagnostics maxDiagNum uri Nothing (partitionBySource diags')
-    Nothing -> do
-      return ()
+lint :: AppLsp () ()
+lint = do
+  flushDiagnosticsBySource maxDiagNum (Just "neut")
+  logList <- lift Check.check
+  let uriDiagList = mapMaybe remarkToDignostic logList
+  let diagGroupList' = NE.groupBy ((==) `on` fst) $ sortBy (compare `on` fst) uriDiagList
+  let diagGroups = map (\g -> (fst $ NE.head g, NE.map snd g)) diagGroupList'
+  forM_ diagGroups $ \(uri, diags) -> do
+    diags' <- lift $ updateCol uri $ NE.toList diags
+    publishDiagnostics maxDiagNum uri Nothing (partitionBySource diags')
 
 maxDiagNum :: Int
 maxDiagNum =

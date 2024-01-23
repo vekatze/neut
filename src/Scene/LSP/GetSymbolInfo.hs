@@ -5,7 +5,6 @@ import Context.Cache (invalidate)
 import Context.Elaborate
 import Context.Type
 import Control.Comonad.Cofree
-import Control.Lens hiding ((:<))
 import Control.Monad.Trans
 import Data.Text qualified as T
 import Entity.LocationTree qualified as LT
@@ -26,9 +25,7 @@ getSymbolInfo ::
 getSymbolInfo params = do
   source <- LSP.getSource params
   lift $ invalidate source
-  let uri = params ^. (J.textDocument . J.uri)
-  path <- liftMaybe $ uriToFilePath uri
-  lift $ Check.check (Just path)
+  lift Check.check
   ((locType, _), _) <- lift (runAppM $ LSP.findDefinition params) >>= liftMaybe
   lift (runAppM $ _getSymbolInfo locType) >>= liftMaybe
 
