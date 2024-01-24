@@ -6,8 +6,6 @@ module Scene.Parse.RawTerm
     parseGeist,
     parseDefInfoCod,
     typeWithoutIdent,
-    preVar,
-    parseName,
     lowType,
   )
 where
@@ -44,55 +42,57 @@ rawExpr :: Parser (RT.RawTerm, C)
 rawExpr = do
   m <- getCurrentHint
   choice
-    [ rawExprLet m,
-      rawExprSeqOrTerm m
-    ]
-
-rawExprLet :: Hint -> Parser (RT.RawTerm, C)
-rawExprLet m = do
-  choice
     [ rawTermLet m,
-      rawTermUse m
-    ]
-
-rawExprSeqOrTerm :: Hint -> Parser (RT.RawTerm, C)
-rawExprSeqOrTerm m = do
-  e1 <- rawTerm
-  choice
-    [ do
-        c1 <- delimiter ";"
-        (e2, c2) <- rawExpr
-        return (m :< RT.Seq e1 c1 e2, c2),
-      return e1
+      rawTermUse m,
+      do
+        e1 <- rawTerm
+        choice
+          [ do
+              c1 <- delimiter ";"
+              (e2, c2) <- rawExpr
+              return (m :< RT.Seq e1 c1 e2, c2),
+            return e1
+          ]
     ]
 
 rawTerm :: Parser (RT.RawTerm, C)
 rawTerm = do
   choice
-    [ try rawTermPiGeneral,
-      try rawTermPiIntro,
-      rawTermBasic
-    ]
-
-rawTermBasic :: Parser (RT.RawTerm, C)
-rawTermBasic = do
-  choice
     [ rawTermDefine,
-      rawTermPiElimExact,
       rawTermIntrospect,
       rawTermMagic,
       rawTermMatch,
+      rawTermPi,
+      rawTermPiIntro,
+      rawTermNoema,
       rawTermIf,
       rawTermWhen,
       rawTermAssert,
-      rawTermNoema,
+      rawTermOption,
       rawTermFlowIntro,
       rawTermFlowElim,
-      rawTermOption,
       rawTermEmbody,
       rawTermWith,
-      rawTermPiElimOrSimple
+      rawTermPiElimExact,
+      do
+        m <- getCurrentHint
+        ec@(e, c1) <- rawTermSimple
+        case e of
+          _ :< RT.Var name -> do
+            choice
+              [ do
+                  (kvs, c) <- keyValueArgs rawTermKeyValuePair
+                  return (m :< RT.PiElimByKey name c1 kvs, c),
+                rawTermPiElimCont m ec
+              ]
+          _ -> do
+            rawTermPiElimCont m ec
     ]
+
+rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
+rawTermPiElimCont m ec = do
+  argListList <- many $ seriesParen rawExpr
+  return $ foldPiElim m ec argListList
 
 {-# INLINE rawTermSimple #-}
 rawTermSimple :: Parser (RT.RawTerm, C)
@@ -107,9 +107,10 @@ rawTermSimple = do
       rawTermSymbol
     ]
 
-rawTermPiGeneral :: Parser (RT.RawTerm, C)
-rawTermPiGeneral = do
+rawTermPi :: Parser (RT.RawTerm, C)
+rawTermPi = do
   m <- getCurrentHint
+  keyword "arrow"
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen (choice [try preAscription, typeWithoutIdent])
   cArrow <- delimiter "->"
@@ -217,7 +218,7 @@ rawTermEmbody :: Parser (RT.RawTerm, C)
 rawTermEmbody = do
   m <- getCurrentHint
   c1 <- delimiter "*"
-  (e, c) <- rawTermBasic
+  (e, c) <- rawTerm
   return (m :< RT.Embody e, c1 ++ c)
 
 rawTermTau :: Parser (RT.RawTerm, C)
@@ -433,7 +434,7 @@ rawTermMatch = do
           c1 <- keyword "match"
           return (c1, False)
       ]
-  es <- bareSeries Nothing SE.Comma rawTermBasic
+  es <- bareSeries Nothing SE.Comma rawTerm
   (patternRowList, c) <- seriesBraceList $ rawTermPatternRow (length $ SE.extract es)
   return (m :< RT.DataElim c1 isNoetic es patternRowList, c)
 
@@ -565,7 +566,7 @@ rawTermNoema :: Parser (RT.RawTerm, C)
 rawTermNoema = do
   m <- getCurrentHint
   c1 <- delimiter "&"
-  (t, c) <- rawTermBasic
+  (t, c) <- rawTerm
   return (m :< RT.Noema t, c1 ++ c)
 
 rawTermFlowIntro :: Parser (RT.RawTerm, C)
@@ -586,7 +587,7 @@ rawTermOption :: Parser (RT.RawTerm, C)
 rawTermOption = do
   m <- getCurrentHint
   c1 <- delimiter "?"
-  (t, c) <- rawTermBasic
+  (t, c) <- rawTerm
   return (m :< RT.Option t, c1 ++ c)
 
 rawTermAdmit :: Parser (RT.RawTerm, C)
@@ -604,21 +605,6 @@ rawTermAssert = do
   (c3, (e, c)) <- betweenBrace rawExpr
   return (m :< RT.Assert c1 (mText, message) c2 c3 e, c)
 
-rawTermPiElimOrSimple :: Parser (RT.RawTerm, C)
-rawTermPiElimOrSimple = do
-  m <- getCurrentHint
-  ec@(e, c1) <- rawTermSimple
-  case e of
-    _ :< RT.Var name -> do
-      choice
-        [ do
-            (kvs, c) <- keyValueArgs rawTermKeyValuePair
-            return (m :< RT.PiElimByKey name c1 kvs, c),
-          rawTermPiElimCont m ec
-        ]
-    _ -> do
-      rawTermPiElimCont m ec
-
 keyValueArgs :: Parser (a, C) -> Parser (SE.Series a, C)
 keyValueArgs p = do
   c1 <- keyword "of"
@@ -631,11 +617,6 @@ keyValueArgs p = do
       do
         series (Just ("of", c1)) SE.Brace SE.Comma p
     ]
-
-rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-rawTermPiElimCont m ec = do
-  argListList <- many $ seriesParen rawExpr
-  return $ foldPiElim m ec argListList
 
 foldPiElim ::
   Hint ->
@@ -734,10 +715,6 @@ rawTermTextIntro = do
   (s, c) <- string
   textType <- lift $ locatorToVarGlobal m coreText
   return (m :< RT.StaticText textType s, c)
-
-preVar :: Hint -> T.Text -> RT.RawTerm
-preVar m str =
-  rawVar m (Var str)
 
 locatorToVarGlobal :: Hint -> T.Text -> App RT.RawTerm
 locatorToVarGlobal m text = do
