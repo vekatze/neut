@@ -71,7 +71,7 @@ rawTerm = do
   choice
     [ try rawTermPiGeneral,
       try rawTermPiIntro,
-      rawTermPiOrConsOrAscOrBasic
+      rawTermBasic
     ]
 
 rawTermBasic :: Parser (RT.RawTerm, C)
@@ -125,29 +125,6 @@ rawTermPiIntro = do
   cArrow <- delimiter "=>"
   (c1, ((e, c2), loc, c)) <- betweenBrace' rawExpr
   return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)) loc, c)
-
-rawTermPiOrConsOrAscOrBasic :: Parser (RT.RawTerm, C)
-rawTermPiOrConsOrAscOrBasic = do
-  m <- getCurrentHint
-  (basic, cBasic) <- rawTermBasic
-  choice
-    [ do
-        cArrow <- delimiter "->"
-        x <- lift Gensym.newTextForHole
-        (cod, c) <- rawTerm
-        loc <- getCurrentLoc
-        return
-          ( m
-              :< RT.Pi
-                (SE.emptySeries SE.Angle SE.Comma, [])
-                (SE.fromList SE.Paren SE.Comma [(m, x, [], [], basic)], cBasic)
-                cArrow
-                cod
-                loc,
-            c
-          ),
-      return (basic, cBasic)
-    ]
 
 rawTermKeyValuePair :: Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair = do
