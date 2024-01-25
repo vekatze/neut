@@ -49,7 +49,7 @@ toDoc term =
         [ PI.horizontal $ D.text "arrow",
           PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
-          PI.delimiter $ attachComment c2 $ D.text "=>",
+          PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
         ]
     _ :< PiIntro (impArgs, c1) (expArgs, c2) c3 body _ -> do

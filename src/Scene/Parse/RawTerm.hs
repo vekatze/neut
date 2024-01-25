@@ -113,7 +113,7 @@ rawTermPi = do
   keyword "arrow"
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen (choice [try preAscription, typeWithoutIdent])
-  cArrow <- delimiter "=>"
+  cArrow <- delimiter "->"
   (cod, c) <- rawTerm
   loc <- getCurrentLoc
   return (m :< RT.Pi impArgs expArgs cArrow cod loc, c)
