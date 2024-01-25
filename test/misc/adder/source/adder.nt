@@ -1,4 +1,4 @@
-define make-adder(x: int): (int) -> int {
+define make-adder(x: int): arrow (int) -> int {
   let adder =
     (y) => {
       add-int(x, y)

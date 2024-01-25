@@ -12,12 +12,12 @@ data finite-map(a, b) {
 data finite-map-signature(a, b) {
 - Finite-Map of {
   - empty: finite-map(a, b)
-  - insert: (a, b, finite-map(a, b)) -> finite-map(a, b)
-  - lookup: (a, &finite-map(a, b)) -> ?b
+  - insert: arrow (a, b, finite-map(a, b)) -> finite-map(a, b)
+  - lookup: arrow (a, &finite-map(a, b)) -> ?b
   }
 }
 
-define make-finite-map(a: tau, b: tau, compare: (a, a) -> order): finite-map-signature(a, b) {
+define make-finite-map(a: tau, b: tau, compare: arrow (a, a) -> order): finite-map-signature(a, b) {
   Finite-Map of {
   - empty = Leaf
   - insert =
@@ -71,7 +71,7 @@ define main(): unit {
   let mymap = insert(2, [tau, tau], mymap) in
   let mymap = insert(2, [tau, tau], mymap) in
   let mymap = insert(2, [int], mymap) in
-  let mymap = insert(3, [() -> int], mymap) in
+  let mymap = insert(3, [arrow () -> int], mymap) in
   let _ = mymap in
   let _ = mymap in
   let result on mymap =

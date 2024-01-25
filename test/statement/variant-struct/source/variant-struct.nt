@@ -1,4 +1,4 @@
-data my-void {
+data my-null {
 }
 
 data data-Z-cons-Z {
@@ -55,7 +55,7 @@ data empty {
 }
 
 data config {
-- Config(counter: int, path: &text, func: (int) -> int)
+- Config(counter: int, path: &text, func: arrow (int) -> int)
 }
 
 data top {

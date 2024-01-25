@@ -10,10 +10,10 @@ data set(a) {
 }
 
 data set-signature(a) {
-- Set(empty: set(a), insert: (a, set(a)) -> set(a), member: (a, &set(a)) -> bool)
+- Set(empty: set(a), insert: arrow (a, set(a)) -> set(a), member: arrow (a, &set(a)) -> bool)
 }
 
-define make-set-signature(a: tau, compare: (a, a) -> order): set-signature(a) {
+define make-set-signature(a: tau, compare: arrow (a, a) -> order): set-signature(a) {
   Set of {
   - empty = Leaf
   - insert =

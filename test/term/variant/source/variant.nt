@@ -225,7 +225,7 @@ define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
 data monoid(a) {
 - Monoid of {
   - m-empty: a
-  - m-op: (a, a) -> a
+  - m-op: arrow (a, a) -> a
   }
 }
 
@@ -282,10 +282,10 @@ define test-match(): unit {
   let _ = unbalanced-freevars-in-branches(_, t4) in
   let _: list(int) = use-struct(list-monoid(_)) in
   let _: list(bool) = use-struct(list-monoid(_)) in
-  let _: list(() -> int) = use-struct(list-monoid(_)) in
+  let _: list(arrow () -> int) = use-struct(list-monoid(_)) in
   let _: list(int) = use-struct-2(list-monoid(_)) in
   let _: list(bool) = use-struct-2(list-monoid(_)) in
-  let _: list(() -> int) = use-struct-2(list-monoid(_)) in
+  let _: list(arrow () -> int) = use-struct-2(list-monoid(_)) in
   Unit
 }
 

@@ -31,14 +31,8 @@ toText term =
       showGlobalVariable x
     _ :< WT.Pi impArgs expArgs cod -> do
       if null impArgs
-        then case expArgs of
-          [(_, x, dom)]
-            | isHole x ->
-                toText dom <> " -> " <> toText cod
-          _ ->
-            inParen (showDomArgList expArgs) <> " -> " <> toText cod
-        else do
-          showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+        then "arrow " <> inParen (showDomArgList expArgs) <> " => " <> toText cod
+        else "arrow " <> showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " => " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->

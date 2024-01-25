@@ -5,57 +5,57 @@ import {
 
 define test-syntax(): unit {
   // nullary
-  let _ = () -> tau in
+  let _ = arrow () -> tau in
   // general, non-dependent
-  let _ = (tau) -> tau in
-  let _ = (() -> tau) -> tau in
-  let _ = (() -> (tau) -> tau) -> tau in
-  let _ = (((tau) -> tau) -> tau) -> tau in
+  let _ = arrow (tau) -> tau in
+  let _ = arrow (arrow () -> tau) -> tau in
+  let _ = arrow (arrow () -> arrow (tau) -> tau) -> tau in
+  let _ = arrow (arrow (arrow (tau) -> tau) -> tau) -> tau in
   // general, dependent
-  let _ = (a: tau, a) -> a in
-  let _ = (a: tau, a) -> a in
-  let _ = (a: tau, a) -> list(tau) in
-  let _ = (a: tau, list(tau)) -> a in
-  let _ = (a: tau, a) -> &list(tau) in
-  let _ = (a: tau, &list(tau)) -> a in
-  let _ = (a: tau, a) -> flow(list(tau)) in
-  let _ = (a: tau, flow(list(tau))) -> a in
-  let _ = (a: tau, a) -> tau in
-  let _ = (a: tau, (a) -> a) -> tau in
-  let _ = (a: tau, ((a) -> a) -> a) -> tau in
+  let _ = arrow (a: tau, a) -> a in
+  let _ = arrow (a: tau, a) -> a in
+  let _ = arrow (a: tau, a) -> list(tau) in
+  let _ = arrow (a: tau, list(tau)) -> a in
+  let _ = arrow (a: tau, a) -> &list(tau) in
+  let _ = arrow (a: tau, &list(tau)) -> a in
+  let _ = arrow (a: tau, a) -> flow(list(tau)) in
+  let _ = arrow (a: tau, flow(list(tau))) -> a in
+  let _ = arrow (a: tau, a) -> tau in
+  let _ = arrow (a: tau, arrow (a) -> a) -> tau in
+  let _ = arrow (a: tau, arrow (arrow (a) -> a) -> a) -> tau in
   // simplified
-  let _ = (tau) -> tau in
-  let _ = ({(tau) -> tau}) -> tau in
-  let _ = (tau) -> (tau) -> list(tau) in
-  let _ = (tau) -> {(tau) -> tau} in
-  let _ = (tau) -> {(tau) -> list(tau)} in
-  let _ = (tau) -> {(list(tau)) -> tau} in
-  let _ = (tau) -> {(tau) -> &list(tau)} in
-  let _ = (tau) -> {(&list(tau)) -> tau} in
-  let _ = (tau) -> {(tau) -> flow(list(tau))} in
-  let _ = (tau) -> {(flow(list(tau))) -> tau} in
-  let _ = (tau) -> {({(tau) -> tau}) -> tau} in
-  let _ = (tau) -> {(tau) -> {(tau) -> tau}} in
-  let _ = (tau) -> {({(tau) -> tau}) -> {(tau) -> tau}} in
-  let _ = ({(tau) -> tau}) -> {({(tau) -> tau}) -> {(tau) -> tau}} in
-  let _ = ({({(tau) -> tau}) -> {(tau) -> tau}}) -> {({(tau) -> tau}) -> {(tau) -> tau}} in
+  let _ = arrow (tau) -> tau in
+  let _ = arrow ({arrow (tau) -> tau}) -> tau in
+  let _ = arrow (tau) -> arrow (tau) -> list(tau) in
+  let _ = arrow (tau) -> {arrow (tau) -> tau} in
+  let _ = arrow (tau) -> {arrow (tau) -> list(tau)} in
+  let _ = arrow (tau) -> {arrow (list(tau)) -> tau} in
+  let _ = arrow (tau) -> {arrow (tau) -> &list(tau)} in
+  let _ = arrow (tau) -> {arrow (&list(tau)) -> tau} in
+  let _ = arrow (tau) -> {arrow (tau) -> flow(list(tau))} in
+  let _ = arrow (tau) -> {arrow (flow(list(tau))) -> tau} in
+  let _ = arrow (tau) -> {arrow ({arrow (tau) -> tau}) -> tau} in
+  let _ = arrow (tau) -> {arrow (tau) -> {arrow (tau) -> tau}} in
+  let _ = arrow (tau) -> {arrow ({arrow (tau) -> tau}) -> {arrow (tau) -> tau}} in
+  let _ = arrow ({arrow (tau) -> tau}) -> {arrow ({arrow (tau) -> tau}) -> {arrow (tau) -> tau}} in
+  let _ = arrow ({arrow ({arrow (tau) -> tau}) -> {arrow (tau) -> tau}}) -> {arrow ({arrow (tau) -> tau}) -> {arrow (tau) -> tau}} in
   // complex
-  let _ = (a: tau, m: (tau, tau) -> tau) -> ({(s: tau) -> (a) -> m(s, a)}) -> a in
+  let _ = arrow (a: tau, m: arrow (tau, tau) -> tau) -> arrow ({arrow (s: tau) -> arrow (a) -> m(s, a)}) -> a in
   Unit
 }
 
 define affine-pi(): tau {
-  let _ = (tau) -> tau in
+  let _ = arrow (tau) -> tau in
   tau
 }
 
 define linear-pi(): tau {
-  let x = (tau) -> tau in
+  let x = arrow (tau) -> tau in
   x
 }
 
 define relevant-pi(): tau {
-  let x = (tau) -> tau in
+  let x = arrow (tau) -> tau in
   let _ = x in
   x
 }
