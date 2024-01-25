@@ -2,7 +2,7 @@ define nop(): unit {
   Unit
 }
 
-define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
+define except-bind<e, a, b>(x: except(e, a), k: arrow (a) -> except(e, b)): except(e, b) {
   match x {
   - Fail(err) =>
     Fail(err)

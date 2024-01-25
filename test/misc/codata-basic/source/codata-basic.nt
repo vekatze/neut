@@ -7,7 +7,7 @@ data foo() {
 }
 
 data stream(a: tau) {
-- Stream(head: a, tail: () -> stream(a))
+- Stream(head: a, tail: arrow () -> stream(a))
 }
 
 define int-stream(x: int): stream(int) {

@@ -9,7 +9,7 @@ data order {
 - GT
 }
 
-define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
+define split(a: tau, cmp: arrow (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), heap(a)) {
   match t {
   - Leaf =>
     Pair(Leaf, Leaf)
@@ -53,7 +53,7 @@ define split(a: tau, cmp: (a, a) -> order, pivot: a, t: heap(a)): pair(heap(a), 
   }
 }
 
-define insert(a: tau, cmp: (a, a) -> order, x: a, t: heap(a)): heap(a) {
+define insert(a: tau, cmp: arrow (a, a) -> order, x: a, t: heap(a)): heap(a) {
   let Pair(smaller, bigger) = split(_, cmp, x, t) in
   Node(smaller, x, bigger)
 }

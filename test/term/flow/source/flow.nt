@@ -4,9 +4,9 @@ import {
 
 define test-syntax(): unit {
   let _ = flow(tau) in
-  let _ = (flow(tau)) -> tau in
-  let _ = (tau) -> flow(tau) in
-  let _ = (flow(tau), flow(tau)) -> (flow(tau)) -> flow(tau) in
+  let _ = arrow (flow(tau)) -> tau in
+  let _ = arrow (tau) -> flow(tau) in
+  let _ = arrow (flow(tau), flow(tau)) -> arrow (flow(tau)) -> flow(tau) in
   let _ = flow(flow(tau)) in
   let _ = detach {Unit} in
   let _ =
@@ -124,7 +124,7 @@ define test-behavior(): unit {
   in
   let _ = ch in
   let ch = new-channel() in
-  let ch: channel(() -> int) = ch in
+  let ch: channel(arrow () -> int) = ch in
   let _ = ch in
   let _ on ch =
     send(ch, () => {

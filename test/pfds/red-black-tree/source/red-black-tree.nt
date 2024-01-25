@@ -17,7 +17,7 @@ data order {
 - GT
 }
 
-define member(a: tau, cmp: (a, a) -> order, x: a, t: &tree(a)): bool {
+define member(a: tau, cmp: arrow (a, a) -> order, x: a, t: &tree(a)): bool {
   case t {
   - Leaf =>
     False
@@ -49,7 +49,7 @@ define balance(a: tau, c: color, t1: tree(a), v: a, t2: tree(a)): tree(a) {
   }
 }
 
-define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
+define insert(a: tau, cmp: arrow (a, a) -> order, x: a, t: tree(a)): tree(a) {
   let helper =
     define self(t: tree(a)): tree(a) {
       match t {
@@ -76,7 +76,7 @@ define insert(a: tau, cmp: (a, a) -> order, x: a, t: tree(a)): tree(a) {
   }
 }
 
-define compare-int(x: () -> int, y: () -> int): order {
+define compare-int(x: arrow () -> int, y: arrow () -> int): order {
   if lt-int(x(), y()) {
     LT
   } else-if gt-int(x(), y()) {
@@ -87,7 +87,7 @@ define compare-int(x: () -> int, y: () -> int): order {
 }
 
 define main(): unit {
-  let t: tree(() -> int) = Leaf in
+  let t: tree(arrow () -> int) = Leaf in
   let t =
     insert(_, compare-int, () => {
       3

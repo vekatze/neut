@@ -1,7 +1,7 @@
 define test-syntax(): unit {
   let _ = &list(tau) in
   let _ = &list(&list(tau)) in
-  let _ = (&tau, &list((&list(tau)) -> &list(tau))) -> &list(tau) in
+  let _ = arrow (&tau, &list(arrow (&list(tau)) -> &list(tau))) -> &list(tau) in
   let xs: list(int) = [1, 2, 3] in
   let _ on xs =
     let _ on xs =

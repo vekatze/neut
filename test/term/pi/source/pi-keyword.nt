@@ -1,9 +1,9 @@
 define foo(FOO: bool, a: tau, 🌟🌟🌟: tau, 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね: int): tau {
   let _ = 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね in
   if FOO {
-    (a) -> 🌟🌟🌟
+    arrow (a) -> 🌟🌟🌟
   } else {
-    (🌟🌟🌟) -> tau
+    arrow (🌟🌟🌟) -> tau
   }
 }
 
@@ -17,7 +17,7 @@ define test-syntax(): unit {
     foo of {
     - a = int
     - FOO = True
-    - 🌟🌟🌟 = list(void)
+    - 🌟🌟🌟 = list(null)
     - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
       {
         let x = 10 in
@@ -29,7 +29,7 @@ define test-syntax(): unit {
   let _ =
     foo of {
     - a = int
-    - 🌟🌟🌟 = list(void)
+    - 🌟🌟🌟 = list(null)
     - FOO = False
     - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
       {
@@ -41,7 +41,7 @@ define test-syntax(): unit {
   in
   let _ =
     foo of {
-    - 🌟🌟🌟 = list(void)
+    - 🌟🌟🌟 = list(null)
     - a =
       foo of {
       - 竹の葉に霰ふるなりさらさらに独りは寝べき心地こそせね =
@@ -51,7 +51,7 @@ define test-syntax(): unit {
           add-int(x, y)
         }
       - a = int
-      - 🌟🌟🌟 = list(void)
+      - 🌟🌟🌟 = list(null)
       - FOO = True
       }
     - FOO = False

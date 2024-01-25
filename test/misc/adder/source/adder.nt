@@ -1,6 +1,6 @@
 define make-adder(x: int): arrow (int) -> int {
   let adder =
-    (y) -> {
+    (y) => {
       add-int(x, y)
     }
   in

@@ -7,7 +7,7 @@ data item2(a) {
 }
 
 data item3(a, b) {
-- Item3((a) -> b)
+- Item3(arrow (a) -> b)
 }
 
 data item4(a, b) {

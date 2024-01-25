@@ -14,15 +14,15 @@ data heap(a) {
 data heap-signature(a) {
 - Heap of {
   - empty: heap(a)
-  - is-empty: (&heap(a)) -> bool
-  - insert: (a, heap(a)) -> heap(a)
-  - merge: (heap(a), heap(a)) -> heap(a)
-  - find-min: (&heap(a)) -> ?a
-  - delete-min: (heap(a)) -> ?heap(a)
+  - is-empty: arrow (&heap(a)) -> bool
+  - insert: arrow (a, heap(a)) -> heap(a)
+  - merge: arrow (heap(a), heap(a)) -> heap(a)
+  - find-min: arrow (&heap(a)) -> ?a
+  - delete-min: arrow (heap(a)) -> ?heap(a)
   }
 }
 
-define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) {
+define make-heap-signature(a: tau, compare: arrow (a, a) -> order): heap-signature(a) {
   let merge =
     let rank =
       (h: &heap(a)) => {

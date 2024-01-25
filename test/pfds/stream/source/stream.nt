@@ -13,7 +13,7 @@ data stream-cell(a) {
 }
 
 data stream(a) {
-- Stream(() -> stream-cell(a))
+- Stream(arrow () -> stream-cell(a))
 }
 
 define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {

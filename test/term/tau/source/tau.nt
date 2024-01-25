@@ -29,14 +29,14 @@ define tau-is-tau(): tau {
 }
 
 define pi-is-tau(): tau {
-  let _: tau = () -> tau in
-  let _: tau = (tau) -> tau in
-  let _: tau = (tau, tau, tau) -> tau in
+  let _: tau = arrow () -> tau in
+  let _: tau = arrow (tau) -> tau in
+  let _: tau = arrow (tau, tau, tau) -> tau in
   tau
 }
 
 define data-is-tau(): tau {
-  let _: tau = void in
+  let _: tau = null in
   let _: tau = unit in
   let _: tau = bool in
   let _: tau = list(tau) in
