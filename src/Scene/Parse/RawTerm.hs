@@ -1,5 +1,6 @@
 module Scene.Parse.RawTerm
   ( rawExpr,
+    var,
     preAscription,
     preBinder,
     parseDef,
@@ -112,7 +113,7 @@ rawTermPi = do
   m <- getCurrentHint
   keyword "arrow"
   impArgs <- parseImplicitArgs
-  expArgs <- seriesParen (choice [try preAscription, typeWithoutIdent])
+  expArgs <- seriesParen (choice [try $ var >>= preAscription, typeWithoutIdent])
   cArrow <- delimiter "->"
   (cod, c) <- rawTerm
   loc <- getCurrentLoc
@@ -191,7 +192,7 @@ rawTermLetVarAscription m = do
 rawTermLetVarAscription' :: Parser (C, Maybe (RT.RawTerm, C))
 rawTermLetVarAscription' =
   choice
-    [ try $ do
+    [ do
         c <- delimiter ":"
         tc <- rawTerm
         return (c, Just tc),
@@ -631,18 +632,23 @@ foldPiElim m (e, c) argListList =
       foldPiElim m (m :< RT.PiElim e c args, c1) rest
 
 preBinder :: Parser (RawBinder RT.RawTerm, C)
-preBinder =
+preBinder = do
+  mxc <- var
   choice
-    [ try preAscription,
-      preAscription'
+    [ preAscription mxc,
+      preAscription' mxc
     ]
 
-preAscription :: Parser (RawBinder RT.RawTerm, C)
-preAscription = do
-  ((m, x), c1) <- var
+preAscription :: ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)
+preAscription ((m, x), c1) = do
   c2 <- delimiter ":"
   (a, c) <- rawTerm
   return ((m, x, c1, c2, a), c)
+
+preAscription' :: ((Hint, T.Text), C) -> Parser (RawBinder RT.RawTerm, C)
+preAscription' ((m, x), c) = do
+  h <- lift $ Gensym.newPreHole m
+  return ((m, x, c, [], h), [])
 
 typeWithoutIdent :: Parser (RawBinder RT.RawTerm, C)
 typeWithoutIdent = do
@@ -650,12 +656,6 @@ typeWithoutIdent = do
   x <- lift Gensym.newTextForHole
   (t, c) <- rawTerm
   return ((m, x, [], [], t), c)
-
-preAscription' :: Parser (RawBinder RT.RawTerm, C)
-preAscription' = do
-  ((m, x), c) <- var
-  h <- lift $ Gensym.newPreHole m
-  return ((m, x, c, [], h), [])
 
 rawTermListIntro :: Parser (RT.RawTerm, C)
 rawTermListIntro = do
