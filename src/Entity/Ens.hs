@@ -5,6 +5,7 @@ module Entity.Ens
     EqEns (..),
     FullEns,
     put,
+    conservativeUpdate,
     strip,
     hasKey,
     toInt,
@@ -110,6 +111,21 @@ put k v ens = do
       return $ m :< Dictionary c (replace k (c1, (v, c2)) dict)
     Nothing ->
       return $ m :< Dictionary c (dict ++ [(k, ([], (v, [])))])
+
+conservativeUpdate :: [T.Text] -> Ens -> Ens -> Either Error Ens
+conservativeUpdate keyPath value ens = do
+  case keyPath of
+    [] ->
+      return value
+    k : rest -> do
+      (m, c, dictionary) <- toDictionary ens
+      dictionary' <- forM dictionary $ \(kd, (c1, (vd, c2))) -> do
+        if k == kd
+          then do
+            vd' <- conservativeUpdate rest value vd
+            return (kd, (c1, (vd', c2)))
+          else return (kd, (c1, (vd, c2)))
+      return $ m :< Dictionary c dictionary'
 
 replace :: (Eq a) => a -> b -> [(a, b)] -> [(a, b)]
 replace k v kvs =

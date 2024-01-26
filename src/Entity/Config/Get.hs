@@ -1,4 +1,4 @@
-module Entity.Config.Add (Config (..)) where
+module Entity.Config.Get (Config (..)) where
 
 import Data.Text qualified as T
 import Entity.Config.Remark qualified as Remark
