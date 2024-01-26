@@ -9,7 +9,7 @@ for target_dir in "$@"; do
   for i in $(find . -d 1 -type d | sort); do
     cd $i
     echo $(basename $i)
-    neut add core https://github.com/vekatze/neut-core/raw/main/archive/${NEW_VERSION}.tar.zst
+    neut get core https://github.com/vekatze/neut-core/raw/main/archive/${NEW_VERSION}.tar.zst
     cd ..
   done
 done

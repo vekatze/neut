@@ -1,12 +1,12 @@
 module Main (main) where
 
-import Act.Add qualified as Add
 import Act.Archive qualified as Archive
 import Act.Build qualified as Build
 import Act.Check qualified as Check
 import Act.Clean qualified as Clean
 import Act.Create qualified as Create
 import Act.Format qualified as Format
+import Act.Get qualified as Get
 import Act.LSP qualified as LSP
 import Act.Version qualified as Version
 import Act.Zen qualified as Zen
@@ -39,8 +39,8 @@ execute = do
           Archive.archive cfg
         C.Create cfg ->
           Create.create cfg
-        C.Add cfg ->
-          Add.add cfg
+        C.Get cfg ->
+          Get.get cfg
         C.Format cfg ->
           Format.format cfg
         C.LSP cfg ->

@@ -5,13 +5,13 @@ import Control.Monad.IO.Class
 import Data.Text qualified as T
 import Entity.BuildMode qualified as BM
 import Entity.Command
-import Entity.Config.Add qualified as Add
 import Entity.Config.Archive qualified as Archive
 import Entity.Config.Build qualified as Build
 import Entity.Config.Check qualified as Check
 import Entity.Config.Clean qualified as Clean
 import Entity.Config.Create qualified as Create
 import Entity.Config.Format qualified as Format
+import Entity.Config.Get qualified as Get
 import Entity.Config.LSP qualified as LSP
 import Entity.Config.Remark qualified as Remark
 import Entity.Config.Version qualified as Version
@@ -36,7 +36,7 @@ parseOpt = do
         cmd "check" parseCheckOpt "type-check specified file",
         cmd "archive" parseArchiveOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
-        cmd "add" parseGetOpt "add a dependency",
+        cmd "get" parseGetOpt "add or update a dependency",
         cmd "format-source" (parseFormatOpt FT.Source) "format a source file",
         cmd "format-ens" (parseFormatOpt FT.Ens) "format an ens file",
         cmd "zen" parseZenOpt "execute `zen` of given file",
@@ -88,11 +88,11 @@ parseGetOpt = do
   moduleURL <- argument str (mconcat [metavar "URL", help "The URL of the archive"])
   remarkCfg <- remarkConfigOpt
   pure $
-    Add $
-      Add.Config
-        { Add.moduleAliasText = T.pack moduleAlias,
-          Add.moduleURL = ModuleURL $ T.pack moduleURL,
-          Add.remarkCfg = remarkCfg
+    Get $
+      Get.Config
+        { Get.moduleAliasText = T.pack moduleAlias,
+          Get.moduleURL = ModuleURL $ T.pack moduleURL,
+          Get.remarkCfg = remarkCfg
         }
 
 parseZenOpt :: Parser Command
