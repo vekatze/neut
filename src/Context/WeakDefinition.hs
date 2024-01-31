@@ -3,6 +3,7 @@ module Context.WeakDefinition
     insert,
     read,
     lookup,
+    DefMap,
   )
 where
 
