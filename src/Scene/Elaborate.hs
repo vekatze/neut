@@ -6,6 +6,7 @@ import Context.DataDefinition qualified as DataDefinition
 import Context.Definition qualified as Definition
 import Context.Elaborate
 import Context.Env qualified as Env
+import Context.Gensym qualified as Gensym
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Remark qualified as Remark
 import Context.SymLoc qualified as SymLoc
@@ -57,6 +58,7 @@ elaborate cacheOrStmt = do
       forM_ stmtList insertStmt
       let remarkList = Cache.remarkList cache
       Remark.insertToGlobalRemarkList remarkList
+      Gensym.setCount $ Cache.countSnapshot cache
       return stmtList
     Right stmtList -> do
       analyzeStmtList stmtList >>= synthesizeStmtList
@@ -81,11 +83,13 @@ synthesizeStmtList stmtList = do
   localVarTree <- SymLoc.get
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
+  countSnapshot <- Gensym.getCount
   Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
-        Cache.locationTree = tmap
+        Cache.locationTree = tmap,
+        Cache.countSnapshot = countSnapshot
       }
   Cache.saveCompletionCache source $
     Cache.CompletionCache
