@@ -31,8 +31,8 @@ toText term =
       showGlobalVariable x
     _ :< WT.Pi impArgs expArgs cod -> do
       if null impArgs
-        then "arrow " <> inParen (showDomArgList expArgs) <> " => " <> toText cod
-        else "arrow " <> showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " => " <> toText cod
+        then "arrow " <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
+        else "arrow " <> showImpArgs impArgs <> inParen (showDomArgList expArgs) <> " -> " <> toText cod
     _ :< WT.PiIntro attr impArgs expArgs e -> do
       case attr of
         AttrL.Attr {lamKind = LK.Fix (_, x, codType)} ->
