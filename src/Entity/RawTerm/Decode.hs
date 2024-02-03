@@ -72,7 +72,7 @@ toDoc term =
     _ :< PiElimByKey name c kvs -> do
       PI.arrange
         [ PI.inject $ nameToDoc name,
-          PI.inject $ attachComment c $ SE.decode $ fmap decPiElimKey kvs
+          PI.inject $ attachComment c $ decPiElimKey kvs
         ]
     _ :< PiElimExact c e ->
       PI.arrange
@@ -384,17 +384,45 @@ isMultiLine docList =
         D.Line {} ->
           True
 
-decPiElimKey :: (Hint, Key, C, C, RawTerm) -> D.Doc
-decPiElimKey (_, k, c1, c2, e) = do
+decPiElimKey :: SE.Series (Hint, Key, C, C, RawTerm) -> D.Doc
+decPiElimKey kvs = do
+  let kvs' = fmap decPiElimKeyItem kvs
+  if isMultiLine $ map (\(_, _, _, d) -> d) $ SE.extract kvs'
+    then SE.decode $ fmap decPiElimKeyMulti kvs'
+    else SE.decode $ fmap decPiElimKeySingle kvs'
+
+type Rhymed =
+  Bool
+
+decPiElimKeyItem :: (Hint, Key, C, C, RawTerm) -> (Key, C, Rhymed, D.Doc)
+decPiElimKeyItem (_, k, c1, c2, e) =
   case e of
     _ :< Var (N.Var k')
       | k == k' ->
-          D.text k
+          (k, c1 ++ c2, True, toDoc e)
     _ ->
+      (k, c1 ++ c2, False, toDoc e)
+
+decPiElimKeySingle :: (Key, C, Rhymed, D.Doc) -> D.Doc
+decPiElimKeySingle (k, c, b, d) = do
+  if b
+    then D.text k
+    else
       PI.arrange
-        [ PI.inject $ D.text k,
-          PI.clauseDelimiter $ attachComment c1 $ D.text "=",
-          PI.inject $ attachComment c2 $ toDoc e
+        [ PI.horizontal $ D.text k,
+          PI.horizontal $ D.text "=",
+          PI.inject $ attachComment c d
+        ]
+
+decPiElimKeyMulti :: (Key, C, Rhymed, D.Doc) -> D.Doc
+decPiElimKeyMulti (k, c, b, d) = do
+  if b
+    then D.text k
+    else
+      PI.arrange
+        [ PI.horizontal $ D.text k,
+          PI.vertical $ D.text "=",
+          PI.inject $ attachComment c d
         ]
 
 decodeIntrospectClause :: (Maybe T.Text, C, RawTerm) -> D.Doc
