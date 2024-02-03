@@ -20,11 +20,12 @@ import Scene.LSP.GetSymbolInfo qualified as LSP
 import Scene.LSP.Highlight qualified as LSP
 import Scene.LSP.Lint qualified as LSP
 import Scene.LSP.References qualified as LSP
+import System.IO (stdin, stdout)
 
 lsp :: Remark.Config -> App Int
 lsp cfg = do
   liftIO $
-    runServer $
+    runServerSilently $
       ServerDefinition
         { defaultConfig = (),
           onConfigurationChange = const $ pure $ Right (),
@@ -33,6 +34,14 @@ lsp cfg = do
           interpretHandler = \env -> Iso (runLSPApp cfg . runLspT env) liftIO,
           options = lspOptions
         }
+
+runServerSilently :: ServerDefinition config -> IO Int
+runServerSilently =
+  runServerWithHandles
+    mempty
+    mempty
+    stdin
+    stdout
 
 handlers :: Handlers (AppLsp ())
 handlers =
