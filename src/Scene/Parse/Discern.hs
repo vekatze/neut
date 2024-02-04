@@ -317,20 +317,21 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ startLoc _ e2@(m2 :< _) endLoc -> do
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       case letKind of
         RT.Try -> do
-          eitherTypeInner <- locatorToVarGlobal mx coreExcept
-          leftType <- Gensym.newPreHole m1
-          let eitherType = m1 :< RT.piElim eitherTypeInner [leftType, t]
-          e1' <- ascribe m1 eitherType e1
+          let mx' = blur mx
+          let m2' = blur m2
+          eitherTypeInner <- locatorToVarGlobal mx' coreExcept
+          leftType <- Gensym.newPreHole m2'
+          let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
+          e1' <- ascribe m2' eitherType e1
           err <- Gensym.newText
-          exceptFail <- locatorToName m2 coreExceptFail
-          exceptPass <- locatorToName m2 coreExceptPass
-          exceptFailVar <- locatorToVarGlobal mx coreExceptFail
-          let _m = blur m2
+          exceptFail <- locatorToName m2' coreExceptFail
+          exceptPass <- locatorToName m2' coreExceptPass
+          exceptFailVar <- locatorToVarGlobal mx' coreExceptFail
           discern nenv $
-            m2
+            m
               :< RT.DataElim
                 []
                 False
@@ -338,12 +339,12 @@ discern nenv term =
                 ( SE.fromList
                     SE.Brace
                     SE.Hyphen
-                    [ ( SE.fromList'' [(_m, RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(_m, RP.Var (Var err))])))],
+                    [ ( SE.fromList'' [(m2', RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
                         [],
-                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)],
+                        m2' :< RT.piElim exceptFailVar [m2' :< RT.Var (Var err)],
                         fakeLoc
                       ),
-                      ( SE.fromList'' [(_m, RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                      ( SE.fromList'' [(m2', RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
                         [],
                         e2,
                         endLoc
