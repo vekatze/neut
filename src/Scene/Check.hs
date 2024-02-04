@@ -1,10 +1,15 @@
-module Scene.Check (check) where
+module Scene.Check
+  ( check,
+    checkSource,
+  )
+where
 
 import Context.App
 import Context.Module (getMainModule)
 import Context.Throw qualified as Throw
 import Control.Monad
 import Entity.Remark
+import Entity.Source (Source (sourceFilePath))
 import Entity.Target
 import Scene.Elaborate qualified as Elaborate
 import Scene.Initialize qualified as Initialize
@@ -15,10 +20,18 @@ import UnliftIO.Async
 
 check :: App [Remark]
 check = do
+  _check (Abstract Foundation)
+
+checkSource :: Source -> App [Remark]
+checkSource source = do
+  _check $ Concrete $ Zen (sourceFilePath source)
+
+_check :: Target -> App [Remark]
+_check target = do
   Throw.collectLogs $ do
     Initialize.initializeForTarget
     mainModule <- getMainModule
-    (_, dependenceSeq) <- Unravel.unravel mainModule (Abstract Foundation)
+    (_, dependenceSeq) <- Unravel.unravel mainModule target
     contentSeq <- forConcurrently dependenceSeq $ \source -> do
       cacheOrContent <- Load.load source
       return (source, cacheOrContent)
