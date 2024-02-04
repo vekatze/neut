@@ -192,7 +192,7 @@ toDoc term =
       D.join
         [ PI.arrange
             [ PI.horizontal ifClause',
-              PI.horizontal $ D.join elseIfClauseList'
+              PI.horizontal $ D.intercalate (D.text " ") elseIfClauseList'
             ],
           PI.arrange
             [ PI.horizontal $ D.text "else",
