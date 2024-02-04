@@ -63,6 +63,7 @@ import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.TopCandidate
+import Entity.VarDefKind qualified as VDK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -267,7 +268,7 @@ discern nenv term =
       (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discern nenv'' $ snd $ RT.cod geist
       x' <- Gensym.newIdentFromText x
-      nenv''' <- extendNominalEnv mx x' nenv''
+      nenv''' <- extendNominalEnv mx x' VDK.Normal nenv''
       body' <- discern nenv''' body
       let mxt' = (mx, x', codType')
       Tag.insertBinder mxt'
@@ -655,9 +656,9 @@ discernLet nenv m mxt mys e1 e2 startLoc endLoc = do
   ysLocal <- mapM Gensym.newIdentFromIdent ys'
   ysCont <- mapM Gensym.newIdentFromIdent ys'
   let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms' ysLocal
-  nenvLocal <- joinNominalEnv localAddition nenv
+  nenvLocal <- joinNominalEnv VDK.Borrowed localAddition nenv
   let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont
-  nenvCont <- joinNominalEnv contAddition nenv
+  nenvCont <- joinNominalEnv VDK.Relayed contAddition nenv
   e1' <- discern nenvLocal e1
   (mxt', e2') <- discernBinderWithBody' nenvCont mxt e2 startLoc endLoc
   Tag.insertBinder mxt'
@@ -670,9 +671,9 @@ discernIdent m nenv x =
   case lookup x nenv of
     Nothing ->
       Throw.raiseError m $ "undefined variable: " <> x
-    Just ident@(_, x') -> do
+    Just (_, x') -> do
       UnusedVariable.delete x'
-      return ident
+      return (m, x')
 
 discernBinder ::
   NominalEnv ->
@@ -686,7 +687,7 @@ discernBinder nenv binder endLoc =
     (mx, x, _, _, t) : xts -> do
       t' <- discern nenv t
       x' <- Gensym.newIdentFromText x
-      nenv' <- extendNominalEnv mx x' nenv
+      nenv' <- extendNominalEnv mx x' VDK.Normal nenv
       (xts', nenv'') <- discernBinder nenv' xts endLoc
       Tag.insertBinder (mx, x', t')
       SymLoc.insert x' (metaLocation mx) endLoc
@@ -703,7 +704,7 @@ discernBinder' nenv binder =
     (mx, x, _, _, t) : xts -> do
       t' <- discern nenv t
       x' <- Gensym.newIdentFromText x
-      nenv' <- extendNominalEnv mx x' nenv
+      nenv' <- extendNominalEnv mx x' VDK.Normal nenv
       (xts', nenv'') <- discernBinder' nenv' xts
       Tag.insertBinder (mx, x', t')
       return ((mx, x', t') : xts', nenv'')
@@ -718,7 +719,7 @@ discernBinderWithBody' ::
 discernBinderWithBody' nenv (mx, x, _, _, codType) e startLoc endLoc = do
   codType' <- discern nenv codType
   x' <- Gensym.newIdentFromText x
-  nenv'' <- extendNominalEnv mx x' nenv
+  nenv'' <- extendNominalEnv mx x' VDK.Normal nenv
   e' <- discern nenv'' e
   SymLoc.insert x' startLoc endLoc
   return ((mx, x', codType'), e')
@@ -754,7 +755,7 @@ discernPatternRow' nenv patList newVarList body = do
   case patList of
     [] -> do
       ensureVariableLinearity newVarList
-      nenv' <- joinNominalEnv newVarList nenv
+      nenv' <- joinNominalEnv VDK.Normal newVarList nenv
       body' <- discern nenv' body
       return ([], ([], [], body'))
     pat : rest -> do

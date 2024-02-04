@@ -42,6 +42,7 @@ import Entity.StrictGlobalLocator qualified as SGL
 import Entity.Term qualified as TM
 import Entity.TopCandidate
 import Entity.TopNameMap
+import Entity.VarDefKind
 import Entity.VisitInfo
 import Entity.WeakTerm qualified as WT
 import Path
@@ -67,7 +68,7 @@ data Env = Env
     importEnv :: IORef (Maybe RawImportSummary),
     localVarMap :: IORef LVT.LocalVarTree,
     topCandidateEnv :: IORef [TopCandidate],
-    unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident)),
+    unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     usedVariableSet :: IORef (S.Set Int),
     unusedImportMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
