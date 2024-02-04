@@ -3,6 +3,7 @@ module Entity.DeclarationName where
 import Data.ByteString.Builder
 import Data.HashMap.Strict qualified as Map
 import Data.Hashable
+import Data.Text qualified as T
 import Data.Text.Encoding qualified as TE
 import Entity.DefiniteDescription qualified as DD
 import Entity.ExternalName qualified as EN
@@ -33,3 +34,11 @@ toBuilder dn =
       DD.toBuilder dd
     Ext (EN.ExternalName rawTxt) ->
       TE.encodeUtf8Builder rawTxt
+
+reify :: DeclarationName -> T.Text
+reify dn =
+  case dn of
+    In dd ->
+      DD.reify dd
+    Ext (EN.ExternalName rawTxt) ->
+      rawTxt

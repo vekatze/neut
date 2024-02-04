@@ -14,7 +14,6 @@ import Context.Env qualified as Env
 import Context.Throw qualified as Throw
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
-import Data.Text qualified as T
 import Entity.ArgNum qualified as AN
 import Entity.DeclarationName qualified as DN
 import Entity.Foreign qualified as F
@@ -48,7 +47,7 @@ lookupDeclEnv m name = do
     Just typeInfo ->
       return typeInfo
     Nothing -> do
-      Throw.raiseError m $ "undeclared function: " <> T.pack (show name)
+      Throw.raiseError m $ "undeclared function: " <> DN.reify name
 
 member :: DN.DeclarationName -> App Bool
 member name = do
