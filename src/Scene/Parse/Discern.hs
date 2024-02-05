@@ -63,6 +63,7 @@ import Entity.Stmt
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.TopCandidate
+import Entity.VarDefKind qualified as VDK
 import Entity.WeakPrim qualified as WP
 import Entity.WeakPrimValue qualified as WPV
 import Entity.WeakTerm qualified as WT
@@ -267,7 +268,7 @@ discern nenv term =
       (expArgs', nenv'') <- discernBinder nenv' expArgs endLoc
       codType' <- discern nenv'' $ snd $ RT.cod geist
       x' <- Gensym.newIdentFromText x
-      nenv''' <- extendNominalEnv mx x' nenv''
+      nenv''' <- extendNominalEnv mx x' VDK.Normal nenv''
       body' <- discern nenv''' body
       let mxt' = (mx, x', codType')
       Tag.insertBinder mxt'
@@ -316,20 +317,21 @@ discern nenv term =
     m :< RT.Embody e -> do
       e' <- discern nenv e
       return $ m :< WT.Embody (doNotCare m) e'
-    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1@(m1 :< _) _ startLoc _ e2@(m2 :< _) endLoc -> do
+    m :< RT.Let letKind _ (mx, pat, c1, c2, t) _ mys _ e1 _ startLoc _ e2@(m2 :< _) endLoc -> do
       case letKind of
         RT.Try -> do
-          eitherTypeInner <- locatorToVarGlobal mx coreExcept
-          leftType <- Gensym.newPreHole m1
-          let eitherType = m1 :< RT.piElim eitherTypeInner [leftType, t]
-          e1' <- ascribe m1 eitherType e1
+          let mx' = blur mx
+          let m2' = blur m2
+          eitherTypeInner <- locatorToVarGlobal mx' coreExcept
+          leftType <- Gensym.newPreHole m2'
+          let eitherType = m2' :< RT.piElim eitherTypeInner [leftType, t]
+          e1' <- ascribe m2' eitherType e1
           err <- Gensym.newText
-          exceptFail <- locatorToName m2 coreExceptFail
-          exceptPass <- locatorToName m2 coreExceptPass
-          exceptFailVar <- locatorToVarGlobal mx coreExceptFail
-          let _m = blur m2
+          exceptFail <- locatorToName m2' coreExceptFail
+          exceptPass <- locatorToName m2' coreExceptPass
+          exceptFailVar <- locatorToVarGlobal mx' coreExceptFail
           discern nenv $
-            m2
+            m
               :< RT.DataElim
                 []
                 False
@@ -337,12 +339,12 @@ discern nenv term =
                 ( SE.fromList
                     SE.Brace
                     SE.Hyphen
-                    [ ( SE.fromList'' [(_m, RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(_m, RP.Var (Var err))])))],
+                    [ ( SE.fromList'' [(m2', RP.Cons exceptFail [] (RP.Paren (SE.fromList' [(m2', RP.Var (Var err))])))],
                         [],
-                        m2 :< RT.piElim exceptFailVar [m2 :< RT.Var (Var err)],
+                        m2' :< RT.piElim exceptFailVar [m2' :< RT.Var (Var err)],
                         fakeLoc
                       ),
-                      ( SE.fromList'' [(_m, RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
+                      ( SE.fromList'' [(m2', RP.Cons exceptPass [] (RP.Paren (SE.fromList' [(mx, pat)])))],
                         [],
                         e2,
                         endLoc
@@ -655,9 +657,9 @@ discernLet nenv m mxt mys e1 e2 startLoc endLoc = do
   ysLocal <- mapM Gensym.newIdentFromIdent ys'
   ysCont <- mapM Gensym.newIdentFromIdent ys'
   let localAddition = zipWith (\my yLocal -> (Ident.toText yLocal, (my, yLocal))) ms' ysLocal
-  nenvLocal <- joinNominalEnv localAddition nenv
+  nenvLocal <- joinNominalEnv VDK.Borrowed localAddition nenv
   let contAddition = zipWith (\my yCont -> (Ident.toText yCont, (my, yCont))) ms' ysCont
-  nenvCont <- joinNominalEnv contAddition nenv
+  nenvCont <- joinNominalEnv VDK.Relayed contAddition nenv
   e1' <- discern nenvLocal e1
   (mxt', e2') <- discernBinderWithBody' nenvCont mxt e2 startLoc endLoc
   Tag.insertBinder mxt'
@@ -670,9 +672,9 @@ discernIdent m nenv x =
   case lookup x nenv of
     Nothing ->
       Throw.raiseError m $ "undefined variable: " <> x
-    Just ident@(_, x') -> do
+    Just (_, x') -> do
       UnusedVariable.delete x'
-      return ident
+      return (m, x')
 
 discernBinder ::
   NominalEnv ->
@@ -686,7 +688,7 @@ discernBinder nenv binder endLoc =
     (mx, x, _, _, t) : xts -> do
       t' <- discern nenv t
       x' <- Gensym.newIdentFromText x
-      nenv' <- extendNominalEnv mx x' nenv
+      nenv' <- extendNominalEnv mx x' VDK.Normal nenv
       (xts', nenv'') <- discernBinder nenv' xts endLoc
       Tag.insertBinder (mx, x', t')
       SymLoc.insert x' (metaLocation mx) endLoc
@@ -703,7 +705,7 @@ discernBinder' nenv binder =
     (mx, x, _, _, t) : xts -> do
       t' <- discern nenv t
       x' <- Gensym.newIdentFromText x
-      nenv' <- extendNominalEnv mx x' nenv
+      nenv' <- extendNominalEnv mx x' VDK.Normal nenv
       (xts', nenv'') <- discernBinder' nenv' xts
       Tag.insertBinder (mx, x', t')
       return ((mx, x', t') : xts', nenv'')
@@ -718,7 +720,7 @@ discernBinderWithBody' ::
 discernBinderWithBody' nenv (mx, x, _, _, codType) e startLoc endLoc = do
   codType' <- discern nenv codType
   x' <- Gensym.newIdentFromText x
-  nenv'' <- extendNominalEnv mx x' nenv
+  nenv'' <- extendNominalEnv mx x' VDK.Normal nenv
   e' <- discern nenv'' e
   SymLoc.insert x' startLoc endLoc
   return ((mx, x', codType'), e')
@@ -754,7 +756,7 @@ discernPatternRow' nenv patList newVarList body = do
   case patList of
     [] -> do
       ensureVariableLinearity newVarList
-      nenv' <- joinNominalEnv newVarList nenv
+      nenv' <- joinNominalEnv VDK.Normal newVarList nenv
       body' <- discern nenv' body
       return ([], ([], [], body'))
     pat : rest -> do

@@ -10,6 +10,8 @@ module Context.Gensym
     newIdentFromIdent,
     newValueVarLocalWith,
     newTextualIdentFromText,
+    getCount,
+    setCount,
   )
 where
 
@@ -91,3 +93,11 @@ newTextualIdentFromText :: T.Text -> App Ident
 newTextualIdentFromText txt = do
   i <- newCount
   newIdentFromText $ ";" <> txt <> T.pack (show i)
+
+getCount :: App Int
+getCount =
+  asks counter >>= \ref -> liftIO $ readIORefU ref
+
+setCount :: Int -> App ()
+setCount countSnapshot =
+  asks counter >>= \ref -> liftIO $ writeIORefU ref countSnapshot

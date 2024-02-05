@@ -1,8 +1,4 @@
-module Scene.LSP.Complete
-  ( complete,
-    benchComplete,
-  )
-where
+module Scene.LSP.Complete (complete) where
 
 import Context.App
 import Context.AppM
@@ -42,14 +38,6 @@ complete uri pos = do
   currentSource <- lift (Source.reflect pathString) >>= liftMaybe
   let loc = positionToLoc pos
   lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
-
-benchComplete :: App ()
-benchComplete = do
-  void $ runAppM $ do
-    let pathString = "/Users/vekatze/Code/neut/test/misc/adder/source/adder.nt"
-    currentSource <- lift (Source.reflect pathString) >>= liftMaybe
-    let loc = (10, 10)
-    lift $ fmap concat $ forConcurrently itemGetterList $ \itemGetter -> itemGetter currentSource loc
 
 itemGetterList :: [Source -> Loc -> App [CompletionItem]]
 itemGetterList =

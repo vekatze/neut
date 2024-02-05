@@ -268,7 +268,7 @@ infer varEnv term =
       insConstraintEnv tCopy tc
       return (m :< WT.Resource resourceID discarder' copier', m :< WT.Tau)
     m :< WT.Use e@(mt :< _) xts cont -> do
-      (e', t') <- infer varEnv e
+      (_, t') <- infer varEnv e
       t'' <- resolveType t'
       case t'' of
         _ :< WT.Data attr _ dataArgs
@@ -285,7 +285,7 @@ infer varEnv term =
                 m
                   :< WT.DataElim
                     False
-                    [(cursor, e', t'')]
+                    [(cursor, e, t'')]
                     ( DT.Switch
                         (cursor, t'')
                         ( DT.Unreachable,

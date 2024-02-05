@@ -372,6 +372,8 @@ simplifyActual m dataNameSet t orig = do
           simplifyActual m dataNameSet' consArg orig
     _ :< WT.Prim {} ->
       return []
+    _ :< WT.Resource {} ->
+      return []
     _ -> do
       sub <- getHoleSubst
       let fmvs = holes t'
