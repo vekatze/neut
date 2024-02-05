@@ -1,5 +1,6 @@
-module Entity.RawProgram.Decode (pp) where
+module Entity.RawProgram.Decode (pp, ImportInfo (..)) where
 
+import Control.Monad
 import Data.Bifunctor
 import Data.Text qualified as T
 import Entity.BaseName qualified as BN
@@ -18,10 +19,18 @@ import Entity.RawTerm.Decode qualified as RT
 import Entity.StmtKind qualified as SK
 import Entity.Syntax.Series qualified as SE
 import Entity.Syntax.Series.Decode qualified as SE
+import Entity.UnusedGlobalLocators (UnusedGlobalLocators, isUsedGL)
+import Entity.UnusedLocalLocators (UnusedLocalLocators, isUsedLL)
 
-pp :: [(T.Text, [BN.BaseName])] -> (C, RawProgram) -> T.Text
-pp presetNames (c1, RawProgram _ importOrNone c2 stmtList) = do
-  let importOrNone' = fmap (decImport presetNames) importOrNone
+data ImportInfo = ImportInfo
+  { presetNames :: [(T.Text, [BN.BaseName])], -- "prelude"
+    unusedLocalLocators :: UnusedLocalLocators,
+    unusedGlobalLocators :: UnusedGlobalLocators
+  }
+
+pp :: ImportInfo -> (C, RawProgram) -> T.Text
+pp importInfo (c1, RawProgram _ importOrNone c2 stmtList) = do
+  let importOrNone' = fmap (decImport importInfo) importOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
@@ -42,18 +51,30 @@ decTopDocList c docList =
     (Just doc, c') : rest -> do
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: [(T.Text, [BN.BaseName])] -> RawImport -> D.Doc
-decImport presetNames (RawImport c _ importItemList _) = do
-  let importItemList' = SE.catMaybes $ fmap (filterImportItem presetNames) importItemList
+decImport :: ImportInfo -> RawImport -> D.Doc
+decImport importInfo (RawImport c _ importItemList _) = do
+  let importItemList' = SE.catMaybes $ fmap (filterImport importInfo) importItemList
   RT.attachComment c $
     D.join
       [ D.text "import ",
         SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
       ]
 
-filterImportItem :: [(T.Text, [BN.BaseName])] -> RawImportItem -> Maybe RawImportItem
-filterImportItem presetNames item@(RawImportItem m (loc, c) lls) = do
-  case lookup loc presetNames of
+filterImport :: ImportInfo -> RawImportItem -> Maybe RawImportItem
+filterImport importInfo = do
+  filterPreset importInfo >=> filterUnused importInfo
+
+filterUnused :: ImportInfo -> RawImportItem -> Maybe RawImportItem
+filterUnused importInfo (RawImportItem m (loc, c) lls) = do
+  if isUsedGL (unusedGlobalLocators importInfo) loc
+    then do
+      let lls' = SE.filter (isUsedLL (unusedLocalLocators importInfo) . snd) lls
+      return $ RawImportItem m (loc, c) lls'
+    else Nothing
+
+filterPreset :: ImportInfo -> RawImportItem -> Maybe RawImportItem
+filterPreset importInfo item@(RawImportItem m (loc, c) lls) = do
+  case lookup loc (presetNames importInfo) of
     Nothing ->
       return item
     Just names -> do

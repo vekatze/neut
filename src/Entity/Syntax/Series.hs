@@ -20,6 +20,7 @@ module Entity.Syntax.Series
     sortSeriesBy,
     appendLeftBiased,
     catMaybes,
+    Entity.Syntax.Series.filter,
   )
 where
 
@@ -161,6 +162,10 @@ appendLeftBiased series1 series2 = do
 catMaybes :: Series (Maybe a) -> Series a
 catMaybes series = do
   series {elems = mapMaybe distributeMaybe $ elems series}
+
+filter :: (a -> Bool) -> Series a -> Series a
+filter p series = do
+  series {elems = Prelude.filter (\(_, a) -> p a) $ elems series}
 
 distributeMaybe :: (a, Maybe b) -> Maybe (a, b)
 distributeMaybe (a, mb) =

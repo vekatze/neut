@@ -1,7 +1,7 @@
 module Scene.LSP.Format (format) where
 
-import Context.App
 import Context.AppM
+import Context.Cache (invalidate)
 import Context.Throw qualified as Throw
 import Control.Monad.Trans
 import Data.Maybe
@@ -15,6 +15,7 @@ import Language.LSP.VFS
 import Path
 import Path.IO
 import Scene.Format qualified as Format
+import Scene.Source.Reflect qualified as Source
 
 format :: Uri -> AppLsp a [TextEdit]
 format uri = do
@@ -32,7 +33,7 @@ _format ::
   AppM [TextEdit]
 _format uri file = do
   path <- liftMaybe (uriToFilePath uri) >>= lift . resolveFile'
-  newText <- lift (getFormattedContent file path) >>= liftMaybe
+  newText <- getFormattedContent file path
   return
     [ TextEdit
         { _range =
@@ -44,13 +45,15 @@ _format uri file = do
         }
     ]
 
-getFormattedContent :: VirtualFile -> Path Abs File -> App (Maybe T.Text)
+getFormattedContent :: VirtualFile -> Path Abs File -> AppM T.Text
 getFormattedContent file path = do
-  case splitExtension path of
-    Just (_, ext)
-      | ext == sourceFileExtension -> do
-          Throw.runMaybe $ Format.format FT.Source path (virtualFileText file)
-      | ext == ensFileExtension ->
-          Throw.runMaybe $ Format.format FT.Ens path (virtualFileText file)
+  (_, ext) <- liftMaybe $ splitExtension path
+  case (ext == sourceFileExtension, ext == ensFileExtension) of
+    (True, _) -> do
+      src <- lift (Source.reflect (toFilePath path)) >>= liftMaybe
+      lift $ invalidate src
+      lift (Throw.runMaybe $ Format.format FT.Source path (virtualFileText file)) >>= liftMaybe
+    (_, True) -> do
+      lift (Throw.runMaybe $ Format.format FT.Ens path (virtualFileText file)) >>= liftMaybe
     _ ->
-      return Nothing
+      liftMaybe Nothing

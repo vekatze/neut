@@ -13,6 +13,8 @@ import Context.SymLoc qualified as SymLoc
 import Context.Throw qualified as Throw
 import Context.TopCandidate qualified as TopCandidate
 import Context.Type qualified as Type
+import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
+import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.WeakDefinition qualified as WeakDefinition
 import Control.Comonad.Cofree
 import Control.Monad
@@ -84,11 +86,15 @@ synthesizeStmtList stmtList = do
   topCandidate <- TopCandidate.get
   rawImportSummary <- RawImportSummary.get
   countSnapshot <- Gensym.getCount
+  unusedGlobalLocatorNames <- UnusedGlobalLocator.get
+  unusedLocalLocatorNames <- UnusedLocalLocator.get
   Cache.saveCache source $
     Cache.Cache
       { Cache.stmtList = stmtList',
         Cache.remarkList = remarkList,
         Cache.locationTree = tmap,
+        Cache.unusedGlobalLocatorNames = unusedGlobalLocatorNames,
+        Cache.unusedLocalLocatorNames = unusedLocalLocatorNames,
         Cache.countSnapshot = countSnapshot
       }
   Cache.saveCompletionCache source $

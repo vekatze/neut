@@ -6,7 +6,7 @@ where
 
 import Context.App
 import Context.Global qualified as Global
-import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedPreset qualified as UnusedPreset
 import Context.UnusedVariable qualified as UnusedVariable
@@ -40,6 +40,8 @@ parseSource source cacheOrContent = do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       saveTopLevelNames source $ getStmtName stmtList
+      UnusedGlobalLocator.set $ Cache.unusedGlobalLocatorNames cache
+      UnusedLocalLocator.set $ Cache.unusedLocalLocatorNames cache
       return $ Left cache
     Right content -> do
       prog <- P.parseFile True Parse.parseProgram path content
@@ -65,7 +67,7 @@ interpret currentSource (RawProgram m importOrNone _ stmtList) = do
   Global.reportMissingDefinitions
   saveTopLevelNames currentSource $ getWeakStmtName stmtList'
   UnusedVariable.registerRemarks
-  UnusedImport.registerRemarks
+  UnusedGlobalLocator.registerRemarks
   UnusedLocalLocator.registerRemarks
   UnusedPreset.registerRemarks
   return stmtList'

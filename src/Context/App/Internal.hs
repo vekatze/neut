@@ -70,7 +70,7 @@ data Env = Env
     topCandidateEnv :: IORef [TopCandidate],
     unusedVariableMap :: IORef (IntMap.IntMap (Hint, Ident, VarDefKind)),
     usedVariableSet :: IORef (S.Set Int),
-    unusedImportMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
+    unusedGlobalLocatorMap :: IORef (Map.HashMap T.Text [(Hint, T.Text)]), -- (SGL ~> [(hint, locatorText)])
     unusedLocalLocatorMap :: IORef (Map.HashMap LL.LocalLocator Hint),
     unusedPresetMap :: IORef (Map.HashMap T.Text Hint), -- (ModuleID ~> Hint)
     buildSignatureMap :: IORef (Map.HashMap MID.ModuleID String), -- only for memoization
@@ -125,7 +125,7 @@ newEnv = do
   topCandidateEnv <- newIORef []
   unusedVariableMap <- newIORef IntMap.empty
   usedVariableSet <- newIORef S.empty
-  unusedImportMap <- newIORef Map.empty
+  unusedGlobalLocatorMap <- newIORef Map.empty
   unusedPresetMap <- newIORef Map.empty
   unusedLocalLocatorMap <- newIORef Map.empty
   nameMap <- newIORef Map.empty
