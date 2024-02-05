@@ -20,6 +20,8 @@ module Entity.Syntax.Series
     sortSeriesBy,
     appendLeftBiased,
     catMaybes,
+    compressEither,
+    Entity.Syntax.Series.filter,
   )
 where
 
@@ -161,6 +163,28 @@ appendLeftBiased series1 series2 = do
 catMaybes :: Series (Maybe a) -> Series a
 catMaybes series = do
   series {elems = mapMaybe distributeMaybe $ elems series}
+
+compressEither :: Series (Either C a) -> Series a
+compressEither series = do
+  let (trail, elems') = compressEither' [] $ elems series
+  series {elems = elems', trailingComment = trail ++ trailingComment series}
+
+compressEither' :: C -> [(C, Either C a)] -> (C, [(C, a)])
+compressEither' c xs =
+  case xs of
+    [] ->
+      (c, [])
+    (c1, y) : rest ->
+      case y of
+        Left c2 ->
+          compressEither' (c ++ c1 ++ c2) rest
+        Right e -> do
+          let (trail, rest') = compressEither' [] rest
+          (trail, (c ++ c1, e) : rest')
+
+filter :: (a -> Bool) -> Series a -> Series a
+filter p series = do
+  series {elems = Prelude.filter (\(_, a) -> p a) $ elems series}
 
 distributeMaybe :: (a, Maybe b) -> Maybe (a, b)
 distributeMaybe (a, mb) =

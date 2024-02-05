@@ -1,8 +1,10 @@
-module Context.UnusedImport
+module Context.UnusedGlobalLocator
   ( initialize,
     insert,
     delete,
     registerRemarks,
+    get,
+    set,
   )
 where
 
@@ -14,27 +16,32 @@ import Data.HashMap.Strict qualified as Map
 import Data.Text qualified as T
 import Entity.Hint
 import Entity.Remark
+import Entity.UnusedGlobalLocators (UnusedGlobalLocators)
 import Prelude hiding (lookup, read)
 
 initialize :: App ()
 initialize =
-  writeRef' unusedImportMap Map.empty
+  writeRef' unusedGlobalLocatorMap Map.empty
 
 insert :: T.Text -> Hint -> T.Text -> App ()
 insert sglText m locatorText =
-  modifyRef' unusedImportMap $ Map.insertWith (++) sglText [(m, locatorText)]
+  modifyRef' unusedGlobalLocatorMap $ Map.insertWith (++) sglText [(m, locatorText)]
 
 delete :: T.Text -> App ()
 delete sglText =
-  modifyRef' unusedImportMap $ Map.delete sglText
+  modifyRef' unusedGlobalLocatorMap $ Map.delete sglText
 
-get :: App [(Hint, T.Text)]
+get :: App UnusedGlobalLocators
 get = do
-  uenv <- readRef' unusedImportMap
-  return $ concat $ Map.elems uenv
+  uenv <- readRef' unusedGlobalLocatorMap
+  return $ Map.toList uenv
+
+set :: UnusedGlobalLocators -> App ()
+set uenv = do
+  writeRef' unusedGlobalLocatorMap $ Map.fromList uenv
 
 registerRemarks :: App ()
 registerRemarks = do
-  unusedImports <- get
-  forM_ unusedImports $ \(m, locatorText) ->
+  unusedGlobalLocators <- concatMap snd <$> get
+  forM_ unusedGlobalLocators $ \(m, locatorText) ->
     Remark.insertRemark $ newRemark m Warning $ "imported but not used: `" <> locatorText <> "`"

@@ -22,7 +22,7 @@ import Context.SymLoc qualified as SymLoc
 import Context.Tag qualified as Tag
 import Context.TopCandidate qualified as TopCandidate
 import Context.Unravel qualified as Unravel
-import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Context.UnusedVariable qualified as UnusedVariable
 import Context.WeakDefinition qualified as WeakDefinition
@@ -61,7 +61,7 @@ initializeForTarget = do
 initializeForSource :: Source.Source -> App ()
 initializeForSource source = do
   UnusedVariable.initialize
-  UnusedImport.initialize
+  UnusedGlobalLocator.initialize
   UnusedLocalLocator.initialize
   Remark.initialize
   Global.initialize

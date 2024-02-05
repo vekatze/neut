@@ -10,7 +10,7 @@ import Context.Global qualified as Global
 import Context.RawImportSummary qualified as RawImportSummary
 import Context.Tag qualified as Tag
 import Context.Throw qualified as Throw
-import Context.UnusedImport qualified as UnusedImport
+import Context.UnusedGlobalLocator qualified as UnusedGlobalLocator
 import Context.UnusedLocalLocator qualified as UnusedLocalLocator
 import Control.Monad
 import Data.HashMap.Strict qualified as Map
@@ -86,7 +86,7 @@ interpretImportItem shouldUpdateTag currentModule m locatorText localLocatorList
           let moduleAlias = ModuleAlias aliasText
           sgl <- Alias.resolveLocatorAlias m moduleAlias sourceLocator
           when shouldUpdateTag $ do
-            UnusedImport.insert (SGL.reify sgl) m locatorText
+            UnusedGlobalLocator.insert (SGL.reify sgl) m locatorText
             forM_ localLocatorList $ \(ml, ll) -> UnusedLocalLocator.insert ll ml
           source <- getSource m sgl locatorText
           return [(source, [AI.Use sgl localLocatorList])]
