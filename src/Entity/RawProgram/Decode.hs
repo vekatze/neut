@@ -30,7 +30,7 @@ data ImportInfo = ImportInfo
 
 pp :: ImportInfo -> (C, RawProgram) -> T.Text
 pp importInfo (c1, RawProgram _ importOrNone c2 stmtList) = do
-  let importOrNone' = fmap (decImport importInfo) importOrNone
+  let importOrNone' = decImport importInfo importOrNone
   let stmtList' = map (first (Just . decStmt)) stmtList
   let program' = (importOrNone', c2) : stmtList'
   D.layout $ decTopDocList c1 program'
@@ -51,39 +51,41 @@ decTopDocList c docList =
     (Just doc, c') : rest -> do
       RT.attachComment c $ D.join [doc, D.line, D.line, decTopDocList c' rest]
 
-decImport :: ImportInfo -> RawImport -> D.Doc
-decImport importInfo (RawImport c _ importItemList _) = do
-  let importItemList' = SE.catMaybes $ fmap (filterImport importInfo) importItemList
-  RT.attachComment c $
-    D.join
-      [ D.text "import ",
-        SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
-      ]
+decImport :: ImportInfo -> Maybe RawImport -> Maybe D.Doc
+decImport importInfo importOrNone = do
+  (RawImport c _ importItemList _) <- importOrNone
+  let importItemList' = SE.compressEither $ fmap (filterImport importInfo) importItemList
+  return $
+    RT.attachComment c $
+      D.join
+        [ D.text "import ",
+          SE.decode $ SE.assoc $ decImportItem <$> sortImport importItemList'
+        ]
 
-filterImport :: ImportInfo -> RawImportItem -> Maybe RawImportItem
+filterImport :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterImport importInfo = do
-  filterPreset importInfo >=> filterUnused importInfo
+  filterUnused importInfo >=> filterPreset importInfo
 
-filterUnused :: ImportInfo -> RawImportItem -> Maybe RawImportItem
+filterUnused :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterUnused importInfo (RawImportItem m (loc, c) lls) = do
   if isUsedGL (unusedGlobalLocators importInfo) loc
     then do
       let lls' = SE.filter (isUsedLL (unusedLocalLocators importInfo) . snd) lls
       return $ RawImportItem m (loc, c) lls'
-    else Nothing
+    else Left c
 
-filterPreset :: ImportInfo -> RawImportItem -> Maybe RawImportItem
+filterPreset :: ImportInfo -> RawImportItem -> Either C RawImportItem
 filterPreset importInfo item@(RawImportItem m (loc, c) lls) = do
   case lookup loc (presetNames importInfo) of
     Nothing ->
       return item
     Just names -> do
       if SE.isEmpty lls
-        then Nothing
+        then Left c
         else do
           let lls' = SE.catMaybes $ fmap (filterLocalLocator names) lls
           if SE.isEmpty lls'
-            then Nothing
+            then Left c
             else return $ RawImportItem m (loc, c) lls'
 
 filterLocalLocator :: [BN.BaseName] -> (Hint, LL.LocalLocator) -> Maybe (Hint, LL.LocalLocator)

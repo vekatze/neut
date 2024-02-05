@@ -40,8 +40,6 @@ parseSource source cacheOrContent = do
       let stmtList = Cache.stmtList cache
       parseCachedStmtList stmtList
       saveTopLevelNames source $ getStmtName stmtList
-      UnusedGlobalLocator.set $ Cache.unusedGlobalLocatorNames cache
-      UnusedLocalLocator.set $ Cache.unusedLocalLocatorNames cache
       return $ Left cache
     Right content -> do
       prog <- P.parseFile True Parse.parseProgram path content

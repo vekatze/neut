@@ -7,16 +7,12 @@ import Entity.RawImportSummary
 import Entity.Remark
 import Entity.Stmt qualified as Stmt
 import Entity.TopCandidate (TopCandidate)
-import Entity.UnusedGlobalLocators (UnusedGlobalLocators)
-import Entity.UnusedLocalLocators (UnusedLocalLocators)
 import GHC.Generics
 
 data Cache = Cache
   { stmtList :: [Stmt.Stmt],
     remarkList :: [Remark],
     locationTree :: LT.LocationTree,
-    unusedGlobalLocatorNames :: UnusedGlobalLocators, -- only for pp
-    unusedLocalLocatorNames :: UnusedLocalLocators, -- only for pp
     countSnapshot :: Int
   }
   deriving (Generic)
@@ -25,8 +21,6 @@ data LowCache = LowCache
   { stmtList' :: [Stmt.StrippedStmt],
     remarkList' :: [Remark],
     locationTree' :: LT.LocationTree,
-    unusedGlobalLocatorNames' :: UnusedGlobalLocators, -- only for pp
-    unusedLocalLocatorNames' :: UnusedLocalLocators, -- only for pp
     countSnapshot' :: Int
   }
   deriving (Generic)
@@ -48,8 +42,6 @@ compress cache =
     { stmtList' = map Stmt.compress (stmtList cache),
       remarkList' = remarkList cache,
       locationTree' = locationTree cache,
-      unusedGlobalLocatorNames' = unusedGlobalLocatorNames cache,
-      unusedLocalLocatorNames' = unusedLocalLocatorNames cache,
       countSnapshot' = countSnapshot cache
     }
 
@@ -59,7 +51,5 @@ extend cache =
     { stmtList = map Stmt.extend (stmtList' cache),
       remarkList = remarkList' cache,
       locationTree = locationTree' cache,
-      unusedGlobalLocatorNames = unusedGlobalLocatorNames' cache,
-      unusedLocalLocatorNames = unusedLocalLocatorNames' cache,
       countSnapshot = countSnapshot' cache
     }

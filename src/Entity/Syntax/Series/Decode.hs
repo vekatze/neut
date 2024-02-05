@@ -24,6 +24,14 @@ decode series = do
         ]
     (Just Angle, True) ->
       D.Nil
+    (Just k, True)
+      | null (trailingComment series) -> do
+          let (open, close) = getContainerPair k
+          PI.arrange
+            [ PI.inject prefix',
+              PI.inject $ D.text open,
+              PI.inject $ D.text close
+            ]
     (Just k, _) -> do
       let (open, close) = getContainerPair k
       case sep of
@@ -65,11 +73,9 @@ listSeq :: [(C, D.Doc)] -> C -> D.Doc
 listSeq elems trail =
   case elems of
     [] ->
-      D.nest D.indent $ C.decode trail
-    [(c, d)] -> do
       if null trail
-        then D.join [decodeListItem (c, d)]
-        else D.join [decodeListItem (c, d), D.nest D.indent $ D.join [D.line, C.decode trail]]
+        then D.Nil
+        else D.nest D.indent $ D.join [D.line, C.decode trail]
     (c, d) : rest -> do
       D.join [decodeListItem (c, d), listSeq rest trail]
 

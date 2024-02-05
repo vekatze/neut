@@ -1,7 +1,6 @@
 module Scene.LSP.Format (format) where
 
 import Context.AppM
-import Context.Cache (invalidate)
 import Context.Throw qualified as Throw
 import Control.Monad.Trans
 import Data.Maybe
@@ -15,7 +14,6 @@ import Language.LSP.VFS
 import Path
 import Path.IO
 import Scene.Format qualified as Format
-import Scene.Source.Reflect qualified as Source
 
 format :: Uri -> AppLsp a [TextEdit]
 format uri = do
@@ -50,8 +48,6 @@ getFormattedContent file path = do
   (_, ext) <- liftMaybe $ splitExtension path
   case (ext == sourceFileExtension, ext == ensFileExtension) of
     (True, _) -> do
-      src <- lift (Source.reflect (toFilePath path)) >>= liftMaybe
-      lift $ invalidate src
       lift (Throw.runMaybe $ Format.format FT.Source path (virtualFileText file)) >>= liftMaybe
     (_, True) -> do
       lift (Throw.runMaybe $ Format.format FT.Ens path (virtualFileText file)) >>= liftMaybe
