@@ -1,17 +1,22 @@
 module Scene.LSP (lsp) where
 
+import Colog.Core (LogAction (..), Severity (..), WithSeverity (..))
+import Colog.Core qualified as L
 import Context.App
 import Context.AppM
 import Control.Lens hiding (Iso)
 import Control.Monad.IO.Class
 import Control.Monad.Trans
 import Data.Maybe
+import Data.Text qualified as T
 import Entity.AppLsp
 import Entity.Config.Remark qualified as Remark
+import Language.LSP.Logging
 import Language.LSP.Protocol.Lens qualified as J
 import Language.LSP.Protocol.Message
 import Language.LSP.Protocol.Types
 import Language.LSP.Server
+import Prettyprinter
 import Scene.Initialize qualified as Initialize
 import Scene.LSP.Complete qualified as LSP
 import Scene.LSP.FindDefinition qualified as LSP
@@ -24,8 +29,9 @@ import System.IO (stdin, stdout)
 
 lsp :: Remark.Config -> App Int
 lsp cfg = do
+  Initialize.initializeCompiler cfg Nothing
   liftIO $
-    runServerSilently $
+    runQuietServer $
       ServerDefinition
         { defaultConfig = (),
           onConfigurationChange = const $ pure $ Right (),
@@ -35,13 +41,27 @@ lsp cfg = do
           options = lspOptions
         }
 
-runServerSilently :: ServerDefinition config -> IO Int
-runServerSilently =
+runQuietServer :: ServerDefinition config -> IO Int
+runQuietServer def = do
   runServerWithHandles
-    mempty
-    mempty
+    ioLogger
+    lspLogger
     stdin
     stdout
+    def
+
+ioLogger :: LogAction IO (WithSeverity LspServerLog)
+ioLogger =
+  L.filterBySeverity Info getSeverity $ L.cmap (show . prettyMsg) L.logStringStderr
+
+lspLogger :: LogAction (LspM config) (WithSeverity LspServerLog)
+lspLogger = do
+  let clientLogger = L.cmap (fmap (T.pack . show . pretty)) defaultClientLogger
+  clientLogger <> L.hoistLogAction liftIO ioLogger
+
+prettyMsg :: (Pretty a) => WithSeverity a -> Doc ann
+prettyMsg l =
+  "[" <> viaShow (L.getSeverity l) <> "] " <> pretty (L.getMsg l)
 
 handlers :: Handlers (AppLsp ())
 handlers =

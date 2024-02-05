@@ -20,6 +20,7 @@ dependencies:
   - base64-bytestring
   - binary
   - bytestring
+  - co-log-core
   - containers
   - cryptohash-sha256
   - directory
@@ -36,6 +37,7 @@ dependencies:
   - parser-combinators
   - path
   - path-io
+  - prettyprinter
   - process
   - safe-exceptions
   - template-haskell
