@@ -188,8 +188,12 @@ clarifyTerm tenv term =
       clarifyLambda tenv attr (TM.chainOf tenv [term]) (impArgs ++ expArgs) e
     _ :< TM.PiElim e es -> do
       es' <- mapM (clarifyPlus tenv) es
-      e' <- clarifyTerm tenv e
-      callClosure e' es'
+      case e of
+        _ :< TM.Prim (P.Value (PV.Op op)) ->
+          callPrimOp op es'
+        _ -> do
+          e' <- clarifyTerm tenv e
+          callClosure e' es'
     _ :< TM.Data _ name dataArgs -> do
       (zs, dataArgs', xs) <- unzip3 <$> mapM (clarifyPlus tenv) dataArgs
       return $
@@ -536,6 +540,11 @@ callClosure e zexes = do
           closureVar
           (C.PiElimDownElim lamVar (xs ++ [envVar]))
       )
+
+callPrimOp :: PrimOp -> [(Ident, C.Comp, C.Value)] -> App C.Comp
+callPrimOp op zexes = do
+  let (zs, es', xs) = unzip3 zexes
+  return $ bindLet (zip zs es') (C.Primitive (C.PrimOp op xs))
 
 dropFst :: [(a, b, c)] -> [(b, c)]
 dropFst xyzs = do
