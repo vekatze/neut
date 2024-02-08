@@ -91,13 +91,6 @@ insertDependency aliasName url = do
             }
         installModule tempFilePath alias digest
 
-installModule :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
-installModule archivePath alias digest = do
-  extractToLibDir archivePath alias digest
-  libModule <- getLibraryModule alias digest
-  fetch libModule
-  Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
-
 insertCoreDependency :: App ()
 insertCoreDependency = do
   coreModuleURL <- Module.getCoreModuleURL
@@ -130,10 +123,16 @@ installIfNecessary alias mirrorList digest = do
             <> "\n- "
             <> MD.reify archiveModuleDigest
             <> " (actual)"
-      extractToLibDir tempFilePath alias digest
-      libModule <- getLibraryModule alias digest
-      fetch libModule
-      Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
+      installModule tempFilePath alias digest
+
+installModule :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
+installModule archivePath alias digest = do
+  isInstalled <- checkIfInstalled digest
+  unless isInstalled $ do
+    extractToLibDir archivePath alias digest
+    libModule <- getLibraryModule alias digest
+    fetch libModule
+    Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
 
 checkIfInstalled :: MD.ModuleDigest -> App Bool
 checkIfInstalled digest = do

@@ -13,7 +13,7 @@ import Entity.Ens qualified as E
 import Entity.Module
 import Entity.PackageVersion qualified as PV
 import Path
-import Path.IO (copyDirRecur, copyFile, listDirRecurRel, withSystemTempDir)
+import Path.IO
 import Prelude hiding (log)
 
 archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> App ()
@@ -21,6 +21,7 @@ archive packageVersion fullEns moduleRootDir contents = do
   withSystemTempDir "archive" $ \tempRootDir -> do
     Module.saveEns (tempRootDir </> moduleFile) fullEns
     copyModuleContents tempRootDir moduleRootDir contents
+    makeReadOnly tempRootDir
     makeArchiveFromTempDir packageVersion tempRootDir
 
 makeArchiveFromTempDir :: PV.PackageVersion -> Path Abs Dir -> App ()
@@ -39,6 +40,13 @@ copyModuleContents tempRootDir moduleRootDir contents = do
         copyDirRecur (moduleRootDir </> dirPath) (tempRootDir </> dirPath)
       Right filePath -> do
         copyFile (moduleRootDir </> filePath) (tempRootDir </> filePath)
+
+makeReadOnly :: Path Abs Dir -> App ()
+makeReadOnly tempRootDir = do
+  (_, filePathList) <- listDirRecur tempRootDir
+  forM_ filePathList $ \filePath -> do
+    p <- getPermissions filePath
+    setPermissions filePath $ p {writable = False}
 
 getArchiveFilePath :: Module -> T.Text -> App (Path Abs File)
 getArchiveFilePath targetModule versionText = do
