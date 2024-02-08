@@ -57,7 +57,15 @@ insertDependency aliasName url = do
         if M.dependencyDigest dep == digest
           then do
             if url `elem` M.dependencyMirrorList dep
-              then return ()
+              then do
+                moduleDirPath <- Module.getModuleDirByID Nothing (MID.Library digest)
+                libDirExists <- Path.doesDirExist moduleDirPath
+                if libDirExists
+                  then do
+                    Remark.printNote' $ "already installed: `" <> MD.reify digest
+                  else do
+                    Remark.printNote' $ "reinstalling a dependency: `" <> MD.reify digest <> "`"
+                    installModule tempFilePath alias digest
               else do
                 Remark.printNote' $ "adding a mirror of `" <> BN.reify (extract alias) <> "`"
                 let dep' = dep {M.dependencyMirrorList = url : M.dependencyMirrorList dep}
@@ -70,24 +78,25 @@ insertDependency aliasName url = do
                 <> MD.reify (M.dependencyDigest dep)
                 <> "\n- new: "
                 <> MD.reify digest
-            extractToLibDir tempFilePath alias digest
             let dep' = dep {M.dependencyDigest = digest, M.dependencyMirrorList = [url]}
             updateDependencyInModuleFile (moduleLocation mainModule) alias dep'
-            libModule <- getLibraryModule alias digest
-            fetch libModule
-            Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
+            installModule tempFilePath alias digest
       Nothing -> do
         Remark.printNote' $ "adding a dependency: " <> BN.reify (extract alias) <> " (" <> MD.reify digest <> ")"
-        extractToLibDir tempFilePath alias digest
         addDependencyToModuleFile alias $
           M.Dependency
             { dependencyMirrorList = [url],
               dependencyDigest = digest,
               dependencyPresetEnabled = False
             }
-        libModule <- getLibraryModule alias digest
-        fetch libModule
-        Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
+        installModule tempFilePath alias digest
+
+installModule :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
+installModule archivePath alias digest = do
+  extractToLibDir archivePath alias digest
+  libModule <- getLibraryModule alias digest
+  fetch libModule
+  Build.buildTarget Build.abstractAxis libModule (Abstract Foundation)
 
 insertCoreDependency :: App ()
 insertCoreDependency = do
@@ -160,10 +169,10 @@ download tempFilePath ma@(ModuleAlias alias) mirrorList = do
           download tempFilePath ma rest
 
 extractToLibDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
-extractToLibDir tempFilePath _ digest = do
-  moduleDirPath <- parent <$> Module.getModuleFilePath Nothing (MID.Library digest)
+extractToLibDir archivePath _ digest = do
+  moduleDirPath <- Module.getModuleDirByID Nothing (MID.Library digest)
   Path.ensureDir moduleDirPath
-  External.run "tar" ["xf", toFilePath tempFilePath, "-C", toFilePath moduleDirPath, "--strip-components=1"]
+  External.run "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath, "--strip-components=1"]
 
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile alias dep = do
