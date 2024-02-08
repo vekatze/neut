@@ -9,22 +9,47 @@ import Control.Monad
 import Data.List
 import Data.Text qualified as T
 import Entity.Const
+import Entity.Ens qualified as E
 import Entity.Module
 import Entity.PackageVersion qualified as PV
 import Path
-import System.IO
+import Path.IO
 import Prelude hiding (log)
 
-archive :: PV.PackageVersion -> [FilePath] -> App ()
-archive packageVersion contents = do
-  mainModule <- Module.getMainModule
-  outputPath <- toFilePath <$> getArchiveFile mainModule (PV.reify packageVersion)
-  let moduleRootDir = parent $ moduleLocation mainModule
-  let tarRootDir = toFilePath $ parent moduleRootDir
-  External.run "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", tarRootDir] ++ contents
+archive :: PV.PackageVersion -> E.FullEns -> Path Abs Dir -> [SomePath Rel] -> App ()
+archive packageVersion fullEns moduleRootDir contents = do
+  withSystemTempDir "archive" $ \tempRootDir -> do
+    Module.saveEns (tempRootDir </> moduleFile) fullEns
+    copyModuleContents tempRootDir moduleRootDir contents
+    makeReadOnly tempRootDir
+    makeArchiveFromTempDir packageVersion tempRootDir
 
-getArchiveFile :: Module -> T.Text -> App (Path Abs File)
-getArchiveFile targetModule versionText = do
+makeArchiveFromTempDir :: PV.PackageVersion -> Path Abs Dir -> App ()
+makeArchiveFromTempDir packageVersion tempRootDir = do
+  (_, files) <- listDirRecurRel tempRootDir
+  let newContents = map toFilePath files
+  mainModule <- Module.getMainModule
+  outputPath <- toFilePath <$> getArchiveFilePath mainModule (PV.reify packageVersion)
+  External.run "tar" $ ["-c", "--zstd", "-f", outputPath, "-C", toFilePath tempRootDir] ++ newContents
+
+copyModuleContents :: Path Abs Dir -> Path Abs Dir -> [SomePath Rel] -> App ()
+copyModuleContents tempRootDir moduleRootDir contents = do
+  forM_ contents $ \content -> do
+    case content of
+      Left dirPath -> do
+        copyDirRecur (moduleRootDir </> dirPath) (tempRootDir </> dirPath)
+      Right filePath -> do
+        copyFile (moduleRootDir </> filePath) (tempRootDir </> filePath)
+
+makeReadOnly :: Path Abs Dir -> App ()
+makeReadOnly tempRootDir = do
+  (_, filePathList) <- listDirRecur tempRootDir
+  forM_ filePathList $ \filePath -> do
+    p <- getPermissions filePath
+    setPermissions filePath $ p {writable = False}
+
+getArchiveFilePath :: Module -> T.Text -> App (Path Abs File)
+getArchiveFilePath targetModule versionText = do
   let archiveDir = getArchiveDir targetModule
   Path.ensureDir archiveDir
   archiveFile <- Path.resolveFile archiveDir $ T.unpack $ versionText <> packageFileExtension
