@@ -1,8 +1,7 @@
-module Scene.Module.UpdateAntecedents (updateAntecedents) where
+module Scene.Module.MakeArchiveEns (makeArchiveEns) where
 
 import Context.App
 import Context.Fetch (getHandleContents)
-import Context.Module qualified as Module
 import Context.Path qualified as Path
 import Context.Throw qualified as Throw
 import Control.Comonad.Cofree
@@ -23,15 +22,15 @@ import Scene.Module.GetExistingVersions
 import System.IO
 import Prelude hiding (log)
 
-updateAntecedents :: PV.PackageVersion -> Module -> App ()
-updateAntecedents newVersion targetModule = do
+makeArchiveEns :: PV.PackageVersion -> Module -> App E.FullEns
+makeArchiveEns newVersion targetModule = do
   existingVersions <- getExistingVersions targetModule
   let antecedents = PV.getAntecedents newVersion existingVersions
   antecedentList <- ListUtils.nubOrd <$> mapM (getDigest targetModule) antecedents
   (c1, (baseEns@(m :< _), c2)) <- Ens.fromFilePath (moduleLocation targetModule)
   let antecedentEns = makeAntecedentEns m antecedentList
   mergedEns <- Throw.liftEither $ E.merge baseEns antecedentEns
-  Module.saveEns (moduleLocation targetModule) (c1, (mergedEns, c2))
+  return (c1, (mergedEns, c2))
 
 getPackagePath :: Module -> PV.PackageVersion -> App (Path Abs File)
 getPackagePath targetModule ver = do

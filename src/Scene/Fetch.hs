@@ -172,7 +172,7 @@ extractToLibDir :: Path Abs File -> ModuleAlias -> MD.ModuleDigest -> App ()
 extractToLibDir archivePath _ digest = do
   moduleDirPath <- Module.getModuleDirByID Nothing (MID.Library digest)
   Path.ensureDir moduleDirPath
-  External.run "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath, "--strip-components=1"]
+  External.run "tar" ["xf", toFilePath archivePath, "-C", toFilePath moduleDirPath]
 
 addDependencyToModuleFile :: ModuleAlias -> M.Dependency -> App ()
 addDependencyToModuleFile alias dep = do

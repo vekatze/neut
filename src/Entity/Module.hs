@@ -145,15 +145,13 @@ getForeignContents baseModule = do
   let moduleRootDir = getModuleRootDir baseModule
   map (moduleRootDir </>) $ moduleForeignDirList baseModule
 
-getExtraContents :: Module -> [SomePath Abs]
+getForeignContents' :: Module -> [Path Rel Dir]
+getForeignContents' baseModule = do
+  moduleForeignDirList baseModule
+
+getExtraContents :: Module -> [SomePath Rel]
 getExtraContents baseModule = do
-  let moduleRootDir = getModuleRootDir baseModule
-  flip map (moduleExtraContents baseModule) $ \somePath -> do
-    case somePath of
-      Left dirPath ->
-        Left $ moduleRootDir </> dirPath
-      Right filePath ->
-        Right $ moduleRootDir </> filePath
+  moduleExtraContents baseModule
 
 getModuleRootDir :: Module -> Path Abs Dir
 getModuleRootDir baseModule =
