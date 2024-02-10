@@ -92,13 +92,17 @@ define test-syntax(): unit {
     }
   in
   let _ =
-    f(let _ = tau in
-    tau, tau, let _ = tau in
-    {
-      function () {
-        tau
-      }
-    }())
+    f(
+      let _ = tau in
+      tau,
+      tau,
+      let _ = tau in
+      {
+        function () {
+          tau
+        }
+      }()
+    )
   in
   Unit
 }
