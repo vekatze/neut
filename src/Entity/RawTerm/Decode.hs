@@ -230,6 +230,12 @@ toDoc term =
         ]
     _ :< With withClause -> do
       decodeKeywordClause "with" $ mapKeywordClause toDoc withClause
+    _ :< Projection e (_, proj) _ -> do
+      PI.arrange
+        [ PI.inject $ toDoc e,
+          PI.inject $ D.text "::",
+          PI.inject $ D.text proj
+        ]
     _ :< Brace c1 (e, c2) -> do
       SE.decode $ toDoc <$> SE.fromListWithComment SE.Brace SE.Comma [(c1, (e, c2))]
 

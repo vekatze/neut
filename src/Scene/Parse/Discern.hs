@@ -466,6 +466,11 @@ discern nenv term =
           discern nenv $ mUse :< RT.Use c1 item c2 vars c3 cont' endLoc
         _ ->
           discern nenv body
+    _ :< RT.Projection e (mProj, proj) loc -> do
+      t <- Gensym.newPreHole (blur mProj)
+      let args = (SE.fromList SE.Brace SE.Comma [(mProj, proj, [], [], t)], [])
+      let var = mProj :< RT.Var (Var proj)
+      discern nenv $ mProj :< RT.Use [] e [] args [] var loc
     _ :< RT.Brace _ (e, _) ->
       discern nenv e
 
