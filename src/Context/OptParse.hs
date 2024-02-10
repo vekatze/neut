@@ -184,7 +184,7 @@ remarkConfigOpt = do
 
 outputKindListOpt :: Parser [OK.OutputKind]
 outputKindListOpt = do
-  option outputKindListReader $ mconcat [long "emit", metavar "EMIT", help "llvm, asm, or object", value [OK.Object]]
+  option outputKindListReader $ mconcat [long "emit", metavar "EMIT", help "EMIT == (llvm || object)", value [OK.Object]]
 
 outputKindListReader :: ReadM [OK.OutputKind]
 outputKindListReader =
@@ -201,8 +201,6 @@ readOutputKinds kindStrList =
       case kindStr of
         "llvm" ->
           return $ OK.LLVM : tmp
-        "asm" ->
-          return $ OK.Asm : tmp
         "object" ->
           return $ OK.Object : tmp
         _ ->

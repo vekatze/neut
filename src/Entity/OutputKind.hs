@@ -3,7 +3,6 @@ module Entity.OutputKind where
 data OutputKind
   = Object
   | LLVM
-  | Asm
   deriving (Show, Eq)
 
 instance Read OutputKind where
@@ -11,7 +10,5 @@ instance Read OutputKind where
     [(Object, [])]
   readsPrec _ "llvm" =
     [(LLVM, [])]
-  readsPrec _ "asm" =
-    [(Asm, [])]
   readsPrec _ _ =
     []

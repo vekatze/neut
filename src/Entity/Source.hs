@@ -55,8 +55,6 @@ attachExtension file kind =
   case kind of
     OK.LLVM -> do
       addExtension ".ll" file
-    OK.Asm -> do
-      addExtension ".s" file
     OK.Object -> do
       addExtension ".o" file
 
@@ -76,10 +74,6 @@ isCompilationSkippable artifactTime outputKindList =
       case kind of
         OK.LLVM -> do
           let b1 = isJust $ A.llvmTime artifactTime
-          let b2 = isCompilationSkippable artifactTime rest
-          b1 && b2
-        OK.Asm -> do
-          let b1 = isJust $ A.asmTime artifactTime
           let b2 = isCompilationSkippable artifactTime rest
           b1 && b2
         OK.Object -> do

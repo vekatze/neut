@@ -45,9 +45,6 @@ type CacheTime =
 type LLVMTime =
   Maybe UTCTime
 
-type AsmTime =
-  Maybe UTCTime
-
 type ObjectTime =
   Maybe UTCTime
 
@@ -167,17 +164,15 @@ getArtifactTime :: [A.ArtifactTime] -> A.ArtifactTime -> App A.ArtifactTime
 getArtifactTime artifactTimeList artifactTime = do
   cacheTime <- getItemTime' (map A.cacheTime artifactTimeList) $ A.cacheTime artifactTime
   llvmTime <- getItemTime' (map A.llvmTime artifactTimeList) $ A.llvmTime artifactTime
-  asmTime <- getItemTime' (map A.asmTime artifactTimeList) $ A.asmTime artifactTime
   objectTime <- getItemTime' (map A.objectTime artifactTimeList) $ A.objectTime artifactTime
-  return A.ArtifactTime {cacheTime, llvmTime, asmTime, objectTime}
+  return A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
 getBaseArtifactTime :: Source.Source -> App A.ArtifactTime
 getBaseArtifactTime source = do
   cacheTime <- getFreshCacheTime source
   llvmTime <- getFreshLLVMTime source
-  asmTime <- getFreshAsmTime source
   objectTime <- getFreshObjectTime source
-  return A.ArtifactTime {cacheTime, llvmTime, asmTime, objectTime}
+  return A.ArtifactTime {cacheTime, llvmTime, objectTime}
 
 getItemTime' ::
   [Maybe UTCTime] ->
@@ -213,11 +208,6 @@ getFreshLLVMTime :: Source.Source -> App LLVMTime
 getFreshLLVMTime source = do
   llvmPath <- Path.sourceToOutputPath OK.LLVM source
   getFreshTime source llvmPath
-
-getFreshAsmTime :: Source.Source -> App AsmTime
-getFreshAsmTime source = do
-  asmPath <- Path.sourceToOutputPath OK.Asm source
-  getFreshTime source asmPath
 
 getFreshObjectTime :: Source.Source -> App ObjectTime
 getFreshObjectTime source = do
@@ -352,6 +342,5 @@ artifactTimeFromCurrentTime = do
     A.ArtifactTime
       { cacheTime = Just now,
         llvmTime = Just now,
-        asmTime = Just now,
         objectTime = Just now
       }
