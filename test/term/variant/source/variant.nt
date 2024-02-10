@@ -3,8 +3,7 @@ data nat {
 - Succ(nat)
 }
 
-data empty {
-}
+data empty {}
 
 define affine-nat(): unit {
   let _ = Zero in
@@ -168,17 +167,17 @@ define nested-enum-match(t: term(my-enum)): my-enum {
 define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
   let foo = Var("test") in
   let f =
-    () => {
+    function () {
       foo
     }
   in
   let g =
-    () => {
+    function () {
       foo
     }
   in
   let h =
-    () => {
+    function () {
       foo
     }
   in
@@ -210,7 +209,7 @@ define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
       if False {
         h
       } else {
-        () => {
+        function () {
           Var("pohe")
         }
       }
@@ -225,17 +224,18 @@ define unbalanced-freevars-in-branches(a: tau, t: term(a)): term(a) {
 data monoid(a) {
 - Monoid of {
   - m-empty: a
-  - m-op: arrow (a, a) -> a
+  - m-op: (a, a) -> a
   }
 }
 
 define list-monoid(a: tau): monoid(list(a)) {
   Monoid of {
   - m-op =
-    (xs, ys) => {
+    function (xs, ys) {
       core.list.append(xs, ys)
     }
-  - m-empty = []
+  - m-empty =
+    []
   }
 }
 
@@ -282,10 +282,10 @@ define test-match(): unit {
   let _ = unbalanced-freevars-in-branches(_, t4) in
   let _: list(int) = use-struct(list-monoid(_)) in
   let _: list(bool) = use-struct(list-monoid(_)) in
-  let _: list(arrow () -> int) = use-struct(list-monoid(_)) in
+  let _: list(() -> int) = use-struct(list-monoid(_)) in
   let _: list(int) = use-struct-2(list-monoid(_)) in
   let _: list(bool) = use-struct-2(list-monoid(_)) in
-  let _: list(arrow () -> int) = use-struct-2(list-monoid(_)) in
+  let _: list(() -> int) = use-struct-2(list-monoid(_)) in
   Unit
 }
 

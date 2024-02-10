@@ -4,12 +4,12 @@ import {
 }
 
 resource noisy-boxed-int {
-- (v: int) => {
+- function (v: int) {
     print("discarded.\n");
     free(v);
     0
   }
-- (v: int) => {
+- function (v: int) {
     print("copied.\n");
     let orig-value = load-int(v) in
     let new-ptr = malloc(1) in

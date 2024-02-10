@@ -18,7 +18,7 @@ define find-min(a: tau, h: &heap(a)): ?a {
   }
 }
 
-define merge(a: tau, cmp: arrow (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
+define merge(a: tau, cmp: (a, a) -> order, h1: heap(a), h2: heap(a)): heap(a) {
   match h1, h2 {
   - Leaf, h2 =>
     h2
@@ -34,11 +34,11 @@ define merge(a: tau, cmp: arrow (a, a) -> order, h1: heap(a), h2: heap(a)): heap
   }
 }
 
-define insert(a: tau, cmp: arrow (a, a) -> order, x: a, h: heap(a)): heap(a) {
+define insert(a: tau, cmp: (a, a) -> order, x: a, h: heap(a)): heap(a) {
   merge(_, cmp, Node(x, []), h)
 }
 
-define merge-pairs(a: tau, cmp: arrow (a, a) -> order, hs: list(heap(a))): heap(a) {
+define merge-pairs(a: tau, cmp: (a, a) -> order, hs: list(heap(a))): heap(a) {
   match hs {
   - Nil =>
     Leaf
@@ -49,7 +49,7 @@ define merge-pairs(a: tau, cmp: arrow (a, a) -> order, hs: list(heap(a))): heap(
   }
 }
 
-define delete-min(a: tau, cmp: arrow (a, a) -> order, h: heap(a)): ?heap(a) {
+define delete-min(a: tau, cmp: (a, a) -> order, h: heap(a)): ?heap(a) {
   match h {
   - Leaf =>
     none()

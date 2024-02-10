@@ -112,7 +112,7 @@ decodeHorizontallyIfPossible series = do
   case separator series of
     Comma
       | Just k <- container series,
-        containsNoComment series -> do
+        isHorizontalSeries series -> do
           let prefix' = decodePrefix series
           let (open, close) = getContainerPair k
           let elems' = map snd $ elems series
@@ -124,6 +124,31 @@ decodeHorizontallyIfPossible series = do
             ]
     _ ->
       decode series
+
+isHorizontalSeries :: Series D.Doc -> Bool
+isHorizontalSeries series = do
+  null (trailingComment series) && isHorizontalSeries' (elems series)
+
+-- [single, ..., single, multi, .., multi] <=> True
+isHorizontalSeries' :: [(C, D.Doc)] -> Bool
+isHorizontalSeries' elems =
+  case elems of
+    [] ->
+      True
+    (c, d) : rest -> do
+      let isMulti = not (null c) || D.isMulti [d]
+      if isMulti
+        then isHorizontalSeries'' rest
+        else isHorizontalSeries' rest
+
+isHorizontalSeries'' :: [(C, D.Doc)] -> Bool
+isHorizontalSeries'' elems =
+  case elems of
+    [] ->
+      True
+    (c, d) : rest -> do
+      let isMulti = not (null c) || D.isMulti [d]
+      isMulti && isHorizontalSeries'' rest
 
 commaSeqHorizontal :: [D.Doc] -> [PI.Piece]
 commaSeqHorizontal elems =

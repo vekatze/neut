@@ -14,18 +14,18 @@ data heap(a) {
 data heap-signature(a) {
 - Heap of {
   - empty: heap(a)
-  - is-empty: arrow (&heap(a)) -> bool
-  - insert: arrow (a, heap(a)) -> heap(a)
-  - merge: arrow (heap(a), heap(a)) -> heap(a)
-  - find-min: arrow (&heap(a)) -> ?a
-  - delete-min: arrow (heap(a)) -> ?heap(a)
+  - is-empty: (&heap(a)) -> bool
+  - insert: (a, heap(a)) -> heap(a)
+  - merge: (heap(a), heap(a)) -> heap(a)
+  - find-min: (&heap(a)) -> ?a
+  - delete-min: (heap(a)) -> ?heap(a)
   }
 }
 
-define make-heap-signature(a: tau, compare: arrow (a, a) -> order): heap-signature(a) {
+define make-heap-signature(a: tau, compare: (a, a) -> order): heap-signature(a) {
   let merge =
     let rank =
-      (h: &heap(a)) => {
+      function (h: &heap(a)) {
         case h {
         - Leaf =>
           0
@@ -35,7 +35,7 @@ define make-heap-signature(a: tau, compare: arrow (a, a) -> order): heap-signatu
       }
     in
     let make-Node =
-      (x: a, l: heap(a), r: heap(a)) => {
+      function (x: a, l: heap(a), r: heap(a)) {
         let rank1 on l = rank(l) in
         let rank2 on r = rank(r) in
         if ge-int(rank1, rank2) {
@@ -62,9 +62,10 @@ define make-heap-signature(a: tau, compare: arrow (a, a) -> order): heap-signatu
     }
   in
   Heap of {
-  - empty = Leaf
+  - empty =
+    Leaf
   - is-empty =
-    (h: &heap(a)) => {
+    function (h: &heap(a)) {
       case h {
       - Leaf =>
         True
@@ -73,12 +74,12 @@ define make-heap-signature(a: tau, compare: arrow (a, a) -> order): heap-signatu
       }
     }
   - insert =
-    (x: a, h: heap(a)) => {
+    function (x: a, h: heap(a)) {
       merge(Node(1, x, Leaf, Leaf), h)
     }
   - merge
   - find-min =
-    (h: &heap(a)) => {
+    function (h: &heap(a)) {
       case h {
       - Leaf =>
         none()
@@ -87,7 +88,7 @@ define make-heap-signature(a: tau, compare: arrow (a, a) -> order): heap-signatu
       }
     }
   - delete-min =
-    (h: heap(a)) => {
+    function (h: heap(a)) {
       match h {
       - Leaf =>
         none()

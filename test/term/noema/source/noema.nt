@@ -1,7 +1,7 @@
 define test-syntax(): unit {
   let _ = &list(tau) in
   let _ = &list(&list(tau)) in
-  let _ = arrow (&tau, &list(arrow (&list(tau)) -> &list(tau))) -> &list(tau) in
+  let _ = (&tau, &list((&list(tau)) -> &list(tau))) -> &list(tau) in
   let xs: list(int) = [1, 2, 3] in
   let _ on xs =
     let _ on xs =
@@ -103,17 +103,17 @@ define nested-enum-match(t: &term(my-enum)): term(my-enum) {
 define unbalanced-freevars-in-branches(a: tau, t: &term(a)): term(a) {
   let foo = Var("test") in
   let f =
-    () => {
+    function () {
       foo
     }
   in
   let g =
-    () => {
+    function () {
       foo
     }
   in
   let h =
-    () => {
+    function () {
       foo
     }
   in
@@ -150,7 +150,7 @@ define unbalanced-freevars-in-branches(a: tau, t: &term(a)): term(a) {
       if False {
         h
       } else {
-        () => {
+        function () {
           Var("pohe")
         }
       }
@@ -173,7 +173,7 @@ define with-ctx(c: &ctx): unit {
     print("stop\n")
   } else {
     print("loop\n");
-    mutate(counter, (x) => {
+    mutate(counter, function (x) {
       sub-int(x, 1)
     });
     with-ctx(c)

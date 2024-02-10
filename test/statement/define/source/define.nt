@@ -71,7 +71,7 @@ define main(): unit {
   let _ = implicit-1("hello") in
   let _ = implicit-2("hello", tau) in
   let local-func-with-imp-args =
-    <a>(x: a) => {
+    function <a>(x: a) {
       x
     }
   in
