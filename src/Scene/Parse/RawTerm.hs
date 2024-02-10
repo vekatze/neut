@@ -84,16 +84,39 @@ rawTerm = do
               [ do
                   (kvs, c) <- keyValueArgs rawTermKeyValuePair
                   return (m :< RT.PiElimByKey name c1 kvs, c),
-                rawTermPiElimCont m ec
+                rawTermPiElimCont ec
               ]
           _ -> do
-            rawTermPiElimCont m ec
+            rawTermPiElimCont ec
     ]
 
-rawTermPiElimCont :: Hint -> (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
-rawTermPiElimCont m ec = do
+rawTermProjection :: Parser ([((Hint, T.Text), Loc)], C)
+rawTermProjection = do
+  choice
+    [ do
+        c1 <- delimiter "::"
+        (mv, c) <- var
+        loc <- getCurrentLoc
+        (mvs, c') <- rawTermProjection
+        return ((mv, loc) : mvs, c1 ++ c ++ c'),
+      do
+        return ([], [])
+    ]
+
+rawTermPiElimCont :: (RT.RawTerm, C) -> Parser (RT.RawTerm, C)
+rawTermPiElimCont (e, c) = do
+  (projections, cProj) <- rawTermProjection
+  let e'@(m :< _) = foldProjection e projections
   argListList <- many $ seriesParen rawExpr
-  return $ foldPiElim m ec argListList
+  return $ foldPiElim m (e', c ++ cProj) argListList
+
+foldProjection :: RT.RawTerm -> [((Hint, T.Text), Loc)] -> RT.RawTerm
+foldProjection e projections =
+  case projections of
+    [] ->
+      e
+    (proj@(mProj, _), loc) : rest ->
+      foldProjection (mProj :< RT.Projection e proj loc) rest
 
 {-# INLINE rawTermSimple #-}
 rawTermSimple :: Parser (RT.RawTerm, C)

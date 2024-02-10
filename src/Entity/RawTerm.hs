@@ -81,6 +81,7 @@ data RawTermF a
   | Assert C (Hint, T.Text) C C (a, C)
   | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a))
   | With (KeywordClause a)
+  | Projection a (Hint, RawIdent) Loc
   | Brace C (a, C)
 
 type Args a =
