@@ -134,7 +134,6 @@ rawTermSimple = do
 rawTermPi :: Parser (RT.RawTerm, C)
 rawTermPi = do
   m <- getCurrentHint
-  keyword "arrow"
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen (choice [try $ var >>= preAscription, typeWithoutIdent])
   cArrow <- delimiter "->"
@@ -145,11 +144,11 @@ rawTermPi = do
 rawTermPiIntro :: Parser (RT.RawTerm, C)
 rawTermPiIntro = do
   m <- getCurrentHint
+  keyword "function"
   impArgs <- parseImplicitArgs
   expArgs <- seriesParen preBinder
-  cArrow <- delimiter "=>"
   (c1, ((e, c2), loc, c)) <- betweenBrace' rawExpr
-  return (m :< RT.PiIntro impArgs expArgs cArrow (c1, (e, c2)) loc, c)
+  return (m :< RT.PiIntro impArgs expArgs [] (c1, (e, c2)) loc, c)
 
 rawTermKeyValuePair :: Parser ((Hint, Key, C, C, RT.RawTerm), C)
 rawTermKeyValuePair = do

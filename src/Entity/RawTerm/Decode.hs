@@ -46,8 +46,7 @@ toDoc term =
       nameToDoc varOrLocator
     _ :< Pi (impArgs, c1) (expArgs, c2) c cod _ -> do
       PI.arrange
-        [ PI.horizontal $ D.text "arrow",
-          PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+        [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
           PI.container $ attachComment c1 $ SE.decode $ fmap piArgToDoc expArgs,
           PI.delimiter $ attachComment c2 $ D.text "->",
           PI.inject $ attachComment c $ toDoc cod
@@ -56,9 +55,9 @@ toDoc term =
       let body' = decodeBlock $ RT.mapEL toDoc body
       D.join
         [ PI.arrange
-            [ PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
-              PI.container $ attachComment c1 $ SE.decode $ fmap piIntroArgToDoc expArgs,
-              PI.delimiter $ attachComment c2 $ D.text "=>"
+            [ PI.horizontal $ D.text "function",
+              PI.container $ SE.decode $ fmap piIntroArgToDoc impArgs,
+              PI.delimiterLeftAligned $ attachComment (c1 ++ c2) $ SE.decode $ fmap piIntroArgToDoc expArgs
             ],
           PI.arrange [PI.inject $ attachComment c3 body']
         ]
