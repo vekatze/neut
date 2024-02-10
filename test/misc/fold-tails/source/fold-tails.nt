@@ -39,7 +39,7 @@ define gen(n: nat): list(nat) {
   }
 }
 
-define fold-r(a: tau, b: tau, f: arrow (b, a) -> a, acc: a, xs: list(b)): a {
+define fold-r(a: tau, b: tau, f: (b, a) -> a, acc: a, xs: list(b)): a {
   match xs {
   - Nil =>
     acc
@@ -83,7 +83,7 @@ define main(): unit {
   let _ = yss in
   let zs =
     // [26, ..., 1]
-    map((l) => {
+    map(function (l) {
       head(l)
     }, yss)
   in
@@ -94,7 +94,7 @@ define main(): unit {
   let _ = zs in
   let result-nat =
     // 26 + ... + 1 = 351
-    fold-r(nat, nat, (a, b) => {
+    fold-r(nat, nat, function (a, b) {
       add-nat(a, b)
     }, Zero, zs)
   in

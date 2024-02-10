@@ -4,9 +4,9 @@ import {
 
 define test-syntax(): unit {
   let _ = flow(tau) in
-  let _ = arrow (flow(tau)) -> tau in
-  let _ = arrow (tau) -> flow(tau) in
-  let _ = arrow (flow(tau), flow(tau)) -> arrow (flow(tau)) -> flow(tau) in
+  let _ = (flow(tau)) -> tau in
+  let _ = (tau) -> flow(tau) in
+  let _ = (flow(tau), flow(tau)) -> (flow(tau)) -> flow(tau) in
   let _ = flow(flow(tau)) in
   let _ = detach {Unit} in
   let _ =
@@ -17,7 +17,7 @@ define test-syntax(): unit {
     }
   in
   let _ =
-    () => {
+    function () {
       let fl =
         detach {
           let _ = Unit in
@@ -29,7 +29,7 @@ define test-syntax(): unit {
     }
   in
   let _ =
-    (fl: flow(unit)) => {
+    function (fl: flow(unit)) {
       attach {
         let _ = Unit in
         fl
@@ -124,17 +124,17 @@ define test-behavior(): unit {
   in
   let _ = ch in
   let ch = new-channel() in
-  let ch: channel(arrow () -> int) = ch in
+  let ch: channel(() -> int) = ch in
   let _ = ch in
   let _ on ch =
-    send(ch, () => {
+    send(ch, function () {
       1
     })
   in
   let ch = ch in
   let ch-clone = ch in
   let _ on ch-clone =
-    send(ch-clone, () => {
+    send(ch-clone, function () {
       1
     })
   in
@@ -142,7 +142,7 @@ define test-behavior(): unit {
     let f =
       detach {
         Ext.sleep(1);
-        send(ch-clone, () => {
+        send(ch-clone, function () {
           3
         })
       }
@@ -150,7 +150,7 @@ define test-behavior(): unit {
     let g =
       detach {
         Ext.sleep(1);
-        send(ch-clone, () => {
+        send(ch-clone, function () {
           4
         })
       }

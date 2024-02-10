@@ -1,5 +1,5 @@
 define bar(xs-cell: &cell(list(int))): unit {
-  borrow(xs-cell, (xs) => {
+  borrow(xs-cell, function (xs) {
     let len = length(xs) in
     print-int(len);
     print("\n")
@@ -11,14 +11,14 @@ define main(): unit {
   let xs-cell = new-cell(xs) in
   let _ on xs-cell =
     let _ = bar(xs-cell) in
-    mutate(xs-cell, (xs) => {
+    mutate(xs-cell, function (xs) {
       Cons(4, xs)
     });
     let _ = bar(xs-cell) in
-    mutate(xs-cell, (_) => {
+    mutate(xs-cell, function (_) {
       Nil
     });
-    mutate(xs-cell, (xs) => {
+    mutate(xs-cell, function (xs) {
       Cons(4, xs)
     });
     bar(xs-cell)

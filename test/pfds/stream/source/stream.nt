@@ -13,7 +13,7 @@ data stream-cell(a) {
 }
 
 data stream(a) {
-- Stream(arrow () -> stream-cell(a))
+- Stream(() -> stream-cell(a))
 }
 
 define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
@@ -22,7 +22,7 @@ define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
   - Nil =>
     ys
   - Cons(x1, rest) =>
-    Stream(() => {
+    Stream(function () {
       Cons(x1, append(a, rest, ys))
     })
   }
@@ -30,18 +30,18 @@ define append(a: tau, xs: stream(a), ys: stream(a)): stream(a) {
 
 define take(a: tau, n: int, xs: stream(a)): stream(a) {
   if eq-int(n, 0) {
-    Stream(() => {
+    Stream(function () {
       Nil
     })
   } else {
     let Stream(k) = xs in
     match k() {
     - Nil =>
-      Stream(() => {
+      Stream(function () {
         Nil
       })
     - Cons(x, rest) =>
-      Stream(() => {
+      Stream(function () {
         Cons(x, take(a, sub-int(n, 1), rest))
       })
     }
@@ -50,8 +50,8 @@ define take(a: tau, n: int, xs: stream(a)): stream(a) {
 
 define main(): unit {
   let my-stream: stream(int) =
-    Stream(() => {
-      Cons(1, Stream(() => {
+    Stream(function () {
+      Cons(1, Stream(function () {
         Nil
       }))
     })

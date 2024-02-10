@@ -44,12 +44,11 @@ define tail(a: tau, xs: &custom-stack(a)): ?&custom-stack(a) {
 }
 
 define main(): unit {
-  let xs = empty(arrow () -> int) in
-  // let v = Pair(() => {1}, () => {2}) in
+  let xs = empty(() -> int) in
   let v =
-    Pair(() => {
+    Pair(function () {
       1
-    }, () => {
+    }, function () {
       2
     })
   in
