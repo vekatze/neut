@@ -76,8 +76,6 @@ emit' llvmCode kind path = do
   case kind of
     OK.LLVM -> do
       Path.writeByteString path llvmCode
-    OK.Asm ->
-      emitInner ("-S" : words clangOptString) llvmCode path
     OK.Object ->
       emitInner (words clangOptString) llvmCode path
 
