@@ -14,7 +14,7 @@ I believe the last one is particularly interesting, as it means Neut found memor
 
 ## How Does it Basically Look Like?
 
-Like below:
+Like the below:
 
 ```neut
 // algebraic data types (tau = the type of types)
@@ -65,8 +65,8 @@ An example scenario:
 
 ```sh
 # setting up the core module (i.e. standard library)
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst"
-export NEUT_CORE_MODULE_DIGEST="Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg="
+export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-37.tar.zst"
+export NEUT_CORE_MODULE_DIGEST="ocDmPr9kkTZJMkJnYpZGrX8-skEB0YUCls5HeWSb7r8"
 
 # get the compiler (choose one)
 curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
@@ -110,4 +110,4 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tutoria
 
 You might also find the module system of Neut interesting. *It distinguishes modules using the digests (checksums) of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
-Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment) for more.
+Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
