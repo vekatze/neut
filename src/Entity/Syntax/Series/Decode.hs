@@ -24,14 +24,6 @@ decode series = do
         ]
     (Just Angle, True) ->
       D.Nil
-    (Just k, True)
-      | null (trailingComment series) -> do
-          let (open, close) = getContainerPair k
-          PI.arrange
-            [ PI.inject prefix',
-              PI.inject $ D.text open,
-              PI.inject $ D.text close
-            ]
     (Just k, _) -> do
       let (open, close) = getContainerPair k
       case sep of
