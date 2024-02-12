@@ -1,9 +1,9 @@
-# Configuration
+# Environment Variables
 
 The behavior of the compiler can be adjusted using the following environment variables:
 
 | Environment Variable      | Meaning                           |
-|---------------------------|-----------------------------------|
+| ------------------------- | --------------------------------- |
 | `NEUT_CACHE_DIR`          | the directory used to save caches |
 | `NEUT_CLANG`              | the command to call `clang`       |
 | `NEUT_CORE_MODULE_DIGEST` | the digest of the core module     |
@@ -14,7 +14,7 @@ The behavior of the compiler can be adjusted using the following environment var
 The default values are as follows:
 
 | Environment Variable      | Default Value                 |
-|---------------------------|-------------------------------|
+| ------------------------- | ----------------------------- |
 | `NEUT_CACHE_DIR`          | `$XDG_CACHE_HOME/neut`        |
 | `NEUT_CLANG`              | `clang`                       |
 | `NEUT_CORE_MODULE_DIGEST` | (undefined; you must set one) |
