@@ -1,20 +1,45 @@
 # LSP Support
 
-The compiler also contains an experimental LSP server to provide a better development experience in an editor-agnostic way. The LSP server currently supports:
+The compiler also contains an experimental LSP server to provide a better development experience in an editor-agnostic way.
 
-1. jump to definition,
-2. linting on save, and
-3. function name completion.
+For editor-specific configurations, see [the next section](editor-support.md).
 
-You can launch the LSP server by running `neut lsp`. Thus, for example, if you're using `eglot`, you can set up the LSP server as follows:
+## Showcase
 
-```neut
-(add-to-list 'eglot-server-programs
-             `(neut-mode . ("neut" "lsp" "--no-color")))
-```
+The LSP server currently has the following features:
 
-The command `neut lsp` must be run inside a project directory. Otherwise, it will report an error something like below:
+- Lint
+- Complete (+ automatic import)
+- Jump to definition
+- Find references
+- Format on save (+ remove unused imports)
+- Show the type of a symbol
+- Highlight symbols
 
-```text
-error: couldn't find a module file (context: /Users/foo/)
-```
+### Lint
+
+![check](./image/screencasts/check.gif "check")
+
+### Completion (+ automatic import)
+
+![completion](./image/screencasts/completion.gif "completion")
+
+### Jump to definition
+
+![jump to definition](./image/screencasts/jump-to-definition.gif "jump to definition")
+
+### Find references
+
+![find references](./image/screencasts/find-references.gif "find references")
+
+### Format on save (+ remove unused imports)
+
+![format on save](./image/screencasts/format-on-save.gif "format on save")
+
+### Show the type of a symbol
+
+![hover type](./image/screencasts/hover-type.gif "hover type")
+
+### Highlight symbols
+
+![highlight](./image/screencasts/highlight.gif "highlight")
