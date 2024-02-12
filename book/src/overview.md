@@ -1,6 +1,6 @@
 # Neut Programming Language
 
-Neut is a dependently-typed programming language with *static memory management*.
+Neut is a dependently-typed programming language with _static memory management_.
 
 Its key features include:
 
@@ -10,7 +10,7 @@ Its key features include:
   <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
 </ul>
 
-I believe the last one is particularly interesting, as it means Neut found memory predictability *inside* the usual λ-calculus.
+I believe the last one is particularly interesting, as it means Neut found memory predictability _inside_ the usual λ-calculus.
 
 ## How Does it Basically Look Like?
 
@@ -38,7 +38,7 @@ define noisy-length(a: tau, xs: my-list(a)): int {
 
 ## Static Memory Management — But How?
 
-*Neut translates a type into a function* that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.
+_Neut translates a type into a function_ that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.
 
 For example, if a variable is used twice, conceptually, a translation like below will happen:
 
@@ -57,46 +57,7 @@ If you need more, see [Chapter 2 (Main Ideas)](./main-ideas.md).
 
 ---
 
-You may be wondering: *"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"*. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
-
-## Quickstart?
-
-An example scenario:
-
-```sh
-# setting up the core module (i.e. standard library)
-export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-37.tar.zst"
-export NEUT_CORE_MODULE_DIGEST="ocDmPr9kkTZJMkJnYpZGrX8-skEB0YUCls5HeWSb7r8"
-
-# get the compiler (choose one)
-curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
-curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
-curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
-
-# ... and make it executable
-chmod +x ~/.local/bin/neut
-
-# let's create a sample project
-neut create sample
-cd sample
-cat source/sample.nt
-# => define main(): unit {
-#      print("Hello, world!\n")
-#    }
-
-# build & execute it
-neut build --execute
-# => Hello, world!
-
-# build it & copy the resulting binary to ./bin
-neut build --install ./bin
-
-# ... and execute it
-./bin/sample
-# => Hello, world!
-```
-
-To learn more about how to use the language, follow [Chapter 3 (Language Tutorial)](./language-tutorial.md).
+You may be wondering: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
 
 ## List of Other Basic Characteristics?
 
@@ -108,6 +69,6 @@ To learn more about how to use the language, follow [Chapter 3 (Language Tutoria
 
 ## Anything Else?
 
-You might also find the module system of Neut interesting. *It distinguishes modules using the digests (checksums) of tarballs* and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
+You might also find the module system of Neut interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
 Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
