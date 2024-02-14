@@ -51,7 +51,7 @@ hljs.registerLanguage("neut", function (hljs) {
     },
     contains: [
       { className: "type",
-        begin: "tau|&|:<|flow|[A-Z][a-z0-9A-Z-]*",
+        begin: "tau|&|:<|flow|\\b[A-Z][a-z0-9A-Z-]*",
       },
       {
         className: "string",
@@ -66,7 +66,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|\\*|:|this|&|-(?=\\s)|tuple|magic",
+        begin: "<=|->|=>|\\*|:|this|&|\\b-(?=\\s)|tuple|magic",
       },
       hljs.COMMENT(
         "//", // begin

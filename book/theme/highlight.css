@@ -58,7 +58,7 @@
 
 .hljs-keyword,
 .hljs-selector-tag {
-  color: var(--mid-blue);
+  color: var(--light-blue);
   background-color: var(--dark-blue);
 }
 
