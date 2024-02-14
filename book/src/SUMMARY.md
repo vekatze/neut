@@ -1,30 +1,33 @@
 # Summary
 
 - [Overview](./overview.md)
+- [Installation / Uninstallation](./installation.md)
+- [Tutorial](./tutorial.md)
+- [Language Reference](./language-reference.md)
+  - [Basics](./basics.md)
+  - [Terms](./terms.md)
+  - [Statements](./statements.md)
+  - [Modules](./modules.md)
+  - [Command Line Interface](./comand-line-interface.md)
+  - [Environment Variables](./environment-variables.md)
+- [Development Support](./development-environment.md)
+  - [The LSP Server](./lsp-support.md)
+  - [Editor Modes](./editor-support.md)
+  - [Rapid Prototyping](./zen.md)
+
+# Appendix
+
 - [Main Ideas](./main-ideas.md)
   - [In a Linear Language](./in-a-linear-language.md)
   - [Executing Types](./executing-types.md)
   - [Exponentials in Action](./exponentials-in-action.md)
   - [Noetic Optimization](./noetic-optimization.md)
   - [Allocation Canceling](./allocation-canceling.md)
-- [Language Reference](./language-reference.md)
-  - [Terms](./terms.md)
-  - [Statements](./statements.md)
-  - [Modules](./modules.md)
-  - [Command Line Interface](./comand-line-interface.md)
-  - [Environment Variables](./environment-variables.md)
-- [Development Environment](./development-environment.md)
-  - [LSP Support](./lsp-support.md)
-  - [Editor Support](./editor-support.md)
-  - [Zen](./zen.md)
-- [Benchmarks](./benchmarks.md)
-
-# Appendix
-
 - [Lower Level Programming](./lower-level-programming.md)
   - [Introspection](./introspection.md)
   - [Magic](./magic.md)
   - [Resource Type](./resource-type.md)
+- [Benchmarks](./benchmarks.md)
 - [Executing the Function Type](./executing-the-function-type.md)
 - [Some Backstage Notes](./some-backstage-notes.md)
 

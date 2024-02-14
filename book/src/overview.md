@@ -17,6 +17,11 @@ I believe the last one is particularly interesting, as it means Neut found memor
 Like the below:
 
 ```neut
+// the obligated hello world
+define hello(): unit {
+  print("Hello, world!\n")
+}
+
 // algebraic data types (tau = the type of types)
 data my-list(a: tau) {
 - Nil
