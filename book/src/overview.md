@@ -12,6 +12,8 @@ Its key features include:
 
 I believe the last one is particularly interesting, as it means Neut found memory predictability *inside* the usual λ-calculus.
 
+(Note: I'm rewriting this whole book to make it up-to-date. ETA: before April 2024)
+
 ## How Does it Basically Look Like?
 
 Like below:
