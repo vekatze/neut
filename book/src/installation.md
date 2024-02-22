@@ -1,4 +1,4 @@
-# Installation / Uninstallation
+# Installation & Uninstallation
 
 ## Installation
 

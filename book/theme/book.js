@@ -109,6 +109,41 @@ hljs.registerLanguage("ens", function (hljs) {
   };
 });
 
+hljs.registerLanguage("llvm", function (hljs) {
+  return {
+    keywords: {
+      $pattern: /[\w-:=<>]+/,
+      keyword: [
+        "define"
+      ].join(" "),
+    },
+    contains: [
+      { className: "type",
+        begin: "\\bptr\\b|i64",
+      },
+      {
+        className: "string",
+        scope: "string",
+        begin: '"',
+        end: '"',
+        contains: [hljs.BACKSLASH_ESCAPE],
+      },
+      {
+        className: "hole-suffix",
+        begin: /\/[0-9]+/,
+      },
+      {
+        className: "builtin",
+        begin: "add|ptrtoint|inttoptr|getelementptr|call|store|load|null|fastcc",
+      },
+      hljs.COMMENT(
+        ";", // begin
+        "$" // end
+      ),
+    ],
+  };
+});
+
 (function codeSnippets() {
   // Syntax highlighting Configuration
   hljs.configure({

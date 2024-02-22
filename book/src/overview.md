@@ -12,7 +12,7 @@ Its key features include:
 
 I believe the last one is particularly interesting, as it means Neut found memory predictability _inside_ the usual λ-calculus.
 
-## How Does it Basically Look Like?
+## How Does it Look?
 
 Like the below:
 
@@ -71,6 +71,7 @@ You may be wondering: _"So we need to, for example, copy the whole list just to 
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
   - That is, the usual one in functional programming, but a bit generalized
+- Built-in LSP support
 
 ## Anything Else?
 

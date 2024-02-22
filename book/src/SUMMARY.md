@@ -1,8 +1,8 @@
 # Summary
 
 - [Overview](./overview.md)
-- [Installation / Uninstallation](./installation.md)
-- [Tutorial](./tutorial.md)
+- [Installation & Uninstallation](./installation.md)
+- [Getting Started](./tutorial.md)
 - [Language Reference](./language-reference.md)
   - [Basics](./basics.md)
   - [Terms](./terms.md)
@@ -14,6 +14,7 @@
   - [The LSP Server](./lsp-support.md)
   - [Editor Modes](./editor-support.md)
   - [Rapid Prototyping](./zen.md)
+- [What's Next?](./contribution.md)
 
 # Appendix
 
