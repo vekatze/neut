@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Overview - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Overview - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/index.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html" class="active"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="neut-programming-language"><a class="header" href="#neut-programming-language">Neut Programming Language</a></h1>
+<p>Neut is a dependently-typed programming language with <em>static memory management</em>.</p>
+<p>Its key features include:</p>
+<ul class="star-list">
+  <li>Full λ-calculus support</li>
+  <li>Static memory management</li>
+  <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
+</ul>
+<p>I believe the last one is particularly interesting, as it means Neut found memory predictability <em>inside</em> the usual λ-calculus.</p>
+<p>(Note: I'm rewriting this whole book to make it up-to-date. ETA: before April 2024)</p>
+<h2 id="how-does-it-basically-look-like"><a class="header" href="#how-does-it-basically-look-like">How Does it Basically Look Like?</a></h2>
+<p>Like below:</p>
+<pre><code class="language-neut">// algebraic data types (tau = the type of types)
+data my-list(a: tau) {
+- Nil
+- Cons(a, my-list(a))
+}
+
+// a recursive function with pattern matching
+define noisy-length(a: tau, xs: my-list(a)): int {
+  match xs {
+  - Nil =&gt;
+    0
+  - Cons(_, ys) =&gt;
+    let my-message = &quot;hey\n&quot; in
+    print(my-message);
+    add-int(1, noisy-length(a, ys))
+  }
+}
+</code></pre>
+<h2 id="static-memory-management--but-how"><a class="header" href="#static-memory-management--but-how">Static Memory Management — But How?</a></h2>
+<p><em>Neut translates a type into a function</em> that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.</p>
+<p>For example, if a variable is used twice, conceptually, a translation like below will happen:</p>
+<pre><code class="language-neut">let xs: list(a) = [value-1, value-2] in
+some-func(xs, xs) // `xs` is used twice
+
+// ↓
+
+let xs: list(a) = [value-1, value-2] in
+let (xs1, xs2) = copy-list-a(xs) in // now `xs` is used exactly once
+some-func(xs1, xs2)
+</code></pre>
+<p>If you need more, see <a href="./main-ideas.html">Chapter 2 (Main Ideas)</a>.</p>
+<hr />
+<p>You may be wondering: <em>&quot;So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?&quot;</em>. This topic is covered in <a href="./noetic-optimization.html">Section 2.4 (Noetic Optimization)</a>. As written there, those redundant copyings can be avoided. The idea is to add a new type <code>&amp;a</code>, the noema type of <code>a</code>, which is the same as <code>a</code> except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.</p>
+<h2 id="quickstart"><a class="header" href="#quickstart">Quickstart?</a></h2>
+<p>An example scenario:</p>
+<pre><code class="language-sh"># setting up the core module (i.e. standard library)
+export NEUT_CORE_MODULE_URL=&quot;https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst&quot;
+export NEUT_CORE_MODULE_DIGEST=&quot;Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=&quot;
+
+# get the compiler (choose one)
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
+
+# ... and make it executable
+chmod +x ~/.local/bin/neut
+
+# let's create a sample project
+neut create sample
+cd sample
+cat source/sample.nt
+# =&gt; define main(): unit {
+#      print(&quot;Hello, world!\n&quot;)
+#    }
+
+# build &amp; execute it
+neut build --execute
+# =&gt; Hello, world!
+
+# build it &amp; copy the resulting binary to ./bin
+neut build --install ./bin
+
+# ... and execute it
+./bin/sample
+# =&gt; Hello, world!
+</code></pre>
+<p>To learn more about how to use the language, follow <a href="./language-tutorial.html">Chapter 3 (Language Tutorial)</a>.</p>
+<h2 id="list-of-other-basic-characteristics"><a class="header" href="#list-of-other-basic-characteristics">List of Other Basic Characteristics?</a></h2>
+<ul>
+<li>Call by value (i.e. non-lazy)</li>
+<li>Impure</li>
+<li>Compiles to <a href="https://llvm.org/docs/LangRef.html">LLVM IR</a>, assembly, and binary</li>
+<li>The type system ≒ <a href="https://en.wikipedia.org/wiki/Calculus_of_constructions">CoC</a> + <a href="https://en.wikipedia.org/wiki/Algebraic_data_type">ADT</a> + fix - universe hierarchy
+<ul>
+<li>That is, the usual one in functional programming, but a bit generalized</li>
+</ul>
+</li>
+</ul>
+<h2 id="anything-else"><a class="header" href="#anything-else">Anything Else?</a></h2>
+<p>You might also find the module system of Neut interesting. <em>It distinguishes modules using the digests (checksums) of tarballs</em> and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see <a href="./module-system.html">Chapter 4 (Module System)</a>.</p>
+<p>Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See <a href="./development-environment">Chapter 5 (Development Environment)</a> for more.</p>
+
+            <footer id="footer-paginator">
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="main-ideas.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html" class="active"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

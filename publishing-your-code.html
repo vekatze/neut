@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Publishing Your Code - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Publishing Your Code - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/publishing-your-code.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html" class="active"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="publishing-your-code"><a class="header" href="#publishing-your-code">Publishing Your Code</a></h1>
+<h2 id="creating-an-archive-for-your-module"><a class="header" href="#creating-an-archive-for-your-module">Creating an Archive for Your Module</a></h2>
+<p>You can create a tarball for your module using <code>neut archive VERSION</code>:</p>
+<pre><code class="language-sh"># create a new release
+neut archive 0-1-0-0
+
+tree .
+# =&gt; ./
+#    ├── archive/
+#    │  └── 0-1-0-0.tar.zst ← NEW!
+#    ├── source/
+#    │  └── hey.nt
+#    └── module.ens
+</code></pre>
+<p>The command <code>neut archive</code> creates a tarball for the current module. The resulting tarball can be, for example, committed and pushed to your repository. Then, a user of your library can then add it to their module using <code>neut add ALIAS URL</code>.</p>
+<h2 id="identity-of-a-module"><a class="header" href="#identity-of-a-module">Identity of a Module</a></h2>
+<p>As we've seen, Neut identifies a module using its tarball's digest, which I believe isn't a very common approach.</p>
+<p>Now, suppose that you released a library <code>X</code> with version <code>1-0-0</code>. The library contains a file like below:</p>
+<pre><code class="language-neut">data some-type {
+- Foo
+- Bar(some-type)
+}
+
+define func(): some-type {
+  Foo
+}
+
+define add-bar(x: some-type): some-type {
+  Bar(some-type)
+}
+</code></pre>
+<p>One day you find a bug in <code>func</code>. You fix this bug and release the new version as <code>1-0-1</code>. Both of the definitions of <code>some-time</code> and <code>add-bar</code> are the same between <code>1-0-0</code> and <code>1-0-1</code>, of course.</p>
+<p>Now, if every package was naively identified only by its digest, the <code>add-bar</code> in <code>1-0-1</code> cannot be applied to values of type <code>some-type</code> in <code>1-0-0</code>, since the argument of <code>add-bar</code> in <code>1-0-1</code> must be of type <code>some-type</code> in <code>1-0-1</code>.</p>
+<p>Therefore, if we use a library <code>A</code> which uses <code>X</code> of version <code>1-0-0</code>, and also a library <code>B</code> which uses <code>X</code> of version <code>1-0-1</code>, we can't make these two libraries <code>A</code> and <code>B</code> cooperate in our module. I believe this isn't desirable. We would like to equate the two compatible versions in some way.</p>
+<p>Neut resolves this problem via an approach based on Semantic Versioning, as described below.</p>
+<h2 id="practical-significance-of-semantic-versioning"><a class="header" href="#practical-significance-of-semantic-versioning">Practical Significance of Semantic Versioning</a></h2>
+<p>Firstly, the <code>VERSION</code> in <code>neut archive VERSION</code> must follow a versioning scheme that is essentially the same as Semantic Versioning.</p>
+<p>If you release a version of your module that is compatible with existing modules, <em>the compatibility information is saved to the module file in the newly-created tarball</em>. The module file thus contains the list of digests of all the compatible but older alternatives.</p>
+<p>For example, suppose you have <code>archive/0-1-0-0.tar.zst</code>. If you run <code>neut archive 0-1-1-0</code>, which is a minor update release, the module file in <code>archive/0-1-1-0.tar.zst</code> should contain:</p>
+<pre><code class="language-ens">{
+  // ...
+  antecedent [
+    &quot;-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=&quot;
+  ]
+  // ...
+}
+</code></pre>
+<p>where the <code>-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=</code> is the digest of the existing tarball <code>0-1-0-0.tar.zst</code>. The value of <code>antecedent</code> stores all the digests of the existing compatible releases. In this way, the module file stores compatibility information.</p>
+<p>This compatibility information is then used by the compiler. When building a module, the compiler constructs a graph of antecedents, and <em>always uses the latest compatible version of a module by tracing the graph</em> during compilation.</p>
+<p>In this sense, the field <code>antecedent</code> defines the identity of a library.</p>
+<h2 id="actual-versioning-scheme"><a class="header" href="#actual-versioning-scheme">Actual Versioning Scheme</a></h2>
+<p>Versions like <code>1-0-0</code>, <code>10-2</code>, <code>0-1-3</code>, or <code>0-0-0-1-8-0</code> are supported. Each natural number between <code>-</code> is called a version segment. The string until the first non-zero version segment is the major version of the release. For example, the major version of <code>10-2-8</code> is <code>10</code>. That of <code>0-0-0-1-8-0</code> is <code>0-0-0-1</code>.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="importing-names.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="development-environment.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html" class="active"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

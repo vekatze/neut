@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Executing Types - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Executing Types - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/executing-types.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html" class="active"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="executing-types"><a class="header" href="#executing-types">Executing Types</a></h1>
+<p>Here, we'll see how a type is translated into a function that copies/discards the terms of the type. To see the basic idea, let's take a simple ADT for example:</p>
+<pre><code class="language-neut">data item {
+- New(int, int)
+}
+</code></pre>
+<p>Suppose that the internal representation of <code>New(10, 20)</code> is something like below:</p>
+<pre><code class="language-neut">New(10, 20)
+
+// ↓ (compile)
+
+let v = malloc({2-words}) in
+store(10, v[0]);
+store(20, v[1]);
+v
+</code></pre>
+<p>We'll see how the type <code>item</code> is translated.</p>
+<h3 id="copyingdiscarding-a-value"><a class="header" href="#copyingdiscarding-a-value">Copying/Discarding a Value</a></h3>
+<p>First of all, in this case, a value <code>v</code> of type <code>item</code> can be discarded as follows:</p>
+<pre><code class="language-neut">free(v)
+</code></pre>
+<p>That is, we just have to apply <code>free</code> to the pointer. Also, the <code>v</code> can be copied as follows:</p>
+<pre><code class="language-neut">// get values from `v`
+let v1 = v[0] in
+let v2 = v[1] in
+
+// deallocate original `v`
+free(v);
+
+// allocate memory regions to store new values
+let v-copy-x = malloc({2-words}) in
+let v-copy-y = malloc({2-words}) in
+
+// store values to the new pointers
+store(v1, v-copy-x[0]);
+store(v1, v-copy-y[0]);
+store(v2, v-copy-x[1]);
+store(v2, v-copy-y[1]);
+
+// ... and return
+(v-copy-x, v-copy-y)
+</code></pre>
+<h3 id="combining-copyingdiscarding-functions"><a class="header" href="#combining-copyingdiscarding-functions">Combining Copying/Discarding functions</a></h3>
+<p>Using the two procedures above, the type <code>item</code> is translated into a function like below:</p>
+<pre><code class="language-neut">define exp-item(selector, v) {
+  if selector == 0 {
+    // discard
+    free(v)
+  } else {
+    // copy
+    let v1 = v[0] in
+    let v2 = v[1] in
+    free(v);
+    let ptr-x = malloc({2-words}) in
+    let ptr-y = malloc({2-words}) in
+    store(v1, ptr-x[0]);
+    store(v1, ptr-y[0]);
+    store(v2, ptr-x[1]);
+    store(v2, ptr-y[1]);
+    (ptr-x, ptr-y)
+  }
+}
+</code></pre>
+<p><code>exp-item(selector, v)</code> discards <code>v</code> if <code>selector</code> is 0. Otherwise, <code>exp-item</code> consumes <code>v</code>, creates two new copies, and then returns them as a tuple.</p>
+<p>Also, an <code>item</code> in source file is compiled into a pointer to <code>exp-item</code>.</p>
+<p>More generally, a type <code>a</code> is translated into something like below:</p>
+<pre><code class="language-neut">define exp-a(selector, v) {
+  if selector == 0 {
+    // a proceduce that discards v
+  } else {
+    // a procedure that copies `v`, consuming the original `v`
+  }
+}
+</code></pre>
+<p>We'll call such a function as the resource exponential of the type <code>a</code>.</p>
+<h3 id="example-behavior-of-types"><a class="header" href="#example-behavior-of-types">Example Behavior of Types</a></h3>
+<p>This <code>exp-item</code> is called when a variable is used relevantly (= more than once) as follows:</p>
+<pre><code class="language-neut">let x = New(10, 20) in
+let a = foo(x) in // first use of `x`
+let b = bar(x) in // second use of `x`
+let c = buz(x) in // third use of `x`
+cont(a, b, c)
+
+// ↓
+
+let x = New(10, 20) in
+let (x1, tmp) = exp-item(1, x) in // copy `x` by passing 1 as `selector`
+let (x2, x3) = exp-item(1, tmp) in
+let a = foo(x1) in
+let b = bar(x2) in
+let c = buz(x3) in
+cont(a, b, c)
+</code></pre>
+<p><code>exp-item</code> is also called when a variable is used affinely (= unused) as follows:</p>
+<pre><code class="language-neut">let x = New(10, 20) in
+print(&quot;hello&quot;) // `x` isn't used
+
+// ↓
+
+let x = New(10, 20) in
+let () = exp-item(0, x) in // discard `x` by passing 0 as `selector`
+print(&quot;hello&quot;)
+</code></pre>
+<p>Note that the variable <code>x</code> is used linearly after translation. Every variable in Neut is linearized in this way so that we can now enjoy the power of linearity.</p>
+<p>This copying/discarding procedure happens <em>immediately after a variable is defined</em>. This is also a source of the memory predictability of Neut.</p>
+<h2 id="the-real-faster-behavior"><a class="header" href="#the-real-faster-behavior">The Real (Faster) Behavior</a></h2>
+<p>The behavior of an exponential is a bit different in the real implementation. There, a variable is copied as follows:</p>
+<pre><code class="language-neut">let x = New(10, 20) in
+let a = foo(x) in // first use of `x`
+let b = bar(x) in // second use of `x`
+cont(a, b)
+
+// ↓
+
+let x = New(10, 20) in
+let x-copy = exp-item(1, x) in
+let a = foo(x-copy) in
+let b = bar(x) in
+cont(a, b)
+</code></pre>
+<p>That is, the copying part of <code>exp-item</code> is reformulated so that it returns only a clone. This avoids creating unnecessary tuples. Although the resulting code contains multiple uses of <code>x</code> now, this is safe because we reformulate <code>exp-item</code> so that it won't deallocate <code>x</code>.</p>
+<p>All in all, the actual implementation of <code>exp-item</code> will be something like the below:</p>
+<pre><code class="language-neut">define exp-item(selector, v) {
+  if selector == 0 {
+    // discard `v`
+    free(v)
+  } else {
+    // copy `v`, keeping the original `v` intact
+    let ptr = malloc({2-words}) in
+    let v1 = v[0] in
+    let v2 = v[1] in
+    ptr
+  }
+}
+</code></pre>
+<p>Or, more generally, type <code>A</code> is translated into something like below:</p>
+<pre><code class="language-neut">// note: exp-A cannot contain any free variables
+define exp-A(selector, v) {
+  if selector == 0 {
+    // a proceduce that discards v
+  } else {
+    // a procedure that creates a copy of `v`, keeping original `v` intact
+  }
+}
+</code></pre>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="in-a-linear-language.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="exponentials-in-action.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html" class="active"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

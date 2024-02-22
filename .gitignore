@@ -1,0 +1,15 @@
+.stack-work/
+.stack-ide/
+neut.cabal
+.DS_Store
+test/res
+*.prof
+target/
+.build/
+test/**/build/
+dist-newstyle/
+book/dist/
+test/sandbox/
+actual
+bin/
+package.yaml

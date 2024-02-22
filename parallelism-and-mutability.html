@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Parallelism and Mutability - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Parallelism and Mutability - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/parallelism-and-mutability.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html" class="active"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="parallelism-and-mutability"><a class="header" href="#parallelism-and-mutability">Parallelism and Mutability</a></h1>
+<h2 id="detachingattaching-control-flows"><a class="header" href="#detachingattaching-control-flows">Detaching/Attaching Control Flows</a></h2>
+<p>Neut has built-in support for parallelism. It is a thin layer over pthread, and works like async/await:</p>
+<pre><code class="language-neut">let f1: flow(int) =
+  detach { // like async
+    print(&quot;fA&quot;);
+    1
+  }
+in
+let f2: flow(int) =
+  detach { // like async
+    print(&quot;fb&quot;);
+    2
+  }
+in
+let v1 = attach f1 in // like await
+let v2 = attach f2 in // like await
+print(&quot;hey&quot;)
+</code></pre>
+<p><code>detach</code> is like async in other languages. <code>detach</code> detaches the specified control flow from the current control flow. More specifically, when <code>detach { ... }</code> is executed, a new thread is created and the content of <code>detach</code> is executed in the thread.</p>
+<p>The type of <code>detach { e }</code> is <code>flow(a)</code> if <code>e: a</code>. Other languages might call this type a promise or a future.</p>
+<p><code>attach e</code> is like await. <code>attach</code> waits for the control flow <code>e</code> to complete, and gets its resulting value. The type of <code>attach e</code> is <code>a</code> if <code>e: flow(a)</code>.</p>
+<h2 id="communication-between-control-flows"><a class="header" href="#communication-between-control-flows">Communication Between Control Flows</a></h2>
+<p>Flows can send/receive values using channels. A channel in Neut is similar to that of Go.</p>
+<p>You can create a channel using <code>new-channel</code>, and send/receive values using those channels.</p>
+<pre><code class="language-neut">let ch0 = new-channel(int) in
+let ch1 = new-channel(int) in
+// channels as queues
+let result on ch0, ch1 =
+  let f =
+    detach {
+      let message0 = receive(_, ch0) in // receive value from ch0
+      send(int, ch1, add-int(message0, 1)); // send value to ch1
+      message0
+    }
+  in
+  let g =
+    detach {
+      let message1 = receive(_, ch1) in // receive value from ch1
+      add-int(message1, 1)
+    }
+  in
+  send(int, ch0, 0); // send value to ch0
+  let v1 = attach f in
+  let v2 = attach g in
+  print(&quot;hey&quot;)
+in
+// ... cont ...
+</code></pre>
+<p>The type of a channel is <code>channel(a)</code>, where the <code>a</code> is the type of values that are sent/received. You'll typically use the noema of a channel because both <code>send</code> and <code>receive</code> expect the noema of a channel.</p>
+<p>You can send a value into a channel using <code>send</code>, and receive one using <code>receive</code>.</p>
+<p>A channel internally has a queue, and <code>send</code> stores a value to that queue.</p>
+<p>When you call <code>receive</code>, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, <code>receive</code> blocks until a value is sent to the queue.</p>
+<p>Incidentally, as mentioned above, a channel in Neut is similar to that of Go (and indeed inspired by Go to some extent), but actually, the main inspiration was from <a href="https://dl.acm.org/doi/10.1145/3371086">Par Means Parallel: Multiplicative Linear Logic Proofs as Concurrent Functional Programs</a>.</p>
+<h2 id="mutable-variables"><a class="header" href="#mutable-variables">Mutable Variables</a></h2>
+<p><code>channel(a)</code> can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type <code>cell(a)</code> is a wrapper of such a channel:</p>
+<pre><code class="language-neut">define sample(): int {
+  let xs: list(int) = [] in
+
+  // create a new cell using `new-cell`
+  let xs-cell = new-cell(list(int), xs) in
+
+  // create a noema of a cell
+  let result on xs-cell =
+    // mutate the cell using `mutate` (add an element)
+    mutate(_, xs-cell, (xs) =&gt; { 1 :: xs });
+
+    // peek the content of a cell using `borrow`
+    let len1 = borrow(_, _, xs-cell, (xs) =&gt; { length(xs) }) in
+    // (len1 == 1)
+
+    // mutate again
+    mutate(_, xs-cell, (xs) =&gt; { 2 :: xs });
+
+    // get the length of the list in the cell, again
+    let len2 = borrow(_, _, xs-cell, (xs) =&gt; { length(xs) }) in
+    // (len2 == 2)
+
+    ...
+  in
+  ...
+}
+</code></pre>
+<p>Here, the type of related wrapper functions are:</p>
+<pre><code class="language-neut">// create a new channel
+new-cell(a: tau, x: a): cell(a)
+
+// mutate the content of a cell
+mutate(a: tau, ch: &amp;cell(a), f: a -&gt; a): top
+
+// borrow the content of a cell and do something
+borrow(a: tau, b: tau, ch: &amp;cell(a), f: &amp;a -&gt; b): b
+
+// clone the content of a cell
+clone(a: tau, ch: &amp;cell(a)): a
+</code></pre>
+<p>The definition of, for example, <code>mutate</code> is like the below:</p>
+<pre><code class="language-neut">define mutate(a: tau, ch: &amp;cell(a), f: a -&gt; a): top {
+  let ch = magic.cast(&amp;cell(a), &amp;channel(a), ch) in
+  let v = receive(a, ch) in
+  send(a, ch, f(v))
+}
+</code></pre>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="noetic-programming.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="other-built-in-utilities.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html" class="active"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

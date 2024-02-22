@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Preliminaries - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Preliminaries - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/preliminaries.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html" class="active"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="preliminaries"><a class="header" href="#preliminaries">Preliminaries</a></h1>
+<p>In this section, we'll see how to create, build, and run a module. We'll also see what will happen when a variable is used non-linearly.</p>
+<h2 id="working-with-a-module"><a class="header" href="#working-with-a-module">Working with a Module</a></h2>
+<h3 id="creating-a-module"><a class="header" href="#creating-a-module">Creating a Module</a></h3>
+<p>Run the following command to create your first module:</p>
+<pre><code class="language-neut">neut create hello
+cd hello
+</code></pre>
+<p>The module should contain a file <code>hello.nt</code> with the following content:</p>
+<pre><code class="language-neut">define main(): unit {
+  print(&quot;Hello, world!\n&quot;)
+}
+</code></pre>
+<p>Let's compile and execute it:</p>
+<pre><code class="language-sh">$ neut build --execute
+# =&gt; Hello, world!
+</code></pre>
+<h3 id="building-a-module"><a class="header" href="#building-a-module">Building a Module</a></h3>
+<p>At the root of your module, you should find <code>module.ens</code>. It should contain the following:</p>
+<pre><code class="language-ens">{
+  // ...
+  target {
+    hello &quot;hello.nt&quot;
+  }
+  // ...
+}
+</code></pre>
+<p>This defines the entry point for a target named <code>hello</code>. Every file declared here must define a function <code>main</code>, which in turn is used by the command <code>neut build TARGET</code>; This command starts compilation assuming that a function <code>main</code> is in <code>hello.nt</code>.</p>
+<!-- That is, the file `"hello.nt"` must define a function named `main`. -->
+<p>If you omit <code>TARGET</code>, <code>neut build</code> simply builds all the targets.</p>
+<p>If you pass <code>--execute</code>, <code>neut build</code> runs the resulting executable after building it.</p>
+<p>If you pass <code>--install DIR</code>, the resulting binary is copied into the directory <code>DIR</code>.</p>
+<p>Incidentally, the paths of source files specified in <code>module.ens</code> are relative to <code>/source/</code>.</p>
+<h2 id="structure-of-a-source-file"><a class="header" href="#structure-of-a-source-file">Structure of a Source File</a></h2>
+<p>The basic structure of a source file is as follows:</p>
+<pre><code class="language-neut">// import other files
+import {
+- foo.bar
+- this.buz
+}
+
+// define functions and types
+// (the order of functions and types doesn't matter in Neut)
+
+define func(arg-1: int): int {
+  arg-1
+}
+
+// ...
+</code></pre>
+<h2 id="linearization-of-variables"><a class="header" href="#linearization-of-variables">Linearization of Variables</a></h2>
+<p>In Neut, a variable is copied/discarded when used non-linearly. Consider the following code:</p>
+<pre><code class="language-neut">define foo(): list(int) {
+  let xs = [1, 2] in
+  // (X)
+  let ys = xs in
+  // (Y)
+  let zs = xs in
+  // (Z)
+  c
+}
+</code></pre>
+<p>In this example, since the variable <code>xs</code> is used three times, <code>xs</code> is copied twice. This will happen immediately after a variable is defined. In our example, <code>xs</code> is copied twice at <code>(X)</code>.</p>
+<p>Also, since the variables <code>ys</code> and <code>zs</code> aren't used, the contents of them are discarded. Again, this will happen immediately after a variable is defined. In our running example, the content of <code>ys</code> is discarded at <code>(Y)</code>, and <code>zs</code> at <code>(Z)</code>.</p>
+<p>Try to use variables linearly when possible for better performance. When you can't avoid non-linearity, you can try using a noema, which is explained later in this chapter. Before that, let's see how the non-noetic fragment of the language behaves.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="installation.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="ADTs-and-lambdas.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html" class="active"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

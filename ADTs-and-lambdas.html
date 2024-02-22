@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>ADTs and Lambdas - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="ADTs and Lambdas - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/ADTs-and-lambdas.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html" class="active"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="adts-and-lambdas"><a class="header" href="#adts-and-lambdas">ADTs and Lambdas</a></h1>
+<p>In this section, we'll see how to use basic values of Neut: algebraic data types (ADTs) and lambdas.</p>
+<h2 id="algebraic-data-types"><a class="header" href="#algebraic-data-types">Algebraic Data Types</a></h2>
+<h3 id="basics"><a class="header" href="#basics">Basics</a></h3>
+<p>ADTs can be defined like below:</p>
+<pre><code class="language-neut">// Defining an algebraic data type
+data my-list(a) {
+- MyNil
+- MyCons(a, my-list(a))
+}
+
+// nullary data types are also allowed
+data test {
+- Foo
+- Bar
+- Buz() // explicit nullary data types
+}
+</code></pre>
+<p>They can be used like the below:</p>
+<pre><code class="language-neut">define create-my-list(): my-list(int) {
+  // using constructors
+  MyCons(1, MyCons(2, MyNil))
+}
+
+define get-length(a: tau, xs: my-list(a)): int {
+  // pattern matching against a my-list
+  match xs {
+  - MyNil =&gt;
+    0
+  - MyCons(1, MyNil) =&gt; // nested pattern matching is available
+    1
+  - MyCons(_, rest) =&gt;
+    add-int(1, get-length(a, rest))
+  }
+}
+</code></pre>
+<p>The name of a constructor must start with an uppercase letter.</p>
+<h3 id="memory-behavior"><a class="header" href="#memory-behavior">Memory Behavior</a></h3>
+<p>When a constructor is called, a memory region for the constructor is allocated. The internal representation of things like <code>MyCons(1, Nil)</code> is:</p>
+<pre><code class="language-neut">(pointer-to-a, discriminant, 1, pointer-to-Nil) // 4-word tuple
+</code></pre>
+<p>where the <code>discriminant</code> is an integer that is used to distinguish constructors; In this case, the actual value for <code>MyCons</code> will be 1. That of <code>MyNil</code> will be 0.</p>
+<p>When <code>match</code> is used against a value of an ADT, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if <code>MyCons(1, Nil)</code> is supplied to a <code>match</code>, the following will happen:</p>
+<ol>
+<li>the <code>1</code> and <code>pointer-to-Nil</code> are bound to some variables,</li>
+<li>the <code>pointer-to-a</code> is discarded along its type <code>tau</code>,</li>
+<li>the outer 4-word tuple is freed, and</li>
+<li>the body of the clause is executed.</li>
+</ol>
+<hr />
+<p>If an ADT and all its constructor don't have any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:</p>
+<pre><code class="language-neut">data color {
+- Red
+- Blue
+- Green
+}
+</code></pre>
+<p>The internal representation of <code>Red</code> in this case is optimized into <code>0</code>. That of <code>Blue</code> is optimized into <code>1</code>, and so on.</p>
+<hr />
+<p>Also, if an ADT has only one constructor and the constructor has only one argument (i.e. the ADT is like a <code>newtype</code> in Haskell), its internal representation is automatically optimized into its content. For example, consider the following code:</p>
+<pre><code class="language-neut">data semigroup(a) {
+- Semigroup((a, a) -&gt; a)
+}
+</code></pre>
+<p>Since the type <code>semigroup</code> has only one constructor (<code>Semigroup</code>) and the constructor has only one argument (<code>(a, a) -&gt; a</code>), the internal representation of <code>Semigroup(e)</code> is optimized into that of <code>e</code>.</p>
+<h2 id="lambdas"><a class="header" href="#lambdas">Lambdas</a></h2>
+<h3 id="basics-1"><a class="header" href="#basics-1">Basics</a></h3>
+<p>You can create a lambda abstraction (anonymous function) and use it as an ordinary function:</p>
+<pre><code class="language-neut">define sample(): int {
+  let inc = (x) =&gt; { add-int(x) } in // create a lambda function int -&gt; int
+  inc(10) // and call it
+}
+</code></pre>
+<p>Also, the type of functions is written as follows in Neut:</p>
+<pre><code class="language-neut">define sample(): int {
+  let type1 = int -&gt; int in         // receives int          / returns int
+  let type2 = (int, bool) -&gt; int in // receives int and bool / returns int
+  let type3 = () -&gt; int in          // receives nothing      / returns int
+  0
+}
+</code></pre>
+<h3 id="memory-behavior-1"><a class="header" href="#memory-behavior-1">Memory Behavior</a></h3>
+<p>A <code>lambda</code> is compiled into a three-word tuple:</p>
+<pre><code class="language-neut">(type-of-free-variables, (freevar-1, ..., freevar-n), pointer-to-closed-function)
+</code></pre>
+<p>When you call a lambda, things like below will happen:</p>
+<pre><code class="language-neut">func(a, b, c)
+
+// ↓ (source code to LLVM)
+
+let free-variables = func[1] in
+let closed-function = func[2] in
+free(func); // free the outer tuple
+CALL closed-function(a, b, c, free-variables) // LLVM-level function call
+</code></pre>
+<h2 id="local-recursion"><a class="header" href="#local-recursion">Local Recursion</a></h2>
+<h3 id="basics-2"><a class="header" href="#basics-2">Basics</a></h3>
+<p>As we've seen, a recursive function can be defined by using <code>define</code>. You can also use <code>mu</code> to define a &quot;local&quot; recursive function:</p>
+<pre><code class="language-neut">define foo(x: int): int {
+  let some-variable = 1 in
+  let some-rec-func =
+    // creating a local recursive function `my-rec-func`
+    mu my-rec-func(y: int): int {
+      if eq-int(y, 0) {
+        some-variable // free variables can be used normally in `mu`
+      } else {
+        print(&quot;hey\n&quot;);
+        my-rec-func(sub-int(y, 1)) // recursive call
+      }
+    }
+  in
+  some-rec-func(x)
+}
+</code></pre>
+<h3 id="behavior"><a class="header" href="#behavior">Behavior</a></h3>
+<p>An anonymous recursive function is translated into a top-level recursive function (i.e. ordinary lambda lifting). For example, the example above is translated into something like below:</p>
+<pre><code class="language-neut">define my-rec-func(y: int, z: int) {
+  if le-int(y, 0) {
+    z
+  } else {
+    print(&quot;hey\n&quot;);
+    my-rec-func(sub-int(y, 1), z)
+  }
+}
+
+define fact(x: int): int {
+  let some-variable = 1 in
+  let some-rec-func = (y: int) =&gt; { my-rec-func(y, some-variable) } in
+  some-rec-func(x)
+}
+</code></pre>
+<p>In practice, one may think of <code>mu</code> as a nested <code>define</code>.</p>
+<h2 id="some-useful-notations"><a class="header" href="#some-useful-notations">Some Useful Notations</a></h2>
+<h3 id="holes-and-implicit-arguments"><a class="header" href="#holes-and-implicit-arguments">Holes and Implicit Arguments</a></h3>
+<p>A hole in Neut is written as <code>_</code>. The content of a hole is inferred by the type system at compile time. This can be useful when we, for example, call a polymorphic function. Suppose we have the following <code>for-each</code> function:</p>
+<pre><code class="language-neut">define for-each(a: tau, b: tau, xs: list(a), f: a -&gt; b): list(b) {
+  match xs {
+  - [] =&gt;
+    []
+  - y :: ys =&gt;
+    f(y) :: for-each(a, b, ys, f)
+  }
+}
+</code></pre>
+<p>If it were not for holes, we'd have to call this function as follows:</p>
+<pre><code class="language-neut">let bool-list = for-each(int, bool, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<p>Using holes, the function can be called without specifying its type arguments explicitly:</p>
+<pre><code class="language-neut">let bool-list = for-each(_, _, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<h3 id="supplying-holes"><a class="header" href="#supplying-holes">Supplying Holes</a></h3>
+<p>When defining a function, you can specify some of its arguments to be implicit:</p>
+<pre><code class="language-neut">// `a: tau` and `b: tau` are implicit
+define for-each[a: tau, b: tau](xs: list(a), f: a -&gt; b): list(b) {
+  ..
+}
+</code></pre>
+<p>Or even shorter:</p>
+<pre><code class="language-neut">define for-each[a, b](xs: list(a), f: a -&gt; b): list(b) {
+  ..
+}
+</code></pre>
+<p>You can call this <code>for-each</code> as if it were a binary function:</p>
+<pre><code class="language-neut">let bool-list = for-each(int-list, int-to-bool-func) in
+cont
+
+// ↓ (automatically translated to)
+
+let bool-list = for-each(_, _, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<p>This can be useful when achieving better readability (YMMV):</p>
+<pre><code class="language-neut">// with implicit arguments
+for-each(xss, (xs) =&gt; {
+  for-each(xs, (x) =&gt; {
+    int-to-bool(x)
+  })
+})
+
+// without implicit arguments
+for-each(list(int), list(bool), xss, (xs) =&gt; {
+  for-each(int, bool, xs, (x) =&gt; {
+    int-to-bool(x)
+  })
+})
+</code></pre>
+<p>You can also write <code>@foo</code> to pass implicit arguments explicitly (as in Coq and Lean):</p>
+<pre><code class="language-neut">let bool-list = @for-each(int, bool, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<h3 id="keyword-arguments"><a class="header" href="#keyword-arguments">Keyword Arguments</a></h3>
+<p>The arguments of a function can be supplied using their names:</p>
+<pre><code class="language-neut">define some-function(a: int, some-argument: tau, b: tau): int {
+  // ...
+}
+
+define caller(): int {
+  let _ =
+    // calling a function using the name of arguments
+    some-function of {
+    - b =&gt; tau
+    - a =&gt; 20
+    - some-argument =&gt; tau
+    }
+  in
+  0
+}
+
+</code></pre>
+<p>This <code>of</code>-notation can also be used with a constructor:</p>
+<pre><code class="language-neut">data config {
+- Config(some-value: my-list(int), foo: int, bar: my-list(int))
+}
+
+define create-struct(): config(my-list(int)) {
+  // create a struct using keyword arguments
+  Config of {
+  - foo =&gt; 30
+  - bar =&gt; MyNil
+  - some-value =&gt; MyCons(3, MyNil)
+  }
+}
+</code></pre>
+<p>or when defining an ADT:</p>
+<pre><code class="language-neut">data config {
+- Config of {
+  - some-value: my-list(int)
+  - foo: int
+  - bar: my-list
+  }
+}
+</code></pre>
+<p>This notation can also be used in pattern matchings:</p>
+<pre><code class="language-neut">define use-config(cfg: config): unit {
+  let Config of { foo =&gt; a, bar =&gt; b, some-value =&gt; c } = config in
+  do-something(a, b, c)
+}
+</code></pre>
+<p>Or more shortly:</p>
+<pre><code class="language-neut">define use-config(cfg: config): unit {
+  let Config of { foo, bar, buz } = config in
+  do-something(foo, bar, buz)
+}
+
+// The following two are equivalent:
+//   let Config of { foo,        bar,        buz        } = config in cont
+//   let Config of { foo =&gt; foo, bar =&gt; bar, buz =&gt; buz } = config in cont
+</code></pre>
+<p>You can also omit unused fields:</p>
+<pre><code class="language-neut">define use-config(cfg: config): unit {
+  let Config of { foo, bar } = config in // `buz` is omitted
+  do-something(foo, bar)
+}
+
+// The following two are equivalent:
+//   let Config of { foo,        bar                  } = config in cont
+//   let Config of { foo =&gt; foo, bar =&gt; bar, buz =&gt; _ } = config in cont
+</code></pre>
+<h3 id="a-notation-for-single-branch-pattern-matching"><a class="header" href="#a-notation-for-single-branch-pattern-matching">A Notation for Single-Branch Pattern Matching</a></h3>
+<p>You can rewrite a single-branch <code>match</code> into <code>let</code> as follows:</p>
+<pre><code class="language-neut">// an example ADT
+data item {
+- Item of {
+  - foo: int
+  - bar: bool
+  }
+}
+
+// before
+define some-func(x: item): int {
+  match x {
+  - Item(foo, bar) =&gt;
+    foo
+  }
+}
+
+// after
+define some-func(x: item): int {
+  let Item(foo, bar) = x in
+  foo
+}
+</code></pre>
+<h2 id="other-basic-types"><a class="header" href="#other-basic-types">Other Basic Types</a></h2>
+<p>Basic types (integers, floats, bools, etc.) are also available in Neut, of course. This will be covered in <a href="./other-built-in-utilities.html">the last section of this chapter</a>.</p>
+<h2 id="how-can-i-say-hello-to-the-world"><a class="header" href="#how-can-i-say-hello-to-the-world">How Can I Say Hello to The World?</a></h2>
+<p>The above should cover the basics of Neut. It won't suffice, however; We can't even do the beloved Hello World now. This is because the type of static text is a noetic type, which is covered in the next section. Let's go ahead.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="preliminaries.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="noetic-programming.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html" class="active"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

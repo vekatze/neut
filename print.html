@@ -1,0 +1,2106 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/print.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="neut-programming-language"><a class="header" href="#neut-programming-language">Neut Programming Language</a></h1>
+<p>Neut is a dependently-typed programming language with <em>static memory management</em>.</p>
+<p>Its key features include:</p>
+<ul class="star-list">
+  <li>Full λ-calculus support</li>
+  <li>Static memory management</li>
+  <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
+</ul>
+<p>I believe the last one is particularly interesting, as it means Neut found memory predictability <em>inside</em> the usual λ-calculus.</p>
+<p>(Note: I'm rewriting this whole book to make it up-to-date. ETA: before April 2024)</p>
+<h2 id="how-does-it-basically-look-like"><a class="header" href="#how-does-it-basically-look-like">How Does it Basically Look Like?</a></h2>
+<p>Like below:</p>
+<pre><code class="language-neut">// algebraic data types (tau = the type of types)
+data my-list(a: tau) {
+- Nil
+- Cons(a, my-list(a))
+}
+
+// a recursive function with pattern matching
+define noisy-length(a: tau, xs: my-list(a)): int {
+  match xs {
+  - Nil =&gt;
+    0
+  - Cons(_, ys) =&gt;
+    let my-message = &quot;hey\n&quot; in
+    print(my-message);
+    add-int(1, noisy-length(a, ys))
+  }
+}
+</code></pre>
+<h2 id="static-memory-management--but-how"><a class="header" href="#static-memory-management--but-how">Static Memory Management — But How?</a></h2>
+<p><em>Neut translates a type into a function</em> that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.</p>
+<p>For example, if a variable is used twice, conceptually, a translation like below will happen:</p>
+<pre><code class="language-neut">let xs: list(a) = [value-1, value-2] in
+some-func(xs, xs) // `xs` is used twice
+
+// ↓
+
+let xs: list(a) = [value-1, value-2] in
+let (xs1, xs2) = copy-list-a(xs) in // now `xs` is used exactly once
+some-func(xs1, xs2)
+</code></pre>
+<p>If you need more, see <a href="./main-ideas.html">Chapter 2 (Main Ideas)</a>.</p>
+<hr />
+<p>You may be wondering: <em>&quot;So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?&quot;</em>. This topic is covered in <a href="./noetic-optimization.html">Section 2.4 (Noetic Optimization)</a>. As written there, those redundant copyings can be avoided. The idea is to add a new type <code>&amp;a</code>, the noema type of <code>a</code>, which is the same as <code>a</code> except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.</p>
+<h2 id="quickstart"><a class="header" href="#quickstart">Quickstart?</a></h2>
+<p>An example scenario:</p>
+<pre><code class="language-sh"># setting up the core module (i.e. standard library)
+export NEUT_CORE_MODULE_URL=&quot;https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst&quot;
+export NEUT_CORE_MODULE_DIGEST=&quot;Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=&quot;
+
+# get the compiler (choose one)
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
+
+# ... and make it executable
+chmod +x ~/.local/bin/neut
+
+# let's create a sample project
+neut create sample
+cd sample
+cat source/sample.nt
+# =&gt; define main(): unit {
+#      print(&quot;Hello, world!\n&quot;)
+#    }
+
+# build &amp; execute it
+neut build --execute
+# =&gt; Hello, world!
+
+# build it &amp; copy the resulting binary to ./bin
+neut build --install ./bin
+
+# ... and execute it
+./bin/sample
+# =&gt; Hello, world!
+</code></pre>
+<p>To learn more about how to use the language, follow <a href="./language-tutorial.html">Chapter 3 (Language Tutorial)</a>.</p>
+<h2 id="list-of-other-basic-characteristics"><a class="header" href="#list-of-other-basic-characteristics">List of Other Basic Characteristics?</a></h2>
+<ul>
+<li>Call by value (i.e. non-lazy)</li>
+<li>Impure</li>
+<li>Compiles to <a href="https://llvm.org/docs/LangRef.html">LLVM IR</a>, assembly, and binary</li>
+<li>The type system ≒ <a href="https://en.wikipedia.org/wiki/Calculus_of_constructions">CoC</a> + <a href="https://en.wikipedia.org/wiki/Algebraic_data_type">ADT</a> + fix - universe hierarchy
+<ul>
+<li>That is, the usual one in functional programming, but a bit generalized</li>
+</ul>
+</li>
+</ul>
+<h2 id="anything-else"><a class="header" href="#anything-else">Anything Else?</a></h2>
+<p>You might also find the module system of Neut interesting. <em>It distinguishes modules using the digests (checksums) of tarballs</em> and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see <a href="./module-system.html">Chapter 4 (Module System)</a>.</p>
+<p>Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See <a href="./development-environment">Chapter 5 (Development Environment)</a> for more.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="main-ideas"><a class="header" href="#main-ideas">Main Ideas</a></h1>
+<p>In this chapter, we'll see how Neut realizes static memory management.</p>
+<p><a href="./in-a-linear-language.html">Section 2.1 (In a Linear Language)</a> briefly examines a linear language to see how things behave in a simplified scenario. Starting from here, we'll look for a way to exploit the power of linearity from a non-linear language.</p>
+<p><a href="./executing-types.html">Section 2.2 (Executing Types)</a> explains the idea of translating types into functions that can copy and discard the terms of the types. Neut's approach to static memory management is twofold, and this section is about the <em>&quot;fair&quot;</em> part of it.</p>
+<p><a href="./exponentials-in-action.html">Section 2.3 (Exponentials in Action)</a> supplements the previous section, showing how concrete types in Neut are compiled into functions.</p>
+<p><a href="./noetic-optimization.html">Section 2.4 (Noetic Optimization)</a> provides a loophole to achieve better performance. Using this loophole, we can avoid certain unsatisfactory runtime behaviors caused by the &quot;fair&quot; translation. This section is about the <em>&quot;cheat&quot;</em> part of Neut's approach.</p>
+<p><a href="./allocation-canceling.html">Section 2.5 (Allocation Canceling)</a> explains how Neut utilizes its static nature to optimize away certain memory allocations. This can result in pretty big performance improvements.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="in-a-linear-language"><a class="header" href="#in-a-linear-language">In a Linear Language</a></h1>
+<h2 id="using-a-variable-exactly-once"><a class="header" href="#using-a-variable-exactly-once">Using a Variable Exactly Once</a></h2>
+<p>Consider a toy language in which every variable is used exactly once. Something like this:</p>
+<pre><code class="language-neut">let x = 1 in
+let y = x + 2 in
+let f =
+  // lambda function
+  (z) =&gt; {
+    y + z // (A)
+  }
+in
+f(4)
+</code></pre>
+<p>The variables <code>x</code>, <code>y</code>, <code>z</code>, and <code>f</code> are used exactly once. Such a use of a variable is called &quot;linear&quot;.</p>
+<p>In such a language, we just have to allocate memory when a value is defined and deallocate unnecessary parts after the value is used. This can be done because, in such a language, we know that a value won't be used ever again if once used. In a linear language, static memory management is almost trivial.</p>
+<h2 id="linearity-and-expressiveness"><a class="header" href="#linearity-and-expressiveness">Linearity and Expressiveness</a></h2>
+<p>As you can easily tell, however, a naive linear language is fairly restrictive. You can't even, for example, apply the same lambda function twice:</p>
+<pre><code class="language-neut">let increment = (x) =&gt; { x + 1 } in
+increment(increment(3)) // error: `increment` is used twice
+</code></pre>
+<p>So we need a remedy here. The possible approaches are (A) staying inside linearity, or (B) going out of linearity.</p>
+<p>The former way requires us to introduce some machinery for recovering expressiveness, like annotating the type system. Since one of the main aims of Neut is to realize the ordinary λ-calculus in a memory-predictable manner, this option can't be taken now. The resulting language must be something that allows every λ-term (which isn't because the latter way is objectively better or whatever, but simply because I find natural deduction lovely).</p>
+<p>Neut thus takes the latter way. It starts from a non-linear language, our usual λ-calculus, and tries to recover the power of linearity, without annotating the type system.</p>
+<h2 id="luck-of-neut"><a class="header" href="#luck-of-neut">Luck of Neut</a></h2>
+<p>That might sound difficult. Luckily, however, Neut found a way inside the λ-calculus that translates a non-linear language into a linear one. The key is to execute types. <em>Using a type to copy/discard the terms of the type</em>.</p>
+<p>If we can copy/discard values, we can adjust the use variables so that all of them are linear. Indeed, if a variable isn't used, we can insert <code>discard(x)</code>. If a variable is used more than twice, we can insert <code>copy(x)</code> as necessary.</p>
+<p>After linearizing the language, we can enjoy the paradise of linearity; static memory management is almost trivial now.</p>
+<p>In the next section, we'll see how types can be used to copy/discard their values.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="executing-types"><a class="header" href="#executing-types">Executing Types</a></h1>
+<p>Here, we'll see how a type is translated into a function that copies/discards the terms of the type. To see the basic idea, let's take a simple ADT for example:</p>
+<pre><code class="language-neut">data item {
+- New(int, int)
+}
+</code></pre>
+<p>Suppose that the internal representation of <code>New(10, 20)</code> is something like below:</p>
+<pre><code class="language-neut">New(10, 20)
+
+// ↓ (compile)
+
+let v = malloc({2-words}) in
+store(10, v[0]);
+store(20, v[1]);
+v
+</code></pre>
+<p>We'll see how the type <code>item</code> is translated.</p>
+<h3 id="copyingdiscarding-a-value"><a class="header" href="#copyingdiscarding-a-value">Copying/Discarding a Value</a></h3>
+<p>First of all, in this case, a value <code>v</code> of type <code>item</code> can be discarded as follows:</p>
+<pre><code class="language-neut">free(v)
+</code></pre>
+<p>That is, we just have to apply <code>free</code> to the pointer. Also, the <code>v</code> can be copied as follows:</p>
+<pre><code class="language-neut">// get values from `v`
+let v1 = v[0] in
+let v2 = v[1] in
+
+// deallocate original `v`
+free(v);
+
+// allocate memory regions to store new values
+let v-copy-x = malloc({2-words}) in
+let v-copy-y = malloc({2-words}) in
+
+// store values to the new pointers
+store(v1, v-copy-x[0]);
+store(v1, v-copy-y[0]);
+store(v2, v-copy-x[1]);
+store(v2, v-copy-y[1]);
+
+// ... and return
+(v-copy-x, v-copy-y)
+</code></pre>
+<h3 id="combining-copyingdiscarding-functions"><a class="header" href="#combining-copyingdiscarding-functions">Combining Copying/Discarding functions</a></h3>
+<p>Using the two procedures above, the type <code>item</code> is translated into a function like below:</p>
+<pre><code class="language-neut">define exp-item(selector, v) {
+  if selector == 0 {
+    // discard
+    free(v)
+  } else {
+    // copy
+    let v1 = v[0] in
+    let v2 = v[1] in
+    free(v);
+    let ptr-x = malloc({2-words}) in
+    let ptr-y = malloc({2-words}) in
+    store(v1, ptr-x[0]);
+    store(v1, ptr-y[0]);
+    store(v2, ptr-x[1]);
+    store(v2, ptr-y[1]);
+    (ptr-x, ptr-y)
+  }
+}
+</code></pre>
+<p><code>exp-item(selector, v)</code> discards <code>v</code> if <code>selector</code> is 0. Otherwise, <code>exp-item</code> consumes <code>v</code>, creates two new copies, and then returns them as a tuple.</p>
+<p>Also, an <code>item</code> in source file is compiled into a pointer to <code>exp-item</code>.</p>
+<p>More generally, a type <code>a</code> is translated into something like below:</p>
+<pre><code class="language-neut">define exp-a(selector, v) {
+  if selector == 0 {
+    // a proceduce that discards v
+  } else {
+    // a procedure that copies `v`, consuming the original `v`
+  }
+}
+</code></pre>
+<p>We'll call such a function as the resource exponential of the type <code>a</code>.</p>
+<h3 id="example-behavior-of-types"><a class="header" href="#example-behavior-of-types">Example Behavior of Types</a></h3>
+<p>This <code>exp-item</code> is called when a variable is used relevantly (= more than once) as follows:</p>
+<pre><code class="language-neut">let x = New(10, 20) in
+let a = foo(x) in // first use of `x`
+let b = bar(x) in // second use of `x`
+let c = buz(x) in // third use of `x`
+cont(a, b, c)
+
+// ↓
+
+let x = New(10, 20) in
+let (x1, tmp) = exp-item(1, x) in // copy `x` by passing 1 as `selector`
+let (x2, x3) = exp-item(1, tmp) in
+let a = foo(x1) in
+let b = bar(x2) in
+let c = buz(x3) in
+cont(a, b, c)
+</code></pre>
+<p><code>exp-item</code> is also called when a variable is used affinely (= unused) as follows:</p>
+<pre><code class="language-neut">let x = New(10, 20) in
+print(&quot;hello&quot;) // `x` isn't used
+
+// ↓
+
+let x = New(10, 20) in
+let () = exp-item(0, x) in // discard `x` by passing 0 as `selector`
+print(&quot;hello&quot;)
+</code></pre>
+<p>Note that the variable <code>x</code> is used linearly after translation. Every variable in Neut is linearized in this way so that we can now enjoy the power of linearity.</p>
+<p>This copying/discarding procedure happens <em>immediately after a variable is defined</em>. This is also a source of the memory predictability of Neut.</p>
+<h2 id="the-real-faster-behavior"><a class="header" href="#the-real-faster-behavior">The Real (Faster) Behavior</a></h2>
+<p>The behavior of an exponential is a bit different in the real implementation. There, a variable is copied as follows:</p>
+<pre><code class="language-neut">let x = New(10, 20) in
+let a = foo(x) in // first use of `x`
+let b = bar(x) in // second use of `x`
+cont(a, b)
+
+// ↓
+
+let x = New(10, 20) in
+let x-copy = exp-item(1, x) in
+let a = foo(x-copy) in
+let b = bar(x) in
+cont(a, b)
+</code></pre>
+<p>That is, the copying part of <code>exp-item</code> is reformulated so that it returns only a clone. This avoids creating unnecessary tuples. Although the resulting code contains multiple uses of <code>x</code> now, this is safe because we reformulate <code>exp-item</code> so that it won't deallocate <code>x</code>.</p>
+<p>All in all, the actual implementation of <code>exp-item</code> will be something like the below:</p>
+<pre><code class="language-neut">define exp-item(selector, v) {
+  if selector == 0 {
+    // discard `v`
+    free(v)
+  } else {
+    // copy `v`, keeping the original `v` intact
+    let ptr = malloc({2-words}) in
+    let v1 = v[0] in
+    let v2 = v[1] in
+    ptr
+  }
+}
+</code></pre>
+<p>Or, more generally, type <code>A</code> is translated into something like below:</p>
+<pre><code class="language-neut">// note: exp-A cannot contain any free variables
+define exp-A(selector, v) {
+  if selector == 0 {
+    // a proceduce that discards v
+  } else {
+    // a procedure that creates a copy of `v`, keeping original `v` intact
+  }
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="exponentials-in-action"><a class="header" href="#exponentials-in-action">Exponentials in Action</a></h1>
+<h2 id="exponential-for-immediates"><a class="header" href="#exponential-for-immediates">Exponential for Immediates</a></h2>
+<p>Immediates like integers or floats can be used multiple times safely since they don't need malloc/free. This fact is reflected by their corresponding exponentials. The types of integers and floats are translated into something like the below:</p>
+<pre><code class="language-neut">define exp-immediate(selector, v) {
+  if selector == 0 {
+    0 // do nothing against `v` (no `free` is necessary)
+  } else {
+    v // just use the original one as a copy
+  }
+}
+</code></pre>
+<p>It might be worth noting that, since these fake exponentials are inlined at compile time, there's no runtime cost. Inlining is omitted here for explanatory purposes.</p>
+<h2 id="exponential-for-the-type-of-types"><a class="header" href="#exponential-for-the-type-of-types">Exponential for The Type of Types</a></h2>
+<p>Neut is a dependently-typed programming language. This means that the type of type, <code>tau</code>, can also be used as an ordinary value:</p>
+<pre><code class="language-neut">let t = tau in
+let a = f(t) in
+let b = g(t) in
+...
+</code></pre>
+<p>This means that we need to translate this <code>tau</code> into a function, too. It might sound difficult, but it's actually easy. Since a type is translated into a closed function as we've seen, types like <code>int</code> or <code>int -&gt; bool</code> are lowered to pointers to the function, which is nothing but an immediate. <code>tau</code> is therefore translated into the pointer to <code>exp-immediate</code> that we've just seen.</p>
+<h2 id="exponential-for-closures"><a class="header" href="#exponential-for-closures">Exponential for Closures</a></h2>
+<p>A resource exponential can also be constructed for closures. Although this is one of the most interesting points of Neut, since it is a bit complicated, I put it in the appendix. See <a href="./executing-the-function-type.html">the Chapter in the Appendix</a> if you're interested in it.</p>
+<h2 id="exponential-for-adts"><a class="header" href="#exponential-for-adts">Exponential for ADTs</a></h2>
+<p>ADTs like the below also have resource exponentials, of course:</p>
+<pre><code class="language-neut">data list(a) {
+- Nil
+- Cons(a, list(a))
+}
+</code></pre>
+<p>The first thing to note is that, since an exponential is a closed function, the values of an ADT must be able to be copied/discarded using a closed function. This means that the information about <code>a</code> in <code>list(a)</code> must be contained in the values.</p>
+<p>That is, for example, the internal representation of <code>Nil</code> is something like below:</p>
+<pre><code class="language-neut">(a, 0)
+</code></pre>
+<p>where the <code>0</code> is the discriminant for <code>Nil</code>. Also, that of <code>Cons(10, xs)</code> is:</p>
+<pre><code class="language-neut">(a, 1, 10, xs)
+</code></pre>
+<p>where the <code>1</code> is the discriminant for <code>Cons</code>.</p>
+<p>With that in mind, the actual exponential for <code>list(a)</code> will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't really interested in details):</p>
+<pre><code class="language-neut">define exp-list(selector, v) {
+  if selector == 0 {
+    let d = get-discriminant(v) in
+    if d == 0 {
+      // discard Nil
+      free(v)
+    } else {
+      // discard Cons
+      let a = v[0] in
+      let cons-head = v[1] in
+      let cons-tail = v[2] in
+      free(v);
+      let () = a(0, v[1]) in // ← discard the head of cons using v[0]
+      exp-list(0, v[2])
+    }
+  } else {
+    let d = get-discriminant(v) in
+    if d == 0 {
+      // copy Nil
+      let ptr = malloc({2-words}) in
+      let a = v[0] in
+      store(a, ptr[0]);
+      store(d, ptr[1]);
+      ptr
+    } else {
+      // copy Cons
+      let ptr = malloc({4-words}) in
+      let a = v[0] in
+      let cons-head-copy = a(1, v[2]) in // ← copy the head of cons using v[0]
+      let cons-tail-copy = exp-list(1, v[3]) in
+      store(a, ptr[0]);
+      store(d, ptr[1]);
+      store(cons-head-copy, ptr[2]);
+      store(cons-tail-copy, ptr[3]);
+      ptr
+    }
+  }
+}
+</code></pre>
+<p>The point here is that <em>the type information in a value is loaded at runtime and used to copy/discard values</em>. This is the main point of dependent types in Neut. Normally, I believe you would expect something like safe array indexing or theorem proving when you hear &quot;This language has dependent types&quot;. In Neut, however, the focus of dependent types is on resource management.</p>
+<h2 id="a-tragedy-in-the-physical-world"><a class="header" href="#a-tragedy-in-the-physical-world">A Tragedy in the Physical World</a></h2>
+<p>...So we have found a way to linearize the language. Does it finish the story? Unfortunately not, as in every storyline. Suppose we have a list <code>xs</code>, and want to choose what to do by its length:</p>
+<pre><code class="language-neut">let xs: list(int) = [1, 2, 3] in
+let len = length(int, xs) in
+if cond(len) {
+  print(&quot;hey&quot;)
+} else {
+  print(&quot;yo&quot;)
+};
+foo(xs)
+</code></pre>
+<p>where the <code>length</code> is defined as follows:</p>
+<pre><code class="language-neut">define length(a: tau, xs: list(a)): int {
+  match xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(1, length(a, ys))
+  }
+}
+</code></pre>
+<p>Here, the <code>match</code> is for the usual pattern matching; It inspects its arguments (<code>xs</code>), and performs branching according to them. After branching, it extracts the content of a value (<code>y</code> and <code>ys</code> if the latter branch is chosen, for example), and then calls <code>free</code> against the outer tuple of <code>xs</code>. Then evaluates the body of the branch (<code>add-int(1, length(ys))</code> in this case).</p>
+<p>What causes a problem here is the fact that the <code>xs</code> is used non-linearly in the code above. The first occurrence is at <code>length(xs)</code>, and the second one is at <code>foo(xs)</code>. This means the code above is translated into something like the below:</p>
+<pre><code class="language-neut">let xs: list(int) = [1, 2, 3] in
+let xs-copy = exp-list(1, xs) in   // copy the original list
+let len = length(int, xs-copy) in  // ... and use it to get its length
+if cond(len) {
+  print(&quot;hey&quot;)
+} else {
+  print(&quot;yo&quot;)
+};
+foo(xs)
+</code></pre>
+<p>That is, the whole list <code>xs</code>, including all the elements, is copied <em>just to obtain its length</em>. This is nothing but a tragedy. Worse, this kind of procedure is pervasive. The list one isn't special at all. We need something like a loophole, or every wish is crushed into pieces.</p>
+<p>This is the topic covered in the next section. We'll see some &quot;noetic&quot; operations there.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="noetic-optimization"><a class="header" href="#noetic-optimization">Noetic Optimization</a></h1>
+<h2 id="introducing-noetic-types"><a class="header" href="#introducing-noetic-types">Introducing Noetic Types</a></h2>
+<p>Let's introduce a new type <code>&amp;list(a)</code>, the noetic variant of <code>list(a)</code>. Also, let's call a value a noema if its type is of the form <code>&amp;a</code>.</p>
+<p>A noema of type <code>&amp;a</code> has the same internal representation as a value of type <code>a</code>. The difference lies in how the values of this type are copied/discarded; <em>a noema is treated as an immediate</em>.</p>
+<p>More specifically, a noema is handled using the <code>exp-immediate</code> that we saw in the last section:</p>
+<pre><code class="language-neut">define exp-immediate(action-selector, v) {
+  if action-selector == 0 {
+    0 // do nothing against `v`
+  } else {
+    v // just use the original one as a copy
+  }
+}
+</code></pre>
+<p>We'll use noemata to deceive the type-oriented resource management system.</p>
+<h2 id="creating-a-noema-local-cast"><a class="header" href="#creating-a-noema-local-cast">Creating a Noema: Local Cast</a></h2>
+<p>Firstly, we need a way to create a noema. The syntax <code>let-on</code> is there for that purpose:</p>
+<pre><code class="language-neut">let x: a = (...) in      // x: a
+let result on x =
+  let y: &amp;a = x in       // x: &amp;a
+  100                    // x: &amp;a
+in
+// outside
+let z: a = x in          // x: a
+cont                     // x: a
+</code></pre>
+<p><code>let-on</code> locally casts a value to a noema, and then casts back the value to its original type. In other words, <code>let-on</code> is essentially just a syntax sugar like the below:</p>
+<pre><code class="language-neut">let len on xs = e in
+cont
+
+// ↓ desugar
+
+let xs = unsafe-cast(a, &amp;a, xs) in // cast: `a` ~&gt; `&amp;a`
+let len = e in                     // (use `&amp;a`)
+let xs = unsafe-cast(&amp;a, a, xs) in // uncast: `&amp;a` ~&gt; `a`
+cont
+</code></pre>
+<p>Note that</p>
+<ul>
+<li>you can't use the original <code>xs: A</code> in <code>e</code> since the name is shadowed by <code>xs: &amp;A</code>, and that</li>
+<li>a new <code>xs: a</code> is defined after <code>let-on</code> by uncasting a noema, and thus can be used in <code>cont</code>.</li>
+</ul>
+<p>As you can see from the definition of <code>let-on</code>, a noema always has its &quot;source&quot; value. We'll call it the hyle of a noema.</p>
+<p>(You might have noticed that the answer type (the type of <code>result</code>) of a <code>let-on</code> needs to be restricted to some extent. This point is covered later in this section)</p>
+<h2 id="using-a-noema-viewing-its-content"><a class="header" href="#using-a-noema-viewing-its-content">Using a Noema: Viewing Its Content</a></h2>
+<p>Now that we can create noemata, we want a way to use them.</p>
+<p>Using a noema, for example, the length of a list can be obtained as follows:</p>
+<pre><code class="language-neut">define length-noetic(a: tau, xs: &amp;list(a)): int {
+  case xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(1, length-noetic(a, ys))
+  }
+}
+</code></pre>
+<p>Here, <code>case</code> does the same as <code>match</code> except that:</p>
+<ul>
+<li>it expects noetic ADTs like <code>&amp;list(a)</code>, not ordinary ADTs like <code>list(a)</code>,</li>
+<li>it doesn't call <code>free</code> against its arguments (the <code>xs</code> here), and that</li>
+<li>the types of the constructor arguments are casted to be noetic.</li>
+</ul>
+<p>The last one means, for example, the type of <code>y</code> in the example above is not <code>a</code> but <code>&amp;a</code>. Similarly, The type of <code>ys</code> is not <code>list(a)</code>, but <code>&amp;list(a)</code>. This ensures that the internal content of <code>xs</code> is kept intact. In this sense, you can think of <code>case</code> as a read-only variant of <code>match</code>.</p>
+<p>Note that, although the <code>y: &amp;a</code> is unused in the code above, since <code>&amp;a</code> is a noetic type, this <code>y</code> isn't discarded, which is what we wanted.</p>
+<h2 id="using-a-noema-incarnation"><a class="header" href="#using-a-noema-incarnation">Using a Noema: Incarnation</a></h2>
+<p>Also, you can create a value of type <code>A</code> from a noema of type <code>&amp;A</code>:</p>
+<pre><code class="language-neut">define sum-of-list(xs: &amp;list(int)): int {
+  case xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(*y, sum-of-list(ys))
+  }
+}
+</code></pre>
+<p><code>*e</code> copies the argument along its type, keeping the original noema intact. In the example above, a term of type <code>int</code> is obtained from a term <code>y: &amp;int</code>, by writing <code>*y</code>.</p>
+<h2 id="example-get-the-length-of-a-list"><a class="header" href="#example-get-the-length-of-a-list">Example: Get the Length of a List</a></h2>
+<p>Using <code>let-on</code> and <code>length-noetic</code>, we can obtain the length of a list as follows:</p>
+<pre><code class="language-neut">define test() {
+  let xs: list(int) = [1, 2, 3] in
+  let len on xs = length-noetic(xs) in // xs: &amp;list(int)
+  do-something(xs, len)
+}
+</code></pre>
+<p>Note that the list <code>xs</code> isn't copied anymore. It might be said that this is something like &quot;borrowing&quot; in other languages.</p>
+<h2 id="result-type-restriction"><a class="header" href="#result-type-restriction">Result Type Restriction</a></h2>
+<p>A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if <code>let-on</code> can return a noema:</p>
+<pre><code class="language-neut">let xs = [1, 2] in
+let result on xs = xs in // **CAUTION** the result of let-on is a noema
+let _ = xs in    // ← Since the variable `_` isn't used,
+                 // the hyle of `result`, namely `xs: list(int)`, is discarded here
+match result {   // ... and thus using `result` here is a use-after-free!
+- [] =&gt;
+  print(&quot;hey&quot;)
+- y :: ys =&gt;
+  print(&quot;yo&quot;)
+}
+</code></pre>
+<p>Thus, we need to restrict the value <code>result</code> so that it can't contain any noemata. For example, types like <code>list(int)</code>, <code>unit</code>, or <code>except(list(int), text)</code> are allowed. types like <code>&amp;text</code>, <code>list(a)</code>, <code>int -&gt; bool</code> are disallowed.</p>
+<p>More specifically, the type of <code>result</code> must satisfy all of the followings:</p>
+<ul>
+<li>it doesn't contain any free variables,</li>
+<li>it doesn't contain any noetic types,</li>
+<li>it doesn't contain any function types (since a noema can reside in it), and</li>
+<li>it doesn't contain any &quot;dubious&quot; ADTs.</li>
+</ul>
+<p>Here, a &quot;dubious&quot; ADT is an ADT like the below:</p>
+<pre><code class="language-neut">data joker-x {
+- HideX(&amp;A) // contains a noetic argument
+}
+
+data joker-y {
+- HideY(int -&gt; bool) // contains a functional argument
+}
+
+data joker-z {
+- HideZ(joker-y) // contains a dubious ADT argument
+}
+</code></pre>
+<p>Indeed, if we were to allow returning these dubious ADTs, we can exploit them to hide a noema:</p>
+<pre><code class="language-neut">let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
+let _ = xs in                   // `xs` is discarded here
+match result {
+- HideX(xs) =&gt;
+  *xs                           // CRASH: use-after-free!
+}
+</code></pre>
+<p>This restriction is checked at compile time by the type system of Neut.</p>
+<h2 id="a-possible-alternative-the-st-monadic-approach"><a class="header" href="#a-possible-alternative-the-st-monadic-approach">A Possible Alternative: The ST Monadic Approach</a></h2>
+<p>Some (including me) might find the above restriction rather ad-hoc. Indeed, there exists an alternative, more seemingly principled approach. The approach essentially uses <a href="https://hackage.haskell.org/package/base-4.18.0.0/docs/Control-Monad-ST.html">the ST monad</a>; Every noetic type is now of the form <code>noema(s, A)</code>, where the <code>s</code> corresponds to the <code>s</code> in <code>STRef s a</code>.</p>
+<p>In this approach, <code>let-on</code> would internally use <code>runST: (forall s. ST s a) -&gt; a</code> to ensure that the result doesn't depend on noetic values. Also, in this approach, the whole language will be made pure so that we can track every use of <code>&amp;e</code> and <code>case</code>. This approach will be a variation of <a href="https://dl.acm.org/doi/abs/10.1145/258949.258970">Monadic State: Axiomatization and Type Safety</a>, or <a href="https://dl.acm.org/doi/abs/10.1145/1016848.1016867">Monadic Regions</a>.</p>
+<p>Then, why Neut didn't take this more &quot;principled&quot; approach? This is because the virtue of noetic types lies in making our experience with certain fragments of the language better. Indeed, we can already do the same thing without noetic stuff by using unsafe casts appropriately. Although we can make the language pure and change the formulation of noemata into <code>noema(s, A)</code>, pursuing local generality here by modifying the whole language will go against the purpose of noetic types; They are there to provide certain safe patterns of uses of unsafe casts.</p>
+<p>The language is already well-generalized. Noetic optimization is gold leaf for the cake.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="allocation-canceling"><a class="header" href="#allocation-canceling">Allocation Canceling</a></h1>
+<p>Thanks to its static nature, memory allocation in Neut can sometimes be optimized away. Consider the following code:</p>
+<pre><code class="language-neut">data int-list {
+- Nil
+- Cons(int, int-list)
+}
+
+// [1, 5, 9] =&gt; [2, 6, 10]
+define increment(xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    Nil
+  // ↓ the `Cons` clause
+  - Cons(x, rest) =&gt;
+    Cons(add-int(x, 1), increment(rest))
+  }
+}
+</code></pre>
+<p>The expected behavior of the <code>Cons</code> clause above would be something like the below:</p>
+<ol>
+<li>obtain <code>x</code> and <code>rest</code> from <code>xs</code></li>
+<li><code>free</code> the outer tuple of <code>xs</code></li>
+<li>calculate <code>add-int(x, 1)</code> and <code>increment(rest)</code></li>
+<li>allocate memory region using <code>malloc</code> to return the result</li>
+<li>store the calculated values to the pointer and return it</li>
+</ol>
+<p>However, since the size of <code>Cons(x, rest)</code> and <code>Cons(add-int(x, 1), increment(rest))</code> are known to be the same at compile-time, the pair of <code>free</code> and <code>malloc</code> should be able to be optimized away, as follows:</p>
+<ol>
+<li>obtain <code>x</code> and <code>rest</code> from <code>xs</code></li>
+<li>calculate <code>add-int(x, 1)</code> and <code>increment(rest)</code></li>
+<li>store the calculated values to <code>xs</code> (overwrite)</li>
+</ol>
+<p>And Neut does this optimization. When a <code>free</code> is required, Neut looks for a <code>malloc</code> that has the same size and optimizes away such a pair if there exists one. The resulting assembly code thus performs in-place updates.</p>
+<h2 id="allocation-canceling-and-branching"><a class="header" href="#allocation-canceling-and-branching">Allocation Canceling and Branching</a></h2>
+<p>This optimization &quot;penetrates&quot; branching. For example, consider the below:</p>
+<pre><code class="language-neut">// (an `insert` function in bubble sort)
+define insert(v: int, xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    // ...
+  - Cons(y, ys) =&gt;           // (X)
+    if gt-int(v, y) {
+      Cons(y, insert(v, ys)) // (Y)
+    } else {
+      Cons(v, Cons(y, ys))   // (Z)
+    }
+  }
+}
+</code></pre>
+<p>At point <code>(X)</code>, <code>free</code> against <code>xs</code> is required. However, this <code>free</code> can be canceled, since <code>malloc</code>s of the same size can be found in all the possible branches (here, <code>(Y)</code> and <code>(Z)</code>). Thus, in the code above, the deallocation of <code>xs</code> at <code>(X)</code> is removed, and the memory region of <code>xs</code> is reused at <code>(Y)</code> and <code>(Z)</code>, resulting in an in-place update of <code>xs</code>.</p>
+<p>On the other hand, consider rewriting the code above into something like the below:</p>
+<pre><code class="language-neut">define foo(v: int, xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    // ...
+  - Cons(y, ys) =&gt;         // (X')
+    if gt-int(v, y) {
+      Nil                  // (Y')
+    } else {
+      Cons(v, Cons(y, ys)) // (Z')
+    }
+  }
+}
+</code></pre>
+<p>At this time, the <code>free</code> against <code>xs</code> at <code>(X')</code> can't be optimized away, since there exists a branch (namely, <code>(Y')</code>) that doesn't perform <code>malloc</code> which is of the same size as <code>xs</code>.</p>
+<h2 id="how-effective-is-this-optimization"><a class="header" href="#how-effective-is-this-optimization">How Effective Is This Optimization?</a></h2>
+<p>The performance benefit obtained by this optimization seems to be pretty significant, at least on my machine. It feels somewhat like tail call optimization. Let me share some numbers.</p>
+<h3 id="a-slower-implementation"><a class="header" href="#a-slower-implementation">A Slower Implementation</a></h3>
+<p>Let's write a slower implementation for comparison. The allocation canceling can be disabled by defining an opaque function like the below:</p>
+<pre><code class="language-neut">define insert(v: int, xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    // ...
+  - Cons(y, ys) =&gt; // (X'')
+    swap-gt(gt-int(v, y), v, y, ys)
+  }
+}
+
+// an opaque function
+define swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+  if cond {
+    Cons(x, insert(v, xs))
+  } else {
+    Cons(v, Cons(x, xs))
+  }
+}
+</code></pre>
+<p>The code above doesn't perform allocation canceling at <code>(X'')</code> since, in this case, the <code>free</code> at <code>(X'')</code> doesn't have its correspondent in its continuation.</p>
+<h3 id="comparing-execution-times"><a class="header" href="#comparing-execution-times">Comparing Execution Times</a></h3>
+<p>Using the slower and faster implementations of <code>insert</code>, I wrote codes that perform naive bubble sorting on linked lists of 30,000 random integers. I also wrote codes that do the same in Haskell and OCaml just for reference (the complete codes are at the end of this page).</p>
+<p>Then I compiled them into M1 native binaries and casually measured their execution time using the <code>time</code> command. I performed each measurement 5 times and calculated the average of them. The result is as follows (Tested on my 14-inch M1 Max MacBook Pro with 32 GB RAM; the chart is powered by Plotly Chart Studio):</p>
+<p><img src="./image/bench-bubble.png" alt="bubble sort" title="bubble sort" /></p>
+<p>As you can see from the two blue bars, allocation canceling can make the performance better more than twice, at least in this case. Also, seeing the chart above, I believe that I won't be heavily punished if I innocently say that the resulting performance of Neut is comparable to that of Haskell, again at least in this case.</p>
+<p>(Now I'm hoping that Neut isn't a bubblesort-oriented joke language...)</p>
+<h3 id="appendix-complete-codes"><a class="header" href="#appendix-complete-codes">Appendix: Complete Codes</a></h3>
+<p>The Neut code used in the test above is as follows:</p>
+<pre><code class="language-neut">declare {
+- arc4random_uniform(int): int
+}
+
+data int-list {
+- My-Nil
+- My-Cons(int, int-list)
+}
+
+define insert(v: int, xs: int-list): int-list {
+  match xs {
+  - My-Nil =&gt;
+    My-Cons(v, My-Nil)
+  - My-Cons(y, ys) =&gt;
+    swap-gt(gt-int(v, y), v, y, ys)
+  }
+}
+
+// replace &quot;inline&quot; with &quot;define&quot; for the slower alternative
+inline swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+  if cond {
+    My-Cons(x, insert(v, xs))
+  } else {
+    My-Cons(v, My-Cons(x, xs))
+  }
+}
+
+define sort(xs: int-list, acc: int-list): int-list {
+  match xs {
+  - My-Nil =&gt;
+    acc
+  - My-Cons(y, ys) =&gt;
+    sort(ys, insert(y, acc))
+  }
+}
+
+define some-rand(): int {
+  magic external(arc4random_uniform, 10000: int)
+}
+
+define rand-list(len: int, acc: int-list): int-list {
+  if eq-int(len, 0) {
+    acc
+  } else {
+    let val = some-rand() in
+    rand-list(sub-int(len, 1), My-Cons(val, acc))
+  }
+}
+
+define main(): unit {
+  let some-list = rand-list(30000, My-Nil) in
+  let some-list = sort(some-list, My-Nil) in
+  let _ = some-list in
+  Unit
+}
+</code></pre>
+<p>The Haskell code used in the test above is as follows:</p>
+<pre><code class="language-haskell">-- Bubble.hs
+
+import System.Random
+
+data List = MyNil | MyCons Int List
+
+insert :: Int -&gt; List -&gt; List
+insert v MyNil = MyCons v MyNil
+insert v (MyCons x xs) = swapGT (v &gt; x) v x xs
+
+{-# INLINE swapGT #-}
+swapGT :: Bool -&gt; Int -&gt; Int -&gt; List -&gt; List
+swapGT False v x xs = MyCons v (MyCons x xs)
+swapGT True v x xs = MyCons x (insert v xs)
+
+sort :: List -&gt; List -&gt; List
+sort MyNil acc = acc
+sort (MyCons x xs) acc = sort xs (insert x acc)
+
+randList :: Int -&gt; List -&gt; IO List
+randList len acc = do
+  if len == 0
+    then return acc
+    else do
+      v &lt;- randomRIO (0, 10000)
+      randList (len - 1) (MyCons v acc)
+
+-- handle laziness
+foo :: List -&gt; Int
+foo xs =
+  case xs of
+    MyNil -&gt;
+      0
+    MyCons _ rest -&gt;
+      foo rest
+
+main :: IO ()
+main = do
+  someList &lt;- randList 30000 MyNil
+  let result = sort someList MyNil
+  print $ foo result
+</code></pre>
+<p>The OCaml code used in the test above is as follows:</p>
+<pre><code class="language-ocaml">(* bubble.ml *)
+
+type intList =
+  MyNil |
+  MyCons of int * intList
+
+let rec insert v xs =
+  match xs with
+  | MyNil -&gt; MyCons(v, MyNil)
+  | MyCons (y, ys) -&gt;
+     if v &gt; y then
+       MyCons (y, (insert v ys))
+     else
+       MyCons (v, (insert y ys))
+
+let rec sort xs acc =
+  match xs with
+  | MyNil -&gt;
+     acc
+  | MyCons(y, ys) -&gt;
+     sort ys (insert y acc)
+
+let rec randList len acc =
+  if len == 0 then
+    acc
+  else
+    let v = Random.int 10000 in
+    randList (len - 1) (MyCons(v, acc))
+
+let main () =
+  Random.init 12345;
+  let someList = randList 30000 MyNil in
+  let _ = sort someList MyNil in
+  ()
+;;
+
+main ()
+</code></pre>
+<p>Please tell me (hopefully gently) if this comparison is unfair due to a reason that I overlooked.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="language-tutorial"><a class="header" href="#language-tutorial">Language Tutorial</a></h1>
+<p>In this chapter, we'll see how to use the language in practice. After finishing this chapter, you should be able to write, run, and distribute your program.</p>
+<p><a href="./installation.html">Section 3.1 (Installation)</a> covers how to install Neut. Prebuilt binaries are available for some platforms. You can also build one by yourself.</p>
+<p><a href="./preliminaries.html">Section 3.2 (Preliminaries)</a> explains how to create and build a module. We'll also see the basics of memory management in Neut.</p>
+<p><a href="./ADTs-and-lambdas.html">Section 3.3 (ADTs and Lambdas)</a> explains how to write basic values in Neut. We'll also see their memory behaviors.</p>
+<p><a href="./noetic-programming.html">Section 3.4 (Noetic Programming)</a> explains how to use a noema to avoid unnecessary clonings. This is useful when you'd like to achieve better performance.</p>
+<p><a href="./parallelism-and-mutability.html">Section 3.5 (Parallelism and Mutability)</a> explains how to perform parallel computation in Neut. You'll also see how channels can be used as mutable variables.</p>
+<p><a href="./other-built-in-utilities.html">Section 3.6 (Other Built-in Utilities)</a> explains how to use primitive types, inline functions, etc.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="installation"><a class="header" href="#installation">Installation</a></h1>
+<h2 id="external-dependencies"><a class="header" href="#external-dependencies">External Dependencies</a></h2>
+<p>Neut depends on <code>curl</code>, <code>tar</code>, <code>zstd</code> and <code>clang (&gt;= 15.0.0)</code>. Please make sure all of them are installed.</p>
+<h2 id="using-a-prebuilt-binary"><a class="header" href="#using-a-prebuilt-binary">Using a Prebuilt Binary</a></h2>
+<p>You can get a prebuilt binary of Neut as follows:</p>
+<pre><code class="language-sh"># macOS
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-darwin
+
+# Linux (amd64)
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-amd64-linux
+
+# Linux (arm64)
+curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/download/neut-arm64-linux
+</code></pre>
+<p>The path <code>~/.local/bin/</code> is just an example; You can change it to anywhere you like as long as the path is in your <code>$PATH</code>.</p>
+<p>Also, don't forget to make it executable:</p>
+<pre><code class="language-sh"># make it executable
+chmod +x ~/.local/bin/neut
+</code></pre>
+<p>We also need to register the URL and the digest of the core module (standard library):</p>
+<pre><code class="language-sh"># add the below to your bashrc, zshrc, etc.
+export NEUT_CORE_MODULE_URL=&quot;https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst&quot;
+export NEUT_CORE_MODULE_DIGEST=&quot;Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=&quot;
+</code></pre>
+<p>Now, let's create a sample project and build it to check if your installation is correct:</p>
+<pre><code class="language-sh">neut create sample
+cd sample
+cat source/sample.nt
+# =&gt; define main(): unit {
+#      print(&quot;Hello, world!\n&quot;)
+#    }
+
+# build &amp; execute
+neut build --execute
+# =&gt; Hello, world!
+
+# build &amp; copy the resulting binary to ./bin
+neut build --install ./bin
+./bin/sample
+# =&gt; Hello, world!
+</code></pre>
+<p>If no error is reported, you're ready. Let's go to the next section. If not, please follow your error message.</p>
+<h2 id="uninstallation"><a class="header" href="#uninstallation">Uninstallation</a></h2>
+<p>Just remove the binary and the directory <code>~/.cache/neut/</code>. Neut won't clutter your PC.</p>
+<h2 id="build-by-yourself"><a class="header" href="#build-by-yourself">Build by Yourself</a></h2>
+<h3 id="locally"><a class="header" href="#locally">Locally</a></h3>
+<p>If you want, you can build the compiler by yourself. With <a href="https://docs.haskellstack.org/en/stable/">stack</a> installed, do the following:</p>
+<pre><code class="language-sh">git clone https://github.com/vekatze/neut
+cd neut
+stack install # =&gt; the binary goes into ~/.local/bin/
+</code></pre>
+<h3 id="using-docker"><a class="header" href="#using-docker">Using Docker</a></h3>
+<p>If you have <a href="https://www.docker.com/">Docker</a> and <a href="https://github.com/casey/just">just</a> installed, you can also take the following way:</p>
+<pre><code class="language-sh">git clone https://github.com/vekatze/neut
+cd neut
+
+# [for amd64 linux binary] (with docker desktop running)
+just build-image-amd64-linux
+just build-compiler-amd64-linux
+cp ./bin/neut-amd64-linux ~/.local/bin/neut
+
+# [for arm64 linux binary] (with docker desktop running)
+just build-image-arm64-linux
+just build-compiler-arm64-linux
+cp ./bin/neut-arm64-linux ~/.local/bin/neut
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="preliminaries"><a class="header" href="#preliminaries">Preliminaries</a></h1>
+<p>In this section, we'll see how to create, build, and run a module. We'll also see what will happen when a variable is used non-linearly.</p>
+<h2 id="working-with-a-module"><a class="header" href="#working-with-a-module">Working with a Module</a></h2>
+<h3 id="creating-a-module"><a class="header" href="#creating-a-module">Creating a Module</a></h3>
+<p>Run the following command to create your first module:</p>
+<pre><code class="language-neut">neut create hello
+cd hello
+</code></pre>
+<p>The module should contain a file <code>hello.nt</code> with the following content:</p>
+<pre><code class="language-neut">define main(): unit {
+  print(&quot;Hello, world!\n&quot;)
+}
+</code></pre>
+<p>Let's compile and execute it:</p>
+<pre><code class="language-sh">$ neut build --execute
+# =&gt; Hello, world!
+</code></pre>
+<h3 id="building-a-module"><a class="header" href="#building-a-module">Building a Module</a></h3>
+<p>At the root of your module, you should find <code>module.ens</code>. It should contain the following:</p>
+<pre><code class="language-ens">{
+  // ...
+  target {
+    hello &quot;hello.nt&quot;
+  }
+  // ...
+}
+</code></pre>
+<p>This defines the entry point for a target named <code>hello</code>. Every file declared here must define a function <code>main</code>, which in turn is used by the command <code>neut build TARGET</code>; This command starts compilation assuming that a function <code>main</code> is in <code>hello.nt</code>.</p>
+<!-- That is, the file `"hello.nt"` must define a function named `main`. -->
+<p>If you omit <code>TARGET</code>, <code>neut build</code> simply builds all the targets.</p>
+<p>If you pass <code>--execute</code>, <code>neut build</code> runs the resulting executable after building it.</p>
+<p>If you pass <code>--install DIR</code>, the resulting binary is copied into the directory <code>DIR</code>.</p>
+<p>Incidentally, the paths of source files specified in <code>module.ens</code> are relative to <code>/source/</code>.</p>
+<h2 id="structure-of-a-source-file"><a class="header" href="#structure-of-a-source-file">Structure of a Source File</a></h2>
+<p>The basic structure of a source file is as follows:</p>
+<pre><code class="language-neut">// import other files
+import {
+- foo.bar
+- this.buz
+}
+
+// define functions and types
+// (the order of functions and types doesn't matter in Neut)
+
+define func(arg-1: int): int {
+  arg-1
+}
+
+// ...
+</code></pre>
+<h2 id="linearization-of-variables"><a class="header" href="#linearization-of-variables">Linearization of Variables</a></h2>
+<p>In Neut, a variable is copied/discarded when used non-linearly. Consider the following code:</p>
+<pre><code class="language-neut">define foo(): list(int) {
+  let xs = [1, 2] in
+  // (X)
+  let ys = xs in
+  // (Y)
+  let zs = xs in
+  // (Z)
+  c
+}
+</code></pre>
+<p>In this example, since the variable <code>xs</code> is used three times, <code>xs</code> is copied twice. This will happen immediately after a variable is defined. In our example, <code>xs</code> is copied twice at <code>(X)</code>.</p>
+<p>Also, since the variables <code>ys</code> and <code>zs</code> aren't used, the contents of them are discarded. Again, this will happen immediately after a variable is defined. In our running example, the content of <code>ys</code> is discarded at <code>(Y)</code>, and <code>zs</code> at <code>(Z)</code>.</p>
+<p>Try to use variables linearly when possible for better performance. When you can't avoid non-linearity, you can try using a noema, which is explained later in this chapter. Before that, let's see how the non-noetic fragment of the language behaves.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="adts-and-lambdas"><a class="header" href="#adts-and-lambdas">ADTs and Lambdas</a></h1>
+<p>In this section, we'll see how to use basic values of Neut: algebraic data types (ADTs) and lambdas.</p>
+<h2 id="algebraic-data-types"><a class="header" href="#algebraic-data-types">Algebraic Data Types</a></h2>
+<h3 id="basics"><a class="header" href="#basics">Basics</a></h3>
+<p>ADTs can be defined like below:</p>
+<pre><code class="language-neut">// Defining an algebraic data type
+data my-list(a) {
+- MyNil
+- MyCons(a, my-list(a))
+}
+
+// nullary data types are also allowed
+data test {
+- Foo
+- Bar
+- Buz() // explicit nullary data types
+}
+</code></pre>
+<p>They can be used like the below:</p>
+<pre><code class="language-neut">define create-my-list(): my-list(int) {
+  // using constructors
+  MyCons(1, MyCons(2, MyNil))
+}
+
+define get-length(a: tau, xs: my-list(a)): int {
+  // pattern matching against a my-list
+  match xs {
+  - MyNil =&gt;
+    0
+  - MyCons(1, MyNil) =&gt; // nested pattern matching is available
+    1
+  - MyCons(_, rest) =&gt;
+    add-int(1, get-length(a, rest))
+  }
+}
+</code></pre>
+<p>The name of a constructor must start with an uppercase letter.</p>
+<h3 id="memory-behavior"><a class="header" href="#memory-behavior">Memory Behavior</a></h3>
+<p>When a constructor is called, a memory region for the constructor is allocated. The internal representation of things like <code>MyCons(1, Nil)</code> is:</p>
+<pre><code class="language-neut">(pointer-to-a, discriminant, 1, pointer-to-Nil) // 4-word tuple
+</code></pre>
+<p>where the <code>discriminant</code> is an integer that is used to distinguish constructors; In this case, the actual value for <code>MyCons</code> will be 1. That of <code>MyNil</code> will be 0.</p>
+<p>When <code>match</code> is used against a value of an ADT, the inner values of the given value are extracted, and the unnecessary data is freed. For example, if <code>MyCons(1, Nil)</code> is supplied to a <code>match</code>, the following will happen:</p>
+<ol>
+<li>the <code>1</code> and <code>pointer-to-Nil</code> are bound to some variables,</li>
+<li>the <code>pointer-to-a</code> is discarded along its type <code>tau</code>,</li>
+<li>the outer 4-word tuple is freed, and</li>
+<li>the body of the clause is executed.</li>
+</ol>
+<hr />
+<p>If an ADT and all its constructor don't have any arguments, the internal representation of the type is optimized into an enum. For example, consider the following code:</p>
+<pre><code class="language-neut">data color {
+- Red
+- Blue
+- Green
+}
+</code></pre>
+<p>The internal representation of <code>Red</code> in this case is optimized into <code>0</code>. That of <code>Blue</code> is optimized into <code>1</code>, and so on.</p>
+<hr />
+<p>Also, if an ADT has only one constructor and the constructor has only one argument (i.e. the ADT is like a <code>newtype</code> in Haskell), its internal representation is automatically optimized into its content. For example, consider the following code:</p>
+<pre><code class="language-neut">data semigroup(a) {
+- Semigroup((a, a) -&gt; a)
+}
+</code></pre>
+<p>Since the type <code>semigroup</code> has only one constructor (<code>Semigroup</code>) and the constructor has only one argument (<code>(a, a) -&gt; a</code>), the internal representation of <code>Semigroup(e)</code> is optimized into that of <code>e</code>.</p>
+<h2 id="lambdas"><a class="header" href="#lambdas">Lambdas</a></h2>
+<h3 id="basics-1"><a class="header" href="#basics-1">Basics</a></h3>
+<p>You can create a lambda abstraction (anonymous function) and use it as an ordinary function:</p>
+<pre><code class="language-neut">define sample(): int {
+  let inc = (x) =&gt; { add-int(x) } in // create a lambda function int -&gt; int
+  inc(10) // and call it
+}
+</code></pre>
+<p>Also, the type of functions is written as follows in Neut:</p>
+<pre><code class="language-neut">define sample(): int {
+  let type1 = int -&gt; int in         // receives int          / returns int
+  let type2 = (int, bool) -&gt; int in // receives int and bool / returns int
+  let type3 = () -&gt; int in          // receives nothing      / returns int
+  0
+}
+</code></pre>
+<h3 id="memory-behavior-1"><a class="header" href="#memory-behavior-1">Memory Behavior</a></h3>
+<p>A <code>lambda</code> is compiled into a three-word tuple:</p>
+<pre><code class="language-neut">(type-of-free-variables, (freevar-1, ..., freevar-n), pointer-to-closed-function)
+</code></pre>
+<p>When you call a lambda, things like below will happen:</p>
+<pre><code class="language-neut">func(a, b, c)
+
+// ↓ (source code to LLVM)
+
+let free-variables = func[1] in
+let closed-function = func[2] in
+free(func); // free the outer tuple
+CALL closed-function(a, b, c, free-variables) // LLVM-level function call
+</code></pre>
+<h2 id="local-recursion"><a class="header" href="#local-recursion">Local Recursion</a></h2>
+<h3 id="basics-2"><a class="header" href="#basics-2">Basics</a></h3>
+<p>As we've seen, a recursive function can be defined by using <code>define</code>. You can also use <code>mu</code> to define a &quot;local&quot; recursive function:</p>
+<pre><code class="language-neut">define foo(x: int): int {
+  let some-variable = 1 in
+  let some-rec-func =
+    // creating a local recursive function `my-rec-func`
+    mu my-rec-func(y: int): int {
+      if eq-int(y, 0) {
+        some-variable // free variables can be used normally in `mu`
+      } else {
+        print(&quot;hey\n&quot;);
+        my-rec-func(sub-int(y, 1)) // recursive call
+      }
+    }
+  in
+  some-rec-func(x)
+}
+</code></pre>
+<h3 id="behavior"><a class="header" href="#behavior">Behavior</a></h3>
+<p>An anonymous recursive function is translated into a top-level recursive function (i.e. ordinary lambda lifting). For example, the example above is translated into something like below:</p>
+<pre><code class="language-neut">define my-rec-func(y: int, z: int) {
+  if le-int(y, 0) {
+    z
+  } else {
+    print(&quot;hey\n&quot;);
+    my-rec-func(sub-int(y, 1), z)
+  }
+}
+
+define fact(x: int): int {
+  let some-variable = 1 in
+  let some-rec-func = (y: int) =&gt; { my-rec-func(y, some-variable) } in
+  some-rec-func(x)
+}
+</code></pre>
+<p>In practice, one may think of <code>mu</code> as a nested <code>define</code>.</p>
+<h2 id="some-useful-notations"><a class="header" href="#some-useful-notations">Some Useful Notations</a></h2>
+<h3 id="holes-and-implicit-arguments"><a class="header" href="#holes-and-implicit-arguments">Holes and Implicit Arguments</a></h3>
+<p>A hole in Neut is written as <code>_</code>. The content of a hole is inferred by the type system at compile time. This can be useful when we, for example, call a polymorphic function. Suppose we have the following <code>for-each</code> function:</p>
+<pre><code class="language-neut">define for-each(a: tau, b: tau, xs: list(a), f: a -&gt; b): list(b) {
+  match xs {
+  - [] =&gt;
+    []
+  - y :: ys =&gt;
+    f(y) :: for-each(a, b, ys, f)
+  }
+}
+</code></pre>
+<p>If it were not for holes, we'd have to call this function as follows:</p>
+<pre><code class="language-neut">let bool-list = for-each(int, bool, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<p>Using holes, the function can be called without specifying its type arguments explicitly:</p>
+<pre><code class="language-neut">let bool-list = for-each(_, _, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<h3 id="supplying-holes"><a class="header" href="#supplying-holes">Supplying Holes</a></h3>
+<p>When defining a function, you can specify some of its arguments to be implicit:</p>
+<pre><code class="language-neut">// `a: tau` and `b: tau` are implicit
+define for-each[a: tau, b: tau](xs: list(a), f: a -&gt; b): list(b) {
+  ..
+}
+</code></pre>
+<p>Or even shorter:</p>
+<pre><code class="language-neut">define for-each[a, b](xs: list(a), f: a -&gt; b): list(b) {
+  ..
+}
+</code></pre>
+<p>You can call this <code>for-each</code> as if it were a binary function:</p>
+<pre><code class="language-neut">let bool-list = for-each(int-list, int-to-bool-func) in
+cont
+
+// ↓ (automatically translated to)
+
+let bool-list = for-each(_, _, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<p>This can be useful when achieving better readability (YMMV):</p>
+<pre><code class="language-neut">// with implicit arguments
+for-each(xss, (xs) =&gt; {
+  for-each(xs, (x) =&gt; {
+    int-to-bool(x)
+  })
+})
+
+// without implicit arguments
+for-each(list(int), list(bool), xss, (xs) =&gt; {
+  for-each(int, bool, xs, (x) =&gt; {
+    int-to-bool(x)
+  })
+})
+</code></pre>
+<p>You can also write <code>@foo</code> to pass implicit arguments explicitly (as in Coq and Lean):</p>
+<pre><code class="language-neut">let bool-list = @for-each(int, bool, int-list, int-to-bool-func) in
+cont
+</code></pre>
+<h3 id="keyword-arguments"><a class="header" href="#keyword-arguments">Keyword Arguments</a></h3>
+<p>The arguments of a function can be supplied using their names:</p>
+<pre><code class="language-neut">define some-function(a: int, some-argument: tau, b: tau): int {
+  // ...
+}
+
+define caller(): int {
+  let _ =
+    // calling a function using the name of arguments
+    some-function of {
+    - b =&gt; tau
+    - a =&gt; 20
+    - some-argument =&gt; tau
+    }
+  in
+  0
+}
+
+</code></pre>
+<p>This <code>of</code>-notation can also be used with a constructor:</p>
+<pre><code class="language-neut">data config {
+- Config(some-value: my-list(int), foo: int, bar: my-list(int))
+}
+
+define create-struct(): config(my-list(int)) {
+  // create a struct using keyword arguments
+  Config of {
+  - foo =&gt; 30
+  - bar =&gt; MyNil
+  - some-value =&gt; MyCons(3, MyNil)
+  }
+}
+</code></pre>
+<p>or when defining an ADT:</p>
+<pre><code class="language-neut">data config {
+- Config of {
+  - some-value: my-list(int)
+  - foo: int
+  - bar: my-list
+  }
+}
+</code></pre>
+<p>This notation can also be used in pattern matchings:</p>
+<pre><code class="language-neut">define use-config(cfg: config): unit {
+  let Config of { foo =&gt; a, bar =&gt; b, some-value =&gt; c } = config in
+  do-something(a, b, c)
+}
+</code></pre>
+<p>Or more shortly:</p>
+<pre><code class="language-neut">define use-config(cfg: config): unit {
+  let Config of { foo, bar, buz } = config in
+  do-something(foo, bar, buz)
+}
+
+// The following two are equivalent:
+//   let Config of { foo,        bar,        buz        } = config in cont
+//   let Config of { foo =&gt; foo, bar =&gt; bar, buz =&gt; buz } = config in cont
+</code></pre>
+<p>You can also omit unused fields:</p>
+<pre><code class="language-neut">define use-config(cfg: config): unit {
+  let Config of { foo, bar } = config in // `buz` is omitted
+  do-something(foo, bar)
+}
+
+// The following two are equivalent:
+//   let Config of { foo,        bar                  } = config in cont
+//   let Config of { foo =&gt; foo, bar =&gt; bar, buz =&gt; _ } = config in cont
+</code></pre>
+<h3 id="a-notation-for-single-branch-pattern-matching"><a class="header" href="#a-notation-for-single-branch-pattern-matching">A Notation for Single-Branch Pattern Matching</a></h3>
+<p>You can rewrite a single-branch <code>match</code> into <code>let</code> as follows:</p>
+<pre><code class="language-neut">// an example ADT
+data item {
+- Item of {
+  - foo: int
+  - bar: bool
+  }
+}
+
+// before
+define some-func(x: item): int {
+  match x {
+  - Item(foo, bar) =&gt;
+    foo
+  }
+}
+
+// after
+define some-func(x: item): int {
+  let Item(foo, bar) = x in
+  foo
+}
+</code></pre>
+<h2 id="other-basic-types"><a class="header" href="#other-basic-types">Other Basic Types</a></h2>
+<p>Basic types (integers, floats, bools, etc.) are also available in Neut, of course. This will be covered in <a href="./other-built-in-utilities.html">the last section of this chapter</a>.</p>
+<h2 id="how-can-i-say-hello-to-the-world"><a class="header" href="#how-can-i-say-hello-to-the-world">How Can I Say Hello to The World?</a></h2>
+<p>The above should cover the basics of Neut. It won't suffice, however; We can't even do the beloved Hello World now. This is because the type of static text is a noetic type, which is covered in the next section. Let's go ahead.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="noetic-programming"><a class="header" href="#noetic-programming">Noetic Programming</a></h1>
+<p>In this section, we'll see how to avoid undesirable copying/discarding. We'll do something like borrowing in other languages.</p>
+<h2 id="the-type-of-a-noema"><a class="header" href="#the-type-of-a-noema">The Type of a Noema</a></h2>
+<p>For any type <code>a</code> in Neut, you can construct a new type <code>&amp;a</code>, the noema type of <code>a</code>. We'll call a value a noema if the type of the value is of the form <code>&amp;a</code>.</p>
+<p>The internal representation of a noema of type <code>&amp;a</code> is the same as a value with type <code>a</code>.</p>
+<p>The point of a noema lies in the fact that <em>a noema isn't copied/discarded even when used non-linearly</em>. Let's see how it behaves.</p>
+<h2 id="creating-a-noema"><a class="header" href="#creating-a-noema">Creating a Noema</a></h2>
+<p>A noema can be created using <code>let-on</code>:</p>
+<pre><code class="language-neut">define sample(xs: list(a)): int {
+  let result on xs =
+    let foo = xs in // foo: &amp;list(a)
+    1
+  in
+  let bar = xs in // foo: list(a)
+  2
+}
+</code></pre>
+<p>In the <code>body</code> of <code>let result on x1, ..., xn = body</code>, the type of <code>xi</code> is cast into its noetic variant. Using this, we can create a noema.</p>
+<p>It might be illuminating to see that <code>let-on</code> is essentially the following syntax sugar:</p>
+<pre><code class="language-neut">let len on xs = e in
+cont
+
+// ↓ desugar
+
+let xs = unsafe-cast(a, &amp;a, xs) in // cast: `a` ~&gt; `&amp;a`
+let len = e in                     // (use `&amp;a`)
+let xs = unsafe-cast(&amp;a, a, xs) in // uncast: `&amp;a` ~&gt; `a`
+cont
+</code></pre>
+<p>For memory safety, the <code>result</code> cannot contain any noemata. For example, the following code results in an error:</p>
+<pre><code class="language-neut">let result on xs =
+  let foo = xs in // foo: &amp;list(a)
+  foo // error: a term of the following type might be noetic: &amp;list(a)
+in
+...
+</code></pre>
+<p>Also note that, since a function can contain a noema, the type of <code>result</code> can't be like <code>a -&gt; b</code>.</p>
+<h2 id="avoiding-unnecessary-copying"><a class="header" href="#avoiding-unnecessary-copying">Avoiding Unnecessary Copying</a></h2>
+<p>A noema isn't copied even when used multiple times. Let's take the following code for example:</p>
+<pre><code class="language-neut">  let result on xs =
+    let foo = xs in // foo: &amp;list(a)
+    let bar = xs in // bar: &amp;list(a)
+    1
+  in
+  cont
+</code></pre>
+<p>The code above clearly uses <code>xs</code> twice in the body of <code>let-on</code>. However, since the type of <code>xs</code> is noetic, the <code>xs</code> isn't copied. The same <code>xs</code> is used in both of the occurrences.</p>
+<p>By using a noema, we can perform something like &quot;borrowing&quot; in other languages.</p>
+<h2 id="using-a-noema-viewing-its-contents"><a class="header" href="#using-a-noema-viewing-its-contents">Using a Noema: Viewing Its Contents</a></h2>
+<p>The content of a noema can be viewed using <code>case</code>:</p>
+<pre><code class="language-neut">define length(a: tau, xs: &amp;list(a)): int {
+  case xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(1, length(a, ys))
+  }
+}
+</code></pre>
+<p>Here, the <code>case</code> is the noetic variant of <code>match</code>; It does the same as <code>match</code> except that it doesn't free the outer tuple of the given value (<code>xs</code> in this case).</p>
+<p>The variables that are bound by a <code>case</code> are cast to be noetic. For example, the <code>y</code> in the example above is not of type <code>a</code>, but of type <code>&amp;a</code>. The <code>ys</code> is not of type <code>list(a)</code>, but of type <code>&amp;list(a)</code>. Since the type of <code>y</code> is noetic, <code>y</code> isn't discarded even though it isn't used.</p>
+<h2 id="using-a-noema-incarnation-1"><a class="header" href="#using-a-noema-incarnation-1">Using a Noema: Incarnation</a></h2>
+<p>You can embody a noema using <code>*e</code>:</p>
+<pre><code class="language-neut">define sum-of-list(xs: &amp;list(int)): int {
+  case xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(*y, sum-of-list(ys)) // ← a use of `*e`
+  }
+}
+</code></pre>
+<p><code>*e</code> copies a noema along its inner type. For example, since the <code>y</code> above is of type <code>&amp;int</code>, <code>*y: int</code> is a <code>y</code>'s new copy of type <code>int</code> (which is the same as <code>y</code> in this case, since <code>y</code> is an immediate).</p>
+<h2 id="the-type-of-a-static-text"><a class="header" href="#the-type-of-a-static-text">The Type of a Static Text</a></h2>
+<p>The fact that a noema isn't copied/discarded can be exploited to represent a static text. In Neut, the type of static text is <code>&amp;text</code>:</p>
+<pre><code class="language-neut">&quot;Hello world!\n&quot;: &amp;text
+</code></pre>
+<p>Some text operations are defined on this noetic type. For example, the core library defines <code>print: &amp;text -&gt; unit</code>. Thus the following is a well-typed code:</p>
+<pre><code class="language-neut">define main(): unit {
+  print(&quot;Hello world!\n&quot;)
+}
+</code></pre>
+<p>Our kawaii hello world.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="parallelism-and-mutability"><a class="header" href="#parallelism-and-mutability">Parallelism and Mutability</a></h1>
+<h2 id="detachingattaching-control-flows"><a class="header" href="#detachingattaching-control-flows">Detaching/Attaching Control Flows</a></h2>
+<p>Neut has built-in support for parallelism. It is a thin layer over pthread, and works like async/await:</p>
+<pre><code class="language-neut">let f1: flow(int) =
+  detach { // like async
+    print(&quot;fA&quot;);
+    1
+  }
+in
+let f2: flow(int) =
+  detach { // like async
+    print(&quot;fb&quot;);
+    2
+  }
+in
+let v1 = attach f1 in // like await
+let v2 = attach f2 in // like await
+print(&quot;hey&quot;)
+</code></pre>
+<p><code>detach</code> is like async in other languages. <code>detach</code> detaches the specified control flow from the current control flow. More specifically, when <code>detach { ... }</code> is executed, a new thread is created and the content of <code>detach</code> is executed in the thread.</p>
+<p>The type of <code>detach { e }</code> is <code>flow(a)</code> if <code>e: a</code>. Other languages might call this type a promise or a future.</p>
+<p><code>attach e</code> is like await. <code>attach</code> waits for the control flow <code>e</code> to complete, and gets its resulting value. The type of <code>attach e</code> is <code>a</code> if <code>e: flow(a)</code>.</p>
+<h2 id="communication-between-control-flows"><a class="header" href="#communication-between-control-flows">Communication Between Control Flows</a></h2>
+<p>Flows can send/receive values using channels. A channel in Neut is similar to that of Go.</p>
+<p>You can create a channel using <code>new-channel</code>, and send/receive values using those channels.</p>
+<pre><code class="language-neut">let ch0 = new-channel(int) in
+let ch1 = new-channel(int) in
+// channels as queues
+let result on ch0, ch1 =
+  let f =
+    detach {
+      let message0 = receive(_, ch0) in // receive value from ch0
+      send(int, ch1, add-int(message0, 1)); // send value to ch1
+      message0
+    }
+  in
+  let g =
+    detach {
+      let message1 = receive(_, ch1) in // receive value from ch1
+      add-int(message1, 1)
+    }
+  in
+  send(int, ch0, 0); // send value to ch0
+  let v1 = attach f in
+  let v2 = attach g in
+  print(&quot;hey&quot;)
+in
+// ... cont ...
+</code></pre>
+<p>The type of a channel is <code>channel(a)</code>, where the <code>a</code> is the type of values that are sent/received. You'll typically use the noema of a channel because both <code>send</code> and <code>receive</code> expect the noema of a channel.</p>
+<p>You can send a value into a channel using <code>send</code>, and receive one using <code>receive</code>.</p>
+<p>A channel internally has a queue, and <code>send</code> stores a value to that queue.</p>
+<p>When you call <code>receive</code>, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, <code>receive</code> blocks until a value is sent to the queue.</p>
+<p>Incidentally, as mentioned above, a channel in Neut is similar to that of Go (and indeed inspired by Go to some extent), but actually, the main inspiration was from <a href="https://dl.acm.org/doi/10.1145/3371086">Par Means Parallel: Multiplicative Linear Logic Proofs as Concurrent Functional Programs</a>.</p>
+<h2 id="mutable-variables"><a class="header" href="#mutable-variables">Mutable Variables</a></h2>
+<p><code>channel(a)</code> can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type <code>cell(a)</code> is a wrapper of such a channel:</p>
+<pre><code class="language-neut">define sample(): int {
+  let xs: list(int) = [] in
+
+  // create a new cell using `new-cell`
+  let xs-cell = new-cell(list(int), xs) in
+
+  // create a noema of a cell
+  let result on xs-cell =
+    // mutate the cell using `mutate` (add an element)
+    mutate(_, xs-cell, (xs) =&gt; { 1 :: xs });
+
+    // peek the content of a cell using `borrow`
+    let len1 = borrow(_, _, xs-cell, (xs) =&gt; { length(xs) }) in
+    // (len1 == 1)
+
+    // mutate again
+    mutate(_, xs-cell, (xs) =&gt; { 2 :: xs });
+
+    // get the length of the list in the cell, again
+    let len2 = borrow(_, _, xs-cell, (xs) =&gt; { length(xs) }) in
+    // (len2 == 2)
+
+    ...
+  in
+  ...
+}
+</code></pre>
+<p>Here, the type of related wrapper functions are:</p>
+<pre><code class="language-neut">// create a new channel
+new-cell(a: tau, x: a): cell(a)
+
+// mutate the content of a cell
+mutate(a: tau, ch: &amp;cell(a), f: a -&gt; a): top
+
+// borrow the content of a cell and do something
+borrow(a: tau, b: tau, ch: &amp;cell(a), f: &amp;a -&gt; b): b
+
+// clone the content of a cell
+clone(a: tau, ch: &amp;cell(a)): a
+</code></pre>
+<p>The definition of, for example, <code>mutate</code> is like the below:</p>
+<pre><code class="language-neut">define mutate(a: tau, ch: &amp;cell(a), f: a -&gt; a): top {
+  let ch = magic.cast(&amp;cell(a), &amp;channel(a), ch) in
+  let v = receive(a, ch) in
+  send(a, ch, f(v))
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="other-built-in-utilities"><a class="header" href="#other-built-in-utilities">Other Built-in Utilities</a></h1>
+<h2 id="primitive-types-and-operations"><a class="header" href="#primitive-types-and-operations">Primitive Types and Operations</a></h2>
+<h3 id="basics-3"><a class="header" href="#basics-3">Basics</a></h3>
+<p>Integers and floats are of course supported in Neut. For example, the factorial function will be written as follows:</p>
+<pre><code class="language-neut">define fact(x: int64): int64 {
+  if eq-int64(x, 0) {
+    1
+  } else {
+    mul-int64(x, fact(sub-int64(x, 1)))
+  }
+}
+</code></pre>
+<p>The above uses <code>int64</code> as an integer type. Other number types are also available:</p>
+<ul>
+<li>integer types: <code>intN (= int1, int2, int3, ..., int64)</code></li>
+<li>float types: <code>floatN (= float16, float32, float64)</code></li>
+</ul>
+<p>These types have a lot of primitive operations. These inherit from LLVM IR:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>integers</th><th>floats</th></tr></thead><tbody>
+<tr><td>arithmetics</td><td>add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr</td><td>neg, add, sub, mul, div, rem</td></tr>
+<tr><td>comparison</td><td>eq, ne, gt, ge, lt, le, ueq, une, ugt, uge, ult, ule</td><td>eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true</td></tr>
+</tbody></table>
+</div>
+<p>For example, all <code>add-int32</code>, <code>neg-float64</code>, <code>eq-int64</code>, and <code>gt-float32</code> are available.</p>
+<p>Neut transparently uses LLVM's integer types and float types for its primitive types. This means, in particular, that the primitive integer types in Neut are &quot;signless&quot;. That is, signedness of an integer type in Neut resides in operators, not in values.</p>
+<p>For example, <code>div-int64</code> interprets its two arguments as signed integers, and returns its (signed) result. <code>udiv-int64</code> interprets its two arguments as unsigned integers, and returns its (unsigned) result. Integer operations prefixed with <code>u</code> are for unsigned operations.</p>
+<p>The internal representation of the integer types in Neut is the same as that of LLVM. They are therefore based on the two's complement representation. That is why Neut doesn't have something like <code>uadd-int64</code>. The <code>u</code>-prefixed integer operations are there only when we need different behaviors for different signednesses.</p>
+<p>For their detailed behaviors, please refer to <a href="https://llvm.org/docs/LangRef.html">the language reference of LLVM</a>. Also, as usual, please be careful when you compare floats. I can hear a faint voice from deep within my heart saying &quot;I want to rename <code>eq</code>s for floats into something like <code>I-know-what-I-am-doing-and-still-want-to-check-if-two-floats-are-ordered-and-equal</code>&quot;.</p>
+<h3 id="platform-dependent-primitive-types"><a class="header" href="#platform-dependent-primitive-types">Platform-Dependent Primitive Types</a></h3>
+<p>You can also use <code>int</code>. This is a syntax sugar for target-dependent type. That is, for example, if the target architecture is 64 bit, the <code>int</code> is an alias of <code>int64</code>. If the target is 32 bit, <code>int</code> is an alias of <code>int32</code>, etc.</p>
+<p>Primitives operations for <code>int</code> are also available. For example, you can use <code>div-int</code>, <code>eq-int</code>. These are aliases of the corresponding primitive operations; If <code>int</code> is <code>int64</code>, the <code>div-int</code> is the same as <code>div-int64</code>.</p>
+<p>The type <code>float</code> is also available. This is the floating point version of <code>int</code>, and thus resolved into <code>float64</code> if the target is 64 bit. You can of course use primitive operations like <code>add-float</code>, <code>gt-float</code>, etc.</p>
+<h3 id="memory-behavior-2"><a class="header" href="#memory-behavior-2">Memory Behavior</a></h3>
+<p>The cloning of operation for primitive values returns the original values. The discarding operation for them does nothing.</p>
+<h2 id="core-types"><a class="header" href="#core-types">Core Types</a></h2>
+<p>The core library (something like Prelude in other languages) is imported automatically and provides basic ADTs and functions. Things like the below are defined in the library:</p>
+<pre><code class="language-neut">data void {}
+
+data unit {
+- Unit
+}
+
+data bool {
+- False
+- True
+}
+
+data list(a) {
+- Nil
+- Cons(a, list(a))
+}
+
+// Additional notes on `list`:
+// (1) you can write `x :: xs` instead of `Cons(x, xs)`
+// (2) you can write `[x, y]` instead of `Cons(x, Cons(y, Nil))`
+
+// you can also write `?a` instead of `except(unit, a)`
+data except(a, b) {
+- Fail(a)
+- Pass(b)
+}
+
+data pair(a, b) {
+- Pair(left: a, right: b)
+}
+</code></pre>
+<p>Basic operations for those types are also defined in the library. For more, please see <a href="https://github.com/vekatze/neut-core/tree/main/source">the source of the core library</a>.</p>
+<h2 id="other-language-features"><a class="header" href="#other-language-features">Other Language Features</a></h2>
+<h3 id="inline-functions"><a class="header" href="#inline-functions">Inline Functions</a></h3>
+<p>You can define inline functions as follows:</p>
+<pre><code class="language-neut">inline increment(x: int): int {
+  add-int(x, 1)
+}
+</code></pre>
+<p>Inline functions can be reduced at compile time.</p>
+<h3 id="type-synonyms"><a class="header" href="#type-synonyms">Type Synonyms</a></h3>
+<p>You can define type synonyms as follows:</p>
+<pre><code class="language-neut">type my-int {
+  int64
+}
+
+// a type synonym with an argument
+type naive-queue(a) {
+  tuple(list(a), list(a))
+}
+</code></pre>
+<h3 id="a-notation-for-not-necessarily-monadic-binds"><a class="header" href="#a-notation-for-not-necessarily-monadic-binds">A Notation for (Not Necessarily) Monadic Binds</a></h3>
+<p>You can use Neut's <code>with</code> notation as something like the <code>do</code> notation in other languages:</p>
+<pre><code class="language-neut">// play with the `with` notation
+define test(): except(&amp;text, int) {
+  with except-bind {
+    bind x: bool = Pass(True) in   // x == True
+    bind y: tau = Fail(&quot;error&quot;) in // returns `Fail(&quot;error&quot;): except(&amp;text, int)`
+    Pass(10) // not executed
+  }
+}
+</code></pre>
+<p>where the <code>except-bind</code> is the bind operator of the except monad:</p>
+<pre><code class="language-neut">// monadic bind
+define except-bind[e, a, b](x: except(e, a), k: a -&gt; except(e, b)): except(e, b) {
+  match x {
+  - Fail(err) =&gt; Fail(err)
+  - Pass(value) =&gt; k(value)
+  }
+}
+</code></pre>
+<p>Although the <code>binder</code> in <code>with binder { .. }</code> is a monadic bind in the case above, it can be any term as long as it typechecks.</p>
+<p>Let's take a look at a slightly more complex example:</p>
+<pre><code class="language-neut">define test(): except(&amp;text, int) {
+  with except-bind {
+    let _ = tau in   // `let` can be used in `with` as usual
+    print(&quot;hey&quot;);    // `e1; e2` can also be used in `with` as usual
+    bind _: bool =
+      bind _: bool = Pass(True) in // `bind` is nestable
+      Fail(&quot;hello&quot;)
+    in
+    Pass(10)
+  }
+}
+</code></pre>
+<h3 id="tail-call-optimization"><a class="header" href="#tail-call-optimization">Tail Call Optimization</a></h3>
+<p>Neut optimizes all the tail calls. Thus, for example, the following function is optimized into a loop:</p>
+<pre><code class="language-neut">define length-of-my-list(a: tau, xs: my-list(a)): int {
+  let helper =
+    mu get-length(ys: my-list(a), acc: int): int {
+      match ys {
+      - Nil =&gt;
+        acc
+      - Cons(_, zs) =&gt;
+        get-length(zs, add-int(1, acc)) // a tail call of `get-length`
+      }
+    }
+  in
+  helper(xs, 0)
+}
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="module-system"><a class="header" href="#module-system">Module System</a></h1>
+<p>In this chapter, we'll see how Neut organizes names.</p>
+<p><a href="./basics-of-modules.html">Section 4.1 (Basics of Modules)</a> explains the basics of the digest-based modules in Neut.</p>
+<p><a href="./importing-names.html">Section 4.2 (Importing Names)</a> explains how to use names defined in other files. You'll also see how digests are used in name resolution.</p>
+<p><a href="./publishing-your-code.html">Section 4.3 (Publishing Your Code)</a> explains how to distribute your programs. Here, you'll see how Semantic Versioning has practical significance in Neut.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="basics-of-modules"><a class="header" href="#basics-of-modules">Basics of Modules</a></h1>
+<h2 id="module"><a class="header" href="#module">Module</a></h2>
+<p>A module in Neut is a directory (and its contents) that contains a file named <code>module.ens</code>. As we've already seen, we can create a module by calling <code>neut create MODULE_NAME</code>:</p>
+<pre><code class="language-sh">neut create hey
+tree hey
+# =&gt; hey/
+#    ├── source/
+#    │  └── hey.nt
+#    └── module.ens
+</code></pre>
+<h3 id="main-module-and-library-module"><a class="header" href="#main-module-and-library-module">Main Module and Library Module</a></h3>
+<p>When running compilation, every module is marked as &quot;main&quot; or &quot;library&quot;. The main module is the module in which <code>neut build</code> is executed. Library modules are all the other modules that are necessary for compilation. This distinction will be useful when considering name resolution, as you'll see in the next section.</p>
+<h3 id="adding-module-dependencies"><a class="header" href="#adding-module-dependencies">Adding Module Dependencies</a></h3>
+<p>A module can use other modules. Such module dependencies can be added using <code>neut add</code>:</p>
+<pre><code class="language-sh">neut add core https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst
+</code></pre>
+<p>By running the code above, the specified tarball is downloaded into <code>~/.cache/neut/library</code>:</p>
+<pre><code class="language-sh">ls ~/.cache/neut/library
+# =&gt; ...
+#    Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=
+#    ...
+</code></pre>
+<p>where the <code>Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=</code> is the digest of the module. Also, the module information is added to the current module's <code>module.ens</code>:</p>
+<pre><code class="language-ens">{
+  // ...
+  dependency {
+    core {
+      digest &quot;Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=&quot;
+      mirror [
+        &quot;https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst&quot;
+      ]
+    }
+  }
+  // ...
+}
+</code></pre>
+<p>It might be worth noting that an alias of a library is chosen <em>by a user of the library</em>. Indeed, in the example above, we (user) chosed the alias <code>core</code> for the downloaded library. The &quot;true&quot; name of the library is its digest, and this is not something that can be chosen arbitrarily by the creator of the library.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="importing-names"><a class="header" href="#importing-names">Importing Names</a></h1>
+<h2 id="importing-names-from-the-current-module"><a class="header" href="#importing-names-from-the-current-module">Importing Names From the Current Module</a></h2>
+<p>Suppose you created a file <code>source/foo/yo.nt</code> in your module, as follows:</p>
+<pre><code class="language-neut">// source/foo/yo.nt
+
+define some-func(): int {
+  1
+}
+
+define hey(): int {
+  2
+}
+</code></pre>
+<p>A file in the same module can be imported using <code>this</code>:</p>
+<pre><code class="language-neut">// source/hey.nt
+
+import {
+// from `/source/foo/yo.nt`, the below imports `some-func` and `hey`
+- this.foo.yo [some-func, hey]
+}
+
+define main(): int {
+  some-func()
+}
+</code></pre>
+<p>The list of imported names can also be written vertically:</p>
+<pre><code class="language-neut">import {
+- this.foo.yo {
+  - some-func
+  - hey
+  }
+}
+</code></pre>
+<p>You can also omit the list of imported names. In that case, you can use the imported names only via their fully qualified forms:</p>
+<pre><code class="language-neut">import {
+- this.foo.yo
+}
+
+define main(): int {
+  this.foo.yo.some-func()
+}
+</code></pre>
+<p>Incidentally, omitting the list of imported names is equivalent to specifying the empty list as the list of imported names:</p>
+<pre><code class="language-neut">// the following two are equivalent
+
+import {
+- this.foo.yo
+}
+
+import {
+- this.foo.yo []
+}
+</code></pre>
+<h2 id="importing-names-from-a-library-module"><a class="header" href="#importing-names-from-a-library-module">Importing Names From a Library Module</a></h2>
+<p>Suppose that you have added a library module to your module:</p>
+<pre><code class="language-ens">{
+  // ...
+  dependency {
+    core {
+      digest &quot;Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=&quot;
+      mirror [
+        &quot;https://github.com/vekatze/neut-core/raw/main/archive/0-12.tar.zst&quot;
+      ]
+    }
+  }
+  // ...
+}
+</code></pre>
+<p>You can import a file from such a library module by specifying its module alias and the relative path to the file:</p>
+<pre><code class="language-neut">import {
+// from core's `/source/text/io.nt`, the below imports `get-line`
+- core.text.io [get-line]
+}
+
+define sample() {
+  let v = get-line() in
+  ...
+}
+</code></pre>
+<p>Here, the module alias of <code>core.text.io</code> is <code>core</code>, and the relative path is <code>text.io</code>. Internally, when compiling a library module, the compiler adds the following correspondence from the current module's <code>module.ens</code>:</p>
+<pre><code class="language-sh">core =&gt; DIGEST_OF_THE_LIBRARY
+
+# core =&gt; Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=
+</code></pre>
+<p>and do the following name resolution:</p>
+<pre><code class="language-text">core.text.io.get-line
+
+↓
+
+Rmtqvu9H0ipzJFaxObbmT8qN1MCkgt3AJtDHMr4dhkg=.text.io.get-line
+</code></pre>
+<h2 id="module-based-qualified-import"><a class="header" href="#module-based-qualified-import">Module-Based Qualified Import</a></h2>
+<p>Names can also be imported via &quot;prefixes&quot;. You can define prefixes in your <code>module.ens</code>:</p>
+<pre><code class="language-ens">{
+  // ...
+  prefix {
+    hey &quot;this.foo.yo&quot; // `hey` is a prefix of `this.foo.yo`
+    hoo &quot;this.bar&quot;    // `hoo` is a prefix of `this.bar`
+  }
+}
+</code></pre>
+<p>These prefixes can then be used in source files of your module:</p>
+<pre><code class="language-neut">import {
+- hey // &quot;hey.*&quot; ~&gt; &quot;this.foo.yo.*&quot;
+- hoo // &quot;hoo.*&quot; ~&gt; &quot;this.bar.*&quot;
+}
+
+define main(): int {
+  let _ = hey.func1() in  // `hey.func1()` ~&gt; `this.foo.yo.func1()`
+  let _ = hoo.func2() in  // `hoo.func2()` ~&gt; `this.bar.func2()`
+  ..
+}
+</code></pre>
+<p>This module-based approach forces us to use prefixes in a consistent manner within a module.</p>
+<h2 id="behind-the-scenes-resolving-this"><a class="header" href="#behind-the-scenes-resolving-this">Behind The Scenes: Resolving <code>this</code></a></h2>
+<p>Remember that every module is whether the main or a library. The name of a global variable is resolved using this distinction.</p>
+<p>Firstly, <code>this</code> in the main module is kept intact. Thus, the resulting assembly file contains a symbol like <code>this.foo.yo.some-func</code>.</p>
+<p>On the other hand, <code>this</code> in a library module is resolved into its corresponding digest. More specifically, when compiling a library module, the compiler adds the following correspondence to its internal state:</p>
+<pre><code class="language-sh">this =&gt; DIGEST_OF_THE_LIBRARY
+
+# e.g. this =&gt; jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=
+</code></pre>
+<p>and resolves <code>this</code> like below:</p>
+<pre><code class="language-text">this.text.io.get-line
+
+↓
+
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+</code></pre>
+<h2 id="other-notes-on-namespaces-and-modules"><a class="header" href="#other-notes-on-namespaces-and-modules">Other Notes on Namespaces and Modules</a></h2>
+<ul>
+<li>A module named <code>core</code> is treated specially (the prelude library)</li>
+<li>Compiled objects, caches, etc. are stored in <code>build/</code> of the corresponding module</li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="publishing-your-code"><a class="header" href="#publishing-your-code">Publishing Your Code</a></h1>
+<h2 id="creating-an-archive-for-your-module"><a class="header" href="#creating-an-archive-for-your-module">Creating an Archive for Your Module</a></h2>
+<p>You can create a tarball for your module using <code>neut archive VERSION</code>:</p>
+<pre><code class="language-sh"># create a new release
+neut archive 0-1-0-0
+
+tree .
+# =&gt; ./
+#    ├── archive/
+#    │  └── 0-1-0-0.tar.zst ← NEW!
+#    ├── source/
+#    │  └── hey.nt
+#    └── module.ens
+</code></pre>
+<p>The command <code>neut archive</code> creates a tarball for the current module. The resulting tarball can be, for example, committed and pushed to your repository. Then, a user of your library can then add it to their module using <code>neut add ALIAS URL</code>.</p>
+<h2 id="identity-of-a-module"><a class="header" href="#identity-of-a-module">Identity of a Module</a></h2>
+<p>As we've seen, Neut identifies a module using its tarball's digest, which I believe isn't a very common approach.</p>
+<p>Now, suppose that you released a library <code>X</code> with version <code>1-0-0</code>. The library contains a file like below:</p>
+<pre><code class="language-neut">data some-type {
+- Foo
+- Bar(some-type)
+}
+
+define func(): some-type {
+  Foo
+}
+
+define add-bar(x: some-type): some-type {
+  Bar(some-type)
+}
+</code></pre>
+<p>One day you find a bug in <code>func</code>. You fix this bug and release the new version as <code>1-0-1</code>. Both of the definitions of <code>some-time</code> and <code>add-bar</code> are the same between <code>1-0-0</code> and <code>1-0-1</code>, of course.</p>
+<p>Now, if every package was naively identified only by its digest, the <code>add-bar</code> in <code>1-0-1</code> cannot be applied to values of type <code>some-type</code> in <code>1-0-0</code>, since the argument of <code>add-bar</code> in <code>1-0-1</code> must be of type <code>some-type</code> in <code>1-0-1</code>.</p>
+<p>Therefore, if we use a library <code>A</code> which uses <code>X</code> of version <code>1-0-0</code>, and also a library <code>B</code> which uses <code>X</code> of version <code>1-0-1</code>, we can't make these two libraries <code>A</code> and <code>B</code> cooperate in our module. I believe this isn't desirable. We would like to equate the two compatible versions in some way.</p>
+<p>Neut resolves this problem via an approach based on Semantic Versioning, as described below.</p>
+<h2 id="practical-significance-of-semantic-versioning"><a class="header" href="#practical-significance-of-semantic-versioning">Practical Significance of Semantic Versioning</a></h2>
+<p>Firstly, the <code>VERSION</code> in <code>neut archive VERSION</code> must follow a versioning scheme that is essentially the same as Semantic Versioning.</p>
+<p>If you release a version of your module that is compatible with existing modules, <em>the compatibility information is saved to the module file in the newly-created tarball</em>. The module file thus contains the list of digests of all the compatible but older alternatives.</p>
+<p>For example, suppose you have <code>archive/0-1-0-0.tar.zst</code>. If you run <code>neut archive 0-1-1-0</code>, which is a minor update release, the module file in <code>archive/0-1-1-0.tar.zst</code> should contain:</p>
+<pre><code class="language-ens">{
+  // ...
+  antecedent [
+    &quot;-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=&quot;
+  ]
+  // ...
+}
+</code></pre>
+<p>where the <code>-doDFqpUZ2qCm2bsO_hpZ51WG3FxoVKSmzjue0sKh0g=</code> is the digest of the existing tarball <code>0-1-0-0.tar.zst</code>. The value of <code>antecedent</code> stores all the digests of the existing compatible releases. In this way, the module file stores compatibility information.</p>
+<p>This compatibility information is then used by the compiler. When building a module, the compiler constructs a graph of antecedents, and <em>always uses the latest compatible version of a module by tracing the graph</em> during compilation.</p>
+<p>In this sense, the field <code>antecedent</code> defines the identity of a library.</p>
+<h2 id="actual-versioning-scheme"><a class="header" href="#actual-versioning-scheme">Actual Versioning Scheme</a></h2>
+<p>Versions like <code>1-0-0</code>, <code>10-2</code>, <code>0-1-3</code>, or <code>0-0-0-1-8-0</code> are supported. Each natural number between <code>-</code> is called a version segment. The string until the first non-zero version segment is the major version of the release. For example, the major version of <code>10-2-8</code> is <code>10</code>. That of <code>0-0-0-1-8-0</code> is <code>0-0-0-1</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="development-environment"><a class="header" href="#development-environment">Development Environment</a></h1>
+<p>Here we'll see some goodies for hackers.</p>
+<p><a href="./lsp-support.html">Section 5.1 (LSP Support)</a> introduces Neut's built-in LSP server. Although a bit basic yet, it aims to provide a good development experience in an editor-agnostic manner.</p>
+<p><a href="./editor-support.html">Section 5.2 (Editor Support)</a> explains how to use editor-specific features, like syntax highlighting or automatic indentation. This section also explains how Neut's LSP server can be utilized in each editor.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="lsp-support"><a class="header" href="#lsp-support">LSP Support</a></h1>
+<p>The compiler also contains an experimental LSP server to provide a better development experience in an editor-agnostic way. The LSP server currently supports:</p>
+<ol>
+<li>jump to definition,</li>
+<li>linting on save, and</li>
+<li>function name completion.</li>
+</ol>
+<p>You can launch the LSP server by running <code>neut lsp</code>. Thus, for example, if you're using <code>eglot</code>, you can set up the LSP server as follows:</p>
+<pre><code class="language-neut">(add-to-list 'eglot-server-programs
+             `(neut-mode . (&quot;neut&quot; &quot;lsp&quot; &quot;--no-color&quot;)))
+</code></pre>
+<p>The command <code>neut lsp</code> must be run inside a project directory. Otherwise, it will report an error something like below:</p>
+<pre><code class="language-text">error: couldn't find a module file (context: /Users/foo/)
+</code></pre>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="editor-support"><a class="header" href="#editor-support">Editor Support</a></h1>
+<h2 id="vscode"><a class="header" href="#vscode">VSCode</a></h2>
+<p>TBD</p>
+<h2 id="emacs"><a class="header" href="#emacs">Emacs</a></h2>
+<p><a href="https://github.com/vekatze/neut-mode">https://github.com/vekatze/neut-mode</a></p>
+<p><code>neut-mode</code> is an Emacs major mode for Neut. The mode provides syntax highlighting and automatic indentation. It also provides a way to use the LSP server via <code>lsp-mode</code> and <code>eglot</code>.</p>
+<p>You can install it using, for example, <a href="https://github.com/radian-software/straight.el">straight.el</a> as follows:</p>
+<pre><code class="language-text">(use-package neut-mode
+  :straight
+  (:host github :repo &quot;vekatze/neut-mode&quot;))
+</code></pre>
+<h3 id="lsp-mode"><a class="header" href="#lsp-mode">lsp-mode</a></h3>
+<p>To enable <code>lsp-mode</code>, you can do the following:</p>
+<pre><code class="language-text">M-x neut-mode-setup-lsp-mode
+M-x lsp
+</code></pre>
+<h3 id="eglot"><a class="header" href="#eglot">eglot</a></h3>
+<p>To enable <code>eglot</code>, you can do the following:</p>
+<pre><code class="language-text">M-x neut-mode-setup-eglot
+M-x eglot
+</code></pre>
+<h2 id="vim"><a class="header" href="#vim">Vim</a></h2>
+<p>TBD</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="configuration"><a class="header" href="#configuration">Configuration</a></h1>
+<p>The behavior of the compiler can be adjusted using the following environment variables:</p>
+<div class="table-wrapper"><table><thead><tr><th>Environment Variable</th><th>Meaning</th></tr></thead><tbody>
+<tr><td><code>NEUT_CACHE_DIR</code></td><td>the directory used to save caches</td></tr>
+<tr><td><code>NEUT_CLANG</code></td><td>the command to call <code>clang</code></td></tr>
+<tr><td><code>NEUT_CORE_MODULE_DIGEST</code></td><td>the digest of the core module</td></tr>
+<tr><td><code>NEUT_CORE_MODULE_URL</code></td><td>the URL of the core module</td></tr>
+<tr><td><code>NEUT_TARGET_ARCH</code></td><td>target arch (<code>amd64</code> or <code>arm64</code>)</td></tr>
+<tr><td><code>NEUT_TARGET_OS</code></td><td>target OS (<code>linux</code> or <code>darwin</code>)</td></tr>
+</tbody></table>
+</div>
+<p>The default values are as follows:</p>
+<div class="table-wrapper"><table><thead><tr><th>Environment Variable</th><th>Default Value</th></tr></thead><tbody>
+<tr><td><code>NEUT_CACHE_DIR</code></td><td><code>$XDG_CACHE_HOME/neut</code></td></tr>
+<tr><td><code>NEUT_CLANG</code></td><td><code>clang</code></td></tr>
+<tr><td><code>NEUT_CORE_MODULE_DIGEST</code></td><td>(undefined; you must set one)</td></tr>
+<tr><td><code>NEUT_CORE_MODULE_URL</code></td><td>(undefined; you must set one)</td></tr>
+<tr><td><code>NEUT_TARGET_ARCH</code></td><td>(host's arch)</td></tr>
+<tr><td><code>NEUT_TARGET_OS</code></td><td>(host's OS)</td></tr>
+</tbody></table>
+</div><div style="break-before: page; page-break-before: always;"></div><h1 id="lower-level-programming"><a class="header" href="#lower-level-programming">Lower Level Programming</a></h1>
+<p>Here, we'll see some magical stuff in Neut.</p>
+<p><a href="introspection.html">Section 4.1 (Introspection)</a> shows how to get some information from the compiler. This is useful when writing platform-dependent code.</p>
+<p><a href="magic.html">Section 4.2 (Magic)</a> shows some black magic. Here, you'll see how to perform arbitrary casting, LLVM-level memory handling, etc.</p>
+<p><a href="resource-type.html">Section 4.3 (Resource Type)</a> explains a new way to define a type. Remember that a type in Neut is translated into a function that copies/discards the values of the type. This section reverses the storyline: We define a type by specifying how to copy/discard the values of the type.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="introspection"><a class="header" href="#introspection">Introspection</a></h1>
+<p>You can get some states of the compiler by using <code>introspect</code>. Currently, you can get the information about the target platform. This information can then be exploited to change the behavior of a function according to the target platform:</p>
+<pre><code class="language-neut">define os-dependent-constant(): int {
+  introspect target-os {
+  - linux =&gt;
+    1
+  - darwin =&gt;
+    2
+  }
+}
+
+define arch-dependent-constant(): int {
+  introspect target-arch {
+  - arm64 =&gt;
+    1
+  - amd64 =&gt;
+    2
+  }
+}
+
+define platform-dependent-constant(): int {
+  introspect target-platform {
+  - arm64-linux =&gt;
+    1
+  - arm64-darwin =&gt;
+    2
+  - amd64-linux =&gt;
+    3
+  }
+}
+</code></pre>
+<p>The target platform is, by default, the same as the platform in which the compiler is executed. You can change it using the following two environment variables:</p>
+<ul>
+<li><code>NEUT_TARGET_ARCH</code></li>
+<li><code>NEUT_TARGET_OS</code></li>
+</ul>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="magic"><a class="header" href="#magic">Magic</a></h1>
+<p>In Neut, you can cast some magic spells, as follows:</p>
+<pre><code class="language-neut">// arbitrary cast
+let v-casted = magic cast(old-type, new-type, v) in
+cont
+
+// calling external function
+let ptr = magic external(malloc, 3) in // allocate 3 bytes
+cont
+
+// store a value to memory (the `store` in LLVM)
+magic store(int64, 10, ptr);
+cont
+
+// load a value from memory (the `load` in LLVM)
+let v = magic load(int64, ptr) in
+cont
+</code></pre>
+<p><code>magic</code> can be exploited to realize, for example, platform-dependent behaviors.</p>
+<p>When you call an external function using <code>magic external</code>, you must declare its type beforehand:</p>
+<pre><code class="language-neut">import {...}
+
+declare {
+- arc4random_uniform(int32): int32
+- func-name(arg-type-1, ..., arg-type-n): result-type
+}
+</code></pre>
+<h2 id="notes-on-types"><a class="header" href="#notes-on-types">Notes on Types</a></h2>
+<p>Except for <code>cast</code>, the resulting type of a <code>magic</code> is unknown. Thus, you often need to annotate types like the below:</p>
+<pre><code class="language-neut">let result: int = magic load(int64, ptr) in
+cont
+</code></pre>
+<h2 id="on-the-syntax-of-store-and-load"><a class="header" href="#on-the-syntax-of-store-and-load">On the Syntax of Store and Load</a></h2>
+<p>The first arguments of <code>store</code> and <code>load</code> must be <code>low-type</code>, where:</p>
+<pre><code class="language-neut">low-type ::= integer-type (= int1, int2, int3, ..., int64)
+           | float-type (= float16, float32, float64)
+           | pointer // LLVM's opaque pointer type
+</code></pre>
+<p>You'll also use this <code>low-type</code> when you declare an external function.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="resource-type"><a class="header" href="#resource-type">Resource Type</a></h1>
+<p>You can define a type by specifying what should happen when copying/discarding a type. This can be done using <code>resource</code>:</p>
+<pre><code class="language-neut">resource type-name {
+- (pointer: int) =&gt; {
+    // ...
+    // (discard `pointer: type-name` here)
+    // ...
+    0 // return any int; this is just a placeholder, and has no significance
+  }
+- (pointer: int) =&gt; {
+    // ...
+    // (copy `pointer: type-name` here)
+    // ...
+    copied-value // return the clone
+  }
+}
+</code></pre>
+<p>When compiled, <code>type-name(0, v)</code> calls the former function against <code>v</code>. <code>type-name(1, v)</code> calls the latter function against <code>v</code>.</p>
+<h2 id="example-noisy-integers"><a class="header" href="#example-noisy-integers">Example: Noisy Integers</a></h2>
+<p>For example, the following is a definition of a &quot;boxed&quot; integer type, with some noisy messages:</p>
+<pre><code class="language-neut">resource boxed-int {
+- (v: int) =&gt; {
+    print(&quot;discarded!\n&quot;); // print a message for a try
+    free(v);
+    0
+  }
+- (v: int) =&gt; {
+    let orig-value = load-int(v) in
+    let new-ptr = malloc(1) in
+    magic store(int, orig-value, new-ptr);
+    new-ptr
+  }
+}
+
+// provide a way to introduce new boxed integer
+define create-new-boxed-int(x: int): boxed-int {
+  let new-ptr = malloc(1) in
+  store-int(x, new-ptr);
+  magic cast(int, boxed-int, new-ptr)
+}
+</code></pre>
+<p>A value of type <code>boxed-int</code> prints <code>&quot;discarded!\n&quot;</code> when the value is discarded.</p>
+<p>Resource types can be used to implement some low-level types. Indeed, <code>i8-array</code>, <code>text</code>, and <code>vector</code> in the core library are defined using <code>resource</code>.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="executing-a-function-type"><a class="header" href="#executing-a-function-type">Executing a Function Type</a></h1>
+<p>Here, we'll see how a closure is compiled in Neut. Then, we'll see how a function type is translated.</p>
+<h2 id="compiling-a-lambda"><a class="header" href="#compiling-a-lambda">Compiling a Lambda</a></h2>
+<p>Suppose we have a function like the below:</p>
+<pre><code class="language-neut">define foo(a: tau): int {
+  let x: int = 10 in
+  let y = tau in
+  let f =
+    (z: a) =&gt; {      // lambda function
+      let foo = x in // ← x is a free var of this lambda
+      let bar = y in // ← y is also a free var of this lambda
+      let buz = z in
+      bar
+    }
+  in
+  0
+}
+</code></pre>
+<p>Let's see how the <code>lambda</code> inside the function is compiled.</p>
+<h3 id="extracting-a-closed-chain-from-a-lambda"><a class="header" href="#extracting-a-closed-chain-from-a-lambda">Extracting a Closed Chain From a Lambda</a></h3>
+<p>First of all, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:</p>
+<pre><code class="language-neut">[a, x, y, z]
+</code></pre>
+<p>Note that this list is &quot;closed&quot;. That is, consider annotating all the variables in the list by their variables, like below:</p>
+<pre><code class="language-neut">[a: tau, x: int, y: tau, z: a]
+</code></pre>
+<p>This list is closed in that the term</p>
+<pre><code class="language-neut">(a: tau, x: int, y: tau, z: a) =&gt; { Unit }
+</code></pre>
+<p>doesn't contain any free variables. We'll call a list like this a closed chain.</p>
+<h3 id="closure-conversion"><a class="header" href="#closure-conversion">Closure Conversion</a></h3>
+<p>We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like below:</p>
+<pre><code class="language-text">(Σ (a: tau, x: int, y: tau). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
+ -----------------------------   ------------
+ the type of the environment     the closed chain (i.e. environment)
+</code></pre>
+<p>This is more or less the usual closure conversion, except that we now have the type of the environment in the closure.</p>
+<h2 id="compiling-a-function-type"><a class="header" href="#compiling-a-function-type">Compiling a Function Type</a></h2>
+<h3 id="copyingdiscarding-a-closure"><a class="header" href="#copyingdiscarding-a-closure">Copying/Discarding a Closure</a></h3>
+<p>Using that type information, we can now copy/discard a closure. For example, to copy a closure, we can do the following:</p>
+<pre><code class="language-neut">// copy a closure `cls`
+
+let env-type = cls[0] in // get the type of the environment
+let env      = cls[1] in // get the pointer to the environment
+let label    = cls[2] in // get the label to the function
+
+let env-clone = env-type(1, env) in // copy the environment using the type of it
+
+// allocate new memory region for our new closure
+let new-ptr = malloc(mul-int(3, word-size)) in
+
+// store cloned values
+store(env-type, new-ptr[0]);  // remember that a type is an immediate
+store(env-clone, new-ptr[1]);
+store(label, new-ptr[2]);     // note that a label is an immediate
+
+new-ptr // ... and return the new closure
+</code></pre>
+<p>Discarding a closure can also be done with the same idea: discard the environment using the type information in the closure.</p>
+<h3 id="translating-a-function-type"><a class="header" href="#translating-a-function-type">Translating a Function Type</a></h3>
+<p>This leads us to translate the function type as follows:</p>
+<pre><code class="language-neut">(x1: A1, ..., xn: An) -&gt; B
+
+// ↓
+
+define exp-closure(action-selector, cls) {
+  if action-selector == 0 {
+    // discard
+
+    // discard the environment using the type of it
+    let env-type = cls[0] in
+    let env      = cls[1] in
+    env-type(0, env);
+
+    // discard the tuple of the closure
+    free(cls)
+  } else {
+    // copy
+
+    // get the original values
+    let env-type = cls[0] in
+    let env      = cls[1] in
+    let label    = cls[2] in
+
+    // copy the environment using the type of it
+    let env-clone = env-type(1, env) in
+
+    let new-ptr = malloc(mul-int(3, word-size)) in
+    // copy the original values
+    store(env-type, new-ptr[0]);
+    store(env-clone, new-ptr[1]);
+    store(label, new-ptr[2]);
+
+    // ... and return the new closure
+    new-ptr
+  }
+}
+</code></pre>
+<p>Note that every function type is translated into the same function no matter what its argument types and the result type are.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="some-backstage-notes"><a class="header" href="#some-backstage-notes">Some Backstage Notes</a></h1>
+<h2 id="are-there-possible-drawbacks-of-neuts-approach"><a class="header" href="#are-there-possible-drawbacks-of-neuts-approach">Are There Possible Drawbacks of Neut's Approach?</a></h2>
+<p>The prominent one that comes to my mind is that, when you use a polymorphic ADT, its type arguments must be stored in its values. For example, consider something like below:</p>
+<pre><code class="language-neut">// a syntax to define an ADT
+data Foo(a) {
+- ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
+- ConsB(a)
+}
+</code></pre>
+<p>In most languages, the internal representation of <code>ConsA(3, True)</code> will be something like:</p>
+<pre><code class="language-neut">// `0` is a tag to distinguish constructors
+(0, 3, True)
+</code></pre>
+<p>However, in Neut, the type information must also be stored:</p>
+<pre><code class="language-neut">// `TYPE` is the address of the type (as function) `a`
+(0, TYPE, 3, True)
+</code></pre>
+<p>This means that in Neut you must pay additional spaces to use parameterized ADTs. So, it might be necessary to use non-parameterized ADTs in performance-critical situations, like below:</p>
+<pre><code class="language-neut">data FooText {
+- ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
+- ConsB(text)
+}
+</code></pre>
+<p>In that case, the internal representation will be <code>(0, 3, True)</code>. We'll have to be careful about what we have to pay for polymorphism.</p>
+<h2 id="why-was-it-named-neut"><a class="header" href="#why-was-it-named-neut">Why was it Named Neut?</a></h2>
+<p>During compilation, every program in Neut is polarized into its positive fragment and its negative fragment, as done in <a href="https://www.cs.bham.ac.uk/~pbl/papers/thesisqmwphd.pdf">Call-by-Push-Value</a>. From this perspective, every term in a source file of this language can be seen as neutral. So, just as <code>.txt</code> is used as the file extension for texts, I chose to use <code>.neut</code> (which is now <code>.nt</code>) as the file extension for neutral terms. Over time, it started to look like a proper noun, and I decided to adopt it as the name of the language.</p>
+<p>(I don't by any means claim this obviously opinionated language to be more neutral than others)</p>
+<h2 id="how-did-neut-find-the-approach"><a class="header" href="#how-did-neut-find-the-approach">How Did Neut Find the Approach?</a></h2>
+<p>By trying to utilize the other side of logical harmony in the sense of Michael Dummett.</p>
+<p>From the viewpoint of natural deduction, executing a program is reducing detours in a proof tree, as is well known (the lovely Curry-Howard correspondence). Such a reduction of a proof tree can be seen as a utilization of local soundness.</p>
+<p>On the other hand, the flip side of harmony, namely local completeness, is often ignored when thinking about programs. At least, that was how it seemed to me N years ago. It made me wonder: Why does local completeness seem to play almost no role in a program when local soundness handles the time aspect of a program, which is of great importance?</p>
+<p>Led by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, or local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.</p>
+<p>A good lecture note on harmony can be found <a href="https://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/03-harmony.pdf">here</a>.</p>
+
+            <footer id="footer-paginator">
+
+              <div id="footer-spacer"></div>
+
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

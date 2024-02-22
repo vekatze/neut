@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Allocation Canceling - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Allocation Canceling - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/allocation-canceling.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html" class="active"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="allocation-canceling"><a class="header" href="#allocation-canceling">Allocation Canceling</a></h1>
+<p>Thanks to its static nature, memory allocation in Neut can sometimes be optimized away. Consider the following code:</p>
+<pre><code class="language-neut">data int-list {
+- Nil
+- Cons(int, int-list)
+}
+
+// [1, 5, 9] =&gt; [2, 6, 10]
+define increment(xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    Nil
+  // ↓ the `Cons` clause
+  - Cons(x, rest) =&gt;
+    Cons(add-int(x, 1), increment(rest))
+  }
+}
+</code></pre>
+<p>The expected behavior of the <code>Cons</code> clause above would be something like the below:</p>
+<ol>
+<li>obtain <code>x</code> and <code>rest</code> from <code>xs</code></li>
+<li><code>free</code> the outer tuple of <code>xs</code></li>
+<li>calculate <code>add-int(x, 1)</code> and <code>increment(rest)</code></li>
+<li>allocate memory region using <code>malloc</code> to return the result</li>
+<li>store the calculated values to the pointer and return it</li>
+</ol>
+<p>However, since the size of <code>Cons(x, rest)</code> and <code>Cons(add-int(x, 1), increment(rest))</code> are known to be the same at compile-time, the pair of <code>free</code> and <code>malloc</code> should be able to be optimized away, as follows:</p>
+<ol>
+<li>obtain <code>x</code> and <code>rest</code> from <code>xs</code></li>
+<li>calculate <code>add-int(x, 1)</code> and <code>increment(rest)</code></li>
+<li>store the calculated values to <code>xs</code> (overwrite)</li>
+</ol>
+<p>And Neut does this optimization. When a <code>free</code> is required, Neut looks for a <code>malloc</code> that has the same size and optimizes away such a pair if there exists one. The resulting assembly code thus performs in-place updates.</p>
+<h2 id="allocation-canceling-and-branching"><a class="header" href="#allocation-canceling-and-branching">Allocation Canceling and Branching</a></h2>
+<p>This optimization &quot;penetrates&quot; branching. For example, consider the below:</p>
+<pre><code class="language-neut">// (an `insert` function in bubble sort)
+define insert(v: int, xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    // ...
+  - Cons(y, ys) =&gt;           // (X)
+    if gt-int(v, y) {
+      Cons(y, insert(v, ys)) // (Y)
+    } else {
+      Cons(v, Cons(y, ys))   // (Z)
+    }
+  }
+}
+</code></pre>
+<p>At point <code>(X)</code>, <code>free</code> against <code>xs</code> is required. However, this <code>free</code> can be canceled, since <code>malloc</code>s of the same size can be found in all the possible branches (here, <code>(Y)</code> and <code>(Z)</code>). Thus, in the code above, the deallocation of <code>xs</code> at <code>(X)</code> is removed, and the memory region of <code>xs</code> is reused at <code>(Y)</code> and <code>(Z)</code>, resulting in an in-place update of <code>xs</code>.</p>
+<p>On the other hand, consider rewriting the code above into something like the below:</p>
+<pre><code class="language-neut">define foo(v: int, xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    // ...
+  - Cons(y, ys) =&gt;         // (X')
+    if gt-int(v, y) {
+      Nil                  // (Y')
+    } else {
+      Cons(v, Cons(y, ys)) // (Z')
+    }
+  }
+}
+</code></pre>
+<p>At this time, the <code>free</code> against <code>xs</code> at <code>(X')</code> can't be optimized away, since there exists a branch (namely, <code>(Y')</code>) that doesn't perform <code>malloc</code> which is of the same size as <code>xs</code>.</p>
+<h2 id="how-effective-is-this-optimization"><a class="header" href="#how-effective-is-this-optimization">How Effective Is This Optimization?</a></h2>
+<p>The performance benefit obtained by this optimization seems to be pretty significant, at least on my machine. It feels somewhat like tail call optimization. Let me share some numbers.</p>
+<h3 id="a-slower-implementation"><a class="header" href="#a-slower-implementation">A Slower Implementation</a></h3>
+<p>Let's write a slower implementation for comparison. The allocation canceling can be disabled by defining an opaque function like the below:</p>
+<pre><code class="language-neut">define insert(v: int, xs: int-list): int-list {
+  match xs {
+  - Nil =&gt;
+    // ...
+  - Cons(y, ys) =&gt; // (X'')
+    swap-gt(gt-int(v, y), v, y, ys)
+  }
+}
+
+// an opaque function
+define swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+  if cond {
+    Cons(x, insert(v, xs))
+  } else {
+    Cons(v, Cons(x, xs))
+  }
+}
+</code></pre>
+<p>The code above doesn't perform allocation canceling at <code>(X'')</code> since, in this case, the <code>free</code> at <code>(X'')</code> doesn't have its correspondent in its continuation.</p>
+<h3 id="comparing-execution-times"><a class="header" href="#comparing-execution-times">Comparing Execution Times</a></h3>
+<p>Using the slower and faster implementations of <code>insert</code>, I wrote codes that perform naive bubble sorting on linked lists of 30,000 random integers. I also wrote codes that do the same in Haskell and OCaml just for reference (the complete codes are at the end of this page).</p>
+<p>Then I compiled them into M1 native binaries and casually measured their execution time using the <code>time</code> command. I performed each measurement 5 times and calculated the average of them. The result is as follows (Tested on my 14-inch M1 Max MacBook Pro with 32 GB RAM; the chart is powered by Plotly Chart Studio):</p>
+<p><img src="./image/bench-bubble.png" alt="bubble sort" title="bubble sort" /></p>
+<p>As you can see from the two blue bars, allocation canceling can make the performance better more than twice, at least in this case. Also, seeing the chart above, I believe that I won't be heavily punished if I innocently say that the resulting performance of Neut is comparable to that of Haskell, again at least in this case.</p>
+<p>(Now I'm hoping that Neut isn't a bubblesort-oriented joke language...)</p>
+<h3 id="appendix-complete-codes"><a class="header" href="#appendix-complete-codes">Appendix: Complete Codes</a></h3>
+<p>The Neut code used in the test above is as follows:</p>
+<pre><code class="language-neut">declare {
+- arc4random_uniform(int): int
+}
+
+data int-list {
+- My-Nil
+- My-Cons(int, int-list)
+}
+
+define insert(v: int, xs: int-list): int-list {
+  match xs {
+  - My-Nil =&gt;
+    My-Cons(v, My-Nil)
+  - My-Cons(y, ys) =&gt;
+    swap-gt(gt-int(v, y), v, y, ys)
+  }
+}
+
+// replace &quot;inline&quot; with &quot;define&quot; for the slower alternative
+inline swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+  if cond {
+    My-Cons(x, insert(v, xs))
+  } else {
+    My-Cons(v, My-Cons(x, xs))
+  }
+}
+
+define sort(xs: int-list, acc: int-list): int-list {
+  match xs {
+  - My-Nil =&gt;
+    acc
+  - My-Cons(y, ys) =&gt;
+    sort(ys, insert(y, acc))
+  }
+}
+
+define some-rand(): int {
+  magic external(arc4random_uniform, 10000: int)
+}
+
+define rand-list(len: int, acc: int-list): int-list {
+  if eq-int(len, 0) {
+    acc
+  } else {
+    let val = some-rand() in
+    rand-list(sub-int(len, 1), My-Cons(val, acc))
+  }
+}
+
+define main(): unit {
+  let some-list = rand-list(30000, My-Nil) in
+  let some-list = sort(some-list, My-Nil) in
+  let _ = some-list in
+  Unit
+}
+</code></pre>
+<p>The Haskell code used in the test above is as follows:</p>
+<pre><code class="language-haskell">-- Bubble.hs
+
+import System.Random
+
+data List = MyNil | MyCons Int List
+
+insert :: Int -&gt; List -&gt; List
+insert v MyNil = MyCons v MyNil
+insert v (MyCons x xs) = swapGT (v &gt; x) v x xs
+
+{-# INLINE swapGT #-}
+swapGT :: Bool -&gt; Int -&gt; Int -&gt; List -&gt; List
+swapGT False v x xs = MyCons v (MyCons x xs)
+swapGT True v x xs = MyCons x (insert v xs)
+
+sort :: List -&gt; List -&gt; List
+sort MyNil acc = acc
+sort (MyCons x xs) acc = sort xs (insert x acc)
+
+randList :: Int -&gt; List -&gt; IO List
+randList len acc = do
+  if len == 0
+    then return acc
+    else do
+      v &lt;- randomRIO (0, 10000)
+      randList (len - 1) (MyCons v acc)
+
+-- handle laziness
+foo :: List -&gt; Int
+foo xs =
+  case xs of
+    MyNil -&gt;
+      0
+    MyCons _ rest -&gt;
+      foo rest
+
+main :: IO ()
+main = do
+  someList &lt;- randList 30000 MyNil
+  let result = sort someList MyNil
+  print $ foo result
+</code></pre>
+<p>The OCaml code used in the test above is as follows:</p>
+<pre><code class="language-ocaml">(* bubble.ml *)
+
+type intList =
+  MyNil |
+  MyCons of int * intList
+
+let rec insert v xs =
+  match xs with
+  | MyNil -&gt; MyCons(v, MyNil)
+  | MyCons (y, ys) -&gt;
+     if v &gt; y then
+       MyCons (y, (insert v ys))
+     else
+       MyCons (v, (insert y ys))
+
+let rec sort xs acc =
+  match xs with
+  | MyNil -&gt;
+     acc
+  | MyCons(y, ys) -&gt;
+     sort ys (insert y acc)
+
+let rec randList len acc =
+  if len == 0 then
+    acc
+  else
+    let v = Random.int 10000 in
+    randList (len - 1) (MyCons(v, acc))
+
+let main () =
+  Random.init 12345;
+  let someList = randList 30000 MyNil in
+  let _ = sort someList MyNil in
+  ()
+;;
+
+main ()
+</code></pre>
+<p>Please tell me (hopefully gently) if this comparison is unfair due to a reason that I overlooked.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="noetic-optimization.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="language-tutorial.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html" class="active"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

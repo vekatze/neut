@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Other Built-in Utilities - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Other Built-in Utilities - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/other-built-in-utilities.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html" class="active"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="other-built-in-utilities"><a class="header" href="#other-built-in-utilities">Other Built-in Utilities</a></h1>
+<h2 id="primitive-types-and-operations"><a class="header" href="#primitive-types-and-operations">Primitive Types and Operations</a></h2>
+<h3 id="basics"><a class="header" href="#basics">Basics</a></h3>
+<p>Integers and floats are of course supported in Neut. For example, the factorial function will be written as follows:</p>
+<pre><code class="language-neut">define fact(x: int64): int64 {
+  if eq-int64(x, 0) {
+    1
+  } else {
+    mul-int64(x, fact(sub-int64(x, 1)))
+  }
+}
+</code></pre>
+<p>The above uses <code>int64</code> as an integer type. Other number types are also available:</p>
+<ul>
+<li>integer types: <code>intN (= int1, int2, int3, ..., int64)</code></li>
+<li>float types: <code>floatN (= float16, float32, float64)</code></li>
+</ul>
+<p>These types have a lot of primitive operations. These inherit from LLVM IR:</p>
+<div class="table-wrapper"><table><thead><tr><th></th><th>integers</th><th>floats</th></tr></thead><tbody>
+<tr><td>arithmetics</td><td>add, sub, mul, div, rem, udiv, urem, or, xor, shl, lshr, ashr</td><td>neg, add, sub, mul, div, rem</td></tr>
+<tr><td>comparison</td><td>eq, ne, gt, ge, lt, le, ueq, une, ugt, uge, ult, ule</td><td>eq, gt, ge, lt, le, ne, ord, ueq, ugt, uge, ult, ule, une, uno, false, true</td></tr>
+</tbody></table>
+</div>
+<p>For example, all <code>add-int32</code>, <code>neg-float64</code>, <code>eq-int64</code>, and <code>gt-float32</code> are available.</p>
+<p>Neut transparently uses LLVM's integer types and float types for its primitive types. This means, in particular, that the primitive integer types in Neut are &quot;signless&quot;. That is, signedness of an integer type in Neut resides in operators, not in values.</p>
+<p>For example, <code>div-int64</code> interprets its two arguments as signed integers, and returns its (signed) result. <code>udiv-int64</code> interprets its two arguments as unsigned integers, and returns its (unsigned) result. Integer operations prefixed with <code>u</code> are for unsigned operations.</p>
+<p>The internal representation of the integer types in Neut is the same as that of LLVM. They are therefore based on the two's complement representation. That is why Neut doesn't have something like <code>uadd-int64</code>. The <code>u</code>-prefixed integer operations are there only when we need different behaviors for different signednesses.</p>
+<p>For their detailed behaviors, please refer to <a href="https://llvm.org/docs/LangRef.html">the language reference of LLVM</a>. Also, as usual, please be careful when you compare floats. I can hear a faint voice from deep within my heart saying &quot;I want to rename <code>eq</code>s for floats into something like <code>I-know-what-I-am-doing-and-still-want-to-check-if-two-floats-are-ordered-and-equal</code>&quot;.</p>
+<h3 id="platform-dependent-primitive-types"><a class="header" href="#platform-dependent-primitive-types">Platform-Dependent Primitive Types</a></h3>
+<p>You can also use <code>int</code>. This is a syntax sugar for target-dependent type. That is, for example, if the target architecture is 64 bit, the <code>int</code> is an alias of <code>int64</code>. If the target is 32 bit, <code>int</code> is an alias of <code>int32</code>, etc.</p>
+<p>Primitives operations for <code>int</code> are also available. For example, you can use <code>div-int</code>, <code>eq-int</code>. These are aliases of the corresponding primitive operations; If <code>int</code> is <code>int64</code>, the <code>div-int</code> is the same as <code>div-int64</code>.</p>
+<p>The type <code>float</code> is also available. This is the floating point version of <code>int</code>, and thus resolved into <code>float64</code> if the target is 64 bit. You can of course use primitive operations like <code>add-float</code>, <code>gt-float</code>, etc.</p>
+<h3 id="memory-behavior"><a class="header" href="#memory-behavior">Memory Behavior</a></h3>
+<p>The cloning of operation for primitive values returns the original values. The discarding operation for them does nothing.</p>
+<h2 id="core-types"><a class="header" href="#core-types">Core Types</a></h2>
+<p>The core library (something like Prelude in other languages) is imported automatically and provides basic ADTs and functions. Things like the below are defined in the library:</p>
+<pre><code class="language-neut">data void {}
+
+data unit {
+- Unit
+}
+
+data bool {
+- False
+- True
+}
+
+data list(a) {
+- Nil
+- Cons(a, list(a))
+}
+
+// Additional notes on `list`:
+// (1) you can write `x :: xs` instead of `Cons(x, xs)`
+// (2) you can write `[x, y]` instead of `Cons(x, Cons(y, Nil))`
+
+// you can also write `?a` instead of `except(unit, a)`
+data except(a, b) {
+- Fail(a)
+- Pass(b)
+}
+
+data pair(a, b) {
+- Pair(left: a, right: b)
+}
+</code></pre>
+<p>Basic operations for those types are also defined in the library. For more, please see <a href="https://github.com/vekatze/neut-core/tree/main/source">the source of the core library</a>.</p>
+<h2 id="other-language-features"><a class="header" href="#other-language-features">Other Language Features</a></h2>
+<h3 id="inline-functions"><a class="header" href="#inline-functions">Inline Functions</a></h3>
+<p>You can define inline functions as follows:</p>
+<pre><code class="language-neut">inline increment(x: int): int {
+  add-int(x, 1)
+}
+</code></pre>
+<p>Inline functions can be reduced at compile time.</p>
+<h3 id="type-synonyms"><a class="header" href="#type-synonyms">Type Synonyms</a></h3>
+<p>You can define type synonyms as follows:</p>
+<pre><code class="language-neut">type my-int {
+  int64
+}
+
+// a type synonym with an argument
+type naive-queue(a) {
+  tuple(list(a), list(a))
+}
+</code></pre>
+<h3 id="a-notation-for-not-necessarily-monadic-binds"><a class="header" href="#a-notation-for-not-necessarily-monadic-binds">A Notation for (Not Necessarily) Monadic Binds</a></h3>
+<p>You can use Neut's <code>with</code> notation as something like the <code>do</code> notation in other languages:</p>
+<pre><code class="language-neut">// play with the `with` notation
+define test(): except(&amp;text, int) {
+  with except-bind {
+    bind x: bool = Pass(True) in   // x == True
+    bind y: tau = Fail(&quot;error&quot;) in // returns `Fail(&quot;error&quot;): except(&amp;text, int)`
+    Pass(10) // not executed
+  }
+}
+</code></pre>
+<p>where the <code>except-bind</code> is the bind operator of the except monad:</p>
+<pre><code class="language-neut">// monadic bind
+define except-bind[e, a, b](x: except(e, a), k: a -&gt; except(e, b)): except(e, b) {
+  match x {
+  - Fail(err) =&gt; Fail(err)
+  - Pass(value) =&gt; k(value)
+  }
+}
+</code></pre>
+<p>Although the <code>binder</code> in <code>with binder { .. }</code> is a monadic bind in the case above, it can be any term as long as it typechecks.</p>
+<p>Let's take a look at a slightly more complex example:</p>
+<pre><code class="language-neut">define test(): except(&amp;text, int) {
+  with except-bind {
+    let _ = tau in   // `let` can be used in `with` as usual
+    print(&quot;hey&quot;);    // `e1; e2` can also be used in `with` as usual
+    bind _: bool =
+      bind _: bool = Pass(True) in // `bind` is nestable
+      Fail(&quot;hello&quot;)
+    in
+    Pass(10)
+  }
+}
+</code></pre>
+<h3 id="tail-call-optimization"><a class="header" href="#tail-call-optimization">Tail Call Optimization</a></h3>
+<p>Neut optimizes all the tail calls. Thus, for example, the following function is optimized into a loop:</p>
+<pre><code class="language-neut">define length-of-my-list(a: tau, xs: my-list(a)): int {
+  let helper =
+    mu get-length(ys: my-list(a), acc: int): int {
+      match ys {
+      - Nil =&gt;
+        acc
+      - Cons(_, zs) =&gt;
+        get-length(zs, add-int(1, acc)) // a tail call of `get-length`
+      }
+    }
+  in
+  helper(xs, 0)
+}
+</code></pre>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="parallelism-and-mutability.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="module-system.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html" class="active"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>

@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Noetic Optimization - Neut Programming Language</title>
+    <meta name="description" content="A dependently-typed programming language with static memory management." />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <link rel="icon" href="data:;base64,iVBORw0KGgo=">
+    <link rel="stylesheet" href="css/general.css" />
+    <link rel="stylesheet" href="highlight.css" />
+    <meta property="og:title" content="Noetic Optimization - Neut Programming Language" />
+    <meta property="og:description" content="A dependently-typed programming language with static memory management." />
+    <meta property="og:url" content="https://vekatze.github.io/neut/noetic-optimization.md" />
+    <meta property="og:type" content="article" />
+  </head>
+  <body>
+    <div id="body-container">
+      <header id="menu-bar">
+        <h1 class="menu-title">
+          <a href="overview.html">
+            Neut Programming Language
+          </a>
+        </h1>
+
+        <div class="right-buttons">
+            <a href="https://github.com/vekatze/neut" class="menubar-item">
+              <span>GitHub</span>
+            </a>
+        </div>
+      </header>
+      <div id="content-box">
+        <aside id="sidebar">
+          <nav class="sidebar-scrollbox">
+            <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html" class="active"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+          </nav>
+        </aside>
+
+        <main id="content" tabindex="0">
+          <article id="content-inner">
+            <h1 id="noetic-optimization"><a class="header" href="#noetic-optimization">Noetic Optimization</a></h1>
+<h2 id="introducing-noetic-types"><a class="header" href="#introducing-noetic-types">Introducing Noetic Types</a></h2>
+<p>Let's introduce a new type <code>&amp;list(a)</code>, the noetic variant of <code>list(a)</code>. Also, let's call a value a noema if its type is of the form <code>&amp;a</code>.</p>
+<p>A noema of type <code>&amp;a</code> has the same internal representation as a value of type <code>a</code>. The difference lies in how the values of this type are copied/discarded; <em>a noema is treated as an immediate</em>.</p>
+<p>More specifically, a noema is handled using the <code>exp-immediate</code> that we saw in the last section:</p>
+<pre><code class="language-neut">define exp-immediate(action-selector, v) {
+  if action-selector == 0 {
+    0 // do nothing against `v`
+  } else {
+    v // just use the original one as a copy
+  }
+}
+</code></pre>
+<p>We'll use noemata to deceive the type-oriented resource management system.</p>
+<h2 id="creating-a-noema-local-cast"><a class="header" href="#creating-a-noema-local-cast">Creating a Noema: Local Cast</a></h2>
+<p>Firstly, we need a way to create a noema. The syntax <code>let-on</code> is there for that purpose:</p>
+<pre><code class="language-neut">let x: a = (...) in      // x: a
+let result on x =
+  let y: &amp;a = x in       // x: &amp;a
+  100                    // x: &amp;a
+in
+// outside
+let z: a = x in          // x: a
+cont                     // x: a
+</code></pre>
+<p><code>let-on</code> locally casts a value to a noema, and then casts back the value to its original type. In other words, <code>let-on</code> is essentially just a syntax sugar like the below:</p>
+<pre><code class="language-neut">let len on xs = e in
+cont
+
+// ↓ desugar
+
+let xs = unsafe-cast(a, &amp;a, xs) in // cast: `a` ~&gt; `&amp;a`
+let len = e in                     // (use `&amp;a`)
+let xs = unsafe-cast(&amp;a, a, xs) in // uncast: `&amp;a` ~&gt; `a`
+cont
+</code></pre>
+<p>Note that</p>
+<ul>
+<li>you can't use the original <code>xs: A</code> in <code>e</code> since the name is shadowed by <code>xs: &amp;A</code>, and that</li>
+<li>a new <code>xs: a</code> is defined after <code>let-on</code> by uncasting a noema, and thus can be used in <code>cont</code>.</li>
+</ul>
+<p>As you can see from the definition of <code>let-on</code>, a noema always has its &quot;source&quot; value. We'll call it the hyle of a noema.</p>
+<p>(You might have noticed that the answer type (the type of <code>result</code>) of a <code>let-on</code> needs to be restricted to some extent. This point is covered later in this section)</p>
+<h2 id="using-a-noema-viewing-its-content"><a class="header" href="#using-a-noema-viewing-its-content">Using a Noema: Viewing Its Content</a></h2>
+<p>Now that we can create noemata, we want a way to use them.</p>
+<p>Using a noema, for example, the length of a list can be obtained as follows:</p>
+<pre><code class="language-neut">define length-noetic(a: tau, xs: &amp;list(a)): int {
+  case xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(1, length-noetic(a, ys))
+  }
+}
+</code></pre>
+<p>Here, <code>case</code> does the same as <code>match</code> except that:</p>
+<ul>
+<li>it expects noetic ADTs like <code>&amp;list(a)</code>, not ordinary ADTs like <code>list(a)</code>,</li>
+<li>it doesn't call <code>free</code> against its arguments (the <code>xs</code> here), and that</li>
+<li>the types of the constructor arguments are casted to be noetic.</li>
+</ul>
+<p>The last one means, for example, the type of <code>y</code> in the example above is not <code>a</code> but <code>&amp;a</code>. Similarly, The type of <code>ys</code> is not <code>list(a)</code>, but <code>&amp;list(a)</code>. This ensures that the internal content of <code>xs</code> is kept intact. In this sense, you can think of <code>case</code> as a read-only variant of <code>match</code>.</p>
+<p>Note that, although the <code>y: &amp;a</code> is unused in the code above, since <code>&amp;a</code> is a noetic type, this <code>y</code> isn't discarded, which is what we wanted.</p>
+<h2 id="using-a-noema-incarnation"><a class="header" href="#using-a-noema-incarnation">Using a Noema: Incarnation</a></h2>
+<p>Also, you can create a value of type <code>A</code> from a noema of type <code>&amp;A</code>:</p>
+<pre><code class="language-neut">define sum-of-list(xs: &amp;list(int)): int {
+  case xs {
+  - [] =&gt;
+    0
+  - y :: ys =&gt;
+    add-int(*y, sum-of-list(ys))
+  }
+}
+</code></pre>
+<p><code>*e</code> copies the argument along its type, keeping the original noema intact. In the example above, a term of type <code>int</code> is obtained from a term <code>y: &amp;int</code>, by writing <code>*y</code>.</p>
+<h2 id="example-get-the-length-of-a-list"><a class="header" href="#example-get-the-length-of-a-list">Example: Get the Length of a List</a></h2>
+<p>Using <code>let-on</code> and <code>length-noetic</code>, we can obtain the length of a list as follows:</p>
+<pre><code class="language-neut">define test() {
+  let xs: list(int) = [1, 2, 3] in
+  let len on xs = length-noetic(xs) in // xs: &amp;list(int)
+  do-something(xs, len)
+}
+</code></pre>
+<p>Note that the list <code>xs</code> isn't copied anymore. It might be said that this is something like &quot;borrowing&quot; in other languages.</p>
+<h2 id="result-type-restriction"><a class="header" href="#result-type-restriction">Result Type Restriction</a></h2>
+<p>A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if <code>let-on</code> can return a noema:</p>
+<pre><code class="language-neut">let xs = [1, 2] in
+let result on xs = xs in // **CAUTION** the result of let-on is a noema
+let _ = xs in    // ← Since the variable `_` isn't used,
+                 // the hyle of `result`, namely `xs: list(int)`, is discarded here
+match result {   // ... and thus using `result` here is a use-after-free!
+- [] =&gt;
+  print(&quot;hey&quot;)
+- y :: ys =&gt;
+  print(&quot;yo&quot;)
+}
+</code></pre>
+<p>Thus, we need to restrict the value <code>result</code> so that it can't contain any noemata. For example, types like <code>list(int)</code>, <code>unit</code>, or <code>except(list(int), text)</code> are allowed. types like <code>&amp;text</code>, <code>list(a)</code>, <code>int -&gt; bool</code> are disallowed.</p>
+<p>More specifically, the type of <code>result</code> must satisfy all of the followings:</p>
+<ul>
+<li>it doesn't contain any free variables,</li>
+<li>it doesn't contain any noetic types,</li>
+<li>it doesn't contain any function types (since a noema can reside in it), and</li>
+<li>it doesn't contain any &quot;dubious&quot; ADTs.</li>
+</ul>
+<p>Here, a &quot;dubious&quot; ADT is an ADT like the below:</p>
+<pre><code class="language-neut">data joker-x {
+- HideX(&amp;A) // contains a noetic argument
+}
+
+data joker-y {
+- HideY(int -&gt; bool) // contains a functional argument
+}
+
+data joker-z {
+- HideZ(joker-y) // contains a dubious ADT argument
+}
+</code></pre>
+<p>Indeed, if we were to allow returning these dubious ADTs, we can exploit them to hide a noema:</p>
+<pre><code class="language-neut">let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
+let _ = xs in                   // `xs` is discarded here
+match result {
+- HideX(xs) =&gt;
+  *xs                           // CRASH: use-after-free!
+}
+</code></pre>
+<p>This restriction is checked at compile time by the type system of Neut.</p>
+<h2 id="a-possible-alternative-the-st-monadic-approach"><a class="header" href="#a-possible-alternative-the-st-monadic-approach">A Possible Alternative: The ST Monadic Approach</a></h2>
+<p>Some (including me) might find the above restriction rather ad-hoc. Indeed, there exists an alternative, more seemingly principled approach. The approach essentially uses <a href="https://hackage.haskell.org/package/base-4.18.0.0/docs/Control-Monad-ST.html">the ST monad</a>; Every noetic type is now of the form <code>noema(s, A)</code>, where the <code>s</code> corresponds to the <code>s</code> in <code>STRef s a</code>.</p>
+<p>In this approach, <code>let-on</code> would internally use <code>runST: (forall s. ST s a) -&gt; a</code> to ensure that the result doesn't depend on noetic values. Also, in this approach, the whole language will be made pure so that we can track every use of <code>&amp;e</code> and <code>case</code>. This approach will be a variation of <a href="https://dl.acm.org/doi/abs/10.1145/258949.258970">Monadic State: Axiomatization and Type Safety</a>, or <a href="https://dl.acm.org/doi/abs/10.1145/1016848.1016867">Monadic Regions</a>.</p>
+<p>Then, why Neut didn't take this more &quot;principled&quot; approach? This is because the virtue of noetic types lies in making our experience with certain fragments of the language better. Indeed, we can already do the same thing without noetic stuff by using unsafe casts appropriately. Although we can make the language pure and change the formulation of noemata into <code>noema(s, A)</code>, pursuing local generality here by modifying the whole language will go against the purpose of noetic types; They are there to provide certain safe patterns of uses of unsafe casts.</p>
+<p>The language is already well-generalized. Noetic optimization is gold leaf for the cake.</p>
+
+            <footer id="footer-paginator">
+              <a rel="prev" href="exponentials-in-action.html" class="nav previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                ← Previous Page
+              </a>
+
+              <div id="footer-spacer"></div>
+
+              <a rel="next" href="allocation-canceling.html" class="nav next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                Next Page →
+              </a>
+            </footer>
+          </article>
+          <div id="footer-wrapper">
+            <footer id="footer-nav">
+              <ol class="chapter"><li class="chapter-item expanded "><a href="overview.html"><strong aria-hidden="true">1.</strong> Overview</a></li><li class="chapter-item expanded "><a href="main-ideas.html"><strong aria-hidden="true">2.</strong> Main Ideas</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="in-a-linear-language.html"><strong aria-hidden="true">2.1.</strong> In a Linear Language</a></li><li class="chapter-item expanded "><a href="executing-types.html"><strong aria-hidden="true">2.2.</strong> Executing Types</a></li><li class="chapter-item expanded "><a href="exponentials-in-action.html"><strong aria-hidden="true">2.3.</strong> Exponentials in Action</a></li><li class="chapter-item expanded "><a href="noetic-optimization.html" class="active"><strong aria-hidden="true">2.4.</strong> Noetic Optimization</a></li><li class="chapter-item expanded "><a href="allocation-canceling.html"><strong aria-hidden="true">2.5.</strong> Allocation Canceling</a></li></ol></li><li class="chapter-item expanded "><a href="language-tutorial.html"><strong aria-hidden="true">3.</strong> Language Tutorial</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="installation.html"><strong aria-hidden="true">3.1.</strong> Installation</a></li><li class="chapter-item expanded "><a href="preliminaries.html"><strong aria-hidden="true">3.2.</strong> Preliminaries</a></li><li class="chapter-item expanded "><a href="ADTs-and-lambdas.html"><strong aria-hidden="true">3.3.</strong> ADTs and Lambdas</a></li><li class="chapter-item expanded "><a href="noetic-programming.html"><strong aria-hidden="true">3.4.</strong> Noetic Programming</a></li><li class="chapter-item expanded "><a href="parallelism-and-mutability.html"><strong aria-hidden="true">3.5.</strong> Parallelism and Mutability</a></li><li class="chapter-item expanded "><a href="other-built-in-utilities.html"><strong aria-hidden="true">3.6.</strong> Other Built-in Utilities</a></li></ol></li><li class="chapter-item expanded "><a href="module-system.html"><strong aria-hidden="true">4.</strong> Module System</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="basics-of-modules.html"><strong aria-hidden="true">4.1.</strong> Basics of Modules</a></li><li class="chapter-item expanded "><a href="importing-names.html"><strong aria-hidden="true">4.2.</strong> Importing Names</a></li><li class="chapter-item expanded "><a href="publishing-your-code.html"><strong aria-hidden="true">4.3.</strong> Publishing Your Code</a></li></ol></li><li class="chapter-item expanded "><a href="development-environment.html"><strong aria-hidden="true">5.</strong> Development Environment</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="lsp-support.html"><strong aria-hidden="true">5.1.</strong> LSP Support</a></li><li class="chapter-item expanded "><a href="editor-support.html"><strong aria-hidden="true">5.2.</strong> Editor Support</a></li></ol></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">6.</strong> Configuration</a></li><li class="chapter-item expanded affix "><li class="part-title">Appendix</li><li class="chapter-item expanded "><a href="lower-level-programming.html"><strong aria-hidden="true">7.</strong> Lower Level Programming</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="introspection.html"><strong aria-hidden="true">7.1.</strong> Introspection</a></li><li class="chapter-item expanded "><a href="magic.html"><strong aria-hidden="true">7.2.</strong> Magic</a></li><li class="chapter-item expanded "><a href="resource-type.html"><strong aria-hidden="true">7.3.</strong> Resource Type</a></li></ol></li><li class="chapter-item expanded "><a href="executing-the-function-type.html"><strong aria-hidden="true">8.</strong> Executing the Function Type</a></li><li class="chapter-item expanded "><a href="some-backstage-notes.html"><strong aria-hidden="true">9.</strong> Some Backstage Notes</a></li></ol>
+            </footer>
+          </div>
+        </main>
+      </div>
+
+
+      <script src="highlight.js"></script>
+      <script src="book.js"></script>
+    </div>
+  </body>
+</html>
