@@ -10,4 +10,8 @@ Feel free to open PR to:
 
 ## Improving the Compiler
 
-- Write a library and release it
+- Find bugs and report them on GitHub (and hopefully create PRs)
+
+## Improving the World
+
+- Write libraries and release them (the most important thing)

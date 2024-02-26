@@ -1,6 +1,6 @@
 # Neut Programming Language
 
-Neut is a dependently-typed programming language with _static memory management_.
+Neut is a functional programming language with _static memory management_.
 
 Its key features include:
 
@@ -10,7 +10,7 @@ Its key features include:
   <li><em>The absence of annotations to the type system</em> when achieving both of the above</li>
 </ul>
 
-I believe the last one is particularly interesting, as it means Neut found memory predictability _inside_ the usual λ-calculus.
+I believe the last one is particularly interesting, as it seems to mean that Neut is leveraging memory predictability which resides _in_ the usual λ-calculus.
 
 ## How Does it Look?
 
@@ -43,7 +43,7 @@ define noisy-length(a: tau, xs: my-list(a)): int {
 
 ## Static Memory Management — But How?
 
-_Neut translates a type into a function_ that knows how to copy/discard the values of the type. Using those functions, every variable is copied/discarded so that it is used exactly once.
+_Neut translates a type into a function_ that knows how to copy/discard the values of the type. By using those functions, every variable is copied/discarded so that it is used exactly once.
 
 For example, if a variable is used twice, conceptually, a translation like below will happen:
 
@@ -69,7 +69,7 @@ You may be wondering: _"So we need to, for example, copy the whole list just to 
 - Call by value (i.e. non-lazy)
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
-- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + fix - universe hierarchy
+- The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (fix) - (universe hierarchy)
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in LSP support
 

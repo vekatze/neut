@@ -1,5 +1,7 @@
 # Statements
 
+Statements in Neut are order-sensitive.
+
 ## `import`
 
 ## `define`

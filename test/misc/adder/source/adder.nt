@@ -7,14 +7,6 @@ define make-adder(x: int): (int) -> int {
   adder
 }
 
-define increment(x: int): int {
-  add-int(x, 1)
-}
-
-define get-increment(): (int) -> int {
-  increment
-}
-
 define main(): unit {
   print-int(make-adder(3)(7));
   print("\n")
