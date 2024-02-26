@@ -351,14 +351,16 @@ em {
     position: absolute;
     left: -3rem;
     content: "#";
-    color: var(--gray-light);
+    /* color: var(--gray-light); */
+    color: var(--gray-deep);
   }
 
   #content h2:before {
     position: absolute;
     left: -4rem;
     content: "##";
-    color: var(--gray);
+    /* color: var(--gray); */
+    color: var(--gray-deep);
   }
 
   #content h3:before {

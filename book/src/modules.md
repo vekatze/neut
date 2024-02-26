@@ -1,10 +1,44 @@
 # Modules
 
-A directory is a _module_ if it contains a file named `module.ens`.
-
-## `module.ens`
+A directory is a _module_ if it contains a file named `module.ens`. This file is for per-module configuration.
 
 ## The Syntax of ens Files
+
+## `target`
+
+### Example
+
+```ens
+{
+  target {
+    foo "foo.nt"
+  }
+}
+```
+
+### Syntax
+
+### Semantics
+
+## `dependency`
+
+## `archive`
+
+The directory of archives.
+
+## `build`
+
+## `source`
+
+## `prefix`
+
+## `foreign`
+
+## `preset`
+
+## `antecedents`
+
+## `inline-limit`
 
 ## The Obligated XKCD
 

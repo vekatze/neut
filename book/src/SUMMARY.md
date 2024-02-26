@@ -5,12 +5,13 @@
 - [Getting Started](./getting-started.md)
   - [Functional Programming](./tutorial.md)
   - [Static Memory Management](./resource-management.md)
-- [Language Basics](./basics.md)
+  - [Publishing Modules](./publish.md)
 - [Language Reference](./language-reference.md)
-  - [Compiler Commands](./comand-line-interface.md)
+  - [Commands](./comand-line-interface.md)
   - [Modules](./modules.md)
   - [Statements](./statements.md)
   - [Terms](./terms.md)
+  - [Foundation](./basics.md)
 - [What's Next?](./contribution.md)
 
 # Appendix
