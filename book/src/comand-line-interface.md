@@ -1,4 +1,4 @@
-# Command Line Interface
+# Commands
 
 ## `neut build TARGET`
 
