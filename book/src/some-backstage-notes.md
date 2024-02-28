@@ -37,6 +37,8 @@ data FooText {
 
 In that case, the internal representation will be `(0, 3, True)`. We'll have to be careful about what we have to pay for polymorphism.
 
+That said, judging from the benchmarks, the overhead mentioned above doesn't seem to be that significant, maybe thanks to the geniuses in the LLVM team.
+
 ## Why was it Named Neut?
 
 During compilation, every program in Neut is polarized into its positive fragment and its negative fragment, as done in [Call-by-Push-Value](https://www.cs.bham.ac.uk/~pbl/papers/thesisqmwphd.pdf). From this perspective, every term in a source file of this language can be seen as neutral. So, just as `.txt` is used as the file extension for texts, I chose to use `.neut` (which is now `.nt`) as the file extension for neutral terms. Over time, it started to look like a proper noun, and I decided to adopt it as the name of the language.

@@ -2,6 +2,8 @@
 
 What's interesting about Neut is its resource management. Towards that, here we'll briefly see its aspect as a functional programming language.
 
+I don't really know what "functional" means, though.
+
 The code in this section can be obtained by:
 
 ```sh

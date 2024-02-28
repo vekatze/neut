@@ -1,4 +1,6 @@
-# Language Reference: Terms
+# Terms
+
+A **term** in Neut is a syntactic construct that can be appeared in the body of `define`.
 
 ## Table of Contents
 

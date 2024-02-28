@@ -1,8 +1,10 @@
 # Editor Support
 
-## VSCode
+Supported editors are (in alphabetical order):
 
-TBD
+- Emacs
+- Vim
+- Visual Studio Code
 
 ## Emacs
 
@@ -37,5 +39,9 @@ M-x eglot
 ```
 
 ## Vim
+
+TBD
+
+## Visual Studio Code
 
 TBD

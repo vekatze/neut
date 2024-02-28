@@ -1,6 +1,6 @@
 # Neut Programming Language
 
-Neut is a functional programming language with _static memory management_.
+Neut is a functional programming language with static memory management.
 
 Its key features include:
 
@@ -11,6 +11,8 @@ Its key features include:
 </ul>
 
 I believe the last one is particularly interesting, as it seems to mean that Neut is leveraging memory predictability which resides _in_ the usual λ-calculus.
+
+Practically, the last one means that yayayayay.
 
 ## How Does it Look?
 
@@ -45,7 +47,7 @@ define noisy-length(a: tau, xs: my-list(a)): int {
 
 _Neut translates a type into a function_ that knows how to copy/discard the values of the type. By using those functions, every variable is copied/discarded so that it is used exactly once.
 
-For example, if a variable is used twice, conceptually, a translation like below will happen:
+For example, if a variable is used twice, a translation like the below will happen:
 
 ```neut
 let xs: list(a) = [value-1, value-2] in
@@ -64,6 +66,10 @@ If you need more, see [Chapter 2 (Main Ideas)](./main-ideas.md).
 
 You may be wondering: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Section 2.4 (Noetic Optimization)](./noetic-optimization.md). As written there, those redundant copyings can be avoided. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
 
+## How Fast is This?
+
+[Not so bad](./benchmarks.md).
+
 ## List of Other Basic Characteristics?
 
 - Call by value (i.e. non-lazy)
@@ -71,10 +77,15 @@ You may be wondering: _"So we need to, for example, copy the whole list just to 
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (fix) - (universe hierarchy)
   - That is, the usual one in functional programming, but a bit generalized
-- Built-in LSP support
+- Built-in [LSP support](./lsp-support.md)
+- Rapid prototyping like scripting languages
 
 ## Anything Else?
 
 You might also find the module system of Neut interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. For more, see [Chapter 4 (Module System)](./module-system.md).
 
 Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
+
+---
+
+You can press the "→" key to go to the next page.
