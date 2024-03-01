@@ -6,7 +6,7 @@
   - [Functional Programming](./tutorial.md)
   - [Static Memory Management](./resource-management.md)
 - [Language Reference](./language-reference.md)
-  - [Commands](./comand-line-interface.md)
+  - [Commands](./commands.md)
   - [Modules](./modules.md)
   - [Statements](./statements.md)
   - [Terms](./terms.md)
