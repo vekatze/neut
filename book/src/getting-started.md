@@ -1,12 +1,11 @@
-# Getting Started
+# Tutorial
 
 Neut is a functional programming language with static memory management.
 
-In this section, we'll first see its aspect as a functional programming language. After that, we'll see static memory management in Neut.
+In this chapter, we'll first see its aspect as a functional programming language. By reading the section, you'll be able to write and publish your programs.
 
-- how to use the toolchain
-- how to write basic programs
-- how to interact with the world
-- how to use the language reference
+We'll then see static memory management in Neut. The section will show you how to write performant programs.
 
-Right after reading this chapter, you're fully ready to write and publish Neut programs.
+During exploration, I'll also show you how to use the language reference in this book.
+
+Let's go ahead.

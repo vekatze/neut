@@ -488,8 +488,13 @@ pre > code {
 .info-block {
   margin: 20px 0;
   padding: 0rem 1rem;
-  background: var(--sumi);
-  border: 1px dotted var(--light-blue);
+  background: var(--dark-magenta);
+  border: 1px dotted var(--light-magenta);
+}
+
+div.info-block p:before {
+  content: "💡";
+  padding-right: 1rem;
 }
 
 #footer-wrapper {

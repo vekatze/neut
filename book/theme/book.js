@@ -84,6 +84,7 @@ hljs.registerLanguage("ens", function (hljs) {
           "target",
           "dependency",
           "antecedent",
+          "prefix",
       ].join(" "),
     },
     contains: [
