@@ -33,7 +33,7 @@ parseOpt = do
     mconcat
       [ cmd "build" parseBuildOpt "build given target",
         cmd "clean" parseCleanOpt "remove the resulting files",
-        cmd "check" parseCheckOpt "type-check specified file",
+        cmd "check" parseCheckOpt "type-check all the files in the current module",
         cmd "archive" parseArchiveOpt "package a tarball",
         cmd "create" parseCreateOpt "create a new module",
         cmd "get" parseGetOpt "add or update a dependency",
