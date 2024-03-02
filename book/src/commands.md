@@ -27,6 +27,21 @@ If you omit the target and just write `neut build`, all the targets are built.
 
 The resulting binaries are put inside the build directory of the module.
 
+### Self-Contained Example
+
+```sh
+# creates a sample project
+neut create hello
+cd hello
+
+# build and run
+neut build --execute # => hello
+
+# build the module, copy the resulting binary, and execute the binary
+neut build --install ./bin
+./bin/hello #=> hello
+```
+
 ### `--execute`
 
 If you pass `--execute` to `neut build`, the resulting binary is executed after the build.
