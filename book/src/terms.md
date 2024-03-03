@@ -199,9 +199,32 @@ Incidentally, 3-word tuples of global variables are usually reduced at compile t
 
 ## Literals
 
-- integers
-- floats
-- texts
+### Integers
+
+Neut has integer literals like `3`, `-16`, `424242`, etc. The type of an integer value must be one of the followings:
+
+- `int1`
+- `int2`
+- ...
+- `int64`
+
+The type `int` is also available. `int` is an architecture-dependent type. If the word size of the target platform is 64 bits, `int` is compiled into `int64`. If the word size of the target platform is 32 bits, `int` is compiled into `int32`, etc.
+
+### Floats
+
+Neut has float literals like `3.8`, `0.2329`, etc. The type of a float value must be one of the followings:
+
+- `float16`
+- `float32`
+- `float64`
+
+The type `float` is also available. `float` is an architecture-dependent type. If the word size of the target platform is 64 bits, `float` is compiled into `float64`. If the word size of the target platform is 32 bits, `float` is compiled into `float32`, etc.
+
+### Texts
+
+Neut has text literals like `"hello"` or `"Hello, world!\n"`. The type of a text literal is `&text`.
+
+In the current implementation, the set of recognized escape sequences like `\n` or `\t` are the same as that of Haskell.
 
 ### Example
 
@@ -209,8 +232,12 @@ Incidentally, 3-word tuples of global variables are usually reduced at compile t
 define foo(var: int): unit {
   let _: int = 100 in
   //           ^^^
+  let _: int16 = 100 in
+  //             ^^^
   let _: float = 3.8 in
   //             ^^^
+  let _: float32 = 3.8 in
+  //               ^^^
   let _: &text = "test" in
   //             ^^^^^^
   Unit
@@ -267,11 +294,118 @@ The following abbreviations are available:
 
 ## `function (x1: a1, ..., xn: an) { e }`
 
-## `define name(x1: a1, ..., xn: an): b { e }`
+`function` can be used to create a lambda abstraction (an anonymous function).
 
-## Function Elimination
+```neut
+define use-function(): int {
+  let f =
+    function (x: int, y: int) {
+      let z = add-int(x, y) in
+      mul-int(z, z)
+    }
+  in
+  f(10, 20)
+}
+```
+
+Lambda abstractions defined by `function` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
+
+## `define`
+
+`define` (at the term-level) can be used to create a function with possible recursion.
+
+```neut
+define use-define(): int {
+  let c = 10 in
+  let f =
+    // ↓ term-level `define`
+    define some-recursive-func(x: int): int {
+      if eq-int(x, 0) {
+        0
+      } else {
+        add-int(c, some-recursive-func(sub-int(x, 1)))
+      }
+    }
+  in
+  f(100)
+}
+```
+
+Functions defined by term-level `define` aren't inlined at compile-time, even if it doesn't contain any recursions.
+
+## `e(e1, ..., en)`
+
+Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to write a function application.
+
+If the function `e` contains implicit arguments, holes are inserted automatically.
+
+For example, consider the following code:
+
+```neut
+define id<a>(x: a): a {
+  x
+}
+
+define use-id(): unit {
+  id(Unit)
+}
+```
+
+The `id(Unit)` in the example above is (conceptually) compiled into the below:
+
+```neut
+define _id(a: tau, x: a): a {
+  x
+}
+
+define use-id(): unit {
+  _id(_, Unit) // ← a hole `_` is inserted here
+}
+```
 
 ## `e of {x1 = e1, ..., xn = en}`
+
+`e of {x1 = e1, ..., xn = en}` is an alternative notation of function application. Other languages would call this a feature of "keyword arguments".
+
+Suppose that we have the following function:
+
+```neut
+define foo(x: int, y: bool, some-path: &text): unit {
+  // ..
+}
+```
+
+In this case, we can call this `foo` by specifying key-value pairs of its arguments:
+
+```neut
+define use-foo(): unit {
+  foo of {
+  - x = 10
+  - y = True
+  - some-path = "/path/to/file"
+  }
+}
+```
+
+This might be useful when used in combination with ADTs:
+
+```neut
+data config {
+- Config of {
+  - count: int
+  - path: &text
+  - colorize: bool
+  }
+}
+
+constant some-config {
+  Config of {
+  - count = 10
+  - path ="/path/to/file"
+  - colorize = True
+  }
+}
+```
 
 ## `exact e`
 
@@ -384,6 +518,42 @@ In the example above, the type of `Succ` is `(my-nat) -> my-nat`.
 Given a type `a: tau`, the `&a` is the type of noema over `a`.
 
 ## `on` (Noema Introduction)
+
+`let x on y = e1 in e2` can be used to introduce noetic values in specific scope.
+
+```neut
+define play-with-let-on(): unit {
+  let xs: list(int) = [1, 2, 3] in
+  let len on xs =
+    // the type of `xs` is `&list(int)` here
+    length(xs)
+  in
+  // the type of `xs` is `list(int)` here
+  print-int(len)
+}
+```
+
+`let-on` is essentially the following syntax sugar:
+
+```neut
+let len on xs = e in
+cont
+
+// ↓ desugar
+
+let xs = unsafe-cast(a, &a, xs) in // cast: `a` ~> `&a`
+let len = e in                     // (use `&a`)
+let xs = unsafe-cast(&a, a, xs) in // uncast: `&a` ~> `a`
+cont
+```
+
+`let-on` can take multiple variables:
+
+```neut
+// ↓ the below is a valid term
+let len on xs, ys, zs = e in
+cont
+```
 
 ## `*e` - Noema Elimination
 

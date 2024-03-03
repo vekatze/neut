@@ -88,6 +88,8 @@ define use-func-with-implicit-arg(): int {
 
 A function with the same name can't be defined in the same file.
 
+All the tail-recursions in Neut are optimized into loops (thanks to geniuses in the LLVM team).
+
 ## `inline`
 
 `inline` defines an inline function. It should look like the below:
