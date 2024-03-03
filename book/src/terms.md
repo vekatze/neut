@@ -6,7 +6,9 @@ A **term** in Neut is a syntactic construct that can be appeared in the body of 
 
 Lorem ipsum.
 
-## The Type of Types
+## `tau`
+
+`tau` is the type of types.
 
 ### Example
 
@@ -197,6 +199,10 @@ Incidentally, 3-word tuples of global variables are usually reduced at compile t
 
 ## Literals
 
+- integers
+- floats
+- texts
+
 ### Example
 
 ```neut
@@ -212,7 +218,9 @@ define foo(var: int): unit {
 
 ```
 
-## The function type
+## `(x1: a1, ..., xn: an) -> b`
+
+`(x1: a1, ..., xn: an) -> b` is the type of functions.
 
 ### Examples
 
@@ -259,13 +267,79 @@ The following abbreviations are available:
 
 ## `function (x1: a1, ..., xn: an) { e }`
 
+## `define name(x1: a1, ..., xn: an): b { e }`
+
 ## Function Elimination
 
-## `let`
+## `e of {x1 = e1, ..., xn = en}`
 
-## `try`
+## `exact e`
 
-## `tie`
+Given a function `e`, `exact e` supplies all the implicit variables of `e` by inserting holes.
+
+For example, suppose we have the following function:
+
+```neut
+define id<a>(x: a): a {
+  x
+}
+```
+
+Then,
+
+```neut
+define use-id() {
+  let g: (x: int) -> int = exact id in
+  Unit
+}
+```
+
+Note that the following won't typecheck:
+
+```neut
+define use-id() {
+  let g: (x: int) -> int = id in
+  Unit
+}
+```
+
+since the type of `id` is `<a>(x: a) -> a`.
+
+`exact` is a machinery to resolve implicit arguments without using function application. You can think of `exact id` as a shorthand of the below:
+
+```neut
+function (x: a) {
+  id(x)
+}
+```
+
+Note that implicit holes are inserted at `id(x)` during type checking (elaboration).
+
+## `let pat = e1 in e2`
+
+## `try pat = e1 in e2`
+
+`try pat = e1 in e2` is a shorthand of the below:
+
+```neut
+match e1 {
+- Fail(err) =>
+  Fail(err)
+- Pass(pat) =>
+  e2
+}
+```
+
+## `tie pat = e1 in e2`
+
+`tie pat = e1 in e2` is a shorthand of the below:
+
+```neut
+case e1 {
+- pat =>
+  e2
+}
+```
 
 ## ADT Formation
 
@@ -283,60 +357,247 @@ The following abbreviations are available:
 
 ## `introspect`
 
+`introspect key {..}` introspects the setup of the compiler and select corresponding terms. It should look like the below:
+
+```neut
+define arch-dependent-constant(): int {
+  introspect target-arch {
+  - arm64 =>
+    1
+  - amd64 =>
+    2
+  }
+}
+```
+
+Currently, the following keys/values are available:
+
+| Key           | Value               |
+| ------------- | ------------------- |
+| `target-arch` | `amd64` or `arm64`  |
+| `target-os`   | `linux` or `darwin` |
+
 ## `_`
 
-## `use`
+`_` is a hole that must be inferred by the type checker. It should look like the below:
+
+```neut
+define id(a: tau, x: a): a {
+  x
+}
+
+define use-hole(): unit {
+  id(_, Unit) // ← using a hole (inferred to be `unit`)
+}
+```
+
+If the compiler couldn't infer the content of the hole, the compiler reports an error.
+
+## `use e {x} in cont`
+
+`use e {x} in cont` is only valid when the `e` is an ADT with only one constructor.
+
+Given such an `e`, `use e {x} in cont` is a shorthand of the below:
+
+```neut
+let K of {x} = e in
+cont
+```
+
+where the `K` is the only constructor of `K`.
+
+An example:
+
+```neut
+data config {
+- Config of {
+  - path: &text
+  - count: int
+  }
+}
+
+define use-config(c: config): unit {
+  use c {count} in
+  print-int(count)
+}
+```
+
+## `assert`
+
+`assert "explanation" { condition }` evaluates `condition` and check if it is `True`. If it is `True`, the `assert` evaluates to `Unit`. Otherwise, it reports that the assertion `"explanation"` failed and exits with `1`.
+
+An example usage:
+
+```neut
+// a bit artificial but I believe you'll get the point
+define fact(n: int): int {
+  assert "the input must be non-negative" {
+    ge-int(n, 0)
+  };
+  if eq-int(n, 0) {
+    1
+  } else {
+    mul-int(n, fact(sub-int(n, 1)))
+  }
+}
+```
 
 ## `if`
 
+`if cond { e1 } else { e2 }` is a shorthand of the below:
+
+```neut
+match cond {
+- True => e1
+- False => e2
+}
+```
+
 ## `when cond { e }`
+
+`when cond { e }` is a shorthand of the below:
+
+```neut
+match cond {
+- True => e
+- False => Unit
+}
+```
 
 ## `e1; e2`
 
+`e1; e2` is a shorthand of the below:
+
+```neut
+let _: unit = e1 in
+e2
+```
+
 ## `admit`
 
-## `detach`
+`admit` is the `undefined` in Haskell. `admit` can have any type. Evaluating `admit` will exit the program, displaying a message like the below:
 
-## `attach`
+```text
+admit: /path/to/file.nt:1:2
+```
 
-## `assert`
+This `admit` is intended to be used ephemerally during development.
+
+## `detach`, `attach`, and `new-channel`
+
+Given a term `e: t`, `detach { e }` creates a term of type `flow(t)`. It creates a thread using pthreads and starts computation in the thread.
+
+Given a term `e: flow(t)`, `attach { e }` creates a term of type `t`. It waits the computational flow in other thread to be completed and gets its resulting value.
+
+An example:
+
+```neut
+let f1: flow(int) =
+  // creates a thread and start computation
+  detach {
+    print("fA");
+    1
+  }
+in
+let f2: flow(int) =
+  // creates a thread and start computation
+  detach {
+    print("fb");
+    2
+  }
+in
+let v1 = attach { f1 } in // waits f1 to be completed
+let v2 = attach { f2 } in // waits f2 to be completed
+print("hey")
+```
+
+### Channels
+
+Flows can send/receive values using channels, like in Go.
+
+You can create a channel using `new-channel`, and send/receive values using those channels.
+
+```neut
+let ch0 = new-channel(int) in
+let ch1 = new-channel(int) in
+// channels as queues
+let result on ch0, ch1 =
+  let f =
+    detach {
+      let message0 = receive(_, ch0) in // receive value from ch0
+      send(int, ch1, add-int(message0, 1)); // send value to ch1
+      message0
+    }
+  in
+  let g =
+    detach {
+      let message1 = receive(_, ch1) in // receive value from ch1
+      add-int(message1, 1)
+    }
+  in
+  send(int, ch0, 0); // send value to ch0
+  let v1 = attach { f } in
+  let v2 = attach { g } in
+  print("hey")
+in
+// ... cont ...
+```
+
+The type of a channel is `channel(a)`, where the `a` is the type of values that are sent/received. You'll use the noema of a channel because both `send` and `receive` expect the noema of a channel.
+
+You can send a value into a channel using `send`, and receive one using `receive`.
+
+A channel internally has a queue, and `send` stores a value to that queue.
+
+When you call `receive`, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, `receive` blocks until a value is sent to the queue.
+
+## `?t`
+
+`?t` is a shorthand of `except(unit, t)`, where the `except` is defined in the core library as follows:
+
+```neut
+data except(a: tau, b: tau) {
+- Fail(a)
+- Pass(b)
+}
+```
+
+## `[e1, ..., en]`
+
+`[e1, ..., en]` is a shorthand of the below:
+
+```neut
+Cons(e1, Cons(..., Cons(en, Nil)))
+```
+
+That is, a shorthand for lists.
 
 ## `with` / `bind`
 
 ## `e::x`
 
+`e::x` is a shorthand of the below:
+
+```neut
+use e {x} in
+x
+```
+
+An example:
+
+```neut
+data config {
+- Config of {
+  - path: &text
+  - count: int
+  }
+}
+
+define use-config(c: config): unit {
+  print-int(c::count)
+}
+```
+
 ## `{ e }`
 
-  <!-- = Tau -->
-  <!-- | Var Name -->
-  <!-- | Pi (Args a) (Args a) C a Loc -->
-  <!-- | PiIntro (Args a) (Args a) C (Block a) Loc -->
-  <!-- | PiIntroFix C DefInfo -->
-  <!-- | PiElim a C (SE.Series a) -->
-  <!-- | PiElimByKey Name C (SE.Series (Hint, Key, C, C, a)) -- auxiliary syntax for key-call -->
-  <!-- | PiElimExact C a -->
-  <!-- | Data (AttrD.Attr BN.BaseName) BN.BaseName [a] -->
-  <!-- | DataIntro (AttrDI.Attr BN.BaseName) BN.BaseName [a] [a] -- (attr, consName, dataArgs, consArgs) -->
-  <!-- | DataElim C N.IsNoetic (SE.Series a) (SE.Series (RP.RawPatternRow a)) -->
-  <!-- | Noema a -->
-  <!-- | Embody a -->
-  <!-- | Let LetKind C (Hint, RP.RawPattern, C, C, a) C (SE.Series (Hint, RawIdent)) C a C Loc C a Loc -->
-  <!-- | StaticText a T.Text -->
-  <!-- | Magic C RawMagic -- (magic kind arg-1 ... arg-n) -->
-  <!-- | Hole HoleID -->
-  <!-- | Annotation RemarkLevel (Annot.Annotation ()) a -->
-  <!-- | Resource C (a, C) (a, C) -- DD is only for printing -->
-  <!-- | Use C a C (Args a) C a Loc -->
-  <!-- | If (KeywordClause a) [KeywordClause a] (EL a) -->
-  <!-- | When (KeywordClause a) -->
-  <!-- | Seq (a, C) C a -->
-  <!-- | ListIntro (SE.Series a) -->
-  <!-- | Admit -->
-  <!-- | Detach C C (a, C) -->
-  <!-- | Attach C C (a, C) -->
-  <!-- | Option a -->
-  <!-- | Assert C (Hint, T.Text) C C (a, C) -->
-  <!-- | Introspect C T.Text C (SE.Series (Maybe T.Text, C, a)) -->
-  <!-- | With (KeywordClause a) -->
-  <!-- | Projection a (Hint, RawIdent) Loc -->
-  <!-- | Brace C (a, C) -->
+`{ e }` can be used as parentheses in other languages.

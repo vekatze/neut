@@ -22,4 +22,5 @@
   - [Rapid Prototyping](./rapid-prototyping.md)
 - [How to Execute Types](./on-executing-types.md)
 - [Benchmarks](./benchmarks.md)
+- [For Compiler Hackers](./benchmarks.md)
 - [Backstage Notes](./some-backstage-notes.md)
