@@ -22,6 +22,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "bind",
         "by",
         "case",
+        "constant",
         "data",
         "declare",
         "default",
@@ -30,6 +31,9 @@ hljs.registerLanguage("neut", function (hljs) {
         "else",
         "else-if",
         "export",
+        "external",
+        "foreign",
+        "function",
         "if",
         "import",
         "in",
@@ -40,6 +44,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "let?",
         "match",
         "mu",
+        "nominal",
         "of",
         "on",
         "resource",
@@ -115,12 +120,13 @@ hljs.registerLanguage("llvm", function (hljs) {
     keywords: {
       $pattern: /[\w-:=<>]+/,
       keyword: [
-        "define"
+        "define",
+        "declare",
       ].join(" "),
     },
     contains: [
       { className: "type",
-        begin: "\\bptr\\b|i64",
+        begin: "\\bptr\\b|i64|float|double|x86_fp80|fp128|ppc_fp128",
       },
       {
         className: "string",
