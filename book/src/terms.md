@@ -343,17 +343,118 @@ case e1 {
 
 ## ADT Formation
 
+After defining an ADT using the statement `data`, the ADT types are made available.
+
+For example:
+
+```neut
+data my-nat {
+- Zero
+- Succ(my-nat)
+}
+
+define use-nat-type(): tau {
+  my-nat
+}
+```
+
 ## ADT Introduction
+
+After defining an ADT using the statement `data`, the constructors can be used to construct values of the ADT.
+
+For example:
+
+```neut
+data my-nat {
+- Zero
+- Succ(my-nat)
+}
+
+define create-nat(): my-nat {
+  Succ(Succ(Zero))
+}
+```
+
+In the example above, the type of `Succ` is `(my-nat) -> my-nat`.
 
 ## ADT Elimination
 
 ## Noema Formation: `&a`
 
+Given a type `a: tau`, the `&a` is the type of noema over `a`.
+
 ## `on` (Noema Introduction)
 
 ## `*e` - Noema Elimination
 
+Given a noema `e: &t`, `*e: t` is a clone of the noema. The original noema is kept intact.
+
+```neut
+define clone-list<a>(xs: &list(a)): list(a) {
+  case xs {
+  - Nil =>
+    Nil
+  - Cons(y, ys) =>
+    Cons(*y, clone-list(ys))
+  }
+}
+```
+
 ## `magic`
+
+`magic` can be used to perform weird stuff. Using a `magic` is an unsafe operation.
+
+Except for `cast`, the result type of `magic` is unspecified, so you must supply type annotations if necessary.
+
+### `cast`
+
+`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`.
+
+Example usage:
+
+```neut
+// empty type
+data descriptor {}
+
+// add an element to the empty type
+constant stdin: descriptor {
+  magic cast(int, descriptor, 0)
+}
+```
+
+### `store` / `load`
+
+`store(type, value, address)` stores a value `value` to `address`.
+
+`load(type, address)` loads a value from `address`.
+
+Example usage:
+
+```neut
+define malloc-then-free(): unit {
+  // allocate memory region
+  let size: int = 10 in
+  let ptr: int = magic external malloc(size) in
+
+  // store a value
+  let value: int = 123 in
+  magic store(int, value, ptr);
+
+  // load and print a value
+  let value = magic load(int, ptr) in
+  print-int(value); // => 123
+
+  // free the pointer and return
+  magic external free(ptr);
+  Unit
+}
+```
+
+These magics are lowered to the `store` and `load` in LLVM IR after compilation.
+
+### `external`
+
+`external` can be used to call foreign functions. See [foreign in Statements](./statements.md#foreign) for more information.
 
 ## `introspect`
 
@@ -573,6 +674,75 @@ Cons(e1, Cons(..., Cons(en, Nil)))
 That is, a shorthand for lists.
 
 ## `with` / `bind`
+
+`with` and `bind` can be used as the "do-notations" in other languages.
+
+`with` and `bind` is a syntax sugar defined as follows:
+
+```neut
+// (1) -----------------------------------------------------
+
+with f {
+  bind x = e1 in
+  e2
+}
+
+↓
+
+f(
+  with f {e1},
+  function (x) {
+    with f {e2}
+  }
+)
+
+// (2) -----------------------------------------------------
+
+with f {
+  LET x = e1 in // LET must be one of `let`, `try`, or `tie`
+  e2
+}
+
+↓
+
+LET x = with f {e1} in
+with f {e2}
+
+
+// (3) -----------------------------------------------------
+
+with f {
+  e1;
+  e2
+}
+
+↓
+
+with f {e1};
+with f {e2}
+
+// (4) -----------------------------------------------------
+
+with f {
+  use e {x1 ..., xn} in
+  cont
+}
+
+↓
+
+use e {x1, ..., xn} in
+with f {cont}
+
+// (5) -----------------------------------------------------
+
+with f {e}
+
+↓
+
+e
+```
+
+where the rule `(5)` is used only when all the other rules are unavailable.
 
 ## `e::x`
 

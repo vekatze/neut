@@ -338,3 +338,22 @@ foreign {
 ```
 
 In foreign entries, you can use `int`, `intN` `float`, `floatN`, `void`, `pointer` as types.
+
+When declairing the interface of a variadic function, we'll only declare the non-variadic part:
+
+```neut
+foreign {
+- printf(pointer): void
+}
+```
+
+... and the specify the types of variadic arguments from the caller:
+
+```neut
+define print(t: &text): unit {
+  // ..
+  magic external printf(fmt)(len: int, val: pointer)
+  //                         ^^^^^^^^^^^^^^^^^^^^^^
+  //                         passing variadic arguments with types
+}
+```

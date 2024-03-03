@@ -10,6 +10,7 @@
   - [Modules](./modules.md)
   - [Statements](./statements.md)
   - [Terms](./terms.md)
+  - [Primitives](./primitives.md)
   - [Basis](./basics.md)
 - [What's Next?](./contribution.md)
 
