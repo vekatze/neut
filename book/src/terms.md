@@ -449,7 +449,69 @@ function (x: a) {
 
 Note that implicit holes are inserted at `id(x)` during type checking (elaboration).
 
-## `let pat = e1 in e2`
+## `let`
+
+`let x = e1 in e2` defines a variable `x` as the result of `e1` so that it can be used in `e2`:
+
+```neut
+define use-let(): unit {
+  let t = "test" in
+  print(t)
+}
+```
+
+`let`s can be nested:
+
+```neut
+define use-let(): unit {
+  let bar =
+    let foo = some-func() in
+    other-func(foo)
+  in
+  do-something(bar)
+}
+```
+
+You can also add type annotations in `let`s:
+
+```neut
+define use-let(): unit {
+  let t: &text = "test" in
+  print(t)
+}
+```
+
+`let` can be used to destruct an ADT value:
+
+```neut
+data item {
+- Item(int, bool)
+}
+
+define use-item(x: item): unit {
+  let Item(i, b) = x in // ← here
+  print-int(i)
+}
+
+define use-item-2(x: item): unit {
+  let Item of {i} = x in // ← here
+  print-int(i)
+}
+```
+
+When passing a pattern, `let` is the following syntax sugar:
+
+```neut
+let pat = x in
+cont
+
+↓
+
+match x {
+- pat =>
+  cont
+}
+```
 
 ## `try pat = e1 in e2`
 

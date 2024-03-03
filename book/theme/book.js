@@ -72,7 +72,7 @@ hljs.registerLanguage("neut", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "<=|->|=>|\\*|:|this|&|\\b-(?=\\s)|tuple|magic|assert",
+        begin: "<=|->|=>|\\*|:|this|&|\\b-(?=\\s)|=|tuple|magic|assert",
       },
       hljs.COMMENT(
         "//", // begin
