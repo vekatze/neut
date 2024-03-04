@@ -11,7 +11,7 @@
   - [Statements](./statements.md)
   - [Terms](./terms.md)
   - [Primitives](./primitives.md)
-  - [Basis](./basics.md)
+  - [Basis](./basis.md)
 - [What's Next?](./contribution.md)
 
 # Appendix
