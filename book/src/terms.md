@@ -4,7 +4,41 @@ A **term** in Neut is a syntactic construct that can be appeared in the body of 
 
 ## Table of Contents
 
-Lorem ipsum.
+- `tau`
+- Local Variables
+- Top-Level Variables
+- Literals
+- `(x1: a1, ..., xn: an) -> b`
+- `function (x1: a1, ..., xn: an) { e }`
+- `define`
+- `e(e1, ..., en)`
+- `e of {x1 = e1, ..., xn = en}`
+- `exact e`
+- `let`
+- `try pat = e1 in e2`
+- `tie pat = e1 in e2`
+- ADT Formation
+- ADT Introduction
+- `match`
+- `case`
+- `&a`
+- `on` (Noema Introduction)
+- `*e` - Noema Elimination
+- `magic`
+- `introspect`
+- `_`
+- `use e {x} in cont`
+- `assert`
+- `if`
+- `when cond { e }`
+- `e1; e2`
+- `admit`
+- `detach`, `attach`, and `new-channel`
+- `?t`
+- `[e1, ..., en]`
+- `with` / `bind`
+- `e::x`
+- `{ e }`
 
 ## `tau`
 
@@ -537,7 +571,7 @@ case e1 {
 }
 ```
 
-## ADT Formation
+## ADT
 
 After defining an ADT using the statement `data`, the ADT types are made available.
 
@@ -554,7 +588,7 @@ define use-nat-type(): tau {
 }
 ```
 
-## ADT Introduction
+## Constructors
 
 After defining an ADT using the statement `data`, the constructors can be used to construct values of the ADT.
 
@@ -573,11 +607,116 @@ define create-nat(): my-nat {
 
 In the example above, the type of `Succ` is `(my-nat) -> my-nat`.
 
-## ADT Elimination
+## `match`
 
-## Noema Formation: `&a`
+ADT values can be destructed using `match`:
+
+```neut
+data my-nat {
+- Zero
+- Succ(my-nat)
+}
+
+define foo(n: my-nat): int {
+  match n {
+  - Zero =>
+    100
+  - Succ(m) =>
+    foo(m)
+  }
+}
+```
+
+Multiple values can be `match`ed at the same time:
+
+```neut
+// True iff `n1 == n2`
+define eq-nat(n1: my-nat, n2: my-nat): bool {
+  match n1, n2 {
+  - Zero, Zero =>
+    True
+  - Succ(m1), Succ(m2) =>
+    eq-nat(m1, m2)
+  - _, _ =>
+    False
+  }
+}
+```
+
+### Memory Behavior
+
+The arguments of `match` is _consumed_.
+
+Let's see how `my-nat` in the next code is used in `match`:
+
+```neut
+data my-nat {
+- Zero
+- Succ(my-nat)
+}
+```
+
+The internal representation of `n: my-nat` is something like the below:
+
+```neut
+Zero:
+  (0)
+Succ:
+  (1, pointer-to-m)
+```
+
+That is, if `n` is `Zero`, the internal representation is a 1-word tuple that contains only one element `0`. If `n` is `Succ(m)`, the internal representation is a 2-word tuple that contains `1` and a pointer to `m`.
+
+```neut
+define foo(n: my-nat): int {
+  match n {
+  - Zero =>
+    100
+  - Succ(m) =>
+    foo(m)
+  }
+}
+```
+
+When evaluating `match`, the computer inspects the first element of the "tuple" `n`.
+
+If it is `0`, the computer frees the outer tuple of `(0)`, and goes to the branch of `Zero` (which is `100` in the example above).
+
+If it is `1`, the computer gets the pointer to the second element of `n`, binds it to `m`, frees the outer tuple of `(1, pointer-to-m)`, and then goes to the branch of `Succ` (which is `foo(m)` in the example above).
+
+## `case`
+
+Given an ADT type `t`, `case` can be used to inspect values of type `&t`.
+
+`case` is a "noetic" variant of `match`:
+
+```neut
+data my-nat {
+- Zero
+- Succ(my-nat)
+}
+
+define foo-noetic(n: &my-nat): int {
+  case n {
+  - Zero =>
+    100
+  - Succ(m) =>
+    foo-noetic(m)
+  }
+}
+```
+
+Note that the type of `m` in the example above is `&my-nat`, not `my-nat`. Contents of constructors are wrapped by `&(_)` after using `case`.
+
+### Memory Behavior
+
+The semantics of `case` is the same as `match` except that `case` doesn't consume (free) its arguments. `case` can be considered as a "read-only" version of `match`.
+
+## `&a`
 
 Given a type `a: tau`, the `&a` is the type of noema over `a`.
+
+The values of type `&a` aren't discarded/copied when used non-linearly.
 
 ## `on` (Noema Introduction)
 
