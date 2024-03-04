@@ -2,8 +2,6 @@
 
 A directory (including its all children) is a _module_ if it contains a file named `module.ens`. This file is for per-module configuration.
 
-## The Syntax of ens Files
-
 ## `target`
 
 `target` defines the entry points of your module.

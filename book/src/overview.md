@@ -74,7 +74,7 @@ You may be wondering: _"So we need to, for example, copy the whole list just to 
 
 - Call by value (i.e. non-lazy)
 - Impure
-- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), assembly, and binary
+- Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), and binary
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (fix) - (universe hierarchy)
   - That is, the usual one in functional programming, but a bit generalized
 - Built-in [LSP support](./lsp-support.md)
