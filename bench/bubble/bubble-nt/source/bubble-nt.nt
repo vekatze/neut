@@ -1,5 +1,6 @@
 import {
 - core.int.text {parse-int}
+- core.random {random}
 }
 
 foreign {
@@ -42,21 +43,15 @@ define sort(xs: int-list, acc: int-list): int-list {
   }
 }
 
-define some-rand(): int {
-  let rand: int = 10000 in
-  magic external arc4random_uniform(rand)
-}
-
 define rand-list(len: int, acc: int-list): int-list {
   if eq-int(len, 0) {
     acc
   } else {
-    let val = some-rand() in
+    let val = random(10000) in
     rand-list(sub-int(len, 1), My-Cons(val, acc))
   }
 }
 
-// 30000
 define main(): unit {
   let args = get-argv() in
   match args {
