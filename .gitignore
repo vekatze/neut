@@ -1,6 +1,6 @@
 .stack-work/
 .stack-ide/
-neut.cabal
+*.cabal
 .DS_Store
 test/res
 *.prof
@@ -12,4 +12,4 @@ book/dist/
 test/sandbox/
 actual
 bin/
-package.yaml
+/package.yaml
