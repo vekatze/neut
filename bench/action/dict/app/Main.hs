@@ -1,11 +1,11 @@
 module Main (main) where
 
-import Data.HashMap.Strict qualified as M
+import Data.Map.Strict qualified as M
 import System.Environment (getArgs)
 import System.Random
 import Text.Read
 
-makeBigDict :: Int -> M.HashMap Int Int -> IO (M.HashMap Int Int)
+makeBigDict :: Int -> M.Map Int Int -> IO (M.Map Int Int)
 makeBigDict len acc =
   if len == 0
     then return acc
@@ -14,7 +14,7 @@ makeBigDict len acc =
       v <- randomRIO (0, 1000000)
       makeBigDict (len - 1) $ M.insert k v acc
 
-randomSum :: Int -> Int -> M.HashMap Int Int -> IO Int
+randomSum :: Int -> Int -> M.Map Int Int -> IO Int
 randomSum count acc bigDict = do
   if count <= 0
     then return acc

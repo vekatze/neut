@@ -6,7 +6,7 @@ language: GHC2021
 dependencies:
 - base >= 4.7 && < 5
 - random
-- unordered-containers
+- containers
 
 ghc-options:
 - -Wall
