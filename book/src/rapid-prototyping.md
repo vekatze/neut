@@ -31,7 +31,7 @@ neut zen path/to/some-file.nt # => (the result of `foo(10)` is printed)
 
 This can be done even if `some-file.nt` isn't an entrypoint of the module. You can think of functions named `zen` as alternative `main`s.
 
-## Zen in Action
+## Zen Experience
 
 You can configure your editor to call `neut zen path/to/current/file.nt`. Also create a key binding for that operation.
 
@@ -39,11 +39,11 @@ Below is an example where Emacs executes this `zen` command when `C-c C-c` is ty
 
 ![zen](./image/screencasts/zen.gif "zen")
 
-This feels a bit like a scripting language, isn't it?
+This feels a bit like a scripting language, doesn't it?
 
 ### Notes for Emacs
 
-Incidentally, the configuration for Emacs is like below:
+Incidentally, the configuration for Emacs in the above example is like the below:
 
 ```text
 (defun ext/neut-compile ()
