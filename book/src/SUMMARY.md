@@ -12,7 +12,7 @@
   - [Terms](./terms.md)
   - [Primitives](./primitives.md)
   - [Basis](./basis.md)
-- [What's Next?](./contribution.md)
+- [Petals and a Gust](./contribution.md)
 
 # Appendix
 
@@ -23,5 +23,4 @@
   - [Rapid Prototyping](./rapid-prototyping.md)
 - [How to Execute Types](./on-executing-types.md)
 - [Benchmarks](./benchmarks.md)
-- [For Compiler Hackers](./benchmarks.md)
 - [Backstage Notes](./some-backstage-notes.md)
