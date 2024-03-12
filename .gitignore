@@ -7,6 +7,7 @@ test/res
 target/
 .build/
 test/**/build/
+bench/**/build/
 dist-newstyle/
 book/dist/
 test/sandbox/
