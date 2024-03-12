@@ -20,7 +20,7 @@ ghc-options:
 - -Wredundant-constraints
 
 executables:
-  intmap-hs-exe:
+  intmap-hs:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

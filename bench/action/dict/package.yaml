@@ -20,7 +20,7 @@ ghc-options:
 - -Wredundant-constraints
 
 executables:
-  dict-hs-exe:
+  dict-hs:
     main:                Main.hs
     source-dirs:         app
     ghc-options:

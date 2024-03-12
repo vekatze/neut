@@ -20,7 +20,7 @@ ghc-options:
 - -Wredundant-constraints
 
 executables:
-  bubble-hs-exe:
+  bubble-hs:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
