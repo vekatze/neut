@@ -14,3 +14,5 @@ test/sandbox/
 actual
 bin/
 /package.yaml
+node_modules/
+dist/
