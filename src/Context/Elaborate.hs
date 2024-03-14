@@ -48,6 +48,7 @@ initialize :: App ()
 initialize = do
   initializeInferenceEnv
   writeRef' weakTypeEnv IntMap.empty
+  setHoleSubst HS.empty
 
 initializeInferenceEnv :: App ()
 initializeInferenceEnv = do
