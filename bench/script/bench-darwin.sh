@@ -10,6 +10,7 @@ for target_dir in $(find "$SCRIPT_DIR/../action" -d 1 -type d | sort); do
   step=3
   for executable in $(find $target_dir/bin -type f | sort); do
     echo ${executable:t}
-    hyperfine -r 1 -P SIZE $((size/step)) $size -D $((size/step)) "${executable} {SIZE}" --export-json ../../result/json/${executable:t}.json
+    mkdir -p ../../result/json/$PLATFORM
+    hyperfine -r 1 -P SIZE $((size/step)) $size -D $((size/step)) "${executable} {SIZE}" --export-json ../../result/json/$PLATFORM/${executable:t}.json
   done
 done

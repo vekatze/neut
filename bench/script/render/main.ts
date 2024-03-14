@@ -1,11 +1,24 @@
 import { Chart, ChartConfiguration, ChartData } from "chart.js";
 import { ChartCallback, ChartJSNodeCanvas } from "chartjs-node-canvas";
-import { readFileSync, writeFileSync, readdirSync } from "fs";
+import {
+  readFileSync,
+  writeFileSync,
+  readdirSync,
+  existsSync,
+  mkdirSync,
+} from "fs";
 import { resolve } from "path";
+import { argv } from "process";
 
-const inputDirPath = "../../result/json";
+const platform = argv[2];
 
-const outputDirPath = "../../result/graph";
+const inputDirPath = `../../result/json/${platform}`;
+
+const outputDirPath = `../../result/graph/${platform}`;
+
+if (!existsSync(outputDirPath)) {
+  mkdirSync(outputDirPath, { recursive: true });
+}
 
 const actionNameMap: Record<string, string> = {
   bubble: "Bubble Sort",
