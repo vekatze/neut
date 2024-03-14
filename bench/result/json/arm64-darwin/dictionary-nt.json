@@ -2,15 +2,15 @@
   "results": [
     {
       "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-nt 333333",
-      "mean": 0.60663028308,
+      "mean": 0.44596168702000005,
       "stddev": null,
-      "median": 0.60663028308,
-      "user": 0.59155054,
-      "system": 0.0071701199999999994,
-      "min": 0.60663028308,
-      "max": 0.60663028308,
+      "median": 0.44596168702000005,
+      "user": 0.43730036,
+      "system": 0.00608632,
+      "min": 0.44596168702000005,
+      "max": 0.44596168702000005,
       "times": [
-        0.60663028308
+        0.44596168702000005
       ],
       "exit_codes": [
         0
@@ -21,15 +21,15 @@
     },
     {
       "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-nt 666666",
-      "mean": 1.35694657408,
+      "mean": 0.9782366450200001,
       "stddev": null,
-      "median": 1.35694657408,
-      "user": 1.32427454,
-      "system": 0.01323512,
-      "min": 1.35694657408,
-      "max": 1.35694657408,
+      "median": 0.9782366450200001,
+      "user": 0.9641023599999999,
+      "system": 0.00942132,
+      "min": 0.9782366450200001,
+      "max": 0.9782366450200001,
       "times": [
-        1.35694657408
+        0.9782366450200001
       ],
       "exit_codes": [
         0
@@ -40,15 +40,15 @@
     },
     {
       "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-nt 999999",
-      "mean": 2.0514815320800004,
+      "mean": 1.5905019790200001,
       "stddev": null,
-      "median": 2.0514815320800004,
-      "user": 2.01099054,
-      "system": 0.01711012,
-      "min": 2.0514815320800004,
-      "max": 2.0514815320800004,
+      "median": 1.5905019790200001,
+      "user": 1.5700003599999999,
+      "system": 0.01273732,
+      "min": 1.5905019790200001,
+      "max": 1.5905019790200001,
       "times": [
-        2.0514815320800004
+        1.5905019790200001
       ],
       "exit_codes": [
         0

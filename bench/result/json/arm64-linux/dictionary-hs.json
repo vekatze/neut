@@ -1,0 +1,61 @@
+{
+  "results": [
+    {
+      "command": "/app/bench/script/../action/dictionary/bin/dictionary-hs 333333",
+      "mean": 1.06791758216,
+      "stddev": null,
+      "median": 1.06791758216,
+      "user": 1.07825,
+      "system": 0.36355346,
+      "min": 1.06791758216,
+      "max": 1.06791758216,
+      "times": [
+        1.06791758216
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "333333"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/dictionary/bin/dictionary-hs 666666",
+      "mean": 2.41020524816,
+      "stddev": null,
+      "median": 2.41020524816,
+      "user": 2.479063,
+      "system": 0.7113854599999999,
+      "min": 2.41020524816,
+      "max": 2.41020524816,
+      "times": [
+        2.41020524816
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "666666"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/dictionary/bin/dictionary-hs 999999",
+      "mean": 3.88422966616,
+      "stddev": null,
+      "median": 3.88422966616,
+      "user": 3.965038,
+      "system": 1.1204664599999998,
+      "min": 3.88422966616,
+      "max": 3.88422966616,
+      "times": [
+        3.88422966616
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "999999"
+      }
+    }
+  ]
+}

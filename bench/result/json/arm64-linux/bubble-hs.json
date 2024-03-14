@@ -1,0 +1,61 @@
+{
+  "results": [
+    {
+      "command": "/app/bench/script/../action/bubble/bin/bubble-hs 16666",
+      "mean": 1.27481701762,
+      "stddev": null,
+      "median": 1.27481701762,
+      "user": 1.1288007,
+      "system": 0.44207068,
+      "min": 1.27481701762,
+      "max": 1.27481701762,
+      "times": [
+        1.27481701762
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "16666"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/bubble/bin/bubble-hs 33332",
+      "mean": 6.21419526962,
+      "stddev": null,
+      "median": 6.21419526962,
+      "user": 5.704835699999999,
+      "system": 2.11164368,
+      "min": 6.21419526962,
+      "max": 6.21419526962,
+      "times": [
+        6.21419526962
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "33332"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/bubble/bin/bubble-hs 49998",
+      "mean": 16.60397898262,
+      "stddev": null,
+      "median": 16.60397898262,
+      "user": 15.3680607,
+      "system": 5.790240679999999,
+      "min": 16.60397898262,
+      "max": 16.60397898262,
+      "times": [
+        16.60397898262
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "49998"
+      }
+    }
+  ]
+}

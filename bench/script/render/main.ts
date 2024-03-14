@@ -22,8 +22,8 @@ if (!existsSync(outputDirPath)) {
 
 const actionNameMap: Record<string, string> = {
   bubble: "Bubble Sort",
-  dictionary: "Map Lookup",
-  intmap: "IntMap Lookup",
+  dictionary: "Map Create & Lookup",
+  intmap: "IntMap Create & Lookup",
 };
 
 const languageNameMap: Record<string, string> = {
@@ -44,10 +44,9 @@ function getKeys(fileName: string): [string, string] {
   return [actionKey, languageKey];
 }
 
-function getLabel(actionKey: string, languageKey: string): string {
-  const title = actionNameMap[actionKey];
+function getLabel(languageKey: string): string {
   const language = languageNameMap[languageKey];
-  return `${title} (${language})`;
+  return `${language}`;
 }
 
 function loadData(fileDir: string, fileName: string): Data {
@@ -85,7 +84,7 @@ function asChartData(dataset: Array<Data>): ChartData {
     const datasets = [];
     for (const data of dataset) {
       datasets.push({
-        label: getLabel(data.actionKey, data.languageKey),
+        label: getLabel(data.languageKey),
         data: data.data,
         backgroundColor: [selectColor(data.languageKey)],
         borderColor: [selectColor(data.languageKey)],
@@ -149,6 +148,10 @@ for (const key in actionNameMap) {
       plugins: {
         legend: {
           position: "chartArea",
+        },
+        title: {
+          display: true,
+          text: actionNameMap[key],
         },
       },
     },

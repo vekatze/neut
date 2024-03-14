@@ -1,0 +1,61 @@
+{
+  "results": [
+    {
+      "command": "/app/bench/script/../action/intmap/bin/intmap-hs 333333",
+      "mean": 0.70633052072,
+      "stddev": null,
+      "median": 0.70633052072,
+      "user": 0.77034088,
+      "system": 0.20325887999999998,
+      "min": 0.70633052072,
+      "max": 0.70633052072,
+      "times": [
+        0.70633052072
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "333333"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/intmap/bin/intmap-hs 666666",
+      "mean": 1.8391633547200001,
+      "stddev": null,
+      "median": 1.8391633547200001,
+      "user": 1.97990188,
+      "system": 0.49296987999999997,
+      "min": 1.8391633547200001,
+      "max": 1.8391633547200001,
+      "times": [
+        1.8391633547200001
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "666666"
+      }
+    },
+    {
+      "command": "/app/bench/script/../action/intmap/bin/intmap-hs 999999",
+      "mean": 3.03158527172,
+      "stddev": null,
+      "median": 3.03158527172,
+      "user": 3.2118378799999996,
+      "system": 0.7996338799999999,
+      "min": 3.03158527172,
+      "max": 3.03158527172,
+      "times": [
+        3.03158527172
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "999999"
+      }
+    }
+  ]
+}
