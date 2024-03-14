@@ -35,7 +35,13 @@ bench-arm64-darwin:
     @echo "\nGenerating graphs..."
     @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts arm64-darwin"
 
-bench-arm64-linux:
+bench-linux-native platform: # platfrom \in {amd64-linux, arm64-linux}
+    @just _build-native {{platform}}
+    @NEUT={{justfile_directory()}}/bin/neut-{{platform}} PLATFORM={{platform}} {{justfile_directory()}}/bench/script/bench-linux.sh
+    @echo "\nGenerating graphs..."
+    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts arm64-darwin"
+
+bench-arm64-linux-container:
     @just build-compiler-arm64-linux
     @just _run-arm64-linux "NEUT=/app/bin/neut-arm64-linux PLATFORM=arm64-linux /app/bench/script/bench-linux.sh"
     @echo "\nGenerating graphs..."
@@ -91,6 +97,12 @@ _build-compiler-darwin arch-name:
     @stack install neut --allow-different-user --local-bin-path ./bin/tmp-{{arch-name}}-darwin
     @mv ./bin/tmp-{{arch-name}}-darwin/neut ./bin/neut-{{arch-name}}-darwin
     @rm -r ./bin/tmp-{{arch-name}}-darwin
+
+_build-native platform:
+    @just _generate-package-yaml
+    @stack install neut --allow-different-user --local-bin-path ./bin/tmp-{{platform}}
+    @mv ./bin/tmp-{{platform}}/neut ./bin/neut-{{platform}}
+    @rm -r ./bin/tmp-{{platform}}
 
 _generate-package-yaml:
     @sed "s/^version: 0$/version: $VERSION/g" ./build/package.template.yaml > ./package.yaml
