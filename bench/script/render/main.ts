@@ -7,8 +7,8 @@ const inputDirPath = "../../result/json";
 const outputDirPath = "../../result/graph";
 
 const actionNameMap: Record<string, string> = {
-  bubble: "Bubble Sort",
-  dict: "Dictionary Lookup",
+  "bubble-sort": "Bubble Sort",
+  dictionary: "Map Lookup",
   intmap: "IntMap Lookup",
 };
 

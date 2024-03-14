@@ -1,6 +1,6 @@
 {
   target {
-    dict-nt "dict-nt.nt"
+    dictionary-nt "dictionary-nt.nt"
   }
   prefix {
     Dict "core.dict"

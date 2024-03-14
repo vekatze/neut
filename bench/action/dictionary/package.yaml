@@ -1,4 +1,4 @@
-name:                dict-hs
+name:                dictionary-hs
 version:             0.1.0.0
 
 language: GHC2021
@@ -20,7 +20,7 @@ ghc-options:
 - -Wredundant-constraints
 
 executables:
-  dict-hs:
+  dictionary-hs:
     main:                Main.hs
     source-dirs:         app
     ghc-options:
