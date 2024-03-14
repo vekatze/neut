@@ -1,6 +1,7 @@
 import { Chart, ChartConfiguration, ChartData } from "chart.js";
 import { ChartCallback, ChartJSNodeCanvas } from "chartjs-node-canvas";
 import { readFileSync, writeFileSync, readdirSync } from "fs";
+import { resolve } from "path";
 
 const inputDirPath = "../../result/json";
 
@@ -162,5 +163,7 @@ for (const key in actionNameMap) {
   });
 
   const buffer = chartJSNodeCanvas.renderToBufferSync(configuration);
-  writeFileSync(`${outputDirPath}/${key}.png`, buffer, "base64");
+  const path = resolve(`${outputDirPath}/${key}.png`);
+  writeFileSync(path, buffer, "base64");
+  console.log(`wrote: ${path}`);
 }

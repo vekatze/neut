@@ -29,6 +29,10 @@ build-compiler-arm64-linux:
 build-compiler-arm64-darwin:
     @just _build-compiler-darwin arm64
 
+bench:
+    ./bench/script/bench.sh
+    cd bench/script/render && pnpm install && pnpm ts-node ./main.ts
+
 test:
     @just _test-in-parallel amd64-linux arm64-linux arm64-darwin
 
