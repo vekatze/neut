@@ -29,9 +29,17 @@ build-compiler-arm64-linux:
 build-compiler-arm64-darwin:
     @just _build-compiler-darwin arm64
 
-bench:
-    ./bench/script/bench.sh
-    cd bench/script/render && pnpm install && pnpm ts-node ./main.ts
+bench-arm64-darwin:
+    @just build-compiler-arm64-darwin
+    @NEUT={{justfile_directory()}}/bin/neut-arm64-darwin {{justfile_directory()}}/bench/script/bench-darwin.sh
+    @echo "\nGenerating graphs..."
+    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts"
+
+bench-arm64-linux:
+    @just build-compiler-arm64-linux
+    @just _run-arm64-linux "NEUT=/app/bin/neut-arm64-linux /app/bench/script/bench-linux.sh"
+    @echo "\nGenerating graphs..."
+    @just _run-arm64-linux "cd /app/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts"
 
 test:
     @just _test-in-parallel amd64-linux arm64-linux arm64-darwin
