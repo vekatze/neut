@@ -1,60 +1,193 @@
 {
   "results": [
     {
-      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 333333",
-      "mean": 0.81054907464,
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 100000",
+      "mean": 0.1757491321,
       "stddev": null,
-      "median": 0.81054907464,
-      "user": 0.93600562,
-      "system": 0.3530809,
-      "min": 0.81054907464,
-      "max": 0.81054907464,
+      "median": 0.1757491321,
+      "user": 0.2013304,
+      "system": 0.07096171999999999,
+      "min": 0.1757491321,
+      "max": 0.1757491321,
       "times": [
-        0.81054907464
+        0.1757491321
       ],
       "exit_codes": [
         0
       ],
       "parameters": {
-        "SIZE": "333333"
+        "SIZE": "100000"
       }
     },
     {
-      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 666666",
-      "mean": 1.9054664496400002,
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 200000",
+      "mean": 0.42885017410000004,
       "stddev": null,
-      "median": 1.9054664496400002,
-      "user": 2.21465162,
-      "system": 0.8102509,
-      "min": 1.9054664496400002,
-      "max": 1.9054664496400002,
+      "median": 0.42885017410000004,
+      "user": 0.49471139999999997,
+      "system": 0.15985872,
+      "min": 0.42885017410000004,
+      "max": 0.42885017410000004,
       "times": [
-        1.9054664496400002
+        0.42885017410000004
       ],
       "exit_codes": [
         0
       ],
       "parameters": {
-        "SIZE": "666666"
+        "SIZE": "200000"
       }
     },
     {
-      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 999999",
-      "mean": 3.14477370064,
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 300000",
+      "mean": 0.7275262151,
       "stddev": null,
-      "median": 3.14477370064,
-      "user": 3.59701962,
-      "system": 1.2008429,
-      "min": 3.14477370064,
-      "max": 3.14477370064,
+      "median": 0.7275262151,
+      "user": 0.8585733999999999,
+      "system": 0.35199472,
+      "min": 0.7275262151,
+      "max": 0.7275262151,
       "times": [
-        3.14477370064
+        0.7275262151
       ],
       "exit_codes": [
         0
       ],
       "parameters": {
-        "SIZE": "999999"
+        "SIZE": "300000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 400000",
+      "mean": 1.0158016331,
+      "stddev": null,
+      "median": 1.0158016331,
+      "user": 1.1769333999999998,
+      "system": 0.43811272,
+      "min": 1.0158016331,
+      "max": 1.0158016331,
+      "times": [
+        1.0158016331
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "400000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 500000",
+      "mean": 1.3549049651,
+      "stddev": null,
+      "median": 1.3549049651,
+      "user": 1.5817943999999997,
+      "system": 0.5681937199999999,
+      "min": 1.3549049651,
+      "max": 1.3549049651,
+      "times": [
+        1.3549049651
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "500000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 600000",
+      "mean": 1.6894340901,
+      "stddev": null,
+      "median": 1.6894340901,
+      "user": 1.9814893999999998,
+      "system": 0.72373172,
+      "min": 1.6894340901,
+      "max": 1.6894340901,
+      "times": [
+        1.6894340901
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "600000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 700000",
+      "mean": 2.0123758411,
+      "stddev": null,
+      "median": 2.0123758411,
+      "user": 2.3479414,
+      "system": 0.8362397199999999,
+      "min": 2.0123758411,
+      "max": 2.0123758411,
+      "times": [
+        2.0123758411
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "700000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 800000",
+      "mean": 2.3820383401,
+      "stddev": null,
+      "median": 2.3820383401,
+      "user": 2.7419143999999998,
+      "system": 0.9663937199999999,
+      "min": 2.3820383401,
+      "max": 2.3820383401,
+      "times": [
+        2.3820383401
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "800000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 900000",
+      "mean": 2.6969303411,
+      "stddev": null,
+      "median": 2.6969303411,
+      "user": 3.1480474,
+      "system": 1.06626972,
+      "min": 2.6969303411,
+      "max": 2.6969303411,
+      "times": [
+        2.6969303411
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "900000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/dictionary/bin/dictionary-hs 1000000",
+      "mean": 3.1542854650999996,
+      "stddev": null,
+      "median": 3.1542854650999996,
+      "user": 3.6515283999999997,
+      "system": 1.2792367199999999,
+      "min": 3.1542854650999996,
+      "max": 3.1542854650999996,
+      "times": [
+        3.1542854650999996
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "1000000"
       }
     }
   ]

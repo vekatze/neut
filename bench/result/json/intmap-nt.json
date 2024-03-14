@@ -1,60 +1,193 @@
 {
   "results": [
     {
-      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 333333",
-      "mean": 0.26165636948000004,
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 100000",
+      "mean": 0.06139931002,
       "stddev": null,
-      "median": 0.26165636948000004,
-      "user": 0.25613374,
-      "system": 0.0038036,
-      "min": 0.26165636948000004,
-      "max": 0.26165636948000004,
+      "median": 0.06139931002,
+      "user": 0.058920219999999995,
+      "system": 0.0017505999999999997,
+      "min": 0.06139931002,
+      "max": 0.06139931002,
       "times": [
-        0.26165636948000004
+        0.06139931002
       ],
       "exit_codes": [
         0
       ],
       "parameters": {
-        "SIZE": "333333"
+        "SIZE": "100000"
       }
     },
     {
-      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 666666",
-      "mean": 0.68568070248,
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 200000",
+      "mean": 0.14966693502,
       "stddev": null,
-      "median": 0.68568070248,
-      "user": 0.67520274,
-      "system": 0.0070516,
-      "min": 0.68568070248,
-      "max": 0.68568070248,
+      "median": 0.14966693502,
+      "user": 0.14587022,
+      "system": 0.0026585999999999997,
+      "min": 0.14966693502,
+      "max": 0.14966693502,
       "times": [
-        0.68568070248
+        0.14966693502
       ],
       "exit_codes": [
         0
       ],
       "parameters": {
-        "SIZE": "666666"
+        "SIZE": "200000"
       }
     },
     {
-      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 999999",
-      "mean": 1.2315589524800001,
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 300000",
+      "mean": 0.22394564402000003,
       "stddev": null,
-      "median": 1.2315589524800001,
-      "user": 1.21177674,
-      "system": 0.0098696,
-      "min": 1.2315589524800001,
-      "max": 1.2315589524800001,
+      "median": 0.22394564402000003,
+      "user": 0.21875022,
+      "system": 0.0038445999999999997,
+      "min": 0.22394564402000003,
+      "max": 0.22394564402000003,
       "times": [
-        1.2315589524800001
+        0.22394564402000003
       ],
       "exit_codes": [
         0
       ],
       "parameters": {
-        "SIZE": "999999"
+        "SIZE": "300000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 400000",
+      "mean": 0.35592156001999997,
+      "stddev": null,
+      "median": 0.35592156001999997,
+      "user": 0.34899922,
+      "system": 0.0046636,
+      "min": 0.35592156001999997,
+      "max": 0.35592156001999997,
+      "times": [
+        0.35592156001999997
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "400000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 500000",
+      "mean": 0.47564506002,
+      "stddev": null,
+      "median": 0.47564506002,
+      "user": 0.46688821999999996,
+      "system": 0.0058146,
+      "min": 0.47564506002,
+      "max": 0.47564506002,
+      "times": [
+        0.47564506002
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "500000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 600000",
+      "mean": 0.60872360202,
+      "stddev": null,
+      "median": 0.60872360202,
+      "user": 0.59832022,
+      "system": 0.0067986,
+      "min": 0.60872360202,
+      "max": 0.60872360202,
+      "times": [
+        0.60872360202
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "600000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 700000",
+      "mean": 0.76942943502,
+      "stddev": null,
+      "median": 0.76942943502,
+      "user": 0.75859922,
+      "system": 0.007333599999999999,
+      "min": 0.76942943502,
+      "max": 0.76942943502,
+      "times": [
+        0.76942943502
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "700000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 800000",
+      "mean": 0.86788335202,
+      "stddev": null,
+      "median": 0.86788335202,
+      "user": 0.85595122,
+      "system": 0.0078546,
+      "min": 0.86788335202,
+      "max": 0.86788335202,
+      "times": [
+        0.86788335202
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "800000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 900000",
+      "mean": 1.06071310102,
+      "stddev": null,
+      "median": 1.06071310102,
+      "user": 1.0464542199999998,
+      "system": 0.0091556,
+      "min": 1.06071310102,
+      "max": 1.06071310102,
+      "times": [
+        1.06071310102
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "900000"
+      }
+    },
+    {
+      "command": "/Users/vekatze/Code/neut/bench/script/../action/intmap/bin/intmap-nt 1000000",
+      "mean": 1.21340114302,
+      "stddev": null,
+      "median": 1.21340114302,
+      "user": 1.19812722,
+      "system": 0.0096776,
+      "min": 1.21340114302,
+      "max": 1.21340114302,
+      "times": [
+        1.21340114302
+      ],
+      "exit_codes": [
+        0
+      ],
+      "parameters": {
+        "SIZE": "1000000"
       }
     }
   ]

@@ -132,6 +132,11 @@ for (const key in actionNameMap) {
           },
         },
       },
+      plugins: {
+        legend: {
+          position: "chartArea",
+        },
+      },
     },
     plugins: [
       {
