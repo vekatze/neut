@@ -42,19 +42,18 @@ This test creates a random intmap of size `N` and performs random lookups from t
 
 I used the following hardware in the tests above:
 
-| Platform      | Hardware configuration               |
+| Platform      | Hardware                             |
 | ------------- | ------------------------------------ |
 | Linux (AMD64) | HP OMEN 16 2023 (7840HS, Arch Linux) |
 | macOS (ARM64) | Apple MacBook Pro 14 (M1 Max)        |
 
-I used the following commands to generate the graphs:
+I used the following commands to run benchmarks and generate the graphs:
 
 ```sh
 just bench-linux amd64-linux # Linux (AMD64)
 just bench-darwin arm64-darwin # macOS (ARM64)
 ```
 
-Other notes:
+You can find source files in the above benchmarks [here](https://github.com/vekatze/neut/placeholder).
 
-- You can find source files in the above benchmarks here.
-- Please tell me (hopefully gently) if some results are unfair because of a reason that I overlooked.
+Please tell me (hopefully gently) if some of the results are unfair for a reason I overlooked.
