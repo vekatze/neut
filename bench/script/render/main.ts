@@ -22,8 +22,8 @@ if (!existsSync(outputDirPath)) {
 
 const actionNameMap: Record<string, string> = {
   bubble: "Bubble Sort",
-  dictionary: "Map Create & Lookup",
-  intmap: "IntMap Create & Lookup",
+  dictionary: "Map (Create & Lookup)",
+  intmap: "IntMap (Create & Lookup)",
 };
 
 const languageNameMap: Record<string, string> = {
@@ -39,7 +39,7 @@ interface Data {
 }
 
 function getKeys(fileName: string): [string, string] {
-  const basename = fileName.split(".")[0]; // I know this is dirty
+  const basename = fileName.split(".")[0];
   const [actionKey, languageKey] = basename.split("-");
   return [actionKey, languageKey];
 }
@@ -135,13 +135,21 @@ for (const key in actionNameMap) {
         x: {
           title: {
             display: true,
-            text: "input size",
+            text: "N",
+            font: {
+              weight: "bold",
+            },
+            padding: 20,
           },
         },
         y: {
           title: {
             display: true,
-            text: "time elapsed (seconds)",
+            text: "Elapsed Time [s]",
+            font: {
+              weight: "bold",
+            },
+            padding: 25,
           },
         },
       },
@@ -169,6 +177,7 @@ for (const key in actionNameMap) {
     ],
   };
   const chartCallback: ChartCallback = (ChartJS: any) => {
+    ChartJS.defaults.font.size = 28;
     ChartJS.defaults.responsive = true;
     ChartJS.defaults.maintainAspectRatio = false;
   };

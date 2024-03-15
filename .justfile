@@ -47,12 +47,6 @@ bench-linux platform: # platform \in {amd64-linux, arm64-linux}
     @echo "\nGenerating graphs..."
     @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts arm64-darwin"
 
-bench-arm64-linux-container:
-    @just build-compiler-arm64-linux
-    @just _run-arm64-linux "NEUT=/app/bin/neut-arm64-linux PLATFORM=arm64-linux /app/bench/script/bench-linux.sh"
-    @echo "\nGenerating graphs..."
-    @just _run-arm64-linux "cd /app/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts arm64-linux"
-
 test:
     @just _test-in-parallel amd64-linux arm64-linux arm64-darwin
 

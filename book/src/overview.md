@@ -62,9 +62,7 @@ some-func(xs1, xs2)
 
 If you need more, see [How to Execute Types](./main-ideas.md).
 
----
-
-You may be wondering: _"So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./noetic-optimization.md). As written there, those redundant copyings can be avoided via something like borrowing in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
+You may wonder: _"\_So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./noetic-optimization.md). As written there, those redundant copyings can be avoided via something like borrowing in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
 
 ## How Fast is This?
 
@@ -83,7 +81,7 @@ You may be wondering: _"So we need to, for example, copy the whole list just to 
 
 ## Anything Else?
 
-You might also find the module system of Neut interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. This topic is covered in the [tutorial](./functional-programming.md).
+You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. This topic is covered in the [tutorial](./functional-programming.md).
 
 Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
 
