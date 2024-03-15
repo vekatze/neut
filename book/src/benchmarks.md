@@ -1,24 +1,5 @@
 # Benchmarks
 
-Configurations:
-
-| Platform      | Hardware configuration               |
-| ------------- | ------------------------------------ |
-| Linux (AMD64) | HP OMEN 16 2023 (7840HS, Arch Linux) |
-| macOS (ARM64) | Apple MacBook Pro 14 (M1 Max)        |
-
-I generated the graphs on this page using the following command:
-
-```sh
-just bench-linux amd64-linux # Linux (AMD64)
-just bench-darwin arm64-darwin # macOS (ARM64)
-```
-
-Other notes:
-
-- You can find source files in the above benchmarks here.
-- Please tell me (hopefully gently) if this comparison is unfair due to a reason that I overlooked.
-
 ## Bubble Sort
 
 This test creates a random list of length `N` and bubble-sort the list.
@@ -54,3 +35,26 @@ This test creates a random intmap of size `N` and performs random lookups from t
 ### macOS (ARM64)
 
 ![IntMap](./image/graph/arm64-darwin/intmap.png "IntMap")
+
+---
+
+## Additional Notes
+
+I used the following hardware in the tests above:
+
+| Platform      | Hardware configuration               |
+| ------------- | ------------------------------------ |
+| Linux (AMD64) | HP OMEN 16 2023 (7840HS, Arch Linux) |
+| macOS (ARM64) | Apple MacBook Pro 14 (M1 Max)        |
+
+I used the following commands to generate the graphs:
+
+```sh
+just bench-linux amd64-linux # Linux (AMD64)
+just bench-darwin arm64-darwin # macOS (ARM64)
+```
+
+Other notes:
+
+- You can find source files in the above benchmarks here.
+- Please tell me (hopefully gently) if some results are unfair because of a reason that I overlooked.
