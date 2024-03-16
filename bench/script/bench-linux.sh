@@ -7,7 +7,7 @@ for target_dir in $(find "$SCRIPT_DIR/../action" -maxdepth 1 -mindepth 1 -type d
   stack install --local-bin-path ./bin
   $NEUT build --install ./bin
   size=$(cat ./test-size.txt)
-  step=3
+  step=10
   for executable in $(find $target_dir/bin -type f | sort); do
     echo ${executable:t}
     mkdir -p ../../result/json/$PLATFORM
