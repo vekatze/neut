@@ -6,7 +6,7 @@ This test creates a random list of length `N` and bubble-sort the list.
 
 ### Linux (AMD64)
 
-![bubble sort](./image/graph/arm64-linux/bubble.png "bubble sort (placeholder)")
+![bubble sort](./image/graph/amd64-linux/bubble.png "bubble sort")
 
 ### macOS (ARM64)
 
@@ -18,7 +18,7 @@ This test creates a random dictionary of size `N` and performs random lookups fr
 
 ### Linux (AMD64)
 
-![dictionary](./image/graph/arm64-linux/dictionary.png "dictionary (placeholder)")
+![dictionary](./image/graph/amd64-linux/dictionary.png "dictionary")
 
 ### macOS (ARM64)
 
@@ -30,7 +30,7 @@ This test creates a random intmap of size `N` and performs random lookups from t
 
 ### Linux (AMD64)
 
-![IntMap](./image/graph/arm64-linux/intmap.png "IntMap (placeholder)")
+![IntMap](./image/graph/amd64-linux/intmap.png "IntMap")
 
 ### macOS (ARM64)
 
@@ -42,10 +42,10 @@ This test creates a random intmap of size `N` and performs random lookups from t
 
 I used the following hardware in the tests above:
 
-| Platform      | Hardware                             |
-| ------------- | ------------------------------------ |
-| Linux (AMD64) | HP OMEN 16 2023 (7840HS, Arch Linux) |
-| macOS (ARM64) | Apple MacBook Pro 14 (M1 Max)        |
+| Platform      | Hardware                         |
+| ------------- | -------------------------------- |
+| Linux (AMD64) | HP OMEN 16 2023 (7840HS, Ubuntu) |
+| macOS (ARM64) | Apple MacBook Pro 14 (M1 Max)    |
 
 I used the following commands to run benchmarks and generate the graphs:
 
