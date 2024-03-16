@@ -39,13 +39,13 @@ bench-darwin platform:
     @just _build-native {{platform}}
     @NEUT={{justfile_directory()}}/bin/neut-{{platform}} PLATFORM={{platform}} {{justfile_directory()}}/bench/script/bench-darwin.sh
     @echo "\nGenerating graphs..."
-    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts arm64-darwin"
+    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts {{platform}}"
 
 bench-linux platform: # platform \in {amd64-linux, arm64-linux}
     @just _build-native {{platform}}
     @NEUT={{justfile_directory()}}/bin/neut-{{platform}} PLATFORM={{platform}} {{justfile_directory()}}/bench/script/bench-linux.sh
     @echo "\nGenerating graphs..."
-    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts {{platform}  }"
+    @sh -c "cd {{justfile_directory()}}/bench/script/render && rm -rf node_modules && npm install && ./node_modules/.bin/ts-node ./main.ts {{platform}}"
 
 test:
     @just _test-in-parallel amd64-linux arm64-linux arm64-darwin
