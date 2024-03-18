@@ -56,4 +56,4 @@ just bench-linux amd64-linux # Linux (AMD64)
 just bench-darwin arm64-darwin # macOS (ARM64)
 ```
 
-Please tell me (hopefully gently) if some of the results are unfair for reasons I overlooked.
+Please tell me (hopefully gently) if some of the results are unfair because of reasons I overlooked.
