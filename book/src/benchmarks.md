@@ -1,8 +1,10 @@
 # Benchmarks
 
+You can find the source files for the following benchmarks [here](https://github.com/vekatze/neut/placeholder).
+
 ## Bubble Sort
 
-This test creates a random list of length `N` and bubble-sort the list.
+This test creates a random list of length `N` and performs bubble-sort on the list.
 
 ### Linux (AMD64)
 
@@ -54,6 +56,4 @@ just bench-linux amd64-linux # Linux (AMD64)
 just bench-darwin arm64-darwin # macOS (ARM64)
 ```
 
-You can find source files in the above benchmarks [here](https://github.com/vekatze/neut/placeholder).
-
-Please tell me (hopefully gently) if some of the results are unfair for a reason I overlooked.
+Please tell me (hopefully gently) if some of the results are unfair for reasons I overlooked.

@@ -50,6 +50,12 @@
   background-color: var(--dark-orange);
 }
 
+.hljs-warning {
+  font-weight: bold;
+  color: var(--mid-orange);
+  background-color: var(--dark-orange);
+}
+
 .hljs-title,
 .hljs-section {
   color: var(--light-magenta);

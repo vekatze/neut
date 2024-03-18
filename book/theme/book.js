@@ -70,6 +70,9 @@ hljs.registerLanguage("neut", function (hljs) {
         className: "hole-suffix",
         begin: /\/[0-9]+/,
       },
+      { className: "warning",
+        begin: "admit",
+      },
       {
         className: "builtin",
         begin: "<=|->|=>|\\*|:|this|&|\\b-(?=\\s)|=|tuple|magic|assert",
