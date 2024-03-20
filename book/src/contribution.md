@@ -24,5 +24,3 @@ Feel free to open PR to:
 - Star the repo
 - Send BTC
 - Cheer on Twitter/Mastodon/Bluesky/Whatever
-
-We're free

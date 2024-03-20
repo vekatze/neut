@@ -27,6 +27,7 @@ const actionNameMap: Record<string, string> = {
 };
 
 const languageNameMap: Record<string, string> = {
+  // slow: "Neut (Slower Implementation)",
   hs: "Haskell",
   nt: "Neut",
 };
@@ -71,6 +72,8 @@ function loadData(fileDir: string, fileName: string): Data {
 function selectColor(languageKey: string): string {
   if (languageKey == "hs") {
     return "#8e82b2";
+  } else if (languageKey == "slow") {
+    return "#acac37";
   } else {
     return "#37acac";
   }
@@ -109,15 +112,26 @@ for (const fileName of fileNameList) {
 }
 
 function filterDataSet(dataset: Array<Data>, key: string): Array<Data> {
-  const result = [];
-  for (const data of dataset) {
-    if (data["actionKey"] == key) {
-      result.push(data);
-    } else {
-      continue;
+  const list = [];
+  for (const languageKey in languageNameMap) {
+    for (const data of dataset) {
+      if (data.actionKey == key && data.languageKey == languageKey) {
+        list.push(data);
+      } else {
+        continue;
+      }
     }
   }
-  return result;
+  return list;
+  // const result = [];
+  // for (const data of dataset) {
+  //   if (data["actionKey"] == key) {
+  //     result.push(data);
+  //   } else {
+  //     continue;
+  //   }
+  // }
+  // return result;
 }
 
 const width = 1200;
@@ -165,7 +179,7 @@ for (const key in actionNameMap) {
     },
     plugins: [
       {
-        id: "background-colour",
+        id: "background-color",
         beforeDraw: (chart) => {
           const ctx = chart.ctx;
           ctx.save();

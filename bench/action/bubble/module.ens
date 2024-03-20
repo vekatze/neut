@@ -1,6 +1,7 @@
 {
   target {
     bubble-nt "bubble-nt.nt"
+    bubble-slow "bubble-slow.nt"
   }
   dependency {
     core {

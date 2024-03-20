@@ -16,7 +16,7 @@ nominal {
 - _insert(v: int, xs: int-list): int-list
 }
 
-inline _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
+define _swap-gt(cond: bool, v: int, x: int, xs: int-list): int-list {
   if cond {
     My-Cons(x, _insert(v, xs))
   } else {

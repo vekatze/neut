@@ -1,4 +1,4 @@
-# On Executing Types
+# How to Execute Types
 
 ## What You'll Learn Here
 
