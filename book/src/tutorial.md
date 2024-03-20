@@ -14,7 +14,7 @@ Here I'll assume that you are somewhat familiar with other functional programmin
 
 We'll explore Neut's basic aspects as a functional programming language. Namely:
 
-- How to _create_ a module (== library == crate == package == whatever = ..)
+- How to _create_ a module
 - How to _build_ a module
 - How to _execute_ a module
 - How to _add_ dependencies
@@ -24,12 +24,18 @@ We'll explore Neut's basic aspects as a functional programming language. Namely:
 
 ### Initialization
 
-Run `neut create sample`. This command creates a new directory `./sample/` and files inside the directory. This is a module in Neut.
-
-The command `create` creates a sample project that does "hello world". This can be built and executed as follows:
+Run the following command:
 
 ```sh
-cd path/to/sample
+neut create sample
+```
+
+This command creates a new directory `./sample/` and files inside the directory. This is a module in Neut. A module in Neut is a directory that contains `module.ens`.
+
+The command `create` creates a sample project that performs the sacred "hello world". This module can be built and executed by running the following commands:
+
+```sh
+cd ./sample
 neut build --execute # => "Hello, world!" (might take seconds for the first time)
 ```
 
@@ -48,7 +54,7 @@ sample/
 └── module.ens
 ```
 
-The directory `build` is the directory where object files (binary files) are put in. You won't have to go into the directory for daily use.
+The directory `build` is the directory where object files (binary files) are put in. You won't have to go into the directory in normal use.
 
 The directory `source` is the directory where source files are put in. This will be our focus.
 
@@ -85,6 +91,8 @@ The content of `module.ens` should be something like the below:
 
 `dependency` specifies external dependencies. Since our project doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
+The `digest` is the base64url-encoded checksum of the tarball. The `mirror` is a list of URLs of the tarball. `enable-preset` makes the `core` library works like Prelude in Haskell. That is, when `enable-preset` is true, designated names in the dependency (`core`) is automatically imported in every file in our module.
+
 ### Source files
 
 Let's see the content of `sample.nt`:
@@ -99,7 +107,7 @@ define main(): unit {
 
 This defines a function `main` that returns a value of type `unit`. This function just prints `"Hello, world!\n"` and returns.
 
-Here, the `unit` is the same as the `()` in Haskell. That is, `unit` is an ADT that contains only one value `Unit`. The explicit definition of `unit` is as follows
+Here, the `unit` is the same as the `()` in Haskell. That is, `unit` is an ADT that contains only one value `Unit`. The explicit definition of `unit` is as follows:
 
 ```neut
 data unit {
@@ -150,7 +158,7 @@ define main(): unit {
 }
 ```
 
-A function can take arguments:
+A function can take arguments. Let's rewrite `sample.nt` into the below:
 
 ```neut
 // sample.nt
@@ -168,7 +176,7 @@ define main(): unit {
 }
 ```
 
-Top-level items like `define` are called **statements**.
+Top-level items like `define` are called **statements**. You'll see more in the next section.
 
 <div class="info-block">
 
@@ -178,7 +186,7 @@ Like F#, statements in Neut are order-sensitive. Because of that, if you were to
 
 ## Publishing Your Module
 
-I'd like to tell you now that you already have a function `my-add` that can be used by others. Let's try publishing it.
+Now let's publish our module so that the function `my-add` and `increment` can be used by others.
 
 You can create an archive of the current module using `neut archive`:
 
@@ -189,7 +197,7 @@ ls ./archive # => 0-1.tar.zst
 
 `neut archive` creates the directory `archive` at the root of your module. This command also creates an archive for the current module.
 
-The name of a module archive must be something like `0-1`, `2-3-8`, `1-2-3-4-5-6`.
+The name of a module archive must be something like `0-1`, `2-3-1`, `1-2-3-4-5-6`.
 
 Names of archives are interpreted as semantic versions to save compatibility relations. For example, if you create an archive `1-2-3`, and then `1-2-4`, the `1-2-4` is treated as a minor update of `1-2-3`.
 
@@ -222,9 +230,10 @@ cd new-item
 
 # ↓ add the previous module to our `new-item`
 neut get some-name https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst
-```
 
-(For convenience, you can use this URL instead of creating a repository just to test this behavior)
+# for convenience, you can try the following command:
+neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst # TODO
+```
 
 The command `neut get` fetches the tarball from the specified URL and adds it to the current module.
 
@@ -250,13 +259,13 @@ The information of the newly-added module is saved to `module.ens`:
 
 <div class="info-block">
 
-In Neut, the name of a module is defined by its user, not by its author. In our running example, we developed our module under the name of `sample`, but the user added the module as `some-name`. Modules in Neut are distinguished by their digests.
+In Neut, the name of a module is defined by its user, not by its author. In our running example, we developed our module under the name of `sample`, but the user added the module as `some-name`. The "real" name of a module in Neut is its digest.
 
 </div>
 
 <div class="info-block">
 
-The identity of a module is defined only by the minor version equivalence. You can "update" your dependencies of version `0-2-4`, for example, by specifying the same module of version `0-2-5`, `0-2-6`, etc.
+You can "update" your dependencies of version `0-2-4`, for example, by specifying the same module of version `0-2-5`, `0-2-6`, etc. Please [here](commands.md#neut-archive) if you're interested in how this "update" is performed.
 
 </div>
 
@@ -278,9 +287,9 @@ define main(): unit {
 
 Like `some-name.sample` in the example above, we can use `import` to specify files of a dependency that we want to use.
 
-The first component of an element in `import` is our alias of the dependency. What follows is the relative path to the file from the root of the source directory of the dependency module.
+The first component of an element in `import` is our alias of the dependency (`some-name`). What follows is the relative path to the file from the root of the source directory of the dependency module.
 
-Like `{my-add}` in the example above, every element of an `import` can optionally have a list of names. Names in these lists can then be used after `import`, as in the example above.
+Like `{my-add}` in the example above, every bullet-item of an `import` can optionally have a list of names. Names in these lists can then be used after `import`, as in the example above.
 
 If you didn't specify `{my-add}`, you'd have to use the fully-qualified form of `my-add`:
 
@@ -297,9 +306,7 @@ define main(): unit {
 }
 ```
 
-What if the file `sample.nt` isn't at the root of the source directory?
-
-Suppose that the dependency `some-name` had contained a file `source/entity/item.nt`. In this case, the file `item.nt` can be imported from `new-item.nt` as follows:
+What if the file we want to `import` isn't at the root of the source directory? Suppose that the dependency `some-name` had contained a file `source/entity/item.nt`. In this case, the file `item.nt` can be imported from `new-item.nt` as follows:
 
 ```neut
 import {
@@ -309,12 +316,12 @@ import {
 
 ## Importing Files in the Current Module
 
-We now know how to import files in other dependencies. Using the same idea, we can also (of course) import files in the current module.
+We now know how to import files in dependencies. Using the same idea, we can also (of course) import files in the current module.
 
 Let's create a new file `new-item/source/foo/greet.nt` with the following content:
 
 ```neut
-// greet.nt
+// foo/greet.nt
 
 define yo(): unit {
   print("Yo")
@@ -395,12 +402,14 @@ define main(): unit {
 
 <div class="info-block">
 
-Unlike Haskell, these prefixes are defined per module, not per file. The prefixes of a file are consistent inside a module.
+Unlike Haskell, these prefixes are defined per module, not per file. The prefixes of a file must be consistent inside a module.
 
 </div>
 
 ## What You've Learned Here
 
-- `neut create MODULE_NAME` can be used to create a project
-
-Let's go to the next, interesting part -- resource management.
+- `neut create MODULE_NAME` can be used to create a module
+- `neut build [TARGET_NAME]` can be used to build modules
+- The option `--execute` can be added to `neut build` to execute modules
+- `neut get` can be used to add external dependencies
+- Tarballs created using `neut archives` can be published as a library

@@ -249,7 +249,7 @@ A ──> B ───┐
 └──────────┴──> D (1.3)
 ```
 
-so that we don't have to rain on their happy parade in Waikiki beach.
+So we don't have to rain on their happy parade in Waikiki beach.
 
 ## `neut create`
 
