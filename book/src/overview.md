@@ -83,7 +83,7 @@ You may wonder: _"\_So we need to, for example, copy the whole list just to get 
 
 You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. This topic is covered in the [tutorial](./functional-programming.md).
 
-Also, Neut includes a preliminary LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
+Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
 
 ---
 

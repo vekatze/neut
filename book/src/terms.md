@@ -825,7 +825,7 @@ These magics are lowered to the `store` and `load` in LLVM IR after compilation.
 
 ### `external`
 
-`external` can be used to call foreign functions. See [foreign in Statements](./statements.md#foreign) for more information.
+`external` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
 
 ## `introspect`
 

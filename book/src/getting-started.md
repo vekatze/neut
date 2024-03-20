@@ -1,11 +1,9 @@
 # Tutorial
 
-Neut is a functional programming language with static memory management.
+Neut is a (1) _module-based_ (2) _functional_ programming language with (3) _static_ memory management. This chapter is a quick introduction to this language.
 
-In this chapter, we'll first see its aspect as a functional programming language. By reading the section, you'll be able to write and publish your programs.
+In [Hello External World](./tutorial.md), we will see Neut's _"module-based"_ aspect. We will see how to use modules in Neut. You'll know how to create, build, execute, and release your modules.
 
-We'll then see static memory management in Neut. The section will show you how to write performant programs.
+In [Programming in Neut](./programming-basics.md), we will see Neut's _"functional"_ aspect. We'll see how to write code in Neut.
 
-During exploration, I'll also show you how to use the language reference in this book.
-
-Let's go ahead.
+In [Static Memory Management](./resource-management.md), we will see Neut's _"static"_ aspect. We will see how to handle memory operations in Neut. We'll also see Neut's technique to optimize memory allocation.

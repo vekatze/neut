@@ -6,7 +6,7 @@ Suppose that you created a new function deep inside your module.
 
 You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior. However, it is a bit cumbersome to my (and hopefully our) liking. I need rapid try-and-error cycles in certain circumstances.
 
-The command `zen` can be used here. Suppose that a file `some-file.nt` contains a function `foo` as in the below:
+The command `zen` can be used here. Suppose that a file `some-file.nt` contains a function `foo` that is defined as in the below:
 
 ```neut
 define foo(x: int): int {
