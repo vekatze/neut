@@ -176,7 +176,7 @@ At this time, the `free` against `xs` at `(X')` can't be optimized away, since t
 
 ### How Effective Is This Optimization?
 
-Please see the benchmark of bubble sort here.
+Please see [here](./resource-management.md#how-effective-is-this-optimization).
 
 ## Compiler Configuration
 
