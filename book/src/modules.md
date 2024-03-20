@@ -179,9 +179,11 @@ The "object files" here are the ones that can be generated using clang as follow
 clang -c -o ffi/arm64-darwin/foo.o path/to/foo.c
 ```
 
+The default value of `foreign` is `[]`.
+
 <div class="info-block">
 
-If you peek at the `build` directory, you'll find a directory named `artifact` that contains cache files (`foo.i`) and object files (`foo.o`). When linking phase, all the object files in the `artifact` directory and the `foreign` directory are linked to produce an executable.
+If you peek at the `build` directory, you'll find a directory named `artifact` that contains cache files (`foo.i`) and object files (`foo.o`). When linking phase, all the object files in the `artifact` directory and the object files in the `foreign` directories are linked to produce an executable.
 
 </div>
 

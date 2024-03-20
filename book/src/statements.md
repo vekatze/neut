@@ -288,12 +288,14 @@ Foreign functions declared here can be used by using `magic external`.
 Suppose that you have a C source file with the following definition:
 
 ```c
+// add_const.c
+
 int add_const(int value) {
   return value + 100;
 }
 ```
 
-You compile this file with `clang -c` to produce an object file, and put it to a `foreign` directory of your module. Under this setting, the following code can utilize `add_const`:
+You compile this file with `clang -c` to produce an object file, and put it to [a foreign directory of your module](modules.md#foreign). Under this setting, the following code can utilize `add_const`:
 
 ```neut
 foreign {
@@ -306,6 +308,8 @@ define main(): unit {
   print("\n")
 }
 ```
+
+An example project that uses `foreign` can be found [here](https://github.com/vekatze/neut/tree/main/test/misc/foreign).
 
 You can also use LLVM intrinsics. For example, the LLVM langref states that `llvm.sin.*` intrinsic is [available](https://llvm.org/docs/LangRef.html#llvm-sin-intrinsic):
 

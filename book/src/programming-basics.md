@@ -1,8 +1,14 @@
 # Programming in Neut
 
-Let's code in Neut. We'll see how to write basic programs in Neut here. We assume that you are already familiar with functional programming. Honestly, I don't really know what "functional programming" is, but anyway.
+Let's code in Neut. We'll see how to write basic programs in Neut here. You are assumed to be already familiar with functional programming.
 
 ## What You'll Learn Here
+
+- How to define and use variables
+- How to define and use functions
+- How to define and use ADTs
+- How to perform parallel computations
+- Other syntactic utilities
 
 ## Programming in Neut
 
@@ -14,14 +20,13 @@ cd start
 edit source/start.nt
 ```
 
-As a simple example, we'll write an interpreter for the untyped lambda calculus.
-
 ### Binding Variables Using `let`
 
 Rewrite `start.nt` into the below:
 
 ```neut
 define hey(): unit {
+  // 🌟
   let x = "hello" in
   let y: int = 100 in
   let z: float = 3.8 in
@@ -40,8 +45,6 @@ Points:
 - Functions can be defined using `define`
 - Functions can be called by writing `f(e1, ..., en)`
 - `let` can be used to define variables
-- `let` can be nested
-- The name `_` can be used to suppress the compiler
 
 As you can see from the example above, `let` can be used to define variables.
 
@@ -49,6 +52,7 @@ You might have noticed that the compiler reports unused variables (`x`, `y`, and
 
 ```neut
 define hey(): unit {
+  // 🌟
   let _ = "hello" in
   let _: int = 100 in
   let _: float = 3.8 in
@@ -61,6 +65,7 @@ define hey(): unit {
 ```neut
 define hey(): unit {
   let x =
+    // 🌟
     let y: int = 100 in
     let z: float = 3.8 in
     "hello"
@@ -73,6 +78,7 @@ define hey(): unit {
 
 ```neut
 define hey(): unit {
+  // 🌟
   print("a");
   print("b")
 }
@@ -90,11 +96,13 @@ define hey(): unit {
 You can use the statement `define` to define functions:
 
 ```neut
+// 🌟
 // defining an ordinary function
 define my-func1(x1: int, x2: bool): bool {
   x2
 }
 
+// 🌟
 // defining a recursive function
 define my-func2(cond: bool): int {
   if cond {
@@ -108,6 +116,7 @@ define my-func2(cond: bool): int {
 `define` can also define a function with implicit arguments (or "generics"):
 
 ```neut
+// 🌟
 // The `a` in the angle bracket is the implicit argument of `id`
 define id<a>(x: a): a {
   x
@@ -115,7 +124,7 @@ define id<a>(x: a): a {
 
 define use-id(): int {
   let str = 10 in
-  id(str)
+  id(str) // calling `id` without specifying `a` explicitly
 }
 ```
 
@@ -166,7 +175,7 @@ You can also use `define` in the body of a function to define recursive function
 ```neut
 define foo() {
   let f =
-      // 🌟
+    // 🌟
     define print-multiple-hellos(counter: int) {
       if eq-int(counter, 0) {
         Unit
@@ -186,10 +195,12 @@ Functions `f` can be called against arguments `e1`, ..., `en` by writing `f(e1, 
 
 ```neut
 define my-func(x: int, y: int): int {
+  // 🌟
   add-int(x, y)
 }
 
 define use-my-func(): int {
+  // 🌟
   my-func(10, 20)
 }
 ```
@@ -198,6 +209,7 @@ The syntax sugar `of` can be used to rewrite the above `use-my-func` into the be
 
 ```neut
 define use-my-func(): int {
+  // 🌟
   my-func of {
   - x = 10
   - y = 20
@@ -205,13 +217,14 @@ define use-my-func(): int {
 }
 ```
 
-A lot of primitive functions (from LLVM) are also available. See [Primitives](./primitives.md) for more.
+A lot of primitive functions (from LLVM) are also available. Please see [Primitives](./primitives.md) for more.
 
 ### Defining ADTs
 
 You can use the statement `data` to define ADTs:
 
 ```neut
+// 🌟
 data my-nat {
 - My-Zero
 - My-Succ(my-nat)
@@ -224,7 +237,7 @@ data my-nat {
 
 //------------
 
-
+// 🌟
 data my-list(a) {
 - My-Nil
 - My-Cons(a, my-list(a))
@@ -237,8 +250,11 @@ data my-list(a) {
 
 Arguments in constructors can optionally have explicit names:
 
+(fixme: make `config` simpler)
+
 ```neut
 data config {
+  // 🌟 ("count", "path", "status")
 - Config(count: int, path: &text, status: my-status)
 }
 ```
@@ -247,6 +263,7 @@ The syntax sugar `of` can be used to rewrite the above definition of `config` in
 
 ```neut
 data config {
+  // 🌟
 - Config of {
   - count: int
   - path: &text
@@ -255,32 +272,35 @@ data config {
 }
 ```
 
-```neut
-data term {
-- Var(text)
-- Abs(text, term)
-- App(term, term)
-}
-```
-
 ### Creating ADT Values
 
-You can use constructors as usual functions. Add the following to `start.nt`:
+You can use constructors as usual functions:
 
 ```neut
-define make-var(x: text): term {
-  Var(x)
+define make-my-list(): my-list(int) {
+  // 🌟
+  My-Cons(1, My-Cons(2, My-Nil))
+}
+
+define make-config(path: &text, status: my-status): term {
+  // 🌟
+  Config of {
+  - count = 10
+  - path = path
+  - status = status
+  }
 }
 ```
 
 We've just used the constructor `Var` here.
 
-### Using ADTs (i.e. Branching)
+### Using ADT values
 
 You can use `match` to deconstruct ADT values:
 
 ```neut
 define sum(xs: my-list(int)): int {
+  // 🌟
   match xs {
   - My-Nil =>
     0
@@ -290,21 +310,37 @@ define sum(xs: my-list(int)): int {
 }
 ```
 
-Nested matching is also available. Add the following to `source/reduce.nt`:
+Nested matching is also available:
 
 ```neut
-define reduce(t: term): term {
-  match t {
-  - App(Abs(x, t1), t2) =>
-    subst([Pair(x, t2)], t1)
+define foo(xs: my-list(int)): int {
+  match xs {
+  - My-Nil =>
+    0
+    // 🌟
+  - My-Cons(y, My-Cons(z, My-Nil)) =>
+    1
+  - My-Cons(_, _) =>
+    2
   }
 }
 ```
 
-You can use `if` as usual:
+The core library defines `bool` with the following definition:
+
+```neut
+// 🌟
+data bool {
+- False
+- True
+}
+```
+
+A special syntax `if` is there to use this `bool` as in other languages:
 
 ```neut
 define factorial(n: int) {
+  // 🌟
   if le-int(n, 0) { // `le-int(n, 0)` means `n <= 0`
     1
   } else {
@@ -318,6 +354,7 @@ The result of `if` can be bound to a variable:
 ```neut
 define yo(cond: bool) {
   let x =
+    // 🌟
     if cond {
       1
     } else {
@@ -400,10 +437,17 @@ define foo(): unit {
 
 ### Auxiliary Syntaxes
 
-Some syntax sugars are also available. For more, please see the [language reference](./terms.md#use-e-x-in-cont).
-
-### Misc
-
-- `magic` and FFI
+- Additional syntax sugars are also available. For more, please see the [language reference](./terms.md#use-e-x-in-cont).
+- If you want to call foreign functions (FFI), please see the [here](statements.md#foreign).
 
 ## What You've Learned Here
+
+- `let` can be used to define variables.
+- Defined variables can be used by specifying their names
+- Functions can be defined using `function` or `define`
+- Functions can be called by writing `f(e1, ..., en)`
+- The statement `data` can be used to define ADTs.
+- Constructors of ADTs are normal functions.
+- ADT values can destructed using `match`
+- `detach` and `attach` can be used to perform parallel computation
+- Additional syntax sugars are documented in the [language reference](./terms.md)
