@@ -4,7 +4,7 @@
 
 Let's introduce a new type `&list(a)`, the noetic variant of `list(a)`. Also, let's call a value a noema if its type is of the form `&a`.
 
-A noema of type `&a` has the same internal representation as a value of type `a`. The difference lies in how the values of this type are copied/discarded; *a noema is treated as an immediate*.
+A noema of type `&a` has the same internal representation as a value of type `a`. The difference lies in how the values of this type are copied/discarded; _a noema is treated as an immediate_.
 
 More specifically, a noema is handled using the `exp-immediate` that we saw in the last section:
 
@@ -135,7 +135,7 @@ match result {   // ... and thus using `result` here is a use-after-free!
 
 Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
 
-More specifically, the type of `result` must satisfy all of the followings:
+More specifically, the type of `result` must satisfy all of the following conditions:
 
 - it doesn't contain any free variables,
 - it doesn't contain any noetic types,

@@ -737,14 +737,14 @@ define play-with-let-on(): unit {
 `let-on` is essentially the following syntax sugar:
 
 ```neut
-let len on xs = e in
+let result on x = e in
 cont
 
 // ↓ desugar
 
-let xs = unsafe-cast(a, &a, xs) in // cast: `a` ~> `&a`
-let len = e in                     // (use `&a`)
-let xs = unsafe-cast(&a, a, xs) in // uncast: `&a` ~> `a`
+let x = unsafe-cast(a, &a, x) in // cast: `a` ~> `&a`
+let result = e in                     // (use `&a`)
+let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
 
@@ -755,6 +755,65 @@ cont
 let len on xs, ys, zs = e in
 cont
 ```
+
+The result of `let-on` (here, `len`) can't contain any noetic terms. Below is the reason.
+
+### Result Type Restriction
+
+As you can see from the definition of `let-on`, a noema always has its "source" value. We'll call it the hyle of a noema.
+
+A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
+
+```neut
+let xs = [1, 2] in
+let result on xs = xs in // **CAUTION** the result of let-on is a noema
+let _ = xs in    // ← Since the variable `_` isn't used,
+                 // the hyle of `result`, namely `xs: list(int)`, is discarded here
+match result {   // ... and thus using `result` here is a use-after-free!
+- [] =>
+  print("hey")
+- y :: ys =>
+  print("yo")
+}
+```
+
+Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
+
+More specifically, the type of `result` must satisfy all of the followings:
+
+- it doesn't contain any free variables,
+- it doesn't contain any noetic types,
+- it doesn't contain any function types (since a noema can reside in it), and
+- it doesn't contain any "dubious" ADTs.
+
+Here, a "dubious" ADT is an ADT like the below:
+
+```neut
+data joker-x {
+- HideX(&A) // contains a noetic argument
+}
+
+data joker-y {
+- HideY(int -> bool) // contains a functional argument
+}
+
+data joker-z {
+- HideZ(joker-y) // contains a dubious ADT argument
+}
+```
+
+Indeed, if we were to allow returning these dubious ADTs, we can exploit them to hide a noema:
+
+```neut
+let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
+let _ = xs in                   // `xs` is discarded here
+match result {
+- HideX(xs) =>
+  *xs                           // CRASH: use-after-free!
+}
+```
+
+This restriction is checked at compile time by the type system of Neut.
 
 ## `*e` - Noema Elimination
 
