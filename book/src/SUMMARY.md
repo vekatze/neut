@@ -13,7 +13,7 @@
   - [Terms](./terms.md)
   - [Primitives](./primitives.md)
   - [Basis](./basis.md)
-- [Petals and a Gust](./contribution.md)
+- [Getting Involved](./contribution.md)
 
 # Appendix
 
