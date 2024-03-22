@@ -1,6 +1,28 @@
 # Commands
 
-General options:
+This section describes how to use the command `neut`. You'll use this command to build a module, add dependencies, etc.
+
+The command `neut` has some subcommands like `neut build`, `neut get`, etc. This section describes those subcommands.
+
+## Common Notes
+
+### Subcommands and Modules
+
+Most of the subcommands of `neut` must be executed inside a module. If you execute such a subcommand outside a module, the command will emit an error like the below:
+
+```sh
+neut build
+#=> error: couldn't find a module file (context: /Users/foo/Desktop)
+```
+
+More explicitly, only the following subcommands can be used outside a module:
+
+- `neut create`
+- `neut version`
+
+### Shared command line options:
+
+Some subcommands share command line options. The list of them is as follows:
 
 - `--no-color` can be used to disable ANSI colors
 
@@ -21,13 +43,13 @@ General options:
 }
 ```
 
-In this case, running `neut build foo` create the executable `foo` by building the current module, treating the `main` in `foo.nt` as the entry point.
+In this case, running `neut build foo` create the executable `foo` by building the current module, using the `main` in `foo.nt` as the entry point.
 
 If you omit the target and just write `neut build`, all the targets are built.
 
-The resulting binaries are put inside the build directory of the module.
+The resulting binaries are put inside the build directory of the module. You might want to use the option `--install` to copy those binaries to anywhere you want.
 
-### Self-Contained Example
+### Example
 
 ```sh
 # creates a sample project
@@ -44,7 +66,7 @@ neut build --install ./bin
 
 ### `--execute`
 
-If you pass `--execute` to `neut build`, the resulting binary is executed after the build.
+If you pass `--execute` to `neut build`, the resulting binaries are executed after the build.
 
 ### `--install DIR`
 
@@ -60,19 +82,25 @@ By default, `neut build` builds all the source files into object files, and then
 
 You can emit LLVM IR by passing `--emit llvm` to `neut build`. In this case, you must also pass `--skip-link`.
 
-### `--clang-option ".."`
+### `--clang-option "(any-string)"`
 
-You can pass `--clang-option ".."` to `neut build` to pass additional clang options to the compiler.
+You can pass `--clang-option "(any-string)"` to `neut build` to pass additional clang options to the compiler.
 
-Internally, the Neut compiler translates source files into LLVM IR files, and then calls clang to convert these IR files into object files (and then calls clang again to link all of them).
+Internally, the Neut compiler translates source files into LLVM IR files, and then calls clang to convert these IR files into object files, and then calls clang again to link all of them.
 
-The options specified here are used when the Neut compiler internally calls clang.
+The options specified here are used when the compiler internally calls clang.
 
 For example, by passing `--clang-option "-fsanitize=address"`, you can use the address sanitizer of clang.
 
 ### `--mode`
 
-You can pass `--mode {develop,release}`. By default this value is `develop`.
+You can pass `--mode {develop,release}` like the below:
+
+```sh
+neut build --mode release
+```
+
+If you don't specify `--mode`, the mode defaults to `develop`.
 
 The value passed here can be obtained from source code by using `introspect`:
 
@@ -81,7 +109,7 @@ define foo(): unit {
   introspect build-mode {
   - release =>
     // ..
-  - default =>
+  - develop =>
     // ..
   }
 }
@@ -135,11 +163,28 @@ These can be used to parse entries.
 
 ## `neut check`
 
-`neut check` type-checks all the files in the current module.
+`neut check` type-checks all the files in the current module. It also creates cache files of the source files for faster compilation.
 
 ### `--no-padding`
 
-If `--no-padding` is set, compiler diagnostics are printed without padding spaces:
+If `--no-padding` is set, compiler diagnostics are printed without padding spaces.
+
+Without `--no-padding`:
+
+```text
+/path/to/sample/source/hey.nt:1:8
+error: expected:
+         () -> unit
+       found:
+         () -> int64
+/path/to/sample/source/hey.nt:2:3
+error: expected:
+         int64
+       found:
+         tau
+```
+
+With `--no-padding`:
 
 ```text
 /Users/vekatze/Desktop/hey/source/hey.nt:1:8
@@ -154,9 +199,27 @@ found:
   tau
 ```
 
+This option is intended to be used in combination with linter wrappers like flycheck.
+
+### `--end-of-entry`
+
+The same as the one of `neut build`.
+
 ## `neut clean`
 
 `neut clean` removes the cache files in the current module's `build` directory.
+
+More specifically, this command removes the following directory in the current module:
+
+```text
+(build-directory)/(platform)/(compiler-version)/
+```
+
+An example of a removed directory:
+
+```text
+build/arm64-darwin/compiler-0.8.0/
+```
 
 ## `neut archive`
 
@@ -171,7 +234,7 @@ found:
 - `2-1-3`
 - `0-0-0-3`
 
-When running `neut archive VERSION`, this command searches the `archive` directory to get all the compatible older versions. For example, suppose the `archive` directory contains the following files:
+When running `neut archive VERSION`, this command searches the archive directory to get all the compatible older versions. For example, suppose the archive directory contains the following files:
 
 - `1-0.tar.zst`
 - `1-1.tar.zst`
@@ -180,7 +243,13 @@ When running `neut archive VERSION`, this command searches the `archive` directo
 
 In this case, the command `neut archive 2-2` searches the `archive` directory and get `2-0` and `2-1` as the older versions on `2-2`. Here, these "older versions" are determined along [Semantic Versioning](https://semver.org/).
 
-This command then computes all the digests of these older compatible tarballs, inserts the list of digests into the `module.ens`, and packs the ens file and the other source files to create a tarball `2-2.tar.zst`. This digest information inside `module.ens` should appear like the below:
+This command then
+
+1. computes all the digests of these older compatible tarballs,
+2. creates a new `module.ens` that contains the list of the older digests, and
+3. packs the ens file and the other source files to create a tarball `2-2.tar.zst`.
+
+This digest information inside `module.ens` of `2-2.tar.zst` should appear like the below:
 
 ```ens
 {
@@ -194,6 +263,14 @@ This command then computes all the digests of these older compatible tarballs, i
 ```
 
 This information is then used when resolving dependencies.
+
+You can extract a resulting tarball to see that `antecedent` information is indeed there.
+
+<div class="info-block">
+
+The `module.ens` in your module isn't modified by `archive`. This subcommand creates a new `module.ens` and put it into the tarball.
+
+</div>
 
 ### Using the Newest Compatible Version
 
@@ -209,7 +286,7 @@ A ──> B ──> D (1.1)
 └───> C ──> D (1.2)
 ```
 
-Thanks to the `antecedent` information inside `D (1.2)`, the compiler can detect that the `D (1.2)` is a newer compatible alternative of `D (1.1)` during compilation. Using this information, the compiler rewrites the relation above into the below:
+Thanks to the `antecedent` information inside `D (1.2)`, the compiler can detect that the `D (1.2)` is a newer compatible alternative of `D (1.1)`. Using this knowledge, the compiler rewrites the above relation into:
 
 ```text
 A ──> B ──┐
@@ -219,7 +296,11 @@ A ──> B ──┐
 
 By this procedure, the compiler always uses the newest compatible alternatives of the dependency relation.
 
-Of course, this rewriting won't work if the minor compatible version `D (1.2)` isn't compatible with `D (1.1)`. This is a bug of the library `D (1.2)`, and should be fixed by the module author.
+<div class="info-block">
+
+This rewriting won't work if the minor "compatible" version `D (1.2)` isn't compatible with `D (1.1)`. This is a bug of the library `D (1.2)`, and should be fixed by the module author.
+
+</div>
 
 ### Utilizing the Compatibility Relation
 
@@ -239,7 +320,7 @@ A ──> B ──┐
 └────────────> D (1.3)
 ```
 
-Then the compiler translates the above relation into the below:
+Then the compiler automatically rewrites the above relation into:
 
 ```text
 A ──> B ───┐
@@ -260,12 +341,12 @@ So we don't have to rain on their happy parade in Waikiki beach.
 `neut get ALIAS URL` fetches and builds external modules specified by `URL`, and add it to the current module under the name `ALIAS`.
 
 ```sh
-neut get some-name https://github.com/SOME_USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
+neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
 ```
 
-This command fetches the tarball from the specified URL and adds it to the current module.
+Here, the `URL` must be the URL of an archive that is created by `neut archive`.
 
-The information of the newly-added module is saved to `module.ens`:
+After executing `neut get`, the information of the new module is saved to `module.ens`:
 
 ```ens
 {
@@ -274,11 +355,11 @@ The information of the newly-added module is saved to `module.ens`:
   }
   dependency {
     // ..
-    // ↓ (something like this is added automatically)
+    // 🌟 (something like this is added automatically)
     some-name {
       digest "xNmQu6It81lGBy1sKvk5_jE4Qt8w8KgkVgGj0RBbbrk"
       mirror [
-        "https://github.com/SOME_USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst"
+        "https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst"
       ]
     }
     // ..
@@ -286,23 +367,25 @@ The information of the newly-added module is saved to `module.ens`:
 }
 ```
 
-The `URL` in `neut get NAME URL` must be the url of an archive that is created by `neut archive`.
+The `digest` is the base64url-encoded checksum of the tarball.
+
+The `mirror` is a list of URLs that can be used to obtain the tarball.
 
 <div class="info-block">
 
-In Neut, modules in Neut are distinguished by their digests, not by their names (aliases).
+In Neut, modules in Neut are distinguished by their digests.
 
 </div>
 
-Suppose you specify an existing `ALIAS` when running `neut get ALIAS URL`. In this case, if the digest of the new tarball is the same as the older one, the `URL` is added to the list `mirror`. Otherwise, the existing dependency is replaced by the newer one.
+`neut get` can be used to "update" dependencies. Suppose you specify an existing `ALIAS` when running `neut get ALIAS URL`. In this case, if the digest of the new tarball isn't the same as the existing one, the existing dependency in the ens file is replaced by the newer one. If the digest is the same as the existing one, the `URL` is added to the list `mirror`.
 
-You can simply remove the entry of an `ALIAS` to "remove" the module from your module.
+You can simply remove the entry of an `ALIAS` by editing the ens file to "remove" the module from your module.
 
-Modules added here can then be used in source files. See [Modules](./modules.md) for information on how to use definitions in external dependencies.
+Modules added here can then be used in source files. See the notes on `import` in [Statements](./statements.md#import) for information on how to use definitions in external dependencies.
 
 ## `neut format-source`
 
-`neut format-source PATH/to/source/file.nt` formats given source file and outputs the result to stdout.
+`neut format-source path/to/source/file.nt` formats given source file and outputs the result to stdout.
 
 ### `--in-place`
 
@@ -310,7 +393,7 @@ When the option `--in-place` is set, `format-source` rewrites given files in-pla
 
 ## `neut format-ens`
 
-`neut format-source path/to/source/file.ens` formats given ens file and outputs the result to stdout.
+`neut format-ens path/to/source/file.ens` formats given ens file and outputs the result to stdout.
 
 ### `--in-place`
 
@@ -320,14 +403,41 @@ When the option `--in-place` is set, `format-source` rewrites given files in-pla
 
 `neut zen path/to/source/file.nt` builds and executes given file as if it were an entry point.
 
-`zen` treats the function `zen` inside the given file as its entry point (that is, `main`).
+The subcommand `zen` treats the function `zen` inside the given file as its entry point (that is, `main`).
 
-This command is intended to be used for rapid prototyping.
+Thus, the type of the function `zen` must be `() -> unit`:
+
+```neut
+define zen(): unit {
+  print("hello, world!\n")
+}
+```
+
+This command is intended to be used for rapid prototyping. Please see [Rapid Prototyping](./rapid-prototyping.md) for more.
 
 ## `neut lsp`
 
-`neut lsp` starts the LSP server. The LSP server has basic features like linting, jump to definition, etc. For more information, see [here](./todo.md).
+`neut lsp` starts the LSP server. The LSP server has basic features like linting, jump to definition, etc. More specifically, the LSP server supports the following LSP capabilities:
+
+- `textDocument/didOpen` (typecheck on open)
+- `textDocument/didSave` (typecheck on save)
+- `textDocument/completion` (completion)
+- `textDocument/definition` (jump to definition)
+- `textDocument/documentHighlight` (highlight symbols)
+- `textDocument/references` (find references)
+- `textDocument/formatting` (format)
+- `textDocument/willSaveWaitUntil` (format on save)
+- `textDocument/hover` (show the type of a symbol)
+
+For more information, please see [Lovely LSP Showcase](./lsp-support.md) and [Editor Setup](./editor-support.md).
 
 ## `neut version`
 
 `neut version` prints the version of the compiler.
+
+### Example
+
+```sh
+neut version
+#=> 0.8.0
+```

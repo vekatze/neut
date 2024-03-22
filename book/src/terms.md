@@ -908,6 +908,20 @@ Currently, the following keys/values are available:
 | `target-arch` | `amd64` or `arm64`  |
 | `target-os`   | `linux` or `darwin` |
 
+You can also use the keyword `default` for the fallback case:
+
+```neut
+define arch-dependent-constant(): int {
+  introspect target-arch {
+  - arm64 =>
+    1
+  - default =>
+    // `2` is returned if target-arch != arm64
+    2
+  }
+}
+```
+
 ## `_`
 
 `_` is a hole that must be inferred by the type checker. It should look like the below:
