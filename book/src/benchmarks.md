@@ -42,7 +42,7 @@ This test creates a random intmap of size `N` and performs random lookups from t
 
 ## Additional Notes
 
-I used the following hardware in the tests above:
+I used the following hardware in the above benchmarks:
 
 | Platform      | Hardware                         |
 | ------------- | -------------------------------- |
