@@ -1,4 +1,4 @@
-# Editor Support
+# Editor Setup
 
 Supported editors are (in alphabetical order):
 

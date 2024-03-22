@@ -1,8 +1,6 @@
 # Lovely LSP Showcase
 
-The compiler also contains an experimental LSP server to provide a better development experience in an editor-agnostic way.
-
-For editor-specific configurations, see [Editor Setup](editor-support.md).
+The compiler contains an experimental LSP server. Let's see what it is like.
 
 ## Showcase
 
@@ -13,8 +11,10 @@ The LSP server currently has the following features:
 - Jump to definition
 - Find references
 - Format on save (+ remove unused imports)
-- Show the type of a symbol
+- Show the type of a variable
 - Highlight symbols
+
+Below are screencasts of them.
 
 ### Lint
 
