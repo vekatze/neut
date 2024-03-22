@@ -1,49 +1,4 @@
-# Some Backstage Notes
-
-## Are There Possible Drawbacks of Neut's Approach?
-
-The prominent one that comes to my mind is that, when you use a polymorphic ADT, its type arguments must be stored in its values. For example, consider something like below:
-
-```neut
-// a syntax to define an ADT
-data Foo(a) {
-- ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
-- ConsB(a)
-}
-```
-
-In most languages, the internal representation of `ConsA(3, True)` will be something like:
-
-```neut
-// `0` is a tag to distinguish constructors
-(0, 3, True)
-```
-
-However, in Neut, the type information must also be stored:
-
-```neut
-// `TYPE` is the address of the type (as function) `a`
-(0, TYPE, 3, True)
-```
-
-This means that in Neut you must pay additional spaces to use parameterized ADTs. So, it might be necessary to use non-parameterized ADTs in performance-critical situations, like below:
-
-```neut
-data FooText {
-- ConsA(int, bool) // e.g. ConsA(3, True): Foo(a)
-- ConsB(text)
-}
-```
-
-In that case, the internal representation will be `(0, 3, True)`. We'll have to be careful about what we have to pay for polymorphism.
-
-That said, judging from the benchmarks, the overhead mentioned above doesn't seem to be that significant, maybe thanks to the geniuses in the LLVM team.
-
-## Why was it Named Neut?
-
-During compilation, every program in Neut is polarized into its positive fragment and its negative fragment, as done in [Call-by-Push-Value](https://www.cs.bham.ac.uk/~pbl/papers/thesisqmwphd.pdf). From this perspective, every term in a source file of this language can be seen as neutral. So, just as `.txt` is used as the file extension for texts, I chose to use `.neut` (which is now `.nt`) as the file extension for neutral terms. Over time, it started to look like a proper noun, and I decided to adopt it as the name of the language.
-
-(I don't by any means claim this obviously opinionated language to be more neutral than others)
+# Random Backstage Notes
 
 ## How Did Neut Find the Approach?
 
@@ -56,3 +11,19 @@ On the other hand, the flip side of harmony, namely local completeness, is often
 Led by the question, I tried to interpret local completeness as something related to the space aspect of a program. Then I noticed that the ability of local expansion, or local completeness, can be interpreted as our knowledge about the structure of the values of the type, which in turn means we can copy and discard values using their type. Here lies the idea of Neut.
 
 A good lecture note on harmony can be found [here](https://www.cs.cmu.edu/~fp/courses/15317-f09/lectures/03-harmony.pdf).
+
+## Why was it Named Neut?
+
+During compilation, every program in Neut is polarized into its positive fragment and its negative fragment, as done in [Call-by-Push-Value](https://www.cs.bham.ac.uk/~pbl/papers/thesisqmwphd.pdf). From this perspective, every term in a source file of this language can be seen as neutral. So, just as `.txt` is used as the file extension for texts, I chose to use `.neut` (which is now `.nt`) as the file extension for neutral terms. Over time, it started to look like a proper noun, and I decided to adopt it as the name of the language.
+
+(I don't by any means claim this obviously opinionated language to be more neutral than others)
+
+## Petals and a Gust
+
+So you reached at the end of this book. Great. I'll tell you a private secret. Please don't spread!
+
+Between you and me, but this language is actually a painting. A small painting, redrawn again and again, alone, for like eight years or longer, seeking my own understanding of beauty™, that happened to take the form of a programming language. This painting, or symptom, is entirely dedicated to my conceited obsession. Still, I now think that the resulting language has something sparkling in its concept, and I don't have any reason to keep it secret in my atelier.
+
+I'd be happy if you were inspired by skimming this book over this weekend, for example, or even happier if you chose to try it on your PC. It might then react to your internal stuff, drawing a new axis in your perspective, and you might feel like writing a new program in the language. Such a chain of reactions is a lucky and lovely accident, which might be the fundamental element that colors our internal world.
+
+Petals in my hands, waiting for your gust.
