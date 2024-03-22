@@ -10,7 +10,7 @@ Make sure all the following dependencies are on your system:
 Add the below to your `.bashrc`, `.zshrc`, etc.
 
 ```sh
-# select the core module (or "prelude")
+# this sets the core module (or "prelude") that is used in `neut create`
 export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archive/0-37.tar.zst"
 export NEUT_CORE_MODULE_DIGEST="ocDmPr9kkTZJMkJnYpZGrX8-skEB0YUCls5HeWSb7r8"
 ```
@@ -27,4 +27,19 @@ curl -L -o ~/.local/bin/neut https://github.com/vekatze/neut/releases/latest/dow
 
 # make it executable
 chmod +x ~/.local/bin/neut
+```
+
+Ensure that `~/.local/bin` is in your `$PATH`.
+
+<div class="info-block">
+
+You can put the binary anywhere you want as long as the location is in your `$PATH`.
+
+</div>
+
+You can check if the compiler is installed correctly by running `neut version`:
+
+```sh
+neut version
+#=> 0.8.0
 ```
