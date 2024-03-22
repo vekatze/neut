@@ -9,11 +9,11 @@
 
 ## On Executing Types
 
-A type in Neut is compiled into a binary function like the one below (pseudo-code):
+A type in Neut is compiled into a pointer to a binary function like the below (pseudo-code):
 
 ```neut
 define discard-or-copy-value(action-selector, value) {
-  if action-selector == 0 {
+  if eq-int(action-selector, 0) {
     discard-value(value);
     Unit
   } else {
@@ -35,7 +35,7 @@ define foo(xs: list(int)): unit {
 }
 ```
 
-Note that the variable `xs` isn't used. The compiler translates the code above into the below (pseudo-code):
+Note that the variable `xs` isn't used. Because of that, the compiler translates the code above into the below (pseudo-code; won't typecheck):
 
 ```neut
 define foo(xs: list(int)): unit {
@@ -57,7 +57,7 @@ define foo(xs: list(int)): unit {
 }
 ```
 
-Note that the variable `xs` is used twice. The compiler translates the code above into the below (pseudo-code):
+Note that the variable `xs` is used twice. Because of that, the compiler translates the above code into the below (pseudo-code; won't typecheck):
 
 ```neut
 define foo(xs: list(int)): unit {
@@ -93,7 +93,13 @@ Also, this function is internally called `"base.#.imm"`. If you compile your pro
 neut build --emit llvm --skip-link
 ```
 
-you'll find this name here and there.
+You'll find this name here and there.
+
+<div class="info-block">
+
+Since every type is translated into a pointer to a function, a type is an immediate value. Thus, the type of the types `tau` is compiled into `base.#.imm`.
+
+</div>
 
 ## Allocation Canceling
 
@@ -188,8 +194,6 @@ The behavior of the compiler can be adjusted using the following environment var
 | `NEUT_CLANG`              | the command to call `clang`       |
 | `NEUT_CORE_MODULE_DIGEST` | the digest of the core module     |
 | `NEUT_CORE_MODULE_URL`    | the URL of the core module        |
-| `NEUT_TARGET_ARCH`        | target arch (`amd64` or `arm64`)  |
-| `NEUT_TARGET_OS`          | target OS (`linux` or `darwin`)   |
 
 The default values are as follows:
 
@@ -199,8 +203,6 @@ The default values are as follows:
 | `NEUT_CLANG`              | `clang`                       |
 | `NEUT_CORE_MODULE_DIGEST` | (undefined; you must set one) |
 | `NEUT_CORE_MODULE_URL`    | (undefined; you must set one) |
-| `NEUT_TARGET_ARCH`        | (host's arch)                 |
-| `NEUT_TARGET_OS`          | (host's OS)                   |
 
 ## Other Basic Facts
 
