@@ -1,11 +1,5 @@
 # Editor Setup
 
-Supported editors are (in alphabetical order):
-
-- Emacs
-- Vim
-- Visual Studio Code
-
 ## Emacs
 
 <https://github.com/vekatze/neut-mode>
