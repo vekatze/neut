@@ -6,9 +6,9 @@
 - How arguments of polymorphic functions are n-copied
 - How function types are translated into functions
 
-## yo
+## Types as Closed Functions
 
-Here, we'll see how a type is translated into a function that copies/discards the terms of the type. To see the basic idea, let's take a simple ADT for example:
+Here, we'll see how a type is translated into a function that discards/copies the terms of the type. To see the basic idea, let's take a simple ADT for example:
 
 ```neut
 data item {
@@ -31,7 +31,7 @@ v
 
 Let's see how the type `item` is translated to copy values like `New(10, 20)`.
 
-### Copying/Discarding a Value
+### Discarding/Copying a Value
 
 Let's see how to discard and copy the values of the type `item`.
 
@@ -41,21 +41,19 @@ A value `v` of type `item` can be discarded as follows:
 free(v)
 ```
 
-That is, we just have to apply `free` to the pointer.
-
 The `v` can be copied as follows:
 
 ```neut
 // copy `v`, keeping the original `v` intact
 let ptr = malloc({2-words}) in
-store(ptr[0], v[0]);
-store(ptr[1], v[1]);
+store(ptr[0], v[0]); // ptr[0] := v[0]
+store(ptr[1], v[1]); // ptr[1] := v[1]
 ptr
 ```
 
-### Combining Copying/Discarding functions
+### Combining Discarding/Copying Functions
 
-Using the two procedures above, we can construct a function that discards and copies the values of the type `item`:
+Using the two procedures above, we can construct a closed function that discards and copies the values of the type `item`:
 
 ```neut
 define exp-item(selector, v) {
@@ -114,13 +112,17 @@ cont(a, b)
 // ↓ (compile)
 
 let x = New(10, 20) in
-let x-copy = exp-item(1, x) in
+let x-copy = exp-item(1, x) in // copy `x` by passing 1 as `selector`
 let a = foo(x-copy) in
 let b = bar(x) in
 cont(a, b)
 ```
 
-This copying/discarding procedure happens _immediately after a variable is defined_. This is also a source of the memory predictability of Neut.
+<div class="info-block">
+
+This copying/discarding procedure happens _immediately after a variable is defined_.
+
+</div>
 
 ## Immediate Types
 
@@ -131,23 +133,22 @@ define base.#.imm(selector, value) {
   if selector == 0 {
     0 // "discarding" doesn't have to do anything
   } else {
-    // "copy"
     value // "copying" simply reuses the original value
   }
 }
 ```
 
-Immediate types are compiled into this `base.#.imm`. Noema types like `&list(int)` are also translated into this function.
+Immediate types are compiled into this function. Noema types like `&list(int)` are also translated into this function.
 
 <div class="info-block">
 
-A type is compiled into a pointer to a function. This means that types are immediates. Because of that, the type of types (`tau`) is also compiled into `base.#.imm`.
+A type is compiled into a pointer to a closed function. This means that types are immediates. Because of that, the type of types (`tau`) is also compiled into `base.#.imm`.
 
 </div>
 
 ## Polymorphic Types
 
-Let's see how values are copied when in a polymorphic function. Consider the following code:
+Let's see how polymorphic values are copied. Consider the following code:
 
 ```neut
 define foo(a: tau, x: a): pair(a, a) {
@@ -166,11 +167,13 @@ define foo(a: tau, x: a): pair(a, a) {
 }
 ```
 
-Thus we can discard and copy values of polymorphic types.
+Thus, we can discard and copy values of polymorphic types.
+
+The main part of this section is now over. What follows is for curious cats.
 
 ## Advanced: Function Types
 
-The below is for curious cats. We'll see how function types like `(int) -> bool` are translated.
+We'll see how function types like `(int) -> bool` are translated.
 
 Suppose we have a function like the below:
 
