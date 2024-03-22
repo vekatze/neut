@@ -90,10 +90,16 @@ hljs.registerLanguage("ens", function (hljs) {
     keywords: {
       $pattern: /[\w-:=<>]+/,
       keyword: [
-          "target",
-          "dependency",
           "antecedent",
+          "archive",
+          "build",
+          "dependency",
+          "foreign",
+          "inline-limit",
           "prefix",
+          "preset",
+          "source",
+          "target",
       ].join(" "),
     },
     contains: [

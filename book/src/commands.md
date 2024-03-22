@@ -4,6 +4,21 @@ This section describes how to use the command `neut`. You'll use this command to
 
 The command `neut` has some subcommands like `neut build`, `neut get`, etc. This section describes those subcommands.
 
+## Table of Contents
+
+- [Common Notes](./commands.md#common-notes)
+- [neut build](./commands.md#neut-build)
+- `neut check`
+- `neut clean`
+- `neut archive`
+- `neut create`
+- `neut get`
+- `neut format-source`
+- `neut format-ens`
+- `neut zen`
+- `neut lsp`
+- `neut version`
+
 ## Common Notes
 
 ### Subcommands and Modules
