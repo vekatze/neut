@@ -1,7 +1,9 @@
 # Development Environment
 
-Here we'll see some goodies for hackers.
+This chapter shows some goodies for writing programs in Neut.
 
-[Section 5.1 (LSP Support)](./lsp-support.md) introduces Neut's built-in LSP server. Although a bit basic yet, it aims to provide a good development experience in an editor-agnostic manner.
+[Lovely LSP Showcase](./lsp-support.md) shows what the LSP server is like using GIF animations.
 
-[Section 5.2 (Editor Support)](./editor-support.md) explains how to use editor-specific features, like syntax highlighting or automatic indentation. This section also explains how Neut's LSP server can be utilized in each editor.
+[Rapid Prototyping](./lsp-support.md) shows how the subcommand `neut zen` works in harmony with editors.
+
+[Editor Setup](./editor-support.md) explains how to set up editors like Emacs, Vim, or Visual Studio Code.

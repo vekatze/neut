@@ -1,8 +1,8 @@
-# LSP Support
+# Lovely LSP Showcase
 
 The compiler also contains an experimental LSP server to provide a better development experience in an editor-agnostic way.
 
-For editor-specific configurations, see [the next section](editor-support.md).
+For editor-specific configurations, see [Editor Setup](editor-support.md).
 
 ## Showcase
 
