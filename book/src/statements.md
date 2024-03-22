@@ -1,8 +1,15 @@
 # Statements
 
-Statements in Neut are order-sensitive. free-writing...
+## Table of Contents
 
-Insert TOC here.
+- import
+- define
+- inline
+- constant
+- data
+- resource
+- nominal
+- foreign
 
 ## `import`
 
@@ -14,8 +21,13 @@ import {
 - this.item.bar {some-func, other-func}
 - sample.buz
 - Qux
+- ZZ
 }
 ```
+
+### Normal Entry
+
+A normal entry in `import` is something like `this.item.bar {some-func, other-func}` or `sample.buz`.
 
 A normal entry in `import` starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file that we want to import is inside the current module, we'll write `this`.
 
@@ -47,7 +59,47 @@ define yo(): unit {
 }
 ```
 
-You can also use something like the qualified import in Haskell. If necessary, see the explanation on `prefix` in [Modules](./modules.md).
+### Prefix Entry
+
+A prefix entry in `import` is something like `Qux` or `ZZ`. That is, a capitalized name that doesn't contain any `.`.
+
+A prefix entry in `import` must be defined in the `prefix` of the current module's `module.ens`. Suppose that `module.ens` contains the following:
+
+```ens
+{
+  // ..
+  prefix {
+    Qux "this.item.bar"
+  }
+  // ..
+}
+```
+
+Then, the code
+
+```neut
+import {
+- this.item.bar
+}
+
+define use-some-func(): unit {
+  this.item.bar.some-func()
+}
+```
+
+can be rewritten into:
+
+```neut
+import {
+- Qux
+}
+
+define use-some-func(): unit {
+  Qux.some-func()
+}
+```
+
+You may also want to see the explanation on `prefix` in [Modules](./modules.md).
 
 ## `define`
 
@@ -62,6 +114,7 @@ define identity-1(a: tau, x: a): a {
   x
 }
 
+// a function with an implicit argument
 define identity-2<a>(x: a): a {
   x
 }
@@ -90,6 +143,20 @@ A function with the same name can't be defined in the same file.
 
 All the tail-recursions in Neut are optimized into loops (thanks to geniuses in the LLVM team).
 
+Note that Neut's statements are order-sensitive. Thus, the following code results in an error:
+
+```neut
+define bar(): int {
+  foo() // `foo` is undefined here
+}
+
+define foo(): int {
+  10
+}
+```
+
+You have to explicitly use the stamement `nominal` for forward references.
+
 ## `inline`
 
 `inline` defines an inline function. It should look like the below:
@@ -117,10 +184,10 @@ the compiler will translate the above code into the below:
 ```neut
 define use-inline-foo(): int {
   let val =
-    let x = 10 in
-    let y = 20 in
+    let tmp1 = 10 in
+    let tmp2 = 20 in
     print("foo");
-    add-int(x, y)
+    add-int(tmp1, tmp2)
   in
   val
 }
@@ -136,7 +203,7 @@ constant some-number: int {
 }
 ```
 
-The compiler tries to reduce the body of a constant at compile-time, and throws an error if it can't reduce it into a value. For example, the following should raise an error:
+The compiler tries to reduce the body of a constant at compile-time, and reports an error if it can't reduce it into a value. For example, the following should raise an error:
 
 ```neut
 constant some-number: int {
@@ -147,14 +214,16 @@ constant some-number: int {
 
 since `print("hello"); 123` isn't a value.
 
-Constants can be used just like functions:
+Constants can be used just like ordinary variables:
 
 ```neut
+// define a constant
 constant some-number: int {
   123
 }
 
 define use-constant(): int {
+  // ... and use it
   print-int(some-number);
   456
 }
@@ -178,9 +247,11 @@ data list(a) {
 data config {
 - Config of {
   - count: int
-  - some-path: &text
-  - should-colorize: bool
+  - foo-path: &text
+  - colorize: bool
   }
+  // the above is equivalent to:
+  //   Config(count: int, foo-path: &text, colorize: bool)
 }
 ```
 
@@ -188,6 +259,7 @@ ADTs can be used with `match` or `case`:
 
 ```neut
 define length<a>(xs: list(a)): int {
+  // destruct ADT values using `match`
   match xs {
   - Nil =>
     0
@@ -197,6 +269,7 @@ define length<a>(xs: list(a)): int {
 }
 
 define length-noetic<a>(xs: &list(a)): int {
+  // read noetic ADT values using `case`
   case xs {
   - Nil =>
     0
@@ -206,6 +279,7 @@ define length-noetic<a>(xs: &list(a)): int {
 }
 
 define use-config(c: config) {
+  // pattern-matching in `let` is also possible
   let Config of {count, some-path} = c in
   print(count)
 }
@@ -226,13 +300,15 @@ resource my-new-type {
 }
 ```
 
-`resource` takes two terms. The first term receives a value of the type, and must specify how to discard the value. The second term receives a value of the type, and must return the clone of the value.
+`resource` takes two terms. The first term ("discarder") receives a value of the type, and must specify how to discard the value. The second term ("copier") receives a value of the type, and must return the clone of the value.
 
-The type of the first term is `int -> int`. The return value in this term dosen't have any particular sense. After discarding the argument, you can just return 0. You might want to call functions like `free` in this term.
+The type of a discarder is `int -> int`. The type of the argument is `int`, and thus you'll have to cast it as necessary. The return value in this term dosen't have any particular sense. After discarding the argument, you can just return 0. You might want to call functions like `free` in this term.
 
-The type of the second term is `int -> int`. The return value in this term is the new clone of the argument, casted to `int`. You might want to call functions like `malloc` in this term.
+The type of a copier is `int -> int`. The type of the argument is `int`, and thus you'll have to cast it as necessary. The return value in this term is the new clone of the argument, casted to `int`. You might want to call functions like `malloc` in this term.
 
 Low-level types like arrays can be defined using `resource`.
+
+You can find an example usage of `resource` in the `int8-array.nt` in the [core library](https://github.com/vekatze/neut-core/blob/main/source/int8-array.nt).
 
 ## `nominal`
 
@@ -244,7 +320,7 @@ nominal {
 }
 ```
 
-The entry of a `nominal` is the same form as found in `define`. Nominal definitions can be used to achieve mutual recursion:
+An entry of `nominal` is the same form as found in `define`. Nominal definitions can be used to achieve mutual recursions:
 
 ```neut
 nominal {
@@ -271,11 +347,11 @@ define is-odd(x: int): bool {
 }
 ```
 
-If a nominal definition aren't followed by a real definition, the compiler reports an error.
+If a nominal definition isn't followed by a real definition, the compiler reports an error.
 
 ## `foreign`
 
-`foreign` declares functions that aren't defined in Neut, but supplied via linked libraries. This should look like the below:
+`foreign` declares functions that is defined in linked objects. It should look like the below:
 
 ```neut
 foreign {
@@ -283,7 +359,7 @@ foreign {
 }
 ```
 
-Foreign functions declared here can be used by using `magic external`.
+Foreign functions declared here can be called by using the term `magic external(..)`.
 
 Suppose that you have a C source file with the following definition:
 
@@ -304,7 +380,7 @@ foreign {
 
 define main(): unit {
   let x: int = 10 in
-  print-int(magic external add_const(x)); // ← here
+  print-int(magic external add_const(x)); // ← `magic external` is used here
   print("\n")
 }
 ```
@@ -343,7 +419,7 @@ foreign {
 }
 ```
 
-In foreign entries, you can use `int`, `intN` `float`, `floatN`, `void`, `pointer` as types.
+In foreign entries, you can use `int`, `int1`, ..., `int64` `float`, `float16`, `float32`, `float64`, `void`, `pointer` as types.
 
 When declairing the interface of a variadic function, we'll only declare the non-variadic part:
 
@@ -353,7 +429,7 @@ foreign {
 }
 ```
 
-... and the specify the types of variadic arguments from the caller:
+... and then specify the types of variadic arguments when using `magic external`:
 
 ```neut
 define print(t: &text): unit {
