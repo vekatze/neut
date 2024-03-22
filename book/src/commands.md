@@ -428,7 +428,40 @@ define zen(): unit {
 }
 ```
 
-This command is intended to be used for rapid prototyping. Please see [Rapid Prototyping](./rapid-prototyping.md) for more.
+This command is intended to be used for rapid prototyping.
+
+### Zen Experience
+
+Suppose that you created a new function deep inside your module.
+
+You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior. However, it is a bit cumbersome to my (and hopefully our) liking. I need rapid try-and-error cycles in certain circumstances.
+
+The command `zen` can be used here. Suppose that a file `some-file.nt` contains a function `foo` that is defined as in the below:
+
+```neut
+define foo(x: int): int {
+  do-complex-calculation(x)
+}
+```
+
+The behavior of `foo` can be inspected rapidly by defining a function named `zen` in the file:
+
+```neut
+// the type of `zen` must be `() -> unit`
+define zen(): unit {
+  print-int(foo(10))
+}
+```
+
+and execute the following command:
+
+```sh
+neut zen path/to/some-file.nt # => (the result of `foo(10)` is printed)
+```
+
+This can be done even if `some-file.nt` isn't an entrypoint of the module. You can think of functions named `zen` as alternative `main`s.
+
+Please see [Rapid Prototyping](./rapid-prototyping.md) to see `neut zen` in action.
 
 ## `neut lsp`
 
