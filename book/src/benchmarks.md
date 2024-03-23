@@ -44,10 +44,10 @@ This test creates a random intmap of size `N` and performs random lookups from t
 
 I used the following hardware in the above benchmarks:
 
-| Platform      | Hardware                         |
-| ------------- | -------------------------------- |
-| Linux (AMD64) | HP OMEN 16 2023 (7840HS, Ubuntu) |
-| macOS (ARM64) | Apple MacBook Pro 14 (M1 Max)    |
+| Platform      | Hardware                                |
+| ------------- | --------------------------------------- |
+| Linux (AMD64) | HP OMEN 16 2023 (7840HS, 32 GB, Ubuntu) |
+| macOS (ARM64) | Apple MacBook Pro 14 (M1 Max, 32 GB)    |
 
 I used the following commands to run benchmarks and generate the graphs:
 

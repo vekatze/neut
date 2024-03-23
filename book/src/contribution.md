@@ -1,23 +1,26 @@
-# Getting Involved
+# What's Next?
 
-- "Now you should be able to write code in Neut ..."
+Now, you should be able to write code in Neut.
+
 - List possible actions to make this project even better.
+
+## Improving the Language
+
+- Write libraries and release them.
+- Find bugs and report them on GitHub (hopefully with PRs)
+- Add libraries.
 
 ## Improving the World
 
-Write libraries/applications and release them! Neut is designed for ease of releasing modules.
+Write libraries/applications and release them! Neut is designed to release modules easily.
 
 ## Improving This Book
 
-Feel free to open PR to:
+Feel free to open PRs to:
 
-- fix typo, grammar, etc.
-- clarify explanations
+- Fix typo, grammar, etc.
+- Clarify explanations
 - etc.
-
-## Improving the Compiler Toolchain
-
-- Find bugs and report them on GitHub (hopefully with PRs)
 
 ## Cheering the Authors
 

@@ -132,11 +132,13 @@ hljs.registerLanguage("llvm", function (hljs) {
       keyword: [
         "define",
         "declare",
+        "private",
+        "constant",
       ].join(" "),
     },
     contains: [
       { className: "type",
-        begin: "\\bptr\\b|i64|float|double|x86_fp80|fp128|ppc_fp128",
+        begin: "\\bptr\\b|i64|i8|float|double|x86_fp80|fp128|ppc_fp128",
       },
       {
         className: "string",
@@ -151,7 +153,7 @@ hljs.registerLanguage("llvm", function (hljs) {
       },
       {
         className: "builtin",
-        begin: "add|ptrtoint|inttoptr|getelementptr|call|store|load|null|fastcc",
+        begin: "unnamed_addr|add|ptrtoint|inttoptr|getelementptr|call|store|load|null|fastcc",
       },
       hljs.COMMENT(
         ";", // begin

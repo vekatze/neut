@@ -1,7 +1,5 @@
 # Terms
 
-A **term** in Neut is a syntactic construct that can be appeared in the body of `define`.
-
 ## Table of Contents
 
 - `tau`
@@ -67,9 +65,9 @@ tau
 
 ### Semantics
 
-`tau` is lowered to a pointer to `base.#.imm`. Thus `tau` is lowered to an immediate.
+`tau` is compiled into a pointer to `base.#.imm`.
 
-### Inference Rule
+### Type
 
 ```neut
 (Γ is a context)
@@ -102,25 +100,27 @@ define sample(): unit {
   // shadowing (not reassignment)
   let x = Unit in
   let x = tau in
-  let f = function (x: bool) { x } in
-
+  let x =
+    function (x: bool) {
+      x // x: bool
+    }
+  in
   Unit
 }
 ```
 
 ### Syntax
 
-A token can be the name of a variable if it doesn't contain any of `=() "\n\t:;,<>[]{}/*`.
+The name of a local variable must satisfy the following conditions:
 
-The name of a variable is interpreted as that of a local variable if the name is defined in a local scope (using `let` for example).
+- It doesn't contain any of `=() "\n\t:;,<>[]{}/*`
+- It doesn't start with `A, B, .., Z` (the upper case alphabets)
 
 ### Semantics
 
 If the content of a variable `x` is an immediate, `x` is lowered to a name of a register which stores the immediate. Otherwise, `x` is lowered to a pointer to the content.
 
-If a variable `x: a` is used n times, the content of `x` is copied along `a` for `n-1` times. If a variable `x: a` isn't used, the content is discarded. This copying/discarding happens immediately after definition.
-
-### Inference Rule
+### Type
 
 ```neut
   Γ ⊢ a: tau
@@ -131,7 +131,7 @@ If a variable `x: a` is used n times, the content of `x` is copied along `a` for
 ### Notes
 
 - Variables in Neut are immutable. You'll need `core.cell` to achieve mutability.
-- The compiler detects and reports unused variables. You can use the name `_` to suppress it.
+- The compiler reports unused variables. You can use the name `_` to suppress those.
 
 ## Top-Level Variables
 
@@ -154,13 +154,9 @@ define sample(): unit {
 
 ### Syntax
 
-stub
+The name of a top-level variable is a (possibly) dot-separated symbols, where each symbol must satisfy the following conditions:
 
-A token can be the name of a top-level variable if it doesn't contain any of `=() "\n\t:;,<>[]{}/*`.
-
-The name of a variable is interpreted as that of a top-level variable if the name is defined in a local scope (using `let` for example).
-
-If a name is defined in a local scope (using `let` for example), the name is interpreted as that of a local variable. If the name is defined in the top-level scope (using `define` for example), the name is interpreted as that of a top-level variable.
+- It doesn't contain any of `=() "\n\t:;,<>[]{}/*`
 
 ### Semantics
 
@@ -172,7 +168,7 @@ A top-level variable `f` is lowered to the following 3-word tuple:
 
 See the Note below for more detailed explanation.
 
-### Inference Rule
+### Type
 
 ```neut
 (Γ is a context)     (c: a is defined at the top-level)
@@ -229,49 +225,85 @@ define fastcc ptr @"this.sample.get-increment"() {
 }
 ```
 
-Incidentally, 3-word tuples of global variables are usually reduced at compile time.
+Incidentally, these 3-word tuples are optimized away as long as top-level variables (functions) are called directly with arguments.
 
-## Literals
+## Integers
 
-### Integers
+### Example
 
-Neut has integer literals like `3`, `-16`, `424242`, etc. The type of an integer value must be one of the followings:
+```neut
+define foo(): unit {
+  let _: int = 100 in
+  //           ^^^
+  let _: int16 = 100 in
+  //             ^^^
+  Unit
+}
+
+```
+
+### Syntax
+
+`3`, `-16`, `424242`, etc.
+
+### Semantics
+
+The same as LLVM integers.
+
+### Type
+
+The type of an integer is unknown in itself, and must be inferred to be one of the followings:
 
 - `int1`
 - `int2`
 - ...
 - `int64`
 
-The type `int` is also available. `int` is an architecture-dependent type. If the word size of the target platform is 64 bits, `int` is compiled into `int64`. If the word size of the target platform is 32 bits, `int` is compiled into `int32`, etc.
+### Note
 
-### Floats
+- The type `int` is also available. For more, see [Primitives](./primitives.md#primitive-types).
 
-Neut has float literals like `3.8`, `0.2329`, etc. The type of a float value must be one of the followings:
+## Floats
+
+### Example
+
+```neut
+define foo(): unit {
+  let _: float = 3.8 in
+  //             ^^^
+  let _: float32 = 3.8 in
+  //             ^^^^^^
+  Unit
+}
+
+```
+
+### Syntax
+
+`3.8`, `-0.2329`, etc.
+
+### Semantics
+
+The same as LLVM floats.
+
+### Type
+
+The type of an integer is unknown in itself, and must be inferred to be one of the followings:
 
 - `float16`
 - `float32`
 - `float64`
 
-The type `float` is also available. `float` is an architecture-dependent type. If the word size of the target platform is 64 bits, `float` is compiled into `float64`. If the word size of the target platform is 32 bits, `float` is compiled into `float32`, etc.
+### Note
 
-### Texts
+- The type `float` is also available. For more, see [Primitives](./primitives.md#primitive-types).
 
-Neut has text literals like `"hello"` or `"Hello, world!\n"`. The type of a text literal is `&text`.
-
-In the current implementation, the set of recognized escape sequences like `\n` or `\t` are the same as that of Haskell.
+## Texts
 
 ### Example
 
 ```neut
-define foo(var: int): unit {
-  let _: int = 100 in
-  //           ^^^
-  let _: int16 = 100 in
-  //             ^^^
-  let _: float = 3.8 in
-  //             ^^^
-  let _: float32 = 3.8 in
-  //               ^^^
+define foo(): unit {
   let _: &text = "test" in
   //             ^^^^^^
   Unit
@@ -279,11 +311,43 @@ define foo(var: int): unit {
 
 ```
 
+### Syntax
+
+`"hello"`, `"Hello, world!\n"`, etc.
+
+### Semantics
+
+A text literal is compiled into a pointer to a tuple like the below:
+
+```text
+(0, length-of-string, array-of-characters)
+```
+
+This tuple is static. That is, in terms of LLVM, a global constant like the below is inserted to the resulting IR.
+
+```llvm
+@"text-hello" = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c"hello"}
+```
+
+And a text like `"hello": &text` is compiled into `ptr @"text-hello"`.
+
+### Type
+
+```neut
+(Γ is a context)  (t is a text literal)
+---------------------------------------
+         Γ |- t: &text
+```
+
+### Note
+
+- In the current implementation, the set of recognized escape sequences like `\n` or `\t` are the same as that of Haskell.
+
 ## `(x1: a1, ..., xn: an) -> b`
 
 `(x1: a1, ..., xn: an) -> b` is the type of functions.
 
-### Examples
+### Example
 
 ```neut
 // a function that accepts ints and returns bools
@@ -312,23 +376,40 @@ The following abbreviations are available:
 
 ```neut
 (y1: b1, ..., ym: bm) -> c
-↓
-<>(y1: b1, ..., ym: bm) -> c
+
+// ↓
+// <>(y1: b1, ..., ym: bm) -> c
 
 
 (b1, ..., bm) -> c
-↓
-(_: b1, ..., _: bm) -> c
+
+// ↓
+// (_: b1, ..., _: bm) -> c
 
 
 <a1, ..., an>(y1: b1, ..., ym: bm) -> c
-↓
-<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
+
+// ↓
+// <a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
+```
+
+### Semantics
+
+A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./on-executing-types.md)
+
+### Type
+
+```neut
+  Γ, x1: a1, ..., xn: an, y1: b1, ..., ym: bm ⊢ c: tau
+--------------------------------------------------------
+Γ ⊢ <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c: tau
 ```
 
 ## `function (x1: a1, ..., xn: an) { e }`
 
 `function` can be used to create a lambda abstraction (an anonymous function).
+
+### Example
 
 ```neut
 define use-function(): int {
@@ -342,7 +423,30 @@ define use-function(): int {
 }
 ```
 
-Lambda abstractions defined by `function` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
+### Syntax
+
+```neut
+function (x1: a1, ..., xn: an) {
+  e
+}
+```
+
+### Semantics
+
+A `function` is compiled into a three-word closure. For more, please see [How to Execute Types](./on-executing-types.md#advanced-function-types).
+
+### Type
+
+```neut
+    Γ, x1: a1, ..., xn: an ⊢ e: t
+-----------------------------------------
+Γ ⊢ function (x1: a1, ..., xn: an) {e}: t
+
+```
+
+### Note
+
+- Lambda abstractions defined by `function` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
 
 ## `define`
 
