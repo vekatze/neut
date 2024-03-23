@@ -452,11 +452,13 @@ A `function` is compiled into a three-word closure. For more, please see [How to
 
 `define` (at the term-level) can be used to create a function with possible recursion.
 
+### Example
+
 ```neut
 define use-define(): int {
   let c = 10 in
   let f =
-    // ↓ term-level `define`
+    // 🌟 term-level `define`
     define some-recursive-func(x: int): int {
       if eq-int(x, 0) {
         0
@@ -469,7 +471,81 @@ define use-define(): int {
 }
 ```
 
-Functions defined by term-level `define` aren't inlined at compile-time, even if it doesn't contain any recursions.
+### Syntax
+
+```neut
+define name<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm): c {
+  e
+}
+```
+
+The following abbreviations are available:
+
+```neut
+define name(y1: b1, ..., ym: bm): c {e}
+
+// ↓
+// define name<>(y1: b1, ..., ym: bm): c {e}
+
+
+define name<a1, ..., an>(y1: b1, ..., ym: bm): c {e}
+
+// ↓
+// define name<a1: _, ..., an: _>(y1: b1, ..., ym: bm) -> c
+```
+
+### Semantics
+
+A term-level `define` is lifted to top-level definitions using lambda lifting. For example, consider the following example:
+
+```neut
+define use-define(): int {
+  let c = 10 in
+  let f =
+    // 🌟 term-level `define` with a free variable `c`
+    define some-recursive-func(x: int): int {
+      if eq-int(x, 0) {
+        0
+      } else {
+        add-int(c, some-recursive-func(sub-int(x, 1)))
+      }
+    }
+  in
+  f(100)
+}
+```
+
+The code above is compiled into something like the below:
+
+```neut
+// the free variable `c` is now a parameter
+define some-recursive-func(c: int, x: int): int {
+  if eq-int(x, 0) {
+    0
+  } else {
+    let f =
+      function (x: int) {
+        some-recursive-func(c, x)
+      }
+    in
+    add-int(c, f(sub-int(x, 1)))
+  }
+}
+
+define use-define(): int {
+  let c = 10 in
+  let f =
+    function (x: int) {
+      some-recursive-func(c, x)
+    }
+  in
+  f(100)
+}
+```
+
+### Note
+
+- Functions defined by term-level `define` aren't inlined at compile-time, even if it doesn't contain any recursions.
 
 ## `e(e1, ..., en)`
 
