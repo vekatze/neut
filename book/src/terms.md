@@ -458,7 +458,7 @@ A `function` is compiled into a three-word closure. For more, please see [How to
 define use-define(): int {
   let c = 10 in
   let f =
-    // 🌟 term-level `define`
+    // 🌟 term-level `define` with a free variable `c`
     define some-recursive-func(x: int): int {
       if eq-int(x, 0) {
         0
@@ -496,7 +496,7 @@ define name<a1, ..., an>(y1: b1, ..., ym: bm): c {e}
 
 ### Semantics
 
-A term-level `define` is lifted to top-level definitions using lambda lifting. For example, consider the following example:
+A term-level `define` is lifted to a top-level definition using lambda lifting. For example, consider the following example:
 
 ```neut
 define use-define(): int {
@@ -543,6 +543,14 @@ define use-define(): int {
 }
 ```
 
+### Type
+
+```neut
+Γ, x1: a1, ..., xn: an, f: (x1: a1, ..., xn: an) -> t ⊢ e: t
+------------------------------------------------------------
+     Γ ⊢ (define f(x1: a1, ..., xn: an):t {e}): t
+```
+
 ### Note
 
 - Functions defined by term-level `define` aren't inlined at compile-time, even if it doesn't contain any recursions.
@@ -550,6 +558,47 @@ define use-define(): int {
 ## `e(e1, ..., en)`
 
 Given a function `e` and arguments `e1, ..., en`, we can write `e(e1, ..., en)` to write a function application.
+
+### Example
+
+```neut
+define use-function(): unit {
+  let _ = foo() in
+  //      ^^^^^
+  let _ = bar(1) in
+  //      ^^^^^^
+  let _ = buz("hello", True) in
+  //      ^^^^^^^^^^^^^^^^^^
+  Unit
+}
+```
+
+### Syntax
+
+```neut
+e(e1, ..., en)
+```
+
+### Semantics
+
+Given a funciton application `e(e1, ..., en)` the system does the following:
+
+1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`.
+2. Extracts the content of the closure `v`, obtaining the label of the closed function and the tuple of the free variables.
+3. Deallocates the tuple of the closure `v`.
+4. Calls the function label is called with the tuple and `v1, ..., vn` as arguments.
+
+### Type
+
+```neut
+Γ ⊢ e: <x1: a1, .., xn: an>(y1: b1, .., ym: bm) -> c    Γ ⊢ e1: b1  ..   Γ ⊢ em: bm
+---------------------------------------------------------------------------------------
+    Γ ⊢ e(e1, .., en): c[x1 := ?M1, .., xn := ?Mn, y1 := e1, .., ym := em]
+```
+
+The `?Mi`s in the above rule are metavariables that must be inferred by the compiler.
+
+### Note
 
 If the function `e` contains implicit arguments, holes are inserted automatically.
 
@@ -581,18 +630,15 @@ define use-id(): unit {
 
 `e of {x1 = e1, ..., xn = en}` is an alternative notation of function application. Other languages would call this a feature of "keyword arguments".
 
-Suppose that we have the following function:
+### Example
 
 ```neut
 define foo(x: int, y: bool, some-path: &text): unit {
-  // ..
+  // whatever
 }
-```
 
-In this case, we can call this `foo` by specifying key-value pairs of its arguments:
-
-```neut
 define use-foo(): unit {
+  // 🌟
   foo of {
   - x = 10
   - y = True
@@ -601,7 +647,27 @@ define use-foo(): unit {
 }
 ```
 
-This might be useful when used in combination with ADTs:
+### Syntax
+
+```neut
+e of {
+- x1 = e1
+- ...
+- xn = en
+}
+```
+
+### Semantics
+
+The same as `e(e1, ..., en)`.
+
+### Type
+
+The same as `e(e1, ..., en)`.
+
+### Note
+
+This notation might be useful when used in combination with ADTs:
 
 ```neut
 data config {
@@ -615,7 +681,7 @@ data config {
 constant some-config {
   Config of {
   - count = 10
-  - path ="/path/to/file"
+  - path = "/path/to/file"
   - colorize = True
   }
 }
@@ -625,18 +691,17 @@ constant some-config {
 
 Given a function `e`, `exact e` supplies all the implicit variables of `e` by inserting holes.
 
-For example, suppose we have the following function:
+### Example
+
+Suppose we have the following function:
 
 ```neut
 define id<a>(x: a): a {
   x
 }
-```
 
-Then,
-
-```neut
 define use-id() {
+                           // 🌟
   let g: (x: int) -> int = exact id in
   Unit
 }
@@ -645,23 +710,53 @@ define use-id() {
 Note that the following won't typecheck:
 
 ```neut
+define id<a>(x: a): a {
+  x
+}
+
 define use-id() {
   let g: (x: int) -> int = id in
   Unit
 }
 ```
 
-since the type of `id` is `<a>(x: a) -> a`.
+This is because the type of `id` is `<a>(x: a) -> a`.
 
-`exact` is a machinery to resolve implicit arguments without using function application. You can think of `exact id` as a shorthand of the below:
+### Syntax
 
 ```neut
-function (x: a) {
-  id(x)
+exact e
+```
+
+### Semantics
+
+Given a term `e` of type `<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c`,
+
+```neut
+exact e
+```
+
+is translated into the below:
+
+```neut
+function (y1: b1, ..., ym: bm) {
+  e(_, ..., _, y1, ..., ym)
 }
 ```
 
-Note that implicit holes are inserted at `id(x)` during type checking (elaboration).
+### Type
+
+```neut
+       Γ ⊢ e: <x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c
+--------------------------------------------------------------------
+Γ ⊢ exact e: ((y1: b1, ..., ym: bm) -> c)[x1 := ?M1, ..., xn := ?Mn]
+```
+
+where `?Mi`s are metavariables that must be inferred by the type checker.
+
+### Note
+
+As you can see from its semantics, an `exact` is just a shorthand of a "hole-application".
 
 ## `let`
 

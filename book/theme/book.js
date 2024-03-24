@@ -30,6 +30,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "detach",
         "else",
         "else-if",
+        "exact",
         "export",
         "external",
         "foreign",
@@ -90,16 +91,16 @@ hljs.registerLanguage("ens", function (hljs) {
     keywords: {
       $pattern: /[\w-:=<>]+/,
       keyword: [
-          "antecedent",
-          "archive",
-          "build",
-          "dependency",
-          "foreign",
-          "inline-limit",
-          "prefix",
-          "preset",
-          "source",
-          "target",
+        "antecedent",
+        "archive",
+        "build",
+        "dependency",
+        "foreign",
+        "inline-limit",
+        "prefix",
+        "preset",
+        "source",
+        "target",
       ].join(" "),
     },
     contains: [
@@ -171,10 +172,10 @@ hljs.registerLanguage("llvm", function (hljs) {
   });
 
   let code_nodes = Array.from(document.querySelectorAll("code"))
-    // Don't highlight `inline code` blocks in headers.
-    .filter(function (node) {
-      return !node.parentElement.classList.contains("header");
-    });
+  // Don't highlight `inline code` blocks in headers.
+      .filter(function (node) {
+        return !node.parentElement.classList.contains("header");
+      });
 
   code_nodes.forEach(function (block) {
     hljs.highlightBlock(block);
@@ -184,27 +185,27 @@ hljs.registerLanguage("llvm", function (hljs) {
 (function chapterNavigation() {
   document.addEventListener("keydown", function (e) {
     if (e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) {
-        return;
+      return;
     }
     if (window.search && window.search.hasFocus()) {
       return;
     }
 
     switch (e.key) {
-      case "ArrowRight":
-        e.preventDefault();
-        var nextButton = document.querySelector(".nav.next");
-        if (nextButton) {
-          window.location.href = nextButton.href;
-        }
-        break;
-      case "ArrowLeft":
-        e.preventDefault();
-        var previousButton = document.querySelector(".nav.previous");
-        if (previousButton) {
-          window.location.href = previousButton.href;
-        }
-        break;
+    case "ArrowRight":
+      e.preventDefault();
+      var nextButton = document.querySelector(".nav.next");
+      if (nextButton) {
+        window.location.href = nextButton.href;
+      }
+      break;
+    case "ArrowLeft":
+      e.preventDefault();
+      var previousButton = document.querySelector(".nav.previous");
+      if (previousButton) {
+        window.location.href = previousButton.href;
+      }
+      break;
     }
   });
 })();
