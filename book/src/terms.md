@@ -13,8 +13,6 @@
 - `e of {x1 = e1, ..., xn = en}`
 - `exact e`
 - `let`
-- `try pat = e1 in e2`
-- `tie pat = e1 in e2`
 - ADT Formation
 - ADT Introduction
 - `match`
@@ -32,6 +30,8 @@
 - `e1; e2`
 - `admit`
 - `detach`, `attach`, and `new-channel`
+- `try pat = e1 in e2`
+- `tie pat = e1 in e2`
 - `?t`
 - `[e1, ..., en]`
 - `with` / `bind`
@@ -760,34 +760,30 @@ As you can see from its semantics, an `exact` is just a shorthand of a "hole-app
 
 ## `let`
 
-`let x = e1 in e2` defines a variable `x` as the result of `e1` so that it can be used in `e2`:
+### Example
 
 ```neut
 define use-let(): unit {
+  // 🌟 `let`
   let t = "test" in
   print(t)
 }
-```
 
-`let`s can be nested:
-
-```neut
 define use-let(): unit {
   let bar =
+    // 🌟 nested `let`
     let foo = some-func() in
     other-func(foo)
   in
   do-something(bar)
 }
-```
 
-You can also add type annotations in `let`s:
-
-```neut
 define use-let(): unit {
+  // 🌟 `let` with a type annotation
   let t: &text = "test" in
   print(t)
 }
+
 ```
 
 `let` can be used to destruct an ADT value:
@@ -798,17 +794,43 @@ data item {
 }
 
 define use-item(x: item): unit {
+  // 🌟 use `let` with a pattern
   let Item(i, b) = x in // ← here
   print-int(i)
 }
 
 define use-item-2(x: item): unit {
-  let Item of {i} = x in // ← here
+  // 🌟 use `let` with an of-pattern
+  let Item of {i} = x in
   print-int(i)
 }
 ```
 
-When passing a pattern, `let` is the following syntax sugar:
+### Syntax
+
+```neut
+let x = e1 in e2
+
+let x: t = e1 in e2
+```
+
+### Semantics
+
+`let x = e1 in e2` defines binds the result of `e1` to the variable `x`. This variable can then be used in `e2`.
+
+### Type
+
+```neut
+Γ ⊢ e1: a     Γ, x: a ⊢ e2: b
+-----------------------------
+   Γ ⊢ let x = e1 in e2: b
+```
+
+### Remark
+
+(1) `let x = e1 in e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1 in e2`.
+
+(2) When a pattern is passed, `let` is the following syntax sugar:
 
 ```neut
 let pat = x in
@@ -819,30 +841,6 @@ cont
 match x {
 - pat =>
   cont
-}
-```
-
-## `try pat = e1 in e2`
-
-`try pat = e1 in e2` is a shorthand of the below:
-
-```neut
-match e1 {
-- Fail(err) =>
-  Fail(err)
-- Pass(pat) =>
-  e2
-}
-```
-
-## `tie pat = e1 in e2`
-
-`tie pat = e1 in e2` is a shorthand of the below:
-
-```neut
-case e1 {
-- pat =>
-  e2
 }
 ```
 
@@ -1370,6 +1368,30 @@ You can send a value into a channel using `send`, and receive one using `receive
 A channel internally has a queue, and `send` stores a value to that queue.
 
 When you call `receive`, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, `receive` blocks until a value is sent to the queue.
+
+## `try pat = e1 in e2`
+
+`try pat = e1 in e2` is a shorthand of the below:
+
+```neut
+match e1 {
+- Fail(err) =>
+  Fail(err)
+- Pass(pat) =>
+  e2
+}
+```
+
+## `tie pat = e1 in e2`
+
+`tie pat = e1 in e2` is a shorthand of the below:
+
+```neut
+case e1 {
+- pat =>
+  e2
+}
+```
 
 ## `?t`
 
