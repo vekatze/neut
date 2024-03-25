@@ -844,11 +844,11 @@ match x {
 }
 ```
 
-## ADT
+## ADT Formation
 
 After defining an ADT using the statement `data`, the ADT types are made available.
 
-For example:
+### Example
 
 ```neut
 data my-nat {
@@ -861,11 +861,31 @@ define use-nat-type(): tau {
 }
 ```
 
-## Constructors
+### Syntax
+
+The same as that of top-level variables.
+
+### Semantics
+
+The same as that of top-level variables.
+
+### Type
+
+If an ADT `some-adt` is nullary, the type of `some-adt` is `tau`.
+
+Otherwise, suppose that an ADT `some-adt` is defined as follows:
+
+```neut
+data some-adt(x1: a1, ..., xn: an) {..}
+```
+
+In this case, the type of `some-adt` is `(x1: a1, ..., xn: an) -> tau`.
+
+## Constructors (ADT Introduction)
 
 After defining an ADT using the statement `data`, the constructors can be used to construct values of the ADT.
 
-For example:
+### Example
 
 ```neut
 data my-nat {
@@ -878,9 +898,51 @@ define create-nat(): my-nat {
 }
 ```
 
-In the example above, the type of `Succ` is `(my-nat) -> my-nat`.
+### Syntax
 
-## `match`
+The same as that of top-level variables.
+
+### Semantics
+
+The same as that of top-level variables.
+
+### Type
+
+If a constructor `c` is nullary, the type of `c` is the ADT type. For example, consider the following code:
+
+```neut
+data some-adt {
+- c1
+}
+
+data other-adt(a: tau) {
+- c2
+}
+```
+
+In this case,
+
+- the type of `c1` is `some-adt`, and
+- the type of `c2` is `other-adt(?M)`, where the `?M` must be inferred by the compiler.
+
+If a constructor `c` isn't nullary, the type of `c` is the function type that takes specified arguments and turns them into the ADT type. For example, consider the following code:
+
+```neut
+data some-adt {
+- c1(foo: int)
+}
+
+data other-adt(a: tau) {
+- c2(bar: bool, buz: other-adt(a))
+}
+```
+
+In this case,
+
+- the type of `c1` is `(foo: int) -> some-adt`, and
+- the type of `c2` is `<a: tau>(bar: bool, buz: other-adt(a)) -> other-adt(a)`.
+
+## `match` (ADT Elimination)
 
 ADT values can be destructed using `match`:
 
