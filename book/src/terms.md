@@ -1230,6 +1230,8 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 
 `let x on y = e1 in e2` can be used to introduce noetic values in specific scope.
 
+### Example
+
 ```neut
 define play-with-let-on(): unit {
   let xs: list(int) = [1, 2, 3] in
@@ -1242,7 +1244,16 @@ define play-with-let-on(): unit {
 }
 ```
 
-`let-on` is essentially the following syntax sugar:
+### Syntax
+
+```neut
+let y on x1, ..., xn = e1 in
+e2
+```
+
+### Semantics
+
+`on` is conceptually the following syntax sugar:
 
 ```neut
 let result on x = e in
@@ -1251,24 +1262,27 @@ cont
 // ↓ desugar
 
 let x = unsafe-cast(a, &a, x) in // cast: `a` ~> `&a`
-let result = e in                     // (use `&a`)
+let result = e in                // (use `&a`)
 let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
 
-`let-on` can take multiple variables:
+### Type
 
 ```neut
-// ↓ the below is a valid term
-let len on xs, ys, zs = e in
-cont
+Γ ⊢ x1: a1
+...
+Γ ⊢ xn: an
+Γ, x1: &a1, ..., xn: &an ⊢ e1: b // note: the context `Γ` is ordered
+Γ, y: b ⊢ e2: c
+(the type `b` is realistic) // see the below note for the definition of "realistic"
+---------------------------------------
+Γ ⊢ let y on x1, ..., xn = e1 in e2: c
 ```
 
-The result of `let-on` (here, `len`) can't contain any noetic terms. Below is the reason.
+### Note
 
-### Result Type Restriction
-
-As you can see from the definition of `let-on`, a noema always has its "source" value. We'll call it the hyle of a noema.
+As you can see from the definition of `let-on`, a noema (noetic value) always has its "source". We'll call it the hyle of a noema.
 
 A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
 
@@ -1287,26 +1301,29 @@ match result {   // ... and thus using `result` here is a use-after-free!
 
 Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
 
-More specifically, the type of `result` must satisfy all of the followings:
+More specifically, the type of `result` must be "realistic". That is, the type must satisfy all of the following conditions:
 
-- it doesn't contain any free variables,
-- it doesn't contain any noetic types,
-- it doesn't contain any function types (since a noema can reside in it), and
-- it doesn't contain any "dubious" ADTs.
+- It doesn't contain any free variables
+- It doesn't contain any noetic types
+- It doesn't contain any function types (since a noema can reside in it)
+- It doesn't contain any "dubious" ADTs
 
-Here, a "dubious" ADT is an ADT like the below:
+Here, a "dubious" ADT is something like the below:
 
 ```neut
+// the type `joker-x` is dubious since it contains a noetic argument
 data joker-x {
-- HideX(&A) // contains a noetic argument
+- HideX(&list(int))
 }
 
+// the type `joker-y` is dubious since it contains a functional argument
 data joker-y {
-- HideY(int -> bool) // contains a functional argument
+- HideY(int -> bool)
 }
 
+// the type `joker-z` is dubious since it contains a dubious ADT argument
 data joker-z {
-- HideZ(joker-y) // contains a dubious ADT argument
+- HideZ(joker-y)
 }
 ```
 
