@@ -1052,33 +1052,52 @@ If the first element is `1`, which means in this case that we found an ADT value
 Γ ⊢ e1: a1
 ...
 Γ ⊢ en: an
-Γ ⊢ pat-1 => body-1: b
+
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ body-1: b
+
 ...
-Γ ⊢ pat-m => body-m: b
-(a1, ..., an are ADT types)
+
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ body-m: b
+
 (for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
 (the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
 ------------------------------------------------------------------------------
-Γ ⊢ match e1, ..., en {- pat-1 => body-1 ... - pat-m => body-m} : b
+Γ ⊢ match e1, ..., en {
+    - pat-1 => body-1
+    ...
+    - pat-m => body-m
+    }: b
 ```
 
 ### Note
 
-Judgments for patterns `Γ ⊢ pat-1 => body-1: b` aren't explicitly defined in this document yet. Below are examples of them just for now:
+An example of the application of the typing rule of `match`:
 
 ```neut
-                   ⊢ Zero => 100: int
+Γ ⊢ n: my-nat
 
- foo: (nat) -> int ⊢ Succ(m: nat) => foo(m): int
+Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ 100: int // body-1
 
-bar: (nat) -> bool ⊢ Zero, Succ(m: nat) => bar(m): int
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: my-nat ⊢ foo(m): int // body-2
+
+(Zero and Succ(m) are patterns for n)
+(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+------------------------------------------------------------------------------
+Γ ⊢ match n {
+    - Zero => 100
+    - Succ(m) => foo(m)
+    }: int
 ```
 
 ## `case`
 
-Given an ADT type `t`, `case` can be used to inspect values of type `&t`.
+You can use `case` to inspect noetic ADT values.
 
-`case` is a "noetic" variant of `match`:
+### Example
 
 ```neut
 data my-nat {
@@ -1091,16 +1110,74 @@ define foo-noetic(n: &my-nat): int {
   - Zero =>
     100
   - Succ(m) =>
+    // the type of foo-noetic is `(&my-nat) -> int`
     foo-noetic(m)
   }
 }
 ```
 
-Note that the type of `m` in the example above is `&my-nat`, not `my-nat`. Contents of constructors are wrapped by `&(_)` after using `case`.
+### Syntax
 
-### Memory Behavior
+```neut
+case e1, ..., en {
+- pattern-1 =>
+  body-1
+- ...
+- pattern-m =>
+  body-m
+}
+```
 
-The semantics of `case` is the same as `match` except that `case` doesn't consume (free) its arguments. `case` can be considered as a "read-only" version of `match`.
+### Semantics
+
+The semantics of `case` is the same as `match` except that `case` doesn't consume ADT values.
+
+### Type
+
+```neut
+Γ ⊢ e1: a1
+...
+Γ ⊢ en: an
+
+Γ, arg_{1,1}: t_{1,1}, ..., arg_{1, k_{1}}: t{1, k_{1}} ⊢ pat-1: a1
+Γ, arg_{1,1}: &t_{1,1}, ..., arg_{1, k_{1}}: &t{1, k_{1}} ⊢ body-1: b
+
+...
+
+Γ, arg_{m,1}: t_{m,1}, ..., arg_{m, k_{m}}: t{m, k_{m}} ⊢ pat-m: an
+Γ, arg_{m,1}: &t_{m,1}, ..., arg_{m, k_{m}}: &t{m, k_{m}} ⊢ body-m: b
+
+(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
+(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+------------------------------------------------------------------------------
+Γ ⊢ case e1, ..., en {
+    - pat-1 => body-1
+    ...
+    - pat-m => body-m
+    }: b
+```
+
+### Note
+
+An example of the application of the typing rule of `case`:
+
+```neut
+Γ ⊢ n: &my-nat
+
+Γ ⊢ Zero: my-nat // pat-1
+Γ ⊢ 100: int // body-1
+
+Γ, m: my-nat ⊢ Succ(m): my-nat // pat-2
+Γ, m: &my-nat ⊢ foo-noetic(m): int // body-2
+
+(Zero and Succ(m) are patterns for n)
+(the sequence Zero, Succ(m) is a exhaustinve matching against n)
+------------------------------------------------------------------------------
+Γ ⊢ case n {
+    - Zero => 100
+    - Succ(m) => foo-noetic(m)
+    }: int
+```
 
 ## `&a`
 
