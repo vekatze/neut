@@ -1381,15 +1381,9 @@ The original hyle is kept intact.
 
 ## `magic`
 
-`magic` can be used to perform weird stuff. Using a `magic` is an unsafe operation.
+You can use `magic` to perform weird stuff. Using a `magic` is an unsafe operation.
 
-Except for `cast`, the result type of `magic` is unspecified, so you must supply type annotations if necessary.
-
-### `cast`
-
-`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`.
-
-Example usage:
+### Example
 
 ```neut
 // empty type
@@ -1397,43 +1391,117 @@ data descriptor {}
 
 // add an element to the empty type
 constant stdin: descriptor {
-  magic cast(int, descriptor, 0)
+  magic cast(int, descriptor, 0) // 🌟 cast
 }
-```
 
-### `store` / `load`
-
-`store(type, value, address)` stores a value `value` to `address`.
-
-`load(type, address)` loads a value from `address`.
-
-Example usage:
-
-```neut
 define malloc-then-free(): unit {
   // allocate memory region
   let size: int = 10 in
-  let ptr: int = magic external malloc(size) in
+  let ptr: int = magic external malloc(size) in // 🌟 external
 
   // store a value
   let value: int = 123 in
-  magic store(int, value, ptr);
+  magic store(int, value, ptr); // 🌟 store
 
   // load and print a value
-  let value = magic load(int, ptr) in
+  let value = magic load(int, ptr) in // 🌟 load
   print-int(value); // => 123
 
   // free the pointer and return
-  magic external free(ptr);
+  magic external free(ptr); // 🌟 external
   Unit
 }
+
 ```
 
-These magics are lowered to the `store` and `load` in LLVM IR after compilation.
+### Syntax
 
-### `external`
+```neut
+magic cast(from-type, to-type, value)
 
-`external` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
+magic store(lowtype, stored-value, address)
+
+magic load(lowtype, address)
+
+magic external func-name(e1, ..., en)
+
+magic external func-name(e1, ..., en)(vararg-1: lowtype-1, ..., vararg-n: lowtype-n)
+```
+
+A "lowtype" is one of the following:
+
+- `int1`, `int2`, ..., `int64`
+- `float16`, `float32`, `float64`
+- `pointer`
+
+Except for `cast`, the result type of `magic` is unspecified, so you must supply type annotations if necessary.
+
+You can also use `int` and `float` as a lowtype. This is a platform-dependent lowtype. If the target architecture is 64-bit, `int` is interpreted as `int64`.
+
+### Semantics
+
+`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. This is just a trick against the type checker, and does nothing at runtime.
+
+`magic store(lowtype, value, address)` stores a value `value` to `address`. This is the same as `store` [in LLVM](https://llvm.org/docs/LangRef.html#store-instruction).
+
+`magic load(lowtype, address)` loads a value from `address`. This is the same as `load` [in LLVM](https://llvm.org/docs/LangRef.html#load-instruction).
+
+`magic external func(e1, ..., en)` can be used to call foreign functions (or FFI). See [foreign in Statements](./statements.md#foreign) for more information.
+
+`magic external func(e1, ..., en)(e{n+1}: lowtype1, ..., e{n+m}: lowtypem)` can also be used to call variadic foreign functions like printf in C. A use of such varidic `external` can be found in the core library [here](https://github.com/vekatze/neut-core/blob/6ef2fed68a6b0b063e15350e788c82ea9371f6bb/source/text/io.nt#L43).
+
+### Type
+
+```neut
+Γ ⊢ t1: tau
+Γ ⊢ t2: tau
+Γ ⊢ e: t1
+-----------------------------
+Γ ⊢ magic cast(t1, t2, e): t2
+
+
+Γ ⊢ stored-value: t1
+Γ ⊢ address: t2
+Γ ⊢ t3: tau
+(value-type is a low-type)
+------------------------------------------------------
+Γ ⊢ magic store(value-type, stored-value, address): t3
+
+
+Γ ⊢ address: t1
+Γ ⊢ t2: tau
+(value-type is a low-type)
+------------------------------------------------------
+Γ ⊢ magic load(value-type, address): t2
+
+
+Γ ⊢ e1: t1
+...
+Γ ⊢ en: tn
+Γ ⊢ t: tau
+(func-name is a foreign function)
+--------------------------------------------------
+Γ ⊢ magic external func-name(e1, ..., en): t
+
+
+Γ ⊢ e1: t1
+...
+Γ ⊢ en: tn
+Γ ⊢ e{n+1}: t{n+1}
+...
+Γ ⊢ e{n+m}: t{n+m}
+(lt-1 is a low-type)
+...
+(lt-m is a low-type)
+Γ ⊢ t: tau
+(func-name is a foreign function)
+-----------------------------------------------------------------------------
+Γ ⊢ magic external func-name(e1, ..., en)(e{n+1}: lt-1, ..., e{n+m}: lt-m): t
+```
+
+### Note
+
+Except for `cast`, the result type of `magic` is unspecified. You may have to supply annotations.
 
 ## `introspect`
 
