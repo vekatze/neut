@@ -857,6 +857,7 @@ data my-nat {
 }
 
 define use-nat-type(): tau {
+  // 🌟
   my-nat
 }
 ```
@@ -894,6 +895,7 @@ data my-nat {
 }
 
 define create-nat(): my-nat {
+  // 🌟 (`Succ` and `Zero` are constructors)
   Succ(Succ(Zero))
 }
 ```
@@ -944,7 +946,9 @@ In this case,
 
 ## `match` (ADT Elimination)
 
-ADT values can be destructed using `match`:
+You can use `match` to destruct ADT values.
+
+### Example
 
 ```neut
 data my-nat {
@@ -953,6 +957,7 @@ data my-nat {
 }
 
 define foo(n: my-nat): int {
+  // 🌟
   match n {
   - Zero =>
     100
@@ -960,13 +965,22 @@ define foo(n: my-nat): int {
     foo(m)
   }
 }
-```
 
-Multiple values can be `match`ed at the same time:
+define bar(n: my-nat): int {
+  // 🌟 (You can use nested patterns)
+  match n {
+  - Zero =>
+    100
+  - Succ(Succ(m)) => // ← a nested pattern
+    200
 
-```neut
-// True iff `n1 == n2`
+- Succ(m) =>
+    foo(m)
+  }
+}
+
 define eq-nat(n1: my-nat, n2: my-nat): bool {
+  // 🌟 (`match` can handle multiple values)
   match n1, n2 {
   - Zero, Zero =>
     True
@@ -976,13 +990,27 @@ define eq-nat(n1: my-nat, n2: my-nat): bool {
     False
   }
 }
+
+
 ```
 
-### Memory Behavior
+### Syntax
 
-The arguments of `match` is _consumed_.
+```neut
+match e1, ..., en {
+- pattern-1 =>
+  body-1
+- ...
+- pattern-m =>
+  body-m
+}
+```
 
-Let's see how `my-nat` in the next code is used in `match`:
+### Semantics
+
+The semantics of `match` is the same as the semantics of ordinary pattern matching except that ADT values are _consumed_ after branching.
+
+For example, let's see how `my-nat` in the next code is used in `match`:
 
 ```neut
 data my-nat {
@@ -995,15 +1023,16 @@ The internal representation of `n: my-nat` is something like the below:
 
 ```neut
 Zero:
-  (0)
+  (0) // 1-word tuple
 Succ:
-  (1, pointer-to-m)
+  (1, pointer-to-m) // 2-word tuple
 ```
 
-That is, if `n` is `Zero`, the internal representation is a 1-word tuple that contains only one element `0`. If `n` is `Succ(m)`, the internal representation is a 2-word tuple that contains `1` and a pointer to `m`.
+When evaluating `match`, the computer inspects the first element of the "tuple" `n`.
 
 ```neut
 define foo(n: my-nat): int {
+  // 🌟 (inspects the first element of `n` here)
   match n {
   - Zero =>
     100
@@ -1013,11 +1042,37 @@ define foo(n: my-nat): int {
 }
 ```
 
-When evaluating `match`, the computer inspects the first element of the "tuple" `n`.
+If the first element is `0`, which means in this case that we found an ADT value of `Zero`, the computer _frees_ the outer tuple of `(0)`, and then evaluates `100`.
 
-If it is `0`, the computer frees the outer tuple of `(0)`, and goes to the branch of `Zero` (which is `100` in the example above).
+If the first element is `1`, which means in this case that we found an ADT value of `Succ`, the computer gets the pointer to the second element of `n`, binds it to `m`, _frees_ the outer tuple of `(1, pointer-to-m)`, and then evaluates `foo(m)`.
 
-If it is `1`, the computer gets the pointer to the second element of `n`, binds it to `m`, frees the outer tuple of `(1, pointer-to-m)`, and then goes to the branch of `Succ` (which is `foo(m)` in the example above).
+### Type
+
+```neut
+Γ ⊢ e1: a1
+...
+Γ ⊢ en: an
+Γ ⊢ pat-1 => body-1: b
+...
+Γ ⊢ pat-m => body-m: b
+(a1, ..., an are ADT types)
+(for all i = 1, ..., m, pat-i is a pattern for e1, ..., en)
+(the sequence pat-1, ..., pat-m is a exhaustinve matching against e1, ..., en)
+------------------------------------------------------------------------------
+Γ ⊢ match e1, ..., en {- pat-1 => body-1 ... - pat-m => body-m} : b
+```
+
+### Note
+
+Judgments for patterns `Γ ⊢ pat-1 => body-1: b` aren't explicitly defined in this document yet. Below are examples of them just for now:
+
+```neut
+                   ⊢ Zero => 100: int
+
+ foo: (nat) -> int ⊢ Succ(m: nat) => foo(m): int
+
+bar: (nat) -> bool ⊢ Zero, Succ(m: nat) => bar(m): int
+```
 
 ## `case`
 
