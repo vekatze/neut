@@ -1183,9 +1183,50 @@ An example of the application of the typing rule of `case`:
 
 Given a type `a: tau`, the `&a` is the type of noema over `a`.
 
-The values of type `&a` aren't discarded/copied when used non-linearly.
+### Example
 
-## `on` (Noema Introduction)
+```neut
+data my-nat {
+- Zero
+- Succ(my-nat)
+}
+
+                     // 🌟
+define foo-noetic(n: &my-nat): int {
+  case n {
+  - Zero =>
+    100
+  - Succ(m) =>
+    foo-noetic(m)
+  }
+}
+```
+
+### Syntax
+
+```neut
+&t
+```
+
+### Semantics
+
+For every type `a`, `&a` is compiled into `base.#.imm`.
+
+### Type
+
+```neut
+Γ ⊢ t: tau
+-----------
+Γ ⊢ &t: tau
+```
+
+### Note
+
+- Values of type `&a` can be created using `on`.
+- Values of type `&a` are expected to be used in combination with `case` or `*e`.
+- Since `&a` is compiled into `base.#.imm`, values of type `&a` aren't discarded or copied even when used non-linearly.
+
+## `on`
 
 `let x on y = e1 in e2` can be used to introduce noetic values in specific scope.
 
