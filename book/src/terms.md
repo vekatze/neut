@@ -944,7 +944,7 @@ In this case,
 - the type of `c1` is `(foo: int) -> some-adt`, and
 - the type of `c2` is `<a: tau>(bar: bool, buz: other-adt(a)) -> other-adt(a)`.
 
-## `match` (ADT Elimination)
+## `match`
 
 You can use `match` to destruct ADT values.
 
@@ -1340,9 +1340,11 @@ match result {
 
 This restriction is checked at compile time by the type system of Neut.
 
-## `*e` - Noema Elimination
+## `*e`
 
-Given a noema `e: &t`, `*e: t` is a clone of the noema. The original noema is kept intact.
+You can use `*e` to create a non-noetic value from a noetic value.
+
+### Example
 
 ```neut
 define clone-list<a>(xs: &list(a)): list(a) {
@@ -1353,6 +1355,28 @@ define clone-list<a>(xs: &list(a)): list(a) {
     Cons(*y, clone-list(ys))
   }
 }
+```
+
+### Syntax
+
+```neut
+*e
+```
+
+### Semantics
+
+Given a noema `e: &t`, `*e` is a clone of the hyle of the noema.
+
+This clone is created by copying the hyle along the type `t`.
+
+The original hyle is kept intact.
+
+### Type
+
+```neut
+Γ ⊢ e: &a
+----------
+Γ ⊢ *e: a
 ```
 
 ## `magic`
