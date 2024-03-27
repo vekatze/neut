@@ -53,6 +53,7 @@ hljs.registerLanguage("neut", function (hljs) {
         "switch",
         "use",
         "via",
+        "when",
         "with",
       ].join(" "),
     },

@@ -1859,14 +1859,48 @@ Derived from the desugared form.
 
 ## `when cond { e }`
 
-`when cond { e }` is a shorthand of the below:
+You can use `when cond { e }` to perform `e` only when `cond` is true.
+
+### Example
 
 ```neut
-match cond {
-- True => e
-- False => Unit
+define foo(b1: bool): unit {
+  when b1 {
+    print("hey")
+  }
+}
+
+```
+
+### Syntax
+
+```neut
+when cond {
+  e
 }
 ```
+
+### Semantics
+
+`when` is the following syntax sugar:
+
+```neut
+when cond {
+  e
+}
+
+↓
+
+if cond {
+  e
+} else {
+  Unit
+}
+```
+
+### Type
+
+Derived from the desugared form.
 
 ## `e1; e2`
 
