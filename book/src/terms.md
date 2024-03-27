@@ -2203,16 +2203,56 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 - You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
 - `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
 
-## `try pat = e1 in e2`
+## `try x = e1 in e2`
 
-`try pat = e1 in e2` is a shorthand of the below:
+`try` is a shorthand for `match` + `except`.
+
+### Example
+
+```neut
+define get-value-or-fail(): except(error, int) {
+  // .. whatever ..
+}
+
+define foo(): unit {
+  try x1 = get-value-or-fail() in
+  try x2 = get-value-or-fail() in
+  print-int(add-int(x1, x2))
+}
+```
+
+### Syntax
+
+```neut
+try x = e1 in
+e2
+```
+
+### Semantics
+
+`try x = e1 in e2` is a shorthand of the below:
 
 ```neut
 match e1 {
 - Fail(err) =>
   Fail(err)
-- Pass(pat) =>
+- Pass(x) =>
   e2
+}
+```
+
+### Type
+
+Derived from the desugared form.
+
+### Note
+
+The definition of `except` is as follows:
+
+```neut
+data except(a, b) {
+- Fail(a)
+- Pass(b)
 }
 ```
 
