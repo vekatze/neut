@@ -1292,9 +1292,9 @@ let result on xs = xs in // **CAUTION** the result of let-on is a noema
 let _ = xs in    // ← Since the variable `_` isn't used,
                  // the hyle of `result`, namely `xs: list(int)`, is discarded here
 match result {   // ... and thus using `result` here is a use-after-free!
-- [] =>
+- Nil =>
   print("hey")
-- y :: ys =>
+- Cons(y, ys) =>
   print("yo")
 }
 ```
@@ -1670,14 +1670,9 @@ Derived from the desugared form.
 
 ## `e::x`
 
-`e::x` is a shorthand of the below:
+You can use `e::x` to extract a value from an ADT value.
 
-```neut
-use e {x} in
-x
-```
-
-An example:
+### Example
 
 ```neut
 data config {
@@ -1691,6 +1686,67 @@ define use-config(c: config): unit {
   print-int(c::count)
 }
 ```
+
+### Syntax
+
+```neut
+e::x
+```
+
+### Semantics
+
+`::` is the following syntax sugar:
+
+```neut
+e::x
+
+↓
+
+use e {x} in
+x
+```
+
+### Note
+
+One possible use of `::` is to select a function from a record of functions:
+
+```neut
+// dict.nt ---------------------------------
+
+...
+
+// declare a record of functions (like signatures in OCaml)
+data trope(k) {
+- Trope of {
+  - insert: <v>(k, v, dict(k, v)) -> dict(k, v)
+  - lookup: <v>(&k, &dict(k, v)) -> ?&v
+  - delete: <v>(k, dict(k, v)) -> dict(k, v)
+  }
+}
+
+// foo.nt ----------------------------------
+
+import {
+- Dict
+- ...
+}
+
+// create a record of functions
+constant intdict: Dict.trope(int) {
+  // ... whatever ...
+}
+
+// ... and use a function of the record
+define make-big-dict(): dict(int, int) {
+  loop(700000, Dict.empty(), function (acc, _) {
+    let key = random(1000000) in
+    let val = random(1000000) in
+    intdict::insert(key, val, acc) // 🌟
+  })
+}
+```
+
+You can find a working example of such a use case [in the core library](https://github.com/vekatze/neut-core/blob/main/source/bench/random-dict.nt).
 
 ## `assert`
 
