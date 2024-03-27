@@ -2087,6 +2087,47 @@ detach {
 
 - `detach` internally uses pthread.
 
+## `attach` (flow-elimination)
+
+You can use `detach` to wait a control flow and get its result.
+
+### Example
+
+```neut
+define foo(f: flow(int)): int {
+  attach { f }
+}
+
+define bar(f: flow((int) -> bool)): bool {
+  let k = attach { f } in
+  k(100)
+}
+```
+
+### Syntax
+
+```neut
+attach { e }
+```
+
+### Semantics
+
+`attach` waits given computational flow to finish and gets its resulting value.
+
+It also `free`s the 3-word + 1-byte tuple that represents a control flow after getting the result.
+
+### Type
+
+```neut
+Γ ⊢ e: flow(a)
+-------------------
+Γ ⊢ attach { e }: a
+```
+
+### Note
+
+- `attach` internally uses pthread.
+
 ## `detach`, `attach`
 
 You can use `attach` to wait a control flow and extract its result.
