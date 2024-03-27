@@ -2256,16 +2256,47 @@ data except(a, b) {
 }
 ```
 
-## `tie pat = e1 in e2`
+## `tie x = e1 in e2`
 
-`tie pat = e1 in e2` is a shorthand of the below:
+You can use `tie` as a "noetic" `let`.
+
+### Example
+
+```neut
+data config {
+- Config of {
+  - foo: int
+  - bar: bool
+  }
+}
+
+define use-noetic-config(c: &config): int {
+  tie Config of {foo} = c in
+  *foo
+}
+```
+
+### Syntax
+
+```neut
+tie x = e1 in
+e2
+```
+
+### Semantics
+
+`tie x = e1 in e2` is a shorthand of the below:
 
 ```neut
 case e1 {
-- pat =>
+- x =>
   e2
 }
 ```
+
+### Type
+
+Derived from the desugared form.
 
 ## `?t`
 
