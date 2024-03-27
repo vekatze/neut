@@ -2300,14 +2300,41 @@ Derived from the desugared form.
 
 ## `?t`
 
-`?t` is a shorthand of `except(unit, t)`, where the `except` is defined in the core library as follows:
+You can use `?t` to represent an optional type.
+
+### Example
 
 ```neut
-data except(a: tau, b: tau) {
-- Fail(a)
-- Pass(b)
+define foo(x: int): ?int {
+  if eq-int(x, 0) {
+    Pass(100)
+  } else {
+    Fail(Unit)
+  }
 }
 ```
+
+### Syntax
+
+```neut
+?t
+```
+
+### Semantics
+
+`?t` is the following syntax sugar:
+
+```neut
+?t
+
+↓
+
+except(unit, t)
+```
+
+### Type
+
+Derived from the syntax sugar.
 
 ## `[e1, ..., en]`
 
