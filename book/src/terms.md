@@ -1505,7 +1505,9 @@ Except for `cast`, the result type of `magic` is unspecified. You may have to su
 
 ## `introspect`
 
-`introspect key {..}` introspects the setup of the compiler and select corresponding terms. It should look like the below:
+You can use `introspect key {..}` to introspect the configuration of the compiler.
+
+### Example
 
 ```neut
 define arch-dependent-constant(): int {
@@ -1516,28 +1518,68 @@ define arch-dependent-constant(): int {
     2
   }
 }
-```
 
-Currently, the following keys/values are available:
-
-| Key           | Value               |
-| ------------- | ------------------- |
-| `target-arch` | `amd64` or `arm64`  |
-| `target-os`   | `linux` or `darwin` |
-
-You can also use the keyword `default` for the fallback case:
-
-```neut
-define arch-dependent-constant(): int {
-  introspect target-arch {
-  - arm64 =>
+define os-dependent-constant(): int {
+  introspect target-os {
+  - linux =>
     1
   - default =>
-    // `2` is returned if target-arch != arm64
+    // `2` is returned if target-os != linux
     2
   }
 }
 ```
+
+### Syntax
+
+```neut
+introspect key {
+- value-1 =>
+  e1
+...
+- value-n =>
+  en
+}
+```
+
+You can use the following configuration `key`s and configuration `value`s:
+
+| Configuration Key | Configuration Value |
+| ----------------- | ------------------- |
+| `target-arch`     | `amd64` or `arm64`  |
+| `target-os`       | `linux` or `darwin` |
+
+You can also use `default` as a configuration value to represent a fallback case.
+
+### Semantics
+
+Firstly, `introspect key {- v1 => e1 ... - vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to the `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` reports a compilation error.
+
+The configuration value `default` is equal to to any configuration values.
+
+### Type
+
+```neut
+(key is a configuration key)
+
+(v1 is a configuration value)
+Γ ⊢ e1: a
+
+...
+
+(vn is a configuration value)
+Γ ⊢ en: a
+------------------------------------------
+Γ ⊢ introspect key {
+    - v1 => e1
+    ...
+    - vn => en
+    }: a
+```
+
+### Note
+
+- `introspect` is resolved at compile-time.
 
 ## `_`
 
