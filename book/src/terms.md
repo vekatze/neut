@@ -1796,14 +1796,66 @@ Otherwise, `assert "description" { condition }` evaluates `condition` and check 
 
 ## `if`
 
-`if cond { e1 } else { e2 }` is a shorthand of the below:
+You can use `if` as in other languages.
+
+### Example
 
 ```neut
-match cond {
-- True => e1
-- False => e2
+define foo(b1: bool): unit {
+  if b1 {
+    print("hey")
+  } else {
+    print("yo")
+  }
+}
+
+define bar(b1: bool, b2: bool): unit {
+  let tmp =
+    if b1 {
+      "hey"
+    } else-if b2 {
+      "yo"
+    } else {
+      "pohe"
+    }
+  in
+  print(tmp)
 }
 ```
+
+### Syntax
+
+```neut
+if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
+```
+
+### Semantics
+
+`if` is the following syntax sugar:
+
+```neut
+if b1 { e1 } else-if b2 { e2 }  ... else-if b_{n-1} { e_{n-1} } else { en }
+
+↓
+
+match b1 {
+- True => e1
+- False =>
+  match b2 {
+  - True => e2
+  - False =>
+    ...
+    match b_{n-1} {
+    - True => e_{n-1}
+    - False => en
+    }
+  }
+}
+```
+
+### Type
+
+Derived from the desugared form.
 
 ## `when cond { e }`
 
