@@ -13,7 +13,7 @@
   - [Terms](./terms.md)
   - [Primitives](./primitives.md)
   - [Basis](./basis.md)
-- [Contribution](./contribution.md)
+- [What's Next?](./contribution.md)
 
 # Appendix
 
