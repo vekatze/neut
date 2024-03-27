@@ -2037,9 +2037,57 @@ When a flow is completed,
 
 (3) A flow in Neut is a thin layer over pthread.
 
-## `detach`, `attach`
+## `detach` (flow-introduction)
 
-You can use `detach` to create a new control flow inside a thread and start computation inside that thread.
+You can use `detach` to create a new control flow.
+
+### Example
+
+```neut
+define foo(): flow(int) {
+  detach {
+    print("fA");
+    1
+  }
+}
+
+define bar(): flow(int) {
+  let f =
+    detach {
+      print("fA");
+      1
+    }
+  in
+  whatever();
+  f
+}
+```
+
+### Syntax
+
+```neut
+detach {
+  e
+}
+```
+
+### Semantics
+
+`detach { e }` creates a new control flow and starts computation of `e` in that flow.
+
+### Type
+
+```neut
+Γ ⊢ e: a
+-------------------------
+Γ ⊢ detach { e }: flow(a)
+```
+
+### Note
+
+- `detach` internally uses pthread.
+
+## `detach`, `attach`
 
 You can use `attach` to wait a control flow and extract its result.
 
