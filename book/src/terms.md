@@ -1544,10 +1544,11 @@ introspect key {
 
 You can use the following configuration `key`s and configuration `value`s:
 
-| Configuration Key | Configuration Value |
-| ----------------- | ------------------- |
-| `target-arch`     | `amd64` or `arm64`  |
-| `target-os`       | `linux` or `darwin` |
+| Configuration Key | Configuration Value    |
+| ----------------- | ---------------------- |
+| `target-arch`     | `amd64` or `arm64`     |
+| `target-os`       | `linux` or `darwin`    |
+| `build-mode`      | `develop` or `release` |
 
 You can also use `default` as a configuration value to represent a fallback case.
 
@@ -1706,6 +1707,10 @@ use e {x} in
 x
 ```
 
+### Type
+
+Derived from the desugared form.
+
 ### Note
 
 One possible use of `::` is to select a function from a record of functions:
@@ -1750,12 +1755,11 @@ You can find a working example of such a use case [in the core library](https://
 
 ## `assert`
 
-`assert "explanation" { condition }` evaluates `condition` and check if it is `True`. If it is `True`, the `assert` evaluates to `Unit`. Otherwise, it reports that the assertion `"explanation"` failed and exits with `1`.
+You can use `assert` to ensure that certain run-time condition is satisfied.
 
-An example usage:
+### Example
 
 ```neut
-// a bit artificial but I believe you'll get the point
 define fact(n: int): int {
   assert "the input must be non-negative" {
     ge-int(n, 0)
@@ -1766,6 +1770,28 @@ define fact(n: int): int {
     mul-int(n, fact(sub-int(n, 1)))
   }
 }
+```
+
+### Syntax
+
+```neut
+assert "any-string" {
+  e
+}
+```
+
+### Semantics
+
+If the [build mode](./commands.md#--mode) is `release`, `assert` does nothing.
+
+Otherwise, `assert "description" { condition }` evaluates `condition` and check if it is `True`. If it is `True`, the `assert` simply evaluates to `Unit`. Otherwise, it reports that the assertion `"description"` failed and exits the execution of the program with the exit code `1`.
+
+### Type
+
+```neut
+Γ ⊢ condition: bool
+--------------------------------------------
+Γ ⊢ assert "description" { condition }: unit
 ```
 
 ## `if`
