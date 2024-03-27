@@ -477,7 +477,7 @@ Please see [Rapid Prototyping](./rapid-prototyping.md) to see `neut zen` in acti
 - `textDocument/willSaveWaitUntil` (format on save)
 - `textDocument/hover` (show the type of a symbol)
 
-For more information, please see [Lovely LSP Showcase](./lsp-support.md) and [Editor Setup](./editor-support.md).
+For more information, please see [Lovely LSP Showcase](./lovely-lsp-showcase.md) and [Editor Setup](./editor-setup.md).
 
 ## `neut version`
 

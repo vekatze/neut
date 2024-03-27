@@ -60,9 +60,9 @@ let (xs1, xs2) = copy-list-a(xs) in // now `xs` is used exactly once
 some-func(xs1, xs2)
 ```
 
-If you need more, see [How to Execute Types](./main-ideas.md).
+If you need more, see [How to Execute Types](./how-to-execute-types.md).
 
-You may wonder: _"\_So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./noetic-optimization.md). As written there, those redundant copyings can be avoided via something like borrowing in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
+You may wonder: _"\_So we need to, for example, copy the whole list just to get its length? Isn't it the end of the world?"_. This topic is covered in [Static Memory Management](./static-memory-management.md). As written there, those redundant copyings can be avoided via something like borrowing in Rust. The idea is to add a new type `&a`, the noema type of `a`, which is the same as `a` except that it isn't copied/discarded, and to utilize it like a reference of the great ST monad.
 
 ## How Fast is This?
 
@@ -75,13 +75,13 @@ You may wonder: _"\_So we need to, for example, copy the whole list just to get 
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), and binary
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (fix) - (universe hierarchy)
   - That is, the usual one in functional programming, but a bit generalized
-- Built-in [LSP support](./lsp-support.md)
+- Built-in [LSP support](./lovely-lsp-showcase.md)
 - Built-in [rapid prototyping experience](./rapid-prototyping.md) like scripting languages
 - Built-in formatter like Go
 
 ## Anything Else?
 
-You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. This topic is covered in the [tutorial](./functional-programming.md).
+You might also find Neut's module system interesting. _It distinguishes modules using the digests (checksums) of tarballs_ and defines module identities using version information. Although this is not the main point of Neut (and I'm ready to retract it immediately if necessary), it still might be of interest. This topic is covered in the [tutorial](./hello-external-world.md).
 
 Also, Neut includes an LSP server, which provides things like code completion, error reporting on save, etc. See [Chapter 5 (Development Environment)](./development-environment.md) for more.
 

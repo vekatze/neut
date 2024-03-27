@@ -10,7 +10,7 @@ curl -sSL https://github.com/(..) | sh
 
 and follow the instructions.
 
-You may also want to [configure your editor](./editor-support.md).
+You may also want to [configure your editor](./editor-setup.md).
 
 If you prefer manual installation, see [here](./manual-installation.md).
 

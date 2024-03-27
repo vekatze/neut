@@ -182,7 +182,7 @@ At this time, the `free` against `xs` at `(X')` can't be optimized away, since t
 
 ### How Effective Is This Optimization?
 
-Please see [here](./resource-management.md#how-effective-is-this-optimization).
+Please see [here](./static-memory-management.md#how-effective-is-this-optimization).
 
 ## Compiler Configuration
 

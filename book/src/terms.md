@@ -395,7 +395,7 @@ The following abbreviations are available:
 
 ### Semantics
 
-A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./on-executing-types.md)
+A function type is compiled into a pointer to `base.#.cls`. For more, please see [How to Execute Types](./how-to-execute-types.md)
 
 ### Type
 
@@ -433,7 +433,7 @@ function (x1: a1, ..., xn: an) {
 
 ### Semantics
 
-A `function` is compiled into a three-word closure. For more, please see [How to Execute Types](./on-executing-types.md#advanced-function-types).
+A `function` is compiled into a three-word closure. For more, please see [How to Execute Types](./how-to-execute-types.md#advanced-function-types).
 
 ### Type
 

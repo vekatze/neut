@@ -74,7 +74,7 @@ define bar(x: int): unit {
 
 In practice, copying/discarding operations on immediate values are optimized away.
 
-If you're interested in how Neut achieves these discarding/copying operations, please see [How to Execute Types](./on-executing-types.md).
+If you're interested in how Neut achieves these discarding/copying operations, please see [How to Execute Types](./how-to-execute-types.md).
 
 ## The Problem
 
@@ -300,4 +300,4 @@ If you're interested in more benchmarking results, please see [Benchmarks](./ben
 
 Now, you should be able to write programs in Neut.
 
-If you're interested in how Neut achieves this memory management, see [How to Execute Types](./on-executing-types.md).
+If you're interested in how Neut achieves this memory management, see [How to Execute Types](./how-to-execute-types.md).
