@@ -2494,6 +2494,46 @@ Derived from the desugared form.
   - it must have explicit monadic binder, and
   - it doesn't have monadic return.
 
-## `{ e }`
+## `{e}`
 
-`{ e }` can be used as parentheses in other languages.
+`{e}` can be used as parentheses in other languages.
+
+```neut
+              // 🌟
+define foo(f: {(int) -> (bool)} -> bool): bool {
+  let g =
+    function (x: int) {
+      True
+    }
+  in
+  f(g)
+}
+
+
+// cf.
+define bar(f: (int) -> (bool) -> bool): bool {
+  f(10)(True)
+}
+```
+
+### Syntax
+
+```neut
+{e}
+```
+
+### Semantics
+
+The semantics of `{e}` is the same as `e`.
+
+### Type
+
+```neut
+Γ ⊢ e: a
+----------
+Γ ⊢ {e}: a
+```
+
+### Note
+
+- Parentheses in Neut are used only for function-related syntactic constructs.
