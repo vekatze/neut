@@ -1583,7 +1583,9 @@ The configuration value `default` is equal to to any configuration values.
 
 ## `_`
 
-`_` is a hole that must be inferred by the type checker. It should look like the below:
+`_` is a hole that must be inferred by the type checker.
+
+### Example
 
 ```neut
 define id(a: tau, x: a): a {
@@ -1595,7 +1597,23 @@ define use-hole(): unit {
 }
 ```
 
-If the compiler couldn't infer the content of the hole, the compiler reports an error.
+### Syntax
+
+```neut
+_
+```
+
+### Semantics
+
+`_` is a hole that must be inferred by the type checker. If the type checker resolves a hole into a term `e`, this hole behaves exactly the same as `e`. If the type checker can't resolve a hole, the type checker reports a compilation error.
+
+### Type
+
+```neut
+Γ ⊢ e[tmp := e1]: a
+-------------------
+Γ ⊢ e[tmp := _]: a
+```
 
 ## `use e {x} in cont`
 
