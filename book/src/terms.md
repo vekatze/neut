@@ -24,6 +24,7 @@
 - `introspect`
 - `_`
 - `use e {x} in cont`
+- `e::x`
 - `assert`
 - `if`
 - `when cond { e }`
@@ -35,7 +36,6 @@
 - `?t`
 - `[e1, ..., en]`
 - `with` / `bind`
-- `e::x`
 - `{ e }`
 
 ## `tau`
@@ -1617,18 +1617,9 @@ _
 
 ## `use e {x} in cont`
 
-`use e {x} in cont` is only valid when the `e` is an ADT with only one constructor.
+You can use `use e {x} in cont` as a shorthand to destruct an ADT that has only one constructor.
 
-Given such an `e`, `use e {x} in cont` is a shorthand of the below:
-
-```neut
-let K of {x} = e in
-cont
-```
-
-where the `K` is the only constructor of `K`.
-
-An example:
+### Example
 
 ```neut
 data config {
@@ -1641,6 +1632,63 @@ data config {
 define use-config(c: config): unit {
   use c {count} in
   print-int(count)
+}
+
+// cf.
+define use-config-2(c: config): unit {
+  let Config of {count} = c in
+  print-int(count)
+}
+```
+
+### Syntax
+
+```neut
+use e {x1, ..., xn} in
+cont
+```
+
+### Semantics
+
+`use` is the following syntax sugar:
+
+```neut
+use e {x1, ..., xn} in
+cont
+
+↓
+
+let K of {x1, ..., xn} = e in
+cont
+```
+
+Here, the `K` is the only one constructor of the type of `e`. If the type of e contains more than one constructors, `use` results in a compilation error.
+
+### Type
+
+Derived from the desugared form.
+
+## `e::x`
+
+`e::x` is a shorthand of the below:
+
+```neut
+use e {x} in
+x
+```
+
+An example:
+
+```neut
+data config {
+- Config of {
+  - path: &text
+  - count: int
+  }
+}
+
+define use-config(c: config): unit {
+  print-int(c::count)
 }
 ```
 
@@ -1888,30 +1936,6 @@ e
 ```
 
 where the rule `(5)` is used only when all the other rules are unavailable.
-
-## `e::x`
-
-`e::x` is a shorthand of the below:
-
-```neut
-use e {x} in
-x
-```
-
-An example:
-
-```neut
-data config {
-- Config of {
-  - path: &text
-  - count: int
-  }
-}
-
-define use-config(c: config): unit {
-  print-int(c::count)
-}
-```
 
 ## `{ e }`
 
