@@ -2338,13 +2338,37 @@ Derived from the syntax sugar.
 
 ## `[e1, ..., en]`
 
-`[e1, ..., en]` is a shorthand of the below:
+You can use `[e1, ..., en]` to construct a list.
+
+### Example
 
 ```neut
+define make-int-list(): list(int) {
+  [1, 2, 3, 4, 5]
+}
+```
+
+### Syntax
+
+```neut
+[e1, ..., en] // n >= 0
+```
+
+### Semantics
+
+`[e1, ..., en]` is the following syntax sugar:
+
+```neut
+[e1, ..., en]
+
+↓
+
 Cons(e1, Cons(..., Cons(en, Nil)))
 ```
 
-That is, a shorthand for lists.
+### Type
+
+Derived from the desugared form.
 
 ## `with` / `bind`
 
