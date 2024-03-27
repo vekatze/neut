@@ -2128,91 +2128,80 @@ It also `free`s the 3-word + 1-byte tuple that represents a control flow after g
 
 - `attach` internally uses pthread.
 
-## `detach`, `attach`
+## `new-channel`
 
-You can use `attach` to wait a control flow and extract its result.
+You can create a channel using `new-channel`, and send/receive values using those channels.
 
 ### Example
 
 ```neut
-let f1: flow(int) =
-  // creates a thread and start computation
-  detach {
-    print("fA");
-    1
-  }
-in
-let f2: flow(int) =
-  // creates a thread and start computation
-  detach {
-    print("fb");
-    2
-  }
-in
-let v1 = attach { f1 } in // waits f1 to be completed
-let v2 = attach { f2 } in // waits f2 to be completed
-print("hey")
+define sample(): unit {
+  let ch0 = new-channel(int) in
+  let ch1 = new-channel(int) in
+  // use channels after turning them into noemata
+  let result on ch0, ch1 =
+    let f =
+      detach {
+        let message0 = receive(_, ch0) in // receive value from ch0
+        send(int, ch1, add-int(message0, 1)); // send value to ch1
+        message0
+      }
+    in
+    let g =
+      detach {
+        let message1 = receive(_, ch1) in // receive value from ch1
+        add-int(message1, 1)
+      }
+    in
+    send(int, ch0, 0); // send value to ch0
+    let v1 = attach { f } in
+    let v2 = attach { g } in
+    print("hey")
+  in
+  // ... cont ...
+}
 ```
 
 ### Syntax
 
 ```neut
-detach {
-  e
-}
-
-attach {
-  e
-}
+new-channel(e)
 ```
 
 ### Semantics
 
-Given a term `e: t`, `detach { e }` creates a term of type `flow(t)`. It creates a thread using pthreads and starts computation in the thread.
+`new-channel` creates a new channel that can be used to send/receive values between flows.
 
-Given a term `e: flow(t)`, `attach { e }` creates a term of type `t`. It waits the computational flow in other thread to be completed and gets its resulting value.
-
-An example:
-
-### Channels
-
-Flows can send/receive values using channels, like in Go.
-
-You can create a channel using `new-channel`, and send/receive values using those channels.
+The internal representation of `channel(a)` is something like the below:
 
 ```neut
-let ch0 = new-channel(int) in
-let ch1 = new-channel(int) in
-// channels as queues
-let result on ch0, ch1 =
-  let f =
-    detach {
-      let message0 = receive(_, ch0) in // receive value from ch0
-      send(int, ch1, add-int(message0, 1)); // send value to ch1
-      message0
-    }
-  in
-  let g =
-    detach {
-      let message1 = receive(_, ch1) in // receive value from ch1
-      add-int(message1, 1)
-    }
-  in
-  send(int, ch0, 0); // send value to ch0
-  let v1 = attach { f } in
-  let v2 = attach { g } in
-  print("hey")
-in
-// ... cont ...
+(queue, thread-mutex, thread-cond, a)
 ```
 
-The type of a channel is `channel(a)`, where the `a` is the type of values that are sent/received. You'll use the noema of a channel because both `send` and `receive` expect the noema of a channel.
+The `queue` is the place where inter-channel values are enqueued/dequeued. More specifically,
 
-You can send a value into a channel using `send`, and receive one using `receive`.
+- the function `send: <a>(ch: &channel, x: a) -> unit` enqueues values to there, and
+- the function `receive: <a>(ch: &channel) -> a` dequeues values from there.
 
-A channel internally has a queue, and `send` stores a value to that queue.
+The `thread-mutex` is initialized by `pthread_mutex_init(3)`. This field is used to update the queue in a thread-safe way.
 
-When you call `receive`, if the queue isn't empty, the first element of the queue is extracted (the element is deleted from the queue). Otherwise, `receive` blocks until a value is sent to the queue.
+The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used to update the queue in a thread-safe way.
+
+### Type
+
+```
+
+------------------------------------
+Γ ⊢ new-channel: <a>() -> channel(a)
+```
+
+### Note
+
+- Channels are intended to be used with flows.
+- You'll use a channel after turning them into a noema, as in the example above.
+- You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
+- You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
+- `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
 
 ## `try pat = e1 in e2`
 
