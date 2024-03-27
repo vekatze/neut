@@ -2372,9 +2372,52 @@ Derived from the desugared form.
 
 ## `with` / `bind`
 
-`with` and `bind` can be used as the "do-notations" in other languages.
+You can use `with` and `bind` as "do-notations" in other languages.
 
-`with` and `bind` is a syntax sugar defined as follows:
+### Example
+
+```neut
+// define a monadic bind
+define except-bind<e, a, b>(x: except(e, a), k: (a) -> except(e, b)): except(e, b) {
+  match x {
+  - Fail(err) =>
+    Fail(err)
+  - Pass(value) =>
+    k(value)
+  }
+}
+
+define test(): except(&text, int) {
+  // ... and supply it to `with`
+  with except-bind {
+    bind _: bool = Fail("hello") in
+    bind _: bool = Fail("hello") in
+    bind _ = Pass(True) in
+    bind _: bool =
+      bind _ = Pass(True) in
+      Fail("hello")
+    in
+    bind _: bool = Fail("hello") in
+    bind _: tau = Pass(int) in
+    Pass(10)
+  }
+}
+```
+
+### Syntax
+
+```neut
+with {
+  e
+}
+
+bind x = e1 in
+e2
+```
+
+### Semantics
+
+`with/bind` is the syntax sugar defined by the following five translation rules:
 
 ```neut
 // (1) -----------------------------------------------------
@@ -2440,6 +2483,16 @@ e
 ```
 
 where the rule `(5)` is used only when all the other rules are unavailable.
+
+### Type
+
+Derived from the desugared form.
+
+### Note
+
+- `with`/`bind` is the ordinary do-notation except that:
+  - it must have explicit monadic binder, and
+  - it doesn't have monadic return.
 
 ## `{ e }`
 
