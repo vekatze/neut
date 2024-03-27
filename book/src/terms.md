@@ -1939,13 +1939,44 @@ Derived from the desugared form.
 
 ## `admit`
 
-`admit` is the `undefined` in Haskell. `admit` can have any type. Evaluating `admit` will exit the program, displaying a message like the below:
+You can use `admit` to suppress the type checker and sketch the structure of your program.
+
+### Example
+
+```neut
+define my-complex-function(): unit {
+  admit
+}
+```
+
+### Syntax
+
+```neut
+admit
+```
+
+### Sematics
+
+Evaluating `admit` will exit the program, displaying a message like the below:
 
 ```text
 admit: /path/to/file.nt:1:2
 ```
 
-This `admit` is intended to be used ephemerally during development.
+When `admit` exits a program, the exit code is 1.
+
+### Type
+
+```neut
+Γ ⊢ t: tau
+------------
+Γ ⊢ admit: t
+```
+
+### Note
+
+- `admit` is the `undefined` in Haskell.
+- `admit` is intended to be used ephemerally during development.
 
 ## `detach`, `attach`, and `new-channel`
 
