@@ -1,29 +1,10 @@
-# What's Next?
+# Contribution
 
-Now, you should be able to write code in Neut.
+You can improve this book, the language, or the world in various ways:
 
-- List possible actions to make this project even better.
-
-## Improving the Language
-
-- Write libraries and release them.
-- Find bugs and report them on GitHub (hopefully with PRs)
-- Add libraries.
-
-## Improving the World
-
-Write libraries/applications and release them! Neut is designed to release modules easily.
-
-## Improving This Book
-
-Feel free to open PRs to:
-
-- Fix typo, grammar, etc.
-- Clarify explanations
-- etc.
-
-## Cheering the Authors
-
-- Star the repo
-- Send BTC
-- Cheer on Twitter/Mastodon/Bluesky/Whatever
+- Write libraries or executables and release them (the most important thing)
+- Open PRs to fix typos or grammatical errors in this book
+- Find bugs and report them on GitHub, hopefully with PRs
+- Share the language on SNS
+- Star the [repository](https://github.com/vekatze/neut)
+- ...
