@@ -1978,13 +1978,72 @@ When `admit` exits a program, the exit code is 1.
 - `admit` is the `undefined` in Haskell.
 - `admit` is intended to be used ephemerally during development.
 
-## `detach`, `attach`, and `new-channel`
+## `flow` (flow-formation)
 
-Given a term `e: t`, `detach { e }` creates a term of type `flow(t)`. It creates a thread using pthreads and starts computation in the thread.
+A `flow` in Neut is the type of a control flow.
 
-Given a term `e: flow(t)`, `attach { e }` creates a term of type `t`. It waits the computational flow in other thread to be completed and gets its resulting value.
+### Example
 
-An example:
+```neut
+flow(int) // the type of control flow that returns int
+
+flow((int) -> bool) // the type of control flow that returns (int) -> bool
+```
+
+### Syntax
+
+```neut
+flow(t)
+```
+
+### Semantics
+
+For any type `t`, the type `flow(t)` is compiled into a pointer to a closed function that discards and copies the values of the type in the following manner:
+
+- Discard `e: flow(t)`: Waits the flow `e` to finish and discard the result along the type `t`, and then returns 0
+- Copy `e: flow(t)`: Waits the flow `e` to finish and copy the result along the type `t`, creates an already-finished control flow, and returns it as a clone.
+
+The type `t` is inside the internal representation of `e`. Because of that, for any `t`, `flow(t)` is compiled to the same closed function. For more, see the following Note.
+
+### Type
+
+```neut
+Γ ⊢ t: tau
+----------------
+Γ ⊢ flow(t): tau
+```
+
+### Note
+
+(1) The internal representation of `e: flow(t)` is a "3-word + 1-byte" tuple like the below:
+
+```neut
+   (thread-id, t, result-value-or-none, finished)
+//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^
+//  3-word                              1-byte
+```
+
+When a flow is created,
+
+- the value of `result-value-or-none` is initialized to 0, and
+- the value of `finished` is also initialized to 0.
+
+When a flow is completed,
+
+- the value `result-value-or-none` is updated to the result of the flow, and
+- the value `finished` is updated to 1.
+
+(2) As you can see from the semantics, you must use control flows linearly to perform parallel computation.
+
+(3) A flow in Neut is a thin layer over pthread.
+
+## `detach`, `attach`
+
+You can use `detach` to create a new control flow inside a thread and start computation inside that thread.
+
+You can use `attach` to wait a control flow and extract its result.
+
+### Example
 
 ```neut
 let f1: flow(int) =
@@ -2005,6 +2064,26 @@ let v1 = attach { f1 } in // waits f1 to be completed
 let v2 = attach { f2 } in // waits f2 to be completed
 print("hey")
 ```
+
+### Syntax
+
+```neut
+detach {
+  e
+}
+
+attach {
+  e
+}
+```
+
+### Semantics
+
+Given a term `e: t`, `detach { e }` creates a term of type `flow(t)`. It creates a thread using pthreads and starts computation in the thread.
+
+Given a term `e: flow(t)`, `attach { e }` creates a term of type `t`. It waits the computational flow in other thread to be completed and gets its resulting value.
+
+An example:
 
 ### Channels
 
