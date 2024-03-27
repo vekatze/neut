@@ -1,4 +1,4 @@
-# What's Next?
+# What is Next?
 
 You've learned a lot. Now you can improve this book, this language, or this world by:
 
