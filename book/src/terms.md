@@ -1904,12 +1904,38 @@ Derived from the desugared form.
 
 ## `e1; e2`
 
-`e1; e2` is a shorthand of the below:
+You can use `e1; e2` to perform sequential operations.
+
+### Example
+
+```neut
+define foo(): unit {
+  print("hello");
+  print(", ");
+  print("world!");
+  print("\n")
+}
+```
+
+### Syntax
+
+```neut
+e1;
+e2
+```
+
+### Semantics
+
+`e1; e2` is the following syntax sugar:
 
 ```neut
 let _: unit = e1 in
 e2
 ```
+
+### Type
+
+Derived from the desugared form.
 
 ## `admit`
 
