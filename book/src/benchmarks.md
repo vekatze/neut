@@ -53,7 +53,7 @@ I used the following hardware in the above benchmarks:
 
 | Platform      | Hardware                                |
 | ------------- | --------------------------------------- |
-| Linux (AMD64) | HP OMEN 16 2023 (7840HS, 32 GB, Ubuntu) |
+| Linux (AMD64) | HP OMEN 16 2023 (7840HS, 32 GB, Debian) |
 | macOS (ARM64) | Apple MacBook Pro 14 (M1 Max, 32 GB)    |
 
 I used the following commands to run benchmarks and generate the graphs:
@@ -62,5 +62,7 @@ I used the following commands to run benchmarks and generate the graphs:
 just bench-linux amd64-linux # Linux (AMD64)
 just bench-darwin arm64-darwin # macOS (ARM64)
 ```
+
+You may want to read [the Dockerfile in the repository](https://github.com/vekatze/neut/blob/main/build/Dockerfile) to get the list of additional dependencies for running benchmarks. The list includes npm, hyperfine, etc.
 
 Please tell me (hopefully gently) if some of the results are unfair because of reasons I overlooked.
