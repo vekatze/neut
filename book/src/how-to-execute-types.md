@@ -171,6 +171,78 @@ Thus, we can discard and copy values of polymorphic types.
 
 The main part of this section is now over. What follows is for curious cats.
 
+## Algebraic Data Types
+
+ADTs like the below also have resource exponentials, of course:
+
+```neut
+data list(a) {
+- Nil
+- Cons(a, list(a))
+}
+```
+
+The first thing to note is that, since an exponential is a closed function, the values of an ADT must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
+
+That is, for example, the internal representation of `Nil` is something like below:
+
+```neut
+(a, 0)
+```
+
+where the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
+
+```neut
+(a, 1, 10, xs)
+```
+
+where the `1` is the discriminant for `Cons`.
+
+With that in mind, the actual exponential for `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):
+
+```neut
+define exp-list(selector, v) {
+  if selector == 0 {
+    let d = get-discriminant(v) in
+    if d == 0 {
+      // discard Nil
+      free(v)
+    } else {
+      // discard Cons
+      let a = v[0] in
+      let cons-head = v[1] in
+      let cons-tail = v[2] in
+      free(v);
+      let () = a(0, v[1]) in // ← discard the head of cons using v[0]
+      exp-list(0, v[2])
+    }
+  } else {
+    let d = get-discriminant(v) in
+    if d == 0 {
+      // copy Nil
+      let ptr = malloc({2-words}) in
+      let a = v[0] in
+      store(a, ptr[0]);
+      store(d, ptr[1]);
+      ptr
+    } else {
+      // copy Cons
+      let ptr = malloc({4-words}) in
+      let a = v[0] in
+      let cons-head-copy = a(1, v[2]) in // ← copy the head of cons using v[0]
+      let cons-tail-copy = exp-list(1, v[3]) in
+      store(a, ptr[0]);
+      store(d, ptr[1]);
+      store(cons-head-copy, ptr[2]);
+      store(cons-tail-copy, ptr[3]);
+      ptr
+    }
+  }
+}
+```
+
+The point is that _the type information in a value is loaded at runtime and used to copy/discard values_. This utilization of types is the main point of dependent types in Neut. When you hear that a programming language has dependent types, I believe that you would expect something like safe array indexing or theorem proving. In Neut, however, the focus of dependent types is on resource management (and the consistency (in a non-technical sense) they provide).
+
 ## Advanced: Function Types
 
 We'll see how function types like `(int) -> bool` are translated.

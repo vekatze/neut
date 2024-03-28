@@ -4,6 +4,7 @@
 
 - [On Executing Types](./basis.md#on-executing-types)
 - [Allocation Canceling](./basis.md#allocation-canceling)
+- [Name Resolution](./basis.md#name-resolution)
 - [Compiler Configuration](./basis.md#compiler-configuration)
 - [Other Basic Facts](./basis.md#other-basic-facts)
 
@@ -184,6 +185,95 @@ At this time, the `free` against `xs` at `(X')` can't be optimized away, since t
 
 Please see [here](./static-memory-management.md#how-effective-is-this-optimization).
 
+## Name Resolution
+
+### Resolving Module Aliases
+
+Let's see how the name of a module alias is resolved. Here, the name of a module alias is something like the `core` in `core.text.io.get-line`:
+
+```neut
+import {
+- core.text.io
+}
+
+define use-external-module-function(): text {
+           // 🌟
+  let value = core.text.io.get-line() in
+  ...
+}
+```
+
+When compiling a module, the compiler reads the field `dependency` in the `module.ens` and adds correspondences like the below to its internal state:
+
+```neut
+// alias => (the digest of the library)
+core => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
+foo-module => "JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q"
+bar-module => "zptXghmyD5druBl8kx2Qrei6O6fDsKCA7z2KoHp1aqA"
+...
+```
+
+The compiler then resolves aliases like below:
+
+```text
+core.text.io.get-line
+
+↓
+
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+
+--------------
+
+foo-module.path.to.some.file.my-function
+
+↓
+
+JEpjuzZ0rlqxiVuCnD000jEKIA_Y6ku1L3J139h3M6Q.path.to.some.file.my-function
+
+--------------
+
+...
+```
+
+### Resolving `this`
+
+Let's see how `this` is resolved. Here, `this` is a component of a global variables, like the below:
+
+```neut
+import {
+- this.path.to.file
+}
+
+define use-my-function(): text {
+           // 🌟
+  let value = this.path.to.file.my-function() in
+  ...
+}
+```
+
+The first thing to note here is that every module is marked as "main" or "library" when running compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
+
+All the occurrences of `this` in the main module are kept intact. Thus, the resulting assembly file contains a symbol like `this.foo.bar` if the main module contains a definition of `this.foo.bar`.
+
+On the other hand, all the occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the below (in addition to the correspondences of module aliases that we've just seen):
+
+```neut
+// this => (the digest of the library)
+this => "jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o"
+```
+
+The compiler then resolves `this` like below:
+
+```text
+this.text.io.get-line
+
+↓
+
+jIx5FxfoymZ-X0jLXGcALSwK4J7NlR1yCdXqH2ij67o=.text.io.get-line
+```
+
+Thus, the resulting assembly file contains symbols like the above.
+
 ## Compiler Configuration
 
 The behavior of the compiler can be adjusted using the following environment variables:
@@ -209,3 +299,5 @@ The default values are as follows:
 - call-by-value
 - impure
 - the type of `main` must be `() -> unit`
+- A module named `core` is treated specially (treated as the "prelude" library)
+  - Syntactic constructs like `[1, 2, 3]` depends on functions in `core`

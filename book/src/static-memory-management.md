@@ -112,9 +112,12 @@ Luckily, Neut has a way to overcome this sadness.
 
 We need a way to bypass this copying/discarding behavior. Here come _noema types_.
 
-For any type `t`, Neut has a type `&t`. We'll call this the noema type of `t`. We'll also say that a term is noetic if the type of the term is a noema type.
+For any type `t`, Neut has a type `&t`. We'll call this the noema type of `t`. Let's introduce some terminologies:
 
-Unlike ordinary terms, noetic terms aren't copied or discarded even when they are used non-linearly. By using this behavior, we can avoid the disaster we have just seen.
+- We'll call a term `e` a noema if the type of `e` is a noema type.
+- We'll say that a term is noetic if the type of the term is a noema type.
+
+Unlike ordinary terms, noemata aren't copied or discarded even when they are used non-linearly. By using this behavior, we can avoid the disaster we have just seen.
 
 Let's see how it works. We first redefine `length`. If the type `t` is an ADT type, you can inspect its content using `case`:
 
@@ -148,7 +151,7 @@ define length-then-branch(xs: &list(int)): unit {
 
 Note that `xs` is used more than once. However, this `xs` isn't copied because the type of the variable is noetic.
 
-## Creating a Noetic Value
+## Creating a Noema
 
 The last piece for our running question is how to construct such noetic values. This can be done by `let-on`.
 
@@ -184,6 +187,18 @@ cont
 ```
 
 The result of `let-on` (that is, `len` in this case) can't include any noetic term. This restriction is required so that a noetic value won't outlive its hyle. Please see the [corresponding part of the language reference](terms.md#result-type-restriction) for more information.
+
+## Embodying a Noema
+
+Incidentally, you can also create a value of type `a` from a value of type `&a`, as follows:
+
+```neut
+define clone-value<a>(x: &a) -> a {
+  *x
+}
+```
+
+By writing `*e`, you can clone the hyle of the noema `e` along the type `a`, keeping the hyle intact.
 
 ## Allocation Canceling
 

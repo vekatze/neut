@@ -2203,6 +2203,71 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 - You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
 - `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
 
+Also, `channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is there to represent such a channel:
+
+```neut
+define sample(): int {
+  let xs: list(int) = [] in
+
+  // create a new cell using `new-cell`
+  let xs-cell = new-cell(list(int), xs) in
+
+  // create a noema of a cell
+  let result on xs-cell =
+    // mutate the cell using `mutate` (add an element)
+    mutate(xs-cell, function (xs) {
+      Cons(1, xs)
+    });
+
+    // peek the content of a cell using `borrow`
+    borrow(xs-cell, function (xs) {
+      let len = length(xs) in
+      print-int(len) // => 1
+    })
+
+    // mutate again
+    mutate(xs-cell, function (xs) {
+      Cons(2, xs)
+    });
+
+    // get the length of the list in the cell, again
+    borrow(xs-cell, function (xs) {
+      let len = length(xs) in
+      print-int(len) // => 2
+    })
+
+    ...
+  in
+  ...
+}
+```
+
+Here, the type of related wrapper functions are:
+
+```neut
+// create a new channel
+new-cell<a>(x: a): cell(a)
+
+// mutate the content of a cell by `f`
+mutate<a>(ch: &cell(a), f: (a) -> a): unit
+
+// borrow the content of a cell and do something
+borrow<a>(ch: &cell(a), f: (&a) -> unit): unit
+
+// clone the content of a cell
+clone<a>(ch: &cell(a)): a
+```
+
+The definition of, for example, `mutate` is essentially something like the below:
+
+```neut
+define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
+  let ch = Magic.cast(&cell(a), &channel(a), ch) in
+  let v = receive(ch) in
+  send(ch, f(v))
+}
+```
+
 ## `try x = e1 in e2`
 
 `try` is a shorthand for `match` + `except`.

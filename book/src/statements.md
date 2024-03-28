@@ -287,7 +287,7 @@ define use-config(c: config) {
 
 ## `resource`
 
-`resource` defines a new type by specifying how to copy/discard the values of the type. It should look like the below:
+`resource` defines a new type by specifying how to discard/copy the values of the type. It should look like the below:
 
 ```neut
 resource my-new-type {
@@ -306,7 +306,34 @@ The type of a discarder is `int -> int`. The type of the argument is `int`, and 
 
 The type of a copier is `int -> int`. The type of the argument is `int`, and thus you'll have to cast it as necessary. The return value in this term is the new clone of the argument, casted to `int`. You might want to call functions like `malloc` in this term.
 
-Low-level types like arrays can be defined using `resource`.
+For example, the following is a definition of a "boxed" integer type, with some noisy messages:
+
+```neut
+resource boxed-int {
+- function (v: int) {
+    print("discarded!\n");
+    free(v);
+    0
+  }
+- function (v: int) {
+    let orig-value = load-int(v) in
+    let new-ptr = malloc(1) in
+    magic store(int, orig-value, new-ptr);
+    new-ptr
+  }
+}
+
+// provide a way to introduce new boxed integer
+define create-new-boxed-int(x: int): boxed-int {
+  let new-ptr = malloc(8) in
+  store-int(x, new-ptr);
+  magic cast(int, boxed-int, new-ptr)
+}
+```
+
+A value of type `boxed-int` prints `"discarded!\n"` when the value is discarded.
+
+`resource` can be used to define low-level types like arrays.
 
 You can find an example usage of `resource` in the `int8-array.nt` in the [core library](https://github.com/vekatze/neut-core/blob/main/source/int8-array.nt).
 
