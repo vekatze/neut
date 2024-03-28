@@ -2,14 +2,14 @@
 
 ## Table of Contents
 
-- import
-- define
-- inline
-- constant
-- data
-- resource
-- nominal
-- foreign
+- [import](#import)
+- [define](#define)
+- [inline](#inline)
+- [constant](#constant)
+- [data](#data)
+- [resource](#resource)
+- [nominal](#nominal)
+- [foreign](#foreign)
 
 ## `import`
 

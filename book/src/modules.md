@@ -4,16 +4,16 @@ A directory (including its all children) is a _module_ if it contains a file nam
 
 ## Table of Contents
 
-- target
-- dependency
-- archive
-- build
-- source
-- prefix
-- foreign
-- preset
-- antecedent
-- inline-limit
+- [target](#target)
+- [dependency](#dependency)
+- [archive](#archive)
+- [build](#build)
+- [source](#source)
+- [prefix](#prefix)
+- [foreign](#foreign)
+- [preset](#preset)
+- [antecedent](#antecedent)
+- [inline-limit](#inline-limit)
 
 ## `target`
 

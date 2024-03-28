@@ -2,6 +2,13 @@
 
 You can find the source files for the following benchmarks [here](https://github.com/vekatze/neut/placeholder).
 
+## Table of Contents
+
+- [Bubble Sort](#bubble-sort)
+- [Dictionary (Create & Lookup)](#dictionary-create--lookup)
+- [IntMap (Create & Lookup)](#intmap-create--lookup)
+- [Additional Notes](#additional-notes)
+
 ## Bubble Sort
 
 This test creates a random list of length `N` and performs bubble-sort on the list.

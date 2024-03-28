@@ -2,8 +2,8 @@
 
 ## Table of Contents
 
-- Primitive Types and Functions
-- Core Types and Functions
+- [Primitive Types and Functions](#primitive-types-and-functions)
+- [Core Types and Functions](#core-types-and-functions)
 
 ## Primitive Types and Functions
 

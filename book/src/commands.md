@@ -6,18 +6,18 @@ The command `neut` has some subcommands like `neut build`, `neut get`, etc. This
 
 ## Table of Contents
 
-- [Common Notes](./commands.md#common-notes)
-- [neut build](./commands.md#neut-build)
-- `neut check`
-- `neut clean`
-- `neut archive`
-- `neut create`
-- `neut get`
-- `neut format-source`
-- `neut format-ens`
-- `neut zen`
-- `neut lsp`
-- `neut version`
+- [Common Notes](#common-notes)
+- [neut build](#neut-build)
+- [neut check](#neut-check)
+- [neut clean](#neut-clean)
+- [neut archive](#neut-archive)
+- [neut create](#neut-create)
+- [neut get](#neut-get)
+- [neut format-source](#neut-format-source)
+- [neut format-ens](#neut-format-ens)
+- [neut zen](#neut-zen)
+- [neut lsp](#neut-lsp)
+- [neut version](#neut-version)
 
 ## Common Notes
 

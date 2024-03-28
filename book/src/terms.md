@@ -2,41 +2,69 @@
 
 ## Table of Contents
 
-- `tau`
-- Local Variables
-- Top-Level Variables
-- Literals
-- `(x1: a1, ..., xn: an) -> b`
-- `function (x1: a1, ..., xn: an) { e }`
-- `define`
-- `e(e1, ..., en)`
-- `e of {x1 = e1, ..., xn = en}`
-- `exact e`
-- `let`
-- ADT Formation
-- ADT Introduction
-- `match`
-- `case`
-- `&a`
-- `on` (Noema Introduction)
-- `*e` - Noema Elimination
-- `magic`
-- `introspect`
-- `_`
-- `use e {x} in cont`
-- `e::x`
-- `assert`
-- `if`
-- `when cond { e }`
-- `e1; e2`
-- `admit`
-- `detach`, `attach`, and `new-channel`
-- `try pat = e1 in e2`
-- `tie pat = e1 in e2`
-- `?t`
-- `[e1, ..., en]`
-- `with` / `bind`
-- `{ e }`
+### Basics
+
+- [tau](#tau)
+- [Local Variables](#local-variables)
+- [Top-Level Variables](#top-level-variables)
+- [let](#let)
+
+### Primitive Value
+
+- [Integers](#integers)
+- [Floats](#floats)
+- [Texts](#texts)
+
+### Function
+
+- [(x1: a1, ..., xn: an) -> b](#x1-a1--xn-an---b)
+- [function (x1: a1, ..., xn: an) { e }](#function-x1-a1--xn-an--e-)
+- [define f(x1: a1, ..., xn: an): c { e }](#define-fx1-a1--xn-an-c--e-)
+- [e(e1, ..., en)](#ee1--en)
+- [e of {x1 = e1, ..., xn = en}](#e-of-x1--e1--xn--en)
+- [exact e](#exact-e)
+
+### ADT
+
+- [ADT Formation](#adt-formation)
+- [Constructors](#constructors-adt-introduction)
+- [match](#match)
+
+### Noema
+
+- [case](#case)
+- [&a](#a)
+- [on](#on)
+- [\*e](#e)
+
+### Flow and Channel
+
+- [flow](#flow)
+- [detach](#detach)
+- [attach](#attach)
+- [new-channel](#new-channel)
+
+### Miscs
+
+- [magic](#magic)
+- [introspect](#introspect)
+- [admit](#admit)
+- [assert](#assert)
+- [\_](#_)
+
+### Syntax Sugar
+
+- [use e {x1, ..., xn} in cont](#use-e-x1--xn-in-cont)
+- [e::x](#ex)
+- [if](#if)
+- [when cond { e }](#when-cond--e-)
+- [e1; e2](#e1-e2)
+- [try x = e1 in e2](#try-x--e1-in-e2)
+- [tie x = e1 in e2](#tie-x--e1-in-e2)
+- [?t](#t)
+- [[e1, ..., en]](#e1--en)
+- [with / bind](#with--bind)
+- [{e}](#e)
 
 ## `tau`
 
@@ -226,6 +254,92 @@ define fastcc ptr @"this.sample.get-increment"() {
 ```
 
 Incidentally, these 3-word tuples are optimized away as long as top-level variables (functions) are called directly with arguments.
+
+## `let`
+
+### Example
+
+```neut
+define use-let(): unit {
+  // 🌟 `let`
+  let t = "test" in
+  print(t)
+}
+
+define use-let(): unit {
+  let bar =
+    // 🌟 nested `let`
+    let foo = some-func() in
+    other-func(foo)
+  in
+  do-something(bar)
+}
+
+define use-let(): unit {
+  // 🌟 `let` with a type annotation
+  let t: &text = "test" in
+  print(t)
+}
+
+```
+
+`let` can be used to destruct an ADT value:
+
+```neut
+data item {
+- Item(int, bool)
+}
+
+define use-item(x: item): unit {
+  // 🌟 use `let` with a pattern
+  let Item(i, b) = x in // ← here
+  print-int(i)
+}
+
+define use-item-2(x: item): unit {
+  // 🌟 use `let` with an of-pattern
+  let Item of {i} = x in
+  print-int(i)
+}
+```
+
+### Syntax
+
+```neut
+let x = e1 in e2
+
+let x: t = e1 in e2
+```
+
+### Semantics
+
+`let x = e1 in e2` defines binds the result of `e1` to the variable `x`. This variable can then be used in `e2`.
+
+### Type
+
+```neut
+Γ ⊢ e1: a     Γ, x: a ⊢ e2: b
+-----------------------------
+   Γ ⊢ let x = e1 in e2: b
+```
+
+### Note
+
+(1) `let x = e1 in e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1 in e2`.
+
+(2) When a pattern is passed, `let` is the following syntax sugar:
+
+```neut
+let pat = x in
+cont
+
+↓
+
+match x {
+- pat =>
+  cont
+}
+```
 
 ## Integers
 
@@ -448,7 +562,7 @@ A `function` is compiled into a three-word closure. For more, please see [How to
 
 - Lambda abstractions defined by `function` are reduced at compile-time when possible. If you would like to avoid this behavior, consider using `define`.
 
-## `define`
+## `define f(x1: a1, ..., xn: an): c { e }`
 
 `define` (at the term-level) can be used to create a function with possible recursion.
 
@@ -650,6 +764,8 @@ define use-foo(): unit {
 ### Syntax
 
 ```neut
+e of {x1 = e1, ..., xn = en}
+
 e of {
 - x1 = e1
 - ...
@@ -757,92 +873,6 @@ where `?Mi`s are metavariables that must be inferred by the type checker.
 ### Note
 
 As you can see from its semantics, an `exact` is just a shorthand of a "hole-application".
-
-## `let`
-
-### Example
-
-```neut
-define use-let(): unit {
-  // 🌟 `let`
-  let t = "test" in
-  print(t)
-}
-
-define use-let(): unit {
-  let bar =
-    // 🌟 nested `let`
-    let foo = some-func() in
-    other-func(foo)
-  in
-  do-something(bar)
-}
-
-define use-let(): unit {
-  // 🌟 `let` with a type annotation
-  let t: &text = "test" in
-  print(t)
-}
-
-```
-
-`let` can be used to destruct an ADT value:
-
-```neut
-data item {
-- Item(int, bool)
-}
-
-define use-item(x: item): unit {
-  // 🌟 use `let` with a pattern
-  let Item(i, b) = x in // ← here
-  print-int(i)
-}
-
-define use-item-2(x: item): unit {
-  // 🌟 use `let` with an of-pattern
-  let Item of {i} = x in
-  print-int(i)
-}
-```
-
-### Syntax
-
-```neut
-let x = e1 in e2
-
-let x: t = e1 in e2
-```
-
-### Semantics
-
-`let x = e1 in e2` defines binds the result of `e1` to the variable `x`. This variable can then be used in `e2`.
-
-### Type
-
-```neut
-Γ ⊢ e1: a     Γ, x: a ⊢ e2: b
------------------------------
-   Γ ⊢ let x = e1 in e2: b
-```
-
-### Remark
-
-(1) `let x = e1 in e2` isn't exactly the same as `{function (x) {e2}}(e1)`. The difference lies in the fact that the type of `e2` can't depend on `x` in `let x = e1 in e2`.
-
-(2) When a pattern is passed, `let` is the following syntax sugar:
-
-```neut
-let pat = x in
-cont
-
-↓
-
-match x {
-- pat =>
-  cont
-}
-```
 
 ## ADT Formation
 
@@ -1379,6 +1409,296 @@ The original hyle is kept intact.
 Γ ⊢ *e: a
 ```
 
+## `flow`
+
+A `flow` in Neut is the type of a control flow.
+
+### Example
+
+```neut
+flow(int) // the type of control flow that returns int
+
+flow((int) -> bool) // the type of control flow that returns (int) -> bool
+```
+
+### Syntax
+
+```neut
+flow(t)
+```
+
+### Semantics
+
+For any type `t`, the type `flow(t)` is compiled into a pointer to a closed function that discards and copies the values of the type in the following manner:
+
+- Discard `e: flow(t)`: Waits the flow `e` to finish and discard the result along the type `t`, and then returns 0
+- Copy `e: flow(t)`: Waits the flow `e` to finish and copy the result along the type `t`, creates an already-finished control flow, and returns it as a clone.
+
+The type `t` is inside the internal representation of `e`. Because of that, for any `t`, `flow(t)` is compiled to the same closed function. For more, see the following Note.
+
+### Type
+
+```neut
+Γ ⊢ t: tau
+----------------
+Γ ⊢ flow(t): tau
+```
+
+### Note
+
+(1) The internal representation of `e: flow(t)` is a "3-word + 1-byte" tuple like the below:
+
+```neut
+   (thread-id, t, result-value-or-none, finished)
+//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^
+//  3-word                              1-byte
+```
+
+When a flow is created,
+
+- the value of `result-value-or-none` is initialized to 0, and
+- the value of `finished` is also initialized to 0.
+
+When a flow is completed,
+
+- the value `result-value-or-none` is updated to the result of the flow, and
+- the value `finished` is updated to 1.
+
+(2) As you can see from the semantics, you must use control flows linearly to perform parallel computation.
+
+(3) A flow in Neut is a thin layer over pthread.
+
+## `detach`
+
+You can use `detach` to create a new control flow.
+
+### Example
+
+```neut
+define foo(): flow(int) {
+  detach {
+    print("fA");
+    1
+  }
+}
+
+define bar(): flow(int) {
+  let f =
+    detach {
+      print("fA");
+      1
+    }
+  in
+  whatever();
+  f
+}
+```
+
+### Syntax
+
+```neut
+detach {
+  e
+}
+```
+
+### Semantics
+
+`detach { e }` creates a new control flow and starts computation of `e` in that flow.
+
+### Type
+
+```neut
+Γ ⊢ e: a
+-------------------------
+Γ ⊢ detach { e }: flow(a)
+```
+
+### Note
+
+- `detach` internally uses pthread.
+
+## `attach`
+
+You can use `detach` to wait a control flow and get its result.
+
+### Example
+
+```neut
+define foo(f: flow(int)): int {
+  attach { f }
+}
+
+define bar(f: flow((int) -> bool)): bool {
+  let k = attach { f } in
+  k(100)
+}
+```
+
+### Syntax
+
+```neut
+attach { e }
+```
+
+### Semantics
+
+`attach` waits given computational flow to finish and gets its resulting value.
+
+It also `free`s the 3-word + 1-byte tuple that represents a control flow after getting the result.
+
+### Type
+
+```neut
+Γ ⊢ e: flow(a)
+-------------------
+Γ ⊢ attach { e }: a
+```
+
+### Note
+
+- `attach` internally uses pthread.
+
+## `new-channel`
+
+You can create a channel using `new-channel`, and send/receive values using those channels.
+
+### Example
+
+```neut
+define sample(): unit {
+  let ch0 = new-channel(int) in
+  let ch1 = new-channel(int) in
+  // use channels after turning them into noemata
+  let result on ch0, ch1 =
+    let f =
+      detach {
+        let message0 = receive(_, ch0) in // receive value from ch0
+        send(int, ch1, add-int(message0, 1)); // send value to ch1
+        message0
+      }
+    in
+    let g =
+      detach {
+        let message1 = receive(_, ch1) in // receive value from ch1
+        add-int(message1, 1)
+      }
+    in
+    send(int, ch0, 0); // send value to ch0
+    let v1 = attach { f } in
+    let v2 = attach { g } in
+    print("hey")
+  in
+  // ... cont ...
+}
+```
+
+### Syntax
+
+```neut
+new-channel(e)
+```
+
+### Semantics
+
+`new-channel` creates a new channel that can be used to send/receive values between flows.
+
+The internal representation of `channel(a)` is something like the below:
+
+```neut
+(queue, thread-mutex, thread-cond, a)
+```
+
+The `queue` is the place where inter-channel values are enqueued/dequeued. More specifically,
+
+- the function `send: <a>(ch: &channel, x: a) -> unit` enqueues values to there, and
+- the function `receive: <a>(ch: &channel) -> a` dequeues values from there.
+
+The `thread-mutex` is initialized by `pthread_mutex_init(3)`. This field is used to update the queue in a thread-safe way.
+
+The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used to update the queue in a thread-safe way.
+
+### Type
+
+```
+
+------------------------------------
+Γ ⊢ new-channel: <a>() -> channel(a)
+```
+
+### Note
+
+- Channels are intended to be used with flows.
+- You'll use a channel after turning them into a noema, as in the example above.
+- You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
+- You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
+- `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
+
+Also, `channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is there to represent such a channel:
+
+```neut
+define sample(): int {
+  let xs: list(int) = [] in
+
+  // create a new cell using `new-cell`
+  let xs-cell = new-cell(list(int), xs) in
+
+  // create a noema of a cell
+  let result on xs-cell =
+    // mutate the cell using `mutate` (add an element)
+    mutate(xs-cell, function (xs) {
+      Cons(1, xs)
+    });
+
+    // peek the content of a cell using `borrow`
+    borrow(xs-cell, function (xs) {
+      let len = length(xs) in
+      print-int(len) // => 1
+    })
+
+    // mutate again
+    mutate(xs-cell, function (xs) {
+      Cons(2, xs)
+    });
+
+    // get the length of the list in the cell, again
+    borrow(xs-cell, function (xs) {
+      let len = length(xs) in
+      print-int(len) // => 2
+    })
+
+    ...
+  in
+  ...
+}
+```
+
+Here, the type of related wrapper functions are:
+
+```neut
+// create a new channel
+new-cell<a>(x: a): cell(a)
+
+// mutate the content of a cell by `f`
+mutate<a>(ch: &cell(a), f: (a) -> a): unit
+
+// borrow the content of a cell and do something
+borrow<a>(ch: &cell(a), f: (&a) -> unit): unit
+
+// clone the content of a cell
+clone<a>(ch: &cell(a)): a
+```
+
+The definition of, for example, `mutate` is essentially something like the below:
+
+```neut
+define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
+  let ch = Magic.cast(&cell(a), &channel(a), ch) in
+  let v = receive(ch) in
+  send(ch, f(v))
+}
+```
+
 ## `magic`
 
 You can use `magic` to perform weird stuff. Using a `magic` is an unsafe operation.
@@ -1582,6 +1902,88 @@ The configuration value `default` is equal to to any configuration values.
 
 - `introspect` is resolved at compile-time.
 
+## `admit`
+
+You can use `admit` to suppress the type checker and sketch the structure of your program.
+
+### Example
+
+```neut
+define my-complex-function(): unit {
+  admit
+}
+```
+
+### Syntax
+
+```neut
+admit
+```
+
+### Sematics
+
+Evaluating `admit` will exit the program, displaying a message like the below:
+
+```text
+admit: /path/to/file.nt:1:2
+```
+
+When `admit` exits a program, the exit code is 1.
+
+### Type
+
+```neut
+Γ ⊢ t: tau
+------------
+Γ ⊢ admit: t
+```
+
+### Note
+
+- `admit` is the `undefined` in Haskell.
+- `admit` is intended to be used ephemerally during development.
+
+## `assert`
+
+You can use `assert` to ensure that certain run-time condition is satisfied.
+
+### Example
+
+```neut
+define fact(n: int): int {
+  assert "the input must be non-negative" {
+    ge-int(n, 0)
+  };
+  if eq-int(n, 0) {
+    1
+  } else {
+    mul-int(n, fact(sub-int(n, 1)))
+  }
+}
+```
+
+### Syntax
+
+```neut
+assert "any-string" {
+  e
+}
+```
+
+### Semantics
+
+If the [build mode](./commands.md#--mode) is `release`, `assert` does nothing.
+
+Otherwise, `assert "description" { condition }` evaluates `condition` and check if it is `True`. If it is `True`, the `assert` simply evaluates to `Unit`. Otherwise, it reports that the assertion `"description"` failed and exits the execution of the program with the exit code `1`.
+
+### Type
+
+```neut
+Γ ⊢ condition: bool
+--------------------------------------------
+Γ ⊢ assert "description" { condition }: unit
+```
+
 ## `_`
 
 `_` is a hole that must be inferred by the type checker.
@@ -1616,9 +2018,9 @@ _
 Γ ⊢ e[tmp := _]: a
 ```
 
-## `use e {x} in cont`
+## `use e {x1, ..., xn} in cont`
 
-You can use `use e {x} in cont` as a shorthand to destruct an ADT that has only one constructor.
+You can use `use e {x1, ..., xn} in cont` as a shorthand to destruct an ADT that has only one constructor.
 
 ### Example
 
@@ -1752,47 +2154,6 @@ define make-big-dict(): dict(int, int) {
 ```
 
 You can find a working example of such a use case [in the core library](https://github.com/vekatze/neut-core/blob/main/source/bench/random-dict.nt).
-
-## `assert`
-
-You can use `assert` to ensure that certain run-time condition is satisfied.
-
-### Example
-
-```neut
-define fact(n: int): int {
-  assert "the input must be non-negative" {
-    ge-int(n, 0)
-  };
-  if eq-int(n, 0) {
-    1
-  } else {
-    mul-int(n, fact(sub-int(n, 1)))
-  }
-}
-```
-
-### Syntax
-
-```neut
-assert "any-string" {
-  e
-}
-```
-
-### Semantics
-
-If the [build mode](./commands.md#--mode) is `release`, `assert` does nothing.
-
-Otherwise, `assert "description" { condition }` evaluates `condition` and check if it is `True`. If it is `True`, the `assert` simply evaluates to `Unit`. Otherwise, it reports that the assertion `"description"` failed and exits the execution of the program with the exit code `1`.
-
-### Type
-
-```neut
-Γ ⊢ condition: bool
---------------------------------------------
-Γ ⊢ assert "description" { condition }: unit
-```
 
 ## `if`
 
@@ -1936,337 +2297,6 @@ e2
 ### Type
 
 Derived from the desugared form.
-
-## `admit`
-
-You can use `admit` to suppress the type checker and sketch the structure of your program.
-
-### Example
-
-```neut
-define my-complex-function(): unit {
-  admit
-}
-```
-
-### Syntax
-
-```neut
-admit
-```
-
-### Sematics
-
-Evaluating `admit` will exit the program, displaying a message like the below:
-
-```text
-admit: /path/to/file.nt:1:2
-```
-
-When `admit` exits a program, the exit code is 1.
-
-### Type
-
-```neut
-Γ ⊢ t: tau
-------------
-Γ ⊢ admit: t
-```
-
-### Note
-
-- `admit` is the `undefined` in Haskell.
-- `admit` is intended to be used ephemerally during development.
-
-## `flow` (flow-formation)
-
-A `flow` in Neut is the type of a control flow.
-
-### Example
-
-```neut
-flow(int) // the type of control flow that returns int
-
-flow((int) -> bool) // the type of control flow that returns (int) -> bool
-```
-
-### Syntax
-
-```neut
-flow(t)
-```
-
-### Semantics
-
-For any type `t`, the type `flow(t)` is compiled into a pointer to a closed function that discards and copies the values of the type in the following manner:
-
-- Discard `e: flow(t)`: Waits the flow `e` to finish and discard the result along the type `t`, and then returns 0
-- Copy `e: flow(t)`: Waits the flow `e` to finish and copy the result along the type `t`, creates an already-finished control flow, and returns it as a clone.
-
-The type `t` is inside the internal representation of `e`. Because of that, for any `t`, `flow(t)` is compiled to the same closed function. For more, see the following Note.
-
-### Type
-
-```neut
-Γ ⊢ t: tau
-----------------
-Γ ⊢ flow(t): tau
-```
-
-### Note
-
-(1) The internal representation of `e: flow(t)` is a "3-word + 1-byte" tuple like the below:
-
-```neut
-   (thread-id, t, result-value-or-none, finished)
-//  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^  ^^^^^^^^
-//  3-word                              1-byte
-```
-
-When a flow is created,
-
-- the value of `result-value-or-none` is initialized to 0, and
-- the value of `finished` is also initialized to 0.
-
-When a flow is completed,
-
-- the value `result-value-or-none` is updated to the result of the flow, and
-- the value `finished` is updated to 1.
-
-(2) As you can see from the semantics, you must use control flows linearly to perform parallel computation.
-
-(3) A flow in Neut is a thin layer over pthread.
-
-## `detach` (flow-introduction)
-
-You can use `detach` to create a new control flow.
-
-### Example
-
-```neut
-define foo(): flow(int) {
-  detach {
-    print("fA");
-    1
-  }
-}
-
-define bar(): flow(int) {
-  let f =
-    detach {
-      print("fA");
-      1
-    }
-  in
-  whatever();
-  f
-}
-```
-
-### Syntax
-
-```neut
-detach {
-  e
-}
-```
-
-### Semantics
-
-`detach { e }` creates a new control flow and starts computation of `e` in that flow.
-
-### Type
-
-```neut
-Γ ⊢ e: a
--------------------------
-Γ ⊢ detach { e }: flow(a)
-```
-
-### Note
-
-- `detach` internally uses pthread.
-
-## `attach` (flow-elimination)
-
-You can use `detach` to wait a control flow and get its result.
-
-### Example
-
-```neut
-define foo(f: flow(int)): int {
-  attach { f }
-}
-
-define bar(f: flow((int) -> bool)): bool {
-  let k = attach { f } in
-  k(100)
-}
-```
-
-### Syntax
-
-```neut
-attach { e }
-```
-
-### Semantics
-
-`attach` waits given computational flow to finish and gets its resulting value.
-
-It also `free`s the 3-word + 1-byte tuple that represents a control flow after getting the result.
-
-### Type
-
-```neut
-Γ ⊢ e: flow(a)
--------------------
-Γ ⊢ attach { e }: a
-```
-
-### Note
-
-- `attach` internally uses pthread.
-
-## `new-channel`
-
-You can create a channel using `new-channel`, and send/receive values using those channels.
-
-### Example
-
-```neut
-define sample(): unit {
-  let ch0 = new-channel(int) in
-  let ch1 = new-channel(int) in
-  // use channels after turning them into noemata
-  let result on ch0, ch1 =
-    let f =
-      detach {
-        let message0 = receive(_, ch0) in // receive value from ch0
-        send(int, ch1, add-int(message0, 1)); // send value to ch1
-        message0
-      }
-    in
-    let g =
-      detach {
-        let message1 = receive(_, ch1) in // receive value from ch1
-        add-int(message1, 1)
-      }
-    in
-    send(int, ch0, 0); // send value to ch0
-    let v1 = attach { f } in
-    let v2 = attach { g } in
-    print("hey")
-  in
-  // ... cont ...
-}
-```
-
-### Syntax
-
-```neut
-new-channel(e)
-```
-
-### Semantics
-
-`new-channel` creates a new channel that can be used to send/receive values between flows.
-
-The internal representation of `channel(a)` is something like the below:
-
-```neut
-(queue, thread-mutex, thread-cond, a)
-```
-
-The `queue` is the place where inter-channel values are enqueued/dequeued. More specifically,
-
-- the function `send: <a>(ch: &channel, x: a) -> unit` enqueues values to there, and
-- the function `receive: <a>(ch: &channel) -> a` dequeues values from there.
-
-The `thread-mutex` is initialized by `pthread_mutex_init(3)`. This field is used to update the queue in a thread-safe way.
-
-The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used to update the queue in a thread-safe way.
-
-### Type
-
-```
-
-------------------------------------
-Γ ⊢ new-channel: <a>() -> channel(a)
-```
-
-### Note
-
-- Channels are intended to be used with flows.
-- You'll use a channel after turning them into a noema, as in the example above.
-- You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
-- You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
-- `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
-
-Also, `channel(a)` can be used as a basis for mutable variables. The idea is to create a channel that is always of length 1. The type `cell(a)` is there to represent such a channel:
-
-```neut
-define sample(): int {
-  let xs: list(int) = [] in
-
-  // create a new cell using `new-cell`
-  let xs-cell = new-cell(list(int), xs) in
-
-  // create a noema of a cell
-  let result on xs-cell =
-    // mutate the cell using `mutate` (add an element)
-    mutate(xs-cell, function (xs) {
-      Cons(1, xs)
-    });
-
-    // peek the content of a cell using `borrow`
-    borrow(xs-cell, function (xs) {
-      let len = length(xs) in
-      print-int(len) // => 1
-    })
-
-    // mutate again
-    mutate(xs-cell, function (xs) {
-      Cons(2, xs)
-    });
-
-    // get the length of the list in the cell, again
-    borrow(xs-cell, function (xs) {
-      let len = length(xs) in
-      print-int(len) // => 2
-    })
-
-    ...
-  in
-  ...
-}
-```
-
-Here, the type of related wrapper functions are:
-
-```neut
-// create a new channel
-new-cell<a>(x: a): cell(a)
-
-// mutate the content of a cell by `f`
-mutate<a>(ch: &cell(a), f: (a) -> a): unit
-
-// borrow the content of a cell and do something
-borrow<a>(ch: &cell(a), f: (&a) -> unit): unit
-
-// clone the content of a cell
-clone<a>(ch: &cell(a)): a
-```
-
-The definition of, for example, `mutate` is essentially something like the below:
-
-```neut
-define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
-  let ch = Magic.cast(&cell(a), &channel(a), ch) in
-  let v = receive(ch) in
-  send(ch, f(v))
-}
-```
 
 ## `try x = e1 in e2`
 

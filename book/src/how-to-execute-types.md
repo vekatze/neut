@@ -1,10 +1,13 @@
 # How to Execute Types
 
-## What You'll Learn Here
+## Table of Contents
 
-- Internal representations of types in Neut
-- How arguments of polymorphic functions are n-copied
-- How function types are translated into functions
+- [Types as Closed Functions](#types-as-closed-functions)
+- [Example Behavior of Types](#example-behavior-of-types)
+- [Immediate Types](#immediate-types)
+- [Polymorphic Types](#polymorphic-types)
+- [Algebraic Data Types](#algebraic-data-types)
+- [Advanced: Function Types](#advanced-function-types)
 
 ## Types as Closed Functions
 
