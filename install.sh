@@ -149,7 +149,7 @@ echo "export NEUT_CORE_MODULE_URL=\"https://github.com/vekatze/neut-core/raw/mai
 echo "export NEUT_CORE_MODULE_DIGEST=\"ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo\""
 
 if command -v apt-get >/dev/null 2>&1; then
-  echo "export NEUT_CLANG=$CLANG
+  echo "export NEUT_CLANG=$CLANG"
 elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1 && [ $HAS_CLANG -eq 0 ]; then
   echo "export NEUT_CLANG=$(brew --prefix)/opt/llvm/bin/clang-N # N == 15, 16, etc."
 fi
