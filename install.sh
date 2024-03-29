@@ -92,34 +92,39 @@ fi
 
 if [ $HAS_CLANG -eq 0 ] || [ $HAS_TAR -eq 0 ] || [ $HAS_CURL -eq 0 ] || [ $HAS_ZSTD -eq 0 ]; then
   if command -v apt-get >/dev/null 2>&1; then
-    printf $BLUE "info: "
+    printf $BLUE "note: "
     echo "You can install all the dependencies by:"
     echo "  apt-get install -y --no-install-recommends curl tar zstd lsb-release wget software-properties-common gnupg && bash -c \"\$(wget -O - https://apt.llvm.org/llvm.sh)\" -s 16"
   elif command -v pacman >/dev/null 2>&1; then
-    printf $BLUE "info: "
+    printf $BLUE "note: "
     echo "You can install all the dependencies by:"
     echo "  pacman -S curl tar zstd clang"
   elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1; then
     os_version=$(sw_vers -productVersion | awk -F . '{print $1}')
     if [ $os_version -ge 14 ]; then # 14 == Sonoma
-      printf $BLUE "info: "
+      printf $BLUE "note: "
       echo "You can install all the dependencies by:"
       echo "  brew install zstd"
     else
-      printf $BLUE "info: "
+      printf $BLUE "note: "
       echo "You can install all the dependencies by:"
       echo "  brew install llvm zstd"
     fi
   fi
-  printf $BLUE "info: "
+  printf $BLUE "note: "
   echo "Please re-run this script after installing all the dependencies."
   exit 1
 fi
 
+printf $BLUE "✓ "
+echo "found all the dependencies."
+
+echo ""
+
 target_dir="$HOME/.local/bin"
 mkdir -p $target_dir
 
-printf $BLUE "info: "
+printf $BLUE "note: "
 echo "downloading the compiler..."
 
 echo ""
@@ -142,7 +147,7 @@ fi
 
 echo ""
 
-printf $BLUE "info: "
+printf $BLUE "note: "
 echo "please restart your shell after adding the following environment variables to your shell config:"
 
 echo ""
@@ -157,7 +162,7 @@ fi
 
 echo ""
 
-printf $BLUE "info: "
-echo "you can run \`neut version\` to check if the compiler is installed correctly."
+printf $BLUE "note: "
+echo "you can run \`neut version\` to see if the compiler is installed correctly."
 
 echo ""

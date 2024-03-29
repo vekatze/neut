@@ -5,10 +5,10 @@
 To install the compiler toolchain, execute [the installation script](github.com/vekatze/neut/TBD):
 
 ```sh
-curl -sSL https://github.com/(..) | sh
+curl -sSL https://raw.githubusercontent.com/vekatze/neut/main/install.sh | bash
 ```
 
-and follow the instructions.
+Then please follow the instructions.
 
 You may also want to [configure your editor](./editor-setup.md).
 
