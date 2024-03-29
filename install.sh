@@ -137,7 +137,7 @@ echo ""
 if [[ ":$PATH:" != *":$HOME/.local/bin:"* ]]; then
   echo ""
   printf $MAGENTA "warning: "
-  echo "~/.local/bin is not in your \$PATH."
+  echo "~/.local/bin is not in your \$PATH. "
 fi
 
 echo ""
@@ -159,3 +159,5 @@ echo ""
 
 printf $BLUE "info: "
 echo "you can run \`neut version\` to check if the compiler is installed correctly."
+
+echo ""
