@@ -22,14 +22,12 @@ import Data.Text qualified as T
 import Data.Text.Encoding
 import Data.Time.Clock
 import Entity.Config.Build
-import Entity.Const
 import Entity.OutputKind qualified as OK
 import Entity.Source
 import Entity.Target
 import GHC.IO.Handle
 import Path
 import Path.IO
-import System.Environment
 import System.Exit
 import System.Process
 
@@ -81,7 +79,7 @@ emit' llvmCode kind path = do
 
 emitInner :: [ClangOption] -> L.ByteString -> Path Abs File -> App ()
 emitInner additionalClangOptions llvm outputPath = do
-  clang <- liftIO getClang
+  clang <- liftIO External.getClang
   let clangCmd = proc clang $ clangBaseOpt outputPath ++ additionalClangOptions
   withRunInIO $ \runInIO ->
     withCreateProcess clangCmd {std_in = CreatePipe, std_err = CreatePipe} $
@@ -111,7 +109,7 @@ clangBaseOpt outputPath =
 
 link :: [Path Abs File] -> Path Abs File -> App ()
 link objectPathList outputPath = do
-  clang <- liftIO getClang
+  clang <- liftIO External.getClang
   clangOptString <- getClangOptString
   ensureDir $ parent outputPath
   External.run clang $ clangLinkOpt objectPathList outputPath clangOptString
@@ -143,15 +141,6 @@ raiseIfProcessFailed procName exitCode h =
           <> T.pack (show i)
           <> "):\n"
           <> errStr
-
-getClang :: IO String
-getClang = do
-  mClang <- lookupEnv envVarClang
-  case mClang of
-    Just clang ->
-      return clang
-    Nothing ->
-      return "clang"
 
 getClangOptString :: App String
 getClangOptString =
