@@ -2,12 +2,6 @@
 
 What's interesting about Neut resides in its resource management. Towards that, here we'll briefly see its aspect as a functional programming language.
 
-The code in this section can be obtained by:
-
-```sh
-git clone https://github.com/vekatze/XXX.git
-```
-
 Here I'll assume that you are somewhat familiar with other functional programming languages like Haskell, OCaml, or F#. You'll be confused if you don't know what ADT means, for example.
 
 ## What You'll Learn Here

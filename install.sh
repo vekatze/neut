@@ -95,6 +95,7 @@ if [ $HAS_CLANG -eq 0 ] || [ $HAS_TAR -eq 0 ] || [ $HAS_CURL -eq 0 ] || [ $HAS_Z
     printf $BLUE "note: "
     echo "You can install all the dependencies by:"
     echo "  apt-get install -y --no-install-recommends curl tar zstd lsb-release wget software-properties-common gnupg && bash -c \"\$(wget -O - https://apt.llvm.org/llvm.sh)\" -s 16"
+    # packages from llvm.sh can be uninstalled by: apt remove clang-16 lldb-16 lld-16 clangd-16
   elif command -v pacman >/dev/null 2>&1; then
     printf $BLUE "note: "
     echo "You can install all the dependencies by:"

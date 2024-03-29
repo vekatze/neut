@@ -15,7 +15,7 @@ export NEUT_CORE_MODULE_URL="https://github.com/vekatze/neut-core/raw/main/archi
 export NEUT_CORE_MODULE_DIGEST="ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo"
 ```
 
-Then get the compiler:
+Then, get the compiler:
 
 ```sh
 # macOS (arm64)

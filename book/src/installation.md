@@ -2,7 +2,7 @@
 
 ## Installation
 
-To install the compiler toolchain, execute [the installation script](github.com/vekatze/neut/TBD):
+To install the compiler toolchain, execute [the installation script](https://raw.githubusercontent.com/vekatze/neut/main/install.sh):
 
 ```sh
 curl -sSL https://raw.githubusercontent.com/vekatze/neut/main/install.sh | bash
@@ -16,9 +16,7 @@ If you prefer manual installation, see [here](./manual-installation.md).
 
 ## Uninstallation
 
-To uninstall the toolchain, just remove the following two:
+To uninstall the toolchain, remove the following two:
 
 - the binary `~/.local/bin/neut`
 - the directory `~/.cache/neut/`
-
-Neut won't clutter your PC.

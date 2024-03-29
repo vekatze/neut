@@ -70,7 +70,7 @@ You may wonder: _"\_So we need to, for example, copy the whole list just to get 
 
 ## List of Other Basic Characteristics?
 
-- Call by value (i.e. non-lazy)
+- Call by value
 - Impure
 - Compiles to [LLVM IR](https://llvm.org/docs/LangRef.html), and binary
 - The type system ≒ [CoC](https://en.wikipedia.org/wiki/Calculus_of_constructions) + [ADT](https://en.wikipedia.org/wiki/Algebraic_data_type) + (fix) - (universe hierarchy)
