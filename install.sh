@@ -53,6 +53,7 @@ for CLANG in "${clangs[@]}"; do
     version=$(echo | $CLANG -dM -E - | grep __clang_major__ | awk '{print $3}')
     if [ $version -ge 15 ]; then
       HAS_CLANG=1
+      break
     fi
   fi
 done
@@ -71,7 +72,7 @@ fi
 
 if [ $HAS_CLANG -eq 0 ]; then
   printf $MAGENTA "warning: "
-  echo "\`$CLANG\` (>= 15.0.0) is missing"
+  echo "\`clang\` (>= 15.0.0) is missing"
 fi
 
 if [ $HAS_TAR -eq 0 ]; then
@@ -117,8 +118,16 @@ fi
 
 target_dir="$HOME/.local/bin"
 mkdir -p $target_dir
-# curl -sSL -o $target_dir/neut $executable_url
-# chmod +x $target_dir/neut
+
+printf $BLUE "info: "
+echo "Downloading the compiler..."
+
+echo ""
+
+curl -SL -o $target_dir/neut $executable_url
+chmod +x $target_dir/neut
+
+echo ""
 
 printf $BLUE "✓ "
 printf "Installed the compiler to "
@@ -133,14 +142,14 @@ fi
 echo ""
 
 printf $BLUE "info: "
-echo "Add the following environment variables to your shell config:"
+echo "Please add the following environment variables to your shell config:"
 
 echo ""
 echo "export NEUT_CORE_MODULE_URL=\"https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst\""
 echo "export NEUT_CORE_MODULE_DIGEST=\"ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo\""
 
 if command -v apt-get >/dev/null 2>&1; then
-  echo "export NEUT_CLANG=clang-17 # N == 15, 16, etc."
+  echo "export NEUT_CLANG=$CLANG
 elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1 && [ $HAS_CLANG -eq 0 ]; then
   echo "export NEUT_CLANG=$(brew --prefix)/opt/llvm/bin/clang-N # N == 15, 16, etc."
 fi
