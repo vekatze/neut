@@ -120,17 +120,17 @@ target_dir="$HOME/.local/bin"
 mkdir -p $target_dir
 
 printf $BLUE "info: "
-echo "Downloading the compiler..."
+echo "downloading the compiler..."
 
 echo ""
 
-curl -SL -o $target_dir/neut $executable_url
-chmod +x $target_dir/neut
+# curl -SL -o $target_dir/neut $executable_url
+# chmod +x $target_dir/neut
 
 echo ""
 
 printf $BLUE "✓ "
-printf "Installed the compiler to "
+printf "installed the compiler to "
 printf $CYAN "$HOME/.local/bin/neut"
 echo ""
 
@@ -142,7 +142,7 @@ fi
 echo ""
 
 printf $BLUE "info: "
-echo "Please add the following environment variables to your shell config:"
+echo "please add the following environment variables to your shell config:"
 
 echo ""
 echo "export NEUT_CORE_MODULE_URL=\"https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst\""
@@ -155,3 +155,30 @@ elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1 && [ $HAS_CLANG -eq
 fi
 
 echo ""
+
+shell_config=""
+user_shell=$(basename "$SHELL")
+
+if [ "$user_shell" == "bash" ]; then
+  shell_config="~/.bashrc"
+elif [ "$user_shell" == "zsh" ]; then
+  shell_config="~/.zshrc"
+fi
+
+if [ "$shell_config" != "" ]; then
+  printf $BLUE "info: "
+  echo "you can copy & paste the below to add environment variables:"
+
+  echo ""
+  echo "echo 'export NEUT_CORE_MODULE_URL=\"https://github.com/vekatze/neut-core/raw/main/archive/0-38.tar.zst\"' >> $shell_config"
+  echo "echo 'export NEUT_CORE_MODULE_DIGEST=\"ub3MUXVac9F1rebIhl_Crm2_GJ7PzCAekgp8aYH3-mo\"' >> $shell_config"
+
+  if command -v apt-get >/dev/null 2>&1; then
+    echo "echo 'export NEUT_CLANG=$CLANG' >> $shell_config"
+  elif [ "$os" = "Darwin" ] && command -v brew >/dev/null 2>&1 && [ $HAS_CLANG -eq 0 ]; then
+    echo "echo 'export NEUT_CLANG=$(brew --prefix)/opt/llvm/bin/clang-N # N == 15, 16, etc.' >> $shell_config"
+  fi
+
+  echo ""
+
+fi
