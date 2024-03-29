@@ -94,7 +94,7 @@ if [ $HAS_CLANG -eq 0 ] || [ $HAS_TAR -eq 0 ] || [ $HAS_CURL -eq 0 ] || [ $HAS_Z
   if command -v apt-get >/dev/null 2>&1; then
     printf $BLUE "info: "
     echo "You can install all the dependencies by:"
-    echo "  apt-get install -y --no-install-recommends curl tar zstd lsb-release wget software-properties-common gnupg && bash -c \"\$(wget -O - https://apt.llvm.org/llvm.sh)\""
+    echo "  apt-get install -y --no-install-recommends curl tar zstd lsb-release wget software-properties-common gnupg && bash -c \"\$(wget -O - https://apt.llvm.org/llvm.sh)\" -s 16"
   elif command -v pacman >/dev/null 2>&1; then
     printf $BLUE "info: "
     echo "You can install all the dependencies by:"
