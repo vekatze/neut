@@ -1307,7 +1307,7 @@ cont
 Γ ⊢ xn: an
 Γ, x1: &a1, ..., xn: &an ⊢ e1: b // note: the context `Γ` is ordered
 Γ, y: b ⊢ e2: c
-(the type `b` is realistic) // see the below note for the definition of "realistic"
+(the type `b` is actual) // see the below note for the definition of "actual"
 ---------------------------------------
 Γ ⊢ let y on x1, ..., xn = e1 in e2: c
 ```
@@ -1333,7 +1333,7 @@ match result {   // ... and thus using `result` here is a use-after-free!
 
 Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
 
-More specifically, the type of `result` must be "realistic"; The type must satisfy all of the following conditions:
+More specifically, the type of `result` must be "actual"; The type must satisfy all of the following conditions:
 
 - It doesn't contain any free variables
 - It doesn't contain any noetic types

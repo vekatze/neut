@@ -10,22 +10,22 @@ Here, we'll see how to write performant programs in Neut.
 
 ## Linearity and Memory
 
-In Neut, the content of a variable is copied along its type if the variable is used more than once. Consider the following code:
+In Neut, the content of a variable is _copied_ according to its type _if the variable is used more than once_. Consider the following code:
 
 ```neut
 define foo(xs: list(int)): list(int) {
-  let ys = xs in
-  let zs = xs in
+  let ys = xs in // use `xs` (1)
+  let zs = xs in // use `xs` (2)
   some-func(ys);
   other-func(zs);
-  xs
+  xs // use `xs` (3)
 }
 ```
 
 In the above code, the variable `xs` is used three times. Because of that, the content of `xs` is copied twice:
 
 ```neut
-// pseudo-code
+// after compilation (pseudo-code)
 define foo(xs: list(int)): list(int) {
   let xs1 = copy-value-along-type(list(int), xs) in
   let xs2 = copy-value-along-type(list(int), xs) in
@@ -37,7 +37,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-Also, the content of a variable is discarded according to its type if the variable isn't used. Consider the following code:
+Also, the content of a variable is _discarded_ _if the variable isn't used_. Consider the following code:
 
 ```neut
 define bar(xs: list(int)): unit {
@@ -48,9 +48,9 @@ define bar(xs: list(int)): unit {
 In the above code, since `xs` isn't used, the content of `xs` is discarded as follows:
 
 ```neut
-// pseudo-code
+// after compilation (pseudo-code)
 define bar(xs: list(int)): unit {
-  let xs1 = discard-along-type(list(int), xs) in
+  let _ = discard-along-type(list(int), xs) in
   Unit
 }
 ```
@@ -72,13 +72,15 @@ define bar(x: int): unit {
 }
 ```
 
-In practice, copying/discarding operations on immediate values are optimized away.
+In practice, however, discarding/copying operations on immediate values are optimized away.
+
+In the literature, a use of a variable is called _linear_ if the variable is used exactly once. Neut's compiler translates programs so that every non-linear use of variables becomes linear, ignoring arguments in discarding/copying functions.
 
 If you're interested in how Neut achieves these discarding/copying operations, please see [How to Execute Types](./how-to-execute-types.md).
 
-## The Problem
+## The Problem: Excessive Copying
 
-In Neut, the content of a variable is copied if the variable is used more than once. Now, suppose we defined a function `length` as follows:
+Now, suppose we defined a function `length` as follows:
 
 ```neut
 define length(xs: list(int)): int {
@@ -94,30 +96,26 @@ define length(xs: list(int)): int {
 Also, suppose that we used the function as follows:
 
 ```neut
-define length-then-branch(xs: list(int)): unit {
-  let len = length(xs) in
-  if eq-int(len, 5) {
-    some-function(xs)
-  } else {
-    other-function(xs)
-  }
+define use-length(xs: list(int)): unit {
+  let len = length(xs) in // use `length` to calculate the length of `xs`
+  some-function(len, xs) // then use `len` and `xs`
 }
 ```
 
-Note that the variable `xs` is used more than once. Therefore, the content of `xs` is copied just to calculate its length. That is a disaster. The end of the world. Every wish is crushed into pieces.
+Note that the variable `xs` is used twice. Therefore, in this example, the content of `xs` is copied _just to calculate its length_. This is a disaster. The end of the world. Every wish is crushed into pieces.
 
-Luckily, Neut has a way to overcome this sadness.
+Luckily, there is a loophole to overcome this situation.
 
 ## The Solution: Noema Type
 
-We need a way to bypass this copying/discarding behavior. Here come _noema types_.
+We need a way to bypass excessive copying. Here come _noema types_.
 
 For any type `t`, Neut has a type `&t`. We'll call this the noema type of `t`. Let's introduce some terminologies:
 
 - We'll call a term `e` a noema if the type of `e` is a noema type.
 - We'll say that a term is noetic if the type of the term is a noema type.
 
-Unlike ordinary terms, noemata aren't copied or discarded even when they are used non-linearly. By using this behavior, we can avoid the disaster we have just seen.
+Unlike ordinary terms, _a noema isn't discarded or copied even when used non-linearly_. By using this behavior, we can avoid the disaster we have just seen.
 
 Let's see how it works. We first redefine `length`. If the type `t` is an ADT type, you can inspect its content using `case`:
 
@@ -132,47 +130,40 @@ define length(xs: &list(int)): int {
 }
 ```
 
-The main difference between `case` and `match` is that `case` doesn't perform `free` against its arguments. Because of that, this new `length` uses the argument `xs` in a read-only manner. That is, `length` doesn't consume `xs`.
+The main difference between `case` and `match` is that `case` doesn't perform `free` against its arguments. Because of that, this new `length` doesn't consume `xs`.
 
 Also, note that the newly-bound variables in `case` are automatically wrapped with `&(_)`. For example, in the above example, the type of `ys` is not `list(int)`, but `&list(int)`.
 
-The `length-then-branch` then becomes as follows:
+The `use-length` then becomes as follows:
 
 ```neut
-define length-then-branch(xs: &list(int)): unit {
-  let len = length(xs) in
-  if eq-int(len, 5) {
-    some-function(xs)
-  } else {
-    other-function(xs)
-  }
+define use-length(xs: list(int)): unit {
+  let len = length( ??? ) in
+  some-function(len, xs)
 }
 ```
 
-Note that `xs` is used more than once. However, this `xs` isn't copied because the type of the variable is noetic.
+We need a way to create a noetic version of `xs: list(int)`.
 
 ## Creating a Noema
 
-The last piece for our running question is how to construct such noetic values. This can be done by `let-on`.
+We can create a noema using `let-on`.
 
 ```neut
-define create-and-use-noetic-values(): unit {
-  let xs: list(int) = [1, 2, 3] in
+define use-length(xs: list(int)): unit {
   // 🌟
   let len on xs =
     // xs: &list(int)
     length(xs)
   in
   // xs: list(int)
-  print-int(len)
+  some-function(len, xs)
 }
 ```
 
-You can add `on` to your `let`s. You'll add a comma-separated list of variables to the `on`. Variables specified there are then cast as a noema in the body of the `let`.
+`on` takes a comma-separated list of variables. Variables specified there are then cast to a noema in the body of the `let` and cast back to non-noetic values in its continuation.
 
-We'll call the content of noetic value `xs` a _hyle_. In the example, the hyle of `xs` at `length(xs)` is `[1, 2, 3]`.
-
-`let-on` is conceptually the following syntax sugar:
+The syntax `let-on` is conceptually the following syntax sugar:
 
 ```neut
 let result on x = e in
@@ -186,7 +177,9 @@ let x = unsafe-cast(&a, a, x) in // uncast: `&a` ~> `a`
 cont
 ```
 
-The result of `let-on` (that is, `len` in this case) can't include any noetic term. This restriction is required so that a noetic value won't outlive its hyle. Please see the [corresponding part of the language reference](terms.md#result-type-restriction) for more information.
+We'll call the content of noetic value `xs` a _hyle_. In the example, the hyle of `xs` at `length(xs)` is `[1, 2, 3]`.
+
+The result of `let-on` (that is, `len` in this case) can't include any noetic term. This restriction is required so that a noetic value won't outlive its hyle. If interested, please see the [corresponding part of the language reference](terms.md#on) for more information.
 
 ## Embodying a Noema
 
@@ -233,16 +226,16 @@ The expected behavior of the `Cons` clause would be something like the following
 
 However, the compiler knows the following two facts during compilation:
 
-- The size of `Cons(x, rest)` and `Cons(foo, bar)` are the same
+- The size of outer tuples of `Cons(x, rest)` and `Cons(foo, bar)` are the same
 - The outer tuple of `Cons(x, rest)` will never be used after extracting its contents
 
-Thanks to this knowledge, the compiler can optimize away the pair of `free` and `malloc`, as follows:
+Thanks to this knowledge, the compiler can optimize away a pair of `free` and `malloc`, as follows:
 
 1. obtain `x` and `rest` from `xs`
 2. calculate `foo (= add-int(x, 1))` and `bar (= increment(rest))`
 3. store the calculated values to `xs` (overwrite)
 
-The compiler indeed performs this optimization. When a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
+When a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ### How Effective Is This Optimization?
 
@@ -299,8 +292,8 @@ I also added the result of Haskell just for reference.
 
 Additional notes:
 
-- You can find the source files used in this benchmarking [here](https://github.com/vekatze/neut/tree/update-docs/bench/action/bubble/source).
-- I used my M1 Max MacBook Pro (32GB) to run the above benchmarks.
+- You can find the source files used in this benchmark [here](https://github.com/vekatze/neut/tree/main/bench/action/bubble/source).
+- I used my M1 Max MacBook Pro (32GB) to run this benchmark.
 
 If you're interested in more benchmarking results, please see [Benchmarks](./benchmarks.md).
 
