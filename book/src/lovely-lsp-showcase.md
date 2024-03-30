@@ -1,6 +1,6 @@
 # Lovely LSP Showcase
 
-The compiler contains an experimental LSP server. Let's see what it is like.
+The compiler contains an LSP server. Let's see what it is like.
 
 ## Showcase
 
