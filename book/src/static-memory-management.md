@@ -37,7 +37,7 @@ define foo(xs: list(int)): list(int) {
 }
 ```
 
-Also, the content of a variable is discarded along its type if the variable isn't used. Consider the following code:
+Also, the content of a variable is discarded according to its type if the variable isn't used. Consider the following code:
 
 ```neut
 define bar(xs: list(int)): unit {
@@ -132,7 +132,7 @@ define length(xs: &list(int)): int {
 }
 ```
 
-The main difference between `case` and `match` lies in the fact that `case` doesn't perform `free` against its arguments. Because of that, this new `length` uses the argument `xs` in a read-only manner. That is, `length` doesn't consume `xs`.
+The main difference between `case` and `match` is that `case` doesn't perform `free` against its arguments. Because of that, this new `length` uses the argument `xs` in a read-only manner. That is, `length` doesn't consume `xs`.
 
 Also, note that the newly-bound variables in `case` are automatically wrapped with `&(_)`. For example, in the above example, the type of `ys` is not `list(int)`, but `&list(int)`.
 
@@ -168,11 +168,11 @@ define create-and-use-noetic-values(): unit {
 }
 ```
 
-You can add `on` to your `let`s. You'll add a comma-separated list of variables to the `on`. Variables specified there are then casted as a noema in the body of the `let`.
+You can add `on` to your `let`s. You'll add a comma-separated list of variables to the `on`. Variables specified there are then cast as a noema in the body of the `let`.
 
 We'll call the content of noetic value `xs` a _hyle_. In the example, the hyle of `xs` at `length(xs)` is `[1, 2, 3]`.
 
-`let-on` is essentially the following syntax sugar:
+`let-on` is conceptually the following syntax sugar:
 
 ```neut
 let result on x = e in
@@ -202,7 +202,7 @@ By writing `*e`, you can clone the hyle of the noema `e` along the type `a`, kee
 
 ## Allocation Canceling
 
-Let's see another aspect of Neut's memory management. Thanks to its static nature, memory allocation in Neut can sometimes be optimized away. Consider the following code:
+Let's see another aspect of Neut's memory management. The compiler can sometimes optimize away memory allocation thanks to its static nature. Consider the following code:
 
 ```neut
 data int-list {
@@ -215,7 +215,7 @@ define increment(xs: int-list): int-list {
   match xs {
   - Nil =>
     Nil
-  - Cons(x, rest) =>
+  - Cons(x, rest) => // ← "the `Cons` clause"
     let foo = add-int(x, 1) in
     let bar = increment(rest) in
     Cons(foo, bar)
@@ -223,7 +223,7 @@ define increment(xs: int-list): int-list {
 }
 ```
 
-The expected behavior of the `Cons` clause in `increment` would be something like the following:
+The expected behavior of the `Cons` clause would be something like the following:
 
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
@@ -245,8 +245,6 @@ Thanks to this knowledge, the compiler can optimize away the pair of `free` and 
 The compiler indeed performs this optimization. When a `free` is required, the compiler looks for a `malloc` in the continuation that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ### How Effective Is This Optimization?
-
-The performance benefit obtained by allocation canceling seems to be pretty significant.
 
 Below is the result of benchmarking of a bubble sorting program. This test creates a random list of length `N` and performs bubble sort on the list.
 
@@ -301,8 +299,8 @@ I also added the result of Haskell just for reference.
 
 Additional notes:
 
-- You can find the source files used in this benchmarking [here](https://github.com/vekatze/neut/placeholder).
-- I used my M1 Max MacBook Pro to perform the above benchmarks.
+- You can find the source files used in this benchmarking [here](https://github.com/vekatze/neut/tree/update-docs/bench/action/bubble/source).
+- I used my M1 Max MacBook Pro (32GB) to run the above benchmarks.
 
 If you're interested in more benchmarking results, please see [Benchmarks](./benchmarks.md).
 
@@ -310,9 +308,3 @@ If you're interested in more benchmarking results, please see [Benchmarks](./ben
 
 - Neut uses noema types to bypass copying resources
 - The compiler finds pairs of `malloc/free` that are the same size and optimizes them away
-
----
-
-Now, you should be able to write programs in Neut.
-
-If you're interested in how Neut achieves this memory management, see [How to Execute Types](./how-to-execute-types.md).
