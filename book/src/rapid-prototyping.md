@@ -1,6 +1,6 @@
 # Rapid Prototyping
 
-You can use [the subcommand](./commands.md#neut-zen) `neut zen` to think deeply about a function.
+You can use [the subcommand](./commands.md#neut-zen) `neut zen` to sketch a function.
 
 Below is an example in which Emacs runs `neut zen path/to/file.nt` when `C-c C-c` is typed:
 
