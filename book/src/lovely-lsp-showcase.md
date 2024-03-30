@@ -6,40 +6,38 @@ The compiler contains an experimental LSP server. Let's see what it is like.
 
 The LSP server currently has the following features:
 
-- Lint
-- Complete (+ automatic import)
-- Jump to definition
-- Find references
-- Format on save (+ remove unused imports)
-- Show the type of a variable
-- Highlight symbols
-
-Below are screencasts of them.
+- [Lint](#lint)
+- [Completion (+ automatic import)](#completion--automatic-import)
+- [Jump to Definition](#jump-to-definition)
+- [Find References](#find-references)
+- [Format on Save (+ Remove Unused Imports)](#format-on-save--remove-unused-imports)
+- [Show the Type of a Variable](#show-the-type-of-a-variable)
+- [Highlight Symbols](#highlight-symbols)
 
 ### Lint
 
-![check](./image/screencasts/check.gif "check")
+![check](./image/screencasts/check.gif "lint")
 
 ### Completion (+ automatic import)
 
 ![completion](./image/screencasts/completion.gif "completion")
 
-### Jump to definition
+### Jump to Definition
 
 ![jump to definition](./image/screencasts/jump-to-definition.gif "jump to definition")
 
-### Find references
+### Find References
 
 ![find references](./image/screencasts/find-references.gif "find references")
 
-### Format on save (+ remove unused imports)
+### Format on Save (+ Remove Unused Imports)
 
 ![format on save](./image/screencasts/format-on-save.gif "format on save")
 
-### Show the type of a symbol
+### Show the Type of a Variable
 
-![hover type](./image/screencasts/hover-type.gif "hover type")
+![hover type](./image/screencasts/hover-type.gif "show the type of a variable")
 
-### Highlight symbols
+### Highlight Symbols
 
-![highlight](./image/screencasts/highlight.gif "highlight")
+![highlight](./image/screencasts/highlight.gif "highlight symbols")
