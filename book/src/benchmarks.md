@@ -1,6 +1,6 @@
 # Benchmarks
 
-You can find the source files for the following benchmarks [here](https://github.com/vekatze/neut/placeholder).
+You can find the source files for the following benchmarks [here](https://github.com/vekatze/neut/tree/main/bench/action).
 
 ## Table of Contents
 
