@@ -2,11 +2,11 @@
 
 What's interesting about Neut resides in its resource management. Towards that, here we'll briefly see its aspect as a functional programming language.
 
-Here I'll assume that you are somewhat familiar with other functional programming languages like Haskell, OCaml, or F#. You'll be confused if you don't know what ADT means, for example.
+Here, I assume you are familiar with other functional programming languages like Haskell, OCaml, or F#.
 
 ## What You'll Learn Here
 
-We'll explore Neut's basic aspects as a functional programming language. Namely:
+We'll explore how to use modules in Neut. More Specifically:
 
 - How to _create_ a module
 - How to _build_ a module
@@ -24,20 +24,20 @@ Run the following command:
 neut create sample
 ```
 
-This command creates a new directory `./sample/` and files inside the directory. This is a module in Neut. A module in Neut is a directory that contains `module.ens`.
+This command creates a new directory `./sample/` and files inside the directory. This directory is an example of a module in Neut. A module in Neut is a directory that contains `module.ens`.
 
-The command `create` creates a sample project that performs the sacred "hello world". This module can be built and executed by running the following commands:
+The command `create` creates a sample project that performs "hello world". This module can be built and executed by running the following commands:
 
 ```sh
 cd ./sample
 neut build --execute # => "Hello, world!" (might take seconds for the first time)
 ```
 
-Let's see what's a module in Neut like.
+Let's see what a module in Neut is like.
 
 ### Structure
 
-The content should be something like the below:
+The content should be something like the following:
 
 ```text
 sample/
@@ -48,15 +48,15 @@ sample/
 └── module.ens
 ```
 
-The directory `build` is the directory where object files (binary files) are put in. You won't have to go into the directory in normal use.
+The directory `build` is where object files (binary files) are put in. You won't have to go into the directory for daily use.
 
 The directory `source` is the directory where source files are put in. This will be our focus.
 
-The file `module.ens` contains meta information of this project like dependencies.
+The file `module.ens` contains meta information about this project, such as dependencies.
 
 <div class="info-block">
 
-Directories like `build` or `source` can be changed to somewhere else using `module.ens`. See [Modules](./modules.md) for more information.
+You can change directories like `build` or `source` to somewhere else by using `module.ens`. See [Modules](./modules.md) for more information.
 
 </div>
 
@@ -81,11 +81,11 @@ The content of `module.ens` should be something like the below:
 }
 ```
 
-`target` specifies the name and the entry point of resulting executables. In the case above, `neut build` will create an executable file `sample` by compiling sources using the `main` function in `sample.nt` as the entry point.
+`target` specifies the name and the entry point of the resulting executables. In the case above, `neut build` will create an executable file `sample` by compiling sources using the `main` function in `sample.nt` as the entry point.
 
-`dependency` specifies external dependencies. Since our project doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
+`dependency` specifies external dependencies. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
-The `digest` is the base64url-encoded checksum of the tarball. The `mirror` is a list of URLs of the tarball. `enable-preset` makes the `core` library works like Prelude in Haskell. That is, when `enable-preset` is true, designated names in the dependency (`core`) is automatically imported in every file in our module.
+The `digest` is the base64url-encoded checksum of the tarball. The `mirror` is a list of URLs of the tarball. `enable-preset` makes the `core` library behave like Prelude in Haskell. When `enable-preset` is true, specified names in the dependency are automatically imported into every file in our module.
 
 ### Source files
 
@@ -99,9 +99,9 @@ define main(): unit {
 }
 ```
 
-This defines a function `main` that returns a value of type `unit`. This function just prints `"Hello, world!\n"` and returns.
+The above code defines a function `main` that returns a value of type `unit`. This function prints `"Hello, world!\n"`.
 
-Here, the `unit` is the same as the `()` in Haskell. That is, `unit` is an ADT that contains only one value `Unit`. The explicit definition of `unit` is as follows:
+Here, the `unit` is an ADT that contains only one value `Unit`. The explicit definition of `unit` is as follows:
 
 ```neut
 data unit {
@@ -113,7 +113,7 @@ data unit {
 //     Unit
 ```
 
-Let's see how development experience works. Edit the code into the following:
+Let's see how development in Neut proceeds. Edit the code into the following:
 
 ```neut
 // sample.nt
@@ -129,7 +129,7 @@ and build the project:
 neut build --execute # => 42
 ```
 
-You can also obtain the resulting binary:
+    You can also obtain the resulting binary:
 
 ```sh
 neut build --install ./bin # creates a directory `bin` and put the resulting binary there
@@ -170,17 +170,17 @@ define main(): unit {
 }
 ```
 
-Top-level items like `define` are called **statements**. You'll see more in the next section.
+Top-level items like `define` are called statements. You'll see more in the next section.
 
 <div class="info-block">
 
-Like F#, statements in Neut are order-sensitive. Because of that, if you were to define `main` before `my-add`, the program won't compile. For forward references, you'll have to explicitly declare names beforehand using a statement called `nominal`, which we'll see later.
+As in F#, statements in Neut are order-sensitive. If you were to define `main` before `my-add`, the code won't compile. For forward references, you'll have to explicitly declare names beforehand using a statement called `nominal`, which we'll see in the next section.
 
 </div>
 
 ## Publishing Your Module
 
-Now let's publish our module so that the function `my-add` and `increment` can be used by others.
+Let's publish our module so others can use the functions `my-add` and `increment`.
 
 You can create an archive of the current module using `neut archive`:
 
@@ -193,7 +193,7 @@ ls ./archive # => 0-1.tar.zst
 
 The name of a module archive must be something like `0-1`, `2-3-1`, `1-2-3-4-5-6`.
 
-Names of archives are interpreted as semantic versions to save compatibility relations. For example, if you create an archive `1-2-3`, and then `1-2-4`, the `1-2-4` is treated as a minor update of `1-2-3`.
+The compiler interprets the names of archives as semantic versions. For example, if you create an archive `1-2-3`, and then `1-2-4`, the `1-2-4` is treated as a minor update of `1-2-3`.
 
 This tarball can be controlled with your version control system like Git and pushed to the remote repository, as usual:
 
@@ -203,33 +203,36 @@ This tarball can be controlled with your version control system like Git and pus
 pwd # => path/to/sample/
 
 git init
-git remote add origin git@github.com:YOUR_NAME/YOUR_REPO_NAME.git
-git push origin master
 
 git commit --allow-empty -m "initial commit"
-git add module.ens build/ source/ archive/ # ← `archive/` is added here
+echo "build" > .gitignore
+git add .gitignore archive/ module.ens source/
 git commit -m "whatever"
+
+git remote add origin git@github.com:YOUR_NAME/YOUR_REPO_NAME.git
+git push origin main
 ```
 
-The tarball is now controlled by GitHub in this case. This tarball can then be used as a dependency, as described in the next section.
+This tarball can be used as a dependency, as described in the next section.
 
 ## Adding Another Module to Your Module
 
-`neut get` can be used to add external dependencies. Given that the `0-1.tar.zst` that we created in the previous section is pushed to GitHub as in the previous section, the tarball can be used as follows:
+`neut get` can be used to add external dependencies. Assuming that we've pushed the `0-1.tar.zst` to GitHub, the tarball can be used in a new module as follows:
 
 ```sh
-pwd # => path/to/sample/
-neut create new-item # let's create a new module
+# create a new module
+pwd # => ~/Desktop (for example)
+neut create new-item
 cd new-item
 
 # ↓ add the previous module to our `new-item`
 neut get some-name https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst
 
 # for convenience, you can try the following command:
-neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst # TODO
+neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst
 ```
 
-The command `neut get` fetches the tarball from the specified URL and adds it to the current module.
+The command `neut get` fetches the tarball from the specified URL and adds it to the current module. The module can then be used as `some-name` in your module.
 
 The information of the newly-added module is saved to `module.ens`:
 
@@ -253,19 +256,13 @@ The information of the newly-added module is saved to `module.ens`:
 
 <div class="info-block">
 
-In Neut, the name of a module is defined by its user, not by its author. In our running example, we developed our module under the name of `sample`, but the user added the module as `some-name`. The "real" name of a module in Neut is its digest.
-
-</div>
-
-<div class="info-block">
-
-You can "update" your dependencies of version `0-2-4`, for example, by specifying the same module of version `0-2-5`, `0-2-6`, etc. Please [here](commands.md#neut-archive) if you're interested in how this "update" is performed.
+The "real" name of an archive is the digest of the tarball. You define an alias of the module for your convenience.
 
 </div>
 
 ## Using Dependencies
 
-These specified dependencies can then be used in your code, using `import`:
+These dependencies can then be used in your code:
 
 ```neut
 // new-item.nt
@@ -283,9 +280,9 @@ Like `some-name.sample` in the example above, we can use `import` to specify fil
 
 The first component of an element in `import` is our alias of the dependency (`some-name`). What follows is the relative path to the file from the root of the source directory of the dependency module.
 
-Like `{my-add}` in the example above, every bullet-item of an `import` can optionally have a list of names. Names in these lists can then be used after `import`, as in the example above.
+Like `{my-add}` in the example above, every bullet item of an `import` can optionally have a list of names. Names in these lists are made available after `import`, as in the example above.
 
-If you didn't specify `{my-add}`, you'd have to use the fully-qualified form of `my-add`:
+If you didn't write `{my-add}`, you'd have to use the fully-qualified form of `my-add`:
 
 ```neut
 // new-item.nt
@@ -300,13 +297,17 @@ define main(): unit {
 }
 ```
 
-What if the file we want to `import` isn't at the root of the source directory? Suppose that the dependency `some-name` had contained a file `source/entity/item.nt`. In this case, the file `item.nt` can be imported from `new-item.nt` as follows:
+We have used the file `(source-directory)/sample.nt` in the dependency until now. What if the file we want to `import` isn't at the root of the source directory?
+
+Suppose the dependency `some-name` contained a file `source/entity/item.nt`. In this case, the file `item.nt` can be imported from `new-item.nt` as follows:
 
 ```neut
 import {
 - some-name.entity.item
 }
 ```
+
+We only have to add `.entity` to specify the path to the file.
 
 ## Importing Files in the Current Module
 
@@ -402,8 +403,8 @@ Unlike Haskell, these prefixes are defined per module, not per file. The prefixe
 
 ## What You've Learned Here
 
-- `neut create MODULE_NAME` can be used to create a module
-- `neut build [TARGET_NAME]` can be used to build modules
-- The option `--execute` can be added to `neut build` to execute modules
-- `neut get` can be used to add external dependencies
-- Tarballs created using `neut archives` can be published as a library
+- Use `neut create MODULE_NAME` to create a module
+- Use `neut build [TARGET_NAME]` to build modules
+- Use `neut build [TARGET_NAME] --execute` to execute modules
+- Use `neut get` to add external dependencies
+- Use `neut archive` and push it to publish modules
