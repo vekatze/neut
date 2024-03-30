@@ -1,6 +1,6 @@
 # Programming in Neut
 
-Let's code in Neut. We'll see how to write basic programs in Neut here. You are assumed to be already familiar with functional programming.
+Now that we know how to deal with modules, let's write programs in Neut.
 
 ## What You'll Learn Here
 
@@ -12,43 +12,22 @@ Let's code in Neut. We'll see how to write basic programs in Neut here. You are 
 
 ## Programming in Neut
 
-Let's create a new module `start` and edit `source/start.nt`:
+### Variables and Functions
 
-```sh
-neut create start
-cd start
-edit source/start.nt
-```
-
-### Binding Variables Using `let`
-
-Rewrite `start.nt` into the below:
+Below is an example of the use of variables and functions:
 
 ```neut
 define hey(): unit {
-  // 🌟
   let x = "hello" in
   let y: int = 100 in
   let z: float = 3.8 in
   print("hey")
 }
-
-define main(): unit {
-  hey()
-}
 ```
 
-Building and executing the module should output `hey` to the stdout.
+As in the above example, you can use `let` to define variables.
 
-Points:
-
-- Functions can be defined using `define`
-- Functions can be called by writing `f(e1, ..., en)`
-- `let` can be used to define variables
-
-As you can see from the example above, `let` can be used to define variables.
-
-You might have noticed that the compiler reports unused variables (`x`, `y`, and `z` in the example above). You can use the name `_` when defining variables to suppress those warnings:
+If you build the above code, you should notice that the compiler reports unused variables (`x`, `y`, and `z` in the example above). You can use the name `_` when defining variables to suppress those warnings:
 
 ```neut
 define hey(): unit {
@@ -60,7 +39,7 @@ define hey(): unit {
 }
 ```
 
-These `let`s can be nested:
+`let`s can be nested:
 
 ```neut
 define hey(): unit {
@@ -74,7 +53,7 @@ define hey(): unit {
 }
 ```
 
-`e1; e2` is a syntax sugar of `let _: unit = e1 in e2`:
+You can use `e1; e2` as a syntax sugar of `let _: unit = e1 in e2`:
 
 ```neut
 define hey(): unit {
@@ -83,7 +62,7 @@ define hey(): unit {
   print("b")
 }
 
-// ↓
+// ↓ (desugar)
 
 define hey(): unit {
   let _ = print("a") in
@@ -108,7 +87,7 @@ define my-func2(cond: bool): int {
   if cond {
     1
   } else {
-    my-func2(not(cond))
+    my-func2(not(cond)) // recursive call of `my-func2`
   }
 }
 ```
@@ -132,21 +111,22 @@ The definition of `id` in the example above is the same as the below:
 
 ```neut
 // you can explicitly write the type of `a`
-define id<a: tau>(x: a): a {
+define id<a: tau>(x: a): a { // `tau` is the type of types
   x
 }
 ```
 
-If we don't use any implicit arguments, the example of `id` and `use-id` becomes as follows (just for comparison):
+We can define `id` without using any implicit arguments as follows (just for comparison):
 
 ```neut
 define id(a: tau, x: a): a {
   x
 }
 
+// using `id`
 define use-id(): int {
   let str = 10 in
-  id(int, str)
+  id(int, str) // ← the first argument `int` is now made explicit
 }
 ```
 
@@ -252,12 +232,12 @@ Arguments in constructors can optionally have explicit names:
 
 ```neut
 data config {
-  // 🌟 ("count", "path", "status")
+  // 🌟
 - Config(count: int, cond: bool)
 }
 ```
 
-The syntax sugar `of` can be used to rewrite the above definition of `config` into:
+The syntax sugar `of` can also be used to rewrite the above definition of `config` into:
 
 ```neut
 data config {
@@ -279,7 +259,7 @@ define make-my-list(): my-list(int) {
   My-Cons(1, My-Cons(2, My-Nil))
 }
 
-define make-config(path: &text, status: my-status): term {
+define make-config(): term {
   // 🌟
   Config of {
   - count = 10
@@ -288,11 +268,9 @@ define make-config(path: &text, status: my-status): term {
 }
 ```
 
-We've just used the constructor `Var` here.
-
 ### Using ADT values
 
-You can use `match` to deconstruct ADT values:
+You can use `match` to destructure ADT values:
 
 ```neut
 define sum(xs: my-list(int)): int {
@@ -306,7 +284,7 @@ define sum(xs: my-list(int)): int {
 }
 ```
 
-Nested matching is also available:
+Nested matching is also possible:
 
 ```neut
 define foo(xs: my-list(int)): int {
@@ -332,7 +310,7 @@ data bool {
 }
 ```
 
-A special syntax `if` is there to use this `bool` as in other languages:
+A syntax sugar `if` is there to use this `bool` as in other languages:
 
 ```neut
 define factorial(n: int) {
@@ -373,7 +351,7 @@ define my-complex-function(x: int, y: bool): int {
 }
 ```
 
-### Assertion
+### `assert`
 
 You can use `assert` as follows:
 
