@@ -60,7 +60,7 @@ define hey(): unit {
 }
 ```
 
-`let`s can be nested:
+These `let`s can be nested:
 
 ```neut
 define hey(): unit {
@@ -250,12 +250,10 @@ data my-list(a) {
 
 Arguments in constructors can optionally have explicit names:
 
-(fixme: make `config` simpler)
-
 ```neut
 data config {
   // 🌟 ("count", "path", "status")
-- Config(count: int, path: &text, status: my-status)
+- Config(count: int, cond: bool)
 }
 ```
 
@@ -266,8 +264,7 @@ data config {
   // 🌟
 - Config of {
   - count: int
-  - path: &text
-  - status: my-status
+  - cond: bool
   }
 }
 ```
@@ -286,8 +283,7 @@ define make-config(path: &text, status: my-status): term {
   // 🌟
   Config of {
   - count = 10
-  - path = path
-  - status = status
+  - cond = True
   }
 }
 ```
@@ -399,7 +395,7 @@ define fact(n: int): int {
 
 The type of `assert ".." { .. }` is `Unit`.
 
-`assert` checks if given condition is satisfied. If the condition is True, it does nothing. Otherwise, it reports that the assertion has failed, and kills the program with exit code `1`.
+`assert` checks if a given condition is satisfied. If the condition is True, it does nothing. Otherwise, it reports that the assertion has failed and kills the program with exit code `1`.
 
 If you pass `--mode release` to `neut build`, `assert` does nothing.
 
@@ -433,7 +429,7 @@ define foo(): unit {
 
 `detach` receives a term of type `t` and turns it into a term of type `flow(t)`. Internally, `detach` creates a new thread and computes the term in that thread.
 
-`attach` receives a term of type `flow(t)` and turns it into a term of type `t`. Internally, `attach` waits given computational flow (thread) to finish and extracts its result.
+`attach` receives a term of type `flow(t)` and turns it into a term of type `t`. Internally, `attach` waits for a given computational flow (thread) to finish and extracts its result.
 
 ### Auxiliary Syntaxes
 
@@ -442,12 +438,11 @@ define foo(): unit {
 
 ## What You've Learned Here
 
-- `let` can be used to define variables.
-- Defined variables can be used by specifying their names
-- Functions can be defined using `function` or `define`
-- Functions can be called by writing `f(e1, ..., en)`
-- The statement `data` can be used to define ADTs.
+- Use `let` to define variables.
+- Use `function` or `define` to define functions
+- Use `f(e1, ..., en)` to call functions
+- Use `data` to define ADTs.
 - Constructors of ADTs are normal functions.
-- ADT values can destructed using `match`
-- `detach` and `attach` can be used to perform parallel computation
-- Additional syntax sugars are documented in the [language reference](./terms.md)
+- Use `match` to destruct ADT values
+- Use `detach` and `attach` to perform parallel computation
+- You can find other syntax sugars in the [language reference](./terms.md#syntax-sugar)
