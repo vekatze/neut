@@ -1,8 +1,6 @@
 # Hello External World
 
-What's interesting about Neut resides in its resource management. Towards that, here we'll briefly see its aspect as a functional programming language.
-
-Here, I assume you are familiar with other functional programming languages like Haskell, OCaml, or F#.
+In this section, starting from the sacred hello world, we'll see how the development cycle in Neut proceeds.
 
 ## What You'll Learn Here
 
@@ -30,7 +28,7 @@ The command `create` creates a sample project that performs "hello world". This 
 
 ```sh
 cd ./sample
-neut build --execute # => "Hello, world!" (might take seconds for the first time)
+neut build --execute # => "Hello, world!"
 ```
 
 Let's see what a module in Neut is like.
@@ -50,13 +48,13 @@ sample/
 
 The directory `build` is where object files (binary files) are put in. You won't have to go into the directory for daily use.
 
-The directory `source` is the directory where source files are put in. This will be our focus.
+The directory `source` is where we put source files.
 
 The file `module.ens` contains meta information about this project, such as dependencies.
 
 <div class="info-block">
 
-You can change directories like `build` or `source` to somewhere else by using `module.ens`. See [Modules](./modules.md) for more information.
+You can change the locations of special directories such as `build` or `source` by using `module.ens`. See [Modules](./modules.md) for more information.
 
 </div>
 
@@ -71,7 +69,7 @@ The content of `module.ens` should be something like the below:
   }
   dependency {
     core {
-      digest "ocDmPr9kkTZJMkJnYpZGrX8-skEB0YUCls5HeWSb7r8"
+      digest "(base64url-encoded checksum)"
       mirror [
         "https://github.com/.../X-Y-Z.tar.zst"
       ]
@@ -85,11 +83,15 @@ The content of `module.ens` should be something like the below:
 
 `dependency` specifies external dependencies. Since our running example doesn't do much, the only dependency is `core`, which is the same as "prelude" in other languages.
 
-The `digest` is the base64url-encoded checksum of the tarball. The `mirror` is a list of URLs of the tarball. `enable-preset` makes the `core` library behave like Prelude in Haskell. When `enable-preset` is true, specified names in the dependency are automatically imported into every file in our module.
+The `digest` is the base64url-encoded checksum of the tarball.
+
+The `mirror` is a list of URLs of the tarball.
+
+The `enable-preset` makes the `core` library behave like Prelude in Haskell. That is, when `enable-preset` is true, specified names in the dependency are automatically imported into every file in our module.
 
 ### Source files
 
-Let's see the content of `sample.nt`:
+Let's see the content of `source/sample.nt`:
 
 ```neut
 // sample.nt
@@ -113,7 +115,7 @@ data unit {
 //     Unit
 ```
 
-Let's see how development in Neut proceeds. Edit the code into the following:
+Let's try editing the code as follows:
 
 ```neut
 // sample.nt
@@ -123,13 +125,13 @@ define main(): unit {
 }
 ```
 
-and build the project:
+Then, build the project:
 
 ```sh
 neut build --execute # => 42
 ```
 
-    You can also obtain the resulting binary:
+You can also obtain the resulting binary:
 
 ```sh
 neut build --install ./bin # creates a directory `bin` and put the resulting binary there
@@ -193,7 +195,7 @@ ls ./archive # => 0-1.tar.zst
 
 The name of a module archive must be something like `0-1`, `2-3-1`, `1-2-3-4-5-6`.
 
-The compiler interprets the names of archives as semantic versions. For example, if you create an archive `1-2-3`, and then `1-2-4`, the `1-2-4` is treated as a minor update of `1-2-3`.
+The compiler interprets the names of archives as semantic versions. For example, if you create an archive `1-2-3` and then `1-2-4`, the `1-2-4` is treated as a newer compatible version of `1-2-3`.
 
 This tarball can be controlled with your version control system like Git and pushed to the remote repository, as usual:
 
@@ -217,7 +219,7 @@ This tarball can be used as a dependency, as described in the next section.
 
 ## Adding Another Module to Your Module
 
-`neut get` can be used to add external dependencies. Assuming that we've pushed the `0-1.tar.zst` to GitHub, the tarball can be used in a new module as follows:
+`neut get` can be used to add external dependencies:
 
 ```sh
 # create a new module
@@ -228,7 +230,7 @@ cd new-item
 # ↓ add the previous module to our `new-item`
 neut get some-name https://github.com/YOUR_NAME/YOUR_REPO_NAME/raw/main/archive/0-1.tar.zst
 
-# for convenience, you can try the following command:
+# for your convenience, you can try the following command:
 neut get some-name https://github.com/vekatze/neut-sample/raw/main/archive/0-1.tar.zst
 ```
 
@@ -276,13 +278,21 @@ define main(): unit {
 }
 ```
 
-Like `some-name.sample` in the example above, we can use `import` to specify files of a dependency that we want to use.
+Let's focus on `import`. This statement specifies the files we want to use in dependencies.
 
-The first component of an element in `import` is our alias of the dependency (`some-name`). What follows is the relative path to the file from the root of the source directory of the dependency module.
+`import` consists of lines like the one below:
+
+```neut
+- some-name.sample {my-add}
+```
+
+The first component of such a line (`some-name`) is our alias of the dependency.
+
+What follows (`sample`) is the relative path to the file from the source directory of the dependency module. Here, you don't have to write the file extension `.nt`.
 
 Like `{my-add}` in the example above, every bullet item of an `import` can optionally have a list of names. Names in these lists are made available after `import`, as in the example above.
 
-If you didn't write `{my-add}`, you'd have to use the fully-qualified form of `my-add`:
+Suppose you didn't write `{my-add}`. In this case, you can use the fully-qualified form of `my-add`:
 
 ```neut
 // new-item.nt
@@ -297,7 +307,7 @@ define main(): unit {
 }
 ```
 
-We have used the file `(source-directory)/sample.nt` in the dependency until now. What if the file we want to `import` isn't at the root of the source directory?
+So far, we have used the file `(source-directory)/sample.nt` in the dependency. What if the file we want to `import` isn't at the root of the source directory?
 
 Suppose the dependency `some-name` contained a file `source/entity/item.nt`. In this case, the file `item.nt` can be imported from `new-item.nt` as follows:
 
@@ -307,7 +317,7 @@ import {
 }
 ```
 
-We only have to add `.entity` to specify the path to the file.
+We only have to add `.entity` to specify the path to the file. No surprises.
 
 ## Importing Files in the Current Module
 
@@ -339,7 +349,7 @@ define main(): unit {
 
 That is, the name of the current module is always `this`.
 
-`import` can import multiple files and multiple names at the same time, of course. For example, the following is a valid use of `import`:
+`import` can import multiple files and multiple names at the same time. For example, the following is a valid use of `import`:
 
 ```neut
 import {
