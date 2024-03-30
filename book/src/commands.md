@@ -1,7 +1,5 @@
 # Commands
 
-This section describes how to use the command `neut`. You'll use this command to build a module, add dependencies, etc.
-
 The command `neut` has subcommands like `neut build`, `neut get`, etc. This section describes those subcommands.
 
 ## Table of Contents
@@ -30,7 +28,7 @@ neut build
 #=> error: couldn't find a module file (context: /Users/foo/Desktop)
 ```
 
-More explicitly, only the following subcommands can be used outside a module:
+Only the following subcommands can be used outside a module:
 
 - `neut create`
 - `neut version`
@@ -45,7 +43,7 @@ Some subcommands share command line options. The list of them is as follows:
 
 `neut build` builds the current module and creates executables. It also creates cache files of the source files for faster compilation.
 
-`neut build TARGET` builds all the targets defined in `module.ens`. For example, suppose that the `module.ens` of a module contains the following section:
+`neut build TARGET` builds the target `TARGET` defined in `module.ens`. For example, suppose that the `module.ens` of a module contains the following section:
 
 ```ens
 {
@@ -62,7 +60,7 @@ In this case, running `neut build foo` creates the executable `foo` by building 
 
 If you omit the target and simply write `neut build`, all the targets are built.
 
-The resulting binaries are put inside the module's build directory. You might want to use the option `--install` to copy those binaries anywhere.
+The resulting binaries are put inside the module's build directory. You might want to use the option `--install` to copy those binaries.
 
 ### Example
 
@@ -256,7 +254,7 @@ When running `neut archive VERSION`, this command searches the archive directory
 - `2-0.tar.zst`
 - `2-1.tar.zst`
 
-In this case, the command `neut archive 2-2` searches the `archive` directory and gets `2-0` and `2-1` as the older versions on `2-2`. Here, these "older versions" are determined along [Semantic Versioning](https://semver.org/).
+In this case, the command `neut archive 2-2` searches the `archive` directory and gets `2-0` and `2-1` as the older compatible versions of `2-2`. Here, these "older" versions are determined according to [Semantic Versioning](https://semver.org/).
 
 This command then does the following:
 
@@ -353,7 +351,7 @@ So we don't have to rain on their happy parade in Waikiki Beach.
 
 ## `neut get`
 
-`neut get ALIAS URL` fetches and builds external modules specified by `URL` and adds it to the current module under the name `ALIAS`.
+`neut get ALIAS URL` fetches and builds external modules specified by `URL` and adds it to the current module as a dependency under the name `ALIAS`.
 
 ```sh
 neut get some-name https://github.com/USER_NAME/REPO_NAME/raw/main/archive/0-1.tar.zst
@@ -436,7 +434,9 @@ Please see [Rapid Prototyping](./rapid-prototyping.md) to see `neut zen` in acti
 
 Suppose that you created a new function deep inside your module.
 
-You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior. However, it is a bit cumbersome to my (and hopefully our) liking. I need rapid try-and-error cycles in certain circumstances.
+You can technically create a test function for the function and check its behavior. Or modify the main function to call the new function just to see its behavior.
+
+It might be, however, a bit cumbersome. We'd love to achieve rapid try-and-error cycles in certain circumstances.
 
 You can use the command `zen` here. Suppose that a file `some-file.nt` contains a function `foo` that is defined as in the below:
 
@@ -465,7 +465,7 @@ This can be done even if `some-file.nt` isn't an entrypoint of the module. You c
 
 ## `neut lsp`
 
-`neut lsp` starts the LSP server. The LSP server has basic features like linting, jump to definition, etc. More specifically, the LSP server supports the following LSP capabilities:
+`neut lsp` starts the LSP server. The LSP server has features like linting, jump to definition, etc. More specifically, the LSP server supports the following LSP capabilities:
 
 - `textDocument/didOpen` (lint on open)
 - `textDocument/didSave` (lint on save)
