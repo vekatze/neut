@@ -72,7 +72,7 @@ Note that the above example executes the type `list(int)` as a function.
 
 ### On Immediate Values
 
-We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values just reuse original values.
+We don't have to discard immediates like integers or floats because their internal representations don't depend on memory-related operations like `malloc` or `free`. Because of that, "discarding" immediate values does nothing. Also, "copying" immediate values means reusing original values.
 
 More specifically, the type of an immediate is compiled into a pointer to the following function (pseudo-code):
 
@@ -98,7 +98,7 @@ You'll find this name here and there.
 
 <div class="info-block">
 
-Since every type is translated into a pointer to a function, a type is an immediate value. Thus, the type of the types `tau` is compiled into `base.#.imm`.
+Since every type is translated into a pointer to a function, a type is an immediate value. Thus, `tau` is compiled into `base.#.imm`.
 
 </div>
 
@@ -138,7 +138,7 @@ However, since the size of `Cons(x, rest)` and `Cons(add-int(x, 1), increment(re
 2. calculate `add-int(x, 1)` and `increment(rest)`
 3. store the calculated values to `xs` (overwrite)
 
-And Neut does this optimization. When a `free` is required, Neut looks for a `malloc` that has the same size and optimizes away such a pair if there exists one. The resulting assembly code thus performs in-place updates.
+And Neut does this optimization. When a `free` is required, Neut looks for a `malloc` that is the same size and optimizes away such a pair if one exists. The resulting assembly code thus performs in-place updates.
 
 ### Allocation Canceling and Branching
 
@@ -160,7 +160,7 @@ define insert(v: int, xs: int-list): int-list {
 }
 ```
 
-At point `(X)`, `free` against `xs` is required. However, this `free` can be canceled, since `malloc`s of the same size can be found in all the possible branches (here, `(Y)` and `(Z)`). Thus, in the code above, the deallocation of `xs` at `(X)` is removed, and the memory region of `xs` is reused at `(Y)` and `(Z)`, resulting in an in-place update of `xs`.
+At point `(X)`, `free` against `xs` is required. However, this `free` can be canceled since `malloc`s of the same size can be found in all the possible branches (here, `(Y)` and `(Z)`). Thus, in the code above, the deallocation of `xs` at `(X)` is removed, and the memory region of `xs` is reused at `(Y)` and `(Z)`, resulting in an in-place update of `xs`.
 
 On the other hand, consider rewriting the code above into something like the below:
 
@@ -179,7 +179,7 @@ define foo(v: int, xs: int-list): int-list {
 }
 ```
 
-At this time, the `free` against `xs` at `(X')` can't be optimized away, since there exists a branch (namely, `(Y')`) that doesn't perform `malloc` which is of the same size as `xs`.
+At this time, the `free` against `xs` at `(X')` can't be optimized away since there exists a branch (namely, `(Y')`) that doesn't perform `malloc` that is of the same size as `xs`.
 
 ### How Effective Is This Optimization?
 
