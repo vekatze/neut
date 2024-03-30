@@ -256,10 +256,10 @@ The field `preset` defines the list of files that must be imported implicitly wh
 }
 ```
 
-In the example above, the current module is expected to have the followings:
+In the example above, the current module is expected to have the following files:
 
-- the file `(source-dir)/foo.nt` that contains the definitions of `my-func` and `other-func`
-- the file `(source-dir)/item/bar.nt` that contains the definitions of `hoge` and `pohe`
+- `(source-dir)/foo.nt` that contains the definitions of `my-func` and `other-func`
+- `(source-dir)/item/bar.nt` that contains the definitions of `hoge` and `pohe`
 
 The field `preset` is used in combination with `enable-preset` in `dependency`. Suppose that we released the module that contains the definition of `preset` as in the above. Also suppose that someone is developing a module `MMM` and they added our module to `MMM`'s dependency:
 
