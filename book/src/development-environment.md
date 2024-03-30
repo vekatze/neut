@@ -1,6 +1,6 @@
 # Development Environment
 
-This chapter shows some goodies for writing programs in Neut.
+This chapter provides some tools for writing programs in Neut.
 
 [Lovely LSP Showcase](./lovely-lsp-showcase.md) shows what the LSP server is like using GIF animations.
 
