@@ -146,7 +146,7 @@ The name of a local variable must satisfy the following conditions:
 
 ### Semantics
 
-If the content of a variable `x` is an immediate, `x` is lowered to a name of a register which stores the immediate. Otherwise, `x` is lowered to a pointer to the content.
+If the content of a variable `x` is an immediate value, `x` is compiled into the name of a register that stores the immediate. Otherwise, `x` is compiled into a pointer to the content.
 
 ### Type
 
@@ -188,13 +188,13 @@ The name of a top-level variable is a (possibly) dot-separated symbols, where ea
 
 ### Semantics
 
-A top-level variable `f` is lowered to the following 3-word tuple:
+A top-level variable `f` is compiled into the following 3-word tuple:
 
 ```
 (base.#.imm, 0, POINTER_TO_FUNCTION(f))
 ```
 
-See the Note below for more detailed explanation.
+See the Note below for a more detailed explanation.
 
 ### Type
 
@@ -206,7 +206,7 @@ See the Note below for more detailed explanation.
 
 ### Note
 
-Let's see how top-level variables are lowered. Consider the following top-level functions:
+Let's see how top-level variables are compiled. Consider the following top-level functions:
 
 ```neut
 // (source-dir)/sample.nt
@@ -221,7 +221,7 @@ define get-increment(): (int) -> int {
 }
 ```
 
-This `increment` and `get-increment` are lowered to LLVM functions like the below:
+This `increment` and `get-increment` are compiled into LLVM functions like the below:
 
 ```llvm
 ; (build-dir)/path/to/sample.ll
@@ -366,7 +366,7 @@ The same as LLVM integers.
 
 ### Type
 
-The type of an integer is unknown in itself, and must be inferred to be one of the followings:
+The type of an integer is unknown in itself. It must be inferred to be one of the following types:
 
 - `int1`
 - `int2`
@@ -402,7 +402,7 @@ The same as LLVM floats.
 
 ### Type
 
-The type of an integer is unknown in itself, and must be inferred to be one of the followings:
+The type of an integer is unknown in itself. It must be inferred to be one of the following types:
 
 - `float16`
 - `float32`
@@ -431,13 +431,13 @@ define foo(): unit {
 
 ### Semantics
 
-A text literal is compiled into a pointer to a tuple like the below:
+A text literal is compiled into a pointer to a tuple like the following:
 
 ```text
 (0, length-of-string, array-of-characters)
 ```
 
-This tuple is static. That is, in terms of LLVM, a global constant like the below is inserted to the resulting IR.
+This tuple is static. More specifically, a global constant like the following is inserted into the resulting IR.
 
 ```llvm
 @"text-hello" = private unnamed_addr constant {i64, i64, [5 x i8]} {i64 0, i64 5, [5 x i8] c"hello"}
@@ -697,10 +697,10 @@ e(e1, ..., en)
 
 Given a funciton application `e(e1, ..., en)` the system does the following:
 
-1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`.
-2. Extracts the content of the closure `v`, obtaining the label of the closed function and the tuple of the free variables.
-3. Deallocates the tuple of the closure `v`.
-4. Calls the function label is called with the tuple and `v1, ..., vn` as arguments.
+1. Computes `e`, `e1`, ..., `en` into values `v`, `v1`, ..., `vn`
+2. Extracts the content of the closure `v`, obtaining the label of the closed function and the tuple of the free variables
+3. Deallocates the tuple of the closure `v`
+4. Calls the function label with the tuple and `v1, ..., vn` as arguments
 
 ### Type
 
@@ -823,7 +823,7 @@ define use-id() {
 }
 ```
 
-Note that the following won't typecheck:
+Note that the following won't type-check:
 
 ```neut
 define id<a>(x: a): a {
@@ -852,7 +852,7 @@ Given a term `e` of type `<x1: a1, ..., xn: an>(y1: b1, ..., ym: bm) -> c`,
 exact e
 ```
 
-is translated into the below:
+is translated into the following:
 
 ```neut
 function (y1: b1, ..., ym: bm) {
@@ -868,7 +868,7 @@ function (y1: b1, ..., ym: bm) {
 Γ ⊢ exact e: ((y1: b1, ..., ym: bm) -> c)[x1 := ?M1, ..., xn := ?Mn]
 ```
 
-where `?Mi`s are metavariables that must be inferred by the type checker.
+Here, `?Mi`s are metavariables that must be inferred by the type checker.
 
 ### Note
 
@@ -876,7 +876,7 @@ As you can see from its semantics, an `exact` is just a shorthand of a "hole-app
 
 ## ADT Formation
 
-After defining an ADT using the statement `data`, the ADT types are made available.
+After defining an ADT using the statement `data`, you can use the ADT.
 
 ### Example
 
@@ -914,7 +914,7 @@ In this case, the type of `some-adt` is `(x1: a1, ..., xn: an) -> tau`.
 
 ## Constructors (ADT Introduction)
 
-After defining an ADT using the statement `data`, the constructors can be used to construct values of the ADT.
+After defining an ADT using the statement `data`, you can use the constructors to construct values of the ADT.
 
 ### Example
 
@@ -976,7 +976,7 @@ In this case,
 
 ## `match`
 
-You can use `match` to destruct ADT values.
+You can use `match` to destructure ADT values.
 
 ### Example
 
@@ -1038,9 +1038,9 @@ match e1, ..., en {
 
 ### Semantics
 
-The semantics of `match` is the same as the semantics of ordinary pattern matching except that ADT values are _consumed_ after branching.
+The semantics of `match` is the same as the semantics of ordinary pattern matching, except that ADT values are _consumed_ after branching.
 
-For example, let's see how `my-nat` in the next code is used in `match`:
+For example, let's see how `my-nat` in the following code is used in `match`:
 
 ```neut
 data my-nat {
@@ -1072,9 +1072,9 @@ define foo(n: my-nat): int {
 }
 ```
 
-If the first element is `0`, which means in this case that we found an ADT value of `Zero`, the computer _frees_ the outer tuple of `(0)`, and then evaluates `100`.
+If the first element is `0`, which means that we found an ADT value of `Zero`, the computer _frees_ the outer tuple of `(0)`, and then evaluates `100`.
 
-If the first element is `1`, which means in this case that we found an ADT value of `Succ`, the computer gets the pointer to the second element of `n`, binds it to `m`, _frees_ the outer tuple of `(1, pointer-to-m)`, and then evaluates `foo(m)`.
+If the first element is `1`, which means that we found an ADT value of `Succ`, the computer gets the pointer to the second element of `n`, binds it to `m`, _frees_ the outer tuple of `(1, pointer-to-m)`, and then evaluates `foo(m)`.
 
 ### Type
 
@@ -1100,6 +1100,8 @@ If the first element is `1`, which means in this case that we found an ADT value
     - pat-m => body-m
     }: b
 ```
+
+The above might be a bit overwhelming. Please see the following Note for an example.
 
 ### Note
 
@@ -1160,7 +1162,7 @@ case e1, ..., en {
 
 ### Semantics
 
-The semantics of `case` is the same as `match` except that `case` doesn't consume ADT values.
+The semantics of `case` is the same as `match`, except that `case` doesn't consume ADT values.
 
 ### Type
 
@@ -1258,7 +1260,7 @@ For every type `a`, `&a` is compiled into `base.#.imm`.
 
 ## `on`
 
-`let x on y = e1 in e2` can be used to introduce noetic values in specific scope.
+`let x on y = e1 in e2` can be used to introduce noetic values in a specific scope.
 
 ### Example
 
@@ -1312,7 +1314,7 @@ cont
 
 ### Note
 
-As you can see from the definition of `let-on`, a noema (noetic value) always has its "source". We'll call it the hyle of a noema.
+As you can see from the definition of `let-on`, a noema (noetic value) always has its source value. We'll call it the hyle of a noema.
 
 A noema doesn't make sense if its hyle is discarded. This means, for example, we can break memory safety if `let-on` can return a noema:
 
@@ -1331,7 +1333,7 @@ match result {   // ... and thus using `result` here is a use-after-free!
 
 Thus, we need to restrict the value `result` so that it can't contain any noemata. For example, types like `list(int)`, `unit`, or `except(list(int), text)` are allowed. types like `&text`, `list(a)`, `int -> bool` are disallowed.
 
-More specifically, the type of `result` must be "realistic". That is, the type must satisfy all of the following conditions:
+More specifically, the type of `result` must be "realistic"; The type must satisfy all of the following conditions:
 
 - It doesn't contain any free variables
 - It doesn't contain any noetic types
@@ -1357,7 +1359,7 @@ data joker-z {
 }
 ```
 
-Indeed, if we were to allow returning these dubious ADTs, we can exploit them to hide a noema:
+Indeed, if we were to allow returning these dubious ADTs, we could exploit them to hide a noema:
 
 ```neut
 let result on xs = HideX(xs) in // the type of `result` is `jokerX` (dubious)
@@ -1411,7 +1413,7 @@ The original hyle is kept intact.
 
 ## `flow`
 
-A `flow` in Neut is the type of a control flow.
+A `flow` in Neut is the type of control flow (much like promises in other languages).
 
 ### Example
 
@@ -1461,7 +1463,7 @@ When a flow is created,
 
 When a flow is completed,
 
-- the value `result-value-or-none` is updated to the result of the flow, and
+- the value `result-value-or-none` is updated to the result of the flow and
 - the value `finished` is updated to 1.
 
 (2) As you can see from the semantics, you must use control flows linearly to perform parallel computation.
@@ -1520,7 +1522,7 @@ detach {
 
 ## `attach`
 
-You can use `detach` to wait a control flow and get its result.
+You can use `detach` to wait for a control flow and get its result.
 
 ### Example
 
@@ -1629,7 +1631,7 @@ The `thread-cond` is initialized by `pthread_cond_init(3)`. This field is used t
 ### Note
 
 - Channels are intended to be used with flows.
-- You'll use a channel after turning them into a noema, as in the example above.
+- You'll use a channel after turning them into a noema (as in the example above).
 - You can use `send: <a>(ch: &channel, x: a) -> unit` to enqueue a value to the channel.
 - You can use `receive: <a>(ch: &channel) -> a` to dequeue a value from the channel. `receive` blocks if there is no value to read.
 - `new-channel: <a>() -> channel(a)` is a normal function defined in the core library.
@@ -1701,7 +1703,7 @@ define mutate<a>(ch: &cell(a), f: (a) -> a): unit {
 
 ## `magic`
 
-You can use `magic` to perform weird stuff. Using a `magic` is an unsafe operation.
+You can use `magic` to perform weird stuff. Using `magic` is an unsafe operation.
 
 ### Example
 
@@ -1760,7 +1762,7 @@ You can also use `int` and `float` as a lowtype. This is a platform-dependent lo
 
 ### Semantics
 
-`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. This is just a trick against the type checker, and does nothing at runtime.
+`magic cast (a, b, e)` casts the term `e` from the type `a` to `b`. This is just a trick against the type checker and does nothing at runtime.
 
 `magic store(lowtype, value, address)` stores a value `value` to `address`. This is the same as `store` [in LLVM](https://llvm.org/docs/LangRef.html#store-instruction).
 
@@ -1825,7 +1827,7 @@ Except for `cast`, the result type of `magic` is unspecified. You may have to su
 
 ## `introspect`
 
-You can use `introspect key {..}` to introspect the configuration of the compiler.
+You can use `introspect key {..}` to introspect the compiler's configuration.
 
 ### Example
 
@@ -1874,9 +1876,9 @@ You can also use `default` as a configuration value to represent a fallback case
 
 ### Semantics
 
-Firstly, `introspect key {- v1 => e1 ... - vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to the `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` reports a compilation error.
+Firstly, `introspect key {- v1 => e1 ... - vn => en}` looks up the configuration value `v` of the compiler by `key`. Then it reads the configuration values `v1`, ..., `vn` in this order to find `vk` that is equal to the `v`. If such a `vk` is found, `introspect` executes the corresponding clause `ek`. If no such `vk` is found, `introspect` will report a compilation error.
 
-The configuration value `default` is equal to to any configuration values.
+The configuration value `default` is equal to any configuration values.
 
 ### Type
 
@@ -1945,7 +1947,7 @@ When `admit` exits a program, the exit code is 1.
 
 ## `assert`
 
-You can use `assert` to ensure that certain run-time condition is satisfied.
+You can use `assert` to ensure that a condition is satisfied at run-time.
 
 ### Example
 
@@ -1974,7 +1976,7 @@ assert "any-string" {
 
 If the [build mode](./commands.md#--mode) is `release`, `assert` does nothing.
 
-Otherwise, `assert "description" { condition }` evaluates `condition` and check if it is `True`. If it is `True`, the `assert` simply evaluates to `Unit`. Otherwise, it reports that the assertion `"description"` failed and exits the execution of the program with the exit code `1`.
+Otherwise, `assert "description" { condition }` evaluates `condition` and checks if it is `True`. If it is `True`, the `assert` simply evaluates to `Unit`. Otherwise, it reports that the assertion `"description"` failed and exits the execution of the program with the exit code `1`.
 
 ### Type
 
@@ -2008,7 +2010,7 @@ _
 
 ### Semantics
 
-`_` is a hole that must be inferred by the type checker. If the type checker resolves a hole into a term `e`, this hole behaves exactly the same as `e`. If the type checker can't resolve a hole, the type checker reports a compilation error.
+`_` is a hole that must be inferred by the type checker. If the type checker resolves a hole into a term `e`, this hole behaves the same as `e`. If the type checker can't resolve a hole, the type checker reports a compilation error.
 
 ### Type
 
@@ -2065,7 +2067,7 @@ let K of {x1, ..., xn} = e in
 cont
 ```
 
-Here, the `K` is the only one constructor of the type of `e`. If the type of e contains more than one constructors, `use` results in a compilation error.
+Here, the `K` is the only constructor of the type of `e`. If the type of e contains more than one constructor, `use` results in a compilation error.
 
 ### Type
 
@@ -2467,7 +2469,7 @@ Derived from the desugared form.
 
 ## `with` / `bind`
 
-You can use `with` and `bind` as "do-notations" in other languages.
+You can use `with` / `bind` as "do-notations" in other languages.
 
 ### Example
 
@@ -2512,7 +2514,7 @@ e2
 
 ### Semantics
 
-`with/bind` is the syntax sugar defined by the following five translation rules:
+`with` / `bind` is the syntax sugar defined by the following five translation rules:
 
 ```neut
 // (1) -----------------------------------------------------
@@ -2577,7 +2579,7 @@ with f {e}
 e
 ```
 
-where the rule `(5)` is used only when all the other rules are unavailable.
+The rule `(5)` is used only when all the other rules are unavailable.
 
 ### Type
 
@@ -2586,7 +2588,7 @@ Derived from the desugared form.
 ### Note
 
 - `with`/`bind` is the ordinary do-notation except that:
-  - it must have explicit monadic binder, and
+  - it must have an explicit monadic binder, and
   - it doesn't have monadic return.
 
 ## `{e}`
