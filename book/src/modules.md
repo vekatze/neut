@@ -1,6 +1,8 @@
 # Modules
 
-A directory (including its all children) is a _module_ if it contains a file named `module.ens`. This file is for per-module configuration.
+A directory (including its all children) is a _module_ if it contains a file named `module.ens`.
+
+Below is the list of configurations of `module.ens`.
 
 ## Table of Contents
 
@@ -17,7 +19,7 @@ A directory (including its all children) is a _module_ if it contains a file nam
 
 ## `target`
 
-The field `target` defines the entry points of a module. It should look like the below:
+The field `target` defines the entry points of a module. It should look like the following:
 
 ```ens
 {
@@ -38,13 +40,13 @@ Suppose that your module has the following `target` in `module.ens`:
   // ..
   target {
     foo "foo.nt"
-    bar "item/bar.nt"
+    bar "item/whatever.nt"
   }
   // ..
 }
 ```
 
-In this case, your module has two targets: `foo` and `bar`. The entry point of `foo` is the `main` function in `(source-dir)/foo.nt`. The entry point of `bar` is the `main` function in `(source-dir)/item/bar.nt`.
+In this case, your module has two targets: `foo` and `bar`. The entry point of `foo` is the `main` function in `(source-dir)/foo.nt`. The entry point of `bar` is the `main` function in `(source-dir)/item/whatever.nt`.
 
 The names in `target` can be specified when running `neut build`. For example, given the above definition of `target`, you can run `neut build foo`.
 
@@ -54,7 +56,7 @@ The names of targets are also used as the names of executables. For example, if 
 
 ## `dependency`
 
-The field `dependency` defines the dependencies of a module. It should look like the below:
+The field `dependency` defines the dependencies of a module. It should look like the following:
 
 ```ens
 {
@@ -102,7 +104,7 @@ An example of `dependency`:
 
 The field `digest` specifies the checksum of the tarball of the dependency. The digest is a Base64URL-encoded SHA256 checksum of the tarball. This digest is the "real" name of this dependency, and used as an identifier.
 
-The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When running `neut get`, the compiler will try to get the tarball if necessary, from the beginning of this list.
+The field `mirror` specifies a list of URLs from which the compiler can fetch the tarball. When running `neut get`, the compiler will try to get the tarball if necessary, using this list from the beginning to the end.
 
 The optional field `enable-preset` specifies whether to import `preset`s automatically, as in "prelude" in other languages. This field should only be used (and set to be true) with the core library. For more information, see the explanation of `preset` in this section.
 
@@ -110,7 +112,7 @@ The field `dependency` can be omitted. The default value of `dependency` is `{}`
 
 ## `archive`
 
-The field `archive` defines the path of the directory into which the subcommand `neut archive` store tarballs. It should look like the below:
+The field `archive` defines the path of the directory into which the subcommand `neut archive` store tarballs. It should look like the following:
 
 ```ens
 {
@@ -124,7 +126,7 @@ The field `archive` can be omitted. The default value of `archive` is `./archive
 
 ## `build`
 
-The field `build` defines the path of the directory to store object files, executables, etc. It should look like the below:
+The field `build` defines the path of the directory to store object files, executables, etc. It should look like the following:
 
 ```ens
 {
@@ -138,7 +140,7 @@ The field `build` can be omitted. The default value of `build` is `./build/`.
 
 ## `source`
 
-The field `source` defines the path of the directory to store source files. It should look like the below:
+The field `source` defines the path of the directory to store source files. It should look like the following:
 
 ```ens
 {
@@ -152,7 +154,7 @@ The field `source` can be omitted. The default value of `source` is `./source/`.
 
 ## `prefix`
 
-The field `prefix` defines the aliases of source files. It should look like the below:
+The field `prefix` defines the aliases of source files. It should look like the following:
 
 ```ens
 {
@@ -175,7 +177,7 @@ import {
 }
 ```
 
-can be rewritten into the below:
+can be rewritten into the following:
 
 ```neut
 import {
@@ -190,7 +192,7 @@ The field `prefix` can be omitted. The default value of `prefix` is `{}`
 
 ## `foreign`
 
-The field `foreign` defines a list of directories that contains platform-dependent object files. It should look like the below:
+The field `foreign` defines a list of directories that contains platform-dependent object files. It should look like the following:
 
 ```ens
 {
@@ -243,7 +245,7 @@ If you peek at the `build` directory, you'll find a directory named `artifact` t
 
 ## `preset`
 
-The field `preset` defines the list of files that must be imported implicitly when the module is used as a dependency. It should look like the below:
+The field `preset` defines the list of names that must be imported implicitly when the module is used as a dependency. It should look like the following:
 
 ```ens
 {
@@ -261,9 +263,13 @@ In the example above, the current module is expected to have the following files
 - `(source-dir)/foo.nt` that contains the definitions of `my-func` and `other-func`
 - `(source-dir)/item/bar.nt` that contains the definitions of `hoge` and `pohe`
 
-The field `preset` is used in combination with `enable-preset` in `dependency`. Suppose that we released the module that contains the definition of `preset` as in the above. Also suppose that someone is developing a module `MMM` and they added our module to `MMM`'s dependency:
+The field `preset` is used in combination with `enable-preset` in `dependency`.
+
+Suppose we released a module that contains the definition of `preset` as in the above. Also, suppose someone is developing a module `MMM` and they added our module to `MMM`'s dependency:
 
 ```ens
+// module.ens in MMM
+
 {
   // ..
   dependency {
@@ -280,7 +286,7 @@ The field `preset` is used in combination with `enable-preset` in `dependency`. 
 
 In this case, source files in `MMM` imports our preset names automatically since `enable-preset` is `true`.
 
-As an example, suppose that a file in `MMM` contains an `import` like the below:
+As an example, suppose a file in `MMM` contains an `import` like the below:
 
 ```neut
 import {
@@ -294,7 +300,7 @@ define buz() {
 }
 ```
 
-This is the same as the below since the preset is enabled:
+This code is the same as the following since the preset is enabled:
 
 ```neut
 define buz() {
@@ -309,7 +315,7 @@ The field `preset` can be omitted. The default value of `preset` is `{}`.
 
 ## `antecedent`
 
-The field `antecedent` defines the list of older compatible versions. This field should like the below:
+The field `antecedent` defines the list of older compatible versions. This field should look like the following:
 
 ```ens
 {
@@ -347,10 +353,10 @@ The field `inline-limit` defines the limit on recursion performed during compila
 
 During compilation, the compiler performs possibly recursive computation when:
 
-- typechecking, and
-- expanding definitions of inline functions.
+- type-checking, and
+- expanding the definitions of inline functions.
 
-The `inline-limit` specifies a limit here. If the limit is exceeded, the compiler reports an error like the below:
+The `inline-limit` specifies a limit here. If the limit is exceeded, the compiler reports an error like the following:
 
 ```text
 /path/to/file.nt:123:45
