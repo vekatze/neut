@@ -13,7 +13,7 @@
 
 ## `import`
 
-`import` imports names from other files. It should look like the below:
+`import` imports names from other files. It should look like the following:
 
 ```neut
 import {
@@ -25,17 +25,17 @@ import {
 }
 ```
 
-### Normal Entry
+### Regular Entry
 
-A normal entry in `import` is something like `this.item.bar {some-func, other-func}` or `sample.buz`.
+A regular entry in `import` is something like `this.item.bar {some-func, other-func}` or `sample.buz`.
 
-A normal entry in `import` starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file that we want to import is inside the current module, we'll write `this`.
+A regular entry starts from the alias of the module (`this`, `sample`). The alias of the module is specified in `dependency` in `module.ens`. If the file we want to import is inside the current module, we'll write `this`.
 
-The remaining part of the normal entry is the relative path from the source directory. For example, if we want to import `(source-dir)/item/bar`, we'll have to write `item.bar` after the alias of the module.
+The remaining part of the regular entry is the relative path from the source directory. For example, if we want to import `(source-dir)/item/bar`, we'll have to write `item.bar` after the alias of the module.
 
-A normal entry can be constructed by connecting the alias part and the path part by `.`. In the case of `this.item.bar`, the alias part is `this`, and the path part is `item.bar`.
+A regular entry can be constructed by concatenating the alias and the path with `.`. In the case of `this.item.bar`, the alias part is `this`, and the path part is `item.bar`.
 
-You can specify names in `{}` after each locator. The names specified here can be used without qualifiers:
+You can specify names in `{}`. The names specified here can be used without qualifiers:
 
 ```neut
 import {
@@ -99,11 +99,11 @@ define use-some-func(): unit {
 }
 ```
 
-You may also want to see the explanation on `prefix` in [Modules](./modules.md).
+You may also want to see the explanation of `prefix` in [Modules](./modules.md).
 
 ## `define`
 
-`define` defines a function. It should look like the below:
+`define` defines a function. It should look like the following:
 
 ```neut
 define foo(x: int, y: int): int {
@@ -128,7 +128,7 @@ define use-foo(): int {
 }
 ```
 
-`define` can optionally have implicit arguments, as in `identity-2` in the above example. These implicit arguments are inserted by the compiler at compile time, so you don't have to write them explicitly:
+`define` can optionally have implicit arguments, as in `identity-2` in the above example. The compiler inserts these implicit arguments at compile time, so you don't have to write them explicitly:
 
 ```neut
 define use-func-with-implicit-arg(): int {
@@ -155,11 +155,11 @@ define foo(): int {
 }
 ```
 
-You have to explicitly use the stamement `nominal` for forward references.
+You have to use the statement `nominal` explicitly for forward references.
 
 ## `inline`
 
-`inline` defines an inline function. It should look like the below:
+`inline` defines an inline function. It should look like the following:
 
 ```neut
 inline foo(x: int, y: int): int {
@@ -179,7 +179,7 @@ define use-inline-foo(): int {
 }
 ```
 
-the compiler will translate the above code into the below:
+The compiler will translate the above code into the below:
 
 ```neut
 define use-inline-foo(): int {
@@ -195,7 +195,7 @@ define use-inline-foo(): int {
 
 ## `constant`
 
-`constant` defines a constant. It should look like the below:
+`constant` defines a constant. It should look like the following:
 
 ```neut
 constant some-number: int {
@@ -203,7 +203,7 @@ constant some-number: int {
 }
 ```
 
-The compiler tries to reduce the body of a constant at compile-time, and reports an error if it can't reduce it into a value. For example, the following should raise an error:
+The compiler tries to reduce the body of a constant at compile-time. It reports an error if it can't reduce the body into a value. For example, the following should raise an error:
 
 ```neut
 constant some-number: int {
@@ -212,9 +212,9 @@ constant some-number: int {
 }
 ```
 
-since `print("hello"); 123` isn't a value.
+The compiler can't reduce `print("hello"); 123` into a value, so it raises an error.
 
-Constants can be used just like ordinary variables:
+You can use constants just like ordinary variables:
 
 ```neut
 // define a constant
@@ -231,7 +231,7 @@ define use-constant(): int {
 
 ## `data`
 
-`data` defines an algebraic data type (ADT). It should look like the below:
+`data` defines an algebraic data type (ADT). It should look like the following:
 
 ```neut
 data nat {
@@ -255,7 +255,7 @@ data config {
 }
 ```
 
-ADTs can be used with `match` or `case`:
+You can get the content of an ADT value by using `match` or `case`:
 
 ```neut
 define length<a>(xs: list(a)): int {
@@ -287,7 +287,7 @@ define use-config(c: config) {
 
 ## `resource`
 
-`resource` defines a new type by specifying how to discard/copy the values of the type. It should look like the below:
+`resource` defines a new type by specifying how to discard/copy the values of the type. It should look like the following:
 
 ```neut
 resource my-new-type {
@@ -300,21 +300,23 @@ resource my-new-type {
 }
 ```
 
-`resource` takes two terms. The first term ("discarder") receives a value of the type, and must specify how to discard the value. The second term ("copier") receives a value of the type, and must return the clone of the value.
+`resource` takes two terms. The first term ("discarder") receives a value of the type and discards the value. The second term ("copier") receives a value of the type and returns the clone of the value (keeping the original value intact).
 
-The type of a discarder is `int -> int`. The type of the argument is `int`, and thus you'll have to cast it as necessary. The return value in this term dosen't have any particular sense. After discarding the argument, you can just return 0. You might want to call functions like `free` in this term.
+The type of a discarder is `(int) -> int`. The type of the argument is `int`, so you'll have to cast it if necessary. The return value in this term doesn't have any particular sense. After discarding the argument, you can return 0. You might want to call functions like `free` in this term.
 
-The type of a copier is `int -> int`. The type of the argument is `int`, and thus you'll have to cast it as necessary. The return value in this term is the new clone of the argument, casted to `int`. You might want to call functions like `malloc` in this term.
+The type of a copier is `(int) -> int`. The type of the argument is `int`, so you'll have to cast it as necessary. The return value in this term is the new clone of the argument, cast to `int`. You might want to call functions like `malloc` in this term.
 
-For example, the following is a definition of a "boxed" integer type, with some noisy messages:
+For example, the following is a definition of a "boxed" integer type with some noisy messages:
 
 ```neut
 resource boxed-int {
+  // discarder
 - function (v: int) {
     print("discarded!\n");
     free(v);
     0
   }
+  // copier
 - function (v: int) {
     let orig-value = load-int(v) in
     let new-ptr = malloc(1) in
@@ -339,7 +341,7 @@ You can find an example usage of `resource` in the `int8-array.nt` in the [core 
 
 ## `nominal`
 
-`nominal` declares functions for forward references. It should look like the below:
+`nominal` declares functions for forward references. It should look like the following:
 
 ```neut
 nominal {
@@ -378,7 +380,7 @@ If a nominal definition isn't followed by a real definition, the compiler report
 
 ## `foreign`
 
-`foreign` declares functions that is defined in linked objects. It should look like the below:
+`foreign` declares functions that is defined in linked objects. It should look like the following:
 
 ```neut
 foreign {
@@ -386,7 +388,7 @@ foreign {
 }
 ```
 
-Foreign functions declared here can be called by using the term `magic external(..)`.
+Foreign functions declared here can be called by using `magic external(..)`.
 
 Suppose that you have a C source file with the following definition:
 
@@ -398,7 +400,7 @@ int add_const(int value) {
 }
 ```
 
-You compile this file with `clang -c` to produce an object file, and put it to [a foreign directory of your module](modules.md#foreign). Under this setting, the following code can utilize `add_const`:
+You compile this file with `clang -c` to produce an object file and put it into [a foreign directory of your module](modules.md#foreign). Under this setting, the following code can utilize `add_const`:
 
 ```neut
 foreign {
@@ -424,7 +426,7 @@ declare fp128     @llvm.sin.f128(fp128 %Val)
 declare ppc_fp128 @llvm.sin.ppcf128(ppc_fp128  %Val)
 ```
 
-Thus the next is a valid use of `foreign`:
+Thus, the next is a valid use of `foreign`:
 
 ```neut
 foreign {
@@ -446,9 +448,9 @@ foreign {
 }
 ```
 
-In foreign entries, you can use `int`, `int1`, ..., `int64` `float`, `float16`, `float32`, `float64`, `void`, `pointer` as types.
+In foreign entries, you can use `int`, `int1`, ..., `int64` `float`, `float16`, `float32`, `float64`, `void`, and `pointer` as types.
 
-When declairing the interface of a variadic function, we'll only declare the non-variadic part:
+When declaring the interface of a variadic function, we'll declare only the non-variadic part:
 
 ```neut
 foreign {
@@ -456,7 +458,7 @@ foreign {
 }
 ```
 
-... and then specify the types of variadic arguments when using `magic external`:
+Then, we'll specify the types of variadic arguments when using `magic external`:
 
 ```neut
 define print(t: &text): unit {
