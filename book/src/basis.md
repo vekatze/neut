@@ -88,13 +88,13 @@ inline discard-or-copy-immediate(selector, value) {
 
 These fake discarding/copying are optimized away at compile-time.
 
-Also, this function is internally called `"base.#.imm"`. If you compile your project with:
+Also, this function is internally called `"base.#.imm"`. Try compiling your project as follows:
 
 ```sh
 neut build --emit llvm --skip-link
 ```
 
-You'll find this name here and there.
+Then, take a peek at the `build` directory. You'll find the name here and there.
 
 <div class="info-block">
 
@@ -124,7 +124,7 @@ define increment(xs: int-list): int-list {
 }
 ```
 
-The expected behavior of the `Cons` clause above would be something like the below:
+The expected behavior of the `Cons` clause above would be something like the following:
 
 1. obtain `x` and `rest` from `xs`
 2. `free` the outer tuple of `xs`
@@ -142,7 +142,7 @@ And Neut does this optimization. When a `free` is required, Neut looks for a `ma
 
 ### Allocation Canceling and Branching
 
-This optimization "penetrates" branching. For example, consider the below:
+This optimization "penetrates" branching. For example, consider the following:
 
 ```neut
 // (an `insert` function in bubble sort)
@@ -162,7 +162,7 @@ define insert(v: int, xs: int-list): int-list {
 
 At point `(X)`, `free` against `xs` is required. However, this `free` can be canceled since `malloc`s of the same size can be found in all the possible branches (here, `(Y)` and `(Z)`). Thus, in the code above, the deallocation of `xs` at `(X)` is removed, and the memory region of `xs` is reused at `(Y)` and `(Z)`, resulting in an in-place update of `xs`.
 
-On the other hand, consider rewriting the code above into something like the below:
+On the other hand, consider rewriting the code above into something like the following:
 
 ```neut
 define foo(v: int, xs: int-list): int-list {
@@ -253,9 +253,9 @@ define use-my-function(): text {
 
 The first thing to note here is that every module is marked as "main" or "library" when running compilation. The main module is the module in which `neut build` is executed. Library modules are all the other modules that are necessary for compilation.
 
-All the occurrences of `this` in the main module are kept intact. Thus, the resulting assembly file contains a symbol like `this.foo.bar` if the main module contains a definition of `this.foo.bar`.
+All the occurrences of `this` in the main module are kept intact during compilation. Thus, the resulting assembly file contains symbols like `this.foo.bar`.
 
-On the other hand, all the occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the below (in addition to the correspondences of module aliases that we've just seen):
+On the other hand, all the occurrences of `this` in a library module are resolved into their corresponding digests. More specifically, when processing a library module, the compiler adds correspondences like the below:
 
 ```neut
 // this => (the digest of the library)
