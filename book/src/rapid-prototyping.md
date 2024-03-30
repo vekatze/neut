@@ -10,7 +10,7 @@ This feels a bit like a scripting language, doesn't it?
 
 ### Notes for Emacs
 
-The configuration for Emacs in the above example is like the below:
+The configuration for Emacs in the above example is like the one below:
 
 ```text
 (defun ext/neut-compile ()
