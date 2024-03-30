@@ -145,7 +145,7 @@ Immediate types are compiled into this function. Noema types like `&list(int)` a
 
 <div class="info-block">
 
-A type is compiled into a pointer to a closed function. This means that types are immediates. Because of that, the type of types (`tau`) is also compiled into `base.#.imm`.
+A type is compiled into a pointer to a closed function. This means that types are immediate values. Because of that, the type of types (`tau`) is also compiled into `base.#.imm`.
 
 </div>
 
@@ -159,9 +159,9 @@ define foo(a: tau, x: a): pair(a, a) {
 }
 ```
 
-The code uses the variable `x` twice. Thus this `x` must be copied along the type `a`.
+The code uses the variable `x` twice. Thus, this `x` must be copied according to the type `a`.
 
-This can be easily done because the internal representation of `a` is a function that can discard and copy the values of type `a`. Thus, the above code is compiled into something like the below:
+This can be done because the internal representation of `a` is a function that can discard and copy the values of type `a`. Thus, the above code is compiled into something like the below:
 
 ```neut
 define foo(a: tau, x: a): pair(a, a) {
@@ -185,7 +185,7 @@ data list(a) {
 }
 ```
 
-The first thing to note is that, since an exponential is a closed function, the values of an ADT must be able to be copied/discarded using a closed function. This means that the information about `a` in `list(a)` must be contained in the values.
+The first thing to note is that the values of an ADT must be able to be copied/discarded using a closed function (since all the types in Neut are compiled into closed functions). This means the information about `a` in `list(a)` must be contained in the values.
 
 That is, for example, the internal representation of `Nil` is something like below:
 
@@ -193,13 +193,13 @@ That is, for example, the internal representation of `Nil` is something like bel
 (a, 0)
 ```
 
-where the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
+Here, the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
 
 ```neut
 (a, 1, 10, xs)
 ```
 
-where the `1` is the discriminant for `Cons`.
+Here, the `1` is the discriminant for `Cons`.
 
 With that in mind, the actual exponential for `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):
 
@@ -244,7 +244,7 @@ define exp-list(selector, v) {
 }
 ```
 
-The point is that _the type information in a value is loaded at runtime and used to copy/discard values_. This utilization of types is the main point of dependent types in Neut. When you hear that a programming language has dependent types, I believe that you would expect something like safe array indexing or theorem proving. In Neut, however, the focus of dependent types is on resource management (and the consistency (in a non-technical sense) they provide).
+The point is that _the type information in a value is loaded at runtime and used to copy/discard values_. This utilization of types is the main point of first-class types in Neut.
 
 ## Advanced: Function Types
 
@@ -272,13 +272,13 @@ Let's see how the `lambda` inside the function is compiled.
 
 ### Extracting a Closed Chain From a Lambda
 
-First of all, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:
+First, the compiler collects all the free variables in the lambda. Here, the compiler also collects all the free variables in the types of the free variables. Thus, in this case, the compiler constructs a list like below:
 
 ```neut
 [a, x, y, z]
 ```
 
-Note that this list is "closed". That is, consider annotating all the variables in the list by their variables, like below:
+This list is "closed" in the following sense. Consider annotating all the variables in the list by their variables, like below:
 
 ```neut
 [a: tau, x: int, y: tau, z: a]
@@ -292,7 +292,7 @@ function (a: tau, x: int, y: tau, z: a) {
 }
 ```
 
-doesn't contain any free variables. We'll call a list like this a closed chain.
+contains no free variables. We'll call a list like this a closed chain.
 
 ### Closure Conversion
 
@@ -304,11 +304,11 @@ We'll use this closed chain to compile a lambda. The internal representation of 
  the type of the environment     the closed chain (i.e. environment)
 ```
 
-This is more or less the usual closure conversion, except that we now have the type of the environment in the closure.
+This is more or less the usual closure conversion, except that we now have the types of the free variables in the closure.
 
 ### Copying/Discarding a Closure
 
-Using that type information, we can now copy/discard a closure. To copy a closure, we can do the following:
+Knowing its internal representation, we can now copy/discard a closure. To copy a closure, we can do the following:
 
 ```neut
 // copy a closure `cls`
@@ -377,6 +377,6 @@ define base.#.cls(action-selector, cls) {
 
 <div class="info-block">
 
-Every function type is translated into this same `base.#.cls` no matter what its argument types and the result types are.
+Every function type is translated into this same `base.#.cls`, no matter its argument types and the result types.
 
 </div>
