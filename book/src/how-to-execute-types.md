@@ -32,11 +32,9 @@ store(20, v[1]);
 v
 ```
 
-Let's see how the type `item` is translated to copy values like `New(10, 20)`.
-
 ### Discarding/Copying a Value
 
-Let's see how to discard and copy the values of the type `item`.
+Now, let's see how to discard and copy the values of the type `item`.
 
 A value `v` of type `item` can be discarded as follows:
 
@@ -53,6 +51,8 @@ store(ptr[0], v[0]); // ptr[0] := v[0]
 store(ptr[1], v[1]); // ptr[1] := v[1]
 ptr
 ```
+
+Not a big deal, right?
 
 ### Combining Discarding/Copying Functions
 
@@ -73,11 +73,11 @@ define exp-item(selector, v) {
 }
 ```
 
-`exp-item(selector, v)` discards `v` if `selector` is 0. Otherwise, this function creates a copy of `v` and then returns it.
+`exp-item(selector, v)` discards `v` if `selector` is 0. Otherwise, this function creates a copy of `v` and then returns it, keeping the original `v` intact.
 
 The type `item` is compiled into a pointer to this function.
 
-More generally, a type `a` is translated into something like below:
+More generally, a type `a` is translated into a pointer to a closed function like below:
 
 ```neut
 define exp-a(selector, v) {
@@ -88,6 +88,8 @@ define exp-a(selector, v) {
   }
 }
 ```
+
+We'll call such a closed function a resource exponential of `a`.
 
 ## Example Behavior of Types
 
@@ -123,7 +125,7 @@ cont(a, b)
 
 <div class="info-block">
 
-This copying/discarding procedure happens _immediately after a variable is defined_.
+This discarding/copying procedure happens _immediately after a variable is defined_.
 
 </div>
 
@@ -142,6 +144,8 @@ define base.#.imm(selector, value) {
 ```
 
 Immediate types are compiled into this function. Noema types like `&list(int)` are also translated into this function.
+
+Uses of `base.#.imm` like `base.#.imm(1, some-value)` are optimized away by inlining.
 
 <div class="info-block">
 
@@ -172,8 +176,6 @@ define foo(a: tau, x: a): pair(a, a) {
 
 Thus, we can discard and copy values of polymorphic types.
 
-The main part of this section is now over. What follows is for curious cats.
-
 ## Algebraic Data Types
 
 ADTs like the below also have resource exponentials, of course:
@@ -201,7 +203,7 @@ Here, the `0` is the discriminant for `Nil`. Also, that of `Cons(10, xs)` is:
 
 Here, the `1` is the discriminant for `Cons`.
 
-With that in mind, the actual exponential for `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):
+With that in mind, the resource exponential of `list(a)` will be something like the below (A bit lengthy; Skip it and just read the succeeding note if you aren't that interested in details):
 
 ```neut
 define exp-list(selector, v) {
@@ -244,7 +246,9 @@ define exp-list(selector, v) {
 }
 ```
 
-The point is that _the type information in a value is loaded at runtime and used to copy/discard values_. This utilization of types is the main point of first-class types in Neut.
+The point is that _the type information in a value is loaded at runtime and used to discard/copy values_. This utilization of types is the main point of first-class types in Neut.
+
+The main part of this section is now over. What follows is for curious cats.
 
 ## Advanced: Function Types
 
@@ -296,7 +300,7 @@ contains no free variables. We'll call a list like this a closed chain.
 
 ### Closure Conversion
 
-We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like below:
+We'll use this closed chain to compile a lambda. The internal representation of a closure for the lambda will be a 3-word tuple like the following:
 
 ```text
 (Σ (a: tau, x: int, y: tau). a , (a, x, y, z), LABEL-TO-FUNCTION-DEFINITION)
@@ -306,9 +310,9 @@ We'll use this closed chain to compile a lambda. The internal representation of 
 
 This is more or less the usual closure conversion, except that we now have the types of the free variables in the closure.
 
-### Copying/Discarding a Closure
+### Discarding/Copying a Closure
 
-Knowing its internal representation, we can now copy/discard a closure. To copy a closure, we can do the following:
+Knowing its internal representation, we can now discard/copy a closure. To copy a closure, we can do the following:
 
 ```neut
 // copy a closure `cls`
